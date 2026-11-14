@@ -229,7 +229,9 @@ export function createPl204TheHook() {
       const otherId = p.aId === hit.id ? p.bId : p.aId;
       if (otherId !== s.playerId) return;
       if ((Number(p.impulse) || 0) < THE_HOOK_TUNING.bumpImpulseGate) return;
-      this._scatter(this._now());
+      const now = this._now();
+      if (this._bumpedUntil != null && now < this._bumpedUntil) return; // already scattered: the grind re-fires stay quiet
+      this._scatter(now);
     },
 
     update(dt, state) {

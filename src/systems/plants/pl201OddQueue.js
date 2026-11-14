@@ -37,6 +37,8 @@ export const ODD_QUEUE_TUNING = Object.freeze({
   joinHoldS: 6,               // hold the tail slot this long
   advanceCooldownS: 30,       // the queue never advances twice in a hurry
   bumpColdS: 90,              // a bumped hull freezes the queue for the shift
+  bumpImpulseGate: 60,        // a real bump, not contact-resolution noise
+  bumpCooldownS: 4,           // one collision, one deny: grind frames do not re-emit
   hullRadius: 8,
   memoryCap: 6,
 });
@@ -71,6 +73,7 @@ export function createPl201OddQueue() {
       this._blockedUntil = null;
       this._joined = false;
       this._advancedForJoin = false;
+      this._lastBumpAt = -Infinity;
       const on = (event, fn) => {
         const off = this.bus?.on?.(event, fn);
         if (typeof off === 'function') this._unsubs.push(off);
@@ -107,6 +110,7 @@ export function createPl201OddQueue() {
       this._blockedUntil = null;
       this._joined = false;
       this._advancedForJoin = false;
+      this._lastBumpAt = -Infinity;
     },
 
     _now() {
@@ -175,7 +179,10 @@ export function createPl201OddQueue() {
       if (!hit) return;
       const otherId = p.aId === hit.id ? p.bId : p.aId;
       if (otherId !== s.playerId) return;
+      if ((Number(p.impulse) || 0) < ODD_QUEUE_TUNING.bumpImpulseGate) return;
       const now = this._now();
+      if (now - this._lastBumpAt < ODD_QUEUE_TUNING.bumpCooldownS) return; // one bump, one deny
+      this._lastBumpAt = now;
       this._blockedUntil = now + ODD_QUEUE_TUNING.bumpColdS;
       this.bus?.emit('audio:cue', { id: 'ui_deny' });
       this.bus?.emit(PL_201_BUMPED_EVENT, { hullId: hit.id, t: now });

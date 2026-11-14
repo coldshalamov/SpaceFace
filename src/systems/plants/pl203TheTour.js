@@ -82,6 +82,7 @@ export function createPl203TheTour() {
       this._stopUntil = null;
       this._lessons = new Map();      // growthIndex -> kind, learned by following
       this._lastGripAt = -Infinity;
+      this._lastWallAt = -Infinity;
       const on = (event, fn) => {
         const off = this.bus?.on?.(event, fn);
         if (typeof off === 'function') this._unsubs.push(off);
@@ -118,6 +119,7 @@ export function createPl203TheTour() {
       this._stopUntil = null;
       this._lessons?.clear();
       this._lastGripAt = -Infinity;
+      this._lastWallAt = -Infinity;
     },
 
     _now() {
@@ -237,7 +239,10 @@ export function createPl203TheTour() {
         });
         return;
       }
-      // A wall holds. If you learned the tour, you knew it would.
+      // A wall holds. If you learned the tour, you knew it would — one hold per window,
+      // the same cooldown the mouth's grip keeps, so a grind fires the beat once.
+      if (now - this._lastWallAt < THE_TOUR_TUNING.gripCooldownS) return;
+      this._lastWallAt = now;
       this.bus?.emit('audio:cue', { id: this._lessons.has(index) ? 'confirm' : 'ui_deny' });
       this.bus?.emit(PL_203_WALL_EVENT, { growthIndex: index, learned: this._lessons.has(index), t: now });
     },

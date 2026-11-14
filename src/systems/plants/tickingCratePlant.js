@@ -31,6 +31,7 @@ export const TICKING_CRATE_TUNING = Object.freeze({
   spawnChancePct: 50,
   hailRangeWu: 180,
   shakeImpulseMin: 40,         // a real jolt, not a bump
+  shakeCooldownS: 0.8,         // one grind is one shake: contact frames inside this do not recount
   deliverRangeWu: 400,         // carrying it near the town (station) delivers
   wrongWeekS: 600,             // the town runs wrong for a week (sector-day contract)
   trueTimeLineCooldownS: 90,
@@ -235,6 +236,7 @@ export const tickingCratePlant = {
       carried: false,
       shakes: 0,
       delivered: false,
+      lastShakeAt: null,
     });
   },
 
@@ -254,9 +256,13 @@ export const tickingCratePlant = {
     if (!enc || !enc.carried || enc.delivered) return;
     if (p.aId !== enc.crateId && p.bId !== enc.crateId) return;
     if (finite(p.impulse, 0) < TICKING_CRATE_TUNING.shakeImpulseMin) return;
+    const now = this._now();
+    // One grind is one shake: the warning cue and receipt fire once per contact, not per frame.
+    if (enc.lastShakeAt != null && now - enc.lastShakeAt < TICKING_CRATE_TUNING.shakeCooldownS) return;
+    enc.lastShakeAt = now;
     enc.shakes += 1;
     this._cue('warning', this._entity(enc.crateId)?.pos, 0.7, 1);
-    this.bus.emit(TICKING_CRATE_EVENT, { kind: 'shaken', crateId: enc.crateId, shakes: enc.shakes, t: this._now() });
+    this.bus.emit(TICKING_CRATE_EVENT, { kind: 'shaken', crateId: enc.crateId, shakes: enc.shakes, t: now });
   },
 
   // The single town outcome writer: smooth keeps true time; any shake runs it wrong.

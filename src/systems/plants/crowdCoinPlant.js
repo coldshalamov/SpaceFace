@@ -106,7 +106,10 @@ export const crowdCoinPlant = {
     on('run:awarded', (p) => this._onAwarded(p));
     on('entity:killed', (p) => this._onKilled(p));
     on('combat:fire', (p) => this._onFire(p));
-    on('run:ended', () => this._reset());
+    on('run:ended', () => this._resetRun()); // this plant's reset is _resetRun (no _reset exists)
+    // A new game restarts simTime near zero: a stale poll stamp would block gifts until
+    // the clock caught up. (run:ended does not fire on restarts-in-place.)
+    on('game:newGame', () => { this._lastPollAt = 0; this._lastPollDt = 0; });
   },
 
   update() {

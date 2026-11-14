@@ -293,6 +293,7 @@ export function createWalkingLunch() {
       const now = this._now();
       const day = lunchDayOf(now);
       if (shiftWasBad(day)) return;                        // it was already free today
+      if (this._demandDays.has(day)) return;               // the day-set is the latch: one demand per day
       if (this._demandDays.size >= WALKING_LUNCH_TUNING.memoryCap) {
         const oldest = [...this._demandDays.keys()].sort((a, b) => a - b)[0];
         this._demandDays.delete(oldest);

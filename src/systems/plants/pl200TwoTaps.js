@@ -44,6 +44,7 @@ export const TWO_TAPS_TUNING = Object.freeze({
   watchRadiusWu: 90,
   knockImpulseGate: 90,       // a real knock is a real hit
   knockWindowS: 3,            // two taps, a beat apart, within this window
+  knockMinBeatS: 0.4,         // ...and a BEAT apart: contact-resolution frames are one tap
   jointRadius: 6,
   memoryCap: 14,              // bounded per-joint tap ledger
 });
@@ -263,6 +264,7 @@ export function createPl200TwoTaps() {
       const index = this._jointIds.indexOf(joint.id);
       if (index < 0) return;
       const last = this._taps.get(joint.id);
+      if (last != null && now - last < TWO_TAPS_TUNING.knockMinBeatS) return; // too soon: the same grind, no re-emit
       if (last != null && now - last <= TWO_TAPS_TUNING.knockWindowS) {
         // Her knock, learned: two taps, a beat apart, on the same joint.
         this._taps.delete(joint.id);

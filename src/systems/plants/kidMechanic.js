@@ -43,6 +43,7 @@ export const KID_MECHANIC_TUNING = Object.freeze({
   brushWindowS: 25,            // leave inside this window and you brushed them off
   bellImpulseGate: 60,
   knockWindowS: 3,
+  ringCooldownS: 0.6,          // one contact grind is one ring: frames inside this are the same hit
   memoryCap: 8,
   kidHull: 'ship_wasp',
   kidFaction: 'faction_dmc',
@@ -94,6 +95,7 @@ export function createKidMechanic() {
       this._pointedAt = null;
       this._thanksDay = -1;
       this._rings = [];
+      this._lastRingHitAt = null;
       this._brushed = false;
       const on = (event, fn) => {
         const off = this.bus?.on?.(event, fn);
@@ -134,6 +136,7 @@ export function createKidMechanic() {
       this._pointedAt = null;
       this._thanksDay = -1;
       this._rings = [];
+      this._lastRingHitAt = null;
     },
 
     _now() {
@@ -271,6 +274,9 @@ export function createKidMechanic() {
       if (!bell) return;
       if ((Number(p.impulse) || 0) < KID_MECHANIC_TUNING.bellImpulseGate) return;
       const now = this._now();
+      // One contact grind is one ring: re-fires inside the cooldown are the same hit.
+      if (this._lastRingHitAt != null && now - this._lastRingHitAt < KID_MECHANIC_TUNING.ringCooldownS) return;
+      this._lastRingHitAt = now;
       this._rings.push(now);
       while (this._rings.length > 4) this._rings.shift();
       const [a, b] = this._rings;

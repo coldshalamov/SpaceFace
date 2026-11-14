@@ -246,6 +246,29 @@ test('PL-200 knock: two real impacts inside her window vent the joint early — 
     'the trench despawns on destroy');
 });
 
+test('PL-200 grind: frames of one contact are one tap — the beat must be real, and never re-emits', () => {
+  const h = harnessFor(pl200TwoTaps, { simTime: 181 });
+  pl200TwoTaps.init(h);
+  pl200TwoTaps.update(0.5, h.state); // arms today's hissing joint
+  const day = Math.floor(181 / TWO_TAPS_TUNING.dayLengthS);
+  const joint = ownedOf(h, 'plantsPl200Joint')[hissingJointFor(day)];
+
+  // Frame 2 of one contact: too soon after tap 1 — ignored entirely, no completion.
+  h.bus.emit('physics:impact', { aId: joint.id, bId: 'p1', impulse: 200 });
+  h.state.simTime += 0.1;
+  h.bus.emit('physics:impact', { aId: joint.id, bId: 'p1', impulse: 200 });
+  assert.equal(eventsOf(h.bus, PL_200_KNOCK_EVENT).length, 0, 'frames of one contact are one tap');
+  assert.equal(eventsOf(h.bus, PL_200_VENT_EVENT).length, 0, 'no auto-completion from a grind');
+
+  // A real beat apart: her knock, learned — exactly once.
+  h.state.simTime += TWO_TAPS_TUNING.knockMinBeatS;
+  h.bus.emit('physics:impact', { aId: joint.id, bId: 'p1', impulse: 200 });
+  assert.equal(eventsOf(h.bus, PL_200_KNOCK_EVENT).length, 1, 'two taps a beat apart complete once');
+  assert.equal(eventsOf(h.bus, PL_200_VENT_EVENT).length, 1, 'the vent comes early, once');
+  pl200TwoTaps.destroy();
+  assertNoListeners(h.bus);
+});
+
 // ---------- PL-201 The odd queue ----------
 
 test('PL-201 positive: hold the tail slot slow and the queue takes you — advance, in silence', () => {
@@ -294,6 +317,21 @@ test('PL-201 negative: flying fast does not join, and bumping a hull freezes the
   advanceWith(h.state, pl201OddQueue, 8);
   assert.equal(eventsOf(h.bus, PL_201_JOIN_EVENT).length, 0, 'the queue will not take you now');
   assert.equal(eventsOf(h.bus, PL_201_ADVANCE_EVENT).length, 0, 'a bumped queue keeps its place');
+  pl201OddQueue.destroy();
+  assertNoListeners(h.bus);
+});
+
+test('PL-201 grind: a grind on a queued hull fires one deny, real hits only', () => {
+  const h = harnessFor(pl201OddQueue);
+  pl201OddQueue.init(h);
+  advanceWith(h.state, pl201OddQueue, 1);
+  const hull = ownedOf(h, 'plantsPl201Queued')[0];
+  h.bus.emit('physics:impact', { aId: hull.id, bId: 'p1', impulse: 20 });
+  assert.equal(eventsOf(h.bus, PL_201_BUMPED_EVENT).length, 0, 'a brush is not a bump');
+  h.bus.emit('physics:impact', { aId: hull.id, bId: 'p1', impulse: 200 });
+  for (let i = 0; i < 5; i++) { h.state.simTime += 0.05; h.bus.emit('physics:impact', { aId: hull.id, bId: 'p1', impulse: 200 }); }
+  assert.equal(eventsOf(h.bus, PL_201_BUMPED_EVENT).length, 1, 'one event for the whole grind');
+  assert.equal(cues(h.bus, 'ui_deny').length, 1, 'one deny cue, not per frame');
   pl201OddQueue.destroy();
   assertNoListeners(h.bus);
 });
@@ -418,6 +456,21 @@ test('PL-203 negative + cap: from flight too far you learn nothing, and a mouth 
   assertNoListeners(h.bus);
 });
 
+test('PL-203 grind: leaning on a wall holds once per window, like the grip', () => {
+  const h = harnessFor(pl203TheTour);
+  pl203TheTour.init(h);
+  advanceWith(h.state, pl203TheTour, 1);
+  const wall = ownedOf(h, 'plantsPl203Growth')[0]; // kind 'wall', the row's first
+  h.bus.emit('physics:impact', { aId: wall.id, bId: 'p1', impulse: 200 });
+  for (let i = 0; i < 5; i++) { h.state.simTime += 0.05; h.bus.emit('physics:impact', { aId: wall.id, bId: 'p1', impulse: 200 }); }
+  assert.equal(eventsOf(h.bus, PL_203_WALL_EVENT).length, 1, 'one hold for the whole grind');
+  h.state.simTime += THE_TOUR_TUNING.gripCooldownS;
+  h.bus.emit('physics:impact', { aId: wall.id, bId: 'p1', impulse: 200 });
+  assert.equal(eventsOf(h.bus, PL_203_WALL_EVENT).length, 2, 'a fresh touch holds again');
+  pl203TheTour.destroy();
+  assertNoListeners(h.bus);
+});
+
 // ---------- PL-204 The hook ----------
 
 test('PL-204 positive: take a seat and the perch sways; hover near and a pilot offers theirs', () => {
@@ -475,6 +528,19 @@ test('PL-204 negative: bump the hook and the perch scatters for the shift', () =
     'no pilot survives a destroy');
 });
 
+test('PL-204 grind: a sustained bump scatters the perch once, not per frame', () => {
+  const h = harnessFor(pl204TheHook);
+  pl204TheHook.init(h);
+  advanceWith(h.state, pl204TheHook, 1);
+  const hook = ownedOf(h, 'plantsPl204Hook')[0];
+  h.bus.emit('physics:impact', { aId: hook.id, bId: 'p1', impulse: 200 });
+  for (let i = 0; i < 5; i++) { h.state.simTime += 0.05; h.bus.emit('physics:impact', { aId: hook.id, bId: 'p1', impulse: 200 }); }
+  assert.equal(eventsOf(h.bus, PL_204_SCATTERED_EVENT).length, 1, 'one scatter for the whole grind');
+  assert.equal(cues(h.bus, 'ui_deny').length, 1, 'one deny cue, not per frame');
+  pl204TheHook.destroy();
+  assertNoListeners(h.bus);
+});
+
 // ---------- PL-205 The lit hull ----------
 
 test('PL-205 positive: park beside the lit hull and the light inside moves, once', () => {
@@ -514,6 +580,21 @@ test('PL-205 negative: bump the hull and the light goes out; she comes home on h
   advanceWith(h.state, pl205TheLitHull, LIT_HULL_TUNING.relightS + 1);
   assert.equal(eventsOf(h.bus, PL_205_RELIT_EVENT).length, 1, 'that light is hers; she came home');
   assert.equal(hull.data.plantsPl205Lit, true);
+  pl205TheLitHull.destroy();
+  assertNoListeners(h.bus);
+});
+
+test('PL-205 grind: frames of the same contact do not re-darken the lit hull', () => {
+  const h = harnessFor(pl205TheLitHull);
+  pl205TheLitHull.init(h);
+  advanceWith(h.state, pl205TheLitHull, 1);
+  const hull = ownedOf(h, 'plantsPl205Hull')[0];
+  h.bus.emit('physics:impact', { aId: hull.id, bId: 'p1', impulse: 200 });
+  for (let i = 0; i < 5; i++) { h.state.simTime += 0.05; h.bus.emit('physics:impact', { aId: hull.id, bId: 'p1', impulse: 200 }); }
+  assert.equal(eventsOf(h.bus, PL_205_DARK_EVENT).length, 1, 'the light goes out once');
+  assert.equal(cues(h.bus, 'ui_deny').length, 1, 'one quiet deny, not per frame');
+  advanceWith(h.state, pl205TheLitHull, LIT_HULL_TUNING.relightS + 1);
+  assert.equal(eventsOf(h.bus, PL_205_RELIT_EVENT).length, 1, 'she still comes home');
   pl205TheLitHull.destroy();
   assertNoListeners(h.bus);
 });

@@ -29,6 +29,8 @@ export const PL_271_RESTOCKED_EVENT = 'plants:pl271:restocked';
 export const PL_271_SOLD_EVENT = 'plants:pl271:routeSold';
 
 export const MAP_IN_THE_LID_TUNING = Object.freeze({
+  cellGraceS: 5,              // combat.js: chargeCell.collectAfter grace before the scoop can take it
+  cellLifetimeS: 600,         // combat.js requires a finite despawnAt on every collectable cell
   sectorId: 'sector_sedna_dark',
   poiX: -2600,                // verified claim-site POI poi_claim_far_ledger (sector-local)
   poiZ: -1700,
@@ -228,6 +230,7 @@ export function createPl271MapInTheLid() {
     },
 
     _spawnCell(cachePos) {
+      const now = Number.isFinite(this.state?.simTime) ? this.state.simTime : 0;
       const spawn = this.helpers?.spawnEntity;
       if (typeof spawn !== 'function' || this._cellPodId != null) return;
       // The gift: ONE working charge cell, stamped to the combat pickup contract.
@@ -247,7 +250,15 @@ export function createPl271MapInTheLid() {
         data: {
           kind: 'payload',
           payloadType: 'charge_cell',
-          kind_pickup: 'charge_cell',
+          // combat.js:106-114 contract: payloadType + chargeCell{version,charge>0,collectAfter}
+          // + finite despawnAt, or the auto-collect walk skips the cell. (kind_pickup is inert.)
+          chargeCell: {
+            version: 1,
+            charge: 40,
+            collectAfter: now + MAP_IN_THE_LID_TUNING.cellGraceS,
+            createdTick: this.state?.tick ?? 0,
+          },
+          despawnAt: now + MAP_IN_THE_LID_TUNING.cellLifetimeS,
           charge: 40,
           plantsPl271Cell: true,
           note: PL_271_CACHE_NOTE,

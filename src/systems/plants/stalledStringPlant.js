@@ -32,6 +32,7 @@ export const STALLED_STRING_TUNING = Object.freeze({
   maxCast: 2,                  // two commuter strangers, hard cap
   containers: 3,
   shoveImpulseMin: 50,         // one good shove
+  shoveCooldownS: 1,           // one grind is one shove: contact frames inside this do not re-emit
   clearRangeWu: 120,           // containers must end up beyond this from the beacon
   patienceS: 90,               // watch commuter patience die in real time
   thanksFlashes: 3,            // a hundred flashes of thanks, bounded to three pulses each
@@ -279,8 +280,11 @@ export const stalledStringPlant = {
     const fromPlayer = p.aId === playerId || p.bId === playerId;
     if (!fromPlayer) return;
     if (finite(p.impulse, 0) < STALLED_STRING_TUNING.shoveImpulseMin) return;
-    enc.lastShoveAt = this._now();
-    this.bus.emit(STALLED_STRING_EVENT, { kind: 'shoved', impulse: finite(p.impulse), t: enc.lastShoveAt });
+    // The stamped shove time is the cooldown gate: one grind, one shoved receipt.
+    const now = this._now();
+    if (enc.lastShoveAt != null && now - enc.lastShoveAt < STALLED_STRING_TUNING.shoveCooldownS) return;
+    enc.lastShoveAt = now;
+    this.bus.emit(STALLED_STRING_EVENT, { kind: 'shoved', impulse: finite(p.impulse), t: now });
   },
 
   _resolved(enc, beacon, now) {

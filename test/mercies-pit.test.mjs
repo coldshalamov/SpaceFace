@@ -346,6 +346,36 @@ test('PL-322 negatives: plain clears pay nothing, no run pays nothing', () => {
   assert.equal(receiptsFor(dead, PLANTS_CROWD_COIN_EVENT).length, 0);
 });
 
+test('PL-322: a new game restarts the clock — the stale poll stamp cannot kill the gift mechanic', () => {
+  const env = makeEnv({ run: swarmRun({ seed: 71, wave: 3 }) });
+  pilot(env, { x: 0, z: 0 });
+  env.emit('run:waveStarted', { wave: 3, tick: 180 });
+  env.state.simTime = 5000;
+  env.state.tick = 300000;
+  env.stepAll(); // the long old session stamped its last poll late
+  const plant = env.plants.find((p) => p.name === 'plants322');
+  assert.ok(plant._lastPollAt >= 5000, 'stale poll stamp established');
+
+  // New game: simTime restarts near zero against the stale stamp.
+  env.state.simTime = 1;
+  env.state.tick = 60;
+  env.state.run = swarmRun({ seed: 72, wave: 3 });
+  env.emit('game:newGame', { seed: 72 });
+  assert.equal(plant._lastPollAt, 0, 'the poll stamps cleared with the session');
+  env.emit('run:waveStarted', { wave: 3, tick: 60 });
+
+  env.emit('run:awarded', { credits: 30, wave: 3 });
+  env.emit('entity:killed', { id: 814, killerId: 7, type: 'ship', cause: 'ship_collision', impactorId: 4, pos: { x: 0, z: 0 }, presentation: {} });
+  env.emit('run:waveCleared', { wave: 3, completionKind: 'clear', durationTicks: 600 });
+  const gift = receiptsFor(env, PLANTS_CROWD_COIN_EVENT).find((r) => r.kind === 'scrap_gift');
+  assert.ok(gift, 'the stands still throw');
+
+  // The poll runs again after the restart: scooping the pile ends the gift.
+  for (const id of gift.pickupIds) env.state.entities.delete(id);
+  env.advance(0.5, 0.25);
+  assert.ok(receiptsFor(env, PLANTS_CROWD_COIN_EVENT).some((r) => r.kind === 'scrap_scooped'), 'the poll is alive after the new game');
+});
+
 // ---- PL-323 The medic mule ----------------------------------------------------------------------------------
 
 test('PL-323: come off a round badly hurt and the mule trundles across and patches one bar, free', () => {
@@ -757,8 +787,8 @@ test('PL-329: chalk your own name over it and your next draft is blind — the c
   env.endRound(3, 'draft');
   const seat = env.ofPlant('pl329')[0];
 
-  // firing over the seat is chalking your own name on the champion's
-  env.emit('combat:fire', { ownerId: 7, origin: { x: seat.pos.x + 10, z: seat.pos.z } });
+  // firing over the seat is chalking your own name on the champion's (combat:fire carries the shot direction)
+  env.emit('combat:fire', { ownerId: 7, origin: { x: seat.pos.x + 10, z: seat.pos.z }, dir: Math.PI });
   const chalked = receiptsFor(env, PLANTS_VETERAN_SEAT_EVENT).find((r) => r.kind === 'chalked_over');
   assert.ok(chalked, 'the chalk reads the disrespect');
   assert.equal(chalked.nextDraft, 'blind');
@@ -769,6 +799,28 @@ test('PL-329: chalk your own name over it and your next draft is blind — the c
   assert.equal(env.ofPlant('pl329').length, 1, 'no seat is offered again this run');
   assert.ok(receiptsFor(env, PLANTS_VETERAN_SEAT_EVENT).some((r) => r.kind === 'chalk_remembers'));
   assert.equal(seatVerdict({ chalked: true }), 'chalked_over');
+});
+
+test('PL-329: firing near the seat aimed away chalks nothing; the shot must bear on the seat', () => {
+  const env = makeEnv({ run: swarmRun({ seed: 60, wave: 3 }) });
+  pilot(env, { x: 0, z: 0 });
+  gateSolid(env, 'survival-room-w3-foundry_gate_a', { x: 500, z: 0 });
+  env.endRound(3, 'draft');
+  const seat = env.ofPlant('pl329')[0];
+  const ox = seat.pos.x + 10, oz = seat.pos.z; // the muzzle lands this close
+
+  // Any weapon discharged nearby, aimed elsewhere (beams re-emit per tick): no chalk, ever.
+  for (let i = 0; i < 6; i++) {
+    env.emit('combat:fire', { ownerId: 7, origin: { x: ox, z: oz }, dir: 0 });
+  }
+  assert.equal(env.ofPlant('pl329').filter((e) => e.alive !== false).length, 1, 'the seat stands');
+  assert.equal(receiptsFor(env, PLANTS_VETERAN_SEAT_EVENT).filter((r) => r.kind === 'chalked_over').length, 0);
+
+  // The seat bears: a shot landing this close AND aimed at it is chalking over the name.
+  env.emit('combat:fire', { ownerId: 7, origin: { x: ox, z: oz }, dir: Math.PI });
+  const chalked = receiptsFor(env, PLANTS_VETERAN_SEAT_EVENT).filter((r) => r.kind === 'chalked_over');
+  assert.equal(chalked.length, 1, 'the chalk reads the disrespect once');
+  assert.equal(env.ofPlant('pl329').filter((e) => e.alive !== false).length, 0, 'the seat is gone');
 });
 
 // ---- PL-330 The surrender door --------------------------------------------------------------------------------
@@ -986,6 +1038,29 @@ test('PL-332 regressions: the perch is found even late in the entity map; perch 
   assert.equal(scans, 1, 'two-plus updates within 0.5 s -> one scan');
   tickAt(2.7); // window expired: the scan resumes
   assert.equal(scans, 2, 'the scan resumes on the throttle');
+});
+
+test('PL-332: a new game clears the stale kill stamp — no false fed lap on the fresh run', () => {
+  const env = makeEnv({ run: swarmRun({ seed: 69, wave: 1 }) });
+  pilot(env, { x: 0, z: 0 });
+  env.state.simTime = 1000;
+  env.state.tick = 60000;
+  env.emit('entity:killed', { id: 900, killerId: 7, type: 'ship', cause: 'kinetic', pos: { x: 0, z: 0 }, presentation: {} });
+  const plant = env.plants.find((p) => p.name === 'plants332');
+  assert.equal(plant._lastKillAt, 1000, 'stale kill stamp established');
+
+  // New game: simTime restarts near zero; the stale stamp would read -999 <= window.
+  env.state.simTime = 1;
+  env.state.tick = 60;
+  env.state.run = swarmRun({ seed: 70, wave: 1 });
+  env.emit('game:newGame', { seed: 70 });
+  assert.equal(plant._lastKillAt, null, 'the stale stamp cleared with the session');
+  env.startRound(1); // the fresh run adopts its mascot
+  assert.equal(env.ofPlant('pl332').length, 1);
+
+  env.emit('run:waveCleared', { wave: 1, completionKind: 'clear', durationTicks: 600 }); // no spectacle
+  assert.equal(receiptsFor(env, PLANTS_MASCOT_EVENT).filter((r) => r.kind === 'fed').length, 0, 'no false fed lap');
+  assert.equal(receiptsFor(env, PLANTS_MASCOT_EVENT).filter((r) => r.kind === 'flew_to_other_fighter').length, 0);
 });
 
 // ---- cross-run reset -------------------------------------------------------------------------------------------

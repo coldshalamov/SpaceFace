@@ -23,6 +23,7 @@ export const FIFTY_TUNING = Object.freeze({
   arrivalTarget: 50,        // the fiftieth visit
   paidUntilS: 600,          // the toll stays paid a good while
   impulseFloor: 40,         // a real shove on the chalk, not a brush
+  billCooldownS: 1,         // one shove grind, one bill: grind frames do not re-stamp
   billUntilS: 900,          // the mark becomes a bill
   chalkRadius: 5,
   dockRadiusFallbackWu: 90,
@@ -49,6 +50,7 @@ export function createPl260FiftiethVisit() {
       this._unsubs = [];
       this._arrivals = new Map();   // stationId -> count
       this._chalkIds = new Map();   // stationId -> chalk prop id
+      this._lastBillAt = -Infinity;
       const on = (event, fn) => {
         const off = this.bus && this.bus.on ? this.bus.on(event, fn) : null;
         if (typeof off === 'function') this._unsubs.push(off);
@@ -74,6 +76,7 @@ export function createPl260FiftiethVisit() {
     _reset() {
       if (this._arrivals) this._arrivals.clear();
       if (this._chalkIds) this._chalkIds.clear();
+      this._lastBillAt = -Infinity;
     },
 
     update(dt) {
@@ -122,6 +125,8 @@ export function createPl260FiftiethVisit() {
         if (chalkId !== p.aId && chalkId !== p.bId) continue;
         const chalk = s.entities && s.entities.get ? s.entities.get(chalkId) : null;
         if (!chalk || chalk.alive === false) { this._chalkIds.delete(stationId); return; }
+        if (now - this._lastBillAt < FIFTY_TUNING.billCooldownS) return; // the grind re-fires: one bill per shove
+        this._lastBillAt = now;
         chalk.data = chalk.data || {};
         chalk.data.swarmFloorPad = { label: 'THE MARK IS A BILL' };
         const station = this._stationById(stationId);

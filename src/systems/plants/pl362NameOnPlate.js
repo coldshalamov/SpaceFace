@@ -128,15 +128,15 @@ export function createPl362NameOnPlate() {
         if (e && e.type === 'ship' && e.alive !== false) {
           if (!this._tow || this._tow.targetId !== target) this._tow = { targetId: target, since: now };
         } else {
-          this._settleTow(now, false);
+          this._settleTow(now);
         }
       } else {
-        this._settleTow(now, true);
+        this._settleTow(now);
       }
     },
 
     /** A released stranger inside a dock ring of this sector earns the sector's mark. */
-    _settleTow(now, aliveCheck) {
+    _settleTow(now) {
       const tow = this._tow;
       this._tow = null;
       if (!tow) return;
@@ -176,7 +176,7 @@ export function createPl362NameOnPlate() {
     _onKilled(p) {
       // A towed hull dying on the line is the counterfeit carry.
       if (this._tow && p && p.id === this._tow.targetId) {
-        this._settleTow(this._now(), false);
+        this._settleTow(this._now());
       }
     },
 

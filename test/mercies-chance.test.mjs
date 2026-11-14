@@ -77,6 +77,15 @@ import {
   AFTER_HOURS_COACH_LINE, AFTER_HOURS_COACH_AGAIN_LINE, isAfterHours, takeoffVerdict,
   afterHoursCoachPlant,
 } from '../src/systems/plants/afterHoursCoach.js';
+import {
+  SHADOW_PILOT_EVENT, SHADOW_PILOT_TUNING, shadowPilotPlant,
+} from '../src/systems/plants/shadowPilotPlant.js';
+import {
+  TICKING_CRATE_EVENT, TICKING_CRATE_TUNING, tickingCratePlant,
+} from '../src/systems/plants/tickingCratePlant.js';
+import {
+  STALLED_STRING_EVENT, STALLED_STRING_TUNING, stalledStringPlant,
+} from '../src/systems/plants/stalledStringPlant.js';
 
 // ---- harness --------------------------------------------------------------------------------
 
@@ -1258,4 +1267,90 @@ test('determinism: the same seed plays the same meeting twice, event for event',
   const a = runOnce();
   const b = runOnce();
   assert.deepEqual(a, b, 'identical seeds give identical meetings');
+});
+
+// ---- grind regressions: physics:impact re-fires every contact-resolution frame while a pair
+// overlaps, so impact-counting chance meetings must cooldown-gate per hull ---------------------
+
+function pl133GrindSetup() {
+  const state = makeState({ meta: { seed: seedWithRoll('pl133', true, SHADOW_PILOT_TUNING.spawnChancePct) } });
+  makePlayer(state, { x: 0, z: 0 }, { x: 120, z: 0 });
+  const h = makeHarness(state);
+  shadowPilotPlant.init({ state, bus: h.bus, helpers: h.helpers });
+  enterSector(h.bus);
+  assert.ok(spawnedBy(h.rec, 'pl133', 'rookie')[0], 'the rookie is shadowing');
+  return { state, ...h };
+}
+
+test('PL-133 grind: frames of one contact count once; two separated real impacts fly maniac', () => {
+  const a = pl133GrindSetup();
+  a.bus.emit('physics:impact', { aId: 'p1', bId: 'rock1', impulse: 30, tick: a.state.tick });
+  for (let i = 0; i < 6; i++) {
+    a.state.simTime += 0.05;
+    a.state.tick += 3;
+    a.bus.emit('physics:impact', { aId: 'p1', bId: 'rock1', impulse: 30, tick: a.state.tick });
+  }
+  a.bus.emit('dock:range', { stationId: 'st1', inRange: true });
+  const closed = eventsOf(a.rec, SHADOW_PILOT_EVENT, 'window_closed');
+  assert.equal(closed.length, 1);
+  assert.equal(closed[0].payload.impacts, 1, 'one sustained grind is one impact');
+  assert.equal(closed[0].payload.style, 'well', 'a grind does not read as maniac');
+
+  const b = pl133GrindSetup();
+  b.bus.emit('physics:impact', { aId: 'p1', bId: 'rock1', impulse: 30, tick: b.state.tick });
+  b.state.simTime += SHADOW_PILOT_TUNING.impactCooldownS + 0.1;
+  b.state.tick += 66;
+  b.bus.emit('physics:impact', { aId: 'p1', bId: 'rock1', impulse: 30, tick: b.state.tick });
+  b.bus.emit('dock:range', { stationId: 'st1', inRange: true });
+  const closed2 = eventsOf(b.rec, SHADOW_PILOT_EVENT, 'window_closed');
+  assert.equal(closed2.length, 1);
+  assert.equal(closed2[0].payload.impacts, 2, 'two separated real impacts both count');
+  assert.equal(closed2[0].payload.style, 'maniac', 'two separated real impacts: maniac');
+});
+
+function pl156GrindSetup() {
+  const state = makeState({ meta: { seed: seedWithRoll('pl156', true, TICKING_CRATE_TUNING.spawnChancePct) } });
+  const player = makePlayer(state);
+  const h = makeHarness(state);
+  tickingCratePlant.init({ state, bus: h.bus, helpers: h.helpers });
+  enterSector(h.bus);
+  const crate = spawnedBy(h.rec, 'pl156', 'ticking_crate')[0];
+  assert.ok(crate, 'the ticking crate spawned');
+  return { state, player, ...h, crate };
+}
+
+test('PL-156 grind: frames of one jolt count one shake', () => {
+  const { state, rec, bus, crate } = pl156GrindSetup();
+  bus.emit('tether:snapCatch', { targetId: crate.id });
+  bus.emit('physics:impact', { aId: crate.id, bId: 'rock1', impulse: 60, tick: state.tick });
+  for (let i = 0; i < 6; i++) {
+    state.simTime += 0.05;
+    state.tick += 3;
+    bus.emit('physics:impact', { aId: crate.id, bId: 'rock1', impulse: 60, tick: state.tick });
+  }
+  const shaken = eventsOf(rec, TICKING_CRATE_EVENT, 'shaken');
+  assert.equal(shaken.length, 1, 'one shake for the whole grind');
+  assert.equal(shaken[0].payload.shakes, 1, 'the warning cue and receipt fired once');
+});
+
+function pl220GrindSetup() {
+  const state = makeState({ meta: { seed: seedWithRoll('pl220', true, STALLED_STRING_TUNING.spawnChancePct) } });
+  makePlayer(state, { x: 300, z: 0 });
+  const h = makeHarness(state);
+  stalledStringPlant.init({ state, bus: h.bus, helpers: h.helpers });
+  enterSector(h.bus);
+  const containers = spawnedBy(h.rec, 'pl220', 'stalled_container');
+  assert.equal(containers.length, STALLED_STRING_TUNING.containers, 'the string stands');
+  return { state, ...h, containers };
+}
+
+test('PL-220 grind: frames of one shove fire one shoved receipt', () => {
+  const { state, rec, bus, containers } = pl220GrindSetup();
+  bus.emit('physics:impact', { aId: containers[0].id, bId: 'p1', impulse: 80, tick: state.tick });
+  for (let i = 0; i < 6; i++) {
+    state.simTime += 0.05;
+    state.tick += 3;
+    bus.emit('physics:impact', { aId: containers[0].id, bId: 'p1', impulse: 80, tick: state.tick });
+  }
+  assert.equal(eventsOf(rec, STALLED_STRING_EVENT, 'shoved').length, 1, 'one shoved event for the grind');
 });

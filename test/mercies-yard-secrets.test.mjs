@@ -1190,6 +1190,47 @@ test('PL-369 positive: learn the word the slow way; one cell a month, in person'
   plant.destroy();
 });
 
+test('PL-369/PL-271 cells stamp the real combat pickup contract (chargeCell + despawnAt)', () => {
+  // pl369: the granted cell carries combat.js:106-114's exact shape — payloadType +
+  // chargeCell{version,charge>0,collectAfter>=0} + finite despawnAt. Without it the
+  // auto-collect walk skips the cell and the month-long mercy pays nothing.
+  const { state, bus, helpers } = rig({}, SKER);
+  const plant = boot(pl369LastAllowance, { state, bus, helpers });
+  const pos = depotPos();
+  step(plant, state);
+  const regular = helpers.spawnEntity({ type: 'ship', pos: { x: pos.x + 30, z: pos.z }, vel: { x: 0, z: 0 }, data: {} });
+  playerAt(state, pos.x, pos.z);
+  for (let i = 0; i < LAST_ALLOWANCE_TUNING.wordFragmentsNeeded; i++) {
+    state.simTime += LAST_ALLOWANCE_TUNING.askGapS + 1;
+    step(plant, state);
+  }
+  state.simTime += LAST_ALLOWANCE_TUNING.askGapS + 1;
+  step(plant, state);
+  const cell = helpers.spawned.find((e) => e.data.plantsPl369Cell);
+  assert.ok(cell, 'cell spawned');
+  assert.equal(cell.data.payloadType, 'charge_cell');
+  assert.equal(cell.data.chargeCell.version, 1);
+  assert.ok(Number.isFinite(cell.data.chargeCell.charge) && cell.data.chargeCell.charge > 0);
+  assert.ok(Number.isFinite(cell.data.chargeCell.collectAfter) && cell.data.chargeCell.collectAfter >= state.simTime);
+  assert.ok(Number.isFinite(cell.data.despawnAt) && cell.data.despawnAt > state.simTime);
+  assert.equal(cell.data.kind_pickup, undefined, 'the inert kind_pickup stamp is gone');
+  plant.destroy();
+
+  // pl271: the cache cell carries the same contract.
+  const rig2 = rig({}, SEDNA);
+  const plant2 = boot(pl271MapInTheLid, { state: rig2.state, bus: rig2.bus, helpers: rig2.helpers });
+  step(plant2, rig2.state);
+  const cell2 = rig2.helpers.spawned.find((e) => e.data.plantsPl271Cell);
+  assert.ok(cell2, 'cache cell spawned');
+  assert.equal(cell2.data.payloadType, 'charge_cell');
+  assert.equal(cell2.data.chargeCell.version, 1);
+  assert.ok(Number.isFinite(cell2.data.chargeCell.charge) && cell2.data.chargeCell.charge > 0);
+  assert.ok(Number.isFinite(cell2.data.chargeCell.collectAfter) && cell2.data.chargeCell.collectAfter >= rig2.state.simTime);
+  assert.ok(Number.isFinite(cell2.data.despawnAt) && cell2.data.despawnAt > rig2.state.simTime);
+  assert.equal(cell2.data.kind_pickup, undefined, 'the inert kind_pickup stamp is gone');
+  plant2.destroy();
+});
+
 test('PL-369 wrong choice: brute-force it and the order closes forever, chalked', () => {
   const { state, bus, helpers } = rig({}, SKER);
   const plant = boot(pl369LastAllowance, { state, bus, helpers });

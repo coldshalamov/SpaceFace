@@ -99,6 +99,9 @@ export const orphanWreckOps = {
       this._orphanInstalled = true;
       this.bus.on('sector:enter', () => this._orphanOnSectorEnter());
       this.bus.on('sector:exit', () => this._orphanReset());
+      // New game: simTime restarts near zero, so a stale enter-stamp would gate the spawn
+      // for the previous session's length. Clear with the rest of the row.
+      this.bus.on('game:newGame', () => { this._orphanSectorEnteredAt = -1; this._orphanRow = null; });
       this.bus.on('save:loaded', () => this._orphanReset());
     }
     attachTowWatch(this, 'orphan', () => this._orphanTowMemory);

@@ -196,6 +196,12 @@ export function createPl360RainCheck() {
       const d = station.data || {};
       const r = Number.isFinite(d.dockRadius) && d.dockRadius > 0 ? d.dockRadius : RAIN_CHECK_TUNING.dockRadiusFallbackWu;
       const who = this._callsign();
+      // One chalk per hull: retire the previous board before hanging a new one, and stamp
+      // homeSectorId so the world's own sector teardown can catch it if we don't.
+      const rm = this.helpers && (this.helpers.removeEntity || this.helpers.despawnEntity);
+      if (this._chalkId != null && typeof rm === 'function') rm(this._chalkId);
+      this._chalkId = null;
+      const sectorId = d.homeSectorId || d.sectorId || this.state?.world?.currentSectorId;
       const ent = spawnEntity({
         type: 'beacon',
         pos: { x: station.pos.x - (r + 10), z: station.pos.z - 10 },
@@ -204,10 +210,12 @@ export function createPl360RainCheck() {
         mass: 1e6,
         hull: 1,
         hullMax: 1,
+        homeSectorId: sectorId,
         data: {
           parentType: 'story_prop',
           storyPropKind: 'plants_pl360_chalk',
           plantsPl360Chalk: true,
+          homeSectorId: sectorId,
           scanLabel: `The board beside the toll: DOCKING COMPED — ${who}`,
           swarmFloorPad: { label: 'COMPED — YOURS' },
           masslineTetherable: true,

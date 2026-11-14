@@ -85,6 +85,9 @@ export const mascotPlant = {
     on('entity:killed', (p) => this._onKilled(p));
     on('run:waveCleared', () => this._onRoundCleared());
     on('run:ended', () => this._reset());
+    // New game: simTime restarts near zero — a stale kill stamp would read as a fresh
+    // final blow (negative <= window). Clear it.
+    on('game:newGame', () => { this._lastKillAt = null; });
   },
 
   update(dt) {

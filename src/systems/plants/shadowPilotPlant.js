@@ -33,6 +33,8 @@ export const SHADOW_PILOT_TUNING = Object.freeze({
   followRangeWu: 320,          // beyond this the copy has lapsed for this sweep
   shadowWindowS: 240,          // the rookie shadows for at most this long
   styleImpactsForManiac: 2,    // player impacts during the window -> "like a maniac"
+  impactImpulseMin: 20,        // a real hit counts, contact-resolution brushes do not
+  impactCooldownS: 1,          // a sustained grind on the same hull is one impact
   towns: 3,                    // meet the echo at the third town (dock approach) after
   parkLineCooldownS: 60,
   echoTtlS: 240,
@@ -190,6 +192,8 @@ export const shadowPilotPlant = {
       impacts: 0,
       parked: false,
       lastParkLineAt: null,
+      lastImpactAt: null,
+      lastImpactOther: null,
     });
   },
 
@@ -198,7 +202,16 @@ export const shadowPilotPlant = {
     const enc = this._memory.get('enc');
     if (!enc) return;
     const playerId = this.state.playerId;
-    if (p.aId !== playerId && p.bId !== playerId) return;
+    const otherId = p.aId === playerId ? p.bId : (p.bId === playerId ? p.aId : null);
+    if (otherId == null) return;
+    if (finite(p.impulse, 0) < SHADOW_PILOT_TUNING.impactImpulseMin) return;
+    const now = finite(this.state.simTime, 0);
+    // A sustained grind re-fires every contact-resolution frame: one collision, one count
+    // per hull. A different hull, or the same hull after the beat, is a separate impact.
+    if (otherId === enc.lastImpactOther && enc.lastImpactAt != null
+      && now - enc.lastImpactAt < SHADOW_PILOT_TUNING.impactCooldownS) return;
+    enc.lastImpactAt = now;
+    enc.lastImpactOther = otherId;
     enc.impacts += 1;
   },
 

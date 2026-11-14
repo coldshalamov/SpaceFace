@@ -40,6 +40,8 @@ export const LAST_ALLOWANCE_TUNING = Object.freeze({
   bruteForceLimit: 3,         // three wordless asks inside a month: closed forever
   mercyMonthS: (240 * 30) / 12, // the mercy-day convention: a year is 240 s × 30; a month is a twelfth
   cellCharge: 40,
+  cellGraceS: 5,              // combat.js: chargeCell.collectAfter grace before the scoop can take it
+  cellLifetimeS: 600,         // combat.js requires a finite despawnAt on every collectable cell
   memoryCap: 8,               // bounded bookkeeping
 });
 
@@ -320,7 +322,15 @@ export function createPl369LastAllowance() {
         data: {
           kind: 'payload',
           payloadType: 'charge_cell',
-          kind_pickup: 'charge_cell',
+          // combat.js:106-114 contract: payloadType + chargeCell{version,charge>0,collectAfter}
+          // + finite despawnAt, or the auto-collect walk skips the cell. (kind_pickup is inert.)
+          chargeCell: {
+            version: 1,
+            charge: LAST_ALLOWANCE_TUNING.cellCharge,
+            collectAfter: now + LAST_ALLOWANCE_TUNING.cellGraceS,
+            createdTick: this.state?.tick ?? 0,
+          },
+          despawnAt: now + LAST_ALLOWANCE_TUNING.cellLifetimeS,
           charge: LAST_ALLOWANCE_TUNING.cellCharge,
           plantsPl369Cell: true,
           scanLabel: 'A charge cell from the dead man\u2019s standing order.',

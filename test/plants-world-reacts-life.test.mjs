@@ -71,6 +71,12 @@ import {
 } from '../src/systems/plants/ducklings.js';
 
 import {
+  PLANTS_ORPHAN_SPAWN_EVENT,
+  ORPHAN_TUNING,
+  orphanWreckOps,
+} from '../src/systems/plants/orphanWreck.js';
+
+import {
   PLANTS_MANNERS_YIELD_EVENT,
   PLANTS_MANNERS_FLASH_ACROSS_EVENT,
   PLANTS_MANNERS_RANKS_EVENT,
@@ -1053,4 +1059,40 @@ test('tow watch immediately clears a cached latch when the live tether is releas
   assert.equal(towTargetIdOf(state, memory, 12), null, 'missing mirror cannot resurrect released tow');
   state.player.tether = { active: true, targetId: 'new-tow' };
   assert.equal(towTargetIdOf(state, memory, 12), 'new-tow', 'live active target remains authoritative');
+});
+
+// ---------------------------------------------------------------------------
+// PL-198 the orphan: a new game drops the stale session row and stamp
+// ---------------------------------------------------------------------------
+
+test('PL-198 a new game clears the stale session row and sector stamp; the wreck spawns spawnDelayS after the fresh stamp', () => {
+  const bus = createBus();
+  const spawnEvents = [];
+  bus.on(PLANTS_ORPHAN_SPAWN_EVENT, (p) => spawnEvents.push(p));
+  const player = makePlayer({});
+  const filer = makeShip('f1', { x: 0, z: 0, vx: 15, data: { trafficRole: 'courier' } });
+  const state = makeState({ simTime: 1000, entities: new Map([['p1', player], ['f1', filer]]) });
+  const { host } = makeHost(bus, state, orphanWreckOps, (h) => h._initOrphanWreck());
+  // The long old session: sector entered late, wreck already spawned and drifting.
+  bus.emit('sector:enter', { sectorId: 's1' });
+  state.simTime = 1000 + ORPHAN_TUNING.spawnDelayS;
+  host._reactOrphanWreck(filer, { role: 'courier' }, [], state, player);
+  const oldWreckId = host._orphanRow && host._orphanRow.wreckId;
+  assert.ok(oldWreckId, 'the old session spawned its wreck');
+
+  // New game: simTime restarts near zero. The stale row and enter-stamp must not
+  // survive the session — a restart into the same sector may never re-fire sector:enter,
+  // and a stale stamp would gate the spawn until the old clock caught up.
+  state.entities.delete(oldWreckId);
+  state.simTime = 1;
+  bus.emit('game:newGame', { seed: 7 });
+  assert.equal(host._orphanRow, null, 'the stale row dropped with the session');
+  assert.equal(host._orphanSectorEnteredAt, -1, 'the stale sector stamp dropped with the session');
+
+  // The restart enters the sector again: the fresh session spawns on its own schedule.
+  bus.emit('sector:enter', { sectorId: 's1' });
+  state.simTime = 1 + ORPHAN_TUNING.spawnDelayS;
+  host._reactOrphanWreck(filer, { role: 'courier' }, [], state, player);
+  assert.equal(spawnEvents.length, 2, 'the fresh session spawns its own wreck on schedule');
+  assert.notEqual(spawnEvents[1].wreckId, oldWreckId);
 });

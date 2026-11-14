@@ -43,6 +43,7 @@ export const ANSELS_DISH_TUNING = Object.freeze({
   eatS: 12,                    // carried long enough counts as eaten
   bellImpulseGate: 60,
   knockWindowS: 3,
+  tapCooldownS: 0.6,           // one contact grind is one tap: frames inside this are the same hit
   scrapCooldownS: 8,           // the scrape is one motion, not a loop
   memoryCap: 8,
   sender: 'Ansel',
@@ -92,6 +93,7 @@ export function createAnselsDish() {
       this._carriedSince = null;
       this._eatenNight = -1;
       this._rings = [];            // knock timestamps, bounded
+      this._lastTapHitAt = null;
       this._thanksNight = -1;
       this._scrapedAt = null;
       this._lastNight = null;
@@ -136,6 +138,7 @@ export function createAnselsDish() {
       this._carriedSince = null;
       this._eatenNight = -1;
       this._rings = [];
+      this._lastTapHitAt = null;
       this._scrapedAt = null;
       this._lastNight = null;
     },
@@ -288,6 +291,9 @@ export function createAnselsDish() {
       if (!bell) return;
       if ((Number(p.impulse) || 0) < ANSELS_DISH_TUNING.bellImpulseGate) return;
       const now = this._now();
+      // One contact grind is one tap: re-fires inside the cooldown are the same hit.
+      if (this._lastTapHitAt != null && now - this._lastTapHitAt < ANSELS_DISH_TUNING.tapCooldownS) return;
+      this._lastTapHitAt = now;
       this._rings.push(now);
       while (this._rings.length > 4) this._rings.shift();
       const [a, b] = this._rings;

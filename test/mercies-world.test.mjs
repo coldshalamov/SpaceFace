@@ -441,6 +441,26 @@ test('PL-260 wrong choice: demand the toll back — the mark becomes a bill', ()
   assert.equal(eventsOf(rec, PLANTS_FIFTY_BILL_EVENT).length, 1);
 });
 
+test('PL-260 grind: shoving the chalk one grind stamps the bill once, not per frame', () => {
+  const { state, rec, bus } = boot(pl260FiftiethVisit);
+  const station = fixtureStation(state, 'st1', { x: 0, z: 200 });
+  for (let i = 0; i < FIFTY_TUNING.arrivalTarget; i++) {
+    bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
+  }
+  const chalk = rec.spawns.find((e) => e.data && e.data.plantsPl260Chalk === true);
+  assert.ok(chalk, 'the chalk mark is visible');
+  // A grind re-fires physics:impact every contact frame; the bill stamps once.
+  for (let i = 0; i < 8; i++) {
+    bus.emit('physics:impact', {
+      aId: chalk.id, bId: state.playerId, impulse: 200, dp: 5,
+      causalActorId: state.playerId, pos: { x: chalk.pos.x, z: chalk.pos.z },
+    });
+  }
+  assert.equal(eventsOf(rec, PLANTS_FIFTY_BILL_EVENT).length, 1, 'one bill for the whole grind');
+  assert.ok(station.data[PL_260_BILLED_STAMP] > 0, 'the mark is a bill');
+  assert.equal(chalk.data.swarmFloorPad.label, 'THE MARK IS A BILL');
+});
+
 // ---------------------------------------------------------------- PL-261
 
 test('PL-261 open tank: come in dry to a dark waystation, one tank is yours', () => {
@@ -1137,6 +1157,28 @@ test('PL-360 wrong choice: sell it to another hull — a fine, and the chalk sta
   assert.ok(eventsOf(rec, PLANTS_FINE_EVENT, 'sold').length === 1);
   bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
   assert.ok(eventsOf(rec, PLANTS_FINE_EVENT, 'docked_fined').length === 1, 'docking under the fine');
+});
+
+test('PL-360 cooldown: a second save replaces the chalk — only the latest board stays up', () => {
+  const { state, rec, bus } = boot(pl360RainCheck);
+  const station = fixtureStation(state, 'st1', { x: 0, z: 0 });
+  const pirate = makeNpc(state, 'pirate1', { x: 200, z: 0 }, { data: { ai: { hostile: true } } });
+  bus.emit('entity:killed', { id: pirate.id, pos: { x: 200, z: 0 } });
+  const first = rec.spawns.find((e) => e.data && e.data.plantsPl360Chalk === true);
+  assert.ok(first, 'the first chalk is on the board');
+  assert.equal(first.homeSectorId, 's1', 'the chalk carries its home sector (top level)');
+  assert.equal(first.data.homeSectorId, 's1', '...and in data, like its pl350/pl346 siblings');
+
+  // One save per station day: a later save re-chalks and retires the earlier board.
+  state.simTime += RAIN_CHECK_TUNING.saveCooldownS + 1;
+  const pirate2 = makeNpc(state, 'pirate2', { x: 220, z: 0 }, { data: { ai: { hostile: true } } });
+  bus.emit('entity:killed', { id: pirate2.id, pos: { x: 220, z: 0 } });
+  const chalks = rec.spawns.filter((e) => e.data && e.data.plantsPl360Chalk === true);
+  assert.equal(chalks.length, 2, 'the second save chalks again');
+  assert.ok(rec.removes.includes(first.id), 'the earlier chalk is torn down, not leaked');
+  const alive = chalks.filter((c) => state.entities.get(c.id));
+  assert.equal(alive.length, 1, 'only the latest chalk remains');
+  assert.equal(alive[0].id, chalks[1].id);
 });
 
 // ---------------------------------------------------------------- PL-361

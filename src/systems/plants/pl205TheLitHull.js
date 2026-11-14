@@ -142,6 +142,7 @@ export function createPl205TheLitHull() {
       if (otherId !== s.playerId) return;
       const hull = s.entities?.get ? s.entities.get(this._hullId) : null;
       if (!hull?.data) return;
+      if (hull.data.plantsPl205Lit !== true) return; // already dark: frames of the same grind stay quiet
       const now = this._now();
       // The light goes out — then she comes home.
       hull.data.plantsPl205Lit = false;

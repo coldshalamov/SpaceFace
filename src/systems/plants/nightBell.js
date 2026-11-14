@@ -41,6 +41,7 @@ export const NIGHT_BELL_TUNING = Object.freeze({
   palletTakeS: 3,
   bellImpulseGate: 60,
   knockWindowS: 3,
+  ringCooldownS: 0.7,          // one contact grind is one ring: frames inside this are the same hit
   jokeRepeatS: 20,             // a second ring this soon, with a pallet out, is a joke
   memoryCap: 12,
 });
@@ -85,6 +86,7 @@ export function createNightBell() {
       this._palletId = null;
       this._bellPoint = null;
       this._rings = [];
+      this._lastBellHitAt = null;
       this._ringDay = -1;
       this._palletDueAt = null;
       this._takeSince = null;
@@ -125,6 +127,7 @@ export function createNightBell() {
       this._palletId = null;
       this._bellPoint = null;
       this._rings = [];
+      this._lastBellHitAt = null;
       this._ringDay = -1;
       this._palletDueAt = null;
       this._takeSince = null;
@@ -223,6 +226,10 @@ export function createNightBell() {
       if ((Number(p.impulse) || 0) < NIGHT_BELL_TUNING.bellImpulseGate) return;
       const now = this._now();
       const t = NIGHT_BELL_TUNING;
+      // One contact grind is one ring: re-fires inside the cooldown are the same hit,
+      // ignored entirely — never counted as a second ring, never a joke.
+      if (this._lastBellHitAt != null && now - this._lastBellHitAt < t.ringCooldownS) return;
+      this._lastBellHitAt = now;
       this._rings.push(now);
       while (this._rings.length > t.memoryCap) this._rings.shift();
       const [a, b] = this._rings;

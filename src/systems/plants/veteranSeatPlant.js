@@ -30,6 +30,8 @@ export const VETERAN_SEAT_TUNING = Object.freeze({
   sitHoldS: 4,
   seatTtlS: 240,
   chalkRangeWu: 80,          // a shot landing this close is chalking over the name
+  chalkBearCosMin: 0.5,      // the shot must bear on the seat (dir dot bearing >= this, ~60° cone)
+  chalkCooldownS: 0.5,       // one chalk per volley: beam re-emits per tick never re-chalk
   seatOffsetWu: 130,
   seatRadiusWu: 10,
   seatHull: 400,
@@ -146,6 +148,7 @@ export const veteranSeatPlant = {
     this._revealed = false;
     this._chalked = false;
     this._chalkReported = false;
+    this._lastChalkAt = -Infinity;
   },
 
   _reset() {
@@ -211,9 +214,18 @@ export const veteranSeatPlant = {
   _onFire(payload) {
     if (this._seatId == null || this._chalked) return;
     if (!payload || payload.ownerId !== this.state.playerId || !payload.origin) return;
+    const now = this._now();
+    if (now - this._lastChalkAt < VETERAN_SEAT_TUNING.chalkCooldownS) return;
     const dx = payload.origin.x - this._seatPos.x;
     const dz = payload.origin.z - this._seatPos.z;
     if (dx * dx + dz * dz > VETERAN_SEAT_TUNING.chalkRangeWu * VETERAN_SEAT_TUNING.chalkRangeWu) return;
+    // The chosen act: a shot LANDING this close AND bearing on the seat — any muzzle flash
+    // nearby aimed elsewhere is not chalking over the name. The combat:fire payload carries
+    // the shot direction as a world angle; without one, the hull's heading is the honest read.
+    const shotDir = Number.isFinite(payload.dir) ? payload.dir : this._player()?.rot;
+    const bearing = Math.atan2(this._seatPos.z - payload.origin.z, this._seatPos.x - payload.origin.x);
+    if (!Number.isFinite(shotDir) || Math.cos(shotDir - bearing) < VETERAN_SEAT_TUNING.chalkBearCosMin) return;
+    this._lastChalkAt = now;
     this._chalkOver();
   },
 

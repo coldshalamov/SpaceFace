@@ -233,6 +233,26 @@ test('PL-273 positive: the dish is cooked nightly, eating it and ringing twice g
     'the sill despawns on destroy');
 });
 
+test('PL-273 grind: one sustained knock is one tap — the two-tap thanks needs two real taps', () => {
+  const h = harnessFor(anselsDishPlant, ANSELS_DISH_TUNING, { simTime: 185 }); // night band
+  advanceWith(h, 1);
+  const dish = ownedOf(h, 'plantsPl273Dish')[0];
+  teleportPlayer(h, dish.pos.x, dish.pos.z);
+  advanceWith(h, ANSELS_DISH_TUNING.eatS + 1);
+  assert.equal(eventsOf(h.bus, 'plants:pl273:eaten').length, 1);
+  const bell = ownedOf(h, 'plantsPl273Bell')[0];
+  // One sustained bump (~0.2 s of contact frames): one tap, no thanks.
+  impact(h, bell.id, 100);
+  for (let i = 0; i < 4; i++) { h.state.simTime += 0.05; impact(h, bell.id, 100); }
+  assert.equal(eventsOf(h.bus, 'plants:pl273:thanks').length, 0, 'one grind is not two taps');
+  // Two spaced taps: the thanks lands, once.
+  h.state.simTime += ANSELS_DISH_TUNING.tapCooldownS;
+  impact(h, bell.id, 100);
+  assert.equal(eventsOf(h.bus, 'plants:pl273:thanks').length, 1, 'two spaced taps thank');
+  h.plant.destroy();
+  assertNoListeners(h.bus);
+});
+
 test('PL-273 bite + leave: docking while it cools scrapes it (exact line); leaving means dawn recycles it quietly', () => {
   const h = harnessFor(anselsDishPlant, ANSELS_DISH_TUNING, { simTime: 185 });
   advanceWith(h, 1);
@@ -413,6 +433,29 @@ test('PL-276 bite: brush them off and the next fit-out has no pointers and one l
   assertNoListeners(h.bus);
 });
 
+test('PL-276 grind: one sustained bump on Pip\u2019s bell does not auto-complete the thanks', () => {
+  const h = harnessFor(kidMechanicPlant, KID_MECHANIC_TUNING, { simTime: 100 }); // work band
+  advanceWith(h, 1);
+  const fence = fencePointFor(h.state.entities.get(KID_MECHANIC_TUNING.stationId));
+  teleportPlayer(h, fence.x + 16, fence.z + 8);
+  advanceWith(h, KID_MECHANIC_TUNING.fitNeedS + 1);
+  assert.equal(eventsOf(h.bus, 'plants:pl276:point').length, 1);
+  const loose = ownedOf(h, 'plantsPl276Loose')[0];
+  const bell = ownedOf(h, 'plantsPl276Bell')[0];
+  // One sustained bump (~0.2 s of contact frames): counted once, no completion.
+  impact(h, bell.id, 100);
+  for (let i = 0; i < 4; i++) { h.state.simTime += 0.05; impact(h, bell.id, 100); }
+  assert.equal(eventsOf(h.bus, 'plants:pl276:thanks').length, 0, 'one grind is not two rings');
+  assert.ok(h.state.entities.get(loose.id), 'the coupling is still loose');
+  // Two spaced taps: the thanks lands once, and Pip seats the coupling.
+  h.state.simTime += KID_MECHANIC_TUNING.ringCooldownS;
+  impact(h, bell.id, 100);
+  assert.equal(eventsOf(h.bus, 'plants:pl276:thanks').length, 1, 'thanked by name');
+  assert.equal(h.state.entities.get(loose.id), undefined, 'Pip seats the coupling');
+  h.plant.destroy();
+  assertNoListeners(h.bus);
+});
+
 // ---------- PL-277 The second chair ----------
 
 test('PL-277 positive: sit in the second chair and the clerk serves you off-book, a beat faster', () => {
@@ -506,6 +549,22 @@ test('PL-278 bite: knock the coin bowl free twice and the plate starts going to 
   assert.ok(stranger, 'a real stranger takes the plate');
   const plate = ownedOf(h, 'plantsPl278Plate').slice(-1)[0];
   assert.equal(plate.data.plantsPl278Holder, stranger.id, 'not yours');
+  h.plant.destroy();
+  assertNoListeners(h.bus);
+});
+
+test('PL-278 grind: knocking the coin bowl all shift demands once — one deny per day', () => {
+  const day = firstFairDay();
+  const h = harnessFor(walkingLunchPlant, WALKING_LUNCH_TUNING);
+  advanceWith(h, 1);
+  const bowl = ownedOf(h, 'plantsPl278Bowl')[0];
+  h.state.simTime = day * WALKING_LUNCH_TUNING.dayLengthS + 10;
+  advanceWith(h, 1);
+  impact(h, bowl.id, 120);
+  for (let i = 0; i < 6; i++) { h.state.simTime += 0.05; impact(h, bowl.id, 120); }
+  assert.equal(eventsOf(h.bus, 'plants:pl278:demand').length, 1, 'one demand for the whole grind');
+  assert.equal(popups(h.bus).filter((p) => p.text === 'Fine. Today it\u2019s free.').length, 1,
+    'one deny popup, not per frame');
   h.plant.destroy();
   assertNoListeners(h.bus);
 });
@@ -781,6 +840,29 @@ test('PL-284 bite: ring it as a joke and the bell comes down for good', () => {
   assert.equal(bracket.data.swarmFloorPad.label, 'BELL TAKEN DOWN');
   advanceWith(h, NIGHT_BELL_TUNING.palletS + 1);
   assert.equal(eventsOf(h.bus, 'plants:pl284:pallet').length, 0, 'the pallet stops coming');
+  h.plant.destroy();
+  assertNoListeners(h.bus);
+});
+
+test('PL-284 grind: one sustained bump is one ring — never a joke, and the bell stays up', () => {
+  const h = harnessFor(nightBellPlant, NIGHT_BELL_TUNING, { simTime: 190 }); // night: you need it
+  advanceWith(h, 1);
+  const bell = ownedOf(h, 'plantsPl284Bell')[0];
+  // A ~0.2 s grind re-fires physics:impact every contact frame.
+  impact(h, bell.id, 100);
+  for (let i = 0; i < 4; i++) { h.state.simTime += 0.05; impact(h, bell.id, 100); }
+  assert.equal(eventsOf(h.bus, 'plants:pl284:ring').length, 0, 'one bump is not yet a ring');
+  assert.equal(eventsOf(h.bus, 'plants:pl284:down').length, 0, 'no joke confiscation from one bump');
+  assert.ok(h.state.entities.get(bell.id), 'the bell is still hanging');
+  // A second ring after the beat completes once: the pallet is due, the bell stays up.
+  h.state.simTime += NIGHT_BELL_TUNING.ringCooldownS;
+  impact(h, bell.id, 100);
+  assert.equal(eventsOf(h.bus, 'plants:pl284:ring').length, 1, 'exactly one ring');
+  advanceWith(h, 0.5);
+  assert.equal(eventsOf(h.bus, 'plants:pl284:down').length, 0);
+  advanceWith(h, NIGHT_BELL_TUNING.palletS + 1);
+  assert.equal(eventsOf(h.bus, 'plants:pl284:pallet').length, 1, 'the pallet still comes');
+  assert.ok(h.state.entities.get(bell.id), 'the bell stays up');
   h.plant.destroy();
   assertNoListeners(h.bus);
 });
