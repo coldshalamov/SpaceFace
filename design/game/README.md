@@ -6,8 +6,9 @@ only; this folder says what the work must produce.
 
 Copied onto master on 2026-11-11 from branch `experience-commissions/EC-G13-integration-director`
 (PR #943), where it was written, so every agent in the main checkout can read it. The per-area
-commission briefs (EC-S01…S25, G01…G21, A01…A07, Z01…Z04, C01) still live on their PR branches;
-read one with `git show origin/experience-commissions/<branch>:design/program/experience-commissions/commissions/<path>`.
+commission briefs (EC-S01…S25, G01…G21, A01…A07, Z01…Z04, C01) are in
+[`design/program/experience-commissions/commissions/`](../program/experience-commissions/commissions/)
+(landed 2026-11-14 from their PRs). They are plans; where one disagrees with this folder, this folder wins.
 
 | Doc | What it decides |
 |---|---|
