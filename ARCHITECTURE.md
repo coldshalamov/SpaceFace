@@ -140,7 +140,7 @@ Two distinct quantities that specs conflated:
 ## 1. TECH STACK & RENDER/UI COMPOSITION
 
 ### 1.1 Stack
-- **Three.js r0.160**, ES modules, vendored at `vendor/three.module.js` (+ `vendor/BufferGeometryUtils.js`). No bundler required; native ESM via `<script type="importmap">`.
+- **Three.js r184**, ES modules, vendored at `vendor/three.module.js` and `vendor/addons/`. The browser import map and production bundle use this vendored renderer; the separately pinned npm `three` dependency is currently r186, so Node-only checks do not by themselves prove browser behavior. No bundler is required for the development route.
 - **DOM overlay** owns accessible interactive UI (HUD, menus, trade, map, tech tree). Decorative or
   world-space text may use 3D rendering when it materially improves the scene, provided essential
   information has an accessible DOM/audio equivalent and the rendering cost is measured.
