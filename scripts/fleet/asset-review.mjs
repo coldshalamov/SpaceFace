@@ -134,7 +134,7 @@ function buildIndex({ useCatalog = true } = {}) {
     model.deployment.literalReferenceCandidates = [...new Set([...model.deployment.literalReferenceCandidates, ...refs])];
     model.variants.push({ lod: lod(pilot.sourceUrl), releaseId: src?.id ?? part?.id ?? null,
       authoring: src ? { path: src.source, sha256: src.sourceSha256, status: 'manifest-only' } : null,
-      release: { path: pilot.sourceUrl, sha256: part?.sha256 ?? src?.releaseSha256 ?? null,
+      release: { path: pilot.sourceUrl, sha256: src?.releaseSha256 ?? part?.sha256 ?? null,
         status: part ? 'catalog-metadata-only' : catalog.generatedAt ? 'not-in-catalog' : 'catalog-unavailable' },
       package: { path: packagePath, metadata: pilot.metadataUrl, sha256: pkg?.sha256 ?? null,
         assetId: pilot.assetId, status: pkg ? 'catalog-metadata-only' : catalog.generatedAt ? 'not-in-catalog' : 'catalog-unavailable' } });
@@ -149,7 +149,7 @@ function buildIndex({ useCatalog = true } = {}) {
       deployment: { status: 'runtime-use-unresolved', literalReferenceCandidates: row?.sourceReferenceFiles || [] } })
       .variants.push({ lod: lod(asset.release), releaseId: asset.id,
         authoring: { path: asset.source, sha256: asset.sourceSha256, status: 'manifest-only' },
-        release: { path: asset.release, sha256: row?.sha256 ?? asset.releaseSha256 ?? null,
+        release: { path: asset.release, sha256: asset.releaseSha256 ?? row?.sha256 ?? null,
           status: row ? 'catalog-metadata-only' : catalog.generatedAt ? 'not-in-catalog' : 'catalog-unavailable' },
         package: null });
   }
