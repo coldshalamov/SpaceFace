@@ -1237,6 +1237,14 @@ ${A} .orr-armory-budget__spend { stroke:var(--dp-hand); }
   ${A} .k-foot .k-word:not(.k-word--primary) { padding:0 12px !important; white-space:nowrap; }
   ${A} .k-foot .sf-cru-fine { flex:0 1 190px; margin:0 !important; flex-wrap:wrap !important; justify-content:flex-end !important; gap:4px 10px !important; }
 }
+/* 801–940px plates: the inspector's crew column spends ~26px more than the card holds at rest, so
+   the status line's descenders sat on the card's foot. The names row is decorative (the status line
+   names Pip and the mount itself) and the spanner drawing has slack to give — the status clears. */
+@media (min-width:761px) and (min-height:801px) and (max-height:940px) {
+  ${A} .orr-crew-names { display:none; }
+  ${A} .orr-pip-spanner > svg { height:56px; }
+  ${A} .orr-pip-spanner { padding-top:8px; }
+}
 @media (min-width:1151px) and (max-height:680px) {
   ${A} > .k-title .sf-cru-note { display:none !important; }
   ${A} .orr-armory-reading__act { display:none !important; }
