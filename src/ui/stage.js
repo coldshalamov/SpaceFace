@@ -33,6 +33,8 @@ export const STAGE_SLOTS = Object.freeze({
   banner: Object.freeze({ id: 'sf-stage-banner', parent: 'ui-root', maxVisible: 1, enter: 'top', lane: 'alerts' }),
   feed: Object.freeze({ id: 'sf-stage-feed', parent: 'hud', maxVisible: 3, enter: 'bottom', lane: 'toasts' }),
   prompt: Object.freeze({ id: 'sf-stage-prompt', parent: 'ui-root', maxVisible: 1, enter: 'right' }),
+  // OPENING-3: a named cast member's face card (speakerCard.js) — one at a time, the rest wait.
+  speaker: Object.freeze({ id: 'sf-stage-speaker', parent: 'ui-root', maxVisible: 1, enter: 'left' }),
 });
 
 // Toast and alert vocabularies say 'warn' and 'error' where the stage contract says 'warning'

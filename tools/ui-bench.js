@@ -1236,6 +1236,27 @@ async function goto(rawId) {
 
 async function openOverlay(kind) {
   const ctx = { state, bus, screenManager: manager, registry, screenMemory, writeStorePage() {}, publishStoreStill() {} };
+  if (kind === 'speaker') {
+    // OPENING-3: Kessler's first line (comms.47a.b0.primary) through the real comms listener and the
+    // Stage's speaker slot, over the flight HUD; a second cast line queues behind it.
+    const { createStage } = await import('../src/ui/stage.js');
+    const { createComms } = await import('../src/ui/comms.js');
+    ctx.stage = createStage(ctx);
+    if (!state.ui) state.ui = {};
+    // Kessler's line lands at ~6:30, after the opening's one-instruction window has closed.
+    state.simTime = 400;
+    if (state.onboarding) state.onboarding = { ...state.onboarding, active: false, finished: true };
+    createComms(ctx);
+    bus.emit('comms:popup', { sender: 'KESSLER', category: 'story', ttl: 8,
+      text: 'Sample the variance. Run the lane home. Dock Helios.' });
+    bus.emit('comms:popup', { sender: 'ROOK', category: 'story', ttl: 8, text: 'Cinder board first. Compost, the Nest, the register after.' });
+    bus.emit('comms:popup', { sender: 'TRAFFIC', category: 'ambient', text: 'Lane 4 is clear.' });
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const card = document.querySelector('.sf-speaker');
+    window.__BENCH_OVERLAY = card ? 'speaker card up' : 'speaker card did not mount';
+    if (card) window.__BENCH_OVERLAY_EL = card;
+    return;
+  }
   if (kind === 'comms') {
     const contact = {
       id: 7, type: 'ship', alive: true, team: 2, radius: 14,

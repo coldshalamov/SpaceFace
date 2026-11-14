@@ -31,6 +31,7 @@ import { createCommsTrace } from './effects/commsTrace.js';
 import { openingInstructionSolo } from './hudAttention.js';
 import { isAdventureFlight } from './attentionGlass.js';
 import { isSwarmGlass } from './swarmGlass.js';
+import { createSpeakerCard, castPortraitFor } from './speakerCard.js';
 
 // G16-02: the injected sheet retired to styles/ui.css. The backlog log and the endgame
 // choice scrim seat inside the Stage's dialog slot (the screens host — the same tier they
@@ -305,6 +306,14 @@ export function scenarioDialogueCommsPayload(payload) {
   };
 }
 
+/** Open-world radio never draws in an arena (doc 20): any live survival run, whatever its ruleset.
+ *  The same test hud.js uses to turn the radio strip off. Swarm-authored lines opt back in with `swarmAuthored`. */
+export function arenaGatesComms(state, p) {
+  const run = state && state.run;
+  if (!(run && run.kind === 'survival' && run.phase !== 'inactive')) return false;
+  return !(p && p.swarmAuthored === true);
+}
+
 export function isDurableStoryReceipt(p) {
   return !!(p && (p.storyReceipt === true || String(p.id || '').startsWith('act:')));
 }
@@ -368,6 +377,7 @@ export function createComms(ctx) {
   // categories bypass the gate; stale ambient lines (>60 s) drop silently — old small talk is
   // noise, not information.
   const held = [];
+  const speakerCard = createSpeakerCard(ctx);
   let nextDripAt = 0;
   const GATE_BYPASS = /alert|danger|critical|warning/i;
   function attentionGateActive() {
@@ -393,8 +403,20 @@ export function createComms(ctx) {
 
   function pushComms(p, delivery = null) {
     if (!p || !p.text) return;
+    // OPENING-3: a named cast member speaks from a face card, not the plain feed line. The card is
+    // the story's window, so it survives the flight glass; it still waits out the opening's one
+    // instruction, and a live Swarm round never shows it. The line is kept in the log either way.
+    if (!p._viaVoice && p.logOnly !== true && !isSwarmGlass(state) && !arenaGatesComms(state, p) && castPortraitFor(p)) {
+      if (openingInstructionSolo(state)) {
+        held.push({ payload: p, heldAt: performance.now(), bypassAttentionGate: true });
+        return;
+      }
+      if (speakerCard.show(p)) { appendBacklog(p, 'story'); return; }
+    }
     const durableStory = isDurableStoryReceipt(p);
-    const glassed = isSwarmGlass(state) || isAdventureFlight(state);
+    const arenaLive = !!(state && state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive');
+    const glassed = arenaLive && p.swarmAuthored === true ? false
+      : (isSwarmGlass(state) || arenaGatesComms(state, p) || isAdventureFlight(state));
     // Swarm glass (design/program/finish/swarm S2): a live Swarm round never shows the
     // comms feed — the whole channel is narrative chatter, not the fight.
     // X3 Adventure glass: ordinary flight is the same case. The left-edge feed is prose
@@ -827,6 +849,7 @@ export function createComms(ctx) {
     if (destroyed) return;
     destroyed = true;
     clearTimeout(initialVisibilityTimer);
+    try { speakerCard.destroy(); } catch (_) {}
     for (const unsubscribe of unsubscribers.splice(0)) {
       try { unsubscribe(); } catch (_) {}
     }

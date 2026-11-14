@@ -73,6 +73,7 @@ export const UI_BENCH_SHOTS = Object.freeze([
   // ORRERY Phase 0a: the flight HUD composed from src/ui/orrery over a real frame of open flight.
   { id: 'orrery-flight', screen: 'orreryFlight', backdrop: 'space' },
   { id: 'comms-radial', screen: 'flight', overlay: 'comms', backdrop: 'world' },
+  { id: 'flight-speaker', screen: 'flight', overlay: 'speaker', backdrop: 'world' },
   { id: 'wingman-radial', screen: 'flight', overlay: 'wingman', backdrop: 'world' },
   // Popups: the layers that rise over a screen — confirmation, find palette, tier-2 tooltip, dossier drawer.
   { id: 'popup-confirm', screen: 'station', overlay: 'confirm', backdrop: 'shell' },
@@ -115,8 +116,8 @@ export const UI_BENCH_SHOTS = Object.freeze([
 
   { id: 'crucible', screen: 'crucible', backdrop: 'world' },
   { id: 'crucible-door', screen: 'crucible', backdrop: 'world' },
-  { id: 'crucible-draft', screen: 'crucibleDraft', backdrop: 'world' },
   { id: 'swarm-play', screen: 'swarmPlay', backdrop: 'world' },
+  { id: 'crucible-draft', screen: 'crucibleDraft', backdrop: 'world' },
   { id: 'crucibleDraft', screen: 'crucibleDraft', backdrop: 'world' },
   { id: 'crucible-rearm', screen: 'crucibleDraft', backdrop: 'world', ruleset: 'scored' },
   { id: 'crucible-fortify', screen: 'crucibleFortify', backdrop: 'world' },
