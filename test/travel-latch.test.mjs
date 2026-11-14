@@ -13,6 +13,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { input, DEFAULTS } from '../src/systems/input.js';
+import { SLICES } from '../src/ui/contextWheel.js';
 import { applyMasslineFlightModifiers } from '../src/systems/flightV3.js';
 import { TRAVEL_FLAGS } from '../src/data/featureFlags.js';
 import {
@@ -79,6 +80,18 @@ function tapKey(host, state, code, dt = DT) {
   host.update(dt, state);
 }
 
+/**
+ * Choose the wheel's Travel Burn slice — the G18-02 route the shipped game actually uses: hold Q,
+ * release over the slice, and `applyWheelVerb` queues one sampled press that the edge detector
+ * sees on the next tick (the same path a bound key would take, minus the letter).
+ */
+function burnTap(host, state, dt = DT) {
+  host.state = state;
+  assert.equal(host.applyWheelVerb({ action: 'travelBurn', phase: 'tap' }), true,
+    'the wheel slice must land in the flight context');
+  host.update(dt, state);
+}
+
 function runTicks(host, state, seconds, dt = DT) {
   for (let i = 0; i < Math.round(seconds / dt); i++) host.update(dt, state);
 }
@@ -91,27 +104,25 @@ function withFlag(on, fn) {
 
 // ---- bindings ---------------------------------------------------------------------------------
 
-test('W1-5: the latch is bound to Num Lock by default, with a laptop fallback in the same array', () => {
+test('W1-5/G18-02: the latch ships on the Q context wheel and stays a rebindable action', () => {
   const b = DEFAULTS.BINDINGS.travelBurn;
-  assert.ok(Array.isArray(b), 'travelBurn must be a rebindable binding array');
-  assert.equal(b[0], 'NumLock', 'Num Lock is the authored default (ADR D5)');
-  assert.ok(b.length > 1, 'a laptop fallback must ship — many laptops have no Num Lock key');
-  // Extending the EXISTING multi-code idiom (as WASD-and-arrows already does), not a parallel
-  // laptop binding scheme.
-  assert.ok(b.includes('F8'), 'F8 is the fallback — KeyH was retired: the UI router owns h/H for Help');
-  assert.ok(!b.includes('KeyH'), 'a flight seat on the Help key fired the drive AND opened Help (RC-05)');
+  assert.ok(Array.isArray(b), 'travelBurn must remain a rebindable binding array');
+  assert.equal(b.length, 0, 'G18-02 moved the overflow verbs to the wheel — no key owns Burn by default');
+  assert.deepEqual(DEFAULTS.BINDINGS.contextWheel, ['KeyQ'], 'the wheel itself rides KeyQ');
+  const slice = SLICES.find((s) => s.action === 'travelBurn');
+  assert.ok(slice, 'the wheel must carry a Travel Burn slice or the verb is unreachable (G18-02 hard rule)');
+  assert.equal(slice.phase, 'tap', 'a burn toggle is one edge, not a held latch');
 });
 
-test('W1-5: the latch binding is present in every control scheme and collides with nothing', () => {
+test('W1-5/G18-02: every control scheme keeps Burn rebindable and the wheel on Q, colliding with nothing', () => {
   for (const [name, scheme] of Object.entries(DEFAULTS.SCHEMES)) {
-    assert.ok(Array.isArray(scheme.travelBurn) && scheme.travelBurn.length,
-      `scheme ${name} must carry the travel-burn latch`);
-    // No other action in the same scheme may claim either code.
+    assert.ok(Array.isArray(scheme.travelBurn),
+      `scheme ${name} must carry the travelBurn seat so settings can rebind it`);
+    assert.deepEqual(scheme.contextWheel, ['KeyQ'], `scheme ${name} keeps the wheel hold on Q`);
+    // No other action in the same scheme may claim the wheel's hold key.
     for (const [action, codes] of Object.entries(scheme)) {
-      if (action === 'travelBurn' || !Array.isArray(codes)) continue;
-      for (const code of scheme.travelBurn) {
-        assert.ok(!codes.includes(code), `${name}.${action} collides with travelBurn on ${code}`);
-      }
+      if (action === 'contextWheel' || !Array.isArray(codes)) continue;
+      assert.ok(!codes.includes('KeyQ'), `${name}.${action} collides with the wheel hold on KeyQ`);
     }
   }
 });
@@ -126,13 +137,13 @@ test('W1-5: off -> spooling -> engaged, then a second press disengages into cool
     host.update(DT, state);
     assert.equal(state.input.travelDrive.state, 'off');
 
-    tapKey(host, state, 'NumLock');
+    burnTap(host, state);
     assert.equal(state.input.travelDrive.state, 'spooling', 'a press arms the spool');
 
     runTicks(host, state, 2.0);
     assert.equal(state.input.travelDrive.state, 'engaged', 'the spool completes into engaged');
 
-    tapKey(host, state, 'NumLock');
+    burnTap(host, state);
     assert.equal(state.input.travelDrive.state, 'cooldown', 'a deliberate disengage costs cooldown');
 
     runTicks(host, state, 4.0);
@@ -144,7 +155,7 @@ test('W1-5/PQ-003: new-profile Space is Massline, while reverse remains the deli
   withFlag(true, () => {
     const host = makeInput();
     const state = makeState();
-    tapKey(host, state, 'NumLock');
+    burnTap(host, state);
     runTicks(host, state, 2.0);
     assert.equal(state.input.travelDrive.state, 'engaged');
 
@@ -174,7 +185,7 @@ test('PQ-003: a migrated legacy profile keeps Space brake and F-primary Massline
         },
       },
     });
-    tapKey(host, state, 'NumLock');
+    burnTap(host, state);
     runTicks(host, state, 2.0);
     host._keys.Space = true;
     host.update(DT, state);
@@ -187,19 +198,22 @@ test('PQ-003: the line-control threshold arbitrates pay-out before Travel Burn r
   withFlag(true, () => {
     const host = makeInput();
     const state = makeState();
-    tapKey(host, state, 'NumLock');
+    burnTap(host, state);
     runTicks(host, state, 2.0);
     assert.equal(state.input.travelDrive.state, 'engaged');
 
     state.player.tether = { active: true, targetId: 'rock' };
-    host._keys.Space = true;
-    runTicks(host, state, 9);
+    // G18-02: the Line is RMB — hold it past the grammar's 0.16 s line-control threshold, then
+    // pay out with reverse. The hold must outlive MASSLINE_HOLD_S for the control phase to open.
+    host._m2 = true;
+    runTicks(host, state, 12 * DT);
     host._keys.ArrowDown = true;
     host.update(DT, state);
 
     assert.equal(state.input.actions.massline.lineControl, true);
     assert.equal(state.input.actions.massline.payOut, 1);
     assert.equal(state.input.travelDrive.state, 'engaged', 'pay-out is not also a Travel Burn brake');
+    host._m2 = false;
   });
 });
 
@@ -207,11 +221,12 @@ test('W1-5: STEERING DOES NOT BREAK THE LATCH — the asymmetry is the feel of t
   withFlag(true, () => {
     const host = makeInput();
     const state = makeState();
-    tapKey(host, state, 'NumLock');
+    burnTap(host, state);
     runTicks(host, state, 2.0);
     assert.equal(state.input.travelDrive.state, 'engaged');
 
-    // Yaw hard, both directions, plus explicit strafe, for a full second.
+    // Yaw hard, both directions, then hold the G18-02 wheel key for half a second — opening the
+    // overflow dial is navigation of intent, never a brake.
     host._keys.KeyA = true;
     runTicks(host, state, 0.5);
     host._keys.KeyA = false;
@@ -224,7 +239,7 @@ test('W1-5: STEERING DOES NOT BREAK THE LATCH — the asymmetry is the feel of t
     runTicks(host, state, 0.2);
 
     assert.equal(state.input.travelDrive.state, 'engaged',
-      'steering and strafing must never break a burn');
+      'steering and the wheel hold must never break a burn');
   });
 });
 
@@ -232,7 +247,7 @@ test('W1-5: forward throttle does not break the latch, but reverse throttle does
   withFlag(true, () => {
     const host = makeInput();
     const state = makeState();
-    tapKey(host, state, 'NumLock');
+    burnTap(host, state);
     runTicks(host, state, 2.0);
 
     host._keys.KeyW = true;
@@ -250,9 +265,9 @@ test('W1-5: cancelling a SPOOL costs no cooldown — only breaking a live burn i
   withFlag(true, () => {
     const host = makeInput();
     const state = makeState();
-    tapKey(host, state, 'NumLock');
+    burnTap(host, state);
     assert.equal(state.input.travelDrive.state, 'spooling');
-    tapKey(host, state, 'NumLock');
+    burnTap(host, state);
     assert.equal(state.input.travelDrive.state, 'off');
     assert.equal(state.input.travelDrive.breakReason, 'cancelled');
   });
@@ -262,7 +277,7 @@ test('W1-5: damage / lane disruption forces cooldown — the interdiction hook',
   withFlag(true, () => {
     const host = makeInput();
     const state = makeState();
-    tapKey(host, state, 'NumLock');
+    burnTap(host, state);
     runTicks(host, state, 2.0);
     assert.equal(state.input.travelDrive.state, 'engaged');
 
@@ -281,7 +296,7 @@ test('W1-5: a held disruption pins the drive down instead of letting cooldown ru
     const host = makeInput();
     const state = makeState();
     state.player.travelDrive = { disrupted: true };
-    tapKey(host, state, 'NumLock');
+    burnTap(host, state);
     runTicks(host, state, 8.0);
     assert.equal(state.input.travelDrive.state, 'cooldown', 'cannot re-engage while held down');
 
@@ -295,7 +310,7 @@ test('W1-5: docking or opening a screen drops the drive', () => {
   withFlag(true, () => {
     const host = makeInput();
     const state = makeState();
-    tapKey(host, state, 'NumLock');
+    burnTap(host, state);
     runTicks(host, state, 2.0);
     assert.equal(state.input.travelDrive.state, 'engaged');
 
@@ -309,7 +324,7 @@ test('golden safety: with the flag off the latch writes NOTHING', () => {
   withFlag(false, () => {
     const host = makeInput();
     const state = makeState();
-    tapKey(host, state, 'NumLock');
+    burnTap(host, state);
     runTicks(host, state, 3.0);
     assert.equal(state.input.travelDrive, undefined,
       'flag off must leave no key on state.input — node runs the sim goldens');
@@ -322,7 +337,7 @@ test('every published latch state is a member of the kernel-exported enum', () =
     const host = makeInput();
     const state = makeState();
     const seen = new Set();
-    tapKey(host, state, 'NumLock');
+    burnTap(host, state);
     for (let i = 0; i < 400; i++) {
       if (i === 150) host._keys.KeyS = true;
       if (i === 152) host._keys.KeyS = false;
