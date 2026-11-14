@@ -79,9 +79,8 @@ const LOCAL_DURABLE_LIMIT = 4096;
 // tail of expendable impact effects. Some events also carry correctness
 // receipts, including save settlement and run lifecycle, so those stay queued.
 const LOCAL_EVENT_RETAIN_LIMIT = 512;
-// Same class: each stepped tick clones the full input state into a durable row,
-// but the presentation side only ever consumes the newest few through a
-// capacity-8 ring. Unbounded retained clones are payload weight, not data.
+// Optional input observer rows use a bounded recent history. Live play keeps
+// only scalar input attribution and a count, even across merged replies.
 const LOCAL_INPUT_PUBLISH_RETAIN_LIMIT = 64;
 // Queued wire commands wait for the next fixed tick and the drain sits outside
 // the step work budget — an input flood otherwise piles up unboundedly and the
