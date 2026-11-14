@@ -437,3 +437,35 @@ The oldest economy spike comes from constructing remote listings and their 64-po
 histories on the first due period. Ten matched Node digests preserved exact market and receipt
 values, but the candidate formulas did not reliably shorten the spike. Preserve the current
 publication boundary until staged preparation can account for earlier on-demand mint and RNG.
+
+## Physics, AI, rendering, and retail motion follow-up
+
+- `58a04236c4cb` retries the last applied worker reply watermark on subsequent foreground
+  beats during a stall. The old path tried only once per episode. A later beat now frees the
+  slot after an invalid or missed attempt, without another diagnostic request or a stale
+  lifecycle ACK. The 33-test clock suite passed. The original retail recording still needs
+  same-path confirmation. It recorded 16 successful draws at tick 2491 with the ship fixed
+  in place at 100 WU/s. The five stale-ACK recoveries and coalesced event bursts implicate
+  the reply path, but the recording lacks an independent current-worker watermark.
+- `125b067d3fc0` removes eager rounding and unnecessary contact correction math. In six
+  matched 112-body pairs, median native step cost was 5.76 to 4.70 ms dispersed and 4.95
+  to 4.23 ms packed. Per-tick poses and 52/4,025 contact receipts matched. The 47-A replay
+  and reload at tick 600 matched the checked-in digest.
+- `424f02858011` shares the optic firing scan and avoids aggregating pilot-only squad contacts.
+  Optic query cost fell 28–30%. The six-pilot squad fixture cost fell 7% with zero projectile
+  contacts and 74% with 60 contacts per pilot. Orders and debug receipts matched.
+- `b6c33eff608c` cuts warm vertex binding validation and unused clip-space sort arithmetic.
+  Isolated validation ran 1.51–2.34 times as fast and sort depth ran 1.12–1.31 times as fast.
+  The vendored renderer fixture preserved buffer rebinding, upload and draw order.
+- `315783bb183a` removes full input graphs from normal Worker replies. The worker still
+  attributes every completed step and ships full rows when an input observer is installed.
+  The browser-worker fixture confirmed a scalar count and no input graph in normal mode.
+- `b401c3a7dea3` removes the whole-scene visibility rewrite from eligible exact-target GPU
+  admission passes. The real vendor renderer fixture retains independent light discovery,
+  shadow scope and ordinary subsequent drawing. Live startup and visibility cost are open.
+- `b93310058ff0` uses a shared known-shape copier for repeat observations of pooled live sensor
+  contacts and retains generic copy behavior for authored records. The candidate fixture used
+  production sensor code with eight observers. Matched cost fell from 196 to 140 ms in the
+  Adventure-shaped case and 250 to 172 ms in the arena case over 60 ticks. Timing preceded
+  the final consolidation of three field writes into the copier. All 42 focused checks passed
+  on the final source.
