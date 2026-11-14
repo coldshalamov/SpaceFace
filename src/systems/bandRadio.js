@@ -305,8 +305,9 @@ export function deriveBandEventKeys(event, payload = {}, state = {}) {
     // Substitute: the broke-down hull that reaches it waits for the pl259 spare-share module.
     return ['player.left_working_spare'];
   }
-  if (event === 'plants:radioMercy:fiftiethArrival') {
-    // PL-307: the fiftieth arrival at one station — some places count.
+  if (event === 'plants:pl260:fifty') {
+    // PL-307: the fiftieth arrival at one station — keyed to pl260's own receipt so the
+    // voice and the toll-paid chalk can never diverge (same seam, same reset scope).
     return ['player.fiftieth_arrival_paid'];
   }
   if (event === 'plants:radioMercy:leakTowedHome') {
@@ -563,7 +564,7 @@ export const bandRadio = {
       // Lane Nine mercy batch (PL-305..PL-320): direct seams + plantsRadioObserverMercy
       // receipts (one per settled deed, emitted at most once per session).
       'tether:snapCatch', 'plants:deadLaneThanks',
-      'plants:radioMercy:berthGifted', 'plants:radioMercy:spareLeft', 'plants:radioMercy:fiftiethArrival',
+      'plants:radioMercy:berthGifted', 'plants:radioMercy:spareLeft', 'plants:pl260:fifty',
       'plants:radioMercy:leakTowedHome', 'plants:radioMercy:darkDockClean', 'plants:radioMercy:chalkSeatThreeDays',
       'plants:radioMercy:skiffTowedHome', 'plants:radioMercy:repairWashed', 'plants:radioMercy:threeYieldsOneShift',
       'plants:radioMercy:convoyPacedHome', 'plants:radioMercy:dawnWatchHeld', 'plants:radioMercy:kindnessChalks',

@@ -18,7 +18,6 @@
 //       entered dock range, dwelt (a real approach), and walked away without docking.
 //   plants:radioMercy:spareLeft           (PL-306) — freight spilled on the lane by somebody
 //       else's guns and the player left it lying there for whoever comes next.
-//   plants:radioMercy:fiftiethArrival     (PL-307) — the player's fiftieth arrival at one
 //       station: some places count.
 //   plants:radioMercy:leakTowedHome       (PL-309) — a tether:snapCatch latch (the player's
 //       tow, towWatch shape) still fresh when the player docked: the stranger came home under
@@ -60,7 +59,6 @@ import { RADIO_TOWN_STATION_IDS, RADIO_DAY_LENGTH_S, radioDayIndexAt } from './r
 
 export const RADIO_MERCY_BERTH_GIFTED_EVENT = 'plants:radioMercy:berthGifted';
 export const RADIO_MERCY_SPARE_LEFT_EVENT = 'plants:radioMercy:spareLeft';
-export const RADIO_MERCY_FIFTIETH_ARRIVAL_EVENT = 'plants:radioMercy:fiftiethArrival';
 export const RADIO_MERCY_LEAK_TOWED_EVENT = 'plants:radioMercy:leakTowedHome';
 export const RADIO_MERCY_DARK_DOCK_EVENT = 'plants:radioMercy:darkDockClean';
 export const RADIO_MERCY_CHALK_SEAT_EVENT = 'plants:radioMercy:chalkSeatThreeDays';
@@ -79,7 +77,6 @@ export const RADIO_MERCY_DEEDS_FOR_CHALKS = 3;
 export const RADIO_MERCY_TUNING = Object.freeze({
   yieldMinDwellS: 20,         // dwelling this long in dock range is a real approach, not a fly-through
   yieldsForTheLine: 3,        // PL-315: three give-ways per shift
-  stationVisitsCap: 8,        // bounded per-station visit ledger (PL-307)
   stationDaysCap: 8,          // bounded per-station streak ledger (PL-312)
   streakDaysForTheLine: 3,    // PL-312: three consecutive core days
   arrivalsForTheLine: 50,     // PL-307: the fiftieth arrival
@@ -169,7 +166,6 @@ export const radioObserverMercyPlant = {
   _hardReset() {
     this._inRange = null;            // {stationId, enteredAt, day, watchDay}
     this._yieldDays = [];            // day indexes of give-ways, pruned to the current day
-    this._stationVisits = new Map(); // stationId -> arrival count (PL-307)
     this._stationStreaks = new Map();// stationId -> {lastDay, streak} (PL-312)
     this._towLatch = null;           // {targetId, latchedAt} (PL-309)
     this._surrenderLatch = null;     // {targetId, latchedAt} (PL-316)
@@ -263,15 +259,6 @@ export const radioObserverMercyPlant = {
       this._emitDeed(RADIO_MERCY_DARK_DOCK_EVENT, { stationId, sectorId, t: now });
     }
     if (stationId == null) return;
-    // PL-307: some places count — the fiftieth arrival at one station.
-    const visits = (this._stationVisits.get(stationId) || 0) + 1;
-    if (this._stationVisits.size >= RADIO_MERCY_TUNING.stationVisitsCap && !this._stationVisits.has(stationId)) {
-      this._stationVisits.delete(this._stationVisits.keys().next().value);
-    }
-    this._stationVisits.set(stationId, visits);
-    if (visits === RADIO_MERCY_TUNING.arrivalsForTheLine) {
-      this._emitDeed(RADIO_MERCY_FIFTIETH_ARRIVAL_EVENT, { stationId, visits, t: now });
-    }
     // PL-312: the same town dock, three core days running — the chalk seat is theirs.
     if (RADIO_TOWN_STATION_IDS.includes(stationId)) {
       const day = radioDayIndexAt(now);

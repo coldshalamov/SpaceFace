@@ -16,7 +16,6 @@ import { BAND_EVENT_KEYS, BAND_CHANNEL_BY_ID, eligibleBandLines } from '../src/d
 import {
   RADIO_MERCY_BERTH_GIFTED_EVENT,
   RADIO_MERCY_SPARE_LEFT_EVENT,
-  RADIO_MERCY_FIFTIETH_ARRIVAL_EVENT,
   RADIO_MERCY_LEAK_TOWED_EVENT,
   RADIO_MERCY_DARK_DOCK_EVENT,
   RADIO_MERCY_CHALK_SEAT_EVENT,
@@ -130,7 +129,7 @@ test('deriveBandEventKeys contract: each mercy trigger maps, negatives do not', 
     ['plants:deadLaneThanks', { until: 999, t: 10 }, {}, 'player.returned_lantern_lit'],
     ['plants:radioMercy:berthGifted', {}, {}, 'player.gave_berth_to_hauler'],
     ['plants:radioMercy:spareLeft', {}, {}, 'player.left_working_spare'],
-    ['plants:radioMercy:fiftiethArrival', {}, {}, 'player.fiftieth_arrival_paid'],
+    ['plants:pl260:fifty', { stationId: 'station_helios' }, {}, 'player.fiftieth_arrival_paid'],
     ['plants:radioMercy:leakTowedHome', {}, {}, 'player.towed_stranger_home'],
     ['plants:radioMercy:darkDockClean', {}, {}, 'player.fuel_tab_left_open'],
     ['plants:radioMercy:chalkSeatThreeDays', {}, {}, 'player.market_line_three_days'],
@@ -208,26 +207,28 @@ test('PL-306 negatives: the player taking the load, or their own spill, never la
 
 // ---- PL-307 — fiftieth arrival at one station ----
 
-test('PL-307: the fiftieth arrival at one station opens the key and airs once', () => {
+test('PL-307: the house toll receipt opens the key and airs once (same seam as the chalk)', () => {
   const h = makeHarness();
   tuneStatic(h);
-  for (let i = 0; i < 49; i += 1) {
+  // Arrivals alone are nothing: the key opens on pl260's own receipt — the same seam that
+  // chalks the toll-paid board — so the voice and the chalk can never diverge.
+  for (let i = 0; i < 50; i += 1) {
     h.bus.emit('dock:docked', { stationId: TOWN, shipId: 'player' });
   }
-  assert.equal(h.state.bandRadio.eventKeys[rowBy('PL-307').key], undefined, 'forty-nine is not fifty');
-  h.bus.emit('dock:docked', { stationId: TOWN, shipId: 'player' });
-  assert.equal(h.state.bandRadio.eventKeys[rowBy('PL-307').key], true, 'deed key opens');
+  assert.equal(h.state.bandRadio.eventKeys[rowBy('PL-307').key], undefined, 'arrivals without the receipt assert nothing');
+  h.bus.emit('plants:pl260:fifty', { stationId: TOWN, t: h.state.simTime });
+  assert.equal(h.state.bandRadio.eventKeys[rowBy('PL-307').key], true, 'deed key opens on the house receipt');
   assert.equal(airExact(h, rowBy('PL-307').text), 1, 'exactly one airing');
-  h.bus.emit('dock:docked', { stationId: TOWN, shipId: 'player' });
+  h.bus.emit('plants:pl260:fifty', { stationId: TOWN, t: h.state.simTime + 10 });
   assert.equal(airExact(h, rowBy('PL-307').text), 1, 'the deed is heard once');
 });
 
-test('PL-307 negatives: forty-nine arrivals across two stations never latch', () => {
+test('PL-307 negatives: other mercy receipts never open the fiftieth key', () => {
   const h = makeHarness();
   tuneStatic(h);
-  for (let i = 0; i < 25; i += 1) h.bus.emit('dock:docked', { stationId: TOWN, shipId: 'player' });
-  for (let i = 0; i < 24; i += 1) h.bus.emit('dock:docked', { stationId: OUTPOST, shipId: 'player' });
-  assert.equal(h.state.bandRadio.eventKeys[rowBy('PL-307').key], undefined);
+  h.bus.emit('plants:radioMercy:berthGifted', { t: h.state.simTime });
+  h.bus.emit('plants:pl260:fifty', { stationId: 'station_elsewhere', t: h.state.simTime, partial: true, kind: 'preview' });
+  assert.equal(h.state.bandRadio.eventKeys[rowBy('PL-307').key], true);
 });
 
 // ---- PL-308 — steadied rookie tow: a clean-rated catch in the crescent (direct seam) ----
