@@ -21,7 +21,7 @@ function fixture(over = {}) {
   };
   const system = createKesslerScale();
   const init = () => system.init({ state, bus, helpers });
-  const pod = (spec = {}) => helpers.spawnEntity({ type: 'payload', mass: 40, pos: kesslerPadPosition(), vel: { x: 0, z: 0 }, data: { payloadType: 'jettisoned_cargo', commodityId: 'cmdty_ore_iron', scanLabel: 'Iron freight' }, ...spec });
+  const pod = (spec = {}) => helpers.spawnEntity({ type: 'payload', mass: 40, pos: kesslerPadPosition(), vel: { x: 0, z: 0 }, data: { payloadType: 'jettisoned_cargo', commodityId: 'cmdty_ore_iron', amount: 17, salvagePool: { cmdty_ore_iron: 17 }, scanLabel: 'Iron freight' }, ...spec });
   const rows = () => (state.world.dressing?.rows || []).filter((r) => r.alive && r.data.kesslerWorksite);
   const ticks = () => system.update(0.5, state);
   const reads = () => events.filter(([name]) => name === 'kesslerPod:weighed');
@@ -51,7 +51,7 @@ test('single canonical global frame: ring, four worksite rows, and real pod read
   assert.equal(near.mass, 40); assert.equal(near.alive, true);
   assert.equal(near.data.commodityId, 'cmdty_ore_iron');
   assert.deepEqual(near.data.kesslerReceipt, { plateRead: 37.6, trueRead: 40 });
-  assert.match(near.data.scanLabel, /Iron freight.*37.6t.*40.0t.*freight retained/);
+  assert.match(near.data.scanLabel, /Iron freight · WEIGHED 40\.0 t · 17 u/);
 });
 
 test('measured skins and entire drawn envelopes flank the open ring and station approach', () => {
@@ -175,7 +175,7 @@ test('ordinary alloy-completion signal hands the existing story navigation to ac
   assert.equal(f.state.nav.waypoint.stationId, null);
   assert.deepEqual(f.state.nav.waypoint.pos, { x: 13008, z: 7212 });
   assert.match(f.state.nav.waypoint.reason, /fresh jettisoned cargo pod.*delivered alloys are not required.*Buy or mine unreserved cargo/);
-  assert.match(f.state.nav.waypoint.reason, /8 WU\/s/);
+  assert.match(f.state.nav.waypoint.reason, /8 u\/s/);
   f.owner._recordCampaignBookSignal('kesslerPod:weighed', { variance: true, entityId: 42 });
   assert.equal(kesslerScalePending(f.state), false);
   assert.notEqual(f.state.nav.waypoint?.label, 'Scale 4 · weigh your own freight');

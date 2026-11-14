@@ -17,6 +17,43 @@ import { KESSLER_SCALE } from '../data/kessler.js';
 import { kesslerPodEligible, kesslerReadCheck, kesslerPlateRead, kesslerTrueRead, kesslerVarianceSeen } from '../characters/kesslerRules.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 
+// — Paired readings (B1 "the board flips to a different number while you watch") —
+// The scale owns one bounded fact in story.flags: { version: 1, first, second } where each
+// sample is { plate, stamp, count }. A second, differently-stamped load is the pattern the
+// mystery needs; an equal stamp or a replayed count cannot corroborate it.
+const kesslerFinitePositive = (n) => Number.isFinite(n) && n > 0;
+const kesslerValidSample = (row) => kesslerFinitePositive(row && row.plate)
+  && kesslerFinitePositive(row.stamp) && row.plate < row.stamp && kesslerFinitePositive(row.count);
+
+/** Remaining freight aboard a pod: the live salvage pool is authoritative — a multi-item
+ *  pool must never collapse to one stale amount; only a pre-pool legacy pod falls back
+ *  to its stamped `amount`. Returns null when no honest figure exists. */
+function kesslerPodUnits(data) {
+  const pool = data && data.salvagePool;
+  if (pool && typeof pool === 'object') {
+    let total = 0;
+    for (const qty of Object.values(pool)) {
+      const n = Math.floor(Number(qty) || 0);
+      if (n > 0) total += n;
+    }
+    return total;
+  }
+  const amount = Math.floor(Number(data && data.amount) || 0);
+  return amount > 0 ? amount : null;
+}
+
+/** The pod's own tag: its receipt rides beside its name so the pilot can come back for it. */
+function kesslerWeighedTag(base, stamp, units) {
+  const tag = `${base} · WEIGHED ${Number.isFinite(stamp) ? stamp.toFixed(1) : '0.0'} t`;
+  return Number.isFinite(units) ? `${tag} · ${units} u` : tag;
+}
+
+/** The pod's name segment — the first ' · ' clause of whatever tag it currently wears. */
+function kesslerTagBase(data) {
+  const first = String(data && data.scanLabel || '').split(' · ')[0].trim();
+  return first || (data && data.name) || 'Cargo pod';
+}
+
 export function kesslerScaleSpec() {
   return {
     type: 'beacon',
@@ -43,6 +80,7 @@ export function createKesslerScale() {
       this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers || {};
       this._unsubs = [];
       this._settlingPods = new Set();
+      this._weighed = new Map();
       const on = (event, fn) => {
         const off = this.bus?.on(event, fn); if (typeof off === 'function') this._unsubs.push(off);
       };
@@ -74,6 +112,7 @@ export function createKesslerScale() {
       this._cookProvider = null;
       this._removeOwned();
       this._settlingPods?.clear();
+      this._weighed?.clear();
     },
     _flags() {
       const flags = this.state?.story?.flags;
@@ -96,10 +135,54 @@ export function createKesslerScale() {
         if (row?.data?.kesslerWorksite) dropDressingRow(this.state, row.id);
       }
       this._settlingPods?.clear();
+      this._weighed?.clear();
       for (const e of this.state?.entityList || []) {
         if (e?.alive && e.data?.kesslerScale === true && e.physicsBody === false)
           this.helpers?.removeEntity?.(e.id);
       }
+    },
+    /** A pod already read this visit (or restored weighed) is tracked by id inside the
+     *  ordinary read pass; when its real pool drains, its own tag keeps the true figure. */
+    _trackWeighed(e) {
+      const d = e && e.data;
+      if (!d || d.kesslerRead !== true || !d.kesslerReceipt
+          || (d.jettisonedCargo !== true && d.payloadType !== 'jettisoned_cargo')) return;
+      const units = kesslerPodUnits(d);
+      const weighed = this._weighed || (this._weighed = new Map());
+      if (!weighed.has(e.id)) { weighed.set(e.id, units); return; }
+      if (weighed.get(e.id) === units) return;
+      weighed.set(e.id, units);
+      e.data.scanLabel = kesslerWeighedTag(kesslerTagBase(d), d.kesslerReceipt.trueRead, units);
+    },
+    /** The bounded paired-reading fact — written only here, beside the receipt stamp. */
+    _recordComparison(flags, sample) {
+      const key = KESSLER_SCALE.comparisonFlag;
+      let watch = flags[key];
+      if (!kesslerValidSample(sample)) return watch && watch.version === 1 ? watch : null;
+      if (!watch || watch.version !== 1 || !kesslerValidSample(watch.first)) {
+        watch = flags[key] = { version: 1, first: sample, second: null };
+        return watch;
+      }
+      // Owner count is monotonic; a reweighed equal stamp cannot be the different load.
+      if (watch.second || sample.count <= watch.first.count
+          || Math.round(sample.stamp * 10) === Math.round(watch.first.stamp * 10)) return watch;
+      watch.second = sample;
+      return watch;
+    },
+    /** The one existing story-line voice (same seam story.js/missionStoryOps.js use):
+     *  the voice arbiter floor, with the toast event as its own fallback. */
+    _sayStoryLine(text, ttl = 6) {
+      if (!text) return false;
+      const voice = this.helpers && this.helpers.voice;
+      if (voice && typeof voice.say === 'function') {
+        const said = voice.say({ channel: 'story', text, kind: 'story', ttl });
+        if (said) return true;
+      }
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('toast', { text, kind: 'story', ttl });
+        return true;
+      }
+      return false;
     },
     _sync() {
       if (!this.state?.story) return;
@@ -142,10 +225,12 @@ export function createKesslerScale() {
       if (!s || !this._adventure()) return;
       const flags = this._flags();
       if (!flags) return;
+      if (!this._weighed) this._weighed = new Map();
       const settling = new Set();
       const pad = kesslerPadPosition();
       for (const e of s.entityList || []) {
-        if (!kesslerPodEligible(e)) continue;
+        if (e?.alive === false) { this._weighed.delete(e.id); continue; }
+        if (!kesslerPodEligible(e)) { this._trackWeighed(e); continue; }
         const check = kesslerReadCheck(e, pad);
         if (!check.arrived) {
           if (check.inZone && Number.isFinite(check.speed)) {
@@ -166,13 +251,29 @@ export function createKesslerScale() {
         // The original cargo stamp/commodity name remains intact; no cargo ledger write.
         const label = e.data.scanLabel || e.data.name || 'Cargo pod';
         e.data.kesslerReceipt = { plateRead: plate, trueRead: honest };
-        e.data.scanLabel = `${label} · ${kesslerReceiptLabel(plate, honest)}`;
-        const beacon = this._beacon();
-        if (beacon) beacon.data.scanLabel = kesslerReceiptLabel(plate, honest);
+        const units = kesslerPodUnits(e.data);
+        e.data.scanLabel = kesslerWeighedTag(label, honest, units);
+        this._weighed.set(e.id, units);
         const firstVariance = variance && flags[KESSLER_SCALE.varianceFlag] !== true;
         if (variance) flags[KESSLER_SCALE.varianceFlag] = true;
         const count = (Number(flags[KESSLER_SCALE.countFlag]) || 0) + 1;
         flags[KESSLER_SCALE.countFlag] = count;
+        // The bounded paired-reading fact: this pod is the second sample only when its
+        // stamp is a different displayed tenth-tonne — then the board shows the two
+        // disagreeing readings and Kessler at the window says the one line, once.
+        const watch = this._recordComparison(flags, { plate, stamp: honest, count });
+        const secondNow = !!(watch && watch.second && watch.second.count === count);
+        const beacon = this._beacon();
+        if (beacon) {
+          beacon.data.scanLabel = secondNow
+            ? `PLATE ${plate.toFixed(1)} t · STAMP ${honest.toFixed(1)} t`
+            : kesslerReceiptLabel(plate, honest);
+        }
+        if (secondNow && plate !== honest
+            && flags[KESSLER_SCALE.comparisonSpokenFlag] !== true) {
+          flags[KESSLER_SCALE.comparisonSpokenFlag] = true;
+          this._sayStoryLine(KESSLER_SCALE.comparisonLine, 6);
+        }
         const line = (firstVariance ? KESSLER_SCALE.firstVariance : KESSLER_SCALE.read)
           .replace('{plate}', plate.toFixed(1)).replace('{true}', honest.toFixed(1));
         this.bus?.emit('comms:popup', {

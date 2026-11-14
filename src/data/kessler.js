@@ -16,9 +16,16 @@ export const KESSLER_SCALE = Object.freeze({
   announceFlag: 'kessler_scale_announced',
   varianceFlag: 'kessler_variance_seen',
   countFlag: 'kessler_reads_counted',
+  // The paired-reading fact and its once-ever spoken latch live beside the scale's
+  // other flags — the scale owner is their only writer.
+  comparisonFlag: 'kessler_comparison',
+  comparisonSpokenFlag: 'kessler_comparison_spoken',
   sender: 'KESSLER DESK',
   announce: 'Scale deck open at the weigh-slip. Pods rest on the plate, the plate reports. Mind the seal.',
   // {plate} = skimmed read, {true} = the honest mass the pod stamps.
   read: 'Plate reads {plate}t. Your stamp says {true}t. Desk codes it within tolerance.',
   firstVariance: 'Plate reads {plate}t. Your stamp says {true}t — a thumb-width short. The desk logs the variance; you saw it. Keep the plate honest by weighing what you already weighed.',
+  // B1 (design/game/16): a second, differently-stamped load reads short too — Kessler at
+  // the window says the one line, once, through the story-line voice.
+  comparisonLine: 'Twelve point four. Again.',
 });
