@@ -1,8 +1,10 @@
-# The Look — Neon Industrial
+# The Look — Working Hardware in Deep Space
 
-Active art direction for the 3D picture (owner, 2026-09-30). The owner's words: *fast-paced, cool,
-bright arcade game with shiny, cool-looking models; sometimes a darker, cyberpunk-ish vibe; lean
-into colour contrast.* The earlier picture read as cheap: matte, pastel, flat, one colour per hull.
+Active art direction for the 3D picture. The 2026-11-14 owner review rejects the fleet's washed-out
+paint, bright continuous neon, blurred spill and near-black shapes. Preserve the game's energetic
+colour and distinct silhouettes, but make objects read as tangible, purposeful hardware with visible
+surface detail and controlled light. The earlier "show car under stage light" direction explains the
+current renderer; it is not the finish to copy into new work.
 
 This page is the direction and the map of where it lives. It replaces the *picture* described in
 [`ILLUSTRATED_GRAPHICS_STANDARD.md`](ILLUSTRATED_GRAPHICS_STANDARD.md) ("Lacquer & Starlight":
@@ -11,19 +13,44 @@ sky still describe real code. Numbers and budgets: [`COLOR_LIGHTING_STANDARD.md`
 
 ## The picture
 
-Working machinery finished like a show car, under stage light, in black space.
+Working machinery with readable materials and form, under directional light in deep space.
 
-1. **Paint is lacquer.** Saturated colour at its authored value under a clear coat: a hard sun
-   glint, a mirror of the sky at the limb, and the panel texture breaking the gloss up plate by plate.
-2. **Two colours fight in every frame.** Each place has a key hue and an opposing edge hue (warm sun
-   against electric cyan; amber sodium against deep blue; rose against cyan). Shadow sides are never
-   grey: they take the mood's shadow colour.
-3. **Lamps are light.** Nav lights, windows, neon trim and drives sit far above the bloom threshold
-   and spill tens of pixels. Paint never glows: lit pigment rolls off below the threshold.
-4. **Space is black.** Contrast and the grade push the void down so the action has somewhere to
-   explode. The sky is rich but quiet.
-5. **Moods, not filters.** A place changes the colour relationship and the darkness. It never
-   changes what a hull is made of.
+1. **Surfaces have a job.** Paint, bare metal, insulation, glass and rock must look like different
+   materials, with texture and relief suited to their scale. Avoid large featureless coloured or
+   translucent primitives, repeated noise, and highlights that erase seams and texture.
+2. **Light reveals form.** A key and restrained fill should leave structure legible on both the
+   lit and shaded sides. Sector colours may tint the light; they must not turn every hull the same
+   colour or crush dark ships into silhouettes.
+3. **Light sources have a purpose.** Engines, navigation and task lamps keep their gameplay cues.
+   Broad decorative strips and windows should not drown the hull in white or coloured blur; retain
+   crisp, identifiable sources and use restrained spill. Paint and hazard markings do not emit.
+4. **Space is deep, not a black cutout.** Keep the background quiet and give objects enough
+   midtone separation to retain their silhouette and surface against it.
+5. **Moods, not filters.** A place changes the colour relationship and the light level. It never
+   changes what a hull is made of or washes out its identity.
+
+## Fleet character
+
+- **Institutions and official fleets:** controlled silhouettes, clean satin paint, deliberately
+  placed markings, selective polished metal, compact navigation lights. Clean must still have
+  material texture and visible construction.
+- **Smugglers and pirates:** distinctive or improvised silhouettes, darker chromatic panels,
+  selective repairs, abrasion and heat marks, sparse signals. Damage should tell a story rather
+  than cover every surface in the same grunge.
+- **Industrial and civilian workcraft:** practical painted plate, exposed service hardware,
+  functional hazard colour and local task lighting. Different occupations retain their own accents.
+- **Creatures and anomalies:** their own credible material and silhouette language, kept readable
+  under the same scene lighting rather than forced into a uniform ship finish.
+
+Starting points for a visual trial, not accepted defaults: satin hull paint roughness 0.42–0.55;
+weathered work or raider paint 0.52–0.70; selected exposed metal 0.30–0.55. For broad decorative
+signal finishes, test authored emission roughly 1.1–1.9 before the runtime signal gain; preserve
+stronger small task lights and gameplay-critical tells where needed. Texture, tint, surface area,
+runtime gain and tone mapping all affect the actual picture, so these numbers do not replace a
+matched bright- and dark-sector review at gameplay scale.
+
+The current shared implementation still uses the older lacquer/rim and high signal gains; the
+above is the target for the ongoing calibration, not a claim that every existing model meets it.
 
 ## Lighting is light (owner, 2026-10-20)
 
@@ -35,10 +62,9 @@ fan for a beam, white glow strips around fields). It was ripped out. The rules:
 - **Light is a THREE light.** A headlight, a power's glow or a flash is a real light that changes
   how nearby surfaces are shaded. Never add a mesh, sprite, fan, cone or strip that poses as light.
   In vacuum a beam is invisible; you see it only where it lands on a hull, rock or station.
-- **The dark is authored.** `LOOK_BASE.rig.ambientGain` / `fillGain` / `rimGain` and lowered
-  `surface.rockFill` / `sceneEnv` (darker in `neon_noir`, `sodium_yard`, `void_signal`) cut the
-  sector fill and back-wash so the side a sun misses is left dark for lamps. The key stays a hard
-  rake and the grazing surface rim keeps silhouettes readable.
+- **The shaded side stays readable.** `LOOK_BASE.rig.ambientGain` / `fillGain` and the surface
+  response control the shadow side. Keep directional form without burying texture or making a
+  bright rim the only part visible; dark moods may be lower-key without becoming black cutouts.
 - **Headlights** ([`src/render/headlights.js`](../../src/render/headlights.js), values
   `LOOK_HEADLIGHT`): a fixed pool of SpotLights mounted with the rig before shader warm-up. Slot 0
   rides the player's bow; the rest go to the nearest powered NPC hulls. Mounted high on the bow and
@@ -152,7 +178,7 @@ Screenshots and cadence are retained in the local integration artifacts under
 - A new look constant is a Look value in `lookMoods.js`, never a literal in a shader.
 - Material physics (roughness, metalness, emission) belongs to the Forge finish, the same in every
   mood. Moods own colour and amount.
-- Paint never emits. Keep `paintCeiling` at or under 0.75 (bloom threshold 1.0, knee 0.25).
+- Paint never emits. Keep `paintCeiling` at or under 0.75 (current bloom threshold 1.0, knee 0.10).
 - Bloom threshold stays 1.0: effect radiance is calibrated against it.
 - A look change is reviewed on the bench sheet and in `flight-look`, in at least one bright and
   one dark mood.
