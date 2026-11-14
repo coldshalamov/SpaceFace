@@ -181,7 +181,15 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
 @media (max-width:640px) {
   ${GO} { --sv:1; --r:76px; padding:28px 22px 24px !important; row-gap:22px !important; }
   ${GO} > .k-title .k-t-title { font-size:clamp(22px, 6.6vw, 34px) !important; line-height:1 !important; max-width:100%; min-width:0; text-wrap:pretty; overflow-wrap:normal; word-break:normal; hyphens:none; }
-  ${GO} .sf-go-grid { gap:14px 28px !important; }
+  /* ui-polish-424: the phone band dropped the desktop row's hairline cards, so the three recovery
+     facts floated as bare text above the coverage line while every other band boxes them. Same card
+     chrome as desktop, two-up, with the third card spanning the row. */
+  ${GO} .sf-go-grid { display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)); align-items:stretch !important; gap:8px !important; }
+  ${GO} .sf-go-grid .k-hero { box-sizing:border-box; justify-content:flex-end; gap:6px; padding:10px 12px !important;
+    border:1px solid rgb(${BONE} / .16); border-radius:6px; background:rgb(12 12 14 / .62); }
+  ${GO} .sf-go-grid:not(:has(> .k-hero[hidden])) > .k-hero:nth-child(3):last-child { grid-column:1 / -1; }
+  ${GO} .sf-go-grid .k-hero__w { letter-spacing:.12em !important; line-height:1.25; }
+  ${GO} .sf-go-grid .k-hero__n { overflow-wrap:break-word; }
   ${GO} .sf-go-foot, ${GO} .sf-go-foot > .k-words { width:100%; }
   ${GO} .sf-go-foot > .k-words { flex-wrap:wrap !important; column-gap:28px !important; row-gap:4px !important; }
   ${GO} .sf-go-foot > .k-words > li:first-child { flex:1 0 100%; min-width:0; max-width:100%; }
