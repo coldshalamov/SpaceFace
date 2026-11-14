@@ -504,3 +504,20 @@ and never reached flight. `81eb6607562d` repairs that action and a fresh pair is
 failure PNGs show the Adventure headline clipping and overlapping its subtitle. The lead has the
 capture path for the title layout. Evidence is `shared-work-cuts-pair-summary.json` under
 `.devshots/fleet/coordination/player-freeze/`.
+
+The repaired locked Foundry pair (`shared-work-cuts-adventure-keys-pair-summary.json`) used the
+seed-1 Supply Pod round. The baseline was `42bb57dc2b97`, the after arm was `5ef7f502fe2f`,
+and the third arm used the current development tree and bundled worker without an overlay.
+All three used focused Electron with normal background throttling and closed cleanly. Their
+first 35 s of active draw rate was 11.41, 10.67, and 10.93/s respectively. Over the available
+flight samples, moving ship gap p95 was 123, 139, and 133 ms and max was 433, 383, and 441 ms.
+Zero signed reversals in 72, 74, and 44 assessable intervals. Baseline remained in round two,
+while the two new-source flights reached Armory sooner, so compare cadence in the fixed window.
+No active flight hit the three-second credit watchdog. Both the baseline flight and both Armory
+PNGs were opened. This is a matched regression check of the event, with a fresh profile and a
+diagnostic round-two entry. The recording's multi-second advancing-flight freeze remains open.
+
+`80381af86296` lets a foreground beat recover the same pending fixed-step wake when its timer is
+at least one tick overdue. The deterministic browser-worker test delays that timer, verifies the
+beat completes a new step, and fires the obsolete callback to check it cannot step twice. The
+foreground return test still verifies that hidden wall time does not become catch-up debt.
