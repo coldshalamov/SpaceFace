@@ -100,7 +100,7 @@ function buildSourceInventory(models, catalogByFile) {
   const byClass = {};
   for (const row of files) byClass[row.classification] = (byClass[row.classification] || 0) + 1;
   const unresolved = files.filter((row) => row.exactLinks.length === 0
-    && ['unmapped-source-model', 'unmapped-release-tree-model', 'generated-authoring-library'].includes(row.classification)).length;
+    && ['unmapped-source-model', 'unmapped-release-tree-model', 'generated-authoring-library', 'third-party-authoring-input'].includes(row.classification)).length;
   const inventoried = new Set(files.map((row) => row.path));
   const unseenKnownPaths = [...known.keys()].filter((path) => !inventoried.has(path));
   return { generatedAt: new Date().toISOString(), roots,
@@ -191,9 +191,9 @@ function buildIndex({ useCatalog = true } = {}) {
   const sourceInventory = buildSourceInventory([...models.values()], catalogByFile);
   // Unmapped source and authoring-library files remain reviewable without calling them shipped.
   // Group only same-stem files in the same directory; name matches to runtime entries stay tentative.
-  const sourceCandidateIds = new Set();
+  const sourceCandidateIds = new Set(), thirdPartyCandidateIds = new Set();
   for (const source of sourceInventory.files) {
-    if (!['unmapped-source-model', 'unmapped-release-tree-model', 'generated-authoring-library'].includes(source.classification)) continue;
+    if (!['unmapped-source-model', 'unmapped-release-tree-model', 'generated-authoring-library', 'third-party-authoring-input'].includes(source.classification)) continue;
     const id = `source-candidate:${dirname(source.path).replace(/\\/g, '/')}/${stem(source.path)}`;
     const model = add(id, { category: source.classification, runtimeAssetId: null, iterationTarget: 20,
       identityStatus: 'source-group-runtime-and-duplicates-unresolved',
@@ -202,7 +202,8 @@ function buildIndex({ useCatalog = true } = {}) {
     model.variants.push({ lod: lod(source.path), sourceFile: { path: source.path, format: source.format,
       sha256: source.sha256, status: 'file-inventory-only' } });
     source.reviewModelId = id;
-    sourceCandidateIds.add(id);
+    if (source.classification === 'third-party-authoring-input') thirdPartyCandidateIds.add(id);
+    else sourceCandidateIds.add(id);
   }
   // Explicit, source-traced playable variants get their own review histories; mere filename
   // similarity does not mint one. Each inherited LOD remains separately visible in coverage.
@@ -252,7 +253,8 @@ function buildIndex({ useCatalog = true } = {}) {
       manifestModelGroups: [...models.keys()].filter((id) => id.startsWith('runtime:')).length,
       unresolvedPresentationGroups: [...models.values()].filter((m) => m.identityStatus === 'group-needs-individual-identities').length,
       sourceModelFiles: sourceInventory.files.length, sourceFilesWithUnresolvedIdentity: sourceInventory.summary.unresolved,
-      unresolvedSourceCandidateGroups: sourceCandidateIds.size },
+      unresolvedSourceCandidateGroups: sourceCandidateIds.size,
+      thirdPartyCandidateGroups: thirdPartyCandidateIds.size },
     warnings: { missingRelease, unmatchedPackages, unseenKnownPaths: sourceInventory.unseenKnownPaths },
     models: [...models.values()].sort((a, b) => a.id.localeCompare(b.id)) };
   writeFileSync(indexPath, `${JSON.stringify(output, null, 2)}\n`);

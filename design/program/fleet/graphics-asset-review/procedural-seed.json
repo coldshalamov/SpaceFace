@@ -1350,6 +1350,13 @@
   ],
   "proceduralFamilies": [
     {
+      "id": "environment:bolus_canal_rib",
+      "source": "src/render/bolusCanal.js",
+      "evidence": "seeded canal rings drawn by the Bolus view; distinct from the bolus_rib fauna",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "not-yet-inspected"
+    },
+    {
       "id": "fauna:needle_swarm",
       "source": "src/render/faunaVisuals.js",
       "evidence": "factory fauna dispatch; individual spawn frequency not established",
