@@ -776,7 +776,13 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} .sxb-ops .sx-dock__group--nav > li:not(:has(> .sx-tile)), ${D} .sxb-ops .so-dock-indicator, ${D} .sxb-ops .orr-stationrow__rule { display:none !important; }
   ${D} .sxb-ops .sx-tile { min-height:0 !important; padding:4px 1px !important; }
   ${D} .sxb-ops .sx-dock__group--nav > li:not(:has(> .sx-tile:is(.is-active, :focus-visible))) > .sx-tile__gloss { display:none !important; }
-  ${D} .sxb-ops .sx-dock__group--nav > li:has(> .sx-tile:focus-visible) ~ li > .sx-tile__gloss { display:none !important; }
+  /* review261: the station's quiet arrival focus (data-sx-quiet-focus) stays on the tile it parked on when a
+     tap opens another destination without moving focus (Safari / iOS buttons), and the old sibling rule
+     only hid lines AFTER a focused tile, so the open line and the focused one printed over each other.
+     One line at a time: a quiet focus never speaks for a tile that is not open, and a player's own focus
+     ring speaks alone. */
+  ${D} .sxb-ops .sx-dock__group--nav > li:has(> .sx-tile[data-sx-quiet-focus]:not(.is-active)) > .sx-tile__gloss { display:none !important; }
+  ${D} .sxb-ops .sx-dock__group--nav:has(> li > .sx-tile:focus-visible:not([data-sx-quiet-focus])) > li:not(:has(> .sx-tile:focus-visible:not([data-sx-quiet-focus]))) > .sx-tile__gloss { display:none !important; }
   ${D} .sxb-ops .sx-dock__group--nav > li > .sx-tile__gloss { display:block; position:absolute !important; top:calc(100% + 4px) !important; bottom:auto !important; left:76px !important; right:104px !important;
     width:auto !important; max-width:none !important; margin:0 !important; padding:0 !important; transform:none !important; text-align:center !important;
     white-space:nowrap !important; overflow:hidden !important; text-overflow:ellipsis !important; line-height:18px !important; }
@@ -840,7 +846,13 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
      instead of ellipsizing mid-word at 390–430 wide (it clamps at two on narrower phones) */
   ${D} .sxb-ops .sx-dock__group--nav { position:relative !important; padding-bottom:34px !important; }
   ${D} .sxb-ops .sx-dock__group--nav > li:not(:has(> .sx-tile:is(.is-active, :focus-visible))) > .sx-tile__gloss { display:none !important; }
-  ${D} .sxb-ops .sx-dock__group--nav > li:has(> .sx-tile:focus-visible) ~ li > .sx-tile__gloss { display:none !important; }
+  /* review261: the station's quiet arrival focus (data-sx-quiet-focus) stays on the tile it parked on when a
+     tap opens another destination without moving focus (Safari / iOS buttons), and the old sibling rule
+     only hid lines AFTER a focused tile, so the open line and the focused one printed over each other.
+     One line at a time: a quiet focus never speaks for a tile that is not open, and a player's own focus
+     ring speaks alone. */
+  ${D} .sxb-ops .sx-dock__group--nav > li:has(> .sx-tile[data-sx-quiet-focus]:not(.is-active)) > .sx-tile__gloss { display:none !important; }
+  ${D} .sxb-ops .sx-dock__group--nav:has(> li > .sx-tile:focus-visible:not([data-sx-quiet-focus])) > li:not(:has(> .sx-tile:focus-visible:not([data-sx-quiet-focus]))) > .sx-tile__gloss { display:none !important; }
   ${D} .sxb-ops .sx-dock__group--nav > li > .sx-tile__gloss { position:absolute !important; left:0 !important; right:0 !important; bottom:0 !important; top:auto !important;
     width:auto !important; max-width:none !important; margin:0 !important; padding:0 !important; transform:none !important; text-align:left !important;
     white-space:normal !important; overflow:hidden !important; line-height:16px !important; max-height:32px !important;
