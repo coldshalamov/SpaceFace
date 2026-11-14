@@ -23,7 +23,7 @@ import {
   renderPackagePilotForAssetId,
   renderPackagePilotForSourceUrl,
 } from './renderPackageManifest.js';
-import { dedupeGltfTextureSources, imageSourceKeyAsync } from './imageSourceDedupe.js';
+import { dedupeGltfTextureSources, imageSourceDedupeStats, imageSourceKeyAsync } from './imageSourceDedupe.js';
 import {
   createSourceDetachManifest,
   dropPackageDetachManifest,
@@ -1041,7 +1041,7 @@ export async function getAuthoredAssetDiagnostic(renderer, url, slot = null) {
   }
 }
 
-export async function getAuthoredAssetRuntimeInfo(renderer, { includeFailures = false } = {}) {
+export async function getAuthoredAssetRuntimeInfo(renderer, { includeFailures = false, includeResources = false } = {}) {
   if (!renderer) return null;
   try {
     const runtime = await runtimeFor(renderer);
@@ -1062,6 +1062,26 @@ export async function getAuthoredAssetRuntimeInfo(renderer, { includeFailures = 
       // drawing the model after an image failure. Read only settled, currently resident records;
       // pending tasks are never awaited and evicted records cannot linger in this diagnostic.
       info.textureFailures = authoredTextureFailureDiagnostics(runtime);
+    }
+    if (includeResources) {
+      // This snapshot is explicitly requested by diagnostics; nothing is walked per frame.
+      // Residency is renderer-local. Shared image-source counters span the entire JS context.
+      const packages = runtime.renderPackages.diagnostics();
+      const residency = packages.residency;
+      info.resources = {
+        scope: 'renderer',
+        packageCacheEntries: packages.cacheEntries,
+        residentAssets: residency.residentAssets,
+        residentResources: residency.residentResources,
+        gpuResidentBytes: residency.gpuResidentBytes,
+        gpuAccountingAuthoritative: residency.gpuAccountingAuthoritative,
+        unaccountedResources: residency.unaccountedResources,
+        cpuPackageBytes: residency.cpuPackageBytes,
+        packageCacheOnlyBytes: residency.packageCacheOnlyBytes,
+        softResidentBytes: residency.softResidentBytes,
+        pendingRequests: residency.pendingRequests,
+      };
+      info.sharedImageSources = { scope: 'javascript-context', ...imageSourceDedupeStats() };
     }
     return info;
   } catch (error) {

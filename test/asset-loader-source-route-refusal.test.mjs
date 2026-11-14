@@ -40,10 +40,14 @@ test('an unpackaged release part resolves null, records the refusal, and stays r
     const diagnostic = await getAuthoredAssetDiagnostic(renderer, UNPACKAGED_URL, SLOT);
     assert.ok(diagnostic instanceof Error, 'the refusal must be recorded for diagnostics');
     assert.match(String(diagnostic.message), /no render package|source route/i);
-    const runtime = await getAuthoredAssetRuntimeInfo(renderer, { includeFailures: true });
+    const runtime = await getAuthoredAssetRuntimeInfo(renderer, { includeFailures: true, includeResources: true });
     assert.ok(runtime.failures.some((failure) => failure.key === `${UNPACKAGED_URL}::${SLOT}`
       && /no render package|source route/i.test(failure.message)),
     'the on-demand batch report identifies the refused asset and reason');
+    assert.equal(runtime.resources.scope, 'renderer');
+    assert.equal(runtime.sharedImageSources.scope, 'javascript-context');
+    assert.ok(Number.isFinite(runtime.resources.gpuResidentBytes));
+    assert.ok(Number.isFinite(runtime.sharedImageSources.sharedDecodesSaved));
 
     const cleared = await invalidateFailedAuthoredAssets(renderer);
     assert.ok(cleared >= 1, 'the recorded refusal is reachable by the recovery sweep');

@@ -41,6 +41,22 @@ test('identical embedded bytes share one image source across documents', async (
   assert.equal(imageSourceDedupeStats().misses, 1);
 });
 
+test('diagnostics count pre-decode reuse separately from post-decode sharing', () => {
+  const key = 'shared-diagnostic-fixture';
+  const first = claimSharedImageTexture(key, decodedTexture(1));
+  const duplicate = claimSharedImageTexture(key, decodedTexture(2));
+  assert.equal(imageSourceDedupeStats().hits, 1);
+  assert.equal(imageSourceDedupeStats().sharedDecodesSaved, 0,
+    'the second image was already decoded before its source was shared');
+  const cached = sharedImageTextureFor(key);
+  assert.equal(imageSourceDedupeStats().hits, 2);
+  assert.equal(imageSourceDedupeStats().sharedDecodesSaved, 1,
+    'a usable pre-decode cache lookup can avoid another decode');
+  first.dispose();
+  duplicate.dispose();
+  cached.dispose();
+});
+
 test('different bytes, lengths, or mime types never share a source', async () => {
   const a = claimSharedImageTexture(await imageSourceKeyAsync(bytes(1), 64, 'image/ktx2'), decodedTexture(1));
   const b = claimSharedImageTexture(await imageSourceKeyAsync(bytes(2), 64, 'image/ktx2'), decodedTexture(2));

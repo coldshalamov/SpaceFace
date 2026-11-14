@@ -460,7 +460,7 @@ export function installFleetLook(SF) {
   window.SF_fleetLook = {
     shoot,
     cost,
-    assetDiagnostics: () => getAuthoredAssetRuntimeInfo(renderer, { includeFailures: true }),
+    assetDiagnostics: () => getAuthoredAssetRuntimeInfo(renderer, { includeFailures: true, includeResources: true }),
     ships: () => SHIPS.map((s) => s.id),
     // --sector=<id>: apply that sector's authored visual-profile rig (intensity + key/fill tint +
     // signature-hero aim) to the live lights before the next shot.

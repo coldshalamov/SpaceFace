@@ -85,6 +85,7 @@ export function textureUploadLeased(texture) {
 const entries = new Map(); // key -> { owner: Texture, users: Set<Texture> }
 let hits = 0;
 let misses = 0;
+let sharedDecodesSaved = 0;
 let hashedBytesTotal = 0;
 let hashMsTotal = 0;
 let digestCalls = 0;
@@ -371,6 +372,9 @@ export function sharedImageTextureFor(key) {
   if (!texturePayloadIntact(entry.owner)) return null;
   hits++;
   const clone = entry.owner.clone();
+  // This lookup happens before decode in both runtime callers. Other hits can arrive after a
+  // duplicate image was already decoded, so counting every hit as a saved decode overstates it.
+  sharedDecodesSaved++;
   return adoptUser(entry, key, clone);
 }
 
@@ -545,7 +549,7 @@ export function imageSourceDedupeStats() {
     users,
     hits,
     misses,
-    sharedDecodesSaved: hits,
+    sharedDecodesSaved,
     digests: digestCalls,
     hashedBytes: hashedBytesTotal,
     hashMs: Math.round(hashMsTotal * 10) / 10,
@@ -558,6 +562,7 @@ export function resetImageSourceDedupeForTests() {
   entries.clear();
   hits = 0;
   misses = 0;
+  sharedDecodesSaved = 0;
   hashedBytesTotal = 0;
   hashMsTotal = 0;
   digestCalls = 0;
