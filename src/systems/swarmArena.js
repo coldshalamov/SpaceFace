@@ -37,6 +37,15 @@
 // callbacks from swarmReinforceCount (which survivalWave already calls on the sim tick).
 
 import { ENVIRONMENT_FAMILIES, environmentSurfaceData, environmentMaterialOf } from '../data/environmentMaterials.js';
+
+/**
+ * The material families a room rolls. The Foundry is slag, ore and scrap: the crystal body is a raw
+ * placeholder octahedron until the asset thread replaces it, so the Foundry does not roll it
+ * (it returns to the rotation by deleting the filter). Other arenas keep every family.
+ */
+export function environmentFamiliesFor(arenaId) {
+  return arenaId === 'helios_core' ? ENVIRONMENT_FAMILIES.filter(m => m !== 'crystal') : ENVIRONMENT_FAMILIES;
+}
 import { ROCK_PLACE_SUBSTANCES, applyRockSubstance } from '../data/rockSubstances.js';
 import { swarmArenaTierForRun, swarmArenaDebrisLayout, planOpeningThrowables } from '../data/swarmArenaLadder.js';
 import { swarmOpeningTerrainStage, planSwarmOpeningTerrain } from '../data/swarmOpeningTerrain.js';
@@ -1507,14 +1516,15 @@ export const swarmArena = {
     const spawnedIds = [];
     const presentMaterials = new Set((state.entityList || []).filter(e => e.alive !== false && e.data?.[SWARM_DEBRIS_TAG]
       && Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z) <= fightRadius).map(environmentMaterialOf));
-    const missingMaterials = ENVIRONMENT_FAMILIES.filter(m => !presentMaterials.has(m));
+    const families = environmentFamiliesFor(run && run.arenaId);
+    const missingMaterials = families.filter(m => !presentMaterials.has(m));
     // The reef planner spaces by the footprints the live recheck below will measure —
     // which means each spot's own material collider. Hand it the exact material sequence
     // the spawn loop's rotation will stamp, so a spot the plan accepts is one the field
     // accepts (321e6d287a99 moved the recheck onto collider footprints).
     const reefMaterials = reef
       ? Array.from({ length: want }, (_, i) => ballast ? 'debris'
-          : (missingMaterials[i] || ENVIRONMENT_FAMILIES[i % ENVIRONMENT_FAMILIES.length]))
+          : (missingMaterials[i] || families[i % families.length]))
       : null;
     // First rooms are authored courts, not a random ring. Later waves and all
     // variant arenas retain the existing seeded planner. No random fallback may
@@ -1542,7 +1552,7 @@ export const swarmArena = {
     for (const spot of spots.slice(0, want)) {
       const material = ballast
         ? 'debris'
-        : spot.material || missingMaterials[materialIndex] || ENVIRONMENT_FAMILIES[materialIndex % ENVIRONMENT_FAMILIES.length];
+        : spot.material || missingMaterials[materialIndex] || families[materialIndex % families.length];
       const typeId = material === 'metal' ? 'ast_metallic' : material === 'crystal' ? 'ast_crystalline' : TYPE_ID;
       const colliderRadius = asteroidColliderRadius(typeId, spot.radius);
       // The old terrain-only census missed hulls crossing the replenishment site.

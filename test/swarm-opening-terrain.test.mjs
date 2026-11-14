@@ -22,7 +22,10 @@ test('first three courts add distinct banks inside the tier and leave the bank-o
     }
   }
   const near = plan(options(1));
-  assert.equal(new Set(near.map(p => p.material)).size, 7, 'all shipped surface verbs remain available');
+  // The Foundry court is slag, ore and scrap: crystal is a placeholder octahedron until the asset thread
+  // replaces it, so six of the seven surface verbs are in the court (see swarmOpeningTerrain.js).
+  assert.equal(new Set(near.map(p => p.material)).size, 6, 'every surface verb except the placeholder crystal remains available');
+  assert.ok(!near.some(p => p.material === 'crystal'), 'no crystal in the Foundry court');
   const flank = plan({ ...options(2), existing: near });
   assert.equal(flank.length, 3, 'surviving first room is not duplicated or relocated');
   const outer = plan({ ...options(3), existing: near.concat(flank) });
