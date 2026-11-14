@@ -1,0 +1,18 @@
+{
+  "modelId": "runtime:SF_FIN_RADIATOR_GRID:fin_radiator_grid",
+  "reviewStatus": "The modular port fin now mirrors outward in diagnostic synthetic and Lamplighter-wayfarer compositions. Other angles, root fit, variations and an ordinary encounter remain open.",
+  "variationDiscovery": "unresolved",
+  "route": "The modular preload selector chooses the radiator for the sampled production Lamplighter-wayfarer identity. The composition was instantiated diagnostically from that real spawn specification.",
+  "deploymentCode": ["src/render/partsLibrary.js", "src/render/modularFinHandedness.js"],
+  "evidence": [
+    ".devshots/fleet/modular-assembly-investigation/REPORT.md",
+    ".devshots/fleet/modular-assembly-investigation/IMPLEMENTED.md",
+    ".devshots/fleet/modular-assembly-investigation/fixed/render.json",
+    ".devshots/fleet/modular-assembly-investigation/lifetime/render.json"
+  ],
+  "risks": [
+    "Root connection remains visually weak on the sampled fighter hull.",
+    "The reflected derivative is shared per resident source geometry but adds memory and has no measured frame-time result.",
+    "The other one-sided fin families and natural traffic encounters have not yet been visually accepted."
+  ]
+}

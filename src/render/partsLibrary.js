@@ -59,6 +59,8 @@ import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection, ceresShipbreakTransform
 // pieces are merged into ship-local batches; stateful pieces such as glass, thrusters, sockets,
 // damage lights, and LOD hooks stay as normal objects.
 import * as THREE from 'three';
+import { handedFinPlacement, mirroredFinNode, mirroredFinPrimitive, oneSidedFinRecord,
+  prepareMirroredFinGeometries, reflectFinMatrix } from './modularFinHandedness.js';
 import { attachSwarmSpecialistVisual } from './swarmSpecialistVisuals.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { detachPackageTexture, isPackageGeometryDetached, rehydrateDetachedGeometries, retainPackageGeometryCpu, LIVE_PACKAGE_CPU_PAYLOAD } from './packageCpuDetach.js';
@@ -11698,7 +11700,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   for (const placement of finPlacements) {
     if (finRecord) {
       yield;
-      yield* instantiatePartSteps(finRecord, hull, placement,
+      yield* instantiatePartSteps(finRecord, hull, handedFinPlacement(finRecord, placement),
         palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     } else {
       ownerLocalFallbackRoots.push(buildFallbackFin(hull, materials, placement));
@@ -12125,6 +12127,22 @@ async function buildComposedShipAsync(entity, library, scene, ownerBoundary, opt
   const frameBudgetMs = () => (options.admissionVisible === true || options.admissionDeadline === true)
     ? COMPOSE_FRAME_MS_URGENT : COMPOSE_FRAME_MS;
   try {
+  const finFile = authoredPreloadPlanForEntity(entity, options).fin?.[0];
+  const finRecords = library.get('fin') || [];
+  const finSeed = hashString(`${entity.id}|${entity.data && entity.data.defId}|${entity.factionId || ''}`);
+  const finRecord = finFile && (recordForFile(finRecords, finFile)
+    || finRecords[((finSeed ^ hashString('fin')) >>> 0) % finRecords.length]);
+  if (oneSidedFinRecord(finRecord)) {
+    // A prewarm may already have retired NORMAL/TANGENT/UV. Prepare the shared
+    // derivative under its own CPU lease before any stepped instance reads it.
+    await waitForAuthoredAdmission(prepareMirroredFinGeometries(
+      (finRecord.primitives || []).map(primitive => primitive.geometry),
+    ), options);
+    assertQueuedAuthoredAdmissionActive(options, 'after-fin-cpu-refill');
+    if (staleAuthoredRunVerdict(ownerBoundary, options)
+      || entity?.alive === false || (ownerBoundary && !ownerBoundary.parent)) return null;
+    sliceStarted = now();
+  }
   let step = steps.next();
   while (!step.done) {
     const sliceMs = now() - sliceStarted;
@@ -12915,6 +12933,7 @@ function* instantiateFlightRootTemplateBodySteps(
         quaternion: new THREE.Quaternion().fromArray(recipe.quaternion || [0, 0, 0, 1]),
         targetLength: sourceLength,
         label: recipe.label || record.assetId || record.url || 'Package',
+        mirrorFinZ: recipe.mirrorFinZ === true,
       };
       const partRoot = yield* instantiateRenderPackagePartSteps(
         record, parent, placement, palette || paletteFor(entity), scene, ownerBoundary,
@@ -14864,7 +14883,8 @@ function* instantiatePartSteps(record, parent, placement, palette, scene, owner,
   parent.add(partRoot);
 
   let visited = 0;
-  for (const primitive of compositionPrimitives(record)) {
+  for (const sourcePrimitive of compositionPrimitives(record)) {
+    const primitive = placement.mirrorFinZ ? mirroredFinPrimitive(sourcePrimitive) : sourcePrimitive;
     if ((++visited % 128) === 0) yield;
     const dedicated = requiresPerShipMesh(primitive);
     let object;
@@ -14932,7 +14952,8 @@ function* instantiatePartSteps(record, parent, placement, palette, scene, owner,
     if ((++visited % 128) === 0) yield;
     const object = new THREE.Object3D();
     object.name = marker.name;
-    marker.matrix.decompose(object.position, object.quaternion, object.scale);
+    (placement.mirrorFinZ ? reflectFinMatrix(marker.matrix) : marker.matrix)
+      .decompose(object.position, object.quaternion, object.scale);
     object.userData = {
       ...marker.userData,
       spacefaceTags: marker.tags,
@@ -14981,6 +15002,7 @@ function* instantiateRenderPackagePartSteps(record, parent, placement, palette, 
     assetId: record.assetId || record.renderPackage?.assetId || null,
     flightStaticV3: record.flightStaticV3 === true,
     label: placement.label || record.assetId || record.url || 'Package',
+    mirrorFinZ: placement.mirrorFinZ === true,
     position: partRoot.position.toArray(),
     quaternion: partRoot.quaternion.toArray(),
     scale: partRoot.scale.toArray(),
@@ -15001,12 +15023,13 @@ function* instantiateRenderPackagePartSteps(record, parent, placement, palette, 
       tagsByName,
       poolAdmissions: bindings.packagePoolAdmissions,
       poolReleases: bindings.packagePoolReleases,
+      mirrorFinZ: placement.mirrorFinZ === true,
     })
-    : null;
+    : (placement.mirrorFinZ ? ({ source }) => mirroredFinNode(source) : null);
   const mergePackageMeshes = staticBatches
     && record.flightStaticV3 !== true
     && (owner?.userData?.kind === 'place' || owner?.userData?.kind === 'station');
-  const createPackageInstance = record.flightStaticV3 === true
+  const createPackageInstance = record.flightStaticV3 === true && !placement.mirrorFinZ
     ? record.renderPackage.createFlightInstance?.bind(record.renderPackage)
     : record.renderPackage.createInstance.bind(record.renderPackage);
   if (typeof createPackageInstance !== 'function') {
@@ -15058,7 +15081,7 @@ function* instantiateRenderPackagePartSteps(record, parent, placement, palette, 
 
     if (object.isMesh) {
       if (object.visible === false) continue;
-      stampGeometryBatchKey(object.geometry, renderPackageGeometryIdentity(record, object.name));
+      stampGeometryBatchKey(object.geometry, renderPackageGeometryIdentity(record, object.name) + (placement.mirrorFinZ ? '|fin-port' : ''));
       const primitive = { material: object.material, tags };
       if (object.userData?.spacefacePackageMaterialPrepared !== true) {
         object.material = requiresPerShipMesh(primitive)
@@ -15126,15 +15149,15 @@ function renderPackageGeometryIdentity(record, name) {
 }
 
 function createRenderPackageShipNodeFactory({
-  scene, owner, record, palette, tagsByName, poolAdmissions, poolReleases,
+  scene, owner, record, palette, tagsByName, poolAdmissions, poolReleases, mirrorFinZ = false,
 }) {
   return ({ source }) => {
     const tags = tagsByName.get(source.name) || source.userData?.spacefaceTags || {};
-    if (!canPoolRenderPackageShipMesh(source, tags)) return null;
+    if (!canPoolRenderPackageShipMesh(source, tags)) return mirrorFinZ ? mirroredFinNode(source) : null;
 
     const material = sharedMaterialFor(source.material, tags, palette);
-    const object = source.clone(false);
-    stampGeometryBatchKey(object.geometry, renderPackageGeometryIdentity(record, source.name));
+    const object = mirrorFinZ ? mirroredFinNode(source) : source.clone(false);
+    stampGeometryBatchKey(object.geometry, renderPackageGeometryIdentity(record, source.name) + (mirrorFinZ ? '|fin-port' : ''));
     object.material = material;
     object.userData = {
       ...(object.userData || {}),
@@ -15144,7 +15167,7 @@ function createRenderPackageShipNodeFactory({
       scene,
       owner,
       object,
-      source.geometry,
+      object.geometry,
       material,
       `${record.assetId || 'PackageShip'}_${source.name || 'Mesh'}`,
       poolAdmissions,
