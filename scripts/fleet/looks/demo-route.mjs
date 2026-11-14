@@ -18,7 +18,6 @@ import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { pressNewGame } from '../../lib/titleRoute.mjs';
 
 const argv = Object.fromEntries(process.argv.slice(2).map((a) => {
   const m = a.match(/^--([^=]+)(?:=(.*))?$/); return m ? [m[1], m[2] === undefined ? true : m[2]] : [a, true];
@@ -468,8 +467,8 @@ const advState = () => page.evaluate(() => {
   if (!tgt && wp && wp.pos && wp.kind === 'mission') { // a marker with no bound entity: the body sitting on it (the sample rock), not passing traffic
     let best = null;
     for (const e of s.entityList || []) {
-      if (!e || e.alive === false || e.isPlayer || e.type === 'station' || e.type === 'projectile') continue;
-      const d = Math.hypot(e.pos.x - wp.pos.x, e.pos.z - wp.pos.z); if (d > (e.type === 'ship' ? 110 : 220)) continue; // the marked derelict may be a (dead, unowned) ship hull
+      if (!e || e.alive === false || e.isPlayer || e.type === 'ship' || e.type === 'station' || e.type === 'projectile') continue;
+      const d = Math.hypot(e.pos.x - wp.pos.x, e.pos.z - wp.pos.z); if (d > 220) continue;
       const score = d - (/aster|rock|ore|sample|wreck|derelict/i.test(`${e.type} ${e.defId || ''} ${e.name || ''}`) ? 60 : 0) - (e.mass > 40 ? 20 : 0);
       if (!best || score < best.score) best = { score, id: e.id, type: e.type, pos: [e.pos.x, e.pos.z], name: e.name || e.defId || (e.data && e.data.name), d: Math.round(d) };
     }
@@ -491,8 +490,7 @@ async function adventureRoute() {
   await bootToTitle();
   await setZero();
   step('click', 'title: NEW GAME');
-  try { await pressNewGame(page); R.clicks++; await page.evaluate(() => { window.__dr.clicks++; }).catch(() => {}); note('pressed the ADVENTURE door (New Game) through scripts/lib/titleRoute.mjs'); }
-  catch (e) { note('pressNewGame failed: ' + e.message.slice(0, 120)); }
+  await clickText(/new game/i);
   // New Game screen(s) -> defaults -> LAUNCH
   const tPre = Date.now(); let flying = false;
   while (Date.now() - tPre < 300_000) {
@@ -500,11 +498,8 @@ async function adventureRoute() {
     const s = await trackScreen();
     if (s && s.mode === 'flight' && !s.top) { flying = true; break; }
     const btns = await readBtns();
-    // never CONTINUE from the title: that loads the autosave an earlier run left on the server (a first-time player has none)
-    const onTitle = !!(s && s.top === 'mainMenu');
-    if (onTitle) note('still on the title; controls: ' + btns.map((b) => b.text).slice(0, 10).join(' | '));
-    const hit = onTitle ? btns.find((b) => /new game|adventure/i.test(b.text)) : (btns.find((b) => /^(launch|start|begin|take off|set out)/i.test(b.text)) || btns.find((b) => /launch/i.test(b.text)));
-    if (hit) { await click(hit.x, hit.y); note(`click "${hit.text}" on ${s && s.top}`); await sleep(1500); } else { note(`no launch control; top=${s && s.top} mode=${s && s.mode}; saw: ${btns.map((b) => b.text).slice(0, 12).join(' | ')}`); await sleep(2500); }
+    const hit = btns.find((b) => /^(launch|start|begin|take off|set out|continue)\b/i.test(b.text)) || btns.find((b) => /launch/i.test(b.text));
+    if (hit) { await click(hit.x, hit.y); note(`click "${hit.text}" on ${s && s.top}`); await sleep(1500); } else await sleep(800);
   }
   step('flight', flying ? 'in flight' : 'NEVER REACHED FLIGHT');
   if (!flying) { R.outcome = 'never reached flight'; return; }
