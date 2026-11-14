@@ -12,9 +12,10 @@ test('surveyor keeps its visible shell and independent scan motion without an en
   const first = buildMachineMesh(firstEntity), other = buildMachineMesh(otherEntity);
   const meshes = root => { const found = []; root.traverse(node => { if (node.isMesh) found.push(node); }); return found; };
   const firstMeshes = meshes(first), otherMeshes = meshes(other);
-  assert.equal(firstMeshes.length, 4);
+  assert.equal(firstMeshes.length, 3);
   assert.ok(!firstMeshes.some(mesh => mesh.geometry.type === 'SphereGeometry'));
-  const [body, ring] = firstMeshes;
+  assert.ok(!firstMeshes.some(mesh => mesh.geometry.type === 'TorusGeometry'));
+  const [body] = firstMeshes;
   const positions = body.geometry.getAttribute('position');
   const normals = body.geometry.getAttribute('normal');
   const uvs = body.geometry.getAttribute('uv');
@@ -22,8 +23,6 @@ test('surveyor keeps its visible shell and independent scan motion without an en
   assert.equal(normals.count, positions.count);
   assert.equal(uvs.count, positions.count);
   assert.ok([...positions.array, ...normals.array, ...uvs.array].every(Number.isFinite));
-  assert.equal(ring.geometry.type, 'TorusGeometry');
-  assert.equal(ring.geometry.parameters.tubularSegments, 40);
   assert.ok(firstMeshes.every((mesh, i) => mesh.geometry === otherMeshes[i].geometry));
   assert.ok(firstMeshes.every((mesh, i) => mesh.material !== otherMeshes[i].material));
 
@@ -47,7 +46,7 @@ test('surveyor keeps its visible shell and independent scan motion without an en
   for (const mesh of firstMeshes) mesh.geometry.addEventListener('dispose', geometryListener);
   try {
     first.traverse(node => disposeObjectNode(node));
-    assert.deepEqual([...disposed.values()], [1, 1, 1, 1]);
+    assert.deepEqual([...disposed.values()], [1, 1, 1]);
     assert.equal(sharedGeometryDisposals, 0);
     otherEntity.data.machine.visualScanWinding = true;
     other.userData.updateAuthoredMotion(1, otherEntity);
