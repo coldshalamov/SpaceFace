@@ -1118,6 +1118,55 @@ test('repeated package-backed ship roots promote only eligible rigid surfaces in
   }
 });
 
+test('retained package pools refresh the far visibility boundary when zoom changes', async () => {
+  const renderer = {};
+  const scene = new THREE.Scene();
+  const fixture = await packageShipFixture();
+  const options = {
+    releaseMode: true,
+    libraryScope: 'render-package-live-zoom-cull-test',
+    bootstrapPlan: {},
+    loadAuthoredPart: async () => fixture.record,
+    prepareAuthoredPipelines: async () => ({ skipped: false }),
+    prepareAuthoredGpuResidency: async () => ({ skipped: false }),
+  };
+  const restoreRuntime = installAuthoredAdmissionRuntime(scene, options);
+  await preloadAuthoredPartLibrary(renderer, options);
+  try {
+    const near = await admitPackageShip('zoom-near', 100, renderer, scene, options);
+    const boundary = await admitPackageShip('zoom-boundary', 690, renderer, scene, options);
+    const distant = await admitPackageShip('zoom-distant', 1000, renderer, scene, options);
+    const camera = new THREE.PerspectiveCamera(90, 16 / 9, 0.1, 5000);
+    camera.lookAt(1000, 0, 0);
+    camera.updateMatrixWorld(true);
+    const authored = [near, boundary, distant].map((mesh) => ({
+      mesh, visible: true, viewCulled: false, renderDirty: false,
+    }));
+    let frameId = 0;
+    const sync = (liveZoom, zoom = 330) => ({ ...syncAuthoredInstancePools(scene, {
+      camera, liveZoom, zoom, fov: 90, aspect: 16 / 9, tilt: 60,
+      entityFrame: { frameId: ++frameId, authored }, authoredRecords: authored,
+    }) });
+
+    assert.equal(sync(NaN, 20).submittedInstanceSlots, 2,
+      'an unavailable live zoom falls back to the requested zoom, culling the distant owner');
+    assert.equal(sync(20).ownersVisited, 0, 'an unchanged boundary retains the cheap stable-frame path');
+    const tinyChange = sync(20.05);
+    assert.equal(tinyChange.ownersVisited, 0, 'small zoom movement inside a cull bin avoids a full resync');
+    assert.equal(tinyChange.submittedInstanceSlots, 2, 'the outward-rounded boundary avoids premature culling');
+    const expanded = sync(330);
+    assert.equal(expanded.submittedInstanceSlots, 3, 'an expanded boundary brings the distant owner back');
+    assert.equal(expanded.ownersVisited, 3);
+    const contracted = sync(20);
+    assert.equal(contracted.submittedInstanceSlots, 2, 'a contracted boundary removes the distant owner');
+    assert.equal(contracted.ownersVisited, 3);
+  } finally {
+    for (const child of [...scene.children]) scene.remove(child);
+    invalidatePartsLibraryCaches(renderer);
+    restoreRuntime();
+  }
+});
+
 test('hidden sector preparation defers package-pool promotion until exact boundary publication', async () => {
   const renderer = {};
   const scene = new THREE.Scene();

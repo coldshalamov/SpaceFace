@@ -16815,7 +16815,7 @@ function sceneState(scene) {
       preparedAuthoredRoots: new Map(),
       frameRecordsByOwner: new Map(),
       cullContext: createInstanceCullContext(),
-      cameraState: { initialized: false, present: false, values: new Float64Array(32), projKey: null },
+      cameraState: { initialized: false, present: false, values: new Float64Array(32), projKey: null, farCullWu: null },
       syncFrame: 0,
       opaqueBatch: createOpaqueMaterialBatchState(),
       scene,
@@ -16960,7 +16960,8 @@ function finalizePoolStats(state, stats) {
 }
 
 function instanceFarCullWuFromOpts(opts, camera) {
-  const zoomOpt = Number(opts && (opts.liveZoom ?? opts.zoom));
+  const liveZoom = opts?.liveZoom == null ? NaN : Number(opts.liveZoom);
+  const zoomOpt = Number.isFinite(liveZoom) ? liveZoom : Number(opts && opts.zoom);
   const tiltOpt = Number(opts && opts.tilt);
   const fovOpt = Number(opts && opts.fov);
   const aspectOpt = Number(opts && opts.aspect);
@@ -17005,7 +17006,15 @@ function buildInstanceCullContext(state, opts) {
   // proxies must re-submit even when pose/camera are otherwise clean — a ducked root changes
   // every descendant matrixWorld but touches no dirty flag the frame records carry.
   context.occluderSinks = opts && opts.occluderSinks instanceof Map ? opts.occluderSinks : null;
-  context.farCullWu = instanceFarCullWuFromOpts(opts, camera);
+  // The cull distance also depends on live zoom/tilt, which can change without a
+  // camera-matrix change. Round outward to a small world-space bin: this keeps small
+  // zoom adjustments from revisiting every owner while never culling earlier than
+  // the exact distance. At most one bin of extra distant geometry stays submitted.
+  const farCullWu = Math.ceil(instanceFarCullWuFromOpts(opts, camera) / INSTANCE_FAR_CULL_BIN_WU)
+    * INSTANCE_FAR_CULL_BIN_WU;
+  const farCullChanged = state.cameraState.farCullWu !== farCullWu;
+  state.cameraState.farCullWu = farCullWu;
+  context.farCullWu = farCullWu;
   if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) {
     state.stats.frameBounded = frameBounded;
     context.cameraDirty = captureCullCameraState(null, state.cameraState);
@@ -17025,7 +17034,7 @@ function buildInstanceCullContext(state, opts) {
       state.cameraState.projKey = projKey;
     }
   }
-  context.cameraDirty = captureCullCameraState(camera, state.cameraState);
+  context.cameraDirty = captureCullCameraState(camera, state.cameraState) || farCullChanged;
   CULL_PROJECTION.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   CULL_FRUSTUM.setFromProjectionMatrix(CULL_PROJECTION);
   state.stats.frameBounded = frameBounded;
@@ -17063,6 +17072,7 @@ function createInstanceCullContext() {
 // pans/zooms still dirty.
 const CAMERA_CULL_POS_QUANT_WU = 0.25;
 const CAMERA_CULL_BASIS_EPS = 1e-3;
+const INSTANCE_FAR_CULL_BIN_WU = 8;
 // Bench-only: force exact matrix compare (pre-quantize residual).
 let _cameraCullExactCompare = false;
 export function setAuthoredInstanceCameraCullExactCompare(enabled) {
