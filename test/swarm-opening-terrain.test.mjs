@@ -35,6 +35,29 @@ test('first three courts add distinct banks inside the tier and leave the bank-o
     'expansion adds reachable banks, rather than moving their centers outside the T0 band');
 });
 
+test('occupiedSlots reserves departed banks without minting clones or accepting garbage', () => {
+  const wave1 = stage(1).count;
+  const wave2 = stage(2).count;
+  const first = plan(options(1));
+  const held = plan({ ...options(1), occupiedSlots: [0] });
+  assert.equal(held.length, wave1 - 1);
+  assert.ok(held.every(p => p.openingTerrainSlot !== 0), 'a reserved station is not a vacancy');
+  // Only integers are identities: lookalikes cannot hold a station.
+  for (const noise of [['0'], [0.5], [null], [NaN], [{}]]) {
+    const spots = plan({ ...options(1), occupiedSlots: noise });
+    assert.equal(spots.length, wave1, JSON.stringify(noise));
+    assert.equal(spots[0].openingTerrainSlot, first[0].openingTerrainSlot);
+  }
+  assert.deepEqual(plan({ ...options(1), occupiedSlots: 'nope' }), [], 'non-array census refused');
+  // The reservation list merges with slot identity already on surviving bodies.
+  const merged = plan({ ...options(2), existing: first, occupiedSlots: [wave1] });
+  assert.deepEqual(merged.map(p => p.openingTerrainSlot).sort((a, b) => a - b),
+    Array.from({ length: wave2 - wave1 - 1 }, (_, i) => wave1 + 1 + i),
+    'round two adds banks only where stations are free; the departed body still owns its slot');
+  // A census bigger than the guard is invalid input, not a cleared court.
+  assert.deepEqual(plan({ ...options(1), occupiedSlots: Array(4097).fill(0) }), []);
+});
+
 test('variants, upgraded lines and later rounds retain their established director', () => {
   for (const override of [{ arenaId: 'the_hive' }, { lineTier: 1 }, { altered: true }, { wave: 4 }, { wave: 0 }]) {
     assert.equal(stageFor({ arenaId: 'helios_core', lineTier: 0, wave: 1, ...override }), null);

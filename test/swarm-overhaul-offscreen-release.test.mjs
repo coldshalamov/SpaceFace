@@ -4,6 +4,7 @@ import { swarmArena, SWARM_VIEW_KEEP_RADIUS } from '../src/systems/swarmArena.js
 import { createSimulation } from '../src/core/sim.js';
 import { createRunState, validateRunState } from '../src/core/runState.js';
 import { SWARM_RULESET } from '../src/data/swarmMode.js';
+import { swarmOpeningTerrainStage } from '../src/data/swarmOpeningTerrain.js';
 
 test('a released rock in view waits; one off camera, a ship, and hive geometry keep their deadlines', () => {
   const sys = Object.create(swarmArena);
@@ -58,6 +59,39 @@ test('visible released debris survives the moving inter-wave clock, then expires
       sys.update(1 / 60, state); core.lifetimeSweep(1 / 60, state);
     }
     assert.equal(state.entities.has(rock.id), false, 'ordinary expiry resumes after the pilot leaves');
+  } finally { sim.dispose(); }
+});
+
+test('a departed bank frees its authored slot only when the real lifetime sweep removes it', () => {
+  const sim = createSimulation({ seed: 4242, systems: [] });
+  try {
+    const state = sim.state; state.mode = 'flight'; state.rockCore = { ratingT: 0 };
+    state.run = createRunState({ kind: 'survival', ruleset: SWARM_RULESET, seed: 4242 });
+    state.run.arenaId = 'helios_core'; state.run.phase = 'active'; state.run.wave = 1;
+    const player = sim.spawn({ type: 'ship', pos: { x: 0, z: 0 } }); state.playerId = player.id;
+    const owner = Object.create(swarmArena);
+    owner.init({ state, bus: sim.bus, helpers: sim.helpers, registry: sim.registry });
+    try {
+      owner._syncOpticLattice = () => {};   // the separately owned optic room is absent here
+      owner._topUp(state.run, 1);
+      const bank = state.entityList.find(e => e.alive && e.data?.openingTerrainSlot === 0);
+      assert.ok(bank);
+      bank.pos = { x: SWARM_VIEW_KEEP_RADIUS + 200, z: 0 };
+      owner._topUp(state.run, 2);
+      assert.equal(state.entityList.filter(e => e.alive && e.data?.openingTerrainSlot === 0).length, 1,
+        'a live departure still reserves its station');
+      state.simTime = bank.data.despawnAt + 0.5;
+      sim.registry.get('core').lifetimeSweep(1 / 60, state);
+      assert.equal(state.entities.has(bank.id), false, 'the ordinary sweep removes the departed body');
+      owner._topUp(state.run, 3);
+      const slots = state.entityList.filter(e => e.alive && Number.isInteger(e.data?.openingTerrainSlot))
+        .map(e => e.data.openingTerrainSlot).sort((a, b) => a - b);
+      assert.deepEqual(slots,
+        Array.from({ length: swarmOpeningTerrainStage({ arenaId: 'helios_core', wave: 3, lineTier: 0 }).count },
+          (_, i) => i));
+      assert.notEqual(state.entityList.find(e => e.data?.openingTerrainSlot === 0), bank,
+        'the freed station goes to a fresh body, not a surviving corpse');
+    } finally { owner.destroy(); }
   } finally { sim.dispose(); }
 });
 

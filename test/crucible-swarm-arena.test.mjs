@@ -198,8 +198,12 @@ test('the field follows the fight: drifting far re-anchors it around the player'
   const near = rocks(h).filter(
     (r) => Math.hypot(r.pos.x - h.player.pos.x, r.pos.z - h.player.pos.z) <= SWARM_DEBRIS_KEEP_RADIUS,
   );
-  assert.equal(near.length, openingStage(2).count, 'the new court has the full second-wave bank');
-  assert.equal(new Set(openingBankSlots(near)).size, near.length);
+  const stageSlots = Array.from({ length: openingStage(2).count }, (_, slot) => slot);
+  // Departure is not destruction: while the abandoned banks live they keep their authored
+  // stations, so the new court fills only the slots nobody owns.
+  const reserved = new Set(openingBankSlots(before));
+  assert.deepEqual(openingBankSlots(near), stageSlots.filter((slot) => !reserved.has(slot)),
+    'the new court mints only stations no living body holds');
   // The rocks left behind are released to the engine's ordinary sweep, never deleted by hand.
   for (const rock of before) {
     assert.ok(Number.isFinite(rock.data.despawnAt) && rock.data.despawnAt < originalDeadlines.get(rock.id),
@@ -207,6 +211,14 @@ test('the field follows the fight: drifting far re-anchors it around the player'
     assert.equal(h.state.entities.get(rock.id), rock, 'the sweep still owns the rock');
     assert.equal(rock.alive, true);
   }
+  // Once the departed bodies are actually gone the freed stations refill on the next census.
+  for (const rock of before) h.state.entities.delete(rock.id);
+  h.state.entityList = h.state.entityList.filter((e) => !before.includes(e));
+  h.bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
+  const refilled = rocks(h).filter(
+    (r) => Math.hypot(r.pos.x - h.player.pos.x, r.pos.z - h.player.pos.z) <= SWARM_DEBRIS_KEEP_RADIUS,
+  );
+  assert.deepEqual(openingBankSlots(refilled), stageSlots);
 });
 
 test('the field stays dense where the FIGHT is, not merely within reach', () => {
@@ -226,11 +238,6 @@ test('the field stays dense where the FIGHT is, not merely within reach', () => 
   const near = rocks(h).filter(
     (r) => Math.hypot(r.pos.x - h.player.pos.x, r.pos.z - h.player.pos.z) <= SWARM_DEBRIS_FIGHT_RADIUS,
   );
-  assert.equal(new Set(openingBankSlots(near)).size, openingStage(2).count,
-    'the fight radius contains the full second-wave bank');
-  const nearbyOpeners = near.filter((rock) => rock.data.openingPocket || rock.data.openingLesson);
-  assert.equal(near.length, openingStage(2).count + nearbyOpeners.length);
-  assert.ok(near.length <= SWARM_DEBRIS_MAX, 'and inside the ceiling, which counts the fight');
   // The ones left behind are on the release clock, not counted, and not deleted by hand.
   const behind = rocks(h).filter(
     (r) => Math.hypot(r.pos.x - h.player.pos.x, r.pos.z - h.player.pos.z) > SWARM_DEBRIS_FIGHT_RADIUS,
@@ -239,6 +246,27 @@ test('the field stays dense where the FIGHT is, not merely within reach', () => 
   for (const rock of behind) {
     assert.ok(Number.isFinite(rock.data.despawnAt) && rock.data.despawnAt < originalDeadlines.get(rock.id));
   }
+  // Their authored stations stay reserved while they live: the fight fills only the free slots,
+  // and no station is held by two living bodies at once.
+  const held = new Set(openingBankSlots(behind));
+  const free = Array.from({ length: openingStage(2).count }, (_, slot) => slot)
+    .filter((slot) => !held.has(slot));
+  assert.deepEqual([...new Set(openingBankSlots(near))].sort((a, b) => a - b), free,
+    'the fight radius holds every station its departed owners did not take with them');
+  const allSlots = rocks(h).map((rock) => rock.data.openingTerrainSlot).filter(Number.isInteger);
+  assert.equal(new Set(allSlots).size, allSlots.length, 'no station is held by two living bodies');
+  const nearbyOpeners = near.filter((rock) => rock.data.openingPocket || rock.data.openingLesson);
+  assert.equal(near.length, free.length + nearbyOpeners.length);
+  assert.ok(near.length <= SWARM_DEBRIS_MAX, 'and inside the ceiling, which counts the fight');
+  // Once the departed bodies are actually gone the freed stations refill in the fight radius.
+  for (const rock of behind) h.state.entities.delete(rock.id);
+  h.state.entityList = h.state.entityList.filter((e) => !behind.includes(e));
+  h.bus.emit('run:wavePlanned', { wave: 2, plan: planFor(2) });
+  const refilled = rocks(h).filter(
+    (r) => Math.hypot(r.pos.x - h.player.pos.x, r.pos.z - h.player.pos.z) <= SWARM_DEBRIS_FIGHT_RADIUS,
+  );
+  assert.equal(new Set(openingBankSlots(refilled)).size, openingStage(2).count,
+    'the fight radius refills the whole bank once its departed owners are gone');
 });
 
 test('wobbling back to a rock cancels its release — it does not vanish under you', () => {

@@ -30,9 +30,10 @@ export function swarmOpeningTerrainStage({ arenaId, wave, lineTier, altered = fa
  * stay inside the tier-owned radial bounds.
  * Stage counts are bank props; the live owner's cap also includes lesson/pocket bodies.
  */
-export function planSwarmOpeningTerrain({ stage, anchor, existing = [], want = 0, layout } = {}) {
+export function planSwarmOpeningTerrain({ stage, anchor, existing = [], occupiedSlots = [], want = 0, layout } = {}) {
   if (!stage || !anchor || !layout || !Number.isFinite(anchor.x) || !Number.isFinite(anchor.z)
     || !Array.isArray(existing) || existing.length > 4096
+    || !Array.isArray(occupiedSlots) || occupiedSlots.length > 4096
     || existing.some(b => !Number.isFinite(b?.x) || !Number.isFinite(b?.z)
       || !Number.isFinite(b?.radius) || b.radius < 0)) return [];
   const radius = layout.sizeMaxWu;
@@ -40,7 +41,8 @@ export function planSwarmOpeningTerrain({ stage, anchor, existing = [], want = 0
   const spots = [];
   // A thrown bank still counts in the live fight. Stage growth must not remint
   // its old station just because that physical body moved away from the slot.
-  const occupied = new Set(existing.map(b => b.openingTerrainSlot).filter(Number.isInteger));
+  const occupied = new Set([...occupiedSlots, ...existing.map(b => b.openingTerrainSlot)]
+    .filter(Number.isInteger));
   for (const slot of STATIONS.slice(0, stage.count)) {
     if (spots.length >= Math.floor(want)) break;
     if (occupied.has(slot.index)) continue;
