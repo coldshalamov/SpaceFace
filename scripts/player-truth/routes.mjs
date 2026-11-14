@@ -203,8 +203,17 @@ async function answerFirstRunPromptOnce(page, step) {
   // mouse input. Locator.click() here re-enters the active locator handler and can wait on itself.
   const visible = await choice.control.isVisible();
   const enabled = await choice.control.isEnabled();
-  const box = await choice.control.boundingBox();
+  const box = visible && enabled ? await choice.control.boundingBox({ timeout: 2000 })
+    .catch(error => {
+      if (error?.name !== 'TimeoutError') throw error;
+      return null;
+    }) : null;
   if (!visible || !enabled || !box || !(box.width > 0) || !(box.height > 0)) {
+    const current = await readFirstLightDialogState(page);
+    if (!current.active) {
+      if (current.dialogPresent) await waitForFirstLightInputRelease(page);
+      return false;
+    }
     throw new Error(`First light ${choice.name} control is not visibly actionable`);
   }
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
