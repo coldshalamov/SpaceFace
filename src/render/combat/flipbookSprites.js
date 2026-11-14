@@ -96,11 +96,13 @@ const FRAG = /* glsl */`
     vec3 rgb = tx.rgb;
     float lum = dot(rgb, vec3(0.299, 0.587, 0.114));
     if (uAdditive > 0.5) {
-      // Heat: dim body keeps the sprite colour, the bright core climbs well past 1.0 so bloom
-      // carries it. Cooling families lose heat with age (progress in phase.x).
-      float heat = pow(clamp(lum, 0.0, 1.0), 1.6) * mix(1.0, 1.0 - 0.7 * vPhase.x, uCooling);
-      vec3 col = mix(rgb * vTint, vec3(1.0, 0.93, 0.78) * max(vTint.r, max(vTint.g, vTint.b)), heat * 0.55);
-      col *= 0.75 + uHdr * heat;
+      // Heat lives only in the brightest texels: the body keeps the painted lobes and dark
+      // channels (gain ~1), the white-hot core climbs well past 1.0 so the bloom throws its halo.
+      float cool = mix(1.0, 1.0 - 0.7 * vPhase.x, uCooling);
+      float core = smoothstep(0.55, 0.95, lum) * cool;
+      vec3 body = rgb * vTint * (0.85 + 0.5 * lum);
+      vec3 hotCol = vec3(1.0, 0.93, 0.78) * max(vTint.r, max(vTint.g, vTint.b));
+      vec3 col = mix(body, hotCol, core * 0.55) * (1.0 + uHdr * core * core);
       gl_FragColor = vec4(col * cover * vOpacity, 1.0);
     } else {
       // Smoke: lit-from-ink body tinted by the sprite colour, normal blend.
