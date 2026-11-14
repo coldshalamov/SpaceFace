@@ -22,20 +22,6 @@
   },
   "assets": [
     {
-      "id": "cockpit_recessed",
-      "kind": "part:cockpits",
-      "source": "assets/ships/parts/cockpits/cockpit_recessed.glb",
-      "release": "assets/ships/release/parts/cockpits/cockpit_recessed.glb",
-      "sourceSha256": "41eb2d5af548c057908140d29ebcb322bda9e526fc845d49b0c1b66d9cfa5962",
-      "releaseSha256": "b6b47040dd99c6ab4e42641f943dcb39f51738786eab453439beb09ba22c94cb",
-      "sourceBytes": 3527524,
-      "releaseBytes": 3144640,
-      "textures": 4,
-      "ktx2Textures": 4,
-      "meshoptBufferViews": 38,
-      "contractNodeCount": 1
-    },
-    {
       "id": "cockpit_slab",
       "kind": "part:cockpits",
       "source": "assets/ships/parts/cockpits/cockpit_slab.glb",
@@ -7007,6 +6993,24 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 60,
       "contractNodeCount": 27
+    },
+    {
+      "id": "cockpit_recessed",
+      "kind": "part:cockpits",
+      "source": "assets/ships/parts/cockpits/cockpit_recessed.glb",
+      "release": "assets/ships/release/parts/cockpits/cockpit_recessed.glb",
+      "sourceSha256": "6fa6342acc011044934dd2e5bc17de9984b0a87d441c148c51960d756a8c6386",
+      "releaseSha256": "ec90f896c5d15ee88a539af811a73c9fabd78c71ca3ffb9eab2423f43a740174",
+      "sourceBytes": 2223428,
+      "releaseBytes": 94380,
+      "textures": 4,
+      "ktx2Textures": 4,
+      "meshoptBufferViews": 39,
+      "contractNodeCount": 1,
+      "textureProfiles": {
+        "baseColorTexture": "Reviewed recessed cockpit sheet resized to 256px, ETC1S KTX2, mipmapped, quality255, sRGB transfer; full-resolution source retained",
+        "metallicRoughnessTexture": "Reviewed recessed cockpit sheet resized to 256px, ETC1S KTX2, mipmapped, quality255, linear transfer; full-resolution source retained"
+      }
     }
   ]
 }

@@ -117,7 +117,7 @@
       "priority": "P0",
       "file": "cockpits/cockpit_recessed.glb",
       "tris": 1884,
-      "bytes": 3527524,
+      "bytes": 2223428,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

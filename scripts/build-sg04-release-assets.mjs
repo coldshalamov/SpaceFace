@@ -20,6 +20,7 @@ import { RELEASE_MESHOPT_OPTIONS } from './lib/releaseMeshoptProfile.mjs';
 import { deduplicateExactEmbeddedTextures } from './lib/deduplicateExactEmbeddedTextures.mjs';
 import { EXACT_ANATOMY_PART_IDS, shadingRepair } from './lib/glbShadingRepair.mjs';
 import { applyReleaseColorTextureProfile, hasReleaseColorTextureProfile } from './lib/releaseColorTextureProfiles.mjs';
+import { applyReleaseCockpitRecessedTextureProfiles } from './lib/releaseCockpitRecessedTextureProfiles.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PART_MANIFEST = resolve(ROOT, 'assets/ships/parts/parts_manifest.json');
@@ -193,7 +194,7 @@ for (let index = 0; index < assets.length; index++) {
   try {
     if (!existsSync(sourceAbs)) throw new Error(`missing SG-04 source asset: ${asset.source}`);
 
-    if (RESUME_VALID && !hasReleaseColorTextureProfile(asset.id)) {
+    if (RESUME_VALID && !hasReleaseColorTextureProfile(asset.id) && asset.id !== 'cockpit_recessed') {
       const existingPair = inspectExistingReleasePair(asset, outputReleasePath);
       if (existingPair) {
         const sourceBytes = readFileSync(sourceAbs);
@@ -221,6 +222,8 @@ for (let index = 0; index < assets.length; index++) {
       && sourceInspection.metrics.ktx2TextureCount === sourceInspection.metrics.textureCount;
     if (sourceInspection.metrics.textureCount > 0 && !sourceAlreadyKtx2) {
       asset.textureProfiles = await applyReleaseColorTextureProfile(document, asset.id, decodeImage);
+      const recessedProfiles = await applyReleaseCockpitRecessedTextureProfiles(document, asset.id, decodeImage);
+      if (recessedProfiles) asset.textureProfiles = { ...asset.textureProfiles, ...recessedProfiles };
       transforms.push(
         ktx2({
           slots: /^(baseColorTexture|emissiveTexture)$/,

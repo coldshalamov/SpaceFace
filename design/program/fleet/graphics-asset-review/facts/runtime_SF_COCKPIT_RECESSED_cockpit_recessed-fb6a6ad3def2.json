@@ -1,0 +1,19 @@
+{
+  "route": "The modular preload planner selects this cockpit for some sampled Lamplighter wayfarers and Vael writ tenders. The sampled player roster selects complete hulls. These are selector traces, not observed encounters.",
+  "deploymentCode": [
+    "src/render/partsLibrary.js",
+    "src/render/assetLoader.js",
+    "src/render/canopyMaterialPolicy.js"
+  ],
+  "status": "The original source bound a grayscale cockpit illustration as the normal map of the three opaque materials. The neutral-normal, smoke-glass, static-detail merge and 256-pixel texture treatment is built in the selected production source, release and runtime package. A shipped-package visual comparison and ordinary-play validation remain pending.",
+  "variationDiscovery": "unresolved",
+  "caveat": "The selector and offline image analysis do not establish natural encounter frequency, gameplay appearance, or frame-time impact.",
+  "diagnostics": [
+    ".devshots/fleet/cockpit-recessed-review/trace.json",
+    ".devshots/fleet/cockpit-recessed-review/source-textures.json",
+    ".devshots/fleet/normal-map-triage/audit.json",
+    ".devshots/fleet/cockpit-recessed-review/surface-fixed-light-camera/report.json",
+    ".devshots/fleet/cockpit-recessed-review/source-surface-contract.json",
+    ".devshots/fleet/cockpit-recessed-review/promotion-state.json"
+  ]
+}

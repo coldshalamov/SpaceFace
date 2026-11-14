@@ -954,12 +954,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.cockpit-recessed",
-    "expectedContentHash": "c4640ca5c9b5be41734b27d3cb506e855f6ca978eb67c1888c5fb70313056ec5",
+    "expectedContentHash": "5f8cf58113ad3774a885ed3dbed911a9601b0b91868632a43e7782c68dd3fb43",
     "key": "cockpit-recessed",
     "metadataUrl": "assets/ships/release/render-packages/cockpit-recessed/render-package.json",
     "runtimeAssetId": "SF_COCKPIT_RECESSED",
     "slot": "cockpit",
-    "sourceSha256": "b6b47040dd99c6ab4e42641f943dcb39f51738786eab453439beb09ba22c94cb",
+    "sourceSha256": "ec90f896c5d15ee88a539af811a73c9fabd78c71ca3ffb9eab2423f43a740174",
     "sourceUrl": "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
   },
   {
