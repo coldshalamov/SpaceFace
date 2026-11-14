@@ -19,6 +19,7 @@ import { wrapShipWithAuthoredParts } from './partsLibrary.js';
 import { RESIDENCY_HELD } from './residencyManager.js';
 import { beginLookMood, currentLookMoodId, tuneLook } from './look.js';
 import { resolveLookPost } from '../data/lookMoods.js';
+import { measureFleetLookCost } from './fleetLookCost.js';
 
 const RELEASE_ROOT = 'assets/ships/release/parts/';
 const TILT = 60 * Math.PI / 180;
@@ -407,31 +408,20 @@ export function installFleetLook(SF) {
     };
   }
 
-  // GPU cost of the picture currently in the holder: draw `frames` frames through the shipping
-  // post route with a hard flush after each, and report the median. Call after shoot(); used by
-  // scripts/look-bench.mjs --cost to price a Look value on the machine it runs on.
+  // Draw `frames` through the shipping post route with a blocking GPU flush after each. This is
+  // render-plus-wait wall time for comparisons, not a measurement of gameplay frame time.
   async function cost(opts = {}) {
     const { renderer, scene, camera: liveCamera } = handles();
     const cam = lastCamera || liveCamera;
-    const gl = renderer.getContext();
     const frames = Math.max(8, opts.frames | 0 || 40);
-    const samples = [];
-    for (let i = 0; i < frames + 6; i++) {
-      if (lastPose) lastPose();
-      const t0 = performance.now();
-      renderOnce(renderer, scene, cam);
-      gl.finish();
-      const dt = performance.now() - t0;
-      if (i >= 6) samples.push(dt);
-      if (i % 8 === 7) await wait(0);
-    }
-    samples.sort((a, b) => a - b);
-    return {
-      medianMs: +samples[samples.length >> 1].toFixed(3),
-      p90Ms: +samples[Math.floor(samples.length * 0.9)].toFixed(3),
-      frames: samples.length,
-      calls: renderer.info.render.calls,
-    };
+    return measureFleetLookCost({
+      renderer,
+      frames,
+      beforeFrame() { if (lastPose) lastPose(); },
+      renderFrame() { renderOnce(renderer, scene, cam); },
+      now: () => performance.now(),
+      yieldToMain: () => wait(0),
+    });
   }
 
   function collectMaterials(root) {
