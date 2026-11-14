@@ -21,9 +21,21 @@ const KESTREL_DEFAULT = Object.freeze({
   wear: 0.55,
   decalId: 'borrowed_time',
 });
+const NON_STARTER_KESTREL_DEFAULT = Object.freeze({ ...KESTREL_DEFAULT, decalId: 'none' });
 
 export function defaultShipAppearance(defId) {
   return defId === 'ship_kestrel' ? KESTREL_DEFAULT : GENERIC_DEFAULT;
+}
+
+export function defaultNonStarterShipAppearance(defId) {
+  return defId === 'ship_kestrel' ? NON_STARTER_KESTREL_DEFAULT : defaultShipAppearance(defId);
+}
+
+export function normalizeNonStarterShipAppearance(input, defId = null) {
+  const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+  const decalId = SHIP_DECALS.includes(source.decalId)
+    ? source.decalId : defaultNonStarterShipAppearance(defId).decalId;
+  return normalizeShipAppearance({ ...source, decalId }, defId);
 }
 
 export function normalizeShipAppearance(input, defId = null) {
@@ -81,6 +93,18 @@ export function paletteWithShipAppearance(entity, basePalette) {
   // An explicit appearance record owns the hull stencils too, including a deliberate 'none'.
   base.decalId = appearance.decalId;
   return base;
+}
+
+// An explicit appearance wins, including 'none'. Old player Kestrels can predate appearance
+// records; retain their personal mark without assigning it to unrelated faction members.
+export function resolveShipDecal(entity, appearanceDecal, factionDecal = null) {
+  if (appearanceDecal) return appearanceDecal;
+  const data = entity?.data;
+  if (!data?.appearance && (data?.defId || entity?.defId) === 'ship_kestrel') {
+    if (data?.kestrelPersonalMarkAtSpawn === true) return KESTREL_DEFAULT.decalId;
+    if (data?.kestrelPersonalMarkAtSpawn !== false && entity?.isPlayer === true) return KESTREL_DEFAULT.decalId;
+  }
+  return factionDecal || undefined;
 }
 
 function normalizeHexColor(value) {

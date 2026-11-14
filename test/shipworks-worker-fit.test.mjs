@@ -206,3 +206,35 @@ test('worker owned Fit waits for its exact owner result and keeps retries truthf
     host.shutdown();
   }
 });
+
+test('blocked Shipworks preview requests a bare stock Hitch and restores the berth on exit', () => {
+  const keys = ['document', 'window', 'requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout', 'clearTimeout'];
+  const previous = new Map(keys.map(key => [key, globalThis[key]]));
+  let stage;
+  try {
+    const dom = shipworksDom();
+    globalThis.document = dom.doc;
+    globalThis.window = { innerWidth: 1920, innerHeight: 1080, addEventListener() {}, removeEventListener() {},
+      matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) };
+    globalThis.requestAnimationFrame = () => 1; globalThis.cancelAnimationFrame = () => {};
+    globalThis.setTimeout = () => 1; globalThis.clearTimeout = () => {};
+    const state = createGameState(4242);
+    state.ui.docked = true; state.ui.dockedStationId = 'station_helios';
+    state.ui.stageRequest = { scene: 'berth', hullDefId: 'ship_kestrel' };
+    state.player.ownedShips = [{ defId: 'ship_kestrel', fittings: [] }];
+    state.player.activeShipIndex = 0;
+    state.render = { renderer: { getContext: () => ({ isContextLost: () => true }) } };
+    stage = createShipStage({ state, bus: createBus(), screenMemory: {
+      read: (_screen, key, fallback) => ({ mode: 'buy', buyId: 'ship_kestrel' })[key] ?? fallback, set() {},
+    } });
+    stage.onShow();
+    assert.equal(state.ui.stageRequest.hullDefId, 'ship_kestrel');
+    assert.equal(state.ui.stageRequest.shipworksPreviewDecalId, 'none');
+    stage.onHide();
+    assert.equal(Object.hasOwn(state.ui.stageRequest, 'shipworksPreviewDecalId'), false);
+    assert.equal(state.ui.stageRequest.hullDefId, 'ship_kestrel');
+  } finally {
+    stage?.dispose();
+    for (const [key, value] of previous) { if (value === undefined) delete globalThis[key]; else globalThis[key] = value; }
+  }
+});

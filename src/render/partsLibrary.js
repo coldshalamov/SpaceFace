@@ -68,7 +68,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { detachPackageTexture, isPackageGeometryDetached, rehydrateDetachedGeometries, retainPackageGeometryCpu, LIVE_PACKAGE_CPU_PAYLOAD } from './packageCpuDetach.js';
 import { textureGpuResident } from './startupGpuResidency.js';
 import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES, paintDecalForPersonality } from '../data/palettes.js';
-import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
+import { paletteWithShipAppearance, resolveShipDecal, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { FACTION_META } from '../data/factions.js';
 import { stencilPayloadFor } from './illustratedStencils.js';
 import { SHIPS } from '../data/ships.js';
@@ -1612,6 +1612,7 @@ export function authoredCompositionFingerprintForEntity(entity, options = {}) {
     id: entity.id == null ? null : String(entity.id),
     type: entity.type || null,
     team: entity.team == null ? null : entity.team,
+    isPlayer: entity.isPlayer === true,
     factionId: entity.factionId || null,
     radius: Number.isFinite(Number(entity.radius)) ? Number(entity.radius) : null,
     requiredWholeShip,
@@ -12054,7 +12055,7 @@ function poolSwarmRetroHardware(ship, entity, scene, owner) {
   ship.ownerLocalMaterials = [...localMaterials];
 }
 
-function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) {
+export function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) {
   const steps = composedShipSteps(entity, library, scene, ownerBoundary, options);
   let step = steps.next();
   while (!step.done) step = steps.next();
@@ -12289,7 +12290,7 @@ function* disposeAbortPartialPreScanSteps(partial) {
   }
 }
 
-function flightRootTemplateKey({
+export function flightRootTemplateKey({
   entity,
   entityPlan,
   palette,
@@ -12333,6 +12334,7 @@ function flightRootTemplateKey({
       thruster: palette && palette.thruster,
       finish: palette && palette.finish,
       wear: palette && palette.wear,
+      decalId: palette && palette.decalId,
     },
     // Whole-ship bodies also mount fitted weapons/modules on their sockets (PQ-176.04), so the
     // loadout must key the template for every body — otherwise a refit reuses a stale composition.
@@ -14872,6 +14874,15 @@ function instantiatePart(record, parent, placement, palette, scene, owner, bindi
   return step.value;
 }
 
+// This is the standalone lacquer lettering in the shipped Kestrel LOD0, not hull armor.
+// It is a personal mark, so leave shared source geometry untouched and omit only this instance.
+export function suppressKestrelPersonalMark(record, name, palette) {
+  return record?.assetId === 'SF_K0_KESTREL_BORROWED_TIME_V4'
+    && normalizePartUrl(record.url).endsWith('wholeships/kestrel.glb')
+    && name === 'LOD0_Armor_ivory'
+    && palette?.decalId !== 'borrowed_time';
+}
+
 function* instantiatePartSteps(record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches = null) {
   if (record?.renderPackage && typeof record.renderPackage.createInstance === 'function') {
     return yield* instantiateRenderPackagePartSteps(
@@ -14890,6 +14901,7 @@ function* instantiatePartSteps(record, parent, placement, palette, scene, owner,
 
   let visited = 0;
   for (const sourcePrimitive of compositionPrimitives(record)) {
+    if (suppressKestrelPersonalMark(record, sourcePrimitive.name, palette)) continue;
     const primitive = placement.mirrorFinZ ? mirroredFinPrimitive(sourcePrimitive) : sourcePrimitive;
     if ((++visited % 128) === 0) yield;
     const dedicated = requiresPerShipMesh(primitive);
@@ -15076,6 +15088,10 @@ function* instantiateRenderPackagePartSteps(record, parent, placement, palette, 
   for (let i = 1; i < planNodes.length; i++) {
     if (i % 128 === 0) yield;
     const object = planNodes[i];
+    if (suppressKestrelPersonalMark(record, object.name, palette)) {
+      object.visible = false;
+      continue;
+    }
     const tags = ceresNodeTags?.get(object) || tagsByName.get(object.name) || object.userData?.spacefaceTags || {};
     object.userData = {
       ...(object.userData || {}),
@@ -15158,6 +15174,11 @@ function createRenderPackageShipNodeFactory({
   scene, owner, record, palette, tagsByName, poolAdmissions, poolReleases, mirrorFinZ = false,
 }) {
   return ({ source }) => {
+    if (suppressKestrelPersonalMark(record, source.name, palette)) {
+      const hidden = source.clone(false);
+      hidden.visible = false;
+      return hidden;
+    }
     const tags = tagsByName.get(source.name) || source.userData?.spacefaceTags || {};
     if (!canPoolRenderPackageShipMesh(source, tags)) return mirrorFinZ ? mirroredFinNode(source) : null;
 
@@ -17491,10 +17512,12 @@ function sharedMaterialFor(base, tags, palette) {
   const finish = palette.finish || 'authored';
   const wear = Number.isFinite(Number(palette.wear)) ? Number(palette.wear).toFixed(2) : '-';
   const decalToken = palette.decalId || 'none';
-  // Instance key still includes tint so faction colors remain distinct material.color uniforms.
-  // Program-family identity (name + spacefaceProgramFamily) deliberately omits tint: color is a
-  // per-instance uniform, not a distinct compiled program.
-  const key = `${materialShareSignature(base, tags)}|${role}|${tint}|${explicitTint ? 'paint' : 'identity'}|${finish}|${wear}${lampShareToken(base)}|${decalToken}`;
+  // Forge keeps native accent and mechanical colors unless the player explicitly paints them.
+  // Avoid splitting identical shared materials and their instance pools by an unused faction tint.
+  // Hulls retain the tint key because their metadata also participates in hull aliasing.
+  const keyTint = base?.userData?.spacefaceFinish === 'forge-v1' && !explicitTint
+    && (role === 'accent' || role === 'dark') ? 'forge-native' : tint;
+  const key = `${materialShareSignature(base, tags)}|${role}|${keyTint}|${explicitTint ? 'paint' : 'identity'}|${finish}|${wear}${lampShareToken(base)}|${decalToken}`;
   let material = sharedMaterialVariants.get(key);
   if (!material) {
     material = applyAppearanceFinish(
@@ -18172,7 +18195,7 @@ function swarmScaledDrawEntity(entity) {
     : entity;
 }
 
-function paletteFor(entity) {
+export function paletteFor(entity) {
   const faction = entity.factionId && FACTION_PALETTES[entity.factionId];
   let base;
   if (faction) {
@@ -18199,12 +18222,10 @@ function paletteFor(entity) {
   const resolved = swarmAccent
     ? { ...palette, accent: swarmAccent, thruster: swarmAccent }
     : palette;
-  // A hull with no appearance record of its own wears its faction's stencils (an explicit
-  // appearance — including a deliberate 'none' — always wins).
-  if (!resolved.decalId && entity?.factionId) {
-    const decal = paintDecalForPersonality(FACTION_PERSONALITY.get(entity.factionId));
-    if (decal) return { ...resolved, decalId: decal };
-  }
+  const factionDecal = entity?.factionId
+    ? paintDecalForPersonality(FACTION_PERSONALITY.get(entity.factionId)) : null;
+  const decal = resolveShipDecal(entity, resolved.decalId, factionDecal);
+  if (decal && !resolved.decalId) return { ...resolved, decalId: decal };
   return resolved;
 }
 

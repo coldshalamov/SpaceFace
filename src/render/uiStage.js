@@ -38,7 +38,8 @@ import { activeOwnedShip } from '../data/hullIdentity.js';
 import { loadAuthoredPart as loadAuthoredPartLive } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { detachStashedStaleWebGlDisposeListeners } from './contextResourceLifecycle.js';
-import { wholeShipVisualForEntity } from './partsLibrary.js';
+import { suppressKestrelPersonalMark, wholeShipVisualForEntity } from './partsLibrary.js';
+import { SHIP_DECALS } from '../core/shipAppearance.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
@@ -434,6 +435,15 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
   }
 
   stage.request = request;
+  if (stage.hullPersonalMark) {
+    const override = request.shipworksPreviewDecalId;
+    const owned = activeOwnedShip(state);
+    const ownedDecal = owned?.appearance?.decalId;
+    const personal = override !== undefined ? override === 'borrowed_time'
+      : owned?.defId === 'ship_kestrel'
+        && (!SHIP_DECALS.includes(ownedDecal) || ownedDecal === 'borrowed_time');
+    stage.hullPersonalMark.visible = personal;
+  }
   // Replay keeps the flight scene's authored reflection light. Bare metal cannot
   // answer a sun/rim rig without that shared environment; the stage never owns it.
   const environment = state.render?.envMap || state.render?.scene?.environment;
@@ -932,6 +942,10 @@ async function loadSceneContent(built, renderer, request) {
   let hullGroup = null;
   if (hullRecord) {
     hullGroup = groupFromBlueprint(hullRecord, 'UiStageHull');
+    const mark = hullGroup.getObjectByName('LOD0_Armor_ivory');
+    if (built.id === 'berth' && mark && suppressKestrelPersonalMark(hullRecord, mark.name, { decalId: 'none' })) {
+      built.hullPersonalMark = mark;
+    }
     placeByBounds(hullGroup, { ...spec.hull, sit: 'centre' });
     hullGroup.rotation.z = spec.hull.roll || 0;
   }
@@ -944,8 +958,15 @@ async function loadSceneContent(built, renderer, request) {
     if (propGroups[i]) setShadowRoles(propGroups[i], built.rig, spec.props[i].casts === true);
   }
   if (hullGroup) setShadowRoles(hullGroup, built.rig, true);
+  // The mark is a lacquer film, so toggling it must not leave a latched berth shadow behind.
+  if (built.hullPersonalMark) built.hullPersonalMark.castShadow = false;
   if (built.id === 'berth') {
-    built.bayTraffic = createStationBayTraffic(hullRecord, groupFromBlueprint, placeByBounds);
+    built.bayTraffic = createStationBayTraffic(hullRecord, (record, name) => {
+      const group = groupFromBlueprint(record, name);
+      const mark = group.getObjectByName('LOD0_Armor_ivory');
+      if (mark && suppressKestrelPersonalMark(record, mark.name, { decalId: 'none' })) mark.visible = false;
+      return group;
+    }, placeByBounds);
     if (built.bayTraffic) admitted.push(...built.bayTraffic.roots);
   }
   await prepareForFirstDraw(admitted, renderer, built);

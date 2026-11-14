@@ -26,11 +26,9 @@ test('every canon house personality wears its own mark, and every mark ships', (
   }
 });
 
-test('the borrowed identities stay deliberate', () => {
-  // The old crowd's tag stays the Free Frontier and Reach mark — the stencil of hulls the aces
-  // could not keep (historyWear forces it on aces too).
-  assert.equal(PAINT_PROFILES.independent.decal, 'borrowed_time');
-  assert.equal(PAINT_PROFILES.pirate.decal, 'borrowed_time');
+test('personal identities are not assigned to unrelated faction ships', () => {
+  assert.equal(PAINT_PROFILES.independent.decal, null);
+  assert.equal(PAINT_PROFILES.pirate.decal, null);
   // Helix flies other houses' transponders and hulls: mimicry IS its identity, so its decks stay bare.
   assert.equal(PAINT_PROFILES.paper.decal, null);
   // The Choir and the Archive keep their own surfaces; "do not apply every mark to every hull".

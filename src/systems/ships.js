@@ -29,6 +29,7 @@ import { syncDerivedPhysicsMass } from '../core/physicsAuthority.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { resolveTravelCeiling } from '../core/flight/propulsionKernel.js';
 import {
+  defaultNonStarterShipAppearance,
   defaultShipAppearance,
   normalizeShipAppearance,
   shipAppearanceSignature,
@@ -1914,6 +1915,9 @@ export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings
       // fallback weapons are still backfilled here so old saves show the barrel they can fire.
       fittings: fittingsForView(shipDef, fittings, weapons),
       appearance: appearance ? normalizeShipAppearance(appearance, shipDef.id) : null,
+      // Worker presentation retains spawn data when control moves between existing entities.
+      // Record the legacy Kestrel's original personal-mark default on the physical hull.
+      ...(shipDef.id === 'ship_kestrel' && !appearance ? { kestrelPersonalMarkAtSpawn: !!isPlayer } : {}),
       livingHull: isPlayer ? normalizeLivingHull(livingHull, 0) : null,
       combat: { targetId: null, lockTarget: null, lockProgress: 0 },
       intent: null,
@@ -2861,9 +2865,10 @@ export const ships = {
     const slots = buildSlotList(def);
     const owned = {
       defId: def.id,
+      starterHull: false,
       fittings: new Array(slots.length).fill(null),
       fittedInstances: {},
-      appearance: defaultShipAppearance(def.id),
+      appearance: defaultNonStarterShipAppearance(def.id),
       livingHull: normalizeLivingHull(current.livingHull, this.state.simTime || 0),
       rapSheet: current.deed || null,
       rapSheetLine: current.deedLine || null,
@@ -2913,9 +2918,10 @@ export const ships = {
     const slots = buildSlotList(def);
     p.ownedShips.push({
       defId,
+      starterHull: false,
       fittings: new Array(slots.length).fill(null),
       fittedInstances: {},
-      appearance: defaultShipAppearance(defId),
+      appearance: defaultNonStarterShipAppearance(defId),
       livingHull: defaultLivingHull(this.state.simTime || 0),
     });
     const newIndex = p.ownedShips.length - 1;

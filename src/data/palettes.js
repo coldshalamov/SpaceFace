@@ -156,16 +156,16 @@ export const TEAM_FALLBACK_PALETTES = Object.freeze({
 //   decal     null | SHIP_DECALS id — the hull stencils the personality wears by default
 //             (src/render/illustratedStencils.js). An appearance record that names a decalId wins.
 //
-// The player's faction_free (independent) profile is the haunted ex-gangster runner: heavy grime,
-// bomber+punk hybrid nose-art, kill marks, repair patches — a ship with a dark history nobody else
-// would touch. Concord/Meridian authority are pristine chrome. Pirates are the filthiest.
+// Profiles describe shared faction finishes. Borrowed Time's personal mark belongs to its player
+// appearance, not to every Free Frontier or Crimson Reach hull. Authority ships are cleaner and
+// pirates are the filthiest.
 export const PAINT_PROFILES = {
   lawful:      { grime: 0.05, chrome: 0.85, noseArt: 'insignia', killMarks: false, patches: 0.0, decal: 'concord' },       // Concord Navy — pristine chrome, clean insignia
   corporate:   { grime: 0.10, chrome: 0.70, noseArt: 'insignia', killMarks: false, patches: 0.0, decal: 'probate' },       // Meridian — the toll ledger instead of borrowed law
-  independent: { grime: 0.55, chrome: 0.05, noseArt: 'bomber', killMarks: true, patches: 0.4, decal: 'borrowed_time' },    // Free Frontier (PLAYER) — haunted ex-gangster runner
+  independent: { grime: 0.55, chrome: 0.05, noseArt: 'bomber', killMarks: true, patches: 0.4, decal: null },               // Free Frontier — independent working ships
   blue_collar: { grime: 0.35, chrome: 0.0, noseArt: null, killMarks: false, patches: 0.3, decal: 'industrial' },           // Drift Miners — workhorse, honest grime
   'blue-collar': { grime: 0.35, chrome: 0.0, noseArt: null, killMarks: false, patches: 0.3, decal: 'industrial' },         // Canonical faction-data spelling; keep blue_collar for legacy callers
-  pirate:      { grime: 0.85, chrome: 0.0, noseArt: 'punk', killMarks: true, patches: 0.6, decal: 'borrowed_time' },       // Crimson Reach — filthy, tagged, scarred
+  pirate:      { grime: 0.85, chrome: 0.0, noseArt: 'punk', killMarks: true, patches: 0.6, decal: null },                 // Crimson Reach — filthy, tagged, scarred
   smuggler:    { grime: 0.50, chrome: 0.0, noseArt: 'punk', killMarks: false, patches: 0.35, decal: 'frontier' },          // The Quiet — stealthy grime, tags
   xenophobic:  { grime: 0.15, chrome: 0.30, noseArt: 'insignia', killMarks: true, patches: 0.1, decal: 'addendum' },       // The Vael — the terms painted full scale, page 9 included
   zealot:      { grime: 0.30, chrome: 0.10, noseArt: null, killMarks: false, patches: 0.2, decal: null },                  // Choir explicit row; preserves the shipped fallback appearance

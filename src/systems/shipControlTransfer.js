@@ -5,7 +5,7 @@ import { writePhysicsControl } from '../core/physicsAuthority.js';
 import { isAssignedFleetBody, isBlackFlagAdventure, SHIPJACK_HANDOFF_RANGE_WU } from '../shipjack/model.js';
 import { MODULES } from '../data/modules.js';
 import { WEAPONS } from '../data/weapons.js';
-import { normalizeShipAppearance } from '../core/shipAppearance.js';
+import { normalizeNonStarterShipAppearance, normalizeShipAppearance } from '../core/shipAppearance.js';
 
 const TRANSFER_CAP = 1024; // Terminal keys never evict: saturation fails closed, never replays.
 const SAFE_ID = /^[A-Za-z0-9_:.\-]{1,128}$/;
@@ -21,11 +21,12 @@ function planAdmission(owner, to, vesselId) {
   const title = owner.state.shipjack?.vesselsById?.[vesselId]?.title;
   if (title === 'sold' || title === 'returned') return { ok: false, reason: 'custody_settled' };
   const owned = admitted ? {
-    defId: def.id, vesselId, fittings: (to.data.fittings || []).slice(),
+    defId: def.id, vesselId, starterHull: false, fittings: (to.data.fittings || []).slice(),
     fittedInstances: to.data.fittedInstances ? structuredClone(to.data.fittedInstances) : {},
     appearance: def.id === 'ship_hornet' && to.data.lootTableId === 'customs_cutter'
       ? normalizeShipAppearance({ ...to.data.appearance, variantId: 'customs_cutter' }, def.id)
-      : to.data.appearance ? structuredClone(to.data.appearance) : undefined,
+      : def.id === 'ship_kestrel' ? normalizeNonStarterShipAppearance(to.data.appearance, def.id)
+        : to.data.appearance ? structuredClone(to.data.appearance) : undefined,
     livingHull: to.data.livingHull ? structuredClone(to.data.livingHull) : undefined,
     name: String(to.data.shipName || to.data.name || '').slice(0, 48),
     shipjackProvisional: true, shipjackNoLegacyWeapon: true,
@@ -160,6 +161,8 @@ export function captureAndTransfer(owner, request = {}) {
   releaseToActivity?.();
   owner.bus.emit('ship:controlChanging', { operationId, fromId: from.id, toId: to.id });
   previous.vesselId ||= from.data.vesselId;
+  // A legacy live body may have relied on its player-only default; keep that look after parking.
+  if (!from.data.appearance) from.data.appearance = normalizeShipAppearance(previous.appearance, previous.defId);
   from.isPlayer = false;
   from.flags ||= {};
   from.flags.persistent = true;

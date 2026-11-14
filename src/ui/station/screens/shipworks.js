@@ -42,7 +42,7 @@ import {
   buildPaintAppearance,
   shipPaintRow,
 } from '../../../data/shipPaints.js';
-import { normalizeShipAppearance, shipAppearanceSignature } from '../../../core/shipAppearance.js';
+import { defaultNonStarterShipAppearance, defaultShipAppearance, normalizeShipAppearance, shipAppearanceSignature } from '../../../core/shipAppearance.js';
 import {
   buildSlotList,
   dryRunLoadoutPresetApply,
@@ -252,6 +252,20 @@ function withCargoMass(player, usedMass) {
 // live cargo record — it is not a second inventory, cargo still owns every unit.
 function declaredLoadPlayer(player) {
   return withCargoMass(player, player && player.cargo && player.cargo.usedMass);
+}
+
+export function stockShipPreviewContext(defId, player) {
+  const def = SHIP_BY_ID.get(defId);
+  if (!def) return null;
+  return {
+    defId: def.id,
+    fittings: [],
+    // The hero selector uses isPlayer for the Hitch mesh, independently of its paint.
+    isPlayer: def.id === 'ship_kestrel',
+    player: declaredLoadPlayer(player),
+    stock: true,
+    appearance: def.id === 'ship_kestrel' ? defaultNonStarterShipAppearance(def.id) : null,
+  };
 }
 
 /**
@@ -1268,7 +1282,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     return request && request.scene === 'berth' ? request : null;
   }
 
-  function previewThroughSharedStage(defId) {
+  function previewThroughSharedStage(defId, appearance) {
     blockedPreviewActive = true;
     canvas.dataset.previewAssetState = 'authored-plate';
     canvas.dataset.previewReady = 'true';
@@ -1276,8 +1290,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const ui = ctx && ctx.state && ctx.state.ui;
     const request = sharedBerthRequest();
     if (!request) return; // the in-flight host stands on the held flight frame; the plate is enough
-    if (request.hullDefId !== defId) {
-      ui.stageRequest = { ...request, hullDefId: defId || null, __lastStatus: undefined };
+    const decalId = appearance
+      ? normalizeShipAppearance(appearance, defId).decalId : defaultShipAppearance(defId).decalId;
+    if (request.hullDefId !== defId || request.shipworksPreviewDecalId !== decalId) {
+      ui.stageRequest = { ...request, hullDefId: defId || null, shipworksPreviewDecalId: decalId, __lastStatus: undefined };
     }
   }
 
@@ -1292,8 +1308,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const ships = (player && player.ownedShips) || [];
     const ship = ships[Number(player && player.activeShipIndex) || 0] || ships[0] || null;
     const defId = (ship && ship.defId) || 'ship_kestrel';
-    if (request.hullDefId === defId) return;
-    ui.stageRequest = { ...request, hullDefId: defId, __lastStatus: undefined };
+    if (request.hullDefId === defId && !Object.hasOwn(request, 'shipworksPreviewDecalId')) return;
+    const { shipworksPreviewDecalId, ...rest } = request;
+    ui.stageRequest = { ...rest, hullDefId: defId, __lastStatus: undefined };
   }
 
   function previewShip(defId, fittings, isPlayer, meta, appearance = null) {
@@ -1304,10 +1321,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!mount) {
       canvas.dataset.previewReady = 'false';
       if (!canvas.dataset.previewBlocked) canvas.dataset.previewBlocked = 'secondary-webgl';
-      previewThroughSharedStage(defId);
+      previewThroughSharedStage(defId, appearance);
       return;
     }
-    blockedPreviewActive = false;
+    if (blockedPreviewActive) restoreSharedStageHull();
     const sameHull = mount.getDefId && mount.getDefId() === defId;
     // Gate on ASSET READINESS, not hull identity alone. The stage is a shared singleton built for
     // the dock host, so a flight-first F2 open can match the hull id while that hull's GLB is
@@ -1359,17 +1376,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         appearance: s.appearance || null,
       };
     }
-    const def = SHIP_BY_ID.get(buyId);
-    if (!def) return null;
-    return {
-      defId: def.id,
-      fittings: [],
-      isPlayer: def.id === 'ship_kestrel',
-      // NXI-120: the catalog hull is read at the same declared load the fleet hulls are —
-      // a bare hull carrying the hold the player actually flies, not an empty guess.
-      player: declaredLoadPlayer(ctx.state.player),
-      stock: true,
-    };
+    // The catalog uses the same declared cargo load as the fleet comparison.
+    return stockShipPreviewContext(buyId, ctx.state.player);
   }
 
   function activeFleetIndex() {

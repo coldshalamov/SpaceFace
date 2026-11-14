@@ -6,37 +6,77 @@ import * as THREE from 'three';
 import { createVisualFactory, invalidateVisualFactoryCaches } from '../src/render/visualFactory.js';
 import { getReadyVolatileSurface, preloadVolatileSurface, VOLATILE_SURFACE_URL } from '../src/render/volatileSurfaceLibrary.js';
 
-test('volatile surface fails safely, retries, and upgrades existing bottles without changing their map shader', async () => {
-  let disposed = false;
+test('volatile surface bounds and shares retries, then upgrades existing bottles without a new shader', async () => {
+  let disposed = 0;
   const failedTexture = new THREE.Texture();
-  failedTexture.dispose = () => { disposed = true; };
-  const failed = await preloadVolatileSurface({ initTexture() { throw new Error('upload failed'); } }, {
-    loadTexture: async () => failedTexture,
+  failedTexture.dispose = () => { disposed++; };
+  let failures = 0;
+  let releaseFailedRetry;
+  let signalFailedRetry;
+  const failedRetryScheduled = new Promise((resolve) => { signalFailedRetry = resolve; });
+  const failed = preloadVolatileSurface({ initTexture() { throw new Error('upload failed'); } }, {
+    loadTexture: async () => { failures++; return failedTexture; },
+    retryDelay: () => {
+      signalFailedRetry();
+      return new Promise((resolve) => { releaseFailedRetry = resolve; });
+    },
   });
-  assert.equal(failed, null);
+  assert.equal(preloadVolatileSurface({}), failed, 'concurrent factories share the pending retry');
+  await failedRetryScheduled;
+  assert.equal(failures, 1, 'the second attempt waits for the retry delay');
+  releaseFailedRetry();
+  assert.equal(await failed, null);
+  assert.equal(failures, 2, 'a failed wave has exactly one retry');
   assert.equal(getReadyVolatileSurface(), null);
-  assert.equal(disposed, true);
+  assert.equal(disposed, 2, 'each failed upload releases its decoded texture');
 
   let resolveTexture;
+  let releaseRetry;
+  let signalRetry;
+  let signalSecondLoad;
+  let attempts = 0;
+  const retryScheduled = new Promise((resolve) => { signalRetry = resolve; });
+  const secondLoadStarted = new Promise((resolve) => { signalSecondLoad = resolve; });
   const loaded = new THREE.Texture();
   const initialized = [];
   const renderer = { initTexture(texture) { initialized.push(texture); } };
   const pending = preloadVolatileSurface(renderer, {
-    loadTexture: () => new Promise(resolve => { resolveTexture = resolve; }),
+    loadTexture: () => {
+      attempts++;
+      if (attempts === 1) return Promise.reject(new Error('temporary load failure'));
+      signalSecondLoad();
+      return new Promise((resolve) => { resolveTexture = resolve; });
+    },
+    retryDelay: () => {
+      signalRetry();
+      return new Promise((resolve) => { releaseRetry = resolve; });
+    },
   });
   const factory = createVisualFactory({ renderer, readyPackagedBodies: {} });
   const entity = { id: 1, type: 'payload', radius: 3, data: { volatileClass: 'cryogenic' } };
-  const root = factory.build(entity);
-  const bottle = root.getObjectByName('VolatilePod_Bottle');
+  const oldBottle = factory.build(entity).getObjectByName('VolatilePod_Bottle');
+  const oldMaterial = oldBottle.material;
+  const oldPlaceholder = oldMaterial.map;
+  // An invalidation while loading must not upgrade a retired material.
+  invalidateVisualFactoryCaches();
+  const bottle = factory.build(entity).getObjectByName('VolatilePod_Bottle');
+  const otherBottle = factory.build({ ...entity, id: 2, data: { volatileClass: 'corrosive' } })
+    .getObjectByName('VolatilePod_Bottle');
   const placeholder = bottle.material.map;
   const materialVersion = bottle.material.version;
-  assert.equal(bottle.material.color.getHex(), 0x8fe1fa, 'the old class color is the fallback');
+  assert.equal(bottle.material.color.getHex(), 0x898f91, 'the fallback is neutral, not a glowing class color');
+  assert.equal(bottle.material.emissiveIntensity, 0);
+  assert.equal(otherBottle.material, bottle.material, 'hazard classes share the same pending shell material');
   assert.ok(placeholder?.isDataTexture, 'a white map keeps the map shader variant present');
-  await Promise.resolve();
+  await retryScheduled;
+  assert.equal(attempts, 1);
+  releaseRetry();
+  await secondLoadStarted;
   resolveTexture(loaded);
   assert.equal(await pending, loaded);
   await Promise.resolve();
   assert.deepEqual(initialized, [loaded]);
+  assert.equal(oldMaterial.map, oldPlaceholder, 'invalidated material stays retired');
   assert.equal(bottle.material.map, loaded, 'the existing shared material receives the warmed texture');
   assert.equal(bottle.material.version, materialVersion, 'swapping an existing map does not request a new shader');
   assert.equal(bottle.material.color.getHex(), 0xffffff);
@@ -60,6 +100,7 @@ test('volatile surface fails safely, retries, and upgrades existing bottles with
       assert.equal(visual.children[0], shell, 'pickup motion still owns child zero');
       assert.equal(cage.parent, shell);
       assert.equal(shell.material.map, loaded, 'classes share one surface texture');
+      assert.equal(shell.material, bottle.material, 'all hazard classes share one shell material');
       const colors = cage.geometry.getAttribute('color');
       const wanted = new THREE.Color(expected);
       assert.ok(Array.from({ length: colors.count }, (_, i) => i).some(i =>

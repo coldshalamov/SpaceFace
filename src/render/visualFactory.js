@@ -77,7 +77,7 @@ import {
   makeGrimeTexture, makePatchTexture, makeNoseArtTexture,
 } from './canvasTextures.js';
 import { FACTION_PALETTES, SHIP_RECIPES, paintProfileFor, paintDecalForPersonality, PLAYER_NOSE_ART } from '../data/palettes.js';
-import { paletteWithShipAppearance } from '../core/shipAppearance.js';
+import { paletteWithShipAppearance, resolveShipDecal } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
@@ -159,8 +159,8 @@ export function setEnvMapForShips(env) {
 
 // Resolve the colors + the paint profile (grime/chrome/nose-art) for an entity. The profile comes
 // from the faction's `personality`, so the dirty-outlaw vs clean-authority look is data-driven and
-// self-applies to every NPC. The PLAYER (team 0 / faction_free) gets the haunted ex-gangster profile.
-function resolvePalette(e) {
+// self-applies to every NPC; personal markings are resolved separately from the faction finish.
+export function resolvePalette(e) {
   const personality = (e.factionId && FACTION_PERSONALITY.get(e.factionId)) || 'independent';
   // paintProfileFor returns shared faction recipe data. Entity wear is presentation state, so keep
   // it local instead of leaking one ship's wear into every later ship from the same manufacturer.
@@ -181,10 +181,8 @@ function resolvePalette(e) {
   if (roleGlow && roleGlow !== colors.thruster) colors = { ...colors, thruster: roleGlow };
   const appearance = paletteWithShipAppearance(e, colors);
   if (Number.isFinite(Number(appearance.wear))) profile.grime = appearance.wear;
-  // A hull with no appearance record wears its faction's stencils; an explicit record (even a
-  // deliberate 'none') wins.
-  const decalId = appearance.decalId || paintDecalForPersonality(personality) || undefined;
-  return Object.assign({}, appearance, { profile, isPlayer: e.team === 0, decalId });
+  const decalId = resolveShipDecal(e, appearance.decalId, paintDecalForPersonality(personality));
+  return Object.assign({}, appearance, { profile, isPlayer: e.isPlayer === true, decalId });
 }
 
 // Stable hash from an entity id (number or string) → small int, for seeding per-entity variety.
@@ -1362,7 +1360,6 @@ function applyPaintProfile(ctx, e) {
   const profile = (pal && pal.profile) || null;
   if (!profile) return;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
-  const isPlayer = !!(pal.isPlayer);
   const defId = e.data && e.data.defId;
 
   // --- CHROME: authority hulls mirror the scene. We bump the existing hull material's metalness
@@ -1412,16 +1409,18 @@ function applyPaintProfile(ctx, e) {
     patch.scale.setScalar(R); g.add(patch);
   }
 
-  // --- NOSE-ART: a decal panel on each flank. Style from the profile; the player's Kestrel gets the
-  //     canonical "BORROWED TIME" haunted-runner look (shark mouth + ghost mascot + 13 kill marks).
+  // --- NOSE-ART: a decal panel on each flank. A Kestrel with the personal decal keeps its
+  //     "BORROWED TIME" look (shark mouth + ghost mascot + 13 kill marks) even when parked.
   if (profile.noseArt) {
-    const noseCfg = PLAYER_NOSE_ART[defId] || {};
-    const motto = noseCfg.motto;
-    const mascot = noseCfg.mascot;
-    const tally = (profile.killMarks && noseCfg.tally) ? noseCfg.tally : 0;
+    const noseCfg = pal.decalId === 'borrowed_time' ? PLAYER_NOSE_ART[defId] : null;
+    // Passing undefined would revive makeNoseArtTexture's legacy Borrowed Time defaults.
+    const motto = noseCfg?.motto || '';
+    const mascot = noseCfg?.mascot || null;
+    const tally = (profile.killMarks && noseCfg?.tally) ? noseCfg.tally : 0;
     const style = profile.noseArt;
-    const naMat = getMaterial(`nose:${style}:${pal.accent}:${defId || 'x'}`, () => {
-      const tex = getTexture(`nose:${style}:${pal.accent}:${defId || 'x'}`, () =>
+    const noseKey = `nose:${style}:${pal.accent}:${defId || 'x'}:${noseCfg ? 'personal' : 'generic'}`;
+    const naMat = getMaterial(noseKey, () => {
+      const tex = getTexture(noseKey, () =>
         makeNoseArtTexture({
           size: 256, seed: (seed ^ 0x99) & 0xffff, style, accent: pal.accent,
           motto, mascot, tally,
@@ -3686,7 +3685,8 @@ function applyStructureProfile(g, pal, R, seed) {
   if (profile.noseArt) {
     const naMat = getMaterial(`nose:struct:${profile.noseArt}:${pal.accent}`, () => {
       const tex = getTexture(`nose:struct:${profile.noseArt}:${pal.accent}`, () =>
-        makeNoseArtTexture({ size: 256, seed: (seed ^ 0x99) & 0xffff, style: profile.noseArt, accent: pal.accent }));
+        makeNoseArtTexture({ size: 256, seed: (seed ^ 0x99) & 0xffff, style: profile.noseArt,
+          accent: pal.accent, motto: '', mascot: null, tally: 0 }));
       return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
         map: tex, transparent: true, depthWrite: false, color: 0xffffff, roughness: 0.6, metalness: 0.1,
         emissive: new THREE.Color(pal.emissive), emissiveIntensity: 0.08, side: THREE.DoubleSide,
@@ -7069,14 +7069,14 @@ function applyVolatileSurface(material, texture) {
   material.emissiveIntensity = 0;
 }
 
-function volatileBottleMaterial(lamp) {
-  return getMaterial(`payload:volatile:${lamp}`, () => {
+function volatileBottleMaterial() {
+  return getMaterial('payload:volatile:shell', () => {
     const surface = getReadyVolatileSurface();
     const material = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-      // The white placeholder retains the old class-colored fallback and the map shader
-      // variant while the real image decodes; swapping maps does not add a new program.
-      map: surface || volatileFallbackTexture(), color: lamp, roughness: 0.42, metalness: 0.55,
-      emissive: new THREE.Color(lamp), emissiveIntensity: 0.12,
+      // Keep the map shader while decoding; the physical band carries the class color even
+      // when the image fails, instead of turning the entire vessel into a neon warning lamp.
+      map: surface || volatileFallbackTexture(), color: 0x898f91, roughness: 0.68, metalness: 0.35,
+      emissiveIntensity: 0,
     }), SHARED_MATERIAL_ROLE.HULL);
     if (surface) applyVolatileSurface(material, surface);
     else _pendingVolatileMaterials.add(material);
@@ -7139,7 +7139,7 @@ function buildVolatilePod(e) {
   const lamp = volatileLampColor(e);
   const bottle = new THREE.Mesh(
     getGeometry('payload:volatile:pressure-shell', () => new THREE.SphereGeometry(0.68 / 0.78, 20, 12)),
-    volatileBottleMaterial(lamp),
+    volatileBottleMaterial(),
   );
   bottle.name = 'VolatilePod_Bottle';
   // Motion owns child zero, so keep the containment fittings under the bottle.
