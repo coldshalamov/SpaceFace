@@ -424,3 +424,20 @@ Codex launched `physics_cut`, `ai_cut`, and `render_cut` for disjoint owners. No
 - `1a5f67b71bb5` accepted. Regression covers the closing-confirmation race.
 
 No additional workers launched. The ordinary Adventure and diagnostic Foundry before/after retry is `shared-work-cuts-adventure-keys`, queued under the normal lock. Current path and results are in [QUALITY.md](QUALITY.md). The seconds-long retail freeze and stable cross-mode frame pacing remain open.
+
+### Stand-in log — overdue reply recovery and final cross-mode pair
+
+- `be33993428a6` accepted. Recorded worker step saturation with an independent worker sample.
+- `513bd2cd3a19` fixed. Resume Adventure launch after a late First light prompt.
+- `80381af86296` fixed. Foreground beats claim overdue fixed-step wakes and invalidate the delayed callback.
+- `a82d2b3f97b7` accepted. Recorded the matched Supply Pod results and their motion/cadence trade-off.
+- `1af30d8c0b99` accepted. Deferred run validation path formatting until invalid values.
+- `167a58ad83c2` fixed. Wait for an animated First light control to become actionable.
+- `0b0c636cbdc3` accepted. Recorded public Adventure flight and updated the active quality rows.
+- `bda9a1b2fa2f` accepted. Field particles publish once with identical packed output in the focused fixture.
+- `24dd46889364` fixed. A foreground beat can expire lost reply credits while the watchdog timer queue is delayed. All 35 worker clock tests passed.
+- `ed036f7a2fe7` accepted. Check moving craft before rechecking rocks when a retained activity view might be invalid.
+- `14f449de0654` accepted. Recorded the latest bundled Foundry playtest and the focused work reductions.
+- `50e4420b91af` accepted. Recorded the matched Adventure and Gauntlet pair. Personally opened all four captures and the final Foundry flight PNG.
+
+Reassigned the Codex workers `ai_cut` and `render_cut` for a second pass. No additional worker accounts launched. The retail reproduction used the default profile, while all locked interventions used disposable profiles. The original multi-second continuing-draw freeze remains unconfirmed after the fixes. Measured worker throughput and live rendering costs still exceed budget. The lead has the title door and overlay observations. See [QUALITY.md](QUALITY.md) for the latest before/after movement and footage receipts.
