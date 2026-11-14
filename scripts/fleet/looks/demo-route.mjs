@@ -307,16 +307,22 @@ async function setFire(on) {
   if (on && !nav.lmb) { await page.mouse.down({ button: 'left' }); nav.lmb = true; }
   if (!on && nav.lmb) { await page.mouse.up({ button: 'left' }); nav.lmb = false; }
 }
+/** The pilot scheme: A/D yaw the ship (D raises rot), W/S thrust, the mouse only aims. Tap a yaw key toward bearing `rel`. */
+async function yawToward(rel) {
+  if (!Number.isFinite(rel) || Math.abs(rel) <= 0.1) return;
+  await page.keyboard.press(rel > 0 ? 'KeyD' : 'KeyA', { delay: Math.max(15, Math.min(90, Math.abs(rel) / 4.5 * 1000)) });
+}
 /** Mouse toward a world point; returns {dist, onScreen}. Off-screen points are aimed along their bearing from the ship. */
 const aimAt = (wx, wz) => page.evaluate(([x, z]) => {
   const s = window.SF.state; const h = window.SF.helpers; const me = s.entities.get(s.playerId); if (!me) return null;
   const dist = Math.hypot(x - me.pos.x, z - me.pos.z);
+  let rel = Math.atan2(z - me.pos.z, x - me.pos.x) - me.rot; while (rel > Math.PI) rel -= 2 * Math.PI; while (rel < -Math.PI) rel += 2 * Math.PI; // nose = (cos rot, sin rot) on XZ; D raises rot
   const t = h.worldToScreen({ x, y: 0, z }, {}); const m = h.worldToScreen({ x: me.pos.x, y: 0, z: me.pos.z }, {});
-  if (t && t.onScreen && t.x > 30 && t.x < innerWidth - 30 && t.y > 30 && t.y < innerHeight - 30) return { dist, x: t.x, y: t.y, on: true };
+  if (t && t.onScreen && t.x > 30 && t.x < innerWidth - 30 && t.y > 30 && t.y < innerHeight - 30) return { dist, rel, x: t.x, y: t.y, on: true };
   const dx = (x - me.pos.x) / (dist || 1), dz = (z - me.pos.z) / (dist || 1);
   const p = h.worldToScreen({ x: me.pos.x + dx * 300, y: 0, z: me.pos.z + dz * 300 }, {});
   let vx = p.x - m.x, vy = p.y - m.y; const n = Math.hypot(vx, vy) || 1; vx /= n; vy /= n;
-  return { dist, x: Math.max(40, Math.min(innerWidth - 40, m.x + vx * 260)), y: Math.max(40, Math.min(innerHeight - 40, m.y + vy * 260)), on: false };
+  return { dist, rel, x: Math.max(40, Math.min(innerWidth - 40, m.x + vx * 260)), y: Math.max(40, Math.min(innerHeight - 40, m.y + vy * 260)), on: false };
 }, [wx, wz]).catch(() => null);
 
 // ---------------------------------------------------------------- SWARM
@@ -333,7 +339,7 @@ async function swarmRoute() {
     if (s && s.mode === 'flight' && !s.top) { const h = await hostilesQ(); if (h && h.n >= 2) { inFlight = true; break; } }
     const btns = await readBtns();
     if (s && s.top) door.push(s.top);
-    const pri = [/^launch round/i, /quick play/i, /hold the line/i, /^launch\b/i, /^(start|begin|deploy|ready)/i, /^continue$/i];
+    const pri = [/^play$/i, /^launch round/i, /quick play/i, /hold the line/i, /^launch\b/i, /^(start|begin|deploy|ready)/i, /^continue$/i];
     let hit = null;
     for (const re of pri) { hit = btns.find((b) => re.test(b.text)); if (hit) break; }
     if (hit) { await click(hit.x, hit.y); note(`click "${hit.text}" on screen ${s && s.top}`); await sleep(1200); } else await sleep(700);
@@ -382,7 +388,7 @@ async function swarmRoute() {
     R.clicks++; await page.evaluate(() => { window.__dr.clicks++; }).catch(() => {});
     await keyUp('KeyW');
     if (!R.screens.some((x) => x.label === 'release')) await shot('release', { gameplay: true });
-    await sleep(600); threw = (await evCount('massline:throw')) > t0n;
+    for (let i = 0; i < 12 && !threw; i++) { await sleep(250); threw = (await evCount('massline:throw')) > t0n; }
     note(threw ? 'THROW registered' : 'release did not register a throw; retrying');
     if (threw) await shot('after-throw', { gameplay: true });
   }
@@ -431,7 +437,7 @@ async function steerFight() {
   await reassertKeys();
   const h = await hostilesQ(); if (!h || !h.near) { await keyUp('KeyW'); await setFire(false); await sleep(150); return; }
   const aim = await aimAt(...(await page.evaluate((id) => { const e = window.SF.state.entities.get(id); return e ? [e.pos.x, e.pos.z] : [0, 0]; }, h.near.id)));
-  if (aim) await page.mouse.move(aim.x, aim.y, { steps: 2 });
+  if (aim) { await page.mouse.move(aim.x, aim.y, { steps: 2 }); await yawToward(aim.rel); }
   if (h.near.dist > 260) await keyUp('KeyS'), await keyDown('KeyW'); else if (h.near.dist < 120) { await keyUp('KeyW'); await keyDown('KeyS'); } else { await keyUp('KeyW'); await keyUp('KeyS'); }
   await setFire(h.near.dist < 760);
   await sleep(110);
@@ -458,15 +464,26 @@ const advState = () => page.evaluate(() => {
   const sm = window.SF.ctx && window.SF.ctx.screenManager;
   let tgt = null;
   if (wp && wp.targetEntityId != null) { const e = s.entities.get(wp.targetEntityId); if (e) tgt = { id: e.id, type: e.type, pos: [e.pos.x, e.pos.z], name: e.name || e.defId || (e.data && e.data.name) }; }
+  if (!tgt && wp && wp.pos && wp.kind === 'mission') { // a marker with no bound entity: the body sitting on it (the sample rock), not passing traffic
+    let best = null;
+    for (const e of s.entityList || []) {
+      if (!e || e.alive === false || e.isPlayer || e.type === 'ship' || e.type === 'station' || e.type === 'projectile') continue;
+      const d = Math.hypot(e.pos.x - wp.pos.x, e.pos.z - wp.pos.z); if (d > 220) continue;
+      const score = d - (/aster|rock|ore|sample|wreck|derelict/i.test(`${e.type} ${e.defId || ''} ${e.name || ''}`) ? 60 : 0) - (e.mass > 40 ? 20 : 0);
+      if (!best || score < best.score) best = { score, id: e.id, type: e.type, pos: [e.pos.x, e.pos.z], name: e.name || e.defId || (e.data && e.data.name), d: Math.round(d) };
+    }
+    if (best) tgt = best;
+  }
   const tracked = s.ui && s.ui.trackedMissionId; const m = tracked && (s.missions && s.missions.active || []).find((x) => x.id === tracked);
   const stations = [];
   for (const e of s.entityList || []) if (e && e.alive !== false && e.type === 'station') stations.push({ id: e.id, name: e.name || e.defId, d: Math.round(me ? Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z) : 0) });
   stations.sort((a, b) => a.d - b.d);
   const tether = s.tether || (me && me.tether) || null;
-  return { mode: s.mode, top: sm && sm.top ? sm.top() : null, sim: +(+s.simTime).toFixed(1), pos: me ? [me.pos.x, me.pos.z] : null, speed: me && me.vel ? Math.round(Math.hypot(me.vel.x, me.vel.z)) : null,
+  return { mode: s.mode, top: sm && sm.top ? sm.top() : null, sim: +(+s.simTime).toFixed(1), pos: me ? [me.pos.x, me.pos.z] : null, speed: me && me.vel ? Math.round(Math.hypot(me.vel.x, me.vel.z)) : null, vel: me && me.vel ? [me.vel.x, me.vel.z] : null,
     wp: wp ? { kind: wp.kind, label: wp.label, pos: wp.pos && [Math.round(wp.pos.x), Math.round(wp.pos.z)], tid: wp.targetEntityId, sectorId: wp.sectorId, onboarding: !!wp.onboarding } : null, tgt,
     mission: m ? { id: m.id, title: m.title || m.name, status: m.status, obj: (m.objectives || []).map((o) => o && (o.text || o.label || o.type)).slice(0, 3) } : null,
-    nearStation: stations[0] || null, sector: s.world && s.world.currentSectorId, docked: s.mode === 'docked' || s.mode === 'station' || !!(s.dock && s.dock.docked), latched: !!(tether && (tether.active || tether.latched || tether.targetId != null)) };
+    nearStation: stations[0] || null, sector: s.world && s.world.currentSectorId, docked: s.mode === 'docked' || s.mode === 'station' || !!(s.dock && s.dock.docked), latched: (() => { const ev = (window.__dr.ev || []); let on = false; for (const e of ev) { if (e.ev === 'tether:latched') on = true; else if (e.ev === 'tether:broken' || e.ev === 'tether:released') on = false; } return on; })(),
+    objText: (() => { const hud = document.getElementById('hud'); if (!hud) return ''; const w = document.createTreeWalker(hud, NodeFilter.SHOW_ELEMENT); let n; while ((n = w.nextNode())) { const t = n.children.length === 0 ? (n.textContent || '').trim() : ''; if (/^ACT\s+[IVX]+/i.test(t)) { const card = n.parentElement && n.parentElement.parentElement; return (card ? card.innerText : t).replace(/\s+/g, ' ').slice(0, 260); } } return ''; })() };
 }).catch(() => null);
 
 async function adventureRoute() {
@@ -498,6 +515,7 @@ async function adventureRoute() {
     await answerConfirmQuiet();
     const a = await advState(); if (!a) { await sleep(300); continue; }
     if (Date.now() - lastLog > 5000) { lastLog = Date.now(); const line = `${phase} sim ${a.sim} wp=${a.wp ? a.wp.label + '@' + a.wp.pos : 'none'} tgt=${a.tgt ? a.tgt.type : '-'} speed ${a.speed} top=${a.top || '-'} latched=${a.latched} st=${a.nearStation ? a.nearStation.name + ':' + a.nearStation.d : '-'}`; note(line); trail.push({ t: wallS(), line }); }
+    if (a.objText && a.objText !== nav.lastObjText) { nav.lastObjText = a.objText; step('objective-card', a.objText); }
     const wpKey = a.wp ? `${a.wp.label}|${a.wp.kind}` : ''; if (wpKey !== lastWpKey) { lastWpKey = wpKey; step('objective', a.wp ? `${a.wp.label} (${a.wp.kind}) ${a.tgt ? a.tgt.type : ''}` : 'none'); }
 
     if (a.docked || (a.top && /station|dock|market|hub/i.test(a.top) && !/pause/.test(a.top))) {
@@ -534,11 +552,14 @@ async function adventureRoute() {
     const isRock = /asteroid|rock|sample|ore|rubble|recover|47-a/i.test(`${kind} ${labelText} ${a.tgt && a.tgt.name || ''}`) && !/helios|dock|station/i.test(labelText);
     const isDock = /dock|helios|station|market/i.test(`${kind} ${labelText}`) || kind === 'station';
     // slow into the target
-    const stop = isRock ? 150 : isDock ? 140 : 60;
-    if (aim.dist > stop) await keyDown('KeyW'); else await keyUp('KeyW');
-    if (aim.dist < 260 && a.speed > 40) { await keyDown('KeyS'); } else await keyUp('KeyS');
+    const stop = isRock ? 120 : isDock ? 110 : 50;
+    const want = Math.max(0, Math.min(190, (aim.dist - stop) * 0.55)); // speed profile: slow into the target
+    await yawToward(aim.rel); // KEYBOARD STEERS: the first runs flew off because only the mouse was pointed at the marker
+    const aligned = Math.abs(aim.rel) < 0.5;
+    if (a.speed > want + 18) { await keyUp('KeyW'); await keyDown('KeyS'); } else if (a.speed < want - 8 && aligned) { await keyUp('KeyS'); await keyDown('KeyW'); } else { await keyUp('KeyW'); await keyUp('KeyS'); }
+    if (a.nearStation && a.nearStation.d > 9000) { R.outcome = `left the arena: ${a.nearStation.d} u from the nearest station while chasing ${labelText}`; note(R.outcome); break; }
     // latch the rock once it is close (and not already towing)
-    if (isRock && !a.latched && aim.dist < 380 && Date.now() - lastLatchTry > 2500) {
+    if (isRock && !a.latched && aim.dist < 380 && Date.now() - lastLatchTry > 4000 && latchTries < 12) {
       lastLatchTry = Date.now(); latchTries++;
       await page.mouse.move(aim.x, aim.y, { steps: 2 }); await page.mouse.down({ button: 'right' }); await sleep(120); await page.mouse.up({ button: 'right' });
       R.clicks++; await page.evaluate(() => { window.__dr.clicks++; }).catch(() => {});
@@ -594,9 +615,12 @@ function toMd() {
   L.push('', '## Steps'); for (const s of R.steps) L.push(`- ${s.at} s  ${s.name}: ${s.detail || ''}`);
   L.push('', '## Screens (PNG per screen)'); for (const s of R.screens) L.push(`- ${s.file}  (${s.at} s)${s.controls ? '  controls: ' + s.controls.join(' | ') : ''}`);
   L.push('', '## Every toast / alert / notice / stage string, with its time (s since title click)');
-  const seen = new Map(); for (const t of R.text || []) { const k = t.text; if (!seen.has(k)) seen.set(k, { n: 0, first: t }); seen.get(k).n++; }
+  const seen = new Map(); for (const t of (R.text || []).filter((x) => x.src !== 'dom:hud')) { const k = t.text; if (!seen.has(k)) seen.set(k, { n: 0, first: t }); seen.get(k).n++; }
   for (const [k, v] of seen) L.push(`- ${v.first.t == null ? 'pre-click' : v.first.t + ' s'}  [${v.first.src}] "${k}"${v.n > 1 ? `  x${v.n}` : ''}`);
   if (!(R.text || []).length) L.push('- (none captured)');
+  const hud = new Map(); for (const t of (R.text || []).filter((x) => x.src === 'dom:hud' && x.t != null && x.t >= 0 && x.text.length <= 70)) if (!hud.has(t.text)) hud.set(t.text, t);
+  L.push('', '## HUD word elements that appeared after the title click (floating text, chips, tags; noisy, first sighting each, max 150)');
+  for (const [k, v] of [...hud].slice(0, 150)) L.push(`- ${v.t} s  "${k}"`);
   L.push('', '## Game events', ...Object.entries(R.eventCounts || {}).map(([k, v]) => `- ${k}: ${v}`));
   L.push('', '## Errors', ...(R.errors.length ? R.errors.slice(0, 30).map((e) => `- page error: ${e}`) : ['- no page errors']), ...(R.consoleErrors.length ? R.consoleErrors.slice(0, 30).map((e) => `- console: ${e}`) : ['- no console errors']));
   L.push('', '## Notes', ...R.notes.slice(-80).map((n) => `- ${n}`));
