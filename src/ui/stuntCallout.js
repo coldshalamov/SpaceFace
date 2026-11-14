@@ -102,6 +102,11 @@ export function handlineSenseLine(eventName, payload) {
   if (eventName === 'tether:latched') {
     return { key: 'latched', name: 'LATCHED', detail: '' };
   }
+  // THROW-01: losing the body on your Line is a beat, never a silent nothing. Said once per run by
+  // the first-beat ledger; repeats keep the snap and its sound (the break cue), no word.
+  if (eventName === 'tether:broke') {
+    return p.reason === 'target_lost' ? { key: 'line-lost', name: 'LOST', detail: '' } : null;
+  }
   if (eventName === 'massline:throw') {
     const spd = Number.isFinite(p.payloadSpeed) ? Math.round(p.payloadSpeed) : null;
     const id = p.releaseId != null ? String(p.releaseId) : 'throw';
@@ -914,7 +919,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     // Rule 4, "once, then quieter": the first latch and the first throw of a run earn a centre word;
     // after that the sound, the camera and the line itself carry it. Reset with the run.
     const firstBeatsSaid = new Set();
-    const FIRST_BEAT_NAMES = new Set(['LATCHED', 'THROWN', 'CRUSHED']);
+    const FIRST_BEAT_NAMES = new Set(['LATCHED', 'THROWN', 'CRUSHED', 'LOST']);
     for (const ev of ['run:started', 'game:newGame', 'save:loaded']) unsubs.push(bus.on(ev, () => firstBeatsSaid.clear()));
     const speak = (line) => {
       if (!line) return;
@@ -1011,6 +1016,11 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('massline:rideStarted', onHandlineSense('massline:rideStarted')));
     unsubs.push(bus.on('tether:snagCleared', onHandlineSense('tether:snagCleared')));
     unsubs.push(bus.on('massline:throw', onHandlineSense('massline:throw')));
+    unsubs.push(bus.on('tether:broke', (payload) => {
+      const me = getState() && getState().playerId;
+      if (me == null || !payload || (payload.ownerId !== me && payload.controllerId !== me && payload.actorId !== me)) return;
+      onHandlineSense('tether:broke')(payload);
+    }));
     // First kill by physics (a thrown body, a rock, a wall): CRUSHED, once per run, Adventure only —
     // Swarm's own cause lane already names every kill. A gun kill keeps the world-anchored DESTROYED.
     unsubs.push(bus.on('entity:killed', (payload) => {

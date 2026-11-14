@@ -540,7 +540,7 @@ export const tetherGameplay = {
         this._active = null;
         this._pendingCut = null;
         this._ignoreReleaseCutUntilReelIdle = false;
-        this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+        this._noRelatchUntil = now; // THROW-01: a lost body is not a press; the Line is ready at once
         this._noRelatchTargetId = null;
         this._resetPhaseMirror();
         this._mirror(state, null, 0);
@@ -1462,7 +1462,9 @@ export const tetherGameplay = {
     this._active = null;
     this._pendingCut = null;
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
-    this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
+    // THROW-01: the cooldown exists to stop a same-press ghost re-latch after a CUT. Losing the body
+    // (killed, gone) was not a press: the Line is ready at once, so the next latch is immediate.
+    this._noRelatchUntil = now + (reason === 'target_lost' || reason === 'entity_destroyed' ? 0 : RELATCH_COOLDOWN_S);
     this._noRelatchTargetId = reason === 'tether_cut' ? targetId : null;
     if (options && options.deferEcho) {
       // D235 — an out-of-update authority break lands here inside the tether:broken

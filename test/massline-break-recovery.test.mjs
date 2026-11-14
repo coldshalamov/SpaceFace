@@ -342,3 +342,25 @@ test('control: without a boundary the same deferred echo flushes on the next upd
   h.system.update(DT, h.state);
   assert.equal(h.events.broke.length, 1, 'in-run echoes still deliver one tick late');
 });
+
+test('THROW-01: after losing the held body the Line is ready at once - a latch within 0.2 s succeeds', () => {
+  const h = buildLatchHarness();
+  fireLatch(h);
+  assert.equal(h.state.player.tether.active, true);
+  const attachmentId = activeAttachmentId(h);
+  h.rock.alive = false;
+  h.state.entities.delete(h.rock.id);
+  h.state.entityList.splice(h.state.entityList.indexOf(h.rock), 1);
+  h.attachments.breakAttachment(attachmentId, 'target_lost', h.rock.id);
+  h.system.update(DT, h.state);
+  assert.equal(h.state.player.tether.active, false, 'the loss clears the line');
+
+  const next = { ...asteroid(3), pos: { x: 170, z: 10 } };
+  h.state.entities.set(next.id, next); h.state.entityList.push(next);
+  h.state.input.aimWorld = { x: next.pos.x, z: next.pos.z };
+  const latchedBefore = h.events.latched.length;
+  for (let i = 0; i < 6; i++) { h.state.tick += 1; h.state.simTime += DT; }   // 0.1 s later
+  fireLatch(h);
+  assert.equal(h.events.latched.length, latchedBefore + 1, 'the next latch is immediate: no cooldown after a loss');
+  assert.equal(h.state.player.tether.targetId, next.id);
+});
