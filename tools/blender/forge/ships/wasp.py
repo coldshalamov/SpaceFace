@@ -216,8 +216,11 @@ def _restore_lod_strips(objects, prefix):
 
 def export(ship, spec=None, **kwargs):
     """Wasp-only adapter; never change shared Forge export behavior for other ships."""
+    spec = spec or E.fleet_spec(SHIP_ID)
     _seat_vents(ship)
     original_lods, original_collision = E._lod_meshes, E._collision_hull
+    trim_strength = None
+    original_trim_strength = None
 
     def wasp_lods(current, level, prefix):
         objects = original_lods(current, level, prefix)
@@ -229,8 +232,18 @@ def export(ship, spec=None, **kwargs):
     E._collision_hull = lambda current, root, sources=None: (_original_collider(root)
         if current is ship else original_collision(current, root, sources))
     try:
-        return E.export_ship(ship, spec or E.fleet_spec(SHIP_ID), **kwargs)
+        # Variants import build(); keep their authored cyan unchanged. This calibrated
+        # reduction belongs only to the base Wasp export and must not leak on reuse.
+        if ship.id == 'wasp' and spec.get('asset_id') == 'SF_WASP_PRODUCTION_V1':
+            material = ship.mat('glow_cyan')
+            shader = next(node for node in material.node_tree.nodes if node.type == 'BSDF_PRINCIPLED')
+            trim_strength = shader.inputs['Emission Strength']
+            original_trim_strength = trim_strength.default_value
+            trim_strength.default_value = 0.75
+        return E.export_ship(ship, spec, **kwargs)
     finally:
+        if trim_strength is not None:
+            trim_strength.default_value = original_trim_strength
         E._lod_meshes, E._collision_hull = original_lods, original_collision
 
 

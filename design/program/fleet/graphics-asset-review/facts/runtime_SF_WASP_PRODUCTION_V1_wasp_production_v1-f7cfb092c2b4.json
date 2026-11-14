@@ -1,5 +1,5 @@
 {
-  "status": "Reviewed Wasp recipe, three source/release tiers, motion bank and selected render packages promoted. Nine canonical package-loader views passed; ordinary flight and frame-time remain unverified.",
+  "status": "The owner considered the cyan strips' halo excessive. Base-Wasp material admission now reduces the original cyan emission to one quarter across all three packaged tiers and the source fallback, matching a reviewed native export without changing shipping geometry. Full visual review, ordinary flight and frame-time remain open.",
   "route": "Base Wasp maps ship_wasp, lancer_sniper/sniper_lance and pirate roles to wasp_production_v1; patrol/escort faction kits and Quiet ghost have separate runtime asset identities.",
   "authoringCode": [
     "tools/blender/forge/ships/wasp.py",
@@ -35,7 +35,7 @@
     "lod2PackageStorage": "LOD2 render.glb externalizes all six KTX2 images through pilot sharedKtx2Hashes; its 161860-byte geometry file excludes those shared payloads. Preserve this contract in any rebuild."
   },
   "findings": [
-    "Shipped colors #1a1f28/#2b313b and the previous recipe #2e3540/#4d5663 were too dark in the current renderer. Accepted #596574/#8994a1 restores panel readability while retaining original cyan strength.",
+    "Shipped colors #1a1f28/#2b313b and the previous recipe #2e3540/#4d5663 were too dark in the current renderer. The earlier #596574/#8994a1 change restores panel readability; its original cyan strength was later rejected and is now reduced.",
     "Accepted 32-section lofts, twelve-sided small tubes, eight-triangle lower-tier light restoration, lower-tier Hull/Armor normal finish and supported vent seating. Shared six-map texture set retained; imperceptible wear texture rejected.",
     "Independent original collider imported through Blender. Canonical recipe scratch rebuild preserves all source positions, UVs, world transforms, oriented triangles, normals, materials and texture bytes against the reviewed candidate across all three tiers; sockets/motion/collision match the original.",
     "Runtime whole-ship demotion is disabled; anonymous hostile initial admission can choose LOD2 under 32 projected pixels. Player/protected initial bodies stay LOD0.",
@@ -48,6 +48,7 @@
   ],
   "followUp": [
     "Painted variant still lacks some physical surface richness; pursue only visible improvements, not an imperceptible extra texture.",
+    "The owner rejected the pronounced blur around the cyan trim. The base-Wasp-only admission adjustment now preserves its other navigation and drive cues; a future quarter-strength Forge export must not be reduced a second time.",
     "Ordinary player-route acceptance and measured frame-time benefit remain open."
   ],
   "evidence": [
@@ -57,6 +58,8 @@
     ".devshots/fleet/wasp-astra/canonical-contract.json",
     ".devshots/fleet/wasp-astra/INTEGRATION.md",
     ".devshots/fleet/wasp-astra/publish-canonical-state.json",
-    ".devshots/fleet/wasp-astra/shipping-single/report.json"
+    ".devshots/fleet/wasp-astra/shipping-single/report.json",
+    ".devshots/fleet/wasp-astra/bloom-ab/report.json",
+    ".devshots/fleet/wasp-emission-astra/admission-render-retry/report.json"
   ]
 }

@@ -7,6 +7,7 @@
 // ready; a temporary procedural body must never impersonate the final ship, station, or place.
 import * as THREE from 'three';
 import { applyAuthoredMaterialProfile, configureAuthoredMaterialProfiles } from './authoredMaterialProfiles.js';
+import { calibrateWaspTrimEmission } from './waspTrimEmission.js';
 import { canonicalizeObjectSurfaceProgramKeys } from './illustratedSurface.js';
 import { installAuthoredPackedOrmOnPrimitives } from './packedOrmShader.js';
 import { prepareHullLayoutGeometry } from './illustratedHullLayout.js';
@@ -1723,6 +1724,11 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
     bounds: { center: _boundsCenter.toArray(), size: _boundsSize.toArray() },
     slot: expectedSlot || metadata.slot || null,
   });
+  // Development source assets and legacy packages compile this cached blueprint
+  // instead of binding a runtime table. Keep their base-Wasp trim response identical.
+  if (metadata.assetId === 'SF_WASP_PRODUCTION_V1') {
+    for (const primitive of primitives) calibrateWaspTrimEmission(primitive.material, metadata.assetId);
+  }
   installAuthoredPackedOrmOnPrimitives(primitives);
   canonicalizeObjectSurfaceProgramKeys(scene);
 
@@ -1944,6 +1950,7 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
       if (!applyAuthoredMaterialProfile(material, entry.role, {
         assetId, bounds: table.bounds, slot: expectedSlot || metadata.slot || null, allowTextures: entry.allowTextures,
       })) continue;
+      calibrateWaspTrimEmission(material, assetId);
       profiled.add(material);
       const effectiveRole = material.userData.spacefaceMaterialRole || entry.role;
       profiledRoles[effectiveRole] = (profiledRoles[effectiveRole] || 0) + 1;
