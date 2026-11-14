@@ -65,3 +65,34 @@ test('every pad kind declares a valid NOCTURNE light, and only a few carry haze'
   // Two wall guns + the Forge share the pool of four haze volumes with the furnace.
   assert.ok(hazy <= 2, 'at most the wall gun and the forge kinds carry haze');
 });
+
+test('the Foundry rim: twelve plates at the room edge, clear of every shop, gate post and the rock band', async () => {
+  const { planFoundryRim, FOUNDRY_RIM_COUNT, FOUNDRY_RIM_RADIUS_WU, FOUNDRY_RIM_HALF_WIDTH_WU } = await import('../src/systems/survivalArena.js');
+  const { SWARM_DEBRIS_OUTER, SWARM_DEBRIS_SIZE_MAX } = await import('../src/systems/swarmArena.js');
+  const { GATE_BEARINGS } = await import('../src/systems/waveMaterialization.js');
+  const at = { x: 1000, z: -500 };
+  const rim = planFoundryRim({ at });
+  assert.equal(rim.length, FOUNDRY_RIM_COUNT);
+  assert.deepEqual(rim, planFoundryRim({ at }), 'authored, no RNG');
+  assert.ok(FOUNDRY_RIM_RADIUS_WU - 20 > SWARM_DEBRIS_OUTER + SWARM_DEBRIS_SIZE_MAX, 'rim is beyond the rock band');
+  // Distance from a point to the plate's oriented box (tangent half-width, 17 WU half-depth).
+  const boxGap = (plate, px, pz) => {
+    const rx = plate.pos.x - at.x, rz = plate.pos.z - at.z;
+    const tx = -plate.normal.z, tz = plate.normal.x;
+    const du = Math.max(0, Math.abs((px - rx) * tx + (pz - rz) * tz) - plate.halfWidth);
+    const dv = Math.max(0, Math.abs((px - rx) * plate.normal.x + (pz - rz) * plate.normal.z) - 17);
+    return Math.hypot(du, dv);
+  };
+  for (const plate of rim) {
+    const rx = plate.pos.x - at.x, rz = plate.pos.z - at.z;
+    assert.ok(Math.abs(Math.hypot(rx, rz) - FOUNDRY_RIM_RADIUS_WU) < 1e-6);
+    assert.ok(Math.abs(plate.normal.x * rx + plate.normal.z * rz + FOUNDRY_RIM_RADIUS_WU) < 1e-6, 'faces the room');
+    for (const pad of pads) assert.ok(boxGap(plate, pad.x, pad.z) > pad.r + 24, `plate clear of a shop (${Math.round(boxGap(plate, pad.x, pad.z))})`);
+    for (const g of Object.values(GATE_BEARINGS)) for (const side of [-1, 1]) {
+      const gx = g.x * 320 + -g.z * 110 * side, gz = g.z * 320 + g.x * 110 * side;
+      assert.ok(boxGap(plate, gx, gz) > 16 + 20, `plate clear of a gate post (${Math.round(boxGap(plate, gx, gz))})`);
+    }
+  }
+  const chord = 2 * FOUNDRY_RIM_RADIUS_WU * Math.sin(Math.PI / FOUNDRY_RIM_COUNT);
+  assert.ok(chord - 2 * FOUNDRY_RIM_HALF_WIDTH_WU >= 40, 'a hull fits between neighbours');
+});

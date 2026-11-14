@@ -397,6 +397,45 @@ function planFoundryToys({ phase, at, lane, across, spin, wave, seed }) {
   return toys;
 }
 
+/**
+ * The Ricochet Foundry's edge (design/game/15_ARENA_FLOORS, composition rules): a ring of twelve bank
+ * plates standing where the room ends, so the player always sees the rim and a thrown body visibly
+ * rebounds off it. Spacing leaves a ship-wide gap between plates (a rail, not a sealed drum), the
+ * ring sits beyond the seeded rock band (340 + 44) and the shops, and inside the spawn leash, so no
+ * arrival, rock or pad is touched. These are room solids, not toys: they stay out of the toy cap and
+ * out of the camera frame the toys define.
+ */
+export const FOUNDRY_RIM_COUNT = 12;
+export const FOUNDRY_RIM_RADIUS_WU = 410;
+export const FOUNDRY_RIM_HALF_WIDTH_WU = 70;
+export function planFoundryRim({ at } = {}) {
+  const ax = at && Number.isFinite(at.x) ? at.x : 0;
+  const az = at && Number.isFinite(at.z) ? at.z : 0;
+  const shape = foundryPlateShape({ halfWidth: FOUNDRY_RIM_HALF_WIDTH_WU, referenceRadius: 26 });
+  const rim = [];
+  for (let i = 0; i < FOUNDRY_RIM_COUNT; i++) {
+    // Offset half a step so no plate sits dead on a compass gate lane (the lanes are the doors).
+    const bearing = (i + 0.5) * TAU / FOUNDRY_RIM_COUNT;
+    const cx = Math.cos(bearing);
+    const cz = Math.sin(bearing);
+    rim.push({
+      id: `foundry_rim_${i + 1}`,
+      kind: 'plate',
+      verb: 'bank',
+      material: 'plate',
+      hazardType: 'debris',
+      solid: true,
+      rim: true,
+      pos: { x: ax + cx * FOUNDRY_RIM_RADIUS_WU, z: az + cz * FOUNDRY_RIM_RADIUS_WU },
+      normal: { x: -cx, z: -cz },
+      halfWidth: FOUNDRY_RIM_HALF_WIDTH_WU,
+      referenceRadius: 26,
+      radius: shape.radius,
+    });
+  }
+  return rim;
+}
+
 /** Authored frame extent over the live toys — camera-law inputs; the renderer stays with its controller. */
 function authoredRoomFrame(toys) {
   if (!Array.isArray(toys) || toys.length === 0) return null;
@@ -1506,6 +1545,8 @@ export const survivalArena = {
     this._installCover(install.cover || run.ruleset === 'swarm', wave);
     this._installToys(install);
     this._materializeRoom(this._toys, wave);
+    // The Foundry's visible edge: bank plates ringing the room (planFoundryRim). Swarm only.
+    if (run.arenaId === FOUNDRY_ARENA_ID && run.ruleset === 'swarm') this._materializeRoom(planFoundryRim({ at: playerAnchor(state) }), wave);
     if (conveyor && wave === 1) this._installConveyorWorkpiece(install.fields[0]);
     // The event director inherits the room it will spend through: the frame the install placed
     // against, and the field specs it may later surge (their authored strengths are the calm it
