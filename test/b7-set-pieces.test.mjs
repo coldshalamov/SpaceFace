@@ -24,7 +24,9 @@ const EXPECTED = {
     // Self-registered runtime dispatches by shapeId; the schedule label is the
     // trigger's own 'selfRegistered' marker (module comment, 346-yard-towout.js).
     script: 'selfRegistered',
-    zoneTypes: ['civilian_core'],
+    // PR-expansion 956 widened the zone gate: Hyperion's anchor zone is a mining_belt, and the
+    // winch is the machine it reaches there.
+    zoneTypes: ['civilian_core', 'mining_belt'],
     verbs: ['latch', 'tow'],
     signal: 'yard_crusher_clock',
   },
