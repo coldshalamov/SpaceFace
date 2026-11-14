@@ -4,7 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
-import { inspectFleetLookAuthored } from '../src/render/fleetLook.js';
+import { captureReadyFleetLookFrame, inspectFleetLookAuthored } from '../src/render/fleetLook.js';
+import { RESIDENCY_HELD } from '../src/render/residencyManager.js';
 
 test('preview only settles published authored or explicit readable fallback boundaries', () => {
   const mesh = { isMesh: true, geometry: {}, material: {} };
@@ -18,6 +19,35 @@ test('preview only settles published authored or explicit readable fallback boun
   boundary.userData.authoredAssetState = 'authored';
   assert.deepEqual(inspectFleetLookAuthored(boundary),
     { ready: true, pending: [], failed: [], targetMeshes: 1 });
+});
+
+test('final preview waits for a residency hold on the same root before reading pixels', async () => {
+  const mesh = { isMesh: true, geometry: {}, material: {}, name: 'Coils', userData: {}, visible: true };
+  const root = { traverse(callback) { callback(this); callback(mesh); } };
+  const events = [];
+  let draws = 0;
+  const result = await captureReadyFleetLookFrame({
+    root, isActive: () => true,
+    draw() { events.push('draw'); draws++; if (draws === 1) mesh.userData[RESIDENCY_HELD] = true; return { draws }; },
+    settle() { events.push('settle'); mesh.userData[RESIDENCY_HELD] = false; return Promise.resolve(); },
+    capture() { events.push('capture'); return 'pixels'; },
+  });
+  assert.deepEqual(events, ['draw', 'settle', 'draw', 'capture']);
+  assert.equal(result.url, 'pixels');
+  assert.equal(result.drawObservation.draws, 2);
+  assert.equal(mesh.visible, true, 'the preview never overrides residency visibility');
+});
+
+test('a hold that never clears fails instead of returning a partial picture', async () => {
+  const mesh = { name: 'Coils', userData: { [RESIDENCY_HELD]: true }, visible: false };
+  const root = { traverse(callback) { callback(this); callback(mesh); } };
+  let captured = false;
+  await assert.rejects(captureReadyFleetLookFrame({
+    root, isActive: () => true, draw: () => ({}), settle: async () => {}, maxAttempts: 2,
+    capture() { captured = true; },
+  }), /residency-held:Coils/);
+  assert.equal(captured, false);
+  assert.equal(mesh.visible, false);
 });
 
 function actualFleetLookFunction(name) {

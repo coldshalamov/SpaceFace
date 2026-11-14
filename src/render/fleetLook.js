@@ -16,6 +16,7 @@ import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { defaultShipAppearance } from '../core/shipAppearance.js';
 import { loadAuthoredPart } from './assetLoader.js';
 import { wrapShipWithAuthoredParts } from './partsLibrary.js';
+import { RESIDENCY_HELD } from './residencyManager.js';
 import { beginLookMood, currentLookMoodId, tuneLook } from './look.js';
 import { resolveLookPost } from '../data/lookMoods.js';
 
@@ -189,6 +190,9 @@ export function inspectFleetLookAuthored(root) {
   let targetMeshes = 0;
   root.traverse((o) => {
     if (o.isMesh && o.geometry && o.material) targetMeshes++;
+    if (o.userData?.[RESIDENCY_HELD] === true && pending.length < 12) {
+      pending.push(`residency-held:${String(o.name || o.type || 'object').slice(0, 60)}`);
+    }
     const status = o.userData?.authoredAssetState;
     if (!status) return;
     if (['awaiting-authored-admission', 'loading', 'compiling-pipelines', 'procedural-fallback',
@@ -200,6 +204,22 @@ export function inspectFleetLookAuthored(root) {
     }
   });
   return { ready: pending.length === 0 && failed.length === 0, pending, failed, targetMeshes };
+}
+
+// The final draw can itself enqueue a geometry upload and hide a target. Keep the same
+// admitted root alive until the ordinary residency lane releases it, then read pixels in
+// the same task as the successful draw (the drawing buffer is not preserved).
+export async function captureReadyFleetLookFrame({ root, isActive, draw, capture, settle = wait, maxAttempts = 150 }) {
+  let verdict;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    if (!isActive()) throw new Error('fleet-look preview retired before capture');
+    const drawObservation = draw();
+    verdict = inspectFleetLookAuthored(root);
+    if (verdict.failed.length) throw new Error(`fleet-look authored preview failed: ${JSON.stringify(verdict)}`);
+    if (verdict.ready) return { url: capture(), drawObservation, verdict };
+    if (attempt + 1 < maxAttempts) await settle(60);
+  }
+  throw new Error(`fleet-look authored preview not ready after final draw: ${JSON.stringify(verdict)}`);
 }
 
 async function waitForAuthored(renderer, scene, cam, root) {
@@ -361,12 +381,18 @@ export function installFleetLook(SF) {
     }
     // Draw through the normal route with the same private camera used for this view.
     const pose = () => poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
-    // Same task as the draw: without preserveDrawingBuffer the canvas clears after compositing.
-    pose();
-    scene.updateMatrixWorld(true);
-    const drawObservation = observePreviewDraw(renderer, built.root,
-      () => renderOnce(renderer, scene, cam));
-    const url = renderer.domElement.toDataURL('image/png');
+    const finalFrame = await captureReadyFleetLookFrame({
+      root: built.root,
+      isActive: () => built.root.parent === holder,
+      draw: () => {
+        pose();
+        scene.updateMatrixWorld(true);
+        return observePreviewDraw(renderer, built.root, () => renderOnce(renderer, scene, cam));
+      },
+      capture: () => renderer.domElement.toDataURL('image/png'),
+    });
+    const { url, drawObservation } = finalFrame;
+    verdict = finalFrame.verdict;
     lastPose = pose;
     lastCamera = cam;
     if (opts.ab?.noEnvironment) scene.environment = opts._env;
