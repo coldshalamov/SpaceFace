@@ -176,6 +176,9 @@ ${commit('.sx-ct-commit:not(.orr-lampkey)')}
 ${T} .sx-ct-commit.orr-lampkey { padding:0 26px 0 20px !important; min-height:44px !important; font-size:15px !important; letter-spacing:.14em !important; color:#1c1406 !important;
   background:none !important; background-image:none !important; text-shadow:none !important; border:0 !important; box-shadow:none !important; border-radius:0 !important; }
 ${T} .sx-ct-commit.orr-lampkey:is(:hover, :focus-visible, :active) { color:#1c1406 !important; background-image:none !important; text-shadow:none !important; }
+/* Accept's reset above squares the key (border-radius:0, 1,4,2) and outranks lampKey.js's #screens .orr-lampkey:focus-visible
+   radius, so consoleStandard's focus outline drew square across the hold track; on focus it follows the 8px field. */
+${T} .sx-ct-commit.orr-lampkey:focus-visible { border-radius:8px !important; }
 ${T} .sx-ct-commit.orr-lampkey:disabled { color:rgb(${BONE} / .55) !important; }
 ${T} .sx-dossier__foot { padding-left:0 !important; }
 ${T} .sx-dossier__foot > li { display:flex; align-items:center; gap:16px; }

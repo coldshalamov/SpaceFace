@@ -1,9 +1,9 @@
 // src/ui/orrery/lampKey.js — the Lamp Key (design/frontend/ORRERY.md §3.6, §4 #10): the one primary
-// verb on a screen. An amber field with dark ink and one 45-degree cut at the top right, a slow sheen
+// verb on a screen. An amber field with dark ink and softly rounded corners, a slow sheen
 // that crosses it, a ripple on press; and for an irreversible verb the Hold: a line of the Hand's
-// light that traces the key's own silhouette while the key is held — out from the cut, down the
+// light that traces the key's own silhouette while the key is held — out from the top-right corner, down the
 // right edge, along the foot, up the left edge and back across the top — with a bright bead at its
-// head, and a short red segment before the cut where the verb commits. Let go early and it empties.
+// head, and a short bright segment before that corner where the verb commits. Let go early and it empties.
 // The line reads the hold from `--sf-hold-p` (0..1), which src/ui/kit/holdVerb.js clocks on the
 // `span.dp-holdring` it appends; this module puts the drawing inside that span.
 //
@@ -17,55 +17,64 @@ const BONE = '236 230 216';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** the hold line runs this far outside the field, so it stands on the glass and not on the amber */
 const RING_OUT = 9;
-/** the field's cut, in px (matches the clip-path below) */
+/** the old field cut, in px (kept for the unused disabled rim path) */
 const CUT = 13;
+/** the field's corner radius, in px; the hold line runs RING_OUT outside it, so its corners are RADIUS + RING_OUT */
+const RADIUS = 8;
 /** the last stretch of the perimeter before the cut, where the hold commits */
 const COMMIT_LEN = 40;
 
 const CSS = `
 .orr-lampkey { position:relative; display:inline-flex !important; align-items:center; gap:0; min-height:44px !important; height:auto !important;
-  padding:0 26px 0 20px !important; margin:0; border:0 !important; border-radius:0 !important; background:none !important; box-shadow:none !important; clip-path:none !important;
+  padding:0 22px !important; margin:0; border:0 !important; border-radius:${RADIUS}px !important; background:none !important; box-shadow:none !important; clip-path:none !important;
   color:#1c1406 !important; cursor:pointer; overflow:visible !important; isolation:isolate; text-shadow:none !important;
   font-family:var(--dp-face-display, "Archivo") !important; font-stretch:125% !important; font-variation-settings:"wdth" 125, "wght" 800 !important; font-weight:800 !important;
   font-size:15px !important; letter-spacing:.14em !important; text-transform:uppercase; line-height:1 !important; }
 .orr-lampkey::before { content:"" !important; position:absolute !important; z-index:-1; inset:0 !important; display:block !important; width:auto !important; height:auto !important; margin:0 !important;
-  background:var(--dp-hand, #f2b950) !important; clip-path:polygon(0 0, calc(100% - ${CUT}px) 0, 100% ${CUT}px, 100% 100%, 0 100%) !important; box-shadow:none !important; border:0 !important;
+  background:var(--dp-hand, #f2b950) !important; clip-path:none !important; border-radius:${RADIUS}px !important; border:0 !important;
+  box-shadow:inset 0 1px 0 rgb(255 248 228 / .45), 0 1px 2px rgb(0 0 0 / .35) !important;
   transition:background .16s linear; }
 /* the sheen: a band of light crossing the field every six seconds */
 .orr-lampkey::after { content:"" !important; position:absolute !important; z-index:-1; inset:0 !important; display:block !important; pointer-events:none;
-  clip-path:polygon(0 0, calc(100% - ${CUT}px) 0, 100% ${CUT}px, 100% 100%, 0 100%) !important; border:0 !important; box-shadow:none !important;
+  clip-path:none !important; border-radius:${RADIUS}px !important; border:0 !important; box-shadow:none !important;
   background:linear-gradient(112deg, transparent 38%, rgb(255 250 236 / .42) 50%, transparent 62%) !important; background-size:60% 100% !important; background-repeat:no-repeat !important;
   background-position:-80% 0 !important; animation:orr-lampkey-sheen 6s linear infinite; }
 @keyframes orr-lampkey-sheen { 0% { background-position:-80% 0; } 22% { background-position:180% 0; } 100% { background-position:180% 0; } }
 .orr-lampkey > .orr-lampkey__word { position:relative; z-index:1; }
 .orr-lampkey:not(:disabled):is(:hover, :focus-visible)::before { background:var(--dp-hand-hot, #ffd98c) !important; }
-.orr-lampkey:focus-visible { outline:1px solid rgb(255 217 140 / .9) !important; outline-offset:4px !important; }
+.orr-lampkey:focus-visible { outline:2px solid rgb(255 217 140 / .85) !important; outline-offset:3px !important; }
+/* consoleStandard's #screens focus rule (1,1,1) outranks the line above and sets border-radius:2px, so the ring
+   was square and cut across the hold track's rounded corners; it follows the rounded field instead. */
+#screens .orr-lampkey:focus-visible { border-radius:8px !important; }
 .orr-lampkey:not(:disabled):active, .orr-lampkey.is-holding { transform:translateY(1px); }
 /* the key being charged stays the brightest filled shape; the travelling light is bigger than the field's edge */
 .orr-lampkey.is-holding::before { background:var(--dp-hand-hot, #ffd98c) !important; }
 .orr-lampkey:disabled { cursor:default; color:rgb(${BONE} / .9) !important; opacity:1 !important; filter:none !important; }
-/* a disabled key is an unlit lamp: the field's own cut shape filled with bone near a third (a body, never a 1px ghost
+/* a disabled key is an unlit lamp: the field's own rounded shape filled with bone near a third (a body, never a 1px ghost
    outline), the verb in bone on it; no sheen, no amber */
-.orr-lampkey:disabled::before { background:rgb(${BONE} / .3) !important; background-image:none !important; box-shadow:none !important; }
+.orr-lampkey:disabled::before { background:rgb(${BONE} / .3) !important; background-image:none !important; box-shadow:inset 0 0 0 1px rgb(${BONE} / .14) !important; }
 .orr-lampkey__rim { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; pointer-events:none; display:none; z-index:1; }
 .orr-lampkey__rim path { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1; stroke-linejoin:miter; }
 .orr-lampkey:disabled .orr-lampkey__track { stroke:rgb(${BONE} / .34); }
 .orr-lampkey:disabled .orr-lampkey__commit, .orr-lampkey:disabled .orr-lampkey__commit-bloom, .orr-lampkey:disabled .orr-lampkey__fill, .orr-lampkey:disabled .orr-lampkey__fillbloom { display:none; }
 .orr-lampkey:disabled::after { display:none !important; inset:1px !important; animation:none !important; background:none !important; background-size:auto !important;
-  clip-path:polygon(0 0, calc(100% - ${CUT - 0.4}px) 0, 100% ${CUT - 0.4}px, 100% 100%, 0 100%) !important; }
+  clip-path:none !important; }
 /* the hold: the ring span becomes a drawing laid over the key's silhouette, a little outside the field */
 .orr-lampkey[data-hold] { margin-left:0 !important; margin-right:0 !important; }
 .orr-lampkey .dp-holdring { position:absolute !important; left:${-RING_OUT}px !important; right:auto !important; top:${-RING_OUT}px !important; width:calc(100% + ${RING_OUT * 2}px) !important;
-  height:calc(100% + ${RING_OUT * 2}px) !important; margin:0 !important; display:block !important; border-radius:0 !important; vertical-align:baseline !important; flex:none !important;
+  height:calc(100% + ${RING_OUT * 2}px) !important; margin:0 !important; display:block !important; border-radius:${RADIUS + RING_OUT}px !important; vertical-align:baseline !important; flex:none !important;
   background:none !important; -webkit-mask:none !important; mask:none !important; pointer-events:none; overflow:visible; z-index:2; }
 .orr-lampkey .dp-holdring::before, .orr-lampkey .dp-holdring::after { display:none !important; content:none !important; }
 .orr-lampkey .dp-holdring > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; display:block; }
-/* at rest a faint track says "hold"; the fill is the Hand's light, its bloom under it; the commit segment is red */
+/* at rest a faint track says "hold"; the fill is the Hand's light, its bloom under it; the commit segment is amber */
 .orr-lampkey .orr-lampkey__track { fill:none; stroke:rgb(${BONE} / .5); stroke-width:1; }
 .orr-lampkey .orr-lampkey__commit { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-width:2; }
 .orr-lampkey .orr-lampkey__commit-bloom { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-width:8; opacity:.28; }
 .orr-lampkey .orr-lampkey__fillbloom, .orr-lampkey .orr-lampkey__fill { fill:none; stroke:var(--dp-hand-hot, #ffd98c); stroke-linecap:round;
-  stroke-dasharray:100; stroke-dashoffset:calc(100 - var(--sf-hold-p, 0) * 100); }
+  stroke-dasharray:100 101; stroke-dashoffset:calc(100 - var(--sf-hold-p, 0) * 100); }
+/* dasharray 100 101, not 100: with a bare 100 the gap is also 100, so at rest (offset 100) the next dash
+   begins exactly at the path's end as a zero-length dash, and the round cap paints it as an amber dot
+   on the track. A 101 gap pushes that dash past the end of the 100-unit path. */
 .orr-lampkey .orr-lampkey__fill { stroke-width:3; }
 .orr-lampkey .orr-lampkey__fillbloom { stroke-width:11; opacity:.36; }
 /* the bead rides the same silhouette, ahead of the fill */
@@ -140,10 +149,12 @@ function layoutRim(button) {
 export function holdPathD(width, height) {
   const W = Math.max(1, width);
   const H = Math.max(1, height);
-  const c = CUT + RING_OUT;
-  // starts at the cut corner and runs clockwise (right edge, foot, left edge, top, the cut), on the half-pixel
-  // grid so a 1px track reads as one row
-  return `M ${W - 0.5} ${c + 0.5} L ${W - 0.5} ${H - 0.5} L 0.5 ${H - 0.5} L 0.5 0.5 L ${W - c + 0.5} 0.5 Z`;
+  const R = Math.min(RADIUS + RING_OUT, (W - 1) / 2, (H - 1) / 2);
+  const a = (x, y) => `A ${R} ${R} 0 0 1 ${x} ${y}`;
+  // starts below the top-right corner and runs clockwise (right edge, foot, left edge, top, that corner), on the
+  // half-pixel grid so a 1px track reads as one row; each corner is the field's radius grown by RING_OUT
+  return `M ${W - 0.5} ${R + 0.5} L ${W - 0.5} ${H - R - 0.5} ${a(W - R - 0.5, H - 0.5)} L ${R + 0.5} ${H - 0.5} ${a(0.5, H - R - 0.5)}`
+    + ` L 0.5 ${R + 0.5} ${a(R + 0.5, 0.5)} L ${W - R - 0.5} 0.5 ${a(W - 0.5, R + 0.5)} Z`;
 }
 
 function svgEl(doc, name, attrs) {
@@ -164,8 +175,8 @@ function layoutHold(button, ring) {
   if (svg) {
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     for (const p of svg.querySelectorAll('.orr-lampkey__track, .orr-lampkey__fillbloom, .orr-lampkey__fill')) p.setAttribute('d', d);
-    const c = CUT + RING_OUT;
-    for (const commit of svg.querySelectorAll('.orr-lampkey__commit, .orr-lampkey__commit-bloom')) commit.setAttribute('d', `M ${Math.max(0, W - c - COMMIT_LEN)} 0.5 L ${W - c + 0.5} 0.5`);
+    const c = Math.min(RADIUS + RING_OUT, (W - 1) / 2, (H - 1) / 2);
+    for (const commit of svg.querySelectorAll('.orr-lampkey__commit, .orr-lampkey__commit-bloom')) commit.setAttribute('d', `M ${Math.max(0, W - c - COMMIT_LEN)} 0.5 L ${W - c - 0.5} 0.5`);
   }
   if (ring.style && typeof ring.style.setProperty === 'function') ring.style.setProperty('--orr-hold-path', `path("${d}")`);
 }

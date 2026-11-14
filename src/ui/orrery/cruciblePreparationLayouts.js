@@ -28,6 +28,9 @@ ${D} .orr-prep-tab[aria-selected=true] { color:rgb(${BONE} / .96); background:no
 ${D} .orr-prep-tab[aria-selected=true]::after { opacity:1; }
 ${D} .orr-prep-tab:focus:not(:focus-visible) { outline:none !important; }
 ${D} .orr-prep-tab:focus-visible { outline:2px solid var(--k-bone, #e8e2d4) !important; outline-offset:3px !important; }
+/* ui-polish-512: the focus ring was a hard square box hugging the label; it takes the rounded field
+   corner the other keys wear, a little softer than full bone, and breathes a few px past the word. */
+${D} .orr-prep-tab:focus-visible { border-radius:6px; outline-color:rgb(${BONE} / .78) !important; outline-offset:4px !important; }
 ${D} .orr-prep-step { font-size:12px; font-variant-numeric:tabular-nums; letter-spacing:.08em; color:rgb(${BONE} / .55); }
 ${D} .orr-prep-tab[aria-selected=true] .orr-prep-step { color:var(--dp-hand); }
 ${D} .orr-prep-nextstep { display:inline-flex; align-items:center; gap:10px; margin:0; padding:14px 0; min-height:48px; font:600 16px var(--dp-face-label); letter-spacing:.12em; text-transform:uppercase; color:rgb(${BONE} / .42); pointer-events:none; user-select:none; }
@@ -267,7 +270,16 @@ ${D} .sf-crd-stakes { gap:10px !important; }
 ${D} .sf-crd-stake .fh-tile-art svg.orr-prep-stake-mark { width:28px !important; height:28px !important; opacity:.8; color:var(--dp-ink-dim) !important;
   transition:color .18s linear, opacity .18s linear; }
 ${D} .orr-tile[aria-pressed=true] .orr-prep-stake-mark { color:var(--dp-hand) !important; opacity:1; }
+/* ui-polish-516: the rule above never won: the at-rest mark rule (.sf-crd-stake .fh-tile-art svg.orr-prep-stake-mark)
+   outranks it, so the chosen stake's mark stayed bone like the other three. Matched at that weight, the chosen
+   contract's chevrons light amber as its underline does. */
+${D} .sf-crd-stake[aria-pressed=true] .fh-tile-art svg.orr-prep-stake-mark { color:var(--dp-hand) !important; opacity:1; }
 ${D} .orr-prep-stake-number { font-size:29px !important; font-weight:250 !important; letter-spacing:-.01em; }
+/* ui-polish-515: the stake marks are drawn on a 128 grid, so at 28px their 2-unit stroke rendered as a .44px
+   hairline: four grey specks over the purses. They sit at 36px with a stroke that lands near 1.4px, the weight
+   of the mode marks above them, so the service ladder reads as marks rather than dust. */
+${D} .sf-crd-stake .fh-tile-art { height:36px !important; }
+${D} .sf-crd-stake .fh-tile-art svg.orr-prep-stake-mark { width:36px !important; height:36px !important; stroke-width:5; opacity:.9; }
 ${D} .orr-prep-stake-pressure { margin-top:3px; font:400 12px/1.3 var(--dp-face-label); letter-spacing:.1em; text-transform:uppercase; }
 ${D} .orr-prep-stake-yield { margin-top:2px; font:400 12px/1.3 var(--dp-face-body,'Instrument Sans'),sans-serif; color:var(--dp-ink-dim); }
 /* arena: one strip of five; the words carry the choice, the hero carries the rooms */
@@ -503,8 +515,8 @@ ${A} .k-foot .k-word--primary {
   display:inline-flex !important; align-items:center; min-height:42px; padding:0 20px;
   font:700 15px var(--dp-face-read) !important; letter-spacing:.03em; text-transform:none;
   color:var(--dp-metal-0, #0b0d10) !important; text-shadow:none !important;
-  background:var(--dp-lamp, #f2b950) !important; border:1px solid rgb(242 185 80 / .9); border-radius:2px;
-  clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+  background:var(--dp-lamp, #f2b950) !important; border:1px solid rgb(242 185 80 / .9); border-radius:8px;
+  clip-path:none; box-shadow:inset 0 1px 0 rgb(255 248 228 / .45), 0 1px 2px rgb(0 0 0 / .35);
   transition:background var(--dp-d-cut, 80ms) linear, box-shadow var(--dp-d-cut, 80ms) linear;
 }
 ${A} .k-foot .k-word--primary:is(:hover, :focus-visible) {
@@ -517,7 +529,7 @@ ${A} .k-foot .k-word:not(.k-word--primary) {
   display:inline-flex !important; align-items:center; min-height:36px; padding:0 14px;
   font:600 14px var(--dp-face-read) !important; letter-spacing:.03em; text-transform:none;
   color:rgb(${BONE} / .88) !important; font-weight:600 !important;
-  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:2px;
+  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:8px;
   transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear, color var(--dp-d-cut, 80ms) linear;
 }
 ${A} .k-foot .k-word:not(.k-word--primary):is(:hover, :focus-visible) {
@@ -617,21 +629,26 @@ ${R} .k-foot .k-word:not(.k-word--primary):not(.is-lamp) {
   display:inline-flex !important; align-items:center; min-height:36px; padding:0 14px;
   font:600 14px var(--dp-face-read) !important; letter-spacing:.03em; text-transform:none;
   color:rgb(${BONE} / .88) !important; font-weight:600 !important;
-  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:2px;
+  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:8px;
   transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear, color var(--dp-d-cut, 80ms) linear;
 }
 ${R} .k-foot .k-word:not(.k-word--primary):not(.is-lamp):is(:hover, :focus-visible) {
   color:#fff !important;
   background:rgb(${BONE} / .12); border-color:rgb(${BONE} / .75);
 }
+/* keyboard focus: the same bone ring the draft's foot keys carry (screenLayouts' foot hover/focus rule strips outline). */
+${R} .k-foot .k-word:focus-visible { outline:2px solid var(--k-bone, #e8e2d4) !important; outline-offset:3px !important; }
+/* short frames turn the foot into a scrollport with no inline padding, which shaved the ring's left edge: 5px of inline
+   room, handed back by an equal negative margin so the keys don't move. */
+${R} > .k-foot.sf-cru-foot.sf-cru-foot { padding-left:5px !important; padding-right:5px !important; margin-left:-5px !important; margin-right:-5px !important; }
 ${R} .k-foot .k-word.k-word--primary:not(.is-lamp) {
   display:inline-flex !important; align-items:center; min-height:42px; padding:0 20px;
   font:700 15px var(--dp-face-read) !important; letter-spacing:.03em; text-transform:none;
   color:var(--dp-metal-0, #0b0d10) !important; font-weight:700 !important;
   text-shadow:none !important;
   background:var(--dp-lamp, #f2b950) !important; background-image:none !important;
-  border:1px solid rgb(242 185 80 / .9); border-radius:2px;
-  clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+  border:1px solid rgb(242 185 80 / .9); border-radius:8px;
+  clip-path:none; box-shadow:inset 0 1px 0 rgb(255 248 228 / .45), 0 1px 2px rgb(0 0 0 / .35);
   transition:background var(--dp-d-cut, 80ms) linear, box-shadow var(--dp-d-cut, 80ms) linear;
 }
 ${R} .k-foot .k-word.k-word--primary:not(.is-lamp):is(:hover, :focus-visible) {
@@ -643,8 +660,9 @@ ${R} .k-foot .k-word.k-word--primary:not(.is-lamp):is(:hover, :focus-visible) {
 ${R} .k-foot .sf-cru-fine, ${R} .k-foot .sf-cru-keynote {
   color:rgb(${BONE} / .86) !important; position:relative; z-index:1; max-width:42ch;
 }
+/* the lamp primary (Take the win) is an amber field, so its bare hold F·X glyph reads in ink (like the draft's Esc cap text), not bone-on-amber. */
 ${R} .k-foot .k-word--primary.is-lamp .sf-cru-kbd {
-  color:rgb(${BONE} / .92) !important; border-color:rgb(${BONE} / .55) !important;
+  color:rgb(11 13 16 / .88) !important; border-color:rgb(11 13 16 / .42) !important;
 }
 /* Keycaps — .sf-cru-kbd on foot verbs + Enter on lit FIT (override bare-hint strip in screenLayouts). */
 ${R} .k-foot .sf-cru-kbd {

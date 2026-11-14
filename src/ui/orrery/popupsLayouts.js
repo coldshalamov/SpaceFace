@@ -91,6 +91,21 @@ const CSS = `
     linear-gradient(var(--sf-pop-tick, rgb(232 226 212 / .55)) 0 0) right bottom / 1px 16px;
   background-repeat: no-repeat;
   animation: sf-popups-brackets 520ms var(--sf-pop-settle, cubic-bezier(.16, 1, .3, 1)) 40ms backwards; }
+/* The pane is a card: a hairline on all four sides, a 12px radius and a soft drop. The four
+   brackets floated 8px outside the glass, so the pane itself had no edge at all and the results
+   foot just stopped against the scrim. */
+.sf-find .sf-find__pane {
+  border: 1px solid color-mix(in srgb, var(--dp-ink, rgb(232 226 212)) 16%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 24px 64px -20px rgb(0 0 0 / .7);
+}
+.sf-find .sf-find__pane::before { content: none; }
+/* The shared #screens focus ring (2px lamp, 2px offset, 2px radius) poked its square corners
+   past the card's rounded top; seat it inside the card's edge and follow its radius. */
+.sf-find .sf-find__pane input.sf-find__input:focus-visible,
+#screens .sf-find .sf-find__pane input.sf-find__input:focus-visible {
+  outline-offset: -2px !important; border-radius: 11px 11px 0 0;
+}
 /* One drawn rule along the head: 1 px core + bloom as geometry, the tier's lit head. */
 .sf-find .sf-find__pane::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; pointer-events: none;
   background: linear-gradient(90deg, transparent, var(--sf-pop-edge, rgb(232 226 212 / .5)) 16%, var(--sf-pop-edge, rgb(232 226 212 / .5)) 84%, transparent);
@@ -99,10 +114,14 @@ const CSS = `
   animation: sf-popups-draw 560ms var(--sf-pop-settle, cubic-bezier(.16, 1, .3, 1)) 80ms backwards; }
 
 /* The field loses its own slab: the pane carries the glass, the field keeps only its resting
-   rule — which warms to the lamp under focus (the palette's one amber leader). */
+   rule — which warms to the lamp under focus (the palette's one amber leader).
+   Width: kit.css sizes the field and the results at the pane's own min(660px*s, 92vw), but the
+   pane is border-box with a 1px hairline, so inside it they ran 2px past the 658px inner edge and
+   the seated focus ring landed on the right hairline. Inside the pane they fill its inner width. */
 .sf-find .sf-find__pane input.sf-find__input,
 .sf-find .sf-find__pane input.sf-find__input:hover,
 .sf-find .sf-find__pane input.sf-find__input:focus {
+  width: 100%;
   background:
     linear-gradient(90deg, transparent, var(--dp-rule-hi, rgb(232 226 212 / .22)) 10%, var(--dp-rule-hi, rgb(232 226 212 / .22)) 90%, transparent) bottom / 100% 1px no-repeat;
   -webkit-backdrop-filter: none; backdrop-filter: none;
@@ -113,6 +132,7 @@ const CSS = `
     linear-gradient(90deg, transparent, var(--dp-lamp, #f2b950) 8%, var(--dp-lamp-hot, #ffd98c) 50%, var(--dp-lamp, #f2b950) 92%, transparent) bottom / 100% 1.5px no-repeat; }
 /* The results lose their second slab: one continuous surface under the field. */
 .sf-find .sf-find__pane .sf-find__results {
+  width: 100%;
   background: none;
   -webkit-backdrop-filter: none; backdrop-filter: none;
   padding-top: 2px;
@@ -161,8 +181,16 @@ const CSS = `
 .sf-drawer--entity > .sf-drawer__apron {
   position: relative; bottom: auto; flex: 0 0 auto; min-height: 0; max-height: 50vh;
   box-sizing: border-box; overflow-y: auto; scroll-padding-block: 8px;
-  margin: 24px 36px 0 88px;
+  margin: 24px 36px 0 82px;
+  /* The rail scrolls, so it clips: a key's focus ring (::after, inset -4px + 1.5px) on the first
+     key was cut flat along the rail's left edge. A few px of side room keeps the whole ring. */
+  padding-left: 6px; padding-right: 6px;
 }
+/* Every rail left margin below is the deck's text inset minus that 6px, so the first key's face
+   still lines up with the record text above it (88/76/40/20 -> 82/70/34/14). */
+/* The rail's top hairline (ui.css .sf-drawer__apron::before, left/right 0) spans the padding box, so
+   it started 6px left of the record text; inset it by the same 6px on both sides. */
+.sf-drawer--entity > .sf-drawer__apron::before { left: 6px; right: 6px; }
 .sf-drawer--entity > .sf-drawer__apron > .sf-drawer__verb {
   box-sizing: border-box; min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere;
 }
@@ -174,7 +202,7 @@ const CSS = `
 @media (max-width: 640px) {
   .sf-drawerlayer > .sf-drawer--entity { bottom: 0; max-height: none; }
   .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { flex: 1 1 auto; }
-  .sf-drawer--entity > .sf-drawer__apron { margin: 20px 20px 0; }
+  .sf-drawer--entity > .sf-drawer__apron { margin: 20px 20px 0 14px; }
 }
 
 /* 641–1100 wide: at 48vw the 960x540 sheet left a 336px column, so CLOSE wrapped to a second apron
@@ -183,8 +211,8 @@ const CSS = `
 @media (min-width: 641px) and (max-width: 1100px) {
   .sf-drawerlayer > .sf-drawer--entity { width: min(600px, max(48vw, 480px)); }
   .sf-drawer--entity .sf-drawer__deck { padding-left: 76px; }
-  .sf-drawer--entity > .sf-drawer__apron { margin-left: 76px; column-gap: 10px; }
-  .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { padding: 0 15px 0 13px; letter-spacing: .11em; }
+  .sf-drawer--entity > .sf-drawer__apron { margin-left: 70px; column-gap: 10px; }
+  .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { padding: 0 14px; letter-spacing: .11em; }
 }
 
 /* Short desktop: keep the compact record, but reserve the footer through normal flex layout.
@@ -211,18 +239,44 @@ const CSS = `
   .sf-drawer--entity .sf-entity-link--row { padding: 5px 2px 5px 0; font-size: 14px; }
   .sf-drawer--entity > .sf-drawer__apron {
     position: relative; left: auto; right: auto; bottom: auto;
-    z-index: 2; margin: 8px 28px 0 76px; height: auto; box-sizing: border-box;
+    z-index: 2; margin: 8px 28px 0 70px; height: auto; box-sizing: border-box;
     padding-top: 10px; padding-bottom: 10px;
     background: rgb(9 11 15);
     box-shadow: 0 -16px 14px -6px rgb(9 11 15);
   }
-  .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { min-height: 34px; padding: 0 14px 0 12px; }
+  .sf-drawer--entity .sf-drawer__apron > .sf-drawer__verb { min-height: 34px; padding: 0 13px; }
   .sf-drawer--entity .sf-drawer__x { top: 8px; right: 12px; width: 28px; height: 28px; }
 }
 /* Wider short frames retain the same content and action inset. */
 @media (min-width: 1101px) and (max-height: 560px) {
   .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { padding-left: 88px; }
-  .sf-drawer--entity > .sf-drawer__apron { margin-left: 88px; margin-right: 28px; }
+  .sf-drawer--entity > .sf-drawer__apron { margin-left: 82px; margin-right: 28px; }
+}
+
+/* ── 2b. The desktop sheet has an edge ───────────────────────────────────────────────────── */
+/* The sheet hugs its content, so on desktop its foot is a hard horizontal cut while its leading edge
+   dissolved over 72px: two edge languages on one sheet, and the station read straight through the
+   dissolve (a contract title ran into the dossier mid-word). The sheet is now a card set against the
+   right edge: opaque glass from its first pixel, a hairline on its open sides, a 12px corner where
+   they meet, and a soft shadow lifting it off the screen. The 88px gutter the dissolve needed
+   closes to 40px, giving the record that width back. */
+@media (min-width: 641px) {
+  .sf-drawerlayer > .sf-drawer--entity {
+    -webkit-mask-image: none; mask-image: none; box-sizing: border-box;
+    background: linear-gradient(180deg, rgb(13 15 21 / .95), rgb(8 10 14 / .97));
+    border-left: 1px solid color-mix(in srgb, var(--dp-ink, rgb(232 226 212)) 15%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--dp-ink, rgb(232 226 212)) 15%, transparent);
+    border-bottom-left-radius: 12px;
+    box-shadow: -24px 0 56px -16px rgb(0 0 0 / .65);
+  }
+  .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { padding-left: 40px; }
+  .sf-drawer--entity > .sf-drawer__apron { margin-left: 34px; }
+  /* Opening moves focus onto the sheet itself (entityLinks). The dissolve used to mask the
+     container's ring from consoleStandard's #screens [tabindex] rule (!important, with a 2px radius);
+     unmasked it drew a lamp frame around the card and squared its corner. The deck, rungs and
+     verbs keep their own focus marks. */
+  .sf-drawerlayer > .sf-drawer--entity:focus-visible,
+  #screens .sf-drawerlayer > .sf-drawer--entity:focus-visible { outline: none !important; border-radius: 0 0 0 12px; }
 }
 
 /* ── 3. Rungs are doors at rest; disabled verbs look disabled ────────────────────────────── */
@@ -241,11 +295,21 @@ const CSS = `
 .sf-drawer__verb[disabled], .sf-drawer__verb:disabled {
   cursor: default; opacity: .38; filter: none;
   color: var(--dp-ink-mute, #b0aea6);
-  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-field-ink, rgb(232 226 212 / .08)) 0);
+  background: var(--dp-field-ink, rgb(232 226 212 / .08));
   box-shadow: none;
 }
 .sf-drawer__verb[disabled]:hover, .sf-drawer__verb:disabled:hover,
 .sf-drawer__verb[disabled]:active, .sf-drawer__verb:disabled:active { transform: none; box-shadow: none; }
+/* One focus ring per key. The key draws its own rounded ring (ui.css button.sf-drawer__verb::after);
+   consoleStandard's #screens focus rule (!important 2px outline, 2px radius) stacked a second,
+   square-cornered ring on top and squared the key itself. Scoped here; the global rule is untouched. */
+#screens .sf-drawer__verb:focus-visible { outline: none !important; border-radius: 8px; }
+/* Forced colors (Windows High Contrast) strips the ::after box-shadow ring, so the outline is the only
+   focus mark there. ui.css's Highlight outline (.sf-drawer__verb:focus-visible, 0,2,0) cannot outrank
+   the rule above, so restate it here at the same weight, later in source order. */
+@media (forced-colors: active) {
+  #screens .sf-drawer__verb:focus-visible { outline: 2px solid Highlight !important; outline-offset: 2px !important; }
+}
 
 /* ── Reduced motion: every state arrives instantly, both guards ──────────────────────────── */
 @media (prefers-reduced-motion: reduce) {

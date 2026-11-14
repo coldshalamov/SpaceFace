@@ -53,7 +53,7 @@ ${R} > .k-foot .k-word, ${RP} > .k-foot .k-word {
   display:inline-flex !important; align-items:center; min-height:38px; padding:0 16px;
   font:600 14px var(--dp-face-read, "Instrument Sans") !important; letter-spacing:.03em; text-transform:none;
   color:rgb(${BONE} / .88) !important;
-  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:2px;
+  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:8px;
   transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear, color var(--dp-d-cut, 80ms) linear;
 }
 ${R} > .k-foot .k-word:is(:hover, :focus-visible), ${RP} > .k-foot .k-word:is(:hover, :focus-visible) {
@@ -64,12 +64,14 @@ ${R} > .k-foot .k-word.k-word--primary, ${RP} > .k-foot .k-word.k-word--primary 
   font:700 15px var(--dp-face-read, "Instrument Sans") !important;
   color:var(--dp-metal-0, #0b0d10) !important;
   background:var(--dp-lamp, #f2b950) !important; border:1px solid rgb(242 185 80 / .9);
-  clip-path:polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 0 100%);
+  border-radius:8px; clip-path:none; box-shadow:inset 0 1px 0 rgb(255 248 228 / .45), 0 1px 2px rgb(0 0 0 / .35);
 }
 ${R} > .k-foot .k-word.k-word--primary:is(:hover, :focus-visible), ${RP} > .k-foot .k-word.k-word--primary:is(:hover, :focus-visible) {
   color:var(--dp-metal-0, #0b0d10) !important; background:var(--dp-lamp-hot, #ffd98c) !important;
   box-shadow:0 0 14px rgb(242 185 80 / .24);
 }
+/* keyboard focus: the same bone ring the draft's foot keys carry (the shared foot hover/focus rule strips outline). */
+${R} > .k-foot .k-word:focus-visible, ${RP} > .k-foot .k-word:focus-visible { outline:2px solid var(--k-bone, #e8e2d4) !important; outline-offset:3px !important; }
 /* one column, one scroller: the ledger and story boxes dissolve so their bands share one order */
 ${R} .sf-crres__stage { display:flex !important; flex-direction:column !important; gap:20px !important; width:100%; max-width:min(600px, 46vw) !important;
   min-height:0 !important; overflow:hidden auto !important; overscroll-behavior:contain; padding:2px 16px 28px 0 !important; margin:0 !important;
