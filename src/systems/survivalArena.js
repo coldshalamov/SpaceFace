@@ -304,17 +304,17 @@ const FOUNDRY_TOY_SALT = 0x1cd3e17;
 // each bank plate and a lamp on each arrival-gate post. Small pools on the floor, shade between.
 const FOUNDRY_PLATE_NOCTURNE = Object.freeze({
   profile: 'dock',
-  lights: Object.freeze([Object.freeze({ id: 'flood', profile: 'shop_amber', offset: Object.freeze([0, 30, 0]), intensity: 2200, range: 150 })]),
+  lights: Object.freeze([Object.freeze({ id: 'flood', profile: 'shop_amber', offset: Object.freeze([0, 30, 0]), intensity: 12000, range: 170, priority: 1 })]),
   medium: false,
 });
 const FOUNDRY_GATE_NOCTURNE = Object.freeze({
   profile: 'dock',
-  lights: Object.freeze([Object.freeze({ id: 'post', profile: 'shop_amber', offset: Object.freeze([0, 30, 0]), intensity: 1800, range: 120 })]),
+  lights: Object.freeze([Object.freeze({ id: 'post', profile: 'shop_amber', offset: Object.freeze([0, 30, 0]), intensity: 9000, range: 140, priority: 1 })]),
   medium: false,
 });
 const FOUNDRY_FURNACE_NOCTURNE = Object.freeze({
   profile: 'industrial',
-  lights: Object.freeze([Object.freeze({ id: 'pour', profile: 'furnace', offset: Object.freeze([0, 14, 0]), intensity: 8500, range: 210 })]),
+  lights: Object.freeze([Object.freeze({ id: 'pour', profile: 'pour_orange', offset: Object.freeze([0, 14, 0]), intensity: 36000, range: 230, priority: 3, importance: 1.8 })]),
   medium: Object.freeze({ radii: Object.freeze([3.2, 1.2, 3.2]), density: 0.0026, color: 0xff9a5a, anisotropy: 0.4, extinction: 1, noise: 0.45 }),
 });
 

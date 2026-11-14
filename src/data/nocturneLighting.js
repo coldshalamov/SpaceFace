@@ -24,6 +24,8 @@ export const NOCTURNE_LIGHT_PROFILES = freeze({
   // Foundry floor: a shop is a pool of warm sodium on indigo shade; the Forge is the hottest thing in the room.
   shop_amber: light('point', 0xffb45e, 2800, 135, 2),
   forge_hot: light('point', 0xff7a33, 5200, 170, 3),
+  // The Foundry furnace's pour: a point light (the engine has no resident area-light slots to spend).
+  pour_orange: light('point', 0xff6a2a, 6500, 200, 3),
   furnace: light('area', 0xff702b, 8500, 210, 2, { angle: 1.05, penumbra: 0.85 }),
   dock: light('spot', 0xffce87, 4800, 220, 2, { angle: 0.72, penumbra: 0.6, shadow: true }),
   gate: light('point', 0x9c83ff, 3800, 220, 2),
