@@ -75,6 +75,11 @@ const CSS = `
   ${S} .sf-range__drawer { width: 240px; }
   ${T} .k-stage:has(> .sf-range__drawer.is-open) .sf-range__box { right: calc(240px + var(--k-gap)); }
 }
+/* ui-polish-438: the rung ladder in one voice. The type governor sets any uppercase label of 7+
+   words in sentence case, so the four long FIELD rungs ("A ring shoves mass out to a berm" ...)
+   read in sentence case while the twelve short ones stayed tracked capitals in the same row
+   (ui-bench still, 2026-11-09). Every rung now reads in the governor's sentence voice. */
+${T} .sf-range__ladder .sf-range__word { text-transform: none; letter-spacing: .005em; font-size: 13px; font-weight: 500; }
 `;
 
 /** Idempotent: the Range mounts once per bench/session; the densify sheet lands once per doc. */
