@@ -1,0 +1,18 @@
+{
+  "route": "The precursor machine layer materializes the surveyor prism from site casts; visualFactory dispatches its kind to the procedural machine builder. It also appears in Verge faction kind tables.",
+  "deploymentCode": [
+    "src/data/precursorMachines.js",
+    "src/systems/precursorMachines.js",
+    "src/render/visualFactory.js",
+    "src/render/machineVisuals.js"
+  ],
+  "status": "Builder and site casts traced; Astra geometry, softened nacre and a lower-section ring are installed after isolated and relocated live-scene comparisons. Existing scan motion and shared-geometry lifetime checks pass.",
+  "variationDiscovery": "unresolved",
+  "caveat": "The sector comparisons use diagnostic relocation, isolated layers and held poses; the Helios chase view timed out. A natural encounter and live frame-time impact remain unverified.",
+  "diagnostics": [
+    ".devshots/fleet/surveyor-astra/check-v1.json",
+    ".devshots/fleet/surveyor-astra/fleetlook-v1/report.json",
+    ".devshots/fleet/surveyor-astra/camera-v1-playertruth/observations.json",
+    ".devshots/fleet/surveyor-astra/fleetlook-shipping/report.json"
+  ]
+}

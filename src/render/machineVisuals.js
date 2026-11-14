@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { machineKindById } from '../data/precursorMachines.js';
 import { creatureSkin } from './creatureSkinLibrary.js';
+import { getSurveyorGeometries } from './surveyorGeometry.js';
 
 const PALE_METAL = 0xb9c4bd;   // nacre-adjacent pale metal
 const DARK_SEAM = 0x2a3430;    // recessed seam material
@@ -90,18 +91,19 @@ function registerWorkMotion(entity, isWorking, apply) {
 }
 
 // A slim articulated arm segment that can stow folded and extend while working.
-function buildToolArm(parent, { pivot, stowRotX = 0.5, workRotX = -0.6, length = 16, tipScale = 5, tipIntensity = 2.0 } = {}) {
+function buildToolArm(parent, { pivot, stowRotX = 0.5, workRotX = -0.6, length = 16, tipScale = 5,
+  tipIntensity = 2.0, armGeometry = null, tipGeometry = null } = {}) {
   const root = new THREE.Group();
   root.position.set(pivot.x || 0, pivot.y || 0, pivot.z || 0);
   if (pivot.rotY != null) root.rotation.y = pivot.rotY;
-  const arm = new THREE.Mesh(geo('tool_arm_seg', () => {
+  const arm = new THREE.Mesh(armGeometry || geo('tool_arm_seg', () => {
     const s = new THREE.BoxGeometry(0.14, 0.1, 1.6);
     s.translate(0, 0, -0.8);
     return s;
   }), seamMat());
   arm.scale.setScalar(length / 1.6);
   const tipMat = lightMat(tipIntensity);
-  const tip = new THREE.Mesh(geo('tool_arm_tip', () => new THREE.OctahedronGeometry(0.16, 0)), tipMat);
+  const tip = new THREE.Mesh(tipGeometry || geo('tool_arm_tip', () => new THREE.OctahedronGeometry(0.16, 0)), tipMat);
   tip.position.z = -length;
   tip.scale.setScalar(tipScale);
   root.add(arm, tip);
@@ -132,24 +134,28 @@ function buildToolSpindle(parent, { length = 18, y = 0, tipScale = 5, tipIntensi
 
 // ── Machine entity bodies ────────────────────────────────────────────────────────────────
 
-// Surveyor Prism: a slowly tumbling tetrahedral instrument — pure procedure, no menace.
+// Surveyor Prism: a slowly tumbling faceted instrument — pure procedure, no menace.
 // Its scanner arm unfolds while the inspection sweep winds toward the ping (row 384).
 function buildSurveyorPrism(entity = null) {
   const g = new THREE.Group();
+  const geometry = getSurveyorGeometries(THREE);
   const body = new THREE.Mesh(
-    geo('prism_body', () => new THREE.OctahedronGeometry(1, 0)),
+    geometry.body,
     metalMat(),
   );
+  // The nacre's original normal strength overpowers the deliberately subtle panel facets.
+  body.material.normalScale.set(0.3, 0.3);
   body.scale.setScalar(12);
   g.add(body);
   const ring = new THREE.Mesh(
-    geo('prism_ring', () => new THREE.TorusGeometry(1.35, 0.06, 6, 40)),
+    geo('prism_ring', () => new THREE.TorusGeometry(1.35, 0.06, 4, 40)),
     lightMat(1.2),
   );
   ring.scale.setScalar(12);
   ring.rotation.x = Math.PI / 2;
   g.add(ring);
-  const scanArm = buildToolArm(g, { pivot: { y: 4 }, length: 14 });
+  const scanArm = buildToolArm(g, { pivot: { y: 4 }, length: 14,
+    armGeometry: geometry.arm, tipGeometry: geometry.tip });
   g.name = 'SF_Machine_surveyor_prism';
   const scanPeriod = machineKindById('surveyor_prism')?.scanPeriodS || 14;
   g.userData.updateAuthoredMotion = registerWorkMotion(entity,

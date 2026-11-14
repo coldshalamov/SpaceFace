@@ -15,7 +15,13 @@ test('surveyor keeps its visible shell and independent scan motion without an en
   assert.equal(firstMeshes.length, 4);
   assert.ok(!firstMeshes.some(mesh => mesh.geometry.type === 'SphereGeometry'));
   const [body, ring] = firstMeshes;
-  assert.equal(body.geometry.type, 'OctahedronGeometry');
+  const positions = body.geometry.getAttribute('position');
+  const normals = body.geometry.getAttribute('normal');
+  const uvs = body.geometry.getAttribute('uv');
+  assert.ok(positions.count > 24, 'the faceted housing keeps its inset surface detail');
+  assert.equal(normals.count, positions.count);
+  assert.equal(uvs.count, positions.count);
+  assert.ok([...positions.array, ...normals.array, ...uvs.array].every(Number.isFinite));
   assert.equal(ring.geometry.type, 'TorusGeometry');
   assert.equal(ring.geometry.parameters.tubularSegments, 40);
   assert.ok(firstMeshes.every((mesh, i) => mesh.geometry === otherMeshes[i].geometry));
