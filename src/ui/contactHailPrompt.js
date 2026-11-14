@@ -144,11 +144,19 @@ export function createContactHailPrompt(ctx) {
     closeBtn.hidden = true;
     if (panelHandle) { panelHandle.clear(); panelHandle = null; }
     panel.hidden = true;
-    panel.classList.remove('sf-contact-hail__panel--detail');
+    panel.classList.remove('sf-contact-hail__panel--detail', 'sf-contact-hail__panel--resident');
     panel.removeAttribute('tabindex');
     linesEl.replaceChildren();
     actionsEl.replaceChildren();
     updateDeckVisual(true);
+  }
+
+  function closeChannel() {
+    const closed = active;
+    hidePanel();
+    if (closed?.residentChannel) bus.emit('contactHail:cancel', {
+      requestId: closed.requestId, targetId: closed.targetId,
+    });
   }
 
   function clearReceipt(payload) {
@@ -167,8 +175,11 @@ export function createContactHailPrompt(ctx) {
     // Retain a read-only reply for reading, never extend simulation receipts or actions.
     routeReadUntil = detail && !(payload.actions?.length)
       ? (Number(state.simTime) || 0) + ROUTE_READING_GRACE_S : null;
-    closeBtn.hidden = !detail;
+    closeBtn.hidden = !detail && payload.residentChannel !== true;
+    closeBtn.setAttribute('aria-label', payload.residentChannel ? 'Close resident conversation' : 'Close route details');
+    closeBtn.textContent = payload.residentChannel ? 'CLOSE CHANNEL' : 'CLOSE DETAILS';
     panel.classList.toggle('sf-contact-hail__panel--detail', detail);
+    panel.classList.toggle('sf-contact-hail__panel--resident', payload.residentChannel === true);
     // Keyboard users can focus and scroll a long chosen route.
     if (detail) panel.setAttribute('tabindex', '0');
     else panel.removeAttribute('tabindex');
@@ -215,9 +226,9 @@ export function createContactHailPrompt(ctx) {
   function applyAvailability(payload) {
     availability = payload || { enabled: false, targetId: null, kind: null, label: 'HAIL' };
     hailButton.disabled = !availability.enabled;
-    hailButton.textContent = 'HAIL';   // unavailable reads as a disabled key (and its aria-label), not a dash
+    hailButton.textContent = availability.enabled && availability.workGlyph ? `${availability.workGlyph} HAIL` : 'HAIL';
     hailButton.setAttribute('aria-label', availability.enabled
-      ? availability.label
+      ? [availability.label, availability.workLabel].filter(Boolean).join('. ')
       : 'Hail unavailable for selected contact');
     root.classList.toggle('sf-contact-hail--ready', !!availability.enabled);
     if (active && (!availability.enabled || availability.targetId !== active.targetId)) hidePanel();
@@ -300,14 +311,14 @@ export function createContactHailPrompt(ctx) {
     for (const [event, handler] of busBindings) bus.off(event, handler);
     document.removeEventListener('keydown', onKeyDown, true);
     deckBtn.removeEventListener('click', onDeckClick);
-    closeBtn.removeEventListener('click', hidePanel);
+    closeBtn.removeEventListener('click', closeChannel);
     try { freqMorph.dispose(); } catch (_) {}
     if (panelHandle) { panelHandle.clear(); panelHandle = null; }
     panel.remove();
     root.remove();
   }
 
-  closeBtn.addEventListener('click', hidePanel);
+  closeBtn.addEventListener('click', closeChannel);
   hailButton.addEventListener('click', () => request('pointer'));
   panel.addEventListener('click', onPanelClick);
   deckBtn.addEventListener('click', onDeckClick);

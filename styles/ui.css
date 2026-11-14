@@ -2623,14 +2623,19 @@ html.sf-reduce-motion .orr-clip__plate { transition:none; }
   font-size: 12px; line-height: 1.35; letter-spacing: .02em; }
 .sf-contact-hail__panel--detail { max-height: min(480px, calc(100dvh - 90px));
   overflow-y: auto; overscroll-behavior: contain; }
+.sf-contact-hail__panel--resident { max-height: min(480px, calc(100dvh - 90px));
+  overflow-y: auto; overscroll-behavior: contain; }
 .sf-contact-hail__close { margin-top: 8px; min-height: 30px; width: 100%;
   border: 1px solid var(--sf-edge); border-radius: 3px; background: var(--sf-surface);
   color: var(--sf-paper); font: 500 12px var(--hud-data, monospace); cursor: pointer; }
 .sf-contact-hail__close[hidden] { display: none; }
 .sf-contact-hail__close:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
 .sf-contact-hail__panel--detail:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
+.sf-contact-hail__panel--resident:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
 .sf-contact-hail__panel--detail .sf-contact-hail__line,
 .sf-contact-hail__line.sf-contact-hail__tow-advice { white-space: normal;
+  overflow: visible; overflow-wrap: anywhere; text-overflow: clip; }
+.sf-contact-hail__panel--resident .sf-contact-hail__line { white-space: normal;
   overflow: visible; overflow-wrap: anywhere; text-overflow: clip; }
 .sf-contact-hail__line + .sf-contact-hail__line { color: var(--sf-calm); }
 .sf-contact-hail__actions { display: flex; gap: 6px; margin-top: 8px; }

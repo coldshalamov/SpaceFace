@@ -68,6 +68,38 @@ test('detail CSS wraps long tokens and bounds scrolling to narrow or short viewp
  // multi-line treatment); pin the grouped selector and the wrapping semantics it carries.
  assert.match(source,/\.sf-contact-hail__panel--detail \.sf-contact-hail__line,\s*\.sf-contact-hail__line\.sf-contact-hail__tow-advice \{\s*white-space:\s*normal;[\s\S]*?overflow-wrap:\s*anywhere;\s*text-overflow:\s*clip/);
  assert.match(source,/width:\s*min\(332px,\s*calc\(100vw - 28px\)\)/);
+ // Resident channel: the optional conversation panel keeps the same bounded scroll and wrap rules.
+ assert.match(source,/\.sf-contact-hail__panel--resident \{\s*max-height:\s*min\(480px,\s*calc\(100dvh - 90px\)\);[\s\S]*?overflow-y:\s*auto/);
+ assert.match(source,/\.sf-contact-hail__panel--resident \.sf-contact-hail__line \{\s*white-space:\s*normal;[\s\S]*?overflow-wrap:\s*anywhere;\s*text-overflow:\s*clip/);
+});
+
+test('resident work signals name all three states accessibly and the optional channel closes without taking flight',()=>{
+ const f=fixture();try{
+  for(const [workStatus,workGlyph,workLabel] of [
+   ['available','!','Work available'],['active','◇','Work in progress'],['ready','✓','Ready to settle']
+  ]) {
+   f.bus.emit('contactHail:availability',{enabled:true,targetId:113,kind:'resident',label:'HAIL TETHYS',workStatus,workGlyph,workLabel});
+   assert.equal(f.prompt.el.nodes.hail.textContent,workGlyph+' HAIL');
+   assert.equal(f.prompt.el.nodes.hail.attrs['aria-label'],'HAIL TETHYS. '+workLabel);
+  }
+  const text='✓ Ready to settle. Approach the berth and use Dock for the recorded handoff.';
+  f.bus.emit('contactHail:offer',{requestId:'resident-1',targetId:113,kind:'resident',residentChannel:true,
+   residentName:'Mira',residentRole:'Freight Seal Clerk',lines:['Mira · Freight Seal Clerk',text],
+   actions:[{id:'resident_berth',label:'APPROACH TO SETTLE'}],expiresAt:31});
+  const panel=f.prompt.el.nodes.panel;
+  assert.ok(panel.classList.contains('sf-contact-hail__panel--resident'));
+  assert.equal(f.prompt.el.nodes.lines.children[1].textContent,text);
+  assert.equal(f.prompt.el.nodes.pilot.textContent,'Mira');
+  assert.equal(f.prompt.el.nodes.classword.textContent,'Freight Seal Clerk');
+  assert.equal(document.activeElement,undefined,'opening an optional radio does not steal keyboard focus');
+  assert.equal(f.prompt.el.nodes.close.hidden,false);
+  assert.equal(f.prompt.el.nodes.close.attrs['aria-label'],'Close resident conversation');
+  let canceled;f.bus.on('contactHail:cancel',payload=>{canceled=payload});
+  f.prompt.el.nodes.close.listeners.click();
+  assert.deepEqual(canceled,{requestId:'resident-1',targetId:113});
+  assert.equal(panel.hidden,true);assert.equal(f.state.mode,'flight');
+  assert.equal(f.state.player.targetId,113);
+ }finally{f.restore();}
 });
 
 test('route reading grace and focused reading do not extend receipt or actionable expiry',()=>{
