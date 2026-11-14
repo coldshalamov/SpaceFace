@@ -234,7 +234,7 @@ export const convoyGodmotherPlant = {
     const ent = spawnEntity(spec);
     if (!ent || ent.id == null) return null;
     ent.data = ent.data || {};
-    ent.data.plants = { ...(ent.data.plants || {}), [CONVOY_GODMOTHER_TUNING.plId]: { role: side === 1 ? 'lead' : 'wing' } };
+    ent.data.plants = { ...(ent.data.plants || {}), [CONVOY_GODMOTHER_TUNING.plId]: { role: side > 0 ? 'lead' : 'wing' } };
     ent.data.callsign = CONVOY_GODMOTHER_CALLSIGN;
     this._owned.set(ent.id, { kind: 'freighter', expiresAt: this._now() + CONVOY_GODMOTHER_TUNING.strangerTtlS });
     return ent;

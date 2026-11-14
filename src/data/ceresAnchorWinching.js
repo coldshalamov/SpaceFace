@@ -5,6 +5,7 @@
 import { CERES_WORKFLEET_CONTRACT as C, ceresWorkfleetPoint } from './ceresWorkfleet.js';
 import { modelTruthProxyManifest, modelTruthRow } from './modelTruth.js';
 import { Masks } from '../core/entity.js';
+import { pluralWord } from '../core/numberFormat.js';
 
 export const CERES_WINCH_MODE = 'ceres_anchor_winch';
 export const CERES_WINCH_SPAN = 480;
@@ -52,7 +53,7 @@ export const ceresWinchAnchorTag = index => `CLIP · ANCHOR ${index + 1}`;
 
 // Durable chalk line on the board: `ANCHOR BOARD · <pilot> · <n> swing(s)`.
 export const ceresAnchorBoardLabel = chalk => chalk
-  ? `ANCHOR BOARD · ${chalk.pilot || 'you'} · ${chalk.swings} ${chalk.swings === 1 ? 'swing' : 'swings'}`
+  ? `ANCHOR BOARD · ${chalk.pilot || 'you'} · ${chalk.swings} ${pluralWord(chalk.swings, 'swing')}`
   : 'ANCHOR BOARD';
 
 function fittedCollision(placeId) {

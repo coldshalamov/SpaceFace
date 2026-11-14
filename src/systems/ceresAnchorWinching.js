@@ -169,12 +169,12 @@ function publish(owner, force = false) {
     choices.push({ id: 'controls', label: 'Back to winch' }, { id: 'close', label: 'Fly the load' });
   }
   const chalk = c.r.chalks?.at(-1);
-  const detail = line ? `${ANCHORS[c.r.anchorIndex].label} holds the original plate. ${c.r.command === 'in' ? 'Reeling in' : c.r.command === 'out' ? 'Paying out' : 'Holding length'}. Keep your own Line on the plate and fly across the anchor to build a swing. Cast off leaves its momentum.`
-    : chalk ? `${ceresAnchorBoardLabel(chalk)}. The original plate reached its cradle. You can borrow the winches again after taking it back on your Line.`
-      : claimed ? 'Easy, girl. Keep your Line on the Long Plate, then choose a clear fixed winch. Reel out of the cut before swinging across the apron. The anchor takes the load; your ship supplies the sideways pull.'
-        : 'Watch the crew lift the original plate. To borrow a winch, select the Long Plate and latch your own Line first. The crew yields it. No fee, no replacement load.';
+  const detail = line ? `${ANCHORS[c.r.anchorIndex].label} · ${c.r.command === 'in' ? 'REELING' : c.r.command === 'out' ? 'PAYING OUT' : 'HOLDING'}. Fly across the anchor to swing.`
+    : chalk ? ceresAnchorBoardLabel(chalk)
+      : claimed ? 'Line is on the plate. Pick a clear winch.'
+        : 'Latch the Long Plate to borrow a winch.';
   if (rt.page === 'compact') { choices.length = 0; choices.push({ id: 'controls', label: 'Winch controls' }); }
-  const plain = { headline: line ? 'SWING THE LONG PLATE' : 'BORROW A WINCH', detail: rt.page === 'compact' ? (line ? `${ANCHORS[c.r.anchorIndex].label} · ${c.r.command === 'in' ? 'REELING' : c.r.command === 'out' ? 'PAYING OUT' : 'HOLDING'}. Open controls to stop or cast off.` : 'Old Hob is attending the fixed winches.') : [detail, ...blocked].join('\n'), choices };
+  const plain = { headline: line ? 'SWING THE LONG PLATE' : 'BORROW A WINCH', detail: rt.page === 'compact' ? (line ? `${ANCHORS[c.r.anchorIndex].label} · ${c.r.command === 'in' ? 'REELING' : c.r.command === 'out' ? 'PAYING OUT' : 'HOLDING'}` : 'Old Hob tends the winches.') : [detail, ...blocked].join('\n'), choices };
   const signature = JSON.stringify([plain, c.player.id, c.player.occupantGeneration, c.load.id, c.load.occupantGeneration]);
   if (!force && signature === rt.signature) return;
   rt.signature = signature;
