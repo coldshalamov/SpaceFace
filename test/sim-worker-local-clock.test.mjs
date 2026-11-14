@@ -138,7 +138,7 @@ function sabJournalPack(arena, slot, start, rows) {
   };
 }
 
-function makeFixture(t, { helpers, sab = false } = {}) {
+function makeFixture(t, { helpers, sab = false, onInputCommandSnapshot } = {}) {
   const posts = [];
   let receive = null;
   const bus = createBus();
@@ -154,6 +154,7 @@ function makeFixture(t, { helpers, sab = false } = {}) {
     // Explicit local mode exercises the browser protocol with a deterministic
     // channel while the default injected/manual path remains directive-driven.
     clockMode: 'worker-local',
+    onInputCommandSnapshot,
     channelFactory: () => ({
       post(msg) { posts.push(msg); },
       onMessage(handler) { receive = handler; },
@@ -165,6 +166,22 @@ function makeFixture(t, { helpers, sab = false } = {}) {
   receive({ kind: 'ready', seq: posts[0].seq });
   return { lane, posts, state, receive, bus };
 }
+
+test('the worker facade requests full input rows only for an observer', t => {
+  const stock = makeFixture(t);
+  assert.equal(stock.posts[0].shipInputSnapshots, false);
+  stock.receive({ kind: 'clockTick', clockSequence: 1, inputPublishCount: 3 });
+  assert.equal(stock.lane.getDiagnostics().boundaryCaptureCount, 3);
+  stock.lane.close();
+
+  let observed = 0;
+  const traced = makeFixture(t, { onInputCommandSnapshot: () => { observed++; } });
+  assert.equal(traced.posts[0].shipInputSnapshots, true);
+  traced.receive({ kind: 'clockTick', clockSequence: 1, inputPublishCount: 1,
+    inputPublishes: [{ actualTick: 1, input: {} }] });
+  assert.equal(traced.lane.getDiagnostics().boundaryCaptureCount, 1);
+  assert.equal(observed, 1);
+});
 
 test('the main lane frees SAB reply cells before sending one cumulative ACK', t => {
   const f = makeFixture(t, { sab: true });
@@ -457,6 +474,7 @@ test('retained replies shed stale presentation events instead of marching to the
     first.commandAcks = [{ seq: 'a' }];
     first.storageOps = [{ op: 'put', key: 'sf.slot.1' }];
     first.inputPublishes = Array.from({ length: 100 }, (_, i) => ({ seq: i }));
+    first.inputPublishCount = 100;
     const second = reply(2, 400, 700);
     second.commandAcks = [{ seq: 'b' }];
 
@@ -467,6 +485,7 @@ test('retained replies shed stale presentation events instead of marching to the
     assert.equal(merged.events[2].p.seq, 190, 'the oldest ambient impact triggers are shed first');
     assert.equal(merged.events.at(-1).p.seq, 699, 'the newest triggers are kept for the next publish');
     assert.equal(merged.inputPublishes.length, 64, 'input snapshots are bounded to the newest tail');
+    assert.equal(merged.inputPublishCount, 100, 'shedding observer rows leaves the underlying count intact');
     assert.equal(merged.inputPublishes[0].seq, 36, 'stale input clones shed before live ones');
     assert.equal(merged.commandAcks.length, 2, 'command receipts are correctness data and never shed');
     assert.equal(merged.storageOps.length, 1, 'storage receipts are correctness data and never shed');
@@ -1200,6 +1219,8 @@ test('a budget-limited batch retains unexecuted ticks for later clock turns', { 
     heartbeat = setInterval(() => lane.runner.heartbeat(), 16);
     await waitFor(() => limited, 10000);
     assert.equal(limited.stepsExecuted, 1, 'the host yields after its expensive step');
+    assert.equal(limited.inputPublishCount, 1, 'the normal worker counted input attribution');
+    assert.equal(limited.inputPublishes, undefined, 'the normal worker shipped no full input graph');
     assert.ok(limited.clockAccumulator >= 1 / 60, 'at least one unexecuted tick is still owed');
     assert.ok(lane.getDiagnostics().workerClockLastDiagnostics.budgetDeferredSteps > 0, 'main can attribute the work limit');
   } finally {

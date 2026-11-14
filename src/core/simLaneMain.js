@@ -996,8 +996,8 @@ export function createSimLaneRuntime({
   }
 
   // ---- input boundary -------------------------------------------------------------
-  const inputSnapshots = createInputCommandSnapshotQueue(LANE_COMPLETED_TICK_CAPACITY);
   const snapshotObserver = typeof onInputCommandSnapshot === 'function' ? onInputCommandSnapshot : null;
+  const inputSnapshots = snapshotObserver ? createInputCommandSnapshotQueue(LANE_COMPLETED_TICK_CAPACITY) : null;
   let nextInputSequence = 0;
   let lastShippedTick = Number.isSafeInteger(state.tick) ? state.tick : 0;
   let inFlightSteps = 0;                // steps posted but not yet acked
@@ -1142,11 +1142,12 @@ export function createSimLaneRuntime({
     // (capture requires the slot to be the newest reserved). The main lane
     // runs the same publish→consume pair inside stepSimulation; here the
     // worker already stepped, so the pair replays at reply time.
-    if (Array.isArray(msg.inputPublishes)) {
-      for (const pub of msg.inputPublishes) {
+    const inputPublishes = msg.inputPublishes;
+    boundaryCaptureCount += msg.inputPublishCount ?? inputPublishes?.length ?? 0;
+    if (inputSnapshots && Array.isArray(inputPublishes)) {
+      for (const pub of inputPublishes) {
         const slotSeq = ++nextInputSequence;
         inputSnapshots.publish(slotSeq, pub.actualTick, lifecycleGeneration, pub.input);
-        boundaryCaptureCount++;
         const observerError = inputSnapshots.consume(slotSeq, snapshotObserver);
         if (observerError) snapshotObserverErrors++;
       }
@@ -2539,6 +2540,7 @@ export function createSimLaneRuntime({
     settings: canonicalClone(state.settings || {}),
     domainMirroring,
     bridgeAll: true,
+    shipInputSnapshots: snapshotObserver !== null,
     tacticalAI: true,
     viewport: viewportSize(),
     // The worker realm has no filesystem — the scenario contract the main lane

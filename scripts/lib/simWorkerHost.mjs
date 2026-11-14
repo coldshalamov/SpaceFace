@@ -2222,17 +2222,20 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       getSystem: (name) => runtime.getSystem(name),
     });
     // Wire-side input boundary: the worker captures the same fields the main
-    // lane's inputCommandSnapshots ring captures — shipped per stepped tick and
-    // replayed through the real ring main-side (see simLaneMain.js).
+    // lane's inputCommandSnapshots ring captures when an observer requests them.
+    // Live play needs only the newest input attribution and a capture count.
+    const shipInputSnapshots = msg.shipInputSnapshots !== false;
     host.inputPublishes = [];
     host.tickBoundary = {
       publishInputCommand(input, actualTick, activityStamp) {
-        host.inputPublishes.push({
-          actualTick,
-          inputSeq: Number.isSafeInteger(input && input._activitySeq) ? input._activitySeq : 0,
-          inputWallMs: Number.isFinite(activityStamp && activityStamp.wallMs) ? activityStamp.wallMs : 0,
-          input: canonicalClone(input),
-        });
+        host.lastInputSeq = Number.isSafeInteger(input?._activitySeq) ? input._activitySeq : 0;
+        host.lastInputWallMs = Number.isFinite(activityStamp?.wallMs) ? activityStamp.wallMs : 0;
+        if (shipInputSnapshots) {
+          host.inputPublishes.push({
+            actualTick, inputSeq: host.lastInputSeq, inputWallMs: host.lastInputWallMs,
+            input: canonicalClone(input),
+          });
+        }
       },
     };
 
@@ -2751,14 +2754,6 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         journalEnd = rebuild.end;
       }
     }
-    // Input attribution: the production lane's boundary publishes ride the
-    // wire (one per step); the newest publish's activity seq/wallMs is the
-    // completedTick's attribution, mirroring pendingInputCommandSeq main-side.
-    if (production && host.inputPublishes.length > 0) {
-      const lastPublish = host.inputPublishes[host.inputPublishes.length - 1];
-      host.lastInputSeq = lastPublish.inputSeq;
-      host.lastInputWallMs = lastPublish.inputWallMs;
-    }
     if (stepsExecuted > 0) {
       completedTick = makeCompletedTick(journalStart, journalEnd);
     }
@@ -2904,7 +2899,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       // Applied-envelope list ships only when the directive asks for it — the
       // commands probe's coverage evidence; zero per-tick wire cost otherwise.
       commandProbe: msg.commandProbe ? drain.applied : undefined,
-      inputPublishes: production ? host.inputPublishes.splice(0) : undefined,
+      inputPublishes: host.inputPublishes.length ? host.inputPublishes.splice(0) : undefined,
+      inputPublishCount: production ? stepsExecuted : undefined,
       storageOps: drainStorageOps(),
       entityVitals: production ? entityVitals : undefined,
       workMs: Number(workNs) / 1e6,

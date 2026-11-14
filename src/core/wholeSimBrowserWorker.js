@@ -509,6 +509,9 @@ function localMergeReply(previous, next) {
     if (!Array.isArray(previous[key])) previous[key] = [];
     previous[key].push(...incoming);
   }
+  if (Number.isSafeInteger(next?.inputPublishCount)) {
+    previous.inputPublishCount = (previous.inputPublishCount || 0) + next.inputPublishCount;
+  }
   localMergeAuxRows(previous, next);
   // Drop the oldest background impact effects first. The sim already consumed
   // them, but the main bus still needs save/run lifecycle events and player hits.
