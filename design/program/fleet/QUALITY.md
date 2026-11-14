@@ -102,7 +102,12 @@ intervals and zero stale-ACK watchdog recoveries during active round two. Simula
 0.56 s per wall second. Opened the flight PNG and confirmed clean shutdown. The baseline
 attempt had its Armory launch click intercepted by the boot overlay. The corrected harness
 waits for that overlay to lift. Its paired verification is queued with the Adventure retry.
-The candidate run uses a temporary Electron profile and a diagnostic round-two entry.
+The candidate run uses a temporary Electron profile and a diagnostic round-two entry. It
+yielded four independent worker samples during reply-age episodes. All four had the same tick
+as the main mirror, a pending wake, and no backpressure or heartbeat hold. A completed 15 s
+worker window measured 31.9 ms p50 and 39.9 ms p95 per authoritative step. It shed 472 of 903
+owed ticks. That window's lost flight time came with an overloaded worker, even though the
+original recording also contains transport watchdog recoveries.
 
 - `aa5b5517ed0c` unified main and worker shared-memory layout sizing. The old main allocation
   silently prevented the envelope ring from binding. Activating the ring exposed a second issue
