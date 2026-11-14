@@ -1203,7 +1203,8 @@ export function createSimLaneRuntime({
         if (ev && typeof ev.t === 'string') {
           const eventStartedAtMs = nowMs();
           try {
-            const p = remapEventPayload(ev.p);
+            const p = ev.t === 'physics:impact' && ev.nativeImpact === true
+              ? ev.p : remapEventPayload(ev.p);
             if (ev.t === 'save:store-synced') {
               // Main-owned achievement mirrors must honor the worker's definitive boot probe
               // before synchronous store-synced listeners can schedule another mirror.
@@ -1237,19 +1238,22 @@ export function createSimLaneRuntime({
             const prevMode = state.mode;
             const world = state.world;
             const prevSerial = world ? world.enterSerial : undefined;
-            if (emitMode != null) state.mode = emitMode;
-            if (emitSerial != null && world) world.enterSerial = emitSerial;
+            const stampMode = emitMode != null;
+            const stampSerial = emitSerial != null && world;
+            if (stampMode && prevMode !== emitMode) state.mode = emitMode;
+            if (stampSerial && prevSerial !== emitSerial) world.enterSerial = emitSerial;
             // Type-scoped echo suppression (the worker-side suppressedEmitTypes
             // twin): while THIS type replays, its re-emit is the echo and must
             // not cross back — a different forwarded type raised inside the
             // same listener (dock:committed → ui:buy cascades) still ships.
-            suppressedForwardTypes.set(ev.t, (suppressedForwardTypes.get(ev.t) | 0) + 1);
+            const previousSuppression = suppressedForwardTypes.get(ev.t) | 0;
+            suppressedForwardTypes.set(ev.t, previousSuppression + 1);
             try {
               bus.emit(ev.t, p);
             } finally {
-              suppressedForwardTypes.set(ev.t, (suppressedForwardTypes.get(ev.t) | 0) - 1);
-              if (emitMode != null) state.mode = prevMode;
-              if (emitSerial != null && world) world.enterSerial = prevSerial;
+              suppressedForwardTypes.set(ev.t, previousSuppression);
+              if (stampMode && state.mode !== prevMode) state.mode = prevMode;
+              if (stampSerial && world.enterSerial !== prevSerial) world.enterSerial = prevSerial;
             }
           } catch (_) { boundaryErrorCount++; }
           const eventMs = Math.max(0, nowMs() - eventStartedAtMs);

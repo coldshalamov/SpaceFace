@@ -1360,7 +1360,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       }
       return;
     }
-    host.pendingEvents.push({
+    const event = {
       t: type,
       p: projected ? projected.flat : nativeImpact,
       lane: projected ? projected.lane : 'sim',
@@ -1370,7 +1370,11 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       // event minted mid-batch (a boot sector:enter replayed under 'flight').
       m: host.state ? host.state.mode : undefined,
       es: host.state && host.state.world ? host.state.world.enterSerial : undefined,
-    });
+    };
+    // Native impact snapshots contain scalar fields and two numeric vectors.
+    // Authored/synthetic impacts still use normal entity-reference projection.
+    if (nativeImpact !== undefined) event.nativeImpact = true;
+    host.pendingEvents.push(event);
     // Paused saves finish on later task turns, after the command's tick reply. Their real
     // bytes and terminal event need a transport wake even when no sim timer is running.
     if (type === 'save:completed' || type === 'save:loaded' || type === 'save:error' || type === 'save:durabilitySettled') onAsyncSaveReady?.();

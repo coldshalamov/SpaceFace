@@ -147,6 +147,43 @@ test('worker ready and tick storage relays precede synchronous save listeners', 
   assert.equal(storage.getItem('outside.key'), 'keep', 'scoped clear preserves unrelated localStorage');
 });
 
+test('impact replay keeps scalar receipts, synthetic references, and emit-time context in order', async (t) => {
+  const state = { entities: new Map(), entityList: [], settings: {}, meta: { seed: 1 },
+    tick: 0, simTime: 0, accumulator: 0, timeScale: 1, mode: 'flight',
+    ui: { screenStack: [] }, world: { enterSerial: 7 } };
+  const bus = createBus();
+  const seen = [];
+  bus.on('physics:impact', payload => {
+    seen.push([payload, state.mode, state.world.enterSerial]);
+    state.mode = 'paused';
+    state.world.enterSerial++;
+  });
+  bus.on('save:completed', () => seen.push([null, state.mode, state.world.enterSerial]));
+  const posts = [];
+  let receive;
+  const lane = createSimLaneRuntime({ state, helpers: {}, registry: {}, bus,
+    flags: { lane: 'worker', sab: false, warnings: [] }, clockMode: 'worker-local',
+    channelFactory: () => ({ post: message => posts.push(message), onMessage: handler => { receive = handler; }, terminate() {} }),
+  });
+  t.after(() => lane.close());
+  receive({ kind: 'ready', seq: posts[0].seq, stateTick: 0, domainUpdates: [] });
+  await lane.readyPromise;
+  const physical = { tick: 1, aId: 1, bId: 2, dp: 4, pos: { x: 3, z: 8 }, normal: { x: 1, z: 0 } };
+  const synthetic = { source: { entityRef: 1, occupantGeneration: 1 } };
+  receive({ kind: 'clockTick', stateTick: 1, simTime: 1 / 60, lifecycleGeneration: 0, domainUpdates: [],
+    spawnInfos: [{ entityId: 1, generation: 1, occupantGeneration: 1, type: 'ship', data: {} }], events: [
+      { t: 'physics:impact', nativeImpact: true, p: physical, m: 'flight', es: 7 },
+      { t: 'save:completed', m: 'flight', es: 7 },
+      { t: 'physics:impact', p: synthetic, m: 'loading', es: 6 },
+    ] });
+  assert.equal(seen[0][0], physical);
+  assert.deepEqual(seen.map(([, mode, serial]) => [mode, serial]), [['flight', 7], ['flight', 7], ['loading', 6]]);
+  assert.ok(state.entities.get(1));
+  assert.equal(seen[2][0].source, state.entities.get(1));
+  assert.equal(state.mode, 'flight');
+  assert.equal(state.world.enterSerial, 7);
+});
+
 test('worker load keeps only validated supplied fallback keys beside the local snapshot', async (t) => {
   const storage = memoryStorage();
   storage.setItem('sf.save.index', 'local-index');
