@@ -56,6 +56,7 @@ import {
   SWARM_FLOOR_CRATE_LABEL,
   swarmFloorPlanFor,
   swarmPadNocturne,
+  swarmPadBody,
   wallGunLabel,
 } from '../data/swarmFloor.js';
 import {
@@ -116,6 +117,11 @@ function weaponName(defId) {
  * The hosted director. ctx is the system ctx ({ state, bus, helpers, registry }); arm/update/
  * teardown are called from the survivalArena slot.
  */
+function padBodyData(kind) {
+  const body = swarmPadBody(kind);
+  return body ? { packagedPropFile: body.file, packagedPropSlot: body.slot, packagedPropRadius: body.radius } : {};
+}
+
 export function createSwarmFloorDirector(ctx) {
   const bus = ctx && ctx.bus;
   const helpers = (ctx && ctx.helpers) || {};
@@ -326,6 +332,7 @@ export function createSwarmFloorDirector(ctx) {
         playerCollectOnly: true,
         swarmFloorPad: rec,
         nocturne: swarmPadNocturne(rec.kind),
+        ...padBodyData(rec.kind),
       },
     });
     if (!entity || entity.id == null) return null;

@@ -114,17 +114,39 @@ export function swarmFloorKeepClear(arenaId) {
  * also carry a short haze volume (the engine holds four at once; the furnace takes the fourth).
  * Offsets are metres above the pad. Phones skip NOCTURNE; the pad is still readable without it.
  */
+// The engine keeps three resident point lights for the whole screen, shared with explosion flashes
+// (priority 2-3). A shop or the furnace beside the player outranks a distant one by priority and
+// importance; plates and gate posts are priority 1 and only show when nothing hotter is near.
 const PAD_HAZE = Object.freeze({ radii: Object.freeze([5, 2.2, 5]), density: 0.0016, color: 0xffc58a, anisotropy: 0.3, extinction: 1, noise: 0.3 });
 const FORGE_HAZE = Object.freeze({ radii: Object.freeze([6, 2.4, 6]), density: 0.0022, color: 0xff9a5a, anisotropy: 0.4, extinction: 1, noise: 0.4 });
 // Only the wall guns, the Forge and the furnace take an 'industrial' composition (haze + a colour probe;
 // the engine holds four probes). The rest use 'dock': a light and nothing else.
 const PAD_NOCTURNE = Object.freeze({
-  wall_gun: Object.freeze({ profile: 'industrial', lights: Object.freeze([Object.freeze({ id: 'shop', profile: 'shop_amber', offset: Object.freeze([0, 22, 0]), intensity: 3200, range: 150 })]), medium: PAD_HAZE }),
-  crate: Object.freeze({ profile: 'dock', lights: Object.freeze([Object.freeze({ id: 'shop', profile: 'shop_amber', offset: Object.freeze([0, 20, 0]), intensity: 2600, range: 125 })]), medium: false }),
-  forge: Object.freeze({ profile: 'industrial', lights: Object.freeze([Object.freeze({ id: 'shop', profile: 'forge_hot', offset: Object.freeze([0, 24, 0]), intensity: 5600, range: 190 })]), medium: FORGE_HAZE }),
-  tap: Object.freeze({ profile: 'dock', lights: Object.freeze([Object.freeze({ id: 'shop', profile: 'work_cyan', offset: Object.freeze([0, 20, 0]), intensity: 2000, range: 130 })]), medium: false }),
+  wall_gun: Object.freeze({ profile: 'industrial', lights: Object.freeze([Object.freeze({ id: 'shop', profile: 'shop_amber', offset: Object.freeze([0, 22, 0]), intensity: 22000, range: 190, priority: 3, importance: 1.5 })]), medium: PAD_HAZE }),
+  crate: Object.freeze({ profile: 'dock', lights: Object.freeze([Object.freeze({ id: 'shop', profile: 'shop_amber', offset: Object.freeze([0, 20, 0]), intensity: 16000, range: 160, priority: 3, importance: 1.5 })]), medium: false }),
+  forge: Object.freeze({ profile: 'industrial', lights: Object.freeze([Object.freeze({ id: 'shop', profile: 'forge_hot', offset: Object.freeze([0, 24, 0]), intensity: 40000, range: 250, priority: 3, importance: 1.8 })]), medium: FORGE_HAZE }),
+  tap: Object.freeze({ profile: 'dock', lights: Object.freeze([Object.freeze({ id: 'shop', profile: 'work_cyan', offset: Object.freeze([0, 20, 0]), intensity: 12000, range: 150 })]), medium: false }),
 });
 
 export function swarmPadNocturne(kind) {
   return PAD_NOCTURNE[kind] || null;
+}
+
+/**
+ * Each shop draws an existing authored body instead of the generic pickup gem (render reads
+ * `data.packagedPropFile / packagedPropSlot / packagedPropRadius`, the same packaged-prop route the
+ * 47-A story props use; the model fits a sphere of `radius` WU). Nothing new is authored here:
+ *   wall gun - the dual turret from the weapons set      Crate - the cargo container
+ *   Forge    - the drill platform (nothing in the repo is a furnace; see the Codex findings)
+ *   Tap      - the slurry tank with its pipe run
+ */
+const PAD_BODY = Object.freeze({
+  wall_gun: Object.freeze({ file: 'weapons/weapon_turret_dual.glb', slot: 'place', radius: 12 }),
+  crate: Object.freeze({ file: 'pods/pod_cargo_container.glb', slot: 'pod', radius: 12 }),
+  forge: Object.freeze({ file: 'places/place_drill_platform.glb', slot: 'place', radius: 15 }),
+  tap: Object.freeze({ file: 'places/place_slurry_tank.glb', slot: 'place', radius: 11 }),
+});
+
+export function swarmPadBody(kind) {
+  return PAD_BODY[kind] || null;
 }
