@@ -169,6 +169,16 @@ ${P} .sxb-vital__acts .orr-act__cost { font-family:${NUM} !important; font-size:
   ${P} .sxb-crown .sxb-vitals > .sxb-vital--note { padding-left:8px !important; box-sizing:border-box !important; }
   ${P} .sxb-crown .sxb-vital--note .sxb-vital__value { white-space:nowrap !important; }
   ${P} .sxb-crown .sxb-vital--note .sxb-vital__acts { flex-wrap:nowrap !important; }
+  /* ui-polish-492: the cells ran edge to edge, so HULL's 86 / 100 printed against LEDGER and the hold bar ran into
+     MUNITIONS. Each cell stops 10px short of its neighbour, and the right-hand cells (ledger, munitions) open on a hairline. */
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--hull, .sxb-vital--fuel, .sxb-vital--hold) { padding-right:10px !important; box-sizing:border-box !important; }
+  ${P} .sxb-crown .sxb-vital--hull .sxb-vital__value { right:10px !important; }
+  ${P} .sxb-crown .sxb-vitals > :is(.sxb-vital--note, .sxb-vital--muni) { padding-left:10px !important; box-sizing:border-box !important;
+    border-left:1px solid rgb(236 230 216 / .16) !important; }
+  ${P} .sxb-crown .sxb-vitals > .sxb-vital--muni { padding-left:8px !important; }
+  /* hold's reading is the shortest, so it gives munitions a column-and-a-half for its label and value plus the hairline */
+  ${P} .sxb-crown .sxb-vitals { grid-template-columns:repeat(20, minmax(0, 1fr)) !important;
+    grid-template-areas:"hull hull hull hull hull hull hull hull hull hull note note note note note note note note note note" "fuel fuel fuel fuel fuel fuel hold hold hold hold hold muni muni muni muni muni muni muni muni muni" !important; }
   ${P} .sxb-berth.dp-frame__head { -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 2px), transparent) !important;
     mask-image:linear-gradient(to bottom, #000 calc(100% - 2px), transparent) !important; padding-bottom:2px !important; }
 }
