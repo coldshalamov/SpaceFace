@@ -33,6 +33,11 @@ test('generic Reach and Free Frontier ships do not inherit Borrowed Time', () =>
   const otherKestrel = makeShipEntitySpec('ship_kestrel', { team: 0, factionId: 'faction_free' });
   expectDecal(otherKestrel, undefined, 'another Kestrel is not identified as the player by team');
   assert.equal(resolvePalette(otherKestrel).isPlayer, false);
+  const paintedKestrel = makeShipEntitySpec('ship_kestrel', {
+    team: 0, factionId: 'faction_free', appearance: { hullColor: '#334455' },
+  });
+  expectDecal(paintedKestrel, 'none', 'a partial NPC paint record does not inherit the starter decal');
+  assert.equal(paintedKestrel.data.appearance.hullColor, '#334455');
 });
 
 test('new and legacy player Kestrels keep their own default', () => {

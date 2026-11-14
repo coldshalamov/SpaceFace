@@ -31,6 +31,7 @@ import { resolveTravelCeiling } from '../core/flight/propulsionKernel.js';
 import {
   defaultNonStarterShipAppearance,
   defaultShipAppearance,
+  normalizeNonStarterShipAppearance,
   normalizeShipAppearance,
   shipAppearanceSignature,
   SHIP_DECALS,
@@ -1914,7 +1915,11 @@ export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings
       // read tier + place visible props. Current starter weapons are explicit fittings; legacy
       // fallback weapons are still backfilled here so old saves show the barrel they can fire.
       fittings: fittingsForView(shipDef, fittings, weapons),
-      appearance: appearance ? normalizeShipAppearance(appearance, shipDef.id) : null,
+      appearance: appearance
+        ? (shipDef.id === 'ship_kestrel' && !isPlayer
+          ? normalizeNonStarterShipAppearance(appearance, shipDef.id)
+          : normalizeShipAppearance(appearance, shipDef.id))
+        : null,
       // Worker presentation retains spawn data when control moves between existing entities.
       // Record the legacy Kestrel's original personal-mark default on the physical hull.
       ...(shipDef.id === 'ship_kestrel' && !appearance ? { kestrelPersonalMarkAtSpawn: !!isPlayer } : {}),
