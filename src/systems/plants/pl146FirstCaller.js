@@ -147,6 +147,12 @@ export function createPl146FirstCaller() {
     },
 
     _resetVisit() {
+      // A sector transition must not orphan the visitor beacon: a 'plants_first_caller_visitor'
+      // hull left in the world keeps being found (and warmed) by PL-373's lamp scan all session.
+      if (this._visitor?.id != null) {
+        const rm = this.helpers?.removeEntity;
+        if (typeof rm === 'function') rm(this._visitor.id);
+      }
       this._visitor = null;
     },
 

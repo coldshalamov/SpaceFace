@@ -27,6 +27,7 @@ export const DUTCH_TUNING = Object.freeze({
   letGoRangeWu: 260,        // leaving this far from the anchor = letting go
   spinUpImpulse: 220,       // tangential impulse on the anchor while both hold
   cooldownS: 30,            // per anchor releaseId
+  cooldownCap: 16,          // cooldown ledger bound; FIFO evict on insert
   memoryCap: 4,             // active clip ledger entries
 });
 
@@ -59,7 +60,7 @@ export const dutchAfterYouPlant = {
     this._unsubs = [];
     this._ownedIds = new Set();   // entity ids this module spawned
     this._clips = new Map();      // releaseId -> { anchorId, propId, at, heldS }
-    this._cooldowns = new Map();  // releaseId -> simTime (bounded by memoryCap)
+    this._cooldowns = new Map();  // releaseId -> simTime (bounded by tuning.cooldownCap)
     this._accum = 0;
     if (!this.bus || typeof this.bus.on !== 'function') return;
     const on = (event, fn) => {
@@ -193,6 +194,10 @@ export const dutchAfterYouPlant = {
       },
     });
     if (!prop) return;
+    if (!this._cooldowns.has(releaseId) && this._cooldowns.size >= DUTCH_TUNING.cooldownCap) {
+      const oldest = this._cooldowns.keys().next().value;   // FIFO: the oldest release cools out
+      this._cooldowns.delete(oldest);
+    }
     this._cooldowns.set(releaseId, now);
     this._clips.set(releaseId, { anchorId: p.payloadId, propId: prop.id, at: now, heldS: 0 });
     this.bus.emit('audio:cue', { id: 'confirm', position: pos, gain: 0.9, rate: 1.0 });

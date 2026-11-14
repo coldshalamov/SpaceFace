@@ -12,6 +12,8 @@
 // - The "cutters hold" is a marked state plus the flare; cutting is judged from real
 //   pickup/salvage receipts. The lamps-find-you reaction uses the lamp flash seam
 //   (data.lampsFlashing + data.lampFlashUntil) on the cutters present.
+// - The hold is player-visible: each marked cutter carries a 'HOLDING' swarmFloorPad for
+//   the minute, swept when the hold expires (the pl259/pl267 chalk expiry discipline).
 
 import { hash32 } from '../../core/rng.js';
 
@@ -58,6 +60,7 @@ export const redMinutePlant = {
     this.helpers = ctx.helpers || {};
     this._unsubs = [];
     this._ownedIds = new Set();
+    this._heldPads = new Map();   // cutter id -> holdUntil (bounded by memoryCap)
     this._flareId = null;
     this._wasWindow = false;
     this._violationKey = null;
@@ -81,9 +84,10 @@ export const redMinutePlant = {
     this._accum += dt;
     if (this._accum < 1) return;   // 1 Hz
     this._accum = 0;
+    const now = Number.isFinite(s.simTime) ? s.simTime : 0;
+    this._sweepExpiredHolds(now);
     const anchor = this._poi() || this._station();
     if (!anchor) return;
-    const now = Number.isFinite(s.simTime) ? s.simTime : 0;
     const phase = redMinutePhase(s.meta && s.meta.seed, RED_MINUTE_TUNING.sectorId);
     const inWindow = redMinuteWindow(now, phase);
     this._ensureFlare(anchor);
@@ -94,6 +98,8 @@ export const redMinutePlant = {
       for (const c of cutters) {
         if (!c.data) c.data = {};
         c.data.plants119HoldUntil = now + RED_MINUTE_TUNING.minuteS;
+        c.data.swarmFloorPad = { label: 'HOLDING' };   // the beat, visible through the pad layer
+        this._heldPads.set(c.id, c.data.plants119HoldUntil);
       }
       this._playerSeenWhole = playerNear;
       this._violationKey = null;
@@ -162,16 +168,35 @@ export const redMinutePlant = {
   _cutters(anchor) {
     const s = this.state;
     const out = [];
+    // coreSystem puts every hull in entityList AND entities: count each cutter once.
+    const seenIds = new Set();
     const list = Array.isArray(s.entityList) ? s.entityList : [];
     const push = (e) => {
       if (out.length >= RED_MINUTE_TUNING.memoryCap) return;
-      if (isCutter(e, s.playerId) && e.pos && this._within(e.pos, anchor.pos, RED_MINUTE_TUNING.gravesRangeWu)) out.push(e);
+      if (!e || e.id == null || seenIds.has(e.id)) return;
+      if (isCutter(e, s.playerId) && e.pos && this._within(e.pos, anchor.pos, RED_MINUTE_TUNING.gravesRangeWu)) {
+        seenIds.add(e.id);
+        out.push(e);
+      }
     };
     for (const e of list) push(e);
     if (s.entities && typeof s.entities.values === 'function') {
       for (const e of s.entities.values()) push(e);
     }
     return out;
+  },
+
+  /** The HOLDING pads come off when the minute expires (the pl259/pl267 chalk sweep). */
+  _sweepExpiredHolds(now) {
+    if (!this._heldPads || this._heldPads.size === 0) return;
+    for (const [id, until] of this._heldPads) {
+      if (Number.isFinite(until) && now < until) continue;
+      this._heldPads.delete(id);
+      const c = this.state && this.state.entities ? this.state.entities.get(id) : null;
+      if (c && c.data && c.data.swarmFloorPad && c.data.swarmFloorPad.label === 'HOLDING') {
+        delete c.data.swarmFloorPad;
+      }
+    }
   },
 
   _ensureFlare(anchor) {
@@ -236,6 +261,7 @@ export const redMinutePlant = {
     this._playerSeenWhole = false;
     const cutters = this._cutters(anchor);
     for (const c of cutters) {
+      if (!c.data) c.data = {};
       c.data.lampsFlashing = true;
       c.data.lampFlashUntil = now + RED_MINUTE_TUNING.cutterFlashS;
     }
@@ -259,6 +285,15 @@ export const redMinutePlant = {
       for (const id of this._ownedIds) removeEntity(id);
     }
     this._ownedIds = new Set();
+    if (this._heldPads) {
+      for (const id of this._heldPads.keys()) {
+        const c = this.state && this.state.entities ? this.state.entities.get(id) : null;
+        if (c && c.data && c.data.swarmFloorPad && c.data.swarmFloorPad.label === 'HOLDING') {
+          delete c.data.swarmFloorPad;
+        }
+      }
+    }
+    this._heldPads = new Map();
     this._flareId = null;
     this._wasWindow = false;
     this._violationKey = null;

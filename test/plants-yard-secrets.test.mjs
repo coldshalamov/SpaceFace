@@ -233,6 +233,25 @@ test('PL-146 save:loaded re-derives the claim from the restored ledger — a for
   assertNoListeners(h.bus);
 });
 
+test('PL-146 mid-visit sector:exit removes the visitor beacon — no orphan hull for PL-373 to warm', () => {
+  const h = harness({ state: { simTime: 0 } });
+  const mod = pl146FirstCaller;
+  mod.init(h);
+  h.bus.emit('claim:claimed', { body: { id: 'b1', x: 0, z: 0 } });
+  h.state.simTime = NIGHT;
+  mod.update(0.5, h.state); // the first call spawns the circling hauler
+  const visitor = h.helpers.spawned.find((e) => e.data.plantsPl146Visitor === true);
+  assert.ok(visitor, 'visitor beacon spawned');
+  assert.equal(h.state.entities.has(visitor.id), true, 'visitor present mid-visit');
+  // Leave the sector mid-visit: the beacon goes with the visit, it is not orphaned.
+  h.bus.emit('sector:exit', { sectorId: 'sector_tethys_junction' });
+  assert.equal(h.state.entities.has(visitor.id), false, 'visitor beacon removed, not orphaned in entities');
+  assert.ok(h.helpers.removed.includes(visitor.id), 'removeEntity carried the visitor id');
+  assert.equal(mod._visitor, null, 'the visit is reset');
+  mod.destroy();
+  assertNoListeners(h.bus);
+});
+
 // ---------- PL-147 The first part ----------
 
 test('PL-147 the works makes one wrong-size part; scrapping it changes nothing', () => {

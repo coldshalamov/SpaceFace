@@ -288,6 +288,39 @@ test('PL-116 holding the standoff spins the pair; cooldown and cap hold', () => 
   dutchAfterYouPlant.destroy();
 });
 
+test('PL-116 the cooldown ledger stays bounded: FIFO evict at cooldownCap, newest still works', () => {
+  const state = makeState({ world: { currentSectorId: DUTCH_TUNING.sectorId } });
+  setupDutch(state);
+  const { rec, bus, helpers } = makeHarness(state);
+  dutchAfterYouPlant.init({ state, bus, helpers });
+  const player = state.entities.get('p1');
+
+  // Each release: throw, then let go (beyond letGoRangeWu) so the clip resolves and the
+  // next distinct releaseId can arm — releaseIds are unique per throw, so the cooldown
+  // ledger is what would grow without the cap.
+  const farPos = { x: -250, z: 480 };   // 270 wu off the anchor: waved through on the sweep
+  for (let i = 0; i < DUTCH_TUNING.cooldownCap + 4; i++) {
+    player.pos = { ...farPos };
+    bus.emit('massline:throw', { releaseId: `rel-${i}`, payloadId: 'anc' });
+    sweep(dutchAfterYouPlant, state, 1, 0.5);
+  }
+  assert.equal(dutchAfterYouPlant._cooldowns.size, DUTCH_TUNING.cooldownCap, 'Map stays at the cap');
+  assert.equal(dutchAfterYouPlant._cooldowns.has('rel-0'), false, 'oldest release evicted');
+  assert.equal(
+    Number.isFinite(dutchAfterYouPlant._cooldowns.get(`rel-${DUTCH_TUNING.cooldownCap + 3}`)),
+    true,
+    'newest release still recorded',
+  );
+
+  // A fresh throw past the bounded ledger still arms.
+  const before = eventsOf(rec, PLANTS_DUTCH_EVENT, 'clipOn').length;
+  bus.emit('massline:throw', { releaseId: 'rel-fresh', payloadId: 'anc' });
+  const fresh = eventsOf(rec, PLANTS_DUTCH_EVENT, 'clipOn');
+  assert.equal(fresh.length, before + 1, 'a fresh throw still clips on');
+  assert.equal(fresh[fresh.length - 1].payload.releaseId, 'rel-fresh');
+  dutchAfterYouPlant.destroy();
+});
+
 // ---- PL-117 Magpie reads the hold ------------------------------------------------------------
 
 test('PL-117 Magpie reads hold items on open radio; empty hold: "Nothing. Bold."', () => {
@@ -414,6 +447,67 @@ test('PL-119 waiting it out with the cutters ends the minute clean', () => {
   assert.equal(commsOf(rec, "Minute's done. Cut clean.").length, 1);
   const flare = rec.spawns.find((s) => s.data && s.data.storyPropKind === 'seal_flare');
   assert.equal(flare.data.swarmFloorPad.label, 'SEAL FLARE', 'pad restores after the minute');
+  redMinutePlant.destroy();
+});
+
+test('PL-119 each cutter counts once: coreSystem lists every hull in BOTH collections (regression)', () => {
+  const state = makeState({ simTime: 500, world: { currentSectorId: RED_MINUTE_TUNING.sectorId } });
+  const phase = redMinutePhase(state.meta.seed, RED_MINUTE_TUNING.sectorId);
+  assert.ok(redMinuteWindow(500, phase), 'fixture time sits inside the minute');
+  fixtureEntity(state, 'poi_hulk', 'derelict', { x: 1000, z: 700 }, { poiId: RED_MINUTE_TUNING.poiId });
+  // fixtureEntity registers every hull in entities AND entityList — exactly the coreSystem shape.
+  const a = fixtureEntity(state, 'civ1', 'ship', { x: 1040, z: 700 }, { name: 'cutter a' });
+  const b = fixtureEntity(state, 'civ2', 'ship', { x: 960, z: 700 }, { name: 'cutter b' });
+  assert.ok(state.entities.get('civ1') === a && state.entityList.includes(a), 'cutter a sits in both collections');
+  assert.ok(state.entities.get('civ2') === b && state.entityList.includes(b), 'cutter b sits in both collections');
+  makePlayer(state, { x: 1080, z: 700 });
+  const { rec, bus, helpers } = makeHarness(state);
+  redMinutePlant.init({ state, bus, helpers });
+
+  sweep(redMinutePlant, state, 1, 1);            // window rising edge
+  const hold = eventsOf(rec, PLANTS_RED_MINUTE_EVENT, 'holdStart');
+  assert.equal(hold.length, 1);
+  assert.equal(hold[0].payload.cutters, 2, 'two cutters reported once each, not twice each');
+  bus.emit('pickup:collected', { id: 'p1', pos: { x: 1010, z: 700 } });
+  const cutting = eventsOf(rec, PLANTS_RED_MINUTE_EVENT, 'cutting');
+  assert.equal(cutting.length, 1);
+  assert.equal(cutting[0].payload.cutters, 2, 'the lamps-find-you report dedupes too');
+  redMinutePlant.destroy();
+});
+
+test('PL-119 memoryCap marks memoryCap UNIQUE cutters, not half of them', () => {
+  const state = makeState({ simTime: 500, world: { currentSectorId: RED_MINUTE_TUNING.sectorId } });
+  fixtureEntity(state, 'poi_hulk', 'derelict', { x: 1000, z: 700 }, { poiId: RED_MINUTE_TUNING.poiId });
+  for (let i = 0; i < RED_MINUTE_TUNING.memoryCap + 1; i++) {
+    fixtureEntity(state, `civ${i}`, 'ship', { x: 1000 + i * 8, z: 700 }, { name: `cutter ${i}` });
+  }
+  makePlayer(state, { x: 1400, z: 700 });
+  const { rec, bus, helpers } = makeHarness(state);
+  redMinutePlant.init({ state, bus, helpers });
+  sweep(redMinutePlant, state, 1, 1);
+  const hold = eventsOf(rec, PLANTS_RED_MINUTE_EVENT, 'holdStart')[0];
+  assert.equal(hold.payload.cutters, RED_MINUTE_TUNING.memoryCap, 'the cap counts unique hulls');
+  let marked = 0;
+  for (let i = 0; i < RED_MINUTE_TUNING.memoryCap + 1; i++) {
+    if (state.entities.get(`civ${i}`).data.plants119HoldUntil > 0) marked += 1;
+  }
+  assert.equal(marked, RED_MINUTE_TUNING.memoryCap, 'memoryCap unique cutters marked, not memoryCap/2');
+  redMinutePlant.destroy();
+});
+
+test('PL-119 the hold is player-visible: cutters carry a HOLDING pad, swept when it expires', () => {
+  const state = makeState({ simTime: 500, world: { currentSectorId: RED_MINUTE_TUNING.sectorId } });
+  fixtureEntity(state, 'poi_hulk', 'derelict', { x: 1000, z: 700 }, { poiId: RED_MINUTE_TUNING.poiId });
+  const cutter = fixtureEntity(state, 'civ1', 'ship', { x: 1040, z: 700 }, { name: 'cutter' });
+  makePlayer(state, { x: 1080, z: 700 });
+  const { rec, bus, helpers } = makeHarness(state);
+  redMinutePlant.init({ state, bus, helpers });
+  sweep(redMinutePlant, state, 1, 1);            // window rising edge
+  assert.equal(cutter.data.plants119HoldUntil > 0, true, 'the hold stamp stays (tests read it)');
+  assert.equal(cutter.data.swarmFloorPad && cutter.data.swarmFloorPad.label, 'HOLDING', 'the beat is visible through the pad layer');
+  // Sit past the hold: the pad is swept at expiry (the pl259/pl267 chalk discipline).
+  sweep(redMinutePlant, state, RED_MINUTE_TUNING.minuteS + 3, 1);
+  assert.equal(cutter.data.swarmFloorPad, undefined, 'pad gone after the hold expires');
   redMinutePlant.destroy();
 });
 

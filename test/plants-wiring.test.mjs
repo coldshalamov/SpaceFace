@@ -84,6 +84,60 @@ test('traffic.js sources all 20 ops modules and spreads them into the reaction o
   assert.ok(wired.includes('this._stepPerspectiveFind(state, plantsPlayer)'), 'perspective stepper wired');
 });
 
+// ---- determinism smoke ----------------------------------------------------------------------
+
+// The banned ambient-time tokens every plants module header declares against. `window.` /
+// `document.` use a lookbehind so data fields literally named `window` (e.g. row.window.x)
+// are not mistaken for the DOM globals.
+const AMBIENT_TOKENS = [
+  ['Math.random(', /(?<![\w$.])Math\.random\(/],
+  ['Date.now(', /(?<![\w$.])Date\.now\(/],
+  ['new Date(', /(?<![\w$.])new Date\(/],
+  ['performance.now(', /(?<![\w$.])performance\.now\(/],
+  ['window.', /(?<![\w$.])window\./],
+  ['document.', /(?<![\w$.])document\./],
+];
+
+test('determinism smoke: zero ambient-time/DOM tokens in any plants module source (recursive)', () => {
+  const files = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, entry.name);
+      if (entry.isDirectory()) walk(p);
+      else if (entry.name.endsWith('.js')) files.push(p);
+    }
+  };
+  walk(PLANTS_DIR);
+  assert.ok(files.length >= 200, `walked the whole bank incl. mercies/ (${files.length} files)`);
+
+  const hits = [];
+  for (const file of files) {
+    const rel = file.slice(PLANTS_DIR.length + 1);
+    const lines = readFileSync(file, 'utf8').split('\n');
+    let inBlock = false;   // inside a /* ... */ span (multi-line JSDoc is common in the bank)
+    lines.forEach((raw, i) => {
+      let line = raw;
+      if (inBlock) {
+        const close = line.indexOf('*/');
+        if (close === -1) return;
+        inBlock = false;
+        line = line.slice(close + 2);
+      }
+      if (/^\s*\/\//.test(line)) return;   // line comments: every header QUOTES the ban
+      const open = line.indexOf('/*');
+      if (open !== -1) {
+        const close = line.indexOf('*/', open);
+        if (close === -1) { inBlock = true; line = line.slice(0, open); }
+        else line = line.slice(0, open) + line.slice(close + 2);
+      }
+      for (const [token, re] of AMBIENT_TOKENS) {
+        if (re.test(line)) hits.push(`${rel}:${i + 1} → ${token} in ${JSON.stringify(line.trim().slice(0, 140))}`);
+      }
+    });
+  }
+  assert.deepEqual(hits, [], `ambient-time/DOM tokens found (file:line):\n${hits.join('\n')}`);
+});
+
 test('plantsRuntime registers every standalone plant module (116)', () => {
   const files = [
     ...readdirSync(PLANTS_DIR).filter((f) => f.endsWith('.js')).map((f) => f),
