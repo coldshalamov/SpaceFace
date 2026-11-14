@@ -144,10 +144,16 @@ async function startServer() {
 async function clickButton(page, label) {
   return page.evaluate((wanted) => {
     const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
+    // The accessible name is the aria-label when set (the title doors show
+    // "Adventure"/"Swarm" while their core names stay "New Game"/"Continue");
+    // otherwise the visible text.
+    const nameOf = (x) => norm(x.getAttribute('aria-label')) || norm(x.textContent);
     const all = [...document.querySelectorAll('button')].filter(x =>
       x.getClientRects().length && getComputedStyle(x).visibility !== 'hidden'
       && !x.disabled && x.getAttribute('aria-disabled') !== 'true');
-    const b = all.find((x) => norm(x.textContent) === norm(wanted)) || all.find((x) => norm(x.textContent).includes(norm(wanted)));
+    const b = all.find((x) => nameOf(x) === norm(wanted))
+      || all.find((x) => nameOf(x).includes(norm(wanted)))
+      || all.find((x) => norm(x.textContent).includes(norm(wanted)));
     if (!b || b.disabled) return false;
     b.click();
     return true;
