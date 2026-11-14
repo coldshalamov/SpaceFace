@@ -60,6 +60,29 @@ See [the current checkpoint](QUALITY.md) for measurements and landed fixes.
 | QUAL-08 | Phone launch and flight. Measure touch input and sustained cadence, and verify physical-device behavior when available. Opus owns visual and UI changes. | READY |
 | QUAL-09 | Adventure freight, fabrication and asteroid workbench. Keep active contract cargo aboard during unrelated spending and preserve separately owned convoy freight. Verify through the normal owner routes. | TAKEN Codex |
 
+## PR intake — landing the open pull requests properly (lead-run, 2026-11-14)
+
+The owner's order: every open PR reviewed, rebuilt where its foundation is weak, landed, no regressions.
+How: [`PR-INTAKE.md`](PR-INTAKE.md). The lead dispatches these headless (`scripts/fleet/run.mjs`) and
+reviews every commit; lane agents do not take them.
+
+| ID | Job (PR) | State |
+|---|---|---|
+| PRI-00 | ui-polish wall (#928–#1116), commission briefs (#943–#1033) merged with `.devshots/pr-intake/safe-merge.sh`; #921 #923 #926 #941 #1113 re-landed | lead-run (batch 3 in flight) |
+| PRI-01-four-small-places | Dione look, Hyperion tow-out gate, Kepler and Orcus chains (#947 #956 #957 #958) | TAKEN devin1 |
+| PRI-02-the-air-clock-costs-money | The survivor's spent air really lowers the rescue payout; the card shows the price (follows #921) | TAKEN devin2 |
+| PRI-03-an-outpost-is-a-place | Outposts take supplies, hand over output, sell for real, expand (#973, sim half; panel is lead-run [FE]) | READY |
+| PRI-05-the-plate-and-the-honest-win | Gauntlet wave-20 plate fight with stakes; strict course-victory rule (#994) | READY |
+| PRI-06-residents-on-the-radio | Hail a station, a named resident answers; simple contracts over radio (#969) | READY |
+| PRI-07a…f | EC-G15 work loops in six slices: rig workshop, tender, salvage crews + Hinge, shipbreaking, Cinderglass + Counterweight, small truths (#982) | READY |
+| PRI-04 save load stays yours | A refused or failed load never ends the live run; stale load requests are fenced (#980) | lead-run (sidekick) |
+| PRI-08 Ceres Belt | Ninth Mouth rescue, borrowed-anchor winching, arrival and return conversations, Breakwater (#945) | NEEDS-PACKET |
+| PRI-09 Frontier provisions | Rebuild on the Frontier owner (#940) | NEEDS-PACKET |
+| PRI-10 Kessler readings + campaign content | Rebuild the paired readings; triage the 93-file content tail (#939) | NEEDS-PACKET |
+| PRI-11 Swarm opening | Three Wasps then the gate, on the wave owner (#942); triage the Foundry tail against `design/game/12` | NEEDS-PACKET |
+| PRI-12 Armory / Manifest / Base / popups redesign [FE] | #1074, four real conflicts | lead-run (sidekick) |
+| PRI-13 leftovers | #981 side rooms, #990 round questions, #988 (already on master), #1030, #1100 | lead decides |
+
 ## Lane 1 — taste, creative, 3D, architecture, review
 
 | ID | Job | State |
