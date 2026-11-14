@@ -42,6 +42,7 @@ import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { hash32 } from '../core/rng.js';
 import { isPlayerWanted } from './heat.js';
 import { LAWFUL_STATION_FACTIONS } from '../data/factions/index.js';
+import { syncCinderReceivingScene } from '../missions/cinderReceivingScene.js';
 export function rookBoothSpec() {
   return {
     type: 'beacon',
@@ -154,11 +155,13 @@ export function rookMarketPadSpec(standId) {
       type: 'beacon',
       pos: sectorLocalToGlobalForSector({ ...QUIET_STAND.pad }, ROOK_BOOTH.sectorId), vel: { x: 0, z: 0 },
       radius: 10, mass: 1e6, hull: 1, hullMax: 1,
-      collides: false,
+      collides: false, physicsBody: false,
       homeSectorId: ROOK_BOOTH.sectorId,
       data: {
         rookMarketPad: QUIET_STAND.id, parentType: 'story_prop',
-        scanLabel: 'a second weigh-ring · hulls bought without a slip',
+        circuitMark: true, ringRadius: QUIET_STAND.padRadius, visualRadius: QUIET_STAND.padRadius,
+        tetherable: false, masslineTetherable: false,
+        scanLabel: 'Quiet Line · sells hull without Rook delivery slip',
         scannerSignalKind: 'salvage',
         homeSectorId: ROOK_BOOTH.sectorId,
       },
@@ -418,6 +421,11 @@ export function createRookBooth() {
       if (!this._adventure()) { this._removeOwned(); return; }
       if (this.helpers.spawnEntity) {
         for (const stand of ROOK_MARKET_STANDS) {
+          // A pad spawned under the old physical spec leaves no ghost collider:
+          // replace it once with the explicitly nonphysical shape.
+          const old = this._padFor(stand.id);
+          if (stand.id === QUIET_STAND.id && old && old.physicsBody !== false
+            && this.helpers.removeEntity) this.helpers.removeEntity(old.id);
           if (!this._padFor(stand.id)) this.helpers.spawnEntity(rookMarketPadSpec(stand.id));
         }
       }
@@ -697,6 +705,9 @@ export function createRookBooth() {
       const market = this._tickMarket(s, now);
       if (!market) return;
       this._maybeAnnounceQuiet(s, flags, market);
+      // The marked-hull scene speaks before the census can consume the proof —
+      // it is presentation only; the loop below still owns the physical take.
+      syncCinderReceivingScene(s, this.bus, QUIET_STAND);
       const wanted = isPlayerWanted(s);
       for (const e of s.entityList || []) {
         if (!rookBoothEligible(e)) continue;
