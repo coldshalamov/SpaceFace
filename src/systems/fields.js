@@ -71,6 +71,7 @@ import { createCollectorKnots } from '../matter/collectorKnot.js';
 import { COLLECTOR_KNOT } from '../data/collectorKnot.js';
 import { isSwarmSpecialistRun, swarmSpecialistKind, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
 import { swarmFieldRadiusScale, swarmFieldCooldownScale } from './playerModifiers.js';
+import { syncRookReceivingBrake, noteRookPadSpawned, resetRookPadIndex, resolveRookPadEntity } from './rookReceivingBrake.js';
 
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
 // PQ-147.01 — NPC tools share the kernel but not the player's four-slot cap.
@@ -454,6 +455,9 @@ export const fields = {
     this._seedLockFieldId = null;
     this._insideRing = new Map();
     this._fieldsIdleQuiet = null;
+    // Attended Rook receiving brake (PRI-10c): edge-cue memory + one impulse per tick.
+    this._rookBrakeCue = null;
+    this._rookBrakeTick = -1;
     // Pull collector knots (packet 05): a library between this emitter owner, the shared capture
     // seam and Gyre's thrown-aggregate lifecycle. Runtime only, never serialized.
     this._knots = createCollectorKnots(this);
@@ -908,6 +912,9 @@ export const fields = {
       return;
     }
     this._handleInput(state, rt);
+    // The receiving brake rides input like the cone: it must run before the idle-quiet
+    // latch below, or a long quiet tow would pause the brake the player is holding.
+    syncRookReceivingBrake(this, state, dt);
     // Skim sheet mirrors the planet collector latch — must run even when the kernel is empty
     // so turning the scoop on can arm a sheet without a pre-existing field.
     this._syncSkimSheet(state, rt);
@@ -999,6 +1006,7 @@ export const fields = {
     if (!fieldsFlag('enabled')) return;
     const entity = payload && payload.entity;
     if (!entity || entity.alive === false) return;
+    if (entity.data?.rookBooth === true) noteRookPadSpawned(this.state, entity);
     this._registerAnchoredField(entity);
   },
 
@@ -1444,6 +1452,7 @@ export const fields = {
     const tick = (state && state.tick) | 0;
     let wantOn = !!(plan && plan.action === 'on' && plan.kind === 'cone');
     if (!wantOn && live && live.industrial !== true && plan?.industrial !== true
+      && plan?.reason !== 'combat_stood_down'
       && live.kind === 'cone' && tick < live.holdUntilTick) wantOn = true;
     if (wantOn && entity.flags && entity.flags.docked) wantOn = false;
     if (wantOn) {
@@ -1522,6 +1531,13 @@ export const fields = {
       });
       this.bus.emit('fields:coneToggled', { active: true, fieldId, sourceId: entity.id, npc: true });
       this._emitDeployCue('cone', center.x, center.z, radius);
+      // A deployment callback can stand the pirate down synchronously. Do not
+      // leave a just-published combat cone armed until the following tick.
+      if (!industrial && rt.npcFields[entity.id]?.fieldId === fieldId
+        && planNpcFieldDeploy(entity, state)?.reason === 'combat_stood_down') {
+        this._setNpcCone(state, rt, entity, false);
+        return null;
+      }
       return fieldId;
     }
     if (!live) return null;
@@ -1740,6 +1756,12 @@ export const fields = {
     state.fields = defaultRuntime();
     if (this._knots) this._knots.publish(state, collectorFitted(state)); // mirror follows the reset
     this._fieldsIdleQuiet = null;
+    // The kept pad id belongs to the sector/lifecycle that just ended: drop it,
+    // then take the one bounded transition scan — a pad already materialized on
+    // load resolves here; a deferred spawn lands through entity:spawned.
+    resetRookPadIndex(state);
+    resolveRookPadEntity(state);
+    this._rookBrakeCue = null;
     state.fieldsRuntime = state.fieldsRuntime || {};
     state.fieldsRuntime.quietLatched = false;
   },
