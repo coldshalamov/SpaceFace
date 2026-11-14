@@ -21,6 +21,7 @@
 export const PLANTS_QUEUE_EVENT = 'plants:pl267:queue';
 
 export const QUEUE_TUNING = Object.freeze({
+  shoutCadenceS: 0.6,         // physics re-emits per grind frame — one shove, one shout
   plId: 'pl267',
   heavyMassMult: 40,          // "visibly overloaded": mass well over a hull's class
   vacateWindowS: 25,          // the hauler must take the berth this soon after the yield
@@ -194,6 +195,10 @@ export function createPl267QueuePass() {
         if (now - y.at > QUEUE_TUNING.vacateWindowS) continue;
         const station = this._stationById(y.stationId);
         if (!station) break;
+        // One shove, one shout: physics re-emits per grind frame, so a cadence guard
+        // keeps a held shove from collapsing the two-shove beat into one contact.
+        if (y.lastShoutAt != null && now - y.lastShoutAt < QUEUE_TUNING.shoutCadenceS) continue;
+        y.lastShoutAt = now;
         const count = (this._shouts.get(y.haulerId) || 0) + 1;
         while (this._shouts.size >= QUEUE_TUNING.memoryCap) this._shouts.delete(this._shouts.keys().next().value);
         this._shouts.set(y.haulerId, count);

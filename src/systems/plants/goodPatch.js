@@ -60,6 +60,9 @@ export const goodPatchPlant = {
       if (typeof off === 'function') this._unsubs.push(off);
     };
     on('dock:range', (p) => this._onDockRange(p));
+    // game:newGame: simTime restarts near zero and the old station never emits a departure
+    // edge, so a stale in-range latch or patched-at stamp would swallow the first visit.
+    on('game:newGame', () => { this._inRange = false; this._patchedAt = null; this._teaDone = false; });
   },
 
   update(dt) {

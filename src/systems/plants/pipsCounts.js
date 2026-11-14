@@ -92,7 +92,7 @@ export const pipsCountsPlant = {
     // game:newGame: the old session's props are already gone, so _despawnOwned's removals
     // no-op and the buoy line respawns fresh; the pass ledger's 20 s bucket keys would
     // collide with the old session's tail and gate the first crossings.
-    on('game:newGame', () => { this._despawnOwned(); this._passTimes = new Map(); });
+    on('game:newGame', () => { this._despawnOwned(); this._passTimes = new Map(); this._podsAboard = 0; });
   },
 
   update(dt) {

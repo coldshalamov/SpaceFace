@@ -866,6 +866,8 @@ test('PL-267 wrong choice: shout at the overloaded one — PREFERRED becomes LAS
   // The shout is its physical verb: a shove on the overloaded hull during its approach.
   bus.emit('physics:impact', { aId: hauler.id, bId: state.playerId, impulse: 90, causalActorId: state.playerId });
   assert.ok(eventsOf(rec, PLANTS_QUEUE_EVENT, 'voided').length === 1, 'PREFERRED voided');
+  // Two shoves is a beat, not a grind: the second lands after the shout cadence.
+  state.simTime += 1;
   bus.emit('physics:impact', { aId: hauler.id, bId: state.playerId, impulse: 90, causalActorId: state.playerId });
   assert.ok(station.data[PL_267_LAST_STAMP] > state.simTime, 'LAST in the same chalk');
   assert.ok(eventsOf(rec, PLANTS_QUEUE_EVENT, 'last').length === 1);
