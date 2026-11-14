@@ -95,6 +95,7 @@ export function injectManifestLayouts(doc = globalThis.document) {
     ${MF} .is-over .manifest-meter { background:#e99083; }
     ${MF} .manifest-condition { color:#d6decb; margin:10px 0 4px; font-size:14px; line-height:1.35; }
     ${MF} details { border-top:1px solid var(--rule); margin-top:14px; padding-top:3px; }
+    ${MF} details:not([open]) > :not(summary) { display:none; }
     ${MF} summary { color:#e1e7dc; font-weight:620; font-size:15px; cursor:pointer; padding:9px 0; }
     ${MF} details ol, ${MF} details ul { padding:0 0 0 20px; color:var(--muted); font-size:14px; }
     ${MF} details li { margin-block:6px; }
