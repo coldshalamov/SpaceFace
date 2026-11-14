@@ -108,6 +108,7 @@ export const survivalRewards = {
       // and land in the same entitlement ledger a cohort chip uses — the wallet's own seams.
       'swarm:bonusChip': p => this._onBonusChip(p),
       'swarm:chipStolen': p => this._onChipStolen(p),
+      'survivalArena:plateTheft': p => this._onPlateTheft(p),
     };
     for (const [event, fn] of Object.entries(handlers)) if (this.bus?.on) this._unsubs.push(this.bus.on(event, fn));
     // Rehydrated actors retain their original immutable admission; missing old-save metadata is
@@ -145,10 +146,26 @@ export const survivalRewards = {
     const r = this._ensure();
     if (r.wave !== this._planWave) {
       r.wave = this._planWave; r.baseCash = 0; r.roundStyle = 0; r.stipendPaid = 0;
+      r.plateKeptWave = 0;
       // Old pickups are rendered harmless at clear before these bounded per-round ledgers reset.
       r.deaths = {}; r.entitlements = {}; r.chips = {};
     }
   },
+  // PRI-05 — the wave-20 stake: keeping the contested bank is worth half the wave's
+  // authored purse. The verdict arrives during wave-clear teardown while this wave's
+  // plan is still current; the run wallet stays the single writer via the usual intent.
+  _onPlateTheft(payload) {
+    if (payload?.status !== 'secured' || payload.wave !== this._planWave) return;
+    const run = liveRun(this.state);
+    if (!run || run.retireToken !== payload.runToken) return;
+    const purse = this._plan?.rewards?.credits;
+    if (!Number.isInteger(purse) || purse <= 0) return;
+    const r = this._ensure();
+    if (r.plateKeptWave === payload.wave) return;
+    r.plateKeptWave = payload.wave;
+    this._emit('run:awardRequested', { credits: Math.floor(purse / 2), reason: 'plate_kept', wave: payload.wave });
+  },
+
   _onEntityKilled(payload) {
     const run = liveRun(this.state);
     if (!run) return;

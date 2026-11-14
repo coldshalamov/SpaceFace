@@ -365,8 +365,8 @@ export function waveOpeningLine(wave, plan) {
     objective = 'Kill the elite and clear the rest.';
     namecheck = leadName ? ` ${leadName} leads.` : '';
   } else if (kind === 'system_event') {
-    objective = 'Steal the plate. Kill it and clear the rest.';
-    namecheck = leadName ? ` ${leadName} holds the plate.` : ' A plate-theft signature.';
+    objective = 'They want the bank plate. Stop the tow.';
+    namecheck = leadName ? ` ${leadName} covers them.` : '';
   } else if (leadName) {
     namecheck = ` ${leadName} on the board.`;
   }
@@ -442,12 +442,16 @@ export const survivalAnnounce = {
     this._unsubs.push(this.bus.on('run:ended', () => { this._muted = true; }));
     this._unsubs.push(this.bus.on('boss:defeated', (p) => this._onBossDefeated(p || {})));
     this._unsubs.push(this.bus.on('survivalArena:installed', (p) => this._onArenaInstalled(p)));
+    this._unsubs.push(this.bus.on('survivalArena:plateTheft', (p) => this._onPlateTheft(p)));
   },
 
   destroy() {
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
     this._firstCourtRock = null;
+    this._plateTheftStatus = null;
+    this._plateTheftWarned = false;
+    this._lastClearLine = null;
   },
 
   newGame() {
@@ -488,6 +492,9 @@ export const survivalAnnounce = {
     this._stallSpokeWave = 0;      // the wave the stall release last spoke on
     this._sacSpoke = false;        // the Hive sac lesson, once per run
     this._firstCourtRock = null;
+    this._plateTheftStatus = null;
+    this._plateTheftWarned = false;
+    this._lastClearLine = null;
   },
 
   // ── emit helpers ──────────────────────────────────────────────────────────────────────────────
@@ -1070,6 +1077,33 @@ export const survivalAnnounce = {
     this._hintsThisWave += 1;
   },
 
+  _plateSuffix() {
+    return this._plateTheftStatus === 'secured' ? ' Plate kept.'
+      : this._plateTheftStatus === 'stolen' || this._plateTheftStatus === 'lost'
+        ? " Plate's gone." : '';
+  },
+
+  _onPlateTheft(payload) {
+    if (payload?.wave !== this._wave || this._muted) return;
+    if (payload.runToken !== this.state?.run?.retireToken) return;
+    this._plateTheftStatus = payload.status;
+    if (payload.status === 'targeted') {
+      if (this._plateTheftWarned) return;
+      this._plateTheftWarned = this._say('objective', `survival:w${this._wave}:plate`,
+        "They're on the plate.", 5);
+      return;
+    }
+    // 'secured' arrives during the arena's wave-clear teardown — after this system's own
+    // clear line was already composed. Re-saying the same line id lets the voice arbiter
+    // replace the queued verdict in place, so the resolved bank rides the same line.
+    const suffix = this._plateSuffix();
+    const clear = this._lastClearLine;
+    if (suffix && clear && clear.wave === this._wave && !clear.suffixed) {
+      clear.suffixed = true;
+      this._say('objective', clear.id, clear.text + suffix, 4);
+    }
+  },
+
   _onWaveCleared(payload) {
     if (this._muted) return;
     if (!liveSurvivalRun(this.state)) return;
@@ -1101,7 +1135,10 @@ export const survivalAnnounce = {
     const survived = rec.completionKind === 'duration';
     const verb = survived ? 'survived' : 'clear';
     const tally = tallyCount > 0 ? ` ${capitalize(countWord(tallyCount))} down.` : '';
-    this._say('objective', `survival:w${wave}:clear`, `Wave ${wave} ${verb}.${tally}`, 4);
+    const text = `Wave ${wave} ${verb}.${tally}`;
+    const plate = this._plateSuffix();
+    this._lastClearLine = { wave, id: `survival:w${wave}:clear`, text, suffixed: !!plate };
+    this._say('objective', `survival:w${wave}:clear`, `${text}${plate}`, 4);
   },
 
   _onLevelUp(payload) {
