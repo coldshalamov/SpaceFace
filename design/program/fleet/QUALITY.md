@@ -533,3 +533,28 @@ the worker advanced 0.53 s of simulation per wall second. The graphics frame spe
 preparing and 29.9 ms submitting at p50. Original retail freezes and sustained pacing remain
 open. See `shared-work-cuts-adventure-keys-before-adventure.json` and
 `shared-work-cuts-final-r2-adventure.json` in the recording evidence folder.
+
+- `1af30d8c0b99` preserves run state validation and defers path formatting until a value
+  fails. Six alternating run-history fixtures went from 94.65 to 49.41 ms per 1,500
+  validations. All 25 focused tests passed.
+- `bda9a1b2fa2f` advances the field particle system through the original substeps and packs
+  once after emission. The 250 ms case previously packed instance buffers four times. Final
+  state, buffers and lighting matched through retirement. Two of 62 focused tests failed on
+  both sources (distant aura snapshot and full VFX fixture cadence).
+- `24dd46889364` lets a foreground heartbeat expire abandoned reply credits when their timer
+  callback is late. A valid ACK on that heartbeat takes priority. The worker rebuilds through
+  the existing journal path, and an obsolete callback cannot expire the replacement reply.
+  All 35 worker clock tests passed.
+- `ed036f7a2fe7` checks for a moving craft before repeating rock geometry and pin work for an
+  invalidated view. In the mixed fixture, rock checks fell from 41,044 to 28,000 over 130 ticks
+  with identical ordered views and world records. In the timing fixture, median classification
+  fell from 141 to 115 ms over 270 ticks. The six focused retention tests passed.
+
+The locked `round2-watchdog-field-after.json` run used the ordinary development launcher with
+its bundled worker, in an isolated Electron profile. Foundry confirmed the Supply Pod event,
+278 shots overall and continued movement under all three controls. Its first 35 s drew 9.77/s
+and advanced 0.56 s of simulation per wall second. Actual mesh gaps reached 155 ms p95 and 473 ms
+max. No signed backsteps across 67 assessable intervals. The active worker window reached
+32.18 ms p50 and 41.27 ms p95 per step with no reply watchdog recovery or backpressure.
+The combat PNG was opened and cleanup passed. This run started before the rock-classification
+change was finalized and is a separate reservation from the earlier Foundry pair.
