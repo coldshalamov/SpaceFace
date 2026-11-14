@@ -14,8 +14,9 @@
 //   them, no shoving. "Haggle them down" = a shove-class physics:impact receipt: once is a
 //   warning (they hold on), twice and they leave WITH the part — and journeymen set prices:
 //   no apprentice returns for the journeyman window. Documented substitute, not a fake.
-// - Bounded Maps with tuning.memoryCap; session state RESET on sector:exit / save:loaded /
-//   game:new / game:newGame; destroy() unsubscribes + despawns owned.
+// - Bounded Maps with tuning.memoryCap; session state RESET on sector:exit / save:loaded,
+//   HARD reset (decency ledger, journeymen window, tow view included) on game:new /
+//   game:newGame; destroy() unsubscribes + despawns owned.
 
 import { makeShipEntitySpec } from '../ships.js';
 import { spawnJettisonedCargoPod } from '../lootShards.js';
@@ -30,6 +31,7 @@ export const APPRENTICE_TUNING = Object.freeze({
   vestaSectorId: 'sector_vesta_forge',
   yearsS: 600,               // "years later" at the table clock
   journeymanS: 1800,         // journeymen set prices: no return this long
+  impactCooldownS: 4,        // one collision, one price: physics:impact re-fires every overlap frame
   holdS: 8,                  // a completed Helios tow
   approachRangeWu: 700,
   giveRangeWu: 60,
@@ -63,6 +65,8 @@ export function createPl358ApprenticesReturn() {
       this._shoves = 0;
       this._journeymanUntil = -Infinity;
       this._warned = false;
+      this._lastShoveAt = -Infinity;
+      this._tow = null;
       const on = (event, fn) => {
         const off = this.bus && this.bus.on ? this.bus.on(event, fn) : null;
         if (typeof off === 'function') this._unsubs.push(off);
@@ -72,8 +76,8 @@ export function createPl358ApprenticesReturn() {
       on('pickup:collected', (p = {}) => this._onPickup(p || {}));
       on('sector:exit', () => this._reset());
       on('save:loaded', () => this._reset());
-      on('game:new', () => this._reset());
-      on('game:newGame', () => this._reset());
+      on('game:new', () => this._hardReset());
+      on('game:newGame', () => this._hardReset());
       this._pl358TowInstalled = false; // re-arm per init: the flag is host-lifetime, the bus is not
       attachTowWatch(this, 'pl358', () => this._memory);
     },
@@ -100,6 +104,16 @@ export function createPl358ApprenticesReturn() {
       this._arrivedSector = null;
       this._shoves = 0;
       this._warned = false;
+      this._lastShoveAt = -Infinity;
+    },
+
+    /** game:new / game:newGame: a fresh universe — the decency ledger cannot cross simTime=0. */
+    _hardReset() {
+      this._reset();
+      this._decentAt = null;
+      this._journeymanUntil = -Infinity;
+      this._tow = null;
+      this._lastShoveAt = -Infinity;
     },
 
     _now() {
@@ -222,6 +236,8 @@ export function createPl358ApprenticesReturn() {
       const hit = p.aId === this._apprenticeId || p.bId === this._apprenticeId;
       if (!hit || p.causalActorId !== s.playerId) return;
       const now = this._now();
+      if (now - this._lastShoveAt < APPRENTICE_TUNING.impactCooldownS) return; // one collision, one price
+      this._lastShoveAt = now;
       this._shoves += 1;
       if (this._shoves === 1 && !this._warned) {
         this._warned = true;

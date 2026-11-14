@@ -120,6 +120,7 @@ export const pl350KeyWall = {
     this._lockedUntil.clear();
     this._toldLockAt.clear();
     this._reserveGiven.clear();
+    this._rehangAt = null;
     this.state = null;
     this.bus = null;
     this.helpers = {};
@@ -130,6 +131,7 @@ export const pl350KeyWall = {
     this._lockedUntil.clear();
     this._toldLockAt.clear();
     this._reserveGiven.clear();
+    this._rehangAt = null;   // a new game restarts simTime: no stale beat may block borrowing
     this._drop();
   },
 

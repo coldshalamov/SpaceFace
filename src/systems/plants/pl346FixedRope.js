@@ -122,6 +122,7 @@ export const pl346FixedRope = {
     this._menders.clear();
     this._gusts.clear();
     this._toldCutAt.clear();
+    this._saidHold = null;
     this.state = null;
     this.bus = null;
     this.helpers = {};
@@ -132,6 +133,7 @@ export const pl346FixedRope = {
     this._menders.clear();
     this._gusts.clear();
     this._toldCutAt.clear();
+    this._saidHold = null;   // a new game restarts simTime: no stale beat may silence the line
     this._drop();
   },
 

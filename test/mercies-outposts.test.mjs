@@ -820,6 +820,31 @@ test('PL-346: use the rope, mend the fray; cut a length and the iris is in no mo
   h.plant.destroy();
 });
 
+test('PL-346: game:new clears the hold-beat — a stale clock cannot silence the rope', () => {
+  const h = boot(pl346FixedRope, { sectorId: FIXED_ROPE_TUNING.sectorId, stationId: 'station_bolus_rib' });
+  drive(h, 2);
+  const liveKnot = (idx) => [...h.state.entities.values()]
+    .find((e) => e.data && e.data.plantsPl346Knot === idx && e.alive !== false);
+  const frayingIdx = () => frayedKnotFor(
+    Math.floor(h.state.simTime / FIXED_ROPE_TUNING.MERCY_DAY_S),
+    FIXED_ROPE_TUNING.knotCount, FIXED_ROPE_TUNING,
+  );
+  // Use the rope at a late table clock: the "Rope holds." beat stamps late.
+  h.state.simTime = FIXED_ROPE_TUNING.MERCY_DAY_S + 30;
+  moveTo(h.state, liveKnot(frayingIdx() === 0 ? 1 : 0).pos, { x: 0, z: 4 });
+  drive(h, 1.5);
+  assert.ok(countOf(h.bus, PL_346_ROPE_EVENT) >= 1, 'the rope holds at the late clock');
+  assert.ok(h.plant._saidHold >= FIXED_ROPE_TUNING.MERCY_DAY_S, 'the beat is stamped late');
+  // A new game: simTime restarts near zero — the stale stamp must not silence the line.
+  h.bus.emit('game:new', {});
+  h.state.simTime = 2;
+  drive(h, 2);   // the rope re-strings on the fresh clock
+  moveTo(h.state, liveKnot(frayingIdx() === 0 ? 1 : 0).pos, { x: 0, z: 4 });
+  drive(h, 1.5);
+  assert.ok(countOf(h.bus, PL_346_ROPE_EVENT) >= 2, 'the rope speaks again on the fresh clock');
+  h.plant.destroy();
+});
+
 // ---------- PL-347 The small-hull drum ----------
 
 test('PL-347: enter fair and the bell may draw you; enter under three hull IDs and the drum skips you by name', () => {
@@ -1040,6 +1065,35 @@ test('PL-350: borrow one, return one; keep a key and the wall locks — chalked 
   drive(h, 2);
   assert.equal(countOf(h.bus, PL_350_BORROWED_EVENT), borrowedBefore, 'no borrow while locked');
 
+  h.plant.destroy();
+});
+
+test('PL-350: game:new clears the re-hang beat — a stale clock cannot block borrowing', () => {
+  const h = boot(pl350KeyWall, { sectorId: KEY_WALL_TUNING.sectorId, stationId: KEY_WALL_TUNING.stationId });
+  drive(h, 2);
+  const liveKeys = () => [...h.state.entities.values()]
+    .filter((e) => e.data && e.data.plantsPl350Key !== undefined && e.alive !== false);
+  const wall = propOf(h.helpers, 'plantsPl350Wall');
+  // Borrow and return once: the re-hang beat stamps.
+  moveTo(h.state, liveKeys()[0].pos, { x: 0, z: 4 });
+  drive(h, 1.5);
+  assert.equal(countOf(h.bus, PL_350_BORROWED_EVENT), 1, 'borrowed once');
+  moveTo(h.state, { x: wall.pos.x + 300, z: wall.pos.z });
+  drive(h, 2);
+  moveTo(h.state, { x: wall.pos.x + 20, z: wall.pos.z });
+  drive(h, 1.5);
+  assert.equal(countOf(h.bus, PL_350_RETURNED_EVENT), 1, 'returned once');
+  assert.ok(Number.isFinite(h.plant._rehangAt), 'the re-hang beat is stamped');
+  // The beat stamped hours into the old run's clock, then a new game: simTime restarts.
+  h.plant._rehangAt = h.state.simTime + 4000;
+  h.bus.emit('game:new', {});
+  h.state.simTime = 3;
+  moveTo(h.state, { x: wall.pos.x + 240, z: wall.pos.z });
+  drive(h, 2);   // wall + keys re-spawn on the fresh clock
+  const fresh = liveKeys().find((k) => k.data.plantsPl350Hanging !== false);
+  moveTo(h.state, fresh.pos, { x: 0, z: 4 });
+  drive(h, 1.5);
+  assert.equal(countOf(h.bus, PL_350_BORROWED_EVENT), 2, 'borrowing works on the fresh clock');
   h.plant.destroy();
 });
 

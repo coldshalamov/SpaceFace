@@ -983,14 +983,68 @@ test('PL-358 wrong choice: haggle them down — journeymen set prices', () => {
   // One shove: they hold on, warned.
   bus.emit('physics:impact', { aId: apprentice.id, bId: state.playerId, impulse: 50, causalActorId: state.playerId });
   assert.ok(eventsOf(rec, PLANTS_APPRENTICE_EVENT, 'haggled').length === 1);
-  // Two: they leave WITH the part, and journeymen set prices.
+  // Production re-fires physics:impact every frame an overlap persists: a shove held over
+  // frames is ONE collision — the rapid repeats count nothing.
+  bus.emit('physics:impact', { aId: apprentice.id, bId: state.playerId, impulse: 50, causalActorId: state.playerId });
+  bus.emit('physics:impact', { aId: apprentice.id, bId: state.playerId, impulse: 50, causalActorId: state.playerId });
+  assert.ok(eventsOf(rec, PLANTS_APPRENTICE_EVENT, 'haggled').length === 1, 'still one warning only');
+  assert.ok(eventsOf(rec, PLANTS_APPRENTICE_EVENT, 'journeymen').length === 0, 'no instant destroy');
+  assert.ok(!rec.removes.includes(part.id), 'the part is not lost to a held shove');
+  assert.ok(!rec.removes.includes(apprentice.id));
+  // Two: only a second impact AFTER the cooldown expires leaves them WITH the part.
+  state.simTime += APPRENTICE_TUNING.impactCooldownS;
   bus.emit('physics:impact', { aId: apprentice.id, bId: state.playerId, impulse: 50, causalActorId: state.playerId });
   assert.ok(eventsOf(rec, PLANTS_APPRENTICE_EVENT, 'journeymen').length === 1);
   assert.ok(rec.removes.includes(part.id), 'the part is gone with them');
   assert.ok(rec.removes.includes(apprentice.id));
 });
 
-// ---------------------------------------------------------------- PL-359
+test('PL-358 game:new is a hard reset: nothing stale gates or gifts the new run', () => {
+  const { state, rec, bus } = boot(pl358ApprenticesReturn, { state: { world: { currentSectorId: 'sector_helios_prime' } } });
+  state.world.currentSectorId = 'sector_helios_prime';
+  // Run 1: decent at Helios, the apprentice returns, haggled away — the journeymen lockout lives.
+  const stranger = makeNpc(state, 'npc1', { x: 40, z: 0 }, { data: { trafficRole: 'hauler' } });
+  bus.emit('tether:snapCatch', { targetId: stranger.id });
+  sweep(pl358ApprenticesReturn, state, APPRENTICE_TUNING.holdS + 1, 1);
+  bus.emit('massline:releaseValidated', { entityId: stranger.id });
+  pl358ApprenticesReturn.update(1 / 60);
+  assert.ok(eventsOf(rec, PLANTS_APPRENTICE_EVENT, 'decent_at_helios').length === 1);
+  state.simTime += APPRENTICE_TUNING.yearsS + 1;
+  state.world.currentSectorId = 'sector_vesta_forge';
+  sweep(pl358ApprenticesReturn, state, 2, 0.5);
+  const apprentice = lastSpawn(rec, (e) => e.data && e.data.callsign === APPRENTICE_CALLSIGN);
+  const part = lastSpawn(rec, (e) => e.data && e.data.plantsPl358Part === true);
+  assert.ok(apprentice && part, 'the first return lands');
+  bus.emit('physics:impact', { aId: apprentice.id, bId: state.playerId, impulse: 50, causalActorId: state.playerId });
+  state.simTime += APPRENTICE_TUNING.impactCooldownS;
+  bus.emit('physics:impact', { aId: apprentice.id, bId: state.playerId, impulse: 50, causalActorId: state.playerId });
+  assert.ok(eventsOf(rec, PLANTS_APPRENTICE_EVENT, 'journeymen').length === 1, 'haggled away in run 1');
+  assert.ok(pl358ApprenticesReturn._journeymanUntil > state.simTime, 'the journeymen lockout is live');
+
+  // A NEW game: the table clock restarts near zero; the ledger cannot survive it.
+  bus.emit('game:new', {});
+  assert.equal(pl358ApprenticesReturn._decentAt, null, 'no stale decency across a new game');
+  assert.equal(pl358ApprenticesReturn._journeymanUntil, -Infinity, 'no stale journeymen lockout');
+  assert.equal(pl358ApprenticesReturn._tow, null, 'no stale tow view');
+  assert.equal(pl358ApprenticesReturn._lastShoveAt, -Infinity, 'no stale impact cooldown');
+  state.simTime = 1;
+  state.world.currentSectorId = 'sector_helios_prime';
+
+  // Run 2: re-earn it fresh — nothing stale blocks the summon or gifts an unearned arrival.
+  const stranger2 = makeNpc(state, 'npc2', { x: 40, z: 0 }, { data: { trafficRole: 'hauler' } });
+  bus.emit('tether:snapCatch', { targetId: stranger2.id });
+  sweep(pl358ApprenticesReturn, state, APPRENTICE_TUNING.holdS + 1, 1);
+  bus.emit('massline:releaseValidated', { entityId: stranger2.id });
+  pl358ApprenticesReturn.update(1 / 60);
+  assert.ok(eventsOf(rec, PLANTS_APPRENTICE_EVENT, 'decent_at_helios').length === 2, 'decent again, earned in this run');
+  state.simTime += APPRENTICE_TUNING.yearsS + 1;
+  state.world.currentSectorId = 'sector_vesta_forge';
+  sweep(pl358ApprenticesReturn, state, 2, 0.5);
+  const apprentice2 = lastSpawn(rec, (e) => e.data && e.data.callsign === APPRENTICE_CALLSIGN);
+  assert.ok(apprentice2 && apprentice2.id !== apprentice.id, 'the apprentice returns in the new run');
+  const part2 = lastSpawn(rec, (e) => e.data && e.data.plantsPl358Part === true);
+  assert.ok(part2 && part2.id !== part.id, 'the part is carried again, at their own cost');
+});
 
 test('PL-359 escort\u2019s gift: walk the convoy to the gate, their spare CM is yours', () => {
   const { state, rec, bus, player } = boot(pl359EscortsGift, { playerPos: { x: 0, z: 0 } });
