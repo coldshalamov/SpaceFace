@@ -6256,35 +6256,6 @@ class PureArrayUniform {
 
 }
 
-// SpaceFace: the lighting director owns a small set of packed uniforms shared by
-// material. A linked WebGL program owns their last submitted values independently.
-function uploadProbeUniforms( gl, seq, values, textures ) {
-
-	for ( let i = 0; i < seq.length; i ++ ) {
-
-		const u = seq[ i ];
-		const v = values[ u.id ];
-		if ( v.needsUpdate === false ) continue;
-		const value = v.value;
-		const revision = v.spacefaceProbeRevision;
-		if ( revision !== undefined && value === v.spacefaceProbeArray ) {
-
-			if ( u.spacefaceProbeUniform === v && u.spacefaceProbeRevision === revision ) continue;
-			u.setValue( gl, value, textures );
-			u.spacefaceProbeUniform = v;
-			u.spacefaceProbeRevision = revision;
-
-		} else {
-
-			u.setValue( gl, value, textures );
-			u.spacefaceProbeUniform = undefined;
-
-		}
-
-	}
-
-}
-
 class StructuredUniform {
 
 	constructor( id ) {
@@ -6435,12 +6406,7 @@ class WebGLUniforms {
 
 		const u = this.map[ name ];
 
-		if ( u !== undefined ) {
-
-			u.setValue( gl, value, textures );
-			if ( u.spacefaceProbeUniform !== undefined ) u.spacefaceProbeUniform = undefined;
-
-		}
+		if ( u !== undefined ) u.setValue( gl, value, textures );
 
 	}
 
@@ -6468,8 +6434,6 @@ class WebGLUniforms {
 
 		}
 
-		if ( seq.spacefaceProbeUniforms !== undefined ) uploadProbeUniforms( gl, seq.spacefaceProbeUniforms, values, textures );
-
 	}
 
 	static seqWithValue( seq, values ) {
@@ -6479,18 +6443,7 @@ class WebGLUniforms {
 		for ( let i = 0, n = seq.length; i !== n; ++ i ) {
 
 			const u = seq[ i ];
-			if ( ! ( u.id in values ) ) continue;
-			if ( typeof u.id === 'string' && u.id.startsWith( 'sfNocturneProbe' ) &&
-				( u.setValue === setValueV3fArray || u.setValue === setValueV4fArray ) ) {
-
-				if ( r.spacefaceProbeUniforms === undefined ) r.spacefaceProbeUniforms = [];
-				r.spacefaceProbeUniforms.push( u );
-
-			} else {
-
-				r.push( u );
-
-			}
+			if ( u.id in values ) r.push( u );
 
 		}
 
