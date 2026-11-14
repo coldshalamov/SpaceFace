@@ -133,6 +133,12 @@ ${GO} > .sf-go-tape .orr-tape__empty { fill:rgb(${BONE} / .8); }
   /* a blank record has no rim stations, so its bare dial takes a slightly taller host */
   ${GO} > .sf-go-recap.is-blank { height:calc(var(--r) * 2.6 + 44px * var(--sv)); }
 }
+/* ...and the career record's title rule sat 14px under the Load save / Load latest underlines, two
+   sets of hairlines stacked so close they read as one tangle. The record steps down a beat so the
+   verb rail ends before its title starts (the ring's lowest figures still clear 540). */
+@media (min-width:641px) and (max-width:1100px) and (max-height:640px) {
+  ${GO} > .sf-go-recap { margin-top:12px !important; }
+}
 /* short narrow desktop (641–800 × ≤560, e.g. 651×461 / 700×461): the one-line verb rail
    (Continue + Load save + Load latest) overruns the right edge — Load latest offR 76/27 —
    because the 1101–1400 wrap and the phone ≤640 wrap leave this band on nowrap. Primary keeps
