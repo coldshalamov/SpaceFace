@@ -1226,7 +1226,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.engine-plasma-ring",
-    "expectedContentHash": "ba8ab715ec64ce9cc5f137b2e06dfc8ccdc6a93c72fd0cc6f40e20af60ed87d9",
+    "expectedContentHash": "dcf8ce0b10431d42bc17382cf096d59317be4bffba5e016bbe50fad91752fb5b",
     "key": "engine-plasma-ring",
     "metadataUrl": "assets/ships/release/render-packages/engine-plasma-ring/render-package.json",
     "runtimeAssetId": "SF_ENGINE_PLASMA_RING",
@@ -1236,7 +1236,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.engine-resonator",
-    "expectedContentHash": "8df327c48328e9f6fcb2909bcf437baaed7eb0a1f28ddc96d4825b2a378eff80",
+    "expectedContentHash": "a3289ee5717101ffc44f6e020084b76083bb330fcb48b341b3f12efc0ba81108",
     "key": "engine-resonator",
     "metadataUrl": "assets/ships/release/render-packages/engine-resonator/render-package.json",
     "runtimeAssetId": "SF_ENGINE_RESONATOR",

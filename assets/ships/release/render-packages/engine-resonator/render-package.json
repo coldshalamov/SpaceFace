@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8df327c48328e9f6fcb2909bcf437baaed7eb0a1f28ddc96d4825b2a378eff80",
+  "contentHash": "a3289ee5717101ffc44f6e020084b76083bb330fcb48b341b3f12efc0ba81108",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.engine-resonator.mesh.det-anomaly-facet-plate.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "a5d53fa1aa7a75689e8e3fa5007dd540dba3e1c7803f304c071c09b5e3855f9b",
+      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.001",
       "nodeId": "sf.render.engine-resonator.mesh.det-anomaly-facet-plate",
@@ -52,7 +52,7 @@
       "id": "sf.render.engine-resonator.mesh.det-crystal-fracture.primitive.0",
       "indexCount": 252,
       "indexed": true,
-      "materialHash": "a5d53fa1aa7a75689e8e3fa5007dd540dba3e1c7803f304c071c09b5e3855f9b",
+      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.002",
       "nodeId": "sf.render.engine-resonator.mesh.det-crystal-fracture",
@@ -77,7 +77,7 @@
       "id": "sf.render.engine-resonator.mesh.det-emissive-port.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "a5d53fa1aa7a75689e8e3fa5007dd540dba3e1c7803f304c071c09b5e3855f9b",
+      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.007",
       "nodeId": "sf.render.engine-resonator.mesh.det-emissive-port",
@@ -102,7 +102,7 @@
       "id": "sf.render.engine-resonator.mesh.det-oxidized-rib.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "a5d53fa1aa7a75689e8e3fa5007dd540dba3e1c7803f304c071c09b5e3855f9b",
+      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.005",
       "nodeId": "sf.render.engine-resonator.mesh.det-oxidized-rib",
@@ -127,7 +127,7 @@
       "id": "sf.render.engine-resonator.mesh.det-phase-seam.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "a5d53fa1aa7a75689e8e3fa5007dd540dba3e1c7803f304c071c09b5e3855f9b",
+      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.006",
       "nodeId": "sf.render.engine-resonator.mesh.det-phase-seam",
@@ -152,7 +152,7 @@
       "id": "sf.render.engine-resonator.mesh.det-resonance-port.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "a5d53fa1aa7a75689e8e3fa5007dd540dba3e1c7803f304c071c09b5e3855f9b",
+      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.009",
       "nodeId": "sf.render.engine-resonator.mesh.det-resonance-port",
@@ -177,7 +177,7 @@
       "id": "sf.render.engine-resonator.mesh.det-resonance-ring.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "a5d53fa1aa7a75689e8e3fa5007dd540dba3e1c7803f304c071c09b5e3855f9b",
+      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.004",
       "nodeId": "sf.render.engine-resonator.mesh.det-resonance-ring",
@@ -202,7 +202,7 @@
       "id": "sf.render.engine-resonator.mesh.det-veil-stencil.primitive.0",
       "indexCount": 252,
       "indexed": true,
-      "materialHash": "a5d53fa1aa7a75689e8e3fa5007dd540dba3e1c7803f304c071c09b5e3855f9b",
+      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.003",
       "nodeId": "sf.render.engine-resonator.mesh.det-veil-stencil",
@@ -227,7 +227,7 @@
       "id": "sf.render.engine-resonator.mesh.det-violet-bleed-vein.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "a5d53fa1aa7a75689e8e3fa5007dd540dba3e1c7803f304c071c09b5e3855f9b",
+      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
       "materialPipelineKey": "opaque",
       "meshName": "Cube",
       "nodeId": "sf.render.engine-resonator.mesh.det-violet-bleed-vein",
@@ -252,7 +252,7 @@
       "id": "sf.render.engine-resonator.mesh.det-violet-vein.primitive.0",
       "indexCount": 324,
       "indexed": true,
-      "materialHash": "a5d53fa1aa7a75689e8e3fa5007dd540dba3e1c7803f304c071c09b5e3855f9b",
+      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.008",
       "nodeId": "sf.render.engine-resonator.mesh.det-violet-vein",
@@ -277,7 +277,7 @@
       "id": "sf.render.engine-resonator.mesh.engine-resonator-material-mechanical-merged.primitive.0",
       "indexCount": 4824,
       "indexed": true,
-      "materialHash": "9023ef01d6a38a6f0a251e5442c00160ed037a69f40800dcdedbdd0bcf1d452c",
+      "materialHash": "3b40b6dcf35e8289b31aed0ae323b0e97e881892027d7a6052fe945acbe2591a",
       "materialPipelineKey": "opaque",
       "meshName": "engine_resonator_Material_Mechanical_Merged",
       "nodeId": "sf.render.engine-resonator.mesh.engine-resonator-material-mechanical-merged",
@@ -302,7 +302,7 @@
       "id": "sf.render.engine-resonator.mesh.hook-drive-core.primitive.0",
       "indexCount": 912,
       "indexed": true,
-      "materialHash": "a5d53fa1aa7a75689e8e3fa5007dd540dba3e1c7803f304c071c09b5e3855f9b",
+      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
       "materialPipelineKey": "opaque",
       "meshName": "HOOK_DRIVE_CORE",
       "nodeId": "sf.render.engine-resonator.mesh.hook-drive-core",
@@ -327,7 +327,7 @@
       "id": "sf.render.engine-resonator.mesh.hook-drive-fan.primitive.0",
       "indexCount": 1080,
       "indexed": true,
-      "materialHash": "a5d53fa1aa7a75689e8e3fa5007dd540dba3e1c7803f304c071c09b5e3855f9b",
+      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
       "materialPipelineKey": "opaque",
       "meshName": "HOOK_DRIVE_FAN",
       "nodeId": "sf.render.engine-resonator.mesh.hook-drive-fan",
@@ -352,7 +352,7 @@
       "id": "sf.render.engine-resonator.mesh.hook-drive-plume.primitive.0",
       "indexCount": 630,
       "indexed": true,
-      "materialHash": "a5d53fa1aa7a75689e8e3fa5007dd540dba3e1c7803f304c071c09b5e3855f9b",
+      "materialHash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
       "materialPipelineKey": "opaque",
       "meshName": "HOOK_DRIVE_PLUME",
       "nodeId": "sf.render.engine-resonator.mesh.hook-drive-plume",
@@ -377,7 +377,7 @@
       "id": "sf.render.engine-resonator.mesh.lod0-engine-resonator-main.primitive.0",
       "indexCount": 936,
       "indexed": true,
-      "materialHash": "60cd302ab0a23ab797cd69deb3e7dbcf9d24396d824c08d1c8c0c4c19bd2e194",
+      "materialHash": "dbc41523ddf5b551c6144781efa2462ac848e67a9d1e0dbf14a3796ea53b6ab9",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_ENGINE_RESONATOR_MAIN",
       "nodeId": "sf.render.engine-resonator.mesh.lod0-engine-resonator-main",
@@ -390,46 +390,14 @@
   "lods": [],
   "materials": [
     {
-      "hash": "60cd302ab0a23ab797cd69deb3e7dbcf9d24396d824c08d1c8c0c4c19bd2e194",
-      "id": "material:60cd302ab0a23ab797cd69de",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "spaceface_neutral_baseColor_1024",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_orm_4x4",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_normal_4x4",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "spaceface_neutral_orm_4x4",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "9023ef01d6a38a6f0a251e5442c00160ed037a69f40800dcdedbdd0bcf1d452c",
-      "id": "material:9023ef01d6a38a6f0a251e54",
+      "hash": "3b40b6dcf35e8289b31aed0ae323b0e97e881892027d7a6052fe945acbe2591a",
+      "id": "material:3b40b6dcf35e8289b31aed0a",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "spaceface_neutral_baseColor_1024",
+          "name": "spaceface_neutral_baseColor_4x4",
           "slot": "baseColor",
           "uri": null
         },
@@ -454,14 +422,46 @@
       ]
     },
     {
-      "hash": "a5d53fa1aa7a75689e8e3fa5007dd540dba3e1c7803f304c071c09b5e3855f9b",
-      "id": "material:a5d53fa1aa7a75689e8e3fa5",
+      "hash": "dbc41523ddf5b551c6144781efa2462ac848e67a9d1e0dbf14a3796ea53b6ab9",
+      "id": "material:dbc41523ddf5b551c6144781",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "spaceface_neutral_baseColor_4x4",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_4x4",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_normal_4x4",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "spaceface_neutral_orm_4x4",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e8a0797b473a7e271b5e795dab45f65adce82303d566f179b7b376a5fa0c8931",
+      "id": "material:e8a0797b473a7e271b5e795d",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "spaceface_neutral_baseColor_1024",
+          "name": "spaceface_neutral_baseColor_4x4",
           "slot": "baseColor",
           "uri": null
         },
@@ -1281,14 +1281,14 @@
       "uri": "engine_resonator.glb"
     },
     "sourceManifest": {
-      "bytes": 344570,
-      "sha256": "b32a4055e4ea55ab4b8355c7b95026fd30b6211125f4317158a34e29714f0a29",
+      "bytes": 344569,
+      "sha256": "2084c9401380f6d10ac608be33194a840437d2abd03b1b1c49b45b8a872264c8",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 82368,
-    "sha256": "143205f519ec97a60fca85e2872f3b98cada5bb8f6eb356cfb3c6f5bf8206467",
+    "bytes": 81856,
+    "sha256": "248f1801f2cf6df8ee2168c0ce9a955879276831d48082b78e94c628f884340e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1856,7 +1856,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_resonator.glb"
   },
-  "runtimeHash": "10ef287ac9a85e3cadd443754963e9c2ec01dff75a66ddfe37b25455931c5c6b",
+  "runtimeHash": "3b81fc1d8c27fe029d87f108b153d955faa0a5833c402e8d3d8c08293e85e69f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

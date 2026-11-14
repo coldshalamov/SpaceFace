@@ -21,6 +21,7 @@ import { releasePlaceGeometryCompression } from './releaseStrictClearancePrecisi
 import { SINGLE_SIDE_REPORT_SCHEMA, singleSideWatertightOpaque } from './singleSideWatertightOpaque.mjs';
 import { compactUniformNormalTextures } from './compactUniformNormal.mjs';
 import { compactUniformOrmTextures } from './compactUniformOrm.mjs';
+import { compactUniformWhiteAlbedoTextures } from './compactUniformWhiteAlbedo.mjs';
 
 import {
   RENDER_PACKAGE_COMPILER_NAME,
@@ -77,6 +78,7 @@ export async function compileRenderPackage(options = {}) {
   normalizeFinWedgeRuntimeDefaults(document, assetId);
   compactUniformNormalTextures(document, { preserveKtx2Hashes: options.externalizeKtx2Hashes });
   compactUniformOrmTextures(document, { preserveKtx2Hashes: options.externalizeKtx2Hashes });
+  compactUniformWhiteAlbedoTextures(document, { preserveKtx2Hashes: options.externalizeKtx2Hashes });
   const resolvedNodes = resolveSourceNodes(document, semanticManifest);
   await prepareRenderDocument(document, semanticManifest, resolvedNodes);
   // Quantization otherwise folds its position decode transform into a leaf mesh node.
