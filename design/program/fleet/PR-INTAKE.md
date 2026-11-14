@@ -51,8 +51,11 @@ echo "conflicts: $?"                            # 0 = clean; >0 = that many conf
    on an update path — do the work on a transition (mission/sector/dock event) and keep a reference.
 3. Old saves load: a missing new field is tolerated and normalised; nothing is minted twice on Continue.
 4. The player can reach it by playing normally. A helper nothing calls is not shipped.
-5. Words on screen are short. One line of speech; the objective and the world tag carry the instruction
-   (`design/game/16_THE_STORY_SHOWN.md`, `20_THE_FIRST_HOUR.md`). Cut explanatory paragraphs.
+5. Words on screen are short. **A spoken line is eight words or fewer** (`design/game/13_JOBS_AND_HEISTS.md`:
+   "Nobody briefs you in a menu if they can hail you from a window"); the objective and the world tag
+   carry the instruction (`16_THE_STORY_SHOWN.md`, `20_THE_FIRST_HOUR.md`). A PR line that explains
+   itself in a paragraph is cut to its point, in the speaker's voice. Where `design/game/` already
+   writes the line for that moment, use that line exactly.
 6. Tests drive the real owner with the payload the game really sends, and would fail on the old code.
 
 ## Order (lead keeps this current)
