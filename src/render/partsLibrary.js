@@ -61,6 +61,7 @@ import { CERES_SHIPBREAK_FILES, isCeresShipbreakSection, ceresShipbreakTransform
 import * as THREE from 'three';
 import { handedFinPlacement, mirroredFinNode, mirroredFinPrimitive, oneSidedFinRecord,
   prepareMirroredFinGeometries, reflectFinMatrix } from './modularFinHandedness.js';
+import { fitLegacyMultiroleFins } from './modularMultiroleFinPlacement.js';
 import { attachSwarmSpecialistVisual } from './swarmSpecialistVisuals.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { detachPackageTexture, isPackageGeometryDetached, rehydrateDetachedGeometries, retainPackageGeometryCpu, LIVE_PACKAGE_CPU_PAYLOAD } from './packageCpuDetach.js';
@@ -11697,7 +11698,7 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
     }))
     : defaultFinPlacements;
   const finRecord = selected.get('fin');
-  for (const placement of finPlacements) {
+  for (const placement of fitLegacyMultiroleFins(selected.get('hull'), cockpitRecord, finRecord, finPlacements)) {
     if (finRecord) {
       yield;
       yield* instantiatePartSteps(finRecord, hull, handedFinPlacement(finRecord, placement),
