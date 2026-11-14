@@ -411,3 +411,16 @@ Open performance work remains in the fixed-step owners and the world draw. The s
 - `772c5cb9a60f` accepted. Recorded fixture numbers and remaining acceptance in [QUALITY.md](QUALITY.md).
 
 Codex launched `physics_cut`, `ai_cut`, and `render_cut` for disjoint owners. No Devin launches. The second perception candidate that fused expiry and snapshot walks was dropped when it showed no measurable win. The before/after Electron command is queued under the game lock for normal Adventure, Swarm and Gauntlet entry using immutable overlays for changed runtime files and default Chromium throttling. The multi-second retail freeze, sustained flight cadence, Ceres contact visibility and full release acceptance remain open.
+
+### Stand-in log — locked flight and probe repairs
+
+- `81eb6607562d` fixed the obsolete Adventure text selector. The next locked attempt found the painted title door has a zero-height native button.
+- `5a232f785fe0` accepted. Locked Swarm and Gauntlet confirmed simultaneous thrust, turn and fire, advancing simulation, and actual mesh travel. Reviewed both Armory and both Rearm captures. Swarm active draws went 7.47 to 8.54/s. Gauntlet went 15.30 to 13.20/s.
+- `eabff4d97c84` accepted. The locked Supply Pod candidate fired 342 shots and drew 10.76/s in active round two. Opened the flight PNG. Baseline was blocked by the loading overlay.
+- `5ef7f502fe2f` accepted. Meshless projectiles keep the existing weapon VFX stream and no longer duplicate impossible-to-apply vitals rows. Seven focused checks passed.
+- `995d9b18c46f` accepted. Updated the three quality queue rows with the player-route evidence.
+- `9581f70f192c` fixed the probe to reach the native Adventure action by keyboard when its rendered hit box collapses. Reported the title layout and clickability defect to Opus with locked before/after screenshots. The lead owns its in-game repair.
+- `387aef15e727` fixed a race in the First light playtest actor when its control vanished during the bounds request.
+- `1a5f67b71bb5` accepted. Regression covers the closing-confirmation race.
+
+No additional workers launched. The ordinary Adventure and diagnostic Foundry before/after retry is `shared-work-cuts-adventure-keys`, queued under the normal lock. Current path and results are in [QUALITY.md](QUALITY.md). The seconds-long retail freeze and stable cross-mode frame pacing remain open.
