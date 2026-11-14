@@ -11,7 +11,7 @@ import { STENCIL_GLSL, stencilFallbackTexture } from './illustratedStencils.js';
 import { LOOK_SURFACE_UNIFORMS } from './look.js';
 import { installNocturneProbeShader } from './nocturne/probes.js';
 import { registerGeometryPreservingShaderHook } from './shaderPoseProvenance.js';
-export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v19-nocturne';
+export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v20-nocturne';
 const TAG = 'spacefaceIllustratedSurfaceHook';
 const LIGHT_NEEDLE = '#include <lights_fragment_end>';
 const OUTPUT_NEEDLE = 'vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;';
@@ -28,12 +28,18 @@ function nocturnePhysicalLightChunk() {
   if (startIndex < 0 || endIndex < startIndex || !chunk.slice(startIndex, endIndex).includes(call)) {
     throw new Error('[render] NOCTURNE physical light shader contract changed');
   }
-  const sun = chunk.slice(startIndex, endIndex).replace(call, `${call}
+  const sun = chunk.slice(startIndex, endIndex).replace(call, `
+    sfShadowedDirectional[ i ] = directLight.color;
+    ${call}
     sfDirectionalGeometricDiffuse += directLight.color
       * saturate(dot(nonPerturbedNormal, directLight.direction)) * BRDF_Lambert(material.diffuseColor);`);
   return chunk.slice(0, startIndex) + `
     vec3 sfLocalPhysicalDiffuse = reflectedLight.directDiffuse;
     vec3 sfDirectionalGeometricDiffuse = vec3(0.0);
+    // Capture each source after Three applies its own shadow; the coat reuses this color.
+    #if ( NUM_DIR_LIGHTS > 0 ) && defined( RE_Direct )
+    vec3 sfShadowedDirectional[ NUM_DIR_LIGHTS ];
+    #endif
   ` + sun + chunk.slice(endIndex);
 }
 const NOCTURNE_PHYSICAL_LIGHT_CHUNK = nocturnePhysicalLightChunk();
@@ -97,7 +103,7 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
       + max(max(sfNormalDelta.x, sfNormalDelta.y), sfNormalDelta.z), 0.06, 1.0);
     float sfCoatAlpha = sfCoatRough * sfCoatRough;
     float sfCoatAlpha2 = sfCoatAlpha * sfCoatAlpha;
-    #if NUM_DIR_LIGHTS > 0
+    #if ( NUM_DIR_LIGHTS > 0 ) && defined( RE_Direct )
     for (int sfJ = 0; sfJ < NUM_DIR_LIGHTS; sfJ++) {
       vec3 sfToLight = directionalLights[sfJ].direction;
       float sfNoL = saturate(dot(nonPerturbedNormal, sfToLight));
@@ -110,7 +116,7 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
         float sfVoH = saturate(dot(geometryViewDir, sfHalf));
         float sfSunFresnel = 0.04 + 0.96 * pow(1.0 - sfVoH, 5.0);
         float sfLobe = sfNoH * sfNoH * (sfCoatAlpha2 - 1.0) + 1.0;
-        sfCoatLight += directionalLights[sfJ].color * sfLookCoatTint * (sfCoatWeight * sfSunFresnel)
+        sfCoatLight += sfShadowedDirectional[sfJ] * sfLookCoatTint * (sfCoatWeight * sfSunFresnel)
           * (sfLookCoatSun * sfNoL * 0.25 * sfCoatAlpha2 / (PI * sfLobe * sfLobe));
       }
     }
