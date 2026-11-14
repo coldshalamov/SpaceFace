@@ -104,11 +104,13 @@ test('tether:snagCleared reaches a callout that the line is clear', () => {
 
 test('massline:throw reaches a callout naming the throw speed', () => {
   const { bus, callout } = mount();
+  const heard = [];
+  bus.on('callout:firstBeat', (p) => heard.push(p.text));
   bus.emit('massline:throw', { releaseId: 'massline:throw:4242:9', payloadSpeed: 133.2 });
   callout.update(0);
-  const text = calloutTextFor(callout.root);
-  assert.match(text, /THROWN/);
-  assert.match(text, /133/);
+  // The first throw of a run is a first beat: it speaks in the centre seat, once (the speed
+  // figure belongs to the detail surfaces).
+  assert.deepEqual(heard, ['THROWN']);
   callout.destroy();
 });
 

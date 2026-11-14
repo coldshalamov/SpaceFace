@@ -15,59 +15,56 @@ const src = readFileSync(new URL('./handline-inference-senses.test.mjs', import.
 const harness = src.slice(src.indexOf('function fakeDocument'), src.indexOf("test('massline:releaseWindow"));
 const { mount } = new Function('createStuntCallout', 'SEED', `${harness}; return { mount };`)(createStuntCallout, 4242);
 
-test('lane: the pilot\'s first latch says LATCHED once; a flail or foreign latch says nothing', () => {
+function words(bus) { const heard = []; bus.on('callout:firstBeat', (p) => heard.push(p.text)); return heard; }
+
+test('lane: the pilots first latch says LATCHED once; a flail or foreign latch says nothing', () => {
   const { bus, callout } = mount();
   try {
+    const heard = words(bus);
     bus.emit('tether:latched', { sourceId: 99, targetId: 2 });
-    callout.update(0);
-    assert.doesNotMatch(calloutTextFor(callout.root), /LATCHED/, 'not the player\'s line');
     bus.emit('tether:latched', { targetId: 2, flail: true, sourceId: 1 });
-    callout.update(0);
-    assert.doesNotMatch(calloutTextFor(callout.root), /LATCHED/, 'a flail is not a first success');
+    assert.deepEqual(heard, [], 'not the player line, and a flail is not a first success');
     bus.emit('tether:latched', { sourceId: 1, targetId: 2 });
-    callout.update(0);
-    assert.match(calloutTextFor(callout.root), /LATCHED/);
+    assert.deepEqual(heard, ['LATCHED']);
+    bus.emit('tether:latched', { sourceId: 1, targetId: 3 });
+    assert.deepEqual(heard, ['LATCHED'], 'once per run');
     bus.emit('run:started', {});
     bus.emit('tether:latched', { sourceId: 1, targetId: 3 });
-    callout.update(0);
-    assert.match(calloutTextFor(callout.root), /LATCHED/, 'a new run earns the word again');
+    assert.deepEqual(heard, ['LATCHED', 'LATCHED'], 'a new run earns the word again');
   } finally { callout.destroy(); }
 });
 
-test('lane: the second latch and second throw of a run stay quiet', () => {
+test('lane: the first throw and the first physics kill speak once; a gun kill stays with DESTROYED', () => {
   const { bus, callout } = mount();
   try {
-    bus.emit('tether:latched', { sourceId: 1, targetId: 2 });
-    callout.update(0);
-    assert.match(calloutTextFor(callout.root), /LATCHED/);
+    const heard = words(bus);
     bus.emit('massline:throw', { releaseId: 'a', payloadSpeed: 100 });
-    callout.update(0);
-    const first = calloutTextFor(callout.root);
-    assert.match(first, /THROWN/);
-    bus.emit('run:waveStarted', {});
-    // Drain lines, then repeat both: nothing new appears.
-    callout.update(1e9);
-    bus.emit('tether:latched', { sourceId: 1, targetId: 4 });
     bus.emit('massline:throw', { releaseId: 'b', payloadSpeed: 120 });
-    callout.update(1e9 + 1);
-    assert.doesNotMatch(calloutTextFor(callout.root), /LATCHED|THROWN/);
+    bus.emit('entity:killed', { id: 5, killerId: 1, cause: 'bullet' });
+    bus.emit('entity:killed', { id: 6, killerId: 1, styleCause: 'collision' });
+    bus.emit('entity:killed', { id: 7, killerId: 1, styleCause: 'collision' });
+    assert.deepEqual(heard, ['THROWN', 'CRUSHED']);
   } finally { callout.destroy(); }
 });
 
-test('lane: the first physics kill says CRUSHED once; a gun kill stays with DESTROYED', () => {
-  const { bus, callout } = mount();
+test('the centre presenter shows a first-beat word, claims the one voice, and hands back', async () => {
+  const { ensureFirstBeatCentre, releaseFirstBeatCentre } = await import('../src/ui/firstBeatCentre.js');
+  const { resetCalloutVoice, claimCalloutVoice } = await import('../src/ui/calloutVoice.js');
+  const made = [];
+  const el = () => ({ style: {}, hidden: true, className: '', textContent: '', offsetWidth: 0,
+    setAttribute() {}, appendChild(c) { made.push(c); }, parentNode: null });
+  const doc = { body: { appendChild(c) { c.parentNode = this; made.push(c); }, removeChild() {} },
+    head: { appendChild() {} }, getElementById: () => null, createElement: () => el() };
+  const handlers = {};
+  const bus = { on(ev, cb) { handlers[ev] = cb; return () => {}; } };
+  resetCalloutVoice();
+  const presenter = ensureFirstBeatCentre({ bus, doc });
   try {
-    bus.emit('entity:killed', { id: 5, killerId: 1, cause: 'bullet' });
-    callout.update(0);
-    assert.doesNotMatch(calloutTextFor(callout.root), /CRUSHED/);
-    bus.emit('entity:killed', { id: 6, killerId: 1, styleCause: 'collision' });
-    callout.update(0);
-    assert.match(calloutTextFor(callout.root), /CRUSHED/);
-    callout.update(1e9);
-    bus.emit('entity:killed', { id: 7, killerId: 1, styleCause: 'collision' });
-    callout.update(1e9 + 1);
-    assert.doesNotMatch(calloutTextFor(callout.root), /CRUSHED/);
-  } finally { callout.destroy(); }
+    handlers['callout:firstBeat']({ text: 'LATCHED' });
+    assert.equal(presenter.node.hidden, false);
+    assert.equal(presenter.node.textContent, 'LATCHED');
+    assert.equal(claimCalloutVoice('sj:collateral', 3, 1000), false, 'a kill word waits for the first beat');
+  } finally { presenter.destroy(); resetCalloutVoice(); releaseFirstBeatCentre(); }
 });
 
 import { SWARM_RULESET } from '../src/data/swarmMode.js';

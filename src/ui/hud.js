@@ -69,6 +69,7 @@ import { createForkInstrument } from './forkInstrument.js';
 // a tow kill is NAMED in adventure too, not only inside a Crucible run. The layer self-gates:
 // its quiet path renders nothing and drops its frame listener when there is nothing to say.
 import { ensureStuntCallout, releaseStuntCallout } from './stuntCallout.js';
+import { ensureFirstBeatCentre, releaseFirstBeatCentre } from './firstBeatCentre.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
 import { isSwarmGlass } from './swarmGlass.js';
@@ -2103,6 +2104,7 @@ export function createHud(ctx, alerts) {
   // stunts; the Crucible-only score fields stay gated inside the layer itself. Idle-quiet: the
   // layer's update returns false and stops listening for frames when nothing is on screen.
   ensureStuntCallout({ state, bus: ctx.bus, onFlightTextGeometryChange: invalidateTransientOverlayGeometry });
+  ensureFirstBeatCentre({ bus: ctx.bus });
 
   // Reserve the active Cluster's rendered height for the comms strip. A viewport scale
   // step can change that height, so both ResizeObserver and resize publish the same value.
@@ -7574,6 +7576,7 @@ export function createHud(ctx, alerts) {
       // FB-012 — the flight HUD owns the stunt callout mount; releasing it here mirrors the
       // Crucible results screen's dispose (the layer re-ensures idempotently on next mount).
       releaseStuntCallout();
+      releaseFirstBeatCentre();
       for (const unsubscribe of hudUnsubscribers.splice(0)) {
         try { unsubscribe(); } catch (_) { /* bus teardown is best effort */ }
       }
