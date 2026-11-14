@@ -30,7 +30,7 @@ import { topUpBarkSituationCells } from './barkSituationFill.js';
 //   faction_quiet Quiet     — terse, minimal, says as little as possible
 //   faction_choir Choir     — zealot, ritual cadence, ascension / the Pattern
 //   faction_free  Frontier  — independent, plainspoken, live-and-let-live
-//   faction_vael  Vael      — alien contract-language, formal, clause-numbered
+//   faction_vael  Vael      — far-rim contract-language, formal, clause-numbered
 //   faction_archive      Archive    — monastic librarian, archival/index register, terrifying calm
 //   faction_fulfillment  Fulfillment— administrative automaton, queue/routing updates, no affect
 //   faction_pitborn      Pitborn    — escaped yard scrapper, kin-talk, scrap prices, Concord-hate
@@ -505,20 +505,20 @@ export const BARKS = {
     ],
   },
 
-  // ── The Vael — alien contract-language / formal ────────────────────────────
+  // ── The Vael — far-rim contract-language / formal ─────────────────────────
   faction_vael: {
     scan: [
       'Vael Consensus. Clause 1: your presence is registered. Await disposition.',
       'This-vessel initiates assessment. Your form is being appraised against terms.',
       'Contact acknowledged under provisional terms. State your standing.',
-      'Clause 1.4: your species’ entry is noted. The prior entry under this standing is older than your record.',
+      'Clause 1.4: your registry entry is noted. This standing predates your vessel’s record.',
       'Ashfall relay clause: the Deep-Mother’s arena is registered ground. Scan before you grieve.',
     ],
     warn: [
       'Clause 3: you occupy Vael-held space without instrument of passage. Void your position.',
       'Your continuance breaches the boundary-accord. Amend, or the accord amends you.',
       'The terms do not admit you here. Withdrawal is the offered remedy.',
-      'Clause 3.7: boundary breached. Your vessel predates the notice by eleven of your cycles. The notice is still valid.',
+      'Clause 3.7: boundary breached. The notice predates this transmission by eleven cycles. It remains valid.',
       'Clause 3.9: your hull is trespass rendered in alloy. Withdrawal remains cheaper.',
     ],
     'demand-cargo': [
@@ -551,7 +551,7 @@ export const BARKS = {
       'You bargain against terms you cannot read.',
       'The ledger closes with or without your assent.',
       'Clause 19: the losing party bears the cost of the verdict. This is the verdict.',
-      'Your species negotiates. The accord pre-dates negotiation. It will outlast yours.',
+      'Your counsel negotiates. The accord predates your claim. It will outlast it.',
       'Clause 19.4: your defiance is a recognized offering. It is declined.',
       'The Deep-Mother is dead. The accord it guarded is not.',
     ],
@@ -559,7 +559,7 @@ export const BARKS = {
       'Vael passage. The terms hold. You are permitted, for now.',
       'This-vessel transits under standing accord. No obligation falls to you today.',
       'Consensus observes. Your standing is neutral. Proceed.',
-      'Passage granted. The clause permitting you was authored before your world formed.',
+      'Passage granted. The clause permits this transit; all other terms remain in force.',
     ],
     distress: [
       'Clause 23: this-vessel declares termination imminent. Assistance is owed.',
@@ -1602,15 +1602,15 @@ export const CONTACT_VOICE_REGISTERS = Object.freeze({
   ]),
   contact_iren_suhl: contactVoice('plain-clause', [
     'The clauses answer back. I keep the transcripts.',
-    'The Vael clause repeats your breath before you speak.',
-    'They are not translating us. They are transcribing us.',
-    'Bring artifacts. I pay for field samples, not miracles.',
-    'Each shard unlocks one clause. Never two.',
-    'Peace requires the answer they expected, not the one you prefer.',
+    'The machine compares what your manifest says now.',
+    'The jury reads your evidence. Not your story.',
+    'The clerk needs a clean control and a witness.',
+    'An accepted appeal may reveal a clause.',
+    'An accepted appeal restores the exception, not the gate.',
   ], [
     contactChoice('transcripts', 'Read the transcripts', [0, 1]),
-    contactChoice('artifact', 'Offer an artifact', [3, 4]),
-    contactChoice('peace', 'Ask about peace', [2, 5]),
+    contactChoice('artifact', 'Ask about evidence', [3, 4]),
+    contactChoice('peace', 'Ask about passage', [2, 5]),
   ]),
   contact_orrin: contactVoice('procedural-defeated', [
     'The audit is clean. The audit is always clean.',

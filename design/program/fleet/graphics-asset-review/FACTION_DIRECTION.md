@@ -26,8 +26,10 @@ Individual vessels can depart from these tendencies when their story or owner ca
 Check the selected runtime body, saved appearance, faction variant and role before changing a
 model: some Forge finishes intentionally retain authored colors and do not consume the ordinary
 faction tint/wear defaults. The role-livery data describes intent, not proof that a particular
-ship currently displays it. The story names Wren's ship Tessera, the starter hull class Hitch,
-and an older art comment names Borrowed Time; do not assume their relationship is settled.
+ship currently displays it. The [story](../../../../src/data/narrative.js) names Wren's individual
+ship Tessera; Hitch is its hull class, and the [nose-art data](../../../../src/data/palettes.js)
+calls Borrowed Time that ship's in-fiction nickname. Its personal marks should not automatically
+appear on other Hitch-class hulls or every independent and pirate ship.
 
 Prefer coherent shared atlases, material families and existing sockets over unique per-object
 textures, lights or extra decorative meshes when they give the same picture. Textures and normal
