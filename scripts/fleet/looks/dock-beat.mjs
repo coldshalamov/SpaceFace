@@ -42,7 +42,7 @@ try {
   console.log('station', await park());
   await page.mouse.click(640, 360);
   const dock = async (label, skipAfterMs) => {
-    const sid = await page.evaluate(() => { const st = (window.SF.state.entityList || []).find((e) => e && e.type === 'station' && e.alive !== false); return st && st.id; });
+    const sid = await page.evaluate(() => { const st = (window.SF.state.entityList || []).find((e) => e && e.type === 'station' && e.alive !== false); return st && ((st.data && st.data.stationId) || st.id); });
     await page.evaluate((id) => {
       window.SF.bus.emit('dock:range', { stationId: id, inRange: true });
       const rec = (window.__beat = { t0: performance.now(), wordOn: null, wordOff: null, screen: null, word: '' });
