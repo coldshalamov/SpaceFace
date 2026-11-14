@@ -1034,6 +1034,19 @@ test('a foreground heartbeat arriving before a throttled timer discards the hidd
     assert.equal(first.clockDiagnostics.steps, 1);
     assert.equal(first.clockDiagnostics.shedSteps, 0);
     assert.equal(first.clockDiagnostics.heartbeatHolds, 1);
+
+    send({ kind: 'clockAck', clockSequence: first.clockSequence, ackJournalEnd: first.journalEnd });
+    await settle();
+    const delayedTimer = [...timers.values()][0];
+    now += 40;
+    send({ kind: 'laneHeartbeat' });
+    await settle();
+    assert.equal(replies.filter(reply => reply.kind === 'clockTick').length, 2,
+      'foreground messages can recover a worker wake that the timer queue did not deliver');
+    delayedTimer();
+    await settle();
+    assert.equal(replies.filter(reply => reply.kind === 'clockTick').length, 2,
+      'late delivery of that same timer cannot step a second time');
   } finally {
     if (typeof globalThis.self.onmessage === 'function') {
       send({ kind: 'shutdown', seq: 'heartbeat-before-timer-shutdown' });

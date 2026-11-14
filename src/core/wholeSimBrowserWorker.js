@@ -1197,7 +1197,7 @@ function scheduleLocalClock() {
   const anchorMs = localClock.anchorMs;
   const isCurrent = () => !localClock.stopped && localClock.active && localClock.scale > 0
     && generation === localClock.generation;
-  const wake = { timerHandle: null, token: 0, fire: null };
+  const wake = { timerHandle: null, token: 0, fire: null, dueAtMs: now + delayMs };
   wake.fire = () => {
     if (localClock.wake !== wake) return;
     cancelLocalClockWake();
@@ -1555,6 +1555,11 @@ self.onmessage = (event) => {
       if (localClock.wake?.token) cancelLocalClockWake();
       localClock.consecutiveTaskWakes = 0;
       scheduleLocalClock();
+    } else if (localClock.wake && now - localClock.wake.dueAtMs >= LOCAL_TIMER_MS) {
+      // A foreground message can still be delivered when Chromium delays the
+      // worker's timer queue. Claim the same overdue wake rather than queue a
+      // second tick. The task/timer becomes obsolete when fire clears it.
+      localClock.wake.fire();
     }
     if (Number.isSafeInteger(msg.motionSampleId)) {
       // This path stays out of the directive chain and the SAB reply ring, so
