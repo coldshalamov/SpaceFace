@@ -2081,6 +2081,7 @@ def stabilize_mesh_for_export(obj):
         return
 
     materials = list(mesh.materials)
+    sharp_edges = {tuple(sorted(e.vertices)) for e in mesh.edges if e.use_edge_sharp}
     use_auto_smooth = bool(getattr(mesh, 'use_auto_smooth', False))
     auto_smooth_angle = float(getattr(mesh, 'auto_smooth_angle', 0.523599))
 
@@ -2099,6 +2100,7 @@ def stabilize_mesh_for_export(obj):
 
         # Preserve vertex order; only faces are reordered.
         verts = [tuple(v.co) for v in bm.verts]
+        uv_names = list(bm.loops.layers.uv.keys())
         face_rows = []
         for face in bm.faces:
             idxs = [v.index for v in face.verts]
@@ -2110,8 +2112,11 @@ def stabilize_mesh_for_export(obj):
                 int(face.material_index),
                 tuple(sorted(idxs)),
                 tuple(idxs),
+                bool(face.smooth),
+                {name: [tuple(loop[bm.loops.layers.uv[name]].uv) for loop in face.loops]
+                 for name in uv_names},
             ))
-        face_rows.sort()
+        face_rows.sort(key=lambda row: row[:3])
         faces = [row[2] for row in face_rows]
         mat_indices = [row[0] for row in face_rows]
     finally:
@@ -2127,9 +2132,17 @@ def stabilize_mesh_for_export(obj):
     if hasattr(new_mesh, 'use_auto_smooth'):
         new_mesh.use_auto_smooth = use_auto_smooth
         new_mesh.auto_smooth_angle = auto_smooth_angle
-    # Keep a consistent smooth flag across rebuilds.
-    for poly in new_mesh.polygons:
-        poly.use_smooth = False
+    # Corner data must follow the *winding*, not the sorted face identity. Losing
+    # it here silently exported mapless meshes despite export_texcoords=True.
+    for poly, row in zip(new_mesh.polygons, face_rows):
+        poly.use_smooth = row[3]
+    for edge in new_mesh.edges:
+        edge.use_edge_sharp = tuple(sorted(edge.vertices)) in sharp_edges
+    for name in uv_names:
+        layer = new_mesh.uv_layers.new(name=name)
+        for poly, row in zip(new_mesh.polygons, face_rows):
+            for loop_index, uv in zip(poly.loop_indices, row[4][name]):
+                layer.data[loop_index].uv = uv
     new_mesh.validate(clean_customdata=True)
     new_mesh.update()
 
@@ -2538,4 +2551,5 @@ def main():
         log('wrote compositions.json')
 
 
-main()
+if __name__ == '__main__':
+    main()
