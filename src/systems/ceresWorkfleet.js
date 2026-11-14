@@ -1,5 +1,6 @@
 import {ceresWorkfleetReacquireReturnBudget,restoreCeresWorkfleetReacquireReturnBudget,ceresWorkfleetHeadClearPrefix,planCeresWorkfleetReacquire,restoreCeresWorkfleetReacquire,ceresWorkfleetReacquireStage,CERES_REACQUIRE_LIMITS} from './ceresWorkfleetRecovery.js';
 import { stepCeresWorkfleetStagecraft } from './ceresWorkfleetStagecraft.js';
+import { stepCeresPlayerWinching } from './ceresPlayerWinching.js';
 import {planCeresWorkfleetRecovery,restoreCeresWorkfleetRecovery,ceresWorkfleetRecoveryClear,CERES_RECOVERY_LIMITS,
  ceresWorkfleetRendezvous,ceresWorkfleetBeginRecoverySeat} from './ceresWorkfleetRecovery.js';
 import {admitCeresCradleLayout} from '../core/ceresWorkfleetLayoutAdmission.js';
@@ -293,6 +294,7 @@ function yieldTerminalPlayerClaims(owner,job,b,claims) {
   return changed;
 }
 function stop(owner,job,phase,reason=phase,playerClaims=null) {
+  delete job.playerWinching;
   job.phase=phase;job.reason=reason;job.updatedTick=owner.state.tick;
   const b=liveBodies(owner.state);
   for(const role of ROLES)if(b[role]) {CONTROL.delete(b[role]);HEAD_CONTROL.delete(b[role]);b[role].data.ceresWorkfleetSlideDisabled=true;publishCeresWorkfleetActuation(b[role],null,owner.state.tick);}
@@ -639,6 +641,7 @@ export function restoreCeresWorkfleetJob(raw) {
     mountId:typeof raw.mountId==='string'?raw.mountId:null,towId:typeof raw.towId==='string'?raw.towId:null,
     receiverId:typeof raw.receiverId==='string'?raw.receiverId:null,reason:invalidRecovery?'recovery-plan-invalid':invalidReturnBudget?'reacquire-budget-invalid':typeof raw.reason==='string'?raw.reason:null,
     blockedReason:['foreign-custody','recovery-pose-outside-route'].includes(raw.blockedReason)?raw.blockedReason:null,
+    ...(raw.playerWinching===true&&['pads','secured'].includes(raw.phase)?{playerWinching:true}:{}),
     restorePending:true};
 }
 function makeJob(state) {
@@ -793,6 +796,18 @@ export function stepCeresWorkfleet(owner,dt) {
   state.npcJobs ||= {byId:{}};
   const job=state.npcJobs.ceresWorkfleet ||= makeJob(state),b=liveBodies(state);
   const {breaker,cradle,cutterHead:head,section}=b;
+  if(stepCeresPlayerWinching(owner,dt,job,b,{
+    service:attachmentsOf(owner),exactSection,healthy:e=>healthy(state,e),admitted:e=>admitted(e,state),
+    controlled:e=>controlled(state,e),playerCustody:e=>playerCustody(state,e),socket:ceresWorkfleetSocket,
+    retained:(holder,load)=>ceresWorkfleetContactRetained(holder,load,state,'cradle'),
+    retain:request=>registryOf(owner)?.get('asteroidSites')?.retainCeresWorkfleetSection?.(request),
+    releaseRetention:()=>registryOf(owner)?.get('asteroidSites')?.releaseCeresWorkfleetRetention?.(job.id),
+    stop:(phase,reason)=>stop(owner,job,phase,reason),change:phase=>change(job,phase,state),
+  })) {
+    syncCeresWorkfleetActivity(owner);
+    if(job.phaseTick===state.tick||state.tick%60===0)captureCeresWorkfleetHardware(owner);
+    return;
+  }
   if(TERMINAL.has(job.phase)&&job.phase!=='secured') {
     if(job.phase==='recovery-interrupted'||job.phase==='player-retained') {
       const claims=terminalPlayerClaims(state,job,b,attachmentsOf(owner));
