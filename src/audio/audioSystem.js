@@ -7404,6 +7404,11 @@ export const audio = {
         const spokeTick = Number(this.state && this.state.tick);
         if (Number.isFinite(spokeTick)) this.rt._masslineBreakSpokeTick = spokeTick;
       }
+      // Doc 18 §1: a perfect release is the twang plus one clean bell-like overtone, the note
+      // players chase. Razor only; the graded pitch ladder already separates good from clean.
+      if (started && event === 'release' && payload && payload.classification === 'razor') {
+        this.play('sfx_core_bell', { gain: 0.34, rate: 1.5, position: payload.pos });
+      }
       if (started && event === 'strain' && this.rt && Number.isFinite(strainNowS)) {
         this.rt._masslineStrainLastS = strainNowS;
       }

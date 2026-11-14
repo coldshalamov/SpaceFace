@@ -7085,6 +7085,7 @@ export const vfx = {
       strainSmooth: 0,
       loadSmooth: 0,
       reelGlow: 0,
+      windowGlow: 0,
       sparkAcc: 0,        // massline_tension port: framerate-independent spark-shed accumulator
       stressFlashAt: -1,  // last endpoint stress flash (visualTime seconds)
       stressFlashEnd: false, // alternates which endpoint flashes
@@ -7094,6 +7095,8 @@ export const vfx = {
     this._tetherColorHot = new THREE.Color('#ff5c5c');
     this._tetherColorOverheat = new THREE.Color('#ff2808');
     this._tetherColorWhite = new THREE.Color('#eaffff');
+    // The best-release window, drawn on the cable itself: a pale gold-white no load ramp produces.
+    this._tetherColorWindow = new THREE.Color('#fff2b8');
   },
 
   // -------------------------------------------------------------------------
@@ -9338,6 +9341,18 @@ export const vfx = {
     // own reel term this used to triple-count and a fully-winched cable read as a plain white
     // noodle, losing the one channel that tells you how hard it is pulling.
     if (cable.reelGlow > 0.01) this._ctmp.lerp(this._tetherColorWhite, cable.reelGlow * 0.20);
+    // The release window shows on the rope (FEEL / doc 18 §2.3): while the throw solver says the
+    // release is on solution, the cable itself turns pale gold-white and its core burns hotter,
+    // so the best moment reads without a word. Steady (no pulse) under reduced flash; the colour
+    // and brightness shift stays because it is a state, not a flash.
+    const windowSol = this.state && this.state.massline2 && this.state.massline2.throw
+      && this.state.massline2.throw.solution;
+    const windowOpen = !!(windowSol && windowSol.valid && windowSol.onSolution
+      && !windowSol.decisionStale && !windowSol.degraded);
+    const windowTarget = windowOpen ? 1 : 0;
+    cable.windowGlow += (windowTarget - cable.windowGlow)
+      * (1 - Math.exp(-(windowTarget > cable.windowGlow ? 18 : 8) * Math.max(0, dt || 0)));
+    if (cable.windowGlow > 0.01) this._ctmp.lerp(this._tetherColorWindow, Math.min(0.85, cable.windowGlow * 0.85));
     // Sustained over-class heat is a steady physical warning, including reduced flash mode.
     if (lineVisual.heat > 0) this._ctmp.lerp(this._tetherColorOverheat, Math.min(1, lineVisual.heat * 1.8));
     // A parting line is white-hot regardless of what load it was carrying a frame ago: the physical
@@ -9401,7 +9416,7 @@ export const vfx = {
       // ~15% of the ribbon, so a number this size buys a two-to-four pixel white line, not a slab.
       // The strain term inside the mapper (2.6·load, up from the old 1.7·load) keeps a heavy
       // swing's filament a multi-pixel read at the shipping chase camera (tape 2026-10-21).
-      intensity: cableRadiance.core * radiance * masslineA11y.radianceScale,
+      intensity: cableRadiance.core * (1 + cable.windowGlow * (masslineA11y.pulseScale > 0 ? 0.9 : 0.5)) * radiance * masslineA11y.radianceScale,
       opacity: (taut ? 0.74 : 0.62) * cable.fade * masslineA11y.opacityScale,
     };
     updateEnergyMaterial(cable.mesh.material, ribbonFrame);
