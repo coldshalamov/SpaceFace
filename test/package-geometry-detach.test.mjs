@@ -16,7 +16,11 @@ import {
   stableJsonStringify,
 } from '../src/contracts/renderPackage.js';
 import { createAssetResidencyRegistry } from '../src/render/assetResidency.js';
-import { createRenderPackageLoader } from '../src/render/renderPackageLoader.js';
+import {
+  assertRenderResourceBindings,
+  createRenderPackageLoader,
+  fetchVerifiedRenderResources,
+} from '../src/render/renderPackageLoader.js';
 import { createUnreadyDrawableGuard } from '../src/render/bloom.js';
 import { touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
 import { hasUnresidentGeometry, prepareStartupGeometryResidency } from '../src/render/startupGpuResidency.js';
@@ -524,11 +528,24 @@ test('dormant instanced residency uploads a refilled attribute before sealing it
 test('real Wasp Armor survives a dormant pool refill and activation on the same renderer', async (t) => {
   resetPackageDetachManifestsForTests();
   t.after(() => resetPackageDetachManifestsForTests());
-  const bytes = readFileSync(new URL('../assets/ships/release/render-packages/wasp-scn-patrol/render.glb', import.meta.url));
+  const renderUrl = new URL('../assets/ships/release/render-packages/wasp-scn-patrol/render.glb', import.meta.url);
+  const bytes = readFileSync(renderUrl);
+  const metadata = JSON.parse(readFileSync(new URL('render-package.json', renderUrl), 'utf8'));
+  assert.equal(assertRenderResourceBindings(bytes, metadata), true);
+  // Production fetches and hash-verifies the package's external KTX2 resources before parsing.
+  // Reproduce that boundary locally; Node has no browser `self` or image URL loader.
+  const verifiedResources = await fetchVerifiedRenderResources(async (url) => {
+    const file = readFileSync(new URL(url));
+    return { ok: true, arrayBuffer: async () => file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength) };
+  }, renderUrl.href, metadata);
   const decode = async () => {
     const loader = new GLTFLoader().setMeshoptDecoder(RuntimeMeshoptDecoder);
     loader.setKTX2Loader({ parse(_bytes, onLoad) { onLoad(new THREE.CompressedTexture([], 4, 4)); } });
     loader.register(registerEmbeddedKtx2Textures);
+    loader.register((parser) => {
+      parser.verifiedExternalKtx2Resources = verifiedResources;
+      return { name: 'FixtureVerifiedExternalKtx2Resources' };
+    });
     return loader.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
   };
   const resources = scene => {
@@ -738,13 +755,12 @@ test('source pins: every F2 gate/detach/ledger call site exists verbatim', () =>
   assert.match(asteroid, /dropGeometryGpuResidencyLedger\(renderer\);/);
   const bloom = read('src/render/bloom.js');
   assert.match(bloom, /preparePresentedDraw\(renderer, geometry, material\)/);
-  assert.match(bloom, /queuePresentedDetachRehydrate\(renderer\)/);
   assert.match(bloom, /const orientationHold = orientationDetachedHoldActive\(renderer\)/);
   assert.match(bloom, /orientationHoldHidesDrawable\(renderer, object\)/);
   assert.match(rendererSrc, /this\._drawBufferAspectClass = aspectClassFromSize\(_drawSize\)/);
   assert.match(
     rendererSrc,
-    /_applySize\(\) \{[\s\S]*?noteOrientationDetachedHold\(this\.renderer\);[\s\S]*?const drawSize = applyRendererSize\(this\.renderer, this\.state\)/,
+    /_applySize\(\) \{[\s\S]*?noteOrientationDetachedHold\(this\.renderer, resources\);[\s\S]*?const drawSize = applyRendererSize\(this\.renderer, this\.state\)/,
     'the aspect hold arms before setSize, so the first phone rotation is not treated as the initial size',
   );
 });
@@ -790,6 +806,18 @@ test('presented draw skips a detached upload and refills before the next one', a
   renderer.renderBufferDirect(null, null, geometry, material, null, null);
   assert.equal(draws, 1);
 
+  compressed.needsUpdate = true;
+  renderer.renderBufferDirect(null, null, geometry, material, null, null);
+  assert.equal(draws, 1, 'a changed texture version refuses the draw before it can upload empty mips');
+  const staleRefill = presentedDetachRehydrateInFlight();
+  assert.ok(staleRefill, 'the refused draw queues a refill for its actual geometry and material');
+  await staleRefill;
+  assert.ok(compressed.mipmaps.length > 0);
+
+  // Re-establish a matching upload stamp and release both payloads to test the orientation path.
+  renderer.properties.set(compressed, { __version: compressed.version });
+  assert.equal(detachPackageGeometry(geometry, renderer), true);
+  assert.equal(detachPackageTexture(compressed), true);
   noteOrientationDetachedHold(renderer);
   assert.equal(detachedPresentedDrawBlocked(renderer, geometry, material), true);
   renderer.renderBufferDirect(null, null, geometry, material, null, null);
