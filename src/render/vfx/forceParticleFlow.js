@@ -95,14 +95,17 @@ class TransportBehavior {
     // from the field centre to the affected body, so telekinesis visibly lights the thing
     // it is holding instead of only washing the space between.
     const auraCandidate = ordinal % 3 === 0 ? ordinal % contactCount : -1;
-    const auraRadius = auraCandidate >= 0 ? contacts[auraCandidate * CONTACT_STRIDE + 2] : 0;
+    const auraOffset = auraCandidate * CONTACT_STRIDE;
+    const auraRadius = auraCandidate >= 0 ? contacts[auraOffset + 2] : 0;
+    const auraReach = event.radius + auraRadius;
     // Only metric-field material cloaks a held body; heat/current/repair are not telekinesis.
     // Read the CURRENT event's kind, not m[0]: flow memory is written below (and on a recycled
     // particle still carries the previous event, so it cannot decide this one).
     // A body larger than the field event itself is impossible decorative occupancy, not an aura.
     p.forceAura = event.kind < 5 && auraCandidate >= 0
-      && auraRadius < Math.max(1, event.radius) * 1.25;
-    const auraContact = p.forceAura ? auraCandidate : -1;
+      && auraRadius < Math.max(1, event.radius) * 1.25
+      && (contacts[auraOffset] - event.x) ** 2 + (contacts[auraOffset + 1] - event.z) ** 2
+        <= auraReach * auraReach;
     if (p.forceAura) owner.stats.aura++;
     const variety = unit(event.seed, ordinal * 3), phase = unit(event.seed, ordinal * 3 + 1) * TAU;
     m[0] = event.kind; m[1] = event.x; m[2] = event.y; m[3] = event.z;
@@ -116,12 +119,11 @@ class TransportBehavior {
     if (event.kind === 9) m[12] = m[11] * (0.16 + variety * 0.045);
     m[13] = event.halfAngle; m[14] = event.halfWidth;
     if (p.forceAura) {
-      const o = auraContact * CONTACT_STRIDE;
-      m[1] = contacts[o]; m[3] = contacts[o + 1];
-      m[6] = Math.max(3, contacts[o + 2] * 1.25);
-      m[7] = phase + auraContact * 1.73;
+      m[1] = contacts[auraOffset]; m[3] = contacts[auraOffset + 1];
+      m[6] = Math.max(3, auraRadius * 1.25);
+      m[7] = phase + auraCandidate * 1.73;
       m[9] = Math.min(1.5, event.strength * 1.18);
-      m[11] = clamp(contacts[o + 2] * 0.85, 1.6, 7.0);
+      m[11] = clamp(auraRadius * 0.85, 1.6, 7.0);
       m[12] = m[11] * (0.075 + unit(event.seed, ordinal * 3 + 4) * 0.02);
     }
     p.life = event.life * (0.74 + variety * 0.26);
