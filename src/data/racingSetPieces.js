@@ -19,7 +19,10 @@ const rivalAnchors = (mira, rook, sable) => Object.freeze({
 export const RACING_SET_PIECES = Object.freeze({
   circuit_helios_belt: Object.freeze({
     anchors: Object.freeze([
-      anchor('quarry_hook', 'Quarry Hook', 6),
+      // G18-06: latch inside 100 WU of the gate so the rope is short enough to load on the
+      // hook exit, and hold it 140 WU down the outgoing leg so the redirect pays out.
+      // Seed 4242 Hard: paired advantage 0.248 s -> 1.217 s, all six laps faster.
+      anchor('quarry_hook', 'Quarry Hook', 6, { entryBackWU: 100, releaseAheadWU: 140 }),
       anchor('return_knuckle', 'Return Knuckle', 9),
     ]),
     rivalAnchors: rivalAnchors(
