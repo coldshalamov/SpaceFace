@@ -97,6 +97,8 @@ test('worker pulse projectiles reach the weapon presenter and retire through the
     const firstReply = await tick();
     assert.ok(firstReply.weaponVfxProjectiles.some((row) => row.entityId === shot.id),
       'the worker ships the mesh-skipped pulse pose on its dedicated VFX channel');
+    assert.ok(!firstReply.entityVitals.some(([id]) => id === shot.id),
+      'the worker does not also ship vitals that the journal cannot consume');
     assert.equal(state.entities.has(shot.id), false,
       'the VFX row stays outside the authoritative entity map');
     assert.equal(state.weaponVfxProjectiles.length, 1,

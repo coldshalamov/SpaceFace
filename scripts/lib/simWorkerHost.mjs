@@ -792,12 +792,15 @@ function collectWeaponVfxProjectiles(state) {
 // reads that are neither journal pose nor spawn-time data. A scalar shadow per
 // entity per drain keeps the wire to changed rows only without rebuilding a
 // JSON signature for unchanged entities.
-export function collectEntityVitals(state, vitalShadow, seenScratch = null) {
+export function collectEntityVitals(state, vitalShadow, seenScratch = null, separateWeaponVfx = false) {
   const out = [];
   const seen = seenScratch || new Set();
   seen.clear();
   for (const e of state.entityList || []) {
     if (!e || !Number.isSafeInteger(e.id)) continue;
+    // Meshless weapon trails never enter the journal. Their separate VFX lane
+    // carries the data used by the presenter, so ordinary vitals have no receiver.
+    if (separateWeaponVfx && e.type === 'projectile' && projectileSkipsVisualFactoryMesh(e)) continue;
     seen.add(e.id);
     const previous = vitalShadow.get(e.id);
     const krakenFrame = krakenMotionFrame(state, e);
@@ -2256,7 +2259,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const initAux = diffAuxTables(host.state);
     const initDomains = diffDomains(host.state, host.domainDiffSeq++);
     // Vitals shadow primes on init — spawnInfo vitals already carry the fields.
-    collectEntityVitals(host.state, host.vitalShadow, host.vitalSeen);
+    collectEntityVitals(host.state, host.vitalShadow, host.vitalSeen, true);
     host.ready = true;
     return {
       lifecycleGeneration: host.lifecycleGeneration,
@@ -2805,7 +2808,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
 
     const events = drainEvents();
     const entityVitals = production
-      ? collectEntityVitals(state, host.vitalShadow, host.vitalSeen)
+      ? collectEntityVitals(state, host.vitalShadow, host.vitalSeen, true)
       : null;
     // This single authored body may become ready or fail without a normal vital
     // changing. Ship its complete vitals each existing packet so coalescing keeps
