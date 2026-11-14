@@ -58,6 +58,7 @@ async function loadMain({
   updaterWillQuit = true,
   deferFirstPaint = false,
   hangInitialNavigation = false,
+  rendererDeathsDuringNavigation = 0,
   omitShowEvent = false,
 } = {}) {
   const windows = [];
@@ -189,6 +190,11 @@ async function loadMain({
         this.loadedUrl = url;
         this.loadRequests.push(url);
         currentUrl = url;
+        if (this.loadRequests.length <= rendererDeathsDuringNavigation) {
+          if (paintBeforeFirstLoadSettles) this.emit('ready-to-show');
+          webContents.emit('render-process-gone', {}, { reason: 'crashed', exitCode: 1 });
+          await new Promise(() => {});
+        }
         if (hangInitialNavigation) await new Promise(() => {});
         if (failWindowLoads > 0) {
           failWindowLoads -= 1;
@@ -730,6 +736,27 @@ test('a hidden shell with an unsettled navigation reaches a terminal startup fai
   assert.equal(h.receipts.filter(({ status }) => status === 'startup-failed').length, 1);
   assert.deepEqual(h.serverStats.exits, [1]);
   assert.ok(!h.receipts.some(({ status }) => status === 'window-ready'));
+});
+
+test('a renderer death during initial navigation retries once and waits for the new paint', async () => {
+  const recovered = await loadMain({ rendererDeathsDuringNavigation: 1,
+    paintBeforeFirstLoadSettles: true, deferFirstPaint: true, allowStartupFailure: true });
+  assert.equal(recovered.win.loadRequests.length, 2);
+  assert.equal(recovered.win.loadRequests[0], recovered.win.loadRequests[1]);
+  assert.equal(recovered.win.isVisible(), false, 'an abandoned first paint cannot reveal the retry');
+  recovered.win.emit('ready-to-show');
+  assert.equal(recovered.win.isVisible(), true);
+  assert.deepEqual(recovered.serverStats.exits, []);
+  assert.equal(recovered.receipts.filter(({ status }) => status === 'window-ready').length, 1);
+  assert.equal(recovered.receipts.find(({ status }) => status === 'canonical-navigation-retry')?.details.code,
+    'SPACEFACE_INITIAL_RENDERER_GONE');
+
+  const failed = await loadMain({ rendererDeathsDuringNavigation: 2, allowStartupFailure: true });
+  assert.equal(failed.win.loadRequests.length, 2);
+  assert.deepEqual(failed.serverStats.exits, [1]);
+  assert.equal(failed.win.isVisible(), false);
+  assert.equal(failed.receipts.find(({ status }) => status === 'startup-failed')?.details.code,
+    'SPACEFACE_INITIAL_RENDERER_GONE');
 });
 
 test('first window deadline covers absent paint and clears for a ready window', async () => {

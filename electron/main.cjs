@@ -1324,6 +1324,7 @@ async function createWindow() {
   let initialCanonicalLoadPending = false;
   let canonicalRetryAvailable = !launchConfig.isolatedEvidence;
   let retryableNavigationFailure = null;
+  let onInitialRendererGone = null;
   let initialLoadReady = false;
   let firstPaintReady = false;
   let startupTimer = null;
@@ -1519,9 +1520,17 @@ async function createWindow() {
     // opening it so presentation can start even if a native event is omitted.
     publishWindowLifecycle(win, 'show');
   }
-  win.once('ready-to-show', () => {
+  win.on('ready-to-show', () => {
+    if (firstPaintReady || startupAbandoned) return;
     firstPaintReady = true;
     showReadyWindow();
+  });
+  win.webContents.on('render-process-gone', (_event, details) => {
+    if (!onInitialRendererGone || details?.reason === 'clean-exit') return;
+    const error = new Error('The game renderer stopped while opening SpaceFace.');
+    error.code = 'SPACEFACE_INITIAL_RENDERER_GONE';
+    error.reason = receiptText(details?.reason);
+    onInitialRendererGone(error);
   });
   win.webContents.on('did-fail-load', (_event, code, message, url, isMainFrame) => {
     if (!isMainFrame) return;
@@ -1570,10 +1579,22 @@ async function createWindow() {
   initialCanonicalLoadPending = true;
   try {
     for (;;) {
+      const rendererGone = new Promise((_, reject) => { onInitialRendererGone = reject; });
       try {
-        await Promise.race([win.loadURL(gameUrl), navigationDeadline]);
+        await Promise.race([rendererGone, win.loadURL(gameUrl), navigationDeadline]);
         break;
       } catch (error) {
+        if (error?.code === 'SPACEFACE_INITIAL_RENDERER_GONE' && canonicalRetryAvailable
+          && !appQuitting && !win.isDestroyed() && !win.webContents.isDestroyed()) {
+          // A dead renderer can strand the load promise. Spend the same one
+          // retry as a failed navigation, from the same save origin and deadline.
+          canonicalRetryAvailable = false;
+          canonicalLoadCommitted = false;
+          firstPaintReady = false;
+          retryableNavigationFailure = null;
+          receipt('canonical-navigation-retry', { code: error.code, reason: error.reason, url: gameUrl });
+          continue;
+        }
         if (isCommittedCanonicalLoadAbort(
           error?.code, error?.url, win, gameUrl, canonicalLoadCommitted, initialCanonicalLoadPending,
         )) {
@@ -1588,6 +1609,8 @@ async function createWindow() {
         canonicalRetryAvailable = false;
         retryableNavigationFailure = null;
         receipt('canonical-navigation-retry', { code: error.code, url: gameUrl });
+      } finally {
+        onInitialRendererGone = null;
       }
     }
   } catch (error) {
