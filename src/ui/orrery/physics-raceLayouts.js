@@ -273,6 +273,12 @@ ${R} .pv-tools > button:is(:hover, :focus-visible)::after { color:rgb(255 253 24
   ${R} { scroll-padding-bottom:190px; }
 }
 
+/* ui-polish-434: at 761–980 × ≤560 (e.g. 960×540) the two-line sentence sat ~10px over the
+   ORBITAL GALLERY hairline, reading as one crowded block; the head gets a little more air there. */
+@media (min-width: 761px) and (max-width: 980px) and (max-height: 560px) {
+  ${R} > .k-title { margin:0 0 16px !important; }
+}
+
 /* Desktop short: compress the head and keep lane scroll masked clear of the foot hairline. */
 @media (min-width: 981px) and (max-height: 560px) {
   ${R} {
