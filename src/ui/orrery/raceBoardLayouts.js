@@ -189,6 +189,15 @@ ${R}:has(> .race-board-start) { scroll-padding-top:128px; }
   /* five cards to a row on 1080p: the course reading wraps evenly instead of orphaning ALIGNED */
   ${R} .race-board-course > .race-map + p + p { text-wrap:balance; }
 }
+@media (max-width: 440px) {
+  /* ui-polish-513: Back wrapped onto a row of its own at the foot of the fit rail, a 50px strip
+     holding one small word. On a phone-width column (where the display line wraps and leaves its corner
+     free) it rides the head's top-right corner beside the kicker, clear of the display line, framed like the
+     other phone screens' Back, and the fit rail ends at its last control. */
+  ${R} .race-board-tools:not(:has(> button:only-child)) > button.k-word:last-child { position:absolute !important;
+    top:12px; right:16px; min-height:32px !important; padding:0 12px 0 8px !important;
+    border-color:rgb(${BONE} / .26) !important; border-radius:6px !important; background:rgb(${BONE} / .03) !important; }
+}
 /* 1080p band: lift the whole flow (no getBoundingClientRect positioning on this board). */
 @media (min-width: 1800px) and (max-width: 2199px) and (min-height: 900px) { ${R} > * { zoom:1.14; } ${R} > .race-board-start { top:calc(-1 * clamp(26px, 6vh, 72px) / 1.14) !important; } ${R}:has(> .race-board-start) { scroll-padding-top:148px; } }
 @media (min-width: 2200px) and (min-height: 1200px) { ${R} > * { zoom:1.4; } ${R} > .race-board-start { top:calc(-1 * clamp(26px, 6vh, 72px) / 1.4) !important; } ${R}:has(> .race-board-start) { scroll-padding-top:180px; } }
