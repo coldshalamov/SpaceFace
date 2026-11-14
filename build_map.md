@@ -7049,3 +7049,44 @@ and "enemy physics weapons stay rare" for Swarm (see `swarm/README.md` §6); mas
 **How a row is done:** its spec's checklist passes; captures on the ordinary route with the Browser pane
 visible; an independent reviewer scores ≥ 4 on the applicable `bible/QUALITY.md` rubrics; the moment(s)
 it enables are recorded in `bible/MOMENTS.md`. Delete the row in the landing commit (board law).
+
+## 37. PR intake, 2026-11-14 — what landed from the open pull requests, and every plan that is still owed
+
+**Owner, 2026-11-14:** get the work out of the open PRs and into master so nothing drifts; build the
+basic, full-quality version of each; write everything that remains here so no plan is lost. This
+section is that record. The rules the work followed are in
+[`design/program/fleet/PR-INTAKE.md`](design/program/fleet/PR-INTAKE.md); the live rows are the
+`PRI-*` rows of [`design/program/fleet/QUEUE.md`](design/program/fleet/QUEUE.md); each `PRI-*` packet in
+`design/program/fleet/packets/` is a complete build plan a worker can run as written. Every PR head stays
+readable as `refs/remotes/pull/<N>` and on its GitHub branch.
+
+### 37.1 Landed in full
+- **The ui-polish wall** (#928–#1116, 88 PRs) and **#1074** (Armory, Manifest, Base Operations, popups redesign).
+- **All commission briefs** (EC-S01…S25, G01…G21, A01…A07, Z01…Z04, C01) → `design/program/experience-commissions/commissions/`.
+- **#921** rescue choices outlive the air clock, and (new) the spent clock really lowers the payout · **#923** Swarm bank identity · **#926** repair-cell tests · **#941** Furnace pickup bank + loss-proof casing · **#1113** Helios rival pace.
+- **#947 #956 #957 #958** Dione look, Hyperion tow-out, Kepler and Orcus chains · **#969** residents on the radio · **#973** outposts are places (simulation + Automation screen) · **#980** a failed load never ends the live run · **#982** the six work-loop slices · **#994** strict course win + the wave-20 plate fight · **#940** Frontier households (rebuilt on the Frontier owner).
+
+### 37.2 Landed in part — the rest is owed (take the packet, it is the plan)
+| PR | Landed | Still owed |
+|---|---|---|
+| **#945 Ceres Belt** | PRI-08a the swing (Old Hob's anchors, player winching) | `PRI-08b-the-ninth-mouth` · `PRI-08c-kroll-and-the-yard-slip`. Not yet planned: **Bell Load** job and **The Door** heist (`design/game/13`), the **Quarry Bell** shift event the winching job should react to, the Ninth Mouth's shaded-cut look (the PR's `shadeRegions` shader — belongs to the look lane, after LOOK-04), and the bar-reply typewriter decision (the PR removed it; undecided — judge on screen) |
+| **#939 Kessler readings + the campaign layer** | PRI-10a (Scale 4 shows both readings; *"Twelve point four. Again."*) | `PRI-10b` yard winch + Jorah · `10c` brake at Rook's ring · `10d` Book 4 law desk, sanctuary, branch choice · `10e` Rook/Rookside/Nest · `10f` The Weighing · `10g` Registry, Slate, Maw · `10h` Foreman's plates · `10i` patrol paperwork · `10j` Book 6 charter · `10k` Ash Cache · `10l` Shepherd's message · `10m` Helios first iron · `10n` Tethys release + deck · `10o` the desk/hail windows. Recon with file:line for every feature: `.devshots/pr-intake/reviews/recon-939.md` (machine-local; the packets carry the decisions) |
+| **#942 Swarm opening + Foundry staging** | (first packet in flight) | `PRI-11a` three Wasps first · `11b` each Brood family met alone · `11c` what the Maw leaves · `11d` Fortify you can read · `11e` beams stop at cover, recoveries named, Cryo weather · `11f` verify-and-fix the small rest. **Deliberately not built** (the design replaced them): the alternate 34-round Foundry score, Mooring Line reads at 26–28, the 29–34 exit bridge and Breaker Yard |
+
+### 37.3 Recorded but not built — plans kept here
+- **#981 Combat Lab side rooms.** `COMBAT_LAB_ARENAS` already has `ceres_belt` and `tethys_hub`; the door hides them because they are unpolished. Plan: bring both rooms to the Foundry's standard (`design/game/15`), then land the PR's exported arena catalog and its lock fix (`crucibleArenaLadderLocked`: only star-gated arenas can lock) from `refs/remotes/pull/981`. The commission's real intent (EC-G14) is larger: the race starts from the Tethys bypass and practice lives at the Dione range — in towns, not on a menu.
+- **#990 The Pack.** Master's cast table, names and twists already cover rounds 1–30. Still unbuilt from the PR: an authored one-line *question* per round in the opener and an `inbound:` line in the Armory forecast (`refs/remotes/pull/990:src/data/swarmPack.js` holds the ten lines). Add them as fields on `src/data/swarmCourse.js` rows; do not add a second composition table.
+- **#1056 #1060 digest pins.** Superseded: regenerate the UI budget baseline once on a quiet machine (queue row `UI-DIGEST`; the flag is `--budgets-out=<path>` with the equals sign).
+- **Beyond what the code PRs carried, from their briefs:** EC-G01 the Berth Board and the five Road Cast · EC-G05 a tug that visibly delivers your stock, a cross-sector route network, raids on your own yard · EC-G12 your wreck and spilled cargo stay where you died with a rival already heading there · EC-G15 the other three work toys (the *crack* at Haumea, the *peel* at Eunomia and Sker, *knock first* at Charon) · EC-C01 the last five minutes (final opponent's goodbye line, lights up, your run on the wall).
+- **The commissions with no code yet** (S01, S03, S05–S12, S16–S25, G02–G04, G06–G11, G16–G21, A01–A05, A07, Z02–Z04): each brief is the plan; the order is `design/game/10_THE_GAME.md` §6; several are already queue rows (G16, G17, G18, G19, A01, G08, G10, G20, G21).
+
+### 37.4 Follow-ups this program found (not from any PR)
+1. **The plate should leave.** In the Gauntlet's wave-20 fight a stolen plate is only dragged 100 wu. Better: the escorts tow it out through a gate and it is gone for the run; a kept plate is a 96-mass slab the pilot can latch and throw.
+2. **A start-at-wave tool for the Gauntlet** (Swarm has `?swarmRound=N`); without it wave 20 and wave 30 cannot be looked at cheaply.
+3. **A bench shot that mounts the hail panel** with a resident on the channel (PRI-06 was verified by tests only).
+4. **Phone screens the bench still flags:** Crucible results (stats under the "Run it again" foot), wingman dial legends over REGROUP, dossier verbs over station tabs, Ledger eligibility cut off at 1440×900, Factions treaty line cut off.
+5. **A voice pass on the #982 work loops** — the rig workshop still carries several lines over the eight-word rule (`src/features/rigWorkshop/aftermath.js`, `jobs.js`, `runtime.js`).
+6. **Station layout CSS is accreting** one media-query patch per review finding (`stationStandard.js`, `stationTabsLayouts.js`, `cruciblePreparationLayouts.js`). Replace the patch stack with a small set of named frames (phone / short desktop / desktop / wide) per surface before the next polish wave.
+7. **The playable check cannot tell "slow" from "broken"** on a loaded machine (fixed 60 s budgets; the game took ~8 min to boot at 100 % CPU and was healthy). Give it a budget scale and run the gate on a quiet machine before any release.
+8. **Known reds left as found:** `travel-latch` (pins a `NumLock` Burn binding that no longer exists), `source-slice-eval-guard` (two new tests missing from its allowlist), `automation-worker-outpost-action` (cold-cadence slot), `words-miner-ops-chips`, `save-growth-dock-trade-flat`, `save-old-version-continue-matrix`, plus the Swarm list in `design/program/fleet/packets/KNOWN-REDS-SWARM.md`.
+9. **Not yet seen on screen** (tests only): the four small places of PRI-01, Frontier rings and tags, Old Hob's anchors, the wave-20 plate, the outpost annexes.
