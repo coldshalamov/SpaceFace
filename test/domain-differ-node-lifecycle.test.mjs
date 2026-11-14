@@ -30,6 +30,31 @@ test('shared-store status reaches the next reply without the save metadata caden
     'in-place health changes also publish on the next reply');
 });
 
+test('a collapsed nested path can expand off its previous enumeration slot', (t) => {
+  const expansion = { segs: ['economy'], depth: 3 };
+  const config = { expandPaths: [expansion] };
+  configureDomainMirroring(config);
+  t.after(() => configureDomainMirroring({}));
+  const state = { economy: { markets: { station_a: { mineral: { price: 5 } } } } };
+  const differ = createDomainDiffer();
+  differ.diff(state, 0);
+  const station = differ.paths.get('economy.markets.station_a');
+  assert.ok(station.kids?.has('mineral'));
+
+  configureDomainMirroring({});
+  differ.diff(state, 1);
+  assert.equal(station.kids, null);
+
+  // Restore through a mutable config rule, with no reset of the original differ.
+  expansion.depth = 2;
+  configureDomainMirroring(config);
+  expansion.depth = 3;
+  const tick = station.slot % DOMAIN_ENUM_TICKS === 2 ? 3 : 2;
+  const result = differ.diff(state, tick);
+  assert.ok(station.kids?.has('mineral'));
+  assert.ok(result.updates.some(update => pathIs(update, 'economy', 'markets', 'station_a', 'mineral')));
+});
+
 function pathIs(update, ...segs) {
   return update && update.segs.length === segs.length
     && update.segs.every((segment, index) => segment === segs[index]);

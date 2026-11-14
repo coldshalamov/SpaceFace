@@ -949,6 +949,16 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
 // value whose signature exceeds this is flagged in the run diagnostics.
 export const DOMAIN_SHIP_CAP_BYTES = 256 * 1024;
+const DOMAIN_ROOT_SEGMENTS = DOMAIN_MIRROR_KEYS.map((key) => key.split('.'));
+
+function resolveDomainSegments(state, segments) {
+  let node = state;
+  for (const seg of segments) {
+    if (node == null) return undefined;
+    node = node[seg];
+  }
+  return node;
+}
 
 // Live-state accessor for a mirrored key. Every segment walks off the state
 // root — 'world.currentSectorId' reaches state.world.currentSectorId, and the
@@ -957,14 +967,7 @@ export const DOMAIN_SHIP_CAP_BYTES = 256 * 1024;
 // treats the leaf as absent rather than throwing on a missing container.
 export function resolveDomainValue(state, key) {
   if (!state) return undefined;
-  let node = state;
-  const start = key.indexOf('.');
-  if (start < 0) return node[key];
-  for (const seg of key.split('.')) {
-    if (node == null) return undefined;
-    node = node[seg];
-  }
-  return node;
+  return key.indexOf('.') < 0 ? state[key] : resolveDomainSegments(state, key.split('.'));
 }
 
 // Path granularity: mirrored roots are diffed at leaf-path level, not whole-key.
@@ -1149,7 +1152,7 @@ export function configureDomainMirroring(config = {}) {
 // Find the leaf-view rule covering a leaf path, or null. leafSegs must equal
 // the full segment count (rule prefix + path suffix) so a rule can't reach
 // deeper into a subtree than it declared.
-function domainLeafViewFor(segs) {
+function builtinDomainLeafViewFor(segs) {
   if (segs.length === 1 && segs[0] === 'world.counterweightCircuit.discovered') return { hotPresentation: true };
   if (segs.length === 1 && ['dockingPresentation', 'counterweightCircuitOffer', 'counterweightCircuitView', 'breakwaterSpurOffer', 'breakwaterSpurView', 'cinderglassJobView', 'cinderglassJobToken', 'cinderglassJobPresentationReady'].includes(segs[0])) return { hotPresentation: true };
   if (segs.length === 1 && ['planet.active', 'planet.siteId'].includes(segs[0])) return { hotPresentation: true };
@@ -1173,9 +1176,6 @@ function domainLeafViewFor(segs) {
   if (segs.length === 1 && segs[0] === 'planet.orchardForecast') return ORCHARD_FORECAST_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'planet.ships') return ORCHARD_EXPOSURE_MIRROR_RULE;
   if (segs.length === 1 && segs[0] === 'aftermathWrecks.causes') return AFTERMATH_CAUSES_MIRROR_RULE;
-  if (activeDomainConfig.combatTraceProjection && isCombatTracePath(segs)) {
-    return COMBAT_TRACE_PRESENTATION_RULE;
-  }
   // DOMAIN_MIRROR_KEYS keeps dotted leaf paths as one logical root on the worker wire; the main
   // lane splits that segment while grafting it into state.npcJobs.byId.
   if ((segs.length === 1 && segs[0] === 'npcJobs.byId')
@@ -1186,6 +1186,10 @@ function domainLeafViewFor(segs) {
       || (segs.length === 2 && segs[0] === 'npcJobs' && segs[1] === 'lanternWard')) {
     return { project: 'lanternWard', hotPresentation: true };
   }
+  return null;
+}
+
+function configuredDomainLeafViewFor(segs) {
   for (const rule of activeDomainConfig.leafViews) {
     if (segs.length !== rule.leafSegs) continue;
     const p = rule.segs;
@@ -1517,7 +1521,7 @@ function projectDomainLeaf(rule, v, state) {
   return out;
 }
 
-function expandDepthFor(segs) {
+function builtinExpandDepthFor(segs) {
   // These roots are bounded presentation projections, even when a diagnostic
   // profile expands every root. Expanding their raw sources would bypass the
   // projector, and the facade must retain the same atomic projected path.
@@ -1525,12 +1529,16 @@ function expandDepthFor(segs) {
     || segs[0] === 'planet.orchardForecast' || segs[0] === 'ilexGreenhousePublic'
     || segs[0] === 'aftermathWrecks.causes' || segs[0] === 'lineProgression'
     || segs[0] === 'stationServices' || segs[0] === 'factionPresence.servicesByStation'
-    || segs[0] === 'economyContracts.massScale.slips') return 0;
+    || segs[0] === 'economyContracts.massScale.slips') return null;
   // One live cable changes every tick, while the bounded broken-line history is mostly static.
   // Keep the complete facade, but diff individual attachment records so that live tension does
   // not clone and transport every old cable on every pose reply.
-  if (segs[0] === 'combat' && segs[1] === 'attachments') return 3;
-  let depth = DOMAIN_EXPAND[segs[0]] || 0;
+  return segs[0] === 'combat' && segs[1] === 'attachments' ? 3 : DOMAIN_EXPAND[segs[0]] || 0;
+}
+
+function expandDepthFor(segs, depth = builtinExpandDepthFor(segs)) {
+  if (depth === null) return 0;
+  if (isCombatAttachmentsPath(segs)) return depth;
   for (const rule of activeDomainConfig.expandPaths) {
     const p = rule.segs;
     if (p.length >= segs.length) continue;
@@ -1541,6 +1549,10 @@ function expandDepthFor(segs) {
     if (match && rule.depth > depth) depth = rule.depth;
   }
   return depth;
+}
+
+function isCombatAttachmentsPath(segs) {
+  return segs[0] === 'combat' && segs[1] === 'attachments';
 }
 
 // True for values the canonical object branch serializes as `o:{...}` — plain
@@ -1980,6 +1992,20 @@ function domainWireChildSegs(segs, aliased, child, name) {
     ? segs.concat(name) : child.segs;
 }
 
+function domainPathMetadata(path, segs) {
+  const root = segs[0];
+  return {
+    ownerSnapshot: root === 'survivalDraftPublic' || root === 'survivalResultsPublic',
+    isCombatTrace: isCombatTracePath(segs),
+    isCombatAttachments: isCombatAttachmentsPath(segs),
+    isNpcJobsById: isNpcJobsByIdPath(segs),
+    isRunSpawnedThreat: root === 'run' && segs[1] === 'spawnedThreat',
+    cadence: domainCadenceFor(root === 'run' && segs.length === 2 ? path : root),
+    builtinLeafView: builtinDomainLeafViewFor(segs),
+    builtinExpandDepth: builtinExpandDepthFor(segs),
+  };
+}
+
 export function createDomainDiffer(options = {}) {
   // Stage-6 instrumentation gate (item F3): the probe slot table + digest sets
   // exist only for --probe domains runs. Production ticks pass probe:false and
@@ -2046,18 +2072,12 @@ export function createDomainDiffer(options = {}) {
       signedScalar: NO_SIGNED_SCALAR,
       bytes: 0,
       lastSign: -1,
-      lastEnum: null,
       slot: nextSlot++,
       probeSlot: null,
       probeChanged: false,
       // These values depend only on the path. Keep them on the node so the
       // hot walk does not repeatedly classify the same path.
-      ownerSnapshot: segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic',
-      isCombatTrace: isCombatTracePath(segs),
-      isCombatAttachments: segs[0] === 'combat' && segs[1] === 'attachments',
-      isNpcJobsById: isNpcJobsByIdPath(segs),
-      isRunSpawnedThreat: segs[0] === 'run' && segs[1] === 'spawnedThreat',
-      cadence: domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? path : segs[0]),
+      ...domainPathMetadata(path, segs),
     };
     if (node.isCombatTrace) {
       node.combatTraceWatermark = null;
@@ -2083,14 +2103,7 @@ export function createDomainDiffer(options = {}) {
     const aliasKey = `${segs[0]}\u0000${segs.length}\u0000${segs[1] ?? ''}`;
     let metadata = node.aliasMetadata && node.aliasMetadata.get(aliasKey);
     if (metadata) return metadata;
-    metadata = {
-      ownerSnapshot: segs[0] === 'survivalDraftPublic' || segs[0] === 'survivalResultsPublic',
-      isCombatTrace: isCombatTracePath(segs),
-      isCombatAttachments: segs[0] === 'combat' && segs[1] === 'attachments',
-      isNpcJobsById: isNpcJobsByIdPath(segs),
-      isRunSpawnedThreat: segs[0] === 'run' && segs[1] === 'spawnedThreat',
-      cadence: domainCadenceFor(segs[0] === 'run' && segs.length === 2 ? node.path : segs[0]),
-    };
+    metadata = domainPathMetadata(node.path, segs);
     if (!node.aliasMetadata) node.aliasMetadata = new Map();
     node.aliasMetadata.set(aliasKey, metadata);
     return metadata;
@@ -2107,7 +2120,10 @@ export function createDomainDiffer(options = {}) {
     // or stock/hold receipt must arrive before its event opens a screen, even for a cold leaf.
     const freshOwnerSnapshot = metadata.ownerSnapshot && node.ownerSnapshotSource !== v;
     if (metadata.ownerSnapshot) node.ownerSnapshotSource = v;
-    if (isCanonicalObject(v) && segs.length - 1 < expandDepthFor(segs)) {
+    const depth = metadata.builtinExpandDepth;
+    if (depth !== null && (segs.length - 1 < depth
+        || (activeDomainConfig.expandPaths.length && segs.length - 1 < expandDepthFor(segs, depth)))
+        && isCanonicalObject(v)) {
       if (node.leaf) {
         releaseProbeSlot(node); // leaf -> container
         if (metadata.isCombatAttachments) {
@@ -2124,7 +2140,6 @@ export function createDomainDiffer(options = {}) {
         }
         if (segs[0] === 'run' && segs.length === 1) {
           // A reset/null run must enumerate the new identity on its first reply.
-          node.lastEnum = null;
           node.lastSign = -1;
           node.digest = null;
         }
@@ -2132,7 +2147,8 @@ export function createDomainDiffer(options = {}) {
       node.leaf = false;
       // Cable admission, cuts and history pruning must accompany this tick's bodies. Unlike
       // cold domain inventories, this bounded table cannot wait ten replies to enumerate.
-      const enumDue = metadata.isCombatAttachments || freshOwnerSnapshot || node.lastEnum == null
+      // A collapsed node has no child table and must enumerate when it expands again.
+      const enumDue = metadata.isCombatAttachments || freshOwnerSnapshot || node.kids === null
         || tick % DOMAIN_ENUM_TICKS === node.slot % DOMAIN_ENUM_TICKS;
       if (enumDue) {
         const previousKids = node.kids;
@@ -2158,7 +2174,6 @@ export function createDomainDiffer(options = {}) {
           }
         }
         node.kids = nextKids;
-        node.lastEnum = tick;
       } else {
         // Between enumerations walk the known set only: absent children delete
         // eagerly (a present-undefined child will be re-discovered next enum);
@@ -2192,8 +2207,9 @@ export function createDomainDiffer(options = {}) {
       }
     }
     node.leaf = true;
-    const leafRule = domainLeafViewFor(segs);
     const isCombatTrace = metadata.isCombatTrace;
+    const leafRule = metadata.builtinLeafView || (isCombatTrace && activeDomainConfig.combatTraceProjection
+      ? COMBAT_TRACE_PRESENTATION_RULE : configuredDomainLeafViewFor(segs));
     // Do not retain a replaced live trace/event array until its next cold slot.
     // The replacement still follows the normal cadence, but dropping the old
     // references here keeps reset/load graphs collectible immediately.
@@ -2395,7 +2411,7 @@ export function createDomainDiffer(options = {}) {
           walkSegs = rootAliasSegs[rootIndex];
           if (!walkSegs) walkSegs = rootAliasSegs[rootIndex] = [key];
         }
-        walk(rootNode, resolveDomainValue(state, key), tick, updates, stats, npcJobsRevision,
+        walk(rootNode, resolveDomainSegments(state, DOMAIN_ROOT_SEGMENTS[rootIndex]), tick, updates, stats, npcJobsRevision,
           runContext, state, walkSegs);
       }
       const sweep = tick % DOMAIN_PROBE_SWEEP_TICKS === 0;
