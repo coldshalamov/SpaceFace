@@ -215,6 +215,45 @@ test('pre-step angular sampling removes duplicate Rapier getter work', async () 
   }
 });
 
+test('quantized native snapshots retain the completed pose across later entity writes', async () => {
+  const quantum = 0.25;
+  const owner = await createSg02DynamicBodyOwner({
+    publishTelemetry: false, fixedDt: DT, quantum, frameOrigin: { x: 8192, z: -4096 },
+  });
+  try {
+    const actor = ship(1);
+    owner.syncFromEntities([actor]);
+    owner.step(DT, 1, { detailedDiagnostics: false });
+
+    const round = value => Math.round(value / quantum) * quantum;
+    const expected = {
+      id: actor.id, x: round(actor.pos.x), z: round(actor.pos.z), yaw: round(actor.rot),
+      vx: round(actor.vel.x), vz: round(actor.vel.z), wy: round(actor.angVel), revision: 0,
+    };
+    actor.pos.x += 128;
+    actor.pos.z -= 64;
+    actor.vel.x = 15;
+    actor.vel.z = -4;
+    actor.rot = 1;
+    actor.angVel = 2;
+
+    assert.deepEqual(owner.quantizedSnapshot(), [expected]);
+    assert.deepEqual({ ...owner.records.get(actor.id).snapshot }, expected);
+    const [copy] = owner.quantizedSnapshot();
+    copy.x = 0;
+    assert.deepEqual(owner.quantizedSnapshot(), [expected]);
+
+    actor.flags.noInterp = true;
+    owner.syncFromEntities([actor]);
+    assert.deepEqual(owner.quantizedSnapshot(), [{
+      id: actor.id, x: round(actor.pos.x), z: round(actor.pos.z), yaw: 1,
+      vx: 15, vz: -4, wy: 2, revision: 0,
+    }]);
+  } finally {
+    owner.dispose();
+  }
+});
+
 test('pre-step angular cache preserves control and torque snapshots', async () => {
   const [optimized, fallback] = await Promise.all([
     createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT }),

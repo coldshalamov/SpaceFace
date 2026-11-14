@@ -75,6 +75,7 @@ export const SG02_DYNAMIC_BODY_OWNER_QUANTUM = 1e-4;
 // response itself stays bit-for-bit inside Rapier.
 export const SG02_CONTACT_FORCE_EVENT_THRESHOLD_N = 60;
 const POSE_RESYNC_EPS2 = 1e-4;
+const SNAPSHOT_SCALARS = Symbol('snapshotScalars');
 // Read-only contact observations are issued by this owner, never by gameplay proximity tests.
 const ISSUED_SOLID_CONTACTS = new WeakMap();
 export function isNativeSolidContact(value, source = null, target = null) {
@@ -172,6 +173,9 @@ const CONTACT_MATERIALS = PHYSICS_MATERIALS;
 // continuous forces integrate inside world.step), so player/tether/AI physics pass through
 // untouched — the clamp bites solver contact response alone.
 const MAX_CONTACT_DV = 40;       // wu/s of contact-sourced linear delta-v per tick
+// Both linear give bounds are at least MAX_CONTACT_DV. Stay a full unit below it so
+// rounding cannot skip the exact norm and contact rules near the threshold.
+const CONTACT_DV_NO_CORRECTION = MAX_CONTACT_DV - 1;
 const MAX_CONTACT_DW = 2.0;      // rad/s of contact-sourced yaw-rate delta per tick (debris/rocks)
 // Post-step pose sanity: every authorized motion source (commands, queued impulses, attachment
 // springs) mutates the body BEFORE _captureExpectedKinematics, so expected.x/z is the complete
@@ -1162,16 +1166,9 @@ export class Sg02DynamicBodyOwner {
       effectiveInertiaY: spec.inertiaY,
       bodyResponseMassScale: 1,
       bodyResponseInertiaScale: 1,
-      snapshot: {
-        id: entity.id,
-        x: quantize(global.x, this.quantum),
-        z: quantize(global.z, this.quantum),
-        yaw: quantize(yaw, this.quantum),
-        vx: quantize(linvel.x, this.quantum),
-        vz: quantize(linvel.z, this.quantum),
-        wy: quantize(wy, this.quantum),
-        revision: spec.revision,
-      },
+      snapshot: createBodySnapshot(
+        this.quantum, entity.id, global.x, global.z, yaw, linvel.x, linvel.z, wy, spec.revision,
+      ),
     };
     retainAdoptedOrchardFrame(this, record);
     for (const owned of colliders) this._colliderOwners.set(owned.handle, { rec: record, collider: owned });
@@ -1456,8 +1453,9 @@ export class Sg02DynamicBodyOwner {
       impulse: { x: -velocity.x * mass, z: -velocity.z * mass } });
     if (!applied) return false;
     writeEntityVelFromBody(rec);
-    rec.snapshot.vx = quantize(rec.entity.vel.x, this.quantum);
-    rec.snapshot.vz = quantize(rec.entity.vel.z, this.quantum);
+    const snapshot = rec.snapshot[SNAPSHOT_SCALARS];
+    snapshot.vx = rec.entity.vel.x;
+    snapshot.vz = rec.entity.vel.z;
     if (rec.postStep) rec.postStep.vDirty = true;
     return true;
   }
@@ -2783,50 +2781,54 @@ export class Sg02DynamicBodyOwner {
     let touched = false;
     const rawDvx = Number(v.x) - e.vx;
     const rawDvz = Number(v.z) - e.vz;
-    const rawDv = Math.hypot(rawDvx, rawDvz);
-    const contactDvBudget = (!Number.isFinite(rawDv)
-        || rawDv > this._victimDvBound(rec))
-      ? this._contactResponseDvBudget(rec)
-      : Infinity;
-    if (!Number.isFinite(rawDv) || rawDv > contactDvBudget) {
-      let acceptedDvx = 0;
-      let acceptedDvz = 0;
-      if (Number.isFinite(rawDv) && rawDv > 0) {
-        const scale = contactDvBudget / rawDv;
-        acceptedDvx = rawDvx * scale;
-        acceptedDvz = rawDvz * scale;
-      }
-      const predictedX = Number.isFinite(e.x)
-        ? e.x : finite(rec._bodyPoseX) + e.vx * this.fixedDt;
-      const predictedZ = Number.isFinite(e.z)
-        ? e.z : finite(rec._bodyPoseZ) + e.vz * this.fixedDt;
-      _vecWriteScratch.x = predictedX + acceptedDvx * this.fixedDt;
-      _vecWriteScratch.y = 0;
-      _vecWriteScratch.z = predictedZ + acceptedDvz * this.fixedDt;
-      rec.body.setTranslation(_vecWriteScratch, true);
-      rec._bodyPoseX = Math.fround(_vecWriteScratch.x);
-      rec._bodyPoseZ = Math.fround(_vecWriteScratch.z);
-      if (post) post.pDirty = true;
-      if (!Number.isFinite(rawDv)) {
-        vx = e.vx;
-        vz = e.vz;
-        touched = true;
+    if (!(Math.abs(rawDvx) + Math.abs(rawDvz) <= CONTACT_DV_NO_CORRECTION)) {
+      const rawDv = Math.hypot(rawDvx, rawDvz);
+      const rawDvFinite = Number.isFinite(rawDv);
+      const contactDvBudget = (!rawDvFinite || rawDv > this._victimDvBound(rec))
+        ? this._contactResponseDvBudget(rec)
+        : Infinity;
+      if (!rawDvFinite || rawDv > contactDvBudget) {
+        let acceptedDvx = 0;
+        let acceptedDvz = 0;
+        if (rawDvFinite && rawDv > 0) {
+          const scale = contactDvBudget / rawDv;
+          acceptedDvx = rawDvx * scale;
+          acceptedDvz = rawDvz * scale;
+        }
+        const predictedX = Number.isFinite(e.x)
+          ? e.x : finite(rec._bodyPoseX) + e.vx * this.fixedDt;
+        const predictedZ = Number.isFinite(e.z)
+          ? e.z : finite(rec._bodyPoseZ) + e.vz * this.fixedDt;
+        _vecWriteScratch.x = predictedX + acceptedDvx * this.fixedDt;
+        _vecWriteScratch.y = 0;
+        _vecWriteScratch.z = predictedZ + acceptedDvz * this.fixedDt;
+        rec.body.setTranslation(_vecWriteScratch, true);
+        rec._bodyPoseX = Math.fround(_vecWriteScratch.x);
+        rec._bodyPoseZ = Math.fround(_vecWriteScratch.z);
+        if (post) post.pDirty = true;
+        if (!rawDvFinite) {
+          vx = e.vx;
+          vz = e.vz;
+          touched = true;
+        }
       }
     }
     const dvx = vx - e.vx;
     const dvz = vz - e.vz;
-    const dv = Math.hypot(dvx, dvz);
-    const closingDv = Math.hypot(e.vx, e.vz);
-    const baseLimit = swarmFeelContact(rec && rec.entity)
-      ? this._victimDvBound(rec)
-      : (rec._tumbling === true || (this._looseContactIds && this._looseContactIds.has(rec.entity.id))
-        ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV);
-    const maxContactDv = Math.max(baseLimit, closingDv + baseLimit);
-    if (dv > maxContactDv) {
-      const scale = maxContactDv / dv;
-      vx = e.vx + dvx * scale;
-      vz = e.vz + dvz * scale;
-      touched = true;
+    if (Math.abs(dvx) + Math.abs(dvz) > CONTACT_DV_NO_CORRECTION) {
+      const dv = Math.hypot(dvx, dvz);
+      const closingDv = Math.hypot(e.vx, e.vz);
+      const baseLimit = swarmFeelContact(rec && rec.entity)
+        ? this._victimDvBound(rec)
+        : (rec._tumbling === true || (this._looseContactIds && this._looseContactIds.has(rec.entity.id))
+          ? TUMBLE_MAX_CONTACT_DV : MAX_CONTACT_DV);
+      const maxContactDv = Math.max(baseLimit, closingDv + baseLimit);
+      if (dv > maxContactDv) {
+        const scale = maxContactDv / dv;
+        vx = e.vx + dvx * scale;
+        vz = e.vz + dvz * scale;
+        touched = true;
+      }
     }
     const dw = wy - e.wy;
     const helmLocked = craftKeepsHelmThroughContact(rec) && rec._tumbling !== true;
@@ -3100,16 +3102,9 @@ export class Sg02DynamicBodyOwner {
       effectiveInertiaY: spec.inertiaY,
       bodyResponseMassScale: 1,
       bodyResponseInertiaScale: 1,
-      snapshot: {
-        id: entity.id,
-        x: quantize(globalX, this.quantum),
-        z: quantize(globalZ, this.quantum),
-        yaw: quantize(finite(entity.rot), this.quantum),
-        vx: quantize(vel.x, this.quantum),
-        vz: quantize(vel.z, this.quantum),
-        wy: quantize(finite(entity.angVel), this.quantum),
-        revision: spec.revision,
-      },
+      snapshot: createBodySnapshot(
+        this.quantum, entity.id, globalX, globalZ, entity.rot, vel.x, vel.z, entity.angVel, spec.revision,
+      ),
     };
     // Old saves may carry a mirrored entity.playerContactGive episode record; nothing reads it —
     // contact velocity is the solver's answer now, so a rebuilt body simply keeps solving from
@@ -3701,12 +3696,13 @@ export class Sg02DynamicBodyOwner {
     kin.yaw = yaw;
     kin.wy = wy;
     rec.snapshot.id = entity.id;
-    rec.snapshot.x = quantize(finite(entity.pos && entity.pos.x), this.quantum);
-    rec.snapshot.z = quantize(finite(entity.pos && entity.pos.z), this.quantum);
-    rec.snapshot.yaw = quantize(yaw, this.quantum);
-    rec.snapshot.vx = quantize(vx, this.quantum);
-    rec.snapshot.vz = quantize(vz, this.quantum);
-    rec.snapshot.wy = quantize(wy, this.quantum);
+    const snapshot = rec.snapshot[SNAPSHOT_SCALARS];
+    snapshot.x = entity.pos && entity.pos.x;
+    snapshot.z = entity.pos && entity.pos.z;
+    snapshot.yaw = yaw;
+    snapshot.vx = vx;
+    snapshot.vz = vz;
+    snapshot.wy = wy;
     rec.snapshot.revision = rec.revision;
     if (noInterp && entity.flags) entity.flags.noInterp = false;
     return true;
@@ -3726,8 +3722,9 @@ export class Sg02DynamicBodyOwner {
       const kin = rec.kinematics || (rec.kinematics = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, wy: 0 });
       kin.x = local.x;
       kin.z = local.z;
-      rec.snapshot.x = quantize(finite(rec.entity.pos && rec.entity.pos.x), this.quantum);
-      rec.snapshot.z = quantize(finite(rec.entity.pos && rec.entity.pos.z), this.quantum);
+      const snapshot = rec.snapshot[SNAPSHOT_SCALARS];
+      snapshot.x = rec.entity.pos && rec.entity.pos.x;
+      snapshot.z = rec.entity.pos && rec.entity.pos.z;
     }
   }
 
@@ -4016,12 +4013,13 @@ export class Sg02DynamicBodyOwner {
     rec.entity.rot = kinematics.yaw;
     rec.entity.angVel = kinematics.wy;
     rec.snapshot.id = rec.entity.id;
-    rec.snapshot.x = quantize(pos.x, this.quantum);
-    rec.snapshot.z = quantize(pos.z, this.quantum);
-    rec.snapshot.yaw = quantize(kinematics.yaw, this.quantum);
-    rec.snapshot.vx = quantize(vel.x, this.quantum);
-    rec.snapshot.vz = quantize(vel.z, this.quantum);
-    rec.snapshot.wy = quantize(rec.entity.angVel, this.quantum);
+    const snapshot = rec.snapshot[SNAPSHOT_SCALARS];
+    snapshot.x = pos.x;
+    snapshot.z = pos.z;
+    snapshot.yaw = kinematics.yaw;
+    snapshot.vx = vel.x;
+    snapshot.vz = vel.z;
+    snapshot.wy = rec.entity.angVel;
     rec.snapshot.revision = rec.revision;
   }
 
@@ -5135,6 +5133,27 @@ function decodeSnapshotBytes(text) {
 
 function quantize(value, quantum) {
   return Math.round(finite(value) / quantum) * quantum;
+}
+
+// Keep the last published pose independent of the mutable entity and live native body.
+// Normal play rarely consumes the diagnostic snapshot, so round only when a reader asks.
+const BODY_SNAPSHOT_FIELDS = Object.fromEntries(['x', 'z', 'yaw', 'vx', 'vz', 'wy'].map((key) => [
+  key,
+  {
+    enumerable: true,
+    get() {
+      const scalars = this[SNAPSHOT_SCALARS];
+      return quantize(scalars[key], scalars.quantum);
+    },
+  },
+]));
+
+function createBodySnapshot(quantum, id, x, z, yaw, vx, vz, wy, revision) {
+  const snapshot = { id };
+  Object.defineProperties(snapshot, BODY_SNAPSHOT_FIELDS);
+  Object.defineProperty(snapshot, SNAPSHOT_SCALARS, { value: { quantum, x, z, yaw, vx, vz, wy } });
+  snapshot.revision = revision;
+  return snapshot;
 }
 
 function compareIds(a, b) {
