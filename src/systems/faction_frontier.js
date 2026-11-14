@@ -51,7 +51,13 @@ import {
   FRONTIER_HOMESTEAD,
   FRONTIER_BARKS,
   FRONTIER_HOUSEHOLD_LINES,
+  FRONTIER_MUTUAL_AID,
+  FRONTIER_SALVAGE_CLAIMS,
 } from '../data/factions/free.js';
+import {
+  syncFrontierReceivingTags,
+  moveFrontierReceivingTag,
+} from '../missions/frontierReceivingTags.js';
 import { hash32, drawSeeded } from '../core/rng.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { strideDt } from '../core/catchupPolicy.js';
@@ -72,6 +78,18 @@ const MAX_STEADS = 24;
 const BARN_MISSION_TAG = 'campaign47a:b4:operation';
 const BARN_MISSION_VERSION = 1;
 const BARN_MODULE_IDS = new Set(FRONTIER_MODULES.map((m) => m.id));
+// Events whose board writes can open, close, or relabel a receiving ask.
+const FRONTIER_TAG_EVENTS = Object.freeze([
+  'entity:killed',
+  'frontier:sitePlanted', 'frontier:moduleSnapped', 'frontier:missionAttemptLost',
+  'frontier:homesteadRaised', 'frontier:barnPartial', 'frontier:homesteadLost',
+  'frontier:supplyRunAsked', 'frontier:supplyDelivered',
+  'frontier:debtPosted', 'frontier:debtSettled', 'frontier:debtLapsed',
+  'frontier:disputePosted', 'frontier:disputeSettled', 'frontier:disputeJumped', 'frontier:disputeLapsed',
+  'mission:failed', 'mission:completed',
+]);
+// The player inside this of a live stead hears the household line once.
+const HOUSEHOLD_HELLO_R = 650;
 // Site seeding — the production spawner for the barn-raising pipeline.
 const FRONTIER_SITE = Object.freeze({
   minR: 1400,        // a site never plants under the player's nose
@@ -161,26 +179,10 @@ export function frontierTierFor(deeds) {
   return row;
 }
 
-// ── Mutual aid — debts between settlers the player can join ────────────────────
-export const FRONTIER_MUTUAL_AID = Object.freeze({
-  offerPeriodS: 140,        // the board tries to pair a debtor with a carrier on this beat
-  markerTtlS: 540,          // a posted marker lapses after this
-  settleR: 260,             // the marker inside this of the debtor lands the aid
-  feeCr: 320,               // the creditor stead pays the carrier (× tier mult)
-  repDelta: 3,
-  maxOpen: 3,               // bounded open markers
-});
-
-// ── Salvage-rights disputes ────────────────────────────────────────────────────
-export const FRONTIER_SALVAGE_CLAIMS = Object.freeze({
-  claimRadius: 900,         // a derelict this close to a stead is contested ground
-  settleRadius: 260,        // tow it inside this of a claimant to settle it their way
-  windowS: 300,
-  settlePayCr: 260,         // the stead pays for its claim honored (× tier mult)
-  settleRep: 3,
-  jumpedRep: -4,            // stripping a filed claim is jumping it
-  maxOpen: 2,
-});
+// ── Mutual aid + salvage claims — data tables live in free.js so the receiving-tag
+// reconciler (a missions helper) can read the same rings without a systems import.
+// Re-exported here: the board's tests and sibling owners import them from this owner.
+export { FRONTIER_MUTUAL_AID, FRONTIER_SALVAGE_CLAIMS };
 
 // ── Defense calls — raids on raised steads ─────────────────────────────────────
 // A raid ROBS; it does not raze. Raiders strip the stead's supplies and batter
@@ -471,6 +473,11 @@ export const frontierHomesteads = {
   init(ctx) {
     this.ctx = ctx; this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers;
     ensureFrontierState(this.state);
+    // Receiving tags: key → transient beacon id. The reconcile is bound on the
+    // instance so focused harnesses can spy that the fixed tick never calls it.
+    this._receivingTags = new Map();
+    this._tagsDirty = false;
+    this._syncReceivingTags = syncFrontierReceivingTags;
     this._subs = [
       this.bus.on('entity:killed', (p) => this._onKilled(p)),
       this.bus.on('mission:accepted', (p) => this._onBarnMissionAccepted(p)),
@@ -490,6 +497,11 @@ export const frontierHomesteads = {
       // checks again here, never on the per-tick path.
       this.bus.on('sector:enter', () => this._onSectorEnter()),
     ];
+    // Every event that can open, close, or relabel a receiving ask dirties the
+    // tag set; the next update reconciles once. Kills are included because a
+    // dead receiving body leaves no frontier event for its tag.
+    const dirty = () => { this._tagsDirty = true; };
+    for (const ev of FRONTIER_TAG_EVENTS) this._subs.push(this.bus.on(ev, dirty));
   },
 
   destroy() {
@@ -533,6 +545,8 @@ export const frontierHomesteads = {
     ensureFrontierState(state);
     this._rebindGenerations(state);
     this._stageFirstProvision(state);
+    // Tags are transient — restore dropped every tag body, so rebuild the set.
+    this._syncReceivingTags(this);
   },
 
   /** New run boundary: the board's bag is run-scoped. Clearing to null lets
@@ -543,6 +557,8 @@ export const frontierHomesteads = {
     if (!state) return;
     state.frontier = null;
     ensureFrontierState(state);
+    // Tag bodies die with the run's entities; the map only needs its ids gone.
+    this._receivingTags?.clear();
   },
 
   _isBarnMission(m) {
@@ -623,6 +639,9 @@ export const frontierHomesteads = {
 
   _onSectorEnter() {
     this._stageFirstProvision(this.state);
+    // Sector hops rebuild the entity set — reconcile the wanted tags here, at
+    // the transition, never on the tick.
+    this._syncReceivingTags(this);
   },
 
   /** The first crate waits outside the ring — staged on real transitions only:
@@ -669,9 +688,9 @@ export const frontierHomesteads = {
   },
 
   /** First clear pocket on the staging rings — a bounded transition-time probe,
-   *  not a tick scan. `reject` vetoes a candidate spot; clearance counts live
-   *  bodies and asteroid-field records within `pad` of each hull's radius. */
-  _clearRingSpot(state, center, baseAngle, rings, pad, reject = null) {
+   *  not a tick scan. Clearance counts live bodies and asteroid-field records
+   *  within `pad` of each hull's radius. */
+  _clearRingSpot(state, center, baseAngle, rings, pad) {
     if (!Number.isFinite(center?.x) || !Number.isFinite(center?.z)) return null;
     const clearOf = (p) => {
       for (const e of state.entityList || []) {
@@ -690,7 +709,6 @@ export const frontierHomesteads = {
       for (let i = 0; i < RING_OFFSETS.length; i++) {
         const a = baseAngle + RING_OFFSETS[i] * Math.PI / 8;
         const p = { x: center.x + Math.cos(a) * radius, z: center.z + Math.sin(a) * radius };
-        if (reject && reject(p)) continue;
         if (clearOf(p)) return p;
       }
     }
@@ -1256,12 +1274,23 @@ export const frontierHomesteads = {
           dx: Math.cos(a) * (frame.radius + e.radius + 4),
           dz: Math.sin(a) * (frame.radius + e.radius + 4),
         };
+        const snappedNow = Object.keys(fd.slots).length;
         this.bus.emit('frontier:moduleSnapped', {
           frameId: frame.id, moduleId: e.id, kind,
-          count: Object.keys(fd.slots).length, tick: state.tick,
+          count: snappedNow, tick: state.tick,
           ...(missionFrame ? { missionId: attempt.missionId, siteId: attempt.siteId,
             frameGen: frame.occupantGeneration ?? null } : {}),
         });
+        if (snappedNow === 1 && fd.said?.firstSnap !== true) {
+          if (!isObj(fd.said)) fd.said = {};
+          fd.said.firstSnap = true;
+          this.bus.emit('comms:log', { text: FRONTIER_HOUSEHOLD_LINES.firstSnap, speaker: 'Frontier board' });
+        }
+        if (snappedNow === FRONTIER_FRAME.moduleSlots && fd.said?.weldGo !== true) {
+          if (!isObj(fd.said)) fd.said = {};
+          fd.said.weldGo = true;
+          this.bus.emit('comms:log', { text: FRONTIER_HOUSEHOLD_LINES.weldGo, speaker: 'E-21 weld crew' });
+        }
         if (!Number.isFinite(fd.raiseDeadline)) {
           // The first module starts the window — the tide does not wait for you.
           fd.raiseDeadline = state.simTime + FRONTIER_BARN_RAISING.windowS;
@@ -1492,10 +1521,19 @@ export const frontierHomesteads = {
     return rec;
   },
 
+  /** First supplies aboard a household that has hailed the player — the moment
+   *  the stead stops being a frame and becomes a home. Said once per stead. */
+  _noteStoresAboard(state, rec) {
+    if (!rec || rec.said?.household !== true || rec.said.stores === true) return;
+    rec.said.stores = true;
+    this._log(state, FRONTIER_HOUSEHOLD_LINES.stores, rec.name);
+  },
+
   // ── Raised homesteads persist: traffic on a beat, supply asks when stranded ────
   _tickHomesteads(state) {
     const f = ensureFrontierState(state);
     let supplyPods = null;
+    const playerEnt = state.entities.get(state.playerId);
     for (const rec of f.homesteads) {
       if (rec.gone === true) continue;
       const ent = state.entities.get(rec.entityId);
@@ -1510,6 +1548,13 @@ export const frontierHomesteads = {
       }
       // Keep the chart position honest — the frame can be towed.
       rec.pos.x = ent.pos.x; rec.pos.z = ent.pos.z;
+      // The welders are gone; the stead is a home. First close pass says so once.
+      if (playerEnt && playerEnt.alive !== false && rec.said?.household !== true
+          && dist2(playerEnt.pos, ent.pos) <= HOUSEHOLD_HELLO_R * HOUSEHOLD_HELLO_R) {
+        if (!isObj(rec.said)) rec.said = {};
+        rec.said.household = true;
+        this._log(state, FRONTIER_HOUSEHOLD_LINES.household, rec.name);
+      }
       // Traffic grows on its beat — the homestead is alive on the chart.
       const beats = Math.floor((state.simTime - rec.raisedAt) / FRONTIER_HOMESTEAD.trafficPeriodS);
       if (beats > rec.traffic) {
@@ -1552,6 +1597,7 @@ export const frontierHomesteads = {
         this._verifyLeads(state, 'hungry', { steadId: rec.entityId }, 'supply');
         this._settleDebtFor(state, rec.entityId, 'covered');
         this._deed(state, 'supply', rec.entityId);
+        this._noteStoresAboard(state, rec);
       }
     }
   },
@@ -1730,7 +1776,7 @@ export const frontierHomesteads = {
     if (rec) {
       // Covered aid was already counted by the physical supply intake — only a
       // carried marker is a second delivery into the household.
-      if (how === 'carried') rec.supplies += 1;
+      if (how === 'carried') { rec.supplies += 1; this._noteStoresAboard(state, rec); }
       rec.stranded = false;
       rec.lastSupplyAt = num(state.simTime);
       // Its supply ask is answered too — the supply-land path filters these
@@ -1830,6 +1876,20 @@ export const frontierHomesteads = {
         // any other disappearance lapses the claim clean.
         this._closeDispute(state, d, 'lapsed', null);
         continue;
+      }
+      // Both claimants reach the player's haul at once — the board names the
+      // choice once, just before a claimant's ring takes it.
+      if (d.twoRingsSaid !== true && d.steadIds.length >= 2 && this._playerHandled(state, w)) {
+        let near = 0;
+        for (const sid of d.steadIds) {
+          const ent = this._steadEnt(state, this._steadRec(state, sid));
+          if (ent && dist2(w.pos, ent.pos)
+              <= (FRONTIER_SALVAGE_CLAIMS.settleRadius + (Number(ent.radius) || 0)) ** 2) near++;
+        }
+        if (near >= 2) {
+          d.twoRingsSaid = true;
+          this._log(state, FRONTIER_HOUSEHOLD_LINES.twoRings);
+        }
       }
       // A claimant settles when the player hauls the wreck inside its ring.
       let settled = false;
@@ -2414,6 +2474,24 @@ export const frontierHomesteads = {
     }
   },
 
+  /** Ride each receiving tag onto its live body — a bounded per-tick rider over
+   *  the tag map. No entity scans, no allocations, no wanted-set rebuild: that
+   *  is the transition-time reconcile's job. */
+  _tickReceivingTags(state) {
+    const tags = this._receivingTags;
+    if (!(tags instanceof Map) || tags.size === 0) return;
+    tags.forEach((tagId, key) => {
+      const tag = state.entities.get(tagId);
+      if (!tag || tag.alive === false) { tags.delete(key); return; }
+      const bodyId = tag.data?.frontierReceivingBody;
+      const body = bodyId != null ? state.entities.get(bodyId) : null;
+      if (!body || body.alive === false) return;
+      const gen = tag.data?.frontierReceivingBodyGen;
+      if (gen != null && body.occupantGeneration !== gen) return;
+      moveFrontierReceivingTag(this, key, body.pos);
+    });
+  },
+
   update(dt, state) {
     const f = ensureFrontierState(state);
     // An arena has no ambient homestead/site business. Keep every existing
@@ -2437,6 +2515,13 @@ export const frontierHomesteads = {
     const raidDt = strideDt(this, 'raids', dt, 3, state);
     if (raidDt > 0) this._tickRaids(state, raidDt);
     this._tickVendettas(state);
+    // Board events dirtied the wanted tag set — reconcile once, on the
+    // transition, then ride each tag onto its body. Neither scans entities.
+    if (this._tagsDirty === true) {
+      this._tagsDirty = false;
+      this._syncReceivingTags(this);
+    }
+    this._tickReceivingTags(state);
   },
 };
 

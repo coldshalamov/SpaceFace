@@ -64,9 +64,37 @@ export const FRONTIER_BARN_RAISING = Object.freeze({
 });
 
 // The household voice — one short line per moment, each said once and remembered
-// in rec.said / attempt.said so a restored session never hears it twice.
+// in rec.said / attempt.said / dispute stamps so a restored session never hears it twice.
 export const FRONTIER_HOUSEHOLD_LINES = Object.freeze({
   firstCrate: 'First crate\'s outside the ring.',
+  firstSnap: 'E-21 receiving',
+  weldGo: 'That\'s six. Stand clear for the weld.',
+  household: 'Welders are gone. We live here now.',
+  stores: 'Stores are in. That\'s a household.',
+  food: 'Food\'s aboard. The board pays.',
+  twoRings: 'Two rings want that wreck. Pick one.',
+});
+
+// Mutual aid — debts between settlers the player can join. The board pairs a
+// stranded stead with a provisioned one and posts a marker the carrier tows home.
+export const FRONTIER_MUTUAL_AID = Object.freeze({
+  offerPeriodS: 140,        // the board tries to pair a debtor with a carrier on this beat
+  markerTtlS: 540,          // a posted marker lapses after this
+  settleR: 260,             // the marker inside this of the debtor lands the aid
+  feeCr: 320,               // the creditor stead pays the carrier (× tier mult)
+  repDelta: 3,
+  maxOpen: 3,               // bounded open markers
+});
+
+// Salvage-rights disputes — contested derelicts on a stead's claim ring.
+export const FRONTIER_SALVAGE_CLAIMS = Object.freeze({
+  claimRadius: 900,         // a derelict this close to a stead is contested ground
+  settleRadius: 260,        // tow it inside this of a claimant to settle it their way
+  windowS: 300,
+  settlePayCr: 260,         // the stead pays for its claim honored (× tier mult)
+  settleRep: 3,
+  jumpedRep: -4,            // stripping a filed claim is jumping it
+  maxOpen: 2,
 });
 
 // Signature toy: the Weld Head — it welds the held object wherever it touches. Build a
