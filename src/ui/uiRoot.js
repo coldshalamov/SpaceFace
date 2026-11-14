@@ -1242,7 +1242,9 @@ export const ui = {
     this._showMainMenuWhenReady = showMainMenuWhenReady;
 
     let shouldShowCinematic = false;
-    try { shouldShowCinematic = !sessionStorage.getItem(CINEMATIC_SEEN_KEY); } catch (e) { shouldShowCinematic = true; }
+    // OPENING-1b (doc 20 rule 5): the splash is mood, not a gate - once per INSTALL (a later launch
+    // goes straight to the title), and the first one yields to any key/click and to a short timer.
+    try { shouldShowCinematic = !sessionStorage.getItem(CINEMATIC_SEEN_KEY) && !localStorage.getItem(CINEMATIC_SEEN_KEY); } catch (e) { shouldShowCinematic = true; }
     if (shouldShowCinematic) {
       this._cinematicActive = true;
       const cinematic = document.createElement('div');
@@ -1314,6 +1316,7 @@ export const ui = {
           if (this._cinematicTeardown === teardownCinematic) this._cinematicTeardown = null;
         }, 700);
         try { sessionStorage.setItem(CINEMATIC_SEEN_KEY, '1'); } catch (e) {}
+        try { localStorage.setItem(CINEMATIC_SEEN_KEY, '1'); } catch (e) {}
         showMainMenuWhenReady();
       };
       const requestPointerDismissal = () => inputFence && inputFence.requestDismiss('pointer');
@@ -1373,7 +1376,7 @@ export const ui = {
         // release fence is complete; blur/visibility loss cancels that incomplete gesture safely.
         autoDismissTimer = setTimeout(() => {
           if (cinematic.parentNode && inputFence) inputFence.requestDismiss('timer');
-        }, 18000);
+        }, 4500);
       };
       this._cinematicTeardown = teardownCinematic;
 
