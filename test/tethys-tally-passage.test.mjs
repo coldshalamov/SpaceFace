@@ -163,8 +163,8 @@ test('production authored roster admits exactly one Kess without replacing its e
   }finally{h.close();}
  }
 });
-test('native ordinary flight waits for original keg, Continue retains hold, player collision clears same object and service delivers once',{timeout:300000},async t=>{
- const h=await tethysTallyNativeFixture();t.after(()=>h.close());
+test('isolated native passage holds original dynamic keg, Continue retains hold, player collision clears same object and service delivers once',{timeout:300000},async t=>{
+ const h=await tethysTallyNativeFixture({isolatePassage:true});t.after(()=>h.close());
  let k=currentKess(h);const id=k.data.worldRecordId;
  let keg=h.state.entityList.find(e=>e.data?.oneOffId===TETHYS_TALLY.oneOffId);const kegId=keg.data.worldRecordId,original={...keg.pos};
  for(let i=0;i<60*160&&!k.data.itinerary?.tallyPassage?.firstHeldAt;i++)fly(h,k.pos,300);
@@ -226,8 +226,8 @@ test('ordinary Hail distinguishes obstructed, unobserved and removed without own
  h.e.data.itinerary.tallyPassage.reason='removed';assert.match(line(),/BODY REMOVED/);assert.match(line(),/No safe placement or cargo release/);
 });
 
-test('ordinary residency and Continue preserve the one courier while native world traffic may clear the keg',{timeout:240000},async t=>{
- const h=await tethysTallyNativeFixture({residency:true});t.after(()=>h.close());let k=currentKess(h);
+test('isolated residency and Continue preserve held courier and original dynamic keg',{timeout:240000},async t=>{
+ const h=await tethysTallyNativeFixture({residency:true,isolatePassage:true});t.after(()=>h.close());let k=currentKess(h);
  const id=k.data.worldRecordId,keg=h.state.entityList.find(e=>e.data?.oneOffId===TETHYS_TALLY.oneOffId),kegId=keg.data.worldRecordId,origin={...keg.pos};
  for(let i=0;i<60*160&&!k.data.itinerary?.tallyPassage?.firstHeldAt;i++)fly(h,k.pos,300);
  assert.ok(k.data.itinerary.tallyPassage.firstHeldAt);const holdPose={...k.pos};let away=false;
@@ -249,5 +249,34 @@ test('ordinary residency and Continue preserve the one courier while native worl
  }else for(let i=0;i<60*100&&k.data.itinerary.legSeq===0;i++)fly(h,holdPose,300);
  assert.equal(k.data.itinerary.legSeq,1,JSON.stringify({pose:k.pos,vel:k.vel,it:k.data.itinerary,job:h.state.npcJobs.byId[k.data.jobId]?.job,player:h.state.entities.get(h.state.playerId)?.pos}));assert.equal(k.data.itinerary.previousTallyPassage.reason,'clear');
  assert.ok(Math.hypot(source.pos.x-origin.x,source.pos.z-origin.z)>40,'a physical displacement, not disappearance, opened this lane');
+ assert.equal(h.state.entityList.filter(e=>e.alive!==false&&e.data?.namedLaneContactId===C.contactId).length,1);
+});
+
+// Keep the inhabited outcome separate from the controlled held-state fixture above.
+// No ships are excluded, no body poses/velocities are written, and the player does not
+// approach or clear the keg. Working traffic is allowed to solve the physical blockage.
+test('full roster naturally clears original keg without player intervention or a manufactured hold',{timeout:180000},async t=>{
+ const h=await tethysTallyNativeFixture();t.after(()=>h.close());
+ let k=currentKess(h);const id=k.data.worldRecordId;
+ const keg=h.state.entityList.find(e=>e.data?.oneOffId===TETHYS_TALLY.oneOffId);
+ const kegId=keg.data.worldRecordId,origin={...keg.pos};
+ h.state.input={...h.state.input,moveX:0,moveZ:0,turnIntent:0,brake:true,boost:false,fire:false};
+ assert.equal(h.state.traffic.freighters.filter(r=>r.authoredActivityCast).length,12);
+ let arrivals=0;h.sim.bus.on('freight:arrival',p=>{if(p.freighterKey===id)arrivals++;});
+ let everHeld=false;
+ for(let i=0;i<60*160&&k.data.itinerary.legSeq===0;i++){h.step();everHeld ||= Number.isFinite(k.data.itinerary.tallyPassage?.firstHeldAt);}
+ assert.equal(k.data.itinerary.legSeq,1);
+ assert.equal(arrivals,1);
+ assert.equal(k.data.itinerary.previousTallyPassage.reason,'clear');
+ assert.equal(everHeld,false,'the native roster clears the corridor before any hold');
+ assert.ok(Math.hypot(keg.pos.x-origin.x,keg.pos.z-origin.z)>40);
+ assert.equal(keg.alive,true);assert.equal(keg.data.worldRecordId,kegId);
+ assert.equal(keg.data.cargoManifest,undefined,'physical clearance is not custody release');
+ const save=h.sim.registry.get('save'),before=structuredClone(k.data.itinerary);
+ const saved=JSON.parse(JSON.stringify(save.serialize('tethys-natural-clear')));delete saved.checksum;
+ assert.equal(save.loadEnvelope(saved),true);h.physics._finishNativeRestore();h.state.mode='flight';
+ assert.equal(await h.physics.prepareBackend(h.state),true);
+ k=currentKess(h);assert.equal(k.data.worldRecordId,id);assert.deepEqual(k.data.itinerary,before);
+ assert.equal(h.state.entityList.filter(e=>e.alive!==false&&e.data?.worldRecordId===kegId).length,1);
  assert.equal(h.state.entityList.filter(e=>e.alive!==false&&e.data?.namedLaneContactId===C.contactId).length,1);
 });

@@ -89,10 +89,10 @@ export function compostRouteFocus(owner) {
   const fed = Math.max(0, Number(saved.compostFedMass) || 0);
   const regrowth = receiver.status === 'destroyed'
     ? 'The receiver was destroyed; it regrows only from new feed — 100t from zero to reach stage 2. ' : '';
-  const progress = `${regrowth}${number(biomass)} biomass; ${number(needed)}t feed to the next visible stage. First visible growth opens the Nest.`;
+  const progress = `${regrowth}${number(biomass)} biomass; ${number(needed)}t feed to the next visible stage. First visible growth opens the Nest; finishing the paid run is optional.`;
   const run = saved.compostRunComplete === true
     ? `Run paid once at ${number(fed)}t; no repeat payment.`
-    : `Your run ${number(fed)}/${UNDERSTORY_COMPOST_RUN.targetMass}t; ${number(Math.max(0, UNDERSTORY_COMPOST_RUN.targetMass - fed))}t remain. No pay before ${UNDERSTORY_COMPOST_RUN.targetMass}t; then ${UNDERSTORY_COMPOST_RUN.creditPerTonne}cr/t of actual run mass, once.`;
+    : `Optional paid run ${number(fed)}/${UNDERSTORY_COMPOST_RUN.targetMass}t; ${number(Math.max(0, UNDERSTORY_COMPOST_RUN.targetMass - fed))}t remain. No pay before ${UNDERSTORY_COMPOST_RUN.targetMass}t; then ${UNDERSTORY_COMPOST_RUN.creditPerTonne}cr/t of actual run mass, once.`;
   const reason = action => `${action} ${progress} ${run}`;
   if (!next) return { ...base, reason: `The garden is at its last stage; no further growth can show. ${run}` };
   if (state.world?.currentSectorId !== SECTOR) return { ...base,

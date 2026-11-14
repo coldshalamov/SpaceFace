@@ -58,6 +58,8 @@ import {
   UNDERSTORY_SPORE_HEAD,
   UNDERSTORY_BARKS,
 } from '../data/factions/understory.js';
+import { nestOutcomeReceipt, NEST_OUTCOMES } from '../data/nestVisit.js';
+import { sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { hash32 } from '../core/rng.js';
 import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 
@@ -569,6 +571,15 @@ function syncGardenStage(state, e, rec) {
   const fed = Number(e.data.compostFedMass) || 0;
   const amount = n => String(Math.round(n * 100) / 100);
   e.data.scanLabel = `UNDERSTORY GARDEN · ${stage.label.toUpperCase()} · stage ${stage.stage}/5 · ${amount(rec.biomass)} biomass · ${amount(fed)}/${UNDERSTORY_COMPOST_RUN.targetMass}t fed · ${amount(Math.max(0, UNDERSTORY_COMPOST_RUN.targetMass - fed))}t remaining · ${e.data.compostRunComplete ? 'run paid once' : 'pays only at 240t (12cr/t)'}`;
+  if (e.data.authoredUnderstoryReceiver === true) {
+    const growth = e.data.gardenFirstPlayerGrowth;
+    const next = UNDERSTORY_GARDEN_STAGES.find(row => row.massFloor > rec.biomass);
+    const toGrowth = next ? Math.ceil((next.massFloor - rec.biomass) / UNDERSTORY_GARDENS.digestionYield * 10) / 10 : 0;
+    const work = growth ? 'your first growth recorded; further feeding is optional'
+      : next ? `${amount(toGrowth)}t feed to visible growth; Line-feed from west, keep cockpit outside`
+      : 'fully grown; no further stage available';
+    e.data.scanLabel = `${UNDERSTORY_RECEIVER.name.toUpperCase()} · ${stage.label.toUpperCase()} · ${work} · optional paid run ${amount(fed)}/${UNDERSTORY_COMPOST_RUN.targetMass}t · ${e.data.compostRunComplete ? 'paid once' : 'pays at 240t (12cr/t)'}`;
+  }
   rec.stage = stage.stage;
   if (stage.stage > prevStage) return { grew: true, stage };
   return { grew: false, stage };
@@ -712,8 +723,8 @@ export const understoryGardens = {
       this.bus.on('sector:enter', () => this.ensureAuthoredReceiver()),
       this.bus.on('save:restoring', () => { this._saveRestoring = true; }),
       this.bus.on('save:loaded', () => {
-        const { authoredReceiver, drops, seq } = ensureUnderstoryState(this.state);
-        this.state.understory = { gardens: {}, compost: {}, tidePushback: {}, authoredReceiver, drops, seq };
+        const { authoredReceiver, drops, seq, rooksideNestReturn } = ensureUnderstoryState(this.state);
+        this.state.understory = { gardens: {}, compost: {}, tidePushback: {}, authoredReceiver, drops, seq, rooksideNestReturn };
         // Only deserialize authorizes rebinding to new runtime occupants. A repeated
         // save:loaded must never adopt an id recycled since the first notification.
         if (this._cacheRestorePending) this._restoreCacheBodies();
@@ -764,6 +775,7 @@ export const understoryGardens = {
     const own = u.authoredReceiver || (u.drops.length ? { status: 'unseen' } : null);
     if (!own) return undefined;
     const result = { version: 1, authoredReceiver: { status: own.status } };
+    if (NEST_OUTCOMES.includes(u.rooksideNestReturn)) result.rooksideNestReturn = u.rooksideNestReturn;
     if (own.status === 'destroyed') {
       result.authoredReceiver.terminalGardenData = this._normalizeTerminal(own.terminalGardenData);
       result.authoredReceiver.firstPlayerGrowth = result.authoredReceiver.terminalGardenData?.gardenFirstPlayerGrowth || null;
@@ -836,6 +848,7 @@ export const understoryGardens = {
     if (!row || !['unseen', 'live', 'destroyed', 'unavailable'].includes(row.status)) {
       own.authoredReceiver = { status: 'unavailable' }; return;
     }
+    if (NEST_OUTCOMES.includes(data.rooksideNestReturn)) own.rooksideNestReturn = data.rooksideNestReturn;
     const caches = data.quietCaches;
     if (caches?.version === 1 && Number.isSafeInteger(caches.seq) && caches.seq >= 0 && caches.seq <= 0x7fffffff
       && Array.isArray(caches.drops) && caches.drops.length <= UNDERSTORY_QUIET.maxOpenDrops + UNDERSTORY_QUIET.dropLogKeep) {
@@ -1153,13 +1166,19 @@ export const understoryGardens = {
         eatenId: prey.id, eatenType: prey.type, fedMass, gained, byPlayer,
         fromStage, stage: stage.stage, biomass: rec.biomass, tick: s.tick };
       const firstGrowth = grew && byPlayer && hasUnderstoryGardenVisualIdentity(e) && !e.data.gardenFirstPlayerGrowth;
-      if (firstGrowth) e.data.gardenFirstPlayerGrowth = { ...receipt };
+      if (firstGrowth) {
+        e.data.gardenFirstPlayerGrowth = { ...receipt };
+        syncGardenStage(s, e, rec);
+      }
       this.bus.emit('understory:gardenFed', receipt);
       if (firstGrowth) this.bus.emit('understory:playerGrowth', receipt);
       if (grew) {
         this.bus.emit('understory:gardenStage', { ...receipt, stageId: stage.id });
-        this.bus.emit('comms:log', { text: byPlayer ? pickBark(s, UNDERSTORY_BARKS.stageUp)
-          : 'The garden takes root in the drifting dead.', speaker: 'The Understory' });
+        const stageBark = byPlayer ? pickBark(s, UNDERSTORY_BARKS.stageUp)
+          : 'The garden takes root in the drifting dead.';
+        this.bus.emit('comms:log', { text: firstGrowth && e.data.authoredUnderstoryReceiver === true
+          ? 'Your load took root; the 240t paid run is optional.'
+          : stageBark, speaker: 'The Understory' });
       }
       if (byPlayer) {
         this._creditCompost(e, rec, fedMass);
@@ -2061,6 +2080,37 @@ export const understoryGardens = {
     }
   },
 
+  /** A return to the real, living receiver closes the Charon excursion. No reward or raid is invented. */
+  _rooksideReturn(gardens) {
+    const s = this.state, u = ensureUnderstoryState(s);
+    if (u.rooksideNestReturn || this._saveRestoring || s.run?.kind !== 'adventure'
+      || s.mode !== 'flight' || s.ui?.docked || s.paused === true
+      || s.world?.currentSectorId !== UNDERSTORY_RECEIVER.sectorId) return;
+    const receipt = nestOutcomeReceipt(s), pilot = s.entities.get(s.playerId);
+    if (!receipt || !pilot || pilot.alive !== true || !(pilot.hull > 0)
+      || sectorMembershipAtGlobal(pilot.pos) !== UNDERSTORY_RECEIVER.sectorId) return;
+    const garden = gardens.find(e => e.data?.gardenId === UNDERSTORY_RECEIVER.gardenId
+      && e.data.authoredUnderstoryReceiver === true && e.alive === true && e.hull > 0
+      && s.entities.get(e.id) === e && e.data.gardenDestroyed !== true
+      && sectorMembershipAtGlobal(e.pos) === UNDERSTORY_RECEIVER.sectorId);
+    if (!garden || !normalizePlayerGardenGrowth(garden.data.gardenFirstPlayerGrowth, UNDERSTORY_RECEIVER.gardenId)
+      || !Number.isFinite(pilot.pos?.x) || !Number.isFinite(pilot.pos?.z)
+      || !Number.isFinite(garden.pos?.x) || !Number.isFinite(garden.pos?.z)
+      || dist2(pilot.pos, garden.pos) > 800 * 800) return;
+    const outcome = {
+      carrier_down: 'The carrier is down — one hull, not the whole Reach.',
+      carrier_gutted: 'Its own Wasps through the couplings; the carrier is down.',
+      nest_emptied: 'The bays are empty and both baffles gone; that does not mean the lane is clear.',
+      carrier_escapes: 'You broke contact and came back alive; the carrier is still out there.',
+    }[receipt.outcome];
+    // Commit before callbacks so repeated ticks and callback-time saves cannot repeat the greeting.
+    u.rooksideNestReturn = receipt.outcome;
+    this.bus.emit('comms:log', { speaker: 'Rookside Receiving Garden',
+      text: `${outcome} Your first growth is still in our ledger. ${garden.data.compostRunComplete
+        ? 'Your paid run is already settled; there is no second invoice.'
+        : 'The paid haul is still optional.'}` });
+  },
+
   update(dt, state) {
     this.ensureAuthoredReceiver();
     this._reseedDestroyedReceiver();
@@ -2101,6 +2151,7 @@ export const understoryGardens = {
       this._digest(e, rec);
       syncGardenStage(state, e, rec);
     }
+    this._rooksideReturn(gardens);
     this._tendGardeners();
     this._sporeHead();
     this._syncTidePushback();
