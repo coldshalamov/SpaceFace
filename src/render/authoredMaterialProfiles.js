@@ -123,12 +123,16 @@ export function isForgeMaterial(material) {
 }
 
 function applyForgeFinish(material, role, options = {}) {
+  const coverage = inspectAuthoredPbrCoverage(material);
+  // Glass and light sources may intentionally be factor-only; an opaque Forge surface with
+  // missing maps still needs source remaster even though the Forge finish bypasses fallback.
+  const factorOnlyAllowed = role === 'glass' || role === 'drive' || role === 'signal';
   material.userData = {
     ...(material.userData || {}), spacefaceMaterialRole: role,
     spacefaceAuthoredMaterialName: material.userData?.spacefaceAuthoredMaterialName || material.name,
     spacefaceRemasterGeometry: true,
-    spacefacePbrCoverage: inspectAuthoredPbrCoverage(material),
-    spacefacePbrRemasterRequired: false,
+    spacefacePbrCoverage: coverage,
+    spacefacePbrRemasterRequired: !coverage.complete && !factorOnlyAllowed,
   };
   delete material.userData.spacefaceHullLayout;
   // Hull-space anchor for the runtime stencil decals (src/render/illustratedStencils.js). Forge
