@@ -2287,7 +2287,7 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger > .sx-ledger__right { bottom:auto !important; overflow:visible; }
   ${D} .sx-ledger__right > .orr-ledger-tape { height:clamp(140px, calc(100vh - 550px), 172px) !important; }
   ${D} .sx-ledger__row > .orr-ledger-purse { min-height:clamp(140px, calc(100vh - 550px), 172px); }
-  ${D} .sx-ledger__right > .dust-em { grid-column:1 / -1; align-self:start; max-width:none; margin:0; padding:8px 14px;
+  ${D} .sx-ledger__right > .dust-em { grid-column:1 / -1; align-self:start; max-width:none; margin:0 16px 0 0; padding:8px 14px;
     display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:14px; align-items:baseline; }
   ${D} .sx-ledger__right > .dust-em .dust-em__note { margin:0; }
   ${D} .sx-ledger__right > .dust-em .dust-em__rows { grid-column:1 / -1; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0 18px;
