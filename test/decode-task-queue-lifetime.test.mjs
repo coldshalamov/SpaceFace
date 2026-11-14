@@ -9,7 +9,8 @@ function runQueueCase(body) {
   const result = spawnSync(process.execPath, ['--unhandled-rejections=strict', '--input-type=module', '-e', `
     import assert from 'node:assert/strict';
     globalThis.requestAnimationFrame = (fn) => queueMicrotask(() => fn(performance.now()));
-    const { scheduleGltfCompile, scheduleGltfParse } = await import(${JSON.stringify(moduleUrl)});
+    const { scheduleGltfCompile, scheduleGltfParse, regradeGltfCompile, regradeGltfParse,
+      withVisibleDecodeClass } = await import(${JSON.stringify(moduleUrl)});
     ${body}
     await new Promise((resolve) => setTimeout(resolve, 0));
   `], { encoding: 'utf8', timeout: 5000 });
@@ -46,5 +47,45 @@ test('departed parse owners skip construction and preserve following live work',
     assert.equal(await departed, null);
     assert.equal(await next, 'live parse');
     assert.equal(parsed, false);
+  `);
+});
+
+test('a deadline join cannot demote a creator already queued as visible', () => {
+  runQueueCase(`
+    const parseOrder = [];
+    const parseToken = {};
+    const firstParse = withVisibleDecodeClass(() => scheduleGltfParse(() => parseOrder.push('first'), parseToken));
+    const secondParse = withVisibleDecodeClass(() => scheduleGltfParse(() => parseOrder.push('second'), {}));
+    assert.equal(regradeGltfParse(parseToken, 'deadline'), true);
+    await Promise.all([firstParse, secondParse]);
+    assert.deepEqual(parseOrder, ['first', 'second'], 'the visible creator keeps its parse priority');
+
+    const compileOrder = [];
+    const compileToken = {};
+    const firstCompile = scheduleGltfCompile(() => compileOrder.push('first'), 'visible', compileToken);
+    const secondCompile = scheduleGltfCompile(() => compileOrder.push('second'), 'visible', {});
+    assert.equal(regradeGltfCompile(compileToken, 'deadline'), true);
+    await Promise.all([firstCompile, secondCompile]);
+    assert.deepEqual(compileOrder, ['first', 'second'], 'the visible creator keeps its compile priority');
+  `);
+});
+
+test('a visible join promotes an ambient parse and compile ahead of queued peers', () => {
+  runQueueCase(`
+    const parseOrder = [];
+    const ordinaryParse = scheduleGltfParse(() => parseOrder.push('ordinary'), {});
+    const parseToken = {};
+    const urgentParse = scheduleGltfParse(() => parseOrder.push('urgent'), parseToken);
+    assert.equal(regradeGltfParse(parseToken, 'visible'), true);
+    await Promise.all([ordinaryParse, urgentParse]);
+    assert.deepEqual(parseOrder, ['urgent', 'ordinary']);
+
+    const compileOrder = [];
+    const ordinaryCompile = scheduleGltfCompile(() => compileOrder.push('ordinary'), 'ambient', {});
+    const compileToken = {};
+    const urgentCompile = scheduleGltfCompile(() => compileOrder.push('urgent'), 'ambient', compileToken);
+    assert.equal(regradeGltfCompile(compileToken, 'visible'), true);
+    await Promise.all([ordinaryCompile, urgentCompile]);
+    assert.deepEqual(compileOrder, ['urgent', 'ordinary']);
   `);
 });

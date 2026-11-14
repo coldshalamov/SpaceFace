@@ -334,6 +334,12 @@ function gltfParseLaneFor(decodeClass) {
       : gltfParsePending.ambient;
 }
 
+function queuedLaneRank(lane, pending) {
+  return lane === pending.visible ? DECODE_CLASS_RANK.visible
+    : lane === pending.deadline ? DECODE_CLASS_RANK.deadline
+      : DECODE_CLASS_RANK.ambient;
+}
+
 function drainGltfParseQueue() {
   const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
     ? () => performance.now()
@@ -462,6 +468,9 @@ export function regradeGltfParse(token, decodeClass) {
     gltfParseEntries.delete(token);
     return false;
   }
+  // A later deadline consumer must not demote a creator that entered as visible. The
+  // joiner's bookkeeping tracks earlier joins, not necessarily the creator's original lane.
+  if (queuedLaneRank(target, gltfParsePending) <= queuedLaneRank(rec.lane, gltfParsePending)) return true;
   rec.lane.splice(idx, 1);
   target.unshift(rec.entry);
   rec.lane = target;
@@ -603,6 +612,7 @@ export function regradeGltfCompile(token, decodeClass) {
     gltfCompileEntries.delete(token);
     return false;
   }
+  if (queuedLaneRank(target, gltfCompilePending) <= queuedLaneRank(rec.lane, gltfCompilePending)) return true;
   rec.lane.splice(idx, 1);
   target.unshift(rec.entry);
   rec.lane = target;
