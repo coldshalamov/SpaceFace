@@ -4,6 +4,8 @@ The owner requested 20 substantive review/improvement iterations for each indivi
 Record real actions and decisions; do not manufacture cycles or repeat unchanged checks to reach
 the number. A count is not visual acceptance. The game's renderer and gameplay camera remain the
 visual authority; see [the graphics front door](../../../../docs/visual-assets/README.md).
+Use [faction direction](FACTION_DIRECTION.md) to connect a model's construction and finish to its
+actual owner, role and story, while checking the live asset selection before applying that direction.
 
 ## Assets arriving through pull requests
 
