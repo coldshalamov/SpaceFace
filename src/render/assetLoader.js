@@ -1041,16 +1041,25 @@ export async function getAuthoredAssetDiagnostic(renderer, url, slot = null) {
   }
 }
 
-export async function getAuthoredAssetRuntimeInfo(renderer) {
+export async function getAuthoredAssetRuntimeInfo(renderer, { includeFailures = false } = {}) {
   if (!renderer) return null;
   try {
     const runtime = await runtimeFor(renderer);
-    return {
+    const info = {
       schema: 'spaceface.authoredAssetRuntimeInfo.v1',
       source: runtime.source,
       decoders: { ...runtime.decoders },
       paths: { ...runtime.paths },
     };
+    // On-demand diagnostics only: ordinary rendering does not walk the failure ledger.
+    if (includeFailures) {
+      info.failures = [...runtime.failures].map(([key, error]) => ({
+        key,
+        message: error?.message || String(error),
+        code: error?.code || null,
+      }));
+    }
+    return info;
   } catch (error) {
     return {
       schema: 'spaceface.authoredAssetRuntimeInfo.v1',

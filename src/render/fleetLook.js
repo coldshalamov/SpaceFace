@@ -14,7 +14,7 @@ import { SHIPS } from '../data/ships.js';
 import { SECTORS } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { defaultShipAppearance } from '../core/shipAppearance.js';
-import { loadAuthoredPart } from './assetLoader.js';
+import { getAuthoredAssetDiagnostic, getAuthoredAssetRuntimeInfo, loadAuthoredPart } from './assetLoader.js';
 import { wrapShipWithAuthoredParts } from './partsLibrary.js';
 import { RESIDENCY_HELD } from './residencyManager.js';
 import { beginLookMood, currentLookMoodId, tuneLook } from './look.js';
@@ -277,7 +277,10 @@ export function installFleetLook(SF) {
     if (opts.file) {
       const url = opts.file.startsWith('assets/') ? opts.file : RELEASE_ROOT + opts.file;
       const bp = await loadAuthoredPart(url, { renderer, slot: opts.slot || null });
-      if (!bp) throw new Error('load failed: ' + url);
+      if (!bp) {
+        const diagnostic = await getAuthoredAssetDiagnostic(renderer, url, opts.slot || null);
+        throw new Error(`load failed: ${url}${diagnostic ? ` — ${diagnostic.message || diagnostic}` : ''}`);
+      }
       return { root: blueprintToGroup(bp), radius: null };
     }
     const def = SHIPS.find((s) => s.id === opts.defId);
@@ -457,6 +460,7 @@ export function installFleetLook(SF) {
   window.SF_fleetLook = {
     shoot,
     cost,
+    assetDiagnostics: () => getAuthoredAssetRuntimeInfo(renderer, { includeFailures: true }),
     ships: () => SHIPS.map((s) => s.id),
     // --sector=<id>: apply that sector's authored visual-profile rig (intensity + key/fill tint +
     // signature-hero aim) to the live lights before the next shot.

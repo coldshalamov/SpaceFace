@@ -5,6 +5,7 @@ import { renderPackagePilotForSourceUrl } from '../src/render/renderPackageManif
 import {
   disposeAuthoredAssetRuntime,
   getAuthoredAssetDiagnostic,
+  getAuthoredAssetRuntimeInfo,
   invalidateFailedAuthoredAssets,
   loadAuthoredPart,
 } from '../src/render/assetLoader.js';
@@ -39,11 +40,16 @@ test('an unpackaged release part resolves null, records the refusal, and stays r
     const diagnostic = await getAuthoredAssetDiagnostic(renderer, UNPACKAGED_URL, SLOT);
     assert.ok(diagnostic instanceof Error, 'the refusal must be recorded for diagnostics');
     assert.match(String(diagnostic.message), /no render package|source route/i);
+    const runtime = await getAuthoredAssetRuntimeInfo(renderer, { includeFailures: true });
+    assert.ok(runtime.failures.some((failure) => failure.key === `${UNPACKAGED_URL}::${SLOT}`
+      && /no render package|source route/i.test(failure.message)),
+    'the on-demand batch report identifies the refused asset and reason');
 
     const cleared = await invalidateFailedAuthoredAssets(renderer);
     assert.ok(cleared >= 1, 'the recorded refusal is reachable by the recovery sweep');
     assert.equal(await getAuthoredAssetDiagnostic(renderer, UNPACKAGED_URL, SLOT), null,
       'invalidation clears the record so a re-admission can retry cleanly');
+    assert.equal((await getAuthoredAssetRuntimeInfo(renderer, { includeFailures: true })).failures.length, 0);
 
     // After recovery the contract still holds: resolve null again, re-record the still-broken
     // package coverage — never wedge or throw.

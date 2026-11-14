@@ -302,7 +302,10 @@ try {
     }
   }
   if (targets.length > 1) for (const v of views) await contactSheet(v, report);
-  writeFileSync(OUT + 'report.json', JSON.stringify({ report, logs: logs.slice(0, 80) }, null, 2));
+  let assetRuntime = null;
+  try { assetRuntime = await page.evaluate(() => window.SF_fleetLook.assetDiagnostics()); }
+  catch (error) { assetRuntime = { error: String(error) }; }
+  writeFileSync(OUT + 'report.json', JSON.stringify({ report, logs: logs.slice(0, 80), assetRuntime }, null, 2));
 } finally {
   try { await browser.close(); }
   finally { server.kill(); }
