@@ -45,9 +45,11 @@ for (const option of ['bloomLevels', 'maxLevels']) {
       bloom.setOptions({ [option]: 1 });
       assertLevels(bloom, 1);
       const narrow = targets(bloom);
-      assert.equal(narrow.length, 2);
-      assert.ok(narrow.every((target) => original.includes(target)), 'scene and first level are reused');
-      assert.equal(disposed.length, 3, 'only the three removed levels are disposed');
+      // LOOK-04: a tier change only picks how many allocated levels run; nothing is freed or allocated,
+      // so auto-quality stepping mid-flight can't hitch on render-target churn.
+      assert.equal(narrow.length, 5);
+      assert.ok(narrow.every((target) => original.includes(target)), 'every target is reused');
+      assert.equal(disposed.length, 0, 'a tier change disposes nothing');
       bloom.render({}, {});
       assert.equal(h.draws.length, 3, 'scene, one bloom pass, composite');
       bloom.setOptions({ [option]: 2 });
@@ -55,7 +57,7 @@ for (const option of ['bloomLevels', 'maxLevels']) {
       const wide = targets(bloom);
       assert.equal(wide.length, 5);
       assert.ok(narrow.every((target) => wide.includes(target)));
-      assert.equal(disposed.length, 3);
+      assert.equal(disposed.length, 0);
       const d = bloom.diagnostics();
       assert.equal(d.contentScale, 0.34);
       assert.equal(d.contentWidth, 287);
@@ -73,7 +75,7 @@ for (const option of ['bloomLevels', 'maxLevels']) {
       assert.equal(getPostRenderTargetTelemetry().renderTargetAllocationsTotal, allocationsBefore);
       assert.equal(steadyDisposals, 0);
       assert.equal(h.draws.length, 27, 'each wide frame has scene, four bloom downsamples, three upsamples, composite');
-      assert.equal(disposed.length, 3);
+      assert.equal(disposed.length, 0);
     } finally { bloom.dispose(); }
   });
 }

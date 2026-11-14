@@ -2402,6 +2402,17 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     return cap >= 2 ? BLOOM_WIDE_PYRAMID_LEVELS : cap;
   }
 
+  // LOOK-04: the pyramid is allocated at full halo depth whatever the quality tier, and the tier only
+  // chooses how many levels run. A tier change (Settings, or auto-quality stepping mid-flight) then
+  // costs nothing; it used to dispose and allocate render targets inside a frame (a ~450 ms hitch).
+  // The deep levels are 1/8 and 1/16 res, so the retained memory is a few hundred KB.
+  function allocLevelsForSize(w, h) {
+    const halfW = Math.max(1, w >> 1);
+    const halfH = Math.max(1, h >> 1);
+    if (halfW < 320 || halfH < 180) return 1;
+    return BLOOM_WIDE_PYRAMID_LEVELS;
+  }
+
   function allocRenderTarget(w, h, opts, reason) {
     recordPostRenderTargetAllocation(reason);
     return new THREE.WebGLRenderTarget(w, h, opts);
@@ -2419,9 +2430,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     if (atmosphere?.supported) attachSceneDepth(rtScene);
     const halfW = Math.max(1, W >> 1);
     const halfH = Math.max(1, H >> 1);
-    const newLevels = enabled === false ? 0 : levelCountForSize(W, H);
+    const allocLevels = enabled === false ? 0 : allocLevelsForSize(W, H);
+    const newLevels = enabled === false ? 0 : Math.min(allocLevels, levelCountForSize(W, H));
     const down = [];
-    for (let i = 0; i < newLevels; i++) {
+    for (let i = 0; i < allocLevels; i++) {
       const dw = Math.max(1, W >> (i + 1));
       const dh = Math.max(1, H >> (i + 1));
       down.push(allocRenderTarget(dw, dh, pyramidRtOpts, reason));
@@ -2439,11 +2451,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       down.length = 0;
       levels = 0;
     } else if (enabled && down.length === 0) {
-      const newLevels = levelCountForSize(W, H);
-      for (let i = 0; i < newLevels; i++) {
+      const allocLevels = allocLevelsForSize(W, H);
+      for (let i = 0; i < allocLevels; i++) {
         down.push(allocRenderTarget(Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), pyramidRtOpts, 'bloom-enable'));
       }
-      levels = newLevels;
+      levels = Math.min(allocLevels, levelCountForSize(W, H));
     }
   }
 
@@ -3491,8 +3503,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     if (Number.isFinite(displayW) && displayW > 0) casDisplayW = displayW;
     if (Number.isFinite(displayH) && displayH > 0) casDisplayH = displayH;
     // A settings/profile change can alter pyramid depth without changing the buffer size.
-    const newLevels = enabled === false ? 0 : levelCountForSize(nextW, nextH);
-    if (nextW !== W || nextH !== H || down.length !== newLevels) {
+    const allocLevels = enabled === false ? 0 : allocLevelsForSize(nextW, nextH);
+    if (nextW !== W || nextH !== H || down.length !== allocLevels) {
       W = nextW;
       H = nextH;
       halfW = Math.max(1, W >> 1);
@@ -3503,13 +3515,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       resizeRenderTarget(rtScene, W, H, 'resize');
       if (atmosphere) atmosphere.setSize(W, H);
       // grow/shrink the pyramid level array if depth changed (resize may cross the 320px threshold)
-      while (down.length < newLevels) {
+      while (down.length < allocLevels) {
         const i = down.length;
         down.push(allocRenderTarget(Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), pyramidRtOpts, 'resize'));
       }
-      while (down.length > newLevels) { const rt = down.pop(); rt.dispose(); }
-      levels = newLevels;
-      for (let i = 0; i < levels; i++) {
+      while (down.length > allocLevels) { const rt = down.pop(); rt.dispose(); }
+      for (let i = 0; i < down.length; i++) {
         resizeRenderTarget(down[i], Math.max(1, W >> (i + 1)), Math.max(1, H >> (i + 1)), 'resize');
       }
       if (rtPost) resizeRenderTarget(rtPost, W, H, 'resize');
@@ -3518,6 +3529,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       contentW = Math.max(1, Math.round(W * contentScale));
       contentH = Math.max(1, Math.round(H * contentScale));
     }
+    // The quality tier picks how many allocated levels run; no allocation happens here.
+    levels = enabled === false ? 0 : Math.min(down.length, levelCountForSize(W, H));
     // Reserve at the first known display size, including native-resolution opening frames.
     // Auto's first reduction then changes only uniforms/viewports; prepareResources also admits
     // the exact offscreen composite variant before flight. Keep this pool through recovery.
@@ -3692,7 +3705,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       contrastLutContrast: Number.isFinite(contrastLutContrast) ? contrastLutContrast : null,
       fullFramePasses: casActive && rtPost ? 3 : 2,
       // Downsample pyramid only — multi-scale composite replaced the upsample chain.
-      bloomPasses: enabled && strength > 0.0001 ? down.length : 0,
+      bloomPasses: enabled && strength > 0.0001 ? levels : 0,
       passFamilies: {
         scene: 1,
         normal: 0,
