@@ -202,9 +202,12 @@ ${D} .sf-crd-foot .k-words > li > button.k-word.orr-key[aria-pressed="true"]:not
   ${D} .orr-door-hero__words { bottom:150px !important; }
 }
 /* Short densify hero: the 150px climb pushed the arena sentence above the short hero crop
-   ("machinery…" cut mid-glyph at 801×461). Drop the words into the visible frame. */
+   ("machinery…" cut mid-glyph at 801×461). Drop the words into the visible frame — but only to
+   the purse brief's shoulder: the brief stands 113px tall at bottom:10px and paints over anything
+   below 123px, so at bottom:100px it sliced the arena line's last row in half under the 750
+   numeral (960×540). 124px seats the line's foot on the brief's top edge. */
 @media (max-height:560px) {
-  ${D} .orr-door-hero__words { bottom:100px !important; }
+  ${D} .orr-door-hero__words { bottom:124px !important; }
 }
 @media (max-height:500px) {
   ${D} .orr-door-hero__words { bottom:110px !important; }
