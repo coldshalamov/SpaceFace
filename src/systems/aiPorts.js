@@ -18,6 +18,7 @@ import { towedLureContactFor } from '../ai/towedLure.js';
 import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { mountFollowsAimAngle } from '../ai/fireDiscipline.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
+import { copySensorContactFields, POOLED_SENSOR_CONTACT } from '../ai/perception.js';
 import { authorizeAIEngagement, isHostileForAI, isOffensiveActionDef } from '../ai/engagementAuthority.js';
 import { isDynamicPhysicsBodyEntity, measureThrusterAuthority, writePhysicsControl, writeOwnedPhysicsControl, cancelOwnedPhysicsControl, ensurePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
@@ -1362,7 +1363,7 @@ function pruneCloakTrackLedger(ledger, now) {
 }
 
 function makeSensorContactRecord() {
-  return {
+  const record = {
     id: null,
     kind: null,
     team: null,
@@ -1391,7 +1392,10 @@ function makeSensorContactRecord() {
     confidence: 0,
     threat: 0,
     hostile: false,
+    fortifyTarget: false,
   };
+  Object.defineProperty(record, POOLED_SENSOR_CONTACT, { value: true });
+  return record;
 }
 
 function ensureSensorContactRecord(records, index) {
@@ -1404,35 +1408,7 @@ function ensureSensorContactRecord(records, index) {
 
 /** Fill a retained contact record from a cached base + observer-relative fields (no object spread). */
 function fillSensorContact(out, base, confidence, threat, hostile) {
-  out.id = base.id;
-  out.kind = base.kind;
-  out.team = base.team;
-  out.classification = base.classification;
-  out.pos = base.pos;
-  out.vel = base.vel;
-  out.radius = base.radius;
-  out.planarRadius = base.planarRadius;
-  out.alive = base.alive;
-  out.valid = base.valid;
-  out.visible = base.visible;
-  out.targetId = base.targetId;
-  out.ownerId = base.ownerId;
-  out.disabled = base.disabled;
-  out.tumbling = base.tumbling;
-  out.tethered = base.tethered;
-  out.exposed = base.exposed;
-  out.ownedBySelf = base.ownedBySelf;
-  out.objectiveValue = base.objectiveValue;
-  out.fortifyTarget = base.fortifyTarget === true;
-  out.massClass = base.massClass;
-  out.operationalMassBand = base.operationalMassBand;
-  out.mobilityBand = base.mobilityBand;
-  out.cargoBand = base.cargoBand;
-  out.tetherabilityBand = base.tetherabilityBand;
-  out.tags = base.tags;
-  out.confidence = confidence;
-  out.threat = threat;
-  out.hostile = hostile;
+  copySensorContactFields(out, base, confidence, threat, hostile);
   // Drop tether-only keys so recycled slots match spread-alloc shape (no undefined own props).
   if ('attachmentId' in out) delete out.attachmentId;
   if ('sourceSocketId' in out) delete out.sourceSocketId;

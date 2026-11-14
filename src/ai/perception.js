@@ -1,5 +1,41 @@
 import { TraceLayer, distance2, normalizeSensorFrame, saturate, stableId } from './contracts.js';
 
+export const POOLED_SENSOR_CONTACT = Symbol('pooled sensor contact');
+
+/** Copy a fixed-shape sensor contact, with observer fields supplied separately for a cached base. */
+export function copySensorContactFields(out, source,
+  confidence = source.confidence, threat = source.threat, hostile = source.hostile) {
+  out.id = source.id;
+  out.kind = source.kind;
+  out.team = source.team;
+  out.classification = source.classification;
+  out.pos = source.pos;
+  out.vel = source.vel;
+  out.radius = source.radius;
+  out.planarRadius = source.planarRadius;
+  out.alive = source.alive;
+  out.valid = source.valid;
+  out.visible = source.visible;
+  out.targetId = source.targetId;
+  out.ownerId = source.ownerId;
+  out.disabled = source.disabled;
+  out.tumbling = source.tumbling;
+  out.tethered = source.tethered;
+  out.exposed = source.exposed;
+  out.ownedBySelf = source.ownedBySelf;
+  out.objectiveValue = source.objectiveValue;
+  out.fortifyTarget = source.fortifyTarget === true;
+  out.massClass = source.massClass;
+  out.operationalMassBand = source.operationalMassBand;
+  out.mobilityBand = source.mobilityBand;
+  out.cargoBand = source.cargoBand;
+  out.tetherabilityBand = source.tetherabilityBand;
+  out.tags = source.tags;
+  out.confidence = confidence;
+  out.threat = threat;
+  out.hostile = hostile;
+}
+
 export class PerceptionMemory {
   constructor({ memoryTicks = 300, confidenceFloor = 0.08, trace = null, freezeResults = true } = {}) {
     if (!Number.isInteger(memoryTicks) || memoryTicks < 1) throw new RangeError('memoryTicks must be positive');
@@ -57,7 +93,13 @@ export class PerceptionMemory {
         memory.contacts.set(key, record);
       } else {
         if (useTick && record.lastSeenTick !== normalized.tick) seenCount++;
-        Object.assign(record, contact);
+        // Scratch rows are immediately reused by the next sensor frame. Preserve the owned
+        // memory record and use fixed fields only for rows produced by that canonical pool.
+        if (contact[POOLED_SENSOR_CONTACT]) {
+          copySensorContactFields(record, contact);
+        } else {
+          Object.assign(record, contact);
+        }
       }
       record.lastSeenTick = normalized.tick;
       record.observedConfidence = contact.confidence;

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { ContactKind, ManeuverKind } from '../src/ai/contracts.js';
+import { ContactKind, makeTrustedSensorFrame, ManeuverKind } from '../src/ai/contracts.js';
 import { ManeuverPlanner } from '../src/ai/maneuver.js';
 import { PerceptionMemory } from '../src/ai/perception.js';
 import { createSimulation } from '../src/core/sim.js';
@@ -208,6 +208,36 @@ test('live perception still expires unseen contacts when the current key set shr
   assert.deepEqual(current.contacts.map((row) => row.id), ['current'],
     'the skipped cleanup scan must still prune stale rows after a new key replaces an old one');
   assert.deepEqual([...memory.byEntity.get('expiry-pilot').contacts.keys()], ['ship|s:current']);
+});
+
+test('reused sensor rows refresh owned memory and preserve supplemental fields', t => {
+  const sim = createSimulation({ seed: 47, systems: [aiPorts], updateOrder: [] });
+  t.after(() => sim.dispose());
+  const observer = sim.spawn({ type: 'ship', team: 2, pos: { x: 0, z: 0 } });
+  const target = sim.spawn({ type: 'ship', team: 1, pos: { x: 120, z: 0 } });
+  const memory = new PerceptionMemory({ freezeResults: false });
+  const sensorFrame = tick => {
+    sim.state.tick = tick;
+    return sim.helpers.aiSensors.liveFramesFor([observer.id], tick, { ephemeral: true }).get(observer.id);
+  };
+  const frame = sensorFrame(0);
+  const pooled = frame.contacts[0];
+  // Simulate a row accepted from another normalized producer before the production refresh.
+  const first = makeTrustedSensorFrame({ ...frame, contacts: [{ ...pooled, supplemental: 'authored' }] });
+  const remembered = memory.observe(observer.id, first, 0).contacts[0];
+
+  target.team = 2;
+  target.pos.x = 250;
+  target.vel.z = 12;
+  const second = sensorFrame(1);
+  assert.equal(second.contacts[0], pooled);
+  assert.equal(remembered.pos.x, 120, 'refreshing sensor scratch leaves memory untouched until observation');
+  const current = memory.observe(observer.id, second, 1).contacts[0];
+  assert.equal(current, remembered);
+  assert.deepEqual(current, {
+    ...pooled, supplemental: 'authored', firstSeenTick: 0, lastSeenTick: 1,
+    observedConfidence: pooled.confidence, ageTicks: 0,
+  });
 });
 
 test('live perception keeps duplicate ordering and expires cold contacts across rewound observations', () => {
