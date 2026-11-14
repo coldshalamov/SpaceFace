@@ -45,6 +45,12 @@ const requireCjs = createRequire(import.meta.url);
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const VERBOSE = process.argv.includes('--verbose');
+// Every readiness wait below is wall-clock: a saturated machine makes a healthy game read as
+// broken (DCL alone has measured 110s+ under parallel checks). SF_CHECK_BUDGET_SCALE multiplies
+// them all so "slow" stays distinguishable from "dead"; gate.mjs --budget-scale=N sets it for its
+// children. Default 1 is byte-identical to today's behaviour; failure text prints the real budget.
+const BUDGET_SCALE = Math.max(1, Number(process.env.SF_CHECK_BUDGET_SCALE) || 1);
+const T = (ms) => Math.round(ms * BUDGET_SCALE);
 // --electron runs the SAME assertions through the route the player actually launches
 // (SpaceFace-Desktop.bat -> scripts/launch-electron.mjs -> electron/main.cjs). The browser route
 // passing proves nothing about it: Electron serves a different web root, enforces a strict CSP the
@@ -177,7 +183,7 @@ async function waitForRunningFlight(page) {
         && typeof state.render?.releaseOpeningPresentationHold !== 'function'
         && Number.isFinite(state.tick) && state.tick > tick
         && Number.isFinite(state.simTime) && state.simTime > simTime;
-    }, baseline, { timeout: 30000 });
+    }, baseline, { timeout: T(30000) });
   } catch (error) {
     const current = await page.evaluate(playableStartupSnapshot).catch(() => null);
     error.message += ` — flight simulation did not resume: ${JSON.stringify({ baseline, current })}`;
@@ -203,10 +209,10 @@ async function exerciseSaveScreen(page, { protectedSession = false } = {}) {
   });
   await page.keyboard.press('Escape');
   const pause = page.locator('[data-screen="pause"]');
-  await pause.waitFor({ state: 'visible', timeout: 15000 });
+  await pause.waitFor({ state: 'visible', timeout: T(15000) });
   await pause.getByRole('button', { name: /^Save\b/ }).click();
   const saves = page.locator('[data-screen="saveLoad"]');
-  await saves.waitFor({ state: 'visible', timeout: 15000 });
+  await saves.waitFor({ state: 'visible', timeout: T(15000) });
   await saves.locator('.sf-slot[data-id="quick"]').click();
   const overwrite = await page.evaluate(() => !!localStorage.getItem('sf.save.quick'));
   await saves.locator('button[data-action="save"]').click();
@@ -216,7 +222,7 @@ async function exerciseSaveScreen(page, { protectedSession = false } = {}) {
     await page.waitForFunction(() => {
       const result = window.__playableSave;
       return result.completed.length > 0 || result.errors.length > 0 || result.refused.length > 0;
-    }, null, { timeout: 30000 });
+    }, null, { timeout: T(30000) });
   } catch (error) {
     const pending = await page.evaluate(() => ({ attempts: window.__playableSave.attempts,
       completed: window.__playableSave.completed.length, errors: window.__playableSave.errors,
@@ -238,9 +244,9 @@ async function exerciseSaveScreen(page, { protectedSession = false } = {}) {
   });
   if (protectedSession) {
     await page.keyboard.press('Escape');
-    await saves.waitFor({ state: 'hidden', timeout: 15000 });
+    await saves.waitFor({ state: 'hidden', timeout: T(15000) });
     await page.keyboard.press('Escape');
-    await pause.waitFor({ state: 'hidden', timeout: 15000 });
+    await pause.waitFor({ state: 'hidden', timeout: T(15000) });
   }
   return result;
 }
@@ -291,17 +297,17 @@ async function openElectronRoute() {
     const env = { ...process.env };
     for (const key of ['SPACEFACE_ELECTRON_TEST_MODE', 'SPACEFACE_ELECTRON_TEST_PORT',
       'SPACEFACE_ELECTRON_TEST_USER_DATA', 'SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION']) delete env[key];
-    electronLaunch = { options: { args: ['.'], cwd: ROOT, timeout: 180_000, env }, cleanup: () => true };
+    electronLaunch = { options: { args: ['.'], cwd: ROOT, timeout: T(180_000), env }, cleanup: () => true };
   } else {
     electronLaunch = createIsolatedElectronLaunch({
       root: ROOT,
       taskId: 'playable',
-      timeout: 180_000,
+      timeout: T(180_000),
       baseEnv: { ...process.env, SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' },
     });
   }
   electronApp = await electron.launch(electronLaunch.options);
-  const page = await electronApp.firstWindow({ timeout: 180_000 });
+  const page = await electronApp.firstWindow({ timeout: T(180_000) });
   // Electron's CSP blocks Playwright's default injected polling, so waitForFunction never
   // resolves without it. That timeout would look exactly like a game hang and be a harness bug.
   installCspSafePlaywrightPolling(page);
@@ -313,7 +319,7 @@ async function openElectronRoute() {
     await bw.evaluate((win) => { win.show(); win.focus(); if (win.moveTop) win.moveTop(); });
   } catch (_) {}
   await page.bringToFront().catch(() => {});
-  await page.waitForLoadState('domcontentloaded', { timeout: 180_000 });
+  await page.waitForLoadState('domcontentloaded', { timeout: T(180_000) });
   if (!PLAYER_PROFILE) assertIsolatedElectronRootUrl(page.url());
   return { page, baseUrl: new URL(page.url()).origin + '/' };
 }
@@ -411,7 +417,7 @@ try {
     console.log('  localStorage keys written: ' + wrote + ' of ' + Object.keys(real.pairs).length);
     phase = 'harness-reload';
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 60000 });
+    await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: T(60000) });
     phase = 'menu';
     console.log('  real saves injected from ' + real.dir);
     console.log('  slots: ' + real.slots.join(', ') + '   versions: ' + JSON.stringify(versions));
@@ -423,24 +429,24 @@ try {
     // the CPU (per-request wall time then starves in the renderer, not the network — the server
     // answers a 1.4MB file in 170ms while the box is pinned). 180s matches the budget this file
     // already grants the desktop route's waitForLoadState below; a real hang still fails here.
-    await page.goto(routeBaseUrl + SIM_LANE_QUERY, { waitUntil: 'domcontentloaded', timeout: 180_000 });
+    await page.goto(routeBaseUrl + SIM_LANE_QUERY, { waitUntil: 'domcontentloaded', timeout: T(180_000) });
   } else {
     // The desktop route boots itself and may raise the cinematic splash, which swallows a scripted
     // .click(). A real key press is the only thing that dismisses it.
     const splash = page.locator('#cinematic-splash');
     if (await splash.isVisible().catch(() => false)) {
       await page.keyboard.press('Space');
-      await splash.waitFor({ state: 'hidden', timeout: 8000 }).catch(() => {});
+      await splash.waitFor({ state: 'hidden', timeout: T(8000) }).catch(() => {});
     }
   }
   let bootOk = true;
   const menuWaitStarted = Date.now();
   try {
-    await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 60000 });
+    await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: T(60000) });
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-screen="mainMenu"]');
       return el && getComputedStyle(el).display !== 'none';
-    }, null, { timeout: 60000 });
+    }, null, { timeout: T(60000) });
     record('BOOT', true, `main menu reached after ${((Date.now() - menuWaitStarted) / 1000).toFixed(1)}s`);
   } catch (err) {
     bootOk = false;
@@ -449,7 +455,7 @@ try {
       overlay: (() => { const o = document.getElementById('boot-overlay') || document.querySelector('.sf-loading, #sf-loading'); return o ? getComputedStyle(o).display : '(none found)'; })(),
       screens: [...document.querySelectorAll('[data-screen]')].filter((e) => getComputedStyle(e).display !== 'none').map((e) => e.dataset.screen),
     })).catch(() => null);
-    record('BOOT', false, `never reached the main menu within its 60s readiness budget — ${JSON.stringify(stuck)}`);
+    record('BOOT', false, `never reached the main menu within its ${Math.round(T(60000) / 1000)}s readiness budget — ${JSON.stringify(stuck)}`);
   }
 
   // ── 2. LAUNCH ──────────────────────────────────────────────────────────────────────────────
@@ -475,17 +481,17 @@ try {
         if (!(await clickButton(page, 'Continue'))) throw new Error('Continue button absent or disabled with real saves present');
       } else if (PHYSICS_VENUE) {
         if (!['gallery', 'league'].includes(PHYSICS_VENUE)) throw new Error('unknown physics venue');
-        await page.locator('[data-screen="mainMenu"] [data-action="physics"]').click({ timeout: 60000 });
+        await page.locator('[data-screen="mainMenu"] [data-action="physics"]').click({ timeout: T(60000) });
         await page.locator('[data-screen="physicsVenues"] .race-board-course')
           .nth(PHYSICS_VENUE === 'gallery' ? 0 : 1)
           .locator('.race-board-launch').first().click();
         // RC-41: the menu launch asks nothing; a live-flight launch still confirms.
         try {
           await page.getByRole('dialog', { name: 'Leave this flight for a challenge?', exact: true })
-            .getByRole('button', { name: 'Launch', exact: true }).click({ timeout: 3000 });
+            .getByRole('button', { name: 'Launch', exact: true }).click({ timeout: T(3000) });
         } catch {}
       } else if (CIRCUIT) {
-        await page.locator('[data-screen="mainMenu"] [data-action="circuits"]').click({ timeout: 60000 });
+        await page.locator('[data-screen="mainMenu"] [data-action="circuits"]').click({ timeout: T(60000) });
         await page.getByRole('combobox', { name: 'Circuit ship', exact: true }).selectOption('starter_wasp');
         await page.getByRole('combobox', { name: 'Circuit drive', exact: true }).selectOption('sprint');
         await page.getByRole('button', { name: 'Practice: overhead', exact: true }).click();
@@ -499,7 +505,7 @@ try {
       await page.waitForFunction(() => {
         const st = window.SF.state;
         return st && st.mode === 'flight';
-      }, null, { timeout: 180000 });
+      }, null, { timeout: T(180000) });
       // Flight mode precedes the first-picture hold releasing and the worker tick loop
       // rearming. Keys sent inside that window are swallowed without a simulation step.
       await waitForRunningFlight(page);
@@ -508,7 +514,7 @@ try {
       record('LAUNCH', true, 'flight mode entered and simulation advanced');
       if (PHYSICS_VENUE) {
         await page.waitForFunction(kind => window.SF.state.physicsVenuePublic?.active
-          && window.SF.state.physicsVenuePublic.kind === kind, PHYSICS_VENUE, { timeout: 15000 });
+          && window.SF.state.physicsVenuePublic.kind === kind, PHYSICS_VENUE, { timeout: T(15000) });
         const venue = await page.evaluate(() => {
           const st = window.SF.state;
           return { view: st.physicsVenuePublic,
@@ -803,7 +809,7 @@ try {
           // Return control through the public owner before the remaining Circuit checks.
           await page.evaluate(() => window.SF.bus.emit('nav:abortRoute', { reason: 'laneFwdCheckComplete' }));
           await page.waitForFunction(() => window.SF.state.nav?.executor?.engaged !== true
-            && window.SF.state.nav?.autopilot?.active !== true, null, { timeout: 15000 });
+            && window.SF.state.nav?.autopilot?.active !== true, null, { timeout: T(15000) });
         }
       }
     }
@@ -831,7 +837,7 @@ try {
         const st = window.SF.state;
         return st.missions.active.every(m => m.status !== 'active' || !m.params?.racingContractId
           || !Number.isFinite(m.params.gridUntilSimS) || st.simTime >= m.params.gridUntilSimS);
-      }, null, { timeout: 60000 });
+      }, null, { timeout: T(60000) });
       // Observe the physical pack at its starting course, before LANE-FWD deliberately
       // engages off-course navigation and the camera's normal culling hides those rivals.
       try {
@@ -839,7 +845,7 @@ try {
           const rivals = [...window.SF.state.entities.values()].filter(e => e.data?.raceOpponent);
           return rivals.length === 2 && rivals.every(e => e.mesh?.parent && e.mesh.visible
             && Math.hypot(e.vel?.x || 0, e.vel?.z || 0) > 1);
-        }, null, { timeout: 60000 });
+        }, null, { timeout: T(60000) });
         const pack = await page.evaluate(() => {
           const st = window.SF.state;
           const race = st.missions.active.find(m => m.status === 'active' && m.params?.racingContractId);
@@ -862,7 +868,7 @@ try {
         await page.waitForFunction(() => {
           const rows = window.SF.state.entityList.filter(entity => entity.alive !== false && entity.data?.physicsVenueId);
           return rows.length > 0 && rows.every(entity => entity.mesh?.parent && entity.mesh.visible);
-        }, null, { timeout: 60000 });
+        }, null, { timeout: T(60000) });
         const bodies = await page.evaluate(() => window.SF.state.entityList
           .filter(entity => entity.alive !== false && entity.data?.physicsVenueId)
           .map(entity => ({ id: entity.id, key: entity.data.physicsVenueKey, mass: entity.mass,
@@ -874,12 +880,12 @@ try {
         }, PHYSICS_VENUE);
         await page.locator('#physics-venue-instrument').getByRole('button', { name: 'Retry', exact: true }).click();
         await page.waitForFunction(() => window.__venueRetryReceipts > 0 && window.SF.state.physicsVenuePublic?.active,
-          null, { timeout: 15000 });
+          null, { timeout: T(15000) });
         record('PHYSICS-RETRY', true, 'HUD Retry received a fresh authoritative started receipt');
         await page.locator('#physics-venue-instrument').getByRole('button', { name: 'Leave event', exact: true }).click();
         await page.waitForFunction(() => window.SF.state.physicsVenuePublic?.active === false
           && !window.SF.state.entityList.some(entity => entity.alive !== false && entity.data?.physicsVenueId),
-        null, { timeout: 15000 });
+        null, { timeout: T(15000) });
         record('PHYSICS-LEAVE', true, 'HUD Leave reached worker and removed owned venue bodies');
       } catch (error) {
         record('PHYSICS-LIFECYCLE', false, error.message);
@@ -922,14 +928,14 @@ try {
         // from "Continue's own load gates never released" — the 2026-09-30 capture was the
         // first kind and sat unconfirmed because the error did not say where it died.
         phase = 'harness-reload';
-        await page.reload({ waitUntil: 'domcontentloaded', timeout: 180000 });
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: T(180000) });
         continueStage = 'boot-graph (window.SF)';
-        await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 60000 });
+        await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: T(60000) });
         continueStage = 'main-menu';
         await page.waitForFunction(() => {
           const el = document.querySelector('[data-screen="mainMenu"]');
           return el && getComputedStyle(el).display !== 'none';
-        }, null, { timeout: 60000 });
+        }, null, { timeout: T(60000) });
         phase = 'menu';
         // Stage-9 remediation: a stray game:started on the restore path is the
         // crash class the worker-side receipt replaced — count any emit here
@@ -953,7 +959,7 @@ try {
           const st = window.SF.state;
           const p = st && st.entities && st.entities.get(st.playerId);
           return !!(st && st.mode === 'flight' && p && p.alive);
-        }, null, { timeout: 120000 });
+        }, null, { timeout: T(120000) });
         continueStage = 'sim-resume';
         await waitForRunningFlight(page);
         phase = 'flight';

@@ -46,7 +46,7 @@ import { analyzeReadability } from './readability.mjs';
 import { buildContactSheet } from './contactSheet.mjs';
 import { renderVerdict, printSummary } from './verdict.mjs';
 import { verifyHarnessEnvironment, ENVIRONMENT_EXIT, renderEnvironmentAbort, quoteLoadError } from './environment.mjs';
-import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, waitForPreparationLaunch, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls, installFirstLightPromptHandler, readLaunchedRunSeed } from './routes.mjs';
+import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, waitForPreparationLaunch, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls, installFirstLightPromptHandler, readLaunchedRunSeed, T } from './routes.mjs';
 import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample, drainPlayerTruth, noteKey, foldTargetRejections } from './driver.mjs';
 import { createPlayWatch, formatPlayStop } from './playWatch.mjs';
 import { createFreezeWatch, readHostPressure } from './freezeWatch.mjs';
@@ -132,7 +132,7 @@ export function preparationSnapshot({ ruleset, includeButton = true }) {
 }
 
 export async function awaitPreparationChoice(page, { ruleset, includeButton = true, timeoutMs = 600000 }) {
-  const handle = await page.waitForFunction(preparationSnapshot, { ruleset, includeButton }, { timeout: timeoutMs });
+  const handle = await page.waitForFunction(preparationSnapshot, { ruleset, includeButton }, { timeout: T(timeoutMs) });
   let next;
   try { next = await handle.jsonValue(); } finally { await handle.dispose?.(); }
   if (next.kind === 'mode-mismatch') {
@@ -281,7 +281,7 @@ export function screenshotHudOccluders() {
 export async function awaitRoundHandoff(page, {
   previousWave, simLimit = null, timeoutMs = 300000, beforeLaunch = async () => {},
 }) {
-  const deadline = Date.now() + timeoutMs;
+  const deadline = Date.now() + T(timeoutMs);
   const observe = async (includeButton) => {
     const remaining = deadline - Date.now(); if (remaining <= 0) return null;
     return waitForPageCondition(page, roundHandoffSnapshot,
@@ -688,7 +688,7 @@ async function runOne(args, arena, extra = {}) {
   };
   const installReader = async () => {
     await page.addScriptTag({ type: 'module', content: `import { installPlayerTruthReader } from '/src/testing/playerTruth/reader.js'; installPlayerTruthReader(window, { vfxEvery: 4, pxEvery: 24, rounds: ${args.mode === 'swarm' || args.mode === 'gauntlet'}, vfxAttribution: ${args.vfxAttribution === true} }).start(); window.__playerTruthReady = true;` });
-    await page.waitForFunction(() => window.__playerTruthReady === true, null, { timeout: 60000 });
+    await page.waitForFunction(() => window.__playerTruthReady === true, null, { timeout: T(60000) });
     readerOn = true;
     if (['adventure', 'swarm', 'gauntlet'].includes(args.mode)) {
       const maxTicks = args.mode === 'adventure' ? 120 : 240;
@@ -845,7 +845,7 @@ async function runOne(args, arena, extra = {}) {
       await installFirstLightPromptHandler(page, step);
       await page.goto(launchUrl.toString(), { waitUntil: 'commit' });
       await page.waitForFunction(() => !!(window.SF && window.SF.state && window.SF.bus),
-        null, { timeout: 180000 });
+        null, { timeout: T(180000) });
       step('main menu', true, `skipped via ?swarmRound=${startRound}${arena ? `&swarmArena=${arena}` : ''}`);
     } else {
       await bootToMenu(page, server.baseUrl, step);
@@ -870,7 +870,7 @@ async function runOne(args, arena, extra = {}) {
         await page.waitForFunction(() => {
           const run = window.SF && window.SF.state && window.SF.state.run;
           return !!(run && run.kind === 'survival');
-        }, null, { timeout: 600000 });
+        }, null, { timeout: T(600000) });
         doorInfo = { arenas: null, seedSet: false, seed: null,
           runSeed: await readLaunchedRunSeed(page).catch(() => null), hull: null, hulls: null, doorPrep: null };
       } else {
@@ -951,7 +951,7 @@ async function runOne(args, arena, extra = {}) {
         };
         step('preparation', true, `hull ${doorInfo.hull || 'default'} · ${door.quote || 'no hull sentence'} · no armory shelf`);
       }
-      await waitUntilFlight(page, { timeout: 600000, active: true });
+      await waitUntilFlight(page, { timeout: T(600000), active: true });
       // Freeze the bounded opening window at the first active frame. Later round motion is a
       // separate lifecycle and cannot extend or overwrite this opening's physical receipts.
       await finalizeImpulseObserver();

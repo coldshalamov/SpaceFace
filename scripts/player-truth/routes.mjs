@@ -4,6 +4,12 @@
 import { quoteLoadError } from './environment.mjs';
 import { consumePageConditionValue } from '../lib/playwrightCspPolling.mjs';
 
+// Readiness budgets are wall-clock: a saturated machine makes a healthy route read as broken.
+// SF_CHECK_BUDGET_SCALE multiplies every fresh budget below (check-game-playable.mjs and
+// gate.mjs share the same knob); a `remaining`-of-deadline wait is already scaled upstream.
+const BUDGET_SCALE = Math.max(1, Number(process.env.SF_CHECK_BUDGET_SCALE) || 1);
+export const T = (ms) => Math.round(ms * BUDGET_SCALE);
+
 const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 const firstLightHandlerPages = new WeakSet();
 const firstLightHandlerActivePages = new WeakSet();
@@ -126,7 +132,8 @@ export async function bootToMenu(page, baseUrl, step) {
   // is enough to begin polling the public startup surface; the readiness loop below owns the
   // longer menu deadline and can report the game's terminal startup pane directly.
   await page.goto(baseUrl, { waitUntil: 'commit' });
-  const deadline = Date.now() + 180000;
+  const budgetMs = T(180000);
+  const deadline = Date.now() + budgetMs;
   while (Date.now() < deadline) {
     const quote = await readLoadError(page);
     if (quote) throw environmentError(quote);
@@ -137,7 +144,7 @@ export async function bootToMenu(page, baseUrl, step) {
       return !!(window.SF && window.SF.state && window.SF.bus && el && getComputedStyle(el).display !== 'none');
     }).catch(() => false);
     if (ready) {
-      await dismissCinematicIntro(page, step, { timeout: 15_000 });
+      await dismissCinematicIntro(page, step, { timeout: T(15_000) });
       step('main menu', true, 'menu visible');
       // The registered handler owns a First light prompt that arrives after the intro/title
       // readiness boundary. A second explicit answer would race its public click.
@@ -150,7 +157,7 @@ export async function bootToMenu(page, baseUrl, step) {
   if (quote) throw environmentError(quote);
   const failure = await readStartupFailure(page);
   if (failure) throw startupFailureError(failure);
-  throw new Error('main menu did not appear');
+  throw new Error(`main menu did not appear within ${Math.round(budgetMs / 1000)}s`);
 }
 
 // A fresh profile can be asked a first-run question on the menu (the shared confirm surface, e.g.
@@ -201,7 +208,7 @@ async function answerFirstRunPromptOnce(page, step) {
   }
   // Keep the semantic accessible-name lookup, then click the actual visible control with trusted
   // mouse input. Locator.click() here re-enters the active locator handler and can wait on itself.
-  const box = await choice.control.boundingBox({ timeout: 10000 }).catch(error => {
+  const box = await choice.control.boundingBox({ timeout: T(10000) }).catch(error => {
       if (error?.name !== 'TimeoutError') throw error;
       return null;
     });
@@ -238,7 +245,7 @@ async function waitForFirstLightInputRelease(page) {
     if (dialog) return false;
     if (root && (root._sfConfirmToken != null || root.innerHTML.trim())) return false;
     return { released: true };
-  }, null, { timeout: 5000 });
+  }, null, { timeout: T(5000) });
   const cleanup = await consumePageConditionValue(cleanupHandle);
   if (cleanup?.superseded) {
     throw new Error(`First light was superseded before input release; preserving ${cleanup.title}`);
@@ -286,7 +293,7 @@ async function isActiveFirstLightPrompt(page) {
 
 /** Dismiss the public cinematic, allowing First light to interrupt and consume one Space press. */
 export async function dismissCinematicIntro(page, step = () => {}, { timeout = 15_000 } = {}) {
-  const deadline = Date.now() + timeout;
+  const deadline = Date.now() + T(timeout);
   let shown = false;
   let spacePresses = 0;
   let promptAnswers = 0;
@@ -411,12 +418,12 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
     else step('intro-not-shown', true, 'fresh route reached the menu without a visible cinematic');
     return { shown, spacePresses, promptAnswers };
   }
-  throw new Error(`cinematic did not dismiss within ${timeout}ms; ${JSON.stringify({ ...last, spacePresses, promptAnswers })}`);
+  throw new Error(`cinematic did not dismiss within ${T(timeout)}ms; ${JSON.stringify({ ...last, spacePresses, promptAnswers })}`);
 }
 
 /** Flight, or a quoted load error. `active` also requires the run phase to be active. */
 export async function waitUntilFlight(page, { timeout = 600000, active = false } = {}) {
-  const deadline = Date.now() + timeout;
+  const deadline = Date.now() + T(timeout);
   while (Date.now() < deadline) {
     const quote = await readLoadError(page);
     if (quote) throw environmentError(quote);
@@ -444,7 +451,7 @@ export async function clickText(page, text, { timeout = 240000, exact = false } 
     const n = (s) => String(s || '').replace(/\s+/g, ' ').trim();
     const b = [...document.querySelectorAll('#screens button')].find((x) => x.offsetParent && (ex ? n(x.textContent) === t : n(x.textContent).includes(t)));
     return !!b && !b.disabled;
-  }, [text, exact], { timeout });
+  }, [text, exact], { timeout: T(timeout) });
   const loc = page.locator('#screens button:visible').filter({ hasText: exact ? new RegExp(`^\\s*${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`) : text }).first();
   await loc.click();
 }
@@ -453,7 +460,7 @@ export async function waitBootOverlayGone(page, timeout = 300000) {
   await page.waitForFunction(() => {
     const o = document.getElementById('boot-overlay'); if (!o) return true;
     const cs = getComputedStyle(o); return cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < 0.05 || o.hidden;
-  }, null, { timeout });
+  }, null, { timeout: T(timeout) });
 }
 
 export async function listDoorArenas(page) {
@@ -473,15 +480,15 @@ export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantH
   const modeAction = page.locator('[data-screen="mainMenu"] [data-action="crucible"]').first();
   if (!(await modeAction.isVisible())) {
     const more = page.locator('[data-screen="mainMenu"] [data-title-more]').first();
-    if (await more.isVisible()) await more.click({ timeout: 60000 });
+    if (await more.isVisible()) await more.click({ timeout: T(60000) });
   }
-  await modeAction.click({ timeout: 60000 });
-  await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucible', null, { timeout: 60000 });
+  await modeAction.click({ timeout: T(60000) });
+  await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucible', null, { timeout: T(60000) });
   await page.locator(`#screens .sf-crd-mode[data-ruleset="${ruleset}"]`).click();
   const arenas = await listDoorArenas(page);
   if (arena) {
     const a = page.locator('#screens .sf-crd-row--arena button').filter({ hasText: arena }).first();
-    await a.click({ timeout: 15000 });
+    await a.click({ timeout: T(15000) });
   }
   let seedSet = false;
   const seedInput = page.locator('#screens .sf-crd-seed input').first();
@@ -491,12 +498,12 @@ export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantH
     // the centre the way a player does, then replace the digits. A collapsed disclosure is the
     // older door; open that too if it is still there.
     const closed = page.locator('#screens details:not([open]):has(.sf-crd-seed) > summary').first();
-    if (await closed.count().catch(() => 0)) await closed.click({ timeout: 15000 }).catch(() => {});
+    if (await closed.count().catch(() => 0)) await closed.click({ timeout: T(15000) }).catch(() => {});
     if (!(await seedInput.count().catch(() => 0))) return;
     await seedInput.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' })).catch(() => {});
     const want = String(seed);
     try {
-      await seedInput.fill(want, { timeout: 5000 });
+      await seedInput.fill(want, { timeout: T(5000) });
       await seedInput.press('Tab');
     } catch {
       // The row is in the DOM but Playwright still calls it hidden (overflow clip). Click the
@@ -524,18 +531,18 @@ export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantH
     // The tile idles in a perpetual CSS motion, so Playwright's "stable" wait never settles under
     // software GL. Click it the way a player does: a trusted mouse click at the tile's centre.
     const tile = page.locator(`#screens .sf-crd-hull[data-starter-id="${pick.id}"]`).first();
-    await tile.scrollIntoViewIfNeeded({ timeout: 15000 }).catch(() => {});
+    await tile.scrollIntoViewIfNeeded({ timeout: T(15000) }).catch(() => {});
     const bb = await tile.boundingBox();
     if (!bb) throw new Error(`hull "${pick.id}" tile has no box on screen`);
     const picked = (id) => { const t = document.querySelector(`#screens .sf-crd-hull[data-starter-id="${id}"]`); return !!t && t.getAttribute('aria-pressed') === 'true'; };
     await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2);
-    let ok = await page.waitForFunction(picked, pick.id, { timeout: 4000 }).then(() => true, () => false);
+    let ok = await page.waitForFunction(picked, pick.id, { timeout: T(4000) }).then(() => true, () => false);
     if (!ok) {
       // Mouse missed (the tile is covered or reflowing): Tab-focus the tile and press Enter, as a keyboard player does.
       const hit = await page.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return e ? `${e.tagName.toLowerCase()}.${[...e.classList].slice(0, 3).join('.')}` : 'nothing'; }, [bb.x + bb.width / 2, bb.y + bb.height / 2]);
       await tile.focus();
       await page.keyboard.press('Enter');
-      ok = await page.waitForFunction(picked, pick.id, { timeout: 8000 }).then(() => true, () => false);
+      ok = await page.waitForFunction(picked, pick.id, { timeout: T(8000) }).then(() => true, () => false);
       if (!ok) throw new Error(`hull "${pick.id}" did not select by mouse (centre hits ${hit}) or keyboard`);
     }
     await page.waitForTimeout(400);
@@ -644,7 +651,7 @@ async function readArmorySnap(page) {
 
 /** Poll the live page. Ready on crucibleDraft. Lost when the world is not a draft. */
 async function waitForArmory(page, { timeoutMs = 300000, graceMs = ARMORY_WORLD_GRACE_MS, acceptSurvival = false, failOnTutorial = false, verb = 'Open armory' } = {}) {
-  const deadline = Date.now() + timeoutMs;
+  const deadline = Date.now() + T(timeoutMs);
   let flightSince = null;
   let last = null;
   while (Date.now() < deadline) {
@@ -752,8 +759,8 @@ export async function readArmoryShelf(page) {
  * records that as a harness read failure and still launches.
  */
 export async function readFittedRows(page) {
-  await clickText(page, 'Rearrange loadout', { timeout: 15000 });
-  await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucibleRefit', null, { timeout: 20000 });
+  await clickText(page, 'Rearrange loadout', { timeout: T(15000) });
+  await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucibleRefit', null, { timeout: T(20000) });
   await page.waitForTimeout(300);
   const rows = await page.evaluate(() => {
     const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
@@ -780,12 +787,12 @@ export async function readFittedRows(page) {
     });
   });
   try {
-    await clickText(page, 'Back to armory', { timeout: 8000 });
-    await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucibleDraft', null, { timeout: 8000 });
+    await clickText(page, 'Back to armory', { timeout: T(8000) });
+    await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucibleDraft', null, { timeout: T(8000) });
   } catch (err) {
     // During a draft, Escape pops the refit and does not launch.
     await page.keyboard.press('Escape').catch(() => {});
-    const back = await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucibleDraft', null, { timeout: 8000 }).then(() => true, () => false);
+    const back = await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucibleDraft', null, { timeout: T(8000) }).then(() => true, () => false);
     if (!back) throw err;
   }
   // A lit row that is showing its own contrast proves selection paints the sentence.
@@ -1020,7 +1027,7 @@ export async function waitForPreparationLaunch(page, {
   now = Date.now,
   read = null,
 } = {}) {
-  const deadline = now() + timeoutMs;
+  const deadline = now() + T(timeoutMs);
   let hold = null;
   let last = null;
   const load = read || (() => readPreparationSnap(page));
@@ -1071,10 +1078,10 @@ export async function readLaunchedRunSeed(page) {
 
 export async function adventureToFlight(page, step, { seed = null } = {}) {
   const door = page.locator('[data-screen="mainMenu"] [data-action="newGame"]').first();
-  await door.waitFor({ state: 'attached', timeout: 60000 });
+  await door.waitFor({ state: 'attached', timeout: T(60000) });
   const openDoor = async () => {
-    if (await door.isVisible()) await door.click({ timeout: 60000 });
-    else await door.press('Enter', { timeout: 60000 });
+    if (await door.isVisible()) await door.click({ timeout: T(60000) });
+    else await door.press('Enter', { timeout: T(60000) });
   };
   await openDoor();
   const opened = await page.waitForFunction(() => {
@@ -1083,11 +1090,11 @@ export async function adventureToFlight(page, step, { seed = null } = {}) {
     if (root?.classList.contains('sf-confirm--in')
       && root.querySelector('#sf-confirm-title')?.textContent?.trim() === 'First light') return 'firstLight';
     return false;
-  }, null, { timeout: 60000 });
+  }, null, { timeout: T(60000) });
   if (await consumePageConditionValue(opened) === 'firstLight') {
     await answerFirstRunPrompt(page, step);
     await openDoor();
-    await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'newGame', null, { timeout: 60000 });
+    await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'newGame', null, { timeout: T(60000) });
   }
   const tutorials = await page.evaluate(() => window.SF.state.settings && window.SF.state.settings.gameplay ? window.SF.state.settings.gameplay.tutorialHints : null);
   step('mode select', true, `New Game (Adventure) · tutorial hints ${tutorials}`);
@@ -1096,7 +1103,7 @@ export async function adventureToFlight(page, step, { seed = null } = {}) {
     await page.locator('#sf-ng-seed').fill(String(seed));
   }
   await clickText(page, 'Launch', { exact: true });
-  await waitUntilFlight(page, { timeout: 600000 });
+  await waitUntilFlight(page, { timeout: T(600000) });
   await waitBootOverlayGone(page);
   step('preparation', true, 'default pilot/ship (no changes), Launch');
   const runSeed = await readLaunchedRunSeed(page);
@@ -1106,7 +1113,7 @@ export async function adventureToFlight(page, step, { seed = null } = {}) {
 
 export async function racingToFlight(page, step, { format = null } = {}) {
   await clickText(page, 'Circuits', { exact: true });
-  await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'raceBoard', null, { timeout: 60000 });
+  await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'raceBoard', null, { timeout: T(60000) });
   if (format) await page.getByRole('combobox', { name: 'Race format' }).selectOption(format);
   const { course, contractId } = await page.evaluate(() => {
     const board = document.querySelector('#screens [data-screen="raceBoard"]');
@@ -1119,14 +1126,14 @@ export async function racingToFlight(page, step, { format = null } = {}) {
   // Prepared hidden screens can share the board classes (for example physics venues).
   // Use the actual Circuits screen and the control a player can see.
   const start = page.locator('#screens [data-screen="raceBoard"] .race-board-launch:visible').first();
-  await start.waitFor({ state: 'visible', timeout: 60000 });
+  await start.waitFor({ state: 'visible', timeout: T(60000) });
   const word = (await start.textContent()).trim();
   await start.click();
   // The board asks "Launch a temporary circuit flight?" before it leaves the menu: answer it like a player.
   const ok = page.locator('.sf-confirm .sf-confirm__ok').first();
   let confirmed = null;
-  try { await ok.waitFor({ state: 'visible', timeout: 15000 }); confirmed = (await ok.textContent()).trim(); await ok.click(); } catch { /* no confirm on this build */ }
-  await waitUntilFlight(page, { timeout: 600000 });
+  try { await ok.waitFor({ state: 'visible', timeout: T(15000) }); confirmed = (await ok.textContent()).trim(); await ok.click(); } catch { /* no confirm on this build */ }
+  await waitUntilFlight(page, { timeout: T(600000) });
   await waitBootOverlayGone(page);
   const race = await page.waitForFunction((selectedId) => {
     const state = window.SF?.state;
@@ -1135,7 +1142,7 @@ export async function racingToFlight(page, step, { format = null } = {}) {
       && m.params?.racingContractId === selectedId);
     const sectorId = mission?.params.courseSectorId;
     return sectorId && state.world?.currentSectorId === sectorId ? { sectorId } : false;
-  }, contractId, { timeout: 30000 }).catch(error => {
+  }, contractId, { timeout: T(30000) }).catch(error => {
     if (error?.name !== 'TimeoutError') throw error;
     throw new Error(`Circuits did not start selected contract ${contractId} in its course sector`, { cause: error });
   });

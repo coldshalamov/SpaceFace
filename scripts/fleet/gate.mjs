@@ -3,6 +3,8 @@
 //
 //   npm run gate               all four steps, stopping at the first failure
 //   npm run gate -- --quick    steps 1–2 only (import lint + Adventure boot)
+//   npm run gate -- --budget-scale=N   multiply every readiness wait (and the gate wall budget)
+//                                      by N — reads "slow" instead of "broken" on a loaded box
 //
 //   1. import-lint     npm run check:src-imports  every relative src/ specifier is canonical
 //                                               and resolves verbatim — the `.//` boot brick
@@ -23,6 +25,16 @@ import { fileURLToPath } from 'node:url';
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT_DIR = join(REPO, '.devshots', 'fleet');
 const BUDGET_MS = 20 * 60 * 1000;
+
+// --budget-scale=N multiplies every readiness wait in the step children (through
+// SF_CHECK_BUDGET_SCALE, the same knob check-game-playable.mjs and player-truth/routes.mjs read)
+// and this gate's own wall budget, so a loaded machine reads "slow", not "broken". The scale is
+// printed on the first line and lands in gate-last.txt so a scaled pass is never mistaken for a
+// quiet-machine pass.
+const argv = process.argv.slice(2);
+const scaleArg = argv.find((a) => a.startsWith('--budget-scale='));
+const BUDGET_SCALE = Math.max(1, Number(scaleArg ? scaleArg.split('=')[1] : process.env.SF_CHECK_BUDGET_SCALE) || 1);
+const GATE_BUDGET_MS = BUDGET_MS * BUDGET_SCALE;
 
 const SWARM_BOOT_CRITICAL = ['route', 'player_ship', 'player_control', 'spawn_motion', 'crucible_realm', 'sim_stalled', 'play_interrupted'];
 const PLAYER_TRUTH_VERDICTS = ['PASS', 'FAIL', 'INCOMPLETE'];
@@ -102,7 +114,7 @@ function runStep(step, timeoutMs) {
     try {
       const { file, base } = npmCommand();
       child = spawn(file, [...base, ...step.args], {
-        cwd: REPO, env: process.env,
+        cwd: REPO, env: { ...process.env, SF_CHECK_BUDGET_SCALE: String(BUDGET_SCALE) },
         detached: process.platform !== 'win32', // own process group so killTree works on POSIX
         windowsHide: true,
       });
@@ -140,13 +152,14 @@ async function main(quick) {
   if (!quick) steps.push(createSwarmBootStep(OUT_DIR), { name: 'sim-47a', args: ['run', 'check:sim'] });
   const lines = [];
   const emit = (l) => { lines.push(l); console.log(l); };
-  const deadline = Date.now() + BUDGET_MS;
+  emit(`budget scale ${BUDGET_SCALE}`);
+  const deadline = Date.now() + GATE_BUDGET_MS;
   let gateOk = true;
 
   for (const step of steps) {
     const remaining = deadline - Date.now();
     if (remaining <= 0) {
-      emit(`FAIL ${step.name}: gate time budget (20m) already spent`);
+      emit(`FAIL ${step.name}: gate time budget (${Math.round(GATE_BUDGET_MS / 60000)}m) already spent`);
       gateOk = false;
       break;
     }
@@ -158,7 +171,7 @@ async function main(quick) {
     if (!r.timedOut && (step.judge ? judged === null : r.code === 0)) {
       emit(`PASS ${step.name} ${secs}s`);
     } else {
-      const detail = r.timedOut ? `timed out at ${secs}s (gate budget 20m)` : (judged || firstErrorLine(r.out));
+      const detail = r.timedOut ? `timed out at ${secs}s (gate budget ${Math.round(GATE_BUDGET_MS / 60000)}m)` : (judged || firstErrorLine(r.out));
       emit(`FAIL ${step.name}: ${detail}`);
       emit(`  log: .devshots/fleet/gate-${step.name}.log (${secs}s)`);
       gateOk = false;
