@@ -464,7 +464,12 @@ export async function listHulls(page) {
  *  `hooks.onShip(doorPrep)` runs after the hull is selected and before the launch click, so a
  *  caller can photograph the ship step. Gauntlet never opens an armory; the door sentence is the preparation. */
 export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantHull = null }, step, hooks = {}) {
-  await clickText(page, 'Crucible', { exact: true });
+  const modeAction = page.locator('[data-screen="mainMenu"] [data-action="crucible"]').first();
+  if (!(await modeAction.isVisible())) {
+    const more = page.locator('[data-screen="mainMenu"] [data-title-more]').first();
+    if (await more.isVisible()) await more.click({ timeout: 60000 });
+  }
+  await modeAction.click({ timeout: 60000 });
   await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucible', null, { timeout: 60000 });
   await page.locator(`#screens .sf-crd-mode[data-ruleset="${ruleset}"]`).click();
   const arenas = await listDoorArenas(page);
