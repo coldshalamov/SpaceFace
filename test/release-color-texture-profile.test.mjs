@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { Document } from '@gltf-transform/core';
+import { Document, NodeIO } from '@gltf-transform/core';
+import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { PNG } from 'pngjs';
 import { applyReleaseColorTextureProfile } from '../scripts/lib/releaseColorTextureProfiles.mjs';
 
@@ -50,4 +51,31 @@ test('duplicate configured texture names reject before encoding either texture',
   assert.deepEqual(Buffer.from(duplicate.getImage()), bytes);
   assert.equal(selected.getMimeType(), 'image/png');
   assert.equal(duplicate.getMimeType(), 'image/png');
+});
+
+test('reviewed cockpit trim is reduced in the release while its other textures remain untouched', async () => {
+  const doc = await new NodeIO().registerExtensions(ALL_EXTENSIONS).read('assets/ships/parts/cockpits/cockpit_dome.glb');
+  const textures = doc.getRoot().listTextures();
+  const selected = textures.find(texture => texture.getName() === 'cockpit_dome_trim_sheet_1k');
+  const other = textures.find(texture => texture.getName() === 'spaceface_neutral_normal_1024');
+  const otherBytes = Buffer.from(other.getImage());
+  const profile = await applyReleaseColorTextureProfile(doc, 'cockpit_dome', decode);
+  assert.match(profile.baseColorTexture, /256px/);
+  const ktx = Buffer.from(selected.getImage()), dfd = ktx.readUInt32LE(48);
+  assert.equal(selected.getMimeType(), 'image/ktx2');
+  assert.equal(ktx.readUInt32LE(20), 256);
+  assert.equal(ktx.readUInt32LE(24), 256);
+  assert.equal(ktx.readUInt32LE(40), 9);
+  assert.equal(ktx[dfd + 12], 163);
+  assert.equal(ktx[dfd + 14], 2);
+  assert.deepEqual(Buffer.from(other.getImage()), otherBytes);
+});
+
+test('an unreviewed replacement cockpit sheet keeps its default profile', async () => {
+  const doc = new Document(), image = new PNG({ width: 4, height: 4 }); image.data.fill(120);
+  const bytes = PNG.sync.write(image);
+  const texture = doc.createTexture('cockpit_dome_trim_sheet_1k').setImage(bytes).setMimeType('image/png');
+  doc.createMaterial().setBaseColorTexture(texture);
+  assert.equal(await applyReleaseColorTextureProfile(doc, 'cockpit_dome', decode), null);
+  assert.deepEqual(Buffer.from(texture.getImage()), bytes);
 });

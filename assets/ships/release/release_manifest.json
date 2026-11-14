@@ -4193,20 +4193,6 @@
       "contractNodeCount": 256
     },
     {
-      "id": "cockpit_dome",
-      "kind": "part:cockpits",
-      "source": "assets/ships/parts/cockpits/cockpit_dome.glb",
-      "release": "assets/ships/release/parts/cockpits/cockpit_dome.glb",
-      "sourceSha256": "34adb6518bccf0d570108b796e869978f33776da3acca30ee65b88e5ac78d27a",
-      "releaseSha256": "0bb75c5c282adf791cfcb796f765d897f9e8339852680dd6ee3a16a73d686d3d",
-      "sourceBytes": 297388,
-      "releaseBytes": 129216,
-      "textures": 3,
-      "ktx2Textures": 3,
-      "meshoptBufferViews": 32,
-      "contractNodeCount": 1
-    },
-    {
       "id": "engine_industrial",
       "kind": "part:engines",
       "source": "assets/ships/parts/engines/engine_industrial.glb",
@@ -7004,6 +6990,23 @@
       "ktx2Textures": 6,
       "meshoptBufferViews": 73,
       "contractNodeCount": 31
+    },
+    {
+      "id": "cockpit_dome",
+      "kind": "part:cockpits",
+      "source": "assets/ships/parts/cockpits/cockpit_dome.glb",
+      "release": "assets/ships/release/parts/cockpits/cockpit_dome.glb",
+      "sourceSha256": "e33a06be5a3a592193073a5f78a2d9b9fd264e5010d86d97ab2547e6f0fdec4e",
+      "releaseSha256": "32609d9c0dd16452ede7904066c4cd0983efe0f27b31a01291afbecd07ad18df",
+      "sourceBytes": 295520,
+      "releaseBytes": 65508,
+      "textures": 3,
+      "ktx2Textures": 3,
+      "meshoptBufferViews": 32,
+      "contractNodeCount": 1,
+      "textureProfiles": {
+        "baseColorTexture": "Reviewed cockpit trim albedo resized to 256px, ETC1S KTX2, mipmapped, quality255, sRGB transfer; full-resolution source retained"
+      }
     }
   ]
 }

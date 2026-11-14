@@ -16,6 +16,7 @@ import {
 } from '../src/contracts/renderPackage.js';
 import { compileRenderPackage, writeFileWithRetry } from './lib/renderPackageCompiler.mjs';
 import { collectRepeatedKtx2PayloadHashes } from './lib/renderPackageStorage.mjs';
+import { configureCockpitDomeStaticMerge } from './lib/cockpitDomeStaticMerge.mjs';
 import {
   buildRuntimeTableForRenderGlb,
   sealMotionBankRef,
@@ -401,6 +402,7 @@ function deriveSceneRootSemanticManifest(pilot, scene, nodes, names) {
   const mergeGroups = pilot.flightStaticV3 === true
     ? deriveFlightStaticMergeGroups(pilot, semanticNodes, meshNodes)
     : [];
+  configureCockpitDomeStaticMerge(pilot, semanticNodes, meshNodes, mergeGroups);
 
   return {
     schema: RENDER_PACKAGE_SOURCE_SCHEMA,

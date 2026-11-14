@@ -1,0 +1,19 @@
+{
+  "route": "The modular composer selects the dome cockpit for some sampled Lamplighter wayfarers and Vael writ tenders. The sampled player roster resolves complete hulls instead. These are selector traces, not observed ordinary encounters.",
+  "deploymentCode": [
+    "src/render/partsLibrary.js",
+    "src/render/assetLoader.js",
+    "src/render/canopyMaterialPolicy.js"
+  ],
+  "status": "Reviewed source and canonical package, including actual loader close/side/top views on a synthetic assembled craft; darker glass, reduced color texture and eight-piece package are built.",
+  "caveat": "The synthetic craft exercises flight composition, but ordinary encounter frequency, actual in-game appearance and frame-time impact remain unverified.",
+  "diagnostics": [
+    ".devshots/fleet/cockpit-dome-review/trace.json",
+    ".devshots/fleet/cockpit-dome-review/inventory.json",
+    ".devshots/fleet/cockpit-dome-review/semantics.json",
+    ".devshots/fleet/engine-ion-small-review/compact-shipping/report.json",
+    ".devshots/fleet/cockpit-dome-review/assembled-baseline/report.json",
+    ".devshots/fleet/cockpit-dome-review/publish-canonical-state.json",
+    ".devshots/fleet/cockpit-dome-review/shipping-composed/report.json"
+  ]
+}

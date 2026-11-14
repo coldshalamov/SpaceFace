@@ -944,12 +944,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.cockpit-dome",
-    "expectedContentHash": "c46df47b3a56f23c5df6b8112de453cc01d151fe81448888246ff733644638bd",
+    "expectedContentHash": "22853c22f7b4871dc77887325e41a75c7ac6cbfaa428adbffc7858210207a205",
     "key": "cockpit-dome",
     "metadataUrl": "assets/ships/release/render-packages/cockpit-dome/render-package.json",
     "runtimeAssetId": "SF_COCKPIT_DOME",
     "slot": "cockpit",
-    "sourceSha256": "0bb75c5c282adf791cfcb796f765d897f9e8339852680dd6ee3a16a73d686d3d",
+    "sourceSha256": "32609d9c0dd16452ede7904066c4cd0983efe0f27b31a01291afbecd07ad18df",
     "sourceUrl": "assets/ships/release/parts/cockpits/cockpit_dome.glb"
   },
   {

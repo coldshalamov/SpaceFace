@@ -63,7 +63,7 @@
       "priority": "P0",
       "file": "cockpits/cockpit_dome.glb",
       "tris": 3214,
-      "bytes": 297388,
+      "bytes": 295520,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
