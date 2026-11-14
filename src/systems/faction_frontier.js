@@ -1637,7 +1637,9 @@ export const frontierHomesteads = {
     // The debtor steadies: the marker carried goods, or the player's own stood in.
     const rec = this._steadRec(state, debt.debtorId);
     if (rec) {
-      rec.supplies += 1;
+      // Covered aid was already counted by the physical supply intake — only a
+      // carried marker is a second delivery into the household.
+      if (how === 'carried') rec.supplies += 1;
       rec.stranded = false;
       rec.lastSupplyAt = num(state.simTime);
       // Its supply ask is answered too — the supply-land path filters these
