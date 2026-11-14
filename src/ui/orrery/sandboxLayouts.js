@@ -126,11 +126,12 @@ const SANDBOX_LAYOUTS_CSS = `
   text-shadow: var(--dp-etch-shadow);
 }
 .sf-sandbox .sf-section-h::after, .sf-sandbox .sf-section-h::before { content: none; }
-/* Group labels sit ON the ladder's spine: the tick straddles it and the label starts where the
-   tick ends. Plain form headers (fine-tune, live tools) keep the bare label: they hang off no rail. */
+/* Group labels sit ON the ladder's spine: the tick straddles it and the label sits beside the
+   tick, which stops 8px short of it (ui-polish-481: the 38px tick ran into the first letter, so the
+   heads read ——QUICK SETUPS / ——COMBAT LAB). Plain form headers (fine-tune, live tools) keep the bare label: they hang off no rail. */
 .sf-sandbox .sf-section-h--rail { position: relative; padding-left: 26px; }
 .sf-sandbox .sf-section-h--rail::before {
-  content: ""; position: absolute; left: -12px; top: 50%; width: 38px; height: 2px;
+  content: ""; position: absolute; left: -12px; top: 50%; width: 30px; height: 2px;
   transform: translateY(-50%); background: var(--dp-line-hi);
 }
 
@@ -229,7 +230,7 @@ const SANDBOX_LAYOUTS_CSS = `
   color: var(--dp-ink-mute);
 }
 .sf-sandbox-railfoot::before {
-  content: ""; position: absolute; left: -12px; top: 50%; width: 38px; height: 2px;
+  content: ""; position: absolute; left: -12px; top: 50%; width: 30px; height: 2px;
   transform: translateY(-50%); background: var(--dp-line-hi);
 }
 .sf-sandbox-railfoot__track {
