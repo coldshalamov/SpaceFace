@@ -450,6 +450,13 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     }
     return best;
   };
+  const foldMoveIntoBar = (group, readout) => {
+    const castId = readout.move ? readout.move.castId : null;
+    if (group.foldCast === castId) return;
+    group.foldCast = castId;
+    bus.emit('swarm:bossMove', { word: readout.move ? readout.move.title : '' });
+    if (readout.move) announce(`cast|${readout.fightId}|${castId}`, `${readout.move.title}. ${readout.move.counter}`, true);
+  };
   const setGroup = (group, readout, showHealth, entities) => {
     if (group.el.style.display !== 'block') group.el.style.display = 'block';
     group.shown = true;
@@ -567,13 +574,17 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
       return;
     }
     const showHealth = !(st && st.run && st.run.kind === 'survival');
+    // Phone Swarm: no separate boss card. The move's word rides the boss bar (swarmJuiceHud
+    // listens for swarm:bossMove); the live region still gets the full instruction.
+    const foldIntoBar = !showHealth && document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
     const layout = layoutFor(canvas.width / dpr || 1280, canvas.height / dpr || 720);
     reserveLiveText();
     live.length = 0;
     for (const group of groups) {
       const readout = readouts[group.index];
-      if (readout) { setGroup(group, readout, showHealth, st && st.entities); live.push(group); }
-      else hideGroup(group);
+      if (readout && foldIntoBar) { foldMoveIntoBar(group, readout); hideGroup(group); }
+      else if (readout) { setGroup(group, readout, showHealth, st && st.entities); live.push(group); }
+      else { if (group.foldCast != null) { group.foldCast = null; bus.emit('swarm:bossMove', { word: '' }); } hideGroup(group); }
     }
     flushAnnouncements();
     // Placement maximizes SEATED readouts — never pixels-per-readout at the price of a

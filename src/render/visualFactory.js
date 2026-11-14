@@ -2797,72 +2797,10 @@ function aimSwarmThreatGlyph(glyph, plate) {
   glyph.rotateZ(Math.atan2(_glyphNose.y, _glyphNose.x));
 }
 
-const _hostileTint = new THREE.Color(0xff2438);
-const _hostileTintOf = new WeakMap();
-// A light crimson cast. 0.9 emissive plus a filled disc painted every wasp into
-// a red coin. 0.5 kept the hull a ship; once the threat mark grew a shaded
-// under-plate the paint could back off so authored hull shading reads through
-// (owner 2026-10: "can't tell what's an enemy or an object" — the mark now
-// carries more of that job). MeshBasic hulls (no emissive) take a small lerp
-// so they do not become a flat crimson circle either.
-const SWARM_HOSTILE_EMISSIVE = 0.35;
-const SWARM_HOSTILE_COLOR_MIX = 0.15;
-
-/**
- * One tinted clone per source material, shared by every hostile that uses it.
- * A fresh clone per wasp, and another on each LOD swap, leaked and broke
- * batching. The clone is marked spacefaceSharedAsset so disposeObjectNode
- * leaves it when one wasp despawns or a LOD child is torn down. The WeakMap
- * drops the clone when the source material itself is collected.
- */
-function hostileTintMaterial(mat) {
-  if (!mat) return mat;
-  if (mat.userData && mat.userData.swarmHostileTint) return mat;
-  const cached = _hostileTintOf.get(mat);
-  if (cached) return cached;
-  const clone = mat.clone();
-  clone.userData = { ...(mat.userData || {}), swarmHostileTint: true, spacefaceSharedAsset: true };
-  if (clone.emissive && clone.emissive.isColor) {
-    clone.emissive.copy(_hostileTint);
-    clone.emissiveIntensity = Math.max(Number(clone.emissiveIntensity) || 0, SWARM_HOSTILE_EMISSIVE);
-  } else if (clone.color && clone.color.isColor) {
-    clone.color.lerp(_hostileTint, SWARM_HOSTILE_COLOR_MIX);
-  }
-  _hostileTintOf.set(mat, clone);
-  return clone;
-}
-
-/**
- * Paint this hull crimson without touching a shared material. Authored wasp
- * metal and a grey rock were the same dark read on the foundry sky (idle
- * aaca743840: 82% of enemy samples within ΔL 8 of the field). The guard keys
- * on the first body child, not the child count: a LOD swap that replaces
- * children 1:1 keeps the count, and the new body would read grey again.
- */
-function tintSwarmHostileHull(mesh) {
-  const kids = mesh.children || [];
-  let body = null;
-  for (const child of kids) {
-    if (child && child.isMesh) { body = child; break; }
-  }
-  if (mesh.userData.swarmHostileTintBody === body) return;
-  mesh.userData.swarmHostileTintBody = body;
-  mesh.traverse((obj) => {
-    if (!obj.isMesh || !obj.material) return;
-    // Authored retro housings keep their neutral metal, including when a pool
-    // temporarily restores their direct draw.
-    if (obj.material.userData?.spacefaceSharedRetroHardware) return;
-    if (typeof obj.name === 'string' && obj.name.startsWith('sf-swarm-threat')) return;
-    const list = Array.isArray(obj.material) ? obj.material : [obj.material];
-    let changed = false;
-    const next = list.map((mat) => {
-      const tinted = hostileTintMaterial(mat);
-      if (tinted !== mat) changed = true;
-      return tinted;
-    });
-    if (changed) obj.material = Array.isArray(obj.material) ? next : next[0];
-  });
-}
+// Hostility is an ACCENT, never a whole-hull colour: the enemy keeps its authored paint and
+// material, lit like everything else. The thin ring, the outlined fighter glyph and the heading
+// wedge below carry it (shape first, so it reads without colour). An emissive crimson wash and a
+// colour multiply used to paint every hull into a flat red block.
 
 /**
  * Hostile swarm hulls are dark metal on a dark field. A thick reticle, and a
@@ -2881,7 +2819,7 @@ function tintSwarmHostileHull(mesh) {
  *     the rim never reaches. Not named a core, not a circle.
  *   - a small nose lamp, same non-additive material family, on while the
  *     gun is live (ai.swarmFireHeld !== true). Held guns stay marked, dark.
- * The hull itself carries a light crimson emissive (see hostileTintMaterial).
+ * The hull keeps its authored material.
  * The rim is capped at SWARM_THREAT_MARK_SCALE × body radius. Created once per boundary.
  * The scale lives in src/data/swarmThreatMark.js, the same leaf the wave owner
  * uses when it stamps swarmMarkRadius. This file does not import survivalWave.
@@ -2905,7 +2843,6 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     hideSwarmThreatMarks(mesh);
     return;
   }
-  tintSwarmHostileHull(mesh);
   const staleCard = mesh.getObjectByName('sf-swarm-threat-core');
   if (staleCard) mesh.remove(staleCard);
   let plate = mesh.getObjectByName('sf-swarm-threat-plate');

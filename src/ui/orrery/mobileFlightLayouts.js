@@ -141,15 +141,17 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
   ${FLIGHT} .sf-crun.is-open > :not(.sf-crun__brief) { padding-inline:8px; background:var(--dp-glass-flight,rgb(5 7 10 / .88)); }
   ${FLIGHT} .sf-crun.is-open > .sf-crun__row--figs { padding-block:4px; }
   ${FLIGHT} .sf-crun__boss, ${FLIGHT} .sf-crun__death { padding:2px 8px; background:var(--dp-glass-flight,rgb(5 7 10 / .88)); border-radius:4px; }
-  /* The centre column (round slam, callouts, hero chain, boss card, PILE-UP) keeps to the left lane
-     under the round line: one size smaller, never under the vitals strip or the radar. */
+  /* The centre column keeps to ONE lane, clear of the vitals, the round line and the radar:
+     callouts, the boss bar (with the move's word folded in) and the round slam. The chain is
+     just its number inside the round line (survivalHud brief), so the hero panel is hidden. */
   ${FLIGHT} .sf-sj__col {
-    top:calc(92px + var(--sf-safe-top,0px)); left:calc(8px + var(--sf-safe-left,0px)); transform:none;
-    max-width:calc(100vw - 144px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)); align-items:flex-start;
+    top:calc(184px + var(--sf-safe-top,0px)); left:50%; transform:translateX(-50%);
+    max-width:calc(100vw - 16px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)); align-items:center;
   }
+  ${FLIGHT} .sf-sj__hero { display:none; }
   ${FLIGHT} .sf-sj__herofig { font-size:34px; }
   ${FLIGHT} .sf-sj__herotier { font-size:11px; letter-spacing:.14em; max-width:100%; }
-  ${FLIGHT} .sf-sj__call { font-size:clamp(15px,4.6vw,22px); letter-spacing:.1em; text-align:left; }
+  ${FLIGHT} .sf-sj__call { font-size:clamp(15px,4.6vw,22px); letter-spacing:.1em; text-align:center; }
   ${FLIGHT} .sf-sj__slamtitle { font-size:clamp(24px,8vw,40px); letter-spacing:.1em; text-align:left; }
   ${FLIGHT} .sf-sj__slamsub { text-align:left; }
   ${FLIGHT} .sf-sj__bossdown { font-size:clamp(20px,6.4vw,32px); }

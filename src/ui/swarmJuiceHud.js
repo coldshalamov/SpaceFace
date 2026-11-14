@@ -118,6 +118,7 @@ export const swarmJuiceHud = {
     this._unsubs.push(this.bus.on('swarm:bossIntro', (p) => this._onBossIntro(p)));
     this._unsubs.push(this.bus.on('swarm:bossHp', (p) => this._onBossHp(p)));
     this._unsubs.push(this.bus.on('swarm:bossDown', (p) => this._onBossDown(p)));
+    this._unsubs.push(this.bus.on('swarm:bossMove', (p) => { this._bossMove = p && typeof p.word === 'string' ? p.word : ''; }));
     this._unsubs.push(this.bus.on('swarm:chain', (p) => this._onChain(p)));
     this._unsubs.push(this.bus.on('swarm:chainBroken', (p) => this._onChainBroken(p)));
     this._unsubs.push(this.bus.on('swarm:chainTier', (p) => this._onChainTier(p)));
@@ -162,6 +163,7 @@ export const swarmJuiceHud = {
     this._clear = null;
     this._card = null;
     this._bossHp = null;
+    this._bossMove = '';
     this._bossDownUntil = 0;
     this._shatter = null;
     this._boardOn = false;
@@ -305,7 +307,7 @@ export const swarmJuiceHud = {
     }
     if (this._bossHp && simNow >= this._bossDownUntil) {
       dom.boss.hidden = false;
-      this._text(dom.bossName, this._bossHp.name);
+      this._text(dom.bossName, this._bossMove ? `${this._bossHp.name} · ${this._bossMove}` : this._bossHp.name);
       dom.bossFill.style.transform = `scaleX(${Math.max(0, Math.min(1, this._bossHp.frac)).toFixed(3)})`;
       this._text(dom.bossCount, this._bossHp.total > 1
         ? `${this._bossHp.alive}/${this._bossHp.total}` : '');

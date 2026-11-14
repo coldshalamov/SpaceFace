@@ -604,6 +604,8 @@ export const survivalHud = {
     const threatShown = showThreat && dom.threat && !dom.threat.hidden;
     const briefParts = [overtime ? `OT ${roundWord}` : roundWord];
     if (threatShown) briefParts.push(String(dom.threatFig.textContent || '').replace(/\s*\/\s*/g, '/'));
+    // Phone: the chain is just its number, beside the round counter (the hero panel is hidden).
+    if (this._chain > 1) briefParts.splice(1, 0, `CHAIN ${this._chain}`);
     briefParts.push(num(run.score));
     this._setText(dom.brief, briefParts.join(' · '));
     this._setStyle(dom.xpFill, 'width', `${Math.round(levelProgress(run) * 100)}%`);

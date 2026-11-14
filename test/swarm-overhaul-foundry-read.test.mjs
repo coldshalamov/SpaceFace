@@ -256,7 +256,7 @@ test('friendly teams and non-ships grow no threat plate', () => {
   assert.equal(syncSwarmThreatPlate(null, hostile(1, 8), null), undefined);
 });
 
-test('a hostile hull is tinted on a clone and the shared material stays put', () => {
+test('a hostile hull keeps its authored material: hostility is an accent, not a wash', () => {
   const shared = new THREE.MeshStandardMaterial({
     color: 0x222222, emissive: 0x111111, emissiveIntensity: 0.2,
   });
@@ -267,34 +267,18 @@ test('a hostile hull is tinted on a clone and the shared material stays put', ()
   const camera = new THREE.Object3D();
   syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
   syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
-  assert.notEqual(hull.material, shared);
-  assert.equal(hull.material.emissive.getHex(), 0xff2438);
-  assert.equal(hull.material.emissiveIntensity, 0.35);
-  assert.equal(hull.material.userData.spacefaceSharedAsset, true, 'despawn must not free a tint shared by other hulls');
+  assert.equal(hull.material, shared, 'no clone, no crimson emissive, no colour multiply');
   assert.equal(shared.emissive.getHex(), 0x111111);
   assert.equal(shared.emissiveIntensity, 0.2);
   assert.equal(shared.color.getHex(), 0x222222);
-  const plate = mesh.getObjectByName('sf-swarm-threat-plate');
-  assert.ok(plate);
-  assert.notEqual(plate.material, hull.material);
-  assert.equal(plate.material.userData && plate.material.userData.swarmHostileTint, undefined);
-  const stamped = hull.material;
-  syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
-  assert.equal(hull.material, stamped, 'a stable child count does not clone again');
-  const other = new THREE.Group();
-  const otherHull = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), shared);
-  other.add(otherHull);
-  syncSwarmThreatPlate(other, hostile(1, 8), camera);
-  assert.equal(otherHull.material, stamped, 'one tinted clone per source material');
   const basicShared = new THREE.MeshBasicMaterial({ color: 0x8899aa });
   const basicMesh = new THREE.Group();
   const basicHull = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), basicShared);
   basicMesh.add(basicHull);
   syncSwarmThreatPlate(basicMesh, hostile(1, 8), camera);
-  const mixed = new THREE.Color(0x8899aa).lerp(new THREE.Color(0xff2438), 0.15);
-  assert.equal(basicHull.material.color.getHex(), mixed.getHex());
-  assert.equal(basicShared.color.getHex(), 0x8899aa);
-  assert.notEqual(basicHull.material, basicShared);
+  assert.equal(basicHull.material.color.getHex(), 0x8899aa);
+  const plate = mesh.getObjectByName('sf-swarm-threat-plate');
+  assert.ok(plate, 'the marker still carries hostility');
 });
 
 function foundry(kind, radius = 16) {

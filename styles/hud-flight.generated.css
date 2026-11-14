@@ -3449,15 +3449,17 @@
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-crun.is-open > :not(.sf-crun__brief) { padding-inline:8px; background:var(--dp-glass-flight,rgb(5 7 10 / .88)); }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-crun.is-open > .sf-crun__row--figs { padding-block:4px; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-crun__boss, :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-crun__death { padding:2px 8px; background:var(--dp-glass-flight,rgb(5 7 10 / .88)); border-radius:4px; }
-  /* The centre column (round slam, callouts, hero chain, boss card, PILE-UP) keeps to the left lane
-     under the round line: one size smaller, never under the vitals strip or the radar. */
+  /* The centre column keeps to ONE lane, clear of the vitals, the round line and the radar:
+     callouts, the boss bar (with the move's word folded in) and the round slam. The chain is
+     just its number inside the round line (survivalHud brief), so the hero panel is hidden. */
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__col {
-    top:calc(92px + var(--sf-safe-top,0px)); left:calc(8px + var(--sf-safe-left,0px)); transform:none;
-    max-width:calc(100vw - 144px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)); align-items:flex-start;
+    top:calc(184px + var(--sf-safe-top,0px)); left:50%; transform:translateX(-50%);
+    max-width:calc(100vw - 16px - var(--sf-safe-left,0px) - var(--sf-safe-right,0px)); align-items:center;
   }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__hero { display:none; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__herofig { font-size:34px; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__herotier { font-size:11px; letter-spacing:.14em; max-width:100%; }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__call { font-size:clamp(15px,4.6vw,22px); letter-spacing:.1em; text-align:left; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__call { font-size:clamp(15px,4.6vw,22px); letter-spacing:.1em; text-align:center; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__slamtitle { font-size:clamp(24px,8vw,40px); letter-spacing:.1em; text-align:left; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__slamsub { text-align:left; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__bossdown { font-size:clamp(20px,6.4vw,32px); }

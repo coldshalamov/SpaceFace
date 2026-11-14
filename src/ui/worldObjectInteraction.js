@@ -1,3 +1,4 @@
+import { isSwarmGlass } from './swarmGlass.js';
 import { createWorldObjectPicker } from '../render/worldObjectPicking.js';
 import { createWorldObjectHoverPresentation } from '../render/objectHoverFeedback.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
@@ -513,14 +514,20 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       const d = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
       rangeTxt = ' · ' + formatDistance(d);
     }
-    const hint = beamHint(entity, player);
-    const status = presentationStatusWord(entity);
+    const rawHint = beamHint(entity, player);
+    // Player-facing words only: an internal state ("mine unavailable") is not a verb. A beam
+    // the target cannot take just says what the press does; the asset-loading state never prints.
+    const hint = { ...rawHint, text: rawHint.text.replace(/ · [A-Za-z ]+ unavailable$/i, '') };
+    // In a Swarm round the glass keeps only the name and the verb on the object (rule 2); the
+    // class / relation / range read-out is an inspector's line, not a fight HUD line.
+    const fight = isSwarmGlass(state);
+    const status = fight ? null : presentationStatusWord(entity);
     const selected = !!(state.player && state.player.targetId === entity.id);
-    const key = [name, classWord(entity), relation, rangeTxt, hint.text, status || '', selected ? 'sel' : ''].join('|');
+    const key = [name, classWord(entity), relation, rangeTxt, hint.text, status || '', fight ? 'fight' : '', selected ? 'sel' : ''].join('|');
     if (key !== previewTextKey) {
       previewTextKey = key;
       tag.nameEl.textContent = name;
-      tag.metaEl.textContent = classWord(entity) + ' · ' + relation + rangeTxt
+      tag.metaEl.textContent = fight ? '' : classWord(entity) + ' · ' + relation + rangeTxt
         + (status ? ' · ' + status : '');
       tag.hintEl.textContent = hint.text;
       tag.el.dataset.beam = hint.beam ? '1' : '0';
