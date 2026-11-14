@@ -239,6 +239,22 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-254 | You weigh a whole wreck on the Nereid Scale | *"Somebody weighed a wreck. The Scale held."* | DRAFT 2026-11-11 |
 | PL-255 | You push a stranger's disabled ship to dock | *"Good turn out there. Logged."* | DRAFT 2026-11-11 |
 | PL-256 | You settle your fines in full | *"Fines settled in full. Unusual."* | DRAFT 2026-11-11 |
+| PL-305 | You give your berth to an overloaded hauler at a dock | *"Somewhere a dockmaster owes you one."* | DRAFT 2026-11-13 |
+| PL-306 | You leave a working spare where a broke-down hull can reach it | *"Left-handed help. The best kind."* | DRAFT 2026-11-13 |
+| PL-307 | Your fiftieth arrival at one station is toll-paid by the house | *"Fifty visits. Some places count."* | DRAFT 2026-11-13 |
+| PL-308 | You steady a rookie's first tow with one lamp flash | *"Rookie's station chalked you HELPER. Good look."* | DRAFT 2026-11-13 |
+| PL-309 | You take a stranger's leak under tow with no bounty posted | *"No bounty on that one. Did it anyway."* | DRAFT 2026-11-13 |
+| PL-310 | A fuel hatch is left unlocked for you at a dark waystation | *"Somebody left the tab open. Says nobody."* | DRAFT 2026-11-13 |
+| PL-311 | You return a borrowed lantern lit | *"Lanterns come back lit out there. Rare."* | DRAFT 2026-11-13 |
+| PL-312 | The market line moves early for you, three days straight | *"The chalk seat stays empty. Line knows."* | DRAFT 2026-11-13 |
+| PL-313 | A crew tows your skiff home after debris weather | *"Whole lane came out for one skiff."* | DRAFT 2026-11-13 |
+| PL-314 | Your repairs start coming back with the wash included | *"Repairs come washed now. Somebody tips."* | DRAFT 2026-11-13 |
+| PL-315 | You give way three times in one shift | *"Three yields, one shift. Well raised."* | DRAFT 2026-11-13 |
+| PL-316 | A convoy paces a stranger home at dawn, wordless | *"Paced them all the way in. Silent."* | DRAFT 2026-11-13 |
+| PL-317 | You plate a sleeping stranger's window against the morning flare | *"Somebody slept late. Somebody got up."* | DRAFT 2026-11-13 |
+| PL-318 | Your callsign keeps turning up on kindness chalks | *"The chalks read like a fan letter."* | DRAFT 2026-11-13 |
+| PL-319 | You take the medal but leave the note | *"Medal's gone, note stays. The deal."* | DRAFT 2026-11-13 |
+| PL-320 | You coach one clean takeoff at a launch mouth | *"Someone's coaching takeoffs again. For free."* | DRAFT 2026-11-13 |
 
 ## F. In the Pit
 
@@ -268,6 +284,18 @@ Each is a trigger and the exact line. One line, once, shortly after the deed; ne
 | PL-224 | **The Brood's shortcut.** In the Hive, a wall you cut stays cut for the run — and the Brood uses your cut too, every one you did not need | Cut only what you need | DRAFT 2026-11-11 |
 | PL-225 | **The figurehead.** In the Cryo Drift, throw a Wasp against the passing ice barge and it sticks, frozen, riding the lane a full circuit | Decorate the barge; the crowd has opinions | DRAFT 2026-11-11 |
 | PL-226 | **The ding.** In the Storm Lattice, the cable car dings at each pylon just before the arc comes | Move on the ding, not the arc | DRAFT 2026-11-11 |
+| PL-321 | **The veteran's tap.** Between rounds, a scarred drone taps your shoulder-lamp twice and points at a door you have not bought — then at your scrounge pile | Take the hint; or ignore it twice — the drone picks somebody else to help | DRAFT 2026-11-13 |
+| PL-322 | **The crowd's coin.** Clear a round with a stunt — a throw, a chain, a last-hit catch — and the stands throw scrap down at your feet worth more than the round paid | Take the bow; or taunt the crowd for more — the next throw lands at the other fighter | DRAFT 2026-11-13 |
+| PL-323 | **The medic mule.** Come off a round badly hurt and a medic drone trundles across to patch one bar, free, no bill, once per run | Accept the patch; or farm it by self-harm — the mule stops coming, mid-run | DRAFT 2026-11-13 |
+| PL-324 | **The loaner gun.** Before round five with a drained wallet, a wall mount grows a gun stenciled LOANER — no charge. Bring it to round ten and the loan is settled in the ledger | Return it by ten; or keep it past ten — loaners stop spawning for your runs, a month of floors | DRAFT 2026-11-13 |
+| PL-325 | **The underdog plate.** Lose five straight and the floor spawns one extra health pad, unannounced, near your wreck | Take the mercy; or lose on purpose to farm it — the sixth loss spawns nothing, and the floor is not sorry | DRAFT 2026-11-13 |
+| PL-326 | **The shadow coach.** After a death, your own wreck's ghost replays one better route — line, doors, taps, the whole run, once | Watch and learn; or skip it three times — the ghost stops showing, and the replay keeps its secrets | DRAFT 2026-11-13 |
+| PL-327 | **The open door.** On the last round before a boss, one random door stands open and paid, a chalk arrow beside it | Use the gift; or wait for two — the arrow moves on, and the door shuts | DRAFT 2026-11-13 |
+| PL-328 | **The Tap cheer.** Let a stranger share your Tap's output mid-round and the stands chant; the Tap runs one surge longer than it should | Share the tap; or hog every tap — taps on your runs run dry a beat early | DRAFT 2026-11-13 |
+| PL-329 | **The veteran's seat.** Hold still in the corner seat between rounds — an old champion's name chalked above it — and your next draft shows one stat it usually hides | Sit the seat; or chalk your own name over it — your next draft is blind, and the chalk remembers | DRAFT 2026-11-13 |
+| PL-330 | **The surrender door.** Outgunned past hope in the first minute, a side door opens — no taunt, no toll, an exit that never touches your record | Leave with your hull; or exit-camp for pity doors — the floor stops opening them for your hull | DRAFT 2026-11-13 |
+| PL-331 | **The free forge.** Feed the Forge scrap you scrounged off the floor — never bought — and one upgrade runs free | Earn the free slot; or buy your way to it — scrounged means scrounged, and the Forge knows its ledger | DRAFT 2026-11-13 |
+| PL-332 | **The mascot.** A tiny drone with a painted number adopts your run: follows your wall guns, perches on your Tap, watches everything | Feed it a final blow; or starve it of spectacle — it flies across the floor to the other fighter | DRAFT 2026-11-13 |
 
 ## G. Street life at the outposts and waystations
 
