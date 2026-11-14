@@ -395,3 +395,19 @@ Reassigned Codex `shared_sim` to fixed-step and economy profiling, `shared_rende
 - `0508cfe642e0` reviewed. The Lark's release GLB and render package dropped by roughly 87 kB apiece. The locked close and chase PNGs show the panel seams and distinctive cyan bands. The lead owns the visual sign-off.
 
 Open performance work remains in the fixed-step owners and the world draw. The shorter worker budget and alternate graphics backend did not meet the motion target. The original retail freeze, packaged launch, and outstanding player routes remain open on [QUALITY.md](QUALITY.md).
+
+### Stand-in log — fixed-step, AI, render and retail motion
+
+- `58a04236c4cb` fixed. Later foreground beats can recover applied worker reply credit without repeating the diagnostic request.
+- `125b067d3fc0` accepted. Matching native poses and contacts with 15–18% lower measured step cost in two 112-body fixtures.
+- `424f02858011` accepted. One optic scan and pilot-only squad contact pruning preserve firing and squad outcomes in focused checks.
+- `b6c33eff608c` accepted. Warm VAO validation and clip-Z sort do less work. The direct vendored render fixtures passed.
+- `f0b392fabbef` fixed. A server-only UI bench no longer occupies the exclusive browser gate. Released its lease after confirming no browser clients and left both server processes and Claude running. The FIFO resumed, and the server still answered HTTP.
+- `d8c809bcd1fb` fixed. The Gauntlet probe uses the current public title action behind More.
+- `315783bb183a` accepted. Normal worker replies no longer clone and replay full per-tick input data. The live worker fixture preserved scalar attribution and the observer fixture still delivered input rows.
+- `b401c3a7dea3` accepted in focused tests. Exact-target pipeline admission skips the full-scene visibility rewrite on its eligible path. Live timing is pending.
+- `9b375798426e` accepted. Aligned the worker note with the optional input stream.
+- `b93310058ff0` accepted. Pooled live AI contacts reuse the canonical copy schema. All 42 focused checks passed.
+- `772c5cb9a60f` accepted. Recorded fixture numbers and remaining acceptance in [QUALITY.md](QUALITY.md).
+
+Codex launched `physics_cut`, `ai_cut`, and `render_cut` for disjoint owners. No Devin launches. The second perception candidate that fused expiry and snapshot walks was dropped when it showed no measurable win. The before/after Electron command is queued under the game lock for normal Adventure, Swarm and Gauntlet entry using immutable overlays for changed runtime files and default Chromium throttling. The multi-second retail freeze, sustained flight cadence, Ceres contact visibility and full release acceptance remain open.
