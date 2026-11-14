@@ -1,0 +1,14 @@
+{
+  "route": "The real cargo producer stamps explosive, corrosive, superdense and cryogenic classes, and visualFactory builds a procedural volatile pressure bottle for payloads or pickups. The owner's corrosive image matches the synthetic real-producer diagnostic, not a naturally observed player jettison.",
+  "deploymentCode": ["src/systems/lootShards.js", "src/data/commodityVolatileClasses.js", "src/render/visualFactory.js", "src/render/volatileSurfaceLibrary.js", "src/render/vfx/fragmentFamilies.js"],
+  "status": "The owner rejected the featureless neon-green shell. A shared generated steel surface, seated containment straps and class-colored warning band are now integrated provisionally; renderer previews cover all four classes and pickup/payload construction. Ordinary gameplay, frame-time impact and complete asset review remain open.",
+  "variationDiscovery": "unresolved",
+  "playableVariants": [
+    {"id":"explosive", "description":"Amber explosive pressure bottle.", "evidence":["src/data/commodityVolatileClasses.js", ".devshots/fleet/cargo-pod-astra/volatile-paint/report.json"]},
+    {"id":"corrosive", "description":"Green corrosive pressure bottle.", "evidence":["src/data/commodityVolatileClasses.js", ".devshots/fleet/cargo-pod-astra/volatile-smooth-integrated/report.json"]},
+    {"id":"superdense", "description":"Violet superdense pressure bottle.", "evidence":["src/data/commodityVolatileClasses.js", ".devshots/fleet/cargo-pod-astra/volatile-paint/report.json"]},
+    {"id":"cryogenic", "description":"Cyan cryogenic pressure bottle.", "evidence":["src/data/commodityVolatileClasses.js", ".devshots/fleet/cargo-pod-astra/volatile-production/report.json"]}
+  ],
+  "caveat": "Producer, focused tests and synthetic rendering establish the construction path, not a natural in-game encounter or frame-time impact. The shared 512px texture adds texture memory and is asynchronously warmed; late arrival can still incur an upload.",
+  "diagnostics": [".devshots/fleet/cargo-pod-astra/volatile-smooth-integrated/report.json", ".devshots/fleet/cargo-pod-astra/generated-vessel-provenance.json", ".devshots/fleet/cargo-pod-astra/volatile-production/report.json"]
+}

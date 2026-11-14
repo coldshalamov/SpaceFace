@@ -49,6 +49,7 @@ import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
 import { getReadyRockFamilies, rockFamilyFor, ROCK_FAMILY_TINT_MIX, ROCK_FAMILY_EMISSIVE_LIFT } from './rockFamilyLibrary.js';
+import { getReadyVolatileSurface, preloadVolatileSurface } from './volatileSurfaceLibrary.js';
 import {
   COMMON_ROCK_MATERIAL_ROLES,
   COMMON_ROCK_MINERAL_SHEEN,
@@ -286,6 +287,7 @@ const _tex = new Map();
 const _geo = new Map();
 const _mat = new Map();
 const _extTex = new Map(); // external jpg assets from our visual generation pipeline (B-*, ore_*, fx_*, ship_*, ui_*)
+const _pendingVolatileMaterials = new Set();
 
 function noDispose(obj) { obj.dispose = () => {}; return obj; }
 
@@ -7033,9 +7035,8 @@ function laneTrafficVisualEntity(e) {
   };
 }
 
-// FB-075 — volatile cargo reads as a hazard bottle, not another canister: sphere under a
-// containment collar (fragmentFamilies' 'volatile' role recipe), with the class's lamp color
-// carried in the collar material so the warning survives the chase camera.
+// FB-075 — volatile cargo reads as a pressure vessel, with a physical warning band
+// that distinguishes the hazard class without making the whole shell glow.
 const VOLATILE_LAMP_COLOR = Object.freeze({
   // keyed by class id and by the stamped lamp name — the sim writes both
   explosive: 0xffb340, corrosive: 0x7dd66a, superdense: 0xa77dff, cryogenic: 0x8fe1fa,
@@ -7050,21 +7051,85 @@ function volatileLampColor(e) {
     || VOLATILE_LAMP_COLOR.default;
 }
 
-function buildVolatilePayloadGeometry() {
-  const geometry = buildPickupRoleGeometry(PICKUP_ROLE.VOLATILE);
-  const position = geometry.getAttribute('position');
-  const normal = geometry.getAttribute('normal');
-  // The existing non-indexed recipe contains a sphere and a hard toroidal collar.
-  // Only sphere triangles have all three vertices at the same radius. Restore
-  // their radial normals without welding the collar or changing any positions.
-  for (let i = 0; i < position.count; i += 3) {
-    const lengths = [0, 1, 2].map(j => Math.hypot(
-      position.getX(i + j), position.getY(i + j), position.getZ(i + j)));
-    if (Math.min(...lengths) <= 0 || Math.max(...lengths) - Math.min(...lengths) > 1e-5) continue;
-    for (let j = 0; j < 3; j++) normal.setXYZ(i + j,
-      position.getX(i + j) / lengths[j], position.getY(i + j) / lengths[j], position.getZ(i + j) / lengths[j]);
-  }
-  return geometry;
+function volatileFallbackTexture() {
+  return getTexture('payload:volatile:white-map', () => {
+    const texture = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+    return texture;
+  });
+}
+
+function applyVolatileSurface(material, texture) {
+  material.map = texture;
+  material.color.setRGB(1, 1, 1);
+  material.roughness = 0.68;
+  material.metalness = 0.35;
+  material.emissiveIntensity = 0;
+}
+
+function volatileBottleMaterial(lamp) {
+  return getMaterial(`payload:volatile:${lamp}`, () => {
+    const surface = getReadyVolatileSurface();
+    const material = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      // The white placeholder retains the old class-colored fallback and the map shader
+      // variant while the real image decodes; swapping maps does not add a new program.
+      map: surface || volatileFallbackTexture(), color: lamp, roughness: 0.42, metalness: 0.55,
+      emissive: new THREE.Color(lamp), emissiveIntensity: 0.12,
+    }), SHARED_MATERIAL_ROLE.HULL);
+    if (surface) applyVolatileSurface(material, surface);
+    else _pendingVolatileMaterials.add(material);
+    return material;
+  });
+}
+
+function volatileContainmentGeometry(lamp) {
+  const base = getGeometry('payload:volatile:containment-base', () => {
+    // The three straps seat against the unchanged .68/.78-radius shell; the flanges
+    // and valve remain within the entity's unit-radius collision envelope.
+    const parts = [
+      new THREE.TorusGeometry(0.902, 0.035, 4, 20),
+      new THREE.TorusGeometry(0.902, 0.035, 4, 20).rotateY(Math.PI / 2),
+      new THREE.TorusGeometry(0.902, 0.035, 4, 20).rotateX(Math.PI / 2),
+    ];
+    for (const sign of [-1, 1]) {
+      parts.push(new THREE.CylinderGeometry(0.17, 0.17, 0.12, 8)
+        .rotateZ(Math.PI / 2).translate(sign * 0.87, 0, 0));
+    }
+    const valveStart = parts.length;
+    parts.push(
+      new THREE.CylinderGeometry(0.075, 0.075, 0.10, 6).rotateZ(Math.PI / 2).translate(0.93, 0, 0),
+      new THREE.BoxGeometry(0.04, 0.24, 0.07).translate(0.96, 0, 0),
+    );
+    const warningRanges = [];
+    let offset = 0;
+    for (let i = 0; i < parts.length; i++) {
+      const count = parts[i].attributes.position.count;
+      const color = new THREE.Color(i < valveStart ? 0x73818b : 0x16232c);
+      const colors = new Float32Array(count * 3);
+      for (let j = 0; j < colors.length; j += 3) color.toArray(colors, j);
+      parts[i].setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      if (i === 2 || i === parts.length - 1) warningRanges.push([offset, offset + count]);
+      offset += count;
+    }
+    const merged = mergeGeometries(parts, false);
+    for (const part of parts) part.dispose();
+    merged.userData.warningRanges = warningRanges;
+    return merged;
+  });
+  return getGeometry(`payload:volatile:containment:${lamp}`, () => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setIndex(base.index);
+    for (const [name, attribute] of Object.entries(base.attributes)) {
+      geometry.setAttribute(name, name === 'color' ? attribute.clone() : attribute);
+    }
+    const colors = geometry.getAttribute('color');
+    const paint = new THREE.Color(lamp);
+    for (const [start, end] of base.userData.warningRanges) {
+      for (let i = start; i < end; i++) colors.setXYZ(i, paint.r, paint.g, paint.b);
+    }
+    return geometry;
+  });
 }
 
 function buildVolatilePod(e) {
@@ -7072,49 +7137,12 @@ function buildVolatilePod(e) {
   const g = new THREE.Group();
   const lamp = volatileLampColor(e);
   const bottle = new THREE.Mesh(
-    e.type === 'payload'
-      ? getGeometry('payload:volatile:smooth-shell', buildVolatilePayloadGeometry)
-      : getGeometry('pickup:role:volatile', () => buildPickupRoleGeometry(PICKUP_ROLE.VOLATILE)),
-    getMaterial(`payload:volatile:${lamp}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-      // Hazard paint carries the class color; restrained emission leaves the
-      // pressure shell and containment hardware readable under flight lighting.
-      color: lamp, roughness: 0.42, metalness: 0.55,
-      emissive: new THREE.Color(lamp), emissiveIntensity: 0.12,
-    }), SHARED_MATERIAL_ROLE.HULL)),
+    getGeometry('payload:volatile:pressure-shell', () => new THREE.SphereGeometry(0.68 / 0.78, 20, 12)),
+    volatileBottleMaterial(lamp),
   );
   bottle.name = 'VolatilePod_Bottle';
-  // Manufactured containment stays inside the existing unit-radius collision envelope.
-  // Parent every fitting to the bottle: pickupMotionPresentation tumbles/scales child zero,
-  // not the outer entity root. The original class-colored shell remains the hazard signal.
-  const fittings = getGeometry('payload:volatile:containment', () => {
-    const parts = [
-      new THREE.TorusGeometry(0.875, 0.04, 4, 20),
-      new THREE.TorusGeometry(0.875, 0.04, 4, 20).rotateY(Math.PI / 2),
-    ];
-    for (const sign of [-1, 1]) {
-      parts.push(
-        new THREE.CylinderGeometry(0.18, 0.18, 0.12, 8).rotateZ(Math.PI / 2).translate(sign * 0.84, 0, 0),
-        new THREE.TorusGeometry(0.18, 0.035, 4, 12).rotateY(Math.PI / 2).translate(sign * 0.9, 0, 0),
-      );
-    }
-    const valveStart = parts.length;
-    parts.push(
-      new THREE.CylinderGeometry(0.1, 0.1, 0.14, 8).rotateZ(Math.PI / 2).translate(0.9, 0, 0),
-      new THREE.BoxGeometry(0.05, 0.25, 0.07).translate(0.95, 0, 0),
-      new THREE.CylinderGeometry(0.12, 0.12, 0.025, 8).rotateZ(Math.PI / 2).translate(-0.92, 0, 0),
-    );
-    // Two construction values in one shared draw; the emissive shell stays separate.
-    for (let i = 0; i < parts.length; i++) {
-      const color = new THREE.Color(i < valveStart ? 0x73818b : 0x16232c);
-      const colors = new Float32Array(parts[i].attributes.position.count * 3);
-      for (let j = 0; j < colors.length; j += 3) color.toArray(colors, j);
-      parts[i].setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    }
-    const merged = mergeGeometries(parts, false);
-    for (const part of parts) part.dispose();
-    return merged;
-  });
-  const cage = new THREE.Mesh(fittings,
+  // Motion owns child zero, so keep the containment fittings under the bottle.
+  const cage = new THREE.Mesh(volatileContainmentGeometry(lamp),
     getMaterial('payload:volatile:containment', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       color: 0xffffff, vertexColors: true, roughness: 0.5, metalness: 0.68,
     }), SHARED_MATERIAL_ROLE.HULL)));
@@ -7597,6 +7625,7 @@ function disposeMapValues(map) {
 }
 
 export function invalidateVisualFactoryCaches() {
+  _pendingVolatileMaterials.clear();
   disposeMapValues(_tex);
   disposeMapValues(_geo);
   disposeMapValues(_mat);
@@ -7650,6 +7679,11 @@ export function buildMawWorksiteVisual(entity) {
 }
 
 export function createVisualFactory({ renderer = null, readyPackagedBodies = null, planetDetailAdmission = null } = {}) {
+  if (renderer) preloadVolatileSurface(renderer).then((texture) => {
+    if (!texture) return;
+    for (const material of _pendingVolatileMaterials) applyVolatileSurface(material, texture);
+    _pendingVolatileMaterials.clear();
+  });
   const readyBodies = readyPackagedBodies || (renderer
     ? createReadyPackagedBodyCache({ residency: getAssetResidency(renderer) }) : null);
   return {

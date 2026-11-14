@@ -1,0 +1,20 @@
+{
+  "schema": "spaceface.generatedArt.v1",
+  "set": "volatile cargo pressure shell",
+  "date": "2026-11-14",
+  "generator": "OpenAI built-in imagegen",
+  "license": "Generated for SpaceFace; no third-party image supplied.",
+  "use": "One shared albedo for procedural volatile cargo bottles; class colors remain on the containment band.",
+  "prompt": "Create one square game-ready albedo texture atlas for the spherical metal pressure shell of an industrial sci-fi hazardous cargo vessel. This is a flat 2D surface sheet, not a picture of a sphere or a scene. Equirectangular horizontal wrap: left and right edges must match seamlessly; top and bottom should be calm and compatible with spherical UV poles. Weathered cool neutral steel and dark graphite make up about 75 percent of the area, with restrained desaturated safety-green painted inspection panels and thin circumferential warning bands occupying about 25 percent. Distinctly manufactured: fitted curved tank plates, clean seams, fastening bolts, a few subtle maintenance stencils without readable text, and realistic fine scuffs. Keep shapes large and clear enough to read when the texture is only 256 pixels and the object is small in a game, while avoiding giant empty monochrome areas. Physically based base-color only, orthographic and evenly exposed, matte neutral midtones, no lighting gradients, no glossy reflections, no shadows cast across the sheet, no glowing or neon, no large pure white or bright lime regions, no logos, no borders. Avoid obvious directional scratches and busy noise; polished contemporary game art with practical industrial detail.",
+  "source": {
+    "originalOutput": "C:/Users/93rob/.codex/generated_images/01a1d299-e952-74c1-82f8-dc9e7c14dca2/exec-dadb14fd-7d88-4738-897f-31a76f94190c.png",
+    "sha256": "f084f3522f23f0635dce646a5a717cfd2ff5f5e85597c023761ade4578388567"
+  },
+  "finishing": "Resized to 512 pixels, neutralized the source green safety pigment, lifted albedo channels by 1.35 and encoded as WebP. No normal or ORM maps were inferred from the generated image.",
+  "files": {
+    "pressure-shell.webp": {
+      "subject": "Weathered industrial pressure-vessel plates and service details.",
+      "sha256": "fd02679a6b77acfbb74a501cfe44491c3a750a05ae049ea3768debe1e463bd9d"
+    }
+  }
+}
