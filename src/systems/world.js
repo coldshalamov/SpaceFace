@@ -6521,7 +6521,8 @@ export const world = {
       const threat = zoneThreat(zone);
       const kind = threat >= 3 ? 'danger' : (threat >= 2 ? 'warn' : 'info');
       this.bus.emit('world:zoneEntered', { zoneId: zone.id, name: zone.name, type: zone.type, factionId: zone.factionId, threat, reason: zone.reason });
-      this.bus.emit('toast', { text: zone.name, kind, ttl: 2.5 });
+      // OPENING-1b: a calm zone name waits out the opening rail; warnings still speak.
+      if (kind !== 'info' || !openingQuiet(state)) this.bus.emit('toast', { text: zone.name, kind, ttl: 2.5 });
       // The zone's authored reason line is the place speaking — what the bare name cannot
       // carry ("Sensors ghost, autopilot drifts; the Vael guard whatever waits inside."). It
       // was written for every named zone, emitted on this same event, and read by nobody.

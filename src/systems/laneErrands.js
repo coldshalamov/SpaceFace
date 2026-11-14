@@ -6,6 +6,7 @@
 // npcJobsRuntime remains the single intent writer: it calls applyLaneErrandIntent
 // after its own _drive. Working routes and physical holds retain that intent.
 
+import { openingQuiet } from '../onboarding/openingQuiet.js';
 import { hash32 } from '../core/rng.js';
 import { ZONE_TETHYS_TALLY } from '../data/authoredPlaces.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
@@ -356,7 +357,8 @@ export function applyLaneErrandIntent(runtime, entry, entity, simT) {
     entry.errand = null;
     return false;
   }
-  if (!errand.said && runtime.bus && typeof runtime.bus.emit === 'function') {
+  // OPENING-1b: crew errand chatter waits until the opening rail is done (errand stays unsaid).
+  if (!errand.said && !openingQuiet(runtime.state) && runtime.bus && typeof runtime.bus.emit === 'function') {
     errand.said = true;
     try {
       const text = errandText(runtime, errand);
