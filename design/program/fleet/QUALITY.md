@@ -469,3 +469,24 @@ publication boundary until staged preparation can account for earlier on-demand 
   Adventure-shaped case and 250 to 172 ms in the arena case over 60 ticks. Timing preceded
   the final consolidation of three field writes into the copier. All 42 focused checks passed
   on the final source.
+
+The locked Electron pair at `42bb57dc2b97` / `b93310058ff0` pinned the eleven changed runtime
+files, used separate temporary profiles and confirmed normal Chromium background throttling.
+Both modes accepted trusted thrust, turning and primary fire, moved the authoritative ship and
+the drawn mesh, and closed cleanly. Neither arm reproduced a second-long in-flight hold with
+successful draws continuing. Movement timing excludes the intentional Armory and Rearm pauses.
+
+| Public route | Active world draws/s | Moving ship gap p95 / max | Player shots |
+| --- | ---: | ---: | ---: |
+| Swarm, seed 73311 | 7.47 to 8.54 | 210 / 575 ms to 214 / 297 ms | 136 to 104 |
+| Gauntlet, seed 4242 | 15.30 to 13.20 | 112 / 178 ms to 138 / 276 ms | 143 to 165 |
+
+Across the first ten seconds of active flight, Swarm drew 7.12 to 8.34/s and Gauntlet drew 14.50
+to 11.19/s. The arms spent different lengths of time fighting before the wave cleared. Maximum
+observed stale simulation age was 583 to 106 ms in Swarm and 0 to 231 ms in Gauntlet. The fixture
+CPU wins did not translate to a reliable game-wide cadence improvement. Opened both Swarm Armory
+captures and both Gauntlet Rearm captures. Both Adventure attempts used an obsolete text selector
+and never reached flight. `81eb6607562d` repairs that action and a fresh pair is queued. The title
+failure PNGs show the Adventure headline clipping and overlapping its subtitle. The lead has the
+capture path for the title layout. Evidence is `shared-work-cuts-pair-summary.json` under
+`.devshots/fleet/coordination/player-freeze/`.
