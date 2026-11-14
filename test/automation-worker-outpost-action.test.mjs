@@ -74,7 +74,20 @@ for (const existingCount of [0, 100]) test(`outpost build and decommission publi
     await tick();
     const leaf = host.host.domainDiffer.paths.get('automation.outposts');
     assert.ok(leaf, 'the production domain differ tracks the outpost leaf');
-    if (existingCount) assert.ok(leaf.bytes > DOMAIN_COLD_BYTES, 'the list uses cold cadence');
+    if (existingCount) {
+      // The automation root signs on a staggered cadence: the leaf keeps its
+      // lastSign from the empty pre-fixture pass and only re-signs when
+      // tick % cadence === slot % cadence. Wait for the leaf's own slot tick
+      // (derived from the differ node, not a hard-coded offset) so the
+      // cold-sized list actually re-signs before its size is read.
+      const interval = Math.max(1, leaf.cadence || 1);
+      const phase = leaf.slot % interval;
+      let waited = 0;
+      while (serial % interval !== phase && waited++ < 2 * interval) await tick();
+      assert.equal(serial % interval, phase, 'the leaf reaches its cadence slot');
+      assert.equal(leaf.lastSign, serial, 'the leaf re-signs on its slot tick');
+      assert.ok(leaf.bytes > DOMAIN_COLD_BYTES, 'the list uses cold cadence');
+    }
 
     const doc = fakeDom();
     globalThis.document = doc;
