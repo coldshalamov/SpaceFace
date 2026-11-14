@@ -1075,9 +1075,23 @@ export async function readLaunchedRunSeed(page) {
 export async function adventureToFlight(page, step, { seed = null } = {}) {
   const door = page.locator('[data-screen="mainMenu"] [data-action="newGame"]').first();
   await door.waitFor({ state: 'attached', timeout: 60000 });
-  if (await door.isVisible()) await door.click({ timeout: 60000 });
-  else await door.press('Enter', { timeout: 60000 });
-  await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'newGame', null, { timeout: 60000 });
+  const openDoor = async () => {
+    if (await door.isVisible()) await door.click({ timeout: 60000 });
+    else await door.press('Enter', { timeout: 60000 });
+  };
+  await openDoor();
+  const opened = await page.waitForFunction(() => {
+    if (window.SF.ctx.screenManager.top() === 'newGame') return 'newGame';
+    const root = document.getElementById('sf-confirm-root');
+    if (root?.classList.contains('sf-confirm--in')
+      && root.querySelector('#sf-confirm-title')?.textContent?.trim() === 'First light') return 'firstLight';
+    return false;
+  }, null, { timeout: 60000 });
+  if (await consumePageConditionValue(opened) === 'firstLight') {
+    await answerFirstRunPrompt(page, step);
+    await openDoor();
+    await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'newGame', null, { timeout: 60000 });
+  }
   const tutorials = await page.evaluate(() => window.SF.state.settings && window.SF.state.settings.gameplay ? window.SF.state.settings.gameplay.tutorialHints : null);
   step('mode select', true, `New Game (Adventure) · tutorial hints ${tutorials}`);
   if (seed != null) {
