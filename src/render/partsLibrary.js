@@ -62,6 +62,7 @@ import * as THREE from 'three';
 import { handedFinPlacement, mirroredFinNode, mirroredFinPrimitive, oneSidedFinRecord,
   prepareMirroredFinGeometries, reflectFinMatrix } from './modularFinHandedness.js';
 import { fitLegacyMultiroleFins } from './modularMultiroleFinPlacement.js';
+import { fitLegacyMultiroleCockpit } from './modularMultiroleCockpitPlacement.js';
 import { attachSwarmSpecialistVisual } from './swarmSpecialistVisuals.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { detachPackageTexture, isPackageGeometryDetached, rehydrateDetachedGeometries, retainPackageGeometryCpu, LIVE_PACKAGE_CPU_PAYLOAD } from './packageCpuDetach.js';
@@ -11650,7 +11651,9 @@ function* composedShipSteps(entity, library, scene, ownerBoundary, options = {},
   const cockpitRecord = selected.get('cockpit');
   if (cockpitRecord) {
     yield;
-    yield* instantiatePartSteps(cockpitRecord, hull, cockpitPlacement,
+    yield* instantiatePartSteps(cockpitRecord, hull,
+      fitLegacyMultiroleCockpit(selected.get('hull'), cockpitRecord, selected.get('fin'), cockpitPlacement,
+        () => hullMounts.fin.map(mount => placementFromMount(mount, hull, {}))),
       palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
     noteUsed('cockpit', cockpitRecord);
   } else {
