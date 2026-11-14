@@ -157,7 +157,7 @@ test('positive case: holding fireGroup = 2 on an intact or unresourceful weld ta
 
   // Announces refusal toast once across the hold
   assert.equal(events.toast.length, 1, 'refusal toast announced exactly once');
-  assert.equal(events.toast[0].text, 'Need scrap or credits to weld');
+  assert.equal(events.toast[0].text, 'Repair needs credits or unsealed scrap; 1 scrap buys 20 HP.');
 
   // Zero mining:start events
   assert.equal(events.start.length, 0, 'emits zero mining:start events');
