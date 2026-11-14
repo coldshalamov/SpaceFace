@@ -2514,6 +2514,13 @@ export const crucibleScreen = {
     });
     addWord(footWords, customise);
     rootEl.classList.toggle('orr-swarm-play', playMode);
+    // The door is mounted ahead of the title's press (the manager prewarms it), so the PLAY state is also
+    // taken up at show time; hiding the door always drops it, so any other way in is the full entrance.
+    door._setPlayMode = (on) => {
+      playMode = !!on;
+      rootEl.classList.toggle('orr-swarm-play', playMode);
+    };
+    door._playKey = play;
     foot.appendChild(footWords);
     // r2: the door documents its input — one quiet line under the keys.
     foot.appendChild(el('p', 'k-t-fine orr-door-hint', '\u2190 \u2192 choose \u00b7 Enter launch'));
@@ -2551,6 +2558,7 @@ export const crucibleScreen = {
 
   onShow() {
     this._embarkSpecActive = true;
+    if (consumeSwarmPlayEntry()) this._setPlayMode?.(true);
     this._refreshDaily?.();
     this._armEmbarkSpec?.();
     this._refreshCabinetBoard?.();
@@ -2564,7 +2572,9 @@ export const crucibleScreen = {
       settle(r.stage, { from: 'left', delay: 60, state: 'crucible:open' });
       settle(r.foot, { from: 'bottom', delay: 120, state: 'crucible:open' });
     } catch { /* motion is cosmetic */ }
-    if (this._preparation) this._preparation.focus();
+    if (this._playKey && this._playKey.isConnected && this._playKey.offsetParent) {
+      try { this._playKey.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
+    } else if (this._preparation) this._preparation.focus();
     else if (r.enter && typeof r.enter.focus === 'function') {
       try { r.enter.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
     }
@@ -2572,6 +2582,7 @@ export const crucibleScreen = {
 
   onHide() {
     this._embarkSpecActive = false;
+    this._setPlayMode?.(false);
     this._cabinetAttract?.stop();
     this._cabinetDoc?.removeEventListener?.('visibilitychange', this._dailyVisibility);
     if (canAnimate()) cue('close');
