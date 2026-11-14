@@ -91,6 +91,12 @@ ${W} .sf-wradial__hub-pips i.is-on { background:rgb(248 244 234); box-shadow:0 0
   ${W} .sf-wradial__wedge .sf-wradial__label { font-stretch:100%; font-variation-settings:"wdth" 100, "wght" 650; letter-spacing:.06em; }
 }
 
+/* phone width: the dial's seat (69 % down) put the REGROUP key's legend over the HUD's power slots (the Burn and Pull
+   keys) under the dial's foot at 390×844. It rides 28px higher so the lowest legend clears them. */
+@media (max-width:760px) {
+  ${W} { top:calc(69% - 28px); }
+}
+
 @media (forced-colors:active) { ${W}::before, ${W}::after, ${W} .sf-wradial__hub::before { display:none; } }
 `;
 
