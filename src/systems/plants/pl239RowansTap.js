@@ -16,6 +16,7 @@
 // - The tap is a calendar fact of the sector while you are there (authored cadence, sim-time).
 
 import { hash32, wrapAngle } from '../../core/rng.js';
+import { plantStationById } from '../plantEntityViews.js';
 
 export const PL_239_TAP_EVENT = 'plants:pl239:tap';
 export const PL_239_MOVED_EVENT = 'plants:pl239:moved';
@@ -112,16 +113,7 @@ export const pl239RowansTap = {
   },
 
   _station(s) {
-    const entities = s?.entities;
-    if (!entities) return null;
-    const list = typeof entities.values === 'function' ? [...entities.values()] : (Array.isArray(entities) ? entities : []);
-    for (const e of list) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      const data = e.data || {};
-      if (data.isGate === true || data.isWormhole === true) continue;
-      if (data.stationId === ROWANS_TAP_TUNING.stationId) return e;
-    }
-    return null;
+    return plantStationById(s, ROWANS_TAP_TUNING.stationId);
   },
 
   _spawnBeacon(s, pos, data) {

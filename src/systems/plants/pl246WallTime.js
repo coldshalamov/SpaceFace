@@ -24,6 +24,7 @@
 import { hash32 } from '../../core/rng.js';
 import { makeShipEntitySpec } from '../ships.js';
 import { queuePhysicsImpulse } from '../../core/physicsAuthority.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_246_WARN_EVENT = 'plants:pl246:warn';
 export const PL_246_PARKED_EVENT = 'plants:pl246:parked';
@@ -99,21 +100,6 @@ export function isParkedNoseIn(pos, vel, rot, plate, t = WALL_TIME_TUNING) {
   if (typeof rot !== 'number' || !Number.isFinite(rot)) return false;
   const off = Math.atan2(Math.sin(rot - noseRot), Math.cos(rot - noseRot));
   return Math.abs(off) <= t.noseToleranceRad;
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createPl246WallTime() {

@@ -16,6 +16,7 @@
 // - The hauler moves only its own authored body; never touches the player or other hulls.
 
 import { hash32 } from '../../core/rng.js';
+import { plantStationById } from '../plantEntityViews.js';
 
 export const PL_237_HONKED_EVENT = 'plants:pl237:honked';
 export const PL_237_CLEAN_EVENT = 'plants:pl237:clean';
@@ -124,16 +125,7 @@ export const pl237HonkAtHeat = {
   },
 
   _station(s) {
-    const entities = s?.entities;
-    if (!entities) return null;
-    const list = typeof entities.values === 'function' ? [...entities.values()] : (Array.isArray(entities) ? entities : []);
-    for (const e of list) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      const data = e.data || {};
-      if (data.isGate === true || data.isWormhole === true) continue;
-      if (data.stationId === HONK_AT_HEAT_TUNING.stationId) return e;
-    }
-    return null;
+    return plantStationById(s, HONK_AT_HEAT_TUNING.stationId);
   },
 
   _ensureHauler(s) {

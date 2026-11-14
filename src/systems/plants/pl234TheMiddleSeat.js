@@ -20,6 +20,7 @@
 
 import { hash32 } from '../../core/rng.js';
 import { makeShipEntitySpec } from '../ships.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_234_MIDDLE_EVENT = 'plants:pl234:middle';
 export const PL_234_STOOD_EVENT = 'plants:pl234:stood';
@@ -59,21 +60,6 @@ export function benchLayoutFor(origin, t = MIDDLE_SEAT_TUNING) {
     endB: { x: bench.x + dir.x * t.benchHalfWu, z: bench.z + dir.z * t.benchHalfWu },
     dir,
   };
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createPl234TheMiddleSeat() {

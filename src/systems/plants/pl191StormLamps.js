@@ -19,6 +19,7 @@
 import { hash32 } from '../../core/rng.js';
 import { insertDressingRow, dropDressingRow } from '../../world/dressingTable.js';
 import { stampSolidDressing } from '../../world/solidDressing.js';
+import { plantStationById } from '../plantEntityViews.js';
 
 export const PL_191_STRUCK_EVENT = 'plants:pl191:struck';
 
@@ -109,16 +110,7 @@ export const pl191StormLamps = {
   },
 
   _station(s) {
-    const entities = s?.entities;
-    if (!entities) return null;
-    const list = typeof entities.values === 'function' ? [...entities.values()] : (Array.isArray(entities) ? entities : []);
-    for (const e of list) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      const data = e.data || {};
-      if (data.isGate === true || data.isWormhole === true) continue;
-      if (data.stationId === STORM_LAMPS_TUNING.stationId) return e;
-    }
-    return null;
+    return plantStationById(s, STORM_LAMPS_TUNING.stationId);
   },
 
   _ensurePylons(s) {

@@ -20,8 +20,9 @@
 
 import { hash32 } from '../../core/rng.js';
 import { BUBBLE_MULTIPLIERS } from '../../data/stationBubbles.js';
-import { insertDressingRow } from '../../world/dressingTable.js';
+import { insertDressingRow, dropDressingRow } from '../../world/dressingTable.js';
 import { stampSolidDressing } from '../../world/solidDressing.js';
+import { plantStationById } from '../plantEntityViews.js';
 
 export const PL_130_STAMPED_EVENT = 'plants:pl130:stamped';
 export const PL_130_HELD_EVENT = 'plants:pl130:held';
@@ -97,10 +98,13 @@ export function createPl130TheStamp() {
       }
       this._plate = null;
       if (this._stampedIds && typeof this._stampedIds.clear === 'function') this._stampedIds.clear();
-      if (this._placeRowId != null && this.state && this.state.world && this.state.world.dressing
-          && Array.isArray(this.state.world.dressing.rows)) {
-        const row = this.state.world.dressing.byId.get(this._placeRowId);
-        if (row && row.data && row.data.plantsPl130 === true) row.alive = false;
+      if (this._placeRowId != null && this.state) {
+        // Drop the row outright: flagging it dead without unlinking left unbounded dead
+        // rows across visit cycles, and no homeSectorId for sector retirement to catch.
+        dropDressingRow(this.state, this._placeRowId);
+        const table = this.state.world && this.state.world.dressing;
+        const row = table && table.byId ? table.byId.get(this._placeRowId) : null;
+        if (row && row.data && row.data.plantsPl130 === true) row.alive = false; // belt-and-braces
       }
       this._placeRowId = null;
       this._accum = 0;
@@ -130,19 +134,8 @@ export function createPl130TheStamp() {
       const player = state && state.entities && typeof state.entities.get === 'function'
         ? state.entities.get(state.playerId) : null;
       if (!player || !player.pos) return null;
-      const idx = state.entityIndex;
-      const list = (idx && Array.isArray(idx.stations) && idx.stations.length)
-        ? idx.stations
-        : (Array.isArray(state.entityList) ? state.entityList : [...(state.entities ? state.entities.values() : [])]);
-      let best = null;
-      let bestD2 = Infinity;
-      for (const st of list) {
-        if (!st || st.alive === false || st.type !== 'station') continue;
-        if ((st.data && st.data.stationId || st.id) !== THE_STAMP_TUNING.anchorStationId) continue;
-        const d2 = (st.pos.x - player.pos.x) ** 2 + (st.pos.z - player.pos.z) ** 2;
-        if (d2 < bestD2) { bestD2 = d2; best = st; }
-      }
-      return best;
+      // Entity-index fast path; plantStationById keeps the no-index fallbacks internally.
+      return plantStationById(state, THE_STAMP_TUNING.anchorStationId);
     },
 
     _ensurePlate(station) {

@@ -21,6 +21,7 @@
 import { hash32 } from '../../core/rng.js';
 import { makeShipEntitySpec } from '../ships.js';
 import { queuePhysicsImpulse } from '../../core/physicsAuthority.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_203_NAME_EVENT = 'plants:pl203:named';
 export const PL_203_LEARNED_EVENT = 'plants:pl203:learned';
@@ -64,21 +65,6 @@ export function gardenFor(origin, t = THE_TOUR_TUNING) {
 /** The name she says at a growth — the row's own words. */
 export function nameOfKind(kind) {
   return kind === 'mouth' ? 'Mouth.' : 'Wall.';
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createPl203TheTour() {

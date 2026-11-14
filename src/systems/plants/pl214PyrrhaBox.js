@@ -22,6 +22,7 @@
 import { hash32 } from '../../core/rng.js';
 import { insertDressingRow, dropDressingRow } from '../../world/dressingTable.js';
 import { stampSolidDressing } from '../../world/solidDressing.js';
+import { plantStationById } from '../plantEntityViews.js';
 
 export const PL_214_READ_EVENT = 'plants:pl214:read';
 export const PL_214_EMPTY_EVENT = 'plants:pl214:empty';
@@ -130,16 +131,7 @@ export const pl214PyrrhaBox = {
   },
 
   _station(s) {
-    const entities = s?.entities;
-    if (!entities) return null;
-    const list = typeof entities.values === 'function' ? [...entities.values()] : (Array.isArray(entities) ? entities : []);
-    for (const e of list) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      const data = e.data || {};
-      if (data.isGate === true || data.isWormhole === true) continue;
-      if (data.stationId === PYRRHA_BOX_TUNING.stationId) return e;
-    }
-    return null;
+    return plantStationById(s, PYRRHA_BOX_TUNING.stationId);
   },
 
   _ensureBench(s) {

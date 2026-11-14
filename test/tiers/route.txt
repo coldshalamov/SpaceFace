@@ -55,7 +55,8 @@ test/station-walk-route-coverage.test.mjs
 
 # --- PL-101..PL-256 world-reacts plant bank (10 suites; the wiring gate is plants-wiring) ---
 test/plants-wiring.test.mjs
-test/plants-world-reacts.test.mjs
+test/plants-world-reacts-core.test.mjs
+test/plants-world-reacts-life.test.mjs
 test/plants-chance-meetings.test.mjs
 test/plants-pit.test.mjs
 test/plants-yard-secrets.test.mjs
@@ -64,6 +65,13 @@ test/plants-outposts-2.test.mjs
 test/plants-street-life-1.test.mjs
 test/plants-street-life-2.test.mjs
 test/plants-radio.test.mjs
+test/mercies-world.test.mjs
+test/mercies-street.test.mjs
+test/mercies-chance.test.mjs
+test/mercies-outposts.test.mjs
+test/mercies-pit.test.mjs
+test/mercies-yard-secrets.test.mjs
+test/mercies-radio.test.mjs
 
 # --- ordinary player routes ---
 # Boot -> New Game -> flight: the six invariants (menu, launch, pilot, hull, world, controls).

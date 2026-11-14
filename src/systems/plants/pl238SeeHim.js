@@ -17,6 +17,7 @@
 // - Rey moves only his own authored body; facing is geometry (wrapAngle), not a render read.
 
 import { hash32, wrapAngle } from '../../core/rng.js';
+import { plantStationById } from '../plantEntityViews.js';
 
 export const PL_238_SEEN_EVENT = 'plants:pl238:seen';
 export const PL_238_PASSED_EVENT = 'plants:pl238:passed';
@@ -119,16 +120,7 @@ export const pl238SeeHim = {
   },
 
   _station(s) {
-    const entities = s?.entities;
-    if (!entities) return null;
-    const list = typeof entities.values === 'function' ? [...entities.values()] : (Array.isArray(entities) ? entities : []);
-    for (const e of list) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      const data = e.data || {};
-      if (data.isGate === true || data.isWormhole === true) continue;
-      if (data.stationId === SEE_HIM_TUNING.stationId) return e;
-    }
-    return null;
+    return plantStationById(s, SEE_HIM_TUNING.stationId);
   },
 
   _spawnProp(s, spec) {

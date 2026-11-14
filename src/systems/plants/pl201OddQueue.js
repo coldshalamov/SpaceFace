@@ -18,6 +18,7 @@
 
 import { hash32 } from '../../core/rng.js';
 import { makeShipEntitySpec } from '../ships.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_201_JOIN_EVENT = 'plants:pl201:joined';
 export const PL_201_ADVANCE_EVENT = 'plants:pl201:advanced';
@@ -52,21 +53,6 @@ export function queueSlotsFor(origin, t = ODD_QUEUE_TUNING) {
     slots.push({ x: origin.x + dir.x * along, z: origin.z + dir.z * along });
   }
   return slots;
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createPl201OddQueue() {

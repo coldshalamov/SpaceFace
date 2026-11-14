@@ -16,6 +16,7 @@
 // - Counting is physical: each lamp is counted by actually going to it.
 
 import { hash32 } from '../../core/rng.js';
+import { plantStationById } from '../plantEntityViews.js';
 
 export const PL_193_READ_EVENT = 'plants:pl193:read';
 export const PL_193_COUNTED_EVENT = 'plants:pl193:counted';
@@ -118,16 +119,7 @@ export const pl193OneShort = {
   },
 
   _station(s) {
-    const entities = s?.entities;
-    if (!entities) return null;
-    const list = typeof entities.values === 'function' ? [...entities.values()] : (Array.isArray(entities) ? entities : []);
-    for (const e of list) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      const data = e.data || {};
-      if (data.isGate === true || data.isWormhole === true) continue;
-      if (data.stationId === ONE_SHORT_TUNING.stationId) return e;
-    }
-    return null;
+    return plantStationById(s, ONE_SHORT_TUNING.stationId);
   },
 
   _ensureLamps(s) {

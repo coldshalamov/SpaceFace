@@ -21,6 +21,7 @@
 import { hash32 } from '../../core/rng.js';
 import { insertDressingRow, dropDressingRow } from '../../world/dressingTable.js';
 import { stampSolidDressing } from '../../world/solidDressing.js';
+import { plantStationById } from '../plantEntityViews.js';
 
 export const PL_247_SCANDAL_EVENT = 'plants:pl247:scandal';
 export const PL_247_WEIGHED_EVENT = 'plants:pl247:weighed';
@@ -130,16 +131,7 @@ export const pl247TheScandal = {
   },
 
   _station(s) {
-    const entities = s?.entities;
-    if (!entities) return null;
-    const list = typeof entities.values === 'function' ? [...entities.values()] : (Array.isArray(entities) ? entities : []);
-    for (const e of list) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      const data = e.data || {};
-      if (data.isGate === true || data.isWormhole === true) continue;
-      if (data.stationId === SCANDAL_TUNING.stationId) return e;
-    }
-    return null;
+    return plantStationById(s, SCANDAL_TUNING.stationId);
   },
 
   _entity(s, id) {

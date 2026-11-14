@@ -17,6 +17,7 @@
 // - "Take a turn" is a physics fact: only a real entity:killed receipt for the active drone counts.
 
 import { hash32 } from '../../core/rng.js';
+import { plantStationById } from '../plantEntityViews.js';
 
 export const PL_190_DRILL_EVENT = 'plants:pl190:drill';
 export const PL_190_TOOK_TURN_EVENT = 'plants:pl190:tookTurn';
@@ -121,16 +122,7 @@ export const pl190DroneRange = {
   },
 
   _station(s) {
-    const entities = s?.entities;
-    if (!entities) return null;
-    const list = typeof entities.values === 'function' ? [...entities.values()] : (Array.isArray(entities) ? entities : []);
-    for (const e of list) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      const data = e.data || {};
-      if (data.isGate === true || data.isWormhole === true) continue;
-      if (data.stationId === DRONE_RANGE_TUNING.stationId) return e;
-    }
-    return null;
+    return plantStationById(s, DRONE_RANGE_TUNING.stationId);
   },
 
   _currentInterval() {

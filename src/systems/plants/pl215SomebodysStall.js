@@ -18,6 +18,7 @@
 // - Items come from a fixed lost-things table keyed by day hash.
 
 import { hash32 } from '../../core/rng.js';
+import { plantStationById } from '../plantEntityViews.js';
 
 export const PL_215_STOCKED_EVENT = 'plants:pl215:stocked';
 export const PL_215_BOUGHT_BACK_EVENT = 'plants:pl215:boughtBack';
@@ -126,16 +127,7 @@ export const pl215SomebodysStall = {
   },
 
   _station(s) {
-    const entities = s?.entities;
-    if (!entities) return null;
-    const list = typeof entities.values === 'function' ? [...entities.values()] : (Array.isArray(entities) ? entities : []);
-    for (const e of list) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      const data = e.data || {};
-      if (data.isGate === true || data.isWormhole === true) continue;
-      if (data.stationId === STALL_TUNING.stationId) return e;
-    }
-    return null;
+    return plantStationById(s, STALL_TUNING.stationId);
   },
 
   _ensurePost(s, now) {

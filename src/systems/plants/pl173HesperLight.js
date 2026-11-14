@@ -17,6 +17,7 @@
 // - Relight is a physics fact: only a real impact receipt with enough impulse relights.
 
 import { hash32 } from '../../core/rng.js';
+import { plantStationById } from '../plantEntityViews.js';
 
 export const PL_173_LAMP_EVENT = 'plants:pl173:lampOut';
 export const PL_173_RELIT_EVENT = 'plants:pl173:relit';
@@ -173,16 +174,7 @@ export const pl173HesperLight = {
   },
 
   _station(s) {
-    const entities = s?.entities;
-    if (!entities) return null;
-    const list = typeof entities.values === 'function' ? [...entities.values()] : (Array.isArray(entities) ? entities : []);
-    for (const e of list) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      const data = e.data || {};
-      if (data.isGate === true || data.isWormhole === true) continue;
-      if (data.stationId === HESPER_LIGHT_TUNING.stationId) return e;
-    }
-    return null;
+    return plantStationById(s, HESPER_LIGHT_TUNING.stationId);
   },
 
   _onImpact(p) {

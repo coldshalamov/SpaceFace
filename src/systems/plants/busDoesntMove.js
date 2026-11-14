@@ -65,6 +65,9 @@ function finite(value, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+// Map key for callers that pass no usable stations array.
+const BUS_STOPS_NO_STATIONS = { busLoopNoStations: true };
+
 /**
  * Eligibility: this plant's own shuttle hull (data.plantsPl103Bus) — the row's Late Benny bus.
  */
@@ -161,12 +164,30 @@ export const busDoesntMoveOps = {
   _busLoopReset() {
     this._busMemory = new Map();
     this._busLoopMemory = new Map();
+    this._busStopsCache = null;
     this._busBornAt = -1;
     this._busSpawnAt = -1;
     this._busEntityId = null;
     this._busShiftEndsAt = -Infinity;
     this._busRespawnAt = -Infinity;
     this._busWpIndex = 0;
+  },
+
+  /**
+   * Cached busLoopStops: the pair is recomputed only when the sector changes, the stations
+   * array identity rotates, or its length moves — never twice per tick for the same source.
+   */
+  _busLoopStopsCached(stations, sectorId) {
+    const arr = Array.isArray(stations) ? stations : null;
+    const key = arr || BUS_STOPS_NO_STATIONS;
+    let entry = this._busStopsCache instanceof Map ? this._busStopsCache.get(key) : null;
+    if (!entry || entry.sectorId !== sectorId || (arr && entry.length !== arr.length)) {
+      if (!(this._busStopsCache instanceof Map)) this._busStopsCache = new Map();
+      if (this._busStopsCache.size >= 4) this._busStopsCache.clear();
+      entry = { sectorId, length: arr ? arr.length : -1, stops: busLoopStops(stations, sectorId) };
+      this._busStopsCache.set(key, entry);
+    }
+    return entry.stops;
   },
 
   _entityById(id) {
@@ -181,7 +202,7 @@ export const busDoesntMoveOps = {
   _busSpawn(state, now) {
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     if (typeof spawnEntity !== 'function') return null;
-    const stops = busLoopStops(state.stations, (state.world && state.world.currentSectorId) || 's');
+    const stops = this._busLoopStopsCached(state.stations, (state.world && state.world.currentSectorId) || 's');
     const bus = spawnEntity({
       type: 'ship',
       pos: { x: stops[0].x, z: stops[0].z },
@@ -240,7 +261,7 @@ export const busDoesntMoveOps = {
 
     const bus = this._entityById(this._busEntityId);
     if (!bus || bus.alive === false || !bus.pos) return false;
-    const stops = busLoopStops(state.stations, (state.world && state.world.currentSectorId) || 's');
+    const stops = this._busLoopStopsCached(state.stations, (state.world && state.world.currentSectorId) || 's');
     const wp = stops[this._busWpIndex % stops.length];
     const d = Math.hypot(finite(bus.pos.x) - finite(wp.x), finite(bus.pos.z) - finite(wp.z));
     if (d <= BUS_TUNING.wpRadiusWu) {
@@ -352,7 +373,7 @@ export const busDoesntMoveOps = {
     if (!row) return false;
     row.lastAt = now;
 
-    const stops = busLoopStops(stations && stations.length ? stations : state.stations,
+    const stops = this._busLoopStopsCached(stations && stations.length ? stations : state.stations,
       (state.world && state.world.currentSectorId) || 's');
 
     // Hand the pod up: a kept pod within handUpRadiusWu of the bus at a stop.

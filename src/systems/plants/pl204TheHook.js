@@ -20,6 +20,7 @@
 
 import { hash32 } from '../../core/rng.js';
 import { makeShipEntitySpec } from '../ships.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_204_SEATED_EVENT = 'plants:pl204:seated';
 export const PL_204_OFFER_EVENT = 'plants:pl204:offered';
@@ -67,21 +68,6 @@ export function craneLayoutFor(origin, t = THE_HOOK_TUNING) {
 export function swayAt(simTime, t = THE_HOOK_TUNING) {
   const w = (Math.PI * 2) / Math.max(1, t.swayPeriodS);
   return Math.sin((Number.isFinite(simTime) ? simTime : 0) * w) * t.swayAmpWu;
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const pools = [];
-  if (list.length) pools.push(list);
-  if (state.entities && typeof state.entities.values === 'function') pools.push([...state.entities.values()]);
-  for (const pool of pools) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createPl204TheHook() {

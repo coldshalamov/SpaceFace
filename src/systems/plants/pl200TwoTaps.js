@@ -19,6 +19,7 @@
 
 import { hash32 } from '../../core/rng.js';
 import { makeShipEntitySpec } from '../ships.js';
+import { plantStationById as stationOf } from '../plantEntityViews.js';
 
 export const PL_200_VENT_EVENT = 'plants:pl200:vent';
 export const PL_200_KNOCK_EVENT = 'plants:pl200:knock';
@@ -79,21 +80,6 @@ export function trenchJointsFor(origin, t = TWO_TAPS_TUNING) {
     joints.push({ x: origin.x + dir.x * along, z: origin.z + dir.z * along });
   }
   return joints;
-}
-
-function stationOf(state, stationId) {
-  if (!state) return null;
-  const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
-  const sources = [];
-  if (list.length) sources.push(list);
-  if (state.entities && typeof state.entities.values === 'function') sources.push([...state.entities.values()]);
-  for (const pool of sources) {
-    for (const e of pool) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      if (((e.data && e.data.stationId) || e.id) === stationId) return e;
-    }
-  }
-  return null;
 }
 
 export function createPl200TwoTaps() {

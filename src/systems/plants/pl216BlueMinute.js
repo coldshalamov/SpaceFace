@@ -17,6 +17,7 @@
 // - Lamp stamps never fight applausePlant's flash contract: they end when the minute ends.
 
 import { hash32, wrapAngle } from '../../core/rng.js';
+import { plantStationById } from '../plantEntityViews.js';
 
 export const PL_216_BLUE_EVENT = 'plants:pl216:blue';
 export const PL_216_NOTED_EVENT = 'plants:pl216:noted';
@@ -116,16 +117,7 @@ export const pl216BlueMinute = {
   },
 
   _station(s) {
-    const entities = s?.entities;
-    if (!entities) return null;
-    const list = typeof entities.values === 'function' ? [...entities.values()] : (Array.isArray(entities) ? entities : []);
-    for (const e of list) {
-      if (!e || e.alive === false || e.type !== 'station') continue;
-      const data = e.data || {};
-      if (data.isGate === true || data.isWormhole === true) continue;
-      if (data.stationId === BLUE_MINUTE_TUNING.stationId) return e;
-    }
-    return null;
+    return plantStationById(s, BLUE_MINUTE_TUNING.stationId);
   },
 
   update(dt, state) {
