@@ -6,6 +6,8 @@
 //
 // Backends:
 //   devin1 | devin2 | devin3   Devin CLI, SWE-2 Max, one Windows profile each (acct1..acct3)
+//   sonnet1 | sonnet2          Devin CLI on acct1/acct2 with Claude Sonnet 5.5 High — frontend packets ([FE]).
+//                              Never on acct3: that account is the lead's and only its free SWE-2 is used.
 //   deepseek                   OpenCode 2.x, opencode-go/deepseek-v4.1-flash#max
 //   flash                      Antigravity (agy), gemini-3.8-flash-high
 //   codex                      Codex 0.163, gpt-6.1-sol high — the senior agent (reviews, architecture, 3D, images)
@@ -36,7 +38,7 @@ if (args[0] === '--list') {
 const [packetId, backend] = args;
 const timeoutMin = Number((args.find((a) => a.startsWith('--timeout-min=')) || '=90').split('=')[1]);
 if (!packetId || !backend) {
-  console.error('usage: node scripts/fleet/run.mjs <PACKET-ID> <devin1|devin2|devin3|deepseek|flash|codex> [--timeout-min=90]');
+  console.error('usage: node scripts/fleet/run.mjs <PACKET-ID> <devin1|devin2|devin3|sonnet1|sonnet2|deepseek|flash|codex> [--timeout-min=90]');
   process.exit(2);
 }
 const packetPath = join(PACKETS, `${packetId}.md`);
@@ -86,10 +88,12 @@ const before = gitStatus();
 const headBefore = gitHead();
 
 let cmd; let cmdArgs; const env = { ...process.env, FLEET_PROMPT: prompt };
-const devin = /^devin([1-4])$/.exec(backend);
+const devin = /^(?:devin([1-4])|sonnet([12]))$/.exec(backend);
+const devinAcct = devin ? (devin[1] || devin[2]) : null;
+const devinModel = devin && devin[2] ? 'claude-sonnet-5-5-high' : 'swe-2-max';
 if (devin) {
   cmd = BASH;
-  cmdArgs = ['-lc', `devin-acct acct${devin[1]} -p "$FLEET_PROMPT" --model swe-2-max --permission-mode dangerous --respect-workspace-trust false --export "$FLEET_EXPORT"`];
+  cmdArgs = ['-lc', `devin-acct acct${devinAcct} -p "$FLEET_PROMPT" --model ${devinModel} --permission-mode dangerous --respect-workspace-trust false --export "$FLEET_EXPORT"`];
   env.FLEET_EXPORT = join(runDir, 'transcript.md');
 } else if (backend === 'deepseek') {
   cmd = OPENCODE;
@@ -132,7 +136,7 @@ function launch(resume) {
   attempt += 1;
   let a = cmdArgs;
   if (resume && devin) {
-    a = ['-lc', `devin-acct acct${devin[1]} -c -p "Continue the packet exactly where you left off. Finish it, then write the receipt." --model swe-2-max --permission-mode dangerous --respect-workspace-trust false --export "$FLEET_EXPORT"`];
+    a = ['-lc', `devin-acct acct${devinAcct} -c -p "Continue the packet exactly where you left off. Finish it, then write the receipt." --model ${devinModel} --permission-mode dangerous --respect-workspace-trust false --export "$FLEET_EXPORT"`];
   } else if (resume && backend === 'deepseek') {
     a = ['run', '-m', 'opencode-go/deepseek-v4.1-flash#max', '--auto', '--continue', 'Continue the packet exactly where you left off. Finish it, then write the receipt.'];
   }
