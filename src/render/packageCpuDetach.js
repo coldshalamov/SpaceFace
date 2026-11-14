@@ -45,6 +45,10 @@ export { packageDetachSerialNow } from './imageSourceDedupe.js';
 const manifests = new Map();
 const manifestsByContentHash = new Map();
 let manifestSequence = 0;
+const EVICTED_REFILL_RECEIPT = Object.freeze({
+  evicted: true, textures: 0, geometries: 0, bytes: 0,
+  geometryMismatches: Object.freeze([]), textureMismatches: Object.freeze([]),
+});
 const GEOMETRY_CPU_KEEP_ATTRIBUTES = new Set(['position', 'sfHullPosition']);
 // Private scene/prepared-root handoff, never serialized into userData or exposed on the runtime API.
 export const LIVE_PACKAGE_CPU_PAYLOAD = Symbol('live-package-cpu-payload');
@@ -1461,6 +1465,16 @@ async function rehydrateManifest(manifest) {
   if (!template) throw new Error(`Render package ${manifest.assetId} rehydrate returned no scene.`);
   const freshResources = [...manifest.collectResources(template)];
   const freshTextures = freshResources.filter(isTextureLike);
+  // The package owner may retire while the immutable re-decode is in flight. Its texture and
+  // geometry objects are then dead: do not reattach bytes or revive shared-source state on that
+  // stale generation. Fresh donor textures can still have dedupe registrations to release.
+  if (manifest.evicted) {
+    for (const fresh of freshTextures) {
+      try { if (typeof fresh.dispose === 'function') fresh.dispose(); } catch (_) {}
+    }
+    trace?.('rebind:evicted');
+    return EVICTED_REFILL_RECEIPT;
+  }
   const freshGeometries = freshResources.filter(isGeometryLike).filter(geometryDetachEligible);
   let restored = 0;
   let restoredBytes = 0;
@@ -1706,6 +1720,8 @@ export function packageGeometryUploadDiagnostics(geometries, { limit = 24 } = {}
 }
 
 function rehydrateManifestOnce(manifest) {
+  // A queued cohort may have lost its owner while an earlier package was re-decoding.
+  if (manifest.evicted) return Promise.resolve(EVICTED_REFILL_RECEIPT);
   // One in-flight decode per package: concurrent callers (the serial restore runway and a
   // targeted texture-level rehydrate) share the same promise instead of double-decoding the
   // immutable render.glb.
@@ -1748,6 +1764,7 @@ export async function rehydrateDetachedTextures(textures, options = {}) {
   for (const manifest of wanted) {
     try {
       const receipt = await rehydrateManifestOnce(manifest);
+      if (receipt.evicted) continue;
       result.packages += 1;
       result.textures += receipt.textures;
       result.geometries += receipt.geometries;
@@ -1759,6 +1776,7 @@ export async function rehydrateDetachedTextures(textures, options = {}) {
     }
     if (yieldToMain) await yieldToMain();
   }
+  if (!result.packages && !result.errors.length) result.skipped = true;
   return result;
 }
 
@@ -1789,6 +1807,7 @@ export async function rehydrateDetachedGeometries(geometries, options = {}) {
   for (const manifest of wanted) {
     try {
       const receipt = await rehydrateManifestOnce(manifest);
+      if (receipt.evicted) continue;
       result.packages += 1;
       result.textures += receipt.textures;
       result.geometries += receipt.geometries;
@@ -1800,6 +1819,7 @@ export async function rehydrateDetachedGeometries(geometries, options = {}) {
     }
     if (yieldToMain) await yieldToMain();
   }
+  if (!result.packages && !result.errors.length) result.skipped = true;
   return result;
 }
 
@@ -1832,6 +1852,7 @@ async function rehydrateManifestList(detached, options = {}) {
     if (manifest.evicted) continue;
     try {
       const receipt = await rehydrateManifestOnce(manifest);
+      if (receipt.evicted) continue;
       result.packages += 1;
       result.textures += receipt.textures;
       result.geometries += receipt.geometries;
@@ -1843,6 +1864,7 @@ async function rehydrateManifestList(detached, options = {}) {
     }
     if (yieldToMain) await yieldToMain();
   }
+  if (!result.packages && !result.errors.length) result.skipped = true;
   return result;
 }
 

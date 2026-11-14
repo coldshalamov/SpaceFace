@@ -16,6 +16,7 @@ import { createRenderPackageLoader, fetchVerifiedRenderResources } from '../src/
 import {
   createPackageDetachManifest,
   assertPackageTextureRefillReady,
+  detachPackageGeometry,
   detachPackageTexture,
   detachedTextureUploadPending,
   dropPackageDetachManifest,
@@ -543,6 +544,85 @@ test('rehydrate is a no-op with nothing detached and skips evicted packages', as
   assert.equal(evictedRun.packages, 0, 'evicted manifests are dropped, not rehydrated');
   assert.equal(decodeCount, 1, 'no decode storm for evicted packages');
   loader.dispose();
+});
+
+test('an evicted package cannot receive a late texture or geometry refill', async () => {
+  const original = decodedFixture();
+  const donor = decodedFixture();
+  for (const item of [original, donor]) {
+    item.geometry.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+  }
+  let releaseRefill;
+  let notifyRefillStarted;
+  const refillStarted = new Promise((resolve) => { notifyRefillStarted = resolve; });
+  let decodes = 0;
+  const loader = freshLoader(async () => {
+    if (++decodes === 1) return original;
+    notifyRefillStarted();
+    return new Promise((resolve) => { releaseRefill = () => resolve(donor); });
+  });
+  let donorDisposals = 0;
+  donor.compressed.addEventListener('dispose', () => { donorDisposals++; });
+  try {
+    await loader.load(packageMetadata('fixture.evict-during-refill'));
+    assert.equal(detachPackageTexture(original.compressed), true);
+    assert.equal(detachPackageGeometry(original.geometry, stubRenderer()), true);
+    const priorVersion = original.compressed.version;
+    const priorGeometryVersion = original.geometry.getAttribute('normal').version;
+    const refill = rehydrateDetachedTextures([original.compressed]);
+    await refillStarted;
+
+    loader.dispose('fixture-evicted-during-refill');
+    assert.equal(packageDetachDiagnostics().manifests, 0);
+    releaseRefill();
+    const receipt = await refill;
+    assert.equal(receipt.packages, 0, 'the canceled refill is not counted as a restored package');
+    assert.equal(receipt.skipped, true);
+    assert.equal(original.compressed.mipmaps.length, 0,
+      'late decoding must not reattach CPU bytes to an evicted texture');
+    assert.equal(original.compressed.version, priorVersion,
+      'a retired texture must not be marked for another upload');
+    assert.equal(original.geometry.getAttribute('normal').array.byteLength, 0,
+      'late decoding must not reattach CPU bytes to an evicted geometry');
+    assert.equal(original.geometry.getAttribute('normal').version, priorGeometryVersion);
+    assert.equal(donorDisposals, 1, 'the unused decoded texture releases its dedupe registration');
+  } finally {
+    loader.dispose();
+  }
+});
+
+test('a queued refill skips a package evicted while the preceding package decodes', async () => {
+  resetPackageDetachManifestsForTests();
+  const first = decodedFixture();
+  const second = decodedFixture();
+  let firstDecodes = 0, secondDecodes = 0, finishFirst, notifyFirst;
+  const firstStarted = new Promise((resolve) => { notifyFirst = resolve; });
+  const loaderA = createRenderPackageLoader({ loadGlb: async () => {
+    if (++firstDecodes === 1) return first;
+    notifyFirst();
+    return new Promise((resolve) => { finishFirst = () => resolve(decodedFixture()); });
+  } });
+  const loaderB = createRenderPackageLoader({ loadGlb: async () => { secondDecodes++; return second; } });
+  try {
+    await loaderA.load(packageMetadata('fixture.queued-refill-a'));
+    await loaderB.load(packageMetadata('fixture.queued-refill-b'));
+    assert.equal(detachPackageTexture(first.compressed), true);
+    assert.equal(detachPackageTexture(second.compressed), true);
+    const refill = rehydrateDetachedTextures([first.compressed, second.compressed]);
+    await firstStarted;
+    loaderB.dispose('fixture-queued-owner-departed');
+    finishFirst();
+
+    const receipt = await refill;
+    assert.equal(receipt.packages, 1, 'only the still-live first package is refilled');
+    assert.equal(firstDecodes, 2);
+    assert.equal(secondDecodes, 1, 'the already-evicted second package is not decoded again');
+    assert.ok(first.compressed.mipmaps.length > 0);
+    assert.equal(second.compressed.mipmaps.length, 0);
+  } finally {
+    loaderA.dispose();
+    loaderB.dispose();
+  }
 });
 
 test('parser-cloned textures sharing one Source and mipmap buffers detach once, count once', async () => {
