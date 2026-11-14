@@ -546,7 +546,7 @@ body.k-screen-top #modal-backdrop { background: none; }
 .sf-confirm__title--danger { color: var(--dp-ink, #e8e2d4); }
 .sf-confirm__body { margin: calc(-6px * var(--k-s)) 0 0; white-space: pre-line; max-width: 46ch;
   font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
-  font-size: var(--k-fs-body); line-height: 1.55; letter-spacing: .005em; color: var(--dp-ink-dim, #b7b4a6); text-wrap: balance; }
+  font-size: var(--k-fs-body); line-height: 1.55; letter-spacing: .005em; color: var(--dp-ink-dim, #b7b4a6); text-wrap: pretty; }
 .sf-confirm__body:empty { display: none; }
 .sf-confirm__note { position: relative; margin: 0; padding-left: 16px; max-width: 46ch; font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
   font-size: var(--k-fs-data); font-weight: 600; line-height: 1.5; color: var(--dp-danger-hot, #ff8a70); text-wrap: balance; }
