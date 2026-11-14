@@ -13,7 +13,7 @@ import { paintTutorialTrackerCaption, tutorialTrackerCaptionText } from '../src/
 const PREMISE = 'Contract 47-A: the manifest says one mass — your instruments say another.';
 const WEAPON = 'Hitch is armed: fire the Pulse Laser S, then let the heat clear.';
 // The tether mark is authored as optional: the tracked 47-A job owns the objective slot.
-const TETHER_LINE = 'Optional: Target the marked derelict.';
+const TETHER_LINE = 'Optional: Latch the loose rock.';
 
 function makeState(overrides = {}) {
   const player = makeEntity({

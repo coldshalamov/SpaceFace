@@ -312,7 +312,9 @@ const CLAIMED_CLEAR_GRACE_S = 2;       // level-0 heat must hold this long befor
 export const BEATS = [
   { // FIRST TETHER — the signature verb. Attach lands inside the first minutes of control.
     key: 'tether',
-    line: 'Target the marked derelict.',
+    // OPENING-1b: the first latch is the light rescue rock 90 wu out (the derelict sits just
+    // beyond it), and the first latch IS the lesson — the swing verb takes the held line.
+    line: 'Latch the loose rock.',
     followups: [
       { on: 'target:acquired', line: 'Latch it. Massline.' },
       { on: 'tether:latched', line: 'Winch in. Hold tether to reel.' },
@@ -528,7 +530,8 @@ function validTrainingDerelict(owner) {
   const wreck = owner._derelictId != null && owner.state?.entities?.get(owner._derelictId);
   return wreck && wreck === owner._derelictBody && wreck.alive !== false
     && occupantGenerationOf(wreck) === owner._derelictGeneration
-    && wreck.data?.onboarding === true && wreck.data?.kind === 'derelict' ? wreck : null;
+    && wreck.data?.onboarding === true
+    && (wreck.data?.kind === 'derelict' || wreck.data?.rescueRole === 'rock') ? wreck : null;
 }
 
 function tetherLessonIsLocal(state, owner) {
@@ -2270,8 +2273,11 @@ export const onboarding = {
       if (!payload || payload.targetId !== this._derelictId) return;
       if (!this._liveTrainingDerelict()) return;
     }
-    // Followup barks (fire once per beat).
-    for (const fu of (beat.followups || [])) {
+    // Followup barks (fire once per beat). The loose-rock latch hands straight to the swing verb.
+    const rockTableau = beat.key === 'tether' && this._liveTrainingDerelict()?.data?.rescueRole === 'rock';
+    const spent = rockTableau && ob.beatDoneAt[beat.key] != null;
+    const rockLatch = rockTableau && eventName === 'tether:latched';
+    for (const fu of (rockLatch || spent ? [] : (beat.followups || []))) {
       if (fu.on !== eventName) continue;
       const fkey = beat.key + ':' + fu.on;
       if (ob.firedFollowups[fkey]) continue;
@@ -2289,7 +2295,11 @@ export const onboarding = {
     if (!ob || ob.beatDoneAt[beat.key] != null) return; // already DONE
     const done = beat.done;
     let resolved = false;
-    if (done === 'tether:released' && eventName === 'tether:released' && ob.tetherReeled === true) {
+    const tetherBody = beat.key === 'tether' ? this._liveTrainingDerelict() : null;
+    const onTableauRock = !!(tetherBody && tetherBody.data && tetherBody.data.rescueRole === 'rock');
+    if (onTableauRock && eventName === 'tether:latched' && payload && payload.targetId === this._derelictId) {
+      resolved = true; // OPENING-1b: the first latch on the loose rock is the lesson
+    } else if (done === 'tether:released' && eventName === 'tether:released' && ob.tetherReeled === true) {
       resolved = true;
       this._dropDerelictSalvage();
     } else if (done === 'flybyFocus:start' && eventName === 'flybyFocus:start') {
@@ -2672,6 +2682,20 @@ export const onboarding = {
     const player = st.entities && st.entities.get(st.playerId);
     if (!player || !player.pos || !this.helpers || !this.helpers.spawnEntity) return;
     // Offset from the current ship so the stronger live massline can be learned without a chase.
+    // OPENING-1b: the rescue tableau's light rock (mass 220, derelict beyond it) is the first
+    // latch target; the separate drill wreck is only the fallback when no tableau is staged.
+    const rescueRockId = st.onboarding && st.onboarding.rescue && st.onboarding.rescue.ids
+      ? st.onboarding.rescue.ids.rock : null;
+    const rescueRock = rescueRockId != null && st.entities ? st.entities.get(rescueRockId) : null;
+    if (rescueRock && rescueRock.alive !== false && rescueRock.data && rescueRock.data.rescueRole === 'rock') {
+      if (st.onboarding && !st.onboarding.tetherSectorId && st.world?.currentSectorId) {
+        st.onboarding.tetherSectorId = st.world.currentSectorId;
+      }
+      this._derelictId = rescueRock.id;
+      this._derelictBody = rescueRock;
+      this._derelictGeneration = occupantGenerationOf(rescueRock);
+      return;
+    }
     const ang = onboardingRandom(st) * TAU;
     const pos = {
       x: player.pos.x + Math.cos(ang) * B1_DERELICT_OFFSET_WU,
@@ -2851,7 +2875,9 @@ export const onboarding = {
       ? this.state.entities.get(this._miningRockId) : null;
     const ownedRockId = miningRock && miningRock.data && miningRock.data.trainingMining === true
       ? this._miningRockId : null;
-    for (const id of [this._liveTrainingDerelict() ? this._derelictId : null, ownedRockId]) {
+    const tetherBody = this._liveTrainingDerelict();
+    const tetherIsTableau = !!(tetherBody && tetherBody.data && tetherBody.data.rescueRole === 'rock');
+    for (const id of [tetherBody && !tetherIsTableau ? this._derelictId : null, ownedRockId]) {
       if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') this.helpers.removeEntity(id);
     }
     this._derelictId = null;
@@ -5113,7 +5139,7 @@ export const onboarding = {
     }
     else if (beat && beat.key === 'tether') {
       const derelict = this._liveTrainingDerelict();
-      if (derelict) target = { pos: derelict.pos, label: 'Derelict' };
+      if (derelict) target = { pos: derelict.pos, label: derelict.data && derelict.data.rescueRole === 'rock' ? 'Loose rock' : 'Derelict' };
     }
     else if (beat && beat.key === 'seam') {
       const rock = this._miningRockId != null && st.entities && st.entities.get(this._miningRockId);
