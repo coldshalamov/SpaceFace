@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { copyFile, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,6 +38,7 @@ if (argv.has('--help') || argv.has('-h')) {
     '  --resume-valid       Reuse already-valid staged outputs during a full atomic build.',
     '  --no-clean           Build directly into the live release directory.',
     '  --only <id[,id...]>  Rebuild selected manifest ids; requires --no-clean.',
+    '  --scratch-source=<file> --scratch-output=<file> --only=<id>  Build one scratch GLB under .devshots.',
     '  --help, -h           Print this help without acquiring the release lock.',
   ].join('\n'));
   process.exit(0);
@@ -45,7 +46,26 @@ if (argv.has('--help') || argv.has('-h')) {
 const DIRECT_LIVE_BUILD = argv.has('--no-clean');
 const RESUME_VALID = argv.has('--resume-valid');
 const ONLY_IDS = readOnlyIds(argvList);
-if (ONLY_IDS.size && !DIRECT_LIVE_BUILD) {
+const scratchSourceArg = argvList.find((arg) => arg.startsWith('--scratch-source='));
+const scratchOutputArg = argvList.find((arg) => arg.startsWith('--scratch-output='));
+const SCRATCH = !!(scratchSourceArg || scratchOutputArg);
+let scratchSource, scratchOutput;
+if (SCRATCH) {
+  if (!scratchSourceArg || !scratchOutputArg || ONLY_IDS.size !== 1 || DIRECT_LIVE_BUILD || RESUME_VALID
+    || argvList.length !== 3 || !argvList.some((arg) => arg.startsWith('--only='))) {
+    throw new Error('scratch build requires exactly --only=<id>, --scratch-source=<file>, and --scratch-output=<file>');
+  }
+  const scratchRoot = realpathSync(resolve(ROOT, '.devshots'));
+  scratchSource = realpathSync(resolve(ROOT, scratchSourceArg.slice('--scratch-source='.length)));
+  const requestedOutput = resolve(ROOT, scratchOutputArg.slice('--scratch-output='.length));
+  const outputParent = realpathSync(dirname(requestedOutput));
+  scratchOutput = resolve(outputParent, requestedOutput.slice(dirname(requestedOutput).length + 1));
+  const inside = (path) => path.startsWith(`${scratchRoot}\\`) || path.startsWith(`${scratchRoot}/`);
+  if (!inside(scratchSource) || !inside(scratchOutput) || existsSync(scratchOutput) || !scratchOutput.endsWith('.glb')) {
+    throw new Error('scratch input and new .glb output must be under .devshots');
+  }
+}
+if (ONLY_IDS.size && !DIRECT_LIVE_BUILD && !SCRATCH) {
   throw new Error('--only requires --no-clean so an incremental build preserves the existing release manifest');
 }
 const BUILD_RELEASE_ROOT = DIRECT_LIVE_BUILD ? RELEASE_ROOT : STAGED_RELEASE_ROOT;
@@ -56,7 +76,7 @@ assertUnderAssetShips('staged release root', STAGED_RELEASE_ROOT);
 assertUnderAssetShips('previous release root', PREVIOUS_RELEASE_ROOT);
 assertUnderAssetShips('release build lock', RELEASE_BUILD_LOCK);
 
-const releaseBuildLock = acquireReleaseBuildLock();
+const releaseBuildLock = SCRATCH ? () => {} : acquireReleaseBuildLock();
 process.on('exit', releaseBuildLock);
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.once(signal, () => {
@@ -160,11 +180,12 @@ if (ONLY_IDS.size && assets.length !== ONLY_IDS.size) {
   const missing = [...ONLY_IDS].filter((id) => !found.has(id));
   throw new Error(`unknown --only release asset id(s): ${missing.join(', ')}`);
 }
+if (SCRATCH) { assets[0].source = scratchSource; assets[0].release = scratchOutput; }
 
-if (!DIRECT_LIVE_BUILD && !RESUME_VALID) {
+if (!SCRATCH && !DIRECT_LIVE_BUILD && !RESUME_VALID) {
   await rm(STAGED_RELEASE_ROOT, { recursive: true, force: true });
 }
-await mkdir(BUILD_RELEASE_ROOT, { recursive: true });
+if (!SCRATCH) await mkdir(BUILD_RELEASE_ROOT, { recursive: true });
 
 await MeshoptEncoder.ready;
 await MeshoptDecoder.ready;
@@ -176,7 +197,7 @@ const io = new NodeIO()
     'meshopt.decoder': MeshoptDecoder,
   });
 
-const existingReleaseManifest = ONLY_IDS.size && existsSync(RELEASE_MANIFEST)
+const existingReleaseManifest = !SCRATCH && ONLY_IDS.size && existsSync(RELEASE_MANIFEST)
   ? JSON.parse(readFileSync(RELEASE_MANIFEST, 'utf8'))
   : null;
 const blockedReleaseSources = new Set((partManifest.parts || [])
@@ -289,6 +310,11 @@ for (let index = 0; index < assets.length; index++) {
     console.error(`[sg04] failed ${index + 1}/${assets.length} ${asset.id}: ${asset.source} -> ${outputReleasePath}`);
     throw error;
   }
+}
+
+if (SCRATCH) {
+  console.log(`[sg04] scratch build complete: ${scratchOutput}`);
+  process.exit(0);
 }
 
 // Carry place-owned assets forward untouched: a full sg04 build must not drop the place
@@ -413,6 +439,7 @@ function inspectExistingReleasePair(asset, outputReleasePath) {
 
 function buildReleasePath(releasePath) {
   const rel = releasePath.replace(/\\/g, '/');
+  if (SCRATCH) return rel;
   if (DIRECT_LIVE_BUILD) return rel;
   return rel.replace(/^assets\/ships\/release\//, 'assets/ships/release.__building/');
 }
