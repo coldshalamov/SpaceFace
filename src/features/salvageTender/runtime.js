@@ -1,9 +1,10 @@
+import { tenderDeparturePlan } from './departure.js';
 import { isBlackFlagAdventure } from '../../shipjack/model.js';
 import { createTenderPhysical, TENDER_BODY_ID, TENDER_PHYSICAL } from './physical.js';
 import { TENDER_CONFIG as C, TENDER_STAGES, freshSalvageTender, normalizeSalvageTender,
   discoverTenderState, recordTenderHistory } from './model.js';
 import { tenderCostQuote, payTenderCost, tenderServiceQuote, bookTenderService,
-  stepTenderService, cancelTenderService, repairTenderHull, rebindTenderService } from './services.js';
+  stepTenderService, holdTenderService, setTenderRepairPriority, cancelTenderService, repairTenderHull, rebindTenderService } from './services.js';
 import { installSalvageTenderSaveAdapter } from './saveAdapter.js';
 import { getSalvageTenderReadModel } from './readModel.js';
 
@@ -29,6 +30,7 @@ export const salvageTender = {
     this.physical = createTenderPhysical(ctx); this._physical = this.physical;
     this._subs = []; this._busy = false; this._restoring = false;
     this._inside = false; this._insideCrateId = null; this._dismissed = false; this._page = 'home';
+    this._packingTarget = null;
     this._shown = false; this._readyToSecure = false; this._lastPromptAt = -Infinity;
     this._offer = null; this.state.salvageTenderOffer = null;
     this._nextDiscoveryAt = 90;
@@ -196,14 +198,14 @@ export const salvageTender = {
   _nearbyCrate() {
     if (!this._sameSector()) return null;
     const player = this._player();
-    return this.physical.recoveryBodies(this._row).filter(e => e.data.cargoManifest?.totalQty > 0
+    return this.physical.recoveryBodies(this._row).filter(e => (e.data.cargoManifest?.totalQty > 0 || this._row.owned)
       && distance(player?.pos, e.pos) <= 110).sort((a, b) => distance(player.pos, a.pos) - distance(player.pos, b.pos))[0] || null;
   },
 
   inspect(page = 'home') {
     if (!this._eligible() || !this._row.discovered || (!this._near(C.offerRange)
-      && !(page === 'cargo' && this._nearbyCrate()))) return fail('Approach or scan Morrowlight, or a nearby recovery crate.');
-    this._page = ['home', 'service', 'restore', 'cargo', 'navigation', 'history'].includes(page) ? page : 'home';
+      && !(['cargo', 'restock', 'packing', 'supply_return'].includes(page) && this._nearbyCrate()))) return fail('Approach or scan Morrowlight, or a nearby recovery crate.');
+    this._page = ['home', 'service', 'restore', 'cargo', 'restock', 'packing', 'navigation', 'history', 'departure', 'supply_return'].includes(page) ? page : 'home';
     const row = this._row, body = this.physical.find(row), choices = [];
     const hull = `${Math.ceil(body?.hull || row.physical.tender.hull)}/${TENDER_PHYSICAL.hullMax}`;
     const stateWord = row.physical.disabled ? 'DISABLED' : row.physical.mode === 'released' ? 'MOVING · services paused' : 'SECURED';
@@ -228,21 +230,54 @@ export const salvageTender = {
       choices.push(choice('service_menu', 'Prepare / service this ship', { action: 'menu', page: 'service' }));
       choices.push(choice('restore_menu', row.stage < 3 ? 'Restore the next machine' : 'Inspect installed machines', { action: 'menu', page: 'restore' }));
       choices.push(choice('cargo_menu', 'Physical supply crates / rack', { action: 'menu', page: 'cargo' }));
+      choices.push(choice('restock_menu', 'Original pods · pack supplies / patch home', { action: 'menu', page: 'restock' }));
       choices.push(choice('navigation_menu', 'Home course / move the tender', { action: 'menu', page: 'navigation' }));
       const patchGate = this._serviceGate({ allowDisabled: true });
       const patchParts = tenderCostQuote(this.state, { items: { cmdty_scrap_metal: 1 } });
       choices.push(choice('patch', 'Patch Morrowlight · 1 scrap → 30 hull', {}, patchGate.ok && patchParts.canUseParts && (body?.hull || 0) < TENDER_PHYSICAL.hullMax,
         patchGate.reason || (!patchParts.canUseParts ? 'Bring one unsealed scrap metal.' : 'The hull is already intact.')));
       choices.push(choice('history_menu', 'Read the work log', { action: 'menu', page: 'history' }));
+    } else if (this._page === 'departure') {
+      const plan = tenderDeparturePlan(this.state, row, this.physical.recoveryBodies(row));
+      detail = `Needs ${plan.fuel.toFixed(1)} fuel · ${plan.hull.toFixed(1)} hull · ${plan.armor.toFixed(1)} armor; `
+        + (plan.sources.length ? (row.service ? 'booked work is not subtracted.' : 'marked lockers can top you up.')
+          : 'nothing is replenished.');
+      for (const source of plan.sources) choices.push(choice(`supply_${source.sourceId}`,
+        `${source.name} · ${source.lines.map(n => `${n.qty} ${n.name}`).join(' / ')} · mark only`,
+        { action: 'supply_course', sourceId: source.sourceId, bodyId: source.bodyId, generation: source.generation }));
+      choices.push(choice('home_course', 'Mark Morrowlight return berth · no autopilot', { action: 'course', destination: 'home' }));
+      choices.push(choice('service_return', 'Back to booked work / service', { action: 'menu', page: 'service' }));
+    } else if (this._page === 'supply_return') {
+      const plan = tenderDeparturePlan(this.state, row, this.physical.recoveryBodies(row));
+      headline = `${row.name} · supply check`;
+      const aboard = plan.need.filter(n => n.units > 0 && n.hold > 0).map(n => `${n.hold} unsealed ${n.name}`).join(' · ') || 'no unsealed supplies';
+      const booked = !row.service ? 'Nothing is booked' : row.service.manualPaused === true ? 'Work still booked, held — resume at berth' : 'Work still booked';
+      const blocked = row.physical.disabled ? ' (home disabled)' : row.physical.mode === 'released' ? ' (home moving)' : '';
+      detail = `${booked}; ${aboard}; marked course leads home${blocked}.`;
+      choices.push(choice('return_home', 'Mark actual Morrowlight · no autopilot', { action: 'supply_return_course' }));
+      choices.push(choice('return_cargo', 'Back to the original lockers', { action: 'menu', page: 'cargo' }));
     } else if (this._page === 'service') {
       detail = `Supplies come from your existing hold. One fuel cell pumps up to ${C.fuelPerCell} fuel; one scrap restores up to ${C.repairPerScrap} hull/armor. Keep within 100 wu at matched speed. Leaving pauses prepaid work.`;
       if (row.service) {
         detail += ` Booked ${row.service.type}: ${row.service.delivered.toFixed(1)}/${row.service.requested.toFixed(1)} delivered. ${row.service.paused ? row.service.pauseReason : 'Machinery is working.'}`;
+        if (row.service.type === 'repair') {
+          detail += ` Priority: ${(row.service.repairPriority || 'balanced') === 'balanced' ? 'balanced' : `${row.service.repairPriority} first`}.`;
+          for (const priority of ['balanced', 'hull', 'armor']) choices.push(choice(`priority_${priority}`, `Redirect: ${priority === 'balanced' ? 'balanced' : priority + ' first'} · no new charge`,
+            { action: 'repair_priority', priority, jobId: row.service.id }, gate.ok && (row.service.repairPriority || 'balanced') !== priority));
+        }
+        choices.push(choice('hold_service', row.service.manualPaused === true ? 'Resume prepaid work · no new charge' : 'Pause prepaid work · keep the remainder',
+          { action: 'hold_service', paused: row.service.manualPaused !== true, jobId: row.service.id }, gate.ok, gate.reason));
         choices.push(choice('cancel_service', row.service.delivered <= 1e-9 ? 'Cancel · untouched supply returned' : 'Cancel · partially used supply is spent'));
-      } else for (const [action, label] of [['refuel', 'Pump one fuel cell'], ['repair', 'Weld with one scrap'], ['emergency', 'Use starter emergency weld · free to 35% hull']]) {
+      } else for (const [action, label] of [['refuel', 'Pump one fuel cell'], ['repair', 'Balanced weld · 1 scrap'], ['emergency', 'Use starter emergency weld · free to 35% hull']]) {
         const q = tenderServiceQuote(this.state, row, action);
         choices.push(choice(action, label, {}, gate.ok && q.ok, gate.ok ? q.reason : gate.reason));
       }
+      if (!row.service) for (const priority of ['hull', 'armor']) {
+        const q = tenderServiceQuote(this.state, row, 'repair');
+        choices.push(choice(`repair_${priority}`, `${priority === 'hull' ? 'Hull' : 'Armor'} first · 1 scrap / up to ${C.repairPerScrap} combined HP`,
+          { action: 'repair', priority }, gate.ok && q.ok, gate.ok ? q.reason : gate.reason));
+      }
+      choices.push(choice('departure_menu', 'Plan a supply run before departure', { action: 'menu', page: 'departure' }));
       const supplies = tenderCostQuote(this.state, { items: { cmdty_fuel_cells: 1, cmdty_scrap_metal: 1 } }).items;
       detail += ` Unsealed hold: ${supplies[0].available} fuel cells · ${supplies[1].available} scrap. Sealed freight is never consumed.`;
     } else if (this._page === 'restore') {
@@ -256,20 +291,58 @@ export const salvageTender = {
         choices.push(choice('restore_cash', `Buy installation supplies · ${next.cost.credits} cr`, { action: 'restore', payment: 'credits' }, gate.ok && q.canUseCredits, gate.reason || 'Insufficient credits.'));
       }
     } else if (this._page === 'cargo') {
-      detail = 'These three finite recovery loads contain scrap metal, salvage electronics and fuel cells. Match a crate’s speed within 75 wu to transfer what fits into your normal hold. Stage 3 clamps one of these original pods; unload it before using its supplies. Empty shells stay empty.';
-      const crates = row.physical.recovery.filter(r => r.status !== 'lost' && r.manifest.totalQty > 0);
+      detail = `Match a pod’s speed within 75 wu to take supplies${row.owned ? '; empty pods can be repacked' : ''}.`;
+      const nearby = this.physical.recoveryBodies(row).filter(e => this.physical.canUnload(row, e.id).ok)
+        .sort((a, b) => distance(this._player()?.pos, a.pos) - distance(this._player()?.pos, b.pos) || a.id - b.id)[0];
+      // The pod that yields take-one buttons needs no second row of the deck.
+      const crates = row.physical.recovery.filter(r => r.status !== 'lost' && r.manifest.totalQty > 0
+        && r.id !== nearby?.data?.worldRecordId);
       for (const r of crates) {
         const e = this.physical.recoveryBodies(row).find(e => e.data.worldRecordId === r.id);
         const can = e && this.physical.canUnload(row, e.id);
         const contents = r.manifest.lines.filter(l => l.qty > 0).map(l => `${l.qty} ${commodityName(l.commodityId)}`).join(' · ');
-        choices.push(choice(`crate_${r.key}`, `${r.name} · ${r.manifest.totalQty} units`, { action: can?.ok ? 'unload' : 'recovery', bodyId: e?.id, sourceId: r.id }, true,
+        choices.push(choice(`crate_${r.key}`, `${r.name} · ${can?.ok ? 'transfer mixed load' : `${r.manifest.totalQty} units`}`, { action: can?.ok ? 'unload' : 'recovery', bodyId: e?.id, sourceId: r.id }, true,
           `${contents}. ${can?.ok ? 'Transfer what fits.' : 'Mark this original crate.'}`));
+      }
+      if (nearby) {
+        const nearbyName = row.physical.recovery.find(r => r.id === nearby.data.worldRecordId)?.name || 'the nearest pod';
+        for (const line of nearby.data.cargoManifest.lines.filter(line => line.qty > 0)) {
+          choices.push(choice(`take_${line.commodityId}`, `Take 1 ${commodityName(line.commodityId)} · ${line.qty} left`,
+            { action: 'unload', bodyId: nearby.id, sourceId: nearby.data.worldRecordId,
+              commodityId: line.commodityId, quantity: 1 }, true, nearbyName));
+        }
+      }
+      if (row.owned) choices.push(choice('supply_return_menu', 'Check recovered supplies / return to Morrowlight', { action: 'menu', page: 'supply_return' }));
+      if (row.owned) choices.push(choice('restock_menu', 'Rack / pack / patch Morrowlight', { action: 'menu', page: 'restock' }));
+    } else if (this._page === 'restock') {
+      detail = 'Pack one unsealed supply from your hold into a chosen pod.';
+      for (const r of row.physical.recovery.filter(r => r.status !== 'lost')) {
+        const e = this.physical.recoveryBodies(row).find(e => e.data.worldRecordId === r.id);
+        if (e) choices.push(choice(`pack_${r.key}`, `${r.name} · ${r.manifest.totalQty} units`,
+          { action: 'packing', bodyId: e.id, generation: e.occupantGeneration, sourceId: r.id }));
       }
       if (row.stage >= 3) {
         const target = this._rackCandidate();
         if (row.physical.rackId) choices.push(choice('release', 'Release the original rack pod', { bodyId: target?.id }));
         else choices.push(choice('stow', 'Clamp nearest supply pod into rack', { bodyId: target?.id }, !!target && gate.ok, 'Bring one stocked original slowly within 95 wu.'));
       }
+    } else if (this._page === 'packing') {
+      const target = this._packingTarget, e = this.state.entities.get(target?.bodyId);
+      const record = row.physical.recovery.find(r => r.id === target?.sourceId);
+      detail = `Move one unsealed supply into ${record?.name || 'this pod'}, or spend its scrap on Morrowlight.`;
+      if (target && e === target.body) for (const id of ['cmdty_scrap_metal', 'cmdty_salvage_electronics', 'cmdty_fuel_cells']) {
+        const q = this.physical.restockQuote(row, target.bodyId, target.generation, target.sourceId, id);
+        choices.push(choice(`deposit_${id}`, `Pack 1 ${commodityName(id)}${q.ok ? ` · ${q.stored}/${q.capacity} stored` : ''}`,
+          { action: 'restock', bodyId: target.bodyId, generation: target.generation, sourceId: target.sourceId, commodityId: id }, q.ok, readable(q.reason)));
+      }
+      if (target && e === target.body) {
+        const home = this.physical.find(row);
+        const q = this.physical.podPatchQuote(row, target.bodyId, target.generation, target.sourceId, home?.occupantGeneration);
+        choices.push(choice('pod_patch', `Patch Morrowlight from this pod · 1 scrap → up to 30 hull${q.ok ? ` (${q.amount} now)` : ''}`,
+          { action: 'pod_patch', bodyId: target.bodyId, generation: target.generation, sourceId: target.sourceId,
+            tenderGeneration: home?.occupantGeneration }, q.ok, readable(q.reason)));
+      }
+      choices.push(choice('pods', 'Choose another original pod', { action: 'menu', page: 'restock' }));
     } else if (this._page === 'navigation') {
       detail = 'Relocation moves this hull and its clamped cargo with your actual Massline. Release costs one scrap for the mooring brake; resuming an interrupted tow is free. Stop below 8 wu/s to secure the new berth; scan the hull to inspect it at any time. Intersector relocation is not offered.';
       choices.push(choice('course', 'Mark Morrowlight on the chart', { destination: 'home' }));
@@ -318,13 +391,36 @@ export const salvageTender = {
     if (!this._eligible()) return fail('Adventure flight only.');
     if (revision !== this._row.revision) return this._feedback(fail('This offer changed. Inspect Morrowlight again.'));
     if (action === 'menu') return this.inspect(options.page);
+    if (action === 'supply_return_course') {
+      if (!this._row.owned || !this._sameSector() || (!this._near(C.offerRange) && !this._nearbyCrate())) return fail('Return alongside an original locker or Morrowlight to check the supply run.');
+      if (!this.physical.find(this._row)) return fail('The original Morrowlight is unavailable.');
+      const row = this._row, offer = this._offer;
+      const result = this._course('home');
+      if (result.ok && owners.get(this.state) === this && this._row === row && this._offer === offer && !this._restoring) { this._dismissed = true; this._hide(); }
+      return result;
+    }
+    if (action === 'supply_course') {
+      if (!this._row.owned || !this._near(C.offerRange) || !this._sameSector()) return fail('Return alongside your tender to plan the supply run.');
+      const plan = tenderDeparturePlan(this.state, this._row, this.physical.recoveryBodies(this._row));
+      const source = plan.sources.find(s => s.sourceId === options.sourceId && s.bodyId === options.bodyId && s.generation === options.generation);
+      if (!source) return this._feedback(fail('That locker or supply changed; check departure preparation again.'));
+      const row = this._row, offer = this._offer;
+      const result = this._course('recovery', source.sourceId);
+      // Course listeners may replace the run or open another card synchronously.
+      if (result.ok && owners.get(this.state) === this && this._row === row && this._offer === offer && !this._restoring) { this._dismissed = true; this._hide(); }
+      return result;
+    }
+    if (action === 'packing') {
+      this._packingTarget = { ...options, body: this.state.entities.get(options.bodyId) };
+      return this.inspect('packing');
+    }
     if (action === 'course') return this._course(options.destination, options.sourceId);
     if (action === 'leave' || action === 'refuse') {
       this._dismissed = true; this._row.nextOfferAt = this.state.simTime + 15; this._hide();
       return { ok: true, ownershipChanged: false };
     }
     if (!this._row.discovered) return fail('Discover the original tender first.');
-    if (!['unload', 'recovery'].includes(action) && !this._near(C.offerRange)) return this._feedback(fail('Come back alongside Morrowlight.'));
+    if (!['unload', 'recovery', 'restock'].includes(action) && !this._near(C.offerRange)) return this._feedback(fail('Come back alongside Morrowlight.'));
     this._busy = true;
     let result;
     try { result = this._act(action, options); }
@@ -379,9 +475,17 @@ export const salvageTender = {
     }
     if (['repair', 'refuel', 'emergency'].includes(action)) {
       const gate = this._serviceGate(); if (!gate.ok) return gate;
-      const result = bookTenderService(this.ctx, row, action);
+      const result = bookTenderService(this.ctx, row, action, options.priority || 'balanced');
       if (result.ok) this._remember(action === 'refuel' ? 'provision' : 'repair', `${action === 'refuel' ? 'Fuel' : 'Repair'} work booked. Stay alongside; leaving pauses the work you paid for.`);
       return result;
+    }
+    if (action === 'hold_service') {
+      const gate = this._serviceGate(); if (!gate.ok) return gate;
+      return holdTenderService(this.ctx, row, options.paused, options.jobId);
+    }
+    if (action === 'repair_priority') {
+      const gate = this._serviceGate(); if (!gate.ok) return gate;
+      return setTenderRepairPriority(this.ctx, row, options.priority, options.jobId);
     }
     if (action === 'cancel_service') return cancelTenderService(this.ctx, row);
     if (action === 'patch') {
@@ -393,8 +497,22 @@ export const salvageTender = {
     if (action === 'recovery') {
       this.physical.capture(row); return this._course('crate', options.sourceId);
     }
+    if (action === 'pod_patch') {
+      const result = this.physical.patchFromRecovery(row, options.bodyId, options.generation, options.sourceId, options.tenderGeneration);
+      if (result.ok && !result.receiptSuppressed) this._remember('repair', `One pod plate patches Morrowlight by ${result.restoredHull} hull.`);
+      return result;
+    }
+    if (action === 'restock') {
+      const result = this.physical.restockRecovery(row, options.bodyId, options.generation, options.sourceId, options.commodityId);
+      if (result.ok) { row.revision++; this._remember('provision', `Packed 1 ${commodityName(options.commodityId)} into the original pod.`); }
+      return result;
+    }
     if (action === 'unload') {
-      const result = this.physical.unloadRecovery(row, options.bodyId);
+      const original = this.physical.recoveryBodies(row).find(e => e.id === options.bodyId);
+      if (options.sourceId && original?.data?.worldRecordId !== options.sourceId) return fail('The original locker changed. Inspect it again.');
+      const selection = options.commodityId !== undefined || options.quantity !== undefined
+        ? { commodityId: options.commodityId, quantity: options.quantity } : null;
+      const result = this.physical.unloadRecovery(row, options.bodyId, selection);
       if (result.ok) { row.revision++; this._remember('provision', `Recovered ${Object.values(result.moved).reduce((a, b) => a + b, 0)} units into your hold. ${result.remaining} remain in the original pod.`); }
       return result;
     }
@@ -432,7 +550,7 @@ export const salvageTender = {
   serialize() { this.physical.capture(this._row); return normalizeSalvageTender(this._row); },
   deserialize(raw) {
     this._row = normalizeSalvageTender(raw); this.state.salvageTender = this._row;
-    this._restoring = true; this._inside = false; this._insideCrateId = null; this._readyToSecure = false; this._dismissed = false; this._hide();
+    this._restoring = true; this._inside = false; this._insideCrateId = null; this._packingTarget = null; this._readyToSecure = false; this._dismissed = false; this._hide();
   },
   afterContinue() {
     this._restoring = false; this.physical.afterRestore(this._row);
@@ -442,7 +560,7 @@ export const salvageTender = {
     this.bus.emit('salvageTender:reset', { reason: 'new-game' });
     this.physical.destroy(this._row); this._row = freshSalvageTender(); this.state.salvageTender = this._row;
     this._nextDiscoveryAt = 90;
-    this._restoring = false; this._inside = false; this._insideCrateId = null; this._readyToSecure = false; this._dismissed = false; this._page = 'home'; this._hide();
+    this._restoring = false; this._inside = false; this._insideCrateId = null; this._packingTarget = null; this._readyToSecure = false; this._dismissed = false; this._page = 'home'; this._hide();
   },
   destroy() {
     this.bus.emit('salvageTender:reset', { reason: 'destroy' });

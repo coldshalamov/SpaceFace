@@ -48,6 +48,7 @@ export function normalizeTenderService(raw) {
   if (!Number.isInteger(raw.shipIndex) || raw.shipIndex < 0 || raw.shipIndex > 10000) return null;
   return {
     id: text(raw.id, 100), type: raw.type, requested, delivered,
+    repairPriority: raw.type === 'repair' && ['hull', 'armor'].includes(raw.repairPriority) ? raw.repairPriority : 'balanced',
     remaining: requested - delivered, shipIndex: raw.shipIndex,
     shipDefId: text(raw.shipDefId, 100), startedAt: Math.max(0, finite(raw.startedAt)),
     vesselId: text(raw.vesselId, 160),
@@ -59,6 +60,7 @@ export function normalizeTenderService(raw) {
     deliveredFuel: Math.max(0, finite(raw.deliveredFuel)),
     paidCommodity: text(raw.paidCommodity, 80), paidUnits: count(raw.paidUnits, 1000),
     beforeProtection: Math.max(0, finite(raw.beforeProtection)),
+    manualPaused: raw.manualPaused === true,
     paused: true, pauseReason: 'Reconnect at the same berth to resume.',
   };
 }
