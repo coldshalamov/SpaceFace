@@ -1001,6 +1001,28 @@ function recessedCanopy(ctx, px, py, pz, sx, sy, sz) {
 }
 
 // ---- weapon props ----------------------------------------------------------------------------
+// The thermal driver applies one heat value to every fin on a weapon. Bake the rigid box layout
+// once per pattern while retaining a separate animated material and barrel child for each weapon.
+export function weaponCoolingFinGeometry(isBeam, count = 3) {
+  const finCount = isBeam ? 3 : count;
+  return getGeometry(`wpn:cooling-fins:${isBeam ? 'beam' : 'gun'}:${finCount}`, () => {
+    const source = isBeam ? new THREE.BoxGeometry(0.04, 0.14, 0.04) : new THREE.BoxGeometry(0.05, 0.03, 0.26);
+    const parts = [];
+    try {
+      for (let i = 0; i < finCount; i++) {
+        if (isBeam) parts.push(source.clone().translate(-0.1 - i * 0.12, 0.18, 0));
+        else for (const sign of [1, -1]) parts.push(source.clone().translate(i * 0.14, sign * 0.17, 0));
+      }
+      const geometry = mergeGeometries(parts, false);
+      if (!geometry) throw new Error('Unable to merge weapon cooling fins');
+      return geometry;
+    } finally {
+      source.dispose();
+      for (const part of parts) part.dispose();
+    }
+  });
+}
+
 // Build a weapon mount (base housing + barrel) for a fitted weapon def, sized by size+tier, and
 // oriented so the barrel points along `facing`. Returns a Group added at the hardpoint position.
 function weaponProp(wdefId, facing, size, pal, R, tier) {
@@ -1055,12 +1077,9 @@ function weaponProp(wdefId, facing, size, pal, R, tier) {
       crystal.position.set(0.3 * s, 0.12 * s, sgn * 0.16 * s); barrel.add(crystal);
     }
     // heat-dissipation fins along the housing
-    for (let i = 0; i < 3; i++) {
-      const finMat = housingMat.clone();
-      const fin = new THREE.Mesh(getGeometry('wpn:bfin', () => new THREE.BoxGeometry(0.04, 0.14, 0.04)), finMat);
-      fin.position.set((-0.1 - i * 0.12) * s, 0.18 * s, 0); fin.scale.setScalar(s); barrel.add(fin);
-      coolingFins.push(fin);
-    }
+    const fin = new THREE.Mesh(weaponCoolingFinGeometry(true), housingMat.clone());
+    fin.scale.setScalar(s); barrel.add(fin);
+    coolingFins.push(fin);
   } else {
     // kinetic/energy gun: a long barrel + recoil housing + COOLING FINS (the signature of a real gun)
     const len = (w && w.range ? Math.min(1.4, 0.7 + w.range / 2000) : 1.0);
@@ -1074,14 +1093,9 @@ function weaponProp(wdefId, facing, size, pal, R, tier) {
     muzzle.position.x = (0.05 + 0.5 * len) * s; muzzle.scale.setScalar(s); barrel.add(muzzle);
     // cooling fins wrapping the barrel (read as a heavy machine gun / railgun) — sized to be clearly visible
     const finCount = size === 'L' ? 5 : size === 'M' ? 4 : 3;
-    for (let i = 0; i < finCount; i++) {
-      for (const sgn of [1, -1]) {
-        const finMat = housingMat.clone();
-        const fin = new THREE.Mesh(getGeometry('wpn:fin', () => new THREE.BoxGeometry(0.05, 0.03, 0.26)), finMat);
-        fin.position.set((0.0 + i * 0.14) * s, sgn * 0.17 * s, 0); fin.scale.set(s, s, s); barrel.add(fin);
-        coolingFins.push(fin);
-      }
-    }
+    const fin = new THREE.Mesh(weaponCoolingFinGeometry(false, finCount), housingMat.clone());
+    fin.scale.setScalar(s); barrel.add(fin);
+    coolingFins.push(fin);
     // a ventral ammo/feed belt box on kinetic guns (damageType hint)
     if (w && w.damageType === 'kinetic') {
       const belt = new THREE.Mesh(getGeometry('wpn:belt', () => new THREE.BoxGeometry(0.16, 0.1, 0.14)), darkWpnMat());
