@@ -396,6 +396,29 @@ test('loader decodes once per content hash and creates lightweight instances sha
   }
 });
 
+test('disposing a loader retires every repeated package lease without disposing a live instance', async () => {
+  const disposals = { geometry: 0, material: 0, texture: 0 };
+  const decoded = decodedFixture(disposals);
+  const residency = createAssetResidencyRegistry();
+  const loader = createRenderPackageLoader({ residency, loadGlb: async () => ({ scene: decoded.scene }) });
+  const first = await loader.load(packageMetadata());
+  const second = await loader.load(packageMetadata());
+  assert.strictEqual(first, second, 'cache hits share the same decoded package');
+  const instance = first.createInstance();
+
+  assert.equal(loader.dispose(), true);
+  assert.equal(first.released, true, 'no lease survives the disposed loader');
+  assert.throws(() => first.createInstance(), /must be retained/);
+  assert.deepEqual(disposals, { geometry: 0, material: 0, texture: 0 },
+    'the separate live instance still owns its resources');
+  assert.equal(residency.canonicalDiagnostics().assets.length, 1);
+
+  assert.equal(instance.dispose(), true);
+  assert.deepEqual(disposals, { geometry: 1, material: 1, texture: 1 });
+  assert.equal(residency.canonicalDiagnostics().assets.length, 0);
+  assert.equal(loader.dispose(), false);
+});
+
 test('loader records encoded package bytes as CPU residency, never as decoded GPU fallback', async () => {
   const decoded = decodedFixture();
   const residency = createAssetResidencyRegistry({ maxGpuBytes: 1 });

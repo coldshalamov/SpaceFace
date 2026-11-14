@@ -582,9 +582,9 @@ export function createRenderPackageLoader(options = {}) {
     return true;
   }
 
-  function releasePackageOwner(entry, reason = 'render-package-released') {
+  function releasePackageOwner(entry, reason = 'render-package-released', force = false) {
     if (!entry) return false;
-    if (entry.refCount > 1) {
+    if (!force && entry.refCount > 1) {
       entry.refCount--;
       return true;
     }
@@ -640,7 +640,10 @@ export function createRenderPackageLoader(options = {}) {
     disposed = true;
     verifiedMetadataCache.clear(); verifiedMetadataBytes = 0;
     for (const entry of cache.values()) {
-      releasePackageOwner(entry, reason);
+      // Repeated loads share one package-cache owner but each contributes a lease. Retirement
+      // must release that owner's entire claim; independent live instance/boundary owners keep
+      // their own residency until they are released separately.
+      releasePackageOwner(entry, reason, true);
     }
     for (const admission of [...activeAdmissions]) {
       admission.abort(new Error('Render package loader has been disposed.'));
