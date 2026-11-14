@@ -18,6 +18,7 @@ import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pressNewGame } from '../../lib/titleRoute.mjs';
 
 const argv = Object.fromEntries(process.argv.slice(2).map((a) => {
   const m = a.match(/^--([^=]+)(?:=(.*))?$/); return m ? [m[1], m[2] === undefined ? true : m[2]] : [a, true];
@@ -467,8 +468,8 @@ const advState = () => page.evaluate(() => {
   if (!tgt && wp && wp.pos && wp.kind === 'mission') { // a marker with no bound entity: the body sitting on it (the sample rock), not passing traffic
     let best = null;
     for (const e of s.entityList || []) {
-      if (!e || e.alive === false || e.isPlayer || e.type === 'ship' || e.type === 'station' || e.type === 'projectile') continue;
-      const d = Math.hypot(e.pos.x - wp.pos.x, e.pos.z - wp.pos.z); if (d > 220) continue;
+      if (!e || e.alive === false || e.isPlayer || e.type === 'station' || e.type === 'projectile') continue;
+      const d = Math.hypot(e.pos.x - wp.pos.x, e.pos.z - wp.pos.z); if (d > (e.type === 'ship' ? 110 : 220)) continue; // the marked derelict may be a (dead, unowned) ship hull
       const score = d - (/aster|rock|ore|sample|wreck|derelict/i.test(`${e.type} ${e.defId || ''} ${e.name || ''}`) ? 60 : 0) - (e.mass > 40 ? 20 : 0);
       if (!best || score < best.score) best = { score, id: e.id, type: e.type, pos: [e.pos.x, e.pos.z], name: e.name || e.defId || (e.data && e.data.name), d: Math.round(d) };
     }
@@ -490,7 +491,8 @@ async function adventureRoute() {
   await bootToTitle();
   await setZero();
   step('click', 'title: NEW GAME');
-  await clickText(/new game/i);
+  try { await pressNewGame(page); R.clicks++; await page.evaluate(() => { window.__dr.clicks++; }).catch(() => {}); note('pressed the ADVENTURE door (New Game) through scripts/lib/titleRoute.mjs'); }
+  catch (e) { note('pressNewGame failed: ' + e.message.slice(0, 120)); }
   // New Game screen(s) -> defaults -> LAUNCH
   const tPre = Date.now(); let flying = false;
   while (Date.now() - tPre < 300_000) {
@@ -498,8 +500,11 @@ async function adventureRoute() {
     const s = await trackScreen();
     if (s && s.mode === 'flight' && !s.top) { flying = true; break; }
     const btns = await readBtns();
-    const hit = btns.find((b) => /^(launch|start|begin|take off|set out|continue)\b/i.test(b.text)) || btns.find((b) => /launch/i.test(b.text));
-    if (hit) { await click(hit.x, hit.y); note(`click "${hit.text}" on ${s && s.top}`); await sleep(1500); } else await sleep(800);
+    // never CONTINUE from the title: that loads the autosave an earlier run left on the server (a first-time player has none)
+    const onTitle = !!(s && s.top === 'mainMenu');
+    if (onTitle) note('still on the title; controls: ' + btns.map((b) => b.text).slice(0, 10).join(' | '));
+    const hit = onTitle ? btns.find((b) => /new game|adventure/i.test(b.text)) : (btns.find((b) => /^(launch|start|begin|take off|set out)/i.test(b.text)) || btns.find((b) => /launch/i.test(b.text)));
+    if (hit) { await click(hit.x, hit.y); note(`click "${hit.text}" on ${s && s.top}`); await sleep(1500); } else { note(`no launch control; top=${s && s.top} mode=${s && s.mode}; saw: ${btns.map((b) => b.text).slice(0, 12).join(' | ')}`); await sleep(2500); }
   }
   step('flight', flying ? 'in flight' : 'NEVER REACHED FLIGHT');
   if (!flying) { R.outcome = 'never reached flight'; return; }
@@ -508,7 +513,7 @@ async function adventureRoute() {
   await shot('flight-start', { gameplay: true });
   await page.mouse.click(VW / 2, VH / 2); R.clicks++; await page.evaluate(() => { window.__dr.clicks++; }).catch(() => {});
 
-  const tEnd = wall0 + CAP_MS; let phase = 'seek'; let lastLog = 0; let latchTries = 0; let lastLatchTry = 0; let docked = false; let dockedAt = null; let lastE = 0;
+  const tEnd = wall0 + CAP_MS; const advThrow = { done: false, tries: 0, l0: 0 }; let phase = 'seek'; let lastLog = 0; let latchTries = 0; let lastLatchTry = 0; let docked = false; let dockedAt = null; let lastE = 0;
   const trail = []; let lastWpKey = ''; let undocked = false; let sawMarketTab = false; let sawMissionsTab = false;
   while (Date.now() < tEnd) {
     const s = await trackScreen(); await gameplayShots();
@@ -542,7 +547,16 @@ async function adventureRoute() {
     let tx = null, tz = null, kind = 'none';
     if (a.tgt) { tx = a.tgt.pos[0]; tz = a.tgt.pos[1]; kind = a.tgt.type; }
     else if (a.wp && a.wp.pos) { tx = a.wp.pos[0]; tz = a.wp.pos[1]; kind = a.wp.kind || 'waypoint'; }
-    const labelText = a.wp ? String(a.wp.label || '') : '';
+    let labelText = a.wp ? String(a.wp.label || '') : '';
+    // OPENING-1b: the first lesson is the light loose rock beside the derelict. Until a throw lands,
+    // fly at THAT rock (not the heavy 47-A boulder), latch it, swing it through the derelict, release.
+    if (!advThrow.done && advThrow.tries < 4 && a.mode === 'flight') {
+      const lr = await page.evaluate(() => {
+        const s = window.SF.state; const r = (s.entityList || []).find((e) => e && e.alive !== false && e.data && e.data.rescueRole === 'rock');
+        return r ? { x: r.pos.x, z: r.pos.z } : null;
+      }).catch(() => null);
+      if (lr) { tx = lr.x; tz = lr.z; kind = 'asteroid'; labelText = 'Loose rock'; }
+    }
     if (tx == null) { // no marker: drift forward and look around, as a lost player would
       await keyDown('KeyW'); await sleep(300); continue;
     }
@@ -565,6 +579,28 @@ async function adventureRoute() {
       R.clicks++; await page.evaluate(() => { window.__dr.clicks++; }).catch(() => {});
       note(`latch try ${latchTries} dist ${Math.round(aim.dist)}`); await sleep(500);
       if (latchTries === 1 || latchTries === 3) await shot(`latch-try-${latchTries}`, { gameplay: true });
+    }
+    if (!advThrow.done && advThrow.tries < 4 && isRock && /loose rock/i.test(labelText)) {
+      const evN = (name) => page.evaluate((n) => (window.__dr.ev || []).filter((e) => e.ev === n).length, name);
+      if ((await evN('tether:latched')) > advThrow.l0 && a.latched) {
+        advThrow.tries++; const t0n = await evN('massline:throw');
+        await shot('latched-rock', { gameplay: true });
+        await keyDown('KeyW'); await keyDown('KeyD');
+        for (let i = 0; i < 6; i++) { await page.mouse.move(VW / 2 + 260 * Math.cos(i * 0.6), VH / 2 + 200 * Math.sin(i * 0.6), { steps: 2 }); await sleep(200); if (i === 2) await shot('swing-rock', { gameplay: true }); }
+        await keyUp('KeyD');
+        const aimD = await page.evaluate(() => {
+          const s = window.SF.state; const h = window.SF.helpers;
+          const d = (s.entityList || []).find((e) => e && e.alive !== false && e.data && e.data.rescueRole === 'derelict');
+          return d ? h.worldToScreen({ x: d.pos.x, y: 0, z: d.pos.z }, {}) : null;
+        }).catch(() => null);
+        await page.mouse.move(aimD && Number.isFinite(aimD.x) ? aimD.x : VW / 2, aimD && Number.isFinite(aimD.y) ? aimD.y : 200, { steps: 2 });
+        await page.mouse.down({ button: 'right' }); await sleep(120); await page.mouse.up({ button: 'right' });
+        R.clicks++; await page.evaluate(() => { window.__dr.clicks++; }).catch(() => {});
+        await keyUp('KeyW'); await shot('release-rock', { gameplay: true });
+        for (let i = 0; i < 12 && !advThrow.done; i++) { await sleep(250); advThrow.done = (await evN('massline:throw')) > t0n; }
+        note(advThrow.done ? 'THROW registered on the loose rock' : 'release did not register a throw; retrying');
+        if (advThrow.done) { await sleep(1500); await shot('after-throw-derelict', { gameplay: true }); }
+      }
     }
     if (isDock && aim.dist < 240 && Date.now() - lastE > 2000) { lastE = Date.now(); await page.keyboard.press('KeyE'); note(`pressed E at dist ${Math.round(aim.dist)}`); await sleep(600); }
     await sleep(120);
