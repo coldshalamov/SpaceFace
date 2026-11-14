@@ -82,24 +82,29 @@ if (args[0] !== 'run' || args[1] !== '--' || !args[2]) {
 }
 const cmd = args.slice(2);
 const label = cmd.join(' ').slice(0, 120);
+// The no-argument bench serves static pages indefinitely and starts no browser.
+// A bench capture (--shot) still launches its browser under the same gate.
+const serverOnlyBench = cmd.length === 2 && cmd[0] === 'node' && cmd[1] === 'scripts/ui-bench.mjs';
 const t0 = Date.now();
-enqueue(label);
-process.on('exit', dequeue);
-let lastNote = 0;
-while (!(headOfQueue() === process.pid && tryTake(label))) {
-  if (Date.now() - t0 > WAIT_MAX_MIN * 60_000) {
-    console.error(`[game-lock] waited ${WAIT_MAX_MIN} min; another game is still running (${readLock()?.label}). Giving up.`);
-    dequeue();
-    process.exit(3);
+if (!serverOnlyBench) {
+  enqueue(label);
+  process.on('exit', dequeue);
+  let lastNote = 0;
+  while (!(headOfQueue() === process.pid && tryTake(label))) {
+    if (Date.now() - t0 > WAIT_MAX_MIN * 60_000) {
+      console.error(`[game-lock] waited ${WAIT_MAX_MIN} min; another game is still running (${readLock()?.label}). Giving up.`);
+      dequeue();
+      process.exit(3);
+    }
+    if (Date.now() - lastNote > 60_000) {
+      lastNote = Date.now();
+      console.error(`[game-lock] another game is running (${readLock()?.label}); waiting...`);
+    }
+    // The head polls fast so a released lock is not left idle; the rest of the queue polls slowly.
+    await new Promise((r) => setTimeout(r, headOfQueue() === process.pid ? 2_000 : 10_000));
   }
-  if (Date.now() - lastNote > 60_000) {
-    lastNote = Date.now();
-    console.error(`[game-lock] another game is running (${readLock()?.label}); waiting...`);
-  }
-  // The head polls fast so a released lock is not left idle; the rest of the queue polls slowly.
-  await new Promise((r) => setTimeout(r, headOfQueue() === process.pid ? 2_000 : 10_000));
+  dequeue();
 }
-dequeue();
 // npm/npx are .cmd shims on Windows and need a shell; everything else runs directly so arguments
 // are passed untouched. Shell arguments are quoted for cmd.exe.
 const needsShell = process.platform === 'win32' && /^(npm|npx|pnpm|yarn)(\.cmd)?$/i.test(cmd[0]);
