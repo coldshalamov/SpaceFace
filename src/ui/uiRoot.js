@@ -1729,8 +1729,16 @@ export const ui = {
     const warmFirstDock = () => {
       this._stationWarmTimer = null;
       if (!this.state || this.state.mode !== 'flight') return;
+      const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 5000 }) : setTimeout(fn, 1500));
       const run = () => {
-        try { this._ensureStationScreenRegistered().catch(() => {}); } catch (_) { /* stays lazy */ }
+        // Then, in a second idle slot, build the hub hidden (DOM skeleton, fonts, one style and
+        // layout pass) so the first open pays what the second does. Never while docked or opening.
+        try {
+          this._ensureStationScreenRegistered().then(() => idle(() => {
+            if (!this.state || this.state.mode !== 'flight' || (this.state.ui && this.state.ui.docked)) return;
+            if (this.screenManager && this.screenManager.top() !== 'station') this._warmScreen('station');
+          })).catch(() => {});
+        } catch (_) { /* stays lazy */ }
         import('./sectorLawPresenter.js').then((m) => { this._stationNameFor = m.stationName; }).catch(() => {});
       };
       if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 5000 });
