@@ -138,6 +138,13 @@ const CSS = `
   padding-top: 2px;
 }
 
+/* ui-polish-524: the rows are also .k-row, and over a station the observatory's own row rule
+   (:is(#screens .sx-observatory, .sx-observatory) .k-row, padding 9px 10px) outranked kit.css, so each result's
+   type word sat 10px in while the query and the key hint above and below it sat at 28px. The rows keep the
+   palette's 28px inset wherever Find opens. */
+.sf-find .sf-find__pane .sf-find__row.k-row,
+#screens .sf-find .sf-find__pane .sf-find__row.k-row { padding-inline: 28px; }
+
 /* Rows arrive on the tier's stagger — 28 ms per rung, the scales-tick cadence — never as a block. */
 .sf-find .sf-find__pane .sf-find__row { animation: sf-popups-rise 300ms var(--sf-pop-settle, cubic-bezier(.16, 1, .3, 1)) backwards; }
 .sf-find .sf-find__pane .sf-find__row:nth-child(1) { animation-delay: 140ms; }
