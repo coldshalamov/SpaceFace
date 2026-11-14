@@ -1058,6 +1058,10 @@ export async function getAuthoredAssetRuntimeInfo(renderer, { includeFailures = 
         message: error?.message || String(error),
         code: error?.code || null,
       }));
+      // Successful GLTF parses may still contain a missing texture: the official loader keeps
+      // drawing the model after an image failure. Read only settled, currently resident records;
+      // pending tasks are never awaited and evicted records cannot linger in this diagnostic.
+      info.textureFailures = authoredTextureFailureDiagnostics(runtime);
     }
     return info;
   } catch (error) {
@@ -1074,6 +1078,16 @@ export async function getAuthoredAssetRuntimeInfo(renderer, { includeFailures = 
       error: error && error.message ? error.message : String(error),
     };
   }
+}
+
+/** On-demand list of partial KTX2 failures for the renderer's currently cached blueprints. */
+export function authoredTextureFailureDiagnostics(runtime) {
+  const failures = [];
+  for (const [key, task] of runtime?.assets || []) {
+    const rows = task?.sfSettledRecord?.report?.textureFailures;
+    if (Array.isArray(rows)) for (const row of rows) failures.push({ key, ...row });
+  }
+  return failures;
 }
 
 export async function invalidateAuthoredAsset(renderer, url = null) {
@@ -1768,6 +1782,7 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
     }),
     report: Object.freeze({
       warnings: Object.freeze(warnings),
+      textureFailures: gltfTextureFailures(gltf),
       primitiveCount: primitives.length,
       markerCount: markers.length,
       ktx2TextureCount: ktx2Textures.size,
@@ -1988,6 +2003,7 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
     }),
     report: Object.freeze({
       warnings: Object.freeze([]),
+      textureFailures: gltfTextureFailures(gltf),
       primitiveCount: primitives.length,
       markerCount: markers.length,
       ktx2TextureCount: 0,
@@ -1998,6 +2014,11 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
     }),
     residency: { key: `${url}::${expectedSlot || '*'}`, generation: null, state: 'resident' },
   });
+}
+
+function gltfTextureFailures(gltf) {
+  const failures = gltf?.parser?.plugins?.KHR_texture_basisu?.textureFailures;
+  return Object.freeze(Array.isArray(failures) ? failures.map((row) => Object.freeze({ ...row })) : []);
 }
 
 /** `driveAnchorMatrix` is serialized as a 16-number array; everything else round-trips as-is. */

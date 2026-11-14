@@ -131,6 +131,43 @@ test('non-basisu textures, URI images and a missing loader follow the stock rule
   assert.throws(() => required.loadTexture(0), /setKTX2Loader must be called/);
 });
 
+test('a failed embedded texture remains visible in the authored asset diagnostics', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { GLTFLoader: VendoredGLTFLoader } = await import('../vendor/addons/loaders/GLTFLoader.js');
+  const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
+  const { authoredTextureFailureDiagnostics, bindAuthoredRuntimeTable } = await import('../src/render/assetLoader.js');
+  await MeshoptDecoder.ready;
+  resetImageSourceDedupeForTests();
+  const glb = readFileSync(new URL('../assets/ships/release/render-packages/ashline-dart/render.glb', import.meta.url));
+  const loader = new VendoredGLTFLoader();
+  loader.setMeshoptDecoder(MeshoptDecoder);
+  loader.register(registerEmbeddedKtx2Textures);
+  loader.setKTX2Loader({ parse(_bytes, _onLoad, onError) { onError(new Error('transcoder refused image')); } });
+
+  // The real loader intentionally keeps the model alive when its image fails. This diagnostic
+  // must report that degraded success instead of declaring the model fully textured.
+  const gltf = await loader.parseAsync(glb.buffer.slice(glb.byteOffset, glb.byteOffset + glb.byteLength), '');
+  assert.ok(gltf.scene);
+  const table = {
+    bounds: { min: [-1, -1, -1], max: [1, 1, 1], size: [2, 2, 2], center: [0, 0, 0] },
+    primitives: [], markers: [], materialProfiles: [], hidden: [],
+  };
+  const record = bindAuthoredRuntimeTable('ashline-dart.glb', gltf, null, table, { entries: [] });
+  assert.ok(record.report.textureFailures.length > 0);
+  assert.match(record.report.textureFailures[0].message, /transcoder refused image/);
+  assert.match(record.report.textureFailures[0].source, /^bufferView \d+$/);
+
+  const task = Promise.resolve(record);
+  task.sfSettledRecord = record;
+  const runtime = { assets: new Map([['ashline-dart.glb::hull', task], ['pending::hull', Promise.resolve()]]) };
+  const failures = authoredTextureFailureDiagnostics(runtime);
+  assert.equal(failures.length, record.report.textureFailures.length);
+  assert.equal(failures[0].key, 'ashline-dart.glb::hull');
+  assert.match(failures[0].message, /transcoder refused image/);
+  runtime.assets.delete('ashline-dart.glb::hull');
+  assert.deepEqual(authoredTextureFailureDiagnostics(runtime), [], 'evicted assets do not leave stale failures');
+});
+
 test('preverified external KTX2 bytes use the existing transcoder and texture-source dedupe path', async () => {
   resetImageSourceDedupeForTests();
   const payload = new Uint8Array([0xab, 0x4b, 0x54, 0x58, 4, 5, 6]);

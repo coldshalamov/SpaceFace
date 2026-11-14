@@ -54,6 +54,10 @@ export class EmbeddedKtx2TexturePlugin {
   constructor(parser) {
     this.parser = parser;
     this.name = EXTENSION;
+    // GLTFLoader deliberately resolves a failed image as null and continues loading the model.
+    // Retain the cause on this document's parser so asset diagnostics can identify a model that
+    // rendered without its authored surface instead of treating it as a complete success.
+    this.textureFailures = [];
   }
 
   loadTexture(textureIndex) {
@@ -102,7 +106,15 @@ export class EmbeddedKtx2TexturePlugin {
 
       parser.associations.set(texture, { textures: textureIndex });
       return texture;
-    }).catch(() => null);
+    }).catch((error) => {
+      this.textureFailures.push(Object.freeze({
+        textureIndex,
+        sourceIndex: extension.source,
+        source: sourceDef.uri || `bufferView ${sourceDef.bufferView}`,
+        message: error?.message || String(error),
+      }));
+      return null;
+    });
 
     parser.textureCache[cacheKey] = promise;
     return promise;
@@ -170,7 +182,8 @@ function decodeEmbeddedSource(parser, sourceDef, loader) {
       return texture;
     })
     .catch((error) => {
-      dedupError('gltf:ktx2-texture-load-failed', 'THREE.GLTFLoader: Couldn\'t load texture', `bufferView ${sourceDef.bufferView}`);
+      dedupError('gltf:ktx2-texture-load-failed', 'THREE.GLTFLoader: Couldn\'t load texture',
+        sourceDef.uri || `bufferView ${sourceDef.bufferView}`, error);
       throw error;
     });
 }
