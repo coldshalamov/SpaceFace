@@ -32,7 +32,7 @@ import {
   modelTruthSkinHull,
   modelTruthSkinPolygon,
 } from './modelTruth.js';
-import { substanceFor } from '../core/physicsAuthority.js';
+import { isDynamicPhysicsBodyEntity, physicsBodyMaterial } from '../core/physicsAuthority.js';
 import { PHYSICS_MATERIALS } from './physicsMaterials.js';
 import { foundryFurnitureProxy } from './foundryFurniture.js';
 
@@ -272,19 +272,21 @@ function declaresMeasuredSkinProxy(entity) {
  * convex hull when the census outline permits, else a bounded compound — proven deterministic
  * across save/reload. Ghost/sensor bodies and authored geometry opt-outs never adopt a skin. */
 export function measuredSkinAllowedFor(entity) {
-  return measuredSkinSubstance(entity) !== null;
+  return measuredSkinDynamicMode(entity) !== null;
 }
 
-function measuredSkinSubstance(entity) {
+// Null declines the measured skin. Otherwise the boolean selects its dynamic or fixed form.
+// Read live authoring here since the cached native body spec follows revision changes.
+function measuredSkinDynamicMode(entity) {
   if (!entity || entity.physicsBody === false || entity.collides === false) return null;
   const type = entity.type;
   if (type === 'projectile' || type === 'pickup' || type === 'sensor') return null;
   if (type === 'fx' && !declaresMeasuredSkinProxy(entity)) return null;
-  const substance = substanceFor(entity);
-  const material = PHYSICS_MATERIALS[substance.material];
-  if (substance.sensor === true || (material && material.ghost === true)) return null;
+  const material = physicsBodyMaterial(entity);
+  if (material === 'sensor' || PHYSICS_MATERIALS[material]?.ghost === true) return null;
   if (hasAuthoredSkinOverride(entity)) return null;
-  return !substance.dynamic || isCompoundSkinDynamicEligible(entity) ? substance : null;
+  const dynamic = isDynamicPhysicsBodyEntity(entity);
+  return !dynamic || isCompoundSkinDynamicEligible(entity) ? dynamic : null;
 }
 
 function authoredProxyManifest(entity) {
@@ -325,9 +327,8 @@ export function resolveCollisionProxyManifest(entity) {
     && id !== 'gate_jump_ring' && !id.startsWith('skin:')) return declared;
   // Eligibility owns the opt-outs: sensors, ghosts, and authored geometry never take a skin —
   // the unknown skin id resolves to nothing and the body falls back to its capsule/ball.
-  const substance = measuredSkinSubstance(entity);
-  if (!substance || (!id && !substance.dynamic)) return declared;
-  const dynamic = substance.dynamic;
+  const dynamic = measuredSkinDynamicMode(entity);
+  if (dynamic === null || (!id && !dynamic)) return declared;
   // Canonical identity is mutable in place — a hull swap rewrites data.defId on the SAME data
   // object — so the data shell, stamped id, and type are not enough: the resolved row is the
   // identity, and any change to it must invalidate the cached manifest.

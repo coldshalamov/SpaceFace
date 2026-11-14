@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import { core } from '../src/core/coreSystem.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
-import { isDynamicPhysicsBodyEntity } from '../src/core/physicsAuthority.js';
+import { isDynamicPhysicsBodyEntity, resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import {
   measuredSkinAllowedFor,
@@ -88,6 +88,24 @@ test('a dynamic hull carrying an old skin stamp (pre-fix save) adopts its measur
   const station = { ...SPECS.station(), id: 92, alive: true };
   station.data = { ...station.data, collisionProxy: 'skin:place_station_trade_hub' };
   assert.equal(resolveCollisionProxyManifest(station), resolveCollisionProxyManifest(station));
+});
+
+test('skin eligibility observes live material and body mode before spec revision', () => {
+  const ship = SPECS.kestrel();
+  ship.data.collisionProxy = 'skin:ship_kestrel';
+  const spec = resolvePhysicsBodySpec(ship);
+  assert.equal(resolveCollisionProxyManifest(ship).id, 'skin:ship_kestrel:polygon');
+
+  ship.physicsBody.material = 'massline_sensor';
+  assert.equal(resolvePhysicsBodySpec(ship), spec);
+  assert.equal(measuredSkinAllowedFor(ship), false);
+  assert.equal(resolveCollisionProxyManifest(ship), null);
+
+  ship.physicsBody.material = 'ship';
+  ship.physicsBody.dynamic = false;
+  assert.equal(resolvePhysicsBodySpec(ship), spec);
+  assert.equal(isDynamicPhysicsBodyEntity(ship), false);
+  assert.equal(resolveCollisionProxyManifest(ship).id, 'skin:ship_kestrel');
 });
 
 test('SG-02 builds measured geometry for dynamic bodies and the skin for fixed ones', async () => {

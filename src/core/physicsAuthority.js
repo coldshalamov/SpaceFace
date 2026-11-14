@@ -405,9 +405,12 @@ export function shouldSyncPhysicsBodyEntity(entity) {
 
 export function isDynamicPhysicsBodyEntity(entity) {
   if (!entity || typeof entity !== 'object') return false;
-  // Single reader: dynamic resolution lives in substanceFor (authored override else
-  // defaultDynamic). Bit-identical to the inline branch this replaced.
-  return substanceFor(entity).dynamic;
+  return bodyIsDynamic(entity, authoredPhysicsBody(entity));
+}
+
+export function physicsBodyMaterial(entity) {
+  if (!entity || typeof entity !== 'object') return 'default';
+  return bodyMaterial(entity, authoredPhysicsBody(entity));
 }
 
 /**
@@ -856,6 +859,10 @@ function defaultDynamic(entity, radius = null) {
   return true;
 }
 
+function bodyIsDynamic(entity, authored) {
+  return authored && authored.dynamic != null ? !!authored.dynamic : defaultDynamic(entity);
+}
+
 function defaultCcd(entity) {
   return entity.type === 'ship' || entity.type === 'drone' || entity.type === 'payload' || entity.type === 'projectile' ||
     entity.type === 'wreck' || entity.type === 'asteroid' || entity.type === 'pod' || entity.type === 'pickup';
@@ -870,6 +877,10 @@ function defaultMaterial(entity) {
   if (entity.type === 'payload') return 'payload';
   if (entity.type === 'pod') return 'debris';
   return entity.type === 'ship' || entity.type === 'drone' ? 'ship' : 'default';
+}
+
+function bodyMaterial(entity, authored) {
+  return String((authored && authored.material) || defaultMaterial(entity));
 }
 
 export function defaultMass(entity, radius = null) {
@@ -923,11 +934,9 @@ export function substanceFor(entity) {
   const isCraft = entity.type === 'ship' || entity.type === 'drone';
   // Coalescing mirrors ensurePhysicsBodySpec exactly (falsy authored values fall through
   // to the same defaults); dynamic keeps isDynamicPhysicsBodyEntity's != null override rule.
-  const material = String((authored && authored.material) || defaultMaterial(entity));
+  const material = bodyMaterial(entity, authored);
   const shape = (authored && authored.shape) ? String(authored.shape) : (isCraft ? 'capsule' : 'ball');
-  const dynamic = authored && authored.dynamic != null
-    ? !!authored.dynamic
-    : defaultDynamic(entity);
+  const dynamic = bodyIsDynamic(entity, authored);
   return { shape, material, dynamic, sensor: material === 'sensor' };
 }
 
