@@ -14140,7 +14140,9 @@ function engineRecordFor(records, entity, seed) {
 }
 
 function weaponRecordFor(records, wdef, facing, size, seed, index) {
-  const id = String(wdef && wdef.id || '').toLowerCase();
+  // A named salvage variant inherits its base weapon's physical family. Its unique ID may
+  // contain no family word at all (e.g. Ironsong), but its baseId is authoritative.
+  const id = String(wdef && (wdef.baseId || wdef.id) || '').toLowerCase();
   const tracking = String(wdef && wdef.tracking || '').toLowerCase();
   let file = 'weapons/weapon_pulse_cannon.glb';
   if (facing === 'turret' || tracking === 'auto_turret') file = 'weapons/weapon_turret_dual.glb';
