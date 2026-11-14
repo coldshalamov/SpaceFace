@@ -96,7 +96,7 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
   closePageOnClickError = false, introVisible = false, promptAfterFirstSpace = false,
   supersedeOnPlay = false, delayedPromptOpening = false, replacementDuringOpeningWait = false,
   cinematicAriaModal = false, conditionReturn = 'handle',
-  dismissSplashOnPromptCleanup = false } = {}) {
+  dismissSplashOnPromptCleanup = false, dismissBeforePlayBounds = false } = {}) {
   const clicks = [], events = [];
   const locatorClicks = [], mouseClicks = [];
   let handler, handlerOptions, handlerSelector, registrations = 0;
@@ -122,7 +122,13 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
     first() { return this; },
     async isVisible() { return active && this.shown; },
     async isEnabled() { return true; },
-    async boundingBox() { return active && this.shown ? { x: 100, y: 200, width: 80, height: 30 } : null; },
+    async boundingBox() {
+      if (dismissBeforePlayBounds && name === 'Play') {
+        active = false;
+        throw Object.assign(new Error('button disappeared while measuring its bounds'), { name: 'TimeoutError' });
+      }
+      return active && this.shown ? { x: 100, y: 200, width: 80, height: 30 } : null;
+    },
     async waitFor() { if (!shown) throw new Error('cancel precondition unavailable'); },
     async textContent() { return raw; },
     async click(options) {
@@ -400,6 +406,14 @@ test('a prompt dismissed between active read and accessible controls is treated 
   await f.answer();
   assert.deepEqual(f.clicks, [], 'the actor never clicks after the prompt has started closing');
   assert.deepEqual(f.events, [], 'a stale callback is not reported as a settings choice');
+});
+
+test('a prompt dismissed during its button bounds lookup sends no click', async () => {
+  const f = fixture({ dismissBeforePlayBounds: true });
+  await f.install();
+  assert.equal(await f.answerDirect(), false);
+  assert.deepEqual(f.clicks, []);
+  assert.deepEqual(f.events, []);
 });
 
 test('Play takes precedence when legacy Keep my settings is also present', async () => {
