@@ -1064,7 +1064,7 @@ export async function readLaunchedRunSeed(page) {
 }
 
 export async function adventureToFlight(page, step, { seed = null } = {}) {
-  await clickText(page, 'New Game', { exact: true });
+  await page.locator('[data-screen="mainMenu"] [data-action="newGame"]').first().click({ timeout: 60000 });
   await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'newGame', null, { timeout: 60000 });
   const tutorials = await page.evaluate(() => window.SF.state.settings && window.SF.state.settings.gameplay ? window.SF.state.settings.gameplay.tutorialHints : null);
   step('mode select', true, `New Game (Adventure) · tutorial hints ${tutorials}`);
