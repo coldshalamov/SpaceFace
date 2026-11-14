@@ -499,10 +499,9 @@ Across the first ten seconds of active flight, Swarm drew 7.12 to 8.34/s and Gau
 to 11.19/s. The arms spent different lengths of time fighting before the wave cleared. Maximum
 observed stale simulation age was 583 to 106 ms in Swarm and 0 to 231 ms in Gauntlet. The fixture
 CPU wins did not translate to a reliable game-wide cadence improvement. Opened both Swarm Armory
-captures and both Gauntlet Rearm captures. Both Adventure attempts used an obsolete text selector
-and never reached flight. `81eb6607562d` repairs that action and a fresh pair is queued. The title
-failure PNGs show the Adventure headline clipping and overlapping its subtitle. The lead has the
-capture path for the title layout. Evidence is `shared-work-cuts-pair-summary.json` under
+captures and both Gauntlet Rearm captures. Both initial Adventure attempts used an obsolete text
+selector and never reached flight. The lead has the failure captures for the clipped Adventure
+headline and collapsed hit area. Evidence is `shared-work-cuts-pair-summary.json` under
 `.devshots/fleet/coordination/player-freeze/`.
 
 The repaired locked Foundry pair (`shared-work-cuts-adventure-keys-pair-summary.json`) used the
@@ -521,3 +520,16 @@ diagnostic round-two entry. The recording's multi-second advancing-flight freeze
 at least one tick overdue. The deterministic browser-worker test delays that timer, verifies the
 beat completes a new step, and fires the obsolete callback to check it cannot step twice. The
 foreground return test still verifies that hidden wall time does not become catch-up debt.
+
+The repaired public Adventure route reached active Helios flight with trusted thrust, turn, and
+fire. The separate locked seed-4242 launches at `42bb57dc2b97` and `1af30d8c0b99` submitted
+12.07 and 9.78 world draws/s over 24 seconds. Moving mesh gap p95 increased from 150 to 172 ms.
+The maxima were 428 and 418 ms. The ship fired 58 and 51 times and traveled 2,910 and 2,304 WU.
+There were zero observed signed backsteps over 257 and 208 assessable intervals. Both flight
+captures were opened and both profiles shut down cleanly. The source pins cover the batch's
+runtime cuts and older clock fixes. The reservations ran separately against other evolving live
+files, so individual patch effects cannot be inferred from this decline. In the latest launch,
+the worker advanced 0.53 s of simulation per wall second. The graphics frame spent 13.1 ms
+preparing and 29.9 ms submitting at p50. Original retail freezes and sustained pacing remain
+open. See `shared-work-cuts-adventure-keys-before-adventure.json` and
+`shared-work-cuts-final-r2-adventure.json` in the recording evidence folder.
