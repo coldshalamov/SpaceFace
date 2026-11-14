@@ -49,11 +49,11 @@ def build():
             x = -W / 2 + 0.9 + i * (W - 1.8) / 2
             F.box(s, f'Panel{e:+d}{i}', (x, e * (D / 2 + 0.12), H / 2),
                   ((W - 2.4) / 3, 0.22, H - 0.9), material='ceramic', bevel=0.06)
-        # lid panels
-        for i in range(3):
-            x = -W / 2 + 0.9 + i * (W - 1.8) / 2
-            F.box(s, f'LidPanel{i}', (x, 0, H + 0.14),
-                  ((W - 2.4) / 3, D - 1.2, 0.28), material='ceramic.dim', bevel=0.05)
+    # lid panels
+    for i in range(3):
+        x = -W / 2 + 0.9 + i * (W - 1.8) / 2
+        F.box(s, f'LidPanel{i}', (x, 0, H + 0.14),
+              ((W - 2.4) / 3, D - 1.2, 0.28), material='ceramic.dim', bevel=0.05)
     # recessed dark seams between the panel columns — the tile gaps read
     s.detail = 1
     seams = []
