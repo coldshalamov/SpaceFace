@@ -106,7 +106,7 @@ const FRAG = /* glsl */`
       gl_FragColor = vec4(col * cover * vOpacity, 1.0);
     } else {
       // Smoke: lit-from-ink body tinted by the sprite colour, normal blend.
-      gl_FragColor = vec4(rgb * mix(vec3(1.0), vTint, 0.55), cover * vOpacity);
+      gl_FragColor = vec4(rgb * mix(vec3(1.0), min(vTint, vec3(0.8)), 0.6) * 0.85, cover * vOpacity);
     }
     #include <colorspace_fragment>
   }

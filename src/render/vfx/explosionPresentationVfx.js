@@ -73,26 +73,58 @@ export function createExplosionPresentationMethods({
     }
   },
 
+  // A kill is an event: the fireball reaches several hull-widths past the victim for its first beats,
+  // a shock ring and a screen-space distortion ripple follow the flash, the smoke grows and lingers
+  // for seconds, and glowing chunks big enough to read as pieces of the ship fly out. Everything
+  // scales with the victim (a Wasp pops, a capital erupts); the fireball is a single flipbook quad.
   _emitPaintedExplosionBody(phase, entry) {
-    const rr = Math.min(Math.max(2, entry.radius || 8), 8 + Math.sqrt(Math.max(2, entry.radius || 8)) * 2.4);
-    const x = entry.x, z = entry.z;
+    const r = Math.max(5, entry.radius || 8);
+    const capital = entry.classId === 'capital';
+    const diameter = Math.max(34, capital ? Math.min(r * 3.2, 280) : r * 5);
+    const s = diameter / 1.35; // flipbook quad: sheet fills ~70% of its cell, scaled 1.35x in vfx.js
     const reduced = resolveVfxAccessibilityProfile(this.state?.settings).flashOpacityScale < 1;
+    const x = entry.x, z = entry.z;
+    const vx = entry.targetVelocityX || 0, vz = entry.targetVelocityZ || 0;
     const dirAngle = Math.atan2(entry.dirZ || 0, entry.dirX || 1);
     if (phase === 'ignition') {
-      this._spawnSprite(SPR_FLASH, x, 0.32, z, 0.11, rr * 0.35, rr * 1.0, reduced ? 0.7 : 1.0, 0,
+      // The bright flash frame: white, HDR, brief, and wide enough to wash the neighbours.
+      this._spawnSprite(SPR_FLASH, x, 0.32, z, 0.12, s * 0.35, s * 0.9, reduced ? 0.7 : 1.0, 0,
         '#ffffff', 0, 0, 1, dirAngle);
-      this._spawnSprite(SPR_COMBUSTION, x, 0.26, z, 0.62, rr * 0.9, rr * 2.3, 0.95, 0,
-        '#ffe2b8', (entry.targetVelocityX || 0) * 0.1, (entry.targetVelocityZ || 0) * 0.1, 1, dirAngle);
+      this._spawnSprite(SPR_COMBUSTION, x, 0.26, z, 0.55, s * 0.30, s * 0.72, 0.95, 0,
+        '#ffe2b8', vx * 0.1, vz * 0.1, 1, dirAngle);
     } else if (phase === 'rupture') {
-      this._spawnSprite(SPR_COMBUSTION, x, 0.24, z, 0.82, rr * 1.2, rr * 3.0, 0.9, 0,
-        '#ffd09a', (entry.targetVelocityX || 0) * 0.12, (entry.targetVelocityZ || 0) * 0.12, 1,
-        dirAngle + 2.1);
-      if (!reduced) this._spawnSprite(SPR_FLASH, x, 0.34, z, 0.09, rr * 0.25, rr * 0.7, 0.9, 0,
+      this._spawnSprite(SPR_COMBUSTION, x, 0.24, z, 1.0, s * 0.55, s * 1.0, 0.92, 0,
+        '#ffd09a', vx * 0.12, vz * 0.12, 1, dirAngle + 2.1);
+      // Fast shock ring, then the screen-space ripple that travels with it.
+      this._spawnSprite(SPR_RING, x, 0.28, z, 0.5, s * 0.35, s * 1.55, reduced ? 0.45 : 0.85, 0,
+        '#ffffff', 0, 0, 1, dirAngle);
+      const dist = this._weaponPresenter && this._weaponPresenter.distortion;
+      if (dist && !reduced) {
+        const local = this._toLocalXZ(x, z, this._spawnLocalXZ);
+        dist.spawn({ x: local.x, y: 0.3, z: local.z, radius: diameter * 0.9, strength: capital ? 1.0 : 0.75, life: 0.55 });
+      }
+      if (!reduced) this._spawnSprite(SPR_FLASH, x, 0.34, z, 0.09, s * 0.25, s * 0.7, 0.9, 0,
         '#fff6e6', 0, 0, 1, dirAngle + 0.7);
+      // Glowing chunks of the ship: few, large, slow enough to track, cooling from white-gold to ember.
+      const chunks = capital ? 9 : (entry.classId === 'small' ? 4 : 6);
+      for (let k = 0; k < chunks; k++) {
+        const a = dirAngle + (explosionPatternSigned(entry.serial, 'rupture', k, 61) * Math.PI);
+        const spd = (28 + explosionPattern01(entry.serial, 'rupture', k, 62) * 70) * Math.min(2.2, diameter / 40);
+        this._spawnParticle(x, z, vx * 0.6 + Math.cos(a) * spd, vz * 0.6 + Math.sin(a) * spd,
+          1.1 + explosionPattern01(entry.serial, 'rupture', k, 63) * 0.9,
+          (2.6 + explosionPattern01(entry.serial, 'rupture', k, 64) * 2.4) * Math.min(2, diameter / 50 + 0.6), 0.9,
+          DESTRUCTION_LIGHT_CINDER_CORE, DESTRUCTION_LIGHT_CINDER_TAIL, 0.9, 0, 0, a, 0.8);
+      }
     } else if (phase === 'residue') {
-      this._spawnSprite(SPR_PUFF, x, 0.10, z, 2.4, rr * 1.4, rr * 3.8, 0.55, 0, '#8a8078',
-        (entry.targetVelocityX || 0) * 0.22 + (entry.dirX || 0) * 3,
-        (entry.targetVelocityZ || 0) * 0.22 + (entry.dirZ || 0) * 3, 1, dirAngle - 1.3);
+      // Smoke outlives the flame: it grows for seconds and drifts with the wreck's momentum.
+      const puffs = capital ? 3 : 2;
+      for (let k = 0; k < puffs; k++) {
+        const a = dirAngle + k * 2.1;
+        this._spawnSprite(SPR_PUFF, x + Math.cos(a) * s * 0.12 * k, 0.10, z + Math.sin(a) * s * 0.12 * k,
+          4.2 + k * 0.8, s * (0.5 + 0.1 * k), s * (1.35 + 0.2 * k), 0.55 - k * 0.08, 0, '#8a8078',
+          vx * 0.22 + (entry.dirX || 0) * 3 + Math.cos(a) * 2, vz * 0.22 + (entry.dirZ || 0) * 3 + Math.sin(a) * 2,
+          1, a - 1.3);
+      }
     }
   },
 
