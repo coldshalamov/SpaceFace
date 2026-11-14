@@ -528,6 +528,112 @@ test('cancelRoot releases a pooled mesh hold and queue entry before reuse', () =
   assert.equal(mesh.userData[RESIDENCY_HELD], false);
 });
 
+test('a canceled upload cannot settle or stamp a reused pool in another in-flight batch', async () => {
+  let now = 0;
+  const uploads = [];
+  const manager = createResidencyManager({
+    now: () => now,
+    requestRoots: (roots, urgent) => new Promise((resolve) => uploads.push({ roots, urgent, resolve })),
+  });
+  const geometry = new THREE.BoxGeometry();
+  stampGeometryGpuResident(geometry);
+  const mesh = new THREE.InstancedMesh(geometry, new THREE.MeshBasicMaterial(), 4);
+  const scene = new THREE.Scene();
+  scene.add(mesh);
+  try {
+    manager.holdRoot(mesh, 'bind', geometry, false);
+    assert.equal(manager.drainUploads(), 1);
+    assert.equal(uploads[0].urgent, false);
+    manager.cancelRoot(mesh);
+    mesh.instanceMatrix = new THREE.InstancedBufferAttribute(new Float32Array(8 * 16), 16);
+    manager.holdRoot(mesh, 'instanced-capacity', geometry, true);
+    now = 201;
+    assert.equal(manager.drainUploads(), 1);
+    assert.equal(uploads[1].urgent, true);
+
+    uploads[0].resolve();
+    await Promise.resolve();
+    assert.equal(manager.isHeld(mesh), true, 'the old batch cannot reveal the new binding');
+    assert.equal(mesh.__sfInstanceResidentCapacity, 0, 'the new instance buffer has not been uploaded yet');
+    assert.equal(manager.snapshot().inFlight, 1, 'the new batch keeps its own in-flight membership');
+    assert.equal(manager.snapshot().queued, 0, 'the old completion did not enqueue a duplicate upload');
+
+    uploads[1].resolve();
+    await Promise.resolve();
+    assert.equal(manager.isHeld(mesh), false);
+    assert.equal(mesh.__sfInstanceResidentCapacity, 8, 'only the new batch stamps the replacement buffer');
+  } finally {
+    manager.dispose();
+    scene.remove(mesh);
+    geometry.dispose();
+    mesh.material.dispose();
+    mesh.dispose();
+  }
+});
+
+test('a hung ambient upload cannot abandon a newer urgent upload', async () => {
+  let now = 0;
+  const uploads = [];
+  const manager = createResidencyManager({
+    now: () => now,
+    requestRoots: (roots, urgent) => new Promise((resolve) => uploads.push({ roots, urgent, resolve })),
+  });
+  const ambient = drawable({ parent: {} });
+  const urgent = drawable({ parent: {} });
+  try {
+    manager.holdRoot(ambient, 'bind', geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8));
+    assert.equal(manager.drainUploads(), 1);
+    now = 29500;
+    manager.holdRoot(urgent, 'bind', geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8), true);
+    assert.equal(manager.drainUploads(), 1);
+    assert.equal(uploads[1].urgent, true);
+    now = 30001;
+    manager.drainUploads();
+    assert.equal(manager.isHeld(urgent), true, 'only the expired ambient batch is abandoned');
+    assert.equal(manager.snapshot().inFlight, 1, 'the recent urgent batch stays in flight');
+    assert.equal(urgent.__sfResidencyFailOpen, false);
+    uploads[1].resolve();
+    await Promise.resolve();
+  } finally {
+    manager.dispose();
+  }
+});
+
+test('a late timed-out batch cannot free the lane owned by its successor', async () => {
+  let now = 0;
+  const uploads = [];
+  const manager = createResidencyManager({
+    now: () => now,
+    requestRoots: (roots) => new Promise((resolve) => uploads.push({ roots, resolve })),
+  });
+  const first = drawable({ parent: {} });
+  const second = drawable({ parent: {} });
+  const third = drawable({ parent: {} });
+  const secondGeometry = geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8);
+  try {
+    manager.holdRoot(first, 'bind', geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8));
+    assert.equal(manager.drainUploads(), 1);
+    now = 30001;
+    manager.holdRoot(second, 'bind', secondGeometry);
+    assert.equal(manager.drainUploads(), 1, 'the watchdog permits a successor batch');
+    uploads[0].resolve();
+    await Promise.resolve();
+    manager.holdRoot(third, 'bind', geometryWith(RESIDENCY_INLINE_UPLOAD_BYTES * 8));
+    now = 30202;
+    assert.equal(manager.drainUploads(), 0, 'the late completion cannot open the successor lane');
+    assert.equal(uploads.length, 2);
+
+    stampGeometryGpuResident(secondGeometry);
+    uploads[1].resolve();
+    await Promise.resolve();
+    now = 30403;
+    assert.equal(manager.drainUploads(), 1, 'the queued root starts after its real predecessor settles');
+    assert.equal(uploads.length, 3);
+  } finally {
+    manager.dispose();
+  }
+});
+
 test('a protected root is admitted inline, never hidden, and its stale hold is cleared', () => {
   const batches = [];
   const manager = createResidencyManager({ requestRoots: (roots) => { batches.push(roots.slice()); } });

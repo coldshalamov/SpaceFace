@@ -217,8 +217,8 @@ export function createResidencyManager(options = {}) {
   const pendingRoots = [];
   /** Dedupe: roots already waiting or in flight. */
   const pendingSet = new Set();
-  /** Roots currently handed to the upload driver. */
-  const inFlight = new Set();
+  /** Roots currently handed to the upload driver, keyed by their exact batch generation. */
+  const inFlight = new Map();
   /** Held roots that could not enter the queue because it was full. */
   const heldUnqueued = new Set();
   /** Every currently held root, and its sweep order (swap-remove on release). */
@@ -230,8 +230,10 @@ export function createResidencyManager(options = {}) {
   let disposed = false;
   let drainInFlight = false;
   let drainStartedAt = 0;
+  let drainBatchToken = null;
   let urgentDrainInFlight = false;
   let urgentDrainStartedAt = 0;
+  let urgentDrainBatchToken = null;
 
   const counters = {
     frames: 0,
@@ -623,8 +625,8 @@ export function createResidencyManager(options = {}) {
     if (index >= 0) pendingRoots.splice(index, 1);
     pendingSet.delete(root);
     heldUnqueued.delete(root);
-    // A late in-flight settlement must not re-queue or release this root under its new
-    // owner; removing the membership makes settleRoot a no-op.
+    // Retire this binding's membership. A later settlement also checks its exact batch token,
+    // because a replacement binding may already have re-added the same pooled root.
     inFlight.delete(root);
     const held = isHeld(root);
     releaseRoot(root);
@@ -716,7 +718,7 @@ export function createResidencyManager(options = {}) {
     // In-flight roots released by the bounded deadline (or unbound) are upload work, not a
     // held drawable: they must not report as pending visibility.
     let count = pendingRoots.length + heldUnqueued.size;
-    for (const root of inFlight) {
+    for (const root of inFlight.keys()) {
       if (isHeld(root)) count += 1;
     }
     return count;
@@ -725,7 +727,7 @@ export function createResidencyManager(options = {}) {
   /** In-flight uploads that no longer hold a drawable (a released/given-up request). */
   function ghostedInFlightCount() {
     let count = 0;
-    for (const root of inFlight) if (!isHeld(root)) count += 1;
+    for (const root of inFlight.keys()) if (!isHeld(root)) count += 1;
     return count;
   }
 
@@ -770,8 +772,9 @@ export function createResidencyManager(options = {}) {
     return Math.min(RESIDENCY_RETRY_MAX_MS, RESIDENCY_RETRY_BASE_MS * (2 ** Math.max(0, attempts - 1)));
   }
 
-  function settleRoot(root, startedAt, error) {
-    if (!inFlight.delete(root)) return;
+  function settleRoot(root, startedAt, error, batchToken) {
+    if (inFlight.get(root) !== batchToken) return;
+    inFlight.delete(root);
     counters.uploadRuns += 1;
     const spent = clock() - startedAt;
     counters.uploadMsTotal += spent;
@@ -972,10 +975,11 @@ export function createResidencyManager(options = {}) {
     return drainCadence(clock(), pendingCount());
   }
 
-  function abandonHungDrain() {
+  function abandonHungDrain(batchToken) {
     // One hung driver promise must not pin the queue or hold bodies forever. The hold
-    // deadline already frees the roots; drop the ghost in-flight membership too.
-    for (const root of Array.from(inFlight)) {
+    // deadline already frees the roots; drop only that batch's in-flight membership.
+    for (const [root, token] of inFlight) {
+      if (token !== batchToken) continue;
       inFlight.delete(root);
       if (isHeld(root)) failOpenRoot(root);
       else releaseRoot(root);
@@ -996,13 +1000,15 @@ export function createResidencyManager(options = {}) {
     const cadence = drainCadence(now, pending);
     if (now - lastDrainAt < cadence) return 0;
     if (drainInFlight && (now - drainStartedAt) >= RESIDENCY_DRAIN_INFLIGHT_WATCHDOG_MS) {
-      abandonHungDrain();
+      abandonHungDrain(drainBatchToken);
       drainInFlight = false;
+      drainBatchToken = null;
     }
     if (urgentDrainInFlight
         && (now - urgentDrainStartedAt) >= RESIDENCY_DRAIN_INFLIGHT_WATCHDOG_MS) {
-      abandonHungDrain();
+      abandonHungDrain(urgentDrainBatchToken);
       urgentDrainInFlight = false;
+      urgentDrainBatchToken = null;
     }
     expireHoldDeadlines(now);
     sweepResidentHolds(RESIDENCY_RESIDENT_SWEEP_PER_DRAIN);
@@ -1017,6 +1023,7 @@ export function createResidencyManager(options = {}) {
     if (desiredUrgent ? urgentDrainInFlight : drainInFlight) return 0;
     if (singleFlight && (drainInFlight || urgentDrainInFlight)) return 0;
     const batch = [];
+    const batchToken = {};
     const limit = drainSelectionLimit(maxRoots, pending);
     const selectStartedAt = clock();
     let batchUrgent = null;
@@ -1036,7 +1043,7 @@ export function createResidencyManager(options = {}) {
         releaseRoot(root);
         continue;
       }
-      inFlight.add(root);
+      inFlight.set(root, batchToken);
       batch.push(root);
     }
     if (batch.length === 0) return 0;
@@ -1045,14 +1052,21 @@ export function createResidencyManager(options = {}) {
     if (urgentBatch) {
       urgentDrainInFlight = true;
       urgentDrainStartedAt = startedAt;
+      urgentDrainBatchToken = batchToken;
     } else {
       drainInFlight = true;
       drainStartedAt = startedAt;
+      drainBatchToken = batchToken;
     }
     const settleBatch = (error) => {
-      for (const root of batch) settleRoot(root, startedAt, error);
-      if (urgentBatch) urgentDrainInFlight = false;
-      else drainInFlight = false;
+      for (const root of batch) settleRoot(root, startedAt, error, batchToken);
+      if (urgentBatch && urgentDrainBatchToken === batchToken) {
+        urgentDrainInFlight = false;
+        urgentDrainBatchToken = null;
+      } else if (!urgentBatch && drainBatchToken === batchToken) {
+        drainInFlight = false;
+        drainBatchToken = null;
+      }
       admitHeldUnqueued();
     };
     let result;
@@ -1081,7 +1095,7 @@ export function createResidencyManager(options = {}) {
     for (const root of Array.from(pendingRoots)) releaseRoot(root);
     pendingRoots.length = 0;
     pendingSet.clear();
-    for (const root of Array.from(inFlight)) releaseRoot(root);
+    for (const root of inFlight.keys()) releaseRoot(root);
     inFlight.clear();
     for (const root of Array.from(heldUnqueued)) releaseRoot(root);
     heldUnqueued.clear();
@@ -1091,6 +1105,8 @@ export function createResidencyManager(options = {}) {
     heldSweepCursor = 0;
     drainInFlight = false;
     urgentDrainInFlight = false;
+    drainBatchToken = null;
+    urgentDrainBatchToken = null;
     refreshDelayPercentiles();
     return true;
   }
