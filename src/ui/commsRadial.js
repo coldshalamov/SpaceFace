@@ -50,7 +50,9 @@ const ACTION_ICON = Object.freeze({
   assist: '<path d="M12 4.2c4.1 0 7.4 3.3 7.4 7.4S16.1 19 12 19s-7.4-3.3-7.4-7.4S7.9 4.2 12 4.2Z"/><path d="M8.8 12h6.4M12 8.8v6.4"/>',
 });
 
-const KNOWN_ACTION_IDS = new Set(Object.keys(ACTION_ICON));
+const KNOWN_ACTION_IDS = new Set([...Object.keys(ACTION_ICON),
+  'resident_work', 'resident_local', 'resident_next', 'resident_accept',
+  'resident_track', 'resident_berth', 'resident_find', 'lantern_repair']);
 const CLOSE_GLYPH = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
 
 function entityById(state, id) {
@@ -146,9 +148,9 @@ export function resolveHailVisual(state, payload, availability = null) {
   const kind = String(availability && availability.kind || payload && payload.kind || '').trim();
   const role = roleWord(entity);
   const density = densityForContact(kind, role);
-  const pilot = callsign(entity, state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0);
-  const classWord = classWordFromOffer(payload, availability, entity);
-  const factionId = resolveFactionId(entity);
+  const pilot = payload?.residentName || callsign(entity, state && state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0);
+  const classWord = payload?.residentRole || classWordFromOffer(payload, availability, entity);
+  const factionId = payload?.residentFactionId || resolveFactionId(entity);
   return {
     targetId,
     pilot,
@@ -249,6 +251,9 @@ const DP_ACTION_ICON = Object.freeze({
   // 2026-10-26 finding 7.
   status: 'info', identify: 'scan', route: 'line', manifest: 'cargo', heave_to: 'offline', help: 'help',
   escort: 'patrol', recover: 'pod', steal: 'pirate', abandon: 'abandon', assist: 'repair',
+  resident_work: 'info', resident_local: 'info', resident_next: 'scan',
+  resident_accept: 'cargo', resident_track: 'line', resident_berth: 'line',
+  resident_find: 'line', lantern_repair: 'repair',
 });
 
 function wedgeIconSvg(actionId) {

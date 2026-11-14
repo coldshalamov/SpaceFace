@@ -7,6 +7,7 @@ import { lanternWardActorSpec } from '../src/world/lanternWardActors.js';
 import { lanternWardCanonicalAnchor } from '../src/data/lanternWardHardware.js';
 import { LANTERN_WARD_REPAIR_ACTION } from '../src/data/lanternWardHail.js';
 import { normalizeLanternWardConversation, stepLanternWardConversation } from '../src/missions/lanternWardConversation.js';
+import { stationContacts } from '../src/systems/stationContacts.js';
 
 function fixture() {
   const state = createGameState(7402), bus = createBus(), events = [], repairCalls = [];
@@ -40,6 +41,29 @@ test('ordinary Nessa hail describes a physical repair and dispatches its offered
   assert.equal(f.repairCalls.length, 1); assert.equal(f.repairCalls[0], f.nessa);
   assert.match(f.events.find(e => e.name === 'contactHail:response').payload.lines[0], /original lamp/);
   f.system.destroy();
+});
+
+test('physical Nessa repair consumes the choice before re-entry and cannot write into a successor save', () => {
+  for (const boundary of ['reentrant', 'generation', 'restore']) {
+    const f = fixture(), memory = Object.create(stationContacts);
+    memory.init({ state: f.state, bus: f.bus });
+    const offer = f.offer(), packet = { requestId: offer.requestId, targetId: 2, choice: LANTERN_WARD_REPAIR_ACTION };
+    let calls = 0;
+    f.system.registry.get('npcJobsRuntime').lanternWardRepair = () => {
+      calls += 1;
+      if (boundary === 'reentrant' && calls === 1) f.bus.emit('contactHail:choice', packet);
+      if (boundary === 'generation') f.nessa.occupantGeneration += 1;
+      if (boundary === 'restore') { f.state.player = createGameState(888).player; f.bus.emit('save:loaded', {}); }
+      return { ok: true };
+    };
+    f.bus.emit('contactHail:choice', packet); f.bus.emit('contactHail:choice', packet);
+    assert.equal(calls, 1, boundary);
+    assert.equal(f.state.player.stationContacts?.contact_nessa_venn?.talkCount || 0,
+      boundary === 'reentrant' ? 1 : 0, boundary);
+    assert.equal(f.events.filter(event => event.name === 'contactHail:response').length,
+      boundary === 'reentrant' ? 1 : 0, boundary);
+    memory.destroy(); f.system.destroy();
+  }
 });
 
 test('expired, unoffered and recycled-occupant hail actions cannot dispatch a repair', () => {

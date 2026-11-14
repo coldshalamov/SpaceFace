@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { applyLaneInputWrites, installSimCommandSink } from '../src/core/simLaneCommands.js';
 import { createCommsRadial } from '../src/ui/commsRadial.js';
+import { MAIN_TO_SIM_BUS_EVENTS } from '../src/core/mainToSimEventSurface.js';
 import { fakeDom } from './helpers/fake-dom.mjs';
 
 function commsDocument() {
@@ -66,6 +67,41 @@ function contactState() {
 }
 
 for (const lane of ['main', 'worker']) {
+  test(`${lane}: a selected resident berth exposes its native verbs in the existing comms fan`, () => {
+    const previousDocument = globalThis.document, doc = commsDocument();
+    globalThis.document = doc;
+    const state = contactState();
+    state.world.currentSectorId = 'sector_tethys_junction'; state.player.targetId = 2;
+    const station = { id: 2, type: 'station', alive: true, pos: { x: 300, z: 0 },
+      data: { stationId: 'station_tethys' } };
+    state.entities.set(2, station); state.entityList[1] = station;
+    const writes = [], uninstall = lane === 'worker' ? installSimCommandSink(command => writes.push(command)) : () => {};
+    const bus = createBus(), choices = [];
+    bus.on('contactHail:choice', payload => choices.push(payload));
+    const radial = createCommsRadial({ state, bus });
+    try {
+      doc.key('keydown', 'Alt');
+      const fan = doc.getElementById('sf-commsfan');
+      assert.equal(fan.hidden, false);
+      const initial = fan.querySelector('[data-k="wedgehost"]').children.filter(node => node.dataset.choice);
+      assert.ok(initial.some(node => node.dataset.choice === 'resident_work'), 'a resident never opens an empty fan');
+      assert.ok(initial.some(node => node.dataset.choice === 'resident_local'));
+      // This is the scanner reply arriving through either lane. Only its real request
+      // is dispatched; the synchronous UI probe cannot accept anything itself.
+      bus.emit('contactHail:offer', { requestId: 'native-resident', targetId: 2, kind: 'resident',
+        residentName: 'Mira', residentRole: 'Freight Seal Clerk', expiresAt: 40,
+        lines: ['Mira', 'The recorder has work.'], actions: [{ id: 'resident_accept', label: 'ACCEPT · 500 CR' }] });
+      const accept = fan.querySelector('[data-k="wedgehost"]').children.find(node => node.dataset.choice === 'resident_accept');
+      assert.ok(accept); accept.click();
+      assert.deepEqual(choices, [{ requestId: 'native-resident', targetId: 2, choice: 'resident_accept', source: 'pointer' }]);
+      assert.equal(MAIN_TO_SIM_BUS_EVENTS.has('contactHail:cancel'), true, 'closing the optional channel revokes actions across the worker bridge');
+    } finally {
+      radial.destroy(); uninstall();
+      if (previousDocument === undefined) delete globalThis.document;
+      else globalThis.document = previousDocument;
+    }
+  });
+
   test(`${lane}: first Alt hold opens nearest contact and stays open before a mirror reply`, () => {
     const previousDocument = globalThis.document;
     const doc = commsDocument();

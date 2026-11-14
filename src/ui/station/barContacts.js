@@ -1,4 +1,6 @@
 import { canonicalContactsForStation } from '../../data/stationResidents.js';
+import { lanternWardResidentFor, stationResidentWork, stationResidentLine } from '../../data/stationContactPresence.js';
+import { lanternWardWorkGuidance } from '../../data/lanternWardGuidance.js';
 import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
 import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './starterWorkdayConversation.js';
 import { kesslerFreightChoice, kesslerFreightReply } from './heliosFreightConversation.js';
@@ -515,6 +517,7 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   // nudges a procedural patron out rather than crowding the bar past four.
   let insertAt = 1;
   for (const canonical of canonicalContactsForStation(stationId)) {
+    canonical.line = stationResidentLine(state, stationId, canonical);
     if (canonical.canonicalKey === 'kessler') {
       const slipChoice = kesslerWeightSlipChoice(state, stationId);
       const workChoice = kesslerStarterWorkChoice(state, stationId);
@@ -570,7 +573,9 @@ export function generateContacts(stationId, state = {}, opts = {}) {
       erisChoirServed: state?.story?.flags?.eris_choir_bar_service?.active === true
         && state.story.flags.eris_choir_bar_service.served === true,
     }] : [];
+  const wardResident = stationId === 'station_helios' ? lanternWardResidentFor(state) : null;
   const listed = [
+    ...(wardResident ? [wardResident] : []),
     ...erisChair, ...endingCourier, ...storyBuyerContacts(state, stationId), ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
   ];
   stampUnheardBarRumor(listed, stationId, state);
@@ -1216,6 +1221,8 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
   if (war) add('War', `${factionShortName(war.rivalId)} — the front holds ${warFrontName(war)}`, 'bad');
 
   const memory = stationContactMemoryFor(state, contact.id);
+  const work = contact.canonicalKey && stationResidentWork(state, stationId);
+  if (work && work.status !== 'available') add(work.glyph, `${work.label}: ${work.title}`, work.status === 'ready' ? 'ok' : 'info');
   // Record before Contact: a two-tag row must never clip the live counter (War owns the first
   // slot; Record owns the second when the contact has filed a deed).
   const deedMemory = contactDeedMemory(contact.id, state.player?.stationContactCounters);
@@ -1433,6 +1440,19 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: "It stays open. The courier doesn't repeat the offer." };
   }
   const state = ctx.state || {};
+  if (contact?.canonicalKey === 'nessa_venn') {
+    const resident = lanternWardResidentFor(state);
+    if (!resident) return { text: 'Nessa’s field channel is unavailable. The Ward’s last recorded work remains in your log.' };
+    if (choiceId === 'ward_route') {
+      const target = state.entities?.get(resident.physicalTargetId);
+      if (target?.pos) ctx.bus?.emit?.('ui:setCourse', { pos: { x: target.pos.x, z: target.pos.z },
+        targetEntityId: target.id, label: 'Nessa Venn · Lantern Ward launch',
+        reason: 'Hail the working launch for the actual lamp handoff.', waypointKind: 'contact',
+        arrivalRadius: 40, autopilot: false });
+      return { text: lanternWardWorkGuidance(state).lines.join(' ') };
+    }
+    return { text: resident.line };
+  }
   if (stationId === BORROWED_SUN.stationId && !barStationInfo(stationId, state)) {
     return { text: 'The Borrowed Sun has no current berth record here. Its carrier must confirm the next visit.' };
   }

@@ -21,7 +21,7 @@ import { isFragileCommodity } from './fragileCargo.js';
 import { sectorFieldOreWeights } from '../data/mining.js';
 import { towClassMassFor } from './shipCapabilities.js';
 import { customsWeirForSector } from '../world/customsWeir.js';
-import { ALL_STATIONS, BRANCH_INTRO_BY_FACTION, BULK_HAUL_FEE, BULK_HAUL_MIN_MASS_U, BULK_HAUL_PAY_MULT, BULK_HAUL_TYPE, CMDTY_BY_ID, CONTRABAND_CMDTYS, LEGAL_TRADE_CMDTYS, MINEABLE_CMDTYS, ONBOARDING_CHOICE_LOOPS, ONBOARDING_CHOICE_SOURCE, POSTED_BOARD_SOURCE, SECTOR_BY_ID, SIZE_TIER, STATION_INFO, TYPE_BY_ID, TYPE_ORDER, campaign47aOutcomeKey, campaign47aRouteKind, cargoFootprint, clamp, completedEndgamePull, isCapitalBossMission, isCompetingStarvedRow, isFingerprintBoardSource, missionOfferMinRep, mulberryLocal, passengerIdentityFor, round, sectorDistanceWu, setPieceUpfrontCost, stampAuthoredTwist, stampCapitalBossTwist, stationInfoFor, withClauseBriefSuffix } from './missionShared.js';
+import { ALL_STATIONS, BRANCH_INTRO_BY_FACTION, BULK_HAUL_FEE, BULK_HAUL_MIN_MASS_U, BULK_HAUL_PAY_MULT, BULK_HAUL_TYPE, CMDTY_BY_ID, CONTRABAND_CMDTYS, LEGAL_TRADE_CMDTYS, MINEABLE_CMDTYS, ONBOARDING_CHOICE_LOOPS, ONBOARDING_CHOICE_SOURCE, POSTED_BOARD_SOURCE, SECTOR_BY_ID, SET_PIECE_DISPOSITION_OBJECTIVES, SIZE_TIER, STATION_INFO, TYPE_BY_ID, TYPE_ORDER, campaign47aOutcomeKey, campaign47aRouteKind, cargoFootprint, clamp, completedEndgamePull, isCapitalBossMission, isCompetingStarvedRow, isFingerprintBoardSource, missionOfferMinRep, mulberryLocal, passengerIdentityFor, round, sectorDistanceWu, setPieceUpfrontCost, stampAuthoredTwist, stampCapitalBossTwist, stationInfoFor, withClauseBriefSuffix } from './missionShared.js';
 import { AUTHORED_SET_PIECES, AUTHORED_SET_PIECE_SOURCE, AUTHORED_SET_PIECE_TYPE, CAPITAL_BOSS, CAPITAL_BOSSES, CAPITAL_BOSS_SOURCE, CAPITAL_BOSS_TYPE, MEGA_HEISTS, MEGA_HEIST_SOURCE, MISSION_TUNING, MISSION_TYPE_PHYSICAL_VERB, ONE_LOAD_CARGO_TYPES, PHYSICAL_MISSION_VARIANTS, RANK_CONTRACT_BY_FACTION, RANK_CONTRACT_SOURCE, SET_PIECE_MISSIONS, STORY_BRANCH_INTRO_TAG, buildAuthoredSetPieceOffer, buildCapitalBossOffer, buildMegaHeistOffer, hasContractsDesk, missionStandingGateForMinRep, offerHistoryMultiplier, offerHistoryTierFor, physicalMissionVariantFor, withBountyHeadMoney } from '../data/missions.js';
 import { LANDMARK_QUEST_SOURCE, validateLandmarkQuestOffer } from '../data/landmarkMissions.js';
 import { SET_PIECE_MISSION_SOURCE, buildSetPieceMissionOffers } from './setPieceMissionOffers.js';
@@ -29,7 +29,7 @@ import { SET_PIECE_FOLLOW_ON_SOURCE } from '../data/sandboxSetPieceFollowOns.js'
 import { BREAKAWAY_RECOVERY_TYPE, COUNTERWEIGHT_WATCH_TYPE, PQ019C_HEIST_SOURCE, PQ019C_HEIST_STATION_ID, PQ019C_HEIST_TYPE, buildBreakawayOffer, buildCounterweightOffer, buildHeistOffer, heistMissionPolicy } from '../data/heistMission.js';
 import { QUIET_BERTH_TYPE, SPLIT_MANIFEST_TYPE, YARD_BOARD_STATION_ID, YARD_WORK_SOURCE, buildQuietBerthOffer, buildSplitManifestOffer } from '../data/yardContracts.js';
 import { syncWakeHandoffOffer } from './wakeHandoffRuntime.js';
-import { attachClauses, attachConditions } from './contractClauses.js';
+import { attachClauses, attachConditions, CLAUSE_GAMBIT_SOURCE, reconstructClauseGambitOffer } from './contractClauses.js';
 import { counterweightRuntime, heistMissionRuntime } from '../missions/heistMissionRuntime.js';
 import { driveTender, tenderSpotRowRetained, TENDER_SPOT_SOURCE } from '../missions/tenderHaul.js';
 import { TENDER_HAUL_TUNING, TENDER_HAUL_TYPE, buildTenderOffer } from '../data/missions.js';
@@ -37,7 +37,7 @@ import { buildEndgameBoardOffers, buildMissionBoardContract, getPickSideStake } 
 import { activeOwnedShip, nextStarterStep } from '../data/starterJobs.js';
 import { raceCourseForSector } from '../data/raceCourses.js';
 import { attachTwistClauses, isMissionConditionRow, missionConditionById, serializableMissionCondition } from '../data/missionConditions.js';
-import { syncCaptainStandingOrders } from './captainStandingOrders.js';
+import { syncCaptainStandingOrders, captainStandingOfferPreflight } from './captainStandingOrders.js';
 import { syncColdburnBid } from './coldburnRey.js';
 import { dedupWarn } from '../core/warnDedup.js';
 import { sayHeistCue } from '../missions/heistMissionRuntime.js';
@@ -263,6 +263,50 @@ export const missionBoardOps = {
     syncColdburnBid(this, info, board);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
+  },
+
+  // Physical resident channels ask the canonical mission owner whether a posted row is
+  // usable. This read never withdraws offers, allocates a mission, loads cargo or charges.
+  contactOfferReadiness(stationId, missionId) {
+    let { offer } = this._findOffer(missionId);
+    if (!offer || offer.stationId !== stationId) return { ok: false, reason: 'That work is no longer posted here.' };
+    if (offer.source === CLAUSE_GAMBIT_SOURCE) {
+      offer = reconstructClauseGambitOffer(offer, this.state.missions.boards, this._epoch());
+      if (!offer) return { ok: false, reason: 'Those contract terms are no longer available.' };
+    }
+    if (Number.isFinite(offer.expiresAtEpoch) && offer.expiresAtEpoch <= this._epoch()) {
+      return { ok: false, reason: 'That offer has expired.' };
+    }
+    if (this._shortageOfferStale(offer)) return { ok: false, reason: 'The receiving station no longer needs this shipment.' };
+    if (offer.params && SET_PIECE_DISPOSITION_OBJECTIVES.has(offer.params.setPieceObjective)) {
+      const wreckId = offer.params.wreckId || offer.wreckId || offer.cause?.wreckId;
+      const bearing = this.state.player?.uniqueWrecks?.bearings?.[wreckId];
+      if (bearing?.phase === 'salvaged' && bearing.choiceId !== offer.params.wreckChoiceId) {
+        return { ok: false, reason: 'That wreck already has a different disposition.' };
+      }
+    }
+    if (offer.source === 'poiBehavior' && !validatePoiCausalOffer(offer).ok) {
+      return { ok: false, reason: 'That signal lead has gone cold.' };
+    }
+    const captain = captainStandingOfferPreflight(this.state, offer);
+    if (!captain.ok) return captain;
+    const cfg = this.state.missions.config || MISSION_TUNING;
+    if (this.state.missions.active.length >= (cfg.maxActive || 8)) {
+      return { ok: false, reason: 'Finish or leave an active contract before taking more work.' };
+    }
+    const preflight = this._acceptPreflight(offer);
+    if (!preflight.ok) return preflight;
+    const acceptCostCr = Math.max(0, Math.round(Number(offer.collateral_cr) || 0))
+      + setPieceUpfrontCost(offer, this.state);
+    if ((Number(this.state.player?.credits) || 0) < acceptCostCr) {
+      return { ok: false, reason: `Need ${acceptCostCr} cr for deposit and service fees.` };
+    }
+    // The normal dock UI is the physical cargo/terms handoff. Do not turn a radio
+    // conversation into remote sealed-cargo creation or an irreversible story choice.
+    const remoteSafe = !offer.preloadedCargo && !offer.storyTag && !offer.storyDisposition
+      && !offer.clauses?.length && !offer.params?.setPieceObjective && !offer.params?.workingBattlefield
+      && ['bounty_hunt', 'patrol_clear', 'mining_quota', 'recon_scan', 'salvage_retrieval'].includes(offer.type);
+    return { ok: true, acceptCostCr, remoteSafe, requiresDock: !remoteSafe };
   },
 
   _syncQuietPassageOffer(info, board) {

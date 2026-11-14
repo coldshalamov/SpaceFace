@@ -1,7 +1,8 @@
 import { playerBearingHyphen } from '../core/playerCompass.js';
 import { CONTACT_HAIL_RANGE, CONTACT_HAIL_REQUEST_TTL_S, CONTACT_HAIL_RECEIPT_TTL_S } from './contactHailConstants.js';
 export { CONTACT_HAIL_RANGE, CONTACT_HAIL_REQUEST_TTL_S, CONTACT_HAIL_RECEIPT_TTL_S } from './contactHailConstants.js';
-import { lanternWardHailOffer, lanternWardHailResponse } from './lanternWardHail.js';
+import { lanternWardHailOffer, lanternWardHailResponse, lanternWardLiveNessa } from './lanternWardHail.js';
+import { stationResidentChannel, createStationResidentOffer } from './stationContactPresence.js';
 import { winnowRecoveryHailLines } from '../world/vestaWinnowRecovery.js';
 import { pallasShiftStatus } from './pallasWorkShift.js';
 import { heliosFreightHailLine } from './heliosFreightHail.js';
@@ -678,6 +679,19 @@ export function contactHailAvailability(state) {
   }
   const tally=tallyThreeHail(state,target,player);
   if(tally)return tally;
+  if (target.data?.lanternWardActor === 'tug' && lanternWardLiveNessa(state) !== target) {
+    return unavailable('unresolved_target');
+  }
+  if (target.type === 'station') {
+    if (!player || player.alive === false) return unavailable('no_player');
+    const distance = distanceBetween(player, target);
+    if (distance > CONTACT_HAIL_RANGE) return unavailable('out_of_reveal_range');
+    const channel = stationResidentChannel(state, target);
+    if (!channel) return unavailable('unsupported_contact');
+    return { enabled: true, reason: null, targetId: target.id, kind: 'resident',
+      label: `HAIL ${channel.stationName}`, distance, entity: target,
+      stationId: channel.stationId, hasResidents: channel.residents.length > 0 };
+  }
   if (target.type !== 'ship' && target.type !== 'drone') return unavailable('unsupported_target');
   if (unresolvedContact(target)) return unavailable('unresolved_target');
   if (!player || player.alive === false) return unavailable('no_player');
@@ -1100,6 +1114,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
   const lantern = lanternWardHailOffer(state, availability, requestId, expiresAt);
   if (lantern) return lantern;
+  if (availability.kind === 'resident') return createStationResidentOffer(state, availability, requestId);
   if (availability.kind === 'variance_adjustment') {
     const target = availability.entity;
     if (state?.world?.currentSectorId !== VARIANCE_ADJUSTMENT_BERTH.sectorId
