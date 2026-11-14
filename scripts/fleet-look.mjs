@@ -9,6 +9,7 @@ import { createServer as createNetServer } from 'node:net';
 import { existsSync, mkdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { navigateToFleetLookReady } from './lib/fleetLookReadiness.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -138,8 +139,15 @@ try {
   if (args.init) await page.addInitScript(String(args.init));
   // 'commit' not 'load': the game's asset preload can hold the load event for minutes under
   // SwiftShader; scripts run fine once navigation commits (same workaround as flight-look).
-  await page.goto(server.url + '?dev=fleetlook', { waitUntil: 'commit', timeout: 180000 });
-  await page.waitForFunction(() => window.SF_fleetLookReady === true, null, { timeout: SHOT_TIMEOUT_MS });
+  try {
+    await navigateToFleetLookReady(page, server.url + '?dev=fleetlook', { timeoutMs: SHOT_TIMEOUT_MS });
+  } catch (error) {
+    writeFileSync(PARTIAL_REPORT_PATH, `${JSON.stringify({
+      runId: RUN_ID, startedAtUtc: RUN_STARTED_AT_UTC,
+      error: String(error), code: error?.code || null, stage: 'startup', logs: logs.slice(0, 80),
+    }, null, 2)}\n`);
+    throw error;
+  }
   // --sector=<id> applies that sector's authored light rig (sectorVisualProfiles) to the live
   // lights so bodies can be judged under e.g. Vesta's hot key or Pallas's cold one.
   if (args.sector) {

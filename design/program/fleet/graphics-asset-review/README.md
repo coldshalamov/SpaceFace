@@ -7,6 +7,23 @@ visual authority; see [the graphics front door](../../../../docs/visual-assets/R
 Use [faction direction](FACTION_DIRECTION.md) to connect a model's construction and finish to its
 actual owner, role and story, while checking the live asset selection before applying that direction.
 
+## Breadth-first work
+
+The owner's examples are fleet-wide rejection criteria, not a priority list of individual models.
+Unexplained transparent boxes, large flat monochrome surfaces, detached parts, harsh clipped glow,
+and mismatched material detail should prompt a check for the same cause across related assets.
+Judge a surface by its role, gameplay size and actual appearance. It needs a convincing material
+response and appropriate detail; an unfinished primitive or a featureless tinted box is not a
+finished cockpit or hull.
+
+Start with shared material, lighting, loading and assembly causes that affect many visible assets,
+then fix representative groups and move through the remaining inventory in batches. Do not hold the
+fleet review on one model while waiting for repeated long captures. Record failed or unfinished
+work and return when a concrete improvement can change it. The requested 20 substantive iterations
+are cumulative per asset across useful passes; never manufacture rounds or equate a count with a
+finished model. Check captured inputs and fatal browser errors promptly so broken render sessions do
+not occupy the shared lock for extended periods.
+
 ## Assets arriving through pull requests
 
 The owner extended this review to models, textures and visual systems arriving in concurrent
