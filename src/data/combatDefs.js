@@ -489,6 +489,21 @@ export const ATTACHMENT_DEFS = Object.freeze([
     limits: { maxPerOwner: 4 },
     cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
   },
+  {
+    // PRI-10b: the CR-FEED yard capstan — fixed quarantine hardware winding ONE marked pod
+    // toward the mouth on its own cable. The mission owner (furnaceCapstan.js) is the only
+    // controller: it cuts at measured reach, holds on command, and releases to a manual
+    // line. The 900 WU max is the cable's whole world; the break envelope is
+    // infrastructure-grade so ordinary pod drift never severs the yard's own line.
+    id: 'attachment_furnace_capstan', version: 1,
+    sourceSocketTags: ['tether'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: false },
+    minLength: 55, maxLength: 900,
+    break: { maxTension: 100000, maxImpulse: 10000, maxYank: 30000, graceTicks: 12 },
+    spring: { K: 640, zeta: 1.15, captureS: 0.45, maxForce: 16000, maxStretchRatio: 0.75 },
+    limits: { maxPerOwner: 1 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
 ]);
 
 export const COMBAT_PROFILES = Object.freeze([

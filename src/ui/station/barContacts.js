@@ -5,6 +5,7 @@ import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConve
 import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './starterWorkdayConversation.js';
 import { kesslerFreightChoice, kesslerFreightReply } from './heliosFreightConversation.js';
 import { kesslerCeresShiftChoice, kesslerCeresShiftReply } from './ceresShiftConversation.js';
+import { furnaceDetailChoices, furnaceDetailReply, isFurnaceDetailChoice } from './furnaceDetailConversation.js';
 import { commodityDisplayName } from '../commodityNames.js';
 import { localizeText } from '../../localization/sourceText.js';
 // Shared station-contact data, choices, replies, and map actions.
@@ -587,6 +588,7 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   stampDeedOpener(listed, stationId, state, info, opts && opts.deedSession);
   stampAceRouteRumor(listed, stationId, state);
   stampLastShiftLocalReport(listed, stationId, state);
+  stampFurnaceDetailChoices(listed, stationId, state);
   stampCollectiveHours(listed, stationId, state);
   stampQuinnsStool(listed, stationId, state);
   // The wake silences this room's ambient patrons, not its mission and service contacts.
@@ -676,6 +678,16 @@ function stampLastShiftLocalReport(contacts, stationId, state) {
   host.choices = [...getChoices(host.role, host), {
     id: 'last_shift_report', label: 'What did the Last Shift record establish?',
   }];
+}
+
+// The same refinery host can read the quarantine worksite's live slip without owning it.
+// Choices carry the record's own signature so a stale record can never answer as current.
+function stampFurnaceDetailChoices(contacts, stationId, state) {
+  if (stationId !== 'station_ceres') return;
+  const host = contacts.find(contact => contact.id === 'contact_station_ceres_0' && contact.role === 'barkeep');
+  if (!host) return;
+  const choices = furnaceDetailChoices(state, stationId, host);
+  if (choices.length) host.choices = [...(host.choices || getChoices(host.role, host)), ...choices];
 }
 
 function lastShiftLocalReply(state, stationId, contact) {
@@ -1459,6 +1471,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: 'The Borrowed Sun has no current berth record here. Its carrier must confirm the next visit.' };
   }
   if (contact && contact.storyBuyer) return storyBuyerReply(contact, choiceId);
+  if (isFurnaceDetailChoice(choiceId)) return furnaceDetailReply(ctx, stationId, contact, choiceId);
   if (choiceId === 'last_shift_report') return lastShiftLocalReply(state, stationId, contact);
   if (contact && contact.id === SORI_COMPARISON_CONTACT_ID) return soriComparisonReply(state, stationId, choiceId);
   if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);

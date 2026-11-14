@@ -87,7 +87,7 @@ export function furnaceWorksiteFocus(m, state) {
     targetEntityId: held ? null : e?.id || null,
     sectorId: held || !lot ? FURNACE_INTAKE.sectorId : sectorMembershipAtGlobal(e?.pos || lot.pos),
     label: held ? 'CR-FEED — release ore across the lip' : 'Infested hauler — disposal pods',
-    reason: `${m.params.furnaceFeeds || 0}/3 hauler lots received; ${m.params.furnaceLosses || 0} lost. ${inBank ? 'The marked load is on the intake-aligned east bank; take the remaining lot nearest the intake first. ' : 'Follow the current marked load position. '}Tow or fling each marked pod into the open amber ring; ordinary rock does not settle these lots.`,
+    reason: `${m.params.furnaceFeeds || 0}/3 hauler lots received; ${m.params.furnaceLosses || 0} lost. ${inBank ? 'The marked load is on the intake-aligned east bank; take the remaining lot nearest the intake first. ' : 'Follow the current marked load position. '}Tow or fling each marked pod into the open amber ring, or hail the yard gantry at the mouth to wind one in on its cable; ordinary rock does not settle these lots.`,
   };
 }
 

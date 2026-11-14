@@ -9,6 +9,9 @@
 import { furnaceMouthGlobal, furnaceReceivingJob } from '../missions/furnaceWorksite.js';
 import { syncFurnaceReceivingLane, noteFurnaceReceivingBrief } from '../missions/furnaceReceivingLane.js';
 import { reconcileFurnaceCasing, noteFurnaceCasingPickup, noteFurnaceCasingBurned } from '../missions/furnaceCasingReturn.js';
+import { initFurnaceCapstan, stepFurnaceCapstan, syncFurnaceCapstan,
+  removeFurnaceCapstan } from '../missions/furnaceCapstan.js';
+import { noteFurnaceArrival, furnaceReceiptLine, furnaceDetailRead } from '../missions/furnaceArrivalScene.js';
 import { FURNACE_INTAKE } from '../data/furnace.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 
@@ -47,6 +50,7 @@ export function createFurnaceIntake() {
     init(ctx) {
       this.destroy();
       this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers || {};
+      this.registry = ctx.registry || null;
       this._unsubs = []; this._restoring = false;
       const on = (event, fn) => {
         const off = this.bus?.on(event, fn); if (typeof off === 'function') this._unsubs.push(off);
@@ -67,6 +71,7 @@ export function createFurnaceIntake() {
       on('mission:completed', () => this._syncLane());
       on('mission:failed', () => this._syncLane());
       on('pickup:collected', (p) => noteFurnaceCasingPickup(this.state, p));
+      initFurnaceCapstan(this, on);
       this._sync();
     },
     destroy() {
@@ -107,6 +112,7 @@ export function createFurnaceIntake() {
       }
       this._laneGuideId = null;
       this._laneJobId = null;
+      removeFurnaceCapstan(this);
     },
     _sync() {
       if (!this.state?.story || this._restoring) return;
@@ -117,22 +123,29 @@ export function createFurnaceIntake() {
       const flags = this._flags();
       if (flags && flags[FURNACE_INTAKE.announceFlag] !== true) {
         flags[FURNACE_INTAKE.announceFlag] = true;
-        this.bus?.emit('comms:popup', {
-          id: 'furnace_intake_announce', sender: FURNACE_INTAKE.sender, category: 'story',
-          text: FURNACE_INTAKE.announce, ttl: 9, persist: false,
-        });
+        // While the quarantine detail is active its own arrival line carries the yard —
+        // the generic intake call would say the same mouth twice.
+        if (!furnaceDetailRead(this.state)?.active) {
+          this.bus?.emit('comms:popup', {
+            id: 'furnace_intake_announce', sender: FURNACE_INTAKE.sender, category: 'story',
+            text: FURNACE_INTAKE.announce, ttl: 9, persist: false,
+          });
+        }
       }
       this._syncLane();
       reconcileFurnaceCasing(this);
     },
     _syncLane() {
       if (!this.state || this._restoring) return;
-      syncFurnaceReceivingLane(this, this._adventure() ? furnaceReceivingJob(this.state) : null);
+      const job = this._adventure() ? furnaceReceivingJob(this.state) : null;
+      syncFurnaceReceivingLane(this, job);
+      syncFurnaceCapstan(this, job);
     },
     /** The mouth is a hazard ring: anything edible crossing the lip is taken, whatever
      *  the speed — flinging is the intended delivery. Once per body per tick. */
-    update() {
+    update(dt) {
       if (this._restoring || !this._adventure()) return;
+      stepFurnaceCapstan(this, dt);
       const list = [...(this.state?.entityList || [])];
       const mouth = furnaceMouthGlobal();
       const r2 = FURNACE_INTAKE.mouthRadius * FURNACE_INTAKE.mouthRadius;
@@ -143,6 +156,9 @@ export function createFurnaceIntake() {
         const dx = pos.x - mouth.x, dz = pos.z - mouth.z;
         if (dx * dx + dz * dz > r2) continue;
         e._furnaceTaken = true;
+        // A validated marked lot is read by the mission ledger's own callout — the yard's
+        // generic burn line must not say the same feed twice.
+        const markedLot = furnaceReceiptLine(this.state, e) != null;
         noteFurnaceCasingBurned(this.state, e);
         const flags = this._flags();
         if (flags) {
@@ -158,12 +174,15 @@ export function createFurnaceIntake() {
           sectorId: FURNACE_INTAKE.sectorId,
           count: flags ? flags[FURNACE_INTAKE.countFlag] : undefined,
         });
-        this.bus?.emit('comms:popup', {
-          id: `furnace_fed_${e.id}`, sender: FURNACE_INTAKE.sender, category: 'info',
-          text: FURNACE_INTAKE.fed, ttl: 6, persist: false,
-        });
+        if (!markedLot) {
+          this.bus?.emit('comms:popup', {
+            id: `furnace_fed_${e.id}`, sender: FURNACE_INTAKE.sender, category: 'info',
+            text: FURNACE_INTAKE.fed, ttl: 6, persist: false,
+          });
+        }
         this.helpers?.removeEntity?.(e.id);
       }
+      noteFurnaceArrival(this);
       noteFurnaceReceivingBrief(this);
       reconcileFurnaceCasing(this);
     },

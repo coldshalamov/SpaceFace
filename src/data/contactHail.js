@@ -47,6 +47,9 @@ import {
 } from './varianceAdjustmentBerth.js';
 import { SLATE_COLUMN } from './slate.js';
 import { pluralWord } from '../core/numberFormat.js';
+import { furnaceCapstanAvailability, furnaceCapstanOffer,
+  furnaceCapstanResponse } from '../missions/furnaceCapstan.js';
+import { furnaceObserver, furnaceObserverReply } from './furnaceShiftContact.js';
 
 
 // Asteroid subset latched on {entityIndexVersion, state.entities}: hail/status lookups used
@@ -679,6 +682,10 @@ export function contactHailAvailability(state) {
   }
   const tally=tallyThreeHail(state,target,player);
   if(tally)return tally;
+  // The quarantine gantry answers its own channel before the ship/drone gate — it is a
+  // fixed fx body with a stamped occupant identity, never a loose prop.
+  const furnaceCapstan = furnaceCapstanAvailability(state, target);
+  if (furnaceCapstan) return furnaceCapstan;
   if (target.data?.lanternWardActor === 'tug' && lanternWardLiveNessa(state) !== target) {
     return unavailable('unresolved_target');
   }
@@ -1112,6 +1119,9 @@ function patrolGrievanceHail(state, entity) {
 
 export function createContactHailOffer(state, availability, requestId, expiresAt) {
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
+  if (availability.kind === 'furnace_capstan') {
+    return furnaceCapstanOffer(state, availability, requestId, expiresAt);
+  }
   const lantern = lanternWardHailOffer(state, availability, requestId, expiresAt);
   if (lantern) return lantern;
   if (availability.kind === 'resident') return createStationResidentOffer(state, availability, requestId);
@@ -1225,12 +1235,21 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
         && traderManifestForTarget(state, availability.entity)) {
       actions.push({ id: 'manifest', label: 'MANIFEST' });
     }
+    // Jorah alone carries the seam-haul ledger that mentions the sealed refinery; the
+    // action replaces an IDENTIFY he would only answer with his own route.
+    const observer = furnaceObserver(state, availability.entity);
+    if (observer) {
+      const slot = actions.findIndex(action => action.id === 'identify');
+      if (slot >= 0) actions[slot] = { id: 'old_refinery', label: 'CLOSED REFINERY' };
+      else if (actions.length < 3) actions.push({ id: 'old_refinery', label: 'CLOSED REFINERY' });
+    }
     const remembered = availability.rescuedWorkerMemory;
     return {
       requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
       lines: charon ? charon.compact : [`${name} · WORKING TRAFFIC`,
         remembered ? rescuedWorkerVoiceLine(remembered) : heliosFreight || voice],
       actions,
+      ...(observer ? { furnaceObserver: observer } : {}),
     };
   }
   const priorityItinerary = availability.priorityCourierItinerary;
@@ -1266,12 +1285,15 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
   if (pallasShiftStatus(state, availability.entity)) actions.unshift({ id: 'status', label: 'STATUS' });
   if (availability.manifestAvailable) actions.push({ id: 'manifest', label: 'MANIFEST' });
   if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
+  const observer = furnaceObserver(state, availability.entity);
+  if (observer && actions.length < 3) actions.push({ id: 'old_refinery', label: 'CLOSED REFINERY' });
   const remembered = availability.rescuedWorkerMemory;
   return {
     requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
     lines: charon ? charon.compact : [`${name} · CIVILIAN FREIGHT`,
       remembered ? rescuedWorkerVoiceLine(remembered) : heliosFreight || voice],
     actions,
+    ...(observer ? { furnaceObserver: observer } : {}),
   };
 }
 
@@ -1971,6 +1993,7 @@ function priorityCourierStatusText(state, target) {
 }
 
 export function createContactHailResponse(state, offer, choice, authority = {}) {
+  if (offer?.kind === 'furnace_capstan') return furnaceCapstanResponse(state, offer, choice);
   if (offer?.lanternWardHail) return lanternWardHailResponse(state, offer, choice, authority.lanternRepair);
   if (!offer || (offer.kind !== 'patrol' && offer.kind !== 'trader' && offer.kind !== 'worker'
     && offer.kind !== 'ace' && offer.kind !== 'variance_adjustment')) {
@@ -1999,6 +2022,15 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
   let line = null, detailLines = null;
   const pallas = pallasShiftStatus(state, target);
   const heliosFreight = combatDriveDisabled(state, target) ? null : heliosFreightHailLine(state, target);
+  if (id === 'old_refinery') {
+    if (!offer.actions?.some(action => action.id === id)) return null;
+    const lines = furnaceObserverReply(state, target, offer);
+    if (!lines) return null;
+    return {
+      requestId: offer.requestId, targetId: target.id, kind: offer.kind, choice: id,
+      expiresAt: (Number(state.simTime) || 0) + CONTACT_HAIL_RECEIPT_TTL_S, lines,
+    };
+  }
   if (target.data?.activityActorSlotId === 'helios_starter_ore_carrier'
       && id === 'route' && (offer.kind === 'trader' || offer.kind === 'worker')
       && offer.actions?.some(action => action.id === 'route')) {

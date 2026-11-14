@@ -28,6 +28,7 @@ import {
   barContactIntelTags,
   barRegularStoryLine,
 } from '../barContacts.js';
+import { furnaceDetailChoices, isFurnaceDetailChoice } from '../furnaceDetailConversation.js';
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
 import { mountContactPortrait } from '../../portraitArt.js';
 import { createWaveform, createVoiceArc, voiceEnvelope } from '../../orrery/waveform.js';
@@ -158,6 +159,7 @@ export function createBarScreen(ctx) {
   let erisServedVisitId = null;
   let erisLastReply = null;
   let saidText = null;   // what the selected contact just said
+  let furnaceSaid = false;  // saidText was minted from the quarantine slip — dies with its record
   // ORRERY (design/frontend/ORRERY.md §6 Bar): the portrait as cinema, the line typed as it is
   // spoken with a Waveform breathing under the name, the words resolving on arrival.
   let wave = null;
@@ -853,6 +855,11 @@ export function createBarScreen(ctx) {
     const st = ctx.state || {};
     const c = selected(st); if (!c) return;
     const choiceId = b.getAttribute('data-choice');
+    // A furnace-detail button is minted with the slip's own signature — a hidden screen,
+    // a changed contact, or a record that moved on must not answer as current or fire
+    // its tracking/navigation intents.
+    if (isFurnaceDetailChoice(choiceId)
+        && (!visible || !furnaceDetailChoices(st, sid(), c).some(row => row.id === choiceId))) return;
     if (c.canonicalKey === 'eris_choir_chair' && !erisOpenAnnounced) enterErisVisit();
     if (c.canonicalKey === 'eris_choir_chair' && choiceId === 'free_drink') erisLastReply = null;
     if (ctx.bus) {
@@ -879,6 +886,7 @@ export function createBarScreen(ctx) {
       pinnedContact = { ...result.pinContact, pinStationId: sid() };
     }
     saidText = (result && result.text) || 'They shrug.';
+    furnaceSaid = !!(result && result.furnaceDetailAnswer);
     if (c.canonicalKey === 'eris_choir_chair' && erisLastReply?.visitId === erisVisitId()) {
       saidText = erisLastReply.outcome === 'settled' ? 'Your drink for this visit has been served.'
         : 'The barkeep cannot pour just now. Try again shortly.';
@@ -943,6 +951,19 @@ export function createBarScreen(ctx) {
     ctx.bus?.on(event, handler);
     return () => ctx.bus?.off(event, handler);
   });
+  // A slip answer is only honest against the record it was read from. Save transitions
+  // and screen swaps retire it — the click-time signature guard covers everything else.
+  const offFurnaceLifecycle = ['save:restoring', 'save:loaded'].map((event) => {
+    const handler = () => {
+      if (!furnaceSaid) return;
+      furnaceSaid = false;
+      saidText = null;
+      if (visible) renderAll(ctx.state || {});
+    };
+    ctx.bus?.on?.(event, handler);
+    return () => ctx.bus?.off?.(event, handler);
+  });
+
   const offErisReceipt = ctx.bus?.on?.('comms:log', (event) => {
     if (sid() !== 'station_eris_margin' || event?.source !== 'eris_choir_chair'
         || (event.outcome !== 'settled' && event.outcome !== 'refused') || event.visitId !== erisVisitId()) return;
@@ -966,6 +987,7 @@ export function createBarScreen(ctx) {
     onHide() {
       visible = false;
       erisOpenAnnounced = false;
+      if (furnaceSaid) { furnaceSaid = false; saidText = null; }
       const leavingVisitId = erisVisitId();
       // A station overlay hides the shell but leaves this tab mounted. Only a real tab
       // departure removes it; defer until the station has swapped its panel.
@@ -981,6 +1003,7 @@ export function createBarScreen(ctx) {
     dispose() {
       visible = false;
       offRecognition.forEach((off) => off());
+      offFurnaceLifecycle.forEach((off) => off());
       if (typeof offErisReceipt === 'function') offErisReceipt();
       pinnedContact = null;
       if (typeof offDockDeed === 'function') offDockDeed();
