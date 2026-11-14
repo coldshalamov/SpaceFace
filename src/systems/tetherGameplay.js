@@ -8,6 +8,7 @@
 // ADMISSION only (selection and the fresh press both fail closed with the same blocked reason the
 // latch will consume). A physics/terrain owner may still override isMasslineObstructed. A line
 // already carried is never severed because a rock crosses it.
+import { openingBeforeClaim } from "../onboarding/openingQuiet.js";
 import {
   classifyMasslineIntent,
   MASSIVE_ANCHOR_MIN_MASS,
@@ -704,12 +705,22 @@ export const tetherGameplay = {
       this.bus.emit('tether:latchDenied', denial);
       return;
     }
+    // OPENING-1b: until the first latch lands, the marked loose rock outranks passing traffic freight
+    // within reach - the first latch is the lesson, never a hauler's cargo.
+    let swappedToRock = false;
+    if (openingBeforeClaim(state) && !(state.onboarding.beatDoneAt && state.onboarding.beatDoneAt.tether != null)
+        && !(target.data && target.data.rescueRole === 'rock')) {
+      const rock = (state.entityList || []).find((e) => e && e.alive !== false && e.data && e.data.rescueRole === 'rock');
+      if (rock && rock.pos && player.pos && Math.hypot(rock.pos.x - player.pos.x, rock.pos.z - player.pos.z) <= 240) {
+        target = rock; swappedToRock = true;
+      }
+    }
     if (target.fieldResident) {
       target = promoteAsteroidFieldRock(state, target.id, this.helpers, 'tether') || target;
     }
 
     // Both ends leave the tether socket, or the measured hardpoint when the body has no socket.
-    const attachWorlds = contextualAttachmentWorlds(player, target, latch.targetWorld);
+    const attachWorlds = contextualAttachmentWorlds(player, target, swappedToRock ? undefined : latch.targetWorld);
     const result = attachments.create({
       defId: TETHER_DEF_ID,
       ownerId: player.id,
