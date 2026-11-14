@@ -44,7 +44,7 @@ export const TIP_JAR_TUNING = Object.freeze({
 });
 
 export const JAR_SALT = 'plantsPl275Jar';
-export const WASH_LINE = 'Pressure wash was already on the hull when you landed.';
+export const WASH_LINE = 'The wash was already done when you landed.';
 export const MIN_LINE = 'Minimum service. The jar remembers fingers.';
 
 /** The jar's fixed spot on the fitting-berth apron, hash-derived bearing. */

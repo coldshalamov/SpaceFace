@@ -116,7 +116,7 @@ export function createPl357WarmGrid() {
         d.dockLampsFlashing = true;
         d.dockLampFlashUntil = now + 0.6;
         const id = `plants:pl357:metered:${p.stationId}:${Math.round(now)}`;
-        this.bus.emit('comms:popup', { id, sender: 'THE GRID', category: 'traffic', text: 'The grid meters you from zero. The grace went to somebody else.', ttl: 7, persist: false });
+        this.bus.emit('comms:popup', { id, sender: 'THE GRID', category: 'traffic', text: 'Grid meters you from zero. Grace went elsewhere.', ttl: 7, persist: false });
         this.bus.emit(PLANTS_METERED_EVENT, { stationId: p.stationId, t: now });
         return;
       }
@@ -151,7 +151,7 @@ export function createPl357WarmGrid() {
       fuel.current = Math.max(fuel.current, Math.min(fuel.max, WARM_GRID_TUNING.launchMinUnits));
       d[PL_357_GRACE_STAMP] = day;
       const id = `plants:pl357:grace:${p.stationId}:${Math.round(now)}`;
-      this.bus.emit('comms:popup', { id, sender: 'THE GRID', category: 'traffic', text: 'The berth grid topped you to launch minimum. The meter never woke.', ttl: 6, persist: false });
+      this.bus.emit('comms:popup', { id, sender: 'THE GRID', category: 'traffic', text: 'Topped to launch minimum. The meter never woke.', ttl: 6, persist: false });
       this.bus.emit('audio:cue', { id: 'confirm', position: null, gain: 0.4, rate: 1.0 });
       this.bus.emit(PLANTS_GRID_EVENT, { stationId: p.stationId, fuel: fuel.current, t: now });
     },

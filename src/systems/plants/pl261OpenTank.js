@@ -147,7 +147,7 @@ export function createPl261OpenTank() {
       pod.data.scanLabel = "The fuel hatch was left unlocked — one tank's worth, tab chalked to nobody";
       this._tanks.set(stationId, pod.id);
       const id = `plants:pl261:open:${stationId}:${Math.round(now)}`;
-      this.bus.emit('comms:popup', { id, sender: 'THE HATCH', category: 'traffic', text: "The hatch is unlocked. One tank's worth, tab chalked to nobody.", ttl: 7, persist: false });
+      this.bus.emit('comms:popup', { id, sender: 'THE HATCH', category: 'traffic', text: "Hatch unlocked: one tank's worth, chalked to nobody.", ttl: 7, persist: false });
       this.bus.emit('audio:cue', { id: 'sfx_vent_chime', position: null, gain: 0.35, rate: 0.9 });
       this.bus.emit(PLANTS_TANK_EVENT, { kind: 'unlocked', stationId, podId: pod.id, t: now });
     },

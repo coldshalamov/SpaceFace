@@ -29,7 +29,7 @@ export const PARADE_TUNING = Object.freeze({
   memoryCap: 8,
 });
 
-export const PARADE_HOME_LINE = 'Whoever kept the light swept your berth and stocked it.';
+export const PARADE_HOME_LINE = 'Swept and stocked, by whoever kept the light.';
 export const PARADE_COLD_LINE = 'Swept, yes. But the light was kept cold.';
 
 function finite(v, f = 0) {

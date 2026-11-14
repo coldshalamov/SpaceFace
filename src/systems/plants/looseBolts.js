@@ -46,7 +46,7 @@ export const LOOSE_BOLTS_TUNING = Object.freeze({
 });
 
 export const GATE_SALT = 'plantsPl281Gate';
-export const TOOK_LINE = 'The gate box is gone. Someone took it home.';
+export const TOOK_LINE = 'Gate box is gone. Someone took it home.';
 export const GONE_CHALK = 'GATE \u2014 NO BOX';
 
 /** The yard gate: a fixed chalked spot, hash-derived bearing. */

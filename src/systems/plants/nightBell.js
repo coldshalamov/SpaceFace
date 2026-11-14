@@ -48,7 +48,7 @@ export const NIGHT_BELL_TUNING = Object.freeze({
 
 export const BELL_SALT = 'plantsPl284Bell';
 export const PALLET_LABEL = 'BLANKET & HOT PACK';
-export const DOWN_LINE = 'The bell comes down. Somebody rang it for nothing.';
+export const DOWN_LINE = 'Bell comes down. Somebody rang it for nothing.';
 
 /** Night band of the shared plant day. */
 export function nightAt(simTime, t = NIGHT_BELL_TUNING) {

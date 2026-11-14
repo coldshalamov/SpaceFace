@@ -123,7 +123,7 @@ export function createPl360RainCheck() {
         d[PL_360_COMP_STAMP] = now + RAIN_CHECK_TUNING.yearS;
         this._spawnChalk(station, now);
         const id = `plants:pl360:saved:${stationId}:${Math.round(now)}`;
-        this.bus.emit('comms:popup', { id, sender: 'THE BOARD', category: 'traffic', text: 'You saved the station. Your docking is comped — your name is on the board.', ttl: 8, persist: false });
+        this.bus.emit('comms:popup', { id, sender: 'THE BOARD', category: 'traffic', text: 'Station saved. Docking comped. Name\u2019s on the board.', ttl: 8, persist: false });
         this.bus.emit('audio:cue', { id: 'confirm', position: null, gain: 0.5, rate: 1.0 });
         this.bus.emit(PLANTS_COMP_EVENT, { kind: 'saved', stationId, until: d[PL_360_COMP_STAMP], t: now });
       }
@@ -156,7 +156,7 @@ export function createPl360RainCheck() {
             if (!(Number.isFinite(compUntil) && compUntil > now)) continue;
             d[PL_360_FINE_STAMP] = now + RAIN_CHECK_TUNING.fineS;
             const id = `plants:pl360:fine:${Math.round(now)}`;
-            this.bus.emit('comms:popup', { id, sender: 'THE BOARD', category: 'traffic', text: 'Selling the chalk? The board keeps the comp, adds a fine — your name stays up there anyway.', ttl: 8, persist: false });
+            this.bus.emit('comms:popup', { id, sender: 'THE BOARD', category: 'traffic', text: 'Sold the chalk? Fine added. Name stays up.', ttl: 8, persist: false });
             this.bus.emit('audio:cue', { id: 'ui_deny', position: null, gain: 0.5, rate: 0.9 });
             this.bus.emit(PLANTS_FINE_EVENT, { kind: 'sold', stationId: (station.data && station.data.stationId) || station.id, until: d[PL_360_FINE_STAMP], t: now });
             break;
@@ -178,7 +178,7 @@ export function createPl360RainCheck() {
         station.data.dockLampsFlashing = true;
         station.data.dockLampFlashUntil = now + 0.6;
         const id = `plants:pl360:finedock:${p.stationId}:${Math.round(now)}`;
-        this.bus.emit('comms:popup', { id, sender: 'THE BOARD', category: 'traffic', text: 'Docking under the fine. The chalk with your name stays up.', ttl: 6, persist: false });
+        this.bus.emit('comms:popup', { id, sender: 'THE BOARD', category: 'traffic', text: 'Docking under the fine. Your chalk stays up.', ttl: 6, persist: false });
         this.bus.emit(PLANTS_FINE_EVENT, { kind: 'docked_fined', stationId: p.stationId, t: now });
         return;
       }

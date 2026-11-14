@@ -54,7 +54,7 @@ export const THE_SAMPLER_TUNING = Object.freeze({
 
 export const STALL_SALT = 'plantsPl291Stall';
 export const TASTE_LINE = 'First taste\u2019s free. No hurry.';
-export const QUEUE_LINE = 'Back of the queue. You could have skipped it.';
+export const QUEUE_LINE = 'Back of the queue. You could\u2019ve skipped.';
 export const TASTE_LABEL = 'FIRST TASTE';
 
 /** The stall: a fixed chalked spot, hash-derived bearing. */

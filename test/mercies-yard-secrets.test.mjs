@@ -1009,7 +1009,7 @@ test('PL-366 wrong choice: game it with a token — it returns exactly what you 
   step(plant, state);
   assert.equal(bus.typesOf(PL_366_TOKEN_EVENT).length, 1);
   assert.equal(state.story.flags.plantsPl366Spent, true);
-  assert.ok(popupTexts(bus).includes('Exactly what you gave. It will not open again.'));
+  assert.ok(popupTexts(bus).includes('Exactly what you gave. Never opens again.'));
 
   state.simTime += REGISTRY_HATCH_TUNING.returnDelayS + 0.1;
   step(plant, state);

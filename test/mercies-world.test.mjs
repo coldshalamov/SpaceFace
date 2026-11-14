@@ -567,7 +567,7 @@ test('PL-261 open tank: come in dry to a dark waystation, one tank is yours', ()
   bus.emit('pickup:collected', { pickupId: pod.id, collectorId: state.playerId });
   assert.ok(state.fuel.current > before, 'take the tank: real fuel');
   assert.ok(eventsOf(rec, PLANTS_TANK_EVENT, 'taken').length === 1);
-  assert.ok(commsOf(rec, "The hatch is unlocked. One tank's worth, tab chalked to nobody.").length === 1);
+  assert.ok(commsOf(rec, "Hatch unlocked: one tank's worth, chalked to nobody.").length === 1);
 });
 
 test('PL-261 wrong choice: drain the lot — the next arrival finds it locked, name chalked', () => {
@@ -950,7 +950,7 @@ test('PL-354 good-hull rate: tow a stranger, dock cheaper everywhere, no sign', 
   const station = fixtureStation(state, 'st1', { x: 0, z: 400 });
   bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
   assert.ok(station.data[PL_354_RATE_STAMP] > state.simTime, 'the quiet rate is stamped');
-  assert.equal(commsOf(rec, 'The boards read your receipts. Fakes dock at a premium.').length, 0,
+  assert.equal(commsOf(rec, 'Boards read receipts. Fakes dock at a premium.').length, 0,
     'no sign, no announcement');
   assert.ok(eventsOf(rec, PLANTS_RATE_EVENT, 'quiet_rate').length === 1);
 });
@@ -965,7 +965,7 @@ test('PL-354 wrong choice: fake rescue receipts — fakes dock at a premium', ()
   const station = fixtureStation(state, 'st1', { x: 0, z: 400 });
   bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
   assert.ok(station.data[PL_354_PREMIUM_STAMP] > state.simTime, 'fakes dock at a premium');
-  assert.ok(commsOf(rec, 'The boards read your receipts. Fakes dock at a premium.').length === 1);
+  assert.ok(commsOf(rec, 'Boards read receipts. Fakes dock at a premium.').length === 1);
   // And a towed hull dying on the line is the same fraud.
   const stranger = makeNpc(state, 'npc2', { x: 40, z: 0 }, { data: { trafficRole: 'hauler' } });
   state.simTime += GOOD_HULL_TUNING.fraudCooldownS + 1;
@@ -1107,7 +1107,7 @@ test('PL-357 warm grid: dock empty, the grid tops you to launch minimum', () => 
   bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
   assert.equal(state.fuel.current, WARM_GRID_TUNING.launchMinUnits, 'topped to launch minimum');
   assert.ok(eventsOf(rec, PLANTS_GRID_EVENT).length === 1);
-  assert.ok(commsOf(rec, 'The berth grid topped you to launch minimum. The meter never woke.').length === 1);
+  assert.ok(commsOf(rec, 'Topped to launch minimum. The meter never woke.').length === 1);
 });
 
 test('PL-357 wrong choice: drain the grace daily — the grid meters you from zero', () => {
@@ -1462,7 +1462,7 @@ test('PL-363 wrong choice: change hulls to farm it — the name only rides one h
   state.entities.set(state.playerId, newHull);
   sweep(pl363FamilyRate, state, 1, 1);
   assert.ok(eventsOf(rec, PLANTS_FARMED_EVENT).length === 1, 'farmed');
-  assert.ok(commsOf(rec, 'Family means the name, and the name only rides one hull.').length === 1);
+  assert.ok(commsOf(rec, 'Family means the name. It rides one hull.').length === 1);
   assert.equal(st1.data[PL_363_FAMILY_STAMP], -Infinity, 'the lane\u2019s rate is voided');
   bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
   assert.equal(st1.data[PL_363_FAMILY_STAMP], -Infinity, 'no family rate while farmed');
@@ -1520,7 +1520,7 @@ test('PL-363 farm bite: the berth office gives nothing while the name is farmed'
   bus.emit('dock:range', { stationId: 'st1', shipId: state.playerId, inRange: true });
   assert.equal(rec.spawns.some((e) => e.data && e.data.plantsPl363Gift), false, 'no gift while farmed');
   assert.equal(commsOf(rec, FAMILY_GIFT_LINE).length, 0, 'no berth-office words either');
-  assert.ok(commsOf(rec, 'Family means the name, and the name only rides one hull.').length === 1);
+  assert.ok(commsOf(rec, 'Family means the name. It rides one hull.').length === 1);
 });
 
 // ---------------------------------------------------------------- cooldown / cap / cleanup

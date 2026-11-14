@@ -49,7 +49,7 @@ export const COFFEE_HATCH_TUNING = Object.freeze({
 export const HATCH_SALT = 'plantsPl274Hatch';
 export const MUG_LINE = 'First cup\u2019s up. Mug fits the dash socket.';
 export const REFILL_LINE = 'Refill\u2019s free for the mug.';
-export const CHARGE_LINE = 'Tossed mugs don\u2019t refill. That one\u2019s on the slate.';
+export const CHARGE_LINE = 'Tossed mugs don\u2019t refill. It\u2019s on the slate.';
 
 /** Morning band of the shared plant day (before the morning bell). */
 export function morningAt(simTime, t = COFFEE_HATCH_TUNING) {

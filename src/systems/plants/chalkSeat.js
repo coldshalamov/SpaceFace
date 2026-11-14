@@ -48,7 +48,7 @@ export const CHALK_SEAT_TUNING = Object.freeze({
 
 export const SEAT_SALT = 'plantsPl287Seat';
 export const SERVED_LINE = 'Your line first.';
-export const FULLPRICE_LINE = 'Full price, then. You know which seat that was.';
+export const FULLPRICE_LINE = 'Full price, then. You know which seat.';
 
 /** Seat positions along the market ring bearing (pure; index 0 = the chalked seat). */
 export function seatsFor(origin, t = CHALK_SEAT_TUNING) {

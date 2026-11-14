@@ -204,7 +204,7 @@ export const pl344NeedsList = {
       this._postId = ent.id;
       this._postDay = day;
       const stationData = station.data || (station.data = {});
-      stationData.plantsPl344Needs = needs;   // the yards read this
+      stationData.plantsPl344Needs = needs;   // seam: stamped for the yards/economy owner to read (no consumer yet; see header)
     }
     return pos;
   },

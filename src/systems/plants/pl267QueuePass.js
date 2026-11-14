@@ -224,7 +224,7 @@ export function createPl267QueuePass() {
       stationData[PL_267_PREFERRED_STAMP] = now + QUEUE_TUNING.chalkWeekS;
       this._spawnChalk(station, now, 'PREFERRED');
       const id = `plants:pl267:preferred:${stationId}:${Math.round(now)}`;
-      this.bus.emit('comms:popup', { id, sender: 'DOCKMASTER', category: 'traffic', text: 'You gave up your slot. The board chalks you PREFERRED.', ttl: 7, persist: false });
+      this.bus.emit('comms:popup', { id, sender: 'DOCKMASTER', category: 'traffic', text: 'Gave up your slot. Board chalks you PREFERRED.', ttl: 7, persist: false });
       this.bus.emit('audio:cue', { id: 'confirm', position: null, gain: 0.45, rate: 1.0 });
       this.bus.emit(PLANTS_QUEUE_EVENT, { kind: 'preferred', stationId, until: stationData[PL_267_PREFERRED_STAMP], t: now });
     },

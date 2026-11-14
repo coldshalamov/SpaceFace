@@ -231,7 +231,7 @@ export function createPl363FamilyRate() {
         st.data[PL_363_FARMED_STAMP] = now + FAMILY_TUNING.farmCooldownS;
       }
       const id = `plants:pl363:farm:${Math.round(now)}`;
-      this.bus.emit('comms:popup', { id, sender: 'THE BERTHS', category: 'traffic', text: 'Family means the name, and the name only rides one hull.', ttl: 8, persist: false });
+      this.bus.emit('comms:popup', { id, sender: 'THE BERTHS', category: 'traffic', text: 'Family means the name. It rides one hull.', ttl: 8, persist: false });
       this.bus.emit('audio:cue', { id: 'ui_deny', position: null, gain: 0.5, rate: 0.9 });
       this.bus.emit(PLANTS_FARMED_EVENT, { sector, until: this._farmedUntil, t: now });
     },

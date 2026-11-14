@@ -53,7 +53,7 @@ export const WALKING_LUNCH_TUNING = Object.freeze({
 
 export const CART_SALT = 'plantsPl278Cart';
 export const OFFER_LINE = 'Unsold plate \u2014 half price, going now.';
-export const OFFER_FREE_LINE = 'Bad shift for us all. Take it, no charge.';
+export const OFFER_FREE_LINE = 'Bad shift for all. Take it, no charge.';
 export const GONE_LINE = 'The plate goes to the quiet hulls now.';
 
 /** Day index of the shared plant clock. */

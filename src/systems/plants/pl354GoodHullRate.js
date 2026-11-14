@@ -167,7 +167,7 @@ export function createPl354GoodHullRate() {
           d.dockLampsFlashing = true;
           d.dockLampFlashUntil = now + 0.6;
           const id = `plants:pl354:premium:${p.stationId}:${Math.round(now)}`;
-          this.bus.emit('comms:popup', { id, sender: 'THE BOARDS', category: 'traffic', text: 'The boards read your receipts. Fakes dock at a premium.', ttl: 7, persist: false });
+          this.bus.emit('comms:popup', { id, sender: 'THE BOARDS', category: 'traffic', text: 'Boards read receipts. Fakes dock at a premium.', ttl: 7, persist: false });
           this.bus.emit(PLANTS_FRAUD_EVENT, { kind: 'premium_dock', stationId: p.stationId, t: now });
         }
         return;

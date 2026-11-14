@@ -12,8 +12,8 @@
 // cue and a stamp), anything else gets the fine answer (the lamp flashes twice for the
 // clerk's receipt). Keeping them late on purpose is loitering at the dark window after
 // close: do it on two distinct nights (bounded, keyed hull+station) and the window closes
-// for good — lamp out, label CLOSED, flag-borne receipt, and the clerk remembers the hull
-// via the read-only stamp data.plantsPl280ClosedForHull.
+// for good — lamp out, label CLOSED, flag-borne receipt for the economy owner to consume
+// (no consumer yet; see data.plantsPl280ClosedForHull — session memory lives on the module).
 //
 // Invariants:
 // - Deterministic: state.simTime / state.tick only; night band, late window and the

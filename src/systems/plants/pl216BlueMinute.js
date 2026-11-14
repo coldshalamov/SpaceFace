@@ -168,7 +168,7 @@ export const pl216BlueMinute = {
         // Watch the blue, and Clerk Yune makes a small note about you.
         this._notedNight = night;
         this.bus?.emit(PL_216_NOTED_EVENT, { night, playerId: player.id ?? s.playerId, t: now });
-        this.bus?.emit('comms:log', { from: 'PATROL', text: 'Blue minute — a hull held its nose on the Fence light. Yune filed it.', t: now });
+        this.bus?.emit('comms:log', { from: 'PATROL', text: 'Blue minute. A hull watched. Yune filed it.', t: now });
         this.bus?.emit('comms:popup', {
           id: `plants:pl216:noted:${night}`, sender: YUNE_SENDER, category: 'traffic',
           text: YUNE_NOTE_LINE, ttl: 5, persist: false,

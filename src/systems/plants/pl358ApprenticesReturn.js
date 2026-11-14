@@ -224,7 +224,7 @@ export function createPl358ApprenticesReturn() {
         this._partPodId = pod.id;
       }
       const id = `plants:pl358:return:${Math.round(now)}`;
-      this.bus.emit('comms:popup', { id, sender: APPRENTICE_CALLSIGN, category: 'story', text: 'You were decent to me at Helios. I carried the part at my own cost.', ttl: 9, persist: false });
+      this.bus.emit('comms:popup', { id, sender: APPRENTICE_CALLSIGN, category: 'story', text: 'You were decent at Helios. Part\u2019s on me.', ttl: 9, persist: false });
       this.bus.emit('audio:cue', { id: 'confirm', position: null, gain: 0.5, rate: 1.0 });
       this.bus.emit(PLANTS_APPRENTICE_EVENT, { kind: 'returned', apprenticeId: ent.id, podId: pod ? pod.id : null, t: now });
     },
@@ -260,7 +260,7 @@ export function createPl358ApprenticesReturn() {
       this._journeymanUntil = now + APPRENTICE_TUNING.journeymanS;
       this.bus.emit('audio:cue', { id: 'ui_deny', position: null, gain: 0.5, rate: 0.9 });
       const id = `plants:pl358:journeymen:${Math.round(now)}`;
-      this.bus.emit('comms:popup', { id, sender: 'THE JOURNEYMEN', category: 'traffic', text: 'Apprentices talk to journeymen. The price is set now.', ttl: 7, persist: false });
+      this.bus.emit('comms:popup', { id, sender: 'THE JOURNEYMEN', category: 'traffic', text: 'Apprentices talk. Journeymen set the price now.', ttl: 7, persist: false });
       this.bus.emit(PLANTS_APPRENTICE_EVENT, { kind: 'journeymen', until: this._journeymanUntil, t: now });
     },
 
@@ -278,7 +278,7 @@ export function createPl358ApprenticesReturn() {
         releaseTrafficReaction(this, apprentice);
       }
       const id = `plants:pl358:paid:${Math.round(now)}`;
-      this.bus.emit('comms:popup', { id, sender: APPRENTICE_CALLSIGN, category: 'story', text: 'Their price, paid in full. They are gone before the ring lights.', ttl: 6, persist: false });
+      this.bus.emit('comms:popup', { id, sender: APPRENTICE_CALLSIGN, category: 'story', text: 'Paid in full. Gone before the ring lights.', ttl: 6, persist: false });
       this.bus.emit(PLANTS_APPRENTICE_EVENT, { kind: 'paid', t: now });
       if (this._apprenticeId != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
         this.helpers.removeEntity(this._apprenticeId);

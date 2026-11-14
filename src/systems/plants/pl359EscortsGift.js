@@ -167,7 +167,7 @@ export function createPl359EscortsGift() {
         lastZ: start.z,
       };
       const id = `plants:pl359:convoy:${Math.round(now)}`;
-      this.bus.emit('comms:popup', { id, sender: CONVOY_CALLSIGN, category: 'traffic', text: 'A slow convoy, walking for the gate. The water is not kind.', ttl: 7, persist: false });
+      this.bus.emit('comms:popup', { id, sender: CONVOY_CALLSIGN, category: 'traffic', text: 'Slow convoy for the gate. Water\u2019s not kind.', ttl: 7, persist: false });
       this.bus.emit(PLANTS_ESCORT_EVENT, { kind: 'convoy_formed', leaderId: leader.id, gateId: gate.id, t: now });
     },
 
@@ -259,7 +259,7 @@ export function createPl359EscortsGift() {
       data.lampsFlashing = true;
       data.lampFlashUntil = now + 1.2;
       const id = `plants:pl359:gift:${Math.round(now)}`;
-      this.bus.emit('comms:popup', { id, sender: CONVOY_CALLSIGN, category: 'traffic', text: 'At the gate, their spare countermeasure is in your hands. No charge.', ttl: 8, persist: false });
+      this.bus.emit('comms:popup', { id, sender: CONVOY_CALLSIGN, category: 'traffic', text: 'Spare countermeasure at the gate — no charge.', ttl: 8, persist: false });
       this.bus.emit('audio:cue', { id: 'confirm', position: null, gain: 0.5, rate: 1.0 });
       this.bus.emit(PLANTS_ESCORT_EVENT, { kind: 'gift', leaderId: leader.id, t: now });
       this._endConvoy('arrived');

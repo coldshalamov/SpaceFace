@@ -203,7 +203,7 @@ export function createPl366RegistryHatch() {
             id: `plants:pl366:token:${Math.round(now)}`,
             sender: 'The registry hatch',
             category: 'story',
-            text: 'Exactly what you gave. It will not open again.',
+            text: 'Exactly what you gave. Never opens again.',
             ttl: 9,
             persist: false,
           });

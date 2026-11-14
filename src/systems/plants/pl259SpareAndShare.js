@@ -242,7 +242,7 @@ export function createPl259SpareAndShare() {
           station.data.dockLampFlashUntil = now + 0.6;
           this._spawnChalk(station, now, 'TOW ON THE BILL');
           const id = `plants:pl259:bill:${p.stationId}:${Math.round(now)}`;
-          this.bus.emit('comms:popup', { id, sender: 'DOCKMASTER', category: 'traffic', text: 'The chalks stopped. One dock bills you for the wasted tow.', ttl: 7, persist: false });
+          this.bus.emit('comms:popup', { id, sender: 'DOCKMASTER', category: 'traffic', text: 'Chalks stopped. One dock bills the wasted tow.', ttl: 7, persist: false });
           this.bus.emit(PLANTS_SPARE_BILL_EVENT, { kind: 'billed', stationId: p.stationId, t: now });
         }
         return;
@@ -254,7 +254,7 @@ export function createPl259SpareAndShare() {
       station.data[PL_259_PAID_STAMP] = now + SPARE_TUNING.paidUntilS;
       this._spawnChalk(station, now, 'BERTHING PAID');
       const id = `plants:pl259:chalk:${p.stationId}:${Math.round(now)}`;
-      this.bus.emit('comms:popup', { id, sender: 'DOCKMASTER', category: 'traffic', text: 'Word outran you here. Your berthing is chalked PAID.', ttl: 7, persist: false });
+      this.bus.emit('comms:popup', { id, sender: 'DOCKMASTER', category: 'traffic', text: 'Word outran you. Berthing chalked PAID.', ttl: 7, persist: false });
       this.bus.emit('audio:cue', { id: 'confirm', position: null, gain: 0.45, rate: 1.0 });
       this.bus.emit(PLANTS_SPARE_CHALK_EVENT, { stationId: p.stationId, creditsLeft: this._chalkCredits, t: now });
     },
