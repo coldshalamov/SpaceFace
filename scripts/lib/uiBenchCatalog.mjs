@@ -149,7 +149,8 @@ export const UI_BENCH_SHOTS = Object.freeze([
   // The boot overlay mid-load: ring at 62% with 4 stage ticks over the tableaux field.
   // Not a screen — the bench stages #boot-overlay directly (mountLoadingShot).
   { id: 'loading', screen: 'bootOverlay', backdrop: 'title' },
-  { id: 'automation', screen: 'automation', backdrop: 'shell' },
+  { id: 'automation', screen: 'automation', backdrop: 'shell', outposts: 'stocked' },
+  { id: 'automation-outposts', screen: 'automation', backdrop: 'shell', outposts: 'stocked', focus: 'outposts' },
 
   { id: 'replay', screen: 'replay', backdrop: 'title' },
   { id: 'clips', screen: 'clips', backdrop: 'title' },

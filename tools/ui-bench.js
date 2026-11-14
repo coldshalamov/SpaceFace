@@ -748,6 +748,53 @@ async function seedBaseShot(gameState, kind = 'claimed') {
 }
 
 /**
+ * Owned-outpost fixture for the automation shot (catalog `outposts: 'stocked'`): one in-range
+ * fuelsynth with stock, inputs and a sale history, one distressed habhub in another sector.
+ * Covers every outpost verb state — enabled primaries in range, range/tooltip-disabled verbs
+ * and arrears-resume out of range.
+ */
+function seedAutomationShot(gameState) {
+  const a = gameState.automation;
+  const pilot = gameState.entities.get(gameState.playerId);
+  const px = (pilot && pilot.pos && pilot.pos.x) || 0;
+  const pz = (pilot && pilot.pos && pilot.pos.z) || 0;
+  gameState.player.credits = Math.max(gameState.player.credits || 0, 200000);
+  const cargo = gameState.player.cargo;
+  Object.assign(cargo.items, { cmdty_gas_hydrogen: 30, cmdty_ore_iron: 20, cmdty_silicate: 10 });
+  cargo.usedVolume = Math.max(cargo.usedVolume || 0, 20);
+  a.outposts = [
+    {
+      id: 9001, defId: 'outpost_fuelsynth', level: 2,
+      sectorId: gameState.world.currentSectorId,
+      pos: { x: px + 140, y: 0, z: pz + 90 },
+      recipeId: 'outpost_fuelsynth', storage: 120, storageGoodId: 'cmdty_fuel_cells',
+      storageCap: 400, defense: 15, upkeepPerMin: 40, autoSell: true, raidCooldown: 0,
+      status: 'producing', ratePerMin: 0.7,
+      production: {
+        status: 'producing', actualRate: 0.7, requestedRate: 0.7,
+        outputGoodId: 'cmdty_fuel_cells', localFeeders: 0,
+        consumedByGood: { cmdty_gas_hydrogen: 0.7, cmdty_ore_iron: 0.7, cmdty_silicate: 0.7 },
+        missingByGood: {},
+      },
+      inputStock: { cmdty_gas_hydrogen: 60, cmdty_ore_iron: 45, cmdty_silicate: 30 },
+      saleStationId: 'station_helios', saleBlock: null, saleSequence: 1,
+      lastSale: { id: 'bench-sale-9001', sequence: 1, kind: 'goods', quantity: 60, credited: 5820 },
+      totalSoldUnits: 210, totalSaleCredits: 18420,
+    },
+    {
+      id: 9002, defId: 'outpost_habhub', level: 1,
+      sectorId: 'sector_ceres_belt', pos: { x: 0, y: 0, z: 0 },
+      recipeId: 'outpost_habhub', storage: 0, storageGoodId: null,
+      storageCap: 1500, defense: 30, upkeepPerMin: 90, autoSell: false, raidCooldown: 0,
+      status: 'distressed', ratePerMin: 0,
+      inputStock: {}, saleStationId: null, saleBlock: null,
+      totalSoldUnits: 0, totalSaleCredits: 2400,
+    },
+  ];
+  a.accumulators = { ...(a.accumulators || {}), upkeepDebt: 540 };
+}
+
+/**
  * The loading shot (catalog id 'loading'). Not a screen: it stages #boot-overlay — the game's own
  * markup, styled by the same intro.css — with createLoadingPresenter on the bench bus, fires the
  * scripted stage sequence so the ring carries 4 ticks + a 62% arc, and waits for the smoothed
@@ -1209,6 +1256,8 @@ async function goto(rawId) {
       else unseedDrillShot(state);
       if (id === 'base' && shot.base) await seedBaseShot(state, shot.base);
       else unseedBaseShot(state);
+      if (id === 'automation' && shot.outposts === 'stocked') seedAutomationShot(state);
+      else if (state.automation && (state.automation.outposts || []).length) state.automation.outposts = [];
       // A codex shot with `record` opens the Figures tab over a lived-in Record (tools/ui-bench-record.js).
       if (shot.record) {
         seedRecordShot(state);

@@ -13,6 +13,9 @@ import { COMMODITIES } from '../../data/commodities.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { droneBayCapacityForState, droneRecoveryCost, normalizeAutomationRecordId, passiveCapPerMinForTier } from '../../systems/automation.js';
 import { describeProgrammedMinerOperation } from '../../systems/automationOperations.js';
+import { outpostInputCapacity, outpostInputIds, outpostInputUsed, outpostLevel, outpostSaleExplanation,
+  outpostTransferAccess, outpostUpgradeCost } from '../../systems/outpostOperations.js';
+import { sellableCargoQuantity, cargoUnitVolume } from '../../systems/cargo.js';
 import { shipworksStationAccess } from '../../systems/ships.js';
 import { escapeHtml } from '../comms.js';
 import { pluralWord } from '../numberFormat.js';
@@ -263,14 +266,12 @@ export function describeOutpostOperation(outpost = {}, def = {}) {
   } else if (state === 'starved') {
     statusLabel = limitingLabel ? `Starved: ${limitingLabel}` : 'Starved';
     detail = limitingLabel
-      ? `${limitingLabel} feed is below this recipe's current demand.`
-      : 'One or more required inputs are not reaching this facility.';
+      ? `${limitingLabel} feed is short. Bring it within 450 wu.`
+      : 'Inputs are not arriving. Bring feedstock within 450 wu.';
     tone = 'warn';
   } else if (state === 'storage_full') {
     statusLabel = 'Storage full';
-    detail = outpost.autoSell
-      ? 'Output bay is full; the next autosell cycle will clear room.'
-      : 'Output bay is full; manual logistics must clear room.';
+    detail = `Output bay is full. ${outpostSaleExplanation(outpost)}`;
     tone = 'warn';
   } else if (state === 'raided') {
     statusLabel = 'Raided';
@@ -291,6 +292,7 @@ export function describeOutpostOperation(outpost = {}, def = {}) {
       goodId,
       label: commodityName(goodId),
       actualPerMin: perMinute,
+      stored: Math.max(0, Number(outpost.inputStock?.[goodId]) || 0),
       short: !!(production && Number(production.missingByGood && production.missingByGood[goodId]) > 0),
     };
   });
@@ -319,11 +321,13 @@ export function describeOutpostOperation(outpost = {}, def = {}) {
       feeders = { state: 'pending', count: null, label: 'Feeder telemetry pending', availability: 'Availability pending' };
     } else {
       const count = Math.max(0, Math.floor(feederCount));
-      const feederState = state === 'starved' ? 'short' : count > 0 ? 'linked' : 'none';
+      const storedInputs = outpostInputUsed(outpost);
+      const feederState = state === 'starved' ? 'short' : count > 0 || storedInputs > 0 ? 'linked' : 'none';
       feeders = {
         state: feederState,
         count,
-        label: count === 1 ? '1 local feeder detected' : `${count || 'No'} local feeders detected`,
+        label: storedInputs > 0 ? `${displayFlowNumber(storedInputs)} input units stored`
+          : count === 1 ? '1 local feeder detected' : `${count || 'No'} local feeders detected`,
         availability: feederState === 'short' ? 'Feed unavailable' : feederState === 'linked' ? 'Feed linked' : 'No feed linked',
       };
     }
@@ -469,10 +473,18 @@ html body #screens #sf-automation.au-orrery .au-industry-rows li { color: rgb(va
 #sf-automation .au-miner-ops strong { display: block; margin-top: 2px; font-size: 13px; color: var(--ink); }
 #sf-automation .au-card button.au-refuel { background: color-mix(in srgb, var(--accent) 15%, transparent); border: 1px solid var(--accent); color: var(--accent); font-weight: 600; }
 #sf-automation .au-card button.au-refuel:hover { background: color-mix(in srgb, var(--accent) 28%, transparent); translate: 0 -1px; box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 30%, transparent); }
-#sf-automation .au-outpost-detail { margin-top: 8px; font-size: 13px; color: var(--ink-dim); }
-#sf-automation .au-outpost-detail summary { width: fit-content; cursor: pointer; color: var(--accent); font-weight: 600; }
-#sf-automation .au-outpost-detail summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+#sf-automation .au-outpost-detail,
+#sf-automation .au-outpost-more { margin-top: 8px; font-size: 13px; color: var(--ink-dim); }
+#sf-automation .au-outpost-detail summary,
+#sf-automation .au-outpost-more summary { width: fit-content; cursor: pointer; color: var(--accent); font-weight: 600; }
+#sf-automation .au-outpost-detail summary:focus-visible,
+#sf-automation .au-outpost-more summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 #sf-automation .au-outpost-detail .au-detail-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 4px; border: 1px solid var(--panel-edge); }
+#sf-automation .au-outpost-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+#sf-automation .au-outpost-actions button { min-height: 38px; }
+/* Closed disclosures must not let their hidden content participate in layout — same
+   content-visibility ghost-box class as the Armory manifest guard. */
+#sf-automation details:not([open]) > *:not(summary) { display: none; }
 /* Verbs: the primary (buy / deploy) is the one accent fill; ordering is an accent outline; recall
    is destructive and stays a quiet danger outline. */
 #sf-automation .au-buy { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 90%, #fff) 0%, var(--accent) 100%); border-color: var(--accent); color: #020617; font-weight: 700; box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 30%, transparent); }
@@ -939,7 +951,8 @@ html body #screens #sf-automation.au-orrery .au-outpost-flow[data-state="storage
 html body #screens #sf-automation.au-orrery :is(.au-outpost-flow, .au-miner-ops) {
   border: 0; border-radius: 0; background: none; box-shadow: none; padding: 8px 0; }
 html body #screens #sf-automation.au-orrery .au-flow-core { border-left: 0; border-right: 0; }
-html body #screens #sf-automation.au-orrery .au-outpost-detail summary {
+html body #screens #sf-automation.au-orrery .au-outpost-detail summary,
+html body #screens #sf-automation.au-orrery .au-outpost-more summary {
   color: rgb(var(--au-bone) / .85); text-decoration: underline dotted rgb(var(--au-bone) / .5);
   text-underline-offset: 4px; }
 html body #screens #sf-automation.au-orrery .au-outpost-detail .au-detail-row {
@@ -1055,7 +1068,7 @@ export const automationScreen = {
             <circle class="au-gauge__bead" data-gaugebead r="3" cx="6" cy="34" />
           </svg>
           <div class="au-meter">
-            <span class="lbl">PASSIVE</span>
+            <span class="lbl">EST. NET VALUE</span>
             <span class="val" data-rate>0 cr/min</span>
             <span class="au-captxt" data-captxt>cap —</span>
           </div>
@@ -1251,7 +1264,7 @@ export const automationScreen = {
     if (captxt) {
       const over = Math.max(0, rate) - cap;
       captxt.textContent = over > 0.5
-        ? `over +${fmtCr(over)} — dropped`
+        ? `over +${fmtCr(over)} — payout limited`
         : `+${fmtCr(Math.max(0, cap - Math.max(0, rate)))} headroom`;
       captxt.dataset.state = over > 0.5 ? 'over' : 'headroom';
     }
@@ -1275,7 +1288,7 @@ export const automationScreen = {
         </div>`).join('') + `
         <div class="au-node au-node--purse" data-node="purse">
           <span class="au-node__ring" aria-hidden="true"></span>
-          <span class="au-node__t"><b data-n-total>0</b><i data-n-sub>cr/min</i></span>
+          <span class="au-node__t"><b data-n-total>0</b><i data-n-sub>est. cr/min</i></span>
         </div>`;
     }
     const st = this._ctx.state;
@@ -1324,11 +1337,11 @@ export const automationScreen = {
     if (sub) {
       sub.textContent = this._conduct && classRate[this._conduct] != null
         ? `${this._conduct} ${fmtCr(Math.max(0, classRate[this._conduct]))}/min`
-        : 'cr/min';
+        : 'est. cr/min';
     }
     el.setAttribute('aria-label', `Conduct the machine — asset flow: ${counts.drones} drones, `
       + `${counts.traders} traders, ${counts.outposts} outposts, ${counts.fleet} escorts; total `
-      + `${Math.round(Math.max(0, rate))} credits per minute`
+      + `${Math.round(Math.max(0, rate))} credits per minute estimated net value before payout limits`
       + (this._conduct ? `; conducting ${this._conduct}.` : '.'));
   },
 
@@ -1398,6 +1411,7 @@ export const automationScreen = {
     } else if (this._tab === 'outposts') {
       const buildUnlocked = (player.researchedNodes || []).includes('tech_outpost_charter');
       parts.push(buildUnlocked ? 1 : 0);
+      parts.push(Math.floor(a.accumulators?.upkeepDebt || 0));
       for (const o of a.outposts || []) {
         const production = o.production || {};
         parts.push(
@@ -1416,6 +1430,10 @@ export const automationScreen = {
           production.localFeeders != null ? production.localFeeders : '',
           Object.keys(production.missingByGood || {}).sort().join(','),
           o.autoSell ? 1 : 0,
+          o.level || 1,
+          o.saleStationId || '', o.saleBlock || '', o.lastSale?.id || '',
+          outpostTransferAccess(st, o),
+          Object.entries(o.inputStock || {}).sort().map(([good, qty]) => `${good}:${Math.floor(qty)}`).join(','),
         );
       }
     } else {
@@ -1435,7 +1453,8 @@ export const automationScreen = {
     if (!body) return;
     const focusSnapshot = captureAutomationBodyFocus(body);
     const openOutpostDetails = this._tab === 'outposts'
-      ? new Set(Array.from(body.querySelectorAll('details[data-outpost-detail][open]'), (details) => details.dataset.outpostDetail))
+      ? new Set(Array.from(body.querySelectorAll('details[data-outpost-detail][open], details[data-outpost-more][open]'),
+          (d) => (d.dataset.outpostDetail ? 'detail:' : 'more:') + (d.dataset.outpostDetail || d.dataset.outpostMore)))
       : new Set();
     const frag = document.createDocumentFragment();
     this._renderOperationsBoard(frag);
@@ -1448,8 +1467,10 @@ export const automationScreen = {
     // focus restore, so the restored focus lands on the live control.
     enhanceSelects(body);
     if (this._tab === 'outposts' && openOutpostDetails.size) {
-      for (const details of body.querySelectorAll('details[data-outpost-detail]')) {
-        if (openOutpostDetails.has(details.dataset.outpostDetail)) details.open = true;
+      for (const details of body.querySelectorAll('details[data-outpost-detail], details[data-outpost-more]')) {
+        const key = (details.dataset.outpostDetail ? 'detail:' : 'more:')
+          + (details.dataset.outpostDetail || details.dataset.outpostMore);
+        if (openOutpostDetails.has(key)) details.open = true;
       }
     }
     restoreAutomationBodyFocus(body, focusSnapshot);
@@ -1464,6 +1485,20 @@ export const automationScreen = {
 
   _renderOperationsBoard(frag) {
     const readout = industryReadoutFromState(this._ctx && this._ctx.state);
+    // The shared readout projects daily income from a facility's potential
+    // output value. Custody and its last accepted receipt are the useful overview.
+    const facilities = (this._auto().outposts || []).filter(Boolean);
+    let facilityIndex = 0;
+    readout.lines = readout.lines.map(line => {
+      if (line.kind !== 'Outpost') return line;
+      const outpost = facilities[facilityIndex++];
+      const def = OUTPOSTS.find(row => row.id === outpost.defId) || outpost;
+      const operation = describeOutpostOperation(outpost, def);
+      const paid = outpost.lastSale ? `last payment ${fmtCr(outpost.lastSale.credited)} cr`
+        : 'no payment received';
+      return { ...line, text: `${line.name} — ${operation.statusLabel}; ${displayFlowNumber(operation.storage.stored)} ${operation.storage.unit} stored; ${paid}.` };
+    });
+    if (readout.lines.length) readout.sentence = readout.lines.map(line => line.text).join(' ');
     frag.appendChild(renderIndustryStrip(readout, { cycle: this._cycleNote || '' }));
     const summary = summarizeAutomationOperations(this._ctx.state);
     const next = automationNextAction(this._ctx.state);
@@ -1498,9 +1533,9 @@ export const automationScreen = {
       </div>
       <div class="au-summary" aria-label="Automation summary">
         ${metricHtml('Assets', String(summary.activeAssets), [`${summary.drones} drones /`, `${summary.traders} traders /`, `${summary.outposts} outposts`])}
-        ${metricHtml('Net Flow', `${fmtCr(summary.netRatePerMin)} cr/min`, [`gross ${fmtCr(summary.grossRatePerMin)} -`, `upkeep ${fmtCr(summary.upkeepPerMin)}`])}
+        ${metricHtml('Est. net value', `${fmtCr(summary.netRatePerMin)} cr/min`, [`output ${fmtCr(summary.grossRatePerMin)} -`, `upkeep ${fmtCr(summary.upkeepPerMin)}`, 'before payout limits'])}
         ${metricHtml('Cap Load', capLoad.label, capLoad.detail)}
-        ${metricHtml('Lifetime', `${fmtCr(summary.totalPassiveEarnedLifetime)} cr`, summary.distressedAssets ? `${summary.distressedAssets} distressed` : 'stable')}
+        ${metricHtml('Lifetime paid', `${fmtCr(summary.totalPassiveEarnedLifetime)} cr`, summary.distressedAssets ? `before upkeep · ${summary.distressedAssets} distressed` : 'before upkeep')}
       </div>`;
     frag.appendChild(wrap);
   },
@@ -1688,10 +1723,45 @@ export const automationScreen = {
       for (const o of owned) {
         const def = OUTPOSTS.find((x) => x.id === o.defId) || o;
         const operation = describeOutpostOperation(o, def);
+        const level = outpostLevel(o), near = outpostTransferAccess(st, o);
+        const passive = !!def.recipe?.passive;
+        const upgradeCost = outpostUpgradeCost(o, def);
+        const stopped = o.status === 'raided' || o.status === 'distressed';
+        const ref = automationRecordRefAttr(o.id, def.id);
+        const buyer = STATION_NAMES.get(o.saleStationId) || 'No buyer assigned';
+        const saleText = o.lastSale
+          ? `Last receipt +${fmtCr(o.lastSale.credited)} cr · realized ${fmtCr(o.totalSaleCredits || 0)} cr`
+          : 'No receipts yet. Stored output is not income.';
+        const accessHint = near ? 'In range — transfers ready.' : 'Fly within 450 wu to transfer.';
+        const inputGoods = outpostInputIds(o, def);
+        const inputUsed = outpostInputUsed(o);
+        const inputCap = outpostInputCapacity(o, def);
+        const cargo = st.player?.cargo || {};
+        const holdFree = Math.max(0, Number(cargo.capVolume) - Number(cargo.usedVolume));
+        const hasFeedstock = inputGoods.some((good) => sellableCargoQuantity(st, good) > 0);
+        const outputGood = operation.output.goodId && operation.output.goodId !== 'credits' ? operation.output.goodId : null;
+        const outputVol = outputGood ? cargoUnitVolume(st, outputGood) : 0;
+        const holdFitsOutput = !outputGood || (outputVol > 0 ? holdFree >= outputVol : holdFree > 0);
+        const arrears = Math.floor(a.accumulators?.upkeepDebt || 0);
+        const supplyWhy = !near ? 'Fly within 450 wu'
+          : inputUsed >= inputCap ? 'Inputs full'
+          : !hasFeedstock ? 'No feedstock in hold' : '';
+        const collectWhy = !near ? 'Fly within 450 wu'
+          : o.storage < 1 ? 'Nothing stored'
+          : !holdFitsOutput ? 'Hold is full' : '';
+        const settleWhy = o.storage < 1 ? 'Nothing stored'
+          : o.status === 'distressed' ? 'Pay arrears first'
+          : o.status === 'raided' ? 'Raided' : '';
+        const recoverWhy = !near ? 'Fly within 450 wu'
+          : inputUsed < 1 ? 'Nothing stored'
+          : holdFree <= 0 ? 'Hold is full' : '';
+        const upgradeWhy = stopped ? 'Facility stopped'
+          : (st.player?.credits || 0) < upgradeCost ? 'Not enough credits' : '';
+        const retireWhy = o.storage >= 1 || inputUsed >= 1 ? 'Collect and recover first' : '';
         const inputHtml = operation.inputs.length
           ? operation.inputs.map((input) => `
               <strong>${entitySpanHtml('commodity:' + input.goodId, escapeHtml(input.label))}</strong>
-              <span class="au-flow-v">${escapeHtml(rateText(input.actualPerMin, 'u/min'))}${input.short ? ' · short' : ''}</span>`).join('')
+              <span class="au-flow-v">${escapeHtml(rateText(input.actualPerMin, 'u/min'))}${input.short ? ' · short' : ''} · ${escapeHtml(displayFlowNumber(input.stored))} stored</span>`).join('')
           : `<strong>No feedstock</strong><span class="au-flow-v">self-contained facility</span>`;
         const outputRate = comparisonRateText(operation.output.actualPerMin, operation.output.targetPerMin, operation.output.unit);
         const storageText = `${displayFlowNumber(operation.storage.stored)}/${displayFlowNumber(operation.storage.capacity)} ${operation.storage.unit} stored`;
@@ -1700,7 +1770,7 @@ export const automationScreen = {
         card.innerHTML = `
           <div class="grow">
             <div class="au-outpost-head">
-              <div class="nm">${prettyId(def.id)} <span class="au-pill">${o.sectorId ? entitySpanHtml('sector:' + o.sectorId, escapeHtml(prettyId(o.sectorId))) : 'unsited'}</span></div>
+              <div class="nm">${prettyId(def.id)} <span class="au-pill">Level ${level}</span> <span class="au-pill">${o.sectorId ? entitySpanHtml('sector:' + o.sectorId, escapeHtml(prettyId(o.sectorId))) : 'unsited'}</span></div>
             </div>
             <div class="au-outpost-flow" data-state="${escapeHtml(operation.state)}" role="img" aria-label="${escapeHtml(operation.accessibleSummary)}">
               <div class="au-flow-node">
@@ -1722,17 +1792,36 @@ export const automationScreen = {
               </div>
             </div>
             <div class="au-operation-reason">${escapeHtml(operation.detail)}</div>
-            <details class="au-outpost-detail" data-outpost-detail="${automationRecordRefAttr(o.id, def.id)}">
+            <div class="au-note">${escapeHtml(outpostSaleExplanation(o))}</div>
+            <div class="au-note">${escapeHtml(saleText)}</div>
+            <div class="au-outpost-actions">
+              ${!passive ? `<button class="au-order" data-act="supplyOutpost" data-ref="${ref}" data-kind="outpost" title="${escapeHtml(supplyWhy || 'Move recipe inputs from your hold')}"${supplyWhy ? ' disabled' : ''}>Supply</button>
+              <button class="au-order" data-act="collectOutpost" data-ref="${ref}" data-kind="outpost" title="${escapeHtml(collectWhy || 'Take stored output into your hold')}"${collectWhy ? ' disabled' : ''}>Collect</button>` : ''}
+              <button class="au-order" data-act="sellOutpost" data-ref="${ref}" data-kind="outpost" title="${escapeHtml(settleWhy || 'Sell stored output at the buyer')}"${settleWhy ? ' disabled' : ''}>Settle</button>
+            </div>
+            <div class="au-note">${escapeHtml(accessHint)}</div>
+            <details class="au-outpost-more" data-outpost-more="${ref}">
+              <summary>More</summary>
+              <div class="au-outpost-actions">
+                <button class="au-order" data-act="toggleOutpostSales" data-ref="${ref}" data-kind="outpost">${o.autoSell ? 'Pause sales' : 'Resume sales'}</button>
+                ${!passive ? `<button class="au-order" data-act="routeOutpost" data-ref="${ref}" data-kind="outpost" title="Next local buyer">Change buyer</button>
+                <button class="au-order" data-act="recoverOutpostInputs" data-ref="${ref}" data-kind="outpost" title="${escapeHtml(recoverWhy || 'Take stored inputs back into your hold')}"${recoverWhy ? ' disabled' : ''}>Recover</button>` : ''}
+                ${upgradeCost != null ? `<button class="au-buy" data-act="upgradeOutpost" data-ref="${ref}" data-kind="outpost" title="${escapeHtml(upgradeWhy || 'Bigger storage; upkeep up 50%')}"${upgradeWhy ? ' disabled' : ''}>Expand · ${fmtCr(upgradeCost)} cr</button>` : ''}
+                ${o.status === 'distressed' ? `<button class="au-buy" data-act="resumeOutpost" data-ref="${ref}" data-kind="outpost">Resume · ${fmtCr(arrears)} cr</button>` : ''}
+                <button class="au-order" data-act="locateOutpost" data-ref="${ref}" data-kind="outpost">Locate</button>
+                <button class="au-recall" data-act="decommission" data-ref="${ref}" data-kind="outpost" title="${escapeHtml(retireWhy || 'Remove the facility')}"${retireWhy ? ' disabled' : ''}>Decommission</button>
+              </div>
+            </details>
+            <details class="au-outpost-detail" data-outpost-detail="${ref}">
               <summary>Facility details</summary>
               <div class="au-detail-row">
                 <span>${escapeHtml(recipeText(def.recipe))}</span>
-                <span>defense ${escapeHtml(def.defense)}</span>
-                <span>upkeep ${escapeHtml(def.upkeepPerMin)}/min</span>
-                <span>${o.autoSell ? 'autosell every minute' : 'manual logistics'}</span>
+                <span>defense ${escapeHtml((def.defense || 0) + 15 * (level - 1))}</span>
+                <span>upkeep ${escapeHtml(displayFlowNumber((def.upkeepPerMin || 0) * Math.pow(1.5, level - 1)))} cr/min</span>
+                ${!passive ? `<span>input storage ${displayFlowNumber(inputUsed)}/${inputCap} u</span><span>buyer: ${escapeHtml(buyer)}</span>` : ''}
               </div>
             </details>
-          </div>
-          <button class="au-recall" data-act="decommission" data-ref="${automationRecordRefAttr(o.id, def.id)}" data-kind="outpost" aria-label="Decommission ${prettyId(def.id)}">Decommission</button>`;
+          </div>`;
         frag.appendChild(card);
       }
     }
@@ -1973,6 +2062,15 @@ export const automationScreen = {
       this.refresh(this._ctx, { forceBody: true }); return;
     }
     if (act === 'assignProgram' && extra === 'custom') return;
+    if (act === 'locateOutpost') {
+      const ctx = this._ctx;
+      const outpost = ctx.state.automation?.outposts.find(row => String(row.id) === String(ref));
+      if (!outpost) return;
+      this._close();
+      openGalaxyMap(ctx, { focus: outpost.sectorId === ctx.state.world?.currentSectorId ? MAP_FOCUS.LOCAL : MAP_FOCUS.GALAXY,
+        sectorId: outpost.sectorId, pos: outpost.pos, label: prettyLabel(outpost.defId), source: 'automation:outpost' });
+      return;
+    }
     if (act === 'locateDrone') {
       const ctx = this._ctx;
       const drone = (ctx.state.automation?.drones || []).find((d) => String(d.id) === String(ref));
@@ -2113,9 +2211,11 @@ function automationFocusKey(element) {
   if (dataset.filter != null) return `filter:${tag}:${dataset.filter}`;
 
   const details = typeof element.closest === 'function'
-    ? element.closest('details[data-outpost-detail]')
+    ? element.closest('details[data-outpost-detail], details[data-outpost-more]')
     : null;
-  if (details && tag === 'summary') return `outpost-details:${details.dataset.outpostDetail}:summary`;
+  if (details && tag === 'summary') {
+    return `outpost-details:${details.dataset.outpostDetail || 'more:' + details.dataset.outpostMore}:summary`;
+  }
   return null;
 }
 
@@ -2159,7 +2259,7 @@ export function describeAutomationCapLoad(summary = {}) {
     return {
       state: 'over-cap',
       label,
-      detail: fmtCr(overage) + ' cr/min over cap; overflow dropped',
+      detail: fmtCr(overage) + ' cr/min over cap; ' + automationCapConsequence(summary),
       overagePerMin: overage,
       headroomPerMin: 0,
     };
@@ -2172,6 +2272,16 @@ export function describeAutomationCapLoad(summary = {}) {
     overagePerMin: 0,
     headroomPerMin: headroom,
   };
+}
+
+// Rate is an output-value estimate, not a receipt. The cap can withhold worker
+// payouts, while facility custody keeps every unit that has not been accepted.
+function automationCapConsequence(summary) {
+  const facilities = Number(summary.outposts) > 0;
+  const workers = Number(summary.drones) > 0 || Number(summary.traders) > 0;
+  return facilities
+    ? workers ? 'worker excess unpaid; facility output retained' : 'facility output retained'
+    : 'excess payout unpaid';
 }
 
 export function describeWingmanDeployment(fs = {}) {
@@ -2278,7 +2388,7 @@ export function automationNextAction(state) {
     const overCap = capLoad.state === 'over-cap';
     return nextAction('drones', 'Raise automation ceiling',
       overCap
-        ? 'Production is over the cap, so the overflow is dropped. Research logistics tiers or rebalance before buying more.'
+        ? `Output value is over the payout cap: ${automationCapConsequence(summary)}. Research logistics tiers or rebalance before buying more.`
         : 'Production is near the cap. Research logistics tiers or rebalance before buying more.',
       overCap ? `${fmtCr(capLoad.overagePerMin)} cr/min over cap` : `${Math.round(summary.capUsedPct)}% cap load`,
       'Review Drones');
