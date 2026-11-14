@@ -13,16 +13,23 @@ const packedParams = new Float32Array(NOCTURNE_PROBE_CAPACITY * 4);
 for (let i = 3; i < packedParams.length; i += 4) packedParams[i] = 1;
 // Three accepts packed numeric uniform arrays directly. Pack once at the
 // producer instead of flattening vectors again for each lit material draw.
+// The vendored renderer caches these owned arrays until their producer writes again.
+function probeArrayUniform(value) {
+  return { value, spacefaceProbeRevision: 0, spacefaceProbeArray: value };
+}
 export const NOCTURNE_PROBE_UNIFORMS = Object.freeze({
   sfNocturneProbeCount: { value: 0 },
   sfNocturneViewToWorld: { value: new Matrix4() },
-  sfNocturneProbeCenter: { value: packedVec3() },
-  sfNocturneProbeInvRadii: { value: packedVec3() },
-  sfNocturneProbeDirection: { value: packedVec3() },
-  sfNocturneProbeColor: { value: packedVec3().fill(1) },
-  sfNocturneProbeAmbient: { value: packedVec3().fill(1) },
-  sfNocturneProbeParams: { value: packedParams },
+  sfNocturneProbeCenter: probeArrayUniform(packedVec3()),
+  sfNocturneProbeInvRadii: probeArrayUniform(packedVec3()),
+  sfNocturneProbeDirection: probeArrayUniform(packedVec3()),
+  sfNocturneProbeColor: probeArrayUniform(packedVec3().fill(1)),
+  sfNocturneProbeAmbient: probeArrayUniform(packedVec3().fill(1)),
+  sfNocturneProbeParams: probeArrayUniform(packedParams),
 });
+
+const PROBE_ARRAY_UNIFORMS = Object.values(NOCTURNE_PROBE_UNIFORMS)
+  .filter((uniform) => uniform.spacefaceProbeArray !== undefined);
 
 export const NOCTURNE_PROBE_PARS_GLSL = /* glsl */`
   uniform int sfNocturneProbeCount;
@@ -108,6 +115,7 @@ export class NocturneProbes {
   write(center, radii, profile, power = 1, direction = null) {
     if (this.count >= NOCTURNE_PROBE_CAPACITY || !profile || !this.enabled || !(power > 0)) return false;
     const i = this.count++;
+    for (const uniform of PROBE_ARRAY_UNIFORMS) uniform.spacefaceProbeRevision++;
     const offset = i * 3;
     const u = this.uniforms;
     writeVec3(u.sfNocturneProbeCenter.value, offset, center.x, center.y, center.z);

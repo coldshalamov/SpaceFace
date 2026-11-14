@@ -36,6 +36,7 @@ import {
 import { createDynamicBufferCoordinator } from '../src/render/dynamicBufferRanges.js';
 import { detachStaleWebGlDisposeListeners } from '../src/render/contextResourceLifecycle.js';
 import { drawableHideSession, touchSubjectOnExactTarget } from '../src/render/openingGpuAdmission.js';
+import { NocturneProbes } from '../src/render/nocturne/probes.js';
 import {
   RENDER_PACKAGE_PILOTS,
   renderPackagePilotForAssetId,
@@ -138,7 +139,9 @@ function createEventCanvas() {
   };
 }
 
-function createDeterministicWebGl2Context(canvas, activeAttributes = []) {
+function createDeterministicWebGl2Context(canvas, activeAttributes = [], activeUniforms = [
+  { name: 'map', type: 0x8b5e, size: 1 },
+]) {
   let nextConstant = 1;
   const constants = new Map([['SAMPLER_2D', 0x8b5e]]);
   const namesByConstant = new Map([[0x8b5e, 'SAMPLER_2D']]);
@@ -189,7 +192,7 @@ function createDeterministicWebGl2Context(canvas, activeAttributes = []) {
     createVertexArray: () => ({}),
     fenceSync: () => ({}),
     getActiveAttrib: (_program, index) => activeAttributes[index],
-    getActiveUniform: () => ({ name: 'map', type: 0x8b5e, size: 1 }),
+    getActiveUniform: (_program, index) => activeUniforms[index],
     getAttribLocation: (_program, name) => activeAttributes.find((attribute) => attribute.name === name).location,
     getContextAttributes: () => ({
       alpha: true,
@@ -210,7 +213,7 @@ function createDeterministicWebGl2Context(canvas, activeAttributes = []) {
     getProgramParameter(_program, value) {
       const name = namesByConstant.get(value);
       if (name === 'ACTIVE_ATTRIBUTES') return activeAttributes.length;
-      if (name === 'ACTIVE_UNIFORMS') return 1;
+      if (name === 'ACTIVE_UNIFORMS') return activeUniforms.length;
       if (name === 'LINK_STATUS' || name === 'VALIDATE_STATUS') return true;
       return true;
     },
@@ -219,7 +222,7 @@ function createDeterministicWebGl2Context(canvas, activeAttributes = []) {
     getShaderParameter: () => true,
     getShaderPrecisionFormat: () => ({ precision: 23, rangeMax: 127, rangeMin: 127 }),
     getSupportedExtensions: () => [],
-    getUniformLocation: () => ({}),
+    getUniformLocation: (program, name) => ({ program, name }),
     isContextLost: () => false,
   };
   return new Proxy(context, {
@@ -370,6 +373,89 @@ test('retail Three keeps clip-depth ordering for meshes, instance bounds and spr
   material.dispose();
   spriteMaterial.dispose();
   renderer.dispose();
+});
+
+test('retail Three submits unpacked or changed probe arrays and skips identical packed values per program', () => {
+  const canvas = createEventCanvas();
+  const activeUniforms = [
+    { name: 'sfNocturneProbeCenter[0]', type: 0x8b51, size: 4 },
+    { name: 'sfNocturneProbeParams[0]', type: 0x8b52, size: 4 },
+    { name: 'ordinaryArray[0]', type: 0x8b51, size: 4 },
+  ];
+  const context = createDeterministicWebGl2Context(canvas, [], activeUniforms);
+  const writes = [];
+  context.uniform3fv = (address, value) => writes.push({ ...address, value: Array.from(value) });
+  context.uniform4fv = context.uniform3fv;
+  const renderer = new RetailTHREE.WebGLRenderer({ canvas, context });
+  const camera = new RetailTHREE.PerspectiveCamera(50, 1, 0.1, 100);
+  const scene = new RetailTHREE.Scene();
+  const geometry = new RetailTHREE.BoxGeometry();
+  const probes = new NocturneProbes();
+  const { sfNocturneProbeCenter: center, sfNocturneProbeParams: params } = probes.uniforms;
+  const ordinary = new Float32Array(12);
+  function writeProbe(x, intensity) {
+    probes.begin(camera);
+    probes.write(new RetailTHREE.Vector3(x, 0, 0), new RetailTHREE.Vector3(1, 1, 1), { intensity });
+    probes.end();
+  }
+  writeProbe(0, 0);
+  function makeMaterial(name = '') {
+    const material = new RetailTHREE.ShaderMaterial({
+      uniforms: {
+        sfNocturneProbeCenter: center,
+        sfNocturneProbeParams: params,
+        ordinaryArray: { value: ordinary },
+      },
+      defines: name ? { PROBE_VARIANT: 1 } : {},
+    });
+    const mesh = new RetailTHREE.Mesh(geometry, material);
+    mesh.frustumCulled = false;
+    scene.add(mesh);
+    return material;
+  }
+  const first = makeMaterial();
+  const second = makeMaterial();
+  function draw() {
+    writes.length = 0;
+    renderer.render(scene, camera);
+    return (name) => writes.filter((write) => write.name === `${name}[0]`);
+  }
+  let written = draw();
+  assert.equal(written('sfNocturneProbeCenter').length, 1, 'two materials share a program');
+  assert.equal(written('sfNocturneProbeParams').length, 1);
+  assert.equal(written('ordinaryArray').length, 2, 'other uniforms keep their ordinary upload behavior');
+  assert.equal(draw()('sfNocturneProbeCenter').length, 0, 'steady subsequent render retains GPU values');
+  writeProbe(-0, 7.125);
+  written = draw();
+  assert.equal(written('sfNocturneProbeCenter').length, 1);
+  assert.ok(Object.is(written('sfNocturneProbeCenter')[0].value[0], -0));
+  assert.equal(written('sfNocturneProbeParams')[0].value[0], 7.125);
+
+  // A custom writer sharing the same program/cache slot can overwrite it in another form.
+  first.uniforms.sfNocturneProbeCenter = { value: Array.from(center.value, () => 5) };
+  written = draw();
+  assert.deepEqual(written('sfNocturneProbeCenter').map(({ value }) => value[0]), [5, -0]);
+  first.uniforms.sfNocturneProbeCenter = center;
+  assert.equal(draw()('sfNocturneProbeCenter').length, 0);
+
+  const variant = makeMaterial('different');
+  const variantWrites = draw()('sfNocturneProbeCenter');
+  assert.equal(variantWrites.length, 1, 'newly linked programs have their own initial values');
+  assert.deepEqual(variantWrites[0].value, Array.from(center.value));
+  writeProbe(11.125, 7.125);
+  const changedPrograms = draw()('sfNocturneProbeCenter');
+  assert.equal(new Set(changedPrograms.map(({ program }) => program)).size, 2);
+  for (const { value } of changedPrograms) assert.deepEqual(value, Array.from(center.value));
+
+  canvas.emit('webglcontextlost', { preventDefault() {} });
+  canvas.emit('webglcontextrestored');
+  const restored = draw()('sfNocturneProbeCenter');
+  assert.equal(new Set(restored.map(({ program }) => program)).size, 2);
+  for (const { value } of restored) assert.deepEqual(value, Array.from(center.value));
+  for (const material of [first, second, variant]) material.dispose();
+  geometry.dispose();
+  renderer.dispose();
+  probes.dispose();
 });
 
 test('retail exact-target admission filters color and shadow draws for a single render', () => {
