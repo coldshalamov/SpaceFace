@@ -1,0 +1,22 @@
+{
+  "modelId": "runtime:SF_WEAPON_GATLING:weapon_gatling",
+  "reviewStatus": "The owner rejected the flat yellow and washed-out housing. A scratch fit relocates a cantilevered rail and a separate floating plate; a compiled candidate has now rendered all nine parts mounted and isolated, although an earlier six-draw attempt remains unexplained. The generated receiver surface and the combined weapon still need packaged visual review; production is unchanged.",
+  "variationDiscovery": "unresolved",
+  "route": "The modular-ship preload selector chooses this asset for a medium autocannon with a fixed mount. A sampled integrated Kestrel instead requests only its complete hull; the selector trace injects equipment and does not establish natural encounter frequency.",
+  "sourceRecipe": "assets/ships/parts/weapons/weapon_gatling.glb",
+  "evidence": [
+    ".devshots/fleet/weapon-gatling-review/selection.json",
+    ".devshots/fleet/weapon-gatling-review/source.json",
+    ".devshots/fleet/weapon-gatling-review/mounted-study/report.json",
+    ".devshots/fleet/weapon-gatling-review/feed-texture-study/report.json",
+    ".devshots/fleet/gatling-fit-astra/packaged-review/report.json",
+    ".devshots/fleet/gatling-fit-astra/packaged-diagnostic/report.json",
+    ".devshots/fleet/graphics-overhaul-asset-catalog/catalog-v2.json"
+  ],
+  "risks": [
+    "The old package size is catalog-derived and must be rechecked before any promotion.",
+    "Natural encounter frequency and gameplay frame-time impact remain unverified.",
+    "In the sampled modular composition, weaponProps is empty: the hull reacts to fire but this weapon has no bound per-barrel recoil or spin.",
+    "The unique Ironsong selector now inherits its autocannon base family; a natural encounter using that route has not been observed."
+  ]
+}
