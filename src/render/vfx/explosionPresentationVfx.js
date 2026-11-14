@@ -73,11 +73,38 @@ export function createExplosionPresentationMethods({
     }
   },
 
+  _emitPaintedExplosionBody(phase, entry) {
+    const rr = Math.min(Math.max(2, entry.radius || 8), 8 + Math.sqrt(Math.max(2, entry.radius || 8)) * 2.4);
+    const x = entry.x, z = entry.z;
+    const reduced = resolveVfxAccessibilityProfile(this.state?.settings).flashOpacityScale < 1;
+    const dirAngle = Math.atan2(entry.dirZ || 0, entry.dirX || 1);
+    if (phase === 'ignition') {
+      this._spawnSprite(SPR_FLASH, x, 0.32, z, 0.11, rr * 0.35, rr * 1.0, reduced ? 0.7 : 1.0, 0,
+        '#ffffff', 0, 0, 1, dirAngle);
+      this._spawnSprite(SPR_COMBUSTION, x, 0.26, z, 0.62, rr * 0.9, rr * 2.3, 0.95, 0,
+        '#ffe2b8', (entry.targetVelocityX || 0) * 0.1, (entry.targetVelocityZ || 0) * 0.1, 1, dirAngle);
+    } else if (phase === 'rupture') {
+      this._spawnSprite(SPR_COMBUSTION, x, 0.24, z, 0.82, rr * 1.2, rr * 3.0, 0.9, 0,
+        '#ffd09a', (entry.targetVelocityX || 0) * 0.12, (entry.targetVelocityZ || 0) * 0.12, 1,
+        dirAngle + 2.1);
+      if (!reduced) this._spawnSprite(SPR_FLASH, x, 0.34, z, 0.09, rr * 0.25, rr * 0.7, 0.9, 0,
+        '#fff6e6', 0, 0, 1, dirAngle + 0.7);
+    } else if (phase === 'residue') {
+      this._spawnSprite(SPR_PUFF, x, 0.10, z, 2.4, rr * 1.4, rr * 3.8, 0.55, 0, '#8a8078',
+        (entry.targetVelocityX || 0) * 0.22 + (entry.dirX || 0) * 3,
+        (entry.targetVelocityZ || 0) * 0.22 + (entry.dirZ || 0) * 3, 1, dirAngle - 1.3);
+    }
+  },
+
   _emitExplosionPhase(phase, entry) {
     if (this._explosionRupture?.emitPhase(phase, entry, this.state?.settings)) {
       // Solid spall remains in the existing debris phase. Primary material is now a fracture
       // fan, armor throat, open reactor cavity or rolling fuel sheet; never stacked ball lobes.
       const accessibility = resolveVfxAccessibilityProfile(this.state?.settings);
+      // LOOK-05C: the rupture sheets carry the fracture structure; the painted fireball carries the
+      // light. A white-hot core (HDR, the bloom catches it), an evolving flipbook fire body, and a
+      // smoke billow that outlives the flame and drifts with the wreck's momentum.
+      this._emitPaintedExplosionBody(phase, entry);
       if (phase === 'ignition' || phase === 'contact-compression' || phase === 'rupture') {
         const family = explosionRuptureFamily(entry);
         if (accessibility.eventLightPeakScale > 0) {

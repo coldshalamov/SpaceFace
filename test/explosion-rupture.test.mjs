@@ -161,7 +161,10 @@ test('shipping phase dispatch replaces legacy ball layers and retains event illu
   harness._spawnSprite=(...args)=>legacy.push(args);
   harness._flashLight=(...args)=>lights.push(args);
   for(const phase of ['ignition','internal','rupture','pressure','residue']) harness._emitExplosionPhase(phase,entry());
-  assert.equal(legacy.length,0,'primary destruction cannot stamp the former combustion/smoke ball envelope');
+  // LOOK-05C: the only sprites are the painted flipbook body (hot flash core, fireball, one
+  // lingering smoke billow) - never the former layered ball, ring or glow-card envelope.
+  assert.ok(legacy.length>0&&legacy.length<=5,'primary destruction stamps only the bounded painted body');
+  assert.ok(legacy.every(a=>[0,2,4].includes(a[0])),'painted body is flash/puff/combustion only: no ring, no fresnel');
   assert.ok(owner.activeCount>0);assert.equal(lights.length,2);
   owner.dispose();
 });

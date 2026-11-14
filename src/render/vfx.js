@@ -15932,12 +15932,12 @@ export const vfx = {
         cursor++;
         continue;
       }
-      if (flip && s.kind === SPR_FLASH) {
+      if (flip && s.kind === SPR_FLASH && scale >= 6) {
         // Sparks and embers ride the flash glow: an authored burst, not just a soft disc.
         writeInstancedSpriteFields(
           this._spriteBatches, 'flipSpark',
           s.x, s.y, s.z, scale * 1.15, scale * 1.15, scale * 1.15,
-          s.roll, s.r, s.g, s.b, op * 0.9, t, s.seed, s.axis,
+          s.roll, s.r, s.g, s.b, op * 0.7, t, s.seed, s.axis,
         );
       }
       const bucketKind = s.kind === SPR_COMBUSTION

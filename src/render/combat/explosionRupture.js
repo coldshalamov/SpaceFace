@@ -203,7 +203,7 @@ export class ExplosionRupture {
         angle, speed: r * (primary ? (compact ? 2.2 : 1.7) : residual ? 0.6 : 0.45)
           * (compact ? 0.55 + pick * 1.05 : 0.7 + pick * 0.6),
         vx: finite(entry.targetVelocityX), vz: finite(entry.targetVelocityZ),
-        seed, motion: 1, alpha: residual ? 0.38 : 0.80,
+        seed, motion: 1, alpha: residual ? 0.30 : 0.58,
         heat: residual ? 0.10 : phase === 'ignition' ? 1.20 : 0.92,
       });
       this.activeCount++;
