@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve, sep } from 'node:path';
+import { basename, dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { NodeIO } from '@gltf-transform/core';
@@ -14,7 +14,8 @@ import {
   RENDER_PACKAGE_SOURCE_SCHEMA,
   stableJsonStringify,
 } from '../src/contracts/renderPackage.js';
-import { compileRenderPackage, writeFileWithRetry } from './lib/renderPackageCompiler.mjs';
+import { compileRenderPackage, normalizeSemanticManifest, writeFileWithRetry } from './lib/renderPackageCompiler.mjs';
+import { createPilotInputDescriptor, pilotInputDescriptorBytes, pilotInputDescriptorUri, readPilotMotionInput } from './lib/renderPackageInputs.mjs';
 import { collectRepeatedKtx2PayloadHashes } from './lib/renderPackageStorage.mjs';
 import { configureCockpitDomeStaticMerge } from './lib/cockpitDomeStaticMerge.mjs';
 import { configureCockpitRecessedStaticMerge } from './lib/cockpitRecessedStaticMerge.mjs';
@@ -59,7 +60,6 @@ export async function buildRenderPackagePilots(options = {}) {
   const releaseManifestPath = resolve(repoRoot, manifest.releaseManifest);
   const releaseManifest = JSON.parse(await readFile(releaseManifestPath, 'utf8'));
   const releaseRows = new Map((releaseManifest.assets || []).map((row) => [row.id, row]));
-  const scratch = check ? await mkdtemp(join(tmpdir(), 'spaceface-render-pilots-')) : null;
   if (onlyKeys) {
     const available = new Set(manifest.pilots.map((pilot) => pilot.key));
     for (const key of onlyKeys) {
@@ -67,12 +67,43 @@ export async function buildRenderPackagePilots(options = {}) {
     }
   }
   const selectedPilots = manifest.pilots.filter((pilot) => !onlyKeys || onlyKeys.has(pilot.key));
+  const scopedKeys = new Set();
+  for (const pilot of selectedPilots) {
+    let metadata;
+    try { metadata = JSON.parse(await readFile(resolve(outputRoot, pilot.metadataUrl), 'utf8')); }
+    catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+      if (outputRoot !== repoRoot) {
+        try { metadata = JSON.parse(await readFile(resolve(repoRoot, pilot.metadataUrl), 'utf8')); }
+        catch (fallbackError) { if (fallbackError.code !== 'ENOENT') throw fallbackError; }
+      }
+    }
+    if (options.scopedInputs === true || metadata?.provenance?.sourceManifest?.uri === pilotInputDescriptorUri(pilot.key)) scopedKeys.add(pilot.key);
+  }
+  // Legacy provenance migration changes content/runtime identities. Stage it explicitly;
+  // never silently rewrite accepted packages in the source checkout.
+  if (!check && outputRoot === repoRoot) {
+    for (const pilot of selectedPilots) {
+      if (!scopedKeys.has(pilot.key)) continue;
+      let metadata;
+      try { metadata = JSON.parse(await readFile(resolve(repoRoot, pilot.metadataUrl), 'utf8')); }
+      catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+      if (metadata.provenance?.sourceManifest?.uri !== pilotInputDescriptorUri(pilot.key)) {
+        throw new Error(`${pilot.key}: legacy package provenance requires a reviewed migration staged with --output-root; no packages were written.`);
+      }
+    }
+  }
   const repeatedKtx2Hashes = externalizeKtx2
     ? await collectRepeatedKtx2PayloadHashes(selectedPilots.map((pilot) => resolve(repoRoot, pilot.outputDir, 'render.glb')))
     : null;
   let bindings = [];
+  const scratch = await mkdtemp(join(tmpdir(), 'spaceface-render-pilots-'));
 
   try {
+    // Legacy callers retain the exact raw full-manifest binding. Snapshot it so
+    // concurrent edits cannot make the compiler hash a different catalog read.
+    const legacyInputPath = join(scratch, 'legacy-pilots.json');
+    await writeFile(legacyInputPath, manifestBytes);
     for (const manifestPilot of manifest.pilots) {
       if (onlyKeys && !onlyKeys.has(manifestPilot.key)) continue;
       const pilot = flightStaticKeys.has(manifestPilot.key)
@@ -90,15 +121,34 @@ export async function buildRenderPackagePilots(options = {}) {
         );
       }
 
-      const semanticManifest = await derivePilotSemanticManifest(pilot, sourcePath);
+      const semanticManifest = normalizeSemanticManifest(await derivePilotSemanticManifest(pilot, sourcePath, { sourceBytes }));
       const outputDir = check
         ? join(scratch, pilot.key)
         : resolve(outputRoot, pilot.outputDir);
       const declaredKtx2Hashes = manifestPilot.sharedKtx2Hashes;
+      const compilerOptions = {
+        sourceAssetId: pilot.releaseAssetId,
+        positionPrecisionPolicy: pilot.positionPrecisionPolicy || 'standard',
+        externalizeKtx2: externalizeKtx2 || declaredKtx2Hashes !== undefined,
+        externalizeKtx2Hashes: externalizeKtx2 ? [...repeatedKtx2Hashes].sort() : declaredKtx2Hashes || null,
+      };
+      const motionInput = await readPilotMotionInput(pilot, semanticManifest, repoRoot);
+      const scopedInputs = scopedKeys.has(pilot.key);
+      const inputUri = pilotInputDescriptorUri(pilot.key);
+      const inputBytes = pilotInputDescriptorBytes(createPilotInputDescriptor({
+        manifest, flightStaticManifest, pilot: manifestPilot, releaseRow, semanticManifest,
+        sourceGlb: { uri: pilot.sourceUrl, sha256: sourceSha256, bytes: sourceBytes.length },
+        motionBank: motionInput, compilerOptions,
+      }));
+      const inputPath = resolve(scratch, inputUri);
+      await mkdir(dirname(inputPath), { recursive: true });
+      await writeFile(inputPath, inputBytes);
       const result = await compileRenderPackage({
         assetId: pilot.assetId,
         sourceGlbPath: sourcePath,
-        sourceManifestPath: manifestPath,
+        sourceGlbBytes: sourceBytes,
+        sourceManifestPath: scopedInputs ? inputPath : legacyInputPath,
+        sourceManifestUri: scopedInputs ? inputUri : basename(manifestPath),
         semanticManifest,
         sourceAssetId: pilot.releaseAssetId,
         positionPrecisionPolicy: pilot.positionPrecisionPolicy || 'standard',
@@ -117,10 +167,19 @@ export async function buildRenderPackagePilots(options = {}) {
           }
         }
       }
-      await attachRuntimeTable(outputDir, pilot, result.package, repoRoot);
+      const sealedMotionInput = await attachRuntimeTable(outputDir, pilot, result.package, repoRoot);
+      if (stableJsonStringify(sealedMotionInput) !== stableJsonStringify(motionInput)) {
+        throw new Error(`${pilot.key}: motion bank changed during compilation; discard this candidate and rebuild.`);
+      }
       if (check) {
         const expectedRoot = options.outputRoot ? outputRoot : repoRoot;
         await assertPackageMatches(outputDir, resolve(expectedRoot, pilot.outputDir), pilot.key);
+        if (scopedInputs && !(await readFile(resolve(expectedRoot, inputUri))).equals(inputBytes)) {
+          throw new Error(`${pilot.key}: input descriptor is stale; rebuild render-package pilots.`);
+        }
+      } else if (scopedInputs) {
+        await mkdir(dirname(resolve(outputRoot, inputUri)), { recursive: true });
+        await writeFileWithRetry(resolve(outputRoot, inputUri), inputBytes);
       }
 
     }
@@ -190,9 +249,9 @@ export async function buildRenderPackagePilots(options = {}) {
   return Object.freeze(bindings.map((binding) => Object.freeze({ ...binding })));
 }
 
-export async function derivePilotSemanticManifest(pilot, sourcePath) {
+export async function derivePilotSemanticManifest(pilot, sourcePath, { sourceBytes } = {}) {
   const io = await renderPackageIo();
-  const document = await io.read(sourcePath);
+  const document = sourceBytes === undefined ? await io.read(sourcePath) : await io.readBinary(new Uint8Array(sourceBytes));
   const documentRoot = document.getRoot();
   const scene = documentRoot.getDefaultScene() || documentRoot.listScenes()[0];
   if (!scene) throw new Error(`${pilot.key}: package source contains no scene.`);
@@ -721,6 +780,7 @@ async function attachRuntimeTable(outputDir, pilot, compiledPackage, repoRoot = 
   metadata.runtime = table;
   metadata.runtimeHash = await computeRenderPackageRuntimeHash(metadata, { digest: sha256 });
   await writeFileWithRetry(metadataPath, `${stableJsonStringify(metadata, 2)}\n`);
+  return motionBank;
 }
 
 function unionGeometryBounds(geometry) {
@@ -750,12 +810,13 @@ export function parseRenderPackagePilotArgs(argv) {
   const onlyKeys = onlyArgs.flatMap((arg) => arg.slice('--only='.length).split(',')).filter(Boolean);
   const outputRootArg = argv.find((arg) => arg.startsWith('--output-root='));
   const manifestArg = argv.find((arg) => arg.startsWith('--manifest='));
-  const unknown = argv.filter((arg) => arg !== '--check' && arg !== '--externalize-ktx2'
+  const unknown = argv.filter((arg) => arg !== '--check' && arg !== '--externalize-ktx2' && arg !== '--scoped-inputs'
     && !arg.startsWith('--only=') && !arg.startsWith('--output-root=') && !arg.startsWith('--manifest='));
   if (unknown.length) throw new Error(`Unknown render-package pilot option: ${unknown.join(', ')}`);
   return {
     check: argv.includes('--check'),
     externalizeKtx2: argv.includes('--externalize-ktx2'),
+    ...(argv.includes('--scoped-inputs') ? { scopedInputs: true } : {}),
     ...(outputRootArg ? { outputRoot: outputRootArg.slice('--output-root='.length) } : {}),
     ...(manifestArg ? { manifestPath: manifestArg.slice('--manifest='.length) } : {}),
     ...(onlyKeys.length ? { onlyKeys } : {}),

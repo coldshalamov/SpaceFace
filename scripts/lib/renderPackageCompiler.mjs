@@ -69,7 +69,8 @@ export async function compileRenderPackage(options = {}) {
   }
 
   const [sourceBytes, sourceManifestBytes] = await Promise.all([
-    readFile(sourceGlbPath),
+    // Pilot builds derive semantics and compile from the same verified source snapshot.
+    options.sourceGlbBytes !== undefined ? Promise.resolve(Buffer.from(options.sourceGlbBytes)) : readFile(sourceGlbPath),
     sourceManifestPath ? readFile(sourceManifestPath) : Promise.resolve(null),
   ]);
   const io = await createIo();
