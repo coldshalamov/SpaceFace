@@ -57,7 +57,7 @@ test('INF-018: one separation emits one distinguishable alert per cause', () => 
     for (const [reason, text] of [
       ['threshold', 'OVERLOAD BREAK'],
       ['monofilament_sweep', 'LINE SEVERED'],
-      ['target_lost', 'TARGET LOST'],
+      ['target_lost', 'LOST'],
       ['line_broken', 'MASSLINE BROKEN'],
     ]) {
       h.state.tick += 11;

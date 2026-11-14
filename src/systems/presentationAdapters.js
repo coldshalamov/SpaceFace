@@ -141,7 +141,7 @@ const UI_CUES = Object.freeze({
   'tether.break': uiCue('presentation:tether:break', 'danger', 'MASSLINE BROKEN', 1.8),
   'tether.break.overload': uiCue('presentation:tether:break-overload', 'warn', 'OVERLOAD BREAK', 1.8),
   'tether.break.severed': uiCue('presentation:tether:break-severed', 'danger', 'LINE SEVERED', 1.8),
-  'tether.break.endpoint': uiCue('presentation:tether:break-endpoint', 'info', 'TARGET LOST', 1.4),
+  'tether.break.endpoint': uiCue('presentation:tether:break-endpoint', 'info', 'LOST', 1.2),
   // Rung 14 — the whip payoff readout (the crack landed). Info tier: it's a reward, not a warning.
   'tether.whip_impact': uiCue('presentation:tether:whip-impact', 'info', 'MASSLINE IMPACT', 1.4),
   // Rung 10 — swing-danger warn (line-near-break / hostile-on-arc / collision-course).
