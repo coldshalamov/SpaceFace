@@ -694,7 +694,7 @@ export const frontierHomesteads = {
   /** First clear pocket on the staging rings — a bounded transition-time probe,
    *  not a tick scan. Clearance counts live bodies and asteroid-field records
    *  within `pad` of each hull's radius. */
-  _clearRingSpot(state, center, baseAngle, rings, pad) {
+  _clearRingSpot(state, center, baseAngle, rings, pad, offsets) {
     if (!Number.isFinite(center?.x) || !Number.isFinite(center?.z)) return null;
     const clearOf = (p) => {
       for (const e of state.entityList || []) {
@@ -709,9 +709,10 @@ export const frontierHomesteads = {
       }
       return true;
     };
+    const bearings = Array.isArray(offsets) && offsets.length ? offsets : RING_OFFSETS;
     for (const radius of rings) {
-      for (let i = 0; i < RING_OFFSETS.length; i++) {
-        const a = baseAngle + RING_OFFSETS[i] * Math.PI / 8;
+      for (let i = 0; i < bearings.length; i++) {
+        const a = baseAngle + bearings[i] * Math.PI / 8;
         const p = { x: center.x + Math.cos(a) * radius, z: center.z + Math.sin(a) * radius };
         if (clearOf(p)) return p;
       }
@@ -1819,19 +1820,29 @@ export const frontierHomesteads = {
       postedAt: num(state.simTime), expiresAt: num(state.simTime) + FRONTIER_MUTUAL_AID.markerTtlS,
       feeCr: FRONTIER_MUTUAL_AID.feeCr, state: 'open', markerId: null, markerGen: null,
     };
-    // The marker pod rides at the creditor's ring — tow it to the debtor.
-    const a = frac('marker-ang', creditor.rec.entityId, f.seq) * Math.PI * 2;
-    const r = (Number(creditor.ent.radius) || 60) + 40;
+    // The marker pod waits in clear space just off the creditor's hull, on the
+    // side facing the debtor — the carrier reads the errand off the geometry.
+    // No clear pocket: post nothing this beat; the offer timer retries.
+    const debtorEnt = debtor.ent;
+    const hullR = Number(creditor.ent.radius) || 60;
+    const facing = Math.atan2(debtorEnt.pos.z - creditor.ent.pos.z,
+      debtorEnt.pos.x - creditor.ent.pos.x);
+    const pos = this._clearRingSpot(state, creditor.ent.pos, facing,
+      [hullR + 36, hullR + 64, hullR + 92], 20, [0, 1, -1, 2]);
+    if (!pos) return null;
     const pod = this.helpers.spawnEntity({
       type: 'payload', team: 0, factionId: FACTION_ID,
-      pos: { x: creditor.ent.pos.x + Math.cos(a) * r, z: creditor.ent.pos.z + Math.sin(a) * r },
-      vel: { x: 0, z: 0 }, radius: 8, mass: 12, hull: 40, hullMax: 40, collides: true,
+      pos, vel: { x: 0, z: 0 }, radius: 8, mass: 12, hull: 40, hullMax: 40, collides: true,
+      physicsBody: { shape: 'ball', radius: 8, mass: 12, dynamic: true },
+      flags: { persistent: true },
       data: {
         frontierAidId: id, aidMarker: true,
         name: `Mutual-aid marker — ${debtor.rec.name}`,
-        scanLabel: `MUTUAL AID · carry to ${debtor.rec.name}`,
+        scanLabel: `MUTUAL AID · 12t · to ${debtor.rec.name}`,
+        masslineTetherable: true,
       },
     });
+    if (!pod) return null;
     debt.markerId = pod.id;
     debt.markerGen = pod.occupantGeneration ?? null;
     f.debts.push(debt);
