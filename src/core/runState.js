@@ -246,7 +246,7 @@ function validateRunStateInner(run) {
     }
   }
 
-  collectNonJsonIssues(run, '', issues);
+  collectNonJsonIssues(run, issues, [], new WeakSet());
   return { ok: issues.length === 0, issues };
 }
 
@@ -326,50 +326,61 @@ function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function collectNonJsonIssues(value, path, issues, visited = new WeakSet(), depth = 0) {
-  if (value === undefined) {
-    issues.push(`${path || '(root)'}: undefined`);
-    return;
+function nonJsonPath(path) {
+  let formatted = '';
+  for (const part of path) {
+    if (typeof part === 'number') formatted += `[${part}]`;
+    else formatted = formatted ? `${formatted}.${part}` : part;
   }
+  return formatted || '(root)';
+}
+
+function isJsonScalar(value) {
+  return value === null || typeof value === 'string' || typeof value === 'boolean' || Number.isFinite(value);
+}
+
+function collectNonJsonIssues(value, issues, path, visited) {
   if (value === null) return;
   const type = typeof value;
-  if (type === 'function' || type === 'bigint' || type === 'symbol') {
-    issues.push(`${path || '(root)'}: non-json ${type}`);
+  if (type !== 'object') {
+    issues.push(`${nonJsonPath(path)}: ${value === undefined ? 'undefined' : `non-json ${type}`}`);
     return;
   }
-  if (type === 'number' && !Number.isFinite(value)) {
-    issues.push(`${path || '(root)'}: non-json number`);
-    return;
-  }
-  if (type !== 'object') return;
   if (visited.has(value)) {
-    issues.push(`${path || '(root)'}: circular`);
+    issues.push(`${nonJsonPath(path)}: circular`);
     return;
   }
-  if (depth >= JSON_DEPTH_CAP) {
-    issues.push(`${path || '(root)'}: too deep`);
+  if (path.length >= JSON_DEPTH_CAP) {
+    issues.push(`${nonJsonPath(path)}: too deep`);
     return;
   }
   visited.add(value);
   try {
     if (value instanceof Map || value instanceof Set) {
-      issues.push(`${path || '(root)'}: ${value.constructor.name}`);
+      issues.push(`${nonJsonPath(path)}: ${value.constructor.name}`);
       return;
     }
     if (Array.isArray(value)) {
       for (let i = 0; i < value.length; i++) {
-        collectNonJsonIssues(value[i], `${path}[${i}]`, issues, visited, depth + 1);
+        const child = value[i];
+        if (isJsonScalar(child)) continue;
+        path.push(i);
+        collectNonJsonIssues(child, issues, path, visited);
+        path.pop();
       }
       return;
     }
     const proto = Object.getPrototypeOf(value);
     if (proto !== Object.prototype && proto !== null) {
-      issues.push(`${path || '(root)'}: non-json object`);
+      issues.push(`${nonJsonPath(path)}: non-json object`);
       return;
     }
     for (const key of Object.keys(value)) {
-      const nextPath = path ? `${path}.${key}` : key;
-      collectNonJsonIssues(value[key], nextPath, issues, visited, depth + 1);
+      const child = value[key];
+      if (isJsonScalar(child)) continue;
+      path.push(key);
+      collectNonJsonIssues(child, issues, path, visited);
+      path.pop();
     }
   } finally {
     // `visited` tracks the current ancestry, not every object seen. Reusing a JSON object in two
