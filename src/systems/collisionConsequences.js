@@ -599,7 +599,12 @@ export const collisionConsequences = {
     // contact damage from what it hits, so it survives the swing and the throw is always there; it
     // takes full damage again the moment the line is cut (the throw's impact breaks it). Gunfire
     // never routes through here.
-    if (isHeldOnPlayerLine(this.state, target)) impactDamage *= HELD_BODY_CONTACT_DAMAGE_SCALE;
+    if (isHeldOnPlayerLine(this.state, target)) {
+      // Scaled, then capped to a share of what the body has left: a swing through a station is a
+      // heavy hit, and no single blow (or run of them) may finish the thing you are holding.
+      const left = Math.max(0, finite(target.hull) + finite(target.shield));
+      impactDamage = Math.min(impactDamage * HELD_BODY_CONTACT_DAMAGE_SCALE, left * HELD_BODY_MAX_SHARE_PER_HIT);
+    }
     // routeDamage may synchronously cross the lethal threshold and invoke combat.kill. Snapshot the
     // live body/contact truth before that call so the sole death owner can publish an immutable
     // presentation receipt without querying a retired entity or inventing collision provenance.
@@ -668,6 +673,7 @@ export const collisionConsequences = {
 
 /** Fraction of contact damage the body on the player's Line takes while it is being swung. */
 export const HELD_BODY_CONTACT_DAMAGE_SCALE = 0.15;
+export const HELD_BODY_MAX_SHARE_PER_HIT = 0.2;
 export function isHeldOnPlayerLine(state, body) {
   const tether = state && state.player && state.player.tether;
   return !!(body && tether && tether.active && tether.targetId === body.id

@@ -23,7 +23,7 @@ test('a latched body takes reduced contact damage; free, it takes full damage', 
   const saved = { ...MASSLINE2_FLAGS };
   Object.assign(MASSLINE2_FLAGS, { enabled: true, throw: true });
   try {
-    const target = { id: 2, type: 'ship', alive: true, team: 1 };
+    const target = { id: 2, type: 'ship', alive: true, team: 1, hull: 1000, shield: 0 };
     const state = { playerId: 1, player: { tether: { active: true, targetId: 2 } } };
     assert.equal(isHeldOnPlayerLine(state, target), true);
     const held = route(state, target);
@@ -32,6 +32,10 @@ test('a latched body takes reduced contact damage; free, it takes full damage', 
     const free = route(state, target);
     assert.ok(free > 0, 'a free body takes the full blow');
     assert.ok(Math.abs(held / free - HELD_BODY_CONTACT_DAMAGE_SCALE) < 1e-6, `held ${held} vs free ${free}`);
+    // A huge blow can never finish the held body: capped to a share of what it has left.
+    state.player.tether.active = true;
+    const frail = { id: 2, type: 'ship', alive: true, team: 1, hull: 10, shield: 0 };
+    assert.ok(route(state, frail) <= 10 * 0.2 + 1e-9, 'one blow cannot finish a held body');
     // A body that is NOT the one on the line is unaffected, and the player never is.
     state.player.tether = { active: true, targetId: 77 };
     assert.equal(isHeldOnPlayerLine(state, target), false);
