@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 import { createBreakwaterSpurPresentation } from '../src/features/breakwaterSpur/presentation.js';
-import { getBreakwaterSpurMapMarkers } from '../src/features/breakwaterSpur/readModel.js';
+import { breakwaterSiteGlobal, getBreakwaterSpurMapMarkers } from '../src/features/breakwaterSpur/readModel.js';
 import { BREAKWATER_PHASE as PH, BREAKWATER_CHARTER, BREAKWATER_SECTOR_ID } from '../src/features/breakwaterSpur/definition.js';
 
 function visibleLights(scene) {
@@ -56,5 +56,31 @@ test('undiscovered and off-sector worksite contributes no visible scene lights',
     state.world.currentSectorId = 'sector_helios_prime';
     presentation.update();
     assert.equal(visibleLights(scene).length, 0);
+  } finally { presentation.dispose(); }
+});
+
+test('site lamps and bulbs follow the current render frame origin', () => {
+  const state = stateWithMirroredView(), scene = new THREE.Scene();
+  state.world.frameOrigin = { x: -12288, z: 8192 };
+  const presentation = createBreakwaterSpurPresentation({ state, scene, THREE });
+  const site = breakwaterSiteGlobal();
+  try {
+    const verifyHead = (origin) => {
+      presentation.update();
+      scene.updateMatrixWorld(true);
+      const group = scene.getObjectByName('breakwaterSpur:lamps');
+      const light = group.children.find(object => object.isPointLight);
+      const bulb = group.children.find(object => object.isMesh);
+      const expected = [site.x - origin.x, 16, site.z + 14 - origin.z];
+      assert.deepEqual(light.getWorldPosition(new THREE.Vector3()).toArray(), expected);
+      assert.deepEqual(bulb.getWorldPosition(new THREE.Vector3()).toArray(), expected);
+      assert.equal(visibleLights(scene).length, 4);
+      assert.equal(light.intensity, 1.35);
+    };
+    verifyHead(state.world.frameOrigin);
+    state.world.frameOrigin = { x: -16384, z: 12288 };
+    verifyHead(state.world.frameOrigin);
+    delete state.world.frameOrigin;
+    verifyHead({ x: 0, z: 0 });
   } finally { presentation.dispose(); }
 });

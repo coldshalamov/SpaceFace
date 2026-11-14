@@ -199,6 +199,11 @@ export function createBreakwaterSpurPresentation(ctx) {
     if (!on) { if (group) group.visible = false; return; }
     ensure();
     group.visible = true;
+    // The anchors are galactic-global, while the rendered scene is frame-local.
+    // Shift their shared parent so the bulbs and lights stay together after a rebase.
+    const origin = state?.world?.frameOrigin;
+    group.position.set(Number.isFinite(origin?.x) ? -origin.x : 0, 0,
+      Number.isFinite(origin?.z) ? -origin.z : 0);
     for (const entry of lights) {
       const lit = on && stage >= entry.stage;
       entry.light.visible = !!lit;
