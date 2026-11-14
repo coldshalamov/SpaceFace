@@ -13,6 +13,9 @@ export function installSingleSamplePackedOrmShader(material) {
     if (typeof originalOnBeforeCompile === 'function') {
       originalOnBeforeCompile.call(this, shader, renderer);
     }
+    // An admitted material can later lose a map on a private clone. Three includes
+    // map presence in its program key, so use its stock chunks for that variant.
+    if (!this.roughnessMap || !this.metalnessMap || !this.aoMap) return;
     const replacements = [
       [
         '#include <roughnessmap_fragment>',
