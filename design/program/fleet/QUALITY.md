@@ -624,3 +624,12 @@ Gauntlet drew 12.74 to 14.55/s over its first 10 s, and the two encounters clear
 times. Adventure advanced 0.47 to 0.52 seconds of simulation per wall second. Neither route
 showed a seconds-long position freeze with drawing still active. Sustained cadence and the
 original retail freeze are still open. Unpinned content comes from the shared checkout.
+
+The locked `flight-holds-owner-followup-steer.json` run used the ordinary Adventure route, a
+disposable Electron profile, and the bundled worker. The Pause menu held tick 126 and the ship
+pose until Resume. Native minimize held tick 427 and the drawn pose. After native restore, fresh
+W and D registered together. The authoritative pose advanced 171 ticks, moved 129 world units
+between samples and changed heading by 110 degrees while the world drew 53 more times. Both
+screenshots were opened and cleanup passed. The earlier W-only run resumed ticks but moved only
+1.44 world units beside a rock. These runs verify restore and steering while leaving the cause of
+the earlier low-movement case open.
