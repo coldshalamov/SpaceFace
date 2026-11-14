@@ -17,8 +17,12 @@ tree. You must not damage them.
    new files only where the packet says. If you truly need another file, do not edit it: write
    the change you wanted into your receipt under "Blocked".
 2. **Before editing a file, run `git diff -- <file>`.** If it already has changes you did not
-   make, stop work on that file and report it under "Blocked". Never edit a file with foreign
-   changes in it.
+   make, that is **not** a blocker (owner, 2026-11-14): run
+   `bash scripts/fleet/own-commit.sh begin <file>` first, make your edit beside their lines without
+   touching theirs, and commit with `bash scripts/fleet/own-commit.sh commit "<message>" <files>` —
+   it commits only what you changed and leaves their edit uncommitted in place. Never revert,
+   reformat or commit another agent's lines on purpose; never leave your own work undone because a
+   file was busy.
 3. **Forbidden git commands, no exceptions:** `reset`, `restore`, `checkout`, `switch`,
    `stash`, `clean`, `rebase`, `merge`, `pull`, `push`, `add -A`, `add .`, `commit -a`,
    `worktree`, `branch -D`. Never delete files you did not create.
