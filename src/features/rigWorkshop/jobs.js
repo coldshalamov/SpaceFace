@@ -4,18 +4,18 @@ import { markDirty, DIRTY } from '../../core/dirtyJournal.js';
 
 export const RIG_JOB_DEFS = Object.freeze([
   Object.freeze({ id: 'needle', title: 'The Needle Orchard', rig: 'cradle',
-    description: 'Three survey cores are wedged among dead freight frames. Take a cradle through the narrow throat, catch the original pods, and bring them to the receiving gantry.',
-    lesson: 'A wide cradle catches more. It also catches the gate. Try a collector on the nose or a bumper on the exposed side.',
+    description: 'Three survey cores wedged in dead freight, through a narrow throat to the gantry.',
+    lesson: 'A wide cradle catches the gate too; try a collector or a bumper.',
     count: 3, mass: 36, radius: 7, hull: 180, pay: 180, asset: 'place_cargo_pod_standard',
     pickup: { x: 670, z: -240 }, destination: { x: 300, z: 480 } }),
   Object.freeze({ id: 'kiln', title: 'A Very Bad Centre of Gravity', rig: 'sled',
-    description: 'Two dense thermal stores need moving from the abandoned kiln to a coolant tender. Their mass pulls the tow off line. Take the powered sled, balance the load, and brake before delivery.',
-    lesson: 'Put the mover behind the load. An off-centre load twists the hitch. Brake early with mover assist enabled, then let the heavy load settle.',
+    description: 'Two dense thermal stores to a coolant tender; their mass pulls the tow off line.',
+    lesson: 'Mover behind the load; brake early and let it settle.',
     count: 2, mass: 190, radius: 5.5, hull: 320, pay: 300, asset: 'place_cargo_pod_hazmat',
     pickup: { x: -760, z: 250 }, destination: { x: -350, z: -480 } }),
   Object.freeze({ id: 'relay', title: 'The Quiet Relay', rig: 'cradle', requires: Object.freeze(['needle', 'kiln']),
-    description: 'A fragile signal coil and its protective housing go to the night-shift gantry.',
-    lesson: 'Shock damage cuts the receipt; keep both packs clear of the frames.',
+    description: 'Coil and housing, to the night gantry.',
+    lesson: 'Shock cuts the receipt; keep both packs clear of the frames.',
     count: 2, mass: 18, radius: 6, hull: 90, pay: 220, asset: 'place_cargo_pod_standard',
     loads: Object.freeze([
       Object.freeze({ label: 'Signal coil', mass: 18, hull: 90 }),
@@ -41,7 +41,7 @@ export function rigJobAvailability(w, id) {
     const prior = w.jobs?.[key];
     return !prior?.settled || !(prior.delivered?.length > 0);
   });
-  return missing.length ? { ok: false, reason: 'Settle the needle and kiln orders with a delivered original first.' } : { ok: true };
+  return missing.length ? { ok: false, reason: 'Settle the needle and kiln orders first.' } : { ok: true };
 }
 
 export function createWorkshopJobs({ state, bus, physics, feedback = () => {} }) {
@@ -70,14 +70,14 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
     const availability = rigJobAvailability(w, id);
     if (!availability.ok) return availability;
     const existing = w.jobs?.[id];
-    if (existing) return { ok: false, reason: existing.settled ? 'This contract has already been settled.' : 'This work order is already aboard. Follow its cargo marker.' };
-    if (w.activeJobId && !w.jobs[w.activeJobId]?.settled) return { ok: false, reason: 'Finish or settle the current work order first.' };
+    if (existing) return { ok: false, reason: existing.settled ? 'This contract has already been settled.' : 'This order is already aboard.' };
+    if (w.activeJobId && !w.jobs[w.activeJobId]?.settled) return { ok: false, reason: 'One order at a time.' };
     if (!w.rigs?.length) return { ok: false, reason: 'Inspect a rig at the bench first.' };
-    if (bodies(w).length + 5 + def.count > RIG_JOB_LIMITS.maxBodies) return { ok: false, reason: 'Workshop body limit reached. Finish the first job before accepting another.' };
+    if (bodies(w).length + 5 + def.count > RIG_JOB_LIMITS.maxBodies) return { ok: false, reason: 'Workshop body limit reached.' };
     if (!w.bench?.pos || state.world?.currentSectorId !== w.bench.sectorId) return { ok: false, reason: 'Accept this order at the workshop in its home sector.' };
     const pickup = clearPatch(w, worldPoint(w, def.pickup), def.pickupRadius ?? (id === 'needle' ? 145 : 165));
     const destination = pickup && clearPatch(w, worldPoint(w, def.destination), 110, pickup);
-    if (!pickup || !destination) return { ok: false, reason: 'The nearby work site is obstructed. Clear the local traffic and try the order again; nothing was spent.' };
+    if (!pickup || !destination) return { ok: false, reason: 'The work site is obstructed; nothing was spent.' };
     const job = { id, title: def.title, stage: 'pickup', acceptedAt: state.simTime || 0,
       sectorId: w.bench.sectorId, pickup, destination,
       cargoIds: [], cargo: [], obstacleIds: [], receiverId: null, deliveryRadius: RIG_JOB_LIMITS.receiverRadius, delivered: [], paid: 0, settled: false,
@@ -186,7 +186,7 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
       const body = original(w, job, record);
       if (body && (body.alive === false || body.hull <= 0)) {
         record.lost = true; record.lastSecuredPos = null;
-        feedback('warning', 'An original cargo body was lost. Recover the survivors for partial payment, then settle the order at the gantry or bench.');
+        feedback('warning', 'An original was lost; the survivors still pay.');
       }
     }
   }
@@ -194,22 +194,22 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
   function deliveryQuote(w, id = w.activeJobId) {
     const job = w.jobs?.[id], def = definition(id);
     if (!job || !def) return { ok: false, reason: 'No work order is active.', accepted: [], rejected: [] };
-    if (job.settled) return { ok: false, reason: 'The receipt is closed. This cargo cannot pay twice.', accepted: [], rejected: [] };
+    if (job.settled) return { ok: false, reason: 'The receipt is closed; cargo cannot pay twice.', accepted: [], rejected: [] };
     if (state.world?.currentSectorId !== job.sectorId) return { ok: false, reason: 'Return to the receiver in the workshop sector.', accepted: [], rejected: [] };
     const player = entity(state, state.playerId), receiver = entity(state, job.receiverId);
-    if (!receiver || receiver.alive === false || receiver.hull <= 0) return { ok: false, reason: 'The receiver is unavailable. Cargo and earned receipts are preserved.', accepted: [], rejected: [] };
-    if (!player || distance(player.pos, job.destination) > 170) return { ok: false, reason: 'Travel to the receiving gantry before requesting delivery.', accepted: [], rejected: [] };
+    if (!receiver || receiver.alive === false || receiver.hull <= 0) return { ok: false, reason: 'The receiver is unavailable; receipts are kept.', accepted: [], rejected: [] };
+    if (!player || distance(player.pos, job.destination) > 170) return { ok: false, reason: 'Travel to the receiving gantry first.', accepted: [], rejected: [] };
     const accepted = [], rejected = [];
     for (const record of job.cargo) {
       if (record.paid) continue;
       const e = original(w, job, record);
       let reason = null;
-      if (!e) reason = 'Original cargo is missing; a replacement body does not satisfy the manifest.';
-      else if (e.alive === false || e.hull <= 0) reason = 'Cargo destroyed. Bring the surviving pieces for a partial payment.';
-      else if (!physicsBodyNativeReady(e)) reason = 'Cargo is waiting for physical admission. Hold position.';
-      else if (!record.collectedByRig || (record.travelled || 0) < RIG_JOB_LIMITS.minimumTravel) reason = 'Use an assembled rig to carry this cargo out of the pickup field.';
-      else if (distance(e.pos, job.destination) > RIG_JOB_LIMITS.receiverRadius) reason = 'Cargo is outside the receiving circle. Bring the body itself inside.';
-      else if (speed(e) > RIG_JOB_LIMITS.speed || Math.abs(e.angVel || 0) > RIG_JOB_LIMITS.spin) reason = 'Cargo is moving too fast. Brake and let it settle.';
+      if (!e) reason = 'Original missing; a replacement does not satisfy the manifest.';
+      else if (e.alive === false || e.hull <= 0) reason = 'Cargo destroyed; the pieces still pay partially.';
+      else if (!physicsBodyNativeReady(e)) reason = 'Cargo awaits physical admission; hold position.';
+      else if (!record.collectedByRig || (record.travelled || 0) < RIG_JOB_LIMITS.minimumTravel) reason = 'A rig must carry it out of the field.';
+      else if (distance(e.pos, job.destination) > RIG_JOB_LIMITS.receiverRadius) reason = 'Cargo is outside the receiving circle.';
+      else if (speed(e) > RIG_JOB_LIMITS.speed || Math.abs(e.angVel || 0) > RIG_JOB_LIMITS.spin) reason = 'Cargo is moving too fast; let it settle.';
       else if (e.data.rigWorkshopCargo.delivered) reason = 'This body already has a delivery receipt.';
       if (reason) rejected.push({ id: record.id, reason });
       else accepted.push({ id: record.id, token: record.token, integrity: Math.max(0, Math.min(1, e.hull / e.hullMax)),
@@ -236,7 +236,7 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
         || body?.occupantGeneration !== selection.generation || body.ownerId !== state.playerId
         || body.data?.playerOwned !== true || line.token !== selection.token
         || line.amount !== selection.amount) {
-        return { ok: false, reason: 'That original or its receipt changed; inspect the handover again.' };
+        return { ok: false, reason: 'That original or receipt changed; inspect again.' };
       }
       quote.accepted = [line];
     }
@@ -292,8 +292,8 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
     bus.emit('economy:grantCredits', { amount, reason: `rigWorkshop:${receipt.id}` });
     bus.emit('rigWorkshop:delivered', copy(receipt));
     feedback(firstModified ? 'signature' : job.settled ? 'delivery' : 'partial',
-      firstModified ? `That is your machine doing real work. ${amount} cr paid, including 100 cr for the first job with your own modification.`
-        : `${job.delivered.length}/${job.cargo.length} originals delivered · ${amount} cr paid. ${job.settled ? 'Work order settled.' : 'The remaining cargo is still yours to recover.'}`, job.destination);
+      firstModified ? `Your machine did real work — ${amount} cr paid, 100 for your own modification.`
+        : `${job.delivered.length}/${job.cargo.length} originals delivered · ${amount} cr paid${job.settled ? ' · settled' : ' · the rest is still yours.'}`, job.destination);
     if (job.settled) { w.activeJobId = null; guide(w, 'bench'); }
     return { ...quote, amount, receipt, settled: job.settled };
   }
@@ -302,13 +302,13 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
     if (deliveryTransactions.has(state)) return { ok: false, reason: 'A handover is already in progress.' };
     const job = w.jobs?.[w.activeJobId];
     if (!job || job.settled) return { ok: false, reason: 'No open work order.' };
-    if (state.world?.currentSectorId !== job.sectorId) return { ok: false, reason: 'Return to the workshop sector to settle this order.' };
+    if (state.world?.currentSectorId !== job.sectorId) return { ok: false, reason: 'Return to the workshop sector to settle.' };
     const player = entity(state, state.playerId);
     if (distance(player?.pos, job.destination) > 170 && distance(player?.pos, w.bench.pos) > 170)
-      return { ok: false, reason: 'Report back to the bench or receiving gantry to close the order.' };
+      return { ok: false, reason: 'Report to the bench or gantry to close.' };
     job.settled = true; job.stage = 'settled'; job.closedPartial = true;
     w.activeJobId = null;
-    feedback('partial', `Order closed with ${job.delivered.length}/${job.cargo.length} delivered. ${job.paid} cr kept. Your rig and the surviving original cargo remain in the world.`);
+    feedback('partial', `Order closed with ${job.delivered.length}/${job.cargo.length} delivered · ${job.paid} cr kept.`);
     guide(w, 'bench');
     return { ok: true, paid: job.paid };
   }
@@ -334,11 +334,11 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
     if (selection) {
       const line = remainingCourses(w).find(c => c.id === selection.id && c.jobId === selection.jobId
         && c.generation === selection.generation && c.token === selection.token);
-      if (target !== 'pickup' || !line) return { ok: false, reason: 'That original is no longer loose on this work order.' };
+      if (target !== 'pickup' || !line) return { ok: false, reason: 'That original is no longer loose.' };
       const body = entity(state, line.id);
       bus.emit('ui:setCourse', { pos: { ...body.pos }, sectorId: job.sectorId, autopilot: false,
         targetEntityId: body.id, waypointKind: 'local', arrivalRadius: 65,
-        label: line.name, reason: 'Approach slowly; the marker follows the original you chose.' });
+        label: line.name, reason: 'Approach slowly; the marker follows your pick.' });
       return { ok: true };
     }
     const useBench = target === 'bench' || !job;
@@ -350,13 +350,13 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
       - distance(original(w, job, b)?.pos || b.origin, player?.pos));
     const cargo = remaining[0] && original(w, job, remaining[0]);
     if (!useBench && usePickup && !remaining.length) return { ok: false,
-      reason: 'There are no loose unpaid originals left. Mark the receiver for the load aboard, or settle the completed work.' };
+      reason: 'No loose unpaid originals left; mark the receiver or settle.' };
     const pos = useBench ? w.bench.pos : usePickup ? cargo?.pos || remaining[0]?.origin || job.pickup : job.destination;
     bus.emit('ui:setCourse', { pos: { ...pos }, sectorId: w.bench.sectorId, autopilot: false,
       ...(cargo ? { targetEntityId: cargo.id } : {}),
       waypointKind: 'local', arrivalRadius: useBench ? 90 : 65,
       label: useBench ? 'RATCHET · RIG WORKSHOP' : usePickup ? `${job.title} · ORIGINAL CARGO` : `${job.title} · RECEIVING GANTRY`,
-      reason: useBench ? 'Inspect, change, repair, or recover your machine.' : usePickup ? 'Fly the rig to the cargo. Slow down, then secure the nearest original.' : 'Deliver the physical cargo inside the gantry circle at low speed.' });
+      reason: useBench ? 'Inspect, change, repair, or recover your machine.' : usePickup ? 'Fly to the cargo, then secure the nearest original.' : 'Deliver the cargo inside the gantry circle, slow.' });
     return { ok: true };
   }
   return { accept, update, recordLoss, deliveryQuote, deliver, settlePartial, guide, remainingCourses };
