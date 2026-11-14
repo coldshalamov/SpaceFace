@@ -100,7 +100,7 @@ export class FieldForcePresentation {
     this.batch=new SweptSurfaceBatch(scene,{capacity:224,name:'SF_FieldForceLanguage',fieldVolume:true});
     this.mesh=this.batch.mesh;this.toLocal=toLocal;this.scene=scene;
     this.particles=new ForceParticleFlow(this.mesh,{capacity:360});
-    this.particleOptions={reducedMotion:false,reducedFlash:false};
+    this.particleOptions={reducedMotion:false,reducedFlash:false,deferUpload:true};
     this.particleBurst={kind:'well',x:0,z:0,y:.7,dx:1,dz:0,radius:1,seed:0,count:6,life:.65,strength:1,halfAngle:.56,halfWidth:52};
     this.local={x:0,z:0};this.descriptor=new Float32Array(SURFACE_FLOATS);
     this.slots=Array.from({length:10},(_,index)=>({

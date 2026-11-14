@@ -373,7 +373,7 @@ export class ForceParticleFlow {
     return { schema: 'spaceface.material-transport.v1', live: this.live, capacity: this.capacity,
       contacts, ...this.stats, batches: this.renderer.batches.length };
   }
-  update(dt, { reducedMotion = false, reducedFlash = false } = {}) {
+  update(dt, { reducedMotion = false, reducedFlash = false, deferUpload = false } = {}) {
     if (this.disposed) return;
     this.reducedMotion = reducedMotion; this.reducedFlash = reducedFlash;
     if (!Number.isFinite(dt) || dt <= 0 || !this.live) return;
@@ -385,8 +385,15 @@ export class ForceParticleFlow {
     let remaining = Math.min(dt, 3.1);
     while (remaining > 1e-8 && this.live) {
       const step = Math.min(0.1, remaining);
-      this.renderer.update(step); remaining -= step;
+      if (deferUpload) {
+        // Quarks' batch renderer first updates its systems, then serializes their output.
+        // This renderer owns exactly one world-space system. Step it here and let the field
+        // owner's publish() pack final values once, after all of its emissions.
+        if (this.renderer.systemToBatchIndex.has(this.system)) this.system.update(step);
+      } else this.renderer.update(step);
+      remaining -= step;
     }
+    if (deferUpload) return;
     this._publishShape();
     this.renderer.visible = this.live > 0;
   }

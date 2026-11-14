@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
+import { FieldForcePresentation } from '../src/render/forceLanguage/fieldForcePresentation.js';
 import { ForceParticleFlow } from '../src/render/vfx/forceParticleFlow.js';
 import { QuarksVfxSystem } from '../src/render/vfx/quarksSystem.js';
 
@@ -179,6 +180,67 @@ test('absolute-age emission matches stepped transport and publishes one shared b
       assert.equal(b.live, 0); assert.equal(b.renderer.visible, false);
     }
   } finally { a.dispose(); b.dispose(); }
+});
+
+test('field transport packs once after advancing and emitting, with the same particle output', () => {
+  const state = {
+    simTime: 0,
+    fields: { active: [{ id: 'test-well', kind: 'well', center: { x: 2, z: 4 }, radius: 95, strength: 60 }] },
+    settings: { video: {}, accessibility: {} },
+  };
+  const reference = new FieldForcePresentation(new THREE.Scene());
+  const current = new FieldForcePresentation(new THREE.Scene());
+  reference.particleOptions.deferUpload = false;
+  const countPublicationWork = ({ particles }) => {
+    const calls = { batch: 0, shape: 0, builtInstances: 0 };
+    const packBatch = particles.batch.update.bind(particles.batch);
+    const packShape = particles._publishShape.bind(particles);
+    particles.batch.update = () => {
+      calls.batch++;
+      calls.builtInstances += particles.live;
+      packBatch();
+    };
+    particles._publishShape = () => { calls.shape++; packShape(); };
+    return calls;
+  };
+  const a = reference.particles;
+  const b = current.particles;
+  const snapshot = (flow) => {
+    const geometry = flow.batch.geometry;
+    const arrays = ['offset', 'color', 'size', 'rotation', 'uvTile', 'aFlowShape', 'aFlowTail', 'aFlowMid'].map((name) => {
+      const attribute = geometry.getAttribute(name);
+      return attribute.array.slice(0, geometry.instanceCount * attribute.itemSize);
+    });
+    return { arrays, count: geometry.instanceCount, visible: flow.renderer.visible, particles: sample(flow),
+      state: flow.system.particles.slice(0, flow.live).map((p) => [p.age, ...p.forceKinematics]),
+      light: { ...flow.contactLight } };
+  };
+  try {
+    for (const owner of [reference, current]) owner.update(0, state);
+    state.simTime = 0.24;
+    for (const owner of [reference, current]) owner.update(0.24, state);
+    assert.ok(b.live > 0);
+    assert.deepEqual(snapshot(b), snapshot(a));
+
+    const baseline = countPublicationWork(reference);
+    const deferred = countPublicationWork(current);
+    state.simTime = 0.49;
+    for (const owner of [reference, current]) owner.update(0.25, state);
+    assert.equal(baseline.batch, 4, 'three transport substeps used to pack before the final field pack');
+    assert.equal(deferred.batch, 1);
+    assert.equal(baseline.shape, 2);
+    assert.equal(deferred.shape, 1);
+    assert.ok(deferred.builtInstances < baseline.builtInstances);
+    assert.deepEqual(snapshot(b), snapshot(a));
+
+    state.fields.active = [];
+    for (const dt of [0.05, 0, 0.18, 0.33, 0.25]) {
+      state.simTime += dt;
+      for (const owner of [reference, current]) owner.update(dt, state);
+      assert.deepEqual(snapshot(b), snapshot(a));
+    }
+    assert.equal(b.live, 0);
+  } finally { reference.dispose(); current.dispose(); }
 });
 
 test('environment snapshots never invent contacts outside the surface footprint', () => {
