@@ -562,6 +562,9 @@ class Ship:
         # ANI-00 rigid motion groups: see tools/blender/forge/motion.py
         self.motion_groups = []
         self.motion_pivots = {}
+        # Finished native inputs, kept outside objects so finish()/LOD decimation do not alter them.
+        self.collision_mesh = None
+        self.lod_mesh_overrides = {}
 
     def mat(self, finish):
         if finish not in self._mats:
@@ -588,6 +591,37 @@ class Ship:
         """Keep these parts as their own mesh named LOD0_<hook>_... (damage/drive role binding)."""
         for o in objs:
             o['forge_hook'] = hook
+
+    def _validate_export_mesh(self, obj):
+        if not isinstance(obj, bpy.types.Object) or obj.type != 'MESH' or not obj.data.polygons:
+            raise ValueError('Export override must be a nonempty native Blender mesh object')
+        if obj in self.objects or obj.modifiers or obj.parent or obj.children:
+            raise ValueError('Export override must be a finished standalone mesh outside ship.objects')
+        if any(scale <= 0 for scale in obj.scale):
+            raise ValueError('Export override requires positive scale')
+
+    def set_collision_mesh(self, obj):
+        """Supply a finished native collider; export copies it without convex-hull rebuilding."""
+        self._validate_export_mesh(obj)
+        self.collision_mesh = obj
+        return obj
+
+    def set_lod_mesh_override(self, level, exported_name, obj):
+        """Replace one static exported mesh at a tier, retaining its semantic material/tags.
+
+        The name must match exactly once at export. Inputs are copied, never finished or decimated.
+        For split-file player LODs, use the actual exported name (normally LOD0_<semantic>).
+        """
+        if type(level) is not int or level not in (0, 1, 2):
+            raise ValueError('LOD override level must be 0, 1 or 2')
+        if not isinstance(exported_name, str) or not exported_name.startswith(('LOD0_', 'LOD1_', 'LOD2_')):
+            raise ValueError('LOD override requires an exact exported LOD mesh name')
+        self._validate_export_mesh(obj)
+        key = (level, exported_name)
+        if key in self.lod_mesh_overrides:
+            raise ValueError(f'Duplicate LOD override: {key}')
+        self.lod_mesh_overrides[key] = obj
+        return obj
 
     def motion_group(self, rig_id, pivot, objects=(), parent=None, rotation=None):
         """Declare a rigid motion group: exports as MOTION_<ID> pivot + welded children.

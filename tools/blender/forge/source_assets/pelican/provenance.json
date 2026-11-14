@@ -1,0 +1,55 @@
+{
+  "origin": "SpaceFace authored v05 review; no external assets",
+  "reviewedSource": [
+    {
+      "lod": 0,
+      "sha256": "0e730eed9181a8bcedfc69c0becee14ee345e85b8bdd3c928bd69f232f0164d6"
+    },
+    {
+      "lod": 1,
+      "sha256": "a4583623e76051d53d343788240d48ae3a028d3869d0e7b46ef8ed1406616942"
+    },
+    {
+      "lod": 2,
+      "sha256": "7fa1141ab03c3437b4961d82a67f9a6273fa1f55303c0fbb1ea9caf0becd0120"
+    }
+  ],
+  "inputs": [
+    {
+      "relativeUrl": "../../ships/pelican.py",
+      "sha256": "915261ee2186fbc5d7bbc61e169e3b3ebb0a83e2afccf2d58de6a3df86a53854"
+    },
+    {
+      "relativeUrl": "../../forge.py",
+      "sha256": "306023f232b9b4504581139a3870748a27eab15964678861f01e84c15a59b443"
+    },
+    {
+      "relativeUrl": "../../forge_export.py",
+      "sha256": "cfa4052214abfacb82365bf487dd2605a2921c0bc889b21911889da12615e711"
+    },
+    {
+      "relativeUrl": "../../animations/ANI_38.py",
+      "sha256": "0c171270bacb3fac6842a389d9b0d262f3f154d6bd3f615dd33d27328cf2490c"
+    },
+    {
+      "relativeUrl": "../../../../../assets/ships/motions/pelican-production-v1.motion.json",
+      "sha256": "e472c228b62812a8eb5666cf95631a8e25cea43f02112dd32fb8af6c2bc020ab"
+    },
+    {
+      "relativeUrl": "./restore-contract.mjs",
+      "sha256": "8e36e70dbd319ac2c32387eb41bbb1f8e62a8402a93c1d1303fd09c9fcf2d721"
+    },
+    {
+      "relativeUrl": "./protected-nodes.json",
+      "sha256": "fc8a3aa0849e94b74a5e9f82fc232d19e2027ff000b2dfee4c24c50c07d85b99"
+    },
+    {
+      "relativeUrl": "./reviewed-lod1.glb",
+      "sha256": "8387b58884998ca1bb9abb024658773c44d71ccdf18f734e6554889291a9d26c"
+    },
+    {
+      "relativeUrl": "./reviewed-lod2.glb",
+      "sha256": "73460bfee69dcb86a5f1525d30d2a138d88068b32f4fb43bf9a7d4204598dbd6"
+    }
+  ]
+}

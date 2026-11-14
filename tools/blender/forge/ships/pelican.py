@@ -8,6 +8,8 @@ sit on the hips.
 import math
 import os
 import sys
+import subprocess
+import json
 
 import bpy
 from mathutils import Vector
@@ -165,8 +167,8 @@ def build():
     # The bill's rim is lit: one thin orange line along the top edge of each jaw wall, closed across
     # the lip — the first thing the chase camera reads (the Look: lamps are light).
     lit_rail(s, 'JawRail', [(2.6, jaw_y(2.6), 0.50), (5.4, jaw_y(5.4), 0.24), (6.85, jaw_y(6.85), -0.30)],
-             0.11, 0.07, 'glow_cyan.bill')
-    F.box(s, 'LipBar', (7.0, 0.0, -0.30), (0.11, 1.9, 0.07), material='glow_cyan.bill', bevel=0.0)
+             0.07, 0.045, 'glow_cyan.bill')
+    F.box(s, 'LipBar', (7.0, 0.0, -0.30), (0.07, 1.9, 0.045), material='glow_cyan.bill', bevel=0.0)
     F.box(s, 'LipNail', (7.22, 0.0, -0.8), (0.34, 0.5, 0.32), material='gunmetal', bevel=0.04)
     # Jaw hinge knuckles where the bill meets the head.
     F.cylinder(s, 'Hinge', (1.5, 1.2, 0.05), (1.5, 1.62, 0.05), 0.3, material='gunmetal', mirror=True,
@@ -187,7 +189,7 @@ def build():
         F.box(s, f'Tooth{i}', (4.2, y, 0.02), (0.22, 0.12, 0.16), material='bare', bevel=0.01, rot_z=0.0)
         F.box(s, f'ToothB{i}', (4.56, y + 0.15, -0.35), (0.16, 0.12, 0.22), material='bare', bevel=0.01)
     F.box(s, 'LampHousing', (3.5, 0.0, -0.4), (0.52, 2.3, 0.5), material='dark', bevel=0.01)
-    F.box(s, 'CutterLamp', (3.5, 0.0, -0.13), (0.38, 2.1, 0.08), material='glow_amber', bevel=0.0)
+    F.box(s, 'CutterLamp', (3.5, 0.0, -0.13), (0.10, 1.7, 0.05), material='glow_amber', bevel=0.0)
 
     # Grab rails along the jaw floor.
     for y in (0.55, -0.55):
@@ -212,7 +214,7 @@ def build():
         dict(x=-3.4, w=0.7, ht=0.7, hb=0.7, zc=0.0, n=2.3, y=PY),
         dict(x=-2.5, w=0.5, ht=0.5, hb=0.5, zc=0.0, n=2.2, y=PY),
         dict(x=-2.1, w=0.15, ht=0.15, hb=0.15, zc=0.0, n=2.0, y=PY),
-    ], material='paint', back_material='dark', count=48, mirror=True)
+    ], material='paint', back_material='dark', count=32, mirror=True)
     F.band(s, 'Pod', (-4.1, PY, 0), (1, 0, 0), 0.4, 'stripe', inset=0.02, depth=0.02, mirror=True)
     F.nozzle(s, 'PodNozzle', (-7.3, PY, 0.0), 0.56, 0.8, material='gunmetal', mirror=True)
     F.nozzle(s, 'CoreNozzle', (-6.2, 0.0, 0.1), 0.62, 0.75, material='gunmetal')
@@ -280,12 +282,55 @@ def build():
     s.hook_part('HOOK_SENSOR_DOME', _dmg['Dome'], _dmg['Dome_Lens'])
     s.hook_part('HOOK_ARMOR_HIP', _dmg['Hip'])
     s.ani38_bank = ANI_38.build(s, list(s.objects), source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
+    s._mats['glow_cyan.bill'].node_tree.nodes.get('Principled BSDF').inputs['Emission Strength'].default_value *= .15
     return s
+
+
+def export(ship, spec=None, *, out_dir=None, preview=True):
+    """Export reviewed finishing, then restore immutable gameplay/motion geometry.
+
+    The original protected nodes are retained as source data, independent of the
+    live GLBs. Lower pod tessellation must not change convex collision or drive
+    centroids. Restore at the glTF layer to retain original indices and normals.
+    """
+    restore = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'source_assets',
+                                         'pelican', 'restore-contract.mjs'))
+    # Refuse stale reviewed topology before any files are exported.
+    subprocess.run(['node', restore, '--check-inputs'], check=True)
+    original_lods = E._lod_meshes
+
+    def reviewed_lods(current, level, prefix):
+        objects = original_lods(current, level, prefix)
+        if level > 0:
+            for obj in objects:
+                if not obj.data.materials:
+                    continue
+                material = obj.data.materials[0]
+                finish = material.get('forgeFinish', material.get('forgeKey', '')).split('.')[0]
+                if finish not in ('paint', 'paint2', 'stripe', 'dark'):
+                    continue
+                E._select_only([obj])
+                bpy.ops.object.shade_smooth_by_angle(angle=math.radians(35), keep_sharp_edges=True)
+                weighted = obj.modifiers.new('PelicanLodWeightedNormal', 'WEIGHTED_NORMAL')
+                weighted.keep_sharp = True
+                weighted.weight = 50
+                bpy.ops.object.modifier_apply(modifier=weighted.name)
+        return objects
+
+    E._lod_meshes = reviewed_lods
+    try:
+        written = E.export_ship(ship, spec or E.fleet_spec(SHIP_ID), out_dir=out_dir, preview=preview)
+    finally:
+        E._lod_meshes = original_lods
+    result = subprocess.run(['node', restore, *[os.path.abspath(path) for path, _ in written]],
+                            check=True, capture_output=True, text=True)
+    counts = json.loads(result.stdout)
+    return [(path, counts[index]) for index, (path, _) in enumerate(written)]
 
 
 if __name__ == '__main__':
     ship = build().finish()
     live = '--live' in sys.argv
-    written = E.export_ship(ship, E.fleet_spec(SHIP_ID), preview=not live)
+    written = export(ship, preview=not live)
     if live:
         ANI_38.bake_ship_banks(ship, written, bank_key=E.fleet_spec(SHIP_ID)['file'].replace('_', '-'))

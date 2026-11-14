@@ -2340,32 +2340,32 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.pelican-production-v1",
-    "expectedContentHash": "e2b02482bcfe3972a2327727176213d3d0ef90bea1915242500b2236ab54099a",
+    "expectedContentHash": "31d14da33e750514cfc187ff45d5308aa1f75aad5c7743be59f841ce23f47a81",
     "key": "pelican-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/pelican-production-v1/render-package.json",
     "runtimeAssetId": "SF_PELICAN_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "da37b57a8a058635008ccd1d9cb46e0450f44644f007801455fa0bad21af56a8",
+    "sourceSha256": "26fb42469fd1acd4a85342239384bc75e0e9ab0598391a416bd5ec5fcb434e84",
     "sourceUrl": "assets/ships/release/parts/wholeships/pelican_production_v1.glb"
   },
   {
     "assetId": "sf.render.pelican-production-v1-lod1",
-    "expectedContentHash": "14cdcdbade69beffd6ff0bf0c53a1c051f414f5c7237ed6e962fbb8f87a9554e",
+    "expectedContentHash": "b907b22a4d2183087d005727460145b8fde7b65de58f9a511bceef246665e0ba",
     "key": "pelican-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/pelican-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_PELICAN_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "6c245c7dba51b3c5c752629e917d9b411f01a62b8ff9b1aba5565e06ba9a192d",
+    "sourceSha256": "8d1e5585c9f9856c198b907284dd02ffebf597326130229b35ef8d9d214b3bef",
     "sourceUrl": "assets/ships/release/parts/wholeships/pelican_production_v1_lod1.glb"
   },
   {
     "assetId": "sf.render.pelican-production-v1-lod2",
-    "expectedContentHash": "f19ab4acb314577523db68f1d140fcdaa613d757286043aa5086f9386b911eee",
+    "expectedContentHash": "12787603f549baaf8a11b8b2a0752b55817af2f4a22e8b540450cfef6c026fac",
     "key": "pelican-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/pelican-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_PELICAN_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "8879c116735fccad673fae1ed8c2f19c4d31243790ac581ec77e938e6e7d8afc",
+    "sourceSha256": "f22f44348f7462cf4a80e36c984986f03e9a338422be49f392be3e2efadcc626",
     "sourceUrl": "assets/ships/release/parts/wholeships/pelican_production_v1_lod2.glb"
   },
   {

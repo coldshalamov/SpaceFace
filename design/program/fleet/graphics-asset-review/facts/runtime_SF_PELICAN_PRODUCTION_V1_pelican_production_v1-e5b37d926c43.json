@@ -1,0 +1,24 @@
+{
+  "modelId": "runtime:SF_PELICAN_PRODUCTION_V1:pelican_production_v1",
+  "reviewStatus": "Reviewed candidate and guarded Forge recipe promoted through the selected production release and runtime packages; ordinary-play acceptance remains open",
+  "variationDiscovery": "unresolved",
+  "sourceRecipe": "tools/blender/forge/ships/pelican.py",
+  "exportEntryPoint": "pelican.export",
+  "sourceInputs": "tools/blender/forge/source_assets/pelican/provenance.json",
+  "acceptedCandidate": ".devshots/fleet/pelican-astra/v05-combined",
+  "reproducedCandidate": ".devshots/fleet/worklight-astra/protected-reproduction/adopted/pelican",
+  "evidence": [
+    ".devshots/fleet/pelican-astra/recipe-pinned-equivalence.json",
+    ".devshots/fleet/pelican-astra/recipe-exact-contract.json",
+    ".devshots/fleet/pelican-astra/recipe-motion-check.json",
+    ".devshots/fleet/pelican-astra/combined-runtime-compare/report.json",
+    ".devshots/fleet/pelican-astra/combined-lod0-fixed/report.json",
+    ".devshots/fleet/pelican-astra/promotion-state.json"
+  ],
+  "risks": [
+    "Isolated package pictures do not prove ordinary purchase/mining player route.",
+    "Procedural LOD0 can vary by tiny floats between Blender runs; reviewed lower-tier geometry is pinned with strict source invalidation.",
+    "The pre-existing model-truth census reason legacy-texture-role remains unresolved.",
+    "Playable color/role variation discovery remains unresolved; Pallas is a lighting comparison, not a new playable model."
+  ]
+}

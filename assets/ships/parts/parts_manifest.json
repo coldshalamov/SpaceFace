@@ -9434,8 +9434,8 @@
       },
       "status": "integration_candidate",
       "wiringStatus": "live_player_pelican",
-      "tris": 27474,
-      "bytes": 1727912,
+      "tris": 25746,
+      "bytes": 1680012,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

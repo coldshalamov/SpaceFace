@@ -4407,8 +4407,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_pelican_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/pelican_production_v1.glb",
-      "releaseSha256": "da37b57a8a058635008ccd1d9cb46e0450f44644f007801455fa0bad21af56a8",
-      "releaseBytes": 717312,
+      "releaseSha256": "26fb42469fd1acd4a85342239384bc75e0e9ab0598391a416bd5ec5fcb434e84",
+      "releaseBytes": 700036,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4438,8 +4438,8 @@
       ],
       "outputDir": "assets/ships/release/render-packages/pelican-production-v1-lod1",
       "metadataUrl": "assets/ships/release/render-packages/pelican-production-v1-lod1/render-package.json",
-      "releaseBytes": 497784,
-      "releaseSha256": "6c245c7dba51b3c5c752629e917d9b411f01a62b8ff9b1aba5565e06ba9a192d"
+      "releaseBytes": 490824,
+      "releaseSha256": "8d1e5585c9f9856c198b907284dd02ffebf597326130229b35ef8d9d214b3bef"
     },
     {
       "key": "pelican-production-v1-lod2",
@@ -4459,8 +4459,8 @@
       ],
       "outputDir": "assets/ships/release/render-packages/pelican-production-v1-lod2",
       "metadataUrl": "assets/ships/release/render-packages/pelican-production-v1-lod2/render-package.json",
-      "releaseBytes": 411496,
-      "releaseSha256": "8879c116735fccad673fae1ed8c2f19c4d31243790ac581ec77e938e6e7d8afc"
+      "releaseBytes": 408460,
+      "releaseSha256": "f22f44348f7462cf4a80e36c984986f03e9a338422be49f392be3e2efadcc626"
     },
     {
       "key": "pip-spanner",

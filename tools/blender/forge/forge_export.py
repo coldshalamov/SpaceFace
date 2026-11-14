@@ -117,6 +117,17 @@ def _root_empty(name, extras):
 
 
 def _collision_hull(ship, prefix_parent, sources=None):
+    supplied = getattr(ship, 'collision_mesh', None)
+    if supplied is not None:
+        ship._validate_export_mesh(supplied)
+        obj = _copy_export_mesh(supplied, 'COLLISION_HULL')
+        obj['collision'] = True
+        obj['nonRender'] = True
+        obj.hide_render = True
+        world = obj.matrix_world.copy()
+        obj.parent = prefix_parent
+        obj.matrix_world = world
+        return obj
     bm = bmesh.new()
     k = float(getattr(ship, 'collision_scale', 1.0))
     for o in (sources or ship.objects):
@@ -143,6 +154,16 @@ def _collision_hull(ship, prefix_parent, sources=None):
     obj['nonRender'] = True
     obj.hide_render = True
     obj.parent = prefix_parent
+    return obj
+
+
+def _copy_export_mesh(source, name):
+    obj = source.copy()
+    obj.data = source.data.copy()
+    obj.name = name
+    obj.data.name = name
+    bpy.context.scene.collection.objects.link(obj)
+    obj.hide_set(False)
     return obj
 
 
@@ -193,6 +214,28 @@ def _lod_meshes(ship, level, prefix):
                         for index in face.loop_indices:
                             normals[index] = tuple(face.normal)
                 mesh.normals_split_custom_set(normals)
+    for (tier, name), supplied in getattr(ship, 'lod_mesh_overrides', {}).items():
+        if tier != level:
+            continue
+        ship._validate_export_mesh(supplied)
+        matches = [obj for obj in result if obj.name == name]
+        if len(matches) != 1:
+            raise ValueError(f'{ship.id}: LOD {level} override must match exactly one mesh: {name}')
+        old = matches[0]
+        if old.parent is not None:
+            raise ValueError(f'{ship.id}: LOD overrides cannot replace moving meshes: {name}')
+        if tuple(old.data.materials) != tuple(supplied.data.materials):
+            raise ValueError(f'{ship.id}: LOD override must retain semantic material slots: {name}')
+        index = result.index(old)
+        # Nested IDPropertyGroup values reference the old object; detach them before deleting it.
+        extras = old.id_properties_ensure().to_dict()
+        bpy.data.objects.remove(old, do_unlink=True)
+        replacement = _copy_export_mesh(supplied, name)
+        for key in list(replacement.keys()):
+            del replacement[key]
+        for key, value in extras.items():
+            replacement[key] = value
+        result[index] = replacement
     return result
 
 

@@ -73295,7 +73295,7 @@
           6.263548
         ]
       },
-      "bytes": 717312,
+      "bytes": 700036,
       "collider": {
         "coverageWu": 0,
         "gapWu": 0,
@@ -73305,8 +73305,8 @@
           14.141285,
           14.805672,
           11.451028,
-          7.092377,
-          3.865252,
+          7.092374,
+          3.86525,
           0,
           3.962167,
           0,
@@ -73321,8 +73321,8 @@
           0,
           3.962167,
           0,
-          3.865252,
-          7.092377,
+          3.86525,
+          7.092374,
           11.451028,
           14.805672,
           14.141285
@@ -73361,8 +73361,8 @@
         "lod1": true,
         "lod2": true,
         "outlineDeltaWu": {
-          "lod1": 3.865252,
-          "lod2": 3.865252
+          "lod1": 3.86525,
+          "lod2": 3.86525
         },
         "overTolerance": false,
         "toleranceWu": 4
@@ -73551,7 +73551,7 @@
             "ax": 0,
             "az": 0,
             "bx": -0.262238,
-            "bz": -0.341756,
+            "bz": -0.341755,
             "id": "arm-3",
             "kind": "capsule",
             "r": 0.028125
@@ -73668,7 +73668,7 @@
             "ax": 0,
             "az": 0,
             "bx": -0.262238,
-            "bz": 0.341756,
+            "bz": 0.341755,
             "id": "arm-20",
             "kind": "capsule",
             "r": 0.028125
@@ -73708,7 +73708,7 @@
         "legacy-texture-role"
       ],
       "shell": {
-        "boundaryEdges": 1756,
+        "boundaryEdges": 1664,
         "inwardFaceFraction": 0.27825,
         "silhouetteRadius": 14.805672,
         "sliceY": 0
@@ -73815,7 +73815,7 @@
       "source": "glb",
       "status": "red",
       "tasteBudget": "legacy-texture-role",
-      "triangles": 27450,
+      "triangles": 25730,
       "unmeasuredHitVolumes": [
         "subsystem_transport_clamp"
       ],
