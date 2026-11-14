@@ -122,12 +122,15 @@ export const LOOK_BASE = deepFreeze({
 // seen only where it lands on a hull, rock or station; vacuum has nothing to scatter it, so no
 // beam geometry is ever drawn. Material-physics-like: the same lamp in every mood.
 export const LOOK_HEADLIGHT = deepFreeze({
-  colorHex: 0xffe6c4,      // warm sodium-white
-  intensity: 25200,        // calibrated to the previous lamp at a 60 WU reference distance
-  decay: 2.0,              // physical inverse-square response shared by NOCTURNE local lights
+  // LOOK-04 / LIGHT (2026-11-14): the inverse-square lamp ran ~17x brighter at 25 WU than at 105 WU, so
+  // anything near the bow went past the surface ceiling into a flat chalky plateau. A gentler falloff and a
+  // much lower intensity keep the pool's centre near the surface knee: warm, textured, shaded rock.
+  colorHex: 0xffd6a0,      // warm sodium
+  intensity: 440,          // lit centre near the 0.5 surface knee on a tan rock at decay 1.2
+  decay: 1.2,              // art-directed falloff (≈4x across 25–105 WU, not 17x)
   range: 450,              // WU; hard cutoff of the light
-  angle: 0.46,             // radians, half-angle of the cone (~26°)
-  penumbra: 0.75,          // soft-edged pool, no hard disc
+  angle: 0.55,             // radians, half-angle of the cone (~32°): a wider pool
+  penumbra: 0.9,           // soft-edged pool, no hard disc
   height: 20,              // WU above the play plane: a lamp high on the bow, pitched down
   aimDistance: 105,        // WU ahead of the bow where the beam's axis meets...
   aimHeight: 0,            // ...this height (the play plane), so the pool lands on what is ahead
