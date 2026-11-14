@@ -35,7 +35,7 @@ do not add another. Only `how === 'carried'` adds one. (The PR's fix; keep its
   site counts as already staged), spawn one `payload` pod (`supplyCargo: true`, `frontierSite`, 10 t, radius 6,
   persistent, `masslineTetherable`, scan label `HOMESTEAD SUPPLIES · 10t`), set `firstProvision = 'issued'`
   **only after** the spawn returned an entity, and say (speaker = the stead's name):
-  `First crate's outside the ring. A roof was the start.`
+  `First crate's outside the ring.`
 - Call it from: the completion handler, `sector:enter`, and `_afterRestore`. Nowhere else. A blocked ring
   simply waits for the next of those.
 
