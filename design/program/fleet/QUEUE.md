@@ -68,20 +68,21 @@ reviews every commit; lane agents do not take them.
 
 | ID | Job (PR) | State |
 |---|---|---|
-| PRI-00 | ui-polish wall (#928–#1116), commission briefs (#943–#1033) merged with `.devshots/pr-intake/safe-merge.sh`; #921 #923 #926 #941 #1113 re-landed | lead-run (batch 3 in flight) |
-| PRI-01-four-small-places | Dione look, Hyperion tow-out gate, Kepler and Orcus chains (#947 #956 #957 #958) | TAKEN devin1 |
-| PRI-02-the-air-clock-costs-money | The survivor's spent air really lowers the rescue payout; the card shows the price (follows #921) | TAKEN devin2 |
-| PRI-03-an-outpost-is-a-place | Outposts take supplies, hand over output, sell for real, expand (#973, sim half; panel is lead-run [FE]) | READY |
-| PRI-05-the-plate-and-the-honest-win | Gauntlet wave-20 plate fight with stakes; strict course-victory rule (#994) | READY |
-| PRI-06-residents-on-the-radio | Hail a station, a named resident answers; simple contracts over radio (#969) | READY |
-| PRI-07a…f | EC-G15 work loops in six slices: rig workshop, tender, salvage crews + Hinge, shipbreaking, Cinderglass + Counterweight, small truths (#982) | READY |
-| PRI-04 save load stays yours | A refused or failed load never ends the live run; stale load requests are fenced (#980) | lead-run (sidekick) |
-| PRI-08 Ceres Belt | Ninth Mouth rescue, borrowed-anchor winching, arrival and return conversations, Breakwater (#945) | NEEDS-PACKET |
-| PRI-09 Frontier provisions | Rebuild on the Frontier owner (#940) | NEEDS-PACKET |
-| PRI-10 Kessler readings + campaign content | Rebuild the paired readings; triage the 93-file content tail (#939) | NEEDS-PACKET |
-| PRI-11 Swarm opening | Three Wasps then the gate, on the wave owner (#942); triage the Foundry tail against `design/game/12` | NEEDS-PACKET |
-| PRI-12 Armory / Manifest / Base / popups redesign [FE] | #1074, four real conflicts | lead-run (sidekick) |
-| PRI-13 leftovers | #981 side rooms, #990 round questions, #988 (already on master), #1030, #1100 | lead decides |
+| PRI-00 | ui-polish wall (#928–#1116) and all commission briefs (#943–#1033) merged with `.devshots/pr-intake/safe-merge.sh`; #1030 #1096 #1100 landed by hand; rebuilt PRs recorded with `mark-merged.sh` | BUILT (only #1073 waits on a foreign-dirty file; UI budget baseline to regenerate once at the end) |
+| PRI-01-four-small-places | Dione look, Hyperion tow-out gate, Kepler and Orcus chains (#947 #956 #957 #958) | BUILT 6d0798beaf f30d876f20 5eb7776e43 9e79dd9075 (lead read the diffs; not seen on screen) |
+| PRI-02-the-air-clock-costs-money | The survivor's spent air really lowers the rescue payout; the card shows the price (follows #921) | BUILT 91ac977809 (lead reviewed) |
+| PRI-03-an-outpost-is-a-place | Outposts take supplies, hand over output, sell for real, expand (#973, sim half) | BUILT cef2ab0e8c — Automation screen half is lead-run [FE], in flight |
+| PRI-05-the-plate-and-the-honest-win | Gauntlet wave-20 plate fight with stakes; strict course-victory rule (#994) | BUILT f9503b8b25 05879ec1b4 a18d147ed7 (lead reviewed the win gate; wave 20 not seen on screen — no start-at-wave tool for the Gauntlet) |
+| PRI-06-residents-on-the-radio | Hail a station, a named resident answers; simple contracts over radio (#969) | BUILT 2a3a9666fe ae71f8a297 8bce6845c4 4496ffd257 + lead fix f05c1ec283 (a sim module had imported station-screen code and the lane forward set lost the defense-warning choices) — hail panel not seen on screen (no bench shot mounts it) |
+| PRI-07a…c | EC-G15 work loops (#982): rig workshop 6f44f9cbd6 · tender 25eee3c370 · salvage crews + Hinge 244947eb30 | BUILT (lead still to read the long strings in the rig workshop) |
+| PRI-07d…f | EC-G15 work loops (#982): shipbreaking · Cinderglass + Counterweight · small truths | 07d TAKEN devin2; 07e, 07f READY |
+| PRI-04 save load stays yours | A refused or failed load never ends the live run; stale load requests are fenced (#980) | lead-run (sidekick), in flight |
+| PRI-08a-the-swing | Ceres: clip a load to Old Hob's anchors and swing it out (#945 part 1) | TAKEN devin1 |
+| PRI-08b-the-ninth-mouth · PRI-08c-kroll-and-the-yard-slip | Ceres parts 2 and 3 (#945) | READY (08b after 08a; 08c after PRI-06 — now clear) |
+| PRI-09-a-household-to-keep | Frontier households rebuilt on the Frontier owner (#940) | BUILT e3ab24bcbf 111c4e7ae7 12a4f863a7 4c5233487f bd21f04af0 28dada57dc + lead fix f5dd833925 (tags not seen on screen) |
+| PRI-10-recon-the-939-tail · PRI-11-recon-the-942-tail | Read-only recon of the two big content tails before any build packet is written (#939, #942) | READY |
+| PRI-12 Armory / Manifest / Base / popups redesign [FE] | #1074 ported file by file onto current master | BUILT 7dca6e4ced 15b08c91a3 24f412cd50 0d939342a9 + fixes (lead looked: Armory phone and desktop, Base); one `stationApp.js` hunk waits on a foreign-dirty file |
+| PRI-13 leftovers | #981 Combat Lab side rooms and #990 per-round questions: not built (the design has seven arenas and master already names and twists all thirty rounds) — briefs landed; #988 already on master; #1056 #1060 digest pins are replaced by the end-of-program baseline regeneration | lead decided |
 
 ## Lane 1 — taste, creative, 3D, architecture, review
 
