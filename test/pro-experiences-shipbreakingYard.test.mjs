@@ -120,7 +120,8 @@ test('three visible original assemblies have distinct extraction sequences and d
     const hold = copy(h.s.player.cargo), credits = h.s.player.credits, collector = h.sim.registry.get('mining');
     const pickupReceipts = []; h.sim.bus.on('pickup:collected', row => pickupReceipts.push(row));
     assert.equal(SHIPBREAKING_LAYOUTS.length, 3);
-    for (const layout of SHIPBREAKING_LAYOUTS) {
+    for (const baseLayout of SHIPBREAKING_LAYOUTS) {
+      const layout = createYardLayout(baseLayout.id, h.job(baseLayout.id).variant);
       const lot = h.job(layout.id); assert.equal(lot.status, 'offered');
       assert.ok(layout.modules.some(module => module.beginner));
       for (const module of layout.modules) {
@@ -468,7 +469,8 @@ test('every catalog/module row and repeated disconnect verb reaches its own targ
   const adapter = createShipbreakingYardPresentation({ deckProvider: () => ({ offerDecision: row => { prompt = row; return true; }, resolveDecision: () => { prompt = null; } }) });
   adapter.init(h.sim.registry.ctx);
   try {
-    for (const layout of SHIPBREAKING_LAYOUTS) {
+    for (const baseLayout of SHIPBREAKING_LAYOUTS) {
+      const layout = createYardLayout(baseLayout.id, h.job(baseLayout.id).variant);
       h.owner.offerCatalog(); const catalog = prompt;
       assert.equal(new Set(catalog.choices.map(choice => choice.id)).size, catalog.choices.length);
       const choose = catalog.choices.find(choice => choice.label.startsWith(layout.title)); assert.ok(choose);

@@ -85,6 +85,18 @@ export function createYardLayout(id, variant = 0) {
   const source = yardLayoutById(id); if (!source) return null;
   const seed = Math.max(0, Math.trunc(Number(variant) || 0));
   const layout = structuredClone(source), mirror = seed % 2 === 0 ? 1 : -1;
+  // New first arrivals and return refits. Historical variants 0–5 retain their exact physical contract.
+  if (id === 'lark' && seed >= 6 && seed <= 11) {
+    layout.name = 'LARK / postal sorting refit';
+    layout.title = 'LARK · SORTING REFIT';
+    layout.summary = 'A light sorting motor and relay cassette on the original heavy frame.';
+    layout.firstAction = 'Attach your MassLine to the 18t sorting motor, scan it and release its clamp.';
+    layout.strategy = 'Two light loads on a heavy frame; release and recover each separately.';
+    Object.assign(layout.modules.find(m => m.id === 'engine'), YARD_ASSETS.machine,
+      { label: 'Postal sorting motor', role: 'machine', mass: 18, value: 160, valueCr: 160 });
+    Object.assign(layout.modules.find(m => m.id === 'cargo'),
+      { label: 'Postal relay cassette', mass: 16, value: 110, valueCr: 110 });
+  }
   layout.variant = seed; layout.conditionLabel = seed % 3 === 0 ? 'Kept dry' : seed % 3 === 1 ? 'Weathered joints' : 'Hard service';
   layout.modules.forEach((module, index) => { module.z *= mirror; module.rot *= mirror; module.condition = Math.max(.64, 1 - ((seed + index * 3) % 5) * .055); });
   layout.intactValue = layout.modules.reduce((sum, module) => sum + module.value, 0);

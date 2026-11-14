@@ -1,3 +1,4 @@
+import { yardWorkGuidance, yardSortingShiftCloseout } from './guidance.js';
 import { createYardPhysics } from './physics.js';
 import { createYardLayout, YARD_LAYOUT_IDS, SHIPBREAKING_YARD_SITE as SITE } from './layouts.js';
 import { createYardJob, freshYardState, normalizeYardState, snapshotYardState, yardPartValue,
@@ -223,8 +224,12 @@ export const shipbreakingYard = {
     this._selectedModuleId = null; this._selectedJobId = null;
     this._observeAll();
     const jobs = YARD_LAYOUT_IDS.map(id => this.getJob(id)).filter(Boolean);
+    const firstShift = jobs.find(job => job.layoutId === 'lark' && job.status === 'offered'
+      && job.variant >= 6 && job.variant <= 11 && this._row.cycles.lark === 0);
     this.bus.emit('shipbreakingYard:offer', { kind: 'catalog', revision: this._row.revision,
-      title: 'CERES · SHIPBREAKING YARD', detail: 'Inspect a claimed wreck before paying. A damaged part earns less; every original you deliver is paid separately. You may leave unfinished work and return.',
+      title: 'CERES · SHIPBREAKING YARD', detail: 'Inspect a retired wreck before paying. '
+        + (firstShift ? 'The LARK refit lot has an 18t motor and a 16t relay cassette. ' : '')
+        + 'A damaged part earns less; every original you deliver is paid separately. You may leave unfinished work and return.',
       actions: jobs.map(job => ({ id: 'inspect', layoutId: job.layoutId,
         label: `${this._layout(job).title} · ${job.status === 'offered' ? `${this._layout(job).fee} cr claim` : job.status.toUpperCase()}`,
         title: `${this._layout(job).summary} Likely remaining value ${this._remainingValue(job)} cr.` })).concat([{ id: 'leave', label: 'LEAVE WITHOUT SPENDING', cancel: true }]) });
@@ -297,6 +302,13 @@ export const shipbreakingYard = {
       actions.push({ id: 'disconnect', couplingId: coupling.id, label: `RELEASE ${coupling.label.toUpperCase()}`,
         disabled: !claimed || !!blocked, title: blocked || 'Service release uses the real clamp. Keep a MassLine on the part to control its drift.' });
     }
+    if (job.layoutId === 'lark' && !TERMINAL_PARTS.has(record.status)) {
+      for (const coupling of layout.couplings.filter(c => c.b === moduleId && job.couplings[c.id].status === 'released')) {
+        const gate = this.physics.resecureGate(job, coupling.id);
+        actions.push({ id: 'resecure', moduleId, couplingId: coupling.id, label: 'RE-SECURE TRANSPORT CLAMP · NO REPAIR',
+          disabled: !claimed || !gate.ok, title: gate.reason || 'Re-clamp the same originals at their current span; no repair.' });
+      }
+    }
     let delivery = null;
     if (!attached.length && !TERMINAL_PARTS.has(record.status)) {
       delivery = this.physics.deliveryGate(job, moduleId, this.receiver());
@@ -354,6 +366,25 @@ export const shipbreakingYard = {
       const target = this.physics.body(job, coupling.b);
       this._cue('released', target, { id: `${job.id}:${couplingId}` });
       this._say(`${coupling.label} released. ${this._layout(job).modules.find(m => m.id === coupling.b)?.label} keeps its real drift; take it gently on the MassLine.`, 'good');
+    } finally { this._busy = false; }
+    this._publish(); return result;
+  },
+
+  resecure(couplingId, revision, jobId = this._row.activeJobId) {
+    const job = this.getJob(jobId), reason = this._gate(revision, job, true);
+    if (reason) return this._result(false, reason);
+    this._busy = true;
+    let result;
+    try {
+      result = this.physics.resecure(job, couplingId, this.state.playerId, {
+        // The ledger owner writes the intent inside the physical transaction window, so a
+        // save taken by a create observer keeps the reserved clamp; rollback restores it whole.
+        mark: (row, span) => { delete row.attachmentId; row.status = 'connected'; row.restLength = span; },
+        restore: (row, prior) => { row.status = prior.status; row.restLength = prior.restLength; },
+      });
+      if (!result.ok) return result;
+      this._refreshFreedom(job); this._touch();
+      this._say('Clamp requested on the same originals; wait for physical admission.', 'good');
     } finally { this._busy = false; }
     this._publish(); return result;
   },
@@ -475,6 +506,7 @@ export const shipbreakingYard = {
     if (actionId === 'work') return this.workTicket(job?.id);
     if (actionId === 'accept') result = this.accept(layoutId || job?.layoutId, revision);
     else if (actionId === 'disconnect') result = this.disconnect(couplingId, revision, job?.id);
+    else if (actionId === 'resecure') result = this.resecure(couplingId, revision, job?.id);
     else if (actionId === 'vent') result = this.vent(moduleId, revision, job?.id);
     else if (actionId === 'deliver') result = this.deliver(moduleId, revision, job?.id);
     else if (actionId === 'park') result = this.park(job?.id, revision);
@@ -508,8 +540,9 @@ export const shipbreakingYard = {
       // A rejected stale/native gate should leave a usable current ticket in the deck.
       if (job && this._near(job)) this.workTicket(job.id);
     }
-    if (result.ok && ['disconnect', 'vent', 'deliver'].includes(actionId)) {
-      if (moduleId) this.inspectPart(moduleId, job.id); else this.workTicket(job.id);
+    if (result.ok && ['disconnect', 'resecure', 'vent', 'deliver'].includes(actionId)) {
+      if (actionId === 'deliver') this.workTicket(job.id);
+      else if (moduleId) this.inspectPart(moduleId, job.id); else this.workTicket(job.id);
     }
     return result;
   },
@@ -519,12 +552,17 @@ export const shipbreakingYard = {
     this._selectedModuleId = null; this._selectedJobId = job.id;
     const layout = this._layout(job), claimed = ['working', 'parked'].includes(job.status);
     if (!claimed) return this.inspect(job.layoutId);
+    const closeout = yardSortingShiftCloseout(job, layout);
+    const advice = !closeout && yardWorkGuidance(job, layout, { couplingReason: c => this._couplingReason(job, c), body: id => this.physics.body(job, id) });
     const actions = layout.modules.filter(m => !TERMINAL_PARTS.has(job.modules[m.id].status))
       .map(m => ({ id: 'inspect-part', moduleId: m.id,
         label: `${m.label} · ${job.modules[m.id].status === 'free' ? 'FREE' : `${Math.round(job.modules[m.id].condition * 100)}%`}` }));
-    actions.push({ id: 'park', label: 'PARK THIS WORK' }, { id: 'abandon', label: 'CLOSE CLAIM…' }, { id: 'leave', label: 'BACK TO FLYING', cancel: true });
+    if (advice) actions.unshift({ id: 'inspect-part', moduleId: advice.moduleId, label: `FOREMAN · ${advice.label}` });
+    if (closeout) actions.unshift({ id: 'park', label: 'PARK CLAIM · KEEP EARNINGS' });
+    else actions.push({ id: 'park', label: 'PARK THIS WORK' });
+    actions.push({ id: 'abandon', label: 'CLOSE CLAIM…' }, { id: 'leave', label: 'BACK TO FLYING', cancel: true });
     this.bus.emit('shipbreakingYard:offer', { kind: 'work', revision: this._row.revision, jobId: job.id,
-      title: `${layout.title} · WORK TICKET`, detail: `${layout.firstAction} Recovered ${job.recoveredCr} cr; ${this._remainingValue(job)} cr still intact. Scan any original to inspect its remaining connections.`, actions });
+      title: `${layout.title} · WORK TICKET`, detail: `${closeout?.detail || advice?.detail || layout.strategy} Recovered ${job.recoveredCr} cr; ${this._remainingValue(job)} cr still intact. Scan any original to inspect its remaining connections.`, actions });
     return this._result(true);
   },
 
