@@ -578,7 +578,8 @@ ${RCX} .orr-arc-draw { stroke-dashoffset:0; }
 const CX_PHONE = 'html:root[data-sf-mobile="1"] body #screens > .k-screen.of-codex.orr-archive.orr-archive';
 const CODEX_PHONE_CSS = `
 ${CX_PHONE} { display:flex !important; flex-direction:column !important; row-gap:10px !important; column-gap:0 !important;
-  padding:12px 14px 0 !important; overflow:hidden !important; --cx-plate:min(140px, 36vw); --cx-sections:118px; --cx-gap:10px; --cx-foot-gap:0px; }
+  padding:24px 18px 0 !important; overflow:hidden !important; --cx-plate:min(140px, 36vw); --cx-sections:118px; --cx-gap:10px; --cx-foot-gap:0px; }
+/* 24/18 frame inset: CODEX sat 16px off the glass, tighter than Achievements (28/21) and Records (33/31), and read as cropped. */
 ${CX_PHONE} > .k-title { flex:none; order:1; display:flex !important; flex-direction:column !important; align-items:stretch !important;
   gap:6px; grid-template-columns:none !important; grid-template-rows:none !important; column-gap:0 !important; }
 ${CX_PHONE} > .k-title > :not(.cx-index) { grid-column:auto; grid-row:auto; }
