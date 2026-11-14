@@ -749,9 +749,10 @@ export function createSimLaneRuntime({
             clockSequence: msg.clockSequence,
             journalEnd: Number.isSafeInteger(msg.journalEnd) ? msg.journalEnd : 0,
           };
-          workerClockLastReceivedJournalEnd = Math.max(
-            workerClockLastReceivedJournalEnd, workerClockAckPending.journalEnd,
-          );
+          const replyGeneration = msg.lifecycleGeneration ?? lifecycleGeneration;
+          if (replyGeneration === lifecycleGeneration) {
+            workerClockAppliedAck = workerClockAckPending;
+          }
         }
         // A local-clock reply carries the worker's cumulative completion
         // watermark. Prefer the diagnostic copy because it is explicitly
@@ -1507,8 +1508,8 @@ export function createSimLaneRuntime({
   let workerClockCommandInFlight = false;
   let workerClockCommandInFlightSequence = 0;
   let workerClockAckPending = null;
+  let workerClockAppliedAck = null;
   let workerClockLastReceivedSequence = 0;
-  let workerClockLastReceivedJournalEnd = 0;
   let workerClockLastAckedSequence = 0;
   let workerClockLastAppliedCommandSequence = 0;
   let workerClockLastCommandScale = null;
@@ -2265,20 +2266,20 @@ export function createSimLaneRuntime({
       if (workerClockMode !== 'worker-local' || laneClosed || !ready) return;
       const episode = openFreeze;
       const sampleId = episode && !episode.sampleRequested ? episode.motionSampleId : null;
+      const appliedAck = episode ? workerClockAppliedAck : null;
+      const beat = { kind: 'laneHeartbeat' };
+      if (sampleId != null) beat.motionSampleId = sampleId;
+      if (appliedAck) {
+        // Retry the applied watermark on foreground beats during a stall. A
+        // beat can arrive before reply capacity is free, so one attempt can
+        // leave the worker waiting for the full rebuild watchdog.
+        beat.clockSequence = appliedAck.clockSequence;
+        beat.ackJournalEnd = appliedAck.journalEnd;
+        beat.lifecycleGeneration = lifecycleGeneration;
+      }
       try {
-        if (sampleId == null) channel.post({ kind: 'laneHeartbeat' });
-        else {
-          // A visible stalled flight can repeat the already-applied watermark
-          // on its next heartbeat without waiting for another reply.
-          channel.post({
-            kind: 'laneHeartbeat',
-            motionSampleId: sampleId,
-            clockSequence: workerClockLastReceivedSequence,
-            ackJournalEnd: workerClockLastReceivedJournalEnd,
-            lifecycleGeneration,
-          });
-          episode.sampleRequested = true;
-        }
+        channel.post(beat);
+        if (sampleId != null) episode.sampleRequested = true;
       } catch (_) { /* best-effort beat */ }
     },
     stepOnce() {
@@ -2391,6 +2392,7 @@ export function createSimLaneRuntime({
     setLifecycleGeneration(value) {
       const nextGeneration = Number.isSafeInteger(value) && value >= 0 ? value : lifecycleGeneration;
       if (nextGeneration !== lifecycleGeneration) {
+        workerClockAppliedAck = null;
         revokeCeresCradleReceipts(readModel, state);
         clearLanePendingTarget(state);
         ceresActuationTick = -1;

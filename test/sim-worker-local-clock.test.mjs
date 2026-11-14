@@ -2193,6 +2193,16 @@ test('SAB presentation ACKs free reply capacity before an earlier directive comp
     assert.equal(sample.oldestUnackedSequence, secondReply.clockSequence);
     assert.equal(sample.replySequence, secondReply.clockSequence);
     assert.equal(sample.sabReplyFreeCount, sample.sabReplySequence);
+
+    send({ kind: 'laneHeartbeat', lifecycleGeneration: 0,
+      clockSequence: secondReply.clockSequence, ackJournalEnd: secondReply.journalEnd });
+    assert.equal(ackTimers.size, 1, 'an obsolete heartbeat cannot release reply capacity');
+    send({ kind: 'laneHeartbeat', lifecycleGeneration: 1,
+      clockSequence: secondReply.clockSequence + 1, ackJournalEnd: secondReply.journalEnd });
+    assert.equal(ackTimers.size, 1, 'a heartbeat cannot ACK a sequence the worker has not sent');
+    send({ kind: 'laneHeartbeat', lifecycleGeneration: 1,
+      clockSequence: secondReply.clockSequence, ackJournalEnd: secondReply.journalEnd });
+    assert.equal(ackTimers.size, 0, 'a retry without a diagnostic request still frees credit');
   } finally {
     if (replies.some((reply) => reply.kind === 'ready')) {
       post({ kind: 'shutdown', seq: 'sab-early-ack-shutdown' }, SAB_ENV_KIND.SHUTDOWN);
@@ -2442,10 +2452,16 @@ test('freeze recorder opens an episode when applied replies starve during advanc
   assert.equal(requests.length, 1);
   assert.equal(requests[0].clockSequence, 1, 'the heartbeat can repeat the last applied reply watermark');
   assert.equal(requests[0].lifecycleGeneration, 0);
+  assert.equal(f.posts.at(-1).clockSequence, 1, 'the next beat retries a missed recovery');
+  assert.equal(f.posts.at(-1).lifecycleGeneration, 0);
   f.receive({ kind: 'laneHeartbeatSample', motionSampleId: requests[0].motionSampleId + 1, steps: 10 });
   assert.equal(f.lane.getDiagnostics().workerClockLive, null, 'a stray sample cannot classify this freeze');
   f.receive({ kind: 'laneHeartbeatSample', motionSampleId: requests[0].motionSampleId, steps: 11 });
   assert.equal(f.lane.getDiagnostics().workerClockLive.steps, 11);
+
+  f.lane.runner.setLifecycleGeneration(1);
+  f.lane.runner.heartbeat();
+  assert.equal(f.posts.at(-1).clockSequence, undefined, 'the old ACK cannot cross a lifecycle transition');
 
   // A fresh applied reply closes the episode with a duration and the state at
   // the moment it recovered.

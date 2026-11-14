@@ -1582,8 +1582,8 @@ self.onmessage = (event) => {
         sabReplySequence: header ? Atomics.load(header, SAB_REPLY_SEQ_INDEX) : null,
         sabReplyFreeCount: header ? Atomics.load(header, SAB_REPLY_FREE_INDEX) : null,
       });
-      recoverClockCreditFromHeartbeat(msg);
     }
+    recoverClockCreditFromHeartbeat(msg);
     return;
   }
   releaseLocalClockAckOnReceipt(msg);
