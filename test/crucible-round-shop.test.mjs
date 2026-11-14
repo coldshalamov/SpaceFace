@@ -89,6 +89,17 @@ test('unaffordable and unknown offers preserve the wallet, loadout and open shop
   assert.equal(h.events.filter(e => e.name === 'run:spent').length, 0);
 });
 
+test('the armory quotes the fitting authority before inviting a purchase', () => {
+  const h = shop({ unlock: false, cash: 1000 });
+  const locked = survivalDraft.currentOffers().find(offer => /research required/i.test(offer.unavailableReason));
+  assert.ok(locked, 'the ship has a compatible fitting whose research is still locked');
+  assert.equal(locked.available, false);
+  assert.equal(survivalDraft.resolvePick({ offerId: locked.id }), false);
+  assert.equal(h.state.run.credits, 1000);
+  h.state.player.researchedNodes = TECH_NODES.map(node => node.id);
+  assert.equal(survivalDraft.currentOffers().find(offer => offer.id === locked.id).available, true);
+});
+
 test('a fitting refusal after payment refunds run money and never grants a free spare', () => {
   const h = shop();
   const offer = survivalDraft.currentOffers().find(o => o.available);

@@ -1,0 +1,125 @@
+{
+  "generator": "OpenAI ImageGen",
+  "date": "2026-11-11",
+  "sourcePrompts": [
+    "Create a wide, cinematic environment illustration as a game production texture, 3:2 landscape. A hard-sci-fi spacecraft maintenance bay on an old orbital station, viewed from across the counter. One hulking open annular power coupler hanging from a brass overhead trolley at the right of frame, its pale ceramic outer armor, clustered dark metal spokes, exposed mint-teal copper windings, one hot amber service lamp. Behind it cyan-white light pours diagonally through high louvers and catches a few particles. Very dark ink-blue shadows and muted tobacco-orange frame members, great silhouette and clean expressive hard surfaces. Leftmost half of the frame is in dark shadow with much less detail to overlay game typography. Slightly painterly, realistic high-budget concept art with a screenprinted softness, tactile industrial enamel and fine scratches, no neon cyberpunk clich\u00e9s. No people, guns, lettering, numbers, logos, captions, UI, overlay lines or watermark. Wide view, attractive at short panoramic crop; important ring sits on right at mid-height, fully recognizable. This will appear over dark graphite-and-bone menu surfaces with copper hardware edges.",
+    "A production game asset atlas, three equal columns and three equal rows, nine different individual hard-sci-fi SPACESHIP COMPONENTS. EXACT regular 3x3 contact sheet on perfectly uniform dark charcoal #10171c, no panels, no text, no borders or grid lines. Each of the nine objects centered and isolated in its own square with generous blank margins all around, identical orthographic three-quarter front elevation, high-end aerospace product visualization, professionally lit micro-beveled machined graphite, softly worn ivory ceramic instrument housings and a distinctive signal color unique per type. Top left: industrial twin short barrel electromagnetic turret in cool nickel and orange with two barrels pointed left. Top middle: long blue light linear split-rail emitter aimed left. Top right: angular teal shield projector with luminous convex circular emitter. Middle left: squat armored hardpoint thruster assembly with three amber-orange exhaust nozzles, NOT a ship. Middle center: winch with copper cable spool, distinct visible hook and mounting hardware, ochre yellow. Middle right: cubic sea-green salvage cargo pod with hinges and latches. Bottom left: precision mining drill with olive titanium spiral bit pointed left, mechanical supports. Bottom middle: compact violet electronics module with a visible layered circuit board and silver thermal fins. Bottom right: scratched burnt-orange armor repair unit, two heavy clamp jaws and a copper welding tip. Rich material depth and controlled highlights. Nice bold silhouettes, crisp close product shots, limited industrial colors, NOT flat vectors or sketch marks. Nine objects of uniform optical size, filling about 72 percent of their cell widths. Nothing extends out of its square. Render as wide as tall SQUARE image.",
+    "Create a square production inventory art atlas for a high-end hard-science-fiction game, EXACT layout of three equal columns and three equal rows, nine distinct SPACESHIP HARDPOINT PARTS, one per cell, no margins between cells, no visible borders. All on perfectly uniform near-black navy #0d151b, never white, no colored lights on background. Full item centered inside each equal square, separated by dark margins, same optical size, product shots with pale ceramic and colored armored panels, machined graphite with clean hard surfaces, industrial wear. 3/4 perspective pointing front-left like professional rendered product catalog. No letters, text, numerals, people, UI or logos. Top left a blue-white EMP disruptor coil assembly with two upright insulated electrodes and lilac electric glow; top middle a squat heavy PLASMA CONE EMITTER, large round orange-ceramic housing, single flared muzzle points left glowing hot red-amber, small radiator fins; top right a rectangular rocket pod with a grid of six red-tipped rockets facing front left inside beige mount. Middle left a futuristic black-and-copper proximity mine pod with a recessed yellow sensor ring and three technical feet; middle center a gravity field generator of concentric pale purple gyroscope rings in a squared industrial cradle; middle right rugged pale yellow ammunition and ordnance storage canisters with dull copper caps on a short mounted rack. Bottom left a small ship scanning radar dish in mint green, angular pedestal and gold receiver arm; bottom middle an ochre heat exchanger radiator with parallel copper fins; bottom right spacecraft adaptive armor fitting, a stack of three dark steel plates with pale blue bevels and visible captive bolts. Beautifully legible silhouettes, sharp precise manufactured bevels and simple highlights. Single strict 3x3 equally spaced square atlas for cropping."
+  ],
+  "files": {
+    "workshop.webp": {
+      "sourcePrompt": 0,
+      "subject": "Orbital service bay",
+      "alphaFromSource": "opaque",
+      "sha256": "dde2fa7f7aa2abf0c350090f125145068335c501314986a2e2990f1b3504ef70"
+    },
+    "cannon.webp": {
+      "sourcePrompt": 1,
+      "subject": "cannon",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "3c15ab85da91a603405b6548fa904b5ddc9499f0f175eb907e900019f5a65ec9"
+    },
+    "linear.webp": {
+      "sourcePrompt": 1,
+      "subject": "linear",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "b200fa5af8afaf096013ce58dca6b0f4680817d3a03ce3bedfdd84e70a0a0b7a"
+    },
+    "shield.webp": {
+      "sourcePrompt": 1,
+      "subject": "shield",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "a09adadb38da577e2f5d883f3b2aaa448e74f0d4625171a01311d3e32ffc4d0e"
+    },
+    "engine.webp": {
+      "sourcePrompt": 1,
+      "subject": "engine",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "0519730f347f8a97f099397ebb80aa2595fd6249989c99fe01f0a3a433b2f443"
+    },
+    "winch.webp": {
+      "sourcePrompt": 1,
+      "subject": "winch",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "08299a178bc4e36f91b80362f359c7dd533de745d67e93268c4013b831de04bc"
+    },
+    "cargo.webp": {
+      "sourcePrompt": 1,
+      "subject": "cargo",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "c3afbd2bbb1bf8d6df7d1e00a596edf3a18fc6d1e9bb2455e14d68a52bdb19b9"
+    },
+    "drill.webp": {
+      "sourcePrompt": 1,
+      "subject": "drill",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "82fca2fc03104c85efc4e29a5a26b9d6920d0093a9f4cecc51ff1ad50eccf94a"
+    },
+    "avionics.webp": {
+      "sourcePrompt": 1,
+      "subject": "avionics",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "e59ec7e26f482ddc25232044bcc63483a86b00be5b6529281a959dba38a85791"
+    },
+    "repair.webp": {
+      "sourcePrompt": 1,
+      "subject": "repair",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "f990cfdea090aae8180743af8654040dc64b6f098b51ea31baff99fa05b1d799"
+    },
+    "emp.webp": {
+      "sourcePrompt": 2,
+      "subject": "emp",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "fd95879cf0aa43ec3aa7ad609bded2acf11660437fa63f44ff0eb6b5ec6d7c7e"
+    },
+    "plasma.webp": {
+      "sourcePrompt": 2,
+      "subject": "plasma",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "9baca1e84e407a5fff979e9ca2661ae94ec9bddca894347647adf33ca54e1b99"
+    },
+    "missile.webp": {
+      "sourcePrompt": 2,
+      "subject": "missile",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "aa74868cb83e544ae89ae897859a515ac13042c1ace64cd54417b1be7df69a9b"
+    },
+    "mine.webp": {
+      "sourcePrompt": 2,
+      "subject": "mine",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "9f44105098b7f571d3d8f37782743e27e12ed8954e56e4d808f2659b0f1ecaf1"
+    },
+    "gravity.webp": {
+      "sourcePrompt": 2,
+      "subject": "gravity",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "ba1d1939052c7e628ec35adb0d8d24e1e0683e40a1bb85ade816fc6a6c4c75a2"
+    },
+    "supply.webp": {
+      "sourcePrompt": 2,
+      "subject": "supply",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "23f826dc4d54e500a0578f3c22de722a1115fc36d88e9de75bea56aa11502813"
+    },
+    "sensor.webp": {
+      "sourcePrompt": 2,
+      "subject": "sensor",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "0b9add64e2f551c695961b9b02931850aa9f2fedfa07d6f30b9d1444e493c439"
+    },
+    "cooler.webp": {
+      "sourcePrompt": 2,
+      "subject": "cooler",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "c6edc13308339efdf4c5e4d8f4d378aea77121812484d0efd79f7a6b94c2a4d8"
+    },
+    "armor.webp": {
+      "sourcePrompt": 2,
+      "subject": "armor",
+      "alphaFromSource": "edge-connected studio background removed",
+      "sha256": "4dea4b559d855bbbd5a6ccc51d0ac67d95b33ca0854573b894efe1fdbdaffec0"
+    }
+  }
+}

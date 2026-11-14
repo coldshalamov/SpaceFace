@@ -256,6 +256,7 @@ export const survivalDraft = {
     for (const entry of this._evolutionOffers(loadout)) legalById.set(entry.id, entry);
     // Hull and service rows have no fitting legality — the extras loop prices and judges them
     // itself. Left through this map they would all read "No compatible slot" at a null price.
+    const ships = this._ships();
     const rows = offers
       .filter((offer) => offer.kind !== SWARM_HULL_OFFER_KIND && offer.kind !== SWARM_SERVICE_OFFER_KIND)
       .map(offer => {
@@ -265,8 +266,14 @@ export const survivalDraft = {
         && this._trials?.get(offer.slotIndex)?.defId === offer.defId;
       // The live demo IS the legality — offerDraft drops a fitted support module, so the card
       // that seeded the trial would read "No compatible slot" while it is still wearing it.
-      const intrinsicRefusal = saucerFittingRefusal(loadout.hullId, MODULE_DEF_BY_ID.get(offer.defId));
-      const legal = (!!current || demoed) && !intrinsicRefusal;
+      const def = MODULE_DEF_BY_ID.get(offer.defId);
+      // An evolution frees its ingredients' hardpoints before the ships owner judges it.
+      // A normal fitting can be quoted against the ship exactly as it stands.
+      const fitBlocker = current && !purchased && offer.kind !== EVOLUTION_OFFER_KIND
+        ? ships?.moduleFitBlocker?.({ slotIndex: current.slotIndex, def }) : null;
+      const fitRefusal = saucerFittingRefusal(loadout.hullId, def)
+        || (fitBlocker && (fitBlocker.text || 'Fitting unavailable'));
+      const legal = (!!current || demoed) && !fitRefusal;
       const price = offer.kind === EVOLUTION_OFFER_KIND ? offer.price : swarmPurchasePrice(offer.defId);
       const replaces = (current || offer).replaces ?? null;
       return { ...offer, ...(current || {}), price, purchased, demoed, replaces,
@@ -274,7 +281,7 @@ export const survivalDraft = {
         held: !!(this._locked && this._locked.id === offer.id),
         lockedIn: !!(this._lockedInto && this._lockedInto.has(offer.id)),
         available: !purchased && legal && price != null && run.credits >= price,
-        unavailableReason: purchased ? 'Fitted' : intrinsicRefusal || (!legal ? 'No compatible slot' :
+        unavailableReason: purchased ? 'Fitted' : fitRefusal || (!legal ? 'No compatible slot' :
           run.credits < price ? `Save ${price - run.credits} more cr` : null) };
     });
     const shown = new Set(rows.map((row) => row.id));
