@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BoxGeometry, Color, Group, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene, Texture } from 'three';
 import { captureReadyFleetLookFrame, installFleetLook, renderOnce, withFleetLookMaterialFactors } from '../src/render/fleetLook.js';
+import { disposeAuthoredAssetRuntime } from '../src/render/assetLoader.js';
 
 function fixture() {
   const scene = { updates: 0, updateMatrixWorld() { this.updates++; } };
@@ -50,6 +51,24 @@ test('fleet look rejects an unavailable production route', () => {
     const { scene, camera, renderer } = fixture();
     assert.throws(() => renderOnce(renderer, scene, camera, owner), /fleet-look.*post route.*unavailable/i);
     assert.equal(renderer.rawDraws, 0);
+  }
+});
+
+test('installed asset diagnostics use the current renderer and include resource counters', async () => {
+  const renderer = { extensions: { has: () => false } };
+  const oldWindow = globalThis.window;
+  globalThis.window = {};
+  try {
+    installFleetLook({ state: { render: { renderer, scene: {}, camera: {} } } });
+    const info = await window.SF_fleetLook.assetDiagnostics();
+    assert.equal(info.schema, 'spaceface.authoredAssetRuntimeInfo.v1');
+    assert.equal(info.resources.scope, 'renderer');
+    assert.equal(info.sharedImageSources.scope, 'javascript-context');
+    assert.ok(Array.isArray(info.failures));
+  } finally {
+    await disposeAuthoredAssetRuntime(renderer);
+    if (oldWindow === undefined) delete globalThis.window;
+    else globalThis.window = oldWindow;
   }
 });
 
