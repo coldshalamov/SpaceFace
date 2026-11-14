@@ -1202,7 +1202,10 @@ export function createConstellation(host, { onPick = null, measure = null, wrap 
       // radii covering the glyphs' real ascent and descent (a 12px face stands ~rimPx*1.5 off its
       // baseline) plus air either side; a roomy dial keeps the original two tight radii.
       const rimRadii = tight ? [nameR - rimPx * 1.6, nameR - rimPx * 0.4, nameR + rimPx * 1.9] : [nameR - rimPx * 0.2, nameR + rimPx * 0.9];
-      for (let k = 0; k <= Math.ceil(textLen / 5); k += 1) {
+      // ui-polish-435: at the tight dial the footprint also leads the word by 10px along the arc, so a
+      // star name set just before the word's first glyph (Drive Tuning against DRIVES at 960×540)
+      // keeps clear air instead of reading as one run.
+      for (let k = tight ? -2 : 0; k <= Math.ceil(textLen / 5); k += 1) {
         const deg = lower ? start - (k * 5 / nameR) * (180 / Math.PI) : start + (k * 5 / nameR) * (180 / Math.PI);
         for (const rr of rimRadii) {
           const [px0, py0] = polar(cx, cy, rr, deg);
