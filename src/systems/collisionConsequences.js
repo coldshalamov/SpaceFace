@@ -593,8 +593,13 @@ export const collisionConsequences = {
     if (!kernel || typeof kernel.routeDamage !== 'function') return null;
     const sourceKind = `collision_${receipt.surface}`;
     // FIGHT-13: a hot-debris scale arrives here; otherwise the kernel receipt stands as is.
-    const impactDamage = Number.isFinite(damageOverride) ? Math.max(0, damageOverride)
+    let impactDamage = Number.isFinite(damageOverride) ? Math.max(0, damageOverride)
       : Math.max(0, Number(receipt.impactDamage) || 0);
+    // THROW-01: the body on your Line is your hammer. While latched it takes heavily reduced
+    // contact damage from what it hits, so it survives the swing and the throw is always there; it
+    // takes full damage again the moment the line is cut (the throw's impact breaks it). Gunfire
+    // never routes through here.
+    if (isHeldOnPlayerLine(this.state, target)) impactDamage *= HELD_BODY_CONTACT_DAMAGE_SCALE;
     // routeDamage may synchronously cross the lethal threshold and invoke combat.kill. Snapshot the
     // live body/contact truth before that call so the sole death owner can publish an immutable
     // presentation receipt without querying a retired entity or inventing collision provenance.
@@ -660,6 +665,14 @@ export const collisionConsequences = {
     return this._onCombatDamage(payload || {});
   },
 };
+
+/** Fraction of contact damage the body on the player's Line takes while it is being swung. */
+export const HELD_BODY_CONTACT_DAMAGE_SCALE = 0.15;
+export function isHeldOnPlayerLine(state, body) {
+  const tether = state && state.player && state.player.tether;
+  return !!(body && tether && tether.active && tether.targetId === body.id
+    && body.id !== state.playerId && massline2Flag('throw'));
+}
 
 function combatKernel(host) {
   const combat = host.registry && host.registry.get && host.registry.get('combat');

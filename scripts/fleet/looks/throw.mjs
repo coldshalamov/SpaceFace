@@ -48,11 +48,11 @@ try {
     const log = (window.__throwLog = []);
     const bus = window.SF && window.SF.bus;
     const sim = () => (window.SF && window.SF.state && window.SF.state.simTime) || 0;
-    for (const ev of ['tether:latched', 'massline:throw', 'massline:selfSling', 'massline:releaseCancelled', 'entity:killed', 'combat:collisionConsequence', 'tether:cut', 'swarm:drop:spawned', 'pickup:collected']) {
+    for (const ev of ['tether:latched', 'massline:throw', 'massline:selfSling', 'massline:releaseCancelled', 'tether:broke', 'tether:released', 'tether:releaseRated', 'entity:killed', 'combat:collisionConsequence', 'tether:cut', 'swarm:drop:spawned', 'pickup:collected']) {
       bus && bus.on && bus.on(ev, (p) => {
         const s = window.SF && window.SF.state;
         const imp = p && p.impactorId != null && s && s.entities && s.entities.get(p.impactorId);
-        log.push({ ev, t: +sim().toFixed(2), id: p && (p.id ?? p.payloadId ?? p.victimId), cause: p && (p.cause || p.source || (p.impactorId != null ? 'impactor' : undefined)), killer: p && p.killerId, type: p && p.type,
+        log.push({ ev, t: +sim().toFixed(2), tgt: p && p.targetId, br: p && (p.breakReason || p.reason), id: p && (p.id ?? p.payloadId ?? p.victimId), cause: p && (p.cause || p.source || (p.impactorId != null ? 'impactor' : undefined)), killer: p && p.killerId, type: p && p.type,
           impactor: imp ? `${imp.type}:${(imp.data && (imp.data.freight ? 'freight' : imp.data.shipClass || imp.data.kind)) || imp.defId || ''}` : (p && p.impactorId != null ? `gone:${p.impactorId}` : undefined),
           pos: p && p.pos ? [Math.round(p.pos.x), Math.round(p.pos.z)] : undefined });
       });
