@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "632804f11e0bb0c04c58a57bd71400247654b1d9bc87eb93498f19be6952f72b",
+  "contentHash": "f919fd6de51d3dff5c95d8fd1e170c48adec1e7830137bb4636629c2eb7942ca",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -104,9 +104,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "20d3a7615e18cfe4653087075f78fe929df29b7e8771397348626fca8540bbce",
+      "geometryHash": "053bde667d2afed33f66d60c9c70cb88f45a7d09597889c5726932b95b107232",
       "id": "sf.render.cold-locker.node.lod0-ceramic-dim.primitive.0",
-      "indexCount": 3384,
+      "indexCount": 1692,
       "indexed": true,
       "materialHash": "59fc1a2147d6b48878996d6a37d6bcf46ea9df319202eb544160200c03f628f1",
       "materialPipelineKey": "opaque",
@@ -329,9 +329,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cd22847825fa2724e8d56a1c8bdef8a2b93fe7ce26822a14866c2197b4941d75",
+      "geometryHash": "cca1067e74a86526ec8aa10ab7bfe9e04590a34e14757e68cfb2b02129b6c850",
       "id": "sf.render.cold-locker.node.lod1-ceramic-dim.primitive.0",
-      "indexCount": 984,
+      "indexCount": 492,
       "indexed": true,
       "materialHash": "59fc1a2147d6b48878996d6a37d6bcf46ea9df319202eb544160200c03f628f1",
       "materialPipelineKey": "opaque",
@@ -554,9 +554,9 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c047683ca91af0fc0f192876b9595658aa309236fc75f1dd9b0edfd8073c6d6",
+      "geometryHash": "479fb62cb93067a93ade9b5922f3a1d89f1540559f8bf5b8329625c49f8fe911",
       "id": "sf.render.cold-locker.node.lod2-ceramic-dim.primitive.0",
-      "indexCount": 234,
+      "indexCount": 156,
       "indexed": true,
       "materialHash": "59fc1a2147d6b48878996d6a37d6bcf46ea9df319202eb544160200c03f628f1",
       "materialPipelineKey": "opaque",
@@ -2238,19 +2238,19 @@
       "sha256": "a9002f76c16d1f97e66e90e89489b1ec447731f3c279d1606a84d183739dd1bc"
     },
     "sourceGlb": {
-      "bytes": 337184,
-      "sha256": "3669ff2873a870e41c673e85c0fb5a6eb76e9194d6020ba2a62dbb3e3cd37663",
+      "bytes": 324392,
+      "sha256": "def6397781560e3889d0ece05b28109840bc055c03ac2a7b98bd9025f8e7a939",
       "uri": "place_cold_locker.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 15249,
+      "sha256": "d555998f72c992a9e21f2a19a16e2e400ae6b40a24e7ce9c070b4f0e14479a77",
+      "uri": "assets/ships/render-packages/inputs/cold-locker.json"
     }
   },
   "render": {
-    "bytes": 329372,
-    "sha256": "db2674cbd046d73aa77e2d0c1e59cb16b637bdfa269d0a85e8cbe4e4b36d04dd",
+    "bytes": 328300,
+    "sha256": "2ef45c056d2cd7c8e3f462d0efcdb8c1665b7ed8729bdb22bbc342fe88739f7c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3102,7 +3102,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_cold_locker.glb"
   },
-  "runtimeHash": "88ac5e732bf440089f273125860fefab1cd2e3e9a1ab2bafbb246dbae3022bf8",
+  "runtimeHash": "2c7a93c656095fb0d5b12447c5647f59474488408ffb54f1a11adac9f4ed8c9c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

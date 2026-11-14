@@ -1,0 +1,354 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": false,
+    "externalizeKtx2Hashes": null,
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "cockpit_recessed",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.cockpit-recessed",
+    "dynamicNameIncludes": [],
+    "key": "cockpit-recessed",
+    "kind": "part",
+    "metadataUrl": "assets/ships/release/render-packages/cockpit-recessed/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/cockpit-recessed",
+    "releaseAssetId": "cockpit_recessed",
+    "releaseBytes": 94380,
+    "releaseSha256": "ec90f896c5d15ee88a539af811a73c9fabd78c71ca3ffb9eab2423f43a740174",
+    "runtimeAssetId": "SF_COCKPIT_RECESSED",
+    "sceneRoot": true,
+    "slot": "cockpit",
+    "sourceUrl": "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 1,
+    "id": "cockpit_recessed",
+    "kind": "part:cockpits",
+    "ktx2Textures": 4,
+    "meshoptBufferViews": 39,
+    "release": "assets/ships/release/parts/cockpits/cockpit_recessed.glb",
+    "releaseBytes": 94380,
+    "releaseSha256": "ec90f896c5d15ee88a539af811a73c9fabd78c71ca3ffb9eab2423f43a740174",
+    "source": "assets/ships/parts/cockpits/cockpit_recessed.glb",
+    "sourceBytes": 2223428,
+    "sourceSha256": "6fa6342acc011044934dd2e5bc17de9984b0a87d441c148c51960d756a8c6386",
+    "textureProfiles": {
+      "baseColorTexture": "Reviewed recessed cockpit sheet resized to 256px, ETC1S KTX2, mipmapped, quality255, sRGB transfer; full-resolution source retained",
+      "metallicRoughnessTexture": "Reviewed recessed cockpit sheet resized to 256px, ETC1S KTX2, mipmapped, quality255, linear transfer; full-resolution source retained"
+    },
+    "textures": 4
+  },
+  "runtime": {
+    "assetId": "SF_COCKPIT_RECESSED",
+    "motionBank": null,
+    "slot": "cockpit",
+    "sourceUrl": "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [],
+    "assetId": "sf.render.cockpit-recessed",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "part",
+    "lods": [],
+    "mergeGroups": [
+      {
+        "id": "sf.render.cockpit-recessed.static-mechanical-details",
+        "nodeIds": [
+          "sf.render.cockpit-recessed.node.det-armor-brow",
+          "sf.render.cockpit-recessed.node.det-dash-panel",
+          "sf.render.cockpit-recessed.node.det-mount-bolt",
+          "sf.render.cockpit-recessed.node.det-mount-collar",
+          "sf.render.cockpit-recessed.node.det-sensor-cluster"
+        ]
+      }
+    ],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.cockpit-recessed",
+        "independentlyCulled": false,
+        "mergeBoundary": "cockpit_recessed",
+        "node": "cockpit_recessed",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.cockpit-recessed-material-accent-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "cockpit_recessed_Material_Accent_Merged",
+        "node": "cockpit_recessed_Material_Accent_Merged",
+        "parentId": "sf.render.cockpit-recessed.node.cockpit-recessed",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.cockpit-recessed-material-hull-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "cockpit_recessed_Material_Hull_Merged",
+        "node": "cockpit_recessed_Material_Hull_Merged",
+        "parentId": "sf.render.cockpit-recessed.node.cockpit-recessed",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.cockpit-recessed-material-mechanical-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "cockpit_recessed_Material_Mechanical_Merged",
+        "node": "cockpit_recessed_Material_Mechanical_Merged",
+        "parentId": "sf.render.cockpit-recessed.node.cockpit-recessed",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.det-armor-brow",
+        "independentlyCulled": false,
+        "mergeBoundary": "cockpit-recessed-static-mechanical-details",
+        "node": "DET_armor_brow",
+        "parentId": null,
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.det-canopy-wear-streak",
+        "independentlyCulled": false,
+        "mergeBoundary": "DET_canopy_wear_streak",
+        "node": "DET_canopy_wear_streak",
+        "parentId": null,
+        "pipelineKey": "blend",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "blend"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.det-dash-panel",
+        "independentlyCulled": false,
+        "mergeBoundary": "cockpit-recessed-static-mechanical-details",
+        "node": "DET_dash_panel",
+        "parentId": null,
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.det-mount-bolt",
+        "independentlyCulled": false,
+        "mergeBoundary": "cockpit-recessed-static-mechanical-details",
+        "node": "DET_mount_bolt",
+        "parentId": null,
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.det-mount-collar",
+        "independentlyCulled": false,
+        "mergeBoundary": "cockpit-recessed-static-mechanical-details",
+        "node": "DET_mount_collar",
+        "parentId": null,
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.det-sensor-cluster",
+        "independentlyCulled": false,
+        "mergeBoundary": "cockpit-recessed-static-mechanical-details",
+        "node": "DET_sensor_cluster",
+        "parentId": null,
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.det-stencil-quiet",
+        "independentlyCulled": false,
+        "mergeBoundary": "DET_stencil_quiet",
+        "node": "DET_stencil_quiet",
+        "parentId": null,
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.hook-emissive",
+        "independentlyCulled": false,
+        "mergeBoundary": "HOOK_Emissive",
+        "node": "HOOK_Emissive",
+        "parentId": "sf.render.cockpit-recessed.node.cockpit-recessed",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.recessed-brow",
+        "independentlyCulled": false,
+        "mergeBoundary": "Recessed_Brow",
+        "node": "Recessed_Brow",
+        "parentId": "sf.render.cockpit-recessed.node.cockpit-recessed",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.recessed-deck",
+        "independentlyCulled": false,
+        "mergeBoundary": "Recessed_Deck",
+        "node": "Recessed_Deck",
+        "parentId": "sf.render.cockpit-recessed.node.cockpit-recessed",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.recessed-frame-0",
+        "independentlyCulled": false,
+        "mergeBoundary": "Recessed_Frame_0",
+        "node": "Recessed_Frame_0",
+        "parentId": "sf.render.cockpit-recessed.node.hook-emissive",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.recessed-frame-0-62",
+        "independentlyCulled": false,
+        "mergeBoundary": "Recessed_Frame_-0.62",
+        "node": "Recessed_Frame_-0.62",
+        "parentId": "sf.render.cockpit-recessed.node.hook-emissive",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.recessed-frame-0-62-2",
+        "independentlyCulled": false,
+        "mergeBoundary": "Recessed_Frame_0.62",
+        "node": "Recessed_Frame_0.62",
+        "parentId": "sf.render.cockpit-recessed.node.hook-emissive",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.recessed-frame-1-25",
+        "independentlyCulled": false,
+        "mergeBoundary": "Recessed_Frame_-1.25",
+        "node": "Recessed_Frame_-1.25",
+        "parentId": "sf.render.cockpit-recessed.node.hook-emissive",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.recessed-frame-1-25-2",
+        "independentlyCulled": false,
+        "mergeBoundary": "Recessed_Frame_1.25",
+        "node": "Recessed_Frame_1.25",
+        "parentId": "sf.render.cockpit-recessed.node.hook-emissive",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.recessed-interior",
+        "independentlyCulled": false,
+        "mergeBoundary": "Recessed_Interior",
+        "node": "Recessed_Interior",
+        "parentId": "sf.render.cockpit-recessed.node.cockpit-recessed",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.recessed-nose-plate",
+        "independentlyCulled": false,
+        "mergeBoundary": "Recessed_Nose_Plate",
+        "node": "Recessed_Nose_Plate",
+        "parentId": "sf.render.cockpit-recessed.node.cockpit-recessed",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.cockpit-recessed.node.recessed-sensor-slit",
+        "independentlyCulled": false,
+        "mergeBoundary": "Recessed_Sensor_Slit",
+        "node": "Recessed_Sensor_Slit",
+        "parentId": "sf.render.cockpit-recessed.node.hook-emissive",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.cockpit-recessed.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 94380,
+    "sha256": "ec90f896c5d15ee88a539af811a73c9fabd78c71ca3ffb9eab2423f43a740174",
+    "uri": "assets/ships/release/parts/cockpits/cockpit_recessed.glb"
+  }
+}

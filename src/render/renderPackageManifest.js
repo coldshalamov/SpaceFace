@@ -954,7 +954,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.cockpit-recessed",
-    "expectedContentHash": "5f8cf58113ad3774a885ed3dbed911a9601b0b91868632a43e7782c68dd3fb43",
+    "expectedContentHash": "9f6aee809d7d857ca9b0f263113e86fc71f269c5f7325fe981e1c121e962e7c5",
     "key": "cockpit-recessed",
     "metadataUrl": "assets/ships/release/render-packages/cockpit-recessed/render-package.json",
     "runtimeAssetId": "SF_COCKPIT_RECESSED",
@@ -974,12 +974,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.cold-locker",
-    "expectedContentHash": "632804f11e0bb0c04c58a57bd71400247654b1d9bc87eb93498f19be6952f72b",
+    "expectedContentHash": "f919fd6de51d3dff5c95d8fd1e170c48adec1e7830137bb4636629c2eb7942ca",
     "key": "cold-locker",
     "metadataUrl": "assets/ships/release/render-packages/cold-locker/render-package.json",
     "runtimeAssetId": "SF_PLACE_COLD_LOCKER",
     "slot": "place",
-    "sourceSha256": "3669ff2873a870e41c673e85c0fb5a6eb76e9194d6020ba2a62dbb3e3cd37663",
+    "sourceSha256": "def6397781560e3889d0ece05b28109840bc055c03ac2a7b98bd9025f8e7a939",
     "sourceUrl": "assets/ships/release/parts/places/place_cold_locker.glb"
   },
   {

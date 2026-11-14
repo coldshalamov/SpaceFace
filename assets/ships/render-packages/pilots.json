@@ -1759,8 +1759,8 @@
       "slot": "place",
       "releaseAssetId": "place_cold_locker",
       "sourceUrl": "assets/ships/release/parts/places/place_cold_locker.glb",
-      "releaseSha256": "3669ff2873a870e41c673e85c0fb5a6eb76e9194d6020ba2a62dbb3e3cd37663",
-      "releaseBytes": 337184,
+      "releaseSha256": "def6397781560e3889d0ece05b28109840bc055c03ac2a7b98bd9025f8e7a939",
+      "releaseBytes": 324392,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
