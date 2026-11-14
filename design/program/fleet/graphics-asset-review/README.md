@@ -5,6 +5,22 @@ Record real actions and decisions; do not manufacture cycles or repeat unchanged
 the number. A count is not visual acceptance. The game's renderer and gameplay camera remain the
 visual authority; see [the graphics front door](../../../../docs/visual-assets/README.md).
 
+## Assets arriving through pull requests
+
+The owner extended this review to models, textures and visual systems arriving in concurrent
+pull-request merges. The starting inventory is not a cutoff: refresh it against the current
+release and runtime manifests as merges land, and apply the same visual, variation, LOD and
+performance review to newly reachable assets. Inspect the actual picture at useful gameplay and
+detail views; reject unfinished shapes, unexplained parts, flat or washed-out surfaces and excessive
+glow. Preserve readable material detail and restrained light while measuring costs separately from
+draw or file counts. Use generated image textures where they improve the result, with the existing
+imagegen workflow and provenance; use GPT-6 Astra for custom Blender or SVG model generation.
+
+When the current local asset list has been reviewed but an asset-bearing PR has not yet landed,
+review and improve that PR under the same standards. Coordinate around the separate merge agent's
+work and preserve its branch and shared-checkout changes. Record real iterations and unresolved
+variants as for local assets; a merged PR or a passing technical check alone is not visual acceptance.
+
 The reusable index is built from the release manifest, the runtime package manifest, the Ruckus
 mesh registry and the dated [procedural candidate seed](procedural-seed.json). A model's source,
 released GLB and runtime package are separate representations; LODs are variants of that model.
