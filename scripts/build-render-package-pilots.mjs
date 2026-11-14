@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,6 +38,30 @@ export async function buildRenderPackagePilots(options = {}) {
   const repoRoot = resolve(options.repoRoot || REPO_ROOT);
   const outputRoot = options.outputRoot ? resolve(repoRoot, options.outputRoot) : repoRoot;
   const externalizeKtx2 = options.externalizeKtx2 === true;
+  const stagedSource = options.stagedSource;
+  const stagedAuthoringSource = options.stagedAuthoringSource;
+  if (stagedAuthoringSource || options.stagedAuthoringSha256) {
+    if (!stagedSource || !stagedAuthoringSource || !/^[a-f0-9]{64}$/.test(options.stagedAuthoringSha256 || '')) {
+      throw new Error('Staged authoring source requires --staged-source and both --staged-authoring-source and --staged-authoring-sha256.');
+    }
+  }
+  if (stagedSource) {
+    if (check || !options.outputRoot || !options.scopedInputs || onlyKeys?.size !== 1
+        || options.manifestPath || externalizeKtx2 || !/^[a-f0-9]{64}$/.test(options.stagedSha256 || '')) {
+      throw new Error('Staged source requires one --only key, --scoped-inputs, explicit --output-root under .devshots, and --staged-sha256; it cannot use --check, a custom manifest, or externalization.');
+    }
+    const ignoredRoot = await realpath(resolve(repoRoot, '.devshots'));
+    if (!outputRoot.startsWith(resolve(repoRoot, '.devshots') + sep)) throw new Error('Staged output root must be under .devshots.');
+    let existing = outputRoot;
+    while (true) {
+      try { existing = await realpath(existing); break; }
+      catch (error) { if (error.code !== 'ENOENT') throw error; existing = dirname(existing); }
+    }
+    if (existing !== ignoredRoot && !existing.startsWith(ignoredRoot + sep)) throw new Error('Staged output root must resolve under .devshots.');
+    await mkdir(outputRoot, { recursive: true });
+  } else if (options.stagedSha256) {
+    throw new Error('--staged-sha256 requires --staged-source.');
+  }
   if (externalizeKtx2) {
     const ignoredRoot = resolve(repoRoot, '.devshots') + sep;
     if (options.check || !options.outputRoot || !outputRoot.startsWith(ignoredRoot)) {
@@ -61,6 +85,36 @@ export async function buildRenderPackagePilots(options = {}) {
   const releaseManifestPath = resolve(repoRoot, manifest.releaseManifest);
   const releaseManifest = JSON.parse(await readFile(releaseManifestPath, 'utf8'));
   const releaseRows = new Map((releaseManifest.assets || []).map((row) => [row.id, row]));
+  if (stagedSource) {
+    const pilot = manifest.pilots.find((entry) => onlyKeys.has(entry.key));
+    if (!pilot) throw new Error('Unknown staged pilot key.');
+    if (pilot.sharedKtx2Hashes !== undefined) throw new Error('Staged source does not support shared KTX2 output.');
+    assertReleaseBinding(pilot, releaseRows.get(pilot.releaseAssetId));
+    const bytes = await readFile(resolve(repoRoot, stagedSource));
+    if (sha256(bytes) !== options.stagedSha256) throw new Error(`${pilot.key}: staged source SHA-256 does not match the supplied digest.`);
+    pilot.releaseSha256 = options.stagedSha256;
+    pilot.releaseBytes = bytes.length;
+    let authoringBinding = {};
+    if (stagedAuthoringSource) {
+      const authoringBytes = await readFile(resolve(repoRoot, stagedAuthoringSource));
+      if (sha256(authoringBytes) !== options.stagedAuthoringSha256) throw new Error(`${pilot.key}: staged authoring source SHA-256 does not match the supplied digest.`);
+      authoringBinding = { sourceSha256: options.stagedAuthoringSha256, sourceBytes: authoringBytes.length };
+    }
+    releaseRows.set(pilot.releaseAssetId, { ...releaseRows.get(pilot.releaseAssetId), ...authoringBinding, releaseSha256: pilot.releaseSha256, releaseBytes: pilot.releaseBytes });
+    // Resolve every possible write through existing ancestors before compilation; a symlink
+    // inside the scratch tree must not redirect a staged build into live files.
+    for (const relative of [pilot.outputDir, ...PACKAGE_FILES.map((file) => join(pilot.outputDir, file)), pilotInputDescriptorUri(pilot.key), manifest.runtimeManifest]) {
+      const target = resolve(outputRoot, relative);
+      if (!target.startsWith(outputRoot + sep)) throw new Error('Staged output path escapes output root.');
+      let ancestor = target;
+      while (true) {
+        try { ancestor = await realpath(ancestor); break; }
+        catch (error) { if (error.code !== 'ENOENT') throw error; ancestor = dirname(ancestor); }
+      }
+      const actualOutput = await realpath(outputRoot);
+      if (ancestor !== actualOutput && !ancestor.startsWith(actualOutput + sep)) throw new Error('Staged output path resolves outside output root.');
+    }
+  }
   if (onlyKeys) {
     const available = new Set(manifest.pilots.map((pilot) => pilot.key));
     for (const key of onlyKeys) {
@@ -110,7 +164,7 @@ export async function buildRenderPackagePilots(options = {}) {
       const pilot = flightStaticKeys.has(manifestPilot.key)
         ? { ...manifestPilot, flightStaticV3: true }
         : manifestPilot;
-      const sourcePath = resolve(repoRoot, pilot.sourceUrl);
+      const sourcePath = resolve(repoRoot, stagedSource || pilot.sourceUrl);
       const releaseRow = releaseRows.get(pilot.releaseAssetId);
       assertReleaseBinding(pilot, releaseRow);
       const sourceBytes = await readFile(sourcePath);
@@ -147,6 +201,7 @@ export async function buildRenderPackagePilots(options = {}) {
       const result = await compileRenderPackage({
         assetId: pilot.assetId,
         sourceGlbPath: sourcePath,
+        ...(stagedSource ? { sourceUri: basename(pilot.sourceUrl) } : {}),
         sourceGlbBytes: sourceBytes,
         sourceManifestPath: scopedInputs ? inputPath : legacyInputPath,
         sourceManifestUri: scopedInputs ? inputUri : basename(manifestPath),
@@ -813,8 +868,14 @@ export function parseRenderPackagePilotArgs(argv) {
   const onlyKeys = onlyArgs.flatMap((arg) => arg.slice('--only='.length).split(',')).filter(Boolean);
   const outputRootArg = argv.find((arg) => arg.startsWith('--output-root='));
   const manifestArg = argv.find((arg) => arg.startsWith('--manifest='));
+  const stagedSourceArg = argv.find((arg) => arg.startsWith('--staged-source='));
+  const stagedShaArg = argv.find((arg) => arg.startsWith('--staged-sha256='));
+  const stagedAuthoringSourceArg = argv.find((arg) => arg.startsWith('--staged-authoring-source='));
+  const stagedAuthoringShaArg = argv.find((arg) => arg.startsWith('--staged-authoring-sha256='));
   const unknown = argv.filter((arg) => arg !== '--check' && arg !== '--externalize-ktx2' && arg !== '--scoped-inputs'
-    && !arg.startsWith('--only=') && !arg.startsWith('--output-root=') && !arg.startsWith('--manifest='));
+    && !arg.startsWith('--only=') && !arg.startsWith('--output-root=') && !arg.startsWith('--manifest=')
+    && !arg.startsWith('--staged-source=') && !arg.startsWith('--staged-sha256=')
+    && !arg.startsWith('--staged-authoring-source=') && !arg.startsWith('--staged-authoring-sha256='));
   if (unknown.length) throw new Error(`Unknown render-package pilot option: ${unknown.join(', ')}`);
   return {
     check: argv.includes('--check'),
@@ -822,6 +883,10 @@ export function parseRenderPackagePilotArgs(argv) {
     ...(argv.includes('--scoped-inputs') ? { scopedInputs: true } : {}),
     ...(outputRootArg ? { outputRoot: outputRootArg.slice('--output-root='.length) } : {}),
     ...(manifestArg ? { manifestPath: manifestArg.slice('--manifest='.length) } : {}),
+    ...(stagedSourceArg ? { stagedSource: stagedSourceArg.slice('--staged-source='.length) } : {}),
+    ...(stagedShaArg ? { stagedSha256: stagedShaArg.slice('--staged-sha256='.length) } : {}),
+    ...(stagedAuthoringSourceArg ? { stagedAuthoringSource: stagedAuthoringSourceArg.slice('--staged-authoring-source='.length) } : {}),
+    ...(stagedAuthoringShaArg ? { stagedAuthoringSha256: stagedAuthoringShaArg.slice('--staged-authoring-sha256='.length) } : {}),
     ...(onlyKeys.length ? { onlyKeys } : {}),
   };
 }
