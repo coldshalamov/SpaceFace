@@ -97,7 +97,7 @@ export function stationResidentLine(state, stationId, resident) {
     && (row.stationId === stationId || row.destStationId === stationId));
   if (receipt) {
     if (receipt.outcome === 'completed') return `Your work on “${receipt.title || 'the contract'}” is filed. The recorded settlement stands.`;
-    if (['failed', 'expired', 'abandoned'].includes(receipt.outcome)) return `“${receipt.title || 'The contract'}” is closed (${receipt.outcome}). Check current work for a recovery or another route.`;
+    if (['failed', 'expired', 'abandoned'].includes(receipt.outcome)) return `“${receipt.title || 'The contract'}” is closed (${receipt.outcome}). Check the board for recovery work.`;
   }
   const memory = stationContactMemoryFor(state, resident.id);
   if (memory?.met && resident.canonicalKey && !resident.trackerId) {
