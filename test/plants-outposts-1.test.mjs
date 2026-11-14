@@ -1395,3 +1395,27 @@ test('determinism: identical double runs (dutch, rat run, dark window)', () => {
   assert.equal(runs[1][1], runs[4][1], 'rat run: identical double run');
   assert.equal(runs[2][1], runs[5][1], 'dark window: identical double run');
 });
+
+test('PL-118/PL-143 same-sector quickload resets the plant (save:loaded boundary)', () => {
+  // A same-sector quickload rebuilds the world without any sector events: the buoy line
+  // must respawn and the board receipts must clear (newGameBoot resets ids + simTime,
+  // saveSystem emits save:loaded alone).
+  const state = makeState({ world: { currentSectorId: PIPS_TUNING.sectorId } });
+  fixtureStation(state, 'station_veil', { x: 420, z: -1120 }); // the line anchors off this station
+  makePlayer(state, { x: 420, z: -1000 }); // the update gate needs a player entity in the world
+  const { bus, helpers } = makeHarness(state);
+  const plant = pipsCountsPlant;
+  plant.init({ state, bus, helpers });
+  sweep(plant, state); // props built pre-load
+  assert.equal(plant._propsBuilt, true, 'props built pre-load');
+
+  // The load boundary: no sector events, just save:loaded with a fresh clock.
+  state.simTime = 1;
+  state.tick = 60;
+  bus.emit('save:loaded', {});
+  assert.equal(plant._propsBuilt, false, 'the load clears the stale build latch');
+  assert.equal(plant._podsAboard, 0, 'board receipts cleared by the load');
+  sweep(plant, state);
+  assert.equal(plant._propsBuilt, true, 'the line respawns for the loaded session');
+  plant.destroy();
+});

@@ -93,6 +93,9 @@ export const pipsCountsPlant = {
     // no-op and the buoy line respawns fresh; the pass ledger's 20 s bucket keys would
     // collide with the old session's tail and gate the first crossings.
     on('game:newGame', () => { this._despawnOwned(); this._passTimes = new Map(); this._podsAboard = 0; });
+    // A same-sector quickload emits no sector/new-game events: rebuilt world, fresh clock,
+    // and the hold's board receipts are whatever the save says. Reset like a fresh sector.
+    on('save:loaded', () => { this._despawnOwned(); this._passTimes = new Map(); this._podsAboard = 0; });
   },
 
   update(dt) {

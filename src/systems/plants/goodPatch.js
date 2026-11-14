@@ -63,6 +63,9 @@ export const goodPatchPlant = {
     // game:newGame: simTime restarts near zero and the old station never emits a departure
     // edge, so a stale in-range latch or patched-at stamp would swallow the first visit.
     on('game:newGame', () => { this._inRange = false; this._patchedAt = null; this._teaDone = false; });
+    // Same-sector quickload: the old station's departure edge is eaten by the sector
+    // change guard, so the load boundary clears the latch itself.
+    on('save:loaded', () => { this._inRange = false; this._patchedAt = null; this._teaDone = false; });
   },
 
   update(dt) {
