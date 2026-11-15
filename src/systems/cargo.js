@@ -13,6 +13,8 @@ import {
   PICKUP_ACCEPTANCE_RETRY_S,
 } from '../core/pickupAcceptance.js';
 import { spawnJettisonedCargoPod, volatileThrowSpeedScale } from './lootShards.js';
+import { KESSLER_SCALE } from '../data/kessler.js';
+import { kesslerPadPosition } from './kesslerScaleWorksite.js';
 import { getDerivedStats, shipworksStationAccess } from './ships.js';
 import { TALLY_THREE, tallyThreeBody, tallyThreeSource, tallyThreeFingerprint } from '../data/tallyThree.js';
 import { salvageBaySaleAllowsIllicit } from '../economy/stationMarketProfile.js';
@@ -232,6 +234,48 @@ function defOf(state, id) {
   if (id in VOL) return { vol: VOL[id], mass: MASS[id], legality: LEGALITY[id], basePrice: BASE_PRICE[id] };
   if (PERSISTENT_FOOTPRINT.has(id)) return PERSISTENT_FOOTPRINT.get(id);
   return null;
+}
+
+/** A stopped pilot can set their own freight down on the existing open Scale 4 deck.
+ *  This is a pure read owned by cargo's jettison path — it never spawns, moves,
+ *  weighs or collects a body; it only plans gentle set-down poses or a refusal. */
+export function kesslerCargoRelease(state, player, radius, clearance, count = 1, firstSlot = 0) {
+  if (!state || state.mode !== 'flight' || state.ui?.docked || state.player?.flags?.docked
+      || state.physicsVenue?.active || !['adventure', 'campaign', undefined, null, ''].includes(state.run?.kind)
+      || state.world?.currentSectorId !== KESSLER_SCALE.sectorId
+      || !player?.alive || state.entities?.get(state.playerId) !== player
+      || ![player.pos?.x, player.pos?.z, player.vel?.x, player.vel?.z, player.radius, radius, clearance].every(Number.isFinite)
+      || player.radius < 0 || radius <= 0 || clearance < 0
+      || Math.hypot(player.vel.x, player.vel.z) > 2) return null;
+  const pad = kesslerPadPosition(), reach = player.radius + radius + clearance;
+  // Keep the whole hull-side release and its two-second pickup embargo inside the
+  // open measuring volume, irrespective of facing. Tight/oversized approaches refuse
+  // rather than silently turning an expected gentle release into a fast dump.
+  const distance = Math.hypot(player.pos.x - pad.x, player.pos.z - pad.z);
+  if (distance > KESSLER_SCALE.padRadius) return null;
+  if (distance + reach + radius + 10 > KESSLER_SCALE.padRadius) return { blocked: true, reason: 'clearance' };
+  if (!Number.isSafeInteger(count) || count < 1 || count > 17
+    || !Number.isSafeInteger(firstSlot) || firstSlot < 0 || firstSlot >= count) return { blocked: true };
+  const rot = Number.isFinite(player.rot) ? player.rot : 0;
+  const fx = Math.cos(rot), fz = Math.sin(rot);
+  // Mixed rich/plain lots remain distinct pods. Fan them beside the aft release,
+  // never at a common point or at the scale center. All slots are checked before
+  // the cargo owner removes a single unit. Before each admission the owner checks
+  // the remaining slots again, after synchronous cargo/spawn callbacks have run.
+  // A tiny extra gap keeps diagonal world-coordinate roundoff from
+  // making an already admitted neighbor appear inside the exact clearance edge.
+  const spacing = radius * 2 + clearance + 1e-4;
+  const positions = Array.from({ length: count }, (_, i) => {
+    const across = (i === 0 ? 0 : Math.ceil(i / 2) * (i % 2 ? 1 : -1)) * spacing;
+    return { x: player.pos.x - fx * reach - fz * across, z: player.pos.z - fz * reach + fx * across };
+  });
+  const bodies = [...(state.entityList || []), ...(state.world?.dressing?.rows || [])];
+  const blocked = positions.slice(firstSlot).some(pos => Math.hypot(pos.x - pad.x, pos.z - pad.z) + radius + 10 > KESSLER_SCALE.padRadius
+    || bodies.some(e => e && e !== player && e.alive !== false && e.physicsBody !== false
+      && (e.collides !== false || e.data?.jettisonedCargo === true)
+      && Number.isFinite(e.pos?.x) && Number.isFinite(e.pos?.z) && Number.isFinite(e.radius) && e.radius > 0
+      && Math.hypot(e.pos.x - pos.x, e.pos.z - pos.z) < e.radius + radius + clearance));
+  return { blocked, positions, ejectSpeed: 2 };
 }
 
 /** The lot a flight jettison dumps.
@@ -1503,6 +1547,16 @@ export const cargo = {
     qty = Math.min(qty, free);
     if (qty <= 0) return 0;
     const richSources = richLotSourcesForQty(state.player.cargo, commodityId, qty);
+    const releaseBodies = richSources.length + (richSources.reduce((n, r) => n + r.richQty, 0) < qty ? 1 : 0);
+    // Only a calm, clear set-down inside Scale 4 changes the existing release impulse.
+    // Hot-dock spills retain their own bay law; all other jettisons remain fast.
+    const deckRelease = options?.bay ? null : kesslerCargoRelease(state, player, JETTISON_POD_RADIUS, JETTISON_CLEARANCE, releaseBodies);
+    if (deckRelease?.blocked) {
+      this.bus?.emit('toast', { text: deckRelease.reason === 'clearance'
+        ? 'Scale 4 needs clearance around the hull. Move toward the ring center; if your hull cannot fit, jettison outside and tow the pod in.'
+        : 'Scale 4 release blocked behind the hull. Make room, or release one free unit at a time.', kind: 'warn', ttl: 5 });
+      return 0;
+    }
     this._jettisonInFlight = true;
     let removed = 0, dumped = 0;
     const acceptedRich = new Map();
@@ -1520,14 +1574,28 @@ export const cargo = {
       const bay = !!(options && options.bay);
       // A deliberate dump leaves aft at eject speed. A hot dock leaves the pods beside the hull,
       // almost stopped, so they sit in the bay instead of riding the approach back out the lane.
-      const eject = bay ? 0 : JETTISON_EJECT_SPEED * volatileThrowSpeedScale(commodityId);
+      // A calm release inside the Scale 4 ring is a gentle set-down instead.
+      const eject = bay ? 0 : deckRelease ? deckRelease.ejectSpeed : JETTISON_EJECT_SPEED * volatileThrowSpeedScale(commodityId);
+      let deckSlot = 0;
       const spawnJettisonPod = (amount, richSource = null) => {
         if (!(amount > 0)) return;
         const slot = bay ? Math.max(0, Math.floor(Number(options && options.slot) || 0)) : 0;
         const along = bay ? (slot - 0.5) * (JETTISON_POD_RADIUS * 2.4) : 0;
-        const pos = bay
+        const pos = deckRelease ? deckRelease.positions[deckSlot] : bay
           ? { x: px - fz * r + fx * along, z: pz + fx * r + fz * along }
           : { x: px - fx * r, z: pz - fz * r };
+        if (deckRelease) {
+          // Cargo removal and prior pod admission publish synchronous events. Re-read
+          // the current pilot and remaining clear slots before committing this body.
+          // A changed pose/context or new obstacle refuses through the existing refund
+          // path; it must never fall back to fast ejection or a stale world position.
+          const current = kesslerCargoRelease(state, player, JETTISON_POD_RADIUS,
+            JETTISON_CLEARANCE, releaseBodies, deckSlot);
+          const here = current?.positions?.[deckSlot++];
+          if (!current || current.blocked || !here || here.x !== pos.x || here.z !== pos.z
+            || player.pos.x !== px || player.pos.z !== pz || player.vel.x !== vx || player.vel.z !== vz
+            || (Number.isFinite(player.rot) ? player.rot : 0) !== rot) return;
+        }
         const vel = bay
           ? { x: vx * 0.04, z: vz * 0.04 }
           : { x: vx - fx * eject, z: vz - fz * eject };

@@ -85,6 +85,8 @@ export const BEAT_COMMS = Object.freeze([
   line('comms.47a.b1.primary', 1, 'primary', 'contact_kessler', 'KESSLER', 'The book posts the alloy run. Scale 4 and the furnace follow.'),
   line('comms.47a.b1.recovery', 1, 'failure_recovery', 'contact_kessler', 'KESSLER', 'Honest work holds. The book re-posts the next job.'),
   line('comms.47a.b1.scale4_handoff', 1, 'step_handoff', 'contact_kessler', 'KESSLER DESK', 'Variance filed. Next: Ceres furnace detail. Feed ore intact; losses stay recorded.'),
+  // Mira's desk kept the delivered crate on the plate; one line points it out.
+  line('comms.47a.b1.alloy_handoff', 1, 'step_handoff', 'contact_mira', 'MIRA', 'Your crate is on Scale 4. Watch it.'),
   line('comms.47a.b2.primary', 2, 'primary', 'contact_rook', 'ROOK', 'Cinder board first. Compost, the Nest, the register after.'),
   line('comms.47a.b2.recovery', 2, 'failure_recovery', 'contact_rook', 'ROOK', 'The board still holds. The book re-posts the next job.'),
   line('comms.47a.b3.primary', 3, 'primary', 'contact_slate', 'SLATE', 'Variance Adjustment posts first. Maw and Foreman follow.'),

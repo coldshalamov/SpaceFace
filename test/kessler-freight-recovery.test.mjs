@@ -24,7 +24,9 @@ function fixture() {
   const s = sim.state, pad = kesslerPadPosition();
   s.mode = 'flight'; s.run.kind = 'adventure'; s.world.currentSectorId = KESSLER_SCALE.sectorId;
   s.story.flags = {}; s.story.beatIndex = 1;
-  s.story.campaign47a = { stepProgress: { '1': { completed: ['alloy_run'] } } };
+  // No recorded handoff: the desk's delivered crate is not on the plate here, so the
+  // only jettisoned cargo in these checks is the pod the cargo owner just minted.
+  s.story.campaign47a = { stepProgress: { '1': { completed: [] } } };
   Object.assign(s.player.cargo, { capMass: 100, capVolume: 100 });
   const p = sim.spawn({ type: 'ship', isPlayer: true, team: 0, pos: pad, radius: 12, mass: 18, hull: 100, data: {} });
   s.playerId = p.id;

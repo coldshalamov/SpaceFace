@@ -14,6 +14,8 @@ import { kesslerWorksiteSpecs, kesslerReceiptLabel, kesslerPadPosition } from '.
 import { insertDressingRow, dropDressingRow } from '../world/dressingTable.js';
 import { stampSolidDressing } from '../world/solidDressing.js';
 import { KESSLER_SCALE } from '../data/kessler.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { spawnJettisonedCargoPod } from './lootShards.js';
 import { kesslerPodEligible, kesslerReadCheck, kesslerPlateRead, kesslerTrueRead, kesslerVarianceSeen } from '../characters/kesslerRules.js';
 import { deferSectorEnterMaterialization } from '../core/sectorEnterDefer.js';
 
@@ -81,6 +83,9 @@ export function createKesslerScale() {
       this._unsubs = [];
       this._settlingPods = new Set();
       this._weighed = new Map();
+      // Pods this owner has recorded on the deck, by id — the only set the
+      // fields-driven deck damping may touch (kept here, never re-scanned).
+      this._deckPods = new Set();
       const on = (event, fn) => {
         const off = this.bus?.on(event, fn); if (typeof off === 'function') this._unsubs.push(off);
       };
@@ -93,6 +98,8 @@ export function createKesslerScale() {
         .push(this._cookProvider);
       on('save:loaded', () => this._sync());
       on('game:newGame', () => this._sync());
+      on('entity:spawned', (p) => this._noteDeckPod(p?.entity));
+      on('cargo:delivered', (p) => this._placeDeliveredCrate(p));
       this._sync();
     },
     destroy() {
@@ -113,6 +120,7 @@ export function createKesslerScale() {
       this._removeOwned();
       this._settlingPods?.clear();
       this._weighed?.clear();
+      this._deckPods?.clear();
     },
     _flags() {
       const flags = this.state?.story?.flags;
@@ -136,13 +144,54 @@ export function createKesslerScale() {
       }
       this._settlingPods?.clear();
       this._weighed?.clear();
+      this._deckPods?.clear();
       for (const e of this.state?.entityList || []) {
         if (e?.alive && e.data?.kesslerScale === true && e.physicsBody === false)
           this.helpers?.removeEntity?.(e.id);
       }
     },
-    /** A pod already read this visit (or restored weighed) is tracked by id inside the
-     *  ordinary read pass; when its real pool drains, its own tag keeps the true figure. */
+    /** A jettisoned cargo pod materialising inside the ring joins the recorded
+     *  deck set immediately — the damping owner needs no wait for the calendar pass. */
+    _noteDeckPod(e) {
+      if (!e || e.alive === false || !this._adventure()) return;
+      const d = e.data || {};
+      if (d.jettisonedCargo !== true && d.payloadType !== 'jettisoned_cargo') return;
+      if (!kesslerReadCheck(e, kesslerPadPosition()).inZone) return;
+      (this._deckPods || (this._deckPods = new Set())).add(e.id);
+    },
+    /** The alloy handoff puts the delivered crate itself on the plate: the real
+     *  units just removed from the hold, in the desk's custody — never collectable
+     *  back, so no stock is invented and the campaign's "weigh the delivered crate"
+     *  is literal. The authored step handoff speaks for it. */
+    _placeDeliveredCrate(p) {
+      const mission = (this.state?.missions?.active || [])
+        .find((m) => m && m.id === p?.missionId);
+      if (!mission || mission.storyTag !== 'campaign47a:b1:alloy_run'
+          || p.stationId !== 'station_tethys') return;
+      this._spawnDeliveredCrate(p.commodityId, p.qty);
+    },
+    _spawnDeliveredCrate(commodityId, qty) {
+      const s = this.state;
+      if (!s || !this._adventure()) return;
+      if (s.world?.currentSectorId !== KESSLER_SCALE.sectorId) return;
+      if ((s.entityList || []).some((e) => e?.alive !== false
+          && e.data?.kesslerDelivered === true)) return;
+      const id = typeof commodityId === 'string' && commodityId ? commodityId : 'cmdty_alloys';
+      const def = COMMODITIES.find((c) => c.id === id);
+      const pad = kesslerPadPosition();
+      const pod = spawnJettisonedCargoPod(s, {
+        pos: { x: pad.x - 16, z: pad.z + 10 }, vel: { x: 0, z: 0 },
+        radius: 3, commodityId: id,
+        amount: Math.max(1, Math.floor(Number(qty) || 0) || 6),
+        unitMass: Number.isFinite(def?.massPerU) ? def.massPerU : 0.6,
+        factionId: 'faction_mts', ownerId: null,
+      }, this.helpers);
+      if (!pod) return;
+      pod.data.physicalCustodyOnly = true;
+      pod.data.kesslerDelivered = true;
+      pod.data.scanLabel = 'Delivered alloys · Scale 4';
+      this._noteDeckPod(pod);
+    },
     _trackWeighed(e) {
       const d = e && e.data;
       if (!d || d.kesslerRead !== true || !d.kesslerReceipt
@@ -217,6 +266,13 @@ export function createKesslerScale() {
           text: KESSLER_SCALE.announce, ttl: 9, persist: false,
         });
       }
+      // Restore seam: a save made after the handoff but before the read brings the
+      // delivered crate back quietly — the flag chain, not a minted pod, drives this.
+      const completed = this.state.story?.campaign47a?.stepProgress?.['1']?.completed;
+      if (Array.isArray(completed) && completed.includes('alloy_run')
+          && !completed.includes('infested')) {
+        this._spawnDeliveredCrate('cmdty_alloys', 6);
+      }
     },
     /** Calendar read pass: every weighable pod at rest inside the ring gets one desk
      *  reading — the thumbed plate figure against the pod's own stamp. */
@@ -229,20 +285,38 @@ export function createKesslerScale() {
       const settling = new Set();
       const pad = kesslerPadPosition();
       for (const e of s.entityList || []) {
-        if (e?.alive === false) { this._weighed.delete(e.id); continue; }
-        if (!kesslerPodEligible(e)) { this._trackWeighed(e); continue; }
+        if (e?.alive === false) {
+          this._weighed.delete(e.id);
+          this._deckPods?.delete(e.id);
+          continue;
+        }
+        if (!kesslerPodEligible(e)) {
+          this._trackWeighed(e);
+          // An already-read pod still resting in the ring stays damped; one that
+          // drifted or was towed out leaves the recorded set.
+          if (e?.data && (e.data.jettisonedCargo === true
+              || e.data.payloadType === 'jettisoned_cargo')) {
+            if (kesslerReadCheck(e, pad).inZone) (this._deckPods || (this._deckPods = new Set())).add(e.id);
+            else this._deckPods?.delete(e.id);
+          }
+          continue;
+        }
         const check = kesslerReadCheck(e, pad);
         if (!check.arrived) {
           if (check.inZone && Number.isFinite(check.speed)) {
             settling.add(e.id);
+            (this._deckPods || (this._deckPods = new Set())).add(e.id);
             if (!this._settlingPods?.has(e.id)) this.bus?.emit('comms:popup', {
               id: `kessler_settle_${e.id}`, sender: KESSLER_SCALE.sender, category: 'story',
               text: `Scale 4 · load moving at ${check.speed.toFixed(1)} WU/s. Reading waits at ${KESSLER_SCALE.restSpeed} WU/s or below. Freight stays yours.`,
               ttl: 5, persist: false,
             });
+          } else {
+            this._deckPods?.delete(e.id);
           }
           continue;
         }
+        (this._deckPods || (this._deckPods = new Set())).add(e.id);
         e.data.kesslerRead = true;
         const plate = kesslerPlateRead(e.mass);
         const honest = kesslerTrueRead(e.mass);
@@ -286,6 +360,13 @@ export function createKesslerScale() {
         });
       }
       this._settlingPods = settling;
+      // Pods removed entirely from the world (not just flagged dead) leave the set.
+      if (this._deckPods?.size) {
+        for (const id of [...this._deckPods]) {
+          const e = s.entities?.get?.(id);
+          if (!e || e.alive === false) this._deckPods.delete(id);
+        }
+      }
     },
   };
 }

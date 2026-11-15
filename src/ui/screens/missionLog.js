@@ -1843,7 +1843,7 @@ export function storyActionForBeat(beat, state) {
         tone: 'primary',
         label: 'STORY',
         title: `Check the manifest · ${scale.sectorName}`,
-        body: 'The manifest was re-coded. At Scale 4, settle a fresh jettisoned unreserved cargo pod in the ring at 8 WU/s or less. Buy or mine cargo if needed; the delivered alloys are gone.',
+        body: 'The manifest was re-coded. The desk kept your delivered alloy crate on Scale 4 — it stays on the plate until the read latches. To weigh your own freight: brake below 2 WU/s inside the ring, then jettison a lot; the calm set-down settles the pod.',
         meta: 'Scale 4',
       };
       const completed = story.campaign47a?.stepProgress?.['1']?.completed;

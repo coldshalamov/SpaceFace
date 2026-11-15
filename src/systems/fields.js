@@ -72,6 +72,7 @@ import { COLLECTOR_KNOT } from '../data/collectorKnot.js';
 import { isSwarmSpecialistRun, swarmSpecialistKind, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
 import { swarmFieldRadiusScale, swarmFieldCooldownScale } from './playerModifiers.js';
 import { syncRookReceivingBrake, noteRookPadSpawned, resetRookPadIndex, resolveRookPadEntity } from './rookReceivingBrake.js';
+import { syncKesslerDeckDamping } from './kesslerDeckDamping.js';
 
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
 // PQ-147.01 — NPC tools share the kernel but not the player's four-slot cap.
@@ -915,6 +916,9 @@ export const fields = {
     // The receiving brake rides input like the cone: it must run before the idle-quiet
     // latch below, or a long quiet tow would pause the brake the player is holding.
     syncRookReceivingBrake(this, state, dt);
+    // The Tethys deck's drag rides the same seam: impulses queued on pods the
+    // scale owner already recorded, before the idle-quiet latch can skip a tick.
+    syncKesslerDeckDamping(this, state, dt);
     // Skim sheet mirrors the planet collector latch — must run even when the kernel is empty
     // so turning the scoop on can arm a sheet without a pre-existing field.
     this._syncSkimSheet(state, rt);

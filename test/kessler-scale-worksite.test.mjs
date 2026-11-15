@@ -174,11 +174,11 @@ test('ordinary alloy-completion signal hands the existing story navigation to ac
   assert.equal(f.state.nav.waypoint.kind, 'story');
   assert.equal(f.state.nav.waypoint.stationId, null);
   assert.deepEqual(f.state.nav.waypoint.pos, { x: 13008, z: 7212 });
-  assert.match(f.state.nav.waypoint.reason, /fresh jettisoned cargo pod.*delivered alloys are not required.*Buy or mine unreserved cargo/);
-  assert.match(f.state.nav.waypoint.reason, /8 u\/s/);
+  assert.match(f.state.nav.waypoint.reason, /delivered alloy crate on Scale 4.*brake below 2 WU\/s inside the ring.*jettison a lot/);
+  assert.match(f.state.nav.waypoint.reason, /Freight stays yours/);
   f.owner._recordCampaignBookSignal('kesslerPod:weighed', { variance: true, entityId: 42 });
   assert.equal(kesslerScalePending(f.state), false);
-  assert.notEqual(f.state.nav.waypoint?.label, 'Scale 4 · weigh your own freight');
+  assert.notEqual(f.state.nav.waypoint?.label, 'Scale 4 · weigh the delivered crate');
   assert.equal(f.state.story.beatIndex, 1, 'furnace detail still follows; weighing is not the whole book');
 });
 

@@ -1744,6 +1744,16 @@ export const missionStoryOps = {
       ...(furnaceSettlement || {}),
     }, this.state.simTime || 0);
     if (!observed || !observed.ok) return false;
+    // The recorded alloy handoff, not the raw delivery event, owns Mira's one-line
+    // pointer — the authored line rides the same comms seam as every step handoff.
+    if (beat.beat === 1 && observed.stepId === 'alloy_run') {
+      const handoff = commsForBeat(1, { variant: 'step_handoff' })
+        .find((entry) => entry.id === 'comms.47a.b1.alloy_handoff');
+      if (handoff) this.bus.emit('comms:popup', {
+        id: handoff.id, sender: handoff.sender, category: 'story', ttl: 8, persist: false,
+        text: handoff.text,
+      });
+    }
     // §34.7 B1: the sealed manifest re-categorizes silent — the HUD does not notify, but
     // LOG notes it anyway, flatly. The recode is the visible lie the Scale 4 weigh answers.
     if (m.params && m.params.silentRecat === true) {

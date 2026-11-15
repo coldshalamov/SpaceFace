@@ -52,9 +52,9 @@ export function kesslerScalePending(state) {
 export function kesslerScaleWaypoint(state) {
   if (!kesslerScalePending(state)) return null;
   return {
-    kind: 'story', storyBeat: 1, label: 'Scale 4 · weigh your own freight',
+    kind: 'story', storyBeat: 1, label: 'Scale 4 · weigh the delivered crate',
     sectorId: KESSLER_SCALE.sectorId, sectorName: 'Tethys Junction',
     stationId: null, pos: kesslerPadPosition(),
-    reason: 'Use any fresh jettisoned cargo pod; the delivered alloys are not required. Buy or mine unreserved cargo if needed, jettison a lot from your hold, then bring that pod inside the Scale 4 ring and settle it at 8 WU/s or below. Read plate against stamp; keep your freight.',
+    reason: 'The desk kept your delivered alloy crate on Scale 4 — it stays on the plate until the read latches. To weigh your own freight: brake below 2 WU/s inside the ring, then jettison a lot; the calm set-down settles the pod. Freight stays yours.',
   };
 }
