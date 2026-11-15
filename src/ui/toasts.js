@@ -28,6 +28,7 @@ import { bindAutomationPayoffUi } from './automationPayoff.js';
 import { counterplayDoctrineById } from '../ai/counterplay/catalog.js';
 import { bindReturningPilotSummary } from './dockArrival.js';
 import { createToastActionButton, normalizeToastAction, pickEvictionVictim, runToastAction } from './toastAction.js';
+import { isSwarmGlass } from './swarmGlass.js';
 
 const MAX = RECEIPT_MAX;
 // Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
@@ -81,6 +82,8 @@ export function createToasts(ctx) {
   const stage = ctx.stage && typeof ctx.stage.show === 'function' ? ctx.stage : null;
   let toastSeq = 0;
   const live = []; // { el, born, ttl }
+  const swarmWait = []; // Swarm: notices waiting their turn (one at a time)
+  const SWARM_WAIT_MAX = 2;
   let nextWakeAt = Infinity;
   let lastAnnounced = '';
   // Last focus outside the toast feed — restored when the final focused toast leaves.
@@ -232,6 +235,19 @@ export function createToasts(ctx) {
   // refused, so a once-only notice sent through the presenter can tell it was never seen.
   function pushNow({ text = '', kind = 'info', ttl = 4, _fromVoice = false, channel = '', action = null, charonApproach = null } = {}) {
     if (!root || !text) return false;
+    // Phone Swarm: the stunt-name receipt ("Tidy.") is a second card in the lane; the centre-lane
+    // callout already speaks the moment, and the phone HUD budget has no room for both.
+    if (kind === 'stunt' && isSwarmGlass(ctx.state) && typeof document !== 'undefined'
+      && document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1') return false;
+    // One notice at a time in a Swarm round: a notice that arrives while another is up waits its
+    // turn (short queue, the oldest drops) and shows when the lane is clear. Errors and an
+    // identical repeat of the live card (it merges, below) are never queued.
+    if (isSwarmGlass(ctx.state) && kind !== 'error' && live.length > 0
+      && !live.some((r) => r.text === text && r.kind === kind)) {
+      swarmWait.push({ text, kind, ttl, channel, action, charonApproach });
+      while (swarmWait.length > SWARM_WAIT_MAX) swarmWait.shift();
+      return false;
+    }
     ensureConnected();
     // One-voice (spec2/06): the voiceArbiter re-emits its surfaced floor as a _fromVoice toast for
     // telemetry/golden parity, but that floor is presented top-center by alerts.js (voice:surface).
@@ -398,6 +414,10 @@ export function createToasts(ctx) {
 
   // Called from hud's frame(), but sleeps until a toast can fade or expire.
   function tick() {
+    if (swarmWait.length && !live.length) {
+      if (isSwarmGlass(ctx.state)) pushNow(swarmWait.shift());
+      else swarmWait.length = 0;
+    }
     if (!live.length) return;
     const now = performance.now();
     if (now < nextWakeAt) return;
@@ -453,7 +473,7 @@ export function createToasts(ctx) {
   // scene. Bound BEFORE the bind*Ui calls below: automationPayoff emits its "while you were away"
   // receipt on save:loaded, and that new-session receipt must land in the lane AFTER this clear.
   for (const name of ['save:loaded', 'game:new', 'game:newGame']) {
-    offSession.push(bus.on(name, () => { while (live.length) dismiss(live[live.length - 1], { instant: true }); }));
+    offSession.push(bus.on(name, () => { { swarmWait.length = 0; while (live.length) dismiss(live[live.length - 1], { instant: true }); } }));
   }
   bindStuntReceipts(bus);
   bindCombatDenialToasts(bus, () => ctx.state);
@@ -471,7 +491,7 @@ export function createToasts(ctx) {
     approach.destroy();
     offToast?.();
     for (const off of offSession) off?.();
-    while (live.length) dismiss(live[live.length - 1], { instant: true });
+    { swarmWait.length = 0; while (live.length) dismiss(live[live.length - 1], { instant: true }); }
   } };
 }
 
