@@ -344,6 +344,36 @@ export function swarmBroodNewcomerFor(wave) {
     || null;
 }
 
+/**
+ * PRI-11b — the family debuts. The first course wave a specialist family fields, ONE member
+ * arrives alone beside the piece of the room that beats it — the same first-read the roster
+ * clock names — and the family's remaining share follows once that member dies or the
+ * ceiling lands. `needs` is the ONE geometric check the placement must satisfy
+ * (src/systems/swarmSafety.js findSwarmDebutArrival); a room that cannot satisfy it gets the
+ * ordinary arrival — never a stall, never manufactured scenery. One row per unlock wave, so
+ * at most one debut per round, and only ever on the family's first appearance.
+ */
+export const SWARM_BROOD_DEBUTS = Object.freeze([
+  // Spitter (round 3) — the acid mark teaches the throw: its debut lands beyond a real
+  // throwable the pilot can pick up and send back.
+  Object.freeze({ round: 3, familyId: 'spitter', needs: 'throwable', ceilingS: 8 }),
+  // Lantern Cyst (round 9) — it bursts where it dies: its debut stands with a proven lane out.
+  Object.freeze({ round: 9, familyId: 'lantern_cyst', needs: 'escapeLane', ceilingS: 8 }),
+  // Leecher (round 11) — the shed is a wall scrape: a real scrape surface behind the pilot.
+  Object.freeze({ round: 11, familyId: 'leecher', needs: 'scrapeSurface', ceilingS: 8 }),
+  // Glassback (round 13) — only mass kills it: loose mass beside its debut that can reach it.
+  Object.freeze({ round: 13, familyId: 'glassback', needs: 'looseMass', ceilingS: 8 }),
+  // Bellows (round 17) — its burst shoves the room: the same proven lane out the cyst keeps.
+  Object.freeze({ round: 17, familyId: 'bellows', needs: 'escapeLane', ceilingS: 8 }),
+]);
+
+/** The debut recipe a wave owes, or null. Pure. */
+export function swarmBroodDebutFor(wave) {
+  const w = Math.max(1, Math.trunc(Number(wave) || 1));
+  for (const row of SWARM_BROOD_DEBUTS) if (row.round === w) return row;
+  return null;
+}
+
 const BROOD_FAMILY_IDS = new Set(SWARM_BROOD_FAMILIES.map((row) => row.id));
 
 /**

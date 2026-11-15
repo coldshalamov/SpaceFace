@@ -59,7 +59,7 @@ import { dominoDeltaVelocity } from './swarmLegendaries.js';
 import { playerTowedLure } from '../ai/towedLure.js';
 import { gateBearing } from './waveMaterialization.js';
 import { swarmRamTakenScale } from './playerModifiers.js';
-import { findSwarmArrival, fortifiedArrivalCentre } from './swarmSafety.js';
+import { findSwarmArrival, findSwarmDebutArrival, fortifiedArrivalCentre } from './swarmSafety.js';
 import { SWARM_COURSE } from '../data/swarmCourse.js';
 import { planSwarmBank, swarmBankEligible } from './swarmBank.js';
 import {
@@ -137,6 +137,7 @@ import {
   TENDRIL_SEG_WIGGLE_BLEND,
   TENDRIL_SEG_WIGGLE_RAD_S,
   swarmBroodBossFor,
+  swarmBroodDebutFor,
   swarmBroodKillPay,
   swarmBroodPlan,
   swarmBroodSacReserve,
@@ -469,6 +470,14 @@ export function createBroodEngine(deps = {}) {
   let bankPlayed = false;
   let bank = null;
   let spawnRequestedBankAttempted = false;
+  // PRI-11b — the wave's family debut: at most one recipe per wave (the family's first
+  // appearance, src/data/swarmBrood.js SWARM_BROOD_DEBUTS). `debutPlan` is the recipe armed
+  // at prepare and spent on spawnWave's first attempt; `debut` is the live hold — the one
+  // slot the step watches, its spawn serial, the family's still-owed count, and its sim
+  // ceiling. The held share never leaves the wave's planned population, and no other
+  // family or ship waits on it.
+  let debutPlan = null;
+  let debut = null;
 
   // --- B4: the Hive's reserve (see src/systems/theHiveArena.js) ------------------------
   //
@@ -580,6 +589,7 @@ export function createBroodEngine(deps = {}) {
   const viewLinks = [];
   const viewAuras = [];
 
+  const viewDebut = { familyId: null, held: 0, until: 0 };
   const view = {
     schema: 'spaceface.swarmBrood.v4',
     cap: CAP,
@@ -607,6 +617,10 @@ export function createBroodEngine(deps = {}) {
     // B5 — the late reserve: the specialist family still held and how many bodies.
     reserveFamily: null,
     reserveBudget: 0,
+    // PRI-11b — the wave's family debut while it is open: { familyId, held, until } on a
+    // retained record, or null. `held` is the family's still-owed share, counted inside
+    // pendingCount — alive plus pending stays inside the wave's planned population.
+    debut: null,
     // B6 — the strain: the wave's mark id and the per-slot mark bytes the renderer
     // tints by. `strain` is null on clean waves; `affix` is 0 on unmarked bodies.
     strain: null,
@@ -694,6 +708,8 @@ export function createBroodEngine(deps = {}) {
     attackSlots = 0;
     brakeDvBudget = 0;
     pendingPlan = null;
+    debutPlan = null;
+    debut = null;
     if (lobCount > 0) { lobAlive.fill(0); lobCount = 0; }
     poolCount = 0;
     acidTickAcc = 0;
@@ -861,6 +877,22 @@ export function createBroodEngine(deps = {}) {
         strainLeft = pick.count;
       }
     }
+    // PRI-11b — a course wave whose specialist family first fields owes its debut: ONE
+    // member staged alone at spawnWave beside the piece of the room that beats it, the
+    // family's remaining share held by this same plan until the member falls or the
+    // recipe's ceiling lands. Held bodies are still the plan's own; no family row is
+    // touched until the seat is actually proven. The Brood's own set-piece waves keep
+    // their authored read, and a mutator or circuit room owns its own — those get the
+    // ordinary arrival instead.
+    debutPlan = null;
+    if (!hiveMode && !swarmBroodBossFor(w)
+      && !(run && run.arenaMutators && run.arenaMutators.length)
+      && !(run && run.telemetry && run.telemetry.circuit)) {
+      const recipe = swarmBroodDebutFor(w);
+      if (recipe && pendingPlan.some((part) => part.id === recipe.familyId && part.count > 0)) {
+        debutPlan = recipe;
+      }
+    }
     liveWave = w;
     view.wave = liveWave;
     view.tendril = tendrilMode;
@@ -904,6 +936,32 @@ export function createBroodEngine(deps = {}) {
         spawned += 3;
       }
     }
+    // PRI-11b — the wave's family debut: ONE member of the debuting family lands first,
+    // beside the piece of the room that answers it (the recipe's one geometric check,
+    // searched through the same arrival route every body uses). Its family row leaves the
+    // ordinary loop here — the member standing plus the rest held — and the step watches
+    // that one slot until it falls or the ceiling lands. An unsatisfied recipe is not a
+    // stall: the row stays in the plan and the family arrives the ordinary way below.
+    if (debutPlan) {
+      const recipe = debutPlan;
+      debutPlan = null;
+      const famIdx = familyIndex.get(recipe.familyId);
+      const row = pendingPlan.find((part) => part.id === recipe.familyId);
+      if (famIdx != null && row && row.count > 0) {
+        const seat = findSwarmDebutArrival(state, recipe.needs, liveFamilyRadius[famIdx]);
+        if (seat) {
+          const slot = findFreeSlot();
+          if (slot >= 0) {
+            spawnAt(slot, famIdx, seat.x, seat.z);
+            debut = { familyId: recipe.familyId, slot, serial: serial[slot],
+              held: row.count - 1,
+              until: now + Math.max(1, finite(recipe.ceilingS, 8)) };
+            spawned += 1;
+            pendingPlan = pendingPlan.filter((part) => part.id !== recipe.familyId);
+          }
+        }
+      }
+    }
     for (const part of pendingPlan) {
       const famIdx = familyIndex.get(part.id);
       if (famIdx == null) continue;
@@ -938,6 +996,22 @@ export function createBroodEngine(deps = {}) {
     assignMotherShares();
     publish();
     return spawned;
+  }
+
+  /**
+   * PRI-11b — the debut's release: the member fell or its ceiling landed, so the family's
+   * held share rejoins the pending plan and is owed to the SAME wave's ordinary arrival —
+   * population law untouched. The retry gate in step admits it on this same tick.
+   */
+  function endDebut(state) {
+    const owed = debut;
+    debut = null;
+    if (owed && owed.held > 0) {
+      const row = { id: owed.familyId, count: owed.held };
+      pendingPlan = Array.isArray(pendingPlan) ? pendingPlan.concat(row) : [row];
+      nextSpawnAttemptAt = Math.min(nextSpawnAttemptAt, finite(state && state.simTime));
+    }
+    publish();
   }
 
   function spawnAt(slot, famIdx, x, z) {
@@ -1203,6 +1277,11 @@ export function createBroodEngine(deps = {}) {
   function step(state) {
     const run = liveSwarmRun(state);
     if (!run || run.phase !== 'active' || state.mode !== 'flight') return false;
+    // PRI-11b — an open debut watches exactly one slot per tick: its member's death ends
+    // the hold, and its ceiling bounds it. The family's held share rejoins the pending
+    // plan either way; the retry gate below admits it on this same tick.
+    if (debut && (!alive[debut.slot] || serial[debut.slot] !== debut.serial
+      || finite(state.simTime) >= debut.until)) endDebut(state);
     if (spawnRequested && pendingPlan?.length && finite(state.simTime) >= nextSpawnAttemptAt) spawnWave(state);
     // The Tendril wave keeps stepping while the body may still exist — the champion hull can
     // materialize after the flock dies, and the chain outlives it by exactly one collapse.
@@ -4053,7 +4132,12 @@ export function createBroodEngine(deps = {}) {
 
   function publish() {
     view.aliveCount = aliveCount;
-    view.pendingCount = pendingPlan ? pendingPlan.reduce((sum, part) => sum + part.count, 0) : 0;
+    view.pendingCount = (pendingPlan ? pendingPlan.reduce((sum, part) => sum + part.count, 0) : 0)
+      + (debut ? debut.held : 0);
+    viewDebut.familyId = debut ? debut.familyId : null;
+    viewDebut.held = debut ? debut.held : 0;
+    viewDebut.until = debut ? debut.until : 0;
+    view.debut = debut ? viewDebut : null;
     view.attackLimit = broodAttackLimit(liveWave);
     view.nextAttackAt = nextAttackAt;
     view.wave = liveWave;
@@ -4215,6 +4299,15 @@ export function createBroodEngine(deps = {}) {
     },
     _reserve() {
       return { family: reserveFamily, left: reserveBudget, releaseAt: reserveReleaseAt };
+    },
+    // PRI-11b — the open debut, read-only for tests and the lab overlay: which family,
+    // which slot the step watches (with its spawn serial), the still-owed share, and the
+    // sim ceiling that bounds the read. null when no debut is armed or live.
+    _debut() {
+      return debut
+        ? { familyId: debut.familyId, slot: debut.slot, serial: debut.serial,
+          held: debut.held, until: debut.until }
+        : null;
     },
     _strain() {
       return { id: strainDef ? strainDef.id : null, mark: strainMark, left: strainLeft };
