@@ -143,6 +143,66 @@ test('occupied mast site defers admission, then admits once and never remints a 
   } finally { dispose(); }
 });
 
+test('a lost mast or a terminal plate never triggers another world scan', () => {
+  const p = { id: 1, type: 'ship', alive: true, hull: 100, occupantGeneration: 1, radius: 20,
+    pos: { x: C.sitePlacement.pos.x + 80, z: C.sitePlacement.pos.z - 240 }, data: {},
+    physicsBody: { radius: 20, mass: 100, dynamic: true } };
+  const listeners = {};
+  const state = { tick: 1, simTime: 0, mode: 'flight', world: { currentSectorId: C.sectorId }, npcJobs: {},
+    playerId: 1, entities: new Map([[1, p]]), entityList: [p],
+    sites: { worldById: { [C.siteId]: { payloads: { long_plate: {} } } } } };
+  const bus = {
+    on: (n, fn) => { (listeners[n] ||= []).push(fn);
+      return () => { listeners[n] = (listeners[n] || []).filter(f => f !== fn); }; },
+    emit: (n, pl) => { for (const fn of listeners[n] || []) fn(pl); },
+  };
+  let next = 2, scans = 0;
+  const baseFilter = state.entityList.filter;
+  state.entityList.filter = (...a) => { scans++; return baseFilter.apply(state.entityList, a); };
+  const owner = { state, bus, helpers: { spawnEntity(spec) {
+    const e = { ...spec, id: next, occupantGeneration: next++ };
+    state.entities.set(e.id, e); state.entityList.push(e); return e;
+  } } };
+  const dispose = installCeresAnchorWinching(owner);
+  const step = () => { state.tick++; state.simTime += 1 / 60; stepCeresAnchorWinching(owner, 1 / 60); };
+  try {
+    for (let i = 0; i < 90; i++) step();
+    assert.equal(state.npcJobs.ceresAnchorSwing.spawnedMask, 15);
+    // Masts and board bound at spawn; only the missing plate asked, exactly once.
+    assert.ok(scans <= 2, `first admission bounded (${scans} scans)`);
+    // A mast falls — its masks forbid replacement — and the lift's plate is destroyed.
+    const mast = state.entityList.find(e => e.data?.ceresWinchAnchor === 0);
+    mast.alive = false; state.entities.delete(mast.id);
+    state.sites.worldById[C.siteId].payloads.long_plate.destroyed = true;
+    for (let i = 0; i < 40; i++) step(); // the fallen mast may ask its one last time
+    scans = 0;
+    for (let i = 0; i < 600; i++) step();
+    assert.equal(scans, 0, 'terminal or lost references never scan the world again');
+    // A restore transition may reconcile once — the destroyed plate still never does.
+    bus.emit('save:restoring', {});
+    scans = 0;
+    for (let i = 0; i < 90; i++) step();
+    const afterRestore = scans;
+    assert.ok(afterRestore <= 4, `restore reconciles once (${afterRestore} scans)`);
+    for (let i = 0; i < 600; i++) step();
+    assert.equal(scans, afterRestore, 'each reference asks at most once per transition');
+    // A fresh matching spawn resolves the plate with no scan at all.
+    state.sites.worldById[C.siteId].payloads.long_plate.destroyed = false;
+    const plate = owner.helpers.spawnEntity({ type: 'wreck', alive: true, hull: 100,
+      pos: { x: 0, z: 0 }, mass: C.existing.section.mass, physicsBody: { dynamic: true },
+      data: { worldRecordId: C.identities.payload, worldSiteId: C.siteId,
+        worldSitePayloadId: C.existing.section.payloadId } });
+    bus.emit('entity:spawned', { entity: plate });
+    // Proof the binding took: near a live mast, the winch offer can publish again.
+    const liveMast = state.entityList.find(e => e.data?.ceresWinchAnchor === 1);
+    p.pos = { ...liveMast.pos };
+    scans = 0;
+    for (let i = 0; i < 600; i++) step();
+    assert.equal(scans, 0, 'a spawn transition binds the plate without a world scan');
+    assert.ok(state.ceresWinchingOffer, 'the bound plate makes the winch offerable');
+  } finally { dispose(); }
+});
+
 import { createPromptDeck, setPromptDeck } from '../src/ui/promptDeck.js';
 import { createCeresWinchingPrompt } from '../src/ui/ceresWinchingPrompt.js';
 test('mounted Prompt Deck keyboard opens valves, switches anchor, returns from compact controls and casts off', async () => {

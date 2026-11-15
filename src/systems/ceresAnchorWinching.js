@@ -83,6 +83,13 @@ function findAt(s, pred) {
   return found.length === 1 ? found[0] : null;
 }
 
+// A lift with no possible live work: the plate is destroyed or already delivered
+// to the cradle, or the crew can no longer finish. Searching for it is spent.
+const loadTerminal = s => s.sites?.worldById?.[C.siteId]?.payloads?.long_plate?.destroyed === true
+  || s.sites?.worldById?.[C.siteId]?.payloads?.long_plate?.retained != null
+  || ['secured', 'section-destroyed', 'worker-disabled', 'head-disabled']
+    .includes(s.npcJobs?.ceresWorkfleet?.phase);
+
 // References are taken once at job start and revalidated by id plus generation;
 // a miss waits for the admission cadence rather than scanning per tick.
 function context(owner) {
@@ -189,6 +196,7 @@ export function installCeresAnchorWinching(owner) {
   const rt = { bodies: [null, null, null], board: null, load: null, sequence: 0, offer: null, signature: '',
     closed: false, page: 'controls', inside: false, lastTick: null, stall: 0, accumulator: 0,
     bellUntil: -1, lastWatchKey: null, easyFor: null, operator: null, lastLine: null, admissionAt: 0,
+    searched: [false, false, false], searchedBoard: false, searchedLoad: false,
     c: { anchors: [null, null, null] } };
   runs.set(owner, rt);
   const off = owner.bus.on('ceresWinching:action', payload => {
@@ -244,12 +252,38 @@ export function installCeresAnchorWinching(owner) {
   const clear = () => { rt.bodies = [null, null, null]; rt.board = null; rt.load = null; rt.offer = null;
     rt.signature = ''; rt.inside = false; rt.closed = false; rt.operator = null; rt.admissionAt = 0;
     rt.easyFor = null; rt.lastLine = null; rt.bellUntil = -1; rt.lastWatchKey = null;
+    rt.searched = [false, false, false]; rt.searchedBoard = false; rt.searchedLoad = false;
     owner.state.ceresWinchingOffer = null; };
+  // A spawn transition is the only honest way a wanted body can appear between
+  // reconciliations: bind it directly instead of paying a world scan.
+  const adopt = (e) => {
+    const s = owner.state, r = s.npcJobs?.ceresAnchorSwing;
+    if (!e || e.alive === false || !e.data || !r) return;
+    for (const def of ANCHORS) {
+      const bit = 1 << def.index;
+      if ((r.spawnedMask & bit) && !(r.lostMask & bit) && !held(s, rt.bodies[def.index])
+        && e.data.ceresWinchIdentity === ceresWinchIdentity(def.index)) {
+        rt.bodies[def.index] = { entity: e, life: e.occupantGeneration };
+        return;
+      }
+    }
+    const boardBit = 1 << CERES_WINCH_BOARD_BIT;
+    if ((r.spawnedMask & boardBit) && !(r.lostMask & boardBit) && !held(s, rt.board)
+      && isCeresWinchBoard(e)) {
+      rt.board = { entity: e, life: e.occupantGeneration };
+      dressBoard(s, rt, r);
+      return;
+    }
+    if (!held(s, rt.load) && !loadTerminal(s) && e.data.worldRecordId === C.identities.payload) {
+      rt.load = { entity: e, life: e.occupantGeneration };
+    }
+  };
+  const spawnedOff = owner.bus.on('entity:spawned', p => adopt(p?.entity ?? owner.state.entities.get(p?.id)));
   const offs = ['save:restoring', 'game:new', 'game:newGame'].map(name => owner.bus.on(name, clear));
   for (const name of ['dock:docked', 'sector:exit', 'game:exitToMenu']) offs.push(owner.bus.on(name, () => {
     const row = owner.state.npcJobs?.ceresAnchorSwing; if (row) row.command = 'hold'; clear();
   }));
-  rt.dispose = () => { off?.(); offs.forEach(f => f?.()); clear(); runs.delete(owner); };
+  rt.dispose = () => { off?.(); spawnedOff?.(); offs.forEach(f => f?.()); clear(); runs.delete(owner); };
   return rt.dispose;
 }
 
@@ -288,18 +322,29 @@ export function stepCeresAnchorWinching(owner, dt) {
         else r.lostMask |= 1 << CERES_WINCH_BOARD_BIT;
       }
     }
-    // Re-find cached references that failed id plus generation — once per
-    // admission tick, never per step.
-    for (const def of ANCHORS) if (!held(s, rt.bodies[def.index])) {
-      const e = findAt(s, x => x.alive !== false && x.data?.ceresWinchIdentity === ceresWinchIdentity(def.index));
-      rt.bodies[def.index] = e ? { entity: e, life: e.occupantGeneration } : null;
+    // Re-find cached references that failed id plus generation — once per slot
+    // per transition, never on a cadence. A negative lookup holds until a spawn
+    // names the wanted identity or a lifecycle event clears the run. Slots the
+    // masks forbid (never minted, already lost) or a finished lift never ask.
+    const boardBit = 1 << CERES_WINCH_BOARD_BIT;
+    for (const def of ANCHORS) {
+      const bit = 1 << def.index;
+      if (!held(s, rt.bodies[def.index]) && (r.spawnedMask & bit) && !(r.lostMask & bit)
+        && rt.searched[def.index] !== true) {
+        rt.searched[def.index] = true;
+        const e = findAt(s, x => x.alive !== false && x.data?.ceresWinchIdentity === ceresWinchIdentity(def.index));
+        rt.bodies[def.index] = e ? { entity: e, life: e.occupantGeneration } : null;
+      }
     }
-    if (!held(s, rt.board)) {
+    if (!held(s, rt.board) && (r.spawnedMask & boardBit) && !(r.lostMask & boardBit)
+      && rt.searchedBoard !== true) {
+      rt.searchedBoard = true;
       const e = findAt(s, x => x.alive !== false && isCeresWinchBoard(x));
       rt.board = e ? { entity: e, life: e.occupantGeneration } : null;
       if (e) dressBoard(s, rt, r);
     }
-    if (!held(s, rt.load)) {
+    if (!held(s, rt.load) && !loadTerminal(s) && rt.searchedLoad !== true) {
+      rt.searchedLoad = true;
       const e = findAt(s, x => x.alive !== false && x.data?.worldRecordId === C.identities.payload);
       rt.load = e ? { entity: e, life: e.occupantGeneration } : null;
     }
