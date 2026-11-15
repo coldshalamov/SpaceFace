@@ -437,7 +437,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "8555609e6b4a67c95bc5350d824adca254f4b5fb464c7e6cf819d8507dbb99d6",
+  "contentHash": "9c6aec6df0db984776af76104c2a9e99d0e9f5f763817a0fa9331fef8898d2fe",
   "dynamicGroups": [
     {
       "id": "sf.render.pallet-jack-lod2.node.lod2-motion-pallet-jack-clamp-armor.dynamic",
@@ -1119,27 +1119,27 @@
     {
       "bounds": {
         "max": [
-          2.5687076419270842,
-          3.0938996525542337,
+          2.5816078799562625,
+          3.704255575850612,
           6.985903739929199
         ],
         "min": [
-          1.4327814013086946,
-          1.1921612767441672,
+          1.4183921200437375,
+          1.1919142058342636,
           -6.985903739929199
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cce5946124bce8f38c8ff30ae2f9cc7639c38940cd7dc32866b817a655e07323",
+      "geometryHash": "a92d8d417231f67fb4d8b10cb57775b4c36293b00e2a0080dc708f2d88ba6861",
       "id": "sf.render.pallet-jack-lod2.node.lod2-motion-pallet-jack-clamp-mechanicaldark.primitive.0",
-      "indexCount": 432,
+      "indexCount": 486,
       "indexed": true,
       "materialHash": "41a3449cecfa0dd32b6c9e0b6bdde3afaf873105c395dbb1f9d9478ebd75894c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_PALLET_JACK_CLAMP_MechanicalDark",
       "nodeId": "sf.render.pallet-jack-lod2.node.lod2-motion-pallet-jack-clamp-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 195
+      "vertexCount": 231
     }
   ],
   "hlods": [],
@@ -2621,8 +2621,8 @@
         0,
         6.985903739929199,
         0,
-        0.0007445216178894043,
-        -0.9569694399833679,
+        0,
+        -0.6519150137901306,
         0,
         1
       ],
@@ -2650,8 +2650,8 @@
         0,
         6.985903739929199,
         0,
-        2.0007445216178894,
-        2.1430304646492004,
+        2,
+        2.4480848908424377,
         0,
         1
       ]
@@ -3200,31 +3200,31 @@
       "sha256": "038631aa07d8075d2e5896eb7500122516e4a282117f943382aff790d698ba3e"
     },
     "sourceGlb": {
-      "bytes": 406588,
-      "sha256": "42d5421268ce39ab230463855d5fdacf344d641a0066cc95f03b67673c8faefe",
+      "bytes": 406988,
+      "sha256": "c45c0e506051f4671df356bd644c8d228b095f55b39c69e479651d20f7499331",
       "uri": "pallet_jack_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 25728,
+      "sha256": "84c8a9f01e48da9eb42ed5a3a80f98b956bb91209ef7e484066c1c64c6790062",
+      "uri": "assets/ships/render-packages/inputs/pallet-jack-lod2.json"
     }
   },
   "render": {
-    "bytes": 409548,
-    "sha256": "9d04de1e7e98f201b8ae874d8c6fb28856770434a9c28eb693a6e6eec1315ba4",
+    "bytes": 409952,
+    "sha256": "01742998a152bb80a9e41c2a474945801ae23fb8222e1ed26f38b2623bfe0cf2",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -1.0608320236206055,
-        0.5964041443699635,
+        0.601954277751378,
         0
       ],
       "max": [
         12,
-        3.693155309087783,
+        3.704255575850612,
         8
       ],
       "min": [
@@ -3234,7 +3234,7 @@
       ],
       "size": [
         26.12166404724121,
-        6.193502329435638,
+        6.204602596198468,
         16
       ]
     },
@@ -3439,8 +3439,8 @@
           0,
           6.985903739929199,
           0,
-          2.0007445216178894,
-          2.1430304646492004,
+          2,
+          2.4480848908424377,
           0,
           1
         ],
@@ -4079,7 +4079,7 @@
     "motionBank": {
       "bytes": 1206,
       "rigId": "pallet_jack_controls",
-      "sha256": "1d94b371d9e9e19f0e6c806b0f16797f08063c571d12bfd6a1890fe3345b57e8",
+      "sha256": "372a049b82d0090bc4c5c9143de17394cc9df2e1b7c2b7c35b0b242eaf7cd9a9",
       "uri": "assets/ships/motions/pallet-jack.motion.json"
     },
     "nodeCount": 43,
@@ -4745,8 +4745,8 @@
           0,
           6.985903739929199,
           0,
-          2.0007445216178894,
-          2.1430304646492004,
+          2,
+          2.4480848908424377,
           0,
           1
         ],
@@ -4764,14 +4764,14 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/pallet_jack_lod2.glb"
   },
-  "runtimeHash": "7851c1b73ad7ee9df64e54a4951323a7a2c24a58d7320a51d951f3e3c44b145f",
+  "runtimeHash": "530bade1bf6ecfc73930dcaf6e0929c9fa28d3322dbc5f1b0f90635a0f25eb8e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           12,
-          3.693155309087783,
+          3.704255575850612,
           8
         ],
         "min": [

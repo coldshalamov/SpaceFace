@@ -41,6 +41,15 @@ def build():
         F.boxes(s,'TineWearShoes_'+label,[((x,side*7,.64),(1.6,1.25,.08)) for x in (2.3,8.5)],material='bare',bevel=.018)
     start = len(s.objects)
     F.box(s,'SlidingCargoClampBridge',(2,0,3.1),(1.4,14,1.2),material='stripe',bevel=.14)
+    # Flush warning stripes: nine double-triangulated quads in the existing dark clamp batch.
+    import bmesh, math
+    from mathutils import Vector, Matrix
+    bm=bmesh.new()
+    for y in (-5.4,-4.05,-2.7,-1.35,0,1.35,2.7,4.05,5.4):
+        rotation=Matrix.Rotation(.42,3,'Z')
+        points=[rotation @ Vector((x,dy,0)) + Vector((2,y,3.704)) for x,dy in ((-.57,-.15),(.57,-.15),(.57,.15),(-.57,.15))]
+        bm.faces.new([bm.verts.new(point) for point in points])
+    s.add(F._new_object('ClampWarningFaces',bm,s.slots(['dark']),bevel=0))
     for side in (-1,1):
         F.box(s,'ClampDownwardJaw'+str(side),(2,side*5.25,1.91),(1.15,.70,1.45),material='dark',bevel=.07)
         F.box(s,'ClampPad'+str(side),(2.08,side*4.85,1.92),(.90,.17,1.08),material='paint2',bevel=.04)

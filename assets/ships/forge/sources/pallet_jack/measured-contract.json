@@ -2,31 +2,31 @@
   "schema": "spaceface.conceptSourceGeometry.v1",
   "assetId": "SF_SHIP_PALLET_JACK",
   "renderScale": 1,
-  "recipeSha256": "aeab75aaad0745984af9feabf372347b4fc742843cef649ac19ffc3dbce240c2",
+  "recipeSha256": "a4c55129372631488c6a838f38d4525ad7d1bf0b031aa19b0281387fe0262fa5",
   "lods": {
     "0": {
       "file": "pallet_jack.glb",
-      "sha256": "6c8306b9494145ce9a6688cc52dbd4871b9daeaf7b007b7ecb574d0ff84645eb",
-      "bytes": 818560,
-      "triangles": 9884,
+      "sha256": "bd9249db504f5789fcf218ae8dabc2f2a9fa17812a608eec451430b77406c570",
+      "bytes": 860220,
+      "triangles": 9902,
       "drawPrimitives": 24,
       "materials": 8,
       "sharedImages": 6
     },
     "1": {
       "file": "pallet_jack_lod1.glb",
-      "sha256": "d90386002c52e02b456a94d531fa7c09c5139bc4ae736e62a3dccaab93f70d99",
-      "bytes": 534528,
-      "triangles": 3948,
+      "sha256": "063b5833ab345633ba40d9f0effa9bf90b3591d7229acc68244b63cbe821822e",
+      "bytes": 556520,
+      "triangles": 3962,
       "drawPrimitives": 24,
       "materials": 8,
       "sharedImages": 6
     },
     "2": {
       "file": "pallet_jack_lod2.glb",
-      "sha256": "5df03beaf515c9442c80cb98804fd7fb1a1af3c3a0ea1dfcb9064b4de28f29b0",
-      "bytes": 430460,
-      "triangles": 1770,
+      "sha256": "02f9795a737b784137e7a31ce140e03b61b75dd7dc284d69cfe4d9bf71ee7264",
+      "bytes": 443280,
+      "triangles": 1788,
       "drawPrimitives": 24,
       "materials": 8,
       "sharedImages": 6

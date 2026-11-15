@@ -2,7 +2,7 @@
   "schema": "spaceface.rigidMotionBank.v1",
   "rigId": "pallet_jack_controls",
   "sourceAssetId": "SF_SHIP_PALLET_JACK",
-  "sourceGlbSha256": "6c8306b9494145ce9a6688cc52dbd4871b9daeaf7b007b7ecb574d0ff84645eb",
+  "sourceGlbSha256": "bd9249db504f5789fcf218ae8dabc2f2a9fa17812a608eec451430b77406c570",
   "fps": 60,
   "bindings": [
     {

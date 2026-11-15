@@ -2290,32 +2290,32 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.pallet-jack",
-    "expectedContentHash": "011b6a18671cc53f814c334a466cf4f83b22299601dedd0c302b2bfce5ba1a47",
+    "expectedContentHash": "f1f9fd3326b17bd7315392538d5330ec9d182b3cff9b15ab48a682b75c10829e",
     "key": "pallet-jack",
     "metadataUrl": "assets/ships/release/render-packages/pallet-jack/render-package.json",
     "runtimeAssetId": "SF_SHIP_PALLET_JACK",
     "slot": "hull",
-    "sourceSha256": "39ddadb4914454956745148ff337b7ee915c2f851baad570282ed21f45e13069",
+    "sourceSha256": "6257393fde14fc5d48d7e7f3ab3013bba42a3a8118ef2d97ec973c4536dc89b0",
     "sourceUrl": "assets/ships/release/parts/wholeships/pallet_jack.glb"
   },
   {
     "assetId": "sf.render.pallet-jack-lod1",
-    "expectedContentHash": "a78cec68ae701d4b5ddb370e2a86fcde919c585785c7bf2e34c212a345955ce3",
+    "expectedContentHash": "2771769ee53affc50c99fc73057c3ed5fe0c1b6a6ba5e770ef435a48bae82e4b",
     "key": "pallet-jack-lod1",
     "metadataUrl": "assets/ships/release/render-packages/pallet-jack-lod1/render-package.json",
     "runtimeAssetId": "SF_SHIP_PALLET_JACK",
     "slot": "hull",
-    "sourceSha256": "dedf051198a6ee39836e799f04eea578ec941976d0397c96e0f455703cf3aff5",
+    "sourceSha256": "bbce8bc6ef8d0ff87ec4ea1a797d9e7a77953da46339ea378d6e7da3b35898ac",
     "sourceUrl": "assets/ships/release/parts/wholeships/pallet_jack_lod1.glb"
   },
   {
     "assetId": "sf.render.pallet-jack-lod2",
-    "expectedContentHash": "8555609e6b4a67c95bc5350d824adca254f4b5fb464c7e6cf819d8507dbb99d6",
+    "expectedContentHash": "9c6aec6df0db984776af76104c2a9e99d0e9f5f763817a0fa9331fef8898d2fe",
     "key": "pallet-jack-lod2",
     "metadataUrl": "assets/ships/release/render-packages/pallet-jack-lod2/render-package.json",
     "runtimeAssetId": "SF_SHIP_PALLET_JACK",
     "slot": "hull",
-    "sourceSha256": "42d5421268ce39ab230463855d5fdacf344d641a0066cc95f03b67673c8faefe",
+    "sourceSha256": "c45c0e506051f4671df356bd644c8d228b095f55b39c69e479651d20f7499331",
     "sourceUrl": "assets/ships/release/parts/wholeships/pallet_jack_lod2.glb"
   },
   {

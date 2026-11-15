@@ -1,0 +1,635 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": false,
+    "externalizeKtx2Hashes": null,
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "wholeship_pallet_jack_lod1",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.pallet-jack-lod1",
+    "dynamicNameIncludes": [
+      "MOTION_PALLET_JACK_CLAMP"
+    ],
+    "key": "pallet-jack-lod1",
+    "kind": "ship",
+    "metadataUrl": "assets/ships/release/render-packages/pallet-jack-lod1/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/pallet-jack-lod1",
+    "releaseAssetId": "wholeship_pallet_jack_lod1",
+    "releaseBytes": 437468,
+    "releaseSha256": "bbce8bc6ef8d0ff87ec4ea1a797d9e7a77953da46339ea378d6e7da3b35898ac",
+    "runtimeAssetId": "SF_SHIP_PALLET_JACK",
+    "sceneRoot": true,
+    "slot": "hull",
+    "sourceUrl": "assets/ships/release/parts/wholeships/pallet_jack_lod1.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 33,
+    "id": "wholeship_pallet_jack_lod1",
+    "kind": "part:wholeships",
+    "ktx2Textures": 6,
+    "meshoptBufferViews": 103,
+    "release": "assets/ships/release/parts/wholeships/pallet_jack_lod1.glb",
+    "releaseBytes": 437468,
+    "releaseSha256": "bbce8bc6ef8d0ff87ec4ea1a797d9e7a77953da46339ea378d6e7da3b35898ac",
+    "source": "assets/ships/parts/wholeships/pallet_jack_lod1.glb",
+    "sourceBytes": 556520,
+    "sourceSha256": "063b5833ab345633ba40d9f0effa9bf90b3591d7229acc68244b63cbe821822e",
+    "textures": 6
+  },
+  "runtime": {
+    "assetId": "SF_SHIP_PALLET_JACK",
+    "motionBank": {
+      "bytes": 1206,
+      "rigId": "pallet_jack_controls",
+      "sha256": "372a049b82d0090bc4c5c9143de17394cc9df2e1b7c2b7c35b0b242eaf7cd9a9",
+      "uri": "assets/ships/motions/pallet-jack.motion.json"
+    },
+    "slot": "hull",
+    "sourceUrl": "assets/ships/release/parts/wholeships/pallet_jack_lod1.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [
+      {
+        "id": "sf.render.pallet-jack-lod1.anchor.socket-camera-focus",
+        "kind": "socket",
+        "node": "SOCKET_Camera_Focus",
+        "parentNodeId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root"
+      },
+      {
+        "id": "sf.render.pallet-jack-lod1.anchor.socket-cargo-cradle",
+        "kind": "socket",
+        "node": "SOCKET_Cargo_Cradle",
+        "parentNodeId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root"
+      },
+      {
+        "id": "sf.render.pallet-jack-lod1.anchor.socket-engine-main",
+        "kind": "socket",
+        "node": "SOCKET_Engine_Main",
+        "parentNodeId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root"
+      },
+      {
+        "id": "sf.render.pallet-jack-lod1.anchor.socket-engine-port",
+        "kind": "socket",
+        "node": "SOCKET_Engine_Port",
+        "parentNodeId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root"
+      },
+      {
+        "id": "sf.render.pallet-jack-lod1.anchor.socket-engine-reverse-1",
+        "kind": "socket",
+        "node": "SOCKET_Engine_Reverse_1",
+        "parentNodeId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root"
+      },
+      {
+        "id": "sf.render.pallet-jack-lod1.anchor.socket-engine-reverse-2",
+        "kind": "socket",
+        "node": "SOCKET_Engine_Reverse_2",
+        "parentNodeId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root"
+      },
+      {
+        "id": "sf.render.pallet-jack-lod1.anchor.socket-engine-reverse-3",
+        "kind": "socket",
+        "node": "SOCKET_Engine_Reverse_3",
+        "parentNodeId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root"
+      },
+      {
+        "id": "sf.render.pallet-jack-lod1.anchor.socket-engine-reverse-4",
+        "kind": "socket",
+        "node": "SOCKET_Engine_Reverse_4",
+        "parentNodeId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root"
+      },
+      {
+        "id": "sf.render.pallet-jack-lod1.anchor.socket-engine-starboard",
+        "kind": "socket",
+        "node": "SOCKET_Engine_Starboard",
+        "parentNodeId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root"
+      }
+    ],
+    "assetId": "sf.render.pallet-jack-lod1",
+    "collisions": [
+      {
+        "id": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-core.collision",
+        "nodeId": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-core",
+        "reference": "COLLISION_PALLET_JACK_CORE"
+      },
+      {
+        "id": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-port.collision",
+        "nodeId": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-port",
+        "reference": "COLLISION_PALLET_JACK_PORT"
+      },
+      {
+        "id": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-starboard.collision",
+        "nodeId": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-starboard",
+        "reference": "COLLISION_PALLET_JACK_STARBOARD"
+      }
+    ],
+    "dynamicGroups": [
+      {
+        "id": "sf.render.pallet-jack-lod1.node.lod1-motion-pallet-jack-clamp-armor.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.pallet-jack-lod1.node.lod1-motion-pallet-jack-clamp-armor"
+      },
+      {
+        "id": "sf.render.pallet-jack-lod1.node.lod1-motion-pallet-jack-clamp-brushedmetal.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.pallet-jack-lod1.node.lod1-motion-pallet-jack-clamp-brushedmetal"
+      },
+      {
+        "id": "sf.render.pallet-jack-lod1.node.lod1-motion-pallet-jack-clamp-livery.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.pallet-jack-lod1.node.lod1-motion-pallet-jack-clamp-livery"
+      },
+      {
+        "id": "sf.render.pallet-jack-lod1.node.lod1-motion-pallet-jack-clamp-mechanicaldark.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.pallet-jack-lod1.node.lod1-motion-pallet-jack-clamp-mechanicaldark"
+      },
+      {
+        "id": "sf.render.pallet-jack-lod1.node.motion-pallet-jack-clamp.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.pallet-jack-lod1.node.motion-pallet-jack-clamp"
+      }
+    ],
+    "hlods": [],
+    "kind": "ship",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-core",
+        "independentlyCulled": false,
+        "mergeBoundary": "COLLISION_PALLET_JACK_CORE",
+        "node": "COLLISION_PALLET_JACK_CORE",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "non-render",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "COLLISION_PALLET_JACK_PORT",
+        "node": "COLLISION_PALLET_JACK_PORT",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "non-render",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.collision-pallet-jack-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "COLLISION_PALLET_JACK_STARBOARD",
+        "node": "COLLISION_PALLET_JACK_STARBOARD",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "non-render",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Armor",
+        "node": "LOD1_Armor",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-brushedmetal",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_BrushedMetal",
+        "node": "LOD1_BrushedMetal",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-canopy",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_CANOPY",
+        "node": "LOD1_CANOPY",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "blend",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "blend"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-hook-drive-core",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_DRIVE_CORE",
+        "node": "LOD1_HOOK_DRIVE_CORE",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-hook-reverse-1-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_REVERSE_1_Armor",
+        "node": "LOD1_HOOK_REVERSE_1_Armor",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-hook-reverse-1-glow-drive",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_REVERSE_1_glow_drive",
+        "node": "LOD1_HOOK_REVERSE_1_glow_drive",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-hook-reverse-1-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_REVERSE_1_MechanicalDark",
+        "node": "LOD1_HOOK_REVERSE_1_MechanicalDark",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-hook-reverse-2-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_REVERSE_2_Armor",
+        "node": "LOD1_HOOK_REVERSE_2_Armor",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-hook-reverse-2-glow-drive",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_REVERSE_2_glow_drive",
+        "node": "LOD1_HOOK_REVERSE_2_glow_drive",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-hook-reverse-2-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_REVERSE_2_MechanicalDark",
+        "node": "LOD1_HOOK_REVERSE_2_MechanicalDark",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-hook-reverse-3-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_REVERSE_3_Armor",
+        "node": "LOD1_HOOK_REVERSE_3_Armor",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-hook-reverse-3-glow-drive",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_REVERSE_3_glow_drive",
+        "node": "LOD1_HOOK_REVERSE_3_glow_drive",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-hook-reverse-3-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_REVERSE_3_MechanicalDark",
+        "node": "LOD1_HOOK_REVERSE_3_MechanicalDark",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-hook-reverse-4-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_REVERSE_4_Armor",
+        "node": "LOD1_HOOK_REVERSE_4_Armor",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-hook-reverse-4-glow-drive",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_REVERSE_4_glow_drive",
+        "node": "LOD1_HOOK_REVERSE_4_glow_drive",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-hook-reverse-4-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_REVERSE_4_MechanicalDark",
+        "node": "LOD1_HOOK_REVERSE_4_MechanicalDark",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Hull",
+        "node": "LOD1_Hull",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Lights_Warm",
+        "node": "LOD1_Lights_Warm",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-livery",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Livery",
+        "node": "LOD1_Livery",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MechanicalDark",
+        "node": "LOD1_MechanicalDark",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-motion-pallet-jack-clamp-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_PALLET_JACK_CLAMP_Armor",
+        "node": "LOD1_MOTION_PALLET_JACK_CLAMP_Armor",
+        "parentId": "sf.render.pallet-jack-lod1.node.motion-pallet-jack-clamp",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-motion-pallet-jack-clamp-brushedmetal",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_PALLET_JACK_CLAMP_BrushedMetal",
+        "node": "LOD1_MOTION_PALLET_JACK_CLAMP_BrushedMetal",
+        "parentId": "sf.render.pallet-jack-lod1.node.motion-pallet-jack-clamp",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-motion-pallet-jack-clamp-livery",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_PALLET_JACK_CLAMP_Livery",
+        "node": "LOD1_MOTION_PALLET_JACK_CLAMP_Livery",
+        "parentId": "sf.render.pallet-jack-lod1.node.motion-pallet-jack-clamp",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.lod1-motion-pallet-jack-clamp-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_PALLET_JACK_CLAMP_MechanicalDark",
+        "node": "LOD1_MOTION_PALLET_JACK_CLAMP_MechanicalDark",
+        "parentId": "sf.render.pallet-jack-lod1.node.motion-pallet-jack-clamp",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.motion-pallet-jack-clamp",
+        "independentlyCulled": false,
+        "mergeBoundary": "MOTION_PALLET_JACK_CLAMP",
+        "node": "MOTION_PALLET_JACK_CLAMP",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "root",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "independentlyCulled": false,
+        "mergeBoundary": "SF_SHIP_PALLET_JACK_ROOT",
+        "node": "SF_SHIP_PALLET_JACK_ROOT",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.socket-camera-focus",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Camera_Focus",
+        "node": "SOCKET_Camera_Focus",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.socket-cargo-cradle",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Cargo_Cradle",
+        "node": "SOCKET_Cargo_Cradle",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.socket-engine-main",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Engine_Main",
+        "node": "SOCKET_Engine_Main",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.socket-engine-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Engine_Port",
+        "node": "SOCKET_Engine_Port",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.socket-engine-reverse-1",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Engine_Reverse_1",
+        "node": "SOCKET_Engine_Reverse_1",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.socket-engine-reverse-2",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Engine_Reverse_2",
+        "node": "SOCKET_Engine_Reverse_2",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.socket-engine-reverse-3",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Engine_Reverse_3",
+        "node": "SOCKET_Engine_Reverse_3",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.socket-engine-reverse-4",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Engine_Reverse_4",
+        "node": "SOCKET_Engine_Reverse_4",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.pallet-jack-lod1.node.socket-engine-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Engine_Starboard",
+        "node": "SOCKET_Engine_Starboard",
+        "parentId": "sf.render.pallet-jack-lod1.node.sf-ship-pallet-jack-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.pallet-jack-lod1.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 437468,
+    "sha256": "bbce8bc6ef8d0ff87ec4ea1a797d9e7a77953da46339ea378d6e7da3b35898ac",
+    "uri": "assets/ships/release/parts/wholeships/pallet_jack_lod1.glb"
+  }
+}

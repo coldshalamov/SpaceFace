@@ -4359,8 +4359,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_pallet_jack",
       "sourceUrl": "assets/ships/release/parts/wholeships/pallet_jack.glb",
-      "releaseSha256": "39ddadb4914454956745148ff337b7ee915c2f851baad570282ed21f45e13069",
-      "releaseBytes": 500220,
+      "releaseSha256": "6257393fde14fc5d48d7e7f3ab3013bba42a3a8118ef2d97ec973c4536dc89b0",
+      "releaseBytes": 500684,
       "dynamicNameIncludes": [
         "MOTION_PALLET_JACK_CLAMP"
       ],
@@ -4376,8 +4376,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_pallet_jack_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/pallet_jack_lod1.glb",
-      "releaseSha256": "dedf051198a6ee39836e799f04eea578ec941976d0397c96e0f455703cf3aff5",
-      "releaseBytes": 437108,
+      "releaseSha256": "bbce8bc6ef8d0ff87ec4ea1a797d9e7a77953da46339ea378d6e7da3b35898ac",
+      "releaseBytes": 437468,
       "dynamicNameIncludes": [
         "MOTION_PALLET_JACK_CLAMP"
       ],
@@ -4393,8 +4393,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_pallet_jack_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/pallet_jack_lod2.glb",
-      "releaseSha256": "42d5421268ce39ab230463855d5fdacf344d641a0066cc95f03b67673c8faefe",
-      "releaseBytes": 406588,
+      "releaseSha256": "c45c0e506051f4671df356bd644c8d228b095f55b39c69e479651d20f7499331",
+      "releaseBytes": 406988,
       "dynamicNameIncludes": [
         "MOTION_PALLET_JACK_CLAMP"
       ],
