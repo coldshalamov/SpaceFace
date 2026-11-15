@@ -3310,7 +3310,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-lane-corner",
-    "expectedContentHash": "1f1df85c8b359b1fa610b81341b539de498910406ee6b5043bab6e827b51fb91",
+    "expectedContentHash": "77effbe7875e0fbf417c959731c812ad2a9f17ad02a723a0c9ecc1a41c0d7d5e",
     "key": "works-conduit-lane-corner",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-corner/render-package.json",
     "runtimeAssetId": "place_works_conduit_lane_corner",
@@ -3320,7 +3320,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-lane-cross",
-    "expectedContentHash": "f573b25bb0ba4d16b592cb73ae1afe362ecb84cf954e7fb4526e90e420436be1",
+    "expectedContentHash": "36f6574af01749e31b7419923e6da31c43ed962a808f24e3011c8f32a2b521ef",
     "key": "works-conduit-lane-cross",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-cross/render-package.json",
     "runtimeAssetId": "place_works_conduit_lane_cross",
@@ -3330,7 +3330,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-lane-end",
-    "expectedContentHash": "8ad6a32513b92eb609d8aed4ba98e3a13a887f790766d63da3debc8dca6f8ccd",
+    "expectedContentHash": "6155376aa4c80c19682ea481e3c86f165f8156af4b22b2213ac1aced7ae7a2b4",
     "key": "works-conduit-lane-end",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-end/render-package.json",
     "runtimeAssetId": "place_works_conduit_lane_end",
@@ -3340,7 +3340,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-lane-junction",
-    "expectedContentHash": "39105c2c92bc4aadc650c6f61bf630d7fcb94892a82d68389934a6bac1df8754",
+    "expectedContentHash": "e75603d3e456d4d641ba7b9c7dacb1192669f8cda8c81aafdf81773ea6f73bf5",
     "key": "works-conduit-lane-junction",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-junction/render-package.json",
     "runtimeAssetId": "place_works_conduit_lane_junction",
@@ -3350,7 +3350,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-lane-straight",
-    "expectedContentHash": "46dbd30fc5b1ff8569dee07e60cc54e5253204077323c4461c43ae968609120a",
+    "expectedContentHash": "b8b5d6b14681dac211fa84c8bfe530f902259a14e2a43252874fb136b41dc56b",
     "key": "works-conduit-lane-straight",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-straight/render-package.json",
     "runtimeAssetId": "place_works_conduit_lane_straight",
@@ -3360,7 +3360,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-lane-t",
-    "expectedContentHash": "bcc2f9bdd83392e801a45e86683f57b752aabc3b2ffab1f1b3ef8e5c62101a7f",
+    "expectedContentHash": "4d6b759f80a8b1ab3b94dea7bc60903b24fd660ef1ec645feaf54e4182ba28c3",
     "key": "works-conduit-lane-t",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-t/render-package.json",
     "runtimeAssetId": "place_works_conduit_lane_t",
@@ -3370,7 +3370,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-power-corner",
-    "expectedContentHash": "bf482c6f22f6e75a54e82306ba1f82548b30dc6ef86d237ad5bd9fbf060f4efe",
+    "expectedContentHash": "72ca90a222f3ab657f733c5d64e96be702495402e43d71389609dc5bf8dfc8f3",
     "key": "works-conduit-power-corner",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-corner/render-package.json",
     "runtimeAssetId": "place_works_conduit_power_corner",
@@ -3380,7 +3380,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-power-cross",
-    "expectedContentHash": "fea9cd7ce695cbdc776e1c97d82b381dfd75750f89822203f74dee93792c4d43",
+    "expectedContentHash": "1128238bea5081cd62b2ebc803aa37bc29d6a914a65de29c29c98bb1d8c41712",
     "key": "works-conduit-power-cross",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-cross/render-package.json",
     "runtimeAssetId": "place_works_conduit_power_cross",
@@ -3390,7 +3390,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-power-end",
-    "expectedContentHash": "c04c79a6866a8752e594e343b06540802140c76714b1579a93b2582a7fd49cc9",
+    "expectedContentHash": "94d179e8a1dee03b9b00cf8c86fc3fc4bbbe3f0eff5cf7b99b231984f12aac06",
     "key": "works-conduit-power-end",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-end/render-package.json",
     "runtimeAssetId": "place_works_conduit_power_end",
@@ -3400,7 +3400,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-power-junction",
-    "expectedContentHash": "f233248e8c1a44fbb1f9017a2bf15edffb3f341fdc0668170d7c20fdfd87a649",
+    "expectedContentHash": "632567d912e2cae46739ca616bcd570f7e49cd00ad432dcc77072b49381ebdc0",
     "key": "works-conduit-power-junction",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-junction/render-package.json",
     "runtimeAssetId": "place_works_conduit_power_junction",
@@ -3410,7 +3410,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-power-straight",
-    "expectedContentHash": "fe0e4c6b750db4928fd96b4435f8538b1f9242d6be7440ccd8025abc5518239e",
+    "expectedContentHash": "f4b42ffa25647e7faf1192c0fcb89d5c28a95404a297f3c652433c6745bb1c9d",
     "key": "works-conduit-power-straight",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-straight/render-package.json",
     "runtimeAssetId": "place_works_conduit_power_straight",
@@ -3420,7 +3420,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.works-conduit-power-t",
-    "expectedContentHash": "f463fe15756fec49afb8196b1d9da62052721378afaafbece88b004a477d3ec3",
+    "expectedContentHash": "f7ec484d81719e0683973a55fa964d1a608ca49b08dec417bfd900b84abf8565",
     "key": "works-conduit-power-t",
     "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-t/render-package.json",
     "runtimeAssetId": "place_works_conduit_power_t",

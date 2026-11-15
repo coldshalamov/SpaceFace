@@ -6302,7 +6302,12 @@
       "rootNode": "place_works_conduit_lane_corner",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-conduit-lane-corner",
-      "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-corner/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-corner/render-package.json",
+      "sharedKtx2Hashes": [
+        "3ddbeef10dec543f526bb9a14a1169eb47636e95142f54a28c8a8ab72e89cd9f",
+        "55ae9a3356c4197705e6e022aeb6c1c7d46d7d782620bb6ba85eded1d588ad03",
+        "b2658a56e89706cf505ff7f0f82314c3f17a80a9bcae6c1e4755c8a0eec25092"
+      ]
     },
     {
       "key": "works-conduit-lane-cross",
@@ -6317,7 +6322,12 @@
       "rootNode": "place_works_conduit_lane_cross",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-conduit-lane-cross",
-      "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-cross/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-cross/render-package.json",
+      "sharedKtx2Hashes": [
+        "3ddbeef10dec543f526bb9a14a1169eb47636e95142f54a28c8a8ab72e89cd9f",
+        "55ae9a3356c4197705e6e022aeb6c1c7d46d7d782620bb6ba85eded1d588ad03",
+        "b2658a56e89706cf505ff7f0f82314c3f17a80a9bcae6c1e4755c8a0eec25092"
+      ]
     },
     {
       "key": "works-conduit-lane-end",
@@ -6332,7 +6342,12 @@
       "rootNode": "place_works_conduit_lane_end",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-conduit-lane-end",
-      "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-end/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-end/render-package.json",
+      "sharedKtx2Hashes": [
+        "3ddbeef10dec543f526bb9a14a1169eb47636e95142f54a28c8a8ab72e89cd9f",
+        "55ae9a3356c4197705e6e022aeb6c1c7d46d7d782620bb6ba85eded1d588ad03",
+        "b2658a56e89706cf505ff7f0f82314c3f17a80a9bcae6c1e4755c8a0eec25092"
+      ]
     },
     {
       "key": "works-conduit-lane-junction",
@@ -6347,7 +6362,12 @@
       "rootNode": "place_works_conduit_lane_junction",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-conduit-lane-junction",
-      "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-junction/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-junction/render-package.json",
+      "sharedKtx2Hashes": [
+        "3ddbeef10dec543f526bb9a14a1169eb47636e95142f54a28c8a8ab72e89cd9f",
+        "55ae9a3356c4197705e6e022aeb6c1c7d46d7d782620bb6ba85eded1d588ad03",
+        "b2658a56e89706cf505ff7f0f82314c3f17a80a9bcae6c1e4755c8a0eec25092"
+      ]
     },
     {
       "key": "works-conduit-lane-straight",
@@ -6362,7 +6382,12 @@
       "rootNode": "place_works_conduit_lane_straight",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-conduit-lane-straight",
-      "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-straight/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-straight/render-package.json",
+      "sharedKtx2Hashes": [
+        "3ddbeef10dec543f526bb9a14a1169eb47636e95142f54a28c8a8ab72e89cd9f",
+        "55ae9a3356c4197705e6e022aeb6c1c7d46d7d782620bb6ba85eded1d588ad03",
+        "b2658a56e89706cf505ff7f0f82314c3f17a80a9bcae6c1e4755c8a0eec25092"
+      ]
     },
     {
       "key": "works-conduit-lane-t",
@@ -6377,7 +6402,12 @@
       "rootNode": "place_works_conduit_lane_t",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-conduit-lane-t",
-      "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-t/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-t/render-package.json",
+      "sharedKtx2Hashes": [
+        "3ddbeef10dec543f526bb9a14a1169eb47636e95142f54a28c8a8ab72e89cd9f",
+        "55ae9a3356c4197705e6e022aeb6c1c7d46d7d782620bb6ba85eded1d588ad03",
+        "b2658a56e89706cf505ff7f0f82314c3f17a80a9bcae6c1e4755c8a0eec25092"
+      ]
     },
     {
       "key": "works-conduit-power-corner",
@@ -6392,7 +6422,12 @@
       "rootNode": "place_works_conduit_power_corner",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-conduit-power-corner",
-      "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-corner/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-corner/render-package.json",
+      "sharedKtx2Hashes": [
+        "41388b25cecb71612db895788dd8a6f2213516f44aac25d02401e54dd9e36615",
+        "4e64faade42795b72d012c54d96cf670aaff2df5c6152d4212dacf936fd15f0f",
+        "af9fb6d2a0099132cf496e7e2adf511ac40c720b7662f7285a37f01bc4f391c1"
+      ]
     },
     {
       "key": "works-conduit-power-cross",
@@ -6407,7 +6442,12 @@
       "rootNode": "place_works_conduit_power_cross",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-conduit-power-cross",
-      "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-cross/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-cross/render-package.json",
+      "sharedKtx2Hashes": [
+        "41388b25cecb71612db895788dd8a6f2213516f44aac25d02401e54dd9e36615",
+        "4e64faade42795b72d012c54d96cf670aaff2df5c6152d4212dacf936fd15f0f",
+        "af9fb6d2a0099132cf496e7e2adf511ac40c720b7662f7285a37f01bc4f391c1"
+      ]
     },
     {
       "key": "works-conduit-power-end",
@@ -6422,7 +6462,12 @@
       "rootNode": "place_works_conduit_power_end",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-conduit-power-end",
-      "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-end/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-end/render-package.json",
+      "sharedKtx2Hashes": [
+        "41388b25cecb71612db895788dd8a6f2213516f44aac25d02401e54dd9e36615",
+        "4e64faade42795b72d012c54d96cf670aaff2df5c6152d4212dacf936fd15f0f",
+        "af9fb6d2a0099132cf496e7e2adf511ac40c720b7662f7285a37f01bc4f391c1"
+      ]
     },
     {
       "key": "works-conduit-power-junction",
@@ -6437,7 +6482,12 @@
       "rootNode": "place_works_conduit_power_junction",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-conduit-power-junction",
-      "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-junction/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-junction/render-package.json",
+      "sharedKtx2Hashes": [
+        "41388b25cecb71612db895788dd8a6f2213516f44aac25d02401e54dd9e36615",
+        "4e64faade42795b72d012c54d96cf670aaff2df5c6152d4212dacf936fd15f0f",
+        "af9fb6d2a0099132cf496e7e2adf511ac40c720b7662f7285a37f01bc4f391c1"
+      ]
     },
     {
       "key": "works-conduit-power-straight",
@@ -6452,7 +6502,12 @@
       "rootNode": "place_works_conduit_power_straight",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-conduit-power-straight",
-      "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-straight/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-straight/render-package.json",
+      "sharedKtx2Hashes": [
+        "41388b25cecb71612db895788dd8a6f2213516f44aac25d02401e54dd9e36615",
+        "4e64faade42795b72d012c54d96cf670aaff2df5c6152d4212dacf936fd15f0f",
+        "af9fb6d2a0099132cf496e7e2adf511ac40c720b7662f7285a37f01bc4f391c1"
+      ]
     },
     {
       "key": "works-conduit-power-t",
@@ -6467,7 +6522,12 @@
       "rootNode": "place_works_conduit_power_t",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/works-conduit-power-t",
-      "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-t/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-t/render-package.json",
+      "sharedKtx2Hashes": [
+        "41388b25cecb71612db895788dd8a6f2213516f44aac25d02401e54dd9e36615",
+        "4e64faade42795b72d012c54d96cf670aaff2df5c6152d4212dacf936fd15f0f",
+        "af9fb6d2a0099132cf496e7e2adf511ac40c720b7662f7285a37f01bc4f391c1"
+      ]
     },
     {
       "key": "works-derrick",

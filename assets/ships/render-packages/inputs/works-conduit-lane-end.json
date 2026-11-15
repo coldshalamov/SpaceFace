@@ -1,0 +1,149 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": true,
+    "externalizeKtx2Hashes": [
+      "3ddbeef10dec543f526bb9a14a1169eb47636e95142f54a28c8a8ab72e89cd9f",
+      "55ae9a3356c4197705e6e022aeb6c1c7d46d7d782620bb6ba85eded1d588ad03",
+      "b2658a56e89706cf505ff7f0f82314c3f17a80a9bcae6c1e4755c8a0eec25092"
+    ],
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "place_works_conduit_lane_end",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.works-conduit-lane-end",
+    "dynamicNameIncludes": [],
+    "key": "works-conduit-lane-end",
+    "kind": "place",
+    "metadataUrl": "assets/ships/release/render-packages/works-conduit-lane-end/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/works-conduit-lane-end",
+    "releaseAssetId": "place_works_conduit_lane_end",
+    "releaseBytes": 467268,
+    "releaseSha256": "3dfe2ecb230014147052a324d0a471678a355db1615186fd54d265b3ccb34097",
+    "rootNode": "place_works_conduit_lane_end",
+    "runtimeAssetId": "place_works_conduit_lane_end",
+    "sharedKtx2Hashes": [
+      "3ddbeef10dec543f526bb9a14a1169eb47636e95142f54a28c8a8ab72e89cd9f",
+      "55ae9a3356c4197705e6e022aeb6c1c7d46d7d782620bb6ba85eded1d588ad03",
+      "b2658a56e89706cf505ff7f0f82314c3f17a80a9bcae6c1e4755c8a0eec25092"
+    ],
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_lane_end.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 4,
+    "id": "place_works_conduit_lane_end",
+    "kind": "part:places",
+    "ktx2Textures": 3,
+    "meshoptBufferViews": 17,
+    "release": "assets/ships/release/parts/works/place_works_conduit_lane_end.glb",
+    "releaseBytes": 467268,
+    "releaseSha256": "3dfe2ecb230014147052a324d0a471678a355db1615186fd54d265b3ccb34097",
+    "source": "assets/ships/parts/works/place_works_conduit_lane_end.glb",
+    "sourceBytes": 361144,
+    "sourceSha256": "a14b80f5053d9ffda8a206ac2151fccd79939d4b0d55d0090ecb75e1f488353c",
+    "textureProfiles": {
+      "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+      "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data",
+      "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear"
+    },
+    "textures": 3
+  },
+  "runtime": {
+    "assetId": "place_works_conduit_lane_end",
+    "motionBank": null,
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_lane_end.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [],
+    "assetId": "sf.render.works-conduit-lane-end",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "place",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.works-conduit-lane-end.mesh.lod0-flow-mesh",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_flow_mesh",
+        "node": "LOD0_flow_mesh",
+        "parentId": "sf.render.works-conduit-lane-end.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.works-conduit-lane-end.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.works-conduit-lane-end.mesh.lod0-merged-material-atlas",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Merged_Material_Atlas",
+        "node": "LOD0_Merged_Material_Atlas",
+        "parentId": "sf.render.works-conduit-lane-end.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.works-conduit-lane-end.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.works-conduit-lane-end.mesh.lod1-flow-mesh",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_flow_mesh",
+        "node": "LOD1_flow_mesh",
+        "parentId": "sf.render.works-conduit-lane-end.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.works-conduit-lane-end.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.works-conduit-lane-end.mesh.lod1-merged-material-atlas",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Merged_Material_Atlas",
+        "node": "LOD1_Merged_Material_Atlas",
+        "parentId": "sf.render.works-conduit-lane-end.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.works-conduit-lane-end.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.works-conduit-lane-end.root",
+        "independentlyCulled": false,
+        "mergeBoundary": "asset-root",
+        "node": "place_works_conduit_lane_end",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.works-conduit-lane-end.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 467268,
+    "sha256": "3dfe2ecb230014147052a324d0a471678a355db1615186fd54d265b3ccb34097",
+    "uri": "assets/ships/release/parts/works/place_works_conduit_lane_end.glb"
+  }
+}

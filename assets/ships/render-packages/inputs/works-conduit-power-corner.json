@@ -1,0 +1,149 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": true,
+    "externalizeKtx2Hashes": [
+      "41388b25cecb71612db895788dd8a6f2213516f44aac25d02401e54dd9e36615",
+      "4e64faade42795b72d012c54d96cf670aaff2df5c6152d4212dacf936fd15f0f",
+      "af9fb6d2a0099132cf496e7e2adf511ac40c720b7662f7285a37f01bc4f391c1"
+    ],
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "place_works_conduit_power_corner",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.works-conduit-power-corner",
+    "dynamicNameIncludes": [],
+    "key": "works-conduit-power-corner",
+    "kind": "place",
+    "metadataUrl": "assets/ships/release/render-packages/works-conduit-power-corner/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/works-conduit-power-corner",
+    "releaseAssetId": "place_works_conduit_power_corner",
+    "releaseBytes": 500136,
+    "releaseSha256": "ba486aa12d5651d360f3fcb96492c0c962836d703230b6c6bb996a6f4b64321d",
+    "rootNode": "place_works_conduit_power_corner",
+    "runtimeAssetId": "place_works_conduit_power_corner",
+    "sharedKtx2Hashes": [
+      "41388b25cecb71612db895788dd8a6f2213516f44aac25d02401e54dd9e36615",
+      "4e64faade42795b72d012c54d96cf670aaff2df5c6152d4212dacf936fd15f0f",
+      "af9fb6d2a0099132cf496e7e2adf511ac40c720b7662f7285a37f01bc4f391c1"
+    ],
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_power_corner.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 4,
+    "id": "place_works_conduit_power_corner",
+    "kind": "part:places",
+    "ktx2Textures": 3,
+    "meshoptBufferViews": 14,
+    "release": "assets/ships/release/parts/works/place_works_conduit_power_corner.glb",
+    "releaseBytes": 500136,
+    "releaseSha256": "ba486aa12d5651d360f3fcb96492c0c962836d703230b6c6bb996a6f4b64321d",
+    "source": "assets/ships/parts/works/place_works_conduit_power_corner.glb",
+    "sourceBytes": 418180,
+    "sourceSha256": "b209be2a739aa22323eb750715a1457865fd018e01bd2763949c83ce757e84e9",
+    "textureProfiles": {
+      "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+      "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data",
+      "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear"
+    },
+    "textures": 3
+  },
+  "runtime": {
+    "assetId": "place_works_conduit_power_corner",
+    "motionBank": null,
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/works/place_works_conduit_power_corner.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [],
+    "assetId": "sf.render.works-conduit-power-corner",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "place",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.works-conduit-power-corner.mesh.lod0-merged-material-atlas",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Merged_Material_Atlas",
+        "node": "LOD0_Merged_Material_Atlas",
+        "parentId": "sf.render.works-conduit-power-corner.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.works-conduit-power-corner.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.works-conduit-power-corner.mesh.lod0-powered",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_powered",
+        "node": "LOD0_powered",
+        "parentId": "sf.render.works-conduit-power-corner.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.works-conduit-power-corner.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.works-conduit-power-corner.mesh.lod1-merged-material-atlas",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Merged_Material_Atlas",
+        "node": "LOD1_Merged_Material_Atlas",
+        "parentId": "sf.render.works-conduit-power-corner.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.works-conduit-power-corner.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.works-conduit-power-corner.mesh.lod1-powered",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_powered",
+        "node": "LOD1_powered",
+        "parentId": "sf.render.works-conduit-power-corner.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.works-conduit-power-corner.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.works-conduit-power-corner.root",
+        "independentlyCulled": false,
+        "mergeBoundary": "asset-root",
+        "node": "place_works_conduit_power_corner",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.works-conduit-power-corner.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 500136,
+    "sha256": "ba486aa12d5651d360f3fcb96492c0c962836d703230b6c6bb996a6f4b64321d",
+    "uri": "assets/ships/release/parts/works/place_works_conduit_power_corner.glb"
+  }
+}
