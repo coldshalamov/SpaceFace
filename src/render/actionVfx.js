@@ -288,7 +288,7 @@ export class ActionVfx {
       s.angle=rot+s.angleOffset;
       s.radius=Math.max(2.5,Math.min(24,finite(target.radius,s.radius)))*(s.recipe.verb==='arm'?1.5:1);
       if(s.socket?.parent){
-        s.socket.updateWorldMatrix(true,false);s.socket.getWorldPosition(this.socketWorld);
+        s.socket.getWorldPosition(this.socketWorld);
         s.x=this.socketWorld.x+this.origin.x;s.z=this.socketWorld.z+this.origin.z;s.y=this.socketWorld.y;
       }
     }
@@ -302,7 +302,7 @@ export class ActionVfx {
       presentedAnchorXZ(source,alpha,this.anchor);
       s.sx=this.anchor.x+c*s.ox-a*s.oz;s.sz=this.anchor.z+a*s.ox+c*s.oz;
       if(s.sourceSocket?.parent){
-        s.sourceSocket.updateWorldMatrix(true,false);s.sourceSocket.getWorldPosition(this.socketWorld);
+        s.sourceSocket.getWorldPosition(this.socketWorld);
         s.sx=this.socketWorld.x+this.origin.x;s.sz=this.socketWorld.z+this.origin.z;
       }
     }
