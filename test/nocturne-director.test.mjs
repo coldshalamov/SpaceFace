@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { NocturneRegistry, NOCTURNE_PRIORITY } from '../src/render/nocturne/registry.js';
 import { NocturneDirector } from '../src/render/nocturne/director.js';
+import { NocturneShadowBudget } from '../src/render/nocturne/shadows.js';
 import { HeadlightPool } from '../src/render/headlights.js';
 
 function camera() {
@@ -243,6 +244,28 @@ test('a skipped draw preserves a requested map until the renderer consumes it', 
   h.director.slots[0].light.shadow.needsUpdate = false;
   h.director.update(1 / 60, h.camera);
   assert.equal(h.director.slots[0].light.shadow.needsUpdate, false);
+});
+
+test('a pending shadow refresh reschedules after an unrendered dark interval', () => {
+  const light = new THREE.SpotLight(0xffffff, 100, 200, .4);
+  const slot = { kind: 'spot', light, source: { stationary: true } };
+  const renderer = { shadowMap: { enabled: true, needsUpdate: false } };
+  const budget = new NocturneShadowBudget([slot], { renderer });
+  budget.update(.016);
+  assert.equal(light.shadow.needsUpdate, true);
+  assert.equal(budget.records[0].pending, true);
+  light.intensity = 0;
+  budget.update(.016);
+  assert.equal(light.shadow.needsUpdate, false);
+  light.intensity = 100; renderer.shadowMap.needsUpdate = false;
+  budget.update(.016);
+  assert.equal(light.shadow.needsUpdate, true, 'the unsubmitted map must be requested again');
+  assert.equal(renderer.shadowMap.needsUpdate, true);
+  light.shadow.needsUpdate = false; // A submitted frame consumed the request.
+  light.intensity = 0; budget.update(.016);
+  light.intensity = 100; renderer.shadowMap.needsUpdate = false; budget.update(.016);
+  assert.equal(light.shadow.needsUpdate, false, 'a consumed stationary map stays cached');
+  light.dispose();
 });
 
 test('optional directional adoption changes no rig membership', () => {

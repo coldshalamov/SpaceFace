@@ -62,6 +62,10 @@ export class NocturneShadowBudget {
       const light = slot.light;
       const source = slot.source;
       if (!enabled || !source || light.intensity <= 0) {
+        // A requested map may not have reached a draw before the light went dark.
+        // Only an unconsumed request invalidates the cached map on this path.
+        if (record.pending && light.shadow.needsUpdate) record.valid = false;
+        record.pending = false;
         light.shadow.needsUpdate = false;
         // A disabled map must refresh before it can illuminate a different place.
         if (!enabled || !source) record.valid = false;
