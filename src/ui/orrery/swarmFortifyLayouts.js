@@ -48,7 +48,7 @@ html body #screens > .k-screen.sf-crucible-fortify .sf-fortify-plan text { fill:
 .sf-fortify-state li { padding:8px 0; font:14px/1.5 var(--dp-face-read); }
 .sf-fortify-state button { margin-left:12px; }
 .sf-fortify-balance { color:var(--dp-hand); font-variant-numeric:tabular-nums; }
-.sf-fortify-ready { display:flex; flex-direction:column; gap:2px; margin-top:6px; }
+.sf-fortify-ready { display:flex; flex-wrap:wrap; gap:2px 28px; margin-top:6px; }
 .sf-fortify-ready p { margin:0; font:14px/1.4 var(--dp-face-read); overflow-wrap:anywhere; }
 .sf-fortify-ready .sf-fortify-lost { color:var(--dp-hand); }
 .sf-fortify-ready [hidden] { display:none; }

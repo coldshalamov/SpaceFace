@@ -79,11 +79,11 @@ export const crucibleFortifyScreen = {
     const title = make('header', 'k-title');
     const heading = make('h1', 'k-display k-t-title', 'Fortify the field'); heading.id = 'sf-fortify-title';
     this._balance = make('p', 'k-sentence sf-fortify-balance', 'Reading the run purse…');
-    this._ready = make('div', 'sf-fortify-ready'); this._ready.setAttribute('role', 'status');
     this._readyLine = make('p', 'k-sentence sf-fortify-ready-line', 'Reading the field…');
     this._lostLine = make('p', 'k-sentence sf-fortify-lost', ''); this._lostLine.hidden = true;
-    this._ready.append(this._readyLine, this._lostLine);
-    title.append(heading, make('p', 'k-sentence', 'Build while paused. Your first defense establishes three fixed approaches. Defenses remain between waves and can be destroyed.'), this._balance, this._ready);
+    for (const line of [this._readyLine, this._lostLine]) line.setAttribute('role', 'status');
+    this._ready = make('div', 'sf-fortify-ready'); this._ready.append(this._balance, this._readyLine, this._lostLine);
+    title.append(heading, make('p', 'k-sentence', 'Build while paused. Your first defense establishes three fixed approaches. Defenses remain between waves and can be destroyed.'), this._ready);
     const layout = make('section', 'sf-fortify-layout'); layout.dataset.sfScroll = 'fortify';
     const plan = make('section', 'sf-fortify-plan'); plan.setAttribute('aria-label', 'Arena construction positions');
     this._map = svg(this._doc, 'svg', { viewBox: '-560 -560 1120 1120', role: 'img', 'aria-label': 'Live paused field: physical obstacles, defenses, approach corridors and selected device reach' });
