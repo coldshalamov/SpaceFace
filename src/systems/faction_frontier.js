@@ -1582,6 +1582,17 @@ export const frontierHomesteads = {
    *  and the household hears its own line about it. */
   _consumeFoodPod(state, f, rec, pod) {
     if (!pod || pod.alive === false) return;
+    // The handoff re-reads custody: a catch-net claim or a stripped load since
+    // the cached verdict means this is no longer the player's whole food load.
+    const garden = this.ctx?.registry?.get?.('lootShards');
+    const mass = typeof garden?.gardenFeedMass === 'function' ? garden.gardenFeedMass(pod) : null;
+    if (!(Number.isFinite(mass) && mass > 0) || !FOOD_COMMODITY_IDS.has(pod.data?.commodityId)) {
+      if (this._foodVerdicts instanceof Map) {
+        this._foodVerdicts.set(`${pod.id}:${pod.occupantGeneration ?? 0}`, false);
+      }
+      this._foodDwell = null;
+      return;
+    }
     pod.data.understoryConsumed = true; // spent like supplyCargo — no second intake reads it
     rec.supplies += 1;
     rec.stranded = false;

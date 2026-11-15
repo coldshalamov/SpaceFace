@@ -228,6 +228,31 @@ test('only a whole food load feeds — an iron pod is left alone and unpaid', ()
   } finally { h.sim.dispose(); }
 });
 
+test('a catch-net claim after the cached verdict refuses the handoff', () => {
+  const h = boot();
+  try {
+    const stead = raiseStead(h);
+    const rec = recOf(h, stead.id);
+    rec.stranded = true;
+    const pod = foodPod(h, stead.pos.x + 80, stead.pos.z);
+    tow(h, pod);
+    // The admission verdict caches while the pod rides the ring.
+    h.sim.runTicks(Math.floor(1 * TICKS_PER_S));
+    const key = `${pod.id}:${pod.occupantGeneration ?? 0}`;
+    assert.equal(h.owner._foodVerdicts.get(key), true, 'the verdict cached');
+    // An outlaw net takes custody before the unload finishes — the real writer.
+    const garden = h.sim.registry.get('lootShards');
+    garden._markCaughtByNet(pod, { id: 9001 });
+    assert.equal(pod.data.caughtByNet, true);
+    h.sim.runTicks(Math.ceil(4 * TICKS_PER_S));
+    assert.equal(pod.alive !== false, true, 'the stead refuses the net-claimed pod');
+    assert.equal(rec.supplies, 0, 'no supplies change hands');
+    assert.equal(h.grants.length, 0, 'no fee paid');
+    assert.equal(h.owner._foodDwell, null, 'the dwell timer cleared');
+    assert.equal(h.owner._foodVerdicts.get(key), false, 'the pod is now ineligible');
+  } finally { h.sim.dispose(); }
+});
+
 test('each pod\'s verdict is evaluated once per identity', () => {
   const h = boot();
   try {
