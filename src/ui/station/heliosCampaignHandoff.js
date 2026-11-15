@@ -123,33 +123,33 @@ export function heliosCampaignChoices(s, stationId) {
 export function heliosCampaignReply(s, stationId, choiceId) {
   if (![FILE, ORIGINAL].includes(choiceId)) return null;
   const f = heliosCampaignStage(s, stationId);
-  if (!f) return { text: 'Kessler closes the file. “That copy is out of date. Bring me the current contract.”' };
+  if (!f) return { text: 'Kessler closes the file. “Out of date. Bring me the current contract.”' };
   const kept = originalKept(s);
   const opening = choiceId === ORIGINAL
-    ? '“The old figure stays on your copy. A note, not a payment.” Kessler puts his thumb on the seal twice. '
-    : kept ? 'Kessler keeps the old figure uncovered. “You asked me to leave it there.” '
-      : paidFirstShift(s) ? 'Kessler draws a second file out from under the paid cutting ticket. '
-        : 'Kessler draws the next posting out from under the receiving slip. ';
+    ? 'Kessler thumbs the seal twice. “Old figure stays. A note, not a payment.” '
+    : kept ? 'Kessler leaves the old figure uncovered. “You asked me to leave it.” '
+      : paidFirstShift(s) ? 'Kessler draws a second file from under your paid cutting ticket. '
+        : 'Kessler draws the next posting from under the receiving slip. ';
   let text;
   switch (f.stage) {
     case 'sample_outbound':
-      text = '“The iron job paid for your cut. This is Contract 47-A — a marked mass-variance sample, not another iron quota. 12.4 tonnes on the acceptance line, Vale’s authorization, reference 44-C. Mine the marked source in Helios Prime and bring it back here. No immediate payout; do not spend money you have not been paid.”'; break;
+      text = '“This is 47-A, not another iron quota.” Mine the marked sample in Helios Prime and bring it here: 12.4 t on the line, reference 44-C, no payout yet.'; break;
     case 'sample_return':
       text = f.mission.params.skimResolved === true
-        ? '“Sample recovery is recorded. So is the Skim: 12.4 tonnes, escorts lost — separate entries. Re-dock at Helios so the receiving desk can close the contract. I cannot clear the payment from this chair.”'
-        : '“Sample recovery is recorded. Bring the contract through the Helios receiving desk. If you were already berthed when the record changed, launch and re-dock. A conversation is not a delivery.”'; break;
+        ? '“Sample recorded. The Skim is a separate entry.” Re-dock at Helios; the receiving desk closes 47-A, not this chair.'
+        : '“Sample recorded. A conversation is not a delivery.” Take it through the Helios receiving desk; if already berthed, launch and re-dock.'; break;
     case 'alloy_ready':
-      text = `“47-A is received. Freight payment withheld; the old file is still pending. ${paidFirstShift(s) ? 'Your cutting wages remain yours.' : 'This posting does not settle the old claim.'}” He lays another posting beside it. “${f.offer.params.qty} units of sealed alloys, loaded on acceptance. Helios to Tethys Junction, the Tycho receiving berth. ${f.offer.reward_cr} credits on this posting. Read the terms before you sign. After delivery, weigh your own freight at Scale 4. Keep that slip beside the old figure.”`; break;
+      text = `“47-A received. Freight payment withheld.” ${paidFirstShift(s) ? 'Your cutting wages stand.' : 'This posting does not settle the old claim.'} Next: ${f.offer.params.qty} units of sealed alloys, loaded on acceptance, Helios to Tethys Junction for ${f.offer.reward_cr} cr; the delivered crate stays on Scale 4 to be weighed.`; break;
     case 'alloy_outbound':
-      text = '“The sealed-alloy run is already signed. Take the reserved load to Tethys Junction. Those alloys belong to the delivery; do not sell or jettison them. After the receiving handoff, Scale 4 can weigh a separate pod of your own freight.”'; break;
+      text = '“The alloy run is signed. Deliver it whole.” Take the reserved load to Tethys Junction; do not sell or jettison it, and Tethys puts the delivered crate on Scale 4.'; break;
     case 'alloy_wait':
-      text = '“47-A is received, freight payment withheld. The next work is the sealed-alloy run to Tethys, but I have no single current posting to put in front of you. Check Contracts. I will not write a second ticket to cover a missing one.”'; break;
+      text = '“47-A received. Freight payment withheld.” The sealed-alloy run to Tethys is next, but this desk has no single current posting; check Contracts.'; break;
     case 'scale_outbound':
-      text = '“Tethys received the alloys. Now take your own fresh jettisoned cargo pod to Scale 4, beside the weigh-slip racks. The delivered alloys are gone; do not look for that same crate. Keep the pod inside the open ring, at 8 WU/s or below, until the plate reads it. Read the stamp too. Release its line and collect your freight when you are finished.”'; break;
+      text = '“Your crate is on Scale 4. Watch it.” Fly to Scale 4 at Tethys; the delivered crate stays on the plate until the read latches.'; break;
     case 'scale_return':
-      text = `“Your stamp: ${f.reading.stamp.toFixed(1)} tonnes. My plate: ${f.reading.plate.toFixed(1)}.” His thumb stops on the seal. ${kept ? '“You kept the first figure. Now you have a second document to disagree with.”' : '“Keep both figures. One is not a correction of the other.”'} “The variance is in the record. It does not release 47-A’s withheld freight payment. The next posting is the Furnace Detail at Tethys; read its armament and cargo requirements before leaving for Ceres.”`; break;
+      text = `“Your stamp: ${f.reading.stamp.toFixed(1)} tonnes. My plate: ${f.reading.plate.toFixed(1)}.” ${kept ? '“Now you have two documents to disagree with.”' : '“Keep both. Neither corrects the other.”'} The variance is filed; it does not release 47-A’s withheld payment. Next: the Furnace Detail on the Tethys board; check its armament and cargo terms before Ceres.`; break;
     default:
-      text = '“The Scale 4 step is recorded, but I have no paired numbers on this copy. I will not invent them. The next contract is the Furnace Detail on the Tethys board.”';
+      text = '“No paired numbers. I will not invent them.” Scale 4 is recorded; next is the Furnace Detail on the Tethys board.';
   }
   return { text: opening + text, campaignHandoffAnswer: true,
     ...(f.offer ? { missionOffer: f.offer } : {}),

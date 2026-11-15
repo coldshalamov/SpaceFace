@@ -26,7 +26,9 @@ function fixture() {
  const receive=()=>{sim.bus.emit('mining:yield',{minerId:s.playerId,commodityId:'cmdty_ore_iron',qty:1,pos:{...asteroid.pos}});assert.equal(b0.params.sampleRecovered,true);sim.bus.emit('dock:docked',{stationId:HOME});dock();assert.equal(s.story.beatIndex,1);owner.ensureBoard(HOME);};
  return {sim,s,owner,b0,first,asteroid,dock,paid,receive,close:()=>sim.dispose()};
 }
-const reply=f=>heliosCampaignReply(f.s,HOME,FILE);
+// Kessler speaks in short quotes; the instruction rides outside them.
+const short=r=>{for(const [,q] of r.text.matchAll(/“([^”]*)”/g))assert.ok(q.trim().split(/\s+/).length<=8,`spoken line over eight words: ${q}`);return r;};
+const reply=f=>short(heliosCampaignReply(f.s,HOME,FILE));
 
 test('paid local shift exposes existing 47-A with a real track intent, without repeating or completing work',()=>{
  const f=fixture();try{
@@ -34,7 +36,7 @@ test('paid local shift exposes existing 47-A with a real track intent, without r
  assert.equal(heliosCampaignStage(f.s,HOME)?.stage,'sample_outbound');
  const c=generateContacts(HOME,f.s).find(c=>c.canonicalKey==='kessler');assert.ok(c.choices.some(c=>c.id===FILE));
  const before=JSON.stringify([f.s.player,f.s.story,f.s.missions]);
- const r=buildReply(c.role,FILE,{state:f.s,bus:f.sim.bus},HOME,c);assert.match(r.text,/not another iron quota/);
+ const r=buildReply(c.role,FILE,{state:f.s,bus:f.sim.bus},HOME,c);short(r);assert.match(r.text,/not another iron quota/);assert.match(r.text,/marked sample in Helios Prime/);
  assert.equal(r.missionOffer,undefined);assert.equal(r.campaignHandoff.missionId,f.b0.id);
  assert.equal(JSON.stringify([f.s.player,f.s.story,f.s.missions]),before);
  const events=[];f.sim.bus.on('ui:pushScreen',p=>events.push(p));
@@ -57,11 +59,12 @@ test('only actual source recovery and Helios settlement expose the next real pre
  f.sim.bus.emit('dock:docked',{stationId:HOME});f.owner.ensureBoard(HOME);
  assert.equal(f.s.story.beatIndex,1);assert.equal(f.s.player.credits,credits+400,'existing B0 story stipend is separate from withheld freight payment');
  const r=reply(f);assert.match(r.text,/Freight payment withheld/);assert.match(r.text,/6 units.*loaded on acceptance/);
+ assert.match(r.text,/delivered crate stays on Scale 4/);assert.doesNotMatch(r.text,/weigh your own freight/i);
  assert.equal(r.missionOffer,f.s.missions.boards[HOME].slots.find(o=>o.storyTag==='campaign47a:b1:alloy_run'));
  assert.equal(r.campaignHandoff.kind,'offer');
  f.sim.bus.emit('ui:acceptMission',{missionId:r.missionOffer.id});
  assert.equal(heliosCampaignStage(f.s,HOME).stage,'alloy_outbound');assert.equal(f.s.player.cargo.items.cmdty_alloys,6);
- const active=reply(f);assert.match(active.text,/do not sell or jettison/);assert.equal(active.missionOffer,undefined);
+ const active=reply(f);assert.match(active.text,/do not sell or jettison/);assert.match(active.text,/delivered crate on Scale 4/);assert.doesNotMatch(active.text,/separate pod|own freight/);assert.equal(active.missionOffer,undefined);
  assert.equal(takeHeliosCampaignAction({state:f.s,bus:f.sim.bus},HOME,active.campaignHandoff),true);
  assert.equal(f.s.ui.trackedMissionId,active.campaignHandoff.missionId);
  assert.equal(f.s.player.credits,credits+400);
@@ -73,7 +76,7 @@ test('the original-number choice is remembered by existing contact owner, not a 
  f.paid();const before=JSON.stringify([f.s.player.credits,f.s.player.cargo,f.s.story,f.s.missions]);
  f.sim.bus.emit('ui:talkContact',{contactId:'contact_station_helios_kessler',canonicalKey:'kessler',stationId:HOME,name:'Kessler',choiceId:ORIGINAL});
  assert.equal(f.s.player.stationContacts.contact_station_helios_kessler.flags.choice_helios_47a_original,true);
- const r=heliosCampaignReply(f.s,HOME,ORIGINAL);assert.match(r.text,/note, not a payment/);
+ const r=short(heliosCampaignReply(f.s,HOME,ORIGINAL));assert.match(r.text,/note, not a payment/);
  assert.equal(JSON.stringify([f.s.player.credits,f.s.player.cargo,f.s.story,f.s.missions]),before);
  assert.ok(!heliosCampaignChoices(f.s,HOME).some(c=>c.id===ORIGINAL));assert.match(reply(f).text,/asked me to leave it/);
  f.receive();assert.match(reply(f).text,/asked me to leave it/);assert.match(reply(f).text,/Freight payment withheld/);
@@ -93,14 +96,15 @@ test('changed, duplicate, closed, foreign, restoring and undocked missions canno
  }finally{f.close();}}
 });
 
-test('Scale 4 route reads the completed alloy step and actual paired readings, never the delivered load',()=>{
+test('Scale 4 route reads the completed alloy step and actual paired readings, and points at the delivered crate on the plate',()=>{
  const f=fixture();try{
  f.paid();f.receive();const o=reply(f).missionOffer;f.sim.bus.emit('ui:acceptMission',{missionId:o.id});
  const alloys=f.s.missions.active.find(m=>m.storyTag==='campaign47a:b1:alloy_run');assert.ok(alloys);
  // Focused event-path fixture: the full cross-sector flight belongs to native acceptance.
  f.s.world.currentSectorId='sector_tethys_junction';f.sim.bus.emit('dock:docked',{stationId:'station_tethys'});
  assert.equal(alloys.status,'completed');f.s.world.currentSectorId=SECTOR;f.dock();
- const r=reply(f);assert.equal(heliosCampaignStage(f.s,HOME).stage,'scale_outbound');assert.match(r.text,/delivered alloys are gone/);
+ const r=reply(f);assert.equal(heliosCampaignStage(f.s,HOME).stage,'scale_outbound');assert.match(r.text,/delivered crate stays on the plate until the read latches/);
+ assert.doesNotMatch(r.text,/gone|own fresh jettisoned|do not look for that same crate/);
  assert.equal(f.s.player.cargo.items.cmdty_alloys||0,0);assert.equal(r.campaignHandoff.kind,'course');
  const events=[];assert.equal(takeHeliosCampaignAction({state:f.s,bus:{emit:(...x)=>events.push(x)}},HOME,r.campaignHandoff),true);
  assert.equal(events[0][0],'ui:setCourse');assert.equal(events[0][1].sectorId,'sector_tethys_junction');
