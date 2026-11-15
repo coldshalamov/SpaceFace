@@ -439,6 +439,12 @@ export function withShopAprons(layout, arenaId) {
 }
 
 export function debrisLayoutForArena(arenaId) {
+  if (arenaId === 'ceres_belt') {
+    return Object.freeze({ id: 'claim', inner: 170, outer: 360, target: 7, safeRadius: 140, separation: 70 });
+  }
+  if (arenaId === 'tethys_hub') {
+    return Object.freeze({ id: 'exchange', inner: 240, outer: 400, target: 3, safeRadius: 170, separation: 90 });
+  }
   if (arenaId === LAGRANGE_ARENA_ID) {
     return Object.freeze({
       id: 'wells',

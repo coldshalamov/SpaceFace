@@ -267,6 +267,8 @@ export const SWARM_EVENT_BY_ID = Object.freeze({
 /** The signature cards each arena can draw — its own name for its own tricks. */
 export const SWARM_EVENT_TABLES = Object.freeze({
   helios_core: Object.freeze(['shutter_storm', 'furnace_flare', 'plate_drift', 'sprocket_crate']),
+  ceres_belt: Object.freeze(['mine_drift', 'supply_drop', 'rock_rain']),
+  tethys_hub: Object.freeze(['supply_drop', 'mine_drift', 'lantern_drift']),
   lagrange_crucible: Object.freeze(['well_swing', 'sling_gust', 'pylon_flip', 'sling_tide']),
   cinder_sluice: Object.freeze(['sluice_surge', 'undertow_snap', 'slag_spill']),
   cryo_drift: Object.freeze(['freeze_front', 'plate_shatter', 'thaw_burst', 'cold_snap']),

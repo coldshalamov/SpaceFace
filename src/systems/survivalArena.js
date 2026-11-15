@@ -320,6 +320,35 @@ const FOUNDRY_FURNACE_NOCTURNE = Object.freeze({
   medium: Object.freeze({ radii: Object.freeze([3.2, 1.2, 3.2]), density: 0.0026, color: 0xff9a5a, anisotropy: 0.4, extinction: 1, noise: 0.45 }),
 });
 
+function planSideRoomToys(arenaId, at, lane) {
+  const toys = [];
+  const add = (id, kind, x, z, radius, extra = {}) => toys.push({
+    id, kind, pos: point(at, x, z), radius, solid: true, hazardType: 'debris', ...extra,
+  });
+  if (arenaId === 'ceres_belt') {
+    const rocks = [[-260, -120], [-210, -220], [-90, -285], [50, -295]];
+    for (let i = 0; i < rocks.length; i++) {
+      add(`claim_rock_${i + 1}`, 'rock', rocks[i][0], rocks[i][1], 34, {
+        entityType: 'asteroid', dynamic: true, mass: 400, material: 'stone',
+        packagedPropFile: i % 2 ? 'places/place_asteroid_seamed.glb' : 'places/place_asteroid_graffiti.glb',
+      });
+    }
+    add('claim_stack_a', 'rack', 250, -185, 40, { packagedPropFile: 'places/place_container_rack.glb' });
+    add('claim_stack_b', 'rack', 250, 190, 40, { packagedPropFile: 'places/place_container_rack.glb' });
+    add('claim_beacon', 'gate', -290, 165, 24, { packagedPropFile: 'places/place_claim_mark.glb' });
+  } else {
+    for (const x of [-260, 260]) for (const z of [-105, 105]) {
+      add(`toll_gate_${x}_${z}`, 'gate', x, z, 18, { packagedPropFile: 'places/place_transponder_gate.glb' });
+    }
+  }
+  const across = { x: -lane.z, z: lane.x };
+  for (const side of [-1, 1]) {
+    add(`arrival_gate_${side}`, 'gate', lane.x * 320 + across.x * 110 * side,
+      lane.z * 320 + across.z * 110 * side, 16, { nocturne: FOUNDRY_GATE_NOCTURNE });
+  }
+  return toys;
+}
+
 function planFoundryToys({ phase, at, lane, across, spin, wave, seed }) {
   const rng = mulberry32((arenaStreamSeed(seed, wave) ^ FOUNDRY_TOY_SALT) >>> 0);
   const toys = [];
@@ -545,6 +574,10 @@ function planArenaInstallBody({
   };
   const phase = typeof arenaPhase === 'string' ? arenaPhase : 'idle';
   const empty = { phase, note: 'inert room', fields: [], mines: [], cover: false };
+  if ((arenaId === 'ceres_belt' || arenaId === 'tethys_hub') && SURVIVAL_ARENA_PHASES.includes(phase)) {
+    return { phase, at, note: arenaId === 'ceres_belt' ? 'worked claim' : 'exchange toll lane',
+      fields: [], mines: [], cover: false, toys: planSideRoomToys(arenaId, at, gateBearing(laneGate)) };
+  }
   if (!isLawArena(arenaId) && phase === 'idle') {
     // PQ-133.04 R3: Foundry idle is no longer empty — wave one installs the authored bank room
     // (three reflective plates plus gate posts marking the arrival lane). Every other non-law
@@ -2285,7 +2318,7 @@ export const survivalArena = {
       const dynamic = toy.dynamic === true;
       const plate = toy.kind === 'plate' ? foundryPlateShape(toy) : null;
       const radius = plate ? plate.radius : Math.max(4, Number.isFinite(toy.radius) ? toy.radius : 16);
-      const furnitureProxy = plate ? null : foundryFurnitureProxy({ kind: toy.kind, radius });
+      const furnitureProxy = plate || toy.packagedPropFile ? null : foundryFurnitureProxy({ kind: toy.kind, radius });
       const lawRadius = plate ? plate.referenceRadius : radius;
       // FB-022: a toy may author its own mass (prop class); shutters keep SHUTTER_MASS.
       const mass = dynamic
@@ -2294,7 +2327,7 @@ export const survivalArena = {
       const hull = 100000 + Math.round(lawRadius * 40);
       const pos = clearOfPilot(state, toy.pos, radius);
       const entity = helpers.spawnEntity({
-        type: 'station',
+        type: toy.entityType || 'station',
         id: solidId,
         pos,
         ...(plate ? { rot: plate.rot } : {}),
@@ -2325,6 +2358,8 @@ export const survivalArena = {
           roomToyId: toy.id,
           roomKind: toy.kind,
           roomDynamic: dynamic,
+          ...(toy.entityType === 'asteroid' ? { masslineTetherable: true, throwable: true, majorDebris: true } : {}),
+          ...(toy.packagedPropFile ? { packagedPropFile: toy.packagedPropFile, packagedPropSlot: 'place', packagedPropRadius: radius } : {}),
           ...(plate ? { foundryPlate: { referenceRadius: plate.referenceRadius,
             halfWidth: plate.halfWidth, halfDepth: plate.halfDepth, halfHeight: plate.halfHeight } } : {}),
           ...(toy.nocturne ? { nocturne: toy.nocturne } : {}),
