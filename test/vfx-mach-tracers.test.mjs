@@ -121,6 +121,27 @@ test('weapon light pool culls dim newcomers when full', () => {
   pool.dispose();
 });
 
+test('weapon muzzle light retains the resolved socket height', () => {
+  let height = 0;
+  const presenter = new WeaponVfxPresenter({ scene: new THREE.Scene(),
+    helpers: { socketWorldPose: () => ({ x: 5, y: height, z: 6, forwardX: 1, forwardY: 0, forwardZ: 0 }) } });
+  presenter.state = { playerId: 'pilot', entities: new Map(), settings: {}, render: { meshes: new Map() } };
+  try {
+    for (const y of [0, 2, -2, undefined, NaN]) {
+      height = y;
+      assert.equal(presenter.handleFire({ weaponId: 'wpn_autocannon_m', ownerId: 'pilot' }, { x: 5, z: 6 }, 0), true);
+      const slot = presenter.lights.slots.find(s => s.alive);
+      assert.equal(slot.light.position.y, Number.isFinite(y) ? y : 0.4);
+      presenter.lights.clear();
+    }
+    for (const y of [undefined, NaN]) {
+      const slot = presenter.lights.spawn({ y });
+      assert.equal(slot.light.position.y, 0.4);
+      presenter.lights.clear();
+    }
+  } finally { presenter.dispose(); }
+});
+
 test('presenter seats heavy hits with harder light and culls off-table skirmish light', () => {
   const fire = (weaponId, targetId, pos) => {
     const presenter = new WeaponVfxPresenter({ scene: new THREE.Scene() });

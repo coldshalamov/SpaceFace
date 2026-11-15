@@ -72,7 +72,7 @@ export class WeaponLightPool {
     slot.peak = Math.max(0, intensity || 2);
     slot.priority = want;
     if (slot.light._nocturneSource) slot.light._nocturneSource.importance = 1 + Math.max(0, want);
-    slot.light.position.set(x || 0, y || 0.4, z || 0);
+    slot.light.position.set(x || 0, Number.isFinite(y) ? y : 0.4, z || 0);
     slot.light.distance = Math.max(4, distance || 14);
     slot.light.decay = EVENT_LIGHT_DECAY;
     this._scratch.set(color || '#39d0ff');
