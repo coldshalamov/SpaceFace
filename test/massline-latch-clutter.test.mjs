@@ -853,7 +853,8 @@ function preciseCursorScoreFor(entity, aim) {
   const miss = Math.max(0, center - radius);
   const surface = Math.max(0, Math.min(1, 1 - miss / CURSOR_LATCH_GRACE));
   const centerPenalty = 0.35 * Math.max(0, Math.min(1, center / (radius + CURSOR_LATCH_GRACE)));
-  return Math.max(0, Math.min(1, surface * (1 - centerPenalty)));
+  const sizeFactor = 1 - 0.25 * Math.max(0, Math.min(1, radius / 150));   // THROW-01: mirrors the owner
+  return Math.max(0, Math.min(1, surface * (1 - centerPenalty) * sizeFactor));
 }
 
 test('a ship directly under the Massline cursor wins over an overlapping large asteroid', () => {

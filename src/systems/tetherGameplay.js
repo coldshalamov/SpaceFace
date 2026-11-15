@@ -3565,7 +3565,7 @@ function acquisitionCursorActive(state) {
   return pointer && pointer.active === true;
 }
 
-function preciseCursorScore(entity, aim) {
+export function preciseCursorScore(entity, aim) {
   if (!entity || !entity.pos || !aim) return 0;
   const centerDistance = Math.hypot(aim.x - entity.pos.x, aim.z - entity.pos.z);
   const radius = Math.max(0, finite(entity.radius));
@@ -3575,7 +3575,10 @@ function preciseCursorScore(entity, aim) {
   // Surface grace still helps acquire large bodies, but the closest center breaks overlap.
   const surfaceScore = clamp01(1 - surfaceMiss / CURSOR_LATCH_GRACE);
   const centerPenalty = 0.35 * clamp01(centerDistance / (radius + CURSOR_LATCH_GRACE));
-  return clamp01(surfaceScore * (1 - centerPenalty));
+  // THROW-01: a small body the cursor is on beats a huge one whose radius merely also covers the cursor
+  // (a hostile inside a station's reach). Size only orders overlapping bodies; it never lowers a lone pick.
+  const sizeFactor = 1 - 0.25 * clamp01(radius / 150);
+  return clamp01(surfaceScore * (1 - centerPenalty) * sizeFactor);
 }
 
 function masslineRouteTargetId(state) {
