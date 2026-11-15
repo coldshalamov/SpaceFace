@@ -43,3 +43,25 @@ test('a latched body takes reduced contact damage; free, it takes full damage', 
     assert.equal(isHeldOnPlayerLine(state, { id: 1, type: 'ship' }), false);
   } finally { Object.assign(MASSLINE2_FLAGS, saved); }
 });
+
+test('the whip recoil (second contact path) also spares the held body; free, the club pays in full', async () => {
+  const { masslineImpactDamage } = await import('../src/systems/masslineImpactDamage.js');
+  const saved = { ...MASSLINE2_FLAGS };
+  Object.assign(MASSLINE2_FLAGS, { enabled: true, throw: true, impactDamage: true });
+  try {
+    const target = { id: 2, type: 'ship', alive: true, team: 1, hull: 60, shield: 0, pos: { x: 0, z: 0 } };
+    const state = { playerId: 1, player: { tether: { active: true, targetId: 2 } } };
+    const hits = [];
+    const host = Object.create(masslineImpactDamage);
+    host.state = state;
+    host._entity = (id) => (id === 2 ? target : null);
+    host._routeKinetic = (mass, damage) => hits.push(damage);
+    const whip = { rating: 'crushing', targetId: 2, momentum: 100000 };
+    host._onWhipImpact(whip);
+    state.player.tether.active = false;
+    host._onWhipImpact(whip);
+    assert.equal(hits.length, 2);
+    assert.ok(hits[0] <= 60 * 0.2 + 1e-9, `held recoil ${hits[0]} must not finish a 60-hull body`);
+    assert.ok(hits[1] >= 60, `free recoil ${hits[1]} pays in full`);
+  } finally { Object.assign(MASSLINE2_FLAGS, saved); }
+});

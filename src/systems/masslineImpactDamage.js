@@ -27,6 +27,7 @@ import { massline2Flag } from '../data/featureFlags.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { isMasslineTumbling } from '../combat/tumbleStatus.js';
 import { isHostileToPlayer } from './scanner.js';
+import { HELD_BODY_CONTACT_DAMAGE_SCALE, HELD_BODY_MAX_SHARE_PER_HIT, isHeldOnPlayerLine } from './collisionConsequences.js';
 
 export const MOMENTUM_DAMAGE_SCALE = 1 / 100;   // momentum -> recoil damage on the thrown body
 export const WHIP_RECOIL_FRACTION = 0.65;       // thrown ship's share of the damage its impact dealt
@@ -75,7 +76,15 @@ export const masslineImpactDamage = {
     if (!mass || mass.alive === false || !DAMAGEABLE.has(mass.type)) return;
     if (mass.id === this.state.playerId) return; // invariant: never the player
     const momentum = Math.max(0, Number(payload.momentum) || 0);
-    const damage = Math.min(RECOIL_DAMAGE_MAX, momentum * MOMENTUM_DAMAGE_SCALE * WHIP_RECOIL_FRACTION);
+    let damage = Math.min(RECOIL_DAMAGE_MAX, momentum * MOMENTUM_DAMAGE_SCALE * WHIP_RECOIL_FRACTION);
+    // THROW-01: the body on your Line is your hammer. The whip recoil is the second contact path
+    // (collisionConsequences is the first) and was finishing light hulls on their first swing hit
+    // (credited to the player, line ended target_lost, no throw ever possible). While held, the
+    // recoil takes the same scale and per-hit share cap; the club still pays in full once released.
+    if (isHeldOnPlayerLine(this.state, mass)) {
+      const left = Math.max(0, (Number(mass.hull) || 0) + (Number(mass.shield) || 0));
+      damage = Math.min(damage * HELD_BODY_CONTACT_DAMAGE_SCALE, left * HELD_BODY_MAX_SHARE_PER_HIT);
+    }
     if (damage <= 0) return;
     this._routeKinetic(mass, damage, 'massline_whip_recoil');
   },
