@@ -9,6 +9,7 @@ import { starterRamSentence } from '../../data/starterJobs.js';
 import { unsatisfiedRequiredConditions } from '../../data/contractClauses.js';
 import { CONTRACT_47A_B0_BODY } from '../../data/narrative.js';
 import { isWeighingOperation, weighingEvidence } from '../../missions/weighingWorksite.js';
+import { isReportInRestitution } from '../../missions/restitutionReadout.js';
 
 // Build a station lookup from the static SECTORS graph.
 export const STATION_INFO = new Map();
@@ -80,14 +81,14 @@ export function registryContactReadout(m) {
     return {
       objective: 'Registry identified — choose custody or force',
       where,
-      next: 'Civilian maintenance vessel. For custody, tether Elroy and reel to 60 WU or less; or destroy the vessel to resolve by force.',
+      next: 'Civilian maintenance vessel. For custody, tether the living vessel, close within 60 WU and reel the Line to 60 WU or less. A short spool alone is not custody. Or destroy the vessel to resolve by force.',
     };
   }
   if (p.investigationStage != null) return null;
   return {
     objective: 'Identify the marked vessel — scan before choosing a response',
     where,
-    next: 'Find the marked vessel off Ashfall in Charon Expanse. Select it, move within 1,200 WU, and pulse scan to identify it before choosing a response.',
+    next: 'Find the marked vessel off Ashfall in Charon Expanse. Select it, move within 1,200 u, and pulse scan to identify it before choosing a response.',
   };
 }
 
@@ -144,6 +145,7 @@ export function objectiveText(m) {
   // W-TENDER fail-forward spot row: the same errand the nav marker names (missionNavReason).
   // The dock truth: berthing completes the row — the rail-market sale is unverified income.
   if (p.tenderSpotForMissionId) return `Spot carriage: dock at ${dest} to complete — the rail market buys what your hold still carries`;
+  if (isReportInRestitution(m)) return `Report in at ${dest} — no cargo required`;
   switch (m.type) {
     case 'cargo_delivery': {
       const serviceClass = `${m.originChoiceId || ''} ${m.title || ''} ${m.mapLabel || ''}`.toLowerCase();

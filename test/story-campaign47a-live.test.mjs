@@ -13,6 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { isSlateCore, slateCoreLayout } from '../src/missions/slateCoreWorksite.js';
+import { getCombatKernel } from '../src/combat/kernel.js';
 import { hasMawReceiving, mawReceivingLayout } from '../src/missions/mawWorksite.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
@@ -402,11 +403,33 @@ function playBookBeat2(h, outcome = 'force') {
   h.missions.spawnTargetsForSector(elroy.destSectorId);
   h.missions._ensureMissionTargets(elroy);
   const targetId = elroy.targetEntityIds[0];
-  state.entities.get(targetId).pos = { x: 5, z: 0 };
+  const target = state.entities.get(targetId), player = state.entities.get(state.playerId);
+  target.pos = { x: player.pos.x + 50, z: player.pos.z };
+  // This adapter fixture does not run the entity pool or native physics. Supply its live
+  // occupants and constraint port explicitly; mission spawning already owns target identity.
+  player.alive = true;
+  player.type = 'ship';
+  player.occupantGeneration ??= 1;
+  target.occupantGeneration ??= targetId;
+  state.ui.docked = false;
   bus.emit('scan:completed', { targetId });
   if (outcome === 'custody') {
-    bus.emit('tether:reel', { actorId: state.playerId, targetId, after: 50 });
+    const kernel = getCombatKernel({ state, bus, helpers: {
+      combatPhysics: {
+        createAttachment: () => ({ id: 'campaign-registry-constraint' }),
+        setAttachmentReel: ({ restLength }) => ({ restLength }),
+        cutAttachment: () => true,
+      },
+    } });
+    const created = kernel.attachments.create({ defId: 'tether_standard', ownerId: state.playerId, targetId });
+    assert.equal(created.ok, true, 'custody requires an actual attachment record');
+    state.player.tether = { active: true, targetId, attachmentId: created.attachment.id };
+    assert.equal(kernel.attachments.reel(created.attachment.id, -1).ok, true);
+    assert.equal(elroy.params.investigationOutcome, 'custody', 'the existing mission owner settles the real reel');
+    kernel.attachments.cut(created.attachment.id, state.playerId);
+    state.player.tether.active = false;
   } else {
+    target.alive = false; // the combat producer marks its victim dead before this event
     bus.emit('entity:killed', { id: targetId, killerId: state.playerId });
   }
 }
