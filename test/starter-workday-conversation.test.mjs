@@ -94,7 +94,7 @@ test('the real canonical Kessler choice preserves ordinary questions and the exi
   assert.ok(wireStart >= 0 && wireEnd > wireStart);
   const compose = Function(
     'contacts', 'canonicalContactsForStation', 'kesslerWeightSlipChoice',
-    'kesslerStarterWorkChoice', 'kesslerFreightChoice', 'kesslerCeresShiftChoice', 'getChoices', 'state', 'stationId',
+    'kesslerStarterWorkChoice', 'kesslerFreightChoice', 'kesslerCeresShiftChoice', 'ceresReturnChoices', 'getChoices', 'state', 'stationId',
     bar.slice(wireStart, wireEnd) + '; return contacts;',
   );
   const job = STARTER_JOBS[0];
@@ -103,7 +103,7 @@ test('the real canonical Kessler choice preserves ordinary questions and the exi
   const slip = { id: 'weight-slip', label: 'Read my weight slip.' };
   const contacts = compose([{ id: 'generated' }], (id) => id === STATION
     ? [{ id: 'contact_station_helios_kessler', canonicalKey: 'kessler', role: 'merchant' }]
-    : [], () => slip, kesslerStarterWorkChoice, kesslerFreightChoice, kesslerCeresShiftChoice, getChoices, state, STATION);
+    : [], () => slip, kesslerStarterWorkChoice, kesslerFreightChoice, kesslerCeresShiftChoice, () => [], getChoices, state, STATION);
   const kessler = contacts.find((contact) => contact.canonicalKey === 'kessler');
   assert.deepEqual(kessler.choices.map((choice) => choice.id), [
     'routes', 'market', 'weight-slip', CHOICE, 'ceres_second_measure_shift', 'dismiss',
@@ -113,7 +113,7 @@ test('the real canonical Kessler choice preserves ordinary questions and the exi
   const away = { ...state, ui: { docked: false, dockedStationId: STATION } };
   const awayContacts = compose([{ id: 'generated' }], (id) => id === STATION
     ? [{ id: 'contact_station_helios_kessler', canonicalKey: 'kessler', role: 'merchant' }]
-    : [], () => null, kesslerStarterWorkChoice, kesslerFreightChoice, kesslerCeresShiftChoice, getChoices, away, STATION);
+    : [], () => null, kesslerStarterWorkChoice, kesslerFreightChoice, kesslerCeresShiftChoice, () => [], getChoices, away, STATION);
   const awayKessler = awayContacts.find((contact) => contact.canonicalKey === 'kessler');
   assert.equal((awayKessler.choices || []).some((choice) => choice.id === CHOICE), false);
 });

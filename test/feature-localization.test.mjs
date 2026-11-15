@@ -30,7 +30,8 @@ test('feature copy and assembled templates reach the existing source-text lookup
     'src/features/cinderglassJob/contact.js', 'src/features/cinderglassJob/readModel.js',
     'src/features/rigWorkshop/presentation.js',
   ];
-  const current = new Set(['src/features/counterweightCircuit/definition.js',
+  const current = new Set(['src/features/breakwaterSpur/readModel.js',
+    'src/features/counterweightCircuit/definition.js',
     'src/features/counterweightCircuit/readModel.js', 'src/features/cinderglassJob/definition.js']);
   const entries = paths.flatMap(path => inventoryText({ path, config,
     source: current.has(path) ? readFileSync(path, 'utf8')

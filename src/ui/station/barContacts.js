@@ -590,14 +590,14 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   stampChoirReliefMemory(listed, stationId, state);
   stampDeedOpener(listed, stationId, state, info, opts && opts.deedSession);
   stampAceRouteRumor(listed, stationId, state);
-  stampLastShiftLocalReport(listed, stationId, state);
-  stampFurnaceDetailChoices(listed, stationId, state);
-  stampCollectiveHours(listed, stationId, state);
-  stampQuinnsStool(listed, stationId, state);
   for (const contact of listed) {
     const arrival = ceresArrivalChoices(state, stationId, contact);
     if (arrival.length) contact.choices = [...getChoices(contact.role, contact), ...arrival];
   }
+  stampLastShiftLocalReport(listed, stationId, state);
+  stampFurnaceDetailChoices(listed, stationId, state);
+  stampCollectiveHours(listed, stationId, state);
+  stampQuinnsStool(listed, stationId, state);
   // The wake silences this room's ambient patrons, not its mission and service contacts.
   const erisSilentUntil = Number(state?.story?.flags?.eris_choir_bar_silent_until);
   if (stationId === 'station_eris_margin' && Number.isFinite(erisSilentUntil)
