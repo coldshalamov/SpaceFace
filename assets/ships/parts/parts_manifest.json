@@ -5512,7 +5512,7 @@
       "file": "places/place_station_trade_hub.glb",
       "tris": 133207,
       "budgetClass": "landmark",
-      "bytes": 10637036,
+      "bytes": 10637040,
       "textureSize": 1024,
       "note": "HELIOS-GOLDEN-PRODUCTION-V1 2026-07-19 — engineered STATION-GOLDEN-02 body; functional armor, hull, machinery, service, docking, radiator, window and marking roles; outward-face material lift; supported service-truss bays; 30 KTX2 PBR textures; deterministic Blender production scripts and promotion receipt. Runtime gameplay capture remains the final visual acceptance gate. | PRO Full Finish 2026-07-06 — Meridian gold trade hub foundation. | M4-HELIOS-HUB-ENV promoted 2026-07-11 through 2026-07-12.",
       "factionAccentVariants": {

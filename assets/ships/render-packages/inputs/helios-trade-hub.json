@@ -1,0 +1,765 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": true,
+    "externalizeKtx2Hashes": [
+      "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
+      "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
+      "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
+      "81942b1db56160ed6ba4d271582c658199748a9598a4666c6a20aab8c4ed4161",
+      "b6d2cc065eab33f76847a512a70331fc803650cb76170154a4233a9ad93ae38a",
+      "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3"
+    ],
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "place_station_trade_hub",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": true
+  },
+  "pilot": {
+    "assetId": "sf.render.helios-trade-hub",
+    "dynamicNameIncludes": [],
+    "key": "helios-trade-hub",
+    "kind": "place",
+    "metadataUrl": "assets/ships/release/render-packages/helios-trade-hub/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/helios-trade-hub",
+    "releaseAssetId": "place_station_trade_hub",
+    "releaseBytes": 2901132,
+    "releaseSha256": "b83d003e5168edcef8ff2fa69fc2050ca1673ae767da3f3caf2b3d1c87a02c1e",
+    "runtimeAssetId": "SF_PLACE_STATION_TRADE_HUB",
+    "sceneRoot": true,
+    "sharedKtx2Hashes": [
+      "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
+      "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
+      "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
+      "81942b1db56160ed6ba4d271582c658199748a9598a4666c6a20aab8c4ed4161",
+      "b6d2cc065eab33f76847a512a70331fc803650cb76170154a4233a9ad93ae38a",
+      "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3"
+    ],
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/places/place_station_trade_hub.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 47,
+    "id": "place_station_trade_hub",
+    "kind": "part:places",
+    "ktx2Textures": 6,
+    "meshoptBufferViews": 170,
+    "release": "assets/ships/release/parts/places/place_station_trade_hub.glb",
+    "releaseBytes": 2901132,
+    "releaseSha256": "b83d003e5168edcef8ff2fa69fc2050ca1673ae767da3f3caf2b3d1c87a02c1e",
+    "source": "assets/ships/parts/places/place_station_trade_hub.glb",
+    "sourceBytes": 10637040,
+    "sourceSha256": "91ab324624930acaf90d5507e32fda20b04ba437f63c1a514160f3e25bb49e31",
+    "textureProfiles": {
+      "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+      "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data",
+      "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear"
+    },
+    "textures": 6
+  },
+  "runtime": {
+    "assetId": "SF_PLACE_STATION_TRADE_HUB",
+    "motionBank": null,
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/places/place_station_trade_hub.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [
+      {
+        "id": "sf.render.helios-trade-hub.anchor.socket-camera-focus",
+        "kind": "socket",
+        "node": "SOCKET_Camera_Focus",
+        "parentNodeId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root"
+      },
+      {
+        "id": "sf.render.helios-trade-hub.anchor.socket-dock-approach",
+        "kind": "socket",
+        "node": "SOCKET_Dock_Approach",
+        "parentNodeId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root"
+      },
+      {
+        "id": "sf.render.helios-trade-hub.anchor.socket-structure-core",
+        "kind": "socket",
+        "node": "SOCKET_Structure_Core",
+        "parentNodeId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root"
+      }
+    ],
+    "assetId": "sf.render.helios-trade-hub",
+    "collisions": [
+      {
+        "id": "sf.render.helios-trade-hub.collision",
+        "nodeId": "sf.render.helios-trade-hub.node.collision-hull",
+        "reference": "COLLISION_HULL"
+      }
+    ],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "place",
+    "lods": [],
+    "mergeGroups": [
+      {
+        "id": "sf.render.helios-trade-hub.flight-static-lane.1",
+        "nodeIds": [
+          "sf.render.helios-trade-hub.node.lod0-armor",
+          "sf.render.helios-trade-hub.node.lod0-beacon-amber",
+          "sf.render.helios-trade-hub.node.lod0-hook-nav-port",
+          "sf.render.helios-trade-hub.node.lod0-hook-nav-starboard",
+          "sf.render.helios-trade-hub.node.lod0-hull",
+          "sf.render.helios-trade-hub.node.lod0-hull-apron",
+          "sf.render.helios-trade-hub.node.lod0-hull-graphite",
+          "sf.render.helios-trade-hub.node.lod0-hull-hall",
+          "sf.render.helios-trade-hub.node.lod0-hull-primer",
+          "sf.render.helios-trade-hub.node.lod0-lights-cyan",
+          "sf.render.helios-trade-hub.node.lod0-lights-warm",
+          "sf.render.helios-trade-hub.node.lod0-mechanical",
+          "sf.render.helios-trade-hub.node.lod0-mechanicaldark",
+          "sf.render.helios-trade-hub.node.lod0-warning"
+        ]
+      },
+      {
+        "id": "sf.render.helios-trade-hub.flight-static-lane.2",
+        "nodeIds": [
+          "sf.render.helios-trade-hub.node.lod1-armor",
+          "sf.render.helios-trade-hub.node.lod1-beacon-amber",
+          "sf.render.helios-trade-hub.node.lod1-hook-nav-port",
+          "sf.render.helios-trade-hub.node.lod1-hook-nav-starboard",
+          "sf.render.helios-trade-hub.node.lod1-hull",
+          "sf.render.helios-trade-hub.node.lod1-hull-apron",
+          "sf.render.helios-trade-hub.node.lod1-hull-graphite",
+          "sf.render.helios-trade-hub.node.lod1-hull-hall",
+          "sf.render.helios-trade-hub.node.lod1-hull-primer",
+          "sf.render.helios-trade-hub.node.lod1-lights-cyan",
+          "sf.render.helios-trade-hub.node.lod1-lights-warm",
+          "sf.render.helios-trade-hub.node.lod1-mechanical",
+          "sf.render.helios-trade-hub.node.lod1-mechanicaldark",
+          "sf.render.helios-trade-hub.node.lod1-warning"
+        ]
+      },
+      {
+        "id": "sf.render.helios-trade-hub.flight-static-lane.3",
+        "nodeIds": [
+          "sf.render.helios-trade-hub.node.lod2-armor",
+          "sf.render.helios-trade-hub.node.lod2-hook-nav-port",
+          "sf.render.helios-trade-hub.node.lod2-hook-nav-starboard",
+          "sf.render.helios-trade-hub.node.lod2-hull",
+          "sf.render.helios-trade-hub.node.lod2-hull-apron",
+          "sf.render.helios-trade-hub.node.lod2-hull-graphite",
+          "sf.render.helios-trade-hub.node.lod2-hull-hall",
+          "sf.render.helios-trade-hub.node.lod2-hull-primer",
+          "sf.render.helios-trade-hub.node.lod2-lights-cyan",
+          "sf.render.helios-trade-hub.node.lod2-lights-warm",
+          "sf.render.helios-trade-hub.node.lod2-mechanical",
+          "sf.render.helios-trade-hub.node.lod2-mechanicaldark",
+          "sf.render.helios-trade-hub.node.lod2-warning"
+        ]
+      }
+    ],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.collision-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:non-render",
+        "node": "COLLISION_HULL",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "non-render",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod0-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod0",
+        "node": "LOD0_Armor",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod0",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod0-beacon-amber",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod0",
+        "node": "LOD0_Beacon_Amber",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod0",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod0-canopy",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:blend:lod0",
+        "node": "LOD0_CANOPY",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:blend:lod0",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "blend"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod0-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod0",
+        "node": "LOD0_HOOK_NAV_PORT",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod0",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod0-hook-nav-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod0",
+        "node": "LOD0_HOOK_NAV_STARBOARD",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod0",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod0-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod0",
+        "node": "LOD0_Hull",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod0",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod0-hull-apron",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod0",
+        "node": "LOD0_Hull_apron",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod0",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod0-hull-graphite",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod0",
+        "node": "LOD0_Hull_graphite",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod0",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod0-hull-hall",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod0",
+        "node": "LOD0_Hull_hall",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod0",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod0-hull-primer",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod0",
+        "node": "LOD0_Hull_primer",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod0",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod0-lights-cyan",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod0",
+        "node": "LOD0_Lights_Cyan",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod0",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod0-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod0",
+        "node": "LOD0_Lights_Warm",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod0",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod0-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod0",
+        "node": "LOD0_Mechanical",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod0",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod0-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod0",
+        "node": "LOD0_MechanicalDark",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod0",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod0-warning",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod0",
+        "node": "LOD0_Warning",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod0",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod1-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod1",
+        "node": "LOD1_Armor",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod1",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod1-beacon-amber",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod1",
+        "node": "LOD1_Beacon_Amber",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod1",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod1-canopy",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:blend:lod1",
+        "node": "LOD1_CANOPY",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:blend:lod1",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "blend"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod1-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod1",
+        "node": "LOD1_HOOK_NAV_PORT",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod1",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod1-hook-nav-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod1",
+        "node": "LOD1_HOOK_NAV_STARBOARD",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod1",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod1-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod1",
+        "node": "LOD1_Hull",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod1",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod1-hull-apron",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod1",
+        "node": "LOD1_Hull_apron",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod1",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod1-hull-graphite",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod1",
+        "node": "LOD1_Hull_graphite",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod1",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod1-hull-hall",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod1",
+        "node": "LOD1_Hull_hall",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod1",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod1-hull-primer",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod1",
+        "node": "LOD1_Hull_primer",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod1",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod1-lights-cyan",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod1",
+        "node": "LOD1_Lights_Cyan",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod1",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod1-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod1",
+        "node": "LOD1_Lights_Warm",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod1",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod1-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod1",
+        "node": "LOD1_Mechanical",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod1",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod1-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod1",
+        "node": "LOD1_MechanicalDark",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod1",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod1-warning",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod1",
+        "node": "LOD1_Warning",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod1",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod2-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod2",
+        "node": "LOD2_Armor",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod2",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod2-canopy",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:blend:lod2",
+        "node": "LOD2_CANOPY",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:blend:lod2",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "blend"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod2-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod2",
+        "node": "LOD2_HOOK_NAV_PORT",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod2",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod2-hook-nav-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod2",
+        "node": "LOD2_HOOK_NAV_STARBOARD",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod2",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod2-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod2",
+        "node": "LOD2_Hull",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod2",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod2-hull-apron",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod2",
+        "node": "LOD2_Hull_apron",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod2",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod2-hull-graphite",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod2",
+        "node": "LOD2_Hull_graphite",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod2",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod2-hull-hall",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod2",
+        "node": "LOD2_Hull_hall",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod2",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod2-hull-primer",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod2",
+        "node": "LOD2_Hull_primer",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod2",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod2-lights-cyan",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod2",
+        "node": "LOD2_Lights_Cyan",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod2",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod2-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod2",
+        "node": "LOD2_Lights_Warm",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod2",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod2-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod2",
+        "node": "LOD2_Mechanical",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod2",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod2-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod2",
+        "node": "LOD2_MechanicalDark",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod2",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.lod2-warning",
+        "independentlyCulled": false,
+        "mergeBoundary": "flight-static:opaque:lod2",
+        "node": "LOD2_Warning",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "flight-static:opaque:lod2",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "independentlyCulled": false,
+        "mergeBoundary": "SF_PLACE_STATION_TRADE_HUB_ROOT",
+        "node": "SF_PLACE_STATION_TRADE_HUB_ROOT",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.socket-camera-focus",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Camera_Focus",
+        "node": "SOCKET_Camera_Focus",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.socket-dock-approach",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Dock_Approach",
+        "node": "SOCKET_Dock_Approach",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.helios-trade-hub.node.socket-structure-core",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Structure_Core",
+        "node": "SOCKET_Structure_Core",
+        "parentId": "sf.render.helios-trade-hub.node.sf-place-station-trade-hub-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.helios-trade-hub.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 2901132,
+    "sha256": "b83d003e5168edcef8ff2fa69fc2050ca1673ae767da3f3caf2b3d1c87a02c1e",
+    "uri": "assets/ships/release/parts/places/place_station_trade_hub.glb"
+  }
+}

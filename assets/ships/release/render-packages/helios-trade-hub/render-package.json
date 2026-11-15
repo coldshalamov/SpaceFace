@@ -151,7 +151,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "15d53ab62025c2983bab91fdb1e72c7695748410ce8263e79b3dac7b930b59c8",
+  "contentHash": "cb392532c015558cc9de3d4c9b183f4e575675466c22520109f51d65b5974b0e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -4023,13 +4023,13 @@
     },
     "sourceGlb": {
       "bytes": 2901132,
-      "sha256": "cf59eaab5914ce68c5089c0f09d5071204de11b1da0a271d53cfd65dbea614a5",
+      "sha256": "b83d003e5168edcef8ff2fa69fc2050ca1673ae767da3f3caf2b3d1c87a02c1e",
       "uri": "place_station_trade_hub.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 32265,
+      "sha256": "08ccba3ae583b13957c5659975d2d75655a95adbb9a9eed055885a1f75aa381d",
+      "uri": "assets/ships/render-packages/inputs/helios-trade-hub.json"
     }
   },
   "render": {
@@ -4072,7 +4072,7 @@
         "uri": "../_shared/images/d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3.ktx2"
       }
     ],
-    "sha256": "154187f438a9922fa38b7488ac52eb2e8107fe35592f6721c9563e99ad2a5e5c",
+    "sha256": "c86405b24975dc2a887d57ce9f2dc8ac3105a7440e6b8da105b620f6740cb8ca",
     "uri": "render.glb"
   },
   "runtime": {
@@ -5865,7 +5865,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_trade_hub.glb"
   },
-  "runtimeHash": "6ea40b8f351d56e8955a35b9ff4281f7950926ea9b92abfeb33aa5fcfb091956",
+  "runtimeHash": "510c992f1c6dc4d79aa1a0e66f238305ba84e7fc33269196358efff600f05daf",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

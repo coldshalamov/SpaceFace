@@ -2847,7 +2847,7 @@
       "slot": "place",
       "releaseAssetId": "place_station_trade_hub",
       "sourceUrl": "assets/ships/release/parts/places/place_station_trade_hub.glb",
-      "releaseSha256": "cf59eaab5914ce68c5089c0f09d5071204de11b1da0a271d53cfd65dbea614a5",
+      "releaseSha256": "b83d003e5168edcef8ff2fa69fc2050ca1673ae767da3f3caf2b3d1c87a02c1e",
       "releaseBytes": 2901132,
       "sceneRoot": true,
       "dynamicNameIncludes": [],

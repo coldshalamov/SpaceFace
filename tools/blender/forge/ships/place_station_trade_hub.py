@@ -912,6 +912,8 @@ def build():
     build_terminal_details(s)
     build_mooring_details(s)
     s.detail = 0
+    # Keep the market windows warm without overwhelming the structural wheel.
+    s._mats['glow_warm'].node_tree.nodes.get('Principled BSDF').inputs['Emission Strength'].default_value *= 0.35
     return s
 
 

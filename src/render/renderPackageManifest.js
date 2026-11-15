@@ -1556,14 +1556,14 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.helios-trade-hub",
-    "expectedContentHash": "15d53ab62025c2983bab91fdb1e72c7695748410ce8263e79b3dac7b930b59c8",
-    "expectedRuntimeHash": "6ea40b8f351d56e8955a35b9ff4281f7950926ea9b92abfeb33aa5fcfb091956",
+    "expectedContentHash": "cb392532c015558cc9de3d4c9b183f4e575675466c22520109f51d65b5974b0e",
+    "expectedRuntimeHash": "510c992f1c6dc4d79aa1a0e66f238305ba84e7fc33269196358efff600f05daf",
     "flightStaticV3": true,
     "key": "helios-trade-hub",
     "metadataUrl": "assets/ships/release/render-packages/helios-trade-hub/render-package.json",
     "runtimeAssetId": "SF_PLACE_STATION_TRADE_HUB",
     "slot": "place",
-    "sourceSha256": "cf59eaab5914ce68c5089c0f09d5071204de11b1da0a271d53cfd65dbea614a5",
+    "sourceSha256": "b83d003e5168edcef8ff2fa69fc2050ca1673ae767da3f3caf2b3d1c87a02c1e",
     "sourceUrl": "assets/ships/release/parts/places/place_station_trade_hub.glb"
   },
   {
