@@ -5,6 +5,7 @@
 // outside is not.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import * as THREE from 'three';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
@@ -26,6 +27,7 @@ import {
 import {
   circleHitRadius, corridorHalfWidth, dashReach, telegraphUrgency,
 } from '../src/combat/telegraphFootprint.js';
+import { vfx } from '../src/render/vfx.js';
 
 const DT = 1 / 60;
 
@@ -147,4 +149,40 @@ test('the presentation mounts the lane footprint beside the hairline and dispose
   assert.ok(pres.lanes && pres.lines && pres.lanes.name === 'sf-swarm-brood-lanes');
   pres.dispose();
   assert.ok(calls.some((c) => c[0] === 'remove' && c[1] === 'sf-swarm-brood-lanes'));
+});
+
+test('live charger telegraph and shield link join their true endpoints on either Z slope', () => {
+  const endpoints = (mesh) => {
+    const m = new THREE.Matrix4(); mesh.getMatrixAt(0, m);
+    return [-0.5, 0.5].map(x => new THREE.Vector3(x, 0, 0).applyMatrix4(m));
+  };
+  const closePoint = (actual, x, z) => {
+    assert.ok(Math.hypot(actual.x - x, actual.z - z) < 1e-3,
+      `got (${actual.x}, ${actual.z}), expected (${x}, ${z})`);
+  };
+  for (const z of [60, -60]) {
+    const h = boot({ wave: 7 });
+    const i = isolate(h.engine, 'charger');
+    assert.ok(i >= 0);
+    h.engine._bodies.px[i] = 120; h.engine._bodies.pz[i] = z;
+    h.state.simTime += DT; h.engine.step(h.state);
+    assert.equal(h.engine.view.phase[i], BROOD_PHASE_WINDUP);
+    const view = h.engine.view;
+    const x0 = view.px[i], z0 = view.pz[i], x1 = view.teleX[i], z1 = view.teleZ[i];
+    view.links.push({ x1: 20, z1: -z, x2: 80, z2: z });
+    h.state.swarmBrood = view;
+    const scene = new THREE.Scene(), pres = createBroodPresentation(scene, 400);
+    const owner = Object.create(vfx); owner.state = h.state; owner._broodPresentation = pres;
+    try {
+      assert.equal(owner._updateBroodPresentation(DT), true);
+      for (const mesh of [pres.lines, pres.lanes, pres.mlinks]) assert.equal(mesh.parent, scene);
+      assert.equal(pres.lines.count, 1); assert.equal(pres.lanes.count, 1); assert.equal(pres.mlinks.count, 1);
+      const line = endpoints(pres.lines); closePoint(line[0], x0, z0); closePoint(line[1], x1, z1);
+      const lane = endpoints(pres.lanes), len = Math.hypot(x1 - x0, z1 - z0);
+      const reach = chargerLane(view, SWARM_BROOD_FAMILIES.find(f => f.id === 'charger').radius).reach;
+      closePoint(lane[0], x0, z0);
+      closePoint(lane[1], x0 + (x1 - x0) / len * reach, z0 + (z1 - z0) / len * reach);
+      const link = endpoints(pres.mlinks); closePoint(link[0], 20, -z); closePoint(link[1], 80, z);
+    } finally { pres.dispose(); }
+  }
 });

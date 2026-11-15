@@ -472,7 +472,7 @@ export function createBroodPresentation(scene, capacity = 400) {
           const dz = teleZ[i] - pz[i];
           const len = Math.sqrt(dx * dx + dz * dz);
           if (len > 1) {
-            quat.setFromAxisAngle(axis, Math.atan2(dz, dx));
+            quat.setFromAxisAngle(axis, -Math.atan2(dz, dx));
             pos.set(px[i] + dx * 0.5, 0.4, pz[i] + dz * 0.5);
             scl.set(len, 1, 1);
             matrix.compose(pos, quat, scl);
@@ -480,7 +480,7 @@ export function createBroodPresentation(scene, capacity = 400) {
             // The footprint: the lane from the charger along the committed bearing, as wide and as
             // long as the dash's damage query (a lane half-width of both radii touching).
             const lane = chargerLane(view, drawn.radius);
-            quat.setFromAxisAngle(axis, Math.atan2(dz, dx));
+            quat.setFromAxisAngle(axis, -Math.atan2(dz, dx));
             pos.set(px[i] + (dx / len) * lane.reach * 0.5, 0.3, pz[i] + (dz / len) * lane.reach * 0.5);
             scl.set(lane.reach, 1, (lane.halfWidth * 2) / 0.14);
             matrix.compose(pos, quat, scl);
@@ -569,7 +569,7 @@ export function createBroodPresentation(scene, capacity = 400) {
         const dz = link.z2 - link.z1;
         const len = Math.sqrt(dx * dx + dz * dz);
         if (!(len > 1)) continue;
-        quat.setFromAxisAngle(axis, Math.atan2(dz, dx));
+        quat.setFromAxisAngle(axis, -Math.atan2(dz, dx));
         pos.set(link.x1 + dx * 0.5, 0.5, link.z1 + dz * 0.5);
         scl.set(len, 1, 0.8);
         matrix.compose(pos, quat, scl);
