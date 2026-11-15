@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import * as THREE from 'three';
 import { createShipMicroMotionTracker } from '../src/render/shipMicroMotion.js';
 import { createProjectileMotionTracker } from '../src/render/projectileMotionPresentation.js';
+import { createSnapshotFence, applySnapshotPoseToMesh } from '../src/render/snapshotFence.js';
 
 function createMockWeaponProp(isTurret = false) {
   const barrel = {
@@ -181,4 +183,34 @@ test('projectile motion: guided missile attitude oscillation and torpedo warhead
   // 3. Corkscrew smoke offset
   const cork = tracker.calculateCorkscrewOffset(77, 1.2, 1, 0, 0.5);
   assert.ok(Number.isFinite(cork.z), 'corkscrew smoke offset calculated');
+});
+
+test('missile wobble stays bounded across repeated snapshot poses and respects a new base', () => {
+  const tracker = createProjectileMotionTracker();
+  const fence = createSnapshotFence({ capacity: 2 });
+  const snap = fence.beginPack(1, 1);
+  snap.write(77, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0);
+  fence.commit();
+  const mesh = new THREE.Group();
+  mesh.rotation.x = 0.2; mesh.rotation.z = -0.3;
+  const entity = { id: 77, data: { kind: 'missile' } };
+  const apply = (reducedMotion = false) => {
+    assert.equal(applySnapshotPoseToMesh(mesh, fence.latestSnapshot(), 77, { x: 0, z: 0 }), true);
+    tracker.updateProjectileMotion(entity, mesh, 1, 1 / 60, { reducedMotion });
+  };
+  apply();
+  const pitch = mesh.rotation.x, roll = mesh.rotation.z;
+  for (let i = 0; i < 20; i++) apply();
+  assert.equal(mesh.rotation.x, pitch);
+  assert.equal(mesh.rotation.z, roll);
+  apply(true);
+  assert.equal(mesh.rotation.x, 0.2);
+  assert.equal(mesh.rotation.z, -0.3);
+  mesh.rotation.x = -0.4; mesh.rotation.z = 0.5;
+  apply();
+  assert.ok(Math.abs(mesh.rotation.x - (-0.4 + pitch - 0.2)) < 1e-12);
+  assert.ok(Math.abs(mesh.rotation.z - (0.5 + roll + 0.3)) < 1e-12);
+  apply(true);
+  assert.equal(mesh.rotation.x, -0.4);
+  assert.equal(mesh.rotation.z, 0.5);
 });

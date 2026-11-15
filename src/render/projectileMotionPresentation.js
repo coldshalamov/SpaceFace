@@ -42,16 +42,33 @@ export function createProjectileMotionTracker() {
     }
     const age = Math.max(0, simTime - bornAt);
 
-    // 1. Guided missile attitude hunting (RCS pulse oscillation)
+    // 1. Guided missile attitude hunting (RCS pulse oscillation). The snapshot pose writer
+    // updates root yaw only, so apply pitch/roll from the authored base rather than adding a
+    // new offset to the previous frame's offset.
+    const motionData = mesh.userData || (mesh.userData = {});
+    if (!Number.isFinite(motionData.projBasePitch)) {
+      motionData.projBasePitch = mesh.rotation.x;
+      motionData.projBaseRoll = mesh.rotation.z;
+    } else {
+      // Respect a later owner that explicitly changes either component (including a recycled
+      // mesh reset) instead of mistaking the last applied wobble for the new authored base.
+      if (mesh.rotation.x !== motionData.projLastPitch) motionData.projBasePitch = mesh.rotation.x;
+      if (mesh.rotation.z !== motionData.projLastRoll) motionData.projBaseRoll = mesh.rotation.z;
+    }
     if (!reducedMotion) {
       const wobbleFreq = 26.0;
       const phase = (entIdNum * 13.37) + simTime * wobbleFreq;
       // High-frequency attitude micro-oscillation in roll/pitch
       const wobbleRoll = Math.sin(phase) * 0.14;
       const wobblePitch = Math.cos(phase * 0.85) * 0.08;
-      mesh.rotation.z += wobbleRoll;
-      mesh.rotation.x += wobblePitch;
+      mesh.rotation.z = motionData.projBaseRoll + wobbleRoll;
+      mesh.rotation.x = motionData.projBasePitch + wobblePitch;
+    } else {
+      mesh.rotation.x = motionData.projBasePitch;
+      mesh.rotation.z = motionData.projBaseRoll;
     }
+    motionData.projLastPitch = mesh.rotation.x;
+    motionData.projLastRoll = mesh.rotation.z;
 
     // 2. Torpedo warhead arming heartbeat strobe
     if (isTorpedo) {
