@@ -16,10 +16,13 @@ import {
 
 const SCARS = 24;
 const RING = 28;
+const WELLS = 4;
 const HANDOFF = 3;
 const CUTS = 4;
-const SHAPES = 24;
-const SEGMENTS = SCARS + RING + HANDOFF + CUTS + SHAPES;
+// Before reserving all four rings, silhouettes could occupy every slot in the original buffer.
+// Preserve that effective limit independently of the other categories.
+const SHAPES = 83;
+const SEGMENTS = SCARS + RING * WELLS + HANDOFF + CUTS + SHAPES;
 
 export class CauseMarkLayer {
   constructor(scene, toLocal) {
@@ -90,7 +93,7 @@ export class CauseMarkLayer {
       return false;
     }
     const segments = [];
-    for (let i = 0; i < mark.segments.length; i++) {
+    for (let i = 0; i < mark.segments.length && segments.length < SHAPES; i++) {
       const src = mark.segments[i];
       const ax = Number(src && src.ax);
       const az = Number(src && src.az);
@@ -114,7 +117,7 @@ export class CauseMarkLayer {
         return true;
       }
     }
-    if (this.wells.length >= 4) this.wells.shift();
+    if (this.wells.length >= WELLS) this.wells.shift();
     this.wells.push({
       id: well.id,
       radius: edge.radius,
@@ -204,6 +207,7 @@ export class CauseMarkLayer {
       cursor = this._seg(cursor, cut.ax, cut.az, cut.bx, cut.bz, 0.72 * gain, 0.9 * gain, gain);
     }
     const shapeGain = reduced ? 0.55 : 0.92;
+    let shapeSegments = 0;
     for (let i = this.shapes.length - 1; i >= 0; i--) {
       const shape = this.shapes[i];
       if (now > shape.until) {
@@ -211,7 +215,7 @@ export class CauseMarkLayer {
         continue;
       }
       const segments = shape.segments;
-      for (let s = 0; s < segments.length; s++) {
+      for (let s = 0; s < segments.length && shapeSegments < SHAPES; s++, shapeSegments++) {
         const seg = segments[s];
         cursor = this._seg(cursor, seg.ax, seg.az, seg.bx, seg.bz, 0.78 * shapeGain, 0.86 * shapeGain, 0.95 * shapeGain);
       }

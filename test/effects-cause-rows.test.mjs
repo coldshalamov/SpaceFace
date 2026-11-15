@@ -506,3 +506,52 @@ test('release, machinery, undock, jettison and planet cues keep a shape', () => 
   assert.equal(reused.age, 0);
   assert.equal(reused.kind, 'scar');
 });
+
+test('four simultaneous well boundaries survive other marks and sleep when empty', () => {
+  const layer = new CauseMarkLayer({ add() {} });
+  const entities = new Map();
+  try {
+    for (let id = 1; id <= 4; id++) {
+      const entity = { id, alive: true, pos: { x: id * 100, z: 0 }, data: { blastRadius: 20, dieAt: 10 } };
+      entities.set(id, entity);
+      assert.equal(layer.noteWell({ id, radius: 20, now: 0, expireAt: 10 }), true);
+    }
+    for (let i = 0; i < 4; i++) layer.noteCut({ ax: 0, az: i, bx: 1, bz: i }, 0);
+    const segments = Array.from({ length: 4 }, (_, i) => ({ ax: i, az: 0, bx: i + 1, bz: 1 }));
+    for (let i = 0; i < 6; i++) layer.noteSilhouette({ segments }, 0);
+    for (let i = 0; i < 24; i++) {
+      const id = 100 + i;
+      entities.set(id, { id, alive: true, pos: { x: i * 10, z: 0 }, rot: 0 });
+      layer.noteScar({ hullId: id, lx: 0, lz: 0, tx: 1, tz: 0, severity: 0.2, now: 0 });
+    }
+    const wreck = { id: 500, type: 'wreck', alive: true, pos: { x: 0, z: 0 } };
+    entities.set(wreck.id, wreck);
+    layer.noteKill({ id: 499, pos: { x: 0, z: 0 }, vel: { x: 2, z: 0 } }, 0);
+    assert.ok(bindKillStreak(layer.handoff, entities, 0.1));
+    const expected = 24 + 4 + 24 + 1 + 4 * 28;
+    assert.equal(layer.update(0.1, id => entities.get(id), false, entities), expected);
+    assert.equal(layer.mesh.geometry.drawRange.count, expected * 2);
+    layer.clear(); layer.update(11, () => null, false, entities);
+    assert.equal(layer.mesh.geometry.drawRange.count, 0);
+    assert.equal(layer.mesh.visible, false);
+  } finally { layer.dispose(); }
+});
+
+test('silhouettes preserve the original aggregate limit above 24 segments', () => {
+  const layer = new CauseMarkLayer({ add() {} });
+  try {
+    const segments = Array.from({ length: 7 }, (_, i) => ({ ax: i, az: 0, bx: i + 1, bz: 1 }));
+    for (let i = 0; i < 6; i++) assert.equal(layer.noteSilhouette({ segments }, 0), true);
+    assert.equal(layer.update(0.1, () => null, false, new Map()), 42);
+    assert.equal(layer.mesh.geometry.drawRange.count, 84);
+    layer.clear();
+    const longMark = Array.from({ length: 100 }, (_, i) => ({ ax: i, az: 0, bx: i + 1, bz: 1 }));
+    assert.equal(layer.noteSilhouette({ segments: longMark }, 0), true);
+    assert.equal(layer.shapes[0].segments.length, 83, 'one mark is bounded by the prior buffer capacity');
+    assert.equal(layer.noteSilhouette({ segments: longMark }, 0), true);
+    assert.equal(layer.update(0.1, () => null, false, new Map()), 83, 'the same bound applies in aggregate');
+    layer.clear(); layer.update(1, () => null, false, new Map());
+    assert.equal(layer.mesh.geometry.drawRange.count, 0);
+    assert.equal(layer.mesh.visible, false);
+  } finally { layer.dispose(); }
+});
