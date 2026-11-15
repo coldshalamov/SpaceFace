@@ -53,7 +53,10 @@ export function projectedShipDiameterPx(pos, radius, camera, viewport) {
   _shipViewPos.set(Number(pos.x), Number(pos.y) || 0, Number(pos.z)).applyMatrix4(camera.matrixWorldInverse);
   const { x, y, z } = _shipViewPos;
   const p = camera.projectionMatrix.elements;
-  if (![x, y, z, p[0], p[5]].every(Number.isFinite)) return Infinity;
+  // Chained tests rather than an array + `.every`: this runs per ordinary LOD ship per frame, and
+  // the array (plus the bound-method callback) was the only allocation in the function.
+  if (!(Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)
+    && Number.isFinite(p[0]) && Number.isFinite(p[5]))) return Infinity;
   const depth = -z;
   if (depth - r <= Math.max(0, Number(camera.near) || 0)) return Infinity;
   if (camera.isOrthographicCamera) return r * height * Math.max(Math.abs(p[5]), Math.abs(p[0]) * (Number(viewport.width) || height) / height);
