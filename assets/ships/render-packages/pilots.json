@@ -4872,7 +4872,7 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_repair_tender",
       "sourceUrl": "assets/ships/release/parts/wholeships/repair_tender.glb",
-      "releaseSha256": "63fcd7ca429b761eebd0ba26ce91bcf5de8ed79573f00e18d259f304e85b38c2",
+      "releaseSha256": "392968aaf2324fab2a03caee71366707003ea8f5f6f796935ab42727f9dc13d8",
       "releaseBytes": 1121576,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -5201,7 +5201,7 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_scrap_sweeper",
       "sourceUrl": "assets/ships/release/parts/wholeships/scrap_sweeper.glb",
-      "releaseSha256": "b6bea503c7a725dfcd7d37d4e03e26bb662daad4ea971db6c3f700529c0f9217",
+      "releaseSha256": "09c1fb5241fd0cc14420f6c40b380b1454d1f0c05e509257420264dcad54f5e6",
       "releaseBytes": 908908,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",

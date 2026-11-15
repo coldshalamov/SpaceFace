@@ -23,7 +23,7 @@ COLORS = {
     'hazard': '#c89a1e',
     'bare.scrap': '#6f6a62',   # the scrap heap: dull mixed metal
     'paint.scrap': '#3f5a6a',  # a stray blue hull plate in the heap
-    'glow_cyan.rust': '#ffd23a',   # work-fleet yellow lifted to light (identity trim)
+    'glow_trim.rust': '#ffd23a',   # work-fleet yellow lifted to light (identity trim)
 }
 
 # The sweeper arms flare: inner edge 1.95 m off the centre line at the throat, 2.35 m at the tips.
@@ -111,7 +111,7 @@ def build():
            depth=-0.03, mirror=True)
     # Identity trim, lit: a thin yellow line 0.25 m inside each arm's outer edge, stopping short of the
     # chevron tips, so the U reads as two lit booms at the chase camera (LOOK.md: lamps are light).
-    F.band(s, 'Arm', (6.0, arm_in(6.0) + 0.61, 0), (-0.4, 7.3, 0), 0.1, 'glow_cyan.rust', facing=(0, 0, 1),
+    F.band(s, 'Arm', (6.0, arm_in(6.0) + 0.61, 0), (-0.4, 7.3, 0), 0.1, 'glow_trim.rust', facing=(0, 0, 1),
            min_facing=0.5, mirror=True, inset=0.004, depth=-0.01, region=(('x', 2.6, 7.35),))
     # arm guide rail: a raised gunmetal lip along each inner edge
     ang = math.atan2(0.4, 7.3)

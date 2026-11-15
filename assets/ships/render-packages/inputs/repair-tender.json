@@ -1,0 +1,931 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": false,
+    "externalizeKtx2Hashes": null,
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "wholeship_repair_tender",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.repair-tender",
+    "dynamicNameIncludes": [
+      "HOOK_DRIVE",
+      "HOOK_NAV",
+      "HOOK_SECONDARY",
+      "HOOK_SENSOR",
+      "HOOK_ARMOR"
+    ],
+    "key": "repair-tender",
+    "kind": "ship",
+    "metadataUrl": "assets/ships/release/render-packages/repair-tender/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/repair-tender",
+    "releaseAssetId": "wholeship_repair_tender",
+    "releaseBytes": 1121576,
+    "releaseSha256": "392968aaf2324fab2a03caee71366707003ea8f5f6f796935ab42727f9dc13d8",
+    "runtimeAssetId": "SF_WHOLESHIP_REPAIR_TENDER",
+    "sceneRoot": true,
+    "slot": "hull",
+    "sourceUrl": "assets/ships/release/parts/wholeships/repair_tender.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 57,
+    "id": "wholeship_repair_tender",
+    "kind": "part:wholeships",
+    "ktx2Textures": 6,
+    "meshoptBufferViews": 152,
+    "release": "assets/ships/release/parts/wholeships/repair_tender.glb",
+    "releaseBytes": 1121576,
+    "releaseSha256": "392968aaf2324fab2a03caee71366707003ea8f5f6f796935ab42727f9dc13d8",
+    "source": "assets/ships/parts/wholeships/repair_tender.glb",
+    "sourceBytes": 3106684,
+    "sourceSha256": "1628ba2ed5a48a393761b2584a4b98ff910587b633cee24fb137a5d616d41f4d",
+    "textures": 6
+  },
+  "runtime": {
+    "assetId": "SF_WHOLESHIP_REPAIR_TENDER",
+    "motionBank": {
+      "bytes": 7176,
+      "rigId": "hull",
+      "sha256": "92b2970835ec0b1ecce49276496aea0539c9f0788275db51ba9590b8d2c7849a",
+      "uri": "assets/ships/motions/repair-tender.motion.json"
+    },
+    "slot": "hull",
+    "sourceUrl": "assets/ships/release/parts/wholeships/repair_tender.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [
+      {
+        "id": "sf.render.repair-tender.anchor.socket-camera-focus",
+        "kind": "socket",
+        "node": "SOCKET_Camera_Focus",
+        "parentNodeId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root"
+      },
+      {
+        "id": "sf.render.repair-tender.anchor.socket-cargo-ventral",
+        "kind": "socket",
+        "node": "SOCKET_Cargo_Ventral",
+        "parentNodeId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root"
+      },
+      {
+        "id": "sf.render.repair-tender.anchor.socket-engine-main",
+        "kind": "socket",
+        "node": "SOCKET_Engine_Main",
+        "parentNodeId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root"
+      },
+      {
+        "id": "sf.render.repair-tender.anchor.socket-mining-front",
+        "kind": "socket",
+        "node": "SOCKET_Mining_Front",
+        "parentNodeId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root"
+      },
+      {
+        "id": "sf.render.repair-tender.anchor.socket-rcs-port",
+        "kind": "socket",
+        "node": "SOCKET_RCS_Port",
+        "parentNodeId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root"
+      },
+      {
+        "id": "sf.render.repair-tender.anchor.socket-rcs-starboard",
+        "kind": "socket",
+        "node": "SOCKET_RCS_Starboard",
+        "parentNodeId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root"
+      },
+      {
+        "id": "sf.render.repair-tender.anchor.socket-tether-massline",
+        "kind": "socket",
+        "node": "SOCKET_Tether_Massline",
+        "parentNodeId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root"
+      },
+      {
+        "id": "sf.render.repair-tender.anchor.socket-trail-main",
+        "kind": "socket",
+        "node": "SOCKET_Trail_Main",
+        "parentNodeId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root"
+      },
+      {
+        "id": "sf.render.repair-tender.anchor.socket-trail-port",
+        "kind": "socket",
+        "node": "SOCKET_Trail_Port",
+        "parentNodeId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root"
+      },
+      {
+        "id": "sf.render.repair-tender.anchor.socket-trail-starboard",
+        "kind": "socket",
+        "node": "SOCKET_Trail_Starboard",
+        "parentNodeId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root"
+      },
+      {
+        "id": "sf.render.repair-tender.anchor.socket-utility-dorsal",
+        "kind": "socket",
+        "node": "SOCKET_Utility_Dorsal",
+        "parentNodeId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root"
+      },
+      {
+        "id": "sf.render.repair-tender.anchor.socket-weapon-front",
+        "kind": "socket",
+        "node": "SOCKET_Weapon_Front",
+        "parentNodeId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root"
+      }
+    ],
+    "assetId": "sf.render.repair-tender",
+    "collisions": [
+      {
+        "id": "sf.render.repair-tender.collision",
+        "nodeId": "sf.render.repair-tender.node.collision-hull",
+        "reference": "COLLISION_HULL"
+      }
+    ],
+    "dynamicGroups": [
+      {
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-hook-drive-core.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.repair-tender.node.lod0-motion-hull-core-hook-drive-core"
+      },
+      {
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-hook-nav-port.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.repair-tender.node.lod0-motion-hull-core-hook-nav-port"
+      },
+      {
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-hook-nav-starboard.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.repair-tender.node.lod0-motion-hull-core-hook-nav-starboard"
+      },
+      {
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-hook-drive-core.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.repair-tender.node.lod1-motion-hull-core-hook-drive-core"
+      },
+      {
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-hook-nav-port.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.repair-tender.node.lod1-motion-hull-core-hook-nav-port"
+      },
+      {
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-hook-nav-starboard.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.repair-tender.node.lod1-motion-hull-core-hook-nav-starboard"
+      },
+      {
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-hook-drive-core.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.repair-tender.node.lod2-motion-hull-core-hook-drive-core"
+      },
+      {
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-hook-nav-port.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.repair-tender.node.lod2-motion-hull-core-hook-nav-port"
+      },
+      {
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-hook-nav-starboard.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.repair-tender.node.lod2-motion-hull-core-hook-nav-starboard"
+      }
+    ],
+    "hlods": [],
+    "kind": "ship",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.collision-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "COLLISION_HULL",
+        "node": "COLLISION_HULL",
+        "parentId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root",
+        "pipelineKey": "non-render",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Armor",
+        "node": "LOD0_MOTION_HULL_CORE_Armor",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-beacon-amber-beacon",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+        "node": "LOD0_MOTION_HULL_CORE_Beacon_Amber_beacon",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-brushedmetal",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_BrushedMetal",
+        "node": "LOD0_MOTION_HULL_CORE_BrushedMetal",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-canopy",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_CANOPY",
+        "node": "LOD0_MOTION_HULL_CORE_CANOPY",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "blend",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "blend"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-hook-drive-core",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-hook-nav-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Hull",
+        "node": "LOD0_MOTION_HULL_CORE_Hull",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-lights-cyan",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+        "node": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-lights-trim-rust",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Trim_rust",
+        "node": "LOD0_MOTION_HULL_CORE_Lights_Trim_rust",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+        "node": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-livery",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Livery",
+        "node": "LOD0_MOTION_HULL_CORE_Livery",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Mechanical",
+        "node": "LOD0_MOTION_HULL_CORE_Mechanical",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+        "node": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod0-motion-hull-core-warning",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Warning",
+        "node": "LOD0_MOTION_HULL_CORE_Warning",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Armor",
+        "node": "LOD1_MOTION_HULL_CORE_Armor",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-beacon-amber-beacon",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Beacon_Amber_beacon",
+        "node": "LOD1_MOTION_HULL_CORE_Beacon_Amber_beacon",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-brushedmetal",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_BrushedMetal",
+        "node": "LOD1_MOTION_HULL_CORE_BrushedMetal",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-canopy",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_CANOPY",
+        "node": "LOD1_MOTION_HULL_CORE_CANOPY",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "blend",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "blend"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-hook-drive-core",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "node": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "node": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-hook-nav-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "node": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Hull",
+        "node": "LOD1_MOTION_HULL_CORE_Hull",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-lights-cyan",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Cyan",
+        "node": "LOD1_MOTION_HULL_CORE_Lights_Cyan",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-lights-trim-rust",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Trim_rust",
+        "node": "LOD1_MOTION_HULL_CORE_Lights_Trim_rust",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Warm",
+        "node": "LOD1_MOTION_HULL_CORE_Lights_Warm",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-livery",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Livery",
+        "node": "LOD1_MOTION_HULL_CORE_Livery",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Mechanical",
+        "node": "LOD1_MOTION_HULL_CORE_Mechanical",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_MechanicalDark",
+        "node": "LOD1_MOTION_HULL_CORE_MechanicalDark",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod1-motion-hull-core-warning",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Warning",
+        "node": "LOD1_MOTION_HULL_CORE_Warning",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Armor",
+        "node": "LOD2_MOTION_HULL_CORE_Armor",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-beacon-amber-beacon",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Beacon_Amber_beacon",
+        "node": "LOD2_MOTION_HULL_CORE_Beacon_Amber_beacon",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-brushedmetal",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_BrushedMetal",
+        "node": "LOD2_MOTION_HULL_CORE_BrushedMetal",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-canopy",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_CANOPY",
+        "node": "LOD2_MOTION_HULL_CORE_CANOPY",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "blend",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "blend"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-hook-drive-core",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "node": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "node": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-hook-nav-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "node": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Hull",
+        "node": "LOD2_MOTION_HULL_CORE_Hull",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-lights-cyan",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Cyan",
+        "node": "LOD2_MOTION_HULL_CORE_Lights_Cyan",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-lights-trim-rust",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Trim_rust",
+        "node": "LOD2_MOTION_HULL_CORE_Lights_Trim_rust",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Warm",
+        "node": "LOD2_MOTION_HULL_CORE_Lights_Warm",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-livery",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Livery",
+        "node": "LOD2_MOTION_HULL_CORE_Livery",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Mechanical",
+        "node": "LOD2_MOTION_HULL_CORE_Mechanical",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_MechanicalDark",
+        "node": "LOD2_MOTION_HULL_CORE_MechanicalDark",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.lod2-motion-hull-core-warning",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Warning",
+        "node": "LOD2_MOTION_HULL_CORE_Warning",
+        "parentId": "sf.render.repair-tender.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.motion-hull-core",
+        "independentlyCulled": false,
+        "mergeBoundary": "MOTION_HULL_CORE",
+        "node": "MOTION_HULL_CORE",
+        "parentId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root",
+        "independentlyCulled": false,
+        "mergeBoundary": "SF_NPCWORK_REPAIR_TENDER_ROOT",
+        "node": "SF_NPCWORK_REPAIR_TENDER_ROOT",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.socket-camera-focus",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Camera_Focus",
+        "node": "SOCKET_Camera_Focus",
+        "parentId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.socket-cargo-ventral",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Cargo_Ventral",
+        "node": "SOCKET_Cargo_Ventral",
+        "parentId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.socket-engine-main",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Engine_Main",
+        "node": "SOCKET_Engine_Main",
+        "parentId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.socket-mining-front",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Mining_Front",
+        "node": "SOCKET_Mining_Front",
+        "parentId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.socket-rcs-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_RCS_Port",
+        "node": "SOCKET_RCS_Port",
+        "parentId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.socket-rcs-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_RCS_Starboard",
+        "node": "SOCKET_RCS_Starboard",
+        "parentId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.socket-tether-massline",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Tether_Massline",
+        "node": "SOCKET_Tether_Massline",
+        "parentId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.socket-trail-main",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Trail_Main",
+        "node": "SOCKET_Trail_Main",
+        "parentId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.socket-trail-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Trail_Port",
+        "node": "SOCKET_Trail_Port",
+        "parentId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.socket-trail-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Trail_Starboard",
+        "node": "SOCKET_Trail_Starboard",
+        "parentId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.socket-utility-dorsal",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Utility_Dorsal",
+        "node": "SOCKET_Utility_Dorsal",
+        "parentId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.repair-tender.node.socket-weapon-front",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Weapon_Front",
+        "node": "SOCKET_Weapon_Front",
+        "parentId": "sf.render.repair-tender.node.sf-npcwork-repair-tender-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.repair-tender.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 1121576,
+    "sha256": "392968aaf2324fab2a03caee71366707003ea8f5f6f796935ab42727f9dc13d8",
+    "uri": "assets/ships/release/parts/wholeships/repair_tender.glb"
+  }
+}

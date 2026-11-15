@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "69712ebeb1b2d0b749b427b2e043d6340ebe06eef75269640c084717add6c76d",
+  "contentHash": "10f5a19fd047e8437ab3e219f485f0e4cd09521d4830ed69dd3d68dbef8c070e",
   "dynamicGroups": [
     {
       "id": "sf.render.repair-tender.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -842,31 +842,6 @@
     {
       "bounds": {
         "max": [
-          9.21523380279541,
-          2.4198536448280494,
-          4.128042557112418
-        ],
-        "min": [
-          -6.699999809265137,
-          1.7301465697486715,
-          -4.128042557112418
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "0e6f3ded1a90c44aa7e05f28a3d20f6c5c6957f7df699dc2878979aa4966857b",
-      "id": "sf.render.repair-tender.node.lod0-motion-hull-core-lights-cyan-rust.primitive.0",
-      "indexCount": 144,
-      "indexed": true,
-      "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeId": "sf.render.repair-tender.node.lod0-motion-hull-core-lights-cyan-rust",
-      "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
           13.220000267028809,
           2.476299753201311,
           2.219696690348116
@@ -888,6 +863,31 @@
       "nodeId": "sf.render.repair-tender.node.lod0-motion-hull-core-lights-cyan",
       "primitiveIndex": 0,
       "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          9.21523380279541,
+          2.4198536448280494,
+          4.128042557112418
+        ],
+        "min": [
+          -6.699999809265137,
+          1.7301465697486715,
+          -4.128042557112418
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0e6f3ded1a90c44aa7e05f28a3d20f6c5c6957f7df699dc2878979aa4966857b",
+      "id": "sf.render.repair-tender.node.lod0-motion-hull-core-lights-trim-rust.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeId": "sf.render.repair-tender.node.lod0-motion-hull-core-lights-trim-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -1217,31 +1217,6 @@
     {
       "bounds": {
         "max": [
-          9.21523380279541,
-          2.4198536448280494,
-          4.128042557112418
-        ],
-        "min": [
-          -6.699999809265137,
-          1.7301465697486715,
-          -4.128042557112418
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d84513dd7895fa720573b2f3ba508532a64191e3ec7b909d45dd44b5d01be316",
-      "id": "sf.render.repair-tender.node.lod1-motion-hull-core-lights-cyan-rust.primitive.0",
-      "indexCount": 144,
-      "indexed": true,
-      "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeId": "sf.render.repair-tender.node.lod1-motion-hull-core-lights-cyan-rust",
-      "primitiveIndex": 0,
-      "vertexCount": 96
-    },
-    {
-      "bounds": {
-        "max": [
           13.220000267028809,
           2.476299753201311,
           2.219696690348116
@@ -1263,6 +1238,31 @@
       "nodeId": "sf.render.repair-tender.node.lod1-motion-hull-core-lights-cyan",
       "primitiveIndex": 0,
       "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          9.21523380279541,
+          2.4198536448280494,
+          4.128042557112418
+        ],
+        "min": [
+          -6.699999809265137,
+          1.7301465697486715,
+          -4.128042557112418
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d84513dd7895fa720573b2f3ba508532a64191e3ec7b909d45dd44b5d01be316",
+      "id": "sf.render.repair-tender.node.lod1-motion-hull-core-lights-trim-rust.primitive.0",
+      "indexCount": 144,
+      "indexed": true,
+      "materialHash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeId": "sf.render.repair-tender.node.lod1-motion-hull-core-lights-trim-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -1592,31 +1592,6 @@
     {
       "bounds": {
         "max": [
-          9.215208052657516,
-          1.780196284881811,
-          4.1280341148376465
-        ],
-        "min": [
-          5.9847917566076205,
-          1.729803705581446,
-          -4.1280341148376465
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c4cff522cc05daf6e129f84a8ac578b06f6ee6eba55e9912f173c47ab396f22f",
-      "id": "sf.render.repair-tender.node.lod2-motion-hull-core-lights-cyan-rust.primitive.0",
-      "indexCount": 72,
-      "indexed": true,
-      "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD2_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeId": "sf.render.repair-tender.node.lod2-motion-hull-core-lights-cyan-rust",
-      "primitiveIndex": 0,
-      "vertexCount": 48
-    },
-    {
-      "bounds": {
-        "max": [
           13.21998926703136,
           1.9488768026514216,
           2.2200000286102295
@@ -1638,6 +1613,31 @@
       "nodeId": "sf.render.repair-tender.node.lod2-motion-hull-core-lights-cyan",
       "primitiveIndex": 0,
       "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          9.215208052657516,
+          1.780196284881811,
+          4.1280341148376465
+        ],
+        "min": [
+          5.9847917566076205,
+          1.729803705581446,
+          -4.1280341148376465
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c4cff522cc05daf6e129f84a8ac578b06f6ee6eba55e9912f173c47ab396f22f",
+      "id": "sf.render.repair-tender.node.lod2-motion-hull-core-lights-trim-rust.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeId": "sf.render.repair-tender.node.lod2-motion-hull-core-lights-trim-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 48
     },
     {
       "bounds": {
@@ -1855,13 +1855,6 @@
       "textures": []
     },
     {
-      "hash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
-      "id": "material:799b05dd6e45a6e8b6507d32",
-      "name": "Material_Emissive_Cyan_rust",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
       "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "id": "material:7dbce0f058ce69aeee64664b",
       "name": "Material_Mechanical",
@@ -1936,6 +1929,13 @@
       "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "id": "material:935effa788e2e47cba8a2bfc",
       "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
+      "id": "material:bbcf53d285c1c11e1c3bb498",
+      "name": "Material_Emissive_Trim_rust",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -2551,7 +2551,7 @@
       ]
     },
     {
-      "id": "sf.render.repair-tender.node.lod0-motion-hull-core-lights-cyan-rust",
+      "id": "sf.render.repair-tender.node.lod0-motion-hull-core-lights-trim-rust",
       "localTransform": [
         7.957616806030273,
         0,
@@ -2571,8 +2571,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_rust",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Trim_rust",
       "nodePath": [
         0,
         1,
@@ -3301,7 +3301,7 @@
       ]
     },
     {
-      "id": "sf.render.repair-tender.node.lod1-motion-hull-core-lights-cyan-rust",
+      "id": "sf.render.repair-tender.node.lod1-motion-hull-core-lights-trim-rust",
       "localTransform": [
         7.957616806030273,
         0,
@@ -3321,8 +3321,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeName": "LOD1_MOTION_HULL_CORE_Lights_Cyan_rust",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Lights_Trim_rust",
       "nodePath": [
         0,
         1,
@@ -4051,7 +4051,7 @@
       ]
     },
     {
-      "id": "sf.render.repair-tender.node.lod2-motion-hull-core-lights-cyan-rust",
+      "id": "sf.render.repair-tender.node.lod2-motion-hull-core-lights-trim-rust",
       "localTransform": [
         4.1280341148376465,
         0,
@@ -4071,8 +4071,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeName": "LOD2_MOTION_HULL_CORE_Lights_Cyan_rust",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Lights_Trim_rust",
       "nodePath": [
         0,
         1,
@@ -5038,22 +5038,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "9e8958af0592a4ed3af2bc4cb8a81f72a4cfebcc210e7a833525d3e95a35ce72"
+      "sha256": "f0eb28922aaa46a94263484997f7011d2a63c966d7ff5abf21d1aec1ffa51e58"
     },
     "sourceGlb": {
       "bytes": 1121576,
-      "sha256": "63fcd7ca429b761eebd0ba26ce91bcf5de8ed79573f00e18d259f304e85b38c2",
+      "sha256": "392968aaf2324fab2a03caee71366707003ea8f5f6f796935ab42727f9dc13d8",
       "uri": "repair_tender.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 37769,
+      "sha256": "7ccfc1ee5b52f0b2e9a7448b42341ea3e1b927d21cbca2bedf6027b4ce251a94",
+      "uri": "assets/ships/render-packages/inputs/repair-tender.json"
     }
   },
   "render": {
     "bytes": 1134496,
-    "sha256": "df159ccc8a49d0e1a0fa7f19d383db141500384c60b513c2b52a6c9815df73ec",
+    "sha256": "f33e5c800c586c26e8c7eea3a667b6bb564f746cc4bebe011fe301fc6316fc6e",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6658,7 +6658,7 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan_rust",
+        "name": "LOD0_MOTION_HULL_CORE_Lights_Trim_rust",
         "planIndex": 16,
         "tags": {
           "canopy": false,
@@ -7099,7 +7099,7 @@
           0,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_Lights_Cyan_rust",
+        "name": "LOD1_MOTION_HULL_CORE_Lights_Trim_rust",
         "planIndex": 34,
         "tags": {
           "canopy": false,
@@ -7540,7 +7540,7 @@
           0,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_Lights_Cyan_rust",
+        "name": "LOD2_MOTION_HULL_CORE_Lights_Trim_rust",
         "planIndex": 52,
         "tags": {
           "canopy": false,
@@ -7693,7 +7693,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/repair_tender.glb"
   },
-  "runtimeHash": "554f0118ad6fddd649b94f5540e9dbf4c2e0897ef547b62d11f7fa5b06b3840f",
+  "runtimeHash": "57ba83d233f8973caf0b59a1aa1a071d8a01a403a1d5f3980317c10f65970fc4",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -7721,7 +7721,7 @@
         "sf.render.repair-tender.node.lod0-motion-hull-core-hook-nav-starboard",
         "sf.render.repair-tender.node.lod0-motion-hull-core-hull",
         "sf.render.repair-tender.node.lod0-motion-hull-core-lights-cyan",
-        "sf.render.repair-tender.node.lod0-motion-hull-core-lights-cyan-rust",
+        "sf.render.repair-tender.node.lod0-motion-hull-core-lights-trim-rust",
         "sf.render.repair-tender.node.lod0-motion-hull-core-lights-warm",
         "sf.render.repair-tender.node.lod0-motion-hull-core-livery",
         "sf.render.repair-tender.node.lod0-motion-hull-core-mechanical",
@@ -7736,7 +7736,7 @@
         "sf.render.repair-tender.node.lod1-motion-hull-core-hook-nav-starboard",
         "sf.render.repair-tender.node.lod1-motion-hull-core-hull",
         "sf.render.repair-tender.node.lod1-motion-hull-core-lights-cyan",
-        "sf.render.repair-tender.node.lod1-motion-hull-core-lights-cyan-rust",
+        "sf.render.repair-tender.node.lod1-motion-hull-core-lights-trim-rust",
         "sf.render.repair-tender.node.lod1-motion-hull-core-lights-warm",
         "sf.render.repair-tender.node.lod1-motion-hull-core-livery",
         "sf.render.repair-tender.node.lod1-motion-hull-core-mechanical",
@@ -7751,7 +7751,7 @@
         "sf.render.repair-tender.node.lod2-motion-hull-core-hook-nav-starboard",
         "sf.render.repair-tender.node.lod2-motion-hull-core-hull",
         "sf.render.repair-tender.node.lod2-motion-hull-core-lights-cyan",
-        "sf.render.repair-tender.node.lod2-motion-hull-core-lights-cyan-rust",
+        "sf.render.repair-tender.node.lod2-motion-hull-core-lights-trim-rust",
         "sf.render.repair-tender.node.lod2-motion-hull-core-lights-warm",
         "sf.render.repair-tender.node.lod2-motion-hull-core-livery",
         "sf.render.repair-tender.node.lod2-motion-hull-core-mechanical",

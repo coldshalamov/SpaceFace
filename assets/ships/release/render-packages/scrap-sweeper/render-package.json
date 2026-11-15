@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3e4c65b99af8588f680b84b604cc0f4df9023295bcf0e7fc98c7ac66ee9ff895",
+  "contentHash": "4ca4f68edcb5c77613906933db1cf51a658ab2392e89fac1e2677dd591c59118",
   "dynamicGroups": [
     {
       "id": "sf.render.scrap-sweeper.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -904,13 +904,13 @@
       },
       "drawMode": 4,
       "geometryHash": "e0dd109c70e6d0c08d35fd6e49c5ff8c157b55dcffa18b4d64187db4b8a92bc6",
-      "id": "sf.render.scrap-sweeper.node.lod0-motion-hull-core-lights-cyan-rust.primitive.0",
+      "id": "sf.render.scrap-sweeper.node.lod0-motion-hull-core-lights-trim-rust.primitive.0",
       "indexCount": 2784,
       "indexed": true,
-      "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
+      "materialHash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeId": "sf.render.scrap-sweeper.node.lod0-motion-hull-core-lights-cyan-rust",
+      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeId": "sf.render.scrap-sweeper.node.lod0-motion-hull-core-lights-trim-rust",
       "primitiveIndex": 0,
       "vertexCount": 934
     },
@@ -1304,13 +1304,13 @@
       },
       "drawMode": 4,
       "geometryHash": "098d873af420b1e106188bb0bf275f739717d5c4a344efb759bce05d5de9cd74",
-      "id": "sf.render.scrap-sweeper.node.lod1-motion-hull-core-lights-cyan-rust.primitive.0",
+      "id": "sf.render.scrap-sweeper.node.lod1-motion-hull-core-lights-trim-rust.primitive.0",
       "indexCount": 291,
       "indexed": true,
-      "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
+      "materialHash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeId": "sf.render.scrap-sweeper.node.lod1-motion-hull-core-lights-cyan-rust",
+      "meshName": "LOD1_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeId": "sf.render.scrap-sweeper.node.lod1-motion-hull-core-lights-trim-rust",
       "primitiveIndex": 0,
       "vertexCount": 134
     },
@@ -1704,13 +1704,13 @@
       },
       "drawMode": 4,
       "geometryHash": "80f25f7a0fa64e4494533fccdb5fb7096181b390e9a8467eb8eba1408eb171f2",
-      "id": "sf.render.scrap-sweeper.node.lod2-motion-hull-core-lights-cyan-rust.primitive.0",
+      "id": "sf.render.scrap-sweeper.node.lod2-motion-hull-core-lights-trim-rust.primitive.0",
       "indexCount": 156,
       "indexed": true,
-      "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
+      "materialHash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeId": "sf.render.scrap-sweeper.node.lod2-motion-hull-core-lights-cyan-rust",
+      "meshName": "LOD2_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeId": "sf.render.scrap-sweeper.node.lod2-motion-hull-core-lights-trim-rust",
       "primitiveIndex": 0,
       "vertexCount": 80
     },
@@ -1962,13 +1962,6 @@
       "textures": []
     },
     {
-      "hash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
-      "id": "material:799b05dd6e45a6e8b6507d32",
-      "name": "Material_Emissive_Cyan_rust",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
       "hash": "7b3f8fc625d85ae4882f8c5b0b4552a20b69260dddfe755af44f2708abb86a55",
       "id": "material:7b3f8fc625d85ae4882f8c5b",
       "name": "Material_Hull_scrap",
@@ -2036,6 +2029,13 @@
       "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "id": "material:935effa788e2e47cba8a2bfc",
       "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
+      "id": "material:bbcf53d285c1c11e1c3bb498",
+      "name": "Material_Emissive_Trim_rust",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -2733,7 +2733,7 @@
       ]
     },
     {
-      "id": "sf.render.scrap-sweeper.node.lod0-motion-hull-core-lights-cyan-rust",
+      "id": "sf.render.scrap-sweeper.node.lod0-motion-hull-core-lights-trim-rust",
       "localTransform": [
         2.887060761451721,
         0,
@@ -2753,8 +2753,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_rust",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Trim_rust",
       "nodePath": [
         0,
         1,
@@ -3533,7 +3533,7 @@
       ]
     },
     {
-      "id": "sf.render.scrap-sweeper.node.lod1-motion-hull-core-lights-cyan-rust",
+      "id": "sf.render.scrap-sweeper.node.lod1-motion-hull-core-lights-trim-rust",
       "localTransform": [
         2.8822187185287476,
         0,
@@ -3553,8 +3553,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeName": "LOD1_MOTION_HULL_CORE_Lights_Cyan_rust",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Lights_Trim_rust",
       "nodePath": [
         0,
         1,
@@ -4333,7 +4333,7 @@
       ]
     },
     {
-      "id": "sf.render.scrap-sweeper.node.lod2-motion-hull-core-lights-cyan-rust",
+      "id": "sf.render.scrap-sweeper.node.lod2-motion-hull-core-lights-trim-rust",
       "localTransform": [
         2.8817347288131714,
         0,
@@ -4353,8 +4353,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeName": "LOD2_MOTION_HULL_CORE_Lights_Cyan_rust",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Lights_Trim_rust",
       "nodePath": [
         0,
         1,
@@ -5320,22 +5320,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "aa4f2fa7d90cb72e6c3f7ca9f44e0fb8cc7f39c10323a305aef13a0c43286950"
+      "sha256": "12a1992c9ef2309d709c9baaeb596eec5cf53f9e7b14af5e59809f5b81a93738"
     },
     "sourceGlb": {
       "bytes": 908908,
-      "sha256": "b6bea503c7a725dfcd7d37d4e03e26bb662daad4ea971db6c3f700529c0f9217",
+      "sha256": "09c1fb5241fd0cc14420f6c40b380b1454d1f0c05e509257420264dcad54f5e6",
       "uri": "scrap_sweeper.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 39278,
+      "sha256": "2d5b9c3bb99391e5a693a56a993962192fd55d7488c054ed4a5156fbad52d8da",
+      "uri": "assets/ships/render-packages/inputs/scrap-sweeper.json"
     }
   },
   "render": {
     "bytes": 922664,
-    "sha256": "123bb72c16a6af6b7e8756e06299da3c78d218397240db1906770a9eb83f55d8",
+    "sha256": "102f0501aa94f4e5c41e02695ffce009b744b4fff6d9c0820e2f27cfc863644d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6983,7 +6983,7 @@
           0.0014244318008422852,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan_rust",
+        "name": "LOD0_MOTION_HULL_CORE_Lights_Trim_rust",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -7452,7 +7452,7 @@
           0.0008715391159057617,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_Lights_Cyan_rust",
+        "name": "LOD1_MOTION_HULL_CORE_Lights_Trim_rust",
         "planIndex": 36,
         "tags": {
           "canopy": false,
@@ -7921,7 +7921,7 @@
           0.00002086162567138672,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_Lights_Cyan_rust",
+        "name": "LOD2_MOTION_HULL_CORE_Lights_Trim_rust",
         "planIndex": 55,
         "tags": {
           "canopy": false,
@@ -8074,7 +8074,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/scrap_sweeper.glb"
   },
-  "runtimeHash": "a1d226337fbb752cc0f319a53ea03ee769c7868cebc82d6a69110f6e9ffb4571",
+  "runtimeHash": "ba70d2822e639d361277237012f7368f6132c2cd2ab5af8a79a13d8178dc99e1",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -8103,7 +8103,7 @@
         "sf.render.scrap-sweeper.node.lod0-motion-hull-core-hook-nav-starboard",
         "sf.render.scrap-sweeper.node.lod0-motion-hull-core-hull",
         "sf.render.scrap-sweeper.node.lod0-motion-hull-core-hull-scrap",
-        "sf.render.scrap-sweeper.node.lod0-motion-hull-core-lights-cyan-rust",
+        "sf.render.scrap-sweeper.node.lod0-motion-hull-core-lights-trim-rust",
         "sf.render.scrap-sweeper.node.lod0-motion-hull-core-lights-warm",
         "sf.render.scrap-sweeper.node.lod0-motion-hull-core-livery",
         "sf.render.scrap-sweeper.node.lod0-motion-hull-core-mechanical",
@@ -8119,7 +8119,7 @@
         "sf.render.scrap-sweeper.node.lod1-motion-hull-core-hook-nav-starboard",
         "sf.render.scrap-sweeper.node.lod1-motion-hull-core-hull",
         "sf.render.scrap-sweeper.node.lod1-motion-hull-core-hull-scrap",
-        "sf.render.scrap-sweeper.node.lod1-motion-hull-core-lights-cyan-rust",
+        "sf.render.scrap-sweeper.node.lod1-motion-hull-core-lights-trim-rust",
         "sf.render.scrap-sweeper.node.lod1-motion-hull-core-lights-warm",
         "sf.render.scrap-sweeper.node.lod1-motion-hull-core-livery",
         "sf.render.scrap-sweeper.node.lod1-motion-hull-core-mechanical",
@@ -8135,7 +8135,7 @@
         "sf.render.scrap-sweeper.node.lod2-motion-hull-core-hook-nav-starboard",
         "sf.render.scrap-sweeper.node.lod2-motion-hull-core-hull",
         "sf.render.scrap-sweeper.node.lod2-motion-hull-core-hull-scrap",
-        "sf.render.scrap-sweeper.node.lod2-motion-hull-core-lights-cyan-rust",
+        "sf.render.scrap-sweeper.node.lod2-motion-hull-core-lights-trim-rust",
         "sf.render.scrap-sweeper.node.lod2-motion-hull-core-lights-warm",
         "sf.render.scrap-sweeper.node.lod2-motion-hull-core-livery",
         "sf.render.scrap-sweeper.node.lod2-motion-hull-core-mechanical",

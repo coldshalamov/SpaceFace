@@ -2580,12 +2580,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.repair-tender",
-    "expectedContentHash": "69712ebeb1b2d0b749b427b2e043d6340ebe06eef75269640c084717add6c76d",
+    "expectedContentHash": "10f5a19fd047e8437ab3e219f485f0e4cd09521d4830ed69dd3d68dbef8c070e",
     "key": "repair-tender",
     "metadataUrl": "assets/ships/release/render-packages/repair-tender/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_REPAIR_TENDER",
     "slot": "hull",
-    "sourceSha256": "63fcd7ca429b761eebd0ba26ce91bcf5de8ed79573f00e18d259f304e85b38c2",
+    "sourceSha256": "392968aaf2324fab2a03caee71366707003ea8f5f6f796935ab42727f9dc13d8",
     "sourceUrl": "assets/ships/release/parts/wholeships/repair_tender.glb"
   },
   {
@@ -2740,12 +2740,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.scrap-sweeper",
-    "expectedContentHash": "3e4c65b99af8588f680b84b604cc0f4df9023295bcf0e7fc98c7ac66ee9ff895",
+    "expectedContentHash": "4ca4f68edcb5c77613906933db1cf51a658ab2392e89fac1e2677dd591c59118",
     "key": "scrap-sweeper",
     "metadataUrl": "assets/ships/release/render-packages/scrap-sweeper/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_SCRAP_SWEEPER",
     "slot": "hull",
-    "sourceSha256": "b6bea503c7a725dfcd7d37d4e03e26bb662daad4ea971db6c3f700529c0f9217",
+    "sourceSha256": "09c1fb5241fd0cc14420f6c40b380b1454d1f0c05e509257420264dcad54f5e6",
     "sourceUrl": "assets/ships/release/parts/wholeships/scrap_sweeper.glb"
   },
   {
