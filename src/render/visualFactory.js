@@ -2752,6 +2752,7 @@ function buildAsteroid(e) {
 }
 
 const _threatPlateQuat = new THREE.Quaternion();
+const _threatPlatePosition = new THREE.Vector3();
 const _threatPlateScale = new THREE.Vector3();
 const _threatCameraQuat = new THREE.Quaternion();
 const _glyphNose = new THREE.Vector3();
@@ -2979,7 +2980,7 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
   const requested = Number.isFinite(markAuth) && markAuth > bodyR ? markAuth : bodyR;
   const markR = Math.min(requested, bodyR * SWARM_THREAT_MARK_SCALE);
   mesh.updateWorldMatrix(true, false);
-  mesh.getWorldScale(_threatPlateScale);
+  mesh.matrixWorld.decompose(_threatPlatePosition, _threatPlateQuat, _threatPlateScale);
   const inv = (n) => 1 / Math.max(1e-4, Math.abs(n));
   const bodyScaleX = bodyR * inv(_threatPlateScale.x);
   const bodyScaleY = bodyR * inv(_threatPlateScale.y);
@@ -3009,7 +3010,6 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
   const gunsHeld = !!(entity.data && entity.data.ai && entity.data.ai.swarmFireHeld === true);
   if (lamp) lamp.visible = !gunsHeld;
   if (camera && camera.quaternion && mesh.quaternion) {
-    mesh.getWorldQuaternion(_threatPlateQuat);
     camera.getWorldQuaternion(_threatCameraQuat);
     _threatPlateQuat.invert().multiply(_threatCameraQuat);
     plate.quaternion.copy(_threatPlateQuat);

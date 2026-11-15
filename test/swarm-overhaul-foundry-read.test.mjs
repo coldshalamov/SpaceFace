@@ -25,6 +25,21 @@ function plateOn(entity, meshQuat, camQuat) {
   return { mesh, camera, plate: mesh.getObjectByName('sf-swarm-threat-plate') };
 }
 
+test('threat rim preserves scale and facing under transformed parents', () => {
+  const parent = new THREE.Group(), mesh = new THREE.Group(), camera = new THREE.Object3D();
+  parent.position.set(10, 4, -2); parent.rotation.set(.1, .7, -.2); parent.scale.set(1.4, .8, 2);
+  parent.add(mesh); mesh.rotation.set(.1, .3, .2); mesh.scale.set(.8, 1.1, 1.3);
+  camera.rotation.set(.5, -.4, .2);
+  const scale = mesh.getWorldScale(new THREE.Vector3());
+  const facing = mesh.getWorldQuaternion(new THREE.Quaternion()).invert()
+    .multiply(camera.getWorldQuaternion(new THREE.Quaternion()));
+  syncSwarmThreatPlate(mesh, hostile(1, 8), camera);
+  const plate = mesh.getObjectByName('sf-swarm-threat-plate');
+  assert.ok(plate.scale.distanceTo(new THREE.Vector3(8 / Math.abs(scale.x),
+    8 / Math.abs(scale.y), 8 / Math.abs(scale.z))) < 1e-10);
+  assert.ok(plate.quaternion.angleTo(facing) < 1e-7);
+});
+
 test('a hostile ship wears one opaque threat rim that faces the camera', () => {
   const camQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.4, -0.7, 0.15));
   const meshQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.2, 1.1, 0.55));
