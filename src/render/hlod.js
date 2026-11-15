@@ -38,7 +38,7 @@ export function applyProjectedDetailLod(root, level) {
     const hlodHidden = object.userData._hlodHidden === true;
     if (hide) {
       if (hlodHidden) return;
-      if (object.userData._hlodBaseVisible === undefined) object.userData._hlodBaseVisible = now;
+      object.userData._hlodBaseVisible = now;
       if (!now) return;
       if (pooled) object.userData.poolLeafVisible = false;
       else object.visible = false;

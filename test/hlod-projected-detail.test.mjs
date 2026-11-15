@@ -47,3 +47,23 @@ test('place HLOD uses the same projected-detail helper', () => {
   assert.equal(applyProjectedDetailLod(root, 'lod2'), 1);
   assert.equal(antenna.visible, false);
 });
+
+test('HLOD restores the owner visibility present when entering far LOD', () => {
+  for (const pooled of [false, true]) {
+    const root = new THREE.Group();
+    const detail = mesh('Greeble_Changing', { greeble: true });
+    if (pooled) {
+      detail.userData.asteroidInstanceAdopted = true;
+      detail.userData.poolLeafVisible = false;
+      detail.visible = false;
+    } else detail.visible = false;
+    root.add(detail);
+    applyProjectedDetailLod(root, 'lod0');
+    if (pooled) detail.userData.poolLeafVisible = true;
+    else detail.visible = true;
+    assert.equal(applyProjectedDetailLod(root, 'lod2'), 1);
+    applyProjectedDetailLod(root, 'lod0');
+    assert.equal(pooled ? detail.userData.poolLeafVisible : detail.visible, true,
+      pooled ? 'pooled detail should return' : 'detail should return');
+  }
+});
