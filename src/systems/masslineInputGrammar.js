@@ -74,7 +74,11 @@ export function createMasslineInputGrammar() {
       releaseSource = pressSource;
       // A device vanishing is not a tap. The rope does not cut or latch because the pad left.
       if (raw.silentRelease !== true) {
-        command.cut = attached && pressStartedAttached && heldS < MASSLINE_HOLD_S - 1e-10;
+        // THROW-01: tap vs hold is the REAL press length when the device reports one (mouse down/up
+        // timestamps), so a frame hitch cannot turn a quick click into a hold. Sim time is the
+        // fallback for devices without timestamps (pad, touch, keys) and for replays.
+        const pressS = Number.isFinite(raw.pressS) && raw.pressS >= 0 ? raw.pressS : heldS;
+        command.cut = attached && pressStartedAttached && pressS < MASSLINE_HOLD_S - 1e-10;
       }
       heldS = 0; pressStartedAttached = false; enteredLineControl = false; pressSource = null;
       rememberedLineLength = 0; rememberedOrbit = 0;

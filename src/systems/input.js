@@ -1073,6 +1073,8 @@ export function domMouseDownEvent(host, d = {}) {
       ? { targetId: line.targetId, attachmentId: line.attachmentId } : null;
     host._pendingThrowLineAtPress = host._throwLineAtPress;
     host._pendingMouseLinePress = true;
+    host._m2DownMs = mouseEventMs(d);
+    host._m2PressS = null;
   }
   host._kbmActivityPending = true;
 }
@@ -1081,7 +1083,19 @@ export function domMouseUpEvent(host, d = {}) {
   if (!host) return;
   if (d.button === 0) host._m0 = false;
   if (d.button === 1) host._m1 = false;
-  if (d.button === 2) { host._m2 = false; host._throwLineAtPress = null; }
+  if (d.button === 2) {
+    host._m2 = false; host._throwLineAtPress = null;
+    // THROW-01: the real press length (event timestamps), carried to the release step.
+    if (Number.isFinite(host._m2DownMs)) {
+      const up = mouseEventMs(d);
+      host._m2PressS = Number.isFinite(up) && up >= host._m2DownMs ? (up - host._m2DownMs) / 1000 : null;
+    }
+    host._m2DownMs = null;
+  }
+}
+
+function mouseEventMs(d) {
+  return Number.isFinite(d && d.timeStamp) ? d.timeStamp : null;
 }
 
 function isCurrentMouseLine(line, tether) {
@@ -2285,7 +2299,9 @@ export const input = {
         source: tetherHeld ? (tetherEdge?.source || 'keyboard')
           : (gpMasslineHeld ? 'gamepad' : (masslineHeld ? 'latch' : null)),
         silentRelease: !!(gp && gp.deviceLostThisFrame) && !masslineHeld,
+        pressS: this._m2PressS,
       });
+    if (!mouseLineHeld) this._m2PressS = null;
     if (!mouseLineHeld) {
       const sampled = this._sampledMouseCutLine;
       if (masslineCommand.cut && tetherEdge?.pressed !== false

@@ -54,14 +54,14 @@ function world({ payloadType = 'hostile', bindF = false } = {}) {
 
   let phase = 0;
   const w = { state, host, system, events, player, payload, bus };
-  w.tick = (n = 1) => {
+  w.tick = (n = 1, dt = DT) => {
     for (let i = 0; i < n; i++) {
-      state.tick += 1; state.simTime += DT;
+      state.tick += 1; state.simTime += dt;
       // The payload orbits the player on the taut line (a swing).
       phase += 3.0 * DT;
       payload.pos.x = Math.cos(phase) * 120; payload.pos.z = Math.sin(phase) * 120;
       payload.vel.x = -Math.sin(phase) * 360; payload.vel.z = Math.cos(phase) * 360;
-      host.update(DT, state);
+      host.update(dt, state);
       // tetherGameplay stand-in: a published cut request cuts the Line and says so.
       const a = state.input.actions;
       if (a && a.tetherCut && state.player.tether.active) {
@@ -227,6 +227,25 @@ test('(e) W held: a click on a held ship throws; a click on an anchor cuts', () 
         assert.equal(w.events.cut.length, 1, `${tag}: the anchor is released`);
         assert.equal(w.state.player.tether.active, false);
       }
+    }
+  }
+}));
+
+// A hitch must never turn a quick click into a hold: the press is measured from the mousedown and
+// mouseup timestamps, not from how long the sim took to notice.
+test('(f) a 120 ms press delivered across a 200 ms frame hitch still throws (ship) or cuts (anchor)', () => withFlags(() => {
+  for (const kind of ['hostile', 'asteroid']) {
+    const w = world({ payloadType: kind });
+    w.latch();
+    w.tick(20);
+    domMouseDownEvent(w.host, { ...POINTER, timeStamp: 5000 }); w.tick(1);
+    w.tick(1, 0.2);                                   // the hitch: one 200 ms frame while the button is down
+    domMouseUpEvent(w.host, { ...POINTER, timeStamp: 5120 }); w.tick(30);
+    if (kind === 'hostile') {
+      assert.equal(w.events.throw.length, 1, 'the click threw');
+      assert.equal(w.events.selfSling.length, 0);
+    } else {
+      assert.equal(w.events.cut.length, 1, 'the click on the anchor cut it');
     }
   }
 }));
