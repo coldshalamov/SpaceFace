@@ -128,6 +128,7 @@ export function createFreightLaneDirector(ctx) {
   let strings = [];       // live strings: { id, departAt, members: [entity], dir }
   let stringSerial = 0;
   let warnEmit = null;    // payload of the last warning, for tests/diag
+  const contactScratch = [];
   const unsubs = [];
 
   function emit(name, payload) {
@@ -363,9 +364,16 @@ export function createFreightLaneDirector(ctx) {
     const mx = finite(member.pos && member.pos.x);
     const mz = finite(member.pos && member.pos.z);
     const reach = FREIGHT_CONTAINER_RADIUS + 2;
-    const entities = state.entities && typeof state.entities.values === 'function'
-      ? state.entities.values()
-      : (Array.isArray(state.entityList) ? state.entityList : null);
+    const hash = state.spatialHash;
+    let entities;
+    if (hash && typeof hash.queryRadius === 'function' && hash.diagnostics?.activeBuckets > 0) {
+      contactScratch.length = 0;
+      hash.queryRadius(mx, mz, reach + (Number(hash.cell) || 64), contactScratch);
+      entities = contactScratch;
+    } else {
+      entities = state.entities && typeof state.entities.values === 'function'
+        ? state.entities.values() : (Array.isArray(state.entityList) ? state.entityList : null);
+    }
     if (!entities) return;
     for (const e of entities) {
       if (!e || e === member || e.alive === false || !e.pos) continue;

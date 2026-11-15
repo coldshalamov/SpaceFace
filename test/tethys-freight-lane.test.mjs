@@ -27,3 +27,25 @@ test('Tethys sends physical freight in round one and retires it on retry', () =>
   assert.equal(retired.length, FREIGHT_STRING_COUNT);
   director.destroy();
 });
+import { createGameState } from '../src/core/gameState.js';
+
+test('moving freight queries nearby indexed bodies without walking the entity store', () => {
+  const state = createGameState(7), bus = createBus(), contacts = [];
+  const target = { id: 100, type: 'asteroid', alive: true, collides: true, radius: 12, mass: 20,
+    pos: { x: -400, z: 25 }, vel: { x: 0, z: 0 }, data: {} };
+  state.entities.set(target.id, target); state.entityList.push(target);
+  state.spatialHash.rebuild(state.entityList);
+  state.entities.values = () => { throw new Error('whole entity store was scanned'); };
+  let nextId = 200;
+  const director = createFreightLaneDirector({ state, bus, helpers: { spawnEntity(spec) {
+    const body = { ...spec, id: nextId++, alive: true };
+    state.entities.set(body.id, body); state.entityList.push(body); return body;
+  } } });
+  bus.on('freight:contact', p => contacts.push(p));
+  director.init();
+  director.arm({ arenaId: 'tethys_hub', at: { x: 0, z: 0 }, installedAt: 0, wave: 1 });
+  state.simTime = FREIGHT_FIRST_DEPART_S;
+  director.update(1 / 60, state);
+  assert.ok(contacts.some(p => p.targetId === target.id), 'large body overlaps the indexed container');
+  director.destroy();
+});
