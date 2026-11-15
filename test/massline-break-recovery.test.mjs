@@ -342,3 +342,16 @@ test('control: without a boundary the same deferred echo flushes on the next upd
   h.system.update(DT, h.state);
   assert.equal(h.events.broke.length, 1, 'in-run echoes still deliver one tick late');
 });
+
+test('THROW-01: a tap on a latched station cuts the line (a click is never a no-op)', () => {
+  const h = buildLatchHarness();
+  h.rock.type = 'station'; h.rock.team = 0; h.rock.mass = 100000; h.rock.data = { roomOwner: 'survival-arena', roomKind: 'plate' };
+  fireLatch(h);
+  assert.equal(h.state.player.tether.active, true, 'the station latches');
+  for (let i = 0; i < 60; i++) { h.state.tick += 1; h.state.simTime += DT; h.system.update(DT, h.state); }   // past the 0.55 s latch grace
+  h.state.input.actions.tetherCut = true;
+  h.system.update(DT, h.state);
+  h.state.input.actions.tetherCut = false;
+  for (let i = 0; i < 6; i++) { h.state.tick += 1; h.state.simTime += DT; h.system.update(DT, h.state); }
+  assert.equal(h.state.player.tether.active, false, 'the tap released the station line');
+});

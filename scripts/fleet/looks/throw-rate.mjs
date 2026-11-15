@@ -66,6 +66,7 @@ try {
         c.push({ id: e.id, mass: e.mass, dist: Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z), scr });
       }
       c.sort((a, b) => a.dist - b.dist); return c[0] || null; });
+    try {
     for (let a = 0; a < per; a++) {
       const rec = { round, attempt: a, mode, latched: false, held: null, heldMass: null, throw: false, selfSling: false, cut: false, endReason: null, heldFate: null, secondClick: false };
       const mark = await page.evaluate(() => window.__log.length);
@@ -104,6 +105,8 @@ try {
       rec.endReason = br ? br.br : (rec.throw ? 'thrown' : (rec.cut ? 'cut' : null));
       const k = ev.find((e) => e.ev === 'entity:killed' && e.id === rec.held);
       rec.killsWhileHeld = ev.filter((e) => e.ev === 'entity:killed' && e.id !== rec.held && e.t >= L.t && e.t < rec.clickT).length;
+      const allLog = await page.evaluate(() => window.__log);
+      rec.killsBaseline = allLog.filter((e) => e.ev === 'entity:killed' && e.t >= L.t - 1.5 && e.t < L.t).length;
       rec.killsAfterRelease = ev.filter((e) => e.ev === 'entity:killed' && e.id !== rec.held && e.t >= rec.clickT).length;
       rec.damageToHeld = ev.filter((e) => e.ev === 'combat:damage' && (e.victim === rec.held || e.tgt === rec.held)).map((e) => `${e.origin}/${e.weapon}:${Math.round(e.dmg)}`).slice(-4);
       rec.heldFate = k ? { t: k.t, killer: k.killer, cause: k.cause ?? null, afterLatch: +(k.t - L.t).toFixed(2) } : 'alive';
@@ -113,17 +116,18 @@ try {
       results.push(rec);
       writeFileSync(out, JSON.stringify(results, null, 1));
     }
+    } catch (e) { console.log(`round ${round} stopped: ${String(e.message).slice(0, 80)}`); }
     await page.close();
   }
   await browser.close();
 } finally { server.kill(); }
 writeFileSync(out, JSON.stringify(results, null, 1));
-const att = results.filter((r) => r.latched);
+const att = results.filter((r) => r.latched && !(r.atClick && r.atClick.tgt && r.atClick.tgt.type !== 'ship' && r.atClick.tgt.type !== 'drone'));
 const thrown = att.filter((r) => r.throw).length;
 const gone = att.filter((r) => r.note === 'line already gone before the click').length;
 const killers = {};
 for (const r of att) if (r.heldFate && r.heldFate !== 'alive') { const k = String(r.heldFate.killer); killers[k] = (killers[k] || 0) + 1; }
 const avg = (k) => (att.length ? (att.reduce((a, r) => a + (r[k] || 0), 0) / att.length).toFixed(2) : 0);
-console.log(`kills per attempt: while held ${avg('killsWhileHeld')} · in the 1.5 s after the click ${avg('killsAfterRelease')}`);
+console.log(`kills per attempt: while held ${avg('killsWhileHeld')} · in the 1.5 s after the click ${avg('killsAfterRelease')} · swarm baseline (1.5 s before latch) ${avg('killsBaseline')} · net of baseline: held ${(avg('killsWhileHeld') - avg('killsBaseline')).toFixed(2)} after ${(avg('killsAfterRelease') - avg('killsBaseline')).toFixed(2)}`);
 console.log(`modules patched for no-hammer: ${patched}`);
 console.log(`mode ${mode}: attempts ${results.length} · latched ${att.length} · throws ${thrown} (${att.length ? Math.round(100 * thrown / att.length) : 0}%) · line gone before click ${gone} · self-slings ${att.filter((r) => r.selfSling).length} · held killed by ${JSON.stringify(killers)}`);
