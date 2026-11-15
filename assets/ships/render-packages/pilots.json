@@ -2470,7 +2470,10 @@
       "rootNode": "greeble_antennas",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/greeble-antennas",
-      "metadataUrl": "assets/ships/release/render-packages/greeble-antennas/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/greeble-antennas/render-package.json",
+      "sharedKtx2Hashes": [
+        "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+      ]
     },
     {
       "key": "greeble-armor-plates",
@@ -2485,7 +2488,10 @@
       "rootNode": "greeble_armor_plates",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/greeble-armor-plates",
-      "metadataUrl": "assets/ships/release/render-packages/greeble-armor-plates/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/greeble-armor-plates/render-package.json",
+      "sharedKtx2Hashes": [
+        "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+      ]
     },
     {
       "key": "greeble-hatches",
@@ -2500,7 +2506,10 @@
       "rootNode": "greeble_hatches",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/greeble-hatches",
-      "metadataUrl": "assets/ships/release/render-packages/greeble-hatches/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/greeble-hatches/render-package.json",
+      "sharedKtx2Hashes": [
+        "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+      ]
     },
     {
       "key": "greeble-nav-lights",
@@ -2515,7 +2524,10 @@
       "rootNode": "greeble_nav_lights",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/greeble-nav-lights",
-      "metadataUrl": "assets/ships/release/render-packages/greeble-nav-lights/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/greeble-nav-lights/render-package.json",
+      "sharedKtx2Hashes": [
+        "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+      ]
     },
     {
       "key": "greeble-pipes",
@@ -2530,7 +2542,10 @@
       "rootNode": "greeble_pipes",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/greeble-pipes",
-      "metadataUrl": "assets/ships/release/render-packages/greeble-pipes/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/greeble-pipes/render-package.json",
+      "sharedKtx2Hashes": [
+        "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+      ]
     },
     {
       "key": "greeble-rcs",
@@ -2545,7 +2560,10 @@
       "rootNode": "greeble_rcs",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/greeble-rcs",
-      "metadataUrl": "assets/ships/release/render-packages/greeble-rcs/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/greeble-rcs/render-package.json",
+      "sharedKtx2Hashes": [
+        "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+      ]
     },
     {
       "key": "greeble-vents",
@@ -2560,7 +2578,10 @@
       "rootNode": "greeble_vents",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/greeble-vents",
-      "metadataUrl": "assets/ships/release/render-packages/greeble-vents/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/greeble-vents/render-package.json",
+      "sharedKtx2Hashes": [
+        "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+      ]
     },
     {
       "key": "habitat-pod",

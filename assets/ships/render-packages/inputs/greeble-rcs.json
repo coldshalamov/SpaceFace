@@ -1,0 +1,128 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": true,
+    "externalizeKtx2Hashes": [
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+    ],
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "greeble_rcs",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.greeble-rcs",
+    "dynamicNameIncludes": [],
+    "key": "greeble-rcs",
+    "kind": "part",
+    "metadataUrl": "assets/ships/release/render-packages/greeble-rcs/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/greeble-rcs",
+    "releaseAssetId": "greeble_rcs",
+    "releaseBytes": 410220,
+    "releaseSha256": "9608e939191cf457a2ad846dc0ea8dfda4ad0f42f65fb33e6ea3d3c18b898583",
+    "rootNode": "greeble_rcs",
+    "runtimeAssetId": "SF_GREEBLE_RCS",
+    "sharedKtx2Hashes": [
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+    ],
+    "slot": "greeble",
+    "sourceUrl": "assets/ships/release/parts/greebles/greeble_rcs.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 1,
+    "id": "greeble_rcs",
+    "kind": "part:greebles",
+    "ktx2Textures": 3,
+    "meshoptBufferViews": 10,
+    "release": "assets/ships/release/parts/greebles/greeble_rcs.glb",
+    "releaseBytes": 410220,
+    "releaseSha256": "9608e939191cf457a2ad846dc0ea8dfda4ad0f42f65fb33e6ea3d3c18b898583",
+    "source": "assets/ships/parts/greebles/greeble_rcs.glb",
+    "sourceBytes": 238516,
+    "sourceSha256": "ebb28eec748a46086b52b96e4c870abfd98f7e38ad256591837356f934d94934",
+    "textures": 3
+  },
+  "runtime": {
+    "assetId": "SF_GREEBLE_RCS",
+    "motionBank": null,
+    "slot": "greeble",
+    "sourceUrl": "assets/ships/release/parts/greebles/greeble_rcs.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [],
+    "assetId": "sf.render.greeble-rcs",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "part",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-rcs.mesh.greeble-rcs-material-accent-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "greeble_rcs_Material_Accent_Merged",
+        "node": "greeble_rcs_Material_Accent_Merged",
+        "parentId": "sf.render.greeble-rcs.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-rcs.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-rcs.mesh.greeble-rcs-material-mechanical-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "greeble_rcs_Material_Mechanical_Merged",
+        "node": "greeble_rcs_Material_Mechanical_Merged",
+        "parentId": "sf.render.greeble-rcs.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-rcs.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-rcs.mesh.rcs-base",
+        "independentlyCulled": false,
+        "mergeBoundary": "RCS_Base",
+        "node": "RCS_Base",
+        "parentId": "sf.render.greeble-rcs.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-rcs.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-rcs.root",
+        "independentlyCulled": false,
+        "mergeBoundary": "asset-root",
+        "node": "greeble_rcs",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-rcs.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 410220,
+    "sha256": "9608e939191cf457a2ad846dc0ea8dfda4ad0f42f65fb33e6ea3d3c18b898583",
+    "uri": "assets/ships/release/parts/greebles/greeble_rcs.glb"
+  }
+}

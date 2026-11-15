@@ -1,0 +1,128 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": true,
+    "externalizeKtx2Hashes": [
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+    ],
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "greeble_pipes",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.greeble-pipes",
+    "dynamicNameIncludes": [],
+    "key": "greeble-pipes",
+    "kind": "part",
+    "metadataUrl": "assets/ships/release/render-packages/greeble-pipes/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/greeble-pipes",
+    "releaseAssetId": "greeble_pipes",
+    "releaseBytes": 410840,
+    "releaseSha256": "5087afcb73d60e9cd121bc7da9f8b55277a733b0bebaaa1d946a91046acfa5d4",
+    "rootNode": "greeble_pipes",
+    "runtimeAssetId": "SF_GREEBLE_PIPES",
+    "sharedKtx2Hashes": [
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+    ],
+    "slot": "greeble",
+    "sourceUrl": "assets/ships/release/parts/greebles/greeble_pipes.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 0,
+    "id": "greeble_pipes",
+    "kind": "part:greebles",
+    "ktx2Textures": 3,
+    "meshoptBufferViews": 10,
+    "release": "assets/ships/release/parts/greebles/greeble_pipes.glb",
+    "releaseBytes": 410840,
+    "releaseSha256": "5087afcb73d60e9cd121bc7da9f8b55277a733b0bebaaa1d946a91046acfa5d4",
+    "source": "assets/ships/parts/greebles/greeble_pipes.glb",
+    "sourceBytes": 240896,
+    "sourceSha256": "6e53ee298c2d2a4d65990544ee26105e88db3a0aaf61997046fb97ef017f908a",
+    "textures": 3
+  },
+  "runtime": {
+    "assetId": "SF_GREEBLE_PIPES",
+    "motionBank": null,
+    "slot": "greeble",
+    "sourceUrl": "assets/ships/release/parts/greebles/greeble_pipes.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [],
+    "assetId": "sf.render.greeble-pipes",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "part",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-pipes.mesh.greeble-pipes-material-accent-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "greeble_pipes_Material_Accent_Merged",
+        "node": "greeble_pipes_Material_Accent_Merged",
+        "parentId": "sf.render.greeble-pipes.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-pipes.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-pipes.mesh.greeble-pipes-material-mechanical-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "greeble_pipes_Material_Mechanical_Merged",
+        "node": "greeble_pipes_Material_Mechanical_Merged",
+        "parentId": "sf.render.greeble-pipes.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-pipes.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-pipes.mesh.pipe-base",
+        "independentlyCulled": false,
+        "mergeBoundary": "Pipe_Base",
+        "node": "Pipe_Base",
+        "parentId": "sf.render.greeble-pipes.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-pipes.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-pipes.root",
+        "independentlyCulled": false,
+        "mergeBoundary": "asset-root",
+        "node": "greeble_pipes",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-pipes.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 410840,
+    "sha256": "5087afcb73d60e9cd121bc7da9f8b55277a733b0bebaaa1d946a91046acfa5d4",
+    "uri": "assets/ships/release/parts/greebles/greeble_pipes.glb"
+  }
+}

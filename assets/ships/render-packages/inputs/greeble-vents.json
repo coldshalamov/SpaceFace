@@ -1,0 +1,116 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": true,
+    "externalizeKtx2Hashes": [
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+    ],
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "greeble_vents",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.greeble-vents",
+    "dynamicNameIncludes": [],
+    "key": "greeble-vents",
+    "kind": "part",
+    "metadataUrl": "assets/ships/release/render-packages/greeble-vents/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/greeble-vents",
+    "releaseAssetId": "greeble_vents",
+    "releaseBytes": 416328,
+    "releaseSha256": "9a28cc7825d80a52d5d6c4907ba04602273cf862d2f68001b667d22747052d4a",
+    "rootNode": "greeble_vents",
+    "runtimeAssetId": "SF_PART_GREEBLE_VENTS",
+    "sharedKtx2Hashes": [
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+    ],
+    "slot": "greeble",
+    "sourceUrl": "assets/ships/release/parts/greebles/greeble_vents.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 0,
+    "id": "greeble_vents",
+    "kind": "part:greebles",
+    "ktx2Textures": 3,
+    "meshoptBufferViews": 8,
+    "release": "assets/ships/release/parts/greebles/greeble_vents.glb",
+    "releaseBytes": 416328,
+    "releaseSha256": "9a28cc7825d80a52d5d6c4907ba04602273cf862d2f68001b667d22747052d4a",
+    "source": "assets/ships/parts/greebles/greeble_vents.glb",
+    "sourceBytes": 243904,
+    "sourceSha256": "e239fd92da5839e5168b6e789c8a30b3197e0e231b232c815afed38ceb6ef7b5",
+    "textures": 3
+  },
+  "runtime": {
+    "assetId": "SF_PART_GREEBLE_VENTS",
+    "motionBank": null,
+    "slot": "greeble",
+    "sourceUrl": "assets/ships/release/parts/greebles/greeble_vents.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [],
+    "assetId": "sf.render.greeble-vents",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "part",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-vents.mesh.greeble-vents-material-hull-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "greeble_vents_Material_Hull_Merged",
+        "node": "greeble_vents_Material_Hull_Merged",
+        "parentId": "sf.render.greeble-vents.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-vents.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-vents.mesh.greeble-vents-material-mechanical-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "greeble_vents_Material_Mechanical_Merged",
+        "node": "greeble_vents_Material_Mechanical_Merged",
+        "parentId": "sf.render.greeble-vents.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-vents.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-vents.root",
+        "independentlyCulled": false,
+        "mergeBoundary": "asset-root",
+        "node": "greeble_vents",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-vents.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 416328,
+    "sha256": "9a28cc7825d80a52d5d6c4907ba04602273cf862d2f68001b667d22747052d4a",
+    "uri": "assets/ships/release/parts/greebles/greeble_vents.glb"
+  }
+}

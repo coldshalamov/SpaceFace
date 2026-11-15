@@ -1,0 +1,116 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": true,
+    "externalizeKtx2Hashes": [
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+    ],
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "greeble_armor_plates",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.greeble-armor-plates",
+    "dynamicNameIncludes": [],
+    "key": "greeble-armor-plates",
+    "kind": "part",
+    "metadataUrl": "assets/ships/release/render-packages/greeble-armor-plates/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/greeble-armor-plates",
+    "releaseAssetId": "greeble_armor_plates",
+    "releaseBytes": 268700,
+    "releaseSha256": "2e60eed1d925e801fe7ba054060f324a96c42eeeb409dbe25fbd002ec60eb3de",
+    "rootNode": "greeble_armor_plates",
+    "runtimeAssetId": "SF_GREEBLE_ARMOR_PLATES",
+    "sharedKtx2Hashes": [
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+    ],
+    "slot": "greeble",
+    "sourceUrl": "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 0,
+    "id": "greeble_armor_plates",
+    "kind": "part:greebles",
+    "ktx2Textures": 3,
+    "meshoptBufferViews": 8,
+    "release": "assets/ships/release/parts/greebles/greeble_armor_plates.glb",
+    "releaseBytes": 268700,
+    "releaseSha256": "2e60eed1d925e801fe7ba054060f324a96c42eeeb409dbe25fbd002ec60eb3de",
+    "source": "assets/ships/parts/greebles/greeble_armor_plates.glb",
+    "sourceBytes": 337068,
+    "sourceSha256": "ad309c8b83a3068c534f6c64955aa6ac4582ec5073a936a90d9a488141ccd5c5",
+    "textures": 3
+  },
+  "runtime": {
+    "assetId": "SF_GREEBLE_ARMOR_PLATES",
+    "motionBank": null,
+    "slot": "greeble",
+    "sourceUrl": "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [],
+    "assetId": "sf.render.greeble-armor-plates",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "part",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-armor-plates.mesh.greeble-armor-plates-material-hull-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "greeble_armor_plates_Material_Hull_Merged",
+        "node": "greeble_armor_plates_Material_Hull_Merged",
+        "parentId": "sf.render.greeble-armor-plates.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-armor-plates.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-armor-plates.mesh.greeble-armor-plates-material-mechanical-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "greeble_armor_plates_Material_Mechanical_Merged",
+        "node": "greeble_armor_plates_Material_Mechanical_Merged",
+        "parentId": "sf.render.greeble-armor-plates.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-armor-plates.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-armor-plates.root",
+        "independentlyCulled": false,
+        "mergeBoundary": "asset-root",
+        "node": "greeble_armor_plates",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-armor-plates.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 268700,
+    "sha256": "2e60eed1d925e801fe7ba054060f324a96c42eeeb409dbe25fbd002ec60eb3de",
+    "uri": "assets/ships/release/parts/greebles/greeble_armor_plates.glb"
+  }
+}

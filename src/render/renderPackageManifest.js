@@ -1356,7 +1356,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.greeble-antennas",
-    "expectedContentHash": "9a3d6787e2926d910457d740c3fbf6ba50877ad9875b700c0bbd1d19b60f196b",
+    "expectedContentHash": "d4db79af2c84ecf9ebe6dd914b864484c89debc6d5be4d9c07fa517a41455613",
     "key": "greeble-antennas",
     "metadataUrl": "assets/ships/release/render-packages/greeble-antennas/render-package.json",
     "runtimeAssetId": "SF_GREEBLE_ANTENNAS",
@@ -1366,7 +1366,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.greeble-armor-plates",
-    "expectedContentHash": "80eb6b0034d4154c8d289110da9760a07c21599fbba15ce67aceba4286443eed",
+    "expectedContentHash": "b55427df965e86fb28d4e2f5846c2f6286a3bc5e87481de47dd68917269d99aa",
     "key": "greeble-armor-plates",
     "metadataUrl": "assets/ships/release/render-packages/greeble-armor-plates/render-package.json",
     "runtimeAssetId": "SF_GREEBLE_ARMOR_PLATES",
@@ -1376,7 +1376,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.greeble-hatches",
-    "expectedContentHash": "9dffe5587749d48ab3d69abe56b51bd52d6ee281275f02377deab1a601a6a09a",
+    "expectedContentHash": "cfe15b532215ef3026bcba9b6881ccf4e1747e72aa8167c51c41e338e7c76def",
     "key": "greeble-hatches",
     "metadataUrl": "assets/ships/release/render-packages/greeble-hatches/render-package.json",
     "runtimeAssetId": "SF_GREEBLE_HATCHES",
@@ -1386,7 +1386,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.greeble-nav-lights",
-    "expectedContentHash": "38db055665d47974b9e6ef58ccf788e72c1184026f2de16a611e5c7a2e9598bc",
+    "expectedContentHash": "203b7e413767367b2b38495f608be849eb5445b0a942f524f0771cbbadf77b2e",
     "key": "greeble-nav-lights",
     "metadataUrl": "assets/ships/release/render-packages/greeble-nav-lights/render-package.json",
     "runtimeAssetId": "SF_GREEBLE_NAV_LIGHTS",
@@ -1396,7 +1396,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.greeble-pipes",
-    "expectedContentHash": "d30d86dc998b2cccaaff3125691e4389b4ec3ebebc1842fc3474798eb2ff040a",
+    "expectedContentHash": "d5e42f935fa45304d4c108a2c852d6173552790b7b31ac573b709f25565640a7",
     "key": "greeble-pipes",
     "metadataUrl": "assets/ships/release/render-packages/greeble-pipes/render-package.json",
     "runtimeAssetId": "SF_GREEBLE_PIPES",
@@ -1406,7 +1406,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.greeble-rcs",
-    "expectedContentHash": "5bb2c8af66160226ad9858d1862a565aa70da3895c48218a395b72299d49a411",
+    "expectedContentHash": "43c4433ccfb0f9c1f271741e0000148c0eed64c2410a74eea8c6bde88d32d627",
     "key": "greeble-rcs",
     "metadataUrl": "assets/ships/release/render-packages/greeble-rcs/render-package.json",
     "runtimeAssetId": "SF_GREEBLE_RCS",
@@ -1416,7 +1416,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.greeble-vents",
-    "expectedContentHash": "6851354a452a13c09728acb97ad155534eda13682aea9492307fcd6d84d0fcac",
+    "expectedContentHash": "a804502f3dba68beddd731e0e1d6571786a93382e871440a2850f2a56ff45ad5",
     "key": "greeble-vents",
     "metadataUrl": "assets/ships/release/render-packages/greeble-vents/render-package.json",
     "runtimeAssetId": "SF_PART_GREEBLE_VENTS",

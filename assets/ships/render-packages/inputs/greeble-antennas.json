@@ -1,0 +1,140 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": true,
+    "externalizeKtx2Hashes": [
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+    ],
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "greeble_antennas",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.greeble-antennas",
+    "dynamicNameIncludes": [],
+    "key": "greeble-antennas",
+    "kind": "part",
+    "metadataUrl": "assets/ships/release/render-packages/greeble-antennas/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/greeble-antennas",
+    "releaseAssetId": "greeble_antennas",
+    "releaseBytes": 268092,
+    "releaseSha256": "f2159587e8d17070a6bfaa0f7e3672d63cc447292e041a3d237f0e4a865f0098",
+    "rootNode": "greeble_antennas",
+    "runtimeAssetId": "SF_GREEBLE_ANTENNAS",
+    "sharedKtx2Hashes": [
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+    ],
+    "slot": "greeble",
+    "sourceUrl": "assets/ships/release/parts/greebles/greeble_antennas.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 1,
+    "id": "greeble_antennas",
+    "kind": "part:greebles",
+    "ktx2Textures": 3,
+    "meshoptBufferViews": 15,
+    "release": "assets/ships/release/parts/greebles/greeble_antennas.glb",
+    "releaseBytes": 268092,
+    "releaseSha256": "f2159587e8d17070a6bfaa0f7e3672d63cc447292e041a3d237f0e4a865f0098",
+    "source": "assets/ships/parts/greebles/greeble_antennas.glb",
+    "sourceBytes": 284752,
+    "sourceSha256": "81fe2d1eab76a04ee35d599d5e228022bff1239fa1fefb917112c78cba9e2c97",
+    "textures": 3
+  },
+  "runtime": {
+    "assetId": "SF_GREEBLE_ANTENNAS",
+    "motionBank": null,
+    "slot": "greeble",
+    "sourceUrl": "assets/ships/release/parts/greebles/greeble_antennas.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [],
+    "assetId": "sf.render.greeble-antennas",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "part",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-antennas.mesh.antenna-beacon",
+        "independentlyCulled": false,
+        "mergeBoundary": "Antenna_Beacon",
+        "node": "Antenna_Beacon",
+        "parentId": "sf.render.greeble-antennas.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-antennas.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-antennas.mesh.antenna-loop",
+        "independentlyCulled": false,
+        "mergeBoundary": "Antenna_Loop",
+        "node": "Antenna_Loop",
+        "parentId": "sf.render.greeble-antennas.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-antennas.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-antennas.mesh.greeble-antennas-material-hull-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "greeble_antennas_Material_Hull_Merged",
+        "node": "greeble_antennas_Material_Hull_Merged",
+        "parentId": "sf.render.greeble-antennas.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-antennas.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-antennas.mesh.greeble-antennas-material-mechanical-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "greeble_antennas_Material_Mechanical_Merged",
+        "node": "greeble_antennas_Material_Mechanical_Merged",
+        "parentId": "sf.render.greeble-antennas.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-antennas.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-antennas.root",
+        "independentlyCulled": false,
+        "mergeBoundary": "asset-root",
+        "node": "greeble_antennas",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-antennas.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 268092,
+    "sha256": "f2159587e8d17070a6bfaa0f7e3672d63cc447292e041a3d237f0e4a865f0098",
+    "uri": "assets/ships/release/parts/greebles/greeble_antennas.glb"
+  }
+}

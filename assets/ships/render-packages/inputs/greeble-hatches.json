@@ -1,0 +1,128 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": true,
+    "externalizeKtx2Hashes": [
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+    ],
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "greeble_hatches",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.greeble-hatches",
+    "dynamicNameIncludes": [],
+    "key": "greeble-hatches",
+    "kind": "part",
+    "metadataUrl": "assets/ships/release/render-packages/greeble-hatches/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/greeble-hatches",
+    "releaseAssetId": "greeble_hatches",
+    "releaseBytes": 422940,
+    "releaseSha256": "412a087c70d5b006f6cd8cbc08d577ab7d1199f2fdce212a6e2977164766eaa0",
+    "rootNode": "greeble_hatches",
+    "runtimeAssetId": "SF_GREEBLE_HATCHES",
+    "sharedKtx2Hashes": [
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+    ],
+    "slot": "greeble",
+    "sourceUrl": "assets/ships/release/parts/greebles/greeble_hatches.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 0,
+    "id": "greeble_hatches",
+    "kind": "part:greebles",
+    "ktx2Textures": 3,
+    "meshoptBufferViews": 11,
+    "release": "assets/ships/release/parts/greebles/greeble_hatches.glb",
+    "releaseBytes": 422940,
+    "releaseSha256": "412a087c70d5b006f6cd8cbc08d577ab7d1199f2fdce212a6e2977164766eaa0",
+    "source": "assets/ships/parts/greebles/greeble_hatches.glb",
+    "sourceBytes": 257188,
+    "sourceSha256": "6362824b722497105fa77605efb626f2a9d4305b39cf0ed3f6410707dd01d227",
+    "textures": 3
+  },
+  "runtime": {
+    "assetId": "SF_GREEBLE_HATCHES",
+    "motionBank": null,
+    "slot": "greeble",
+    "sourceUrl": "assets/ships/release/parts/greebles/greeble_hatches.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [],
+    "assetId": "sf.render.greeble-hatches",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "part",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-hatches.mesh.greeble-hatches-material-hull-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "greeble_hatches_Material_Hull_Merged",
+        "node": "greeble_hatches_Material_Hull_Merged",
+        "parentId": "sf.render.greeble-hatches.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-hatches.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-hatches.mesh.greeble-hatches-material-mechanical-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "greeble_hatches_Material_Mechanical_Merged",
+        "node": "greeble_hatches_Material_Mechanical_Merged",
+        "parentId": "sf.render.greeble-hatches.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-hatches.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-hatches.mesh.hatch-handle",
+        "independentlyCulled": false,
+        "mergeBoundary": "Hatch_Handle",
+        "node": "Hatch_Handle",
+        "parentId": "sf.render.greeble-hatches.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-hatches.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-hatches.root",
+        "independentlyCulled": false,
+        "mergeBoundary": "asset-root",
+        "node": "greeble_hatches",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-hatches.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 422940,
+    "sha256": "412a087c70d5b006f6cd8cbc08d577ab7d1199f2fdce212a6e2977164766eaa0",
+    "uri": "assets/ships/release/parts/greebles/greeble_hatches.glb"
+  }
+}

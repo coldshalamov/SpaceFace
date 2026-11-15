@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9dffe5587749d48ab3d69abe56b51bd52d6ee281275f02377deab1a601a6a09a",
+  "contentHash": "cfe15b532215ef3026bcba9b6881ccf4e1747e72aa8167c51c41e338e7c76def",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -343,14 +343,22 @@
       "uri": "greeble_hatches.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 4520,
+      "sha256": "ed52a3d19961f52c3ee354d45cda3787374511e15d1e87cf7b2d07c58ab7402e",
+      "uri": "assets/ships/render-packages/inputs/greeble-hatches.json"
     }
   },
   "render": {
-    "bytes": 422448,
-    "sha256": "55629aa727e8e0c42378a2b325c3c78056ead25491c1f256531a4b93c65f6048",
+    "bytes": 212872,
+    "resources": [
+      {
+        "bytes": 209600,
+        "mimeType": "image/ktx2",
+        "sha256": "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd",
+        "uri": "../_shared/images/830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd.ktx2"
+      }
+    ],
+    "sha256": "7b754270268838689f775ea1d3e7844505f90e1b4b20d0d46e6bcdb372ffe49a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -486,7 +494,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_hatches.glb"
   },
-  "runtimeHash": "5f51a2d0f6a7ff4c60bef87c3ef1d9826aa759685a06885baec5e62a33bf2448",
+  "runtimeHash": "307411d944f4e18df37335959dafe97bc6190c23f7f9bd5fb65ef025204ba972",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

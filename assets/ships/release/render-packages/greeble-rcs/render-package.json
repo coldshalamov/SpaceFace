@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5bb2c8af66160226ad9858d1862a565aa70da3895c48218a395b72299d49a411",
+  "contentHash": "43c4433ccfb0f9c1f271741e0000148c0eed64c2410a74eea8c6bde88d32d627",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -343,14 +343,22 @@
       "uri": "greeble_rcs.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 4378,
+      "sha256": "4756b002fcbb03d9a22a91381b01f2f19c9745cff5d539ea28012667605b12d4",
+      "uri": "assets/ships/render-packages/inputs/greeble-rcs.json"
     }
   },
   "render": {
-    "bytes": 409472,
-    "sha256": "3e63942a68f72bd5a77d1fb4e354aaf0fbe0206c2738d20c243be880bf5ced5c",
+    "bytes": 199900,
+    "resources": [
+      {
+        "bytes": 209600,
+        "mimeType": "image/ktx2",
+        "sha256": "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd",
+        "uri": "../_shared/images/830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd.ktx2"
+      }
+    ],
+    "sha256": "1701611a901ab19f27e1d6d16976566bcab8931e4d76fcfb02a553a61f3ea935",
     "uri": "render.glb"
   },
   "runtime": {
@@ -514,7 +522,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_rcs.glb"
   },
-  "runtimeHash": "c79331bf4ccfe0867f281b82f8ddbfb900d32fe91406c3005bcd9eb7118b0c43",
+  "runtimeHash": "c3241672d7426ebdffb5f3ac6d27111ff2260a32278c0f007b6819912921e714",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

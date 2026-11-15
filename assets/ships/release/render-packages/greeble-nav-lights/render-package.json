@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "38db055665d47974b9e6ef58ccf788e72c1184026f2de16a611e5c7a2e9598bc",
+  "contentHash": "203b7e413767367b2b38495f608be849eb5445b0a942f524f0771cbbadf77b2e",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -343,14 +343,22 @@
       "uri": "greeble_nav_lights.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 4616,
+      "sha256": "50327791782c8919f1b6a3688674efafe8594c4327a8c3f0f086dbda20f7bce1",
+      "uri": "assets/ships/render-packages/inputs/greeble-nav-lights.json"
     }
   },
   "render": {
-    "bytes": 249776,
-    "sha256": "9c0141f70d65b7ef309dec8ca4c9c50904f76931527ac2ca8c1a28959cdcf1fe",
+    "bytes": 40192,
+    "resources": [
+      {
+        "bytes": 209600,
+        "mimeType": "image/ktx2",
+        "sha256": "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd",
+        "uri": "../_shared/images/830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd.ktx2"
+      }
+    ],
+    "sha256": "6cb7055f73acfd0c3db206cc357e9e935e9f86a90d08bea3e11f3242c05cbaa8",
     "uri": "render.glb"
   },
   "runtime": {
@@ -514,7 +522,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_nav_lights.glb"
   },
-  "runtimeHash": "ac39d7b8883845ee4daae3a23249b58fd7812be055823b394347ffa74b16270f",
+  "runtimeHash": "00120048504944e1b420667812a72ca78a3f356b9364cd808b784418bfa36b38",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

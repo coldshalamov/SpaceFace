@@ -1,0 +1,128 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": true,
+    "externalizeKtx2Hashes": [
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+    ],
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "greeble_nav_lights",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.greeble-nav-lights",
+    "dynamicNameIncludes": [],
+    "key": "greeble-nav-lights",
+    "kind": "part",
+    "metadataUrl": "assets/ships/release/render-packages/greeble-nav-lights/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/greeble-nav-lights",
+    "releaseAssetId": "greeble_nav_lights",
+    "releaseBytes": 253132,
+    "releaseSha256": "89ff04eb4fa5165c619dcb6557931f4bfc7de667115dca84bd518b30ef2a813b",
+    "rootNode": "greeble_nav_lights",
+    "runtimeAssetId": "SF_GREEBLE_NAV_LIGHTS",
+    "sharedKtx2Hashes": [
+      "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd"
+    ],
+    "slot": "greeble",
+    "sourceUrl": "assets/ships/release/parts/greebles/greeble_nav_lights.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 1,
+    "id": "greeble_nav_lights",
+    "kind": "part:greebles",
+    "ktx2Textures": 3,
+    "meshoptBufferViews": 12,
+    "release": "assets/ships/release/parts/greebles/greeble_nav_lights.glb",
+    "releaseBytes": 253132,
+    "releaseSha256": "89ff04eb4fa5165c619dcb6557931f4bfc7de667115dca84bd518b30ef2a813b",
+    "source": "assets/ships/parts/greebles/greeble_nav_lights.glb",
+    "sourceBytes": 255708,
+    "sourceSha256": "5e25f2b74296faaa2c76b6b02ade7dd71b8be3a328479beb29afa424d22552dd",
+    "textures": 3
+  },
+  "runtime": {
+    "assetId": "SF_GREEBLE_NAV_LIGHTS",
+    "motionBank": null,
+    "slot": "greeble",
+    "sourceUrl": "assets/ships/release/parts/greebles/greeble_nav_lights.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [],
+    "assetId": "sf.render.greeble-nav-lights",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "part",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-accent-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "greeble_nav_lights_Material_Accent_Merged",
+        "node": "greeble_nav_lights_Material_Accent_Merged",
+        "parentId": "sf.render.greeble-nav-lights.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-nav-lights.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-nav-lights.mesh.greeble-nav-lights-material-mechanical-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "greeble_nav_lights_Material_Mechanical_Merged",
+        "node": "greeble_nav_lights_Material_Mechanical_Merged",
+        "parentId": "sf.render.greeble-nav-lights.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-nav-lights.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-nav-lights.mesh.nav-base",
+        "independentlyCulled": false,
+        "mergeBoundary": "Nav_Base",
+        "node": "Nav_Base",
+        "parentId": "sf.render.greeble-nav-lights.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-nav-lights.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.greeble-nav-lights.root",
+        "independentlyCulled": false,
+        "mergeBoundary": "asset-root",
+        "node": "greeble_nav_lights",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.greeble-nav-lights.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 253132,
+    "sha256": "89ff04eb4fa5165c619dcb6557931f4bfc7de667115dca84bd518b30ef2a813b",
+    "uri": "assets/ships/release/parts/greebles/greeble_nav_lights.glb"
+  }
+}
