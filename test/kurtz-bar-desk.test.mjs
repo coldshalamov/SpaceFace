@@ -13,7 +13,9 @@ test('Ash Cache seats Kurtz at the desk with ledger verbs', () => {
   assert.equal(kurtz.id, 'contact_station_ashcache_kurtz');
   const choices = getChoices(kurtz.role, kurtz);
   assert.ok(choices.some((row) => row.id === 'takeLedger'));
-  assert.ok(choices.some((row) => row.id === 'openLedger'));
+  assert.ok(choices.some((row) => row.id === 'deepReach'));
+  assert.match(choices.find((row) => row.id === 'takeLedger').label, /Take.*1 unit/);
+  assert.equal(choices.some((row) => row.id === 'openLedger'), false, 'opening must not silently take custody');
 });
 
 test('taking the ledger from the bar fires the Kurtz desk writer', () => {

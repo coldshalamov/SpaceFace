@@ -34,7 +34,9 @@ import { attachClauses, attachConditions, CLAUSE_GAMBIT_SOURCE, reconstructClaus
 import { counterweightRuntime, heistMissionRuntime } from '../missions/heistMissionRuntime.js';
 import { driveTender, tenderSpotRowRetained, TENDER_SPOT_SOURCE } from '../missions/tenderHaul.js';
 import { TENDER_HAUL_TUNING, TENDER_HAUL_TYPE, buildTenderOffer } from '../data/missions.js';
-import { buildEndgameBoardOffers, buildMissionBoardContract, getPickSideStake } from '../story/campaign47a/index.js';
+import { buildEndgameBoardOffers, buildMissionBoardContract, getDeepReachOperation, getPickSideStake } from '../story/campaign47a/index.js';
+import { hasAshCacheStoryClearance } from '../story/campaign47a/ashCacheAccess.js';
+import { deepReachBriefing } from '../story/campaign47a/deepReachBriefing.js';
 import { activeOwnedShip, nextStarterStep } from '../data/starterJobs.js';
 import { raceCourseForSector } from '../data/raceCourses.js';
 import { attachTwistClauses, isMissionConditionRow, missionConditionById, serializableMissionCondition } from '../data/missionConditions.js';
@@ -1002,6 +1004,23 @@ export const missionBoardOps = {
           params: { ...existing.params, weighingVersion: 1 } };
         board.slots = board.slots.map(row => row === existing ? fresh : row);
         return true;
+      }
+      // Cached B7 rows keep their accepted terms and callback bodies. Only repair
+      // presentation, and never borrow newly earned callbacks from the live state.
+      if (offer.source === 'campaign47a.deep_reach'
+          && existing.source === offer.source && existing.stationId === offer.stationId
+          && existing.type === offer.type && existing.storyOperation === offer.storyOperation
+          && existing.destStationId === offer.destStationId && existing.destSectorId === offer.destSectorId
+          && existing.params?.assetId === offer.params.assetId) {
+        const operation = getDeepReachOperation(campaign47aOutcomeKey(this.state), branch);
+        const rows = existing.params?.reckoning?.rows;
+        const presentation = deepReachBriefing(operation, Array.isArray(rows) ? rows : [], { clearance: hasAshCacheStoryClearance(this.state, 'station_ashcache') });
+        const title = presentation.title.toUpperCase();
+        if (existing.title !== title || existing.brief !== presentation.brief) {
+          const fresh = { ...existing, title, brief: presentation.brief };
+          board.slots = board.slots.map(row => row === existing ? fresh : row);
+          return true;
+        }
       }
       return board.slots.length !== before;
     }

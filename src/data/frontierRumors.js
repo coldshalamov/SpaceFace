@@ -4,6 +4,7 @@
 // an approximate global_v1 search circle. World owns purchased/resolved records; bar and map code
 // consume the pure offer/read helpers here.
 
+import { ashCacheAccessRecord } from '../story/campaign47a/ashCacheAccess.js';
 import { playerBearingLetter } from '../core/playerCompass.js';
 import { hash32 } from '../core/rng.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
@@ -122,6 +123,7 @@ export function hasTethysBlackMarketAccess(state) {
  * @param {object} state live game state (may be null; treats access as unearned)
  */
 export function stationBerthAdmits(st, rep, state) {
+  st = ashCacheAccessRecord(state, st);
   return !!st
     && !(typeof st.dockDeny === 'string' && DOCK_DENY_REASONS.includes(st.dockDeny))
     && st.abandoned !== true
@@ -155,8 +157,9 @@ export function stationBerthRefusal(st, rep, state) {
   if (state && st && st.id && stationGrudge(state, st.id)) {
     return { kind: 'structural', reason: 'grudge', text: stationGrudgeRefusal(state, st.id) };
   }
-  const deny = dockDenyReason(st, { rep });
-  const floor = stationMinRepFor(st);
+  const access = ashCacheAccessRecord(state, st);
+  const deny = dockDenyReason(access, { rep });
+  const floor = stationMinRepFor(access);
   if (deny && deny.reason === 'hostile_rep' && Number.isFinite(rep) && rep < floor) return { kind: 'standing', floor };
   return deny ? { kind: 'structural', reason: deny.reason, text: deny.text } : { kind: 'closed' };
 }

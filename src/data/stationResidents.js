@@ -116,8 +116,8 @@ export const CANONICAL_CONTACTS = [
     factionId: 'faction_vael',
     line: 'Eleven years counting the same mass.',
     choices: [
-      { id: 'openLedger', label: 'Open the desk ledger.' },
-      { id: 'takeLedger', label: 'Take the ledger.' },
+      { id: 'deepReach', label: 'What is waiting on the approach?' },
+      { id: 'takeLedger', label: 'Take the desk ledger (1 unit).' },
       { id: 'approach', label: 'Ask what he is counting.' },
     ],
   },

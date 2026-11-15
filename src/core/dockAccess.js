@@ -1,3 +1,4 @@
+import { ashCacheAccessRecord } from '../story/campaign47a/ashCacheAccess.js';
 // The shared pure refusal selector used by UI docking commands, the denial banner and
 // harbor service readouts. This extraction keeps the shipped station/faction rules unchanged.
 import { dockDenyReason } from '../data/dockDeny.js';
@@ -57,7 +58,7 @@ export function resolveDockDeny(state, stationRef) {
 
   // THE WORLD REMEMBERS: three slams in a day and the berth refuses the ring until the note is paid.
   const grudgeText = stationId ? stationGrudgeRefusal(state, stationId) : null;
-  const deny = grudgeText ? { reason: 'grudge', text: grudgeText } : dockDenyReason(station, factionMeta);
+  const deny = grudgeText ? { reason: 'grudge', text: grudgeText } : dockDenyReason(ashCacheAccessRecord(state, station, stationId), factionMeta);
   if (!deny) return null;
   return {
     stationId: stationId || null,
