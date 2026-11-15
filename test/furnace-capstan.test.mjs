@@ -8,6 +8,7 @@ import { furnaceLots, furnaceLotSpec, furnaceMouthGlobal, FURNACE_MITE_KEYS } fr
 import { FURNACE_CAPSTAN, initFurnaceCapstan, removeFurnaceCapstan, stepFurnaceCapstan,
   syncFurnaceCapstan, furnaceCapstanRead, furnaceCapstanAvailability, furnaceCapstanOffer,
   furnaceCapstanResponse } from '../src/missions/furnaceCapstan.js';
+import { npcCableAdmits } from '../src/render/combat/npcCableFx.js';
 
 function fixture({ initController = true } = {}) {
   const s = createGameState(23), bus = createBus(), calls = [];
@@ -268,6 +269,21 @@ test('production intake owns the gantry lifecycle and one canonical body survive
   f.bus.flush();
   assert.equal(f.s.entityList.filter(e => e.alive && e.data?.furnaceCapstanId).length, 0);
   intake.destroy();
+});
+
+test('the yard cable is admitted to the NPC service-cable renderer', () => {
+  const f = fixture();
+  f.choose(f.offer('furnace_haul'), 'furnace_haul');
+  const line = f.cable();
+  assert.ok(line, 'the gantry → pod line exists');
+  assert.equal(npcCableAdmits(line, f.s.playerId), true, 'the capstan cable draws');
+  // The admitted service modes keep their endpoint/life exclusions.
+  assert.equal(npcCableAdmits({ ...line, state: 'broken' }, f.s.playerId), false);
+  assert.equal(npcCableAdmits({ ...line, ownerId: f.s.playerId }, f.s.playerId), false);
+  assert.equal(npcCableAdmits({ ...line, targetId: f.s.playerId }, f.s.playerId), false);
+  assert.equal(npcCableAdmits({ ...line, controllerId: f.s.playerId }, f.s.playerId), false);
+  assert.equal(npcCableAdmits({ ...line, defId: 'attachment_transport_clamp' }, f.s.playerId), false,
+    'a transport clamp without an admitted control mode stays out');
 });
 
 test('the eaten pod clears its own cable; the winch never mints a receipt itself', () => {

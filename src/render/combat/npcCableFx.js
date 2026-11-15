@@ -9,6 +9,18 @@ import { createMasslineRibbonMaterial, updateEnergyMaterial } from '../energy/en
 
 const CAPACITY = 6;
 
+/** NPC service-cable admission: a standard NPC tether, or one of the named NPC
+ *  service modes (lantern-ward work, the Ceres anchor winch, the yard capstan).
+ *  Player-owned, player-targeted or player-controlled lines stay on the player
+ *  path; dead links never draw. */
+export function npcCableAdmits(link, playerId) {
+  const serviceCable = (link?.defId === 'attachment_transport_clamp'
+      && (link.controlMode === 'lantern_ward_attended_work' || link.controlMode === 'ceres_anchor_winch'))
+    || (link?.defId === 'attachment_furnace_capstan' && link.controlMode === 'furnace_capstan');
+  return !!(link && (link.defId === 'tether_standard' || serviceCable) && link.state === 'active'
+    && link.ownerId !== playerId && link.targetId !== playerId && link.controllerId !== playerId);
+}
+
 /** Standard kernel lines outside the player path. All meshes and frame scratch are resident. */
 export class NpcCableFx {
   constructor(scene, toLocalXZ, accessibilityPolicy) {
@@ -94,11 +106,7 @@ export class NpcCableFx {
     }
     for (const id in attachments) {
       const link = attachments[id];
-      const serviceCable = link?.defId === 'attachment_transport_clamp'
-        && (link.controlMode === 'lantern_ward_attended_work' || link.controlMode === 'ceres_anchor_winch');
-      if (!link || (link.defId !== 'tether_standard' && !serviceCable) || link.state !== 'active'
-        || link.ownerId === state.playerId || link.targetId === state.playerId
-        || link.controllerId === state.playerId
+      if (!npcCableAdmits(link, state.playerId)
         || !this._endpoints(state, link, alpha)) continue;
       if (hasCamera) {
         this.bounds.center.set((this.a.x + this.b.x) * 0.5, 1.5, (this.a.z + this.b.z) * 0.5);
