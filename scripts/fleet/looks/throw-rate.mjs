@@ -83,6 +83,7 @@ try {
       await sleep(1000);
       await page.keyboard.up('KeyD');
       const active = await page.evaluate(() => !!window.SF.state.player.tether.active);
+      rec.atClick = await page.evaluate(() => { const st = window.SF.state, t = st.player.tether, e = t && st.entities.get(t.targetId); return { tether: t && { active: t.active, target: t.targetId, att: t.attachmentId, phase: t.phase }, tgt: e && { type: e.type, team: e.team, alive: e.alive, ai: e.data && e.data.ai && { arch: e.data.ai.archetype, role: e.data.ai.role, passive: e.data.ai.passive, ctx: e.data.ai.spawnContext, lawful: e.data.ai.lawful }, enc: !!(e.data && e.data.encounter) } }; });
       rec.clickT = await page.evaluate(() => +window.SF.state.simTime.toFixed(2));
       if (active) {
         const aim = await page.evaluate(() => { const s = window.SF.state, h = window.SF.helpers;

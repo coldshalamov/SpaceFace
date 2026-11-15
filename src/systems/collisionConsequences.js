@@ -599,6 +599,9 @@ export const collisionConsequences = {
     // contact damage from what it hits, so it survives the swing and the throw is always there; it
     // takes full damage again the moment the line is cut (the throw's impact breaks it). Gunfire
     // never routes through here.
+    // THROW-01: the held body swings as a club at half strength; the throw is the payoff. Measured
+    // before this, a held swing out-killed the same second after release (4.1 vs 2.7 per attempt).
+    if (other && other !== target && isHeldOnPlayerLine(this.state, other)) impactDamage *= HELD_BODY_OUTGOING_DAMAGE_SCALE;
     if (isHeldOnPlayerLine(this.state, target)) {
       // Scaled, then capped to a share of what the body has left: a swing through a station is a
       // heavy hit, and no single blow (or run of them) may finish the thing you are holding.
@@ -674,6 +677,7 @@ export const collisionConsequences = {
 /** Fraction of contact damage the body on the player's Line takes while it is being swung. */
 export const HELD_BODY_CONTACT_DAMAGE_SCALE = 0.15;
 export const HELD_BODY_MAX_SHARE_PER_HIT = 0.2;
+export const HELD_BODY_OUTGOING_DAMAGE_SCALE = 0.5;
 export function isHeldOnPlayerLine(state, body) {
   const tether = state && state.player && state.player.tether;
   return !!(body && tether && tether.active && tether.targetId === body.id

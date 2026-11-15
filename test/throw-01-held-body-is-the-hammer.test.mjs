@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
 import {
-  collisionConsequences, HELD_BODY_CONTACT_DAMAGE_SCALE, isHeldOnPlayerLine,
+  collisionConsequences, HELD_BODY_CONTACT_DAMAGE_SCALE, HELD_BODY_OUTGOING_DAMAGE_SCALE, isHeldOnPlayerLine,
 } from '../src/systems/collisionConsequences.js';
 
 function route(state, target) {
@@ -63,5 +63,25 @@ test('the whip recoil (second contact path) also spares the held body; free, the
     assert.equal(hits.length, 2);
     assert.ok(hits[0] <= 60 * 0.2 + 1e-9, `held recoil ${hits[0]} must not finish a 60-hull body`);
     assert.ok(hits[1] >= 60, `free recoil ${hits[1]} pays in full`);
+  } finally { Object.assign(MASSLINE2_FLAGS, saved); }
+});
+
+test('the held body swings at reduced strength; released, it hits at full strength', () => {
+  const saved = { ...MASSLINE2_FLAGS };
+  Object.assign(MASSLINE2_FLAGS, { enabled: true, throw: true });
+  try {
+    const victim = { id: 5, type: 'ship', alive: true, team: 1, hull: 1000, shield: 0 };
+    const held = { id: 2, type: 'ship', alive: true, team: 1 };
+    const state = { playerId: 1, player: { tether: { active: true, targetId: 2 } } };
+    const seen = [];
+    const host = Object.create(collisionConsequences);
+    host.state = state;
+    host.registry = { get: (k) => (k === 'combat' ? { kernel: { routeDamage: (i) => { seen.push(i); return null; } } } : null) };
+    const receipt = { impactDamage: 100, surface: 'hull', pos: { x: 0, z: 0 }, normal: { x: 1, z: 0 }, provenance: { actorId: 1, weaponId: 'x', tag: 'massline' } };
+    const total = (i) => Object.values(i.packet.channels || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+    host._routeImpactDamage(victim, held, receipt);
+    state.player.tether.active = false;
+    host._routeImpactDamage(victim, held, receipt);
+    assert.ok(Math.abs(total(seen[0]) / total(seen[1]) - HELD_BODY_OUTGOING_DAMAGE_SCALE) < 1e-6, 'held swings at half; released at full');
   } finally { Object.assign(MASSLINE2_FLAGS, saved); }
 });
