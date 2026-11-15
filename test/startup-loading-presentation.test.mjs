@@ -37,12 +37,13 @@ test('loading presenter replaces a frozen route with stage progress and releases
   assert.equal(overlay.style.display, 'flex');
   assert.equal(overlay.attributes.get('aria-busy'), 'true');
   assert.equal(overlay.dataset.loadingStage, 'authored-visuals');
-  assert.equal(label.textContent, 'Building the opening scene');
-  assert.equal(detail.textContent, 'Loading only assets visible at launch');
+  // doc 20: one short plain phrase per phase, no technical detail line
+  assert.equal(label.textContent, 'Building the scene');
+  assert.equal(detail.textContent, '');
   assert.equal(progress.style.width, '50%');
 
   bus.emit('mode:changed', { mode: 'loading', previousMode: 'menu' });
-  assert.equal(label.textContent, 'Building the opening scene',
+  assert.equal(label.textContent, 'Building the scene',
     'the loading mode event must not overwrite a truthful New Game stage with Continue copy');
 
   bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
@@ -62,7 +63,7 @@ test('loading mode has useful Continue copy before asset-stage events arrive', (
   createLoadingPresenter({ document, bus });
   bus.emit('mode:changed', { mode: 'loading', previousMode: 'menu' });
 
-  assert.equal(label.textContent, 'Restoring flight state');
+  assert.equal(label.textContent, 'Opening your save');
   assert.equal(overlay.classList.contains('hidden'), false);
 });
 

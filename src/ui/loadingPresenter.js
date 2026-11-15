@@ -46,6 +46,24 @@ function setFlightVeilHold(render, held) {
   try { render.onFlightVeilHoldChanged?.(held); } catch (_) { /* the frame loop re-syncs */ }
 }
 
+// design/game/20_THE_FIRST_HOUR.md, Loading: no tech words on the screen. The stage ids keep their detailed
+// labels for tools and the journal; the player reads one short plain phrase per phase.
+const PLAIN_STAGE_LABELS = Object.freeze({
+  'restoring-save': 'Opening your save',
+  'preparing-run': 'Getting the ship ready',
+  'authored-library': 'Getting the ship ready',
+  'authored-visuals': 'Building the scene',
+  'render-pipelines': 'Lighting the scene',
+  'gpu-resources': 'Almost there',
+  'physics-authority': 'Almost there',
+  'entering-flight': 'Taking the controls',
+});
+export function plainStageLabel(stage) {
+  const id = String((stage && stage.id) || '');
+  if (PLAIN_STAGE_LABELS[id]) return PLAIN_STAGE_LABELS[id];
+  return id.startsWith('boot-') ? 'Getting ready' : 'Getting the ship ready';
+}
+
 export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600 } = {}) {
   if (!document || !bus || typeof bus.on !== 'function') return NOOP;
   const overlay = document.getElementById?.('boot-overlay');
@@ -290,7 +308,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       const current = pendingWork; pendingWork = null;
       ring?.report({ ...activeStage, progress: current.progress });
       if (detail && current.total > 0) {
-        detail.textContent = `${current.completed} of ${current.total} resources prepared in this pass`;
+        detail.textContent = ''; // no resource counts on screen (doc 20)
       }
     }, 80);
   });
@@ -311,8 +329,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     activeStage = stage;
     overlay.style.display = 'flex'; overlay.classList.remove('hidden');
     overlay.setAttribute('aria-busy', 'true'); overlay.dataset.loadingStage = String(stage.id || 'loading');
-    if (label) label.textContent = String(stage.label || DEFAULT_STAGE.label);
-    if (detail) detail.textContent = String(stage.detail || 'Preparing the playable scene');
+    if (label) label.textContent = plainStageLabel(stage);
+    if (detail) detail.textContent = '';
     // Row 473: the initial boot stages are the command deck coming up, not a place in the world.
     // The discriminator is the same one the mode:changed handler uses for boot stages.
     if (String(stage.id || '').startsWith('boot-')) {
