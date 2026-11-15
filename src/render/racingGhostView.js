@@ -119,9 +119,13 @@ export function createRacingGhostView(scene,state,{storage}={}) {
         const drawn=ensureLine();
         const attr=drawn.geometry.attributes.position;
         const local=racingGhostHookLocal(pose,hook);
-        attr.array[0]=0;attr.array[1]=0;attr.array[2]=0;
-        attr.array[3]=local.x;attr.array[4]=0;attr.array[5]=local.z;
-        attr.needsUpdate=true;drawn.visible=true;
+        const x=Math.fround(local.x),z=Math.fround(local.z),a=attr.array;
+        if(!Number.isFinite(x)||!Number.isFinite(z)||a[0]!==0||a[1]!==0||a[2]!==0
+          ||a[3]!==x||a[4]!==0||a[5]!==z){
+          a[0]=0;a[1]=0;a[2]=0;a[3]=x;a[4]=0;a[5]=z;
+          attr.needsUpdate=true;
+        }
+        drawn.visible=true;
       }else if(line)line.visible=false;
     },
     dispose(){if(disposed)return;disposed=true;release();owner=null;resetRacingGhostSession(state);},

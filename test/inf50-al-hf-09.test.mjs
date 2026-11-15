@@ -125,8 +125,17 @@ test('seed 4242: the ghost view draws the Quarry Hook line and hides it on an ol
   assert.ok(Math.abs(end[3] - 10) < 0.05);
   assert.ok(Math.abs(end[5] - 80) < 0.05);
   const geometry = line.geometry;
+  const attr = geometry.attributes.position, version = attr.version;
+  for (let i = 0; i < 100; i++) view.frame(race);
+  assert.equal(attr.version, version, 'unchanged ghost hooks do not upload again');
+  latched.state.world.frameOrigin = { x: 500, z: -200 };
   view.frame(race);
+  assert.equal(attr.version, version, 'rebasing preserves the hull-local line buffer');
+  assert.ok(Math.abs(view.root.position.x - 99530) < .05);
   assert.equal(view.root.getObjectByName('Quarry Hook line').geometry, geometry);
+  latched.state.simTime = 0.35;
+  view.frame(race);
+  assert.ok(attr.version > version, 'a moved ghost still publishes the changed endpoint');
   latched.state.simTime = 0.05;
   view.frame(race);
   assert.equal(view.root.getObjectByName('Quarry Hook line').visible, false);
