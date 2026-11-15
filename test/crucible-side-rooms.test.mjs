@@ -48,5 +48,12 @@ for (const arenaId of ['ceres_belt', 'tethys_hub']) {
     if (arenaId === 'tethys_hub') assert.equal(owner._freight._armed.lane.x0, -400, 'traffic stays on the original lane');
     bus.emit('run:ended', {});
     assert.equal(furniture().length, 0);
+    Object.assign(state.run, { phase: 'active', wave: 1, retireToken: 2 });
+    arm();
+    const retry = furniture();
+    assert.equal(retry.length, first.length);
+    assert.ok(retry.every(e => !first.includes(e)), 'retry creates one fresh room');
+    bus.emit('run:ended', {});
+    assert.equal(furniture().length, 0);
   });
 }
