@@ -97,6 +97,7 @@ import {
 } from '../../src/core/timeEffects.js';
 import { canonicalClone, deepAssignInPlace } from './simReadModel.mjs';
 import { LANTERN_WARD_VITAL_KEYS, lanternWardPresentationLife, lanternWardVitalValue } from './npcJobsMirror.mjs';
+import { NINTH_MOUTH_LIGHT_VITAL_KEYS, ninthMouthLightLife, ninthMouthLightVitalValue } from './ceresNinthMouthMirror.mjs';
 import { setLaneViewport, setLaneModalActive } from '../../src/systems/input.js';
 import { nowNs, realmMemoryUsage, installLaneStorage, stageLaneStorage, settleLaneStorageCheck } from './simRealm.mjs';
 import { sabArenaTotalBytes } from './simSabEnvelope.mjs';
@@ -412,6 +413,10 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = nu
     fields.pallasSeamCutting = e.data.minerShiftActive === true;
     fields.pallasSeamStandbyTick = pallasSeamStandbyTick(e);
   }
+  const ninthLife = ninthMouthLightLife(e);
+  if (ninthLife != null) {
+    for (const key of NINTH_MOUTH_LIGHT_VITAL_KEYS) fields[key] = ninthMouthLightVitalValue(e, key, ninthLife);
+  }
   const wardLife = lanternWardPresentationLife(e);
   if (wardLife != null) {
     for (const key of LANTERN_WARD_VITAL_KEYS) fields[key] = lanternWardVitalValue(e, key, wardLife);
@@ -540,6 +545,10 @@ function vitalShadowMatches(e, shadow, krakenFrame, state) {
         || shadow.machineVisualScanning !== machineVisualScanning(machine)
         || shadow.machineVisualCollecting !== (machine.collectId != null)) return false;
   } else if (Object.hasOwn(shadow, 'machineVisualLife')) return false;
+  const ninthLife = ninthMouthLightLife(e);
+  if (shadow.ninthMouthLightLife !== ninthLife
+    || shadow.ninthMouthLightIdentity !== (ninthLife == null ? null : e.data.ninthMouthIdentity)
+    || shadow.ninthMouthLightOn !== (ninthLife == null ? null : e.data.ninthMouthLight)) return false;
   let i = 0;
   for (const key of VITAL_FIELDS) {
     if (vitalShadowValue(e[key]) !== shadow[i++]) return false;
@@ -639,6 +648,10 @@ function writeVitalShadow(e, shadow, krakenFrame, state) {
     delete shadow.seekerTargetGeneration; delete shadow.seekerTurnRate;
     delete shadow.seekerDiverted; delete shadow.seekerGuidanceBroken;
   }
+  const ninthLife = ninthMouthLightLife(e);
+  shadow.ninthMouthLightLife = ninthLife;
+  shadow.ninthMouthLightIdentity = ninthLife == null ? null : e.data.ninthMouthIdentity;
+  shadow.ninthMouthLightOn = ninthLife == null ? null : e.data.ninthMouthLight;
   let i = 0;
   for (const key of VITAL_FIELDS) shadow[i++] = vitalShadowValue(e[key]);
   const vel = e.vel && typeof e.vel === 'object' ? e.vel : null;

@@ -1,3 +1,4 @@
+import { NINTH_MOUTH_LIGHT_VITAL_KEYS, foldNinthMouthLightVitals } from './ceresNinthMouthMirror.mjs';
 import { projectIlexGreenhouse } from '../../src/data/ilexGreenhouse.js';
 import { foldSwarmSpecialistPresentation } from '../../src/data/swarmSpecialistPresentation.js';
 import { bindCeresCradlePublicLayout } from '../../src/core/ceresWorkfleetLayoutAdmission.js';
@@ -347,6 +348,8 @@ export function applySpawnInfos(readModel, spawnInfos, state = null, worldGenera
       foldSeekerVitals(row, info.vitals, info.occupantGeneration);
       foldPallasSeamVitals(row, info.vitals);
       foldLanternWardVitals(row, info.vitals, info.occupantGeneration);
+      foldNinthMouthLightVitals(row, info.vitals, info.occupantGeneration);
+      for (const key of NINTH_MOUTH_LIGHT_VITAL_KEYS) delete row[key];
     }
     // A re-delivered spawn (init replay, rebuild) must not mint a fresh row
     // object: the render realm holds entity refs across the hop (admission
@@ -433,7 +436,7 @@ export function applyFacadePose(readModel, entityId, pose, knownRow = null) {
 // names under these prefixes plus vx/vz, so any other key can skip them.
 const VITAL_KEY_KIND = new Map();
 const VITAL_FOLD_ONLY = new Set(['ceresCradlePublic', 'ceresWorkfleetPublic', 'orchardPodPublic',
-  ...CREATURE_VISUAL_VITAL_KEYS]);
+  ...NINTH_MOUTH_LIGHT_VITAL_KEYS, ...CREATURE_VISUAL_VITAL_KEYS]);
 const LANTERN_WARD_VITAL_SET = new Set(LANTERN_WARD_VITAL_KEYS);
 const VITAL_FOLD_PREFIXES = ['boost', 'machine', 'mine', 'swarm', 'data', 'ecology', 'cm', 'aiFsm',
   'seeker', 'pallas', 'lanternWard', 'orchard', 'ceres', 'nemesis'];
@@ -492,6 +495,7 @@ export function applyEntityVitals(readModel, vitals, state = null, worldGenerati
     foldSeekerVitals(row, fields);
     foldPallasSeamVitals(row, fields);
     foldLanternWardVitals(row, fields);
+    foldNinthMouthLightVitals(row, fields);
     foldOrchardPodVitals(row, fields);
     if (state && Object.hasOwn(fields, 'ceresCradlePublic')) {
       const update = fields.ceresCradlePublic;
@@ -947,6 +951,9 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   // The winching prompt deck reads the published offer and the finite lift's phase.
   'npcJobs.ceresWorkfleet.phase',
   'ceresWinchingOffer',
+  'ceresNinthMouthOffer',
+  // Fixed eight-original receipt/conversation record for the station and chart. No live poses.
+  'npcJobs.ceresNinthMouth',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -1021,6 +1028,8 @@ export const DOMAIN_CADENCE = Object.freeze({
   'npcJobs.lanternWard': 6,
   'npcJobs.ceresWorkfleet.phase': 1,
   ceresWinchingOffer: 1,
+  ceresNinthMouthOffer: 1,
+  'npcJobs.ceresNinthMouth': 1,
   sites: 10,
   salvageOutfits: 10,
   cinderglassJobView: 6, cinderglassJobToken: 1, cinderglassJobPresentationReady: 1,
@@ -1159,7 +1168,7 @@ export function configureDomainMirroring(config = {}) {
 // deeper into a subtree than it declared.
 function builtinDomainLeafViewFor(segs) {
   if (segs.length === 1 && segs[0] === 'world.counterweightCircuit.discovered') return { hotPresentation: true };
-  if (segs.length === 1 && ['dockingPresentation', 'ceresWinchingOffer', 'counterweightCircuitOffer', 'counterweightCircuitView', 'breakwaterSpurOffer', 'breakwaterSpurView', 'cinderglassJobView', 'cinderglassJobToken', 'cinderglassJobPresentationReady'].includes(segs[0])) return { hotPresentation: true };
+  if (segs.length === 1 && ['dockingPresentation', 'ceresWinchingOffer', 'ceresNinthMouthOffer', 'counterweightCircuitOffer', 'counterweightCircuitView', 'breakwaterSpurOffer', 'breakwaterSpurView', 'cinderglassJobView', 'cinderglassJobToken', 'cinderglassJobPresentationReady'].includes(segs[0])) return { hotPresentation: true };
   if (segs.length === 1 && ['planet.active', 'planet.siteId'].includes(segs[0])) return { hotPresentation: true };
   if (segs.length === 1 && segs[0] === 'planet.player') return { project: 'planetPlayer', hotPresentation: true };
   if (segs.length === 1 && segs[0] === 'planet.center') return { project: 'planetCenter', hotPresentation: true };

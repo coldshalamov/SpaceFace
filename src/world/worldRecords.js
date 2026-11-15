@@ -8,6 +8,8 @@ import { captureLanternWardHardware, isLanternWardHardwareEntity, isLanternWardR
 import { LANTERN_WARD_SECTOR } from '../data/lanternWardLayout.js';
 import { isLanternWardActorRecord, lanternWardActorRoleForRecord,
   lanternWardActorSpec } from './lanternWardActors.js';
+import { captureNinthMouthBody, isNinthMouthBody, isNinthMouthRecordIdentity,
+  ninthMouthRoleForRecord, ninthMouthBodySpec } from './ceresNinthMouthBodies.js';
 // Pure durable world-entity record schema + rematerialization helpers (M2-C2).
 //
 // Owned exclusively by systems/world.js for capture on demote and rematerialize on promote.
@@ -351,15 +353,18 @@ export function normalizeRecord(raw, fallbackId) {
   const fallbackIdentity = typeof fallbackId === 'string' && fallbackId.startsWith('lantern-ward:')
     ? { recordId: fallbackId } : null;
   const wardSlot = fallbackIdentity && (isLanternWardRecordIdentity(fallbackIdentity) || isLanternWardActorRecord(fallbackIdentity));
+  const ninthSlot = typeof fallbackId === 'string' && isNinthMouthRecordIdentity({ recordId: fallbackId });
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    if (!wardSlot) return null;
+    if (!wardSlot && !ninthSlot) return null;
     // The bag key still proves that this finite original existed. Retain an
     // unavailable row instead of letting a corrupt/null value mint it anew.
-    raw = { recordId: fallbackId, extra: { lanternWardInvalid: true } };
+    raw = { recordId: fallbackId, extra: ninthSlot ? { ninthMouthInvalid: true } : { lanternWardInvalid: true } };
   } else if (wardSlot && raw.recordId != null && raw.recordId !== fallbackId) {
     // A contradictory value cannot erase the occupied finite slot and thereby
     // authorize another original. The slot remains unavailable, not rekeyed.
     raw = { ...raw, recordId: fallbackId, extra: { ...raw.extra, lanternWardInvalid: true } };
+  } else if (ninthSlot && raw.recordId != null && raw.recordId !== fallbackId) {
+    raw = { ...raw, recordId: fallbackId, extra: { ...raw.extra, ninthMouthInvalid: true } };
   }
   const recordId = typeof raw.recordId === 'string' && raw.recordId
     ? raw.recordId
@@ -368,14 +373,16 @@ export function normalizeRecord(raw, fallbackId) {
   const wardIdentity = raw.recordId === recordId ? raw : { ...raw, recordId };
   const wardHardware = isLanternWardRecordIdentity(wardIdentity), wardActor = isLanternWardActorRecord(wardIdentity);
   const wardOriginal = wardHardware || wardActor;
+  const ninthOriginal = ninthSlot || isNinthMouthRecordIdentity({ recordId });
   const rawKind = DURABLE_KINDS.has(raw.kind) ? raw.kind : null;
-  const kind = rawKind || (wardOriginal ? RECORD_KIND.NPC : null);
+  const kind = rawKind || (wardOriginal || ninthOriginal ? RECORD_KIND.NPC : null);
   if (!kind) return null;
   const rawSector = raw.sectorId || raw.homeSectorId;
-  const sectorId = typeof rawSector === 'string' && rawSector ? rawSector : wardOriginal ? LANTERN_WARD_SECTOR : null;
+  const sectorId = typeof rawSector === 'string' && rawSector ? rawSector
+    : wardOriginal ? LANTERN_WARD_SECTOR : ninthOriginal ? 'sector_ceres_belt' : null;
   if (!sectorId) return null;
   const validPosition = finiteXZ(raw.pos);
-  if (!validPosition && !wardOriginal) return null;
+  if (!validPosition && !wardOriginal && !ninthOriginal) return null;
   // missionTag is the v1 live-entity spelling of the same durable contract identity. Canonicalize
   // both fields so old saves cannot rematerialize an unowned target or miss kill attribution.
   const missionId = raw.missionId || raw.missionTag || null;
@@ -385,6 +392,8 @@ export function normalizeRecord(raw, fallbackId) {
   if (wardOriginal && (!rawKind || !validPosition || typeof rawSector !== 'string' || !rawSector || raw.enemyTypeId != null
       || (wardHardware && !lanternWardHardwareRoleForRecord(wardIdentity))
       || (wardActor && !lanternWardActorRoleForRecord(wardIdentity)))) extra.lanternWardInvalid = true;
+  if (ninthOriginal && (!rawKind || !validPosition || typeof rawSector !== 'string' || !rawSector || raw.enemyTypeId != null
+      || !ninthMouthRoleForRecord({ ...raw, recordId }))) extra.ninthMouthInvalid = true;
 
   const rec = {
     recordId,
@@ -601,6 +610,9 @@ function itineraryStationId(itinerary, keys) {
 /** Convert supported traffic endpoint itineraries into the deterministic catch-up language. */
 export function canonicalTrafficIntent(entity, opts = {}, previous = null) {
   const d = entity && entity.data || {};
+  // The pocket's own custody itinerary is not traffic: never let the generic
+  // endpoint parser abstract a finite original into a convoy intent.
+  if (isNinthMouthBody(entity)) return null;
   const explicit = opts.intent !== undefined
     ? opts.intent
     : (d.abstractIntent || d.activityIntent || null);
@@ -735,6 +747,7 @@ export function recordsForSector(bag, sectorId) {
 export function recordShouldRematerialize(rec, tier) {
   if (!rec || rec.alive === false) return false;
   if (rec.outcome === 'defeated' || rec.outcome === 'destroyed') return false;
+  if (isNinthMouthRecordIdentity(rec) && !ninthMouthRoleForRecord(rec)) return false;
   // These finite originals have exact native recipes. Refuse before world's
   // enemyTypeId shortcut can replace a corrupted civic body with an enemy ship.
   if (isLanternWardRecordIdentity(rec)
@@ -773,6 +786,7 @@ export function entityHasDurableMarkers(entity, playerId) {
   if (explicitOwner != null && explicitOwner !== 'worldRecords') return false;
   if (entity.type === 'station' && entity.data && entity.data.isGate) return false;
   if (entity.type === 'station' && entity.data && entity.data.stationId) return false;
+  if (isNinthMouthBody(entity)) return true;
   if (entity.type === 'asteroid') return false;
   if (entity.type === 'payload') {
     if (isLanternWardHardwareEntity(entity)
@@ -812,6 +826,9 @@ export function entityIsDurableCandidate(entity, playerId) {
  */
 export function classifyEntityKind(entity) {
   const d = entity && entity.data || {};
+  // The pocket's bodies pin mission-adjacent flags for protection, not mission
+  // ownership. Keep them finite NPC originals before the generic classifiers.
+  if (isNinthMouthBody(entity)) return RECORD_KIND.NPC;
   if (entity.type === 'payload' && isLanternWardHardwareEntity(entity)) return RECORD_KIND.NPC;
   if (entity.type === 'wreck' || d.wreckClass || d.markerId) {
     return d.markerId ? RECORD_KIND.AFTERMATH : RECORD_KIND.WRECK;
@@ -877,6 +894,7 @@ export function captureEntityRecord(entity, opts = {}) {
   const d = entity.data || {};
   const starterBuoy = kind === RECORD_KIND.MISSION_TARGET && sectorId === 'sector_helios_prime' ? starterBuoyRecordMarker(entity) : null;
   const lanternHardware = captureLanternWardHardware(entity);
+  const ninthBody = captureNinthMouthBody(entity);
   const existingId = d.worldRecordId || opts.recordId || null;
   const previous = opts.previousRecord
     || opts.existingRecord
@@ -1245,6 +1263,12 @@ export function markRecordDestroyed(bag, recordId, opts = {}) {
 export function spawnSpecFromRecord(record) {
   const rec = normalizeRecord(record);
   if (!rec || !recordShouldRematerialize(rec, 'FULL')) return null;
+  // The pocket's eight originals have exact recipes; a corrupted row never
+  // degrades into a generic ship or a second copy of a finite body.
+  if (isNinthMouthRecordIdentity(record)) {
+    const role = ninthMouthRoleForRecord(record);
+    return role ? ninthMouthBodySpec(role, record) : null;
+  }
   const starterBuoy = starterBuoyFromRecord(rec);
   if (starterBuoy) return starterBuoy;
   // A malformed versioned starter marker must not fall through into a generic ship.

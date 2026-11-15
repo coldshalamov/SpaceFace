@@ -52,6 +52,8 @@ import {
   missionUpfrontCost,
 } from '../missionPreflight.js';
 import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
+import { book4ChoiceAction } from '../book4Choice.js';
+import { isReportInRestitution } from '../../missions/restitutionReadout.js';
 import { resolveContract47aRecoveryTarget, resolveWaypointPresentationPosition } from '../navigationWaypoint.js';
 import { kesslerScaleWaypoint } from '../../systems/kesslerScaleWorksite.js';
 import {
@@ -1921,30 +1923,8 @@ export function storyActionForBeat(beat, state) {
         body: 'Run short hauls, mining, or safe bounty work until a tier-2 hull is affordable.',
         meta: ((state && state.player && state.player.credits) || 0).toLocaleString() + ' cr',
       };
-    case 4: {
-      // Once the door is chosen, the intro has done its job: the Journal names that door's
-      // operation until it is live. An active operation already owns CURRENT ACTION, so the
-      // pre-choice sponsor prompt is the only honest fallback left here.
-      const activeOperation = (state?.missions?.active || []).some((mission) =>
-        mission?.status === 'active' && mission.storyTag === 'campaign47a:b4:operation');
-      const door = b4DoorOperation(branch);
-      if (branch && door && !activeOperation) {
-        return {
-          tone: 'primary',
-          label: 'OPERATION',
-          title: 'Run ' + door.name,
-          body: door.title + ' is posted on the book board. Accept it from Missions and run the door you chose.',
-          meta: 'B4 · ' + storyBeatDisplayName(branch),
-        };
-      }
-      return {
-        tone: 'primary',
-        label: 'FACTION',
-        title: 'Choose a sponsor',
-        body: 'Accept an intro contract from MTS, SCN, or the Free Captains to lock your first path.',
-        meta: 'Branch',
-      };
-    }
+    case 4:
+      return book4ChoiceAction(state);
     case 5:
       return {
         tone: 'primary',
