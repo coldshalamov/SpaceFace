@@ -3219,9 +3219,19 @@ function buildAcquisitionSnapshot(host, player, def, state, intent, admissionSou
     && isAuthorizedFocusTarget(state, player, focusTarget)
     ? focusTarget.id
     : null;
+  // THROW-01: with autofire on (Swarm) the mouse is a combat stick, not a cursor, so the aim tag and
+  // the latch otherwise fall to steering intent and can pick a station ahead of the ship the guns are
+  // locked on. When the pilot is not asking for an anchor swing (no turn intent), the locked hostile is
+  // the body the tag names and the press latches.
+  const autoAimMarker = state && state.input && state.input.autoFire ? state.input.autoAim : null;
+  const autoAimId = autoAimMarker && typeof autoAimMarker === 'object' && autoAimMarker.targetId != null
+    && Math.abs(finite(intent && intent.turn, 0)) < 0.2
+    && physicallyEligibleIds.has(autoAimMarker.targetId)
+    && isHostileToPlayer(byId.get(autoAimMarker.targetId), player.team, state)
+    ? autoAimMarker.targetId : null;
   const eligibleSelectedPayloadId = physicallyEligibleIds.has(selectedPayloadId)
     ? selectedPayloadId
-    : null;
+    : autoAimId;
   const eligibleRouteId = physicallyEligibleIds.has(routeId) ? routeId : null;
 
   const aim = aimWorldFor(player, state, maxLength);

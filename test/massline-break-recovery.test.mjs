@@ -355,3 +355,17 @@ test('THROW-01: a tap on a latched station cuts the line (a click is never a no-
   for (let i = 0; i < 6; i++) { h.state.tick += 1; h.state.simTime += DT; h.system.update(DT, h.state); }
   assert.equal(h.state.player.tether.active, false, 'the tap released the station line');
 });
+
+test('THROW-01: with autofire locked on a hostile and no anchor-swing intent, the latch takes the hostile, not the station ahead', () => {
+  const h = buildLatchHarness();
+  h.rock.type = 'station'; h.rock.team = 0; h.rock.mass = 100000; h.rock.radius = 40; h.rock.pos = { x: 140, z: 0 }; h.rock.data = {};
+  const ship = { id: 9, type: 'ship', team: 1, alive: true, pos: { x: 120, z: 60 }, vel: { x: 0, z: 0 }, rot: 0, radius: 8, mass: 16, flags: {},
+    data: { ai: { archetype: 'pirate', spawnContext: 'raid' }, combat: { targetId: 1 }, encounter: true } };
+  h.state.entities.set(ship.id, ship); h.state.entityList.push(ship);
+  h.state.input.autoFire = true;
+  h.state.input.autoAim = { targetId: ship.id, leadSpeed: 0 };
+  h.state.input.aimIntentActive = false;
+  fireLatch(h);
+  if (h.state.player.tether.active) assert.equal(h.state.player.tether.targetId, ship.id, 'the hostile the guns are on');
+  else assert.fail('nothing latched');
+});
