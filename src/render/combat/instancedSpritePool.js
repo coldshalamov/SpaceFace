@@ -184,6 +184,9 @@ function createBucket(scene, id, capacity, texture, blending, radiance = 1.0, fl
   geometry.setAttribute('aSpriteAxis', axis);
 
   const material = flipFamily ? createFlipbookMaterial(flipFamily) : createTransientVfxMaterial(id, radiance, volume ? texture : null);
+  // The bucket owns this material exclusively. Keep empty batches out of Three's render list;
+  // object.visible remains independent for VFX isolation and other scene-level owners.
+  material.visible = false;
   const mesh = new THREE.InstancedMesh(geometry, material, capacity);
   mesh.name = `SF_VFX_${id}_sprite_instances`;
   mesh.count = 0;
@@ -240,9 +243,11 @@ function dynamicAttribute(length, itemSize) {
 function commitBucket(bucket) {
   if (bucket.dynamicBufferOwner) {
     commitDynamicBufferOwner(bucket.dynamicBufferOwner, bucket.writeCount);
+    bucket.mesh.material.visible = bucket.writeCount > 0;
     return;
   }
   bucket.mesh.count = bucket.writeCount;
+  bucket.mesh.material.visible = bucket.writeCount > 0;
   bucket.position.needsUpdate = true;
   bucket.scale.needsUpdate = true;
   bucket.roll.needsUpdate = true;
