@@ -1,0 +1,531 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": false,
+    "externalizeKtx2Hashes": null,
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "place_breakaway_fork",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.breakaway-fork",
+    "dynamicNameIncludes": [
+      "HOOK_DRIVE",
+      "HOOK_NAV",
+      "HOOK_SECONDARY",
+      "HOOK_SENSOR",
+      "HOOK_ARMOR"
+    ],
+    "key": "breakaway-fork",
+    "kind": "place",
+    "metadataUrl": "assets/ships/release/render-packages/breakaway-fork/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/breakaway-fork",
+    "releaseAssetId": "place_breakaway_fork",
+    "releaseBytes": 441304,
+    "releaseSha256": "15f2ae4cc576669180e9e281260338cda8b23141f3d4d0a5b88309b599c1c054",
+    "rootNode": "SF_PLACE_BREAKAWAY_FORK_ROOT",
+    "runtimeAssetId": "SF_PLACE_BREAKAWAY_FORK",
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/places/place_breakaway_fork.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 35,
+    "id": "place_breakaway_fork",
+    "kind": "part:places",
+    "ktx2Textures": 6,
+    "meshoptBufferViews": 106,
+    "release": "assets/ships/release/parts/places/place_breakaway_fork.glb",
+    "releaseBytes": 441304,
+    "releaseSha256": "15f2ae4cc576669180e9e281260338cda8b23141f3d4d0a5b88309b599c1c054",
+    "source": "assets/ships/parts/places/place_breakaway_fork.glb",
+    "sourceBytes": 1636244,
+    "sourceSha256": "4a68d5a83bbc754ffc3d1af70df7a6236b69867b79ab0332e4b36d5d4799ff64",
+    "textureProfiles": {
+      "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+      "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data",
+      "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear"
+    },
+    "textures": 6
+  },
+  "runtime": {
+    "assetId": "SF_PLACE_BREAKAWAY_FORK",
+    "motionBank": null,
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/places/place_breakaway_fork.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [],
+    "assetId": "sf.render.breakaway-fork",
+    "collisions": [
+      {
+        "id": "sf.render.breakaway-fork.collision",
+        "nodeId": "sf.render.breakaway-fork.mesh.collision-hull",
+        "reference": "COLLISION_HULL"
+      }
+    ],
+    "dynamicGroups": [
+      {
+        "id": "sf.render.breakaway-fork.mesh.lod0-hook-nav-port.dynamic",
+        "kind": "dynamic-surface",
+        "nodeId": "sf.render.breakaway-fork.mesh.lod0-hook-nav-port"
+      },
+      {
+        "id": "sf.render.breakaway-fork.mesh.lod0-hook-nav-starboard.dynamic",
+        "kind": "dynamic-surface",
+        "nodeId": "sf.render.breakaway-fork.mesh.lod0-hook-nav-starboard"
+      },
+      {
+        "id": "sf.render.breakaway-fork.mesh.lod1-hook-nav-port.dynamic",
+        "kind": "dynamic-surface",
+        "nodeId": "sf.render.breakaway-fork.mesh.lod1-hook-nav-port"
+      },
+      {
+        "id": "sf.render.breakaway-fork.mesh.lod1-hook-nav-starboard.dynamic",
+        "kind": "dynamic-surface",
+        "nodeId": "sf.render.breakaway-fork.mesh.lod1-hook-nav-starboard"
+      },
+      {
+        "id": "sf.render.breakaway-fork.mesh.lod2-hook-nav-port.dynamic",
+        "kind": "dynamic-surface",
+        "nodeId": "sf.render.breakaway-fork.mesh.lod2-hook-nav-port"
+      },
+      {
+        "id": "sf.render.breakaway-fork.mesh.lod2-hook-nav-starboard.dynamic",
+        "kind": "dynamic-surface",
+        "nodeId": "sf.render.breakaway-fork.mesh.lod2-hook-nav-starboard"
+      }
+    ],
+    "hlods": [],
+    "kind": "place",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.collision-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "COLLISION_HULL",
+        "node": "COLLISION_HULL",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "non-render",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod0-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Armor",
+        "node": "LOD0_Armor",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod0-beacon-amber",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Beacon_Amber",
+        "node": "LOD0_Beacon_Amber",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod0-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+        "node": "LOD0_HOOK_NAV_PORT",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod0-hook-nav-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_HOOK_NAV_STARBOARD",
+        "node": "LOD0_HOOK_NAV_STARBOARD",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod0-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Hull",
+        "node": "LOD0_Hull",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod0-hull-aged",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Hull_aged",
+        "node": "LOD0_Hull_aged",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod0-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Lights_Warm",
+        "node": "LOD0_Lights_Warm",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod0-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Mechanical",
+        "node": "LOD0_Mechanical",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod0-mechanical-copper",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Mechanical_copper",
+        "node": "LOD0_Mechanical_copper",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod0-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MechanicalDark",
+        "node": "LOD0_MechanicalDark",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod0-warning",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Warning",
+        "node": "LOD0_Warning",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod1-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Armor",
+        "node": "LOD1_Armor",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod1-beacon-amber",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Beacon_Amber",
+        "node": "LOD1_Beacon_Amber",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod1-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_NAV_PORT",
+        "node": "LOD1_HOOK_NAV_PORT",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod1-hook-nav-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_NAV_STARBOARD",
+        "node": "LOD1_HOOK_NAV_STARBOARD",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod1-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Hull",
+        "node": "LOD1_Hull",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod1-hull-aged",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Hull_aged",
+        "node": "LOD1_Hull_aged",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod1-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Lights_Warm",
+        "node": "LOD1_Lights_Warm",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod1-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Mechanical",
+        "node": "LOD1_Mechanical",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod1-mechanical-copper",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Mechanical_copper",
+        "node": "LOD1_Mechanical_copper",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod1-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MechanicalDark",
+        "node": "LOD1_MechanicalDark",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod1-warning",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Warning",
+        "node": "LOD1_Warning",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod2-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_Armor",
+        "node": "LOD2_Armor",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod2-beacon-amber",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_Beacon_Amber",
+        "node": "LOD2_Beacon_Amber",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod2-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_HOOK_NAV_PORT",
+        "node": "LOD2_HOOK_NAV_PORT",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod2-hook-nav-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_HOOK_NAV_STARBOARD",
+        "node": "LOD2_HOOK_NAV_STARBOARD",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod2-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_Hull",
+        "node": "LOD2_Hull",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod2-hull-aged",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_Hull_aged",
+        "node": "LOD2_Hull_aged",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod2-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_Mechanical",
+        "node": "LOD2_Mechanical",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod2-mechanical-copper",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_Mechanical_copper",
+        "node": "LOD2_Mechanical_copper",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod2-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MechanicalDark",
+        "node": "LOD2_MechanicalDark",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.mesh.lod2-warning",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_Warning",
+        "node": "LOD2_Warning",
+        "parentId": "sf.render.breakaway-fork.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.breakaway-fork.root",
+        "independentlyCulled": false,
+        "mergeBoundary": "asset-root",
+        "node": "SF_PLACE_BREAKAWAY_FORK_ROOT",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.breakaway-fork.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 441304,
+    "sha256": "15f2ae4cc576669180e9e281260338cda8b23141f3d4d0a5b88309b599c1c054",
+    "uri": "assets/ships/release/parts/places/place_breakaway_fork.glb"
+  }
+}

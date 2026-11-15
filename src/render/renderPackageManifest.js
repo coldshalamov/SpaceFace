@@ -754,12 +754,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.breakaway-fork",
-    "expectedContentHash": "1720c4a454957102d2776a24aaea579d8160058845a6eadbed29eb3b31f741e0",
+    "expectedContentHash": "b3a0c53d4648a163ad5e35f07d5d231fc3dc8d183da48e1d2eb41856771d56a4",
     "key": "breakaway-fork",
     "metadataUrl": "assets/ships/release/render-packages/breakaway-fork/render-package.json",
     "runtimeAssetId": "SF_PLACE_BREAKAWAY_FORK",
     "slot": "place",
-    "sourceSha256": "1be8538072134f1669e9396ba6afc3601412f4fe6ca73108dfc0c2804cde2bfc",
+    "sourceSha256": "15f2ae4cc576669180e9e281260338cda8b23141f3d4d0a5b88309b599c1c054",
     "sourceUrl": "assets/ships/release/parts/places/place_breakaway_fork.glb"
   },
   {

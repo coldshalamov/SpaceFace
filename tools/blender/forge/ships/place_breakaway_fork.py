@@ -101,6 +101,11 @@ def build():
               (2.4, 2.4, 1.0), material='dark', rot_z=a, bevel=0.05)
     F.light(s, 'SeatLamp', (44.0, 0.0, 0.2), 'glow_amber', size=0.5)
 
+    # Tie the service pylon to the last cross-tie rather than leave it floating.
+    # The current pinned source is finalized by source_assets/breakaway-fork/finalize.mjs.
+    F.box(s, 'ServiceSupport', (71.5, 0.0, -1.2), (7.5, 0.8, 0.8),
+          material='paint2', bevel=0.0)
+
     # --- service pylon near the tips (socket_service station, x ~ 77) ---------------------------
     F.box(s, 'ServicePylon', (77.0, 0.0, -1.0), (4.4, 5.0, 6.4), material='paint',
           bevel=0.2)

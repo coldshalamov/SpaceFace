@@ -1346,8 +1346,8 @@
       "slot": "place",
       "releaseAssetId": "place_breakaway_fork",
       "sourceUrl": "assets/ships/release/parts/places/place_breakaway_fork.glb",
-      "releaseSha256": "1be8538072134f1669e9396ba6afc3601412f4fe6ca73108dfc0c2804cde2bfc",
-      "releaseBytes": 440552,
+      "releaseSha256": "15f2ae4cc576669180e9e281260338cda8b23141f3d4d0a5b88309b599c1c054",
+      "releaseBytes": 441304,
       "rootNode": "SF_PLACE_BREAKAWAY_FORK_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",

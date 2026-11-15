@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1720c4a454957102d2776a24aaea579d8160058845a6eadbed29eb3b31f741e0",
+  "contentHash": "b3a0c53d4648a163ad5e35f07d5d231fc3dc8d183da48e1d2eb41856771d56a4",
   "dynamicGroups": [
     {
       "id": "sf.render.breakaway-fork.mesh.lod0-hook-nav-port.dynamic",
@@ -85,16 +85,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "72f5a536ec35c8f75718267a2c9aad759975b1f77b86ee8b0093dd7b93bb2534",
+      "geometryHash": "50539b08bfad0df432f7a8a3e63879d209cb8c4ab08ef053262c5df1190e6837",
       "id": "sf.render.breakaway-fork.mesh.lod0-armor.primitive.0",
-      "indexCount": 6576,
+      "indexCount": 6612,
       "indexed": true,
       "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.breakaway-fork.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 3580
+      "vertexCount": 3604
     },
     {
       "bounds": {
@@ -360,16 +360,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "6cf3b07a0ac97bfe17d26ff362ea202e5db8a4786b2d0ccfa76c3c94d0d5c11b",
+      "geometryHash": "665bfa4a64ffebac4b4ad1ed182cd20dd0c1f8cb7971271c6a2579dc903799ad",
       "id": "sf.render.breakaway-fork.mesh.lod1-armor.primitive.0",
-      "indexCount": 4686,
+      "indexCount": 4722,
       "indexed": true,
       "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.breakaway-fork.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 3051
+      "vertexCount": 3075
     },
     {
       "bounds": {
@@ -635,16 +635,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cf529cb042ea12a75cfc1973c6f7e9f92945f894cddcffc1b3fa9684418e1907",
+      "geometryHash": "de047c6565a723cb55c9193ec86da101cd3cf814689ad5dded2183952b165bcd",
       "id": "sf.render.breakaway-fork.mesh.lod2-armor.primitive.0",
-      "indexCount": 2022,
+      "indexCount": 2058,
       "indexed": true,
       "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.breakaway-fork.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1574
+      "vertexCount": 1598
     },
     {
       "bounds": {
@@ -2801,19 +2801,19 @@
       "sha256": "e86562154156cef4d6fd43245f537a94d17f5fbeb4a5a52dd88bc1bad82f8ca2"
     },
     "sourceGlb": {
-      "bytes": 440552,
-      "sha256": "1be8538072134f1669e9396ba6afc3601412f4fe6ca73108dfc0c2804cde2bfc",
+      "bytes": 441304,
+      "sha256": "15f2ae4cc576669180e9e281260338cda8b23141f3d4d0a5b88309b599c1c054",
       "uri": "place_breakaway_fork.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 19301,
+      "sha256": "c109a6f057187a9dabed0254f3e9de79b91252fc15963dc50e58f959e572fb47",
+      "uri": "assets/ships/render-packages/inputs/breakaway-fork.json"
     }
   },
   "render": {
-    "bytes": 446840,
-    "sha256": "7e718867cbdf269cc06f73e6e0ab868bff773d0700fa5e4f735c319892969356",
+    "bytes": 447596,
+    "sha256": "380d9b69b12aef3797fa1636f006808aa60d8f7d67938fd9d7983841832afaa7",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4201,7 +4201,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_breakaway_fork.glb"
   },
-  "runtimeHash": "dba8aeae96f99dcb939618bf2ca18e8e9c8b461ecf9d724a5b55dfc1424bfaa3",
+  "runtimeHash": "f350111556dd60208227c9ddac25edd84aa70b5d7f10aaf899b196b02bf91340",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
