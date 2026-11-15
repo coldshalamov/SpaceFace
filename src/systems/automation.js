@@ -96,6 +96,8 @@ const compareStableId = (left, right) => {
   const b = String(right && right.id != null ? right.id : right);
   return a < b ? -1 : a > b ? 1 : 0;
 };
+const feedsOutpostGood = (g, goodId) => (
+  (goodId == null || (g.oreType || DRONE_ORE_ID) === goodId) && (g.buffer || 0) > 0);
 
 // Static lookups (built once).
 const DRONE_BY_ID = new Map(DRONES.map((d) => [d.id, d]));
@@ -2145,14 +2147,16 @@ export const automation = {
     if (!a.outposts.length) return;
     const currentSectorId = this.state.world && this.state.world.currentSectorId || null;
     // Stable id order makes shared-feed allocation reproducible even if a save or UI reorders rows.
-    const ordered = a.outposts
-      .filter((o) => o && o.sectorId === currentSectorId)
-      .slice()
-      .sort(compareStableId);
+    const ordered = this._outpostOrderScratch || (this._outpostOrderScratch = []);
+    ordered.length = 0;
+    for (const o of a.outposts) if (o && o.sectorId === currentSectorId) ordered.push(o);
+    ordered.sort(compareStableId);
+    const feeders = ordered.length ? this._outpostFeeders(currentSectorId, a) : null;
     for (const o of ordered) {
       const def = OUTPOST_BY_ID.get(o.defId) || o;
-      this._advanceOutpost(o, def, dt, a);
+      this._advanceOutpost(o, def, dt, a, feeders);
     }
+    ordered.length = 0;
 
     // periodic autosell (every 60s) — banks the surplus through the capped funnel.
     this._outpostSellAccum += dt;
@@ -2172,7 +2176,7 @@ export const automation = {
       { outRate, level: o.level || 1, goodId: outpostStoredGoodId(o, def) });
   },
 
-  _advanceOutpost(o, def, dt, a) {
+  _advanceOutpost(o, def, dt, a, feeders) {
     if (def.retiredInto) return null;
     if (o.status === 'distressed') return null;
     if (o.status === 'raided') {
@@ -2181,24 +2185,24 @@ export const automation = {
       if (o.raidCooldown > 0) return null;
       o.status = 'producing';
       const productiveS = Math.max(0, dt - blockedS);
-      return productiveS > 1e-9 ? this._produceOutpost(o, def, productiveS, a) : null;
+      return productiveS > 1e-9 ? this._produceOutpost(o, def, productiveS, a, feeders) : null;
     }
-    return this._produceOutpost(o, def, dt, a);
+    return this._produceOutpost(o, def, dt, a, feeders);
   },
 
-  _produceOutpost(o, def, dt, a) {
+  _produceOutpost(o, def, dt, a, feeders = this._outpostFeeders(o.sectorId, a)) {
     if (!o.inputStock) normalizeOutpostOperation(o);
     const level = o.level || 1;
     const authoredRate = (def.outRate || 0) * Math.pow(1.6, level - 1);
     const cap = (def.storageCap || 0) * Math.pow(1.7, level - 1);
     const room = Math.max(0, cap - (o.storage || 0));
     const recipeDef = def.recipe || o.recipe || null;
-    const availableByGood = this._availableOutpostInputs(o, recipeDef, a);
+    const availableByGood = this._availableOutpostInputs(o, recipeDef, feeders);
     const recipe = this._resolveOutpostRecipe(o, def, recipeDef, availableByGood);
     const requestedOutput = Math.max(0, authoredRate * dt);
     const plan = planOutpostProduction({ recipe, requestedOutput, storageRoom: room, availableByGood });
 
-    this._consumeOutpostInputs(o, plan.consumedByGood, a);
+    this._consumeOutpostInputs(o, plan.consumedByGood, feeders);
     o.storage = Math.min(cap, Math.max(0, (o.storage || 0) + plan.produced));
     if (plan.produced > 1e-9 && recipe && recipe.output) {
       o.storageGoodId = Object.keys(recipe.output)[0];
@@ -2217,28 +2221,21 @@ export const automation = {
       consumedByGood: plan.consumedByGood,
       missingByGood: plan.missingByGood,
       limitingGoodId: plan.limitingGoodId,
-      localFeeders: (a.drones || []).filter((g) => (
-        g && g.sectorId === o.sectorId && g.status !== 'distressed'
-        && g.status !== 'stranded'
-        && !(hasProgram(g))
-      )).length,
+      localFeeders: feeders.length,
       inputStored: outpostInputUsed(o),
     };
     return plan;
   },
 
-  _outpostFeedGroups(o, goodId, a) {
-    return (a.drones || [])
-      .filter((g) => (
-        g
-        && g.sectorId === o.sectorId
-        && g.status !== 'distressed'
-        && g.status !== 'stranded'
-        && !(hasProgram(g))
-        && (goodId == null || (g.oreType || DRONE_ORE_ID) === goodId)
-        && (g.buffer || 0) > 0
-      ))
-      .sort(compareStableId);
+  // One retained, stable-id-ordered array of a sector's live feeder groups (no per-tick allocation).
+  _outpostFeeders(sectorId, a) {
+    const out = this._outpostFeederScratch || (this._outpostFeederScratch = []);
+    out.length = 0;
+    for (const g of a.drones || out) {
+      if (g && g.sectorId === sectorId && g.status !== 'distressed' && g.status !== 'stranded'
+        && !hasProgram(g)) out.push(g);
+    }
+    return out.sort(compareStableId);
   },
 
   _resolveOutpostRecipe(o, def, recipeDef, availableByGood) {
@@ -2256,19 +2253,19 @@ export const automation = {
     return chosen ? { id: chosen.id, inputs: chosen.inputs, output: chosen.output } : null;
   },
 
-  _availableOutpostInputs(o, recipe, a) {
+  _availableOutpostInputs(o, recipe, feeders) {
     const book = outpostRecipeBook(recipe);
     const inputIds = book ? CLAIM_REFINERY_INPUT_IDS : Object.keys((recipe && recipe.inputs) || {}).sort();
     const available = {};
     for (const goodId of inputIds) {
-      available[goodId] = this._outpostFeedGroups(o, goodId, a)
-        .reduce((sum, g) => sum + Math.max(0, Number(g.buffer) || 0), 0)
-        + Math.max(0, Number(o.inputStock?.[goodId]) || 0);
+      let sum = 0;
+      for (const g of feeders) if (feedsOutpostGood(g, goodId)) sum += Math.max(0, Number(g.buffer) || 0);
+      available[goodId] = sum + Math.max(0, Number(o.inputStock?.[goodId]) || 0);
     }
     return available;
   },
 
-  _consumeOutpostInputs(o, consumedByGood, a) {
+  _consumeOutpostInputs(o, consumedByGood, feeders) {
     for (const goodId of Object.keys(consumedByGood || {}).sort()) {
       let remaining = Math.max(0, Number(consumedByGood[goodId]) || 0);
       const stored = Math.min(remaining, Math.max(0, Number(o.inputStock?.[goodId]) || 0));
@@ -2276,7 +2273,8 @@ export const automation = {
         o.inputStock[goodId] = Math.max(0, o.inputStock[goodId] - stored);
         remaining -= stored;
       }
-      for (const g of this._outpostFeedGroups(o, goodId, a)) {
+      for (const g of feeders) {
+        if (!feedsOutpostGood(g, goodId)) continue;
         if (!(remaining > 1e-9)) break;
         const take = Math.min(Math.max(0, Number(g.buffer) || 0), remaining);
         g.buffer = Math.max(0, (Number(g.buffer) || 0) - take);
