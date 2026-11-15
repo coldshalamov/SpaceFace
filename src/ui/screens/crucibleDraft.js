@@ -827,6 +827,7 @@ export function swarmNextLine(next) {
   if (next.specialistBrief) bits.push(`prepare: ${next.specialistBrief.threat} ${next.specialistBrief.counter}`);
   if (next.event) bits.push(`${next.event.name} — ${next.event.telegraph}`);
   if (next.boss) bits.push(`boss: ${next.boss.label}`);
+  if (next.course?.question) bits.push(`inbound: ${next.course.question}`);
   return `Next — ${bits.join(' · ')}`;
 }
 

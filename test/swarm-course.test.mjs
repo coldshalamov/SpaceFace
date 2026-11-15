@@ -155,7 +155,8 @@ test('the course is thirty frozen rows — the design table verbatim', () => {
     const row = SWARM_COURSE[round - 1];
     assert.ok(row, `round ${round} exists`);
     assert.ok(Object.isFrozen(row), `round ${round} is frozen`);
-    assert.deepEqual(Object.keys(row).sort(), ['name', 'round', 'twist', 'twistId']);
+    assert.deepEqual(Object.keys(row).sort(), ['name', 'question', 'round', 'twist', 'twistId']);
+    assert.ok(row.question === null || typeof row.question === 'string');
     assert.equal(row.round, round);
     assert.equal(row.name, name, `round ${round}'s name is verbatim`);
     assert.equal(row.twist, twist, `round ${round}'s twist is verbatim`);
@@ -304,7 +305,7 @@ test('the round preview exposes the authored name and twist', () => {
   assert.deepEqual(long.course, {
     round: 7, name: 'Long Shots',
     twist: 'Lancers at the edges, Wasps in the middle. Rocks appear for cover',
-    twistId: 'plate_drift',
+    twistId: 'plate_drift', question: 'Separate their approaches and open one target.',
   });
   assert.equal(long.event.name, 'Plate drift', 'the preview names the card the twist deals');
   const quiet = swarmRoundPreview({ arenaId: ARENA, wave: 29, seed: SEED });

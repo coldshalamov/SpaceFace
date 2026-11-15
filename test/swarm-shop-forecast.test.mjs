@@ -26,6 +26,7 @@ import { summarizeRunBuild } from '../src/data/runModifiers.js';
 import { normalizeMutators } from '../src/systems/survivalMutators.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { swarmRoundPreview } from '../src/data/swarmLadder.js';
+import { swarmCourseFor } from '../src/data/swarmCourse.js';
 import {
   crucibleDraftScreen,
   crucibleRefitScreen,
@@ -243,6 +244,8 @@ test('shop forecast follows canonical stake, Threat, modifier and mutator plan i
   let line = swarmNextLine(base);
   assert.match(line, /room cap 11/);
   assert.doesNotMatch(line, /11 in the room|admissions/i);
+  // EC-Z01 — the next round's own question rides the forecast as its inbound line.
+  assert.ok(line.endsWith(`· inbound: ${swarmCourseFor(2).question}`), line);
 
   run.telemetry.swarmStake = 'exhibition';
   assert.equal(expectedAt(2).killTarget, 22);
@@ -269,6 +272,7 @@ test('shop forecast follows canonical stake, Threat, modifier and mutator plan i
   // round 20; the Foreman now keeps round 15.
   assert.equal(boss.boss?.label, 'The Yardmaster');
   assert.match(swarmNextLine(boss), /boss: The Yardmaster/);
+  assert.doesNotMatch(swarmNextLine(boss), /inbound:/, 'a round without a question shows none');
   const newcomer = expectedAt(14);
   // 4757ab2081e1 (C01-04) authored cast debuts on the course rounds — the Anchor
   // Controller's first sighting is round 14's cast row; the generated roster clock

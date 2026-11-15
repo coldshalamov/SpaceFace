@@ -21,6 +21,7 @@ import {
   survivalAnnounce,
   waveOpeningLine,
 } from '../src/systems/survivalAnnounce.js';
+import { SWARM_COURSE, swarmCourseFor } from '../src/data/swarmCourse.js';
 
 const ARENA = 'helios_core';
 const SEED = 7;
@@ -469,4 +470,32 @@ test('all ten waves produce clean, distinct, deterministic openers', () => {
     seen.add(line);
   }
   assert.equal(seen.size, 10, 'each wave says something of its own');
+});
+
+// ── 9. The Pit's authored round question (EC-Z01) ───────────────────────────────────────────────
+
+test('an authored Swarm round speaks its own question once; the open ladder never borrows one', () => {
+  const authored = new Set(SWARM_COURSE.map((row) => row.question).filter(Boolean));
+  assert.equal(authored.size, 10, 'rounds 1-10 each carry a distinct question');
+  for (const question of authored) {
+    assert.ok(question.split(/\s+/).length <= 8, `spoken lines stay at eight words: ${question}`);
+  }
+  for (const wave of [1, 3, 7, 10, 11, 31, 35]) {
+    const run = createRunState({ kind: 'survival', ruleset: 'swarm', seed: SEED });
+    run.arenaId = ARENA; run.phase = 'active';
+    const h = boot({ run });
+    const plan = planWave({ ruleset: 'swarm', mode: 'swarm', seed: SEED, arenaId: ARENA, wave });
+    assert.notEqual(plan.ok, false, `swarm wave ${wave} must plan`);
+    openWave(h, wave, plan);
+    h.bus.emit('run:waveStarted', { wave, tick: 2 });
+    const why = h.lines().filter((e) => e.payload.id === `survival:w${wave}:why`).map((e) => e.payload.text);
+    const question = swarmCourseFor(wave)?.question || null;
+    if (question) {
+      assert.deepEqual(why, [question], `round ${wave} asks its authored question once`);
+    } else {
+      assert.ok(why.every((text) => !authored.has(text)), `wave ${wave} must not borrow an authored question: ${why}`);
+    }
+    assert.equal(h.texts().filter((text) => authored.has(text)).length, question ? 1 : 0);
+    survivalAnnounce.destroy();
+  }
 });

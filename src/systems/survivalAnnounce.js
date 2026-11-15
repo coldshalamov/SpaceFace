@@ -212,6 +212,10 @@ function questionClauseFor(wave, plan, arenaId) {
   // misname the mechanic on the field (a bruiser's roster role reads as 'anchor' with no
   // snare well on wave 33). One question per wave: the act's.
   if (plan.swarm && plan.swarm.act) return null;
+  // EC-Z01 — an authored course round asks its own question; the derived line is the fallback
+  // for rounds without one and for the open ladder past the course, which has no row.
+  const authored = plan.swarm && !plan.swarm.circuit ? swarmCourseFor(wave)?.question : null;
+  if (typeof authored === 'string' && authored.length > 0) return authored;
   const derived = Boolean(plan.swarm) || plan.heaviesOnly === true || plan.mode === 'endless'
     || !Number.isInteger(wave) || wave < 1 || wave > SURVIVAL_TEMPLATE_BLOCK;
   const row = derived
