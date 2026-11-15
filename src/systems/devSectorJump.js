@@ -58,7 +58,12 @@ export async function applyDevSectorJump({
         const jumpBeat = devSectorQuery.get('beat');
         if (jumpBeat && registry) {
           const ob = registry.get('onboarding');
-          if (ob && typeof ob.devJumpToBeat === 'function') logger(`[SpaceFace] dev beat jump '${jumpBeat}': ${ob.devJumpToBeat(jumpBeat)}`);
+          // The opening rail starts a beat after flight begins; jump once it is up (3 s of sim in).
+          const doJump = () => {
+            if (!(state.simTime >= 3) || !ob || !ob.state || !ob.state.onboarding) { setTimeout(doJump, 200); return; }
+            if (typeof ob.devJumpToBeat === 'function') logger(`[SpaceFace] dev beat jump '${jumpBeat}': ${ob.devJumpToBeat(jumpBeat)}`);
+          };
+          setTimeout(doJump, 200);
         }
         if (targetSectorId && worldSystem && state.world && state.world.currentSectorId !== targetSectorId) {
           worldSystem.enterSector(targetSectorId);

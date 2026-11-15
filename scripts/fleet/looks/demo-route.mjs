@@ -588,7 +588,14 @@ async function adventureRoute() {
         advThrow.tries++; const t0n = await evN('massline:throw');
         await shot('latched-rock', { gameplay: true });
         await keyDown('KeyW'); await keyDown('KeyD');
-        for (let i = 0; i < 6; i++) { await page.mouse.move(VW / 2 + 260 * Math.cos(i * 0.6), VH / 2 + 200 * Math.sin(i * 0.6), { steps: 2 }); await sleep(200); if (i === 2) await shot('swing-rock', { gameplay: true }); }
+        const rw0 = await evN('massline:releaseWindow');
+        for (let i = 0; i < 40; i++) {
+          await page.mouse.move(VW / 2 + 260 * Math.cos(i * 0.6), VH / 2 + 200 * Math.sin(i * 0.6), { steps: 2 }); await sleep(150);
+          if (i === 3) await shot('swing-rock', { gameplay: true });
+          // THROW needs the release window the rope itself opens; tap the moment it does (after a real swing).
+          if (i >= 6 && (await evN('massline:releaseWindow')) > rw0) break;
+          if ((await evN('tether:broken')) > 0 && i > 20) break;
+        }
         await keyUp('KeyD');
         const aimD = await page.evaluate(() => {
           const s = window.SF.state; const h = window.SF.helpers;
