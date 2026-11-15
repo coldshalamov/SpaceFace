@@ -376,6 +376,10 @@ export function createBroodPresentation(scene, capacity = 400) {
   const FAMILY_COLORS = DRAW_FAMILIES.map((def) => color.clone().setRGB(
     def.bodyColor[0], def.bodyColor[1], def.bodyColor[2],
   ));
+  // The character sheet's draw scale, resolved once per family at create: the per-body loop used
+  // to linear-scan the 9-row SWARM_BROOD_CHARACTER table per live body per frame for a value that
+  // never changes for a family. Same fallback (`|| 1`) the scan used.
+  const FAMILY_CHAR_SCALE = DRAW_FAMILIES.map((def) => swarmBroodCharacterFor(def.id)?.drawScale || 1);
   // The strain marks: byte index → the strain's authored tint (swarmBroodLate.js). A marked
   // body burns pale-hot over its family's recipe — the cooked flesh reads before it pops.
   const STRAIN_TINTS = SWARM_BROOD_STRAINS.map((strain) => color.clone().setRGB(
@@ -436,8 +440,8 @@ export function createBroodPresentation(scene, capacity = 400) {
         const fam = family[i];
         const drawn = fam >= 0 && fam < FAMILY_N ? DRAW_FAMILIES[fam] : null;
         // S6: the E1 draw scale lives on Lane F's character sheet (drawScale 1.5 — draw only,
-        // the collision radius in swarmBrood.js never moves).
-        const charScale = drawn ? (swarmBroodCharacterFor(drawn.id)?.drawScale || 1) : 1;
+        // the collision radius in swarmBrood.js never moves). Resolved per family at create.
+        const charScale = drawn ? FAMILY_CHAR_SCALE[fam] : 1;
         const base = (drawn ? drawn.radius / 2.4 : 1) * charScale;
         const stretch = familyStretch(fam);
         scl.set(base * stretch[0], base * stretch[1], base * stretch[2]);
