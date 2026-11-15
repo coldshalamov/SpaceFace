@@ -98,6 +98,20 @@ function makeNode(doc, tag, cls, parent, text) {
   return node;
 }
 
+// Quantised, cached `scaleX` — the shared one lives in hud.js's own closure, but this module keeps
+// its own last-written value so a settled bar (a static boss meter between hits, the chain window
+// decaying to 0) skips both the `toFixed` string and the CSS re-parse. Same rounding (thousandths,
+// clamped to 0..1) as hud.js's setScaleX, so the picture is unchanged.
+function setScaleX(el, value) {
+  if (!el) return;
+  const raw = Number.isFinite(value) ? value : 0;
+  const bounded = raw < 0 ? 0 : raw > 1 ? 1 : raw;
+  const next = Math.round(bounded * 1000) / 1000;
+  if (el._sfScaleX === next) return;
+  el._sfScaleX = next;
+  el.style.transform = `scaleX(${next})`;
+}
+
 export const swarmJuiceHud = {
   id: 'swarmJuiceHud',
   name: 'swarmJuiceHud',
@@ -214,7 +228,7 @@ export const swarmJuiceHud = {
       dom.heroMix.hidden = !badge;
       const remaining = chainWindowRemaining(this._chainAt, simNow);
       const deplete = Math.max(0, Math.min(1, remaining / SWARM_CHAIN_WINDOW_S));
-      dom.heroDeplete.style.transform = `scaleX(${deplete.toFixed(3)})`;
+      setScaleX(dom.heroDeplete, deplete);
       this._text(dom.heroBest, this._chainBest > this._chain ? `BEST ${this._chainBest}` : '');
     }
 
@@ -309,7 +323,7 @@ export const swarmJuiceHud = {
       dom.boss.hidden = false;
       dom.col.classList?.add?.('is-boss');
       this._text(dom.bossName, this._bossMove ? `${this._bossHp.name} · ${this._bossMove}` : this._bossHp.name);
-      dom.bossFill.style.transform = `scaleX(${Math.max(0, Math.min(1, this._bossHp.frac)).toFixed(3)})`;
+      setScaleX(dom.bossFill, this._bossHp.frac);
       this._text(dom.bossCount, this._bossHp.total > 1
         ? `${this._bossHp.alive}/${this._bossHp.total}` : '');
     } else {
@@ -351,7 +365,16 @@ export const swarmJuiceHud = {
             const seat = seatOutOfRects({ x: px, y: py, w: p.w, h: p.h }, this._avoid().get(), { w: vw, h: vh });
             px = seat.x; py = seat.y; fade = seat.fade;
           }
-          p.node.style.transform = `translate(${Math.round(px)}px, ${Math.round(py)}px)`;
+          // A popup holds a fixed world anchor, so between camera settles the projected px is
+          // identical frame to frame — skip the template and the style parse when the rounded
+          // pair has not moved (the same trick floatingText.js uses on its own layer).
+          const tx = Math.round(px);
+          const ty = Math.round(py);
+          if (p.tx !== tx || p.ty !== ty) {
+            p.tx = tx;
+            p.ty = ty;
+            p.node.style.transform = `translate(${tx}px, ${ty}px)`;
+          }
           const filter = fade < 1 ? `opacity(${fade})` : '';
           if (p.filter !== filter) { p.filter = filter; p.node.style.filter = filter; }
           p.node.hidden = false;
@@ -433,7 +456,7 @@ export const swarmJuiceHud = {
     node.dataset.cause = p.cause || '';
     node.style.filter = '';
     node.hidden = false;
-    const rec = { node, wx: p.pos.x, wz: p.pos.z, at: now, text, entry, w: 0, h: 0, filter: '' };
+    const rec = { node, wx: p.pos.x, wz: p.pos.z, at: now, text, entry, w: 0, h: 0, filter: '', tx: NaN, ty: NaN };
     entry.refresh = (t) => {
       rec.text = t; node.textContent = t; rec.w = 0; rec.h = 0;
       rec.at = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : rec.at;
