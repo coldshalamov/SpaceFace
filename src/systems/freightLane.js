@@ -40,6 +40,8 @@ import { FOUNDRY_ARENA_ID, SWARM_DEBRIS_FIGHT_RADIUS } from './swarmArena.js';
 /** The lane spans the playable diameter: the same radius the debris ring marks as the fight. */
 export const FREIGHT_LANE_HALF_LENGTH = SWARM_DEBRIS_FIGHT_RADIUS;
 export const FREIGHT_FIRST_DEPART_S = 20;
+// Exchange traffic is already underway when the first fight opens.
+export const TETHYS_FIRST_DEPART_S = 4;
 export const FREIGHT_PERIOD_S = 40;
 /**
  * PIT-01 — the lane debuts on 'Mind the Gap': the Foundry's fourth round is the
@@ -145,14 +147,15 @@ export function createFreightLaneDirector(ctx) {
     if (arenaId !== 'tethys_hub' && (arenaId !== FOUNDRY_ARENA_ID || wave < FREIGHT_DEBUT_WAVE)) return;
     const lane = planFreightLane({ at });
     const t0 = Number.isFinite(installedAt) ? installedAt : simTimeOf(ctx.state);
+    const firstDeparture = arenaId === 'tethys_hub' ? TETHYS_FIRST_DEPART_S : FREIGHT_FIRST_DEPART_S;
     armed = {
       lane,
       arenaId,
       installedAt: t0,
       wave,
       seed,
-      nextDepartAt: t0 + FREIGHT_FIRST_DEPART_S,
-      warnAt: t0 + FREIGHT_FIRST_DEPART_S - FREIGHT_WARN_LEAD_S,
+      nextDepartAt: t0 + firstDeparture,
+      warnAt: t0 + firstDeparture - FREIGHT_WARN_LEAD_S,
       dir: 1,
     };
   }

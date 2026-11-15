@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
-import { createFreightLaneDirector, FREIGHT_FIRST_DEPART_S, FREIGHT_STRING_COUNT } from '../src/systems/freightLane.js';
+import { createFreightLaneDirector, FREIGHT_STRING_COUNT } from '../src/systems/freightLane.js';
 
 test('Tethys sends physical freight in round one and retires it on retry', () => {
   const state = { simTime: 0, entityList: [], entities: new Map() };
@@ -18,7 +18,7 @@ test('Tethys sends physical freight in round one and retires it on retry', () =>
   } });
   director.init();
   director.arm({ arenaId: 'tethys_hub', at: { x: 0, z: 0 }, installedAt: 0, wave: 1 });
-  state.simTime = FREIGHT_FIRST_DEPART_S;
+  state.simTime = 4;
   director.update(1 / 60, state);
   assert.equal(state.entityList.length, FREIGHT_STRING_COUNT);
   assert.ok(state.entityList.every(body => body.type === 'container' && body.physicsBody.dynamic && body.data.masslineTetherable));
@@ -44,7 +44,7 @@ test('moving freight queries nearby indexed bodies without walking the entity st
   bus.on('freight:contact', p => contacts.push(p));
   director.init();
   director.arm({ arenaId: 'tethys_hub', at: { x: 0, z: 0 }, installedAt: 0, wave: 1 });
-  state.simTime = FREIGHT_FIRST_DEPART_S;
+  state.simTime = 4;
   director.update(1 / 60, state);
   assert.ok(contacts.some(p => p.targetId === target.id), 'large body overlaps the indexed container');
   director.destroy();
