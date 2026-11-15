@@ -103,17 +103,31 @@ function hits(b, r, pad) {
   return b.x < r.x + r.w + pad && b.x + b.w > r.x - pad && b.y < r.y + r.h + pad && b.y + b.h > r.y - pad;
 }
 
+/** `hits` for a rect that may be absent or empty — the validity test `list` used to carry. */
+function hitsLive(b, r, pad) {
+  return !!r && r.w > 0 && r.h > 0 && hits(b, r, pad);
+}
+
 /**
  * Seat a label (box = top-left x,y and w,h in px) so it overlaps none of `rects`, staying inside
  * `bounds` {w,h}. Tries the nearest clear spot (just past each blocking edge, then the four
  * sides in turn); when nothing is clear returns the original box with `fade` = FT_YIELD_OPACITY.
  * Returns { x, y, fade } where fade is 1 when the seat is clear. x,y are the new top-left.
+ *
+ * Most labels — a Swarm kill word over open field, a damage number in clear sky — are not blocked
+ * at all, so that case is answered straight off `rects` with no filtered array, no closure and no
+ * candidate objects. Only a genuinely blocked label pays for the search, which then behaves
+ * exactly as it always has.
  */
 export function seatOutOfRects(box, rects, bounds, opts = {}) {
   const pad = opts.pad ?? 4;
+  let blockedNow = false;
+  for (let i = 0; i < rects.length; i++) {
+    if (hitsLive(box, rects[i], pad)) { blockedNow = true; break; }
+  }
+  if (!blockedNow) return { x: box.x, y: box.y, fade: 1 };
   const list = rects.filter((r) => r && r.w > 0 && r.h > 0);
   const blocked = (b) => list.some((r) => hits(b, r, pad));
-  if (!blocked(box)) return { x: box.x, y: box.y, fade: 1 };
   const maxX = Math.max(0, (bounds.w || 0) - box.w);
   const maxY = Math.max(0, (bounds.h || 0) - box.h);
   const cands = [];
