@@ -89,8 +89,9 @@ ${T} .sx-fac-network > .sx-fac-treaty { flex-basis:100%; min-width:0; }
 @media (max-width:650px) {
   ${D} .sx-fac .sx-fac__stage { grid-template-columns:minmax(0, 1fr) !important; column-gap:0 !important; row-gap:18px; }
   /* stacked, the ring is no longer a pinned column: sticky, it stayed at the stage top while the
-     reading scrolled up over it, so the treaty sentence printed across the crest labels */
-  ${D} .sx-fac .sx-fac__stage > .orr-fac-orbit { position:static !important; }
+     reading scrolled up over it, so the treaty sentence printed across the crest labels. It is
+     relative, not static: its crests and rim are absolute and need the ring's own box to sit in */
+  ${D} .sx-fac .sx-fac__stage > .orr-fac-orbit { position:relative !important; }
 }
 /* the stage is the reading's scroll window: when it overflows it folds at the rim (the house
    dissolve, scrollExtent.js) instead of guillotining the last rung — the NEXT MOVE heading was
