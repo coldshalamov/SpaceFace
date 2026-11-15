@@ -6,7 +6,7 @@
 function projectTextureUserData(value, path, textureRefs, visiting) {
   if (!value || typeof value !== 'object') return value;
   if (value.isTexture === true) {
-    textureRefs.push({ path, texture: value });
+    textureRefs.push({ path: path.slice(), texture: value });
     // Material.copy JSON-clones userData. A texture in that graph serializes its image (which can
     // synchronously call canvas.toDataURL); restore the exact shared texture reference afterward.
     return null;
@@ -25,7 +25,10 @@ function projectTextureUserData(value, path, textureRefs, visiting) {
       const projected = new Array(value.length);
       for (let i = 0; i < value.length; i++) {
         const item = value[i];
-        const next = projectTextureUserData(item, [...path, i], textureRefs, visiting);
+        path.push(i);
+        let next;
+        try { next = projectTextureUserData(item, path, textureRefs, visiting); }
+        finally { path.pop(); }
         projected[i] = next;
         if (next !== item) changed = true;
       }
@@ -34,7 +37,10 @@ function projectTextureUserData(value, path, textureRefs, visiting) {
 
     const projected = {};
     for (const [key, item] of Object.entries(value)) {
-      const next = projectTextureUserData(item, [...path, key], textureRefs, visiting);
+      path.push(key);
+      let next;
+      try { next = projectTextureUserData(item, path, textureRefs, visiting); }
+      finally { path.pop(); }
       projected[key] = next;
       if (next !== item) changed = true;
     }

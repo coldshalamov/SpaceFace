@@ -83,6 +83,23 @@ test('material clone preserves nested texture references without serializing or 
   base.dispose();
 });
 
+test('material clone restores repeated textures at independent nested array paths', () => {
+  const a = new THREE.Texture();
+  const b = new THREE.Texture();
+  const base = new THREE.MeshStandardMaterial();
+  base.userData = { groups: [{ slots: [a, { texture: b }] }, { slots: [b, a] }], plain: [1, { value: 2 }] };
+  const clone = cloneMaterialPreservingShaderHooks(base);
+  assert.strictEqual(clone.userData.groups[0].slots[0], a);
+  assert.strictEqual(clone.userData.groups[0].slots[1].texture, b);
+  assert.strictEqual(clone.userData.groups[1].slots[0], b);
+  assert.strictEqual(clone.userData.groups[1].slots[1], a);
+  assert.notStrictEqual(clone.userData.groups, base.userData.groups);
+  clone.userData.plain[1].value = 9;
+  assert.equal(base.userData.plain[1].value, 2);
+  assert.strictEqual(base.userData.groups[0].slots[0], a);
+  clone.dispose(); base.dispose(); a.dispose(); b.dispose();
+});
+
 test('partsLibrary keeps re-exporting cloneMaterialPreservingShaderHooks for existing importers', () => {
   assert.equal(partsLibrary.cloneMaterialPreservingShaderHooks, cloneMaterialPreservingShaderHooks);
 });
