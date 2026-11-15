@@ -157,6 +157,7 @@ const DENIAL_NEXT_ACTION = Object.freeze({
   'CANNOT LATCH': 'PICK ANOTHER TARGET',
   'UNAVAILABLE': 'REPOSITION AND RETRY',
   'SPOOL OUT': 'REPAIR THE SPOOL',
+  'ALREADY HELD': 'PICK ANOTHER TARGET',
 });
 export function denialNextAction(status, reason) {
   return DENIAL_NEXT_ACTION[previewStatusCopy(status, reason)] ?? 'REPOSITION AND RETRY';
@@ -180,6 +181,7 @@ const BRACKET_DENIAL_REASON = Object.freeze({
   'CANNOT LATCH': 'CANNOT LATCH',
   'UNAVAILABLE': 'LATCH NOT READY',
   'SPOOL OUT': 'SPOOL IS OUT',
+  'ALREADY HELD': 'ALREADY HELD',
 });
 
 export function resolveMasslineBracketRead(status, reason) {
@@ -2560,7 +2562,7 @@ function rampColor(errorRad, tolRad, hot) {
   return `hsl(${Math.round(hue)}, 95%, 62%)`;
 }
 
-function previewStatusCopy(status, reason) {
+export function previewStatusCopy(status, reason) {
   if (status === 'ready') return 'READY';
   // M3: snare_/bridle_ denial reasons carry their inner cause after the prefix — strip it so a
   // denied remote latch reads with the same words as a denied ordinary latch.
@@ -2586,8 +2588,10 @@ function previewStatusCopy(status, reason) {
   // Attachments create-fail reasons that used to read as a generic UNAVAILABLE.
   if (r === 'target_missing' || r === 'endpoint_stale') return 'ENDPOINT LOST';
   if (r === 'owner_missing' || r === 'controller_missing') return 'CANNOT LATCH';
+  // THROW-01: the target's line socket is taken (another line already holds it). Plain words.
+  if (r === 'target_socket_unavailable') return 'ALREADY HELD';
   if (r === 'physics_port_unavailable' || r === 'source_socket_unavailable'
-    || r === 'target_socket_unavailable' || r === 'physics_create_rejected'
+    || r === 'physics_create_rejected'
     || r === 'physics_create_failed' || r === 'spawn_authority_unavailable'
     || r === 'endpoint_spawn_failed') {
     return 'LINE FAILED';

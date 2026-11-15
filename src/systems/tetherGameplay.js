@@ -1314,8 +1314,10 @@ export const tetherGameplay = {
       now,
       snapshot,
       stable.selected,
-      now < this._noRelatchUntil && (this._noRelatchTargetId == null
-        || stable.selected?.id === this._noRelatchTargetId) ? 'cooldown' : null,
+      (now < this._noRelatchUntil && (this._noRelatchTargetId == null
+        || stable.selected?.id === this._noRelatchTargetId) ? 'cooldown' : null)
+        // THROW-01: the tag asks the same question the latch will: no free target socket = denied now.
+        || (stable.selected && def ? (combatKernel(this)?.attachments?.targetSocketBlocker?.(def.id, stable.selected.id) || null) : null),
     );
     return state.masslineAcquisition;
   },

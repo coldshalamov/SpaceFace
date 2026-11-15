@@ -1218,7 +1218,7 @@ export function createAttachmentService(context) {
         && attachment.controllerId === controllerId);
   }
 
-  return Object.freeze({ get, breakPolicy, reelPolicy, physicsContract, create, reel, cut, breakAttachment, breakOwnedBy, breakOrphans, reconcilePhysics, transfer, rebind, updateTelemetryAndBreak, listForEntity, listControlledBy });
+  return Object.freeze({ get, breakPolicy, reelPolicy, physicsContract, create, reel, cut, breakAttachment, breakOwnedBy, breakOrphans, reconcilePhysics, transfer, rebind, updateTelemetryAndBreak, listForEntity, listControlledBy, targetSocketBlocker });
 
   function combatPhysics() {
     return helpers && helpers.combatPhysics;
@@ -1310,6 +1310,15 @@ export function createAttachmentService(context) {
       if (used < socket.maxAttachments) return socket;
     }
     return null;
+  }
+
+  /** THROW-01: the reason a latch of `defId` onto `targetId` would be refused for want of a free target socket, else null. The aim tag asks this so it never offers a latch the press would deny. */
+  function targetSocketBlocker(defId, targetId) {
+    const def = catalog.attachments.get(defId);
+    const target = entity(targetId);
+    if (!def || !target || !target.alive) return null;
+    const runtime = ensureCombatant(state, target, catalog);
+    return selectSocket(runtime, def.targetSocketTags, null, target.id) ? null : 'target_socket_unavailable';
   }
 
   function entity(id) {
