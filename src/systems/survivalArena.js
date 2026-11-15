@@ -326,19 +326,19 @@ function planSideRoomToys(arenaId, at, lane) {
     id, kind, pos: point(at, x, z), radius, solid: true, hazardType: 'debris', ...extra,
   });
   if (arenaId === 'ceres_belt') {
-    const rocks = [[-260, -120], [-210, -220], [-90, -285], [50, -295]];
+    const rocks = [[-180, -105], [-160, -190], [-65, -235], [45, -245]];
     for (let i = 0; i < rocks.length; i++) {
       add(`claim_rock_${i + 1}`, 'rock', rocks[i][0], rocks[i][1], 34, {
         entityType: 'asteroid', dynamic: true, mass: 400, material: 'stone',
         packagedPropFile: i % 2 ? 'places/place_asteroid_seamed.glb' : 'places/place_asteroid_graffiti.glb',
       });
     }
-    add('claim_stack_a', 'rack', 250, -185, 40, { packagedPropFile: 'places/place_container_rack.glb' });
-    add('claim_stack_b', 'rack', 250, 190, 40, { packagedPropFile: 'places/place_container_rack.glb' });
-    add('claim_beacon', 'gate', -290, 165, 24, { packagedPropFile: 'places/place_claim_mark.glb' });
+    add('claim_stack_a', 'rack', 190, -155, 40, { packagedPropFile: 'places/place_container_rack.glb' });
+    add('claim_stack_b', 'rack', 190, 155, 40, { packagedPropFile: 'places/place_container_rack.glb' });
+    add('claim_beacon', 'claim', -165, 105, 32, { packagedPropFile: 'places/place_claim_mark.glb' });
   } else {
     for (const x of [-260, 260]) for (const z of [-105, 105]) {
-      add(`toll_gate_${x}_${z}`, 'gate', x, z, 18, { packagedPropFile: 'places/place_transponder_gate.glb' });
+      add(`toll_gate_${x}_${z}`, 'gate', x, z, 18, { nocturne: FOUNDRY_GATE_NOCTURNE });
     }
   }
   const across = { x: -lane.z, z: lane.x };

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRunState } from '../src/core/runState.js';
+import { resolveCollisionProxyManifest } from '../src/data/collisionProxyManifests.js';
 import { SWARM_EVENT_TABLES } from '../src/data/swarmEvents.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { survivalArena } from '../src/systems/survivalArena.js';
@@ -33,7 +34,9 @@ for (const arenaId of ['ceres_belt', 'tethys_hub']) {
       assert.ok(first.some(e => e.data.roomToyId === 'claim_beacon'));
       assert.deepEqual(SWARM_EVENT_TABLES.ceres_belt, ['mine_drift', 'supply_drop', 'rock_rain']);
     } else {
-      assert.ok(first.filter(e => e.data.roomToyId?.startsWith('toll_gate_')).length >= 4);
+      const gates = first.filter(e => e.data.roomToyId?.startsWith('toll_gate_'));
+      assert.ok(gates.length >= 4);
+      assert.ok(gates.every(e => !e.data.packagedPropFile && resolveCollisionProxyManifest(e)), 'each toll post uses its matching collision shape');
       assert.ok(SWARM_EVENT_TABLES.tethys_hub.includes('supply_drop'));
     }
     bus.emit('run:waveCleared', {});
