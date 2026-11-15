@@ -926,14 +926,25 @@ export function flightDestinationSurface(state, command, temporaryCircuit = fals
   return { show: false, line: '', urgent: false, actLine };
 }
 
+// Last resolved flight layout, keyed on the two numbers it is pure in.
+let _objectiveHudLayoutMemo = null;
+
 /**
  * Geometry contract for the persistent flight anchors. Values mirror the authored desktop CSS and
  * intentionally reserve a clear center/lower-middle playfield. Used by the objective hierarchy
  * regression to cover both the 1280x720 floor and 1920x1080 target without launching the game.
+ *
+ * Pure in (width, height) and called on the HUD's slow tick plus by every receipt lane placement,
+ * so the previous answer is retained and handed back while the keyed viewport is unchanged. No
+ * caller mutates the result (checked across hud.js, toasts.js, capitalBossOverlayMount.js and the
+ * reading tests), so one object per viewport is safe to share.
  */
 export function resolveObjectiveHudLayout(width, height) {
   const w = Math.max(320, Number(width) || 1280);
   const h = Math.max(240, Number(height) || 720);
+  if (_objectiveHudLayoutMemo && _objectiveHudLayoutMemo.w === w && _objectiveHudLayoutMemo.h === h) {
+    return _objectiveHudLayoutMemo.layout;
+  }
   const compact = w <= 760 || h <= 620;
   // Ultrawide safe frame (A_LIST_GAPS §4 / design/frontend/RESPONSIVE_STRATEGY.md): anchored
   // instruments clamp to a centred 16:9-ish box so a 21:9 player is not asked to read the far
@@ -989,6 +1000,7 @@ export function resolveObjectiveHudLayout(width, height) {
     },
   };
   layout.receipt = receiptLaneRect(layout);
+  _objectiveHudLayoutMemo = { w, h, layout };
   return layout;
 }
 
