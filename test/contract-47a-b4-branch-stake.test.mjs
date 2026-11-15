@@ -85,6 +85,11 @@ function completeDoorOperation(h, mission) {
   h.missions._ensureMissionTargets(mission);
   assert.notEqual(mission.type, 'escort', 'Spine Break is exercised through its native physical fixture');
   for (const targetId of [...mission.targetEntityIds]) {
+    // The live kill contract: the body dies first, then the event reports it. The
+    // Weighing's casualty gate authenticates a genuinely dead body — a kill event
+    // on a still-living hull is not a kill the game would ever publish.
+    const entity = h.state.entities.get(targetId);
+    if (entity) entity.alive = false;
     h.bus.emit('entity:killed', { id: targetId, killerId: h.state.playerId });
   }
 }

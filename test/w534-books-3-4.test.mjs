@@ -769,7 +769,9 @@ await check('B4: Concord door — the Weighing plus the Too-Perfect Pack', () =>
   assert.equal(op.storyBranch, 'patrol');
   completePatrol(h, op);
   assert.equal(op.status, 'completed');
-  assert.equal(state.story.flags.helix_unmasked, true, 'the pack resolves to Helix');
+  assert.notEqual(state.story.flags.helix_unmasked, true, 'generic fixture kills are not live registry evidence');
+  assert.equal(state.story.flags.weighing_receipt.outcome, 'cleared_unverified');
+  assert.equal(op.params.completionMethod, 'hold_the_weir');
   assert.equal(state.story.beatIndex, 5);
 });
 

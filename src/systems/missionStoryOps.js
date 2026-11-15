@@ -1,3 +1,4 @@
+import { isWeighingOperation, weighingEvidence, WEIGHING_OPENING } from '../missions/weighingWorksite.js';
 import { isMawWorksite, snapshotMawWorksite, restoreMawWorksite, parkMawWorksite } from '../missions/mawWorksite.js';
 import { authoredCinderRoute, retainCinderRetry } from '../missions/cinderRoute.js';
 import { isTenderRivalHull, isTenderRivalRecord, releaseTenderRivalHull } from '../missions/tenderHaul.js';
@@ -1697,6 +1698,11 @@ export const missionStoryOps = {
       this._advanceStory(beat, { skipCredits: true });
       return true;
     }
+    // Terminal mission settlement records only the method the native scene supplied.
+    // Clearing the three marked targets is still the mission owner's predicate.
+    if (isWeighingOperation(m)) {
+      m.params.completionMethod = weighingEvidence(m) ? 'break_the_pattern' : 'hold_the_weir';
+    }
     const furnaceSettlement = furnaceSettlementFromMission(m, beat.beat, 'infested', 'mission:completed');
     const observed = recordBeatStep(this.state, 'mission:completed', {
       missionId: m.id,
@@ -1747,10 +1753,20 @@ export const missionStoryOps = {
         text: 'The spine holds. The board moves the price: your door keeps its entry. Coupler Head rating posted to your record.',
       });
     } else if (bookScene === 'too_perfect_pack') {
-      story.flags.helix_unmasked = true;
+      const authored = isWeighingOperation(m), evidence = authored && weighingEvidence(m);
+      if (!authored || evidence) story.flags.helix_unmasked = true;
+      if (authored) story.flags.weighing_receipt = {
+        version: 1, missionId: m.id, at: this.state.simTime || 0,
+        outcome: evidence ? 'unmasked_and_cleared' : 'cleared_unverified',
+        packId: evidence?.packId || null, exposedAt: evidence?.at ?? null,
+      };
       this.bus.emit('comms:popup', {
-        id: `b4_pack_${m.id}`, sender: 'IFF REGISTER', category: 'story', ttl: 8, persist: true,
-        text: 'IFF RESOLVES: HELIX PROVISIONING — NOT REACH. The pack was flawless; flawless is a signature too.',
+        id: `b4_pack_${m.id}`, sender: 'IFF REGISTER', category: 'story', ttl: 10, persist: true,
+        text: !authored
+          ? 'IFF RESOLVES: HELIX PROVISIONING — NOT REACH. The pack was flawless; flawless is a signature too.'
+          : evidence
+            ? 'WEIR CLEARED. Three live transponders resolved to Helix before the fight. Concord keeps the registry evidence.'
+            : 'WEIR CLEARED. The marked hulls are down; no live pack exposure was verified. Concord records the clearance, not an accusation.',
       });
     } else if (bookScene === 'barn_raising') {
       if (m.params?.frontierBarnRaisingVersion === 1 && m.params?.frontierReceipt?.version === 1) {
@@ -2706,7 +2722,7 @@ export const missionStoryOps = {
       return true;
     }
     if (scene === 'too_perfect_pack') {
-      popup('CONCORD WEIR', 'The pack on the weir flies Reach colors with no slag on the welds. Run the Weighing honest; the pattern will tell on itself.', 7);
+      popup('CONCORD WEIR', isWeighingOperation(inst) ? WEIGHING_OPENING : 'The pack on the weir flies Reach colors with no slag on the welds. Run the Weighing honest; the pattern will tell on itself.', 12);
       return true;
     }
     if (scene === 'barn_raising') {

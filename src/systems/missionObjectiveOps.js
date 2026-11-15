@@ -1,3 +1,4 @@
+import { isWeighingOperation, isWeighingCasualty } from '../missions/weighingWorksite.js';
 import { isMawWorksite, acceptMawImpact, loseMawBody } from '../missions/mawWorksite.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { starterBuoySpec, starterMiningReceiptMatches, isOriginalStarterBuoyTow, playerHoldsStarterBuoy } from '../missions/starterWorkday.js';
@@ -346,6 +347,7 @@ export const missionObjectiveOps = {
    * after contractClauses has judged the kill — a kill no clause fails must still complete.
    */
   _settleBountyTargetKill(m, i, p) {
+    if (isWeighingOperation(m) && !isWeighingCasualty(this.state, m, p)) return;
     // Versioned refinery work is a cleared-place predicate, not fabricated kill credit.
     if (authoredFurnaceWorksite(m) || authoredCinderRoute(m)) return;
     if (!Array.isArray(m.targetEntityIds) || !m.targetEntityIds.includes(p.id)) return;
@@ -531,6 +533,14 @@ export const missionObjectiveOps = {
       const m = this.state.missions.active[i];
       if (authoredCinderRoute(m)) continue;
       if (missionObservesClauseEvent(m, 'entity:killed')) continue;
+      if (isWeighingOperation(m)) {
+        // A finite lane clearance observes real destruction, including terrain or
+        // another actor. Keep the actual killer unchanged: this is mission progress,
+        // never a fabricated player kill or an extra bounty payment. Missing or
+        // merely unloaded bodies do not qualify, and a dead slot never respawns.
+        if (isWeighingCasualty(this.state, m, p)) this._settleBountyTargetKill(m, i, p);
+        continue;
+      }
       const gone = (id) => {
         const e = this.state.entities && this.state.entities.get(id);
         if (!e || e.alive === false) return true;
