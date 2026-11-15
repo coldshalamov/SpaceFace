@@ -77,7 +77,7 @@ function starterShip() {
  * Full owner stack: survivalArena hosts the floor director; runSession is the real purse
  * and the real run:modifierRecordRequested owner; ships is the real fitting owner.
  */
-function boot({ seed = 7, ruleset = SWARM_RULESET, arenaId = FOUNDRY_ARENA_ID, credits = 0, fittings = null } = {}) {
+function boot({ seed = 7, ruleset = SWARM_RULESET, arenaId = FOUNDRY_ARENA_ID, credits = 0, fittings = null, wave = 3 } = {}) {
   const state = createGameState(seed);
   const rawBus = createBus();
   const bus = {
@@ -129,7 +129,7 @@ function boot({ seed = 7, ruleset = SWARM_RULESET, arenaId = FOUNDRY_ARENA_ID, c
 
   const run = createRunState({ kind: 'survival', ruleset, seed });
   run.arenaId = arenaId;
-  run.wave = 1;
+  run.wave = wave;
   run.phase = 'wave_intro';
   state.run = run;
   state.simTime = 0;
@@ -152,7 +152,8 @@ function boot({ seed = 7, ruleset = SWARM_RULESET, arenaId = FOUNDRY_ARENA_ID, c
   bus.on('presentation:vfxCue', (p) => events.vfx.push({ ...p }));
 
   // The install fires synchronously inside this emit — listeners must already be attached.
-  bus.emit('run:wavePlanned', { wave: 1, plan: planWave({ seed, arenaId, wave: 1 }) });
+  // Default wave 3: both wall-gun pads are lit by then (PIT-01 debut ladder).
+  bus.emit('run:wavePlanned', { wave, plan: planWave({ seed, arenaId, wave }) });
 
   function pads() {
     return state.entityList.filter((e) => e && e.alive !== false && e.data && e.data.swarmFloorPad);

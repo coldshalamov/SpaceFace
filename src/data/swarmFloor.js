@@ -65,8 +65,10 @@ export const SWARM_FLOOR_FORGE_RADIUS = 16;
 export const SWARM_FLOOR_PLANS = Object.freeze({
   helios_core: Object.freeze({
     wallGuns: Object.freeze([
-      Object.freeze({ id: 'foundry-gun-south', defId: 'wpn_pulse_laser_s', dx: 0, dz: 310 }),
-      Object.freeze({ id: 'foundry-gun-ne', defId: 'wpn_concussion_cannon_s', dx: 220, dz: -220 }),
+      // PIT-01 — `wave` is the pad's debut round ('Second Helpings' lights the first gun;
+      // the second follows a round later): a spec with no wave sells from round 1.
+      Object.freeze({ id: 'foundry-gun-south', defId: 'wpn_pulse_laser_s', dx: 0, dz: 310, wave: 2 }),
+      Object.freeze({ id: 'foundry-gun-ne', defId: 'wpn_concussion_cannon_s', dx: 220, dz: -220, wave: 3 }),
     ]),
     crateSpots: Object.freeze([
       Object.freeze({ dx: 195, dz: -5 }),

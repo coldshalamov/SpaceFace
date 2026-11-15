@@ -351,6 +351,10 @@ export function createSwarmFloorDirector(ctx) {
     const spots = plan.crateSpots.map((offset) => ({ x: anchor.x + offset.dx, z: anchor.z + offset.dz }));
     armed = { arenaId, at: { x: anchor.x, z: anchor.z }, installedAt, wave, seed, spots };
     for (const spec of plan.wallGuns) {
+      // PIT-01 — wall guns light in order: each spec carries the round it debuts on
+      // ('Doors Open' sells none, 'Second Helpings' lights the first), and a pad the
+      // round has not reached stays dark for this install.
+      if (spec.wave != null && wave < spec.wave) continue;
       const def = WEAPON_BY_ID.get(spec.defId);
       _spawnPad({
         rec: {

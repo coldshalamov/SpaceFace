@@ -50,7 +50,7 @@ function starterShip() {
  * Full owner stack: survivalArena hosts the floor director; runSession is the real purse;
  * ships is the real fitting owner. Only the entity bag and the fields ledger are stubs.
  */
-function boot({ seed = 7, ruleset = SWARM_RULESET, arenaId = FOUNDRY_ARENA_ID, credits = 0 } = {}) {
+function boot({ seed = 7, ruleset = SWARM_RULESET, arenaId = FOUNDRY_ARENA_ID, credits = 0, wave = 3 } = {}) {
   const state = createGameState(seed);
   const rawBus = createBus();
   const bus = {
@@ -95,7 +95,7 @@ function boot({ seed = 7, ruleset = SWARM_RULESET, arenaId = FOUNDRY_ARENA_ID, c
 
   const run = createRunState({ kind: 'survival', ruleset, seed });
   run.arenaId = arenaId;
-  run.wave = 1;
+  run.wave = wave;
   run.phase = 'wave_intro';
   state.run = run;
   state.simTime = 0;
@@ -118,7 +118,8 @@ function boot({ seed = 7, ruleset = SWARM_RULESET, arenaId = FOUNDRY_ARENA_ID, c
   bus.on('entity:retired', (p) => events.retired.push({ ...p }));
 
   // The install fires synchronously inside this emit — listeners must already be attached.
-  bus.emit('run:wavePlanned', { wave: 1, plan: planWave({ seed, arenaId, wave: 1 }) });
+  // Default wave 3: both wall-gun pads are lit by then (PIT-01 debut ladder).
+  bus.emit('run:wavePlanned', { wave, plan: planWave({ seed, arenaId, wave }) });
 
   function tick() {
     state.tick += 1;
@@ -159,6 +160,21 @@ function boot({ seed = 7, ruleset = SWARM_RULESET, arenaId = FOUNDRY_ARENA_ID, c
     destroy() { survivalArena.destroy(); session.destroy(); kernel.dispose(); },
   };
 }
+
+test('the wall guns light in order: none on round 1, the south gun on 2, both from 3', () => {
+  const w1 = boot({ wave: 1 });
+  try {
+    assert.equal(w1.events.armed[0].pads.length, 4, 'round 1 arms the Crate, Forge and Taps — no guns');
+    assert.equal(w1.padById('foundry-gun-south'), null);
+    assert.equal(w1.padById('foundry-gun-ne'), null);
+  } finally { w1.destroy(); }
+  const w2 = boot({ wave: 2 });
+  try {
+    assert.equal(w2.events.armed[0].pads.length, 5, 'round 2 lights the first wall gun');
+    assert.ok(w2.padById('foundry-gun-south'), 'the south gun is the first one lit');
+    assert.equal(w2.padById('foundry-gun-ne'), null);
+  } finally { w2.destroy(); }
+});
 
 test('a helios_core install arms six lit pads at the authored Foundry spots', () => {
   const h = boot();
