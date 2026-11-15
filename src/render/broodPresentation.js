@@ -430,7 +430,8 @@ export function createBroodPresentation(scene, capacity = 400) {
       for (let i = 0; i < count; i++) {
         if (!alive[i]) continue;
         const bob = reduced ? 0 : Math.sin(simTime * 5.1 + seedPhase[i]) * 0.35;
-        quat.setFromAxisAngle(axis, heading[i]);
+        // Simulation headings rotate +X toward +Z; Three's positive Y rotation does the opposite.
+        quat.setFromAxisAngle(axis, -heading[i]);
         pos.set(px[i], 0.6 + bob, pz[i]);
         const fam = family[i];
         const drawn = fam >= 0 && fam < FAMILY_N ? DRAW_FAMILIES[fam] : null;
@@ -674,7 +675,7 @@ export function createBroodPresentation(scene, capacity = 400) {
       for (let i = 0; i < SEG_CAP && segN < SEG_CAP; i++) {
         if (!view.segAlive[i]) continue;
         const sway = reduced ? 0 : Math.sin(simTime * 6.4 + i * 0.9) * 0.28;
-        quat.setFromAxisAngle(axis, view.segHeading ? view.segHeading[i] : 0);
+        quat.setFromAxisAngle(axis, view.segHeading ? -view.segHeading[i] : 0);
         pos.set(view.segX[i], 0.7 + sway, view.segZ[i]);
         // The knuckle: longer than the dart, narrower — one link of a worm, not a ship.
         scl.set(base * 1.7, base * 0.8, base * 0.85);
