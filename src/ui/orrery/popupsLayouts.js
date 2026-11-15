@@ -160,12 +160,12 @@ const CSS = `
 @media (min-width: 1101px) and (max-height: 560px) {
   .sf-drawerlayer > .sf-drawer--entity > .sf-drawer__deck { padding-left: 40px; }
   .sf-drawer--entity > .sf-drawer__apron { margin-left: 40px; margin-right: 28px; }
+}
 
 /* Focus lands on the sheet itself (entityLinks); the deck, rungs and verbs keep their own marks,
    so the sheet does not draw a second lamp frame around its card. */
 .sf-drawerlayer > .sf-drawer--entity:focus-visible,
 #screens .sf-drawerlayer > .sf-drawer--entity:focus-visible { outline: none !important; }
-}
 
 /* ── 3. Rungs are doors at rest; disabled verbs look disabled ────────────────────────────── */
 /* The quiet etched chevron — the door mark. Bone at rest, the lamp under the hand; it slides a
