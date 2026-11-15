@@ -933,8 +933,12 @@ export function swarmQuota(wave) {
   // The debut band holds there while new silhouettes still carry the escalation;
   // once the whole roster is out the only lever left is body count, so the tail
   // climbs to the hard cap by wave 22.
+  //
+  // PIT-01 — the early ramp climbs min(26 + 4w, 4 + 6w): the 4 + 6w leg walks the
+  // opening rounds up from the cast-pinned ten (16, 22, 28 on rounds 2–4) instead
+  // of the old 3.4× round-2 cliff, meets 26 + 4w at round 11, then yields to it.
   const bound = w < 16 ? SWARM_QUOTA_DELIVERABLE : Math.min(SWARM_QUOTA_CAP, w + 26);
-  return Math.min(bound, Math.max(floor, 26 + w * 4));
+  return Math.min(bound, Math.max(floor, Math.min(26 + w * 4, 4 + w * 6)));
 }
 
 /**

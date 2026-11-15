@@ -274,10 +274,11 @@ test('.01 opening reward-reference is 15; later waves still climb; concurrency u
   assert.equal(swarmLevel(1), 1);
   // PQ-174.01 design memo: return 1 at every swarm wave so scaleCombatant cannot inflate hull.
   assert.equal(swarmLevel(22), 1);
-  // Later count still increases. S10 re-tuned the wave-2+ ramp for 60–90 s rounds
-  // (24 ran ~44 s at bench kill rate — under the band); the wave-1 lesson pins above
-  // are unchanged, and the cap is unchanged.
-  assert.equal(swarmQuota(2), 34);
+  // Later count still increases. PIT-01 re-ramped the wave-2+ quota to
+  // min(26 + 4w, 4 + 6w) before the floor/bound clamps — the wave-2 ramp leg (16)
+  // sits under the concurrency floor (11 + 8): the wave-1 lesson pins above are
+  // unchanged, and the cap is unchanged.
+  assert.equal(swarmQuota(2), 19);
   assert.ok(swarmQuota(2) > swarmQuota(1));
   assert.ok(swarmQuota(12) > swarmQuota(1));
   // C01-01: the course ends at wave 30 — the late ordinary rounds already sit at the cap,

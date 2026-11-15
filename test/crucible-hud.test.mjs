@@ -312,7 +312,7 @@ test('wave plan projection preserves the live Swarm quota, hull runway, and main
   const wire = projectBridgeEvent('run:wavePlanned', { wave: 3, tick: 91, plan: original });
   assert.equal(wire.dropped, false);
   assert.equal(wire.reason, 'adapter');
-  assert.equal(wire.flat.plan.swarm.killTarget, 38);
+  assert.equal(wire.flat.plan.swarm.killTarget, 22);
   assert.equal(wire.flat.plan.objective.population, 'ships');
   assert.equal(waveOpeningLine(3, wire.flat.plan), waveOpeningLine(3, original),
     'the main-side opening copy retains its authored objective and arrival wording');

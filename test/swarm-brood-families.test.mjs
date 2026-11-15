@@ -139,9 +139,10 @@ test('the ship wave is untouched: quota, concurrency and roster pins hold', () =
   assert.equal(SWARM_BOSS_FIRST, 5);
   assert.equal(swarmConcurrent(1), 10);
   assert.equal(swarmQuota(1), 15);
-  // Wave-2+ quota re-tuned by S10 round length (60–90 s rounds); the ship wave's own
-  // shape — opening quota, concurrency, boss cadence — is still the pins above/below.
-  assert.equal(swarmQuota(2), 34);
+  // Wave-2+ quota re-ramped by PIT-01 (min(26 + 4w, 4 + 6w) under the same clamps —
+  // the round-2 concurrency floor holds 19); the ship wave's own shape — opening
+  // quota, concurrency, boss cadence — is still the pins above/below.
+  assert.equal(swarmQuota(2), 19);
   assert.equal(swarmConcurrent(25), 18); // a boss round holds fewer bodies (C01-01: 5, 10, 15, 20, 25, 30)
   assert.equal(swarmConcurrent(26), 30);
   assert.equal(swarmQuota(10), 26); // wave 10 is a champion round now — this is its discounted quota
