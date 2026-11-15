@@ -1081,6 +1081,10 @@ const _overheadCuesOptions = { reducedMotion: false, reducedFlash: false, simTim
 // _shadowPolicyOptions only reads .id, so one frozen-shape object replaces the old
 // per-entity `{ type: typeName }` allocation.
 const _shadowFallbackEntity = { id: undefined, type: '' };
+// The per-frame policy arm only ever sets `framePass`; the callee reads it synchronously and keeps
+// nothing, so one frozen literal replaces the fresh `{ framePass: true }` per ship/station/place per
+// presented frame (syncEntityViews' hot loop).
+const _shadowPolicyFrameExtra = Object.freeze({ framePass: true });
 // livingMachineScore destructures its options synchronously — same contract as the
 // scratches above: every field is rewritten per entity, nothing retains the struct.
 const _livingMachineOptions = {
@@ -29190,7 +29194,7 @@ export const render = {
         if (typeName === 'ship' || typeName === 'station' || typeName === 'place') {
           // entity may be null for a world-record row; the retained stand-in keeps the old
           // `{ type: typeName }` verdict (non-player, distance-checked) without the allocation.
-          const policyResult = this._syncShadowCasterPolicyChecked(mesh, lodLevel, entity || _shadowFallbackEntity, { framePass: true });
+          const policyResult = this._syncShadowCasterPolicyChecked(mesh, lodLevel, entity || _shadowFallbackEntity, _shadowPolicyFrameExtra);
           if (policyResult) {
             shadowPolicyRefreshed = true;
             shadowPolicyRefreshes++;
