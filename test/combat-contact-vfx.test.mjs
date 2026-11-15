@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { CombatContactVfx, combatContactExtent, reflectedContactExtent } from '../src/render/vfx/combatContactVfx.js';
+import { createAsteroidMotionTracker } from '../src/render/asteroidMotionPresentation.js';
 import { createGameplayExplosion } from '../scripts/lib/vfxGameplayExplosion.mjs';
 import { createGameplayWorldEvents } from '../scripts/lib/vfxGameplayWorldEvents.mjs';
 
@@ -42,6 +43,28 @@ test('small contacts clear the actual authored body and reuse its measured surfa
   h.root.scale.y=2;h.pool.emit('mirror',{...h.p,tick:14},h.state);h.update(.3);
   assert.equal(measurements,2,'a changed mounted scale invalidates only the cached measurement');
   assert.ok(h.pool.slots[2].y+1.1>14);h.pool.dispose();geometry.dispose();material.dispose();
+});
+
+test('contact bounds follow the animated asteroid body and reuse an unchanged pose',()=>{
+  const h=harness();delete h.root.userData.visualBounds;h.body.type='asteroid';
+  const geometry=new THREE.BoxGeometry(12,4,4),material=new THREE.MeshBasicMaterial();
+  const mesh=new THREE.Mesh(geometry,material);h.root.add(mesh);h.root.userData.asteroidInstanceBody=mesh;
+  const tracker=createAsteroidMotionTracker();
+  const measure=h.pool.boundsBox.setFromObject;let measurements=0;
+  h.pool.boundsBox.setFromObject=function(...args){measurements++;return measure.apply(this,args);};
+  try {
+    tracker.updateAsteroidMotion(h.body,h.root,0,1/60);
+    h.pool.emit('contact',{...h.p,tick:1},h.state);
+    h.pool.emit('contact',{...h.p,tick:2},h.state);
+    assert.equal(measurements,1,'unchanged body reuses bounds');
+    for(let i=1;i<=100;i++)tracker.updateAsteroidMotion(h.body,h.root,i/60,1/60);
+    h.pool.emit('contact',{...h.p,tick:3},h.state);
+    const top=new THREE.Box3().setFromObject(h.root).max.y;
+    assert.equal(measurements,2,'tumble refreshes bounds once on the next contact');
+    assert.ok(Math.abs(h.pool.slots[2].y-Math.max(.15,top-.65))<1e-9);
+    h.pool.emit('contact',{...h.p,tick:4},h.state);
+    assert.equal(measurements,2,'subsequent unchanged contacts stay cached');
+  } finally {h.pool.dispose();geometry.dispose();material.dispose();}
 });
 
 test('reflected releases use native velocity and stay bounded independently of trauma',()=>{

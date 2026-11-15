@@ -41,7 +41,7 @@ export class CombatContactVfx {
     this.pose={x:0,z:0};this.time=0;this.live=0;this.dirty=false;this.disposed=false;
     this.boundsBox=new THREE.Box3();this.boundsCache=new WeakMap();
   }
-  _surfaceTop(root,row,scale,radius){
+  _surfaceTop(root,row,scale,radius,animatedAsteroid=false){
     const hull=root?.userData?.hull,bounds=hull?.userData?.visualBounds||root?.userData?.visualBounds;
     if(bounds?.size)return finite(bounds.center?.[1])+bounds.size[1]*.5;
     if(row?.bounds?.size)return(finite(row.bounds.center?.[1])+row.bounds.size[1]*.5)*scale+finite(row.drawOffset?.[1]);
@@ -49,9 +49,13 @@ export class CombatContactVfx {
     // unchanged root once; contacts never traverse model geometry in the frame loop.
     if(root?.isObject3D){
       let cached=this.boundsCache.get(root);const sy=root.scale.y,children=root.children.length;
-      if(!cached||cached.hull!==hull||cached.sy!==sy||cached.children!==children){
+      const motionBody=animatedAsteroid?(root.userData?.asteroidInstanceBody||root.children[0]||root):null;
+      if(motionBody?.matrixAutoUpdate)motionBody.updateMatrix();
+      if(!cached||cached.hull!==hull||cached.sy!==sy||cached.children!==children
+        ||cached.motionBody!==motionBody||(motionBody&&!cached.motionMatrix?.equals(motionBody.matrix))){
         root.updateWorldMatrix(true,true);this.boundsBox.setFromObject(root);
-        cached={hull,sy,children,top:this.boundsBox.isEmpty()?radius*.4:this.boundsBox.max.y-root.position.y};
+        cached={hull,sy,children,motionBody,motionMatrix:motionBody?.matrix.clone(),
+          top:this.boundsBox.isEmpty()?radius*.4:this.boundsBox.max.y-root.position.y};
         this.boundsCache.set(root,cached);
       }
       return cached.top+root.position.y;
@@ -77,7 +81,7 @@ export class CombatContactVfx {
       Math.max(0,finite(p.feelDeltaV,finite(p.preSolveClosingSpeed,finite(p.deltaV))));
     const row=body?modelTruthRowForEntity(body):null,scale=row?mountDrawScale(row,body):1;
     const root=state.render?.meshes?.get?.(id)||body?.view?.root||body?.mesh;
-    const top=this._surfaceTop(root,row,scale,radius);
+    const top=this._surfaceTop(root,row,scale,radius,body?.type==='asteroid');
     let ox=pos.x-finite(body?.pos?.x),oz=pos.z-finite(body?.pos?.z);
     const cs=Math.cos(rotation),sn=Math.sin(rotation),localX=ox*cs+oz*sn,localZ=-ox*sn+oz*cs;
     ox=localX;oz=localZ;
