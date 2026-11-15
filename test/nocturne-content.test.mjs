@@ -49,6 +49,38 @@ test('actual model sockets bind real sources and track animated, scaled parents 
   r.content.dispose();
 });
 
+test('emitter pose resolves one world transform per socket update', () => {
+  const r = rig(); const root = r.add(station());
+  root.rotation.y = .6; root.scale.set(1.3, .8, 1.7); r.update();
+  const source = r.registry.get('nocturne:entity:2:gantry');
+  const initialPosition = source.position.clone(), initialTarget = source.target.clone();
+  const socket = root.getObjectByName('SOCKET_Light_Gantry');
+  const update = socket.updateWorldMatrix; let calls = 0;
+  socket.updateWorldMatrix = function (...args) { calls++; return update.apply(this, args); };
+  r.update(.016);
+  assert.equal(calls, 1, 'localToWorld owns its world-matrix update');
+  const expected = socket.getWorldPosition(new Vector3());
+  assert.ok(source.position.distanceTo(expected) < 1e-9);
+  assert.ok(source.position.distanceTo(initialPosition) < 1e-9);
+  assert.ok(source.target.distanceTo(initialTarget) < 1e-9);
+  const stubPosition = new Vector3(3, 4, 5); let stubUpdates = 0;
+  const stub = { position: stubPosition, updateWorldMatrix() { stubUpdates++; } };
+  const stubSource = { type: 'point', position: new Vector3(), target: new Vector3() };
+  r.content._pose({ root: null }, { socket: stub, source: stubSource, definition: {} }, membrane);
+  assert.equal(stubUpdates, 1); assert.deepEqual(stubSource.position.toArray(), [3, 4, 5]);
+  for (const useSocket of [true, false]) {
+    // A real Object3D may override localToWorld without updating its matrix.
+    const custom = new Group(); let customUpdates = 0; let currentOffset = 0;
+    custom.updateWorldMatrix = () => { customUpdates++; currentOffset = 23; };
+    custom.localToWorld = point => { point.x += currentOffset; return point; };
+    const customSource = { type: 'point', position: new Vector3(), target: new Vector3() };
+    r.content._pose({ root: useSocket ? null : custom },
+      { socket: useSocket ? custom : null, source: customSource, definition: {} }, membrane);
+    assert.equal(customUpdates, 1); assert.equal(customSource.position.x, 23);
+  }
+  r.content.dispose();
+});
+
 test('power loss immediately extinguishes fixtures and probe contribution; repair restores it', () => {
   const r = rig(); const entity = station(); r.add(entity); r.update();
   const before = r.registry.size;

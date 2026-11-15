@@ -1,7 +1,7 @@
 // Render-only bridge from world entities / authored model sockets into NOCTURNE.
 // Census is bounded and runs at 4 Hz. Hierarchies are inspected only when a model is admitted or
 // replaced; frame updates touch admitted sources and their socket parent chains, never the scene.
-import { Color, Vector3 } from 'three';
+import { Color, Object3D, Vector3 } from 'three';
 import {
   NOCTURNE_COMPOSITIONS, NOCTURNE_CONTENT_LIMITS, NOCTURNE_LAYOUTS,
   NOCTURNE_LIGHT_PROFILES, NOCTURNE_PROFILE_ALIASES, NOCTURNE_LUMINOUS_ASTEROID_TYPES,
@@ -349,7 +349,7 @@ export class NocturneContent {
     const { source, definition, socket, emitter } = entry;
     const root = record.root;
     if (socket) {
-      socket.updateWorldMatrix?.(true, false);
+      if (socket.localToWorld !== Object3D.prototype.localToWorld) socket.updateWorldMatrix?.(true, false);
       if (emitter) this._sourcePosition.copy(emitter.center);
       else if (entry.explicit && definition.offset) this._sourcePosition.fromArray(definition.offset);
       else this._sourcePosition.set(0, 0, 0);
@@ -358,7 +358,7 @@ export class NocturneContent {
     } else {
       const offset = definition.offset || ZERO3;
       if (root) {
-        root.updateWorldMatrix?.(true, false);
+        if (root.localToWorld !== Object3D.prototype.localToWorld) root.updateWorldMatrix?.(true, false);
         this._sourcePosition.fromArray(offset);
         root.localToWorld(this._sourcePosition);
       } else {
