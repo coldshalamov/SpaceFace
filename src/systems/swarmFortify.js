@@ -45,6 +45,7 @@ function fortifyRuntime(lifetime, create = false) {
       fortifiedIngress: false,
       structures: new Map(),
       structureRows: [],
+      lostDevices: new Map(),
       commandHighWatermark: 0,
       commandReceipts: new Map(),
     };
@@ -305,8 +306,29 @@ export const swarmFortify = {
       arena: runtime?.arenaAnchor ? { ...runtime.arenaAnchor, radius: null } : null,
       sockets,
       structures,
+      // One loss per socket, only for the round just played. Presentation history: it never
+      // implies a free replacement.
+      lostDevices: [...(runtime?.lostDevices?.values() || [])]
+        .filter(loss => loss.wave === run?.wave).map(loss => ({ ...loss })),
       terrain,
     };
+  },
+
+  /** Placed, standing defences for the wave owner's arrival search. Read at wave start only. */
+  getArrivalGuards() {
+    const runtime = fortifyRuntime(runLifetime(this.state && this.state.run));
+    const anchor = runtime?.arenaAnchor;
+    if (runtime?.fortifiedIngress !== true || !anchor || !Number.isFinite(anchor.x) || !Number.isFinite(anchor.z)) return null;
+    const guards = [];
+    for (const record of runtime.structures.values()) {
+      const entity = this.state?.entities?.get?.(record.entityId) || record.entity;
+      const socket = swarmFortifySocket(record.socketId);
+      if (!socket || !entity || entity.alive === false || !(entity.hull > 0) || !entity.pos) continue;
+      guards.push({ socketId: socket.id, corridor: socket.corridor, x: entity.pos.x, z: entity.pos.z,
+        radius: Number.isFinite(entity.radius) ? entity.radius : 12 });
+    }
+    return guards.length ? { anchor: { x: anchor.x, z: anchor.z,
+      rotation: Number.isFinite(anchor.rotation) ? anchor.rotation : 0 }, guards } : null;
   },
 
   // Preview and commit ask the same geometry question, including both Tesla endpoints.
@@ -510,7 +532,10 @@ export const swarmFortify = {
       deviceId: device.id,
       socketId: socket.id,
     };
-    if (receipt.accepted) runtime.fortifiedIngress = true;
+    if (receipt.accepted) {
+      runtime.fortifiedIngress = true;
+      runtime.lostDevices?.delete(socket.id);
+    }
     return this._rememberCommand(runtime, result);
   },
 
@@ -852,6 +877,13 @@ export const swarmFortify = {
       this.fieldOwner.unregisterAnchoredFields(this.state, entity.id, 'fortify_destroyed');
       runtime.structures.delete(entity.id);
       this._removeStructureRow(runtime, record);
+      const run = this.state?.run;
+      if (run?.kind === 'survival' && isSwarmRuleset(run.ruleset)
+        && (run.phase === 'active' || run.phase === 'cleanup') && Number.isInteger(run.wave) && run.wave >= 1
+        && Number.isFinite(entity.hull) && entity.hull <= 0 && swarmFortifySocket(record.socketId)
+        && !runtime.structureRows.some(other => other.requestId === record.requestId)) {
+        runtime.lostDevices.set(record.socketId, { deviceId: record.deviceId, socketId: record.socketId, wave: run.wave });
+      }
     }
   },
 

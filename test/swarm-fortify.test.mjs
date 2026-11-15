@@ -828,6 +828,7 @@ test('an empty full-hull turret reload is paid once and fires again in the next 
     enemy.data.runCohort = 'survival';
     assert.equal(isHostileToPlayer(enemy, player.team, sim.state), true);
     assert.ok(sim.state.entityList.includes(enemy));
+    noteSwarmPilotAction(sim.state);
     const fire = [];
     sim.bus.on('combat:fire', (event) => { if (event.ownerId === turret.id) fire.push(event); });
     for (let tick = 0; tick < 3; tick++) sim.step();

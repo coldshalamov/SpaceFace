@@ -59,7 +59,8 @@ import { dominoDeltaVelocity } from './swarmLegendaries.js';
 import { playerTowedLure } from '../ai/towedLure.js';
 import { gateBearing } from './waveMaterialization.js';
 import { swarmRamTakenScale } from './playerModifiers.js';
-import { findSwarmArrival } from './swarmSafety.js';
+import { findSwarmArrival, fortifiedArrivalCentre } from './swarmSafety.js';
+import { SWARM_COURSE } from '../data/swarmCourse.js';
 import { planSwarmBank, swarmBankEligible } from './swarmBank.js';
 import {
   BROOD_CHARGER_DASH_MAX_S,
@@ -238,6 +239,7 @@ export function createBroodEngine(deps = {}) {
   const fieldList = typeof deps.fieldList === 'function' ? deps.fieldList : () => EMPTY_FIELDS;
   const getState = typeof deps.getState === 'function' ? deps.getState : () => null;
   const routeDamage = typeof deps.routeDamage === 'function' ? deps.routeDamage : null;
+  const fortifyArrival = typeof deps.fortifyArrival === 'function' ? deps.fortifyArrival : null;
 
   // body state
   const px = new Float32Array(CAP);
@@ -877,6 +879,9 @@ export function createBroodEngine(deps = {}) {
     const familyIndex = buildFamilyIndex();
     const deferred = [];
     let spawned = 0, groupIndex = 0;
+    // A paid field is met, not walked past: while the thirty-round course runs, packs arrive on
+    // the far side of a standing defence (placement only; the draw order below is unchanged).
+    const fortify = fortifyArrival && liveWave >= 1 && liveWave <= SWARM_COURSE.length ? fortifyArrival() : null;
     // Admit the whole vignette atomically before the usual gate arrivals. It spends the
     // existing plan and never moves the chosen rock or an already-live brood body.
     if (!bankPlayed && !spawnRequestedBankAttempted) {
@@ -904,8 +909,10 @@ export function createBroodEngine(deps = {}) {
       if (famIdx == null) continue;
       let owed = 0;
       for (let start = 0; start < part.count; start += 18) {
-        const bearing = gateBearing(GATE_RING[groupIndex++ % GATE_RING.length]);
-        const cx = ax + bearing.x * 165, cz = az + bearing.z * 165;
+        const bearing = gateBearing(GATE_RING[groupIndex % GATE_RING.length]);
+        const meet = fortify ? fortifiedArrivalCentre(fortify, groupIndex) : null;
+        groupIndex++;
+        const cx = meet ? meet.x : ax + bearing.x * 165, cz = meet ? meet.z : az + bearing.z * 165;
         const n = Math.min(18, part.count - start);
         for (let i = 0; i < n; i++) {
           const slot = findFreeSlot();

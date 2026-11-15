@@ -158,6 +158,7 @@ test('kinetic turret acquires the nearest live Brood target and physical rock oc
   sim.state.run.wave = 1;
   const player = ship(sim, { x: -300, z: 300, team: 0 });
   sim.state.playerId = player.id;
+  noteSwarmPilotAction(sim.state);
   const turret = fortifyEntity(sim, 'kinetic_turret', 0, 0, { ammo: 2 });
   const arena = sim.registry.get('swarmArena');
   const brood = arena._brood;
@@ -232,6 +233,7 @@ test('turret reload stages ammo until paid, rolls back on rejection, and holds f
   runState(sim);
   const player = ship(sim, { x: -300, z: 300, team: 0 });
   sim.state.playerId = player.id;
+  noteSwarmPilotAction(sim.state);
   const turret = fortifyEntity(sim, 'kinetic_turret', 0, 0, { ammo: 0 });
   const effects = createSwarmFortifyEffects({ state: sim.state, bus, helpers: sim.helpers, registry: sim.registry });
   const structures = [{ entityId: turret.id, entity: turret, deviceId: 'kinetic_turret',
@@ -339,6 +341,7 @@ test('Tesla and projectile contacts damage real Brood lives and pay one receipt 
   sim.state.run.wave = 1;
   const player = ship(sim, { x: -300, z: 300, team: 0 });
   sim.state.playerId = player.id;
+  noteSwarmPilotAction(sim.state);
   const arena = sim.registry.get('swarmArena');
   const brood = arena._brood;
   brood.prepareWave(sim.state.run, 1);
@@ -417,6 +420,7 @@ test('default Rapier projectile sweep chooses nearest collider against Brood wit
   sim.state.run.wave = 1;
   const player = ship(sim, { x: -300, z: 300, team: 0 });
   sim.state.playerId = player.id;
+  noteSwarmPilotAction(sim.state);
   const turret = fortifyEntity(sim, 'kinetic_turret', 0, 0, { ammo: 1 });
   const enemy = ship(sim, { x: 150, z: 0, team: 1, wave: 1 });
   const arena = sim.registry.get('swarmArena');

@@ -109,6 +109,32 @@ export function findSwarmArrival(state, proposed, radius, options = {}) {
   return null;
 }
 
+export const SWARM_FORTIFY_MEET_WU = 110;
+
+/**
+ * Where pack `index` of a wave arrives when the pilot has paid for defences: on the far side of
+ * the outermost defence of a defended corridor, on the line from the field's anchor through it,
+ * so the pack has to cross the hardware to reach the pilot. Corridors with nothing standing are
+ * skipped; packs rotate over the defended ones in fixed order. Wave-start work only: allocates
+ * one point and never touches the RNG. `fortify` is the Fortify owner's getArrivalGuards() answer.
+ */
+export function fortifiedArrivalCentre(fortify, index) {
+  const guards = fortify?.guards, anchor = fortify?.anchor;
+  if (!guards?.length || !Number.isFinite(anchor?.x) || !Number.isFinite(anchor?.z)) return null;
+  const outer = new Map();
+  for (const guard of guards) {
+    const far = Math.hypot(guard.x - anchor.x, guard.z - anchor.z);
+    const best = outer.get(guard.corridor);
+    if (!best || far > best.far) outer.set(guard.corridor, { guard, far });
+  }
+  const corridors = [...outer.keys()].sort();
+  const pick = outer.get(corridors[Math.abs(Math.trunc(index)) % corridors.length]);
+  if (!pick || !(pick.far > 1e-6)) return null;
+  const reach = pick.far + finite(pick.guard.radius, 12) + SWARM_FORTIFY_MEET_WU;
+  return { x: anchor.x + (pick.guard.x - anchor.x) / pick.far * reach,
+    z: anchor.z + (pick.guard.z - anchor.z) / pick.far * reach };
+}
+
 // First act belongs to one round of one run. New Game reuses the state object and
 // Retry reuses the wave number, while wallet/phase changes replace the run object.
 // The run owner's token survives those replacements and changes on each launch.

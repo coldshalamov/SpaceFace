@@ -807,6 +807,10 @@ export const swarmArena = {
     this._brood = createBroodEngine({
       bus: this.bus,
       getState: () => this.state,
+      fortifyArrival: () => {
+        const owner = this.registry && this.registry.get ? this.registry.get('swarmFortify') : null;
+        return owner && typeof owner.getArrivalGuards === 'function' ? owner.getArrivalGuards() : null;
+      },
       fieldList: () => {
         const fields = this.registry && this.registry.get ? this.registry.get('fields') : null;
         return fields && typeof fields.kernelList === 'function' ? fields.kernelList() : null;

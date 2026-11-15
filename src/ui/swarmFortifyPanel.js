@@ -1,4 +1,4 @@
-import { SWARM_FORTIFY_DEVICES, SWARM_FORTIFY_FACINGS } from '../data/swarmFortify.js';
+import { SWARM_FORTIFY_DEVICES, SWARM_FORTIFY_FACINGS, swarmFortifySocket } from '../data/swarmFortify.js';
 import { injectOrreryScreens } from './orrery/screenLayouts.js';
 import { injectSwarmFortifyLayouts } from './orrery/swarmFortifyLayouts.js';
 import { cue } from './kit/index.js';
@@ -41,6 +41,23 @@ function svg(doc, tag, attributes) {
 function deviceSlots(model, deviceId) {
   return (model.sockets || []).map(slot => ({ ...slot, ...(slot.devices?.[deviceId] || {}) }));
 }
+const shortSocket = socketId => (swarmFortifySocket(socketId)?.label || socketId || '').replace(' corridor', '');
+
+// What stands, what needs service, and what the last round cost: the readiness read the pilot
+// sees before committing to a build. Pure over the owner's read model.
+export function fortifyReadiness(model) {
+  const rows = (model?.structures || []).filter(row => SWARM_FORTIFY_DEVICES[row.deviceId]);
+  const servicing = rows.filter(row => row.missingEndpoint || row.operational === false || row.hull < row.hullMax
+    || (Number.isFinite(row.ammo) && row.ammo < row.ammoMax)).length;
+  const lost = (model?.lostDevices || []).filter(row => SWARM_FORTIFY_DEVICES[row.deviceId]);
+  return {
+    ready: !rows.length ? 'No defenses in place.'
+      : 'In place · ' + rows.map(row => SWARM_FORTIFY_DEVICES[row.deviceId].name).join(', ')
+        + (servicing ? ' · ' + servicing + (servicing === 1 ? ' needs service' : ' need service') : ' · all ready'),
+    lost: lost.length ? 'Lost last round · ' + lost.map(row =>
+      SWARM_FORTIFY_DEVICES[row.deviceId].name + ' at ' + shortSocket(row.socketId)).join(', ') : null,
+  };
+}
 export function fortifyAvailable(run) {
   return run?.kind === 'survival' && run.ruleset === 'swarm' && run.wave >= 1
     && (run.phase === 'draft' || run.phase === 'refit');
@@ -62,7 +79,11 @@ export const crucibleFortifyScreen = {
     const title = make('header', 'k-title');
     const heading = make('h1', 'k-display k-t-title', 'Fortify the field'); heading.id = 'sf-fortify-title';
     this._balance = make('p', 'k-sentence sf-fortify-balance', 'Reading the run purse…');
-    title.append(heading, make('p', 'k-sentence', 'Build while paused. Your first defense establishes three fixed approaches. Defenses remain between waves and can be destroyed.'), this._balance);
+    this._ready = make('div', 'sf-fortify-ready'); this._ready.setAttribute('role', 'status');
+    this._readyLine = make('p', 'k-sentence sf-fortify-ready-line', 'Reading the field…');
+    this._lostLine = make('p', 'k-sentence sf-fortify-lost', ''); this._lostLine.hidden = true;
+    this._ready.append(this._readyLine, this._lostLine);
+    title.append(heading, make('p', 'k-sentence', 'Build while paused. Your first defense establishes three fixed approaches. Defenses remain between waves and can be destroyed.'), this._balance, this._ready);
     const layout = make('section', 'sf-fortify-layout'); layout.dataset.sfScroll = 'fortify';
     const plan = make('section', 'sf-fortify-plan'); plan.setAttribute('aria-label', 'Arena construction positions');
     this._map = svg(this._doc, 'svg', { viewBox: '-560 -560 1120 1120', role: 'img', 'aria-label': 'Live paused field: physical obstacles, defenses, approach corridors and selected device reach' });
@@ -149,6 +170,9 @@ export const crucibleFortifyScreen = {
     const focusFacing = this._root.contains(active) ? active?.dataset?.facingId : null;
     const focusRepair = this._root.contains(active) ? active?.dataset?.repairId : null;
     this._balance.textContent = 'Run purse · ' + Math.max(0, Math.floor(model.credits || 0)) + ' cr';
+    const readiness = fortifyReadiness(model);
+    this._readyLine.textContent = readiness.ready;
+    this._lostLine.textContent = readiness.lost || ''; this._lostLine.hidden = !readiness.lost;
     const slots = deviceSlots(model, this._deviceId);
     if (!slots.some(slot => slot.id === this._socketId)) this._socketId = slots.find(slot => !slot.blocked && !slot.occupied)?.id || slots[0]?.id || null;
     this._sockets.replaceChildren();
