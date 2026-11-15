@@ -334,6 +334,13 @@ export const survivalHud = {
     this._styleActIds = [];
     this._styleActFams = [];
     this._styleFigText = '';
+    // The till row's memo (see update): which ledger it was built from, and the composed line.
+    this._modsRun = null;
+    this._modsArr = null;
+    this._modsLen = -1;
+    this._modsTail = null;
+    this._tapMods = [];
+    this._modsText = '';
     this._unsubs = [];
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:awarded', (p) => this._onAwarded(p)));
@@ -671,12 +678,26 @@ export const survivalHud = {
     }
 
     // A01-05: the till's receipts, in the order the run bought them. Text only — no
-    // colour cue is the only channel.
-    const tapMods = swarmOwnedTapMods(st);
-    this._setHidden(dom.mods, !tapMods.length);
-    if (tapMods.length) {
-      this._setText(dom.modsList, tapMods.map((mod) => `${mod.icon} ${mod.name}`).join('  '));
+    // colour cue is the only channel. This is the per-frame HUD tick and the list only moves
+    // when the till sells (one record appended) or a callin spends its last charge (one record
+    // spliced), so the owned-defs scan and the composed line are keyed on the ledger itself
+    // rather than rebuilt every frame. Length alone is not enough — a splice plus an append in
+    // one frame leaves the same length — so the last record's identity rides along.
+    const modsArr = Array.isArray(run.modifiers) ? run.modifiers : null;
+    const modsLen = modsArr ? modsArr.length : 0;
+    const modsTail = modsLen > 0 ? modsArr[modsLen - 1] : null;
+    if (this._modsRun !== run || this._modsArr !== modsArr || this._modsLen !== modsLen
+      || this._modsTail !== modsTail) {
+      this._modsRun = run;
+      this._modsArr = modsArr;
+      this._modsLen = modsLen;
+      this._modsTail = modsTail;
+      this._tapMods = swarmOwnedTapMods(st);
+      this._modsText = this._tapMods.map((mod) => `${mod.icon} ${mod.name}`).join('  ');
     }
+    const tapMods = this._tapMods;
+    this._setHidden(dom.mods, !tapMods.length);
+    if (tapMods.length) this._setText(dom.modsList, this._modsText);
 
     // PQ-174.06: after a death the readout keeps the cause and the missed telegraph on the
     // glass, beside the LOST word — a death the player cannot read is a bug report.
