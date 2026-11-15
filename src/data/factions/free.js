@@ -67,6 +67,7 @@ export const FRONTIER_BARN_RAISING = Object.freeze({
 // in rec.said / attempt.said / dispute stamps so a restored session never hears it twice.
 export const FRONTIER_HOUSEHOLD_LINES = Object.freeze({
   firstCrate: 'First crate\'s outside the ring.',
+  bringModules: 'Six modules. Bring them to the ring.',
   firstSnap: 'E-21 receiving',
   weldGo: 'That\'s six. Stand clear for the weld.',
   household: 'Welders are gone. We live here now.',

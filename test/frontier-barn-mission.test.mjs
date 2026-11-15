@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { frontierHomesteads } from '../src/systems/faction_frontier.js';
-import { FRONTIER_MODULES, FRONTIER_FRAME } from '../src/data/factions/free.js';
+import { FRONTIER_MODULES, FRONTIER_FRAME, FRONTIER_HOUSEHOLD_LINES } from '../src/data/factions/free.js';
 import { createSimulation } from '../src/core/sim.js';
 import { world } from '../src/systems/world.js';
 import { missions as missionsProto } from '../src/systems/missions.js';
@@ -195,6 +195,11 @@ test('accepted Book 4 Frontier attempt survives public Save and Continue', async
     assert.equal(Object.keys(attempt.moduleIds).length, 6);
     const frameBefore = state.entities.get(attempt.frameId);
     const first = state.entities.get(attempt.moduleIds.habitat);
+    const bring = [];
+    sim.bus.on('comms:log', p => { if (p?.text === FRONTIER_HOUSEHOLD_LINES.bringModules) bring.push(p); });
+    player.pos = { x: frameBefore.pos.x + 200, z: frameBefore.pos.z };
+    registry.get('frontierHomesteads').update(1 / 60, state);
+    assert.equal(bring.length, 1, 'the weld crew calls the modules in when the player reaches the frame');
     const native = registry.get('physics');
     await native.prepareBackend(state);
     for (let tick = 0; tick < 900 && !first.data.snapped; tick++) {
@@ -234,6 +239,11 @@ test('accepted Book 4 Frontier attempt survives public Save and Continue', async
     assert.equal(frame.data.slots.habitat, restoredFirst.id);
     registry.get('frontierHomesteads').update(1 / 60, state);
     assert.equal(frame.data.slots.habitat, restoredFirst.id, 'the restored slot remains bound on the next owner tick');
+    assert.equal(restoredAttempt.said?.bringModules, true);
+    const restoredPlayer = state.entities.get(state.playerId);
+    restoredPlayer.pos = { x: frame.pos.x + 100, z: frame.pos.z };
+    registry.get('frontierHomesteads').update(1 / 60, state);
+    assert.equal(bring.length, 1, 'Continue near the frame does not repeat the line');
   } finally {
     sim.dispose();
     restoreFeatureMaps(flags);
@@ -532,6 +542,30 @@ test('abort/reaccept retires the incomplete tagged attempt before planting one r
   assert.equal(h.state.entityList.filter((e) => e.alive !== false && e.data?.frontierMissionId === second.id
     && e.data?.homesteadFrame === true).length, 1);
   assert.equal(modulesFor(h, second).length, FRONTIER_MODULES.length);
+});
+
+test('the weld crew calls the six modules in once per barn attempt, when the player first comes within 650 wu', () => {
+  const h = makeHarness();
+  const player = h.helpers.spawnEntity({ type: 'ship', isPlayer: true, pos: { x: 1e6, z: 1e6 }, radius: 8 });
+  h.state.playerId = player.id;
+  const bring = () => h.events.filter((e) => e.name === 'comms:log'
+    && e.payload.text === FRONTIER_HOUSEHOLD_LINES.bringModules && e.payload.speaker === 'E-21 weld crew').length;
+  const first = accept(h); h.owner.update(0.016, h.state);
+  const frame = attemptFrame(h, first);
+  assert.equal(bring(), 0, 'nothing said while the player is far from the frame');
+  player.pos = { x: frame.pos.x + 640, z: frame.pos.z };
+  h.owner.update(0.016, h.state);
+  assert.equal(bring(), 1);
+  assert.equal(h.state.frontier.barnAttempt.said.bringModules, true);
+  player.pos = { x: 1e6, z: 1e6 }; h.owner.update(0.016, h.state);
+  player.pos = { x: frame.pos.x, z: frame.pos.z + 100 }; h.owner.update(0.016, h.state);
+  assert.equal(bring(), 1, 'leaving and returning does not repeat the line');
+  first.status = 'failed'; h.bus.emit('mission:failed', { missionId: first.id, reason: 'abandoned' });
+  h.state.missions.active = [];
+  const second = accept(h, mission('m_barn_2')); h.owner.update(0.016, h.state);
+  const frame2 = attemptFrame(h, second);
+  player.pos = { x: frame2.pos.x + 100, z: frame2.pos.z }; h.owner.update(0.016, h.state);
+  assert.equal(bring(), 2, 'a fresh attempt hears it once more');
 });
 
 test('aborting an adopted unfinished site releases its mission tag but keeps the same open-world work', () => {

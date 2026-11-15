@@ -739,6 +739,15 @@ export const frontierHomesteads = {
         && frame.data.frontierMissionId === attempt.missionId
         && frame.data.frontierSite === attempt.siteId
         && frame.occupantGeneration === attempt.frameGen) {
+      if (attempt.said?.bringModules !== true) {
+        const player = state.entities.get(state.playerId);
+        if (player && player.alive !== false
+            && dist2(player.pos, frame.pos) <= HOUSEHOLD_HELLO_R * HOUSEHOLD_HELLO_R) {
+          if (!isObj(attempt.said)) attempt.said = {};
+          attempt.said.bringModules = true;
+          this._log(state, FRONTIER_HOUSEHOLD_LINES.bringModules, 'E-21 weld crew');
+        }
+      }
       for (const module of FRONTIER_MODULES) {
         const id = attempt.moduleIds[module.id];
         if (id == null) continue;
