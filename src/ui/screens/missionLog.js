@@ -1,4 +1,5 @@
 import { cinderJournalAction } from '../../missions/cinderRoute.js';
+import { patrolPaperworkAction, patrolContractBrief } from '../../missions/patrolPaperwork.js';
 import { cinderglassJobJournalReceipt } from '../../features/cinderglassJob/integration.js';
 import { setLocalizedTextTemplate } from '../../localization/domBridge.js';
 import { COUNTERWEIGHT_EVENTS } from '../../features/counterweightCircuit/definition.js';
@@ -958,11 +959,12 @@ export function missionCommandBrief(m, state) {
   const firstSample = contract47aReadout(m);
   const field = cinderJournalAction(state);
   const cinder = field?.missionId === m.id ? field : null;
+  const patrol = patrolContractBrief(state, m);
   return Object.freeze({
     what: objectiveText(m),
     where: registry?.where || firstSample?.where || destLabel(m),
-    how: cinder?.body || stripNextPrefix(nextStepText(m, state)),
-    why: missionPurposeText(m),
+    how: cinder?.body || patrol?.how || stripNextPrefix(nextStepText(m, state)),
+    why: patrol?.why || missionPurposeText(m),
     reward: term('Pays', 'close cleanly'),
     risk: [term('Risk', 'R0 / route pending'), stake ? stake.text : 'no collateral'].join(' · '),
     completion: missionProgressLabel(m),
@@ -1925,7 +1927,9 @@ export function storyActionForBeat(beat, state) {
       };
     case 4:
       return book4ChoiceAction(state);
-    case 5:
+    case 5: {
+      const paperwork = patrolPaperworkAction(state);
+      if (paperwork) return paperwork;
       return {
         tone: 'primary',
         label: 'CHAIN',
@@ -1933,7 +1937,10 @@ export function storyActionForBeat(beat, state) {
         body: 'Complete your faction chain and keep the next contract tracked between docks.',
         meta: chainProgress ? (chainProgress + ' done') : 'Faction',
       };
-    case 6:
+    }
+    case 6: {
+      const paper = patrolPaperworkAction(state);
+      if (paper) return paper;
       return {
         tone: 'primary',
         label: 'ASSET',
@@ -1941,6 +1948,7 @@ export function storyActionForBeat(beat, state) {
         body: 'Deploy a drone, trader, or outpost so the sector starts earning while you fly.',
         meta: 'Passive',
       };
+    }
     case 7:
       {
         // Pre-offer Deep Reach guidance. The live shared gate (story/endings/eligibility.js) is

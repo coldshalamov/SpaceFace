@@ -1,6 +1,7 @@
 import { pallasSeamInfoLine } from '../data/pallasSeamWork.js';
 import { targetFrameHtml } from './views/targetFrame.js';
 import { commodityDisplayName } from './commodityNames.js';
+import { normalizePatrolPaperwork } from '../missions/patrolPaperwork.js';
 // Target panel (ARCHITECTURE §5, spec "Target panel") — the selected-target readout above
 // the radar. Populated from state.player.targetId → entity lookup. Shows name, faction tag,
 // three segmented bars, distance (wu) and closing speed. Hidden when there is neither a live
@@ -869,6 +870,12 @@ export function objectInfoLine(t, state, p, dist) {
     if (!record && t.type === 'wreck' && d.scanned && d.provenance && d.provenance.killerLabel) {
       facts.push(`Killer: ${d.provenance.killerLabel}`);
     }
+    // An identified generic wreck story does not replace this independently witnessed label.
+    // Keep its scan gate, but do not put paperwork behind the black-box deduplication gate.
+    if (t.type === 'wreck' && d.scanned) {
+      const paper = normalizePatrolPaperwork(d.patrolPaperwork);
+      if (paper) facts.push(`Owner: ${paper.owner} — ${paper.cargo}`);
+    }
     // The rest of the history the aftermath owner recorded at kill time, read through the
     // same scan gate: how it died (the cause's black-box evidence), what shipment it was
     // flying (freight identity), and how long it has been dead (the wreck's own kill stamp
@@ -908,6 +915,7 @@ export function objectInfoLine(t, state, p, dist) {
       && !(state && state.entities && typeof state.entities.get === 'function' && state.entities.get(d.owner))
       ? (readableIdentity(STATION_BY_ID.get(d.owner)?.name) || readableIdentity(d.owner)) : null);
   if (ownerName) facts.push(`Owner: ${ownerName}`);
+  if (t.type === 'wreck' && !d.scanned && normalizePatrolPaperwork(d.patrolPaperwork)) facts.push('Pulse scanner to read sealed record');
   const interaction = interactionProfileForEntity(t);
   if (interaction.hazardous) facts.push('Hazard');
   const lane = initialMouseToolLane(state, t.id);
