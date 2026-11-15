@@ -80,6 +80,7 @@ function harness({ runPatch = {}, planPatch = {}, rockPatch = {}, victimPatch = 
     isSwarmSpecialistRun: () => false, swarmSpecialistBriefForEnemy: () => null,
     occupantGenerationOf: entity => entity?.occupantGeneration ?? null,
     isHostileToPlayer: productionHostility,
+    swarmCourseFor: () => null,
   });
   announce.init({ state, bus });
   // The line's existing plan composition is outside this focused seam; retain the real event setup,
@@ -93,6 +94,7 @@ function harness({ runPatch = {}, planPatch = {}, rockPatch = {}, victimPatch = 
 
   const impacts = evaluate(impactsSource, 'masslineImpacts', {
     massline2Flag: () => false,
+    isIntactMawWorksiteBody: () => false,
     queryNearbyEntities: (_state, _center, _radius, _scratch, candidates) => candidates,
     isHostileToPlayer: productionHostility,
   });
