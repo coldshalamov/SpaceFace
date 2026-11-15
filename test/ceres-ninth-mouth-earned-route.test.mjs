@@ -61,9 +61,12 @@ test('earned original lamp Seat, original barge rescue, Continue and sector retu
   const unsafe=motion(lamp),offer=s.ceresNinthMouthOffer;
   rt.bus.emit('ceresNinthMouth:action',{offerId:offer.id,playerLife:offer.playerLife,action:'seat:0'});
   assert.equal(lamp.data.ninthMouthInstalled,false);assert.deepEqual(motion(lamp),unsafe);
-  // Drag the lamp on the Line until its own velocity carries it inside the seat
-  // mark, then release and let the real coast finish. Loose rock shed when the
-  // wall gives can knock the load off its course; the pilot delivers it again.
+  // Drag the lamp gently on the Line. The tether can only pull, never push, and
+  // vacuum gives a released payload no drag, so the pilot holds a walking pace
+  // that leaves the lamp slack-coasting under the authored maxSpeed toward the
+  // mark, releases only when its measured speed is below it on a real crossing
+  // course, then lets the native coast finish. Loose rock shed when the wall
+  // gives can knock the load off its course; the pilot delivers it again.
   let ready=false;let hit=null,prevVx=lamp.vel.x,prevVz=lamp.vel.z;
   for(let attempt=0;attempt<3&&!ready;attempt++){
    const pl=localPoint(p.pos),lq=localPoint(lamp.pos);
@@ -75,14 +78,18 @@ test('earned original lamp Seat, original barge rescue, Continue and sector retu
    for(let n=0;n<12000;n++){
     const tp=localPoint(p.pos),off=(tp.x+95)*-.319+(tp.z+23)*.948;
     const corr=Math.max(-.6,Math.min(.6,off*.04));
-    const vx=.65*.948+corr*.319,vz=.65*.319-corr*.948;
+    const vx=.42*.948+corr*.319,vz=.42*.319-corr*.948;
     key('KeyS',p.vel.x<vx-.1);key('KeyW',p.vel.x>vx+.1);key('KeyQ',p.vel.z<vz-.1);key('KeyE',p.vel.z>vz+.1);key('Digit0',false);step(1);watchRock();
     if(n===30&&attempt===0){assert.equal(s.ceresNinthMouthOffer.guidance.role,'lamp:0');assert.equal(s.ceresNinthMouthOffer.guidance.attached,true);const read=masslineFlightRead(s);assert.ok(read.tow);assert.equal(read.cue,s.ceresNinthMouthOffer.guidance.instruction);}
     const l=localPoint(lamp.pos),rem=Math.hypot(l.x+95,l.z+23);
     const v2=lamp.vel.x**2+lamp.vel.z**2,dot=(-95-l.x)*lamp.vel.x+(-23-l.z)*lamp.vel.z;
     const disc=dot*dot-v2*(rem*rem-64);
     const eta=v2>.0025&&dot>0&&disc>=0?(dot-Math.sqrt(disc))/v2:Infinity;
-    if((rem<25&&rem>8)||eta<40)break;
+    // A slack lamp keeps whatever speed the last taut pull left it; releasing
+    // early only ever reads 'intercept'. Break on the first tick the lamp is
+    // measured under the seat maxSpeed (.85 squared), outside the mark, inside
+    // the deliver budget (eta<90s) and aimed inside the deliver radius.
+    if(v2<.7225&&rem>9&&rem<60&&eta<90&&dot*dot>v2*(rem*rem-49))break;
    }
    if(s.player.tether.active)tap('KeyF');timing.lampReleased=s.simTime;
    assert.equal(s.player.tether.active,false);
