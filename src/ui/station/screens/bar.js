@@ -54,6 +54,7 @@ import {
 } from '../../../data/frontierRumors.js';
 import { DOSS_ARCHIVE_CONTACT_ID, dossArchiveMapOffer } from '../../../data/dossArchive.js';
 import { CERES_RETURN_CONTACT, CERES_RETURN_STATION } from '../../../story/ceresShiftReturn.js';
+import { cinderDepartureChoices, cinderDepartureOfferCurrent, isCinderDepartureChoice } from '../cinderDepartureConversation.js';
 import { VONN_FREIGHT_CONTACT_ID, vonnFreightLossMapOffer } from '../../../data/vonnFreightLoss.js';
 import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
 import { dressComms, watchComms } from './comms.js';
@@ -183,6 +184,7 @@ export function createBarScreen(ctx) {
   let stopType = null;
   const stopDecrypt = [];
   let pendingMissionOffer = null;
+  let pendingCinderOffer = null;
   let pendingFirstShiftMarket = null;
   let pendingCampaignHandoff = null;
   let campaignHandoffAnswer = false;
@@ -335,7 +337,8 @@ export function createBarScreen(ctx) {
     }
     const offer = pendingMissionOffer;
     if (!offer || !missionOfferAvailable(state, offer.id)
-      || campaignHandoffAnswer && !heliosCampaignActionCurrent(state, sid(), pendingCampaignHandoff)) return '';
+      || campaignHandoffAnswer && !heliosCampaignActionCurrent(state, sid(), pendingCampaignHandoff)
+      || pendingCinderOffer && !cinderDepartureOfferCurrent(state, sid(), selected(state), pendingCinderOffer)) return '';
     const preflight = missionPreflight(offer, state);
     const consequences = missionConsequenceSummary(offer);
     const unmet = offer.requirementUnmet || offer.lockedReason || preflight.blocker || null;
@@ -730,7 +733,7 @@ export function createBarScreen(ctx) {
     handoffEpoch++; selectedId = id; saidText = null;
     pendingCampaignHandoff = null; campaignHandoffAnswer = false;
     pendingFirstShiftMarket = null; firstShiftAnswer = false;
-    pendingMissionOffer = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
+    pendingMissionOffer = null; pendingCinderOffer = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
     const st = ctx.state || {};
     renderRail(st); renderStage(st); renderLeads(st);
     if (focus) {
@@ -912,6 +915,15 @@ export function createBarScreen(ctx) {
         return;
       }
       if (campaignAccept) pendingCampaignHandoff = null;
+      const cinderAccept = pendingCinderOffer;
+      if (cinderAccept && !cinderDepartureOfferCurrent(ctx.state, sid(), selected(ctx.state || {}), pendingCinderOffer)) {
+        pendingMissionOffer = null;
+        pendingCinderOffer = null;
+        saidText = 'The posting changed. Ask again for its current terms before signing.';
+        renderStage(ctx.state || {});
+        return;
+      }
+      if (cinderAccept) pendingCinderOffer = null;
       const acceptingContact = selectedId;
       const wasAvailable = missionOfferAvailable(ctx.state || {}, missionId);
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
@@ -955,6 +967,10 @@ export function createBarScreen(ctx) {
     // its tracking/navigation intents.
     if (isFurnaceDetailChoice(choiceId)
         && (!visible || !furnaceDetailChoices(st, sid(), c).some(row => row.id === choiceId))) return;
+    // Same rule for the Cinder desk: every choice id carries the receipts-and-board
+    // signature it was read from, and an out-of-date signature fires no intents.
+    if (isCinderDepartureChoice(choiceId)
+        && (!visible || !cinderDepartureChoices(st, sid(), c).some(row => row.id === choiceId))) return;
     if (c.canonicalKey === 'kessler' && ['helios_47a_file', 'helios_47a_original'].includes(choiceId)
       && (!visible || !heliosCampaignChoices(st, sid()).some(choice => choice.id === choiceId))) {
       pendingCampaignHandoff = null;
@@ -1018,6 +1034,7 @@ export function createBarScreen(ctx) {
     pendingCampaignHandoff = result?.campaignHandoff || null;
     campaignHandoffAnswer = result?.campaignHandoffAnswer === true;
     pendingMissionOffer = result && result.missionOffer || null;
+    pendingCinderOffer = result?.cinderDepartureOffer || null;
     pendingFirstShiftMarket = result && result.firstShiftMarket || null;
     firstShiftAnswer = !!result?.firstShiftReceipt;
     pendingFrontierRumorOffer = result && result.frontierRumorOffer || null;
@@ -1148,6 +1165,7 @@ export function createBarScreen(ctx) {
       handoffEpoch++;
       acceptedMissionId = null;
       pendingMissionOffer = null;
+      pendingCinderOffer = null;
       pendingFirstShiftMarket = null;
       pendingCampaignHandoff = null;
       if (campaignHandoffAnswer) { saidText = null; campaignHandoffAnswer = false; }
@@ -1173,6 +1191,7 @@ export function createBarScreen(ctx) {
       handoffEpoch++;
       acceptedMissionId = null;
       pendingMissionOffer = null;
+      pendingCinderOffer = null;
       pendingFirstShiftMarket = null;
       pendingCampaignHandoff = null;
       if (campaignHandoffAnswer) { saidText = null; campaignHandoffAnswer = false; }
