@@ -11,6 +11,11 @@
 //   deepseek                   OpenCode 2.x, opencode-go/deepseek-v4.1-flash#max
 //   flash                      Antigravity (agy), gemini-3.8-flash-high
 //   codex                      Codex 0.163, gpt-6.1-sol high — the senior agent (reviews, architecture, 3D, images)
+//   hydrogen                   agy, gemini-4-hydrogen-xhigh — critic/investigator; reads frames (verify its claims)
+//   grok | dsx                 cursor-agent, grok-4.7-high | deepseek-v41-flash-1017-max — investigators (verify)
+//
+// Investigation packets (READ-ONLY, the usual use of hydrogen/grok/dsx): the packet says so; the worker
+// writes findings with file:line evidence to its RECEIPT.md and changes no tracked file.
 //
 // Each run writes .devshots/fleet/runs/<PACKET-ID>.<backend>.<stamp>/ (git-ignored):
 //   PROMPT.txt  run.log  RECEIPT.md (written by the worker)  EXIT.json  CHANGED.txt
@@ -28,6 +33,7 @@ const HOME = process.env.USERPROFILE || 'C:\\Users\\93rob';
 const BASH = 'C:\\Program Files\\Git\\bin\\bash.exe';
 const OPENCODE = join(HOME, 'AppData', 'Roaming', 'npm', 'node_modules', '@opencode', 'cli', 'bin', 'opencode.exe');
 const AGY = join(HOME, 'AppData', 'Local', 'agy', 'bin', 'agy.exe');
+const CURSOR = join(HOME, 'AppData', 'Local', 'cursor-agent', 'cursor-agent.cmd');
 const CODEX_JS = join(HOME, 'AppData', 'Roaming', 'npm', 'node_modules', '@openai', 'codex', 'bin', 'codex.js');
 
 const args = process.argv.slice(2);
@@ -38,7 +44,7 @@ if (args[0] === '--list') {
 const [packetId, backend] = args;
 const timeoutMin = Number((args.find((a) => a.startsWith('--timeout-min=')) || '=90').split('=')[1]);
 if (!packetId || !backend) {
-  console.error('usage: node scripts/fleet/run.mjs <PACKET-ID> <devin1|devin2|devin3|sonnet1|sonnet2|deepseek|flash|codex> [--timeout-min=90]');
+  console.error('usage: node scripts/fleet/run.mjs <PACKET-ID> <devin1|devin2|devin3|sonnet1|sonnet2|deepseek|flash|codex|hydrogen|grok|dsx> [--timeout-min=90]');
   process.exit(2);
 }
 const packetPath = join(PACKETS, `${packetId}.md`);
@@ -107,6 +113,17 @@ if (devin) {
 } else if (backend === 'flash') {
   cmd = AGY;
   cmdArgs = ['--print', prompt, '--model', 'gemini-3.8-flash-high', '--dangerously-skip-permissions', '--output-format', 'text'];
+} else if (backend === 'hydrogen') {
+  // Gemini 4 Hydrogen XHigh via agy (owner 2026-11-15: large separate budget). Reads images; good critic and investigator.
+  cmd = AGY;
+  cmdArgs = ['--print', prompt, '--model', 'gemini-4-hydrogen-xhigh', '--dangerously-skip-permissions', '--output-format', 'text'];
+} else if (backend === 'grok' || backend === 'dsx') {
+  // cursor-agent (owner 2026-11-15: two large separate buckets). grok = Grok 4.7 High; dsx = DeepSeek V4.1 Flash Max.
+  // Launched through cmd.exe with the prompt in an env var: a quoted prompt as an argv word gets split on Windows.
+  cmd = process.env.ComSpec || 'C:\\Windows\\System32\\cmd.exe';
+  const model = backend === 'grok' ? 'grok-4.7-high' : 'deepseek-v41-flash-1017-max';
+  cmdArgs = ['/d', '/s', '/c', `""${CURSOR}" -p --force --trust --output-format text --model ${model} --workspace "${REPO}" "%FLEET_PROMPT_LINE%""`];
+  env.FLEET_PROMPT_LINE = prompt.replace(/\r?\n/g, ' ').replace(/"/g, "'");
 } else {
   console.error(`unknown backend ${backend}`); process.exit(2);
 }
@@ -143,7 +160,7 @@ function launch(resume) {
   log.write(`
 [fleet] attempt ${attempt}${resume ? ' (resume)' : ''} at ${new Date().toISOString()}
 `);
-  const child = spawn(cmd, a, { cwd: REPO, env, windowsHide: true });
+  const child = spawn(cmd, a, { cwd: REPO, env, windowsHide: true, windowsVerbatimArguments: backend === 'grok' || backend === 'dsx' });
   if (backend === 'codex') child.stdin.end(prompt); else child.stdin.end();
   const onData = (d) => { log.write(d); tail = (tail + d.toString()).slice(-4000); };
   child.stdout.on('data', onData);
