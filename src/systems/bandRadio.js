@@ -625,14 +625,15 @@ export const bandRadio = {
     if (this._mercyObserver) this._mercyObserver.update(_dt, state);
     const own = this._ensureState();
     const now = Math.max(0, finite(this.state.simTime, 0));
-    this._sampleLiveLandmarkProximity(now);
     const tuned = own.channelId && BAND_CHANNEL_BY_ID[own.channelId];
-    if (!tuned || this.state.mode !== 'flight' || !!(this.state.ui && this.state.ui.docked)) {
+    const inRun = this.state.run?.kind === 'survival' && this.state.run.phase !== 'inactive';
+    if (!inRun) this._sampleLiveLandmarkProximity(now);
+    if (inRun || !tuned || this.state.mode !== 'flight' || !!(this.state.ui && this.state.ui.docked)) {
       own.signalStrength = 0;
       own.effectiveChannelId = tuned ? tuned.id : null;
       own.effectiveSourceId = null;
       own.effectiveKey = tuned ? tuned.id : null;
-      this._emitBed({ active: false, reason: tuned ? 'not-in-flight' : 'off' });
+      this._emitBed({ active: false, reason: inRun ? 'crucible' : (tuned ? 'not-in-flight' : 'off') });
       this._emitStatus();
       return;
     }
