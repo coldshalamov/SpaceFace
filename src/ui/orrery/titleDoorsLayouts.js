@@ -11,7 +11,7 @@ import { injectOrrery } from './tokens.js';
 const img = (name) => {
   try { return new URL('../../../assets/ui/backdrops/' + name, import.meta.url).href; } catch { return '../assets/ui/backdrops/' + name; }
 };
-const ADVENTURE_IMG = img('backdrop-newgame.jpg');
+const ADVENTURE_IMG = img('backdrop-title.jpg');
 const SWARM_IMG = img('backdrop-crucible-door.jpg');
 const STYLE_ID = 'sf-orrery-title-doors-layouts';
 const T = 'html body .of-title.orr-title--doors';
@@ -49,7 +49,7 @@ ${SECOND_LI} { grid-column:1 / span 12; grid-row:2; margin:0 7px 0 0 !important;
 ${DOOR_LI} {
   display:flex !important; flex-direction:column; justify-content:flex-end; min-height:clamp(210px, 34vh, 330px);
   padding:20px 26px 22px !important; box-sizing:border-box; position:relative !important; container-type:inline-size;
-  background:linear-gradient(0deg, rgb(6 8 12 / .94) 0%, rgb(6 8 12 / .62) 42%, rgb(6 8 12 / .12) 100%), var(--door-img) center / cover no-repeat;
+  background:linear-gradient(0deg, rgb(6 8 12 / .88) 0%, rgb(6 8 12 / .5) 40%, rgb(6 8 12 / 0) 100%), var(--door-img) center / cover no-repeat;
   border:1px solid rgb(${BONE} / .34); border-radius:2px;
   clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
   transition:border-color .16s linear, box-shadow .16s linear; }
@@ -65,7 +65,9 @@ ${DOOR_BTN}[data-door-label] { font-size:0 !important; line-height:0 !important;
 ${DOOR_BTN}[data-door-label]::before { content:attr(data-door-label); display:block !important; position:static !important; inset:auto !important; width:auto !important; height:auto !important;
   margin:0 !important; padding:0 !important; background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important; transform:none !important; opacity:1 !important;
   font:${DOOR_FONT}; letter-spacing:.02em; text-transform:uppercase; color:inherit; }
-${DOOR_BTN}:is(:hover, :focus, :focus-visible, [data-awake]) { background:none !important; }
+${DOOR_BTN}:is(:hover, :focus, :focus-visible, [data-awake]) { background:none !important; outline:none !important; box-shadow:none !important; }
+/* the attention lamp's bracket round the word is not wanted on a door (the door itself lights) */
+${DOOR_BTN}::after, ${DOOR_LI} .dp-lit__item::after { display:none !important; content:none !important; }
 html body #screens .of-title.orr-title--doors .of-title-actions li.of-title-door > button.dp-lit__item:is(:focus, :focus-visible) { outline:0 solid transparent !important; outline-offset:0 !important; }
 ${DOOR_LI} .dp-lit__note {
   display:block !important; position:static !important; clip:auto !important; clip-path:none !important; width:auto !important; height:auto !important;
@@ -74,6 +76,8 @@ ${DOOR_LI} .dp-lit__note {
 /* with a save: the door's line is a short Continue summary (two lines), and New Game's own line steps aside */
 ${DOOR_LI}.is-adventure .dp-lit__note { display:-webkit-box !important; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden !important; }
 ${SECOND_LI} .dp-lit__note { display:none !important; }
+/* the fine line under the doors: readable on the lit scene */
+${T} .dp-frame__foot, ${T} .dp-frame__foot * { color:rgb(${BONE} / .9) !important; text-shadow:0 1px 6px rgb(0 0 0 / .85); }
 /* the small row (Settings, Help, Quit) is centred by mainMenu.js from how many words show; these are the full-row defaults */
 ${LI('settings')} { grid-column:1 / span 8; grid-row:2; }
 ${LI('help')} { grid-column:9 / span 8; grid-row:2; }

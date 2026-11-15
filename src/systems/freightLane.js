@@ -41,7 +41,7 @@ import { FOUNDRY_ARENA_ID, SWARM_DEBRIS_FIGHT_RADIUS } from './swarmArena.js';
 export const FREIGHT_LANE_HALF_LENGTH = SWARM_DEBRIS_FIGHT_RADIUS;
 export const FREIGHT_FIRST_DEPART_S = 20;
 // Exchange traffic is already underway when the first fight opens.
-export const TETHYS_FIRST_DEPART_S = 4;
+export const TETHYS_FIRST_DEPART_S = 8;
 export const FREIGHT_PERIOD_S = 40;
 /**
  * PIT-01 — the lane debuts on 'Mind the Gap': the Foundry's fourth round is the
