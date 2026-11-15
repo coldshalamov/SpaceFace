@@ -263,6 +263,7 @@ export class BombDetonationVfx {
     if(this.disposed)return 0;
     const now=finite(state.simTime,this.time);if(now<this.time)this.clear();
     const dt=Math.max(0,now-this.time);this.time=now;
+    if(!this.live&&!this.particles.live)return 0;
     const video=state.settings?.video,a11y=state.settings?.accessibility;
     const reduced=!!(video?.motionReduce||a11y?.reducedMotion||a11y?.motionReduce);
     const flash=!!(video?.flashReduce||a11y?.flashReduce||a11y?.reducedFlash);

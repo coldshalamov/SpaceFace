@@ -40,6 +40,34 @@ test('eight native payloads have different constructions and finish their own fi
   assert.equal(signatures.size,Object.keys(BOMB_DEFS).length);
 });
 
+test('retired bomb matter stays idle and wakes for another receipt',()=>{
+  const state=fixture(),owner=new BombDetonationVfx(new THREE.Scene());
+  try {
+    owner.emit('bombs:detonated',receipt('bomb_frag'),state);
+    state.simTime=1.2;owner.update(state);
+    state.simTime=10;owner.update(state);
+    assert.equal(owner.live,0);assert.equal(owner.particles.live,0);assert.equal(owner.mesh.visible,false);
+    let begins=0,publishes=0;
+    const begin=owner.batch.begin,publish=owner.particles.publish;
+    owner.batch.begin=function(...args){begins++;return begin.apply(this,args);};
+    owner.particles.publish=function(...args){publishes++;return publish.apply(this,args);};
+    for(let i=0;i<100;i++){state.simTime+=.016;owner.update(state);}
+    assert.equal(begins,0);assert.equal(publishes,0);
+    owner.emit('bombs:detonated',receipt('bomb_frag',20),state);
+    state.simTime+=.2;owner.update(state);
+    assert.ok(owner.live>0);assert.ok(owner.mesh.visible);assert.ok(begins>0);assert.ok(publishes>0);
+    assert.ok(owner.particles.live>0);
+    owner.slots.find(s=>s.alive).life=.21;
+    state.simTime+=.02;owner.update(state);
+    assert.equal(owner.live,0);assert.ok(owner.particles.live>0,'transport can outlive the source');
+    const beforeTail=publishes;state.simTime+=.01;owner.update(state);
+    assert.ok(publishes>beforeTail,'a particle-only tail still updates');
+    state.settings.video.motionReduce=true;state.simTime+=.01;owner.update(state);
+    assert.equal(owner.particles.live,0,'reduced motion clears the remaining tail');
+    state.simTime=0;owner.update(state);assert.equal(owner.time,0,'idle rewind still updates the clock');
+  } finally {owner.dispose();}
+});
+
 test('anchor links end on actual hit surfaces, follow local offsets, and invent no receivers',()=>{
   const state=fixture(),owner=new BombDetonationVfx(new THREE.Scene());
   const p=receipt('bomb_anchor');owner.emit('bombs:detonated',p,state);
