@@ -2,6 +2,7 @@
 // Pure presentation rules used by hud.js, toasts.js, and onboarding. Tests drive these
 // functions directly — do not re-implement them in a check.
 
+import { openingQuiet } from '../onboarding/openingQuiet.js';
 import { validCharonApproachReceipt } from '../world/charonSupplyReadout.js';
 import { isVoiceOwnedAlertToast } from './alerts.js';
 import { getPromptDevice } from './bindings.js';
@@ -96,6 +97,15 @@ export function admitReceipt({
       if (!plainCallout(line)) return { admit: false, reason: 'adventure-glass' };
     } else if (!attentionAdmits(state, { source, kind: k0, text: line })) {
       return { admit: false, reason: 'adventure-glass' };
+    }
+  }
+  // OPENING-1b: while the opening rail speaks (until the first dock) the glass carries one voice -
+  // the objective line and the verb tag. Sector wire, calendar, rumor and hint toasts wait; errors,
+  // warnings, stunt/throw words and the tutorial's own lines still draw.
+  if (openingQuiet(state) && !charonDiscovery) {
+    const k1 = String(kind || 'info');
+    if (k1 === 'info' && channel !== 'tutorial' && channel !== 'massline' && channel !== 'stunt') {
+      return { admit: false, reason: 'opening-quiet' };
     }
   }
   if (isFightCaptionSentence(line)) return { admit: false, reason: 'fight-caption' };
