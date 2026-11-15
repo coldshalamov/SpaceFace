@@ -92,3 +92,11 @@ test('a moving remote-tether source and target both blend; degenerates fail clos
   // Missing geometry keeps the historic false contract.
   assert.equal(writeTetherVisualEndpoints(null, drone, true, out, 0.5), false);
 });
+
+test('fallback heading takes the shortest route when accumulated rotation is normalized', () => {
+  for (const turns of [4 * Math.PI, -4 * Math.PI]) {
+    const heading = presentedAnchorRot({ prevRot: turns + 0.1, rot: 0.3 }, 0.5);
+    assert.ok(Math.abs(Math.cos(heading) - Math.cos(0.2)) < 1e-9);
+    assert.ok(Math.abs(Math.sin(heading) - Math.sin(0.2)) < 1e-9);
+  }
+});

@@ -74,7 +74,9 @@ export function presentedAnchorRot(entity, alpha, slotHint = -1) {
   // A spawn-frame sentinel or a respawned identity is a discontinuity, not a spin: no physical
   // per-tick rotation approaches this magnitude, and wrapping it would blend through garbage.
   if (!Number.isFinite(rawDelta) || Math.abs(rawDelta) > 100) return rot;
-  let delta = rawDelta;
+  // Physics headings can accumulate several turns before another owner normalizes them.
+  // Reduce the full delta first; a single ±2π adjustment is not enough in that case.
+  let delta = rawDelta % (Math.PI * 2);
   if (delta > Math.PI) delta -= Math.PI * 2;
   else if (delta < -Math.PI) delta += Math.PI * 2;
   return prevRot + delta * alpha;
