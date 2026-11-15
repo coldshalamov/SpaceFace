@@ -86,3 +86,38 @@ test('Crucible ghost owns a lease until actual presentation disposal', () => {
     clearStaticBatchGeometryCacheForTests();
   }
 });
+
+test('Crucible ghost shares native material variants while preserving custom clone semantics', () => {
+  takeGhostTape();
+  sampleGhostPose({ tick: 0, x: 0, z: 0, r: 0, seed: 42, hullId: 'ship_hornet' });
+  const tape = takeGhostTape(), map = new Map();
+  const storage = { getItem: key => map.get(key) || null, setItem: (key, value) => map.set(key, value) };
+  useCrucibleMetaStorage(storage);
+  const imported = importGhostShareText(ghostShareTextForTape(tape), storage);
+  assert.ok(imported.ok); assert.ok(armGhostPlayback(imported.hash));
+  const root = new THREE.Group(), geometry = new THREE.BoxGeometry(), texture = new THREE.Texture();
+  const material = new THREE.MeshStandardMaterial({ map: texture });
+  const hook = () => {}; material.onBeforeCompile = hook;
+  for (let i = 0; i < 8; i++) root.add(new THREE.Mesh(geometry, material));
+  const custom = new THREE.MeshStandardMaterial(); let customClones = 0;
+  custom.clone = function () { customClones++; return THREE.Material.prototype.clone.call(this); };
+  root.add(new THREE.Mesh(geometry, custom), new THREE.Mesh(geometry, custom));
+  const scene = new THREE.Scene(), owner = createCrucibleGhostPresentation();
+  try {
+    owner.attach(scene); owner.sync({ tick: 0 }, root);
+    const ghost = scene.children.find(node => node.userData?.crucibleGhost);
+    const variants = ghost.children.slice(0, 8).map(node => node.material);
+    assert.equal(new Set(variants).size, 1, 'one native material gets one ghost variant');
+    assert.notEqual(variants[0], material); assert.equal(variants[0].map, texture);
+    assert.equal(variants[0].onBeforeCompile, hook);
+    assert.equal(customClones, 2, 'overridden clone remains per-mesh');
+    let variantDisposals = 0, textureDisposals = 0;
+    variants[0].addEventListener('dispose', () => variantDisposals++);
+    texture.addEventListener('dispose', () => textureDisposals++);
+    owner.dispose();
+    assert.equal(variantDisposals, 1); assert.equal(textureDisposals, 0);
+  } finally {
+    owner.dispose(); geometry.dispose(); material.dispose(); custom.dispose(); texture.dispose();
+    resetCrucibleMetaForTests();
+  }
+});

@@ -6,6 +6,7 @@ import {
   getGhostPlaybackTape,
   ghostPoseAt,
 } from '../systems/survivalRecords.js';
+import { Material, MeshStandardMaterial, MeshPhysicalMaterial } from 'three';
 import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 import { retainStaticBatchGeometryTree, releaseStaticBatchGeometryTree } from './staticBatchGeometryCache.js';
 import { readFrameOrigin } from './frameCoordinates.js';
@@ -107,6 +108,13 @@ function applyGhostMaterial(material) {
   return next;
 }
 
+function canShareGhostMaterial(material) {
+  if (!material || material.clone !== Material.prototype.clone) return false;
+  const prototype = Object.getPrototypeOf(material);
+  return (prototype === MeshStandardMaterial.prototype && material.copy === MeshStandardMaterial.prototype.copy)
+    || (prototype === MeshPhysicalMaterial.prototype && material.copy === MeshPhysicalMaterial.prototype.copy);
+}
+
 export function createCrucibleGhostPresentation() {
   let scene = null;
   let root = null;
@@ -178,21 +186,24 @@ export function createCrucibleGhostPresentation() {
       // this transform from sync(), never the live writers.
       root.matrixAutoUpdate = true;
       clonedMaterials = [];
+      const sharedMaterials = new Map();
+      const cloneMaterial = (material) => {
+        const share = canShareGhostMaterial(material);
+        if (share && sharedMaterials.has(material)) return sharedMaterials.get(material);
+        const next = applyGhostMaterial(material);
+        if (next && next !== material) clonedMaterials.push(next);
+        if (share) sharedMaterials.set(material, next);
+        return next;
+      };
       root.traverse((obj) => {
         if (!obj) return;
         obj.castShadow = false;
         obj.receiveShadow = false;
         if (!obj.material) return;
         if (Array.isArray(obj.material)) {
-          obj.material = obj.material.map((mat) => {
-            const next = applyGhostMaterial(mat);
-            if (next && next !== mat) clonedMaterials.push(next);
-            return next;
-          });
+          obj.material = obj.material.map(cloneMaterial);
         } else {
-          const next = applyGhostMaterial(obj.material);
-          if (next && next !== obj.material) clonedMaterials.push(next);
-          obj.material = next;
+          obj.material = cloneMaterial(obj.material);
         }
       });
       if (!root.userData) root.userData = {};
