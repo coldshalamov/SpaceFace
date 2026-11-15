@@ -1,0 +1,507 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": true,
+    "externalizeKtx2Hashes": [
+      "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
+      "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
+      "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
+      "81942b1db56160ed6ba4d271582c658199748a9598a4666c6a20aab8c4ed4161",
+      "b6d2cc065eab33f76847a512a70331fc803650cb76170154a4233a9ad93ae38a",
+      "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3"
+    ],
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "place_tally_post",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.tally-post",
+    "dynamicNameIncludes": [
+      "HOOK_DRIVE",
+      "HOOK_NAV",
+      "HOOK_SECONDARY",
+      "HOOK_SENSOR",
+      "HOOK_ARMOR"
+    ],
+    "key": "tally-post",
+    "kind": "place",
+    "metadataUrl": "assets/ships/release/render-packages/tally-post/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/tally-post",
+    "releaseAssetId": "place_tally_post",
+    "releaseBytes": 274432,
+    "releaseSha256": "c529024582cfa4cfc79a1abaae120847cdf40dfab6e9d68bc0540c658ae493d4",
+    "runtimeAssetId": "SF_PLACE_TALLY_POST",
+    "sceneRoot": true,
+    "sharedKtx2Hashes": [
+      "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
+      "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
+      "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
+      "81942b1db56160ed6ba4d271582c658199748a9598a4666c6a20aab8c4ed4161",
+      "b6d2cc065eab33f76847a512a70331fc803650cb76170154a4233a9ad93ae38a",
+      "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3"
+    ],
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/places/place_tally_post.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 30,
+    "id": "place_tally_post",
+    "kind": "part:places",
+    "ktx2Textures": 6,
+    "meshoptBufferViews": 100,
+    "release": "assets/ships/release/parts/places/place_tally_post.glb",
+    "releaseBytes": 274432,
+    "releaseSha256": "c529024582cfa4cfc79a1abaae120847cdf40dfab6e9d68bc0540c658ae493d4",
+    "source": "assets/ships/parts/places/place_tally_post.glb",
+    "sourceBytes": 628176,
+    "sourceSha256": "b2c8a55e3432a114975069a7da935da4e2e0075f12dd1db4a786d5019b333ee1",
+    "textureProfiles": {
+      "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+      "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data",
+      "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear"
+    },
+    "textures": 6
+  },
+  "runtime": {
+    "assetId": "SF_PLACE_TALLY_POST",
+    "motionBank": null,
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/places/place_tally_post.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [],
+    "assetId": "sf.render.tally-post",
+    "collisions": [
+      {
+        "id": "sf.render.tally-post.collision",
+        "nodeId": "sf.render.tally-post.node.collision-hull",
+        "reference": "COLLISION_HULL"
+      }
+    ],
+    "dynamicGroups": [
+      {
+        "id": "sf.render.tally-post.node.lod0-hook-nav-port.dynamic",
+        "kind": "dynamic-surface",
+        "nodeId": "sf.render.tally-post.node.lod0-hook-nav-port"
+      },
+      {
+        "id": "sf.render.tally-post.node.lod1-hook-nav-port.dynamic",
+        "kind": "dynamic-surface",
+        "nodeId": "sf.render.tally-post.node.lod1-hook-nav-port"
+      },
+      {
+        "id": "sf.render.tally-post.node.lod2-hook-nav-port.dynamic",
+        "kind": "dynamic-surface",
+        "nodeId": "sf.render.tally-post.node.lod2-hook-nav-port"
+      }
+    ],
+    "hlods": [],
+    "kind": "place",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.collision-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "COLLISION_HULL",
+        "node": "COLLISION_HULL",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "non-render",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod0-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Armor",
+        "node": "LOD0_Armor",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod0-beacon-amber",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Beacon_Amber",
+        "node": "LOD0_Beacon_Amber",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod0-beacon-amber-dim",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Beacon_Amber_dim",
+        "node": "LOD0_Beacon_Amber_dim",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod0-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+        "node": "LOD0_HOOK_NAV_PORT",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod0-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Hull",
+        "node": "LOD0_Hull",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod0-lights-cyan",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Lights_Cyan",
+        "node": "LOD0_Lights_Cyan",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod0-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Lights_Warm",
+        "node": "LOD0_Lights_Warm",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod0-livery",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Livery",
+        "node": "LOD0_Livery",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod0-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Mechanical",
+        "node": "LOD0_Mechanical",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod0-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MechanicalDark",
+        "node": "LOD0_MechanicalDark",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod0-warning",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Warning",
+        "node": "LOD0_Warning",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod1-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Armor",
+        "node": "LOD1_Armor",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod1-beacon-amber",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Beacon_Amber",
+        "node": "LOD1_Beacon_Amber",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod1-beacon-amber-dim",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Beacon_Amber_dim",
+        "node": "LOD1_Beacon_Amber_dim",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod1-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_HOOK_NAV_PORT",
+        "node": "LOD1_HOOK_NAV_PORT",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod1-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Hull",
+        "node": "LOD1_Hull",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod1-lights-cyan",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Lights_Cyan",
+        "node": "LOD1_Lights_Cyan",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod1-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Lights_Warm",
+        "node": "LOD1_Lights_Warm",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod1-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Mechanical",
+        "node": "LOD1_Mechanical",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod1-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MechanicalDark",
+        "node": "LOD1_MechanicalDark",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod1-warning",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_Warning",
+        "node": "LOD1_Warning",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod2-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_Armor",
+        "node": "LOD2_Armor",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod2-beacon-amber",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_Beacon_Amber",
+        "node": "LOD2_Beacon_Amber",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod2-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_HOOK_NAV_PORT",
+        "node": "LOD2_HOOK_NAV_PORT",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod2-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_Hull",
+        "node": "LOD2_Hull",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod2-lights-cyan",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_Lights_Cyan",
+        "node": "LOD2_Lights_Cyan",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod2-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_Lights_Warm",
+        "node": "LOD2_Lights_Warm",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod2-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_Mechanical",
+        "node": "LOD2_Mechanical",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod2-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MechanicalDark",
+        "node": "LOD2_MechanicalDark",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.lod2-warning",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_Warning",
+        "node": "LOD2_Warning",
+        "parentId": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.tally-post.node.sf-place-tally-post-root",
+        "independentlyCulled": false,
+        "mergeBoundary": "SF_PLACE_TALLY_POST_ROOT",
+        "node": "SF_PLACE_TALLY_POST_ROOT",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.tally-post.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 274432,
+    "sha256": "c529024582cfa4cfc79a1abaae120847cdf40dfab6e9d68bc0540c658ae493d4",
+    "uri": "assets/ships/release/parts/places/place_tally_post.glb"
+  }
+}

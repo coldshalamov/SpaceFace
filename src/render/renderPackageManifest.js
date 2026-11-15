@@ -2860,12 +2860,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.tally-post",
-    "expectedContentHash": "de92e73e5d9b6fb4b713fe8d1160deac53f22cbf1810624ec6b73c5e05184838",
+    "expectedContentHash": "a9f4606c097d32da9fee6983387b595517d13eabea40f586d8bd1f4d1211b023",
     "key": "tally-post",
     "metadataUrl": "assets/ships/release/render-packages/tally-post/render-package.json",
     "runtimeAssetId": "SF_PLACE_TALLY_POST",
     "slot": "place",
-    "sourceSha256": "fe70324a66d9a0cd5ce87476e8fd603047b1fde99d753ee1f775a91b8d3bfd72",
+    "sourceSha256": "c529024582cfa4cfc79a1abaae120847cdf40dfab6e9d68bc0540c658ae493d4",
     "sourceUrl": "assets/ships/release/parts/places/place_tally_post.glb"
   },
   {

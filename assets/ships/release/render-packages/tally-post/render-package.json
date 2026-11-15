@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "de92e73e5d9b6fb4b713fe8d1160deac53f22cbf1810624ec6b73c5e05184838",
+  "contentHash": "a9f4606c097d32da9fee6983387b595517d13eabea40f586d8bd1f4d1211b023",
   "dynamicGroups": [
     {
       "id": "sf.render.tally-post.node.lod0-hook-nav-port.dynamic",
@@ -110,26 +110,26 @@
       "bounds": {
         "max": [
           0.8500000238418579,
-          8.799951557463045,
-          0.5499954376505347
+          8.62001342955633,
+          0.10002746946422328
         ],
         "min": [
           -0.8500000238418579,
-          8.400049205476408,
-          -0.5499954376505347
+          8.519985960092107,
+          -0.10002746946422328
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f380ba732b2bceac8b948ca523215f83926005dade4a1f434791f450ea2edcfb",
+      "geometryHash": "2932a141aabcb4e3e28e059a3dd4dbde98808d7fe8192a3fe790acb38aed5c58",
       "id": "sf.render.tally-post.node.lod0-beacon-amber.primitive.0",
-      "indexCount": 564,
+      "indexCount": 36,
       "indexed": true,
       "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber",
       "nodeId": "sf.render.tally-post.node.lod0-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 168
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -384,27 +384,27 @@
     {
       "bounds": {
         "max": [
-          0.8473650217056274,
-          8.797262882936767,
-          0.5469457139522697
+          0.8500000238418579,
+          8.62001342955633,
+          0.10002746946422328
         ],
         "min": [
-          -0.8473650217056274,
-          8.402737880002686,
-          -0.5469457139522697
+          -0.8500000238418579,
+          8.519985960092107,
+          -0.10002746946422328
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bbdae6173144fa213a6641975a4fb9d646f14b7389bb119a488857e50b0aded1",
+      "geometryHash": "faa13cda0baeaacb1161f3f59de1d91985b5dedda14774ba9550f2086f3caa54",
       "id": "sf.render.tally-post.node.lod1-beacon-amber.primitive.0",
-      "indexCount": 132,
+      "indexCount": 36,
       "indexed": true,
       "materialHash": "f411337ed53ce67818500d1f05b277415a4416a923b2450feb4528fb221f89e4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber",
       "nodeId": "sf.render.tally-post.node.lod1-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 48
+      "vertexCount": 24
     },
     {
       "bounds": {
@@ -609,18 +609,18 @@
     {
       "bounds": {
         "max": [
-          0.8404949903488159,
-          8.790226110799539,
-          0.540254081445563
+          0.8500000238418579,
+          8.62001342955633,
+          0.10002746946422328
         ],
         "min": [
-          -0.8404949903488159,
-          8.40977560581423,
-          -0.540254081445563
+          -0.8500000238418579,
+          8.519985960092107,
+          -0.10002746946422328
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3f3a479cabbeb797ba764049e8d716cead453cd75d4708e250cf69aed04cb34",
+      "geometryHash": "faa13cda0baeaacb1161f3f59de1d91985b5dedda14774ba9550f2086f3caa54",
       "id": "sf.render.tally-post.node.lod2-beacon-amber.primitive.0",
       "indexCount": 36,
       "indexed": true,
@@ -1154,7 +1154,7 @@
         0.8500000238418579,
         0,
         0,
-        8.600000381469727,
+        8.569999694824219,
         0,
         1
       ],
@@ -1182,7 +1182,7 @@
         0.8500000238418579,
         0,
         0,
-        8.600000381469727,
+        8.569999694824219,
         0,
         1
       ]
@@ -1680,20 +1680,20 @@
     {
       "id": "sf.render.tally-post.node.lod1-beacon-amber",
       "localTransform": [
-        0.8473650217056274,
+        0.8500000238418579,
         0,
         0,
         0,
         0,
-        0.8473650217056274,
+        0.8500000238418579,
         0,
         0,
         0,
         0,
-        0.8473650217056274,
+        0.8500000238418579,
         0,
         0,
-        8.600000381469727,
+        8.569999694824219,
         0,
         1
       ],
@@ -1708,20 +1708,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
-        0.8473650217056274,
+        0.8500000238418579,
         0,
         0,
         0,
         0,
-        0.8473650217056274,
+        0.8500000238418579,
         0,
         0,
         0,
         0,
-        0.8473650217056274,
+        0.8500000238418579,
         0,
         0,
-        8.600000381469727,
+        8.569999694824219,
         0,
         1
       ]
@@ -2170,20 +2170,20 @@
     {
       "id": "sf.render.tally-post.node.lod2-beacon-amber",
       "localTransform": [
-        0.8404949903488159,
+        0.8500000238418579,
         0,
         0,
         0,
         0,
-        0.8404949903488159,
+        0.8500000238418579,
         0,
         0,
         0,
         0,
-        0.8404949903488159,
+        0.8500000238418579,
         0,
         0,
-        8.600000858306885,
+        8.569999694824219,
         0,
         1
       ],
@@ -2198,20 +2198,20 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.tally-post.body",
       "worldTransform": [
-        0.8404949903488159,
+        0.8500000238418579,
         0,
         0,
         0,
         0,
-        0.8404949903488159,
+        0.8500000238418579,
         0,
         0,
         0,
         0,
-        0.8404949903488159,
+        0.8500000238418579,
         0,
         0,
-        8.600000858306885,
+        8.569999694824219,
         0,
         1
       ]
@@ -2613,18 +2613,18 @@
       "sha256": "85eee5746298cb86bfaa31c3e1c6e601048e8653a465f32fcb0f3a3740a331f9"
     },
     "sourceGlb": {
-      "bytes": 280952,
-      "sha256": "fe70324a66d9a0cd5ce87476e8fd603047b1fde99d753ee1f775a91b8d3bfd72",
+      "bytes": 274432,
+      "sha256": "c529024582cfa4cfc79a1abaae120847cdf40dfab6e9d68bc0540c658ae493d4",
       "uri": "place_tally_post.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 18957,
+      "sha256": "6b33e4ef6ec085603e3d79ac5916c0f8c4e4631d841add849c13df6b8eb207d9",
+      "uri": "assets/ships/render-packages/inputs/tally-post.json"
     }
   },
   "render": {
-    "bytes": 168100,
+    "bytes": 161604,
     "resources": [
       {
         "bytes": 10835,
@@ -2663,7 +2663,7 @@
         "uri": "../_shared/images/d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3.ktx2"
       }
     ],
-    "sha256": "de48bd564bec50404e78247689b649b404301f0f13bc413e8c3e49523c6bae93",
+    "sha256": "337851d3f270f6dfd939c4f281558b7bf47cf5342c1f6f260df50f0ac71631db",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3012,7 +3012,7 @@
           0.8500000238418579,
           0,
           0,
-          8.600000381469727,
+          8.569999694824219,
           0,
           1
         ],
@@ -3297,20 +3297,20 @@
       {
         "canopy": false,
         "matrix": [
-          0.8473650217056274,
+          0.8500000238418579,
           0,
           0,
           0,
           0,
-          0.8473650217056274,
+          0.8500000238418579,
           0,
           0,
           0,
           0,
-          0.8473650217056274,
+          0.8500000238418579,
           0,
           0,
-          8.600000381469727,
+          8.569999694824219,
           0,
           1
         ],
@@ -3568,20 +3568,20 @@
       {
         "canopy": false,
         "matrix": [
-          0.8404949903488159,
+          0.8500000238418579,
           0,
           0,
           0,
           0,
-          0.8404949903488159,
+          0.8500000238418579,
           0,
           0,
           0,
           0,
-          0.8404949903488159,
+          0.8500000238418579,
           0,
           0,
-          8.600000858306885,
+          8.569999694824219,
           0,
           1
         ],
@@ -3787,7 +3787,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_tally_post.glb"
   },
-  "runtimeHash": "1712a756f8e3b1895db530140a002eb992ea79234f48597a6b7dfd8eb2eb6c22",
+  "runtimeHash": "6441162f06b033f74f024b39a295071f93350823f7c3d15f2f9d23ab741b5597",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

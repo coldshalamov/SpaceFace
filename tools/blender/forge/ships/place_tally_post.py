@@ -76,8 +76,8 @@ def build():
     F.boxes(s, 'ScaleBars', bars, 'glow_amber.dim')
     s.detail = 0
     # centre index marker — the "needle" seat, brighter
-    F.box(s, 'ScaleIndex', (0, 0, GATE_H + 1.2), (1.7, 1.1, 0.4), material='glow_amber',
-          bevel=0.03)
+    F.box(s, 'ScaleIndex', (0, 0, GATE_H + 1.17), (1.7, 0.20, 0.10), material='glow_amber',
+          bevel=0.0)
 
     # === sensors aimed into the gate mouth =========================================
     # pods under the lintel pointing down into the weighing volume
