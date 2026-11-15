@@ -2757,6 +2757,9 @@ const _threatPlateScale = new THREE.Vector3();
 const _threatCameraQuat = new THREE.Quaternion();
 const _glyphNose = new THREE.Vector3();
 const _glyphInv = new THREE.Quaternion();
+// Child handles live here, one record per hull, so the per-frame sync never searches the subtree
+// for them. A record is reused only while each handle still hangs off the parent it was mounted on
+// (partsLibrary clears a boundary's children on teardown); otherwise that handle is re-resolved.
 const _swarmThreatMarks = new WeakMap();
 // Fraction of body radius. sampleBox reads Chebyshev d ≤ 0.7r. 0.66 keeps a
 // unit-circle silhouette inside that square after any camera tilt, and still
@@ -2842,27 +2845,70 @@ function aimSwarmThreatGlyph(glyph, plate) {
  * uses when it stamps swarmMarkRadius. This file does not import survivalWave.
  */
 function hideSwarmThreatMarks(mesh) {
-  const marks = _swarmThreatMarks.get(mesh);
-  if (marks) {
-    marks.plate.visible = false;
-    if (marks.chevron) marks.chevron.visible = false;
-    if (marks.glyph) marks.glyph.visible = false;
-    if (marks.lamp) marks.lamp.visible = false;
+  let marks = _swarmThreatMarks.get(mesh);
+  if (!marks) {
+    // First time this hull is asked to hide: sweep the legacy filled card once (it is a subtree
+    // search) and remember that the hull carries none of this file's marks. Nothing in the tree
+    // creates `sf-swarm-threat-core` any more; it only ever comes baked into an older boundary.
+    const staleCard = mesh.getObjectByName('sf-swarm-threat-core');
+    if (staleCard) mesh.remove(staleCard);
+    marks = { plate: null, chevron: null, glyph: null, lamp: null };
+    _swarmThreatMarks.set(mesh, marks);
   }
-  const staleCard = mesh.getObjectByName('sf-swarm-threat-core');
-  if (staleCard) mesh.remove(staleCard);
+  if (marks.plate) marks.plate.visible = false;
+  if (marks.chevron) marks.chevron.visible = false;
+  if (marks.glyph) marks.glyph.visible = false;
+  if (marks.lamp) marks.lamp.visible = false;
 }
 
-export function syncSwarmThreatPlate(mesh, entity, camera) {
+/**
+ * The handles this hull already wears, or null when the record cannot be trusted.
+ * A handle is reused only while it still hangs off the parent it was mounted on: a boundary
+ * teardown (`partsLibrary` clears a root) leaves the objects alive but orphaned, and a re-bind
+ * then mounts a fresh set on the same boundary — the parent check re-resolves in that case.
+ * A record is only trusted when all three mounted children are present; the lamp rides the
+ * glyph, so a glyph that predates one simply keeps its cached null (it is never re-searched).
+ */
+function swarmThreatHandles(mesh) {
+  if (!mesh || typeof mesh.getObjectByName !== 'function') return null;
+  const cached = _swarmThreatMarks.get(mesh);
+  if (!cached || !cached.plate || cached.plate.parent !== mesh) return null;
+  if (!cached.chevron || cached.chevron.parent !== mesh) return null;
+  if (!cached.glyph || cached.glyph.parent !== mesh) return null;
+  return cached;
+}
+
+export function syncSwarmThreatPlate(mesh, entity, camera, cameraWorldQuat = null) {
   if (!mesh || typeof mesh.getObjectByName !== 'function') return;
   if (!entity || entity.type !== 'ship' || entity.team == null || entity.team === 0 || entity.team === 2
     || (entity.data && entity.data.circuitNode === true)) {
     hideSwarmThreatMarks(mesh);
     return;
   }
-  const staleCard = mesh.getObjectByName('sf-swarm-threat-core');
-  if (staleCard) mesh.remove(staleCard);
-  let plate = mesh.getObjectByName('sf-swarm-threat-plate');
+  // The mark's children are built once per hull. After that they are read straight off the
+  // WeakMap record, so a settled hostile pays no subtree search at all. A record that no longer
+  // matches the tree (a teardown cleared the boundary's children) falls back to the name sweep
+  // below, exactly as the uncached path did, so nothing is ever built twice.
+  const cached = swarmThreatHandles(mesh);
+  let plate;
+  let chevron;
+  let glyph;
+  let lamp;
+  if (cached) {
+    plate = cached.plate;
+    chevron = cached.chevron;
+    glyph = cached.glyph;
+    lamp = cached.lamp;
+  } else {
+    // Cold path: one name sweep per hull (never per frame) — the legacy card, then any mark left
+    // behind by an earlier binding of this same boundary.
+    const staleCard = mesh.getObjectByName('sf-swarm-threat-core');
+    if (staleCard) mesh.remove(staleCard);
+    plate = mesh.getObjectByName('sf-swarm-threat-plate');
+    chevron = mesh.getObjectByName('sf-swarm-threat-chevron');
+    glyph = mesh.getObjectByName('sf-swarm-threat-glyph');
+    lamp = glyph ? glyph.getObjectByName('sf-swarm-threat-lamp') : null;
+  }
   if (!plate) {
     // Thin lit stroke over a shaded plate. The bright rim keeps 0.92–1.0, sitting
     // outside the hull sample and short of the sky; the two children below make it
@@ -2928,7 +2974,6 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
   }
   // Heading wedge. ConeGeometry's tip is +Y. Hull noses are +X (visualFactory
   // contract). rotateZ(-PI/2) sends that tip to local +X. Not camera-facing.
-  let chevron = mesh.getObjectByName('sf-swarm-threat-chevron');
   if (!chevron) {
     chevron = new THREE.Mesh(
       getGeometry('swarm:threat-chevron', () => new THREE.ConeGeometry(0.22, 0.46, 3)),
@@ -2943,8 +2988,6 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
   // In-hull silhouette. Shares the rim's DoubleSide material. The lens sits
   // on plate +Z, so the face it sees is the shape's +Z side. Not a disc, and
   // not an additive VFX layer (those hid the threat pixels).
-  let glyph = mesh.getObjectByName('sf-swarm-threat-glyph');
-  let lamp = glyph && glyph.getObjectByName('sf-swarm-threat-lamp');
   if (!glyph) {
     glyph = new THREE.Mesh(
       getGeometry('swarm:threat-glyph', swarmThreatGlyphGeometry),
@@ -2999,8 +3042,8 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
     bodyScaleY * SWARM_GLYPH_OF_BODY,
     bodyScaleZ * SWARM_GLYPH_OF_BODY,
   );
-  const marks = _swarmThreatMarks.get(mesh);
-  if (marks) { marks.plate = plate; marks.chevron = chevron; marks.glyph = glyph; marks.lamp = lamp; }
+  const record = cached || _swarmThreatMarks.get(mesh);
+  if (record) { record.plate = plate; record.chevron = chevron; record.glyph = glyph; record.lamp = lamp; }
   else _swarmThreatMarks.set(mesh, { plate, chevron, glyph, lamp });
   plate.visible = true;
   chevron.visible = true;
@@ -3010,7 +3053,10 @@ export function syncSwarmThreatPlate(mesh, entity, camera) {
   const gunsHeld = !!(entity.data && entity.data.ai && entity.data.ai.swarmFireHeld === true);
   if (lamp) lamp.visible = !gunsHeld;
   if (camera && camera.quaternion && mesh.quaternion) {
-    camera.getWorldQuaternion(_threatCameraQuat);
+    // One camera world quaternion serves every hostile on the glass: the caller reads it once per
+    // frame and hands it in. A caller that passes nothing still gets the correct answer.
+    if (cameraWorldQuat) _threatCameraQuat.copy(cameraWorldQuat);
+    else camera.getWorldQuaternion(_threatCameraQuat);
     _threatPlateQuat.invert().multiply(_threatCameraQuat);
     plate.quaternion.copy(_threatPlateQuat);
   }

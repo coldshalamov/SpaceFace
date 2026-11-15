@@ -142,6 +142,8 @@ export {
 import { CAMERA_NEAR_MARGIN_WU, modelTruthPlanarRadius, modelTruthSlideOutside } from '../data/modelTruth.js';
 const _liveViewFrustum = typeof THREE !== 'undefined' ? new THREE.Frustum() : null;
 const _liveViewProjView = typeof THREE !== 'undefined' ? new THREE.Matrix4() : null;
+// Camera world orientation, read once per sync pass for the Swarm threat marks.
+const _swarmThreatCameraQuat = typeof THREE !== 'undefined' ? new THREE.Quaternion() : null;
 
 import { createSpaceBackground } from './spaceBackground.js';
 import * as parallaxLayers from './parallaxLayers.js';
@@ -28881,6 +28883,9 @@ export const render = {
       _liveViewFrustum.setFromProjectionMatrix(_liveViewProjView);
       liveViewFrustum = _liveViewFrustum;
     }
+    // Swarm threat marks face the lens; every hostile on the glass wants the same quaternion.
+    // Read once per pass, at the first marked hull (the camera cannot move inside a pass).
+    let threatCameraQuat;
     const survivalRun = !!(this.state.run && this.state.run.kind === 'survival');
     globalAsteroidMotion.beginVeinFrame(survivalRun ? 'survival' : null);
 
@@ -29218,9 +29223,15 @@ export const render = {
         // real screen. The presented pose inside the live glass extents wins over the runway deny.
         const glassRadius = Math.max(lodRadius, world.radii[slot] || 0);
         const onLiveGlass = rootOnLiveGlass(bounds, liveViewFrustum, mesh.position, glassRadius);
-        if (entity && entity.type === 'ship' && !isPlayer
-            && this.state.run && this.state.run.kind === 'survival') {
-          syncSwarmThreatPlate(mesh, entity, this.cam && this.cam.obj);
+        if (entity && entity.type === 'ship' && !isPlayer && survivalRun) {
+          // The camera cannot move inside a pass, so its world quaternion is read once and every
+          // marked hull reuses it (null when the camera cannot answer — the callee falls back).
+          if (threatCameraQuat === undefined) {
+            threatCameraQuat = liveCam && typeof liveCam.getWorldQuaternion === 'function'
+              ? (liveCam.getWorldQuaternion(_swarmThreatCameraQuat) || _swarmThreatCameraQuat)
+              : null;
+          }
+          syncSwarmThreatPlate(mesh, entity, liveCam, threatCameraQuat);
         }
         const glassSpan = Math.max(bounds.glassHalfX || 0, bounds.glassHalfZ || 0, 1);
         let planarSpeed = 0;
