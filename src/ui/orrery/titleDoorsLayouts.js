@@ -100,7 +100,7 @@ ${T} .of-title-aside { display:contents !important; }
 }
 /* the phone: the two doors stacked, then the small row; More behind its toggle as on the desktop */
 @media (max-width:700px) {
-  ${T} .of-title-actions { position:absolute !important; left:16px !important; right:16px !important; width:auto !important; bottom:20px !important; transform:none !important; gap:12px 0 !important; }
+  ${T} .of-title-actions { position:relative !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; width:100% !important; margin:18px 0 0 !important; transform:none !important; gap:12px 0 !important; }
   ${DOOR_LI}.is-adventure, ${DOOR_LI}.is-swarm { grid-column:1 / -1 !important; margin:0 !important; min-height:132px; }
   ${DOOR_LI}.is-adventure { grid-row:1 !important; }
   ${DOOR_LI}.is-swarm { grid-row:2 !important; }
