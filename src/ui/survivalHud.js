@@ -26,6 +26,7 @@ import { styleMultiplier } from '../systems/stuntCombo.js';
 import { SWARM_CHAIN_VARIED_STEP, SWARM_CHAIN_WARN_S, SWARM_CHAIN_WINDOW_S } from '../systems/swarmChain.js';
 import { resolveActionLabel } from '../systems/input.js';
 import { swarmOwnedTapMods } from '../systems/playerModifiers.js';
+import { indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
 
 const STYLE_ID = 'sf-crun-css';
 /** How long an earn receipt stays on screen, in sim seconds. */
@@ -776,12 +777,17 @@ export const survivalHud = {
    */
   _bossVitals(state) {
     const entities = state && state.entities;
-    if (!entities || typeof entities.values !== 'function') return null;
+    if (!entities) return null;
     let count = 0;
     let hull = 0;
     let max = 0;
     let name = null;
-    for (const entity of entities.values()) {
+    // The champion bodies are `type: 'ship'` (waveMaterialization stamps the mark on the enemy
+    // spec), so the ship lane is the whole domain. Walking `entities.values()` here paid for
+    // every rock, projectile and dressing in the largest bag the game ever holds; the index
+    // answers the same question from ships+drones. The Map iterator is the fallback for the
+    // minimal states that only populate `entities` (as it is for hud.js's own scans).
+    for (const entity of indexedShipLikeOrEntitiesScan(state)) {
       if (!entity || entity.alive === false) continue;
       const data = entity.data;
       const commander = data && data.circuitCommander === true;
