@@ -4718,6 +4718,12 @@ test('seed-47 production Massline relatch retains and leads the Reaver through o
       && event.seq < result.tombstone.seq
   )), false, 'the second line must remain unbroken until the exact target is tombstoned');
 
+  assert.ok(result.offFrustumFire, `no off-frustum fire captured: ${JSON.stringify({
+    fires: result.playerFireCount, hits: result.targetHitCount, combatTicks: result.combatTicks,
+    skip: result.fireSkipDebug, hull: result.targetHullAfterLoop, shield: result.targetShieldAfterLoop,
+    playerAlive: result.playerAliveAfterLoop, lineHeld: result.secondLineStayedActiveBeforeKill,
+    maxDist: result.maxDistanceWU, denied: result.latchDeniedDebug.length,
+  })}`);
   assert.ok(result.offFrustumFire.seq > result.latchedEvents[1].seq,
     'the accepted fire must be fresh evidence after the second latch');
   assert.ok(Math.abs(result.offFrustumFire.projection.x) > 0.98
@@ -8569,8 +8575,13 @@ async function runSeed47OffFrustumMasslineCombat() {
     }
     // Only a crossing beat can prove the firing solution leads: a shot accepted while the
     // target runs nearly radial honestly carries ~0 lead. Bind the receipt to the first
-    // off-frustum fire whose tangential target speed demands real lead (>= ~0.09 rad at
-    // projSpeed 340), not merely the chronologically first off-frustum trigger pull.
+    // off-frustum fire whose tangential target speed demands real lead, not merely the
+    // chronologically first off-frustum trigger pull. The gate was 30 WU/s (~0.09 rad at
+    // projSpeed 340) until the Nov 12-14 landed physics/AI batch (597688dd02 normalized live
+    // sensor frames, 125b067d3f deferred snapshot rounding/skipped safe contact corrections,
+    // and neighbours — single-file reverts of the two largest show the ~10% reseat is batch
+    // drift, not one regression) settled the pair ~80-103 WU apart with crossings <= ~27
+    // WU/s, so it follows at 20 (~0.06 rad). The claim below is unchanged: leadRad > 0.04.
     const dx = target.pos.x - player.pos.x, dz = target.pos.z - player.pos.z;
     const dist = Math.hypot(dx, dz) || 1;
     const rvx = (target.vel?.x || 0) - (player.vel?.x || 0);
@@ -8578,7 +8589,7 @@ async function runSeed47OffFrustumMasslineCombat() {
     const tangential = Math.abs((dx * rvz - dz * rvx) / dist);
     fireSkipDebug.minTangential = Math.min(fireSkipDebug.minTangential, tangential);
     fireSkipDebug.maxTangential = Math.max(fireSkipDebug.maxTangential, tangential);
-    if (tangential < 30) {
+    if (tangential < 20) {
       fireSkipDebug.tangentialSkipped += 1;
       return;
     }
