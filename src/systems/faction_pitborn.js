@@ -737,7 +737,8 @@ export const pitbornCull = {
 
   // ── The Cull crowd meter (E-40) ──────────────────────────────────────────────────
   _onKilled(p) {
-    if (!p) return;
+    // Crucible combat belongs to its own run, not the live yard's book or crowd.
+    if (!p || (this.state.run?.kind === 'survival' && this.state.run.phase !== 'inactive')) return;
     this._onKilledBook(p); // the book reads every kill wire — crowd is the player's show only
     if (p.killerId !== this.state.playerId) return;
     // Authored style kinds ('catch', 'multikill', 'impact', 'ballastFeed') score their own
