@@ -1690,7 +1690,9 @@ export const crucibleDraftScreen = {
           ? (circuitError ? 'Circuit data invalid — start a new run'
             : circuitRun.status === 'route' ? 'Choose a destination first' : 'Finish or enter Overtime first')
           : shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue'),
-      'Esc', 'Escape');
+      // Launch carries no Esc badge in the armory: Esc is the way out of the screen, never a launch
+      // key a player should learn (the guard below still stops a stray Esc from launching).
+      shop && !circuitOwed ? '' : 'Esc', 'Escape');
     // In the armory the way forward is the one consequential key; buying happens on the cards.
     this._skip.classList.toggle('k-word--primary', shop && !circuitOwed);
     // A warm hold that resolved off-draft left the control disabled+relabelled; re-arm it here
