@@ -196,8 +196,8 @@ export function createRigPhysicsAdapter(ctx) {
     if (rig.rootId) rig.partIds = [rig.rootId, ...rig.partIds.filter(id => id !== rig.rootId)];
     if (w.undo?.rigId === rig.id) w.undo = null;
     rig.revision++;
-    change(w, rig.rootId ? 'A surviving part carries the rig identity. Bring the loose originals together at the bench to reconnect them.'
-      : 'The machine is lost, but its name remains. Fit a new keel at the bench using reclaimed stock.');
+    change(w, rig.rootId ? 'A surviving part keeps the rig. Reconnect the loose parts at the bench.'
+      : 'Machine lost, name kept. Fit a new keel from reclaimed stock.');
     emit('rigWorkshop:jointBroken', { rigId: rig.id, reason: 'part_destroyed', count: lost.length });
     return lost.length;
   }
@@ -411,7 +411,7 @@ export function createRigPhysicsAdapter(ctx) {
     if (on && (!rig.towAttachmentId || attachments.get(rig.towAttachmentId)?.state !== 'active')) return fail('couple_rig_before_power');
     if (on && rig.connections.some(e => e.state === 'pending')) return fail('wait_for_connections');
     rig.power = !!on;
-    change(w, on ? 'Drive assist live. Your normal thrust and brake controls command the fitted motors; release to coast.' : 'Drive isolated. The rig keeps its earned momentum.');
+    change(w, on ? 'Drive live: thrust and brake run the motors; release to coast.' : 'Drive off. The rig keeps its momentum.');
     emit('rigWorkshop:power', { rigId: rig.id, on: rig.power });
     return { ok: true };
   }
@@ -482,7 +482,7 @@ export function createRigPhysicsAdapter(ctx) {
     const result = attachments.create({ defId: 'tether_standard', ownerId: p.id, targetId: target.id, controlMode: 'rigWorkshopRecovery' });
     if (!result.ok) return result;
     rig.towAttachmentId = result.attachment.id;
-    change(w, 'Recovery line attached to the same surviving body. Tow it to the bench; nothing is teleported.');
+    change(w, 'Recovery line on. Tow it to the bench.');
     return { ok: true, targetId: target.id };
   }
   function update(dt, w) {

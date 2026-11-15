@@ -1,10 +1,10 @@
 // Player explanations for refusals from the existing attachment/native owners.
 // Internal reason codes are useful for tests; the pilot needs the next useful action.
 const REASONS = Object.freeze({
-  fit_a_new_frame: 'The old machine is lost. Fit a new keel frame at the bench, then rebuild around its saved name.',
-  body_is_not_cargo: 'This body is machinery or infrastructure. Bring an owned cargo payload into the cradle instead.',
-  connection_limit: 'This rig already has its full set of connections. Release a load before adding another.',
-  body_limit: 'The workshop has reached its physical body limit. Recover or reuse the machinery already in the world.',
+  fit_a_new_frame: 'Machine lost. Fit a new keel at the bench; the name carries over.',
+  body_is_not_cargo: 'That is machinery, not cargo. Bring an owned payload into the cradle.',
+  connection_limit: 'Every connection is in use. Release a load first.',
+  body_limit: 'Workshop body limit reached. Reuse the machinery already out there.',
   approach_bench: 'Fly closer to the bench.',
   rig_missing: 'Select one of your two workshop rigs.',
   unknown_part: 'Choose one of the six parts on the bench.',
@@ -40,7 +40,7 @@ const REASONS = Object.freeze({
   couple_rig_before_power: 'Couple your ship first. Mover assist follows your normal flight controls.',
   tow_surviving_parts_back_to_bench: 'Tow the surviving parts into the yard, cut power, and let them settle.',
   rig_already_sound: 'The surviving parts and connections are sound.',
-  no_surviving_parts: 'No part survived. Fit a new keel at the bench using reclaimed stock; the machine keeps its name and history.',
+  no_surviving_parts: 'No part survived. Fit a new keel from reclaimed stock; the name stays.',
   approach_a_surviving_part: 'Approach the marked original part to attach a recovery line.',
   native_admission_failed: 'The physical connection could not seat. Your unused stock is still on the bench.',
   physics_unavailable: 'The physical owner is not ready. Hold position and try again.',
@@ -55,7 +55,7 @@ export function explainWorkshopReason(reason) {
   const text = String(reason);
   if (REASONS[text]) return REASONS[text];
   if (!/^[a-z0-9_:-]+$/.test(text)) return text;
-  return `The connection is unavailable (${text.replaceAll('_', ' ').replaceAll(':', ' · ')}). Move closer, slow down, and try another connection point.`;
+  return `Connection unavailable (${text.replaceAll('_', ' ').replaceAll(':', ' · ')}). Move closer, slow down, or try another point.`;
 }
 export const PART_BUTTONS = Object.freeze({
   frame: 'Keel frame · spine', hitch: 'Tow coupling · hitch', cradle: 'Cargo cradle · carry',

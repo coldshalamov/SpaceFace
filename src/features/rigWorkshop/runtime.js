@@ -378,7 +378,7 @@ export function createRigWorkshopSystem() {
       const mass = Math.round(live.reduce((sum, e) => sum + (e.mass || 0), 0));
       const damaged = live.filter(e => e.hull < e.hullMax).length;
       this._show('bench', `${rig.name} · ${rig.partIds.length} real parts`,
-        `${mass} mass units before cargo · ${w.stock} reclaimed parts${damaged ? ` · ${damaged} damaged` : ''} · ${rig.template === 'sled' ? 'Powered mover; uneven loads twist the hitch.' : 'Cradle catches awkward cargo; reach costs cornering.'}`,
+        `${mass} mass unladen · ${w.stock} reclaimed parts${damaged ? ` · ${damaged} damaged` : ''} · ${rig.template === 'sled' ? 'Powered; uneven loads twist the hitch.' : 'Cradle catches odd cargo; reach costs cornering.'}`,
         [
           { id: 'edit', label: 'Build · six parts', run: () => this._showParts() },
           this._option('couple', 'Couple ship', 'couple'),
@@ -441,7 +441,7 @@ export function createRigWorkshopSystem() {
       this._show('jobs', 'RATCHET · useful trouble outside the yard',
         w.activeJobId ? 'One order at a time.' : 'Settle both local orders with a surviving original to earn the relay.',
         [...RIG_JOB_DEFS.map(d => ({ id: `job:${d.id}`, label: `${d.title}${w.jobs[d.id]?.settled ? ' · done' : !rigJobAvailability(w, d.id).ok ? ' · earn crew trust' : ''}`, disabled: false,
-          run: () => w.jobs[d.id]?.settled ? this._showAftermath(d.id) : this._show('offer', d.title, `${d.description} ${d.lesson} ${rigJobAvailability(w, d.id).reason || ''} Up to ${d.pay * d.count} cr, paid per surviving original.`,
+          run: () => w.jobs[d.id]?.settled ? this._showAftermath(d.id) : this._show('offer', d.title, `${d.description} ${d.lesson} ${rigJobAvailability(w, d.id).reason || ''} Up to ${d.pay * d.count} cr, per surviving original.`,
             [this._option('accept', 'Accept this work order', 'acceptJob', { id: d.id }, { disabled: !!w.activeJobId || !rigJobAvailability(w, d.id).ok }),
               this._option('refuse', 'Leave it on the board', 'cancel', {}, { cancel: true })]) })),
           ...(w.activeJobId ? [this._option('guide', 'Mark a destination', 'guide'),
@@ -630,7 +630,7 @@ export function createRigWorkshopSystem() {
       const rig = this.activeRig, w = this.workshop, job = w.jobs[w.activeJobId];
       if (!rig || !isWorkshopAdventure(this.state)) return;
       const broken = Math.max(rig.connections.filter(c => ['broken', 'detached'].includes(c.state)).length, rig.detachedCount || 0);
-      const detail = job ? `${job.title} · ${job.delivered.length}/${job.cargo.length} delivered · ${job.stage === 'pickup' ? 'Approach slowly and secure an original.' : 'Brake below 6 WU/s and 0.4 rad/s before the gantry.'}${job.id === 'kiln' ? ' Keep mover assist on.' : ''}` : 'Test the rig or carry your own payloads; the tow answers real physics.';
+      const detail = job ? `${job.title} · ${job.delivered.length}/${job.cargo.length} delivered · ${job.stage === 'pickup' ? 'Ease in and secure an original.' : 'Brake below 6 WU/s and 0.4 rad/s before the gantry.'}${job.id === 'kiln' ? ' Keep mover assist on.' : ''}` : 'Test the rig, or haul your own payloads.';
       this._show('field', `${rig.name}${broken ? ` · ${counted(broken, 'broken connection', 'broken connections')}` : ''}`, detail,
         [{ id: 'capture', label: 'Choose cargo to secure', run: () => this._showCargoCapture() },
           this._option('power', rig.power ? 'Cut mover power' : 'Enable movers', 'power'),

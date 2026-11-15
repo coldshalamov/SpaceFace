@@ -119,7 +119,11 @@ test('a genuinely completed three-way job teaches Kit to tow a safe original on 
     assert.equal(h.meeting.crews.latch.learnedMassLimit, true);
     assert.equal(h.meeting.bodies.core.claim, 'keel');
     assert.ok(h.events.some(e => e.name === 'salvageOutfits:radio' && /checked the mass/.test(e.payload.text)));
-    assert.ok(h.events.some(e => e.name === 'salvageOutfits:radio' && /called the sealed tooling rack/.test(e.payload.text)));
+    const scene = h.events.find(e => e.name === 'salvageOutfits:radio' && /called the sealed tooling rack/.test(e.payload.text));
+    assert.ok(scene);
+    assert.ok(scene.payload.text.split(/\s+/).length <= 8, `Keel's scene line stays one short line: ${scene.payload.text}`);
+    assert.ok(h.events.some(e => e.name === 'salvageOutfits:offer' && /marked receiver/.test(e.payload.detail)),
+      'the tow-to-receiver instruction rides the offer card, not the radio line');
     const cache = entity(h, h.meeting.bodies.cache); let sawLine = false;
     assert.ok(advanceUntil(h, () => h.meeting.bodies.cache.deliveredBy === 'latch', 180, () => {
       sawLine ||= !!h.owner.physical.line(entity(h, h.meeting.crews.latch), cache);
@@ -188,7 +192,7 @@ test('learned-load greeting tolerates Kit losing its target during the first rad
     assert.equal(m.bodies.core.claim, 'keel');
     assert.equal(m.crews.latch.learnedMassLimit, true);
     assert.ok(h.events.some(e => e.name === 'salvageOutfits:radio'
-      && /checking for a safe smaller load/.test(e.payload.text)));
+      && /after a safe smaller load/.test(e.payload.text)));
     assert.ok(h.events.every(e => e.name !== 'salvageOutfits:radio' || !/undefined|null/.test(e.payload.text)));
     assert.equal(h.state.player.credits, 0);
   } finally { h.close(); }

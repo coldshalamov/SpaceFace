@@ -21,17 +21,20 @@ function fixture() {
  const pos=receiverPosition(),player=helpers.spawnEntity({type:'ship',isPlayer:true,hull:100,mass:18,radius:12,pos:{x:pos.x-600,z:pos.z},vel:{x:0,z:0},data:{derived:{mass:18,operationalMass:18,propulsion:{mainAccel:100}}}});state.playerId=player.id;
  const owner=Object.create(understoryGardens),co=Object.create(cargo),lo=Object.create(lootShards),registry={get:n=>({understoryGardens:owner,cargo:co,lootShards:lo}[n])};
  for(const sys of [co,lo,owner])sys.init({state,bus,helpers,registry});
- bus.on('comms:popup',e=>events.push(e));bus.on('economy:grantCredits',e=>events.push({credit:e}));
+ // Every garden line is a short quote; the rest of the receipt is plain fact. The bus swallows
+ // listener throws, so the overlong lines are collected and asserted on close.
+ const long=[];
+ bus.on('comms:popup',e=>{for(const [,q] of e.text.matchAll(/“([^”]*)”/g))if(q.split(/\s+/).length>8)long.push(q);if(e.text.split(/\s+/).length>50)long.push(e.text);events.push(e);});bus.on('economy:grantCredits',e=>events.push({credit:e}));
  const garden=owner.ensureAuthoredReceiver();assert.ok(garden);ensureCombatState(state);
  const service=createAttachmentService({state,bus,helpers,catalog:createCombatCatalog()});
  const tick=()=>syncCompostArrival(owner,[garden]);
  const pod=(qty=1)=>{addCargo(state,'cmdty_ore_iron',qty);assert.equal(co.jettison('cmdty_ore_iron',qty),qty);return [...state.entityList].reverse().find(e=>e.alive&&e.data?.jettisonedCargo);};
  const attach=load=>{if(state.player.tether?.attachmentId!=null)service.cut(state.player.tether.attachmentId,player.id,'change-load');const result=service.create({defId:'tether_standard',ownerId:player.id,targetId:load.id});assert.equal(result.ok,true);const a=result.attachment||service.get(result.attachmentId);state.player.tether={active:true,targetId:load.id,attachmentId:a.id};return a;};
- return {state,bus,events,admitted,owner,garden,player,helpers,co,lo,pod,attach,tick,close(){for(const s of [owner,co,lo])s.destroy?.();}};
+ return {state,bus,events,admitted,owner,garden,player,helpers,co,lo,pod,attach,tick,close(){for(const s of [owner,co,lo])s.destroy?.();assert.deepEqual(long,[],'garden receipts stay short');}};
 }
 test('real close arrival uses receipt lane, no free feed/pay and no repeat after serialized conversation memory',()=>{
  const h=fixture();try{const before=JSON.stringify({data:h.garden.data,credits:h.state.player.credits,cargo:h.state.player.cargo});h.tick();
- assert.equal(h.events.length,1);assert.equal(h.events[0].id,'compost_arrival_arrival');assert.equal(h.events[0].storyReceipt,true);assert.match(h.events[0].text,/nothing is owed for arriving/);
+ assert.equal(h.events.length,1);assert.equal(h.events[0].id,'compost_arrival_arrival');assert.equal(h.events[0].storyReceipt,true);assert.match(h.events[0].text,/Nothing is owed for arriving/);
  assert.equal(JSON.stringify({data:h.garden.data,credits:h.state.player.credits,cargo:h.state.player.cargo}),before);
  h.state.story.flags=JSON.parse(JSON.stringify(h.state.story.flags));h.state.simTime+=20;h.tick();assert.equal(h.events.length,1);
  }finally{h.close();}

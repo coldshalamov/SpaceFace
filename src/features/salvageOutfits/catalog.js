@@ -42,13 +42,13 @@ export const SALVAGE_PIECES = Object.freeze([
 export const SALVAGE_SITUATIONS = Object.freeze([
   Object.freeze({ id: 'split_drift', title: 'Three pieces, three claims',
     coreClaim: 'keel', latchTarget: 'frame', keelDelay: 0,
-    line: 'Keel Union is lining up the drive cradle. Latchkey is racing for the radiator. The tooling rack is still open.' }),
+    line: "Cradle's ours. Kit wants the radiator. Rack's open." }),
   Object.freeze({ id: 'heavy_lift', title: 'A second pair of hands',
     coreClaim: 'keel', latchTarget: 'cache', keelDelay: 2,
-    line: 'The heavy cradle needs the Hawser. Help deliver the separate radiator and share the completed haul.' }),
+    line: 'Cradle needs the Hawser. You bring the radiator.' }),
   Object.freeze({ id: 'overreach', title: 'More load than cable',
     coreClaim: 'latch', latchTarget: 'core', keelDelay: 9,
-    line: 'Latchkey has called a cradle heavier than its working limit. Keel is still approaching. The small pieces remain useful.' }),
+    line: 'Kit called too much cradle. Small pieces pay.' }),
 ]);
 
 export const outfit = id => OUTFITS.find(row => row.id === id);

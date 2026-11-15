@@ -1,7 +1,7 @@
 // Limited story-entry clearance, not a reputation award. Pure over canonical saved owners.
 import { getEmpireSeedProgram } from './embodiedMissions.js';
 
-export const ASH_CACHE_CLEARANCE_TEXT = 'ASH CACHE BERTH CONTROL: Your working seed carries limited Deep Reach clearance through the disposition at the desk. Vael standing, debts and conduct restrictions remain in force.';
+export const ASH_CACHE_CLEARANCE_TEXT = 'ASH CACHE BERTH CONTROL: your seed grants limited Deep Reach clearance; Vael standing, debts and conduct rules still apply.';
 
 export function hasAshCacheStoryClearance(state, station) {
   const id = typeof station === 'string' ? station : station?.stationId || station?.id;

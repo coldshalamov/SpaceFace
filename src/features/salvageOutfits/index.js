@@ -12,6 +12,7 @@ const activeCrew = c => c && !['destroyed', 'departed'].includes(c.status);
 const safeId = id => typeof id === 'string' && /^[\w:./-]{1,120}$/.test(id)
   && !['__proto__', 'constructor', 'prototype'].includes(id);
 const publicChoice = (id, label, title, cancel = false) => ({ id, label, title, cancel });
+const RECEIVER_HOW = 'Tow originals slowly to the marked receiver for pay; beamed pieces pay as plain salvage.';
 
 /** One finite source owner. Workers/ropes/physics/cargo/credits retain their existing writers.
  * Register before npcJobsRuntime's UPDATE so a receiver witnesses a live line before a job cuts it.
@@ -116,11 +117,10 @@ export const salvageOutfits = {
     }
     // Greeting listeners can retarget Kit before this scene summary is composed.
     const targetLabel = m.bodies[m.crews.latch.targetId]?.label;
-    const learnedWork = targetLabel ? `called the ${targetLabel.toLowerCase()}` : 'is checking for a safe smaller load';
     const sceneLine = m.variant === 'overreach' && m.crews.latch.learnedMassLimit && !m.crews.latch.cautious
-      ? `Kit left the cradle to Keel and ${learnedWork}.`
+      ? targetLabel ? `Kit called the ${targetLabel.toLowerCase()}. Cradle's ours.` : "Kit's after a safe smaller load. Cradle's ours."
       : situation(m.variant).line;
-    this._say('keel', `${sceneLine} Receiver is marked nearby. Tow an original in slowly for payment, or beam it for ordinary salvage.`);
+    this._say('keel', sceneLine);
     this.offer(id);
     this.bus.emit('salvageOutfits:started', { meetingId: id, variant: m.variant, sectorId: m.sectorId });
     return { ok: true, meetingId: id };
@@ -212,7 +212,7 @@ export const salvageOutfits = {
           if (actor) this.physical.stop(actor);
           if (activeCrew(c)) { c.status = 'departing'; c.targetId = null; }
         }
-        this._say('keel', 'That wreck is worked. What each of us recovered is in the receiving ledger; nothing will grow back here.');
+        this._say('keel', "Wreck's worked. It's all in the ledger.");
         this.bus.emit('salvageOutfits:completed', { meetingId: m.id });
       }
       if (!m.offer && !m.agreement && this._now() - this._lastOfferAt > 45
@@ -259,7 +259,7 @@ export const salvageOutfits = {
     c.status = c.targetId ? 'approach' : 'idle';
     if (c.targetId) {
       m.bodies[c.targetId].claim = c.id;
-      this._say(c.id, `Changing course: ${m.bodies[c.targetId].label}. You can see my approach.`);
+      this._say(c.id, `Changing course: ${m.bodies[c.targetId].label}.`);
     }
   },
   // Decide the repair stop once per call site event or slow check. Callers revalidate the
@@ -300,7 +300,7 @@ export const salvageOutfits = {
     if (b.claim === 'player' || this.physical.playerLine(target)) {
       if (this.physical.playerLine(target) && b.claim !== 'player') {
         this._breach(m, b, c.id); b.claim = 'player';
-        this._say(c.id, 'Your cable has the original. I am looking for another piece.');
+        this._say(c.id, "It's on your cable. I'll find another.");
       }
       this.physical.cancelTow(actor); this._retarget(m, c); return;
     }
@@ -313,7 +313,7 @@ export const salvageOutfits = {
         && c.towSeconds >= L.overloadSeconds) {
         c.overcommitted = true; c.stalls++; c.status = 'stalled';
         this.physical.cancelTow(actor); b.claim = null;
-        this._say('latch', 'Too much cradle. Cable slipped. It is still there—bring that same piece in and I will pay for the rescue.', 'warn');
+        this._say('latch', 'Cable slipped. Bring that cradle in; I pay.', 'warn');
         this._closeOffer(m);
         this.offer(m.id, 'rescue');
         this.bus.emit('salvageOutfits:mistake', { meetingId: m.id, crewId: c.id, bodyKey: b.key });
@@ -439,10 +439,10 @@ export const salvageOutfits = {
     } else {
       crewId = 'keel'; title = 'Divide the work before the cables cross';
       detail = distrust
-        ? 'Keel remembers the trouble at the last job. No joint contract this time. Work intentions are marked; the ordinary salvage and combat rules still apply.'
-        : `SPLIT: Keel takes the drive cradle; radiator and tooling rack are yours. COOPERATE: deliver the radiator while Keel delivers the heavy cradle; earn its ordinary remaining-value payment plus ${bonus} credits ONLY if both originals arrive. Latchkey will respect the marked pieces. Beam work remains possible, but cannot fulfill an intact-delivery agreement.`;
+        ? `Keel remembers the last job: no joint contract. ${RECEIVER_HOW}`
+        : `SPLIT: cradle to Keel; radiator and tooling rack are yours. COOPERATE: you haul the radiator, Keel the cradle; its salvage pay plus ${bonus} cr only if both arrive. ${RECEIVER_HOW}`;
       const canDivide = !distrust && activeBody(m.bodies.core) && activeBody(m.bodies.frame) && activeCrew(m.crews.keel);
-      if (!distrust && !canDivide) detail = 'The first pieces have already changed hands. Remaining originals and work intentions are marked. Recover what is actually left; the ordinary salvage and combat rules apply.';
+      if (!distrust && !canDivide) detail = `The first pieces have changed hands; recover what is left. ${RECEIVER_HOW}`;
       choices = !canDivide ? [] : [publicChoice('split', 'SPLIT DISTINCT PIECES', 'Keel reserves the cradle; both smaller originals are yours.'),
         publicChoice('cooperate', 'WORK THE HEAVY LIFT', `Two physical deliveries. Joint bonus ${bonus} credits only after both arrive.`)];
       choices.push(publicChoice('refuse', 'RACE INDEPENDENTLY', 'No payment and no hostility. Crews continue working.'),
@@ -601,7 +601,7 @@ export const salvageOutfits = {
     }
     if (!['split', 'cooperate'].includes(a.type) || b.id !== 'core' || crewId !== 'keel') return;
     a.status = 'broken'; this._memory('keel', 'cheated', m, 'promise_broken');
-    this._say('keel', 'That was the cradle you promised us. I am cancelling the deal. We will remember; we are not starting a gunfight.', 'warn');
+    this._say('keel', 'That was our cradle. Deal off. We remember.', 'warn');
   },
   _mined(p) {
     if (this._restoring || p?.minerId !== this.state.playerId || !(p.qty > 0)) return;

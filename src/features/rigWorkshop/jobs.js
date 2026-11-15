@@ -292,8 +292,8 @@ export function createWorkshopJobs({ state, bus, physics, feedback = () => {} })
     bus.emit('economy:grantCredits', { amount, reason: `rigWorkshop:${receipt.id}` });
     bus.emit('rigWorkshop:delivered', copy(receipt));
     feedback(firstModified ? 'signature' : job.settled ? 'delivery' : 'partial',
-      firstModified ? `Your machine did real work — ${amount} cr paid, 100 for your own modification.`
-        : `${job.delivered.length}/${job.cargo.length} originals delivered · ${amount} cr paid${job.settled ? ' · settled' : ' · the rest is still yours.'}`, job.destination);
+      firstModified ? `Your machine did real work: ${amount} cr, 100 for your mod.`
+        : `${job.delivered.length}/${job.cargo.length} originals delivered · ${amount} cr paid${job.settled ? ' · settled' : ' · the rest is yours'}`, job.destination);
     if (job.settled) { w.activeJobId = null; guide(w, 'bench'); }
     return { ...quote, amount, receipt, settled: job.settled };
   }

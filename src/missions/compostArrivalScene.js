@@ -7,7 +7,6 @@
 // story.flags so a heard line never repeats after Continue.
 import { UNDERSTORY_RECEIVER, gardenGrowthRadius, firstPlayerGardenGrowth } from '../data/understoryReceiver.js';
 import { UNDERSTORY_GARDENS, UNDERSTORY_GARDEN_STAGES, UNDERSTORY_COMPOST_RUN } from '../data/factions/understory.js';
-import { compostRouteFocus } from './compostRoute.js';
 
 const finite = p => Number.isFinite(p?.x) && Number.isFinite(p?.z);
 const amount = n => Number(n.toFixed(1)).toString();
@@ -93,31 +92,29 @@ export function syncCompostArrival(owner, gardens) {
   let id, text, cue;
   if (grewHere && !heard.growth) {
     id = 'growth';
-    text = `The receiving voice returns through the old hull. “That was yours. It is not yours now.” Your feed raised this garden from stage ${growth.fromStage} to ${growth.stage}; its living footprint changed. The first growth is recorded. Follow the current Journal toward the Nest. ${data.compostRunComplete === true ? 'The separate Compost run is already paid; no repeat payment.' : `${amount(fed)}/${UNDERSTORY_COMPOST_RUN.targetMass}t on the separate run. This growth is not its payment.`}`;
+    text = `“That was yours. It is not yours now.” Your feed grew the garden from stage ${growth.fromStage} to ${growth.stage}. ${data.compostRunComplete === true ? 'The Compost run is already paid; no repeat.' : `Separate paid run: ${amount(fed)}/${UNDERSTORY_COMPOST_RUN.targetMass}t.`}`;
     cue = 'Rookside grew from your feed; the Journal has the next route';
   } else if (steps.includes('compost')) return;
   else if (!heard.arrival) {
     id = 'arrival';
-    const route = compostRouteFocus({ state: s, registry: owner.ctx?.registry });
-    text = `A voice in the reclaimed hull: “Rook counts what stops moving. We count what starts again.” This is ${UNDERSTORY_RECEIVER.name}. ${route.reason} The mouth takes the load when it crosses, not your promise. You can leave with your cargo; nothing is owed for arriving.`;
+    text = `“Rook counts what stops. We count what starts.” ${UNDERSTORY_RECEIVER.name} takes a load when it crosses the mouth. ${next ? `${amount(Math.ceil(needed * 10) / 10)}t of feed makes the next growth; the Journal marks where to find it.` : 'This garden is at its last stage; no further growth can show.'} Nothing is owed for arriving.`;
     cue = 'Rookside receives real loose feed; arrival alone changes nothing';
   } else if (fed > 0 && !heard.partial && !grewHere) {
     id = 'partial';
-    text = `“We kept it.” The garden records ${amount(fed)}t of your material, but it has not made its first player-fed growth. ${next ? `${amount(Math.ceil(needed * 10) / 10)}t more feed reaches the next stage.` : 'This garden is already at its last stage; no further growth can show here.'} The used pod or wreck is gone; bringing its name back will not feed us twice. The ${UNDERSTORY_COMPOST_RUN.targetMass}t paid run is still a separate account.`;
+    text = `“We kept it.” The garden records ${amount(fed)}t; no growth yet. ${next ? `${amount(Math.ceil(needed * 10) / 10)}t more feed reaches the next stage.` : 'This garden is already at its last stage; no further growth can show here.'} The ${UNDERSTORY_COMPOST_RUN.targetMass}t paid run is a separate account.`;
     cue = next ? `Feed received; ${amount(Math.ceil(needed * 10) / 10)}t more for next growth`
       : 'Feed received; this garden has no further growth stage';
   } else if (fed > 0 && !grewHere && held && !heard.returnLoad) {
     id = 'returnLoad';
-    text = `“Another load. We still have the first one.” The garden has kept your ${amount(fed)}t. There is ${amount(held.mass)}t of new edible material on your Line. ${!next ? 'This garden has no further growth stage.' : held.mass + 1e-9 >= needed ? 'This load can make the first growth if all of it reaches the mouth.' : `After this load, ${amount(Math.ceil((needed - held.mass) * 10) / 10)}t more would still be needed.`} Keep the Line attached until intake; the ring belongs to this load. You can still take it away. No payment is promised for returning.`;
+    text = `“Another load. We still have the first.” ${amount(fed)}t kept; ${amount(held.mass)}t new feed on your Line. ${!next ? 'This garden has no further growth stage.' : held.mass + 1e-9 >= needed ? 'This load can make the first growth if all of it reaches the mouth.' : `After this load, ${amount(Math.ceil((needed - held.mass) * 10) / 10)}t more is needed.`} Keep the Line attached until intake.`;
     cue = 'New load, same garden; only material actually received counts';
   } else if (fed > 0 && !grewHere && next && !held && heard.partial && !heard.resupply) {
     id = 'resupply';
-    const route = compostRouteFocus({ state: s, registry: owner.ctx?.registry });
-    text = `“Do not buy us a promise. Bring what you can spare.” Your ${amount(fed)}t is still here; leaving will not erase it. ${route.reason} Nothing has been added to your hold.`;
+    text = `“Bring what you can spare. Not promises.” Your ${amount(fed)}t stays with the garden; the Journal marks where more feed is.`;
     cue = 'Your feed is kept; check the Journal for the remaining supply';
   } else if (held && !heard.load) {
     id = 'load';
-    text = `“We can use the ${amount(held.mass)}t on your Line.” The ring shows where this load's center enters the living mouth. Ease the load across from the west while the cockpit stays outside. Keep the Line attached until the garden takes it. Releasing a cargo pod near a station can sell it to the Dump Chute instead; sold cargo cannot feed the garden. ${!next ? 'This garden is at its last stage; this load cannot produce a new growth here.' : held.mass + 1e-9 >= needed ? 'This load is enough for the next growth if all of it reaches us.' : `${amount(Math.ceil((needed - held.mass) * 10) / 10)}t will still be needed after this load.`} The pod's handling weight is not necessarily its edible cargo mass.`;
+    text = `“We can use the ${amount(held.mass)}t on your Line.” Ease its center across from the west, cockpit outside. Keep the Line attached until intake; a pod dropped near a station goes to the Dump Chute instead. ${!next ? 'This garden is at its last stage; this load cannot produce a new growth here.' : held.mass + 1e-9 >= needed ? 'This load is enough for the next growth if all of it reaches us.' : `${amount(Math.ceil((needed - held.mass) * 10) / 10)}t will still be needed after this load.`}`;
     cue = 'Guide the load center across its receiving ring; keep cockpit outside';
   }
   if (!id) return;

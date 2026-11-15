@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createGameState } from '../src/core/gameState.js';
 import { buildMissionBoardContract, getDeepReachOperation } from '../src/story/campaign47a/embodiedMissions.js';
 import { deepReachBriefing } from '../src/story/campaign47a/deepReachBriefing.js';
+import { ASH_CACHE_CLEARANCE_TEXT } from '../src/story/campaign47a/ashCacheAccess.js';
 import { generateContacts, getChoices, buildReply, emitBarContactChoice } from '../src/ui/station/barContacts.js';
 const clone=x=>JSON.parse(JSON.stringify(x));
 function state(branch='patrol') { const s=createGameState(8008); s.story={beatIndex:7,branch,flags:{elroy_outcome:'custody',empire_seed_asset_id:'au_1',weighing_receipt:{outcome:'cleared_unverified'}},campaign47a:{flags:{spine:{v:1,solved:{1:{verb:'burn',stepId:'infested'},3:{method:'sling_in',stepId:'foreman'},6:{asset:'trader'}}}}}}; return s; }
@@ -56,6 +57,6 @@ test('limited berth clearance is announced only when actually earned',()=>{
  Object.assign(s.story.flags,{beat_6_done:true,empire_seed_complete:true,empire_seed_variant:'trader'});
  s.story.campaign47a.stepProgress={2:{completed:['elroy']}};
  s.automation.traders=[{id:'au_1',route:{from:'station_coalition',to:'station_helios',good:'cmdty_ore_iron'}}];
- assert.match(read(),/limited Deep Reach clearance/);assert.match(read(),/Vael standing, debts and conduct restrictions remain/);
+ assert.match(read(),/limited Deep Reach clearance/);assert.match(read(),/Vael standing, debts and conduct rules still apply/);assert.ok(ASH_CACHE_CLEARANCE_TEXT.split(/\s+/).length<=20,'the berth notice is one short sentence');
  s.automation.traders=[];assert.doesNotMatch(read(),/limited Deep Reach clearance/);
 });
