@@ -291,7 +291,7 @@ const HALO_RANGE = SCANNER_CONTACT_RANGE;
 const HALO_RANGE_SQ = HALO_RANGE * HALO_RANGE;
 
 const EDGE_BAND_PX = 24;
-const EDGE_CENTER_PX = EDGE_BAND_PX * 0.5;
+const EDGE_CENTER_PX = EDGE_BAND_PX * 0.5 + 6;   // inset: the indicator never touches the screen edge
 const EDGE_GAP_PX = 4;
 
 const ARC_SPAN_PX = 54;

@@ -249,7 +249,7 @@ test('PQ-006 release cues clamp offscreen without visor arcs and keep a static n
   });
   assert.deepEqual(
     { x: waypointCue.x, y: waypointCue.y, direction: waypointCue.direction, label: waypointCue.label },
-    { x: 1410, y: 30, direction: 'upper right', label: 'ALIGN' },
+    { x: 1410, y: 30, direction: 'upper right', label: '' },
   );
   assert.match(waypointCue.ariaLabel, /waypoint/i);
 });

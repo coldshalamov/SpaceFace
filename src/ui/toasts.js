@@ -246,7 +246,7 @@ export function createToasts(ctx) {
       && !live.some((r) => r.text === text && r.kind === kind)) {
       swarmWait.push({ text, kind, ttl, channel, action, charonApproach });
       while (swarmWait.length > SWARM_WAIT_MAX) swarmWait.shift();
-      return false;
+      return true;   // accepted: it will be shown in its turn (false would read as "refused, never seen")
     }
     ensureConnected();
     // One-voice (spec2/06): the voiceArbiter re-emits its surfaced floor as a _fromVoice toast for

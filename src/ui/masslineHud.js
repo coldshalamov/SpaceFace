@@ -692,7 +692,9 @@ export function resolveReleaseCue(projection, options = {}) {
   const kind = options.kind === 'self' ? 'self-sling' : 'throw';
   const target = options.targetKind === 'waypoint' ? ' waypoint' : '';
   const state = onSolution ? 'open' : 'aligning';
-  const label = onSolution ? 'RELEASE' : 'ALIGN';
+  // A cue pinned to the screen corner for an offscreen target has no room for a word (it clipped
+  // under the edge); the arrow/diamond marks the direction and aria-label keeps the full state.
+  const label = onSolution ? 'RELEASE' : (offscreen ? '' : 'ALIGN');
   const offscreenCopy = offscreen ? `, target offscreen ${direction}` : ', target onscreen';
   return {
     visible: true,

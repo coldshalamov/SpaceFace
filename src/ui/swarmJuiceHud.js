@@ -307,12 +307,14 @@ export const swarmJuiceHud = {
     }
     if (this._bossHp && simNow >= this._bossDownUntil) {
       dom.boss.hidden = false;
+      dom.col.classList?.add?.('is-boss');
       this._text(dom.bossName, this._bossMove ? `${this._bossHp.name} · ${this._bossMove}` : this._bossHp.name);
       dom.bossFill.style.transform = `scaleX(${Math.max(0, Math.min(1, this._bossHp.frac)).toFixed(3)})`;
       this._text(dom.bossCount, this._bossHp.total > 1
         ? `${this._bossHp.alive}/${this._bossHp.total}` : '');
     } else {
       dom.boss.hidden = true;
+      dom.col.classList?.remove?.('is-boss');
     }
 
     // --- the shatter ------------------------------------------------------------------
@@ -635,7 +637,7 @@ export const swarmJuiceHud = {
       root, hero, heroTier, heroFig, heroMix, heroBest, heroDeplete,
       calls, shatter, slam, slamTitle, slamSub,
       tally, tallyTitle, tallyRows,
-      card, cardTitle, cardLine, boss, bossName, bossFill, bossCount, bossDown,
+      col, card, cardTitle, cardLine, boss, bossName, bossFill, bossCount, bossDown,
     };
     return this._dom;
   },
@@ -677,6 +679,14 @@ const CSS = `
   width:max-content; max-width:94vw; display:flex; flex-direction:column; align-items:center; gap:8px; }
 .sf-sj__hero { order:0; display:flex; flex-direction:column; align-items:center; gap:2px; }
 .sf-sj__hero[hidden] { display:none; }
+/* While a boss is up the top centre has ONE owner: the boss bar and its name, with the callout
+   below it in clear space. The chain shrinks to a small figure under the bar (the round panel
+   already carries the chain and its tier); no tier word, no big numeral. */
+.sf-sj__col.is-boss .sf-sj__boss { order:0; }
+.sf-sj__col.is-boss .sf-sj__hero { order:1; }
+.sf-sj__col.is-boss .sf-sj__herotier, .sf-sj__col.is-boss .sf-sj__heromix { display:none; }
+.sf-sj__col.is-boss .sf-sj__herofig { font-size:22px; }
+.sf-sj__col.is-boss .sf-sj__calls, .sf-sj__col.is-boss .sf-sj__slam { margin-top:14px; }
 .sf-sj__herotier { font-weight:700; font-size:13px; letter-spacing:.34em; text-transform:uppercase;
   color:var(--dp-ink-mute, var(--sf-calm)); }
 .sf-sj__herorow { display:flex; align-items:baseline; gap:12px; }

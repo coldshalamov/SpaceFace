@@ -433,7 +433,7 @@ export function createSpeedDial() {
     }
 
     const phase = speedPhase(sp, r);
-    const word = drive ? 'Drive' : boosting ? 'Boost' : phase === 'over' ? 'Above top' : phase === 'rest' ? 'At rest' : '';
+    const word = drive ? 'Drive' : boosting ? 'Boost' : phase === 'rest' ? 'At rest' : '';
     if (changed('phase', `${phase}|${word}|${boosting ? 1 : 0}`)) {
       root.classList.toggle('is-rest', phase === 'rest');
       root.classList.toggle('is-boost', boosting || drive);
