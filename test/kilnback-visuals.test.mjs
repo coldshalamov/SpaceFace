@@ -90,6 +90,26 @@ test('a consumed pulse cannot claim heat; only an actual finite source field dra
   } finally { h.close(); }
 });
 
+test('empty heat frames skip world transforms and later lanes use the current transform', () => {
+  const h = fixture(); try {
+    h.phase('burn');
+    const update = h.root.updateWorldMatrix; let calls = 0;
+    h.root.updateWorldMatrix = function (...args) { calls++; return update.apply(this, args); };
+    h.step();
+    assert.equal(calls, 0, 'empty heat does not need a world transform');
+    assert(heat(h.root).every(n => !n.visible));
+    const field = h.sim.registry.get('fields').registerThermal({ id: 'transform-fixture-lane', kind: 'cone',
+      center: { x: 14, z: 0 }, dir: { x: 1, z: 0 }, radius: C.range, halfAngleRad: C.halfAngle,
+      durationS: C.pulseSeconds, ownerId: h.entity.id, thermal: { family: 'kilnback', kind: 'burn',
+        sourceKey: h.row.key, ownerLife: h.entity.occupantGeneration, attackId: h.row.key + ':attack:0' } });
+    assert(field); h.root.position.x = 30; h.step();
+    let lane = heat(h.root).find(n => n.visible); assert(lane); near(lane.getWorldPosition(new THREE.Vector3()).x, 14);
+    h.state.simTime += C.pulseSeconds + .01; calls = 0; h.step();
+    assert(heat(h.root).every(n => !n.visible));
+    assert.equal(calls, 0, 'retired lanes hide without reading world transforms');
+  } finally { h.close(); }
+});
+
 test('a source-owned cask handoff waits for native revision then leaves the exact authored gap', () => {
   const h = fixture(); try {
     h.step(); assert(h.nodes.MOTION_KILNBACK_CASK_PORT.visible);

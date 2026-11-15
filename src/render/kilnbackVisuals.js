@@ -164,9 +164,11 @@ export function createKilnbackVisualDriver(root, entity) {
         : frame.phase === 'burn' ? (lanes.length ? 1 : .25)
         : frame.phase === 'vent' ? .40 * (1 - Math.min(1, age / C.ventTicks)) : 0;
       for (const entry of hotMaterials) entry.material.emissiveIntensity = entry.intensity * heatGain * (lowFlash ? .45 : 1);
-      root.updateWorldMatrix(true, false);
-      root.getWorldQuaternion(worldRotation).invert(); root.getWorldPosition(worldPoint);
-      readFrameOrigin(state, origin);
+      if (lanes.length) {
+        root.updateWorldMatrix(true, false);
+        root.getWorldQuaternion(worldRotation).invert(); root.getWorldPosition(worldPoint);
+        readFrameOrigin(state, origin);
+      }
       for (let i = 0; i < heat.length; i++) {
         const mesh = heat[i], lane = lanes[i];
         const accepted = lane && lane.ownerLife === life && typeof lane.id === 'string'
