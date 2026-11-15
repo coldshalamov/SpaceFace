@@ -97,6 +97,32 @@ test('the nearest real surface wins regardless of index order', t => {
   h.straight(); h.step(); assert.equal(h.engine.view.beams.find(v => v.state === 1).range, 13);
 });
 
+test('every live sweep in one tick shares a single cover pass over the stones', t => {
+  const stoneReads = (beams) => {
+    const h = fixture(t, { extraRocks: 8 }), b = h.b, pool = h.engine._beams, first = h.straight();
+    h.sim.spawn({ type: 'asteroid', pos: { x: 45, z: -60 }, vel: { x: 0, z: 0 }, radius: 12, mass: 50, collides: true });
+    if (beams === 2) {
+      // The attack-slot gate fires one turret at a time; seat the second roster turret's
+      // sweep on its own lane (mirror stone at z -60) so both edges are live in one tick.
+      const second = b.alive.findIndex((_, i) => i !== h.turret && b.liveFamilyId[b.family[i]] === 'beam_turret');
+      const slot = pool.alive.findIndex((on) => !on);
+      assert.ok(second >= 0 && slot >= 0, 'the ordinary roster supplies a second turret and a free slot');
+      b.alive[second] = 1; b.px[second] = b.teleX[second] = 0; b.pz[second] = b.teleZ[second] = -60;
+      b.vx[second] = b.vz[second] = 0; b.timer[second] = 99;
+      for (const key of ['x', 'z', 'a0', 'a1', 't', 'total', 'range', 'reach', 'width']) pool[key][slot] = pool[key][first];
+      pool.z[slot] = -60; pool.owner[slot] = second; pool.alive[slot] = 1;
+    }
+    const get = h.state.entities.get, ids = new Set(h.state.entityList.filter(e => e.type === 'asteroid').map(e => e.id));
+    let reads = 0;
+    h.state.entities.get = function (id) { if (ids.has(id)) reads++; return get.call(this, id); };
+    h.step();
+    h.state.entities.get = get;
+    assert.equal(h.engine.view.beams.filter(v => v.state === 1 && v.range === 28).length, beams, 'each edge still stops at the stone');
+    return reads;
+  };
+  assert.equal(stoneReads(2), stoneReads(1), 'a second beam does not re-walk the asteroid index');
+});
+
 test('cover beyond the old 64-rock movement cache still stops the actual beam', t => {
   const h = fixture(t, { extraRocks: 72 }); h.straight(); h.step();
   assert.equal(h.player.hull, 100); assert.equal(h.engine.view.beams.find(v => v.state === 1).range, 28);

@@ -455,6 +455,11 @@ export function createBroodEngine(deps = {}) {
   // segment scratch for the beam sweep and the link-break tests — retained, never newed
   const segA = { x: 0, z: 0 };
   const segB = { x: 0, z: 0 };
+  // beam cover stones — refilled once per beam tick, grown in place, never newed per tick
+  const coverX = [];
+  const coverZ = [];
+  const coverR = [];
+  let coverCount = 0;
   const playerFields = [];
   const posScratch = { x: 0, z: 0 };
   const velScratch = { x: 0, z: 0 };
@@ -1211,6 +1216,8 @@ export function createBroodEngine(deps = {}) {
   function cacheRocks(state) {
     rockCount = 0;
     rockEntities.fill(null);
+    const cover = bankCover?.entity;
+    let coverSeated = false;
     const list = indexedTypeScan(state, 'asteroids');
     let nextRock = 0;
     for (; nextRock < list.length && rockCount < ROCK_CACHE_MAX; nextRock++) {
@@ -1221,6 +1228,7 @@ export function createBroodEngine(deps = {}) {
       // any heavy body. Under the index it never reaches this list anyway; on the un-indexed
       // fallback every entity lands here, and without the guard the worm eats its own neck.
       if (e.data && e.data.lootTableId === TENDRIL_HEAD_LOOT_ID) continue;
+      if (e === cover) coverSeated = true;
       rockEntities[rockCount] = e;
       rockCredited[rockCount] = playerOwnsBody(state, e) ? 1 : 0;
       rockX[rockCount] = finite(e.pos.x);
@@ -1230,7 +1238,7 @@ export function createBroodEngine(deps = {}) {
       rockVZ[rockCount] = finite(e.vel && e.vel.z);
       rockCount += 1;
     }
-    cacheBossChunks(state);
+    if (cacheBossChunks(state, cover)) coverSeated = true;
     // A late original must not become transparent merely because old fragments
     // occupy the terrain budget. Custody reads the canonical provenance record —
     // the actively towed line wins ties, otherwise nearest to the tracked signature.
@@ -1256,6 +1264,7 @@ export function createBroodEngine(deps = {}) {
     }
     for (let i = 0; i < handledCount && rockCount < ROCK_STORAGE_MAX; i++) {
       const e = handledRocks[i];
+      if (e === cover) coverSeated = true;
       rockEntities[rockCount] = e;
       rockCredited[rockCount] = 1;
       rockX[rockCount] = e.pos.x; rockZ[rockCount] = e.pos.z;
@@ -1266,7 +1275,6 @@ export function createBroodEngine(deps = {}) {
     // A selected Bank stone is physical shelter even when the pilot never
     // touches it. Preserve all ordinary/handled seats and the separate chunk seats.
     // Never grant custody, replace a destroyed life, or reuse a restored identity.
-    const cover = bankCover?.entity;
     if (cover && bankCover.wave === liveWave && state.run?.wave === liveWave
       && rockCount < ROCK_STORAGE_MAX
       && state.entities?.get?.(cover.id) === cover
@@ -1275,7 +1283,7 @@ export function createBroodEngine(deps = {}) {
       && cover.physicsBody !== false && physicsBodyNativeReady(cover)
       && Number.isFinite(cover.pos?.x) && Number.isFinite(cover.pos?.z)
       && Number.isFinite(cover.vel?.x) && Number.isFinite(cover.vel?.z)
-      && !rockEntities.includes(cover)) {
+      && !coverSeated) {
       const body = resolvePhysicsBodySpec(cover);
       if (body?.dynamic && body.radius > 0 && body.mass > 0
         && body.material !== 'sensor' && body.material !== 'massline_sensor'
@@ -1319,15 +1327,17 @@ export function createBroodEngine(deps = {}) {
       && Number.isFinite(e.vel?.x) && Number.isFinite(e.vel?.z);
   }
 
-  function cacheBossChunks(state) {
+  function cacheBossChunks(state, cover) {
     const lane = entityIndexLaneVersion(state, ['wrecks']);
     if (lane < 0 || lane !== chunkLaneVersion) {
       refreshChunkRefs(state);
       chunkLaneVersion = lane;
     }
+    let coverSeated = false;
     for (let i = 0; i < chunkRefCount && rockCount < ROCK_STORAGE_MAX; i++) {
       const e = chunkRefs[i];
       if (!chunkIsLive(state, e)) continue;
+      if (e === cover) coverSeated = true;
       rockEntities[rockCount] = e;
       rockCredited[rockCount] = playerOwnsBody(state, e) ? 1 : 0;
       rockX[rockCount] = finite(e.pos.x);
@@ -1337,6 +1347,7 @@ export function createBroodEngine(deps = {}) {
       rockVZ[rockCount] = finite(e.vel.z);
       rockCount += 1;
     }
+    return coverSeated;
   }
 
   function cacheMovers(state) {
@@ -2586,6 +2597,7 @@ export function createBroodEngine(deps = {}) {
    */
   function stepBeams(simTime) {
     if (beamCount <= 0) return;
+    let coverReady = false;
     for (let b = 0; b < BEAM_MAX; b++) {
       if (!beamAlive[b]) continue;
       const owner = beamOwner[b];
@@ -2594,6 +2606,7 @@ export function createBroodEngine(deps = {}) {
         beamCount -= 1;
         continue;
       }
+      if (!coverReady) { cacheBeamCover(); coverReady = true; }
       beamT[b] += DT;
       const t = Math.min(1, beamT[b] / beamTotal[b]);
       const a = beamA0[b] + (beamA1[b] - beamA0[b]) * t;
@@ -2635,11 +2648,12 @@ export function createBroodEngine(deps = {}) {
 
   // Cover is a live native solid, not the flock's padded collision disc. Inspect the
   // asteroid index directly: the 64-entry movement cache must not make later stones
-  // transparent. No damage, custody or movement is written here.
-  function beamCoverFraction(width) {
+  // transparent. Gathered once per tick into retained columns every live sweep shares.
+  // No damage, custody or movement is written here.
+  function cacheBeamCover() {
     const state = getState();
     const stones = indexedTypeScan(state, 'asteroids');
-    let nearest = 1;
+    coverCount = 0;
     for (let r = 0; r < stones.length; r++) {
       const stone = stones[r];
       if (stone?.type !== 'asteroid' || stone.alive === false || stone.collides === false
@@ -2650,7 +2664,15 @@ export function createBroodEngine(deps = {}) {
       if (!body || body.material === 'sensor' || body.material === 'massline_sensor'
         || PHYSICS_MATERIALS[body.material]?.ghost
         || !(Number.isFinite(body.radius) && body.radius > 0)) continue;
-      const contact = segmentCircleT(segA, segB, stone.pos.x, stone.pos.z, body.radius + width);
+      coverX[coverCount] = stone.pos.x; coverZ[coverCount] = stone.pos.z; coverR[coverCount] = body.radius;
+      coverCount++;
+    }
+  }
+
+  function beamCoverFraction(width) {
+    let nearest = 1;
+    for (let r = 0; r < coverCount; r++) {
+      const contact = segmentCircleT(segA, segB, coverX[r], coverZ[r], coverR[r] + width);
       if (contact != null && contact < nearest) nearest = contact;
     }
     return nearest;
