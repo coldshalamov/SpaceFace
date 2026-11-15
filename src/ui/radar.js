@@ -181,6 +181,7 @@ export function createRadarContactsStillCache() {
     ghostCount: 0,
     veil: false,
     blind: false,
+    crucible: false,
     nearestOffRangeHostile: null,
     salients: 0,
     rescanDraws: 0,
@@ -221,6 +222,7 @@ export function censusRadarContactsStillLayer({
   const playerX = player.pos.x;
   const playerZ = player.pos.z;
   const blind = radarBoardBlind(state, player);
+  const crucible = state?.run?.kind === 'survival' && state.run.phase !== 'inactive';
   const radarScale = metrics.radius / range;
   const trafficRangeSq = rangeSq * RADAR_TRAFFIC_RANGE_FRACTION * RADAR_TRAFFIC_RANGE_FRACTION;
   const stillQx = Math.round(playerX * radarScale);
@@ -236,6 +238,7 @@ export function censusRadarContactsStillLayer({
     && targetId === cache.targetId
     && (veil === true) === cache.veil
     && (blind === true) === (cache.blind === true)
+    && crucible === cache.crucible
     && cache.rescanDraws > 0;
 
   // FB-035 — live POI plans ride the mark: the readout's radarKind is the blip class and its
@@ -286,6 +289,9 @@ export function censusRadarContactsStillLayer({
   for (let i = 0; i < contacts.length; i += 1) {
     const entity = contacts[i];
     if (!entity || !entity.pos || !entity.alive || entity === player) continue;
+    const data = entity.data;
+    if (crucible && (entity.type === 'station' || entity.type === 'beacon')
+      && !(data && (data.roomOwner || data.swarmGateFlare || data.circuitCore || data.circuitMark))) continue;
     const dx = entity.pos.x - playerX;
     const dz = entity.pos.z - playerZ;
     const distanceSq = dx * dx + dz * dz;
@@ -396,6 +402,7 @@ export function censusRadarContactsStillLayer({
   cache.ghostCount = ghostMarks ? ghostMarks.length : 0;
   cache.veil = veil === true;
   cache.blind = blind === true;
+  cache.crucible = crucible;
   cache.salients = salientContactCount;
   cache.nearestOffRangeHostile = nearestOffRangeHostile;
   cache.rescanDraws = RADAR_CONTACTS_STILL_RESCAN_DRAWS;
@@ -2487,7 +2494,8 @@ export function createRadar(ctx) {
 
     const sectorId = state.world && state.world.currentSectorId;
     const pings = sectorId && state.world.scanPings && state.world.scanPings[sectorId];
-    if (!boardBlind && (Array.isArray(pings) || contactsHaveLivePing(contacts, state.simTime))) {
+    if (!boardBlind && !(state.run?.kind === 'survival' && state.run.phase !== 'inactive')
+      && (Array.isArray(pings) || contactsHaveLivePing(contacts, state.simTime))) {
       g.save();
       g.font = canvasFont(700, 12, 'data');
       g.textAlign = 'center';
