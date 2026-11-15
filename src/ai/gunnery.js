@@ -20,6 +20,15 @@ const LEAD_PIP_ON_SOLUTION_RAD = 0.05;
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const DEFAULT_PROJ_SPEED = 360; // fallback matching weapons._playerProjSpeed
 
+// The lead solver reads `pos`/`vel` synchronously and retains neither, so one module scratch
+// replaces the two literals `leadSolution` used to build per call — it runs from the HUD every
+// frame while a lead target is held. The RETURNED solution stays a fresh object: the HUD keeps it
+// for the frame, and a shared result would let a second caller overwrite the first's pip.
+const _leadTargetScratch = { pos: null, vel: { x: 0, z: 0 } };
+// A target with no velocity at all still needs a zero to read — one frozen literal, not a
+// per-call one.
+const _zeroVel = Object.freeze({ x: 0, z: 0 });
+
 // A pip describes straight-flight gunfire. Seekers steer toward a lock and deployed ordnance
 // has its own placement, so neither can lend its speed to a gun later in the fitting order.
 function ballisticMountSpeed(mount) {
@@ -62,8 +71,11 @@ export function leadSolution(shooter, target, projSpeed) {
   if (!shooter || !shooter.pos || !shooter.vel || !target || !target.pos) {
     return { valid: false, angle: 0, x: 0, z: 0, dist: 0 };
   }
-  const tvel = target.vel || { x: 0, z: 0 };
-  const tgt = { pos: target.pos, vel: { x: tvel.x || 0, z: tvel.z || 0 } };
+  const tvel = target.vel || _zeroVel;
+  const tgt = _leadTargetScratch;
+  tgt.pos = target.pos;
+  tgt.vel.x = tvel.x || 0;
+  tgt.vel.z = tvel.z || 0;
   const speed = Number.isFinite(projSpeed) && projSpeed > 0 ? projSpeed : primaryProjSpeed(shooter);
   const angle = solveLeadAngle(shooter, tgt, speed);
   const dx = target.pos.x - shooter.pos.x;
