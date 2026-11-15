@@ -303,11 +303,13 @@ function createFormationRecord(background) {
   const record = {
     points, paint: createPaintedFormation(uniforms), family: -1, lastTime: null, activeStars: 0, attributeBytes: count * 8 * 4,
     paintAttributeBytes: FAMILIES * PAINT_VERTICES_PER_FAMILY * 6 * 4, indexBytes: indices.byteLength,
-    signature: null, anchorX: 0, anchorZ: 0, rebuilds: 0, refills: 0,
+    signature: null, anchorX: 0, anchorZ: 0, phasePeriod: 4000, rebuilds: 0, refills: 0,
   };
   points.add(record.paint);
-  const period = Math.max(4000, (Number(background.H) || 0) * 80);
-  function phase(value) { return ((value + period * 0.5) % period + period) % period - period * 0.5; }
+  function phase(value) {
+    const period = record.phasePeriod;
+    return ((value + period * 0.5) % period + period) % period - period * 0.5;
+  }
   points.onBeforeRender = (renderer, scene, renderCamera) => {
     const next = stellarFormationIndex(background.deepFieldRecipe?.id);
     const now = Number(background.bgTime) || 0;
@@ -457,6 +459,7 @@ export function rebuildDeepFieldStars(background) {
   const globalProjection = background._spaceBackgroundGlobalProjection === true;
   record.anchorX = camera.position.x + (globalProjection ? 0 : Number(origin.x) || 0);
   record.anchorZ = camera.position.z + (globalProjection ? 0 : Number(origin.z) || 0);
+  record.phasePeriod = Math.max(4000, (Number(background.H) || 0) * 80);
   const pixelScale = bufferHeight * camera.projectionMatrix.elements[5] * 0.5;
   fillFormation(record, background, camera, pixelScale);
   record.signature = signature;

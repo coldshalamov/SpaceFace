@@ -179,3 +179,27 @@ test('indexed draws preserve quality prefixes and all visible crossfade families
   record.points.geometry.dispose(); record.points.material.dispose();
   record.paint.geometry.dispose(); record.paint.material.dispose();
 });
+
+test('a reused stellar record updates its parallax wrap span after camera-height rebuild', () => {
+  const background = makeBackground(), record = rebuildDeepFieldStars(background);
+  const { camera, renderer } = background;
+  background.H = 240;
+  assert.equal(rebuildDeepFieldStars(background), record, 'height changes reuse the resident buffers');
+  record.points.onBeforeRender(renderer, null, camera);
+  assert.equal(record.points.material.uniforms.uPhaseX.value[0], 0,
+    'the existing rebuild anchor leaves no immediate phase jump');
+  camera.position.x += 100;
+  record.points.onBeforeRender(renderer, null, camera);
+  const nearPhase = record.points.material.uniforms.uPhaseX.value[0];
+  assert.ok(Math.abs(nearPhase - 100 * STELLAR_FORMATIONS[0].parallax) < 1e-8);
+  assert.equal(rebuildDeepFieldStars(background), record);
+  record.points.onBeforeRender(renderer, null, camera);
+  assert.equal(record.points.material.uniforms.uPhaseX.value[0], nearPhase,
+    'an unchanged rebuild does not reset the ongoing phase');
+  camera.position.x -= 100;
+  camera.position.x += 600000;
+  record.points.onBeforeRender(renderer, null, camera);
+  const expected = 600000 * STELLAR_FORMATIONS[0].parallax;
+  assert.ok(Math.abs(record.points.material.uniforms.uPhaseX.value[0] - expected) < 1e-8,
+    'phase uses the new 19200-unit wrap span rather than the old 9600-unit span');
+});
