@@ -30,7 +30,7 @@ const COURSE_APPROACH = { x: BREAKWATER_SITE_LOCAL.x, z: BREAKWATER_SITE_LOCAL.z
 // that actually occurred; every line keys off a real transition.
 const NESSA = {
   signal: 'Unknown hull, you are passing Breakwater Spur. It is a dead loading frame, not a wreck — mark it if you haul.',
-  inspect: 'Nessa Vale, dispatch. Two empty sockets, one dead light, shelf still square. The cartridges are in the pocket south-west if you want the work.',
+  inspect: 'Dispatch. Two empty sockets. Originals lie southeast.',
   partial: 'One arm is holding. The other socket is still empty.',
   damaged: 'That original is scarred. It will seat — just settle it slower.',
   seat: 'Seated. That is a real part again, not salvage.',
@@ -124,11 +124,14 @@ export function createBreakwaterSpurSystem() {
       });
     },
 
-    _offer() {
-      const offer = buildBreakwaterSpurOffer(this.state);
+    _offer(page = 'home') {
+      const offer = buildBreakwaterSpurOffer(this.state, page);
       if (!offer) return;
       this._offerRevision = offer.revision;
-      const projected = {...offer, expiresAt:this.state.simTime + BREAKWATER_OFFER_TTL_S};
+      const guidance = offer.kind === 'restore'
+        ? ['drive','drum'].map(role => this.physical.restorationGuidance(this._row(),role)).filter(Boolean)
+        : [];
+      const projected = {...offer, detail: [offer.detail,...guidance].join(' '), expiresAt:this.state.simTime + BREAKWATER_OFFER_TTL_S};
       this.state.breakwaterSpurOffer = projected;
       this.bus.emit('breakwaterSpur:offer', projected);
     },
@@ -284,15 +287,20 @@ export function createBreakwaterSpurSystem() {
         this.bus.emit('breakwaterSpur:receipt', { text: 'That offer has gone stale.', kind: 'warn' });
         return;
       }
-      if (!this.state.breakwaterSpurOffer?.actions?.some(action => action.id === id)) return;
+      const selected = this.state.breakwaterSpurOffer?.actions?.find(action => action.id === id);
+      if (!selected) return;
       this._offerRevision=null; this.state.breakwaterSpurOffer=null;
       const epoch=this._epoch, t=this.state.simTime;
       switch (id) {
+        case 'service:menu':
+          this._offer('services'); return;
+        case 'service:back':
+          this._offer(); return;
         case 'course':
           this.bus.emit('ui:setCourse', { pos:sectorLocalToGlobalForSector(COURSE_APPROACH,BREAKWATER_SECTOR_ID), sectorId:BREAKWATER_SECTOR_ID, label:'Breakwater Spur', autopilot:false });
           break;
         case 'course_pocket':
-          this.bus.emit('ui:setCourse', { pos:sectorLocalToGlobalForSector(BREAKWATER_POCKET_LOCAL,BREAKWATER_SECTOR_ID), sectorId:BREAKWATER_SECTOR_ID, label:'Breakwater salvage pocket', autopilot:false });
+          this.bus.emit('ui:setCourse', { pos:sectorLocalToGlobalForSector(BREAKWATER_POCKET_LOCAL,BREAKWATER_SECTOR_ID), sectorId:BREAKWATER_SECTOR_ID, label:'Breakwater southeast salvage pocket', autopilot:false });
           break;
         case 'course:receiver':
           if (row.charter !== BREAKWATER_CHARTER.BONDED || row.looseLoad?.kind !== 'consignment'
@@ -375,9 +383,10 @@ export function createBreakwaterSpurSystem() {
           }
           break;
         }
-        case 'service:repair': case 'service:fuel': {
+        case 'service:repair': case 'service:fuel':
+        case 'service:repair:budget': case 'service:fuel:budget': {
           const kind = id.split(':')[1];
-          this.services.runService(row, kind).then(res => {
+          this.services.runService(row, kind, id.endsWith(':budget') ? selected.units : undefined).then(res => {
             if (this._epoch!==epoch || this._destroyed) return;
             if (res.ok) {
               this._cue('work');

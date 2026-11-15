@@ -17,6 +17,21 @@ const FUEL_CR_PER_UNIT = 3;     // canonical economy rate (SERVICE_PRICES.fuelCr
 
 function finite(n, fallback = 0) { return Number.isFinite(n) ? n : fallback; }
 
+// Same integer-unit quote and rounded debit as the actual service writer.
+export function breakwaterServicePrice(kind, units) {
+  return units > 0 ? Math.max(1, Math.round(units * (kind === 'repair' ? REPAIR_CR_PER_HP : FUEL_CR_PER_UNIT))) : 0;
+}
+export function affordableBreakwaterServiceUnits(kind, units, credits) {
+  const available = Math.max(0, Math.floor(finite(units)));
+  const balance = Math.max(0, finite(credits));
+  let low = 0, high = available;
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2);
+    if (breakwaterServicePrice(kind, mid) <= balance) low = mid; else high = mid - 1;
+  }
+  return low;
+}
+
 export function createBreakwaterSpurServices(ctx) {
   const state = ctx.state;
   const bus = ctx.bus;
@@ -130,7 +145,7 @@ export function createBreakwaterSpurServices(ctx) {
     if (!offer || offer.units <= 0) return { ok: false, reason: 'nothing_to_service' };
     const units = Math.max(0, Math.min(unitsWanted || offer.units, offer.units, offer.stock));
     if (units <= 0) return { ok: false, reason: 'no_stock' };
-    const price = Math.max(1, Math.round(units * offer.pricePer));
+    const price = breakwaterServicePrice(kind, units);
     const station = yard();
     if (!station?._applyJobDelta) return { ok: false, reason: 'yard_unavailable' };
     const type = kind === 'repair' ? 'repair' : 'refuel';

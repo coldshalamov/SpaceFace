@@ -3,7 +3,7 @@
 // live entity references across a frame.
 
 import {
-  BREAKWATER_SITE_ID, BREAKWATER_SECTOR_ID, BREAKWATER_SITE_LOCAL,
+  BREAKWATER_SITE_ID, BREAKWATER_SECTOR_ID, BREAKWATER_SITE_LOCAL, BREAKWATER_POCKET_LOCAL,
   BREAKWATER_POI_ID, BREAKWATER_CONTACT_ID, BREAKWATER_DISPATCHER,
   BREAKWATER_PHASE, BREAKWATER_CHARTER, BREAKWATER_STOCK,
   BREAKWATER_COMMISSION_COST, BREAKWATER_COOP_JOBS, BREAKWATER_BONDED,
@@ -11,6 +11,7 @@ import {
 } from './definition.js';
 import { nextActionFor, cartridgesSeated, surveyComplete } from './project.js';
 import { sectorLocalToGlobalForSector } from '../../data/sectorCoordinates.js';
+import { breakwaterServicePrice, affordableBreakwaterServiceUnits } from './services.js';
 
 const PH = BREAKWATER_PHASE;
 
@@ -120,6 +121,22 @@ export function getBreakwaterSpurMapMarkers(state, sectorId) {
     stageLabel,
     statusLine: row.nextAction || nextActionFor(row) || stageLabel,
   }];
+  // Restoration stays navigable while the pilot is away towing an original.
+  // The pocket is a fixed search area, never a promise a moved original is there.
+  if (row.phase === PH.SURVEYED || row.phase === PH.RESTORING) {
+    const append = (id, name, local, line) => markers.push({
+      id, kind: 'poi', poiType: 'breakwater_spur', name, x: local.x, z: local.z,
+      drawPos: { ...local }, coursePos: { ...local }, courseLabel: name,
+      courseArrivalRadius: 20, stageId: 'restoration_route', stageLabel: 'Restoration route', statusLine: line,
+    });
+    if (Object.values(row.cartridges || {}).some(c => c.status === 'loose' || c.status === 'unconfirmed')) {
+      append('poi_breakwater_salvage_pocket', 'Breakwater · southeast salvage pocket', BREAKWATER_POCKET_LOCAL,
+        'Original search area — not live cargo tracking.');
+    }
+    append('poi_breakwater_restoration_approach', 'Breakwater · receiving shelf approach',
+      { x: BREAKWATER_SITE_LOCAL.x, z: BREAKWATER_SITE_LOCAL.z - 90 },
+      'Open approach to the matching cradle mouth.');
+  }
   if (row.charter === BREAKWATER_CHARTER.BONDED && row.looseLoad?.kind === 'consignment'
     && row.looseLoad.status === 'in_transit') {
     const spot = BREAKWATER_CONSIGNMENT.receiverLocal;
@@ -137,7 +154,7 @@ export function getBreakwaterSpurMapMarkers(state, sectorId) {
 
 // Decision-deck offers — built from the row only, with a revision the adapter
 // echoes back so stale choices are refused.
-export function buildBreakwaterSpurOffer(state) {
+export function buildBreakwaterSpurOffer(state, page = 'home') {
   const row = state.world.breakwaterSpur;
   if (!row || row.phase === PH.DARK) return null;
   const status = getBreakwaterSpurStatus(state);
@@ -151,7 +168,7 @@ export function buildBreakwaterSpurOffer(state) {
     case PH.SIGNALED:
       return {
         ...base, kind: 'inspect', title: 'Breakwater Spur — dead loading frame',
-        detail: 'An H-shaped freight spur, dark. Two socket cradles on the receiving shelf and a dispatcher console are all that is left working.',
+        detail: 'An H-shaped freight spur, dark. Scan the dispatcher console and both socket cradles on the receiving shelf. Nessa can restore the berth only with its two surviving original cartridges.',
         actions: [...actions, { id: 'course', label: 'Mark course' }, { id: 'close', label: 'Leave' }],
         status,
       };
@@ -161,12 +178,16 @@ export function buildBreakwaterSpurOffer(state) {
       const detail = [
         `Sockets: drive ${row.sockets.drive.status}, drum ${row.sockets.drum.status}.`,
         `Cartridges: drive — ${cartLabel(carts.drive)}; drum — ${cartLabel(carts.drum)}.`,
-        'Both originals lie in the salvage pocket to the south-west.',
+        'The original search pocket is southeast; the chart marks the receiving shelf approach.',
+        'Guide each original through its matching cradle mouth and settle it against the rear support until Seat is offered.',
       ].join(' ');
       if (canSeat(row, 'drive')) actions.push({ id: 'seat:drive', label: 'Seat drive cartridge' });
       if (canSeat(row, 'drum')) actions.push({ id: 'seat:drum', label: 'Seat drum cartridge' });
       addCartridgeRepairs(row,actions);
-      actions.push({ id: 'course_pocket', label: 'Mark salvage pocket' }, { id: 'close', label: 'Leave' });
+      if (Object.values(row.cartridges).some(c => c.status === 'loose' || c.status === 'unconfirmed')) {
+        actions.push({ id: 'course_pocket', label: 'Mark original search pocket' });
+      }
+      actions.push({ id: 'close', label: 'Leave' });
       return { ...base, kind: 'restore', title: 'Breakwater Spur — restoration', detail, actions, status };
     }
     case PH.READY: {
@@ -194,7 +215,7 @@ export function buildBreakwaterSpurOffer(state) {
       };
     case PH.OPERATING:
     case PH.DEGRADED:
-      return operatingOffer(row, base, status, actions);
+      return operatingOffer(row, base, status, actions, state, page);
     case PH.FAILED:
       return {
         ...base, kind: 'failed', title: 'Breakwater Spur — dead frame',
@@ -228,7 +249,7 @@ function addCartridgeRepairs(row,actions) {
   }
 }
 
-function operatingOffer(row, base, status, actions) {
+function operatingOffer(row, base, status, actions, state, page) {
   addCartridgeRepairs(row,actions);
   if (row.charter === BREAKWATER_CHARTER.COOP) {
     const j = row.coop.jobs;
@@ -249,8 +270,28 @@ function operatingOffer(row, base, status, actions) {
       actions.push({ id: 'deliver:supply', label: 'Hand supply cartridge to the shelf' });
     }
     if (status.stock.repair > 0 || status.stock.fuel > 0) {
-      actions.push({ id: 'service:repair', label: `Repair hull (${status.stock.repair} in stock)` });
-      actions.push({ id: 'service:fuel', label: `Refuel (${status.stock.fuel} in stock)` });
+      const player = state.entities?.get?.(state.playerId);
+      const needs = { repair: Math.max(0, finite(player?.hullMax) - finite(player?.hull)),
+        fuel: Math.max(0, finite(state.fuel?.max) - finite(state.fuel?.current)) };
+      for (const kind of ['repair', 'fuel']) {
+        const units = Math.max(0, Math.floor(Math.min(status.stock[kind], needs[kind])));
+        if (!units) continue;
+        const label = kind === 'repair' ? 'Repair hull' : 'Refuel';
+        actions.push({ id: `service:${kind}`, label: `${label} · ${units} units / ${breakwaterServicePrice(kind, units)} CR` });
+        const partial = affordableBreakwaterServiceUnits(kind, units, state.player?.credits);
+        if (partial > 0 && partial < units) actions.push({ id: `service:${kind}:budget`, units: partial,
+          label: `${label} what I can afford · ${partial} units / ${breakwaterServicePrice(kind, partial)} CR` });
+      }
+    }
+    const serviceActions = actions.filter(action => action.id.startsWith('service:'));
+    if (page === 'services') return { ...base, revision: `${base.revision}:services`, kind: 'services',
+      title: 'Breakwater Spur — fuel and hull services', detail, status,
+      actions: [...serviceActions, { id: 'service:back', label: 'Back to the co-op berth' }, { id: 'close', label: 'Leave' }] };
+    // The prompt adapter has nine action slots. Group services rather than
+    // silently clipping a job, a repair or Leave from a fully populated berth.
+    if (actions.length + 1 > 9 && serviceActions.length) {
+      const nonService = actions.filter(action => !action.id.startsWith('service:'));
+      actions.splice(0, actions.length, ...nonService, { id: 'service:menu', label: 'Fuel and hull services' });
     }
     actions.push({ id: 'close', label: 'Leave' });
     return { ...base, kind: 'berth', title: 'Breakwater Spur — co-op berth', detail, actions, status };
