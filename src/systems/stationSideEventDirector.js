@@ -118,6 +118,7 @@ export const stationSideEventDirector = {
     if (s.accum < 1) return;                 // 1 Hz — no per-frame work
     s.accum = 0;
     this._sweepActive(state, s);
+    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
     if (state.mode && state.mode !== 'flight') return;        // pacing is flight-only (cosmetic + spawn)
     if (isDocked(state) || isTutorialActive(state)) return;
     const now = state.simTime || 0;
