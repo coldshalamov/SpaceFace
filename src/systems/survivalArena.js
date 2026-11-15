@@ -1535,7 +1535,7 @@ export const survivalArena = {
       ruleset: run.ruleset,
       wave,
       seed,
-      anchor: playerAnchor(state),
+      anchor: this._sideRoomKey?.arenaId === run.arenaId ? this._sideRoomKey.at : playerAnchor(state),
       laneGate,
       bossRoom: plan.swarm && plan.swarm.bossRoom ? plan.swarm.bossRoom : null,
       // The seeded event card — an event round pre-places the objects the event needs, so the
@@ -1603,7 +1603,9 @@ export const survivalArena = {
     this._installMines(install.mines);
     this._installCover(install.cover || run.ruleset === 'swarm', wave);
     this._installToys(install);
-    this._materializeRoom(this._toys, wave);
+    const sideRoom = run.arenaId === 'ceres_belt' || run.arenaId === 'tethys_hub';
+    if (!sideRoom || this._roomIds.length === 0) this._materializeRoom(this._toys, wave);
+    if (sideRoom) this._sideRoomKey = { arenaId: run.arenaId, token: run.retireToken, at: install.at };
     if (contestedPlateId) {
       this._plateTheftRunToken = run.retireToken;
       this._plateTheftPlan = { token: run.retireToken, seed: run.seed };
@@ -1804,17 +1806,28 @@ export const survivalArena = {
     // (ownership releases so the next install re-adopts or tops up honestly).
     const retainAnchors = reason === 'wave_cleared'
       && liveSurvivalRun(this.state)?.ruleset === 'swarm';
+    const run = liveSurvivalRun(this.state);
+    const key = this._sideRoomKey;
+    const retainSideRoom = (reason === 'wave_cleared' || reason === 'rearm') && key && run
+      && key.arenaId === run.arenaId && key.token === run.retireToken;
+    const roomIds = retainSideRoom ? this._roomIds : null;
+    const roomSolids = retainSideRoom ? this._roomSolids : null;
     const released = {
       fields: this._releaseFields(),
       mines: this._releaseMines(),
       cover: this._releaseCover(retainAnchors),
-      solids: this._releaseRoom(reason),
+      solids: retainSideRoom ? 0 : this._releaseRoom(reason),
     };
     const had = released.fields > 0 || released.mines > 0 || released.cover || released.solids > 0;
     const phase = this._phase;
     const wave = this._wave;
     const arenaId = this._arenaId;
     this._reset();
+    if (retainSideRoom) {
+      this._sideRoomKey = key;
+      this._roomIds = roomIds;
+      this._roomSolids = roomSolids;
+    }
     if (had) {
       this._emit('survivalArena:released', {
         wave, arenaPhase: phase, reason, arenaId, ...released,
@@ -2043,7 +2056,7 @@ export const survivalArena = {
 
   _tickToys(dt, state) {
     const toys = this._toys;
-    if (!toys || toys.length === 0) return;
+    if (!toys || toys.length === 0 || this._sideRoomKey) return;
     // The opening lesson is a still room: the crushers and currents that shove bodies arrive
     // with the room's fields, when the lesson releases the pack — not before the first key.
     const roomStill = this._deferredFields != null;
@@ -2783,6 +2796,7 @@ export const survivalArena = {
     this._cryoShocked = new Set();
     this._roomIds = [];
     this._roomSolids = new Map();
+    this._sideRoomKey = null;
     this._toys = [];
     this._installedFields = [];
     this._plateTheftRunToken = null;

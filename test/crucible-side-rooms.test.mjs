@@ -9,7 +9,7 @@ import { survivalArena } from '../src/systems/survivalArena.js';
 import { isAttachable } from '../src/systems/tetherGameplay.js';
 
 for (const arenaId of ['ceres_belt', 'tethys_hub']) {
-  test(`${arenaId} installs its furniture and cleans it on rearm and exit`, t => {
+  test(`${arenaId} keeps furniture between waves and cleans it on exit`, t => {
     const state = createGameState(7), bus = createBus();
     const player = { id: 1, type: 'ship', team: 0, alive: true, radius: 8, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, data: {} };
     state.playerId = 1; state.entities.set(1, player); state.entityList.push(player);
@@ -36,9 +36,13 @@ for (const arenaId of ['ceres_belt', 'tethys_hub']) {
       assert.ok(first.filter(e => e.data.roomToyId?.startsWith('toll_gate_')).length >= 4);
       assert.ok(SWARM_EVENT_TABLES.tethys_hub.includes('supply_drop'));
     }
-    arm();
-    assert.ok(first.every(e => !e.alive));
-    assert.equal(furniture().length, first.length);
+    bus.emit('run:waveCleared', {});
+    state.run.wave = 2;
+    player.pos.x = 500;
+    bus.emit('run:wavePlanned', { wave: 2, plan: planWave({ seed: 7, arenaId, wave: 2 }) });
+    assert.ok(first.every(e => e.alive), 'furniture persists between waves');
+    assert.deepEqual(furniture(), first);
+    if (arenaId === 'tethys_hub') assert.equal(owner._freight._armed.lane.x0, -400, 'traffic stays on the original lane');
     bus.emit('run:ended', {});
     assert.equal(furniture().length, 0);
   });
