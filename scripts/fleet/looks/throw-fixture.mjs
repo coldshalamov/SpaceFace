@@ -14,6 +14,7 @@ const out = process.argv[2] || '.devshots/fleet/looks/throw-fixture/run.json';
 const round = Number(process.argv[3] || 2);
 const N = Number(process.argv[4] || 40);
 const NC = Number(process.argv[5] || 15);
+const LANE = process.argv[6] === 'worker' ? 'worker' : 'main';   // worker: no staging (the page cannot reach the sim), aim at the nearest on-screen light hostile
 const PORT = 8165;
 mkdirSync(dirname(out), { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -24,7 +25,7 @@ try {
   const browser = await chromium.launch({ headless: true, args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
   const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
   page.on('pageerror', () => {});
-  await page.goto(`http://127.0.0.1:${PORT}/?simLane=main&swarmRound=${round}`, { timeout: 120000 });
+  await page.goto(`http://127.0.0.1:${PORT}/?${LANE === 'main' ? 'simLane=main&' : ''}swarmRound=${round}`, { timeout: 120000 });
   const t0 = Date.now(); let live = 0;
   while (Date.now() - t0 < 420_000) {
     const ok = page.locator('.sf-confirm__ok');
@@ -33,17 +34,29 @@ try {
     if (await launch.isVisible().catch(() => false)) await launch.click({ force: true, timeout: 5000 }).catch(() => {});
     live = await page.evaluate(() => { const s = window.SF && window.SF.state; if (!s || s.mode !== 'flight') return 0;
       return (s.entityList || []).filter((e) => e && e.alive !== false && e.type === 'ship' && !e.isPlayer && e.team !== 0).length; }).catch(() => 0);
-    if (live >= 5) break;
+    if (live >= (LANE === 'worker' ? 3 : 5)) break;
     await sleep(1500);
   }
-  if (live < 5) throw new Error('fight never went live');
+  if (live < (LANE === 'worker' ? 3 : 5)) throw new Error('fight never went live');
   await page.evaluate(() => {
     const log = (window.__log = []); const bus = window.SF.bus;
     for (const ev of ['tether:latched', 'massline:throw', 'massline:selfSling', 'tether:cut', 'tether:broke', 'entity:killed', 'tether:latchDenied'])
       bus.on(ev, (p) => log.push({ ev, t: +window.SF.state.simTime.toFixed(2), tgt: p && p.targetId, id: p && (p.id ?? p.payloadId), br: p && (p.reason || p.breakReason), killer: p && p.killer }));
     // Staging only: teleport + heal. `far` hostiles are parked out of the way so the staged one is alone.
-    window.__stage = (clusterCount) => {
+    window.__stage = (clusterCount, lane) => {
       const s = window.SF.state, h = window.SF.helpers, me = s.entities.get(s.playerId);
+      if (lane === 'worker') {
+        const c = [];
+        for (const e of s.entityList || []) {
+          if (!e || e.alive === false || e.type !== 'ship' || e.isPlayer || e.team === 0) continue;
+          if (Number.isFinite(e.mass) && e.mass > 32) continue;
+          const scr = h.worldToScreen({ x: e.pos.x, y: 0, z: e.pos.z }, {});
+          if (!scr || !scr.onScreen || scr.x < 330 || scr.x > 950 || scr.y < 160 || scr.y > 580) continue;
+          c.push({ id: e.id, d: Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z), scr: { x: scr.x, y: scr.y } });
+        }
+        c.sort((a, b) => a.d - b.d);
+        return c[0] ? { id: c[0].id, scr: c[0].scr, cluster: [], clusterScr: null } : null;
+      }
       const hs = (s.entityList || []).filter((e) => e && e.alive !== false && e.type === 'ship' && !e.isPlayer && e.team !== 0);
       const light = hs.filter((e) => !(Number.isFinite(e.mass) && e.mass > 32));
       if (!light.length) return null;
@@ -84,10 +97,10 @@ try {
     }
   };
   for (let phase = 0; phase < 2; phase++) {
-    const count = phase === 0 ? N : NC;
+    const count = phase === 0 ? N : (LANE === 'worker' ? 0 : NC);
     for (let a = 0; a < count; a++) {
       await release();
-      const st = await page.evaluate((c) => window.__stage(c), phase === 1 ? 5 : 0);
+      const st = await page.evaluate(([c, lane]) => window.__stage(c, lane), [phase === 1 ? 5 : 0, LANE]);
       if (!st) { (phase ? cluster : rows).push({ attempt: a, note: 'nothing to stage' }); await sleep(1500); continue; }
       await sleep(600);
       const mark = await logLen();
