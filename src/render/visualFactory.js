@@ -4110,7 +4110,8 @@ function buildPickup(e) {
   // rich burns hotter than any plain drop ever did.
   gem.onBeforeRender = () => {
     const t = nowSec();
-    gem.material.emissiveIntensity = 1.6 * worth.glintHeat * (1 + 0.45 * Math.sin(t * 3 + ph));
+    const glint = g.userData.pickupFlashReduced === true ? 1 : 1 + 0.45 * Math.sin(t * 3 + ph);
+    gem.material.emissiveIntensity = 1.6 * worth.glintHeat * glint;
   };
   return g;
 }

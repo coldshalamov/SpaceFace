@@ -185,7 +185,7 @@ export function resolveFunnelMoteStream(seed, simTime, out = null) {
  * `haloFloor`/`haloKick` are the worth read's contribution (pickupWorthRead.js): a rich lot
  * rests brighter and kicks wider, a junk lot rests dimmer; the defaults are today's plain
  * read, so callers that pass no tier are bit-identical to the old behavior. */
-export function resolvePickupHaloPose(simTime, phase, reducedMotion, out = null, haloFloor = 0.55, haloKick = 0.45) {
+export function resolvePickupHaloPose(simTime, phase, reducedMotion, out = null, haloFloor = 0.55, haloKick = 0.45, reducedFlash = false) {
   const rec = out || { spinX: 0, spinY: 0, kick: 0, glow: 0.55 };
   const t = Number.isFinite(simTime) ? simTime : 0;
   const p = Number.isFinite(phase) ? phase : 0;
@@ -205,10 +205,11 @@ export function resolvePickupHaloPose(simTime, phase, reducedMotion, out = null,
   if (cyc < 0.10) kick = Math.exp(-cyc * 60);
   else if (cyc > 0.14 && cyc < 0.24) kick = Math.exp(-(cyc - 0.14) * 60) * 0.7;
   if (reducedMotion) kick *= 0.5;
+  if (reducedFlash) kick = 0;
   rec.kick = kick;
   const floor = Number.isFinite(haloFloor) ? Math.min(1, Math.max(0, haloFloor)) : 0.55;
   const gain = Number.isFinite(haloKick) ? Math.max(0, haloKick) : 0.45;
-  rec.glow = floor + 0.18 * Math.sin(t * 2.2 + p) + kick * gain;
+  rec.glow = reducedFlash ? floor : floor + 0.18 * Math.sin(t * 2.2 + p) + kick * gain;
   return rec;
 }
 
@@ -278,6 +279,9 @@ export function createPickupMotionTracker() {
     // The renderer passes reducedMotion; retain motionReduce for existing direct callers.
     const reducedMotion = typeof options.reducedMotion === 'boolean'
       ? options.reducedMotion : options.motionReduce === true;
+    const reducedFlash = typeof options.reducedFlash === 'boolean'
+      ? options.reducedFlash : options.flashReduce === true;
+    if (mesh.userData) mesh.userData.pickupFlashReduced = reducedFlash;
     if (mesh.userData?.pickupVisual === 'swarm_drop') {
       mesh.userData.swarmDropMotionReduced = reducedMotion;
     }
@@ -352,6 +356,7 @@ export function createPickupMotionTracker() {
     if (cyc < 0.10) strobe = Math.exp(-cyc * 60);
     else if (cyc > 0.14 && cyc < 0.24) strobe = Math.exp(-(cyc - 0.14) * 60) * 0.7;
     if (reducedMotion) strobe *= 0.5;
+    if (reducedFlash) strobe = 0;
     // FB-075: a volatile lot's hazard ping kicks hotter — the warning survives the chase camera.
     // A dead-dropped cache stays dark on purpose (ev_smuggler_dumps_cache): no strobe, no ring.
     const unlitDrop = entity.data && entity.data.unlitDrop === true;
@@ -398,7 +403,7 @@ export function createPickupMotionTracker() {
       if (mat && 'opacity' in mat) mat.opacity = 0;
     } else if (halo) {
       const pose = resolvePickupHaloPose(rec.animTime, rec.phase, reducedMotion, haloPoseScratch,
-        worthRead.haloFloor, worthRead.haloKick);
+        worthRead.haloFloor, worthRead.haloKick, reducedFlash);
       halo.rotation.x = pose.spinX;
       halo.rotation.y = pose.spinY;
       const base = halo.userData && halo.userData.baseScale ? halo.userData.baseScale : 1;
