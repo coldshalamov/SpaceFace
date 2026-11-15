@@ -60,7 +60,9 @@ ${DOOR_BTN} {
   font:${DOOR_FONT} !important; letter-spacing:.02em !important; text-transform:uppercase; text-shadow:0 1px 0 rgb(0 0 0 / .6); }
 /* the button's own text is the core copy (New Game / Continue); the door draws ADVENTURE from its data-door-label */
 ${DOOR_BTN}[data-door-label] { font-size:0 !important; line-height:0 !important; letter-spacing:0 !important; }
-${DOOR_BTN}[data-door-label]::before { content:attr(data-door-label); display:block; font:${DOOR_FONT}; letter-spacing:.02em; text-transform:uppercase; }
+${DOOR_BTN}[data-door-label]::before { content:attr(data-door-label); display:block !important; position:static !important; inset:auto !important; width:auto !important; height:auto !important;
+  margin:0 !important; padding:0 !important; background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important; transform:none !important; opacity:1 !important;
+  font:${DOOR_FONT}; letter-spacing:.02em; text-transform:uppercase; color:inherit; }
 ${DOOR_BTN}:is(:hover, :focus-visible, [data-awake]) { outline:none !important; background:none !important; }
 ${DOOR_LI}:has(> button:focus-visible) { outline:2px solid var(--k-bone, #e8e2d4); outline-offset:3px; }
 ${DOOR_LI} .dp-lit__note {

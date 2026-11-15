@@ -253,6 +253,14 @@ ${D}.orr-swarm-play .k-foot li:has(> .sf-swarm-quick-key), ${D}.orr-swarm-play .
 ${D}.orr-swarm-play .sf-crd-sub { display:block !important; }
 ${D}.orr-swarm-play .orr-door-hero { grid-column:1 !important; grid-row:2 !important; }
 ${D}.orr-swarm-play .orr-prep-continue, ${D}.orr-swarm-play .orr-cabinet-preview { display:none !important; }
+/* one clean scrim behind the words (a soft rise from the foot), not boxes and bands laid across the picture */
+${D}.orr-swarm-play .orr-door-hero { mask-image:none !important; -webkit-mask-image:none !important; }
+${D}.orr-swarm-play .orr-door-hero__art { -webkit-mask-image:none !important; mask-image:none !important; }
+${D}.orr-swarm-play .orr-door-hero::after { height:62% !important;
+  background:linear-gradient(0deg, rgb(5 7 10 / .92) 0%, rgb(5 7 10 / .66) 34%, rgb(5 7 10 / .22) 70%, transparent 100%) !important; }
+${D}.orr-swarm-play .orr-door-hero__words, ${D}.orr-swarm-play .orr-prep-brief {
+  background:none !important; box-shadow:none !important; padding:0 !important; margin-left:0 !important; border-radius:0 !important; }
+${D}.orr-swarm-play .orr-door-hero__line, ${D}.orr-swarm-play .orr-prep-cadence { text-shadow:0 1px 10px rgb(0 0 0 / .7); }
 ${D}.orr-swarm-play .orr-door-hero__words { bottom:28px !important; left:28px !important; right:auto !important; width:min(52%, 620px) !important; max-width:none !important; }
 ${D}.orr-swarm-play .orr-prep-brief { position:absolute !important; right:28px !important; left:auto !important; bottom:28px !important; text-align:right !important; width:min(34%, 380px) !important; }
 ${D}.orr-swarm-play .orr-door-hero__name { font-size:clamp(34px,5vw,64px) !important; }
