@@ -106,6 +106,9 @@
 :is(#screens .sx-observatory, .sx-observatory) :is(h2,h3,h4,p) { overflow-wrap: break-word; }
 :is(#screens .sx-observatory, .sx-observatory) .k-t-title { font-size: 36px; }:is(#screens .sx-observatory, .sx-observatory) .k-t-hero { font-size: 44px; }
 :is(#screens .sx-observatory, .sx-observatory) .k-row { min-height: 38px; padding: 9px 10px; font-size: 13px; gap: 10px; border-top: 1px solid var(--so-line-soft); }
+/* Global find over a station keeps its own inset, or its kind column sits 4px left of the field above it (ui-polish-524). */
+.sf-find .sf-find__pane .sf-find__row.k-row,
+#screens .sf-find .sf-find__pane .sf-find__row.k-row { padding: 10px 14px; }
 :is(#screens .sx-observatory, .sx-observatory) .k-row__name { color: var(--so-ink); }:is(#screens .sx-observatory, .sx-observatory) .k-row__num { font-size: 14px; }
 :is(#screens .sx-observatory, .sx-observatory) .k-row__sub { color: var(--so-dim); font-size: 12px; }
 :is(#screens .sx-observatory, .sx-observatory) :is(.k-row.is-active,.fh-row.is-selected,.k-row[aria-selected=true]) { background: rgb(var(--so-accent-rgb) / .06); box-shadow: none; }
