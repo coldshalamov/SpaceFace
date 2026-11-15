@@ -285,7 +285,7 @@ async function waitFor(page, label, fn, ms = 240_000, arg) {
   throw new Error(`timed out waiting for ${label}`);
 }
 async function installBench(page) {
-  await waitFor(page, 'SF_fleetLook + SF', () => !!(window.SF && window.SF.registry && window.SF.timeEffects && window.SF_fleetLookReady), 120_000);
+  await waitFor(page, 'SF_fleetLook + SF', () => !!(window.SF && window.SF.registry && window.SF.timeEffects && window.SF_fleetLookReady), 300_000);
   await page.evaluate(PAGE_BENCH);
   await page.evaluate(async () => { try { const m = await import('/src/render/adaptiveQuality.js'); window.__lookPresetMatch = m.matchingQualityPreset; } catch (e) {} try { const l = await import('/src/render/look.js'); window.__lookFields = l.LOOK_FIELDS; } catch (e) {} });
 }
