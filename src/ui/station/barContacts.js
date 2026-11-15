@@ -4,7 +4,7 @@ import { lanternWardWorkGuidance } from '../../data/lanternWardGuidance.js';
 import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConversation.js';
 import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './starterWorkdayConversation.js';
 import { kesslerFreightChoice, kesslerFreightReply } from './heliosFreightConversation.js';
-import { kesslerCeresShiftChoice, kesslerCeresShiftReply } from './ceresShiftConversation.js';
+import { kesslerCeresShiftChoice, kesslerCeresShiftReply, ceresReturnChoices } from './ceresShiftConversation.js';
 import { CERES_ARRIVAL_PREFIX, ceresArrivalChoices, ceresArrivalMapOffer, ceresArrivalReply } from '../../story/ceresArrivalStory.js';
 import { furnaceDetailChoices, furnaceDetailReply, isFurnaceDetailChoice } from './furnaceDetailConversation.js';
 import { commodityDisplayName } from '../commodityNames.js';
@@ -524,7 +524,8 @@ export function generateContacts(stationId, state = {}, opts = {}) {
       const workChoice = kesslerStarterWorkChoice(state, stationId);
       const freightChoice = kesslerFreightChoice(state, stationId);
       const ceresChoice = kesslerCeresShiftChoice(state, stationId);
-      if (slipChoice || workChoice || freightChoice || ceresChoice) {
+      const ceresReturns = ceresReturnChoices(state, stationId);
+      if (slipChoice || workChoice || freightChoice || ceresChoice || ceresReturns.length) {
         const choices = getChoices(canonical.role, canonical);
         const dismissIndex = choices.findIndex((choice) => choice && choice.id === 'dismiss');
         const dismissChoice = dismissIndex >= 0 ? choices.splice(dismissIndex, 1)[0] : null;
@@ -532,6 +533,7 @@ export function generateContacts(stationId, state = {}, opts = {}) {
         if (workChoice) choices.push(workChoice);
         if (freightChoice) choices.push(freightChoice);
         if (ceresChoice) choices.push(ceresChoice);
+        choices.push(...ceresReturns);
         if (dismissChoice) choices.push(dismissChoice);
         canonical.choices = choices;
       }

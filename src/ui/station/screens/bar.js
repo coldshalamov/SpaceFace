@@ -47,6 +47,7 @@ import {
   TETHYS_BLACK_MARKET_DISCOVERY,
 } from '../../../data/frontierRumors.js';
 import { DOSS_ARCHIVE_CONTACT_ID, dossArchiveMapOffer } from '../../../data/dossArchive.js';
+import { CERES_RETURN_CONTACT, CERES_RETURN_STATION } from '../../../story/ceresShiftReturn.js';
 import { VONN_FREIGHT_CONTACT_ID, vonnFreightLossMapOffer } from '../../../data/vonnFreightLoss.js';
 import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
 import { dressComms, watchComms } from './comms.js';
@@ -140,6 +141,8 @@ function offerWord(attrs, label) {
   return `<ul class="k-words k-words--row sx-bar-offer__foot"><li><button type="button" ${stationControlAttrs('offer')} class="k-word k-word--emph k-word--primary sx-bar-offer__verb" ${attrs}>${label}</button></li></ul>`;
 }
 
+let ceresRequestSequence = 0;
+
 export function createBarScreen(ctx) {
   installGhostConvoyBarListener(ctx && ctx.bus, ctx && ctx.state);
   installOreLotBarListener(ctx && ctx.bus, ctx && ctx.state);
@@ -159,6 +162,12 @@ export function createBarScreen(ctx) {
   let erisServedVisitId = null;
   let erisLastReply = null;
   let saidText = null;   // what the selected contact just said
+  let ceresPending = null;
+  let ceresResponse = null;
+  function clearCeresPending() {
+    if (ceresPending && !ceresResponse) saidText = null;
+    ceresPending = null; ceresResponse = null;
+  }
   let furnaceSaid = false;  // saidText was minted from the quarantine slip — dies with its record
   // ORRERY (design/frontend/ORRERY.md §6 Bar): the portrait as cinema, the line typed as it is
   // spoken with a Waveform breathing under the name, the words resolving on arrival.
@@ -670,11 +679,16 @@ export function createBarScreen(ctx) {
       }
     } catch (_) { /* cosmetic */ }
   }
-  function renderAll(state) { renderRail(state); renderStage(state); renderLeads(state); seatSpine(); if (typeof requestAnimationFrame === 'function') requestAnimationFrame(seatSpine); }
+  function renderAll(state) {
+    if (ceresPending && (sid() !== CERES_RETURN_STATION || !state.ui?.docked)) clearCeresPending();
+    renderRail(state); renderStage(state); renderLeads(state); seatSpine();
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(seatSpine);
+  }
 
   // ---------- interactions ----------
   function selectContact(id, focus) {
     if (!id || id === selectedId) return;
+    clearCeresPending();
     selectedId = id; saidText = null; pendingMissionOffer = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
     const st = ctx.state || {};
     renderRail(st); renderStage(st); renderLeads(st);
@@ -860,6 +874,10 @@ export function createBarScreen(ctx) {
     // its tracking/navigation intents.
     if (isFurnaceDetailChoice(choiceId)
         && (!visible || !furnaceDetailChoices(st, sid(), c).some(row => row.id === choiceId))) return;
+    clearCeresPending();
+    const ceresRequest = c.id === CERES_RETURN_CONTACT && sid() === CERES_RETURN_STATION
+      && choiceId.startsWith('ceres_return_') ? { requestId: `ceres-return:${++ceresRequestSequence}`, choiceId } : null;
+    if (ceresRequest) ceresPending = ceresRequest;
     if (c.canonicalKey === 'eris_choir_chair' && !erisOpenAnnounced) enterErisVisit();
     if (c.canonicalKey === 'eris_choir_chair' && choiceId === 'free_drink') erisLastReply = null;
     if (ctx.bus) {
@@ -867,6 +885,7 @@ export function createBarScreen(ctx) {
         contactId: c.id, choiceId, stationId: sid(),
         canonicalKey: c.canonicalKey || null, trackerId: c.trackerId || null, name: c.name,
         role: c.role || null, // INF-074: lets contact memory tell barkeeps from merchants
+        ...(ceresRequest ? { requestId: ceresRequest.requestId } : {}),
         ...(c.canonicalKey === 'eris_choir_chair' ? {
           visitId: erisVisitId(), requestId: `eris:${erisVisitId()}:${choiceId}`,
         } : {}),
@@ -886,6 +905,8 @@ export function createBarScreen(ctx) {
       pinnedContact = { ...result.pinContact, pinStationId: sid() };
     }
     saidText = (result && result.text) || 'They shrug.';
+    if (ceresRequest) saidText = ceresResponse?.requestId === ceresRequest.requestId
+      ? ceresResponse.text : 'Kessler looks for the current yard slip.';
     furnaceSaid = !!(result && result.furnaceDetailAnswer);
     if (c.canonicalKey === 'eris_choir_chair' && erisLastReply?.visitId === erisVisitId()) {
       saidText = erisLastReply.outcome === 'settled' ? 'Your drink for this visit has been served.'
@@ -976,6 +997,24 @@ export function createBarScreen(ctx) {
     }
     renderAll(ctx.state || {});
   });
+  const offCeresReceipt = ctx.bus?.on?.('comms:log', (event) => {
+    if (!visible || !ceresPending || sid() !== CERES_RETURN_STATION || !ctx.state.ui?.docked
+      || selectedId !== CERES_RETURN_CONTACT || event?.source !== 'ceres_shift_return'
+      || event.contactId !== CERES_RETURN_CONTACT || event.stationId !== CERES_RETURN_STATION
+      || event.requestId !== ceresPending.requestId || event.choiceId !== ceresPending.choiceId
+      || !['accepted', 'refused'].includes(event.outcome) || typeof event.text !== 'string' || ceresResponse) return;
+    ceresResponse = { requestId: event.requestId, text: event.text };
+    saidText = event.text;
+    renderAll(ctx.state || {});
+  });
+  const offCeresLoad = ['save:restoring', 'save:loaded'].map((event) => {
+    const handler = () => {
+      if (selectedId === CERES_RETURN_CONTACT) saidText = null;
+      clearCeresPending();
+    };
+    ctx.bus?.on?.(event, handler);
+    return () => ctx.bus?.off?.(event, handler);
+  });
 
   return {
     el,
@@ -986,6 +1025,8 @@ export function createBarScreen(ctx) {
     },
     onHide() {
       visible = false;
+      if (selectedId === CERES_RETURN_CONTACT) saidText = null;
+      clearCeresPending();
       erisOpenAnnounced = false;
       if (furnaceSaid) { furnaceSaid = false; saidText = null; }
       const leavingVisitId = erisVisitId();
@@ -1002,6 +1043,9 @@ export function createBarScreen(ctx) {
     refresh(c) { renderAll((c || ctx).state || {}); },
     dispose() {
       visible = false;
+      clearCeresPending();
+      if (typeof offCeresReceipt === 'function') offCeresReceipt();
+      offCeresLoad.forEach((off) => off());
       offRecognition.forEach((off) => off());
       offFurnaceLifecycle.forEach((off) => off());
       if (typeof offErisReceipt === 'function') offErisReceipt();
