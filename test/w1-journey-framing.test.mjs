@@ -124,7 +124,7 @@ test('the Journal B2 what-next follows the same ordered steps as the tracker', (
     missions: { active: [], boards: {} },
     player: { credits: 0 },
   });
-  assert.equal(storyActionForBeat(STORY_BEATS[2], state([])).title, 'Arm for a bounty');
+  assert.equal(storyActionForBeat(STORY_BEATS[2], state([])).title, 'Three clearances, one real hull');
   assert.equal(storyActionForBeat(STORY_BEATS[2], state(['cinder_board'])).title, 'Feed the Compost Run');
   assert.equal(storyActionForBeat(STORY_BEATS[2], state(['cinder_board', 'compost'])).title, 'Clear the Nest');
   assert.equal(storyActionForBeat(STORY_BEATS[2], state(['cinder_board', 'compost', 'nest'])).title,
