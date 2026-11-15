@@ -1022,7 +1022,7 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('tether:cut', (payload) => {
       const st = getState();
       const target = st && st.entities && payload && payload.targetId != null ? st.entities.get(payload.targetId) : null;
-      if (!target || (target.type !== 'station' && target.type !== 'asteroid') || (target.type === 'asteroid' && target.data && target.data.isChunk)) return;
+      if (!target || (target.type !== 'station' && target.type !== 'asteroid' && target.type !== 'pickup') || (target.type === 'asteroid' && target.data && target.data.isChunk)) return;
       onHandlineSense('anchor:released')(payload);
     }));
     unsubs.push(bus.on('tether:broke', (payload) => {

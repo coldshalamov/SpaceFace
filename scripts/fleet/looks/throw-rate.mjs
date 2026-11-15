@@ -74,10 +74,20 @@ try {
       for (let i = 0; i < 10 && !pick; i++) { pick = await pickTarget(); if (!pick) await sleep(500); }
       if (!pick) { rec.note = 'no light hostile on screen'; results.push(rec); continue; }
       rec.heldMass = pick.mass;
-      await page.mouse.move(pick.scr.x, pick.scr.y, { steps: 3 });
-      await page.mouse.down({ button: 'right' }); await sleep(120); await page.mouse.up({ button: 'right' });
       let L = null;
-      for (let i = 0; i < 10 && !L; i++) { await sleep(150); L = await page.evaluate((m) => window.__log.slice(m).find((e) => e.ev === 'tether:latched') || null, mark); }
+      for (let tries = 0; tries < 4 && !L; tries++) {
+        if (tries > 0) { pick = await pickTarget(); if (!pick) break; rec.heldMass = pick.mass; }
+        const m2 = await page.evaluate(() => window.__log.length);
+        await page.mouse.move(pick.scr.x, pick.scr.y, { steps: 3 });
+        await page.mouse.down({ button: 'right' }); await sleep(120); await page.mouse.up({ button: 'right' });
+        let got = null;
+        for (let i = 0; i < 10 && !got; i++) { await sleep(150); got = await page.evaluate((m) => window.__log.slice(m).find((e) => e.ev === 'tether:latched') || null, m2); }
+        if (!got) continue;
+        // Only a hostile ship counts as the attempt; anything else (pickup, rock, station) is let go and the pick retried.
+        const kind = await page.evaluate((id) => { const e = window.SF.state.entities.get(id); return e ? e.type : null; }, got.tgt);
+        if (kind === 'ship' || kind === 'drone') { L = got; break; }
+        await sleep(800); await page.mouse.down({ button: 'right' }); await sleep(100); await page.mouse.up({ button: 'right' }); await sleep(600);
+      }
       if (!L) { rec.note = 'no latch'; results.push(rec); await sleep(800); continue; }
       rec.latched = true; rec.held = L.tgt;
       await page.keyboard.down('KeyW'); await page.keyboard.down('KeyD');
