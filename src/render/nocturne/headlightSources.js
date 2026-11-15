@@ -47,7 +47,7 @@ export class NocturneHeadlightSources {
     this.registry = registry;
     this.look = look;
     this.rows = Array.from({ length: capacity }, (_, i) => ({
-      entity: null, root: null, socket: null, distance: Infinity, halfLength: 0,
+      entity: null, root: null, socket: null, socketCache: null, distance: Infinity, halfLength: 0,
       source: registry.register(`headlight:${i}`, { type: 'spot', intensity: look.intensity,
         color: look.colorHex, range: look.range, decay: look.decay,
         angle: look.angle, penumbra: look.penumbra, enabled: false, priority: 2,
@@ -84,7 +84,7 @@ export class NocturneHeadlightSources {
       }
       // Stable source identity per retained owner, even when distances reorder.
       for (const row of this.rows) {
-        if (row.entity && !this._chosen.includes(row.entity)) { row.entity = null; row.root = null; row.socket = null; }
+        if (row.entity && !this._chosen.includes(row.entity)) { row.entity = null; row.root = null; row.socket = null; row.socketCache = null; }
       }
       for (const e of this._chosen) {
         if (!e || this.rows.some(row => row.entity === e)) continue;
@@ -101,8 +101,10 @@ export class NocturneHeadlightSources {
         && (!isPlayer || playerLamp));
       if (!source.enabled) continue;
       const root = meshes?.get(e.id) || e.view?.root || null;
-      if (root !== row.root || (row.socket && !socketVisibleUnderRoot(row.socket, root))) {
+      const socketCache = root?.userData?.__socketCache ?? null;
+      if (root !== row.root || socketCache !== row.socketCache || (row.socket && !socketVisibleUnderRoot(row.socket, root))) {
         row.root = root; row.socket = null;
+        row.socketCache = socketCache;
         row.socket = findVisibleSocket(root);
         // No authored HOOK_HEADLIGHT (no hull has one yet): the default lamp rides the drawn hull's own
         // bounds, not a guess from the sim radius. World box of the frame-local root, measured once.
@@ -145,7 +147,7 @@ export class NocturneHeadlightSources {
   }
 
   clear() {
-    for (const row of this.rows) { row.entity = null; row.root = null; row.socket = null; if (row.source) row.source.enabled = false; }
+    for (const row of this.rows) { row.entity = null; row.root = null; row.socket = null; row.socketCache = null; if (row.source) row.source.enabled = false; }
     this._chosen.fill(null);
     this._distances.fill(Infinity);
     this._playerId = null;

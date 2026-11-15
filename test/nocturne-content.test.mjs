@@ -310,6 +310,35 @@ test('headlights rebind a hidden LOD socket to its visible replacement instead o
   headlights.dispose(); r.content.dispose();
 });
 
+test('headlight remeasures a stable ship boundary after authored content publishes', () => {
+  const r = rig(), root = new Group();
+  const fallback = new Mesh(new SphereGeometry(2), new MeshStandardMaterial());
+  const authored = new Mesh(new SphereGeometry(10), new MeshStandardMaterial());
+  root.add(fallback); root.userData.__socketCache = new Map();
+  r.scene.add(root); r.meshes.set(r.player.id, root);
+  const headlights = new NocturneHeadlightSources(r.registry, { capacity: 1 });
+  try {
+    headlights.update(r.state, .25, membrane, { meshes: r.meshes });
+    const row = headlights.rows[0]; const before = row.source.position.x;
+    root.remove(fallback); root.add(authored);
+    root.userData.authoredVisualRoot = 'authored-root';
+    root.userData.__socketCache = new Map();
+    headlights.update(r.state, .016, membrane, { meshes: r.meshes });
+    assert.ok(row.source.position.x > before + 5, 'light moves to the published hull nose');
+    const traverse = root.traverse; let traversals = 0;
+    root.traverse = function (...args) { traversals++; return traverse.apply(this, args); };
+    headlights.update(r.state, .016, membrane, { meshes: r.meshes });
+    assert.equal(traversals, 0, 'an unchanged boundary does not trigger a tree scan');
+    const socket = new Group(); socket.name = 'SOCKET_HEADLIGHT'; socket.position.x = 17;
+    root.add(socket); root.userData.__socketCache = new Map();
+    headlights.update(r.state, .016, membrane, { meshes: r.meshes });
+    assert.equal(row.socket, socket); assert.equal(row.source.position.x, 17);
+  } finally {
+    headlights.dispose(); r.content.dispose(); fallback.geometry.dispose();fallback.material.dispose();
+    authored.geometry.dispose();authored.material.dispose();
+  }
+});
+
 test('a named emissive socket is reserved once and its material power controls indirect composition', () => {
   const r = rig();
   const entity = { id: 9, type: 'wreck', alive: true, pos: { x: 1020, z: 2000 }, radius: 40,
