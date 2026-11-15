@@ -94,18 +94,23 @@ function wantedFrontierReceivingTags(owner, state) {
     }
   }
 
+  // A stead wears ONE receiving tag. Every stead-family ask keys its wanted row
+  // by the body's id + occupant generation, so `add`'s first-wins applies the
+  // priority order — supplies → aid → claim — and the next reason takes the slot
+  // (a relabel, not a respawn) when the higher one closes.
+  const steadKey = (body) => `stead:${body.id}:${body.occupantGeneration ?? 0}`;
   // Stranded steads ask for stores — the ring is the pod's landing circle.
   for (const rec of f.homesteads || []) {
     if (!rec || rec.gone === true || rec.stranded !== true) continue;
     const ent = owner._steadEnt(state, rec);
-    add(`stead:${rec.entityId}`, ent, 'SUPPLIES WANTED', FRONTIER_HOMESTEAD.supplyRadius);
+    if (ent) add(steadKey(ent), ent, 'SUPPLIES WANTED', FRONTIER_HOMESTEAD.supplyRadius);
   }
 
   // Open aid markers want the marker's CENTER inside the debtor's ring.
   for (const d of f.debts || []) {
     if (!d || d.state !== 'open') continue;
     const ent = owner._steadEnt(state, owner._steadRec(state, d.debtorId));
-    add(`aid:${d.id}`, ent, 'AID · bring the marker',
+    if (ent) add(steadKey(ent), ent, 'AID · bring the marker',
       FRONTIER_MUTUAL_AID.settleR + (Number(ent?.radius) || 0));
   }
 
@@ -115,7 +120,7 @@ function wantedFrontierReceivingTags(owner, state) {
     for (const sid of d.steadIds) {
       const rec = owner._steadRec(state, sid);
       const ent = owner._steadEnt(state, rec);
-      add(`claim:${d.id}:${sid}`, ent, `CLAIM · ${rec?.name || 'homestead'}`,
+      if (ent) add(steadKey(ent), ent, `CLAIM · ${rec?.name || 'homestead'}`,
         FRONTIER_SALVAGE_CLAIMS.settleRadius + (Number(ent?.radius) || 0));
     }
   }

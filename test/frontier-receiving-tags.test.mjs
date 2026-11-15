@@ -49,6 +49,8 @@ const tags = (h) => h.state.entityList.filter(
   (e) => e && e.alive !== false && e.data?.frontierReceivingTag === true);
 const tagFor = (h, key) => tags(h).find(
   (e) => e.data?.frontierReceivingKey === key) || null;
+const tagOn = (h, body) => tags(h).find(
+  (e) => e.data?.frontierReceivingBody === body?.id) || null;
 const recOf = (h, entityId) =>
   ensureFrontierState(h.state).homesteads.find((r) => r.entityId === entityId);
 const lineHeard = (h, text) => h.logs.filter((l) => l.text === text).length;
@@ -126,7 +128,7 @@ test('a stranded stead wears SUPPLIES WANTED until stores land', () => {
     h.sim.step();
     assert.equal(rec.stranded, true);
     h.sim.step();
-    const tag = tagFor(h, `stead:${stead.id}`);
+    const tag = tagOn(h, stead);
     assert.ok(tag, 'the hungry stead advertises');
     assert.equal(tag.data.scanLabel, 'SUPPLIES WANTED');
     assert.equal(tag.data.ringRadius, FRONTIER_HOMESTEAD.supplyRadius);
@@ -137,7 +139,7 @@ test('a stranded stead wears SUPPLIES WANTED until stores land', () => {
     });
     h.sim.step();
     assert.equal(rec.stranded, false);
-    assert.equal(tagFor(h, `stead:${stead.id}`), null, 'the ask is answered — tag retires');
+    assert.equal(tagOn(h, stead), null, 'the ask is answered — tag retires');
   } finally { h.sim.dispose(); }
 });
 
@@ -153,8 +155,14 @@ test('an open aid marker draws AID RECEIVING at the debtor and retires on settle
     h.sim.step();
     const debt = f.debts.find((d) => d.state === 'open');
     assert.ok(debt, 'the board posted a marker');
+    // A stranded debtor wears SUPPLIES WANTED first — a landed crate would
+    // cover the debt outright, so close just the supplies obligation on the
+    // fields the intake writer owns; the aid ask takes the slot.
+    recA.stranded = false;
+    recA.lastSupplyAt = h.state.simTime;
+    h.owner._tagsDirty = true;
     h.sim.step();
-    const tag = tagFor(h, `aid:${debt.id}`);
+    const tag = tagOn(h, a);
     assert.ok(tag, 'the debtor wears the receiving ring');
     assert.equal(tag.data.scanLabel, 'AID · bring the marker');
     assert.equal(tag.data.ringRadius, FRONTIER_MUTUAL_AID.settleR + a.radius);
@@ -164,7 +172,7 @@ test('an open aid marker draws AID RECEIVING at the debtor and retires on settle
     marker.pos.x = a.pos.x + 30; marker.pos.z = a.pos.z;
     h.sim.step();
     assert.equal(debt.state, 'paid');
-    assert.equal(tagFor(h, `aid:${debt.id}`), null);
+    assert.equal(tagOn(h, a), null);
   } finally { h.sim.dispose(); }
 });
 
@@ -183,19 +191,55 @@ test('an open dispute draws CLAIM RECEIVING on each claimant', () => {
     assert.ok(d.steadIds.length >= 2, 'two steads claim it');
     h.sim.step();
     for (const sid of d.steadIds) {
-      const tag = tagFor(h, `claim:${d.id}:${sid}`);
+      const tag = tagOn(h, h.state.entities.get(sid));
       assert.ok(tag, `claimant ${sid} wears its filed-wreck ring`);
       assert.equal(tag.data.scanLabel, `CLAIM · ${h.state.frontier.homesteads.find((r) => r.entityId === sid).name}`);
       const ent = h.state.entities.get(sid);
       assert.equal(tag.data.ringRadius, FRONTIER_SALVAGE_CLAIMS.settleRadius + ent.radius);
     }
-    // Claim lapses on the window — the rings retire.
+    // Claim lapses on the window — the claim ring retires. The steads crossed
+    // the hunger line during the jump, so each tag relabels to its next
+    // reason rather than vanishing.
     h.state.simTime = d.expiresAt + 1;
     h.sim.step();
     assert.notEqual(d.state, 'open');
-    assert.equal(tagFor(h, `claim:${d.id}:${d.steadIds[0]}`), null);
-    assert.equal(tagFor(h, `claim:${d.id}:${d.steadIds[1]}`), null);
+    for (const sid of d.steadIds) {
+      const t = tagOn(h, h.state.entities.get(sid));
+      assert.equal(t?.data.scanLabel?.startsWith('CLAIM') ?? false, false,
+        'the claim ring retires with the row');
+    }
     void wreck;
+  } finally { h.sim.dispose(); }
+});
+
+test('a stranded debtor wears one tag — supplies outranks aid, and aid shows when supplies closes', () => {
+  const h = boot();
+  try {
+    const a = raiseStead(h, 0, 0);
+    const b = raiseStead(h, 6000, 0);
+    const f = ensureFrontierState(h.state);
+    const recA = recOf(h, a.id); const recB = recOf(h, b.id);
+    // Poor enough to be stranded AND the board's debtor — two reasons, one stead.
+    recA.lastSupplyAt = -400; recB.lastSupplyAt = h.state.simTime; recB.supplies = 2;
+    f.nextDebtAt = 0;
+    h.sim.step();
+    const debt = f.debts.find((d) => d.state === 'open');
+    assert.ok(debt, 'the board posted a marker');
+    assert.equal(recA.stranded, true, 'the debtor is also stranded');
+    h.sim.step();
+    const onA = tags(h).filter((e) => e.data?.frontierReceivingBody === a.id);
+    assert.equal(onA.length, 1, 'a stead with several reasons wears only one ring');
+    assert.equal(onA[0].data.scanLabel, 'SUPPLIES WANTED', 'supplies outranks aid');
+    // The supplies obligation closes — a real crate would cover the debt
+    // outright, so flip the board fields the intake writer owns; the next
+    // reason takes the slot.
+    recA.stranded = false;
+    recA.lastSupplyAt = h.state.simTime;
+    h.owner._tagsDirty = true;
+    h.sim.step();
+    const after = tags(h).filter((e) => e.data?.frontierReceivingBody === a.id);
+    assert.equal(after.length, 1, 'still one ring on the stead');
+    assert.equal(after[0].data.scanLabel, 'AID · bring the marker', 'the next reason shows');
   } finally { h.sim.dispose(); }
 });
 
@@ -232,7 +276,7 @@ test('a tag rides its receiving body when the body moves', () => {
     const rec = recOf(h, stead.id);
     rec.lastSupplyAt = -400;
     h.sim.step(); h.sim.step();
-    const tag = tagFor(h, `stead:${stead.id}`);
+    const tag = tagOn(h, stead);
     assert.ok(tag);
     stead.pos.x += 500; stead.pos.z += 120;
     h.sim.step();
