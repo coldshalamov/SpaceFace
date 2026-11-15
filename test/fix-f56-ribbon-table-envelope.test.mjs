@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { tableVfxDrawWuFromState } from '../src/render/tabletopPolicy.js';
 import { PROJECTILE_DRAW_PAD_WU } from '../src/combat/projectileFlight.js';
 import { WeaponVfxPresenter } from '../src/render/weapons/presenter.js';
+import { WeaponRibbonPool } from '../src/render/weapons/ribbonPool.js';
 
 function projectile(id, x, ownerId = 'npc') {
   return {
@@ -87,6 +88,45 @@ test('non-priority ribbon begins releasing after it leaves the live table envelo
   } finally {
     presenter.dispose();
   }
+});
+
+test('rapid frame re-entry starts a fresh wake while the old wake fades', () => {
+  const shot = projectile(14, 500);
+  const { presenter, state, update } = harness([shot]);
+  try {
+    update();
+    const oldSlot = presenter.ribbons.byEntity.get(shot.id);
+    shot.prevPos.x = shot.pos.x;
+    shot.pos.x = tableVfxDrawWuFromState(state) + PROJECTILE_DRAW_PAD_WU + 8;
+    update();
+    assert.ok(presenter.ribbons.lingerAge[oldSlot] > 0);
+    shot.prevPos.x = shot.pos.x; shot.pos.x = -500;
+    update();
+    const newSlot = presenter.ribbons.byEntity.get(shot.id);
+    assert.notEqual(newSlot, oldSlot);
+    const base = newSlot * presenter.ribbons.segments * 3;
+    assert.equal(presenter.ribbons.hist[base], -500);
+    assert.equal(presenter.ribbons.hist[base + 3], -500, 'new history does not bridge the old position');
+    assert.equal(presenter.ribbons.alive[oldSlot], 1, 'the old wake keeps fading');
+    for (let i = 0; i < 30; i++) update();
+    assert.equal(presenter.ribbons.alive[oldSlot], 0);
+    assert.equal(presenter.ribbons.byEntity.get(shot.id), newSlot, 'old retirement cannot remove the new mapping');
+  } finally { presenter.dispose(); }
+});
+
+test('a full ribbon pool reuses a detached wake without losing its new mapping', () => {
+  const pool = new WeaponRibbonPool(null, { capacity: 1 });
+  try {
+    pool.spawn({ entityId: 14, x: 500, y: 0, z: 0 });
+    pool.release(14); pool.detachReleased(14);
+    const slot = pool.spawn({ entityId: 14, x: -500, y: 0, z: 0 });
+    assert.equal(slot, 0);
+    assert.equal(pool.live, 1);
+    assert.equal(pool.byEntity.get(14), 0);
+    assert.equal(pool.hist[0], -500);
+    assert.equal(pool.hist[3], -500);
+    assert.equal(pool.lingerAge[0], 0);
+  } finally { pool.dispose(); }
 });
 
 for (const priority of [

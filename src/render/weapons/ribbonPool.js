@@ -307,6 +307,13 @@ export class WeaponRibbonPool {
     this.lingerAge[slot] = Math.max(this.lingerAge[slot], 0.0001);
   }
 
+  detachReleased(entityId) {
+    const slot = this.byEntity.get(entityId);
+    if (slot == null || !(this.lingerAge[slot] > 0)) return;
+    this.byEntity.delete(entityId);
+    this.entityIds[slot] = -1;
+  }
+
   update(dt, cameraPos, accessibilityProfile = null) {
     const id = accessibilityProfile && accessibilityProfile.id;
     const reducedMotion = id === 'reduced-motion' || id === 'reduced-motion-and-flash';

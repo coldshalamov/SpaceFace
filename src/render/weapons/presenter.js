@@ -711,6 +711,7 @@ export class WeaponVfxPresenter {
       if (recipeUsesRibbonWake(recipe)) {
         _seen.add(entity.id);
         if (onFrame) {
+          this.ribbons.detachReleased(entity.id);
           if (!this.ribbons.byEntity.has(entity.id)) {
             flightColorsForEntity(recipe, entity, this._flightColors);
             const ribbon = this._ribbonSpec;
