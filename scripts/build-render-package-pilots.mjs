@@ -88,7 +88,6 @@ export async function buildRenderPackagePilots(options = {}) {
   if (stagedSource) {
     const pilot = manifest.pilots.find((entry) => onlyKeys.has(entry.key));
     if (!pilot) throw new Error('Unknown staged pilot key.');
-    if (pilot.sharedKtx2Hashes !== undefined) throw new Error('Staged source does not support shared KTX2 output.');
     assertReleaseBinding(pilot, releaseRows.get(pilot.releaseAssetId));
     const bytes = await readFile(resolve(repoRoot, stagedSource));
     if (sha256(bytes) !== options.stagedSha256) throw new Error(`${pilot.key}: staged source SHA-256 does not match the supplied digest.`);
@@ -103,7 +102,11 @@ export async function buildRenderPackagePilots(options = {}) {
     releaseRows.set(pilot.releaseAssetId, { ...releaseRows.get(pilot.releaseAssetId), ...authoringBinding, releaseSha256: pilot.releaseSha256, releaseBytes: pilot.releaseBytes });
     // Resolve every possible write through existing ancestors before compilation; a symlink
     // inside the scratch tree must not redirect a staged build into live files.
-    for (const relative of [pilot.outputDir, ...PACKAGE_FILES.map((file) => join(pilot.outputDir, file)), pilotInputDescriptorUri(pilot.key), manifest.runtimeManifest]) {
+    const sharedImages = pilot.sharedKtx2Hashes?.length
+      ? [join(dirname(pilot.outputDir), '_shared', 'images'),
+        ...pilot.sharedKtx2Hashes.map((hash) => join(dirname(pilot.outputDir), '_shared', 'images', `${hash}.ktx2`))]
+      : [];
+    for (const relative of [pilot.outputDir, ...PACKAGE_FILES.map((file) => join(pilot.outputDir, file)), ...sharedImages, pilotInputDescriptorUri(pilot.key), manifest.runtimeManifest]) {
       const target = resolve(outputRoot, relative);
       if (!target.startsWith(outputRoot + sep)) throw new Error('Staged output path escapes output root.');
       let ancestor = target;

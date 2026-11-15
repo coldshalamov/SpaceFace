@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { buildRenderPackagePilots, parseRenderPackagePilotArgs } from '../scripts/build-render-package-pilots.mjs';
@@ -52,6 +52,46 @@ test('renamed staged source retains the canonical compiled provenance', async ()
     assert.equal(descriptor.releaseRow.sourceSha256, authoringDigest);
     assert.equal(descriptor.releaseRow.sourceBytes, authoringBytes.length);
     assert.equal(descriptor.releaseRow.releaseSha256, digest);
+  } finally { await rm(temp, { recursive: true, force: true }); }
+});
+
+test('staged shared textures stay in scratch and match the declared content hashes', async () => {
+  await mkdir(outputParent, { recursive: true });
+  const temp = await mkdtemp(join(outputParent, 'shared-texture-test-'));
+  try {
+    const manifest = JSON.parse(await readFile('assets/ships/render-packages/pilots.json'));
+    const pilot = manifest.pilots.find((entry) => entry.key === 'helios-span');
+    assert.ok(pilot?.sharedKtx2Hashes?.length);
+    const source = join(temp, 'source.glb');
+    await copyFile(pilot.sourceUrl, source);
+    const digest = createHash('sha256').update(await readFile(source)).digest('hex');
+    const liveDir = 'assets/ships/release/render-packages/_shared/images';
+    const before = await Promise.all(pilot.sharedKtx2Hashes.map((hash) => readFile(join(liveDir, `${hash}.ktx2`))));
+    const output = join(temp, 'output');
+    await buildRenderPackagePilots({ onlyKeys: [pilot.key], scopedInputs: true,
+      stagedSource: source, stagedSha256: digest, outputRoot: output });
+    for (const [index, hash] of pilot.sharedKtx2Hashes.entries()) {
+      const staged = await readFile(join(output, liveDir, `${hash}.ktx2`));
+      assert.equal(createHash('sha256').update(staged).digest('hex'), hash);
+      assert.deepEqual(await readFile(join(liveDir, `${hash}.ktx2`)), before[index]);
+    }
+  } finally { await rm(temp, { recursive: true, force: true }); }
+});
+
+test('staged shared texture paths cannot escape the output root through a link', async () => {
+  await mkdir(outputParent, { recursive: true });
+  const temp = await mkdtemp(join(outputParent, 'shared-link-test-'));
+  try {
+    const source = 'assets/ships/release/parts/wholeships/helios_span.glb';
+    const digest = createHash('sha256').update(await readFile(source)).digest('hex');
+    const output = join(temp, 'output');
+    const packages = join(output, 'assets/ships/release/render-packages');
+    const outside = join(temp, 'outside');
+    await mkdir(packages, { recursive: true });
+    await mkdir(outside);
+    await symlink(outside, join(packages, '_shared'), 'junction');
+    await assert.rejects(buildRenderPackagePilots({ onlyKeys: ['helios-span'], scopedInputs: true,
+      stagedSource: source, stagedSha256: digest, outputRoot: output }), /resolves outside output root/);
   } finally { await rm(temp, { recursive: true, force: true }); }
 });
 
