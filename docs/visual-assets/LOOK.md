@@ -41,6 +41,9 @@ Working machinery with readable materials and form, under directional light in d
   functional hazard colour and local task lighting. Different occupations retain their own accents.
 - **Creatures and anomalies:** their own credible material and silhouette language, kept readable
   under the same scene lighting rather than forced into a uniform ship finish.
+- **Alien infestation:** unsettling brown, fleshy growth with layered folds and tangible organic
+  surfaces. Spread should read in stages, from clean structures to increasingly overgrown areas,
+  under the story and simulation's control; do not scatter it indiscriminately as generic dressing.
 
 Starting points for a visual trial, not accepted defaults: satin hull paint roughness 0.42–0.55;
 weathered work or raider paint 0.52–0.70; selected exposed metal 0.30–0.55. For broad decorative
