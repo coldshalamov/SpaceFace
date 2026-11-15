@@ -37,8 +37,13 @@ export function spawnReckoning(owner, m) {
       const durableSlot = slot++;
       const saved = job.bodies[key];
       if (saved?.destroyed) continue;
+      const scanLabel = key.endsWith('_tug')
+        ? 'B2 RESCUED CREW — HOLDING YOUR LINE' : row.label.toUpperCase();
       const adopted = live(owner, m, key);
       if (adopted) {
+        // A persisted callback keeps its accepted row's identity after scan/Continue.
+        adopted.data.scanLabel = scanLabel;
+        if (adopted.type === 'wreck') adopted.data.authoredScanLabel = scanLabel;
         if (!m.targetEntityIds.includes(adopted.id)) m.targetEntityIds.push(adopted.id);
         continue;
       }
@@ -56,7 +61,7 @@ export function spawnReckoning(owner, m) {
       }
       spec.data ||= {};
       Object.assign(spec.data, { missionTag: m.id, physicalRole: 'reckoning_piece', reckoningKey: key,
-        scanLabel: isTug ? 'B2 RESCUED CREW — HOLDING YOUR LINE' : row.label.toUpperCase() });
+        scanLabel, ...(isTug ? {} : { authoredScanLabel: scanLabel }) });
       const entity = owner.helpers.spawnEntity(spec);
       if (!entity) continue;
       owner._stampMissionTargetIdentity(entity, m, durableSlot);

@@ -180,6 +180,11 @@ export function createBarScreen(ctx) {
   let pendingFrontierRumorOffer = null;
   let acceptedMissionId = null;
   let pinnedContact = null;
+  let pendingCourier = null;
+  function clearCourierPending() {
+    if (pendingCourier && selectedId === pendingCourier.id) saidText = null;
+    pendingCourier = null;
+  }
   // THE WORLD REMEMBERS (U-E): the one deed a contact opens with this dock. `opener` is memoised by
   // generateContacts so re-renders keep the same line; `told` flips once the line has been drawn.
   let deedSession = { stationId: null, opener: undefined, told: false };
@@ -287,7 +292,7 @@ export function createBarScreen(ctx) {
       }
       // A sold story buyer keeps their closing word even if the sim's settle has not reached
       // this frame yet (worker transport): the pin replaces the stale offer in place.
-      if (pinnedContact && pinnedContact.storyBuyer) {
+      if (pinnedContact && (pinnedContact.storyBuyer || pinnedContact.endgameResolved)) {
         return generated.map((contact) => (contact.id === pinnedContact.id ? pinnedContact : contact));
       }
       return generated;
@@ -689,6 +694,7 @@ export function createBarScreen(ctx) {
   function selectContact(id, focus) {
     if (!id || id === selectedId) return;
     clearCeresPending();
+    clearCourierPending();
     selectedId = id; saidText = null; pendingMissionOffer = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
     const st = ctx.state || {};
     renderRail(st); renderStage(st); renderLeads(st);
@@ -892,16 +898,13 @@ export function createBarScreen(ctx) {
       });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
     }
+    if (c.endgameChoice === 'E' && choiceId === 'accept_next_run') {
+      pendingCourier = { ...c, pinStationId: sid() };
+    }
     let result = null;
     try { result = buildReply(c.role, choiceId, ctx, sid(), c); } catch (_) { result = null; }
     if (result && result.uniqueWreckRumor && ctx.bus) ctx.bus.emit('uniqueWreck:rumorHeard', result.uniqueWreckRumor);
-    if (result && result.endgameResolved) {
-      pinnedContact = {
-        ...c,
-        line: '47-A closed. 47-B pending.',
-        choices: [{ id: 'closed', label: 'Safe flying.' }],
-      };
-    } else if (result && result.pinContact) {
+    if (result && result.pinContact) {
       pinnedContact = { ...result.pinContact, pinStationId: sid() };
     }
     saidText = (result && result.text) || 'They shrug.';
@@ -1016,6 +1019,28 @@ export function createBarScreen(ctx) {
     return () => ctx.bus?.off?.(event, handler);
   });
 
+  // The courier reviews terms now and receives the filed result later, from the sole story owner.
+  // Keep that receipt with its speaker instead of lending it to the next generated contact.
+  const offCourierReceipt = ctx.bus?.on?.('endgame:chosen', (event) => {
+    const courier = pendingCourier;
+    if (event?.choice !== 'E' || !courier || !visible || !ctx.state.ui?.docked
+      || sid() !== courier.pinStationId || sid() !== 'station_ashcache'
+      || selectedId !== courier.id) return;
+    pendingCourier = null;
+    pinnedContact = { ...courier, endgameResolved: true,
+      line: '47-A closed. 47-B pending.', choices: [{ id: 'closed', label: 'Safe flying.' }] };
+    saidText = '47-A closed for 1,200 cr. 47-B remains pending. No pardon, no rank. Safe flying.';
+    renderAll(ctx.state || {});
+  });
+  const offCourierLifecycle = ['save:restoring', 'save:loaded', 'game:newGame', 'game:started', 'dock:undocked'].map((event) => {
+    const handler = () => {
+      clearCourierPending();
+      if (pinnedContact?.endgameChoice === 'E') { pinnedContact = null; saidText = null; }
+    };
+    ctx.bus?.on?.(event, handler);
+    return () => ctx.bus?.off?.(event, handler);
+  });
+
   return {
     el,
     onShow(c) {
@@ -1027,6 +1052,7 @@ export function createBarScreen(ctx) {
       visible = false;
       if (selectedId === CERES_RETURN_CONTACT) saidText = null;
       clearCeresPending();
+      clearCourierPending();
       erisOpenAnnounced = false;
       if (furnaceSaid) { furnaceSaid = false; saidText = null; }
       const leavingVisitId = erisVisitId();
@@ -1044,6 +1070,9 @@ export function createBarScreen(ctx) {
     dispose() {
       visible = false;
       clearCeresPending();
+      clearCourierPending();
+      if (typeof offCourierReceipt === 'function') offCourierReceipt();
+      offCourierLifecycle.forEach((off) => off());
       if (typeof offCeresReceipt === 'function') offCeresReceipt();
       offCeresLoad.forEach((off) => off());
       offRecognition.forEach((off) => off());
