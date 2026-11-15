@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
+import { pressNewGame } from './lib/titleRoute.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT = fileURLToPath(new URL('../.devshots/alpha/m6-localization-reachability/', import.meta.url));
@@ -16,6 +17,15 @@ const probe = await acquireVisualProbeServer({ root: ROOT });
 const { chromium } = await loadPlaywright();
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
+// A first-ever profile gets the once-only first-light offer on the title, and a save on disk
+// adds "Start a new game?" — under qps-ploc their labels are pseudo copy, so this handler is
+// keyed on the shared confirm surface itself and answers its OK wherever it lands inside a
+// click's actionability wait (trusted mouse, like player-truth's handler).
+await page.addLocatorHandler(page.locator('#sf-confirm-root.sf-confirm--in'), async () => {
+  const ok = page.locator('#sf-confirm-root.sf-confirm--in .sf-confirm__ok').first();
+  const box = await ok.boundingBox().catch(() => null);
+  if (box) await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+}, { noWaitAfter: true });
 const surfaces = [];
 const screenshots = [];
 
@@ -32,7 +42,8 @@ try {
   surfaces.push(await assertVisiblePseudoSurface('mainMenu'));
   await capture('01-main-menu-qps-1280x720.png');
 
-  await page.locator('[data-screen="mainMenu"] [data-action="newGame"]').first().click();
+  // TITLE-01: a save on disk asks "Start a new game?" first; pressNewGame answers it.
+  await pressNewGame(page);
   await waitForScreen('newGame');
   await page.setViewportSize({ width: 1440, height: 900 });
   surfaces.push(await assertVisiblePseudoSurface('newGame'));

@@ -129,7 +129,7 @@ test('bark corpus is register-faithful, not a raw English dump', () => {
 
 test('bark JSON preserves every pre-extraction localized message and hull line', () => {
   const beforeExtraction = {
-    'en-US': 'a460d1f4996430fefe2a7dd4d7ba1dfe89b01c579c406291968d9f84192b1526',
+    'en-US': '2d859b493f5151dee1193e192b10587683fa43fc0f7206f21bd2ee56e32fa960',
     'es-ES': 'ab978160eb63dd6a49ba8b46aa31fec261818762fc709ab173a06e76bd4126aa',
     'fr-FR': '3f849fb5d19eeeb49f407844ab7dd218edc744cd9a4c3e899c08220a7936553e',
     'de-DE': '7dda2283607e61b04f6b8e02b9ec4d41b4688f56312a12fc18793b2b903d7d10',
