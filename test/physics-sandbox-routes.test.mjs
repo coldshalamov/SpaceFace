@@ -15,7 +15,7 @@ import { physics } from '../src/core/physics.js';
 import { world } from '../src/systems/world.js';
 import { runSession } from '../src/systems/runSession.js';
 import { survivalRun } from '../src/systems/survivalRun.js';
-import { swarmArena, SWARM_DEBRIS_TAG } from '../src/systems/swarmArena.js';
+import { swarmArena, SWARM_DEBRIS_TAG, environmentFamiliesFor } from '../src/systems/swarmArena.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { SWARM_RULESET } from '../src/data/swarmMode.js';
 import { weapons, buildWeaponDamagePacket } from '../src/systems/weapons.js';
@@ -27,7 +27,7 @@ import { dockingCorridor } from '../src/systems/dockingCorridor.js';
 import { collisionConsequences } from '../src/systems/collisionConsequences.js';
 import { resolveAutopilotTarget } from '../src/systems/flightV3.js';
 import { WEAPONS } from '../src/data/weapons.js';
-import { ENVIRONMENT_FAMILIES, environmentMaterialOf } from '../src/data/environmentMaterials.js';
+import { environmentMaterialOf } from '../src/data/environmentMaterials.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import {
   schedulePhysicalBlast,
@@ -95,8 +95,9 @@ async function bootArena(seed = 4242, opts = {}) {
   const player = sim.spawn(shipSpec({ x: 0, z: 0 }));
   state.playerId = player.id;
   player.isPlayer = true;
-  bus.emit('run:beginRequested', { kind: 'survival', ruleset: SWARM_RULESET, seed, arenaId: ARENA });
-  bus.emit('run:wavePlanned', { wave: 1, plan: planWave({ seed, arenaId: ARENA, wave: 1, ruleset: SWARM_RULESET }) });
+  const arenaId = opts.arenaId || ARENA;
+  bus.emit('run:beginRequested', { kind: 'survival', ruleset: SWARM_RULESET, seed, arenaId });
+  bus.emit('run:wavePlanned', { wave: 1, plan: planWave({ seed, arenaId, wave: 1, ruleset: SWARM_RULESET }) });
   // The player's Rapier body is created at prepareBackend with the entity's current yaw, and
   // yaw is body-authoritative afterwards — a cone aim has to be pointed before this call.
   if (opts.aimAtNearestDebris) {
@@ -219,13 +220,15 @@ function blastBeside(state, helpers, center, radius, impulse, evidence = {}) {
 
 // ─── Crucible route ────────────────────────────────────────────────────────────────
 
-test('crucible route: the generated arena debris field covers all six material families', async () => {
+test('crucible route: the generated arena debris field covers every family the arena rolls', async () => {
   const t = await bootArena(4242);
   try {
     const rocks = arenaDebris(t.state);
     assert.ok(rocks.length >= 10, `generated arena scenery exists (${rocks.length} bodies)`);
     const mats = new Set(rocks.map(environmentMaterialOf));
-    for (const family of ENVIRONMENT_FAMILIES) {
+    // LOOK-05D (0d4b500693) took crystal out of the Foundry's roll while its body is a
+    // placeholder — assert the arena's authored set, which re-expands when the filter goes.
+    for (const family of environmentFamiliesFor(ARENA)) {
       assert.ok(mats.has(family), `every material family occurs among generated arena scenery (missing ${family})`);
     }
   } finally { t.sim.dispose(); }
@@ -394,7 +397,9 @@ test('crucible route: a concussion round out-throws a pulse round on comparable 
 test('crucible route: plasma splash delivers exactly once per generated body', async () => {
   const prev = COMBAT_FLAGS.weaponImpulseConsequences;
   COMBAT_FLAGS.weaponImpulseConsequences = true;
-  const t = await bootArena(4242);
+  // The Foundry no longer rolls crystal (LOOK-05D, 0d4b500693) — this case boots the
+  // Lagrange Crucible, whose generated field still carries it.
+  const t = await bootArena(4242, { arenaId: 'lagrange_crucible' });
   try {
     const { sim, state, bus, player } = t;
     sim.step(DT);
