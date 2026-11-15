@@ -32,13 +32,15 @@ export const TITLE_DOORS_LAYOUT_CSS = `
 /* the column becomes one grid: two doors (twelve of twenty-four columns each), then a row of small words */
 ${T} .of-title-actions {
   display:grid !important; grid-template-columns:repeat(24, minmax(0, 1fr)) !important; gap:14px 0 !important; column-gap:0 !important;
-  width:min(660px, 52vw) !important; margin:0 !important; align-content:end; justify-items:stretch;
+  width:min(600px, 46vw) !important; margin:0 !important; align-content:end; justify-items:stretch;
   position:absolute !important; left:48px !important; right:auto !important; top:auto !important;
   bottom:clamp(56px, 10vh, 110px) !important; transform:none !important;
   padding:0 !important; max-width:none !important; min-height:0 !important; height:auto !important; }
 ${T} .of-title-actions > ul { display:contents !important; list-style:none; margin:0; padding:0; }
 ${T} .of-title-actions li { margin:0 !important; padding:0 !important; list-style:none; min-width:0; position:static !important; width:auto !important; max-width:none !important; }
 ${T} .of-title-actions li[hidden] { display:none !important; }
+/* no tech words on the way in: the standing line is empty, so its lamp goes too */
+${T} .dp-title__eyebrow:empty { display:none !important; }
 /* the doors */
 ${DOOR_LI}.is-adventure { grid-column:1 / span 12; grid-row:1; margin:0 7px 0 0 !important; --door-img:url("${ADVENTURE_IMG}"); }
 ${DOOR_LI}.is-swarm { grid-column:13 / span 12; grid-row:1; margin:0 0 0 7px !important; --door-img:url("${SWARM_IMG}"); }
