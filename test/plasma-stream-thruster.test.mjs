@@ -46,6 +46,35 @@ function close(a, b, eps = 1e-4) {
   return Math.abs(a - b) <= eps;
 }
 
+test('rebasing the live plasma stream preserves retained contrail fold phases', () => {
+  const stream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
+  stream.attach(new THREE.Scene());
+  const sockets = [{ x: 0, y: 0, z: 3, ax: 1, ay: 0, az: 0 }];
+  runFrames(stream, sockets, THRUST, 12, { id: 'rebase-phase' });
+  const trail = stream._trails[0];
+  const values = () => {
+    const phase = trail.material.uniforms.uPatternPhase.value;
+    return trail.samplePositions().map((p) => [
+      Math.sin(p.x * 0.037 + p.y * 0.021 + p.z * 0.053 + phase.x),
+      Math.sin(p.x * 0.061 + p.y * 0.033 + p.z * 0.047 + phase.y),
+    ]);
+  };
+  assert.match(trail.material.vertexShader, /uPatternPhase\.x/);
+  assert.match(trail.material.vertexShader, /uPatternPhase\.y/);
+  const before = values();
+  assert.ok(before.length > 1);
+  for (const [dx, dz] of [[-1024, 512], [256, -2048], [768, 1536]]) {
+    stream.reproject(dx, dz);
+    const after = values();
+    assert.equal(after.length, before.length);
+    for (let i = 0; i < before.length; i++) {
+      assert.ok(close(after[i][0], before[i][0]) && close(after[i][1], before[i][1]),
+        `sample ${i} changed fold phase after rebase`);
+    }
+  }
+  stream.dispose();
+});
+
 test('smoothstep is monotonic on unit interval', () => {
   let prev = -1;
   for (let i = 0; i <= 20; i++) {

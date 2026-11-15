@@ -157,6 +157,8 @@ const TRAIL_VERT = /* glsl */`
   // path.a stores each sample's birth on this clock; age is derived on the GPU so the texture
   // contents do not change as time passes.
   uniform float uNow;
+  // Keep the world-fixed sheet pattern stable when recorded positions are rebased.
+  uniform vec2 uPatternPhase;
 
   uniform float uRadiusHead;
   uniform float uRadiusTail;
@@ -305,8 +307,8 @@ const TRAIL_VERT = /* glsl */`
     float sheetSeed = hash11(aStrand * 7.13 + segment * 0.37 + 1.7);
     // Continuous, world-fixed folds. Independent hashes per sample made straight flight
     // look like stacked rectangular splinters. Nothing here moves an old path or adds a clock.
-    float worldSeed = 0.5 + 0.5 * sin(dot(p, vec3(0.037, 0.021, 0.053)) + aStrand * 2.3 + segment * 0.11);
-    float staticTexture = 0.5 + 0.5 * sin(dot(p, vec3(0.061, 0.033, 0.047)) + aStrand * 3.1 + segment * 0.7);
+    float worldSeed = 0.5 + 0.5 * sin(dot(p, vec3(0.037, 0.021, 0.053)) + uPatternPhase.x + aStrand * 2.3 + segment * 0.11);
+    float staticTexture = 0.5 + 0.5 * sin(dot(p, vec3(0.061, 0.033, 0.047)) + uPatternPhase.y + aStrand * 3.1 + segment * 0.7);
 
     // Four interlaced wakes with space BETWEEN them. A constant-radius sixteen-sheet tube
     // saturated into a ruler-straight white bar. These long folds are fixed to the recorded
@@ -573,6 +575,7 @@ export function createContrailMaterial(T, opts = {}) {
       uLive: { value: 0 },
       uTrailSeconds: { value: TRAIL_SECONDS },
       uNow: { value: 0 },
+      uPatternPhase: { value: new T.Vector2() },
       uHead: { value: 0 },
 
       // The wake is a tight corded sheath around a searing core, roughly bell-radius — it must
@@ -762,6 +765,9 @@ export class ContrailTrail {
     const ox = Number.isFinite(dx) ? dx : 0;
     const oz = Number.isFinite(dz) ? dz : 0;
     if (ox === 0 && oz === 0) return;
+    const phase = this.material.uniforms.uPatternPhase.value;
+    phase.x = (phase.x - ox * 0.037 - oz * 0.053) % (Math.PI * 2);
+    phase.y = (phase.y - ox * 0.061 - oz * 0.047) % (Math.PI * 2);
     for (let i = 0; i < this._live; i++) {
       const s = this._slot(i) * 4;
       this._path[s] += ox;
