@@ -1,4 +1,5 @@
 import { isCeresWorkfleetHardware } from '../data/ceresWorkfleetIdentity.js';
+import { heldBodyGripFactor } from './heldBodyGrip.js';
 import { selectHitSubsystem } from './geometry.js';
 import { ensureCombatant, syncCombatantBounds } from './runtime.js';
 import { damageSubsystem } from './subsystems.js';
@@ -235,6 +236,11 @@ export function createDamageRouter(context, statusService, options = {}) {
       packet.heat = (packet.heat || 0) * diffScale;
     }
     const origin = input && input.origin || null;
+    // THROW-01 grip grace: the body on the player's Line is the player's weapon (heldBodyGrip.js).
+    if (target && !packet.flags.structuralHull) {
+      const gripFactor = heldBodyGripFactor(state, target, origin, sumChannels(packet.channels));
+      if (gripFactor < 1) for (const channel of catalog.damageModel.channelOrder) packet.channels[channel] = (packet.channels[channel] || 0) * gripFactor;
+    }
     const rawTotal = sumChannels(packet.channels);
 
     if (!target || !target.alive) return rejected('target_missing', input, packet);

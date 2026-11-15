@@ -2783,6 +2783,9 @@ export const tetherGameplay = {
     t.tensionEstimate = t.active ? Math.min(2, Math.max(0, finite(this._tensionEstimate, 0))) : 0;
     if (!t.active) this._tensionEstimate = 0;
     t.attachmentId = this._active ? this._active.attachmentId : null;
+    // THROW-01: when this line began, for the grip-grace window (heldBodyGrip.js).
+    const gripKey = t.active ? `${t.attachmentId}|${t.targetId}` : null;
+    if (gripKey !== this._gripKey) { this._gripKey = gripKey; t.latchedTick = gripKey ? state.tick : null; }
     t.lineControl = !!(t.active && command && command.lineControl);
     t.lineLengthRate = t.lineControl ? finite(lineLengthCommand, 0) : 0;
     t.orbitDirection = t.lineControl ? finite(command && command.orbitDirection, 0) : 0;
