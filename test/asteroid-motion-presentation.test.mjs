@@ -82,6 +82,23 @@ test('asteroid motion: reduced motion preserves static orientation without extre
   assert.equal(rx1, rx2, 'tumble frozen under reduced motion');
 });
 
+test('renderer reduced-motion flag freezes asteroid tumble and mining jitter with canonical precedence', () => {
+  const tracker = createAsteroidMotionTracker();
+  const mesh = createMockAsteroidMesh();
+  const asteroid = { id: 'ast_live_reduce', type: 'asteroid', radius: 12, data: { isBeingMined: true } };
+  const body = mesh.userData.asteroidBody;
+  tracker.updateAsteroidMotion(asteroid, mesh, 1, 0.05, { reducedMotion: false });
+  const moving = body.rotation.x;
+  tracker.updateAsteroidMotion(asteroid, mesh, 1.05, 0.05, { reducedMotion: true, motionReduce: false });
+  assert.equal(body.rotation.x, moving);
+  assert.equal(body.position.x, 0); assert.equal(body.position.z, 0);
+  tracker.updateAsteroidMotion(asteroid, mesh, 1.1, 0.05, { reducedMotion: true });
+  assert.equal(body.rotation.x, moving);
+  tracker.updateAsteroidMotion(asteroid, mesh, 1.15, 0.05, { reducedMotion: false, motionReduce: true });
+  assert.notEqual(body.rotation.x, moving);
+  assert.ok(body.position.x !== 0 || body.position.z !== 0);
+});
+
 test('asteroid motion: size factor halves the rate at double radius, clamped, NaN-safe', () => {
   assert.equal(resolveAsteroidSizeFactor(16), 1);
   assert.ok(Math.abs(resolveAsteroidSizeFactor(32) - 0.5) < 1e-9);

@@ -29456,7 +29456,7 @@ export const render = {
             if (isGate) {
               globalInfrastructureMotion.updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
             } else {
-              globalInfrastructureMotion.updateStationMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
+              globalInfrastructureMotion.updateStationMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
               if (entity.data && entity.data.dockLampsFlashing) {
                 applyStationDockLampFlash(mesh, entity, simTime, _worldSiteA11y?.reducedFlash);
               }
@@ -29468,8 +29468,6 @@ export const render = {
             const playerEntity = framePlayer;
             if (isGate) {
               globalInfrastructureMotion.updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
-            } else {
-              globalInfrastructureMotion.updatePlaceMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
             }
           } else if (typeName === 'wreck' && !isOrchardFrame(entity)) {
             // Fresh kill wrecks spiral (root-owned) while dead drift continues (child-owned).

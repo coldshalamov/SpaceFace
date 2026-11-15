@@ -415,7 +415,8 @@ export function createInfrastructureMotionTracker() {
     const animDt = dt * ratio;
     const rec = getState(entity.id);
     noteBoundaryRoot(rec, mesh);
-    const reducedMotion = options.motionReduce === true;
+    const reducedMotion = typeof options.reducedMotion === 'boolean'
+      ? options.reducedMotion : options.motionReduce === true;
     lastSimTime = simTime;
 
     // Detect player distance for gate activation spin-up
@@ -500,7 +501,8 @@ export function createInfrastructureMotionTracker() {
     const animDt = dt * ratio;
     const rec = getState(entity.id);
     noteBoundaryRoot(rec, mesh);
-    const reducedMotion = options.motionReduce === true;
+    const reducedMotion = typeof options.reducedMotion === 'boolean'
+      ? options.reducedMotion : options.motionReduce === true;
     lastSimTime = simTime;
 
     // Continuous rotation of habitation rings — per-station rate variety from the id hash,
@@ -653,7 +655,8 @@ export function createInfrastructureMotionTracker() {
     const animDt = dt * ratio;
     const rec = getState(entity.id);
     noteBoundaryRoot(rec, mesh);
-    const reducedMotion = options.motionReduce === true;
+    const reducedMotion = typeof options.reducedMotion === 'boolean'
+      ? options.reducedMotion : options.motionReduce === true;
     const boundHulk = isPhysicsBoundWholeHulk(entity);
     lastSimTime = simTime;
 

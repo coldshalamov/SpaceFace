@@ -104,3 +104,31 @@ test('infrastructure motion: derelict wrecks drift with zero-G angular momentum'
   assert.notEqual(rx1, rx2, 'wreck drifts around X');
   assert.notEqual(ry1, ry2, 'wreck drifts around Y');
 });
+
+test('renderer reduced-motion option reaches gates, stations and wrecks', () => {
+  const tracker = createInfrastructureMotionTracker();
+  const gate = { id: 'gate_reduce', pos: { x: 500, z: 500 } }, gateMesh = createMockGateMesh();
+  tracker.updateGateMotion(gate, gateMesh, 1, 0.05, null, { reducedMotion: false });
+  const g0 = gateMesh.userData.innerRing.rotation.z;
+  tracker.updateGateMotion(gate, gateMesh, 1.05, 0.05, null, { reducedMotion: true, motionReduce: false });
+  const g1 = gateMesh.userData.innerRing.rotation.z;
+  tracker.updateGateMotion(gate, gateMesh, 1.1, 0.05, null, { reducedMotion: false, motionReduce: true });
+  const g2 = gateMesh.userData.innerRing.rotation.z;
+  assert.ok(Math.abs((g1 - g0) / (g2 - g1) - 0.3) < 1e-9, 'gate slows and resumes');
+
+  const station = { id: 'station_reduce', pos: { x: 0, z: 0 } }, stationMesh = createMockStationMesh();
+  tracker.updateStationMotion(station, stationMesh, 1, 0.05, { reducedMotion: false });
+  const ring = stationMesh.userData.ring1.rotation.z;
+  tracker.updateStationMotion(station, stationMesh, 1.05, 0.05, { reducedMotion: true, motionReduce: false });
+  assert.equal(stationMesh.userData.ring1.rotation.z, ring);
+  tracker.updateStationMotion(station, stationMesh, 1.1, 0.05, { reducedMotion: false, motionReduce: true });
+  assert.notEqual(stationMesh.userData.ring1.rotation.z, ring);
+
+  const wreck = { id: 'wreck_reduce', pos: { x: 0, z: 0 } }, wreckMesh = createMockWreckMesh();
+  tracker.updateWreckMotion(wreck, wreckMesh, 1, 0.05, { reducedMotion: false });
+  const x = wreckMesh.children[0].rotation.x;
+  tracker.updateWreckMotion(wreck, wreckMesh, 1.05, 0.05, { reducedMotion: true, motionReduce: false });
+  assert.equal(wreckMesh.children[0].rotation.x, x);
+  tracker.updateWreckMotion(wreck, wreckMesh, 1.1, 0.05, { reducedMotion: false, motionReduce: true });
+  assert.notEqual(wreckMesh.children[0].rotation.x, x);
+});

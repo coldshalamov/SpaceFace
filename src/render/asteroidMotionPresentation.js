@@ -563,7 +563,8 @@ export function createAsteroidMotionTracker() {
       if (displaced && displaced !== rec) displaced.boundaryRoot = null;
       boundaryIndex.set(mesh, rec);
     }
-    const reducedMotion = options.motionReduce === true;
+    const reducedMotion = typeof options.reducedMotion === 'boolean'
+      ? options.reducedMotion : options.motionReduce === true;
     lastSimTime = simTime;
 
     // Kinematics for lever-arm impact response: contact offset is measured from the body's
