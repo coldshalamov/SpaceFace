@@ -59,6 +59,7 @@ import { syncEntityCollisionIndexMembership } from '../core/coreSystem.js';
 import { writePickupRemainder } from '../core/pickupAcceptance.js';
 import { zonesForSector, zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { ZONE_CERES_THROUGHLINE } from '../data/authoredPlaces.js';
+import { CERES_NINTH_MOUTH } from '../data/ceresNinthMouth.js';
 import {
   globalToSectorLocalForSector,
   sectorLocalToGlobalForSector,
@@ -219,6 +220,7 @@ const AMBIENT_AFTER_MEANINGFUL_S = 8; // don't talk over a fresh encounter's ope
 const WINDOW_S = 600;              // rolling window for the 1-major/2-minor caps
 const DEFER_S = 21;                // re-check period for a due-but-ineligible item
 const MAX_GATE_DEFERS = 60;        // a gated item that never becomes eligible eventually drops
+const NINTH_MOUTH_WORK_R2 = (CERES_NINTH_MOUTH.hearingRadius + 100) ** 2; // patrols hold off a live lamp tow
 const POOL_MAX = 140;              // pressure pool cap per deck
 const ENTRY_GRACE_COMBAT = 22;     // pressure seeded on sector entry (first beats land ~40-90s in)
 const ENTRY_GRACE_CIVIL = 30;
@@ -5569,6 +5571,7 @@ export function advanceSessionRhythm(dir, state, now) {
 export function encounterPacingBlockReason(dir, state, shape, now) {
   if (isDocked(state)) return 'docked';
   if (isTutorialActive(state)) return 'tutorial';
+  if (shape.proximity === true && shape.context === 'patrol' && ninthMouthPocketWorkLive(state)) return 'pocket_work';
   const tensionReason = tensionPacingBlockReason(dir, state, shape, now);
   if (tensionReason) return tensionReason;
   const rhythmReason = sessionRhythmBlockReason(dir && dir.sessionRhythm && dir.sessionRhythm.phase, shape);
@@ -5597,6 +5600,16 @@ export function encounterPacingBlockReason(dir, state, shape, now) {
   if (shape.tier === 'major' && now - dir.lastMajorAt < MAJOR_EXTRA_GAP_S) return 'major_gap';
   if (shape.tier === 'minor' && minors >= MAX_MINOR_PER_DAY) return 'minor_quota';
   return null;
+}
+
+function ninthMouthPocketWorkLive(state) {
+  if (state.world?.currentSectorId !== CERES_NINTH_MOUTH.sectorId) return false;
+  const job = state.npcJobs?.ceresNinthMouth;
+  if (!job || job.rescue || job.objects?.barge?.lost) return false;
+  const player = state.entities?.get ? state.entities.get(state.playerId) : null;
+  if (!player || !player.pos) return false;
+  const dx = player.pos.x - CERES_NINTH_MOUTH.center.x, dz = player.pos.z - CERES_NINTH_MOUTH.center.z;
+  return dx * dx + dz * dz <= NINTH_MOUTH_WORK_R2;
 }
 
 function isDocked(state) {
