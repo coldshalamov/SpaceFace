@@ -2474,7 +2474,7 @@ export const crucibleRefitScreen = {
     // D30 caps: the launch key answers to Escape, endless-continue to Space / pad Y, and the
     // run-ending word (the win or the walk-away) to a 0.6 s hold of F / pad X — the ring on the
     // word is the hold's progress, so the cap is what fires it, not a tooltip.
-    setKeyLabel(this._done, lines.primary, lines.finishes ? 'hold F·X' : 'Esc', lines.finishes ? 'f' : 'Escape');
+    setKeyLabel(this._done, lines.primary, lines.finishes ? 'hold F·X' : '', lines.finishes ? 'f' : 'Escape');
     // The run-ending commit takes the Lamp; every other key rests in bone. (The first refresh
     // runs before the foot exists, like every other word here.)
     if (this._done) this._done.classList.toggle('is-lamp', !!lines.finishes);
