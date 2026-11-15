@@ -65,8 +65,8 @@ ${DOOR_BTN}[data-door-label] { font-size:0 !important; line-height:0 !important;
 ${DOOR_BTN}[data-door-label]::before { content:attr(data-door-label); display:block !important; position:static !important; inset:auto !important; width:auto !important; height:auto !important;
   margin:0 !important; padding:0 !important; background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important; transform:none !important; opacity:1 !important;
   font:${DOOR_FONT}; letter-spacing:.02em; text-transform:uppercase; color:inherit; }
-${DOOR_BTN}:is(:hover, :focus-visible, [data-awake]) { outline:none !important; background:none !important; }
-${DOOR_LI}:has(> button:focus-visible) { outline:2px solid var(--k-bone, #e8e2d4); outline-offset:3px; }
+${DOOR_BTN}:is(:hover, :focus, :focus-visible, [data-awake]) { background:none !important; }
+html body #screens .of-title.orr-title--doors .of-title-actions li.of-title-door > button.dp-lit__item:is(:focus, :focus-visible) { outline:0 solid transparent !important; outline-offset:0 !important; }
 ${DOOR_LI} .dp-lit__note {
   display:block !important; position:static !important; clip:auto !important; clip-path:none !important; width:auto !important; height:auto !important;
   overflow:visible !important; margin:10px 0 0 !important; font:400 15px/1.4 var(--dp-face-body, 'Instrument Sans'), sans-serif !important;
@@ -103,13 +103,21 @@ ${T} .of-title-aside { display:contents !important; }
 }
 /* the phone: the two doors stacked, then the small row; More behind its toggle as on the desktop */
 @media (max-width:700px) {
-  ${T} .of-title-actions { position:relative !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; width:100% !important; margin:18px 0 0 !important; transform:none !important; gap:12px 0 !important; }
-  ${DOOR_LI}.is-adventure, ${DOOR_LI}.is-swarm { grid-column:1 / -1 !important; margin:0 !important; min-height:132px; }
+  ${T} .of-title-actions { position:relative !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; width:100% !important; margin:18px 0 0 !important; transform:none !important; gap:14px 0 !important; }
+  ${DOOR_LI}.is-adventure, ${DOOR_LI}.is-swarm { grid-column:1 / -1 !important; margin:0 !important; min-height:clamp(132px, 19vh, 172px); clip-path:none; }
+  ${T} .dp-logotype { margin-bottom:6px; }
+  ${T} .of-title-more { margin-top:4px; }
   ${DOOR_LI}.is-adventure { grid-row:1 !important; }
   ${DOOR_LI}.is-swarm { grid-row:2 !important; }
   ${SECOND_LI} { grid-column:1 / -1 !important; grid-row:auto !important; margin:0 !important; }
   ${LI('settings')}, ${LI('help')}, ${LI('quit')} { grid-column:span 12 !important; grid-row:auto !important; }
-  ${MORE_LI_OPEN} { grid-column:span 12 !important; }
+  ${T} .of-title-actions { align-content:start !important; }
+  ${LI('settings')}, ${LI('help')}, ${LI('quit')} { order:1; }
+  ${T} .of-title-actions { column-gap:10px !important; }
+  ${T} .of-title-actions :is(li:has(> [data-action="settings"]), li:has(> [data-action="help"]), li:has(> [data-action="quit"])) { padding:0 !important; }
+  ${MORE_LI_OPEN} { grid-column:span 12 !important; order:2; padding:0 !important; }
+  :is(${MORE_LI_OPEN}) .dp-lit__note { display:none !important; }
+  ${T} .of-title-more { order:3; }
 }
 `;
 

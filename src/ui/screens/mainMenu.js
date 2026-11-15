@@ -500,6 +500,11 @@ export const mainMenuScreen = {
       bMore.textContent = open ? 'Less' : 'More';
       cue('confirm');
     });
+    if (globalThis.matchMedia?.('(max-width:700px)').matches) {
+      stage.classList.add('is-more-open');
+      bMore.setAttribute('aria-expanded', 'true');
+      bMore.textContent = 'Less';
+    }
     stage.appendChild(bMore);
     detachLamp = attachAttentionLamp(stage);
     // ORRERY: the same buttons, set round the rim of the emblem's dial; the amber Hand swings from
