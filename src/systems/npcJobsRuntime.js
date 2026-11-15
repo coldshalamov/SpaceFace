@@ -11,6 +11,7 @@ import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrc
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
 import { serializeCeresPlayerWinching } from './ceresPlayerWinching.js';
 import { installCeresAnchorWinching, stepCeresAnchorWinching, serializeCeresAnchorSwing, restoreCeresAnchorSwing } from './ceresAnchorWinching.js';
+import { installCeresNinthMouth, stepCeresNinthMouth, serializeCeresNinthMouth, restoreCeresNinthMouth } from './ceresNinthMouth.js';
 import {
   stepLanternWard, serializeLanternWard, restoreLanternWard,
   clearLanternWardControls, lanternWardCompletionReceipt, lanternWardStatus,
@@ -1089,6 +1090,8 @@ export const npcJobsRuntime = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
+    this._ceresNinthMouthCleanup?.();
+    this._ceresNinthMouthCleanup = installCeresNinthMouth(this);
     this._ceresWinchingCleanup?.();
     this._ceresWinchingCleanup = installCeresAnchorWinching(this);
     this._ensureState();
@@ -4491,6 +4494,7 @@ export const npcJobsRuntime = {
     }
     stepCeresWorkfleet(this,dt);
     stepCeresAnchorWinching(this,dt);
+    stepCeresNinthMouth(this,dt);
     stepLanternWard(this,dt);
     this._stepPlayerTenderDispatch(dt);
     this._stepOncallTenderReturn();
@@ -7379,7 +7383,8 @@ export const npcJobsRuntime = {
     for (const rec of towed) this._clearTugAttachment(rec.entry, 'npc_tow_target_gone');
   },
 
-  destroy() { this._ceresWinchingCleanup?.(); this._ceresWinchingCleanup = null; },
+  destroy() { this._ceresWinchingCleanup?.(); this._ceresWinchingCleanup = null;
+    this._ceresNinthMouthCleanup?.(); this._ceresNinthMouthCleanup = null; },
 
   // ── save / restore ────────────────────────────────────────────────────────────────────────────
   // Physical receipts are retrieved from this owner; a bus payload is not service truth.
@@ -7390,6 +7395,8 @@ export const npcJobsRuntime = {
   serialize() {
     const byId = this._byId();
     const out = { byId: {} };
+    const ninthMouth = serializeCeresNinthMouth(this);
+    if (ninthMouth) out.ceresNinthMouth = ninthMouth;
     const anchorSwing = serializeCeresAnchorSwing(this);
     if (anchorSwing) out.ceresAnchorSwing = anchorSwing;
     const ward = serializeLanternWard(this);
@@ -7535,6 +7542,7 @@ export const npcJobsRuntime = {
     }
     this.state.npcJobs = { byId, siteCouriers: {}, lots: {}, surveyMarks: {}, revision: 0 };
     restoreLanternWard(this, data?.lanternWard ?? null);
+    restoreCeresNinthMouth(this, data?.ceresNinthMouth ?? null);
     const ceresWorkfleet=restoreCeresWorkfleetJob(data?.ceresWorkfleet);
     if(ceresWorkfleet)this.state.npcJobs.ceresWorkfleet=ceresWorkfleet;
     const anchorSwing = restoreCeresAnchorSwing(data?.ceresAnchorSwing);
