@@ -16,10 +16,11 @@ import { PLATE_THEFT } from '../src/systems/foundryPlateTheft.js';
 
 // Focused motion proof: ordinary wave materialization, enemy factory, tactical AI,
 // maneuver port and Rapier run together. Weapons are excluded to isolate hauling.
-// No scripted NPC intent, injected force, or post-spawn pose/velocity edits. This
-// does not claim a rendered encounter or the complete production system manifest.
+// The only order is the theft owner's own tow-out activity; no injected force or
+// post-spawn pose/velocity edits. This does not claim a rendered encounter or the
+// complete production system manifest.
 for (const arenaId of ['helios_core', 'cinder_sluice']) {
-  test(`ordinary escort movement physically retrieves the bank in ${arenaId}`, async t => {
+  test(`ordinary escort movement tows the bank out through the gate in ${arenaId}`, async t => {
     const seed = 4242;
     const sim = createSimulation({ seed, systems: [spawnBudget, survivalArena, survivalWave,
       createTacticalAISystem(), actions, aiPorts, physics, combat] });
@@ -46,17 +47,31 @@ for (const arenaId of ['helios_core', 'cinder_sluice']) {
     const plate = state.entities.get(admitted.plateId), home = { ...plate.pos };
     assert.equal(plate.mass, PLATE_THEFT.mass);
 
-    for (let tick = 0; tick < 2400 && arena.diagnostics().plateTheft?.status !== 'stolen'; tick++) sim.step();
+    for (let tick = 0; tick < 2400 && arena.diagnostics().plateTheft?.status !== 'towing'; tick++) sim.step();
+    const towing = arena.diagnostics().plateTheft;
+    const displacement = Math.hypot(plate.pos.x - home.x, plate.pos.z - home.z);
+    assert.equal(towing?.status, 'towing', JSON.stringify({ towing, displacement, tick: state.tick }));
+    assert.ok(displacement >= PLATE_THEFT.displacement, `measured native displacement ${displacement}`);
+    assert.ok(towing.towing >= 1 && towing.links >= 1, 'the captor keeps its own line for the tow-out');
+    const escorts = towing.actorIds.map(id => state.entities.get(id));
+    const { gate, dir } = towing.exit;
+    const out = () => (plate.pos.x - gate.x) * dir.x + (plate.pos.z - gate.z) * dir.z;
+    const startOut = out();
+    for (let tick = 0; tick < 4800 && arena.diagnostics().plateTheft?.status !== 'stolen'; tick++) sim.step();
 
     const result = arena.diagnostics().plateTheft;
-    const displacement = Math.hypot(plate.pos.x - home.x, plate.pos.z - home.z);
-    assert.equal(result?.status, 'stolen', JSON.stringify({ result, displacement, tick: state.tick }));
-    assert.ok(displacement >= PLATE_THEFT.displacement, `measured native displacement ${displacement}`);
-    assert.equal(state.entities.get(plate.id), plate, 'the moved bank retains its physical identity');
-    assert.equal(plate.alive, true);
-    assert.equal(result.links, 0, 'the successful tow releases its physical constraint');
+    assert.equal(result?.status, 'stolen', JSON.stringify({ result, out: out(), startOut, tick: state.tick,
+      escorts: escorts.map(e => ({ pos: e.pos, act: e.data.ai.activity })) }));
+    assert.ok(out() >= PLATE_THEFT.exitClear, `the plate left through the exit gate (${out()})`);
+    assert.equal(plate.alive, false, 'the stolen plate is gone for the run');
+    for (let i = 0; i < 4; i++) sim.step();
+    assert.equal(state.entities.get(plate.id) === plate, false, 'the ordinary removal seam retired it');
+    assert.equal(result.links, 0, 'the tow-out releases its physical constraint');
+    assert.equal(result.towing, 0);
     assert.equal(receipts.filter(receipt => receipt.status === 'stolen').length, 1);
-    const escorts = result.actorIds.map(id => state.entities.get(id));
+    for (const escort of escorts) {
+      assert.notEqual(escort.data.ai.activity?.reason, 'vignette_motion:foundry_plate_tow', 'escorts return to the fight');
+    }
     assert.ok(escorts.length > 0 && escorts.length <= PLATE_THEFT.maxActors);
     for (const escort of escorts) {
       assert.equal(escort.mass, 75, 'the ordinary enemy factory owns the towing hull');
@@ -64,7 +79,6 @@ for (const arenaId of ['helios_core', 'cinder_sluice']) {
       assert.equal(escort.data.lootTableId, PLATE_THEFT.enemyId);
       assert.equal(native._sg02.records.get(escort.id).body.isValid(), true);
     }
-    assert.equal(native._sg02.records.get(plate.id).body.isValid(), true);
     const maneuvers = sim.registry.get('aiPorts').inspect();
     assert.ok(maneuvers.flushedManeuvers > 0, 'production AI supplies the motion');
     assert.equal(maneuvers.droppedManeuvers, 0);

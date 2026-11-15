@@ -1574,7 +1574,7 @@ export const survivalArena = {
     if (contestedPlateId) {
       this._plateTheftRunToken = run.retireToken;
       this._plateTheftPlan = { token: run.retireToken, seed: run.seed };
-      this._plateTheft?.arm(this._roomSolids.get(contestedPlateId));
+      this._plateTheft?.arm(this._roomSolids.get(contestedPlateId), install.plateTheftExit);
     }
     // The Foundry's visible edge: bank plates ringing the room (planFoundryRim). Swarm only.
     if (run.arenaId === FOUNDRY_ARENA_ID && run.ruleset === 'swarm') this._materializeRoom(planFoundryRim({ at: playerAnchor(state) }), wave);
