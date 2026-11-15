@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { objectiveText } from '../src/ui/sim/missionRecap.js';
 import { cleanCylinderContact, cleanCylinderReply, CYLINDER_MESSAGE_ID } from '../src/ui/station/cleanCylinderConversation.js';
+import { generateContacts, buildReply } from '../src/ui/station/barContacts.js';
 import { createGameState } from '../src/core/gameState.js';
 import { makeEntity } from '../src/core/entity.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
@@ -236,6 +237,34 @@ test('M30 seed 4242: the recorded message names each settled outcome without pay
     assert.equal(cleanCylinderContact(f.state, T.stationId), null);
     assert.match(cleanCylinderReply(f.state, T.stationId, contact, 'cylinder_after').text, /no settled/);
   }
+});
+
+test('M30 seed 4242: the recorded message reaches the bar through the real contact list and reply path', () => {
+  const f = runtime(), m = f.accept();
+  f.match(m); f.step(); f.arrive(m);
+  assert.equal(f.state.missions.receipts.find(r => r.missionId === m.id).storyOutcome, 'clean_delivery');
+  f.state.ui.docked = true; f.state.ui.dockedStationId = T.stationId;
+  const listed = generateContacts(T.stationId, f.state);
+  const contact = listed.find(c => c.id === CYLINDER_MESSAGE_ID);
+  assert.ok(contact, 'the settled run leaves its message on the real contact rail');
+  assert.equal(listed.filter(c => c.id === CYLINDER_MESSAGE_ID).length, 1, 'one message, not a duplicated row');
+  const ctx = { state: f.state, bus: f.bus };
+  const spoken = buildReply(contact.role, 'cylinder_after', ctx, T.stationId, contact);
+  assert.match(spoken.text, /clean cylinder/);
+  const filed = buildReply(contact.role, 'cylinder_receipt', ctx, T.stationId, contact);
+  assert.match(filed.text, /1,200 cr/);
+  const before = JSON.stringify([f.state.missions, f.state.story, f.state.player.credits]);
+  buildReply(contact.role, 'cylinder_bye', ctx, T.stationId, contact);
+  assert.equal(JSON.stringify([f.state.missions, f.state.story, f.state.player.credits]), before,
+    'the desk pays nothing and files nothing a second time');
+  // A foreign contact clicking the same choice id never answers as the Shepherd's message.
+  const host = listed.find(c => c.id !== CYLINDER_MESSAGE_ID);
+  if (host) assert.notEqual(buildReply(host.role, 'cylinder_after', ctx, T.stationId, host).text, spoken.text);
+  f.state.missions.receipts = [];
+  assert.equal(generateContacts(T.stationId, f.state).some(c => c.id === CYLINDER_MESSAGE_ID), false,
+    'the row leaves the rail with its receipt');
+  assert.equal(buildReply(contact.role, 'cylinder_after', ctx, T.stationId, contact).text.includes('no settled'), true,
+    'the same click fails closed once the record is gone');
 });
 
 test('M30 seed 4242: no message claims a pilot survived a failed or absent run', () => {

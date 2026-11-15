@@ -12,6 +12,8 @@ import { kesslerFreightChoice, kesslerFreightReply } from './heliosFreightConver
 import { kesslerCeresShiftChoice, kesslerCeresShiftReply, ceresReturnChoices } from './ceresShiftConversation.js';
 import { CERES_ARRIVAL_PREFIX, ceresArrivalChoices, ceresArrivalMapOffer, ceresArrivalReply } from '../../story/ceresArrivalStory.js';
 import { furnaceDetailChoices, furnaceDetailReply, isFurnaceDetailChoice } from './furnaceDetailConversation.js';
+import { cinderDepartureChoices, cinderDepartureContact, cinderDepartureReply, isCinderDepartureChoice } from './cinderDepartureConversation.js';
+import { cleanCylinderContact, cleanCylinderReply } from './cleanCylinderConversation.js';
 import { commodityDisplayName } from '../commodityNames.js';
 import { localizeText } from '../../localization/sourceText.js';
 // Shared station-contact data, choices, replies, and map actions.
@@ -587,7 +589,14 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   for (const contact of contacts) {
     if (contact?.canonicalKey) contact.line = stationResidentLine(state, stationId, contact);
   }
+  // Two earlier-packet conversations mint a whole desk row when their gate passes: the
+  // Shepherd's recorded afterword left by a settled clean-cylinder crossing, and Rook's
+  // Cinder desk relay (or the superseding settled-return account) at Tethys/Expanse.
+  const cylinderMessage = cleanCylinderContact(state, stationId);
+  const cinderDesk = cinderDepartureContact(state, stationId);
   const listed = [
+    ...(cylinderMessage ? [cylinderMessage] : []),
+    ...(cinderDesk ? [cinderDesk] : []),
     ...(wardResident ? [wardResident] : []),
     ...erisChair, ...endingCourier, ...storyBuyerContacts(state, stationId), ...(sori ? [sori] : []), ...authoredBarContactsForStation(stationId, state), ...(fence ? [fence] : []), ...contacts,
   ];
@@ -603,6 +612,7 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   }
   stampLastShiftLocalReport(listed, stationId, state);
   stampFurnaceDetailChoices(listed, stationId, state);
+  stampCinderDepartureChoices(listed, stationId, state);
   stampCollectiveHours(listed, stationId, state);
   stampQuinnsStool(listed, stationId, state);
   // The wake silences this room's ambient patrons, not its mission and service contacts.
@@ -702,6 +712,16 @@ function stampFurnaceDetailChoices(contacts, stationId, state) {
   if (!host) return;
   const choices = furnaceDetailChoices(state, stationId, host);
   if (choices.length) host.choices = [...(host.choices || getChoices(host.role, host)), ...choices];
+}
+
+// Cinder reads carry their own fingerprint on every choice id: the minted Tethys/Expanse
+// relay rows and the Ceres host each expose only what the current receipts and board
+// actually say, so a stale record can never answer as current.
+function stampCinderDepartureChoices(contacts, stationId, state) {
+  for (const contact of contacts) {
+    const choices = cinderDepartureChoices(state, stationId, contact);
+    if (choices.length) contact.choices = [...choices, ...(contact.choices || getChoices(contact.role, contact))];
+  }
 }
 
 function lastShiftLocalReply(state, stationId, contact) {
@@ -1475,6 +1495,8 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: 'It stays open. Come back when you have read the terms.' };
   }
   const state = ctx.state || {};
+  const cylinderReply = cleanCylinderReply(state, stationId, contact, choiceId);
+  if (cylinderReply) return cylinderReply;
   if (contact?.canonicalKey === 'nessa_venn') {
     const resident = lanternWardResidentFor(state);
     if (!resident) return { text: 'Nessa’s field channel is unavailable. The Ward’s last recorded work remains in your log.' };
@@ -1492,6 +1514,7 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: 'The Borrowed Sun has no current berth record here. Its carrier must confirm the next visit.' };
   }
   if (contact && contact.storyBuyer) return storyBuyerReply(contact, choiceId);
+  if (isCinderDepartureChoice(choiceId)) return cinderDepartureReply(ctx, stationId, contact, choiceId);
   if (isFurnaceDetailChoice(choiceId)) return furnaceDetailReply(ctx, stationId, contact, choiceId);
   if (String(choiceId).startsWith(CERES_ARRIVAL_PREFIX)) {
     const reply = ceresArrivalReply(state, stationId, contact, choiceId);
