@@ -37,7 +37,7 @@ point at). A file with foreign changes in `git diff`: do the rest, re-check ever
 thirty, then report it under Blocked with the exact hunk you wanted.
 
 ## Tests
-adapt `test/ash-cache-courier-ui.test.mjs`, `test/kurtz-bar-desk.test.mjs`, `test/ending-choice-e-route.test.mjs`, `test/helios-campaign-ui.test.mjs`, `test/tethys-scale-ui.test.mjs` for the conversations that landed. They must drive the real owner with what the game really sends, and fail on the old code.
+adapt `test/ash-cache-courier-ui.test.mjs`, `test/kurtz-bar-desk.test.mjs`, `test/ending-choice-e-route.test.mjs`, `test/helios-campaign-ui.test.mjs`, `test/tethys-scale-ui.test.mjs` (now `test/cinder-desk-ui.test.mjs`: the Tethys scale conversation was not built; it tests Rook's Cinder desk) for the conversations that landed. They must drive the real owner with what the game really sends, and fail on the old code.
 
 ## Checks
 The named tests; then the capped sweep PR-INTAKE allows (twelve files, four minutes each);

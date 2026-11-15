@@ -13,8 +13,8 @@ import { FURNACE_MITE_KEYS } from '../src/missions/furnaceWorksite.js';
 import { furnaceDetailRead } from '../src/missions/furnaceArrivalScene.js';
 import { fakeDom } from './helpers/fake-dom.mjs';
 
-// The packet names this file for the Tethys desk conversation; the conversation that
-// actually landed is Rook's Cinder desk relay (PRI-10e) and its settled-return account
+// The packet named this file tethys-scale-ui for a Tethys desk conversation that was not
+// built; the conversation that actually landed is Rook's Cinder desk relay (PRI-10e) and its settled-return account
 // at Expanse. These tests mount the production bar screen and prove the minted rail
 // row, the signature-bound choices, the Ceres host's pointer, and the real posting's
 // own accept path — all through the contact list and clicks a player sees.
