@@ -49,7 +49,18 @@ only — nobody has *seen* the gantry-to-pod cable on screen. Fable: eyeball the
 yard capstan once (or a `?sector=ceres&shot=1` capture) before ticking R3.
 - [ ] `acf9b3122d` Reduce trade hub window glare *(foreign perf worker)*
 - [ ] `2f2881a065` **fleet(PRI-10d)** law desk / Book 4 restitution — worker died mid-run, recovered and committed by hand. Tests `book4-*-guidance` pass; check whether the packet's full scope landed (receipt was never written).
-- [ ] `53194ad2f4` **fleet(PRI-08b)** the ninth mouth — lamp tow onto the Ceres ray. **KNOWN FAIL:** `test/ceres-ninth-mouth-earned-route.test.mjs` — "earned original lamp Seat, original barge rescue, Continue and sector return" fails (lamp slingshots when `move()` runs with an attached load). 15/16 pass.
+- [ ] `53194ad2f4` **fleet(PRI-08b)** the ninth mouth — lamp tow onto the Ceres ray.
+- [ ] `8798162e8b` **wiring commit (mislabeled)** — subject says "fleet(PRI-10d)" but it actually
+  carries BOTH dead workers' recovered wiring hunks: the law desk mount + `book4ChoiceAction`
+  consumer (10d), AND the ninth-mouth route wiring the SWE-2 review found absent — prompt mount
+  in `proExperiencesBrowser`, `ceresNinthMouth:action` on the event surface, `simReadModel` /
+  `simWorkerHost` / `world.js` / `worldCatchup` / `worldRecords` staging (08b). Both features are
+  now reachable at HEAD; `node --check` clean on all 9 touched files and the ninth-mouth contact
+  test passes 4/4. The mislabel stands because the shared checkout forbids history rewrites.
+- **KNOWN FAIL:** `test/ceres-ninth-mouth-earned-route.test.mjs` — root cause found by the SWE-2
+  review: a lawful `patrol_scan` squad physically rams the tethered lamp mid-tow (see
+  "## Reviewer findings" below for file:line detail). Fix is a **design call**, not a bug patch:
+  patrol standoff vs tethered loads, a quiet zone during the job, or a lawful-collision grace.
 
 ## Uncommitted foreign work left in the tree (assess, don't assume mine)
 
