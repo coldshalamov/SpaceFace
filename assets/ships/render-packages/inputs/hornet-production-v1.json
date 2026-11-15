@@ -1,0 +1,752 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": false,
+    "externalizeKtx2Hashes": null,
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "wholeship_hornet_production_v1",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.hornet-production-v1",
+    "dynamicNameIncludes": [
+      "HOOK_DRIVE",
+      "HOOK_NAV",
+      "HOOK_SECONDARY",
+      "HOOK_SENSOR",
+      "HOOK_ARMOR"
+    ],
+    "key": "hornet-production-v1",
+    "kind": "ship",
+    "metadataUrl": "assets/ships/release/render-packages/hornet-production-v1/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/hornet-production-v1",
+    "releaseAssetId": "wholeship_hornet_production_v1",
+    "releaseBytes": 582256,
+    "releaseSha256": "62591c7a00df35682f490b510c2d6efb97f20e221e2f023cf11810e99e457a15",
+    "runtimeAssetId": "SF_HORNET_PRODUCTION_V1",
+    "sceneRoot": true,
+    "slot": "hull",
+    "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 37,
+    "id": "wholeship_hornet_production_v1",
+    "kind": "part:wholeships",
+    "ktx2Textures": 6,
+    "meshoptBufferViews": 86,
+    "release": "assets/ships/release/parts/wholeships/hornet_production_v1.glb",
+    "releaseBytes": 582256,
+    "releaseSha256": "62591c7a00df35682f490b510c2d6efb97f20e221e2f023cf11810e99e457a15",
+    "source": "assets/ships/parts/wholeships/hornet_production_v1.glb",
+    "sourceBytes": 1167972,
+    "sourceSha256": "95a034b6aea73a10a84c4c1d5b63b94d378823578fbe89917cc10ba61656ec15",
+    "textures": 6
+  },
+  "runtime": {
+    "assetId": "SF_HORNET_PRODUCTION_V1",
+    "motionBank": {
+      "bytes": 14421,
+      "rigId": "hornet",
+      "sha256": "79cdf6a0653e930a1aad537f5dc6a1c1671a91e5617043bb50821c181435dbe6",
+      "uri": "assets/ships/motions/hornet-production-v1.motion.json"
+    },
+    "slot": "hull",
+    "sourceUrl": "assets/ships/release/parts/wholeships/hornet_production_v1.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [
+      {
+        "id": "sf.render.hornet-production-v1.anchor.socket-camera-focus",
+        "kind": "socket",
+        "node": "SOCKET_Camera_Focus",
+        "parentNodeId": "sf.render.hornet-production-v1.node.hornet-lod0-root"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.anchor.socket-cargo-ventral",
+        "kind": "socket",
+        "node": "SOCKET_Cargo_Ventral",
+        "parentNodeId": "sf.render.hornet-production-v1.node.hornet-lod0-root"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.anchor.socket-engine-port",
+        "kind": "socket",
+        "node": "SOCKET_Engine_Port",
+        "parentNodeId": "sf.render.hornet-production-v1.node.hornet-lod0-root"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.anchor.socket-engine-starboard",
+        "kind": "socket",
+        "node": "SOCKET_Engine_Starboard",
+        "parentNodeId": "sf.render.hornet-production-v1.node.hornet-lod0-root"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.anchor.socket-mining-front",
+        "kind": "socket",
+        "node": "SOCKET_Mining_Front",
+        "parentNodeId": "sf.render.hornet-production-v1.node.hornet-lod0-root"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.anchor.socket-rcs-port",
+        "kind": "socket",
+        "node": "SOCKET_RCS_Port",
+        "parentNodeId": "sf.render.hornet-production-v1.node.hornet-lod0-root"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.anchor.socket-rcs-starboard",
+        "kind": "socket",
+        "node": "SOCKET_RCS_Starboard",
+        "parentNodeId": "sf.render.hornet-production-v1.node.hornet-lod0-root"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.anchor.socket-tether-massline",
+        "kind": "socket",
+        "node": "SOCKET_Tether_Massline",
+        "parentNodeId": "sf.render.hornet-production-v1.node.hornet-lod0-root"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.anchor.socket-trail-port",
+        "kind": "socket",
+        "node": "SOCKET_Trail_Port",
+        "parentNodeId": "sf.render.hornet-production-v1.node.hornet-lod0-root"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.anchor.socket-trail-starboard",
+        "kind": "socket",
+        "node": "SOCKET_Trail_Starboard",
+        "parentNodeId": "sf.render.hornet-production-v1.node.hornet-lod0-root"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.anchor.socket-utility-dorsal",
+        "kind": "socket",
+        "node": "SOCKET_Utility_Dorsal",
+        "parentNodeId": "sf.render.hornet-production-v1.node.hornet-lod0-root"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.anchor.socket-weapon-port",
+        "kind": "socket",
+        "node": "SOCKET_Weapon_Port",
+        "parentNodeId": "sf.render.hornet-production-v1.node.hornet-lod0-root"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.anchor.socket-weapon-starboard",
+        "kind": "socket",
+        "node": "SOCKET_Weapon_Starboard",
+        "parentNodeId": "sf.render.hornet-production-v1.node.hornet-lod0-root"
+      }
+    ],
+    "assetId": "sf.render.hornet-production-v1",
+    "collisions": [
+      {
+        "id": "sf.render.hornet-production-v1.collision",
+        "nodeId": "sf.render.hornet-production-v1.node.collision-hull",
+        "reference": "COLLISION_HULL"
+      }
+    ],
+    "dynamicGroups": [
+      {
+        "id": "sf.render.hornet-production-v1.node.lod0-hook-drive-core.dynamic",
+        "kind": "dynamic-surface",
+        "nodeId": "sf.render.hornet-production-v1.node.lod0-hook-drive-core"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.node.lod0-hook-nav-port.dynamic",
+        "kind": "dynamic-surface",
+        "nodeId": "sf.render.hornet-production-v1.node.lod0-hook-nav-port"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.node.lod0-hook-nav-starboard.dynamic",
+        "kind": "dynamic-surface",
+        "nodeId": "sf.render.hornet-production-v1.node.lod0-hook-nav-starboard"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.node.lod0-hook-sensor-beacon-beacon-amber-beacon.dynamic",
+        "kind": "dynamic-surface",
+        "nodeId": "sf.render.hornet-production-v1.node.lod0-hook-sensor-beacon-beacon-amber-beacon"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-p-hook-armor-flap-armor.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-p-hook-armor-flap-armor"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-p-hook-secondary-tippod-armor.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-p-hook-secondary-tippod-armor"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-p-hook-secondary-tippod-mechanical.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-p-hook-secondary-tippod-mechanical"
+      },
+      {
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-p-hook-secondary-tippod-mechanicaldark.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-p-hook-secondary-tippod-mechanicaldark"
+      }
+    ],
+    "hlods": [],
+    "kind": "ship",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.collision-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "COLLISION_HULL",
+        "node": "COLLISION_HULL",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "non-render",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "independentlyCulled": false,
+        "mergeBoundary": "HORNET_LOD0_ROOT",
+        "node": "HORNET_LOD0_ROOT",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Armor",
+        "node": "LOD0_Armor",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-canopy",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_CANOPY",
+        "node": "LOD0_CANOPY",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "blend",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "blend"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-hook-drive-core",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_HOOK_DRIVE_CORE",
+        "node": "LOD0_HOOK_DRIVE_CORE",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_HOOK_NAV_PORT",
+        "node": "LOD0_HOOK_NAV_PORT",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-hook-nav-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_HOOK_NAV_STARBOARD",
+        "node": "LOD0_HOOK_NAV_STARBOARD",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-hook-sensor-beacon-beacon-amber-beacon",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
+        "node": "LOD0_HOOK_SENSOR_BEACON_Beacon_Amber_beacon",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Hull",
+        "node": "LOD0_Hull",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-lights-cyan-jacket",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Lights_Cyan_jacket",
+        "node": "LOD0_Lights_Cyan_jacket",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-livery",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Livery",
+        "node": "LOD0_Livery",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_Mechanical",
+        "node": "LOD0_Mechanical",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MechanicalDark",
+        "node": "LOD0_MechanicalDark",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-canard-p-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HORNET_CANARD_P_Armor",
+        "node": "LOD0_MOTION_HORNET_CANARD_P_Armor",
+        "parentId": "sf.render.hornet-production-v1.node.motion-hornet-canard-p",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-canard-s-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HORNET_CANARD_S_Armor",
+        "node": "LOD0_MOTION_HORNET_CANARD_S_Armor",
+        "parentId": "sf.render.hornet-production-v1.node.motion-hornet-canard-s",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-p-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HORNET_FLAP_P_Armor",
+        "node": "LOD0_MOTION_HORNET_FLAP_P_Armor",
+        "parentId": "sf.render.hornet-production-v1.node.motion-hornet-flap-p",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-p-hook-armor-flap-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HORNET_FLAP_P_HOOK_ARMOR_FLAP_Armor",
+        "node": "LOD0_MOTION_HORNET_FLAP_P_HOOK_ARMOR_FLAP_Armor",
+        "parentId": "sf.render.hornet-production-v1.node.motion-hornet-flap-p",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-p-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HORNET_FLAP_P_Mechanical",
+        "node": "LOD0_MOTION_HORNET_FLAP_P_Mechanical",
+        "parentId": "sf.render.hornet-production-v1.node.motion-hornet-flap-p",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-s-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HORNET_FLAP_S_Armor",
+        "node": "LOD0_MOTION_HORNET_FLAP_S_Armor",
+        "parentId": "sf.render.hornet-production-v1.node.motion-hornet-flap-s",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-flap-s-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HORNET_FLAP_S_Mechanical",
+        "node": "LOD0_MOTION_HORNET_FLAP_S_Mechanical",
+        "parentId": "sf.render.hornet-production-v1.node.motion-hornet-flap-s",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-p-hook-secondary-tippod-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HORNET_TIPPOD_P_HOOK_SECONDARY_TIPPOD_Armor",
+        "node": "LOD0_MOTION_HORNET_TIPPOD_P_HOOK_SECONDARY_TIPPOD_Armor",
+        "parentId": "sf.render.hornet-production-v1.node.motion-hornet-tippod-p",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-p-hook-secondary-tippod-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HORNET_TIPPOD_P_HOOK_SECONDARY_TIPPOD_Mechanical",
+        "node": "LOD0_MOTION_HORNET_TIPPOD_P_HOOK_SECONDARY_TIPPOD_Mechanical",
+        "parentId": "sf.render.hornet-production-v1.node.motion-hornet-tippod-p",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-p-hook-secondary-tippod-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HORNET_TIPPOD_P_HOOK_SECONDARY_TIPPOD_MechanicalDark",
+        "node": "LOD0_MOTION_HORNET_TIPPOD_P_HOOK_SECONDARY_TIPPOD_MechanicalDark",
+        "parentId": "sf.render.hornet-production-v1.node.motion-hornet-tippod-p",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-s-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HORNET_TIPPOD_S_Armor",
+        "node": "LOD0_MOTION_HORNET_TIPPOD_S_Armor",
+        "parentId": "sf.render.hornet-production-v1.node.motion-hornet-tippod-s",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-s-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HORNET_TIPPOD_S_Mechanical",
+        "node": "LOD0_MOTION_HORNET_TIPPOD_S_Mechanical",
+        "parentId": "sf.render.hornet-production-v1.node.motion-hornet-tippod-s",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.lod0-motion-hornet-tippod-s-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HORNET_TIPPOD_S_MechanicalDark",
+        "node": "LOD0_MOTION_HORNET_TIPPOD_S_MechanicalDark",
+        "parentId": "sf.render.hornet-production-v1.node.motion-hornet-tippod-s",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.motion-hornet-canard-p",
+        "independentlyCulled": false,
+        "mergeBoundary": "MOTION_HORNET_CANARD_P",
+        "node": "MOTION_HORNET_CANARD_P",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.motion-hornet-canard-s",
+        "independentlyCulled": false,
+        "mergeBoundary": "MOTION_HORNET_CANARD_S",
+        "node": "MOTION_HORNET_CANARD_S",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.motion-hornet-flap-p",
+        "independentlyCulled": false,
+        "mergeBoundary": "MOTION_HORNET_FLAP_P",
+        "node": "MOTION_HORNET_FLAP_P",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.motion-hornet-flap-s",
+        "independentlyCulled": false,
+        "mergeBoundary": "MOTION_HORNET_FLAP_S",
+        "node": "MOTION_HORNET_FLAP_S",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.motion-hornet-tippod-p",
+        "independentlyCulled": false,
+        "mergeBoundary": "MOTION_HORNET_TIPPOD_P",
+        "node": "MOTION_HORNET_TIPPOD_P",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.motion-hornet-tippod-s",
+        "independentlyCulled": false,
+        "mergeBoundary": "MOTION_HORNET_TIPPOD_S",
+        "node": "MOTION_HORNET_TIPPOD_S",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.socket-camera-focus",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Camera_Focus",
+        "node": "SOCKET_Camera_Focus",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.socket-cargo-ventral",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Cargo_Ventral",
+        "node": "SOCKET_Cargo_Ventral",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.socket-engine-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Engine_Port",
+        "node": "SOCKET_Engine_Port",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.socket-engine-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Engine_Starboard",
+        "node": "SOCKET_Engine_Starboard",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.socket-mining-front",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Mining_Front",
+        "node": "SOCKET_Mining_Front",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.socket-rcs-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_RCS_Port",
+        "node": "SOCKET_RCS_Port",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.socket-rcs-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_RCS_Starboard",
+        "node": "SOCKET_RCS_Starboard",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.socket-tether-massline",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Tether_Massline",
+        "node": "SOCKET_Tether_Massline",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.socket-trail-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Trail_Port",
+        "node": "SOCKET_Trail_Port",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.socket-trail-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Trail_Starboard",
+        "node": "SOCKET_Trail_Starboard",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.socket-utility-dorsal",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Utility_Dorsal",
+        "node": "SOCKET_Utility_Dorsal",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.socket-weapon-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Weapon_Port",
+        "node": "SOCKET_Weapon_Port",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.hornet-production-v1.node.socket-weapon-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Weapon_Starboard",
+        "node": "SOCKET_Weapon_Starboard",
+        "parentId": "sf.render.hornet-production-v1.node.hornet-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.hornet-production-v1.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 582256,
+    "sha256": "62591c7a00df35682f490b510c2d6efb97f20e221e2f023cf11810e99e457a15",
+    "uri": "assets/ships/release/parts/wholeships/hornet_production_v1.glb"
+  }
+}

@@ -611,7 +611,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "be0e43e45c7abc864158f01ebc941ffc4027a2a590ebbfa68abe3a9f79782151",
+  "contentHash": "770610ed2bd2862dc9dc661bf6dd1e95df986a5353ae346628aa28b0449c3b92",
   "dynamicGroups": [
     {
       "id": "sf.render.hornet-production-v1-lod2.mesh.lod0-hook-drive-core.dynamic",
@@ -858,7 +858,7 @@
       "id": "sf.render.hornet-production-v1-lod2.mesh.lod0-lights-cyan-jacket.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "6bedd9ee1e78066ccf54d53a1e6c41c218c8ae4c00a170a899734c102d6a265b",
+      "materialHash": "9182254bf8128fe374ad95ff593c4ee62b7e72c04a0bd82698b6d84e4b16fec2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lights_Cyan_jacket.002",
       "nodeId": "sf.render.hornet-production-v1-lod2.mesh.lod0-lights-cyan-jacket",
@@ -1156,13 +1156,6 @@
       "textures": []
     },
     {
-      "hash": "6bedd9ee1e78066ccf54d53a1e6c41c218c8ae4c00a170a899734c102d6a265b",
-      "id": "material:6bedd9ee1e78066ccf54d53a",
-      "name": "Material_Emissive_Cyan_jacket",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
       "hash": "7c83da78cae650b1fb371c9259585c00a40e27a83f3e54eba72c1d9565ddb844",
       "id": "material:7c83da78cae650b1fb371c92",
       "name": "Material_Hull",
@@ -1225,6 +1218,13 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "9182254bf8128fe374ad95ff593c4ee62b7e72c04a0bd82698b6d84e4b16fec2",
+      "id": "material:9182254bf8128fe374ad95ff",
+      "name": "Material_Emissive_Cyan_jacket",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
@@ -2460,19 +2460,19 @@
       "sha256": "30411245799830b7e35343fc46e45cfa9ac270e4d6ed710acbb91fa4f5f1d343"
     },
     "sourceGlb": {
-      "bytes": 373692,
-      "sha256": "2af99cfbffa6530d918235a5752c1ac419b5cc09879580da102b51d127eb9eeb",
+      "bytes": 373712,
+      "sha256": "163c4d60a4e7f5833307694a3a3b6311bd0575f6097fa940cd457cae77c4345b",
       "uri": "hornet_production_v1_lod2.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 19156,
+      "sha256": "2a17b7012fc8e7a92ed23e98743848ef7b332dd21de3ca534346f52da2a327e4",
+      "uri": "assets/ships/render-packages/inputs/hornet-production-v1-lod2.json"
     }
   },
   "render": {
-    "bytes": 380644,
-    "sha256": "d65ca8b8916e439582168562957ce740d4bca9878b19f7780fced2ce1a0f284b",
+    "bytes": 380664,
+    "sha256": "f2012a1f075102a1ec2b0d63d46bccb43563aecd912d788af5450681f5db1c08",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4304,7 +4304,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/hornet_production_v1_lod2.glb"
   },
-  "runtimeHash": "4076e517f3809cdc188c8f642401363e59515962355983d44ce5e04dd77d0d3f",
+  "runtimeHash": "c10ade122dddea809a33ad7c732a9b5d8e93d5fea5ab676c45625e6db775c2dc",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

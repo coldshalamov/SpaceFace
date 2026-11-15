@@ -213,6 +213,9 @@ def build():
     s.hook_part('HOOK_SECONDARY_TIPPOD', _dmg['TipPod'], _dmg['TipBarrel'])
     s.hook_part('HOOK_SENSOR_BEACON', _dmg['Beacon'])
     s.hook_part('HOOK_ARMOR_FLAP', _dmg['FlapOuter'])
+    # Keep the leading-edge stripes readable without washing the hull in bloom.
+    trim = s.mat('glow_cyan.jacket').node_tree.nodes.get('Principled BSDF').inputs['Emission Color']
+    trim.default_value = tuple(c * 4 / 33 for c in trim.default_value[:3]) + (1.0,)
     s.ani37_bank = ANI_37.build(s, {
         'tippodP': [_dmg['TipPod'], _dmg['TipBarrel']],
         'tippodS': [_dmg['TipPod_M'], _dmg['TipBarrel_M']],
