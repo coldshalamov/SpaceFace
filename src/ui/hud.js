@@ -1743,7 +1743,11 @@ export function setAttr(el, name, value) {
 export function clearAttr(el, name) {
   if (!el) return;
   const cache = el._sfAttr || (el._sfAttr = Object.create(null));
-  const needsClear = cache[name] !== undefined || el.hasAttribute(name);
+  // `hasAttribute` is only consulted to catch an attribute written outside this cache; the
+  // minimal element doubles the HUD tests mount expose set/removeAttribute alone, and a missing
+  // probe must not turn a no-op clear into a throw.
+  const needsClear = cache[name] !== undefined
+    || (typeof el.hasAttribute === 'function' && el.hasAttribute(name));
   cache[name] = undefined;
   if (needsClear) el.removeAttribute(name);
 }
@@ -6154,9 +6158,12 @@ export function createHud(ctx, alerts) {
       // The 290px nowrap field shows the short act title; the full canon heading stays on the
       // node's tooltip and accessible name so nothing is lost to the ellipsis.
       const actFull = actLine ? journeyActTrackerFullLine(state) : '';
-      mtTitle.title = actFull;
-      if (actFull) mtTitle.setAttribute('aria-label', actFull);
-      else mtTitle.removeAttribute('aria-label');
+      // Every other write here goes through a compared writer; these three did not, so an
+      // unchanged act line re-wrote the tooltip and the accessible name 10×/s (and cleared the
+      // label whenever the line went empty). setTitle/setAttr/clearAttr all keep their own cache.
+      setTitle(mtTitle, actFull);
+      if (actFull) setAttr(mtTitle, 'aria-label', actFull);
+      else clearAttr(mtTitle, 'aria-label');
       setDisplay(mtTitle, !!actLine);
       // The muted-safe tutorial caption rides the tracker's secondary line. It is additive:
       // the objective's verb, distance and recall state above are untouched.
