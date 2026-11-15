@@ -157,7 +157,7 @@ export function governTree(root, win = globalThis.window, cfg = TYPE_GOVERNOR) {
 }
 
 function isVisibleScreenRoot(node) {
-  const screen = typeof node.closest === 'function' ? node.closest('.k-screen') : null;
+  const screen = typeof node.closest === 'function' ? node.closest('.screen, .k-screen') : null;
   return !screen || screen.classList.contains('sf-screen--visible');
 }
 
