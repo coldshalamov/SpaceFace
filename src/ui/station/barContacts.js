@@ -5,6 +5,7 @@ import { kesslerWeightSlipChoice, kesslerWeightSlipReply } from './massSlipConve
 import { kesslerStarterWorkChoice, kesslerStarterWorkReply } from './starterWorkdayConversation.js';
 import { kesslerFreightChoice, kesslerFreightReply } from './heliosFreightConversation.js';
 import { kesslerCeresShiftChoice, kesslerCeresShiftReply } from './ceresShiftConversation.js';
+import { CERES_ARRIVAL_PREFIX, ceresArrivalChoices, ceresArrivalMapOffer, ceresArrivalReply } from '../../story/ceresArrivalStory.js';
 import { furnaceDetailChoices, furnaceDetailReply, isFurnaceDetailChoice } from './furnaceDetailConversation.js';
 import { commodityDisplayName } from '../commodityNames.js';
 import { localizeText } from '../../localization/sourceText.js';
@@ -591,6 +592,10 @@ export function generateContacts(stationId, state = {}, opts = {}) {
   stampFurnaceDetailChoices(listed, stationId, state);
   stampCollectiveHours(listed, stationId, state);
   stampQuinnsStool(listed, stationId, state);
+  for (const contact of listed) {
+    const arrival = ceresArrivalChoices(state, stationId, contact);
+    if (arrival.length) contact.choices = [...getChoices(contact.role, contact), ...arrival];
+  }
   // The wake silences this room's ambient patrons, not its mission and service contacts.
   const erisSilentUntil = Number(state?.story?.flags?.eris_choir_bar_silent_until);
   if (stationId === 'station_eris_margin' && Number.isFinite(erisSilentUntil)
@@ -1472,6 +1477,15 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   }
   if (contact && contact.storyBuyer) return storyBuyerReply(contact, choiceId);
   if (isFurnaceDetailChoice(choiceId)) return furnaceDetailReply(ctx, stationId, contact, choiceId);
+  if (String(choiceId).startsWith(CERES_ARRIVAL_PREFIX)) {
+    const reply = ceresArrivalReply(state, stationId, contact, choiceId);
+    if (choiceId === `${CERES_ARRIVAL_PREFIX}map`) {
+      const offer = ceresArrivalMapOffer(state, stationId, contact);
+      if (offer && !openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, ...offer }))
+        return { text: 'The chart will not open. She waits.' };
+    }
+    return reply;
+  }
   if (choiceId === 'last_shift_report') return lastShiftLocalReply(state, stationId, contact);
   if (contact && contact.id === SORI_COMPARISON_CONTACT_ID) return soriComparisonReply(state, stationId, choiceId);
   if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);
