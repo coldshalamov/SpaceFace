@@ -37,6 +37,31 @@ test('specialist tell resources follow the authored boundary teardown', () => {
   assert.equal(materialDisposed, 1);
 });
 
+test('jackal wake reaches salvo points through transformed parents', () => {
+  const parent = new THREE.Group(), root = new THREE.Group(), emitter = new THREE.Object3D();
+  parent.position.set(13, 7, -4); parent.rotation.set(.2, .6, -.1); parent.scale.set(1.4, .8, 2);
+  root.position.set(7, 3, -8); root.rotation.y = .4; root.scale.set(.8, 1.1, 1.3); parent.add(root);
+  emitter.name = 'SOCKET_MINE_EJECTOR'; emitter.position.set(2, 3, 4); root.add(emitter);
+  const points = [{ x: 66, z: -25 }, { x: 81, z: -45 }, { x: 45, z: -51 }];
+  const actor = { pos: { x: 55, z: -31 }, data: { swarmSpecialist: {
+    kind: 'jackal', phase: 'active', salvoPoints: points,
+  } } };
+  attachSwarmSpecialistVisual(root, actor);
+  root.userData.swarmSpecialistVisual.update(actor, 1);
+  const wake = root.getObjectByName('SF_SWARM_JACKAL_MINE_WAKE');
+  const positions = wake.geometry.attributes.position;
+  const origin = root.getWorldPosition(new THREE.Vector3());
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    const expected = root.worldToLocal(new THREE.Vector3(origin.x + p.x - actor.pos.x,
+      origin.y + .3, origin.z + p.z - actor.pos.z));
+    const actual = new THREE.Vector3().fromBufferAttribute(positions, i * 4 + 2)
+      .add(new THREE.Vector3().fromBufferAttribute(positions, i * 4 + 3)).multiplyScalar(.5);
+    assert.ok(actual.distanceTo(expected) < 1e-5);
+  }
+  disposeDetachedObject(root);
+});
+
 test('production worker transports changing tells into existing rendered specialist ships', async (t) => {
   const lane = createSimHost();
   t.after(() => lane.shutdown());

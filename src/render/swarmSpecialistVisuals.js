@@ -9,6 +9,7 @@ const KINDS = Object.freeze({ warden_escort: 'warden', mine_layer_jackal: 'jacka
 const UP = new THREE.Vector3(0, 1, 0);
 const ORIGIN = new THREE.Vector3(), POINT = new THREE.Vector3(), DELTA = new THREE.Vector3();
 const U = new THREE.Vector3(), V = new THREE.Vector3(), TURN = new THREE.Quaternion();
+const WAKE_INVERSE = new THREE.Matrix4();
 const smooth = value => { const t = Math.max(0, Math.min(1, value)); return t * t * (3 - 2 * t); };
 function phaseWeight(view, tick) {
   if (view.phase === 'idle') return 0;
@@ -79,14 +80,18 @@ function writeWake(wake, root, live, view, strength, emitter) {
     wake.mesh.visible = false; return;
   }
   root.updateWorldMatrix(true, false);
-  if (emitter) { emitter.getWorldPosition(wake.source); root.worldToLocal(wake.source); }
+  if (emitter) emitter.getWorldPosition(wake.source);
+  WAKE_INVERSE.copy(root.matrixWorld).invert();
+  ORIGIN.setFromMatrixPosition(root.matrixWorld);
+  if (emitter) wake.source.applyMatrix4(WAKE_INVERSE);
   else wake.source.set(0, .3, 0);
   const positions = wake.mesh.geometry.attributes.position;
   let count = 0;
   for (let i = 0; i < 3; i++) {
     const point = view.salvoPoints[i];
     if (!Number.isFinite(point?.x) || !Number.isFinite(point?.z)) continue;
-    localSimPoint(root, live, point.x, point.z, wake.target);
+    wake.target.set(ORIGIN.x + point.x - (Number(live?.pos?.x) || 0), ORIGIN.y + .3,
+      ORIGIN.z + point.z - (Number(live?.pos?.z) || 0)).applyMatrix4(WAKE_INVERSE);
     const dx = wake.target.x - wake.source.x, dz = wake.target.z - wake.source.z;
     const length = Math.hypot(dx, dz);
     if (length < 1) continue;
