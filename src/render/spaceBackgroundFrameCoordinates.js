@@ -101,6 +101,8 @@ function withGlobalCameraMatrix(background, method, args) {
   camera.position.x = globalX;
   camera.position.z = globalZ;
   if (typeof camera.updateMatrixWorld === 'function') camera.updateMatrixWorld(true);
+  // Sector/resize work projects with the global camera, so its rig must be in that frame too.
+  restoreLocalRoot(background, globalX, globalZ);
   try {
     return method.apply(background, args);
   } finally {
@@ -140,11 +142,16 @@ export function installSpaceBackgroundFrameCoordinateBridge() {
       scratch.globalCamera,
     );
 
-    const result = originalUpdate.call(this, frameDt, bgTime, globalCamera);
     this.localCamX = localX;
     this.localCamZ = localZ;
-    restoreLocalRoot(this, localX, localZ);
-    return result;
+    const wasGlobalUpdate = this._spaceBackgroundGlobalUpdate;
+    this._spaceBackgroundGlobalUpdate = true;
+    try {
+      return originalUpdate.call(this, frameDt, bgTime, globalCamera);
+    } finally {
+      this._spaceBackgroundGlobalUpdate = wasGlobalUpdate;
+      restoreLocalRoot(this, localX, localZ);
+    }
   };
 
   if (typeof originalSectorEnter === 'function') {

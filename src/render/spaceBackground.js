@@ -2657,7 +2657,12 @@ export class SpaceBackground {
     const e = this._heroProjB || (this._heroProjB = new THREE.Vector3());
     const g = this.group ? this.group.position : { x: 0, y: 0, z: 0 };
     const r = Number.isFinite(radiusWorld) && radiusWorld > 0 ? radiusWorld : 0;
-    v.set(g.x + spec.bx - this.camX * par, g.y + HERO_DEPTH, g.z + spec.bz - this.camZ * par);
+    // During bridged updates the rig is temporarily global while the real camera stays local.
+    // Sector/resize projections instead move both rig and camera global in the bridge.
+    const localProjection = this._spaceBackgroundGlobalUpdate && !this._spaceBackgroundGlobalProjection;
+    const gx = localProjection ? this.localCamX : g.x;
+    const gz = localProjection ? this.localCamZ : g.z;
+    v.set(gx + spec.bx - this.camX * par, g.y + HERO_DEPTH, gz + spec.bz - this.camZ * par);
     e.copy(v);
     const me = cam.matrixWorld.elements;
     e.x += me[0] * r; e.y += me[1] * r; e.z += me[2] * r;

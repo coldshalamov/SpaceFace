@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import * as THREE from 'three';
 
-import { SpaceBackground, layerUvOffset } from '../src/render/spaceBackground.js';
+import { SpaceBackground, PALETTES, layerUvOffset, screenNdcToParallaxAnchor } from '../src/render/spaceBackground.js';
 import {
   installSpaceBackgroundFrameCoordinateBridge,
   resolveSpaceBackgroundGlobalCamera,
@@ -62,6 +63,58 @@ test('global camera projection reuses caller storage and adds only frame origin'
     out,
   ), out);
   assert.deepEqual(out, { x: 4108.5, y: 88, z: -8195.25 });
+});
+
+test('hero admission sees the same visible planet across a frame-origin rebase', () => {
+ for (const [globalX,globalZ] of [[8192,-4096],[-16384,12288]]) {
+  for (const camera of [new THREE.PerspectiveCamera(50, 16 / 9, 0.1, 20000),
+    new THREE.OrthographicCamera(-180,180,100,-100,0.1,20000)]) {
+  const bg = frameHarness();
+  camera.position.set(0, 140, 80); camera.lookAt(0, 0, 0); camera.updateMatrixWorld(true);
+  bg.camera = camera; bg.heroSizeK = 4; bg.quadSize = 4000;
+  const anchor = screenNdcToParallaxAnchor(camera, 0, 0, {x:0,z:80}, {bgY:bg.bgY,heroDepth:12});
+  const spec={kind:'planet',type:'gas',frac:0.15,seed:7,
+    bx:anchor.bx+globalX*0.055,bz:anchor.bz+globalZ*0.055};
+  const before=frameHarness();
+  const globalCamera=camera.clone();
+  globalCamera.position.x+=globalX; globalCamera.position.z+=globalZ;
+  globalCamera.updateMatrixWorld(true);
+  before.camera=globalCamera; before.heroSizeK=4; before.quadSize=4000;
+  before.heroPlacement=[spec];
+  before._spawnPlanet=function(s) { this.planets.push({spec:s,sprite:{scale:{x:20}}}); };
+  before.update(1/60, 1, {x:globalCamera.position.x,y:globalCamera.position.y,z:globalCamera.position.z});
+  assert.equal(before.planets.length,1,'the same physical camera admits the centered planet before rebase');
+  bg.heroPlacement=[spec];
+  bg._spawnPlanet=function(s) { this.planets.push({spec:s,sprite:{scale:{x:20}}}); };
+  bg.state.world.frameOrigin.x=globalX; bg.state.world.frameOrigin.z=globalZ;
+  bg.update(1/60, 1, {x:camera.position.x,y:camera.position.y,z:camera.position.z});
+  assert.equal(bg.planets.length,1,'a planet centered on the real local camera must be admitted');
+  assert.equal(bg.planets[0].spec,spec);
+  }
+ }
+});
+
+test('sector refresh and resize project with camera and background in the same frame', () => {
+  const bg=frameHarness(), camera=new THREE.PerspectiveCamera(50,16/9,0.1,20000);
+  camera.position.set(0,140,80);camera.lookAt(0,0,0);camera.updateMatrixWorld(true);
+  const origin={x:8192,z:-4096};bg.state.world.frameOrigin=origin;
+  bg.camera=camera;bg.heroSizeK=4;bg.quadSize=4000;bg.seed=47;
+  bg.localCamX=0;bg.localCamZ=80;bg.camX=origin.x;bg.camZ=origin.z+80;
+  bg.group.position.set(0,bg.bgY,80);
+  const anchor=screenNdcToParallaxAnchor(camera,0,0,{x:0,z:80},{bgY:bg.bgY,heroDepth:12});
+  const spec={kind:'planet',type:'gas',frac:0.15,seed:7,bx:anchor.bx+origin.x*.055,bz:anchor.bz+origin.z*.055};
+  const checks=[];
+  const project=()=>{checks.push(bg._heroOnGlass(spec,.055,10));return 500;};
+  bg._computePerspScale=project;bg._publishOpeningSubmissionPackage=()=>{};
+  bg.onResize();assert.deepEqual(checks,[true]);
+  bg._requestSkyPlate=()=>{};bg._skyPaletteForSector=()=>Object.keys(PALETTES)[0];
+  bg._sectorTintCurrent=new THREE.Color();bg._sectorTintStart=new THREE.Color();bg._sectorTintTarget=new THREE.Color();
+  bg.bakeAll=()=>{};bg._ensureNebulaBake=()=>{};bg._rebuildStarsAndFlares=()=>{};bg._spawnStructureCard=()=>{};
+  bg._refreshHeroes=project;
+  bg.onSectorEnter({id:'fixture'},null);
+  assert.deepEqual(checks,[true,true]);
+  assert.equal(camera.position.x,0);assert.equal(camera.position.z,80);
+  assert.equal(bg.group.position.x,0);assert.equal(bg.group.position.z,80);
 });
 
 function frameHarness() {
