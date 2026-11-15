@@ -1,0 +1,379 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": true,
+    "externalizeKtx2Hashes": [
+      "22601a035528934734c6af46603b3154e15298bea3c974cb921153e2added2cf",
+      "7c5e5c9f575242a2b6d42c39a7338b7577029e1d573351a27d744e7cb56b285b",
+      "9220dd5467d11daf3b3e621bcce7c905bc80db01d132f22bd2db04d6c264af0c"
+    ],
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "weapon_heavy_cannon",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.weapon-heavy-cannon",
+    "dynamicNameIncludes": [],
+    "key": "weapon-heavy-cannon",
+    "kind": "part",
+    "metadataUrl": "assets/ships/release/render-packages/weapon-heavy-cannon/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/weapon-heavy-cannon",
+    "releaseAssetId": "weapon_heavy_cannon",
+    "releaseBytes": 443508,
+    "releaseSha256": "208dc9a7b878bf355ccd9b6762b06e2f669efa400602bd6153fd52c379220c8f",
+    "runtimeAssetId": "SF_WEAPON_HEAVY_CANNON",
+    "sceneRoot": true,
+    "sharedKtx2Hashes": [
+      "22601a035528934734c6af46603b3154e15298bea3c974cb921153e2added2cf",
+      "7c5e5c9f575242a2b6d42c39a7338b7577029e1d573351a27d744e7cb56b285b",
+      "9220dd5467d11daf3b3e621bcce7c905bc80db01d132f22bd2db04d6c264af0c"
+    ],
+    "slot": "weapon",
+    "sourceUrl": "assets/ships/release/parts/weapons/weapon_heavy_cannon.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 2,
+    "id": "weapon_heavy_cannon",
+    "kind": "part:weapons",
+    "ktx2Textures": 12,
+    "meshoptBufferViews": 21,
+    "release": "assets/ships/release/parts/weapons/weapon_heavy_cannon.glb",
+    "releaseBytes": 443508,
+    "releaseSha256": "208dc9a7b878bf355ccd9b6762b06e2f669efa400602bd6153fd52c379220c8f",
+    "source": "assets/ships/parts/weapons/weapon_heavy_cannon.glb",
+    "sourceBytes": 405880,
+    "sourceSha256": "dbc7c4f7b828af4eb96465c6a3712077efea228a58f99db998655b650825c393",
+    "textures": 12
+  },
+  "runtime": {
+    "assetId": "SF_WEAPON_HEAVY_CANNON",
+    "motionBank": null,
+    "slot": "weapon",
+    "sourceUrl": "assets/ships/release/parts/weapons/weapon_heavy_cannon.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [
+      {
+        "id": "sf.render.weapon-heavy-cannon.anchor.socket-muzzle",
+        "kind": "socket",
+        "node": "SOCKET_Muzzle",
+        "parentNodeId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon"
+      }
+    ],
+    "assetId": "sf.render.weapon-heavy-cannon",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "part",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.heavy-barrel",
+        "independentlyCulled": false,
+        "mergeBoundary": "Heavy_Barrel",
+        "node": "Heavy_Barrel",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.heavy-breech",
+        "independentlyCulled": false,
+        "mergeBoundary": "Heavy_Breech",
+        "node": "Heavy_Breech",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.heavy-muzzle-glow",
+        "independentlyCulled": false,
+        "mergeBoundary": "Heavy_Muzzle_Glow",
+        "node": "Heavy_Muzzle_Glow",
+        "parentId": "sf.render.weapon-heavy-cannon.node.hook-emissive",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.heavy-recoil-0-72",
+        "independentlyCulled": false,
+        "mergeBoundary": "Heavy_Recoil_-0.72",
+        "node": "Heavy_Recoil_-0.72",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.heavy-recoil-0-72-2",
+        "independentlyCulled": false,
+        "mergeBoundary": "Heavy_Recoil_0.72",
+        "node": "Heavy_Recoil_0.72",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.heavy-rib-2-15",
+        "independentlyCulled": false,
+        "mergeBoundary": "Heavy_Rib_2.15",
+        "node": "Heavy_Rib_2.15",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.heavy-rib-2-8",
+        "independentlyCulled": false,
+        "mergeBoundary": "Heavy_Rib_2.8",
+        "node": "Heavy_Rib_2.8",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.heavy-rib-3-45",
+        "independentlyCulled": false,
+        "mergeBoundary": "Heavy_Rib_3.45",
+        "node": "Heavy_Rib_3.45",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.heavy-rib-4-1",
+        "independentlyCulled": false,
+        "mergeBoundary": "Heavy_Rib_4.1",
+        "node": "Heavy_Rib_4.1",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.hook-emissive",
+        "independentlyCulled": false,
+        "mergeBoundary": "HOOK_Emissive",
+        "node": "HOOK_Emissive",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-brushednickel",
+        "independentlyCulled": false,
+        "mergeBoundary": "Remaster_Material_Mechanical_BrushedNickel",
+        "node": "Remaster_Material_Mechanical_BrushedNickel",
+        "parentId": null,
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.remaster-material-mechanical-shadowenamel",
+        "independentlyCulled": false,
+        "mergeBoundary": "Remaster_Material_Mechanical_ShadowEnamel",
+        "node": "Remaster_Material_Mechanical_ShadowEnamel",
+        "parentId": null,
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.socket-muzzle",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Muzzle",
+        "node": "SOCKET_Muzzle",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_heavy_cannon",
+        "node": "weapon_heavy_cannon",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-1",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_heavy_cannon_Bolt_1",
+        "node": "weapon_heavy_cannon_Bolt_1",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-2",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_heavy_cannon_Bolt_2",
+        "node": "weapon_heavy_cannon_Bolt_2",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-3",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_heavy_cannon_Bolt_3",
+        "node": "weapon_heavy_cannon_Bolt_3",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-4",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_heavy_cannon_Bolt_4",
+        "node": "weapon_heavy_cannon_Bolt_4",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-5",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_heavy_cannon_Bolt_5",
+        "node": "weapon_heavy_cannon_Bolt_5",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-6",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_heavy_cannon_Bolt_6",
+        "node": "weapon_heavy_cannon_Bolt_6",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-7",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_heavy_cannon_Bolt_7",
+        "node": "weapon_heavy_cannon_Bolt_7",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-bolt-8",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_heavy_cannon_Bolt_8",
+        "node": "weapon_heavy_cannon_Bolt_8",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-hull-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_heavy_cannon_Material_Hull_Merged",
+        "node": "weapon_heavy_cannon_Material_Hull_Merged",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon-material-mechanical-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_heavy_cannon_Material_Mechanical_Merged",
+        "node": "weapon_heavy_cannon_Material_Mechanical_Merged",
+        "parentId": "sf.render.weapon-heavy-cannon.node.weapon-heavy-cannon",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-heavy-cannon.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 443508,
+    "sha256": "208dc9a7b878bf355ccd9b6762b06e2f669efa400602bd6153fd52c379220c8f",
+    "uri": "assets/ships/release/parts/weapons/weapon_heavy_cannon.glb"
+  }
+}

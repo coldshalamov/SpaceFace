@@ -1,0 +1,343 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": true,
+    "externalizeKtx2Hashes": [
+      "22601a035528934734c6af46603b3154e15298bea3c974cb921153e2added2cf",
+      "7c5e5c9f575242a2b6d42c39a7338b7577029e1d573351a27d744e7cb56b285b",
+      "9220dd5467d11daf3b3e621bcce7c905bc80db01d132f22bd2db04d6c264af0c"
+    ],
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "weapon_lance",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.weapon-lance",
+    "dynamicNameIncludes": [],
+    "key": "weapon-lance",
+    "kind": "part",
+    "metadataUrl": "assets/ships/release/render-packages/weapon-lance/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/weapon-lance",
+    "releaseAssetId": "weapon_lance",
+    "releaseBytes": 426368,
+    "releaseSha256": "86cddf30b18fd392d5c9c27b937ca77c22c68a2a54cc24965524082d978b389d",
+    "runtimeAssetId": "SF_WEAPON_LANCE",
+    "sceneRoot": true,
+    "sharedKtx2Hashes": [
+      "22601a035528934734c6af46603b3154e15298bea3c974cb921153e2added2cf",
+      "7c5e5c9f575242a2b6d42c39a7338b7577029e1d573351a27d744e7cb56b285b",
+      "9220dd5467d11daf3b3e621bcce7c905bc80db01d132f22bd2db04d6c264af0c"
+    ],
+    "slot": "weapon",
+    "sourceUrl": "assets/ships/release/parts/weapons/weapon_lance.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 2,
+    "id": "weapon_lance",
+    "kind": "part:weapons",
+    "ktx2Textures": 12,
+    "meshoptBufferViews": 27,
+    "release": "assets/ships/release/parts/weapons/weapon_lance.glb",
+    "releaseBytes": 426368,
+    "releaseSha256": "86cddf30b18fd392d5c9c27b937ca77c22c68a2a54cc24965524082d978b389d",
+    "source": "assets/ships/parts/weapons/weapon_lance.glb",
+    "sourceBytes": 314192,
+    "sourceSha256": "a19f5cb3876d5d3e7af87fc7d8f3a0d36b566100aa6d94d28715241392c2f964",
+    "textures": 12
+  },
+  "runtime": {
+    "assetId": "SF_WEAPON_LANCE",
+    "motionBank": null,
+    "slot": "weapon",
+    "sourceUrl": "assets/ships/release/parts/weapons/weapon_lance.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [
+      {
+        "id": "sf.render.weapon-lance.anchor.socket-muzzle",
+        "kind": "socket",
+        "node": "SOCKET_Muzzle",
+        "parentNodeId": "sf.render.weapon-lance.node.weapon-lance"
+      }
+    ],
+    "assetId": "sf.render.weapon-lance",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "part",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.hook-emissive",
+        "independentlyCulled": false,
+        "mergeBoundary": "HOOK_Emissive",
+        "node": "HOOK_Emissive",
+        "parentId": "sf.render.weapon-lance.node.weapon-lance",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.lance-crystal",
+        "independentlyCulled": false,
+        "mergeBoundary": "Lance_Crystal",
+        "node": "Lance_Crystal",
+        "parentId": "sf.render.weapon-lance.node.hook-emissive",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.lance-fin-1",
+        "independentlyCulled": false,
+        "mergeBoundary": "Lance_Fin_-1",
+        "node": "Lance_Fin_-1",
+        "parentId": "sf.render.weapon-lance.node.weapon-lance",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.lance-fin-1-2",
+        "independentlyCulled": false,
+        "mergeBoundary": "Lance_Fin_1",
+        "node": "Lance_Fin_1",
+        "parentId": "sf.render.weapon-lance.node.weapon-lance",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.lance-focus-2-1",
+        "independentlyCulled": false,
+        "mergeBoundary": "Lance_Focus_2.1",
+        "node": "Lance_Focus_2.1",
+        "parentId": "sf.render.weapon-lance.node.hook-emissive",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.lance-focus-3-15",
+        "independentlyCulled": false,
+        "mergeBoundary": "Lance_Focus_3.15",
+        "node": "Lance_Focus_3.15",
+        "parentId": "sf.render.weapon-lance.node.hook-emissive",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.lance-focus-4-2",
+        "independentlyCulled": false,
+        "mergeBoundary": "Lance_Focus_4.2",
+        "node": "Lance_Focus_4.2",
+        "parentId": "sf.render.weapon-lance.node.hook-emissive",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.lance-focus-5-2",
+        "independentlyCulled": false,
+        "mergeBoundary": "Lance_Focus_5.2",
+        "node": "Lance_Focus_5.2",
+        "parentId": "sf.render.weapon-lance.node.hook-emissive",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.lance-root",
+        "independentlyCulled": false,
+        "mergeBoundary": "Lance_Root",
+        "node": "Lance_Root",
+        "parentId": "sf.render.weapon-lance.node.weapon-lance",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.lance-spine",
+        "independentlyCulled": false,
+        "mergeBoundary": "Lance_Spine",
+        "node": "Lance_Spine",
+        "parentId": "sf.render.weapon-lance.node.weapon-lance",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.remaster-material-hull-vitreousceramic",
+        "independentlyCulled": false,
+        "mergeBoundary": "Remaster_Material_Hull_VitreousCeramic",
+        "node": "Remaster_Material_Hull_VitreousCeramic",
+        "parentId": null,
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.remaster-material-mechanical-brushednickel",
+        "independentlyCulled": false,
+        "mergeBoundary": "Remaster_Material_Mechanical_BrushedNickel",
+        "node": "Remaster_Material_Mechanical_BrushedNickel",
+        "parentId": null,
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.remaster-material-mechanical-shadowenamel",
+        "independentlyCulled": false,
+        "mergeBoundary": "Remaster_Material_Mechanical_ShadowEnamel",
+        "node": "Remaster_Material_Mechanical_ShadowEnamel",
+        "parentId": null,
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.socket-muzzle",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Muzzle",
+        "node": "SOCKET_Muzzle",
+        "parentId": "sf.render.weapon-lance.node.weapon-lance",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.weapon-lance",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_lance",
+        "node": "weapon_lance",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.weapon-lance-bolt-1",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_lance_Bolt_1",
+        "node": "weapon_lance_Bolt_1",
+        "parentId": "sf.render.weapon-lance.node.weapon-lance",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.weapon-lance-bolt-2",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_lance_Bolt_2",
+        "node": "weapon_lance_Bolt_2",
+        "parentId": "sf.render.weapon-lance.node.weapon-lance",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.weapon-lance-bolt-3",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_lance_Bolt_3",
+        "node": "weapon_lance_Bolt_3",
+        "parentId": "sf.render.weapon-lance.node.weapon-lance",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.weapon-lance-material-accent-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_lance_Material_Accent_Merged",
+        "node": "weapon_lance_Material_Accent_Merged",
+        "parentId": "sf.render.weapon-lance.node.weapon-lance",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.weapon-lance-material-hull-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_lance_Material_Hull_Merged",
+        "node": "weapon_lance_Material_Hull_Merged",
+        "parentId": "sf.render.weapon-lance.node.weapon-lance",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.weapon-lance.node.weapon-lance-material-mechanical-merged",
+        "independentlyCulled": false,
+        "mergeBoundary": "weapon_lance_Material_Mechanical_Merged",
+        "node": "weapon_lance_Material_Mechanical_Merged",
+        "parentId": "sf.render.weapon-lance.node.weapon-lance",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.weapon-lance.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 426368,
+    "sha256": "86cddf30b18fd392d5c9c27b937ca77c22c68a2a54cc24965524082d978b389d",
+    "uri": "assets/ships/release/parts/weapons/weapon_lance.glb"
+  }
+}

@@ -3220,7 +3220,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.weapon-heavy-cannon",
-    "expectedContentHash": "3961641f5626eb84ee5b04b493b557e446e0978ea1044949919add894113c2ec",
+    "expectedContentHash": "50bd76dc235af11b2cc16922ed46b1d431bf0831e8ddb8fa85d1c3efd99d5884",
     "key": "weapon-heavy-cannon",
     "metadataUrl": "assets/ships/release/render-packages/weapon-heavy-cannon/render-package.json",
     "runtimeAssetId": "SF_WEAPON_HEAVY_CANNON",
@@ -3230,7 +3230,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.weapon-lance",
-    "expectedContentHash": "06a3b2f38ec13e300fe53c837fda693c6b24c1ae64e59a59a6c3899e591341a7",
+    "expectedContentHash": "e49b04f96da6a72cd33a8ccae248bd1b5b8721e2e13122a3d23d358008302d29",
     "key": "weapon-lance",
     "metadataUrl": "assets/ships/release/render-packages/weapon-lance/render-package.json",
     "runtimeAssetId": "SF_WEAPON_LANCE",
@@ -3240,7 +3240,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.weapon-pulse-cannon",
-    "expectedContentHash": "e3e90dccefde2ba375fedba77c47dd7b3d63e48368fdfffd9d0f040dfff4f03d",
+    "expectedContentHash": "a7b0155b1bd3a512030e709d5ea93d68389ef597f0c0a1bfad473288886a7a5d",
     "key": "weapon-pulse-cannon",
     "metadataUrl": "assets/ships/release/render-packages/weapon-pulse-cannon/render-package.json",
     "runtimeAssetId": "SF_WEAPON_PULSE_CANNON",
@@ -3260,7 +3260,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.weapon-turret-dual",
-    "expectedContentHash": "2d5df0a2f3c5db33cb4d0c5d3be30a13a7ad3d399d072cdbecc79e0847d78c8e",
+    "expectedContentHash": "69ffa2990d86ef969f651cdf09e09e45711d27ae9b2680808620bac4bcbbcdf7",
     "key": "weapon-turret-dual",
     "metadataUrl": "assets/ships/release/render-packages/weapon-turret-dual/render-package.json",
     "runtimeAssetId": "SF_WEAPON_TURRET_DUAL",
