@@ -599,6 +599,8 @@ async function adventureRoute() {
         await page.mouse.down({ button: 'right' }); await sleep(120); await page.mouse.up({ button: 'right' });
         R.clicks++; await page.evaluate(() => { window.__dr.clicks++; }).catch(() => {});
         await keyUp('KeyW'); await shot('release-rock', { gameplay: true });
+        const seq = await page.evaluate(() => { const t = window.__dr.rel(performance.now()) - 8; return (window.__dr.ev || []).filter((e) => e.t >= t).map((e) => e.ev + '@' + e.t); }).catch(() => []);
+        note('events in the last 8 s before the release: ' + JSON.stringify(seq.slice(-40)));
         const rel0 = await evN('tether:released');
         for (let i = 0; i < 12 && !advThrow.done; i++) { await sleep(250); advThrow.done = (await evN('massline:throw')) > t0n || (await evN('tether:released')) > rel0 || (await evN('tether:cut')) > 0; }
         const evs = await page.evaluate(() => (window.__dr.ev || []).filter((e) => /massline:throw|tether:released|tether:cut/.test(e.ev)).slice(-3)).catch(() => []);

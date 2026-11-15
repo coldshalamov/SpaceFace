@@ -54,6 +54,12 @@ export async function applyDevSectorJump({
           dismiss();
         } catch (_) {}
         const worldSystem = registry && registry.get('world');
+        // `&beat=<key>`: stand the opening rail at that beat (raid, claimed, seam, dock) for the demo route.
+        const jumpBeat = devSectorQuery.get('beat');
+        if (jumpBeat && registry) {
+          const ob = registry.get('onboarding');
+          if (ob && typeof ob.devJumpToBeat === 'function') logger(`[SpaceFace] dev beat jump '${jumpBeat}': ${ob.devJumpToBeat(jumpBeat)}`);
+        }
         if (targetSectorId && worldSystem && state.world && state.world.currentSectorId !== targetSectorId) {
           worldSystem.enterSector(targetSectorId);
         }

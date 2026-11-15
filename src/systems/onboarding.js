@@ -2324,6 +2324,26 @@ export const onboarding = {
   },
 
   // Mark a beat DONE and, if it was the choice beat, finish the tutorial.
+  // Dev/fixture only (`?sector=..&beat=raid`, src/systems/devSectorJump.js): stand the rail at an
+  // arbitrary beat with every earlier beat recorded done and the rescue rail closed, so the demo route
+  // can shoot beats 5-10 (raid, claimed, seam, dock) without playing the opening. Never called by play.
+  devJumpToBeat(beatKey) {
+    const ob = this.state && this.state.onboarding;
+    const idx = BEATS.findIndex((b) => b.key === beatKey);
+    if (!ob || idx < 0) return false;
+    const now = this.state.simTime || 0;
+    for (let i = 0; i < idx; i++) if (ob.beatDoneAt[BEATS[i].key] == null) ob.beatDoneAt[BEATS[i].key] = now;
+    ob.active = true; ob.finished = false;
+    if (ob.rescue) { this._removeRescueActors(); ob.rescue.completed = true; ob.rescue.active = false; ob.rescue.current = null; }
+    ob.currentBeat = idx;
+    const beat = BEATS[idx];
+    ob.beatAction = taughtVerbLine(this.state, beat.key, beat.line);
+    this._enterBeat(beat);
+    this._setObjectiveWaypoint(true);
+    this._refreshBeatPanel();
+    return true;
+  },
+
   _beatDone(beat) {
     const ob = this.state.onboarding;
     if (!ob || ob.beatDoneAt[beat.key] != null) return;
