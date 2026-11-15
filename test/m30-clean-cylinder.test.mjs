@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { objectiveText } from '../src/ui/sim/missionRecap.js';
+import { cleanCylinderContact, cleanCylinderReply, CYLINDER_MESSAGE_ID } from '../src/ui/station/cleanCylinderConversation.js';
 import { createGameState } from '../src/core/gameState.js';
 import { makeEntity } from '../src/core/entity.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
@@ -199,4 +201,73 @@ test('M30 seed 4242: live V3/Rapier consumes escort intent and moves the charge 
     assert.ok(lead.pos.x > start.x && lead.pos.z > start.z, 'motion is toward the exit refuge');
     assert.ok(lead.vel.length() < T.speed * 1.5, 'the existing Shepherd pace remains matchable');
   } finally { sim.dispose(); }
+});
+
+const spokenWords = s => String(s || '').trim().split(/\s+/).length;
+
+test('M30 seed 4242: the recorded message names each settled outcome without paying or rewriting history', () => {
+  for (const outcome of ['clean_delivery', 'contaminated_delivery', 'retreated']) {
+    const f = runtime(), m = f.accept();
+    f.match(m); f.step();
+    if (outcome === 'retreated') { m.params.cleanCylinder.phase = 'retreat'; f.at(m, T.entry); f.step(); }
+    else { if (outcome === 'contaminated_delivery') m.params.cleanCylinder.exposure = 0.7; f.arrive(m); }
+    const receipt = f.state.missions.receipts.find(r => r.missionId === m.id);
+    assert.equal(receipt.storyOutcome, outcome, 'the real settlement wrote the story outcome');
+    const before = JSON.stringify({ story: f.state.story, missions: f.state.missions, credits: f.state.player.credits });
+    const contact = cleanCylinderContact(f.state, T.stationId);
+    assert.ok(contact, 'a settled run leaves one recorded message');
+    assert.equal(contact.id, CYLINDER_MESSAGE_ID);
+    assert.match(contact.roleLabel, /recorded message/);
+    assert.ok(contact.choices.some(c => c.id === 'cylinder_after')
+      && contact.choices.some(c => c.id === 'cylinder_receipt'));
+    assert.ok(spokenWords(contact.line) <= 12, 'the greeting is one short line');
+    const words = cleanCylinderReply(f.state, T.stationId, contact, 'cylinder_after').text;
+    assert.ok(spokenWords(words) <= 12, 'the afterword is one short line');
+    assert.match(words, outcome === 'retreated' ? /crossing is still out there/
+      : outcome === 'clean_delivery' ? /clean cylinder/ : /will not call it clean/);
+    const filed = cleanCylinderReply(f.state, T.stationId, contact, 'cylinder_receipt').text;
+    assert.ok(spokenWords(filed) <= 12, 'the filed receipt answer is one short line');
+    assert.match(filed, outcome === 'retreated' ? /300 cr/ : outcome === 'clean_delivery' ? /1,200 cr/ : /600 cr/);
+    assert.match(cleanCylinderReply(f.state, T.stationId, contact, 'cylinder_bye').text, /engine note/);
+    assert.equal(JSON.stringify({ story: f.state.story, missions: f.state.missions, credits: f.state.player.credits }),
+      before, 'reading the message pays nothing and mints nothing');
+    assert.equal(cleanCylinderContact(f.state, 'station_helios'), null, 'the message lives at the destination bar only');
+    f.state.missions.receipts = [];
+    assert.equal(cleanCylinderContact(f.state, T.stationId), null);
+    assert.match(cleanCylinderReply(f.state, T.stationId, contact, 'cylinder_after').text, /no settled/);
+  }
+});
+
+test('M30 seed 4242: no message claims a pilot survived a failed or absent run', () => {
+  const f = runtime(), m = f.accept();
+  assert.equal(cleanCylinderContact(f.state, T.stationId), null, 'an active run has no afterword yet');
+  f.charge(m).alive = false;
+  f.bus.emit('entity:destroyed', { id: f.charge(m).id, pos: f.charge(m).pos, data: f.charge(m).data });
+  assert.equal(m.status, 'failed');
+  assert.equal(cleanCylinderContact(f.state, T.stationId), null, 'a destroyed charge files no recorded thanks');
+});
+
+test('M30 seed 4242: recap wording follows the real crossing, delivery and settled outcome', () => {
+  const f = runtime(), m = f.accept();
+  assert.equal(objectiveText(m), 'Join the charge at the entry refuge — within 420 u, relative speed below 12 u/s');
+  f.match(m); f.step();
+  f.at(m, T.exit); f.step();
+  assert.equal(m.params.cleanCylinder.phase, 'delivery');
+  f.step();
+  assert.match(objectiveText(m), /BERTH/, 'the owner-written status reaches the recap');
+  f.arrive(m);
+  assert.equal(objectiveText(m), 'Delivered to Expanse — cylinder clean');
+  const g = runtime(), gm = g.accept();
+  g.match(gm); g.step();
+  gm.params.cleanCylinder.exposure = 0.7;
+  g.arrive(gm);
+  assert.equal(objectiveText(gm), 'Delivered to quarantine — contaminated cylinder');
+  const h = runtime(), hm = h.accept();
+  hm.params.cleanCylinder.phase = 'retreat';
+  assert.equal(objectiveText(hm), 'Return to the entry refuge together', 'retreat names its door before any drive tick');
+  h.at(hm, { x: 1000, z: 1900 }); h.step();
+  assert.match(objectiveText(hm), /RETREAT TO ENTRY REFUGE/, 'the owner-written retreat status reaches the recap');
+  h.at(hm, T.entry); h.step();
+  assert.equal(hm.status, 'completed');
+  assert.equal(objectiveText(hm), 'Returned together to the entry refuge — crossing unfinished');
 });
