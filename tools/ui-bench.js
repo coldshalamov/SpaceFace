@@ -1335,6 +1335,39 @@ async function openOverlay(kind) {
     if (card) window.__BENCH_OVERLAY_EL = card;
     return;
   }
+  if (kind === 'hail-resident') {
+    // PRI-06's resident radio channel: a station selected, the scanner's availability (work mark on the
+    // HAIL key) and its offer (a named resident, two choices, CLOSE CHANNEL) through the real prompt.
+    const { createStage } = await import('../src/ui/stage.js');
+    const { createContactHailPrompt } = await import('../src/ui/contactHailPrompt.js');
+    const { createStationResidentOffer, residentsForStation } = await import('../src/data/stationContactPresence.js');
+    ctx.stage = createStage(ctx);
+    if (!state.ui) state.ui = {};
+    state.simTime = 400;
+    if (state.onboarding) state.onboarding = { ...state.onboarding, active: false, finished: true };
+    const stationEntity = {
+      id: 7700, type: 'station', alive: true, team: 0, radius: 90, hull: 4000, hullMax: 4000,
+      pos: { x: 260, y: 0, z: -140 }, vel: { x: 0, y: 0, z: 0 },
+      data: { stationId: 'station_helios', name: 'Helios Station', factionId: 'faction_scn' },
+    };
+    state.entities.set(stationEntity.id, stationEntity);
+    if (!state.entityList.some((entity) => entity.id === stationEntity.id)) state.entityList.push(stationEntity);
+    state.player.targetId = stationEntity.id;
+    createContactHailPrompt(ctx);
+    const resident = residentsForStation(state, 'station_helios')[0];
+    const offer = createStationResidentOffer(state, { entity: stationEntity, targetId: stationEntity.id }, 1, { contactId: resident?.id });
+    bus.emit('contactHail:availability', { enabled: true, reason: null, targetId: stationEntity.id, kind: 'resident',
+      label: 'HAIL', heaveToAvailable: false, workStatus: offer?.workStatus || 'available',
+      workGlyph: offer?.workGlyph || '!', workLabel: offer?.workLabel || 'Work available' });
+    if (offer) bus.emit('contactHail:offer', { ...offer, actions: offer.actions.slice(0, 2) });
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const panel = document.querySelector('.sf-contact-hail__panel--resident');
+    window.__BENCH_OVERLAY = panel && !panel.hidden ? 'resident channel open' : 'resident channel did not open';
+    // The staged card is the overlay, frame included: the panel fills a .sf-stage__item whose glass is
+    // what actually covers the HUD behind it.
+    if (panel && !panel.hidden) window.__BENCH_OVERLAY_EL = panel.closest('.sf-stage__item') || panel;
+    return;
+  }
   if (kind === 'comms') {
     const contact = {
       id: 7, type: 'ship', alive: true, team: 2, radius: 14,
@@ -1791,6 +1824,9 @@ function visibleControls() {
     // able to see (whyReveal.js carriers are readouts with a keyboard seat, not always buttons).
     for (const el of root.querySelectorAll('button, a, [role="tab"], [role="button"], input, select, summary, [data-action], [data-why]')) {
       if (seen.has(el) || el.closest('#bench-bar, #bench-broken, #bench-intent')) continue;
+      // A control under an `inert` layer is covered and unreachable (a dossier sheet makes the screen behind it
+      // inert on a phone): it is not a control the player has, so it cannot collide with the sheet's verbs.
+      if (el.closest('[inert]')) continue;
       if (!shownRect(el)) continue;
       seen.add(el);
       found.push(el);

@@ -75,6 +75,7 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'comms-radial', screen: 'flight', overlay: 'comms', backdrop: 'world' },
   { id: 'flight-speaker', screen: 'flight', overlay: 'speaker', backdrop: 'world' },
   { id: 'wingman-radial', screen: 'flight', overlay: 'wingman', backdrop: 'world' },
+  { id: 'hail-resident', screen: 'flight', overlay: 'hail-resident', backdrop: 'world' },
   // Popups: the layers that rise over a screen — confirmation, find palette, tier-2 tooltip, dossier drawer.
   { id: 'popup-decision', screen: 'flight', overlay: 'decision', backdrop: 'world' },
   { id: 'popup-cargo', screen: 'flight', overlay: 'cargo', backdrop: 'world' },
