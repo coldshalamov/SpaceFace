@@ -474,10 +474,10 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
   {
     id: 'corsair_wing',
     label: 'Corsair Wing',
-    line: 'Three raider aces, flying as one. One bank catches the wing.',
+    line: 'Five raider aces, flying as one. One bank catches the wing.',
     room: 'wing_bank',
     trickId: 'phase-jammer',
-    packages: [{ enemyId: 'corsair_raider', count: 3, role: 'elite', sameGate: true }],
+    packages: [{ enemyId: 'corsair_raider', count: 5, role: 'elite', sameGate: true }],
   },
   {
     id: 'the_anvil',

@@ -129,11 +129,11 @@ export const SWARM_COURSE_CAST = Object.freeze([
     P('wasp_swarmer', 3, { gateIndex: 2, atTick: 12 }),
     P('tether_control_raider', 4, { gateIndex: 4, atTick: 252 }),
   ]),
-  // 10 — Corsair Wing (boss): three raider aces flying as one. Light chaff — the wing's
+  // 10 — Corsair Wing (boss): five raider aces flying as one. Light chaff — the wing's
   // own bank-and-tear is the fight.
   castRound(10, [W('wasp_swarmer', 6), W('choir_zealot', 4)], [
-    P('wasp_swarmer', 4, { gate: 'front', atTick: 0 }),
-    P('choir_zealot', 4, { gate: 'rear', atTick: 12 }),
+    P('wasp_swarmer', 3, { gate: 'front', atTick: 0 }),
+    P('choir_zealot', 3, { gate: 'rear', atTick: 12 }),
   ]),
   // 11 — a Warden shielding gunners: the warden's first sighting steps out alone
   // on the debut beat; the dome screens whatever pack it lands beside.

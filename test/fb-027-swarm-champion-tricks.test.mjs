@@ -120,11 +120,11 @@ test('every compositional rotation row names a shipped trick; capital rows name 
   assert.equal(w10.swarm.bossScoreId, 'capital_boss_hulk');
 });
 
-test('a corsair wing lands three hunters on the crucible contract and all telegraph the jam', () => {
+test('a corsair wing lands five hunters on the crucible contract and all telegraph the jam', () => {
   const h = boot(35);
   startWave(h, 35);
   const hunters = champions(h);
-  assert.equal(hunters.length, 3, 'three raider aces, three hunters');
+  assert.equal(hunters.length, 5, 'five raider aces, five hunters');
   for (const e of hunters) {
     assert.equal(e.data.lootTableId, 'corsair_raider');
     assert.equal(e.data.runCohort, SURVIVAL_COHORT_TAG);
@@ -149,12 +149,12 @@ test('a corsair wing lands three hunters on the crucible contract and all telegr
     assert.equal(e.data.intent.mode, 'bounty_player');
   }
   const tells = named(h, 'bountyHunt:trickTelegraph');
-  assert.equal(tells.filter((p) => p.payload.trickId === 'phase-jammer').length, 3);
+  assert.equal(tells.filter((p) => p.payload.trickId === 'phase-jammer').length, 5);
 
   // Past the counter window the jam fires — once per hunter, then cooldown.
   step(h, Math.ceil(1.1 / DT) + 4);
   const fired = named(h, 'bountyHunt:trickActivated').filter((p) => p.payload.trickId === 'phase-jammer');
-  assert.equal(fired.length, 3, 'each champion fires the trick once');
+  assert.equal(fired.length, 5, 'each champion fires the trick once');
   for (const e of hunters) {
     assert.equal(e.data.bountyHunt.trickState.phase, 'cooldown');
     assert.equal(e.data.cm.effect.cfg.kind, 'ecm',

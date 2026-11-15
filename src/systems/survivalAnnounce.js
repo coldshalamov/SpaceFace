@@ -320,7 +320,7 @@ export function waveOpeningLine(wave, plan) {
     }
     const namecheck = newcomer ? ` ${newcomer} is new.` : '';
     if (swarm.boss) {
-      // The champion NAMES ITSELF. A boss wave can be one Dreadnought or a wing of three raiders,
+      // The champion NAMES ITSELF. A boss wave can be one Dreadnought or a wing of five raiders,
       // and "Corsair Raider leads" would describe the second one as if it were the first.
       const label = swarm.bossLabel || 'A capital signature';
       const line = swarm.bossLine ? ` ${swarm.bossLine}` : '';

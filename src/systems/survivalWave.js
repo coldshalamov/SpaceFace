@@ -1181,7 +1181,7 @@ export const survivalWave = {
         // The champion is the wave's WORK, not one more body in the count. Remembering which hulls
         // they are means a kill quota met on chaff cannot end a boss wave with the boss still
         // flying — and because the marker is a FLAG rather than an enemy id, a wave can owe a wing
-        // of three raiders exactly as easily as it owes one Dreadnought.
+        // of five raiders exactly as easily as it owes one Dreadnought.
         if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID || characterScore || gauntletRegent) this._bossIds.add(id);
       }
       // FB-024 — the capital champion lands as an ordinary cohort body first (budget, gate,
