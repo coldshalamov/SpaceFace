@@ -80,6 +80,14 @@ const VERDICT_CAUSE_COPY = Object.freeze({
   swing: 'NEEDED MORE SPEED',
   unobserved: 'UNGRADED',
 });
+/** True when a live release grade has been read for 0.6 s and a different ready candidate is aimed. */
+export function releaseVerdictYieldsToAim(state) {
+  const verdict = state && state.masslineReleaseVerdict;
+  const sel = state && state.masslineAcquisition && state.masslineAcquisition.selected;
+  if (!verdict || !sel || sel.status !== 'ready' || sel.targetId == null || sel.targetId === verdict.targetId) return false;
+  const age = finite(state.simTime) - (finite(verdict.untilSimTime) - MASSLINE_VERDICT_PILL_S);
+  return age > 0.6;
+}
 export function releaseVerdictCopy(rating, { plain = false } = {}) {
   if (!rating || typeof rating !== 'object') return '';
   // X3 Adventure glass: one plain word at the body. The measured cause and the kept-share
@@ -1465,6 +1473,8 @@ export const masslineHud = {
         && state.masslineReleaseVerdict.broke !== true && state.masslineReleaseVerdict.severed !== true) {
       state.masslineReleaseVerdict = null;
     }
+    // THROW-01: a grade must not hide the aim tag of the NEXT target the pilot is already lining up.
+    if (releaseVerdictYieldsToAim(state)) state.masslineReleaseVerdict = null;
     const verdict = state.masslineReleaseVerdict;
     if (verdict && finite(state.simTime) < finite(verdict.untilSimTime)) {
       return this._renderVerdictPill(dom, state, player, w2s, verdict);
