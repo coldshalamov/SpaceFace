@@ -55,6 +55,7 @@ import {
   swarmNewcomerFor,
   swarmWallPickFor,
   swarmOpeningCount,
+  swarmCastQuota,
   swarmOpeningPackages,
   swarmPlanBlock,
   swarmRosterFor,
@@ -551,7 +552,9 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   // The mutator owns the whole room, debut included: the newcomer's staged arrival still lands
   // alone on its own bearing, but its body joins the heavies like every other package.
   if (heaviesOnly) packages = applyHeaviesOnly(packages);
-  if (pressure !== 1) {
+  // Course round 1 fields its authored cast at every stake ("ten Wasps", three first).
+  const castQuota = swarmCastQuota(w, cast);
+  if (pressure !== 1 && !castQuota) {
     // Pressure scales the opening burst itself, not just the ceiling it fills under: champion
     // bodies are owed exactly as authored (a wing of one is never scaled to zero) and the
     // debut stays one readable arrival, while the chaff groups thin or thicken with the
@@ -688,9 +691,9 @@ function planSwarmWave({ seed, wave, rng, mutators, buildSummary, swarmStake, sw
   // The Threat product stacks on the same legs — Thick Pack is one more pressure leg, never a
   // new kind of math.
   if (pressure !== 1) {
-    swarm.concurrent = Math.max(1, Math.min(SWARM_SPAWN_CAP, Math.round(swarm.concurrent * pressure)));
+    swarm.concurrent = Math.max(castQuota, 1, Math.min(SWARM_SPAWN_CAP, Math.round(swarm.concurrent * pressure)));
     swarm.openingPressure = Math.max(1, Math.min(swarm.concurrent, swarmOpeningCount(packages)));
-    swarm.killTarget = Math.max(1, Math.round(swarm.killTarget * pressure));
+    swarm.killTarget = castQuota || Math.max(1, Math.round(swarm.killTarget * pressure));
     swarm.rewardReferenceKills = Math.max(1, Math.round(swarm.rewardReferenceKills * pressure));
   }
   // The wave owner paces reinforcement arrivals off the same pressure the packages were

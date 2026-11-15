@@ -27,7 +27,7 @@ import { aftermathWrecks } from '../src/systems/aftermathWrecks.js';
 import { combatOutcome, setCombatOutcomeQuietLatchForBench } from '../src/systems/combatOutcome.js';
 import { survivalAnnounce } from '../src/systems/survivalAnnounce.js';
 import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
-import { swarmQuota } from '../src/data/swarmMode.js';
+import { swarmCourseQuota } from '../src/data/swarmMode.js';
 import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { pickupFloatingTextSpec } from '../src/ui/floatingText.js';
 
@@ -232,7 +232,7 @@ test('seed 4242: round 1 resolves into round 2 when its quota dies', () => {
   const h = bootSwarm();
   assert.equal(h.state.run.phase, 'active');
   assert.equal(h.state.run.wave, 1);
-  const quota = swarmQuota(1);
+  const quota = swarmCourseQuota(1);
 
   let guard = 0;
   while (!(h.state.run.phase === 'active' && h.state.run.wave === 2) && guard++ < 60 * 600) {

@@ -32,6 +32,7 @@ import {
   swarmLevel,
   swarmPressureIsHolding,
   swarmQuota,
+  swarmCourseQuota,
 } from '../src/data/swarmMode.js';
 import { swarmArena } from '../src/systems/swarmArena.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
@@ -169,7 +170,7 @@ test('plan contract: cohort completion, kill quota, level 1', () => {
   assert.deepEqual(plan.completionRules.blockingRoles, []);
   assert.equal(plan.completionRules.cleanupTicks, SWARM_CLEANUP_TICKS);
   assert.equal(plan.swarm.durationTicks, SWARM_WAVE_DURATION_TICKS);
-  assert.equal(plan.swarm.killTarget, swarmQuota(1));
+  assert.equal(plan.swarm.killTarget, swarmCourseQuota(1));
   assert.equal(plan.swarm.rewardReferenceKills, swarmQuota(1));
   assert.equal(plan.level, 1);
   assert.equal(plan.swarm.level, 1);
@@ -194,11 +195,11 @@ test('wave 1 clears on its cohort quota, not a clock, on the three .00 seeds (pr
     assert.equal(cell.cleared.completionKind, 'cohort');
     assert.equal(cell.cleared.durationTicks, SWARM_WAVE_DURATION_TICKS,
       'the duration envelope still rides the receipt for legacy consumers');
-    assert.equal(cell.cleared.killed, swarmQuota(1),
-      `seed ${seed} resolved fewer than the quota — the wave owed ${swarmQuota(1)} bodies`);
+    assert.equal(cell.cleared.killed, swarmCourseQuota(1),
+      `seed ${seed} resolved fewer than the quota — the wave owed ${swarmCourseQuota(1)} bodies`);
     assert.equal(cell.cleared.survivors, 0, 'a resolved cohort leaves no survivors to carry');
     assert.ok(cell.duration < 3600, `seed ${seed} sat on a clock for ${cell.duration.toFixed(1)}s`);
-    assert.ok(cell.killed >= 15, `seed ${seed} cleared before the wave-1 quota of 15`);
+    assert.ok(cell.killed >= 10, `seed ${seed} cleared before round one's authored ten`);
   }
 });
 
@@ -214,7 +215,7 @@ test('the stream stops at its quota, and a living champion holds its round open'
   }
   const clears = named(h.emitted, 'run:waveCleared').filter((e) => e.payload.wave === 1);
   assert.equal(clears.length, 1, 'wave 1 closed on cohort resolution');
-  assert.equal(clears[0].payload.killed, swarmQuota(1));
+  assert.equal(clears[0].payload.killed, swarmCourseQuota(1));
   const materialized = named(h.emitted, 'run:waveMaterialized').length;
   for (let i = 0; i < 120; i++) tick(h, 1);
   assert.equal(named(h.emitted, 'run:waveMaterialized').length, materialized,
@@ -251,8 +252,8 @@ test('run:waveProgress publishes the cohort countdown — bodies left of the quo
   const open = first[0].payload;
   assert.equal(open.wave, 1);
   assert.equal(open.completionKind, 'cohort');
-  assert.equal(open.total, swarmQuota(1));
-  assert.equal(open.remaining, swarmQuota(1));
+  assert.equal(open.total, swarmCourseQuota(1));
+  assert.equal(open.remaining, swarmCourseQuota(1));
   for (let i = 0; i < 600; i++) {
     if (i % 4 === 0) killOne(h);
     tick(h, 1);
@@ -260,8 +261,8 @@ test('run:waveProgress publishes the cohort countdown — bodies left of the quo
   const later = named(h.emitted, 'run:waveProgress');
   assert.ok(later.length >= 2, 'progress published again when the quota countdown moved');
   const last = later[later.length - 1].payload;
-  assert.equal(last.total, swarmQuota(1));
-  assert.ok(last.remaining < swarmQuota(1), `remaining ${last.remaining} should drop as bodies resolve`);
+  assert.equal(last.total, swarmCourseQuota(1));
+  assert.ok(last.remaining < swarmCourseQuota(1), `remaining ${last.remaining} should drop as bodies resolve`);
 });
 
 test('death at the boundary is a death, not a surviving-wave award', () => {

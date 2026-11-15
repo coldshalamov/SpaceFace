@@ -39,6 +39,7 @@ import {
   resetSwarmPressureState,
   swarmPressureIsHolding,
   swarmPressureSuppressing,
+  swarmCourseQuota,
   swarmQuota,
 } from '../src/data/swarmMode.js';
 import { swarmArena } from '../src/systems/swarmArena.js';
@@ -189,16 +190,21 @@ test('a healthy quota wave rides its breaths and never trips the stall watchdog'
   const telegraphs = [];
   h.bus.on('swarm:stallReleased', (p) => releases.push(p));
   h.bus.on('swarm:pressureTelegraph', (p) => telegraphs.push(p));
+  // Round 1 fields exactly its authored ten (no stream, so no breath); round 2 is the first
+  // streaming round, reached the way the player does.
   let cleared = null;
-  h.bus.on('run:waveCleared', (p) => { if (cleared == null && p && p.wave === 1) cleared = p; });
+  h.bus.on('run:waveCleared', (p) => { if (cleared == null && p && p.wave === 2) cleared = p; });
 
   beginSwarm(h, 4242);
   assert.equal(h.state.run.phase, 'active');
-  for (let i = 0; i < 12000 && !cleared; i++) {
-    if (i % 5 === 0 && h.state.run.phase === 'active') killOne(h);
+  for (let i = 0; i < 24000 && !cleared; i++) {
+    const phase = h.state.run.phase;
+    if (phase === 'draft') h.bus.emit('run:draftResolved', {});
+    else if (phase === 'refit') h.bus.emit('run:refitClosed', {});
+    else if (i % 5 === 0 && phase === 'active') killOne(h);
     tick(h, 1);
   }
-  assert.ok(cleared, 'wave 1 cleared on its quota');
+  assert.ok(cleared, 'round 2 cleared on its quota');
   assert.ok(telegraphs.length >= 1, 'the run earned at least one real breathing hold');
   assert.equal(releases.length, 0, 'working breaths never reach the watchdog window');
   teardown(h);
@@ -242,7 +248,7 @@ test('a hold frozen over owed quota starves the wave, then the watchdog lifts it
     tick(h, 1);
   }
   assert.ok(cleared, 'the starved round still met its kill quota once the hold lifted');
-  assert.equal(cleared.killed, swarmQuota(1), 'the clear came from real resolutions, not a bypass');
+  assert.equal(cleared.killed, swarmCourseQuota(1), 'the clear came from real resolutions, not a bypass');
   assert.equal(releases.length, 1, 'no repeat fire once the stream is moving again');
   teardown(h);
 });

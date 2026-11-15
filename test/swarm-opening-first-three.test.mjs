@@ -392,6 +392,54 @@ test('a full room keeps the owed pack owed — it retries, it does not burst or 
   }
 });
 
+// AUDIT-06 — design/game/12 round 1: "ten Wasps, one gate". The quota is the cast's own
+// body count, so the stream cannot trickle Wasps past the authored ten after the beat.
+function fieldWholeRound(h) {
+  beginWave(h, 1);
+  const opening = liveWasps(h).length;
+  // Clear every Wasp the tick it lands, for up to ninety seconds, so the stream has every
+  // chance to over-deliver after the beat.
+  for (let i = 0; i < 90 * 60 && !h.events.some((e) => e.event === 'run:waveCleared'); i++) {
+    for (const wasp of liveWasps(h)) kill(h, wasp);
+    tick(h, 1);
+  }
+  return {
+    opening,
+    wasps: materialized(h).filter((e) => e.payload.enemyId === 'wasp_swarmer')
+      .reduce((n, e) => n + e.payload.admitted, 0),
+    others: materialized(h).filter((e) => e.payload.enemyId !== 'wasp_swarmer').length,
+    cleared: h.events.filter((e) => e.event === 'run:waveCleared').length,
+  };
+}
+
+test('round 1 fields exactly the authored ten Wasps across the beat and after it, and again on Retry', () => {
+  const plan = planWave({ seed: SEED, arenaId: ARENA, wave: 1, ruleset: 'swarm' });
+  assert.equal(plan.swarm.killTarget, 10, 'the round owes exactly the cast\'s ten bodies');
+  for (const extra of [{ swarmStake: 'exhibition' }, { swarmStake: 'ironbound' }, { swarmThreats: ['thick_pack'] }]) {
+    const staked = planWave({ seed: SEED, arenaId: ARENA, wave: 1, ruleset: 'swarm', ...extra });
+    assert.equal(staked.swarm.killTarget, 10, `${JSON.stringify(extra)} still fields the authored ten`);
+    assert.deepEqual(staked.schedule.map((e) => [e.enemyId, e.count, e.afterOpeningBeat === true]),
+      [['wasp_swarmer', 3, false], ['wasp_swarmer', 7, true]], `${JSON.stringify(extra)} opens three, owes seven`);
+    assert.ok(staked.swarm.concurrent >= 10, 'the room seats the whole authored pack');
+  }
+  const h = room();
+  const first = fieldWholeRound(h);
+  assert.equal(first.opening, 3, 'three open the round');
+  assert.equal(first.wasps, 10, 'ten Wasps in all — no stream trickle past the authored cast');
+  assert.equal(first.others, 0, 'and nothing but Wasps comes through the gate');
+  assert.equal(first.cleared, 1, 'the round clears on the tenth');
+  h.bus.emit('run:ended', { outcome: 'defeat' });
+  h.events.length = 0;
+  h.state.run = Object.assign(
+    createRunState({ kind: 'survival', ruleset: 'swarm', seed: SEED }),
+    { wave: 1, phase: 'active', retireToken: 2 },
+  );
+  const retry = fieldWholeRound(h);
+  assert.equal(retry.opening, 3);
+  assert.equal(retry.wasps, 10, 'a retried round one fields the same ten');
+  assert.equal(retry.cleared, 1);
+});
+
 test('same seed, same room, same wave: the opening is deterministic', () => {
   const positionsOf = (h) => liveWasps(h)
     .map((e) => `${Math.round(e.pos.x)},${Math.round(e.pos.z)}`).sort();

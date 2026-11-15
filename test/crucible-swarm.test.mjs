@@ -42,6 +42,7 @@ import {
   swarmOpeningCount,
   swarmOpeningPackages,
   swarmQuota,
+  swarmCourseQuota,
   swarmRosterFor,
   bindSwarmPressureContext,
   resetSwarmPressureState,
@@ -188,7 +189,7 @@ test('every swarm wave names a live enemy, a legal gate and a room that is never
     // The old quota numbers survive only as chip valuation (`rewardReferenceKills`).
     assert.ok(plan.swarm.rewardReferenceKills > 0);
     assert.equal(plan.completionRules.kind, 'cohort');
-    assert.equal(plan.swarm.killTarget, swarmQuota(wave));
+    assert.equal(plan.swarm.killTarget, swarmCourseQuota(wave));
   }
 });
 
@@ -348,7 +349,7 @@ test('a fast round clear earns the shop instead of waiting for a timer', () => {
   const cleared = named(h.emitted, 'run:waveCleared');
   assert.equal(cleared.length, 1);
   assert.equal(cleared[0].payload.completionKind, 'cohort');
-  assert.equal(killed, swarmQuota(1));
+  assert.equal(killed, swarmCourseQuota(1));
   assert.equal(cleared[0].payload.survivors, 0);
   assert.ok(cleared[0].payload.tick < 3600, 'a fast player does not wait a minute');
   tick(h, 300);
@@ -409,7 +410,7 @@ test('a fast clear never overfills the finite round budget', () => {
     while (killOne(h)) {} tick(h);
   }
   // The quota counts bodies; gate flares (beacon-type story props) arrive alongside them.
-  assert.equal(h.spawned.filter((e) => e.type !== 'beacon').length, swarmQuota(1));
+  assert.equal(h.spawned.filter((e) => e.type !== 'beacon').length, swarmCourseQuota(1));
   assert.equal(h.state.run.phase, 'draft');
   assert.equal(named(h.emitted, 'run:waveCleared').length, 1);
 });

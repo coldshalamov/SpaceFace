@@ -885,10 +885,26 @@ export const SWARM_QUOTA_MARGIN = 8;
 export const SWARM_QUOTA_OPENING_MARGIN = 5;
 
 /**
- * Wave-1 kill quota. The opening lesson stays light — the .01 memo pins it at 15 while
- * later waves carry `max(concurrent + SWARM_QUOTA_MARGIN, ramp)`.
+ * Wave-1 kill quota off the authored course (and the purse it prices). The opening lesson
+ * stays light — the .01 memo pins it at 15 while later waves carry
+ * `max(concurrent + SWARM_QUOTA_MARGIN, ramp)`. The course's round 1 fields its cast
+ * instead: see `swarmCastQuota`.
  */
 export const SWARM_OPENING_QUOTA = 15;
+
+/**
+ * Course round 1 is "ten Wasps, one gate" (design/game/12): its quota IS the cast row's
+ * body count, read from the table so the two cannot drift, and no stake or wager moves it.
+ * 0 everywhere else — those rounds keep `swarmQuota`.
+ */
+export function swarmCastQuota(wave, castRow) {
+  return castRow && swarmWaveOf(wave) === 1 ? swarmOpeningCount(castRow.packages) : 0;
+}
+
+/** The ordinary course's base quota for a round: the cast's own count where it pins one. */
+export function swarmCourseQuota(wave) {
+  return swarmCastQuota(wave, swarmCastFor(wave)) || swarmQuota(wave);
+}
 
 /**
  * The quota's deliverable bound. The stream's readable-arrival law — readable groups of
@@ -1688,7 +1704,7 @@ export function swarmPlanBlock(wave, bossOverride, castRow = undefined) {
     schemaVersion: SWARM_SCHEMA_VERSION,
     wave: w,
     // Finite pressure per round. Clearing the pack earns the shop; a timer cannot award it.
-    killTarget: swarmQuota(w),
+    killTarget: swarmCastQuota(w, cast) || swarmQuota(w),
     rewardReferenceKills: swarmQuota(w),
     durationTicks: SWARM_WAVE_DURATION_TICKS,
     concurrent: swarmConcurrent(w),

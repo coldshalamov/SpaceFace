@@ -36,6 +36,7 @@ import {
   isSwarmBossWave,
   resetSwarmPressureState,
   swarmBossFor,
+  swarmCastQuota,
   swarmPressureAt,
   swarmRosterFor,
 } from '../src/data/swarmMode.js';
@@ -235,7 +236,9 @@ test('the materialization path fields exactly the cast — scheduled and stream 
       }
     }
     const events = materialized(h);
-    assert.ok(events.length >= 3, `round ${w} materialized a real wave (${events.length} receipts)`);
+    // Round 1 owes exactly its authored cast (design/game/12 "ten Wasps"): two arrivals, no stream.
+    const exact = swarmCastQuota(w, swarmCastFor(w)) > 0;
+    assert.ok(events.length >= (exact ? 2 : 3), `round ${w} materialized a real wave (${events.length} receipts)`);
     const seenScheduled = new Set();
     const seenStream = new Set();
     for (const m of events) {
@@ -257,8 +260,9 @@ test('the materialization path fields exactly the cast — scheduled and stream 
       assert.ok(seenScheduled.has(id),
         `round ${w} scheduled '${id}' but it never materialized`);
     }
-    // The stream proves it is alive on every round: at least one reinforcement batch.
-    assert.ok(seenStream.size >= 1, `round ${w} stream never fired`);
+    // The stream proves it is alive on every other round: at least one reinforcement batch.
+    if (exact) assert.equal(seenStream.size, 0, `round ${w} streamed past its authored cast`);
+    else assert.ok(seenStream.size >= 1, `round ${w} stream never fired`);
     // The stream's draws stay inside the cast mix for the whole round.
     for (const id of seenStream) {
       assert.ok(allowed.has(id), `round ${w} stream fielded '${id}' outside the cast`);
