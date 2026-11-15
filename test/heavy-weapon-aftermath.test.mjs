@@ -67,6 +67,24 @@ test('retained contact follows target rotation and rebasing, with a paused mater
   h.presenter.dispose();
 });
 
+test('heavy aftermath retires on a replacement life while legacy unkeyed meshes still follow', () => {
+  for (const keyed of [true, false]) {
+    const h = harness();
+    h.mesh.userData.sfBoundEntityId = 2;
+    if (keyed) h.mesh.userData.sfStableEntityKey = 'life-a';
+    h.hit('wpn_siege_lance_l'); h.update(.2);
+    assert.equal(h.presenter.heavyImpacts.live, 1);
+    const replacement = new THREE.Group(); replacement.position.x = 100;
+    replacement.userData.sfBoundEntityId = 2;
+    if (keyed) replacement.userData.sfStableEntityKey = 'life-b';
+    h.state.render.scene.add(replacement); h.state.render.meshes.set(2, replacement);
+    h.update(.3);
+    assert.equal(h.presenter.heavyImpacts.live, keyed ? 0 : 1);
+    if (!keyed) assert.ok(h.presenter.heavyImpacts.batch.attributes[0].getX(0) > 100);
+    h.presenter.dispose();
+  }
+});
+
 test('rail, siege and molten flight retain fundamentally different carried anatomy', () => {
   const rail = resolveWeaponRecipe('wpn_railgun_m').flight;
   const siege = resolveWeaponRecipe('wpn_siege_lance_l').flight;

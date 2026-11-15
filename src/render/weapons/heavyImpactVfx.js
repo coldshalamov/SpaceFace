@@ -44,6 +44,7 @@ export class HeavyImpactVfx {
     const slant = Math.atan2(ax * wnz - az * wnx, Math.max(.25, -(ax * wnx + az * wnz)));
     Object.assign(slot, { alive: true, variant, recipe, born: now, life: recipe.life,
       role: SURFACE_ROLE.IMPACT, targetId: payload.targetId ?? null, attached: captured.attached,
+      boundKey: captured.boundKey ?? null, guardBinding: true,
       x: captured.x, y: captured.y, z: captured.z, angle: Math.atan2(nz, nx),
       pitch: Math.atan2(captured.ny, Math.hypot(nx, nz)), slant,
       radius: clamp(Math.sqrt(Math.max(1, targetRadius)) * 1.8, 3.8, 10.5),

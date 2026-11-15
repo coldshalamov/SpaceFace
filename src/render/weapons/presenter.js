@@ -986,6 +986,7 @@ export class WeaponVfxPresenter {
       const out = this._surfacePoseScratch;
       const mesh = slot.targetId != null ? this._mesh(slot.targetId) : null;
       if (slot.attached && !mesh) return null;
+      if (slot.attached && slot.guardBinding && this._foreignMarkBinding(mesh, slot)) return null;
       if (!mesh) {
         out.x = slot.x; out.y = slot.y; out.z = slot.z;
         out.ax = nx; out.ay = ny; out.az = nz;
