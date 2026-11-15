@@ -166,7 +166,7 @@ export function installDeepFieldPresentation(Background) {
           + (this.stellarFormation && this.stellarFormation.points.geometry.drawRange.count > 0 ? 2 : 0),
         stellarFormation: STELLAR_FORMATIONS[this.stellarFormation?.family]?.name || null,
         stellarFormationStars: this.stellarFormation?.activeStars || 0,
-        stellarFormationBytes: (this.stellarFormation?.attributeBytes || 0) + (this.stellarFormation?.paintAttributeBytes || 0),
+        stellarFormationBytes: (this.stellarFormation?.attributeBytes || 0) + (this.stellarFormation?.paintAttributeBytes || 0) + (this.stellarFormation?.indexBytes || 0),
         stellarFormationRefills: this.stellarFormation?.refills || 0,
         deepFieldPresentation: 'clip-proof-fractured-v1',
         skyCarrierTriangles: 1,

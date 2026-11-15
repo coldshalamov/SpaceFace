@@ -36,6 +36,23 @@ const FAMILIES = STELLAR_FORMATIONS.length;
 export const STELLAR_CAPACITY_PER_FORMATION = 8192;
 const SKY_DEPTH = -160;
 const WEIGHT_DARK = 1e-4;
+const STELLAR_TIER_COUNTS = Object.freeze([8192, 4096, 2048]);
+const PAINT_VERTICES_PER_FAMILY = 96 * 3;
+
+// Static tier-specific family blocks address the original interleaved attributes. This lets a
+// stable region draw its existing quality prefix without submitting six completely dark families.
+function makeFormationIndices() {
+  const length = STELLAR_TIER_COUNTS.reduce((sum, count) => sum + count * FAMILIES, 0);
+  const IndexArray = STELLAR_CAPACITY_PER_FORMATION * FAMILIES <= 65536 ? Uint16Array : Uint32Array;
+  const indices = new IndexArray(length);
+  let at = 0;
+  for (const count of STELLAR_TIER_COUNTS) {
+    for (let family = 0; family < FAMILIES; family++) {
+      for (let i = 0; i < count; i++) indices[at++] = i * FAMILIES + family;
+    }
+  }
+  return indices;
+}
 
 export function stellarFormationIndex(recipeId) {
   return STELLAR_FORMATIONS.findIndex((entry) => entry.recipe === recipeId);
@@ -218,7 +235,7 @@ const PAINT_FRAGMENT = /* glsl */`
 
 function createPaintedFormation(uniforms) {
   const geometry = new THREE.BufferGeometry();
-  const vertices = FAMILIES * 96 * 3;
+  const vertices = FAMILIES * PAINT_VERTICES_PER_FAMILY;
   geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices * 3), 3));
   geometry.setAttribute('aFormationUv', new THREE.BufferAttribute(new Float32Array(vertices * 2), 2));
   geometry.setAttribute('aStellarFamily', new THREE.BufferAttribute(new Float32Array(vertices), 1));
@@ -255,6 +272,8 @@ function placementSignature(background, camera, bufferHeight) {
 function createFormationRecord(background) {
   const count = STELLAR_CAPACITY_PER_FORMATION * FAMILIES;
   const geometry = new THREE.BufferGeometry();
+  const indices = makeFormationIndices();
+  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
   geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
   geometry.setAttribute('aStellarColor', new THREE.BufferAttribute(new Float32Array(count * 3), 3));
   geometry.setAttribute('aStellarSize', new THREE.BufferAttribute(new Float32Array(count), 1));
@@ -283,7 +302,7 @@ function createFormationRecord(background) {
   points.frustumCulled = false;
   const record = {
     points, paint: createPaintedFormation(uniforms), family: -1, lastTime: null, activeStars: 0, attributeBytes: count * 8 * 4,
-    paintAttributeBytes: FAMILIES * 96 * 3 * 6 * 4,
+    paintAttributeBytes: FAMILIES * PAINT_VERTICES_PER_FAMILY * 6 * 4, indexBytes: indices.byteLength,
     signature: null, anchorX: 0, anchorZ: 0, rebuilds: 0, refills: 0,
   };
   points.add(record.paint);
@@ -303,20 +322,25 @@ function createFormationRecord(background) {
     const weights = uniforms.uWeights.value;
     const phaseX = uniforms.uPhaseX.value;
     const phaseZ = uniforms.uPhaseZ.value;
-    let lit = false;
+    let firstLit = FAMILIES, lastLit = -1;
     for (let i = 0; i < FAMILIES; i++) {
       const focus = Number.isFinite(background.arenaFocus) ? background.arenaFocus : 1;
       const target = i === next ? STELLAR_FORMATIONS[i].intensity * focus : 0;
       weights[i] += (target - weights[i]) * ease;
       if (weights[i] < WEIGHT_DARK) weights[i] = 0;
-      else lit = true;
+      else { firstLit = Math.min(firstLit, i); lastLit = i; }
       phaseX[i] = phase((globalX - record.anchorX) * STELLAR_FORMATIONS[i].parallax);
       phaseZ[i] = phase((globalZ - record.anchorZ) * STELLAR_FORMATIONS[i].parallax);
     }
     const perFamily = background.lowTier ? 2048 : background.tierName === 'mid' ? 4096 : 8192;
-    // A region with no formation submits no vertices: draw range zero, not 49k early-outs.
-    geometry.setDrawRange(0, lit ? perFamily * FAMILIES : 0);
-    record.paint.geometry.setDrawRange(0, lit ? FAMILIES * 96 * 3 : 0);
+    // Include all still-visible crossfade families, including any dark gaps between them.
+    // In steady state the span is one family; an unknown region still submits nothing.
+    const litSpan = lastLit < 0 ? 0 : lastLit - firstLit + 1;
+    const tierOffset = perFamily === 8192 ? 0 : perFamily === 4096
+      ? 8192 * FAMILIES : (8192 + 4096) * FAMILIES;
+    geometry.setDrawRange(litSpan ? tierOffset + firstLit * perFamily : 0, litSpan * perFamily);
+    record.paint.geometry.setDrawRange(litSpan ? firstLit * PAINT_VERTICES_PER_FAMILY : 0,
+      litSpan * PAINT_VERTICES_PER_FAMILY);
     record.activeStars = next < 0 ? 0 : perFamily;
     uniforms.uDensity.value = STELLAR_CAPACITY_PER_FORMATION / perFamily;
     uniforms.uRootOffset.value.set(renderCamera.position.x - background.group.position.x,

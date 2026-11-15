@@ -51,20 +51,23 @@ test('stellar quality prefixes, transitions, rebases and rebuilds keep bounded s
   record.points.onBeforeRender(renderer, null, camera);
   assert.equal(record.attributeBytes, 8192 * FAMILIES * 8 * 4);
   assert.equal(record.activeStars, 8192);
-  assert.equal(geometry.drawRange.count, 8192 * FAMILIES);
+  assert.equal(geometry.drawRange.count, 8192);
+  assert.equal(geometry.drawRange.start, 0);
+  assert.equal(record.paint.geometry.drawRange.count, 96 * 3);
   const u = record.points.material.uniforms;
   const phase = u.uPhaseX.value.slice();
   background.state.world.frameOrigin.x = 8192; camera.position.x -= 8192;
   record.points.onBeforeRender(renderer, null, camera);
   assert.deepEqual(u.uPhaseX.value, phase, 'origin shift must not change stellar membership');
   background.lowTier = true;
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 220; i++) {
     background.bgTime += 1 / 60;
     background.deepFieldRecipe.id = 'fringe_tidal_filament';
     record.points.onBeforeRender(renderer, null, camera);
   }
   assert.equal(record.activeStars, 2048);
-  assert.equal(geometry.drawRange.count, 2048 * FAMILIES);
+  assert.equal(geometry.drawRange.count, 2048);
+  assert.equal(geometry.drawRange.start, (8192 + 4096) * FAMILIES + 2 * 2048);
   assert.ok(u.uWeights.value[2] > 0.60 && u.uWeights.value[0] < 0.01);
   assert.deepEqual(geometry.getAttribute('position').array, before);
   assert.equal(geometry.getAttribute('position').version, uploadedVersion, 'frames never re-upload the buffer');
@@ -141,4 +144,38 @@ test('a region with no formation submits no vertices instead of 49k early-outs',
   record.points.onBeforeRender(renderer, null, camera);
   assert.ok(record.points.geometry.drawRange.count > 0, 'the core formation lights up');
   record.points.geometry.dispose(); record.points.material.dispose();
+});
+
+test('indexed draws preserve quality prefixes and all visible crossfade families', () => {
+  const background = makeBackground();
+  const record = rebuildDeepFieldStars(background);
+  const { camera, renderer } = background;
+  const index = record.points.geometry.index.array;
+  const weights = record.points.material.uniforms.uWeights.value;
+  record.points.onBeforeRender(renderer, null, camera);
+  // Jump to a distant family so the intermediate dark family must remain harmless in the span.
+  background.deepFieldRecipe.id = 'anomaly_electromagnetic_scar';
+  background.bgTime = 0.1;
+  record.points.onBeforeRender(renderer, null, camera);
+  assert.ok(weights[0] > 0 && weights[3] > 0);
+  for (const [tier, count, base] of [['high', 8192, 0], ['mid', 4096, 8192 * FAMILIES],
+    ['low', 2048, (8192 + 4096) * FAMILIES]]) {
+    background.tierName = tier;
+    background.lowTier = tier === 'low';
+    record.points.onBeforeRender(renderer, null, camera);
+    const range = record.points.geometry.drawRange;
+    assert.equal(range.start, base);
+    assert.equal(range.count, 4 * count);
+    for (const family of [0, 3]) {
+      const first = range.start + family * count;
+      for (let n = 0; n < count; n++) {
+        assert.equal(index[first + n], n * FAMILIES + family, `${tier} family ${family} star ${n}`);
+      }
+    }
+    assert.equal(record.paint.geometry.drawRange.start, 0);
+    assert.equal(record.paint.geometry.drawRange.count, 4 * 96 * 3);
+  }
+  assert.equal(record.indexBytes, (8192 + 4096 + 2048) * FAMILIES * 2);
+  record.points.geometry.dispose(); record.points.material.dispose();
+  record.paint.geometry.dispose(); record.paint.material.dispose();
 });
