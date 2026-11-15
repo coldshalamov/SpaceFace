@@ -230,7 +230,7 @@ check('HUD mission tracker is the persistent Tutorial Objective surface for onbo
   assert.match(HUD_SRC, /sf-mt-obj/, 'HUD mounts .sf-mt-obj objective line');
   assert.match(
     HUD_SRC,
-    /flightDestinationSurface\(state, command\)/,
+    /flightDestinationSurface\(state, command(?:, temporaryCircuit)?\)/,
     'onboarding waypoint path paints one destination line',
   );
   assert.match(CORE_COPY_SRC, /tutorialObjective:\s*\{\s*label:\s*'TUTORIAL OBJECTIVE'\s*\}/,

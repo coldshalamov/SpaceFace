@@ -15,8 +15,8 @@ test('trafficJobOps imports stationName from traffic.js', async () => {
   assert.equal(stationName(null, 'Origin'), 'Origin');
 });
 
-test('missionStoryOps imports setPieceEventFields from missions.js', async () => {
-  assert.ok(importsFrom(src('systems/missionStoryOps.js'), 'setPieceEventFields', './missions.js'));
+test('missionStoryOps imports setPieceEventFields from missionShared.js', async () => {
+  assert.ok(importsFrom(src('systems/missionStoryOps.js'), 'setPieceEventFields', './missionShared.js'));
   const { setPieceEventFields } = await import('../src/systems/missions.js');
   assert.deepEqual(setPieceEventFields({}), {});
 });

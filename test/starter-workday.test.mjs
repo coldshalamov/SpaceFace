@@ -7,12 +7,15 @@ import { readFileSync } from 'node:fs';
 import { starterWorkSite, authoredStarterSite, starterBuoySpec, starterMiningFocus, starterMiningReceiptMatches, starterBuoyRecordMarker, starterBuoyFromRecord, isStarterBuoyRecord, STARTER_WORKDAY_VERSION, registerStarterBuoyTow } from '../src/missions/starterWorkday.js';
 import { activeOwnedShip, nextStarterStep } from '../src/data/starterJobs.js';
 import * as cinderRoute from '../src/missions/cinderRoute.js';
+import * as weighingWorksite from '../src/missions/weighingWorksite.js';
+import * as tenderHaul from '../src/missions/tenderHaul.js';
+import { isNinthMouthBody } from '../src/world/ceresNinthMouthBodies.js';
 import { isSpineBreakOperation } from '../src/missions/spineBreakWorksite.js';
 import { loseMawBody } from '../src/missions/mawWorksite.js';
 import { registerMassScaleTow } from '../src/systems/cargoCustody.js';
 const src = p => readFileSync(new URL('../'+p, import.meta.url),'utf8');
 const loadOps = (p, name, deps) => {
- deps={forEachFieldRock,registerStarterBuoyTow,isSpineBreakOperation,loseMawBody,...deps};
+ deps={forEachFieldRock,registerStarterBuoyTow,isSpineBreakOperation,loseMawBody,...weighingWorksite,...tenderHaul,...deps};
  if(p==='src/systems/missionSpawningOps.js')deps={...cinderRoute,registerMassScaleTow,...deps};
  const code=src(p).replace(/\r\n/g,'\n').replace(/^import[\s\S]*?;\n/gm,'').replace(`export const ${name}`,`const ${name}`);
  return Function(...Object.keys(deps),code+`;return ${name};`)(...Object.values(deps));
@@ -123,9 +126,9 @@ test('real payload index + identity stamp + physical role owner preserve one Con
  const exportedFunction=(code,name)=>Function(`return (${code.match(new RegExp(`export function ${name}\\([^]*?\\n}`))[0].replace('export ', '')});`)();
  const views=Function(production('livingWorldViews').replace(/export /g,'')+';return {forEachJobInteractable,forEachLivingWorldActor};')();
  const missionIdentityOf=exportedFunction(production('worldRecords'),'missionIdentityOf');
- const missionTargetSlotOf=exportedFunction(src('src/systems/missions.js'),'missionTargetSlotOf');
- const lowestVacantSlot=exportedFunction(src('src/systems/missions.js'),'lowestVacantSlot');
- const physicalRoleOf=exportedFunction(src('src/systems/missions.js'),'physicalRoleOf');
+ const missionTargetSlotOf=exportedFunction(src('src/systems/missionShared.js'),'missionTargetSlotOf');
+ const lowestVacantSlot=exportedFunction(src('src/systems/missionShared.js'),'lowestVacantSlot');
+ const physicalRoleOf=exportedFunction(src('src/systems/missionShared.js'),'physicalRoleOf');
  const PHYSICAL_ROLE={SLAG_CORE:'slag_core'};
  const deps={...views,missionIdentityOf,missionTargetSlotOf,lowestVacantSlot,physicalRoleOf,PHYSICAL_ROLE,
    PHYSICAL_TYPE_SET:new Set(['tow_recovery']),registerStarterBuoyTow,authoredStarterSite,starterBuoySpec,
@@ -194,7 +197,7 @@ test('actual durable capture/normalize/restore preserves moved damaged buoy and 
 
    const start=worldSource.indexOf('  _captureSectorDurableRecords(sectorId, opts = {}) {');
    const method=worldSource.slice(start,worldSource.indexOf('\n  /**',start));
-   const captureDeps={...records,...captureViews,starterBuoyRecordMarker,isLanternWardHardwareEntity,captureBolusRib:()=>{},TETHYS_BLACK_MARKET_RUN:{sectorId:'elsewhere',runId:'other-run'}};
+   const captureDeps={...records,...captureViews,starterBuoyRecordMarker,isLanternWardHardwareEntity,isNinthMouthBody,captureBolusRib:()=>{},TETHYS_BLACK_MARKET_RUN:{sectorId:'elsewhere',runId:'other-run'}};
    const capture=Function(...Object.keys(captureDeps),`return ({${method}})._captureSectorDurableRecords;`)(...Object.values(captureDeps));
    const ordinaryPayload={...e,id:91,data:{...e.data,starterWorkdayVersion:undefined,worldRecordId:'ordinary_payload'}};
    const captureState={world:{currentSectorId:m.destSectorId},entityList:[e,ordinaryPayload],entities:new Map([[90,e],[91,ordinaryPayload]]),
@@ -216,7 +219,7 @@ test('actual durable capture/normalize/restore preserves moved damaged buoy and 
    assert.equal(restored.data.identityKey,e.data.identityKey);assert.equal(restored.data.physicalRole,'slag_core');
    assert.deepEqual(restored.pos,e.pos);assert.deepEqual(restored.vel,e.vel);assert.equal(restored.hull,67);
    assert.equal(restored.rot,1.2);assert.equal(restored.angVel,0.5);assert.equal(restored.physicsBody.mass,[18,19,20][step-1]);
-   const fn=(name)=>Function(`return (${src('src/systems/missions.js').match(new RegExp(`export function ${name}\\([^]*?\\n}`))[0].replace('export ', '')});`)();
+   const fn=(name)=>Function(`return (${src('src/systems/missionShared.js').match(new RegExp(`export function ${name}\\([^]*?\\n}`))[0].replace('export ', '')});`)();
    const views=Function(src('src/world/livingWorldViews.js').replace(/export /g,'')+';return {forEachJobInteractable,forEachLivingWorldActor};')();
    const missionDeps={...views,authoredStarterSite,starterBuoySpec,missionIdentityOf:records.missionIdentityOf,
      missionTargetSlotOf:fn('missionTargetSlotOf'),lowestVacantSlot:fn('lowestVacantSlot'),physicalRoleOf:fn('physicalRoleOf'),
