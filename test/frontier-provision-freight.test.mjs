@@ -200,6 +200,34 @@ test('a towed food pod settles the debtor\'s open aid like a covered supply', ()
   } finally { h.sim.dispose(); }
 });
 
+test('only a whole food load feeds — an iron pod is left alone and unpaid', () => {
+  const h = boot();
+  try {
+    const stead = raiseStead(h);
+    const rec = recOf(h, stead.id);
+    rec.stranded = true;
+    const iron = spawnJettisonedCargoPod(h.state, {
+      commodityId: 'cmdty_ore_iron', amount: 4, ownerId: h.state.playerId,
+      pos: { x: stead.pos.x + 80, z: stead.pos.z },
+    }, h.sim.helpers);
+    assert.ok(iron, 'the jettison produced a pod');
+    iron.vel.x = 0; iron.vel.z = 0;
+    tow(h, iron);
+    h.sim.runTicks(Math.ceil(5 * TICKS_PER_S));
+    assert.equal(iron.alive !== false, true, 'the stead leaves the mineral pod alone');
+    assert.equal(rec.supplies, 0, 'no supplies for ore');
+    assert.equal(h.grants.length, 0, 'no fee paid');
+    assert.equal(h.state.frontier.deeds, 0, 'no deed logged');
+    // A food pod in the same ring is still taken.
+    dropTow(h);
+    const food = foodPod(h, stead.pos.x + 80, stead.pos.z);
+    tow(h, food);
+    h.sim.runTicks(Math.ceil(2.4 * TICKS_PER_S));
+    assert.equal(food.alive, false, 'the stead took the food aboard');
+    assert.equal(rec.supplies, 1);
+  } finally { h.sim.dispose(); }
+});
+
 test('each pod\'s verdict is evaluated once per identity', () => {
   const h = boot();
   try {

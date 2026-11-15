@@ -63,6 +63,7 @@ import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { strideDt } from '../core/catchupPolicy.js';
 import { counted } from '../core/numberFormat.js';
 import { queryAsteroidField } from '../world/asteroidField.js';
+import { COMMODITIES } from '../data/commodities.js';
 
 
 const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; };
@@ -75,6 +76,11 @@ const intOr = (v, d = 0) => { const n = Number(v); return Number.isFinite(n) ? n
 
 const FACTION_ID = 'faction_free';
 const MAX_STEADS = 24;
+// A stead's intake is a kitchen, not a composter: only a whole load of a food-class
+// commodity counts as the player's food offering (commodities.js category 'food').
+const FOOD_COMMODITY_IDS = new Set(
+  COMMODITIES.filter((c) => c && c.category === 'food').map((c) => c.id),
+);
 const BARN_MISSION_TAG = 'campaign47a:b4:operation';
 const BARN_MISSION_VERSION = 1;
 const BARN_MODULE_IDS = new Set(FRONTIER_MODULES.map((m) => m.id));
@@ -1559,6 +1565,11 @@ export const frontierHomesteads = {
     const key = `${pod.id}:${pod.occupantGeneration ?? 0}`;
     const cached = this._foodVerdicts.get(key);
     if (cached !== undefined) return cached;
+    if (!FOOD_COMMODITY_IDS.has(pod.data?.commodityId)) {
+      if (this._foodVerdicts.size >= 64) this._foodVerdicts.delete(this._foodVerdicts.keys().next().value);
+      this._foodVerdicts.set(key, false);
+      return false;
+    }
     const garden = this.ctx?.registry?.get?.('lootShards');
     const mass = typeof garden?.gardenFeedMass === 'function' ? garden.gardenFeedMass(pod) : null;
     const ok = Number.isFinite(mass) && mass > 0;
