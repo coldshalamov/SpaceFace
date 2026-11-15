@@ -395,7 +395,8 @@ export function updateTrailStreakInstance(pool, index, {
   assertDynamicBufferOwnerWritable(pool.dynamicBufferOwner);
   const transform = pool._transform;
   transform.position.set(x, y || 0.4, z);
-  transform.rotation.set(0, Math.atan2(vz || 0, vx || 0) - Math.PI * 0.5, 0);
+  // UV 0 is on local +Z; keep UV 0 → 1 along the supplied XZ axis.
+  transform.rotation.set(0, -Math.atan2(vz || 0, vx || 0) - Math.PI * 0.5, 0);
   transform.scale.set(Math.max(0.01, width), 1, Math.max(0.01, length));
   transform.updateMatrix();
   pool.mesh.setMatrixAt(index, transform.matrix);
@@ -437,7 +438,7 @@ export function updateTrailStreakMesh(mesh, {
 }) {
   mesh.visible = true;
   mesh.position.set(x, y || 0.4, z);
-  mesh.rotation.y = Math.atan2(vz || 0, vx || 0) - Math.PI * 0.5;
+  mesh.rotation.y = -Math.atan2(vz || 0, vx || 0) - Math.PI * 0.5;
   mesh.scale.set(Math.max(0.01, width), 1, Math.max(0.01, length));
   mesh.material.uniforms.uOpacity.value = Math.max(0, opacity);
   mesh.material.uniforms.uTrailTime.value = time || 0;

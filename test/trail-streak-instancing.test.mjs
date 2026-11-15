@@ -251,10 +251,10 @@ assert(Math.abs(position.x - 12) < 1e-6 && Math.abs(position.y - 0.4) < 1e-6
 assert(Math.abs(scale.x - 2.5) < 1e-6);
 assert(Math.abs(scale.y - 1) < 1e-6);
 assert(Math.abs(scale.z - 14) < 1e-6);
-const expectedYaw = Math.atan2(9, 4) - Math.PI * 0.5;
+const expectedYaw = -Math.atan2(9, 4) - Math.PI * 0.5;
 const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(rotation);
 assert(Math.abs(Math.atan2(forward.x, forward.z) - expectedYaw) < 1e-6,
-  'instance yaw must match the former per-mesh yaw');
+  'instance yaw must align the streak with the supplied axis');
 
 for (let i = 2; i < 96; i++) {
   surfaces.updateTrailStreakInstance(pool, i, {
