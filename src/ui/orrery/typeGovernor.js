@@ -156,9 +156,13 @@ export function governTree(root, win = globalThis.window, cfg = TYPE_GOVERNOR) {
   return task.changed;
 }
 
+function screenRoot(node) {
+  return typeof node.closest === 'function' ? node.closest('.screen, .k-screen') : null;
+}
+
 function isVisibleScreenRoot(node) {
-  const screen = typeof node.closest === 'function' ? node.closest('.screen, .k-screen') : null;
-  return !screen || screen.classList.contains('sf-screen--visible');
+  const screen = screenRoot(node);
+  return !screen || screen.classList.contains('sf-screen--visible') || screen.classList.contains('sf-screen--entering');
 }
 
 /** Watch `#screens`; govern what mounts, in slices. Idempotent per document; never throws into the UI. */
@@ -170,6 +174,7 @@ export function installTypeGovernor(doc = globalThis.document) {
   const now = () => (win.performance ? win.performance.now() : Date.now());
   const visible = []; const hidden = [];
   const seen = new WeakSet();
+  const watchedScreens = new WeakSet();
   let frame = 0; let idle = 0;
 
   const run = (list, budgetMs) => {
@@ -191,9 +196,24 @@ export function installTypeGovernor(doc = globalThis.document) {
       idle = later(() => { idle = 0; run(hidden, cfg.idleBudgetMs); pump(); });
     }
   };
+  const visibilityObserver = new win.MutationObserver((records) => {
+    for (const { target } of records) {
+      if (!isVisibleScreenRoot(target)) continue;
+      for (let i = 0; i < hidden.length;) {
+        if (target === hidden[i].root || target.contains(hidden[i].root)) visible.push(hidden.splice(i, 1)[0]);
+        else i++;
+      }
+    }
+    pump();
+  });
   const enqueue = (node) => {
     if (node.nodeType !== 1 || seen.has(node)) return;
     seen.add(node);
+    const screen = screenRoot(node);
+    if (screen && !watchedScreens.has(screen)) {
+      watchedScreens.add(screen);
+      visibilityObserver.observe(screen, { attributes: true, attributeFilter: ['class'] });
+    }
     const task = { root: node, it: elementsOf(node), changed: 0 };
     (isVisibleScreenRoot(node) ? visible : hidden).push(task);
   };

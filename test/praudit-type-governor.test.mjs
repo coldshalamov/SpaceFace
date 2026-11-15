@@ -43,3 +43,41 @@ test('a hidden station screen waits for idle while a visible screen is governed 
   idle.shift()();
   assert.deepEqual(reads, ['menu', 'station']);
 });
+
+test('a queued hidden station is promoted when it starts opening', () => {
+  const observers = [];
+  const frames = [];
+  const idle = [];
+  const reads = [];
+  class Observer {
+    constructor(callback) { this.callback = callback; this.targets = []; observers.push(this); }
+    observe(target, options) { this.targets.push({ target, options }); }
+    disconnect() {}
+  }
+  const win = {
+    MutationObserver: Observer, performance: { now: () => 0 },
+    requestAnimationFrame: cb => { frames.push(cb); return frames.length; },
+    requestIdleCallback: cb => { idle.push(cb); return idle.length; },
+    getComputedStyle: () => { reads.push('station'); return { textTransform: 'none' }; },
+  };
+  const doc = { defaultView: win, getElementById: () => host, createTreeWalker: () => ({ nextNode: () => null }) };
+  const classes = new Set(['screen', 'sx-berth']);
+  const station = {
+    ownerDocument: doc, isConnected: true, nodeType: 1, tagName: 'DIV',
+    namespaceURI: 'http://www.w3.org/1999/xhtml', dataset: {},
+    childNodes: [{ nodeType: 3, nodeValue: 'Station' }],
+    classList: { contains: value => classes.has(value) },
+    closest: selector => selector.includes('.screen') ? station : null,
+    contains: node => node === station, style: { setProperty() {} },
+  };
+  const host = { children: [station] };
+  installTypeGovernor(doc);
+  assert.equal(idle.length, 1);
+  const visibility = observers.find(observer => observer.targets.some(({ target, options }) => target === station && options.attributes));
+  assert.ok(visibility, 'the screen root must be watched for opening');
+  classes.add('sf-screen--entering');
+  visibility.callback([{ type: 'attributes', target: station }]);
+  assert.equal(frames.length, 1, 'opening moves pending type work to the next frame');
+  frames.shift()();
+  assert.deepEqual(reads, ['station']);
+});
