@@ -233,6 +233,8 @@ export function createOrdnanceMotionTracker() {
         tumbleX: phase * 0.3,
         tumbleZ: phase * 0.2,
         materializeT0: -1,
+        claimBirthT0: -1,
+        claimLife: null,
         stuckT0: -1,
         armPopT0: -1,
         tumbleKickX: 0,
@@ -256,6 +258,10 @@ export function createOrdnanceMotionTracker() {
     if (!resolveOrdnanceKindConfig(type)) return;
     const rec = getState(id, type);
     rec.materializeT0 = lastSimTime;
+    if (type === 'payload') {
+      rec.claimBirthT0 = lastSimTime;
+      rec.claimLife = entity?.occupantGeneration ?? null;
+    }
     const h = hashId(String(type) + ':' + String(id));
     const kick = type === 'charge' ? 1.6 : type === 'bomb' ? 0.8 : 0.45;
     rec.tumbleKickX += Math.cos(((h & 0xffff) / 0xffff) * Math.PI * 2) * kick;
@@ -544,13 +550,24 @@ export function createOrdnanceMotionTracker() {
     // pods stop paying the compare. Survivor pods never carry this stamp.
     if (kind === 'payload' && mesh.userData && mesh.userData.jettisonClaimLamp) {
       const lamp = mesh.userData.jettisonClaimLamp;
-      const spawnAge = rec.materializeT0 >= 0 ? simTime - rec.materializeT0 : -1;
+      // Unfold ends after 0.35 s; the claim lamp's distinct decay lasts through the embargo.
+      if ((rec.claimLife != null && entity.occupantGeneration != null
+          && rec.claimLife !== entity.occupantGeneration)
+          || (Number.isFinite(simTime) && simTime < rec.claimBirthT0)) {
+        rec.claimBirthT0 = -1;
+        rec.claimLife = null;
+      }
+      const spawnAge = rec.claimBirthT0 >= 0 ? simTime - rec.claimBirthT0 : -1;
       const burn = resolveJettisonClaimBurn(simTime, spawnAge, lamp.until, reducedFlash, lamp.base);
       const target = burn == null ? lamp.base : burn;
       if (lamp.material && lamp.material.emissiveIntensity !== target) {
         lamp.material.emissiveIntensity = target;
       }
-      if (burn == null) delete mesh.userData.jettisonClaimLamp;
+      if (burn == null) {
+        rec.claimBirthT0 = -1;
+        rec.claimLife = null;
+        delete mesh.userData.jettisonClaimLamp;
+      }
     }
   }
 

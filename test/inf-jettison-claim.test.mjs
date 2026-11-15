@@ -20,10 +20,55 @@ import {
   JETTISON_CLAIM_STEADY_GAIN,
   JETTISON_CLAIM_SPIKE_GAIN,
   JETTISON_CLAIM_SPIKE_DECAY,
+  createOrdnanceMotionTracker,
   resolveJettisonClaimBurn,
 } from '../src/render/ordnanceMotionPresentation.js';
+import { createVisualFactory } from '../src/render/visualFactory.js';
 
 const BASE = 0.8; // the shared transponder's authored emissiveIntensity
+
+test('live claim lamp continues its decay after the deploy animation ends', () => {
+  const tracker = createOrdnanceMotionTracker();
+  const handlers = new Map();
+  tracker.bindEvents({ on(name, fn) { handlers.set(name, fn); return () => {}; } });
+  const entity = { id: 970, occupantGeneration: 1, type: 'payload', alive: true, radius: 4,
+    pos: { x: 0, z: 0 }, data: { kind: 'cargo', payloadType: 'jettisoned_cargo',
+      commodityId: 'cmdty_food', playerJettisonOrigin: { version: 1, ownerId: 1 },
+      pickupEmbargoUntil: 12 } };
+  const mesh = createVisualFactory().build(entity);
+  const baseScale = mesh.scale.x;
+  const lamp = mesh.userData.jettisonClaimLamp;
+  tracker.updateOrdnanceMotion(entity, mesh, 10, 0.016);
+  handlers.get('entity:spawned')({ id: entity.id, type: entity.type, entity });
+  tracker.updateOrdnanceMotion(entity, mesh, 10.1, 0.016);
+  assert.ok(mesh.scale.x < baseScale, 'deploy unfold still animates');
+  tracker.updateOrdnanceMotion(entity, mesh, 10.36, 0.016);
+  assert.equal(mesh.scale.x, baseScale, 'deploy returns to its original scale');
+  assert.ok(Math.abs(lamp.material.emissiveIntensity
+    - resolveJettisonClaimBurn(10.36, 0.36, 12, false, lamp.base)) < 1e-12);
+  tracker.updateOrdnanceMotion(entity, mesh, 10.5, 0.016, null, { reducedFlash: true });
+  assert.equal(lamp.material.emissiveIntensity, lamp.base + JETTISON_CLAIM_STEADY_GAIN);
+  tracker.updateOrdnanceMotion(entity, mesh, 10.6, 0.016);
+  assert.ok(lamp.material.emissiveIntensity > lamp.base + JETTISON_CLAIM_STEADY_GAIN);
+  tracker.updateOrdnanceMotion(entity, mesh, 12, 0.016);
+  assert.equal(mesh.userData.jettisonClaimLamp, undefined);
+  assert.equal(lamp.material.emissiveIntensity, lamp.base);
+
+  // Recycled ID with no new spawn event is a cold pose, not the previous occupant's glow.
+  const reused = { ...entity, occupantGeneration: 2, data: { ...entity.data, pickupEmbargoUntil: 14 } };
+  const reusedMesh = createVisualFactory().build(reused);
+  tracker.updateOrdnanceMotion(reused, reusedMesh, 12.1, 0.016);
+  assert.equal(reusedMesh.userData.jettisonClaimLamp.material.emissiveIntensity,
+    reusedMesh.userData.jettisonClaimLamp.base + JETTISON_CLAIM_STEADY_GAIN);
+  handlers.get('entity:spawned')({ id: reused.id, type: reused.type, entity: reused });
+  const replacement = { ...reused, occupantGeneration: 3 };
+  const replacementMesh = createVisualFactory().build(replacement);
+  tracker.updateOrdnanceMotion(replacement, replacementMesh, 12.2, 0.016);
+  assert.equal(replacementMesh.userData.jettisonClaimLamp.material.emissiveIntensity,
+    replacementMesh.userData.jettisonClaimLamp.base + JETTISON_CLAIM_STEADY_GAIN,
+    'an unretired stamp cannot carry into a different known generation');
+  tracker.unbindEvents();
+});
 
 test('the claim burns: a hot parting beat easing into a steady claim burn', () => {
   const until = 100;
