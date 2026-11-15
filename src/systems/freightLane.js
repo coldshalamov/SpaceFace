@@ -41,6 +41,12 @@ import { FOUNDRY_ARENA_ID, SWARM_DEBRIS_FIGHT_RADIUS } from './swarmArena.js';
 export const FREIGHT_LANE_HALF_LENGTH = SWARM_DEBRIS_FIGHT_RADIUS;
 export const FREIGHT_FIRST_DEPART_S = 20;
 export const FREIGHT_PERIOD_S = 40;
+/**
+ * PIT-01 — the lane debuts on 'Mind the Gap': the Foundry's fourth round is the
+ * first one the lane runs at all ("the lane runs for the first time"). Earlier
+ * rounds still arm the room beside it — they just send no traffic down it.
+ */
+export const FREIGHT_DEBUT_WAVE = 4;
 export const FREIGHT_WARN_LEAD_S = 3;
 export const FREIGHT_BLINK_HZ = 2;
 export const FREIGHT_STRING_COUNT = 5;
@@ -134,7 +140,9 @@ export function createFreightLaneDirector(ctx) {
 
   function arm({ arenaId = null, at = null, installedAt = null, wave = 0, seed = 1 } = {}) {
     teardown('rearm');
-    if (arenaId !== FOUNDRY_ARENA_ID) return;
+    // The lane holds itself until its authored debut round: rounds 1–3 install no
+    // traffic at all, and any live string a re-arm would orphan is torn down above.
+    if (arenaId !== FOUNDRY_ARENA_ID || wave < FREIGHT_DEBUT_WAVE) return;
     const lane = planFreightLane({ at });
     const t0 = Number.isFinite(installedAt) ? installedAt : simTimeOf(ctx.state);
     armed = {

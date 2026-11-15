@@ -1593,7 +1593,7 @@ export const survivalArena = {
     }
     // A01-02 — the freight lane is the Foundry's own machinery, not a wave law: it arms on
     // every helios_core install regardless of phase (idle rooms included) and self-clears on
-    // any other arenaId.
+    // any other arenaId — and holds its own debut: no traffic before FREIGHT_DEBUT_WAVE.
     if (this._freight) {
       this._freight.arm({
         arenaId: run.arenaId,

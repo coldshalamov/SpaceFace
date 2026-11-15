@@ -13,6 +13,7 @@ import { FOUNDRY_ARENA_ID } from '../src/systems/swarmArena.js';
 import {
   FREIGHT_FIRST_DEPART_S,
   FREIGHT_PERIOD_S,
+  FREIGHT_DEBUT_WAVE,
   FREIGHT_WARN_LEAD_S,
   FREIGHT_STRING_COUNT,
   FREIGHT_SPACING_WU,
@@ -38,7 +39,7 @@ function makeFields() {
   };
 }
 
-function boot() {
+function boot({ wave = FREIGHT_DEBUT_WAVE } = {}) {
   const state = createGameState(7);
   const rawBus = createBus();
   const bus = {
@@ -65,12 +66,13 @@ function boot() {
   survivalArena.init(ctx);
   const run = createRunState({ kind: 'survival', ruleset: 'scored', seed: 7 });
   run.arenaId = FOUNDRY_ARENA_ID;
-  run.wave = 1;
+  run.wave = wave;
   run.phase = 'wave_intro';
   state.run = run;
   state.simTime = 0;
   state.tick = 0;
-  bus.emit('run:wavePlanned', { wave: 1, plan: planWave({ seed: 7, arenaId: FOUNDRY_ARENA_ID, wave: 1 }) });
+  // PIT-01: the lane debuts on 'Mind the Gap' — the harness rides its first legal round.
+  bus.emit('run:wavePlanned', { wave, plan: planWave({ seed: 7, arenaId: FOUNDRY_ARENA_ID, wave }) });
   const kernel = getCombatKernel(ctx);
   const events = { warnings: [], departures: [], clears: [], contacts: [], released: [], retired: [], kills: [], horn: [] };
   bus.on('freight:warning', (p) => events.warnings.push({ ...p }));
@@ -131,6 +133,24 @@ function boot() {
   return { state, ctx, bus, kernel, events, helpers, tick, tickN, tickUntil, spawn, freightMembers, impulses,
     destroy() { survivalArena.destroy(); kernel.dispose(); } };
 }
+
+test('the lane holds its debut: rounds 1–3 run no traffic, round 4 departs at 20 s', () => {
+  for (const wave of [1, 2, 3]) {
+    const h = boot({ wave });
+    try {
+      h.tickUntil(65);
+      assert.equal(h.events.warnings.length, 0, `round ${wave} lights no lane warning`);
+      assert.equal(h.events.departures.length, 0, `round ${wave} sends no string`);
+      assert.equal(h.events.horn.length, 0, `round ${wave} never sounds the horn`);
+      assert.equal(h.freightMembers().length, 0, `round ${wave} fields no containers`);
+    } finally { h.destroy(); }
+  }
+  const h = boot({ wave: FREIGHT_DEBUT_WAVE });
+  try {
+    h.tickUntil(21);
+    assert.equal(h.events.departures.length, 1, 'the debut round departs its first string at 20 s');
+  } finally { h.destroy(); }
+});
 
 test('freight timetable: warning exactly 3 s before departure, first string at 20 s, then every 40 s', () => {
   const h = boot();
