@@ -126,6 +126,7 @@ const HOOK = () => {
             type: p && p.type, victim: p && p.victimId, pos: p && p.pos ? [Math.round(p.pos.x), Math.round(p.pos.z)] : undefined,
             impactor: imp ? `${imp.type}:${(imp.data && (imp.data.freight ? 'freight' : imp.data.shipClass || imp.data.kind)) || imp.defId || ''}` : undefined };
           if (ev === 'nav:waypoint' || ev === 'mission:updated' || ev === 'mission:accepted' || ev === 'mission:completed') rec.label = pickText(p && (p.label ? p : p.mission || p)).slice(0, 100);
+          if (p && p.reason) rec.reason = p.reason;
           D.ev.push(rec);
           if (D.t0 != null) {
             const set = (k) => { if (D.ms[k] == null) D.ms[k] = { t: D.rel(t), clicks: D.clicks }; };
@@ -592,7 +593,11 @@ async function adventureRoute() {
         const readThrow = () => page.evaluate(() => { const s = window.SF.state; const t = s.massline2 && s.massline2.throw; const tt = s.player && s.player.tether; return { on: !!(t && t.solution && t.solution.valid && t.solution.onSolution), armed: !!(t && t.armed), phase: tt ? (tt.phase || tt.state || null) : null, strain: tt && Number.isFinite(tt.strain) ? +tt.strain.toFixed(2) : null, aimTarget: t ? t.aimTargetId : null }; }).catch(() => ({ on: false }));
         let clickInfo = null;
         for (let i = 0; i < 60; i++) {
-          await page.mouse.move(VW / 2 + 260 * Math.cos(i * 0.6), VH / 2 + 200 * Math.sin(i * 0.6), { steps: 2 }); await sleep(100);
+          // Fly an arc toward the derelict with the cursor ON it: the throw solution needs an aimed target.
+          const dsc = await page.evaluate(() => { const s = window.SF.state; const d = (s.entityList || []).find((e) => e && e.alive !== false && e.data && e.data.rescueRole === 'derelict'); return d ? window.SF.helpers.worldToScreen({ x: d.pos.x, y: 0, z: d.pos.z }, {}) : null; }).catch(() => null);
+          const ax = dsc && Number.isFinite(dsc.x) ? Math.max(40, Math.min(VW - 40, dsc.x)) : VW / 2 + 260 * Math.cos(i * 0.6);
+          const ay = dsc && Number.isFinite(dsc.y) ? Math.max(40, Math.min(VH - 40, dsc.y)) : VH / 2 + 200 * Math.sin(i * 0.6);
+          await page.mouse.move(ax, ay, { steps: 2 }); await sleep(100);
           if (i === 3) await shot('swing-rock', { gameplay: true });
           const rt = await readThrow();
           // THROW fires on a press while the rope's own release window is open on the aimed target.
