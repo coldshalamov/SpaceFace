@@ -31,7 +31,8 @@ import { swarmLevel } from '../data/swarmMode.js';
 import { WAVE_30_SYSTEM_EVENT } from '../data/survivalActs.js';
 import { SURVIVAL_COHORT_TAG, levelForWave } from './waveMaterialization.js';
 import { GAUNTLET_REGENT_FIGHT_ID, SURVIVAL_WAVE_OWNER_PREFIX } from './survivalWave.js';
-import { swarmPilotHasActed } from './swarmSafety.js';
+import { swarmPilotHasActed, findSwarmLocalSeat } from './swarmSafety.js';
+import { SWARM_MAW_OFFCUT, SWARM_MAW_OFFCUT_TAG } from '../data/swarmMawOffcut.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
 
@@ -83,6 +84,12 @@ function sectorLevelForMission(state, mission) {
  * hull died, every one an ordinary tetherable throw-mass that outlives the round. The run's
  * rng deals the count and the scatter; a record-stamped ledger keeps a restore or a second
  * start from minting a second field.
+ * PRI-11c — each proposed piece is seated through the arena's clearance search before it
+ * exists: the authored seat stands when it is clear, a blocked one walks to the nearest
+ * clear spot inside the bounded band, and a slot with no clear seat at all is spent
+ * unspawned rather than landing inside the pilot's immediate flight path. The round-five
+ * champion's first piece is re-authored as the hand-sized offcut (src/data/swarmMawOffcut.js)
+ * — an ordinary dynamic body the arena keeps through round six and then releases.
  */
 const SWARM_BOSS_CHUNKS = Object.freeze({
   min: 4, max: 6,
@@ -100,8 +107,11 @@ function spawnSwarmBossChunks(context, record, boss) {
   const roll = (lo, hi) => lo + (rng ? rng() : 0.5) * (hi - lo);
   const count = Math.round(roll(SWARM_BOSS_CHUNKS.min, SWARM_BOSS_CHUNKS.max + 0.999));
   const bossName = (boss.data && (boss.data.scanLabel || boss.data.name)) || 'capital hulk';
-  const label = `${String(bossName).replace(/\s+/g, ' ').toUpperCase()} CHUNK`;
+  const name = String(bossName).replace(/\s+/g, ' ').toUpperCase();
+  const label = `${name} CHUNK`;
   const vel = boss.vel && Number.isFinite(boss.vel.x) ? boss.vel : { x: 0, z: 0 };
+  const offcutRound = record.encounterId === 'capital_boss_hulk'
+    && survivalWaveOfFightId(record.fightId) === 5;
   const ids = [];
   for (let i = 0; i < count; i++) {
     const angle = roll(0, Math.PI * 2);
@@ -128,6 +138,20 @@ function spawnSwarmBossChunks(context, record, boss) {
       },
       flags: { persistent: true },
     };
+    if (offcutRound && i === 0) {
+      // The authored native mass is required: the wreck material would otherwise re-derive
+      // a far heavier body from the small radius, and the offcut would stop being throwable.
+      spec.radius = SWARM_MAW_OFFCUT.radius;
+      spec.mass = SWARM_MAW_OFFCUT.mass;
+      spec.physicsBody = { mass: SWARM_MAW_OFFCUT.mass, radius: SWARM_MAW_OFFCUT.radius, dynamic: true };
+      spec.data.scanLabel = `${name} OFFCUT`;
+      spec.data[SWARM_MAW_OFFCUT_TAG] = true;
+    }
+    const seat = findSwarmLocalSeat(state, spec.pos, spec.radius,
+      { velocity: spec.vel, clearance: 4 });
+    if (!seat) continue;
+    spec.pos.x = seat.x;
+    spec.pos.z = seat.z;
     const entity = spawn(spec);
     if (entity && entity.id != null) ids.push(entity.id);
   }

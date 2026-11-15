@@ -51,7 +51,7 @@ import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
 import { queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
-import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { validateRunState } from '../core/runState.js';
 import { SWARM_FORTIFY_SCHEMA_VERSION } from '../data/swarmFortify.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
@@ -198,6 +198,12 @@ function cellKey(cx, cz) {
 
 // mover/rock caches — rebuilt into retained arrays every tick, never reallocated
 const ROCK_CACHE_MAX = 64;
+// PRI-11c — a fallen champion's chunks are wreck-lane bodies, invisible to the asteroid
+// scan. They get their own seats past the asteroid cap: the rock law is already the
+// thrown-body owner ("a fast rock is a thrown rock"), so one feed answers bowling
+// (fast chunk kills) and cover (still chunk slides bodies off, sheds a scrape) alike.
+const BOSS_CHUNK_CACHE_MAX = 8;
+const ROCK_STORAGE_MAX = ROCK_CACHE_MAX + BOSS_CHUNK_CACHE_MAX;
 const MOVER_CACHE_MAX = 96;
 
 const EMPTY_FIELDS = [];
@@ -290,13 +296,19 @@ export function createBroodEngine(deps = {}) {
   const gridCellZ = new Int32Array(CAP);
 
   // caches
-  const rockX = new Float32Array(ROCK_CACHE_MAX);
-  const rockZ = new Float32Array(ROCK_CACHE_MAX);
-  const rockR = new Float32Array(ROCK_CACHE_MAX);
-  const rockVX = new Float32Array(ROCK_CACHE_MAX);
-  const rockVZ = new Float32Array(ROCK_CACHE_MAX);
-  const rockCredited = new Uint8Array(ROCK_CACHE_MAX);
+  const rockX = new Float32Array(ROCK_STORAGE_MAX);
+  const rockZ = new Float32Array(ROCK_STORAGE_MAX);
+  const rockR = new Float32Array(ROCK_STORAGE_MAX);
+  const rockVX = new Float32Array(ROCK_STORAGE_MAX);
+  const rockVZ = new Float32Array(ROCK_STORAGE_MAX);
+  const rockCredited = new Uint8Array(ROCK_STORAGE_MAX);
   let rockCount = 0;
+  // Retained boss-chunk refs: rediscovered only when the wrecks lane's membership version
+  // moves (or every tick under the un-indexed fallback, same as the other caches), then
+  // revalidated by reference — no per-tick lane walk while the field is stable.
+  const chunkRefs = new Array(BOSS_CHUNK_CACHE_MAX).fill(null);
+  let chunkRefCount = 0;
+  let chunkLaneVersion = null;
   const movX = new Float32Array(MOVER_CACHE_MAX);
   const movZ = new Float32Array(MOVER_CACHE_MAX);
   const movVX = new Float32Array(MOVER_CACHE_MAX);
@@ -1195,6 +1207,55 @@ export function createBroodEngine(deps = {}) {
       rockR[rockCount] = finite(e.radius, 10) * 1.05;
       rockVX[rockCount] = finite(e.vel && e.vel.x);
       rockVZ[rockCount] = finite(e.vel && e.vel.z);
+      rockCount += 1;
+    }
+    cacheBossChunks(state);
+  }
+
+  // PRI-11c — boss chunks are `wreck` type: they never enter the 'asteroids' lane above,
+  // so a thrown piece of the champion sailed straight through the flock before this feed.
+  // Discovery rides the wrecks lane's membership version (the index bumps it on any
+  // spawn/remove there); a still lane costs one version read plus a handful of reference
+  // revalidations. Under the un-indexed fallback every tick rescans, matching the other
+  // caches' fallback contract. The law that eats them is the ordinary rock contact law —
+  // speed decides whether the contact is a throw, never a second channel.
+  function refreshChunkRefs(state) {
+    chunkRefCount = 0;
+    const lane = indexedTypeScan(state, 'wrecks');
+    for (let i = 0; i < lane.length && chunkRefCount < BOSS_CHUNK_CACHE_MAX; i++) {
+      const e = lane[i];
+      if (!e || e.type !== 'wreck' || e.alive === false || e.collides === false) continue;
+      if (e.data?.swarmBossChunk !== true || !e.pos || !e.vel) continue;
+      if (!Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) continue;
+      chunkRefs[chunkRefCount] = e;
+      chunkRefCount += 1;
+    }
+  }
+
+  function chunkIsLive(state, e) {
+    return !!e && e.alive !== false && e.collides !== false
+      && e.data?.swarmBossChunk === true
+      && state.entities && typeof state.entities.get === 'function'
+      && state.entities.get(e.id) === e
+      && Number.isFinite(e.pos?.x) && Number.isFinite(e.pos?.z)
+      && Number.isFinite(e.vel?.x) && Number.isFinite(e.vel?.z);
+  }
+
+  function cacheBossChunks(state) {
+    const lane = entityIndexLaneVersion(state, ['wrecks']);
+    if (lane < 0 || lane !== chunkLaneVersion) {
+      refreshChunkRefs(state);
+      chunkLaneVersion = lane;
+    }
+    for (let i = 0; i < chunkRefCount && rockCount < ROCK_STORAGE_MAX; i++) {
+      const e = chunkRefs[i];
+      if (!chunkIsLive(state, e)) continue;
+      rockCredited[rockCount] = playerOwnsBody(state, e) ? 1 : 0;
+      rockX[rockCount] = finite(e.pos.x);
+      rockZ[rockCount] = finite(e.pos.z);
+      rockR[rockCount] = finite(e.radius, 10) * 1.05;
+      rockVX[rockCount] = finite(e.vel.x);
+      rockVZ[rockCount] = finite(e.vel.z);
       rockCount += 1;
     }
   }

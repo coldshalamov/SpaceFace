@@ -48,6 +48,7 @@ export function environmentFamiliesFor(arenaId) {
 }
 import { ROCK_PLACE_SUBSTANCES, applyRockSubstance } from '../data/rockSubstances.js';
 import { swarmArenaTierForRun, swarmArenaDebrisLayout, planOpeningThrowables } from '../data/swarmArenaLadder.js';
+import { SWARM_MAW_OFFCUT, SWARM_MAW_OFFCUT_TAG } from '../data/swarmMawOffcut.js';
 import { swarmOpeningTerrainStage, planSwarmOpeningTerrain } from '../data/swarmOpeningTerrain.js';
 import { swarmFloorKeepClear } from '../data/swarmFloor.js';
 import { mulberry32 } from '../core/rng.js';
@@ -1029,7 +1030,7 @@ export const swarmArena = {
     if (wave <= 1) resetSwarmPressureState();
     this._pressureAlive = liveCohortCount(this.state);
     this._raiseCapacity();
-    this._cullWrecks();
+    this._cullWrecks(wave);
     // Wave 1 stays in motion. Seed 4242 idle: settling the opener, then again
     // every 0.4s until the pilot acted, parked foundry rocks under 6 u/s (max
     // 5.8). The lesson wasp rammed that field at sim 31.167. Master settles
@@ -1410,7 +1411,7 @@ export const swarmArena = {
     for (const id of doomed) helpers.removeEntity(id, { reason: 'swarm_embedded_debris' });
   },
 
-  _cullWrecks() {
+  _cullWrecks(wave) {
     const state = this.state;
     if (!state || !Array.isArray(state.entityList)) return;
     const anchor = playerAnchor(state);
@@ -1424,6 +1425,16 @@ export const swarmArena = {
     for (const entity of indexedTypeScan(state, 'wrecks')) {
       if (!entity || entity.alive === false || entity.type !== 'wreck' || !entity.pos) continue;
       if (entity.data?.[SWARM_DEBRIS_TAG]) continue; // Authored conductive cover uses the terrain lifetime.
+      // PRI-11c — the Maw's kept offcut holds its lifetime through round six: it is never
+      // counted against the cap while its window runs, and once the window closes it takes
+      // the same release deadline every other released wreck does — the ordinary sweep.
+      if (entity.data?.[SWARM_MAW_OFFCUT_TAG] === true) {
+        if (Number.isInteger(wave) && wave <= SWARM_MAW_OFFCUT.keepThroughWave) continue;
+        if (!(Number.isFinite(entity.data.despawnAt) && entity.data.despawnAt <= deadline)) {
+          entity.data.despawnAt = deadline;
+        }
+        continue;
+      }
       const already = entity.data && Number.isFinite(entity.data.despawnAt)
         && entity.data.despawnAt <= deadline;
       if (already) continue;

@@ -117,6 +117,32 @@ export function findSwarmArrival(state, proposed, radius, options = {}) {
   return null;
 }
 
+/**
+ * A seat for matter the room already named a spot for — boss ballast on its authored
+ * offsets, wreck pieces at the death site. The proposed point is kept when it is clear;
+ * otherwise a bounded golden-angle disc walk looks for the nearest clear seat inside
+ * `reach`. No seat inside the band returns null: the caller spends the slot rather than
+ * placing inside a solid or teleporting the piece across the room. Deterministic,
+ * allocation-bounded (64 candidates), touches no RNG and no existing body. `options`
+ * is passed through to swarmPlacementIsClear verbatim — same rule as the Hive walls.
+ */
+export function findSwarmLocalSeat(state, proposed, radius, options = {}) {
+  if (!proposed || !Number.isFinite(proposed.x) || !Number.isFinite(proposed.z)
+    || !Number.isFinite(radius) || radius < 0) return null;
+  const { reach = 160, ...clearance } = options;
+  if (swarmPlacementIsClear(state, proposed, radius, clearance)) {
+    return { x: proposed.x, z: proposed.z };
+  }
+  const bound = Math.max(0, finite(reach));
+  for (let sample = 1; sample < 64; sample++) {
+    const a = sample * 2.399963229728653;
+    const r = bound * Math.sqrt(sample / 63);
+    const pos = { x: proposed.x + Math.cos(a) * r, z: proposed.z + Math.sin(a) * r };
+    if (swarmPlacementIsClear(state, pos, radius, clearance)) return pos;
+  }
+  return null;
+}
+
 export const SWARM_FORTIFY_MEET_WU = 110;
 
 /**

@@ -1,4 +1,5 @@
 import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
+import { findSwarmLocalSeat } from '../systems/swarmSafety.js';
 
 /** Call INSIDE _spawnCapitalBossTargets, before helpers.spawnEntity(spec). Mutates a NEW spec, not GameState. */
 export function decorateCapitalBossSpawnSpec(spec,actor,encounter,{missionId,index=0}={}) {
@@ -19,8 +20,12 @@ export function decorateCapitalBossSpawnSpec(spec,actor,encounter,{missionId,ind
  * Swarm champions have no mission row, so the hull arrives from the wave and the throw-mass
  * never did. Place each non-hull actor once, on the boss's pose, through the same ledger a
  * mission uses. A filled slot is a tombstone: a second start does not mint another rock.
+ * PRI-11c: when `state` is supplied each authored offset is seated through the arena's
+ * clearance search first — the offset stands when clear, a blocked one steps to the
+ * nearest clear seat inside the bounded band, and a slot with no clear seat at all is
+ * spent as 'unplaced' rather than landing inside the pilot's immediate flight path.
  */
-export function spawnSwarmCapitalBallast({ fightId, encounter, boss, ledger, spawnEntity }) {
+export function spawnSwarmCapitalBallast({ fightId, encounter, boss, ledger, spawnEntity, state }) {
   if (!fightId || !encounter || !boss || !boss.pos || !ledger || typeof spawnEntity !== 'function') {
     throw new TypeError('Swarm ballast needs the fight, the placed boss, a ledger, and a spawn port');
   }
@@ -33,13 +38,23 @@ export function spawnSwarmCapitalBallast({ fightId, encounter, boss, ledger, spa
     const want = Math.max(1, actor.count || 1);
     for (let actorIndex = 0; actorIndex < want; actorIndex++) {
       const anchored = capitalBossBallastPosition(encounter, bossSpawn, actorIndex);
+      const radius = actor.radius || 12;
+      const slot = `${fightId}/${actor.role}/${actorIndex}`;
+      const seat = state && !Object.hasOwn(ledger, slot)
+        ? findSwarmLocalSeat(state, anchored, radius, { clearance: 8 })
+        : anchored;
+      if (!seat) {
+        // A packed room spends the authored slot without manufacturing a collision.
+        ledger[slot] = { state: 'unplaced', entityId: null };
+        continue;
+      }
       const spec = {
         type: actor.kind === 'asteroid' ? 'asteroid' : 'wreck',
         team: 2,
-        pos: { x: anchored.x, z: anchored.z },
+        pos: { x: seat.x, z: seat.z },
         vel: { x: 0, z: 0 },
         rot: boss.rot || 0,
-        radius: actor.radius || 12,
+        radius,
         mass: actor.mass || 40,
         hull: actor.hull || 80,
         hullMax: actor.hull || 80,
@@ -48,7 +63,7 @@ export function spawnSwarmCapitalBallast({ fightId, encounter, boss, ledger, spa
           tetherable: actor.tetherable !== false,
           physicalRole: actor.role,
           scanLabel: actor.scanLabel || actor.role,
-          capitalBossActorKey: `${fightId}/${actor.role}/${actorIndex}`,
+          capitalBossActorKey: slot,
           capitalBossEncounterId: encounter.id,
         },
         flags: { persistent: true },
