@@ -42,9 +42,15 @@ need a re-review pass by Codex/Fable).
 
 ## Known open verification gaps
 
-- `npm run gate` LAUNCH step fails: "no New Game button" at the main menu — likely the foreign
-  title-door redesign changed the entry control. Boot now passes (13.9s) at budget-scale 10;
-  CONTINUE also timed out once at load-gates→flight under load. Not yet classified fix-vs-harness.
+- `npm run gate` is RED but the failure looks environmental, not code: boot 45.8s PASS,
+  LAUNCH/PILOT/HULL/WORLD/CONTROLS/LANE-FWD/SAVE all PASS; CONTINUE fails because after the
+  harness reload 10 authored-ship GLB requests died with `net::ERR_NETWORK_IO_SUSPENDED`
+  (Chrome suspending IO under machine load — three fleet workers running) and the new
+  authored-visuals readiness guard correctly refused to enter flight on procedural fallback
+  (`retryable:true`). An earlier "no New Game button" LAUNCH failure was the same class of
+  transient (menu still mounting at click time). Re-run on a quiet machine before treating
+  this as a real regression; if it persists, the check may deserve one retry on retryable
+  load failures (the game itself offers "Retry Launch").
 - PRI-14 packet completed only 2 of 7 items before timeout (crucible-results, wingman-radial).
   Remaining: crucible draft phone clipping, dossier verbs vs station tabs, station-ledger,
   faction-treaty phone, hail-panel shot.
