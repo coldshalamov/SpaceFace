@@ -80,13 +80,24 @@ ${ROW}:is(.is-active, [aria-selected="true"]):is(:hover, :focus-visible) .sx-fac
    the unfolded rows wrap to their own full-width lines) */
 ${T} .sx-fac-network { display:flex !important; flex-wrap:wrap; align-items:baseline; column-gap:18px; row-gap:2px; }
 ${T} .sx-fac-network__rows, ${T} .sx-fac-network__empty { flex-basis:100%; }
+/* the treaty sentence is a flex item with min-width:auto, so on the phone it ran past the reading's edge and clipped */
+${T} .sx-fac-network > .sx-fac-treaty { flex-basis:100%; min-width:0; }
 /* a desktop window 650px wide or narrower (390x844): the stage kept its two desktop columns, the
    ring took 300px and the reading got the rest, so CURRENT STATION AUTHORITY stood one letter a
    line down the right edge and the ring sat under the tab bar (ui-bench still, 2026-10-30). The
    stage stacks here the way the phone composition already does: ring first, the reading under it. */
 @media (max-width:650px) {
   ${D} .sx-fac .sx-fac__stage { grid-template-columns:minmax(0, 1fr) !important; column-gap:0 !important; row-gap:18px; }
+  /* stacked, the ring is no longer a pinned column: sticky, it stayed at the stage top while the
+     reading scrolled up over it, so the treaty sentence printed across the crest labels */
+  ${D} .sx-fac .sx-fac__stage > .orr-fac-orbit { position:static !important; }
 }
+/* the stage is the reading's scroll window: when it overflows it folds at the rim (the house
+   dissolve, scrollExtent.js) instead of guillotining the last rung — the NEXT MOVE heading was
+   hard-cut mid-glyph at rest (bench 1440x900). The paired pad keeps the fold on empty column at
+   scroll end, so the last rung reads whole (the industry ladder's RC-49 pairing). */
+${T} .sx-fac__stage[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 20px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 20px), transparent); padding-bottom:20px !important; }
+${T} .sx-fac__stage[data-overflow="0"] { -webkit-mask-image:none; mask-image:none; }
 `;
 
 export function injectOrreryStationFactions(doc = globalThis.document) {
