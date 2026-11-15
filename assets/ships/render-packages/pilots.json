@@ -280,7 +280,11 @@
       "sceneRoot": true,
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-deb-liner-hull-panel-authored-down",
-      "metadataUrl": "assets/ships/release/render-packages/aftermath-deb-liner-hull-panel-authored-down/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/aftermath-deb-liner-hull-panel-authored-down/render-package.json",
+      "sharedKtx2Hashes": [
+        "627cd467749746901a5fd84c83223ab6e4c15cdd90c9f71e88ddb886d942aa01",
+        "b754908b7a80e21d02ccad8584fb89a8bde8b027555af06e1bf01bbf0fb885a8"
+      ]
     },
     {
       "key": "aftermath-deb-ore-freighter-drive-bell",
@@ -558,7 +562,11 @@
       "sceneRoot": true,
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-liner-boatbay-authored-down",
-      "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-liner-boatbay-authored-down/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-liner-boatbay-authored-down/render-package.json",
+      "sharedKtx2Hashes": [
+        "627cd467749746901a5fd84c83223ab6e4c15cdd90c9f71e88ddb886d942aa01",
+        "b754908b7a80e21d02ccad8584fb89a8bde8b027555af06e1bf01bbf0fb885a8"
+      ]
     },
     {
       "key": "aftermath-wreck-liner-bow",
@@ -588,7 +596,11 @@
       "sceneRoot": true,
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-wreck-liner-bow-authored-down",
-      "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-liner-bow-authored-down/render-package.json"
+      "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-liner-bow-authored-down/render-package.json",
+      "sharedKtx2Hashes": [
+        "627cd467749746901a5fd84c83223ab6e4c15cdd90c9f71e88ddb886d942aa01",
+        "b754908b7a80e21d02ccad8584fb89a8bde8b027555af06e1bf01bbf0fb885a8"
+      ]
     },
     {
       "key": "aftermath-wreck-liner-drum",

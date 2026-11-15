@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0a04394d4cfc3cc6ee5502906842bbbd6c499823dd08f8794da74cf388b8e52e",
+  "contentHash": "9a239c9719b9e4f3afd533b27a7629bd136f826e85673f6b5f340cf97b29f124",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1298,14 +1298,28 @@
       "uri": "place_aftermath_deb_liner_hull_panel_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 13956,
+      "sha256": "c213505ae4020bad808ffec3bfa0433ea9dc417d6d135c8605199a18f987d424",
+      "uri": "assets/ships/render-packages/inputs/aftermath-deb-liner-hull-panel-authored-down.json"
     }
   },
   "render": {
-    "bytes": 1191712,
-    "sha256": "61b24013177e52b0975193652a16165ce98985e1c8d057e4a69371374750dca5",
+    "bytes": 577384,
+    "resources": [
+      {
+        "bytes": 305838,
+        "mimeType": "image/ktx2",
+        "sha256": "627cd467749746901a5fd84c83223ab6e4c15cdd90c9f71e88ddb886d942aa01",
+        "uri": "../_shared/images/627cd467749746901a5fd84c83223ab6e4c15cdd90c9f71e88ddb886d942aa01.ktx2"
+      },
+      {
+        "bytes": 308504,
+        "mimeType": "image/ktx2",
+        "sha256": "b754908b7a80e21d02ccad8584fb89a8bde8b027555af06e1bf01bbf0fb885a8",
+        "uri": "../_shared/images/b754908b7a80e21d02ccad8584fb89a8bde8b027555af06e1bf01bbf0fb885a8.ktx2"
+      }
+    ],
+    "sha256": "50d2b99af5e9ccc2ccfde7f41aa20ce18d4e231903784a0b66b9129b9f2a5aff",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1731,7 +1745,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_liner_hull_panel_authored_down.glb"
   },
-  "runtimeHash": "c4231aa7ec029bca1d1368b973be14296f824ee4c14f87ffbe3f30527423a11b",
+  "runtimeHash": "50cccf03a8bcf0af16a1ac7f45b6f19dd271e1ee5679535074b276e12924f1fa",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

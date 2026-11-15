@@ -152,7 +152,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-deb-liner-hull-panel-authored-down",
-    "expectedContentHash": "0a04394d4cfc3cc6ee5502906842bbbd6c499823dd08f8794da74cf388b8e52e",
+    "expectedContentHash": "9a239c9719b9e4f3afd533b27a7629bd136f826e85673f6b5f340cf97b29f124",
     "key": "aftermath-deb-liner-hull-panel-authored-down",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-deb-liner-hull-panel-authored-down/render-package.json",
     "runtimeAssetId": "place_aftermath_deb_liner_hull_panel_authored_down",
@@ -334,7 +334,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-liner-boatbay-authored-down",
-    "expectedContentHash": "19b1e1d8c3c5c6b8c8985ef90e4503f85bd8128d7558bc0a88c2df4f0006cccb",
+    "expectedContentHash": "791a9e5a576d88792785872fdbf3cce8744ed1d984da97ec58a6004680436d55",
     "key": "aftermath-wreck-liner-boatbay-authored-down",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-liner-boatbay-authored-down/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_liner_boatbay_authored_down",
@@ -354,7 +354,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.aftermath-wreck-liner-bow-authored-down",
-    "expectedContentHash": "46b3dd12e86d505b4d553fa90cdaebfd6dc39aeed35bb3db384779e00067e381",
+    "expectedContentHash": "178693991023742fac02f7807e6a0bb734bdf5b9bd0b5450e41a578764742452",
     "key": "aftermath-wreck-liner-bow-authored-down",
     "metadataUrl": "assets/ships/release/render-packages/aftermath-wreck-liner-bow-authored-down/render-package.json",
     "runtimeAssetId": "place_aftermath_wreck_liner_bow_authored_down",

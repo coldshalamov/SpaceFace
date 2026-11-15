@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "19b1e1d8c3c5c6b8c8985ef90e4503f85bd8128d7558bc0a88c2df4f0006cccb",
+  "contentHash": "791a9e5a576d88792785872fdbf3cce8744ed1d984da97ec58a6004680436d55",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1671,14 +1671,28 @@
       "uri": "place_aftermath_wreck_liner_boatbay_authored_down.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 16790,
+      "sha256": "c3cf4be579c0f93a2d99dcb313a08b3aaa640d8b865bb52ed92645dc3374b03b",
+      "uri": "assets/ships/render-packages/inputs/aftermath-wreck-liner-boatbay-authored-down.json"
     }
   },
   "render": {
-    "bytes": 1504900,
-    "sha256": "c1ab03d46f2a1e65dfc81ff049bda622dde9c67ffd3bd2c8fa7172c1d1636682",
+    "bytes": 890564,
+    "resources": [
+      {
+        "bytes": 305838,
+        "mimeType": "image/ktx2",
+        "sha256": "627cd467749746901a5fd84c83223ab6e4c15cdd90c9f71e88ddb886d942aa01",
+        "uri": "../_shared/images/627cd467749746901a5fd84c83223ab6e4c15cdd90c9f71e88ddb886d942aa01.ktx2"
+      },
+      {
+        "bytes": 308504,
+        "mimeType": "image/ktx2",
+        "sha256": "b754908b7a80e21d02ccad8584fb89a8bde8b027555af06e1bf01bbf0fb885a8",
+        "uri": "../_shared/images/b754908b7a80e21d02ccad8584fb89a8bde8b027555af06e1bf01bbf0fb885a8.ktx2"
+      }
+    ],
+    "sha256": "6438edb80265984dff933da747ac4550cf24f5f8e11e7f1b70484e2ba03256ad",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2246,7 +2260,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_wreck_liner_boatbay_authored_down.glb"
   },
-  "runtimeHash": "b46f63d5123ef5b3082caaa394554b4380b2966b9190e463885151869752ebf5",
+  "runtimeHash": "e37ff1609146794d588c3a8867730a5c168b56b925cb2890479b5910b9187d86",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
