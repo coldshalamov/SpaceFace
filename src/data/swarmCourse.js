@@ -16,39 +16,38 @@
 // and the champion rounds (the boss room is the mechanic) stay name + roster rather
 // than wearing a borrowed card. These rows are the honest gaps for later mechanics.
 //
-// question is the round's one-line question (EC-Z01; PR #990's Pack lines trimmed to the
-// eight-word voice), spoken once in the opener and shown as the Armory's `inbound:` line.
-// Rounds 1–10 carry one; the rest are null, and the open ladder past 30 has no row.
+// question is the round's one-line question (EC-Z01, PR #990), spoken once in the opener and
+// shown as the Armory's `inbound:` line. Rounds 2–10 carry one; round 1 stays silent ("Kiln
+// explains nothing"), the rest are null, and the open ladder past 30 has no row.
 
 function courseRound(round, name, twist, twistId, question = null) {
   return Object.freeze({ round, name, twist, twistId, question });
 }
 
 export const SWARM_COURSE = Object.freeze([
-  courseRound(1, 'Doors Open', 'ten Wasps, one gate. Kiln explains nothing', null,
-    'Kill clean, or throw what the room gives.'),
+  courseRound(1, 'Doors Open', 'ten Wasps, one gate. Kiln explains nothing', null),
   courseRound(2, 'Second Helpings', 'Wasps from two gates. The first wall gun is lit', null,
-    'Turn their approach into a bank or throw.'),
+    'Two gates now. Make the wall gun work.'),
   courseRound(3, 'Hot Potato', 'Detonator Darts. The round teaches throwing things back', null,
-    'Sidestep the pass, then punish the turn.'),
+    'Catch the dart. Send it home.'),
   // sling_tide is the room pouring crosswise on a lane — the lane running for the first time.
   courseRound(4, 'Mind the Gap', 'the lane runs for the first time, with Wasps on both sides of it', 'sling_tide',
-    'Flank the pressure, or move it.'),
+    'The lane is running. Let it carry them.'),
   courseRound(5, 'Iron Maw', 'Boss. A mouth that eats what you throw — until you throw a Detonator', null,
-    'The champion is the work. Save your ammunition.'),
+    'It eats what you throw. Almost everything.'),
   courseRound(6, 'The Charge', 'Bruisers. Every wall has a scorch mark by the end', null,
-    'Use your new kit on familiar hulls.'),
+    'Bruisers charge straight. Be somewhere else.'),
   // plate_drift is the Foundry's own cover card: cover rocks appear and the sag walks them.
   courseRound(7, 'Long Shots', 'Lancers at the edges, Wasps in the middle. Rocks appear for cover', 'plate_drift',
-    'Separate their approaches and open one target.'),
+    'Lancers at the edges. Use the rocks.'),
   // mine_drift rides hazards in on a bearing with the player's own team — mines that are
   // also yours to use. Band round, so it serves at the minor voice and scaled wager.
   courseRound(8, 'Breadcrumbs', 'Jackals. The floor fills with mines that are also yours to use', 'mine_drift',
-    'Spend the mass, or take the open flank.'),
+    'Their mines are your mines too.'),
   courseRound(9, 'Tug of War', 'Tether Raiders. Half the round you are attached to something', null,
-    'Guns isolate one; a thrown hull breaks them.'),
+    'They will hook you. Pull back harder.'),
   courseRound(10, 'Corsair Wing', 'Boss: five ships that fly as one. The room changes — the crusher wakes. Bench', null,
-    'Solve the familiar mix, then refit.'),
+    'Five fly as one. Break the wing.'),
   courseRound(11, 'The Umbrella', 'a Warden shielding gunners. Take the handle away', null),
   courseRound(12, 'Delivery', 'enemies arrive on the freight. Cut the container loose before it stops', 'delivery'),
   courseRound(13, 'Lights Out', 'the arena dims. Ghosts. Your own lamps and the lane lights are all you have', 'lights_out'),

@@ -476,11 +476,12 @@ test('all ten waves produce clean, distinct, deterministic openers', () => {
 
 test('an authored Swarm round speaks its own question once; the open ladder never borrows one', () => {
   const authored = new Set(SWARM_COURSE.map((row) => row.question).filter(Boolean));
-  assert.equal(authored.size, 10, 'rounds 1-10 each carry a distinct question');
+  assert.equal(authored.size, 9, 'rounds 2-10 each carry a distinct question');
+  assert.equal(swarmCourseFor(1).question, null, 'round 1: Kiln explains nothing');
   for (const question of authored) {
     assert.ok(question.split(/\s+/).length <= 8, `spoken lines stay at eight words: ${question}`);
   }
-  for (const wave of [1, 3, 7, 10, 11, 31, 35]) {
+  for (const wave of [1, 2, 3, 7, 10, 11, 31, 35]) {
     const run = createRunState({ kind: 'survival', ruleset: 'swarm', seed: SEED });
     run.arenaId = ARENA; run.phase = 'active';
     const h = boot({ run });

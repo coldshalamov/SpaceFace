@@ -305,7 +305,7 @@ test('the round preview exposes the authored name and twist', () => {
   assert.deepEqual(long.course, {
     round: 7, name: 'Long Shots',
     twist: 'Lancers at the edges, Wasps in the middle. Rocks appear for cover',
-    twistId: 'plate_drift', question: 'Separate their approaches and open one target.',
+    twistId: 'plate_drift', question: 'Lancers at the edges. Use the rocks.',
   });
   assert.equal(long.event.name, 'Plate drift', 'the preview names the card the twist deals');
   const quiet = swarmRoundPreview({ arenaId: ARENA, wave: 29, seed: SEED });
