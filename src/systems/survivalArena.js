@@ -1366,6 +1366,7 @@ export const survivalArena = {
     if (this._callins) this._callins.destroy();
     if (this._freight) this._freight.destroy();
     if (this._floor) this._floor.destroy();
+    if (this._plateTheft) this._plateTheft.destroy();
     this._teardown('destroy');
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];

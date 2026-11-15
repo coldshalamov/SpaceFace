@@ -90,8 +90,9 @@ export function createPlateTheft({ state, bus, registry }) {
     for (let i = 0; i < record.candidates.length; i++) if (record.candidates[i] === entity) return;
     record.candidates.push(entity);
   };
+  let offSpawned = null;
   if (bus && typeof bus.on === 'function') {
-    bus.on('entity:spawned', (p) => noteSpawned(p?.entity ?? state.entities?.get?.(p?.id)));
+    offSpawned = bus.on('entity:spawned', (p) => noteSpawned(p?.entity ?? state.entities?.get?.(p?.id)));
   }
   return {
     arm(plate) {
@@ -199,6 +200,13 @@ export function createPlateTheft({ state, bus, registry }) {
         && state.run?.retireToken === record.runToken && !event) {
         emit(record, reason === 'wave_cleared' && live(record.plate, record.generation) ? 'secured' : 'interrupted');
       }
+    },
+    /** Retire the event AND release the spawn subscription — the arena's
+     *  destroy path calls this so a re-init cannot stack retired listeners
+     *  (each still holding this state's capture) on the bus. */
+    destroy(reason = 'destroy') {
+      this.clear(reason);
+      if (typeof offSpawned === 'function') { offSpawned(); offSpawned = null; }
     },
     diagnostics() {
       return event ? { status: event.status, plateId: event.plate.id,

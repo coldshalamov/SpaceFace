@@ -169,6 +169,35 @@ test('the public arena consumer preserves a moved plate on replay and releases i
   } finally { arena.destroy(); }
 });
 
+test('re-init on the same bus leaves exactly one spawn listener, and destroy releases it', () => {
+  const state = createGameState(4242); state.run = runFor();
+  const bus = createBus();
+  const helpers = { spawnEntity(spec) {
+    const e = makeEntity({ ...spec, id: state.nextEntityId++ });
+    state.entities.set(e.id, e); state.entityList.push(e); return e;
+  } };
+  const liveSpawnListeners = () => bus._listeners.get('entity:spawned')?.size || 0;
+  const ctx = () => ({ state, bus, helpers, registry: { get: () => null } });
+  const arena = Object.create(survivalArena);
+  const baseline = liveSpawnListeners();
+  arena.init(ctx());
+  try {
+    const armed = liveSpawnListeners();
+    arena.init(ctx());
+    assert.equal(liveSpawnListeners(), armed,
+      'init → destroy → init installs one spawn listener, not two');
+    // A subsequent spawn is recorded once — one live subscription on the bus.
+    let heard = 0;
+    const off = bus.on('entity:spawned', () => { heard++; });
+    bus.emit('entity:spawned', { entity: { alive: true, data: {} }, id: 99999 });
+    off();
+    assert.equal(heard, 1, 'one emit reaches one observer');
+    arena.destroy();
+    assert.equal(liveSpawnListeners(), baseline,
+      'the arena destroy path releases the helper subscription');
+  } finally { arena.destroy(); }
+});
+
 test('retired create and cleanup cannot cut a successor attachment with a recycled ID', async t => {
   const h = await physicsFixture(t);
   const service = h.kernel.attachments;
