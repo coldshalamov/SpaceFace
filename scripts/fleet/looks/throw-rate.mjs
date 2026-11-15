@@ -52,7 +52,7 @@ try {
     await page.evaluate(() => {
       const log = (window.__log = []);
       const bus = window.SF.bus; const sim = () => window.SF.state.simTime;
-      for (const ev of ['tether:latched', 'massline:throw', 'massline:selfSling', 'tether:cut', 'tether:broke', 'entity:killed', 'combat:damage'])
+      for (const ev of ['tether:latched', 'massline:throw', 'massline:selfSling', 'tether:cut', 'tether:broke', 'entity:killed', 'combat:damage', 'tether:latchDenied'])
         bus.on(ev, (p) => log.push({ ev, t: +sim().toFixed(2), tgt: p && p.targetId, id: p && (p.id ?? p.payloadId), br: p && (p.reason || p.breakReason), killer: p && p.killer, cause: p && p.cause, dmg: p && p.applied, origin: p && p.origin && (p.origin.kind || p.origin.id), weapon: p && p.weaponId, victim: p && p.targetId }));
     });
     await page.mouse.click(640, 360);
@@ -82,7 +82,12 @@ try {
         await page.mouse.down({ button: 'right' }); await sleep(120); await page.mouse.up({ button: 'right' });
         let got = null;
         for (let i = 0; i < 10 && !got; i++) { await sleep(150); got = await page.evaluate((m) => window.__log.slice(m).find((e) => e.ev === 'tether:latched') || null, m2); }
-        if (!got) continue;
+        if (!got) {
+          (rec.failedPresses ||= []).push(await page.evaluate(([m, id, scr]) => { const st = window.SF.state, t = st.player.tether, me = st.entities.get(st.playerId), e = st.entities.get(id), sel = st.masslineAcquisition && st.masslineAcquisition.selected;
+            const pv = document.querySelector('#sf-ml2 .ml2-preview');
+            return { tether: t && { active: t.active, target: t.targetId, phase: t.phase }, dist: e && me ? Math.round(Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z)) : null, targetAlive: e ? e.alive : null, screen: scr, selected: sel && { id: sel.targetId, status: sel.status, reason: sel.reason }, el: (() => { const q = document.elementFromPoint(scr.x, scr.y); return q ? `${q.tagName}.${String(q.className).slice(0, 40)}#${q.id}` : null; })(), tag: pv ? (pv.textContent || '').slice(0, 40) : null, tagShown: pv ? getComputedStyle(pv).display !== 'none' : null, denials: window.__log.slice(m).filter((x) => x.ev === 'tether:latchDenied').map((x) => x.br), mode: st.mode, tick: st.tick }; }, [m2, pick.id, { x: Math.round(pick.scr.x), y: Math.round(pick.scr.y) }]));
+          continue;
+        }
         // Only a hostile ship counts as the attempt; anything else (pickup, rock, station) is let go and the pick retried.
         const kind = await page.evaluate((id) => { const e = window.SF.state.entities.get(id); return e ? e.type : null; }, got.tgt);
         if (kind === 'ship' || kind === 'drone') { L = got; break; }
