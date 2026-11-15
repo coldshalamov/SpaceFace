@@ -86,6 +86,21 @@ test('engine bells charge white-hot and cool to gunmetal in 2 seconds', () => {
   assert.equal(sampleBellThermal(0).intensity, 0);
 });
 
+test('bell thermal samples support isolated reusable outputs without changing default ownership', () => {
+  const first = {}, second = {};
+  for (const heat of [0, .001, .2, .34, .5, .68, 1]) {
+    const expected = sampleBellThermal(heat);
+    assert.equal(sampleBellThermal(heat, first), first);
+    assert.deepEqual(first, expected);
+  }
+  const saved = { ...first };
+  sampleBellThermal(.2, second);
+  assert.deepEqual(first, saved, 'another ship output cannot overwrite the first');
+  assert.notEqual(sampleBellThermal(.5), sampleBellThermal(.5), 'default callers retain distinct objects');
+  const outputs = Array.from({ length: 100 }, () => sampleBellThermal(.5, first));
+  assert.equal(new Set(outputs).size, 1, 'repeated hot samples reuse their supplied object');
+});
+
 test('boost lag is 2% of camera distance and the latch spring returns to the ship', () => {
   let lag = 0;
   for (let i = 0; i < 30; i++) lag = stepBoostLag(lag, true, 100, 0.05, false);

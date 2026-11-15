@@ -165,29 +165,28 @@ export function integrateBellHeat(heat, drive, dt) {
 }
 
 /** White-hot → cherry → dull iron → off. Intensity 0 is the authored gunmetal. */
-export function sampleBellThermal(heat) {
+export function sampleBellThermal(heat, out) {
   const h = clamp01(heat);
-  if (h <= 0.001) return { r: 0, g: 0, b: 0, intensity: 0 };
+  const sample = out || { r: 0, g: 0, b: 0, intensity: 0 };
+  if (h <= 0.001) {
+    sample.r = 0; sample.g = 0; sample.b = 0; sample.intensity = 0;
+    return sample;
+  }
   if (h < 0.34) {
     const k = h / 0.34;
-    return { r: 0.28 * k, g: 0.07 * k, b: 0.05 * k, intensity: 0.45 * k };
+    sample.r = 0.28 * k; sample.g = 0.07 * k; sample.b = 0.05 * k; sample.intensity = 0.45 * k;
+    return sample;
   }
   if (h < 0.68) {
     const k = (h - 0.34) / 0.34;
-    return {
-      r: 0.28 + 0.72 * k,
-      g: 0.07 + 0.08 * k,
-      b: 0.05 * (1 - k),
-      intensity: 0.45 + 1.15 * k,
-    };
+    sample.r = 0.28 + 0.72 * k; sample.g = 0.07 + 0.08 * k;
+    sample.b = 0.05 * (1 - k); sample.intensity = 0.45 + 1.15 * k;
+    return sample;
   }
   const k = (h - 0.68) / 0.32;
-  return {
-    r: 1,
-    g: 0.15 + 0.85 * k,
-    b: 0.02 + 0.98 * k,
-    intensity: 1.6 + 1.7 * k,
-  };
+  sample.r = 1; sample.g = 0.15 + 0.85 * k;
+  sample.b = 0.02 + 0.98 * k; sample.intensity = 1.6 + 1.7 * k;
+  return sample;
 }
 
 export function writeSlipstreamState(state, active, intensity) {

@@ -17,6 +17,7 @@ import { nocturneForScene } from './nocturne/bridge.js';
 import { sampleBellThermal, writeSlipstreamState } from '../presentation/flightOverheadMath.js';
 
 export function createFlightOverheadPresentation(scene) {
+  const bellSample = { r: 0, g: 0, b: 0, intensity: 0 };
   const nocturne = nocturneForScene(scene);
   const light = nocturne
     ? nocturne.createLight('engine:cooldown', 'point', { color: 0xfff1e0, range: 26, priority: 1 })
@@ -44,7 +45,7 @@ export function createFlightOverheadPresentation(scene) {
       writeSlipstreamState(state, !!(slip && slip.active), slip ? slip.intensity : 0);
 
       const heat = rec && Number.isFinite(rec.bellHeat) ? rec.bellHeat : 0;
-      const sample = sampleBellThermal(heat);
+      const sample = sampleBellThermal(heat, bellSample);
       const lit = sample.intensity > 0.02 && entity && mesh;
       if (!lit) {
         light.intensity = 0;

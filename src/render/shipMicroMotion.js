@@ -862,6 +862,7 @@ export function createShipMicroMotionTracker() {
         rcsMain: 0,
         bellHeat: 0,
         bellCool: true,
+        bellThermalSample: { r: 0, g: 0, b: 0, intensity: 0 },
         slipstream: null,
 
         // Engine bell gimbal + boost ignition
@@ -1524,7 +1525,7 @@ export function createShipMicroMotionTracker() {
   }
 
   function applyBellThermal(rec, heat, flashReduce) {
-    const sample = sampleBellThermal(heat);
+    const sample = sampleBellThermal(heat, rec.bellThermalSample);
     const flash = flashReduce ? 0.28 : 1;
     for (let i = 0; i < rec.bellCount; i++) {
       const bell = rec.bells[i];
