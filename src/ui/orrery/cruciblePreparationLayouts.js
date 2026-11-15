@@ -1034,6 +1034,7 @@ ${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt {
   background:linear-gradient(160deg,#1b2a30,var(--armory-panel) 57%) !important;
 }
 ${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt:is(:hover,:focus-visible,.is-lit) { border-color:var(--dp-hand) !important; }
+${A} :is(.sf-cru-dealt .sf-cru-card.sf-cru-card--dealt, .sf-cru-cards .sf-cru-card):focus-visible { outline:0 solid transparent !important; outline-offset:0 !important; box-shadow:inset 0 0 0 1px var(--dp-hand) !important; }
 ${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt::before { display:none !important; }
 ${A} .sf-cru-dealt .sf-cru-dealtface {
   min-height:0 !important; height:clamp(100px,12.9vw,235px); width:auto; position:relative;
