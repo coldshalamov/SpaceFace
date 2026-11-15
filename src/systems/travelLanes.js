@@ -552,6 +552,9 @@ export const travelLanes = {
       // drops entity bookkeeping whose ids no longer refer to anything.
       bus.on('save:loaded', () => this._resetRunBindings(true));
       bus.on('sector:enter', () => { this._trafficNeedsRebind = true; });
+      bus.on('run:started', (payload) => {
+        if (payload?.kind === 'survival') this._retireTrafficForRun();
+      });
     }
   },
 
@@ -617,6 +620,21 @@ export const travelLanes = {
       this._slingHaulerId = hauler.id;
       this._slingHaulerBinding = bindLaneEntity(hauler);
     }
+  },
+
+  _retireTrafficForRun() {
+    const state = this.state;
+    if (this._trafficNeedsRebind) this._rebindOwnedTraffic(state);
+    const remove = this.helpers?.removeEntity;
+    if (typeof remove !== 'function') return;
+    for (let i = 0; i < this._trafficIds.length; i++) {
+      const entity = state.entities?.get(this._trafficIds[i]);
+      if (currentLaneEntity(this._trafficBindings[i], entity) && isLaneTraffic(entity, this.lane.id, i)) {
+        remove(entity.id);
+      }
+    }
+    this._trafficIds.length = 0;
+    this._trafficBindings.length = 0;
   },
 
   /**
@@ -1333,6 +1351,7 @@ export const travelLanes = {
    * own entities' positions.
    */
   _updateTraffic(state, player) {
+    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     if (typeof spawnEntity !== 'function') return;
     const entities = state.entities;
