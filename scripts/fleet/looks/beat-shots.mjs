@@ -22,6 +22,7 @@ try {
   await sleep(2500);
   browser = await chromium.launch({ headless: argv.headed !== true, args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
   const page = await (await browser.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+  page.on('console', (m) => { const t = m.text(); if (/dev beat jump|dev sector|unknown sector|SpaceFace\]/.test(t)) console.log('console:', t.slice(0, 200)); });
   await page.goto(`http://127.0.0.1:${PORT}/?sector=sector_helios_prime&beat=${BEAT}&shot=1`, { waitUntil: 'commit' });
   await page.waitForFunction(() => window.__sfShotReady === true, null, { timeout: 240_000 });
   const report = { beat: BEAT, shots: [] };
