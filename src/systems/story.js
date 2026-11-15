@@ -110,6 +110,7 @@ import {
 import { continuationJobPermitted, newGamePlusConsequenceLine } from '../story/endings/continuationAccess.js';
 import { normalizeStoryFacts, recallStoryFact, recordCareerDecision, recordStoryFact } from '../story/storyFacts.js';
 import { vergeEvidenceLinked } from './shipLedger.js';
+import { normalizeSeedCharter, seedCharterPaidReceipt, seedRemittanceComparison } from './seedCharter.js';
 
 const ASHFALL = 'sector_ashfall_reach';
 const VALE_PROFIT_ID = 'story_vale_profit_100k';
@@ -257,6 +258,7 @@ export const story = {
       this._onPostEndingSignal('economy:tradeCompleted', p || {});
     });
     bus.on('economy:grantCredits', (p) => this._onAutomationRemittance(p || {}));
+    bus.on('automation:traderCycleCompleted', (p) => this._onSeedCharterRemittance(p || {}));
     bus.on('asset:deployed', () => {
       this._armValeRemittanceWatch();
       this._maybeSpeakBeatRecovery('asset:deployed');
@@ -769,7 +771,9 @@ export const story = {
     if (!s || !s.flags || !s.flags.vale_remittance_armed) return;
     if (s.flags.vale_remittance_noted) return;
     const reason = String((p && p.reason) || '');
-    if (!reason.startsWith('automation:')) return;
+    if (!reason.startsWith('automation:') || !Number.isFinite(p.amount) || p.amount <= 0) return;
+    // The crewed charter's actual cycle receipt, after the economy owner, carries this scene.
+    if (normalizeSeedCharter(this.state.automation?.meta?.seedCharter)) return;
     s.flags.vale_remittance_noted = true;
     const amount = Number(p && p.amount) || 0;
     const ledger = s.transactionLog || (s.transactionLog = []);
@@ -785,6 +789,36 @@ export const story = {
       category: 'story',
       ttl: 8,
       persist: false,
+    });
+  },
+
+  // B6 Empire Seed: the crewed charter's real paid cycle is what "comes home". One line per
+  // paid cycle — eight words or fewer — and it stops being said after the third cycle
+  // (16_THE_STORY_SHOWN.md); the kept receipt on the flag stays current either way.
+  _onSeedCharterRemittance(event) {
+    const s = this.state && this.state.story;
+    if (!s) return;
+    const receipt = seedCharterPaidReceipt(this.state, event);
+    if (!receipt) return;
+    s.flags = s.flags || {};
+    const prior = s.flags.seed_charter_remittance;
+    // A completed cycle's receipt is told once — a repeated delivery of the same cycle is not news.
+    if (prior && prior.assetId === receipt.assetId
+      && Number.isSafeInteger(prior.cycle) && prior.cycle >= receipt.cycle) return;
+    const spoken = prior && Number.isSafeInteger(prior.spoken) ? prior.spoken : 0;
+    const say = spoken < 3;
+    s.flags.seed_charter_remittance = { ...receipt, spoken: spoken + (say ? 1 : 0) };
+    s.flags.vale_remittance_noted = true;
+    if (!say) return;
+    const ledger = s.transactionLog || (s.transactionLog = []);
+    ledger.push({ at: receipt.at, amount: receipt.amount, assetId: receipt.assetId,
+      cycle: receipt.cycle, note: 'REMITTANCE FROM CREWED CHARTER / CLEARED: VALE HOLDINGS LLC' });
+    this._fireComms({
+      id: 'seed_charter_remittance_' + receipt.cycle,
+      sender: 'VALE HOLDINGS LLC',
+      text: `${receipt.amount.toLocaleString()} CR REMITTED. CHARTER CYCLE ${receipt.cycle}.`,
+      note: seedRemittanceComparison(this.state) + ' The clearing receipt is kept in Automation → Traders.',
+      category: 'story', ttl: 10, persist: true,
     });
   },
 

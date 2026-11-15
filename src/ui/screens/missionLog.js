@@ -1,5 +1,6 @@
 import { cinderJournalAction } from '../../missions/cinderRoute.js';
 import { patrolPaperworkAction, patrolContractBrief } from '../../missions/patrolPaperwork.js';
+import { seedCharterOffer, SEED_CHARTER_STATION } from '../../systems/seedCharter.js';
 import { cinderglassJobJournalReceipt } from '../../features/cinderglassJob/integration.js';
 import { setLocalizedTextTemplate } from '../../localization/domBridge.js';
 import { COUNTERWEIGHT_EVENTS } from '../../features/counterweightCircuit/definition.js';
@@ -1940,6 +1941,18 @@ export function storyActionForBeat(beat, state) {
     }
     case 6: {
       const paper = patrolPaperworkAction(state);
+      if (paper?.label === 'WRECK RECORD') return paper;
+      const charter = seedCharterOffer(state);
+      if (charter) {
+        // Keep any observed wreck record — and its Weighing boundary — verbatim; only the
+        // generic deploy-anything call to action is replaced by this charter's berth.
+        const record = paper ? paper.body.replace(' Deploy a drone, trader, or outpost to start earning while you fly.', '') : '';
+        return { tone: 'primary', label: 'FIRST RUN', title: 'Meet the crew at Belt Outpost',
+          body: 'Belt Outpost in Ceres offers one fully crewed Hauler for ' + charter.costCr.toLocaleString()
+            + ' cr, plus ' + charter.upkeepPerMin + ' cr/min upkeep. Dock there and open Automation. Read the first paid receipt in Traders; buying the charter is not income. Deploy a drone through research if you prefer that route.'
+            + (record ? ' ' + record : ''),
+          meta: 'Crewed service · no research grant', mapAction: stationRouteAction(SEED_CHARTER_STATION, 'Plot route to Belt Outpost') };
+      }
       if (paper) return paper;
       return {
         tone: 'primary',
