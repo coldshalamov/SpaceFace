@@ -13847,7 +13847,8 @@ export const vfx = {
     if (!(dist > 0.5)) { ribbon.visible = false; return; }
     const pLocal = this._toLocalXZ(player.pos.x, player.pos.z, this._spawnLocalXZ);
     ribbon.position.set(pLocal.x, 0, pLocal.z);
-    ribbon.rotation.y = Math.atan2(dz, dx);
+    // The authored cylinder extends from local 0 to +Z; rotate that axis onto the other endpoint.
+    ribbon.rotation.y = Math.atan2(dx, dz);
     ribbon.scale.set(1, 1, dist);
     ribbon.visible = true;
     // Tension from the massline controller telemetry (set by attachments.js); overload drives the
