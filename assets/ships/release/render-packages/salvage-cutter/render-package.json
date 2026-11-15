@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "13595d8dd9c1d145b4b1fcfff4b06beaef9ae395ab1a3823ca71a54168728bee",
+  "contentHash": "3266b7010d4c6dac646e07cba39904ab2c1faf478ee5c9e839f7735d4f20534f",
   "dynamicGroups": [
     {
       "id": "sf.render.salvage-cutter.node.lod0-hook-drive-core.dynamic",
@@ -929,13 +929,13 @@
       },
       "drawMode": 4,
       "geometryHash": "3e106061645b306f9c44b45bd78d6fe579de21e45e2f4ca737ebf752ddaf2504",
-      "id": "sf.render.salvage-cutter.node.lod0-lights-cyan-rust.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod0-lights-trim-rust.primitive.0",
       "indexCount": 1689,
       "indexed": true,
-      "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
+      "materialHash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD0_Lights_Cyan_rust",
-      "nodeId": "sf.render.salvage-cutter.node.lod0-lights-cyan-rust",
+      "meshName": "LOD0_Lights_Trim_rust",
+      "nodeId": "sf.render.salvage-cutter.node.lod0-lights-trim-rust",
       "primitiveIndex": 0,
       "vertexCount": 548
     },
@@ -1629,13 +1629,13 @@
       },
       "drawMode": 4,
       "geometryHash": "0617b1c20d5de4da1dfff4d3f2bf6340aec908c9fe045f147287e6b92fab231f",
-      "id": "sf.render.salvage-cutter.node.lod1-lights-cyan-rust.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod1-lights-trim-rust.primitive.0",
       "indexCount": 105,
       "indexed": true,
-      "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
+      "materialHash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD1_Lights_Cyan_rust",
-      "nodeId": "sf.render.salvage-cutter.node.lod1-lights-cyan-rust",
+      "meshName": "LOD1_Lights_Trim_rust",
+      "nodeId": "sf.render.salvage-cutter.node.lod1-lights-trim-rust",
       "primitiveIndex": 0,
       "vertexCount": 46
     },
@@ -2279,13 +2279,13 @@
       },
       "drawMode": 4,
       "geometryHash": "dd130944132aba17f3b4f7291478174d3bc2cf9e720ffd03384d453fa2e171cf",
-      "id": "sf.render.salvage-cutter.node.lod2-lights-cyan-rust.primitive.0",
+      "id": "sf.render.salvage-cutter.node.lod2-lights-trim-rust.primitive.0",
       "indexCount": 78,
       "indexed": true,
-      "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
+      "materialHash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_Lights_Cyan_rust",
-      "nodeId": "sf.render.salvage-cutter.node.lod2-lights-cyan-rust",
+      "meshName": "LOD2_Lights_Trim_rust",
+      "nodeId": "sf.render.salvage-cutter.node.lod2-lights-trim-rust",
       "primitiveIndex": 0,
       "vertexCount": 38
     },
@@ -2730,13 +2730,6 @@
       "textures": []
     },
     {
-      "hash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
-      "id": "material:799b05dd6e45a6e8b6507d32",
-      "name": "Material_Emissive_Cyan_rust",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
       "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "id": "material:7dbce0f058ce69aeee64664b",
       "name": "Material_Mechanical",
@@ -2838,6 +2831,13 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
+      "id": "material:bbcf53d285c1c11e1c3bb498",
+      "name": "Material_Emissive_Trim_rust",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
@@ -3572,7 +3572,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.node.lod0-lights-cyan-rust",
+      "id": "sf.render.salvage-cutter.node.lod0-lights-trim-rust",
       "localTransform": [
         5.325099587440491,
         0,
@@ -3592,8 +3592,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_Lights_Cyan_rust",
-      "nodeName": "LOD0_Lights_Cyan_rust",
+      "mergeBoundary": "LOD0_Lights_Trim_rust",
+      "nodeName": "LOD0_Lights_Trim_rust",
       "nodePath": [
         0,
         12
@@ -4956,7 +4956,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.node.lod1-lights-cyan-rust",
+      "id": "sf.render.salvage-cutter.node.lod1-lights-trim-rust",
       "localTransform": [
         5.324969291687012,
         0,
@@ -4976,8 +4976,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_Lights_Cyan_rust",
-      "nodeName": "LOD1_Lights_Cyan_rust",
+      "mergeBoundary": "LOD1_Lights_Trim_rust",
+      "nodeName": "LOD1_Lights_Trim_rust",
       "nodePath": [
         0,
         28
@@ -6240,7 +6240,7 @@
       ]
     },
     {
-      "id": "sf.render.salvage-cutter.node.lod2-lights-cyan-rust",
+      "id": "sf.render.salvage-cutter.node.lod2-lights-trim-rust",
       "localTransform": [
         5.324890851974487,
         0,
@@ -6260,8 +6260,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_Lights_Cyan_rust",
-      "nodeName": "LOD2_Lights_Cyan_rust",
+      "mergeBoundary": "LOD2_Lights_Trim_rust",
+      "nodeName": "LOD2_Lights_Trim_rust",
       "nodePath": [
         0,
         44
@@ -7819,17 +7819,17 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "8122103be2e221c1094d538f63e3ceff968c8a18d76fbdd542989ab71631bb8e"
+      "sha256": "7b6ef42e69f55d628ec02adae8244295e8de4094df91338e3d8ba849b78c7577"
     },
     "sourceGlb": {
       "bytes": 978856,
-      "sha256": "28b2e11eb5c3ab3fa7774762f0bac31923a7da778a6ec2dd6133750958488745",
+      "sha256": "4b5df619a48f5ff71dcf3d10e07abbd3a05860db515b2968ccefc98e6d0b1273",
       "uri": "salvage_cutter.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 57044,
+      "sha256": "baffa45f8de404502642fa7f179a0a481e0c00cf03aed7d982f5a1b97c384f4c",
+      "uri": "assets/ships/render-packages/inputs/salvage-cutter.json"
     }
   },
   "render": {
@@ -7872,7 +7872,7 @@
         "uri": "../_shared/images/d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3.ktx2"
       }
     ],
-    "sha256": "bfd23cf4549349548bc5af6f4b0d3b606204b56000f852a98544fab22891ada2",
+    "sha256": "41650f77d8bbf5f27d7ab57557517653796da8da10d728b2c320dd66ee43044a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -9882,7 +9882,7 @@
           0.00006652623414993286,
           1
         ],
-        "name": "LOD0_Lights_Cyan_rust",
+        "name": "LOD0_Lights_Trim_rust",
         "planIndex": 17,
         "tags": {
           "canopy": false,
@@ -10335,7 +10335,7 @@
           -0.0000013634562492370605,
           1
         ],
-        "name": "LOD1_Lights_Cyan_rust",
+        "name": "LOD1_Lights_Trim_rust",
         "planIndex": 36,
         "tags": {
           "canopy": false,
@@ -10788,7 +10788,7 @@
           0.000040411949157714844,
           1
         ],
-        "name": "LOD2_Lights_Cyan_rust",
+        "name": "LOD2_Lights_Trim_rust",
         "planIndex": 55,
         "tags": {
           "canopy": false,
@@ -11804,7 +11804,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/salvage_cutter.glb"
   },
-  "runtimeHash": "329c2705443a8a6d83ca85c476bbde6d2d2137ddcdc86d13c3567af843a063db",
+  "runtimeHash": "bbe6bb833997c7466503eab04bdb1e85e1bc49470b99ab0803e880100e6455ca",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -11834,7 +11834,7 @@
         "sf.render.salvage-cutter.node.lod0-hull",
         "sf.render.salvage-cutter.node.lod0-hull-patch",
         "sf.render.salvage-cutter.node.lod0-hull-primer",
-        "sf.render.salvage-cutter.node.lod0-lights-cyan-rust",
+        "sf.render.salvage-cutter.node.lod0-lights-trim-rust",
         "sf.render.salvage-cutter.node.lod0-lights-warm",
         "sf.render.salvage-cutter.node.lod0-mechanical",
         "sf.render.salvage-cutter.node.lod0-mechanicaldark",
@@ -11862,7 +11862,7 @@
         "sf.render.salvage-cutter.node.lod1-hull",
         "sf.render.salvage-cutter.node.lod1-hull-patch",
         "sf.render.salvage-cutter.node.lod1-hull-primer",
-        "sf.render.salvage-cutter.node.lod1-lights-cyan-rust",
+        "sf.render.salvage-cutter.node.lod1-lights-trim-rust",
         "sf.render.salvage-cutter.node.lod1-lights-warm",
         "sf.render.salvage-cutter.node.lod1-mechanical",
         "sf.render.salvage-cutter.node.lod1-mechanicaldark",
@@ -11888,7 +11888,7 @@
         "sf.render.salvage-cutter.node.lod2-hull",
         "sf.render.salvage-cutter.node.lod2-hull-patch",
         "sf.render.salvage-cutter.node.lod2-hull-primer",
-        "sf.render.salvage-cutter.node.lod2-lights-cyan-rust",
+        "sf.render.salvage-cutter.node.lod2-lights-trim-rust",
         "sf.render.salvage-cutter.node.lod2-lights-warm",
         "sf.render.salvage-cutter.node.lod2-mechanical",
         "sf.render.salvage-cutter.node.lod2-mechanicaldark",

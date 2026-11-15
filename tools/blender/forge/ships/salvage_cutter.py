@@ -24,7 +24,7 @@ COLORS = {
     'paint.patch': '#5a3622',   # rust-primer patch plate
     'paint.primer': '#4c4f51',  # grey-primer patch plate
     'paint2.olive': '#3c4526',  # olive replacement plate
-    'glow_cyan.rust': '#ffd23a',  # Work-fleet safety yellow, lit: the spine line
+    'glow_trim.rust': '#ffd23a',  # Work-fleet safety yellow, lit: the spine line
 }
 
 
@@ -66,7 +66,7 @@ def build():
     F.band(s, 'Hull', (-8.1, 0, 0), (1, 0, 0), 0.5, 'hazard', inset=0.02, depth=0.02)
     # Identity trim, lit: one thin safety-yellow line down the green-grey spine, drive collar to jaw
     # hinge, under the cage bars -- the beetle's back read in light (LOOK.md: lamps are light).
-    F.band(s, 'Hull', (0, 0, 0), (0, 1, 0), 0.16, 'glow_cyan.rust', facing=(0, 0, 1), min_facing=0.6, inset=0.01,
+    F.band(s, 'Hull', (0, 0, 0), (0, 1, 0), 0.16, 'glow_trim.rust', facing=(0, 0, 1), min_facing=0.6, inset=0.01,
            depth=-0.02, region=(('x', -7.6, 3.6),))
     # patched plates: mismatched replacement panels, modelled proud of the skin
     F.panel(s, 'Hull', (1.6, 0.95), (1.5, 1.1), 'paint.patch', inset=0.04, depth=0.05)

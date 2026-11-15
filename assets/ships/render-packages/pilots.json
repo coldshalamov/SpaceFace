@@ -5031,7 +5031,7 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_salvage_cutter",
       "sourceUrl": "assets/ships/release/parts/wholeships/salvage_cutter.glb",
-      "releaseSha256": "28b2e11eb5c3ab3fa7774762f0bac31923a7da778a6ec2dd6133750958488745",
+      "releaseSha256": "4b5df619a48f5ff71dcf3d10e07abbd3a05860db515b2968ccefc98e6d0b1273",
       "releaseBytes": 978856,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
