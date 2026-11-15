@@ -55,9 +55,14 @@ export function reconcileFurnaceCasing(owner) {
   const record = furnaceCasingRecord(state);
   if (!record || record.collected || owner._casingIssuing) return;
   let body = record.entityId != null ? state.entities?.get(record.entityId) : null;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const backedOff = Number.isFinite(record.nextAttemptAt) && now < record.nextAttemptAt;
   // A restored save remaps ids — adopt the live body carrying this return's identity before
-  // concluding the issue never landed. One bounded scan, and only on the unproven path.
-  if (!body || body.alive === false) {
+  // concluding the issue never landed. One bounded scan, and only on the unproven path:
+  // the missing-body search rides the same retry clock as the pocket probe, so a blocked
+  // return performs no full-world search between retries.
+  if (body && body.alive === false) body = null;
+  if (!body && (owner._restoring || record.state !== 'pending' || !backedOff)) {
     body = (state.entityList || []).find(e => e?.alive !== false
       && e.data?.furnaceCasingReturnId === record.materialId) || null;
   }
@@ -69,8 +74,7 @@ export function reconcileFurnaceCasing(owner) {
   if (record.state !== 'pending') { record.state = 'pending'; return; }
   if (owner._restoring || state.mode !== 'flight'
       || state.world?.currentSectorId !== FURNACE_INTAKE.sectorId || state.run?.kind === 'survival') return;
-  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-  if (Number.isFinite(record.nextAttemptAt) && now < record.nextAttemptAt) return;
+  if (backedOff) return;
   const pos = pocket(state);
   if (!pos) { record.nextAttemptAt = now + RETRY_DELAY_S; return; }
   let spawned;
