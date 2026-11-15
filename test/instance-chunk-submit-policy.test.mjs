@@ -97,3 +97,31 @@ test('live instance finalize refreshes bounds when the camera/origin moved', asy
   const source = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
   assert.match(source, /refreshBounds:\s*dirty\s*\|\|\s*!!\(context\s*&&\s*context\.cameraDirty\)/);
 });
+
+test('chunk recomputation reuses internal storage without changing shadow or budget behavior', () => {
+  const chunk = chunkAt(50, 0);
+  const options = { count: 1, playerX: 0, playerZ: 0, castRadius: 100 };
+  applyInstanceChunkSubmitPolicy(chunk, options);
+  const memo = chunk.submitPolicyMemo;
+  const metrics = memo.nearest;
+  assert.equal(chunk.mesh.castShadow, true);
+  assert.equal(metrics.nearestAxis, 50);
+
+  chunk.mesh.setMatrixAt(0, new THREE.Matrix4().setPosition(200, 0, 0));
+  chunk.matrixSerial = 1;
+  applyInstanceChunkSubmitPolicy(chunk, { ...options, recomputeBudget: { remaining: 0 } });
+  assert.strictEqual(chunk.submitPolicyMemo, memo);
+  assert.strictEqual(chunk.submitPolicyMemo.nearest, metrics);
+  assert.equal(metrics.nearestAxis, 200);
+  assert.equal(chunk.mesh.castShadow, false, 'matrix changes bypass the displacement budget');
+
+  const moved = { ...options, playerX: 150 };
+  applyInstanceChunkSubmitPolicy(chunk, { ...moved, recomputeBudget: { remaining: 0 } });
+  assert.equal(chunk.mesh.castShadow, false, 'exhausted displacement budget defers recomputation');
+  applyInstanceChunkSubmitPolicy(chunk, { ...moved, recomputeBudget: { remaining: 1 } });
+  assert.strictEqual(chunk.submitPolicyMemo, memo);
+  assert.strictEqual(chunk.submitPolicyMemo.nearest, metrics);
+  assert.equal(metrics.nearestAxis, 50);
+  assert.equal(chunk.mesh.castShadow, true);
+  chunk.mesh.geometry.dispose(); chunk.mesh.material.dispose();
+});

@@ -8,12 +8,13 @@
 
 import { SHADOW_CAST_RADIUS_SQ } from './shadowCasterPolicy.js';
 
-export function nearestSubmittedInstanceMetrics(chunk, playerX = 0, playerZ = 0) {
+function writeNearestSubmittedInstanceMetrics(chunk, playerX, playerZ, result) {
   if (!chunk || !chunk.visibleIndices || chunk.visibleIndices.size === 0) {
-    return { nearestSq: Infinity, nearestAxis: Infinity };
+    result.nearestSq = Infinity; result.nearestAxis = Infinity;
+    return result;
   }
   const array = chunk.mesh && chunk.mesh.instanceMatrix && chunk.mesh.instanceMatrix.array;
-  if (!array) return { nearestSq: Infinity, nearestAxis: Infinity };
+  if (!array) { result.nearestSq = Infinity; result.nearestAxis = Infinity; return result; }
   const originX = Number(playerX) || 0;
   const originZ = Number(playerZ) || 0;
   let nearestSq = Infinity;
@@ -27,7 +28,13 @@ export function nearestSubmittedInstanceMetrics(chunk, playerX = 0, playerZ = 0)
     const axis = Math.max(Math.abs(dx), Math.abs(dz));
     if (axis < nearestAxis) nearestAxis = axis;
   }
-  return { nearestSq, nearestAxis };
+  result.nearestSq = nearestSq; result.nearestAxis = nearestAxis;
+  return result;
+}
+
+
+export function nearestSubmittedInstanceMetrics(chunk, playerX = 0, playerZ = 0) {
+  return writeNearestSubmittedInstanceMetrics(chunk, playerX, playerZ, {});
 }
 
 export function nearestSubmittedInstanceAxisDistance(chunk, playerX = 0, playerZ = 0) {
@@ -87,18 +94,17 @@ function nearestSubmittedInstanceMetricsMemoized(chunk, options, submitted, opaq
     if (budget.remaining <= 0) return memo.nearest;
     budget.remaining -= 1;
   }
-  const nearest = nearestSubmittedInstanceMetrics(chunk, playerX, playerZ);
-  chunk.submitPolicyMemo = {
-    serial,
-    submitted,
-    opaque,
-    castRadius: options && options.castRadius,
-    castRadiusSq: options && options.castRadiusSq,
-    playerX,
-    playerZ,
-    slack: castVerdictSlack(nearest, options),
-    nearest,
-  };
+  const nextMemo = memo || { nearest: {} };
+  const nearest = writeNearestSubmittedInstanceMetrics(chunk, playerX, playerZ, nextMemo.nearest);
+  nextMemo.serial = serial;
+  nextMemo.submitted = submitted;
+  nextMemo.opaque = opaque;
+  nextMemo.castRadius = options && options.castRadius;
+  nextMemo.castRadiusSq = options && options.castRadiusSq;
+  nextMemo.playerX = playerX;
+  nextMemo.playerZ = playerZ;
+  nextMemo.slack = castVerdictSlack(nearest, options);
+  chunk.submitPolicyMemo = nextMemo;
   return nearest;
 }
 
@@ -110,21 +116,26 @@ export function isOpaqueInstancePoolMaterial(material) {
   return true;
 }
 
-export function shouldInstanceChunkCastShadow(options = {}) {
-  if (options.opaque !== true) return false;
-  const submitted = Math.max(0, Math.floor(Number(options.submittedCount) || 0));
+function castShadowVerdict(opaque, submittedCount, nearestDistanceSq, nearestAxisDistance, castRadiusSq, castRadius) {
+  if (opaque !== true) return false;
+  const submitted = Math.max(0, Math.floor(Number(submittedCount) || 0));
   if (submitted <= 0) return false;
-  const axis = Number(options.nearestAxisDistance);
-  const axisRadius = Number(options.castRadius);
-  if (options.nearestAxisDistance != null && Number.isFinite(axis)
+  const axis = Number(nearestAxisDistance);
+  const axisRadius = Number(castRadius);
+  if (nearestAxisDistance != null && Number.isFinite(axis)
     && Number.isFinite(axisRadius) && axisRadius > 0) {
     return axis <= axisRadius;
   }
-  const dist = Number(options.nearestDistanceSq);
+  const dist = Number(nearestDistanceSq);
   if (!Number.isFinite(dist)) return false;
-  const radiusSq = Number(options.castRadiusSq);
+  const radiusSq = Number(castRadiusSq);
   const limit = Number.isFinite(radiusSq) && radiusSq > 0 ? radiusSq : SHADOW_CAST_RADIUS_SQ;
   return dist <= limit;
+}
+
+export function shouldInstanceChunkCastShadow(options = {}) {
+  return castShadowVerdict(options.opaque, options.submittedCount, options.nearestDistanceSq,
+    options.nearestAxisDistance, options.castRadiusSq, options.castRadius);
 }
 
 /**
@@ -149,14 +160,8 @@ export function applyInstanceChunkSubmitPolicy(chunk, options = {}) {
   const material = (chunk.pool && chunk.pool.material) || mesh.material;
   const opaque = isOpaqueInstancePoolMaterial(material);
   const nearest = nearestSubmittedInstanceMetricsMemoized(chunk, options, submitted, opaque);
-  const nextCast = shouldInstanceChunkCastShadow({
-    opaque,
-    submittedCount: submitted,
-    nearestDistanceSq: nearest.nearestSq,
-    nearestAxisDistance: nearest.nearestAxis,
-    castRadiusSq: options.castRadiusSq,
-    castRadius: options.castRadius,
-  });
+  const nextCast = castShadowVerdict(opaque, submitted, nearest.nearestSq, nearest.nearestAxis,
+    options.castRadiusSq, options.castRadius);
   if (mesh.castShadow !== nextCast) {
     mesh.castShadow = nextCast;
     changed = true;
