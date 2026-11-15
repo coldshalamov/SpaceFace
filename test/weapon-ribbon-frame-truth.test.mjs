@@ -93,3 +93,29 @@ test('without the re-express pass the same move would bend the wake — the guar
   assert.equal(ribbons.hist[hb], before - 512, 'reproject shifts every laid point, head included');
   assert.equal(ribbons.hist[hb + 2], -256);
 });
+
+test('rebasing shifts live and fading wakes, leaving empty slots ready for reuse', () => {
+  const presenter = new WeaponVfxPresenter({ scene: null, state: {}, helpers: {} });
+  const ribbons = presenter.ribbons, stride = ribbons.segments * 3;
+  try {
+    presenter.reproject(-10, 20);
+    assert.ok(ribbons.hist.every(value => value === 0), 'an empty pool has no history to shift');
+    const fading = ribbons.spawn({ entityId: 3, x: 4, y: 2, z: 5 });
+    ribbons.release(3); ribbons.detachReleased(3);
+    const active = ribbons.spawn({ entityId: 4, x: 20, y: 3, z: 30 });
+    const before = ribbons.hist.slice();
+    presenter.reproject(-512, 256);
+    for (const slot of [fading, active]) {
+      for (let i = slot * stride; i < (slot + 1) * stride; i += 3) {
+        assert.equal(ribbons.hist[i], before[i] - 512);
+        assert.equal(ribbons.hist[i + 1], before[i + 1]);
+        assert.equal(ribbons.hist[i + 2], before[i + 2] + 256);
+      }
+    }
+    assert.equal(ribbons.hist[2 * stride], 0, 'dead slot was not rewritten');
+    const reused = ribbons.spawn({ entityId: 5, x: 11, y: 4, z: 12 });
+    for (let i = reused * stride; i < (reused + 1) * stride; i += 3) {
+      assert.deepEqual(Array.from(ribbons.hist.slice(i, i + 3)), [11, 4, 12]);
+    }
+  } finally { presenter.dispose(); }
+});

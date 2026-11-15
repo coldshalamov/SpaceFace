@@ -1208,10 +1208,14 @@ export class WeaponVfxPresenter {
       slot.light.position.x += ox;
       slot.light.position.z += oz;
     }
-    const hist = this.ribbons.hist;
-    for (let i = 0; i < hist.length; i += 3) {
-      hist[i] += ox;
-      hist[i + 2] += oz;
+    const ribbons = this.ribbons, hist = ribbons.hist, stride = ribbons.segments * 3;
+    for (let slot = 0; slot < ribbons.capacity; slot++) {
+      if (!ribbons.alive[slot]) continue;
+      const end = (slot + 1) * stride;
+      for (let i = slot * stride; i < end; i += 3) {
+        hist[i] += ox;
+        hist[i + 2] += oz;
+      }
     }
   }
 
