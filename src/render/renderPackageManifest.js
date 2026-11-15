@@ -2178,32 +2178,32 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.mule-production-v1",
-    "expectedContentHash": "5330ada5d65cc7dab97eef3362d51c6f7c51b7b7228523776ef7b01ce449bdde",
+    "expectedContentHash": "c869eb7a2ebf0220618787f859828552c78343c674838babf1116738637f8fb8",
     "key": "mule-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/mule-production-v1/render-package.json",
     "runtimeAssetId": "SF_MULE_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "39d4e8f04e22cdaa94b1f7ceaeb365438620c9b183dac234478835df940c9b62",
+    "sourceSha256": "252961fde9a6485a44cdf1449112229edf4d2986bbb8b93b76c0eeba725981d0",
     "sourceUrl": "assets/ships/release/parts/wholeships/mule_production_v1.glb"
   },
   {
     "assetId": "sf.render.mule-production-v1-lod1",
-    "expectedContentHash": "c2231c978c55e23e6b003e7fbb5075fb1e604576f640b4d25a879ed12c857449",
+    "expectedContentHash": "b4f0cff08b7164f3ba96fae742ea3c3f81eace2cd09275753bdaeb3b1adc1854",
     "key": "mule-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/mule-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_MULE_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "b72b99dc4a36f933b2f5a433a3f55d3f19688161b7da5fa326293cb597cd9a06",
+    "sourceSha256": "bfc1854a9d52307146990a1f902e22c324f615f98be6e8b14795b888df302323",
     "sourceUrl": "assets/ships/release/parts/wholeships/mule_production_v1_lod1.glb"
   },
   {
     "assetId": "sf.render.mule-production-v1-lod2",
-    "expectedContentHash": "c9edbde385e08fe97a278e4a89a54e4e3e56a3d5db272f3b924cedf25a2d6414",
+    "expectedContentHash": "00813632f6d8dfb8b8b9eca366c982f3fa0c03b9534577bb233dba21b2faed94",
     "key": "mule-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/mule-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_MULE_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "6f0caa1a8bd32a854e1837ce5afee67acddf4f28f98dd3d5f76f7543d2434439",
+    "sourceSha256": "8c4cc780b0c725e45c9c3db55b5114e918bdcfa6422b55edca6b136bf0f13f6e",
     "sourceUrl": "assets/ships/release/parts/wholeships/mule_production_v1_lod2.glb"
   },
   {

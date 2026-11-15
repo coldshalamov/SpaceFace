@@ -246,6 +246,9 @@ def build():
     s.hook_part('HOOK_SECONDARY_MAST', _dmg['Mast_Mast'], _dmg['Mast_Foot'], _dmg['Mast_Tip'])
     s.hook_part('HOOK_SENSOR_DOME', _dmg['Dome'], _dmg['Dome_Lens'])
     s.hook_part('HOOK_ARMOR_BUMPER', _dmg['Bumper'])
+    # Keep the dorsal stripe readable without washing the hull in bloom.
+    trim = s.mat('glow_cyan.cream').node_tree.nodes.get('Principled BSDF').inputs['Emission Color']
+    trim.default_value = tuple(c * 4 / 33 for c in trim.default_value[:3]) + (1.0,)
     s.ani38_bank = ANI_38.build(s, list(s.objects), source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 

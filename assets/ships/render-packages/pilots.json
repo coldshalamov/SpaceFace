@@ -4138,8 +4138,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_mule_production_v1",
       "sourceUrl": "assets/ships/release/parts/wholeships/mule_production_v1.glb",
-      "releaseSha256": "39d4e8f04e22cdaa94b1f7ceaeb365438620c9b183dac234478835df940c9b62",
-      "releaseBytes": 712572,
+      "releaseSha256": "252961fde9a6485a44cdf1449112229edf4d2986bbb8b93b76c0eeba725981d0",
+      "releaseBytes": 712592,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4159,8 +4159,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_mule_production_v1_lod1",
       "sourceUrl": "assets/ships/release/parts/wholeships/mule_production_v1_lod1.glb",
-      "releaseSha256": "b72b99dc4a36f933b2f5a433a3f55d3f19688161b7da5fa326293cb597cd9a06",
-      "releaseBytes": 506320,
+      "releaseSha256": "bfc1854a9d52307146990a1f902e22c324f615f98be6e8b14795b888df302323",
+      "releaseBytes": 506340,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4180,8 +4180,8 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_mule_production_v1_lod2",
       "sourceUrl": "assets/ships/release/parts/wholeships/mule_production_v1_lod2.glb",
-      "releaseSha256": "6f0caa1a8bd32a854e1837ce5afee67acddf4f28f98dd3d5f76f7543d2434439",
-      "releaseBytes": 420928,
+      "releaseSha256": "8c4cc780b0c725e45c9c3db55b5114e918bdcfa6422b55edca6b136bf0f13f6e",
+      "releaseBytes": 420956,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
