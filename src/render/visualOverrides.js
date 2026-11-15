@@ -1014,7 +1014,7 @@ export function packagedPropSpec(entity) {
       file: data.packagedPropFile.replace(/^[\\/]+/, ''),
       slot: data.packagedPropSlot || slotForPackagedFile(data.packagedPropFile),
       radius: data.packagedPropRadius,
-      hideImmediately: true,
+      hideImmediately: !(data.roomOwner === 'survival-freight' && data.freightString != null),
     };
   }
   const mapped = SCENARIO_47A_PACKAGED_PROPS[data.assetRef];
@@ -1724,7 +1724,7 @@ export function installVisualOverrides(factory, options = {}) {
       && !(authoredWholeShipsOnly && !requiredWholeShip);
     const authoredCargoCapsule = hasExplicitAuthoredPayloadPresentation(entity);
     const lastShiftRecorder = lastShiftRecorderPackagedPropSpec(entity);
-    const explicitPackagedProp = (entity?.type === 'drone' || entity?.type === 'wreck' || entity?.type === 'container')
+    const explicitPackagedProp = (entity?.type === 'drone' || entity?.type === 'wreck')
       && typeof entity.data?.packagedPropFile === 'string' && packagedPropSpec(entity);
     const scenarioProp = directShip || isWorldPlaceProp(entity) || authoredCargoCapsule || lastShiftRecorder || explicitPackagedProp
       ? null

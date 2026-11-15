@@ -7804,6 +7804,7 @@ export function createVisualFactory({ renderer = null, readyPackagedBodies = nul
           case 'pickup': return stampBuiltVisual(buildPickup(e));
           case 'projectile': return stampBuiltVisual(buildProjectile(e));
           case 'drone': return stampBuiltVisual(e.data?.foldAberrant ? buildFoldAberrantVisual(e) : e.data?.vesper === true ? buildVesperVisual(e) : e.data?.morrow === true ? buildMorrowVisual(e) : buildDrone(e));
+          case 'container': return stampBuiltVisual(buildPayload(e));
           case 'payload': return stampBuiltVisual(e.data?.foldAberrant ? buildFoldPayloadVisual(e) : buildPayload(e));
           case 'mine': return stampBuiltVisual(buildMine(e));
           case 'vectormine': return stampBuiltVisual(buildVectorMine(e));

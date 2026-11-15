@@ -21,5 +21,6 @@ test('the real Tethys freight body admits an authored cargo model', () => {
   assert.equal(root.userData.visualBuildFailed, undefined);
   assert.ok(root.userData.authoredPackageUrl?.endsWith('/places/place_cargo_pod_standard.glb'));
   assert.equal(typeof root.userData.requestAuthoredUpgrade, 'function');
+  assert.equal(root.userData.authoredPendingFallbackDrawn, true, 'freight stays visible while its model loads');
   director.destroy();
 });
