@@ -6,6 +6,44 @@ import { createSpindleGeometry } from '../src/render/weapons/projectileGeometrie
 import { EnergyBoltPool } from '../src/render/weapons/energyBoltPool.js';
 import { createDynamicBufferCoordinator, disposeDynamicBufferCoordinator } from '../src/render/dynamicBufferRanges.js';
 
+test('origin shifts skip published-empty particle batches but preserve pending and live work', () => {
+  const q = new QuarksVfxSystem({ scene: new THREE.Scene() });
+  try {
+    // First rebase publishes initially uninitialized empty batch counts.
+    q.reproject(1, 1);
+    let nativeCalls = 0, flowCalls = 0;
+    for (const batch of q.renderer.batches) {
+      const update = batch.update;
+      batch.update = function (...args) { nativeCalls++; return update.apply(this, args); };
+    }
+    const flowUpdate = q.flow.batch.update;
+    q.flow.batch.update = function (...args) { flowCalls++; return flowUpdate.apply(this, args); };
+    q.reproject(3, -2);
+    assert.equal(nativeCalls, 0); assert.equal(flowCalls, 0);
+    q.spawnImpact(4, 1, 6, 1, 0, 0);
+    const nativeParticle = q.impactSpall.particles[0], beforeX = nativeParticle.position.x;
+    q.reproject(3, -2);
+    assert.equal(nativeParticle.position.x, beforeX + 3);
+    assert.ok(nativeCalls > 0, 'newly spawned, not-yet-published particles are uploaded');
+    q.reset(); nativeCalls = flowCalls = 0;
+    assert.ok(q.flow.emit({ kind: 'heat', x: 10, z: 20, count: 1, life: 1, deferUpload: true }) > 0);
+    assert.equal(q.flow.batch.geometry.instanceCount, 0, 'flow particles can be live before publication');
+    const particle = q.flow.system.particles[0], flowX = particle.position.x;
+    q.reproject(3, -2);
+    assert.equal(nativeCalls, 0); assert.equal(flowCalls, 1);
+    assert.equal(particle.position.x, flowX + 3);
+    q.reset(); nativeCalls = flowCalls = 0;
+    q.renderer.batches[0].geometry.instanceCount = 1;
+    q.reproject(3, -2);
+    assert.equal(nativeCalls, 1, 'stale published instances are cleared even when no particles remain');
+    assert.equal(q.renderer.batches[0].geometry.instanceCount, 0);
+    q.reset(); nativeCalls = 0; q.spawnImpact(7, 1, 9, 1, 0, 0);
+    const reused = q.impactSpall.particles[0], reusedX = reused.position.x;
+    q.reproject(-4, 2);
+    assert.equal(reused.position.x, reusedX - 4); assert.ok(nativeCalls > 0, 'reused pool republishes');
+  } finally { q.dispose(); }
+});
+
 test('createSpindleGeometry produces 3D multi-planar vertices and indices', () => {
   const geo = createSpindleGeometry(3);
   const positions = geo.attributes.position;

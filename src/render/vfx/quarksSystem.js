@@ -703,13 +703,17 @@ export class QuarksVfxSystem {
 
   reproject(dx, dz) {
     if (!Number.isFinite(dx) || !Number.isFinite(dz)) return;
+    let live = false;
     for (const sys of this.renderer.systemToBatchIndex.keys()) {
+      if (sys.particleNum > 0) live = true;
       for (let i = 0; i < sys.particleNum; i++) {
         sys.particles[i].position.x += dx; sys.particles[i].position.z += dz;
       }
     }
-    for (const batch of this.renderer.batches) batch.update();
-    this.flow.reproject(dx, dz);
+    for (const batch of this.renderer.batches) {
+      if (live || batch.geometry?.instanceCount !== 0) batch.update();
+    }
+    if (this.flow.live || this.flow.batch.geometry?.instanceCount !== 0) this.flow.reproject(dx, dz);
   }
 
   /**
