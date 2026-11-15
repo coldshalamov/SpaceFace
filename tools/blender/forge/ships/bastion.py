@@ -320,6 +320,9 @@ def build():
     F.light(s, 'NavPort', (-8.4, 3.42, 0.3), 'glow_red', size=0.18)
     F.light(s, 'NavStarboard', (-8.4, -3.42, 0.3), 'glow_green', size=0.18)
     F.light(s, 'BowLight', (9.75, 0.0, 0.6), 'glow_amber', size=0.12)
+    # Identity trim is painted red with a restrained glow; navigation lamps remain separate.
+    trim = s.mat('glow_cyan.warning').node_tree.nodes.get('Principled BSDF').inputs['Emission Color']
+    trim.default_value = tuple(c / 44 for c in trim.default_value[:3]) + (1.0,)
     s.ani38_bank = ANI_38.build(s, list(s.objects), source_asset_id=E.fleet_spec(SHIP_ID)['asset_id'])
     return s
 

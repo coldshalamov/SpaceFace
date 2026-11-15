@@ -1,0 +1,641 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": false,
+    "externalizeKtx2Hashes": null,
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "wholeship_bastion_production_v1",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.bastion-production-v1",
+    "dynamicNameIncludes": [
+      "HOOK_DRIVE",
+      "HOOK_NAV",
+      "HOOK_SECONDARY",
+      "HOOK_SENSOR",
+      "HOOK_ARMOR"
+    ],
+    "key": "bastion-production-v1",
+    "kind": "ship",
+    "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/bastion-production-v1",
+    "releaseAssetId": "wholeship_bastion_production_v1",
+    "releaseBytes": 824828,
+    "releaseSha256": "41a5342c1ed98929c2e886a6eca6fc6f9eb54dd500914bfaa2d53ad5e1a7819b",
+    "runtimeAssetId": "SF_BASTION_PRODUCTION_V1",
+    "sceneRoot": true,
+    "slot": "hull",
+    "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 32,
+    "id": "wholeship_bastion_production_v1",
+    "kind": "part:wholeships",
+    "ktx2Textures": 6,
+    "meshoptBufferViews": 76,
+    "release": "assets/ships/release/parts/wholeships/bastion_production_v1.glb",
+    "releaseBytes": 824828,
+    "releaseSha256": "41a5342c1ed98929c2e886a6eca6fc6f9eb54dd500914bfaa2d53ad5e1a7819b",
+    "source": "assets/ships/parts/wholeships/bastion_production_v1.glb",
+    "sourceBytes": 2134004,
+    "sourceSha256": "831513e38372d70787d07a96777aa6b9119c12bcba560a284bac75c754146fa2",
+    "textures": 6
+  },
+  "runtime": {
+    "assetId": "SF_BASTION_PRODUCTION_V1",
+    "motionBank": {
+      "bytes": 7279,
+      "rigId": "hull",
+      "sha256": "5d6255a23e68b737a0477c6fd110258de60fad3edfa24619fa9f2edb56ab22fa",
+      "uri": "assets/ships/motions/bastion-production-v1.motion.json"
+    },
+    "slot": "hull",
+    "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [
+      {
+        "id": "sf.render.bastion-production-v1.anchor.socket-camera-focus",
+        "kind": "socket",
+        "node": "SOCKET_Camera_Focus",
+        "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.anchor.socket-cargo-ventral",
+        "kind": "socket",
+        "node": "SOCKET_Cargo_Ventral",
+        "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.anchor.socket-engine-main",
+        "kind": "socket",
+        "node": "SOCKET_Engine_Main",
+        "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.anchor.socket-mining-front",
+        "kind": "socket",
+        "node": "SOCKET_Mining_Front",
+        "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.anchor.socket-rcs-port",
+        "kind": "socket",
+        "node": "SOCKET_RCS_Port",
+        "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.anchor.socket-rcs-starboard",
+        "kind": "socket",
+        "node": "SOCKET_RCS_Starboard",
+        "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.anchor.socket-tether-massline",
+        "kind": "socket",
+        "node": "SOCKET_Tether_Massline",
+        "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.anchor.socket-trail-main",
+        "kind": "socket",
+        "node": "SOCKET_Trail_Main",
+        "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.anchor.socket-trail-port",
+        "kind": "socket",
+        "node": "SOCKET_Trail_Port",
+        "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.anchor.socket-trail-starboard",
+        "kind": "socket",
+        "node": "SOCKET_Trail_Starboard",
+        "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.anchor.socket-utility-dorsal",
+        "kind": "socket",
+        "node": "SOCKET_Utility_Dorsal",
+        "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.anchor.socket-weapon-front",
+        "kind": "socket",
+        "node": "SOCKET_Weapon_Front",
+        "parentNodeId": "sf.render.bastion-production-v1.node.bastion-lod0-root"
+      }
+    ],
+    "assetId": "sf.render.bastion-production-v1",
+    "collisions": [
+      {
+        "id": "sf.render.bastion-production-v1.collision",
+        "nodeId": "sf.render.bastion-production-v1.node.collision-hull",
+        "reference": "COLLISION_HULL"
+      }
+    ],
+    "dynamicGroups": [
+      {
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-armor-port-hull.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-armor-port-hull"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-armor-port-livery.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-armor-port-livery"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-drive-core.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-drive-core"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-nav-port.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-nav-port"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-nav-starboard.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-nav-starboard"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-secondary-casemate-armor.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-secondary-casemate-armor"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-secondary-casemate-mechanical.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-secondary-casemate-mechanical"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-secondary-casemate-mechanicaldark.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-secondary-casemate-mechanicaldark"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-mechanical.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-mechanical"
+      },
+      {
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-mechanicaldark.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-mechanicaldark"
+      }
+    ],
+    "hlods": [],
+    "kind": "ship",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+        "independentlyCulled": false,
+        "mergeBoundary": "BASTION_LOD0_ROOT",
+        "node": "BASTION_LOD0_ROOT",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.collision-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "COLLISION_HULL",
+        "node": "COLLISION_HULL",
+        "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+        "pipelineKey": "non-render",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Armor",
+        "node": "LOD0_MOTION_HULL_CORE_Armor",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-beacon-amber",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "node": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-armor-port-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_PORT_Hull",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_PORT_Hull",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-armor-port-livery",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_PORT_Livery",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_ARMOR_PORT_Livery",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-drive-core",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-nav-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-secondary-casemate-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CASEMATE_Armor",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CASEMATE_Armor",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-secondary-casemate-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CASEMATE_Mechanical",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CASEMATE_Mechanical",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-secondary-casemate-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CASEMATE_MechanicalDark",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_SECONDARY_CASEMATE_MechanicalDark",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-beacon-amber-beacon",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber_beacon",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Beacon_Amber_beacon",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Mechanical",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_Mechanical",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hook-sensor-mast-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_MechanicalDark",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_SENSOR_MAST_MechanicalDark",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Hull",
+        "node": "LOD0_MOTION_HULL_CORE_Hull",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-hull-upper",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Hull_upper",
+        "node": "LOD0_MOTION_HULL_CORE_Hull_upper",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-lights-cyan-warning",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Cyan_warning",
+        "node": "LOD0_MOTION_HULL_CORE_Lights_Cyan_warning",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+        "node": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-livery",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Livery",
+        "node": "LOD0_MOTION_HULL_CORE_Livery",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Mechanical",
+        "node": "LOD0_MOTION_HULL_CORE_Mechanical",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.lod0-motion-hull-core-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+        "node": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+        "parentId": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.motion-hull-core",
+        "independentlyCulled": false,
+        "mergeBoundary": "MOTION_HULL_CORE",
+        "node": "MOTION_HULL_CORE",
+        "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.socket-camera-focus",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Camera_Focus",
+        "node": "SOCKET_Camera_Focus",
+        "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.socket-cargo-ventral",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Cargo_Ventral",
+        "node": "SOCKET_Cargo_Ventral",
+        "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.socket-engine-main",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Engine_Main",
+        "node": "SOCKET_Engine_Main",
+        "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.socket-mining-front",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Mining_Front",
+        "node": "SOCKET_Mining_Front",
+        "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.socket-rcs-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_RCS_Port",
+        "node": "SOCKET_RCS_Port",
+        "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.socket-rcs-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_RCS_Starboard",
+        "node": "SOCKET_RCS_Starboard",
+        "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.socket-tether-massline",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Tether_Massline",
+        "node": "SOCKET_Tether_Massline",
+        "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.socket-trail-main",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Trail_Main",
+        "node": "SOCKET_Trail_Main",
+        "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.socket-trail-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Trail_Port",
+        "node": "SOCKET_Trail_Port",
+        "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.socket-trail-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Trail_Starboard",
+        "node": "SOCKET_Trail_Starboard",
+        "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.socket-utility-dorsal",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Utility_Dorsal",
+        "node": "SOCKET_Utility_Dorsal",
+        "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.bastion-production-v1.node.socket-weapon-front",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Weapon_Front",
+        "node": "SOCKET_Weapon_Front",
+        "parentId": "sf.render.bastion-production-v1.node.bastion-lod0-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.bastion-production-v1.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 824828,
+    "sha256": "41a5342c1ed98929c2e886a6eca6fc6f9eb54dd500914bfaa2d53ad5e1a7819b",
+    "uri": "assets/ships/release/parts/wholeships/bastion_production_v1.glb"
+  }
+}

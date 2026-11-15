@@ -594,32 +594,32 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.bastion-production-v1",
-    "expectedContentHash": "c9cee8bf24e9b03931ab37bc8a4bf9ed6d18d62cd66308fdaf86a6d9540572df",
+    "expectedContentHash": "24357c4e42d22bbd3cdb8718edcb43eb1fefb2f764d61916c43c5fc3afff24a1",
     "key": "bastion-production-v1",
     "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1/render-package.json",
     "runtimeAssetId": "SF_BASTION_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "be0e1b50fd0a1f2ddb9dc566257be291c422d93eb706076988516e57b3c76598",
+    "sourceSha256": "41a5342c1ed98929c2e886a6eca6fc6f9eb54dd500914bfaa2d53ad5e1a7819b",
     "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1.glb"
   },
   {
     "assetId": "sf.render.bastion-production-v1-lod1",
-    "expectedContentHash": "bb4e4348b90b5369641bec5ceb956d0a7f935dc203611c72963fd21b0d92cef5",
+    "expectedContentHash": "2d3d845cb3539238333f13d8e6975d80965aeefb5a8a0fa0ac271d26df11b237",
     "key": "bastion-production-v1-lod1",
     "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1-lod1/render-package.json",
     "runtimeAssetId": "SF_BASTION_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "c60aaf4cd703f422a375da2135a994baffd6ab7ad9f2dd967e6b803b106f0f1a",
+    "sourceSha256": "adc6b9a6807626d8730b0d1ff0441b68496ac5bb24ed0d021e08bb0ad029e36a",
     "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1_lod1.glb"
   },
   {
     "assetId": "sf.render.bastion-production-v1-lod2",
-    "expectedContentHash": "e104354442d34dd7fe369e4d565170a6c2ce801e5da258aa8807791d0d4b0cbb",
+    "expectedContentHash": "92a14298e61b85d5fabeeb1bbf5033df8b2de2b99b583fac0c42da81303f4a70",
     "key": "bastion-production-v1-lod2",
     "metadataUrl": "assets/ships/release/render-packages/bastion-production-v1-lod2/render-package.json",
     "runtimeAssetId": "SF_BASTION_PRODUCTION_V1",
     "slot": "hull",
-    "sourceSha256": "9a40e746a6863fe050b705bb371986d74930314e62632d213e708127cc4d52de",
+    "sourceSha256": "58095c5f7f023bd65e012b8916454bd21f15c02a3f87b5edf84f596f92b11273",
     "sourceUrl": "assets/ships/release/parts/wholeships/bastion_production_v1_lod2.glb"
   },
   {
