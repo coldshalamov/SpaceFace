@@ -3992,6 +3992,8 @@ function buildSwarmDrop(e) {
   g.userData.pickupRole = null;
   const ph = (hashId(e && e.id) % 100) / 100 * Math.PI * 2;
   body.onBeforeRender = () => {
+    // The pickup tracker owns the frozen pose under reduced motion; do not overwrite it at draw.
+    if (g.userData.swarmDropMotionReduced === true) return;
     body.rotation.y = nowSec() * 1.6 + ph;
     outer.rotation.x = Math.PI / 2 + 0.35 * Math.sin(nowSec() * 2.1 + ph);
   };

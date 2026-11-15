@@ -278,6 +278,9 @@ export function createPickupMotionTracker() {
     // The renderer passes reducedMotion; retain motionReduce for existing direct callers.
     const reducedMotion = typeof options.reducedMotion === 'boolean'
       ? options.reducedMotion : options.motionReduce === true;
+    if (mesh.userData?.pickupVisual === 'swarm_drop') {
+      mesh.userData.swarmDropMotionReduced = reducedMotion;
+    }
     lastSimTime = simTime;
     rec.animTime = rec.animTime == null ? (Number.isFinite(simTime) ? simTime : 0) : (rec.animTime + animDt);
 
