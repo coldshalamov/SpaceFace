@@ -1724,7 +1724,7 @@ export function installVisualOverrides(factory, options = {}) {
       && !(authoredWholeShipsOnly && !requiredWholeShip);
     const authoredCargoCapsule = hasExplicitAuthoredPayloadPresentation(entity);
     const lastShiftRecorder = lastShiftRecorderPackagedPropSpec(entity);
-    const explicitPackagedProp = (entity?.type === 'drone' || entity?.type === 'wreck')
+    const explicitPackagedProp = (entity?.type === 'drone' || entity?.type === 'wreck' || entity?.type === 'container')
       && typeof entity.data?.packagedPropFile === 'string' && packagedPropSpec(entity);
     const scenarioProp = directShip || isWorldPlaceProp(entity) || authoredCargoCapsule || lastShiftRecorder || explicitPackagedProp
       ? null

@@ -195,6 +195,9 @@ export function createFreightLaneDirector(ctx) {
           freightString: id,
           freightIndex: i,
           masslineTetherable: true,
+          packagedPropFile: 'places/place_cargo_pod_standard.glb',
+          packagedPropSlot: 'place',
+          packagedPropRadius: FREIGHT_CONTAINER_RADIUS,
           name: armed.arenaId === 'tethys_hub' ? 'EXCHANGE FREIGHT' : 'FOUNDRY FREIGHT',
         },
       });
