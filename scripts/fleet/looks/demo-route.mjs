@@ -252,7 +252,7 @@ const hostilesQ = () => page.evaluate(() => {
 
 // ---------------------------------------------------------------- shared: boot, intro, first-run prompt
 async function bootToTitle() {
-  await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'commit' });
+  await page.goto(`http://127.0.0.1:${PORT}/${argv.lane === 'main' ? '?simLane=main' : ''}`, { waitUntil: 'commit' });
   const t0 = Date.now(); let introStart = null; let introEnd = null; let spaced = 0; let ready = false;
   while (Date.now() - t0 < 240_000) {
     const st = await page.evaluate(() => {
@@ -589,21 +589,25 @@ async function adventureRoute() {
         await shot('latched-rock', { gameplay: true });
         await keyDown('KeyW'); await keyDown('KeyD');
         const rw0 = await evN('massline:releaseWindow');
-        for (let i = 0; i < 40; i++) {
-          await page.mouse.move(VW / 2 + 260 * Math.cos(i * 0.6), VH / 2 + 200 * Math.sin(i * 0.6), { steps: 2 }); await sleep(150);
+        const readThrow = () => page.evaluate(() => { const s = window.SF.state; const t = s.massline2 && s.massline2.throw; const tt = s.player && s.player.tether; return { on: !!(t && t.solution && t.solution.valid && t.solution.onSolution), armed: !!(t && t.armed), phase: tt ? (tt.phase || tt.state || null) : null, strain: tt && Number.isFinite(tt.strain) ? +tt.strain.toFixed(2) : null, aimTarget: t ? t.aimTargetId : null }; }).catch(() => ({ on: false }));
+        let clickInfo = null;
+        for (let i = 0; i < 60; i++) {
+          await page.mouse.move(VW / 2 + 260 * Math.cos(i * 0.6), VH / 2 + 200 * Math.sin(i * 0.6), { steps: 2 }); await sleep(100);
           if (i === 3) await shot('swing-rock', { gameplay: true });
-          // THROW needs the release window the rope itself opens; tap the moment it does (after a real swing).
-          if (i >= 6 && (await evN('massline:releaseWindow')) > rw0) break;
+          const rt = await readThrow();
+          // THROW fires on a press while the rope's own release window is open on the aimed target.
+          if (i >= 6 && rt.on) { clickInfo = { i, ...rt, windowEvents: (await evN('massline:releaseWindow')) - rw0 }; break; }
           if ((await evN('tether:broken')) > 0 && i > 20) break;
         }
+        note('click-time: ' + JSON.stringify(clickInfo || { windowNeverOpen: true, last: await readThrow() }));
         await keyUp('KeyD');
         const aimD = await page.evaluate(() => {
           const s = window.SF.state; const h = window.SF.helpers;
           const d = (s.entityList || []).find((e) => e && e.alive !== false && e.data && e.data.rescueRole === 'derelict');
           return d ? h.worldToScreen({ x: d.pos.x, y: 0, z: d.pos.z }, {}) : null;
         }).catch(() => null);
-        await page.mouse.move(aimD && Number.isFinite(aimD.x) ? aimD.x : VW / 2, aimD && Number.isFinite(aimD.y) ? aimD.y : 200, { steps: 2 });
-        await page.mouse.down({ button: 'right' }); await sleep(120); await page.mouse.up({ button: 'right' });
+        if (!clickInfo) await page.mouse.move(aimD && Number.isFinite(aimD.x) ? aimD.x : VW / 2, aimD && Number.isFinite(aimD.y) ? aimD.y : 200, { steps: 2 });
+        await page.mouse.down({ button: 'right' }); await sleep(60); await page.mouse.up({ button: 'right' });
         R.clicks++; await page.evaluate(() => { window.__dr.clicks++; }).catch(() => {});
         await keyUp('KeyW'); await shot('release-rock', { gameplay: true });
         const seq = await page.evaluate(() => { const t = window.__dr.rel(performance.now()) - 8; return (window.__dr.ev || []).filter((e) => e.t >= t).map((e) => e.ev + '@' + e.t); }).catch(() => []);
