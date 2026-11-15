@@ -105,3 +105,31 @@ test('surface influence stays local and output records are reused through empty 
   for (let i = 0; i < records.length; i++) assert.equal(env.records[i], records[i]);
   assert.equal(env.clear(), env);
 });
+
+test('large fallback lists advance a complete scan window while type buckets keep their own stride', () => {
+  const entries = Array.from({ length: 2048 }, (_, i) => body(i, 0, 0, { type: 'projectile' }));
+  entries[1300] = body(1300, 10, 0);
+  const state = stateFor(entries), env = new FlowEnvironment();
+  env.update(state, 0, 0, 30, null);
+  assert.deepEqual(ids(env), []);
+  state.simTime = 0.1; env.update(state, 0, 0, 30, null);
+  assert.deepEqual(ids(env), [1300], 'second 1024-entry window reaches the next unscanned portion');
+
+  const spatialState = stateFor(entries), spatialEnv = new FlowEnvironment();
+  spatialState.spatialHash = { diagnostics: { activeBuckets: 1 },
+    queryRadius(_x, _z, _radius, out) { out.push(...entries); } };
+  spatialEnv.update(spatialState, 0, 0, 30, null);
+  assert.deepEqual(ids(spatialEnv), []);
+  spatialState.simTime = 0.1; spatialEnv.update(spatialState, 0, 0, 30, null);
+  assert.deepEqual(ids(spatialEnv), [1300], 'spatial results use the same full-window stride');
+
+  const bucket = Array.from({ length: 512 }, (_, i) => body(i + 3000, 0, 0, { type: 'projectile' }));
+  bucket[300] = body(3300, 10, 0);
+  const indexed = stateFor(bucket), indexedEnv = new FlowEnvironment();
+  indexed.entityIndex = { __spacefaceEntityIndexV1: true, ready: true,
+    ships: [], asteroids: bucket, stations: [], wrecks: [] };
+  indexedEnv.update(indexed, 0, 0, 30, null);
+  assert.deepEqual(ids(indexedEnv), []);
+  indexed.simTime = 0.1; indexedEnv.update(indexed, 0, 0, 30, null);
+  assert.deepEqual(ids(indexedEnv), [3300], 'indexed buckets continue to advance by 256');
+});

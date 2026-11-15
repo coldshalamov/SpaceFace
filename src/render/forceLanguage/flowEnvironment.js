@@ -99,6 +99,7 @@ export class FlowEnvironment {
     // Keep good prior candidates while a very large fallback type list is examined in bounded
     // rotating windows. Spatial queries normally cover only a small neighborhood.
     for (let i = 0; i < FLOW_ENVIRONMENT_CAPACITY; i++) this._consider(this._retained[i]);
+    let scanStride = MAX_SCAN;
     if (hasActiveSpatialHash(state.spatialHash)) {
       this._candidates.length = 0;
       state.spatialHash.queryRadius(this._x + this._origin.x, this._z + this._origin.z,
@@ -108,6 +109,7 @@ export class FlowEnvironment {
     } else {
       const index = state.entityIndex;
       if (index?.__spacefaceEntityIndexV1 && index.ready === true) {
+        scanStride = MAX_SCAN / BUCKETS.length;
         for (let i = 0; i < BUCKETS.length; i++) this._scan(index[BUCKETS[i]], MAX_SCAN / BUCKETS.length);
       } else if (Array.isArray(state.entityList)) {
         this._scan(state.entityList, MAX_SCAN);
@@ -117,7 +119,7 @@ export class FlowEnvironment {
         state.entities.forEach(this._visitMap);
       }
     }
-    this._cursor += MAX_SCAN / BUCKETS.length;
+    this._cursor += scanStride;
     for (let i = 0; i < FLOW_ENVIRONMENT_CAPACITY; i++) this._retained[i] = null;
   }
 
