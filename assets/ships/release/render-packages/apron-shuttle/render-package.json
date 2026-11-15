@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "e1773f0cdf2c14e6820be030b64bdad4aa44be029412a45adcbddcfbc0d66765",
+  "contentHash": "a2d0f715c8ed1a794cca20d56bd148961be096312274396376c847b350424236",
   "dynamicGroups": [
     {
       "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -832,7 +832,7 @@
       "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-lights-cyan-helios.primitive.0",
       "indexCount": 6342,
       "indexed": true,
-      "materialHash": "3116f19dfa9de6450e9fd554fc5363edb50a54bb629db4305029b5120a10ef25",
+      "materialHash": "167676e90aa5eaf49f464d6a3d5b60e70d8eb3903a064943763e5cebc2132d26",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_helios",
       "nodeId": "sf.render.apron-shuttle.node.lod0-motion-hull-core-lights-cyan-helios",
@@ -1157,7 +1157,7 @@
       "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-lights-cyan-helios.primitive.0",
       "indexCount": 1203,
       "indexed": true,
-      "materialHash": "3116f19dfa9de6450e9fd554fc5363edb50a54bb629db4305029b5120a10ef25",
+      "materialHash": "167676e90aa5eaf49f464d6a3d5b60e70d8eb3903a064943763e5cebc2132d26",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_HULL_CORE_Lights_Cyan_helios",
       "nodeId": "sf.render.apron-shuttle.node.lod1-motion-hull-core-lights-cyan-helios",
@@ -1482,7 +1482,7 @@
       "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-lights-cyan-helios.primitive.0",
       "indexCount": 714,
       "indexed": true,
-      "materialHash": "3116f19dfa9de6450e9fd554fc5363edb50a54bb629db4305029b5120a10ef25",
+      "materialHash": "167676e90aa5eaf49f464d6a3d5b60e70d8eb3903a064943763e5cebc2132d26",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_HULL_CORE_Lights_Cyan_helios",
       "nodeId": "sf.render.apron-shuttle.node.lod2-motion-hull-core-lights-cyan-helios",
@@ -1627,17 +1627,17 @@
       ]
     },
     {
+      "hash": "167676e90aa5eaf49f464d6a3d5b60e70d8eb3903a064943763e5cebc2132d26",
+      "id": "material:167676e90aa5eaf49f464d6a",
+      "name": "Material_Emissive_Trim_helios",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "1ee807a3355d83d28693fa8ca2cd68fbcf12bb6994018797042ab459f71819c0",
       "id": "material:1ee807a3355d83d28693fa8c",
       "name": "Material_Canopy",
       "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "3116f19dfa9de6450e9fd554fc5363edb50a54bb629db4305029b5120a10ef25",
-      "id": "material:3116f19dfa9de6450e9fd554",
-      "name": "Material_Emissive_Cyan_helios",
-      "pipelineKey": "opaque:front",
       "textures": []
     },
     {
@@ -4453,18 +4453,18 @@
     },
     "sourceGlb": {
       "bytes": 933912,
-      "sha256": "fdd933dc22f5d700b45bd19f275a7076e354bf3d7e1346c76a370f30d4c03108",
+      "sha256": "a6b984d7d2b1902e184f4c266cc74c7161a1b7398c1d6fe8e179c9283d80f0b3",
       "uri": "apron_shuttle.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 34199,
+      "sha256": "5c6c568af8c5fe7b91dd4ae2183c4c6299990aeb4e2617e4195091ae9b42c0b8",
+      "uri": "assets/ships/render-packages/inputs/apron-shuttle.json"
     }
   },
   "render": {
     "bytes": 947648,
-    "sha256": "7fe6585816c27cd1c66f9c065ad35fb857430a3f0fbfc86ec78ae215a2b58663",
+    "sha256": "620d7e3985e4cfe70586d5360329cf6a41eadc05f1ce8e431e506a014f10368a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6872,7 +6872,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/apron_shuttle.glb"
   },
-  "runtimeHash": "7806fa8f9a25c9baf4d4612bbef83f303a4d2c71452129007e5ced6643d84c42",
+  "runtimeHash": "d5d3e8ade001d1db03bec4f022f42f577abd1584cd075a02faac0bdf02f363ad",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

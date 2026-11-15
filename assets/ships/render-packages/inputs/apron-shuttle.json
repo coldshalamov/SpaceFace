@@ -1,0 +1,847 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": false,
+    "externalizeKtx2Hashes": null,
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "wholeship_apron_shuttle",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.apron-shuttle",
+    "dynamicNameIncludes": [
+      "HOOK_DRIVE",
+      "HOOK_NAV",
+      "HOOK_SECONDARY",
+      "HOOK_SENSOR",
+      "HOOK_ARMOR"
+    ],
+    "key": "apron-shuttle",
+    "kind": "ship",
+    "metadataUrl": "assets/ships/release/render-packages/apron-shuttle/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/apron-shuttle",
+    "releaseAssetId": "wholeship_apron_shuttle",
+    "releaseBytes": 933912,
+    "releaseSha256": "a6b984d7d2b1902e184f4c266cc74c7161a1b7398c1d6fe8e179c9283d80f0b3",
+    "runtimeAssetId": "SF_WHOLESHIP_APRON_SHUTTLE",
+    "sceneRoot": true,
+    "slot": "hull",
+    "sourceUrl": "assets/ships/release/parts/wholeships/apron_shuttle.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 50,
+    "id": "wholeship_apron_shuttle",
+    "kind": "part:wholeships",
+    "ktx2Textures": 6,
+    "meshoptBufferViews": 120,
+    "release": "assets/ships/release/parts/wholeships/apron_shuttle.glb",
+    "releaseBytes": 933912,
+    "releaseSha256": "a6b984d7d2b1902e184f4c266cc74c7161a1b7398c1d6fe8e179c9283d80f0b3",
+    "source": "assets/ships/parts/wholeships/apron_shuttle.glb",
+    "sourceBytes": 2491232,
+    "sourceSha256": "01038715294f83e506f8407d3c7206424d4234ac9267ce573b0de2d0c103552a",
+    "textures": 6
+  },
+  "runtime": {
+    "assetId": "SF_WHOLESHIP_APRON_SHUTTLE",
+    "motionBank": {
+      "bytes": 7223,
+      "rigId": "hull",
+      "sha256": "785a6bab6b96d9e0c3e26d81ae51aaad75844499534e5a89e77d9f47cf6e06e6",
+      "uri": "assets/ships/motions/apron-shuttle.motion.json"
+    },
+    "slot": "hull",
+    "sourceUrl": "assets/ships/release/parts/wholeships/apron_shuttle.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [
+      {
+        "id": "sf.render.apron-shuttle.anchor.socket-camera-focus",
+        "kind": "socket",
+        "node": "SOCKET_Camera_Focus",
+        "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root"
+      },
+      {
+        "id": "sf.render.apron-shuttle.anchor.socket-cargo-ventral",
+        "kind": "socket",
+        "node": "SOCKET_Cargo_Ventral",
+        "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root"
+      },
+      {
+        "id": "sf.render.apron-shuttle.anchor.socket-engine-main",
+        "kind": "socket",
+        "node": "SOCKET_Engine_Main",
+        "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root"
+      },
+      {
+        "id": "sf.render.apron-shuttle.anchor.socket-mining-front",
+        "kind": "socket",
+        "node": "SOCKET_Mining_Front",
+        "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root"
+      },
+      {
+        "id": "sf.render.apron-shuttle.anchor.socket-rcs-port",
+        "kind": "socket",
+        "node": "SOCKET_RCS_Port",
+        "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root"
+      },
+      {
+        "id": "sf.render.apron-shuttle.anchor.socket-rcs-starboard",
+        "kind": "socket",
+        "node": "SOCKET_RCS_Starboard",
+        "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root"
+      },
+      {
+        "id": "sf.render.apron-shuttle.anchor.socket-tether-massline",
+        "kind": "socket",
+        "node": "SOCKET_Tether_Massline",
+        "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root"
+      },
+      {
+        "id": "sf.render.apron-shuttle.anchor.socket-trail-main",
+        "kind": "socket",
+        "node": "SOCKET_Trail_Main",
+        "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root"
+      },
+      {
+        "id": "sf.render.apron-shuttle.anchor.socket-trail-port",
+        "kind": "socket",
+        "node": "SOCKET_Trail_Port",
+        "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root"
+      },
+      {
+        "id": "sf.render.apron-shuttle.anchor.socket-trail-starboard",
+        "kind": "socket",
+        "node": "SOCKET_Trail_Starboard",
+        "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root"
+      },
+      {
+        "id": "sf.render.apron-shuttle.anchor.socket-utility-dorsal",
+        "kind": "socket",
+        "node": "SOCKET_Utility_Dorsal",
+        "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root"
+      },
+      {
+        "id": "sf.render.apron-shuttle.anchor.socket-weapon-front",
+        "kind": "socket",
+        "node": "SOCKET_Weapon_Front",
+        "parentNodeId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root"
+      }
+    ],
+    "assetId": "sf.render.apron-shuttle",
+    "collisions": [
+      {
+        "id": "sf.render.apron-shuttle.collision",
+        "nodeId": "sf.render.apron-shuttle.node.collision-hull",
+        "reference": "COLLISION_HULL"
+      }
+    ],
+    "dynamicGroups": [
+      {
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-hook-drive-core.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.apron-shuttle.node.lod0-motion-hull-core-hook-drive-core"
+      },
+      {
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-hook-nav-port.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.apron-shuttle.node.lod0-motion-hull-core-hook-nav-port"
+      },
+      {
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-hook-nav-starboard.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.apron-shuttle.node.lod0-motion-hull-core-hook-nav-starboard"
+      },
+      {
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-hook-drive-core.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.apron-shuttle.node.lod1-motion-hull-core-hook-drive-core"
+      },
+      {
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-hook-nav-port.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.apron-shuttle.node.lod1-motion-hull-core-hook-nav-port"
+      },
+      {
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-hook-nav-starboard.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.apron-shuttle.node.lod1-motion-hull-core-hook-nav-starboard"
+      },
+      {
+        "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-hook-drive-core.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.apron-shuttle.node.lod2-motion-hull-core-hook-drive-core"
+      },
+      {
+        "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-hook-nav-port.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.apron-shuttle.node.lod2-motion-hull-core-hook-nav-port"
+      },
+      {
+        "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-hook-nav-starboard.dynamic",
+        "kind": "moving-part",
+        "nodeId": "sf.render.apron-shuttle.node.lod2-motion-hull-core-hook-nav-starboard"
+      }
+    ],
+    "hlods": [],
+    "kind": "ship",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.collision-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "COLLISION_HULL",
+        "node": "COLLISION_HULL",
+        "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "pipelineKey": "non-render",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Armor",
+        "node": "LOD0_MOTION_HULL_CORE_Armor",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-beacon-amber",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "node": "LOD0_MOTION_HULL_CORE_Beacon_Amber",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-canopy",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_CANOPY",
+        "node": "LOD0_MOTION_HULL_CORE_CANOPY",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "blend",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "blend"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-hook-drive-core",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-hook-nav-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "node": "LOD0_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Hull",
+        "node": "LOD0_MOTION_HULL_CORE_Hull",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-lights-cyan",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+        "node": "LOD0_MOTION_HULL_CORE_Lights_Cyan",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-lights-cyan-helios",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Cyan_helios",
+        "node": "LOD0_MOTION_HULL_CORE_Lights_Cyan_helios",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+        "node": "LOD0_MOTION_HULL_CORE_Lights_Warm",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-livery",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Livery",
+        "node": "LOD0_MOTION_HULL_CORE_Livery",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_Mechanical",
+        "node": "LOD0_MOTION_HULL_CORE_Mechanical",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+        "node": "LOD0_MOTION_HULL_CORE_MechanicalDark",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Armor",
+        "node": "LOD1_MOTION_HULL_CORE_Armor",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-beacon-amber",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
+        "node": "LOD1_MOTION_HULL_CORE_Beacon_Amber",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-canopy",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_CANOPY",
+        "node": "LOD1_MOTION_HULL_CORE_CANOPY",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "blend",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "blend"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-hook-drive-core",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "node": "LOD1_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "node": "LOD1_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-hook-nav-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "node": "LOD1_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Hull",
+        "node": "LOD1_MOTION_HULL_CORE_Hull",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-lights-cyan",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Cyan",
+        "node": "LOD1_MOTION_HULL_CORE_Lights_Cyan",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-lights-cyan-helios",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Cyan_helios",
+        "node": "LOD1_MOTION_HULL_CORE_Lights_Cyan_helios",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Warm",
+        "node": "LOD1_MOTION_HULL_CORE_Lights_Warm",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-livery",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Livery",
+        "node": "LOD1_MOTION_HULL_CORE_Livery",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_Mechanical",
+        "node": "LOD1_MOTION_HULL_CORE_Mechanical",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod1-motion-hull-core-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD1_MOTION_HULL_CORE_MechanicalDark",
+        "node": "LOD1_MOTION_HULL_CORE_MechanicalDark",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-armor",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Armor",
+        "node": "LOD2_MOTION_HULL_CORE_Armor",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-beacon-amber",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+        "node": "LOD2_MOTION_HULL_CORE_Beacon_Amber",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-canopy",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_CANOPY",
+        "node": "LOD2_MOTION_HULL_CORE_CANOPY",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "blend",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "blend"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-hook-drive-core",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "node": "LOD2_MOTION_HULL_CORE_HOOK_DRIVE_CORE",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-hook-nav-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "node": "LOD2_MOTION_HULL_CORE_HOOK_NAV_PORT",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-hook-nav-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "node": "LOD2_MOTION_HULL_CORE_HOOK_NAV_STARBOARD",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "dynamic",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-hull",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Hull",
+        "node": "LOD2_MOTION_HULL_CORE_Hull",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-lights-cyan-helios",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Cyan_helios",
+        "node": "LOD2_MOTION_HULL_CORE_Lights_Cyan_helios",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-lights-warm",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Warm",
+        "node": "LOD2_MOTION_HULL_CORE_Lights_Warm",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-livery",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Livery",
+        "node": "LOD2_MOTION_HULL_CORE_Livery",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-mechanical",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_Mechanical",
+        "node": "LOD2_MOTION_HULL_CORE_Mechanical",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.lod2-motion-hull-core-mechanicaldark",
+        "independentlyCulled": false,
+        "mergeBoundary": "LOD2_MOTION_HULL_CORE_MechanicalDark",
+        "node": "LOD2_MOTION_HULL_CORE_MechanicalDark",
+        "parentId": "sf.render.apron-shuttle.node.motion-hull-core",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.motion-hull-core",
+        "independentlyCulled": false,
+        "mergeBoundary": "MOTION_HULL_CORE",
+        "node": "MOTION_HULL_CORE",
+        "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "independentlyCulled": false,
+        "mergeBoundary": "SF_NPCWORK_APRON_SHUTTLE_ROOT",
+        "node": "SF_NPCWORK_APRON_SHUTTLE_ROOT",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.socket-camera-focus",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Camera_Focus",
+        "node": "SOCKET_Camera_Focus",
+        "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.socket-cargo-ventral",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Cargo_Ventral",
+        "node": "SOCKET_Cargo_Ventral",
+        "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.socket-engine-main",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Engine_Main",
+        "node": "SOCKET_Engine_Main",
+        "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.socket-mining-front",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Mining_Front",
+        "node": "SOCKET_Mining_Front",
+        "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.socket-rcs-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_RCS_Port",
+        "node": "SOCKET_RCS_Port",
+        "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.socket-rcs-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_RCS_Starboard",
+        "node": "SOCKET_RCS_Starboard",
+        "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.socket-tether-massline",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Tether_Massline",
+        "node": "SOCKET_Tether_Massline",
+        "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.socket-trail-main",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Trail_Main",
+        "node": "SOCKET_Trail_Main",
+        "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.socket-trail-port",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Trail_Port",
+        "node": "SOCKET_Trail_Port",
+        "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.socket-trail-starboard",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Trail_Starboard",
+        "node": "SOCKET_Trail_Starboard",
+        "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.socket-utility-dorsal",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Utility_Dorsal",
+        "node": "SOCKET_Utility_Dorsal",
+        "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.apron-shuttle.node.socket-weapon-front",
+        "independentlyCulled": false,
+        "mergeBoundary": "SOCKET_Weapon_Front",
+        "node": "SOCKET_Weapon_Front",
+        "parentId": "sf.render.apron-shuttle.node.sf-npcwork-apron-shuttle-root",
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.apron-shuttle.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 933912,
+    "sha256": "a6b984d7d2b1902e184f4c266cc74c7161a1b7398c1d6fe8e179c9283d80f0b3",
+    "uri": "assets/ships/release/parts/wholeships/apron_shuttle.glb"
+  }
+}

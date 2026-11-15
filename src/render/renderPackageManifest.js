@@ -474,12 +474,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.apron-shuttle",
-    "expectedContentHash": "e1773f0cdf2c14e6820be030b64bdad4aa44be029412a45adcbddcfbc0d66765",
+    "expectedContentHash": "a2d0f715c8ed1a794cca20d56bd148961be096312274396376c847b350424236",
     "key": "apron-shuttle",
     "metadataUrl": "assets/ships/release/render-packages/apron-shuttle/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_APRON_SHUTTLE",
     "slot": "hull",
-    "sourceSha256": "fdd933dc22f5d700b45bd19f275a7076e354bf3d7e1346c76a370f30d4c03108",
+    "sourceSha256": "a6b984d7d2b1902e184f4c266cc74c7161a1b7398c1d6fe8e179c9283d80f0b3",
     "sourceUrl": "assets/ships/release/parts/wholeships/apron_shuttle.glb"
   },
   {

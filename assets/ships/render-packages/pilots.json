@@ -763,7 +763,7 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_apron_shuttle",
       "sourceUrl": "assets/ships/release/parts/wholeships/apron_shuttle.glb",
-      "releaseSha256": "fdd933dc22f5d700b45bd19f275a7076e354bf3d7e1346c76a370f30d4c03108",
+      "releaseSha256": "a6b984d7d2b1902e184f4c266cc74c7161a1b7398c1d6fe8e179c9283d80f0b3",
       "releaseBytes": 933912,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",

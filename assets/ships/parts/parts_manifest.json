@@ -7980,7 +7980,7 @@
       "priority": "P2",
       "file": "wholeships/apron_shuttle.glb",
       "tris": 40832,
-      "bytes": 2491264,
+      "bytes": 2491232,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
