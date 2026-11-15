@@ -3235,6 +3235,21 @@ export function createHud(ctx, alerts) {
   })();
   const tellSlots = [];
   const tellPhoneAvoid = createAvoidRects(document, { ttlMs: 90, exclude: (el) => !!el.closest?.('.sf-tells') });
+  // updateDoctrineTells runs every frame and its blocker list only changes when a panel appears
+  // or moves, so the rect rows are written into reused `{x,y,width,height}` slots instead of a
+  // fresh object per obstacle per frame. The pool only grows; the live list is its prefix.
+  const tellBlockerPool = [];
+  const tellReservedScratch = [];
+  const tellPhoneBlockers = [];
+  function tellBlockerAt(index, left, top, width, height) {
+    let slot = tellBlockerPool[index];
+    if (!slot) slot = tellBlockerPool[index] = { x: 0, y: 0, width: 0, height: 0 };
+    slot.x = left;
+    slot.y = top;
+    slot.width = width;
+    slot.height = height;
+    return slot;
+  }
   for (let i = 0; i < TELL_POOL_SIZE; i++) {
     const linkEl = document.createElement('div');
     linkEl.className = 'sf-tell-link';
@@ -3399,9 +3414,16 @@ export function createHud(ctx, alerts) {
     const h = (typeof window !== 'undefined' && window.innerHeight) || 720;
     refreshFlightTextObstacleSnapshot();
     const phoneTells = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
-    const reserved = getFlightTextObstacles()
-      .filter(row => TELL_OBSTACLE_OWNERS.has(row.owner))
-      .map(row => ({ x: row.left, y: row.top, width: row.width, height: row.height }));
+    // Blocker rows are written into the reused pool above: same values, same order, no per-frame
+    // array plus one object literal per measured obstacle.
+    const obstacles = getFlightTextObstacles();
+    const reserved = tellReservedScratch;
+    reserved.length = 0;
+    for (let i = 0; i < obstacles.length; i++) {
+      const row = obstacles[i];
+      if (!TELL_OBSTACLE_OWNERS.has(row.owner)) continue;
+      reserved.push(tellBlockerAt(reserved.length, row.left, row.top, row.width, row.height));
+    }
     const measuredLeft = objectiveEdgeObstacles().left;
     if (measuredLeft) reserved.push(measuredLeft);
     // Danger tier in a Swarm round: ONE line (20_THE_FIRST_HOUR rule 2). Live tells of one kind
@@ -3434,7 +3456,12 @@ export function createHud(ctx, alerts) {
       let placement;
       if (phoneTells) {
         // Phone: seat clear of the deck, shrink to the kind word, else hide (MOB-08).
-        const blockers = reserved.concat(tellPhoneAvoid.get());
+        // Same list as `reserved.concat(tellPhoneAvoid.get())` produced, refilled in place.
+        const avoid = tellPhoneAvoid.get();
+        tellPhoneBlockers.length = 0;
+        for (let i = 0; i < reserved.length; i++) tellPhoneBlockers.push(reserved[i]);
+        for (let i = 0; i < avoid.length; i++) tellPhoneBlockers.push(avoid[i]);
+        const blockers = tellPhoneBlockers;
         const seat = seatPhoneTell((dims) => resolveDoctrineTellPlacement(w, h, proj, slotIndex, blockers, slot.layoutOffset, dims),
           blockers, slot.geometry);
         placement = seat && seat.placement;
@@ -3443,8 +3470,9 @@ export function createHud(ctx, alerts) {
         placement = resolveDoctrineTellPlacement(w, h, proj, slotIndex, reserved, slot.layoutOffset, slot.geometry);
       }
       if (!placement) { setDisplay(slot.el, false); slot.linkEl.hidden = true; continue; }
-      reserved.push({ x: placement.x - placement.width / 2, y: placement.y - placement.height / 2,
-        width: placement.width, height: placement.height });
+      reserved.push(tellBlockerAt(reserved.length,
+        placement.x - placement.width / 2, placement.y - placement.height / 2,
+        placement.width, placement.height));
       slot.layoutOffset = placement.onScreen ? { x: placement.x - proj.x, y: placement.y - proj.y } : null;
       setDisplay(slot.el, true, 'inline-flex');
       setClass(slot.el, 'is-offscreen', !placement.onScreen);
