@@ -45,10 +45,15 @@ async function sharedOrDecodedTexture(key, bytes, loader) {
   if (!pending) { pending = new Map(); inFlightDecodes.set(loader, pending); }
   const existing = pending.get(key);
   if (existing) {
-    await existing;
-    // The owner may have been disposed or CPU-detached before this waiter resumed.
-    const shared = sharedImageTextureFor(key);
-    if (shared) return shared;
+    try {
+      await existing;
+      // The owner may have been disposed or CPU-detached before this waiter resumed.
+      const shared = sharedImageTextureFor(key);
+      if (shared) return shared;
+    } catch (_) {
+      // A failed transcode should not make another document lose its own independent chance.
+      // Each waiter makes at most one fallback decode, matching the former failure isolation.
+    }
   }
   const decode = new Promise((resolve, reject) => loader.parse(bytes, resolve, reject))
     .then((texture) => claimSharedImageTexture(key, texture));

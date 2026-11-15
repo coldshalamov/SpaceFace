@@ -35,7 +35,7 @@ test('simultaneous released ship textures share a single in-flight transcode and
   assert.equal(sharedImageSourceUserCount(x),2);x.dispose();assert.equal(sharedImageSourceUserCount(y),1);y.dispose();
 });
 
-test('a failed shared transcode does not poison a later retry', async()=>{
+test('a failed shared transcode lets a waiting document decode independently', async()=>{
   resetImageSourceDedupeForTests();
   const bytes=firstImage('assets/ships/release/render-packages/wasp/render.glb');
   let calls=0, rejectFirst;
@@ -48,8 +48,11 @@ test('a failed shared transcode does not poison a later retry', async()=>{
   await new Promise(resolve=>setTimeout(resolve,100));
   assert.equal(calls,1,'both requests wait on the same transcode');
   rejectFirst(new Error('fixture transcode failure'));
-  assert.deepEqual(await Promise.all([a,b]),[null,null]);
-  for(const plugin of [first,second]) assert.match(plugin.textureFailures[0].message,/fixture transcode failure/);
-  const result=await new EmbeddedKtx2TexturePlugin(parser(bytes,loader,{})).loadTexture(0);
-  assert.ok(result);assert.equal(calls,2);result.dispose();
+  const [failed,result]=await Promise.all([a,b]);
+  assert.equal(failed,null);assert.ok(result);
+  assert.match(first.textureFailures[0].message,/fixture transcode failure/);
+  assert.equal(second.textureFailures.length,0);
+  assert.equal(calls,2,'the waiting document gets its own bounded retry');
+  const later=await new EmbeddedKtx2TexturePlugin(parser(bytes,loader,{})).loadTexture(0);
+  assert.ok(later);assert.equal(calls,2);result.dispose();later.dispose();
 });
