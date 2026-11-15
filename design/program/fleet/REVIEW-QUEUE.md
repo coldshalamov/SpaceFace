@@ -26,6 +26,14 @@ need a re-review pass by Codex/Fable).
 - [ ] `42023c0168` fix(R2): catch-net custody change invalidates food verdict *(FIX-R1, part of)*
 - [ ] `2c6e03e187` fix(R3): yard capstan gantry-to-pod cable draws *(FIX-R1, part of)*
 - [ ] `b51aab7026` fix(R4): finished/lost Ceres lift stops scanning world *(FIX-R1, part of)*
+- [ ] `df4b82d982` fix(R5): blocked casing return no longer scans every tick *(FIX-R1, part of)*
+- [ ] `11a28aac9f` fix(R6): overlapping receiving rings prioritized to one tag *(FIX-R1, part of)*
+- [ ] `76ebff9f74` fix(R7): retired plate-theft helper drops its spawn listener *(FIX-R1, part of)*
+
+All seven R1–R7 fixes landed with red-before-green evidence and 70/70 focused tests passing;
+`check:src-imports` clean. **Gap:** R3's cable is proven at the renderer-admission predicate
+only — nobody has *seen* the gantry-to-pod cable on screen. Fable: eyeball the Ceres quarantine
+yard capstan once (or a `?sector=ceres&shot=1` capture) before ticking R3.
 - [ ] `acf9b3122d` Reduce trade hub window glare *(foreign perf worker)*
 - [ ] `2f2881a065` **fleet(PRI-10d)** law desk / Book 4 restitution — worker died mid-run, recovered and committed by hand. Tests `book4-*-guidance` pass; check whether the packet's full scope landed (receipt was never written).
 - [ ] `53194ad2f4` **fleet(PRI-08b)** the ninth mouth — lamp tow onto the Ceres ray. **KNOWN FAIL:** `test/ceres-ninth-mouth-earned-route.test.mjs` — "earned original lamp Seat, original barge rescue, Continue and sector return" fails (lamp slingshots when `move()` runs with an attached load). 15/16 pass.
