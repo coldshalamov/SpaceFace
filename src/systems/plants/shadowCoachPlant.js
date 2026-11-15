@@ -71,7 +71,7 @@ export const shadowCoachPlant = {
     };
     on('entity:killed', (p) => this._onKilled(p));
     on('run:waveStarted', () => this._endReplay('round_started'));
-    on('run:ended', () => this._reset());
+    on('run:ended', () => this._resetRun());
   },
 
   update(dt) {
