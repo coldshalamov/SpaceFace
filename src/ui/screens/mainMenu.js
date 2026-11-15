@@ -345,7 +345,7 @@ export function titlePrimaryAction(hasSave) {
  * already promised ("the scored ten-wave Survival run", "the authored intro cinematics").
  */
 export const MENU_MODE_GLOSSES = Object.freeze({
-  swarm: 'Hold off the horde: pick the room, then PLAY',
+  swarm: 'One press to round one — the horde arena',
   crucible: 'A scored ten-wave survival run',
   archive: 'Authored intro reels, in the Codex',
   circuits: 'Race rivals or run time trials',

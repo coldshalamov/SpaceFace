@@ -491,11 +491,8 @@ html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !imp
 .boot-keys__row { display:flex; gap:6px; }
 .boot-keys kbd { min-width:38px; padding:8px 12px 9px; text-align:center; font:600 16px/1 var(--dp-face-label, "Archivo", sans-serif); letter-spacing:.06em; text-transform:uppercase;
   color:rgb(236 230 216); border:1px solid rgb(236 230 216 / .6); border-bottom-width:3px; border-radius:4px; background:rgb(236 230 216 / .06); }
-.boot-keys__word { font:500 15px var(--dp-face-body, "Instrument Sans", sans-serif); color:rgb(240 235 224 / .95); text-shadow:0 1px 8px rgb(0 0 0 / .8); }
-/* each card owns its own quarter of the 16 s turn: in, hold, out, then gone before the next begins (no overlap) */
-@keyframes boot-key-card { 0% { opacity:0; transform:translateY(6px); } 2% { opacity:1; transform:none; } 21% { opacity:1; transform:none; } 23% { opacity:0; transform:translateY(-6px); } 100% { opacity:0; } }
-/* the flight HUD and its toasts never draw over the intro splash (or its fade) */
-body:has(#cinematic-splash) :is(#hud, #toasts, #alerts) { visibility:hidden !important; }
+.boot-keys__word { font:500 14px var(--dp-face-body, "Instrument Sans", sans-serif); color:rgb(232 226 212 / .78); }
+@keyframes boot-key-card { 0% { opacity:0; transform:translateY(6px); } 4% { opacity:1; transform:none; } 22% { opacity:1; transform:none; } 26% { opacity:0; transform:translateY(-6px); } 100% { opacity:0; } }
 html.sf-reduce-motion .boot-key-card { animation:none; }
 html.sf-reduce-motion .boot-key-card:first-child { opacity:1; }
 #boot-overlay.boot-overlay--orrery .boot-lockup {

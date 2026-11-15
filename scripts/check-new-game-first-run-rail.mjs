@@ -23,8 +23,8 @@ assert.match(newGame, /coreText\('firstMinutes'\)/,
 // spec2/03 supersedes the prior first-15 route copy. The rail now teaches the 6-beat pacing:
 // wake/beacon → tether derelict → mine seam → dock + pick work.
 for (const phrase of [
-  'Wake at the beacon',
-  'Tether the derelict',
+  'Latch the loose rock',
+  'Swing it through the wreck',
   'Mine the first seam',
   'Dock and pick work',
 ]) {

@@ -322,7 +322,15 @@ export function applyFragileCargoImpact(state, payload = {}, options = {}) {
   return receipt;
 }
 
+// OPENING-1b: a repeating crack (a held pod grinding on a rock) is one line per 10 s, not one per hit.
+const lastLossNotice = new WeakMap();
 function emitLossNotice(helpers, bus, receipt) {
+  if (bus && typeof bus === 'object') {
+    const last = lastLossNotice.get(bus);
+    const t = Number(receipt.t);
+    if (Number.isFinite(t) && Number.isFinite(last) && t - last < 10 && t >= last) return;
+    if (Number.isFinite(t)) lastLossNotice.set(bus, t);
+  }
   const first = receipt.items[0];
   const label = receipt.items.length === 1 ? first.name : `${receipt.totalQty} fragile units`;
   const spilled = receipt.totalSpilledQty || 0;

@@ -364,8 +364,8 @@ function starterLoadoutRows(starter) {
 // The first fifteen minutes (spec2/03 §1): the four beats a Steam-demo player should know before
 // Launch. Rendered as four static kit rows under the loadout (check-new-game-first-run-rail).
 const FIRST_MINUTES = [
-  ['Wake at the beacon', 'Thrust to the beacon. One verb at a time.'],
-  ['Tether the derelict', 'Latch, winch, cut. The vacuum shows itself.'],
+  ['Latch the loose rock', 'Right-click the marked rock beside you. One verb at a time.'],
+  ['Swing it through the wreck', 'Fly an arc, then release toward the derelict.'],
   ['Mine the first seam', 'Pulse, beam the bright seams, ride the heat.'],
   ['Dock and pick work', 'Sell at Helios, then choose haul, bounty, or survey. M charts the sector; N charts the star lane.'],
 ];

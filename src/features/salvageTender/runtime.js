@@ -7,6 +7,7 @@ import { tenderCostQuote, payTenderCost, tenderServiceQuote, bookTenderService,
   stepTenderService, holdTenderService, setTenderRepairPriority, cancelTenderService, repairTenderHull, rebindTenderService } from './services.js';
 import { installSalvageTenderSaveAdapter } from './saveAdapter.js';
 import { getSalvageTenderReadModel } from './readModel.js';
+import { openingQuiet } from '../../onboarding/openingQuiet.js';
 
 const owners = new WeakMap();
 const distance = (a, b) => a && b ? Math.hypot(a.x - b.x, a.z - b.z) : Infinity;
@@ -72,7 +73,8 @@ export const salvageTender = {
   },
 
   _player() { const p = this.state.entities?.get(this.state.playerId); return p?.alive ? p : null; },
-  _eligible() { return isBlackFlagAdventure(this.state) && this.state.mode === 'flight' && !this._restoring; },
+  // OPENING-1b: no tender offer cards before the first dock - the opening carries one voice.
+  _eligible() { return isBlackFlagAdventure(this.state) && this.state.mode === 'flight' && !this._restoring && !openingQuiet(this.state); },
   _sameSector() { return this.state.world?.currentSectorId === this._row.physical?.sectorId; },
   _near(range = C.offerRange) {
     return this._sameSector() && distance(this._player()?.pos, this.physical.find(this._row)?.pos) <= range;

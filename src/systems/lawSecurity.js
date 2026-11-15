@@ -1110,6 +1110,9 @@ export const lawSecurity = {
     // Direct-contact physics can identify the rock itself as the impactor. A thrown rock
     // carries its responsible actor's id instead; only that actor can be an aggressor.
     if (payload.origin?.kind === 'collision' && attacker.type === 'asteroid') return;
+    // OPENING-1b: the tutorial swing must never criminalise a new pilot - until the raid is done, harm the
+    // pilot (or their thrown rock) does opens no law case. The first consequence is the claimed-salvage choice.
+    if (attacker.id === state.playerId && openingBeforeClaim(state)) return;
     const player = entityById(state, state.playerId);
 
     this._observeInspectionCollateral(payload, attacker, target);
