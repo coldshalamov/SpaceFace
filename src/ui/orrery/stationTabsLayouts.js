@@ -991,6 +991,10 @@ ${T} .sx-fab-head__cat { margin-top:0 !important; }
 /* the Ladder's light cursor on every scrolling rail */
 ${SCROLL_EXTENT_CSS}
 ${T} :is(.sx-ct__board, .sx-ind__list, .sx-fac__rows)[data-overflow="0"] { -webkit-mask-image:none !important; mask-image:none !important; }
+/* the contracts board and the factions rail fold at EVERY height: at tall viewports the window had
+   no fold, so the last posted row was hard-cut mid-glyph (bench 1440x900: the contracts board, then
+   the factions rail's "The Archive") and read as broken text, not "more below" */
+${T} :is(.sx-ct__board, .sx-fac__rows)[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 20px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 20px), transparent); }
 
 /* ================================ ROUND 5: MISSIONS ========================================= */
 /* the ladder's ticks read at 1x: row ticks 8px at 40%, the rail's minor ticks 5px at 30%; a block gap you can see */
@@ -2057,10 +2061,11 @@ ${T} .sx-ind__list { padding-bottom:0 !important; }
 ${T} .sx-ind-process__head .sx-ind-process__tier + .sx-ind-process__count::before { content:"·  "; color:rgb(${BONE} / .4); }
 /* every rung's tick (and the Hand) hangs on its name's line, not the middle of a two-line rung */
 ${T} .sx-ind-process__items .sx-ind-row::before, ${T} .sx-ind-process__items .sx-ind-row::after { top:var(--ind-name-y, 14.5px) !important; }
-/* an augment rung says what it consumes, in the sub-line's voice, after its name */
+/* an augment rung says what it consumes, in the sub-line's voice, after its name (under it on every desktop height: beside the
+   name at 801+ tall it ran past the ladder column and was cut, bench 2026-11-14) */
 ${T} .sx-ind-row__name .sx-ind-row__from { margin-left:12px; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wght" 600, "wdth" 112;
   font-size: 12px; letter-spacing:.14em; text-transform:uppercase; color:rgb(${BONE} / .52) !important; }
-@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-ind-row__name .sx-ind-row__from { display:block; margin-left:0; margin-top:2px; } ${T} .sx-ind-process__items .sx-ind-row { --ind-name-y:12.5px; } }
+@media (min-width:651px), (max-height:600px) { ${T} .sx-ind-row__name .sx-ind-row__from { display:block; margin-left:0; margin-top:2px; } ${T} .sx-ind-process__items .sx-ind-row { --ind-name-y:12.5px; } }
 /* phone: the consumed module keeps the rung's one line by drawing in its tracking, so the ladder head stays in view */
 @media (max-width:650px) and (min-height:601px) { ${T} .sx-ind-row__name .sx-ind-row__from { margin-left:8px; letter-spacing:.05em; font-stretch:100%; font-variation-settings:"wght" 600, "wdth" 100; } }
 
@@ -2296,10 +2301,11 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger .orr-ltape__purse text.orr-ltape__net-key { letter-spacing:.06em; font-stretch:100%; transform:translateY(-3px); }
 }
 
-/* Ledger at 1101–1440 wide × 461–720 tall (ui-polish-124): the purse sat under the tape, so at 1101×700 its
+/* Ledger at 1101–1440 wide × 461+ tall (ui-polish-124; the gate once ended at 720, so 1440×900 fell between this and the
+   1441+ × 721+ rule and lost its eligibility card under the panel, bench 2026-11-14): the purse sat under the tape, so at 1101×700 its
    BOUGHT / SOLD keys ran under the foot rail and at 1280×540 the whole gauge fell below the panel. The purse
    stands beside the tape at the tape's height; the reading keeps the full column under the tape. */
-@media (min-width:1101px) and (max-width:1440px) and (min-height:461px) and (max-height:720px) {
+@media (min-width:1101px) and (max-width:1440px) and (min-height:461px) {
   ${D} .sx-ledger > .sx-ledger__right { display:grid !important; grid-template-columns:minmax(0, 1fr) 230px; grid-template-rows:auto minmax(0, 1fr); column-gap:16px; row-gap:6px !important; align-content:start; }
   ${D} .sx-ledger__right > .orr-ledger-tape { grid-column:1; grid-row:1; }
   ${D} .sx-ledger__right > .sx-ledger__row { display:contents !important; }
@@ -2307,15 +2313,16 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger__row > .sx-ledger__read { grid-column:1 / -1; grid-row:2; min-width:0; }
 }
 
-/* Ledger eligibility card at 1101–1440 × 461–720 (ui-polish-287): the card stacked eight lines in a 34ch column
+/* Ledger eligibility card at 1101–1440 × 461+ (ui-polish-287): the card stacked eight lines in a 34ch column
    under the tape, so at 1280×720 everything past Net worth fell below the panel. The tape gives up what the frame
-   lacks (172px at 720 tall, 140px floor), and the card spans the tape and purse as one hairline strip: the head beside its note, the three gates side by side, the footnote under them. The panel
-   scrolls (as its 651–1100 frames do) so an open reading never buries the card. */
-@media (min-width:1101px) and (max-width:1440px) and (min-height:461px) and (max-height:720px) {
+   lacks (152px at 720 tall, 140px floor), and the card spans the tape and purse as one hairline strip: the head beside its note, the three gates side by side, the footnote under them. The panel
+   scrolls (as its 651–1100 frames do) so an open reading never buries the card. The extra 18px at 720 is the card's
+   footnote and its own bottom edge, which the foot rail cut at rest (bench 2026-11-15). */
+@media (min-width:1101px) and (max-width:1440px) and (min-height:461px) {
   ${D} .sx-ledger { overflow:hidden auto !important; scrollbar-width:thin !important; overscroll-behavior:contain !important; }
   ${D} .sx-ledger > .sx-ledger__right { bottom:auto !important; overflow:visible; }
-  ${D} .sx-ledger__right > .orr-ledger-tape { height:clamp(140px, calc(100vh - 550px), 172px) !important; }
-  ${D} .sx-ledger__row > .orr-ledger-purse { min-height:clamp(140px, calc(100vh - 550px), 172px); }
+  ${D} .sx-ledger__right > .orr-ledger-tape { height:clamp(140px, calc(100vh - 568px), 172px) !important; }
+  ${D} .sx-ledger__row > .orr-ledger-purse { min-height:clamp(140px, calc(100vh - 568px), 172px); }
   ${D} .sx-ledger__right > .dust-em { grid-column:1 / -1; align-self:start; max-width:none; margin:0 16px 0 0; padding:8px 14px;
     display:grid; grid-template-columns:auto minmax(0, 1fr); column-gap:14px; align-items:baseline; }
   ${D} .sx-ledger__right > .dust-em .dust-em__note { margin:0; }

@@ -237,6 +237,9 @@ ${RF} > .k-title .sf-cru-preview {
   ${RF} > .sf-cru-stage:not(.orr-hull--on) {
     min-height:0 !important; overflow:hidden !important;
     display:flex !important; flex-direction:column !important;
+    /* the list opens scrolled to the lit hardpoint, so its first visible row's head sits a few px
+       above the stage: the 2-line round forecast above it printed through that row (bench 2026-11-15) */
+    padding-top:8px !important;
   }
   ${RF} > .sf-cru-stage:not(.orr-hull--on) > .sf-cru-rows {
     flex:1 1 auto !important; min-height:0 !important; overflow:auto !important;
