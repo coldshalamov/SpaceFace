@@ -77,3 +77,70 @@ yard capstan once (or a `?sector=ceres&shot=1` capture) before ticking R3.
   faction-treaty phone, hail-panel shot.
 - PRI-10d's later chain (10e–10o) is queued behind FIX-R1 on devin2; check whether it ran.
 - No performance re-baseline since the UI changes — headed Chromium traces are stale.
+
+## Reviewer findings (SWE-2 pass)
+
+### `53194ad2f4` fleet(PRI-08b) — needs-rebuild
+
+**Failing-test root cause (diagnosed by instrumented replay, `scripts/probe-ninth-mouth-slingshot.mjs`):**
+`test/ceres-ninth-mouth-earned-route.test.mjs:93` fails because a routine lawful proximity
+encounter physically rams the towed lamp — not because of tether/guidance code. A `patrol_scan`
+encounter (`src/data/encounters/030-patrol-scan.js`: 2× `patrol_lawman` brawlers, `faction_scn`,
+wedge formation) spawns ~560 wu from the player and flies `scan_approach` →
+`ManeuverKind.INTERCEPT` on the player (`src/ai/doctrine.js:167-169`, `:445-457`;
+script `src/systems/encounterScripts.js:342-397`). During the slow ~0.65 wu/s earned tow,
+squad hull (probe: id 220, mass 70) crossed the lamp's tether trail and at sim t≈69.65s made
+contact with `lamp:0` (mass 8, `src/data/ceresNinthMouth.js:29-30`). Four consecutive
+`physics:impact` ticks took the lamp from 1.3 to ~40 m/s; the still-active 63.9-wu
+`tether_standard` attachment then slung it to ~100 m/s before the player released it (~22 m/s
+at release). `src/systems/ceresNinthMouth.js` guidance therefore computes `intercept`, not
+`coast`, and the seat predicate (`maxSpeed:1`, `src/data/ceresNinthMouth.js:42`) can never be
+met. Native physics behaved exactly as authored — the gap is that lawful scan squads intercept
+point-blank on the player with no regard for a tethered load, and this job is the first content
+where one routine punt fails the work. The brisk `ceres-ninth-mouth-fast-earned-route` test
+passes (lamp seated by sim t≈46s, before the squad's line crosses the pocket). Any fix is a
+design call larger than a review fix: standoff/avoidance for `scan_approach` vs attached loads,
+a lawful-proximity-encounter quiet zone while this job's tow is live, or a lawful-collision
+grace on player-tethered bodies — owner should pick one.
+
+**Packet-required wiring missing from the commit** (the packet lists these files
+`design/program/fleet/packets/PRI-08b-the-ninth-mouth.md:14-23`; all exist only as uncommitted
+foreign work in the tree, so at HEAD the feature is unreachable and invisible on the real route):
+- `src/core/mainToSimEventSurface.js` — no `ceresNinthMouth:action` at HEAD, so prompt choices
+  never reach `src/systems/ceresNinthMouth.js:361`'s bus listener in the worker/main path
+  (dirty tree adds it at line 28).
+- `src/features/proExperiencesBrowser.js` — no mount at HEAD:
+  `createCeresNinthMouthPrompt` / `createCeresNinthMouthVisuals` are never instantiated.
+- `scripts/lib/simReadModel.mjs`, `scripts/lib/simWorkerHost.mjs` — packet-named, untouched.
+- `src/systems/world.js`, `src/world/worldRecords.js`, `src/world/worldCatchup.js` —
+  packet-named, untouched; persistence currently rides `npcJobsRuntime` serialize only
+  (passes tests, but check the world-record path once UI wiring lands).
+
+### `2f2881a065` fleet(PRI-10d) — needs-rebuild (dead-at-HEAD UI exports; rest is sound)
+
+- `src/ui/station/lawFineDesk.js` (`mountLawFineDesk`) is committed but mounted nowhere at HEAD;
+  the only mount is uncommitted dirty work in `src/ui/station/stationApp.js` (import + mount at
+  `.sxb-crown` + refresh/setActive/dispose lifecycle). Same file also carries foreign
+  `STATION_HELP` gloss work — stage only the law-fine hunks when landing.
+- `book4ChoiceAction` (`src/ui/book4Choice.js`) has no committed consumer; only dirty
+  `src/ui/screens/missionLog.js` imports it → the guided choice is dead at HEAD.
+  `book4MissionChips` IS reachable at HEAD via `contracts.js:504` and `missionPreflight.js:268`.
+- Verified sound in the commit: `isReportInRestitution` matches the real mutation shape
+  (`src/systems/missions.js` stamps `source:'missionMutation'`, `mutationTag:'restitution'`,
+  `mutatedFromMissionId`, `params.replacesMissionId`); `law:fineChoice` stale-offer binding
+  (`src/systems/lawSecurity.js:6494-6550`) matches the desk's `expectedFine` payload and is in
+  the event surface; `missionConsequenceSummary(m, state)` signature change is graceful at the
+  one un-updated caller `src/ui/station/screens/bar.js:322` (no Book 4 chips there — confirm
+  that omission is intended); sanctuary mission-quarry resume block (lawSecurity ~966-1007,
+  helpers ~8830-8880) and the hail-chip tracker-column re-mount are off-headline but coherent.
+- Book 4 tests pass 10/10.
+
+### R1–R7 fix commits — all OK
+
+`d55f238a61` (food-category gate), `42023c0168` (custody recheck at handoff + dwell clear),
+`2c6e03e187` (capstan admitted to `npcCableAdmits`), `b51aab7026` (terminal-state scan gating;
+`player-retained` correctly stays non-terminal), `df4b82d982` (`nextAttemptAt` adoption backoff),
+`11a28aac9f` (one tag per stead/generation, supplies→aid→claim priority, relabel on close),
+`76ebff9f74` (`destroy()` + spawn-listener unsubscribe, arena destroy path wired). Each closes
+its packet finding without new writes across ownership; 70/70 focused tests pass and
+`check:src-imports` is clean (3377 modules).
