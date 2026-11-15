@@ -104,6 +104,9 @@ export function handlineSenseLine(eventName, payload) {
   }
   // THROW-01: losing the body on your Line is a beat, never a silent nothing. Said once per run by
   // the first-beat ledger; repeats keep the snap and its sound (the break cue), no word.
+  // THROW-01: letting go of a fixed anchor is a result, not a silent nothing (the twang plays from
+  // the cut cue). The one callout voice, no toast.
+  if (eventName === 'anchor:released') return { key: 'anchor-let-go', name: 'LET GO', detail: '' };
   if (eventName === 'tether:broke') {
     return p.reason === 'target_lost' ? { key: 'line-lost', name: 'LOST', detail: '' } : null;
   }
@@ -1016,6 +1019,12 @@ export function createStuntCallout({ state = null, bus = null, host = null, doc 
     unsubs.push(bus.on('massline:rideStarted', onHandlineSense('massline:rideStarted')));
     unsubs.push(bus.on('tether:snagCleared', onHandlineSense('tether:snagCleared')));
     unsubs.push(bus.on('massline:throw', onHandlineSense('massline:throw')));
+    unsubs.push(bus.on('tether:cut', (payload) => {
+      const st = getState();
+      const target = st && st.entities && payload && payload.targetId != null ? st.entities.get(payload.targetId) : null;
+      if (!target || (target.type !== 'station' && target.type !== 'asteroid') || (target.type === 'asteroid' && target.data && target.data.isChunk)) return;
+      onHandlineSense('anchor:released')(payload);
+    }));
     unsubs.push(bus.on('tether:broke', (payload) => {
       const me = getState() && getState().playerId;
       if (me == null || !payload || (payload.ownerId !== me && payload.controllerId !== me && payload.actorId !== me)) return;

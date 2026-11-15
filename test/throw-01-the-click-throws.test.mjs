@@ -208,3 +208,25 @@ test('(d) the free-yourself key on a held hostile still cuts (and slings the pla
   assert.equal(w.events.cut.length, 1, 'F cuts the line');
   assert.equal(w.events.selfSling.length, 1, 'F frees YOU: the taut cut is the self-sling');
 }));
+
+// Pilots hold W while swinging. A held reel must never turn a release click into nothing.
+test('(e) W held: a click on a held ship throws; a click on an anchor cuts', () => withFlags(() => {
+  for (const kind of ['hostile', 'asteroid']) {
+    for (const held of [3, 5, 8]) {
+      const w = world({ payloadType: kind });
+      w.latch();
+      w.host._keys.KeyW = true;
+      w.tick(40);                                  // swinging under thrust
+      domMouseDownEvent(w.host, POINTER); w.tick(held);
+      domMouseUpEvent(w.host, POINTER); w.tick(30);
+      const tag = `${kind} held ${held}`;
+      if (kind === 'hostile') {
+        assert.equal(w.events.throw.length, 1, `${tag}: throws`);
+        assert.equal(w.events.selfSling.length, 0, `${tag}: no self-sling`);
+      } else {
+        assert.equal(w.events.cut.length, 1, `${tag}: the anchor is released`);
+        assert.equal(w.state.player.tether.active, false);
+      }
+    }
+  }
+}));
