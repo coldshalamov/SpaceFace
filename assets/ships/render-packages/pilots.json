@@ -5751,8 +5751,8 @@
       "slot": "place",
       "releaseAssetId": "place_transponder_gate",
       "sourceUrl": "assets/ships/release/parts/places/place_transponder_gate.glb",
-      "releaseSha256": "b1c51bfc944fbe518717b330e15f170993b1c2a2ad67928facd771eb8ee5b13c",
-      "releaseBytes": 395064,
+      "releaseSha256": "5ae7039087beccb92013b56661be7a8c93c8532ad066f8c690e91e949c91a347",
+      "releaseBytes": 403552,
       "rootNode": "SF_PLACE_TRANSPONDER_GATE_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",

@@ -3030,12 +3030,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.transponder-gate",
-    "expectedContentHash": "0d716f4a9a106cf4f4ef1b8be940dca49d7b465335e6463bb6a923640b270eb3",
+    "expectedContentHash": "9177e76568eb4ee6daf206277d5e08bed3a38251b1d81e8800350bf39243b779",
     "key": "transponder-gate",
     "metadataUrl": "assets/ships/release/render-packages/transponder-gate/render-package.json",
     "runtimeAssetId": "place_transponder_gate",
     "slot": "place",
-    "sourceSha256": "b1c51bfc944fbe518717b330e15f170993b1c2a2ad67928facd771eb8ee5b13c",
+    "sourceSha256": "5ae7039087beccb92013b56661be7a8c93c8532ad066f8c690e91e949c91a347",
     "sourceUrl": "assets/ships/release/parts/places/place_transponder_gate.glb"
   },
   {

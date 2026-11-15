@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "0d716f4a9a106cf4f4ef1b8be940dca49d7b465335e6463bb6a923640b270eb3",
+  "contentHash": "9177e76568eb4ee6daf206277d5e08bed3a38251b1d81e8800350bf39243b779",
   "dynamicGroups": [
     {
       "id": "sf.render.transponder-gate.mesh.lod0-hook-nav-port.dynamic",
@@ -207,26 +207,26 @@
       "bounds": {
         "max": [
           1.069551729197672,
-          12.149817478314061,
+          12.030397339372445,
           8.850000381469727
         ],
         "min": [
           -1.069551729197672,
-          1.9501832607835343,
+          1.9496022028638826,
           -8.850000381469727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "78fce61d49ef0a720a805ae2fef0fb829e6a84652947b952d3483a51991a0bb3",
+      "geometryHash": "07a41a1d470eea8368b8bae9751f443fb2abbdb1c781ab74d20e6843f395876f",
       "id": "sf.render.transponder-gate.mesh.lod0-lights-cyan.primitive.0",
-      "indexCount": 828,
+      "indexCount": 1260,
       "indexed": true,
       "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lights_Cyan",
       "nodeId": "sf.render.transponder-gate.mesh.lod0-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 552
+      "vertexCount": 840
     },
     {
       "bounds": {
@@ -432,26 +432,26 @@
       "bounds": {
         "max": [
           1.069551729197672,
-          12.149817478314061,
+          12.030397339372445,
           8.850000381469727
         ],
         "min": [
           -1.069551729197672,
-          1.9501832607835343,
+          1.9496022028638826,
           -8.850000381469727
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b9ef4f0698c5fde4e423087c488edeface00332b02960cd3dd5a7fd5fd1e540e",
+      "geometryHash": "bdda842a165b8d8d2b09bd2a0770eb324ff8cdd40be4ec81fd0e1b74be4bd570",
       "id": "sf.render.transponder-gate.mesh.lod1-lights-cyan.primitive.0",
-      "indexCount": 828,
+      "indexCount": 1260,
       "indexed": true,
       "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Lights_Cyan",
       "nodeId": "sf.render.transponder-gate.mesh.lod1-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 552
+      "vertexCount": 840
     },
     {
       "bounds": {
@@ -657,26 +657,26 @@
       "bounds": {
         "max": [
           1.0429823846293422,
-          12.15034281934996,
+          12.030293538266477,
           5.15000057220459
         ],
         "min": [
           -1.0429823846293422,
-          5.9496585157940824,
+          6.059706614321413,
           -5.15000057220459
         ]
       },
       "drawMode": 4,
-      "geometryHash": "52e65a0d5e65b00f2be04c1ef61804fd4bdb6ccde8c487045e54544f0f59735b",
+      "geometryHash": "1547f52a12708f4e58a33996ff44cb7c32cef70fd0aefe039b9b38bd79059bf7",
       "id": "sf.render.transponder-gate.mesh.lod2-lights-cyan.primitive.0",
-      "indexCount": 120,
+      "indexCount": 360,
       "indexed": true,
       "materialHash": "c8bc418ef6e934f23d9f4f7df0d7834ebcdb17a4ce023a634f9b4bdb9a22d7a4",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Lights_Cyan",
       "nodeId": "sf.render.transponder-gate.mesh.lod2-lights-cyan",
       "primitiveIndex": 0,
-      "vertexCount": 80
+      "vertexCount": 240
     },
     {
       "bounds": {
@@ -1234,7 +1234,7 @@
         8.850000381469727,
         0,
         0,
-        7.050000369548798,
+        6.989999771118164,
         0,
         1
       ],
@@ -1262,7 +1262,7 @@
         8.850000381469727,
         0,
         0,
-        7.050000369548798,
+        6.989999771118164,
         0,
         1
       ]
@@ -1675,7 +1675,7 @@
         8.850000381469727,
         0,
         0,
-        7.050000369548798,
+        6.989999771118164,
         0,
         1
       ],
@@ -1703,7 +1703,7 @@
         8.850000381469727,
         0,
         0,
-        7.050000369548798,
+        6.989999771118164,
         0,
         1
       ]
@@ -2116,7 +2116,7 @@
         5.15000057220459,
         0,
         0,
-        9.050000667572021,
+        9.045000076293945,
         0,
         1
       ],
@@ -2144,7 +2144,7 @@
         5.15000057220459,
         0,
         0,
-        9.050000667572021,
+        9.045000076293945,
         0,
         1
       ]
@@ -2399,19 +2399,19 @@
       "sha256": "70b2fa53cc3718c0ab3c317e15a8df836873f3b96a7b1a1ae83c9daa2ffcf18b"
     },
     "sourceGlb": {
-      "bytes": 395064,
-      "sha256": "b1c51bfc944fbe518717b330e15f170993b1c2a2ad67928facd771eb8ee5b13c",
+      "bytes": 403552,
+      "sha256": "5ae7039087beccb92013b56661be7a8c93c8532ad066f8c690e91e949c91a347",
       "uri": "place_transponder_gate.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 16866,
+      "sha256": "5be6cca9fa5214ed3a4946a505ba2dca2f6c041a3393e68b80d06e0ff0c404e0",
+      "uri": "assets/ships/render-packages/inputs/transponder-gate.json"
     }
   },
   "render": {
-    "bytes": 400192,
-    "sha256": "544fe4067d4517de816121f44c9f9c0f6f7c6f3ed88fffe5702983ab847d1d70",
+    "bytes": 408684,
+    "sha256": "5f4f2d80f6a72a95ce3b45e95cae7c4c9c70dcc4ac9e5f115e72f35961ce68e5",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2867,7 +2867,7 @@
           8.850000381469727,
           0,
           0,
-          7.050000369548798,
+          6.989999771118164,
           0,
           1
         ],
@@ -3111,7 +3111,7 @@
           8.850000381469727,
           0,
           0,
-          7.050000369548798,
+          6.989999771118164,
           0,
           1
         ],
@@ -3355,7 +3355,7 @@
           5.15000057220459,
           0,
           0,
-          9.050000667572021,
+          9.045000076293945,
           0,
           1
         ],
@@ -3479,7 +3479,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_transponder_gate.glb"
   },
-  "runtimeHash": "1e49d890ef14b3890b7d2062c90d6ac08a051dd5ec2348403a36a8d66dfebc55",
+  "runtimeHash": "b367c6c5c2b09347d6a095c66446a60df200e301fd7c547362d3cac20f051fc5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

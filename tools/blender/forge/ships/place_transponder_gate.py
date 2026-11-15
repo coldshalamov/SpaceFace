@@ -91,17 +91,20 @@ def build():
     F.box(s, 'ReaderHead', (0, 0, 11.6), (1.05, 3.2, 1.9), material='paint2.navy',
           bevel=0.1)
     for ex in (-1, 1):
-        F.box(s, f'ReaderEye{ex:+d}', (ex * 0.56, 0, 11.6), (0.14, 2.2, 1.1),
-              material='glow_cyan', bevel=0.0)
+        for line in (-1, 0, 1):
+            F.box(s, f'ReaderEye{ex:+d}_{line:+d}', (ex * 0.56, 0, 11.6 + line * 0.34),
+                  (0.14, 2.2, 0.18), material='glow_cyan', bevel=0.0)
         # lane-facing scanner paddles at mid-height — the heads that read you as you pass
         F.box(s, f'ScanPaddle{ex:+d}', (ex * 0.75, -4.5, 6.4), (0.5, 2.0, 1.6),
               material='paint2', bevel=0.06)
-        F.box(s, f'ScanPaddleEye{ex:+d}', (ex * 1.03, -4.5, 6.4), (0.08, 1.3, 0.9),
-              material='glow_cyan', bevel=0.0)
+        for line in (-1, 0, 1):
+            F.box(s, f'ScanPaddleEye{ex:+d}_{line:+d}', (ex * 1.03, -4.5, 6.4 + line * 0.27),
+                  (0.08, 1.3, 0.14), material='glow_cyan', bevel=0.0)
         F.box(s, f'ScanPaddleB{ex:+d}', (ex * 0.75, 4.5, 6.4), (0.5, 2.0, 1.6),
               material='paint2', bevel=0.06)
-        F.box(s, f'ScanPaddleBEye{ex:+d}', (ex * 1.03, 4.5, 6.4), (0.08, 1.3, 0.9),
-              material='glow_cyan', bevel=0.0)
+        for line in (-1, 0, 1):
+            F.box(s, f'ScanPaddleBEye{ex:+d}_{line:+d}', (ex * 1.03, 4.5, 6.4 + line * 0.27),
+                  (0.08, 1.3, 0.14), material='glow_cyan', bevel=0.0)
     # each paddle pair rides an inverted-T mast rooted in the sill — a post rising
     # through the opening and a short crossarm threading both plates, so the heads
     # read as mounted lane scanners instead of floating signs
