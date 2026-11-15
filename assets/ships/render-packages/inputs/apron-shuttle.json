@@ -33,7 +33,7 @@
     "outputDir": "assets/ships/release/render-packages/apron-shuttle",
     "releaseAssetId": "wholeship_apron_shuttle",
     "releaseBytes": 933912,
-    "releaseSha256": "a6b984d7d2b1902e184f4c266cc74c7161a1b7398c1d6fe8e179c9283d80f0b3",
+    "releaseSha256": "b63e9d2050e16b4adf9224e8fe87aeab00cc65b8eea33fd410b17c0dc8bf6fc4",
     "runtimeAssetId": "SF_WHOLESHIP_APRON_SHUTTLE",
     "sceneRoot": true,
     "slot": "hull",
@@ -47,10 +47,10 @@
     "meshoptBufferViews": 120,
     "release": "assets/ships/release/parts/wholeships/apron_shuttle.glb",
     "releaseBytes": 933912,
-    "releaseSha256": "a6b984d7d2b1902e184f4c266cc74c7161a1b7398c1d6fe8e179c9283d80f0b3",
+    "releaseSha256": "b63e9d2050e16b4adf9224e8fe87aeab00cc65b8eea33fd410b17c0dc8bf6fc4",
     "source": "assets/ships/parts/wholeships/apron_shuttle.glb",
     "sourceBytes": 2491232,
-    "sourceSha256": "01038715294f83e506f8407d3c7206424d4234ac9267ce573b0de2d0c103552a",
+    "sourceSha256": "7ab1271a71f6f06409ab525a4ba7a6eb0b20275da20eb10646a0211dff4b3416",
     "textures": 6
   },
   "runtime": {
@@ -841,7 +841,7 @@
   },
   "sourceGlb": {
     "bytes": 933912,
-    "sha256": "a6b984d7d2b1902e184f4c266cc74c7161a1b7398c1d6fe8e179c9283d80f0b3",
+    "sha256": "b63e9d2050e16b4adf9224e8fe87aeab00cc65b8eea33fd410b17c0dc8bf6fc4",
     "uri": "assets/ships/release/parts/wholeships/apron_shuttle.glb"
   }
 }

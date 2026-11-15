@@ -21,7 +21,7 @@ COLORS = {
     'stripe': '#2c2e33',
     'hazard': '#c8901e',
     'paint.patch': '#4b4a45',  # a replaced plate still in primer grey
-    'glow_cyan.rust': '#ffd23a',   # work-fleet yellow lifted to light (identity trim)
+    'glow_trim.rust': '#ffd23a',   # work-fleet yellow lifted to light (identity trim)
 }
 
 TY = 2.0    # saddle tank centre line
@@ -64,7 +64,7 @@ def build():
     # Identity trim, lit: a thin yellow line along each graphite saddle tank's top, broken at the hazard
     # band (same colour would vanish there) (LOOK.md: lamps are light).
     for lo, hi in ((-4.4, -1.65), (-1.15, 1.5)):
-        F.band(s, 'Tank', (-1.4, TY, TZ), (0, 1, 0), 0.1, 'glow_cyan.rust', facing=(0, 0, 1), min_facing=0.6,
+        F.band(s, 'Tank', (-1.4, TY, TZ), (0, 1, 0), 0.1, 'glow_trim.rust', facing=(0, 0, 1), min_facing=0.6,
                mirror=True, inset=0.004, depth=-0.01, region=(('x', lo, hi),))
     for i, x in enumerate((-3.4, 0.6)):
         F.box(s, f'TankStrap{i}', (x, TY * 0.72, TZ), (0.4, 1.0, 0.4), material='gunmetal', bevel=0.03, mirror=True)

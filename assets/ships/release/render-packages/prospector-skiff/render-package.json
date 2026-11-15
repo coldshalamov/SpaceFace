@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "7b11262f68c07dffbda4e926f8b9031f73c9f85cc311328ebb2116706c350ad0",
+  "contentHash": "e1a70cb19651446a7d2bb372cd7d91db89a37a0d34a16190ac5771106ec78a57",
   "dynamicGroups": [
     {
       "id": "sf.render.prospector-skiff.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -892,31 +892,6 @@
     {
       "bounds": {
         "max": [
-          1.505385160446167,
-          0.5992416536149155,
-          2.055266064109119
-        ],
-        "min": [
-          -4.601888179779053,
-          0.5865674818220962,
-          -2.055266064109119
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "289d4535d3da9043fbaa3db92772a21f7c72fff492de3f24a4532f927fb5aa1c",
-      "id": "sf.render.prospector-skiff.node.lod0-motion-hull-core-lights-cyan-rust.primitive.0",
-      "indexCount": 2394,
-      "indexed": true,
-      "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeId": "sf.render.prospector-skiff.node.lod0-motion-hull-core-lights-cyan-rust",
-      "primitiveIndex": 0,
-      "vertexCount": 904
-    },
-    {
-      "bounds": {
-        "max": [
           6.865999817848206,
           0.5916009646701607,
           1.027999997138977
@@ -938,6 +913,31 @@
       "nodeId": "sf.render.prospector-skiff.node.lod0-motion-hull-core-lights-cyan",
       "primitiveIndex": 0,
       "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.505385160446167,
+          0.5992416536149155,
+          2.055266064109119
+        ],
+        "min": [
+          -4.601888179779053,
+          0.5865674818220962,
+          -2.055266064109119
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "289d4535d3da9043fbaa3db92772a21f7c72fff492de3f24a4532f927fb5aa1c",
+      "id": "sf.render.prospector-skiff.node.lod0-motion-hull-core-lights-trim-rust.primitive.0",
+      "indexCount": 2394,
+      "indexed": true,
+      "materialHash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeId": "sf.render.prospector-skiff.node.lod0-motion-hull-core-lights-trim-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 904
     },
     {
       "bounds": {
@@ -1292,31 +1292,6 @@
     {
       "bounds": {
         "max": [
-          1.5007658004760742,
-          0.5997655753337435,
-          2.0514117251616297
-        ],
-        "min": [
-          -4.602540969848633,
-          0.5870996351993986,
-          -2.0512352954130946
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5ffbdba013959bcc4cd21176214ca6da9e7528ff51081a0cc852bd675fb5bae9",
-      "id": "sf.render.prospector-skiff.node.lod1-motion-hull-core-lights-cyan-rust.primitive.0",
-      "indexCount": 378,
-      "indexed": true,
-      "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeId": "sf.render.prospector-skiff.node.lod1-motion-hull-core-lights-cyan-rust",
-      "primitiveIndex": 0,
-      "vertexCount": 185
-    },
-    {
-      "bounds": {
-        "max": [
           6.865999817848206,
           0.5916009646701607,
           1.027999997138977
@@ -1338,6 +1313,31 @@
       "nodeId": "sf.render.prospector-skiff.node.lod1-motion-hull-core-lights-cyan",
       "primitiveIndex": 0,
       "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5007658004760742,
+          0.5997655753337435,
+          2.0514117251616297
+        ],
+        "min": [
+          -4.602540969848633,
+          0.5870996351993986,
+          -2.0512352954130946
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5ffbdba013959bcc4cd21176214ca6da9e7528ff51081a0cc852bd675fb5bae9",
+      "id": "sf.render.prospector-skiff.node.lod1-motion-hull-core-lights-trim-rust.primitive.0",
+      "indexCount": 378,
+      "indexed": true,
+      "materialHash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeId": "sf.render.prospector-skiff.node.lod1-motion-hull-core-lights-trim-rust",
+      "primitiveIndex": 0,
+      "vertexCount": 185
     },
     {
       "bounds": {
@@ -1704,13 +1704,13 @@
       },
       "drawMode": 4,
       "geometryHash": "eaf0a287cd888a8bcccef83c3c05c83a54fcf9faf4c8b74928fbebd95544cd96",
-      "id": "sf.render.prospector-skiff.node.lod2-motion-hull-core-lights-cyan-rust.primitive.0",
+      "id": "sf.render.prospector-skiff.node.lod2-motion-hull-core-lights-trim-rust.primitive.0",
       "indexCount": 90,
       "indexed": true,
-      "materialHash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
+      "materialHash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
       "materialPipelineKey": "opaque",
-      "meshName": "LOD2_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeId": "sf.render.prospector-skiff.node.lod2-motion-hull-core-lights-cyan-rust",
+      "meshName": "LOD2_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeId": "sf.render.prospector-skiff.node.lod2-motion-hull-core-lights-trim-rust",
       "primitiveIndex": 0,
       "vertexCount": 63
     },
@@ -1873,13 +1873,6 @@
       ]
     },
     {
-      "hash": "799b05dd6e45a6e8b6507d329581fe696596c104e5cc6bade4aeedf920ca73c8",
-      "id": "material:799b05dd6e45a6e8b6507d32",
-      "name": "Material_Emissive_Cyan_rust",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
       "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "id": "material:7dbce0f058ce69aeee64664b",
       "name": "Material_Mechanical",
@@ -1922,6 +1915,13 @@
       "hash": "935effa788e2e47cba8a2bfc79a973d344da892c4694f492551cb156683b7c64",
       "id": "material:935effa788e2e47cba8a2bfc",
       "name": "Material_Emissive_Warm",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "bbcf53d285c1c11e1c3bb49889c1f0b81f6b923f17e16d5b72e229fa88f707bb",
+      "id": "material:bbcf53d285c1c11e1c3bb498",
+      "name": "Material_Emissive_Trim_rust",
       "pipelineKey": "opaque:front",
       "textures": []
     },
@@ -2733,7 +2733,7 @@
       ]
     },
     {
-      "id": "sf.render.prospector-skiff.node.lod0-motion-hull-core-lights-cyan-rust",
+      "id": "sf.render.prospector-skiff.node.lod0-motion-hull-core-lights-trim-rust",
       "localTransform": [
         3.05363667011261,
         0,
@@ -2753,8 +2753,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Cyan_rust",
+      "mergeBoundary": "LOD0_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeName": "LOD0_MOTION_HULL_CORE_Lights_Trim_rust",
       "nodePath": [
         0,
         1,
@@ -3533,7 +3533,7 @@
       ]
     },
     {
-      "id": "sf.render.prospector-skiff.node.lod1-motion-hull-core-lights-cyan-rust",
+      "id": "sf.render.prospector-skiff.node.lod1-motion-hull-core-lights-trim-rust",
       "localTransform": [
         3.0516533851623535,
         0,
@@ -3553,8 +3553,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeName": "LOD1_MOTION_HULL_CORE_Lights_Cyan_rust",
+      "mergeBoundary": "LOD1_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeName": "LOD1_MOTION_HULL_CORE_Lights_Trim_rust",
       "nodePath": [
         0,
         1,
@@ -4283,7 +4283,7 @@
       ]
     },
     {
-      "id": "sf.render.prospector-skiff.node.lod2-motion-hull-core-lights-cyan-rust",
+      "id": "sf.render.prospector-skiff.node.lod2-motion-hull-core-lights-trim-rust",
       "localTransform": [
         3.049264967441559,
         0,
@@ -4303,8 +4303,8 @@
         1
       ],
       "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Cyan_rust",
-      "nodeName": "LOD2_MOTION_HULL_CORE_Lights_Cyan_rust",
+      "mergeBoundary": "LOD2_MOTION_HULL_CORE_Lights_Trim_rust",
+      "nodeName": "LOD2_MOTION_HULL_CORE_Lights_Trim_rust",
       "nodePath": [
         0,
         1,
@@ -5220,22 +5220,22 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "92545ee0b1c355959bfb4ccba109ee1ef660509e4f40131b09eeac071c29b5df"
+      "sha256": "027c5a1adea4f3be0bdf77944cc2475787b204ce9fafdec8e63f4bbed48e5204"
     },
     "sourceGlb": {
       "bytes": 914724,
-      "sha256": "25e7973d2e5f5a084da73f2c38c3872c203bf5ff4ba211c98fb4e80d95547288",
+      "sha256": "4bf9db99dc49979245ce1f9ae4f608b9d648fc3d3711089c7a81b93a41e6640d",
       "uri": "prospector_skiff.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 39602,
+      "sha256": "5499121288ab7c64dcec717b3b068b77bda15fca24f2cb344337b035c45fdc02",
+      "uri": "assets/ships/render-packages/inputs/prospector-skiff.json"
     }
   },
   "render": {
     "bytes": 929324,
-    "sha256": "71d2d75d6010388c904b59b88af56fc7f6378942bdacf112a08f1ee422a1230e",
+    "sha256": "20b57fc610b64fe4a05715ccfa153192bd3f91b8debf7a74708f7403d5db1831",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6906,7 +6906,7 @@
           0,
           1
         ],
-        "name": "LOD0_MOTION_HULL_CORE_Lights_Cyan_rust",
+        "name": "LOD0_MOTION_HULL_CORE_Lights_Trim_rust",
         "planIndex": 18,
         "tags": {
           "canopy": false,
@@ -7375,7 +7375,7 @@
           0.00008821487426757812,
           1
         ],
-        "name": "LOD1_MOTION_HULL_CORE_Lights_Cyan_rust",
+        "name": "LOD1_MOTION_HULL_CORE_Lights_Trim_rust",
         "planIndex": 37,
         "tags": {
           "canopy": false,
@@ -7816,7 +7816,7 @@
           -0.0020122528076171875,
           1
         ],
-        "name": "LOD2_MOTION_HULL_CORE_Lights_Cyan_rust",
+        "name": "LOD2_MOTION_HULL_CORE_Lights_Trim_rust",
         "planIndex": 55,
         "tags": {
           "canopy": false,
@@ -7941,7 +7941,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/prospector_skiff.glb"
   },
-  "runtimeHash": "1216c4ab8c268101aa2388c272947b9960b3c2435ddf3b30764704c7141f3a58",
+  "runtimeHash": "676a6c03eb365134524ce44ef651d8f733083a0a03edf43d0d0459db6d67c087",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -7971,7 +7971,7 @@
         "sf.render.prospector-skiff.node.lod0-motion-hull-core-hull",
         "sf.render.prospector-skiff.node.lod0-motion-hull-core-hull-patch",
         "sf.render.prospector-skiff.node.lod0-motion-hull-core-lights-cyan",
-        "sf.render.prospector-skiff.node.lod0-motion-hull-core-lights-cyan-rust",
+        "sf.render.prospector-skiff.node.lod0-motion-hull-core-lights-trim-rust",
         "sf.render.prospector-skiff.node.lod0-motion-hull-core-lights-warm",
         "sf.render.prospector-skiff.node.lod0-motion-hull-core-mechanical",
         "sf.render.prospector-skiff.node.lod0-motion-hull-core-mechanicaldark",
@@ -7987,7 +7987,7 @@
         "sf.render.prospector-skiff.node.lod1-motion-hull-core-hull",
         "sf.render.prospector-skiff.node.lod1-motion-hull-core-hull-patch",
         "sf.render.prospector-skiff.node.lod1-motion-hull-core-lights-cyan",
-        "sf.render.prospector-skiff.node.lod1-motion-hull-core-lights-cyan-rust",
+        "sf.render.prospector-skiff.node.lod1-motion-hull-core-lights-trim-rust",
         "sf.render.prospector-skiff.node.lod1-motion-hull-core-lights-warm",
         "sf.render.prospector-skiff.node.lod1-motion-hull-core-mechanical",
         "sf.render.prospector-skiff.node.lod1-motion-hull-core-mechanicaldark",
@@ -8002,7 +8002,7 @@
         "sf.render.prospector-skiff.node.lod2-motion-hull-core-hook-nav-starboard",
         "sf.render.prospector-skiff.node.lod2-motion-hull-core-hull",
         "sf.render.prospector-skiff.node.lod2-motion-hull-core-hull-patch",
-        "sf.render.prospector-skiff.node.lod2-motion-hull-core-lights-cyan-rust",
+        "sf.render.prospector-skiff.node.lod2-motion-hull-core-lights-trim-rust",
         "sf.render.prospector-skiff.node.lod2-motion-hull-core-lights-warm",
         "sf.render.prospector-skiff.node.lod2-motion-hull-core-mechanical",
         "sf.render.prospector-skiff.node.lod2-motion-hull-core-mechanicaldark",

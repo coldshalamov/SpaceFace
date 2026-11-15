@@ -474,12 +474,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.apron-shuttle",
-    "expectedContentHash": "a2d0f715c8ed1a794cca20d56bd148961be096312274396376c847b350424236",
+    "expectedContentHash": "cab1aff0bcc50423ed5a919eb0074e05c2b7114f2528bcd8ff9f808703dc5af1",
     "key": "apron-shuttle",
     "metadataUrl": "assets/ships/release/render-packages/apron-shuttle/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_APRON_SHUTTLE",
     "slot": "hull",
-    "sourceSha256": "a6b984d7d2b1902e184f4c266cc74c7161a1b7398c1d6fe8e179c9283d80f0b3",
+    "sourceSha256": "b63e9d2050e16b4adf9224e8fe87aeab00cc65b8eea33fd410b17c0dc8bf6fc4",
     "sourceUrl": "assets/ships/release/parts/wholeships/apron_shuttle.glb"
   },
   {
@@ -2450,12 +2450,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.prospector-skiff",
-    "expectedContentHash": "7b11262f68c07dffbda4e926f8b9031f73c9f85cc311328ebb2116706c350ad0",
+    "expectedContentHash": "e1a70cb19651446a7d2bb372cd7d91db89a37a0d34a16190ac5771106ec78a57",
     "key": "prospector-skiff",
     "metadataUrl": "assets/ships/release/render-packages/prospector-skiff/render-package.json",
     "runtimeAssetId": "SF_WHOLESHIP_PROSPECTOR_SKIFF",
     "slot": "hull",
-    "sourceSha256": "25e7973d2e5f5a084da73f2c38c3872c203bf5ff4ba211c98fb4e80d95547288",
+    "sourceSha256": "4bf9db99dc49979245ce1f9ae4f608b9d648fc3d3711089c7a81b93a41e6640d",
     "sourceUrl": "assets/ships/release/parts/wholeships/prospector_skiff.glb"
   },
   {

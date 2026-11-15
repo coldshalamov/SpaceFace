@@ -763,7 +763,7 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_apron_shuttle",
       "sourceUrl": "assets/ships/release/parts/wholeships/apron_shuttle.glb",
-      "releaseSha256": "a6b984d7d2b1902e184f4c266cc74c7161a1b7398c1d6fe8e179c9283d80f0b3",
+      "releaseSha256": "b63e9d2050e16b4adf9224e8fe87aeab00cc65b8eea33fd410b17c0dc8bf6fc4",
       "releaseBytes": 933912,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -4617,7 +4617,7 @@
       "slot": "hull",
       "releaseAssetId": "wholeship_prospector_skiff",
       "sourceUrl": "assets/ships/release/parts/wholeships/prospector_skiff.glb",
-      "releaseSha256": "25e7973d2e5f5a084da73f2c38c3872c203bf5ff4ba211c98fb4e80d95547288",
+      "releaseSha256": "4bf9db99dc49979245ce1f9ae4f608b9d648fc3d3711089c7a81b93a41e6640d",
       "releaseBytes": 914724,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",

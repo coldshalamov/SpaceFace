@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a2d0f715c8ed1a794cca20d56bd148961be096312274396376c847b350424236",
+  "contentHash": "cab1aff0bcc50423ed5a919eb0074e05c2b7114f2528bcd8ff9f808703dc5af1",
   "dynamicGroups": [
     {
       "id": "sf.render.apron-shuttle.node.lod0-motion-hull-core-hook-drive-core.dynamic",
@@ -4453,18 +4453,18 @@
     },
     "sourceGlb": {
       "bytes": 933912,
-      "sha256": "a6b984d7d2b1902e184f4c266cc74c7161a1b7398c1d6fe8e179c9283d80f0b3",
+      "sha256": "b63e9d2050e16b4adf9224e8fe87aeab00cc65b8eea33fd410b17c0dc8bf6fc4",
       "uri": "apron_shuttle.glb"
     },
     "sourceManifest": {
       "bytes": 34199,
-      "sha256": "5c6c568af8c5fe7b91dd4ae2183c4c6299990aeb4e2617e4195091ae9b42c0b8",
+      "sha256": "4bd7b14849165535bb6b3bb5dff840f5716cb87bf1c9d2ea879eb23643ef0b60",
       "uri": "assets/ships/render-packages/inputs/apron-shuttle.json"
     }
   },
   "render": {
     "bytes": 947648,
-    "sha256": "620d7e3985e4cfe70586d5360329cf6a41eadc05f1ce8e431e506a014f10368a",
+    "sha256": "416af00f2b762573b730b2a4415c9e53d59f6b6aa35bda7e0767a4484851c5df",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6872,7 +6872,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/apron_shuttle.glb"
   },
-  "runtimeHash": "d5d3e8ade001d1db03bec4f022f42f577abd1584cd075a02faac0bdf02f363ad",
+  "runtimeHash": "3aa2664265796d49e6539d152f70f8f07db58549f8b809377624fe64d6b56e55",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
