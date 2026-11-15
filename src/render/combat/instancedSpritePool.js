@@ -55,7 +55,7 @@ export function createInstancedSpriteBuckets(
 
 function flipbooksDisabled() {
   try {
-    return typeof location !== 'undefined' && /[?&]vfxFlip=0/.test(location.search || '');
+    return typeof location !== 'undefined' && /[?&]vfxFlip=0(?:&|$)/.test(location.search || '');
   } catch (_) { return false; }
 }
 function flipBucketList(buckets) {
