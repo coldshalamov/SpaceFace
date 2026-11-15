@@ -62,6 +62,7 @@ import { nestOutcomeReceipt, NEST_OUTCOMES } from '../data/nestVisit.js';
 import { sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { hash32 } from '../core/rng.js';
 import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
+import { clearCompostArrival, syncCompostArrival, tickCompostArrival } from '../missions/compostArrivalScene.js';
 
 import { UNDERSTORY_MASS_EPSILON, UNDERSTORY_RECEIVER, receiverPosition, firstPlayerGardenGrowth, hasUnderstoryGardenVisualIdentity, gardenGrowthRadius, normalizePlayerGardenGrowth } from '../data/understoryReceiver.js';
 
@@ -720,8 +721,20 @@ export const understoryGardens = {
       // Quiet-market intents a prompt/desk adapter can raise without importing the file.
       this.bus.on('understory:buyCover', () => this._onBuyCover()),
       this.bus.on('understory:payDebt', () => this._onPayDebt()),
-      this.bus.on('sector:enter', () => this.ensureAuthoredReceiver()),
-      this.bus.on('save:restoring', () => { this._saveRestoring = true; }),
+      this.bus.on('sector:enter', () => { this.ensureAuthoredReceiver(); this._compostArrivalDirty = true; }),
+      // The intake ring and voice reconcile only on real transitions — a held or
+      // released load, a feed event, dock state, a step change — never rebuilt
+      // per tick. tickCompostArrival's rider handles the sole unevented edge
+      // (the player crossing receiving range).
+      ...[
+        'tether:attached', 'tether:released', 'tether:broke', 'tether:broken',
+        'entity:killed', 'dock:docked', 'dock:undocked', 'game:newGame',
+        'mission:completed', 'understory:gardenFed', 'understory:playerGrowth',
+        'understory:gardenStage', 'understory:gardenSeeded', 'understory:compostRunComplete',
+      ].map(ev => this.bus.on(ev, () => { this._compostArrivalDirty = true; })),
+      this.bus.on('save:restoring', () => {
+        this._saveRestoring = true; this._compostArrivalNear = false; clearCompostArrival(this);
+      }),
       this.bus.on('save:loaded', () => {
         const { authoredReceiver, drops, seq, rooksideNestReturn } = ensureUnderstoryState(this.state);
         this.state.understory = { gardens: {}, compost: {}, tidePushback: {}, authoredReceiver, drops, seq, rooksideNestReturn };
@@ -730,6 +743,7 @@ export const understoryGardens = {
         if (this._cacheRestorePending) this._restoreCacheBodies();
         this._cacheRestorePending = false;
         this._saveRestoring = false; this.ensureAuthoredReceiver(); this._announceStoredGrowth();
+        this._compostArrivalDirty = true;
       }),
       this.bus.on('save:error', () => { this._saveRestoring = false; this._cacheRestorePending = false; }),
     ];
@@ -737,6 +751,7 @@ export const understoryGardens = {
   },
 
   destroy() {
+    clearCompostArrival(this);
     for (const off of this._subs || []) {
       try { if (typeof off === 'function') off(); } catch { /* listener hygiene */ }
     }
@@ -2151,6 +2166,11 @@ export const understoryGardens = {
       this._digest(e, rec);
       syncGardenStage(state, e, rec);
     }
+    if (this._compostArrivalDirty === true) {
+      this._compostArrivalDirty = false;
+      syncCompostArrival(this, gardens);
+    }
+    tickCompostArrival(this, gardens);
     this._rooksideReturn(gardens);
     this._tendGardeners();
     this._sporeHead();

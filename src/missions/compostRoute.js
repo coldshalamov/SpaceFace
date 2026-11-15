@@ -45,6 +45,7 @@ function freeFeedCargo(state, needed, towCapacity) {
   const items = state.player?.cargo?.items || {};
   const held = Object.keys(items).filter(id => Number.isFinite(Number(items[id])) && Number(items[id]) > 0)
     .map(id => COMMODITY_BY_ID.get(id)).filter(Boolean).sort((a, b) => a.order - b.order);
+  let partial = null;
   for (const { def } of held) {
     if (def.legality !== 'legal' || !(def.massPerU > 0)) continue;
     const free = Math.floor(sellableCargoQuantity(state, def.id));
@@ -57,10 +58,12 @@ function freeFeedCargo(state, needed, towCapacity) {
     const quantity = Math.min(free, Math.max(1, Math.ceil(needed / def.massPerU)),
       Math.floor(towCapacity / def.massPerU));
     if (quantity > 0 && cargoPodMassForContents(def.massPerU, quantity) <= towCapacity) {
-      return { name: def.name, quantity, mass: quantity * def.massPerU };
+      const load = { name: def.name, quantity, mass: quantity * def.massPerU };
+      if (load.mass + 1e-9 >= needed) return load;
+      if (!partial || load.mass > partial.mass) partial = load;
     }
   }
-  return null;
+  return partial;
 }
 
 function beamAvailable(state, player) {
@@ -116,7 +119,12 @@ export function compostRouteFocus(owner) {
   const cargoOwner = owner.registry?.get?.('cargo'), podOwner = owner.registry?.get?.('lootShards');
   const cargo = typeof cargoOwner?.jettison === 'function' && typeof podOwner?.gardenFeedMass === 'function'
     ? freeFeedCargo(state, needed, towCapacity) : null;
-  if (cargo) return { ...base, reason: reason(`You have free ${cargo.name}: jettison ${cargo.quantity}u (${number(cargo.mass)}t feed) at the west approach, then catch the pod with the Line and tow it into the mat. Keep your cockpit outside; jettison alone is not growth.`) };
+  const partialCargo = cargo && cargo.mass + 1e-9 < needed;
+  const cargoPlan = cargo ? { ...base, reason: reason(`You have free ${cargo.name}: jettison ${cargo.quantity}u (${number(cargo.mass)}t feed) at the west approach, then catch the pod with the Line and tow it into the mat. Keep your cockpit outside and the Line attached until intake; releasing near a station can sell the pod instead. ${partialCargo ? `This load alone is short: ${number(Math.ceil((needed - cargo.mass) * 10) / 10)}t would still be needed. You may feed this part now or keep it and collect a larger load.` : 'This is enough for the next growth if it all reaches the garden.'} Jettison alone is not growth.`) } : null;
+  if (cargoPlan && !partialCargo) return cargoPlan;
+  // A partial hold is a real choice, not a reason to hide an available acquisition
+  // route. Prefer a live source when one is usable; fall back to feeding this part.
+  const unavailable = text => cargoPlan || { ...base, pos: null, reason: reason(text) };
   let source = null, distance = Infinity, sourceMass = 0;
   const index = state.entityIndex;
   // Ready type lanes are authoritative (including empty ones); no full-world census.
@@ -132,27 +140,23 @@ export function compostRouteFocus(owner) {
   }
   if (source) return { ...base, label: 'Compost Run — recover loose feed', targetEntityId: source.id,
     pos: { x: source.pos.x, z: source.pos.z }, reason: reason(`${number(sourceMass)}t usable loose feed located. Approach and catch it with the Line; clear any obstruction before latching. Then return to Rookside's west approach. Other valid feed also counts.`) };
-  if (typeof cargoOwner?.jettison !== 'function' || typeof podOwner?.gardenFeedMass !== 'function') return { ...base, pos: null,
-    reason: reason('Cargo delivery eligibility is unavailable. No mining-to-feed supply is being promised.') };
+  if (typeof cargoOwner?.jettison !== 'function' || typeof podOwner?.gardenFeedMass !== 'function') return unavailable('Cargo delivery eligibility is unavailable. No mining-to-feed supply is being promised.');
   const iron = IRON;
   const hold = state.player?.cargo;
-  if (!(towCapacity >= cargoPodMassForContents(iron.massPerU, 1))) return { ...base, pos: null,
-    reason: reason('No usable feed is held. This fit cannot put a 20t cargo pod under way; restore tow capability or bring a lighter eligible load. No feed is supplied.') };
+  if (!(towCapacity >= cargoPodMassForContents(iron.massPerU, 1))) return unavailable('No usable feed is held. This fit cannot put a 20t cargo pod under way; restore tow capability or bring a lighter eligible load. No feed is supplied.');
   if (!beamAvailable(state, player) || !Number.isFinite(hold?.capVolume) || !Number.isFinite(hold?.usedVolume)
-    || hold.capVolume - hold.usedVolume < iron.volPerU) return { ...base, pos: null,
-    reason: reason('No usable loose feed located. Mining needs an available beam and free hold space; restore them or bring another eligible load.') };
+    || hold.capVolume - hold.usedVolume < iron.volPerU) return unavailable('No usable loose feed located. Mining needs an available beam and free hold space; restore them or bring another eligible load.');
   const beamMode = state.ui?.beamMode || state.player?.beamMode || 'auto';
-  if (!['auto', 'extract'].includes(beamMode) || state.input?.receiver) return { ...base, pos: null,
-    reason: reason('Set the beam to AUTO or EXTRACT without a transfer receiver to mine ordinary iron, or bring another eligible load.') };
+  if (!['auto', 'extract'].includes(beamMode) || state.input?.receiver) return unavailable('Set the beam to AUTO or EXTRACT without a transfer receiver to mine ordinary iron, or bring another eligible load.');
   const { face } = nearestMiningResourceFace(state, { sectorId: SECTOR, center: player.pos,
     commodityId: iron.id }, ASTEROIDS, e => interactionEligibility(state, e, 'mine', { phase: 'extract' }).ok
       && (() => { const action = resolveBeamVerb(describeEntity(state, e), { mode: beamMode,
           selectedComponentId: state.ui?.componentSelection?.componentId || null });
         return action.ok && action.verb === 'extract'; })());
-  if (!face) return { ...base, label: 'Compost Run — find feed', pos: null,
+  if (!face) return cargoPlan || { ...base, label: 'Compost Run — find feed', pos: null,
     reason: reason('No eligible live or dormant Charon iron face located. Search for another real loose load or free cargo; an exhausted field is not a supply promise.') };
   return { ...base, label: 'Compost Run — Charon iron face',
     targetEntityId: face.fieldResident ? null : face.id, pos: { x: face.pos.x, z: face.pos.z },
-    reason: reason(`Mine ordinary iron at this face; ${Math.ceil(needed / iron.massPerU)}u would supply ${number(needed)}t or more. Only actual ore collected counts. Once free cargo is aboard, return to Rookside to jettison and Line-feed it; other valid material also works.`) };
+    reason: reason(`${partialCargo ? `Your free ${cargo.quantity}u ${cargo.name} is ${number(cargo.mass)}t, short of this growth. You can feed it at Rookside now and make up the difference later, or keep it. ` : ''}Mine ordinary iron at this face; ${Math.ceil(needed / iron.massPerU)}u would supply ${number(needed)}t or more. Only actual ore collected counts; keep enough unsold for the garden. Once enough free cargo is aboard, return to Rookside to jettison and Line-feed it; other valid material also works.`) };
 }
 
