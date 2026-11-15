@@ -119,6 +119,8 @@ function armoryFor(run, preview) {
     _refitBtn: { hidden: false },
     _sub: { textContent: '' },
     _preview: preview,
+    _briefing: { hidden: false },
+    _armoryHeading: { hidden: false, textContent: '' },
     _skip: fakeButton(`Launch round ${run.wave + 1}`, 'Esc'),
     _rerollBtn: Object.assign(fakeButton('Re-roll', 'R'), { style: {} }),
     _wallet: { textContent: '' },
