@@ -326,6 +326,14 @@ export const survivalHud = {
     this._waveProgress = null;
     this._death = null;
     this._lastTells = [];
+    // The style figure's memo (see update): the three printed numbers it was built from, and the
+    // composed line. NaN forces one rebuild on the first frame a combo is live.
+    this._stylePts = NaN;
+    this._styleLinks = -1;
+    this._styleCarry = NaN;
+    this._styleActIds = [];
+    this._styleActFams = [];
+    this._styleFigText = '';
     this._unsubs = [];
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:awarded', (p) => this._onAwarded(p)));
@@ -587,11 +595,50 @@ export const survivalHud = {
     // Style is a live figure, not a phase readout: it decays as you repeat yourself and climbs as
     // you vary the cause, so it belongs beside the score it is multiplying.
     const combo=st.stunts?.combo;
-    const styleMult=combo?styleMultiplier(combo):1;
     const showStyle=!!combo?.activeCount;
     this._setHidden(dom.styleWord, !showStyle);
     this._setHidden(dom.styleFig, !showStyle);
-    if (showStyle) this._setText(dom.styleFig, `${Math.floor(combo.activePoints)} pending ×${styleMult.toFixed(2)} · ${2-combo.bridges.length} links`);
+    if (showStyle) {
+      // This runs every presented frame. `styleMultiplier` builds two filtered arrays and two Sets
+      // per call, and the line is a template per frame, yet the figure only moves when one of the
+      // three numbers it prints moves. Key it on those, plus the act identities: the multiplier
+      // also reads each act's trickId/family, and a re-recognition re-classifies an open act IN
+      // PLACE (stuntCombo.recordTrick) without changing the count or the points. The comparison is
+      // two string reads per act against retained arrays — still zero allocation per frame.
+      const acts = combo.acts;
+      const links = combo.bridges.length;
+      let changed = this._stylePts !== combo.activePoints || this._styleLinks !== links
+        || this._styleCarry !== (combo.activeCarry || 0)
+        || this._styleActIds.length !== acts.length;
+      if (!changed) {
+        for (let i = 0; i < acts.length; i++) {
+          if (this._styleActIds[i] !== acts[i].trickId || this._styleActFams[i] !== acts[i].family) {
+            changed = true;
+            break;
+          }
+        }
+      }
+      if (changed) {
+        this._stylePts = combo.activePoints;
+        this._styleLinks = links;
+        this._styleCarry = combo.activeCarry || 0;
+        this._styleActIds.length = acts.length;
+        this._styleActFams.length = acts.length;
+        for (let i = 0; i < acts.length; i++) {
+          this._styleActIds[i] = acts[i].trickId;
+          this._styleActFams[i] = acts[i].family;
+        }
+        const styleMult = styleMultiplier(combo);
+        this._styleFigText = `${Math.floor(combo.activePoints)} pending ×${styleMult.toFixed(2)} · ${2-links} links`;
+      }
+      this._setText(dom.styleFig, this._styleFigText);
+    } else {
+      // Nothing on the glass: forget the memo so the next live combo rebuilds even if it happens
+      // to open on the same points and the same act ids this one closed on.
+      this._stylePts = NaN;
+      this._styleActIds.length = 0;
+      this._styleActFams.length = 0;
+    }
     this._setHidden(dom.line, !showStyle);
     if(showStyle)this._setText(dom.line,combo.acts.map(a=>a.name).join(' → '));
 
