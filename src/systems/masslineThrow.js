@@ -67,7 +67,9 @@ export function isThrowArmPayload(state) {
       || data.role || data.scenarioRole || '').toLowerCase();
     return THROW_ARM_COMBAT_ARCHETYPES.has(archetype);
   }
-  return target.type === 'payload' || (target.type === 'asteroid' && !!target.data?.isChunk);
+  // THROW-01: rocks are ammo - a loose room rock authored `throwable` throws like a chunk.
+  return target.type === 'payload'
+    || (target.type === 'asteroid' && (!!target.data?.isChunk || target.data?.throwable === true));
 }
 
 // INF-016 — turning-target confidence. The intercept solver extrapolates the aim target

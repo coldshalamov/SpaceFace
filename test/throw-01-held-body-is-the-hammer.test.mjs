@@ -2,6 +2,7 @@
 // damage (so the swing never kills the thing you are about to throw); cut free, it takes full damage.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { isThrowArmPayload } from '../src/systems/masslineThrow.js';
 import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
 import {
   collisionConsequences, HELD_BODY_CONTACT_DAMAGE_SCALE, HELD_BODY_OUTGOING_DAMAGE_SCALE, isHeldOnPlayerLine,
@@ -84,4 +85,12 @@ test('the held body swings at reduced strength; released, it hits at full streng
     host._routeImpactDamage(victim, held, receipt);
     assert.ok(Math.abs(total(seen[0]) / total(seen[1]) - HELD_BODY_OUTGOING_DAMAGE_SCALE) < 1e-6, 'held swings at half; released at full');
   } finally { Object.assign(MASSLINE2_FLAGS, saved); }
+});
+
+test('rocks are ammo: a loose room rock authored throwable arms the throw; a plain rock does not', () => {
+  const mk = (data) => ({ playerId: 1, entities: new Map([[1, { id: 1, team: 0 }], [7, { id: 7, type: 'asteroid', alive: true, data }]]),
+    player: { tether: { active: true, targetId: 7 } } });
+  assert.equal(isThrowArmPayload(mk({ throwable: true })), true);
+  assert.equal(isThrowArmPayload(mk({})), false);
+  assert.equal(isThrowArmPayload(mk({ isChunk: true })), true);
 });

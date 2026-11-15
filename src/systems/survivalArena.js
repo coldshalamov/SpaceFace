@@ -2266,7 +2266,7 @@ export const survivalArena = {
         dynamic: true, ccd: true, material: 'debris', revision: 0,
       },
       data: { roomOwner: ARENA_ROOM_OWNER, roomSolidId: 'conveyor-workpiece',
-        conveyorWorkpiece: true, majorDebris: true },
+        conveyorWorkpiece: true, majorDebris: true, throwable: true },
     });
     if (body && body.id != null) this._roomIds.push(body.id);
   },
