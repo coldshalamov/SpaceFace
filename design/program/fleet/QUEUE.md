@@ -72,11 +72,13 @@ reviews every commit; lane agents do not take them.
 | PRI-01 · 02 · 03 · 05 · 06 · 07a–f · 09 · 12 | Small places; air clock pays less; outposts (sim + screen); plate fight + honest win; residents on the radio; six work loops; Frontier households; Armory/Manifest/Base/popups | BUILT (hashes in §37.1; most not yet seen on screen — L1-REVIEW) |
 | PRI-04 save load stays yours | #980 | BUILT 852e630de5 |
 | PRI-08a-the-swing | Ceres winching (#945 part 1) | BUILT 9e3f95c4ae + lead 4889e7cb81 |
-| PRI-08b-the-ninth-mouth · PRI-08c-kroll-and-the-yard-slip | Ceres parts 2 and 3 | chained on devin1 |
+| PRI-08b-the-ninth-mouth | Ceres part 2 | LANDED 53194ad2f4 — NEEDS FABLE REVIEW (1 test fails: earned-route lamp slingshot) |
+| PRI-08c-kroll-and-the-yard-slip | Ceres part 3 | chained on devin1 |
 | PRI-10a | Scale 4 shows both readings | BUILT f02cc6caa5 |
-| PRI-10b…o | #939 campaign layer, rebuilt feature by feature (fifteen packets) | chained on devin2, in order b c d e f g i j k l n h m o |
+| PRI-10b…o | #939 campaign layer, rebuilt feature by feature (fifteen packets) | chained on devin2, in order b c d e f g i j k l n h m o — b,c landed; d LANDED 2f2881a065 NEEDS FABLE REVIEW (worker died, recovered by hand) |
 | PRI-11a…f | #942 on today's thirty-round course: three Wasps first; Brood debuts; Maw wreckage; Fortify [FE → sonnet1]; beams/recoveries/Cryo; verify the rest | chained on devin1 after PRI-08c (11d on sonnet1) |
-| PRI-14-phone-screens-the-bench-flags [FE] | Seven screens the bench still flags + a hail-panel bench shot | chained on sonnet1 |
+| PRI-14-phone-screens-the-bench-flags [FE] | Seven screens the bench still flags + a hail-panel bench shot | timed out after 2/7 (crucible-results 04978f3202, wingman-radial 6c46c4f68b); remainder → PRI-14b |
+| PRI-14b-phone-screens-the-remainder [FE] | The six bench flags PRI-14 did not reach | chained on sonnet1 after PRI-11d |
 | PRI-REVIEW-1 | Senior review (Codex) of the intake commits; report `reviews/2026-11-14-pr-intake.md` | TAKEN codex |
 | PRI-GATE | Gate budget scale + fast tier green + rig-workshop voice pass | lead-run (sidekick), in flight |
 
