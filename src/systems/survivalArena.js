@@ -337,8 +337,16 @@ function planSideRoomToys(arenaId, at, lane) {
     add('claim_stack_b', 'rack', 25, 155, 40, { packagedPropFile: 'places/place_container_rack.glb' });
     add('claim_beacon', 'claim', -95, 105, 32, { packagedPropFile: 'places/place_claim_mark.glb' });
   } else {
-    for (const x of [-125, 125]) for (const z of [-85, 85]) {
-      add(`toll_gate_${x}_${z}`, 'gate', x, z, 18, { nocturne: FOUNDRY_GATE_NOCTURNE });
+    for (const x of [-150, 150]) {
+      add(`toll_gate_${x}`, 'toll', x, 0, 60, {
+        packagedPropFile: 'places/place_transponder_gate.glb',
+        collisionProxyManifest: {
+          schemaVersion: 1, id: 'tethys:toll-gate', referenceRadius: 'radius',
+          flags: { collides: true, renderable: false, targetable: false, radarVisible: false },
+          primitives: [-1, 1].map(side => ({ kind: 'obb', id: `pylon-${side}`, x: 0, z: side * 0.86,
+            angleDeg: 0, hx: 0.11, hz: 0.15 })),
+        },
+      });
     }
   }
   const across = { x: -lane.z, z: lane.x };
@@ -2217,6 +2225,8 @@ export const survivalArena = {
     for (const [toyId, solid] of solids) {
       if (!solid || solid.alive === false || !solid.pos) continue;
       if (!solid.data || solid.data.roomDynamic === true) continue;
+      if (solid.data.roomKind === 'toll'
+        && Math.abs(player.pos.z - solid.pos.z) < solid.radius * 0.71 - Math.max(1, finiteOf(player.radius, 8))) continue;
       const dx = solid.pos.x - player.pos.x;
       const dz = solid.pos.z - player.pos.z;
       const dist = Math.hypot(dx, dz);
@@ -2364,6 +2374,7 @@ export const survivalArena = {
           revision: 0,
           ...(plate ? { collisionProxyManifest: foundryPlateProxy(plate) } : {}),
           ...(furnitureProxy ? { collisionProxyManifest: furnitureProxy } : {}),
+          ...(toy.collisionProxyManifest ? { collisionProxyManifest: toy.collisionProxyManifest } : {}),
         },
         data: {
           roomOwner: ARENA_ROOM_OWNER,

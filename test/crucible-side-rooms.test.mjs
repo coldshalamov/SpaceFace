@@ -26,7 +26,7 @@ for (const arenaId of ['ceres_belt', 'tethys_hub']) {
     const furniture = () => state.entityList.filter(e => e.alive && e.data?.roomOwner === 'survival-arena');
     arm();
     const first = furniture();
-    assert.ok(first.length >= 6 && first.length <= 12);
+    assert.ok(first.length >= (arenaId === 'ceres_belt' ? 6 : 4) && first.length <= 12);
     if (arenaId === 'ceres_belt') {
       const rocks = first.filter(e => e.data.roomToyId?.startsWith('claim_rock_'));
       assert.ok(rocks.length >= 3 && rocks.every(e => e.physicsBody.dynamic && isAttachable(e, state.playerId, state)));
@@ -35,8 +35,21 @@ for (const arenaId of ['ceres_belt', 'tethys_hub']) {
       assert.deepEqual(SWARM_EVENT_TABLES.ceres_belt, ['mine_drift', 'supply_drop', 'rock_rain']);
     } else {
       const gates = first.filter(e => e.data.roomToyId?.startsWith('toll_gate_'));
-      assert.ok(gates.length >= 4);
-      assert.ok(gates.every(e => !e.data.packagedPropFile && resolveCollisionProxyManifest(e)), 'each toll post uses its matching collision shape');
+      assert.equal(gates.length, 2);
+      assert.ok(gates.every(e => e.data.packagedPropFile === 'places/place_transponder_gate.glb'));
+      for (const gate of gates) {
+        const proxy = resolveCollisionProxyManifest(gate);
+        assert.equal(proxy?.primitives.length, 2);
+        assert.ok(proxy.primitives.every(p => Math.abs(p.z) > p.hz), 'the opening stays navigable');
+      }
+      const crushed = [];
+      bus.on('combat:crushed', p => crushed.push(p));
+      state.run.ruleset = 'swarm';
+      player.pos = { x: 130, z: 0 }; player.vel = { x: 500, z: 0 };
+      owner._tickPlayerSlams(state);
+      assert.equal(crushed.length, 0, 'flying through the open gate is not a wall slam');
+      state.run.ruleset = 'scored';
+      player.pos = { x: 0, z: 0 }; player.vel = { x: 0, z: 0 };
       assert.ok(SWARM_EVENT_TABLES.tethys_hub.includes('supply_drop'));
     }
     bus.emit('run:waveCleared', {});
