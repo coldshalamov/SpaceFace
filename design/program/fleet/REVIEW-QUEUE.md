@@ -19,6 +19,19 @@ need a re-review pass by Codex/Fable).
 
 ## Landed but unreviewed (newest last)
 
+**Standing rule: every `fleet(` / `fix(` commit after `b0baf1b4e3` (the Codex review baseline) needs
+review — run `git log --oneline b0baf1b4e3..HEAD` for the live list; the boxes below are just the
+ones landed when this file was written.** Workers commit incrementally, so `fleet(PRI-XX)` commits
+may be partial slices of a packet still running — check the packet's run dir
+(`.devshots/fleet/runs/<packet>.*.*/RECEIPT.md`) for the worker's own account before judging.
+
+- [ ] `f3d0fdc9b9` look-bench waits up to 5 min for the game under a busy machine *(harness tolerance)*
+- [ ] `a1d2bc116e` fleet(PRI-08c): Kroll's berth on the chart *(worker still running — partial)*
+- [ ] `bb92e70358` fix(THROW-01): whip recoil spares the body on your Line *(foreign worker)*
+- [ ] `a7c5517eba` Reduce Apron Shuttle trim glare *(foreign perf worker)*
+- [ ] `a84afab337` Skip dark stellar formation vertices *(foreign perf worker)*
+- [ ] `3b3311a4f1` Isolate concurrent texture transcode failures *(foreign perf worker)*
+- [ ] `58cb302944` fleet(PRI-11d): Fortify screen reads what stands *(worker still running — partial)*
 - [ ] `bef48aa349` Share simultaneous embedded texture transcodes *(foreign perf worker)*
 - [ ] `6c46c4f68b` ui(wingman-radial): phone dial raised so REGROUP clears power slots *(PRI-14, partial packet)*
 - [ ] `ebb232494f` Skip idle VFX sprite buckets in render list *(foreign perf worker)*
