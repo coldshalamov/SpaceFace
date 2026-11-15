@@ -178,8 +178,11 @@ export const gutterRunOps = {
     }
     if (run) return false; // one stranger at a time; the others stay out of the dark
 
-    const row = memory.get(e.id);
-    if (row && !(now >= row.lastAt)) memory.delete(e.id);
+    let row = memory.get(e.id);
+    if (row && !(now >= row.lastAt)) {
+      memory.delete(e.id); // clock rewound (Continue/fresh state) — the stored row is stale
+      row = null;
+    }
     if (!row) {
       while (memory.size >= GUTTER_RUN_TUNING.memoryCap) memory.delete(memory.keys().next().value);
       memory.set(e.id, { lastRunAt: -Infinity, lastAt: now });
