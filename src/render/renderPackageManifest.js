@@ -2830,12 +2830,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.station-billboard",
-    "expectedContentHash": "b0fe05eee63153b1efb36e100e49a95885bdcaf020e03b3354ef19a310726b39",
+    "expectedContentHash": "954e72bdfa26bc968c6cd22fbae797d601b11a1ae1633bd18cd4833c4c5a3d1d",
     "key": "station-billboard",
     "metadataUrl": "assets/ships/release/render-packages/station-billboard/render-package.json",
     "runtimeAssetId": "SF_PLACE_HELIOS_SUPPORT_DOCK_ARM",
     "slot": "place",
-    "sourceSha256": "dbe0f7ba897af433cf9dc80114e21e74ef50e8b55874ecc4dc6aca0b0bc226fa",
+    "sourceSha256": "00fa4fe5a293981da96d2ee8d4327fc2550fcbb30de5bbd47f984e0ddd002f47",
     "sourceUrl": "assets/ships/release/parts/places/place_station_billboard.glb"
   },
   {

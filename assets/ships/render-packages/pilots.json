@@ -5399,8 +5399,8 @@
       "slot": "place",
       "releaseAssetId": "place_station_billboard",
       "sourceUrl": "assets/ships/release/parts/places/place_station_billboard.glb",
-      "releaseSha256": "dbe0f7ba897af433cf9dc80114e21e74ef50e8b55874ecc4dc6aca0b0bc226fa",
-      "releaseBytes": 390636,
+      "releaseSha256": "00fa4fe5a293981da96d2ee8d4327fc2550fcbb30de5bbd47f984e0ddd002f47",
+      "releaseBytes": 424024,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
