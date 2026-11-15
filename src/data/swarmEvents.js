@@ -41,6 +41,11 @@ export const SWARM_EVENT_EVERY = 5;
  */
 export const SWARM_MINOR_EVENT_PERIOD = 10;
 export const SWARM_MINOR_EVENT_RESIDUES = Object.freeze([2, 8]);
+/**
+ * PIT-01 — the opening rounds run exactly what the table says: the first dealt card of
+ * any band is wave 5 onward. Waves 1–4 offer no minor event and no wager.
+ */
+export const SWARM_EVENTS_FIRST_WAVE = 5;
 
 /** A minor event's bounty is its card's authored wager scaled down — half the bet. */
 export const SWARM_MINOR_WAGER_SCALE = 0.5;
@@ -295,7 +300,8 @@ export function isSwarmEventWave(wave) {
  */
 export function isSwarmMinorEventWave(wave) {
   const w = swarmWaveOf(wave);
-  return SWARM_MINOR_EVENT_RESIDUES.includes(w % SWARM_MINOR_EVENT_PERIOD)
+  return w >= SWARM_EVENTS_FIRST_WAVE
+    && SWARM_MINOR_EVENT_RESIDUES.includes(w % SWARM_MINOR_EVENT_PERIOD)
     && !isSwarmBossWave(w) && !isSwarmEventWave(w);
 }
 

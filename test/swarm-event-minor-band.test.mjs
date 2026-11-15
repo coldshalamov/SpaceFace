@@ -1,11 +1,12 @@
 // CRUCIBLE minor event band — the off-beats between the every-5th majors.
 //
-// Waves ≡2 and ≡8 of each ten-wave block (2, 8, 12, 18…) deal from the minor-tagged
-// subset — supply pods, mine drifts, the smallest install-free surge — so the five-wave
-// cadence never leaves four identical rounds. The wager seam is unchanged: the card
-// still telegraphs accept/refuse, but the bounty rides at SWARM_MINOR_WAGER_SCALE of
-// the card's authored bet, and the voice drops to 'info'. Major rounds and boss rounds
-// are untouched; the band can never double-book a wave.
+// Waves ≡2 and ≡8 of each ten-wave block at-or-after wave 5 (8, 12, 18…) deal from the
+// minor-tagged subset — supply pods, mine drifts, the smallest install-free surge — so
+// the five-wave cadence never leaves four identical rounds. PIT-01: the course's opening
+// rounds (1–4) are quiet — no band card and no wager rides the onboarding lessons. The
+// wager seam is unchanged: the card still telegraphs accept/refuse, but the bounty rides
+// at SWARM_MINOR_WAGER_SCALE of the card's authored bet, and the voice drops to 'info'.
+// Major rounds and boss rounds are untouched; the band can never double-book a wave.
 //
 // Deterministic: seeded picks, simTime windows, no wall clock.
 import test from 'node:test';
@@ -13,6 +14,7 @@ import assert from 'node:assert/strict';
 
 import {
   SWARM_EVENT_BY_ID,
+  SWARM_EVENTS_FIRST_WAVE,
   SWARM_EVENT_TABLES,
   SWARM_MINOR_WAGER_SCALE,
   isSwarmEventWave,
@@ -89,8 +91,10 @@ test('the cadence law: minors on ≡2,8 mod 10 — never major, never boss, neve
     const minor = isSwarmMinorEventWave(w);
     const major = isSwarmEventWave(w);
     assert.ok(!(minor && major), `wave ${w} cannot book both bands`);
-    // The residue law is boss-gated: ≡2/8 mod 10 AND not a champion round.
-    const expected = (w % 10 === 2 || w % 10 === 8) && !isSwarmBossWave(w);
+    // The residue law is boss-gated and quiet-gated: ≡2/8 mod 10 at-or-after the first
+    // dealt wave AND not a champion round.
+    const expected = w >= SWARM_EVENTS_FIRST_WAVE
+      && (w % 10 === 2 || w % 10 === 8) && !isSwarmBossWave(w);
     assert.equal(minor, expected, `wave ${w} minor flag`);
     assert.equal(major, w > 30 && w % 10 === 5, `wave ${w} major flag`);
     if (isSwarmBossWave(w)) {
@@ -98,9 +102,10 @@ test('the cadence law: minors on ≡2,8 mod 10 — never major, never boss, neve
       assert.equal(swarmMinorEventFor({ arenaId: 'the_hive', wave: w, seed: SEED }), null);
     }
   }
-  // The band starts at wave 2 — rounds 1 and 3 stay clean. Wave 4 is the course's first
-  // authored twist ('Mind the Gap' → sling_tide) and deals its own card — see swarm-course.
-  for (const w of [1, 3]) {
+  // PIT-01 — the opening rounds are exactly what the table says: rounds 1–4 deal no
+  // minor card, no major card and no authored twist. Wave 4's own reveal is the lane,
+  // so 'Mind the Gap' no longer books sling_tide — see swarm-course.
+  for (const w of [1, 2, 3, 4]) {
     assert.equal(isSwarmMinorEventWave(w), false);
     assert.equal(swarmMinorEventFor({ arenaId: 'helios_core', wave: w, seed: SEED }), null);
     assert.equal(swarmEventFor({ arenaId: 'helios_core', wave: w, seed: SEED }), null,
@@ -173,9 +178,10 @@ test('supply and mines out-deal the one small surge in the band', () => {
 });
 
 test('a minor wager telegraphs scaled terms quietly, and accept fires + pays', () => {
-  const wave = 2;
+  // PIT-01: wave 8 is the first band round — 'Breadcrumbs' course-deals mine_drift.
+  const wave = 8;
   const card = swarmMinorEventFor({ arenaId: 'helios_core', wave, seed: SEED });
-  assert.ok(card && card.band === 'minor', 'wave 2 deals a minor card');
+  assert.ok(card && card.band === 'minor', 'wave 8 deals a minor card');
   const authored = SWARM_EVENT_BY_ID[card.id];
   const h = armedDirector({ arenaId: 'helios_core', wave });
   startWave(h, wave);
@@ -234,15 +240,15 @@ test('same seed deals the same minor card — ghosts agree; seeds still vary it'
   }
   const ids = new Set();
   for (let seed = 1; seed <= 40; seed++) {
-    const draw = swarmMinorEventFor({ arenaId: 'the_hive', wave: 2, seed });
+    const draw = swarmMinorEventFor({ arenaId: 'the_hive', wave: 32, seed });
     if (draw) ids.add(draw.id);
   }
   assert.ok(ids.size >= 2, 'the minor draw is seeded, not constant');
 });
 
 test('boss and ordinary waves arm nothing — the director consult holds the cap', () => {
-  // Wave 4 is out of this list: the course's authored twist arms sling_tide on it.
-  for (const wave of [1, 6, 9, 15]) {
+  // PIT-01: waves 2–4 join the quiet list — the early rounds deal no card at all.
+  for (const wave of [1, 2, 3, 4, 6, 9, 15]) {
     const h = armedDirector({ arenaId: 'asteroid_mill', wave });
     startWave(h, wave);
     assert.equal(telegraphed(h).length, 0, `wave ${wave} offers nothing`);

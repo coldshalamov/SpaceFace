@@ -30,8 +30,8 @@ export const SWARM_COURSE = Object.freeze([
     'Two gates now. Make the wall gun work.'),
   courseRound(3, 'Hot Potato', 'Detonator Darts. The round teaches throwing things back', null,
     'Catch the dart. Send it home.'),
-  // sling_tide is the room pouring crosswise on a lane — the lane running for the first time.
-  courseRound(4, 'Mind the Gap', 'the lane runs for the first time, with Wasps on both sides of it', 'sling_tide',
+  // PIT-01 — the lane itself is the reveal: no dealt card or wager rides its debut round.
+  courseRound(4, 'Mind the Gap', 'the lane runs for the first time, with Wasps on both sides of it', null,
     'The lane is running. Let it carry them.'),
   courseRound(5, 'Iron Maw', 'Boss. A mouth that eats what you throw — until you throw a Detonator', null,
     'It eats what you throw. Almost everything.'),

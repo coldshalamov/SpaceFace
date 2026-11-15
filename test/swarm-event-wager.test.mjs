@@ -1,7 +1,8 @@
 // CRUCIBLE mid-run wager — the telegraph is a bet, not ambient pressure.
 //
 // C01-01: every fifth round of the course is a champion now, so the major band is dead —
-// the minor band (waves ≡2,8 mod 10: 2, 8, 12, 18, 22, 28) carries the only cards the Pit
+// the minor band (waves ≡2,8 mod 10 at-or-after 5: 8, 12, 18, 22, 28; PIT-01 leaves the
+// opening rounds quiet) carries the only cards the Pit
 // deals, and it rides the same telegraph/verdict/bounty machinery these tests pin. A
 // minor card's wager is stamped at SWARM_MINOR_WAGER_SCALE of the authored bet; ENGAGE
 // fires the event as authored and pays the stated bounty; REFUSE stands the room down —
@@ -243,14 +244,17 @@ test('a supply wager pays score and still drops the pod at its authored stamp', 
 });
 
 test('seeded determinism: same arena, wave and seed offer the identical wager', () => {
-  const a = armedDirector({ arenaId: 'the_hive', wave: 2, seed: SEED });
-  const b = armedDirector({ arenaId: 'the_hive', wave: 2, seed: SEED });
-  startWave(a, 2);
-  startWave(b, 2);
+  // PIT-01: wave 2 sits inside the quiet opening now — wave 32 is the same band shape
+  // (a seeded minor draw on the deep clock) this test always pinned.
+  const wave = 32;
+  const a = armedDirector({ arenaId: 'the_hive', wave, seed: SEED });
+  const b = armedDirector({ arenaId: 'the_hive', wave, seed: SEED });
+  startWave(a, wave);
+  startWave(b, wave);
   assert.deepEqual(telegraphed(a), telegraphed(b), 'same seed, same offer — ghosts agree');
   // And a different seed still draws a wager-shaped offer when it draws a card at all.
-  const c = armedDirector({ arenaId: 'the_hive', wave: 2, seed: 777 });
-  startWave(c, 2);
+  const c = armedDirector({ arenaId: 'the_hive', wave, seed: 777 });
+  startWave(c, wave);
   const offer = telegraphed(c)[0];
   if (offer) assert.ok(offer.wager && offer.wager.timeout, 'any drawn card states its default');
   a.director.destroy();
