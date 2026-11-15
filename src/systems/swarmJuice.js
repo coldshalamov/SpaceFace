@@ -47,13 +47,16 @@ import { swarmBroodStrainDebutFor } from '../data/swarmBroodLate.js';
 import {
   SWARM_CHAIN_TIERS,
   SWARM_CLOSE_CALL_HULL,
+  SWARM_CRYO_CUES,
   SWARM_HITSTOP_SCALE,
   SWARM_HITSTOP_SOURCE,
   SWARM_LAST_ONE_WINDOW_S,
   SWARM_MULTI_WINDOW_S,
   SWARM_NEWCOMER_COUNTERS,
   SWARM_PILEUP_CAUSES,
+  SWARM_RECOVERY_WORDS,
   SWARM_REVENGE_WINDOW_S,
+  SWARM_SCRAPE_WORDS,
   arcadeEffectsLevel,
   swarmChainTierCrossed,
   swarmHitStopSeconds,
@@ -179,6 +182,15 @@ export const swarmJuice = {
     // one-voice announcer like every other named beat (the arena emits the receipt; the
     // juice layer decides whether it is worth a word).
     this._unsubs.push(this.bus.on('swarm:stormDischarge', (p) => this._onStormDischarge(p)));
+    // PRI-11e — recoveries are named when they happen: the room's own shed hazards ride the
+    // Brood counter receipt, the player's shield/hull recoveries ride the receipts their
+    // owners already emit, and Cryo's portable weather rides the room's cue receipt. All of
+    // them speak through the one-voice announcer, four words or fewer.
+    this._unsubs.push(this.bus.on('swarm:broodCounter', (p) => this._onBroodCounter(p)));
+    this._unsubs.push(this.bus.on('shieldRestored', (p) => this._onShieldRestored(p)));
+    this._unsubs.push(this.bus.on('swarm:supplyCollected', (p) => this._onSupplyCollected(p)));
+    this._unsubs.push(this.bus.on('service:completed', (p) => this._onServiceCompleted(p)));
+    this._unsubs.push(this.bus.on('swarm:cryoWeather', (p) => this._onCryoWeather(p)));
     this._unsubs.push(this.bus.on('run:started', () => this._reset()));
     this._unsubs.push(this.bus.on('run:ended', () => this._reset()));
   },
@@ -246,6 +258,7 @@ export const swarmJuice = {
     this._bossDownSent = false;
     this._cueQueue = [];            // { at, payload } sound cues due on the sim clock
     this._slamCueAt = -Infinity;    // last round-slam cue set, so one arrival is one moment
+    this._recoveryCalls = new Set(); // `${wave}:${text}` — each recovery named once per round
   },
 
   _onKilled(payload) {
@@ -512,6 +525,76 @@ export const swarmJuice = {
       text: 'GRID LIVE',
       count: bites,
     });
+  },
+
+  /**
+   * PRI-11e — a recovery is named when it happens, once per round per name (a shield that
+   * drops twice still got its word). `wave` is the receipt's own wave when it carries one.
+   */
+  _announceRecovery(run, wave, text, kind = 'recovery') {
+    const w = Number.isInteger(wave) ? wave : run.wave;
+    const key = `${w}:${text}`;
+    if (this._recoveryCalls.has(key)) return;
+    this._recoveryCalls.add(key);
+    this._emit('swarm:announce', { kind, text, count: 1 });
+  },
+
+  /**
+   * The Brood's counter receipt: a grip really shed on a wall or a glassback shell really
+   * broken — the changed hazard is named, never the attempt (the engine only emits after
+   * the body died). Gated to the live round so a stale receipt cannot speak over a restart.
+   */
+  _onBroodCounter(payload) {
+    const st = this.state;
+    const run = liveSwarmRun(st);
+    if (!run || !payload || st.mode !== 'flight' || run.phase !== 'active') return;
+    if (payload.wave !== run.wave) return;
+    let text = null;
+    if (payload.kind === 'shell') text = SWARM_RECOVERY_WORDS.shell;
+    else if (payload.kind === 'scrape') {
+      text = SWARM_SCRAPE_WORDS[payload.familyId] || SWARM_SCRAPE_WORDS.default;
+    }
+    if (text) this._announceRecovery(run, payload.wave, text);
+  },
+
+  /** The player's shield came back up — the room names the recovery, not the timer. */
+  _onShieldRestored(payload) {
+    const st = this.state;
+    const run = liveSwarmRun(st);
+    if (!run || !payload || st.mode !== 'flight' || run.phase !== 'active') return;
+    if (payload.combatantId !== st.playerId) return;
+    this._announceRecovery(run, run.wave, SWARM_RECOVERY_WORDS.shield);
+  },
+
+  /** A scooped repair cell patched the hull — the receipt already proved the heal. */
+  _onSupplyCollected(payload) {
+    const st = this.state;
+    const run = liveSwarmRun(st);
+    if (!run || !payload || st.mode !== 'flight') return;
+    if (!(Number(payload.restored) > 0)) return;
+    this._announceRecovery(run, payload.wave, SWARM_RECOVERY_WORDS.hull);
+  },
+
+  /** The yard's patch bought between rounds is the same recovery, named the same way. */
+  _onServiceCompleted(payload) {
+    const st = this.state;
+    const run = liveSwarmRun(st);
+    if (!run || !payload || payload.type !== 'repair') return;
+    if (!(Number(payload.restoredHull) > 0)) return;
+    this._announceRecovery(run, run.wave, SWARM_RECOVERY_WORDS.hull);
+  },
+
+  /**
+   * Cryo Drift's portable weather: the room's cue receipt names the role and the transition;
+   * the announcer speaks the short public word. A cue the room did not author stays silent.
+   */
+  _onCryoWeather(payload) {
+    const st = this.state;
+    const run = liveSwarmRun(st);
+    if (!run || !payload || run.arenaId !== 'cryo_drift') return;
+    const words = SWARM_CRYO_CUES[payload.role];
+    const text = words && words[payload.cue];
+    if (text) this._emit('swarm:announce', { kind: 'cryo', text, count: 1 });
   },
 
   _onChain(payload) {

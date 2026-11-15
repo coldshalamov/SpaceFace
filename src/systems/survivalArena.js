@@ -110,6 +110,7 @@ import {
   cryoZoneAt,
   planCryoInstall,
 } from './cryoDriftArena.js';
+import { readCryoWeatherCue } from './cryoWeatherRead.js';
 import { LAGRANGE_ARENA_ID, planLagrangeInstall } from './lagrangeCrucible.js';
 import {
   STORM_ARENA_ID,
@@ -1536,6 +1537,8 @@ export const survivalArena = {
             toyId: role === 'coolant' ? 'coolant_tank' : 'heat_manifold',
             home: { x: spot.x, z: spot.z },
             charge: CRYO_PROP_VENT_TICKS,
+            weatherRead: { alive: true, docked: true, active: true, charge: CRYO_PROP_VENT_TICKS },
+            weatherSeen: new Set(),
           });
         }
       }
@@ -1864,6 +1867,7 @@ export const survivalArena = {
         && Number.isFinite(body.pos.x) && Number.isFinite(body.pos.z);
       if (!alive) {
         room.props[role] = [];
+        this._readCryoWeather(vent, role, { alive: false, docked: false, active: false, charge: vent.charge });
         continue;
       }
       const dx = body.pos.x - vent.home.x;
@@ -1878,11 +1882,27 @@ export const survivalArena = {
       } else {
         room.props[role] = [];
       }
+      this._readCryoWeather(vent, role, { alive: true, docked: !displaced,
+        active: room.props[role].length > 0, charge: vent.charge });
       if (system && typeof system.updateExternal === 'function') {
         const center = room.props[role][0] || vent.home;
         system.updateExternal(slotId, { center: { x: center.x, z: center.z } });
       }
     }
+  },
+
+  /**
+   * PRI-11e — the room reports what its portable weather just did, once per transition per
+   * installed prop: a tank leaving its berth is the cold front, the pocket ending is the
+   * front passed. The cue is a fact receipt; the announcer (swarmJuice) owns the words.
+   */
+  _readCryoWeather(vent, role, current) {
+    const seen = vent.weatherSeen || (vent.weatherSeen = new Set());
+    const cue = readCryoWeatherCue(vent.weatherRead, current, role, seen);
+    vent.weatherRead = current;
+    if (!cue) return;
+    seen.add(cue.id);
+    this._emit('swarm:cryoWeather', { cue: cue.id, role, wave: this._wave });
   },
 
   _tickCryo(state) {

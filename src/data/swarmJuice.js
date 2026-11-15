@@ -236,6 +236,50 @@ export function swarmRoundTally({ flawless = false, durationS = null, kills = 0,
   return rows;
 }
 
+// --- Recovery and weather names (§5.8) ---------------------------------------------------
+//
+// A recovery is named when it happens — the sim reports the receipt (`shieldRestored`,
+// `swarm:supplyCollected`, `service:completed`, `swarm:broodCounter`), the juice layer speaks
+// these words through the announcer. Every name is four words or fewer by contract.
+
+/** The announcer's words for the player's own recoveries and the room's shed hazards. */
+export const SWARM_RECOVERY_WORDS = Object.freeze({
+  shield: 'SHIELD BACK',
+  hull: 'HULL PATCHED',
+  shell: 'SHELL BROKEN',
+});
+
+/**
+ * A grip scraped off on a wall names its family — the leecher's shed is the authored
+ * lesson; anything else that dies the same way sheds as a grip.
+ */
+export const SWARM_SCRAPE_WORDS = Object.freeze({
+  leecher: 'LEECHER SHED',
+  default: 'GRIP SHED',
+});
+
+/**
+ * Cryo Drift's portable weather, named. The room (`swarm:cryoWeather`) reports the cue id
+ * and role; the juice layer speaks these words — COLD FRONT when a tank's pocket leaves its
+ * berth, FRONT PASSED when the vented pocket is spent.
+ */
+export const SWARM_CRYO_CUES = Object.freeze({
+  coolant: Object.freeze({
+    moved: 'COLD FRONT',
+    spent: 'FRONT PASSED',
+    lost: 'TANK LOST',
+    refilled: 'RECHARGED',
+    low: 'CHARGE LOW',
+  }),
+  heat: Object.freeze({
+    moved: 'HEAT FRONT',
+    spent: 'FRONT PASSED',
+    lost: 'MANIFOLD LOST',
+    refilled: 'RECHARGED',
+    low: 'CHARGE LOW',
+  }),
+});
+
 // --- New threat counters (§5.7) ---------------------------------------------------------
 
 /**
