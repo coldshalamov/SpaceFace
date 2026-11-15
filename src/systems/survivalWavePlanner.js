@@ -212,6 +212,7 @@ function expandSchedule(packages) {
       if (pkg.wall === true) entry.wall = true;
       if (pkg.staged === true) entry.staged = true;
       if (pkg.rideFreight === true) entry.rideFreight = true;
+      if (pkg.afterOpeningBeat === true) entry.afterOpeningBeat = true;
       if (typeof pkg.characterScoreId === 'string') entry.characterScoreId = pkg.characterScoreId;
       if (Number.isFinite(pkg.distance)) entry.distance = pkg.distance;
       entries.push(entry);

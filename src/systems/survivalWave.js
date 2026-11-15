@@ -110,6 +110,15 @@ const SWARM_RETURN_FIRE_S = 2;
 // lifts it rather than let a finite round starve on a quota nothing can deliver.
 export const SWARM_STALL_RELEASE_TICKS = 9 * 60;
 
+// PRI-11a — round one's opening beat: the authored three land alone, then the package
+// the cast owes to the beat follows on the first of three endings — a kill, ten active
+// seconds after the pilot's first deliberate act, or a twenty-second ceiling measured
+// from the wave's first active tick. The clock is `_elapsedSeconds()`, the file's own
+// active-time read: sim seconds that actually ran, so a paused sim spends nothing and
+// a doubled update in one step reads the same step's time and cannot spend twice.
+const SWARM_OPENING_BEAT_ACTED_S = 10;
+const SWARM_OPENING_BEAT_CEILING_S = 20;
+
 // S7 — the reaver's pack call: the caller announces, then its Wasps ride the ordinary stream
 // through a lit gate. 48 ticks (0.8 s) keeps the tell inside the sheet's 0.6 s floor.
 const SWARM_PACK_CALL_LEAD_TICKS = 48;
@@ -265,6 +274,7 @@ export const survivalWave = {
 
     this._cursor += 1;
     this._maybeReleaseOpeningLesson();
+    this._updateOpeningBeat();
     this._flushStaleFreightQueue();
     this._dispatchDue();
     this._shapeSwarmFire();
@@ -335,6 +345,19 @@ export const survivalWave = {
     // A later Swarm wave opens the same way the first one does after its lesson: batch by batch,
     // a breath apart, so the escalation reads as packs arriving instead of one dump in 3 s.
     if (swarm && wave > 1 && !plan.openingLesson) this._spaceOpeningArrivals();
+    // PRI-11a — the cast can owe part of the opening to the beat: the flag rides a
+    // schedule entry, so the beat's whole law is which packages are still owed, never a
+    // second ledger. It re-arms per wave through _resetWave — a Retry lands here with
+    // a fresh retireToken before round 1 plans again.
+    this._openingBeat = this._pending.some(
+      (item) => item && item.entry && item.entry.afterOpeningBeat === true,
+    )
+      ? {
+        wave,
+        runToken: run && Number.isInteger(run.retireToken) ? run.retireToken : null,
+        actedAt: null,
+      }
+      : null;
     const rules = plan.completionRules || {};
     const roles = Array.isArray(rules.blockingRoles) ? rules.blockingRoles : [];
     this._blockingRoles = new Set(roles);
@@ -558,6 +581,9 @@ export const survivalWave = {
     this._noteCircuitResolution(entry);
     this._bossIds.delete(id);
     this._resolved += 1;
+    // PRI-11a — a resolution while the opening beat is open is the beat's kill ending:
+    // during the beat the authored three are the only cohort the room fields.
+    if (this._openingBeat) this._endOpeningBeat('kill');
     // S7 — the reaver's counter ships: its called Wasps scatter when it dies. The authored
     // forceFlee egress is the existing owner — they break off and fly out, and the
     // out-of-fight seam resolves them so the round closes on the rout, not a hunt.
@@ -1026,6 +1052,13 @@ export const survivalWave = {
         this._pending[write++] = item;
         continue;
       }
+      // PRI-11a — an entry the cast owes to the opening beat stays pending while the
+      // beat is open. The tick it ends, this falls through to the ordinary
+      // owed-arrival path on its own gate — same clamp, same retry, never a burst.
+      if (entry.afterOpeningBeat === true && this._openingBeat) {
+        this._pending[write++] = item;
+        continue;
+      }
       // C01-05 round 12 — a delivery batch does not gate in. It waits on the freight
       // queue; the next string's members are its seats (see _onFreightDeparted).
       if (entry.rideFreight === true) {
@@ -1384,6 +1417,56 @@ export const survivalWave = {
     this._emit('run:openingLessonReleased', { wave: this._wave, tick: this._cursor });
   },
 
+  /**
+   * PRI-11a — the owner's read for the Brood's hold: true while this wave's opening
+   * beat is still open. The beat's own ledger lives here; the Brood asks the wave
+   * owner rather than keeping a second clock of its own.
+   */
+  openingBeatOpen(wave) {
+    const beat = this._openingBeat;
+    return !!beat && beat.wave === wave;
+  },
+
+  /**
+   * PRI-11a — the beat's per-tick clock. Two of its three endings are timed and both
+   * are measured in active sim-seconds off `_elapsedSeconds`: the pilot's first
+   * deliberate act starts a ten-second window; a twenty-second ceiling from the
+   * wave's first active tick bounds the whole beat either way. The third ending is a
+   * kill, resolved in `_resolveCohort` the tick the receipt lands.
+   */
+  _updateOpeningBeat() {
+    const beat = this._openingBeat;
+    if (!beat) return;
+    const state = this.state;
+    // The first deliberate act is the same seam the fire shaping reads — noted here
+    // too so the beat's own clock cannot depend on update order inside the owner.
+    if (swarmPilotIsActing(state)) noteSwarmPilotAction(state);
+    if (beat.actedAt == null && swarmPilotHasActed(state)) {
+      beat.actedAt = this._elapsedSeconds();
+    }
+    if (beat.actedAt != null
+      && this._elapsedSeconds() - beat.actedAt >= SWARM_OPENING_BEAT_ACTED_S) {
+      this._endOpeningBeat('acted');
+      return;
+    }
+    if (this._elapsedSeconds() >= SWARM_OPENING_BEAT_CEILING_S) {
+      this._endOpeningBeat('ceiling');
+    }
+  },
+
+  /** Ends the beat once: owed packages become ordinary due work on the next dispatch. */
+  _endOpeningBeat(reason) {
+    const beat = this._openingBeat;
+    if (!beat) return;
+    this._openingBeat = null;
+    this._emit('swarm:openingBeatEnded', {
+      wave: beat.wave,
+      runToken: beat.runToken,
+      reason,
+      tick: this._cursor,
+    });
+  },
+
   _shapeSwarmFire() {
     if (!this._cohort?.size) return;
     const state = this.state;
@@ -1515,6 +1598,9 @@ export const survivalWave = {
     const lesson = this._plan.openingLesson;
     if (lesson && !this._lessonReleased && Number.isFinite(lesson.holdTicks)
       && this._cursor < lesson.holdTicks) return;
+    // PRI-11a — while the opening beat is open the three own the room; the stream does
+    // not top up beside them. The beat's own clock ends it, never the stream's.
+    if (this._openingBeat) return;
     const emergencyOnly = opts.emergencyOnly === true;
     if (!emergencyOnly && (this._cleared || !this._active)) return;
     if (!emergencyOnly && this._cursor < 0) return;
@@ -2217,6 +2303,7 @@ export const survivalWave = {
     this._lastReinforceTick = -9999;
     this._lessonReleased = false;
     this._lessonOpenedAt = null;
+    this._openingBeat = null;
     this._stallSuppressed = false;
     this._stallTicks = 0;
     this._stallSeenResolved = 0;

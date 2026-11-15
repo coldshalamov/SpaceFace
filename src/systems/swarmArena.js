@@ -793,6 +793,7 @@ export const swarmArena = {
     this._terrainRetry = false;
     this._lessonRockId = null;
     this._wallWave = 0;
+    this._beatHold = null;
     // B4 — the Mill's ore ledger (pickupId → credits it pays) and the Hive's living
     // geometry ({ ring, nextGrowAt, sacs } while the wave's room is alive).
     this._millOres = new Map();
@@ -840,8 +841,12 @@ export const swarmArena = {
     this._unsubs.push(this.bus.on('entity:destroyed', () => this._onPressureDestroyed()));
     this._unsubs.push(this.bus.on('physics:impact', (p) => this._onDebrisImpact(p)));
     this._unsubs.push(this.bus.on('run:openingLessonReleased', () => this._onOpeningLessonReleased()));
+    // PRI-11a — the Brood's round-one hold ends on the wave owner's single release
+    // event; the arena never times the beat itself.
+    this._unsubs.push(this.bus.on('swarm:openingBeatEnded', (p) => this._onOpeningBeatEnded(p)));
     this._unsubs.push(this.bus.on('run:ended', () => {
       this._broodHeldUntil = null;
+      this._beatHold = null;
       this._lessonHoldS = null;
       this._law = null;
       this._lawAnnounced = null;
@@ -891,6 +896,7 @@ export const swarmArena = {
     this._lessonRockId = null;
     this._wallWave = 0;
     this._broodHeldUntil = null;
+    this._beatHold = null;
     this._lessonHoldS = null;
     this._law = null;
     this._lawAnnounced = null;
@@ -931,6 +937,12 @@ export const swarmArena = {
       this._broodHeldUntil = null;
       this._wakeLessonWell();
       if (this._brood) this._brood.spawnWave(state);
+    }
+    // PRI-11a — the beat's release is the owner's event; this poll is the backstop for a
+    // release that asked while the room was between phases, so the hold still lifts on
+    // the owner's own word rather than on a clock kept here.
+    if (this._beatHold && !this._openingBeatBlocksBrood()) {
+      this._releaseBeatBrood();
     }
     if (this._brood) this._brood.step(state);
     // Core's lifetime clock keeps moving through the short, still-visible inter-wave phases.
@@ -1004,6 +1016,9 @@ export const swarmArena = {
     const run = liveSwarmRun(this.state);
     if (!run) return;
     const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
+    // A new plan retires any beat hold the last wave left — the owner will re-arm it
+    // here only if this wave actually owes the opening beat.
+    this._beatHold = null;
     // SWARM-07 B1 — plan the wave's Brood cohort (spawn happens when the wave goes live).
     if (this._brood) this._brood.prepareWave(run, wave);
     // B4 — the old wave's living geometry dies before the new room is even planned.
@@ -1050,6 +1065,10 @@ export const swarmArena = {
     if (this._lessonHoldS != null) {
       this._broodHeldUntil = now + this._lessonHoldS;
       this._lessonHoldS = null;
+    } else if (this._brood && this._openingBeatBlocksBrood()) {
+      // PRI-11a — round one's three stand alone first: the Brood waits on the wave
+      // owner's word that the opening beat is over, not on a clock of its own.
+      this._beatHold = { wave: run.wave, runToken: Number.isInteger(run.retireToken) ? run.retireToken : null };
     } else if (this._brood) {
       this._prepareBankStone(run, now);
       this._brood.spawnWave(this.state);
@@ -1147,6 +1166,50 @@ export const swarmArena = {
     if (this._broodHeldUntil == null) return;
     const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
     this._broodHeldUntil = Math.min(this._broodHeldUntil, now + OPENING_LESSON_RELEASE_TICKS / 60);
+  },
+
+  /**
+   * PRI-11a — the wave owner decides when the opening beat is over; the Brood asks
+   * rather than keeping a second clock. With no owner answering, admission stays
+   * exactly what it was before the beat existed.
+   */
+  _openingBeatBlocksBrood() {
+    const run = liveSwarmRun(this.state);
+    if (!run) return false;
+    const owner = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('survivalWave')
+      : null;
+    return !!(owner && typeof owner.openingBeatOpen === 'function'
+      && owner.openingBeatOpen(run.wave));
+  },
+
+  /**
+   * The hold's release is the ordinary wave-start admission, deferred to the beat's
+   * end: same bank-stone preparation, same spawnWave call, still gated on a live
+   * fight so a receipt that lands between phases does not admit a crowd into the
+   * armory. Returns true only when the Brood actually launched.
+   */
+  _releaseBeatBrood() {
+    const state = this.state;
+    const run = liveSwarmRun(state);
+    if (!this._brood || !run || run.phase !== 'active' || !state || state.mode !== 'flight') return false;
+    this._beatHold = null;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    this._prepareBankStone(run, now);
+    this._brood.spawnWave(state);
+    return true;
+  },
+
+  _onOpeningBeatEnded(payload) {
+    const hold = this._beatHold;
+    if (!hold) return;
+    const wave = payload && Number.isInteger(payload.wave) ? payload.wave : null;
+    if (wave != null && wave !== hold.wave) return;
+    // A release stamped by an older run — or signed by no run at all — can never free
+    // this run's hold: the same wave-plus-token law the first-action seam keeps. The
+    // owner's genuine quiet is still caught by the update backstop above.
+    if (hold.runToken != null && (!payload || payload.runToken !== hold.runToken)) return;
+    this._releaseBeatBrood();
   },
 
   _onPressureDestroyed() {

@@ -26,6 +26,10 @@
 //                                follows on the ticks behind the beat, never ahead of it).
 //                * staged: true — a body the wave owes landing alone on its own bearing,
 //                                same beat, without the first-sighting semantics.
+//                * afterOpeningBeat: true — the round's opening beat owes this package:
+//                                the wave owner holds it while the first arrivals stand
+//                                alone, then dispatches it through the ordinary owed
+//                                path on the beat's end (PRI-11a — round 1 only).
 //                * distance    — materialisation distance; defaults to the debut ring on
 //                                debut/staged bodies, the ordinary ring otherwise.
 //
@@ -58,10 +62,13 @@ const W = (enemyId, weight) => ({ enemyId, weight });
 const P = (enemyId, count, extra = {}) => ({ enemyId, count, ...extra });
 
 export const SWARM_COURSE_CAST = Object.freeze([
-  // 1 — ten Wasps, one gate. The opening pressure IS ten hulls: the design's sentence
-  // is the wave's literal composition.
+  // 1 — ten Wasps, one gate, in two arrivals. The first three land at tick 0 and stand
+  // alone while the newcomer's eye finds them; the other seven stay owed to the opening
+  // beat and follow through the same gate the tick it ends (PRI-11a). The row's body
+  // count is still ten, so the opening-pressure law below reads the same wave.
   castRound(1, [W('wasp_swarmer', 10)], [
-    P('wasp_swarmer', 10, { gateIndex: 0, atTick: 0 }),
+    P('wasp_swarmer', 3, { gateIndex: 0, atTick: 0 }),
+    P('wasp_swarmer', 7, { gateIndex: 0, atTick: 0, afterOpeningBeat: true }),
   ]),
   // 2 — Wasps from two gates: front and rear doors at once.
   castRound(2, [W('wasp_swarmer', 10)], [

@@ -1468,6 +1468,9 @@ export function swarmCastPackages(wave, bossOverride) {
       batchGapTicks: 0,
       ...(spec.debut === true ? { debut: true } : {}),
       ...(spec.staged === true ? { staged: true } : {}),
+      // PRI-11a — the opening-beat flag is a spec field like debut/staged: it rides the
+      // resolved package so schedule expansion, not the planner, sees one package shape.
+      ...(spec.afterOpeningBeat === true ? { afterOpeningBeat: true } : {}),
       ...(Number.isFinite(spec.distance)
         ? { distance: spec.distance }
         : (solo ? { distance: SWARM_DEBUT_DISTANCE } : {})),
