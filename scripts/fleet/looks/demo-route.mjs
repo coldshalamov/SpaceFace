@@ -19,6 +19,7 @@ import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pressNewGame } from '../../lib/titleRoute.mjs';
 
 const argv = Object.fromEntries(process.argv.slice(2).map((a) => {
   const m = a.match(/^--([^=]+)(?:=(.*))?$/); return m ? [m[1], m[2] === undefined ? true : m[2]] : [a, true];
@@ -496,7 +497,7 @@ async function adventureRoute() {
   await bootToTitle();
   await setZero();
   step('click', 'title: NEW GAME');
-  await clickText(/new game/i);
+  await pressNewGame(page); // the title's ADVENTURE door (scripts/lib/titleRoute.mjs)
   // New Game screen(s) -> defaults -> LAUNCH
   const tPre = Date.now(); let flying = false;
   while (Date.now() - tPre < 300_000) {
