@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { createBus } from '../src/core/eventBus.js';
 import {
   applyFlashAccessibility,
+  flashScreenCapSize,
   resolveVfxAccessibilityProfile,
 } from '../src/render/vfxAccessibility.js';
 import {
@@ -57,12 +58,14 @@ test('the pooled VFX choke points apply reduced-flash policy to every effect fam
   const system = Object.create(vfx);
   system.init({ state, bus, helpers: {} });
 
-  const normal = system._spawnSprite(0, 0, 0, 0, 0.06, 30, 90, 1, 0, '#ffffff', 0, 0);
+  const normal = system._spawnSprite(0, 0, 0, 0, 0.06, 30, 40, 1, 0, '#ffffff', 0, 0);
+  const normalCapped = system._spawnSprite(0, 0, 0, 0, 0.06, 30, 90, 1, 0, '#ffffff', 0, 0);
   system._flashLight({ x: 0, z: 0 }, '#ffffff', 10, 8, 100);
   const normalPeak = system._lights[0].peak;
 
   state.settings.accessibility.flashReduce = true;
-  const reduced = system._spawnSprite(0, 0, 0, 0, 0.06, 30, 90, 1, 0, '#ffffff', 0, 0);
+  const reduced = system._spawnSprite(0, 0, 0, 0, 0.06, 30, 40, 1, 0, '#ffffff', 0, 0);
+  const reducedCapped = system._spawnSprite(0, 0, 0, 0, 0.06, 30, 90, 1, 0, '#ffffff', 0, 0);
   const reducedCombustion = system._spawnSprite(4, 0, 0, 0, 0.08, 24, 70, 0.8, 0,
     '#ff6a24', 0, 0, 2.2, 0);
   system._flashLight({ x: 0, z: 0 }, '#ffffff', 10, 8, 100);
@@ -70,6 +73,11 @@ test('the pooled VFX choke points apply reduced-flash policy to every effect fam
 
   assert.ok(reduced.op0 < normal.op0);
   assert.ok(reduced.size1 < normal.size1);
+  assert.equal(normalCapped.size1, flashScreenCapSize(144));
+  assert.equal(reducedCapped.size1, flashScreenCapSize(144),
+    'both large flashes can reach the same global screen cap');
+  assert.ok(reducedCapped.size0 < normalCapped.size0);
+  assert.ok(reducedCapped.op0 < normalCapped.op0);
   assert.ok(reducedCombustion.op0 <= 0.32,
     'irregular combustion must use the same reduced-flash choke point as generic flash cards');
   assert.ok(reducedCombustion.size1 < 70);
