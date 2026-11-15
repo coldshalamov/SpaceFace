@@ -1635,6 +1635,9 @@ export function collectImmutableResources(root, stats = null, retireShadowCaster
     if (object.geometry) markImmutableResource(object.geometry, resources);
     const materials = Array.isArray(object.material) ? object.material : object.material ? [object.material] : [];
     for (const material of materials) {
+      // Materials are commonly shared by many package meshes. Once recorded, their
+      // texture graph was already visited and cannot change during this traversal.
+      if (!material || resources.has(material)) continue;
       markImmutableResource(material, resources);
       collectTextures(material, resources, new Set());
     }
