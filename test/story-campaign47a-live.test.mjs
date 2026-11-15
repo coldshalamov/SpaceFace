@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { hasMawReceiving, mawReceivingLayout } from '../src/missions/mawWorksite.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { missions as missionsProto, CONTRACT_47A_SAMPLE_ID } from '../src/systems/missions.js';
@@ -257,6 +258,21 @@ function completeSpineSetPiece(h, mission) {
       .map((id) => h.state.entities.get(id))
       .find((entity) => entity && entity.data && entity.data.physicalRole === role);
     assert.ok(target, `${mission.type} needs ${role}`);
+    if (hasMawReceiving(mission)) {
+      // Adapter fixture, not native piloting: stage the new physical receiving gate
+      // after the three finite impacts above. The earned public-input route is separate.
+      h.bus.emit('tether:latched', { sourceId: h.state.playerId, targetId: target.id });
+      target.pos = { ...mawReceivingLayout().receiver };
+      target.vel = { x: 19, z: 0 };
+      h.missions._ensureMissionTargets(mission);
+      assert.equal(mission.status, 'active', 'fast Maw arrivals cannot settle');
+      target.vel = { x: 0, z: 0 };
+      h.missions._ensureMissionTargets(mission);
+      assert.equal(mission.status, 'completed', 'handled Maw settles at the exterior receiver');
+      assert.equal(mission.params.mawReceipt.mass, 120);
+      assert.equal(target.alive, true, 'Maw recovery retains the live body');
+      return;
+    }
     let berth = [...h.state.entities.values()].find((entity) => (
       entity && entity.type === 'station' && entity.data && entity.data.stationId === mission.destStationId
     ));
@@ -470,7 +486,11 @@ function completePhysicalMission(h, mission) {
     return;
   }
   for (const targetId of [...mission.targetEntityIds]) {
-    h.bus.emit('entity:killed', { id: targetId, killerId: h.state.playerId });
+    const target = h.state.entities.get(targetId);
+    // Combat marks the actual victim dead before its synchronous entity:killed event;
+    // the versioned weighing casualty gate reads that real death, not the id alone.
+    if (target) target.alive = false;
+    h.bus.emit('entity:killed', { id: targetId, killerId: h.state.playerId, entity: target });
   }
 }
 

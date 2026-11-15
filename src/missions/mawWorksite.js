@@ -1,3 +1,5 @@
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import { lineClassForIndex } from '../data/lineProgression.js';
 // A finite Ceres worksite owned by missions, using existing massline bodies and visuals.
 // No ecology AI, inventory, rewards, or second world-record writer.
 export const MAW_WORKSITE_VERSION = 1;
@@ -13,6 +15,16 @@ const LOCAL = Object.freeze([
   Object.freeze({ x: 1710, z: 2140 }),
   Object.freeze({ x: 1710, z: 2190 }),
 ]);
+export function hasMawReceiving(m) {
+  return isMawWorksite(m) && m.params.mawRecoveryVersion === 1;
+}
+export function mawReceivingLayout() {
+  return { receiver: sectorLocalToGlobalForSector({ x: 2100, z: 2140 }, SECTOR), radius: 80, maxSpeed: 18 };
+}
+export function mawHandlingRead(state, mass = 40) {
+  const cls = lineClassForIndex(state.lineProgression?.classIndex || 1);
+  return `${mass}t load; Class ${cls.label} controls ${cls.fullControlMassT}t. ${mass > cls.fullControlMassT ? 'Use brief pulls and release before the line strains; cool before relatching.' : 'Build speed under control, then release.'}`;
+}
 export function isMawWorksite(m) {
   return m?.storyTag === TAG && m.type === 'tow_recovery' && m.destSectorId === SECTOR
     && m.params?.mawWorksiteVersion === MAW_WORKSITE_VERSION;
@@ -40,6 +52,7 @@ export function restoreMawWorksite(m) {
   // or later sync writes so loading never changes the caller's saved payload.
   m.params = { ...m.params };
   if (m.params.mawBodies == null) {
+    if (m.status === 'completed') m.params.mawLedgerInvalid = true;
     // No saved inventory may be reconstructed after a recorded stun.
     if (m.params.mawStuns != null && m.params.mawStuns !== 0) m.params.mawLedgerInvalid = true;
     return;
@@ -89,9 +102,18 @@ function specFor(m, row) {
 }
 export function syncMawWorksite(owner, m, toGlobal) {
   if (!isMawWorksite(m)) return false;
+  if (m.status === 'completed' && !validMawAftermath(m)) return true;
   // Reconciliation may run before the deferred destruction receipt. Record the
   // issued body's loss before considering any surviving same-lineage bodies.
   snapshotMawWorksite(owner, m);
+  // A terminal issued slot cannot leave an already-live stale twin behind. Retire only
+  // intact exact-owned bodies; material fragments retain their independent lifecycle.
+  for (const row of Array.isArray(m.params.mawBodies) ? m.params.mawBodies : []) {
+    if (!Number.isInteger(row?.slot) || row.slot < 0 || row.slot > 3 || !(row.spent || row.lost)) continue;
+    for (const e of owner.state.entityList || []) if (belongs(e, m, row.slot) && e.alive !== false) {
+      e.alive = false; owner.helpers?.spawnBudget?.releaseEntity?.(e.id);
+    }
+  }
   if (m.params.mawLedgerInvalid || m.params.mawBodies?.some?.(row => row.lost)) {
     owner._sayStoryLine?.('Ceres traffic: the worksite cannot settle. This detail is void; return to the board for a fresh attempt.', 7);
     const index = owner.state.missions.active.indexOf(m);
@@ -122,6 +144,15 @@ export function syncMawWorksite(owner, m, toGlobal) {
   m.targetEntityIds = [...new Set([...ids, ...(m.targetEntityIds || []).filter(id =>
     m.params.mawBodies.some(row => row.entityId === id && !row.spent && !row.lost))])];
   snapshotMawWorksite(owner, m);
+  if (hasMawReceiving(m)) {
+    syncMawReceiver(owner, m);
+    const body = owner.state.entities.get(m.params.mawBodies[0]?.entityId);
+    if (m.status === 'active' && mawAtReceiver(owner, m, body)) {
+      const tether = owner.state.player?.tether;
+      owner._completePhysical?.(m, owner.state.missions.active.indexOf(m),
+        tether?.active && tether.targetId === body.id ? 'tow_in' : 'sling_in');
+    }
+  }
   return true;
 }
 export function acceptMawImpact(owner, m, p) {
@@ -165,6 +196,9 @@ export function parkMawWorksite(owner, m) {
     }
     delete row.entityId;
   }
+  for (const e of owner.state.entityList || []) if (receiverOwned(e, m)) {
+    e.alive = false; owner.helpers?.spawnBudget?.releaseEntity?.(e.id);
+  }
   m.targetEntityIds = [];
   return true;
 }
@@ -181,6 +215,11 @@ export function mawWorksiteFocus(m, state, toGlobal) {
   if (m.params.mawLedgerInvalid) return { stationId: null, pos: toGlobal(LOCAL[0], SECTOR),
     label: 'Ceres worksite record unavailable', reason: 'The saved material record is invalid; no replacement supply or payment has been created.' };
   const stuns = m.params.mawStuns || 0;
+  if (hasMawReceiving(m) && stuns >= 3 && (held(0) || m.params.mawHandledAfterStun)) {
+    const layout = mawReceivingLayout();
+    return { stationId: null, pos: layout.receiver, label: 'Ceres traffic — exterior Maw receiving beacon',
+      reason: `Settle the 120t Maw within ${layout.radius} WU below ${layout.maxSpeed} WU/s. ${mawHandlingRead(state, 120)} Payment does not stop its drift.` };
+  }
   if (stuns >= 3 && held(0)) return { stationId: m.destStationId,
     label: 'Ceres yard — stunned Maw receiving berth', reason: 'Tow the stunned Maw to the yard, or sling it into the berth.' };
   const pending = m.params.mawBodies?.slice(1).filter(row => !row.spent && !row.lost) || [];
@@ -191,6 +230,73 @@ export function mawWorksiteFocus(m, state, toGlobal) {
     : m.params.mawBodies?.[slot]?.pos || toGlobal(LOCAL[slot], SECTOR),
     presentationEntityId: body?.id || null,
     label: slot ? 'Ceres traffic — hot-slag staging' : 'Furnace Maw — refinery approach',
-    reason: stuns >= 3 ? 'The Maw is stunned. Latch its body; Ceres yard will receive it.'
-      : `${stuns}/3 stuns. ${carryingSlag ? 'Swing or sling the held hot-slag pod into the Maw for a solid hit.' : 'Latch a marked hot-slag pod. Swing or sling each of the three into the Maw; a lost pod voids the detail.'}` };
+    reason: stuns >= 3 ? (hasMawReceiving(m) ? `Three hits logged. Latch the 120t Maw, then move it east to the nearby receiving beacon. ${mawHandlingRead(state, 120)}` : 'The Maw is stunned. Latch its body; Ceres yard will receive it.')
+      : `${stuns}/3 stuns. ${hasMawReceiving(m) ? mawHandlingRead(state) + ' ' : ''}${carryingSlag ? 'Swing or sling the held hot-slag pod into the Maw for a solid hit.' : 'Latch a marked hot-slag pod. Swing or sling each of the three into the Maw; a lost pod voids the detail.'}` };
+}
+
+// The exterior receiving detail is opt-in for fresh offers. Accepted older work keeps
+// the original station gate and body ledger. No money, line class or force is written here.
+const receiverOwned = (e, m) => e?.data?.persistenceOwner === OWNER
+  && e.data.mawMissionId === m.id && e.data.mawSlot === 'receiver' && e.data.materialFragment !== true;
+function syncMawReceiver(owner, m) {
+  const matches = (owner.state.entityList || []).filter(e => e.alive !== false && receiverOwned(e, m));
+  for (const e of matches.slice(1)) owner.helpers.removeEntity?.(e.id);
+  if (matches.length) return;
+  const layout = mawReceivingLayout();
+  owner.helpers.spawnEntity?.({ type: 'payload', team: 2, pos: layout.receiver, vel: { x: 0, z: 0 },
+    radius: 8, mass: 1, hull: 1, hullMax: 1, collides: false, ttl: Infinity, homeSectorId: SECTOR,
+    data: { persistenceOwner: OWNER, mawMissionId: m.id, mawSlot: 'receiver', tetherable: false,
+      scanLabel: 'MAW RECEIVING — within 80 WU, below 18 WU/s' } });
+}
+export function mawAtReceiver(owner, m, e) {
+  if (!hasMawReceiving(m) || m.params.mawLedgerInvalid || m.params.mawHandledAfterStun !== true
+      || m.params.mawStuns !== 3 || !Array.isArray(m.params.mawBodies)
+      || m.params.mawBodies.length !== 4 || !m.params.mawBodies.slice(1).every(row => row.spent && !row.lost)
+      || m.params.mawBodies[0].lost || !belongs(e, m, 0) || e.alive === false || !(e.hull > 0)
+      || e.mass !== 120 || e.physicsBody?.mass !== 120
+      || e.id !== m.params.mawBodies[0].entityId || owner.state.world?.currentSectorId !== SECTOR) return false;
+  const l = mawReceivingLayout();
+  return finitePoint(e.pos) && finitePoint(e.vel) && Math.hypot(e.pos.x-l.receiver.x, e.pos.z-l.receiver.z) <= l.radius
+    && Math.hypot(e.vel.x, e.vel.z) <= l.maxSpeed;
+}
+export function prepareMawReceipt(owner, m, method) {
+  if (!hasMawReceiving(m)) return true;
+  const body = owner.state.entities.get(m.params.mawBodies?.[0]?.entityId);
+  if (!['tow_in', 'sling_in'].includes(method) || !mawAtReceiver(owner, m, body)) return false;
+  snapshotMawWorksite(owner, m);
+  m.params.mawReceipt = { version: 1, missionId: m.id, mass: 120, method, sectorId: SECTOR,
+    receiver: { ...mawReceivingLayout().receiver }, pos: { x: body.pos.x, z: body.pos.z },
+    speed: Math.hypot(body.vel.x, body.vel.z), atS: owner.state.simTime || 0 };
+  return true;
+}
+export function validMawAftermath(m) {
+  const p = m?.params, receipt = p?.mawReceipt, rows = p?.mawBodies, l = mawReceivingLayout();
+  return hasMawReceiving(m) && m.status === 'completed' && !p.mawLedgerInvalid
+    && p.mawHandledAfterStun === true && p.mawStuns === 3 && Array.isArray(rows) && rows.length === 4
+    && rows.every((row, slot) => row?.slot === slot && finitePoint(row.pos) && finitePoint(row.vel)
+      && Number.isFinite(row.hull) && row.hull >= 0 && row.hull <= 220
+      && Number.isFinite(row.rot) && Number.isFinite(row.angVel)
+      && typeof row.spent === 'boolean' && typeof row.lost === 'boolean'
+      && (slot === 0 ? !row.spent : row.spent && !row.lost))
+    && receipt?.version === 1 && receipt.missionId === m.id && receipt.mass === 120 && receipt.sectorId === SECTOR
+    && ['tow_in', 'sling_in'].includes(receipt.method) && finitePoint(receipt.pos) && finitePoint(receipt.receiver)
+    && receipt.receiver.x === l.receiver.x && receipt.receiver.z === l.receiver.z
+    && Number.isFinite(receipt.speed) && receipt.speed >= 0 && receipt.speed <= l.maxSpeed && Number.isFinite(receipt.atS)
+    && Math.hypot(receipt.pos.x-l.receiver.x, receipt.pos.z-l.receiver.z) <= l.radius;
+}
+export function retireMawWorksite(owner, m) {
+  if (!hasMawReceiving(m)) return false;
+  if (m.status !== 'completed' || !validMawAftermath(m)) {
+    for (const e of owner.state.entityList || []) if (receiverOwned(e, m)) owner.helpers.removeEntity?.(e.id);
+    return false;
+  }
+  snapshotMawWorksite(owner, m);
+  owner.state.missions.mawWorksiteAftermath = { id: m.id, type: m.type, storyTag: TAG, destSectorId: SECTOR,
+    status: 'completed', params: JSON.parse(JSON.stringify(m.params)) };
+  m.targetEntityIds = [];
+  return true;
+}
+export function materializeMawAftermath(owner) {
+  const m = owner.state.missions.mawWorksiteAftermath;
+  if (m) syncMawWorksite(owner, m, sectorLocalToGlobalForSector);
 }
