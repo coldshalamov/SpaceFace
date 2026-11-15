@@ -57,7 +57,15 @@ export function createContactHailPrompt(ctx) {
       <button type="button" class="sf-contact-hail__close" data-k="close" hidden aria-label="Close route details">CLOSE DETAILS</button>
     </aside>`;
   const uiRoot = document.getElementById('ui-root');
-  uiRoot.appendChild(root);
+  // The hail chip flows with the tracker column beside its COMMS chip (comms.js adopts the same
+  // way). hud.js's adoptCommsChrome re-parents it into the comms tape on the real route; the
+  // self-adoption covers mounts that land after that pass — the fixed corner seat painted over
+  // the tracker heading whenever both were up (bench flight-speaker 2026-11-14).
+  const backlogChip = document.getElementById('sf-comm-backlog-btn');
+  const trackerColumn = document.querySelector('.sf-leftcontext');
+  if (backlogChip && trackerColumn && trackerColumn.contains(backlogChip)) backlogChip.after(root);
+  else if (trackerColumn) trackerColumn.appendChild(root);
+  else uiRoot.appendChild(root);
 
   const hailButton = root.querySelector('[data-k="hail"]');
   const panel = root.querySelector('[data-k="panel"]');

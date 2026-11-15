@@ -32,6 +32,7 @@ import {
   missionStandingRequirement,
   missionUpfrontCost,
 } from '../../missionPreflight.js';
+import { book4MissionChips } from '../../book4Choice.js';
 import { mountDataState } from '../../uiPrimitives.js';
 import { factionIcon, icon } from '../icons.js';
 import { missionBoardReadiness } from '../stationHubModel.js';
@@ -384,13 +385,13 @@ const CT_STAND_COMPACT = { cx: 192, cy: 76, r: 40, half: 40, keyY: 48, labelY: 5
  * the failure half dim (the gauge's ghost tone), the success half lit, each half's head marking
  * the live end. Pure string; composeDossier mounts the gauge halves into the placeholder.
  */
-export function consequenceScalesSvg(m, { compact = false } = {}) {
+export function consequenceScalesSvg(m, state, { compact = false } = {}) {
   // compact: a short screen draws the scales at 1:1 in a 400x60 box (no endpoint captions), so the labels never shrink
   const w = compact ? 400 : 520; const h = compact ? 60 : 84;
   const f = (n) => Math.round(n * 100) / 100;
   const r = Math.min(risk(m), 5);
   const high = r >= 3;
-  const consequences = missionConsequenceSummary(m);
+  const consequences = missionConsequenceSummary(m, state);
   const gain = Math.max(0, Number(consequences.repReward) || 0);
   const loss = Math.max(0, -(Number(consequences.repPenalty) || 0));
   let out = `<svg class="orr-svg" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">`;
@@ -465,7 +466,7 @@ export function missionDossierHtml(m, state, options = {}) {
   const clauses = Array.isArray(m.clauses) ? m.clauses : [];
   const readiness = missionDossierReadiness(m, state);
   const ready = readiness.canAccept;
-  const consequences = missionConsequenceSummary(m);
+  const consequences = missionConsequenceSummary(m, state);
   const upfrontCr = missionUpfrontCost(m);
   const facShort = escapeHtml((FAC.get(m.factionId) || {}).short || 'faction');
   const authoredSummary = missionDossierSummary(m);
@@ -500,6 +501,7 @@ export function missionDossierHtml(m, state, options = {}) {
       + (upfrontCr ? termRow('Upfront', cr(upfrontCr), 'to accept') : '')
       + (missionOffersFollowUp(m) ? termRow('Follow-up', 'Posted on success', 'same contract family') : '')
       + (m.featured ? termRow('Featured', 'Day rate', `pays ×${m.featured.rewardMult} · +${m.featured.repBonus} rep`) : '')
+      + book4MissionChips(m, state).map((chip) => termRow(chip.label || 'Note', escapeHtml(chip.text || ''))).join('')
       + termRow('Readiness', escapeHtml(readiness.label), escapeHtml(readiness.detail)),
     readiness,
     clausesHtml: clauses.map((c) => `<li class="k-t-fine k-62"><span class="sx-tag"${clauseWhyAttr(c)}>${escapeHtml(c.label || c.id || 'clause')}</span></li>`).join(''),
@@ -1086,11 +1088,11 @@ export function createContractsScreen(ctx) {
       scales.className = 'orr-ct-scales';
       scales.setAttribute('aria-hidden', 'true');
       const compact = typeof window !== 'undefined' && window.innerHeight > 0 && window.innerHeight <= 800;
-      scales.innerHTML = consequenceScalesSvg(m, { compact });
+      scales.innerHTML = consequenceScalesSvg(m, state, { compact });
       risky.insertAdjacentElement('afterend', scales);
       const slot = scales.querySelector('.orr-ct-standgauge');
       if (slot) {
-        const cons = missionConsequenceSummary(m);
+        const cons = missionConsequenceSummary(m, state);
         const sLoss = Math.max(0, -(Number(cons.repPenalty) || 0));
         const sGain = Math.max(0, Number(cons.repReward) || 0);
         const P = compact ? CT_STAND_COMPACT : CT_STAND;
@@ -1128,7 +1130,7 @@ export function createContractsScreen(ctx) {
     // 720 ms with collateral. The hold's progress lights the combined key-to-berth path; letting go
     // early retracts it; at full the berth ignites and the mission commits.
     const accept = dossier.querySelector('.sx-ct-commit[data-accept]');
-    const consequences = missionConsequenceSummary(m);
+    const consequences = missionConsequenceSummary(m, state);
     acceptHoldMs = consequences.collateral > 0 ? 720 : 450;
     const holdNote = contractAcceptHoldNote(state, consequences.collateral);
     if (accept && !accept.disabled) {
@@ -1194,7 +1196,7 @@ export function createContractsScreen(ctx) {
   function offerTermsKey(missionId, state) {
     const offer = offers(state).find((row) => String(mid(row)) === String(missionId));
     if (!offer) return null;
-    const cons = missionConsequenceSummary(offer) || {};
+    const cons = missionConsequenceSummary(offer, state) || {};
     const clauseIds = (Array.isArray(offer.clauses) ? offer.clauses : [])
       .map((clause) => clause && clause.id != null ? String(clause.id) : '')
       .filter(Boolean)

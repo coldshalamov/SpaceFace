@@ -19,6 +19,7 @@ import { SECTORS } from '../data/sectors.js';
 import { stationBerthRefusal } from '../data/frontierRumors.js';
 import { forecastTransitFor, sectorSignalFor } from '../systems/sectorSim.js';
 import { authoredTenderHaul } from '../missions/tenderHaul.js';
+import { book4MissionChips } from './book4Choice.js';
 import {
   smugglingPreflightCopy,
   buildIllicitStacksFromCargo,
@@ -223,7 +224,7 @@ export function missionRiskRewardSummary(m) {
   };
 }
 
-export function missionConsequenceSummary(m) {
+export function missionConsequenceSummary(m, state) {
   const reward = missionRewardCredits(m);
   const repReward = missionRepReward(m);
   const repPenalty = missionRepPenalty(m);
@@ -263,6 +264,8 @@ export function missionConsequenceSummary(m) {
         : `${clause.prose} Keep it${bonus}; breach fails the contract.`,
     });
   }
+
+  chips.push(...book4MissionChips(m, state));
 
   return { reward, repReward, repPenalty, collateral, chips };
 }

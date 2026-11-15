@@ -120,7 +120,7 @@ function journeyStepCandidate(slots, state) {
         mission,
         preflight,
         readiness: missionBoardReadiness(preflight),
-        consequences: missionConsequenceSummary(mission),
+        consequences: missionConsequenceSummary(mission, state),
       };
     });
   return rows.find((row) => row.readiness.state !== 'blocked') || rows[0] || null;
@@ -168,7 +168,7 @@ export function recommendMissionBoardOffer(slots = [], state = {}) {
       if (id == null || id === '') return null;
       const preflight = missionPreflight(mission, state);
       const readiness = missionBoardReadiness(preflight);
-      const consequences = missionConsequenceSummary(mission);
+      const consequences = missionConsequenceSummary(mission, state);
       const risk = missionRiskTier(mission);
       const collateral = consequences.collateral || 0;
       const reward = consequences.reward || 0;

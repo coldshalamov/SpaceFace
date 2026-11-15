@@ -24,6 +24,7 @@ import {
   partialDeliverySettlement,
 } from '../../systems/missions.js';
 import { authoredTenderHaul } from '../../missions/tenderHaul.js';
+import { isReportInRestitution } from '../../missions/restitutionReadout.js';
 
 const CARRY_TYPES = new Set(['cargo_delivery', 'salvage_retrieval']);
 // Types whose record names a destination the pilot travels to and closes out at.
@@ -337,7 +338,7 @@ export function missionNextActionRow(state, mission) {
     });
     return Object.freeze(row);
   }
-  if (destination && location.inSector && (type === 'passenger_transport' || type === 'smuggling_run')) {
+  if (destination && location.inSector && (type === 'passenger_transport' || type === 'smuggling_run' || isReportInRestitution(mission))) {
     row.phase = 'turn_in';
     row.action = Object.freeze({
       kind: 'dock',
