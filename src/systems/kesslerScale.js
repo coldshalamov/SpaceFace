@@ -282,7 +282,8 @@ export function createKesslerScale() {
       const flags = this._flags();
       if (!flags) return;
       if (!this._weighed) this._weighed = new Map();
-      const settling = new Set();
+      const settling = this._settlingNext || (this._settlingNext = new Set());
+      settling.clear();
       const pad = kesslerPadPosition();
       for (const e of s.entityList || []) {
         if (e?.alive === false) {
@@ -359,10 +360,11 @@ export function createKesslerScale() {
           variance, firstVariance, count,
         });
       }
+      this._settlingNext = this._settlingPods;
       this._settlingPods = settling;
       // Pods removed entirely from the world (not just flagged dead) leave the set.
       if (this._deckPods?.size) {
-        for (const id of [...this._deckPods]) {
+        for (const id of this._deckPods) {
           const e = s.entities?.get?.(id);
           if (!e || e.alive === false) this._deckPods.delete(id);
         }
