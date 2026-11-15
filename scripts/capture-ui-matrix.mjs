@@ -2280,7 +2280,9 @@ export async function openBoot({ browser, baseUrl, viewport, locale = null, menu
       // The Crucible lab exists only in the room the Crucible door launches. That launch is the
       // route a player takes, so the boot takes it: title → Crucible → Practice room. The room
       // fixes its own seed (sandboxSetup.js 'sling_practice'); typing 47 would not take.
-      const door = await clickControl(page, { selector: '[data-screen="mainMenu"] [data-action="crucible"]', text: 'Crucible' });
+      // TITLE-01: the Swarm setup word waits behind the title's More.
+      await page.locator('[data-screen="mainMenu"] [data-title-more]').first().click({ timeout: 5000 }).catch(() => {});
+      const door = await clickControl(page, { selector: '[data-screen="mainMenu"] [data-action="crucible"]', text: 'Swarm setup' });
       if (!door.ok) throw new Error(`practice boot: ${door.reason}`);
       await waitForAnyVisible(page, ['[data-screen="crucible"]'], 30_000, 'crucible door');
       const practice = await clickControl(page, { selector: '[data-screen="crucible"] button', text: 'Practice room' });

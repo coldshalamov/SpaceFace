@@ -2,6 +2,7 @@
 // Boot -> title -> Crucible -> Quick play -> first playable frame -> scene census + screenshot.
 // Writes only to .devshots/crucible-arcs/.
 
+import { pressTitleAction } from './lib/titleRoute.mjs';
 import fs from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
@@ -71,8 +72,8 @@ try {
 
   await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
-  await page.waitForSelector('[data-action="crucible"]', { timeout: 60_000 });
-  await page.click('[data-action="crucible"]');
+  await page.waitForSelector('[data-action="crucible"]', { state: 'attached', timeout: 60_000 });
+  await pressTitleAction(page, 'crucible');
   await page.waitForFunction(
     () => !!document.querySelector('.sf-crucible, [data-screen="crucible"], [data-action]'),
     null, { timeout: 60_000 },

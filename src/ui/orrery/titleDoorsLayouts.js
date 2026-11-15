@@ -1,12 +1,18 @@
 // TITLE-01 — the title as two doors (design/game/20_THE_FIRST_HOUR.md storyboard, 0:09 "Title"):
-// ADVENTURE and SWARM side by side over the live hero scene, a small row under them (Continue,
-// Settings, Help, Quit) and everything else behind one quiet "More". Layout and type only: the
-// buttons, their data-action hooks, aria names and DOM order are the title's own (mainMenu.js);
-// this sheet sets them out. Scoped to the desktop title (`.orr-title--doors`); the phone keeps its
-// own column. No dial and no menu over the ship: the doors stand in the lower third, clear of the
-// logotype.
+// ADVENTURE and SWARM side by side over the live hero scene, a small row under them (Settings, Help,
+// Quit) and everything else behind one quiet "More". Layout and type only: the buttons, their
+// data-action hooks, aria names and DOM order are the title's own (mainMenu.js, which also marks the two
+// door items `of-title-door` + `is-adventure` / `is-swarm`); this sheet sets them out. The Adventure door is
+// New Game for a new player and Continue when a save exists, in which case New Game stands on the door as its
+// secondary key (`of-title-door-secondary`), never behind More. No dial and no menu over the ship: the doors
+// stand in the lower left, clear of the hero.
 import { injectOrrery } from './tokens.js';
 
+const img = (name) => {
+  try { return new URL('../../../assets/ui/backdrops/' + name, import.meta.url).href; } catch { return '../assets/ui/backdrops/' + name; }
+};
+const ADVENTURE_IMG = img('backdrop-newgame.jpg');
+const SWARM_IMG = img('backdrop-crucible-door.jpg');
 const STYLE_ID = 'sf-orrery-title-doors-layouts';
 const T = 'html body .of-title.orr-title--doors';
 const BONE = '236 230 216';
@@ -15,17 +21,18 @@ const MORE_ACTIONS = ['load', 'crucible', 'archive', 'circuits', 'sandbox', 'phy
 const MORE_LI = MORE_ACTIONS.map(LI).join(',\n');
 const MORE_LI_OPEN = MORE_ACTIONS
   .map((a) => `${T} .of-title-actions.is-more-open li:has(> [data-action="${a}"])`).join(',\n');
-const DOOR_LI = `${T} .of-title-actions :is(li:has(> [data-action="newGame"]), li:has(> [data-action="swarm"]))`;
-const DOOR_BTN = `${T} .of-title-actions :is(li:has(> [data-action="newGame"]), li:has(> [data-action="swarm"])) > button`;
-const ROW_BTN = `${T} .of-title-actions :is(li:has(> [data-action="continue"]), li:has(> [data-action="settings"]), li:has(> [data-action="help"]), li:has(> [data-action="quit"])) > button`;
+const DOOR_LI = `${T} .of-title-actions li.of-title-door`;
+const DOOR_BTN = `${DOOR_LI} > button`;
+const SECOND_LI = `${T} .of-title-actions li.of-title-door-secondary`;
+const ROW_BTN = `${T} .of-title-actions :is(li:has(> [data-action="settings"]), li:has(> [data-action="help"]), li:has(> [data-action="quit"]), li.of-title-door-secondary) > button`;
+// the door word fits its own door: cqw is the door's inner width (ADVENTURE is ~6.1em of Archivo 800)
+const DOOR_FONT = "800 clamp(28px, min(6vh, 15cqw), 58px)/1 var(--dp-face-display, 'Archivo')";
 
 export const TITLE_DOORS_LAYOUT_CSS = `
-/* the phone column lists every word already; the toggle is the desktop's */
-html body .of-title.orr-title--phone .of-title-more { display:none !important; }
-/* the column becomes one grid: two doors (two columns each), then a row of four small words */
+/* the column becomes one grid: two doors (twelve of twenty-four columns each), then a row of small words */
 ${T} .of-title-actions {
   display:grid !important; grid-template-columns:repeat(24, minmax(0, 1fr)) !important; gap:14px 0 !important; column-gap:0 !important;
-  width:min(560px, 44vw) !important; margin:0 !important; align-content:end; justify-items:stretch;
+  width:min(660px, 52vw) !important; margin:0 !important; align-content:end; justify-items:stretch;
   position:absolute !important; left:48px !important; right:auto !important; top:auto !important;
   bottom:clamp(56px, 10vh, 110px) !important; transform:none !important;
   padding:0 !important; max-width:none !important; min-height:0 !important; height:auto !important; }
@@ -33,47 +40,44 @@ ${T} .of-title-actions > ul { display:contents !important; list-style:none; marg
 ${T} .of-title-actions li { margin:0 !important; padding:0 !important; list-style:none; min-width:0; position:static !important; width:auto !important; max-width:none !important; }
 ${T} .of-title-actions li[hidden] { display:none !important; }
 /* the doors */
-${LI('newGame')} { grid-column:1 / span 12; grid-row:1; }
-${LI('swarm')} { grid-column:13 / span 12; grid-row:1; }
-/* the door is the list item: border, glass and the notch on it; the word and its line sit inside in flow */
+${DOOR_LI}.is-adventure { grid-column:1 / span 12; grid-row:1; margin:0 7px 0 0 !important; --door-img:url("${ADVENTURE_IMG}"); }
+${DOOR_LI}.is-swarm { grid-column:13 / span 12; grid-row:1; margin:0 0 0 7px !important; --door-img:url("${SWARM_IMG}"); }
+${SECOND_LI} { grid-column:1 / span 12; grid-row:2; margin:0 7px 0 0 !important; }
+/* the door is the list item: image, border and the notch on it; the word and its line sit inside in flow */
 ${DOOR_LI} {
-  display:flex !important; flex-direction:column; justify-content:flex-end; min-height:clamp(132px, 21vh, 190px);
-  padding:18px 22px 16px !important; box-sizing:border-box; position:relative !important;
-  background:linear-gradient(0deg, rgb(8 10 14 / .86), rgb(8 10 14 / .5));
+  display:flex !important; flex-direction:column; justify-content:flex-end; min-height:clamp(210px, 34vh, 330px);
+  padding:20px 26px 22px !important; box-sizing:border-box; position:relative !important; container-type:inline-size;
+  background:linear-gradient(0deg, rgb(6 8 12 / .94) 0%, rgb(6 8 12 / .62) 42%, rgb(6 8 12 / .12) 100%), var(--door-img) center / cover no-repeat;
   border:1px solid rgb(${BONE} / .34); border-radius:2px;
   clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
-  transition:border-color .16s linear, background .16s linear, box-shadow .16s linear; }
-${LI('newGame')} { margin:0 7px 0 0 !important; }
-${LI('swarm')} { margin:0 0 0 7px !important; }
+  transition:border-color .16s linear, box-shadow .16s linear; }
 ${DOOR_LI}:is(:hover, :focus-within) {
-  border-color:var(--dp-hand, #f2b950); box-shadow:0 0 22px rgb(242 185 80 / .2);
-  background:linear-gradient(0deg, rgb(26 20 10 / .88), rgb(8 10 14 / .55)); }
+  border-color:var(--dp-hand, #f2b950); box-shadow:0 0 26px rgb(242 185 80 / .25);
+  background:linear-gradient(0deg, rgb(20 14 6 / .92) 0%, rgb(14 10 6 / .5) 42%, rgb(6 8 12 / .05) 100%), var(--door-img) center / cover no-repeat; }
 ${DOOR_BTN} {
   display:block !important; width:100% !important; padding:0 !important; margin:0 !important; text-align:left; cursor:pointer;
   color:rgb(248 244 234) !important; background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
-  font:800 clamp(30px, 4.4vh, 44px)/1 var(--dp-face-display, 'Archivo') !important; letter-spacing:.03em !important; text-transform:uppercase;
-  text-shadow:0 1px 0 rgb(0 0 0 / .6); }
+  font:${DOOR_FONT} !important; letter-spacing:.02em !important; text-transform:uppercase; text-shadow:0 1px 0 rgb(0 0 0 / .6); }
+/* the button's own text is the core copy (New Game / Continue); the door draws ADVENTURE from its data-door-label */
+${DOOR_BTN}[data-door-label] { font-size:0 !important; line-height:0 !important; letter-spacing:0 !important; }
+${DOOR_BTN}[data-door-label]::before { content:attr(data-door-label); display:block; font:${DOOR_FONT}; letter-spacing:.02em; text-transform:uppercase; }
 ${DOOR_BTN}:is(:hover, :focus-visible, [data-awake]) { outline:none !important; background:none !important; }
 ${DOOR_LI}:has(> button:focus-visible) { outline:2px solid var(--k-bone, #e8e2d4); outline-offset:3px; }
 ${DOOR_LI} .dp-lit__note {
   display:block !important; position:static !important; clip:auto !important; clip-path:none !important; width:auto !important; height:auto !important;
-  overflow:visible !important; margin:8px 0 0 !important; font:400 14px/1.4 var(--dp-face-body, 'Instrument Sans'), sans-serif !important;
+  overflow:visible !important; margin:10px 0 0 !important; font:400 15px/1.4 var(--dp-face-body, 'Instrument Sans'), sans-serif !important;
   letter-spacing:0 !important; text-transform:none; color:rgb(${BONE} / .82) !important; }
-/* the small row: Continue, Settings, Help, Quit */
-/* the small row is centred by mainMenu.js (it sets each visible word's column from how many show);
-   these are the full-row defaults */
-${LI('continue')} { grid-column:1 / span 6; grid-row:2; }
-${LI('settings')} { grid-column:7 / span 6; grid-row:2; }
-${LI('help')} { grid-column:13 / span 6; grid-row:2; }
-${LI('quit')} { grid-column:19 / span 6; grid-row:2; }
-${T} .of-title-actions :is(li:has(> [data-action="continue"]), li:has(> [data-action="settings"]), li:has(> [data-action="help"]), li:has(> [data-action="quit"])) { padding:0 5px !important; }
+/* the small row (Settings, Help, Quit) is centred by mainMenu.js from how many words show; these are the full-row defaults */
+${LI('settings')} { grid-column:1 / span 8; grid-row:2; }
+${LI('help')} { grid-column:9 / span 8; grid-row:2; }
+${LI('quit')} { grid-column:17 / span 8; grid-row:2; }
+${T} .of-title-actions :is(li:has(> [data-action="settings"]), li:has(> [data-action="help"]), li:has(> [data-action="quit"])) { padding:0 5px !important; }
 ${ROW_BTN} {
   width:100% !important; min-height:44px; padding:8px 12px !important; text-align:center; justify-content:center;
   font:600 14px var(--dp-face-label, 'Archivo') !important; letter-spacing:.12em !important; text-transform:uppercase;
   color:rgb(${BONE} / .9) !important; background:rgb(8 10 14 / .6) !important; border:1px solid rgb(${BONE} / .22) !important; border-radius:2px !important;
   text-shadow:0 1px 0 rgb(0 0 0 / .6); }
 ${ROW_BTN}:is(:hover, :focus-visible, [data-awake]) { color:#fff !important; border-color:rgb(${BONE} / .6) !important; outline:none !important; }
-${T} .of-title-actions li:has(> [data-action="continue"]) .dp-lit__note { display:block; font:400 12px/1.3 var(--dp-face-body, 'Instrument Sans'), sans-serif !important; letter-spacing:0; text-transform:none; color:rgb(${BONE} / .75) !important; }
 /* More: everything else, closed until asked */
 ${MORE_LI} { display:none !important; }
 ${MORE_LI_OPEN} { display:list-item !important; grid-row:auto; grid-column:auto / span 8; padding:0 5px !important; }
@@ -87,8 +91,18 @@ ${T} .of-title-more:is(:hover, :focus-visible) { color:#fff !important; outline:
 /* the reference line that rode under the dial has no place here: its words live behind More */
 ${T} .of-title-aside { display:contents !important; }
 @media (max-height:700px) {
-  ${T} .of-title-actions { bottom:clamp(44px, 8vh, 80px); gap:10px; }
-  ${DOOR_BTN} { min-height:104px; padding:12px 18px 12px !important; }
+  ${T} .of-title-actions { bottom:clamp(40px, 7vh, 70px) !important; gap:10px 0 !important; }
+  ${DOOR_LI} { min-height:clamp(180px, 33vh, 230px); padding:16px 22px 18px !important; }
+}
+/* the phone: the two doors stacked, then the small row; More behind its toggle as on the desktop */
+@media (max-width:700px) {
+  ${T} .of-title-actions { position:absolute !important; left:16px !important; right:16px !important; width:auto !important; bottom:20px !important; transform:none !important; gap:12px 0 !important; }
+  ${DOOR_LI}.is-adventure, ${DOOR_LI}.is-swarm { grid-column:1 / -1 !important; margin:0 !important; min-height:132px; }
+  ${DOOR_LI}.is-adventure { grid-row:1 !important; }
+  ${DOOR_LI}.is-swarm { grid-row:2 !important; }
+  ${SECOND_LI} { grid-column:1 / -1 !important; grid-row:auto !important; margin:0 !important; }
+  ${LI('settings')}, ${LI('help')}, ${LI('quit')} { grid-column:span 12 !important; grid-row:auto !important; }
+  ${MORE_LI_OPEN} { grid-column:span 12 !important; }
 }
 `;
 

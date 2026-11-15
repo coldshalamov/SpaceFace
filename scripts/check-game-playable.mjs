@@ -32,6 +32,7 @@
 // Deliberate non-goals: no screenshots, no pixel comparison, no golden files, no performance
 // budget. Those belong to other checks. This checks basic route liveness, not every gameplay
 // workflow, fun, appearance, or performance; choose an affected route for those claims.
+import { pressTitleAction } from './lib/titleRoute.mjs';
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -487,7 +488,7 @@ try {
         if (!(await clickButton(page, 'Continue'))) throw new Error('Continue button absent or disabled with real saves present');
       } else if (PHYSICS_VENUE) {
         if (!['gallery', 'league'].includes(PHYSICS_VENUE)) throw new Error('unknown physics venue');
-        await page.locator('[data-screen="mainMenu"] [data-action="physics"]').click({ timeout: T(60000) });
+        await pressTitleAction(page, 'physics', { timeout: T(60000) });
         await page.locator('[data-screen="physicsVenues"] .race-board-course')
           .nth(PHYSICS_VENUE === 'gallery' ? 0 : 1)
           .locator('.race-board-launch').first().click();
@@ -497,7 +498,7 @@ try {
             .getByRole('button', { name: 'Launch', exact: true }).click({ timeout: T(3000) });
         } catch {}
       } else if (CIRCUIT) {
-        await page.locator('[data-screen="mainMenu"] [data-action="circuits"]').click({ timeout: T(60000) });
+        await pressTitleAction(page, 'circuits', { timeout: T(60000) });
         await page.getByRole('combobox', { name: 'Circuit ship', exact: true }).selectOption('starter_wasp');
         await page.getByRole('combobox', { name: 'Circuit drive', exact: true }).selectOption('sprint');
         await page.getByRole('button', { name: 'Practice: overhead', exact: true }).click();

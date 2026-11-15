@@ -407,6 +407,9 @@ export const mainMenuScreen = {
     const { backdrop, title, stage, status } = createTitleFrame(rootEl);
     // The eyebrow's standing line (the localized contract line). The gloss writer below restores
     // exactly this when no verb is awake, and _render may replace it with the Continue summary.
+    // TITLE-01: no tech words on the way in. The standing line is empty; a save's Continue summary and a
+    // load failure still write here.
+    status.textContent = '';
     this._statusDefault = status.textContent;
 
     // The words. Visible words follow the sheet; the accessible names keep the game's core copy
@@ -422,7 +425,7 @@ export const mainMenuScreen = {
     // titleVerbOrder owns the reading order.
     const labels = {
       // TITLE-01: the two doors. Visible words are the door names; the accessible names keep the core copy.
-      newGame: 'Adventure',
+      newGame: coreText('newGame'),
       continue: coreText('continue'),
       load: 'Load',
       // "Swarm" — the mode the title sells (S4): one press straight into round 1 through the
@@ -509,7 +512,7 @@ export const mainMenuScreen = {
     rootEl.classList.add(phone ? 'orr-title--phone' : 'orr-title');
     // TITLE-01: on a desktop the title is two doors over the live scene, not the dial. The same buttons
     // (data-action, aria, order) stand as a door pair, a small row, and a closed "More".
-    if (!phone) rootEl.classList.add('orr-title--doors');
+    rootEl.classList.add('orr-title--doors');
     // The emblem sits BEHIND the logotype (ORRERY 6): its upper third runs under the name, its rim is
     // lettered, and the verbs ride its right side from just above east down to the south-east, so the name
     // and the choice are one object and the lower left goes back to the key art.
@@ -719,7 +722,21 @@ export const mainMenuScreen = {
         ctx.bus.emit('game:load', { slot: latest.slot });
         return;
       }
-      case 'newGame': pushWhenReady(ctx, 'newGame', 'New Game'); return;
+      case 'newGame': {
+        // TITLE-01: with a save on disk the door is Continue and New Game is its secondary key; starting over
+        // asks first, so a fumbled press cannot walk a returning player away from their run.
+        if (this._latestSave) {
+          this._confirmFirstLight({
+            title: 'Start a new game?',
+            body: 'Your latest save stays on disk until you save over it. Continue picks it up instead.',
+            confirmLabel: 'New Game',
+            cancelLabel: 'Back',
+          }).then((ok) => { if (ok) pushWhenReady(ctx, 'newGame', 'New Game'); });
+          return;
+        }
+        pushWhenReady(ctx, 'newGame', 'New Game');
+        return;
+      }
       case 'load': pushWhenReady(ctx, 'saveLoad', 'Load Game'); return;
       case 'swarm': {
         // TITLE-01 — the SWARM door opens the Swarm entrance in its one-button PLAY state: PLAY is the
@@ -762,15 +779,29 @@ export const mainMenuScreen = {
     ].join('');
   },
 
-  // TITLE-01: the small row (Continue, Settings, Help, Quit) is centred under the doors by how many of
-  // its words are showing (Continue waits for a save; Quit waits for a shell).
+  // TITLE-01: the doors and the small row. The Adventure door is New Game for a new player and Continue when a
+  // save exists; then New Game stands on the door as its secondary key (never behind More). The small row
+  // (Settings, Help, Quit) is centred under the doors by how many of its words show.
   _layoutTitleRow() {
     if (!refs || !refs.stage) return;
-    const lis = ['continue', 'settings', 'help', 'quit']
-      .map((a) => refs.stage.querySelector('li:has(> [data-action="' + a + '"])'))
-      .filter((li) => li && !li.hidden);
+    const stage = refs.stage;
+    const liOf = (a) => stage.querySelector('li:has(> [data-action="' + a + '"])');
+    const hasSave = !!this._latestSave;
+    stage.classList.toggle('has-save', hasSave);
+    const cont = liOf('continue'); const ng = liOf('newGame'); const sw = liOf('swarm');
+    for (const li of [cont, ng, sw]) if (li) li.classList.remove('of-title-door', 'is-adventure', 'is-swarm', 'of-title-door-secondary');
+    if (sw) sw.classList.add('of-title-door', 'is-swarm');
+    const adventure = hasSave ? cont : ng;
+    if (adventure) adventure.classList.add('of-title-door', 'is-adventure');
+    if (hasSave && ng) ng.classList.add('of-title-door-secondary');
+    // The door draws ADVENTURE from data-door-label; the button's own text stays the core copy so every
+    // route, probe and screen reader that looks for New Game or Continue still finds exactly that.
+    if (refs.bContinue) { if (hasSave) refs.bContinue.dataset.doorLabel = 'Adventure'; else delete refs.bContinue.dataset.doorLabel; }
+    if (refs.bNew) { if (hasSave) delete refs.bNew.dataset.doorLabel; else refs.bNew.dataset.doorLabel = 'Adventure'; }
+    if (isPhoneLayout()) return; // the phone's rows are CSS
+    const lis = ['settings', 'help', 'quit'].map(liOf).filter((li) => li && !li.hidden);
     const start = Math.floor((24 - 6 * lis.length) / 2) + 1;
-    lis.forEach((li, i) => { li.style.gridColumn = (start + 6 * i) + ' / span 6'; li.style.gridRow = '2'; });
+    lis.forEach((li, i) => { li.style.gridColumn = (start + 6 * i) + ' / span 6'; li.style.gridRow = hasSave ? '3' : '2'; });
   },
 
   _render(ctx) {
