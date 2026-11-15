@@ -282,7 +282,7 @@ export const COMBAT_LAB_ARENAS = freezeDeep([
     id: 'tethys_hub',
     label: 'Tethys Exchange',
     sectorId: 'sector_tethys_junction',
-    spawnPos: { x: 1050, z: 380 },
+    spawnPos: { x: 1280, z: 380 },
   },
   {
     id: 'lagrange_crucible',
