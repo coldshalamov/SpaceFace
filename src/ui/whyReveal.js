@@ -152,12 +152,14 @@ function carrierFrom(ev) {
  * mountWhyReveal() — install the ONE delegated reveal for `[data-why]`.
  * Returns { destroy } (idempotent). Safe headless: a no-op with no document.
  */
-export function mountWhyReveal() {
+export function mountWhyReveal(quiet = null) {
   if (typeof document === 'undefined') return { destroy() {} };
+  // OPENING-1b: an optional gate (the opening rail is speaking) keeps hover/focus tips off the glass.
+  const hushed = () => { try { return typeof quiet === 'function' && quiet() === true; } catch { return false; } };
 
   const onPointerOver = (ev) => {
     const carrier = carrierFrom(ev);
-    if (!carrier) { hideWhyTip('data-why'); return; }
+    if (!carrier || hushed()) { hideWhyTip('data-why'); return; }
     showWhyTip(whyTextFor(carrier), ev.clientX, ev.clientY, 'data-why');
     describe(carrier);
   };
@@ -172,7 +174,7 @@ export function mountWhyReveal() {
   };
   const onFocusIn = (ev) => {
     const carrier = carrierFrom(ev);
-    if (!carrier) { hideWhyTip('data-why'); return; }
+    if (!carrier || hushed()) { hideWhyTip('data-why'); return; }
     showWhyTipForElement(whyTextFor(carrier), carrier, 'data-why');
     describe(carrier);
   };

@@ -154,6 +154,7 @@ import { mountNemesisComms } from './nemesisComms.js';
 import { createWingmanRadial } from './wingmanRadial.js';
 import { firstBootScreenId, shouldAskMotionPreference } from './accessibility.js';
 import { restoredDefeatIntent } from './sim/restoredDefeatIntent.js';
+import { openingQuiet } from '../onboarding/openingQuiet.js';
 
 // id-of-export → { load, export }. Order matters only for nicer console logs.
 // Use literal dynamic-import call sites, not import(path): esbuild can rewrite these to bundled
@@ -785,7 +786,7 @@ export const ui = {
     // carrier — causeLedger's market tooltip generalised (whyReveal.js). Hover AND keyboard focus,
     // never a click. Mounted at document level so station workspace and modal screens share it.
     if (this.whyReveal && typeof this.whyReveal.destroy === 'function') this.whyReveal.destroy();
-    this.whyReveal = mountWhyReveal();
+    this.whyReveal = mountWhyReveal(() => openingQuiet(this.state));
 
     // No sound on mouse hover (frontend direction sheet §7 / Task D §4.1): the kit's `move` cue
     // fires on keyboard focus movement only. The `sfx_ui_hover` recipe stays — commsRadial and the
