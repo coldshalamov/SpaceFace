@@ -8,6 +8,7 @@ import {
 } from '../systems/survivalRecords.js';
 import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
 import { retainStaticBatchGeometryTree, releaseStaticBatchGeometryTree } from './staticBatchGeometryCache.js';
+import { readFrameOrigin } from './frameCoordinates.js';
 
 export const CRUCIBLE_GHOST_OPACITY = 0.32;
 
@@ -114,6 +115,7 @@ export function createCrucibleGhostPresentation() {
   let clonedMaterials = [];
   let warmPending = false;
   let mintDefers = 0;
+  const origin = { x: 0, z: 0 };
 
   function hide() {
     if (root) root.visible = false;
@@ -244,7 +246,8 @@ export function createCrucibleGhostPresentation() {
       const y = playerMesh && playerMesh.position && Number.isFinite(playerMesh.position.y)
         ? playerMesh.position.y
         : 0;
-      root.position.set(pose.x, y, pose.z);
+      readFrameOrigin(state, origin);
+      root.position.set(pose.x - origin.x, y, pose.z - origin.z);
       // visualFactory / shipKit: mesh.rotation.y = -entity.rot so +X points forward.
       root.rotation.y = -pose.r;
     },

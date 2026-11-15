@@ -315,6 +315,14 @@ test('PQ-160.02 a shared ghost renders as a translucent hull', async () => {
   assert.ok(ghost.material.opacity <= CRUCIBLE_GHOST_OPACITY + 1e-9);
   assert.equal(ghost.material.depthWrite, false);
   assert.equal(ghost.userData.crucibleGhost, true);
+  presentation.sync({ tick: 6, world: { frameOrigin: { x: 1000, z: -2000 } } }, player);
+  assert.equal(ghost.position.x, -994, 'recorded world x is placed in the current render frame');
+  assert.equal(ghost.position.z, 2000, 'recorded world z follows the current render frame');
+  presentation.sync({ tick: 6, world: { frameOrigin: { x: -10, z: 40 } } }, player);
+  assert.equal(ghost.position.x, 16); assert.equal(ghost.position.z, -40);
+  presentation.sync({ tick: 6 }, player);
+  assert.equal(ghost.position.x, 6); assert.equal(ghost.position.z, 0, 'old states without an origin use zero');
+  assert.equal(tape.frames[1].x, 6, 'presentation does not mutate recorded global poses');
   presentation.dispose();
   resetCrucibleMetaForTests();
 });
