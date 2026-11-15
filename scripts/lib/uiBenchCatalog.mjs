@@ -16,6 +16,8 @@ export const BACKDROPS = Object.freeze({
  *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string, chart?: string, route?: string, drill?: string, base?: string, manifestStake?: number, mobile?: string, defeat?: string, lawFine?: string, seed?: number}[]} */
 export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'title', screen: 'mainMenu', backdrop: 'title' },
+  // TITLE-01: the title with a life on file (the Adventure door reads Continue; New Game stands on it).
+  { id: 'title-save', screen: 'mainMenu', backdrop: 'title', saves: 'filed' },
   { id: 'mainMenu', screen: 'mainMenu', backdrop: 'title' },
   { id: 'motionAsk', screen: 'motionAsk', backdrop: 'title' },
   { id: 'new-game', screen: 'newGame', backdrop: 'title' },

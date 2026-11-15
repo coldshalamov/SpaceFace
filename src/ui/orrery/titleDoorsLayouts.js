@@ -71,6 +71,9 @@ ${DOOR_LI} .dp-lit__note {
   display:block !important; position:static !important; clip:auto !important; clip-path:none !important; width:auto !important; height:auto !important;
   overflow:visible !important; margin:10px 0 0 !important; font:400 15px/1.4 var(--dp-face-body, 'Instrument Sans'), sans-serif !important;
   letter-spacing:0 !important; text-transform:none; color:rgb(${BONE} / .82) !important; }
+/* with a save: the door's line is a short Continue summary (two lines), and New Game's own line steps aside */
+${DOOR_LI}.is-adventure .dp-lit__note { display:-webkit-box !important; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden !important; }
+${SECOND_LI} .dp-lit__note { display:none !important; }
 /* the small row (Settings, Help, Quit) is centred by mainMenu.js from how many words show; these are the full-row defaults */
 ${LI('settings')} { grid-column:1 / span 8; grid-row:2; }
 ${LI('help')} { grid-column:9 / span 8; grid-row:2; }
