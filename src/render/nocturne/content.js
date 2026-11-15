@@ -215,7 +215,8 @@ export class NocturneContent {
     if (!mediumValid) this.diagnostics.invalidDescriptors++;
     const record = { entity, root, archetype, generation: this._generation, lights: [], mediumId: `nocturne-medium:${entity.id}`,
       composition: profileFor(archetype), radius: Math.max(LIMIT.minimumFixtureRadius, finite(entity.radius, 20)),
-      phase: (idHash(entity.id) % 4096) / 4096, medium: mediumValid ? meta.medium ?? null : false, children: root?.children?.length || 0 };
+      phase: (idHash(entity.id) % 4096) / 4096, medium: mediumValid ? meta.medium ?? null : false,
+      children: root?.children?.length || 0, socketCache: root?.userData?.__socketCache ?? null };
     const usedEmitters = new Set();
     for (let i = 0; i < (definitions?.length || 0) && i < LIMIT.maxLightsPerOwner; i++) {
       const definition = definitions[i];
@@ -324,7 +325,9 @@ export class NocturneContent {
       let retained = false;
       for (let i = 0; i < this._candidateCount; i++) if (this._candidateEntity[i] === record.entity
         && this._candidateRoot[i] === record.root && this._candidateArchetype[i] === record.archetype
-        && (record.root?.children?.length || 0) === record.children && bindingsVisible(record)) { retained = true; break; }
+        && (record.root?.children?.length || 0) === record.children
+        && (record.root?.userData?.__socketCache ?? null) === record.socketCache
+        && bindingsVisible(record)) { retained = true; break; }
       if (!retained) this._remove(record);
     }
     for (let i = 0; i < this._candidateCount; i++) {

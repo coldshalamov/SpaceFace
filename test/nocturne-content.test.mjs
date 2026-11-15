@@ -91,6 +91,26 @@ test('automatic lamp fallback uses visible emissive geometry, not radius-based i
   r.content.dispose();
 });
 
+test('authored publication refreshes emitters beneath a stable boundary', () => {
+  const r = rig(); const root = r.add(station(), []);
+  const fallback = new Mesh(new SphereGeometry(2), new MeshStandardMaterial());
+  const authored = new Mesh(new SphereGeometry(2), new MeshStandardMaterial({ emissive: 0xffb45e, emissiveIntensity: 2 }));
+  root.add(fallback); root.userData.__socketCache = new Map();
+  try {
+    r.update(); assert.equal(r.registry.size, 0);
+    root.remove(fallback); root.add(authored); root.userData.__socketCache = new Map();
+    r.update(); assert.equal(r.registry.size, 1, 'published emissive geometry is admitted');
+    const source = r.registry.sources[0];
+    let traversals = 0; const traverse = root.traverse;
+    root.traverse = function (...args) { traversals++; return traverse.apply(this, args); };
+    r.update(); assert.equal(traversals, 0, 'unchanged boundary does not re-scan its tree');
+    assert.equal(r.registry.sources[0], source);
+  } finally {
+    r.content.dispose(); fallback.geometry.dispose();fallback.material.dispose();
+    authored.geometry.dispose();authored.material.dispose();
+  }
+});
+
 test('removed and same-id rematerialized entities release old handles, never leak source residency', () => {
   const r = rig(); const entity = station(); r.add(entity); r.update();
   const old = r.registry.get('nocturne:entity:2:gantry');
