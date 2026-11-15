@@ -29,6 +29,12 @@ import {
   barRegularStoryLine,
 } from '../barContacts.js';
 import { furnaceDetailChoices, isFurnaceDetailChoice } from '../furnaceDetailConversation.js';
+import {
+  heliosCampaignActionCurrent,
+  heliosCampaignChoices,
+  takeHeliosCampaignAction,
+} from '../heliosCampaignHandoff.js';
+import { firstShiftMarketCurrent, openFirstShiftMarket } from '../starterWorkdayConversation.js';
 import { stationContactMemoryFor, stationContactMemoryLine } from '../../../data/stationContacts.js';
 import { mountContactPortrait } from '../../portraitArt.js';
 import { createWaveform, createVoiceArc, voiceEnvelope } from '../../orrery/waveform.js';
@@ -177,6 +183,12 @@ export function createBarScreen(ctx) {
   let stopType = null;
   const stopDecrypt = [];
   let pendingMissionOffer = null;
+  let pendingFirstShiftMarket = null;
+  let pendingCampaignHandoff = null;
+  let campaignHandoffAnswer = false;
+  let firstShiftAnswer = false;
+  let handoffEpoch = 0;
+  let acceptancePending = false;
   let pendingFrontierRumorOffer = null;
   let acceptedMissionId = null;
   let pinnedContact = null;
@@ -322,7 +334,8 @@ export function createBarScreen(ctx) {
       `</section>`;
     }
     const offer = pendingMissionOffer;
-    if (!offer || !missionOfferAvailable(state, offer.id)) return '';
+    if (!offer || !missionOfferAvailable(state, offer.id)
+      || campaignHandoffAnswer && !heliosCampaignActionCurrent(state, sid(), pendingCampaignHandoff)) return '';
     const preflight = missionPreflight(offer, state);
     const consequences = missionConsequenceSummary(offer);
     const unmet = offer.requirementUnmet || offer.lockedReason || preflight.blocker || null;
@@ -335,6 +348,24 @@ export function createBarScreen(ctx) {
       (unmet ? `<p class="k-sentence k-bad sx-bar-offer__blocker">${escapeHtml(unmet)}</p>` : '') +
       offerWord(`data-accept-mission="${escapeHtml(String(offer.id))}"${unmet ? ' disabled' : ''}`, 'Accept + track') +
     `</section>`;
+  }
+
+  function campaignHandoffHtml(state) {
+    const action = pendingCampaignHandoff;
+    if (action?.kind === 'offer' || !heliosCampaignActionCurrent(state, sid(), action)) return '';
+    const label = action.kind === 'mission' ? 'Track + open Mission Log' : 'Plot Scale 4 course';
+    return '<section class="sx-bar-offer" aria-label="Next campaign leg">'
+      + '<p class="k-sentence sx-bar-offer__state">' + escapeHtml(action.kind === 'mission'
+        ? action.title + ' is already accepted. Tracking does not settle it.'
+        : 'A course to the open Scale 4 ring. Your freight stays yours.') + '</p>'
+      + offerWord('data-campaign-handoff', label) + '</section>';
+  }
+
+  function firstShiftMarketHtml(state) {
+    if (!firstShiftMarketCurrent(state, sid(), pendingFirstShiftMarket)) return '';
+    return '<section class="sx-bar-offer" aria-label="First shift iron buyer">'
+      + '<p class="k-sentence sx-bar-offer__state">Review your held iron and the current price. Nothing is sold until you choose Sell.</p>'
+      + offerWord('data-first-shift-market', 'Review iron at Market') + '</section>';
   }
 
   function frontierRumorOfferHtml() {
@@ -503,7 +534,7 @@ export function createBarScreen(ctx) {
           (choices.length
             ? choices.map((ch) => `<li><button type="button" ${stationControlAttrs('choice')} class="k-word k-word--emph sx-choice" data-choice="${escapeHtml(ch.id)}"${ch.disabled ? ` disabled title="${escapeHtml(ch.reason || '')}"` : ''}>${escapeHtml(ch.label)}</button></li>`).join('')
             : `<li class="k-sentence sx-muted">They have nothing to say.</li>`) +
-        `</ul>` + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) + dossArchiveMapOfferHtml(state, c) +
+        `</ul>` + campaignHandoffHtml(state) + firstShiftMarketHtml(state) + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) + dossArchiveMapOfferHtml(state, c) +
       `</div>`;
 
     appendVonnFreightLossMapOffer(state, c);
@@ -598,7 +629,8 @@ export function createBarScreen(ctx) {
       choices.insertAdjacentElement('afterend', hint);
     }
     const reply = stageEl.querySelector('.sx-talk__reply');
-    if (reply && saidText && saidText !== spokenText && !reducedMotion()) {
+    if (reply && saidText && saidText !== spokenText && !reducedMotion()
+      && !firstShiftAnswer && !campaignHandoffAnswer) {
       spokenText = saidText;
       const text = reply.textContent;
       const ms = Math.min(6000, 300 + text.length * 22);
@@ -695,7 +727,10 @@ export function createBarScreen(ctx) {
     if (!id || id === selectedId) return;
     clearCeresPending();
     clearCourierPending();
-    selectedId = id; saidText = null; pendingMissionOffer = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
+    handoffEpoch++; selectedId = id; saidText = null;
+    pendingCampaignHandoff = null; campaignHandoffAnswer = false;
+    pendingFirstShiftMarket = null; firstShiftAnswer = false;
+    pendingMissionOffer = null; pendingFrontierRumorOffer = null; acceptedMissionId = null;
     const st = ctx.state || {};
     renderRail(st); renderStage(st); renderLeads(st);
     if (focus) {
@@ -799,6 +834,27 @@ export function createBarScreen(ctx) {
   });
 
   stageEl.addEventListener('click', async (ev) => {
+    if (ev.target.closest('[data-campaign-handoff]')) {
+      if (!visible || selected(ctx.state || {})?.canonicalKey !== 'kessler') return;
+      const action = pendingCampaignHandoff;
+      pendingCampaignHandoff = null;
+      if (!takeHeliosCampaignAction(ctx, sid(), action)) {
+        saidText = 'The contract changed. Ask Kessler again for the current route.';
+      } else if (action.kind === 'course') {
+        saidText = 'Scale 4 course requested. Check the map before launch; plotting does not move your ship or freight.';
+      }
+      renderStage(ctx.state || {});
+      return;
+    }
+    if (ev.target.closest('[data-first-shift-market]')) {
+      if (!visible || selected(ctx.state || {})?.canonicalKey !== 'kessler') return;
+      if (!openFirstShiftMarket(ctx, sid(), pendingFirstShiftMarket)) {
+        pendingFirstShiftMarket = null;
+        saidText = 'The hold or ticket changed. Ask me again before taking this slip to Market.';
+        renderStage(ctx.state || {});
+      }
+      return;
+    }
     if (ev.target.closest('[data-open-vonn-freight-loss-map]')) {
       if (openVonnFreightLossMap(ctx) && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_open' });
       return;
@@ -843,11 +899,30 @@ export function createBarScreen(ctx) {
     const accept = ev.target.closest('[data-accept-mission]');
     if (accept && !accept.disabled) {
       const missionId = accept.getAttribute('data-accept-mission');
+      if (!visible || acceptancePending || pendingMissionOffer?.id !== missionId) return;
+      const acceptingEpoch = handoffEpoch;
+      const campaignAccept = campaignHandoffAnswer;
+      if (campaignAccept && (selected(ctx.state || {})?.canonicalKey !== 'kessler'
+        || pendingCampaignHandoff?.kind !== 'offer' || pendingCampaignHandoff.missionId !== missionId
+        || !heliosCampaignActionCurrent(ctx.state, sid(), pendingCampaignHandoff))) {
+        pendingMissionOffer = null;
+        pendingCampaignHandoff = null;
+        saidText = 'The posting changed. Ask Kessler for its current terms before signing.';
+        renderStage(ctx.state || {});
+        return;
+      }
+      if (campaignAccept) pendingCampaignHandoff = null;
+      const acceptingContact = selectedId;
       const wasAvailable = missionOfferAvailable(ctx.state || {}, missionId);
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
       // The worker-lane rpc returns the authoritative verdict; the emitted path
       // (main lane) has no ack, so acceptance is verified by re-reading the offer.
-      const res = await acceptMissionOnLane(ctx.bus, missionId);
+      acceptancePending = true;
+      let res;
+      try { res = await acceptMissionOnLane(ctx.bus, missionId); }
+      catch (_) { res = null; }
+      finally { acceptancePending = false; }
+      if (!visible || selectedId !== acceptingContact || handoffEpoch !== acceptingEpoch) return;
       const laneAccepted = res && res.ok === true && res.emitted !== true;
       const markAccepted = () => {
         acceptedMissionId = missionId;
@@ -880,6 +955,19 @@ export function createBarScreen(ctx) {
     // its tracking/navigation intents.
     if (isFurnaceDetailChoice(choiceId)
         && (!visible || !furnaceDetailChoices(st, sid(), c).some(row => row.id === choiceId))) return;
+    if (c.canonicalKey === 'kessler' && ['helios_47a_file', 'helios_47a_original'].includes(choiceId)
+      && (!visible || !heliosCampaignChoices(st, sid()).some(choice => choice.id === choiceId))) {
+      pendingCampaignHandoff = null;
+      saidText = 'That file is no longer current. Ask Kessler again.';
+      renderStage(st);
+      return;
+    }
+    const choiceEpoch = ++handoffEpoch;
+    const choiceStationId = sid();
+    // A synchronous intent can hide/reopen the Bar, restore a save or change its contact.
+    // Do not execute or commit an answer belonging to the visit that just ended.
+    const handoffChoiceCurrent = () => visible && handoffEpoch === choiceEpoch
+      && ctx.state === st && sid() === choiceStationId && selected(st)?.id === c.id;
     clearCeresPending();
     const ceresRequest = c.id === CERES_RETURN_CONTACT && sid() === CERES_RETURN_STATION
       && choiceId.startsWith('ceres_return_') ? { requestId: `ceres-return:${++ceresRequestSequence}`, choiceId } : null;
@@ -898,29 +986,40 @@ export function createBarScreen(ctx) {
       });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
     }
+    if (!handoffChoiceCurrent()) return;
     if (c.endgameChoice === 'E' && choiceId === 'accept_next_run') {
       pendingCourier = { ...c, pinStationId: sid() };
     }
     let result = null;
     try { result = buildReply(c.role, choiceId, ctx, sid(), c); } catch (_) { result = null; }
+    if (!handoffChoiceCurrent()) return;
     if (result && result.uniqueWreckRumor && ctx.bus) ctx.bus.emit('uniqueWreck:rumorHeard', result.uniqueWreckRumor);
     if (result && result.pinContact) {
       pinnedContact = { ...result.pinContact, pinStationId: sid() };
     }
-    saidText = (result && result.text) || 'They shrug.';
-    if (ceresRequest) saidText = ceresResponse?.requestId === ceresRequest.requestId
+    let answerText = (result && result.text) || 'They shrug.';
+    if (ceresRequest) answerText = ceresResponse?.requestId === ceresRequest.requestId
       ? ceresResponse.text : 'Kessler looks for the current yard slip.';
-    furnaceSaid = !!(result && result.furnaceDetailAnswer);
     if (c.canonicalKey === 'eris_choir_chair' && erisLastReply?.visitId === erisVisitId()) {
-      saidText = erisLastReply.outcome === 'settled' ? 'Your drink for this visit has been served.'
+      answerText = erisLastReply.outcome === 'settled' ? 'Your drink for this visit has been served.'
         : 'The barkeep cannot pour just now. Try again shortly.';
     }
     if (result?.missionOffer && ctx.bus) ctx.bus.emit('comms:popup', {
       id: `bar-lead:${c.id}:${result.missionOffer.id || choiceId}`,
-      sender: c.name || 'Contact', contactId: c.id, text: saidText,
-      category: 'story', ttl: Math.max(8, Math.ceil(saidText.length / 18)), persist: true,
+      sender: c.name || 'Contact', contactId: c.id, text: answerText,
+      category: 'story', ttl: Math.max(8, Math.ceil(answerText.length / 18)), persist: true,
     });
+    // Popup listeners can synchronously end this visit too. Keep the answer local
+    // until that boundary has returned; lifecycle cleanup cannot clear an answer
+    // whose handoff/receipt ownership flags have not been committed yet.
+    if (!handoffChoiceCurrent()) return;
+    saidText = answerText;
+    furnaceSaid = !!(result && result.furnaceDetailAnswer);
+    pendingCampaignHandoff = result?.campaignHandoff || null;
+    campaignHandoffAnswer = result?.campaignHandoffAnswer === true;
     pendingMissionOffer = result && result.missionOffer || null;
+    pendingFirstShiftMarket = result && result.firstShiftMarket || null;
+    firstShiftAnswer = !!result?.firstShiftReceipt;
     pendingFrontierRumorOffer = result && result.frontierRumorOffer || null;
     acceptedMissionId = null;
     awaitingPointerMove = true;
@@ -1041,6 +1140,24 @@ export function createBarScreen(ctx) {
     return () => ctx.bus?.off?.(event, handler);
   });
 
+  // A campaign or first-shift answer is honest only against the receipts and postings it was
+  // read from. Save, run and dock transitions retire the pending handoff and its answer —
+  // the click-time staleness guards cover everything else.
+  const offCampaignLifecycle = ['save:restoring', 'save:loaded', 'game:newGame', 'game:started', 'dock:undocked'].map((event) => {
+    const clear = () => {
+      handoffEpoch++;
+      acceptedMissionId = null;
+      pendingMissionOffer = null;
+      pendingFirstShiftMarket = null;
+      pendingCampaignHandoff = null;
+      if (campaignHandoffAnswer) { saidText = null; campaignHandoffAnswer = false; }
+      if (firstShiftAnswer) { saidText = null; firstShiftAnswer = false; }
+      if (visible) renderAll(ctx.state || {});
+    };
+    ctx.bus?.on?.(event, clear);
+    return () => ctx.bus?.off?.(event, clear);
+  });
+
   return {
     el,
     onShow(c) {
@@ -1053,6 +1170,13 @@ export function createBarScreen(ctx) {
       if (selectedId === CERES_RETURN_CONTACT) saidText = null;
       clearCeresPending();
       clearCourierPending();
+      handoffEpoch++;
+      acceptedMissionId = null;
+      pendingMissionOffer = null;
+      pendingFirstShiftMarket = null;
+      pendingCampaignHandoff = null;
+      if (campaignHandoffAnswer) { saidText = null; campaignHandoffAnswer = false; }
+      if (firstShiftAnswer) { saidText = null; firstShiftAnswer = false; }
       erisOpenAnnounced = false;
       if (furnaceSaid) { furnaceSaid = false; saidText = null; }
       const leavingVisitId = erisVisitId();
@@ -1071,8 +1195,10 @@ export function createBarScreen(ctx) {
       visible = false;
       clearCeresPending();
       clearCourierPending();
+      handoffEpoch++;
       if (typeof offCourierReceipt === 'function') offCourierReceipt();
       offCourierLifecycle.forEach((off) => off());
+      offCampaignLifecycle.forEach((off) => off());
       if (typeof offCeresReceipt === 'function') offCeresReceipt();
       offCeresLoad.forEach((off) => off());
       offRecognition.forEach((off) => off());
