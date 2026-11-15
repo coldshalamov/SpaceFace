@@ -1,4 +1,4 @@
-// A01-02 — the Ricochet Foundry freight lane (arena helios_core, Lane 2).
+// The Foundry and Tethys Exchange freight lane.
 //
 // A freight string crosses the Foundry on a deterministic timetable: five 400 t
 // containers, 30 WU apart, west to east through the room's centre at 140 WU/s.
@@ -140,9 +140,8 @@ export function createFreightLaneDirector(ctx) {
 
   function arm({ arenaId = null, at = null, installedAt = null, wave = 0, seed = 1 } = {}) {
     teardown('rearm');
-    // The lane holds itself until its authored debut round: rounds 1–3 install no
-    // traffic at all, and any live string a re-arm would orphan is torn down above.
-    if (arenaId !== FOUNDRY_ARENA_ID || wave < FREIGHT_DEBUT_WAVE) return;
+    // Foundry traffic debuts in round four; Tethys runs from round one.
+    if (arenaId !== 'tethys_hub' && (arenaId !== FOUNDRY_ARENA_ID || wave < FREIGHT_DEBUT_WAVE)) return;
     const lane = planFreightLane({ at });
     const t0 = Number.isFinite(installedAt) ? installedAt : simTimeOf(ctx.state);
     armed = {
@@ -195,7 +194,7 @@ export function createFreightLaneDirector(ctx) {
           freightString: id,
           freightIndex: i,
           masslineTetherable: true,
-          name: 'FOUNDRY FREIGHT',
+          name: armed.arenaId === 'tethys_hub' ? 'EXCHANGE FREIGHT' : 'FOUNDRY FREIGHT',
         },
       });
       if (e) members.push(e);
