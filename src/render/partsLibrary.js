@@ -248,6 +248,7 @@ import {
 } from './opaqueMaterialBatch.js';
 import {
   rememberStaticBatchGeometry,
+  ensureStaticBatchGeometryBounds,
   staticBatchGeometryCacheKey,
   takeCachedStaticBatchGeometry,
   retainStaticBatchGeometry,
@@ -14833,8 +14834,7 @@ function integerAttributeMax(ArrayType, normalized) {
 }
 
 function addStaticBatchMesh(parent, bindings, geometry, material, tags, urls, label) {
-  if (geometry && typeof geometry.computeBoundingSphere === 'function') geometry.computeBoundingSphere();
-  if (geometry && typeof geometry.computeBoundingBox === 'function') geometry.computeBoundingBox();
+  ensureStaticBatchGeometryBounds(geometry);
   const mesh = new THREE.Mesh(geometry, material);
   retainStaticBatchGeometryForObject(mesh);
   mesh.name = `GLTFKit_${label || 'StaticBatch'}`;

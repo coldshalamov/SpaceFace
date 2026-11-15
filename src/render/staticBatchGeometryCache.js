@@ -29,6 +29,15 @@ export function takeCachedStaticBatchGeometry(key) {
   const record = key && cache.get(key);
   return record && !record.disposed ? record.geometry : null;
 }
+// Cached batches are immutable after publication. Their first admission must still
+// recompute bounds: a transformed clone may carry conservative source bounds.
+export function ensureStaticBatchGeometryBounds(geometry) {
+  const record = geometry && records.get(geometry);
+  if (record?.boundsComputed) return;
+  if (typeof geometry?.computeBoundingSphere === 'function') geometry.computeBoundingSphere();
+  if (typeof geometry?.computeBoundingBox === 'function') geometry.computeBoundingBox();
+  if (record) record.boundsComputed = true;
+}
 export function rememberStaticBatchGeometry(key, geometry, limit = DEFAULT_LIMIT) {
   if (!key || !geometry) return geometry;
   const existing = cache.get(key);

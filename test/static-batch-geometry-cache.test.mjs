@@ -4,6 +4,7 @@ import { BoxGeometry } from 'three';
 
 import {
   clearStaticBatchGeometryCacheForTests,
+  ensureStaticBatchGeometryBounds,
   rememberStaticBatchGeometry,
   staticBatchGeometryCacheKey,
   staticBatchGeometryCacheSize,
@@ -34,4 +35,27 @@ test('same urls and part matrices share one immutable marked geometry', () => {
   assert.equal(takeCachedStaticBatchGeometry('missing'), null);
   clearStaticBatchGeometryCacheForTests();
   geometry.dispose();
+});
+
+test('shared batch bounds are recomputed once, including when source bounds exist', () => {
+  clearStaticBatchGeometryCacheForTests();
+  const geometry = new BoxGeometry(2, 3, 4);
+  geometry.computeBoundingSphere();
+  geometry.computeBoundingBox();
+  geometry.boundingSphere.radius = 999;
+  geometry.boundingBox.max.x = 999;
+  let sphereCalls = 0;
+  let boxCalls = 0;
+  const sphere = geometry.computeBoundingSphere.bind(geometry);
+  const box = geometry.computeBoundingBox.bind(geometry);
+  geometry.computeBoundingSphere = () => { sphereCalls++; sphere(); };
+  geometry.computeBoundingBox = () => { boxCalls++; box(); };
+  rememberStaticBatchGeometry('bounds', geometry);
+  ensureStaticBatchGeometryBounds(geometry);
+  assert.notEqual(geometry.boundingSphere.radius, 999);
+  assert.equal(geometry.boundingBox.max.x, 1);
+  ensureStaticBatchGeometryBounds(takeCachedStaticBatchGeometry('bounds'));
+  assert.equal(sphereCalls, 1);
+  assert.equal(boxCalls, 1);
+  clearStaticBatchGeometryCacheForTests();
 });
