@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { faunaSpeciesById, FAUNA_SPECIES } from '../data/alienFauna.js';
 import { alienStrainById } from '../data/alienEcology.js';
-import { creatureSkin } from './creatureSkinLibrary.js';
+import { bindCreatureSkin } from './creatureSkinLibrary.js';
 import { buildNurseryRay, buildNurseryFlock } from './veilRayNurseryVisuals.js';
 import { bolusSilhouette } from './bolusSilhouettes.js';
 import { createCasketSegmentGeometry, createCasketHeadGeometry } from './casketWormGeometry.js';
@@ -30,17 +30,19 @@ function strainColors(entity) {
 const TISSUE_TINT_MIX = 0.78;
 
 function tissueMat(color) {
-  // Every creature body goes through here: once the skin has decoded (creatureSkinLibrary.js) they all wear
-  // living tissue — veins, pores, folds — tinted by the strain, instead of a flat primitive colour.
-  const skin = creatureSkin('tissue');
-  return new THREE.MeshStandardMaterial({
-    color: skin ? new THREE.Color(0xffffff).lerp(new THREE.Color(color), TISSUE_TINT_MIX) : color,
-    map: skin ? skin.baseColor : null,
-    normalMap: skin ? skin.normal : null,
+  const material = new THREE.MeshStandardMaterial({
+    color,
     normalScale: new THREE.Vector2(0.9, 0.9),
     roughness: 0.85, metalness: 0.0,
     emissive: 0x1a1408, emissiveIntensity: 0.15,
   });
+  bindCreatureSkin(material, 'tissue', (skin) => {
+    material.color.set(0xffffff).lerp(new THREE.Color(color), TISSUE_TINT_MIX);
+    material.map = skin.baseColor;
+    material.normalMap = skin.normal;
+    material.needsUpdate = true;
+  });
+  return material;
 }
 function glowMat(color, intensity = 1.2) {
   return new THREE.MeshStandardMaterial({
@@ -203,16 +205,20 @@ function buildHullLeech(colors) {
 // Lantern Cyst: a translucent bioluminescent sac — drifts warm-facing, ruptures if killed.
 function buildLanternCyst(colors) {
   const g = new THREE.Group();
-  const skin = creatureSkin('tissue');
+  const sacMaterial = new THREE.MeshStandardMaterial({
+    color: colors.tissue,
+    roughness: 0.35, metalness: 0.0,
+    transparent: true, opacity: 0.55,
+    emissive: colors.glow, emissiveIntensity: 0.35,
+  });
+  bindCreatureSkin(sacMaterial, 'tissue', (skin) => {
+    sacMaterial.color.set(0xffffff).lerp(new THREE.Color(colors.tissue), TISSUE_TINT_MIX);
+    sacMaterial.map = skin.baseColor;
+    sacMaterial.needsUpdate = true;
+  });
   const sac = new THREE.Mesh(
     geo('lc_sac', createLanternSacGeometry),
-    new THREE.MeshStandardMaterial({
-      color: skin ? new THREE.Color(0xffffff).lerp(new THREE.Color(colors.tissue), TISSUE_TINT_MIX) : colors.tissue,
-      map: skin ? skin.baseColor : null,
-      roughness: 0.35, metalness: 0.0,
-      transparent: true, opacity: 0.55,
-      emissive: colors.glow, emissiveIntensity: 0.35,
-    }),
+    sacMaterial,
   );
   sac.scale.setScalar(7);
   g.add(sac);
@@ -1081,6 +1087,17 @@ export function buildAlienGrowthProp(placeId, radius = 8) {
       }
       break;
     }
+  }
+  // Some growth variants use only one of these finishes. Retire the unused
+  // materials so they do not keep a pending skin subscription alive.
+  const usedMaterials = new Set();
+  g.traverse((node) => {
+    if (node.material) {
+      for (const material of (Array.isArray(node.material) ? node.material : [node.material])) usedMaterials.add(material);
+    }
+  });
+  for (const material of [tissue, fil, glow]) {
+    if (!usedMaterials.has(material)) material.dispose();
   }
   g.userData.kind = 'alienGrowth';
   g.userData.moduleId = moduleId;

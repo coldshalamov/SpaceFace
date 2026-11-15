@@ -18,6 +18,24 @@ export const CREATURE_SKIN_REPEAT = Object.freeze({ tissue: [3, 2], nacre: [2, 2
 
 let readySkins = null;
 let readyPromise = null;
+const waitingMaterials = new Set();
+
+// Materials own their subscription, while the library retains the shared textures.
+// A disposed view must not be revived when a slow decode completes.
+export function bindCreatureSkin(material, name, apply) {
+  const skin = creatureSkin(name);
+  if (skin) {
+    apply(skin);
+    return;
+  }
+  const entry = { material, name, apply, onDispose: null };
+  entry.onDispose = () => {
+    waitingMaterials.delete(entry);
+    material.removeEventListener('dispose', entry.onDispose);
+  };
+  waitingMaterials.add(entry);
+  material.addEventListener('dispose', entry.onDispose);
+}
 
 /**
  * Decode and GPU-warm both skins. Failure is not fatal: the library publishes nothing, resolves null, and
@@ -52,6 +70,11 @@ export function preloadCreatureSkinLibrary(renderer, options = {}) {
     });
     for (const skin of Object.keys(skins)) Object.freeze(skins[skin]);
     readySkins = Object.freeze(skins);
+    for (const entry of waitingMaterials) {
+      waitingMaterials.delete(entry);
+      entry.material.removeEventListener('dispose', entry.onDispose);
+      if (readySkins[entry.name]) entry.apply(readySkins[entry.name]);
+    }
     return readySkins;
   }).catch((error) => {
     readySkins = null;

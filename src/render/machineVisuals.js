@@ -8,7 +8,7 @@
 
 import * as THREE from 'three';
 import { machineKindById } from '../data/precursorMachines.js';
-import { creatureSkin } from './creatureSkinLibrary.js';
+import { bindCreatureSkin } from './creatureSkinLibrary.js';
 import { getSurveyorGeometries } from './surveyorGeometry.js';
 import { attachSurveyorSurface } from './surveyorSurfaceLibrary.js';
 
@@ -20,14 +20,18 @@ const SHADOW_INNER = 0x1a2320;
 function metalMat() {
   // Pale metal wears generated nacre plating (creatureSkinLibrary.js) once it has decoded: fine growth-line
   // layers and hairline seams instead of a bare grey primitive. The pale-metal colour still tints it.
-  const skin = creatureSkin('nacre');
-  return new THREE.MeshStandardMaterial({
-    color: skin ? new THREE.Color(0xffffff).lerp(new THREE.Color(PALE_METAL), 0.5) : PALE_METAL,
-    map: skin ? skin.baseColor : null,
-    normalMap: skin ? skin.normal : null,
+  const material = new THREE.MeshStandardMaterial({
+    color: PALE_METAL,
     roughness: 0.35, metalness: 0.85,
     emissive: 0x0c1210, emissiveIntensity: 0.1,
   });
+  bindCreatureSkin(material, 'nacre', (skin) => {
+    material.color.set(0xffffff).lerp(new THREE.Color(PALE_METAL), 0.5);
+    material.map = skin.baseColor;
+    material.normalMap = skin.normal;
+    material.needsUpdate = true;
+  });
+  return material;
 }
 function seamMat() {
   return new THREE.MeshStandardMaterial({ color: DARK_SEAM, roughness: 0.8, metalness: 0.4 });
