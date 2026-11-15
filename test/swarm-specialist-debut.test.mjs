@@ -109,9 +109,9 @@ test('the debut flag rides the schedule so materialization can protect it', () =
 });
 
 test('non-debut waves never carry a debut package', () => {
-  // Course rounds whose cast introduces nothing new (1/2/4/5/7) and the open ladder
+  // Course rounds whose cast introduces nothing new (1/2/4/5) and the open ladder
   // past the course (31) alike run without a staged first sighting.
-  for (const w of [1, 2, 4, 5, 7, 31]) {
+  for (const w of [1, 2, 4, 5, 31]) {
     const plan = swarmPlan(w);
     assert.ok(!plan.error);
     assert.equal(plan.packages.filter((pkg) => pkg.debut === true).length, 0, `wave ${w}`);

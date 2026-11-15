@@ -48,7 +48,8 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
-import { queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { physicsBodyNativeReady, queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
+import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { indexedShipLikeScan, indexedTypeScan, entityIndexLaneVersion } from '../world/livingWorldViews.js';
@@ -203,7 +204,10 @@ const ROCK_CACHE_MAX = 64;
 // thrown-body owner ("a fast rock is a thrown rock"), so one feed answers bowling
 // (fast chunk kills) and cover (still chunk slides bodies off, sheds a scrape) alike.
 const BOSS_CHUNK_CACHE_MAX = 8;
-const ROCK_STORAGE_MAX = ROCK_CACHE_MAX + BOSS_CHUNK_CACHE_MAX;
+// A thrown stone the pilot already owns keeps its seat when the ordinary lane overflows —
+// its custody outranks anonymous room dressing, and the Bank's chosen stone keeps one more.
+const HANDLED_ROCK_CACHE_MAX = 8;
+const ROCK_STORAGE_MAX = ROCK_CACHE_MAX + BOSS_CHUNK_CACHE_MAX + HANDLED_ROCK_CACHE_MAX + 1;
 const MOVER_CACHE_MAX = 96;
 
 const EMPTY_FIELDS = [];
@@ -302,6 +306,11 @@ export function createBroodEngine(deps = {}) {
   const rockVX = new Float32Array(ROCK_STORAGE_MAX);
   const rockVZ = new Float32Array(ROCK_STORAGE_MAX);
   const rockCredited = new Uint8Array(ROCK_STORAGE_MAX);
+  // Seat occupants by reference: the cover seat's dedup and any stale-id audit compare
+  // entity objects, never bare ids — a recycled id cannot quietly inherit a reservation.
+  const rockEntities = new Array(ROCK_STORAGE_MAX).fill(null);
+  const handledRocks = new Array(HANDLED_ROCK_CACHE_MAX).fill(null);
+  const handledDistances = new Float64Array(HANDLED_ROCK_CACHE_MAX);
   let rockCount = 0;
   // Retained boss-chunk refs: rediscovered only when the wrecks lane's membership version
   // moves (or every tick under the un-indexed fallback, same as the other caches), then
@@ -481,6 +490,9 @@ export function createBroodEngine(deps = {}) {
   // Transient, once per run; the ordinary plan remains the population authority.
   let bankPlayed = false;
   let bank = null;
+  // The stone the Bank chose stays physical cover for the rest of the round: the rock
+  // cache reserves it a seat keyed to the body's own identity and occupant generation.
+  let bankCover = null;
   let spawnRequestedBankAttempted = false;
   // PRI-11b — the wave's family debut: at most one recipe per wave (the family's first
   // appearance, src/data/swarmBrood.js SWARM_BROOD_DEBUTS). `debutPlan` is the recipe armed
@@ -708,6 +720,7 @@ export function createBroodEngine(deps = {}) {
   function clear(reason = 'clear') {
     if (reason === 'new_game' || reason === 'run_ended') bankPlayed = false;
     bank = null;
+    bankCover = null;
     spawnRequestedBankAttempted = false;
     if (aliveCount > 0) { alive.fill(0); affix.fill(0); }
     aliveCount = 0;
@@ -944,6 +957,9 @@ export function createBroodEngine(deps = {}) {
           firstLife: serial[free[0]], spitLife: serial[free[1]], secondLife: serial[free[2]],
           phase: 'first', until: now + 8, flankX: layout.flankX, flankZ: layout.flankZ,
           rockId: layout.rockId };
+        const cover = state.entities?.get?.(layout.rockId);
+        bankCover = cover?.type === 'asteroid'
+          ? { entity: cover, generation: cover.occupantGeneration, wave: liveWave } : null;
         bankPlayed = true;
         spawned += 3;
       }
@@ -1192,15 +1208,18 @@ export function createBroodEngine(deps = {}) {
 
   function cacheRocks(state) {
     rockCount = 0;
+    rockEntities.fill(null);
     const list = indexedTypeScan(state, 'asteroids');
-    for (let i = 0; i < list.length && rockCount < ROCK_CACHE_MAX; i++) {
-      const e = list[i];
+    let nextRock = 0;
+    for (; nextRock < list.length && rockCount < ROCK_CACHE_MAX; nextRock++) {
+      const e = list[nextRock];
       if (!e || e.alive === false || !e.pos) continue;
       if (e.collides === false) continue;
       // The Tendril head is never terrain — it plows the flock through the MOVER cache like
       // any heavy body. Under the index it never reaches this list anyway; on the un-indexed
       // fallback every entity lands here, and without the guard the worm eats its own neck.
       if (e.data && e.data.lootTableId === TENDRIL_HEAD_LOOT_ID) continue;
+      rockEntities[rockCount] = e;
       rockCredited[rockCount] = playerOwnsBody(state, e) ? 1 : 0;
       rockX[rockCount] = finite(e.pos.x);
       rockZ[rockCount] = finite(e.pos.z);
@@ -1210,6 +1229,63 @@ export function createBroodEngine(deps = {}) {
       rockCount += 1;
     }
     cacheBossChunks(state);
+    // A late original must not become transparent merely because old fragments
+    // occupy the terrain budget. Custody reads the canonical provenance record —
+    // the actively towed line wins ties, otherwise nearest to the tracked signature.
+    // More than eight overflow bodies remain a documented bounded admission.
+    handledRocks.fill(null);
+    let handledCount = 0;
+    for (let i = nextRock; i < list.length; i++) {
+      const e = list[i];
+      if (!e || e.type !== 'asteroid' || e.alive === false || e.collides === false
+        || !Number.isFinite(e.pos?.x) || !Number.isFinite(e.pos?.z)
+        || !playerOwnsBody(state, e)) continue;
+      const active = state.player?.tether?.active && state.player.tether.targetId === e.id;
+      const distance = active ? -1 : (e.pos.x - playerX) ** 2 + (e.pos.z - playerZ) ** 2;
+      let at = handledCount;
+      while (at > 0 && distance < handledDistances[at - 1]) at--;
+      if (at >= HANDLED_ROCK_CACHE_MAX) continue;
+      for (let j = Math.min(handledCount, HANDLED_ROCK_CACHE_MAX - 1); j > at; j--) {
+        handledRocks[j] = handledRocks[j - 1];
+        handledDistances[j] = handledDistances[j - 1];
+      }
+      handledRocks[at] = e; handledDistances[at] = distance;
+      handledCount = Math.min(handledCount + 1, HANDLED_ROCK_CACHE_MAX);
+    }
+    for (let i = 0; i < handledCount && rockCount < ROCK_STORAGE_MAX; i++) {
+      const e = handledRocks[i];
+      rockEntities[rockCount] = e;
+      rockCredited[rockCount] = 1;
+      rockX[rockCount] = e.pos.x; rockZ[rockCount] = e.pos.z;
+      rockR[rockCount] = finite(e.radius, 10) * 1.05;
+      rockVX[rockCount] = finite(e.vel?.x); rockVZ[rockCount] = finite(e.vel?.z);
+      rockCount++;
+    }
+    // A selected Bank stone is physical shelter even when the pilot never
+    // touches it. Preserve all ordinary/handled seats and the separate chunk seats.
+    // Never grant custody, replace a destroyed life, or reuse a restored identity.
+    const cover = bankCover?.entity;
+    if (cover && bankCover.wave === liveWave && state.run?.wave === liveWave
+      && rockCount < ROCK_STORAGE_MAX
+      && state.entities?.get?.(cover.id) === cover
+      && cover.occupantGeneration === bankCover.generation
+      && cover.type === 'asteroid' && cover.alive !== false && cover.collides !== false
+      && cover.physicsBody !== false && physicsBodyNativeReady(cover)
+      && Number.isFinite(cover.pos?.x) && Number.isFinite(cover.pos?.z)
+      && Number.isFinite(cover.vel?.x) && Number.isFinite(cover.vel?.z)
+      && !rockEntities.includes(cover)) {
+      const body = resolvePhysicsBodySpec(cover);
+      if (body?.dynamic && body.radius > 0 && body.mass > 0
+        && body.material !== 'sensor' && body.material !== 'massline_sensor'
+        && PHYSICS_MATERIALS[body.material]?.ghost !== true) {
+        rockEntities[rockCount] = cover;
+        rockCredited[rockCount] = playerOwnsBody(state, cover) ? 1 : 0;
+        rockX[rockCount] = cover.pos.x; rockZ[rockCount] = cover.pos.z;
+        rockR[rockCount] = finite(cover.radius, 10) * 1.05;
+        rockVX[rockCount] = cover.vel.x; rockVZ[rockCount] = cover.vel.z;
+        rockCount++;
+      }
+    }
   }
 
   // PRI-11c — boss chunks are `wreck` type: they never enter the 'asteroids' lane above,
@@ -1250,6 +1326,7 @@ export function createBroodEngine(deps = {}) {
     for (let i = 0; i < chunkRefCount && rockCount < ROCK_STORAGE_MAX; i++) {
       const e = chunkRefs[i];
       if (!chunkIsLive(state, e)) continue;
+      rockEntities[rockCount] = e;
       rockCredited[rockCount] = playerOwnsBody(state, e) ? 1 : 0;
       rockX[rockCount] = finite(e.pos.x);
       rockZ[rockCount] = finite(e.pos.z);

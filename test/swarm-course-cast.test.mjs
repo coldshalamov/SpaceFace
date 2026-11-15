@@ -280,17 +280,27 @@ test('the named formations resolve through the gate seam', () => {
   }
   // Round 2 — Wasps from two gates.
   assert.deepEqual(gatesFor(2, 'wasp_swarmer').sort(), ['front', 'rear'], 'round 2 fields wasps on two gates');
-  // Round 7 — Lancers at the edges (the literal side bearings), Wasps in the middle.
-  assert.deepEqual(gatesFor(7, 'lancer_sniper').sort(), ['diagonal_a', 'diagonal_b'],
-    'round 7 lancers hold the edge bearings');
+  // Round 7 — Lancers at the edges: the first sighting steps out alone on its own
+  // bearing, then the packs hold the literal side doors behind it.
+  {
+    const plan = planWave({ seed: SEED, arenaId: ARENA, wave: 7, ruleset: 'swarm' });
+    const lancers = plan.packages.filter((pkg) => pkg.enemyId === 'lancer_sniper');
+    const packs = lancers.filter((pkg) => pkg.debut !== true);
+    assert.deepEqual(packs.map((pkg) => pkg.gateGroup).sort(), ['diagonal_a', 'diagonal_b'],
+      'round 7 lancer packs hold the edge bearings');
+    const debut = lancers.find((pkg) => pkg.debut === true);
+    assert.ok(debut && !packs.some((pkg) => pkg.gateGroup === debut.gateGroup),
+      'round 7\'s first sighting takes its own bearing');
+  }
   assert.deepEqual(gatesFor(7, 'wasp_swarmer').sort(), ['front', 'rear'],
     'round 7 wasps hold the middle bearings');
-  // Round 11 — a Warden shielding gunners: it rides a Lancer group's own gate.
+  // Round 11 — a Warden shielding gunners: the dome's first sighting steps out alone
+  // on the debut beat, on a bearing the gunner line does not use.
   {
-    const lancerGates = new Set(gatesFor(11, 'lancer_sniper'));
     const warden = gatesFor(11, 'warden_escort');
     assert.equal(warden.length, 1, 'round 11 fields one warden');
-    assert.ok(lancerGates.has(warden[0]), 'round 11 warden arrives inside the gunner line it wards');
+    const lancerGates = new Set(gatesFor(11, 'lancer_sniper'));
+    assert.ok(!lancerGates.has(warden[0]), 'round 11 warden steps out on its own bearing');
   }
   // Round 21 — heavies shoulder to shoulder: the wall crosses the north bearings as one front.
   {

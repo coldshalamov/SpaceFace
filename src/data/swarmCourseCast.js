@@ -103,13 +103,15 @@ export const SWARM_COURSE_CAST = Object.freeze([
     P('wasp_swarmer', 3, { gateIndex: 2, atTick: 12 }),
     P('bruiser_brawler', 3, { gateIndex: 4, atTick: 252 }),
   ]),
-  // 7 — Lancers at the edges, Wasps in the middle. The edge bearings are the literal
-  // left/right doors (diagonal_a west, diagonal_b east); front/rear are the middle.
+  // 7 — Lancers at the edges, Wasps in the middle. Wasps open on the middle bearings;
+  // the first lancer steps out alone on the debut beat, then the packs hold the
+  // literal side doors behind it (diagonal_a west, diagonal_b east).
   castRound(7, [W('lancer_sniper', 6), W('wasp_swarmer', 4)], [
-    P('lancer_sniper', 2, { gate: 'diagonal_a', atTick: 0 }),
-    P('lancer_sniper', 2, { gate: 'diagonal_b', atTick: 0 }),
-    P('wasp_swarmer', 4, { gate: 'front', atTick: 12 }),
+    P('lancer_sniper', 1, { debut: true }),
+    P('wasp_swarmer', 4, { gate: 'front', atTick: 0 }),
     P('wasp_swarmer', 3, { gate: 'rear', atTick: 24 }),
+    P('lancer_sniper', 2, { gate: 'diagonal_a', atTick: 252 }),
+    P('lancer_sniper', 1, { gate: 'diagonal_b', atTick: 264 }),
   ]),
   // 8 — Jackals: Wasp fodder opens, a first solo sowing lands on the debut beat, then
   // the mine-lane pack behind it.
@@ -133,11 +135,11 @@ export const SWARM_COURSE_CAST = Object.freeze([
     P('wasp_swarmer', 4, { gate: 'front', atTick: 0 }),
     P('choir_zealot', 4, { gate: 'rear', atTick: 12 }),
   ]),
-  // 11 — a Warden shielding gunners: the warden rides one Lancer group's own gate —
-  // the dome lands inside its ward, not beside it.
+  // 11 — a Warden shielding gunners: the warden's first sighting steps out alone
+  // on the debut beat; the dome screens whatever pack it lands beside.
   castRound(11, [W('lancer_sniper', 5), W('wasp_swarmer', 4), W('warden_escort', 3)], [
+    P('warden_escort', 1, { debut: true }),
     P('lancer_sniper', 4, { gateIndex: 0, atTick: 0 }),
-    P('warden_escort', 1, { gate: 'same', atTick: 0, staged: true }),
     P('lancer_sniper', 3, { gateIndex: 2, atTick: 12 }),
     P('wasp_swarmer', 6, { gateIndex: 4, atTick: 24 }),
   ]),

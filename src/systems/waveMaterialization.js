@@ -287,7 +287,13 @@ export function materializeWaveBatch(ctx, request) {
     ? ingressPolicy.anchor : null;
   const fortifiedIngress = req.swarm === true && fixedAnchor
     && Number.isFinite(fixedAnchor.x) && Number.isFinite(fixedAnchor.z);
-  const anchor = fortifiedIngress ? fixedAnchor : playerAnchor(ctx);
+  // Only the authored wall batch may use the room's original planning anchor.
+  // Fortify still owns its corridors. Arrival admission below continues checking
+  // the CURRENT pilot, so crossing the chord cannot cause a close-range spawn.
+  const roomAnchor = req.swarm === true && req.wall === true
+    && Number.isFinite(req.roomAnchor?.x) && Number.isFinite(req.roomAnchor?.z)
+    ? req.roomAnchor : null;
+  const anchor = fortifiedIngress ? fixedAnchor : roomAnchor || playerAnchor(ctx);
   const distance = Number.isFinite(req.distance) && req.distance > 0
     ? req.distance
     : SURVIVAL_SPAWN_DISTANCE;
@@ -348,8 +354,11 @@ export function materializeWaveBatch(ctx, request) {
         const lane = granted === 1 ? 0 : (i / (granted - 1)) * 2 - 1;
         const angle = baseAngle + lane * GATE_SPREAD_RAD + (rng() - 0.5) * GATE_SPREAD_RAD * 0.5;
         // E4: a lone swarm body (or a scored fan) never materialises inside the line either —
-        // the jitter swings around the ring, never under it.
-        const radius = Math.max(req.swarm === true ? SWARM_MIN_ARRIVAL_WU : 0,
+        // the jitter swings around the ring, never under it. The minimum ring gets a hair
+        // of outward epsilon: hypot() and origin subtraction can round an exact 215-WU ring
+        // below 215; the strict safety check would then reject this same seeded point on
+        // every retry. Keep that check strict and move only the proposed minimum ring outward.
+        const radius = Math.max(req.swarm === true ? SWARM_MIN_ARRIVAL_WU + 1e-6 : 0,
           distance * (1 + (rng() - 0.5) * 2 * RADIUS_JITTER));
         pos = {
           x: anchor.x + Math.cos(angle) * radius,
@@ -370,12 +379,9 @@ export function materializeWaveBatch(ctx, request) {
         // E4: the blocked-arrival search may legally settle closer than the materialisation
         // line (its own floor is hull-clearance, not the screen). A slot that cannot offer a
         // spot outside the line defers — the batch retries next window, it does not pop in.
-        // The clamp above pins the radius floor to exactly SWARM_MIN_ARRIVAL_WU, whose
-        // hypot lands a hair under 215 through float error — an on-line arrival is legal,
-        // so only a genuinely-inside point (hull-clearance range, tens of wu in) defers.
         const player = ctx.state?.entities?.get?.(ctx.state?.playerId);
         if (!open || (player && player.pos
-          && Math.hypot(open.x - player.pos.x, open.z - player.pos.z) < SWARM_MIN_ARRIVAL_WU - 0.5)) {
+          && Math.hypot(open.x - player.pos.x, open.z - player.pos.z) < SWARM_MIN_ARRIVAL_WU)) {
           deferred++;
           continue;
         }
