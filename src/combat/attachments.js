@@ -7,6 +7,7 @@ import { createMasslineRuntime, stepMassline } from '../core/constraints/masslin
 import { SIM_DT } from '../core/sim.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { trainingWheelsHold } from '../onboarding/trainingWheels.js';
 
 // Production action_attach envelope. Its ordinary endpoints share the fail-closed durability
 // contract; only 47-A's explicitly marked false-mass spindle uses this legacy break envelope.
@@ -614,6 +615,8 @@ export function createAttachmentService(context) {
     const attachment = typeof attachmentOrId === 'string' ? get(attachmentOrId) : attachmentOrId;
     const physics = combatPhysics();
     if (!attachment || attachment.state !== 'active') return fail('attachment_missing');
+    // OPENING-1b training wheels: the first loose rock holds its line against strain until the first throw.
+    if (trainingWheelsHold(state, state.entities && state.entities.get(attachment.targetId), reason)) return fail('training_wheels');
     if (physics && typeof physics.cutAttachment === 'function') {
       try {
         physics.cutAttachment({

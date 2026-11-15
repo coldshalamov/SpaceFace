@@ -685,6 +685,7 @@ export const onboarding = {
     bus.on('mission:completed', (p) => this._onMissionCompleted(p || {}));
 
     // ── First-hour beat events (spec2/03) ─────────────────────────────────────────────────
+    bus.on('massline:throw', () => { const o = this.state && this.state.onboarding; if (o) o.firstThrowWheels = false; });
     bus.on('tether:latched', (p) => this._onBeatEvent('tether:latched', p || {}));
     // Production winch path (attachments.reel) emits tether:reel {before,after}. Gate the B1 cut
     // follow-up on rest length <= TETHER_REEL_MAX_WU so loose pay-out/early ticks do not teach cut.
@@ -3268,6 +3269,8 @@ export const onboarding = {
   },
 
   _createRescueCast(rescue) {
+    // OPENING-1b training wheels: the first rock's line cannot strain-break until the first throw lands.
+    if (this.state && this.state.onboarding && this.state.onboarding.beatDoneAt && this.state.onboarding.beatDoneAt.raid == null) this.state.onboarding.firstThrowWheels = true;
     const st = this.state;
     const player = st.entities && st.entities.get(st.playerId);
     if (!rescue || !rescue.active || !player || !player.pos

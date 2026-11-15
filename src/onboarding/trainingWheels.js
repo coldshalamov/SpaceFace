@@ -1,0 +1,15 @@
+// OPENING-1b training wheels (lead decision): the tutorial's first loose rock cannot strain-break its
+// line until the pilot has thrown once. The flag is owned by onboarding (state.onboarding.firstThrowWheels,
+// set when the rescue cast is staged, cleared on the first massline:throw). It only withholds the
+// strain/overload break reasons - cut, release, target loss and every other end still work, so the
+// pilot can always throw. Pure read; the tether rules (combat/attachments.js) consult it.
+export const TRAINING_WHEEL_BREAK_REASONS = Object.freeze(new Set([
+  'threshold', 'brace_overload', 'overload', 'sustained-overload', 'catastrophic-overload', 'snap',
+]));
+
+export function trainingWheelsHold(state, targetEntity, reason) {
+  const ob = state && state.onboarding;
+  if (!ob || ob.active !== true || ob.finished === true || ob.firstThrowWheels !== true) return false;
+  if (!TRAINING_WHEEL_BREAK_REASONS.has(String(reason))) return false;
+  return !!(targetEntity && targetEntity.data && targetEntity.data.rescueRole === 'rock');
+}
