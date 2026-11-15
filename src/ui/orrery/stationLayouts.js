@@ -195,6 +195,31 @@ ${S} .sxb-vital:has(.sxb-vital__value .orr-vnum.is-word) > .orr-vdial-bare { vis
 ${S} .sxb-vital--industry .sxb-vital__value { position:static !important; margin-top:2px !important; pointer-events:auto; }
 ${S} .sxb-vital--industry .sxb-vital__value .orr-vnum.is-word { margin-top:0; letter-spacing:.12em; }
 
+/* ---- the law desk: a fine on the counter is a head reading with its three answers ----------------- */
+/* lawFineDesk.js mounts into the crown and brought no station grammar with it: the panel sat at the
+   crown's alignment edge as a line of body text with three unmarked words. It speaks in the label
+   face and the station's own word-verbs, and (>=1101, where the crown is a card) shares the top row
+   with the credits, so the readings keep their row and the tab loses no height to it. */
+${S} .sxb-law-fine { font-family:var(--dp-face-label, "Archivo") !important; text-align:left !important; }
+${S} .sxb-law-fine > [role='status'] { flex:1 1 100% !important; font-stretch:112%; font-weight:650; font-size:12px !important;
+  letter-spacing:.12em !important; text-transform:uppercase; color:rgb(${BONE} / .72) !important; }
+${S} .sxb-law-fine > button { display:inline-flex !important; align-items:center; gap:5px; min-height:0 !important; height:auto !important;
+  padding:1px 0 !important; border:0 !important; background:none !important; box-shadow:none !important; clip-path:none !important;
+  font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size:12px !important;
+  letter-spacing:.1em !important; text-transform:uppercase; color:rgb(${BONE} / .88) !important; }
+${S} .sxb-law-fine > button::before { content:"\u203A"; display:inline !important; font-size:12px; letter-spacing:0; color:rgb(${BONE} / .55); }
+${S} .sxb-law-fine > button::after { display:none !important; }
+${S} .sxb-law-fine > button:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; }
+${S} .sxb-law-fine > button:focus-visible { outline:2px solid var(--dp-hand, #f2b950) !important; outline-offset:2px !important; }
+${S} .sxb-law-fine > button:disabled { color:rgb(${BONE} / .5) !important; cursor:default; }
+/* >=1101 the crown is a card and the credits hold its top-right: the desk takes the empty top-left
+   as a seated notice. Absolute, so it contributes nothing to the card's width or height — a desk in
+   flow grew the crown column and cut "SOLAR CONCORD NAVY" off the title at 1280 (bench 2026-11-15). */
+@media (min-width:1101px) {
+  ${D} .sxb-crown > .sxb-law-fine { position:absolute !important; left:18px; top:16px; width:auto !important;
+    max-width:min(560px, 55%) !important; }
+}
+
 /* ---- the foot: destinations as words on a ruled line with the Hand; comms and help as words ---- */
 ${S} .sxb-ops, ${S} .sxb-ops .of-facility-rail { align-items:flex-start !important; }
 ${S} .sxb-ops { flex-wrap:nowrap !important; column-gap:clamp(16px, 2vw, 40px) !important; }
@@ -803,6 +828,11 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${D} { grid-template-rows:max-content minmax(0, 1fr) max-content !important; }
   ${D} .sxb-berth.dp-frame__head { grid-template-columns:minmax(0, 1fr) !important; grid-template-rows:none !important;
     grid-template-areas:"trigger" "title" "crown" "handoff" "tape" "signs" !important; row-gap:6px !important; padding-bottom:6px !important; }
+  /* a fine on the counter takes the row under the dials (the crown is display:contents here, so the
+     desk is a head item): the head scrolls its tape and signs, and a debt must not hide at the bottom */
+  ${D} .sxb-berth.dp-frame__head:has(> .sxb-crown > .sxb-law-fine:not([hidden])) {
+    grid-template-areas:"trigger" "title" "crown" "law" "handoff" "tape" "signs" !important; }
+  ${D} .sxb-berth.dp-frame__head > .sxb-crown > .sxb-law-fine { grid-area:law !important; align-self:stretch !important; margin-inline:12px !important; }
   ${D} .sxb-berth.dp-frame__head > .so-command-trigger { grid-area:trigger !important; justify-self:end !important; position:static !important; }
   ${D} .sxb-berth.dp-frame__head > .so-station-title { grid-area:title !important; }
   ${D} .sxb-berth.dp-frame__head > .sxb-crown { grid-area:crown !important; position:relative !important; inset:auto !important; width:100% !important; margin:0 !important; }

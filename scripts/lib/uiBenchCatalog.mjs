@@ -13,7 +13,7 @@ export const BACKDROPS = Object.freeze({
  *  `drill` / `base` pick the populated seeds (seedDrillShot / seedBaseShot). `defeat` picks the
  *  Game Over fixture (seedGameOverShot): 'populated' mounts a real buildDefeatReceipt plate,
  *  'empty' the clean state. `seed` overrides the run seed a shot writes into state.meta.seed.
- *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string, chart?: string, route?: string, drill?: string, base?: string, manifestStake?: number, mobile?: string, defeat?: string, seed?: number}[]} */
+ *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string, chart?: string, route?: string, drill?: string, base?: string, manifestStake?: number, mobile?: string, defeat?: string, lawFine?: string, seed?: number}[]} */
 export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'title', screen: 'mainMenu', backdrop: 'title' },
   { id: 'mainMenu', screen: 'mainMenu', backdrop: 'title' },
@@ -120,6 +120,8 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'station-bar-story-buyer', screen: 'station', tab: 'bar', backdrop: 'shell', story: 'ledger' },
   { id: 'station-factions-treaty', screen: 'station', tab: 'factions', backdrop: 'shell', story: 'treaty', dock: 'station_depot3' },
   { id: 'station-ledger', screen: 'station', tab: 'ledger', backdrop: 'shell' },
+  // A wanted pilot's fine on the counter: the docked law desk mounted in the station head's crown.
+  { id: 'station-law-desk', screen: 'station', tab: 'market', backdrop: 'shell', lawFine: 'offered' },
 
   { id: 'crucible', screen: 'crucible', backdrop: 'world' },
   { id: 'crucible-door', screen: 'crucible', backdrop: 'world' },

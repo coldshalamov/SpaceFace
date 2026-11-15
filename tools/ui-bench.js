@@ -14,6 +14,7 @@ import { createScreenMemory } from '../src/ui/screenMemory.js';
 import { isMapScreenId, openGalaxyMap, focusFromLegacyScreenId } from '../src/ui/mapAuthority.js';
 import { BENCH_HELIOS_BOARD } from './ui-bench-board.js';
 import { missions } from '../src/systems/missions.js';
+import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { buildDefeatReceipt } from '../src/combat/playerDefeat.js';
 import { createRunState } from '../src/core/runState.js';
 import { runSession } from '../src/systems/runSession.js';
@@ -159,6 +160,40 @@ function seedStoryRewardShot(state, kind) {
     };
     flags['crossRep.choirVaelTreaty'] = true;
   }
+}
+
+/** `lawFine: 'offered'` docks a wanted pilot: a lawful Helios berth, a heat tier the law asks about,
+ *  and the production law owner's own assessment on the real `dock:docked` payload. The desk is
+ *  mounted by createStationApp from state.lawSecurity.fineOffer, so the fixture is state only. */
+let benchLawFineOwner = null;
+let benchLawFineBaseline = null;
+function seedLawFineShot(state, bus) {
+  unseedLawFineShot(state);
+  const station = {
+    id: 7701, type: 'station', alive: true, team: 0, factionId: 'faction_scn',
+    radius: 90, hull: 4000, hullMax: 4000, pos: { x: 0, y: 0, z: 0 }, vel: { x: 0, y: 0, z: 0 },
+    data: { stationId: 'station_helios', name: 'Helios Station', factionId: 'faction_scn' },
+  };
+  benchLawFineBaseline = { heat: state.player.heat, lawSecurity: state.lawSecurity };
+  state.player.heat = 0.4;
+  state.entities.set(station.id, station);
+  if (!state.entityList.some((entity) => entity.id === station.id)) state.entityList.push(station);
+  benchLawFineOwner = Object.create(lawSecurity);
+  benchLawFineOwner.init({ state, bus, helpers: {}, registry: { get: () => null } });
+  bus.emit('dock:docked', { stationId: 'station_helios' });
+}
+function unseedLawFineShot(state) {
+  if (benchLawFineOwner) {
+    try { benchLawFineOwner.destroy(); } catch { /* a fixture owner that never ticked */ }
+    benchLawFineOwner = null;
+  }
+  if (!benchLawFineBaseline) return;
+  state.lawSecurity = benchLawFineBaseline.lawSecurity;
+  if (state.player) state.player.heat = benchLawFineBaseline.heat;
+  benchLawFineBaseline = null;
+  const at = state.entityList.findIndex((entity) => entity.id === 7701);
+  if (at >= 0) state.entityList.splice(at, 1);
+  state.entities.delete(7701);
 }
 
 function seededState() {
@@ -1242,6 +1277,8 @@ async function goto(rawId) {
       if (id === 'footprint') seedFootprintShot(state, shot.footprint || 'wanted'); else unseedFootprintShot(state);
       // Story-reward readers: a claimed Lost Ledger (bar buyer) or the Cassandra Treaty (faction link).
       seedStoryRewardShot(state, shot.story || null);
+      // A `lawFine` station shot docks a wanted pilot over the law owner's own fine on the counter.
+      if (shot.lawFine) seedLawFineShot(state, bus); else unseedLawFineShot(state);
       // `impound: 'lot' | 'ransom'` opens Shipworks over the impound lot's attendant desk (tools/ui-bench-impound.js).
       seedImpoundShot(state, bus, screenMemory, shot.impound || null);
       // X-03 visual fixture: ?fitOfferDefId=<id> stamps the named-module hint so the yard row
