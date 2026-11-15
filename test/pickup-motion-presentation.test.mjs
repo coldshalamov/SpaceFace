@@ -99,6 +99,29 @@ function createMockHalo(baseScale) {
   };
 }
 
+test('renderer reduced-motion setting controls pickup motion and overrides the legacy alias', () => {
+  const tracker = createPickupMotionTracker();
+  const mesh = createMockPickupMesh();
+  mesh.userData.pickupHalo = createMockHalo(1);
+  const pickup = { id: 506, pos: { x: 50, z: 50 } };
+  const player = { pos: { x: 0, z: 0 } };
+  const update = (time, options) => tracker.updatePickupMotion(pickup, mesh, time, 0.05, player, options);
+  update(3, { reducedMotion: false });
+  const movingPitch = mesh.userData.gem.rotation.x;
+  update(3.05, { reducedMotion: true, motionReduce: false });
+  const calmPitch = mesh.userData.gem.rotation.x;
+  const calmHalo = mesh.userData.pickupHalo.rotation.x;
+  assert.equal(calmPitch, movingPitch);
+  assert.deepEqual(mesh.userData.gem.position, { x: 0, y: 0, z: 0 });
+  update(3.10, { reducedMotion: true });
+  assert.equal(mesh.userData.gem.rotation.x, calmPitch);
+  assert.equal(mesh.userData.pickupHalo.rotation.x, calmHalo);
+  update(3.15, { reducedMotion: false, motionReduce: true });
+  assert.notEqual(mesh.userData.gem.rotation.x, calmPitch);
+  assert.notEqual(mesh.userData.pickupHalo.rotation.x, calmHalo);
+  assert.ok(mesh.userData.gem.position.x !== 0 || mesh.userData.gem.position.z !== 0);
+});
+
 test('pickup halo: precesses with sim time and kicks on the double-flash beat', () => {
   const a = resolvePickupHaloPose(10, 0.3, false);
   const b = resolvePickupHaloPose(10.5, 0.3, false);

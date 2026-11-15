@@ -275,7 +275,9 @@ export function createPickupMotionTracker() {
     const ratio = presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
     const animDt = dt * ratio;
     const rec = getState(entity.id);
-    const reducedMotion = options.motionReduce === true;
+    // The renderer passes reducedMotion; retain motionReduce for existing direct callers.
+    const reducedMotion = typeof options.reducedMotion === 'boolean'
+      ? options.reducedMotion : options.motionReduce === true;
     lastSimTime = simTime;
     rec.animTime = rec.animTime == null ? (Number.isFinite(simTime) ? simTime : 0) : (rec.animTime + animDt);
 
