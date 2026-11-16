@@ -1015,7 +1015,9 @@ export function resolveDomainValue(state, key) {
 // last-signed digest per leaf path, so it stays consistent with the facade
 // state between cold/warm re-signs (facades trail live by the tier interval
 // at worst — the signed digest still describes the shipped content).
-export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1, salvageOutfits: 2 });
+// massline2: 2 — the throw's release window (massline2.throw.solution) lasts a few ticks; as one big leaf it re-signed
+// on the cold/warm cadence and the main-thread throw cue lit late or never. Split, it ships every pass.
+export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1, salvageOutfits: 2, massline2: 2 });
 // player: 1 — the wallet/cargo fields the UI reads hot (player.credits,
 // player.cargo) sign every pass instead of trailing the monolithic player
 // leaf's cold-tier 60-tick interval: a settled trade used to leave the facade

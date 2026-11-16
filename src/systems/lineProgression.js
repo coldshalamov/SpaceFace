@@ -13,6 +13,7 @@ import {
   normalizeLineProgression,
   lineClassForTonnage,
   lineClassForIndex,
+  isOverLineClass,
   stampLineRecord,
 } from '../data/lineProgression.js';
 
@@ -93,7 +94,7 @@ export const lineProgression = {
       ? state.entities.get(payload.targetId)
       : null;
     this._heldTargetId = payload.targetId ?? null;
-    this._heldMassT = target ? bodyMassOf(target) : 0;
+    this._heldMassT = target && !(target.data && target.data.rescueRole === 'rock') ? bodyMassOf(target) : 0;
     this._snapGraceUntil = 0;
     this._restoreLoadedHold = false;
     const player = this._player();
@@ -138,7 +139,7 @@ export const lineProgression = {
       && a.targetId === target.id && (tether.attachmentId == null || a.id === tether.attachmentId));
     if (!held) return;
     this._heldTargetId = target.id;
-    this._heldMassT = bodyMassOf(target);
+    this._heldMassT = target.data && target.data.rescueRole === 'rock' ? 0 : bodyMassOf(target);
     this._heldAttachmentId = held.id;
   },
 
@@ -186,7 +187,7 @@ export const lineProgression = {
     this._reconcileLoadedHold();
     const bag = this._ensureBag(state);
     const cls = lineClassForIndex(bag.classIndex);
-    const over = this._heldMassT > 0 && this._heldMassT > cls.fullControlMassT;
+    const over = isOverLineClass(this._heldMassT, bag.classIndex);
     bag.overClass = over === true;
     bag.classFullControlMassT = cls.fullControlMassT;
     bag.overClassReelFactor = over ? OVERCLASS_REEL_FACTOR : 1;

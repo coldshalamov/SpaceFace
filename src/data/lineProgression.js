@@ -204,6 +204,25 @@ export function lineClassForIndex(index) {
   return LINE_CLASS_BY_INDEX[Math.min(LINE_CLASSES.length, Math.max(1, Math.trunc(Number(index) || 1)))] || LINE_CLASSES[0];
 }
 
+// ONE WEIGHT RULE: a held body is over class when its mass exceeds the current line class's
+// full-control ceiling. The overclass snap (systems/lineProgression.js) and the TOO HEAVY aim tag
+// (ui/masslineHud.js) both read this, so a body the tag lets you latch never snaps for weight and
+// anything that would snap says TOO HEAVY before the press.
+export function bodyMassT(entity) {
+  const pb = entity && entity.physicsBody && Number(entity.physicsBody.mass);
+  if (Number.isFinite(pb) && pb > 0) return pb;
+  const m = entity && Number(entity.mass);
+  return Number.isFinite(m) && m > 0 ? m : 1;
+}
+export function isOverLineClass(massT, classIndex) {
+  return massT > 0 && massT > lineClassForIndex(classIndex).fullControlMassT;
+}
+export function entityOverLineClass(state, entity) {
+  // The tutorial's loose rock is the one body every pilot is taught on: it is by definition within class.
+  if (entity && entity.data && entity.data.rescueRole === 'rock') return false;
+  return isOverLineClass(bodyMassT(entity), state && state.lineProgression && state.lineProgression.classIndex);
+}
+
 export function defaultLineProgression() {
   return {
     schemaVersion: 1,

@@ -50,6 +50,7 @@ import { isCrackerRunWorkLoad } from './crackerRunGuidance.js';
 import { isSwarmGlass } from './swarmGlass.js';
 import { verbChip } from './controlPrompts.js';
 import { releaseWindowOpen } from './throwCue.js';
+import { entityOverLineClass } from '../data/lineProgression.js';
 import { isAdventureFlight } from './attentionGlass.js';
 import { openingQuiet } from '../onboarding/openingQuiet.js';
 
@@ -1540,10 +1541,10 @@ export const masslineHud = {
     const massRead = massPreviewRead(target, playerMass);
     // OPENING-1b: no TOO HEAVY until the first throw has landed - the first latch is the light rock. After it,
     // a heavy body says TOO HEAVY before the latch rather than snapping the line after.
-    const heavyHushed = openingQuiet(state) && !(state.onboarding && state.onboarding.firstThrowSeen === true) && !!(massRead && massRead.share >= 0.8);
+    const heavyHushed = openingQuiet(state) && !(state.onboarding && state.onboarding.firstThrowSeen === true) && entityOverLineClass(state, target);
     const massText = !seedPreview && ready && !heavyHushed
       ? (quietTelemetry
-        ? (massRead && massRead.share >= 0.8 ? 'TOO HEAVY' : verbChip(state, 'tether', 'LATCH'))
+        ? (entityOverLineClass(state, target) ? 'TOO HEAVY' : verbChip(state, 'tether', 'LATCH'))
         : massPreviewWord(target, playerMass, state))
       : '';
     const text = seedText || massText || bracketReadText(read);
