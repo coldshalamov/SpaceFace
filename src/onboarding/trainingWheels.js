@@ -5,6 +5,8 @@
 // pilot can always throw. Pure read; the tether rules (combat/attachments.js) consult it.
 export const TRAINING_WHEEL_BREAK_REASONS = Object.freeze(new Set([
   'threshold', 'brace_overload', 'overload', 'sustained-overload', 'catastrophic-overload', 'snap',
+  // Seen in the first measured opening: the line snapped as an over-class load, then a passing NPC tractor took it.
+  'line_overclass_snap', 'npc_tractor_phase',
 ]));
 
 export function trainingWheelsHold(state, targetEntity, reason) {

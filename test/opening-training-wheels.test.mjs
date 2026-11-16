@@ -6,7 +6,7 @@ const rock = { data: { rescueRole: 'rock' } };
 const wheels = (over = {}) => ({ onboarding: { active: true, finished: false, firstThrowWheels: true, ...over } });
 
 test('the first loose rock cannot strain-break its line while the wheels are on', () => {
-  for (const reason of ['threshold', 'brace_overload', 'overload', 'snap']) {
+  for (const reason of ['threshold', 'brace_overload', 'overload', 'snap', 'line_overclass_snap', 'npc_tractor_phase']) {
     assert.equal(trainingWheelsHold(wheels(), rock, reason), true, reason);
   }
 });
