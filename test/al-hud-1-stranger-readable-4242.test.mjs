@@ -746,6 +746,7 @@ test('real HUD coalesces accepted receipt bursts into one paint and ignores refu
     assert.match(live.textContent,/×8/);
     fx.hud.frame(1/60,true);
     assert.equal(queries,0,'the UI root may finish its other owners before placement');
+    fx.clock.now += 250; // past the 100 ms flight-text obstacle floor (2c50e11639)
     fx.hud.flushReceiptLane();
     const firstPaintQueries=queries;
     assert.ok(firstPaintQueries>0,'the first paint measures the actual accepted receipt');
@@ -754,11 +755,13 @@ test('real HUD coalesces accepted receipt bursts into one paint and ignores refu
     fx.hud.flushReceiptLane();assert.equal(queries,firstPaintQueries,'one flush places the whole burst only once');
     active()[0].click();
     assert.equal(active().length,0,'the original dismiss control still works');
+    fx.clock.now += 250; // past the 100 ms flight-text obstacle floor (2c50e11639)
     fx.hud.frame(1/60,true);fx.hud.flushReceiptLane();
     assert.ok(!fx.hud.getFlightTextObstacles().some(entry=>entry.owner==='receipt'),'dismiss removes the obstacle on the same paint');
     // The real UI root ticks other presentation owners after HUD.frame. A receipt emitted
     // by one of them still gets placed in that very paint, with no second rAF.
     queries=0;let lateEvents=0;
+    fx.clock.now += 250; // past the 100 ms flight-text obstacle floor (2c50e11639)
     const owner={state:fx.state,hud:fx.hud,toasts,_hudVisibleLast:true,
       screenManager:{isOpen:()=>false,isLiveOverlay:()=>false},
       discoveryPlate:{tick(){lateEvents++;fx.bus.emit('toast',{text:'Late cargo receipt',kind:'success'});}}};
