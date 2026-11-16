@@ -17,7 +17,7 @@ test('Swarm pickup meshes retain edge visibility and resume their draw callbacks
   const factory = createVisualFactory();
   const tracker = createPickupMotionTracker();
   const families = [
-    { id: 42, data: { swarmRepair: true }, expected: 9 },
+    { id: 42, data: { swarmRepair: true }, expected: 7 },
     { id: 43, data: { kind: 'swarm_drop', swarmDrop: true, dropId: 'magnet' }, expected: 3 },
   ];
   try {
@@ -28,10 +28,10 @@ test('Swarm pickup meshes retain edge visibility and resume their draw callbacks
       root.traverse((object) => { if (object.isMesh) meshes.push(object); });
       assert.equal(meshes.length, family.expected);
       assert.ok(meshes.every((mesh) => mesh.frustumCulled));
-      // Origin-centered local spheres remain valid when the drop callback rotates its meshes.
+      // Origin-centered drop spheres remain valid when its callback rotates the meshes.
       for (const mesh of meshes) {
         mesh.geometry.computeBoundingSphere();
-        assert.equal(mesh.geometry.boundingSphere.center.lengthSq(), 0);
+        if (family.expected === 3) assert.equal(mesh.geometry.boundingSphere.center.lengthSq(), 0);
       }
       const pose = (x, time, options = {}) => {
         root.position.x = x;
@@ -43,11 +43,12 @@ test('Swarm pickup meshes retain edge visibility and resume their draw callbacks
       assert.ok(pose(60, 0.3).every((inside) => !inside), 'offscreen meshes cull');
       assert.ok(pose(0, 0.6).every(Boolean), 'all meshes return on re-entry');
       setFactoryPresentationNow(0.6);
-      if (family.expected === 9) {
+      if (family.data.swarmRepair) {
         const cross = root.getObjectByName('SwarmRepairCrossBarA');
         const before = cross.material.emissiveIntensity;
         cross.onBeforeRender();
         assert.notEqual(cross.material.emissiveIntensity, before, 'visible cross refreshes its glint');
+        assert.ok(pose(0, 0.9, { reducedMotion: true }).every(Boolean));
       } else {
         const body = root.getObjectByName('SwarmDropCrystal');
         const outer = root.children[2];

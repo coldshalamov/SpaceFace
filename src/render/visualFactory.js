@@ -3933,17 +3933,24 @@ function buildSwarmRepairCell(e) {
     body.add(m);
     return m;
   };
+  // The static barrel/lid and clamp bands each share one material and move as one body.
+  const mergeRepairPieces = (parts) => {
+    const merged = mergeGeometries(parts, false);
+    for (const part of parts) part.dispose();
+    if (!merged) throw new Error('repair cell geometry could not be merged');
+    return merged;
+  };
   // Squat barrel on a planted flange — the upright stance is half the identity at a glance.
-  add('swarmrepair:barrel', () => new THREE.CylinderGeometry(0.46, 0.54, 0.66, 10),
-    shell, 'SwarmRepairBarrel', [0, -0.02, 0]);
+  add('swarmrepair:shell-pair', () => mergeRepairPieces([
+    new THREE.CylinderGeometry(0.46, 0.54, 0.66, 10).translate(0, -0.02, 0),
+    new THREE.CylinderGeometry(0.5, 0.45, 0.18, 10).translate(0, 0.37, 0),
+  ]), shell, 'SwarmRepairBarrel');
   add('swarmrepair:flange', () => new THREE.CylinderGeometry(0.64, 0.7, 0.12, 10),
     band, 'SwarmRepairFootFlange', [0, -0.37, 0]);
-  add('swarmrepair:lid', () => new THREE.CylinderGeometry(0.5, 0.45, 0.18, 10),
-    shell, 'SwarmRepairLid', [0, 0.37, 0]);
-  add('swarmrepair:band-lo', () => new THREE.TorusGeometry(0.52, 0.05, 6, 18).rotateX(Math.PI / 2),
-    band, 'SwarmRepairClampBandLo', [0, -0.16, 0]);
-  add('swarmrepair:band-hi', () => new THREE.TorusGeometry(0.52, 0.05, 6, 18).rotateX(Math.PI / 2),
-    band, 'SwarmRepairClampBandHi', [0, 0.14, 0]);
+  add('swarmrepair:band-pair', () => mergeRepairPieces([
+    new THREE.TorusGeometry(0.52, 0.05, 6, 18).rotateX(Math.PI / 2).translate(0, -0.16, 0),
+    new THREE.TorusGeometry(0.52, 0.05, 6, 18).rotateX(Math.PI / 2).translate(0, 0.14, 0),
+  ]), band, 'SwarmRepairClampBandLo');
   // The weld seam where the lid seats — white-hot, the mark of a fresh patch kit.
   add('swarmrepair:weldseam', () => new THREE.TorusGeometry(0.475, 0.032, 6, 18).rotateX(Math.PI / 2),
     weld, 'SwarmRepairWeldSeam', [0, 0.27, 0]);
