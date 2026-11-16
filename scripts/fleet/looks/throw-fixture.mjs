@@ -42,48 +42,37 @@ try {
     const log = (window.__log = []); const bus = window.SF.bus;
     for (const ev of ['tether:latched', 'massline:throw', 'massline:selfSling', 'tether:cut', 'tether:broke', 'entity:killed', 'tether:latchDenied'])
       bus.on(ev, (p) => log.push({ ev, t: +window.SF.state.simTime.toFixed(2), tgt: p && p.targetId, id: p && (p.id ?? p.payloadId), br: p && (p.reason || p.breakReason), killer: p && p.killer }));
-    // Staging only: teleport + heal. `far` hostiles are parked out of the way so the staged one is alone.
-    window.__stage = (clusterCount, lane) => {
-      const s = window.SF.state, h = window.SF.helpers, me = s.entities.get(s.playerId);
-      if (lane === 'worker') {
-        const c = [];
-        for (const e of s.entityList || []) {
-          if (!e || e.alive === false || e.type !== 'ship' || e.isPlayer || e.team === 0) continue;
-          if (Number.isFinite(e.mass) && e.mass > 32) continue;
-          const scr = h.worldToScreen({ x: e.pos.x, y: 0, z: e.pos.z }, {});
-          if (!scr || !scr.onScreen || scr.x < 330 || scr.x > 950 || scr.y < 160 || scr.y > 580) continue;
-          c.push({ id: e.id, d: Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z), scr: { x: scr.x, y: scr.y } });
-        }
-        c.sort((a, b) => a.d - b.d);
-        return c[0] ? { id: c[0].id, scr: c[0].scr, cluster: [], clusterScr: null } : null;
-      }
-      const hs = (s.entityList || []).filter((e) => e && e.alive !== false && e.type === 'ship' && !e.isPlayer && e.team !== 0);
+    // Staging only: teleport + heal. No projection helper is needed: the pointer's own aimWorld says
+    // where a screen point is in the world, so the hostile is placed exactly under the pointer.
+    window.__aimWorld = () => { const s = window.SF.state; const a = s.input && s.input.aimWorld; const me = s.entities.get(s.playerId);
+      return a && me ? { x: a.x, z: a.z, mx: me.pos.x, mz: me.pos.z } : null; };
+    // Pin the staged hostile in place (position + zero velocity every frame) until the press has resolved, so it
+    // cannot drift out from under the pointer; released as soon as the line is up.
+    window.__pin = null;
+    const pinLoop = () => { const pn = window.__pin; if (pn) { const e = window.SF.state.entities.get(pn.id); if (e) { e.pos.x = pn.x; e.pos.z = pn.z; e.vel.x = 0; e.vel.z = 0; } } requestAnimationFrame(pinLoop); };
+    requestAnimationFrame(pinLoop);
+    window.__stage = (at, clusterAt, clusterCount) => {
+      const s = window.SF.state, me = s.entities.get(s.playerId);
+      const hs = (s.entityList || []).filter((e) => e && e.alive !== false && e.type === 'ship' && !e.isPlayer && e.team !== 0 && e.team !== 2 && !(e.data && e.data.ai && e.data.ai.passive));
       const light = hs.filter((e) => !(Number.isFinite(e.mass) && e.mass > 32));
       if (!light.length) return null;
       const target = light[0];
       const others = hs.filter((e) => e !== target);
-      const park = (e, i) => { const a = i * 0.9; e.pos.x = me.pos.x + Math.cos(a) * 3800; e.pos.z = me.pos.z + Math.sin(a) * 3800; e.vel.x = 0; e.vel.z = 0; };
-      others.forEach(park);
-      // pick the direction whose screen point is inside the playfield
-      for (let k = 0; k < 16; k++) {
-        const a = k * Math.PI / 8;
-        const px = me.pos.x + Math.cos(a) * 150, pz = me.pos.z + Math.sin(a) * 150;
-        const scr = h.worldToScreen({ x: px, y: 0, z: pz }, {});
-        if (!scr || !scr.onScreen || scr.x < 330 || scr.x > 950 || scr.y < 160 || scr.y > 580) continue;
-        target.pos.x = px; target.pos.z = pz; target.vel.x = 0; target.vel.z = 0;
-        if (Number.isFinite(target.hullMax)) target.hull = target.hullMax;
-        if (Number.isFinite(target.shieldMax)) target.shield = target.shieldMax;
-        const cl = [];
-        if (clusterCount) {
-          const ca = a + 1.2;      // the cluster sits off to one side, ~330 wu from the player
-          others.slice(0, clusterCount).forEach((e, i) => { e.pos.x = me.pos.x + Math.cos(ca) * 330 + (i - 2) * 38; e.pos.z = me.pos.z + Math.sin(ca) * 330 + (i % 2) * 40; e.vel.x = 0; e.vel.z = 0; cl.push(e.id); });
-        }
-        const clScr = clusterCount ? h.worldToScreen({ x: me.pos.x + Math.cos(a + 1.2) * 330, y: 0, z: me.pos.z + Math.sin(a + 1.2) * 330 }, {}) : null;
-        if (Number.isFinite(me.hull) && Number.isFinite(me.hullMax)) me.hull = me.hullMax;
-        return { id: target.id, scr: { x: scr.x, y: scr.y }, cluster: cl, clusterScr: clScr && clScr.onScreen ? { x: clScr.x, y: clScr.y } : null };
-      }
-      return null;
+      others.forEach((e, i) => { const a = i * 0.9; e.pos.x = me.pos.x + Math.cos(a) * 3800; e.pos.z = me.pos.z + Math.sin(a) * 3800; e.vel.x = 0; e.vel.z = 0; });
+      target.pos.x = at.x; target.pos.z = at.z; target.vel.x = 0; target.vel.z = 0;
+      if (Number.isFinite(target.hullMax)) target.hull = target.hullMax;
+      if (Number.isFinite(target.shieldMax)) target.shield = target.shieldMax;
+      const cl = [];
+      if (clusterCount && clusterAt) others.slice(0, clusterCount).forEach((e, i) => { e.pos.x = clusterAt.x + (i - 2) * 38; e.pos.z = clusterAt.z + (i % 2) * 40; e.vel.x = 0; e.vel.z = 0; cl.push(e.id); });
+      if (Number.isFinite(me.hull) && Number.isFinite(me.hullMax)) me.hull = me.hullMax;
+      window.__pin = { id: target.id, x: at.x, z: at.z };
+      return { id: target.id, cluster: cl };
     };
+    window.__nearest = () => { const s = window.SF.state, h = window.SF.helpers, me = s.entities.get(s.playerId), c = [];
+      for (const e of s.entityList || []) { if (!e || e.alive === false || e.type !== 'ship' || e.isPlayer || e.team === 0) continue; if (Number.isFinite(e.mass) && e.mass > 32) continue;
+        const scr = h.worldToScreen ? h.worldToScreen({ x: e.pos.x, y: 0, z: e.pos.z }, {}) : null; if (!scr || !scr.onScreen || scr.x < 330 || scr.x > 950 || scr.y < 160 || scr.y > 580) continue;
+        c.push({ id: e.id, d: Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z), scr: { x: scr.x, y: scr.y } }); }
+      c.sort((x, y) => x.d - y.d); return c[0] || null; };
   });
   await page.mouse.click(640, 360);
   const cl = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -100,9 +89,21 @@ try {
     const count = phase === 0 ? N : (LANE === 'worker' ? 0 : NC);
     for (let a = 0; a < count; a++) {
       await release();
-      const st = await page.evaluate(([c, lane]) => window.__stage(c, lane), [phase === 1 ? 5 : 0, LANE]);
+      let st = null;
+      if (LANE === 'worker') { const n = await page.evaluate(() => window.__nearest()); st = n ? { id: n.id, scr: n.scr, clusterScr: null } : null; }
+      else {
+        // Latch spot: a screen point ~170 wu from the player (read through the pointer's aimWorld); cluster spot on the far side.
+        const P = [{ x: 800, y: 360 }, { x: 480, y: 360 }, { x: 640, y: 230 }, { x: 640, y: 490 }][a % 4];
+        const Q = [{ x: 480, y: 360 }, { x: 800, y: 360 }, { x: 640, y: 490 }, { x: 640, y: 230 }][a % 4];
+        await page.mouse.move(Q.x, Q.y, { steps: 2 }); await sleep(250);
+        const qw = await page.evaluate(() => window.__aimWorld());
+        await page.mouse.move(P.x, P.y, { steps: 2 }); await sleep(250);
+        const pw = await page.evaluate(() => window.__aimWorld());
+        const ok = await page.evaluate(([at, clusterAt, cc]) => window.__stage(at, clusterAt, cc), [pw, qw, phase === 1 ? 5 : 0]);
+        st = ok && pw ? { id: ok.id, scr: P, clusterScr: phase === 1 ? Q : null, dist: Math.round(Math.hypot(pw.x - pw.mx, pw.z - pw.mz)) } : null;
+      }
       if (!st) { (phase ? cluster : rows).push({ attempt: a, note: 'nothing to stage' }); await sleep(1500); continue; }
-      await sleep(600);
+      await sleep(150);
       const mark = await logLen();
       const rec = { phase, attempt: a, held: st.id };
       await page.mouse.move(st.scr.x, st.scr.y, { steps: 3 });
@@ -111,6 +112,7 @@ try {
       await press(120);
       let L = null;
       for (let i = 0; i < 8 && !L; i++) { await sleep(150); L = (await since(mark)).find((e) => e.ev === 'tether:latched') || null; }
+      await page.evaluate(() => { window.__pin = null; });
       rec.latched = !!L;
       rec.latchedBody = L ? L.tgt : null;
       rec.denials = (await since(mark)).filter((e) => e.ev === 'tether:latchDenied').map((e) => e.br);
@@ -120,6 +122,7 @@ try {
       await sleep(1000); await page.keyboard.up('KeyD');
       const live = await page.evaluate(() => !!window.SF.state.player.tether.active);
       rec.lineLive = live;
+      rec.atClick = await page.evaluate(() => { const st = window.SF.state, t = st.player.tether, e = t && st.entities.get(t.targetId); return { tether: t && { active: t.active, target: t.targetId, att: t.attachmentId, phase: t.phase }, tgt: e && { type: e.type, team: e.team, mass: e.mass, ai: e.data && e.data.ai && { arch: e.data.ai.archetype, role: e.data.ai.role, passive: e.data.ai.passive, ctx: e.data.ai.spawnContext, lawful: e.data.ai.lawful }, enc: !!(e.data && e.data.encounter), chunk: !!(e.data && e.data.isChunk) } }; });
       const aim = phase === 1 && st.clusterScr ? st.clusterScr : { x: 640, y: 300 };
       await page.mouse.move(cl(aim.x, 330, 950), cl(aim.y, 160, 580), { steps: 2 });
       rec.clickT = await page.evaluate(() => +window.SF.state.simTime.toFixed(2));
@@ -144,9 +147,10 @@ try {
 writeFileSync(out, JSON.stringify({ rows, cluster }, null, 1));
 const att = rows.filter((r) => r.held != null);
 const latched = att.filter((r) => r.latched);
-const live = latched.filter((r) => r.lineLive);
+const rightBody = latched.filter((r) => r.latchedBody === r.held);
+const live = rightBody.filter((r) => r.lineLive);
 const thrown = live.filter((r) => r.throw);
-console.log(`(a) press->latch: ${latched.length}/${att.length} (${att.length ? Math.round(100 * latched.length / att.length) : 0}%)`);
+console.log(`(a) press->latch: ${latched.length}/${att.length} (of which the staged hostile itself: ${rightBody.length}) (${att.length ? Math.round(100 * latched.length / att.length) : 0}%)`);
 console.log(`(b) click->throw given a live line: ${thrown.length}/${live.length} (${live.length ? Math.round(100 * thrown.length / live.length) : 0}%) · line gone before click ${latched.length - live.length} · self-slings ${latched.filter((r) => r.selfSling).length}`);
 const miss = att.filter((r) => !r.latched);
 console.log(`failed presses: ${miss.length}; with tag "RMB · LATCH"/shown and no denial: ${miss.filter((r) => !r.denials.length && r.pre && r.pre.tagShown).length}; elements under pointer: ${JSON.stringify([...new Set(miss.map((r) => r.pre && r.pre.el))])}; tags: ${JSON.stringify([...new Set(miss.map((r) => r.pre && r.pre.tag))])}; denials: ${JSON.stringify([...new Set(miss.flatMap((r) => r.denials))])}`);
