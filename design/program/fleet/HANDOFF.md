@@ -19,6 +19,13 @@ Read in this order: this page → `PLAYBOOK.md` (how the work runs, the four pro
      (an outside agent made the boot movie wait for in-memory playback; hold raised from 9 s to 20 s).
      Its owner is unknown. Do not commit it blind; park it and review it (a 20 s boot hold is long).
 2. **Run the gate on a quiet machine** (no workers running): `npm run gate`. Then push master.
+   **Last gate (lead, 2026-11-16, HEAD `acfdc33c83`):** import-lint PASS (6–9 s) and boot-adventure
+   PASS (172–195 s, full route) on two runs; **boot-swarm REFUSED by the harness asset-staleness
+   guard — served `assets/` do not match HEAD** (~30+ `render-packages/*` size mismatches from the
+   in-flight interactive asset campaign: apron-shuttle, greeble-*, repair tender, prospector skiff,
+   customs pylon). Harness verdict on both runs: "not a gameplay FAIL", browser not started.
+   Swarm at HEAD boots fine when the tree's assets match (look-bench swarm frame, 2026-11-16).
+   **Next session: after the asset campaign commits, re-run `npm run gate`, then push master.**
    **Pushed at checkpoint:** master is on origin at `c233f72a` (quick gate PASS before merging 38
    incoming UI-polish commits from origin; import lint PASS after; the full gate has not run since).
 3. **Review the BUILT rows** in `QUEUE.md` that are visible on screen (lead looks before `DONE`):
@@ -78,6 +85,15 @@ every run a `--timeout-min`.
 
 `deep-sky-plate-pipeline` #9, `performance-dirty-ranges` (4), `render-target-pipeline-warmup` #25,
 `pq-204-advanced-perf` #13/#19, `anvil-orchard-motor`, `ceres-five-minute-acceptance` (2),
-`physics-sandbox-routes` (2), `pq-163-04-cliff` (2), and 30 Swarm/survival failures listed in the
-C01-02 receipt. Row `KNOWN-REDS` in `QUEUE.md`. One open question on the one-feel change: the race test
-`al-race-1-contested-line-4242` lost its anchored-lap margin on two Hard circuits — row `G18-REVIEW`.
+`physics-sandbox-routes` (2), `pq-163-04-cliff` (2), `rock-shadow-fill` (1: the test pins the old
+dark shadow fill `veryDark [0.006,…]`; the LOOK-04/PR #947 look work moved `lookMoods.js`
+`shadowTint` to `[0.42, 0.52, 1.0]` — one-commit fix: test follows the deliberate change), and 30
+Swarm/survival failures listed in the C01-02 receipt. Row `KNOWN-REDS` in `QUEUE.md`. One open
+question on the one-feel change: the race test `al-race-1-contested-line-4242` lost its
+anchored-lap margin on two Hard circuits — row `G18-REVIEW`.
+
+**Fixed this session (lead, 2026-11-16):** the two shipworks worker-test reds from the uncommitted
+scroll-fold edit (landed properly in `1d38740c2f` with the stubs speaking the real Element API) and
+the stale zero-occlusion pin in `shipworks-dock-composition` (test now follows the gate's exported
+allowance, `f5eec53b82`). The ninth-mouth `earned-route` red from REVIEW-QUEUE is also green
+(`da6a214102`, AUDIT-13).
