@@ -6101,15 +6101,21 @@ function buildMine(e) {
   g.add(hull);
 
   // Anchor spikes under the skirt — an emplaced charge visibly seats into the surface below.
-  const spikeGeo = getGeometry('mine:anchor-spike', () =>
-    new THREE.ConeGeometry(0.07, 0.20, 4).rotateX(Math.PI));
-  for (let i = 0; i < 3; i++) {
-    const a = i * Math.PI * 2 / 3 + Math.PI / 6;
-    const spike = new THREE.Mesh(spikeGeo, darkwork);
-    spike.name = `MineAnchorSpike_${i + 1}`;
-    spike.position.set(Math.cos(a) * 0.30, -0.30, Math.sin(a) * 0.30);
-    g.add(spike);
-  }
+  const spikeGeo = getGeometry('mine:anchor-spike-set', () => {
+    const source = new THREE.ConeGeometry(0.07, 0.20, 4).rotateX(Math.PI);
+    const parts = Array.from({ length: 3 }, (_, i) => {
+      const a = i * Math.PI * 2 / 3 + Math.PI / 6;
+      return source.clone().translate(Math.cos(a) * 0.30, -0.30, Math.sin(a) * 0.30);
+    });
+    const result = mergeGeometries(parts, false);
+    source.dispose();
+    for (const part of parts) part.dispose();
+    if (!result) throw new Error('mine anchor spike geometry could not be merged');
+    return result;
+  });
+  const spikes = new THREE.Mesh(spikeGeo, darkwork);
+  spikes.name = 'MineAnchorSpike_1';
+  g.add(spikes);
 
   // Bolted girth band: the armor ring plus evenly spaced stud heads, a clamped casing joint.
   const armorRing = new THREE.Mesh(
@@ -6119,16 +6125,21 @@ function buildMine(e) {
   armorRing.name = 'MineArmorRing';
   armorRing.position.y = -0.02;
   g.add(armorRing);
-  const studGeo = getGeometry('mine:ring-stud', () =>
-    new THREE.CylinderGeometry(0.026, 0.03, 0.075, 6).rotateZ(Math.PI / 2));
-  for (let i = 0; i < 8; i++) {
-    const a = i * Math.PI / 4;
-    const stud = new THREE.Mesh(studGeo, darkwork);
-    stud.name = `MineRingStud_${i + 1}`;
-    stud.position.set(Math.cos(a) * 0.478, -0.02, Math.sin(a) * 0.478);
-    stud.rotation.y = -a;
-    g.add(stud);
-  }
+  const studGeo = getGeometry('mine:ring-stud-set', () => {
+    const source = new THREE.CylinderGeometry(0.026, 0.03, 0.075, 6).rotateZ(Math.PI / 2);
+    const parts = Array.from({ length: 8 }, (_, i) => {
+      const a = i * Math.PI / 4;
+      return source.clone().rotateY(-a).translate(Math.cos(a) * 0.478, -0.02, Math.sin(a) * 0.478);
+    });
+    const result = mergeGeometries(parts, false);
+    source.dispose();
+    for (const part of parts) part.dispose();
+    if (!result) throw new Error('mine ring stud geometry could not be merged');
+    return result;
+  });
+  const studs = new THREE.Mesh(studGeo, darkwork);
+  studs.name = 'MineRingStud_1';
+  g.add(studs);
 
   // Top deck: machined access cap, service panel, and a domed warning beacon recessed in a bezel.
   const cap = new THREE.Mesh(

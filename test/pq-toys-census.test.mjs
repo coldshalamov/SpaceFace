@@ -36,10 +36,10 @@ test('physical mine reads as machined ordnance, not a primitive token', () => {
   assert.ok(root.getObjectByName('MineLensBezel'), 'warning beacon must be recessed in a bezel');
   assert.equal(root.getObjectByName('MineArmingLens').geometry.type, 'SphereGeometry',
     'warning beacon is a dome, not a wafer');
-  assert.ok(root.children.filter((c) => c.name.startsWith('MineAnchorSpike_')).length >= 3,
-    'emplaced ordnance needs anchor spikes');
-  assert.ok(root.children.filter((c) => c.name.startsWith('MineRingStud_')).length >= 6,
-    'girth band must read as a bolted joint');
+  assert.equal(root.getObjectByName('MineAnchorSpike_1').geometry.index.count / 3, 24,
+    'emplaced ordnance retains all three anchor spikes');
+  assert.equal(root.getObjectByName('MineRingStud_1').geometry.index.count / 3, 192,
+    'girth band retains all eight stud heads');
   assert.ok(root.children.filter((c) => c.name.startsWith('MineWhipAerial_')).length >= 2,
     'proximity field needs whip aerials');
 });
