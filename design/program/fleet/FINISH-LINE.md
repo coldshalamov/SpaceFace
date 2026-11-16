@@ -15,5 +15,7 @@ moves no row below goes on a list, not to an agent.
 | Click → throw given a live line, staged fixture | ≥ 95 % | 7/7 and 8/8 on small samples |
 | Release beats flailing (kills thrown vs held, staged cluster) | thrown clearly higher, held not limp | 2.55 vs 1.46 (n=8); 3.57 vs 0.28 (n=7) |
 | Clipped / overlapping on-screen strings (desktop 1280×720 and phone) | 0 | Swarm r10: ALIGN, top-centre stack: fixed, frames pending |
-| Page errors / console errors on both routes | 0 | pending |
+| Page errors / console errors on both routes | 0 | Swarm run-end crash fixed (fc7ac010); mergeGeometries warnings remain |
+| Frame rate, this laptop, preset low (Adventure / Swarm r1 start → after 30 s) | ≥ 55 fps / no decay | 29 / 24 → 14 (draw calls 203 → 444, INV-05) |
+| Enemies drawn as placeholder bodies at first contact | 0 | white stand-ins seen in r1–r2 (LOAD-01) |
 | One clear "what next" on every frame | yes | pending |
