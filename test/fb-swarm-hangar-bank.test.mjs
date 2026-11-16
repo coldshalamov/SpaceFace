@@ -121,7 +121,9 @@ test('cash-out before a boss banks half', () => {
   const settled = settle(storage, {
     outcome: 'extracted',
     cashOut: true,
-    wavesCleared: 9,
+    // S14 cadence (483dff1723) put the first champion at wave 5, so "before a boss" is any
+    // round below it — 9 clears a champion and banks in full.
+    wavesCleared: 4,
     credits: 100,
     runId: 'cash-before-boss',
   });
