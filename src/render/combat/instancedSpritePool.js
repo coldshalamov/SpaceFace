@@ -15,6 +15,10 @@ const SPRITE_ROLL = 2;
 const SPRITE_COLOR = 3;
 const SPRITE_OPACITY = 4;
 
+const LOD_ROWS = 6;
+const LOD_COLUMNS = 4;
+// Projected diameter below this fraction of the view height uses the coarse carrier (~0.045 = 32 px at 720p).
+export const LOD_SCREEN_FRACTION = 0.045;
 const SPRITE_PHASE = 5;
 const SPRITE_AXIS = 6;
 
@@ -37,6 +41,18 @@ export function createInstancedSpriteBuckets(
   );
   scene.add(glow.mesh, ring.mesh, smoke.mesh, combustion.mesh);
   const buckets = { glow, ring, smoke, combustion, capacity: safeCapacity };
+  // LOD (LOOK-05C): a small or distant event does not need 768 triangles. Same closed-volume
+  // carrier, coarser tessellation (3 x 6 x 4 x 2 = 144 triangles); the vertex shader rebuilds the
+  // surface from uv, so the silhouette follows the same analytic volume, just with fewer rows.
+  // Instances are routed by projected size in writeInstancedSpriteFields.
+  buckets.lo = {
+    glow: createBucket(scene, 'glowLo', safeCapacity, glowTexture, THREE.AdditiveBlending, 1.7, null, { rows: LOD_ROWS, columns: LOD_COLUMNS }, glow.mesh.material),
+    ring: createBucket(scene, 'ringLo', safeCapacity, ringTexture, THREE.AdditiveBlending, 1.45, null, { rows: LOD_ROWS, columns: LOD_COLUMNS }, ring.mesh.material),
+  };
+  scene.add(buckets.lo.glow.mesh, buckets.lo.ring.mesh);
+  buckets.lodCam = { x: 0, y: 0, z: 0, k: 0 };
+  buckets.lodOff = urlFlagOff('vfxLod');
+  buckets.lodStats = { lo: 0, hi: 0, loTriangles: 0, hiTriangles: 0 };
   // Authored flipbooks (LOOK-05C): present only where a DOM can load the sheets. Each family
   // replaces the matching volume write; the volume buckets stay as the headless/fallback path.
   if (flipbooksAvailable() && !flipbooksDisabled()) {
@@ -53,11 +69,12 @@ export function createInstancedSpriteBuckets(
   return buckets;
 }
 
-function flipbooksDisabled() {
+function urlFlagOff(name) {
   try {
-    return typeof location !== 'undefined' && /[?&]vfxFlip=0(?:&|$)/.test(location.search || '');
+    return typeof location !== 'undefined' && new RegExp('[?&]' + name + '=0(?:&|$)').test(location.search || '');
   } catch (_) { return false; }
 }
+function flipbooksDisabled() { return urlFlagOff('vfxFlip'); }
 function flipBucketList(buckets) {
   const f = buckets && buckets.flip;
   return f ? [f.fire, f.smoke, f.ring, f.spark, f.wisp] : [];
@@ -74,6 +91,10 @@ export function resetInstancedSpriteBuckets(buckets) {
   buckets.smoke.writeCount = 0;
   buckets.combustion.writeCount = 0;
   for (const b of flipBucketList(buckets)) { assertDynamicBufferOwnerWritable(b.dynamicBufferOwner); b.writeCount = 0; }
+  if (buckets.lo) {
+    for (const b of [buckets.lo.glow, buckets.lo.ring]) { assertDynamicBufferOwnerWritable(b.dynamicBufferOwner); b.writeCount = 0; }
+    buckets.lodStats.lo = 0; buckets.lodStats.hi = 0;
+  }
 }
 
 export function writeInstancedSprite(buckets, bucketKind, sprite) {
@@ -121,7 +142,7 @@ export function writeInstancedSpriteFields(
   axis = roll,
 ) {
   const flip = buckets.flip;
-  const bucket = bucketKind === 'flipFire' ? flip.fire
+  const bucket0 = bucketKind === 'flipFire' ? flip.fire
     : bucketKind === 'flipSmoke' ? flip.smoke
       : bucketKind === 'flipRing' ? flip.ring
         : bucketKind === 'flipSpark' ? flip.spark
@@ -129,6 +150,20 @@ export function writeInstancedSpriteFields(
           : bucketKind === 'smoke'
             ? buckets.smoke
             : (bucketKind === 'combustion' ? buckets.combustion : (bucketKind ? buckets.ring : buckets.glow));
+  let bucket = bucket0;
+  if (buckets.lo && !buckets.lodOff && (bucket0 === buckets.glow || bucket0 === buckets.ring)) {
+    const cam = buckets.lodCam;
+    if (cam.k > 0) {
+      const dx = x - cam.x, dy = y - cam.y, dz = z - cam.z;
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) + 1e-3;
+      const extent = Math.max(scaleValue || 0, scaleX || 0, scaleY || 0);
+      // projected diameter as a fraction of the view height
+      if (extent * cam.k / dist < LOD_SCREEN_FRACTION) {
+        bucket = bucket0 === buckets.glow ? buckets.lo.glow : buckets.lo.ring;
+      }
+    }
+    if (bucket === bucket0) buckets.lodStats.hi++; else buckets.lodStats.lo++;
+  }
   const index = bucket.writeCount;
   if (index >= bucket.capacity) return false;
   assertDynamicBufferOwnerWritable(bucket.dynamicBufferOwner);
@@ -163,11 +198,12 @@ export function commitInstancedSpriteBuckets(buckets) {
   commitBucket(buckets.smoke);
   commitBucket(buckets.combustion);
   for (const b of flipBucketList(buckets)) commitBucket(b);
+  if (buckets.lo) { commitBucket(buckets.lo.glow); commitBucket(buckets.lo.ring); }
 }
 
-function createBucket(scene, id, capacity, texture, blending, radiance = 1.0, flipFamily = null) {
+function createBucket(scene, id, capacity, texture, blending, radiance = 1.0, flipFamily = null, geoOpts = null, sharedMaterial = null) {
   const volume = !flipFamily && (id === 'smoke' || id === 'combustion');
-  const geometry = flipFamily ? createFlipbookGeometry() : (volume ? new THREE.BoxGeometry(1, 1, 1) : createVfxEventGeometry());
+  const geometry = flipFamily ? createFlipbookGeometry() : (volume ? new THREE.BoxGeometry(1, 1, 1) : createVfxEventGeometry(geoOpts || {}));
   const position = dynamicAttribute(capacity * 3, 3);
   const scale = dynamicAttribute(capacity * 2, 2);
   const roll = dynamicAttribute(capacity, 1);
@@ -183,7 +219,7 @@ function createBucket(scene, id, capacity, texture, blending, radiance = 1.0, fl
   geometry.setAttribute('aSpritePhase', phase);
   geometry.setAttribute('aSpriteAxis', axis);
 
-  const material = flipFamily ? createFlipbookMaterial(flipFamily) : createTransientVfxMaterial(id, radiance, volume ? texture : null);
+  const material = sharedMaterial || (flipFamily ? createFlipbookMaterial(flipFamily) : createTransientVfxMaterial(id, radiance, volume ? texture : null));
   // The bucket owns this material exclusively. Keep empty batches out of Three's render list;
   // object.visible remains independent for VFX isolation and other scene-level owners.
   material.visible = false;
@@ -192,7 +228,8 @@ function createBucket(scene, id, capacity, texture, blending, radiance = 1.0, fl
   mesh.count = 0;
   mesh.frustumCulled = false;
   mesh.renderOrder = 11;
-  mesh.userData.spacefaceVfxSpriteBatch = true;
+  // The coarse LOD twins share their parent's material and are not separate role buckets.
+  if (sharedMaterial) mesh.userData.spacefaceVfxSpriteLod = true; else mesh.userData.spacefaceVfxSpriteBatch = true;
   mesh.userData.spriteBucket = id;
   mesh.userData.spacefaceStructuredTransient = material.userData.spacefaceTransientTechnique;
   if (volume) {

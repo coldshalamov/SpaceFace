@@ -2246,6 +2246,9 @@ export const vfx = {
     add(this._spriteBatches && this._spriteBatches.ring.mesh);
     add(this._spriteBatches && this._spriteBatches.smoke.mesh);
     add(this._spriteBatches && this._spriteBatches.combustion.mesh);
+    if (this._spriteBatches && this._spriteBatches.lo) {
+      add(this._spriteBatches.lo.glow.mesh); add(this._spriteBatches.lo.ring.mesh);
+    }
     if (this._spriteBatches && this._spriteBatches.flip) {
       for (const key of ['fire', 'smoke', 'ring', 'spark', 'wisp']) add(this._spriteBatches.flip[key].mesh);
     }
@@ -15885,6 +15888,14 @@ export const vfx = {
     }
     this._spritesPublishedIdle = false;
     resetInstancedSpriteBuckets(this._spriteBatches);
+    {
+      const cam0 = this.state && this.state.render && this.state.render.camera;
+    if (cam0 && cam0.position && Number.isFinite(cam0.fov) && this._spriteBatches.lodCam) {
+      const lc = this._spriteBatches.lodCam;
+      lc.x = cam0.position.x; lc.y = cam0.position.y; lc.z = cam0.position.z;
+      lc.k = 1 / (2 * Math.tan(cam0.fov * Math.PI / 360));
+    }
+    }
     const st = this._spr, active = this._activeSprites;
     const smokeOrder = this._smokeSpriteOrder;
     let smokeCount = 0;
@@ -16622,9 +16633,10 @@ function disposeEnergyVolumeMaterials(group) {
 function spriteBucketValues(buckets) {
   if (!buckets) return [];
   const flip = buckets.flip;
-  return flip
-    ? [buckets.glow, buckets.ring, buckets.smoke, buckets.combustion, flip.fire, flip.smoke, flip.ring, flip.spark, flip.wisp]
-    : [buckets.glow, buckets.ring, buckets.smoke, buckets.combustion];
+  const out = [buckets.glow, buckets.ring, buckets.smoke, buckets.combustion];
+  if (buckets.lo) out.push(buckets.lo.glow, buckets.lo.ring);
+  if (flip) out.push(flip.fire, flip.smoke, flip.ring, flip.spark, flip.wisp);
+  return out;
 }
 
 function releaseVfxDynamicBufferOwner(owner) {

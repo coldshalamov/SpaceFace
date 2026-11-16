@@ -11,17 +11,18 @@ export const VFX_EVENT_TRIANGLES = VFX_EVENT_LOBES * VFX_EVENT_ROWS * VFX_EVENT_
  * same triangle budget, but spends it on three closed 16x8 volumes with real parallax.
  * Instance descriptors supply the physical family and lifecycle; no geometry is rebuilt.
  */
-export function createVfxEventGeometry({ instanced = false } = {}) {
+export function createVfxEventGeometry({ instanced = false, rows = VFX_EVENT_ROWS, columns = VFX_EVENT_COLUMNS } = {}) {
+  const VFX_EVENT_ROWS_N = Math.max(2, rows | 0), VFX_EVENT_COLUMNS_N = Math.max(2, columns | 0);
   const positions = [];
   const uvs = [];
   const sections = [];
   const indices = [];
   for (let lobe = 0; lobe < VFX_EVENT_LOBES; lobe++) {
     const base = positions.length / 3;
-    for (let row = 0; row <= VFX_EVENT_ROWS; row++) {
-      const u = row / VFX_EVENT_ROWS;
-      for (let column = 0; column <= VFX_EVENT_COLUMNS; column++) {
-        const v = column / VFX_EVENT_COLUMNS;
+    for (let row = 0; row <= VFX_EVENT_ROWS_N; row++) {
+      const u = row / VFX_EVENT_ROWS_N;
+      for (let column = 0; column <= VFX_EVENT_COLUMNS_N; column++) {
+        const v = column / VFX_EVENT_COLUMNS_N;
         // The vertex shader rebuilds this carrier from uv/aEventSection; the static y keeps
         // CPU bounds and tooling honest about the volume existing in three axes.
         positions.push(u, 0.5 + 0.5 * u, v);
@@ -29,10 +30,10 @@ export function createVfxEventGeometry({ instanced = false } = {}) {
         sections.push(lobe, VFX_EVENT_LOBES > 1 ? lobe / (VFX_EVENT_LOBES - 1) : 0);
       }
     }
-    for (let row = 0; row < VFX_EVENT_ROWS; row++) {
-      for (let column = 0; column < VFX_EVENT_COLUMNS; column++) {
-        const a = base + row * (VFX_EVENT_COLUMNS + 1) + column;
-        const b = a + VFX_EVENT_COLUMNS + 1;
+    for (let row = 0; row < VFX_EVENT_ROWS_N; row++) {
+      for (let column = 0; column < VFX_EVENT_COLUMNS_N; column++) {
+        const a = base + row * (VFX_EVENT_COLUMNS_N + 1) + column;
+        const b = a + VFX_EVENT_COLUMNS_N + 1;
         indices.push(a, b, a + 1, a + 1, b, b + 1);
       }
     }
@@ -46,6 +47,6 @@ export function createVfxEventGeometry({ instanced = false } = {}) {
   if (instanced) geometry.instanceCount = 0;
   geometry.name = 'SF_VFX_closed-event-volumes';
   geometry.userData.spacefaceTransientTechnique = 'closed-folded-event-volumes';
-  geometry.userData.triangleBudget = VFX_EVENT_TRIANGLES;
+  geometry.userData.triangleBudget = VFX_EVENT_LOBES * VFX_EVENT_ROWS_N * VFX_EVENT_COLUMNS_N * 2;
   return geometry;
 }
