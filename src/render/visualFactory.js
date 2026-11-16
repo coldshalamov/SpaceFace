@@ -3822,20 +3822,27 @@ function buildCreditChip(e) {
 
   const stack = new THREE.Group();
   stack.name = 'CreditChipStack';
-  const chipGeo = getGeometry('creditchip:hex', () => new THREE.CylinderGeometry(0.78, 0.78, 0.16, 6));
-  const offsets = [
-    { y: -0.14, rot: 0.08, scale: 1 },
-    { y: 0.02, rot: -0.18, scale: 0.94 },
-    { y: 0.16, rot: 0.12, scale: 0.86 },
-  ];
-  for (let i = 0; i < offsets.length; i++) {
-    const chip = new THREE.Mesh(chipGeo, bodyMat);
-    chip.name = i === 0 ? 'CreditChipBody' : `CreditChipStack_${i + 1}`;
-    chip.position.y = offsets[i].y;
-    chip.rotation.y = offsets[i].rot;
-    chip.scale.setScalar(offsets[i].scale);
-    stack.add(chip);
-  }
+  const chipGeo = getGeometry('creditchip:stack', () => {
+    const source = new THREE.CylinderGeometry(0.78, 0.78, 0.16, 6);
+    const offsets = [
+      { y: -0.14, rot: 0.08, scale: 1 },
+      { y: 0.02, rot: -0.18, scale: 0.94 },
+      { y: 0.16, rot: 0.12, scale: 0.86 },
+    ];
+    const parts = offsets.map(({ y, rot, scale }) => source.clone().applyMatrix4(
+      new THREE.Matrix4().compose(new THREE.Vector3(0, y, 0),
+        new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot),
+        new THREE.Vector3(scale, scale, scale)),
+    ));
+    const merged = mergeGeometries(parts, false);
+    source.dispose();
+    for (const part of parts) part.dispose();
+    if (!merged) throw new Error('credit chip stack geometry could not be merged');
+    return merged;
+  });
+  const chip = new THREE.Mesh(chipGeo, bodyMat);
+  chip.name = 'CreditChipBody';
+  stack.add(chip);
 
   const rim = new THREE.Mesh(
     getGeometry('creditchip:rim', () => new THREE.TorusGeometry(0.78, 0.045, 6, 6)),
@@ -3868,8 +3875,6 @@ function buildCreditChip(e) {
   g.userData.interactionKind = 'pickup';
   g.userData.pickupVisual = 'credit_chip';
   g.userData.visualLanguage = 'minted-credit-chip';
-  const host = stack.children[0];
-  host.frustumCulled = false;
   // Tumble/bob/vortex/intake transforms are owned by pickupMotionPresentation (sim-time,
   // tractor-aware). Wall-clock writes here stomped the intake alignment every render pass.
   return g;
