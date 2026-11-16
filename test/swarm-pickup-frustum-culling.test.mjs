@@ -50,16 +50,27 @@ test('Swarm pickup meshes retain edge visibility and resume their draw callbacks
         assert.notEqual(cross.material.emissiveIntensity, before, 'visible cross refreshes its glint');
       } else {
         const body = root.getObjectByName('SwarmDropCrystal');
+        const outer = root.children[2];
         const before = body.rotation.y;
         body.onBeforeRender();
         assert.notEqual(body.rotation.y, before, 'visible drop resumes rotation');
         root.updateMatrixWorld(true);
         assert.ok(meshes.every((mesh) => frustum.intersectsObject(mesh)));
-        pose(0, 0.9, { reducedMotion: true });
+        pose(23.5, 0.9);
+        assert.equal(frustum.intersectsObject(body), false, 'body is beyond the edge');
+        assert.equal(frustum.intersectsObject(outer), true, 'larger ring still crosses the edge');
+        const beforeRing = outer.rotation.x;
+        setFactoryPresentationNow(0.9);
+        outer.onBeforeRender();
+        assert.notEqual(outer.rotation.x, beforeRing, 'visible ring animates even when body is culled');
+        pose(0, 1.2, { reducedMotion: true });
         const held = body.rotation.y;
-        setFactoryPresentationNow(1.2);
+        const heldRing = outer.rotation.x;
+        setFactoryPresentationNow(1.5);
         body.onBeforeRender();
+        outer.onBeforeRender();
         assert.equal(body.rotation.y, held, 'reduced motion keeps the tracker pose');
+        assert.equal(outer.rotation.x, heldRing, 'reduced motion keeps the outer ring pose');
       }
     }
   } finally {
