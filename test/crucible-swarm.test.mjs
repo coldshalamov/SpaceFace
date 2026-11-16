@@ -40,13 +40,13 @@ import {
   swarmLevel,
   swarmGateFor,
   swarmOpeningCount,
-  swarmOpeningPackages,
   swarmQuota,
   swarmCourseQuota,
   swarmRosterFor,
   bindSwarmPressureContext,
   resetSwarmPressureState,
 } from '../src/data/swarmMode.js';
+import { swarmTwistFor } from '../src/data/swarmTwists.js';
 import { isSwarmRuleset, swarmWaveEndsInMenu } from '../src/systems/survivalSwarm.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { SPAWN_BUDGET_DEFAULT_MAX } from '../src/data/survivalActs.js';
@@ -189,7 +189,13 @@ test('every swarm wave names a live enemy, a legal gate and a room that is never
     // The old quota numbers survive only as chip valuation (`rewardReferenceKills`).
     assert.ok(plan.swarm.rewardReferenceKills > 0);
     assert.equal(plan.completionRules.kind, 'cohort');
-    assert.equal(plan.swarm.killTarget, swarmCourseQuota(wave));
+    // G08-02 (aad98992ac) gave the authored thirty rounds names and twists; Everything Must Go
+    // (round 24) deliberately doubles the bodies the round owes, so the quota is the base course
+    // quota times that twist's own multiplier.
+    const twist = swarmTwistFor(wave, ARENA);
+    const twistDoubles = twist && twist.id === 'everything_must_go';
+    assert.equal(plan.swarm.killTarget, swarmCourseQuota(wave) * (twistDoubles ? 2 : 1),
+      `wave ${wave} owes its course quota${twistDoubles ? ' doubled by its twist' : ''}`);
   }
 });
 
@@ -281,14 +287,18 @@ test('a swarm run reaches active with the room already under pressure', () => {
   assert.equal(run.wave, 1);
   assert.ok(isSwarmRuleset(run.ruleset), 'the run is playing the swarm ruleset');
 
-  // The whole opening burst is on the board inside 24 ticks — a swarm wave opens AT pressure.
+  // PRI-11a (559cfa2235): round one opens with three Wasps and owes the rest to the opening
+  // beat, so the pressure law is "the opening group is standing inside 24 ticks" — the owed
+  // seven follow the first kill, the pilot's first act plus ten seconds, or the ceiling.
   tick(h, 30);
-  const opening = swarmOpeningCount(swarmOpeningPackages(1, () => 0.5));
-  assert.ok(
-    h.spawned.length >= opening,
-    `the opening burst landed (${h.spawned.length} of ${opening})`,
-  );
-  assert.equal(liveHostiles(h).length, swarmConcurrent(1), 'the room opened at full strength');
+  const opening = planWave({ seed: SEED, arenaId: ARENA, wave: 1, ruleset: SWARM_RULESET })
+    .schedule.filter((entry) => entry.afterOpeningBeat !== true)
+    .reduce((sum, entry) => sum + entry.count, 0);
+  assert.equal(opening, 3, 'round one opens with the authored three');
+  const standing = h.spawned.filter((entity) => entity.type !== 'beacon');
+  assert.ok(standing.length >= opening,
+    `the opening group landed (${standing.length} of ${opening})`);
+  assert.equal(liveHostiles(h).length, opening, 'the room opens at its authored opening strength');
   for (const entity of h.spawned) {
     // Gate flares are wave presentation artifacts, not roster bodies — no cohort stamp.
     if (entity.type === 'beacon') continue;
