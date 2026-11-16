@@ -275,6 +275,7 @@ import {
   warmAsteroidInstanceKeys,
   warmAsteroidInstanceVariants,
 } from './asteroidInstancePool.js';
+import { createCreditChipBatch, creditChipPartLeaves } from './creditChipBatch.js';
 import {
   beginRenderEntityFrame,
   classifyRenderEntity,
@@ -8660,6 +8661,11 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   } else {
     abandonAsteroidInstancePool(owner._asteroidInstancePool, scene);
   }
+  try { owner._creditChipBatch?.dispose?.(); } catch (error) {
+    stormWarn('render:credit-chip-batch-dispose', '[render] credit chip batch dispose failed', error);
+  }
+  owner._creditChipBatch = null;
+  if (owner._creditChipSubmittable) owner._creditChipSubmittable.length = 0;
   if (owner._hazardVisuals && Array.isArray(owner._hazardVisuals)) {
     for (const root of owner._hazardVisuals) {
       removeRendererRoot(scene, root);
@@ -8815,6 +8821,8 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._contactShadowPool = null;
   owner._shipAuxPool = null;
   owner._asteroidInstancePool = null;
+  owner._creditChipBatch = null;
+  owner._creditChipSubmittable = null;
   owner._livingHullPresentation = null;
   owner._nemesisHullPresentations = null;
   owner._crucibleGhostPresentation = null;
@@ -10773,6 +10781,19 @@ export const render = {
       shadowStageGate: () => this._shadowDepthEnabled()
         && !!(this.renderer && this.scene && this._keyLight),
     });
+    // PERF-HOT-03: every Swarm kill drops a four-part credit chip and nothing removes it until it
+    // is scooped or the round-clear sweep runs, so a round pays up to four submissions per chip.
+    // One instanced batch per part draws any number of them in four calls; the chip entities keep
+    // their own groups and every pose writer (pickupMotionPresentation) is untouched.
+    this._creditChipBatch = createCreditChipBatch(scene, {
+      // A batch minted mid-flight carries a never-linked instanced program; route it through the
+      // same admission latch the asteroid pool uses rather than linking it inside a presented pass.
+      onMeshCreated: (mesh) => {
+        const flightAdmission = state.mode === 'flight'
+          && Number.isFinite(state.render && state.render.firstPlayableFrameAt);
+        void admitSubjectPipelines(mesh, { debugBy: 'credit-chip-instances', urgent: flightAdmission });
+      },
+    });
     this._entityFrame = createRenderEntityFrame();
     this._cameraOccluderState = createCameraOccluderState();
     this._presentationWorld = createPresentationWorld();
@@ -11210,6 +11231,9 @@ export const render = {
     this._rosterPrewarmWeaponIds = new Set();
     this._rosterPrewarmRoots = [];
     this._rosterPrewarmPending = new Set();
+    // PERF-HOT-03: chip roots this pass found submitting; refilled every sync, never retained
+    // across frames (a chip that leaves the list is un-hidden by the batch's next sync).
+    this._creditChipSubmittable = [];
     // Diagnostics: what each pending bounded-warm promise is, so a settle that times out can
     // name what it was still waiting on instead of only counting it.
     this._rosterPrewarmPendingLabels = new WeakMap();
@@ -21707,6 +21731,15 @@ export const render = {
         boundary.position.set(0, 0, 0);
         boundary.userData = boundary.userData || {};
         boundary.userData.rosterPrewarm = spec.id;
+        // PERF-HOT-03: the credit-chip exemplar is the one build that owns the exact four part
+        // geometries/materials the live chip batch draws. Publishing its empty batches here links
+        // their instanced programs behind the shell instead of on the first kill of the round.
+        if (spec.type === 'pickup' && spec.data && spec.data.kind === 'credit_chip'
+            && this._creditChipBatch) {
+          try { this._creditChipBatch.warm(boundary); } catch (error) {
+            stormWarn('credit-chip-batch-warm-failed', '[render] credit chip batch warm failed', error);
+          }
+        }
         this.scene.add(boundary);
         // Cohort-batched tally: one dirty mark per mount instead of a
         // synchronous countShadowReceivers walk per exemplar — the paced
@@ -28858,6 +28891,10 @@ export const render = {
     queryOptions.origin = this._frameMembrane.origin;
     queryOptions.playerId = this.state.playerId;
     const query = this._presentationQueries.query(queryOptions);
+    // PERF-HOT-03: chip roots this pass will hand to the instanced batch; refilled below and
+    // consumed at the end of the same pass. Clearing here (not only after the sync) keeps a pass
+    // that aborts mid-sweep from carrying stale roots into the next one.
+    if (this._creditChipSubmittable) this._creditChipSubmittable.length = 0;
     // The whole preamble above (sequence mint, budgets, a11y, lamp bus, room
     // update, bounds, living counters, visibility-present, cast radius, player
     // local, the query mint) is one step in the opening publish — park here so
@@ -29351,6 +29388,14 @@ export const render = {
         const visibilityChanged = !(!posed && protectedRoot)
           && applyEntityMeshVisibility(mesh, wantsVisible);
         if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
+        // PERF-HOT-03: a credit chip that actually submits this frame joins the instanced batch
+        // pass at the end of the sweep — four draw calls for every chip on the field instead of
+        // four per chip. The batch hides the chip's part leaves in the same pass that copies
+        // their matrices, so nothing it draws is also drawn directly.
+        if (wantsVisible === true && typeName === 'pickup' && userData.pickupVisual === 'credit_chip'
+            && this._creditChipSubmittable) {
+          this._creditChipSubmittable.push(mesh);
+        }
         // D38 — a latched root on the live glass is a hole in the picture: whatever lane queued
         // its compile/residency while it was still off-glass must not finish under ambient FIFO
         // rules. The deadline-band clause catches the same root one band early — the pending
@@ -29558,6 +29603,21 @@ export const render = {
     // freeze queue — mass re-shows amortize instead of paying 2x O(subtree)
     // per root inside this pass.
     this._drainHiddenUnfreezeQueue();
+
+    // PERF-HOT-03: credit chips are four draw submissions each and a Swarm round drops one per
+    // kill with no mid-round cap. The sweep above just wrote every chip's pose, so hand this
+    // pass's submitting chips to the instanced batch (four calls for any number of them). The
+    // chip leaves keep their own groups; only the copy into the instance buffers happens here.
+    if (this._creditChipBatch && this._creditChipSubmittable) {
+      tryPresentedCall(this, 'credit-chip-instances', () => {
+        if (this.state && this.state.render) {
+          this.state.render.creditChipInstances = this._creditChipBatch.sync(this._creditChipSubmittable);
+        } else {
+          this._creditChipBatch.sync(this._creditChipSubmittable);
+        }
+      });
+    }
+    this._creditChipSubmittable.length = 0;
 
     if (!slipstreamSeen) writeSlipstreamState(this.state, false, 0);
 
