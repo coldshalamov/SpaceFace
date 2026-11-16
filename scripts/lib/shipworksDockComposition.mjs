@@ -46,7 +46,7 @@ const SAMPLE_LIMIT = 1200;
 // miner's drill prow ~27%. The pin therefore keeps the structural checks exact and allows a
 // documented 0.1%-of-samples fleet occlusion allowance; a real intersection (a ship turning
 // inside the room) still fails this loudly.
-const MAX_OCCLUDED_SAMPLES = 18;
+export const MAX_OCCLUDED_SAMPLES = 18;
 
 let dependencyPromise = null;
 
