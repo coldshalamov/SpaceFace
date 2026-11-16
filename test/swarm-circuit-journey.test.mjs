@@ -1422,8 +1422,10 @@ function withDraftDom(h, callback) {
   });
   globalThis.document = { createElement: node };
   const screen = Object.create(crucibleDraftScreen);
+  // 7dca6e4ced added the service-bay briefing and section heading that mount() builds and refresh()
+  // then writes, so a screen built without mount() still needs those nodes.
   for (const key of ['root', 'cards', 'title', 'filters', 'refitBtn', 'sub', 'preview',
-    'note', 'skip', 'rerollBtn', 'wallet', 'hint']) screen[`_${key}`] = node();
+    'note', 'skip', 'rerollBtn', 'wallet', 'hint', 'briefing', 'armoryHeading']) screen[`_${key}`] = node();
   screen._reading = null;
   screen._visualArmory = null;
   screen._category = 'All';
