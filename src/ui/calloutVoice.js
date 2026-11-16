@@ -19,3 +19,6 @@ export function claimCalloutVoice(key, priority, ttlMs) {
 }
 
 export function resetCalloutVoice() { liveUntil = 0; livePri = 0; liveKey = ''; }
+
+/** True while a centre callout holds the voice (so a world chip can step aside for that moment). */
+export function calloutVoiceLive() { return nowMs() < liveUntil; }

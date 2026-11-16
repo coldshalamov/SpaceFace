@@ -328,7 +328,9 @@ export function placeBracketWords(mark, hull, label, viewport, hudObstacles = []
     consider(8, 8); consider(vw - w - 8, 8);
     consider(8, vh - h - 8); consider(vw - w - 8, vh - h - 8);
     // Keep the mark and its accessible mass/denial read when a full-screen panel leaves no room.
-    return best || { ...clamp(candidates[0]), hidden: true };
+    // A word parked in a far screen corner (over the touch controls, or over empty space) is not
+    // attached to its mark any more: past ~200 px it hides, and the mark keeps its aria label.
+    return best && bestDistance <= 200 * 200 ? best : { ...clamp(candidates[0]), hidden: true };
   }
   const hx = hull.x + hull.w / 2;
   const hy = hull.y + hull.h / 2;

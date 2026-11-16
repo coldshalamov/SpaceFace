@@ -1,5 +1,6 @@
 import { isSwarmGlass } from './swarmGlass.js';
 import { verbChip } from './controlPrompts.js';
+import { calloutVoiceLive } from './calloutVoice.js';
 import { createWorldObjectPicker } from '../render/worldObjectPicking.js';
 import { createWorldObjectHoverPresentation } from '../render/objectHoverFeedback.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
@@ -513,6 +514,9 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       const d = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
       rangeTxt = ' · ' + formatDistance(d);
     }
+    // A Swarm centre callout (LATCHED, a kill word) owns the moment: the world chip steps aside
+    // for its few seconds instead of printing over it.
+    if (isSwarmGlass(state) && calloutVoiceLive()) { tag.el.hidden = true; return; }
     const rawHint = beamHint(entity, player);
     // Player-facing words only: an internal state ("mine unavailable") is not a verb. A beam
     // the target cannot take just says what the press does; the asset-loading state never prints.
