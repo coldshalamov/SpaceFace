@@ -109,7 +109,8 @@ export function getBootVisualizer(document = globalThis.document, options = {}) 
     if (!onScreen()) { stopClock(); return; }
     if (clock !== null) return;
     const el = overlay.querySelector?.('[data-loading-clock]');
-    if (!el) return;
+    // the clock is off the screen (doc 20): no 4-a-second text writes into an element nobody sees
+    if (!el || (typeof el.getClientRects === 'function' && el.getClientRects().length === 0)) return;
     clockStart ??= host.performance?.now?.() ?? Date.now();
     clock = host.setInterval(() => {
       const t = Math.max(0, ((host.performance?.now?.() ?? Date.now()) - clockStart) / 1000);
