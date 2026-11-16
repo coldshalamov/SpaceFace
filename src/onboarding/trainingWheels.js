@@ -11,7 +11,8 @@ export const TRAINING_WHEEL_BREAK_REASONS = Object.freeze(new Set([
 
 export function trainingWheelsHold(state, targetEntity, reason) {
   const ob = state && state.onboarding;
-  if (!ob || ob.active !== true || ob.finished === true || ob.firstThrowWheels !== true) return false;
+  if (!ob || ob.active !== true || ob.finished === true || ob.firstThrowSeen === true) return false;
+  if (ob.beatDoneAt && ob.beatDoneAt.raid != null) return false; // the raid is the next lesson: wheels are long off
   if (!TRAINING_WHEEL_BREAK_REASONS.has(String(reason))) return false;
   return !!(targetEntity && targetEntity.data && targetEntity.data.rescueRole === 'rock');
 }
