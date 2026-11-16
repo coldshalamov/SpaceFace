@@ -4,6 +4,7 @@ import { createSalvageOutfitsPresentation, createSalvageOutfitsOverlay,
   SALVAGE_OUTFITS_MAIN_TO_SIM_EVENTS, SALVAGE_OUTFITS_PRESENTATION_EVENTS } from './presentation.js';
 import { salvageOutfitMeetingPresent } from './readModel.js';
 import { SALVAGE_OUTFITS_LIMITS } from './catalog.js';
+import { loadingShellVisible } from '../../localization/idleWarmPolicy.js';
 export { captureSalvageOutfits, restoreSalvageOutfits, normalizeSalvageOutfits,
   freshSalvageOutfits } from './persistence.js';
 export { createSalvageOutfitsReadModel, writeSalvageOutfitsReadModel,
@@ -166,9 +167,12 @@ export function mountSalvageOutfitsPresentation(ctx = {}) {
     canvas,
     draw(currentState, hudVisible = true) {
       if (destroyed) return;
+      // The loading shell covers the canvas: per-frame work under it is pure invalidation.
+      if (loadingShellVisible(canvas.ownerDocument)) return;
       const state = currentState || (typeof ctx.state === 'function' ? ctx.state() : ctx.state);
-      canvas.hidden = !hudVisible || state?.mode !== 'flight' || state?.ui?.docked === true;
-      if (canvas.hidden) return;
+      const hidden = !hudVisible || state?.mode !== 'flight' || state?.ui?.docked === true;
+      if (canvas.hidden !== hidden) canvas.hidden = hidden;
+      if (hidden) return;
       if (dirty) syncSize();
       api.draw();
     },

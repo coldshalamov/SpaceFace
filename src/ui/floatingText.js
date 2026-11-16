@@ -14,6 +14,7 @@ import { damageLayer, admitLayerVoice } from '../audio/hitVoice.js';
 import { shouldHideOwnRepDelta } from '../story/endings/publicIdentity.js';
 import { floatLedger, floatPriority, seatOutOfRects } from './floatingTextRules.js';
 import { createAvoidRects } from './hudAvoidRects.js';
+import { loadingShellVisible } from '../localization/idleWarmPolicy.js';
 
 const POOL = 56;
 
@@ -207,6 +208,8 @@ export function createFloatingText(ctx) {
   const padBox = { x: 0, y: 0, w: 0, h: 0 };
 
   function syncPadLabels() {
+    // The loading shell covers the HUD: the pad pass under it only restyles elements nobody sees.
+    if (loadingShellVisible(document)) return;
     if (!helpers.worldToScreen || typeof state.entities?.values !== 'function') return;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     visiblePads.length = 0;

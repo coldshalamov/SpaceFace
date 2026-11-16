@@ -26,6 +26,11 @@
 // and 10-30ms on the densest station/armory screens. That must never be one long task at boot, when
 // every screen is pre-built, so the work is sliced: the visible screen first (8ms a frame), hidden
 // pre-built screens only in idle time (3ms a slice). `typeGovernorStats()` reports what it has done.
+//
+// While the loading shell owns the screen every write is an invalidation nobody can see, so a step
+// stands down until it lifts — the task stays queued and resumes on the next frame.
+
+import { loadingShellVisible } from '../../localization/idleWarmPolicy.js';
 
 export const TYPE_GOVERNOR = Object.freeze({
   trackingSmall: 0.075,   // em, labels up to 17px
@@ -127,6 +132,8 @@ function skip(el) {
 
 /** Read up to cfg.chunk elements, then write their patches: one style pass per step. Returns true at the end of the tree. */
 function governStep(task, win, cfg) {
+  // Covered by the loading shell: stay queued instead of invalidating styles nobody can see.
+  if (loadingShellVisible(win?.document)) return false;
   const jobs = [];
   let finished = false;
   for (let i = 0; i < cfg.chunk; i++) {
@@ -139,7 +146,12 @@ function governStep(task, win, cfg) {
     if (m) { const patch = governType(m, cfg); if (patch) jobs.push([el, patch]); }
   }
   for (const [el, patch] of jobs) {
-    for (const [prop, value] of Object.entries(patch)) el.style.setProperty(prop, value, 'important');
+    for (const [prop, value] of Object.entries(patch)) {
+      // An identical !important declaration is already the rule — rewriting it only invalidates.
+      if (typeof el.style.getPropertyValue === 'function' && el.style.getPropertyValue(prop) === value
+        && el.style.getPropertyPriority?.(prop) === 'important') continue;
+      el.style.setProperty(prop, value, 'important');
+    }
     governed.add(el);
   }
   stats.changed += jobs.length;
@@ -150,6 +162,8 @@ function governStep(task, win, cfg) {
 /** Govern every uppercase text element under `root`, synchronously (tests, tools). Returns how many changed. */
 export function governTree(root, win = globalThis.window, cfg = TYPE_GOVERNOR) {
   if (!root || !win?.getComputedStyle) return 0;
+  // The same veil guard keeps a covered tree from writing (and the step loop from never finishing).
+  if (loadingShellVisible(win?.document)) return 0;
   const task = { it: elementsOf(root), changed: 0 };
   while (!governStep(task, win, cfg)) { /* keep stepping */ }
   stats.roots++;
@@ -178,6 +192,8 @@ export function installTypeGovernor(doc = globalThis.document) {
   let frame = 0; let idle = 0;
 
   const run = (list, budgetMs) => {
+    // The frame slice stands down while the shell owns the screen; the queue waits for the next frame.
+    if (loadingShellVisible(win.document)) return;
     const t0 = now();
     while (list.length && now() - t0 < budgetMs) {
       const task = list[0];
