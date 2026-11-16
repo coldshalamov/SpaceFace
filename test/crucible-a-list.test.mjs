@@ -48,7 +48,9 @@ test('swarm mass pursues; an Adventure wasp stays on flyby', () => {
   const wasp = ENEMY_TYPES.find((row) => row.id === 'wasp_swarmer');
   assert.equal(wasp.combatDoctrineId, 'interceptor_flyby');
   assert.equal(swarmDoctrineStamp('wasp_swarmer', { swarm: true }), 'pack_pursuit');
-  assert.equal(swarmDoctrineStamp('choir_zealot', { swarm: true }), 'pack_pursuit');
+  // S7 (25ebcd7082): only the wasp packs — the choir keeps its authored escort_screen, whose ward
+  // in a swarm is the nearest packmate. Pinning pack_pursuit for the choir would erase that tell.
+  assert.equal(swarmDoctrineStamp('choir_zealot', { swarm: true }), null);
   assert.equal(swarmDoctrineStamp('wasp_swarmer', { swarm: false }), null);
   assert.equal(swarmDoctrineStamp('lancer_sniper', { swarm: true }), null);
   assert.equal(swarmDoctrineStamp('corsair_raider', { swarm: true, champion: true }), 'brawler_commit');
