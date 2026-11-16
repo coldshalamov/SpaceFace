@@ -38,7 +38,7 @@ so **the lead verifies every finding and signs off** before anything acts on it.
 
 | ID | Job | State |
 |---|---|---|
-| REVIEW-BATCH | Senior review of every fleet commit since the last review; findings with file:line and failure, no code edits. First run 2026-11-11: 2 HIGH fixed by lead (5a1106b9), 7 MED/LOW → FIX-R1, FIX-R2 | READY (repeat; fifth review 2026-11-12-9615eb79 routed: lead fixed 2 HIGH + 1 MED, FIX-R5a/R5b) |
+| REVIEW-BATCH | Senior review of every fleet commit since the last review; findings with file:line and failure, no code edits. First run 2026-11-11: 2 HIGH fixed by lead (5a1106b9), 7 MED/LOW → FIX-R1, FIX-R2 | DONE 8a75fd6600 (sixth review 2026-11-16: 575cfaa1ac79..be43a250cb, 168 clean, 4 findings → FIX-R6, lead-verified) |
 | G08 silhouettes (3D) | May be given to Codex with Blender instead of Lane 1 — distinct shapes per Swarm enemy | READY |
 | LOOK-00-concept-frames | Three frames in `design/game/look/concepts/`; lead chose A (B = brightest a place may go, C = darkest) | DONE |
 
@@ -119,6 +119,7 @@ reviews every commit; lane agents do not take them.
 | ID | Job | State |
 |---|---|---|
 | FIX-R2-reactions-respect-job-owners | Review finding: road rage / tailgater / rubberneckers must lease job-owned hulls through npcJobs, not overwrite them | BUILT 824b9b9b |
+| FIX-R6-codex-batch-2026-11-16 | Four codex findings (report 8a75fd6600): ninth-mouth capture HIGH, Weighing kill-reveal MED, Rookside cooldown LOW, npc teardown LOW | BUILT bf8c46d1a7, a80a0d9e89, 12d3176842, 021c809703 — lead ran the four focused suites: 49/49 green |
 | G18-02b-the-wheel-opens | REDO: holding Q must open the context wheel on the real route; prove with `scripts/fleet/looks/context-wheel.mjs` | BUILT 321ab601 (lead looked: wheel opens mid-fight with FULL STOP / WINCH / STRAFE) |
 | PERF-01-where-the-frame-goes | Main-thread render, HUD and post experiments in quiet Adventure and Swarm 20 | BUILT. Adventure render-off gained 11.0 fps across neighboring baselines. Post-fix Swarm 20 had no cinematic samples, 11.9 fps, 0.15% idle and 0.677 sim/wall |
 | STAB-05-continue-latest-primary | Continue must restore the latest stable save when another session writes during decode | BUILT 8867962b594c |

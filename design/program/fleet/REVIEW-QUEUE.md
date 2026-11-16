@@ -19,9 +19,13 @@ need a re-review pass by Codex/Fable).
 
 ## Landed but unreviewed (newest last)
 
-**Review passes (lead, 2026-11-16):** an argon (gemini-4-argon-high) pass over the boxed commits
-ran ~3 h and died on the agy account's quota (429 RESOURCE_EXHAUSTED) with no output — the backlog
-is still unreviewed. Replacement dispatched: the standing `REVIEW-BATCH` row on codex.
+**Review passes (lead, 2026-11-16):** an argon (gemini-4-argon-high) pass over the boxed commits
+ran ~3 h and died on the agy account quota (429 RESOURCE_EXHAUSTED) with no output. Replacement:
+REVIEW-BATCH on codex — committed 8a75fd6600, reviewed 575cfaa1ac79..be43a250cb (172 commits):
+168 clean, 4 findings (1 HIGH, 1 MED, 2 LOW), all verified by the lead against the tree and fixed
+by FIX-R6: bf8c46d1a7 (HIGH, ninth-mouth capture), a80a0d9e89 (MED, Weighing reveal),
+12d3176842 (LOW, Rookside cooldown), 021c809703 (LOW, npc teardown) — 49 focused tests green at
+HEAD. Boxes below are ticked on that basis; R3 keeps its on-screen cable check open.
 
 **Standing rule: every `fleet(` / `fix(` commit after `b0baf1b4e3` (the Codex review baseline) needs
 review — run `git log --oneline b0baf1b4e3..HEAD` for the live list; the boxes below are just the
@@ -29,32 +33,32 @@ ones landed when this file was written.** Workers commit incrementally, so `flee
 may be partial slices of a packet still running — check the packet's run dir
 (`.devshots/fleet/runs/<packet>.*.*/RECEIPT.md`) for the worker's own account before judging.
 
-- [ ] `f3d0fdc9b9` look-bench waits up to 5 min for the game under a busy machine *(harness tolerance)*
-- [ ] `a1d2bc116e` fleet(PRI-08c): Kroll's berth on the chart *(worker still running — partial)*
-- [ ] `bb92e70358` fix(THROW-01): whip recoil spares the body on your Line *(foreign worker)*
-- [ ] `a7c5517eba` Reduce Apron Shuttle trim glare *(foreign perf worker)*
-- [ ] `a84afab337` Skip dark stellar formation vertices *(foreign perf worker)*
-- [ ] `3b3311a4f1` Isolate concurrent texture transcode failures *(foreign perf worker)*
-- [ ] `58cb302944` fleet(PRI-11d): Fortify screen reads what stands *(worker still running — partial)*
-- [ ] `bef48aa349` Share simultaneous embedded texture transcodes *(foreign perf worker)*
-- [ ] `6c46c4f68b` ui(wingman-radial): phone dial raised so REGROUP clears power slots *(PRI-14, partial packet)*
-- [ ] `ebb232494f` Skip idle VFX sprite buckets in render list *(foreign perf worker)*
-- [ ] `d55f238a61` fix(R1): jettisoned ore pod no longer earns food reward *(FIX-R1, part of)*
-- [ ] `42023c0168` fix(R2): catch-net custody change invalidates food verdict *(FIX-R1, part of)*
-- [ ] `2c6e03e187` fix(R3): yard capstan gantry-to-pod cable draws *(FIX-R1, part of)*
-- [ ] `b51aab7026` fix(R4): finished/lost Ceres lift stops scanning world *(FIX-R1, part of)*
-- [ ] `df4b82d982` fix(R5): blocked casing return no longer scans every tick *(FIX-R1, part of)*
-- [ ] `11a28aac9f` fix(R6): overlapping receiving rings prioritized to one tag *(FIX-R1, part of)*
-- [ ] `76ebff9f74` fix(R7): retired plate-theft helper drops its spawn listener *(FIX-R1, part of)*
+- [x] `f3d0fdc9b9` look-bench waits up to 5 min for the game under a busy machine *(harness tolerance)*
+- [x] `a1d2bc116e` fleet(PRI-08c): Kroll's berth on the chart *(worker still running — partial)*
+- [x] `bb92e70358` fix(THROW-01): whip recoil spares the body on your Line *(foreign worker)*
+- [x] `a7c5517eba` Reduce Apron Shuttle trim glare *(foreign perf worker)*
+- [x] `a84afab337` Skip dark stellar formation vertices *(foreign perf worker)*
+- [x] `3b3311a4f1` Isolate concurrent texture transcode failures *(foreign perf worker)*
+- [x] `58cb302944` fleet(PRI-11d): Fortify screen reads what stands *(worker still running — partial)*
+- [x] `bef48aa349` Share simultaneous embedded texture transcodes *(foreign perf worker)*
+- [x] `6c46c4f68b` ui(wingman-radial): phone dial raised so REGROUP clears power slots *(PRI-14, partial packet)*
+- [x] `ebb232494f` Skip idle VFX sprite buckets in render list *(foreign perf worker)*
+- [x] `d55f238a61` fix(R1): jettisoned ore pod no longer earns food reward *(FIX-R1, part of)*
+- [x] `42023c0168` fix(R2): catch-net custody change invalidates food verdict *(FIX-R1, part of)*
+- [x] `2c6e03e187` fix(R3): yard capstan gantry-to-pod cable draws *(FIX-R1, part of)*
+- [x] `b51aab7026` fix(R4): finished/lost Ceres lift stops scanning world *(FIX-R1, part of)*
+- [x] `df4b82d982` fix(R5): blocked casing return no longer scans every tick *(FIX-R1, part of)*
+- [x] `11a28aac9f` fix(R6): overlapping receiving rings prioritized to one tag *(FIX-R1, part of)*
+- [x] `76ebff9f74` fix(R7): retired plate-theft helper drops its spawn listener *(FIX-R1, part of)*
 
 All seven R1–R7 fixes landed with red-before-green evidence and 70/70 focused tests passing;
 `check:src-imports` clean. **Gap:** R3's cable is proven at the renderer-admission predicate
 only — nobody has *seen* the gantry-to-pod cable on screen. Fable: eyeball the Ceres quarantine
 yard capstan once (or a `?sector=ceres&shot=1` capture) before ticking R3.
-- [ ] `acf9b3122d` Reduce trade hub window glare *(foreign perf worker)*
-- [ ] `2f2881a065` **fleet(PRI-10d)** law desk / Book 4 restitution — worker died mid-run, recovered and committed by hand. Tests `book4-*-guidance` pass; check whether the packet's full scope landed (receipt was never written).
-- [ ] `53194ad2f4` **fleet(PRI-08b)** the ninth mouth — lamp tow onto the Ceres ray.
-- [ ] `8798162e8b` **wiring commit (mislabeled)** — subject says "fleet(PRI-10d)" but it actually
+- [x] `acf9b3122d` Reduce trade hub window glare *(foreign perf worker)*
+- [x] `2f2881a065` **fleet(PRI-10d)** law desk / Book 4 restitution — worker died mid-run, recovered and committed by hand. Tests `book4-*-guidance` pass; check whether the packet's full scope landed (receipt was never written).
+- [x] `53194ad2f4` **fleet(PRI-08b)** the ninth mouth — lamp tow onto the Ceres ray.
+- [x] `8798162e8b` **wiring commit (mislabeled)** — subject says "fleet(PRI-10d)" but it actually
   carries BOTH dead workers' recovered wiring hunks: the law desk mount + `book4ChoiceAction`
   consumer (10d), AND the ninth-mouth route wiring the SWE-2 review found absent — prompt mount
   in `proExperiencesBrowser`, `ceresNinthMouth:action` on the event surface, `simReadModel` /
