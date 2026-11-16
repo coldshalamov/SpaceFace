@@ -24,6 +24,7 @@ import {
 } from '../combat/impulseKernel.js';
 import { appendCombatTrace } from '../combat/trace.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
+import { isPloughing, trackPloughReleases, ploughKill } from '../combat/ploughFlight.js';
 import {
   clearPendingSlam,
   closingSpeedFromImpact,
@@ -121,6 +122,7 @@ export const collisionConsequences = {
 
   update(dt, state) {
     if (state?.mode === 'flight') holdAttachedPlatingLifetimes(state, dt);
+    if (state?.mode === 'flight') trackPloughReleases(state);
     const enabled = combatFlag('weaponImpulseConsequences');
     if (!enabled) {
       if (this._applicationEnabled) this._resetTransientState();
@@ -602,7 +604,7 @@ export const collisionConsequences = {
     // THROW-01: the held body swings as a club at half strength; the throw is the payoff. Measured
     // before this, a held swing out-killed the same second after release (4.1 vs 2.7 per attempt).
     if (other && other !== target && isHeldOnPlayerLine(this.state, other)) impactDamage *= HELD_BODY_OUTGOING_DAMAGE_SCALE;
-    if (isHeldOnPlayerLine(this.state, target)) {
+    if (isHeldOnPlayerLine(this.state, target) || isPloughing(this.state, target)) {
       // Scaled, then capped to a share of what the body has left: a swing through a station is a
       // heavy hit, and no single blow (or run of them) may finish the thing you are holding.
       const left = Math.max(0, finite(target.hull) + finite(target.shield));
@@ -632,7 +634,8 @@ export const collisionConsequences = {
     });
     // A physical blow breaks wreckage regardless of the dead body's former team.
     packet.flags = { allowAnyTarget: true, ignoreFriendlyFire: target.type === 'wreck' };
-    return kernel.routeDamage({
+    const ploughing = other && other !== target ? isPloughing(this.state, other) : false;
+    const routed = kernel.routeDamage({
       attackerId: receipt.provenance.actorId,
       targetId: target.id,
       packet,
@@ -642,6 +645,9 @@ export const collisionConsequences = {
         weaponId: receipt.provenance.weaponId,
       },
     });
+    // THROW-01 plough: each kill costs the thrown body a share of its speed.
+    if (ploughing && target.alive === false) ploughKill(this.state, other);
+    return routed;
   },
 
   _admitPair(aId, bId, tick, internedKey = null) {

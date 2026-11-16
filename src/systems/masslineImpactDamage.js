@@ -27,6 +27,7 @@ import { massline2Flag } from '../data/featureFlags.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { isMasslineTumbling } from '../combat/tumbleStatus.js';
 import { isHostileToPlayer } from './scanner.js';
+import { isPloughing } from '../combat/ploughFlight.js';
 import { HELD_BODY_CONTACT_DAMAGE_SCALE, HELD_BODY_MAX_SHARE_PER_HIT, isHeldOnPlayerLine } from './collisionConsequences.js';
 
 export const MOMENTUM_DAMAGE_SCALE = 1 / 100;   // momentum -> recoil damage on the thrown body
@@ -81,7 +82,7 @@ export const masslineImpactDamage = {
     // (collisionConsequences is the first) and was finishing light hulls on their first swing hit
     // (credited to the player, line ended target_lost, no throw ever possible). While held, the
     // recoil takes the same scale and per-hit share cap; the club still pays in full once released.
-    if (isHeldOnPlayerLine(this.state, mass)) {
+    if (isHeldOnPlayerLine(this.state, mass) || isPloughing(this.state, mass)) {
       const left = Math.max(0, (Number(mass.hull) || 0) + (Number(mass.shield) || 0));
       damage = Math.min(damage * HELD_BODY_CONTACT_DAMAGE_SCALE, left * HELD_BODY_MAX_SHARE_PER_HIT);
     }

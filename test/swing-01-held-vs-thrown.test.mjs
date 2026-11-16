@@ -288,6 +288,13 @@ test('SWING-01: a held swing lands, and the throw is the payoff (10 seeds)', { t
       `design shape: thrown kills (${summary.thrown.killsTotal}) must exceed held kills`
       + ` (${summary.held.killsTotal}) — ${JSON.stringify(summary)}`,
     );
+    // THROW-01 plough: a thrown body ploughs a pack (it survives its own impacts and each kill only
+    // costs it a share of its speed); the held swing stays chip damage with no kills, unchanged.
+    assert.ok(summary.thrown.killsMean >= 2.0,
+      `plough: a throw into five Wasps must kill >= 2.0 on average (got ${summary.thrown.killsMean}) — ${JSON.stringify(summary)}`);
+    assert.equal(summary.held.killsTotal, 0, 'a held swing still kills nothing');
+    assert.ok(Math.abs(summary.held.damageMean - 276.88) <= 276.88 * 0.05,
+      `held damage is unchanged (276.88 +/- 5%), got ${summary.held.damageMean}`);
     assert.ok(
       summary.held.damageMean > 0,
       `design shape: a held swing must not be limp (held damage ${summary.held.damageMean})`
