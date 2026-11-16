@@ -48,7 +48,7 @@ function harness({ tutorialHints = true, seed = 47 } = {}) {
   };
   const asteroid = {
     id: 3, type: 'asteroid', alive: true,
-    pos: { x: 180, z: -60 }, data: { typeId: 'ast_common_rock' },
+    pos: { x: 180, z: -60 }, data: { typeId: 'ast_common_rock', fieldId: 'f_helios_starter', asteroidSlotId: 'slot-test-1' },
   };
   const station = {
     id: 4, type: 'station', alive: true,
