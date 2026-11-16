@@ -4,6 +4,7 @@ import { getPromptDeck } from './promptDeck.js';
 import { queryShipjack, isBlackFlagAdventure } from '../shipjack/model.js';
 import { BLACK_FLAG_TERMS, BLACK_FLAG_ENCOUNTER_BY_ID } from '../data/blackFlag.js';
 import { laneInputWrite } from '../core/simLaneCommands.js';
+import { openingQuiet } from '../onboarding/openingQuiet.js';
 
 const PANEL_ID = 'black-flag:acquisition';
 const LABELS = Object.freeze({
@@ -78,6 +79,8 @@ export function createBlackFlagPrompt(ctx, { read = queryShipjack, deck = getPro
   const show = (force = false) => {
     const targetId = state.player?.targetId;
     if (targetId == null) { selected = null; dismissed = null; resolve(); return; }
+    // OPENING-1b (doc 20: the raid has no text wall): no vessel-link card until the first dock.
+    if (openingQuiet(state)) { resolve(); return; }
     if (state.mode !== 'flight' || state.ui?.docked) { resolve(); return; }
     if (targetId !== selected) { selected = targetId; dismissed = null; page = 0; pending = false; signature = ''; }
     if (dismissed === targetId && !force) return;

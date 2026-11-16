@@ -1506,6 +1506,10 @@ export const masslineHud = {
     if (!selected || tethered) return this._hideAcquisitionPreview(dom);
     const target = state.entities && state.entities.get ? state.entities.get(selected.targetId) : null;
     if (!target || !target.pos) return this._hideAcquisitionPreview(dom);
+    // The aim tag names a thing to grab: never the pilot's own hull, nor anything riding on it.
+    if (target.id === state.playerId || (player && player.pos && Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z) < 16)) {
+      return this._hideAcquisitionPreview(dom);
+    }
     const targetScreen = projectWorld(w2s, target.pos.x, target.pos.z);
     if (!targetScreen || !Number.isFinite(targetScreen.x) || !Number.isFinite(targetScreen.y)) {
       return this._hideAcquisitionPreview(dom);

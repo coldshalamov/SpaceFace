@@ -5883,7 +5883,8 @@ export const npcJobsRuntime = {
     const kindLabel = { miner: 'Miner', hauler: 'Hauler', salvor: 'Salvor', tender: 'Tender', courier: 'Courier', patrol: 'Patrol' }[entry.job.kind] || 'Crew';
     if (this.bus && typeof this.bus.emit === 'function') {
       try {
-        this.bus.emit('toast', { text: `${kindLabel}: Watch your wash — I'm on a bench here!`, kind: 'warn', ttl: 3 });
+        // OPENING-1b: the moment after the first throw belongs to the payoff and the next objective line.
+        if (!openingQuiet(this.state)) this.bus.emit('toast', { text: `${kindLabel}: Watch your wash — I'm on a bench here!`, kind: 'warn', ttl: 3 });
         this.bus.emit('npcjobs:closeCall', {
           jobId: entry.job.id, kind: entry.job.kind, sectorId: entry.sectorId || null,
           distance: Math.sqrt(d2), relSpeed, simTime: now,
