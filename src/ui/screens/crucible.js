@@ -445,7 +445,7 @@ const signatureLine = (arenaId) =>
  */
 export const ARENA_DESCRIPTIONS = Object.freeze({
   helios_core: Object.freeze(['Ricochet Foundry', 'Hard banks, tight gaps and moving machinery. Turn pursuit into a pile-up.', signatureLine('helios_core')]),
-  ceres_belt: Object.freeze(['Ceres Mining Belt', 'Working claims, ore seams and freight clutter. Split the swarm on the rocks.', signatureLine('ceres_belt')]),
+  ceres_belt: Object.freeze(['Ceres Belt', 'Working claims, ore seams and freight clutter. Split the swarm on the rocks.', signatureLine('ceres_belt')]),
   tethys_hub: Object.freeze(['Tethys Exchange', 'Toll lanes and sealed freight on the junction braid. Cross the traffic — let the freight take the hit.', signatureLine('tethys_hub')]),
   lagrange_crucible: Object.freeze(['Lagrange Crucible', 'Gravity wells and sling routes. Bend the whole fight around an anchor.', signatureLine('lagrange_crucible')]),
   cinder_sluice: Object.freeze(['Cinder Sluice', 'Ride hot currents and force enemies across the flow.', signatureLine('cinder_sluice')]),

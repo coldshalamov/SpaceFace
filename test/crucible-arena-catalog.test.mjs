@@ -105,7 +105,7 @@ test('signature names come only from events that exist and have authored names',
 });
 
 test('the two side rooms carry the authored pitches', () => {
-  assert.equal(ARENA_DESCRIPTIONS.ceres_belt[0], 'Ceres Mining Belt');
+  assert.equal(ARENA_DESCRIPTIONS.ceres_belt[0], 'Ceres Belt');
   assert.equal(ARENA_DESCRIPTIONS.tethys_hub[0], 'Tethys Exchange');
   for (const id of ['ceres_belt', 'tethys_hub']) {
     assert.equal(ARENA_DESCRIPTIONS[id][2], SWARM_EVENT_TABLES[id].map(eventId => SWARM_EVENT_BY_ID[eventId].name).join(' · '));
