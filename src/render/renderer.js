@@ -275,7 +275,7 @@ import {
   warmAsteroidInstanceKeys,
   warmAsteroidInstanceVariants,
 } from './asteroidInstancePool.js';
-import { createCreditChipBatch, creditChipPartLeaves } from './creditChipBatch.js';
+import { createCreditChipBatch } from './creditChipBatch.js';
 import {
   beginRenderEntityFrame,
   classifyRenderEntity,
