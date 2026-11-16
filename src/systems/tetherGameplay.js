@@ -43,6 +43,7 @@ import {
   stampLineRecord,
 } from '../data/lineProgression.js';
 
+import { THROW_CLASS_MAX_MASS } from '../data/survivalWaves.js';
 import { createCadenceWinch, stepCadenceWinch, readCadencePair, rateCadenceTechnique } from './masslineControlLaw.js';
 // FB-013 — the copy owner for first-use lines. Pure data (no DOM, no Three.js), the same module
 // onboarding's _showHint speaks through, so a head's line and a rail line share one vocabulary.
@@ -3210,9 +3211,15 @@ function buildAcquisitionSnapshot(host, player, def, state, intent, admissionSou
   }
   physicallyEligible.sort(compareEntityIds);
   deniedCandidates.sort(compareEntityIds);
+  // AIM-01 (Swarm ruleset only): a throwable hostile anywhere in the cone is the throw the pilot
+  // means — it outranks room solids, payloads and pickups. Those still win when no throwable
+  // hostile is in the cone, so anchor swings and pickups keep working; every other mode keeps the
+  // full eligible pool.
+  const swarmAmmunition = swarmThrowableHostiles(physicallyEligible, player, state);
+  const scoringPool = swarmAmmunition.length ? swarmAmmunition : physicallyEligible;
   // Priority is allowed to choose only inside the physically valid set. Retain invalid records
   // solely when no valid body exists so the receipt can still explain blocked/out-of-range truth.
-  const rankingCandidates = physicallyEligible.length ? physicallyEligible : deniedCandidates;
+  const rankingCandidates = scoringPool.length ? scoringPool : deniedCandidates;
   if (!rankingCandidates.length) return emptyAcquisitionSnapshot('no-target', intent);
 
   const physicallyEligibleIds = new Set(physicallyEligible.map((entity) => entity.id));
@@ -3267,6 +3274,30 @@ function buildAcquisitionSnapshot(host, player, def, state, intent, admissionSou
     reachAllowanceOf: (entity) => Math.max(0, Number(entity && entity.radius) || 0),
   });
   return { ranked, byId, context, intent, aim, maxLength, denial: null, hostileContextTargetId };
+}
+
+/**
+ * AIM-01 — the Swarm-only ammunition preference. In a survival run under the swarm ruleset the
+ * Line is a thrower first: a hostile the Line can actually throw is the body's answer to "slightly
+ * off the pointer". The wave planner's ammunition class decides "throwable" — an authored
+ * physicalClass 'ammunition' hull, or any hostile at or below THROW_CLASS_MAX_MASS. When at least
+ * one is in the cone only throwable hostiles rank, so room solids, payloads, pickups and heavier
+ * hulls all yield to the ammunition. Returns [] outside the swarm ruleset so Adventure selection
+ * is byte-identical.
+ */
+function swarmThrowableHostiles(eligible, player, state) {
+  const run = state && state.run;
+  if (!(run && run.kind === 'survival' && run.ruleset === 'swarm')) return [];
+  if (!Array.isArray(eligible) || !eligible.length) return [];
+  const team = player && player.team;
+  return eligible.filter((entity) => isThrowableSwarmHostile(entity, team, state));
+}
+
+function isThrowableSwarmHostile(entity, team, state) {
+  if (!isHostileToPlayer(entity, team, state)) return false;
+  if (entity && entity.data && entity.data.physicalClass === 'ammunition') return true;
+  const mass = Number(entity && entity.mass);
+  return Number.isFinite(mass) && mass > 0 && mass <= THROW_CLASS_MAX_MASS;
 }
 
 function emptyAcquisitionSnapshot(denial, intent) {
