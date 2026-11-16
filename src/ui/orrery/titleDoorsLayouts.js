@@ -42,20 +42,20 @@ ${T} .of-title-actions li[hidden] { display:none !important; }
 /* no tech words on the way in: the standing line is empty, so its lamp goes too */
 ${T} .dp-title__eyebrow:empty { display:none !important; }
 /* the doors */
-${DOOR_LI}.is-adventure { grid-column:1 / span 12; grid-row:1; margin:0 7px 0 0 !important; --door-img:url("${ADVENTURE_IMG}"); }
+${DOOR_LI}.is-adventure { grid-column:1 / span 12; grid-row:1; margin:0 7px 0 0 !important; --door-img:url("${ADVENTURE_IMG}"); --door-img-pos:72% 56%; --door-img-size:270% auto; }
 ${DOOR_LI}.is-swarm { grid-column:13 / span 12; grid-row:1; margin:0 0 0 7px !important; --door-img:url("${SWARM_IMG}"); }
 ${SECOND_LI} { grid-column:1 / span 12; grid-row:2; margin:0 7px 0 0 !important; }
 /* the door is the list item: image, border and the notch on it; the word and its line sit inside in flow */
 ${DOOR_LI} {
   display:flex !important; flex-direction:column; justify-content:flex-end; min-height:clamp(210px, 34vh, 330px);
   padding:20px 26px 22px !important; box-sizing:border-box; position:relative !important; container-type:inline-size;
-  background:linear-gradient(0deg, rgb(6 8 12 / .88) 0%, rgb(6 8 12 / .5) 40%, rgb(6 8 12 / 0) 100%), var(--door-img) center / cover no-repeat;
+  background:linear-gradient(0deg, rgb(6 8 12 / .82) 0%, rgb(6 8 12 / .42) 38%, rgb(6 8 12 / 0) 70%), var(--door-img) var(--door-img-pos, center) / var(--door-img-size, cover) no-repeat;
   border:1px solid rgb(${BONE} / .34); border-radius:2px;
   clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
   transition:border-color .16s linear, box-shadow .16s linear; }
 ${DOOR_LI}:is(:hover, :focus-within) {
   border-color:var(--dp-hand, #f2b950); box-shadow:0 0 26px rgb(242 185 80 / .25);
-  background:linear-gradient(0deg, rgb(20 14 6 / .92) 0%, rgb(14 10 6 / .5) 42%, rgb(6 8 12 / .05) 100%), var(--door-img) center / cover no-repeat; }
+  background:linear-gradient(0deg, rgb(20 14 6 / .85) 0%, rgb(14 10 6 / .42) 38%, rgb(6 8 12 / 0) 70%), var(--door-img) var(--door-img-pos, center) / var(--door-img-size, cover) no-repeat; }
 ${DOOR_BTN} {
   display:block !important; width:100% !important; padding:0 !important; margin:0 !important; text-align:left; cursor:pointer;
   color:rgb(248 244 234) !important; background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
@@ -77,7 +77,7 @@ ${DOOR_LI} .dp-lit__note {
 ${DOOR_LI}.is-adventure .dp-lit__note { display:-webkit-box !important; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden !important; }
 ${SECOND_LI} .dp-lit__note { display:none !important; }
 /* the fine line under the doors: readable on the lit scene */
-${T} .dp-frame__foot, ${T} .dp-frame__foot * { color:rgb(${BONE} / .9) !important; text-shadow:0 1px 6px rgb(0 0 0 / .85); }
+${T} .dp-frame__foot, ${T} .dp-frame__foot * { color:rgb(${BONE} / .96) !important; opacity:1 !important; font-weight:600; text-shadow:0 1px 3px rgb(0 0 0 / .95), 0 0 10px rgb(0 0 0 / .8); }
 /* the small row (Settings, Help, Quit) is centred by mainMenu.js from how many words show; these are the full-row defaults */
 ${LI('settings')} { grid-column:1 / span 8; grid-row:2; }
 ${LI('help')} { grid-column:9 / span 8; grid-row:2; }

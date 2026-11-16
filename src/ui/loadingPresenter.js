@@ -33,6 +33,7 @@ export const FIRST_DRAW_REVEAL_CAP_MS = 20000;
 export const FIRST_DRAW_STAGE_LABEL_MS = 3000;
 export const ADMISSION_QUIET_MS = 400;
 export const ADMISSION_DRAIN_CAP_MS = 3000;
+export const SWARM_ADMISSION_DRAIN_CAP_MS = 500;
 // Needle settle before the shell starts its fade.
 export const REVEAL_FINISH_MS = 200;
 
@@ -445,7 +446,10 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       // The drain has its own short cap past the first draw: smooth-from-the-first-second must
       // not cost a long load. Whatever is still pending then links after the lift.
       if (firstDrawSeenAt === null) firstDrawSeenAt = clockNow();
-      if (clockNow() - firstDrawSeenAt >= ADMISSION_DRAIN_CAP_MS) return true;
+      // A Swarm round arrives with its pack at once: its veil lifts after a short drain, not the full cap,
+      // so the player never fights behind it (the sim stays held until the lift either way).
+      const drainCap = destinationRoute === 'Crucible' ? SWARM_ADMISSION_DRAIN_CAP_MS : ADMISSION_DRAIN_CAP_MS;
+      if (clockNow() - firstDrawSeenAt >= drainCap) return true;
       const pendingFn = render && render.pendingPipelineAdmissions;
       if (typeof pendingFn !== 'function') return true;
       let pending = 0;
