@@ -923,6 +923,15 @@ function isGenericCargoPresentation(entity, spec) {
     && !data.packagedPropFile && !data.assetRef && !data.authoredPayloadAssetId;
 }
 
+/**
+ * W-BLOOM-LOW brood remains are ammunition, not freight. visualFactory's buildPayload routes
+ * them to their family's authored husk recipe (buildBroodRemainVisual) before the canister
+ * fallback, so the generic tow package would bolt a second, wrong body onto the husk.
+ */
+function isBroodRemainPayload(data) {
+  return !!data && data.payloadType === 'brood_remains';
+}
+
 function preserveGenericCargoFamily(packaged, root, entity, spec) {
   if (!isGenericCargoPresentation(entity, spec)) return;
   const family = root.userData.commodityPresentationId;
@@ -1045,6 +1054,13 @@ export function packagedPropSpec(entity) {
     // The producer's containment bottle carries the volatile class in its shape
     // and lamp. A generic freight replacement would hide both warnings.
     if (data.volatileClass || data.volatileLamp) return null;
+    // W-BLOOM-LOW: a brood remain is ammunition the kill left behind, not cargo. Its
+    // authored husk/flake silhouette IS the throw-selection the player reads, and the
+    // factory already built it; bolting the full LOD0 cargo container on top drew five
+    // extra calls and ~7.7k triangles per husk beside flakes the remain still shows
+    // (hideImmediately is false here, so both bodies drew). The remain keeps its own
+    // body only.
+    if (isBroodRemainPayload(data)) return null;
     return {
       file: GENERIC_TOW_PACKAGED_PROP.file,
       slot: GENERIC_TOW_PACKAGED_PROP.slot,

@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 import { createVisualFactory, invalidateVisualFactoryCaches } from '../src/render/visualFactory.js';
+import { packagedPropSpec } from '../src/render/visualOverrides.js';
 import { resolveOrdnanceKindConfig } from '../src/render/ordnanceMotionPresentation.js';
 import { SWARM_BROOD_FAMILIES } from '../src/data/swarmBrood.js';
 import { SWARM_BROOD_LATE_FAMILIES } from '../src/data/swarmBroodLate.js';
@@ -175,4 +176,23 @@ test('non-remain payloads and unknown remain kinds keep the sealed canister', ()
   const volatile = factory.build({ id: 'p5', type: 'payload', radius: 3, data: { volatileClass: 'explosive' } });
   assert.equal(volatile.userData.visualLanguage, 'volatile-pressure-bottle',
     'the hazard bottle dispatch still wins first');
+});
+
+// PERF-HOT-03 item 2: brood remains are ordinary payloads, so the generic packaged-prop path
+// bolted a full LOD0 pod_cargo_container onto every husk while the procedural flakes stayed
+// drawn (five calls and ~7.7k triangles per husk). A remain draws only as its own husk body;
+// real cargo (and every ordinary payload) keeps the packaged pod.
+test('a brood remain never takes the packaged cargo pod; real cargo payloads still do', () => {
+  const rem = remainEntity('husk_shards');
+  assert.equal(packagedPropSpec(rem), null, 'the husk keeps its own authored body only');
+  const cargo = {
+    id: 'cargo-1', type: 'payload', alive: true, radius: 4, pos: { x: 0, z: 0 }, rot: 0,
+    data: { kind: 'cargo', payloadType: 'jettisoned_cargo', commodityId: 'cmdty_food' },
+  };
+  const spec = packagedPropSpec(cargo);
+  assert.equal(spec && spec.file, 'pods/pod_cargo_container.glb', 'cargo still admits the freight body');
+  // Explicit authored recipes above the generic branch still outrank, and are untouched.
+  const rescue = { ...cargo, id: 'cargo-2', data: { ...cargo.data, distressBeacon: true } };
+  assert.equal(packagedPropSpec(rescue).file, 'places/place_47a_rescue_capsule.glb');
+  assert.equal(packagedPropSpec({ ...rem, alive: false }), null, 'a dead remain admits nothing either');
 });
