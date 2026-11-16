@@ -1586,7 +1586,9 @@ export function setText(el, text) {
   if (!el) return;
   if (el._sfText === text) return;
   el._sfText = text;
-  el.textContent = text;
+  const node = el.firstChild;
+  if (typeof text === 'string' && text && node && node.nodeType === 3 && node === el.lastChild) node.data = text;
+  else el.textContent = text;
 }
 function setScaleX(el, value, opts = null) {
   if (!el) return;
