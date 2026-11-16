@@ -75,7 +75,9 @@ function hashId(id) {
  * 'spent' is a live OPTIC_MATERIALS row — a dark prism keeps its lattice seat.
  */
 export function opticCellKindOf(entity) {
-  const id = entity && entity.data && entity.data.opticMaterial;
+  const data = entity && entity.data;
+  const id = data && data.opticMaterial;
+  if (id === 'metal' && data.fieldId && !data.opticStructureId) return null;
   return (typeof id === 'string' && OPTIC_MATERIALS[id]) ? id : null;
 }
 
