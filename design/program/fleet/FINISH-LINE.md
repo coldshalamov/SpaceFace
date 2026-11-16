@@ -16,6 +16,6 @@ moves no row below goes on a list, not to an agent.
 | Release beats flailing (kills thrown vs held, staged cluster) | thrown clearly higher, held not limp | ✅ SWING-01 node test, 10 seeds: thrown 2.1 kills of 5 (plough), held 0 kills / 277 chip damage |
 | Clipped / overlapping on-screen strings (desktop 1280×720 and phone) | 0 | Swarm r10: ALIGN, top-centre stack: fixed, frames pending |
 | Page errors / console errors on both routes | 0 | Swarm run-end crash fixed (fc7ac010); mergeGeometries warnings remain |
-| Frame rate, this laptop, preset low (Adventure / Swarm r1 start → after 30 s) | ≥ 55 fps / no decay | 29 / 24 → 14 (draw calls 203 → 444, INV-05) |
-| Enemies drawn as placeholder bodies at first contact | 0 | white stand-ins seen in r1–r2 (LOAD-01) |
+| Frame rate, this laptop, preset low (Adventure / Swarm r1 start → after 30 s) | ≥ 55 fps / no decay | CPU-bound (INV-13). Flight frame ≈ 90–99 ms = JS ~50 + style recalc ~32 (INV-14) → STYLE-03, PERF-HOT-04 in flight. ACCEPT-03 headed: Adventure 16.9, Swarm 32.4 mean |
+| Enemies drawn as placeholder bodies at first contact | 0 | roster Wasps: none drawn (INV-11); hull publishes before pools (PUBLISH-01); crystal shards removed from Swarm (FIX-03) |
 | One clear "what next" on every frame | yes | pending |
