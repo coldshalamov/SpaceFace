@@ -48,7 +48,7 @@ import { ENVIRONMENT_FAMILIES, environmentSurfaceData, environmentMaterialOf } f
 export function environmentFamiliesFor(arenaId) {
   return ENVIRONMENT_FAMILIES.filter(m => m !== 'crystal');
 }
-import { ROCK_PLACE_SUBSTANCES, applyRockSubstance } from '../data/rockSubstances.js';
+import { ROCK_PLACE_SUBSTANCES, ROCK_SUBSTANCES, applyRockSubstance } from '../data/rockSubstances.js';
 import { swarmArenaTierForRun, swarmArenaDebrisLayout, planOpeningThrowables } from '../data/swarmArenaLadder.js';
 import { SWARM_MAW_OFFCUT, SWARM_MAW_OFFCUT_TAG } from '../data/swarmMawOffcut.js';
 import { swarmOpeningTerrainStage, planSwarmOpeningTerrain } from '../data/swarmOpeningTerrain.js';
@@ -421,6 +421,42 @@ export function pickDebrisSubstance(material, rng) {
 export function rockSizeClassForRadius(radius) {
   const r = Number(radius) || 0;
   return r < 14 ? 'pebble' : r < 24 ? 'boulder' : 'monolith';
+}
+
+/**
+ * ROCK-01 — the mass the weight rule actually reads. `bodyMassT` prefers
+ * `physicsBody.mass`, and physics derives an un-authored asteroid or wreck body from
+ * its collider (`density * colliderR^3`, ~0.25 / 0.10): the spec `mass` the spawner
+ * wrote never reached that number, so every debris rock read 5-50x the class-I
+ * ceiling and the whole room answered TOO HEAVY.
+ *
+ * Pebble- and boulder-class debris now authors `physicsBody.mass` outright, inside
+ * the Line ladder's bands: a pebble is class-I ammunition (Wasp weight), a boulder
+ * class-II. Monoliths keep the density law — they stay cover, not ammunition. The
+ * substance's `densityMult` positions a body inside its band, so metal still
+ * out-weighs silicate and wreck ballast stays the lightest thing in the room.
+ */
+export const SWARM_DEBRIS_MASS_BANDS_T = Object.freeze({
+  pebble: Object.freeze({ min: 12, max: 18 }),
+  boulder: Object.freeze({ min: 60, max: 95 }),
+});
+const SUBSTANCE_DENSITY_MIN = Math.min(...Object.values(ROCK_SUBSTANCES).map((s) => s.densityMult));
+const SUBSTANCE_DENSITY_MAX = Math.max(...Object.values(ROCK_SUBSTANCES).map((s) => s.densityMult));
+
+/**
+ * The live mass (t) a debris body of this radius should carry once physics
+ * normalizes it — `null` for monolith class, whose cover mass keeps the
+ * collider-density law untouched. `densityMult` is the stamped substance's; a
+ * body with no substance (wreck ballast) rides `SUBSTANCE_DENSITY_MIN`, the
+ * band floor — lightest by design.
+ */
+export function swarmDebrisLiveMassT(radius, densityMult) {
+  const band = SWARM_DEBRIS_MASS_BANDS_T[rockSizeClassForRadius(radius)];
+  if (!band) return null;
+  const span = SUBSTANCE_DENSITY_MAX - SUBSTANCE_DENSITY_MIN;
+  const t = span > 0 ? Math.max(0, Math.min(1,
+    ((Number.isFinite(densityMult) ? densityMult : 1) - SUBSTANCE_DENSITY_MIN) / span)) : 1;
+  return Math.round(band.min + t * (band.max - band.min));
 }
 
 /** Nothing spawns closer than this to the player, whatever the roll says. */
@@ -1733,12 +1769,18 @@ export const swarmArena = {
       && rock.pos && Number.isFinite(rock.pos.x) && Number.isFinite(rock.pos.z)) {
       const now = Number.isFinite(state.simTime) ? state.simTime : 0;
       const parentRadius = Math.max(1, Number(rock.radius) || Number(d.size) || 8);
+      const parentDensityMult = ROCK_SUBSTANCES[d.substance] ? ROCK_SUBSTANCES[d.substance].densityMult : 1;
       const children = [];
       for (let i = 0; i < SWARM_DEBRIS_REMNANTS; i++) {
         const ang = rng() * Math.PI * 2;
         const radius = Math.max(6, parentRadius * (SWARM_DEBRIS_REMNANT_RATIO + rng() * 0.08));
         const dist = parentRadius * 0.55 + radius;
         const oreHP = Math.max(40, Math.round(parentRadius * 10));
+        // Remnant live mass is written for the rope, not the wall: the same class-band law the
+        // arena spawner authors, inheriting the parent's substance, so a worn monolith's
+        // pebble and boulder chunks are throwables too — not TOO HEAVY cover. The spec `mass`
+        // keeps its authored r²·5 intent; the weight rule reads physicsBody.mass.
+        const remnantMassT = swarmDebrisLiveMassT(radius, parentDensityMult);
         children.push({
           type: 'asteroid',
           pos: {
@@ -1747,9 +1789,9 @@ export const swarmArena = {
           },
           vel: { x: 0, z: 0 },
           radius,
-          physicsBody: { radius: asteroidColliderRadius(TYPE_ID, radius) },
-          // Remnant mass is written for the rope, not the wall: heavy enough to read as rock,
-          // light enough that the massline can actually pick it up.
+          physicsBody: remnantMassT != null
+            ? { radius: asteroidColliderRadius(TYPE_ID, radius), mass: remnantMassT }
+            : { radius: asteroidColliderRadius(TYPE_ID, radius) },
           mass: Math.round(radius * radius * SWARM_DEBRIS_REMNANT_MASS_K),
           angVel: (rng() - 0.5) * 0.3,
           hull: oreHP,
@@ -1935,14 +1977,19 @@ export const swarmArena = {
     // applyRockSubstance owns the substance stamp — restitution, break speed, impact VFX and
     // the density that scales the thrown mass come through it, exactly like field rocks.
     const densityMult = substance ? applyRockSubstance(data, substance) : 1;
+    // ROCK-01: the weight rule reads physicsBody.mass, which physics would otherwise derive
+    // from collider volume and land every rock over class I. Pebbles and boulders author the
+    // number on both fields — pebble = class-I ammunition, boulder = class-II — with the
+    // substance's density keeping the in-band order (wreck ballast takes the floor).
+    // A monolith keeps the derived density law: cover, not ammunition.
+    const liveMassT = swarmDebrisLiveMassT(size, substance ? densityMult : SUBSTANCE_DENSITY_MIN);
     const spawned = helpers.spawnEntity({
       type: material === 'debris' ? 'wreck' : 'asteroid',
       pos,
       vel: { x: 0, z: 0 },
       radius: size,
-      physicsBody: { radius: colliderRadius },
-      // Same 2D-area density scaling terrainAnchors uses, so these read (and sling) as monoliths.
-      mass: Math.round(size * size * 40 * densityMult),
+      physicsBody: liveMassT != null ? { radius: colliderRadius, mass: liveMassT } : { radius: colliderRadius },
+      mass: liveMassT != null ? liveMassT : Math.round(size * size * 40 * densityMult),
       angVel,
       hull: oreHP,
       hullMax: oreHP,
@@ -2060,6 +2107,9 @@ export const swarmArena = {
     if (!rockLive && helpers && typeof helpers.spawnEntity === 'function') {
       const size = radius;
       const oreHP = Math.round(360 + size * 14);
+      // Light enough to be the body that moves — the taught rock is class-I ammunition
+      // like every other loose pebble. Debris-derived mass would make an immovable wall.
+      const lessonMassT = swarmDebrisLiveMassT(size, 1);
       const spawned = helpers.spawnEntity({
         type: 'asteroid',
         pos: {
@@ -2068,9 +2118,10 @@ export const swarmArena = {
         },
         vel: { x: 0, z: 0 },
         radius: size,
-        physicsBody: { radius: asteroidColliderRadius(TYPE_ID, size) },
-        // Light enough to be the body that moves. Debris mass would make an immovable wall.
-        mass: 220,
+        physicsBody: lessonMassT != null
+          ? { radius: asteroidColliderRadius(TYPE_ID, size), mass: lessonMassT }
+          : { radius: asteroidColliderRadius(TYPE_ID, size) },
+        mass: lessonMassT != null ? lessonMassT : 220,
         angVel: 0,
         hull: oreHP,
         hullMax: oreHP,
@@ -2305,8 +2356,11 @@ export const swarmArena = {
       entity.data.oreHPMax = hull;
       if (entity.data[HIVE_SAC_TAG]) {
         // A sac is light enough for the massline to pick up — slinging one back into
-        // the brood it was feeding is the counter the room teaches.
-        entity.mass = Math.round(size * size * HIVE_SAC_MASS_K);
+        // the brood it was feeding is the counter the room teaches. The spawned
+        // pebble band already carries that weight; keep the spec field in agreement.
+        entity.mass = Number.isFinite(entity.physicsBody && entity.physicsBody.mass)
+          ? entity.physicsBody.mass
+          : Math.round(size * size * HIVE_SAC_MASS_K);
       }
     }
     return id;
