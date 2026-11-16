@@ -49,7 +49,7 @@ try {
     // Pin the staged hostile in place (position + zero velocity every frame) until the press has resolved, so it
     // cannot drift out from under the pointer; released as soon as the line is up.
     window.__pin = null;
-    const pinLoop = () => { const pn = window.__pin; if (pn) { const e = window.SF.state.entities.get(pn.id); if (e) { e.pos.x = pn.x; e.pos.z = pn.z; e.vel.x = 0; e.vel.z = 0; } } requestAnimationFrame(pinLoop); };
+    const pinLoop = () => { const pn = window.__pin; if (pn) { const e = window.SF.state.entities.get(pn.id); if (e) { const aw = window.SF.state.input && window.SF.state.input.aimWorld; e.pos.x = aw ? aw.x : pn.x; e.pos.z = aw ? aw.z : pn.z; e.vel.x = 0; e.vel.z = 0; } } requestAnimationFrame(pinLoop); };
     requestAnimationFrame(pinLoop);
     window.__stage = (at, clusterAt, clusterCount) => {
       const s = window.SF.state, me = s.entities.get(s.playerId);
