@@ -74,7 +74,7 @@ function readRectRows(doc, query, exclude) {
   return rows;
 }
 
-const DEFAULT_TTL_MS = 400;
+const DEFAULT_TTL_MS = 800;
 const defaultQuery = AVOID_SELECTORS.join(',');
 const sharedHudSnapshots = new WeakMap();
 

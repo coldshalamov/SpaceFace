@@ -54,7 +54,8 @@ const INTERACTIVE = 'button, a, summary, [role="button"], [role="tab"], [role="m
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const governed = new WeakSet();
 const installed = new WeakSet();
-const stats = { roots: 0, elements: 0, changed: 0, slices: 0, ms: 0, maxSliceMs: 0 };
+const stats = { roots: 0, elements: 0, changed: 0, slices: 0, ms: 0, maxSliceMs: 0,
+  steps: 0, enqueued: 0, queueVisible: 0, queueHidden: 0 };
 
 export function typeGovernorStats() { return { ...stats }; }
 
@@ -132,8 +133,10 @@ function skip(el) {
 
 /** Read up to cfg.chunk elements, then write their patches: one style pass per step. Returns true at the end of the tree. */
 function governStep(task, win, cfg) {
+  stats.steps++;
   // Covered by the loading shell: stay queued instead of invalidating styles nobody can see.
   if (loadingShellVisible(win?.document)) return false;
+  task.started = true;
   const jobs = [];
   let finished = false;
   for (let i = 0; i < cfg.chunk; i++) {
@@ -143,6 +146,9 @@ function governStep(task, win, cfg) {
     if (skip(el)) continue;
     stats.elements++;
     const m = measure(el, win, cfg);
+    // An element is measured once, patched or not — a queued task whose subtree overlaps this
+    // one must never pay for the same getComputedStyle again.
+    governed.add(el);
     if (m) { const patch = governType(m, cfg); if (patch) jobs.push([el, patch]); }
   }
   for (const [el, patch] of jobs) {
@@ -152,7 +158,6 @@ function governStep(task, win, cfg) {
         && el.style.getPropertyPriority?.(prop) === 'important') continue;
       el.style.setProperty(prop, value, 'important');
     }
-    governed.add(el);
   }
   stats.changed += jobs.length;
   task.changed += jobs.length;
@@ -206,9 +211,14 @@ export function installTypeGovernor(doc = globalThis.document) {
     stats.slices++; stats.ms += spent; if (spent > stats.maxSliceMs) stats.maxSliceMs = spent;
   };
   const pump = () => {
+    stats.queueVisible = visible.length; stats.queueHidden = hidden.length;
     if (visible.length && !frame) frame = win.requestAnimationFrame(() => { frame = 0; run(visible, cfg.visibleBudgetMs); pump(); });
     if (!visible.length && hidden.length && !idle) {
-      const later = (cb) => (typeof win.requestIdleCallback === 'function' ? win.requestIdleCallback(cb, { timeout: 1500 }) : win.setTimeout(cb, 60));
+      // No forced idle timeout: the prewarm backlog must wait for a genuinely idle slice. A
+      // timed-out rIC still fires on a busy main thread, which put every queued measure back on
+      // flight frames — getComputedStyle against a HUD that dirties styles every frame cost ~3ms
+      // per element (PERF-REG-01). Where rIC does not exist, a slow timer drip bounds the cost.
+      const later = (cb) => (typeof win.requestIdleCallback === 'function' ? win.requestIdleCallback(cb) : win.setTimeout(cb, 400));
       idle = later(() => { idle = 0; run(hidden, cfg.idleBudgetMs); pump(); });
     }
   };
@@ -224,7 +234,14 @@ export function installTypeGovernor(doc = globalThis.document) {
   });
   const enqueue = (node) => {
     if (node.nodeType !== 1 || seen.has(node)) return;
+    // A node inside a not-yet-started task's subtree is already covered by that task's lazy walk —
+    // queueing a second task only re-walks it. (A task mid-walk may have passed this node's spot,
+    // so it does not count as coverage; its own task is the safe path.)
+    const covered = (list) => list.some((task) => !task.started && task.root !== node
+      && task.root.isConnected !== false && typeof task.root.contains === 'function' && task.root.contains(node));
+    if (covered(visible) || covered(hidden)) return;
     seen.add(node);
+    stats.enqueued++;
     const screen = screenRoot(node);
     if (screen && !watchedScreens.has(screen)) {
       watchedScreens.add(screen);

@@ -206,6 +206,25 @@ export function createFloatingText(ctx) {
   const padObstacles = [];
   const padBounds = { w: 0, h: 0 };
   const padBox = { x: 0, y: 0, w: 0, h: 0 };
+  // The pad layer's box and the phone-deck flag move only on a viewport or deck change; reading
+  // them inside the frame pass forced one layout per frame whenever a pad tag was on screen
+  // (PERF-REG-01: get clientWidth was the profile's #2 leaf). The values are marked stale on
+  // resize/attribute flip and read once, on the first frame a tag is actually on screen.
+  const padStatics = { w: 0, phoneDeck: false, stale: true };
+  const refreshPadStatics = () => {
+    padStatics.w = padLayer.clientWidth || layer.clientWidth || 0;
+    const viewport = document.defaultView;
+    padBounds.w = padStatics.w || viewport?.innerWidth || 1280;
+    padBounds.h = padLayer.clientHeight || viewport?.innerHeight || 720;
+    padStatics.phoneDeck = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
+    padStatics.stale = false;
+  };
+  const markPadStaticsStale = () => { padStatics.stale = true; };
+  const padStaticsWin = document.defaultView;
+  padStaticsWin?.addEventListener?.('resize', markPadStaticsStale);
+  const padStaticsObserver = typeof MutationObserver !== 'undefined' && document.documentElement
+    ? new MutationObserver(markPadStaticsStale) : null;
+  padStaticsObserver?.observe?.(document.documentElement, { attributes: true, attributeFilter: ['data-sf-mobile-flight'] });
 
   function syncPadLabels() {
     // The loading shell covers the HUD: the pad pass under it only restyles elements nobody sees.
@@ -282,10 +301,8 @@ export function createFloatingText(ctx) {
 
     // Read layout together after text/visibility changes. Placing one chip
     // before measuring the next can force the HUD to lay out repeatedly.
-    const padW = padLayer.clientWidth || layer.clientWidth || 0;
-    const viewport = document.defaultView;
-    padBounds.w = padW || viewport?.innerWidth || 1280;
-    padBounds.h = padLayer.clientHeight || viewport?.innerHeight || 720;
+    if (padStatics.stale) refreshPadStatics();
+    const padW = padStatics.w;
     let hasMeasuredPad = false;
     for (const node of visiblePads) {
       if (!node.w) { node.w = node.el.offsetWidth || 0; node.h = node.el.offsetHeight || 0; }
@@ -293,7 +310,7 @@ export function createFloatingText(ctx) {
     }
     padObstacles.length = 0;
     if (hasMeasuredPad) for (const rect of avoid.get()) padObstacles.push(rect);
-    const phoneDeck = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
+    const phoneDeck = padStatics.phoneDeck;
 
     for (const node of visiblePads) {
       const half = node.w / 2 + 6;
@@ -653,6 +670,8 @@ export function createFloatingText(ctx) {
         try { unsubscribe(); } catch (_) { /* bus teardown is best effort */ }
       }
       for (const n of nodes) retire(n);
+      padStaticsObserver?.disconnect?.();
+      padStaticsWin?.removeEventListener?.('resize', markPadStaticsStale);
       for (const node of padNodes.values()) {
         node.el.parentNode && node.el.parentNode.removeChild(node.el);
       }
