@@ -2430,12 +2430,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.power-skid",
-    "expectedContentHash": "cfd5bfe82ecf861b122cc9c1dc25f597e83ad6c6f865ce82b67cb7c832bface8",
+    "expectedContentHash": "d9b209a14bbac39d2bbc186d7e97afb951046a2cda3c5bf532017bfe0be24490",
     "key": "power-skid",
     "metadataUrl": "assets/ships/release/render-packages/power-skid/render-package.json",
     "runtimeAssetId": "place_power_skid",
     "slot": "place",
-    "sourceSha256": "945291679598ae7fa12ba2a6343f504cda25beac07ec38766d20340a1ffb04e2",
+    "sourceSha256": "82e77d511202b6453d33c7d00b419b9e1af1d580c488d4ea612bc16be3eb60a2",
     "sourceUrl": "assets/ships/release/parts/places/place_power_skid.glb"
   },
   {

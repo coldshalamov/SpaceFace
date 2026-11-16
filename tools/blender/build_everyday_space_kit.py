@@ -1194,8 +1194,84 @@ def build_power_skid():
     put(box('plug', (0.5, 0.5, 0.5), (4.9, -1.5, 0.35)), 'esk_bare_steel', root)
     socket('SOCKET_Power_Out', (5.1, -1.5, 0.35), root)
     socket('SOCKET_Hoist_Center', (0, 0, 2.4), root)
+    bpy.context.view_layer.update()
+    collision_lo, collision_hi, _ = envelope(root)
+    # The skid's 256px Forge panel maps are retained beside this kit. Isolate the
+    # Forge image cache so a full-kit build cannot borrow another asset's maps.
+    sys.path.insert(0, str(ROOT / 'tools' / 'blender' / 'forge'))
+    import forge as F
+    previous_dir, previous_cache = F.TEXTURE_DIR, F._IMAGE_CACHE.copy()
+    F.TEXTURE_DIR = str(ROOT / 'assets/incubator/everyday_space_kit/textures/power_skid')
+    F._IMAGE_CACHE.clear()
+    try:
+        shell = F.make_material('skid_shell', 'paint', '#858780', 'power_skid')
+        cab = F.make_material('skid_cabinet', 'paint', '#405b70', 'power_skid')
+    finally:
+        F.TEXTURE_DIR = previous_dir
+        F._IMAGE_CACHE.clear()
+        F._IMAGE_CACHE.update(previous_cache)
+    for name, mat in [('core_shell', shell), ('core_domea', shell), ('core_domef', shell), ('cabinet', cab)]:
+        obj = bpy.data.objects[name]
+        obj.data.materials.clear()
+        obj.data.materials.append(mat)
+        F.box_project_uvs(obj, scale=1.0)
+        if name.startswith('core_'):
+            for face in obj.data.polygons:
+                face.use_smooth = True
+    # Retain the hot-radiator signal as narrow channels between physical slats.
+    bpy.data.objects.remove(bpy.data.objects['fin'], do_unlink=True)
+    for i in range(7):
+        x = -1.55 + i * .315
+        put(box(f'radiator_slat_{i}', (.18, .18, 1.72), (x, 0, 3.76)), 'esk_bare_steel', root)
+        if i < 6:
+            put(box(f'radiator_heat_{i}', (.045, .08, 1.48), (x + .12, 0, 3.72)), 'esk_radiator_hot', root)
+    put(box('radiator_bottom', (2.35, .22, .16), (-.6, 0, 2.92)), 'esk_struct_alloy', root)
+    for tag, x in [('aft', -1.45), ('fore', .25)]:
+        put(cyl('core_clamp_' + tag, 1.19, .17, (x, 0, 1.7), rot=(0, math.pi / 2, 0), verts=24),
+            'esk_struct_alloy', root)
+    put(cyl('service_manifold', .17, 2.6, (-.5, -1.14, 1.65), rot=(0, math.pi / 2, 0), verts=12),
+        'esk_pipe_steel', root)
+    for x in (-1.3, .3):
+        put(cyl('manifold_mount_' + str(x), .23, .23, (x, -1.1, 1.65), rot=(math.pi / 2, 0, 0), verts=12),
+            'esk_bare_steel', root)
+    put(box('cabinet_access', (1.15, .055, 1.24), (1.9, -1.225, 1.39)), 'esk_armor_plate', root)
+    for i in range(4):
+        put(box('cabinet_vent_' + str(i), (.7, .045, .055), (1.9, -1.26, 1.13 + i * .16)), 'esk_scorch', root)
+    put(box('cabinet_latch', (.08, .07, .24), (2.33, -1.27, 1.58)), 'esk_bare_steel', root)
+    # First merge the new fixtures, in the same order as the reviewed scratch build.
+    prefixes = ('radiator_slat_', 'radiator_heat_', 'radiator_bottom', 'core_clamp_',
+                'service_manifold', 'manifold_mount_', 'cabinet_access', 'cabinet_vent_', 'cabinet_latch')
+    fixture_groups = {}
+    for obj in list(root.children):
+        if obj.type == 'MESH' and obj.name.startswith(prefixes):
+            fixture_groups.setdefault(obj.data.materials[0].name, []).append(obj)
+    for index, objects in enumerate(fixture_groups.values()):
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in objects:
+            obj.select_set(True)
+        bpy.context.view_layer.objects.active = objects[0]
+        if len(objects) > 1:
+            bpy.ops.object.join()
+        objects[0].name = 'skid_fixture_%02d' % index
+    # All meshes here are static. Merge only equal materials, preserving the separate
+    # hot and amber signal roles and the existing named sockets.
+    groups = {}
+    for obj in list(root.children):
+        if obj.type == 'MESH':
+            if len(obj.data.materials) != 1 or obj.children or obj.animation_data:
+                raise RuntimeError('power skid contains an unsupported dynamic or multi-material piece')
+            groups.setdefault(obj.data.materials[0].name, []).append(obj)
+    for index, objects in enumerate(groups.values()):
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in objects:
+            obj.select_set(True)
+        bpy.context.view_layer.objects.active = objects[0]
+        if len(objects) > 1:
+            bpy.ops.object.join()
+        objects[0].name = 'skid_static_%02d' % index
     meta = {
         'family': 'service', 'role': 'portable reactor skid: formed core, hot fin, cabinet, visible cable run',
+        '_collision_bounds': (collision_lo, collision_hi),
         'states': 'active=amber status+hot fin; cold=dark; see _patched (salvage) variant',
         'placement': 'wherever plant runs — the trunk should visibly reach what it powers',
         'lodPlan': 'LOD1: core+cabinet; LOD2: single box',
@@ -2518,9 +2594,13 @@ def main():
         root, meta = BUILDERS[name]()
         bpy.context.view_layer.update()
         lo, hi, size = envelope(root)
+        collision_bounds = meta.pop('_collision_bounds', None)
         tris = tri_count(root)
         # House collision convention: one COLLISION_HULL EMPTY (a mesh fails the
         # assetLoader material-map contract); scale carries box half-extents.
+        if collision_bounds is not None:
+            lo, hi = collision_bounds
+            size = hi - lo
         center = (lo + hi) * 0.5
         bpy.ops.object.empty_add(type='CUBE', radius=1.0, location=tuple(center))
         chull = bpy.context.active_object

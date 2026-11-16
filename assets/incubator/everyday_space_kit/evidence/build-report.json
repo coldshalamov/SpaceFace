@@ -799,13 +799,13 @@
     {
       "id": "power_skid",
       "status": "design_candidate",
-      "triangles": 644,
+      "triangles": 1188,
       "sizeM": [
         8.249,
         3.484,
         5.0
       ],
-      "parts": 16,
+      "parts": 10,
       "sockets": [
         "SOCKET_Hoist_Center",
         "SOCKET_Power_Out"
@@ -823,8 +823,8 @@
           2.5
         ]
       },
-      "bytes": 45412,
-      "sha256": "0663c07313a147caf1a80f69ff5949f94abaea834e26ce5844ccdf44170f59d0",
+      "bytes": 104804,
+      "sha256": "b0e8d6a758899227aaf3d11a456ab33890a8c2a5ba9332eed0a2486142fe49fd",
       "family": "service",
       "role": "portable reactor skid: formed core, hot fin, cabinet, visible cable run",
       "states": "active=amber status+hot fin; cold=dark; see _patched (salvage) variant",

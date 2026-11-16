@@ -1,0 +1,225 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": false,
+    "externalizeKtx2Hashes": null,
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "place_power_skid",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.power-skid",
+    "dynamicNameIncludes": [],
+    "key": "power-skid",
+    "kind": "place",
+    "metadataUrl": "assets/ships/release/render-packages/power-skid/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/power-skid",
+    "releaseAssetId": "place_power_skid",
+    "releaseBytes": 63492,
+    "releaseSha256": "82e77d511202b6453d33c7d00b419b9e1af1d580c488d4ea612bc16be3eb60a2",
+    "rootNode": "power_skid",
+    "runtimeAssetId": "place_power_skid",
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/places/place_power_skid.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 2,
+    "id": "place_power_skid",
+    "kind": "part:places",
+    "ktx2Textures": 3,
+    "meshoptBufferViews": 28,
+    "release": "assets/ships/release/parts/places/place_power_skid.glb",
+    "releaseBytes": 63492,
+    "releaseSha256": "82e77d511202b6453d33c7d00b419b9e1af1d580c488d4ea612bc16be3eb60a2",
+    "source": "assets/incubator/everyday_space_kit/source/power_skid.glb",
+    "sourceBytes": 104804,
+    "sourceSha256": "b0e8d6a758899227aaf3d11a456ab33890a8c2a5ba9332eed0a2486142fe49fd",
+    "textureProfiles": {
+      "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+      "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data",
+      "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear"
+    },
+    "textures": 3
+  },
+  "runtime": {
+    "assetId": "place_power_skid",
+    "motionBank": null,
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/places/place_power_skid.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [
+      {
+        "id": "sf.render.power-skid.anchor.socket-hoist-center",
+        "kind": "socket",
+        "node": "SOCKET_Hoist_Center",
+        "parentNodeId": "sf.render.power-skid.root"
+      },
+      {
+        "id": "sf.render.power-skid.anchor.socket-power-out",
+        "kind": "socket",
+        "node": "SOCKET_Power_Out",
+        "parentNodeId": "sf.render.power-skid.root"
+      }
+    ],
+    "assetId": "sf.render.power-skid",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "place",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.power-skid.mesh.skid-static-00",
+        "independentlyCulled": false,
+        "mergeBoundary": "skid_static_00",
+        "node": "skid_static_00",
+        "parentId": "sf.render.power-skid.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.power-skid.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.power-skid.mesh.skid-static-01",
+        "independentlyCulled": false,
+        "mergeBoundary": "skid_static_01",
+        "node": "skid_static_01",
+        "parentId": "sf.render.power-skid.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.power-skid.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.power-skid.mesh.skid-static-02",
+        "independentlyCulled": false,
+        "mergeBoundary": "skid_static_02",
+        "node": "skid_static_02",
+        "parentId": "sf.render.power-skid.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.power-skid.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.power-skid.mesh.skid-static-03",
+        "independentlyCulled": false,
+        "mergeBoundary": "skid_static_03",
+        "node": "skid_static_03",
+        "parentId": "sf.render.power-skid.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.power-skid.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.power-skid.mesh.skid-static-04",
+        "independentlyCulled": false,
+        "mergeBoundary": "skid_static_04",
+        "node": "skid_static_04",
+        "parentId": "sf.render.power-skid.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.power-skid.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.power-skid.mesh.skid-static-05",
+        "independentlyCulled": false,
+        "mergeBoundary": "skid_static_05",
+        "node": "skid_static_05",
+        "parentId": "sf.render.power-skid.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.power-skid.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.power-skid.mesh.skid-static-06",
+        "independentlyCulled": false,
+        "mergeBoundary": "skid_static_06",
+        "node": "skid_static_06",
+        "parentId": "sf.render.power-skid.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.power-skid.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.power-skid.mesh.skid-static-07",
+        "independentlyCulled": false,
+        "mergeBoundary": "skid_static_07",
+        "node": "skid_static_07",
+        "parentId": "sf.render.power-skid.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.power-skid.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.power-skid.mesh.skid-static-08",
+        "independentlyCulled": false,
+        "mergeBoundary": "skid_static_08",
+        "node": "skid_static_08",
+        "parentId": "sf.render.power-skid.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.power-skid.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.power-skid.mesh.skid-static-09",
+        "independentlyCulled": false,
+        "mergeBoundary": "skid_static_09",
+        "node": "skid_static_09",
+        "parentId": "sf.render.power-skid.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.power-skid.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.power-skid.root",
+        "independentlyCulled": false,
+        "mergeBoundary": "asset-root",
+        "node": "power_skid",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.power-skid.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 63492,
+    "sha256": "82e77d511202b6453d33c7d00b419b9e1af1d580c488d4ea612bc16be3eb60a2",
+    "uri": "assets/ships/release/parts/places/place_power_skid.glb"
+  }
+}
