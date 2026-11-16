@@ -8,6 +8,8 @@ import {
   ILLUSTRATED_SURFACE_KEY,
 } from '../src/render/illustratedSurface.js';
 import { applyAuthoredMaterialProfile } from '../src/render/authoredMaterialProfiles.js';
+import { installSingleSamplePackedOrmShader } from '../src/render/packedOrmShader.js';
+import * as illustratedSurfaceModule from '../src/render/illustratedSurface.js';
 
 test('a late-attached packed-ORM clone still collapses after a second canonicalize', () => {
   const hull = new THREE.MeshStandardMaterial({ color: 0x334455 });
@@ -177,4 +179,147 @@ test('clearcoat sun lobe skips zero-facing lights before half-vector work', () =
     'half-vector normalization stays inside the positive-light branch');
   assert.ok(loop.indexOf('sfCoatLight +=', guard) > guard,
     'the guarded branch still emits the original positive-light lobe');
+});
+
+
+// PERF-HOT-04: the installed-key walk memoizes its settled result per material. Two properties
+// make that memo safe, and both are pinned here against the material shapes the renderer really
+// composes: a memo hit serves a key byte-identical to an uncached derivation, and every input
+// that decides the key invalidates the memo instead of serving a stale one.
+//
+// The reference is a fresh module instance (empty memo), which is the pre-change code path.
+async function uncachedInstalledKey(material) {
+  const fresh = await import(`../src/render/illustratedSurface.js?perf-hot-04=${uncachedInstalledKey.seq++}`);
+  fresh.canonicalizeInstalledSurfaceProgramKey(material);
+  return String(material.customProgramCacheKey());
+}
+uncachedInstalledKey.seq = 0;
+
+// Twin factories, because Material.clone() drops instance-assigned onBeforeCompile and
+// customProgramCacheKey — a cloned "reference" would compare default keys, not these variants.
+const MATERIAL_TWIN_BUILDERS = {
+  plain: () => new THREE.MeshStandardMaterial({ color: 0x334455 }),
+  uniqueKeyNoise: () => {
+    const material = new THREE.MeshStandardMaterial({ color: 0x445566 });
+    material.customProgramCacheKey = () => `MeshStandardMaterial|${material.uuid}|standard`;
+    return material;
+  },
+  packedOrm: () => {
+    const orm = new THREE.Texture();
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x8a96a4, roughnessMap: orm, metalnessMap: orm, aoMap: orm,
+    });
+    installSingleSamplePackedOrmShader(material);
+    return material;
+  },
+  packedOrmBreakup: () => {
+    const material = MATERIAL_TWIN_BUILDERS.packedOrm();
+    applyAuthoredMaterialProfile(material, 'hull', { allowTextures: false });
+    return material;
+  },
+  illustratedHull: () => {
+    const material = MATERIAL_TWIN_BUILDERS.packedOrmBreakup();
+    installIllustratedSurface(material);
+    material.userData.spacefaceHullLayout = { kind: 2, strength: 0.5, accent: '#cfd8e6' };
+    return material;
+  },
+  illustratedPhysical: () => {
+    const material = new THREE.MeshPhysicalMaterial({ color: 0x778899, clearcoat: 0.6 });
+    installIllustratedSurface(material);
+    return material;
+  },
+  compileSourceKeyed: () => {
+    const material = new THREE.MeshStandardMaterial({ color: 0x99aabb });
+    material.onBeforeCompile = function compileSourceHook(shader) {
+      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '// patched');
+    };
+    material.customProgramCacheKey = () => material.onBeforeCompile.toString();
+    return material;
+  },
+};
+
+test('the memoized installed key equals an uncached derivation for every material shape', async () => {
+  const cache = await import('../src/render/illustratedSurface.js');
+  for (const [label, build] of Object.entries(MATERIAL_TWIN_BUILDERS)) {
+    const memoized = build();
+    // Some shapes already answer a canonical key (packed-ORM installs its own), so the first
+    // walk legitimately reports "no change" — the key it serves is the contract, not the bool.
+    cache.canonicalizeInstalledSurfaceProgramKey(memoized);
+    const key = String(memoized.customProgramCacheKey());
+    assert.equal(key, await uncachedInstalledKey(build()), `${label}: memoized key must be byte-identical`);
+    // The second walk is the memo hit this packet exists for: nothing to change, key never moves.
+    assert.equal(cache.canonicalizeInstalledSurfaceProgramKey(memoized), false, `${label}: settled walk reports no change`);
+    assert.equal(String(memoized.customProgramCacheKey()), key, `${label}: settled key is stable`);
+    // And the memoized material and a fresh twin still collapse onto one family key.
+    assert.equal(memoized.customProgramCacheKey(), await uncachedInstalledKey(build()),
+      `${label}: two twins of one shape share one family key`);
+  }
+});
+
+test('each key input invalidates the memo instead of serving the stale key', async () => {
+  const cache = await import('../src/render/illustratedSurface.js');
+  const material = new THREE.MeshStandardMaterial({ color: 0x445566 });
+  assert.equal(cache.canonicalizeInstalledSurfaceProgramKey(material), true);
+  const settled = String(material.customProgramCacheKey());
+  assert.equal(cache.canonicalizeInstalledSurfaceProgramKey(material), false);
+
+  // A different illustration family version is an input to the key.
+  material.userData = { ...material.userData, spacefaceIllustratedSurface: 'spaceface-illustrated-surface-next' };
+  assert.equal(cache.canonicalizeInstalledSurfaceProgramKey(material), true);
+  const next = String(material.customProgramCacheKey());
+  assert.notEqual(next, settled);
+  assert.ok(next.includes('spaceface-illustrated-surface-next'));
+  material.userData = { ...material.userData, spacefaceIllustratedSurface: 'spaceface-illustrated-surface-next' };
+  assert.equal(String(material.customProgramCacheKey()), next, 'same inputs keep the same key');
+
+  // A re-wrapped key function (what a compose clone carries) is an input too.
+  material.customProgramCacheKey = () => `MeshStandardMaterial|${material.uuid}|${next}`;
+  assert.equal(cache.canonicalizeInstalledSurfaceProgramKey(material), true);
+  const rewrapped = String(material.customProgramCacheKey());
+  assert.equal(rewrapped, next, 'the unique uuid noise is stripped again');
+  assert.equal(rewrapped, await uncachedInstalledKey(Object.assign(
+    new THREE.MeshStandardMaterial({ color: 0x445566 }),
+    { userData: { spacefaceIllustratedSurface: 'spaceface-illustrated-surface-next' } },
+  )));
+
+  // A new compile hook of the same shape is still re-canonicalized from scratch.
+  material.onBeforeCompile = function replacementHook(shader) { shader.fragmentShader += '// one'; };
+  assert.equal(cache.canonicalizeInstalledSurfaceProgramKey(material), false,
+    'a hook change alone cannot alter a key with no compile-source token');
+  material.customProgramCacheKey = () => `${material.onBeforeCompile.toString()}|${material.uuid}`;
+  assert.equal(cache.canonicalizeInstalledSurfaceProgramKey(material), true);
+  assert.equal(String(material.customProgramCacheKey()).includes(material.uuid), false);
+});
+
+test('a stable key function whose answer changes is still re-canonicalized', () => {
+  const cache = illustratedSurfaceModule;
+  // The already-canonical shape: the first walk finds nothing to install, so no closure replaces
+  // this function and the memo has to compare the string it returns, not just its identity.
+  let answer = 'spaceface-packed-orm-single-sample-v1';
+  const material = new THREE.MeshStandardMaterial({ color: 0x223344 });
+  material.customProgramCacheKey = () => answer;
+  assert.equal(cache.canonicalizeInstalledSurfaceProgramKey(material), false, 'canonical already');
+  assert.equal(cache.canonicalizeInstalledSurfaceProgramKey(material), false, 'memo hit');
+
+  // Same function object, a new answer carrying compose uuid noise: must re-derive, not hit.
+  answer = `spaceface-packed-orm-single-sample-v1|${material.uuid}|vec3 sf = normalize(vNormal);`;
+  assert.equal(cache.canonicalizeInstalledSurfaceProgramKey(material), true, 'changed answer re-derives');
+  assert.equal(String(material.customProgramCacheKey()), 'spaceface-packed-orm-single-sample-v1');
+});
+
+test('a repeated subtree walk stops re-deriving settled keys', () => {
+  const group = new THREE.Group();
+  const materials = [];
+  const geometry = new THREE.BoxGeometry();
+  for (let i = 0; i < 8; i += 1) {
+    const material = new THREE.MeshStandardMaterial({ color: 0x335577 });
+    material.customProgramCacheKey = () => `MeshStandardMaterial|spaceface-packed-orm-single-sample-v1|${material.uuid}`;
+    materials.push(material);
+    group.add(new THREE.Mesh(geometry, material));
+  }
+  assert.ok(canonicalizeObjectSurfaceProgramKeys(group) >= 8, 'first walk canonicalizes every material');
+  const settledKeys = materials.map((material) => material.customProgramCacheKey());
+  assert.equal(canonicalizeObjectSurfaceProgramKeys(group), 0, 'a settled subtree reports no changes');
+  assert.deepEqual(materials.map((material) => material.customProgramCacheKey()), settledKeys,
+    'the settled family keys are untouched by the extra walks');
 });

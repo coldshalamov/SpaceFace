@@ -228,25 +228,75 @@ export function canonicalizeSurfaceProgramFamilyKey(previousKey, extraToken) {
 }
 
 /**
+ * PERF-HOT-04: the family key already installed on an unchanged material.
+ *
+ * This walk runs on every presentation bind, authored-upgrade settle and warm re-stamp, so a
+ * subtree that is already canonical still paid the full split/regex canonicalize plus an
+ * `onBeforeCompile.toString()` per material, four family passes each once packed-ORM, breakup and
+ * illustration tokens are present — ~1k passes and 1.4–2.4 ms a frame in Adventure (INV-13).
+ *
+ * The canonical key is a pure function of exactly four inputs: the string the material's key
+ * function returns, that function's identity, the compile hook's identity (only its source text is
+ * read, and a function object's source text never changes), and the three family flags on
+ * userData. Memoize that input set per material. Weak keys die with the material, and a memo only
+ * ever holds a key this function already installed, so a hit can only answer "unchanged".
+ */
+const CANONICAL_SURFACE_PROGRAM_KEYS = new WeakMap();
+
+/**
  * Rewrite leftover unique keys on Standard/Physical materials after compose clones.
  * ShaderMaterial identities stay untouched. Does not force needsUpdate — first bind
  * happens before first compile so the family key is the one that compiles.
  */
 export function canonicalizeInstalledSurfaceProgramKey(material) {
   if (!material || (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial)) return false;
-  const current = typeof material.customProgramCacheKey === 'function'
-    ? String(material.customProgramCacheKey() || '')
+  const keyFunction = typeof material.customProgramCacheKey === 'function' ? material.customProgramCacheKey : null;
+  const compileHook = material.onBeforeCompile;
+  const data = material.userData;
+  const packedOrmFlag = !!data && data.spacefacePackedOrmSingleSample === true;
+  const breakupFlag = !!data && data.spacefaceRoughnessBreakup === true;
+  // receiptFamilyTokens stringifies the version, so compare the token it would push: a version
+  // that is not a string still has to match by value, not by object identity.
+  const illustratedFlag = data && data.spacefaceIllustratedSurface
+    ? String(data.spacefaceIllustratedSurface)
     : '';
-  const compileSource = typeof material.onBeforeCompile === 'function'
-    ? String(material.onBeforeCompile.toString() || '')
+  const current = keyFunction ? String(keyFunction.call(material) || '') : '';
+  const memo = CANONICAL_SURFACE_PROGRAM_KEYS.get(material);
+  if (memo && memo.keyFunction === keyFunction && memo.compileHook === compileHook
+      && memo.current === current && memo.packedOrmFlag === packedOrmFlag
+      && memo.breakupFlag === breakupFlag && memo.illustratedFlag === illustratedFlag) {
+    return false;
+  }
+  const compileSource = typeof compileHook === 'function'
+    ? String(compileHook.toString() || '')
     : '';
   const source = current && current === compileSource ? '' : current;
   let next = canonicalizeSurfaceProgramFamilyKey(source);
   for (const token of receiptFamilyTokens(material)) {
     next = canonicalizeSurfaceProgramFamilyKey(next, token);
   }
-  if (typeof material.customProgramCacheKey === 'function' && next === current) return false;
+  const changed = !keyFunction || next !== current;
+  if (!changed) {
+    // The material already answers its own canonical key — nothing to install, but the settled
+    // state is still worth remembering so the next walk skips the derivation.
+    CANONICAL_SURFACE_PROGRAM_KEYS.set(material, {
+      keyFunction, compileHook, current, packedOrmFlag, breakupFlag, illustratedFlag,
+    });
+    return false;
+  }
   material.customProgramCacheKey = () => next;
+  // Record the settled state — the canonical key the closure now returns plus every input that
+  // decides it. A later call with the same key function, compile hook, returned string and family
+  // flags answers false without re-deriving; any changed input (a re-wrapped hook, a new key
+  // function, a new family flag, a different returned string) misses and canonicalizes afresh.
+  CANONICAL_SURFACE_PROGRAM_KEYS.set(material, {
+    keyFunction: material.customProgramCacheKey,
+    compileHook,
+    current: next,
+    packedOrmFlag,
+    breakupFlag,
+    illustratedFlag,
+  });
   return true;
 }
 
