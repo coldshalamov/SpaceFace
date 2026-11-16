@@ -97,6 +97,8 @@ function fixture({ mode = 'shared', cards = 1, captionHeight = 56, captionSlot =
   const pendingTimers = [];
   const context = {
     Set,
+    // placeReceiptLane re-points the Swarm column observer from state.run (ac5fde80c2).
+    state: { run: null },
     performance: { now: () => performanceNow },
     setTimeout: (fn) => { pendingTimers.push(fn); return pendingTimers.length; },
     clearTimeout: (id) => { if (id > 0 && id <= pendingTimers.length) pendingTimers[id - 1] = null; },
@@ -132,6 +134,9 @@ function fixture({ mode = 'shared', cards = 1, captionHeight = 56, captionSlot =
     let flightTextObstacleSnapshotAt = -Infinity;
     let flightTextObstacleRetry = null;
     const FLIGHT_TEXT_OBSTACLE_MIN_MS = 100;
+    // placeReceiptLane reads the Swarm column observer that ac5fde80c2 added beside it.
+    let observedSwarmColumn = null;
+    let swarmColumnObserver = null;
     ${owners.join('\n')}; ${extraCode}; ({ freeOverlayBands, flushReceiptLane, placeReceiptLane, readReceiptRect,
       contentInvalidate: () => { receiptGeometryKeep = true; receiptGeometryReusable = receiptGeometryRects !== null; receiptLanePlacementDirty = true; },
       placeCaptionInSafeSlot, ${owners.some(s => s.startsWith('function setReceiptPlacementMode')) ? 'setReceiptPlacementMode,' : ''}
