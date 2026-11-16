@@ -1024,7 +1024,7 @@ ${A} .orr-armory-wallet .orr-wallet-caption { margin:0; font:600 12px/1.3 var(--
 ${A} .orr-armory-wallet strong { display:flex; align-items:baseline; gap:6px; font:720 clamp(26px,2.4vw,40px)/1 var(--dp-face-display,'Archivo'),sans-serif; font-variation-settings:normal; letter-spacing:-.04em; color:var(--dp-ink); }
 ${A} .orr-armory-wallet .orr-wallet-amount { display:inline; margin:0; font:inherit; color:inherit !important; letter-spacing:inherit; font-variant-numeric:tabular-nums lining-nums; }
 ${A} .orr-armory-wallet small { font:650 14px/1 var(--dp-face-read),sans-serif; color:var(--dp-hand); letter-spacing:0; text-transform:uppercase; }
-${A} .sf-cru-stage { overflow:auto !important; overscroll-behavior:contain; padding:1px 4px 8px 1px !important; }
+${A} .sf-cru-stage { overflow:auto !important; overscroll-behavior:contain; padding:1px 4px 34px 1px !important; -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 30px),transparent) !important; mask-image:linear-gradient(to bottom,#000 calc(100% - 30px),transparent) !important; }
 ${A} .orr-armory-section { font:700 20px/1.2 var(--dp-face-display),sans-serif; letter-spacing:-.02em; color:var(--dp-ink); margin:0 0 14px; text-transform:none; flex:none; }
 ${A} .sf-cru-circuit { padding:12px 16px; margin:0 0 14px; border:1px solid var(--armory-rule); background:var(--armory-panel); }
 ${A} .sf-cru-dealt { gap:clamp(8px,1.1vw,18px) !important; margin:0 !important; }
