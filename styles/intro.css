@@ -481,7 +481,8 @@ html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !imp
 #boot-overlay.boot-overlay--orrery .boot-meta,
 #boot-overlay.boot-overlay--orrery .boot-progress-pct,
 #boot-overlay.boot-overlay--orrery .boot-detail:not([data-loading-destination]),
-#boot-overlay.boot-overlay--orrery .boot-ring { display:none !important; }
+#boot-overlay.boot-overlay--orrery .boot-ring,
+#boot-overlay.boot-overlay--orrery .boot-instrument { display:none !important; }
 #boot-overlay.boot-overlay--orrery .boot-progress-row { order:1; margin:18px 0 0; justify-content:flex-start; }
 #boot-overlay.boot-overlay--orrery .boot-progress { display:block !important; width:min(64vw, 380px); height:2px; background:rgb(232 226 212 / .16); }
 #boot-overlay.boot-overlay--orrery .boot-progress > span { display:block; height:100%; background:rgb(232 226 212 / .9); }
