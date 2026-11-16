@@ -521,7 +521,9 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     const rawHint = beamHint(entity, player);
     // Player-facing words only: an internal state ("mine unavailable") is not a verb. A beam
     // the target cannot take just says what the press does; the asset-loading state never prints.
-    const hint = { ...rawHint, text: rawHint.text.replace(/ · [A-Za-z ]+ unavailable$/i, '') };
+    // Your own hull is never a thing to latch: the card names it, the verb stays off it.
+    const hint = relation === 'You' ? { sling: false, beam: false, text: '' }
+      : { ...rawHint, text: rawHint.text.replace(/ · [A-Za-z ]+ unavailable$/i, '') };
     // In a Swarm round the glass keeps only the name and the verb on the object (rule 2); the
     // class / relation / range read-out is an inspector's line, not a fight HUD line.
     const fight = isSwarmGlass(state);

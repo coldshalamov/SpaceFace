@@ -1538,9 +1538,9 @@ export const masslineHud = {
     // F4: a latchable body with mass answers the swing question on the same caption line.
     const playerMass = finite(player && player.physicsBody && player.physicsBody.mass) || finite(player && player.mass);
     const massRead = massPreviewRead(target, playerMass);
-    // OPENING-1b: no TOO HEAVY on anything in the opening minutes - the first latch is the
-    // light rock, and a heavy-body verdict would be the wrong first lesson.
-    const heavyHushed = openingQuiet(state) && !!(massRead && massRead.share >= 0.8);
+    // OPENING-1b: no TOO HEAVY until the first throw has landed - the first latch is the light rock. After it,
+    // a heavy body says TOO HEAVY before the latch rather than snapping the line after.
+    const heavyHushed = openingQuiet(state) && !(state.onboarding && state.onboarding.firstThrowSeen === true) && !!(massRead && massRead.share >= 0.8);
     const massText = !seedPreview && ready && !heavyHushed
       ? (quietTelemetry
         ? (massRead && massRead.share >= 0.8 ? 'TOO HEAVY' : verbChip(state, 'tether', 'LATCH'))

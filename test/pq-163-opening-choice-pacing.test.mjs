@@ -496,3 +496,20 @@ test('the choice tableau uses the live law cast, not a stub witness', () => {
   assert.equal(cutter.data.ai.lawful, true, 'the witness is lawful');
   assert.equal(cutter.data.lawWitness, true, 'the witness is marked for law intake');
 });
+
+test('OPENING-1b: the first real throw of the loose rock completes the swing lesson even with no reel or wreck contact', () => {
+  const h = boot();
+  h.bus.emit('game:started', {});
+  tick(h);
+  const derelictId = h.sys._derelictId;
+  h.state.player.targetId = derelictId;
+  h.bus.emit('tether:latched', { targetId: derelictId });
+  h.bus.emit('tether:released', { targetId: derelictId });
+  tick(h);
+  settle(h, 5);
+  assert.equal(h.state.onboarding.rescue.current, 'swing', 'the swing is the current lesson');
+  const rock = rescueActor(h, 'rock');
+  h.bus.emit('massline:throw', { payloadId: rock.id, releaseId: 'first' });
+  assert.equal(h.state.onboarding.rescue.beats.swing.state, 'done', 'the throw cleared beat 4');
+  assert.equal(h.state.onboarding.firstThrowSeen, true);
+});

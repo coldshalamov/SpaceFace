@@ -685,7 +685,7 @@ export const onboarding = {
     bus.on('mission:completed', (p) => this._onMissionCompleted(p || {}));
 
     // ── First-hour beat events (spec2/03) ─────────────────────────────────────────────────
-    bus.on('massline:throw', () => { const o = this.state && this.state.onboarding; if (o) o.firstThrowSeen = true; });
+    bus.on('massline:throw', (p) => { const o = this.state && this.state.onboarding; if (o) o.firstThrowSeen = true; this._onFirstThrow(p || {}); });
     bus.on('tether:latched', (p) => this._onBeatEvent('tether:latched', p || {}));
     // Production winch path (attachments.reel) emits tether:reel {before,after}. Gate the B1 cut
     // follow-up on rest length <= TETHER_REEL_MAX_WU so loose pay-out/early ticks do not teach cut.
@@ -3689,6 +3689,18 @@ export const onboarding = {
       kind: 'rescue-shove',
       atS: this.state.simTime || 0,
     });
+  },
+
+  // OPENING-1b: the first real throw of the loose rock completes the swing lesson. The old gate waited for
+  // latch -> reel -> cut -> a rock-on-wreck contact, so a buffered tap-throw that never reeled (or sailed past
+  // the wreck) left beat 4 open for good. The throw is the lesson; the wreck scrap still drops.
+  _onFirstThrow(p) {
+    const rescue = this._rescue && this._rescue();
+    if (!rescue || this._rescueCurrentKey() !== 'swing') return;
+    const rockId = rescue.ids && rescue.ids.rock;
+    if (rockId == null || (p.payloadId != null && p.payloadId !== rockId)) return;
+    this._dropRescueScrap(this._rescueActor('derelict'));
+    this._rescueDone('swing');
   },
 
   _rescueDone(key) {
