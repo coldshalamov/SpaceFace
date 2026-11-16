@@ -267,11 +267,12 @@ test('seed 4242: the round readout counts the live cohort and the wave closes on
     assert.ok(Number.isInteger(progress0.remaining) && Number.isInteger(progress0.total),
       `cohort progress carries remaining/total, got ${JSON.stringify(progress0)}`);
     assert.equal(progress0.durationTicks, undefined, 'no clock rides the cohort payload');
-    assert.equal(t0.word, 'HOSTILES');
+    // 57686d45ca wired typed wave plans: the full-ship cohort reads HOSTILE SHIPS, not HOSTILES.
+    assert.equal(t0.word, 'HOSTILE SHIPS');
     const cohort = progress0.total;
     assert.equal(t0.fig, `${cohort} / ${cohort}`, `full cohort on the readout, got ${t0.fig}`);
     assert.equal(t0.fillPct, 0);
-    assert.equal(t0.aria, 'Hostiles remaining');
+    assert.equal(t0.aria, 'hostile ships remaining');
     assert.equal(t0.now, String(cohort));
     assert.equal(t0.max, String(cohort));
 
@@ -284,7 +285,7 @@ test('seed 4242: the round readout counts the live cohort and the wave closes on
     assert.equal(t1.fig, `${cohort - killed} / ${cohort}`, `kills resolved the count: ${t1.fig}`);
     assert.equal(t1.now, String(cohort - killed));
     assert.ok(t1.fillPct > 0, 'the bar is resolved-share, not elapsed time');
-    assert.equal(t1.aria, 'Hostiles remaining');
+    assert.equal(t1.aria, 'hostile ships remaining');
     assert.ok(progress1.remaining < progress0.remaining, 'the published count fell with the kills');
 
     // The wave closes when the cohort resolves — no clock carries it over the line.
@@ -317,7 +318,7 @@ test('seed 4242: the readout IS the cohort — kills move it because kills are t
     const cohort = progress0.total;
     assert.equal(beforeKills.fig, `${cohort} / ${cohort}`);
     assert.equal(beforeKills.fillPct, 0);
-    assert.equal(beforeKills.word, 'HOSTILES');
+    assert.equal(beforeKills.word, 'HOSTILE SHIPS');
     assert.ok(QUOTA_FIG.test(beforeKills.fig),
       `the cohort readout is honest x / total, got ${beforeKills.fig}`);
 
@@ -333,8 +334,8 @@ test('seed 4242: the readout IS the cohort — kills move it because kills are t
       'the figure answers the resolved count, not a clock');
     assert.notEqual(afterKills.fig, beforeKills.fig, 'kills move the readout — they ARE the wave');
     assert.ok(afterKills.fillPct > beforeKills.fillPct, 'the bar is resolved share');
-    assert.equal(afterKills.word, 'HOSTILES');
-    assert.equal(afterKills.aria, 'Hostiles remaining');
+    assert.equal(afterKills.word, 'HOSTILE SHIPS');
+    assert.equal(afterKills.aria, 'hostile ships remaining');
     assert.equal(afterKills.now, String(expectedRemaining));
   } finally {
     survivalHud.destroy();
