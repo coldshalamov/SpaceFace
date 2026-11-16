@@ -440,4 +440,31 @@ for (const seed of [4242, 8008]) {
     assert.equal(none.stationConditions, undefined);
     assert.equal(none.stationOutages, undefined);
   });
+
+  // SWARM-LEAK-01 — "Dock control, Helios Station: The yard is flush — repair and fuel are running
+  // cheap today." reached a live Swarm round's receipt lane. The berth's condition record and its
+  // receipts still settle (the market really reprices); only the Adventure prose line is withheld,
+  // because a sealed arena has no campaign berth the player can act on.
+  test(`a live Swarm round carries no berth prose line; Adventure still says it (seed ${seed})`, () => {
+    const prose = (emitted) => emitted.filter((e) => e.event === 'toast'
+      && /^(Dock control|Yardmaster), /.test(String(e.payload && e.payload.text || '')));
+    const ctx = makeCtx(seed);
+    const { state, bus, emitted } = ctx;
+    // Every condition that speaks in the berth's own voice: boom, strike, slam and grudge.
+    bus.emit('economy:oreFlood', { sectorId: 'sector_ceres_belt', pricePressure: -0.2, yieldU: 40, commodityId: 'cmdty_ore_iron' });
+    killCrew(ctx, { role: 'miner', data: { homeStationId: BELT } });
+    killCrew(ctx, { role: 'miner', data: { homeStationId: BELT } });
+    killCrew(ctx, { role: 'miner', data: { homeStationId: BELT } });
+    for (let i = 0; i < 3; i++) { state.simTime += DOCK_SLAM_LAW.relatchS + 1; bus.emit('combat:collisionConsequence', slam()); }
+    bus.emit('dock:docked', { stationId: CERES });
+    assert.ok(prose(emitted).length >= 3, 'Adventure hears the dock, the strike and the grudge');
+
+    const swim = makeCtx(seed);
+    swim.state.run = { kind: 'survival', phase: 'active', ruleset: 'swarm' };
+    swim.bus.emit('economy:oreFlood', { sectorId: 'sector_ceres_belt', pricePressure: -0.2, yieldU: 40, commodityId: 'cmdty_ore_iron' });
+    assert.deepEqual(prose(swim.emitted), [], 'a Swarm round hears none of the berth lines');
+    assert.equal(receiptsOf(swim.emitted, 'station:boom').length, 1, 'the boom itself still settles and posts its receipt');
+    assert.match(stationConditionLine(swim.state, CERES), /The yard is flush/,
+      'the condition is real; only the unsolicited line is withheld');
+  });
 }

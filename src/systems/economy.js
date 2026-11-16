@@ -52,6 +52,7 @@ import {
 } from '../economy/stationConditions.js';
 import { ECON_CONTRACT_THRESHOLDS } from '../data/economyContractTemplates.js';
 import { effectiveDangerTierFor } from './sectorSim.js';
+import { isSwarmGlass } from '../ui/swarmGlass.js';
 import {
   FIRST_UPGRADE,
   FIRST_UPGRADE_MINUTES,
@@ -4944,10 +4945,15 @@ export const economy = {
     const stationName = stationDisplayNameFor(state, stationId);
     const voice = lawful ? 'Dock control' : 'Yardmaster';
     const outageMin = Math.round(DOCK_SLAM_LAW.repairOutageS / 60);
-    this.bus.emit('toast', {
-      text: `${voice}, ${stationName}: a ${Math.round(mass)}-ton hull just went through our ring — ${fineCr} cr filed on your note, repair bay down ${outageMin} min`,
-      kind: 'warn', ttl: 5,
-    });
+    // A live Swarm round cannot dock at a campaign berth, and the arena's own crash juice speaks
+    // for its hits; the dock's prose line is Adventure (SWARM-LEAK-01). The fine, the outage and
+    // the receipt still land — only the line the player cannot act on is withheld.
+    if (!isSwarmGlass(state)) {
+      this.bus.emit('toast', {
+        text: `${voice}, ${stationName}: a ${Math.round(mass)}-ton hull just went through our ring — ${fineCr} cr filed on your note, repair bay down ${outageMin} min`,
+        kind: 'warn', ttl: 5,
+      });
+    }
     const receipt = {
       schemaVersion: 1,
       stationId,
@@ -5019,10 +5025,12 @@ export const economy = {
     const debt = Math.max(0, Math.round(Number(state.player && state.player.debt) || 0));
     const floor = Math.max(0, Math.round(Number(g.untilPaidCr) || 0));
     const owed = Math.max(0, debt - floor);
-    this.bus.emit('toast', {
-      text: `${voice}, ${name}: ${g.slams} hulls through our ring in a day — pay the ${owed} cr on your note before you come through our ring again`,
-      kind: 'error', ttl: 6,
-    });
+    if (!isSwarmGlass(state)) {
+      this.bus.emit('toast', {
+        text: `${voice}, ${name}: ${g.slams} hulls through our ring in a day — pay the ${owed} cr on your note before you come through our ring again`,
+        kind: 'error', ttl: 6,
+      });
+    }
     this.bus.emit('station:grudge', {
       schemaVersion: 1,
       stationId,
@@ -5141,10 +5149,14 @@ export const economy = {
     if (wasOn) return null; // an extension, not a new strike
     delete rec.killLog;
     const { voice, name, lawful } = stationVoiceFor(state, stationId);
-    this.bus.emit('toast', {
-      text: `${voice}, ${name}: ${CONDITION_LINES.strike}`,
-      kind: 'warn', ttl: 5,
-    });
+    // A live Swarm round is a sealed arena: its berths keep no campaign memory the player can act
+    // on, so the berth's own prose line is not a notice the arena owes (SWARM-LEAK-01).
+    if (!isSwarmGlass(state)) {
+      this.bus.emit('toast', {
+        text: `${voice}, ${name}: ${CONDITION_LINES.strike}`,
+        kind: 'warn', ttl: 5,
+      });
+    }
     const receipt = {
       schemaVersion: 1, stationId, sectorId: info.sectorId || null, factionId: info.factionId || null, lawful,
       actorId: p.killerId, victimRole: role, kills: log.length, strikeUntil: rec.strikeUntil,
@@ -5188,10 +5200,14 @@ export const economy = {
       };
       receipts.push(receipt);
       this.bus.emit('station:boom', receipt);
-      this.bus.emit('toast', {
-        text: `${voice}, ${name}: ${CONDITION_LINES.boom}`,
-        kind: 'info', ttl: 5,
-      });
+      // The boom is real (the market reprices); its announcement is a berth's prose line, which a
+      // live Swarm round does not carry over the fight (SWARM-LEAK-01).
+      if (!isSwarmGlass(state)) {
+        this.bus.emit('toast', {
+          text: `${voice}, ${name}: ${CONDITION_LINES.boom}`,
+          kind: 'info', ttl: 5,
+        });
+      }
     }
     return receipts;
   },
@@ -5199,10 +5215,16 @@ export const economy = {
   /**
    * One dock-control line on dock (same toast path as the slam), plus the derived blockade's
    * receipt the first time a berth is docked while a war front holds its sector.
+   *
+   * A live Swarm round is a sealed arena: its berths are not campaign berths, the run keeps its
+   * own wallet and fiction, and "Dock control, Helios Station: the yard is flush" over the fight
+   * is Adventure prose the player cannot act on (SWARM-LEAK-01). Refuse at the owner — nothing
+   * is emitted — rather than filtering the toast later. Adventure is untouched.
    */
   _announceStationConditions(stationId) {
     const state = this.state;
     if (!stationId) return;
+    if (isSwarmGlass(state)) return;
     const live = stationConditionsFor(state, stationId);
     if (!live) { if (this._blockadeAnnounced) delete this._blockadeAnnounced[stationId]; return; }
     if (live.blockade) {
