@@ -232,16 +232,43 @@ export function canonicalizeSurfaceProgramFamilyKey(previousKey, extraToken) {
  *
  * This walk runs on every presentation bind, authored-upgrade settle and warm re-stamp, so a
  * subtree that is already canonical still paid the full split/regex canonicalize plus an
- * `onBeforeCompile.toString()` per material, four family passes each once packed-ORM, breakup and
- * illustration tokens are present — ~1k passes and 1.4–2.4 ms a frame in Adventure (INV-13).
+ * `onBeforeCompile.toString()` per material — four family passes each once packed-ORM, breakup and
+ * illustration tokens are present (2.1–2.4 ms a frame over 700 live materials in Adventure,
+ * INV-13).
  *
- * The canonical key is a pure function of exactly four inputs: the string the material's key
+ * The canonical key is a pure function of the inputs this walk reads: the string the material's key
  * function returns, that function's identity, the compile hook's identity (only its source text is
- * read, and a function object's source text never changes), and the three family flags on
- * userData. Memoize that input set per material. Weak keys die with the material, and a memo only
- * ever holds a key this function already installed, so a hit can only answer "unchanged".
+ * read, and a function object's source text never changes), and the three family flags on userData.
+ * Memoize that set per material. A WeakMap key dies with the material, and a memo only ever
+ * describes a state this function already settled, so a hit can only answer "unchanged".
+ *
+ * `constant` marks a memo whose key function is the closure this function installed: that closure
+ * ignores its receiver and returns the memoized string, so a matching identity settles the key
+ * without calling it. Every other memo re-reads the string (the material's own key function may
+ * answer differently over time), which is the only case that pays a call.
  */
 const CANONICAL_SURFACE_PROGRAM_KEYS = new WeakMap();
+
+function surfaceFamilyFlags(material) {
+  const data = material.userData;
+  return {
+    packedOrm: !!data && data.spacefacePackedOrmSingleSample === true,
+    breakup: !!data && data.spacefaceRoughnessBreakup === true,
+    // receiptFamilyTokens stringifies the version, so compare what it would push.
+    illustrated: data && data.spacefaceIllustratedSurface ? String(data.spacefaceIllustratedSurface) : '',
+  };
+}
+
+function memoDescribes(memo, material, keyFunction, compileHook) {
+  if (memo.compileHook !== compileHook) return false;
+  const flags = surfaceFamilyFlags(material);
+  if (memo.packedOrm !== flags.packedOrm || memo.breakup !== flags.breakup
+      || memo.illustrated !== flags.illustrated) return false;
+  if (memo.keyFunction !== keyFunction) return false;
+  // The installed closure is a constant: it answers `memo.current` for any receiver.
+  if (memo.constant === true) return true;
+  return memo.current === String(keyFunction.call(material) || '');
+}
 
 /**
  * Rewrite leftover unique keys on Standard/Physical materials after compose clones.
@@ -252,50 +279,38 @@ export function canonicalizeInstalledSurfaceProgramKey(material) {
   if (!material || (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial)) return false;
   const keyFunction = typeof material.customProgramCacheKey === 'function' ? material.customProgramCacheKey : null;
   const compileHook = material.onBeforeCompile;
-  const data = material.userData;
-  const packedOrmFlag = !!data && data.spacefacePackedOrmSingleSample === true;
-  const breakupFlag = !!data && data.spacefaceRoughnessBreakup === true;
-  // receiptFamilyTokens stringifies the version, so compare the token it would push: a version
-  // that is not a string still has to match by value, not by object identity.
-  const illustratedFlag = data && data.spacefaceIllustratedSurface
-    ? String(data.spacefaceIllustratedSurface)
-    : '';
-  const current = keyFunction ? String(keyFunction.call(material) || '') : '';
   const memo = CANONICAL_SURFACE_PROGRAM_KEYS.get(material);
-  if (memo && memo.keyFunction === keyFunction && memo.compileHook === compileHook
-      && memo.current === current && memo.packedOrmFlag === packedOrmFlag
-      && memo.breakupFlag === breakupFlag && memo.illustratedFlag === illustratedFlag) {
-    return false;
-  }
+  if (memo && memoDescribes(memo, material, keyFunction, compileHook)) return false;
+  const current = keyFunction ? String(keyFunction.call(material) || '') : '';
   const compileSource = typeof compileHook === 'function'
     ? String(compileHook.toString() || '')
     : '';
   const source = current && current === compileSource ? '' : current;
   let next = canonicalizeSurfaceProgramFamilyKey(source);
-  for (const token of receiptFamilyTokens(material)) {
+  const tokens = receiptFamilyTokens(material);
+  for (const token of tokens) {
     next = canonicalizeSurfaceProgramFamilyKey(next, token);
   }
-  const changed = !keyFunction || next !== current;
-  if (!changed) {
+  const flags = surfaceFamilyFlags(material);
+  if (keyFunction && next === current) {
     // The material already answers its own canonical key — nothing to install, but the settled
-    // state is still worth remembering so the next walk skips the derivation.
+    // state is worth remembering so the next walk skips the derivation.
     CANONICAL_SURFACE_PROGRAM_KEYS.set(material, {
-      keyFunction, compileHook, current, packedOrmFlag, breakupFlag, illustratedFlag,
+      keyFunction, compileHook, current, constant: false, ...flags,
     });
     return false;
   }
   material.customProgramCacheKey = () => next;
-  // Record the settled state — the canonical key the closure now returns plus every input that
-  // decides it. A later call with the same key function, compile hook, returned string and family
-  // flags answers false without re-deriving; any changed input (a re-wrapped hook, a new key
-  // function, a new family flag, a different returned string) misses and canonicalizes afresh.
+  // Record the settled state: the canonical key the installed closure returns plus every input
+  // that decides it. A later call with the same key function, compile hook, returned string and
+  // family flags answers false without re-deriving; any changed input — a re-wrapped hook, a new
+  // key function, a new family flag, a different returned string — misses and canonicalizes anew.
   CANONICAL_SURFACE_PROGRAM_KEYS.set(material, {
     keyFunction: material.customProgramCacheKey,
     compileHook,
     current: next,
-    packedOrmFlag,
-    breakupFlag,
-    illustratedFlag,
+    constant: true,
+    ...flags,
   });
   return true;
 }
@@ -308,9 +323,15 @@ export function canonicalizeObjectSurfaceProgramKeys(root) {
   };
   if (typeof root.traverse === 'function') {
     root.traverse((object) => {
-      const list = Array.isArray(object.material) ? object.material
-        : object.material ? [object.material] : [];
-      for (const material of list) visit(material);
+      // One visit per drawable slot, without minting a wrapper array per node — this walk runs on
+      // every bind and settle, and a scene is thousands of nodes.
+      const material = object.material;
+      if (!material) return;
+      if (Array.isArray(material)) {
+        for (let i = 0; i < material.length; i += 1) visit(material[i]);
+        return;
+      }
+      visit(material);
     });
     return changed;
   }
@@ -324,11 +345,15 @@ export function* canonicalizeObjectSurfaceProgramKeysSteps(root) {
   if (!root) return 0;
   const visitObject = (object) => {
     let changed = 0;
-    const list = Array.isArray(object.material) ? object.material
-      : object.material ? [object.material] : [];
-    for (const material of list) {
-      if (canonicalizeInstalledSurfaceProgramKey(material)) changed += 1;
+    const material = object.material;
+    if (!material) return 0;
+    if (Array.isArray(material)) {
+      for (let i = 0; i < material.length; i += 1) {
+        if (canonicalizeInstalledSurfaceProgramKey(material[i])) changed += 1;
+      }
+      return changed;
     }
+    if (canonicalizeInstalledSurfaceProgramKey(material)) changed += 1;
     return changed;
   };
   if (typeof root.traverse !== 'function') return visitObject(root);
