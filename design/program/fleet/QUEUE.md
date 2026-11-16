@@ -184,7 +184,8 @@ reviews every commit; lane agents do not take them.
 | PL-03 scavenger half | Real salvor hull dispatched from the nearest yard through the existing salvor/job seam; turns back if the wreck is emptied | BUILT 7c744edb (lead-review) |
 | PL-08-applause | Station lamps flash at a slingshot kill | BUILT 1ff73ce9 |
 | RECON-NEXT | Draft code facts for the next `NEEDS-PACKET` row (none open now; use for any `WRITE` row Lane 1 asks for) | READY (repeat) |
-| AUDIT-14b-frame-retakes | Six AUDIT-14 captures re-framed to the lead's INDEX verdicts (capture-only, no game code) | TAKEN devin3 (lead-run) |
+| AUDIT-14b-frame-retakes | Six AUDIT-14 captures re-framed to the lead's INDEX verdicts (capture-only, no game code) | DONE — 15/17 lead-judged PASS (INDEX current); yard + pods UNGRADEABLE, finding below |
+| QUARANTINE-GANTRY-VISUAL | The furnace intake capstan gantry entity (`place_maintenance_gantry`) resolves to **no mesh** — on-screen arch is the intake beacon's Group, so the quarantine yard has no readable close-up look; lots never read as glowing. AUDIT-14b run 3 evidence: `.devshots/fleet/runs/AUDIT-14b-frame-retakes.devin3.2026-11-16T08-*/run.log` + its `_meshes` probe | NEEDS-PACKET (Lane 2/3: mount a real gantry visual or confirm by-design) |
 
 ## Lane 4 — mechanical, cannot go wrong
 
