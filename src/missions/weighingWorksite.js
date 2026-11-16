@@ -79,25 +79,61 @@ function scene(m) {
   }
   return r;
 }
+const validCast = cast => Array.isArray(cast) && cast.length === 3
+  && new Set(cast.map(row => row && row.slot)).size === 3
+  && cast.every(row => Number.isInteger(row && row.slot) && row.slot >= 0 && row.slot < 3
+    && row.entityId != null && typeof row.worldRecordId === 'string' && !!row.worldRecordId);
+// Where does each retained cast slot stand? A live member must still authenticate
+// against the retained identity; a canonically settled kill is that slot's own
+// physical break. Anything else — despawned, replaced, never the mission's body —
+// cannot be told from a quiet loss and fails closed.
+function castDisposition(state, m, members, cast) {
+  if (!validCast(cast)) return null;
+  const dead = new Set(m.completedTargetSlots || []);
+  let live = 0;
+  for (const row of cast) {
+    const e = members.find(member => targetSlot(m, member) === row.slot);
+    if (e) {
+      if (!isWeighingTarget(state, m, e, row.slot)
+        || e.data.worldRecordId !== row.worldRecordId) return null;
+      live++;
+    } else if (!dead.has(row.slot)) return null;
+  }
+  return { live, dead: 3 - live };
+}
 function armedMapping(state, m, r, members, receipt) {
   const cast = r.armedCast;
-  if (!Array.isArray(cast) || cast.length !== 3 || !Number.isFinite(r.armedAt)
-    || !Array.isArray(receipt?.memberIds) || receipt.memberIds.length !== 3
-    || new Set(receipt.memberIds).size !== 3 || !Number.isFinite(receipt.t)
-    || receipt.t < r.armedAt || !receipt.memberIds.includes(receipt.breakerId)) return false;
+  if (!validCast(cast) || !Number.isFinite(r.armedAt)
+    || !Array.isArray(receipt?.memberIds)
+    || new Set(receipt.memberIds).size !== receipt.memberIds.length
+    || !Number.isFinite(receipt.t) || receipt.t < r.armedAt
+    || !receipt.memberIds.includes(receipt.breakerId)) return false;
+  const dead = new Set(m.completedTargetSlots || []);
   const mappedIds = new Set(), originalIds = new Set();
   for (let slot = 0; slot < 3; slot++) {
     const saved = cast.find(row => row?.slot === slot);
     const e = members.find(row => targetSlot(m, row) === slot);
-    if (!saved || !e || !isWeighingTarget(state, m, e, slot)
-      || saved.worldRecordId !== e.data.worldRecordId || saved.entityId == null
-      || originalIds.has(saved.entityId)) return false;
+    if (!saved || saved.entityId == null || originalIds.has(saved.entityId)) return false;
     originalIds.add(saved.entityId);
+    if (!e) {
+      // A canonically settled kill is this slot's own break: a dead hull can never be
+      // flagged or listed live, so the casualty ledger vouches it. The receipt may
+      // still name its original id when the drop preceded the death.
+      const named = receipt.memberIds.filter(id => id === saved.entityId);
+      if (named.length > 1 || mappedIds.has(named[0])) return false;
+      if (named.length === 1) mappedIds.add(named[0]);
+      else if (!dead.has(slot)) return false;
+      continue;
+    }
+    if (!isWeighingTarget(state, m, e, slot)
+      || saved.worldRecordId !== e.data.worldRecordId) return false;
     const matches = receipt.memberIds.filter(id => id === saved.entityId || id === e.id);
     if (matches.length !== 1 || mappedIds.has(matches[0])) return false;
     mappedIds.add(matches[0]);
   }
-  return mappedIds.size === 3;
+  // Every receipt id must land on a cast slot — a foreign or extra id voids it —
+  // and a lone id is never a pack break.
+  return mappedIds.size === receipt.memberIds.length && mappedIds.size >= 2;
 }
 function canonicalHull(e) {
   return e.factionId === 'faction_helix'
@@ -192,6 +228,16 @@ const voidQuiet = (owner, m, r, members, state) => {
   say(owner, m, 'broken', WEIGHING_BROKEN);
   return true;
 };
+// One arming boundary for every kind of physical break: the retained original cast
+// is what the pending reveal and the owner receipt must map, whatever broke it.
+function armReveal(m, r, cast, liveMembers, state) {
+  r.phase = 'reveal_pending';
+  r.armedAt = Number.isFinite(state.simTime) ? state.simTime : 0;
+  r.armedCast = cast.map(row => ({ slot: row.slot, entityId: row.entityId, worldRecordId: row.worldRecordId }));
+  for (const e of liveMembers) { e.data.helixFalseFlag = true; e.data.helixPack = packId(m);
+    e.data.helixSlot = { ...WEIGHING_WORKSITE.slots[targetSlot(m, e)] }; }
+  return true;
+}
 export function observeWeighingScene(owner, m, state = owner.state) {
   if (!isWeighingOperation(m) || m.status !== 'active' || state.mode !== 'flight' || state.ui?.docked
     || state.world?.currentSectorId !== m.destSectorId) return false;
@@ -219,7 +265,8 @@ export function observeWeighingScene(owner, m, state = owner.state) {
   if (r.phase === 'reveal_pending') {
     if (quarantineDuplicates(state, m, r)) return false;
     const receipt = state.helix?.droppedPacks?.[packId(m)];
-    if (all && armedMapping(state, m, r, members, receipt) && members.every(canonicalHull)) {
+    const disp = castDisposition(state, m, members, r.armedCast);
+    if (disp && armedMapping(state, m, r, members, receipt) && members.every(canonicalHull)) {
       r.evidence = { kind: 'unmasked', packId: packId(m), at: receipt.t,
         slots: [0, 1, 2], maskFactionId: 'faction_reach' };
       r.phase = 'combat';
@@ -227,18 +274,32 @@ export function observeWeighingScene(owner, m, state = owner.state) {
       for (const e of members) { e.data.helixFalseFlag = false; release(state, e); }
       return true;
     }
-    // The break already fired; a post-break dent cannot un-fire it. Only losing the
-    // cast before the canonical receipt lands voids the reveal.
-    if (!all || settled(m)) return voidQuiet(owner, m, r, members, state);
+    // The break already fired; a post-break dent or a settled kill cannot un-fire it.
+    // Only losing a cast member without a canonical kill — missing, replaced — or
+    // shrinking past the two flagged hulls a receipt needs voids the reveal.
+    if (!disp || disp.live < 2) return voidQuiet(owner, m, r, members, state);
     return false;
   }
   // A partial initial budget is harmless; losing a previously assembled slot, a
-  // canonical cleared slot, or taking damage ends the quiet tell without exposure.
+  // canonical cleared slot, or taking damage ends the quiet tell without exposure —
+  // except a confirmed kill of an assembled original, which is itself the break and
+  // arms the same reveal on the retained original cast identities.
   if (!all) {
+    if (r.assembled) {
+      const disp = castDisposition(state, m, members, r.assembledCast);
+      if (disp && disp.dead >= 1 && disp.live >= 2) {
+        if (quarantineDuplicates(state, m, r)) return false;
+        return armReveal(m, r, r.assembledCast, members, state);
+      }
+    }
     if (r.assembled || settled(m) || damaged()) return voidQuiet(owner, m, r, members, state);
     return false;
   }
   r.assembled = true;
+  // Retain the assembled originals' durable identities: a later canonical kill arms
+  // the reveal even after settlement removes the dead hull from the target list.
+  r.assembledCast = members.map(e => ({ slot: targetSlot(m, e),
+    entityId: e.id, worldRecordId: e.data.worldRecordId })).sort((a, b) => a.slot - b.slot);
   // Displacement is the break — a member shoved, slung or knocked off its slot by
   // more than the bound fires the unmasking attempt before any damage ledger counts.
   const cx = members.reduce((v, e) => v + e.pos.x, 0) / 3;
@@ -249,13 +310,7 @@ export function observeWeighingScene(owner, m, state = owner.state) {
   });
   if (broken) {
     if (quarantineDuplicates(state, m, r)) return false;
-    r.phase = 'reveal_pending';
-    r.armedAt = Number.isFinite(state.simTime) ? state.simTime : 0;
-    r.armedCast = members.map(e => ({ slot: targetSlot(m, e),
-      entityId: e.id, worldRecordId: e.data.worldRecordId })).sort((a, b) => a.slot - b.slot);
-    for (const e of members) { e.data.helixFalseFlag = true; e.data.helixPack = packId(m);
-      e.data.helixSlot = { ...WEIGHING_WORKSITE.slots[targetSlot(m, e)] }; }
-    return true;
+    return armReveal(m, r, r.assembledCast, members, state);
   }
   if (damaged() || settled(m)) return voidQuiet(owner, m, r, members, state);
   return false;

@@ -104,16 +104,54 @@ test('partial budget cannot falsely expose; intact cast arms only on displacemen
   h.add(2); observeWeighingScene(h.owner, h.m); h.helixTick();
   assert.equal(h.m.params.weighingScene.phase, 'holding');
 });
-test('damage or lost target releases survivors without registry claim or kill credit', () => {
-  for (const damage of [true, false]) {
-    const h = harness(); observeWeighingScene(h.owner, h.m);
-    if (damage) h.ships[0].shield -= 1;
-    else { h.ships[0].alive = false; h.m.completedTargetSlots = [0]; h.m.targetEntityIds.shift(); }
-    observeWeighingScene(h.owner, h.m); h.helixTick();
-    assert.equal(weighingEvidence(h.m), null); assert.equal(h.m.params.weighingScene.phase, 'combat');
-    assert.equal(h.ships[1].data.ai.passive, false); assert.equal(h.m.objectiveProgress, 0);
-    h.m.status = 'completed'; assert.match(weighingReadout(h.m), /without verified/);
-  }
+test('damage to a holding member releases survivors without registry claim or kill credit', () => {
+  const h = harness(); observeWeighingScene(h.owner, h.m);
+  h.ships[0].shield -= 1;
+  observeWeighingScene(h.owner, h.m); h.helixTick();
+  assert.equal(weighingEvidence(h.m), null); assert.equal(h.m.params.weighingScene.phase, 'combat');
+  assert.equal(h.ships[1].data.ai.passive, false); assert.equal(h.m.objectiveProgress, 0);
+  h.m.status = 'completed'; assert.match(weighingReadout(h.m), /without verified/);
+});
+test('killing an assembled original is the break and arms the canonical reveal', () => {
+  const h = harness(); observeWeighingScene(h.owner, h.m);
+  const deadId = h.ships[0].id;
+  h.ships[0].alive = false; h.m.completedTargetSlots = [0]; h.m.targetEntityIds.shift();
+  observeWeighingScene(h.owner, h.m);
+  assert.equal(h.m.params.weighingScene.phase, 'reveal_pending', 'a settled kill is a valid break');
+  assert.equal(h.m.params.weighingScene.armedCast.length, 3);
+  assert.ok(h.m.params.weighingScene.armedCast.some(row => row.entityId === deadId),
+    'the retained original cast still names the dead hull');
+  assert.equal(h.events.filter(e => e.data.id?.includes('broken')).length, 0, 'voidQuiet not taken');
+  assert.deepEqual(h.ships.slice(1).map(e => e.data.helixFalseFlag), [true, true]);
+  assert.equal(weighingEvidence(h.m), null, 'no receipt yet');
+  observeWeighingScene(h.owner, h.m);
+  assert.equal(h.m.params.weighingScene.phase, 'reveal_pending', 'the settled casualty cannot void it');
+  h.ships[1].pos.x += 150; h.helixTick(); observeWeighingScene(h.owner, h.m);
+  assert.equal(weighingEvidence(h.m)?.kind, 'unmasked');
+  assert.equal(h.ships[1].factionId, 'faction_helix');
+  assert.equal(h.ships[1].data.ai.roe, 'weapons_free');
+});
+test('kill before assembly or a member gone without a canonical kill stays closed', () => {
+  const early = harness(2); early.ships[0].alive = false;
+  early.m.completedTargetSlots = [0]; early.m.targetEntityIds.shift();
+  observeWeighingScene(early.owner, early.m); early.helixTick();
+  assert.equal(early.m.params.weighingScene.phase, 'combat', 'never-assembled fails closed');
+  const gone = harness(); observeWeighingScene(gone.owner, gone.m);
+  gone.state.entities.delete(gone.ships[0].id);
+  observeWeighingScene(gone.owner, gone.m); gone.helixTick();
+  assert.equal(gone.m.params.weighingScene.phase, 'combat', 'a missing member is no confirmed kill');
+  assert.equal(weighingEvidence(gone.m), null);
+});
+test('a kill during a pending reveal stays pending until the survivors break', () => {
+  const h = harness(); observeWeighingScene(h.owner, h.m); h.ships[0].pos.x += 150;
+  observeWeighingScene(h.owner, h.m);
+  assert.equal(h.m.params.weighingScene.phase, 'reveal_pending');
+  h.ships[1].alive = false; h.m.completedTargetSlots = [1];
+  h.m.targetEntityIds = h.m.targetEntityIds.filter(id => id !== h.ships[1].id);
+  observeWeighingScene(h.owner, h.m);
+  assert.equal(h.m.params.weighingScene.phase, 'reveal_pending', 'the second break cannot un-fire it');
+  h.helixTick(); observeWeighingScene(h.owner, h.m);
+  assert.equal(weighingEvidence(h.m)?.kind, 'unmasked');
 });
 test('foreign identity and duplicate slots cannot form an authenticated pack', () => {
   for (const key of ['missionTag', 'missionId', 'identityKey', 'worldRecordId', 'homeSectorId']) {
