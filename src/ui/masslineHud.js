@@ -49,6 +49,7 @@ import { formatSpeed } from './units.js';
 import { isCrackerRunWorkLoad } from './crackerRunGuidance.js';
 import { isSwarmGlass } from './swarmGlass.js';
 import { verbChip } from './controlPrompts.js';
+import { releaseWindowOpen } from './throwCue.js';
 import { isAdventureFlight } from './attentionGlass.js';
 import { openingQuiet } from '../onboarding/openingQuiet.js';
 
@@ -1503,6 +1504,9 @@ export const masslineHud = {
       && (!selected || selected.targetId !== seedAim.targetId)) {
       return this._renderSeedLatchPreview(dom, state, player, w2s, seedAim);
     }
+    // OPENING-1b (doc 20 rule 2): holding a throwable, the one world tag says the throw verb (live binding)
+    // on the held body, and lights while the rope's release window is open - Adventure, like Swarm.
+    if (tethered && isAdventureFlight(state)) return this._renderHeldThrowCue(dom, state, player, w2s);
     if (!selected || tethered) return this._hideAcquisitionPreview(dom);
     const target = state.entities && state.entities.get ? state.entities.get(selected.targetId) : null;
     if (!target || !target.pos) return this._hideAcquisitionPreview(dom);
@@ -1577,6 +1581,27 @@ export const masslineHud = {
     for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
       setClass(dom.previewEl, `ml2-preview-${name}`, selected.status === name);
     }
+  },
+
+  _renderHeldThrowCue(dom, state, player, w2s) {
+    const held = state.entities && state.entities.get ? state.entities.get(state.player.tether.targetId) : null;
+    if (!held || !held.pos || held.id === state.playerId) return this._hideAcquisitionPreview(dom);
+    const screen = projectWorld(w2s, held.pos.x, held.pos.z);
+    if (!finiteProjection(screen) || !screen.onScreen) return this._hideAcquisitionPreview(dom);
+    const text = verbChip(state, 'tether', 'THROW');
+    const placed = placeHudBracketWords(this, dom.previewEl, text, { x: screen.x, y: screen.y }, player, w2s,
+      { w: viewportExtent('innerWidth', 'clientWidth', 1440), h: viewportExtent('innerHeight', 'clientHeight', 900) });
+    setStyle(dom.previewMark, 'display', 'none');
+    setStyle(dom.previewSourceMark, 'display', 'none');
+    setStyle(dom.previewSvg, 'display', 'none');
+    setStyle(dom.previewEl, 'display', placed.hidden ? 'none' : 'block');
+    setClass(dom.previewEl, 'ml2-preview-snare', false);
+    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(placed.x)}px, ${Math.round(placed.y)}px, 0)`);
+    if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
+    setAttr(dom.previewEl, 'data-bracket-state', 'CAN');
+    setAttr(dom.previewEl, 'data-throw-cue', '1');
+    setAttr(dom.previewEl, 'data-window', releaseWindowOpen(state) ? '1' : '0');
+    setAttr(dom.previewEl, 'aria-label', text);
   },
 
   // VERB-25 — a mass seed under the cursor uses the same preview caption, not a second mark.
@@ -1746,6 +1771,8 @@ export const masslineHud = {
 
   _hideAcquisitionPreview(dom) {
     setStyle(dom.previewEl, 'display', 'none');
+    setAttr(dom.previewEl, 'data-throw-cue', '0');
+    setAttr(dom.previewEl, 'data-window', '0');
     setBracketShape(dom.previewMark, '');
     setAttr(dom.previewMark, 'aria-hidden', 'true');
     setAttr(dom.previewMark, 'aria-label', '');

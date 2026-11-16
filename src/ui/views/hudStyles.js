@@ -1932,6 +1932,9 @@ export const HUD_CSS = `
   /* massline marks: shapes stay (diamond / circle / dashed carry the state); the text chips lose their
      plates and take the kit's face and tokens. */
   #hud #sf-ml2 { --ml2-c:var(--k-text-live); --ml2-p:var(--k-text-live); }
+  /* OPENING-1b: the held throw cue lights (and pulses unless motion is reduced) while the release window is open. */
+  #hud #sf-ml2 .ml2-preview[data-throw-cue="1"][data-window="1"] { color: #fff; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+  @media (prefers-reduced-motion: no-preference) { #hud #sf-ml2 .ml2-preview[data-throw-cue="1"][data-window="1"] { animation: sf-throw-cue .5s ease-in-out infinite alternate; } @keyframes sf-throw-cue { from { opacity: .65; } to { opacity: 1; } } }
   #hud #sf-ml2 .ml2-preview, #hud #sf-ml2 .ml2-mark-label, #hud #sf-ml2 .ml2-pill {
     background:none; border:0; box-shadow:none; text-shadow:none; clip-path:none; padding:0;
     font:400 var(--k-fs-data)/1.3 var(--k-text); letter-spacing:0; color:var(--k-text-live); animation:none; }
