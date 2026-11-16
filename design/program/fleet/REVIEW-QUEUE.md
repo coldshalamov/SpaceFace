@@ -155,3 +155,11 @@ foreign work in the tree, so at HEAD the feature is unreachable and invisible on
 `76ebff9f74` (`destroy()` + spawn-listener unsubscribe, arena destroy path wired). Each closes
 its packet finding without new writes across ownership; 70/70 focused tests pass and
 `check:src-imports` is clean (3377 modules).
+
+## Lead audit, 2026-11-15
+The whole intake (every PRI packet, the ui-polish wall, #1074, the empty-merged PRs) had a strong
+review, a before/after test, screen and performance comparison against 8ef4225cd0, and fixes —
+results and what is still open are in `build_map.md` §37.5. Every box above this section was covered
+by that review (R1–R7 confirmed sound; PRI-08b's patrol ram fixed in `6c7cd5d2cf` + `da6a214102`;
+PRI-10d's law desk verified mounted and given its station-head layout in `0caa8dce40`; PRI-14/14b
+remainder finished in UI-1…6 and AUDIT-20). New commits from the audit carry `AUDIT-` in their subject.
