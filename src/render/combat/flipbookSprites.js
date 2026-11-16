@@ -100,7 +100,11 @@ const FRAG = /* glsl */`
       // channels (gain ~1), the white-hot core climbs well past 1.0 so the bloom throws its halo.
       float cool = mix(1.0, 1.0 - 0.7 * vPhase.x, uCooling);
       float core = smoothstep(0.55, 0.95, lum) * cool;
-      vec3 body = rgb * vTint * (0.85 + 0.5 * lum);
+      // The fire sheet's late frames are grey smoke. Added to the frame that grey reads as a white
+      // cloud, so desaturated texels are weighted down: lingering smoke is the smoke family's job.
+      float sat = (max(rgb.r, max(rgb.g, rgb.b)) - min(rgb.r, min(rgb.g, rgb.b))) / (max(rgb.r, max(rgb.g, rgb.b)) + 1e-3);
+      float fireOnly = mix(0.15, 1.0, smoothstep(0.12, 0.42, sat) + (1.0 - uCooling) * 1.0 + core);
+      vec3 body = rgb * vTint * (0.85 + 0.5 * lum) * min(1.0, fireOnly);
       vec3 hotCol = vec3(1.0, 0.93, 0.78) * max(vTint.r, max(vTint.g, vTint.b));
       vec3 col = mix(body, hotCol, core * 0.55) * (1.0 + uHdr * core * core);
       gl_FragColor = vec4(col * cover * vOpacity, 1.0);
