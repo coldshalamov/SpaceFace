@@ -19,6 +19,10 @@ need a re-review pass by Codex/Fable).
 
 ## Landed but unreviewed (newest last)
 
+**Review passes (lead, 2026-11-16):** an argon (gemini-4-argon-high) pass over the boxed commits
+ran ~3 h and died on the agy account's quota (429 RESOURCE_EXHAUSTED) with no output — the backlog
+is still unreviewed. Replacement dispatched: the standing `REVIEW-BATCH` row on codex.
+
 **Standing rule: every `fleet(` / `fix(` commit after `b0baf1b4e3` (the Codex review baseline) needs
 review — run `git log --oneline b0baf1b4e3..HEAD` for the live list; the boxes below are just the
 ones landed when this file was written.** Workers commit incrementally, so `fleet(PRI-XX)` commits
