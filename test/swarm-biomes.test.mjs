@@ -86,14 +86,16 @@ test('both biomes register end to end: catalog, laws, ladder, events, recipes', 
     'a fresh ladder has not earned the Hive');
 
   // Event tables validate and both arenas can draw cards. C01-01: every fifth round is a
-  // champion now, so the course's only card slots are the minor band — waves 2 and 8 here.
+  // champion now, so the course's only card slots are the minor band. C01-05 (e43158f938) gave
+  // wave 12 the `delivery` twist, which owns its own room mechanic and therefore deals no seeded
+  // minor card on top of it — wave 8's `mine_drift` is the shipped telegraphed card.
   assert.deepEqual(validateSwarmEvents(), []);
   const millCard = swarmMinorEventFor({ arenaId: MILL_ARENA_ID, wave: 2, seed: SEED });
   const hiveCard = swarmMinorEventFor({ arenaId: HIVE_ARENA_ID, wave: 8, seed: SEED });
-  assert.equal(millCard?.band, 'minor');
   assert.equal(hiveCard?.band, 'minor');
-  assert.ok(millCard && millCard.telegraph, 'the Mill draws a telegraphed event');
-  assert.ok(hiveCard && hiveCard.telegraph, 'the Hive draws a telegraphed event');
+  assert.equal(millCard, null,
+    'wave 2 is a named-round slot with no authored card and no seeded draw');
+  assert.ok(hiveCard.telegraph, 'the Hive draws a telegraphed event');
 });
 
 test('the rooms plan distinctly: the grind pair vs the breath', () => {
