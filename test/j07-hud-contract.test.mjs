@@ -116,9 +116,10 @@ test('the threat badge styles the tier values scanner.js actually emits', () => 
   // contactThreatTier returns a NUMBER 0..3 keyed off mass. A rule written as
   // [data-tier="high"] matches nothing, renders as an unstyled badge, and no check can see it --
   // this exact mistake was written and caught by hand during J07. Pin both ends of the pair.
-  const scanner = readFileSync(root('src/systems/scanner.js'), 'utf8');
+  // 41c9ea2e7c moved the read model (and its tier cut points) out of scanner.js.
+  const scanner = readFileSync(root('src/systems/scannerReadModel.js'), 'utf8');
   const tiers = /const THREAT_MASS_TIERS = \[([^\]]*)\]/.exec(scanner);
-  assert.ok(tiers, 'scanner.js no longer declares THREAT_MASS_TIERS');
+  assert.ok(tiers, 'scannerReadModel.js no longer declares THREAT_MASS_TIERS');
   const maxTier = tiers[1].split(',').filter((x) => x.trim()).length;   // tier 1..N
   const selectors = [...hudCssSrc.matchAll(/\.sf-target__threat\[data-tier="([^"]+)"\]/g)].map((m) => m[1]);
   assert.ok(selectors.length > 0, 'the threat badge has no tier styling at all');

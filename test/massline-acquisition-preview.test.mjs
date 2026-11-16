@@ -433,16 +433,18 @@ test('the acquisition preview marks the candidate itself and never draws a cable
     // the target"): a valid target says CAN as the open-diamond shape, and F4 gave the mark's
     // accessible label the mass verdict — assistive tech hears what the swing will feel like,
     // not a bare CAN. The caption stays quiet; a sentence on the bracket is for denied reads.
+    // X3 (c4f6627ba9) then put ordinary flight on the quiet glass: the bracket says the plain verb
+    // "TOO HEAVY" instead of the tonnage register, which stays on the target dossier.
     assert.equal(mark.classList.contains('ml2-shape-can'), true,
       'a valid target shows the open-diamond CAN shape on the mark');
-    assert.equal(mark.attributes['aria-label'], "MASS 5200 · WON'T BUDGE",
+    assert.equal(mark.attributes['aria-label'], 'TOO HEAVY',
       'the mark must still speak an honest label to assistive tech');
     assert.equal(preview.attributes['data-bracket-state'], 'CAN',
       'the bracket state must be machine-readable before the press');
     assert.equal(preview.style.display, 'block',
       'a latchable body with mass prints the swing verdict on the caption line');
-    assert.equal(preview.textContent, "MASS 5200 · WON'T BUDGE",
-      'the caption is the same mass verdict the mark speaks');
+    assert.equal(preview.textContent, 'TOO HEAVY',
+      'the caption is the same swing verdict the mark speaks');
 
     assert.equal(line.parentNode.style.display, 'none',
       'only the real rendered Massline cable may connect the player to an object');
@@ -930,7 +932,9 @@ test('cached HUD geometry moves the mass words without moving the world mark or 
     assert.notEqual(words.style.transform, oldPosition, 'a changed HUD snapshot repaints even in a stationary world');
     assert.equal(mark.style.transform, anchored);
     assert.equal(words.style.display, 'block');
-    assert.match(words.textContent, /MASS 12/);
+    // X3 (c4f6627ba9) put ordinary flight on the quiet glass: the bracket prints the plain latch
+    // verb instead of the mass register, which stays on the target dossier.
+    assert.match(words.textContent, /LATCH/);
     const measured = measurements;
     hud.update(1 / 60, state);
     assert.equal(measurements, measured, 'an unchanged frame does not measure the label again');
@@ -938,7 +942,7 @@ test('cached HUD geometry moves the mass words without moving the world mark or 
     hud.update(1 / 60, state);
     assert.equal(words.style.display, 'none');
     assert.equal(mark.style.display, 'block');
-    assert.match(mark.attributes['aria-label'], /MASS 12/, 'the anchored mark retains its accessible mass read');
+    assert.match(mark.attributes['aria-label'], /LATCH/, 'the anchored mark retains its accessible latch read');
     assert.equal(mark.style.transform, anchored);
   } finally {
     hud.destroy(); MASSLINE2_FLAGS.enabled = previousEnabled;
