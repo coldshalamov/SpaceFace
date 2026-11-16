@@ -4118,7 +4118,6 @@ function buildPickup(e) {
   halo.material = halo.material.clone();
   halo.scale.setScalar(R);
   halo.userData.baseScale = R;
-  halo.frustumCulled = false;
   g.add(halo);
   g.userData.pickupHalo = halo;
   g.userData.kind = 'pickup'; g.userData.gem = gem;
@@ -4139,7 +4138,6 @@ function buildPickup(e) {
     band.material = band.material.clone();
     band.scale.setScalar(R);
     band.userData.baseScale = R;
-    band.frustumCulled = false;
     g.add(band);
     g.userData.worthBand = band;
   }
@@ -4148,7 +4146,6 @@ function buildPickup(e) {
   g.userData.pickupRole = shapeName === 'raw_ore' ? PICKUP_ROLE.ORE
     : (pickupRoleForEntity(e) || null);
   const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
-  gem.frustumCulled = false;
   // Emissive glint only — tumble/bob/vortex/intake transforms are owned by
   // pickupMotionPresentation (sim-time, tractor-aware). Material is cloned per-gem (line above).
   // The breathe carries farther than it used to: at flight-camera range the old ±28% never
