@@ -127,6 +127,10 @@ const HOOK = () => {
             impactor: imp ? `${imp.type}:${(imp.data && (imp.data.freight ? 'freight' : imp.data.shipClass || imp.data.kind)) || imp.defId || ''}` : undefined };
           if (ev === 'nav:waypoint' || ev === 'mission:updated' || ev === 'mission:accepted' || ev === 'mission:completed') rec.label = pickText(p && (p.label ? p : p.mission || p)).slice(0, 100);
           if (p && p.reason) rec.reason = p.reason;
+          if (p && p.breakReason && !rec.reason) rec.reason = p.breakReason;
+          if (p && p.mode) rec.mode = p.mode;
+          if (p && typeof p.open === 'boolean') rec.open = p.open;
+          if (rec.id == null && p && p.targetId != null && /^(tether|massline):/.test(ev)) rec.id = p.targetId;
           D.ev.push(rec);
           if (D.t0 != null) {
             const set = (k) => { if (D.ms[k] == null) D.ms[k] = { t: D.rel(t), clicks: D.clicks }; };
@@ -247,8 +251,93 @@ const hostilesQ = () => page.evaluate(() => {
     hs.push({ id: e.id, mass: e.mass, dist: Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z), scr: scr && { x: scr.x, y: scr.y, on: !!scr.onScreen } });
   }
   hs.sort((a, b) => a.dist - b.dist);
+  const onPlay = (scr) => scr && scr.on && scr.x > 300 && scr.x < 980 && scr.y > 140 && scr.y < 600;
+  // A rock/wreck chunk is the better payload when one is up: ships get killed by the fight while
+  // they are held, but a chunk outlives the hold and the release window always arrives.
+  let rock = null;
+  for (const e of s.entityList || []) {
+    if (!e || e.alive === false || !e.pos || e.isPlayer) continue;
+    const throwable = e.type === 'payload' || (e.type === 'asteroid' && e.data && (e.data.isChunk || e.data.throwable === true));
+    if (!throwable) continue;
+    const scr = h.worldToScreen({ x: e.pos.x, y: 0, z: e.pos.z }, {});
+    if (!onPlay(scr)) continue;
+    const d = Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z);
+    if (!rock || d < rock.dist) rock = { id: e.id, kind: 'rock', mass: e.mass, dist: d, scr: { x: scr.x, y: scr.y } };
+  }
   const meScr = h.worldToScreen({ x: me.pos.x, y: 0, z: me.pos.z }, {});
-  return { n: hs.length, near: hs[0] || null, light: hs.filter((e) => !(Number.isFinite(e.mass) && e.mass > 32) && e.scr && e.scr.on && e.scr.x > 300 && e.scr.x < 980 && e.scr.y > 140 && e.scr.y < 600)[0] || null, me: meScr && { x: meScr.x, y: meScr.y } };
+  const light = hs.filter((e) => !(Number.isFinite(e.mass) && e.mass > 32) && e.scr && onPlay(e.scr))[0] || null;
+  if (light) light.kind = 'ship';
+  return { n: hs.length, near: hs[0] || null, light, rock, me: meScr && { x: meScr.x, y: meScr.y } };
+}).catch(() => null);
+
+const cl = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+// The throw cue as the player sees it: the aim tag's own lit state plus the sim's window flag
+// behind it. In Swarm the tag is the hover chip (.sf-woi shows RMB · THROW while a throwable is
+// held); tetherActive lets a dead line end the wait instead of sending a blind tap.
+const readThrowCue = () => page.evaluate(() => {
+  const s = window.SF.state; const t = s.massline2 && s.massline2.throw; const tt = s.player && s.player.tether;
+  // isThrowArmPayload replicated: payload/throwable rock, or a hostile/combat ship. A line that
+  // fails this turns an RMB tap into an ordinary cut — the press can never become a throw.
+  const pl = tt && tt.active && tt.targetId != null ? s.entities.get(tt.targetId) : null;
+  let throwable = false;
+  if (pl && pl.alive !== false) {
+    if (pl.type === 'payload' || (pl.type === 'asteroid' && pl.data && (pl.data.isChunk || pl.data.throwable === true))) throwable = true;
+    else if (pl.type === 'ship' || pl.type === 'drone') {
+      const me = s.entities.get(s.playerId); const d = pl.data || {}; const ai = d.ai || {};
+      const arch = String(ai.archetype || ai.doctrine || ai.role || d.role || d.scenarioRole || '').toLowerCase();
+      throwable = !!((me && pl.team !== me.team && pl.team !== 0 && pl.team !== 2 && !ai.passive)
+        || ['pirate', 'raider', 'marauder', 'corsair', 'outlaw', 'brawler', 'sniper', 'swarmer', 'hunter', 'mercenary', 'miniboss_capital'].includes(arch));
+    }
+  }
+  return { on: !!(t && t.solution && t.solution.valid && t.solution.onSolution), armed: !!(t && t.armed), aimTarget: t ? t.aimTargetId : null,
+    enterS: t && t.solution && t.solution.window && Number.isFinite(t.solution.window.enterS) ? +t.solution.window.enterS.toFixed(2) : null,
+    winReliable: !!(t && t.solution && t.solution.window && t.solution.window.reliable),
+    tetherActive: !!(tt && tt.active), tetherTarget: tt && tt.targetId != null ? tt.targetId : null, ttType: pl ? pl.type : null, throwable, phase: tt ? (tt.phase || tt.state || null) : null,
+    strain: tt && Number.isFinite(tt.strain) ? +tt.strain.toFixed(2) : null,
+    cue: (document.querySelector('.ml2-preview[data-throw-cue="1"]') || document.querySelector('.sf-woi:not([hidden]) .sf-woi__hint') || {}).textContent || null,
+    cueLit: !!document.querySelector('.ml2-preview[data-throw-cue="1"][data-window="1"], .sf-woi[data-sling="1"][data-window="1"]:not([hidden])') };
+}).catch(() => ({ on: false, tetherActive: true }));
+// The tether's own acquisition preview (same receipt the HUD reads): which body a press would
+// latch right now. Pressing while it names a pickup/plain rock wastes the press — those bodies
+// latch fine but can never arm the throw.
+const latchPreviewQ = () => page.evaluate(() => {
+  const s = window.SF.state; const acq = s.masslineAcquisition || s.n; const sel = acq && acq.selected;
+  if (!sel || sel.targetId == null) return { selId: null, reason: acq ? acq.reason : null };
+  const e = s.entities.get(sel.targetId);
+  let throwable = false;
+  if (e && e.alive !== false) {
+    if (e.type === 'payload' || (e.type === 'asteroid' && e.data && (e.data.isChunk || e.data.throwable === true))) throwable = true;
+    else if (e.type === 'ship' || e.type === 'drone') {
+      const me = s.entities.get(s.playerId); const d = e.data || {}; const ai = d.ai || {};
+      const arch = String(ai.archetype || ai.doctrine || ai.role || d.role || d.scenarioRole || '').toLowerCase();
+      throwable = !!((me && e.team !== me.team && e.team !== 0 && e.team !== 2 && !ai.passive)
+        || ['pirate', 'raider', 'marauder', 'corsair', 'outlaw', 'brawler', 'sniper', 'swarmer', 'hunter', 'mercenary', 'miniboss_capital'].includes(arch)
+        || sel.hostileContext === true);
+    }
+  }
+  return { selId: sel.targetId, selType: sel.targetType || (e && e.type) || null, status: sel.status || null, reason: sel.reason || null, throwable };
+}).catch(() => null);
+const scrOfQ = (id) => page.evaluate((tid) => {
+  const s = window.SF.state; const e = s.entities.get(tid);
+  const scr = e && e.pos && window.SF.helpers.worldToScreen({ x: e.pos.x, y: 0, z: e.pos.z }, {});
+  return scr ? { x: scr.x, y: scr.y, on: !!scr.onScreen } : null;
+}, id).catch(() => null);
+// The throw's aim: the hostile nearest the HELD body (whip it into its packmates), preferring one
+// on screen so the hover tag can light on it — a real entity the release solve can target.
+const throwAimQ = () => page.evaluate(() => {
+  const s = window.SF.state; const h = window.SF.helpers; const me = s.entities.get(s.playerId); if (!me) return null;
+  const t = s.player && s.player.tether; const held = t && t.active && t.targetId != null ? s.entities.get(t.targetId) : null;
+  const anchor = (held && held.pos) || me.pos;
+  let best = null;
+  for (const e of s.entityList || []) {
+    if (!e || e.alive === false || e.type !== 'ship' || e.isPlayer || e.team === 0 || (held && e.id === held.id)) continue;
+    const scr = h.worldToScreen({ x: e.pos.x, y: 0, z: e.pos.z }, {});
+    const on = !!(scr && scr.onScreen && scr.x > 300 && scr.x < 980 && scr.y > 140 && scr.y < 600);
+    const d = Math.hypot(e.pos.x - anchor.x, e.pos.z - anchor.z);
+    const score = d - (on ? 4000 : 0);
+    if (!best || score < best.score) best = { score, id: e.id, dist: Math.round(d), on, scr: scr && { x: scr.x, y: scr.y } };
+  }
+  return best && best.scr ? { id: best.id, dist: best.dist, on: best.on, x: best.scr.x, y: best.scr.y } : null;
 }).catch(() => null);
 
 // ---------------------------------------------------------------- shared: boot, intro, first-run prompt
@@ -361,44 +450,112 @@ async function swarmRoute() {
   const q0 = await qualityInfo(); R.quality_atFlight = q0;
   await shot('flight-start', { gameplay: true });
 
-  // The throw, as throw.mjs does it (latch with a real RMB press, swing, release toward the pack). A latch that
-  // breaks at once ("TARGET LOST") or a release that throws nothing is retried with a fresh light target.
+  // The throw, run the way the Adventure door does it since OPENING-1b: latch with a real RMB
+  // press, swing, then keep the aim on a pack body and tap RMB only when the throw cue is
+  // shown/lit — the aim tag reads RMB · THROW and lights while the rope's release window is open.
+  // Each cycle logs the cue state at the tap and the line-end event that followed; a line that
+  // dies while waiting skips the tap, because a press on no line is just another latch/miss and
+  // hides the real end reason. Retried with a fresh light target while any cycle is untried.
   const evCount = (name) => page.evaluate((n) => (window.__dr.ev || []).filter((e) => e.ev === n).length, name);
+  const evLen = () => page.evaluate(() => (window.__dr.ev || []).length);
+  const evSince = (k) => page.evaluate((m) => (window.__dr.ev || []).slice(m), k);
+  const LINE_END = new Set(['massline:throw', 'massline:selfSling', 'tether:released', 'tether:broke', 'tether:broken', 'tether:cut']);
   let threw = false; let latchedEver = false;
+  R.throwCycles = [];
   for (let cycle = 0; cycle < 5 && !threw; cycle++) {
+    const rec = { cycle: cycle + 1 };
     let pick = null; const tp = Date.now();
-    while (!pick && Date.now() - tp < 40_000) { await steerFight(); const h = await hostilesQ(); pick = h && h.light; if (!pick) await sleep(400); }
+    while (!pick && Date.now() - tp < 40_000) { await steerFight(); const h = await hostilesQ(); pick = h && (h.rock || h.light); if (!pick) await sleep(400); }
     await releaseAll();
-    if (!pick) { note('no light hostile on screen'); continue; }
+    if (!pick) { note('no latchable target on screen'); rec.end = { ev: 'none', reason: 'no latchable target on screen' }; R.throwCycles.push(rec); continue; }
+    rec.target = pick.id; rec.targetKind = pick.kind || 'ship';
     const l0 = await evCount('tether:latched'); const b0 = await evCount('tether:broken'); const t0n = await evCount('massline:throw');
-    note(`throw cycle ${cycle + 1}: latch on ${JSON.stringify({ id: pick.id, mass: pick.mass, dist: Math.round(pick.dist) })}`);
-    await page.mouse.move(pick.scr.x, pick.scr.y, { steps: 3 });
+    note(`throw cycle ${cycle + 1}: latch on ${JSON.stringify({ id: pick.id, kind: pick.kind || 'ship', mass: pick.mass, dist: Math.round(pick.dist) })}`);
+    // Keep the pointer on the pick until the line's own preview names a throw-capable body. The
+    // aim point sits in debris; a press on a pickup or plain rock latches a payload that can
+    // never throw. No press at all beats a wasted latch when the preview never improves.
+    let pv = null;
+    for (let k = 0; k < 14; k++) {
+      const sc = await scrOfQ(pick.id);
+      if (sc && sc.on) await page.mouse.move(cl(sc.x, 8, VW - 8), cl(sc.y, 8, VH - 8), { steps: 2 });
+      await sleep(160);
+      pv = await latchPreviewQ();
+      if (pv && pv.throwable) break;
+    }
+    rec.preview = pv;
+    note(`throw cycle ${cycle + 1} preview: ${JSON.stringify(pv)}`);
+    if (!pv || !pv.throwable) { rec.end = { ev: 'none', reason: 'preview never named a throw payload' }; R.throwCycles.push(rec); continue; }
     await page.mouse.down({ button: 'right' }); await sleep(120); await page.mouse.up({ button: 'right' });
     R.clicks++; await page.evaluate(() => { window.__dr.clicks++; }).catch(() => {});
     let latched = false;
     for (let i = 0; i < 10 && !latched; i++) { await sleep(150); latched = (await evCount('tether:latched')) > l0; }
-    if (!latched) { note('no latch this cycle'); continue; }
+    if (!latched) { note('no latch this cycle'); rec.end = { ev: 'none', reason: 'latch press never latched' }; R.throwCycles.push(rec); continue; }
     latchedEver = true; await sleep(500);
-    if ((await evCount('tether:broken')) > b0) { note('latch broke at once (target lost); retrying'); continue; }
+    if ((await evCount('tether:broken')) > b0) { note('latch broke at once (target lost); retrying'); rec.end = { ev: 'tether:broken', reason: 'broke at once after latch' }; R.throwCycles.push(rec); continue; }
+    // A line can land on a body the throw grammar will not arm (civilian/escort hull, ordinary
+    // rock). A tap there is just a cut, so release it deliberately and spend the retry elsewhere.
+    const lc = await readThrowCue();
+    rec.latchCue = lc;
+    if (lc.tetherActive && !lc.throwable) {
+      await page.mouse.down({ button: 'right' }); await sleep(120); await page.mouse.up({ button: 'right' });
+      R.clicks++; await page.evaluate(() => { window.__dr.clicks++; }).catch(() => {});
+      note(`throw cycle ${cycle + 1}: latched ${lc.tetherTarget} (${lc.ttType || '?'}) is not a throw payload; released`);
+      rec.end = { ev: 'none', reason: 'payload not throw-arm', ttType: lc.ttType }; R.throwCycles.push(rec); continue;
+    }
+    if (!lc.tetherActive) { rec.end = { ev: 'none', reason: 'line dead before swing' }; R.throwCycles.push(rec); continue; }
     if (cycle === 0 || !R.screens.some((x) => x.label === 'latched')) await shot('latched', { gameplay: true });
     await keyDown('KeyW'); await keyDown('KeyD');
     for (let i = 0; i < 6; i++) { await page.mouse.move(VW / 2 + 260 * Math.cos(i * 0.6), VH / 2 + 200 * Math.sin(i * 0.6), { steps: 2 }); await sleep(200); if (i === 2 && !R.screens.some((x) => x.label === 'swing')) await shot('swing', { gameplay: true }); }
+    // Keep the swing fed (W+D held) and the aim on a pack body while watching the cue. The lit
+    // cue is sub-frame in Swarm (release windows open for ~1 tick), so the tap also goes when the
+    // forecast window enters the game's own 350 ms snap buffer — that press queues and fires on
+    // the open tick — and finally on a live-line deadline: any press on a live line registers a
+    // throw, only a press on a dead one is silent, so the deadline stays well inside line life.
+    const mark = await evLen();
+    const rw0 = await evCount('massline:releaseWindow');
+    let cue = null; let lineGone = false; let lastCue = null; let why = null;
+    rec.trail = [];
+    for (let i = 0; i < 60; i++) {
+      const aim = await throwAimQ();
+      await page.mouse.move(cl(aim && Number.isFinite(aim.x) ? aim.x : VW / 2, 300, 980), cl(aim && Number.isFinite(aim.y) ? aim.y : 200, 140, 600), { steps: 2 });
+      await sleep(120);
+      const rt = await readThrowCue(); lastCue = rt;
+      rec.trail.push({ i, on: rt.on, lit: rt.cueLit, enterS: rt.enterS, aimT: rt.aimTarget, thr: rt.throwable, ph: rt.phase, act: rt.tetherActive });
+      if (!rt.tetherActive || !rt.throwable) { lineGone = true; break; }
+      if ((await evSince(mark)).some((e) => LINE_END.has(e.ev))) { lineGone = true; break; }
+      if (rt.on || rt.cueLit) why = 'cue lit';
+      else if (rt.enterS != null && rt.enterS > 0 && rt.enterS <= 0.35) why = `window opens in ${rt.enterS}s`;
+      else if (i >= 30) why = 'deadline on a live line';
+      if (why) { cue = { i, ...rt, aim, windowEvents: (await evCount('massline:releaseWindow')) - rw0 }; break; }
+    }
     await keyUp('KeyD');
-    const aim = await page.evaluate(() => {
-      const s = window.SF.state; const h = window.SF.helpers;
-      const hs = (s.entityList || []).filter((e) => e && e.alive !== false && e.type === 'ship' && !e.isPlayer && e.team !== 0);
-      if (!hs.length) return null;
-      const c = hs.reduce((a, e) => ({ x: a.x + e.pos.x / hs.length, z: a.z + e.pos.z / hs.length }), { x: 0, z: 0 });
-      return h.worldToScreen({ x: c.x, y: 0, z: c.z }, {});
-    });
-    await page.mouse.move(aim && Number.isFinite(aim.x) ? aim.x : VW / 2, aim && Number.isFinite(aim.y) ? aim.y : 200, { steps: 2 });
-    await page.mouse.down({ button: 'right' }); await sleep(120); await page.mouse.up({ button: 'right' });
-    R.clicks++; await page.evaluate(() => { window.__dr.clicks++; }).catch(() => {});
+    rec.cue = cue || { neverLit: true, last: lastCue, windowEvents: (await evCount('massline:releaseWindow')) - rw0 };
+    note(`throw cycle ${cycle + 1} cue: ${JSON.stringify(rec.cue)}`);
+    rec.tap = null;
+    if (!lineGone) {
+      // Up to 3 real 120 ms taps, aim held between them so a queued snap keeps its target.
+      for (let p = 0; p < 3 && !threw; p++) {
+        const aim = await throwAimQ();
+        await page.mouse.move(cl(aim && Number.isFinite(aim.x) ? aim.x : VW / 2, 300, 980), cl(aim && Number.isFinite(aim.y) ? aim.y : 200, 140, 600), { steps: 2 });
+        const rt2 = await readThrowCue();
+        if (!rt2.tetherActive || !rt2.throwable) { note(`throw cycle ${cycle + 1} line ended before tap ${p + 1}`); break; }
+        await page.mouse.down({ button: 'right' }); await sleep(120); await page.mouse.up({ button: 'right' });
+        R.clicks++; await page.evaluate(() => { window.__dr.clicks++; }).catch(() => {});
+        rec.tap = { at: rt2, why, presses: p + 1 };
+        note(`throw cycle ${cycle + 1} tap ${p + 1} (${why})`);
+        for (let w = 0; w < 4 && !threw; w++) { await sleep(150); threw = (await evCount('massline:throw')) > t0n; }
+      }
+    } else note(`throw cycle ${cycle + 1} tap skipped — the line ended while waiting`);
     await keyUp('KeyW');
     if (!R.screens.some((x) => x.label === 'release')) await shot('release', { gameplay: true });
     for (let i = 0; i < 12 && !threw; i++) { await sleep(250); threw = (await evCount('massline:throw')) > t0n; }
-    note(threw ? 'THROW registered' : 'release did not register a throw; retrying');
+    const since = await evSince(mark);
+    const all = await evSince(0);
+    const end = since.find((e) => LINE_END.has(e.ev)) || [...all].reverse().find((e) => LINE_END.has(e.ev)) || null;
+    rec.end = end; rec.threw = threw;
+    note(`throw cycle ${cycle + 1} line end: ${JSON.stringify(end)} · ${threw ? 'THROW registered' : 'release did not register a throw; retrying'}`);
     if (threw) await shot('after-throw', { gameplay: true });
+    R.throwCycles.push(rec);
   }
   step('throw', threw ? 'throw registered' : latchedEver ? 'latched but never threw' : 'never latched');
 
@@ -590,7 +747,7 @@ async function adventureRoute() {
         await shot('latched-rock', { gameplay: true });
         await keyDown('KeyW'); await keyDown('KeyD');
         const rw0 = await evN('massline:releaseWindow');
-        const readThrow = () => page.evaluate(() => { const s = window.SF.state; const t = s.massline2 && s.massline2.throw; const tt = s.player && s.player.tether; return { on: !!(t && t.solution && t.solution.valid && t.solution.onSolution), armed: !!(t && t.armed), phase: tt ? (tt.phase || tt.state || null) : null, strain: tt && Number.isFinite(tt.strain) ? +tt.strain.toFixed(2) : null, aimTarget: t ? t.aimTargetId : null, cue: (document.querySelector('.ml2-preview[data-throw-cue="1"]') || document.querySelector('.sf-woi:not([hidden]) .sf-woi__hint') || {}).textContent || null, cueLit: !!document.querySelector('.ml2-preview[data-throw-cue="1"][data-window="1"], .sf-woi[data-sling="1"][data-window="1"]:not([hidden])') }; }).catch(() => ({ on: false }));
+        const readThrow = readThrowCue; // shared with the Swarm cycle: the aim tag + the sim's window flag
         let clickInfo = null;
         for (let i = 0; i < 60; i++) {
           // Fly an arc toward the derelict with the cursor ON it: the throw solution needs an aimed target.
@@ -670,6 +827,15 @@ function toMd() {
   L.push(`- Renderer: ${R.renderer}`, `- Quality preset at flight: ${JSON.stringify(R.quality_atFlight)}`, `- Quality at end: ${JSON.stringify(R.quality_atEnd)}`, `- Outcome: ${R.outcome}`);
   L.push(`- Total wall time ${R.wallSeconds} s; clicks from title click: ${R.clicks}; intro on screen ${R.intro_seconds ?? '?'} s`);
   L.push('', '## Timings from the title click (wall s, mouse presses so far)', `- first flight frame: ${ms('firstFlight')}`, `- first Line latch: ${ms('firstLatch')}`, `- first throw: ${ms('firstThrow')}`, `- first kill: ${ms('firstKill')}`);
+  if (m.firstFlight && m.firstThrow) L.push(`- first flight to first throw: ${(m.firstThrow.t - m.firstFlight.t).toFixed(2)} s`);
+  if (R.throwCycles && R.throwCycles.length) {
+    L.push('', '## Throw cycles');
+    for (const c of R.throwCycles) {
+      const tr = c.trail || []; const minEnter = tr.reduce((m, r) => (r.enterS != null && (m == null || r.enterS < m) ? r.enterS : m), null);
+      const aimSeen = tr.some((r) => r.aimT != null);
+      L.push(`- cycle ${c.cycle}: target ${c.target ?? '-'} (${c.targetKind || 'ship'}) · cue ${JSON.stringify(c.cue || null)} · tap ${c.tap ? `${c.tap.presses || 1}x ${c.tap.why || ''}` : 'skipped (line ended)'} · minEnterS ${minEnter} · aim ${aimSeen} · end ${JSON.stringify(c.end || null)} · threw ${!!c.threw}`);
+    }
+  }
   const f = R.frame_playable || {}; const g = R.frame_playable_excluding_screenshots || {};
   L.push('', '## Frame time over the playable span (flight mode, rAF deltas, ms)', `- all: n=${f.frames} p50 ${f.p50} p95 ${f.p95} p99 ${f.p99} max ${f.max}; >100ms ${f.over100ms}; >250ms ${f.over250ms}; mean ${f.fpsMean} fps`, `- excluding screenshot windows: n=${g.frames} p50 ${g.p50} p95 ${g.p95} p99 ${g.p99} max ${g.max}; >100ms ${g.over100ms}; >250ms ${g.over250ms}`);
   const lt = R.longTasks || {}; L.push(`- long tasks: ${lt.total_over_50ms} over 50 ms, ${lt.over_250ms} at or over 250 ms (${lt.over_250ms_excl_screenshot} not near a screenshot); worst ${JSON.stringify(lt.worst)}`);
