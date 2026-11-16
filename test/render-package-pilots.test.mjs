@@ -2222,6 +2222,74 @@ test('removing the current owner during hidden preparation leaves the incoming r
   }
 });
 
+test('an authored hull publishes before its pending package pool and attaches it on settle', async () => {
+  const renderer = {};
+  const scene = new THREE.Scene();
+  const fixture = await packageShipFixture();
+  const poolPreparation = deferred();
+  let poolTarget = null;
+  const options = {
+    releaseMode: true,
+    libraryScope: 'render-package-hull-before-pools-test',
+    bootstrapPlan: {},
+    loadAuthoredPart: async () => fixture.record,
+    prepareAuthoredPipelines: async (subject) => {
+      if (subject?.isInstancedMesh) {
+        poolTarget = subject;
+        await poolPreparation.promise;
+      }
+      return { skipped: false };
+    },
+    prepareAuthoredGpuResidency: async () => ({ skipped: false }),
+  };
+  const restoreRuntime = installAuthoredAdmissionRuntime(scene, options);
+  await preloadAuthoredPartLibrary(renderer, options);
+
+  try {
+    const current = await admitPackageShip('hull-publish-current', 0, renderer, scene, options);
+    const currentEligible = authoredPackageInstance(current).nodes.get('eligible');
+    const incoming = startPackageShip('hull-publish-incoming', 40, renderer, scene, options);
+    for (let turn = 0; turn < 80 && !poolTarget; turn++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    assert.ok(poolTarget, 'the repeated authored part parks in a detached pool admission');
+    for (let turn = 0; turn < 80 && incoming.userData.authoredAssetState !== 'authored'; turn++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    // The hull publishes on its own root compile+residency — the still-draining pool
+    // sibling can no longer hold the graft (INV-11).
+    assert.equal(incoming.userData.authoredAssetState, 'authored',
+      'the ship publishes while its package pool is still admitting');
+    const incomingEligible = authoredPackageInstance(incoming).nodes.get('eligible');
+    assert.equal(poolTarget.parent, null, 'an unready pool chunk never enters the drawn scene');
+    assert.equal(poolTarget.userData.spacefacePackageAdmissionPending, true);
+    assert.equal(poolTarget.count, 0, 'no unlinked instance slot is submitted');
+    assert.equal(incomingEligible.isMesh, true,
+      'a pool-owned part keeps its accepted direct surface until the instanced draw is armed');
+    assert.equal(currentEligible.isMesh, true,
+      'the already-published sibling part keeps drawing direct through the wait — no pop');
+
+    poolPreparation.resolve();
+    for (let turn = 0; turn < 80 && poolTarget.parent !== scene; turn++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    assert.equal(poolTarget.parent, scene,
+      'the settled admission attaches its pooled draw to the published scene');
+    assert.equal(poolTarget.userData.spacefacePackageAdmissionPending, undefined);
+    assert.equal(poolTarget.count, 2, 'both live owners submit their instance slot');
+    assert.equal(incomingEligible.isMesh, false,
+      'the pooled part swaps onto the linked instanced draw once armed');
+    assert.equal(currentEligible.isMesh, false);
+    assert.equal(incoming.userData.authoredAssetState, 'authored');
+    scene.remove(current, incoming);
+  } finally {
+    poolPreparation.resolve();
+    for (const child of [...scene.children]) scene.remove(child);
+    invalidatePartsLibraryCaches(renderer);
+    restoreRuntime();
+  }
+});
+
 test('removing the current owner from a READY hidden pool keeps later publication direct', async () => {
   const renderer = {};
   const scene = new THREE.Scene();

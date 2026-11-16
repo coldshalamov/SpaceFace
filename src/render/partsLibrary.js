@@ -9593,6 +9593,17 @@ async function prepareAuthoredShipVisualPipelines(authored, options = {}, phaseO
   // A failed root remains distinct from a still-pending pool sibling.
   preparations[0].then(() => { rootPhase = 'complete'; publishPhase(); },
     () => { rootPhase = 'rejected'; publishPhase(); });
+  // Hull-before-pools (PUBLISH-01): an immediate-commit ship upgrade may publish the authored
+  // hull as soon as its own root compile+residency resolves instead of draining every
+  // package-pool sibling first — six wasp pool siblings once held an already-ready hull off
+  // the glass for seconds (INV-11). Each sibling still commits only through
+  // activateRenderPackagePoolAdmission's prepared guard, so no pooled part can draw ahead of
+  // its own linked program; it simply appears when its admission lands. Callers that defer
+  // either publication or pool activation keep the all-settled contract: their publish must
+  // arm the complete dressed set at once.
+  const attachPoolsWhenReady = options.attachPackagePoolsWhenReady === true
+    && options.deferPackagePoolActivation !== true
+    && options.deferBoundaryPublication !== true;
   for (const admission of poolAdmissions) {
     const preparation = prepareRenderPackagePoolAdmission(admission, options);
     preparations.push(preparation);
@@ -9600,6 +9611,47 @@ async function prepareAuthoredShipVisualPipelines(authored, options = {}, phaseO
       () => { pendingPools--; publishPhase(); },
       () => { pendingPools--; publishPhase(); },
     );
+    if (attachPoolsWhenReady) {
+      const noteLatePoolFailure = (error) => {
+        // Same classification as the orphan pump: a mid-flight cancellation is the
+        // owner-gone race, anything else is a defect — and neither unpublishes the hull.
+        try {
+          if (admission && admission.cancelled === true) {
+            console.info('[partsLibrary] pooled chunk admission failed', error);
+          } else {
+            console.warn('[partsLibrary] pooled chunk admission failed', error);
+          }
+        } catch { /* diagnostics only */ }
+      };
+      Promise.resolve(preparation).then(() => {
+        // A pre-graft settlement is still claimed by the commit's own activation passes —
+        // the return loop below, then publish's — so the armed leg only owns siblings that
+        // outlasted the graft, attaching them to the boundary they now draw against.
+        const boundary = authored && authored.root && authored.root.parent;
+        if (!boundary || staleAuthoredRunVerdict(boundary, options)) return;
+        if (options.asyncAdmission && options.asyncAdmission.signal
+            && options.asyncAdmission.signal.aborted) return;
+        try {
+          activateRenderPackagePoolAdmission(admission);
+        } catch (error) {
+          // A late activation failure cannot veto the committed hull — the transaction's
+          // own rollback keeps every accepted direct surface.
+          noteLatePoolFailure(error);
+        }
+      }, noteLatePoolFailure);
+    }
+  }
+  if (attachPoolsWhenReady) {
+    let rootResult;
+    try {
+      rootResult = await preparations[0];
+    } catch (error) {
+      throw new AggregateError([error], 'Authored ship pipeline admission failed');
+    }
+    // Siblings that already settled activate in the same detached position the all-settled
+    // path used — including its failure veto — while pending siblings take the armed leg.
+    for (const admission of poolAdmissions) activateRenderPackagePoolAdmission(admission);
+    return rootResult;
   }
   // A first rejection must not release an owner while sibling compile/upload work is still touching
   // its resources. Settle the complete admission group, then either fail/clean it as one unit or
@@ -9756,7 +9808,14 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
       const pipelineStartedAtMs = monotonicNow();
       const restorePipelinePhase = beginPreparePhase('preparing-pipelines');
       try {
-        pipelineReady = prepareAuthoredShipVisualPipelines(authored, options, restorePipelinePhase.update);
+        pipelineReady = prepareAuthoredShipVisualPipelines(authored, {
+          ...options,
+          // Immediate-commit ship upgrades publish the hull on root readiness alone — a
+          // still-draining package-pool sibling attaches through its own armed continuation
+          // instead of holding the graft (PUBLISH-01 / INV-11). The callee itself keeps the
+          // all-settled contract whenever publication or pool activation is deferred.
+          attachPackagePoolsWhenReady: true,
+        }, restorePipelinePhase.update);
       } finally {
         recordAdmissionWork(monotonicNow() - pipelineStartedAtMs);
         const tier1 = tier1CausalCounters();
