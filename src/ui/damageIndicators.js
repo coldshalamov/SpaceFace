@@ -211,6 +211,18 @@ export function createDamageIndicators() {
 
   let activeCount = 0;
 
+  function paintCue(marker, cue) {
+    if (marker._sfGlyph !== cue.glyph) {
+      marker._sfGlyph = cue.glyph;
+      marker.glyph.textContent = cue.glyph;
+    }
+    const className = `sf-dmgind-marker layer-${cue.layer} severity-${cue.severity}`;
+    if (marker._sfCueClass !== className) {
+      marker._sfCueClass = className;
+      marker.element.className = className;
+    }
+  }
+
   function retire(marker) {
     if (!marker || marker.age === Infinity) return;
     marker.element.style.display = 'none';
@@ -258,8 +270,7 @@ export function createDamageIndicators() {
     selected.age = 0;
     selected.dirX = NaN; // a stolen slot must not inherit the previous hit's direction
     selected.dirY = NaN;
-    selected.glyph.textContent = cue.glyph;
-    selected.element.className = `sf-dmgind-marker layer-${cue.layer} severity-${cue.severity}`;
+    paintCue(selected, cue);
     return true;
   }
 
@@ -270,8 +281,7 @@ export function createDamageIndicators() {
     marker.age = 0;
     marker.dirX = NaN;
     marker.dirY = NaN;
-    marker.glyph.textContent = cue.glyph;
-    marker.element.className = `sf-dmgind-marker layer-${cue.layer} severity-${cue.severity}`;
+    paintCue(marker, cue);
   }
 
   function onNearMiss(payload) {

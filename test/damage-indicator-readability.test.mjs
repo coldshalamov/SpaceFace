@@ -83,6 +83,35 @@ test('impact markers coalesce repeated hits, cap simultaneous sources, and retir
   }
 });
 
+test('refreshing an impact marker does not rewrite unchanged glyph or class', () => {
+  const previousDocument = globalThis.document;
+  const previousWindow = globalThis.window;
+  globalThis.document = new FakeDocument();
+  globalThis.window = { innerWidth: 1280, innerHeight: 720 };
+  try {
+    const indicators = createDamageIndicators().bind(() => ({ pos: { x: 0, z: 0 } }), 1);
+    const marker = indicators.el.children[0];
+    const glyph = marker.children[1].children[0];
+    let text = glyph.textContent, markerClass = marker.className, textWrites = 0, classWrites = 0;
+    Object.defineProperty(glyph, 'textContent', { get: () => text, set: value => { text = value; textWrites++; } });
+    Object.defineProperty(marker, 'className', { get: () => markerClass, set: value => { markerClass = value; classWrites++; } });
+    const hit = { targetId: 1, attackerId: 9, applied: 10, dominantLayer: 'shield',
+      after: { shield: 35, shieldMax: 55 }, attackerPos: { x: 80, z: 0 } };
+    assert.equal(indicators.onDamage(hit), true);
+    assert.equal(indicators.onDamage(hit), true);
+    assert.equal(text, 'S');
+    assert.equal(textWrites, 1);
+    assert.equal(classWrites, 1);
+    assert.equal(indicators.onDamage({ ...hit, brokeShield: true }), true);
+    assert.equal(textWrites, 1, 'a severity change retains the same layer glyph');
+    assert.equal(classWrites, 2, 'a severity change still updates the marker');
+    assert.match(markerClass, /severity-warning/);
+  } finally {
+    globalThis.document = previousDocument;
+    globalThis.window = previousWindow;
+  }
+});
+
 test('indicator styling is non-diegetic, tokenized, and contains no screen-edge arcs or idle animation', () => {
   const source = readFileSync(new URL('../src/ui/damageIndicators.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /sf-dmgind-arc/);
