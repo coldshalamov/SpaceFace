@@ -72,7 +72,7 @@ reviews every commit; lane agents do not take them.
 | PRI-01 · 02 · 03 · 05 · 06 · 07a–f · 09 · 12 | Small places; air clock pays less; outposts (sim + screen); plate fight + honest win; residents on the radio; six work loops; Frontier households; Armory/Manifest/Base/popups | BUILT (hashes in §37.1; most not yet seen on screen — L1-REVIEW) |
 | PRI-04 save load stays yours | #980 | BUILT 852e630de5 |
 | PRI-08a-the-swing | Ceres winching (#945 part 1) | BUILT 9e3f95c4ae + lead 4889e7cb81 |
-| PRI-08b-the-ninth-mouth | Ceres part 2 | LANDED 53194ad2f4 — NEEDS FABLE REVIEW (1 test fails: earned-route lamp slingshot) |
+| PRI-08b-the-ninth-mouth | Ceres part 2 | LANDED 53194ad2f4 + wiring 8798162e8b — earned-route test green (AUDIT-13 da6a214102: release at 0.70 m/s → coast → seated, 16/16) | NEEDS FABLE REVIEW (whole feature on screen) |
 | PRI-08c-kroll-and-the-yard-slip | Ceres part 3 | chained on devin1 |
 | PRI-10a | Scale 4 shows both readings | BUILT f02cc6caa5 |
 | PRI-10b…o | #939 campaign layer, rebuilt feature by feature (fifteen packets) | chained on devin2, in order b c d e f g i j k l n h m o — b,c landed; d LANDED 2f2881a065 NEEDS FABLE REVIEW (worker died, recovered by hand) |
@@ -90,6 +90,7 @@ reviews every commit; lane agents do not take them.
 | LOOK-01 one grade | Concept A applied and tuned on screen in 4 passes (771c32c1, 37c9ddcd, 5b11ca4c, ca53d481, 4f828c87): warm key, blue shadows, ambient/fill restored, darkest moods floored, bloom only on true lights, exposure ~+3%, empty space deep indigo. Capture: `design/game/look/captures/2026-11-11-after-look-pass.png` | BUILT (owner to judge) |
 | LOOK-03 | A rock turns pure white mid-fight (hit flash, pale albedo over the key, or a highlight) — find the cause, fix in its owner | HOLD (not reproduced in rounds 2/3/5; diagnostics 53d5d274 + scanner ready — rerun on the next sighting) |
 | LOOK-04-the-look | Owner 2026-11-12: bold, readable, cheap — energy bands, emissive-only bloom, role rims, indigo shadow, fixed res + CAS/FXAA (packet has the root causes) | TAKEN lead (bench building: Sonnet) |
+| NINTH-MOUTH-CUT-01 | The Mouth's rock walls stop reading as flat polygons: port PR #945's shadeRegions mechanism onto LOOK-04's rock family (AUDIT-14 capture 04-ceres-ninth-mouth.png is the before) | TAKEN hydrogen (lead-run) |
 | FUNGUS-01-progressive-infestation | Owner 2026-11-15: plan a story-led spread from clean areas to increasingly infested eligible structures, with creepy brown, fleshy alien growth and organic folds. Decide how saved sector Bloom tide and local ecology contamination relate; publish deterministic severity and changes from the simulation to bounded, attached visual growth, with clear/sever recovery and LOD limits. Preserve intentional Understory faction and garden identities; verify the ordinary route and save/load. | NEEDS-PACKET |
 | THROW-01-the-click-throws | A right-click on a held enemy always throws it (today a newcomer's click mostly cuts and self-slings: 3/7) | TAKEN sonnet (lead-run) |
 | OPENING-1-the-story-leads | First ten minutes follow the story: Tethys trade, Kessler's line, beats reordered (drills after dock), sample marked at spawn, seam mines the sample | TAKEN agent2 (devin2) |
@@ -183,6 +184,7 @@ reviews every commit; lane agents do not take them.
 | PL-03 scavenger half | Real salvor hull dispatched from the nearest yard through the existing salvor/job seam; turns back if the wreck is emptied | BUILT 7c744edb (lead-review) |
 | PL-08-applause | Station lamps flash at a slingshot kill | BUILT 1ff73ce9 |
 | RECON-NEXT | Draft code facts for the next `NEEDS-PACKET` row (none open now; use for any `WRITE` row Lane 1 asks for) | READY (repeat) |
+| AUDIT-14b-frame-retakes | Six AUDIT-14 captures re-framed to the lead's INDEX verdicts (capture-only, no game code) | TAKEN devin3 (lead-run) |
 
 ## Lane 4 — mechanical, cannot go wrong
 
