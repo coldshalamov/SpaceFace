@@ -11,9 +11,21 @@
 // Driver: scripts/fleet-look.mjs. Verification harness, not a shipped feature.
 import * as THREE from 'three';
 import { SHIPS } from '../data/ships.js';
+import { BOMB_DEFS } from '../data/bombs.js';
+import { BOMB_PROXY_RADIUS, BOMB_VISUAL_RADIUS } from '../systems/bombs.js';
+import { faunaSpeciesById } from '../data/alienFauna.js';
+import { ALIEN_SITES } from '../data/alienEcology.js';
+import { planBolusLayout } from '../data/theBolus.js';
 import { SECTORS } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { defaultShipAppearance } from '../core/shipAppearance.js';
+import { connectivityMask } from '../systems/siteLogistics.js';
+import { resolveWorksConduitPiece } from '../ui/asteroid/worksPartLoader.js';
+import { MACHINE_KINDS } from '../data/precursorMachines.js';
+import { buildMachineMesh, buildMachineProp } from './machineVisuals.js';
+import { preloadCreatureSkinLibrary } from './creatureSkinLibrary.js';
+import { preloadSurveyorSurface } from './surveyorSurfaceLibrary.js';
+import { createLodState, projectedShipDiameterPx } from './lod.js';
 import { getAuthoredAssetDiagnostic, getAuthoredAssetRuntimeInfo, loadAuthoredPart } from './assetLoader.js';
 import { wrapShipWithAuthoredParts } from './partsLibrary.js';
 import { RESIDENCY_HELD } from './residencyManager.js';
@@ -23,6 +35,40 @@ import { measureFleetLookCost } from './fleetLookCost.js';
 
 const RELEASE_ROOT = 'assets/ships/release/parts/';
 const TILT = 60 * Math.PI / 180;
+const CONDUIT_CELL_WU = 2.2;
+const CONDUIT_CELL_RADIUS = CONDUIT_CELL_WU * Math.SQRT1_2;
+// Connected layout covering all 6 Works conduit shapes per family (end/straight/corner/t/cross/junction)
+// with zero dangling ports; [2, 2] stays cross and [6, 2] receives the single service-lid junction.
+const CONDUIT_NETWORK_CELLS = Object.freeze([
+  [0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2], [7, 2],
+  [2, 1], [2, 0], [3, 0],
+  [2, 3],
+  [4, 3],
+  [6, 1], [6, 3], [6, 4], [7, 4],
+]);
+const CONDUIT_SERVICE_CELL = '6,2';
+const MACHINE_PROP_IDS = Object.freeze([
+  'pylon', 'monolith', 'spine', 'plate', 'husk', 'vault', 'gate_ring', 'marker', 'dock_arm', 'gantry',
+]);
+
+// Match one real spawning site; Bolus has its own layout and strain rather than an ALIEN_SITES cast.
+export function faunaPreviewEntity(speciesId, { siteId, aggregate = false } = {}) {
+  const species = faunaSpeciesById(speciesId);
+  if (!species) throw new Error('no fauna species ' + speciesId);
+  const bolus = speciesId.startsWith('bolus_');
+  const site = bolus ? null : Object.values(ALIEN_SITES).find((entry) =>
+    (!siteId || entry.siteId === siteId) && Number(entry.faunaCast?.[speciesId]) > 0);
+  if ((bolus && siteId) || (!bolus && !site)) throw new Error('no matching fauna site for ' + speciesId);
+  if (aggregate && site?.siteId !== 'veil_ray_nursery') throw new Error('aggregate preview requires the veil ray nursery');
+  const specimen = bolus ? planBolusLayout(1).find((entry) => entry.speciesId === speciesId) : null;
+  const radius = specimen?.radius ?? species.radius;
+  const driveState = specimen ? (specimen.dynamic ? 'drift' : 'anchored')
+    : species.dormant ? 'dormant' : species.sessile ? 'anchored' : 'drift';
+  return { id: 900000 + stablePreviewId(speciesId), type: 'fauna', radius,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    data: { strainId: bolus ? 'ashfall_choir' : site.strainId,
+      ecology: { speciesId, siteId: site?.siteId || null, aggregate, driveState, phase: 0, anchor: { x: 0, z: 0 } } } };
+}
 
 /**
  * Stable preview-entity id per ship def, so the same ship always previews as the same hull.
@@ -217,6 +263,14 @@ function poseCamera(cam, view, radius, heading, center) {
     cam.lookAt(aim.x, aim.y, aim.z);
     cam.updateProjectionMatrix();
     return;
+  } else if (view === 'work') {
+    const D = Math.max(radius * 1.9, 16);
+    cam.position.set(aim.x, aim.y + D * Math.sin(TILT), aim.z - D * Math.cos(TILT));
+    cam.far = Math.max(cam.far, radius * 20);
+  } else if (view === 'site') {
+    const D = Math.max(radius * 7.2, 68);
+    cam.position.set(aim.x, aim.y + D * Math.sin(TILT), aim.z - D * Math.cos(TILT));
+    cam.far = Math.max(cam.far, radius * 20);
   } else if (view === 'side') orbit(radius * 3.2, 0.12, Math.PI / 2 + h);
   else if (view === 'top') cam.position.set(aim.x, aim.y + radius * 3.4, aim.z - 0.001);
   else if (view === 'front') orbit(radius * 2.8, 0.35, Math.PI + 0.55 + h);
@@ -315,6 +369,225 @@ export function installFleetLook(SF) {
     if (!holder.parent) scene.add(holder);
   }
 
+  async function buildConduitNetwork(family, renderer) {
+    if (family !== 'lane' && family !== 'power') throw new Error('no conduit family ' + family);
+    const cellSet = new Set(CONDUIT_NETWORK_CELLS.map(([c, r]) => `${c},${r}`));
+    const has = (c, r) => cellSet.has(`${c},${r}`);
+    const plan = CONDUIT_NETWORK_CELLS.map(([c, r]) => {
+      const mask = connectivityMask(has, c, r);
+      const piece = resolveWorksConduitPiece(family, mask, { service: `${c},${r}` === CONDUIT_SERVICE_CELL });
+      if (!piece) throw new Error(`unresolved conduit cell (${c},${r}) for ${family}`);
+      return { col: c, row: r, ...piece };
+    });
+    const uniqueAssetIds = [...new Set(plan.map((piece) => piece.assetId))];
+    const blueprints = new Map();
+    if (typeof window !== 'undefined') window.__SF_fleetLookStage = `conduit:load:${family}:${uniqueAssetIds.length}`;
+    await Promise.all(uniqueAssetIds.map(async (assetId) => {
+      const url = `${RELEASE_ROOT}works/${assetId}.glb`;
+      const bp = await loadAuthoredPart(url, { renderer, slot: 'place', admissionVisible: true });
+      if (!bp) {
+        const diagnostic = await getAuthoredAssetDiagnostic(renderer, url, 'place');
+        throw new Error(`load failed: ${url}${diagnostic ? ` — ${diagnostic.message || diagnostic}` : ''}`);
+      }
+      blueprints.set(assetId, bp);
+    }));
+    if (typeof window !== 'undefined') window.__SF_fleetLookStage = `conduit:built:${family}`;
+    const root = new THREE.Group();
+    root.name = `SF_ConduitNetwork_${family}`;
+    const segments = [];
+    const lodState = createLodState();
+    const triCount = (geom) => (geom.index
+      ? Math.round(geom.index.count / 3)
+      : Math.round((geom.attributes?.position?.count || 0) / 3));
+    for (const piece of plan) {
+      const bp = blueprints.get(piece.assetId);
+      const seat = new THREE.Group();
+      seat.name = `conduit_${piece.assetId}_${piece.col}_${piece.row}`;
+      seat.position.set(piece.col * CONDUIT_CELL_WU, 0, piece.row * CONDUIT_CELL_WU);
+      seat.rotation.y = piece.rotation;
+      const levels = new Set();
+      const meshes = [];
+      for (const p of bp.primitives || []) {
+        if (p.tags && (p.tags.collision || p.tags.collider)) continue;
+        const mesh = new THREE.Mesh(p.geometry, p.material);
+        mesh.name = p.name;
+        mesh.matrixAutoUpdate = false;
+        mesh.matrix.copy(p.matrix);
+        const lodTag = p.tags && p.tags.lod ? p.tags.lod : null;
+        if (lodTag) levels.add(lodTag);
+        mesh.userData.worksLod = lodTag;
+        mesh.visible = !lodTag || lodTag === 'lod0';
+        seat.add(mesh);
+        meshes.push(mesh);
+      }
+      root.add(seat);
+      segments.push({ col: piece.col, row: piece.row, kind: piece.kind, assetId: piece.assetId, seat, levels, meshes });
+    }
+    const worldCenter = new THREE.Vector3();
+    const segPos = new THREE.Vector3();
+    const camPos = new THREE.Vector3();
+    root.userData.updateLodForCamera = (cam, viewport) => {
+      root.updateMatrixWorld(true);
+      const boxNow = new THREE.Box3().setFromObject(root);
+      boxNow.getCenter(worldCenter);
+      camPos.copy(cam.position);
+      const cameraDistance = camPos.distanceTo(worldCenter);
+      const projectedCellPx = projectedShipDiameterPx(worldCenter, CONDUIT_CELL_RADIUS, cam, viewport);
+      const desired = lodState.resolve(projectedCellPx);
+      let minSegmentPx = Infinity;
+      let maxSegmentPx = 0;
+      const activeLods = new Set();
+      const visibleNames = new Set();
+      const hiddenNames = new Set();
+      let visibleMeshCount = 0;
+      let hiddenMeshCount = 0;
+      let visibleTriangles = 0;
+      const byAsset = new Map();
+      for (const seg of segments) {
+        seg.seat.getWorldPosition(segPos);
+        const segPx = projectedShipDiameterPx(segPos, CONDUIT_CELL_RADIUS, cam, viewport);
+        if (segPx < minSegmentPx) minSegmentPx = segPx;
+        if (segPx > maxSegmentPx) maxSegmentPx = segPx;
+        const activeLod = seg.levels.has(desired)
+          ? desired
+          : (seg.levels.has('lod1') ? 'lod1' : [...seg.levels].sort()[0] || 'lod0');
+        activeLods.add(activeLod);
+        let entry = byAsset.get(seg.assetId);
+        if (!entry) {
+          entry = {
+            assetId: seg.assetId,
+            kind: seg.kind,
+            activeLod,
+            count: 0,
+            visibleNodes: new Set(),
+            hiddenNodes: new Set(),
+            visibleTriangles: 0,
+          };
+          byAsset.set(seg.assetId, entry);
+        }
+        entry.count += 1;
+        for (const mesh of seg.meshes) {
+          const tag = mesh.userData.worksLod;
+          const show = !tag || tag === activeLod;
+          mesh.visible = show;
+          if (show) {
+            visibleMeshCount += 1;
+            const tris = triCount(mesh.geometry);
+            visibleTriangles += tris;
+            entry.visibleTriangles += tris;
+            visibleNames.add(mesh.name);
+            entry.visibleNodes.add(mesh.name);
+          } else {
+            hiddenMeshCount += 1;
+            hiddenNames.add(mesh.name);
+            entry.hiddenNodes.add(mesh.name);
+          }
+        }
+      }
+      const perShape = [...byAsset.values()].map((e) => ({
+        assetId: e.assetId,
+        kind: e.kind,
+        activeLod: e.activeLod,
+        instances: e.count,
+        visibleNodes: [...e.visibleNodes].sort(),
+        hiddenNodes: [...e.hiddenNodes].sort(),
+        visibleTriangles: e.visibleTriangles,
+      }));
+      return {
+        family,
+        segmentCount: segments.length,
+        activeLods: [...activeLods].sort(),
+        desiredLod: desired,
+        cameraDistance: Number(cameraDistance.toFixed(2)),
+        projectedCellPx: Number(projectedCellPx.toFixed(2)),
+        minSegmentPx: Number((Number.isFinite(minSegmentPx) ? minSegmentPx : 0).toFixed(2)),
+        maxSegmentPx: Number(maxSegmentPx.toFixed(2)),
+        visibleMeshCount,
+        hiddenMeshCount,
+        visibleTriangles,
+        visibleNodeNames: [...visibleNames].sort(),
+        hiddenNodeNames: [...hiddenNames].sort(),
+        perShape,
+      };
+    };
+    return {
+      root,
+      radius: null,
+      identity: {
+        type: 'conduitNetwork',
+        family,
+        cellPitchWu: CONDUIT_CELL_WU,
+        segmentCount: segments.length,
+        assetIds: [...blueprints.keys()].sort(),
+      },
+    };
+  }
+
+  async function buildMachinePreview(opts, renderer) {
+    const rawId = String(opts.machineId || '');
+    if (typeof document !== 'undefined') await preloadCreatureSkinLibrary(renderer).catch(() => null);
+    if (Object.hasOwn(MACHINE_KINDS, rawId)) {
+      if (rawId === 'surveyor_prism' && typeof document !== 'undefined') await preloadSurveyorSurface(renderer).catch(() => null);
+      const kind = MACHINE_KINDS[rawId];
+      const machineState = opts.machineState === 'working' || opts.machineWorking === true ? 'working' : 'idle';
+      const working = machineState === 'working';
+      const motionTime = Number.isFinite(opts.machineTime) ? opts.machineTime : (working ? 1.2 : 0);
+      const entity = {
+        id: 900000 + stablePreviewId(`machine:${rawId}`),
+        type: 'machine',
+        radius: kind.radius,
+        pos: { x: 0, z: 0 },
+        vel: { x: 0, z: 0 },
+        data: {
+          machine: {
+            kind: rawId,
+            visualScanWinding: working,
+            repairing: working,
+            interrogating: working,
+            working,
+            awakened: working,
+            visualCollecting: working,
+            collectId: working ? 1 : null,
+            awake: working,
+          },
+        },
+      };
+      const root = buildMachineMesh(entity);
+      if (!root || root.userData?.machineKind !== rawId) throw new Error('machine visual identity mismatch: ' + rawId);
+      const animated = typeof root.userData?.updateAuthoredMotion === 'function';
+      if (animated) root.userData.updateAuthoredMotion(entity, motionTime);
+      return {
+        root,
+        radius: kind.radius,
+        identity: {
+          type: 'machine',
+          machineKind: rawId,
+          state: machineState,
+          time: motionTime,
+          animated,
+          rootName: root.name,
+        },
+      };
+    }
+    const propId = rawId.replace(/^machine_/, '');
+    if (MACHINE_PROP_IDS.includes(propId)) {
+      const propRadius = Number.isFinite(opts.machineRadius) && opts.machineRadius > 0 ? opts.machineRadius : 20;
+      const root = buildMachineProp(propId, propRadius);
+      if (!root || root.userData?.machinePropId !== propId) throw new Error('machine prop identity mismatch: ' + rawId);
+      return {
+        root,
+        radius: null,
+        identity: {
+          type: 'machineProp',
+          propId,
+          radius: propRadius,
+          rootName: root.name,
+        },
+      };
+    }
+    throw new Error('no machine or machine prop ' + rawId);
+  }
+
   async function build(opts) {
     const { renderer, scene } = handles();
     if (opts.file) {
@@ -325,6 +598,48 @@ export function installFleetLook(SF) {
         throw new Error(`load failed: ${url}${diagnostic ? ` — ${diagnostic.message || diagnostic}` : ''}`);
       }
       return { root: blueprintToGroup(bp), radius: null };
+    }
+    if (opts.conduitNetworkFamily) return buildConduitNetwork(opts.conduitNetworkFamily, renderer);
+    if (opts.machineId) return buildMachinePreview(opts, renderer);
+    if (opts.asteroidType) {
+      const types = ['ast_common_rock', 'ast_metallic', 'ast_icy', 'ast_crystalline', 'ast_gas_cloud', 'ast_rare_exotic'];
+      const variant = opts.asteroidVariant;
+      if (!types.includes(opts.asteroidType) || !Number.isInteger(variant) || variant < 0 || variant > 4 || !['lod0', 'lod1', 'lod2'].includes(opts.asteroidLod)) throw new Error('invalid asteroid preview');
+      // The live factory hashes the entity ID to select one of five shared geometries.
+      let id = 0;
+      for (;; id++) {
+        let hash = 2166136261;
+        for (const ch of String(id)) { hash ^= ch.charCodeAt(0); hash = Math.imul(hash, 16777619); }
+        if ((hash >>> 0) % 5 === variant) break;
+      }
+      const vf = state.render.vf || (await import('./visualFactory.js')).createVisualFactory();
+      const root = vf.build({ id, type: 'asteroid', radius: 12, pos: { x: 0, z: 0 }, data: { typeId: opts.asteroidType } });
+      root.userData.updateLod(opts.asteroidLod);
+      return { root, radius: 12, identity: { type: 'asteroid', typeId: opts.asteroidType, variant, lod: opts.asteroidLod, entityId: id } };
+    }
+    if (opts.bombId) {
+      if (!Object.hasOwn(BOMB_DEFS, opts.bombId)) throw new Error('no bomb payload ' + opts.bombId);
+      const vf = state.render.vf || (await import('./visualFactory.js')).createVisualFactory();
+      const entity = { id: 900000 + stablePreviewId(opts.bombId), type: 'bomb', radius: BOMB_PROXY_RADIUS,
+        pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+        data: { bombId: opts.bombId, visualRadius: BOMB_VISUAL_RADIUS, armed: false } };
+      const root = vf.build(entity);
+      if (root?.userData?.payloadId !== opts.bombId) throw new Error('bomb visual identity mismatch: ' + opts.bombId);
+      return { root, radius: BOMB_VISUAL_RADIUS, identity: { type: 'bomb', payloadId: opts.bombId,
+        visualRadius: BOMB_VISUAL_RADIUS, proxyRadius: BOMB_PROXY_RADIUS, armed: false } };
+    }
+    if (opts.faunaId) {
+      const entity = faunaPreviewEntity(opts.faunaId, { siteId: opts.faunaSite, aggregate: opts.faunaAggregate === true });
+      const vf = state.render.vf || (await import('./visualFactory.js')).createVisualFactory();
+      const root = vf.build(entity);
+      const nursery = entity.data.ecology.siteId === 'veil_ray_nursery';
+      const expectedName = entity.data.ecology.aggregate ? 'SF_VeilRay_Nursery_Juvenile_Flock' : 'SF_VeilRay_Nursery_Adult';
+      if (!root || (nursery ? root.name !== expectedName : root.userData?.speciesId !== opts.faunaId)) {
+        throw new Error('fauna visual identity mismatch: ' + opts.faunaId);
+      }
+      return { root, radius: entity.radius, identity: { type: 'fauna', speciesId: opts.faunaId,
+        siteId: entity.data.ecology.siteId, strainId: entity.data.strainId, entityRadius: entity.radius,
+        driveState: entity.data.ecology.driveState, aggregate: entity.data.ecology.aggregate, rootName: root.name } };
     }
     const def = SHIPS.find((s) => s.id === opts.defId);
     if (!def) throw new Error('no ship def ' + opts.defId);
@@ -374,6 +689,8 @@ export function installFleetLook(SF) {
     }
     cam.aspect = width / height;
     holder.clear();
+    const setStage = (s) => { if (typeof window !== 'undefined') window.__SF_fleetLookStage = s; };
+    setStage('build');
     const built = await build(opts);
     if (!built.root.parent) holder.add(built.root);
     built.root.rotation.y = (opts.yaw || 0) * Math.PI / 180;
@@ -394,9 +711,11 @@ export function installFleetLook(SF) {
       // Yield one frame before either settle wait: the authored boundary stamps its pending
       // state asynchronously, and checked too early waitForAuthored sees no pending flags —
       // the pose below then measures an empty pre-upgrade marker and the frame ships blank.
+      setStage('waitForAuthored:pre');
       await wait(120);
       if (opts.defId || opts.file) verdict = await waitForAuthored(renderer, scene, cam, built.root);
       if (!verdict.ready) throw new Error(`fleet-look authored preview not ready: ${JSON.stringify(verdict)}`);
+      setStage('poseCamera');
       const box = new THREE.Box3().setFromObject(built.root);
       const sphere = box.getBoundingSphere(new THREE.Sphere());
       const radius = opts.radius || sphere.radius || built.radius || 6;
@@ -405,6 +724,9 @@ export function installFleetLook(SF) {
       // view frames and aims at that, so a tall station's mid-volume is what fills the picture.
       const placeCenter = new THREE.Vector3(0, sphere.center.y, 0);
       poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
+      if (typeof built.root.userData?.updateLodForCamera === 'function') {
+        built.root.userData.updateLodForCamera(cam, { width, height });
+      }
       built.root.traverse((c) => {
         const m = c.material;
         if (!m) return;
@@ -416,32 +738,41 @@ export function installFleetLook(SF) {
       // strict renderer admission (compile, upload and exact-target touch).
       if (opts.file) verdict = await waitForAuthored(renderer, scene, cam, built.root);
       if (!verdict.ready) throw new Error(`fleet-look authored preview not ready: ${JSON.stringify(verdict)}`);
+      setStage('admit');
       const admit = state.render.compileObjectPipelines;
       if (typeof admit !== 'function') throw new Error('fleet-look pipeline admission unavailable');
-      const result = await admit(holder, { explicit: true, strict: true, joinOutstanding: true,
+      const result = await admit(holder, { explicit: true, strict: true, joinOutstanding: !opts.conduitNetworkFamily,
+        onPreparationLeg: (leg) => setStage(`admit:${leg}`),
         isActive: () => built.root.parent === holder });
       if (!result || result.skipped === true || result.incomplete === true || result.contextLost === true) {
         throw new Error(`fleet-look pipeline admission incomplete: ${result?.reason || (result ? 'incomplete receipt' : 'no receipt')}`);
       }
       // Draw through the normal route with the same private camera used for this view.
+      setStage('captureReady');
       const pose = () => poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
+      let lodObservation = null;
       const finalFrame = await captureReadyFleetLookFrame({
         root: built.root,
         isActive: () => built.root.parent === holder,
         draw: () => {
           pose();
           scene.updateMatrixWorld(true);
+          if (typeof built.root.userData?.updateLodForCamera === 'function') {
+            lodObservation = built.root.userData.updateLodForCamera(cam, { width, height });
+          }
           return withFleetLookMaterialFactors(built.root, opts.ab, () =>
             observePreviewDraw(renderer, built.root, () => renderOnce(renderer, scene, cam)));
         },
         capture: () => renderer.domElement.toDataURL('image/png'),
       });
+      setStage('done');
       const { url, drawObservation } = finalFrame;
       verdict = finalFrame.verdict;
       lastPose = pose;
       lastCamera = cam;
       return {
-        url, ok: verdict.ready, radius, diagNames: built.diagNames, drawObservation, authoredVerdict: verdict,
+        url, ok: verdict.ready, radius, identity: built.identity, diagNames: built.diagNames, drawObservation, authoredVerdict: verdict,
+        ...(lodObservation ? { lodObservation } : {}),
         size: box.getSize(new THREE.Vector3()).toArray(),
         materials: withFleetLookMaterialFactors(built.root, opts.ab, () => collectMaterials(built.root)),
       };
@@ -495,6 +826,7 @@ export function installFleetLook(SF) {
     cost,
     assetDiagnostics: () => getAuthoredAssetRuntimeInfo(handles().renderer, { includeFailures: true, includeResources: true }),
     ships: () => SHIPS.map((s) => s.id),
+    machines: () => ({ machines: Object.keys(MACHINE_KINDS), props: [...MACHINE_PROP_IDS] }),
     // --sector=<id>: apply that sector's authored visual-profile rig (intensity + key/fill tint +
     // signature-hero aim) to the live lights before the next shot.
     setSector: (sectorId) => {

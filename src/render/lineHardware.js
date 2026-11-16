@@ -71,8 +71,14 @@ export function createLineHardware(state, options = {}) {
       headMount.add(lineHardwarePart(records[0], 'LineWinchHead', materials, sharedMaterials));
       for (const mount of padMounts) mount.add(lineHardwarePart(records[1], mount.name + '_plate', materials, sharedMaterials));
       // The real renderer's residency and compile lanes own admission before this rig is revealed.
+      // Without an owner gate, a deadline-expired residency pass keeps occupying the shared
+      // serial queue and residency batch chain it was queued on, parking every later admission
+      // behind work nobody is still waiting for. Let the deadline retire the pass at the next
+      // submission boundary; in-flight units still settle through the queue first.
       if (typeof state?.render?.prepareAuthoredGpuResidency === 'function') {
-        await admission.wait(state.render.prepareAuthoredGpuResidency(root));
+        await admission.wait(state.render.prepareAuthoredGpuResidency(root, {
+          isActive: () => !disposed && !admission.signal.aborted,
+        }));
       }
       if (typeof state?.render?.compileObjectPipelines === 'function') {
         await admission.wait(state.render.compileObjectPipelines(root, { debugBy: 'line-class-hardware', signal: admission.signal }));

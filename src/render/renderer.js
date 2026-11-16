@@ -12463,10 +12463,23 @@ export const render = {
         || (state.mode === 'flight'
           && Number.isFinite(state.render && state.render.firstPlayableFrameAt)
           && admissionSubjectIsOnDeadlineGlass(subject, state));
+      // The ambient residency/touch lanes assume flight's presented-frame pump drains
+      // them: presented cadence is the only thing that paces ordinary serial units and
+      // the ordinary residency chain. An explicit admission outside flight (standalone
+      // preview/probe holders — there is no present cadence to drain behind) is the
+      // caller's deadline work the same way an on-glass root is, so its residency and
+      // touch legs ride the urgent lane instead of parking behind ambient queue depth
+      // or a superseded owner's still-running pass. Flight callers keep the ambient
+      // tier explicit non-urgent lanes use for pacing.
+      const deadlineLane = urgent === true
+        || (state.mode !== 'flight' && admissionOptions && admissionOptions.explicit === true);
       if (admissionOptions && admissionOptions.joinOutstanding === true) {
         const existing = inFlightSubjectAdmissions.get(subject);
         if (existing && existing.size > 0) {
-          if (!urgent) return existing.values().next().value.admission;
+          // A deadline-lane joiner joining an ambient outstanding admission would
+          // inherit the starved ordinary lanes it exists to escape; it may only
+          // join an admission that itself rides the deadline lane.
+          if (!deadlineLane) return existing.values().next().value.admission;
           for (const rec of existing) {
             if (rec.urgent) return rec.admission;
           }
@@ -12537,7 +12550,7 @@ export const render = {
               && admissionOptions.strict !== true) {
             return result;
           }
-          const residencyUrgent = urgent === true
+          const residencyUrgent = deadlineLane === true
             || (state.mode === 'flight'
               && Number.isFinite(state.render && state.render.firstPlayableFrameAt)
               && admissionSubjectIsOnDeadlineGlass(subject, state));
@@ -12608,7 +12621,7 @@ export const render = {
             // state — the same touch the opening plan runs — so any residual variant links here,
             // behind the pending latch, instead of inside a presented bloom frame.
             try {
-              const touchReceipt = await submitExactSubjectTouch(subject, admissionOptions.isActive, urgent);
+              const touchReceipt = await submitExactSubjectTouch(subject, admissionOptions.isActive, deadlineLane);
               if (touchReceipt?.skipped || touchReceipt?.incomplete || touchReceipt?.contextLost) {
                 exactTargetReady = false;
                 exactTouchFailure = touchReceipt;
@@ -12701,7 +12714,7 @@ export const render = {
         subjectAdmissions = new Set();
         inFlightSubjectAdmissions.set(subject, subjectAdmissions);
       }
-      const admissionRecord = { admission, urgent };
+      const admissionRecord = { admission, urgent: deadlineLane };
       subjectAdmissions.add(admissionRecord);
       observePipelineAdmission(admission,
         (error) => console.warn('[render] background pipeline admission failed', error));

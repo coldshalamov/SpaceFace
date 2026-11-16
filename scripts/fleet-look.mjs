@@ -1,6 +1,10 @@
 // Fleet look: render authored ships through the live renderer and material path.
 //   node scripts/fleet-look.mjs --file=wholeships/hornet_production_v1.glb --views=chase,close,inspect
 //   node scripts/fleet-look.mjs --def=ship_kestrel --views=close,inspect
+//   node scripts/fleet-look.mjs --bombs=bomb_frag,bomb_goo --views=chase,close
+//   node scripts/fleet-look.mjs --fauna=archive_crab,black_sail --views=chase,close
+//   node scripts/fleet-look.mjs --conduit-network=lane,power --views=work,site
+//   node scripts/fleet-look.mjs --machines=witness,debris_sorter,pylon --views=close,inspect
 //   node scripts/fleet-look.mjs --fleet            # every live wholeship, contact sheet per view
 //   node scripts/fleet-look.mjs --fleet --sector=sector_vesta_forge   # under that sector's light rig
 // Output: .devshots/fleet-look/<name>_<view>.png (+ report.json). Crops chase/close to the ship.
@@ -17,7 +21,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   return [k, v.length ? v.join('=') : true];
 }));
 const OUT = ROOT + (args.out || '.devshots/fleet-look') + '/';
-const views = String(args.views || 'chase,close,inspect').split(',');
+const views = String(args.views || (args['conduit-network'] ? 'work,site' : 'chase,close,inspect')).split(',');
 const SHOT_TIMEOUT_MS = Number(args.timeout || 600) * 1000;
 const RUN_STARTED_AT_UTC = new Date().toISOString();
 const RUN_ID = `${process.pid}-${RUN_STARTED_AT_UTC.replace(/[:.]/g, '-')}`;
@@ -168,11 +172,59 @@ try {
   };
 
   let targets;
-  if (args.fleet) targets = LIVE_FLEET.filter(([n]) => !args.only || String(args.only).split(',').includes(n));
+  if (args.asteroids) {
+    const types = String(args.asteroids).split(',');
+    const variants = String(args.variants || '0,1,2,3,4').split(',').map(Number);
+    const lods = String(args.lods || 'lod0,lod1,lod2').split(',');
+    if (args.asteroids === true || types.some((id) => !/^ast_[a-z_]+$/.test(id)) || variants.some((v) => !Number.isInteger(v) || v < 0 || v > 4) || lods.some((lod) => !/^lod[012]$/.test(lod))) throw new Error('invalid asteroid types, variants or lods');
+    targets = types.flatMap((type) => variants.flatMap((variant) => lods.map((lod) => [`${type}_variant${variant}_${lod}`, { asteroidType: type, asteroidVariant: variant, asteroidLod: lod }])));
+  }
+  else if (args.fauna) {
+    const ids = String(args.fauna).split(',');
+    if (args.fauna === true || ids.some((id) => !/^[a-z0-9_]+$/.test(id))) throw new Error('--fauna requires comma-separated species IDs');
+    if (args['fauna-aggregate'] && (ids.length !== 1 || ids[0] !== 'veil_ray')) throw new Error('--fauna-aggregate requires only veil_ray');
+    targets = ids.map((id) => [id, { faunaId: id,
+      ...(args['fauna-site'] ? { faunaSite: String(args['fauna-site']) } : {}),
+      ...(args['fauna-aggregate'] ? { faunaAggregate: true } : {}) }]);
+  }
+  else if (args.bombs) targets = String(args.bombs).split(',').map((id) => [id, { bombId: id }]);
+  else if (args['conduit-network']) {
+    const families = String(args['conduit-network']).split(',');
+    if (args['conduit-network'] === true || families.some((f) => f !== 'lane' && f !== 'power')) {
+      throw new Error('--conduit-network requires comma-separated family IDs (lane, power)');
+    }
+    targets = families.map((family) => [`conduit_network_${family}`, { conduitNetworkFamily: family }]);
+  }
+  else if (args.machines) {
+    const ids = String(args.machines).split(',');
+    if (args.machines === true || ids.some((id) => !/^[a-z0-9_]+$/.test(id))) {
+      throw new Error('--machines requires comma-separated machine or prop IDs');
+    }
+    const rawStates = args['machine-states'] || args['machine-state'];
+    const states = rawStates ? String(rawStates).split(',') : [null];
+    if (states.some((s) => s !== null && s !== 'idle' && s !== 'working')) {
+      throw new Error('--machine-state(s) must be idle or working');
+    }
+    const machineTime = args['machine-time'] != null ? Number(args['machine-time']) : undefined;
+    const machineRadius = args['machine-radius'] != null ? Number(args['machine-radius']) : undefined;
+    if (machineTime !== undefined && !Number.isFinite(machineTime)) throw new Error('--machine-time must be a finite number');
+    if (machineRadius !== undefined && (!Number.isFinite(machineRadius) || machineRadius <= 0)) throw new Error('--machine-radius must be a positive number');
+    const multiState = states.length > 1;
+    targets = ids.flatMap((id) => states.map((st) => [
+      multiState && st ? `${id}_${st}` : id,
+      {
+        machineId: id,
+        ...(st ? { machineState: st } : {}),
+        ...(machineTime !== undefined ? { machineTime } : {}),
+        ...(machineRadius !== undefined ? { machineRadius } : {}),
+      },
+    ]));
+  }
+  else if (args.fleet) targets = LIVE_FLEET.filter(([n]) => !args.only || String(args.only).split(',').includes(n));
   else if (args.files) targets = String(args.files).split(',').map((f) => [f.split('/').pop().replace('.glb', ''), { file: f }]);
   else if (args.file) targets = [[args.name || String(args.file).split('/').pop().replace('.glb', ''), { file: args.file }]];
   else if (args.def) targets = [[args.name || String(args.def).replace('ship_', ''), { defId: args.def }]];
-  else throw new Error('pass --file, --def or --fleet');
+  else throw new Error('pass --fauna, --bombs, --conduit-network, --machines, --file, --def or --fleet');
 
   for (const [name, spec] of targets) {
     for (const view of views) {
@@ -291,11 +343,16 @@ try {
           },
         });
         const { res, file } = shot;
-        report.push({ name, view, file, ok: res.ok, size: res.size, radius: res.radius, drawObservation: res.drawObservation, materials: view === views[0] ? res.materials : undefined, ms: Date.now() - t0 });
-        console.log('shot', name, view, `${Date.now() - t0}ms`, res.ok ? '' : '(authored swap not confirmed)');
+        report.push({ name, view, file, ok: res.ok, size: res.size, radius: res.radius, identity: res.identity, drawObservation: res.drawObservation, ...(res.lodObservation ? { lodObservation: res.lodObservation } : {}), materials: view === views[0] ? res.materials : undefined, ms: Date.now() - t0 });
+        const lodNote = res.lodObservation ? ` lod=${res.lodObservation.activeLods.join(',')} px=${res.lodObservation.projectedCellPx} dist=${res.lodObservation.cameraDistance}` : '';
+        console.log('shot', name, view, `${Date.now() - t0}ms${lodNote}`, res.ok ? '' : '(authored swap not confirmed)');
       } catch (err) {
-        report.push({ name, view, error: String(err).slice(0, 500), ...(err?.code === 'FLEET_LOOK_SHOT_TIMEOUT' ? { timedOut: true, stage: shotState.stage, timeoutMs: SHOT_TIMEOUT_MS } : {}) });
-        console.log('FAIL', name, view, String(err).slice(0, 200));
+        let innerStage = null;
+        if (err?.code === 'FLEET_LOOK_SHOT_TIMEOUT') {
+          try { innerStage = await page.evaluate(() => window.__SF_fleetLookStage || null); } catch (_) {}
+        }
+        report.push({ name, view, error: String(err).slice(0, 500), ...(err?.code === 'FLEET_LOOK_SHOT_TIMEOUT' ? { timedOut: true, stage: shotState.stage, innerStage, timeoutMs: SHOT_TIMEOUT_MS } : {}) });
+        console.log('FAIL', name, view, String(err).slice(0, 200), innerStage ? `(innerStage=${innerStage})` : '');
         if (err?.code === 'FLEET_LOOK_SHOT_TIMEOUT') throw err;
         continue;
       }
