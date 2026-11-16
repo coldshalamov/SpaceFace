@@ -416,7 +416,9 @@ export function createSpeedDial() {
     setSpin(reading === 0 ? 0 : Math.min(18, 0.6 + (sp / r) * 6) * presentedAdvanceRatio(nowMs()));
     if (changed('reading', reading)) {
       const text = formatSpeedReading(sp);
-      numeral.textContent = text;
+      const node = numeral.firstChild;
+      if (node && node.nodeType === 3 && node === numeral.lastChild) node.data = text;
+      else numeral.textContent = text;
       numeral.classList.toggle('is-l4', text.length === 4);
       numeral.classList.toggle('is-l5', text.length >= 5);
       // the streaks are the "really moving" cue: absent at a crawl, full at ref x 1.3, never at rest

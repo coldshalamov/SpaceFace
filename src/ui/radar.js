@@ -2107,7 +2107,11 @@ export function createRadar(ctx) {
       // so the plate leads with the NAME — the thing a pilot scans for — then the distance. The
       // old "OBJECTIVE 457 WU · BEACON" buried the name and wrapped past the dial's width.
       const nextText = `◆ ${label} · ${distance}`;
-      if (objectiveReadout.textContent !== nextText) objectiveReadout.textContent = nextText;
+      if (objectiveReadout.textContent !== nextText) {
+        const node = objectiveReadout.firstChild;
+        if (node && node.nodeType === 3 && node === objectiveReadout.lastChild) node.data = nextText;
+        else objectiveReadout.textContent = nextText;
+      }
       objectiveKey.title = `The amber diamond marks your objective (${label}). ${distance}.`;
       setObjectiveKeyMode('objective');
       return;
