@@ -233,7 +233,11 @@ test('the station workbench has one lamp accent and printed panels', () => {
   assert.ok(accentViolations('#hud { --sf-accent: #7dffb3; --sf-station-accent: var(--dp-lamp); }').some((item) => /second accent/.test(item)));
   // Was: the panels must wear bezel.svg. Owner ruling 2026-09-22 -- a panel is a printed field.
   assert.doesNotMatch(css, /(?:bezel|keycap)[a-z-]*\.svg/);
-  assert.match(css, /background:\s*var\(--dp-field\)/);
+  // 0d939342a9 gave the command palette the shared popup material (glass/seam/phos) instead of the
+  // bare --dp-field slab the critic photographed as the generic modal (F1); the palette is
+  // explicitly exempted from the flattening now.
+  assert.match(css, /background:\s*var\(--sf-pop-glass\)/,
+    'the palette wears the shared popup glass');
   assert.match(css, /border-radius:\s*0/);
   assert.doesNotMatch(css, /\.card\b|data-sf-card|sf-card/);
 });
