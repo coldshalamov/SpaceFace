@@ -323,8 +323,12 @@ function buildShepherd() {
     const s = new THREE.BoxGeometry(2.6, 0.06, 0.7);
     return s;
   });
+  // Identical vanes use one finish per machine; later vanes borrow the first's
+  // material so teardown frees it exactly once.
+  const vaneMaterial = seamMat();
   for (let i = 0; i < 3; i += 1) {
-    const v = new THREE.Mesh(vane, seamMat());
+    const v = new THREE.Mesh(vane, vaneMaterial);
+    if (i > 0) v.userData.borrowedGeometryMaterial = true;
     v.position.z = -6 + i * 6;
     v.scale.setScalar(10);
     g.add(v);
@@ -670,8 +674,10 @@ export function buildMachineProp(placeId, radius = 20) {
       }), metalMat());
       seg.scale.setScalar(r * 0.4);
       g.add(seg);
+      const nodeMaterial = lightMat(0.7);
       for (let i = -1; i <= 1; i += 1) {
-        const node = new THREE.Mesh(geo('mp_node', () => new THREE.OctahedronGeometry(0.3, 0)), lightMat(0.7));
+        const node = new THREE.Mesh(geo('mp_node', () => new THREE.OctahedronGeometry(0.3, 0)), nodeMaterial);
+        if (i > -1) node.userData.borrowedGeometryMaterial = true;
         node.position.x = i * r * 0.9;
         node.scale.setScalar(r * 0.35);
         g.add(node);
@@ -731,9 +737,11 @@ export function buildMachineProp(placeId, radius = 20) {
         const s = new THREE.ConeGeometry(0.16, 0.5, 4);
         return s;
       });
+      const markerMaterial = seamMat(); // deliberately unlit
       for (let i = 0; i < 4; i += 1) {
         const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
-        const mk = new THREE.Mesh(marker, seamMat()); // deliberately unlit
+        const mk = new THREE.Mesh(marker, markerMaterial);
+        if (i > 0) mk.userData.borrowedGeometryMaterial = true;
         mk.position.set(Math.cos(a) * r, Math.sin(a) * r, 0);
         mk.rotation.z = a - Math.PI / 2;
         mk.scale.setScalar(r * 0.3);
