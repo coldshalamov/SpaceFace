@@ -11,6 +11,7 @@ import { isPlayerWanted } from '../systems/heat.js';
 import { classifyImpactResponsibility } from '../combat/killCausality.js';
 import { targetDisplayName } from './targetPanel.js';
 import { counted } from './numberFormat.js';
+import { isSwarmGlass } from './swarmGlass.js';
 
 
 const STYLE_ID = 'sf-sector-law-style';
@@ -333,6 +334,9 @@ export function createSectorLawPresenter(ctx) {
   function showSector(sectorId) {
     const id = sectorId || state.world && state.world.currentSectorId;
     if (!id || state.mode !== 'flight' || state.ui && state.ui.docked) return false;
+    // A live Swarm round has no sector law to show: the arena is not a jurisdiction, and its
+    // "SECTOR LAW · HIGH SECURITY" line is open-world chrome (SWARM-LEAK-01).
+    if (isSwarmGlass(state)) return false;
     // Opening one-instruction rule (hudAttention): the jurisdiction paragraph is flavor beside
     // the first objective — the entry card retires while it owns the screen. Live incidents and
     // authority receipts still surface; danger is not an instruction.
@@ -348,7 +352,7 @@ export function createSectorLawPresenter(ctx) {
   }
 
   function renderIncident(payload) {
-    if (drillUiOpen()) return false;
+    if (drillUiOpen() || isSwarmGlass(state)) return false;
     const view = authorityIncidentReadout(payload, state, state.simTime);
     if (!view) return false;
     active = { mode: view.mode, incident: { ...payload }, hideAt: view.mode === 'receipt' ? Number(state.simTime || 0) + RECEIPT_TTL_S : Infinity };
@@ -368,7 +372,7 @@ export function createSectorLawPresenter(ctx) {
   }
 
   function showDirectReceipt(receipt) {
-    if (drillUiOpen()) return false;
+    if (drillUiOpen() || isSwarmGlass(state)) return false;
     const receiptText = directLawReceiptText(receipt);
     if (!receiptText) return false;
     active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
@@ -398,7 +402,7 @@ export function createSectorLawPresenter(ctx) {
 
   function tick() {
     if (destroyed || !active) return;
-    if (state.mode !== 'flight' || state.ui && state.ui.docked || drillUiOpen()) { hide(); return; }
+    if (state.mode !== 'flight' || state.ui && state.ui.docked || drillUiOpen() || isSwarmGlass(state)) { hide(); return; }
     const now = Number(state.simTime || 0);
     if (active.mode === 'line' && active.hideAt <= now) {
       paintLaw(stepLawHud(active, null, now));

@@ -1176,6 +1176,43 @@ test('mobile authority notices register and release their existing flight overla
     assert.equal(presenter.el.dataset.flightCritical, undefined, 'steady badge does not evict other flight visuals');
     assert.deepEqual(calls.slice(-3).map(([kind]) => kind), ['register', 'release', 'register'],
       'the old critical registration is released before normal-priority registration');
+    // A live Swarm round is not a jurisdiction: the steady badge and its line retire at the owner.
+    state.run = { kind: 'survival', phase: 'active', ruleset: 'swarm' };
+    assert.equal(presenter.showSector('sector_helios'), false, 'no sector-law line inside an arena');
+    presenter.tick();
+    assert.equal(presenter.el.hidden, true, 'a badge carried in from Adventure is retired by the arena');
+    presenter.destroy();
+  } finally { dom.restore(); }
+});
+
+// SWARM-LEAK-01 — a live Swarm round painted the Adventure law card: "AUTHORITY RECEIPT /
+// SELF-DEFENSE AUTHORIZED · you fired first; break contact to disengage" plus its incident
+// variants while the arena was running. The arena has no jurisdiction to break contact with, so
+// the presenter refuses at its two entry points (receipt and incident) and Adventure is unchanged.
+test('a live Swarm round never paints the authority/law card; Adventure still does', () => {
+  const dom = installSectorLawDom();
+  try {
+    const state = { mode: 'flight', ui: {}, simTime: 0, world: {}, playerId: 1,
+      run: { kind: 'survival', phase: 'active', ruleset: 'swarm' } };
+    const presenter = createSectorLawPresenter({ state, bus: createBus(), ui: {} });
+    assert.equal(presenter.showDirectReceipt({
+      outcome: 'retaliation_authorized', cause: 'player_attack', stationId: 'station_helios',
+      statusText: 'SELF-DEFENSE',
+    }), false, 'no SELF-DEFENSE AUTHORIZED card in a Swarm round');
+    assert.equal(presenter.el.hidden, true);
+    assert.doesNotMatch(presenter.el.getAttribute('aria-label') || '', /SELF-DEFENSE/);
+    assert.equal(presenter.renderIncident({ id: 'inc', attackerId: 2, status: 'responding',
+      cause: 'npc_piracy', factionId: 'faction_scn', stationId: 'station_helios', responderIds: [7] }),
+      false, 'no intercept card in a Swarm round');
+    assert.equal(presenter.el.hidden, true);
+
+    state.run = { kind: 'survival', phase: 'inactive', ruleset: 'swarm' };
+    assert.equal(presenter.showDirectReceipt({
+      outcome: 'retaliation_authorized', cause: 'player_attack', stationId: 'station_helios',
+      statusText: 'SELF-DEFENSE',
+    }), true, 'Adventure (no live run) keeps the receipt');
+    assert.equal(presenter.el.hidden, false);
+    assert.match(presenter.el.getAttribute('aria-label'), /SELF-DEFENSE AUTHORIZED/);
     presenter.destroy();
   } finally { dom.restore(); }
 });
