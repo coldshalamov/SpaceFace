@@ -71,7 +71,7 @@ const CSS = `
   /* At --orr-cluster-scale ≤.6 (960/1280) the inverse-scaled labels widen the plate.
      Nudge it left by the extra label size so the column keeps its place under the
      hull; scale 1 → 0. */
-  left: calc(${P.x - 62 + 24}px - (12px / var(--orr-cluster-scale, 1) - 12px) * 5);   /* clear of the HEAT readout */ }
+  left: calc(${P.x - 62 + 36}px - (12px / var(--orr-cluster-scale, 1) - 12px) * 5);   /* clear of the hull arc tail */ }
 .orr-cluster__legend svg { width:16px; height:8px; overflow:visible; }
 .orr-cluster__legend b { font-family:var(--dp-face-numeral); font-weight:520; font-size:13px; color:var(--dp-phos, #dfeeff); font-variant-numeric:tabular-nums; text-align:right; }
 .orr-cluster__legend b.is-hull { font-weight:300; font-size:26px; line-height:.9; }
@@ -83,7 +83,7 @@ const CSS = `
 /* SFQ-B202 / B208 / B209 — the next decision sits under the legend, off the hull art and off
    the arrival fade. Large text uses the same scale token as the rest of the UI. Reduced motion
    never waits on this line: it is not an orr-cluster__fade child. */
-.orr-cluster__next { position:absolute; top:${P.y + 146}px; width:226px; margin:0;
+.orr-cluster__next { position:absolute; top:${P.y + 146}px; width:250px; margin:0;
   left: calc(${P.x - 62}px - (12px / var(--orr-cluster-scale, 1) - 12px) * 5);
   font-family:var(--dp-face-label, inherit); font-weight:560; line-height:1.25;
   font-size:max(12px, calc(13px * var(--sf-text-scale, 1))); color:var(--dp-danger, #ff5038);

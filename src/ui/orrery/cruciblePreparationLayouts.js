@@ -1060,6 +1060,8 @@ ${A} .sf-cru-note:empty { min-height:0; margin:0 !important; }
 ${A} .sf-cru-stage > .sf-cru-cards { padding:4px !important; }
 ${A} .sf-cru-cards .sf-cru-card { border:1px solid var(--armory-rule) !important; padding:8px 14px !important; background:var(--armory-panel) !important; min-height:66px !important; }
 ${A} .sf-cru-cards .sf-cru-card + .sf-cru-card { margin-top:3px !important; }
+/* A dealt card cut by the bottom bar must read as "more below", not as a layout bug: the list fades out over its last 28px and keeps 30px of tail so the final card is whole once scrolled to the end. */
+${A} .sf-cru-stage > .sf-cru-cards { padding-bottom:30px !important; -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 28px),transparent) !important; mask-image:linear-gradient(to bottom,#000 calc(100% - 28px),transparent) !important; }
 ${A} .sf-cru-cards .sf-cru-card:is(.is-lit,:focus-visible) { border-color:var(--dp-hand) !important; }
 ${A} .sf-cru-cards .sf-cru-card.is-unavail { opacity:.85 !important; }
 ${A} .sf-cru-cards .orr-equipment-glyph { color:var(--armory-cool); }
