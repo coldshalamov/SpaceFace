@@ -18,7 +18,7 @@
 import { createRadar } from './radar.js';
 import { mountIonStormHud } from './ionStormHud.js';
 import { mountTravelVectorHud } from './travelVectorHud.js';
-import { createTargetPanel, targetDisplayName, authoredSiteRosterDetail } from './targetPanel.js';
+import { createTargetPanel, targetDisplayName, authoredSiteRosterDetail, isWorldSiteWorkTarget as isWorldSiteWorkTargetEntity } from './targetPanel.js';
 import { createFloatingText } from './floatingText.js';
 import { createAvoidRects } from './hudAvoidRects.js';
 import { seatPhoneTell } from './phoneTellSeat.js';
@@ -747,6 +747,21 @@ export function resolveFlightObjectiveCommand(
     return { owner: 'story', mission: null, waypoint: null };
   }
   return null;
+}
+
+/**
+ * The objective marker's painted string, or null when the surface does not belong on this screen.
+ * A live Swarm round has no open-world goal line: the run's own round/wave readout is the only
+ * objective, and a leftover Adventure waypoint (a station 3.6k u away) is not a thing the arena
+ * can be flown to. Owned here so the arrow, its label and its accessible name share one gate.
+ */
+export function objectiveMarkerLabel(label) {
+  return String(label).replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 28) || 'OBJECTIVE';
+}
+
+export function objectiveMarkerLine(state, label, travel) {
+  if (isSwarmGlass(state)) return null;
+  return `GOAL · ${objectiveMarkerLabel(label)} · ${travel.distanceText} · ${travel.etaText}`;
 }
 
 function mtMarkerLine(state, wp, suffix = '') {
@@ -5481,6 +5496,7 @@ export function createHud(ctx, alerts) {
       ? state.entities.get(state.playerId)
       : null;
     const locked = !!(state.player && state.player.targetId != null);
+    const swarmRound = isSwarmGlass(state);
     if (!player || !player.pos) {
       mountContactRoster(rightDock, elOverview, radar.el, false);
       return;
@@ -5492,6 +5508,11 @@ export function createHud(ctx, alerts) {
     contacts.length = 0;
     const consider = (e) => {
       if (!e || !e.alive || e === player) return;
+      // A live Swarm round lists the fight, not the campaign's set dressing: an Adventure world
+      // work site (relay cradle, cargo brace…) beside the arena is not a thing to shoot, line or
+      // work from here, and its roster row leaked "FIELD COIL CRADLE — Select CARGO BRACE first"
+      // over a Swarm round (SWARM-LEAK-01).
+      if (swarmRound && isWorldSiteWorkTargetEntity(e)) return;
       const isShip = verbAcceptsType('target', e.type); // PQ-015: shared ship|drone membership
       const isWreck = isWreckLike(e);
       if (!isShip && !isWreck) return;
@@ -6345,6 +6366,19 @@ export function createHud(ctx, alerts) {
       setClass(elNavReadout, 'sf-nav--lock', false);
       return;
     }
+    // A live Swarm round has no open-world goal: the arena's own round readout is the objective
+    // and no campaign waypoint can be flown to. Gate at the owner so the chevron, its "GOAL ·"
+    // label and its accessible name are never painted — not hidden after the fact.
+    if (isSwarmGlass(state)) {
+      setDisplay(arrow, false);
+      setDisplay(elNavReadout, false);
+      setClass(elNavReadout, 'sf-nav--lock', false);
+      // Retained text from the Adventure frame before the run must not sit in the tree either.
+      if (lastNavLabel !== '') { setText(elNavLabel, ''); lastNavLabel = ''; }
+      lastObjectiveMarkerText = '';
+      lastObjectiveSig = null;
+      return;
+    }
     // Priority: durable nav waypoint (mission/trade/story), else legacy mission-local waypoint.
     const tracked = state.ui.trackedMissionId;
     const objectiveOwnsAttention = !!tracked || !!(state.nav && state.nav.waypoint);
@@ -6427,12 +6461,11 @@ export function createHud(ctx, alerts) {
     if (objectiveSig !== lastObjectiveSig) {
       lastObjectiveSig = objectiveSig;
       const travel = objectiveTravelReadout(state, objectiveWaypointRecord, objectiveTravelRecord);
-      const conciseLabel = String(label).replace(/\s+/g, ' ').trim().toUpperCase().slice(0, 28) || 'OBJECTIVE';
-      const markerText = `GOAL · ${conciseLabel} · ${travel.distanceText} · ${travel.etaText}`;
+      const markerText = objectiveMarkerLine(state, label, travel);
       if (markerText !== lastObjectiveMarkerText) {
         setText(arrowLabel, markerText);
         applyDistanceSpeech(arrowLabel, travel.distanceText);
-        setAttr(arrow, 'aria-label', `Current objective: ${conciseLabel}, ${travel.distanceText}, ${travel.etaText}`);
+        setAttr(arrow, 'aria-label', `Current objective: ${objectiveMarkerLabel(label)}, ${travel.distanceText}, ${travel.etaText}`);
         lastObjectiveMarkerText = markerText;
       }
     }

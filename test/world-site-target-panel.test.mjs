@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { CERES_SHIPBREAK_MANIFEST as manifest } from '../src/data/ceresShipbreak.js';
 import { worldSiteManifestById } from '../src/data/worldSiteManifests.js';
 import { createWorldSiteRecord } from '../src/systems/worldSiteKernel.js';
-import { objectInfoLine, targetDisplayName, targetInteractionClass } from '../src/ui/targetPanel.js';
+import { authoredSiteRosterDetail, objectInfoLine, targetDisplayName, targetInteractionClass } from '../src/ui/targetPanel.js';
 
 function fixture() {
   const record = createWorldSiteRecord(manifest);
@@ -62,3 +62,26 @@ test('site payload materials come from the site record and honor an empty remain
   record.payloads.relay_field_coil.remainingPool = {};
   assert.doesNotMatch(objectInfoLine(target, state, player, 20), /Scrap|Electronics/);
 });
+
+// SWARM-LEAK-01 — a live Swarm round's contact roster and target card carried the Adventure work-site
+// row ("FIELD COIL CRADLE … sealed · Select CARGO BRACE first · Payload: Scrap Metal ×6"). The site
+// is campaign furniture the arena cannot work, so both surfaces read it as ordinary contact chrome.
+test('a live Swarm round never prints a world-site work row; Adventure still does', () => {
+  const site = worldSiteManifestById('world_site_helios_relay');
+  const record = createWorldSiteRecord(site);
+  // Sealed cradle whose cut depends on the cargo brace: the row that leaked read
+  // "sealed · Select CARGO BRACE first · Payload: …".
+  const target = { id: 12, type: 'wreck', alive: true, radius: 8, data: {
+    role: 'world_site_component', worldSiteId: site.id, worldSiteComponentId: 'payload_cradle',
+    worldSiteTargetable: true, name: 'FIELD COIL CRADLE', salvagePool: { cmdty_scrap_metal: 4 },
+  } };
+  const state = { sites: { worldById: { [site.id]: record } }, entities: new Map([[12, target]]) };
+  const player = { data: { miningBeam: { range: 200 } } };
+  assert.match(authoredSiteRosterDetail(state, target, player, 20), /Select CARGO BRACE first/);
+  assert.match(objectInfoLine(target, state, player, 20), /Select CARGO BRACE first/);
+
+  const swamState = { ...state, run: { kind: 'survival', phase: 'active', ruleset: 'swarm' } };
+  assert.equal(authoredSiteRosterDetail(swamState, target, player, 20), null);
+  assert.equal(objectInfoLine(target, swamState, player, 20), '');
+});
+

@@ -226,7 +226,8 @@ export function targetInteractionClass(e, state = null) {
   return interactionClassLine(e);
 }
 
-function isWorldSiteWorkTarget(entity) {
+/** A world work-site component (relay cradle, cargo brace, shipbreak clamp…) — campaign furniture. */
+export function isWorldSiteWorkTarget(entity) {
   const d = entity?.data;
   return !!(d?.worldSiteId && d.worldSiteComponentId
     && (d.role === 'world_site_component' || d.worldSiteStructural === true));
@@ -234,6 +235,9 @@ function isWorldSiteWorkTarget(entity) {
 
 // Null means an ordinary contact: callers must keep its usual scanner/manifest disclosure.
 export function authoredSiteRosterDetail(state, entity, player, distance) {
+  // Work-site rows are campaign furniture. A live Swarm round reads the fight, so its roster
+  // never carries "FIELD COIL CRADLE — sealed · Select CARGO BRACE first" (SWARM-LEAK-01).
+  if (isSwarmGlass(state) && isWorldSiteWorkTarget(entity)) return null;
   if (isWorldSiteWorkTarget(entity)) return worldSiteTargetInfoLine(entity, state, player, distance);
   if (isOrchardFrame(entity)) return orchardSocketInfoLine(entity, state);
   return null;
@@ -790,6 +794,10 @@ export function passengerLinerLastLegLine(entity) {
 }
 
 export function objectInfoLine(t, state, p, dist) {
+  // A live Swarm round shows the fight, never a campaign work-site card ("FIELD COIL CRADLE ·
+  // sealed · Select CARGO BRACE first"). The target panel keeps the name and health it reads
+  // live; the site's authored operation row belongs to Adventure (SWARM-LEAK-01).
+  if (isWorldSiteWorkTarget(t) && isSwarmGlass(state)) return '';
   const workLoad = crackerRunWorkLoadRead(state, t);
   if (workLoad) return `${workLoad.classLine} · ${workLoad.note}`;
   if (isWorldSiteWorkTarget(t)) return worldSiteTargetInfoLine(t, state, p, dist);

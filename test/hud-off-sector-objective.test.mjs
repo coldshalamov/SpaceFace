@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { flightDestinationSurface, resolveFlightObjectiveCommand, objectiveTravelReadout,
-  objectiveBearingGlyph, objectiveBearingDeg } from '../src/ui/hud.js';
+  objectiveBearingGlyph, objectiveBearingDeg, objectiveMarkerLine } from '../src/ui/hud.js';
 import { resolveRadarObjective } from '../src/ui/radar.js';
 
 const HELIOS = 'sector_helios_prime';
@@ -61,3 +61,26 @@ test('an explicitly selected local course owns the display without changing trac
   assert.equal(state.nav.waypoint, waypoint);
   assert.deepEqual(resolveRadarObjective(state).waypointPos, waypoint.pos);
 });
+
+// SWARM-LEAK-01 — the Adventure goal line ("GOAL · HELIOS STATION · 3.6k u · ETA —") painted
+// over a live Swarm round: a station 3.6k u away that the arena player cannot fly to. Both owners
+// (the HUD marker and the radar's objective key) ask one predicate; Adventure keeps its line.
+const swarmState = (waypoint) => ({ ...stateFor(waypoint), run: { kind: 'survival', phase: 'active', ruleset: 'swarm' } });
+
+test('a live Swarm run paints no GOAL marker line and no radar objective cue', () => {
+  const waypoint = { kind: 'local', sectorId: CERES, label: 'Helios Prime', pos: { x: 3600, z: 0 } };
+  const travel = { distanceWu: 3600, distanceText: '3.6k u', etaText: 'ETA —', etaS: null, closingSpeed: 0 };
+  assert.equal(objectiveMarkerLine(swarmState(waypoint), 'Helios Prime', travel), null,
+    'the Swarm round owns the only objective readout; no campaign goal line draws');
+  assert.equal(resolveRadarObjective(swarmState(waypoint)), null,
+    'the dial points at no campaign station inside a Swarm round');
+});
+
+test('Adventure keeps the same goal line and radar cue the Swarm gate removed', () => {
+  const waypoint = { kind: 'local', sectorId: CERES, label: 'Helios Prime', pos: { x: 3600, z: 0 } };
+  const state = stateFor(waypoint);
+  const travel = objectiveTravelReadout(state, waypoint);
+  assert.match(objectiveMarkerLine(state, 'Helios Prime', travel), /^GOAL · HELIOS PRIME · /);
+  assert.deepEqual(resolveRadarObjective(state).waypointPos, waypoint.pos);
+});
+
