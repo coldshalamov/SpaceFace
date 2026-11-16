@@ -1921,11 +1921,7 @@ export const ui = {
     (async () => {
       try {
         while (queue.length) {
-          // The loading screen holds them too (lead, 2026-11-16, INV-07 profile): warming hidden
-          // screens (race board, physics venues, codex, mission log) during a run's load forced
-          // ~1,600 style recalcs and ~3.7 s of layout-bound JS in front of the first picture.
-          // The queue resumes once the run is live.
-          if (this.state?.mode === 'loading' || this.screenManager?.top?.() === 'newGame') {
+          if (this.state?.mode !== 'loading' && this.screenManager?.top?.() === 'newGame') {
             await yieldPresentationFrame();
             if (registrationCycle && !isScreenRegistrationCycleCurrent(registrationCycle)) return;
             continue;

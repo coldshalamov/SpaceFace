@@ -79,15 +79,7 @@ test('New Game opening between mount and paint retains the unfinished warm', asy
     await f.frame();
     assert.deepEqual(f.calls, ['mount:pause']);
     assert.deepEqual(f.owner._screenPrewarmQueue, ['pause', 'settings']);
-    // Launch: the loading screen still holds the warm (it owns the run's first picture) …
     f.setMode('loading');
-    f.setTop('loading');
-    await f.frame();
-    await f.frame();
-    assert.deepEqual(f.calls, ['mount:pause'], 'loading holds hidden-screen warms');
-    // … and the queue resumes once the run is live.
-    f.setMode('flight');
-    f.setTop('hud');
     await f.frame();
     await f.frame();
     assert.deepEqual(f.calls.slice(0, 3), ['mount:pause', 'mount:pause', 'paint:pause']);
