@@ -3925,7 +3925,6 @@ function buildSwarmRepairCell(e) {
     const m = new THREE.Mesh(getGeometry(geoKey, geoBuild), material);
     m.name = name;
     if (pos) m.position.set(pos[0], pos[1], pos[2]);
-    m.frustumCulled = false;
     body.add(m);
     return m;
   };
@@ -3962,7 +3961,6 @@ function buildSwarmRepairCell(e) {
   halo.material = halo.material.clone();
   halo.scale.setScalar(R);
   halo.userData.baseScale = R;
-  halo.frustumCulled = false;
   g.add(halo);
 
   g.userData.kind = 'pickup';
@@ -4012,7 +4010,6 @@ function buildSwarmDrop(e) {
   const body = new THREE.Mesh(getGeometry('swarmdrop:crystal', () => new THREE.OctahedronGeometry(0.85, 0).scale(0.8, 1.35, 0.8)), crystal);
   body.name = 'SwarmDropCrystal';
   body.scale.setScalar(R);
-  body.frustumCulled = false;
   g.add(body);
   const ringMat = (opacity) => getMaterial(`swarmdrop:ring:${hue}:${opacity}`, () => new THREE.MeshBasicMaterial({
     color: new THREE.Color(hue), transparent: true, opacity,
@@ -4022,11 +4019,9 @@ function buildSwarmDrop(e) {
   halo.material = halo.material.clone();
   halo.scale.setScalar(R * 1.15);
   halo.userData.baseScale = R * 1.15;
-  halo.frustumCulled = false;
   g.add(halo);
   const outer = new THREE.Mesh(getGeometry('swarmdrop:outer', () => new THREE.TorusGeometry(2.1, 0.035, 6, 36)), ringMat(0.38));
   outer.scale.setScalar(R * 1.15);
-  outer.frustumCulled = false;
   g.add(outer);
   g.userData.kind = 'pickup';
   g.userData.interactionKind = 'pickup';
