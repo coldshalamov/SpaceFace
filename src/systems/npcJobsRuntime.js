@@ -7515,7 +7515,9 @@ export const npcJobsRuntime = {
   },
 
   destroy() { this._ceresWinchingCleanup?.(); this._ceresWinchingCleanup = null;
-    this._ceresNinthMouthCleanup?.(); this._ceresNinthMouthCleanup = null; },
+    this._ceresNinthMouthCleanup?.(); this._ceresNinthMouthCleanup = null;
+    this._cuttingCourtesyCleanup?.(); this._cuttingCourtesyCleanup = null;
+    this._sharedCutCleanup?.(); this._sharedCutCleanup = null; },
 
   // ── save / restore ────────────────────────────────────────────────────────────────────────────
   // Physical receipts are retrieved from this owner; a bus payload is not service truth.
