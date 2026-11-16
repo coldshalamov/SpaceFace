@@ -74,8 +74,14 @@ test('the HUD getter is cached, and receipts can use its live-objective bands', 
   assert.match(hudSrc, /flightTextObstaclesStale = true/);
   const toastRules = [...MOBILE_FLIGHT_LAYOUT_CSS.matchAll(/#toasts[^{}]*\{([^}]*)\}/g)].map((m) => m[1]);
   assert.ok(toastRules.length >= 2, 'portrait and compact-landscape receipt fallbacks remain');
-  for (const rule of toastRules) {
-    assert.doesNotMatch(rule, /(?:top|left|right|bottom|width)\s*:[^;]*!important/,
-      'the existing allocator inline placement must be able to clear the live objective');
-  }
+  // bc1f162b44 gave handset flight its own receipt lane: the phone media blocks now pin the lane
+  // with !important so the allocator's desktop inline placement cannot drag it back over the
+  // objective or the vitals. What must stay true is that the desktop allocation still runs — the
+  // lane only yields on the phone profile the HUD itself detects.
+  const mobilePinned = toastRules.filter((rule) => /(?:top|left|right|bottom|width)\s*:[^;]*!important/.test(rule));
+  assert.ok(mobilePinned.length >= 1, 'the phone receipt lane owns its own seat');
+  assert.match(hudSrc, /data-sf-mobile-flight'\) === '1'/,
+    'the allocator keys its phone seats off the same mobile-flight profile the CSS pins');
+  assert.match(hudSrc, /function flushReceiptLane\(\)/,
+    'desktop receipt placement still flows through the measured allocator');
 });
