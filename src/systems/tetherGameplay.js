@@ -708,7 +708,9 @@ export const tetherGameplay = {
     // OPENING-1b: until the first latch lands, the marked loose rock outranks passing traffic freight
     // within reach - the first latch is the lesson, never a hauler's cargo.
     let swappedToRock = false;
-    if (openingBeforeClaim(state) && !(state.onboarding.beatDoneAt && state.onboarding.beatDoneAt.tether != null)
+    // (Not gated on the rail being 'active': the latch can land in the first seconds, before the rail speaks.)
+    const obState = state.onboarding;
+    if (obState && obState.finished !== true && !(obState.beatDoneAt && (obState.beatDoneAt.tether != null || obState.beatDoneAt.raid != null))
         && !(target.data && target.data.rescueRole === 'rock')) {
       const rock = (state.entityList || []).find((e) => e && e.alive !== false && e.data && e.data.rescueRole === 'rock');
       if (rock && rock.pos && player.pos && Math.hypot(rock.pos.x - player.pos.x, rock.pos.z - player.pos.z) <= 240) {

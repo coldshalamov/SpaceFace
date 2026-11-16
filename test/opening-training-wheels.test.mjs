@@ -20,7 +20,7 @@ test('the pilot can always cut, release or lose the target: only strain breaks a
 test('wheels come off after the first throw, outside the tutorial, and for any other body', () => {
   assert.equal(trainingWheelsHold(wheels({ firstThrowSeen: true }), rock, 'threshold'), false);
   assert.equal(trainingWheelsHold(wheels({ beatDoneAt: { raid: 1 } }), rock, 'threshold'), false);
-  assert.equal(trainingWheelsHold(wheels({ active: false }), rock, 'threshold'), false);
+  assert.equal(trainingWheelsHold(wheels({ active: false }), rock, 'threshold'), true, 'the wheels do not wait for the rail to speak');
   assert.equal(trainingWheelsHold(wheels({ finished: true }), rock, 'threshold'), false);
   assert.equal(trainingWheelsHold(wheels(), { data: {} }, 'threshold'), false);
   assert.equal(trainingWheelsHold({}, rock, 'threshold'), false);
