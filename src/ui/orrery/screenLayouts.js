@@ -872,7 +872,7 @@ html.sf-reduce-motion #screens .orr-newgame .sf-ng-launch:has(> .orr-lampkey__wo
 #screens .orr-newgame .orr-ng-caption > .k-sentence { position:absolute !important; left:0; top:clamp(44px, 5.2vh, 60px); max-width:min(460px, 42%); margin:0 !important; }
 #screens .orr-newgame .orr-ng-caption > .orr-ng-stats { position:absolute !important; inset:0 !important; display:block !important; margin:0 !important; gap:0 !important; pointer-events:none; }
 /* what it carries: one line of its fittings under its sentence */
-#screens .orr-newgame .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { position:absolute !important; left:0; top:clamp(116px, 13.4vh, 150px); margin:0 !important; pointer-events:auto; }
+#screens .orr-newgame .orr-ng-caption > div.orr-ng-loadout { position:absolute !important; left:0; top:clamp(116px, 13.4vh, 150px); margin:0 !important; pointer-events:auto; }
 #screens .orr-newgame .orr-ng-caption ul[aria-label="Loadout"] { display:flex !important; flex-direction:row !important; flex-wrap:wrap; align-items:baseline; gap:4px 0 !important; width:max-content; max-width:min(540px, 28vw); }
 #screens .orr-newgame .orr-ng-caption ul[aria-label="Loadout"] > li > * { white-space:nowrap !important; width:auto !important; max-width:none !important; }
 #screens .orr-newgame .orr-ng-caption ul[aria-label="Loadout"] > li + li::before { content:"·"; margin:0 10px; color:rgb(232 226 212 / .4); }
@@ -903,9 +903,9 @@ html.sf-reduce-motion #screens .orr-newgame .sf-ng-route .sf-ng-route__step .k-r
   #screens .orr-newgame .orr-ng-caption ul[aria-label="Loadout"] { flex-direction:column !important; gap:3px !important; width:auto !important; max-width:none !important; }
   #screens .orr-newgame .orr-ng-caption ul[aria-label="Loadout"] > li + li::before { display:none; }
   #screens .orr-newgame > .k-stage > :is(.k-world--stage, .k-stage__poster) { left:23% !important; width:66% !important; }
-  #screens .orr-newgame .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { top:clamp(84px, 13.4vh, 100px); }
+  #screens .orr-newgame .orr-ng-caption > div.orr-ng-loadout { top:clamp(84px, 13.4vh, 100px); }
   #screens .orr-newgame .orr-turntable--carousel > .orr-turntable__art { display:none; }
-  #screens .orr-newgame .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { top:clamp(96px, 16vh, 120px); }
+  #screens .orr-newgame .orr-ng-caption > div.orr-ng-loadout { top:clamp(96px, 16vh, 120px); }
   #screens .orr-newgame .sf-ng-route > .k-caps { margin-bottom:8px !important; }
   #screens .orr-newgame .sf-ng-route .sf-ng-route__step .k-row__name { font-size:12px; }
 }
@@ -945,7 +945,7 @@ html body #screens .k-screen.orr-newgame .sf-ng-footer .sf-back.k-word::after { 
    under the line at every size (the stats ring and the run's scale stay absolute over the stage) */
 #screens .orr-newgame .orr-ng-caption > .sf-slot-card-title { position:static !important; }
 #screens .orr-newgame .orr-ng-caption > .k-sentence { position:static !important; margin-top:10px !important; }
-#screens .orr-newgame .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { position:static !important; margin-top:22px !important; top:auto !important; }
+#screens .orr-newgame .orr-ng-caption > div.orr-ng-loadout { position:static !important; margin-top:22px !important; top:auto !important; }
 /* the screen's title steps down so the chosen hull's name leads the stage */
 #screens .orr-newgame .orr-ng-title { font-size:clamp(28px, 1.9vw, 40px) !important; }
 /* both columns end together: LAUNCH and its footnote stand at the foot of the form column */
@@ -980,7 +980,7 @@ html body #screens .k-screen.orr-newgame .sf-ng-footer .sf-back.k-word::after { 
 @media (min-width:2200px) and (min-height:1200px) {
   #screens .orr-newgame > :is(.sf-ng-header, .sf-ng-body, .sf-ng-footer, .k-fine) { zoom:1.3; }
   /* the stage's own words scale with the form: the hull's sentence, its loadout and the run's tape */
-  #screens .orr-newgame .orr-ng-caption > :is(.k-sentence, .sf-ng-route), #screens .orr-newgame .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { zoom:1.3; }
+  #screens .orr-newgame .orr-ng-caption > :is(.k-sentence, .sf-ng-route), #screens .orr-newgame .orr-ng-caption > div.orr-ng-loadout { zoom:1.3; }
   #screens .orr-newgame .orr-hullring text.orr-hullring__num { font-size:32px; }
   #screens .orr-newgame .orr-hullring text.orr-hullring__num tspan { font-size:13px; }
   #screens .orr-newgame .orr-hullring text.orr-hullring__label { font-size:12px; }

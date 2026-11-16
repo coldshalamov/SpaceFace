@@ -81,8 +81,8 @@ ${NG} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-size {
   font-size:12px !important; letter-spacing:.06em !important;
   color:rgb(${BONE} / .82) !important; font-variant-numeric:tabular-nums !important; }
 ${NG} .orr-ng-caption ul[aria-label="Loadout"] .orr-ng-size::before { content:none !important; display:none !important; }
-${NG} .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) > .orr-ng-label,
-${NG} .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) > .fh-legend {
+${NG} .orr-ng-caption > div.orr-ng-loadout > .orr-ng-label,
+${NG} .orr-ng-caption > div.orr-ng-loadout > .fh-legend {
   color:rgb(${BONE} / .86) !important; margin-bottom:8px !important; letter-spacing:.06em !important; }
 @media (max-width:1366px) {
   ${NG} .orr-ng-caption ul[aria-label="Loadout"] .fh-legend,
@@ -149,7 +149,7 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
     display:inline-flex !important; grid-template-columns:none !important; column-gap:6px !important; font-size:12px !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 620 !important; letter-spacing:.06em !important; }
   ${NGD} .orr-ng-caption > .sf-slot-card-title { float:left !important; margin:0 24px 0 0 !important; }
   ${NGD} .orr-ng-caption > .k-sentence { margin-top:0 !important; padding-top:2px !important; max-width:none !important; }
-  ${NGD} .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { clear:both !important; margin-top:0 !important; padding-top:14px !important; }
+  ${NGD} .orr-ng-caption > div.orr-ng-loadout { clear:both !important; margin-top:0 !important; padding-top:14px !important; }
   /* the run keeps its titles only (the ≤800-tall intent); the hidden beats no longer hold ~90px under the scale */
   ${NGD} .sf-ng-route .sf-ng-route__step { padding:0 !important; height:auto !important; }
   ${NGD} .sf-ng-route .sf-ng-route__step .k-row__sub { display:none !important; }
@@ -321,7 +321,7 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} > .k-stage > .orr-ng-hero-box { left:var(--ng-hero-x) !important; width:var(--ng-hero-w) !important; top:150px !important; height:92px !important; }
   ${NGD} > .k-stage::before { left:var(--ng-hero-x); width:var(--ng-hero-w); top:226px; height:30px; }
   /* the fittings: one column of name + size under a rule */
-  ${NGD} .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { position:static !important; margin:0 !important; padding-top:16px !important;
+  ${NGD} .orr-ng-caption > div.orr-ng-loadout { position:static !important; margin:0 !important; padding-top:16px !important;
     border-top:1px solid rgb(${BONE} / .16); }
   ${NGD} .orr-ng-caption ul[aria-label="Loadout"] { display:flex !important; flex-direction:column !important; gap:6px !important;
     width:auto !important; max-width:100% !important; }

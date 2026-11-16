@@ -702,6 +702,7 @@ export const newGameScreen = {
     // Loadout: the picked starter's fitted modules as quiet words. Not buttons — nothing here
     // is chosen; the starter row above is the picker and rewrites this list on every pick.
     const loadoutField = field('Loadout');
+    loadoutField.wrap.classList.add('orr-ng-loadout');
     const loadout = el('ul', 'k-words k-words--row');
     loadout.setAttribute('aria-label', 'Loadout');
     const renderLoadout = (starter) => {

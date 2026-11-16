@@ -63,7 +63,7 @@ export const MOBILE_SCREEN_CSS = `
     display:block !important; width:100% !important; height:170px !important; transform:none !important;
     opacity:1 !important; visibility:visible !important; object-fit:contain; }
   ${N} .k-stage > .orr-ng-hero-box { display:none !important; }
-  ${N} .orr-ng-caption > div:has(> ul[aria-label="Loadout"]) { margin-top:8px !important; }
+  ${N} .orr-ng-caption > div.orr-ng-loadout { margin-top:8px !important; }
   ${N} .orr-ng-caption ul[aria-label="Loadout"] { display:flex !important; flex-direction:column !important; gap:5px !important; }
   ${N} .sf-ng-route { position:relative !important; inset:auto !important; width:100% !important; margin-top:12px !important; }
   ${N} .sf-ng-route .sf-ng-route__steps { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr));
