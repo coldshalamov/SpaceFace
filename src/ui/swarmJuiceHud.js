@@ -178,6 +178,7 @@ export const swarmJuiceHud = {
     this._card = null;
     this._bossHp = null;
     this._bossMove = '';
+    this._bossMoveUntil = 0;
     this._bossDownUntil = 0;
     this._shatter = null;
     this._boardOn = false;
@@ -322,7 +323,8 @@ export const swarmJuiceHud = {
     if (this._bossHp && simNow >= this._bossDownUntil) {
       dom.boss.hidden = false;
       dom.col.classList?.add?.('is-boss');
-      this._text(dom.bossName, this._bossMove ? `${this._bossHp.name} · ${this._bossMove}` : this._bossHp.name);
+      const move = this._bossMove && (!this._bossMoveUntil || simNow < this._bossMoveUntil) ? this._bossMove : '';
+      this._text(dom.bossName, move ? `${this._bossHp.name} · ${move}` : this._bossHp.name);
       setScaleX(dom.bossFill, this._bossHp.frac);
       this._text(dom.bossCount, this._bossHp.total > 1
         ? `${this._bossHp.alive}/${this._bossHp.total}` : '');
@@ -536,7 +538,16 @@ export const swarmJuiceHud = {
   _onBossIntro(p) {
     if (!p || typeof p.name !== 'string' || !p.name) return;
     const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
-    this._card = { title: p.name, line: p.line || '', at: now, shownAt: null, until: now + CARD_TTL_S };
+    // Phone: no separate boss card. The intro line becomes one compact clause on the boss bar for
+    // the card's duration (the bar already names the boss).
+    if (document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1') {
+      const clause = String(p.line || '').split(/[.—–:]/)[0].trim();
+      this._card = null;
+      this._bossMove = clause.length > 34 ? `${clause.slice(0, 33).trim()}…` : clause;
+      this._bossMoveUntil = now + CARD_TTL_S;
+    } else {
+      this._card = { title: p.name, line: p.line || '', at: now, shownAt: null, until: now + CARD_TTL_S };
+    }
     this._bossHp = { name: p.name, frac: 1, alive: 1, total: 1 };
     this._bossDownUntil = 0;
   },
