@@ -1,6 +1,7 @@
 // Book 2's finite Cinder squad. Missions remembers evidence/slots; aftermathWrecks alone
 // owns hull pose, damage, custody, materialization and retirement. Never pin or mint a wreck.
 import { isPlayerWanted } from '../systems/heat.js';
+import { pluralWord } from '../core/numberFormat.js';
 import { ROOK_BOOTH } from '../data/rook.js';
 import { rookReceivingBrakeReadout } from '../systems/rookReceivingBrake.js';
 import { rookPadPosition, rookDeliveryCheck, rookBoothEligible } from '../characters/rookRules.js';
@@ -280,12 +281,12 @@ export function cinderFieldReport(m, state) {
   const pending = Math.max(0, cleared - drivenOff - marks(m).length);
   const parts = [`${cleared}/3 lane clearances.`];
   if (drivenOff) parts.push(`${drivenOff} driven off: no hull left behind.`);
-  if (destroyed) parts.push(`${destroyed} marked ${destroyed === 1 ? 'hull destroyed' : 'hulls destroyed'}.`);
-  if (consumed) parts.push(`${consumed} marked ${consumed === 1 ? 'hull stripped or sold elsewhere' : 'hulls stripped or sold elsewhere'}: no Rook proof.`);
+  if (destroyed) parts.push(`${destroyed} marked ${pluralWord(destroyed, 'hull destroyed', 'hulls destroyed')}.`);
+  if (consumed) parts.push(`${consumed} marked ${pluralWord(consumed, 'hull stripped or sold elsewhere', 'hulls stripped or sold elsewhere')}: no Rook proof.`);
   if (a.delivered) parts.push('Rook has the matching hull receipt.');
   else {
-    if (recorded) parts.push(`${recorded} marked ${recorded === 1 ? 'hull remains recorded' : 'hulls remain recorded'} for recovery.`);
-    if (pending) parts.push(`${pending} cleared ${pending === 1 ? 'mark awaits' : 'marks await'} aftermath evidence; missing is not lost.`);
+    if (recorded) parts.push(`${recorded} marked ${pluralWord(recorded, 'hull remains recorded', 'hulls remain recorded')} for recovery.`);
+    if (pending) parts.push(`${pending} cleared ${pluralWord(pending, 'mark awaits', 'marks await')} aftermath evidence; missing is not lost.`);
     if (recorded === 1 && cleared === 3 && !pending) parts.push('This is the last recorded hull. Selling it to Quiet Line or stripping it forfeits the contract pay.');
   }
   return { cleared, drivenOff, destroyed, consumed, recorded, pending, delivered: a.delivered, text: parts.join(' ') };

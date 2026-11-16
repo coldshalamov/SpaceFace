@@ -4,6 +4,7 @@ import { cinderReturnRead, cinderReturnContact, cinderReturnChoices, cinderRetur
 import { furnaceDetailRead } from '../../missions/furnaceArrivalScene.js';
 import { authoredCinderRoute, cinderAccounting, CINDER_TAG } from '../../missions/cinderRoute.js';
 import { isPlayerWanted } from '../../systems/heat.js';
+import { pluralWord } from '../../core/numberFormat.js';
 import { SECTORS } from '../../data/sectors.js';
 import { sectorLocalToGlobalForSector } from '../../data/sectorCoordinates.js';
 
@@ -118,7 +119,7 @@ export function cinderDepartureReply(ctx, stationId, contact, choiceId) {
   }
   if (action === 'next') {
     const r = read.furnace;
-    const worms = r.casketLosses ? `${r.casketLosses} Casket ${r.casketLosses === 1 ? 'worm loss is' : 'worm losses are'} recorded. That slip does not identify whose blast caused them. `
+    const worms = r.casketLosses ? `${r.casketLosses} Casket ${pluralWord(r.casketLosses, 'worm loss is', 'worm losses are')} recorded. That slip does not identify whose blast caused them. `
       : 'No Casket worm losses are recorded. ';
     return answer(`The host keeps the disposal slip beside your glass. ${r.received}/3 pods received, ${r.lost} lost; ${r.rewardCr} cr recorded. ${worms}${fine}${held}Rook is posting Cinder work at Tethys: three armed Wasps on Charon’s Ashfall approach, and one identifiable hull to his ring at Expanse. These are ships that fight, not repair mites. He pays for the clearance and the proof. Read his terms before you sign. ${legal}`);
   }
