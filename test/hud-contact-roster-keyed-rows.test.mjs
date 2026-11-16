@@ -105,7 +105,10 @@ test('stable active Massline controls do not rewrite their accessible label at H
     assert.equal(controls.getAttribute('tabindex'), '0', 'the socket stays keyboard reachable');
     const labelBefore = controls.getAttribute('aria-label');
     const tipBefore = controls.getAttribute('data-why');
-    assert.match(labelBefore, /Line.*Space.*F/, 'the accessible name carries the live Massline keys');
+    assert.match(labelBefore, /Line.*RMB/,
+      // G18-02 (b931aac851) made RMB the Line in every door: the default tether key binding is now
+      // empty, so the accessible name carries the mouse label instead of Space/F.
+      'the accessible name carries the live Massline keys');
     assert.match(tipBefore, /Line/, 'the socket still explains its verb');
 
     let ariaLabelWrites = 0;

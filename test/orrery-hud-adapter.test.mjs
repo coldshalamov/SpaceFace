@@ -172,8 +172,11 @@ test('the mounted Cluster follows live rebinds, including an intentionally unbou
     state.settings.controls.bindings.tether = [];
     mounted.update(state, player, true);
     assert.equal(key(), '—', 'unbinding cannot silently restore a default key');
-    assert.doesNotMatch(socket().getAttribute('data-why'), /HOLD|REEL|PAY OUT|ORBIT|PUMP/,
-      'an unavailable line-control modifier cannot advertise the axes');
+    // G18-02 (b931aac851) made RMB the Line in every door and left the keyboard seat empty by
+    // default, so an empty `tether` binding now means "the mouse owns it", not "no Line". The axes
+    // stay advertised because RMB really does control them; only the key label clears.
+    assert.match(socket().getAttribute('data-why'), /Hold RMB for line control: .*REEL/,
+      'the mouse Line still names the axes it really has');
     state.settings.controls.bindings.tether = ['KeyU'];
     state.player.tether.active = false;
     mounted.update(state, player, true);
@@ -231,8 +234,12 @@ test('D240: the live context strip is a measured obstacle again, for arrows and 
     'content-driven strip growth refreshes the box, not only window resizes');
   assert.match(src, /function invalidateAndPlaceHudOverlays\(\)\s*\{\s*invalidateObjectiveEdgeBoxes\(\)/s,
     'the observed invalidator still marks the edge boxes stale');
-  assert.match(src, /const measuredLeft = objectiveEdgeObstacles\(\)\.left;[\s\S]*?resolveDoctrineTellPlacement\(w, h, proj, slotIndex,\s*\[measuredLeft, \.\.\.touchReserved, \.\.\.placed\]/,
+  assert.match(src, /const measuredLeft = objectiveEdgeObstacles\(\)\.left;[\s\S]{0,400}?reserved\.push\(measuredLeft\)/,
     'doctrine tells yield to the same measured strip');
+  // ...and the tells resolve their seat from that reserved pool (74e6020171 replaced the per-frame
+  // obstacle array with a reused blocker pool, so the call takes `reserved`, not a spread literal).
+  assert.match(src, /resolveDoctrineTellPlacement\(w, h, proj, slotIndex, reserved,/,
+    'the tell seat is solved against the reserved strip and touch controls');
 });
 
 test('a settled Cluster frame writes nothing: springs at rest ignore a repeat target', async () => {
