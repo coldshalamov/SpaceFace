@@ -68,7 +68,6 @@ ${ROW}:is(.is-active, [aria-selected="true"]):is(:hover, :focus-visible) .sx-fac
    whole scale and the contract line read above the fold. */
 @media (min-width:1101px) and (min-height:601px) and (max-height:800px) {
   ${D} .orr-fac-orbit { height:clamp(260px, calc(100vh - 446px), 420px) !important; }
-  ${D} .sx-fac .sx-fac-overview { position:relative !important; padding-right:0 !important; }
   ${D} .sx-fac .sx-fac-overview > .k-caps, ${D} .sx-fac .sx-fac-ident__name { padding-right:150px !important; }
   ${D} .sx-fac .sx-fac-overview > .sx-fac-heroes { position:absolute !important; top:0; right:0; margin:0 !important; text-align:right; z-index:1; }
   ${D} .sx-fac .sx-fac-heroes .k-hero { align-items:flex-end !important; }
@@ -80,6 +79,7 @@ ${ROW}:is(.is-active, [aria-selected="true"]):is(:hover, :focus-visible) .sx-fac
    the unfolded rows wrap to their own full-width lines) */
 ${T} .sx-fac-network { display:flex !important; flex-wrap:wrap; align-items:baseline; column-gap:18px; row-gap:2px; }
 ${T} .sx-fac-network__rows, ${T} .sx-fac-network__empty { flex-basis:100%; }
+@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-fac-network { margin-top:6px !important; } }
 /* the treaty sentence is a flex item with min-width:auto, so on the phone it ran past the reading's edge and clipped */
 ${T} .sx-fac-network > .sx-fac-treaty { flex-basis:100%; min-width:0; }
 /* a desktop window 650px wide or narrower (390x844): the stage kept its two desktop columns, the

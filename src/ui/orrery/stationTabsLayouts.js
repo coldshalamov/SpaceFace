@@ -386,15 +386,12 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   ${T} .sx-dossier { column-gap:24px; }
 }
 
-/* every figure in these tabs is the thin numeral (ORRERY §3.4) */
-${T} :is(.sx-fac-heroes, .sx-fab-heroes, .sx-ledger__read-hero) .k-hero__n { font-variation-settings:"wdth" 100, "wght" 250 !important; font-weight:250 !important; }
 
 /* ================================ FACTIONS ================================================== */
 /* the powers on the ladder: a name and its standing; the crests live on the orbit */
 ${T} .sx-fac__rail { position:relative; }
 ${T} .sx-fac__rail > .k-caps { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .72) !important; padding-left:26px !important; }
 ${rail('.sx-fac__rows', '.sx-fac__rows .sx-fac-row', '.is-active, [aria-selected="true"]')}
-${T} .sx-fac__rows > li { display:block !important; }
 ${T} .sx-fac__rows .sx-fac-row { display:grid !important; grid-template-columns:minmax(0, 1fr) 56px; align-items:baseline; column-gap:10px;
   padding:7px 0 7px 26px !important; min-height:0 !important; height:auto !important; width:100% !important; text-align:left; }
 ${T} .sx-fac-row__body { display:contents !important; }
@@ -403,23 +400,18 @@ ${T} .sx-fac-row__name { font-family:var(--dp-face-body, "Instrument Sans") !imp
   text-transform:none !important; color:rgb(${BONE} / .86) !important; }
 ${T} .sx-fac-row__name > .k-62 { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .55) !important; display:block; margin-bottom:2px; }
 ${T} .sx-fac-row:is(.is-active, [aria-selected="true"]) .sx-fac-row__name { color:rgb(250 247 238) !important; }
-${T} .sx-fac-row__tier { text-align:right; font-variant-numeric:tabular-nums; font-size:13px !important; color:rgb(248 244 234) !important; }
+${T} .sx-fac-row__tier { text-align:right; justify-self:end; font-variant-numeric:tabular-nums; font-size:13px !important; color:rgb(248 244 234) !important; }
 ${T} .sx-fac-row__tier.k-bad { color:var(--dp-danger, #ff5038) !important; }
-${T} .sx-fac-row__tier.k-good { color:rgb(248 244 234) !important; }
 /* the stage: the orbit at the left, the reading beside it */
 ${T} .sx-fac__stage { display:grid !important; grid-template-columns:minmax(300px, 40%) minmax(0, 1fr); column-gap:clamp(24px, 3vw, 56px); align-items:start; align-content:start; }
 ${T} .orr-fac-orbit { position:sticky; top:0; width:100%; height:clamp(320px, 54vh, 560px); }
 ${T} .sx-fac-reading { min-width:0; position:relative; isolation:isolate; }
 ${T} .sx-fac-reading::before { content:""; position:absolute; z-index:-1; inset:-30px -60px; pointer-events:none; background:radial-gradient(closest-side, rgb(7 8 10 / .82), rgb(7 8 10 / .62) 60%, rgb(7 8 10 / 0)); }
-${T} .sx-fac-overview { padding-right:0 !important; }
-${T} .sx-fac-overview > * + * { margin-top:10px !important; }
-${T} .sx-fac-crest { display:none !important; }
 ${T} .sx-fac-overview > .k-caps, ${T} .sx-fac__detail .k-caps { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .6) !important; }
 ${T} .sx-fac-ident__name { max-width:none !important; margin-top:6px !important; }
 ${T} .sx-fac-ident__name .sf-entity-link { text-decoration:none !important; background-image:none !important; border-bottom:0 !important; color:inherit !important; }
 ${T} .sx-fac-ident__name .sf-entity-link:is(:hover, :focus-visible) { text-decoration:underline 1px rgb(${BONE} / .45) !important; text-underline-offset:6px; outline:none !important; }
 ${T} .sx-fac-ident__flag { font-size:13px !important; color:rgb(${BONE} / .72) !important; }
-${T} .sx-fac-heroes { display:flex !important; flex-wrap:wrap; gap:14px 40px !important; margin-top:14px !important; }
 ${T} .sx-fac-heroes .k-hero { ${PLAIN} padding:0 !important; min-height:0 !important; }
 ${T} .sx-fac-heroes .k-hero__n { font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 300 !important; font-weight:300 !important;
   font-size:clamp(28px, 3.6vh, 40px) !important; line-height:1 !important; letter-spacing:-.01em !important; color:rgb(248 244 234) !important; text-shadow:none !important; }
@@ -451,15 +443,7 @@ ${T} .sx-fac-node:is(:hover, :focus-visible) { outline:none !important; }
 ${T} .sx-fac-node:is(:hover, :focus-visible) .k-row__name { color:var(--dp-hand, #f2b950) !important; }
 ${T} .sx-fac-network__empty { font-size:12.5px !important; color:rgb(${BONE} / .6) !important; }
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
-  ${T} .sx-fac__stage { grid-template-columns:minmax(260px, 36%) minmax(0, 1fr); column-gap:20px; }
-  ${T} .orr-fac-orbit { height:clamp(260px, 44vh, 320px); }
-  ${T} .sx-fac-overview > * + * { margin-top:6px !important; }
-  ${T} .sx-fac-ident__name { font-size:26px !important; }
-  ${T} .sx-fac-heroes { gap:8px 24px !important; margin-top:8px !important; }
-  ${T} .sx-fac-heroes .k-hero__n { font-size:26px !important; }
   ${T} .sx-fac-heroes .k-hero__w { font-size: 12px !important; margin-top:3px; }
-  ${T} .sx-fac__detail { gap:12px !important; margin-top:12px !important; }
-  ${T} .sx-fac-contracts .sx-ladder__step { padding:3px 0 !important; }
   ${T} .sx-fac__rows .sx-fac-row { padding-top:5px !important; padding-bottom:5px !important; }
 }
 
@@ -609,7 +593,6 @@ ${T} .sx-ledger .st-ledger-empty:not([hidden]) { ${PLAIN} display:block !importa
 ${rail('.st-ledger-list', '.st-ledger-list .st-ledger-entry', '[aria-selected="true"]')}
 ${T} .sx-ledger .st-ledger-list { margin-top:14px !important; grid-row:4; }
 ${T} .sx-ledger .st-ledger-empty { grid-row:4; align-self:start; }
-${T} .sx-ledger .st-ledger-list[hidden] { display:none !important; }
 ${T} .sx-ledger .st-ledger-entry { ${PLAIN} display:block !important; padding:8px 0 8px 26px !important; min-height:0 !important; height:auto !important; }
 ${T} .sx-ledger .st-ledger-entry-body { grid-template-columns:auto minmax(0, 1fr) auto !important; column-gap:14px !important; }
 ${T} .sx-ledger .st-ledger-cycle { ${LABEL} font-family:var(--dp-face-label, "Archivo") !important; font-size: 12px !important; letter-spacing:.12em !important; color:rgb(${BONE} / .55) !important; font-variant-numeric:tabular-nums; }
@@ -628,7 +611,6 @@ ${T} .sx-ledger__read-hero { ${PLAIN} padding:0 !important; }
 ${T} .sx-ledger__read-num { font-family:var(--dp-face-numeral, "Archivo") !important; font-stretch:100% !important; font-variation-settings:"wdth" 100, "wght" 250 !important; font-weight:250 !important;
   font-size:clamp(56px, 8vh, 96px) !important; line-height:1 !important; letter-spacing:-.02em !important; color:rgb(248 244 234) !important; text-shadow:none !important; }
 ${T} .sx-ledger__read-unit { ${LABEL} font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; }
-${T} .sx-ledger__read-title { font-size:clamp(22px, 2.6vh, 30px) !important; }
 ${T} .sx-ledger__read-line { font-size:15px !important; line-height:1.5; color:rgb(248 244 234) !important; max-width:52ch; }
 ${T} .sx-ledger__read-hand { font-size:13px !important; color:rgb(${BONE} / .72) !important; max-width:52ch; }
 ${T} .sx-ledger .st-ledger-detail { ${PLAIN} padding:0 !important; }
@@ -641,7 +623,6 @@ ${T} .sx-fac__rows:is(:focus-within, :hover) .sx-fac-row:is(.is-active, [aria-se
 ${T} .sx-fac-row__name > .k-62 { display:block; margin-bottom:1px; }
 /* the standing figure: its tier as the label above the number; the two readings smaller; captions one line */
 ${T} .sx-fac-heroes { align-items:flex-start !important; gap:16px 44px !important; }
-${T} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:clamp(48px, 7vh, 80px) !important; }
 ${T} .sx-fac-heroes .k-hero__n .sx-fac-tier { ${LABEL} display:block; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .62) !important; margin-bottom:6px; }
 ${T} .sx-fac-heroes .k-hero__n.k-bad .sx-fac-tier { color:var(--dp-danger, #ff5038) !important; }
 ${T} .sx-fac-heroes .k-hero__w { font-family:var(--dp-face-body, "Instrument Sans") !important; font-stretch:100%; font-variation-settings:normal !important; font-weight:400 !important;
@@ -660,13 +641,9 @@ ${T} .sx-fac-contracts .sx-ladder__step.is-next::after { content:"you are here" 
   ${T} .sx-fac__stage { grid-template-columns:minmax(420px, 48%) minmax(0, 1fr) !important; column-gap:28px !important; }
   ${T} .orr-fac-orbit { height:clamp(330px, 56vh, 420px) !important; }
   ${T} .sx-fac-heroes { flex-wrap:nowrap !important; gap:10px 26px !important; }
-  ${T} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:44px !important; }
-  ${T} .sx-fac-heroes .k-hero__n { font-size:30px !important; }
   ${T} .sx-fac-heroes .k-hero__w { font-size: 12px !important; max-width:20ch !important; }
   ${T} .sx-fac-ident__name { font-size:24px !important; }
   ${T} .sx-fac-ident__flag { font-size:12px !important; }
-  ${T} .sx-fac__detail { gap:10px !important; margin-top:10px !important; }
-  ${T} .orr-standing { max-width:520px; }
   ${T} .sx-fac-contracts .sx-ladder__step { padding:2px 0 !important; }
   ${T} .sx-fac-contracts .sx-ladder__name { font-size: 12px !important; }
 }
@@ -867,12 +844,7 @@ ${T} .sx-fac-rung-next { font-size:12.5px !important; line-height:1.45; color:rg
 /* relations fold into a word; no rule under the last one */
 ${word('.sx-fac-network__toggle')}
 ${T} .sx-fac-network__toggle[aria-expanded="true"] { color:var(--dp-hand, #f2b950) !important; }
-${T} .sx-fac-network__rows[hidden], ${T} .sx-fac-network__empty[hidden] { display:none !important; }
-${T} .sx-fac-network__rows > li:last-child > .k-row { border-bottom:0 !important; }
-${T} .sx-fac-network { margin-top:12px !important; }
 /* the chosen power's crest stands beside its name */
-${T} .sx-fac-overview { position:relative; padding-right:150px !important; }
-${T} .sx-fac-crest { display:block !important; position:absolute; right:0; top:0; width:124px; height:124px; pointer-events:none; }
 ${T} .sx-fac-crest img { display:block; width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 0 18px rgb(0 0 0 / .7)); }
 ${T} .sx-fac-row__nil { color:rgb(${BONE} / .35) !important; }
 /* the powers rail on a wide screen: the figure flush after the name, no void between them */
@@ -882,15 +854,10 @@ ${T} .sx-fac-row__nil { color:rgb(${BONE} / .35) !important; }
 }
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
   ${T} .sx-fac-heroes { margin-top:8px !important; gap:8px 24px !important; }
-  ${T} .sx-fac__detail { margin-top:10px !important; }
   ${T} .sx-fac__detail > * + * { margin-top:8px !important; }
-  ${T} .sx-fac-crest { width:84px; height:84px; }
-  ${T} .sx-fac-overview { padding-right:96px !important; }
   ${T} .sx-fac-rung-next { font-size:12px !important; }
   /* a short screen: the descriptor and the two section words yield; the instruments say it */
   ${T} .sx-fac-ident__flag, ${T} .sx-fac-ladder > .k-caps, ${T} .sx-fac-intent > .k-caps { display:none !important; }
-  ${T} .sx-fac-heroes .k-hero__n { font-size:40px !important; }
-  ${T} .sx-fac-heroes { margin-top:4px !important; }
 }
 
 /* ================================ ROUND 3: INDUSTRY ========================================= */
@@ -912,13 +879,10 @@ ${T} .orr-lampkey:disabled::after { display:block !important; }
 }
 
 /* ================================ ROUND 2: LEDGER =========================================== */
-/* the tape stands above the reading in the right column; the reading hangs beneath the Hand's tick */
-${T} .sx-ledger { grid-template-rows:auto auto auto minmax(0, 1fr) auto !important; }
 /* the panel's rows flow as a block (the split grid gave the list a squeezed track); the right column stands beside it */
 ${T} .sx-ledger { position:relative !important; display:block !important; }
 ${T} .sx-ledger > .st-ledger { display:block !important; max-width:min(560px, 46%); }
 ${T} .sx-ledger .st-ledger-list { max-height:min(46vh, 520px) !important; }
-${T} .sx-ledger .st-ledger-nav { margin-top:10px !important; }
 ${T} .sx-ledger > .sx-ledger__right { position:absolute; left:calc(min(560px, 46%) + clamp(28px, 4vw, 72px)); right:0; top:0; bottom:0; display:flex; flex-direction:column; gap:14px; min-width:0; overflow:hidden; }
 ${T} .sx-ledger__right > .orr-ledger-tape { flex:none; width:100%; height:clamp(150px, 22vh, 210px); margin-top:8px; }
 ${T} .sx-ledger__right > .sx-ledger__read { position:static !important; padding-right:0 !important; margin:0 !important; }
@@ -934,7 +898,6 @@ ${T} .sx-ledger__right > .sx-ledger__read { position:static !important; padding-
 @media (max-width:520px) {
   ${T} .sx-ledger > .st-ledger { max-width:none; }
   ${T} .sx-ledger > .sx-ledger__right { position:relative; left:auto; top:auto; bottom:auto; width:100%; margin-top:18px; overflow:visible; }
-  ${T} .sx-ledger__right > .orr-ledger-tape { height:180px; }
   ${T} .sx-ledger__right > .sx-ledger__row { flex-direction:column; align-items:stretch; gap:16px; }
   ${T} .sx-ledger__row > .sx-ledger__read { align-self:stretch; }
   ${T} .sx-ledger__row > .orr-ledger-purse { align-self:center; margin:0; }
@@ -963,14 +926,9 @@ ${T} .sx-ledger .st-ledger-entry-body { grid-template-columns:auto auto minmax(0
 ${T} .sx-ledger .st-ledger-type { text-align:left !important; }
 ${T} .sx-ledger .st-ledger-cycle, ${T} .sx-ledger .st-ledger-type { font-size: 12px !important; }
 ${T} .sx-ledger .st-ledger-line { font-size:13.5px !important; line-height:1.4; }
-${T} .sx-ledger .st-ledger-status { font-size: 12px !important; }
 /* a short list never squeezes its rows: they keep their two lines and the list scrolls */
 ${T} .sx-ledger .st-ledger-list > li, ${T} .sx-ledger .st-ledger-entry { flex:none !important; min-height:0 !important; }
-${T} .sx-ledger .st-ledger-list { overflow:hidden auto !important; min-height:0 !important; }
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
-  ${T} .sx-ledger__right > .orr-ledger-tape { height:clamp(120px, 24vh, 150px); margin-top:0; }
-  ${T} .sx-ledger > .sx-ledger__right { gap:8px; }
-  ${T} .sx-ledger__read-num { font-size:64px !important; }
   ${T} .sx-ledger__read-title { font-size:17px !important; margin-top:4px !important; }
 }
 
@@ -1048,31 +1006,14 @@ ${T} .sx-dossier > .orr-ct-route::before { content:""; position:absolute; inset:
 }
 
 /* ================================ ROUND 4: FACTIONS ========================================= */
-/* the chosen power is the hero: its crest large beside its name, the authority's sun dimmed to a pivot behind the arm */
-${T} .sx-fac-overview { padding-left:0 !important; padding-right:200px !important; }
-${T} .sx-fac-overview > .k-caps, ${T} .sx-fac-ident__name, ${T} .sx-fac-ident__flag { margin-left:0 !important; padding-left:0 !important; }
-${T} .sx-fac-crest { left:auto; right:0; top:-10px; width:170px; height:170px; }
-${T} .sx-fac-crest img { filter:grayscale(1) drop-shadow(0 0 18px rgb(0 0 0 / .7)); }
-${T} .sx-fac-crest.is-authority { display:none !important; }
-${T} .sx-fac-overview:has(.sx-fac-crest.is-authority) { padding-right:0 !important; }
 /* the hero cluster on one baseline; the rail's figures on one axis, nothing for zero */
 ${T} .sx-fac-heroes { align-items:last baseline !important; }
 ${T} .sx-fac__rows .sx-fac-row { grid-template-columns:minmax(0, 1fr) 52px !important; justify-content:stretch !important; }
-${T} .sx-fac-row__tier { justify-self:end; }
-${T} .orr-standing text.orr-standing__name { font-size: 12px !important; letter-spacing:.12em; }
-${T} .orr-standing text.orr-standing__rung { font-size: 12px !important; }
 ${T} .sx-fac-rung-next { max-width:64ch; }
-@media (min-width:1500px) {
-  ${T} .sx-fac-overview { padding-right:0 !important; }
-  ${T} .sx-fac-crest { left:440px; right:auto; }
-}
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
   /* the orbit is the selector at 720: the rim names yield to the crests, and speak only for the chosen or hovered one */
-  ${T} .orr-fac-orbit .orr-crest__words { display:none !important; }
   ${T} .orr-fac-orbit .orr-crest:is(.is-chosen, :hover, :focus-visible) .orr-crest__words { display:flex !important; }
   ${T} .sx-fac-rung-next__more, ${T} .sx-fac-intent { display:none !important; }
-  ${T} .sx-fac-crest { width:110px; height:110px; top:-6px; }
-  ${T} .sx-fac-overview { padding-right:130px !important; }
 }
 
 /* ================================ ROUND 5: FACTIONS ========================================= */
@@ -1080,27 +1021,14 @@ ${T} .sx-fac-rung-next { max-width:64ch; }
 ${T} .sx-fac-heroes { display:block !important; }
 ${T} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:clamp(72px, 10vh, 112px) !important; line-height:.92 !important; }
 ${T} .sx-fac-heroes .k-hero__w { display:none !important; }
-/* one left edge: the name, kicker and descriptor stand on the reading's axis */
-${T} .sx-fac-overview > .k-caps, ${T} .sx-fac-ident__name, ${T} .sx-fac-ident__flag, ${T} .sx-fac-ident__name .sf-entity-link { margin-inline:0 !important; padding-inline:0 !important; text-indent:0 !important; transform:none !important; translate:none !important; left:auto !important; }
-/* the hero crest sits on the reading's right axis at every width */
-@media (min-width:1500px) {
-  ${T} .sx-fac-overview { padding-right:200px !important; }
-  ${T} .sx-fac-overview:has(.sx-fac-crest.is-authority) { padding-right:0 !important; }
-  ${T} .sx-fac-crest { left:auto !important; right:0 !important; }
-}
 /* the scale is as wide as the reading (measured live); no cap */
 ${T} .orr-standing { max-width:none !important; }
-${T} .orr-crest__name, ${T} .orr-crest__rep { white-space:nowrap !important; hyphens:none !important; word-break:keep-all !important; }
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
   ${T} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:64px !important; }
   /* the figures stay under the crests at 720 (the names yield); the arc reads against its zero tick */
-  ${T} .orr-fac-orbit .orr-crest__words { display:flex !important; }
-  ${T} .orr-fac-orbit .orr-crest .orr-crest__name { display:none !important; }
   ${T} .orr-fac-orbit .orr-crest:is(.is-chosen, :hover, :focus-visible) .orr-crest__name { display:block !important; }
-  ${T} .orr-standing text.orr-standing__name { font-size: 12px !important; letter-spacing:.1em !important; }
   ${T} .sx-fac__detail { gap:6px !important; margin-top:6px !important; }
   ${T} .sx-fac-rung-next { margin-top:2px !important; }
-  ${T} .sx-fac-network { margin-top:6px !important; }
   ${T} .sx-fac-overview > * + * { margin-top:4px !important; }
 }
 
@@ -1172,13 +1100,10 @@ ${T} .sx-ledger .st-ledger-entry[aria-selected="true"] :is(.st-ledger-cycle, .st
 ${T} .sx-ledger__keys { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .5) !important; margin-top:8px !important; padding-left:26px; }
 ${T} .sx-ledger:has(.st-ledger-empty:not([hidden])) .sx-ledger__keys { display:none !important; }
 /* the empty sentence stands where the count stands when the book is filled: right under the intro */
-${T} .sx-ledger .st-ledger-empty:not([hidden]) { margin-top:14px !important; margin-bottom:0 !important; order:0; position:static !important; }
 ${T} .sx-ledger .st-ledger-list[hidden] ~ .st-ledger-empty:not([hidden]) { margin-top:14px !important; }
 ${T} .sx-ledger .st-ledger-nav[hidden], ${T} .sx-ledger .st-ledger-nav:not(:has([data-ledger-page]:not([disabled]))) { margin-top:0 !important; }
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
   ${T} .sx-ledger__right > .sx-ledger__read { padding-top:10px !important; }
-  ${T} .sx-ledger__read::after { height:10px; }
-  ${T} .sx-ledger__keys { display:none !important; }
 }
 
 /* ================================ ROUND 10b ================================================= */
@@ -1189,8 +1114,6 @@ ${T} .sx-fac-overview { display:block !important; }
 ${T} .sx-fac-crest img { mix-blend-mode:screen; }
 @media (min-width:1500px) {
   /* the scale and the rungs take the reading's full width under the crest */
-  ${T} .sx-fac-overview > .sx-fac__detail { margin-right:-200px !important; }
-  ${T} .sx-fac-overview:has(.sx-fac-crest.is-authority) > .sx-fac__detail { margin-right:0 !important; }
 }
 /* the Missions title is flat ink at every width */
 ${T} .sx-dossier__title, ${T} .sx-dossier__title .sf-entity-link { color:rgb(248 244 234) !important; background:none !important; -webkit-text-fill-color:currentColor !important; text-shadow:0 0 18px rgb(0 0 0 / .6) !important; }
@@ -1253,13 +1176,10 @@ ${T} .orr-ledger-purse { flex:none; width:230px; height:210px; margin-left:auto;
 ${T} .orr-ledger-purse::before { content:""; position:absolute; z-index:-1; inset:-16px; border-radius:50%; pointer-events:none;
   background:radial-gradient(circle, rgb(6 8 11 / .8), rgb(6 8 11 / .6) 50%, rgb(6 8 11 / 0) 74%); }
 /* the key hint is the ladder's foot at every size */
-${T} .sx-ledger__keys { display:block !important; }
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
-  ${T} .sx-ledger__right > .orr-ledger-tape { height:clamp(150px, 27vh, 195px) !important; }
   ${T} .orr-ledger-purse { width:180px; height:160px; margin-top:0; }
   ${T} .sx-ledger__row { gap:20px; }
   ${T} .sx-ledger__keys { display:block !important; margin-top:4px !important; }
-  ${T} .sx-ledger .st-ledger-list { max-height:min(40vh, 300px) !important; }
 }
 /* the empty ladder keeps its rail with one empty rung where the first receipt will land */
 ${T} .sx-ledger .st-ledger-empty:not([hidden]) { position:relative !important; margin-top:36px !important; padding:8px 0 8px 26px !important;
@@ -1521,11 +1441,7 @@ ${T} .sx-fac-crest { display:block !important; position:absolute; right:0 !impor
 ${T} .sx-fac-crest img, ${T} .sx-fac-crest svg, ${T} .sx-fac-crest * { filter:grayscale(1) !important; }
 ${T} .sx-fac-overview { padding-right:0 !important; }
 ${T} .sx-fac-overview > :not(.sx-fac-crest) { position:relative; z-index:1; }
-@media (min-width:1500px) { ${T} .sx-fac-overview > .sx-fac__detail { margin-right:0 !important; } }
-@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-fac-crest { width:200px; height:200px; top:-10px; } }
 /* rim words at the label floor; a dim zero is a zero */
-${T} .orr-crest__name { font-size: 12px !important; }
-${T} .orr-crest__rep { font-size: 12px !important; }
 ${T} .sx-fac__rows .sx-fac-row__tier.is-zero { color:rgb(${BONE} / .32) !important; }
 
 /* every ladder row keeps the arm's room whatever its own sheet said */
@@ -1566,7 +1482,6 @@ ${T} .sx-dossier__terms > li.sx-term--threat::before { background:var(--dp-dange
 
 /* ================================ ROUND 5: LEDGER =========================================== */
 /* the reading's left edge is the axis; the ladder's read mark is light on the rail, no arrowhead */
-${T} .sx-ledger__right > .sx-ledger__read, ${T} .sx-ledger__read > *, ${T} .sx-ledger__read .k-hero { padding-left:0 !important; margin-left:0 !important; }
 ${T} .st-ledger-list .st-ledger-entry[aria-selected="true"]::before { display:none !important; }
 ${T} .st-ledger-list .st-ledger-entry[aria-selected="true"]::after { width:18px !important; height:2px !important; margin-top:-1px !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .5) !important; }
 ${T} .orr-ledger-purse { width:270px; height:224px; }
@@ -1574,8 +1489,6 @@ ${T} .orr-ledger-purse { width:270px; height:224px; }
 
 /* a short screen: a posted name wraps rather than clips once the price rides the sub-line */
 @media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-ct__rows .sx-ct-row .sx-ct-row__title { white-space:normal !important; line-height:1.25 !important; } }
-/* the reading stands on the axis */
-${T} .sx-ledger__read .k-caps, ${T} .sx-ledger__read-kicker, ${T} .sx-ledger__read-title, ${T} .sx-ledger__read-line, ${T} .sx-ledger__read-hand { padding-left:0 !important; margin-left:0 !important; text-indent:0 !important; }
 
 ${T} .sx-ledger__read.fh-plate, ${T} .sx-ledger__row > .sx-ledger__read { padding-left:0 !important; }
 
@@ -1704,7 +1617,6 @@ ${T} .sx-ledger .st-ledger-line { color:rgb(${BONE} / .8) !important; }
 /* the purse group right-aligns to the tape's end and its feet sit on the price line's baseline */
 ${T} .orr-ledger-purse { width:280px; height:236px; margin-right:-6px; }
 @media (min-width:651px) and (max-height:800px), (max-height:600px) {
-  ${T} .sx-ledger__right > .orr-ledger-tape { height:clamp(176px, 27vh, 240px) !important; }
   ${T} .sx-ledger .st-ledger-list { max-height:min(34vh, 250px) !important; }
   ${T} .orr-ledger-purse { width:220px; height:172px; }
   ${T} .sx-ledger__right > .sx-ledger__read { padding-top:8px !important; }
@@ -1713,7 +1625,6 @@ ${T} .orr-ledger-purse { width:280px; height:236px; margin-right:-6px; }
 /* ================================ ROUND 7: FACTIONS ========================================= */
 /* the watermark stands behind the numeral, not off in the corner */
 ${T} .sx-fac-crest { left:-64px !important; right:auto !important; top:12px !important; width:340px !important; height:340px !important; opacity:.2 !important; }
-@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-fac-crest { width:220px !important; height:220px !important; left:-40px !important; top:0 !important; } }
 
 /* ================================ ROUND 9: MISSIONS ========================================= */
 /* the price is a fact on the title's line, twelve px after it, in the numeral face at 62%; the chosen row lifts it */
@@ -1791,17 +1702,11 @@ ${T} .sx-ind__list > .orr-extent::before { opacity:.4 !important; }
 /* the reading stands off its rule; unread cycle prefixes read as one column with the tape's */
 ${T} .sx-ledger .sx-ledger__read.fh-plate, ${T} .sx-ledger__right > .sx-ledger__read { padding-left:12px !important; }
 ${T} .sx-ledger .st-ledger-entry:not([aria-selected="true"]) .st-ledger-cycle { color:rgb(${BONE} / .62) !important; }
-${T} .sx-ledger__read::after { background:rgb(${BONE} / .5) !important; }
 
 /* the watermark IS the authority's crest: the old "no second authority mark" rule hid it; it paints currentColor */
 ${T} .sx-fac-overview > .sx-fac-crest, ${T} .sx-fac-overview > .sx-fac-crest.is-authority { display:block !important; color:rgb(236 230 216); }
 ${T} .sx-fac-overview > .sx-fac-crest .dp-mark, ${T} .sx-fac-overview > .sx-fac-crest svg { display:block; width:100%; height:100%; color:rgb(236 230 216); }
 
-/* a short screen's tier names at 9px: nine bands of ~63px hold ACCEPTED only at this size */
-@media (min-width:651px) and (max-height:800px), (max-height:600px) {
-  ${T} .orr-standing text.orr-standing__name, ${T} svg.orr-svg.is-compact text.orr-standing__name { font-size: 12px !important; letter-spacing:.08em !important; }
-  ${T} .orr-standing text.orr-standing__val { font-size: 12px !important; }
-}
 
 /* ================================ ROUND 8: INDUSTRY ========================================= */
 ${T} .sx-fab-foot .orr-lampkey:disabled { opacity:1 !important; color:rgb(${BONE} / .5) !important; }
@@ -1845,7 +1750,6 @@ ${T} .sx-bar__leads:focus-within .sx-bar__leadkeys { color:rgb(${BONE} / .6) !im
 /* the watermark stays inside its column and fades out above the scale row */
 ${T} .sx-fac-crest { left:0 !important; top:6px !important; width:320px !important; height:320px !important;
   -webkit-mask-image:linear-gradient(180deg, #000 0, #000 58%, transparent 80%) !important; mask-image:linear-gradient(180deg, #000 0, #000 58%, transparent 80%) !important; }
-@media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-fac-crest { width:200px !important; height:200px !important; } }
 /* the legend: who the chosen power stands with and against, one line, rivals red */
 ${T} .sx-fac-legend { margin:0 0 6px !important; font-size: 12px !important; letter-spacing:.14em !important; color:rgb(${BONE} / .72) !important; }
 ${T} .sx-fac-legend__k { color:rgb(248 244 234); }
@@ -1857,8 +1761,6 @@ ${T} .sx-fac-legend .is-hostile { color:rgb(255 80 56 / .85) !important; }
 }
 
 /* ================================ ROUND 9: LEDGER =========================================== */
-/* the reading's rule sits on the same column as the axis */
-${T} .sx-ledger__read::after { left:1px !important; }
 
 /* ================================ ROUND 9: INDUSTRY ========================================= */
 /* the ladder's rungs carry their state in light: makeable full with a long tick, short of stock at 70%, facility-blocked at 45% */
@@ -1886,9 +1788,6 @@ ${T} .orr-lampkey .orr-lampkey__commit-bloom { display:none !important; }
 /* while a relation set shows, a bystander's name is no brighter than its ghosted emblem; a related name lifts */
 ${T} .orr-crestorbit.has-relations .orr-crest:not(.is-related):not(.is-chosen) .orr-crest__name { opacity:.85 !important; }
 ${T} .orr-crestorbit.has-relations .orr-crest.is-related .orr-crest__name { color:rgb(${BONE} / .86) !important; }
-@media (min-width:651px) and (max-height:800px), (max-height:600px) {
-  ${T} .orr-fac-orbit .orr-crest .orr-crest__name { font-size: 12px !important; }
-}
 
 /* the tape (and the leader's run into the reading) stands above the reading's glass */
 ${T} .sx-ledger__right > .orr-ledger-tape { position:relative; z-index:2; }
@@ -1947,7 +1846,6 @@ ${T} .sx-fac__detail:has(.orr-standing.is-rung-ticks) .sx-fac-rung-next.is-on-sc
 
 /* rolling headline numerals keep the thin face's own proportion */
 ${T} :is(.sx-ledger__read-num, .sx-fac-num).orr-counter .orr-counter__digit { width:.56em; }
-${T} .sx-fac-num.orr-counter { vertical-align:baseline; }
 
 /* ================================ ROUND 12: MISSIONS ======================================== */
 /* the seam is drawn with the rail's own stroke: a 1.5px spine, its faint band, its 4px ticks on the ladder's pitch */
@@ -2185,7 +2083,6 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-fac-heroes { grid-column:2; grid-row:1 / 3; margin:0 !important; }
   ${D} .sx-fac-heroes .k-hero:first-child .k-hero__n { font-size:30px !important; text-align:right; }
   ${D} .sx-fac-heroes .k-hero__n .sx-fac-tier { margin-bottom:0 !important; }
-  ${D} .sx-fac__detail > .sx-fac-ladder:first-child { margin:0 !important; padding:0 !important; }
   /* the scale's svg keeps a rung band under its values that sleeps at this size; the next rung reads in it */
   ${D} .sx-fac-rung-next { margin-top:-16px !important; }
   /* the authority's watermark stands behind your standing, as it does on a wide screen */
@@ -2264,7 +2161,6 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .sx-ledger .st-ledger-status { margin-top:8px !important; }
   ${D} .sx-ledger .st-ledger-list { flex:1 1 auto !important; min-height:0 !important; max-height:none !important; margin:6px 0 0 !important; }
   ${D} .sx-ledger .st-ledger-list .st-ledger-entry { padding-top:6px !important; padding-bottom:6px !important; }
-  ${D} .sx-ledger .sx-ledger__keys { display:none !important; }
   /* #sx-panel clamps the panel to the body height (~60px at 460 tall) and hides overflow, so a
      trapped panel is unreachable by wheel: scrollIntoView moves overflow:hidden boxes but a user
      cannot. The panel becomes the one scroll surface (the dp-frame__scroll contract its sibling
