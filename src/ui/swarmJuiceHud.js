@@ -379,9 +379,9 @@ export const swarmJuiceHud = {
           }
           const filter = fade < 1 ? `opacity(${fade})` : '';
           if (p.filter !== filter) { p.filter = filter; p.node.style.filter = filter; }
-          p.node.hidden = false;
+          if (p.nodeHidden !== false) { p.nodeHidden = false; p.node.hidden = false; }
         } else {
-          p.node.hidden = true;
+          if (p.nodeHidden !== true) { p.nodeHidden = true; p.node.hidden = true; }
         }
       }
     }
@@ -458,7 +458,7 @@ export const swarmJuiceHud = {
     node.dataset.cause = p.cause || '';
     node.style.filter = '';
     node.hidden = false;
-    const rec = { node, wx: p.pos.x, wz: p.pos.z, at: now, text, entry, w: 0, h: 0, filter: '', tx: NaN, ty: NaN };
+    const rec = { node, wx: p.pos.x, wz: p.pos.z, at: now, text, entry, w: 0, h: 0, filter: '', tx: NaN, ty: NaN, nodeHidden: false };
     entry.refresh = (t) => {
       rec.text = t; node.textContent = t; rec.w = 0; rec.h = 0;
       rec.at = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : rec.at;

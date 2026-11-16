@@ -1314,6 +1314,7 @@ export const ui = {
         cinematic.classList.add('is-closing'); // intro.css: .65s opacity settle
         fadeRemovalTimer = setTimeout(() => {
           if (cinematic.parentNode) cinematic.parentNode.removeChild(cinematic);
+          document.body?.classList.remove('sf-cinematic-open');
           if (this._cinematicTeardown === teardownCinematic) this._cinematicTeardown = null;
         }, 700);
         try { sessionStorage.setItem(CINEMATIC_SEEN_KEY, '1'); } catch (e) {}
@@ -1331,6 +1332,7 @@ export const ui = {
         if (autoDismissTimer) clearTimeout(autoDismissTimer);
         if (fadeRemovalTimer) clearTimeout(fadeRemovalTimer);
         if (cinematic.parentNode) cinematic.parentNode.removeChild(cinematic);
+        document.body?.classList.remove('sf-cinematic-open');
         if (wasActive) this._pendingMainMenu = false;
         this._cinematicInputFence = null;
         if (this._cinematicTeardown === teardownCinematic) this._cinematicTeardown = null;
@@ -1348,6 +1350,7 @@ export const ui = {
         // sitting between it and the player forever.
         if (!host) { this._cinematicActive = false; showMainMenuWhenReady(); return; }
         host.appendChild(cinematic);
+        document.body?.classList.add('sf-cinematic-open');
         // First paint-worthy moment for the clip: start the decoder only now that the layer
         // can actually be seen (the .cine-bg still + poster covered the wait).
         if (cineVideo && cineVideo.isConnected) {

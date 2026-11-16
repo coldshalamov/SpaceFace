@@ -86,7 +86,11 @@ export function arcGauge({
 /** Orbit Ring — a tick scale on a ring, optionally drifting (compositor rotation). */
 export function orbitRing({ cx, cy, r, count = 72, major = 6, len = 3, majorLen = 8, tone = 'faint', drift = 0, from = 0, to = 360, width = 1, inward = true } = {}) {
   const outer = svg('g', { class: 'orr-orbit' });
-  const inner = svg('g', drift ? { class: `orr-drift${drift < 0 ? ' orr-drift--rev' : ''}`, style: `transform-origin:${cx}px ${cy}px; --orr-drift-s:${Math.abs(drift)}s` } : {});
+  // A turn measured in tens of minutes is ornament, not data in motion — below ~0.3°/s the eye
+  // can't see the sweep move, while an SVG transform animation still costs a style recalc every
+  // frame. orr-drift--still parks the rotor; the ring reads identically.
+  const still = drift && Math.abs(drift) >= 1200;
+  const inner = svg('g', drift ? { class: `orr-drift${still ? ' orr-drift--still' : ''}${drift < 0 ? ' orr-drift--rev' : ''}`, style: `transform-origin:${cx}px ${cy}px; --orr-drift-s:${Math.abs(drift)}s` } : {});
   inner.appendChild(svg('path', { d: ticksD(cx, cy, r, count, { len, major, majorLen, from, to, inward }), class: `orr-core orr-${tone}`, 'stroke-width': width, 'stroke-linecap': 'butt' }));
   outer.appendChild(inner);
   return { el: outer, rotor: inner };

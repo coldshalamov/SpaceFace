@@ -84,6 +84,13 @@ export function createToasts(ctx) {
   const live = []; // { el, born, ttl }
   const swarmWait = []; // Swarm: notices waiting their turn (one at a time)
   const SWARM_WAIT_MAX = 2;
+  // NOTICE-01: global repeat guard. A live identical card still folds into a count badge (the
+  // grouping below); once it is gone, the same text re-run inside REPEAT_DROP_MS is dropped —
+  // that is the notice flood: the same line re-earning a fresh card every re-check for minutes.
+  // Errors excepted: a failure the player must see is never swallowed. Wall-clock like `born` —
+  // this lane presents DOM, not sim.
+  const REPEAT_DROP_MS = 20000;
+  const recentShown = new Map(); // text -> performance.now() of its most recent showing
   let nextWakeAt = Infinity;
   let lastAnnounced = '';
   // Last focus outside the toast feed — restored when the final focused toast leaves.
@@ -101,6 +108,18 @@ export function createToasts(ctx) {
       liveRegion = document.getElementById('toast-live');
       positionLane();
     }
+  }
+
+  // Mobile flight rules read receipt presence at :root; publishing the flag keeps them off a
+  // document-wide :has() that re-scanned this subtree on every HUD mutation. The data-side check
+  // is the same answer the selector gave — records leave `live` before they take --out — without
+  // a synchronous DOM walk on the accept path (flushReceiptLane owns those).
+  function syncToastFlag() {
+    const rootEl = root?.ownerDocument?.documentElement;
+    if (!rootEl) return;
+    const any = live.some((rec) => rec.el && rec.el.isConnected !== false
+      && !(rec.el.classList && rec.el.classList.contains('sf-toast--out')));
+    rootEl.dataset.sfToastLive = any ? '1' : '0';
   }
 
   function positionLane() {
@@ -308,11 +327,21 @@ export function createToasts(ctx) {
         r.badge.textContent = '×' + r.count;
         r.el.setAttribute('aria-label', text + ' (×' + r.count + ', dismiss)');
         announceStatus(text, r.count);
+        recentShown.set(text, now);
         recomputeNextWake();
         invalidateReceiptGeometry();
         return true;
       }
     }
+    // No live card folded — a text that already ran within the window stays dropped.
+    if (kind !== 'error') {
+      const last = recentShown.get(text);
+      if (last != null && now - last < REPEAT_DROP_MS) return false;
+      if (recentShown.size > 64) {
+        for (const [t, at] of recentShown) if (now - at >= REPEAT_DROP_MS) recentShown.delete(t);
+      }
+    }
+    recentShown.set(text, now);
     const el = document.createElement('div');
     el.className = `sf-toast sf-toast--${kind}`;
     const icon = document.createElement('span');
@@ -374,6 +403,7 @@ export function createToasts(ctx) {
     if (lane && lane.firstElementChild && lane.firstElementChild !== el) {
       lane.insertBefore(el, lane.firstElementChild);
     }
+    syncToastFlag();
     invalidateReceiptGeometry();
     return true;
   }
@@ -408,6 +438,7 @@ export function createToasts(ctx) {
       }
     }
     if (hadFocus) restoreFocusAfterDismiss(i >= 0 ? i : 0);
+    syncToastFlag();
     recomputeNextWake();
     invalidateReceiptGeometry();
   }

@@ -495,13 +495,15 @@ html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !imp
 .boot-keys__word { font:500 15px var(--dp-face-body, "Instrument Sans", sans-serif); color:rgb(240 235 224 / .95); text-shadow:0 1px 8px rgb(0 0 0 / .8); }
 /* each card owns its own quarter of the 16 s turn: in, hold, out, then gone before the next begins (no overlap) */
 @keyframes boot-key-card { 0% { opacity:0; transform:translateY(6px); } 2% { opacity:1; transform:none; } 21% { opacity:1; transform:none; } 23% { opacity:0; transform:translateY(-6px); } 100% { opacity:0; } }
-/* the flight HUD and its toasts never draw over the intro splash (or its fade) */
-body:has(#cinematic-splash) :is(#hud, #toasts, #alerts) { visibility:hidden !important; }
+/* the flight HUD and its toasts never draw over the intro splash (or its fade). uiRoot toggles
+   the body class beside the element — a document :has() here re-scanned every HUD mutation. */
+body.sf-cinematic-open :is(#hud, #toasts, #alerts) { visibility:hidden !important; }
 /* Nothing behind the veil renders or animates: the HUD, toasts and screens stand down (their infinite CSS
    animations each cost a style recalc per frame while the loading shell is up). The card's own motion is
-   opacity and transform only, promoted so it runs off the main thread. */
-body:has(#boot-overlay:not(.hidden)) :is(#hud, #toasts, #alerts, #screens) { content-visibility:hidden; }
-body:has(#boot-overlay:not(.hidden)) :is(#hud, #screens) * { animation-play-state:paused !important; }
+   opacity and transform only, promoted so it runs off the main thread. bootEntry mirrors the overlay's
+   .hidden flag into body.sf-boot-open for the same reason. */
+body.sf-boot-open :is(#hud, #toasts, #alerts, #screens) { content-visibility:hidden; }
+body.sf-boot-open :is(#hud, #screens) * { animation-play-state:paused !important; }
 .boot-key-card { will-change:opacity, transform; }
 html.sf-reduce-motion .boot-key-card { animation:none; }
 html.sf-reduce-motion .boot-key-card:first-child { opacity:1; }

@@ -117,11 +117,11 @@ const CSS = `
 .orr-cluster__icon.has-arsenal svg { display:block; width:100%; height:100%; stroke-width:1.9; }
 .orr-cluster__key.is-armed .orr-cluster__icon { color:var(--dp-hand-hot, #ffd98c); opacity:1; }
 /* Verbs that feel loaded: armed key exhales a slow transform-only breath */
-.orr-cluster__key.is-armed { animation: orr-key-armed-breath 2.4s ease-in-out infinite; }
+.orr-cluster__key.is-armed { animation: orr-key-armed-breath 2.4s ease-in-out infinite; will-change:transform; }
 @keyframes orr-key-armed-breath { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
 /* SWARM-03: a tactically-live verb breathes — the key warms and exhales so "why now"
    reads at a glance (latch in reach, ordnance armed, a pack inside the well). */
-.orr-cluster__key.is-live .orr-cluster__icon { color:var(--dp-hand, #f2b950); animation:orr-key-live 1.15s ease-in-out infinite; }
+.orr-cluster__key.is-live .orr-cluster__icon { color:var(--dp-hand, #f2b950); animation:orr-key-live 1.15s ease-in-out infinite; will-change:opacity; }
 .orr-cluster__key.is-live .orr-cluster__keytag b { color:var(--dp-hand-hot, #ffd98c); }
 @keyframes orr-key-live { 0%,100% { opacity:1; } 50% { opacity:.5; } }
 .orr-cluster__key.is-cooldown .orr-cluster__icon { opacity:.5; }
@@ -203,7 +203,11 @@ const CSS = `
 .orr-cluster__payload .orr-counter { font-family:var(--dp-face-numeral); font-weight:320; font-size:26px; color:var(--dp-phos, #dfeeff); }
 .orr-cluster__payload small { font-family:var(--dp-face-label); font-stretch:112%; font-weight:600; font-size: 12px; letter-spacing:.12em; color:var(--dp-ink-dim, #b7b4a6); }
 .orr-cluster__beam { stroke-dasharray:1 5; }
-.orr-cluster__pulse { stroke-dasharray:14 400; animation:orr-pulse 1.6s linear infinite; }
+/* The tether sits at opacity:0 until a beam is live; the travelling dash is a stroke-dashoffset
+   animation, which repaints its element every frame — running it under an invisible parent was
+   pure cost. data-tethered rides the same write that owns the group opacity. */
+.orr-cluster__pulse { stroke-dasharray:14 400; animation:orr-pulse 1.6s linear infinite; animation-play-state:paused; }
+[data-tethered="1"] .orr-cluster__pulse { animation-play-state:running; }
 @keyframes orr-pulse { from { stroke-dashoffset:14; } to { stroke-dashoffset:-400; } }
 .orr-cluster__glyph { transform-box:fill-box; transform-origin:center; }
 .orr-cluster.is-arriving .orr-cluster__glyph { animation:orr-glyph-in 900ms var(--dp-ease-out) both; }
@@ -810,7 +814,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
     // dwell, so before the measurement the tether still draws and live strain still reads —
     // only the mass numeral sits at the honest empty mark instead of a fabricated count.
     const tethered = !!(t && t.state && t.state !== 'Idle');
-    if (changed('tethered', tethered)) { tetherG.setAttribute('opacity', tethered ? '1' : '0'); payload.style.visibility = tethered ? 'visible' : 'hidden'; }
+    if (changed('tethered', tethered)) { tetherG.setAttribute('opacity', tethered ? '1' : '0'); tetherG.dataset.tethered = tethered ? '1' : '0'; payload.style.visibility = tethered ? 'visible' : 'hidden'; }
     if (tethered) {
       const st = Math.max(0, Math.min(1, Number(t.strain) || 0));
       const massShown = Number(t.mass) > 0 ? Math.round(Number(t.mass)) : null;

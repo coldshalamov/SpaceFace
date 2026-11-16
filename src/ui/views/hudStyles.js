@@ -434,6 +434,11 @@ export const HUD_CSS = `
      6 Hz strobes die, the stage beats stay with the JS-driven convergence and the latch, and the
      diamond's pulse rides its svg child so it never overrides the inline optical-lag transform. */
   .sf-lockring__bracket { opacity:1; animation:none; }
+  /* The old sheet also left the container breathing forever — including while the ring is
+     visibility:hidden (every frame an Animation invalidation for a pulse nobody can see).
+     In this skin .active always carries data-stage, so the breathe never had a visible
+     window; it is retired unconditionally. */
+  .sf-lockring__brackets { animation:none; }
   .sf-lockring[data-stage] .sf-lockring__brackets,
   .sf-lockring[data-stage="acquiring"] .sf-lockring__brackets,
   .sf-lockring[data-stage="tracking"] .sf-lockring__brackets { animation:none; }

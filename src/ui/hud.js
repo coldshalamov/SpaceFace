@@ -1752,6 +1752,13 @@ function setCssVar(el, name, value) {
   cache[name] = value;
   el.style.setProperty(name, value);
 }
+// The objective/target edge arrow's rotation used to ride --sf-arrow-angle on the whole arrow —
+// a custom-property write whose recalc covered the label too. Rotate the glyph itself (the node
+// that actually turns); null restores the sheet's transform for the on-screen diamond.
+function setArrowAngle(el, angleRad) {
+  const glyph = el && (el._sfGlyph || (el._sfGlyph = el.querySelector?.('.sf-objarrow__glyph')));
+  if (glyph) setStyle(glyph, 'transform', angleRad == null ? '' : `translate(-50%,-50%) rotate(${angleRad}rad)`);
+}
 function setOpacity(el, value) {
   if (!el) return;
   const next = String(value);
@@ -4990,7 +4997,7 @@ export function createHud(ctx, alerts) {
           setText(targetEdgeLabel, text);
           setAttr(targetEdge, 'aria-label', text);
           setDataEdge(targetEdge, marker.edge);
-          setCssVar(targetEdge, '--sf-arrow-angle', `${marker.angleRad}rad`);
+          setArrowAngle(targetEdge, marker.angleRad);
           // Share the objective cue's cached layout boxes without changing its direction.
           let edgeX = marker.x, edgeY = marker.y;
           const obstacles = objectiveEdgeObstacles();
@@ -6512,6 +6519,7 @@ export function createHud(ctx, alerts) {
       setClass(arrow, 'sf-objarrow--edge', false);
       setClass(arrow, 'sf-objarrow--compact', true);
       setDataEdge(arrow, x > w * 0.62 ? 'right' : (y < 62 ? 'top' : 'left'));
+      setArrowAngle(arrow, null);
       setStyle(arrow, 'transform', `translate3d(${x}px,${y}px,0)`);
       setDisplay(arrow, true);
       return;
@@ -6548,7 +6556,7 @@ export function createHud(ctx, alerts) {
     if (edgeSafeInset > 0) edgeX = Math.min(Math.max(edgeX, edgeSafeInset + 34), w - edgeSafeInset - 34);
     setClass(arrow, 'sf-objarrow--compact', true);
     setDataEdge(arrow, edgePlacement.edge);
-    setCssVar(arrow, '--sf-arrow-angle', `${edgePlacement.angleRad}rad`);
+    setArrowAngle(arrow, edgePlacement.angleRad);
     setDisplay(arrow, true);
     setStyle(arrow, 'transform', `translate3d(${edgeX}px,${edgeY}px,0)`);
   }

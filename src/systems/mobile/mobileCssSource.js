@@ -76,9 +76,9 @@ export const FLIGHT_CSS = `
 #sf-touch-overlay .mf-tether .mf-key-word { letter-spacing:0; font-size:10.5px; font-stretch:100%; }
 #sf-touch-overlay .mf-tether > svg:not([class]) { width:calc(22px * var(--mf-scale)); height:calc(22px * var(--mf-scale)); }
 #sf-touch-overlay .mf-ring-art { position:absolute; inset:0; width:100%; height:100%; overflow:visible; z-index:0; }
-#sf-touch-overlay .mf-pulse { transform-origin:40px 40px; animation:mf-orbit 2.6s linear infinite; opacity:0; }
+#sf-touch-overlay .mf-pulse { transform-origin:40px 40px; animation:mf-orbit 2.6s linear infinite; animation-play-state:paused; opacity:0; }
 #sf-touch-overlay .mf-r-pulse { stroke:rgb(var(--mf-ice)); stroke-width:3.4; stroke-linecap:round; stroke-dasharray:24 190; }
-#sf-touch-overlay .mf-tether[data-latched="1"] .mf-pulse { opacity:1; }
+#sf-touch-overlay .mf-tether[data-latched="1"] .mf-pulse { opacity:1; animation-play-state:running; }
 #sf-touch-overlay .mf-tether[data-latched="1"] .mf-r-edge { stroke:rgb(var(--mf-ice) / .8); }
 #sf-touch-overlay .mf-tether[data-held="1"] { transform:scale(.95); }
 #sf-touch-overlay .mf-tether[data-held="1"] .mf-r-edge { stroke:var(--mf-phos); stroke-width:2.2; }
@@ -226,7 +226,7 @@ export const FLIGHT_CSS = `
  #sf-touch-overlay .mf-pick-text { font-size:12px; line-height:1.25; }
  /* An active authority notice shares the clear column with the wheel caption. Reserve two
     bounded, scrollable rows below the tabs; neither the warning nor its copy is suppressed. */
- :root[data-sf-mobile-wheel="1"]:has(#sf-sector-law[data-flight-critical="true"]:not([hidden])) #sf-touch-overlay .mf-wheel-top {
+ :root[data-sf-mobile-wheel="1"][data-sf-law-critical="1"] #sf-touch-overlay .mf-wheel-top {
    max-height:calc(96px + max(44px,(100dvh - 228px - var(--sf-safe-top,0px) - var(--sf-safe-bottom,0px)) / 2));
  }
  :root[data-sf-mobile-wheel="1"] #ui-root > #sf-sector-law[data-flight-critical="true"]:not([hidden]) {
@@ -249,7 +249,7 @@ export const FLIGHT_CSS = `
   box-sizing:border-box; left:calc(14px + var(--sf-safe-left,0px)); right:calc(14px + var(--sf-safe-right,0px));
   width:max-content; max-width:min(88vw,420px); margin-inline:auto;
 }
-:root:has(#hud .sf-radar-wrap--expanded) #sf-touch-overlay :is(.mf-stick, .mf-caption) { visibility:hidden; }
+:root[data-sf-radar-expanded="1"] #sf-touch-overlay :is(.mf-stick, .mf-caption) { visibility:hidden; }
 @media (orientation:portrait) {
   #sf-touch-overlay .mf-caption[data-control="stick"] { top:calc(29dvh + var(--sf-safe-top,0px)); bottom:auto; }
   :root[data-sf-mobile-wheel="1"] #sf-touch-overlay .mf-caption { bottom:calc(100px + var(--sf-safe-bottom,0px)); }
@@ -264,7 +264,7 @@ export const FLIGHT_CSS = `
   :root[data-sf-mobile-wheel="1"][data-sf-mobile-lefty="1"] #ui-root > #sf-sector-law[data-flight-critical="true"]:not([hidden]) {
     left:auto!important; right:calc(12px + var(--sf-safe-right,0px))!important;
   }
-  :root[data-sf-mobile-wheel="1"]:has(#sf-sector-law[data-flight-critical="true"]:not([hidden])) #sf-touch-overlay .mf-caption {
+  :root[data-sf-mobile-wheel="1"][data-sf-law-critical="1"] #sf-touch-overlay .mf-caption {
     top:calc(82px + var(--sf-safe-top,0px)); bottom:auto;
   }
 }
@@ -429,7 +429,7 @@ export const SCREEN_CSS = `
  /* the Massline cadence card is a 330px instrument in the mid-left column, where a thumb lives: on a phone it keeps its
     status line and window bar, drops the stat row and hint, and sits under the pause key */
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml2-cadence-slot { position:fixed!important; right:auto!important; left:calc(14px + var(--sf-safe-left,0px))!important; top:calc(272px + var(--sf-safe-top,0px))!important; bottom:auto!important; width:min(230px,56vw)!important; }
- :root[data-sf-mobile="1"][data-sf-mobile-flight="1"]:has(.ml-cadence:not([hidden])) .sf-leftcontext { opacity:0!important; pointer-events:none!important; }
+ :root[data-sf-mobile="1"][data-sf-mobile-flight="1"][data-sf-cadence="1"] .sf-leftcontext { opacity:0!important; pointer-events:none!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml-cadence { width:100%!important; padding:9px 12px 8px!important; }
  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .ml-cadence :is(.ml-cadence__stats,.ml-cadence__hint) { display:none!important; }
  :root[data-sf-mobile-wheel="1"] .ml2-cadence-slot { opacity:0!important; }

@@ -20,8 +20,10 @@ ${FLIGHT} #ui-root > #sf-sector-law {
 }
 /* A critical notice may temporarily occupy the decorative teaching ghost's space. */
 ${FLIGHT} #sf-touch-overlay.mf-notice-priority .mf-ghost { visibility:hidden; }
-/* Expanded navigation owns this space; hidden task controls must not intercept radar taps. */
-${FLIGHT} #hud:has(.sf-radar-wrap--expanded) :is(.sf-leftcontext,.sf-leftcontext *) {
+/* Expanded navigation owns this space; hidden task controls must not intercept radar taps.
+   radar.js mirrors the expansion into :root[data-sf-radar-expanded] — a #hud :has() here
+   re-scanned the wrap subtree on every HUD mutation. */
+${FLIGHT}[data-sf-radar-expanded="1"] #hud :is(.sf-leftcontext,.sf-leftcontext *) {
   visibility:hidden!important; pointer-events:none!important;
 }
 /* Expansion reparents the dial from the interactive right dock into #hud, whose children
@@ -242,7 +244,7 @@ ${FLIGHT}:not([data-sf-mobile-wheel="1"]) body:not(.ui-modal-open) #hud > .sf-ra
   ${FLIGHT} #toasts .sf-toast__text { min-width:0; flex:1; white-space:normal; overflow-wrap:anywhere; }
   ${FLIGHT} #toasts .sf-toast:not(.sf-toast--info) .sf-toast__text { white-space:normal; overflow:visible; text-overflow:clip; }
   ${FLIGHT} #alerts .sf-alert--floor.sf-alert--info .sf-alert__text { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
-  ${FLIGHT}:has(#toasts .sf-toast:not(.sf-toast--out)) #alerts .sf-alert--floor.sf-alert--info { visibility:hidden!important; }
+  ${FLIGHT}[data-sf-toast-live="1"] #alerts .sf-alert--floor.sf-alert--info { visibility:hidden!important; }
 
   /* The diamond stays on its body. Its words belong above the touch actions, not on top of
      that body, a receipt, or the pilot's own ship. Inline display remains the live owner's. */

@@ -2969,9 +2969,13 @@ body.ui-live-screen .sf-comm-backlog { visibility:hidden; pointer-events:none; }
   font:700 12px var(--hud-display,"IBM Plex Sans",sans-serif); letter-spacing:.06em; cursor:pointer; pointer-events:auto;
   transition:color .12s, border-color .12s; text-shadow:none; }
 .sf-comm-backlog-btn:hover { border-color:var(--accent,#4f8fdd); color:#e7edf5; }
-.sf-comm-backlog-btn--pulse { color:#e7edf5; border-color:var(--accent,#4f8fdd);
+/* The backlog lamp used to pulse an inset box-shadow — a repaint every frame. The same 2px
+   bottom line now rides an ::after whose opacity animates, which the compositor owns. */
+.sf-comm-backlog-btn--pulse { color:#e7edf5; border-color:var(--accent,#4f8fdd); }
+.sf-comm-backlog-btn--pulse::after { content:""; position:absolute; left:0; right:0; bottom:0; height:2px;
+  background:var(--accent,#4f8fdd); opacity:.15; will-change:opacity;
   animation:sf-commpulse 1.3s ease-in-out infinite alternate; }
-@keyframes sf-commpulse { from { box-shadow:inset 0 -2px rgba(79,143,221,.15); } to { box-shadow:inset 0 -2px var(--accent,#4f8fdd); } }
+@keyframes sf-commpulse { from { opacity:.15; } to { opacity:1; } }
 .sf-comm-backlog { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) scale(.97);
   width:min(620px, 92vw); max-height:78vh; display:none; flex-direction:column; z-index:2400;
   background:var(--sf-pop-glass); border:1px solid var(--sf-pop-seam); border-top:2px solid var(--dp-phos); border-radius:2px; box-shadow:var(--sf-pop-shadow);

@@ -169,7 +169,11 @@ export function createMasslineCadenceReadout(parent) {
   const view=doc.defaultView || globalThis.window;
   const text=(node,value)=>{if(node._mlText!==value){node._mlText=value;node.textContent=value;}};
   const prev={hide:null,open:null,whip:null,barX:null,barW:null,barO:null};
-  const hideRoot=hide=>{if(prev.hide!==hide){prev.hide=hide;root.hidden=hide;}};
+  // Mobile flight rules key off a visible cadence card at :root; the flag keeps them off a
+  // document :has() that re-scanned on every mutation. Cleared on hide() and destroy().
+  const syncFlag=hide=>{const rootEl=doc.documentElement;if(rootEl)rootEl.dataset.sfCadence=hide?'0':'1';};
+  const hideRoot=hide=>{if(prev.hide!==hide){prev.hide=hide;root.hidden=hide;syncFlag(hide);}};
+  syncFlag(false);
   let destroyed=false, latestState=null, previousFocus=null, refreshTimer=null, hintTimer=null, hintState=null;
   const onFocus=(event)=>{if(event.relatedTarget && !root.contains(event.relatedTarget)) previousFocus=event.relatedTarget;};
   const onKey=(event)=>event.stopPropagation();
@@ -276,7 +280,7 @@ export function createMasslineCadenceReadout(parent) {
   };
   details.addEventListener?.('toggle',onToggle);
   return {element:root,hide,update,
-    destroy(){stopRefresh();stopHint();restoreFocus();destroyed=true;view?.removeEventListener?.('resize',onResize);details.removeEventListener?.('toggle',onToggle);
+    destroy(){stopRefresh();stopHint();restoreFocus();destroyed=true;syncFlag(true);view?.removeEventListener?.('resize',onResize);details.removeEventListener?.('toggle',onToggle);
       root.removeEventListener?.('focusin',onFocus);root.removeEventListener?.('keydown',onKey);
       root.remove();}};
 }

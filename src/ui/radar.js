@@ -94,8 +94,13 @@ export function publishRadarHostileCourse(canvas, { baseLabel, courseText = '', 
   const live = mode === 'flight' && courseText && Number.isFinite(simTime);
   const label = live ? `${baseLabel} ${courseText}` : baseLabel;
   if (canvas.getAttribute('aria-label') !== label) canvas.setAttribute('aria-label', label);
-  if (live) canvas.setAttribute('data-radar-bearing-sim', String(simTime));
-  else canvas.removeAttribute('data-radar-bearing-sim');
+  // The stamp is the actor's freshness check (0.5 s tolerance): a raw per-frame simTime write
+  // invalidated this subtree every frame. 0.1 s floor-quantized stays below simTime and cuts
+  // ~6/7 of the attribute churn; the label itself still turns on a real bearing change.
+  const stamp = live ? String(Math.floor(simTime * 10) / 10) : null;
+  const cur = canvas.getAttribute('data-radar-bearing-sim');
+  if (stamp == null) { if (cur != null) canvas.removeAttribute('data-radar-bearing-sim'); }
+  else if (cur !== stamp) canvas.setAttribute('data-radar-bearing-sim', stamp);
 }
 
 const TRAIL_MAX = 7;
@@ -1785,6 +1790,10 @@ export function createRadar(ctx) {
     expanded = !!value;
     dial.classList.toggle('sf-radar--expanded', expanded);
     wrap.classList.toggle('sf-radar-wrap--expanded', expanded);
+    // Mobile layouts key off expansion at :root — publishing the flag there keeps them off
+    // a document-wide :has() that re-scanned this whole subtree on every HUD mutation.
+    const rootEl = wrap.ownerDocument?.documentElement;
+    if (rootEl) rootEl.dataset.sfRadarExpanded = expanded ? '1' : '0';
     dial.setAttribute('aria-expanded', expanded ? 'true' : 'false');
     dial.setAttribute('aria-label', expanded
       ? 'Local tactical radar, expanded. Activate to collapse to the flight dial.'

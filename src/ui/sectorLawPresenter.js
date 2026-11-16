@@ -287,6 +287,10 @@ export function createSectorLawPresenter(ctx) {
       const dock = document.querySelector('.sf-rightdock');
       if (dock && root.parentNode !== dock) dock.prepend(root);
     }
+    // Mobile layout rules key off a visible critical notice at :root — the flag keeps them
+    // off a document-wide :has() that re-scanned on every HUD mutation.
+    const rootEl = document.documentElement;
+    if (rootEl) rootEl.dataset.sfLawCritical = mobile && critical && !root.hidden ? '1' : '0';
   }
   const onResize = () => {
     if (resizeFrame) return;

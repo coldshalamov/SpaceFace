@@ -11,8 +11,25 @@ function sessionStore() {
   try { return window.sessionStorage; } catch { return null; }
 }
 
+// intro.css used to stand the HUD down through body:has(#boot-overlay:not(.hidden)) — a document
+// :has() whose re-scan ran on every HUD mutation all session. The overlay's .hidden flag now mirrors
+// into body.sf-boot-open here; every writer (loadingPresenter, failure panes, boot error paths) is
+// covered by the one observer. index.html ships the class set because the veil starts visible.
+function watchBootVeil(overlay) {
+  if (!overlay || typeof MutationObserver !== 'function' || !document.body) return;
+  const sync = () => {
+    const open = !overlay.classList.contains('hidden');
+    if (document.body.classList.contains('sf-boot-open') !== open) {
+      document.body.classList.toggle('sf-boot-open', open);
+    }
+  };
+  new MutationObserver(sync).observe(overlay, { attributes: true, attributeFilter: ['class'] });
+  sync();
+}
+
 async function start() {
   const overlay = document.getElementById('boot-overlay');
+  watchBootVeil(overlay);
   let ring = null, artwork = null;
   try {
     ring = mountBootRing(document, overlay);

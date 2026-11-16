@@ -108,6 +108,9 @@ export const ORRERY_CSS = `
 
 /* Drift: the outer tick rings turn slowly, on the compositor. */
 .orr-drift { transform-box:view-box; animation:orr-drift var(--orr-drift-s, 900s) linear infinite; }
+/* Sub-perceptible drift (a full turn in ≥20 min) is parked by orbitRing — the ornament stays
+   drawn, the per-frame recalc it caused does not. */
+.orr-drift--still { animation-play-state:paused; }
 .orr-drift--rev { animation-direction:reverse; }
 @keyframes orr-drift { to { transform:rotate(360deg); } }
 
