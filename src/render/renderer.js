@@ -21818,6 +21818,9 @@ export const render = {
           }
         } catch (error) {
           stormWarn('survival-roster-prewarm-admission-failed', '[render] survival roster prewarm admission failed', spec.id, error);
+          // PERF-HOT-03: no chain will run, so the park hold must drop here or this exemplar
+          // would stay mounted for the whole run — exactly the leak the hold exists to avoid.
+          if (boundary.userData) boundary.userData.warmBuilding = false;
         }
         if (cohortOwed()) await yieldToBrowser();
       }
