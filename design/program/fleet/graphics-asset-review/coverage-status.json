@@ -3,10 +3,10 @@
   "generatedAt": "2026-11-16T09:37:39.925Z",
   "note": "One durable status per model ID. `unused/unresolved` is a disposition for unresolved linkage or identity, not proof of non-use or permission to delete. Review details and evidence remain in the per-model facts and append-only journals. Index refreshes and status updates rewrite this whole file; serialize those commands and do not run concurrent status writers.",
   "statusCounts": {
-    "pending": 142,
+    "pending": 127,
     "in progress": 0,
-    "passed": 15,
-    "needs follow-up": 361,
+    "passed": 42,
+    "needs follow-up": 349,
     "unused/unresolved": 3048
   },
   "models": {
@@ -91,89 +91,134 @@
       "updatedAt": "2026-11-16T06:20:33.716Z"
     },
     "procedural-asteroid:ast_common_rock:variant0": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/visualFactory.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "016e40e4cfd47857e01b1ed4267fd5442f275696b09cfa04b369a9bb97220bd6",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.716Z"
+      "views": [
+        "chase",
+        "close lod0",
+        "close lod2"
+      ],
+      "changes": "Shared factory fix applied this pass: glowing ore veins/shards seated flush onto displaced triangle faces in src/render/visualFactory.js (no per-variant geometry change); surfaces unchanged.",
+      "issues": "Evidence is isolated-renderer only (lod0/lod2, chase/close); ordinary-play asteroid-field view still pending and noted as the residual gap.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/ast_common_rock_variant0_lod0_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/ast_common_rock_variant0_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/report.json"
+      ],
+      "updatedAt": "2026-11-16T20:16:56.862Z"
     },
     "procedural-asteroid:ast_common_rock:variant1": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/visualFactory.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "016e40e4cfd47857e01b1ed4267fd5442f275696b09cfa04b369a9bb97220bd6",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.720Z"
+      "views": [
+        "chase",
+        "close lod0",
+        "close lod2"
+      ],
+      "changes": "Shared factory fix applied this pass: glowing ore veins/shards seated flush onto displaced triangle faces in src/render/visualFactory.js (no per-variant geometry change); surfaces unchanged.",
+      "issues": "Evidence is isolated-renderer only (lod0/lod2, chase/close); ordinary-play asteroid-field view still pending and noted as the residual gap.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/ast_common_rock_variant1_lod0_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/ast_common_rock_variant1_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/report.json"
+      ],
+      "updatedAt": "2026-11-16T20:16:58.555Z"
     },
     "procedural-asteroid:ast_common_rock:variant2": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/visualFactory.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "016e40e4cfd47857e01b1ed4267fd5442f275696b09cfa04b369a9bb97220bd6",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.721Z"
+      "views": [
+        "chase",
+        "close lod0",
+        "close lod2"
+      ],
+      "changes": "Shared factory fix applied this pass: glowing ore veins/shards seated flush onto displaced triangle faces in src/render/visualFactory.js (no per-variant geometry change); surfaces unchanged.",
+      "issues": "Evidence is isolated-renderer only (lod0/lod2, chase/close); ordinary-play asteroid-field view still pending and noted as the residual gap.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/ast_common_rock_variant2_lod0_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/ast_common_rock_variant2_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/report.json"
+      ],
+      "updatedAt": "2026-11-16T20:16:59.986Z"
     },
     "procedural-asteroid:ast_common_rock:variant3": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/visualFactory.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "016e40e4cfd47857e01b1ed4267fd5442f275696b09cfa04b369a9bb97220bd6",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.721Z"
+      "views": [
+        "chase",
+        "close lod0",
+        "close lod2"
+      ],
+      "changes": "Shared factory fix applied this pass: glowing ore veins/shards seated flush onto displaced triangle faces in src/render/visualFactory.js (no per-variant geometry change); surfaces unchanged.",
+      "issues": "Evidence is isolated-renderer only (lod0/lod2, chase/close); ordinary-play asteroid-field view still pending and noted as the residual gap.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/ast_common_rock_variant3_lod0_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/ast_common_rock_variant3_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/report.json"
+      ],
+      "updatedAt": "2026-11-16T20:17:03.468Z"
     },
     "procedural-asteroid:ast_common_rock:variant4": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/visualFactory.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "016e40e4cfd47857e01b1ed4267fd5442f275696b09cfa04b369a9bb97220bd6",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.721Z"
+      "views": [
+        "chase",
+        "close lod0",
+        "close lod2"
+      ],
+      "changes": "Shared factory fix applied this pass: glowing ore veins/shards seated flush onto displaced triangle faces in src/render/visualFactory.js (no per-variant geometry change); surfaces unchanged.",
+      "issues": "Evidence is isolated-renderer only (lod0/lod2, chase/close); ordinary-play asteroid-field view still pending and noted as the residual gap.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/ast_common_rock_variant4_lod0_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/ast_common_rock_variant4_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_common_rock/report.json"
+      ],
+      "updatedAt": "2026-11-16T20:17:05.575Z"
     },
     "procedural-asteroid:ast_crystalline:variant0": {
       "status": "passed",
@@ -306,89 +351,134 @@
       "updatedAt": "2026-11-16T18:38:18.614Z"
     },
     "procedural-asteroid:ast_gas_cloud:variant0": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/visualFactory.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "016e40e4cfd47857e01b1ed4267fd5442f275696b09cfa04b369a9bb97220bd6",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.721Z"
+      "views": [
+        "chase",
+        "close lod0",
+        "close lod2"
+      ],
+      "changes": "Shared factory fix applied this pass: glowing ore veins/shards seated flush onto displaced triangle faces in src/render/visualFactory.js (no per-variant geometry change); surfaces unchanged.",
+      "issues": "Evidence is isolated-renderer only (lod0/lod2, chase/close); ordinary-play asteroid-field view still pending and noted as the residual gap.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/ast_gas_cloud_variant0_lod0_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/ast_gas_cloud_variant0_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/report.json"
+      ],
+      "updatedAt": "2026-11-16T20:17:08.082Z"
     },
     "procedural-asteroid:ast_gas_cloud:variant1": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/visualFactory.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "016e40e4cfd47857e01b1ed4267fd5442f275696b09cfa04b369a9bb97220bd6",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.721Z"
+      "views": [
+        "chase",
+        "close lod0",
+        "close lod2"
+      ],
+      "changes": "Shared factory fix applied this pass: glowing ore veins/shards seated flush onto displaced triangle faces in src/render/visualFactory.js (no per-variant geometry change); surfaces unchanged.",
+      "issues": "Evidence is isolated-renderer only (lod0/lod2, chase/close); ordinary-play asteroid-field view still pending and noted as the residual gap.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/ast_gas_cloud_variant1_lod0_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/ast_gas_cloud_variant1_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/report.json"
+      ],
+      "updatedAt": "2026-11-16T20:17:10.587Z"
     },
     "procedural-asteroid:ast_gas_cloud:variant2": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/visualFactory.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "016e40e4cfd47857e01b1ed4267fd5442f275696b09cfa04b369a9bb97220bd6",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.721Z"
+      "views": [
+        "chase",
+        "close lod0",
+        "close lod2"
+      ],
+      "changes": "Shared factory fix applied this pass: glowing ore veins/shards seated flush onto displaced triangle faces in src/render/visualFactory.js (no per-variant geometry change); surfaces unchanged.",
+      "issues": "Evidence is isolated-renderer only (lod0/lod2, chase/close); ordinary-play asteroid-field view still pending and noted as the residual gap.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/ast_gas_cloud_variant2_lod0_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/ast_gas_cloud_variant2_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/report.json"
+      ],
+      "updatedAt": "2026-11-16T20:17:12.590Z"
     },
     "procedural-asteroid:ast_gas_cloud:variant3": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/visualFactory.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "016e40e4cfd47857e01b1ed4267fd5442f275696b09cfa04b369a9bb97220bd6",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.721Z"
+      "views": [
+        "chase",
+        "close lod0",
+        "close lod2"
+      ],
+      "changes": "Shared factory fix applied this pass: glowing ore veins/shards seated flush onto displaced triangle faces in src/render/visualFactory.js (no per-variant geometry change); surfaces unchanged.",
+      "issues": "Evidence is isolated-renderer only (lod0/lod2, chase/close); ordinary-play asteroid-field view still pending and noted as the residual gap.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/ast_gas_cloud_variant3_lod0_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/ast_gas_cloud_variant3_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/report.json"
+      ],
+      "updatedAt": "2026-11-16T20:17:14.814Z"
     },
     "procedural-asteroid:ast_gas_cloud:variant4": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/visualFactory.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "016e40e4cfd47857e01b1ed4267fd5442f275696b09cfa04b369a9bb97220bd6",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.721Z"
+      "views": [
+        "chase",
+        "close lod0",
+        "close lod2"
+      ],
+      "changes": "Shared factory fix applied this pass: glowing ore veins/shards seated flush onto displaced triangle faces in src/render/visualFactory.js (no per-variant geometry change); surfaces unchanged.",
+      "issues": "Evidence is isolated-renderer only (lod0/lod2, chase/close); ordinary-play asteroid-field view still pending and noted as the residual gap.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/ast_gas_cloud_variant4_lod0_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/ast_gas_cloud_variant4_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_gas_cloud/report.json"
+      ],
+      "updatedAt": "2026-11-16T20:17:17.205Z"
     },
     "procedural-asteroid:ast_icy:variant0": {
       "status": "passed",
@@ -651,89 +741,134 @@
       "updatedAt": "2026-11-16T18:38:16.945Z"
     },
     "procedural-asteroid:ast_rare_exotic:variant0": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/visualFactory.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "016e40e4cfd47857e01b1ed4267fd5442f275696b09cfa04b369a9bb97220bd6",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.721Z"
+      "views": [
+        "chase",
+        "close lod0",
+        "close lod2"
+      ],
+      "changes": "Shared factory fix applied this pass: glowing ore veins/shards seated flush onto displaced triangle faces in src/render/visualFactory.js (no per-variant geometry change); surfaces unchanged.",
+      "issues": "Evidence is isolated-renderer only (lod0/lod2, chase/close); ordinary-play asteroid-field view still pending and noted as the residual gap.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/ast_rare_exotic_variant0_lod0_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/ast_rare_exotic_variant0_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/report.json"
+      ],
+      "updatedAt": "2026-11-16T20:17:19.513Z"
     },
     "procedural-asteroid:ast_rare_exotic:variant1": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/visualFactory.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "016e40e4cfd47857e01b1ed4267fd5442f275696b09cfa04b369a9bb97220bd6",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.721Z"
+      "views": [
+        "chase",
+        "close lod0",
+        "close lod2"
+      ],
+      "changes": "Shared factory fix applied this pass: glowing ore veins/shards seated flush onto displaced triangle faces in src/render/visualFactory.js (no per-variant geometry change); surfaces unchanged.",
+      "issues": "Evidence is isolated-renderer only (lod0/lod2, chase/close); ordinary-play asteroid-field view still pending and noted as the residual gap.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/ast_rare_exotic_variant1_lod0_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/ast_rare_exotic_variant1_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/report.json"
+      ],
+      "updatedAt": "2026-11-16T20:17:21.756Z"
     },
     "procedural-asteroid:ast_rare_exotic:variant2": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/visualFactory.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "016e40e4cfd47857e01b1ed4267fd5442f275696b09cfa04b369a9bb97220bd6",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.721Z"
+      "views": [
+        "chase",
+        "close lod0",
+        "close lod2"
+      ],
+      "changes": "Shared factory fix applied this pass: glowing ore veins/shards seated flush onto displaced triangle faces in src/render/visualFactory.js (no per-variant geometry change); surfaces unchanged.",
+      "issues": "Evidence is isolated-renderer only (lod0/lod2, chase/close); ordinary-play asteroid-field view still pending and noted as the residual gap.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/ast_rare_exotic_variant2_lod0_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/ast_rare_exotic_variant2_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/report.json"
+      ],
+      "updatedAt": "2026-11-16T20:17:24.268Z"
     },
     "procedural-asteroid:ast_rare_exotic:variant3": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/visualFactory.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "016e40e4cfd47857e01b1ed4267fd5442f275696b09cfa04b369a9bb97220bd6",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.721Z"
+      "views": [
+        "chase",
+        "close lod0",
+        "close lod2"
+      ],
+      "changes": "Shared factory fix applied this pass: glowing ore veins/shards seated flush onto displaced triangle faces in src/render/visualFactory.js (no per-variant geometry change); surfaces unchanged.",
+      "issues": "Evidence is isolated-renderer only (lod0/lod2, chase/close); ordinary-play asteroid-field view still pending and noted as the residual gap.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/ast_rare_exotic_variant3_lod0_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/ast_rare_exotic_variant3_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/report.json"
+      ],
+      "updatedAt": "2026-11-16T20:17:26.449Z"
     },
     "procedural-asteroid:ast_rare_exotic:variant4": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/visualFactory.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "016e40e4cfd47857e01b1ed4267fd5442f275696b09cfa04b369a9bb97220bd6",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.721Z"
+      "views": [
+        "chase",
+        "close lod0",
+        "close lod2"
+      ],
+      "changes": "Shared factory fix applied this pass: glowing ore veins/shards seated flush onto displaced triangle faces in src/render/visualFactory.js (no per-variant geometry change); surfaces unchanged.",
+      "issues": "Evidence is isolated-renderer only (lod0/lod2, chase/close); ordinary-play asteroid-field view still pending and noted as the residual gap.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/ast_rare_exotic_variant4_lod0_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/ast_rare_exotic_variant4_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/asteroids-20261116b/post_ast_rare_exotic/report.json"
+      ],
+      "updatedAt": "2026-11-16T20:17:28.732Z"
     },
     "procedural-optic-cell:diamond:variant0": {
       "status": "needs follow-up",
@@ -8941,424 +9076,448 @@
       "relatedModels": []
     },
     "runtime:place_works_conduit_lane_corner:place_works_conduit_lane_corner": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/works/place_works_conduit_lane_corner.glb",
           "sha256": "1998cd0adc87e46fcc495cf83000dba01f19ef2260396a4de9f97afb8d32cb35",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/works-conduit-lane-corner/render.glb",
-          "sha256": "210d313664186b535cd60f8fe1e49bc05a8befed0701b47e2678a84298f2b664",
-          "sha256Source": "catalog-only"
+          "sha256": "50962ec4b22ce7b1ef19acf1582cb838e750ebbf838edc8ef2420130d24883bb",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/works/place_works_conduit_lane_corner.glb",
           "sha256": "b032032555259d66543c4651776edbe358cd0058c86874154dab1cedd3c38b31",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views; both declared LOD nodes remain grouped under this model."
+        "installed-network work (lod0)",
+        "installed-network site (lod1)"
       ],
-      "changes": "No change. The lane conduit family has a cohesive dark-bronze, blue and pale structural palette across the individual corner, cross, end, junction, straight and T forms.",
-      "issues": "Need an installed network view and observed LOD selection before acceptance; package counts alone do not establish a safe merge and the isolated views cannot confirm adjoining joins.",
+      "changes": "No asset change. Verification upgrade: installed-network view (work/site) + observed LOD0/LOD1 selection now exist, completing what this record's follow-up required.",
+      "issues": "First network shot of a session runs dimmer (env-map warm-up) — capture note, not a model defect. Ordinary Works play-route view still pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_inspect.png",
-        "design/program/fleet/graphics-asset-review/works-conduit-notes.md"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_lane_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_lane_site.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/_sheet_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/report.json"
       ],
-      "updatedAt": "2026-11-16T15:10:09.499Z"
+      "updatedAt": "2026-11-16T21:05:02.371Z"
     },
     "runtime:place_works_conduit_lane_cross:place_works_conduit_lane_cross": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/works/place_works_conduit_lane_cross.glb",
           "sha256": "27df453f64dffc53ed655d76c5fbd7be79c9aebc5b84953a1009022fa2d83a39",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/works-conduit-lane-cross/render.glb",
-          "sha256": "6e592e8aab99be28c965f1b9724e14de902a2914a63199d7728e2834d5e575cf",
-          "sha256Source": "catalog-only"
+          "sha256": "c362d0d92b97653b0f8da19bbcae8df3c35471b915980b8ff9f233a80566917f",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/works/place_works_conduit_lane_cross.glb",
           "sha256": "ac0534b4eadb98ef8624630fc2376b11333f376f0b48216066f9a44983e6bc23",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views; both declared LOD nodes remain grouped under this model."
+        "installed-network work (lod0)",
+        "installed-network site (lod1)"
       ],
-      "changes": "No change. The lane conduit family has a cohesive dark-bronze, blue and pale structural palette across the individual corner, cross, end, junction, straight and T forms.",
-      "issues": "Need an installed network view and observed LOD selection before acceptance; package counts alone do not establish a safe merge and the isolated views cannot confirm adjoining joins.",
+      "changes": "No asset change. Verification upgrade: installed-network view (work/site) + observed LOD0/LOD1 selection now exist, completing what this record's follow-up required.",
+      "issues": "First network shot of a session runs dimmer (env-map warm-up) — capture note, not a model defect. Ordinary Works play-route view still pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_inspect.png",
-        "design/program/fleet/graphics-asset-review/works-conduit-notes.md"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_lane_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_lane_site.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/_sheet_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/report.json"
       ],
-      "updatedAt": "2026-11-16T15:10:09.754Z"
+      "updatedAt": "2026-11-16T21:05:02.678Z"
     },
     "runtime:place_works_conduit_lane_end:place_works_conduit_lane_end": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/works/place_works_conduit_lane_end.glb",
           "sha256": "a14b80f5053d9ffda8a206ac2151fccd79939d4b0d55d0090ecb75e1f488353c",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/works-conduit-lane-end/render.glb",
-          "sha256": "d9accf0150b38f3fffc33640f0c3a80a258caa541c3d64ce77422a3d2556447d",
-          "sha256Source": "catalog-only"
+          "sha256": "0860d7fef531c98c5d8489294656c4e9a60176f73488323082f2138f6a8fec1a",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/works/place_works_conduit_lane_end.glb",
           "sha256": "3dfe2ecb230014147052a324d0a471678a355db1615186fd54d265b3ccb34097",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views; both declared LOD nodes remain grouped under this model."
+        "installed-network work (lod0)",
+        "installed-network site (lod1)"
       ],
-      "changes": "No change. The lane conduit family has a cohesive dark-bronze, blue and pale structural palette across the individual corner, cross, end, junction, straight and T forms.",
-      "issues": "Need an installed network view and observed LOD selection before acceptance; package counts alone do not establish a safe merge and the isolated views cannot confirm adjoining joins.",
+      "changes": "No asset change. Verification upgrade: installed-network view (work/site) + observed LOD0/LOD1 selection now exist, completing what this record's follow-up required.",
+      "issues": "First network shot of a session runs dimmer (env-map warm-up) — capture note, not a model defect. Ordinary Works play-route view still pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_inspect.png",
-        "design/program/fleet/graphics-asset-review/works-conduit-notes.md"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_lane_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_lane_site.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/_sheet_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/report.json"
       ],
-      "updatedAt": "2026-11-16T15:10:09.997Z"
+      "updatedAt": "2026-11-16T21:05:02.988Z"
     },
     "runtime:place_works_conduit_lane_junction:place_works_conduit_lane_junction": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/works/place_works_conduit_lane_junction.glb",
           "sha256": "b221ec951a1d5991093b881e3298032f25113b115843abfc5f0ba5b273ee5792",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/works-conduit-lane-junction/render.glb",
-          "sha256": "71c0f285a9aa84fb76da9b669cd7f2992dbd8e301b12925de353913a64d2ff85",
-          "sha256Source": "catalog-only"
+          "sha256": "27c8a97bdc69b939707a8ed43de03f9a6435bb0eb8d4f2d1650aebbfb7b2461c",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/works/place_works_conduit_lane_junction.glb",
           "sha256": "dddb5fd0c008676450ab8d2512fae0e35ca530aaa444d14aa03ea04d2b4f18c2",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views; both declared LOD nodes remain grouped under this model."
+        "installed-network work (lod0)",
+        "installed-network site (lod1)"
       ],
-      "changes": "No change. The lane conduit family has a cohesive dark-bronze, blue and pale structural palette across the individual corner, cross, end, junction, straight and T forms.",
-      "issues": "Need an installed network view and observed LOD selection before acceptance; package counts alone do not establish a safe merge and the isolated views cannot confirm adjoining joins.",
+      "changes": "No asset change. Verification upgrade: installed-network view (work/site) + observed LOD0/LOD1 selection now exist, completing what this record's follow-up required.",
+      "issues": "First network shot of a session runs dimmer (env-map warm-up) — capture note, not a model defect. Ordinary Works play-route view still pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_inspect.png",
-        "design/program/fleet/graphics-asset-review/works-conduit-notes.md"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_lane_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_lane_site.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/_sheet_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/report.json"
       ],
-      "updatedAt": "2026-11-16T15:10:10.263Z"
+      "updatedAt": "2026-11-16T21:05:03.605Z"
     },
     "runtime:place_works_conduit_lane_straight:place_works_conduit_lane_straight": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/works/place_works_conduit_lane_straight.glb",
           "sha256": "4c58a6234c41e76fc57d251c28f49befcb04fdec603ecd1770d8832d0313c17c",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/works-conduit-lane-straight/render.glb",
-          "sha256": "3b22a1296c25f3967178dffad96a6de2c41f5dbf5823937ff416ceb34e10fe64",
-          "sha256Source": "catalog-only"
+          "sha256": "b90763d6933cb525b92787b579c6e646d8a687f36ab85635c898b7489bfbf8a4",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/works/place_works_conduit_lane_straight.glb",
           "sha256": "84224af598e1f3610b6c1078b116e148bddb09ef0d9be87c9665cede2bf67cce",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views; both declared LOD nodes remain grouped under this model."
+        "installed-network work (lod0)",
+        "installed-network site (lod1)"
       ],
-      "changes": "No change. The lane conduit family has a cohesive dark-bronze, blue and pale structural palette across the individual corner, cross, end, junction, straight and T forms.",
-      "issues": "Need an installed network view and observed LOD selection before acceptance; package counts alone do not establish a safe merge and the isolated views cannot confirm adjoining joins.",
+      "changes": "No asset change. Verification upgrade: installed-network view (work/site) + observed LOD0/LOD1 selection now exist, completing what this record's follow-up required.",
+      "issues": "First network shot of a session runs dimmer (env-map warm-up) — capture note, not a model defect. Ordinary Works play-route view still pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_inspect.png",
-        "design/program/fleet/graphics-asset-review/works-conduit-notes.md"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_lane_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_lane_site.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/_sheet_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/report.json"
       ],
-      "updatedAt": "2026-11-16T15:10:10.595Z"
+      "updatedAt": "2026-11-16T21:05:04.184Z"
     },
     "runtime:place_works_conduit_lane_t:place_works_conduit_lane_t": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/works/place_works_conduit_lane_t.glb",
           "sha256": "fa25c702dc57bf6ad57210b4bc640c98176551cfd59b158f4e72594b4cb56f5d",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/works-conduit-lane-t/render.glb",
-          "sha256": "ffdd95465ab0bd25c8f167f6cbdc36f2c780da52188984a3bb9136ed0681c0b7",
-          "sha256Source": "catalog-only"
+          "sha256": "65662cc877da266442fb54d4221b66b7a35a255578a613b811bdf73ed4914e98",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/works/place_works_conduit_lane_t.glb",
           "sha256": "4cb7382f386141782eb7a74706c041429b545ea2ca404d491739b685bae0ac9a",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views; both declared LOD nodes remain grouped under this model."
+        "installed-network work (lod0)",
+        "installed-network site (lod1)"
       ],
-      "changes": "No change. The lane conduit family has a cohesive dark-bronze, blue and pale structural palette across the individual corner, cross, end, junction, straight and T forms.",
-      "issues": "Need an installed network view and observed LOD selection before acceptance; package counts alone do not establish a safe merge and the isolated views cannot confirm adjoining joins.",
+      "changes": "No asset change. Verification upgrade: installed-network view (work/site) + observed LOD0/LOD1 selection now exist, completing what this record's follow-up required.",
+      "issues": "First network shot of a session runs dimmer (env-map warm-up) — capture note, not a model defect. Ordinary Works play-route view still pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_inspect.png",
-        "design/program/fleet/graphics-asset-review/works-conduit-notes.md"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_lane_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_lane_site.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/_sheet_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/report.json"
       ],
-      "updatedAt": "2026-11-16T15:10:10.890Z"
+      "updatedAt": "2026-11-16T21:05:04.798Z"
     },
     "runtime:place_works_conduit_power_corner:place_works_conduit_power_corner": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/works/place_works_conduit_power_corner.glb",
           "sha256": "b209be2a739aa22323eb750715a1457865fd018e01bd2763949c83ce757e84e9",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/works-conduit-power-corner/render.glb",
-          "sha256": "a8563c62185bd2d07189c6ce5d73346c20fa8c7b0d5a6c62eec53360b1e13443",
-          "sha256Source": "catalog-only"
+          "sha256": "f502a2aab0d3e896756105406249c3b0ca87f3c571fe7f9287d2e621f605867b",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/works/place_works_conduit_power_corner.glb",
           "sha256": "ba486aa12d5651d360f3fcb96492c0c962836d703230b6c6bb996a6f4b64321d",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views; both declared LOD nodes remain grouped under this model."
+        "installed-network work (lod0)",
+        "installed-network site (lod1)"
       ],
-      "changes": "No change. The power conduit family is visibly distinct through its pale casing and restrained yellow internal runs across the individual corner, cross, end, junction, straight and T forms.",
-      "issues": "Need an installed network view and observed LOD selection before acceptance; preserve the directional yellow power cue and do not merge based solely on aggregate package counts.",
+      "changes": "No asset change. Verification upgrade: installed-network view (work/site) + observed LOD0/LOD1 selection now exist, completing what this record's follow-up required.",
+      "issues": "First network shot of a session runs dimmer (env-map warm-up) — capture note, not a model defect. Ordinary Works play-route view still pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_inspect.png",
-        "design/program/fleet/graphics-asset-review/works-conduit-notes.md"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_power_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_power_site.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/_sheet_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/report.json"
       ],
-      "updatedAt": "2026-11-16T15:10:11.170Z"
+      "updatedAt": "2026-11-16T21:05:05.491Z"
     },
     "runtime:place_works_conduit_power_cross:place_works_conduit_power_cross": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/works/place_works_conduit_power_cross.glb",
           "sha256": "3fb2750332ab6f958a39596a9c53fc36576497a93f8c21c4ae4025fff6b64a69",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/works-conduit-power-cross/render.glb",
-          "sha256": "f6322e4b527a61853166cef3ae880a2b9b4c74c20c6ede84e017f63187ba4a25",
-          "sha256Source": "catalog-only"
+          "sha256": "861c67a06241c5105f3d64455dfba283cdaecb92babe401acbed5df2f040aa40",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/works/place_works_conduit_power_cross.glb",
           "sha256": "0da3f50ba5edbae7a9f51c420262eece9b97dedae8404c5bb05ffcfe775285bd",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views; both declared LOD nodes remain grouped under this model."
+        "installed-network work (lod0)",
+        "installed-network site (lod1)"
       ],
-      "changes": "No change. The power conduit family is visibly distinct through its pale casing and restrained yellow internal runs across the individual corner, cross, end, junction, straight and T forms.",
-      "issues": "Need an installed network view and observed LOD selection before acceptance; preserve the directional yellow power cue and do not merge based solely on aggregate package counts.",
+      "changes": "No asset change. Verification upgrade: installed-network view (work/site) + observed LOD0/LOD1 selection now exist, completing what this record's follow-up required.",
+      "issues": "First network shot of a session runs dimmer (env-map warm-up) — capture note, not a model defect. Ordinary Works play-route view still pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_inspect.png",
-        "design/program/fleet/graphics-asset-review/works-conduit-notes.md"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_power_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_power_site.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/_sheet_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/report.json"
       ],
-      "updatedAt": "2026-11-16T15:10:11.451Z"
+      "updatedAt": "2026-11-16T21:05:05.897Z"
     },
     "runtime:place_works_conduit_power_end:place_works_conduit_power_end": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/works/place_works_conduit_power_end.glb",
           "sha256": "23092def1c2edb604fb9490dae4d78cc8f7ec7752bf986a55c700bce7d4dabaf",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/works-conduit-power-end/render.glb",
-          "sha256": "bcc31aeebc204c708787de02f61b9882002c0cc62f11ed753a5955f764f4ed84",
-          "sha256Source": "catalog-only"
+          "sha256": "3a2d5c14b24b4ecea39afe8ca051ca0058621d84ddc9b4e0e53fa00f0bf73e73",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/works/place_works_conduit_power_end.glb",
           "sha256": "8208ec0e8796b4d8484cfead2dd52b8c4a56ad7b549b539c295480b0b4cfb9e6",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views; both declared LOD nodes remain grouped under this model."
+        "installed-network work (lod0)",
+        "installed-network site (lod1)"
       ],
-      "changes": "No change. The power conduit family is visibly distinct through its pale casing and restrained yellow internal runs across the individual corner, cross, end, junction, straight and T forms.",
-      "issues": "Need an installed network view and observed LOD selection before acceptance; preserve the directional yellow power cue and do not merge based solely on aggregate package counts.",
+      "changes": "No asset change. Verification upgrade: installed-network view (work/site) + observed LOD0/LOD1 selection now exist, completing what this record's follow-up required.",
+      "issues": "First network shot of a session runs dimmer (env-map warm-up) — capture note, not a model defect. Ordinary Works play-route view still pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_inspect.png",
-        "design/program/fleet/graphics-asset-review/works-conduit-notes.md"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_power_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_power_site.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/_sheet_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/report.json"
       ],
-      "updatedAt": "2026-11-16T15:10:11.750Z"
+      "updatedAt": "2026-11-16T21:05:06.207Z"
     },
     "runtime:place_works_conduit_power_junction:place_works_conduit_power_junction": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/works/place_works_conduit_power_junction.glb",
           "sha256": "eb73e66968d3b7c2d22e4f5f506015d265506bf7f28316a763051354945ee47a",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/works-conduit-power-junction/render.glb",
-          "sha256": "b647f251e36e43c8953fc479f229e26d369666d705f07a62f373c7c1c6189823",
-          "sha256Source": "catalog-only"
+          "sha256": "68026878ac535d9124e09f23ef1583decb3354fe7057f814183a605e9e772e0c",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/works/place_works_conduit_power_junction.glb",
           "sha256": "33c78d6a33fd93b92e504331c07bc526eb5564e027b4238d23b7d4c473f2d18d",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views; both declared LOD nodes remain grouped under this model."
+        "installed-network work (lod0)",
+        "installed-network site (lod1)"
       ],
-      "changes": "No change. The power conduit family is visibly distinct through its pale casing and restrained yellow internal runs across the individual corner, cross, end, junction, straight and T forms.",
-      "issues": "Need an installed network view and observed LOD selection before acceptance; preserve the directional yellow power cue and do not merge based solely on aggregate package counts.",
+      "changes": "No asset change. Verification upgrade: installed-network view (work/site) + observed LOD0/LOD1 selection now exist, completing what this record's follow-up required.",
+      "issues": "First network shot of a session runs dimmer (env-map warm-up) — capture note, not a model defect. Ordinary Works play-route view still pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_inspect.png",
-        "design/program/fleet/graphics-asset-review/works-conduit-notes.md"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_power_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_power_site.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/_sheet_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/report.json"
       ],
-      "updatedAt": "2026-11-16T15:10:12.181Z"
+      "updatedAt": "2026-11-16T21:05:06.499Z"
     },
     "runtime:place_works_conduit_power_straight:place_works_conduit_power_straight": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/works/place_works_conduit_power_straight.glb",
           "sha256": "33a2566fdb526ac7e50f613086b1567838e11a2036204567fef6cacc11cf1d8d",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/works-conduit-power-straight/render.glb",
-          "sha256": "54c77f6d439357e9e3de10a0076f3a229b849f90251047e0c37062e546594586",
-          "sha256Source": "catalog-only"
+          "sha256": "b3d3a2281e1b7ac6ebb073e33f482ca7030a52ce59566da24fea7f188e89ba02",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/works/place_works_conduit_power_straight.glb",
           "sha256": "c9cbae5875f29ecbe77bc6679acbf68783595256082f45f4bf69778b124171bb",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views; both declared LOD nodes remain grouped under this model."
+        "installed-network work (lod0)",
+        "installed-network site (lod1)"
       ],
-      "changes": "No change. The power conduit family is visibly distinct through its pale casing and restrained yellow internal runs across the individual corner, cross, end, junction, straight and T forms.",
-      "issues": "Need an installed network view and observed LOD selection before acceptance; preserve the directional yellow power cue and do not merge based solely on aggregate package counts.",
+      "changes": "No asset change. Verification upgrade: installed-network view (work/site) + observed LOD0/LOD1 selection now exist, completing what this record's follow-up required.",
+      "issues": "First network shot of a session runs dimmer (env-map warm-up) — capture note, not a model defect. Ordinary Works play-route view still pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_inspect.png",
-        "design/program/fleet/graphics-asset-review/works-conduit-notes.md"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_power_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_power_site.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/_sheet_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/report.json"
       ],
-      "updatedAt": "2026-11-16T15:10:12.477Z"
+      "updatedAt": "2026-11-16T21:05:06.767Z"
     },
     "runtime:place_works_conduit_power_t:place_works_conduit_power_t": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/works/place_works_conduit_power_t.glb",
           "sha256": "1475fac9e5e705a68339f0e20b32e5ed26d650403f0adfd49c9b04f723c84930",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/works-conduit-power-t/render.glb",
-          "sha256": "f6a64e843348a56afd4edade63818dc00c1771174266afb20cbb36ac3f8fa8b0",
-          "sha256Source": "catalog-only"
+          "sha256": "65b0695277d6ae93ebfeb5211eef7f4cb608d9cf577782be8cb4b5afee52e2f3",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/works/place_works_conduit_power_t.glb",
           "sha256": "2c99c0f4a9a5ce16d1d5d889d47d9073cea5cf3fc27c400c445fccef2bb93f15",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views; both declared LOD nodes remain grouped under this model."
+        "installed-network work (lod0)",
+        "installed-network site (lod1)"
       ],
-      "changes": "No change. The power conduit family is visibly distinct through its pale casing and restrained yellow internal runs across the individual corner, cross, end, junction, straight and T forms.",
-      "issues": "Need an installed network view and observed LOD selection before acceptance; preserve the directional yellow power cue and do not merge based solely on aggregate package counts.",
+      "changes": "No asset change. Verification upgrade: installed-network view (work/site) + observed LOD0/LOD1 selection now exist, completing what this record's follow-up required.",
+      "issues": "First network shot of a session runs dimmer (env-map warm-up) — capture note, not a model defect. Ordinary Works play-route view still pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/works-conduits-20261116/_sheet_inspect.png",
-        "design/program/fleet/graphics-asset-review/works-conduit-notes.md"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_power_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/conduit_network_power_site.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/_sheet_work.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/conduits-network-20261116/report.json"
       ],
-      "updatedAt": "2026-11-16T15:10:12.827Z"
+      "updatedAt": "2026-11-16T21:05:07.041Z"
     },
     "runtime:place_works_derrick:place_works_derrick": {
       "status": "needs follow-up",

@@ -46,7 +46,7 @@ import { buildRubricVisual } from './characters/rubricModel.js';
 import { buildRuckusVisual } from './characters/ruckusModel.js';
 import { buildRuudVisual } from './characters/ruudModel.js';
 import { modelTruthMountFractions } from '../data/modelTruth.js';
-import { mergeGeometries, mergeVertices, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+import { mergeGeometries, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
 import { getReadyRockFamilies, rockFamilyFor, ROCK_FAMILY_TINT_MIX, ROCK_FAMILY_EMISSIVE_LIFT } from './rockFamilyLibrary.js';
 import { getReadyVolatileSurface, preloadVolatileSurface } from './volatileSurfaceLibrary.js';
@@ -2235,6 +2235,40 @@ function canonicalAstTypeId(typeId) {
   return AST_TYPE_ALIASES[id] || id;
 }
 
+function applyBoxAsteroidUvs(geometry, scaleU = 0.5, scaleV = 0.5) {
+  const pos = geometry.getAttribute('position');
+  const uv = geometry.getAttribute('uv');
+  if (!pos || !uv) return;
+  const ax = new THREE.Vector3(), bx = new THREE.Vector3(), cx = new THREE.Vector3();
+  const e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), fn = new THREE.Vector3();
+  const verts = [ax, bx, cx];
+  for (let i = 0; i + 2 < pos.count; i += 3) {
+    ax.fromBufferAttribute(pos, i);
+    bx.fromBufferAttribute(pos, i + 1);
+    cx.fromBufferAttribute(pos, i + 2);
+    e1.subVectors(bx, ax);
+    e2.subVectors(cx, ax);
+    fn.crossVectors(e1, e2);
+    const nx = Math.abs(fn.x), ny = Math.abs(fn.y), nz = Math.abs(fn.z);
+    for (let k = 0; k < 3; k++) {
+      const p = verts[k];
+      let uRaw, vRaw;
+      if (ny >= nx && ny >= nz) {
+        uRaw = p.x;
+        vRaw = fn.y >= 0 ? -p.z : p.z;
+      } else if (nx >= nz) {
+        uRaw = fn.x >= 0 ? -p.z : p.z;
+        vRaw = p.y;
+      } else {
+        uRaw = fn.z >= 0 ? p.x : -p.x;
+        vRaw = p.y;
+      }
+      uv.setXY(i + k, uRaw * scaleU + 0.5, vRaw * scaleV + 0.5);
+    }
+  }
+  uv.needsUpdate = true;
+}
+
 function transformCommonRockUvs(geometry, variantIdx) {
   const uv = geometry.getAttribute('uv');
   const transform = COMMON_ROCK_UV_TRANSFORMS[variantIdx];
@@ -2257,14 +2291,15 @@ function transformCommonRockUvs(geometry, variantIdx) {
 }
 
 function astDisplacedGeometry(typeId, def, variantIdx) {
-  const key = `ast:geology-v5:${typeId}:${variantIdx}`;
+  const key = `ast:geology-v6:${typeId}:${variantIdx}`;
   return getGeometry(key, () => {
     const geo = new THREE.IcosahedronGeometry(1, def.detail + 1);
-    const uvTransform = typeId === 'ast_common_rock' ? transformCommonRockUvs(geo, variantIdx) : null;
     const pos = geo.attributes.position;
     const normal = geo.attributes.normal;
-    const colors = typeId === 'ast_common_rock' ? new Float32Array(pos.count * 3) : null;
-    const geologyPbr = typeId === 'ast_common_rock' ? new Float32Array(pos.count * 4) : null;
+    const isCommonRock = typeId === 'ast_common_rock';
+    const isIce = typeId === 'ast_icy';
+    const colors = (isCommonRock || isIce) ? new Float32Array(pos.count * 3) : null;
+    const geologyPbr = isCommonRock ? new Float32Array(pos.count * 4) : null;
     const dominantRoleCounts = { matrix: 0, fracture: 0, regolith: 0, ferrite: 0 };
     const responseRanges = {
       ao: [Infinity, -Infinity],
@@ -2289,21 +2324,21 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
           * Math.sin(surfaceNormal.z * f * 3.3 + oz);
         amp *= 0.5; f *= 2.0;
       }
-      const silhouetteRadius = typeId === 'ast_common_rock'
+      const silhouetteRadius = isCommonRock
         ? geologySilhouetteRadius(surfaceNormal.x, surfaceNormal.y, surfaceNormal.z, variantIdx)
         : 1;
-      const scale = typeId === 'ast_common_rock'
+      const scale = isCommonRock
         ? silhouetteRadius
           + geologyDisplacement(surfaceNormal.x, surfaceNormal.y, surfaceNormal.z, variantIdx) * 1.9
           + def.displace * d * 0.18
         : 1 + def.displace * d;
       v.multiplyScalar(Math.max(0.5, scale));
       pos.setXYZ(i, v.x, v.y, v.z);
-      // Keep an intermediate radial normal for deterministic geology tone sampling. Common rocks
-      // replace it below with merged displaced-surface normals so macro strata affect grazing light.
+      // Keep an intermediate radial normal for deterministic geology tone sampling. Final normals
+      // below are rebuilt directly from displaced triangle geometry across shared positions.
       surfaceNormal.copy(v).normalize();
       normal.setXYZ(i, surfaceNormal.x, surfaceNormal.y, surfaceNormal.z);
-      if (colors) {
+      if (isCommonRock) {
         const response = geologySurfaceResponse(
           surfaceNormal.x,
           surfaceNormal.y,
@@ -2330,21 +2365,29 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
           responseRanges[field][0] = Math.min(responseRanges[field][0], value);
           responseRanges[field][1] = Math.max(responseRanges[field][1], value);
         }
+      } else if (isIce) {
+        // Subtle crevice-to-ridge tonal depth (deep cobalt-slate recesses, frosted pale ridges)
+        // keeps opaque glacial ice readable instead of a flat monochrome block.
+        const t = Math.max(0, Math.min(1, (scale - 0.72) / 0.56));
+        colors[i * 3] = 0.64 + 0.30 * t;
+        colors[i * 3 + 1] = 0.80 + 0.18 * t;
+        colors[i * 3 + 2] = 0.96 + 0.06 * t;
       }
     }
     normal.needsUpdate = true;
     if (colors) geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     if (geologyPbr) geo.setAttribute('sfGeologyPbr', new THREE.BufferAttribute(geologyPbr, 4));
-    if (typeId === 'ast_common_rock') {
-      // IcosahedronGeometry is non-indexed, so computeVertexNormals on the original buffer would
-      // preserve triangle facets. Merge identical displaced vertices first: the resulting normals
-      // follow the authored strata/joint relief while remaining smooth across shared rock faces.
-      const smooth = mergeVertices(geo, 1e-5);
-      smooth.computeVertexNormals();
-      smooth.computeBoundingSphere();
-      // Preserve the dense, non-indexed representation expected by the asteroid instancing path;
-      // toNonIndexed duplicates the already-smoothed normals instead of recreating face normals.
-      const denseSmooth = toCreasedNormals(smooth, THREE.MathUtils.degToRad(42));
+    // Box-projected UVs eliminate the spherical +/-Y polar pinch and meridian wrap seam on
+    // displaced icospheres while compensating for ROCK_FAMILY_REPEAT [4, 2] on family ores.
+    const isFamilyRock = def.variant === 'metal' || def.variant === 'crystal' || def.variant === 'exotic';
+    if (isCommonRock) applyBoxAsteroidUvs(geo, 0.52, 0.52);
+    else if (isFamilyRock) applyBoxAsteroidUvs(geo, 0.25, 0.5);
+    else applyBoxAsteroidUvs(geo, 0.5, 0.5);
+    const uvTransform = isCommonRock ? transformCommonRockUvs(geo, variantIdx) : null;
+    if (isCommonRock) {
+      // toCreasedNormals merges exclusively on quantized position, preserving smooth intra-plane
+      // normals across UV projection boundaries as well as crisp 42-degree geological breaks.
+      const denseSmooth = toCreasedNormals(geo, THREE.MathUtils.degToRad(42));
       denseSmooth.computeBoundingSphere();
       denseSmooth.userData.spacefaceGeology = {
         schema: 'spaceface.commonRockGeology.v4',
@@ -2362,16 +2405,8 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
       };
       return denseSmooth;
     }
-    // The original icosphere normals describe the undisplaced sphere, so retaining them makes
-    // every smooth-shaded variant (most visibly ice) reflect like a plastic ball even after its
-    // silhouette has been heavily displaced. Rebuild normals from the final surface. Merge first
-    // so neighboring faces share the same displaced vertex, then preserve deliberate geological
-    // breaks with a material-appropriate crease angle.
-    const displaced = mergeVertices(geo, 1e-5);
-    displaced.computeVertexNormals();
-    displaced.computeBoundingSphere();
-    const creaseDegrees = typeId === 'ast_icy' ? 62 : (def.flat ? 34 : 48);
-    const surfaced = toCreasedNormals(displaced, THREE.MathUtils.degToRad(creaseDegrees));
+    const creaseDegrees = isIce ? 52 : (def.flat ? 34 : 48);
+    const surfaced = toCreasedNormals(geo, THREE.MathUtils.degToRad(creaseDegrees));
     surfaced.computeBoundingSphere();
     surfaced.userData.spacefaceGeology = {
       schema: 'spaceface.asteroidSurfaceNormals.v1',
@@ -2492,6 +2527,61 @@ function configureCommonRockPbr(material) {
  * The bare material is keyed apart and tagged, and `upgradeBareRockMaterials` re-skins every live
  * rock the moment the library publishes.
  */
+function makeIceNormalTexture() {
+  const S = 128;
+  const h = new Float32Array(S * S);
+  const rnd = mulberryLite(0x1ce73);
+  const sampleLayer = (cells, amp) => {
+    const g = cells;
+    const grid = new Float32Array(g * g);
+    for (let i = 0; i < grid.length; i++) grid[i] = rnd();
+    const at = (gx, gy) => grid[((gy % g) + g) % g * g + ((gx % g) + g) % g];
+    const scale = g / S;
+    for (let y = 0; y < S; y++) {
+      for (let x = 0; x < S; x++) {
+        const fx = x * scale, fy = y * scale;
+        const x0 = Math.floor(fx), y0 = Math.floor(fy);
+        let sx = fx - x0, sy = fy - y0;
+        sx = sx * sx * (3 - 2 * sx); sy = sy * sy * (3 - 2 * sy);
+        const a = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * sx;
+        const b = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * sx;
+        const n = a + (b - a) * sy;
+        // Ridged crease profile suggests fractured glacial plates rather than soft noise.
+        h[y * S + x] += (1 - Math.abs(n * 2 - 1)) * amp;
+      }
+    }
+  };
+  sampleLayer(6, 0.55);
+  sampleLayer(14, 0.30);
+  sampleLayer(28, 0.15);
+  const canvas = document.createElement('canvas');
+  canvas.width = S; canvas.height = S;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(S, S);
+  const strength = 2.8;
+  for (let y = 0; y < S; y++) {
+    const ym = (y - 1 + S) & (S - 1), yp = (y + 1) & (S - 1);
+    for (let x = 0; x < S; x++) {
+      const xm = (x - 1 + S) & (S - 1), xp = (x + 1) & (S - 1);
+      const dx = (h[y * S + xp] - h[y * S + xm]) * strength;
+      const dy = (h[yp * S + x] - h[ym * S + x]) * strength;
+      const invLen = 1 / Math.hypot(-dx, -dy, 1);
+      const k = (y * S + x) * 4;
+      img.data[k] = Math.round(((-dx * invLen) * 0.5 + 0.5) * 255);
+      img.data[k + 1] = Math.round(((-dy * invLen) * 0.5 + 0.5) * 255);
+      img.data[k + 2] = Math.round(((invLen) * 0.5 + 0.5) * 255);
+      img.data[k + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.NoColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 4;
+  tex.needsUpdate = true;
+  return tex;
+}
+
 function astMaterial(typeId, def, tint, variantIdx = 0) {
   const wantsCommonSurface = typeId === 'ast_common_rock' && tint == null;
   const commonSurfaceReady = wantsCommonSurface ? getReadyRockSurfaceTextures() : null;
@@ -2533,10 +2623,20 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
       // cool blue-grey stone with a satin sheen and a faint cold glow, so it reads as ice beside tan rock, sits in the
       // terrain value band (bible LOOK §3: terrain 25–50 lit) and draws as an ordinary opaque rock.
       const iceColor = color.clone().lerp(new THREE.Color('#5d8aa6'), 0.55);
+      const hasCanvas = typeof document !== 'undefined';
+      const iceRough = hasCanvas
+        ? getTexture('ast:icerough', () =>
+          makeNoiseTexture({ size: 256, seed: 73, octaves: 4, baseCells: 5, contrast: 1.5, brightness: 0.14 }))
+        : null;
+      const iceNormal = hasCanvas ? getTexture('ast:icenormal', makeIceNormalTexture) : null;
       const material = new THREE.MeshStandardMaterial({
         color: iceColor,
-        roughness: 0.38,
+        normalMap: iceNormal,
+        normalScale: new THREE.Vector2(0.55, 0.55),
+        roughnessMap: iceRough,
+        roughness: 0.48,
         metalness: 0.0,
+        vertexColors: true,
         emissive: new THREE.Color(def.emissive || '#2a5f80'),
         emissiveIntensity: Math.min(eiBoost, 0.10),
         envMapIntensity: 0.55,
@@ -2634,6 +2734,63 @@ export function upgradeFamilylessRockMaterials(root) {
   return count;
 }
 
+const _astVA = new THREE.Vector3();
+const _astVB = new THREE.Vector3();
+const _astVC = new THREE.Vector3();
+const _astCenter = new THREE.Vector3();
+const _astNormal = new THREE.Vector3();
+const _astTangent = new THREE.Vector3();
+const _astBitangent = new THREE.Vector3();
+const _astEdgeA = new THREE.Vector3();
+const _astEdgeB = new THREE.Vector3();
+const _astEdgeC = new THREE.Vector3();
+const _astEdgeTmp = new THREE.Vector3();
+const _astBasisMat = new THREE.Matrix4();
+const _astUp = new THREE.Vector3(0, 1, 0);
+
+function sampleAsteroidSurfaceFace(geo, faceIndex) {
+  const pos = geo.getAttribute('position');
+  const idx = geo.getIndex();
+  const base = faceIndex * 3;
+  const i0 = idx ? idx.getX(base) : base;
+  const i1 = idx ? idx.getX(base + 1) : base + 1;
+  const i2 = idx ? idx.getX(base + 2) : base + 2;
+  _astVA.fromBufferAttribute(pos, i0);
+  _astVB.fromBufferAttribute(pos, i1);
+  _astVC.fromBufferAttribute(pos, i2);
+  _astCenter.copy(_astVA).add(_astVB).add(_astVC).multiplyScalar(1 / 3);
+  _astEdgeA.subVectors(_astVB, _astVA);
+  _astEdgeB.subVectors(_astVC, _astVB);
+  _astEdgeC.subVectors(_astVA, _astVC);
+  _astNormal.crossVectors(_astEdgeA, _astEdgeTmp.subVectors(_astVC, _astVA)).normalize();
+  if (_astNormal.dot(_astCenter) < 0) _astNormal.negate();
+  const lenA = _astEdgeA.length(), lenB = _astEdgeB.length(), lenC = _astEdgeC.length();
+  let longest = _astEdgeA, maxLen = lenA;
+  if (lenB > maxLen) { longest = _astEdgeB; maxLen = lenB; }
+  if (lenC > maxLen) { longest = _astEdgeC; maxLen = lenC; }
+  _astTangent.copy(longest).normalize();
+  _astBitangent.crossVectors(_astTangent, _astNormal).normalize();
+  // Re-orthogonalize tangent against normal in case of tiny numerical drift.
+  _astTangent.crossVectors(_astNormal, _astBitangent).normalize();
+  return maxLen;
+}
+
+function pickUniqueAsteroidFaces(geo, count, rnd) {
+  const pos = geo.getAttribute('position');
+  const idx = geo.getIndex();
+  const faceCount = Math.floor((idx ? idx.count : (pos ? pos.count : 0)) / 3);
+  if (faceCount <= 0) return [];
+  const chosen = [];
+  const used = new Set();
+  for (let i = 0; i < count; i++) {
+    let f = Math.floor(rnd() * faceCount);
+    for (let tries = 0; tries < 8 && used.has(f); tries++) f = Math.floor(rnd() * faceCount);
+    used.add(f);
+    chosen.push(f);
+  }
+  return chosen;
+}
+
 function buildAsteroid(e) {
   const R = e.radius || 12;
   const typeId = canonicalAstTypeId(e.data && e.data.typeId);
@@ -2674,12 +2831,17 @@ function buildAsteroid(e) {
   if (!opticKind && def.variant === 'crystal') {
     const rnd = mulberryLite(hashId(e.id));
     const shardMat = emissiveMaterial('#c878ff', 1.1, SHARED_MATERIAL_ROLE.ROCK);
-    for (let i = 0; i < 6; i++) {
+    const shardFaces = pickUniqueAsteroidFaces(geo, 6, rnd);
+    for (let i = 0; i < shardFaces.length; i++) {
       const shard = new THREE.Mesh(getGeometry('ast:shard', () => new THREE.OctahedronGeometry(0.18, 0)), shardMat);
-      const a = rnd() * Math.PI * 2, e2 = (rnd() - 0.5) * 1.4;
-      shard.position.set(Math.cos(a) * R * 0.7, Math.sin(e2) * R * 0.5, Math.sin(a) * R * 0.7);
-      shard.scale.setScalar(R * (0.5 + rnd() * 0.6));
-      shard.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
+      sampleAsteroidSurfaceFace(geo, shardFaces[i]);
+      const baseScale = 0.55 + rnd() * 0.45;
+      // Seat each crystal spire into its displaced facet so it sprouts outward from the surface.
+      shard.position.copy(_astCenter).addScaledVector(_astNormal, -0.03 * baseScale).multiplyScalar(R);
+      shard.quaternion.setFromUnitVectors(_astUp, _astNormal);
+      shard.rotateX((rnd() - 0.5) * 0.45);
+      shard.rotateZ((rnd() - 0.5) * 0.45);
+      shard.scale.set(R * baseScale, R * baseScale * 1.45, R * baseScale);
       shard.userData.spacefaceTags = { greeble: true };
       shard.userData.asteroidInstanceDetail = true;
       g.add(shard);
@@ -2719,20 +2881,25 @@ function buildAsteroid(e) {
     g.add(hull);
   }
 
-  // GLOWING ORE VEINS — emissive streaks scattered across the surface for valuable ore types, so a
-  // rock reads as "mineral-rich" at a glance (neon veins glowing through the rock = the cyberpunk
-  // mining fantasy). Each vein is a thin additive capsule sunk slightly into the surface.
+  // GLOWING ORE VEINS — emissive streaks seated flush along displaced surface facets so a rock
+  // reads as "mineral-rich" at a glance without capsules poking past edges into empty space.
   if (def.veinColor && !opticKind) {
     const rnd = mulberryLite(hashId(e.id) ^ 0xbeef);
     const veinMat = emissiveMaterial(def.veinColor, 1.6, SHARED_MATERIAL_ROLE.ROCK);
     const veinGeo = getGeometry('ast:vein', () => new THREE.CapsuleGeometry(0.025, 0.5, 3, 5).rotateZ(Math.PI / 2));
     const veinCount = def.variant === 'crystal' || def.variant === 'exotic' ? 5 : 3;
-    for (let i = 0; i < veinCount; i++) {
+    const veinFaces = pickUniqueAsteroidFaces(geo, veinCount, rnd);
+    for (let i = 0; i < veinFaces.length; i++) {
       const vein = new THREE.Mesh(veinGeo, veinMat);
-      const a = rnd() * Math.PI * 2, e2 = (rnd() - 0.5) * 1.4;
-      vein.position.set(Math.cos(a) * R * 0.85, Math.sin(e2) * R * 0.6, Math.sin(a) * R * 0.85);
-      vein.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
-      vein.scale.setScalar(R * (0.6 + rnd() * 0.8));
+      const maxEdgeLen = sampleAsteroidSurfaceFace(geo, veinFaces[i]);
+      // The chord through centroid parallel to the longest edge has length (2/3)*maxEdgeLen;
+      // capping capsule length (0.55*scaleX) <= 0.54*maxEdgeLen guarantees zero overhang.
+      const lenScale = Math.min(0.85, ((0.54 * maxEdgeLen) / 0.55) * (0.75 + rnd() * 0.25));
+      const thickScale = 0.45 + rnd() * 0.25;
+      _astBasisMat.makeBasis(_astTangent, _astNormal, _astBitangent);
+      vein.quaternion.setFromRotationMatrix(_astBasisMat);
+      vein.position.copy(_astCenter).addScaledVector(_astNormal, -0.008 * thickScale).multiplyScalar(R);
+      vein.scale.set(R * lenScale, R * thickScale, R * thickScale);
       vein.userData.spacefaceTags = { greeble: true };
       vein.userData.asteroidInstanceDetail = true;
       g.add(vein);
