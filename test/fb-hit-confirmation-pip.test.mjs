@@ -88,6 +88,31 @@ test('world labels read layout only when a tag needs to be drawn', () => {
   assert.equal(padLayer.children[0].style.display, 'block');
 });
 
+test('an arena run never builds an ambient world label; a priced till and Adventure still do', () => {
+  // SWARM-LEAK-01 — COFFEE HATCH / ANSEL'S SILL / CUSTOMS QUEUE / FIELD COIL CRADLE are Adventure
+  // world texture; a live Swarm round reads the fight (20_THE_FIRST_HOUR rule 3). The label was
+  // built and then hidden with a class, so its words still sat in the HUD tree.
+  const world = makeWorld({ helpers: { worldToScreen: () => ({ x: 200, y: 100, onScreen: true }) } });
+  const padLayer = world.layer.children.find((el) => el.id === 'sf-floorpads');
+  const ambient = { ...world.target, id: 'ambient', pos: { x: 10, z: 10 },
+    data: { swarmFloorPad: { label: 'COFFEE HATCH' } } };
+  world.state.entities.set(ambient.id, ambient);
+
+  world.state.run = { kind: 'survival', phase: 'active', ruleset: 'swarm' };
+  world.ft.update(0.016);
+  assert.equal(padLayer.children.length, 0, 'the arena builds no label node for an ambient pad');
+
+  world.target.data = { swarmFloorPad: { label: 'THE CRATE · 950', kind: 'crate', price: 950 } };
+  world.ft.update(0.016);
+  assert.deepEqual(padLayer.children.map((el) => el.textContent), ['THE CRATE · 950'],
+    'a priced till is still a fight decision and keeps its tag');
+
+  world.state.run = { kind: 'adventure', phase: 'inactive' };
+  world.ft.update(0.016);
+  assert.deepEqual(padLayer.children.map((el) => el.textContent).sort(),
+    ['COFFEE HATCH', 'THE CRATE · 950'], 'Adventure keeps both');
+});
+
 test('two floor tags projected onto one point take separate seats', () => {
   const world = makeWorld({ helpers: { worldToScreen: () => ({ x: 200, y: 170, onScreen: true }) } });
   const second = { ...world.target, id: 'other' };

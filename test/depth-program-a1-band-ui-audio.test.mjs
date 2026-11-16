@@ -99,8 +99,7 @@ test('Band HUD is one compact non-modal chip and emits tuner intent without muta
 });
 
 test('Band HUD invalidates only when its rendered signal projection changes', () => {
-  const documentRef = fakeDocument();
-  const host = new MiniElement('div');
+  const documentRef = fakeDocument();  const host = new MiniElement('div');
   host.id = 'hud';
   documentRef.body.appendChild(host);
   const bus = createBus();
@@ -279,4 +278,27 @@ test('procedural Band beds pool a live graph, retune cleanly, and honor RF silen
   runtime.setIntent({ active: false, silence: true });
   assert.equal(runtime.activeGraph, null);
   runtime.destroy();
+});
+
+// SWARM-LEAK-01 — the tuner chip printed "RADIO  OFF" (and, on a tuned save, a campaign channel)
+// over a live Swarm round: an open-world control the arena cannot use. Gate at the source so the
+// chip is never painted; Adventure keeps the same chip, including its steady OFF state.
+test('a live Swarm round paints no Band tuner chip; Adventure still does', () => {
+  const mount = (run) => {
+    const documentRef = fakeDocument();
+    const host = new MiniElement('div');
+    host.id = 'hud';
+    documentRef.body.appendChild(host);
+    const state = { mode: 'flight', ui: { docked: false }, run,
+      bandRadio: { channelId: null, signalStrength: 0 } };
+    return { documentRef, host, hud: uiModule.createBandHud({ state, bus: createBus() }, { documentRef, host }) };
+  };
+  const swarm = mount({ kind: 'survival', phase: 'active', ruleset: 'swarm' });
+  assert.equal(swarm.hud.root.hidden, true, 'the arena carries no band tuner');
+  swarm.hud.destroy();
+
+  const adventure = mount({ kind: 'adventure', phase: 'inactive' });
+  assert.equal(adventure.hud.root.hidden, false, 'Adventure keeps the chip');
+  assert.match(adventure.hud.button.textContent, /RADIO/);
+  adventure.hud.destroy();
 });

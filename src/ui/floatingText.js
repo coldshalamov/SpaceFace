@@ -215,6 +215,19 @@ export function createFloatingText(ctx) {
     for (const e of state.entities.values()) {
       const rec = e && e.data && e.data.swarmFloorPad;
       if (!rec || e.alive === false || !e.pos) continue;
+      // An ambient flavor label ("COFFEE HATCH", "ANSEL'S SILL", "CUSTOMS QUEUE"…) is Adventure
+      // world texture: the room is the fight, so the arena never builds the node at all. Refusing
+      // it here — before creation — keeps the words out of the tree instead of painting them and
+      // hiding them with a class (SWARM-LEAK-01, 20_THE_FIRST_HOUR rule 3).
+      const priced = rec.kind != null || Number.isFinite(rec.price);
+      if (inArena && !priced) {
+        const stale = padNodes.get(e.id);
+        if (stale) {
+          stale.el.parentNode && stale.el.parentNode.removeChild(stale.el);
+          padNodes.delete(e.id);
+        }
+        continue;
+      }
       let node = padNodes.get(e.id);
       if (!node) {
         const el = document.createElement('div');
@@ -232,9 +245,7 @@ export function createFloatingText(ctx) {
       _padWorld.x = e.pos.x; _padWorld.z = e.pos.z;
       const s = helpers.worldToScreen(_padWorld, _padScreen);
       // A price tag is for the till you are standing at. Far away a priced pad is a small lit
-      // dot (the body itself carries the glow); an ambient flavor label shows only up close and
-      // never inside an arena run, where the room is the fight (20_THE_FIRST_HOUR rule 3).
-      const priced = rec.kind != null || Number.isFinite(rec.price);
+      // dot (the body itself carries the glow); an ambient flavor label shows only up close.
       const reach = (priced ? PAD_TAG_REACH : PAD_NOTE_REACH) * (node.near ? 1.2 : 1);
       let near = true;
       if (player && player.pos) {
@@ -249,7 +260,7 @@ export function createFloatingText(ctx) {
         node.el.className = 'sf-fp' + (denied ? ' sf-fp--deny' : '') + (far ? ' sf-fp--far' : '');
       }
       const quiet = !near && !priced;
-      const show = !(inArena && !priced) && !quiet && Number.isFinite(s.x) && Number.isFinite(s.y)
+      const show = !quiet && Number.isFinite(s.x) && Number.isFinite(s.y)
         && (s.onScreen !== false || s.x !== 0 || s.y !== 0);
       const nextDisplay = show ? 'block' : 'none';
       if (node.el.style.display !== nextDisplay) node.el.style.display = nextDisplay;

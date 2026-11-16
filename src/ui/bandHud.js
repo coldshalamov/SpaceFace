@@ -5,6 +5,7 @@ import QUIESSENCE_PACK from '../data/flavor/060-quiessence.js';
 import { createHudDragController } from './hudLayout.js';
 import { BINDINGS } from './bindings.js';
 import { bearingRefusalLine, paintBearingRefusal, BEARING_REFUSAL_HOLD_MS } from './orrery/bearingRefusal.js';
+import { isSwarmGlass } from './swarmGlass.js';
 
 const QUIESSENCE_INDEXES = new Set(QUIESSENCE_PACK.entries.map((entry) => entry.shipIndex));
 
@@ -133,7 +134,11 @@ export function createBandHud(ctx, options = {}) {
     const sourceId = status && status.sourceId || own.effectiveSourceId;
     const strength = clamp01(finite(status && status.signalStrength, finite(own.signalStrength, 0)));
     const silence = !!(status && status.silence) || sourceId === 'planet_hush';
-    const hidden = !(state.mode === 'flight' && !(state.ui && state.ui.docked));
+    // A live Swarm round has no band: the arena's own radio is off and the chip's "RADIO OFF"
+    // (or a tuned channel from the campaign) is an open-world control the room cannot use
+    // (SWARM-LEAK-01). Gate at the source so the chip is never painted, not hidden by a class.
+    const hidden = !(state.mode === 'flight' && !(state.ui && state.ui.docked))
+      || isSwarmGlass(state);
 
     // Strength is published at 5 Hz but renders in four threshold buckets — compare the
     // scalar projection inputs before any of the string formatting runs at all.
@@ -153,8 +158,7 @@ export function createBandHud(ctx, options = {}) {
     const meter = channelId ? signalMeter(strength, silence) : '';   // off: no dashed placeholder, the word says it
     const text = `RADIO  ${label}${censusText}${meter ? `  ${meter}` : ''}`;
     const dataOff = channelId ? 'false' : 'true';
-    const dataSilence = silence ? 'true' : 'false';
-    const censusAria = census ? ` Census ${census.scanned} of ${census.total}${census.complete ? ', complete' : ''}.` : '';
+    const dataSilence = silence ? 'true' : 'false';    const censusAria = census ? ` Census ${census.scanned} of ${census.total}${census.complete ? ', complete' : ''}.` : '';
     const ariaLabel = channelId
       ? `Band tuner, ${label}, ${silence ? 'radio silence' : signalLabel(strength)}.${censusAria} Activate for next channel.`
       : 'Band tuner, off. Activate for next channel.';
