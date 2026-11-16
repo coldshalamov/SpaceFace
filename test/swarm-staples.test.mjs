@@ -188,10 +188,12 @@ test('the seeded cadence deals a card to every special round and to no ordinary 
   // The specials are the announced cadence, not a scatter: C01-01 fills every multiple of
   // five with a champion, so the seeded major band is dead inside the thirty — G08-02's
   // authored course twists deal their own cards on their own rounds instead; minors still
-  // ride the two off-beats of each ten (2, 8, 12, 18, 22, 28).
+  // ride the two off-beats of each ten (2, 8, 12, 18, 22, 28). PIT-01 (38e21d6080) keeps the
+  // Pit's first four rounds clear, so the earliest live minor is round 8 — not round 2.
   assert.equal(isSwarmEventWave(10), false);
   assert.equal(isSwarmEventWave(20), false);
-  assert.equal(isSwarmMinorEventWave(2), true);
+  assert.equal(isSwarmMinorEventWave(2), false);
+  assert.equal(isSwarmMinorEventWave(8), true);
   assert.equal(isSwarmMinorEventWave(18), true);
   assert.equal(isSwarmEventWave(4), false);
   assert.equal(isSwarmEventWave(13), false);
