@@ -29,6 +29,10 @@ const FOCUS_SCALE = 0.5;
 //     focus per pass sequence while a genuinely NEW threat is still gated only by the 4 s floor.
 const COOLDOWN_S = 4.0;
 const TARGET_COOLDOWN_S = 14.0;
+// NOTICE-01: the "Time slows — latch the flyby" tutorial prompt is bounded per flyby event
+// (one target's lease episodes, keyed like _targetCooldowns by id+occupant generation) and
+// stops forever once the player has latched — the lesson is taught, not looped.
+const FLYBY_PROMPT_MAX_SHOWINGS = 2;
 const MIN_REL_SPEED = 96;
 const MIN_CLOSING_SPEED = 25;
 const MAX_ACQUIRE_RANGE = 280;
@@ -93,6 +97,7 @@ function freshFocus() {
     cooldownUntil: 0,
     targetId: null,
     zoom: 0,
+    flybyLatched: false,
   };
 }
 
@@ -109,6 +114,7 @@ function ensureFocus(state) {
   if (!Number.isFinite(focus.cooldownUntil)) focus.cooldownUntil = 0;
   if (!Number.isFinite(focus.zoom)) focus.zoom = 0;
   if (focus.targetId == null) focus.targetId = null;
+  if (typeof focus.flybyLatched !== 'boolean') focus.flybyLatched = false;
   return focus;
 }
 
@@ -306,6 +312,9 @@ export const flybyFocus = {
     // loaded value is "empty". Determinism is unaffected — the map is keyed by stable ids, driven
     // by state.simTime, and rebuilt from empty on every init, which is where replays begin.
     this._targetCooldowns = new Map();
+    // Prompt showings per flyby event, keyed `${id}:${occupantGeneration}` — same lifecycle as
+    // _targetCooldowns: runtime-only, rebuilt empty on init, cleared by the same reset events.
+    this._promptCounts = new Map();
     this._cooldownNow = 0;
     this._isTargetCoolingDown = (id, entity) => {
       const cooldown = this._targetCooldowns.get(id);
@@ -317,6 +326,9 @@ export const flybyFocus = {
     ensureFocus(this.state);
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs.push(this.bus.on('entity:spawned', (p) => this._onEntitySpawned(p), { presentation: true }));
+      // The prompt's off switch: a real latch payload ({ targetId, ... }) — landing it during the
+      // lease, or on the lease's own ship, proves the verb and stamps the persisted learned flag.
+      this._unsubs.push(this.bus.on('tether:latched', (p) => this._onTetherLatched(p)));
     }
     const resetOn = (event, reason) => {
       if (!this.bus || typeof this.bus.on !== 'function') return;
@@ -339,6 +351,18 @@ export const flybyFocus = {
     const entity = payload && payload.entity;
     if (!isQuietWakeCandidate(entity)) return;
     this.noteFlybyWake();
+  },
+
+  // NOTICE-01: the tutorial prompt teaches the latch during a slowed flyby. Once the player has
+  // latched — anything while the lease is up, or the lease's own ship — the lesson landed for
+  // good. Persisted on the focus bag so the credit survives a save; only a new game forgets it.
+  _onTetherLatched(payload = {}) {
+    const st = this.state;
+    if (!st) return;
+    const focus = ensureFocus(st);
+    if (!focus.flybyLatched && (focus.active === true || payload.targetId === focus.targetId)) {
+      focus.flybyLatched = true;
+    }
   },
 
   destroy() {
@@ -366,6 +390,8 @@ export const flybyFocus = {
       // lease — that is the whole point of the per-target cooldown. Only a load / new game /
       // death / dock / re-init clears it, matching what the global scalar already did.
       if (this._targetCooldowns) this._targetCooldowns.clear();
+      if (this._promptCounts) this._promptCounts.clear();
+      if (reason === 'new-game') focus.flybyLatched = false;
     }
     if (resetZoom) focus.zoom = 0;
     if (this.timeEffects) this.timeEffects.clear(TIME_EFFECT_SOURCE);
@@ -507,9 +533,9 @@ export const flybyFocus = {
     focus.startedAt = now;
     focus.until = now + FOCUS_DURATION_S;
     focus.cooldownUntil = now + COOLDOWN_S;
+    const leaseEntity = st.entities.get(pick.id);
     if (this._targetCooldowns) {
-      const entity = st.entities.get(pick.id);
-      this._targetCooldowns.set(pick.id, { entity, generation: entity?.occupantGeneration,
+      this._targetCooldowns.set(pick.id, { entity: leaseEntity, generation: leaseEntity?.occupantGeneration,
         until: now + TARGET_COOLDOWN_S });
     }
     focus.targetId = pick.id;
@@ -518,6 +544,12 @@ export const flybyFocus = {
       if (arcade) this.timeEffects.clear(TIME_EFFECT_SOURCE);
       else this.timeEffects.set(TIME_EFFECT_SOURCE, FOCUS_REQUEST);
     }
+    // NOTICE-01: bounded tutorial prompt — at most FLYBY_PROMPT_MAX_SHOWINGS per flyby event
+    // (this target's occupant generation), and never once the player has latched.
+    const promptKey = `${pick.id}:${leaseEntity?.occupantGeneration ?? 0}`;
+    const shown = this._promptCounts ? (this._promptCounts.get(promptKey) | 0) : 0;
+    const showPrompt = !arcade && focus.flybyLatched !== true && shown < FLYBY_PROMPT_MAX_SHOWINGS;
+    if (showPrompt && this._promptCounts) this._promptCounts.set(promptKey, shown + 1);
     if (this.bus) {
       this.bus.emit('flybyFocus:start', {
         targetId: pick.id,
@@ -530,7 +562,7 @@ export const flybyFocus = {
         timeToClosestS: pick.timeToClosestS,
         closestSurfaceMiss: pick.closestSurfaceMiss,
       });
-      if (!arcade) this.bus.emit('toast', {
+      if (showPrompt) this.bus.emit('toast', {
         text: 'Time slows — latch the flyby before it clears',
         kind: 'good',
         ttl: 1.6,

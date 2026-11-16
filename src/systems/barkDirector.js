@@ -3122,6 +3122,20 @@ export const barkDirector = {
     const record = cargoSpillRecord(own);
     const key = `${resolved.ownerId}|${reaction}|${state.tick || 0}`;
     if (record.lastKey === key) return null;
+    // NOTICE-01: once per event. One custody incident can re-announce — a respill on the same
+    // custodyId, a per-line dump on one manifest, the kill that spilled the cargo — so the owner
+    // + reaction + incident speaks a single time; later repeats fold into the toast card's count
+    // at the lane instead of opening new lines here. The tick fallback preserves the old
+    // same-tick dedupe for events that carry no incident identity (a raw player jettison).
+    const carrierTag = payload.carrierId ?? payload.id ?? payload.entityId ?? null;
+    const incident = payload.custodyId != null
+      ? `custody:${payload.custodyId}`
+      : carrierTag != null
+        ? `carrier:${carrierTag}|${payload.manifestId || ''}`
+        : `tick:${state.tick || 0}`;
+    const incidentKey = `${resolved.ownerId}|${reaction}|${incident}`;
+    if (!Array.isArray(record.seen)) record.seen = [];
+    if (record.seen.includes(incidentKey)) return null;
 
     const barkText = resolved.claimantName
       ? cargoSpillBarkText(resolved.claimantName, reaction) : CARGO_RECOVERY_NOTICE[reaction].text;
@@ -3147,6 +3161,10 @@ export const barkDirector = {
     record.lastKey = key;
     record.lastAt = now;
     record.lastOwnerId = resolved.ownerId;
+    record.seen.push(incidentKey);
+    // Bounded: the receipt cache only needs the recent window of incidents — one raid's pods
+    // plus their re-announcements never approach the cap before newer events evict them.
+    while (record.seen.length > 32) record.seen.shift();
     record.count = Math.min(Number.MAX_SAFE_INTEGER, (Number(record.count) || 0) + 1);
 
     const receipt = {
@@ -3470,7 +3488,7 @@ function freshState() {
 }
 
 function freshCargoSpill() {
-  return { lastKey: null, lastAt: 0, lastOwnerId: null, count: 0 };
+  return { lastKey: null, lastAt: 0, lastOwnerId: null, count: 0, seen: [] };
 }
 
 function cargoSpillRecord(own) {

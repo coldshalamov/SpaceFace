@@ -14,6 +14,7 @@ import {
   lineClassForTonnage,
   lineClassForIndex,
   isOverLineClass,
+  lineLessonBody,
   stampLineRecord,
 } from '../data/lineProgression.js';
 
@@ -94,7 +95,9 @@ export const lineProgression = {
       ? state.entities.get(payload.targetId)
       : null;
     this._heldTargetId = payload.targetId ?? null;
-    this._heldMassT = target && !(target.data && target.data.rescueRole === 'rock') ? bodyMassOf(target) : 0;
+    // The lesson bodies (tutorial rock, raid-beat raider) count no mass: the opening's swing
+    // must never heat the winch toward a snap while the class ladder is still at I.
+    this._heldMassT = target && !lineLessonBody(target) ? bodyMassOf(target) : 0;
     this._snapGraceUntil = 0;
     this._restoreLoadedHold = false;
     const player = this._player();
@@ -139,7 +142,7 @@ export const lineProgression = {
       && a.targetId === target.id && (tether.attachmentId == null || a.id === tether.attachmentId));
     if (!held) return;
     this._heldTargetId = target.id;
-    this._heldMassT = target.data && target.data.rescueRole === 'rock' ? 0 : bodyMassOf(target);
+    this._heldMassT = lineLessonBody(target) ? 0 : bodyMassOf(target);
     this._heldAttachmentId = held.id;
   },
 

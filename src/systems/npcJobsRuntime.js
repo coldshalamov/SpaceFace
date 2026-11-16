@@ -7235,11 +7235,15 @@ export const npcJobsRuntime = {
       entry.routeHold = {
         threatId: threat.id, x: px, z: pz,
         label: best && typeof best.label === 'string' ? best.label : null,
-        since: now, distressT: -Infinity,
+        since: now,
       };
     }
-    if (now - entry.routeHold.distressT >= ROUTE_HOLD_DISTRESS_S) {
-      entry.routeHold.distressT = now;
+    // NOTICE-01: the cry's cadence lives on the entry, not the hold row — a recreated hold
+    // (threat swap, or resume→re-hold on the next re-check) must not reset the clock and bark
+    // again on the same cycle it cleared on. Once when the lane goes hot, then bounded: at most
+    // one cry per ROUTE_HOLD_DISTRESS_S per hull.
+    if (now - (entry.holdDistressT ?? -Infinity) >= ROUTE_HOLD_DISTRESS_S) {
+      entry.holdDistressT = now;
       const kindLabel = { miner: 'Miner', hauler: 'Hauler', salvor: 'Salvor', tender: 'Tender', courier: 'Courier', patrol: 'Patrol' }[job.kind] || 'Crew';
       const where = entry.routeHold.label ? `at ${entry.routeHold.label}` : 'where I sit';
       if (this.bus && typeof this.bus.emit === 'function') {

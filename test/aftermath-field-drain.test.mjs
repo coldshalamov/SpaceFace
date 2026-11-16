@@ -73,6 +73,47 @@ test('a mounted aftermath card resolves when its field drains in-sector', () => 
   );
 });
 
+// NOTICE-01: a mounted FIELD RESPONSE card may not sit for minutes after its field ended.
+// One offer generation carries one housekeeping TTL (a ttlAt — the deck's undisplayed expiry,
+// not a fake countdown), expires through the ordinary deck tick, and can only remount on a
+// genuinely new publish.
+test('one offer generation carries a housekeeping TTL and cannot pin the lane', () => {
+  const h = makeHarness();
+  const deck = makeDeck();
+  const updates = [];
+  deck.updateDecision = (id, spec) => { updates.push(spec); deck.mounted.set(id, spec); return true; };
+  createAftermathChoicePrompt({ bus: h.bus, state: h.state, deck });
+  const offer = () => ({
+    sectorId: SECTOR,
+    choices: [{ id: 'salvage', label: 'Salvage' }, { id: 'escape', label: 'Leave' }],
+  });
+
+  h.state.aftermathWrecks = { bySector: { [SECTOR]: [{ markerId: 'wreck-1', victimId: 900 }] } };
+  h.bus.emit('combat:outcome', { sectorId: SECTOR, killerId: h.state.playerId });
+  h.bus.emit('combat:aftermathChoices', offer());
+  const spec = deck.mounted.get('aftermath:field');
+  assert.ok(spec, 'the witnessed field mounts');
+  assert.equal(spec.deadlineAt == null, true, 'no countdown deadline — the offer has no real urgency');
+  assert.equal(spec.ttlAt, h.state.simTime + 120, 'one offer generation carries the TTL');
+
+  h.state.simTime += 10;
+  h.bus.emit('combat:aftermathChoices', { ...offer(), refreshOnly: true });
+  assert.equal(updates.at(-1).ttlAt, spec.ttlAt,
+    'a refresh keeps the mounted card\'s remaining time instead of re-arming');
+
+  spec.onExpire();                 // the deck fires this when the TTL passes, then removes the card
+  deck.mounted.delete('aftermath:field');
+  h.bus.emit('combat:aftermathChoices', { ...offer(), refreshOnly: true });
+  assert.equal(deck.mounted.has('aftermath:field'), false,
+    'a dead offer generation cannot remount on a refresh');
+
+  h.state.simTime += 200;
+  h.bus.emit('combat:aftermathChoices', offer());
+  const remounted = deck.mounted.get('aftermath:field');
+  assert.ok(remounted, 'a genuinely new publish re-offers the field');
+  assert.equal(remounted.ttlAt, h.state.simTime + 120, 'with a fresh TTL');
+});
+
 test('a live field keeps its card across a no-op republish', () => {
   const h = makeHarness();
   const deck = makeDeck();

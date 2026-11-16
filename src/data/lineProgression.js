@@ -217,9 +217,16 @@ export function bodyMassT(entity) {
 export function isOverLineClass(massT, classIndex) {
   return massT > 0 && massT > lineClassForIndex(classIndex).fullControlMassT;
 }
+// The tutorial's two lesson bodies ride the line above class I by definition: the loose rock the
+// first throw is taught on, and the raid beat's raider (`data.onboardingRaid`) the second throw
+// swings into it. The aim tag and the overclass snap both read this so the opening never says
+// TOO HEAVY on them nor snaps the line.
+export function lineLessonBody(entity) {
+  const data = entity && entity.data;
+  return !!(data && (data.rescueRole === 'rock' || data.onboardingRaid === true));
+}
 export function entityOverLineClass(state, entity) {
-  // The tutorial's loose rock is the one body every pilot is taught on: it is by definition within class.
-  if (entity && entity.data && entity.data.rescueRole === 'rock') return false;
+  if (lineLessonBody(entity)) return false;
   return isOverLineClass(bodyMassT(entity), state && state.lineProgression && state.lineProgression.classIndex);
 }
 

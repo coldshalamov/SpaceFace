@@ -102,6 +102,38 @@ test('w-499: an over-class hold heats the winch to a grace-window snap', () => {
   assert.equal(state.lineProgression.winchHeat, 0, 'heat resets after the snap');
 });
 
+// NOTICE-01: the opening's second throw — "Latch the raider. Swing him into the rock." — must
+// hold a 220 T body on a class-I line without ever heating the winch toward a snap.
+test('notice-01: a latched tutorial raider counts no held mass — no heat, no snap', () => {
+  const { state, bus, sys, attachments, cutCalls } = harness();
+  state.entities.set('raider1', {
+    id: 'raider1', pos: { x: 7, z: 0 }, mass: 220,
+    data: { onboarding: true, onboardingRaid: true },
+  });
+  attachments.listForEntity = (id) => (id === 'p1'
+    ? [{ id: 'att-raid', state: 'active', targetId: 'raider1' }]
+    : []);
+  bus.emit('tether:latched', { targetId: 'raider1' });
+  for (let i = 0; i < 60 * 12; i += 1) {
+    state.simTime += 1 / 60;
+    sys.update(1 / 60, state);
+  }
+  assert.equal(state.lineProgression.overClass, false, 'the raid raider is never over class');
+  assert.equal(state.lineProgression.winchHeat, 0, 'no heat means the grace snap never arms');
+  assert.equal(cutCalls.length, 0, 'the line never cuts on the lesson');
+  bus.emit('tether:released', { targetId: 'raider1' });
+  assert.equal(state.lineProgression.tonnageLoggedT, 0,
+    'the lesson hold logs no tonnage — same as the rock');
+  // Control: the same mass without the raid tag is a real over-class hold.
+  state.entities.set('plainHeavy', { id: 'plainHeavy', mass: 220, data: {} });
+  attachments.listForEntity = (id) => (id === 'p1'
+    ? [{ id: 'att-plain', state: 'active', targetId: 'plainHeavy' }]
+    : []);
+  bus.emit('tether:latched', { targetId: 'plainHeavy' });
+  sys.update(1 / 60, state);
+  assert.equal(state.lineProgression.overClass, true, 'ordinary 220 T still strains the line');
+});
+
 test('w-499: a within-class hold never heats, and a stale bag normalizes clean', () => {
   const { state, bus, sys } = harness();
   bus.emit('tether:latched', { targetId: 'rock1' });

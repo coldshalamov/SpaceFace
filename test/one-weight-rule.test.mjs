@@ -33,6 +33,18 @@ test('the tutorial loose rock is within class for the tag and the snap alike', (
   assert.equal(entityOverLineClass(at(1), { mass: 220, data: {} }), true);
 });
 
+// NOTICE-01: the raid beat's raider is the second lesson body — "Latch the raider. Swing him
+// into the rock." must never say TOO HEAVY, and the swing must never snap for weight.
+test('the tutorial raider is exempt like the lesson rock — the tag and the snap read one rule', () => {
+  const raider = { mass: 220, data: { onboarding: true, onboardingRaid: true } };
+  assert.equal(entityOverLineClass(at(1), raider), false,
+    'the raid beat raider never reads TOO HEAVY');
+  assert.equal(entityOverLineClass(at(1), { mass: 220, data: { onboarding: true } }), true,
+    'an ordinary onboarding body still reads TOO HEAVY — only the raid raider is exempt');
+  assert.equal(entityOverLineClass(at(1), { mass: 220, data: { onboardingRaid: false } }), true,
+    'a raider-shaped body without the raid tag still reads TOO HEAVY');
+});
+
 import { DOMAIN_EXPAND, DOMAIN_MIRROR_KEYS } from '../scripts/lib/simReadModel.mjs';
 test('the release-window state reaches the main thread on the hot cadence (worker lane throw cue)', () => {
   assert.ok(DOMAIN_MIRROR_KEYS.includes('massline2'), 'massline2 is mirrored');

@@ -412,6 +412,52 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
   f.system.destroy();
 }
 
+// NOTICE-01: the 'Time slows — latch the flyby' tutorial prompt is bounded — at most two
+// showings per flyby event (one target's lease episodes), and never again once the player
+// has latched. The lease itself is unthrottled; only the line is.
+{
+  const target = hostile(2);
+  const f = runtimeFor([target]);
+  const prompts = [];
+  f.bus.on('toast', (p) => {
+    if (String((p && p.text) || '').includes('latch the flyby')) prompts.push(p);
+  });
+  const fly = (t) => { f.state.simTime = t; f.system.update(1 / 60, f.state); };
+
+  fly(0);
+  assert.equal(f.state.player.flybyFocus.active, true);
+  assert.equal(prompts.length, 1, 'the first lease teaches the latch');
+
+  // The same ship keeps presenting passes — every re-acquisition used to re-toast.
+  for (const t of [3.01, 14.1, 17.2, 28.2, 31.3, 42.3]) fly(t);
+  assert.equal(prompts.length, 2, 'one flyby event shows the prompt at most twice');
+  assert.equal(f.state.player.flybyFocus.active, true,
+    'the lease still opens — only the prompt is bounded');
+  f.system.destroy();
+}
+
+{
+  const target = hostile(2);
+  const f = runtimeFor([target]);
+  const prompts = [];
+  f.bus.on('toast', (p) => {
+    if (String((p && p.text) || '').includes('latch the flyby')) prompts.push(p);
+  });
+  f.system.update(DT, f.state);
+  assert.equal(prompts.length, 1);
+  // The real latch payload for the leased ship.
+  f.bus.emit('tether:latched', {
+    sourceId: f.p.id, targetId: target.id, massRatio: 1, type: 'tether_standard',
+  });
+  assert.equal(f.state.player.flybyFocus.flybyLatched, true, 'the latch lands the lesson');
+
+  f.state.simTime = 3.01; f.system.update(DT, f.state);   // lease expires
+  f.state.simTime = 14.1; f.system.update(DT, f.state);   // re-acquire past both cooldowns
+  assert.equal(f.state.player.flybyFocus.active, true, 'the lease still opens');
+  assert.equal(prompts.length, 1, 'never again once the player has latched');
+  f.system.destroy();
+}
+
 {
   const f = runtimeFor([hostile(2)]);
   f.system.update(DT, f.state);

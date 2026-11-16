@@ -120,6 +120,53 @@ test('a threat nowhere near the route resumes straight away — no invented dive
   assert.equal(entry.routeHold ?? null, null, 'no fallback was ever chosen');
 });
 
+// NOTICE-01: the distress cry is per speaker, not per hold row. A re-chosen or re-entered
+// hold used to reset the cry clock and bark on every threat re-check — the flood.
+test('the hold cry speaks once when the lane goes hot — re-checks stay quiet inside 60 s', () => {
+  const sim = boot();
+  const { e, entry } = loadedHauler(sim);
+  const toasts = [];
+  sim.bus.on('toast', (p) => toasts.push(p.text || ''));
+  const distress = [];
+  sim.bus.on('npcjobs:distress', (p) => distress.push(p));
+  const cries = () => toasts.filter((t) => t.includes("Lane's still hot")).length;
+
+  const pirate = hostile(sim, e.pos.x + 300, 0);
+  steps(sim, 12);
+  assert.equal(entry.job.phase, NPC_JOB_PHASE.FLEE);
+  pirate.pos.x = 1900; pirate.pos.z = 60;      // camps the destination
+  steps(sim, 30);
+  assert.ok(entry.routeHold, 'the fallback hold is chosen');
+  assert.equal(cries(), 1, 'the lane going hot speaks once');
+
+  // A second hostile taking over the camp re-chooses the hold row on the next re-check —
+  // the re-created row used to reset the clock and cry again immediately.
+  const second = hostile(sim, 1880, 40);
+  remove(sim, pirate);
+  steps(sim, 30);
+  assert.ok(entry.routeHold, 'the hold re-chooses on the new threat');
+  assert.equal(cries(), 1, 'a re-chosen hold inside the minute stays quiet');
+
+  // Lane clears, then turns hot again inside the same minute — still quiet.
+  remove(sim, second);
+  steps(sim, 45);
+  assert.equal(entry.routeHold, null, 'the leg resumes when the camp leaves');
+  const late = hostile(sim, e.pos.x + 300, 0);
+  steps(sim, 12);
+  assert.equal(entry.job.phase, NPC_JOB_PHASE.FLEE, 'the new close hostile re-interrupts');
+  late.pos.x = 1900; late.pos.z = 60;
+  steps(sim, 30);
+  assert.ok(entry.routeHold, 'a fresh hold inside the same minute');
+  assert.equal(cries(), 1, 'the second hot lane inside 60 s does not re-cry');
+
+  // Bounded is not silenced: a lane that stays hot past the minute cries again.
+  steps(sim, 60 * 65);
+  assert.equal(cries(), 2, 'a still-hot lane re-cries on the bounded cadence');
+  assert.equal(distress.length, 2, 'the distress event rides the same cadence');
+  assert.ok(distress[1].simTime - distress[0].simTime >= 60,
+    'two cries per speaker are at least a minute apart');
+});
+
 test('a route threat with no safe earlier stop hunkers in place', () => {
   const sim = boot();
   const e = sim.spawn({ type: 'ship', team: 2, pos: { x: 1400, z: 300 }, vel: { x: 0, z: 0 }, hull: 100, hullMax: 100, radius: 8 });

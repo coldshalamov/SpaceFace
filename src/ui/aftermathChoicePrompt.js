@@ -5,17 +5,22 @@ import { getPromptDeck } from './promptDeck.js';
 
 const DECISION_ID = 'aftermath:field';
 const OBSERVE_DISTANCE_WU = 900;
+// NOTICE-01: the card used to mount with deadlineAt null and sat for minutes after its field
+// was done. One offer generation gets one housekeeping TTL — a ttlAt, the deck's undisplayed
+// expiry: the offer is "when you get around to it", so it stays under real deadlines in the
+// ladder and shows no fake countdown, it just may not pin the lane forever.
+const FIELD_RESPONSE_TTL_S = 120;
 
 export function createAftermathChoicePrompt(ctx = {}) {
   const bus = ctx.bus, state = ctx.state;
   if (!bus || typeof bus.on !== 'function') return inertPrompt();
   const deckOf = () => (ctx.deck != null ? ctx.deck : getPromptDeck());
   let observed = null, pending = null, waitingForObservation = false, disposed = false;
-  let open = false, submitting = false;
+  let open = false, submitting = false, offerDeadlineAt = null;
 
   const currentPlayer = () => state?.entities?.get?.(state.playerId);
   const sector = () => state?.world?.currentSectorId || null;
-  const close = () => { open = false; submitting = false; const deck = deckOf(); deck?.resolveDecision?.(DECISION_ID); };
+  const close = () => { open = false; submitting = false; offerDeadlineAt = null; const deck = deckOf(); deck?.resolveDecision?.(DECISION_ID); };
   const nearby = (anchor) => {
     const pos = currentPlayer()?.pos;
     return !!(pos && anchor && Number.isFinite(pos.x) && Number.isFinite(pos.z)
@@ -68,15 +73,23 @@ export function createAftermathChoicePrompt(ctx = {}) {
     if (!relevant() && Array.isArray(payload.custody) && payload.custody.length) rememberPlayerLocation(payload.sectorId);
     if (!relevant()) { waitingForObservation = true; close(); return false; }
     waitingForObservation = false;
+    // A refresh of the mounted offer keeps the card's remaining time; only a genuinely new or
+    // changed offer (the recorder suppresses unchanged signatures) re-arms the TTL.
+    if (!(payload.refreshOnly && open)) {
+      offerDeadlineAt = (Number(state?.simTime) || 0) + FIELD_RESPONSE_TTL_S;
+    }
     const descriptions = { salvage: 'Wreck available', pursuit: 'Ship recorded fleeing', rescue: 'Survivor available' };
     const contexts = choices.map((choice) => choice?.context || descriptions[choice?.id]).filter(Boolean);
     const spec = {
-      id: DECISION_ID, kind: 'info', sender: 'AFTERMATH', headline: 'FIELD RESPONSE', deadlineAt: null,
+      id: DECISION_ID, kind: 'info', sender: 'AFTERMATH', headline: 'FIELD RESPONSE', deadlineAt: null, ttlAt: offerDeadlineAt,
       detail: contexts.length ? contexts.join(' · ') : 'Choose a response. Flight remains active.',
       choices: choices.map((choice) => ({ id: String(choice?.id || ''), label: String(choice?.label || choice?.id || '') })).filter((choice) => choice.id),
       // Retain the exact unresolved choice without claiming keys away from the field.
       // The deck restores it automatically if the pilot returns before a lifecycle reset.
       onTick: () => { deck.setDecisionVisible?.(DECISION_ID, relevant()); },
+      // The deadline fired: this offer generation is over. Only a materially new publish (never
+      // a refreshOnly of the same signature) may mount a fresh card.
+      onExpire: () => { open = false; offerDeadlineAt = null; },
       onChoose: (choiceId) => {
         if (!relevant()) { pending = null; close(); return; }
         if (submitting) return;

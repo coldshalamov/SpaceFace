@@ -101,6 +101,31 @@ test('a wreck fallback on a freight spill keeps the real restitution debit and r
   } finally { h.director.destroy(); }
 });
 
+// NOTICE-01: once per event — a custody incident that re-announces (per-line dump, a respill
+// on the same custody, the same manifest dropping again) folds, it does not re-speak.
+test('a re-announced spill incident speaks once — a new incident is a new event', () => {
+  const wreck = body(42, 'wreck', 'Hull Debris');
+  const h = setup(wreck);
+  try {
+    const spill = {
+      carrierId: 42, manifestId: 'manifest_42', attackerId: 1, playerCaused: true,
+      commodityId: 'cmdty_ore_iron', qty: 4, cause: 'combat_fire',
+    };
+    h.bus.emit('freight:cargoSpilled', spill);
+    assert.equal(h.spoken.length, 1, 'the incident speaks once');
+    h.state.tick += 1;
+    h.bus.emit('freight:cargoSpilled', { ...spill, qty: 2 });
+    assert.equal(h.spoken.length, 1, 'the same carrier+manifest incident never speaks twice');
+    h.state.tick += 1;
+    // A different custody incident is a different event — it earns its own notice.
+    h.bus.emit('freight:cargoSpilled', { ...spill, custodyId: 'custody_77' });
+    assert.equal(h.spoken.length, 2, 'a new custody incident is a new event');
+    h.state.tick += 1;
+    h.bus.emit('freight:cargoSpilled', { ...spill, custodyId: 'custody_77', qty: 1 });
+    assert.equal(h.spoken.length, 2, 'and that custody never re-speaks either');
+  } finally { h.director.destroy(); }
+});
+
 test('a Swarm run never posts cargo recovery notices for arena wrecks', () => {
   const wreck = body(42, 'wreck', 'Hull Debris');
   const h = setup(wreck);
