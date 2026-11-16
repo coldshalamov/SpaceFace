@@ -408,7 +408,7 @@ export function normalizeRecord(raw, fallbackId) {
     rot: Number.isFinite(raw.rot) ? raw.rot : 0,
     angVel: Number.isFinite(raw.angVel) ? raw.angVel : 0,
     // identity / spawn
-    type: isStarterBuoyRecord(raw) || (raw.type === 'payload' && wardHardware) ? 'payload'
+    type: (ninthOriginal && raw.type === 'payload') || isStarterBuoyRecord(raw) || (raw.type === 'payload' && wardHardware) ? 'payload'
       : raw.type === 'wreck' || raw.type === 'fx' || raw.type === 'ship' ? raw.type : 'ship',
     enemyTypeId: raw.enemyTypeId || null,
     shipDefId: raw.shipDefId || raw.defId || null,
@@ -433,7 +433,7 @@ export function normalizeRecord(raw, fallbackId) {
     playerCreated: raw.playerCreated === true,
     named: raw.named === true || (typeof raw.name === 'string' && raw.name.trim().length > 0),
     name: typeof raw.name === 'string' && raw.name ? raw.name : null,
-    retentionClass: wardOriginal ? RETENTION_CLASS.PERMANENT : deriveRetentionClass(raw),
+    retentionClass: wardOriginal || ninthOriginal ? RETENTION_CLASS.PERMANENT : deriveRetentionClass(raw),
     trafficRole: raw.trafficRole || null,
     trafficLabel: raw.trafficLabel || null,
     itinerary: raw.itinerary && typeof raw.itinerary === 'object' ? clonePlain(raw.itinerary) : null,
@@ -1014,7 +1014,7 @@ export function captureEntityRecord(entity, opts = {}) {
     vel: entity.vel,
     rot: entity.rot,
     angVel: entity.angVel,
-    type: starterBuoy || lanternHardware ? 'payload' : entity.type === 'wreck' || entity.type === 'fx' ? entity.type : 'ship',
+    type: starterBuoy || lanternHardware || (ninthBody && entity.type === 'payload') ? 'payload' : entity.type === 'wreck' || entity.type === 'fx' ? entity.type : 'ship',
     enemyTypeId: d.lootTableId || d.enemyTypeId || null,
     shipDefId: d.defId || null,
     factionId: entity.factionId || d.factionId || null,
@@ -1038,7 +1038,7 @@ export function captureEntityRecord(entity, opts = {}) {
     retentionClass,
     trafficRole: d.trafficRole || null,
     trafficLabel: d.trafficLabel || null,
-    itinerary: lanternHardware || d.itinerary || (opts.itinerary || null),
+    itinerary: ninthBody || lanternHardware || d.itinerary || (opts.itinerary || null),
     cargoManifest: d.cargoManifest || null,
     freightDockSeq: Number.isFinite(d.freightDockSeq) ? d.freightDockSeq : null,
     wreckClass: d.wreckClass || null,
