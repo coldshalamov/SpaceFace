@@ -23,6 +23,7 @@ import { isHostileToPlayer, playerSensorBlock } from '../systems/scanner.js';
 import { heatZoneInCurrentSector } from '../systems/heat.js';
 import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
 import { objectiveIsOffSector } from './objectiveSector.js';
+import { isSwarmGlass } from './swarmGlass.js';
 import { SHIPS } from '../data/ships.js';
 import { prefersReducedMotion } from './effects/effectRuntime.js';
 import {
@@ -1123,6 +1124,11 @@ function waypointLabel(waypoint) {
 }
 
 export function resolveRadarObjective(state) {
+  // A live Swarm round has no campaign objective to point at: the arena's round readout is the
+  // only goal, and a leftover Adventure waypoint is a station the player cannot dock at from here.
+  // Gate at the owner so the rim hand, the objective corridor, the key plate ("◆ HELIOS PRIME ·
+  // 3.6k") and the dial's accessible name all stay quiet together.
+  if (isSwarmGlass(state)) return null;
   const waypoint = state && state.nav && state.nav.waypoint;
   // A foreign-sector coordinate is not a physical target on this local scope.
   if (objectiveIsOffSector(state, waypoint)) return null;
