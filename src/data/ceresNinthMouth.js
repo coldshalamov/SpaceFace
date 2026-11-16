@@ -32,6 +32,35 @@ const definitions = [
 export const CERES_NINTH_MOUTH = freeze({
   id,sectorId,center,worldPoint,localPoint,definitions,
   scope:'one-barge unlit service-cut rescue; not the full Nine-Mouth cave',
+  shade:{
+    local:{x:2.5,z:0},
+    halfExtents:{x:132,y:110,z:62},
+    feather:28,
+    broadFloor:0.78,
+    regions:[
+      // Core service-cut throat pocket: atmospheric depth while local lamps stay vivid.
+      {id:'ninth-mouth:pocket',local:{x:2.5,y:0,z:0},halfExtents:{x:132,y:110,z:62},
+        feather:28,broadFloor:0.78,facetBias:-0.05,facetContrast:1.0,normal:{x:0,y:0,z:0,w:0}},
+      // North rock shoulder cut cliff facing +Z into the passage vs upper key crest.
+      {id:'ninth-mouth:shoulder_north_cut',role:'shoulder_north',local:{x:0,y:0,z:-125},
+        halfExtents:{x:132,y:115,z:100},feather:26,broadFloor:0.90,facetBias:0.06,facetContrast:1.0,
+        normal:{x:0,y:0.25,z:0.97,w:0.45}},
+      {id:'ninth-mouth:shoulder_north_outer',role:'shoulder_north',local:{x:0,y:0,z:-125},
+        halfExtents:{x:132,y:115,z:100},feather:26,broadFloor:0.96,facetBias:0.14,facetContrast:0.85,
+        normal:{x:0,y:0.85,z:-0.53,w:0.40}},
+      // South rock shoulder cut cliff facing -Z into the passage vs upper ridge.
+      {id:'ninth-mouth:shoulder_south_cut',role:'shoulder_south',local:{x:0,y:0,z:125},
+        halfExtents:{x:132,y:115,z:100},feather:26,broadFloor:0.88,facetBias:-0.04,facetContrast:1.0,
+        normal:{x:0,y:0.25,z:-0.97,w:0.45}},
+      {id:'ninth-mouth:shoulder_south_outer',role:'shoulder_south',local:{x:0,y:0,z:125},
+        halfExtents:{x:132,y:115,z:100},feather:26,broadFloor:0.95,facetBias:0.12,facetContrast:0.85,
+        normal:{x:0,y:0.85,z:0.53,w:0.40}},
+      // Loose fallen rock on the inner throat lip.
+      {id:'ninth-mouth:fallen_rock',role:'fallen_rock',local:{x:98,y:0,z:26},
+        halfExtents:{x:28,y:28,z:28},feather:12,broadFloor:0.94,facetBias:0.10,facetContrast:1.0,
+        normal:{x:0,y:0,z:0,w:0}},
+    ],
+  },
   admissionRadius:650,hearingRadius:720,alertRadius:720,
   // The headcount board is a world tag on the receiver mast, not a spoken line.
   board:{waiting:'9 IN / 8 OUT',rescued:'9 IN / 9 OUT'},

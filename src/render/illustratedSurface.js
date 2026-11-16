@@ -10,6 +10,7 @@ import { HULL_LAYOUT_GLSL } from './illustratedHullLayout.js';
 import { STENCIL_GLSL, stencilFallbackTexture } from './illustratedStencils.js';
 import { LOOK_SURFACE_UNIFORMS } from './look.js';
 import { installNocturneProbeShader } from './nocturne/probes.js';
+import { SHADE_REGION_GAIN_GLSL, installShadeRegionShader } from './nocturne/shadeRegions.js';
 import { registerGeometryPreservingShaderHook } from './shaderPoseProvenance.js';
 export const ILLUSTRATED_SURFACE_KEY = 'spaceface-illustrated-surface-v20-nocturne';
 const TAG = 'spacefaceIllustratedSurfaceHook';
@@ -35,6 +36,13 @@ function nocturnePhysicalLightChunk() {
       * saturate(dot(nonPerturbedNormal, directLight.direction)) * BRDF_Lambert(material.diffuseColor);`);
   return chunk.slice(0, startIndex) + `
     vec3 sfLocalPhysicalDiffuse = reflectedLight.directDiffuse;
+    vec3 sfLocalPhysicalSpecular = reflectedLight.directSpecular;
+    #ifdef USE_SHEEN
+    vec3 sfLocalPhysicalSheen = sheenSpecularDirect;
+    #endif
+    #ifdef USE_CLEARCOAT
+    vec3 sfLocalPhysicalClearcoat = clearcoatSpecularDirect;
+    #endif
     vec3 sfDirectionalGeometricDiffuse = vec3(0.0);
     // Capture each source after Three applies its own shadow; the coat reuses this color.
     #if ( NUM_DIR_LIGHTS > 0 ) && defined( RE_Direct )
@@ -131,6 +139,41 @@ export const ILLUSTRATED_SURFACE_GLSL = /* glsl */`
   // no lacquer, but its grazing facets still need to separate from black space.
   sfRimLight = sfLookRim * (sfLookRimStrength * (sfCoatWeight + sfRockSurface * sfLookRockRim)
     * pow(sfGrazing, sfLookRimPower) * (1.0 - 0.55 * sfBodyLight));
+  // Claimed rock shade regions keep zero gain outside their bounds; inside, derive flat facet
+  // normals and step the key response into distinct LOOK-04 bands for cut wall readability.
+  vec3 sfFacetCross = cross(dFdx(-vViewPosition), dFdy(-vViewPosition));
+  float sfFacetLen = length(sfFacetCross);
+  vec3 sfFacetNormal = sfFacetLen > 1e-6 ? (sfFacetCross / sfFacetLen) : nonPerturbedNormal;
+  if (dot(sfFacetNormal, nonPerturbedNormal) < 0.0) sfFacetNormal = -sfFacetNormal;
+  vec3 sfWorldNormalRaw = mat3(sfNocturneViewToWorld) * sfFacetNormal;
+  float sfWorldNormalLen = length(sfWorldNormalRaw);
+  vec3 sfFacetWorldNormal = sfWorldNormalLen > 1e-5 ? (sfWorldNormalRaw / sfWorldNormalLen) : vec3(0.0, 1.0, 0.0);
+  ${SHADE_REGION_GAIN_GLSL}
+  float sfCutS2 = 0.0;
+  float sfCutStepLevel = 1.0;
+  vec3 sfCutStepTint = vec3(1.0);
+  if (sfShadeRegionGain > 0.001 && sfRockSurface > 0.5) {
+    float sfFacetKey = sfExposure;
+    #if ( NUM_DIR_LIGHTS > 0 ) && defined( RE_Direct )
+    vec3 sfKeyDir = normalize(directionalLights[0].direction);
+    float sfHalfLambert = clamp(0.5 + 0.5 * dot(sfFacetNormal, sfKeyDir), 0.0, 1.0);
+    float sfDirShadow = dot(sfDirectionalGeometricDiffuse, vec3(0.2126, 0.7152, 0.0722)) / sfPaintLuma;
+    sfFacetKey = mix(sfHalfLambert * 0.48, sfHalfLambert * 0.65 + 0.35 * clamp(sfDirShadow, 0.0, 1.0),
+      smoothstep(0.02, 0.25, sfDirShadow));
+    #else
+    sfFacetKey = clamp(sfExposure + dot(sfFacetNormal - nonPerturbedNormal, geometryViewDir) * 0.5, 0.0, 1.0);
+    #endif
+    float sfCutSignal = clamp(sfFacetKey + sfShadeFacetBias, 0.0, 1.0);
+    float sfCutFw = clamp(max(fwidth(sfCutSignal) * 1.1, 0.015), 0.015, 0.045);
+    float sfCutS1 = smoothstep(0.24 - sfCutFw, 0.24 + sfCutFw, sfCutSignal);
+    sfCutS2 = smoothstep(0.46 - sfCutFw, 0.46 + sfCutFw, sfCutSignal);
+    float sfCutS3 = smoothstep(0.68 - sfCutFw, 0.68 + sfCutFw, sfCutSignal);
+    sfCutStepLevel = 0.20 + 0.38 * sfCutS1 + 0.60 * sfCutS2 + 0.77 * sfCutS3;
+    sfCutStepTint = mix(sfLookShadowTint, sfLookLightTint, 0.15 * sfCutS1 + 0.45 * sfCutS2 + 0.40 * sfCutS3);
+    vec3 sfCutRimTint = mix(sfLookRim, vec3(0.90, 0.87, 0.82), 0.80 * sfShadeRegionGain);
+    float sfCutEdge = pow(sfGrazing, max(sfLookRimPower * 0.82, 1.4)) * (0.45 + 0.55 * (1.0 - sfCutS2 * 0.55));
+    sfRimLight = max(sfRimLight, sfCutRimTint * (sfLookRimStrength * sfLookRockRim * sfCutEdge * 1.45 * sfShadeRegionGain));
+  }
 `;
 
 const THREE_DEFAULT_PROGRAM_KEY_PARTS = new Set([
@@ -279,7 +322,10 @@ export function installIllustratedSurface(material) {
     } };
     shader.uniforms.sfPaintPigment = { value: new Color(pigment?.color || '#ffffff') };
     shader.uniforms.sfPaintStrength = { value: pigment?.strength || 0 };
-    shader.uniforms.sfRockSurface = { value: this.userData?.spacefaceSharedMaterialRole === 'rock' ? 1 : 0 };
+    const sharedRole = this.userData?.spacefaceSharedMaterialRole;
+    const isRockRole = sharedRole === 'rock'
+      || (!sharedRole && this.userData?.spacefaceMaterialRole === 'geology');
+    shader.uniforms.sfRockSurface = { value: isRockRole ? 1 : 0 };
     const layout = this.userData?.spacefaceHullLayout;
     shader.uniforms.sfLayoutKind = { value: layout?.kind || 0 };
     shader.uniforms.sfLayoutStrength = { value: layout?.strength || 0 };
@@ -395,6 +441,36 @@ export function installIllustratedSurface(material) {
       // bloom threshold, so a sunlit ivory wall keeps its form instead of glowing. Coat, rim,
       // specular and lamps are light and stay free to bloom.
       .replace(OUTPUT_NEEDLE, `
+        if (sfShadeRegionGain > 0.001) {
+          vec3 sfBroadDiffuse = max(totalDiffuse - sfLocalPhysicalDiffuse, vec3(0.0));
+          vec3 sfBroadSpecular = max(totalSpecular - sfLocalPhysicalSpecular, vec3(0.0));
+          float sfPocketFloorMix = mix(1.0, sfShadeBroadFloor, sfShadeRegionGain);
+          sfBroadSpecular *= sfPocketFloorMix;
+          #ifdef USE_SHEEN
+          sheenSpecularDirect = (sheenSpecularDirect - sfLocalPhysicalSheen) * sfPocketFloorMix + sfLocalPhysicalSheen;
+          sheenSpecularIndirect *= sfPocketFloorMix;
+          #endif
+          #ifdef USE_CLEARCOAT
+          clearcoatSpecularDirect = (clearcoatSpecularDirect - sfLocalPhysicalClearcoat) * sfPocketFloorMix + sfLocalPhysicalClearcoat;
+          clearcoatSpecularIndirect *= sfPocketFloorMix;
+          #endif
+          if (sfRockSurface > 0.5) {
+            float sfCutPigmentY = max(sfPaintPigmentY, 0.0001);
+            vec3 sfCutFloorPigment = diffuseColor.rgb * (1.0 - metalnessFactor)
+              * (max(sfCutPigmentY, sfLookRockFloor) / sfCutPigmentY);
+            vec3 sfCutStepLight = sfCutStepTint * sfCutStepLevel * sfShadeBroadFloor;
+            float sfCutPhysMix = mix(0.32, 0.85, clamp(sfCutS2, 0.0, 1.0));
+            vec3 sfSteppedDiffuse = max(sfBroadDiffuse, sfCutFloorPigment * 0.08)
+              * mix(vec3(1.0), sfCutStepLight * 0.72, sfCutPhysMix)
+              + sfCutFloorPigment * sfCutStepLight * 0.58;
+            float sfRockCutBlend = clamp(sfShadeRegionGain * max(sfShadeFacetContrast, 0.0), 0.0, 1.0);
+            sfBroadDiffuse = mix(sfBroadDiffuse, sfSteppedDiffuse, sfRockCutBlend);
+          } else {
+            sfBroadDiffuse *= sfPocketFloorMix;
+          }
+          totalDiffuse = sfBroadDiffuse + sfLocalPhysicalDiffuse;
+          totalSpecular = sfBroadSpecular + sfLocalPhysicalSpecular;
+        }
         // Retain scanned pigment/strata under reflected terrain fill. Read the final
         // diffuse response here: aomap_fragment runs after lights_fragment_end and
         // can darken an apparently well-lit geological face. Pre-AO sfLight and the
@@ -440,6 +516,7 @@ export function installIllustratedSurface(material) {
         }
         vec3 outgoingLight = sfSurfaceLight + totalEmissiveRadiance;`);
     installNocturneProbeShader(shader);
+    installShadeRegionShader(shader);
   }
   Object.assign(illustratedSurfaceShader, previousHook);
   registerGeometryPreservingShaderHook(illustratedSurfaceShader, previousHook);

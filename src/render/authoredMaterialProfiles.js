@@ -6,6 +6,11 @@ import { hullLayoutForAsset } from './illustratedHullLayout.js';
 import { resolveLampChannel } from '../data/lampChannels.js';
 import { installLampBus } from './lampBus.js';
 import { applyMaterialRoleBand, MATERIAL_ROLE_ALIASES, substanceRoleOverride } from '../data/materialRoleBands.js';
+import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
+
+function stampGeologySharedRole(material, role) {
+  if (role === 'geology') stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
+}
 
 const ROLE_RULES = Object.freeze([
   ['glass', /canopy|cockpit.?glass|material_glass|window|viewport|visor/i],
@@ -135,6 +140,7 @@ function applyForgeFinish(material, role, options = {}) {
     spacefacePbrRemasterRequired: !coverage.complete && !factorOnlyAllowed,
   };
   delete material.userData.spacefaceHullLayout;
+  stampGeologySharedRole(material, role);
   // Hull-space anchor for the runtime stencil decals (src/render/illustratedStencils.js). Forge
   // hulls skip the paint-layout restyle, but their painted-on marks are authored at runtime.
   if (options.bounds && Array.isArray(options.bounds.center) && Array.isArray(options.bounds.size)) {
@@ -321,6 +327,7 @@ export function applyAuthoredMaterialProfile(material, explicitRole = null, opti
   material.userData.spacefaceIllustratedPigment = illustratedPigmentForMaterial(
     options.assetId, role, material.userData.spacefaceAuthoredMaterialName,
   );
+  stampGeologySharedRole(material, role);
   if (role !== 'glass' && role !== 'drive' && role !== 'signal') installIllustratedSurface(material);
   applyMaterialRoleBand(material, role);
   material.needsUpdate = true;
@@ -439,6 +446,7 @@ function applyAssetSpecificCorrection(material, assetId, allowTextures) {
   }
   material.emissive.setHex(0x000000);
   material.emissiveIntensity = 0;
+  stampGeologySharedRole(material, 'geology');
   applyMaterialRoleBand(material, 'geology');
   material.dithering = true;
   material.needsUpdate = true;
