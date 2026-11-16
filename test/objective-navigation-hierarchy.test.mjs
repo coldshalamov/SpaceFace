@@ -246,6 +246,10 @@ test('tutorial panel yields to the current spatial objective and returns when it
     '_tickPowerSituations', '_resolveMissingThreeDone']) owner[method] = () => {};
   owner._setRescueWaypoint = () => false;
   owner._setMissingThreeWaypoint = () => false;
+  // The update loop now calls once-only teaching owners (the store sentence, OPENING-1) before the
+  // waypoint pass; without a bus they throw and the catch-all swallows the whole pass, so the
+  // fixture supplies the bus those owners write to.
+  owner.bus = { emit() {}, on() { return () => {}; } };
   let beacon = null;
   owner._findBeacon = () => beacon;
   const tick = () => owner.update(0.2, state);
