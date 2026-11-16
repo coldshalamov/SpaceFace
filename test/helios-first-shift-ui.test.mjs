@@ -122,37 +122,84 @@ test('mounted Kessler renders paid return, routes held iron without selling, and
  }finally{h.close();}
 });
 
-import fs from 'node:fs';
-import { marketResumeSelection } from '../src/ui/station/screens/market.js';
-const source=fs.readFileSync(new URL('../src/ui/station/screens/market.js', import.meta.url),'utf8');
-// Exact production onShow and openTradeMode bodies, with rendering and quote owners
-// stubbed. This checks controller selection ordering, not DOM geometry or settlement.
-const onShow=source.split('    onShow(c) {')[1].split('\n    refresh(c)')[0].replace(/},\s*$/,'');
-const openMode=source.split('  function openTradeMode(nextMode, state, options = {}) {')[1].split('\n  // Feature 16')[0].replace(/}\s*$/,'');
-const create=new Function('marketResumeSelection',`return function(seed={}) {
- let selectedId=seed.selectedId||'cmdty_copper',qty=seed.qty||1,mode=seed.mode||'buy',pendingTrade=seed.pendingTrade||null;
- let disposed=false, visible=false, authoritativeTradeQuote=null,cargoOnly=false,marketFilter='all',marketQuery='',listRenderSignature='';
- const state={held:{cmdty_copper:5,cmdty_ore_iron:3}},events=[];
- const ctx={state,bus:{emit:(...args)=>events.push(args)}};
- const hydratePendingTrade=()=>{},historyBackfill={reset(){}},stationId=()=> 'station_helios',historyContextKey=()=> 'h',papers={show(){}};
- const tradedList=()=>[{id:'cmdty_copper'},{id:'cmdty_ore_iron'}],trackedCmdty=()=>null,heldQty=(s,id)=>s.held[id]||0;
- const sellOpeningQuantity=heldQty,pinSealedSellQuantity=()=>{},renderAll=()=>{},tbodyEl=null,isPhoneLayout=()=>true;
- const openTradeMode=function(nextMode,state,options={}) {${openMode}};
- const show=function(c) {${onShow}};
- return {show,ctx,read:()=>({selectedId,qty,mode,pendingTrade,events})};
-}`)(marketResumeSelection);
-test('exact Market onShow honors iron handoff over cached/non-iron held lot',()=>{
- for(const seed of [{},{selectedId:'cmdty_copper',mode:'sell',qty:4},{selectedId:'cmdty_ore_iron',mode:'buy'}]){
- const h=create(seed);h.show({...h.ctx,tradeMode:'sell',commodityId:'cmdty_ore_iron'});
- assert.equal(h.read().selectedId,'cmdty_ore_iron');assert.equal(h.read().mode,'sell');assert.equal(h.read().qty,3);
- assert.deepEqual(h.read().events,[['economy:marketOpened',{stationId:'station_helios'}]]);
- }
+import { createMarketScreen } from '../src/ui/station/screens/market.js';
+import { TRADE_EXPECTATION_KEY } from '../src/ui/station/tradeReceipt.js';
+import { installDom } from './helpers/mini-dom.mjs';
+
+// The real Market screen on the shared test DOM: onShow's iron handoff must win over a
+// cached lot and must never steal the selection back from an unresolved trade.
+function marketState() {
+  return {
+    simTime: 0,
+    ui: { dockedStationId: 'station_helios' },
+    player: { credits: 0, cargo: { items: { cmdty_ore_copper: 5, cmdty_ore_iron: 3 }, capVolume: 100, usedVolume: 8 } },
+    economy: { markets: {} },
+  };
+}
+function openMarket(state) {
+  const emitted = [];
+  const screen = createMarketScreen({ state, bus: { emit: (...a) => emitted.push(a), on: () => () => {}, off: () => {} } });
+  document.body.appendChild(screen.el);
+  return { state, screen, emitted };
+}
+function marketSelection(h) {
+  const active = h.screen.el.querySelector('.sx-mkt-row.is-active');
+  return {
+    selectedId: active && active.getAttribute('data-cmdty'),
+    qty: Number(h.screen.el.querySelector('.sx-qty__in').value),
+    mode: h.screen.el.querySelector('[data-mode="sell"].is-on') ? 'sell' : 'buy',
+  };
+}
+function marketOpened(h) {
+  return h.emitted.filter(e => e[0] === 'economy:marketOpened');
+}
+test('Market onShow honors iron handoff over cached/non-iron held lot', () => {
+  const dom = installDom();
+  try {
+    const presets = [
+      // a fresh screen — nothing selected yet
+      () => {},
+      // a cached Sell session resting on copper
+      (h) => {
+        h.screen.onShow({ state: h.state, tradeMode: 'sell' });
+        h.screen.el.querySelector('[data-cmdty="cmdty_ore_copper"]').click();
+        h.screen.onHide();
+      },
+      // a cached Buy session resting on iron
+      (h) => { h.screen.onShow({ state: h.state, tradeMode: 'buy', commodityId: 'cmdty_ore_iron' }); h.screen.onHide(); },
+    ];
+    for (const preset of presets) {
+      const state = marketState();
+      const h = openMarket(state);
+      preset(h);
+      h.emitted.length = 0;
+      h.screen.onShow({ state, tradeMode: 'sell', commodityId: 'cmdty_ore_iron' });
+      const sel = marketSelection(h);
+      assert.equal(sel.selectedId, 'cmdty_ore_iron');
+      assert.equal(sel.mode, 'sell');
+      assert.equal(sel.qty, 3);
+      assert.deepEqual(marketOpened(h), [['economy:marketOpened', { stationId: 'station_helios' }]]);
+      h.screen.dispose();
+    }
+  } finally { dom.restore(); }
 });
-test('exact Market onShow does not replace an unresolved trade with iron handoff',()=>{
- for(const side of ['buy','sell']){
- const pendingTrade={commodityId:'cmdty_copper',side,qty:2,status:'pending',intentId:'pending-1'};
- const h=create({pendingTrade});h.show({...h.ctx,tradeMode:'sell',commodityId:'cmdty_ore_iron'});
- assert.equal(h.read().selectedId,'cmdty_copper');assert.equal(h.read().mode,side);assert.equal(h.read().qty,2);assert.equal(h.read().pendingTrade,pendingTrade);
- assert.deepEqual(h.read().events,[['economy:marketOpened',{stationId:'station_helios'}]]);
- }
+test('Market onShow does not replace an unresolved trade with iron handoff', () => {
+  const dom = installDom();
+  try {
+    for (const side of ['buy', 'sell']) {
+      const state = marketState();
+      const expectation = { intentId: 'pending-1', commodityId: 'cmdty_ore_copper', side, qty: 2, total: 24, stationId: 'station_helios', atSimTime: 0, status: 'pending', transport: 'main' };
+      state.ui[TRADE_EXPECTATION_KEY] = expectation;
+      const h = openMarket(state);
+      h.emitted.length = 0;
+      h.screen.onShow({ state, tradeMode: 'sell', commodityId: 'cmdty_ore_iron' });
+      const sel = marketSelection(h);
+      assert.equal(sel.selectedId, 'cmdty_ore_copper');
+      assert.equal(sel.mode, side);
+      assert.equal(sel.qty, 2);
+      assert.equal(state.ui[TRADE_EXPECTATION_KEY], expectation, 'the unresolved trade keeps its own expectation');
+      assert.deepEqual(marketOpened(h), [['economy:marketOpened', { stationId: 'station_helios' }]]);
+      h.screen.dispose();
+    }
+  } finally { dom.restore(); }
 });
