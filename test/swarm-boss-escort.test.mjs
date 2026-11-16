@@ -281,7 +281,7 @@ test('solo rows keep the exact wrap law they shipped — the guard formula is un
   // And a compositional row's wing is the boss, not an entourage — the guard still stacks.
   const wing = swarmBossFor(180);
   assert.equal(bossPackagesFor(wing).filter((p) => p.enemyId === 'corsair_raider')
-    .reduce((s, p) => s + p.count, 0), 3, 'the aces are the fight, not attendants');
+    .reduce((s, p) => s + p.count, 0), 5, 'the aces are the fight, not attendants (doc 12: five ships that fly as one; PIT-01 2065539416)');
   assert.equal(bossPackagesFor(wing).find((p) => p.enemyId === SWARM_WRAP_ESCORT_ENEMY).count, 1);
 });
 
