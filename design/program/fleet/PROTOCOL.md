@@ -37,7 +37,8 @@ tree. You must not damage them.
    Electron only when the packet says to, and **always through the lock**:
    `node scripts/fleet/game-lock.mjs run -- <command>` (e.g. `... run -- npm run check:playable`). It waits
    if another game is running. Never start two at once; never run the whole test suite; close what you
-   started.
+   started. **Never kill a lock holder or queued job you did not start** (lead, 2026-11-16), even if it looks
+   hung — the lock's own give-up timer and dead-pid sweep handle that; report a suspected hang instead.
 7. Do not edit `test/references/**`, golden files, or expected outputs to make a check pass.
 8. **Tests must use what the game really sends** (senior review 2026-11-11 found four tests that passed
    while the feature was dead). When your code listens for an event, find the real emitter
