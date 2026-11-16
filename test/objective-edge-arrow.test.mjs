@@ -79,6 +79,23 @@ class HudElement {
     return child;
   }
   append(...children) { children.forEach((child) => this.appendChild(child)); }
+  // createHud places the objective-details disclosure with insertBefore (81df3d83c7).
+  insertBefore(child, reference) {
+    if (!child) return null;
+    if (reference == null) return this.appendChild(child);
+    let index = this.children.indexOf(reference);
+    if (index < 0) throw new Error('Reference node is not a child of this parent');
+    if (child === reference) return child;
+    if (child.parentNode) {
+      const oldParent = child.parentNode;
+      const oldIndex = oldParent.children.indexOf(child);
+      oldParent.removeChild(child);
+      if (oldParent === this && oldIndex < index) index -= 1;
+    }
+    child.parentNode = this;
+    this.children.splice(index, 0, child);
+    return child;
+  }
   prepend(child) { child.parentNode = this; this.children.unshift(child); return child; }
   removeChild(child) {
     const i = this.children.indexOf(child);
@@ -267,7 +284,10 @@ function mountArrowFixture({ worldToScreen } = {}) {
     removeEventListener() {},
     matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
   };
-  globalThis.performance = { now: () => 1000 };
+  // The obstacle snapshot has a 100 ms floor (2c50e11639); a fixture clock that never advances
+  // would pin every publish after the first, so `advance()` moves it on demand.
+  let clockMs = 1000;
+  globalThis.performance = { now: () => clockMs };
   globalThis.getComputedStyle = (element) => ({
     display: element?.style?.display === 'none' ? 'none' : (element?.style?.display || 'block'),
     visibility: element?.style?.visibility || 'visible',
@@ -346,6 +366,13 @@ function mountArrowFixture({ worldToScreen } = {}) {
       state.tick += 1;
       hud.frame(dt);
     },
+    // Content invalidations now only mark the lane dirty (5e64b404ed) and obstacle snapshots
+    // respect a 100 ms floor (2c50e11639); a caller that wants the new geometry in this turn
+    // advances the fixture clock past the floor and asks the HUD to place.
+    place(ms = 250) {
+      clockMs += ms;
+      hud.flushReceiptLane();
+    },
     restore() {
       if (typeof hud.destroy === 'function') hud.destroy();
       globalThis.document = prevDoc;
@@ -382,6 +409,7 @@ test('flight text obstacles omit deferred captions and include visible captions'
   fx.doc.body.appendChild(deferred);
   try {
     assert.equal(fx.hud.registerExternalFlightCaption(deferred), true);
+    fx.place();
     assert.equal(fx.hud.getFlightTextObstacles().some((row) => row.owner === 'flight-caption'), false,
       'a no-room deferred discovery does not claim world-label space while transparent');
 
@@ -393,6 +421,7 @@ test('flight text obstacles omit deferred captions and include visible captions'
     };
     fx.doc.body.appendChild(visibleCaption);
     assert.equal(fx.hud.registerExternalFlightCaption(visibleCaption), true);
+    fx.place();
     const visible = fx.hud.getFlightTextObstacles().find((row) => row.owner === 'flight-caption');
     assert.deepEqual(visible && [visible.left, visible.top, visible.right, visible.bottom], [240, 90, 440, 120],
       'a live caption reserves its actual box');
@@ -402,6 +431,7 @@ test('flight text obstacles omit deferred captions and include visible captions'
 
     visibleCaption.style.visibility = 'hidden';
     fx.hud.refreshExternalFlightCaption(visibleCaption);
+    fx.place();
     assert.equal(fx.hud.getFlightTextObstacles().some((row) => row.owner === 'flight-caption'), false,
       'CSS-hidden captions are omitted on the next cached refresh');
   } finally {
@@ -426,12 +456,19 @@ test('active entering receipt reserves its measured box while transparent', () =
     && !receipt.classList.contains('sf-toast--out') ? [receipt] : [];
   try {
     fx.bus.emit('toast', { text: 'New delivery receipt', kind: 'info' });
+    // The HUD stopped listening to bare `toast` when receipt placement was coalesced per paint
+    // (eadf3e78b1); the lane now hears the real geometry signal toasts.js emits once the card is
+    // in the DOM (invalidateReceiptGeometry → hud:receiptGeometryChanged).
+    fx.bus.emit('hud:receiptGeometryChanged', {});
+    fx.place();
     const active = fx.hud.getFlightTextObstacles().find((row) => row.owner === 'receipt');
     assert.deepEqual(active && [active.left, active.top, active.right, active.bottom], [40, 90, 240, 130],
       'an entering active receipt reserves its actual box before the opacity transition starts');
 
     receipt.classList.add('sf-toast--out');
     fx.bus.emit('toast', { text: 'Receipt dismissed', kind: 'info' });
+    fx.bus.emit('hud:receiptGeometryChanged', {});
+    fx.place();
     assert.equal(fx.hud.getFlightTextObstacles().some((row) => row.owner === 'receipt'), false,
       'a retired receipt releases its box');
   } finally {
@@ -452,6 +489,7 @@ test('an entering visible presentation caption reserves its measured box while t
   });
   try {
     fx.bus.emit('presentation:caption', { text: 'Impact registered', assertive: false });
+    fx.place();
     assert.equal(caption.hidden, false);
     assert.equal(caption.classList.contains('show'), true);
     const active = fx.hud.getFlightTextObstacles().find((row) => row.owner === 'caption');

@@ -89,6 +89,24 @@ class HudElement {
     return child;
   }
 
+  // createHud places the objective-details disclosure with insertBefore (81df3d83c7).
+  insertBefore(child, reference) {
+    if (!child) return null;
+    if (reference == null) return this.appendChild(child);
+    let index = this.children.indexOf(reference);
+    if (index < 0) throw new Error('Reference node is not a child of this parent');
+    if (child === reference) return child;
+    if (child.parentNode) {
+      const oldParent = child.parentNode;
+      const oldIndex = oldParent.children.indexOf(child);
+      oldParent.removeChild(child);
+      if (oldParent === this && oldIndex < index) index -= 1;
+    }
+    child.parentNode = this;
+    this.children.splice(index, 0, child);
+    return child;
+  }
+
   replaceChildren(...children) {
     for (const child of this.children) child.parentNode = null;
     this.children.length = 0;
