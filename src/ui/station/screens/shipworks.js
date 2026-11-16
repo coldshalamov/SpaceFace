@@ -660,6 +660,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   function dressApron() {
     ensureInteriorStyle();
+    // the stats plate scrolls whenever the viewport squeezes it; give it the ladder's fold and
+    // cursor so the hidden rows read as "more below", never as a card cut mid-row (bench 1440x900)
+    syncScrollExtent(statsEl);
     for (const hero of statsEl.querySelectorAll('.sx-sw-hero')) {
       paintHeroNum(hero.querySelector('.k-hero__n'));
       paintLegend(hero.querySelector('.k-hero__w'), hero.classList.contains('is-selected'));

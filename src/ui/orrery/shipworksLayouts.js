@@ -673,7 +673,12 @@ ${W} .sx-sw__side, ${W} .sx-sw__stats { -webkit-mask-image:none !important; mask
 @supports (animation-timeline: scroll()) {
   ${W} .sx-sw__stats { animation:sx-fold-foot linear both; animation-timeline:scroll(self block);
     -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - var(--sx-fold)), transparent) !important;
-    mask-image:linear-gradient(180deg, #000 calc(100% - var(--sx-fold)), transparent) !important; }
+    mask-image:linear-gradient(180deg, #000 calc(100% - var(--sx-fold)), transparent) !important;
+    /* the fold fades a foot of PADDING, never a sentence: at rest the last fact line used to dim
+       mid-word and read as a cut (bench 2026-11-14), and the hairline scrollbar hid the fact that
+       the column scrolls at all */
+    padding-bottom:46px !important;
+    scrollbar-color:rgb(${BONE} / .5) transparent; }
 }
 ${W} .sx-sw__chooser[data-overflow="0"], ${W} .sx-sw__list[data-overflow="0"] { -webkit-mask-image:none !important; mask-image:none !important; }
 /* For Sale: the price is the number; the stage's second title goes; the render sits on a contact shadow */

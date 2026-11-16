@@ -26,6 +26,21 @@ export function fakeDom() {
         return child;
       },
       append(...kids) { for (const k of kids) this.appendChild(k); },
+      // real-Element API the scroll-extent cue uses (a foot marker inserted after the scroller)
+      get parentElement() { return this.parentNode; },
+      get nextElementSibling() {
+        const sibs = this.parentNode?.children ?? [];
+        const i = sibs.indexOf(this);
+        return i >= 0 ? (sibs[i + 1] ?? null) : null;
+      },
+      insertAdjacentElement(position, node) {
+        if (position === 'beforeend' || position === 'afterbegin') this.appendChild(node);
+        else if (position === 'afterend' && this.parentNode) {
+          const sibs = this.parentNode.children;
+          this.parentNode.insertBefore(node, sibs[sibs.indexOf(this) + 1] ?? null);
+        }
+        return node;
+      },
       setAttribute(name, value) { this.attributes[name] = String(value); },
       removeAttribute(name) { delete this.attributes[name]; },
       getAttribute(name) { return this.attributes[name] ?? null; },

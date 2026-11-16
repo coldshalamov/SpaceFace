@@ -76,7 +76,7 @@ test('worker Shipworks Remove waits for owner and preserves the exact fitting', 
 const host=createSimHost(),main=createGameState(4242),bus=createBus(),domains=new Map(Object.entries(main));let seq=0;
 const apply=reply=>{for(const u of reply.domainUpdates||[]){const segs=u.segs.length===1&&u.segs[0].includes('.')?u.segs[0].split('.'):u.segs;applyDomainPathUpdate(domains,{...u,segs},new Set());main[segs[0]]=domains.get(segs[0]);}};
 const tick=async(commands=[])=>{const r=structuredClone(await host.tick({tick:++seq,steps:0,commands}));apply(r);return r;};
-const globals=['document','window','requestAnimationFrame','cancelAnimationFrame','setTimeout'];const previous=new Map(globals.map(k=>[k,globalThis[k]]));let stage;
+const globals=['document','window','requestAnimationFrame','cancelAnimationFrame','setTimeout','getComputedStyle'];const previous=new Map(globals.map(k=>[k,globalThis[k]]));let stage;
 try {
  apply(structuredClone(await host.init({profile:'production',seed:4242,bridgeAll:true,domainMirroring:createDomainMirroringProfile('station'),scenarioContract:JSON.parse(readFileSync('src/data/scenarios/47a.scenario.json','utf8'))})));
  const {state,registry,runtime}=host.host;state.mode='flight';state.ui.docked=true;state.ui.dockedStationId='station_helios';
@@ -88,7 +88,7 @@ try {
  state.player.ownedShips[0].fittings[slot]='mod_cargo_net_s';state.player.ownedShips[0].fittedInstances[slot]={instanceId:'mi_earned',defId:'mod_cargo_net_s'};registry.get('ships').recomputeEntity(player.id,state.player.ownedShips[0].fittings);await tick();
  const inventoryNode=host.host.domainDiffer.paths.get('player.moduleInventory');
  while((inventoryNode.slot-host.host.domainDiffSeq+60)%60<10)await tick();
- const dom=shipworksDom();globalThis.document=dom.doc;globalThis.window={innerWidth:1920,innerHeight:1080,addEventListener(){},removeEventListener(){},matchMedia:()=>({matches:false,addEventListener(){},removeEventListener(){}})};globalThis.requestAnimationFrame=()=>1;globalThis.cancelAnimationFrame=()=>{};globalThis.setTimeout=()=>1;
+ const dom=shipworksDom();globalThis.document=dom.doc;globalThis.window={innerWidth:1920,innerHeight:1080,addEventListener(){},removeEventListener(){},matchMedia:()=>({matches:false,addEventListener(){},removeEventListener(){}})};globalThis.requestAnimationFrame=()=>1;globalThis.cancelAnimationFrame=()=>{};globalThis.setTimeout=()=>1;globalThis.getComputedStyle=()=>({position:'static'});
  main.render={renderer:{getContext:()=>({isContextLost:()=>true})}};const ring=createSimCommandRing();let seen;
  bus.on('ui:unfitModule',p=>{seen=p;if(MAIN_TO_SIM_BUS_EVENTS.has('ui:unfitModule'))ring.pushBus({emit:'ui:unfitModule',payload:p});});
  for(const name of ['ui:buyShip','ui:setActiveShip']) bus.on(name,p=>{

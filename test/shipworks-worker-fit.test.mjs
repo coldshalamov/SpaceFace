@@ -208,7 +208,7 @@ test('worker owned Fit waits for its exact owner result and keeps retries truthf
 });
 
 test('blocked Shipworks preview requests a bare stock Hitch and restores the berth on exit', () => {
-  const keys = ['document', 'window', 'requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout', 'clearTimeout'];
+  const keys = ['document', 'window', 'requestAnimationFrame', 'cancelAnimationFrame', 'setTimeout', 'clearTimeout', 'getComputedStyle'];
   const previous = new Map(keys.map(key => [key, globalThis[key]]));
   let stage;
   try {
@@ -216,6 +216,7 @@ test('blocked Shipworks preview requests a bare stock Hitch and restores the ber
     globalThis.document = dom.doc;
     globalThis.window = { innerWidth: 1920, innerHeight: 1080, addEventListener() {}, removeEventListener() {},
       matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) };
+    globalThis.getComputedStyle = () => ({ position: 'static' });
     globalThis.requestAnimationFrame = () => 1; globalThis.cancelAnimationFrame = () => {};
     globalThis.setTimeout = () => 1; globalThis.clearTimeout = () => {};
     const state = createGameState(4242);
