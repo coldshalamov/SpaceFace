@@ -1,4 +1,5 @@
 import { isSwarmGlass } from './swarmGlass.js';
+import { releaseWindowOpen } from './throwCue.js';
 import { verbChip } from './controlPrompts.js';
 import { calloutVoiceLive } from './calloutVoice.js';
 import { createWorldObjectPicker } from '../render/worldObjectPicking.js';
@@ -538,6 +539,8 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       tag.el.dataset.selected = selected ? '1' : '0';
       tag.el.dataset.relation = relation.toLowerCase();
     }
+    // The throw verb lights while the rope's release window is open (a tap throws); not part of the text key.
+    tag.el.dataset.window = (previewTextKey && tag.el.dataset.sling === '1' && releaseWindowOpen(state)) ? '1' : '0';
     tag.el.dataset.bars = paintHoverTagVitals(tag, entity) ? '1' : '0';
     const pt = lastPoint || pointerPoint(null);
     if (pt) {

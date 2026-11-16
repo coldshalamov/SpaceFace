@@ -36,6 +36,8 @@ const CSS = `
   overflow-wrap:anywhere}
 .sf-woi[data-beam="1"] .sf-woi__hint{color:var(--dp-phos, #dfeeff)}
 .sf-woi[data-sling="1"] .sf-woi__hint{color:var(--dp-hand, #f2b950)}
+.sf-woi[data-sling="1"][data-window="1"] .sf-woi__hint{color:#fff;text-decoration:underline;text-underline-offset:3px;font-weight:700}
+@media (prefers-reduced-motion:no-preference){.sf-woi[data-sling="1"][data-window="1"] .sf-woi__hint{animation:sf-woi-throw .5s ease-in-out infinite alternate}@keyframes sf-woi-throw{from{opacity:.65}to{opacity:1}}}
 .sf-woi[data-selected="1"] .sf-woi__meta{color:var(--dp-hand, #f2b950)}
 /* relations: threat red is the only alarm; allies read in the rest light — the meta line names them */
 .sf-woi[data-relation="hostile"] .sf-woi__name{color:var(--dp-danger-hot, #ff8a70)}

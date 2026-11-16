@@ -590,7 +590,7 @@ async function adventureRoute() {
         await shot('latched-rock', { gameplay: true });
         await keyDown('KeyW'); await keyDown('KeyD');
         const rw0 = await evN('massline:releaseWindow');
-        const readThrow = () => page.evaluate(() => { const s = window.SF.state; const t = s.massline2 && s.massline2.throw; const tt = s.player && s.player.tether; return { on: !!(t && t.solution && t.solution.valid && t.solution.onSolution), armed: !!(t && t.armed), phase: tt ? (tt.phase || tt.state || null) : null, strain: tt && Number.isFinite(tt.strain) ? +tt.strain.toFixed(2) : null, aimTarget: t ? t.aimTargetId : null, cue: (document.querySelector('#hud .sf-aimtag, #hud [class*=aimtag]') || {}).textContent || null }; }).catch(() => ({ on: false }));
+        const readThrow = () => page.evaluate(() => { const s = window.SF.state; const t = s.massline2 && s.massline2.throw; const tt = s.player && s.player.tether; return { on: !!(t && t.solution && t.solution.valid && t.solution.onSolution), armed: !!(t && t.armed), phase: tt ? (tt.phase || tt.state || null) : null, strain: tt && Number.isFinite(tt.strain) ? +tt.strain.toFixed(2) : null, aimTarget: t ? t.aimTargetId : null, cue: (document.querySelector('.sf-woi:not([hidden]) .sf-woi__hint') || {}).textContent || null, cueLit: !!document.querySelector('.sf-woi[data-sling="1"][data-window="1"]:not([hidden])') }; }).catch(() => ({ on: false }));
         let clickInfo = null;
         for (let i = 0; i < 60; i++) {
           // Fly an arc toward the derelict with the cursor ON it: the throw solution needs an aimed target.
@@ -603,7 +603,7 @@ async function adventureRoute() {
           // THROW fires on a press while the rope's own release window is open on the aimed target.
           // The release cue the PLAYER sees (the aim tag words) works on the worker lane, where sim internals are unreadable.
           if (i === 0) { const li = await page.evaluate(() => { const s = window.SF.state; const id = s.player && s.player.tether && s.player.tether.targetId; const e = id != null && s.entities.get(id); return e ? { id, type: e.type, rescueRole: (e.data && e.data.rescueRole) || null, kind: (e.data && (e.data.kind || e.data.typeId)) || null, mass: e.mass || null, guarded: !!(e.data && e.data.rescueRole === 'rock') } : { id: id ?? null }; }).catch(() => null); note('first latch identity: ' + JSON.stringify(li)); }
-          if (i >= 6 && (rt.on || /throw|release|let go/i.test(rt.cue || ''))) { clickInfo = { i, ...rt, windowEvents: (await evN('massline:releaseWindow')) - rw0 }; break; }
+          if (i >= 3 && (rt.on || rt.cueLit || /throw/i.test(rt.cue || ''))) { clickInfo = { i, ...rt, windowEvents: (await evN('massline:releaseWindow')) - rw0 }; break; }
           if ((await evN('tether:broken')) > 0 && i > 20) break;
         }
         note('click-time: ' + JSON.stringify(clickInfo || { windowNeverOpen: true, last: await readThrow() }));
