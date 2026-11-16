@@ -8858,7 +8858,12 @@ export function disposeRendererOwnedResources(owner, options = {}) {
 /** The loading cook's bounded warm roots (see render._parkBoundedWarmRoots). */
 function isBoundedWarmRoot(root) {
   const tag = root && root.userData && root.userData.rosterPrewarm;
-  return tag === 'bounded-cook' || tag === 'opening-species-warm' || tag === 'deferred-warm';
+  return tag === 'bounded-cook' || tag === 'opening-species-warm' || tag === 'deferred-warm'
+    // Per-exemplar warm boundaries (the launch cohort mounts one per hull/hulk spec as a direct
+    // scene child). They exist only to link programs and upload buffers; PERF-HOT-03 measured
+    // nine invisible kestrel admission kits — 351 meshes, ~353k triangles, all off camera —
+    // still resident from t≈60 s through the Armory because no park sweep recognised their tag.
+    || (root.userData.rosterPrewarmExemplar === true);
 }
 
 function normalizeWarmHullFile(file) {
@@ -21731,6 +21736,16 @@ export const render = {
         boundary.position.set(0, 0, 0);
         boundary.userData = boundary.userData || {};
         boundary.userData.rosterPrewarm = spec.id;
+        // PERF-HOT-03: this boundary exists to link programs and upload buffers, nothing else —
+        // mark it so the park sweep recognises it. Without the mark the launch cohort's exemplars
+        // were never parked (the sweep only knew the three profile tags), and INV-06 measured nine
+        // invisible kestrel admission kits — 351 meshes, ~353k triangles, every one off camera —
+        // still resident from t≈60 s through the Armory. Parking keeps the linked programs and
+        // uploaded buffers; it only drops the per-exemplar kit from the drawn graph.
+        // `warmBuilding` holds that park off until this exemplar's own admission→compile chain
+        // lands, so a later wave's exemplar can never be detached mid-attach.
+        boundary.userData.rosterPrewarmExemplar = true;
+        boundary.userData.warmBuilding = true;
         // PERF-HOT-03: the credit-chip exemplar is the one build that owns the exact four part
         // geometries/materials the live chip batch draws. Publishing its empty batches here links
         // their instanced programs behind the shell instead of on the first kill of the round.
@@ -21784,6 +21799,16 @@ export const render = {
           }, (error) => {
             stormWarn('survival-roster-prewarm-admission-failed', '[render] survival roster prewarm admission failed', spec.id, error);
             return null;
+          }).then((result) => {
+            // PERF-HOT-03: this exemplar's own admission→compile chain has landed, so its
+            // `warmBuilding` hold can drop. A chain that settles after the cook's park legs (the
+            // settle deadline expired with the shell still waiting) parks itself here — bounded
+            // and idempotent, and only outside loading where the cook's sweeps expect the roots.
+            if (boundary.userData) boundary.userData.warmBuilding = false;
+            if (this.state && this.state.mode !== 'loading') {
+              try { this._parkBoundedWarmRoots(); } catch (_) { /* parking is best-effort */ }
+            }
+            return result;
           });
           if (this._rosterPrewarmPending) {
             this._rosterPrewarmPending.add(settled);

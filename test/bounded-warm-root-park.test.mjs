@@ -41,6 +41,40 @@ test('bounded warm roots leave the scene graph but stay owned for run-end releas
   assert.equal(render._parkBoundedWarmRoots.call(owner).roots, 0, 'a second park is a no-op');
 });
 
+// PERF-HOT-03 item 3: the launch cohort mounts one exemplar boundary per hull/hulk spec straight
+// onto the scene, and INV-06 measured nine invisible kestrel admission kits — 351 meshes, ~353k
+// triangles, every one off camera — still resident from t≈60 s through the Armory. They exist only
+// to link programs, so the park sweep must recognise them; a root still holding its own attach
+// (warmBuilding) stays mounted so a queued upgrade job cannot drop.
+test('per-exemplar warm boundaries park once their own attach settles', () => {
+  const scene = new THREE.Scene();
+  const exemplar = new THREE.Group();
+  exemplar.visible = false;
+  exemplar.userData.rosterPrewarm = 'crucible-warm:ship:patrol_lawman';
+  exemplar.userData.rosterPrewarmExemplar = true;
+  exemplar.add(new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial()));
+  scene.add(exemplar);
+  const owner = {
+    scene,
+    state: { mode: 'flight', render: {} },
+    _rosterPrewarmRoots: [exemplar],
+  };
+
+  // Mid-attach: the park sweep must leave it alone — parking fails boundaryBelongsToScene and the
+  // queued compose would drop silently.
+  exemplar.userData.warmBuilding = true;
+  assert.equal(render._parkBoundedWarmRoots.call(owner).roots, 0);
+  assert.equal(exemplar.parent, scene, 'a still-attaching exemplar keeps its mount');
+
+  exemplar.userData.warmBuilding = false;
+  const parked = render._parkBoundedWarmRoots.call(owner);
+  assert.equal(parked.roots, 1);
+  assert.equal(parked.nodes, 2, 'the kit leaves the drawn graph, node count reported');
+  assert.equal(exemplar.parent, null, 'the parked exemplar stops walking every frame');
+  assert.deepEqual(owner._rosterPrewarmRoots, [exemplar],
+    'run-end release still reaches it through the shared ownership list');
+});
+
 test('the flight boundary parks bounded warm roots the skipped live-sector cook never reached', () => {
   // The defect this guards: waitForOpeningGpuResources only invokes
   // prepareLiveSectorBeforeFlight while mode is still 'loading', and the software-WebGL
