@@ -4,5 +4,9 @@
 export function releaseWindowOpen(state) {
   const t = state && state.massline2 && state.massline2.throw;
   const sol = t && t.solution;
-  return !!(sol && sol.valid && sol.onSolution && !sol.decisionStale && !sol.degraded);
+  // THROW-02: the held window mirror is authoritative while it lasts — masslineThrow keeps it lit
+  // for at least RELEASE_WINDOW_MIN_S after the solver's own tick so the cue is readable. Mirrors
+  // that predate the hold (no windowOpen field) fall back to the solver's on-solution tick.
+  return !!(sol && (sol.windowOpen === true
+    || (sol.valid && sol.onSolution && !sol.decisionStale && !sol.degraded)));
 }

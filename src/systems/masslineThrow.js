@@ -49,6 +49,15 @@ const FLICK_AIM_RANGE = 240;
 // corridor anywhere can bend the claimed contact, so the preview must not call it irrelevant.
 const THROW_FIELD_CORRIDOR_HORIZON_S = 6;
 
+// THROW-02 — a fast Swarm swing crosses the release band inside one tick: BOT-01 saw 22
+// `massline:releaseWindow` open events each die the same tick, so the lit RMB · THROW cue could
+// never be seen. Once the band opens, the reported window holds for at least this much sim time…
+const RELEASE_WINDOW_MIN_S = 0.20;
+// …and stays open until the swing has left the band by a clear margin — whichever is later. The
+// margin is measured in wu past contact (solution.missDistance), the readability hysteresis that
+// keeps a swing riding the band edge from flickering the cue.
+const RELEASE_WINDOW_EXIT_MARGIN_WU = 12;
+
 const AIMABLE_TYPES = new Set(['ship', 'drone', 'asteroid', 'station', 'wreck', 'payload']);
 const THROW_ARM_COMBAT_ARCHETYPES = new Set([
   'pirate', 'raider', 'marauder', 'corsair', 'outlaw', 'brawler', 'sniper', 'swarmer',
@@ -73,8 +82,10 @@ export function isThrowArmPayload(state) {
     return THROW_ARM_COMBAT_ARCHETYPES.has(archetype);
   }
   // THROW-01: rocks are ammo - a loose room rock authored `throwable` throws like a chunk.
+  // THROW-02: a wreck-material debris body (the ballast room's rocks) throws the same way.
   return target.type === 'payload'
-    || (target.type === 'asteroid' && (!!target.data?.isChunk || target.data?.throwable === true));
+    || ((target.type === 'asteroid' || target.type === 'wreck')
+      && (!!target.data?.isChunk || target.data?.throwable === true));
 }
 
 // INF-016 — turning-target confidence. The intercept solver extrapolates the aim target
@@ -132,7 +143,8 @@ export const masslineThrow = {
     this._pointerEntityReleaseTarget = entityReleaseTarget(null, 'pointer');
     this._pointerPointReleaseTarget = pointReleaseTarget('point', 'pointer', 0, 0, 2);
     this._flickPointReleaseTarget = pointReleaseTarget('point', 'touch-flick', 0, 0, 2);
-    this._solutionWasOn = false;
+    this._windowWasOpen = false;
+    this._windowOpenedAtS = null;
     this._throwArmWasHeld = false;
     this._pendingSnap = null;
     this._throwPrediction = {};
@@ -179,7 +191,8 @@ export const masslineThrow = {
     this._throwTurnTrack = null; this._selfTurnTrack = null;
     this._swing = null; this._pendingSnap = null; this._windowForecast = null;
     this._pendingReleaseValidation = null; this._armAuthorized = false;
-    this._releaseAttemptTick = -1; this._solutionWasOn = false;
+    this._releaseAttemptTick = -1; this._windowWasOpen = false;
+    this._windowOpenedAtS = null;
     // A held input across a menu/load/latch boundary is NOT a new throw press.
     this._throwArmWasHeld = !!(state && state.input && state.input.actions && state.input.actions.throwArm);
   },
@@ -250,12 +263,14 @@ export const masslineThrow = {
       runtime.armed = armed;
       this._armAuthorized = false;
       runtime.solution = null; this._throwPrediction = {}; this._windowForecast = null;
-      this._solutionWasOn = false;
+      this._windowWasOpen = false;
+      this._windowOpenedAtS = null;
       return; // A changed pointer/target never redirects an already queued release.
     }
     if (!aim) {
       runtime.aimTargetId = null; runtime.aimSynthetic = false; runtime.solution = null;
-      this._windowForecast = null; this._solutionWasOn = false;
+      this._windowForecast = null; this._windowWasOpen = false;
+      this._windowOpenedAtS = null;
       // A manual throw without a selected target is still a legal cut, not a swallowed input.
       if (pressed && mode !== 'arm') this._executeThrow(state, player, payload, { entity: null }, {
         valid: false, errorRad: Math.PI, tolRad: 0, onSolution: false, interceptAngle: Math.atan2(payload.vel.z, payload.vel.x),
@@ -301,15 +316,29 @@ export const masslineThrow = {
     if (!window.reliable || window.exitS === 0 && !solution.onSolution) window.enterS = null;
     solution.window = window;
     solution.timeToSolution = solution.onSolution ? 0 : window.enterS;
-    runtime.solution = mirrorSolution(runtime.solution, solution);
     const onNow = !!(solution.valid && solution.onSolution && !solution.decisionStale && !solution.degraded);
-    if (onNow !== this._solutionWasOn) {
-      if (onNow) this.bus.emit('audio:cue', { id: 'massline.solutionLock' });
+    // THROW-02 — the reported window outlives a sub-tick band crossing. It opens on the solver's
+    // own on-solution tick, then holds: never shorter than RELEASE_WINDOW_MIN_S of sim time, and
+    // never closed before the swing has left the band by RELEASE_WINDOW_EXIT_MARGIN_WU. The tap
+    // path below reads this held window so a click inside the lit cue earns the window's grade;
+    // 'arm' and the buffered queue still answer the solver's own tick.
+    const inBand = !!(solution.valid && !solution.decisionStale && !solution.degraded)
+      && (!!solution.onSolution
+        || finite(solution.missDistance, Infinity) <= RELEASE_WINDOW_EXIT_MARGIN_WU);
+    const simNow = finite(state.simTime, state.tick / 60);
+    if (onNow && this._windowOpenedAtS == null) this._windowOpenedAtS = simNow;
+    const windowOpen = this._windowOpenedAtS != null
+      && (simNow - this._windowOpenedAtS < RELEASE_WINDOW_MIN_S || inBand);
+    if (!windowOpen) this._windowOpenedAtS = null;
+    solution.windowOpen = windowOpen;
+    runtime.solution = mirrorSolution(runtime.solution, solution);
+    if (windowOpen !== this._windowWasOpen) {
+      if (windowOpen) this.bus.emit('audio:cue', { id: 'massline.solutionLock' });
       this.bus.emit('massline:releaseWindow', { sourceId: player.id, payloadId: payload.id,
-        targetId: runtime.aimTargetId, open: onNow, tick: state.tick,
+        targetId: runtime.aimTargetId, open: windowOpen, tick: state.tick,
         clearance: solution.clearance, relativeSpeed: solution.relativeSpeed });
     }
-    this._solutionWasOn = onNow;
+    this._windowWasOpen = windowOpen;
     if (mode === 'arm') {
       if (armed && this._armAuthorized && onNow && solution.relativeSpeed >= THROW_MIN_PAYLOAD_SPEED) {
         this._executeThrow(state, player, payload, aim, solution, 'arm');
@@ -322,12 +351,15 @@ export const masslineThrow = {
     }
     if (this._pendingSnap) {
       if (onNow || state.tick >= this._pendingSnap.deadlineTick) {
-        this._executeThrow(state, player, payload, aim, solution, onNow ? 'snap' : 'snap-manual');
+        this._executeThrow(state, player, payload, aim, solution, windowOpen ? 'snap' : 'snap-manual');
       }
       return;
     }
     if (!pressed) return;
-    if (onNow) { this._executeThrow(state, player, payload, aim, solution, 'snap'); return; }
+    // A tap while the lit cue shows earns the window's 'snap' grade — including the held tail the
+    // solver itself has already left (THROW-02); the prediction receipt still reports that tick's
+    // honest geometry. Outside the window the throw fires as snap-manual exactly as before.
+    if (windowOpen) { this._executeThrow(state, player, payload, aim, solution, 'snap'); return; }
     const bufferS = trainingWheelsOn(state, payload) ? Infinity : Math.max(SNAP_WINDOW_MS, SNAP_BUFFER_MS) / 1000;
     if (window.reliable && window.enterS > 0 && window.enterS <= bufferS) {
       this._pendingSnap = { identity, attachmentId: tether.attachmentId, touch: flickPressed,
@@ -377,7 +409,8 @@ export const masslineThrow = {
       || (attachmentId != null && this._releaseLatchAttachmentId !== attachmentId);
     if (!isNewLatch) return;
 
-    this._pendingSnap = null; this._windowForecast = null; this._armAuthorized = false; this._solutionWasOn = false;
+    this._pendingSnap = null; this._windowForecast = null; this._armAuthorized = false; this._windowWasOpen = false;
+    this._windowOpenedAtS = null;
     this._releaseLatchActive = true;
     this._releaseLatchPayloadId = payload.id;
     this._releaseLatchAttachmentId = attachmentId;
@@ -776,6 +809,7 @@ function mirrorSolution(existing, solution) {
   out.errorRad = solution.errorRad;
   out.tolRad = solution.tolRad;
   out.onSolution = solution.onSolution;
+  out.windowOpen = solution.windowOpen === true;
   out.interceptAngle = solution.interceptAngle;
   out.payloadSpeed = solution.payloadSpeed;
   out.timeToSolution = solution.timeToSolution;

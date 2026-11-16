@@ -1916,6 +1916,9 @@ export const swarmArena = {
       size,
       // Both marks on purpose: ours for census and teardown, terrainAnchor so the massline's
       // existing anchor logic treats these exactly like the rocks it already knows.
+      // THROW-02/doc 12: the room's cover is ammunition — every debris rock arms the throw
+      // (wreck ballast included); the line-class weight rule still says TOO HEAVY.
+      throwable: true,
       [SWARM_DEBRIS_TAG]: true,
       terrainAnchor: true,
       terrainAnchorEncounterIds: [],
@@ -2080,6 +2083,8 @@ export const swarmArena = {
           openingLesson: true,
           // defaultDynamic only promotes asteroids that carry this flag, so the rope can throw it.
           tetherPayload: true,
+          // THROW-02: the taught rock is ammunition like every other loose arena rock.
+          throwable: true,
         }),
       });
       const id = spawned && typeof spawned === 'object' ? spawned.id : spawned;
