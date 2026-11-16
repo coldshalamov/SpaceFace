@@ -102,7 +102,8 @@ try {
         const ok = await page.evaluate(([at, clusterAt, cc]) => window.__stage(at, clusterAt, cc), [pw, qw, phase === 1 ? 5 : 0]);
         st = ok && pw ? { id: ok.id, scr: P, clusterScr: phase === 1 ? Q : null, dist: Math.round(Math.hypot(pw.x - pw.mx, pw.z - pw.mz)) } : null;
       }
-      if (!st) { (phase ? cluster : rows).push({ attempt: a, note: 'nothing to stage' }); await sleep(1500); continue; }
+      if (!st) { if ((global.__noStage = (global.__noStage || 0) + 1) % 40 && global.__noStage <= 40 * 1) { await sleep(3000); a--; continue; } (phase ? cluster : rows).push({ attempt: a, note: 'nothing to stage' }); global.__noStage = 0; await sleep(1500); continue; }
+      global.__noStage = 0;
       await sleep(150);
       const mark = await logLen();
       const rec = { phase, attempt: a, held: st.id };
