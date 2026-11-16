@@ -73,6 +73,18 @@ test('real intake reports partial feed, then canonical growth once; never credit
  h.state.story.campaign47a.stepProgress['2'].completed.push('compost');h.state.story.flags=JSON.parse(JSON.stringify(h.state.story.flags));h.state.simTime+=20;h.tick();assert.equal(h.events.filter(e=>e.id==='compost_arrival_growth').length,1);
  }finally{h.close();}
 });
+test('a growth inside the arrival cooldown reconciles once its deadline passes',()=>{
+ const h=fixture();try{h.tick();assert.equal(h.events.at(-1).id,'compost_arrival_arrival');
+ const rest=h.pod(17);h.attach(rest);rest.pos={...h.garden.pos};h.state.simTime+=1;
+ h.owner.update(1/60,h.state);
+ assert.equal(rest.alive,false);assert.equal(h.garden.data.gardenStage,2);
+ assert.equal(h.events.filter(e=>e.id==='compost_arrival_growth').length,0,'cooldown defers the acknowledgement');
+ h.state.simTime+=9;h.owner.update(1/60,h.state);
+ assert.equal(h.events.at(-1).id,'compost_arrival_growth');assert.match(h.events.at(-1).text,/stage 1 to 2/);
+ h.owner.update(1/60,h.state);
+ assert.equal(h.events.filter(e=>e.id==='compost_arrival_growth').length,1,'reconciled once, not retried');
+ }finally{h.close();}
+});
 test('synchronous restore after dialogue does not publish a stale cue, and destroy is idempotent',()=>{
  const h=fixture();try{let cues=0;h.bus.on('toast',()=>cues++);h.bus.on('comms:popup',()=>h.bus.emit('save:restoring',{}));h.tick();assert.equal(cues,0);clearCompostArrival(h.owner);clearCompostArrival(h.owner);
  }finally{h.close();}

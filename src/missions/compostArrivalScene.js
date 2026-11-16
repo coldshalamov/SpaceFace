@@ -16,6 +16,7 @@ const VOICE_RANGE2 = 1000 * 1000;
 export function clearCompostArrival(owner) {
   const mark = owner._compostArrivalMark;
   owner._compostArrivalMark = null;
+  owner._compostArrivalPendingAt = null;
   if (mark && owner.state?.entities?.get(mark.id) === mark && mark.data?.[TAG] === true) {
     owner.helpers?.removeEntity?.(mark.id);
   }
@@ -85,7 +86,14 @@ export function syncCompostArrival(owner, gardens) {
   const memory = old?.version === 1 && old.gardenId === data.gardenId ? old
     : { version: 1, gardenId: data.gardenId, heard: {} };
   const heard = memory.heard && typeof memory.heard === 'object' && !Array.isArray(memory.heard) ? memory.heard : {};
-  if (Number.isFinite(memory.nextAt) && s.simTime < memory.nextAt) return;
+  if (Number.isFinite(memory.nextAt) && s.simTime < memory.nextAt) {
+    // A real transition asked for this reconcile inside the cooldown. Keep the
+    // stored deadline so the owed line fires once it comes due; tickCompostArrival
+    // honors it — a deferred request must not be discarded here.
+    owner._compostArrivalPendingAt = memory.nextAt;
+    return;
+  }
+  owner._compostArrivalPendingAt = null;
   const growth = data.gardenFirstPlayerGrowth && !heard.growth ? firstPlayerGardenGrowth(s) : null;
   const grewHere = growth?.gardenId === data.gardenId || heard.growth === true;
   const fed = Number.isFinite(data.compostFedMass) ? Math.max(0, data.compostFedMass) : 0;
@@ -145,6 +153,13 @@ export function tickCompostArrival(owner, gardens) {
     + (p.pos.z - garden.pos.z) * (p.pos.z - garden.pos.z) <= VOICE_RANGE2);
   if (near !== owner._compostArrivalNear) {
     owner._compostArrivalNear = near;
+    syncCompostArrival(owner, gardens);
+  }
+  // The other owed edge: a reconcile the cooldown deferred. Honor its stored
+  // deadline once — the line inside the window must not stay dropped.
+  const due = owner._compostArrivalPendingAt;
+  if (Number.isFinite(due) && s.simTime >= due) {
+    owner._compostArrivalPendingAt = null;
     syncCompostArrival(owner, gardens);
   }
 }
