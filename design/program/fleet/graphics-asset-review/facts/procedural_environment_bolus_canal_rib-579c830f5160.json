@@ -1,0 +1,6 @@
+{
+  "route": "ribRings(seed) builds nineteen canal ring meshes; buildBolusCanal feeds bolusView's ensureView/syncBolusView presentation in sector_the_bolus. This is distinct from the bolus_rib fauna species.",
+  "deploymentCode": ["src/render/bolusCanal.js", "src/render/bolusView.js"],
+  "variants": "Seed-varied ring dimensions and closed, crest and stalled motion poses; no authored LOD switch identified.",
+  "status": "source-traced and synthetic update measured; current gameplay-camera visual review remains pending"
+}

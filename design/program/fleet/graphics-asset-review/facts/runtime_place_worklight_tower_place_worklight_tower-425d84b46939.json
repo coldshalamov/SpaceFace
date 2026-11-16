@@ -1,0 +1,23 @@
+{
+  "route": "The worklight tower is a released place and render package. The world instantiates a Helios Half-Shift cluster instance and two Vesta faction-berth instances when their sites are admitted; counterweightCircuit creates two fixtures in Pallas Drift. POI landmark data, Breakwater Spur and the UI stage also reference it. Everyday station-kit dressing can select it without replacement, at most once per sector. Placement and visibility remain conditional on residency, site and camera.",
+  "deploymentCode": [
+    "src/data/everydaySpaceKitDressing.js",
+    "src/data/factionBerths.js",
+    "src/data/worldOneOffs.js",
+    "src/features/breakwaterSpur/definition.js",
+    "src/features/counterweightCircuit/definition.js",
+    "src/features/counterweightCircuit/physical.js",
+    "src/systems/world.js",
+    "src/render/partsLibrary.js"
+  ],
+  "status": "Source placement, material/LOD data and renderer ownership traced; a Breakwater frame-origin correction passed focused tests and LOD0 was visually inspected in current isolated multi-angle captures. LOD1/2, player-route pictures and performance remain unverified.",
+  "variationDiscovery": "unresolved",
+  "notes": [
+    "The Ceres occupational-yard worklight data has no caller in src and is not evidence of a spawned yard placement.",
+    "Place boundaries start on lod0 and can resolve different LODs by projected size; no runtime tier frequency has been sampled.",
+    "Forge merges the floodhead geometry by material and LOD; eligible place surfaces are further statically batched per boundary. Cross-boundary instancing must be observed rather than assumed.",
+    "Ordinary fx dressing has no Nocturne override and does not automatically receive Nocturne's archetype fixtures; the authored crown uses emissive materials. The UI stage has its own explicit practical lights.",
+    "The Breakwater Spur owner independently creates up to four physical PointLights, including one at the worklight head. Its group now follows the frame origin; the focused scene-graph check covers initial nonzero origin, rebase and missing origin. Ordinary route and visual acceptance remain unverified.",
+    "Three-Lamp Corner currently uses the ordinary eight-head worklight model, not a separate playable material/geometry variant. The isolated world owner probe shows a FULL-residency fx actor and REDUCED-residency dressing row with no collision, lamp stage or NOCTURNE fixture descriptor. Its related Pigeon Day sequence emits transient VFX cues rather than modifying individual model lamps."
+  ]
+}

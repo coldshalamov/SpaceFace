@@ -1,0 +1,56 @@
+{
+  "route": "Player ship_hornet uses production LOD family. Owned appearance.variantId customs_cutter is independent SF_HORNET_SCN_CUSTOMS_CUTTER; patrol is independent SF_HORNET_SCN_INTERDICTOR. Corsair and tether-control gameplay Hornet IDs resolve Ashline visual bodies.",
+  "variationDiscovery": "incomplete",
+  "status": "23 substantive iterations. Accepted scratch candidate retains completed isolated reviews. Durable native Forge source added, but normal guarded export rejects tangent/normal drift before destination writes; publication blocked.",
+  "evidence": [
+    ".devshots/fleet/hornet-astra/routes.json",
+    ".devshots/fleet/hornet-astra/census.json",
+    ".devshots/fleet/hornet-astra/contracts.json",
+    ".devshots/fleet/hornet-astra/comparison.json",
+    ".devshots/fleet/hornet-astra/comparison-protected.json",
+    ".devshots/fleet/hornet-astra/build_candidate_protected.py",
+    ".devshots/fleet/hornet-astra/initial-views/report.json",
+    ".devshots/fleet/hornet-astra/complete-comparison/report.json",
+    ".devshots/fleet/hornet-astra/candidate-verification.json",
+    ".devshots/fleet/hornet-astra/source-pins.json",
+    ".devshots/fleet/hornet-astra/HANDOFF.md",
+    ".devshots/fleet/hornet-astra/complete-lower-tiers/report.json",
+    ".devshots/fleet/hornet-astra/guarded-rejection.json",
+    ".devshots/fleet/hornet-astra/native-geometric-drift.json",
+    ".devshots/fleet/hornet-astra/native-attribute-drift.json",
+    ".devshots/fleet/hornet-astra/authoring-experiment-withdrawn-20261114/source_assets/README.md",
+    ".devshots/fleet/hornet-astra/authoring-experiment-withdrawn-20261114/source_assets/provenance.json"
+  ],
+  "relatedAssetRisks": [
+    "Interdictor external motion bank bytes match package pin, but bank source identity says production Hornet and source hash differs from current Interdictor source; animation behavior not yet checked."
+  ],
+  "pending": [
+    "Resolve native tangent/normal round-trip guard failure before publication",
+    "Independent lead review and path-specific recipe/integration handoff",
+    "Compiled release/package and ordinary player route, including dynamic motion",
+    "Arbitrary paint/finish variations not previewed; variation discovery remains incomplete",
+    "No measured FPS improvement"
+  ],
+  "candidate": {
+    "path": ".devshots/fleet/hornet-astra/protected-stage8/hornet_candidate8.glb",
+    "sha256": "47e6fea7633a172c6b04db6fc58bfc786b8bd7a8490f1c9c5e70bf69f212ab5c",
+    "baselineTriangles": 16076,
+    "candidateTriangles": 15540,
+    "sourceBytesSaved": 46240,
+    "changedMeshes": [
+      "LOD0_Mechanical",
+      "LOD0_MechanicalDark"
+    ],
+    "contracts": "Exact node hierarchy/transforms, other23 meshes, materials, embedded images, lower tiers; external motion bank unchanged",
+    "visual": "Complete25-draw close/inspect/top/chase viewed in same-session pair",
+    "publication": "not published"
+  },
+  "captureCorrections": "Initial lower close frames were incomplete (20/23 and15/17 draws). Iteration22 supersedes mistaken saddle/engine-mouth observations; corrected views reach23 and17. Final LOD0 pair reaches25 in every pose.",
+  "authoring": {
+    "recipe": "tools/blender/forge/ships/hornet.py",
+    "source": ".devshots/fleet/hornet-astra/authoring-experiment-withdrawn-20261114/source_assets",
+    "guardedExport": "REJECTED - destination unchanged",
+    "blocker": "Blender tangent/normal round trip differs from reviewed surface attributes",
+    "evidence": ".devshots/fleet/hornet-astra/guarded-rejection.json"
+  }
+}

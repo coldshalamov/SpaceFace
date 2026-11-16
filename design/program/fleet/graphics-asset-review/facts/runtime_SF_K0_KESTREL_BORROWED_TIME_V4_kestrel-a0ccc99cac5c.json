@@ -1,0 +1,76 @@
+{
+  "status": "Guarded reviewed geometry reproduced; a New Game/Launch and thrust probe drew the candidate through a browser-only package override. Canonical publication and an unobstructed ordinary-flight appearance check remain open.",
+  "route": "Hitch player-facing starter, internal ship_kestrel. Default New Game owned ship maps to the K0 body. Understory gardener variant is a distinct asset.",
+  "authoringCode": [
+    "tools/blender/forge/ships/kestrel.py",
+    "tools/blender/forge/animations/ANI_01.py",
+    "tools/blender/forge/animations/ANI_02.py",
+    "tools/blender/forge/animations/ANI_05.py",
+    "tools/blender/forge/animations/ANI_06.py",
+    "tools/blender/forge/animations/ANI_07.py",
+    "tools/blender/forge/animations/ANI_16.py",
+    "tools/blender/forge/animations/ANI_17.py",
+    "tools/blender/forge/animations/ANI_18.py"
+  ],
+  "deploymentCode": [
+    "src/core/newGameBoot.js",
+    "src/data/wholeShipVisualIdentity.js",
+    "src/render/partsLibrary.js",
+    "src/render/wholeShipLodPolicy.js"
+  ],
+  "baseline": {
+    "evidence": ".devshots/fleet/kestrel-astra/baseline.json",
+    "releaseBytes": [
+      919420,
+      602284,
+      472460
+    ],
+    "renderTrianglesExcludingCollider": [
+      39214,
+      14496,
+      5397
+    ],
+    "materials": [
+      17,
+      16,
+      15
+    ],
+    "textures": 6,
+    "motionPivots": 18,
+    "sockets": 9,
+    "collisionTriangles": 300,
+    "lod2SharedTextures": 6
+  },
+  "identity": [
+    "Steel teal pressure hull, charcoal shoulders, cyan livery, orange warning accents, salvage-green repair pod.",
+    "Long canopy and dorsal spine, twin bow guns, mining chin, axial drive drum, radiator combs, dorsal dish.",
+    "DIE LAUGHING hero stencil; default appearance worn with wear0.55 and borrowed_time decal, null explicit hull/accent paint."
+  ],
+  "constraints": [
+    "Preserve owner-authored silhouette, 18 motion pivots, nine pinned sockets, collider and damage hooks.",
+    "No canonical GLBs/shared metadata changes before root coordination.",
+    "Separate source/package diagnostics from ordinary flight and frame-time evidence."
+  ],
+  "provisionalChanges": [
+    "32-section pressure hull; 12-side gun cylinders; 32-side drive components.",
+    "Brighter teal/charcoal palette, seated hull vents and real repair recess.",
+    "Two-triangle lower-tier cyan spine, no new draw/material; hooked lower-tier normals still under review.",
+    "Original canopy retained; trial did not earn acceptance."
+  ],
+  "lodReachability": "Player stays LOD0. Current policy admits anonymous hostile bodies below 32 CSS pixels at LOD2; LOD1 is authored-only while runtime demotion remains disabled. Do not describe these tiers as player transitions.",
+  "sharedAppearanceFinding": "borrowed_time default installs an illustratedStencils hull-bounds decal via partsLibrary. Its oversized upside-down projection is separate from the authored rotated shoulder stencil. Shared appearance code unchanged.",
+  "reproduction": {
+    "evidence": ".devshots/fleet/kestrel-astra/reproduction-summary.json",
+    "source": "tools/blender/forge/source_assets/kestrel/README.md",
+    "geometrySourceBytes": 2721472,
+    "limitations": [
+      "Reviewed geometry pins are authoritative; parametric geometry edits require explicit re-review and repinning.",
+      "Authored GLBs retain unused generated buffers until official release optimization.",
+      "No new game run: shared game lock occupied. Ordinary flight probe previously failed before admission.",
+      "Shared inverted default decal remains outside this asset write set."
+    ],
+    "reviewGuardEvidence": ".devshots/fleet/kestrel-astra/review-guard-check.json",
+    "blenderRoundtripEvidence": ".devshots/fleet/kestrel-astra/blender-pin-roundtrip.json"
+  },
+  "flightCandidateEvidence": ".devshots/fleet/kestrel-astra/flight-final-v2/hero-composed-observation.json"
+}

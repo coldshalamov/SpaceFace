@@ -1,8 +1,9 @@
 # Per-asset graphics review
 
-The owner requested 20 substantive review/improvement iterations for each individual asset.
-Record real actions and decisions; do not manufacture cycles or repeat unchanged checks to reach
-the number. A count is not visual acceptance. The game's renderer and gameplay camera remain the
+The owner requests a fast, systematic quality and practical efficiency pass over every in-scope
+model. Visually inspect each model, improve its surfaces and construction where needed, and record
+the outcome. Use as many iterations as the particular asset needs; there is no fixed iteration quota.
+The game's renderer and gameplay camera remain the
 visual authority; see [the graphics front door](../../../../docs/visual-assets/README.md).
 Use [faction direction](FACTION_DIRECTION.md) to connect a model's construction and finish to its
 actual owner, role and story, while checking the live asset selection before applying that direction.
@@ -16,12 +17,21 @@ Judge a surface by its role, gameplay size and actual appearance. It needs a con
 response and appropriate detail; an unfinished primitive or a featureless tinted box is not a
 finished cockpit or hull.
 
+For each reachable model, inspect representative gameplay and detail views, apply a suitable
+textured or otherwise convincing material treatment to visible surfaces, and check for obvious
+geometry, material, texture and draw waste. Preserve intentional functional lights and glass.
+Batch similar assets and reuse suitable surfaces where this preserves their individual character.
+Record one concise result per model: pending, in progress, passed, or needs follow-up; include the
+asset identity/version, views, changes and any remaining issue. A single considered pass can be
+enough. Do not require performance captures or benchmarks for this campaign; describe theoretical
+savings as such and do not claim a measured speedup without a measurement. Refresh the queue for
+newly landed assets and keep unused or uncertain items distinct from player-reachable models.
+
 Start with shared material, lighting, loading and assembly causes that affect many visible assets,
 then fix representative groups and move through the remaining inventory in batches. Do not hold the
 fleet review on one model while waiting for repeated long captures. Record failed or unfinished
-work and return when a concrete improvement can change it. The requested 20 substantive iterations
-are cumulative per asset across useful passes; never manufacture rounds or equate a count with a
-finished model. Check captured inputs and fatal browser errors promptly so broken render sessions do
+work and return when a concrete improvement can change it. Record a clear per-model disposition;
+do not substitute iteration counts or an inventory for visual review. Check captured inputs and fatal browser errors promptly so broken render sessions do
 not occupy the shared lock for extended periods.
 
 ## Assets arriving through pull requests
@@ -33,7 +43,8 @@ performance review to newly reachable assets. Inspect the actual picture at usef
 detail views; reject unfinished shapes, unexplained parts, flat or washed-out surfaces and excessive
 glow. Preserve readable material detail and restrained light while measuring costs separately from
 draw or file counts. Use generated image textures where they improve the result, with the existing
-imagegen workflow and provenance; use GPT-6 Astra for custom Blender or SVG model generation.
+imagegen workflow and provenance. Use Luna for bounded cataloging and mechanical work, Terra for
+most asset and 3D implementation work, and Sol for difficult one-off decisions; do not use Astra.
 
 When the current local asset list has been reviewed but an asset-bearing PR has not yet landed,
 review and improve that PR under the same standards. Coordinate around the separate merge agent's
@@ -101,10 +112,11 @@ node scripts/fleet/asset-review.mjs record .devshots/fleet/graphics-overhaul-ass
 `current-isolated` and `ordinary-play`; use `[]` if an iteration did not inspect a specific
 variant or LOD. `show` lists each declared LOD target and its evidence separately from the model's
 iteration count. Named LODs are read from GLB node names or extras; their presence does not
-establish runtime visibility. An asset cannot be called fully reviewed simply because it has 20 entries
-while one of its LODs or distinct playable variants remains unexamined.
+establish runtime visibility. Record the actual variants reviewed and any material gaps; an iteration
+count alone does not establish coverage.
 
-`show` reports recorded iterations and the remainder of the requested 20. A pending comparison,
+The current `show` tool still reports a historical remainder toward 20; that number is not a requirement.
+A pending comparison,
 blank capture, metadata inventory or historical screenshot must not be described as current
 player-route acceptance. Report actual measured performance separately from resource counts or a
 synthetic benchmark. The recorder rejects missing evidence and exact repeated observations.
@@ -119,8 +131,7 @@ node scripts/fleet/game-lock.mjs run -- node scripts/fleet-look.mjs --files=whol
 Inspect the images and target draw reports before recording a decision. An isolated preview uses
 the live renderer but is not the ordinary gameplay route; a source-GLB preview does not prove the
 compiled package shipped. Use matched within-session measurements for performance comparisons.
-Coordinate shared files and current claims. The owner requires GPT-6 Astra for custom Blender/SVG
-model generation and imagegen for generated 2D textures.
+Coordinate shared files and current claims. Use imagegen when generated 2D textures are appropriate.
 
 The script, facts, seed and iteration journal are repository files; the generated index and large
 capture evidence remain in `.devshots`. Preserve the referenced `.devshots` files in an external

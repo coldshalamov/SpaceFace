@@ -2640,6 +2640,13 @@
       "inspectionStatus": "not-yet-inspected"
     },
     {
+      "id": "bomb:frag",
+      "source": "src/render/visualFactory.js",
+      "evidence": "bomb_frag starter payload; buildBomb default studded-drum geometry, shared bomb chassis family",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "runtime route traced; visual and practical review pending"
+    },
+    {
       "id": "bomb:concussion",
       "source": "src/render/visualFactory.js",
       "evidence": "bomb entity dispatch variant",
@@ -3114,6 +3121,43 @@
       "evidence": "player-facing orrery preview",
       "renderStatus": "not-yet-rendered",
       "inspectionStatus": "not-yet-inspected"
+    },
+    {
+      "id": "ship:concord-interdictor",
+      "source": "src/render/ships/concordPatrol.js",
+      "sourceSha256": "32f92d6865d1b0ed9951bfc093975e187844aaefe3ec9607cfe9e365c9e8a96b",
+      "evidence": "SF_SCN_CONCORD_INTERDICTOR; visualOverrides maps patrol_lawman and the 47-A meridian recovery tug to this builder; actual admission depends on surrounding asset selection",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "source route traced; visual and practical review pending"
+    },
+    {
+      "id": "ship:quiet-raider",
+      "source": "src/render/ships/quietRaider.js",
+      "sourceSha256": "9e5b34f6d7000d0871d9bd889e2b329883268d1c47a680197aafcde994471123",
+      "evidence": "SF_QUIET_RAIDER; visualOverrides maps corsair_raider to this builder; actual admission depends on surrounding asset selection",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "source route traced; visual and practical review pending"
+    },
+    {
+      "id": "ship:drift-barge",
+      "source": "src/render/ships/driftBarge.js",
+      "evidence": "SF_DMC_DRIFT_BARGE; visualOverrides maps bruiser_brawler to this builder; actual admission depends on asset selection",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "source reviewed; visual and practical review pending"
+    },
+    {
+      "id": "ship:meridian-trader",
+      "source": "src/render/ships/meridianTrader.js",
+      "evidence": "SF_MTS_MERIDIAN_HAULER; visualOverrides maps mule_trader to this builder; actual admission depends on asset selection",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "source reviewed; visual and practical review pending"
+    },
+    {
+      "id": "ship:reaver-pirate",
+      "source": "src/render/ships/reaverPirate.js",
+      "evidence": "SF_REACH_REAVER_PIRATE; visualOverrides maps reaver_pirate and several 47-A roles to this builder; actual admission depends on asset selection",
+      "renderStatus": "not-yet-rendered",
+      "inspectionStatus": "source reviewed; visual and practical review pending"
     }
   ]
 }

@@ -1,0 +1,45 @@
+{
+  "route": "ship_drifter and smuggler production body; Helix courier and Archive censor are separately identified faction bodies.",
+  "variationDiscovery": "incomplete",
+  "status": "Seventeen substantive iterations recorded. Original production authoring route restored exactly. Blocked guarded recipe/helper inputs preserved in .devshots/fleet/drifter-astra/guarded-export-experiment; no production-path changes remain. No canonical publication or pending Drifter capture.",
+  "evidence": [
+    ".devshots/fleet/drifter-astra/preserved-contract-comparison.json",
+    ".devshots/fleet/drifter-astra/preserved-comparison/report.json",
+    ".devshots/fleet/drifter-astra/preserved-comparison/_sheet_close.png",
+    ".devshots/fleet/drifter-astra/motion-contract-comparison.json",
+    ".devshots/fleet/drifter-astra/socket-contract-comparison.json",
+    ".devshots/fleet/drifter-astra/PRODUCTION_PLAN.md",
+    ".devshots/fleet/drifter-astra/complete-pictures/report.json",
+    ".devshots/fleet/drifter-astra/complete-pictures/comparison-close.png",
+    ".devshots/fleet/drifter-astra/complete-pictures/comparison-inspect.png",
+    ".devshots/fleet/drifter-astra/guarded-export-experiment/tools/blender/forge/source_assets/drifter/README.md",
+    ".devshots/fleet/drifter-astra/all-node-transform-comparison.json",
+    ".devshots/fleet/drifter-astra/native-correspondence.json",
+    ".devshots/fleet/drifter-astra/native-comparison/source-hashes.json",
+    ".devshots/fleet/drifter-astra/guard-fixtures/report.json",
+    ".devshots/fleet/drifter-astra/fail-closed-result.json",
+    ".devshots/fleet/drifter-astra/guarded-export-experiment/preserved-files.json",
+    ".devshots/fleet/fleetlook-readiness-investigation/summary.json",
+    ".devshots/fleet/fleetlook-readiness-investigation/FINDINGS.md"
+  ],
+  "materialRisk": "Selected scratch geometry retains collider faces, sockets, materials, images and animation pivot, but expanded review found a ~0.0685-unit LOD2 drive-anchor shift. Native rebuilds vary normals/tangents and sometimes one triangle. The archived guard blocks promotion. Earlier missing-band interpretation is withdrawn: retained LOD1 PNG band regions match within one RGB level. Moving VFX, paints, wreck fit and performance remain unaccepted.",
+  "pending": [
+    "Resolve repeatable native normals/tangents/topology without weakening material visual equivalence",
+    "Preserve the exact baseline LOD2 drive anchor natively, then review corrected source references",
+    "Observe actual motion/exhaust/mining, paint and tier transitions on live Drifter",
+    "Requalify wreck fit for changed release hash and inspect wreck appearance",
+    "Complete remaining three substantive iterations toward 20 without fabricated counts"
+  ],
+  "corrections": [
+    {
+      "recordedAt": "2026-11-14T06:45:14.802087+00:00",
+      "performedBy": "drifter_continuation_astra",
+      "observation": "Correction to the LOD1 missing-emissive-band interpretation: both retained close PNGs contain the bands. Nose/tail regions have 600/1419 bright amber pixels in each image, with corresponding RGB differences of at most one level. The previous missing-band visual interpretation is withdrawn. This pair establishes neither shader admission failure nor camera/visibility mismatch.",
+      "evidence": [
+        ".devshots/fleet/fleetlook-readiness-investigation/summary.json",
+        ".devshots/fleet/fleetlook-readiness-investigation/FINDINGS.md"
+      ],
+      "scope": "Correction of the original interpretation; not a new asset iteration or native-export acceptance."
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "route": "Standalone packaged modular engine; no ordinary geometry consumer established. All roster plans use complete whole bodies. Pelican and Ironback map to twin only in the bypassed modular selector; Mule/Atlas reaction_l definitions have explicit industrial mappings and also use whole bodies. Unknown identities select small ion; miner traffic selects Helios Cradle.",
+  "variationDiscovery": "unresolved",
+  "playableVariants": [],
+  "deploymentCode": [
+    "src/render/partsLibrary.js",
+    "src/data/wholeShipVisualIdentity.js",
+    "src/render/vfxProfiles.js"
+  ],
+  "dynamicCaveat": "An incomplete engine library can reach hashed fallback; no live route causing that condition observed. VFX profile engine_ion_twin is independently active and does not prove use of this GLB.",
+  "authoringCode": [
+    "tools/art/generate_ship_parts_library.py"
+  ],
+  "authoringCaveat": "Current source includes merged meshes and later DET detail/texture changes absent from the historical generator. Preserve prepared source if later refining.",
+  "status": "Four substantive source/contract/current-isolated review passes recorded;20 target incomplete. No ordinary geometry consumer established. Side/top/chase valid17 draws; first place16/17 incomplete. No production changes.",
+  "diagnostics": [
+    ".devshots/fleet/engine-ion-twin-astra/selection.json",
+    ".devshots/fleet/engine-ion-twin-astra/fallback-selection.json",
+    ".devshots/fleet/engine-ion-twin-astra/census.json",
+    ".devshots/fleet/engine-ion-twin-astra/components.json",
+    ".devshots/fleet/engine-ion-twin-astra/binding-contract.json",
+    ".devshots/fleet/engine-ion-twin-astra/baseline/report.json"
+  ]
+}

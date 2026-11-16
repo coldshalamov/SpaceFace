@@ -1,0 +1,14 @@
+{
+  "route": "The source sets userData.assetId to SF_QUIET_RAIDER. visualOverrides.js maps corsair_raider to this builder; actual admission depends on surrounding asset selection.",
+  "deploymentCode": [
+    "src/render/ships/quietRaider.js",
+    "src/render/visualOverrides.js"
+  ],
+  "sourceSha256": "9e5b34f6d7000d0871d9bd889e2b329883268d1c47a680197aafcde994471123",
+  "status": "Needs follow-up. The 2026-11-16 source trace made no model change and captured no visual views; appearance, practical cost, and actual selected runtime representation remain unassessed.",
+  "variationDiscovery": "unresolved",
+  "diagnostics": [
+    ".devshots/fleet/graphics-overhaul-asset-catalog/procedural-ship-handoff-2026-11-16.md"
+  ],
+  "caveat": "The source map establishes a candidate builder route, not that this builder is selected in ordinary play."
+}

@@ -1,0 +1,27 @@
+{
+  "route": "The modular selection map names engine_plasma_ring for Bastion, Warden, Colossus and Leviathan and for drive_torch_l; all current roster ships instead select required complete Forge bodies and skip modular engines. A direct current-plan sweep of all 15 roster ships selected no plasma-ring engine; an unknown synthetic definition selected the small ion engine. No ordinary consumer has been established. Special construction paths and an incomplete-library fallback are not ruled out.",
+  "deploymentCode": [
+    "src/render/partsLibrary.js",
+    "src/render/assetLoader.js",
+    "src/data/wholeShipVisualIdentity.js"
+  ],
+  "variationDiscovery": "unresolved",
+  "status": "Source/release/package and one existing hash-matched isolated view inspected. Three material candidates are scratch-only and their bounded four-angle package-loader comparison is queued. Ordinary play and live timing remain unverified.",
+  "independentVfxCaveat": "engine_plasma_ring is also a thruster VFX profile used by other ship definitions. A VFX profile reference does not prove that this 3D engine mesh is drawn.",
+  "authoringCaveat": "The older generator recipe does not alone account for all later authored detail meshes and the current single-material assignments; preserve the current source and its hooks.",
+  "findings": [
+    "The visible nine primitives all use the same Material_Accent, so the shell, fan, details and plasma core share a bright cyan treatment in the inspected image; Material_Hull is present but unused.",
+    "The source base-color, normal and ORM are uniform placeholder maps. Existing package compilation already reduced the neutral normal and ORM maps to 4x4; the source white sRGB albedo remains 1024x1024 in the package.",
+    "The exact white albedo payload also appears in the engine-resonator package. An exact-byte and role-guarded 4x4 replacement has matching decoded pixels and BC3, BC7, ASTC and ETC2 blocks at every mip, but has not been integrated into the compiler yet.",
+    "Preserve the fan, core and plume hooks and their per-instance drive behavior. The scratch material variants retain identical geometry, node transforms and extras, and match baseline finalizeShip drive samples."
+  ],
+  "evidence": [
+    ".devshots/fleet/cockpit-dome-review/orm-shipping/report.json",
+    ".devshots/fleet/cockpit-dome-review/orm-shipping/engine_plasma_ring_place.png",
+    ".devshots/fleet/plasma-ring-review/reachability.json",
+    ".devshots/fleet/plasma-ring-review/inventory.json",
+    ".devshots/fleet/plasma-ring-review/white-albedo-comparison.json",
+    ".devshots/fleet/plasma-ring-review/material-candidates.json",
+    ".devshots/fleet/plasma-ring-review/drive-hooks.json"
+  ]
+}

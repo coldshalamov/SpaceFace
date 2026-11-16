@@ -1,0 +1,37 @@
+{
+  "route": "CORRECTION to initial journal entry: ordinary spawnJettisonedCargoPod does not stamp authoredPayloadAssetId. Its explicit authored admission is false, so visualOverrides.packagedPropSpec selects pods/pod_cargo_container.glb. The conditional partsLibrary jettison selector would select standard pod, but that branch is not admitted by these producers. Standard pod is connected through named derelict POIs (world stamps fx/dressing placeId and landmarkGlb) and selected everyday station-yard dressing (everydaySpaceKit + placeId), then buildAuthoredPlaceProp. Their visible ordinary-route result remains unobserved.",
+  "deploymentCode": [
+    "src/systems/cargo.js",
+    "src/systems/lootShards.js",
+    "src/data/cargoPayloadTypes.js",
+    "src/render/partsLibrary.js",
+    "src/render/assetLoader.js",
+    "src/render/visualOverrides.js",
+    "src/core/presentationAdmission.js",
+    "src/data/scenarios/47aLiveScene.js",
+    "src/systems/world.js",
+    "src/render/renderPackageManifest.js",
+    "src/data/sectors.js",
+    "src/data/everydaySpaceKitDressing.js",
+    "src/data/occupationalYardDressing.js"
+  ],
+  "status": "Eight substantive review iterations. Scratch hollow-mouth candidate visibly exposes floor and inner wall in corrected opened end/oblique views at all three LODs. No canonical standard-pod change or ordinary-route acceptance. Requested twenty iterations remain incomplete.",
+  "variationDiscovery": "unresolved",
+  "animation": "Eight ANI-11 door/retainer/lock motion groups plus ANI-24 drift. Do not merge across their motion ownership. The separately packaged breached and hazmat models are not covered by this review.",
+  "resourceSharing": "renderPackageLoader compiles a flat instance plan and marks geometry/material/texture resources immutable and shared. This establishes shared resources, not actual draw instancing. Ordinary-route pooling and active LOD transitions have not been observed. Submission census: six static draws have distinct materials; fourteen draws span eight independent motion groups. No safe additional same-material static merge identified.",
+  "materialReview": "Six material slots use six shared panel/machinery maps with correct albedo, normal and packed ORM bindings. Package maps are KTX2 with full mip chains. Source has duplicated texture descriptors but only six images; release deduplicates descriptors. Existing paint2/Material_Armor gives the recessed rear wall charcoal dielectric paint with roughness 0.5 and metalness 0.1. Source-map inspection supports retaining these maps; final response to live lighting remains pending. Forge paint skips faction multipliers unless explicitly overridden.",
+  "caveat": "Player-route appearance, lighting, LOD transitions, commodity presentation variants, instance draw batching and frame-time impact remain unverified. Source ray tests establish cavity geometry only. Earlier *-open exports compensated pose during parenting; mouth-posed-comparison supersedes their doorway evidence. Both source and candidate show stronger broad LOD2 highlights than LOD0/1; no runtime LOD transition acceptance.",
+  "diagnostics": [
+    ".devshots/fleet/cargo-pod-astra/census.json",
+    ".devshots/fleet/cargo-pod-astra/source-open/build.json",
+    ".devshots/fleet/cargo-pod-astra/candidate-open/build.json",
+    ".devshots/fleet/cargo-pod-astra/candidate-compact-open/build.json",
+    ".devshots/fleet/cargo-pod-astra/contract-check.json",
+    ".devshots/fleet/cargo-pod-astra/routing.json",
+    ".devshots/fleet/cargo-pod-astra/materials/report.json",
+    ".devshots/fleet/cargo-pod-astra/baseline/report.json",
+    ".devshots/fleet/cargo-pod-astra/comparison/report.json",
+    ".devshots/fleet/cargo-pod-astra/mouth-posed-comparison/report.json",
+    ".devshots/fleet/cargo-pod-astra/submission-census.json"
+  ]
+}

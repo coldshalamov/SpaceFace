@@ -1,0 +1,18 @@
+{
+  "route": "Player Mule via requiredWholeShip selection, three LODs; warm-freighter site shares this production body. Fulfillment and Pitborn resolve separate asset identities.",
+  "variationDiscovery": "incomplete",
+  "status": "5 substantive passes; target 20 incomplete. Scratch duplicate-stud correction built; no production edits or current-renderer acceptance. Locked baseline capture queued.",
+  "evidence": [
+    ".devshots/fleet/mule-astra/routes.json",
+    ".devshots/fleet/mule-astra/census.json",
+    ".devshots/fleet/mule-astra/comparison.json"
+  ],
+  "materialRisk": "LOD0 collider regeneration changes point set by up to 0.001092 asset units; warm-freighter pins old release SHA and fit.",
+  "pending": [
+    "Current chase/top/side for all three LODs",
+    "Scratch correction comparison",
+    "Material/spine-emission comparison",
+    "Player and warm-freighter ordinary-route evidence",
+    "Complete remaining substantive iterations without padding"
+  ]
+}

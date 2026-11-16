@@ -1,0 +1,17 @@
+{
+  "status": "Source, release, package and selector traced; one existing hash-matched isolated view inspected. Material and placement candidates remain scratch-only, and ordinary mesh reachability is unresolved.",
+  "route": "The modular selector maps ship_saucer and gravimetric, inertialess and field-sail drives to the resonator part. The current player roster chooses complete hulls and does not request a modular engine. A synthetic unknown definition selects the small ion engine. Separate resonator thruster-profile references do not establish a consumer for this mesh.",
+  "deploymentCode": ["src/render/partsLibrary.js", "src/data/wholeShipVisualIdentity.js", "src/render/assetLoader.js", "src/render/vfxProfiles.js"],
+  "authoringCode": ["tools/art/generate_ship_parts_library.py", "tools/art/blender/sf_framing.py"],
+  "authoringCaveat": "The existing prepared asset includes later DET details absent from its older procedural generator; do not regenerate from that recipe alone.",
+  "variationDiscovery": "unresolved",
+  "currentPackage": {"primitives": 15, "triangles": 3826, "materials": 3, "drawsInOneIsolatedView": 15, "bytes": 82368},
+  "findings": [
+    "Three source maps are uniform; compact normal and ORM maps are already in the runtime package, while the white albedo is being addressed separately by the lead.",
+    "The existing isolated view shows a very dark casing and dominant bright violet details and core, including blocky accents; material candidates have not yet been visually judged.",
+    "At rest DET_resonance_port is disjoint from every other mesh bounding box, with a nearest bounding-box gap of at least 0.0672 units to the core. Its relationship to the animated assembly and its intended placement require visual review.",
+    "Twelve 80-triangle rivet components and six 108-triangle facets are packed into one mechanical mesh; the three drive hooks require independent animation bindings.",
+    "Runtime composition can batch compatible static primitives, so isolated package submissions do not establish an equal flight-draw cost."
+  ],
+  "evidence": [".devshots/fleet/resonator-review/inventory.json", ".devshots/fleet/resonator-review/reachability.json", ".devshots/fleet/resonator-review/components.json", ".devshots/fleet/cockpit-dome-review/orm-shipping/report.json", ".devshots/fleet/resonator-review/material-candidates.json", ".devshots/fleet/resonator-review/placement-candidates.json"]
+}

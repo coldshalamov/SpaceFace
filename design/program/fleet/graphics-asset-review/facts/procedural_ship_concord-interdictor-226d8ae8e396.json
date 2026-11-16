@@ -1,0 +1,14 @@
+{
+  "route": "The source sets userData.assetId to SF_SCN_CONCORD_INTERDICTOR. visualOverrides.js maps patrol_lawman and the 47-A meridian recovery tug to this builder; actual admission depends on surrounding asset selection.",
+  "deploymentCode": [
+    "src/render/ships/concordPatrol.js",
+    "src/render/visualOverrides.js"
+  ],
+  "sourceSha256": "32f92d6865d1b0ed9951bfc093975e187844aaefe3ec9607cfe9e365c9e8a96b",
+  "status": "Needs follow-up. The 2026-11-16 source trace made no model change and captured no visual views; appearance, practical cost, and actual selected runtime representation remain unassessed.",
+  "variationDiscovery": "unresolved",
+  "diagnostics": [
+    ".devshots/fleet/graphics-overhaul-asset-catalog/procedural-ship-handoff-2026-11-16.md"
+  ],
+  "caveat": "The source map establishes candidate builder routes, not that this builder is selected in ordinary play."
+}
