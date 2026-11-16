@@ -63,6 +63,8 @@ test('HUD placement survives the normal settings save and prompts an autosave', 
     _syncSharedPlayerStore() {},
     _cancelCeresAttachmentRestore() {},
     _cancelCeresEntityReferenceRestore() {},
+    // init() retains the temporary-campaign snapshot before wiring (cf0b1e1b16).
+    _retainTemporaryCampaignState() {},
     _publishSharedStoreStatus() {},
     recordDirty() {},
     requestAutosave(reason) { reasons.push(reason); },
