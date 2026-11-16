@@ -2160,8 +2160,38 @@ def iter_export_objects(root):
     return objs
 
 
-def export_glb(root, path):
+def join_parts_rack_static(root):
+    """Join only the rack's static, nonsemantic frame pieces by material."""
+    groups = {
+        'esk_paint_service_blue': ('aleg0_a', 'aleg0_f', 'aleg1_a', 'aleg1_f',
+                                   'atie0', 'atie1', 'spine'),
+        'esk_struct_alloy': ('foot0', 'foot1', 'sparcradle_a', 'sparcradle_f'),
+        'esk_pipe_steel': ('spar0', 'spar1', 'spar2'),
+    }
+    if root.name != 'parts_rack':
+        raise RuntimeError('rack join applied to another asset')
+    by_name = {obj.name: obj for obj in root.children}
+    for role, names in groups.items():
+        for name in names:
+            obj = by_name.get(name)
+            if (obj is None or obj.type != 'MESH' or obj.children or obj.animation_data
+                    or obj.data.shape_keys or len(obj.data.materials) != 1
+                    or obj.data.materials[0].name != role or len(obj.keys())):
+                raise RuntimeError(f'parts_rack static join input drifted: {name}')
+    for names in groups.values():
+        objects = [by_name[name] for name in sorted(names)]
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in objects:
+            obj.select_set(True)
+        bpy.context.view_layer.objects.active = objects[0]
+        bpy.ops.object.join()
+
+
+def export_glb(root, path, *, rack_policy=False):
     bpy.context.view_layer.update()
+    if rack_policy:
+        join_parts_rack_static(root)
+        bpy.context.view_layer.update()
     # Stabilize every mesh *before* selection so the exporter sees a fixed
     # triangle stream even if it walks objects in an internal order.
     for obj in iter_export_objects(root):
@@ -2173,12 +2203,37 @@ def export_glb(root, path):
     for obj in export_objs:
         obj.select_set(True)
     bpy.context.view_layer.objects.active = root
-    bpy.ops.export_scene.gltf(
-        filepath=str(path), export_format='GLB', use_selection=True,
-        export_apply=True, export_yup=True,
-        export_texcoords=True, export_normals=True,
-        export_materials='EXPORT', export_extras=True,
-    )
+    # The stock rack's closed opaque pieces ship front-sided; its repair light
+    # remains double-sided. Materials are shared between kit builds, so restore
+    # their settings immediately after this one export.
+    saved_culling = {}
+    if rack_policy:
+        if root.name != 'parts_rack':
+            raise RuntimeError('rack export policy applied to another asset')
+        expected = {'esk_paint_service_blue', 'esk_struct_alloy', 'esk_light_repair',
+                    'esk_id_plate', 'esk_bare_steel', 'esk_patch_plate',
+                    'esk_paint_civic_bone', 'esk_paint_industrial_ochre', 'esk_pipe_steel'}
+        materials = {slot.material for obj in export_objs if obj.type == 'MESH'
+                     for slot in obj.material_slots if slot.material}
+        if {mat.name for mat in materials} != expected:
+            raise RuntimeError('parts_rack material set drifted; review export policy')
+        if any(mat.use_nodes and any(node.type == 'TEX_IMAGE' and node.image
+                                     for node in mat.node_tree.nodes)
+               for mat in materials):
+            raise RuntimeError('parts_rack gained an image texture; review UV export policy')
+        for mat in materials:
+            saved_culling[mat] = mat.use_backface_culling
+            mat.use_backface_culling = mat.name != 'esk_light_repair'
+    try:
+        bpy.ops.export_scene.gltf(
+            filepath=str(path), export_format='GLB', use_selection=True,
+            export_apply=True, export_yup=True,
+            export_texcoords=not rack_policy, export_normals=True,
+            export_materials='EXPORT', export_extras=True,
+        )
+    finally:
+        for mat, value in saved_culling.items():
+            mat.use_backface_culling = value
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
@@ -2474,7 +2529,7 @@ def main():
         chull['sf_collision'] = True
         chull.parent = root
         glb = OUT_SOURCE / f'{name}.glb'
-        digest = export_glb(root, glb)
+        digest = export_glb(root, glb, rack_policy=(name == 'parts_rack'))
         if name in FORGE_DERIVED:
             stamp_forge_source(glb, FORGE_DERIVED[name])
             digest = hashlib.sha256(glb.read_bytes()).hexdigest()

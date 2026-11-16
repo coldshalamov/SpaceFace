@@ -1,0 +1,236 @@
+{
+  "catalog": {
+    "releaseManifest": "assets/ships/release/release_manifest.json",
+    "runtimeManifest": "src/render/renderPackageManifest.js",
+    "schema": "spaceface.renderPackagePilots.v1"
+  },
+  "compiler": {
+    "externalizeKtx2": false,
+    "externalizeKtx2Hashes": null,
+    "name": "spaceface-render-package-compiler",
+    "positionPrecisionPolicy": "standard",
+    "sourceAssetId": "place_parts_rack",
+    "version": "1.0.0"
+  },
+  "flightStatic": {
+    "policy": {
+      "schema": "spaceface.flightRenderPackagePilots.v1"
+    },
+    "selected": false
+  },
+  "pilot": {
+    "assetId": "sf.render.parts-rack",
+    "dynamicNameIncludes": [],
+    "key": "parts-rack",
+    "kind": "place",
+    "metadataUrl": "assets/ships/release/render-packages/parts-rack/render-package.json",
+    "outputDir": "assets/ships/release/render-packages/parts-rack",
+    "releaseAssetId": "place_parts_rack",
+    "releaseBytes": 23624,
+    "releaseSha256": "464274899982bd867fdf999b2858511d6eac249705865f595243a514621fae5a",
+    "rootNode": "parts_rack",
+    "runtimeAssetId": "place_parts_rack",
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/places/place_parts_rack.glb"
+  },
+  "releaseRow": {
+    "contractNodeCount": 0,
+    "id": "place_parts_rack",
+    "kind": "part:places",
+    "ktx2Textures": 0,
+    "meshoptBufferViews": 24,
+    "release": "assets/ships/release/parts/places/place_parts_rack.glb",
+    "releaseBytes": 23624,
+    "releaseSha256": "464274899982bd867fdf999b2858511d6eac249705865f595243a514621fae5a",
+    "source": "assets/incubator/everyday_space_kit/source/parts_rack.glb",
+    "sourceBytes": 30388,
+    "sourceSha256": "325688b1c3ed509076792d47d2199e24a8efcd61d1c2fd4659d81a438e02fd74",
+    "textureProfiles": {
+      "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+      "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data",
+      "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear"
+    },
+    "textures": 0
+  },
+  "runtime": {
+    "assetId": "place_parts_rack",
+    "motionBank": null,
+    "slot": "place",
+    "sourceUrl": "assets/ships/release/parts/places/place_parts_rack.glb"
+  },
+  "schema": "spaceface.renderPackagePilotInputs.v1",
+  "semanticManifest": {
+    "anchors": [],
+    "assetId": "sf.render.parts-rack",
+    "collisions": [],
+    "dynamicGroups": [],
+    "hlods": [],
+    "kind": "place",
+    "lods": [],
+    "mergeGroups": [],
+    "schema": "spaceface.renderPackageSource.v1",
+    "semanticNodes": [
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.parts-rack.mesh.aleg0-a",
+        "independentlyCulled": false,
+        "mergeBoundary": "aleg0_a",
+        "node": "aleg0_a",
+        "parentId": "sf.render.parts-rack.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.parts-rack.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.parts-rack.mesh.fl-bracket",
+        "independentlyCulled": false,
+        "mergeBoundary": "fl_bracket",
+        "node": "fl_bracket",
+        "parentId": "sf.render.parts-rack.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.parts-rack.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.parts-rack.mesh.fl-housing",
+        "independentlyCulled": false,
+        "mergeBoundary": "fl_housing",
+        "node": "fl_housing",
+        "parentId": "sf.render.parts-rack.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.parts-rack.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.parts-rack.mesh.fl-lens",
+        "independentlyCulled": false,
+        "mergeBoundary": "fl_lens",
+        "node": "fl_lens",
+        "parentId": "sf.render.parts-rack.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.parts-rack.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.parts-rack.mesh.foot0",
+        "independentlyCulled": false,
+        "mergeBoundary": "foot0",
+        "node": "foot0",
+        "parentId": "sf.render.parts-rack.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.parts-rack.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.parts-rack.mesh.id",
+        "independentlyCulled": false,
+        "mergeBoundary": "id",
+        "node": "id",
+        "parentId": "sf.render.parts-rack.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.parts-rack.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.parts-rack.mesh.plate0",
+        "independentlyCulled": false,
+        "mergeBoundary": "plate0",
+        "node": "plate0",
+        "parentId": "sf.render.parts-rack.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.parts-rack.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.parts-rack.mesh.plate1",
+        "independentlyCulled": false,
+        "mergeBoundary": "plate1",
+        "node": "plate1",
+        "parentId": "sf.render.parts-rack.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.parts-rack.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.parts-rack.mesh.plate2",
+        "independentlyCulled": false,
+        "mergeBoundary": "plate2",
+        "node": "plate2",
+        "parentId": "sf.render.parts-rack.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.parts-rack.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.parts-rack.mesh.plate3",
+        "independentlyCulled": false,
+        "mergeBoundary": "plate3",
+        "node": "plate3",
+        "parentId": "sf.render.parts-rack.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.parts-rack.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.parts-rack.mesh.plate4",
+        "independentlyCulled": false,
+        "mergeBoundary": "plate4",
+        "node": "plate4",
+        "parentId": "sf.render.parts-rack.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.parts-rack.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.parts-rack.mesh.spar0",
+        "independentlyCulled": false,
+        "mergeBoundary": "spar0",
+        "node": "spar0",
+        "parentId": "sf.render.parts-rack.root",
+        "pipelineKey": "opaque",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.parts-rack.body",
+        "transparency": "opaque"
+      },
+      {
+        "cullingGroup": "asset",
+        "id": "sf.render.parts-rack.root",
+        "independentlyCulled": false,
+        "mergeBoundary": "asset-root",
+        "node": "parts_rack",
+        "parentId": null,
+        "pipelineKey": "root",
+        "role": "immutable",
+        "spatialClusterId": "sf.render.parts-rack.body",
+        "transparency": "opaque"
+      }
+    ]
+  },
+  "sourceGlb": {
+    "bytes": 23624,
+    "sha256": "464274899982bd867fdf999b2858511d6eac249705865f595243a514621fae5a",
+    "uri": "assets/ships/release/parts/places/place_parts_rack.glb"
+  }
+}

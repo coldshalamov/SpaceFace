@@ -2320,12 +2320,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.parts-rack",
-    "expectedContentHash": "00b1bd99cd814754cccc9a096385a81347db33ee800e9c6d9f787f6679ea78c6",
+    "expectedContentHash": "2f96366723dcbf1314691e37f065f85b1e229e02de445ac10381e38dc47879bb",
     "key": "parts-rack",
     "metadataUrl": "assets/ships/release/render-packages/parts-rack/render-package.json",
     "runtimeAssetId": "place_parts_rack",
     "slot": "place",
-    "sourceSha256": "cf134604e3ffd5c3ac039f494437278645862ff51abc7f5748715ffa5b1e7921",
+    "sourceSha256": "464274899982bd867fdf999b2858511d6eac249705865f595243a514621fae5a",
     "sourceUrl": "assets/ships/release/parts/places/place_parts_rack.glb"
   },
   {

@@ -773,7 +773,7 @@
         4.0,
         5.029
       ],
-      "parts": 23,
+      "parts": 12,
       "sockets": [],
       "collisionProxy": {
         "kind": "box",
@@ -788,8 +788,8 @@
           2.514
         ]
       },
-      "bytes": 35324,
-      "sha256": "bf0d678b375b6cf4cbcfef3207c03b9e46e519ce505c69d2d0030bc01bd43a51",
+      "bytes": 30388,
+      "sha256": "325688b1c3ed509076792d47d2199e24a8efcd61d1c2fd4659d81a438e02fd74",
       "family": "service",
       "role": "A-frame stock rack: leaning mixed hull plates + spar tubes in cradles",
       "states": "full=as built; depleted=fewer plates (subtraction at instancing)",

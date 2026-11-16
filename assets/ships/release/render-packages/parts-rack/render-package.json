@@ -6,158 +6,33 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "00b1bd99cd814754cccc9a096385a81347db33ee800e9c6d9f787f6679ea78c6",
+  "contentHash": "2f96366723dcbf1314691e37f065f85b1e229e02de445ac10381e38dc47879bb",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          3.695170694778932,
-          4.235932350158691,
-          1.9039635848383345
+          3.695262908935547,
+          4.359950948783885,
+          1.9038265513432242
         ],
         "min": [
-          3.504829114486205,
-          -0.03593241795897484,
-          0.24603627211051804
+          -3.6952641010284424,
+          -0.03597700996113806,
+          -1.9038725661289908
         ]
       },
       "drawMode": 4,
-      "geometryHash": "cbcad241bee5bf025dcd5bf120d23b147aaf542a4d995b4ee37d7b0759ce68d2",
+      "geometryHash": "d3ff44e5013c60fd9193ac1b29c8c1c14e1ec0ccfa300db0db2aecca95ccd7a7",
       "id": "sf.render.parts-rack.mesh.aleg0-a.primitive.0",
-      "indexCount": 60,
+      "indexCount": 420,
       "indexed": true,
       "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.011",
       "nodeId": "sf.render.parts-rack.mesh.aleg0-a",
       "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          3.6951706976837193,
-          4.235932350158691,
-          -0.24603624680902436
-        ],
-        "min": [
-          3.5048291115814174,
-          -0.035932548344135284,
-          -1.903963610139828
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "bf7f4de146aa31e64d636073cbda1b031806f1e0540204e7d7e5fff3f36c9178",
-      "id": "sf.render.parts-rack.mesh.aleg0-f.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.001",
-      "nodeId": "sf.render.parts-rack.mesh.aleg0-f",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          -3.504829114486205,
-          4.235932350158691,
-          1.9039635848383345
-        ],
-        "min": [
-          -3.695170694778932,
-          -0.03593241795897484,
-          0.24603627211051804
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "cbcad241bee5bf025dcd5bf120d23b147aaf542a4d995b4ee37d7b0759ce68d2",
-      "id": "sf.render.parts-rack.mesh.aleg1-a.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.012",
-      "nodeId": "sf.render.parts-rack.mesh.aleg1-a",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          -3.5048291115814174,
-          4.235932350158691,
-          -0.24603624680902436
-        ],
-        "min": [
-          -3.6951706976837193,
-          -0.035932548344135284,
-          -1.903963610139828
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "bf7f4de146aa31e64d636073cbda1b031806f1e0540204e7d7e5fff3f36c9178",
-      "id": "sf.render.parts-rack.mesh.aleg1-f.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.004",
-      "nodeId": "sf.render.parts-rack.mesh.aleg1-f",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          3.6866053367230798,
-          4.299989134598052,
-          0.3500000238418579
-        ],
-        "min": [
-          3.513394472542057,
-          4.100010483932222,
-          -0.3500000238418579
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5bffd1b8bd02f789cf337c0cf47020f27ae06862ce33eabfa82aadadd7da4eff",
-      "id": "sf.render.parts-rack.mesh.atie0.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.003",
-      "nodeId": "sf.render.parts-rack.mesh.atie0",
-      "primitiveIndex": 0,
-      "vertexCount": 36
-    },
-    {
-      "bounds": {
-        "max": [
-          -3.513394472542057,
-          4.299989134598052,
-          0.3500000238418579
-        ],
-        "min": [
-          -3.6866053367230798,
-          4.100010483932222,
-          -0.3500000238418579
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5bffd1b8bd02f789cf337c0cf47020f27ae06862ce33eabfa82aadadd7da4eff",
-      "id": "sf.render.parts-rack.mesh.atie1.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.002",
-      "nodeId": "sf.render.parts-rack.mesh.atie1",
-      "primitiveIndex": 0,
-      "vertexCount": 36
+      "vertexCount": 252
     },
     {
       "bounds": {
@@ -179,7 +54,7 @@
       "indexed": true,
       "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
       "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.005",
+      "meshName": "Cylinder.001",
       "nodeId": "sf.render.parts-rack.mesh.fl-bracket",
       "primitiveIndex": 0,
       "vertexCount": 36
@@ -237,52 +112,27 @@
     {
       "bounds": {
         "max": [
-          4.100076200906258,
-          0.19990691556586598,
-          2
+          4.099999904632568,
+          0.6999023322128668,
+          2.0001372867687492
         ],
         "min": [
-          3.0999236083588784,
-          -0.09990692152633046,
-          -2
+          -4.099999904632568,
+          -0.09990233072275068,
+          -2.0001372867687492
         ]
       },
       "drawMode": 4,
-      "geometryHash": "65bf82fc6137d2413b9e70e499e60dbb9ed46f19fe0cfe9565bb48c0fe1e52be",
+      "geometryHash": "f9a76634c90e67d7b26edbe9079469c324b4ece761a9343ddf323d0d4192e13c",
       "id": "sf.render.parts-rack.mesh.foot0.primitive.0",
-      "indexCount": 36,
+      "indexCount": 144,
       "indexed": true,
       "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
       "materialPipelineKey": "opaque",
       "meshName": "Cube.010",
       "nodeId": "sf.render.parts-rack.mesh.foot0",
       "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          -3.0999236083588784,
-          0.19990691556586598,
-          2
-        ],
-        "min": [
-          -4.100076200906258,
-          -0.09990692152633046,
-          -2
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "65bf82fc6137d2413b9e70e499e60dbb9ed46f19fe0cfe9565bb48c0fe1e52be",
-      "id": "sf.render.parts-rack.mesh.foot1.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.013",
-      "nodeId": "sf.render.parts-rack.mesh.foot1",
-      "primitiveIndex": 0,
-      "vertexCount": 24
+      "vertexCount": 96
     },
     {
       "bounds": {
@@ -304,7 +154,7 @@
       "indexed": true,
       "materialHash": "be22fc38209109d7bc12285f39f62e37dd1a3ce1207285a7efa5c1f152eab929",
       "materialPipelineKey": "opaque",
-      "meshName": "Cube.001",
+      "meshName": "Cube.013",
       "nodeId": "sf.render.parts-rack.mesh.id",
       "primitiveIndex": 0,
       "vertexCount": 24
@@ -439,150 +289,25 @@
         "max": [
           3.200000524520874,
           0.7023484510981167,
-          -0.9398388598593684
+          1.2599019965181186
         ],
         "min": [
           -3.200000524520874,
           0.3976516025460636,
-          -1.2601611878243475
+          -1.259901877308829
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5c26019d3cb0435f6734bdff68ccc619accd42f3ac600006b9f09bc698d57652",
+      "geometryHash": "a0cf0ae2c7e79b4f62890751619b08acb65f5634e7927670c7bf0a367e50be28",
       "id": "sf.render.parts-rack.mesh.spar0.primitive.0",
-      "indexCount": 108,
+      "indexCount": 324,
       "indexed": true,
       "materialHash": "f6ac19da4caa1b500dda88b075a51b39f92241b30bb252f2dcf2a8ef20fa2a41",
       "materialPipelineKey": "opaque",
       "meshName": "Cylinder.010",
       "nodeId": "sf.render.parts-rack.mesh.spar0",
       "primitiveIndex": 0,
-      "vertexCount": 60
-    },
-    {
-      "bounds": {
-        "max": [
-          3.200000524520874,
-          0.7023484510981167,
-          0.1601611639824895
-        ],
-        "min": [
-          -3.200000524520874,
-          0.3976516025460636,
-          -0.1601611639824895
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5c26019d3cb0435f6734bdff68ccc619accd42f3ac600006b9f09bc698d57652",
-      "id": "sf.render.parts-rack.mesh.spar1.primitive.0",
-      "indexCount": 108,
-      "indexed": true,
-      "materialHash": "f6ac19da4caa1b500dda88b075a51b39f92241b30bb252f2dcf2a8ef20fa2a41",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.007",
-      "nodeId": "sf.render.parts-rack.mesh.spar1",
-      "primitiveIndex": 0,
-      "vertexCount": 60
-    },
-    {
-      "bounds": {
-        "max": [
-          3.200000524520874,
-          0.7023484510981167,
-          1.2601611878243475
-        ],
-        "min": [
-          -3.200000524520874,
-          0.3976516025460636,
-          0.9398388598593684
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5c26019d3cb0435f6734bdff68ccc619accd42f3ac600006b9f09bc698d57652",
-      "id": "sf.render.parts-rack.mesh.spar2.primitive.0",
-      "indexCount": 108,
-      "indexed": true,
-      "materialHash": "f6ac19da4caa1b500dda88b075a51b39f92241b30bb252f2dcf2a8ef20fa2a41",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.008",
-      "nodeId": "sf.render.parts-rack.mesh.spar2",
-      "primitiveIndex": 0,
-      "vertexCount": 60
-    },
-    {
-      "bounds": {
-        "max": [
-          -2.5999450133878375,
-          0.7000686617396292,
-          1.7000000476837158
-        ],
-        "min": [
-          -3.000054891244731,
-          0.19993131441851286,
-          -1.7000000476837158
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c74720c5f055286c08da004898fa2aa79cf02759d2bb93b5765307c0459375f4",
-      "id": "sf.render.parts-rack.mesh.sparcradle-a.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.006",
-      "nodeId": "sf.render.parts-rack.mesh.sparcradle-a",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          3.000054891244731,
-          0.7000686617396292,
-          1.7000000476837158
-        ],
-        "min": [
-          2.5999450133878375,
-          0.19993131441851286,
-          -1.7000000476837158
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c74720c5f055286c08da004898fa2aa79cf02759d2bb93b5765307c0459375f4",
-      "id": "sf.render.parts-rack.mesh.sparcradle-f.primitive.0",
-      "indexCount": 36,
-      "indexed": true,
-      "materialHash": "ef83aaa905288b1ffc8a4f70a3e53b116e2023318bdaa0f61fc2789039568538",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cube.008",
-      "nodeId": "sf.render.parts-rack.mesh.sparcradle-f",
-      "primitiveIndex": 0,
-      "vertexCount": 24
-    },
-    {
-      "bounds": {
-        "max": [
-          3.5999999046325684,
-          4.3598666312031185,
-          0.09536423588430645
-        ],
-        "min": [
-          -3.5999999046325684,
-          4.1401333687968815,
-          -0.09536423588430645
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "81e4aefd902a240c97c402dfb03eb1c3fde69b1506702d3167a9b029523811f6",
-      "id": "sf.render.parts-rack.mesh.spine.primitive.0",
-      "indexCount": 60,
-      "indexed": true,
-      "materialHash": "c4d232af0c91939b2fe36a452cebf6eacd8473e0a14efdb01faee1a6dd88c9f2",
-      "materialPipelineKey": "opaque",
-      "meshName": "Cylinder.009",
-      "nodeId": "sf.render.parts-rack.mesh.spine",
-      "primitiveIndex": 0,
-      "vertexCount": 36
+      "vertexCount": 180
     }
   ],
   "hlods": [],
@@ -657,21 +382,21 @@
     {
       "id": "sf.render.parts-rack.mesh.aleg0-a",
       "localTransform": [
-        2.135932384058833,
+        3.6952635049819946,
         0,
         0,
         0,
         0,
-        2.135932384058833,
+        3.6952635049819946,
         0,
         0,
         0,
         0,
-        2.135932384058833,
+        3.6952635049819946,
         0,
-        3.5999999046325684,
-        2.0999999660998583,
-        1.0749999284744263,
+        -5.960464477539062e-7,
+        2.161986969411373,
+        -0.00002300739288330078,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -685,266 +410,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.parts-rack.body",
       "worldTransform": [
-        2.135932384058833,
+        3.6952635049819946,
         0,
         0,
         0,
         0,
-        2.135932384058833,
+        3.6952635049819946,
         0,
         0,
         0,
         0,
-        2.135932384058833,
+        3.6952635049819946,
         0,
-        3.5999999046325684,
-        2.0999999660998583,
-        1.0749999284744263,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.parts-rack.mesh.aleg0-f",
-      "localTransform": [
-        2.1359324492514133,
-        0,
-        0,
-        0,
-        0,
-        2.1359324492514133,
-        0,
-        0,
-        0,
-        0,
-        2.1359324492514133,
-        0,
-        3.5999999046325684,
-        2.099999900907278,
-        -1.0749999284744263,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "aleg0_f",
-      "nodeName": "aleg0_f",
-      "nodePath": [
-        0,
-        1
-      ],
-      "parentId": "sf.render.parts-rack.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.parts-rack.body",
-      "worldTransform": [
-        2.1359324492514133,
-        0,
-        0,
-        0,
-        0,
-        2.1359324492514133,
-        0,
-        0,
-        0,
-        0,
-        2.1359324492514133,
-        0,
-        3.5999999046325684,
-        2.099999900907278,
-        -1.0749999284744263,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.parts-rack.mesh.aleg1-a",
-      "localTransform": [
-        2.135932384058833,
-        0,
-        0,
-        0,
-        0,
-        2.135932384058833,
-        0,
-        0,
-        0,
-        0,
-        2.135932384058833,
-        0,
-        -3.5999999046325684,
-        2.0999999660998583,
-        1.0749999284744263,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "aleg1_a",
-      "nodeName": "aleg1_a",
-      "nodePath": [
-        0,
-        2
-      ],
-      "parentId": "sf.render.parts-rack.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.parts-rack.body",
-      "worldTransform": [
-        2.135932384058833,
-        0,
-        0,
-        0,
-        0,
-        2.135932384058833,
-        0,
-        0,
-        0,
-        0,
-        2.135932384058833,
-        0,
-        -3.5999999046325684,
-        2.0999999660998583,
-        1.0749999284744263,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.parts-rack.mesh.aleg1-f",
-      "localTransform": [
-        2.1359324492514133,
-        0,
-        0,
-        0,
-        0,
-        2.1359324492514133,
-        0,
-        0,
-        0,
-        0,
-        2.1359324492514133,
-        0,
-        -3.5999999046325684,
-        2.099999900907278,
-        -1.0749999284744263,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "aleg1_f",
-      "nodeName": "aleg1_f",
-      "nodePath": [
-        0,
-        3
-      ],
-      "parentId": "sf.render.parts-rack.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.parts-rack.body",
-      "worldTransform": [
-        2.1359324492514133,
-        0,
-        0,
-        0,
-        0,
-        2.1359324492514133,
-        0,
-        0,
-        0,
-        0,
-        2.1359324492514133,
-        0,
-        -3.5999999046325684,
-        2.099999900907278,
-        -1.0749999284744263,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.parts-rack.mesh.atie0",
-      "localTransform": [
-        0.3500000238418579,
-        0,
-        0,
-        0,
-        0,
-        0.3500000238418579,
-        0,
-        0,
-        0,
-        0,
-        0.3500000238418579,
-        0,
-        3.5999999046325684,
-        4.199999809265137,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "atie0",
-      "nodeName": "atie0",
-      "nodePath": [
-        0,
-        4
-      ],
-      "parentId": "sf.render.parts-rack.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.parts-rack.body",
-      "worldTransform": [
-        0.3500000238418579,
-        0,
-        0,
-        0,
-        0,
-        0.3500000238418579,
-        0,
-        0,
-        0,
-        0,
-        0.3500000238418579,
-        0,
-        3.5999999046325684,
-        4.199999809265137,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.parts-rack.mesh.atie1",
-      "localTransform": [
-        0.3500000238418579,
-        0,
-        0,
-        0,
-        0,
-        0.3500000238418579,
-        0,
-        0,
-        0,
-        0,
-        0.3500000238418579,
-        0,
-        -3.5999999046325684,
-        4.199999809265137,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "atie1",
-      "nodeName": "atie1",
-      "nodePath": [
-        0,
-        5
-      ],
-      "parentId": "sf.render.parts-rack.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.parts-rack.body",
-      "worldTransform": [
-        0.3500000238418579,
-        0,
-        0,
-        0,
-        0,
-        0.3500000238418579,
-        0,
-        0,
-        0,
-        0,
-        0.3500000238418579,
-        0,
-        -3.5999999046325684,
-        4.199999809265137,
-        0,
+        -5.960464477539062e-7,
+        2.161986969411373,
+        -0.00002300739288330078,
         1
       ]
     },
@@ -973,7 +453,7 @@
       "nodeName": "fl_bracket",
       "nodePath": [
         0,
-        7
+        2
       ],
       "parentId": "sf.render.parts-rack.root",
       "role": "immutable",
@@ -1022,7 +502,7 @@
       "nodeName": "fl_housing",
       "nodePath": [
         0,
-        8
+        3
       ],
       "parentId": "sf.render.parts-rack.root",
       "role": "immutable",
@@ -1071,7 +551,7 @@
       "nodeName": "fl_lens",
       "nodePath": [
         0,
-        9
+        4
       ],
       "parentId": "sf.render.parts-rack.root",
       "role": "immutable",
@@ -1098,20 +578,20 @@
     {
       "id": "sf.render.parts-rack.mesh.foot0",
       "localTransform": [
-        2,
+        4.099999904632568,
         0,
         0,
         0,
         0,
-        2,
+        4.099999904632568,
         0,
         0,
         0,
         0,
-        2,
+        4.099999904632568,
         0,
-        3.5999999046325684,
-        0.04999999701976776,
+        0,
+        0.30000000074505806,
         0,
         1
       ],
@@ -1120,75 +600,26 @@
       "nodeName": "foot0",
       "nodePath": [
         0,
-        10
+        5
       ],
       "parentId": "sf.render.parts-rack.root",
       "role": "immutable",
       "spatialClusterId": "sf.render.parts-rack.body",
       "worldTransform": [
-        2,
+        4.099999904632568,
         0,
         0,
         0,
         0,
-        2,
+        4.099999904632568,
         0,
         0,
         0,
         0,
-        2,
-        0,
-        3.5999999046325684,
-        0.04999999701976776,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.parts-rack.mesh.foot1",
-      "localTransform": [
-        2,
+        4.099999904632568,
         0,
         0,
-        0,
-        0,
-        2,
-        0,
-        0,
-        0,
-        0,
-        2,
-        0,
-        -3.5999999046325684,
-        0.04999999701976776,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "foot1",
-      "nodeName": "foot1",
-      "nodePath": [
-        0,
-        11
-      ],
-      "parentId": "sf.render.parts-rack.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.parts-rack.body",
-      "worldTransform": [
-        2,
-        0,
-        0,
-        0,
-        0,
-        2,
-        0,
-        0,
-        0,
-        0,
-        2,
-        0,
-        -3.5999999046325684,
-        0.04999999701976776,
+        0.30000000074505806,
         0,
         1
       ]
@@ -1218,7 +649,7 @@
       "nodeName": "id",
       "nodePath": [
         0,
-        12
+        6
       ],
       "parentId": "sf.render.parts-rack.root",
       "role": "immutable",
@@ -1267,7 +698,7 @@
       "nodeName": "plate0",
       "nodePath": [
         0,
-        13
+        7
       ],
       "parentId": "sf.render.parts-rack.root",
       "role": "immutable",
@@ -1316,7 +747,7 @@
       "nodeName": "plate1",
       "nodePath": [
         0,
-        14
+        8
       ],
       "parentId": "sf.render.parts-rack.root",
       "role": "immutable",
@@ -1365,7 +796,7 @@
       "nodeName": "plate2",
       "nodePath": [
         0,
-        15
+        9
       ],
       "parentId": "sf.render.parts-rack.root",
       "role": "immutable",
@@ -1414,7 +845,7 @@
       "nodeName": "plate3",
       "nodePath": [
         0,
-        16
+        10
       ],
       "parentId": "sf.render.parts-rack.root",
       "role": "immutable",
@@ -1463,7 +894,7 @@
       "nodeName": "plate4",
       "nodePath": [
         0,
-        17
+        11
       ],
       "parentId": "sf.render.parts-rack.root",
       "role": "immutable",
@@ -1504,7 +935,7 @@
         0,
         0,
         0.5500000268220901,
-        -1.100000023841858,
+        5.960464477539063e-8,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -1512,7 +943,7 @@
       "nodeName": "spar0",
       "nodePath": [
         0,
-        18
+        12
       ],
       "parentId": "sf.render.parts-rack.root",
       "role": "immutable",
@@ -1532,252 +963,7 @@
         0,
         0,
         0.5500000268220901,
-        -1.100000023841858,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.parts-rack.mesh.spar1",
-      "localTransform": [
-        3.200000524520874,
-        0,
-        0,
-        0,
-        0,
-        3.200000524520874,
-        0,
-        0,
-        0,
-        0,
-        3.200000524520874,
-        0,
-        0,
-        0.5500000268220901,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "spar1",
-      "nodeName": "spar1",
-      "nodePath": [
-        0,
-        19
-      ],
-      "parentId": "sf.render.parts-rack.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.parts-rack.body",
-      "worldTransform": [
-        3.200000524520874,
-        0,
-        0,
-        0,
-        0,
-        3.200000524520874,
-        0,
-        0,
-        0,
-        0,
-        3.200000524520874,
-        0,
-        0,
-        0.5500000268220901,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.parts-rack.mesh.spar2",
-      "localTransform": [
-        3.200000524520874,
-        0,
-        0,
-        0,
-        0,
-        3.200000524520874,
-        0,
-        0,
-        0,
-        0,
-        3.200000524520874,
-        0,
-        0,
-        0.5500000268220901,
-        1.100000023841858,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "spar2",
-      "nodeName": "spar2",
-      "nodePath": [
-        0,
-        20
-      ],
-      "parentId": "sf.render.parts-rack.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.parts-rack.body",
-      "worldTransform": [
-        3.200000524520874,
-        0,
-        0,
-        0,
-        0,
-        3.200000524520874,
-        0,
-        0,
-        0,
-        0,
-        3.200000524520874,
-        0,
-        0,
-        0.5500000268220901,
-        1.100000023841858,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.parts-rack.mesh.sparcradle-a",
-      "localTransform": [
-        1.7000000476837158,
-        0,
-        0,
-        0,
-        0,
-        1.7000000476837158,
-        0,
-        0,
-        0,
-        0,
-        1.7000000476837158,
-        0,
-        -2.799999952316284,
-        0.44999998807907104,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "sparcradle_a",
-      "nodeName": "sparcradle_a",
-      "nodePath": [
-        0,
-        21
-      ],
-      "parentId": "sf.render.parts-rack.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.parts-rack.body",
-      "worldTransform": [
-        1.7000000476837158,
-        0,
-        0,
-        0,
-        0,
-        1.7000000476837158,
-        0,
-        0,
-        0,
-        0,
-        1.7000000476837158,
-        0,
-        -2.799999952316284,
-        0.44999998807907104,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.parts-rack.mesh.sparcradle-f",
-      "localTransform": [
-        1.7000000476837158,
-        0,
-        0,
-        0,
-        0,
-        1.7000000476837158,
-        0,
-        0,
-        0,
-        0,
-        1.7000000476837158,
-        0,
-        2.799999952316284,
-        0.44999998807907104,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "sparcradle_f",
-      "nodeName": "sparcradle_f",
-      "nodePath": [
-        0,
-        22
-      ],
-      "parentId": "sf.render.parts-rack.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.parts-rack.body",
-      "worldTransform": [
-        1.7000000476837158,
-        0,
-        0,
-        0,
-        0,
-        1.7000000476837158,
-        0,
-        0,
-        0,
-        0,
-        1.7000000476837158,
-        0,
-        2.799999952316284,
-        0.44999998807907104,
-        0,
-        1
-      ]
-    },
-    {
-      "id": "sf.render.parts-rack.mesh.spine",
-      "localTransform": [
-        3.5999999046325684,
-        0,
-        0,
-        0,
-        0,
-        3.5999999046325684,
-        0,
-        0,
-        0,
-        0,
-        3.5999999046325684,
-        0,
-        0,
-        4.25,
-        0,
-        1
-      ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "spine",
-      "nodeName": "spine",
-      "nodePath": [
-        0,
-        23
-      ],
-      "parentId": "sf.render.parts-rack.root",
-      "role": "immutable",
-      "spatialClusterId": "sf.render.parts-rack.body",
-      "worldTransform": [
-        3.5999999046325684,
-        0,
-        0,
-        0,
-        0,
-        3.5999999046325684,
-        0,
-        0,
-        0,
-        0,
-        3.5999999046325684,
-        0,
-        0,
-        4.25,
-        0,
+        5.960464477539063e-8,
         1
       ]
     },
@@ -1832,54 +1018,54 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "27269c2df61e288e55eba6e9cece16b335a587694e40ed9773c68135cc3b1c6d"
+      "sha256": "2f1646ccbf54b76e9c259972c65e410802f1c92cf544eb9ea3b01f4a20d0e072"
     },
     "sourceGlb": {
-      "bytes": 25328,
-      "sha256": "cf134604e3ffd5c3ac039f494437278645862ff51abc7f5748715ffa5b1e7921",
+      "bytes": 23624,
+      "sha256": "464274899982bd867fdf999b2858511d6eac249705865f595243a514621fae5a",
       "uri": "place_parts_rack.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
-      "uri": "pilots.json"
+      "bytes": 7956,
+      "sha256": "900911e0335a111ee7fa27bcc3748ae3a351e5161dbaa3a7f31f37d7ca8bfc90",
+      "uri": "assets/ships/render-packages/inputs/parts-rack.json"
     }
   },
   "render": {
-    "bytes": 30860,
-    "sha256": "0876f7189db4e9ccf6cb7a74159baa3ded332aaca015addcac3475a431f16399",
+    "bytes": 25768,
+    "sha256": "546a19e8b729e1f1119c64ef663977f545af5e7de6eb51ff8a87c987a6183223",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.20996189001012766,
-        2.414403882921224,
+        0.21000003814697266,
+        2.414406178323014,
         0
       ],
       "max": [
         4.519999980926514,
         4.928714687368779,
-        2
+        2.0001372867687492
       ],
       "min": [
-        -4.100076200906258,
-        -0.09990692152633046,
-        -2
+        -4.099999904632568,
+        -0.09990233072275068,
+        -2.0001372867687492
       ],
       "size": [
-        8.620076181832772,
-        5.02862160889511,
-        4
+        8.619999885559082,
+        5.02861701809153,
+        4.0002745735374985
       ]
     },
     "hidden": [],
     "legacyPart": true,
     "markers": [],
     "materialProfileRoles": {
-      "hull": 12,
-      "mechanical": 3,
-      "service": 7,
+      "hull": 9,
+      "mechanical": 1,
+      "service": 1,
       "signal": 1
     },
     "materialProfiles": [
@@ -1890,28 +1076,28 @@
       },
       {
         "allowTextures": false,
-        "planIndex": 3,
-        "role": "service"
-      },
-      {
-        "allowTextures": false,
         "planIndex": 4,
-        "role": "service"
+        "role": "hull"
       },
       {
         "allowTextures": false,
         "planIndex": 5,
-        "role": "service"
+        "role": "hull"
       },
       {
         "allowTextures": false,
         "planIndex": 6,
-        "role": "service"
+        "role": "signal"
       },
       {
         "allowTextures": false,
         "planIndex": 7,
-        "role": "service"
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
       },
       {
         "allowTextures": false,
@@ -1926,7 +1112,7 @@
       {
         "allowTextures": false,
         "planIndex": 11,
-        "role": "signal"
+        "role": "hull"
       },
       {
         "allowTextures": false,
@@ -1941,223 +1127,33 @@
       {
         "allowTextures": false,
         "planIndex": 14,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 15,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 16,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 17,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 18,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 19,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 20,
         "role": "mechanical"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 21,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 22,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 23,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 24,
-        "role": "hull"
-      },
-      {
-        "allowTextures": false,
-        "planIndex": 25,
-        "role": "service"
       }
     ],
-    "nodeCount": 26,
+    "nodeCount": 15,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          2.135932384058833,
+          3.6952635049819946,
           0,
           0,
           0,
           0,
-          2.135932384058833,
+          3.6952635049819946,
           0,
           0,
           0,
           0,
-          2.135932384058833,
+          3.6952635049819946,
           0,
-          3.5999999046325684,
-          2.0999999660998583,
-          1.0749999284744263,
+          -5.960464477539062e-7,
+          2.161986969411373,
+          -0.00002300739288330078,
           1
         ],
         "name": "aleg0_a",
         "planIndex": 2,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.1359324492514133,
-          0,
-          0,
-          0,
-          0,
-          2.1359324492514133,
-          0,
-          0,
-          0,
-          0,
-          2.1359324492514133,
-          0,
-          3.5999999046325684,
-          2.099999900907278,
-          -1.0749999284744263,
-          1
-        ],
-        "name": "aleg0_f",
-        "planIndex": 3,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.135932384058833,
-          0,
-          0,
-          0,
-          0,
-          2.135932384058833,
-          0,
-          0,
-          0,
-          0,
-          2.135932384058833,
-          0,
-          -3.5999999046325684,
-          2.0999999660998583,
-          1.0749999284744263,
-          1
-        ],
-        "name": "aleg1_a",
-        "planIndex": 4,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2.1359324492514133,
-          0,
-          0,
-          0,
-          0,
-          2.1359324492514133,
-          0,
-          0,
-          0,
-          0,
-          2.1359324492514133,
-          0,
-          -3.5999999046325684,
-          2.099999900907278,
-          -1.0749999284744263,
-          1
-        ],
-        "name": "aleg1_f",
-        "planIndex": 5,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.3500000238418579,
-          0,
-          0,
-          0,
-          0,
-          0.3500000238418579,
-          0,
-          0,
-          0,
-          0,
-          0.3500000238418579,
-          0,
-          3.5999999046325684,
-          4.199999809265137,
-          0,
-          1
-        ],
-        "name": "atie0",
-        "planIndex": 6,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          0.3500000238418579,
-          0,
-          0,
-          0,
-          0,
-          0.3500000238418579,
-          0,
-          0,
-          0,
-          0,
-          0.3500000238418579,
-          0,
-          -3.5999999046325684,
-          4.199999809265137,
-          0,
-          1
-        ],
-        "name": "atie1",
-        "planIndex": 7,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2184,7 +1180,7 @@
           1
         ],
         "name": "fl_bracket",
-        "planIndex": 9,
+        "planIndex": 4,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2211,7 +1207,7 @@
           1
         ],
         "name": "fl_housing",
-        "planIndex": 10,
+        "planIndex": 5,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2238,7 +1234,7 @@
           1
         ],
         "name": "fl_lens",
-        "planIndex": 11,
+        "planIndex": 6,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2247,52 +1243,25 @@
       {
         "canopy": false,
         "matrix": [
-          2,
+          4.099999904632568,
           0,
           0,
           0,
           0,
-          2,
+          4.099999904632568,
           0,
           0,
           0,
           0,
-          2,
+          4.099999904632568,
           0,
-          3.5999999046325684,
-          0.04999999701976776,
+          0,
+          0.30000000074505806,
           0,
           1
         ],
         "name": "foot0",
-        "planIndex": 12,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          2,
-          0,
-          0,
-          0,
-          0,
-          2,
-          0,
-          0,
-          0,
-          0,
-          2,
-          0,
-          -3.5999999046325684,
-          0.04999999701976776,
-          0,
-          1
-        ],
-        "name": "foot1",
-        "planIndex": 13,
+        "planIndex": 7,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2319,7 +1288,7 @@
           1
         ],
         "name": "id",
-        "planIndex": 14,
+        "planIndex": 8,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2346,7 +1315,7 @@
           1
         ],
         "name": "plate0",
-        "planIndex": 15,
+        "planIndex": 9,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2373,7 +1342,7 @@
           1
         ],
         "name": "plate1",
-        "planIndex": 16,
+        "planIndex": 10,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2400,7 +1369,7 @@
           1
         ],
         "name": "plate2",
-        "planIndex": 17,
+        "planIndex": 11,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2427,7 +1396,7 @@
           1
         ],
         "name": "plate3",
-        "planIndex": 18,
+        "planIndex": 12,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2454,7 +1423,7 @@
           1
         ],
         "name": "plate4",
-        "planIndex": 19,
+        "planIndex": 13,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2477,146 +1446,11 @@
           0,
           0,
           0.5500000268220901,
-          -1.100000023841858,
+          5.960464477539063e-8,
           1
         ],
         "name": "spar0",
-        "planIndex": 20,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.200000524520874,
-          0,
-          0,
-          0,
-          0,
-          3.200000524520874,
-          0,
-          0,
-          0,
-          0,
-          3.200000524520874,
-          0,
-          0,
-          0.5500000268220901,
-          0,
-          1
-        ],
-        "name": "spar1",
-        "planIndex": 21,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.200000524520874,
-          0,
-          0,
-          0,
-          0,
-          3.200000524520874,
-          0,
-          0,
-          0,
-          0,
-          3.200000524520874,
-          0,
-          0,
-          0.5500000268220901,
-          1.100000023841858,
-          1
-        ],
-        "name": "spar2",
-        "planIndex": 22,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.7000000476837158,
-          0,
-          0,
-          0,
-          0,
-          1.7000000476837158,
-          0,
-          0,
-          0,
-          0,
-          1.7000000476837158,
-          0,
-          -2.799999952316284,
-          0.44999998807907104,
-          0,
-          1
-        ],
-        "name": "sparcradle_a",
-        "planIndex": 23,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1.7000000476837158,
-          0,
-          0,
-          0,
-          0,
-          1.7000000476837158,
-          0,
-          0,
-          0,
-          0,
-          1.7000000476837158,
-          0,
-          2.799999952316284,
-          0.44999998807907104,
-          0,
-          1
-        ],
-        "name": "sparcradle_f",
-        "planIndex": 24,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          3.5999999046325684,
-          0,
-          0,
-          0,
-          0,
-          3.5999999046325684,
-          0,
-          0,
-          0,
-          0,
-          3.5999999046325684,
-          0,
-          0,
-          4.25,
-          0,
-          1
-        ],
-        "name": "spine",
-        "planIndex": 25,
+        "planIndex": 14,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -2627,7 +1461,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_parts_rack.glb"
   },
-  "runtimeHash": "1b5b53648ec329847a4278a00cfc511283fe3948ce472729fe72771874565b99",
+  "runtimeHash": "fd38aa1951cb13e4db9a9c670fdcad4fe66346402e8a74b5993e5e41327bcbd5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
@@ -2635,27 +1469,21 @@
         "max": [
           4.519999980926514,
           4.928714687368779,
-          2
+          2.0001372867687492
         ],
         "min": [
-          -4.100076200906258,
-          -0.09990692152633046,
-          -2
+          -4.099999904632568,
+          -0.09990233072275068,
+          -2.0001372867687492
         ]
       },
       "id": "sf.render.parts-rack.body",
       "nodeIds": [
         "sf.render.parts-rack.mesh.aleg0-a",
-        "sf.render.parts-rack.mesh.aleg0-f",
-        "sf.render.parts-rack.mesh.aleg1-a",
-        "sf.render.parts-rack.mesh.aleg1-f",
-        "sf.render.parts-rack.mesh.atie0",
-        "sf.render.parts-rack.mesh.atie1",
         "sf.render.parts-rack.mesh.fl-bracket",
         "sf.render.parts-rack.mesh.fl-housing",
         "sf.render.parts-rack.mesh.fl-lens",
         "sf.render.parts-rack.mesh.foot0",
-        "sf.render.parts-rack.mesh.foot1",
         "sf.render.parts-rack.mesh.id",
         "sf.render.parts-rack.mesh.plate0",
         "sf.render.parts-rack.mesh.plate1",
@@ -2663,11 +1491,6 @@
         "sf.render.parts-rack.mesh.plate3",
         "sf.render.parts-rack.mesh.plate4",
         "sf.render.parts-rack.mesh.spar0",
-        "sf.render.parts-rack.mesh.spar1",
-        "sf.render.parts-rack.mesh.spar2",
-        "sf.render.parts-rack.mesh.sparcradle-a",
-        "sf.render.parts-rack.mesh.sparcradle-f",
-        "sf.render.parts-rack.mesh.spine",
         "sf.render.parts-rack.root"
       ]
     }
