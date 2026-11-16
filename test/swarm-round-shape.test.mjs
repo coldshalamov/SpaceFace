@@ -204,28 +204,45 @@ test('one gate per group: opening groups arrive on distinct bearings (waves 1-3)
     const h = room(SEED, wave);
     const plan = beginWave(h, wave);
     // C01-04: the course authors the groups — the law is that each lands on its own
-    // bearing (round 1's ten-Wasp charge is one group, one gate; rounds 2-3 spread).
+    // bearing. PRI-11a (559cfa2235) then split round one's ten-Wasp charge into the opening
+    // three and the seven owed to the beat, both through the SAME authored gate (`ne`), so
+    // round one is still one group on one bearing and rounds 2-3 spread.
     const opening = plan.packages.filter((p) => Number.isInteger(p.atTick));
     const gates = new Set(opening.map((p) => p.gateGroup).filter(Boolean));
-    assert.equal(gates.size, opening.length,
-      `wave ${wave} gives every scheduled group its own gate (${[...gates]})`);
+    if (wave === 1) {
+      assert.equal(gates.size, 1, `round one is one charge on one bearing (${[...gates]})`);
+      assert.equal(gates.has(opening[0].gateGroup), true);
+      assert.ok(opening.every((p) => p.gateGroup === opening[0].gateGroup),
+        'the owed seven follow the opening three through the same door');
+    } else {
+      assert.equal(gates.size, opening.length,
+        `wave ${wave} gives every scheduled group its own gate (${[...gates]})`);
+    }
     tick(h, 90);
     const byGate = new Map();
     for (const m of h.events.filter((e) => e.event === 'run:waveMaterialized')) {
       const g = m.payload.gateGroup;
       byGate.set(g, (byGate.get(g) || 0) + 1);
     }
-    // Every admitted group reports exactly one gate — a group never splits across doors,
-    // and every group due inside the window has reported.
-    const due = opening.filter((p) => p.atTick < 90).length;
-    assert.equal(byGate.size, due, `wave ${wave} groups came through ${byGate.size} gates`);
+    // Every admitted group reports exactly one gate — a group never splits across doors, and
+    // every group due inside the window has reported. The owed packages wait on the opening
+    // beat, so they are not due inside this window.
+    const dueGates = new Set(opening
+      .filter((p) => p.atTick < 90 && p.afterOpeningBeat !== true)
+      .map((p) => p.gateGroup).filter(Boolean));
+    assert.equal(byGate.size, dueGates.size, `wave ${wave} groups came through ${byGate.size} gates`);
   }
 });
 
 test('the last three commit to pack_pursuit and are named once for edge pointers', () => {
   const h = room(SEED, 1);
   beginWave(h, 1);
+  // PRI-11a (559cfa2235): round one opens with three Wasps and owes the other seven to the
+  // opening beat, so the round fields its full pack only after that beat closes. One kill ends
+  // the beat and the owed seven follow through the same gate.
   tick(h, 30);
+  kill(h, liveHostiles(h)[0]);
+  tick(h, 90);
   const hostiles = liveHostiles(h);
   assert.ok(hostiles.length >= 4, 'the wave fields more than the last-three band');
   // Resolve all but three, then park the survivors 400 WU out — off-frame, parked.
@@ -252,6 +269,8 @@ test('the last three commit to pack_pursuit and are named once for edge pointers
   const h2 = room(SEED + 1, 1);
   beginWave(h2, 1);
   tick(h2, 30);
+  kill(h2, liveHostiles(h2)[0]);
+  tick(h2, 90);
   const hostiles2 = liveHostiles(h2);
   for (const e of hostiles2.slice(3)) kill(h2, e);
   const tail2 = liveHostiles(h2);
