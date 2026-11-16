@@ -6,9 +6,9 @@ import { core } from '../src/core/coreSystem.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import { environmentMaterials, addEnvironmentHeat, queueEnvironmentImpact } from '../src/systems/environmentMaterials.js';
 import { resolvePhysicsBodySpec } from '../src/core/physicsAuthority.js';
-import { ENVIRONMENT_FAMILIES, adventureMaterialFor, environmentMaterialOf, environmentSurfaceData } from '../src/data/environmentMaterials.js';
+import { adventureMaterialFor, environmentMaterialOf, environmentSurfaceData } from '../src/data/environmentMaterials.js';
 import { rockSubstanceForSlot, ROCK_SUBSTANCES } from '../src/data/rockSubstances.js';
-import { swarmArena, SWARM_DEBRIS_TAG } from '../src/systems/swarmArena.js';
+import { swarmArena, SWARM_DEBRIS_TAG, DEBRIS_SUBSTANCE_BY_MATERIAL, environmentFamiliesFor } from '../src/systems/swarmArena.js';
 import { runSession } from '../src/systems/runSession.js';
 import { survivalRun } from '../src/systems/survivalRun.js';
 import { COMBAT_LAB_ARENAS } from '../src/data/combatLabSetups.js';
@@ -93,10 +93,23 @@ test('every ordinary Crucible arena gets all five material opportunities on its 
     runSession.init(h.ctx); survivalRun.init(h.ctx); swarmArena.init(h.ctx);
     h.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'swarm', seed: 42, arenaId: arena.id });
     h.bus.emit('run:wavePlanned', { wave: 1, plan: {} });
-    const materials = new Set(h.state.entityList.filter(e => e.alive !== false && e.data?.[SWARM_DEBRIS_TAG]).map(environmentMaterialOf));
-    // Every registered family, except the Hive's deliberate five-body target (no ice in the Hive):
-    // that exception is named here so it cannot widen to other arenas.
-    const wanted = arena.id === 'the_hive' ? ENVIRONMENT_FAMILIES.filter((m) => m !== 'cryo') : ENVIRONMENT_FAMILIES;
+    // The rolled family, not the resolved env material: a 'rock' slot stamped slag resolves
+    // to calcite (substance truth wins over the base pick), so read the family the substance
+    // belongs to via the production table — that is the opportunity the field offered.
+    const rolledFamily = (e) => {
+      const sub = e.data && e.data.substance;
+      if (sub) {
+        for (const [family, subs] of Object.entries(DEBRIS_SUBSTANCE_BY_MATERIAL)) {
+          if (subs.includes(sub)) return family;
+        }
+      }
+      return environmentMaterialOf(e);
+    };
+    const materials = new Set(h.state.entityList.filter(e => e.alive !== false && e.data?.[SWARM_DEBRIS_TAG]).map(rolledFamily));
+    // Every family the arena actually rolls — FIX-03 holds crystal out of every Swarm room
+    // while its body is a placeholder — except the Hive's deliberate no-ice target: that
+    // exception is named here so it cannot widen to other arenas.
+    const wanted = environmentFamiliesFor(arena.id).filter((m) => arena.id !== 'the_hive' || m !== 'cryo');
     for (const material of wanted) assert.ok(materials.has(material), `${arena.id} carries ${material}`);
     swarmArena.destroy();
   }

@@ -39,12 +39,14 @@
 import { ENVIRONMENT_FAMILIES, environmentSurfaceData, environmentMaterialOf } from '../data/environmentMaterials.js';
 
 /**
- * The material families a room rolls. The Foundry is slag, ore and scrap: the crystal body is a raw
- * placeholder octahedron until the asset thread replaces it, so the Foundry does not roll it
- * (it returns to the rotation by deleting the filter). Other arenas keep every family.
+ * The material families a room rolls. Until the crystal asset is real its body is a raw
+ * placeholder octahedron (fleet draft "Crystal asteroids draw as a bare primitive" — the same
+ * note the Foundry opening court in swarmOpeningTerrain.js cites), so NO Swarm arena rolls it:
+ * the Foundry's filter now covers every room. Restore the family by deleting the filter here
+ * and the matching guard in _spawnDebrisRock.
  */
 export function environmentFamiliesFor(arenaId) {
-  return arenaId === 'helios_core' ? ENVIRONMENT_FAMILIES.filter(m => m !== 'crystal') : ENVIRONMENT_FAMILIES;
+  return ENVIRONMENT_FAMILIES.filter(m => m !== 'crystal');
 }
 import { ROCK_PLACE_SUBSTANCES, applyRockSubstance } from '../data/rockSubstances.js';
 import { swarmArenaTierForRun, swarmArenaDebrisLayout, planOpeningThrowables } from '../data/swarmArenaLadder.js';
@@ -1890,8 +1892,12 @@ export const swarmArena = {
     const helpers = this.helpers;
     if (!helpers || typeof helpers.spawnEntity !== 'function') return null;
     const oreHP = Math.round(360 + size * 14);
-    const material = extraData?.material || 'rock';
-    const typeId = material === 'metal' ? 'ast_metallic' : material === 'crystal' ? 'ast_crystalline' : TYPE_ID;
+    // Same crystal hold-out as environmentFamiliesFor above: a caller that still hands the
+    // family to a debris rock — an opening station, a reef recipe, a mutator — gets ordinary
+    // rock instead, so no Swarm debris body can mint the placeholder substance, typeId or skin.
+    // Delete with that filter when the crystal asset is real.
+    const material = extraData?.material === 'crystal' ? 'rock' : extraData?.material || 'rock';
+    const typeId = material === 'metal' ? 'ast_metallic' : TYPE_ID;
     // Row 495: the debris field wears the hand-made rock family. The rolled env material
     // picks the matching substance (slag rides the everyday-rock slot; wreck-material slots
     // stay dead hulls) and the stamped substance answers density, restitution and break

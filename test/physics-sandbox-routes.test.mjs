@@ -397,21 +397,22 @@ test('crucible route: a concussion round out-throws a pulse round on comparable 
 test('crucible route: plasma splash delivers exactly once per generated body', async () => {
   const prev = COMBAT_FLAGS.weaponImpulseConsequences;
   COMBAT_FLAGS.weaponImpulseConsequences = true;
-  // The Foundry no longer rolls crystal (LOOK-05D, 0d4b500693) — this case boots the
-  // Lagrange Crucible, whose generated field still carries it.
+  // FIX-03: NO Swarm arena rolls crystal while its body is a placeholder (the Foundry's
+  // LOOK-05D hold-out now covers every room) — the generated field's fracturable body is
+  // slag (calcite), heated through the same weapon seam into the same fracture owner's shards.
   const t = await bootArena(4242, { arenaId: 'lagrange_crucible' });
   try {
     const { sim, state, bus, player } = t;
     sim.step(DT);
-    // The arena generates a crystal rock; heating it through the same seam weapons use
-    // fractures it into a cluster of generated physical shards — close enough for splash.
-    const crystal = arenaDebris(state)
-      .filter((r) => environmentMaterialOf(r) === 'crystal')
+    // The arena generates a calcite (slag) rock; heating it through the same seam weapons
+    // use fractures it into a cluster of generated physical shards — close enough for splash.
+    const fracturable = arenaDebris(state)
+      .filter((r) => environmentMaterialOf(r) === 'calcite')
       .sort((a, b) => a.radius - b.radius)[0];
-    assert.ok(crystal, 'the generated arena field carries crystal');
-    addEnvironmentHeat(state, crystal, 48, { actorId: player.id });
+    assert.ok(fracturable, 'the generated arena field carries a fracturable (calcite) body');
+    addEnvironmentHeat(state, fracturable, 48, { actorId: player.id });
     sim.step(DT);
-    assert.equal(crystal.alive, false, 'the generated crystal fractured');
+    assert.equal(fracturable.alive, false, 'the generated calcite fractured');
     const shards = state.entityList.filter((e) => e.alive !== false && e.data?.materialFragment === true);
     assert.ok(shards.length >= 2, `fracture produced generated shards (${shards.length})`);
     sim.step(DT); // let the shards register with the native owner

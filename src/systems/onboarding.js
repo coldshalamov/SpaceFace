@@ -3304,7 +3304,11 @@ export const onboarding = {
     const player = this.state && this.state.player;
     for (const slot of Object.keys(rescue.ids)) {
       const id = rescue.ids[slot];
-      if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function') {
+      // An adopted swing substitute is a world body the rail does not own — drop the
+      // pointer, never the entity.
+      const entity = id != null && this.state.entities ? this.state.entities.get(id) : null;
+      if (id != null && this.helpers && typeof this.helpers.removeEntity === 'function'
+        && (!entity || (entity.data && entity.data.rescue === true))) {
         this.helpers.removeEntity(id);
       }
       if (player && id != null && player.targetId === id) player.targetId = null;
@@ -3555,7 +3559,7 @@ export const onboarding = {
     // Destroying a beat's working body fails the attempt and stages a fresh one — retry, not
     // wall. A kill before its beat is current only restages the body; it never yanks the rail.
     if (payload.id === rescue.ids.rock) {
-      if (key === 'swing') this._rescueFail('swing', 'rock destroyed');
+      if (key === 'swing') this._swingRetargetRock('rock destroyed');
       else this._respawnRescueSlot('swing');
     } else if (payload.id === rescue.ids.pod) {
       if (key === 'grab') this._rescueFail('grab', 'pod destroyed');
@@ -3582,7 +3586,10 @@ export const onboarding = {
       // A missing standing piece restages the whole authored tableau — respawning only
       // the working slot would loop forever on a wreck or wall that is never coming back.
       if (!derelict) { this._spawnRescueCast(); return; }
-      if (!rock) { this._rescueFail('swing', 'rock lost'); return; }
+      // FIX-03: a gone lesson rock is not a fail — any thrown body completes the beat now,
+      // so the objective retargets the nearest loose throwable in reach rather than pointing
+      // at a body that no longer exists. Only an empty pocket still fails and restages.
+      if (!rock) { this._swingRetargetRock('rock lost'); return; }
       // A rock punted clear of the pocket (a wild release, a chance collision) is gone for
       // good at these speeds: restage it near the pilot — retry, never a wall.
       const playerPos = this.state.entities.get(this.state.playerId);
@@ -3594,7 +3601,7 @@ export const onboarding = {
         if (Math.hypot(derelict.pos.x - playerPos.pos.x, derelict.pos.z - playerPos.pos.z) > 1800) {
           this._spawnRescueCast();
         } else {
-          this._rescueFail('swing', 'rock drifted out of reach');
+          this._swingRetargetRock('rock drifted out of reach');
         }
         return;
       }
@@ -3694,11 +3701,11 @@ export const onboarding = {
   // OPENING-1b: the first real throw of the loose rock completes the swing lesson. The old gate waited for
   // latch -> reel -> cut -> a rock-on-wreck contact, so a buffered tap-throw that never reeled (or sailed past
   // the wreck) left beat 4 open for good. The throw is the lesson; the wreck scrap still drops.
+  // FIX-03: ANY body counts — ACCEPT-02's pilot threw two ordinary rocks and sat on beat 4 for
+  // eight minutes because only the authored lesson rock's payloadId was accepted.
   _onFirstThrow(p) {
     const rescue = this._rescue && this._rescue();
     if (!rescue || this._rescueCurrentKey() !== 'swing') return;
-    const rockId = rescue.ids && rescue.ids.rock;
-    if (rockId == null || (p.payloadId != null && p.payloadId !== rockId)) return;
     this._dropRescueScrap(this._rescueActor('derelict'));
     this._rescueDone('swing');
   },
@@ -3799,7 +3806,11 @@ export const onboarding = {
     if (!player || !player.pos) return;
     const slot = key === 'swing' ? 'rock' : key === 'shove' ? 'scout' : 'pod';
     const oldId = rescue.ids[slot];
-    if (oldId != null && typeof this.helpers.removeEntity === 'function') {
+    // Same adoption guard as _removeRescueActors: a world rock borrowed for the swing is
+    // released, never deleted, before the authored retry is staged.
+    const oldEntity = oldId != null && st.entities ? st.entities.get(oldId) : null;
+    if (oldId != null && typeof this.helpers.removeEntity === 'function'
+      && (!oldEntity || (oldEntity.data && oldEntity.data.rescue === true))) {
       this.helpers.removeEntity(oldId);
     }
     // Specs carry the authored stats; placement comes from the STANDING tableau so the
@@ -3818,6 +3829,58 @@ export const onboarding = {
     }
     const spawned = this.helpers.spawnEntity(specs[slot]);
     rescue.ids[slot] = spawned && spawned.id != null ? spawned.id : null;
+  },
+
+  // FIX-03 — the lesson rock is expendable: the player's first massline:throw of ANY body
+  // completes the swing beat, so a destroyed or lost authored rock is not a fail. The
+  // objective adopts the nearest loose throwable in reach — the same ammo rule the throw
+  // arm uses (asteroid/wreck with `throwable` or `isChunk`, masslineThrow.isThrowArmPayload)
+  // — and ids.rock tracks it so latch, waypoint and kill reads all follow. An adopted body
+  // is the world's, not the tableau's: _respawnRescueSlot/_removeRescueActors never delete
+  // it. Only an empty pocket still fails and restages — retry, never a wall.
+  _swingRetargetRock(reason) {
+    const st = this.state;
+    const rescue = this._rescue();
+    const player = st.entities && st.entities.get(st.playerId);
+    const substitute = player && player.pos ? this._nearestSwingThrowable(player.pos) : null;
+    if (rescue && substitute) {
+      // The abandoned tableau body leaves with the pointer — unless the pilot is still
+      // attached to it (that latch's own throw completes the beat), and a world body is
+      // never the rail's to delete.
+      const oldId = rescue.ids.rock;
+      const old = oldId != null && st.entities ? st.entities.get(oldId) : null;
+      if (old && old.data && old.data.rescue === true
+        && !rescuePlayerLatchedTo(st, st.playerId, oldId)
+        && this.helpers && typeof this.helpers.removeEntity === 'function') {
+        this.helpers.removeEntity(oldId);
+      }
+      rescue.ids.rock = substitute.id;
+      rescue.rockLatched = rescuePlayerLatchedTo(st, st.playerId, substitute.id);
+      rescue.rockReeled = false;
+      rescue.rockReleasedAfterReel = false;
+      this._setRescueWaypoint(true);
+      this._refreshBeatPanel();
+      return;
+    }
+    this._rescueFail('swing', reason);
+  },
+
+  _nearestSwingThrowable(origin) {
+    const st = this.state;
+    const entities = st && st.entities;
+    if (!entities || typeof entities.values !== 'function' || !origin) return null;
+    let best = null;
+    let bestD = 1800; // the beat's own out-of-reach bound — a farther "nearest" is not in reach
+    for (const e of entities.values()) {
+      if (!e || e.alive === false || !e.pos || e.id === st.playerId) continue;
+      if (e.type !== 'asteroid' && e.type !== 'wreck') continue;
+      const d = e.data || {};
+      if (d.rescue === true || d.onboarding === true) continue;
+      if (d.throwable !== true && d.isChunk !== true) continue;
+      const dist = Math.hypot(e.pos.x - origin.x, e.pos.z - origin.z);
+      if (dist < bestD) { bestD = dist; best = e; }
+    }
+    return best;
   },
 
   // The vacuum shows itself: swinging the rock through the derelict shakes loose scrap.
