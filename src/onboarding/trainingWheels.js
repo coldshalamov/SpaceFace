@@ -9,6 +9,14 @@ export const TRAINING_WHEEL_BREAK_REASONS = Object.freeze(new Set([
   'line_overclass_snap', 'npc_tractor_phase',
 ]));
 
+/** True while the opening's training wheels are on for this body (first loose rock, before the first throw). */
+export function trainingWheelsOn(state, targetEntity) {
+  const ob = state && state.onboarding;
+  if (!ob || ob.finished === true || ob.firstThrowSeen === true) return false;
+  if (ob.beatDoneAt && ob.beatDoneAt.raid != null) return false;
+  return !!(targetEntity && targetEntity.data && targetEntity.data.rescueRole === 'rock');
+}
+
 export function trainingWheelsHold(state, targetEntity, reason) {
   const ob = state && state.onboarding;
   if (!ob || ob.finished === true || ob.firstThrowSeen === true) return false;

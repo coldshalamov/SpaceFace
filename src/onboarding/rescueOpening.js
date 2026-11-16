@@ -124,6 +124,7 @@ export function makeRescueCastSpecs(playerPos, rng) {
       data: {
         onboarding: true, rescue: true, rescueRole: 'rock',
         typeId: 'ast_rescue_rock',
+        throwable: true,   // THROW-01: the opening's first rock is the first thing thrown; a tap must throw it, not cut it
       },
     },
     derelict: {

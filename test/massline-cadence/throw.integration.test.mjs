@@ -151,3 +151,38 @@ test('stopping the winch refreshes the coast forecast immediately, not four tick
   assert.equal(f.host._windowForecast.tick,f.state.tick);
   assert.equal(f.state.massline2.throw.solution.window.reliable,true);
 });
+
+// THROW-01 input buffer: a tap shortly BEFORE the release window opens is held and fires when it opens.
+function windowAheadTicks(f, lo, hi) {
+  for (let x = 40; x > -80; x -= 0.1) {
+    f.victim.pos.x = x;
+    const now = solveCadenceRelease(f.payload, f.victim);
+    const win = forecastCadenceWindow(f.player, f.payload, f.victim, { restLength: 100 });
+    if (!now.onSolution && win.reliable && win.enterS > 0) {
+      const t = Math.round(win.enterS * 60);
+      if (t >= lo && t <= hi) return t;
+    }
+  }
+  return null;
+}
+test('THROW-01: a tap 0.2-0.33 s before the window opens is buffered and throws when it opens', () => {
+  const f = setup();
+  const ticks = windowAheadTicks(f, 12, 20);
+  assert.ok(ticks != null, 'a real window 12-20 ticks ahead exists');
+  f.press(); f.step();
+  assert.equal(f.bus.count('massline:throw'), 0, 'the early tap does not throw (or cut) at once');
+  assert.ok(f.host._pendingSnap, 'it is held');
+  for (let i = 1; i <= ticks - 1; i++) { tick(f); f.step(); assert.equal(f.bus.count('massline:throw'), 0, `still waiting (tick ${i})`); }
+  for (let i = 0; i < 4; i++) { tick(f); f.step(); }
+  assert.equal(f.bus.count('massline:throw'), 1, 'it fires when the window opens');
+});
+test('THROW-01: with the training wheels on, a tap any time after latching waits for the window', () => {
+  const f = setup();
+  f.state.onboarding = { finished: false, firstThrowSeen: false, beatDoneAt: {} };
+  f.payload.data = { ...(f.payload.data || {}), rescueRole: 'rock' };
+  const ticks = windowAheadTicks(f, 30, 60);
+  assert.ok(ticks != null, 'a real window 30-60 ticks ahead exists');
+  f.press(); f.step();
+  assert.equal(f.bus.count('massline:throw'), 0);
+  assert.ok(f.host._pendingSnap, 'the whole wait is covered');
+});

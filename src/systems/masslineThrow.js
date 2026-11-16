@@ -25,9 +25,14 @@ import { forecastCadenceWindow } from '../combat/masslineReleaseGeometry.js';
 import { resolveThrowWhoosh } from '../audio/masslineInstrument.js';
 import { clearSwingTraceReleasePaint, paintSwingTraceRelease } from '../render/masslineSwingTrace.js';
 import { isHostileToPlayer } from './scannerReadModel.js';
+import { trainingWheelsOn } from '../onboarding/trainingWheels.js';
 
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const SNAP_WINDOW_MS = 90;          // forward-only queue ceiling; 5 fixed ticks at 60 Hz
+// THROW-01 input buffer: a tap this long BEFORE the release window opens is held and fires when it opens
+// (action-game buffering) instead of releasing early. Under the opening's training wheels it covers the
+// whole wait from latch to window.
+const SNAP_BUFFER_MS = 350;
 // SF-2b (#5): the queue outlives the window it accepted the press for by this many ticks. The
 // forecast that queues a press models a coasting swing; under thrust (W+D spin) the real window
 // arrives up to one tick after the forecast, and a deadline at exactly the forecast tick cut the
@@ -323,7 +328,8 @@ export const masslineThrow = {
     }
     if (!pressed) return;
     if (onNow) { this._executeThrow(state, player, payload, aim, solution, 'snap'); return; }
-    if (window.reliable && window.enterS > 0 && window.enterS <= SNAP_WINDOW_MS / 1000) {
+    const bufferS = trainingWheelsOn(state, payload) ? Infinity : Math.max(SNAP_WINDOW_MS, SNAP_BUFFER_MS) / 1000;
+    if (window.reliable && window.enterS > 0 && window.enterS <= bufferS) {
       this._pendingSnap = { identity, attachmentId: tether.attachmentId, touch: flickPressed,
         deadlineTick: state.tick + Math.ceil(window.enterS * 60 - 1e-6) + SNAP_DEADLINE_SLACK_TICKS };
       runtime.armed = true;
