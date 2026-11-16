@@ -191,3 +191,64 @@ test('the warm hook publishes the four empty part batches before any chip exists
   pool.dispose();
   invalidateVisualFactoryCaches();
 });
+
+// CHIP-CHECK-01 — a live chip has to land in EVERY part with a real pose. The pool's own counter
+// (`stats.chips`) and the per-bucket `count` were both correct while the shipped frame showed no
+// chip; what a regression would break is an individual part's instance matrix, which is what the
+// GPU actually draws from. This pins the whole contract per part, through the real factory build:
+// one instance in each of the four batches, a finite non-singular matrix that is the live leaf's
+// own world matrix (so tumble, bob and intake still come from pickupMotionPresentation), and a
+// geometry that still carries triangles — no empty or collapsed part.
+test('a live chip produces one finite instance per part with the leaf world matrix', () => {
+  const scene = new THREE.Scene();
+  const factory = createVisualFactory();
+  const tracker = createPickupMotionTracker();
+  const pool = createCreditChipBatch(scene);
+  const chip = buildChip(factory, scene, 940, 12, -7);
+  tracker.updatePickupMotion(chip.entity, chip.root, 2.5, 0.016, null, {});
+
+  const stats = pool.sync([chip.root]);
+  assert.equal(stats.chips, 1);
+  assert.equal(stats.drawCalls, CREDIT_CHIP_PART_NAMES.length);
+
+  const leaves = creditChipPartLeaves(chip.root);
+  for (let p = 0; p < CREDIT_CHIP_PART_NAMES.length; p++) {
+    const mesh = pool.buckets[p].mesh;
+    assert.equal(mesh.count, 1, `${CREDIT_CHIP_PART_NAMES[p]} draws the chip`);
+    assert.equal(mesh.visible, true);
+    assert.ok(mesh.geometry.attributes.position.count > 0, `${CREDIT_CHIP_PART_NAMES[p]} has vertices`);
+    assert.ok((mesh.geometry.index ? mesh.geometry.index.count : mesh.geometry.attributes.position.count) >= 3,
+      `${CREDIT_CHIP_PART_NAMES[p]} still carries triangles`);
+
+    const drawn = matrixAt(mesh, 0);
+    assert.ok(drawn.elements.every((v) => Number.isFinite(v)),
+      `${CREDIT_CHIP_PART_NAMES[p]} instance matrix is finite`);
+    assert.ok(Math.abs(drawn.determinant()) > 1e-6,
+      `${CREDIT_CHIP_PART_NAMES[p]} instance matrix is not singular`);
+    // Every element equals the live leaf's solved world matrix: the batch draws the pose the
+    // presentation pass authored, not a pose of its own.
+    leaves[p].updateWorldMatrix(true, false);
+    for (let k = 0; k < 16; k++) {
+      assert.ok(Math.abs(drawn.elements[k] - leaves[p].matrixWorld.elements[k]) < 1e-4,
+        `${CREDIT_CHIP_PART_NAMES[p]} element ${k} matches the leaf world matrix`);
+    }
+    // A world-space translation, not local: the chip sits at its own spot on the field.
+    assert.ok(Math.abs(drawn.elements[12] - 12) < 1.5, 'instance X is the chip world X');
+    assert.ok(Math.abs(drawn.elements[14] + 7) < 1.5, 'instance Z is the chip world Z');
+  }
+
+  // A second chip must land in slot 1 of every part, so the piles do not overdraw one another.
+  const second = buildChip(factory, scene, 941, -4, 9);
+  tracker.updatePickupMotion(second.entity, second.root, 2.5, 0.016, null, {});
+  const two = pool.sync([chip.root, second.root]);
+  assert.equal(two.chips, 2);
+  for (let p = 0; p < CREDIT_CHIP_PART_NAMES.length; p++) {
+    const mesh = pool.buckets[p].mesh;
+    assert.equal(mesh.count, 2);
+    const secondMatrix = matrixAt(mesh, 1);
+    assert.ok(secondMatrix.elements.every((v) => Number.isFinite(v)));
+    assert.ok(Math.abs(secondMatrix.elements[12] + 4) < 1.5, 'the second chip has its own slot');
+  }
+  pool.dispose();
+  invalidateVisualFactoryCaches();
+});
