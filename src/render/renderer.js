@@ -4541,6 +4541,24 @@ function resolvingMarkerMissionCritical(mesh, entity, state) {
  * draws a real hull (the ship's own stand-in or a published procedural body) rather than only
  * the abstract octahedron.
  */
+// A live enemy in a survival (Swarm) run never shows the pending stand-in: a hull whose authored
+// body is still being admitted stays off the glass and un-lockable (presentationFallbackVisible
+// false) until it commits. The sim is untouched (the body still spawns, moves and fights on its
+// own clock, so determinism holds); a failsafe shows the stand-in after the hold so a stuck
+// admission can never leave an invisible attacker.
+export const HOSTILE_PENDING_HOLD_MS = 4000;
+export function hostileHeldUntilAuthored(mesh, liveEntity, state, nowMs) {
+  if (!liveEntity || liveEntity.type !== 'ship' || liveEntity.isPlayer || liveEntity.team === 0) return false;
+  if (!state || !state.run || state.run.kind !== 'survival') return false;
+  if (state.render && state.render.hostileHoldOff === true) return false; // A/B switch for the bench
+  if (resolvingMarkerMissionCritical(mesh, liveEntity, state)) return false;
+  const ud = mesh.userData;
+  const now = Number.isFinite(nowMs) ? nowMs
+    : (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now());
+  if (!Number.isFinite(ud.pendingHoldSince)) ud.pendingHoldSince = now;
+  return now - ud.pendingHoldSince < HOSTILE_PENDING_HOLD_MS;
+}
+
 export function syncResolvingMarker(mesh, state) {
   if (!mesh || !mesh.userData) return;
   if (!mesh.userData.resolvingMarker) {
@@ -4567,6 +4585,12 @@ export function syncResolvingMarker(mesh, state) {
     if (hull) {
       marker.rotation.x = hull.rotation.x;
       marker.rotation.z = hull.rotation.z;
+    }
+    const pendingEntity = boundaryLiveEntity(mesh, mesh.userData.admissionEntity || null);
+    if (hostileHeldUntilAuthored(mesh, pendingEntity, state)) {
+      marker.visible = false;
+      pendingEntity.presentationFallbackVisible = false;
+      return;
     }
     marker.visible = true;
     return;
