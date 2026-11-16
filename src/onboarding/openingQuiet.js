@@ -15,3 +15,17 @@ export function openingQuiet(state) {
   if (ob.beatDoneAt && ob.beatDoneAt.dock != null) return false;
   return true;
 }
+
+// OPENING-1b: until the raid is done no NPC tractor may take a body the pilot is latched to, nor work
+// within reach of the pilot's line (a passing hauler must not steal the first rock or the swing).
+export const OPENING_NPC_TOW_KEEPOUT_WU = 420;
+export function npcTowAllowedInOpening(state, target) {
+  if (!openingBeforeClaim(state) && !(state && state.onboarding && state.onboarding.finished !== true
+      && !(state.onboarding.beatDoneAt && state.onboarding.beatDoneAt.raid != null))) return true;
+  if (!target) return true;
+  const held = state.player && state.player.tether && state.player.tether.targetId;
+  if (held != null && held === target.id) return false;
+  const me = state.entities && state.entities.get && state.entities.get(state.playerId);
+  if (me && me.pos && target.pos && Math.hypot(target.pos.x - me.pos.x, target.pos.z - me.pos.z) < OPENING_NPC_TOW_KEEPOUT_WU) return false;
+  return true;
+}

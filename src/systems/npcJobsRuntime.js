@@ -124,7 +124,7 @@ import { makeShipEntitySpec } from './ships.js';
 import { HEADLINE_TEMPLATES, fillTemplate } from '../data/newsTemplates.js';
 import { BEAMS } from '../data/mining.js';
 import { barkFor } from '../data/barks.js';
-import { openingQuiet } from '../onboarding/openingQuiet.js';
+import { openingQuiet, npcTowAllowedInOpening } from '../onboarding/openingQuiet.js';
 
 // INF: a hauler that loads against an empty shelf is the visible end of a broken feeder chain —
 // its miner died before posting a lot, and nothing in the world said so. The berth the run was
@@ -3326,6 +3326,7 @@ export const npcJobsRuntime = {
     entry.towNextScanSimT = simT + NPC_TOW_SCAN_INTERVAL_S;
     const target = plan.findTarget();
     if (!target || !entity.pos || !target.pos) return false;
+    if (!npcTowAllowedInOpening(this.state, target)) return false; // OPENING-1b: no tractor steals the first rock
     pinOccupationalLatch(target);
     stampNpcMasslineHead(entity, plan.headId);
     const created = attachments.create({
@@ -3893,6 +3894,7 @@ export const npcJobsRuntime = {
   _attachTowAssist(entry, hull, target) {
     const attachments = this._combatAttachments();
     if (!attachments) return false;
+    if (!npcTowAllowedInOpening(this.state, target)) return false; // OPENING-1b
     const orchard=entry.orchardAssist === true;
     if (orchard && (orchardTowLease(this.state,target)!==entry.orchardLease
       || !entry.orchardLease?.physics?.readOrchardPodReady?.(target))) return false;
