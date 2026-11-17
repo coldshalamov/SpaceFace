@@ -15159,7 +15159,7 @@ export const render = {
           }
           const barrierIdle = await waitForAuthoredUpgradeQueueIdle(scene, {
             stale: cookStale,
-            timeoutMs: Math.min(8000, remainingMs()),
+            timeoutMs: Math.min(15000, remainingMs()),
             yieldToMain: yieldAndFlushLiveSectorGpu,
           });
           if (cookStale()) return cookSuperseded;
@@ -15172,28 +15172,84 @@ export const render = {
           // Adventure actor path uses. A lapsed shared deadline stops NEW admits
           // and flips isActive so an in-flight one bails before touching the GPU:
           // the exact-picture drain below still covers whatever is left.
+          // A boundary whose authored body is still in flight (crucible-warm
+          // exemplars re-armed after their early owner left, a late roster hull)
+          // has literally no geometry to submit — the plan census skips the same
+          // 'awaiting-authored-admission'/'loading' states, so re-arm it, give the
+          // committed admission the remaining window, then leave stragglers to
+          // the deferred tail instead of failing the whole launch.
           let barrierStepAt = prepareNow();
           let barrierAdmitted = 0;
+          let barrierUnembodied = 0;
+          // 'awaiting-authored-admission' and 'loading' are exactly the states the
+          // plan census skips; the readmission set adds their cancelled/orphaned
+          // twins — none of them hold drawable geometry. authoredUpgradePromise
+          // survives a successful commit, so pending is judged by state, not the
+          // retained handle.
+          const rootStillBodiless = (root) => {
+            const data = root && root.userData;
+            if (!data) return false;
+            const status = data.authoredAssetState;
+            // Procedural roots never carry an authored state — 'missing' is only
+            // bodiless as a stored status, never for a root outside the authored
+            // pipeline (authoredReadmissionStatus maps absent to 'missing').
+            if (status == null) return false;
+            if (status === 'loading' || status === 'compiling-pipelines') return true;
+            return authoredReadmissionStatus(status);
+          };
           for (const entity of firstFlightEntities) {
             if (!entity || entity.id == null) continue;
             if (entity.alive === false || state.entities.get(entity.id) !== entity) continue;
-            const root = this._meshes.get(entity.id);
+            let root = this._meshes.get(entity.id);
             if (!root) continue;
             if (cookStale()) return cookSuperseded;
             if (prepareNow() > barrierDeadline) { barrierDeadlineOpen = false; break; }
-            await admitSubjectPipelines(root, {
-              openingRequired: true, strict: true, urgent: true,
-              isActive: () => barrierTimedIsActive()
-                && entity.alive !== false && state.entities.get(entity.id) === entity
-                && this._meshes.get(entity.id) === root,
-            });
+            const rootData = root.userData || {};
+            if (rootData.authoredAssetState === 'awaiting-authored-admission'
+                && typeof rootData.requestAuthoredUpgrade === 'function') {
+              try {
+                requestAuthoredUpgrade(root, renderer, scene, { admissionVisible: true });
+              } catch (_) { /* re-arm is best-effort; the tail owns a refusal */ }
+            }
+            const pendingUpgrade = (root.userData || {}).authoredUpgradePromise;
+            if (pendingUpgrade && typeof pendingUpgrade.then === 'function') {
+              const slice = Math.min(12000, Math.max(0, barrierDeadline - prepareNow()));
+              if (slice > 0) {
+                await Promise.race([
+                  Promise.resolve(pendingUpgrade).then(() => true, () => false),
+                  new Promise((resolve) => setTimeout(() => resolve(false), slice)),
+                ]);
+                if (cookStale()) return cookSuperseded;
+                // Publish commits a fresh root on the same map slot; a vanished
+                // slot means the owner left — admitSubjectPipelines' isActive
+                // would only throw owner-inactive on the stale handle.
+                const current = this._meshes.get(entity.id);
+                if (!current) { barrierUnembodied += 1; continue; }
+                root = current;
+              }
+            }
+            if (rootStillBodiless(root)) { barrierUnembodied += 1; continue; }
+            try {
+              await admitSubjectPipelines(root, {
+                openingRequired: true, strict: true, urgent: true,
+                isActive: () => barrierTimedIsActive()
+                  && entity.alive !== false && state.entities.get(entity.id) === entity
+                  && this._meshes.get(entity.id) === root,
+              });
+            } catch (error) {
+              // The shared deadline lapsing mid-admit bails via owner-inactive —
+              // expected cancellation, not a barrier failure. Stop starting new
+              // admits; the exact-picture drain still covers whatever landed.
+              if (isOwnerInactiveTouchError(error)) { barrierDeadlineOpen = false; break; }
+              throw error;
+            }
             barrierAdmitted += 1;
             if (openingProviderNow() - barrierStepAt >= 8) {
               await yieldLiveSectorGpu();
             }
           }
           recordOpeningCookStep(state.render, 'live.swarmFirstPictureAdmit', barrierStepAt,
-            'resolved', { roots: barrierAdmitted });
+            'resolved', { roots: barrierAdmitted, unembodied: barrierUnembodied });
           // In-view rock pool chunks only — the field's remaining keys ride the
           // deferred tail's normal warm, not ~2000 pool issues inside the veil.
           barrierStepAt = prepareNow();
@@ -15257,10 +15313,15 @@ export const render = {
           for (const subject of picturePoolSubjects) {
             if (cookStale()) return cookSuperseded;
             if (prepareNow() > barrierDeadline) { barrierDeadlineOpen = false; break; }
-            await admitSubjectPipelines(subject, {
-              openingRequired: true, strict: true, urgent: true,
-              isActive: barrierTimedIsActive,
-            });
+            try {
+              await admitSubjectPipelines(subject, {
+                openingRequired: true, strict: true, urgent: true,
+                isActive: barrierTimedIsActive,
+              });
+            } catch (error) {
+              if (isOwnerInactiveTouchError(error)) { barrierDeadlineOpen = false; break; }
+              throw error;
+            }
           }
           recordOpeningCookStep(state.render, 'live.swarmFirstPictureRockPools', barrierStepAt,
             'resolved', {

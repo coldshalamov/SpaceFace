@@ -1822,6 +1822,10 @@ function swarmFixture(flagEnabled) {
     warmAsteroidInstanceKeys: () => {},
     requestAuthoredUpgrade: async () => {},
     admitSubjectPipelines: async (root) => { admitted.push(root && root.name || String(root)); return { ok: true }; },
+    authoredReadmissionStatus: (status) => status == null || status === 'missing'
+      || status === 'awaiting-authored-admission' || status === 'cancelled-before-load'
+      || status === 'orphaned-before-swap' || status === 'orphaned-after-pipeline-compile',
+    isOwnerInactiveTouchError: (error) => !!(error && error.code === 'SF_EXACT_TARGET_OWNER_INACTIVE'),
     prepareMobileOpeningFirstPicture: async () => {
       f.marks.push('exact-picture');
       return { plan: { drawLeaves: [1] }, submission: { materials: 3 }, resources: {} };
