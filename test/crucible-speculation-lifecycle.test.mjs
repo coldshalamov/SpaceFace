@@ -1,6 +1,44 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { crucibleScreen } from '../src/ui/screens/crucible.js';
+import { createScreenManager } from '../src/ui/screenManager.js';
+import { installDom } from './helpers/mini-dom.mjs';
+
+test('the screen manager parks the former world stage for the hangar and retains the legacy foundry', () => {
+  const env = installDom(), doc = env.document;
+  const create = doc.createElement;
+  doc.createElement = tag => {
+    const node = create(tag);
+    node.prepend = child => node.insertBefore(child, node.firstChild);
+    node.removeChild = child => child.remove();
+    return node;
+  };
+  doc.addEventListener = doc.removeEventListener = () => {};
+  for (const id of ['screens', 'modal-backdrop', 'hud']) {
+    const node = doc.createElement('div'); node.id = id; doc.body.append(node);
+  }
+  const state = { mode: 'menu', ui: {} };
+  const manager = createScreenManager({ state, bus: { emit() {}, on: () => () => {} },
+    timeEffects: { set() {}, clear() {} } });
+  try {
+    manager.register({ id: 'mainMenu', stage: { scene: 'title-field' } });
+    manager.register({ id: 'crucible', stage: crucibleScreen.stage,
+      mount(root) { this._preparation = {}; root.dataset.kReady = '0'; },
+      onShow() { assert.equal(state.ui.stageRequest, null, 'the former world is parked before preview activation'); } });
+    manager.register({ id: 'legacyCrucible', stage: crucibleScreen.stage });
+    manager.pushScreen('mainMenu');
+    assert.equal(state.ui.stageRequest.scene, 'title-field');
+    const former = state.ui.stageRequest;
+    manager.pushScreen('crucible');
+    assert.equal(state.ui.stageRequest, null);
+    former.onStatus('live');
+    assert.equal(state.ui.stageRequest, null, 'a late former-stage callback cannot restore its request');
+    manager.popScreen();
+    assert.equal(state.ui.stageRequest.scene, 'title-field', 'returning to the title restores its own stage');
+    manager.pushScreen('legacyCrucible');
+    assert.equal(state.ui.stageRequest.scene, 'arena-foundry');
+  } finally { manager.destroy(); env.restore(); }
+});
 
 test('Crucible activates the selected-ship preview and speculation only while shown', () => {
   const screen = Object.create(crucibleScreen);

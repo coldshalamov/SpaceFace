@@ -168,7 +168,65 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   // This wrapper owns a single preview, with the same authored hull and fittings used in flight.
   // It is created only when the screen is shown, never while ScreenManager prewarms a hidden door.
   let hullStage = null, active = false, step = 0, lastBuild = null, lastHull = null, latest = null;
-  let previewReleased = false, shownPreview = null, shownHull = null;
+  let previewReleased = false, previewActive = false, shownPreview = null, shownHull = null;
+  let disposed = false;
+  const decodedImages = new WeakMap();
+  const markVisual = (kind, ready = false) => {
+    root.dataset.kReady = ready ? '1' : '0';
+    root.dataset.hangarVisual = kind;
+  };
+  function imageDecoded(image) {
+    if (!image?.complete || !(image.naturalWidth > 0)) return false;
+    const src = image.currentSrc || image.src;
+    if (!src || typeof image.decode !== 'function') return false;
+    let record = decodedImages.get(image);
+    if (!record || record.src !== src) {
+      record = { src, ready: false };
+      decodedImages.set(image, record);
+      Promise.resolve().then(() => image.decode()).then(() => {
+        if (disposed || decodedImages.get(image) !== record) return;
+        record.ready = image.complete && image.naturalWidth > 0 && (image.currentSrc || image.src) === src;
+        refreshVisualReadiness();
+      }, () => { /* A failed decode stays unready; it is not an asset-failure exemption. */ });
+    }
+    return record.ready;
+  }
+  function refreshVisualReadiness() {
+    if (disposed || !active) { markVisual('inactive'); return; }
+    if (step === 0) {
+      if (previewReleased || !hullStage || !latest || shownHull !== latest.hull.id) { markVisual('loading'); return; }
+      const mounted = hullStage.hasMount?.();
+      const canvas = hullStage.canvas;
+      if (mounted === true && shipStage.classList.contains('is-live') && canvas
+        && shipStage.contains(canvas) && canvas.width > 0 && canvas.height > 0) {
+        markVisual('ship-live', true);
+      } else if (mounted === false && imageDecoded(hullStage.poster)) {
+        // A host without a preview context can show its decoded authored still. A pending
+        // or failed authored load WITH a mount must never be promoted by its covering poster.
+        markVisual('ship-poster', true);
+      } else markVisual('loading');
+      return;
+    }
+    const image = arenaHero?.querySelector('.orr-door-hero__art.is-on');
+    const words = arenaHero?.querySelector('.orr-door-hero__words');
+    const label = arenaHero?.querySelector('.orr-door-hero__name')?.textContent.trim();
+    const selected = read().arenaLabel;
+    const ready = imageDecoded(image) && !words?.classList.contains('is-turning') && label === selected;
+    markVisual(ready ? 'arena-image' : 'loading', ready);
+  }
+  // Asset and caption changes are sparse DOM events. No readiness polling or hidden draw
+  // loop is needed, and the active/step guards reject callbacks from released previews.
+  const Observer = doc.defaultView?.MutationObserver || globalThis.MutationObserver;
+  const visualObserver = typeof Observer === 'function' ? new Observer(refreshVisualReadiness) : null;
+  visualObserver?.observe(shipStage, { attributes: true, attributeFilter: ['class'], childList: true });
+  if (arenaHero) visualObserver?.observe(arenaHero, {
+    attributes: true, attributeFilter: ['class', 'src'], childList: true, characterData: true, subtree: true,
+  });
+  const assetLoaded = event => {
+    if (shipStage.contains(event.target) || arenaHero?.contains(event.target)) refreshVisualReadiness();
+  };
+  root.addEventListener('load', assetLoaded, true);
+  root.addEventListener('error', assetLoaded, true);
   const revealSelectedHull = () => {
     const view = doc.defaultView;
     view?.requestAnimationFrame?.(() => {
@@ -200,21 +258,28 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   hint.id = 'sf-hangar-launch-note'; enter.setAttribute('aria-describedby', hint.id);
   foot.append(hint);
   function releasePreview() {
+    markVisual(active ? 'loading' : 'inactive');
     hullStage?.deactivate();
+    previewActive = false;
     if (hullStage && !previewReleased) { hullStage.release(); previewReleased = true; shownPreview = null; }
   }
   function paintPreview() {
     if (!active || step !== 0 || !latest) return;
     shipStage.querySelector('.sf-hangar-poster')?.remove();
-    if (!hullStage) hullStage = stageFactory(shipStage, { live: true, dock: false, zoom: 1.3 });
+    if (!hullStage) hullStage = stageFactory(shipStage, {
+      live: true, dock: false, zoom: 1.3, onReady: refreshVisualReadiness,
+    });
     if (previewReleased) { hullStage.restore(); previewReleased = false; }
     const key = JSON.stringify([latest.hull.id, latest.fittings, latest.weapons]);
     if (shownPreview !== key) {
+      markVisual('loading');
       hullStage.show(latest.hull.id, { fittings: latest.fittings, weapons: latest.weapons,
         preserveView: shownPreview !== null && shownHull === latest.hull.id });
       shownPreview = key; shownHull = latest.hull.id;
     }
-    hullStage.activate(ctx);
+    // A refresh may update copy or fittings without changing visibility. Activation draws
+    // immediately and starts drift, so perform it only when entering or restoring the preview.
+    if (!previewActive) { hullStage.activate(ctx); previewActive = true; }
   }
   function paintKits(hull) {
     kitList.replaceChildren();
@@ -294,6 +359,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
       }
     }
     paintPreview();
+    refreshVisualReadiness();
     onPreviewVisibility(false);
   }
   function show(index) {
@@ -318,9 +384,15 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
       // The cached hangar returns to the selected ship after equipment preparation or a
       // title visit. Only the visible step resets; the canonical ship and run choices stay.
       if (entering) show(0);
-      else if (active) { paintPreview(); revealSelectedHull(); }
+      else if (active) { paintPreview(); refreshVisualReadiness(); revealSelectedHull(); }
       else releasePreview();
     },
-    dispose() { active = false; hullStage?.dispose(); hullStage = null; onPreviewVisibility(false); },
+    dispose() {
+      disposed = true; active = false; previewActive = false;
+      visualObserver?.disconnect();
+      root.removeEventListener('load', assetLoaded, true);
+      root.removeEventListener('error', assetLoaded, true);
+      hullStage?.dispose(); hullStage = null; markVisual('inactive'); onPreviewVisibility(false);
+    },
   };
 }

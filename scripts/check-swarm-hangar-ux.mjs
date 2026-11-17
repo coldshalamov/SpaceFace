@@ -46,13 +46,14 @@ const S = {
 const report = {
   pass: false, startedAt: new Date().toISOString(), viewports: liveOnly ? [LIVE_VIEWPORT] : sizes,
   bench: { requested: !liveOnly, viewports: liveOnly ? [] : sizes }, checks: [], screenshots: [], previewCaptures: [],
-  animationSettlements: [], equipmentGeometry: [],
+  animationSettlements: [], equipmentGeometry: [], initialReadiness: [], pointerGeometry: [],
   browserErrors: [], requestFailures: [], live: { requested: runLive, completed: false, viewport: LIVE_VIEWPORT },
   scope: 'Real mouse and keyboard input. DOM, bench log and runtime state are read-only observers. '
     + (liveOnly ? 'Public source route only; no bench fixtures. Runtime combat evidence is required for completion.'
       : 'Bench launch is an intent, not proof of combat.'),
 };
 const check = (name, evidence = {}) => { report.checks.push({ name, ...evidence }); console.log(`[hangar-ux] ${name}`); };
+const shipAssetRequests = new WeakMap();
 let server, browser, currentPage;
 const cleanup = async () => {
   if (browser) { const closing = browser; browser = null; await closing.close().catch(() => {}); }
@@ -63,11 +64,27 @@ for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.once(signal, () =>
 });
 
 function observeErrors(page, label) {
+  const assets = { pending: new Map(), recent: [] };
+  shipAssetRequests.set(page, assets);
+  page.on('request', request => {
+    if (!request.url().includes('/assets/ships/')) return;
+    assets.pending.set(request, { url: request.url(), type: request.resourceType(),
+      startedAt: new Date().toISOString(), startedMs: performance.now() });
+  });
+  const finishAsset = (request, outcome) => {
+    const entry = assets.pending.get(request);
+    if (!entry) return;
+    assets.pending.delete(request);
+    assets.recent.push({ ...entry, outcome, elapsedMs: Math.round(performance.now() - entry.startedMs) });
+    if (assets.recent.length > 40) assets.recent.shift();
+  };
+  page.on('requestfinished', request => finishAsset(request, 'finished'));
   page.on('pageerror', error => report.browserErrors.push({ route: label, error: String(error) }));
   page.on('requestfailed', request => {
     // Navigation intentionally cancels preview fetches; preserve these as diagnostics, not
     // asset-failure verdicts. Required visible art is checked at its actual use below.
     report.requestFailures.push({ route: label, url: request.url(), error: request.failure()?.errorText });
+    finishAsset(request, request.failure()?.errorText || 'failed');
   });
 }
 async function shot(page, name) {
@@ -98,8 +115,8 @@ async function shipShot(page, name, { hullId, posterUrl, selector = S.preview })
     };
     if (!visible(host)) return false;
     const canvas = host.querySelector('canvas');
-    // is-live is the stage owner's authored-frame readiness signal. A merely mounted
-    // canvas is insufficient: it may still be blank while the selected hull streams in.
+    // is-live is the stage owner's authored-asset settlement signal. A merely mounted
+    // canvas can still be blank while the selected hull streams in; neither proves GPU completion.
     if (host.classList.contains('is-live') && visible(canvas) && canvas.width > 0 && canvas.height > 0) {
       return { mode: 'live', hullId, backingWidth: canvas.width, backingHeight: canvas.height };
     }
@@ -222,12 +239,36 @@ async function waitArenaImage(page) {
       && !document.querySelector('.orr-door-hero__words.is-turning');
   });
 }
+function inspectPointerTarget(element, fraction) {
+  const rect = element.getBoundingClientRect();
+  const box = { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  const point = { x: rect.x + rect.width * fraction.x, y: rect.y + rect.height * fraction.y };
+  const control = element.closest('button,summary,input,textarea,[role="button"]') || element;
+  const target = document.elementFromPoint(point.x, point.y);
+  return { box, point, viewport: { width: innerWidth, height: innerHeight },
+    fullyInside: rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.top >= 0
+      && rect.right <= innerWidth && rect.bottom <= innerHeight,
+    intendedHit: target === control || control.contains(target),
+    control: { tag: control.tagName, action: control.getAttribute('data-action'),
+      label: control.getAttribute('aria-label') || control.textContent.trim().replace(/\s+/g, ' ').slice(0, 160) },
+    hit: target ? { tag: target.tagName, class: target.getAttribute('class') } : null };
+}
 async function pointFor(locator, fraction = { x: .5, y: .5 }) {
   await locator.waitFor({ state: 'visible' });
-  await locator.scrollIntoViewIfNeeded();
-  const box = await locator.boundingBox();
-  assert.ok(box && box.width > 0 && box.height > 0, 'The public control has no clickable box.');
-  return { x: box.x + box.width * fraction.x, y: box.y + box.height * fraction.y };
+  const before = await locator.evaluate(inspectPointerTarget, fraction);
+  const evidence = { fraction, before, branch: before.fullyInside && before.intendedHit ? 'already-visible' : 'scroll', after: null };
+  report.pointerGeometry.push(evidence);
+  const started = performance.now();
+  try {
+    // Scrolling an already visible target invokes Playwright's stability wait even
+    // when no scroll is needed. Use its current native hit target in that case.
+    if (evidence.branch === 'scroll') await locator.scrollIntoViewIfNeeded();
+    // Re-read geometry after either branch; clickAt still checks enabled/inert and
+    // elementFromPoint immediately before sending the real mouse event.
+    const after = evidence.after = await locator.evaluate(inspectPointerTarget, fraction);
+    assert.ok(after.box.width > 0 && after.box.height > 0, 'The public control has no clickable box.');
+    return after.point;
+  } finally { evidence.elapsedMs = Math.round(performance.now() - started); }
 }
 async function assertControlEnabled(locator, reason = 'Public control must accept input') {
   const state = await locator.evaluate(element => {
@@ -281,7 +322,135 @@ async function assertNoOverflow(page) {
     && box.documentWidth <= box.viewport + 1, `Horizontal overflow: ${JSON.stringify(box)}`);
   return box;
 }
-async function hangarReady(page) {
+async function initialAuthoredHangarReady(page, { allowPosterFallback = false } = {}) {
+  // Initial authored loading has its own finite boundary. It does not enlarge the
+  // ordinary input/read deadlines or excuse an unresponsive control after arrival.
+  const timeoutMs = 60000, started = performance.now();
+  const evidence = { startedAt: new Date().toISOString(), url: page.url(), viewport: page.viewportSize(),
+    timeoutMs, allowPosterFallback, completed: false, observations: 0, coherentFrames: 0, largestObservationGaps: [], lastState: null,
+    meaning: 'Selected authored-stage settlement (or an explicitly certified decoded poster on the source route) '
+      + 'and two responsive animation-frame observations; '
+      + 'not a GPU-completion witness or a performance result.' };
+  report.initialReadiness.push(evidence);
+  const assetContext = () => {
+    const assets = shipAssetRequests.get(page);
+    return { pending: [...(assets?.pending.values() || [])].map(({ startedMs, ...entry }) =>
+      ({ ...entry, ageMs: Math.round(performance.now() - startedMs) })),
+    recent: (assets?.recent || []).map(({ startedMs, ...entry }) => entry) };
+  };
+  let stopped = false, timer, previousFrame = null, previousKey = null;
+  const observe = async () => {
+    while (!stopped) {
+      const dispatched = performance.now();
+      const state = await page.evaluate(({ selectors, allowPosterFallback }) => new Promise(resolve => {
+        const requestedAt = performance.now();
+        requestAnimationFrame(async frameAt => {
+          const rafWaitMs = performance.now() - requestedAt;
+          const box = element => {
+            if (!element) return null;
+            const r = element.getBoundingClientRect();
+            return { x: r.x, y: r.y, width: r.width, height: r.height };
+          };
+          const visible = element => {
+            if (!element?.isConnected) return false;
+            const rect = element.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0 || rect.right <= 0 || rect.bottom <= 0
+              || rect.left >= innerWidth || rect.top >= innerHeight) return false;
+            for (let node = element; node; node = node.parentElement) {
+              const css = getComputedStyle(node);
+              if (node.hidden || css.display === 'none' || css.visibility === 'hidden' || Number(css.opacity) <= 0) return false;
+            }
+            return true;
+          };
+          const root = document.querySelector(selectors.root);
+          const hulls = [...(root?.querySelectorAll(`${selectors.hull}[aria-pressed="true"]`) || [])];
+          const kits = [...(root?.querySelectorAll(`${selectors.kit}[aria-pressed="true"]`) || [])];
+          const nav = root?.querySelector('[data-swarm-step="0"]');
+          const stage = root?.querySelector(selectors.preview), canvas = stage?.querySelector('canvas');
+          const poster = stage?.querySelector('img');
+          const posterSrc = poster?.currentSrc || poster?.src;
+          const selectedPosterSrc = hulls[0]?.querySelector('img')?.src;
+          let posterDecoded = false;
+          // Only the adapter knows whether a live mount exists. Its explicit no-mount
+          // marker may certify the authored still on the source route; a covering poster
+          // while a live model is pending cannot satisfy this check. The bench stays live-only.
+          if (allowPosterFallback && root?.dataset.kReady === '1' && root.dataset.hangarVisual === 'ship-poster'
+            && posterSrc && posterSrc === selectedPosterSrc && visible(poster) && poster.complete && poster.naturalWidth > 0) {
+            try {
+              await poster.decode();
+              posterDecoded = root.dataset.kReady === '1' && root.dataset.hangarVisual === 'ship-poster'
+                && stage.isConnected && stage.dataset.hullId === hulls[0]?.dataset.swarmHull
+                && root.querySelector(`${selectors.hull}[aria-pressed="true"]`) === hulls[0]
+                && (poster.currentSrc || poster.src) === posterSrc && poster.complete && poster.naturalWidth > 0 && visible(poster);
+            } catch { /* A failed decode remains a readiness failure. */ }
+          }
+          const result = {
+            frameAtMs: frameAt, observedAtMs: performance.now(), rafWaitMs,
+            rootPresent: !!root, rootVisible: visible(root), step: root?.dataset.prepStep || null,
+            ownerReady: root?.dataset.kReady === '1', ownerVisual: root?.dataset.hangarVisual || null,
+            navPresent: !!nav, navVisible: visible(nav), navCurrent: nav?.getAttribute('aria-current') || null,
+            selectedHullCount: hulls.length, selectedHull: hulls[0]?.dataset.swarmHull || null,
+            selectedHullName: hulls[0]?.querySelector('strong')?.textContent.trim() || null,
+            selectedKitCount: kits.length, selectedKit: kits[0]?.dataset.swarmKit || null,
+            selectedKitDisabled: kits[0]?.getAttribute('aria-disabled') === 'true',
+            previewHull: stage?.dataset.hullId || null, stageVisible: visible(stage), stageBox: box(stage),
+            authoredSettled: !!stage?.classList.contains('is-live'),
+            canvas: { visible: visible(canvas), width: canvas?.width || 0, height: canvas?.height || 0, box: box(canvas) },
+            poster: poster ? { src: poster.currentSrc || poster.src, expectedSrc: selectedPosterSrc,
+              complete: poster.complete, decoded: posterDecoded, width: poster.naturalWidth, visible: visible(poster) } : null,
+            shipName: root?.querySelector('.sf-hangar-shipname')?.textContent.trim() || null,
+            manifest: [...(root?.querySelectorAll('.sf-hangar-fitting') || [])].map(item => item.textContent.trim()),
+            reviewVisible: visible(root?.querySelector(selectors.review)),
+            visibleBypasses: [...document.querySelectorAll('.sf-swarm-play-key,.sf-swarm-customise-key,.sf-swarm-quick-key')]
+              .filter(visible).map(element => element.className),
+          };
+          const liveReady = result.ownerReady && result.ownerVisual === 'ship-live'
+            && result.authoredSettled && result.canvas.visible && result.canvas.width > 0 && result.canvas.height > 0;
+          result.previewMode = liveReady ? 'live' : allowPosterFallback && posterDecoded ? 'fallback' : 'unready';
+          result.missing = [];
+          if (!result.rootVisible || result.step !== '0') result.missing.push('visible ship step');
+          if (!result.navVisible || result.navCurrent !== 'step') result.missing.push('current ship navigation');
+          if (result.selectedHullCount !== 1 || !result.selectedHull) result.missing.push('one selected hull');
+          if (result.selectedKitCount !== 1 || !result.selectedKit || result.selectedKitDisabled) result.missing.push('one enabled selected loadout');
+          if (result.previewHull !== result.selectedHull || !result.stageVisible) result.missing.push('matching visible ship stage');
+          if (result.previewMode === 'unready') result.missing.push('selected authored stage settlement');
+          if (!result.shipName || result.shipName !== result.selectedHullName || !result.manifest.length) result.missing.push('coherent ship name and equipment');
+          if (result.reviewVisible || result.visibleBypasses.length) result.missing.push('ship setup without launch bypass');
+          resolve(result);
+        });
+      }), { selectors: S, allowPosterFallback });
+      if (stopped) return;
+      const elapsedMs = Math.round(performance.now() - started);
+      const gap = { observation: ++evidence.observations, elapsedMs,
+        roundTripMs: Math.round(performance.now() - dispatched),
+        frameGapMs: previousFrame === null ? null : Math.round(state.frameAtMs - previousFrame),
+        rafWaitMs: Math.round(state.rafWaitMs) };
+      evidence.largestObservationGaps.push(gap);
+      evidence.largestObservationGaps.sort((a, b) => b.roundTripMs - a.roundTripMs);
+      evidence.largestObservationGaps.length = Math.min(evidence.largestObservationGaps.length, 5);
+      evidence.lastState = state;
+      const key = JSON.stringify([state.selectedHull, state.selectedKit, state.previewHull, state.previewMode, state.shipName, state.manifest]);
+      evidence.coherentFrames = !state.missing.length
+        ? previousKey === key && previousFrame !== null && state.frameAtMs > previousFrame ? evidence.coherentFrames + 1 : 1
+        : 0;
+      previousKey = state.missing.length ? null : key;
+      previousFrame = state.frameAtMs;
+      if (evidence.coherentFrames >= 2) { evidence.completed = true; return; }
+    }
+  };
+  try {
+    await Promise.race([observe(), new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`Initial authored hangar readiness exceeded ${timeoutMs} ms; `
+        + `last state: ${JSON.stringify(evidence.lastState)}`)), timeoutMs);
+    })]);
+  } finally {
+    stopped = true; clearTimeout(timer);
+    evidence.elapsedMs = Math.round(performance.now() - started);
+    evidence.assetContext = assetContext();
+  }
+}
+async function hangarReady(page, { initialAuthored = false, allowPosterFallback = false } = {}) {
+  if (initialAuthored) await initialAuthoredHangarReady(page, { allowPosterFallback });
   await page.locator(S.root).waitFor({ state: 'visible' });
   await page.locator(`${S.hull}[aria-pressed="true"]`).waitFor({ state: 'visible' });
   assert.equal(await page.locator(S.root).getAttribute('data-prep-step'), '0', 'Swarm must open on ship choice.');
@@ -312,7 +481,7 @@ async function openBenchTitle(page, size) {
   // actual readiness fault; do not disguise it as a later navigation timeout.
   await assertControlEnabled(page.locator(S.title), 'Bench reported ready with Swarm unavailable');
 }
-async function titlePointerRoute(page, region, captureName) {
+async function titlePointerRoute(page, region, captureName, { allowPosterFallback = false } = {}) {
   const title = page.locator(S.title);
   assert.equal(await title.evaluate(element => element.tagName), 'BUTTON');
   assert.equal(await title.locator('.dp-lit__note').count(), 1, 'The description must belong to the same native button as its art and border.');
@@ -333,7 +502,7 @@ async function titlePointerRoute(page, region, captureName) {
   const target = region === 'description' ? title.locator('.dp-lit__note') : title;
   const fraction = region === 'padding' ? { x: .025, y: .22 } : region === 'art' ? { x: .8, y: .35 } : undefined;
   const point = await clickAt(page, target, fraction);
-  await hangarReady(page);
+  await hangarReady(page, { initialAuthored: true, allowPosterFallback });
   return { region, point };
 }
 async function chooseShip(page, { requirePreset = false } = {}) {
@@ -474,7 +643,7 @@ async function benchViewport(size, index) {
         assert.ok(focus.visible && ((focus.outline !== 'none' && parseFloat(focus.width) > 0) || focus.shadow !== 'none'),
           'Keyboard focus has no visible treatment.');
         await page.keyboard.press(key);
-        await hangarReady(page);
+        await hangarReady(page, { initialAuthored: true });
         assert.equal(await launchIntents(page), 0);
         check(`Native title ${key} opens ship setup without launching`, { tabs, focus });
       }
@@ -592,7 +761,7 @@ async function liveRoute() {
     await navigate('fresh title navigation', () => bootToMenu(page, server.baseUrl,
       (name, pass, detail) => check('Live: ' + name, { pass, detail })));
     await waitBootOverlayGone(page, 180000);
-    await navigate('title to hangar', () => titlePointerRoute(page, 'padding', 'live-title'));
+    await navigate('title to hangar', () => titlePointerRoute(page, 'padding', 'live-title', { allowPosterFallback: true }));
     const { build, posterUrl } = await navigate('selected ship preview', () => chooseShip(page, { requirePreset: true }));
     live.build = build;
     live.hangarPreview = await shipShot(page, 'live-selected-ship', { hullId: build.hull, posterUrl });

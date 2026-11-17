@@ -1,12 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { installDom } from './helpers/mini-dom.mjs';
+import { installDom, dispatch } from './helpers/mini-dom.mjs';
 import { createCruciblePreparation } from '../src/ui/orrery/cruciblePreparation.js';
 import { SHIPS } from '../src/data/ships.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
 
-function fixture() {
+function fixture({ noMount = false } = {}) {
   const env = installDom(), doc = env.document;
+  const observers = [];
+  const priorObserver = globalThis.MutationObserver;
+  globalThis.MutationObserver = class {
+    constructor(callback) { this.callback = callback; observers.push(this); }
+    observe() {} disconnect() { this.disconnected = true; }
+  };
+  const notifyVisual = () => { for (const observer of observers) if (!observer.disconnected) observer.callback(); };
   const create = doc.createElement;
   doc.createElement = tag => {
     const node = create(tag);
@@ -22,6 +29,9 @@ function fixture() {
   const make = (tag, cls = '') => { const node = doc.createElement(tag); node.className = cls; return node; };
   const root = make('div'), title = make('header', 'k-title'), stage = make('div', 'k-stage');
   const foot = make('footer'), enter = make('button', 'k-word--primary');
+  const arena = make('div', 'orr-door-hero'), arenaImage = make('img', 'orr-door-hero__art is-on');
+  const arenaWords = make('div', 'orr-door-hero__words'), arenaName = make('p', 'orr-door-hero__name');
+  arenaName.textContent = 'Ricochet Foundry'; arenaWords.append(arenaName); arena.append(arenaImage, arenaWords);
   const settings = make('ul', 'sf-crd-settings'), hullRow = make('li', 'sf-crd-row--hull');
   const state = { starterId: 'ricochet_runner', ruleset: 'swarm', stake: 'exhibition', arenaLabel: 'Ricochet Foundry' };
   let adapter;
@@ -36,23 +46,46 @@ function fixture() {
     control.addEventListener('click', () => { if (hull.earned) { state.starterId = control.dataset.starterId; adapter?.update(); } });
     hullRow.append(control);
   }
-  settings.append(hullRow); stage.append(settings); foot.append(enter); root.append(title, stage, foot);
+  settings.append(hullRow); stage.append(settings); foot.append(enter); root.append(title, stage, arena, foot);
   doc.body.append(root);
   const calls = [];
+  let preview;
   adapter = createCruciblePreparation({ root, title, stage, foot, enter, hullChoices,
-    read: () => state, stageFactory: () => {
+    read: () => state, stageFactory: (host, options) => {
       calls.push(['create']);
-      return {
-        show(id, options) { calls.push(['show', id, options]); },
+      let canvas = make('canvas'), mounted = !noMount, readyFired = false;
+      canvas.width = 640; canvas.height = 360;
+      const poster = make('img', 'k-stage__poster');
+      host.append(canvas, poster);
+      preview = {
+        get canvas() { return canvas; }, poster, hasMount: () => mounted,
+        show(id, fit) { calls.push(['show', id, fit]); host.classList.remove('is-live'); poster.src = `${id}.webp`; },
+        settle() {
+          host.classList.add('is-live');
+          // Match stageHull's once-only arrival hook. Later hull/fit arrivals must be
+          // observed from the current stage, rather than relying on a second callback.
+          if (!readyFired) { readyFired = true; options.onReady?.(); }
+          notifyVisual();
+        },
         activate() { calls.push(['activate']); }, deactivate() { calls.push(['deactivate']); },
-        release() { calls.push(['release']); }, restore() { calls.push(['restore']); },
-        dispose() { calls.push(['dispose']); },
+        release() { calls.push(['release']); mounted = false; canvas.remove(); },
+        restore() {
+          calls.push(['restore']); mounted = !noMount; host.classList.remove('is-live');
+          canvas = make('canvas'); canvas.width = 640; canvas.height = 360; host.append(canvas);
+        },
+        dispose() { calls.push(['dispose']); mounted = false; canvas.remove(); },
       };
+      return preview;
     } });
   assert.ok(adapter, 'exercise the actual hangar adapter, not the fallback document route');
-  return { root, state, enter, adapter, calls,
+  return { root, state, enter, adapter, calls, notifyVisual, arenaImage, arenaWords, arenaName,
+    get preview() { return preview; },
     steps: root.querySelectorAll('.sf-hangar-step').filter(node => node.tagName === 'BUTTON'),
-    close() { adapter.dispose(); env.restore(); } };
+    close() {
+      adapter.dispose(); env.restore();
+      if (priorObserver === undefined) delete globalThis.MutationObserver;
+      else globalThis.MutationObserver = priorObserver;
+    } };
 }
 
 test('the hangar keeps its GPU preview out of prewarm, the arena step and hidden screens', () => {
@@ -77,6 +110,127 @@ test('the hangar keeps its GPU preview out of prewarm, the arena step and hidden
     assert.equal(f.calls.length, hidden);
     f.adapter.setActive(true);
     assert.equal(f.calls.filter(call => call[0] === 'show').at(-1)[1], 'ship_kestrel');
+  } finally { f.close(); }
+});
+
+test('readiness follows the current visible hull and resets across fitting changes, release and disposal', () => {
+  const f = fixture();
+  try {
+    assert.equal(f.root.dataset.kReady, '0');
+    f.adapter.setActive(true);
+    assert.equal(f.root.dataset.kReady, '0', 'a pending authored preview is not ready');
+    f.preview.settle();
+    assert.equal(f.root.dataset.kReady, '1');
+    assert.equal(f.root.dataset.hangarVisual, 'ship-live');
+    f.state.starterId = 'hull:ship_hornet'; f.adapter.update();
+    assert.equal(f.root.dataset.kReady, '0', 'the previous fit cannot vouch for its replacement');
+    f.preview.settle();
+    assert.equal(f.root.dataset.kReady, '1');
+    f.steps[1].click();
+    f.preview.settle();
+    assert.equal(f.root.dataset.kReady, '0', 'a released ship callback cannot ready the arena image');
+    f.adapter.setActive(false); f.preview.settle();
+    assert.equal(f.root.dataset.hangarVisual, 'inactive');
+    f.adapter.setActive(true);
+    assert.equal(f.root.dataset.kReady, '0', 'a restored context must establish readiness again');
+    f.preview.settle();
+    assert.equal(f.root.dataset.kReady, '1');
+    f.adapter.dispose(); f.preview.settle();
+    assert.equal(f.root.dataset.kReady, '0', 'late completion cannot ready a disposed screen');
+  } finally { f.close(); }
+});
+
+test('only a missing preview mount can use a successfully decoded authored poster', async () => {
+  const mounted = fixture();
+  try {
+    mounted.adapter.setActive(true);
+    Object.assign(mounted.preview.poster, { complete: true, naturalWidth: 2400, decode: async () => {} });
+    dispatch(mounted.preview.poster, 'load');
+    await Promise.resolve(); await Promise.resolve();
+    assert.equal(mounted.root.dataset.kReady, '0', 'a covering poster cannot waive a pending or failed authored mount');
+  } finally { mounted.close(); }
+
+  const f = fixture({ noMount: true });
+  try {
+    f.adapter.setActive(true);
+    let finish;
+    Object.assign(f.preview.poster, { complete: true, naturalWidth: 2400,
+      decode: () => new Promise(resolve => { finish = resolve; }) });
+    dispatch(f.preview.poster, 'load');
+    await Promise.resolve();
+    assert.equal(f.root.dataset.kReady, '0', 'load alone is not a successful decode');
+    finish(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    assert.equal(f.root.dataset.kReady, '1');
+    assert.equal(f.root.dataset.hangarVisual, 'ship-poster', 'the fallback is never labelled live');
+  } finally { f.close(); }
+});
+
+test('arena readiness requires the selected decoded image and rejects stale, failed and hidden completions', async () => {
+  const f = fixture();
+  try {
+    const decodes = [];
+    Object.assign(f.arenaImage, { src: 'foundry.webp', complete: true, naturalWidth: 2000,
+      decode: () => new Promise((resolve, reject) => decodes.push({ resolve, reject })) });
+    f.adapter.setActive(true); f.steps[1].click();
+    await Promise.resolve();
+    assert.equal(f.root.dataset.kReady, '0');
+    f.arenaImage.src = 'ceres.webp'; f.state.arenaLabel = 'Ceres Belt';
+    f.arenaName.textContent = 'Ceres Belt'; f.arenaWords.classList.add('is-turning'); f.adapter.update();
+    await Promise.resolve();
+    decodes[0].resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    assert.equal(f.root.dataset.kReady, '0', 'the former arena decode cannot ready the new selection');
+    decodes[1].resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    assert.equal(f.root.dataset.kReady, '0', 'the arena caption is still changing');
+    f.arenaWords.classList.remove('is-turning'); f.notifyVisual();
+    assert.equal(f.root.dataset.kReady, '1');
+    assert.equal(f.root.dataset.hangarVisual, 'arena-image');
+    f.arenaImage.src = 'missing.webp'; f.adapter.update(); await Promise.resolve();
+    decodes[2].reject(new Error('decode failed')); await Promise.resolve(); await Promise.resolve();
+    assert.equal(f.root.dataset.kReady, '0', 'failed arena assets do not become ready');
+    f.arenaImage.src = 'late.webp'; f.adapter.update(); await Promise.resolve();
+    f.adapter.setActive(false); decodes[3].resolve();
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    assert.equal(f.root.dataset.kReady, '0');
+    assert.equal(f.root.dataset.hangarVisual, 'inactive');
+  } finally { f.close(); }
+});
+
+test('visible hangar refreshes do not reactivate the preview, while hull and fitting changes still render', () => {
+  const f = fixture();
+  try {
+    f.adapter.setActive(true);
+    const firstFit = f.calls.find(call => call[0] === 'show');
+    const arrived = f.calls.length;
+    f.adapter.update();
+    f.state.stake = 'veteran'; f.state.arenaLabel = 'Ceres Belt';
+    f.adapter.update();
+    f.adapter.setActive(true);
+    assert.equal(f.calls.length, arrived,
+      'refreshing unchanged preview content must not redraw or restart rotation');
+
+    f.root.querySelectorAll('.sf-hangar-kit').find(node => node.dataset.swarmKit === 'hull:ship_hornet').click();
+    const sameHullFit = f.calls.filter(call => call[0] === 'show').at(-1);
+    assert.equal(sameHullFit[1], 'ship_hornet');
+    assert.notDeepEqual(sameHullFit[2].fittings, firstFit[2].fittings);
+    assert.equal(sameHullFit[2].preserveView, true, 'equipment changes preserve the current ship view');
+    assert.equal(f.calls.filter(call => call[0] === 'activate').length, 1);
+
+    f.root.querySelectorAll('.sf-hangar-hull').find(node => node.dataset.swarmHull === 'ship_kestrel').click();
+    const changedHull = f.calls.filter(call => call[0] === 'show').at(-1);
+    assert.equal(changedHull[1], 'ship_kestrel');
+    assert.equal(changedHull[2].preserveView, false, 'a different hull receives its own framing');
+    assert.equal(f.calls.filter(call => call[0] === 'show').length, 3,
+      'each actual hull or fitting change reaches the renderer exactly once');
+    assert.equal(f.calls.filter(call => call[0] === 'activate').length, 1);
+
+    f.adapter.setActive(false);
+    f.adapter.setActive(true);
+    assert.equal(f.calls.filter(call => call[0] === 'restore').length, 1);
+    assert.equal(f.calls.filter(call => call[0] === 'activate').length, 2,
+      'a released preview must reactivate when the hangar becomes visible again');
+    assert.equal(f.calls.filter(call => call[0] === 'show').at(-1)[1], 'ship_kestrel');
+    f.adapter.update();
+    assert.equal(f.calls.filter(call => call[0] === 'activate').length, 2);
   } finally { f.close(); }
 });
 

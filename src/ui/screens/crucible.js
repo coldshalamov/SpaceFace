@@ -843,10 +843,11 @@ function weeklyDoorCard() {
 export const crucibleScreen = {
   id: 'crucible',
 
-  // The foundry running hot behind the door (design/frontend/direction/approved/frames/
-  // frame-crucible-door.png). ScreenManager turns this into state.ui.stageRequest while the door is
-  // on top, and owns this root's data-k-ready with it — the door is ready when the arena is lit.
-  stage: { scene: 'arena-foundry' },
+  // The new hangar owns its selected hull and arena art. Drawing another whole foundry
+  // behind that composition spends a second scene without showing the selected ship.
+  // ScreenManager clears the former stage request; the adapter owns visible-asset readiness.
+  // Keep the authored world stage for the legacy composition when the adapter is unavailable.
+  stage() { return this._preparation ? null : { scene: 'arena-foundry' }; },
 
   mount(rootEl, ctx) {
     this._embarkSpecActive = false;
@@ -2569,9 +2570,8 @@ export const crucibleScreen = {
     // chosen tile (the tiles keep their art, their words, aria-pressed and their handlers).
     if (ORRERY && !preparation) this._stations = [modes, hulls, arenas].map((row) => createStationRow({ row }));
     this._regions = { title, stage, foot, enter };
-    // data-k-ready belongs to the ScreenManager on a screen that declares `stage`: the door is not
-    // ready to photograph when its words are built, it is ready when the arena behind them is lit.
-    // Writing '1' here raced the stage and produced a capture of a door with nothing behind it.
+    // Readiness belongs to the visible asset owner: the preparation adapter for the hangar,
+    // ScreenManager for the legacy world stage. Mounting words alone cannot mark either ready.
 
     if (preparation) preparation.focus();
     else if (typeof enter.focus === 'function') {

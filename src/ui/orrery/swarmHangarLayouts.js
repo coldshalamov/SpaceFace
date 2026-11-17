@@ -10,7 +10,7 @@ ${H} { display:grid !important; grid-template-columns:minmax(370px,.9fr) minmax(
   grid-template-rows:auto auto minmax(0,1fr) auto !important; gap:18px 26px !important;
   box-sizing:border-box; position:absolute !important; inset:0 !important; width:100% !important; height:100dvh !important;
   max-width:none !important; max-height:none !important; margin:0 !important; padding:28px 40px 22px !important;
-  background:linear-gradient(115deg,var(--dp-metal-0,#0b1017),var(--dp-glass-deep)) !important;
+  background:linear-gradient(115deg,var(--dp-metal-0,#0b1017),var(--dp-glass-deep)) var(--dp-void) !important;
   color:var(--dp-ink); overflow:hidden !important; user-select:none; -webkit-user-select:none;
   font:400 15px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif; }
 ${H} *, ${H} *::before, ${H} *::after { box-sizing:border-box; }
