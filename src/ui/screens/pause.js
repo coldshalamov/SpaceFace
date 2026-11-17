@@ -34,6 +34,7 @@ import { injectPauseLayouts, PAUSE_COLUMN_QUERY } from '../orrery/pauseLayouts.j
 import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
 import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
 import { contract47aReadout } from '../sim/missionRecap.js';
+import { swarmCircuitClosingLine } from '../../systems/survivalAnnounce.js';
 import { requestCodexTab } from '../codexRequests.js';
 import { writtenEndingArchive } from '../../story/endings/index.js';
 import { latestPlayerImpactFromTrace, pauseImpactCause } from '../../combat/presentationImpact.js';
@@ -464,13 +465,16 @@ export function pauseLastImpactLine(state) {
 
 export function pauseStatusLines(state) {
   // FIX-05: a live Swarm run owns no contract deck — its brief is the round itself, and
-  // Adventure mission coaching (TRACKED · Contract 47-A …) must never paint over it.
+  // Adventure mission coaching (TRACKED · Contract 47-A …) must never paint over it. A
+  // Circuit round names the rule that closes IT, not the pack (REVIEW-FIX05-BATCH finding 3).
   if (isSwarmGlass(state)) {
     const wave = Number.isInteger(state.run.wave) ? state.run.wave : null;
+    const circuit = state.run.telemetry && typeof state.run.telemetry === 'object'
+      ? state.run.telemetry.circuit : null;
     return {
       hit: pauseLastImpactLine(state),
       objective: 'SWARM' + (wave != null ? ' · ROUND ' + wave : ''),
-      next: 'Next: clear the field.',
+      next: 'Next: ' + swarmCircuitClosingLine(circuit),
       save: saveLine(state),
     };
   }

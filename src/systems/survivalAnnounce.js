@@ -258,6 +258,24 @@ function displayName(enemyId) {
  *   "Wave 10. Seven hostiles from the northwest and the east. Dreadnought 'Iron Maw' leads. Kill it
  *    and clear the rest."
  */
+/**
+ * The rule that closes a Circuit round — survive, defend, escort and the rest. Null circuit
+ * (an ordinary round) closes with the pack. Shared with the pause brief so a paused Circuit
+ * names the same goal the announcer does (REVIEW-FIX05-BATCH finding 3, grok).
+ */
+export function swarmCircuitClosingLine(circuit) {
+  if (!circuit || typeof circuit !== 'object') return 'Break the pack.';
+  return circuit.kind === 'survive' ? 'Survive sixty seconds.'
+    : circuit.kind === 'defend' ? 'Defend the beacon.'
+      : circuit.kind === 'escort' ? 'Escort the freighter.'
+        : circuit.kind === 'nodes' ? 'Destroy the hive nodes.'
+          : circuit.kind === 'hold' ? 'Hold the zone.'
+            : circuit.kind === 'collect' ? 'Collect the cores.'
+              : circuit.kind === 'commander' ? `Assassinate ${circuit.commanderName || 'the commander'}.`
+                : circuit.kind === 'reach' ? 'Reach the gate.'
+                  : 'Break the pack.';
+}
+
 export function waveOpeningLine(wave, plan) {
   const packages = packagesOf(plan);
   if (!Number.isInteger(wave) || wave < 1 || packages.length === 0) return null;
@@ -303,16 +321,7 @@ export function waveOpeningLine(wave, plan) {
     // open ladder past the win has no authored names to wear.
     const course = circuit ? null : swarmCourseFor(wave);
     const heading = course ? `ROUND ${wave} — ${course.name}.` : `Wave ${wave}.`;
-    const closing = !circuit ? 'Break the pack.'
-      : circuit.kind === 'survive' ? 'Survive sixty seconds.'
-        : circuit.kind === 'defend' ? 'Defend the beacon.'
-        : circuit.kind === 'escort' ? 'Escort the freighter.'
-        : circuit.kind === 'nodes' ? 'Destroy the hive nodes.'
-          : circuit.kind === 'hold' ? 'Hold the zone.'
-            : circuit.kind === 'collect' ? 'Collect the cores.'
-              : circuit.kind === 'commander' ? `Assassinate ${circuit.commanderName || 'the commander'}.`
-                : circuit.kind === 'reach' ? 'Reach the gate.'
-                  : 'Break the pack.';
+    const closing = swarmCircuitClosingLine(circuit);
     // The first-run lesson names what is on the field, not the held pack: one hull, one rock
     // worth throwing, and the pack still on its way.
     if (plan.openingLesson) {

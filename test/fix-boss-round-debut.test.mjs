@@ -10,6 +10,12 @@
 // and the wave-intro line returned before its "X is new." namecheck. So the hull that IS a
 // bomb arrived unannounced on the first boss round. These pins drive the real planner, the
 // real juice owner and the real HUD model on the ordinary run path.
+//
+// KNOWINGLY RED (FIX-05): three tests below still pin the pre-C01-04 presentation — the round
+// slam now reads the PLAN's own newcomer ("the plan's own newcomer is the honest card",
+// swarmJuice._onWavePlanned), so wave 5 names the brood Spore Drift, wave 15 the Wake Eel and
+// wave 6 the Bruiser Brawler, and no lone debut body is staged on a champion round. The probed
+// current truth these tests must be re-pointed to is build_map.md §38.2 (KNOWN-REDS-SWARM).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 

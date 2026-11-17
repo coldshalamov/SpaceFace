@@ -218,6 +218,58 @@ test('a five-ace wing publishes pooled hull and the census on every change', () 
   swarmJuice.destroy();
 });
 
+test('a live straggler holds the wing alive; a champion felled uncollected still says BOSS DOWN', () => {
+  const h = bootJuice(10);
+  h.state.run.phase = 'wave_intro';
+  h.bus.emit('run:wavePlanned', { wave: 10, plan: {} });
+  h.state.run.phase = 'active';
+  const wing = [spawnAce(h, 10), spawnAce(h, 10)];
+  advance(h, 20); // both collected by the sweep
+  const late = spawnAce(h, 10); // lands after the sweeps — uncollected
+  for (const body of wing) {
+    body.alive = false;
+    h.bus.emit('entity:killed', {
+      id: body.id, killerId: h.state.playerId, type: 'ship', pos: { x: 40, z: 0 },
+      presentation: { cause: 'direct' },
+    });
+  }
+  advance(h);
+  let downs = h.emitted.filter((e) => e.event === 'swarm:bossDown');
+  assert.equal(downs.length, 0, 'a live champion the sweep missed is swept at kill time');
+  assert.equal(bossHpEmissions(h).at(-1).alive, 1, 'the straggler joined the census');
+  late.alive = false;
+  h.state.entities.delete(late.id);
+  h.bus.emit('entity:killed', {
+    id: late.id, killerId: h.state.playerId, type: 'ship', pos: { x: 40, z: 0 },
+    presentation: { cause: 'direct' },
+  });
+  advance(h);
+  downs = h.emitted.filter((e) => e.event === 'swarm:bossDown');
+  assert.equal(downs.length, 1, 'the last champion falling says BOSS DOWN once');
+  swarmJuice.destroy();
+});
+
+test('a champion killed inside the first scan window still counts and still says BOSS DOWN', () => {
+  const h = bootJuice(10);
+  h.state.run.phase = 'wave_intro';
+  h.bus.emit('run:wavePlanned', { wave: 10, plan: {} });
+  h.state.run.phase = 'active';
+  const ace = spawnAce(h, 10);
+  advance(h, 2); // never reaches the 15-tick sweep
+  ace.alive = false;
+  h.bus.emit('entity:killed', {
+    id: ace.id, killerId: h.state.playerId, type: 'ship', pos: { x: 40, z: 0 },
+    presentation: { cause: 'direct' },
+  });
+  advance(h, 20);
+  const downs = h.emitted.filter((e) => e.event === 'swarm:bossDown');
+  assert.equal(downs.length, 1, 'BOSS DOWN even though no sweep ever collected the ace');
+  const hps = bossHpEmissions(h);
+  assert.equal(hps.at(-1).alive, 0, 'the census reads 0, not the intro seed');
+  assert.equal(hps.at(-1).total, 1);
+  swarmJuice.destroy();
+});
+
 test('a labelled kill cannot invalidate the run envelope mid-fight', () => {
   const h = bootJuice(10);
   const results = Object.create(survivalResults);
@@ -277,6 +329,24 @@ test('the same tracked mission still owns the Adventure pause brief', () => {
   };
   const lines = pauseStatusLines(state);
   assert.ok(/TRACKED · Contract 47-A/.test(lines.objective), `objective: ${lines.objective}`);
+});
+
+test('a paused Swarm Circuit names the rule that closes it, not the pack', () => {
+  const state = {
+    run: swarmRun(10),
+    missions: { active: [contract47aMission()] },
+    ui: { trackedMissionId: 'mission-47a' },
+    simTime: 30, tick: 1800,
+    playerId: 1,
+    entities: new Map(),
+  };
+  state.run.telemetry = { circuit: { kind: 'escort', stage: 2, localRound: 3 } };
+  const lines = pauseStatusLines(state);
+  assert.ok(/Escort the freighter\./.test(lines.next), `next: ${lines.next}`);
+  state.run.telemetry = { circuit: { kind: 'survive', stage: 1, localRound: 1 } };
+  assert.ok(/Survive sixty seconds\./.test(pauseStatusLines(state).next), 'survive names its clock');
+  state.run.telemetry = {};
+  assert.ok(/Break the pack\./.test(pauseStatusLines(state).next), 'an ordinary round closes the pack, the announcer word');
 });
 
 test('a scenario beat mints no OFFICIAL DENIAL cue inside a live Swarm round', () => {
