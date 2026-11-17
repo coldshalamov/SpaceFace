@@ -47,6 +47,7 @@ import { hash32 } from '../core/rng.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { makeShipEntitySpec } from './ships.js';
 import { strideDt } from '../core/catchupPolicy.js';
+import { isSwarmGlass } from '../ui/swarmGlass.js';
 
 const FACTION_ID = 'faction_choir';
 const dist2 = (a, b) => { const dx = a.x - b.x, dz = a.z - b.z; return dx * dx + dz * dz; };
@@ -1142,6 +1143,9 @@ export const choirResonance = {
   _onKilled(p) {
     const state = this.state;
     if (!p || !state) return;
+    // The kill ear is Adventure liturgy: inside a live Swarm round no kill is a
+    // sacrilege, no ledger row is written, and no Shrine Cantor bark speaks (FIX-04).
+    if (isSwarmGlass(state)) return;
     const victim = state.entities && state.entities.get ? state.entities.get(p.id) : null;
     // A kill receipt names a dead body — every real emitter flips `alive` before
     // the wire. A receipt for a still-living occupant is stale: the id it names
