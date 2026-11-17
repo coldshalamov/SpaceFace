@@ -1,89 +1,48 @@
 // Dump the large/cyan objects dominating the crucible-start frame: names, bounds, materials.
-// Boot -> title -> Crucible -> Quick play -> first playable frame -> scene census + screenshot.
+// Boot -> title -> Swarm hangar -> equipment review -> deploy -> scene census + screenshot.
 // Writes only to .devshots/crucible-arcs/.
 
-import { pressTitleAction } from './lib/titleRoute.mjs';
 import fs from 'node:fs';
-import net from 'node:net';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { startBenchServer } from './lib/benchServer.mjs';
+import { loadPlaywright } from './lib/load-playwright.mjs';
+import { launchChromium } from './player-truth/browser.mjs';
+import { bootToMenu, crucibleToArmory, waitBootOverlayGone, waitForPreparationLaunch } from './player-truth/routes.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = path.join(ROOT, '.devshots', 'crucible-arcs');
 const HEADLESS = true;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-async function freePort() {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.once('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const port = srv.address().port;
-      srv.close(() => resolve(port));
-    });
-  });
-}
-async function waitForServer(url, timeoutMs = 120_000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) return;
-    } catch { /* not up yet */ }
-    await sleep(150);
-  }
-  throw new Error(`game server did not answer at ${url}`);
-}
-
 fs.mkdirSync(OUT_DIR, { recursive: true });
-const port = await freePort();
-const server = spawn(process.execPath, ['server.js', String(port)], {
-  cwd: ROOT, stdio: 'ignore',
-  env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '', SPACEFACE_USER_CONTENT_DIR: '' },
-});
+const server = await startBenchServer();
 let browser = null;
-const report = { bigObjects: [], ribbons: [], consoleErrors: [] };
+const report = { bigObjects: [], ribbons: [], consoleErrors: [], route: [] };
+const routeStep = (name, pass, detail) => report.route.push({ name, pass, detail });
 
 try {
-  await waitForServer(`http://127.0.0.1:${port}/`);
-  browser = await chromium.launch({
+  const { chromium } = await loadPlaywright();
+  ({ browser } = await launchChromium(chromium, {
     headless: HEADLESS,
     args: ['--disable-renderer-backgrounding', '--disable-background-timer-throttling',
       '--disable-backgrounding-occluded-windows', '--window-size=1600,900'],
-  });
+  }));
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
   page.on('pageerror', (e) => report.consoleErrors.push(`[pageerror] ${String(e).slice(0, 200)}`));
   page.on('console', (m) => {
     if (m.type() === 'error') report.consoleErrors.push(`[console] ${m.text().slice(0, 200)}`);
   });
-  await page.addInitScript(() => {
-    sessionStorage.setItem('sf.cinematicSeen', '1');
-    try {
-      if (!localStorage.getItem('sf.settings.profile.v1')) {
-        localStorage.setItem('sf.settings.profile.v1', JSON.stringify({
-          version: 1,
-          settings: { accessibility: { motionPreference: 'system' }, video: { motionReduce: true } },
-        }));
-      }
-    } catch (_) { /* storage unavailable */ }
-  });
-
-  await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
-  await page.waitForSelector('[data-action="crucible"]', { state: 'attached', timeout: 60_000 });
-  await pressTitleAction(page, 'crucible');
-  await page.waitForFunction(
-    () => !!document.querySelector('.sf-crucible, [data-screen="crucible"], [data-action]'),
-    null, { timeout: 60_000 },
-  );
-  // click "Quick play"
-  await page.evaluate(() => {
-    const words = [...document.querySelectorAll('button, [data-action], [role="button"]')];
-    const w = words.find((el) => /quick play/i.test(el.textContent || ''));
-    if (w) w.click();
-  });
+  await bootToMenu(page, server.baseUrl, routeStep);
+  await waitBootOverlayGone(page);
+  report.preparation = await crucibleToArmory(page, {
+    ruleset: 'swarm', arena: 'helios_core', seed: 4242, hull: 'ricochet_runner',
+  }, routeStep);
+  await waitForPreparationLaunch(page);
+  await waitBootOverlayGone(page);
+  // The starting preset is reviewed through the same explicit deployment control a player uses.
+  await page.locator('[data-screen="crucibleDraft"] .sf-cru-foot .k-word--primary:visible').click();
+  await page.waitForFunction(() => ['wave_intro', 'active'].includes(window.SF.state.run?.phase), null, { timeout: 60_000 });
   await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 240_000 });
   await page.waitForFunction(() => Number.isFinite(window.SF.state.render
     && window.SF.state.render.firstPlayableFrameAt), null, { timeout: 180_000 });
@@ -231,7 +190,7 @@ try {
   await page.screenshot({ path: path.join(OUT_DIR, 'crucible-no-deepfield.png') });
 } finally {
   if (browser) await browser.close().catch(() => {});
-  server.kill('SIGTERM');
+  await server.close();
 }
 fs.writeFileSync(path.join(OUT_DIR, 'report.json'), JSON.stringify(report, null, 2));
 console.log(JSON.stringify({ astRootName: report.census?.astRootName, astKids: report.census?.astKids, ribbons: report.census?.ribbons, consoleErrors: report.consoleErrors.slice(0, 5) }, null, 1));

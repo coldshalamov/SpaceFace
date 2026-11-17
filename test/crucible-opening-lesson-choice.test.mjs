@@ -16,7 +16,7 @@ function memoryStorage() {
   return { getItem: (key) => rows.get(key) ?? null, setItem: (key, value) => rows.set(key, String(value)), removeItem: (key) => rows.delete(key) };
 }
 
-test('ordinary first Swarm launch opens the generated horde; explicit training choice keeps the lesson', () => {
+test('ordinary Swarm reviews equipment before the horde; tutorial remains an explicit independent choice', () => {
   useCrucibleMetaStorage(memoryStorage());
   clearCrucibleSetup();
   const emitted = [];
@@ -26,18 +26,23 @@ test('ordinary first Swarm launch opens the generated horde; explicit training c
   assert.equal(first.ok, true);
   const ordinary = crucibleLaunchConfig(first.value, 'swarm');
   assert.notEqual(ordinary.openingLesson, true, 'a fresh profile does not silently get the tutorial hold');
+  assert.notEqual(ordinary.openArmoryBeforeRound1, false, 'ordinary preparation keeps the opening armory');
   assert.equal(ordinary.survivalSetup.seed, 4242);
   assert.equal(requestCrucibleRun(bus, first.value, 'swarm'), true);
-  assert.notEqual(lastCrucibleSetup().openingLesson, true, 'default launch and retry remain immediate-horde runs');
+  assert.notEqual(lastCrucibleSetup().openingLesson, true, 'default launch and retry keep the ordinary encounter');
+  assert.notEqual(lastCrucibleSetup().openArmoryBeforeRound1, false, 'a normal retry retains equipment review');
   const ordinaryRequest = emitted.find(({ event }) => event === 'game:new');
   assert.ok(ordinaryRequest);
   assert.notEqual(ordinaryRequest.payload.crucibleSetup.openingLesson, true,
     'native boot payload does not re-enable the first-profile tutorial');
+  assert.notEqual(ordinaryRequest.payload.crucibleSetup.openArmoryBeforeRound1, false,
+    'native boot payload does not turn equipment review into quick launch');
 
   const training = crucibleSetupFor({ starterId: 'kinetic_baseline', seed: 4243 });
   training.value.openingLesson = true;
   const lesson = crucibleLaunchConfig(training.value, 'swarm', { openingLesson: true });
   assert.equal(lesson.openingLesson, true, 'the visible training option survives launch config construction');
+  assert.notEqual(lesson.openArmoryBeforeRound1, false, 'choosing the tutorial never skips ship equipment');
   assert.equal(lesson.survivalSetup.seed, 4243);
   assert.equal(requestCrucibleRun(bus, training.value, 'swarm'), true);
   assert.equal(lastCrucibleSetup().openingLesson, true, 'retry snapshot retains the chosen training opening');

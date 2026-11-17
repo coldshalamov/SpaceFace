@@ -17,39 +17,39 @@ export const SWARM_STAKE_SCHEMA_VERSION = 1;
 export const SWARM_STAKES = Object.freeze([
   Object.freeze({
     id: 'exhibition',
-    label: 'Exhibition',
+    label: 'Easy',
     purse: 2400,
     pressure: 0.65,
     earn: 0.75,
     score: 0.5,
-    blurb: 'Walk in rich; the room is a classroom. Buy what you want to see.',
+    blurb: 'More starting credits and fewer enemies. A good first run; rewards and score are reduced.',
   }),
   Object.freeze({
     id: 'contender',
-    label: 'Contender',
+    label: 'Normal',
     purse: 750,
     pressure: 1.0,
     earn: 1.0,
     score: 1.0,
-    blurb: 'The run the swarm was tuned for. A real stake, an honest pack.',
+    blurb: 'Standard enemy numbers, rewards and score. Start with 750 credits for equipment.',
   }),
   Object.freeze({
     id: 'veteran',
-    label: 'Veteran',
+    label: 'Hard',
     purse: 250,
     pressure: 1.15,
     earn: 1.25,
     score: 1.5,
-    blurb: 'Thin purse, thick pack. The shop is earned, not spent into.',
+    blurb: 'More enemies and only 250 starting credits. Earn higher round rewards and score.',
   }),
   Object.freeze({
     id: 'ironbound',
-    label: 'Ironbound',
+    label: 'Extreme',
     purse: 0,
     pressure: 1.3,
     earn: 1.5,
     score: 2.0,
-    blurb: 'Nothing but the hull. The purse is what you take off the pack.',
+    blurb: 'The most enemies and no starting credits. Your selected preset is included; earn credits by clearing rounds.',
   }),
 ]);
 
@@ -74,13 +74,11 @@ export function swarmStakeFor(stakeId) {
 /** One legible line for the door: what the purse buys and what it costs. */
 export function swarmStakePitch(stakeId) {
   const stake = swarmStakeFor(stakeId);
-  const purse = stake.purse > 0 ? `${stake.purse} cr to open` : 'no purse';
-  const pressure = stake.pressure === 1 ? 'the tuned pack'
-    : stake.pressure < 1 ? `${Math.round(stake.pressure * 100)}% pressure`
-    : `${Math.round(stake.pressure * 100)}% pressure`;
-  const earn = stake.earn === 1 ? 'standard pay' : `pays ×${stake.earn}`;
-  const score = stake.score === 1 ? 'true tally' : `scores ×${stake.score}`;
-  return `${purse} · ${pressure} · ${earn} · ${score}`;
+  const purse = `${stake.purse.toLocaleString('en-US')} starting credits`;
+  const difference = Math.round((stake.pressure - 1) * 100);
+  const enemies = difference === 0 ? 'standard enemy numbers'
+    : `${Math.abs(difference)}% ${difference < 0 ? 'fewer' : 'more'} enemies`;
+  return `${purse} · ${enemies} · round rewards ×${stake.earn} · score ×${stake.score}`;
 }
 
 /**
@@ -90,7 +88,7 @@ export function swarmStakePitch(stakeId) {
  */
 export function swarmStakeYield(stakeId) {
   const stake = swarmStakeFor(stakeId);
-  return `pays ×${stake.earn} · scores ×${stake.score}`;
+  return `Round rewards ×${stake.earn} · Score ×${stake.score}`;
 }
 
 /** Data sanity, checkable without a DOM. */

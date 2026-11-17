@@ -19,12 +19,13 @@ class CpuRenderer {
     this.extensions = { has: () => false };
     this.disposals = 0;
     this.retirements = 0;
+    this.draws = 0;
     renderers.push(this);
   }
   setPixelRatio() {}
   setSize() {}
   setClearColor() {}
-  render(scene) { this.scene = scene; }
+  render(scene) { this.scene = scene; this.draws++; }
   getContext() { return { isContextLost: () => this.retirements > 0 }; }
   dispose() { this.disposals++; }
   forceContextLoss() { this.retirements++; }
@@ -189,4 +190,20 @@ test('real stage release/restore callbacks create one source renderer per live s
   for (const renderer of renderers.slice(before)) {
     assert.equal(renderer.disposals, 1); assert.equal(renderer.retirements, 1);
   }
+});
+
+test('a hidden preview fences direct draws as well as its animation loop', () => {
+  const { mount, renderer } = mountPreview();
+  mount.show('ship_pelican', { rotating: false, fittings: [] });
+  assert.ok(renderer.draws > 0);
+  mount.setActive(false);
+  const before = renderer.draws;
+  mount.rotateBy(0.25);
+  mount.frame();
+  mount.show('ship_wasp', { rotating: false, fittings: [] });
+  assert.equal(renderer.draws, before, 'hidden selection or completion paths must not render');
+  mount.setActive(true);
+  assert.ok(renderer.draws > before, 'reopening renders the latest selected hull');
+  assert.equal(mount.getDefId(), 'ship_wasp');
+  mount.dispose();
 });

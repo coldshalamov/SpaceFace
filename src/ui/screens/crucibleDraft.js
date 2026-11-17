@@ -324,10 +324,11 @@ export function affordableOfferCount(offers) {
   return count;
 }
 
-/** The one line the first Escape leaves behind when it spared the player's unspent credits. */
+/** Cancel keeps preparation open and points to the explicit launch control. */
 export function launchGuardLine(count) {
   const n = Math.max(0, Math.floor(Number(count) || 0));
-  return `You can still afford ${counted(n, 'card', 'cards')} — Esc again or Launch to go`;
+  return n ? `You can still afford ${counted(n, 'item', 'items')}. Choose Launch round when you are ready.`
+    : 'Choose Launch round when you are ready. Your ship stays here until you launch.';
 }
 
 const WEAPON_DEF_BY_ID = new Map(WEAPONS.map((def) => [def && def.id, def]));
@@ -1138,7 +1139,7 @@ export const crucibleDraftScreen = {
         this._warmHold = true;
         skip.disabled = true;
         skip.setAttribute('aria-disabled', 'true');
-        setKeyLabel(skip, 'Readying the field…', 'Esc', 'Escape');
+        setKeyLabel(skip, 'Readying the field…', ctx.state?.run?.ruleset === 'swarm' ? '' : 'Esc', 'Escape');
         // Bounded: a compile that never settles must not strand the player in the armory.
         Promise.race([
           Promise.resolve(warm.promise).catch(() => null),
@@ -1187,9 +1188,8 @@ export const crucibleDraftScreen = {
     rootEl.appendChild(foot);
 
     // The run is fully paused on this choice, so it must be answerable from the keyboard: 1/2/3
-    // pick, arrows move, R buys another draw, Escape keeps the current loadout. Escape is
-    // otherwise dead here (the screen is locked so the manager will not pop it), which would
-    // leave a paused player with a key that does nothing.
+    // pick, arrows move, R buys another draw. In Swarm, Escape points to the explicit launch
+    // control and keeps preparation paused. Rearm keeps its existing skip behavior.
     rootEl.addEventListener('keydown', (event) => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       // While the search field owns the keyboard, the rails' keys stand down: typing 'r'
@@ -1223,8 +1223,7 @@ export const crucibleDraftScreen = {
         // would reach the document-level flight handler with no modal open and Escape would
         // also push Pause — one key, two consequences. Own it here end to end.
         event.stopPropagation();
-        // In the armory Esc is a way out, not a launch: while the wallet still buys something on
-        // the shelf, the first press spends itself on a warning and the second one goes.
+        // A cancel gesture cannot deploy the player, even with zero credits or an empty shelf.
         if (this._guardLaunch(ctx)) return;
         skip.click();
         return;
@@ -1267,8 +1266,8 @@ export const crucibleDraftScreen = {
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
     bindScreenResultRefresh(this, this._ctx, ARMORY_RESULT_REFRESH_EVENTS);
-    this._visualArmory?.setActive(true);
     if (this._ctx) this.refresh(this._ctx);
+    this._visualArmory?.setActive(true);
     this._offCancel?.();
     this._offCancel = this._ctx?.bus.on('ui:cancel', () => {
       const ctx = this._ctx;
@@ -1317,14 +1316,6 @@ export const crucibleDraftScreen = {
     this._emitIntentAndRefresh(context, 'run:draftRerollRequested', {});
   },
 
-  /**
-   * The armory's Escape guard. Esc (and a pad's B) used to launch the next round on the spot,
-   * with whatever the player had not spent. In the swarm shop, while at least one current offer is
-   * still buyable, the first Esc only moves focus to Launch and says what is left to buy; the
-   * second Esc — or a click or Enter on Launch, which never comes through here — goes. Nothing
-   * buyable, or the Gauntlet's Rearm, behaves exactly as before. Returns true when this press
-   * was spent on the warning and must not resolve the draft.
-   */
   /** Four stage positions and the paths between them, drawn with the ORRERY vector helpers. */
   _paintCircuitRoute(stages) {
     const host = this._circuit && this._circuit.graphic;
@@ -1427,15 +1418,9 @@ export const crucibleDraftScreen = {
     const run = ctx && ctx.state && ctx.state.run;
     if (!run || run.ruleset !== 'swarm') return false;
     if (this._circuitGate(ctx)) return true;
-    if (this._launchWarned === true) {
-      this._launchWarned = false;
-      return false;
-    }
-    // Search and category filters only change the view. An empty shelf must not turn Cancel
-    // into an unannounced launch, and an old card must not warn about already-spent credits.
+    // Cancel always stays in preparation. Only the explicit launch control (including native
+    // Enter/Space or controller confirm on that button) can deploy a Swarm run.
     const count = affordableOfferCount(draftOwner(ctx)?.currentOffers?.());
-    if (count < 1) return false;
-    this._launchWarned = true;
     const text = launchGuardLine(count);
     this._flash = { text, until: Date.now() + 8000, guard: true };
     if (this._note) this._note.textContent = text;
@@ -1458,9 +1443,7 @@ export const crucibleDraftScreen = {
     const cards = this._cards;
     if (!context || !rootEl || !cards) return;
     this._ctx = context;
-    // A rebuilt shelf (a purchase, a re-roll, a filter) is a different shelf: the Escape warning
-    // and its line described the old one, so the next Esc reads the new one fresh.
-    this._launchWarned = false;
+    // A rebuilt shelf changes the affordable-item count in the Cancel explanation.
     if (this._flash && this._flash.guard) this._flash = null;
 
     const owner = draftOwner(context);
@@ -1682,6 +1665,7 @@ export const crucibleDraftScreen = {
       const keep = visible.find(offer => offer.id === this._reading.offerId);
       const first = keep || visible.find(offer => offer.available) || visible[0];
       if (shop && first) this._paintReading(context, first);
+      this._visualArmory?.setReadingVisible?.(!this._reading.el.hidden);
     }
 
     setKeyLabel(this._skip,
@@ -1690,9 +1674,8 @@ export const crucibleDraftScreen = {
           ? (circuitError ? 'Circuit data invalid — start a new run'
             : circuitRun.status === 'route' ? 'Choose a destination first' : 'Finish or enter Overtime first')
           : shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue'),
-      // Launch carries no Esc badge in the armory: Esc is the way out of the screen, never a launch
-      // key a player should learn (the guard below still stops a stray Esc from launching).
-      shop && !circuitOwed ? '' : 'Esc', 'Escape');
+      // Cancel remains in preparation; only explicit confirmation on this control deploys.
+      shop ? '' : 'Esc', 'Escape');
     // In the armory the way forward is the one consequential key; buying happens on the cards.
     this._skip.classList.toggle('k-word--primary', shop && !circuitOwed);
     // A warm hold that resolved off-draft left the control disabled+relabelled; re-arm it here

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Fleet stability gate — one command that says "the game still works".
 //
-//   npm run gate               all four steps, stopping at the first failure
+//   npm run gate               all five steps, stopping at the first failure
 //   npm run gate -- --quick    steps 1–2 only (import lint + Adventure boot)
 //   npm run gate -- --budget-scale=N   multiply every readiness wait (and the gate wall budget)
 //                                      by N — reads "slow" instead of "broken" on a loaded box
@@ -10,8 +10,10 @@
 //                                               and resolves verbatim — the `.//` boot brick
 //   2. boot-adventure  npm run check:playable     real-route boot: menu, launch, hull, ship
 //                                               mesh, world, controls, no exception/shader error
-//   3. boot-swarm      npm run player-truth -- --mode=swarm --rounds=1 --duration=10   headless Swarm boot: 10 sim-s of live play (a whole round is too slow under software GL)
-//   4. sim-47a         npm run check:sim          deterministic 47-A replay
+//   3. menu-journey    npm run check:swarm-hangar-ux   native pointer/keyboard targets, ship/loadout
+//                                               selection, preserved settings, viewport captures
+//   4. boot-swarm      npm run player-truth -- --mode=swarm --rounds=1 --duration=10   headless Swarm boot: 10 sim-s of live play (a whole round is too slow under software GL)
+//   5. sim-47a         npm run check:sim          deterministic 47-A replay
 //
 // Prints one line per step (PASS boot-adventure 74s / FAIL boot-swarm: <first error line>),
 // then GATE PASS or GATE FAIL, writes the same to .devshots/fleet/gate-last.txt, and exits
@@ -149,7 +151,11 @@ async function main(quick) {
     { name: 'import-lint', args: ['run', 'check:src-imports'] },
     { name: 'boot-adventure', args: ['run', 'check:playable'] },
   ];
-  if (!quick) steps.push(createSwarmBootStep(OUT_DIR), { name: 'sim-47a', args: ['run', 'check:sim'] });
+  if (!quick) steps.push(
+    { name: 'menu-journey', args: ['run', 'check:swarm-hangar-ux'] },
+    createSwarmBootStep(OUT_DIR),
+    { name: 'sim-47a', args: ['run', 'check:sim'] },
+  );
   const lines = [];
   const emit = (l) => { lines.push(l); console.log(l); };
   emit(`budget scale ${BUDGET_SCALE}`);

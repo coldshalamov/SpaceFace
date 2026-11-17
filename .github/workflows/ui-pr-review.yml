@@ -7,6 +7,7 @@ on:
       - 'styles/**'
       - 'src/systems/mobile/*Css*'
       - 'scripts/ui-bench.mjs'
+      - 'scripts/check-swarm-hangar-ux.mjs'
       - 'scripts/lib/uiBench*'
       - 'tools/ui-bench*'
       - 'test/ui-bench-arrival-reset.test.mjs'
@@ -93,6 +94,9 @@ jobs:
           route('src/ui/orrery/helpLayouts.js src/ui/screens/help.js', 'help')
           route('src/ui/orrery/settingsLayouts.js src/ui/screens/settings.js', 'settings')
           route('src/ui/orrery/achievementsLayouts.js src/ui/screens/achievements.js', 'achievements')
+          route('src/ui/orrery/titleDoorsLayouts.js src/ui/screens/mainMenu.js', 'title title-save crucible-door')
+          route('src/ui/orrery/swarmHangarLayouts.js src/ui/orrery/cruciblePreparation.js', 'crucible-door')
+          route('src/ui/orrery/swarmArmoryShipLayouts.js src/ui/ship/swarmArmoryShipPreview.js', 'crucible-draft')
           route('src/ui/orrery/crucible-doorLayouts.js src/ui/screens/crucible.js',
                 'crucible-door crucible-rearm crucible-results')
           route('src/ui/orrery/codexLayouts.js src/ui/orrery/archiveLayouts.js src/ui/screens/codex.js',
@@ -182,6 +186,9 @@ jobs:
                       reasons[path] = sorted(matches)
                   else:
                       unmapped.append(path)
+              elif path == 'scripts/check-swarm-hangar-ux.mjs':
+                  selected.update({'title', 'crucible-door'})
+                  reasons[path] = ['title', 'crucible-door']
               elif path.startswith('src/systems/mobile/'):
                   application_paths.append(path)
                   selected.update(all_shots)
@@ -297,6 +304,10 @@ jobs:
             !/design/
             !/tools/blender/
             !/docs/
+      - name: Fetch authored ships for the hangar and equipment previews
+        if: startsWith(matrix.shot, 'crucible-')
+        run: |
+          git sparse-checkout add '/assets/ships/release/parts/**' '/assets/ships/release/render-packages/**'
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -361,6 +372,15 @@ jobs:
       - name: Install Chromium
         timeout-minutes: 5
         run: npx playwright install --with-deps chromium
+      - name: Verify native title targets and the ship-first preparation route
+        id: menu_journey
+        if: matrix.shot == 'crucible-door'
+        continue-on-error: true
+        timeout-minutes: 8
+        run: |
+          timeout --signal=TERM --kill-after=15s 450s node scripts/fleet/game-lock.mjs run -- \
+            node scripts/check-swarm-hangar-ux.mjs --out=.devshots/ui-pr-review/arrivals/menu-journey \
+            2>&1 | tee .devshots/ui-pr-review/arrivals/menu-journey.log
       - name: Verify mission selection and real hold acceptance
         id: pointer
         if: matrix.shot == 'station-contracts'
@@ -478,7 +498,7 @@ jobs:
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
               summary.write('## Fixture: ' + os.environ['SHOT'] + '\n\n')
               summary.write('| Evidence phase | Outcome |\n|---|---|\n')
-              for name in ('pointer', 'desktop', 'phone', 'arrivals_upload', 'arrival_reset_regression', 'refit_regression', 'fortify_regression', 'desktop_walk', 'phone_walk'):
+              for name in ('menu_journey', 'pointer', 'desktop', 'phone', 'arrivals_upload', 'arrival_reset_regression', 'refit_regression', 'fortify_regression', 'desktop_walk', 'phone_walk'):
                   summary.write('| ' + name + ' | ' + str(outcomes.get(name, 'missing')) + ' |\n')
               summary.write('\n| Scoped regression | Coverage |\n|---|---|\n')
               for data in regressions.values():
@@ -513,6 +533,8 @@ jobs:
           required = ['desktop', 'phone', 'arrivals_upload', 'desktop_walk', 'phone_walk', 'walks_upload']
           if os.environ['SHOT'] == 'station-contracts':
               required.append('pointer')
+          if os.environ['SHOT'] == 'crucible-door':
+              required.append('menu_journey')
           not_tested = []
           scoped = [
               ('refit_regression', 'test/crucible-refit-compact-consequences.test.mjs', ['crucible-refit', 'crucible-refit-swarm']),

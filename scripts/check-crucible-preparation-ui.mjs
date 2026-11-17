@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 // Real screen modules + real draft/fitting owners, using the repository's seeded UI bench.
 // Not a full gameplay/bootstrap or GPU performance test. No production data is mutated.
-// node scripts/check-crucible-preparation-ui.mjs [--out=/tmp/crucible-ui]
+// Focused armory transaction checks; check-swarm-hangar-ux.mjs owns the complete title journey.
+// node scripts/check-crucible-preparation-ui.mjs [--out=.devshots/crucible-preparation]
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { startBenchServer } from './lib/benchServer.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { launchChromium } from './player-truth/browser.mjs';
 const out = path.resolve(process.argv.find(a=>a.startsWith('--out='))?.slice(6) || '.devshots/crucible-preparation');
 mkdirSync(out, {recursive:true});
 const server = await startBenchServer();
@@ -14,7 +16,7 @@ let browser;
 const errors = [], checks = [];
 try {
   const {chromium} = await loadPlaywright();
-  browser = await chromium.launch({headless:true, ...(process.env.SF_CHROMIUM ? {executablePath:process.env.SF_CHROMIUM} : {})});
+  ({browser} = await launchChromium(chromium, {headless:true, ...(process.env.SF_CHROMIUM ? {executablePath:process.env.SF_CHROMIUM} : {})}));
   const page = await browser.newPage({viewport:{width:1440,height:900}});
   page.setDefaultTimeout(10000);
   page.on('pageerror', error => errors.push(String(error)));
@@ -28,28 +30,32 @@ try {
   };
   const snap = async name => page.screenshot({path:path.join(out,`${name}.png`)});
   const wallet = () => page.evaluate(()=>window.__BENCH_STATE.run.credits);
+  const launches = () => page.evaluate(()=>window.BENCH.log.filter(line=>/^game:new\(/.test(line)).length);
   const card = name => page.locator('.sf-cru-card').filter({has:page.locator('h2',{hasText:name})});
 
   await open('crucible');
-  assert.equal(await page.locator('.orr-preparation').getAttribute('data-prep-step'),'0');
-  await snap('encounter');
-  await page.getByRole('tab',{name:'01 Encounter'}).press('ArrowRight');
-  assert.equal(await page.locator('.orr-preparation').getAttribute('data-prep-step'),'1');
-  assert.ok(await page.locator('.sf-crd-hull .orr-sigil').count() > 0);
-  await page.locator('.orr-prep-shipart').waitFor({state:'visible'});
+  assert.equal(await page.locator('.orr-swarm-hangar').getAttribute('data-prep-step'),'0');
+  const alternateHull = page.locator('[data-swarm-hull][aria-disabled="false"]:not([aria-pressed="true"])').first();
+  const hullId = await alternateHull.getAttribute('data-swarm-hull');
+  await alternateHull.click();
+  assert.equal(await alternateHull.getAttribute('aria-pressed'),'true');
+  assert.equal(await page.locator('.sf-hangar-shipstage').getAttribute('data-hull-id'),hullId);
   await page.waitForFunction(()=>{
-    const image=document.querySelector('.orr-prep-shipart');
+    const image=document.querySelector('[data-swarm-hull][aria-pressed="true"] img');
     return image?.complete && image.naturalWidth>0;
   });
-  await page.locator('.orr-prep-fitting').first().click();
-  assert.equal(await page.locator('.orr-prep-fitting').first().getAttribute('aria-pressed'),'true');
-  assert.ok(await page.locator('.orr-prep-fitnote').innerText());
-  await page.getByRole('button',{name:'Ship',exact:true}).click();
-  await snap('ship-kit');
-  await page.evaluate(()=>{window.__launches=0;window.__BENCH_BUS.on('game:new',()=>window.__launches++);});
-  await page.getByRole('button',{name:'Open armory →',exact:true}).click();
-  assert.equal(await page.evaluate(()=>window.__launches),1);
-  checks.push('Door tabs, real starter art, true hardpoint selection and existing New Game launch intent');
+  const loadout = page.locator('[data-swarm-kit][aria-disabled="false"]').first();
+  await loadout.click();
+  assert.equal(await loadout.getAttribute('aria-pressed'),'true');
+  assert.ok(await page.locator('.sf-hangar-manifest').innerText());
+  await snap('ship-loadout');
+  assert.equal(await launches(),0,'Choosing ship and equipment must not begin a run');
+  await page.locator('.sf-hangar-next').click();
+  assert.equal(await page.locator('.orr-swarm-hangar').getAttribute('data-prep-step'),'1');
+  await snap('arena-difficulty');
+  await page.getByRole('button',{name:/^Review equipment for /}).click();
+  assert.equal(await launches(),1);
+  checks.push('Ship-first setup, distinct hull art, selected equipment manifest and one canonical review-equipment launch intent');
 
   await open('crucible-draft');
   await page.locator('[data-category="Weapons"]').click();
@@ -82,6 +88,8 @@ try {
   await page.locator('[data-category="Weapons"]').click();
   await card('Autocannon S').click();
   const trialBefore=await wallet();
+  const more = page.locator('.orr-armory-reading__more');
+  if (await more.getAttribute('open') === null) await more.locator('summary').click();
   await page.getByRole('button',{name:'Demo — fly it one round',exact:true}).click();
   assert.equal(await wallet(),trialBefore);
   assert.equal(await page.getByRole('button',{name:'On trial',exact:true}).isDisabled(),true);
@@ -94,11 +102,13 @@ try {
 
   for (const size of [{width:1280,height:800},{width:390,height:844}]) {
     await open('crucible',size);
-    const width = await page.locator('.orr-preparation').evaluate(e=>e.scrollWidth);
-    assert.ok(width<=size.width+1,`Door horizontal overflow: ${width}`);
-    await page.getByRole('button',{name:'Choose ship & kit →',exact:true}).click();
-    await page.getByRole('button',{name:'Open armory →',exact:true}).scrollIntoViewIfNeeded();
+    const width = await page.locator('.orr-swarm-hangar').evaluate(e=>e.scrollWidth);
+    assert.ok(width<=size.width+1,`Hangar horizontal overflow: ${width}`);
+    await page.locator('.sf-hangar-next').scrollIntoViewIfNeeded();
     await snap(`ship-${size.width}`);
+    await page.locator('.sf-hangar-next').click();
+    await page.getByRole('button',{name:/^Review equipment for /}).scrollIntoViewIfNeeded();
+    await snap(`run-${size.width}`);
     await open('crucible-draft',size);
     await page.locator('[data-category="Weapons"]').click();
     await card('Autocannon S').click();
@@ -107,9 +117,9 @@ try {
     assert.ok(armoryWidth<=size.width+1,`Armory horizontal overflow: ${armoryWidth}`);
     await snap(`armory-${size.width}`);
   }
-  await page.evaluate(()=>document.documentElement.classList.add('sf-reduce-motion'));
+  await page.emulateMedia({reducedMotion:'reduce'});
   assert.equal(await page.locator('.orr-armory-item > svg').evaluate(e=>getComputedStyle(e).animationName),'none');
-  checks.push('1280×800 and 390×844: reachable launch/install, no horizontal overflow, game reduced-motion preference');
+  checks.push('1280×800 and 390×844: reachable review/install, no horizontal overflow, system reduced-motion preference');
   assert.deepEqual(errors,[]);
   console.log(JSON.stringify({pass:true,checks,errors},null,2));
   writeFileSync(path.join(out,'checks.json'),JSON.stringify({pass:true,checks,errors},null,2));

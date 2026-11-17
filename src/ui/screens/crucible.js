@@ -27,7 +27,6 @@ import {
   normalizeSeed,
   practiceLaunchFor,
   canChooseSwarmOpeningLesson,
-  consumeSwarmPlayEntry,
   defaultSwarmStakeId,
   rememberSwarmStake,
 } from '../crucibleLaunch.js';
@@ -71,6 +70,7 @@ import {
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { createCruciblePreparation } from '../orrery/cruciblePreparation.js';
+import { availableSwarmStarterId, swarmPreparationReadiness } from '../ship/swarmHangarModel.js';
 import { reducedMotion as orreryMotionReduced } from '../orrery/motion.js';
 import { cabinetDailySnapshot, createCabinetAttract, createCabinetEntryBand, renderCabinetBoard } from '../swarmCabinet.js';
 import { SWARM_CABINET_ATTRACT_TAPE } from '../swarmCabinetAttractTape.js';
@@ -779,24 +779,23 @@ const CRUCIBLE_MODE_CARDS = Object.freeze([
     ruleset: SWARM_RULESET,
     label: 'Swarm',
     verb: 'Launch Swarm',
-    blurb: 'Bring the swarm. Turn the room against it.',
-    sub: 'Clear a round. Spend the spoils or save for a bigger toy. Push your build as far as it goes.',
+    blurb: 'Survive enemy waves and upgrade your ship between rounds.',
+    sub: 'Clear 30 rounds to win, then continue if you want. Buy equipment between rounds and face a boss every five rounds.',
   },
   {
     ruleset: 'scored',
     label: 'Gauntlet',
     verb: 'Enter the Gauntlet',
-    blurb: 'Thirty authored waves in three acts. One question per wave.',
-    sub: 'Thirty waves in three acts. Every wave you rearm; every ten you refit. '
-      + 'Nothing you earn here follows you home.',
+    blurb: 'Survive 30 waves and compete for a high score.',
+    sub: 'Choose an upgrade after each wave and rearrange equipment every ten waves. Equipment lasts for this run.',
   },
 ]);
 
 const DAILY_CARD = Object.freeze({
   label: 'Daily',
   verb: 'Play today',
-  blurb: 'The same seed for everyone, today.',
-  sub: 'One seed for the whole day. Same run on every machine. Nothing you earn here follows you home.',
+  blurb: 'Play today’s shared challenge.',
+  sub: 'Everyone plays the same seed and rules. Daily results have their own records.',
 });
 
 const GHOST_CARD = Object.freeze({
@@ -809,13 +808,18 @@ function weeklyDoorCard() {
   const id = weeklyMutatorForNow();
   const def = id ? SURVIVAL_MUTATOR_BY_ID[id] : null;
   const name = def && def.label ? def.label : 'Weekly';
-  const blurb = def && def.blurb ? def.blurb : 'This week\'s twist is locked to UTC.';
+  const blurb = {
+    gravity_slalom: 'Three gravity wells pull ships around the arena.',
+    heavies_only: 'Face heavy enemy ships instead of light fighters.',
+    weapons_cold: 'Start without fitted guns. Use your tether and collisions; equipment stops are disabled.',
+    reef: 'Fight among dense rock obstacles that provide cover.',
+  }[id] || (def?.blurb || 'A different shared rule each week.');
   return {
     id,
     label: 'Weekly',
     name,
     blurb: `${name}. ${blurb}`,
-    sub: `${name}. ${blurb} Locked for this UTC week. Nothing you earn here follows you home.`,
+    sub: `${name}. ${blurb} The rule changes each week.`,
   };
 }
 
@@ -830,8 +834,7 @@ export const crucibleScreen = {
   mount(rootEl, ctx) {
     this._embarkSpecActive = false;
     const door = this;
-    // TITLE-01: the title's SWARM door lands here in its one-button PLAY state; Customise opens the rest.
-    let playMode = consumeSwarmPlayEntry();
+    // The public route always opens the ship hangar. No silent default launch.
     let enterButton = null;
     let preparation = null;
     let syncTrainingChoice = () => {};
@@ -861,7 +864,10 @@ export const crucibleScreen = {
     let freeSeed = previous && !previous.dailyDateKey ? String(previous.seed) : null;
     let doorProfile = null;
     try { doorProfile = loadCrucibleMeta(); } catch { doorProfile = null; }
-    if (!isStarterAvailable(doorProfile, starterId)) starterId = 'ricochet_runner';
+    starterId = availableSwarmStarterId(starterId, {
+      hullChoices: crucibleHullChoices(),
+      kitChoices: COMBAT_LAB_STARTER_PACKAGES.map(kit => ({ id: kit.id, available: isStarterAvailable(doorProfile, kit.id) })),
+    }) || 'ricochet_runner';
     if (ruleset === 'boss_circuit' && !isModeAvailable(doorProfile, 'boss_circuit')) {
       ruleset = CRUCIBLE_DEFAULT_RULESET;
     }
@@ -1190,7 +1196,7 @@ export const crucibleScreen = {
       syncArena();
       syncGhost();
       const offer = currentGhostOffer();
-      sub.textContent = `Practice — seed ${launch.seed}. ${offer.available ? 'Your ghost for this seed is loaded.' : 'No ghost was recorded for this seed.'}`;
+      sub.textContent = `Practice a recorded run. ${offer.available ? 'Your recorded ghost is ready to race.' : 'No ghost was recorded for this run.'}`;
       cue('confirm');
       if (preparation) preparation.focus();
       else if (enterButton && typeof enterButton.focus === 'function') {
@@ -1213,7 +1219,7 @@ export const crucibleScreen = {
         modeSentence.textContent = weekly
           ? `${DAILY_CARD.sub} This week: ${week.name}. ${week.blurb} ${challenge}`
           : `${DAILY_CARD.sub} ${challenge}`;
-        if (enterButton) enterButton.textContent = weekly ? `Play ${week.name}` : DAILY_CARD.verb;
+        if (enterButton && !preparation) enterButton.textContent = weekly ? `Play ${week.name}` : DAILY_CARD.verb;
         seedInput.readOnly = true;
         seedInput.setAttribute('aria-readonly', 'true');
         seedInput.value = String(dailySnapshot.seed);
@@ -1225,7 +1231,9 @@ export const crucibleScreen = {
         syncStake();
         syncThreat();
         syncPerk();
+        syncArena();
         syncGhost();
+        preparation?.update();
         return;
       }
       const entry = ruleset === POWERED_CONVEYOR_RULESET
@@ -1236,22 +1244,21 @@ export const crucibleScreen = {
         }
         : ruleset === 'boss_circuit'
         ? {
-          blurb: 'Five champions. Refit between them. No drafts.',
-          sub: 'The authored wave-ten bosses, one after another, in the room you picked.',
+          blurb: 'Defeat five bosses in a row.',
+          sub: 'Rearrange your equipment between bosses. There are no equipment offers, so bring a fitted ship.',
           verb: 'Enter the circuit',
         }
         : (ruleset === BLOCK_RULESET
           ? {
             // PQ-133.04 R4 — the bounded block's own voice. Ten authored waves with an ending.
-            blurb: 'One authored block. Ten waves. An ending.',
-            sub: 'The Foundry teaches in one bounded block: the same ten authored waves the '
-              + 'Gauntlet opens with, ending in victory at wave ten. Nothing you earn here follows you home.',
+            blurb: 'A shorter challenge that ends after ten waves.',
+            sub: 'Play the first ten Gauntlet waves. Defeat the boss on wave ten to win. Equipment lasts for this run.',
             verb: 'Fly the Block',
           }
           : (CRUCIBLE_MODE_CARDS.find((m) => m.ruleset === ruleset) || CRUCIBLE_MODE_CARDS[0]));
-      sub.textContent = entry.blurb;
+      sub.textContent = 'Choose your ship, equip it, and survive the swarm.';
       modeSentence.textContent = weekly ? week.sub : entry.sub;
-      if (enterButton) enterButton.textContent = weekly ? `Play ${week.name}` : entry.verb;
+      if (enterButton && !preparation) enterButton.textContent = weekly ? `Play ${week.name}` : entry.verb;
       seedInput.readOnly = false;
       seedInput.removeAttribute('aria-readonly');
       reroll.disabled = false;
@@ -1266,15 +1273,16 @@ export const crucibleScreen = {
       // The arena card's event line is a swarm sentence — it re-renders with the mode.
       syncArena();
       syncGhost();
+      preparation?.update();
     }
 
     // THE STAKE ROW (swarm only): the run's difficulty contract as four tiles, each naming its
     // purse, its pressure and its earn — the same numbers the results surface reads back. Daily
     // hides the row and rides Contender: a shared challenge cannot let the purse be a door choice.
-    const stakeBody = settingRow('Stake', 'sf-crd-row--stake');
+    const stakeBody = settingRow('Difficulty', 'sf-crd-row--stake');
     const stakeLi = stakeBody.parentNode;
     const stakes = el('ul', 'k-words k-words--row sf-crd-stakes fh-cluster');
-    stakes.setAttribute('aria-label', 'Stake');
+    stakes.setAttribute('aria-label', 'Difficulty');
     pin(stakes, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
     const stakeButtons = [];
     const stakeSentence = el('p', 'k-sentence sf-crd-stake-sub', '');
@@ -1282,13 +1290,13 @@ export const crucibleScreen = {
       exhibition: 'credits', contender: 'boost', veteran: 'weapon', ironbound: 'hull',
     });
     function syncStake() {
-      if (preparation) preparation.update();
       const on = !daily && ruleset === SWARM_RULESET;
       if (stakeLi && stakeLi.style) { stakeLi.hidden = !on; stakeLi.style.display = on ? '' : 'none'; }
       const def = swarmStakeFor(stake);
       // The blurb only: purse, pressure, pay and score all read on the tiles themselves.
       stakeSentence.textContent = def.blurb;
       for (const other of stakeButtons) syncChoice(other, other.dataset.stakeId === stake);
+      preparation?.update();
     }
     for (const entry of SWARM_STAKES) {
       const card = choiceTile(entry.label, 'sf-crd-stake', '', STAKE_ICON[entry.id] || 'hull');
@@ -1321,6 +1329,7 @@ export const crucibleScreen = {
     const threatButtons = [];
     const threatSentence = el('p', 'k-sentence sf-crd-threat-sub', '');
     function syncThreat() {
+      preparation?.update();
       const on = !daily && ruleset === SWARM_RULESET;
       if (threatLi && threatLi.style) { threatLi.hidden = !on; threatLi.style.display = on ? '' : 'none'; }
       for (const other of threatButtons) syncChoice(other, threatPicks.has(other.dataset.threatId));
@@ -1643,6 +1652,7 @@ export const crucibleScreen = {
           // SWARM-04: a mutator contract is a side door — the Zone row and the authored
           // seed's meaning change the moment one is picked.
           syncLadder();
+          preparation?.update();
           cue('confirm');
         });
         addWord(modList, button);
@@ -1659,7 +1669,6 @@ export const crucibleScreen = {
     const arenaDescriptions = ARENA_DESCRIPTIONS;
     const arenaSentence = el('p', 'k-sentence sf-crd-arena', '');
     const syncArena = () => {
-      if (preparation) preparation.update();
       // SWARM-04: the ladder's star gates. Under the swarm ruleset the rooms open in the
       // authored order as the profile's star total climbs (§6.3); the Daily is exempt — a
       // shared challenge is a side door, not the climb. Other modes keep the rooms open.
@@ -1704,6 +1713,7 @@ export const crucibleScreen = {
       }
       syncLadder();
       armEmbarkSpec();
+      preparation?.update();
     };
     for (const arena of COMBAT_LAB_ARENAS.filter(entry => arenaDescriptions[entry.id])) {
       const button = choiceTile(arenaDescriptions[arena.id][0], 'sf-crd-arena-choice',
@@ -1877,11 +1887,12 @@ export const crucibleScreen = {
       const onLadder = onPlay && seedNow === arcadeSeed;
       els.seedNote.textContent = !onPlay ? ''
         : onLadder
-          ? 'The authored climb — this seed banks stars and checkpoints.'
-          : 'Custom seed — the room still plays; the ladder does not count it.';
+          ? 'Standard run. Earn stars and unlock starting checkpoints.'
+          : 'Custom seed. Stars and starting checkpoints are not awarded.';
       els.zoneLi.hidden = !onLadder;
       if (!onLadder) {
         startWave = 1;
+        preparation?.update();
         return;
       }
       const rec = ladderArenaRec();
@@ -1940,16 +1951,17 @@ export const crucibleScreen = {
         : '';
       els.zoneSentence.textContent = (startWave > 1
         ? `${picked.name} — checkpoint start at Round ${startWave}. The opening armory holds `
-          + `${swarmCheckpointPurseFor(swarmZoneIndexFor(startWave))} cr for a mid-build.`
+          + `${swarmCheckpointPurseFor(swarmZoneIndexFor(startWave))} extra credits for equipment.`
         : `${picked.name} — from Round 1. Clear each zone's boss for stars and the next checkpoint.`)
         + pickedAsk;
       // The verb says where Play goes (§7.2): only on the ladder's own door — weekly, daily
       // and the other modes keep their own words.
-      if (enterButton && ruleset === SWARM_RULESET && !daily && !weekly) {
+      if (enterButton && !preparation && ruleset === SWARM_RULESET && !daily && !weekly) {
         enterButton.textContent = startWave > 1
           ? `Play ${picked.name} — Round ${startWave}`
           : 'Launch Swarm';
       }
+      preparation?.update();
     }
 
     // SWARM-05 §7.2 — the hangar strip. Swarm's persistent workshop: the bounty, each
@@ -1961,7 +1973,7 @@ export const crucibleScreen = {
       catch { return; /* pre-mount */ }
       const on = ruleset === SWARM_RULESET;
       els.hangarLi.hidden = !on;
-      if (!on) return;
+      if (!on) { preparation?.update(); return; }
       try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
       const hangar = (doorProfile && doorProfile.hangar) || emptyHangar();
       const bounty = Math.max(0, Math.round(Number(hangar.bounty) || 0));
@@ -2029,6 +2041,7 @@ export const crucibleScreen = {
         });
         addWord(els.hangarHulls, button);
       }
+      preparation?.update();
     }
 
     // Share (PQ-160.02): a run travels as a code, a ghost as a share block — files and codes,
@@ -2373,7 +2386,7 @@ export const crucibleScreen = {
     const footWords = el('ul', 'k-words k-words--row');
     footWords.setAttribute('aria-label', 'Swarm');
     let trainingOpening = false;
-    // The one launch path, shared by Enter and Quick play. INF-038.
+    // The one launch path, shared by the explicit launch key and custom trials.
     function launchCurrent(trialRuleset = null, { inFlight = false } = {}) {
       const conveyor = trialRuleset === POWERED_CONVEYOR_RULESET || ruleset === POWERED_CONVEYOR_RULESET;
       const launchRuleset = conveyor ? POWERED_CONVEYOR_RULESET : ruleset;
@@ -2388,12 +2401,23 @@ export const crucibleScreen = {
       // ever passing the locked word's deny.
       if (bareHull) {
         const pickDef = SHIPS.find((row) => row && row.id === starterId.slice(5));
+        if (!pickDef) { cue('deny'); return; }
         if (pickDef && pickDef.swarmEarned && !swarmCrossoverEarned(pickDef.swarmEarned)) {
           hullSentence.dataset.kind = 'earn';
           hullSentence.textContent = `${pickDef.name} is earned, not picked — a Swarm run proves it first.`;
           cue('deny');
           return;
         }
+      }
+      const terms = conveyor ? { weeklyMutatorId: null, challengeMutators: [] } : doorChallengeTerms();
+      const readiness = swarmPreparationReadiness({ starterId, ruleset: launchRuleset,
+        ...terms, threatIds: daily ? [] : [...threatPicks], stake, daily,
+        startWave: conveyor ? 1 : startWave, hangar: doorProfile?.hangar });
+      if (!readiness.allowed) {
+        preparation?.update();
+        ctx.bus.emit('toast', { text: readiness.message, kind: 'info', ttl: 6 });
+        cue('deny');
+        return;
       }
       // The stake lands on the validated setup (requestCrucibleRun reads setup.swarmStake).
       // Daily rides Contender — a shared challenge does not get a purse choice; the same
@@ -2460,7 +2484,8 @@ export const crucibleScreen = {
       }
       requestSharedCrucibleRun(ctx.bus, payload, launchRuleset);
     }
-    const training = word('Training: Off', 'k-word');
+    const training = word('Tutorial: Off', 'k-word');
+    training.dataset.swarmTraining = 'true';
     paintKey(training, 'small');
     training.setAttribute('aria-pressed', 'false');
     const trainingApplies = () => canChooseSwarmOpeningLesson({
@@ -2468,12 +2493,12 @@ export const crucibleScreen = {
     });
     syncTrainingChoice = () => {
       const enabled = trainingApplies();
-      training.textContent = trainingOpening ? 'Training: On' : 'Training: Off';
+      training.textContent = trainingOpening ? 'Tutorial: On' : 'Tutorial: Off';
       training.disabled = !enabled;
       training.setAttribute('aria-disabled', enabled ? 'false' : 'true');
       training.setAttribute('aria-label', enabled
-        ? `Training opening: ${trainingOpening ? 'on' : 'off'}. Select to ${trainingOpening ? 'turn off' : 'turn on'} the optional single-enemy lesson.`
-        : 'Training opening unavailable for the selected mode or challenge.');
+        ? `Flight tutorial ${trainingOpening ? 'on' : 'off'}. Begin with one enemy and control prompts.`
+        : 'Flight tutorial is available in a standard Swarm run. Disable daily, weekly and ghost challenges to use it.');
       training.title = enabled
         ? 'Optional first-wave lesson. Off by default; the normal Swarm opening starts immediately.'
         : 'Available for an ordinary Swarm run without a daily, weekly, or ghost challenge.';
@@ -2487,30 +2512,6 @@ export const crucibleScreen = {
       cue('confirm');
     });
     addWord(footWords, training);
-    const quick = word('Quick play', 'k-word--emph sf-swarm-quick-key');
-    quick.setAttribute('aria-label', 'Quick play: Swarm now on your ladder');
-    quick.title = 'Swarm now on the arena\u2019s ladder, with this build and checkpoint.';
-    // A key like Back beside it, not loose words in front of the launch key.
-    paintKey(quick, 'small');
-    // Quick play IS the ladder (§6.1/§7.2): Swarm on the arena's authored seed, at the picked
-    // checkpoint, no challenge keys, no ghost. Hull and arena stay — loadout is the player's to keep.
-    // seedCustom clears so the authored seed fills the field. PLAY (the title door's one button) is
-    // the same launch with round 1 starting in flight.
-    function quickLaunch({ inFlight = false } = {}) {
-      ruleset = SWARM_RULESET;
-      daily = false;
-      weekly = false;
-      practiceQueued = false;
-      pendingShare = null;
-      raceGhost = false;
-      seedCustom = false;
-      syncMode();
-      syncHull();
-      syncGhost();
-      launchCurrent(null, { inFlight });
-    }
-    quick.addEventListener('click', () => quickLaunch());
-    addWord(footWords, quick);
     const enter = word('Hold the line', 'k-word--emph k-word--primary sf-swarm-enter-key');
     enterButton = enter;
     paintKey(enter, 'hazard');
@@ -2522,29 +2523,6 @@ export const crucibleScreen = {
     const back = word('Back', 'k-word--emph sf-back');
     back.addEventListener('click', () => { cue('close'); ctx.bus.emit('ui:popScreen', {}); });
     addWord(footWords, back);
-    // TITLE-01: PLAY (one press to round 1 on the shipped defaults) and Customise (the full entrance).
-    // Both are in the DOM always; the play state shows only these, Training and Back.
-    const play = word('Play', 'k-word--emph k-word--primary sf-swarm-play-key');
-    paintKey(play, 'hazard');
-    play.addEventListener('click', () => quickLaunch({ inFlight: true }));
-    addWord(footWords, play);
-    const customise = word('Customise', 'k-word--emph sf-swarm-customise-key');
-    paintKey(customise, 'small');
-    customise.addEventListener('click', () => {
-      playMode = false;
-      rootEl.classList.remove('orr-swarm-play');
-      cue('confirm');
-      try { enterButton && enterButton.focus({ preventScroll: true }); } catch { /* focus is a courtesy */ }
-    });
-    addWord(footWords, customise);
-    rootEl.classList.toggle('orr-swarm-play', playMode);
-    // The door is mounted ahead of the title's press (the manager prewarms it), so the PLAY state is also
-    // taken up at show time; hiding the door always drops it, so any other way in is the full entrance.
-    door._setPlayMode = (on) => {
-      playMode = !!on;
-      rootEl.classList.toggle('orr-swarm-play', playMode);
-    };
-    door._playKey = play;
     foot.appendChild(footWords);
     // r2: the door documents its input — one quiet line under the keys.
     foot.appendChild(el('p', 'k-t-fine orr-door-hint', '\u2190 \u2192 choose \u00b7 Enter launch'));
@@ -2553,8 +2531,12 @@ export const crucibleScreen = {
     syncMode();
     syncHull();
     preparation = createCruciblePreparation({ root: rootEl, stage, title, foot, enter,
+      ctx, hullChoices: crucibleHullChoices(),
       onPreviewVisibility: visible => this._cabinetAttract?.setVisible(visible),
-      read: () => ({ starterId, arenaId, arenaLabel: (arenaDescriptions[arenaId] || [])[0] || arenaId, ruleset, daily, dailySnapshot, weekly, stake, weeklyMutatorId: doorChallengeTerms().weeklyMutatorId, seed: seedInput.value }) });
+      read: () => ({ starterId, arenaId, arenaLabel: (arenaDescriptions[arenaId] || [])[0] || arenaId,
+        ruleset, daily, dailySnapshot, weekly, stake, ...doorChallengeTerms(),
+        threatIds: daily ? [] : [...threatPicks], startWave, hangar: doorProfile?.hangar,
+        seed: seedInput.value }) });
     this._preparation = preparation;
     // The door unit's composition sheet lands after the prep sheet so its fixes win the cascade
     // (crucible-doorLayouts.js documents what it carries).
@@ -2582,7 +2564,7 @@ export const crucibleScreen = {
 
   onShow() {
     this._embarkSpecActive = true;
-    if (consumeSwarmPlayEntry()) this._setPlayMode?.(true);
+    this._preparation?.setActive(true);
     this._refreshDaily?.();
     this._armEmbarkSpec?.();
     this._refreshCabinetBoard?.();
@@ -2596,9 +2578,7 @@ export const crucibleScreen = {
       settle(r.stage, { from: 'left', delay: 60, state: 'crucible:open' });
       settle(r.foot, { from: 'bottom', delay: 120, state: 'crucible:open' });
     } catch { /* motion is cosmetic */ }
-    if (this._playKey && this._playKey.isConnected && this._playKey.offsetParent) {
-      try { this._playKey.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
-    } else if (this._preparation) this._preparation.focus();
+    if (this._preparation) this._preparation.focus();
     else if (r.enter && typeof r.enter.focus === 'function') {
       try { r.enter.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
     }
@@ -2606,7 +2586,7 @@ export const crucibleScreen = {
 
   onHide() {
     this._embarkSpecActive = false;
-    this._setPlayMode?.(false);
+    this._preparation?.setActive(false);
     this._cabinetAttract?.stop();
     this._cabinetDoc?.removeEventListener?.('visibilitychange', this._dailyVisibility);
     if (canAnimate()) cue('close');

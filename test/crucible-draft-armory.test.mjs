@@ -1,7 +1,7 @@
-// The armory's Escape guard. Esc used to launch the next round on the spot, with the credits the
-// player never spent; in the swarm shop, while the wallet still buys something on the shelf, the
-// first Esc now only moves focus to Launch and says what is left, and the second one goes.
-// Mounted over the stub DOM so the real keydown handler is what these tests press.
+// Swarm launches only through its explicit forward control. Escape/controller Cancel can
+// focus that control and explain the choice, but never turn a second press or an empty wallet
+// into deployment. This exercises the real handlers over the stub DOM; native Enter/Space
+// activation and visual hit targets are covered by check-swarm-hangar-ux.mjs.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -85,35 +85,39 @@ test('affordableOfferCount counts only what the wallet can buy now', () => {
   ]), 1, 'unaffordable, fitted, the flown hull and a free hull switch are not cards to buy');
 });
 
-test('launchGuardLine reads in plain words and agrees with the count', () => {
-  assert.equal(launchGuardLine(2), 'You can still afford 2 cards — Esc again or Launch to go');
-  assert.equal(launchGuardLine(1), 'You can still afford 1 card — Esc again or Launch to go');
+test('launchGuardLine explains available purchases without advertising Cancel as deployment', () => {
+  for (const count of [0, 1, 2]) {
+    const line = launchGuardLine(count);
+    assert.ok(line.length > 0, 'Cancel provides a useful explanation even at zero credits.');
+    if (count > 0) assert.ok(line.includes(String(count)), 'The available-purchase count remains truthful.');
+    assert.doesNotMatch(line, /\b(?:Esc(?:ape)?|Cancel) again\b/i);
+  }
 });
 
-test('wallet that affords a card: first Escape spares the credits, second Escape launches once', () => {
+test('affordable equipment and repeated Escape never deploy or spend the wallet', () => {
   const m = mountShop({ credits: 80, offers: [offer('a'), offer('b', { available: false, price: 500 })] });
   try {
-    assert.equal(m.screen._skip.dataset.label, 'Launch round 4', 'the shop button is the launch');
-    const first = m.press('Escape');
-    assert.equal(first.event.defaultPrevented, true, 'the key is still owned end to end');
-    assert.equal(first.stopped, 1, 'and still never reaches the flight handler');
-    assert.equal(m.picks().length, 0, 'the first Escape launches nothing');
-    assert.equal(m.focused(), 1, 'it moves focus to Launch');
-    assert.equal(m.screen._note.textContent, 'You can still afford 1 card — Esc again or Launch to go');
-    assert.equal(m.screen._note.attributes.role, 'status', 'announced politely to a screen reader');
-
-    m.press('Escape');
-    assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: null }]], 'the second Escape resolves as ever');
+    for (let press = 0; press < 4; press++) {
+      const key = m.press('Escape');
+      assert.equal(key.event.defaultPrevented, true, 'the key is owned end to end');
+      assert.equal(key.stopped, 1, 'Cancel never reaches the flight handler');
+      assert.deepEqual(m.picks(), [], 'Repeated Cancel is never consent to deploy.');
+      assert.equal(m.focused(), press + 1, 'Cancel points to the explicit forward control.');
+      assert.ok(m.screen._note.textContent.length > 0);
+      assert.equal(m.screen._note.attributes.role, 'status', 'The explanation is announced.');
+      assert.equal(m.ctx.state.run.credits, 80);
+      assert.equal(m.ctx.state.run.phase, 'draft');
+    }
   } finally { m.restore(); }
 });
 
-test('nothing affordable: the first Escape launches at once, exactly as before', () => {
+test('zero starting credits do not turn Escape into a deployment shortcut', () => {
   const m = mountShop({ credits: 0, offers: [offer('a', { available: false }), offer('b', { available: false })] });
   try {
-    m.press('Escape');
-    assert.equal(m.picks().length, 1);
-    assert.equal(m.focused(), 0, 'no detour through the warning');
-    assert.doesNotMatch(m.screen._note.textContent, /afford/);
+    m.press('Escape'); m.press('Escape');
+    assert.deepEqual(m.picks(), []);
+    assert.equal(m.focused(), 2);
+    assert.equal(m.ctx.state.run.phase, 'draft');
   } finally { m.restore(); }
 });
 
@@ -125,33 +129,37 @@ test('pad cancel uses the Escape guard and only the visible armory answers', () 
     m.ctx.bus.emit('ui:cancel', {});
     assert.equal(m.picks().length, 0, 'first B warns without launching');
     assert.equal(m.focused(), focusedBefore + 1);
-    assert.equal(m.screen._note.textContent, launchGuardLine(1));
+    assert.ok(m.screen._note.textContent.length > 0);
     m.ctx.bus.emit('ui:cancel', {});
-    assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: null }]], 'second B launches once');
+    assert.deepEqual(m.picks(), [], 'A second controller Cancel also cannot deploy.');
+    const beforeCovered = m.focused();
     m.ctx.screenManager.top = () => 'crucibleRefit';
     m.ctx.bus.emit('ui:cancel', {});
-    assert.equal(m.screen._launchWarned, false, 'a covering screen owns its cancel');
+    assert.equal(m.focused(), beforeCovered, 'A covering screen owns its Cancel.');
     m.screen.onHide();
     m.ctx.screenManager.top = () => 'crucibleDraft';
     m.ctx.bus.emit('ui:cancel', {});
-    assert.equal(m.screen._launchWarned, false, 'hidden armory unsubscribes');
+    assert.equal(m.focused(), beforeCovered, 'Hidden armory unsubscribes.');
+    assert.deepEqual(m.picks(), []);
   } finally { m.screen.dispose(); m.restore(); }
 });
 
-test('pad cancel with no affordable card launches immediately', () => {
+test('controller Cancel remains non-deploying with no affordable equipment', () => {
   const m = mountShop({ credits: 0, offers: [offer('a', { available: false })] });
   try {
     m.screen.onShow();
-    m.ctx.bus.emit('ui:cancel', {});
-    assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: null }]]);
+    m.ctx.bus.emit('ui:cancel', {}); m.ctx.bus.emit('ui:cancel', {});
+    assert.deepEqual(m.picks(), []);
   } finally { m.screen.dispose(); m.restore(); }
 });
 
-test('an empty shelf launches at once too', () => {
+test('an empty equipment shelf still requires explicit deployment', () => {
   const m = mountShop({ credits: 900, offers: [] });
   try {
-    m.press('Escape');
-    assert.equal(m.picks().length, 1);
+    m.press('Escape'); m.press('Escape');
+    assert.deepEqual(m.picks(), []);
+    m.screen._skip.click();
+    assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: null }]]);
   } finally { m.restore(); }
 });
 
@@ -165,7 +173,7 @@ test('the Gauntlet keeps its loadout on the first Escape, whatever the wallet', 
   } finally { m.restore(); }
 });
 
-test('clicking Launch after the warning resolves, and a click alone never needs the warning', () => {
+test('the explicit forward control deploys with or without a preceding Cancel', () => {
   const warned = mountShop({ offers: [offer('a'), offer('b')] });
   try {
     warned.press('Escape');
@@ -181,7 +189,7 @@ test('clicking Launch after the warning resolves, and a click alone never needs 
   } finally { direct.restore(); }
 });
 
-test('a rebuilt shelf re-reads: spending the last credits turns the next Escape into a launch', () => {
+test('spending the last credits does not change the meaning of Cancel', () => {
   const m = mountShop({ credits: 80, offers: [offer('a')] });
   try {
     m.press('Escape');
@@ -193,11 +201,13 @@ test('a rebuilt shelf re-reads: spending the last credits turns the next Escape 
     m.screen.refresh(m.ctx);
     assert.doesNotMatch(m.screen._note.textContent, /afford/, 'the old count is not left on the line');
     m.press('Escape');
-    assert.equal(m.picks().length, 1, 'nothing left to spend: one Escape goes');
+    assert.deepEqual(m.picks(), [], 'Cancel remains non-deploying after a purchase.');
+    m.screen._skip.click();
+    assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: null }]]);
   } finally { m.restore(); }
 });
 
-test('a repaint with cards still affordable warns again instead of launching on a stale second press', () => {
+test('a repaint with affordable equipment cannot turn repeated Cancel into consent', () => {
   const m = mountShop({ credits: 200, offers: [offer('a'), offer('b')] });
   try {
     m.press('Escape');
@@ -207,9 +217,9 @@ test('a repaint with cards still affordable warns again instead of launching on 
     m.screen.refresh(m.ctx);
     m.press('Escape');
     assert.equal(m.picks().length, 0, 'the shelf changed since the warning, so it is read fresh');
-    assert.equal(m.screen._note.textContent, 'You can still afford 1 card — Esc again or Launch to go');
+    assert.ok(m.screen._note.textContent.length > 0);
     m.press('Escape');
-    assert.equal(m.picks().length, 1);
+    assert.deepEqual(m.picks(), []);
   } finally { m.restore(); }
 });
 
@@ -226,6 +236,6 @@ test('Escape inside the search field still backs out of the field first, launchi
     assert.equal(m.screen._search.value, '');
     assert.equal(m.picks().length, 0);
     assert.doesNotMatch(m.screen._note.textContent, /afford/, 'the guard is the shop key, not the field key');
-    assert.equal(m.screen._launchWarned, false);
+    assert.equal(m.ctx.state.run.phase, 'draft');
   } finally { m.restore(); }
 });

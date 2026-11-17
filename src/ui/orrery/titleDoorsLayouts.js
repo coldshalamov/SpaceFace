@@ -1,127 +1,163 @@
-// TITLE-01 — the title as two doors (design/game/20_THE_FIRST_HOUR.md storyboard, 0:09 "Title"):
-// ADVENTURE and SWARM side by side over the live hero scene, a small row under them (Settings, Help,
-// Quit) and everything else behind one quiet "More". Layout and type only: the buttons, their
-// data-action hooks, aria names and DOM order are the title's own (mainMenu.js, which also marks the two
-// door items `of-title-door` + `is-adventure` / `is-swarm`); this sheet sets them out. The Adventure door is
-// New Game for a new player and Continue when a save exists, in which case New Game stands on the door as its
-// secondary key (`of-title-door-secondary`), never behind More. No dial and no menu over the ship: the doors
-// stand in the lower left, clear of the hero.
+// Title navigation keeps the authored world and puts its verbs on complete, tactile controls.
+// A mode's image, padding, edge, name, description and action belong to the SAME native button.
+// Main-menu state, save ownership and input intents remain in mainMenu.js.
 import { injectOrrery } from './tokens.js';
 
-const img = (name) => {
-  try { return new URL('../../../assets/ui/backdrops/' + name, import.meta.url).href; } catch { return '../assets/ui/backdrops/' + name; }
-};
+const img = (name) => new URL('../../../assets/ui/backdrops/' + name, import.meta.url).href;
 const ADVENTURE_IMG = img('backdrop-title.jpg');
 const SWARM_IMG = img('backdrop-crucible-door.jpg');
 const STYLE_ID = 'sf-orrery-title-doors-layouts';
 const T = 'html body .of-title.orr-title--doors';
-const BONE = '236 230 216';
 const LI = (action) => `${T} .of-title-actions li:has(> [data-action="${action}"])`;
-const MORE_ACTIONS = ['load', 'crucible', 'archive', 'circuits', 'sandbox', 'physics'];
-const MORE_LI = MORE_ACTIONS.map(LI).join(',\n');
-const MORE_LI_OPEN = MORE_ACTIONS
-  .map((a) => `${T} .of-title-actions.is-more-open li:has(> [data-action="${a}"])`).join(',\n');
-const DOOR_LI = `${T} .of-title-actions li.of-title-door`;
-const DOOR_BTN = `${DOOR_LI} > button`;
-const SECOND_LI = `${T} .of-title-actions li.of-title-door-secondary`;
-const ROW_BTN = `${T} .of-title-actions :is(li:has(> [data-action="settings"]), li:has(> [data-action="help"]), li:has(> [data-action="quit"]), li.of-title-door-secondary) > button`;
-// the door word fits its own door: cqw is the door's inner width (ADVENTURE is ~6.1em of Archivo 800)
-const DOOR_FONT = "800 clamp(28px, min(6vh, 15cqw), 58px)/1 var(--dp-face-display, 'Archivo')";
+const DOOR = `${T} .of-title-actions li.of-title-door > button`;
+const UTILITY = `${T} .of-title-actions li:not(.of-title-door) > button`;
 
 export const TITLE_DOORS_LAYOUT_CSS = `
-/* the column becomes one grid: two doors (twelve of twenty-four columns each), then a row of small words */
-${T} .of-title-actions {
-  display:grid !important; grid-template-columns:repeat(24, minmax(0, 1fr)) !important; gap:14px 0 !important; column-gap:0 !important;
-  width:min(600px, 46vw) !important; margin:0 !important; align-content:end; justify-items:stretch;
-  position:absolute !important; left:48px !important; right:auto !important; top:auto !important;
-  bottom:clamp(56px, 10vh, 110px) !important; transform:none !important;
-  padding:0 !important; max-width:none !important; min-height:0 !important; height:auto !important; }
-${T} .of-title-actions > ul { display:contents !important; list-style:none; margin:0; padding:0; }
-${T} .of-title-actions li { margin:0 !important; padding:0 !important; list-style:none; min-width:0; position:static !important; width:auto !important; max-width:none !important; }
-${T} .of-title-actions li[hidden] { display:none !important; }
-/* no tech words on the way in: the standing line is empty, so its lamp goes too */
-${T} .dp-title__eyebrow:empty { display:none !important; }
-/* the doors */
-${DOOR_LI}.is-adventure { grid-column:1 / span 12; grid-row:1; margin:0 7px 0 0 !important; --door-img:url("${ADVENTURE_IMG}"); --door-img-pos:72% 56%; --door-img-size:270% auto; }
-${DOOR_LI}.is-swarm { grid-column:13 / span 12; grid-row:1; margin:0 0 0 7px !important; --door-img:url("${SWARM_IMG}"); }
-${SECOND_LI} { grid-column:1 / span 12; grid-row:2; margin:0 7px 0 0 !important; }
-/* the door is the list item: image, border and the notch on it; the word and its line sit inside in flow */
-${DOOR_LI} {
-  display:flex !important; flex-direction:column; justify-content:flex-end; min-height:clamp(210px, 34vh, 330px);
-  padding:20px 26px 22px !important; box-sizing:border-box; position:relative !important; container-type:inline-size;
-  background:linear-gradient(0deg, rgb(6 8 12 / .82) 0%, rgb(6 8 12 / .42) 38%, rgb(6 8 12 / 0) 70%), var(--door-img) var(--door-img-pos, center) / var(--door-img-size, cover) no-repeat;
-  border:1px solid rgb(${BONE} / .34); border-radius:2px;
-  clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
-  transition:border-color .16s linear, box-shadow .16s linear; }
-${DOOR_LI}:is(:hover, :focus-within) {
-  border-color:var(--dp-hand, #f2b950); box-shadow:0 0 26px rgb(242 185 80 / .25);
-  background:linear-gradient(0deg, rgb(20 14 6 / .85) 0%, rgb(14 10 6 / .42) 38%, rgb(6 8 12 / 0) 70%), var(--door-img) var(--door-img-pos, center) / var(--door-img-size, cover) no-repeat; }
-${DOOR_BTN} {
-  display:block !important; width:100% !important; padding:0 !important; margin:0 !important; text-align:left; cursor:pointer;
-  color:rgb(248 244 234) !important; background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
-  font:${DOOR_FONT} !important; letter-spacing:.02em !important; text-transform:uppercase; text-shadow:0 1px 0 rgb(0 0 0 / .6); }
-/* the button's own text is the core copy (New Game / Continue); the door draws ADVENTURE from its data-door-label */
-${DOOR_BTN}[data-door-label] { font-size:0 !important; line-height:0 !important; letter-spacing:0 !important; }
-${DOOR_BTN}[data-door-label]::before { content:attr(data-door-label); display:block !important; position:static !important; inset:auto !important; width:auto !important; height:auto !important;
-  margin:0 !important; padding:0 !important; background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important; transform:none !important; opacity:1 !important;
-  font:${DOOR_FONT}; letter-spacing:.02em; text-transform:uppercase; color:inherit; }
-${DOOR_BTN}:is(:hover, :focus, :focus-visible, [data-awake]) { background:none !important; outline:none !important; box-shadow:none !important; }
-/* the attention lamp's bracket round the word is not wanted on a door (the door itself lights) */
-${DOOR_BTN}::after, ${DOOR_LI} .dp-lit__item::after { display:none !important; content:none !important; }
-html body #screens .of-title.orr-title--doors .of-title-actions li.of-title-door > button.dp-lit__item:is(:focus, :focus-visible) { outline:0 solid transparent !important; outline-offset:0 !important; }
-${DOOR_LI} .dp-lit__note {
-  display:block !important; position:static !important; clip:auto !important; clip-path:none !important; width:auto !important; height:auto !important;
-  overflow:visible !important; margin:10px 0 0 !important; font:400 15px/1.4 var(--dp-face-body, 'Instrument Sans'), sans-serif !important;
-  letter-spacing:0 !important; text-transform:none; color:rgb(${BONE} / .82) !important; }
-/* with a save: the door's line is a short Continue summary (two lines), and New Game's own line steps aside */
-${DOOR_LI}.is-adventure .dp-lit__note { display:-webkit-box !important; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden !important; }
-${SECOND_LI} .dp-lit__note { display:none !important; }
-/* the fine line under the doors: readable on the lit scene */
-${T} .dp-frame__foot, ${T} .dp-frame__foot * { color:rgb(${BONE} / .96) !important; opacity:1 !important; font-weight:600; text-shadow:0 1px 3px rgb(0 0 0 / .95), 0 0 10px rgb(0 0 0 / .8); }
-/* the small row (Settings, Help, Quit) is centred by mainMenu.js from how many words show; these are the full-row defaults */
-${LI('settings')} { grid-column:1 / span 8; grid-row:2; }
-${LI('help')} { grid-column:9 / span 8; grid-row:2; }
-${LI('quit')} { grid-column:17 / span 8; grid-row:2; }
-${T} .of-title-actions :is(li:has(> [data-action="settings"]), li:has(> [data-action="help"]), li:has(> [data-action="quit"])) { padding:0 5px !important; }
-${ROW_BTN} {
-  width:100% !important; min-height:44px; padding:8px 12px !important; text-align:center; justify-content:center;
-  font:600 14px var(--dp-face-label, 'Archivo') !important; letter-spacing:.12em !important; text-transform:uppercase;
-  color:rgb(${BONE} / .9) !important; background:rgb(8 10 14 / .6) !important; border:1px solid rgb(${BONE} / .22) !important; border-radius:2px !important;
-  text-shadow:0 1px 0 rgb(0 0 0 / .6); }
-${ROW_BTN}:is(:hover, :focus-visible, [data-awake]) { color:#fff !important; border-color:rgb(${BONE} / .6) !important; outline:none !important; }
-/* More: everything else, closed until asked */
-${MORE_LI} { display:none !important; }
-${MORE_LI_OPEN} { display:list-item !important; grid-row:auto; grid-column:auto / span 8; padding:0 5px !important; }
-${T} .of-title-actions :is(${MORE_ACTIONS.map((a) => `[data-action="${a}"]`).join(', ')}) { width:100% !important; min-height:40px; padding:6px 12px !important; text-align:left;
-  font:500 13px var(--dp-face-label, 'Archivo') !important; letter-spacing:.1em !important; text-transform:uppercase; color:rgb(${BONE} / .85) !important;
-  background:rgb(8 10 14 / .6) !important; border:1px solid rgb(${BONE} / .16) !important; border-radius:2px !important; }
-${T} .of-title-more { grid-column:1 / -1; justify-self:center; min-height:32px; padding:4px 14px !important;
-  font:500 12px var(--dp-face-label, 'Archivo') !important; letter-spacing:.14em !important; text-transform:uppercase; color:rgb(${BONE} / .7) !important;
-  background:none !important; border:0 !important; border-bottom:1px solid rgb(${BONE} / .3) !important; cursor:pointer; }
-${T} .of-title-more:is(:hover, :focus-visible) { color:#fff !important; outline:none !important; border-bottom-color:var(--dp-hand, #f2b950) !important; }
-/* the reference line that rode under the dial has no place here: its words live behind More */
-${T} .of-title-aside { display:contents !important; }
-@media (max-height:700px) {
-  ${T} .of-title-actions { bottom:clamp(40px, 7vh, 70px) !important; gap:10px 0 !important; }
-  ${DOOR_LI} { min-height:clamp(180px, 33vh, 230px); padding:16px 22px 18px !important; }
+${T} {
+  --title-ink:var(--dp-ink, #ece6d8); --title-accent:var(--dp-hand, #f2b950);
+  --title-line:rgb(206 221 230 / .24); --title-panel:rgb(12 21 30 / .9);
+  --dp-margin:clamp(24px, 4vw, 72px);
+  user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent;
 }
-/* the phone: the two doors stacked, then the small row; More behind its toggle as on the desktop */
-@media (max-width:700px) {
-  ${T} .of-title-actions { position:relative !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; width:100% !important; margin:18px 0 0 !important; transform:none !important; gap:14px 0 !important; }
-  ${DOOR_LI}.is-adventure, ${DOOR_LI}.is-swarm { grid-column:1 / -1 !important; margin:0 !important; min-height:clamp(132px, 19vh, 172px); clip-path:none; }
-  ${T} .dp-logotype { margin-bottom:6px; }
-  ${T} .of-title-more { margin-top:4px; }
-  ${DOOR_LI}.is-adventure { grid-row:1 !important; }
-  ${DOOR_LI}.is-swarm { grid-row:2 !important; }
-  ${SECOND_LI} { grid-column:1 / -1 !important; grid-row:auto !important; margin:0 !important; }
-  ${LI('settings')}, ${LI('help')}, ${LI('quit')} { grid-column:span 12 !important; grid-row:auto !important; }
-  ${T} .of-title-actions { align-content:start !important; }
-  ${LI('settings')}, ${LI('help')}, ${LI('quit')} { order:1; }
-  ${T} .of-title-actions { column-gap:10px !important; }
-  ${T} .of-title-actions :is(li:has(> [data-action="settings"]), li:has(> [data-action="help"]), li:has(> [data-action="quit"])) { padding:0 !important; }
-  ${MORE_LI_OPEN} { grid-column:span 12 !important; order:2; padding:0 !important; }
-  :is(${MORE_LI_OPEN}) .dp-lit__note { display:none !important; }
-  ${T} .of-title-more { order:3; }
+${T} :is(input, textarea, [contenteditable="true"]) { user-select:text; -webkit-user-select:text; }
+${T} .dp-logotype { width:clamp(280px, 37vw, 680px) !important; max-width:100%; }
+${T} .dp-title__rule, ${T} .dp-title__eyebrow:empty { display:none !important; }
+${T} .dp-title__eyebrow { max-width:60ch; white-space:normal; font:500 14px/1.45 var(--dp-face-body, 'Instrument Sans'), sans-serif; }
+${T} > .dp-frame__body { grid-template-columns:minmax(0, 1fr) !important; align-items:center; }
+${T} .dp-veil--column { width:72%; background:linear-gradient(90deg, rgb(6 11 17 / .92), rgb(6 11 17 / .58) 62%, transparent); }
+${T} .of-title-actions {
+  display:grid !important; grid-template-columns:repeat(12, minmax(0, 1fr)) !important;
+  gap:10px !important; width:min(570px, 46vw) !important; min-width:0;
+  margin:0 !important; padding:4px !important; align-content:start; align-self:center !important;
+  position:relative !important; left:auto !important; right:auto !important; top:auto !important;
+  bottom:auto !important; transform:none !important; height:auto !important;
+  max-height:100%; overflow:hidden auto; overscroll-behavior:contain; scrollbar-width:thin;
+}
+${T} .of-title-actions::before { display:none !important; }
+${T} .of-title-actions > ul:not(.of-title-aside) { display:contents !important; }
+${T} .of-title-actions li { margin:0 !important; padding:0 !important; list-style:none; min-width:0; width:auto !important; max-width:none !important; position:relative !important; }
+${T} .of-title-actions :is(li[hidden], ul[hidden]) { display:none !important; }
+${T} .of-title-actions li.of-title-door { grid-column:1 / -1; order:1; }
+${T} .of-title-actions li.of-title-door.is-swarm { order:2; }
+${T} .of-title-actions li.of-title-door.is-adventure { --door-image:url("${ADVENTURE_IMG}"); --door-position:70% 55%; }
+${T} .of-title-actions li.of-title-door.is-swarm { --door-image:url("${SWARM_IMG}"); --door-position:center 54%; }
+${DOOR} {
+  appearance:none; box-sizing:border-box; display:flex !important; flex-direction:column; align-items:flex-start;
+  justify-content:center; gap:0; position:relative; isolation:isolate; overflow:hidden;
+  width:100% !important; min-height:clamp(142px, 18vh, 194px); margin:0 !important;
+  padding:20px 70px 20px 26px !important; cursor:pointer; text-align:left; white-space:normal;
+  color:var(--title-ink) !important; background:var(--title-panel) !important;
+  border:1px solid var(--title-line) !important; border-left:3px solid rgb(206 221 230 / .36) !important;
+  border-radius:3px !important; box-shadow:0 9px 26px rgb(0 0 0 / .18) !important;
+  font:500 16px/1.4 var(--dp-face-body, 'Instrument Sans'), sans-serif !important;
+  letter-spacing:0 !important; text-transform:none !important; text-shadow:0 1px 4px rgb(0 0 0 / .4);
+  transition:background-color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
+${DOOR}::before {
+  content:"" !important; display:block !important; position:absolute !important; inset:0 !important;
+  width:auto !important; height:auto !important; margin:0 !important; transform:none !important; z-index:-1;
+  background:linear-gradient(90deg, rgb(10 18 27 / .99) 8%, rgb(10 18 27 / .93) 42%, rgb(10 18 27 / .12) 100%), var(--door-image) var(--door-position, center) / cover no-repeat !important;
+  opacity:.9 !important; border:0 !important; box-shadow:none !important; border-radius:0 !important; pointer-events:none;
+}
+${DOOR}::after, ${UTILITY}::after { display:none !important; content:none !important; }
+${DOOR}:is(:hover, :focus-visible, [data-awake]) {
+  border-color:var(--title-accent) !important; border-left-color:var(--title-accent) !important;
+  box-shadow:inset 0 0 0 1px rgb(242 185 80 / .2), 0 10px 28px rgb(0 0 0 / .2) !important;
+  background:rgb(24 32 40 / .98) !important; outline:none !important;
+}
+${DOOR}:focus-visible { outline:2px solid var(--title-accent) !important; outline-offset:2px !important; }
+${DOOR}:active { box-shadow:inset 0 0 0 2px var(--title-accent) !important; }
+${DOOR}[aria-disabled="true"] { opacity:.55 !important; cursor:progress; }
+${DOOR} > * { pointer-events:none; }
+${T} .of-title-door-type { font:650 12px/1.3 var(--dp-face-label, 'Archivo'), sans-serif; letter-spacing:.18em; text-transform:uppercase; color:rgb(181 202 218); }
+${T} .of-title-door-name { display:block; margin:5px 0 7px; font:800 clamp(25px, 3.5vh, 38px)/1.05 var(--dp-face-display, 'Archivo'), sans-serif; letter-spacing:.02em; text-transform:uppercase; color:var(--title-ink); }
+${DOOR} .dp-lit__note {
+  display:-webkit-box !important; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  position:static !important; clip:auto !important; clip-path:none !important; width:auto !important; height:auto !important;
+  overflow:hidden !important; margin:0 !important; padding:0 !important; max-width:38ch;
+  font:400 15px/1.45 var(--dp-face-body, 'Instrument Sans'), sans-serif !important; letter-spacing:0 !important;
+  text-transform:none !important; color:rgb(218 226 232) !important;
+}
+${T} .of-title-door-action { display:block; margin-top:13px; color:var(--title-accent); font:650 13px/1.3 var(--dp-face-label, 'Archivo'), sans-serif; letter-spacing:.05em; }
+${T} .of-title-door-arrow { position:absolute; right:24px; top:50%; transform:translateY(-50%); color:var(--title-accent); font:400 28px/1 var(--dp-face-body, 'Instrument Sans'), sans-serif; transition:transform .16s ease; }
+${DOOR}:is(:hover, :focus-visible) .of-title-door-arrow { transform:translate(4px, -50%); }
+${T} .of-title-actions li.of-title-door-secondary, ${LI('load')} { grid-column:span 6; order:3; }
+${T} .of-title-actions:not(.has-save) li:has(> [data-action="load"]) { display:none !important; }
+${LI('settings')}, ${LI('help')}, ${LI('quit')} { grid-column:span 4; order:4; }
+${T} .of-title-actions:not(.can-quit) li:has(> :is([data-action="settings"], [data-action="help"])) { grid-column:span 6; }
+${UTILITY} {
+  appearance:none; display:flex !important; align-items:center; justify-content:center;
+  box-sizing:border-box; width:100% !important; min-height:46px; margin:0 !important; padding:10px 12px !important;
+  font:650 13px/1.35 var(--dp-face-label, 'Archivo'), sans-serif !important; letter-spacing:.06em !important;
+  white-space:normal; text-transform:uppercase; text-align:center; color:var(--title-ink) !important;
+  background:rgb(12 21 30 / .82) !important; border:1px solid var(--title-line) !important; border-radius:3px !important;
+  box-shadow:none !important; cursor:pointer; transition:background-color .16s ease, border-color .16s ease;
+}
+${UTILITY}::before { display:none !important; content:none !important; }
+${UTILITY}:is(:hover, :focus-visible, [data-awake]) { background:rgb(33 44 54 / .96) !important; border-color:var(--title-accent) !important; color:#fff !important; outline:none !important; }
+${UTILITY}:focus-visible { outline:2px solid var(--title-accent) !important; outline-offset:2px !important; }
+${UTILITY}:active { background:rgb(65 56 38 / .98) !important; }
+${UTILITY} :is(.of-title-door-type, .dp-lit__note, .of-title-door-action, .of-title-door-arrow) { display:none !important; }
+${UTILITY} .of-title-door-name { margin:0; font:inherit; color:inherit; }
+${T} .of-title-actions .of-title-more {
+  grid-column:1 / -1; order:5; appearance:none; display:flex; align-items:center; justify-content:space-between;
+  min-height:44px; padding:10px 14px !important; cursor:pointer; color:rgb(207 220 229) !important;
+  background:rgb(8 16 24 / .65) !important; border:1px solid rgb(206 221 230 / .16) !important; border-radius:3px !important;
+  font:600 13px/1.4 var(--dp-face-label, 'Archivo'), sans-serif !important; letter-spacing:.03em !important; text-transform:none;
+}
+${T} .of-title-more::before { display:none !important; }
+${T} .of-title-more::after { content:"+" !important; font-size:20px; position:static !important; background:none !important; width:auto; height:auto; transform:none; opacity:1; }
+${T} .of-title-more[aria-expanded="true"]::after { content:"−" !important; }
+${T} .of-title-more:is(:hover, :focus-visible) { border-color:var(--title-accent) !important; color:#fff !important; outline:none !important; }
+${T} .of-title-more:focus-visible { outline:2px solid var(--title-accent) !important; outline-offset:2px !important; }
+${T} .of-title-actions > ul.of-title-aside {
+  grid-column:1 / -1; order:6; display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:8px; list-style:none; margin:0 !important; padding:2px 0 4px !important; width:100% !important;
+}
+${T} .of-title-actions > ul.of-title-aside[hidden] { display:none !important; }
+${T} .of-title-aside li > button { min-height:88px; flex-direction:column; gap:5px; align-items:flex-start; text-align:left; }
+${T} .of-title-aside .dp-lit__note {
+  display:block !important; position:static !important; clip:auto !important; clip-path:none !important;
+  width:auto !important; height:auto !important; padding:0 !important; margin:0 !important;
+  font:400 12px/1.4 var(--dp-face-body, 'Instrument Sans'), sans-serif !important;
+  letter-spacing:0 !important; text-transform:none !important; color:rgb(192 207 220) !important;
+}
+${T} .of-title-aside button > * { pointer-events:none; }
+${T} .dp-frame__foot { gap:10px; color:rgb(210 220 226) !important; opacity:1 !important; }
+${T} .dp-frame__foot :is(button, span) { color:inherit !important; font:600 12px/1.4 var(--dp-face-label, 'Archivo'), sans-serif; }
+${T} .dp-frame__foot button { min-height:36px; padding:8px 4px; cursor:pointer; }
+${T} .dp-frame__foot button:is(:hover, :focus-visible) { color:var(--title-accent) !important; text-decoration:underline; text-underline-offset:4px; }
+@media (max-height:760px) {
+  ${T} { --dp-margin:24px; gap:18px; }
+  ${T} .dp-logotype { width:clamp(280px, 34vw, 480px) !important; }
+  ${DOOR} { min-height:126px; padding:16px 60px 16px 20px !important; }
+  ${T} .of-title-door-action { margin-top:8px; }
+  ${T} .of-title-door-name { font-size:28px; }
+  ${T} .of-title-actions { gap:8px !important; }
+}
+@media (max-width:850px) {
+  ${T} .of-title-actions { width:min(520px, 68vw) !important; }
+}
+@media (max-width:600px) {
+  ${T} { --dp-margin:20px; gap:18px; }
+  ${T} .of-title-actions { width:100% !important; align-self:start !important; padding:3px !important; }
+  ${T} .dp-logotype { width:100% !important; max-width:400px; }
+  ${T} .dp-veil--column { width:100%; background:linear-gradient(90deg, rgb(6 11 17 / .85), rgb(6 11 17 / .62)); }
+  ${DOOR} { min-height:150px; padding:18px 48px 18px 18px !important; }
+  ${T} .of-title-door-name { font-size:28px; }
+  ${DOOR} .dp-lit__note { font-size:14px !important; }
+  ${T} .of-title-door-arrow { right:15px; }
+  ${T} .dp-frame__foot { gap:6px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  ${T} *, ${T} *::before, ${T} *::after { transition:none !important; animation:none !important; }
+}
+html.sf-reduce-motion ${T.replace('html body ', '')} *, html.sf-reduce-motion ${T.replace('html body ', '')} *::after { transition:none !important; animation:none !important; }
+@media (forced-colors:active) {
+  ${DOOR}, ${UTILITY}, ${T} .of-title-more { border:1px solid ButtonText !important; background:Canvas !important; color:ButtonText !important; box-shadow:none !important; }
+  ${DOOR}::before { display:none !important; }
+  ${DOOR}:focus-visible, ${UTILITY}:focus-visible, ${T} .of-title-more:focus-visible { outline:2px solid Highlight !important; }
+  ${T} :is(.of-title-door-name, .of-title-door-type, .of-title-door-action, .of-title-door-arrow), ${DOOR} .dp-lit__note { color:ButtonText !important; }
 }
 `;
 

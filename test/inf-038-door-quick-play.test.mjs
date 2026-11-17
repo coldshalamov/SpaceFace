@@ -1,24 +1,18 @@
-// INF-038 — seeds and existing challenges at the front door.
+// INF-038 — seeds and existing challenges survive the ship-first preparation route.
 //
 // The door copies as well as pastes: doorRunShareCode encodes the pending configuration
 // with the same envelope the paste path decodes, so a copied code reproduces the intended
 // run. Malformed pastes fail closed with a useful error; no account or service anywhere.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 
 import {
   applyRunShareCode,
   doorRunShareCode,
 } from '../src/ui/screens/shareCode.js';
+import { crucibleSetupFor, crucibleLaunchConfig } from '../src/ui/crucibleLaunch.js';
 
-const DOOR_SOURCE = readFileSync(
-  fileURLToPath(new URL('../src/ui/screens/crucible.js', import.meta.url)),
-  'utf8',
-);
-
-const QUICK = {
+const SETUP = {
   starterId: 'physics_toolkit',
   seed: 424242,
   arenaId: 'helios_core',
@@ -27,7 +21,7 @@ const QUICK = {
 
 test('INF-038: a copied door code reproduces the intended configuration', () => {
   const res = doorRunShareCode({
-    ...QUICK,
+    ...SETUP,
     mutators: ['heavies_only'],
     dailyDateKey: '2026-09-21',
     weeklyMutatorId: 'glass_cannon',
@@ -36,17 +30,17 @@ test('INF-038: a copied door code reproduces the intended configuration', () => 
   assert.ok(res.code.startsWith('SFC1-'), 'the existing challenge serialization');
   const applied = applyRunShareCode(res.code);
   assert.equal(applied.ok, true);
-  assert.equal(applied.seed, QUICK.seed);
-  assert.equal(applied.ruleset, QUICK.ruleset);
-  assert.equal(applied.arenaId, QUICK.arenaId);
-  assert.equal(applied.starterId, QUICK.starterId);
+  assert.equal(applied.seed, SETUP.seed);
+  assert.equal(applied.ruleset, SETUP.ruleset);
+  assert.equal(applied.arenaId, SETUP.arenaId);
+  assert.equal(applied.starterId, SETUP.starterId);
   assert.deepEqual(applied.mutators, ['heavies_only']);
   assert.equal(applied.dailyDateKey, '2026-09-21');
   assert.equal(applied.weeklyMutatorId, 'glass_cannon');
 });
 
-test('INF-038: a quick-play-shaped setup encodes cleanly', () => {
-  const res = doorRunShareCode({ ...QUICK, seed: 987654321 });
+test('INF-038: a configured seed encodes cleanly', () => {
+  const res = doorRunShareCode({ ...SETUP, seed: 987654321 });
   assert.equal(res.ok, true);
   const applied = applyRunShareCode(res.code);
   assert.equal(applied.ok, true);
@@ -62,8 +56,19 @@ test('INF-038: malformed pastes fail closed with a useful error', () => {
   }
 });
 
-test('INF-038: the door carries Quick play, Copy code, and the daily identity', () => {
-  assert.match(DOOR_SOURCE, /Quick play/, 'Quick play stands on the door');
-  assert.match(DOOR_SOURCE, /Copy code/, 'the share-code action goes both ways');
-  assert.match(DOOR_SOURCE, /Today's challenge/, 'the daily challenge names its date and seed');
+test('INF-038: a shared build retains its difficulty and opens equipment review before combat', () => {
+  const copied = doorRunShareCode({ ...SETUP, stake: 'veteran' });
+  assert.equal(copied.ok, true);
+  const applied = applyRunShareCode(copied.code);
+  assert.equal(applied.ok, true);
+  assert.equal(applied.stake, 'veteran');
+  const setup = crucibleSetupFor({ ...applied, swarmStake: applied.stake });
+  assert.equal(setup.ok, true);
+  const launch = crucibleLaunchConfig(setup.value, applied.ruleset, { swarmStake: applied.stake });
+  assert.equal(launch.survivalSetup.seed, SETUP.seed);
+  assert.equal(launch.survivalSetup.hullId, setup.value.hullId);
+  assert.deepEqual(launch.survivalSetup.loadout, setup.value.loadout);
+  assert.equal(launch.swarmStake, 'veteran');
+  assert.notEqual(launch.openArmoryBeforeRound1, false,
+    'sharing a configuration must not recreate the removed public quick-play bypass');
 });

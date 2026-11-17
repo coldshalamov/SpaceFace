@@ -228,7 +228,7 @@ test('zero child exit code does not make a malformed or incomplete boot verdict 
   assert.match(step.judge({ code: 0, out: '' }), /boot-critical checks not PASS/);
 });
 
-function standaloneFixture(t) {
+function standaloneFixture(t, { rejectMenu = false } = {}) {
   const root = tempRoot(t);
   const scripts = join(root, 'scripts', 'fleet');
   mkdirSync(scripts, { recursive: true });
@@ -238,6 +238,7 @@ function standaloneFixture(t) {
     scripts: {
       'check:src-imports': 'node gate-child.cjs import-fixture',
       'check:playable': 'node gate-child.cjs adventure-fixture',
+      'check:swarm-hangar-ux': 'node gate-child.cjs menu-fixture',
       'player-truth': 'node gate-child.cjs swarm-fixture',
       'check:sim': 'node gate-child.cjs sim-fixture',
     },
@@ -246,6 +247,10 @@ function standaloneFixture(t) {
     const { writeFileSync } = require('node:fs');
     const { join } = require('node:path');
     const [, , step, ...args] = process.argv;
+    if (step === 'menu-fixture' && ${rejectMenu}) {
+      console.error('FAIL: menu padding does not activate its button');
+      process.exit(1);
+    }
     if (step === 'swarm-fixture') {
       const output = args.find(arg => arg.startsWith('--out=')).slice('--out='.length);
       const results = ${JSON.stringify(criticalIds)}.map(id => ({ id, status: 'PASS' }));
@@ -270,9 +275,19 @@ test('the standalone gate runs npm scripts without inheriting npm_execpath', (t)
   assert.equal(child.status, 0, child.error?.message || child.stderr);
   assert.match(gate.output('gate-import-lint.log'), /import-fixture/);
   assert.match(gate.output('gate-boot-adventure.log'), /adventure-fixture/);
+  assert.match(gate.output('gate-menu-journey.log'), /menu-fixture/);
   assert.match(gate.output('gate-boot-swarm.log'), /swarm-fixture/);
   assert.match(gate.output('gate-sim-47a.log'), /sim-fixture/);
   assert.match(gate.output('gate-last.txt'), /GATE PASS/);
+});
+
+test('a failed native menu journey cannot produce a passing stability gate', (t) => {
+  const gate = standaloneFixture(t, { rejectMenu: true });
+  const child = gate.run();
+  assert.equal(child.status, 1, child.error?.message || child.stderr);
+  assert.match(gate.output('gate-last.txt'), /FAIL menu-journey/);
+  assert.match(gate.output('gate-last.txt'), /GATE FAIL/);
+  assert.doesNotMatch(gate.output('gate-last.txt'), /PASS boot-swarm|GATE PASS/);
 });
 
 test('a synchronous spawn error is recorded as a normal gate failure', (t) => {

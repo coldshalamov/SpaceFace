@@ -1,340 +1,297 @@
-// Crucible preparation is a presentation adapter, not another launch path. Existing controls are
-// moved intact; their handlers, unlocks, share codes and seed validation remain the screen owner's.
-import { COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
-import { SHIPS } from '../../data/ships.js';
-import { WEAPONS } from '../../data/weapons.js';
-import { MODULES } from '../../data/modules.js';
-import { swarmStakeFor, swarmStakeYield } from '../../data/swarmStakes.js';
+// The Swarm hangar presents hull, equipment and run settings as separate decisions.
+// Launch, purchases, unlocks and saved choices still belong to their existing owners.
+import { swarmStakeFor } from '../../data/swarmStakes.js';
 import { SWARM_BOSS_EVERY, SWARM_REFIT_EVERY } from '../../data/swarmMode.js';
-import { applyWeaponsColdLoadout } from '../../systems/survivalMutators.js';
-import { buildSlotList } from '../../systems/ships.js';
 import { hullPosterUrl } from '../hullPosters.js';
+import { shipStatSheet } from '../ship/shipStats.js';
+import { createStageHull } from '../screens/stageHull.js';
 import { equipmentSvg } from './equipmentGlyphs.js';
-import { BUILD_SIGILS, STAKE_MARKS, sigilSvg } from './buildSigils.js';
-import { createHullRing } from './hullRing.js';
-import { rollTo } from './text.js';
-import { createSpring } from './motion.js';
-import { createSlotJig } from './slotJig.js';
-import { injectCruciblePreparation } from './cruciblePreparationLayouts.js';
+import { swarmHangarRoster, preferredSwarmStarterForHull, swarmPreviewLoadout,
+  swarmPreparationReadiness } from '../ship/swarmHangarModel.js';
+import { injectSwarmHangarLayouts } from './swarmHangarLayouts.js';
 
-const defs = new Map([...WEAPONS, ...MODULES].map(d => [d.id, d]));
-const modeName = rules => ({ swarm: 'Swarm', scored: 'Gauntlet', boss_circuit: 'Boss circuit', block: 'Foundry Block' })[rules] || 'Crucible';
+// Kept as the public pure loadout projection used by the existing screen tests.
+export const preparationLoadout = swarmPreviewLoadout;
+const modeName = rules => ({ swarm: 'Swarm', scored: 'Gauntlet', boss_circuit: 'Boss circuit', block: '10-wave challenge' })[rules] || 'Challenge';
+const SLOT_LABELS = Object.freeze({ weapon: 'Weapon', shield: 'Shield', engine: 'Engine',
+  cargo: 'Cargo', mining: 'Mining', utility: 'Utility', thruster: 'Maneuvering thruster' });
 
-/** One hull of each starter, for the stat ring's fractions against the largest of them. */
-const STARTER_HULLS = COMBAT_LAB_STARTER_PACKAGES
-  .map(s => SHIPS.find(h => h.id === s.hullId)).filter(Boolean);
-const RING_MAX = {
-  mass: Math.max(1, ...STARTER_HULLS.map(h => h.mass || 0)),
-  energyCap: Math.max(1, ...STARTER_HULLS.map(h => h.energyCap || 0)),
-  hull: Math.max(1, ...STARTER_HULLS.map(h => h.hull || 0)),
-};
-const ringFrac = (v, max) => Math.max(0.08, Math.min(1, (v || 0) / max));
-
-/** Mass left, energy over the top, hull right — the chosen hull against the whole roster. */
-function hullRingStats(hull) {
-  const ghosts = key => STARTER_HULLS.filter(h => h.id !== hull.id).map(h => ringFrac(h[key], RING_MAX[key]));
-  return [
-    { name: 'Mass', unit: '', reading: String(hull.mass), frac: ringFrac(hull.mass, RING_MAX.mass), ghosts: ghosts('mass') },
-    { name: 'Energy', unit: '', reading: String(hull.energyCap), frac: ringFrac(hull.energyCap, RING_MAX.energyCap), ghosts: ghosts('energyCap') },
-    { name: 'Hull', unit: '', reading: String(hull.hull), frac: ringFrac(hull.hull, RING_MAX.hull), ghosts: ghosts('hull') },
-  ];
-}
-
-/** Pure and shared by the preview and its tests; slot identity is the game's canonical identity. */
-export function preparationLoadout(starterId, weeklyMutatorId = null) {
-  const starter = COMBAT_LAB_STARTER_PACKAGES.find(s => s.id === starterId);
-  const hullId = starter?.hullId || (String(starterId).startsWith('hull:') ? starterId.slice(5) : null);
-  const hull = SHIPS.find(s => s.id === hullId);
-  if (!hull) return null;
-  const entries = (starter?.loadout || []).map(s => ({ ...s }));
-  const effective = weeklyMutatorId === 'weapons_cold' ? applyWeaponsColdLoadout(entries) : entries;
-  const fit = new Map(effective.map(s => [s.slotIndex, s.defId]));
-  return { hull, name: starter?.label || `${hull.name} · bare hull`, slots: buildSlotList(hull).map(slot => {
-    const defId = fit.get(slot.index) || null;
-    return { ...slot, defId, name: defs.get(defId)?.name || (defId ? defId : 'Empty') };
-  }) };
-}
-
-export function createCruciblePreparation({ root, stage, title, foot, enter, read, onPreviewVisibility = () => {} } = {}) {
+export function createCruciblePreparation({ root, stage, title, foot, enter, read, ctx,
+  hullChoices = [], onPreviewVisibility = () => {}, stageFactory = createStageHull } = {}) {
   const doc = root?.ownerDocument;
-  // Minimal node test documents keep the pre-existing screen path rather than a half-built widget.
   if (!doc?.createElementNS || !root.querySelector || !stage?.replaceChildren) return null;
-  injectCruciblePreparation(doc);
-  root.classList.add('orr-preparation');
+  injectSwarmHangarLayouts(doc);
+  root.classList.add('orr-swarm-hangar');
   const make = (tag, cls, text) => {
-    const n = doc.createElement(tag); n.className = cls;
-    if (text !== undefined) n.textContent = text;
-    if (tag === 'button') n.type = 'button';
-    return n;
+    const node = doc.createElement(tag); node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    if (tag === 'button') node.type = 'button';
+    return node;
   };
-  const visibility = (node, visible) => {
-    node.hidden = !visible;
-    node.style.setProperty('display', visible ? '' : 'none', visible ? '' : 'important');
+  const visible = (node, on) => {
+    if (!node) return;
+    node.hidden = !on;
+    node.style.setProperty('display', on ? '' : 'none', on ? '' : 'important');
   };
   const settings = stage.querySelector('.sf-crd-settings');
-  // Each step names its ONE decision up front: the door reads as "the fight, then the ship,
-  // then the armory" instead of a wall of tile rows. Big choice first, small fittings last.
-  const HEADS = [
-    { step: '01 · The fight', line: 'Mode, arena, and where on the ladder this run starts. Nothing here costs anything.' },
-    { step: '02 · The ship', line: 'The hull and the kit it launches with. Kits come fitted; a bare hull buys its kit in the armory.' },
-  ];
-  const panels = ['encounter', 'ship'].map((id, i) => {
-    const panel = make('section', 'orr-prep-panel');
-    panel.id = `sf-prep-${id}`; panel.setAttribute('role', 'tabpanel');
-    panel.setAttribute('aria-labelledby', `sf-prep-tab-${i}`);
-    const head = make('div', 'orr-prep-panelhead');
-    head.append(make('h2', 'orr-prep-panelhead-step', HEADS[i].step), make('p', 'orr-prep-panelhead-line', HEADS[i].line));
-    const list = make('ul', 'sf-crd-settings orr-prep-settings');
-    panel.append(head, list); return { panel, list };
-  });
-  const challengesWrap = make('details', 'orr-prep-disclosure');
-  challengesWrap.appendChild(make('summary', '', 'Challenges — weekly, ghosts'));
-  const extras = make('details', 'orr-prep-disclosure');
-  extras.appendChild(make('summary', '', 'Seed, perks, hangar & records'));
-  const extraRows = make('ul', 'sf-crd-settings orr-prep-settings');
-  extras.appendChild(extraRows);
-  const rows = [...settings.children];
-  for (const row of rows) {
-    // The Zone row rides the Encounter rail under Arena: the checkpoint pick is the ladder's
-    // entry point — which part of the authored climb this run starts from — not a side door
-    // like the seed field (SWARM-04).
-    const first = row.matches('.sf-crd-row--mode,.sf-crd-row--stake,.sf-crd-row--arena,.sf-crd-row--zone');
-    const second = row.matches('.sf-crd-row--hull,.sf-crd-row--modifiers');
-    (first ? panels[0].list : second ? panels[1].list : extraRows).appendChild(row);
+  const originalKits = [...root.querySelectorAll('.sf-crd-hull')];
+  const originalBare = [...root.querySelectorAll('.sf-crd-anyhull-ship')];
+  const controls = new Map([...originalKits, ...originalBare].map(button => [button.dataset.starterId, button]));
+  const kitChoices = originalKits.map(button => ({ id: button.dataset.starterId,
+    locked: button.dataset.locked === '1', earnText: button.dataset.earn || '' }));
+  const roster = swarmHangarRoster({ hullChoices, kitChoices });
+  const panel = (name, id) => {
+    const node = make('section', 'sf-hangar-panel'); node.id = id;
+    node.setAttribute('aria-label', name);
+    return node;
+  };
+  const shipPanel = panel('Choose your ship and starting loadout', 'sf-hangar-ships');
+  const runPanel = panel('Choose your arena and difficulty', 'sf-hangar-run');
+  const section = (heading, line = '') => {
+    const node = make('section', 'sf-hangar-section');
+    node.append(make('h2', 'sf-hangar-section-title', heading));
+    if (line) node.append(make('p', 'sf-hangar-note', line));
+    return node;
+  };
+  const rosterSection = section('Choose your ship', 'Every hull has its own handling, defenses and weapon mounts.');
+  const rosterList = make('div', 'sf-hangar-roster'); rosterList.setAttribute('role', 'group');
+  rosterList.setAttribute('aria-label', 'Ships');
+  const selectionStatus = make('p', 'sf-hangar-selection-status'); selectionStatus.setAttribute('role', 'status');
+  const hullButtons = [];
+  for (const hull of roster) {
+    const button = make('button', 'sf-hangar-hull'); button.dataset.swarmHull = hull.id;
+    button.setAttribute('aria-pressed', 'false'); button.setAttribute('aria-disabled', String(hull.locked));
+    button.setAttribute('aria-label', `${hull.name}, ${hull.roleLabel}${hull.locked ? '. Locked. ' + hull.earnText : ''}`);
+    const image = make('img', ''); image.src = hullPosterUrl(hull.id); image.alt = ''; image.draggable = false;
+    button.append(image, make('strong', '', hull.name), make('span', '', hull.roleLabel));
+    if (hull.locked) button.append(make('small', 'sf-hangar-lock', 'Locked'));
+    button.addEventListener('click', () => {
+      if (hull.locked) { selectionStatus.textContent = `${hull.name}: ${hull.earnText || 'Earn this ship in Swarm.'}`; return; }
+      const id = preferredSwarmStarterForHull(hull.id, { currentStarterId: read().starterId, hullChoices, kitChoices });
+      controls.get(id)?.click();
+      selectionStatus.textContent = '';
+      update();
+    });
+    rosterList.append(button); hullButtons.push(button);
   }
-  // Keep challenge modes available, but out of the first decision's primary rail.
-  const challenges = make('ul', 'k-words k-words--row orr-prep-challenges');
-  for (const button of panels[0].panel.querySelectorAll('.sf-crd-weekly,.sf-crd-ghost')) {
-    challenges.appendChild(button.parentElement.tagName === 'LI' ? button.parentElement : button);
+  rosterSection.append(rosterList, selectionStatus); shipPanel.append(rosterSection);
+  const kitSection = section('Starting loadout', 'Presets are included. You can replace equipment before launching.');
+  const kitList = make('div', 'sf-hangar-kits'); kitList.setAttribute('role', 'group');
+  kitList.setAttribute('aria-label', 'Starting loadouts for the selected ship');
+  kitSection.append(kitList); shipPanel.append(kitSection);
+  const storedControls = make('div', 'sf-hangar-source-controls'); visible(storedControls, false);
+  const challengeSection = make('details', 'sf-hangar-disclosure');
+  challengeSection.append(make('summary', '', 'Optional challenges'));
+  challengeSection.append(make('p', 'sf-hangar-note', 'Daily runs share the same arena and rules. Weekly challenges add a special rule. Ghosts replay a recorded run.'));
+  const challengeList = make('div', 'sf-hangar-challenges'); challengeSection.append(challengeList);
+  for (const button of root.querySelectorAll('.sf-crd-daily,.sf-crd-weekly,.sf-crd-ghost')) {
+    challengeList.append(button.parentElement.tagName === 'LI' ? button.parentElement : button);
   }
-  challengesWrap.appendChild(challenges);
-  for (const child of [...stage.children]) if (child !== settings) extras.appendChild(child);
-  stage.replaceChildren(panels[0].panel, panels[1].panel);
-  panels[0].panel.append(challengesWrap, extras);
-  const dailyReading = make('p', 'k-t-fine orr-prep-daily');
-  panels[0].panel.insertBefore(dailyReading, panels[0].list);
-  const bare = root.querySelector('.sf-crd-anyhull');
-  if (bare) {
-    const disclosure = make('details', 'orr-prep-disclosure orr-prep-bare');
-    disclosure.appendChild(make('summary', '', 'Build from a bare hull'));
-    bare.parentNode.insertBefore(disclosure, bare); disclosure.appendChild(bare);
+  for (const note of root.querySelectorAll('.sf-crd-mode-sub,.sf-crd-ghost-sub')) challengeSection.append(note);
+  const customSection = make('details', 'sf-hangar-disclosure');
+  customSection.append(make('summary', '', 'Custom runs & records'));
+  customSection.append(make('p', 'sf-hangar-note', 'Use a seed or shared code to replay the same run. These options are optional.'));
+  const customRows = make('ul', 'sf-hangar-options'); customSection.append(customRows);
+  const progression = make('details', 'sf-hangar-disclosure');
+  progression.append(make('summary', '', 'Permanent upgrades & perks'));
+  progression.append(make('p', 'sf-hangar-note', 'These use your earned Swarm progress. Your starting equipment budget is separate.'));
+  const progressRows = make('ul', 'sf-hangar-options'); progression.append(progressRows);
+  const runRows = make('ul', 'sf-hangar-options');
+  const byClass = name => [...settings.children].find(row => row.classList.contains(name));
+  // Order decisions by what they mean. Optional rules and purchases never share a picker.
+  for (const name of ['sf-crd-row--arena', 'sf-crd-row--stake', 'sf-crd-row--mode', 'sf-crd-row--zone']) {
+    const row = byClass(name); if (row) runRows.append(row);
   }
-
-  const nav = make('nav', 'orr-prep-nav'); nav.setAttribute('aria-label', 'Crucible preparation');
-  const tablist = make('div', 'orr-prep-tabs'); tablist.setAttribute('role', 'tablist');
-  const tabs = ['Encounter', 'Ship & kit'].map((label, i) => {
-    const tab = make('button', 'orr-prep-tab'); tab.id = `sf-prep-tab-${i}`;
-    tab.setAttribute('role', 'tab'); tab.setAttribute('aria-controls', panels[i].panel.id);
-    tab.append(make('span', 'orr-prep-step', `0${i + 1}`), make('span', '', label));
-    tab.addEventListener('click', () => show(i));
-    tablist.appendChild(tab); return tab;
+  for (const row of [...settings.children]) {
+    if (row.matches('.sf-crd-row--hull')) storedControls.append(row);
+    else if (row.matches('.sf-crd-row--threat,.sf-crd-row--modifiers')) challengeSection.append(row);
+    else if (row.matches('.sf-crd-row--hangar,.sf-crd-row--perks')) progressRows.append(row);
+    else customRows.append(row);
+  }
+  for (const child of [...stage.children]) if (child !== settings) customSection.append(child);
+  runPanel.append(runRows);
+  const training = foot.querySelector('[data-swarm-training]');
+  if (training) {
+    const lesson = section('Flight tutorial', 'Begin with one enemy and prompts for your controls. Available in a standard Swarm run.');
+    lesson.classList.add('sf-hangar-lesson'); lesson.append(training); runPanel.append(lesson);
+  }
+  runPanel.append(challengeSection, progression, customSection);
+  stage.replaceChildren(shipPanel, runPanel, storedControls);
+  for (const [selector, label] of [['.sf-crd-row--stake', 'Difficulty'], ['.sf-crd-row--mode', 'Run type'], ['.sf-crd-row--zone', 'Starting round']]) {
+    const cap = root.querySelector(`${selector} > .k-row__name`); if (cap) cap.textContent = label;
+  }
+  for (const button of root.querySelectorAll('.sf-crd-stake')) {
+    const def = swarmStakeFor(button.dataset.stakeId);
+    const change = Math.round((def.pressure - 1) * 100);
+    const enemies = change === 0 ? 'Standard enemy numbers' : `${Math.abs(change)}% ${change < 0 ? 'fewer' : 'more'} enemies`;
+    button.replaceChildren(make('strong', '', def.label), make('span', 'sf-hangar-budget', `${def.purse.toLocaleString('en-US')} credits`),
+      make('span', '', enemies), make('small', '', `Round rewards ×${def.earn} · Score ×${def.score}`));
+    button.setAttribute('aria-label', `${def.label}. ${def.purse} starting credits. ${enemies}. Round rewards times ${def.earn}. Score times ${def.score}.`);
+  }
+  const modeCopy = { swarm: '30 waves. Upgrade between rounds.', scored: '30 waves. Compete for a high score.', boss_circuit: 'Five bosses. Refit between fights.' };
+  for (const button of root.querySelectorAll('.sf-crd-mode,.sf-crd-block')) {
+    const isBlock = button.classList.contains('sf-crd-block');
+    const legend = button.querySelector('.fh-tile-legend');
+    if (legend && isBlock) legend.textContent = '10-wave challenge';
+    button.append(make('span', 'sf-hangar-choice-detail', isBlock ? 'A shorter run with a finish at wave 10.' : modeCopy[button.dataset.ruleset] || 'Survival challenge.'));
+  }
+  const nav = make('nav', 'sf-hangar-nav'); nav.setAttribute('aria-label', 'Swarm preparation');
+  const tabs = ['Ship & loadout', 'Arena & difficulty'].map((label, index) => {
+    const tab = make('button', 'sf-hangar-step'); tab.dataset.swarmStep = String(index);
+    tab.setAttribute('aria-controls', index === 0 ? shipPanel.id : runPanel.id);
+    tab.append(make('span', 'sf-hangar-step-number', String(index + 1).padStart(2, '0')), make('span', '', label));
+    tab.addEventListener('click', () => show(index)); nav.append(tab); return tab;
   });
-  const nextStep = make('span', 'orr-prep-nextstep', '03 ARMORY');
-  nextStep.setAttribute('aria-label', 'Next, fit equipment in the armory');
-  const summary = make('p', 'orr-prep-summary', '');
-  nav.append(tablist, nextStep, summary); root.insertBefore(nav, stage);
-  tablist.addEventListener('keydown', e => {
-    const current = tabs.indexOf(doc.activeElement);
-    if (current < 0 || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
-    e.preventDefault(); e.stopPropagation();
-    const next = e.key === 'Home' ? 0 : e.key === 'End' ? 1 : 1 - current;
-    show(next); tabs[next].focus({ preventScroll: true });
-  });
-
+  const equipmentStep = make('span', 'sf-hangar-step sf-hangar-step--next');
+  const equipmentStepLabel = make('span', '', 'Equipment & launch');
+  equipmentStep.append(make('span', 'sf-hangar-step-number', '03'), equipmentStepLabel);
+  nav.append(equipmentStep); root.insertBefore(nav, stage);
   const arenaHero = root.querySelector('.orr-door-hero');
-  const attractHost = make('div', 'orr-cabinet-preview');
-  attractHost.hidden = true;
-  if (arenaHero) arenaHero.appendChild(attractHost);
-  const shipHero = make('section', 'orr-prep-ship');
-  shipHero.setAttribute('aria-label', 'Selected ship and starting equipment');
-  const shipHead = make('header', 'orr-prep-shiphead');
-  const name = make('h2', 'orr-prep-hullname', '');
-  const subtitle = make('p', 'orr-prep-hullline', '');
-  shipHead.append(make('p', 'orr-label', 'Your starting build'), name, subtitle);
-  const visual = make('div', 'orr-prep-shipvisual');
-  const img = make('img', 'orr-prep-shipart'); img.alt = ''; img.decoding = 'async';
-  const fallback = equipmentSvg({ kind: 'hull' }, doc); fallback.classList.add('orr-prep-fallback');
-  const jigHost = make('div', 'orr-prep-shipjig');
-  const jig = createSlotJig({ host: jigHost });
-  const views = make('div', 'orr-prep-views'); views.setAttribute('role', 'group'); views.setAttribute('aria-label', 'Ship view');
-  const viewButtons = ['Ship', 'Hardpoints'].map((label, i) => {
-    const b = make('button', 'orr-prep-view', label); b.addEventListener('click', () => showView(i));
-    views.appendChild(b); return b;
-  });
-  visual.append(img, fallback, jigHost, views);
-  img.addEventListener('error', () => { visibility(img, false); visibility(fallback, true); });
-  // The weigh-in instrument: the chosen hull's numbers read AT the render, each filled against the
-  // largest starter, the rest of the roster as ghost ticks. Redrawn when the render's box lands.
-  const ring = createHullRing({ host: visual, anchor: img });
-  img.addEventListener('load', () => ring.layout());
-  const manifest = make('div', 'orr-prep-manifest'); manifest.setAttribute('role', 'group');
-  manifest.setAttribute('aria-label', 'Starting equipment; select a fitting to locate its hardpoint');
-  const fitNote = make('p', 'orr-prep-fitnote', ''); fitNote.setAttribute('role', 'status');
-  shipHero.append(shipHead, visual, manifest, fitNote); root.insertBefore(shipHero, foot);
-  const brief = make('div', 'orr-prep-brief');
-  const purse = make('strong', 'orr-prep-purse', '');
-  const purseN = make('span', 'orr-prep-purse-n', '');
-  const purseUnit = make('span', 'orr-prep-purse-unit', '');
-  purse.append(purseN, ' ', purseUnit);
-  const cadence = make('p', 'orr-prep-cadence', '');
-  brief.append(purse, cadence); if (arenaHero) arenaHero.appendChild(brief);
-
-  const continueButton = make('button', 'k-word k-word--emph k-word--primary orr-prep-continue', 'Choose ship & kit →');
-  const enterLi = enter.parentNode;
-  const nextLi = make('li', ''); nextLi.appendChild(continueButton); enterLi.parentNode.insertBefore(nextLi, enterLi);
-  continueButton.addEventListener('click', () => { show(1); tabs[1].focus({ preventScroll: true }); });
-  const hint = root.querySelector('.orr-door-hint');
-  const roPool = [];
-  let step = 0, view = 0, lastBuild = null, latest = null, lit = -1;
-  function showView(next) {
-    view = next;
-    const url = latest && hullPosterUrl(latest.hull.id);
-    visibility(img, view === 0 && !!url);
-    visibility(fallback, view === 0 && !url);
-    visibility(jigHost, view === 1);
-    viewButtons.forEach((b, i) => b.setAttribute('aria-pressed', String(view === i)));
-    if (view === 1) paintJig();
+  if (arenaHero) {
+    arenaHero.removeAttribute('aria-hidden');
+    const words = arenaHero.querySelector('.orr-door-hero__words');
+    words?.prepend(make('p', 'sf-hangar-eyebrow', 'Selected arena'));
   }
-  function paintJig() {
-    if (!latest) return;
-    jig.show({ hullId: latest.hull.id, slots: latest.slots.map(s => s.type),
-      filled: latest.slots.map(s => !!s.defId), target: lit,
-      label: lit >= 0 ? `Hardpoint ${lit + 1}` : '', sub: latest.slots[lit]?.name || '',
-      engraving: `${latest.hull.name} · ${latest.slots.filter(s => s.defId).length}/${latest.slots.length} fitted` });
+  const shipHero = make('section', 'sf-hangar-preview'); shipHero.setAttribute('aria-label', 'Selected ship');
+  const shipHead = make('header', 'sf-hangar-shiphead');
+  const shipName = make('h2', 'sf-hangar-shipname'); const shipRole = make('p', 'sf-hangar-shiprole');
+  shipHead.append(make('p', 'sf-hangar-eyebrow', 'Your ship'), shipName, shipRole);
+  const shipStage = make('div', 'sf-hangar-shipstage'); shipStage.setAttribute('role', 'img');
+  const fitTitle = make('div', 'sf-hangar-fit-title');
+  fitTitle.append(make('h3', '', 'Installed equipment'), make('span', '', 'Included with this loadout'));
+  const manifest = make('div', 'sf-hangar-manifest');
+  const fitNote = make('p', 'sf-hangar-fit-note');
+  const stats = make('div', 'sf-hangar-stats'); stats.setAttribute('aria-label', 'Ship ratings, out of ten');
+  shipHero.append(shipHead, shipStage, stats, fitTitle, manifest, fitNote); root.insertBefore(shipHero, foot);
+  // This wrapper owns a single preview, with the same authored hull and fittings used in flight.
+  // It is created only when the screen is shown, never while ScreenManager prewarms a hidden door.
+  let hullStage = null, active = false, step = 0, lastBuild = null, lastHull = null, latest = null;
+  let previewReleased = false, shownPreview = null, shownHull = null;
+  const summary = make('p', 'sf-hangar-summary'); summary.setAttribute('aria-live', 'polite');
+  const next = make('button', 'sf-hangar-next', 'Choose arena →');
+  next.addEventListener('click', () => { show(1); tabs[1].focus({ preventScroll: true }); });
+  const back = foot.querySelector('.sf-back');
+  if (back) { back.textContent = 'Main menu'; back.setAttribute('aria-label', 'Back to main menu'); }
+  const actions = make('div', 'sf-hangar-actions'); if (back) actions.append(back);
+  actions.append(summary, next, enter); foot.replaceChildren(actions);
+  const hint = make('p', 'sf-hangar-footer-note', 'Choose a ship, set up your run, then review equipment before launching.');
+  hint.id = 'sf-hangar-launch-note'; enter.setAttribute('aria-describedby', hint.id);
+  foot.append(hint);
+  function releasePreview() {
+    hullStage?.deactivate();
+    if (hullStage && !previewReleased) { hullStage.release(); previewReleased = true; shownPreview = null; }
   }
-  function show(next) {
-    step = next; root.dataset.prepStep = String(step);
-    panels.forEach(({ panel }, i) => visibility(panel, i === step));
-    tabs.forEach((tab, i) => { tab.setAttribute('aria-selected', String(i === step)); tab.tabIndex = i === step ? 0 : -1; });
-    if (arenaHero) visibility(arenaHero, step === 0);
-    visibility(shipHero, step === 1); visibility(enterLi, step === 1); visibility(nextLi, step === 0);
-    stage.scrollTop = 0;
-    if (hint) hint.textContent = step === 0 ? '01 — Choose the fight: mode, arena, ladder. Your ship comes next.' : '02 — Choose the ship. Kits come fitted; bare hulls buy their kit in the armory. Nothing here costs campaign credits.';
-    update();
+  function paintPreview() {
+    if (!active || step !== 0 || !latest) return;
+    shipStage.querySelector('.sf-hangar-poster')?.remove();
+    if (!hullStage) hullStage = stageFactory(shipStage, { live: true, dock: false, zoom: 1 });
+    if (previewReleased) { hullStage.restore(); previewReleased = false; }
+    const key = JSON.stringify([latest.hull.id, latest.fittings, latest.weapons]);
+    if (shownPreview !== key) {
+      hullStage.show(latest.hull.id, { fittings: latest.fittings, weapons: latest.weapons,
+        preserveView: shownPreview !== null && shownHull === latest.hull.id });
+      shownPreview = key; shownHull = latest.hull.id;
+    }
+    hullStage.activate(ctx);
+  }
+  function paintKits(hull) {
+    kitList.replaceChildren();
+    for (const kit of hull.kits) {
+      const button = make('button', 'sf-hangar-kit'); button.dataset.swarmKit = kit.id;
+      button.setAttribute('aria-disabled', String(kit.locked));
+      button.append(make('strong', '', kit.label), make('span', '', kit.description));
+      if (kit.locked) button.append(make('small', '', kit.earnText || 'Locked loadout'));
+      else if (!kit.bare) button.append(make('small', '', kit.equipmentNames.join(' · ')));
+      button.addEventListener('click', () => {
+        if (kit.locked) { selectionStatus.textContent = kit.earnText || 'Earn this loadout in Swarm.'; return; }
+        controls.get(kit.id)?.click(); selectionStatus.textContent = ''; update();
+      });
+      kitList.append(button);
+    }
   }
   function update() {
     const state = read();
-    if (state.dailySnapshot) dailyReading.textContent = `Today · ${state.dailySnapshot.dateKey} UTC · seed ${state.dailySnapshot.seed}`;
-    onPreviewVisibility(step === 0 && state.ruleset === 'swarm');
-    const stake = swarmStakeFor(state.daily ? 'contender' : state.stake);
-    const isSwarm = state.ruleset === 'swarm';
     const loadout = preparationLoadout(state.starterId, state.weeklyMutatorId);
     if (!loadout) return;
     latest = loadout;
-    // The run at a glance, always on screen: where, what, and what it costs. A pick that never
-    // lands (a locked hull, a denied tile) reads here immediately — the summary is the receipt.
-    const purseBits = isSwarm ? ` · ${stake.purse.toLocaleString('en-US')} cr purse` : '';
-    summary.textContent = `${state.daily ? 'Daily · ' : ''}${modeName(state.ruleset)} · ${state.arenaLabel || 'Arena'} · ${loadout.hull.name}${purseBits}`;
-    nextStep.textContent = isSwarm ? '03 ARMORY' : '03 LAUNCH';
-    nextStep.setAttribute('aria-label', isSwarm ? 'Next, fit equipment in the armory' : 'Next, enter the arena');
-    if (isSwarm) enter.textContent = 'Open armory →';
-    // The purse is a mechanical counter: it rolls to the new stake and settles. Non-swarm terms
-    // have no number to roll, so they arrive as plain readings.
-    const canRoll = typeof globalThis.document?.createElement === 'function';
-    if (isSwarm) { purseUnit.textContent = 'cr'; if (canRoll) rollTo(purseN, stake.purse); else purseN.textContent = stake.purse.toLocaleString('en-US'); }
-    else {
-      purseUnit.textContent = state.ruleset === 'scored' ? 'waves' : state.ruleset === 'block' ? 'waves' : 'champions';
-      purseN.textContent = state.ruleset === 'scored' ? '30' : state.ruleset === 'block' ? '10' : '5';
-    }
-    cadence.textContent = isSwarm ? `Starting budget · ${Math.round(stake.pressure * 100)}% pressure\nArmory every round · Refit & boss every ${SWARM_REFIT_EVERY === SWARM_BOSS_EVERY ? SWARM_REFIT_EVERY : `${SWARM_REFIT_EVERY}/${SWARM_BOSS_EVERY}`}`
-      : 'An authored challenge. Your starter kit is ready before launch.';
-    const buildKey = `${state.starterId}:${state.weeklyMutatorId || ''}:${state.ruleset}`;
+    const hull = roster.find(row => row.id === loadout.hull.id);
+    if (lastHull !== loadout.hull.id) { lastHull = loadout.hull.id; if (hull) paintKits(hull); }
+    for (const button of hullButtons) button.setAttribute('aria-pressed', String(button.dataset.swarmHull === loadout.hull.id));
+    for (const button of kitList.children) button.setAttribute('aria-pressed', String(button.dataset.swarmKit === state.starterId));
+    const isSwarm = state.ruleset === 'swarm'; const difficulty = swarmStakeFor(state.daily ? 'contender' : state.stake);
+    const readiness = swarmPreparationReadiness(state);
+    summary.textContent = `${loadout.hull.name} · ${state.arenaLabel || 'Arena'} · ${isSwarm ? difficulty.label : modeName(state.ruleset)}`;
+    enter.textContent = readiness.equipmentNext ? 'Review equipment →' : 'Launch challenge';
+    enter.disabled = !readiness.allowed;
+    enter.setAttribute('aria-disabled', String(!readiness.allowed));
+    enter.setAttribute('aria-label', readiness.equipmentNext ? `Review equipment for ${loadout.hull.name}. Combat has not started.` : `Launch ${modeName(state.ruleset)} with ${loadout.hull.name}`);
+    equipmentStepLabel.textContent = readiness.equipmentNext ? 'Equipment & launch' : 'Launch challenge';
+    kitSection.querySelector('.sf-hangar-note').textContent = readiness.equipmentNext
+      ? 'Presets are included. You can replace equipment before launching.'
+      : 'Presets are included. This challenge launches with the equipment shown.';
+    hint.textContent = step === 0 ? 'Your ship and its starting equipment. Nothing here spends campaign credits.'
+      : readiness.message || `${readiness.startingCredits.toLocaleString('en-US')} starting credits · Equipment between rounds · Boss every ${SWARM_BOSS_EVERY} rounds · Refit every ${SWARM_REFIT_EVERY} rounds`;
+    const fitted = loadout.slots.filter(slot => slot.defId).length;
+    const intrinsic = loadout.slots.filter(slot => slot.intrinsicDefId).length;
+    fitNote.textContent = readiness.physicsOnly ? readiness.message
+      : !readiness.allowed ? readiness.message
+        : readiness.equipmentNext ? fitted ? 'Keep this equipment or change it in Equipment before you deploy.'
+          : intrinsic ? 'This ship has built-in weapons. You can add equipment before you deploy.'
+            : 'This ship is empty. Choose and buy equipment before you deploy.'
+          : intrinsic ? 'This ship launches with its built-in weapons and the equipment shown.'
+            : 'This is the equipment you take into the challenge.';
+    fitNote.classList.toggle('is-empty', !fitted && !intrinsic && !readiness.physicsOnly);
+    const buildKey = `${state.starterId}:${state.weeklyMutatorId || ''}`;
     if (lastBuild !== buildKey) {
-      lastBuild = buildKey; lit = -1;
-      name.textContent = loadout.hull.name;
-      subtitle.textContent = `${loadout.name} · ${loadout.slots.filter(s => s.defId).length} / ${loadout.slots.length} hardpoints fitted`;
-      const url = hullPosterUrl(loadout.hull.id);
-      if (url) img.src = url; else img.removeAttribute('src');
-      ring.paint(hullRingStats(loadout.hull));
-      manifest.replaceChildren();
-      let fitIndex = 0;
-      for (const slot of loadout.slots) {
-        const b = make('button', 'orr-prep-fitting'); b.dataset.slotIndex = String(slot.index);
-        b.setAttribute('aria-pressed', 'false');
-        b.style.setProperty('--i', String(fitIndex));
-        fitIndex += 1;
-        const glyph = equipmentSvg({ defId: slot.defId || slot.type }, doc); if (glyph) b.appendChild(glyph);
-        const text = make('span', ''); text.append(make('small', '', `${String(slot.index + 1).padStart(2, '0')} / ${slot.type} ${slot.size}`), make('strong', '', slot.name));
-        b.appendChild(text); if (!slot.defId) b.classList.add('is-empty');
-        b.addEventListener('click', () => {
-          lit = slot.index; showView(1);
-          for (const sibling of manifest.children) sibling.setAttribute('aria-pressed', String(sibling === b));
-          fitNote.textContent = `${slot.name} · hardpoint ${slot.index + 1} · ${slot.type} ${slot.size}`;
-        });
-        manifest.appendChild(b);
+      lastBuild = buildKey; shipName.textContent = loadout.hull.name;
+      shipRole.textContent = `${hull?.roleLabel || 'Ship'} · ${loadout.name}`;
+      shipStage.dataset.hullId = loadout.hull.id;
+      shipStage.setAttribute('aria-label', `${loadout.hull.name} with ${loadout.name} loadout`);
+      if (!hullStage) {
+        const image = make('img', 'sf-hangar-poster'); image.src = hullPosterUrl(loadout.hull.id); image.alt = ''; image.draggable = false;
+        shipStage.replaceChildren(image);
       }
-      fitNote.textContent = isSwarm ? 'Keep this kit, replace parts, or buy supplies in the opening armory.' : 'This is the kit you take into the arena.';
-      showView(view);
-      // The weigh-in: the render rises and settles, the name snaps, the manifest staggers in.
-      shipHero.classList.remove('is-arriving');
-      if (typeof requestAnimationFrame === 'function') {
-        requestAnimationFrame(() => shipHero.classList.add('is-arriving'));
-      } else shipHero.classList.add('is-arriving');
+      manifest.replaceChildren();
+      const slotCounts = {};
+      for (const slot of loadout.slots) {
+        const item = make('div', 'sf-hangar-fitting'); if (!slot.defId && !slot.intrinsicDefId) item.classList.add('is-empty');
+        const glyph = equipmentSvg({ defId: slot.defId || slot.intrinsicDefId || slot.type }, doc); if (glyph) item.append(glyph);
+        slotCounts[slot.type] = (slotCounts[slot.type] || 0) + 1;
+        const words = make('span', ''); words.append(make('small', '', `${SLOT_LABELS[slot.type] || 'Equipment'} ${slotCounts[slot.type]}`),
+          make('strong', '', slot.intrinsicDefId ? `${slot.intrinsicName} · Built in` : slot.name));
+        item.append(words); manifest.append(item);
+      }
+      stats.replaceChildren();
+      const sheet = shipStatSheet({ shipId: loadout.hull.id, fittings: loadout.fittings });
+      for (const stat of sheet?.stats || []) {
+        const item = make('div', 'sf-hangar-stat'); item.title = stat.meaning;
+        const label = make('span', '', stat.label); const value = make('strong', '', `${stat.value}/10`);
+        const meter = make('meter', ''); meter.min = 0; meter.max = 10; meter.value = stat.value;
+        meter.setAttribute('aria-label', `${stat.label}: ${stat.value} out of 10. ${stat.meaning}`);
+        item.append(label, value, meter); stats.append(item);
+      }
     }
-    if (placeHand) placeHand();
-    if (step === 1 && view === 1) paintJig();
+    paintPreview();
+    onPreviewVisibility(false);
   }
-  // Character-select faces: one authored sigil per build (seven of the ten starters share two
-  // hulls, so a hull render cannot be their face) with the hull it rides as the sub-line.
-  for (const b of root.querySelectorAll('.sf-crd-hull')) {
-    const kit = preparationLoadout(b.dataset.starterId); const art = b.querySelector('.fh-tile-art');
-    if (!kit || !art) continue;
-    if (b.dataset.locked === '1') b.appendChild(make('span', 'orr-prep-locknote', b.dataset.earn || 'Locked'));
-    const fitted = kit.slots.filter(s => s.defId).length;
-    b.appendChild(make('span', 'orr-prep-hullsub', `${kit.hull.name} · ${fitted}/${kit.slots.length} fitted`));
-    art.replaceChildren(sigilSvg(BUILD_SIGILS, b.dataset.starterId, doc) || equipmentSvg({ kind: 'hull' }, doc));
-  }
-  // The stake's mark: a service ladder of chevrons, lit when its run is the chosen contract.
-  for (const b of root.querySelectorAll('.sf-crd-stake')) {
-    const stake = swarmStakeFor(b.dataset.stakeId);
-    const art = b.querySelector('.fh-tile-art');
-    const markSvg = sigilSvg(STAKE_MARKS, b.dataset.stakeId, doc, 'orr-sigil orr-prep-stake-mark');
-    if (art && markSvg) art.replaceChildren(markSvg);
-    b.append(make('span', 'orr-prep-stake-number', `${stake.purse.toLocaleString('en-US')} cr`),
-      make('span', 'orr-prep-stake-pressure', `${Math.round(stake.pressure * 100)}% pressure`),
-      make('span', 'orr-prep-stake-yield', swarmStakeYield(b.dataset.stakeId)));
-  }
-  for (const b of root.querySelectorAll('.sf-crd-mode,.sf-crd-block')) {
-    const art = b.querySelector('.fh-tile-art');
-    if (art) art.replaceChildren(equipmentSvg({ ruleset: b.dataset.ruleset || 'block' }, doc));
-  }
-  // The Hand (ORRERY §4 #2): one amber marker riding the roster's rail, swinging to whichever
-  // build is the choice. It is the screen's one warm pointer; everything else stays bone.
-  let placeHand = null;
-  const hullsList = root.querySelector('.sf-crd-hulls');
-  if (hullsList && typeof doc.createElementNS === 'function') {
-    const ns = 'http://www.w3.org/2000/svg';
-    const hand = make('span', 'orr-prep-hand'); hand.setAttribute('aria-hidden', 'true');
-    const handSvg = doc.createElementNS(ns, 'svg');
-    for (const [attr, value] of Object.entries({ viewBox: '0 0 18 22', 'aria-hidden': 'true', focusable: 'false' })) {
-      handSvg.setAttribute(attr, value);
-    }
-    const blade = doc.createElementNS(ns, 'path');
-    blade.setAttribute('d', 'M1 11H9 M9 4.5 16 11 9 17.5');
-    handSvg.appendChild(blade); hand.appendChild(handSvg);
-    const rail = hullsList.parentElement;
-    if (rail) rail.appendChild(hand);
-    const handSpring = createSpring({
-      value: 0, preset: 'swing',
-      onUpdate: v => { hand.style.transform = `translateY(${Math.round(v * 10) / 10}px)`; },
-    });
-    placeHand = () => {
-      const on = hullsList.querySelector('.orr-tile[aria-pressed="true"]');
-      if (!on) return;
-      // offsetTop is relative to the nearest positioned ancestor; keep the answer inside the rail.
-      const top = on.offsetTop + on.offsetHeight / 2 - 11;
-      handSpring.set(Math.max(0, top));
-    };
-    placeHand();
-    if (typeof ResizeObserver === 'function') {
-      const handRo = new ResizeObserver(placeHand);
-      handRo.observe(hullsList);
-      roPool.push(handRo);
-    }
+  function show(index) {
+    step = index === 1 ? 1 : 0; root.dataset.prepStep = String(step);
+    visible(shipPanel, step === 0); visible(runPanel, step === 1);
+    visible(shipHero, step === 0); visible(arenaHero, step === 1);
+    visible(next, step === 0); visible(enter, step === 1);
+    for (let i = 0; i < tabs.length; i++) { tabs[i].setAttribute('aria-current', i === step ? 'step' : 'false'); }
+    stage.scrollTop = 0;
+    if (!active || step !== 0) releasePreview();
+    update();
   }
   show(0);
-  return { update, attractHost: arenaHero ? attractHost : null,
-    get previewVisible() { return step === 0 && read().ruleset === 'swarm'; },
+  return {
+    update, attractHost: null, get previewVisible() { return false; },
     focus() { tabs[step].focus({ preventScroll: true }); },
-    dispose() { onPreviewVisibility(false); jig.dispose(); ring.dispose(); for (const ro of roPool) ro.disconnect(); } };
+    setActive(on) {
+      active = !!on;
+      if (active) paintPreview(); else releasePreview();
+    },
+    dispose() { active = false; hullStage?.dispose(); hullStage = null; onPreviewVisibility(false); },
+  };
 }
