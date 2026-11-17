@@ -84,6 +84,7 @@ import {
   ARENA_TOY_LIGHT_MASS,
   ARENA_TOY_LIGHT_RADIUS,
   ARENA_TOY_MAX,
+  CRUSHER_CYCLE,
   SHUTTER_MASS,
   SHUTTER_SERVO,
   currentCarry,
@@ -317,7 +318,9 @@ const FOUNDRY_GATE_NOCTURNE = Object.freeze({
 const FOUNDRY_FURNACE_NOCTURNE = Object.freeze({
   profile: 'industrial',
   lights: Object.freeze([Object.freeze({ id: 'pour', profile: 'pour_orange', offset: Object.freeze([0, 14, 0]), intensity: 36000, range: 230, priority: 3, importance: 1.8 })]),
-  medium: Object.freeze({ radii: Object.freeze([3.2, 1.2, 3.2]), density: 0.0026, color: 0xff9a5a, anisotropy: 0.4, extinction: 1, noise: 0.45 }),
+  // A soft warm pall hugging the furnace, not a disc: the old 3.2-radius, 0.0026 medium scattered a 36000 point
+  // light into one flat red plate over a third of the screen. The light itself still lands on hulls and rocks.
+  medium: Object.freeze({ radii: Object.freeze([2.0, 0.9, 2.0]), density: 0.0006, color: 0xff9a5a, anisotropy: 0.4, extinction: 1, noise: 0.45 }),
 });
 
 function planSideRoomToys(arenaId, at, lane) {
@@ -356,6 +359,13 @@ function planSideRoomToys(arenaId, at, lane) {
   }
   return toys;
 }
+
+// 12_SWARM_THE_PIT: every tenth Foundry round is a room-changing round — "the crusher wakes
+// and the conveyor carries bodies toward it." The press parks just inside the freight lane's
+// east mouth (the lane runs west→east through `at`), inside the rim ring, facing the flow.
+export const FOUNDRY_CRUSHER_WAVE_PERIOD = 10;
+const FOUNDRY_CRUSHER_MOUTH_WU = 330;
+const FOUNDRY_CRUSHER_ANVIL_WU = 366;
 
 function planFoundryToys({ phase, at, lane, across, spin, wave, seed }) {
   const rng = mulberry32((arenaStreamSeed(seed, wave) ^ FOUNDRY_TOY_SALT) >>> 0);
@@ -407,6 +417,29 @@ function planFoundryToys({ phase, at, lane, across, spin, wave, seed }) {
       // The furnace is the hottest thing in the room: its own light and a short pall of haze
       // (render-only; src/render/nocturne reads `data.nocturne`). Phones skip it.
       nocturne: FOUNDRY_FURNACE_NOCTURNE,
+    });
+  }
+  // The room-changing round's own machine. Non-solid like every law toy — the jaws are a
+  // field verdict (stepCrusher), not a wall, and whatever the pilot throws down the lane is
+  // what gets crumpled.
+  if (Number.isInteger(wave) && wave > 0 && wave % FOUNDRY_CRUSHER_WAVE_PERIOD === 0) {
+    toys.push({
+      id: 'foundry_crusher',
+      kind: 'crusher',
+      verb: 'kill',
+      hazardType: 'debris',
+      usable: true,
+      throwable: false,
+      pos: { x: at.x + FOUNDRY_CRUSHER_MOUTH_WU, z: at.z },
+      anvil: { x: at.x + FOUNDRY_CRUSHER_ANVIL_WU, z: at.z },
+      dir: { x: 1, z: 0 },
+      radius: 72,
+      strength: 720,
+      anvilRadius: 22,
+      falloff: 1.08,
+      halfAngleRad: 0.42,
+      edgeSoftRad: 0.1,
+      cycle: { ...CRUSHER_CYCLE },
     });
   }
   if (phase === 'shutter_slow' || phase === 'shutter_alternating') {

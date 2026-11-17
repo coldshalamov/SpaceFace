@@ -196,7 +196,9 @@ const FRAGMENT = /* glsl */`
       else {
         float range = uLightShape[j].x;
         float cutoff = range > 0.0 ? pow(clamp(1.0 - pow(distance / range, 4.0), 0.0, 1.0), 2.0) : 1.0;
-        attenuation = cutoff / max(pow(distance, uLightShape[j].y), 1.0);
+        // A lamp has a body: floor the falloff at a 12 WU radius so dust beside a hot source glows instead of
+        // clipping into a flat plate (1/d^2 diverges at the light).
+        attenuation = cutoff / max(pow(max(distance, 12.0), uLightShape[j].y), 1.0);
         if (kind > 0.5) {
           float angle = dot(-L, uLightDirection[j].xyz);
           attenuation *= smoothstep(uLightDirection[j].w, max(uLightDirection[j].w + 0.00001, uLightShape[j].z), angle);
