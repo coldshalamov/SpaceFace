@@ -7186,3 +7186,38 @@ fails with it.
   `design/program/fleet/graphics-asset-review/HANDOFF-REMAINING-20261117.md` — 485 passed /
   4 owner-gated / 29 pending ROCK-family at the last addendum, plus the ordinary-play
   verification pass over the ~450 passed models and the motion-state captures).
+
+### 38.5 Review outcome (addendum, 2026-11-17 later)
+The adversarial pass ran as three read-only reviewers — devin3 (SWE-2 Max, acct3), grok
+(grok-4.7-high) and hydrogen (gemini-4-hydrogen-xhigh, 429-walled mid-run, its quota spent; two
+reviewers covered the packet). Receipts: `.devshots/fleet/runs/REVIEW-FIX05-BATCH.*`.
+Acted on and landed in `ede705fa62` (+ `258576773b`, + the scope repair `d95323ff50`):
+- **HIGH (devin3):** bb76c66adf moved the killer-label writer to `run.telemetry` but committed the
+  reader still on the dead top-level key — at that commit every reaped-killer attribution answered
+  'Unknown contact'. Writer and reader move together (`258576773b`).
+- **MED (both):** `swarm:bossDown` lived only in the kill path — a champion felled inside the
+  15-tick pre-collection window (or a wing emptied without a kill receipt) froze the top bar while
+  the side row cleared. The kill-time sweep collects the whole wing before the verdict (a live
+  straggler holds it alive), and `_publishBossHp` owns the exactly-once down emit. Two regression
+  cases added; suite 10/10.
+- **MED (grok):** a paused Swarm Circuit said "Next: clear the field." — the brief reads
+  `run.telemetry.circuit` (sole writer `survivalRun.js:442`) and names the same closing rule the
+  announcer uses (`swarmCircuitClosingLine`, exported from `survivalAnnounce.js`).
+- **MED (grok):** the fades stayed on under `forced-colors: active` — decoration; every armory
+  edge stands down there.
+- **MED (grok):** the laptop-height block zeroed the catalog scroll tail under the 56px fade —
+  tail holds; reading tail 44→48 so the last block clears its own band.
+- **LOW:** the knowingly-red debut tests disclose their state in the file header (→ §38.2).
+Not acted, design follow-ups for the look lane: grok's plate-tear divergence (the side row reads
+its own plate-aware meter per FIX-04 `f61a9720f3` while the top bar reads pooled hull — a rope
+tear moves one and not the other) and survivalHud's ungated percent tick.
+Also recorded: bb76c66adf accidentally shipped the foreign thumbnails/Rearm CSS + the Operations
+label inside itself (`git commit -- <paths>` commits working-tree contents; the index surgery was
+silently discarded). `d95323ff50` stripped those hunks from master and the working tree was
+restored to carry them again as their owners' uncommitted state — nothing of theirs is lost; the
+lesson for workers is on the record: commit from the index, never by pathspec, when foreign work
+shares a file. `2f83306430` verified CLEAN by both reviewers.
+State for the next playtest: `check:sim` green; fix05 suite 10/10; crucible-announce/inf50 43/43;
+the armory verified on the bench at 1280×720, 1920×1080 and 390×844. The full checklist
+play-through (both modes + the TOO HEAVY count) remains the queued acceptance pass
+(`PLAYTHROUGH-REPLAY`).
