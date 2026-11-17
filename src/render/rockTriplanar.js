@@ -21,13 +21,16 @@ const ROOT = '/assets/ships/release/surfaces/rock-triplanar/';
 export const ROCK_TRIPLANAR_FAMILIES = Object.freeze({
   // sat: how much of the generated colour survives (the Helios key light tints, the stone does not shout);
   // contrast: value spread around mid-grey; rough: base roughness; ao: cavity strength from the normal slope;
-  // ember: hot-vein emission (0 off); metal: bright-fleck metalness; frost: lifts pale facets.
-  silicate: Object.freeze({ files: { baseColor: `${ROOT}silicate_basecolor.jpg`, normal: `${ROOT}silicate_normal.png` }, tile: 38, normal: 1.15, tint: [1.16, 1.20, 1.34], sat: 0.20, contrast: 1.25, rough: 0.9, ao: 1.1, ember: 0, metal: 0, frost: 0 }),
-  slag: Object.freeze({ files: null, alias: 'silicate', tile: 30, normal: 1.3, tint: [0.30, 0.29, 0.32], sat: 0.25, contrast: 1.5, rough: 0.34, ao: 1.0, ember: 2.4, metal: 0, frost: 0 }),
-  metal: Object.freeze({ files: { baseColor: `${ROOT}metal_basecolor.jpg`, normal: `${ROOT}metal_normal.png` }, tile: 34, normal: 1.2, tint: [1.0, 1.04, 1.16], sat: 0.55, contrast: 1.45, rough: 0.82, ao: 1.1, ember: 0, metal: 0.95, frost: 0 }),
-  crystal: Object.freeze({ files: { baseColor: `${ROOT}crystal_basecolor.jpg`, normal: `${ROOT}crystal_normal.png` }, tile: 30, normal: 1.0, tint: [1.0, 0.97, 1.08], sat: 0.7, contrast: 1.15, rough: 0.55, ao: 0.9, ember: 0, metal: 0, frost: 0 }),
-  ice: Object.freeze({ files: { baseColor: `${ROOT}ice_basecolor.jpg`, normal: `${ROOT}ice_normal.png` }, tile: 36, normal: 0.9, tint: [1.55, 1.65, 1.8], sat: 0.7, contrast: 1.1, rough: 0.5, ao: 0.7, ember: 0, metal: 0, frost: 0.35 }),
-  cooked: Object.freeze({ files: null, alias: 'silicate', tile: 34, normal: 1.2, tint: [0.95, 0.76, 0.66], sat: 0.5, contrast: 1.35, rough: 0.85, ao: 1.1, ember: 0.9, metal: 0, frost: 0 }),
+  // ember: hot-vein emission (0 off); metal: bright-fleck metalness; frost: lifts pale facets;
+  // floor (ROCK-03): minimum pigment so the darkest texels never crush to a pure-black hole;
+  // rim (ROCK-03): cool premultiplied limb emission, dim and broad, so a charcoal body still
+  // separates from black space without reading as a lamp.
+  silicate: Object.freeze({ files: { baseColor: `${ROOT}silicate_basecolor.jpg`, normal: `${ROOT}silicate_normal.png` }, tile: 38, normal: 1.15, tint: [1.16, 1.20, 1.34], sat: 0.20, contrast: 1.25, rough: 0.9, ao: 1.1, ember: 0, metal: 0, frost: 0, floor: 0.030, rim: [0.045, 0.058, 0.095] }),
+  slag: Object.freeze({ files: null, alias: 'silicate', tile: 30, normal: 1.3, tint: [0.30, 0.29, 0.32], sat: 0.25, contrast: 1.5, rough: 0.34, ao: 1.0, ember: 3.4, metal: 0, frost: 0, floor: 0.050, rim: [0.070, 0.085, 0.140] }),
+  metal: Object.freeze({ files: { baseColor: `${ROOT}metal_basecolor.jpg`, normal: `${ROOT}metal_normal.png` }, tile: 34, normal: 1.2, tint: [1.0, 1.04, 1.16], sat: 0.55, contrast: 1.45, rough: 0.82, ao: 1.1, ember: 0, metal: 0.95, frost: 0, floor: 0.040, rim: [0.050, 0.062, 0.100] }),
+  crystal: Object.freeze({ files: { baseColor: `${ROOT}crystal_basecolor.jpg`, normal: `${ROOT}crystal_normal.png` }, tile: 30, normal: 1.0, tint: [1.0, 0.97, 1.08], sat: 0.7, contrast: 1.15, rough: 0.55, ao: 0.9, ember: 0, metal: 0, frost: 0, floor: 0.030, rim: [0.050, 0.052, 0.095] }),
+  ice: Object.freeze({ files: { baseColor: `${ROOT}ice_basecolor.jpg`, normal: `${ROOT}ice_normal.png` }, tile: 36, normal: 0.9, tint: [1.55, 1.65, 1.8], sat: 0.7, contrast: 1.1, rough: 0.5, ao: 0.7, ember: 0, metal: 0, frost: 0.35, floor: 0.045, rim: [0.055, 0.080, 0.115] }),
+  cooked: Object.freeze({ files: null, alias: 'silicate', tile: 34, normal: 1.2, tint: [0.95, 0.76, 0.66], sat: 0.5, contrast: 1.35, rough: 0.85, ao: 1.1, ember: 0.9, metal: 0, frost: 0, floor: 0.035, rim: [0.050, 0.060, 0.100] }),
 });
 
 const SUBSTANCE_FAMILY = Object.freeze({
@@ -115,7 +118,15 @@ varying vec3 vTpPos;
 varying vec3 vTpNrm;
 `;
 const VERTEX_BODY = `
-vTpPos = position * length(vec3(modelMatrix[0].x, modelMatrix[0].y, modelMatrix[0].z));
+vTpPos = position;
+#ifdef USE_INSTANCING
+  // ROCK-03: pooled asteroids draw through InstancedMesh — the per-rock scale lives in the
+  // instance matrix, not the shared model matrix, or every pooled rock would sample the same
+  // unit-sphere texel patch.
+  vTpPos *= length(instanceMatrix[0].xyz);
+#else
+  vTpPos *= length(vec3(modelMatrix[0].x, modelMatrix[0].y, modelMatrix[0].z));
+#endif
 vTpNrm = normal;
 `;
 const FRAGMENT_PARS = `
@@ -133,6 +144,8 @@ uniform float sfTpRough;
 uniform float sfTpAo;
 uniform float sfTpEmber;
 uniform float sfTpFrost;
+uniform float sfTpFloor;
+uniform vec3 sfTpRim;
 uniform vec3 sfTpTint;
 uniform mat3 normalMatrix;
 `;
@@ -167,17 +180,32 @@ if (sfTpOn > 0.5) {
   }
   sfTpAlb /= max(dot(vec3(1.0), step(vec3(0.02), sfTpWeights) * sfTpWeights), 1e-4);
   sfTpLum = dot(sfTpAlb, vec3(0.2126, 0.7152, 0.0722));
-  // Identity: pull saturation down, spread values, then multiply the family tint. The raw warm oxide (before the
-  // desaturation) is what the ember veins key on, so the hot veins stay small and specific.
-  sfTpEmberMask = smoothstep(0.26, 0.34, sfTpAlb.r - sfTpAlb.b) * smoothstep(0.18, 0.28, sfTpLum);
   vec3 sfTpCol = mix(vec3(sfTpLum), sfTpAlb, sfTpSat);
-  sfTpCol = max((sfTpCol - 0.16) * sfTpContrast + 0.16, 0.0);
+  // ROCK-03: the darkest texels floor at the family's minimum pigment instead of crushing to a
+  // pure-black hole, so a charcoal body keeps a whisper of colour and separates from space.
+  sfTpCol = max((sfTpCol - 0.16) * sfTpContrast + 0.16, vec3(sfTpFloor));
   sfTpCol += vec3(sfTpFrost * smoothstep(0.30, 0.55, sfTpLum) * 0.5);
   // Whiteout blend: reorient each projection's tangent normal to the object normal, then mix.
   sfTpNx.xy *= sfTpNormalScale; sfTpNy.xy *= sfTpNormalScale; sfTpNz.xy *= sfTpNormalScale;
   // Cavity: where the sampled relief leans hard the surface is a crack or a lip, and it gets dark (read as form).
   float sfTpSlope = dot(vec3(length(sfTpNx.xy), length(sfTpNy.xy), length(sfTpNz.xy)), sfTpWeights);
   sfTpCavity = clamp(1.0 - sfTpAo * sfTpSlope * 0.9, 0.38, 1.0);
+  // ROCK-03: the melt shows at the crack floors. The old mask keyed on rare bright rust flecks
+  // (~3% of the sheet), so the fissure network the cavity term crushes to black rendered as a
+  // black jagged band. The deep end of the relief (low cavity) is that fissure web — but the
+  // auto-selected mip averages the slope field flat at gameplay distance, so the mask re-samples
+  // the normal one level sharper (three cheap fetches, still the shared program).
+  vec3 sfTpMn = vec3(0.0, 0.0, 1.0);
+  if (sfTpWeights.x > 0.02) sfTpMn += (texture2D(sfTpNormal, sfTpUvX, -1.5).xyz * 2.0 - 1.0) * sfTpWeights.x;
+  if (sfTpWeights.y > 0.02) sfTpMn += (texture2D(sfTpNormal, sfTpUvY, -1.5).xyz * 2.0 - 1.0) * sfTpWeights.y;
+  if (sfTpWeights.z > 0.02) sfTpMn += (texture2D(sfTpNormal, sfTpUvZ, -1.5).xyz * 2.0 - 1.0) * sfTpWeights.z;
+  sfTpMn /= max(dot(vec3(1.0), step(vec3(0.02), sfTpWeights) * sfTpWeights), 1e-4);
+  float sfTpVeinSlope = length(sfTpMn.xy) * sfTpNormalScale;
+  float sfTpVeinCavity = clamp(1.0 - sfTpAo * sfTpVeinSlope * 0.9, 0.38, 1.0);
+  sfTpEmberMask = max(
+    smoothstep(0.66, 0.46, sfTpVeinCavity) * smoothstep(0.62, 0.30, sfTpLum),
+    smoothstep(0.26, 0.34, sfTpAlb.r - sfTpAlb.b) * smoothstep(0.10, 0.20, sfTpLum)
+  );
   diffuseColor.rgb *= sfTpCol * sfTpTint * mix(0.55, 1.0, sfTpCavity) * sfTpCavity;
   sfTpNx = vec3(sfTpNx.xy + sfTpObjN.zy, abs(sfTpNx.z) * sfTpObjN.x);
   sfTpNy = vec3(sfTpNy.xy + sfTpObjN.xz, abs(sfTpNy.z) * sfTpObjN.y);
@@ -198,8 +226,17 @@ if (sfTpOn > 0.5) {
 }
 `;
 const FRAGMENT_EMISSIVE = `
-if (sfTpOn > 0.5 && sfTpEmber > 0.0) {
-  totalEmissiveRadiance += vec3(1.0, 0.34, 0.08) * (sfTpEmber * sfTpEmberMask * sfTpEmberMask);
+if (sfTpOn > 0.5) {
+  // ROCK-03: a cool broad limb for rough rock, dim and wide and far under the bloom threshold —
+  // the silhouette guarantee that keeps a charcoal boulder readable against black space without
+  // ever reading as a lamp or a glassy edge.
+  float sfTpGrazing = clamp(1.0 - abs(dot(normalize(normal), normalize(vViewPosition))), 0.0, 1.0);
+  totalEmissiveRadiance += sfTpRim * pow(sfTpGrazing, 1.9);
+  if (sfTpEmber > 0.0) {
+    // Linear mask, not squared: the vein cores hold full HDR emission (bloom-eligible) while the
+    // edges fall off softly — squaring crushed the whole web to ~0 at gameplay distance.
+    totalEmissiveRadiance += vec3(1.0, 0.34, 0.08) * (sfTpEmber * sfTpEmberMask);
+  }
 }
 `;
 const FRAGMENT_NORMAL = `
@@ -231,6 +268,7 @@ export function installTriplanarRock(material, family) {
     sfTpMetal: { value: spec.metal }, sfTpTint: { value: tint },
     sfTpSat: { value: spec.sat }, sfTpContrast: { value: spec.contrast }, sfTpRough: { value: spec.rough },
     sfTpAo: { value: spec.ao }, sfTpEmber: { value: spec.ember }, sfTpFrost: { value: spec.frost },
+    sfTpFloor: { value: spec.floor || 0 }, sfTpRim: { value: new THREE.Vector3(...(spec.rim || [0, 0, 0])) },
   };
   material.color.setRGB(1, 1, 1);
   function triplanarRockShader(shader, renderer) {

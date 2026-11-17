@@ -61,17 +61,21 @@ test('before the library decodes, family types keep the flat tinted material', (
 
 let preDecodeMetallicRoot = null;
 
-test('family-less rocks are tagged for a later re-skin before the family maps decode', () => {
+test('triplanar field rocks install the shared family program, never the familyless tag', () => {
   assert.equal(getReadyRockFamilies(), null);
   preDecodeMetallicRoot = withCanvasStub(() => createVisualFactory().build({
     id: 41, type: 'asteroid', radius: 12, data: { typeId: 'ast_metallic' },
   }));
   assert.notEqual(preDecodeMetallicRoot.userData.visualBuildFailed, true);
   const material = preDecodeMetallicRoot.userData.asteroidInstanceBody.material;
-  assert.equal(material.map, null, 'no half-loaded family map');
-  assert.ok(material.roughnessMap, 'the procedural metal surface uses the noise roughness map');
-  assert.equal(material.userData.spacefaceFamilylessRock?.typeId, 'ast_metallic',
-    'the pre-decode material is tagged so the family-ready continuation can re-skin it');
+  assert.equal(material.map, null, 'the triplanar surface carries no UV map');
+  assert.equal(material.roughnessMap, null, 'the triplanar roughness comes from the shader, not a noise map');
+  assert.equal(material.userData.spacefaceTriplanarRock, 'metal',
+    'ROCK-03: a metallic field rock rides the shared object-space triplanar family');
+  assert.equal(material.userData.spacefaceFamilylessRock, undefined,
+    'the triplanar route needs no family-decode re-skin — the shared sfTpOn uniform flips it on');
+  assert.ok(material.customProgramCacheKey().includes('spaceface-rock-triplanar'),
+    'the field rock shares the one triplanar program family');
 });
 
 test('a failed decode publishes nothing and resolves null instead of throwing', async () => {
@@ -87,7 +91,7 @@ test('a failed decode publishes nothing and resolves null instead of throwing', 
   }
 });
 
-test('decoded families are configured, GPU-warmed once each, and worn by their asteroid types only', async () => {
+test('decoded families are configured and GPU-warmed once each; field ores keep their triplanar family', async () => {
   const loaded = [];
   const initialized = [];
   const families = await preloadRockFamilyLibrary({ initTexture: (texture) => initialized.push(texture) }, {
@@ -110,36 +114,40 @@ test('decoded families are configured, GPU-warmed once each, and worn by their a
   assert.equal(rockFamilyFor('ice'), null, 'ice stays transmissive glass');
   assert.equal(rockFamilyFor('gas'), null, 'the gas cloud stays a translucent hull');
 
+  // ROCK-03: the field ores ride the shared object-space triplanar family by substance, the same
+  // program the authored place_rock bodies wear — one program key, no per-rock materials, no UV maps.
   const metallic = bodyMaterial('ast_metallic');
-  assert.equal(metallic.map, metal.baseColor);
-  assert.equal(metallic.normalMap, metal.normal);
-  assert.equal(metallic.emissiveMap, null, 'a metal rock does not glow');
-
   const crystalline = bodyMaterial('ast_crystalline');
-  assert.equal(crystalline.map, crystal.baseColor);
-  assert.equal(crystalline.emissiveMap, crystal.emissive);
-  assert.ok(crystalline.emissiveIntensity > 0.9, 'a glow map confines the glow, so the intensity is lifted above the flat value');
-
   const rare = bodyMaterial('ast_rare_exotic');
-  assert.equal(rare.map, exotic.baseColor);
-  assert.equal(rare.emissiveMap, exotic.emissive);
-
-  // The type colour only tints the texture now: white-dominant, not the old dark multiply.
+  assert.equal(metallic.userData.spacefaceTriplanarRock, 'metal');
+  assert.equal(crystalline.userData.spacefaceTriplanarRock, 'crystal');
+  assert.equal(rare.userData.spacefaceTriplanarRock, 'crystal');
+  assert.equal(metallic.customProgramCacheKey(), crystalline.customProgramCacheKey(),
+    'every triplanar field rock shares the one program family');
+  assert.equal(rare.customProgramCacheKey(), metallic.customProgramCacheKey());
   for (const material of [metallic, crystalline, rare]) {
-    assert.ok(material.color.r > 0.6 && material.color.g > 0.6 && material.color.b > 0.6, 'family materials tint, they do not darken');
+    assert.equal(material.map, null, 'the triplanar surface needs no UV map');
+    assert.ok(material.color.r > 0.9 && material.color.g > 0.9 && material.color.b > 0.9,
+      'the triplanar install whitens the albedo multiplier so the family set carries the surface');
   }
 
   assert.equal(bodyMaterial('ast_icy').map, null, 'ice keeps its glass material');
 });
 
-test('decoded family maps re-skin a rock that was built before the decode', () => {
+test('a familyless-tagged rock re-skins onto the live material — now the shared triplanar family', () => {
   assert.ok(preDecodeMetallicRoot, 'the pre-decode fixture exists');
-  const before = preDecodeMetallicRoot.userData.asteroidInstanceBody.material;
+  // ROCK-03: astMaterial no longer writes the tag, but the re-skin machinery still covers roots
+  // that carry it — it lands the rock on whatever astMaterial returns today.
+  const leaf = preDecodeMetallicRoot.userData.asteroidInstanceBody;
+  const stale = new THREE.MeshStandardMaterial({ color: 0x5a6470 });
+  stale.userData.spacefaceFamilylessRock = { typeId: 'ast_metallic', tint: null, variant: 0 };
+  leaf.material = stale;
   const changed = upgradeFamilylessRockMaterials(preDecodeMetallicRoot);
   const after = preDecodeMetallicRoot.userData.asteroidInstanceBody.material;
   assert.equal(changed, 1, 'the live rock is re-skinned once');
-  assert.notEqual(after, before, 'the procedural material is replaced');
-  assert.equal(after.map, rockFamilyFor('metal').baseColor, 'the decoded family map is worn');
+  assert.notEqual(after, stale, 'the stale material is replaced');
+  assert.equal(after.userData.spacefaceTriplanarRock, 'metal',
+    'the re-skin lands on the shared triplanar family, not the decoded UV map');
   assert.equal(after.userData.spacefaceFamilylessRock, undefined, 'the stale tag leaves with the material');
   assert.equal(upgradeFamilylessRockMaterials(preDecodeMetallicRoot), 0, 'a second pass is a no-op');
 });

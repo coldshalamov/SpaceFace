@@ -49,6 +49,7 @@ import { modelTruthMountFractions } from '../data/modelTruth.js';
 import { mergeGeometries, toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec, ROCK_SURFACE_VARIANTS } from './rockSurfaceLibrary.js';
 import { getReadyRockFamilies, rockFamilyFor, ROCK_FAMILY_TINT_MIX, ROCK_FAMILY_EMISSIVE_LIFT } from './rockFamilyLibrary.js';
+import { installTriplanarRock } from './rockTriplanar.js';
 import { getReadyVolatileSurface, preloadVolatileSurface } from './volatileSurfaceLibrary.js';
 import { preloadSurveyorSurface, surveyorSurfaceRendererLifecycle } from './surveyorSurfaceLibrary.js';
 import {
@@ -2582,6 +2583,12 @@ function makeIceNormalTexture() {
   return tex;
 }
 
+// ROCK-03: field ores (Metallic Asteroid, Helios field rocks, crystals, exotics) ride the shared
+// object-space triplanar family — the same program the authored place_rock bodies wear — by
+// substance: metallic → metal ore, crystalline/exotic → crystal. No per-rock materials; one
+// cached material per type still serves the whole instanced pool.
+const AST_VARIANT_TRIPLANAR = Object.freeze({ metal: 'metal', crystal: 'crystal', exotic: 'crystal' });
+
 function astMaterial(typeId, def, tint, variantIdx = 0) {
   const wantsCommonSurface = typeId === 'ast_common_rock' && tint == null;
   const commonSurfaceReady = wantsCommonSurface ? getReadyRockSurfaceTextures() : null;
@@ -2591,17 +2598,19 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
   // numbers; this key keeps one cached material per variant.
   const variantSpec = commonSurfaceReady ? rockSurfaceVariantSpec(variantIdx) : null;
   const variantKey = variantSpec ? `:v${ROCK_SURFACE_VARIANTS.indexOf(variantSpec)}` : '';
-  // Metallic / crystalline / exotic rocks wear a generated surface family once its maps have decoded
-  // (rockFamilyLibrary.js); a rock built before then keeps the flat tinted material under its own key.
-  const family = typeId === 'ast_common_rock' ? null : rockFamilyFor(def.variant);
-  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}${family ? ':fam' : ''}`;
+  // ROCK-03: variants on the triplanar map skip the UV family path entirely — it decoded late or
+  // never in flight and left the rocks as smooth flat icosahedra. A triplanar material needs no
+  // decoded map to hold the right program: the shared sfTpOn uniform flips it on when the set lands.
+  const tpFamily = typeId === 'ast_common_rock' ? null : (AST_VARIANT_TRIPLANAR[def.variant] || null);
+  const family = (typeId === 'ast_common_rock' || tpFamily) ? null : rockFamilyFor(def.variant);
+  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}${family ? ':fam' : ''}${tpFamily ? ':tp' : ''}`;
   return getMaterial(key, () => {
     const commonSurface = commonSurfaceReady;
     let color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
     if (variantSpec) color.multiply(new THREE.Color(...variantSpec.tint));
     // The texture carries the surface, so the type colour only tints it rather than multiplying it dark.
     if (family) color = new THREE.Color(0xffffff).lerp(color, ROCK_FAMILY_TINT_MIX[def.variant] ?? 0.25);
-    const skipRoughNoise = !!commonSurface || def.variant === 'crystal' || def.variant === 'ice';
+    const skipRoughNoise = !!commonSurface || !!tpFamily || def.variant === 'crystal' || def.variant === 'ice';
     const rough = skipRoughNoise
       ? null
       : getTexture('noise:astrough', () =>
@@ -2672,11 +2681,15 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
         spacefaceBareRock: { typeId, tint: tint == null ? null : tint, variant: variantIdx | 0 },
       };
     }
+    // ROCK-03: the triplanar install goes on BEFORE getMaterial chains installIllustratedSurface,
+    // which is exactly the order the shared family is built for — the Look's governor, rim and
+    // rock fill keep working on top of the substance surface.
+    if (tpFamily) installTriplanarRock(material, tpFamily);
     // Non-common rocks built before their family maps decode keep the procedural tint/noise
     // material. Tag them so the family-ready continuation can re-material them onto the decoded
     // maps; without this an old rock sits on the poorer surface AND on a program the family
     // warm never links, so its first draw pays the whole illustrated-surface link in flight.
-    if (!family && typeId !== 'ast_common_rock' && def.variant !== 'ice') {
+    if (!family && !tpFamily && typeId !== 'ast_common_rock' && def.variant !== 'ice') {
       material.userData = {
         ...(material.userData || {}),
         spacefaceFamilylessRock: { typeId, tint: tint == null ? null : tint, variant: variantIdx | 0 },
