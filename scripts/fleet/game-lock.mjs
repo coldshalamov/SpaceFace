@@ -162,7 +162,19 @@ const child = needsShell
   ? spawn(executionCmd.map(q).join(' '), { cwd: process.cwd(), env: childEnv, stdio: 'inherit', shell: true })
   : spawn(executionCmd[0] === 'node' ? process.execPath : executionCmd[0], executionCmd.slice(1),
     { cwd: process.cwd(), env: childEnv, stdio: 'inherit' });
-const done = (code) => { release(); process.exit(code ?? 1); };
+const done = (code) => { clearTimeout(holdTimer); release(); process.exit(code ?? 1); };
+// A hung holder starves every queued job (lead, 2026-11-17: an edge probe held the lock 54 min with 10 jobs behind it).
+// Hard cap on one hold; the whole child tree is ended and the lock released. SF_LOCK_MAX_HOLD_MIN overrides (0 = off),
+// e.g. for a long gate or a multi-run measurement that legitimately needs more.
+const MAX_HOLD_MIN = Number(process.env.SF_LOCK_MAX_HOLD_MIN ?? 45);
+const holdTimer = MAX_HOLD_MIN > 0 ? setTimeout(() => {
+  console.error(`[game-lock] holder exceeded ${MAX_HOLD_MIN} min; ending it and releasing the lock`);
+  try {
+    if (process.platform === 'win32') spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });
+    else child.kill('SIGKILL');
+  } catch { /* already gone */ }
+  setTimeout(() => done(124), 3000);
+}, MAX_HOLD_MIN * 60_000) : null;
 child.on('close', done);
 child.on('error', (e) => { console.error(`[game-lock] ${e.message}`); done(1); });
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { child.kill(); release(); process.exit(1); });
