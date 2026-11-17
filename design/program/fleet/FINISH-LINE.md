@@ -10,7 +10,7 @@ moves no row below goes on a list, not to an agent.
 | Swarm PLAY → first hostile (cold / warm) | ≤ 10 s / ≤ 5 s | 34–54 s cold; warm 41.8 s (cache saves ~11 s). Swarm-only tax itemised in INV-08: survival cook 11.4 s, awaited post-opening pass 10.2 s, per-frame style recalc 10.7 s |
 | Adventure New Game → flying | ≤ 15 s | ~30 s (OPENING-1b) |
 | First flight frame → first throw, Adventure | ≤ 30 s | ✅ 18.2 s (opening1b-r, worker lane, clean profile); first latch 8.4 s; ACCEPT-01 headed 29.6 s before the beat-4/cue fixes |
-| First flight frame → first throw, Swarm | ≤ 30 s | pending |
+| First flight frame → first throw, Swarm | ≤ 30 s | ✅ 8.95 s headed (BOT-02, person-like tap), 5 kills by the thrown hull |
 | Press → latch, staged fixture | ≥ 95 % | 38/40 (f4), 40/40 (f5), 16/16 (f6); wrong body 3/16 once the hostile is truly under the pointer |
 | Click → throw given a live line, staged fixture | ≥ 95 % | 21/21 (f4), 13/13 (f6) on the staged hostile; worker lane 3/3 |
 | Release beats flailing (kills thrown vs held, staged cluster) | thrown clearly higher, held not limp | ✅ SWING-01 node test, 10 seeds: thrown 2.1 kills of 5 (plough), held 0 kills / 277 chip damage |
