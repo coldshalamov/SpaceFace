@@ -216,3 +216,55 @@ evidence to decide: 60 runtime-reachable, 1,130 authoring-only, 74 duplicates,
 6. Usage: agy accounts 429 on 5h windows (retryable); deepseek-free hangs silently on very
    large briefs (force early output; prefer devin for long ones); devin acct4 is NOT an
    account — only acct1-3 exist and are logged in.
+
+---
+
+## ADDENDUM — orchestrator session 2026-11-17 (~06:16–10:00): waves landed
+
+State at THIS session close: **485 passed / 4 needs follow-up / 29 pending** (ledger is
+authoritative; 1,074 iterations). This addendum supersedes the §2/§3 wave lists above —
+all of them landed.
+
+**Waves landed and applied (all visually accepted by the orchestrator before record/status):**
+Wave A1 proc-ships ×22 (grok; one systematic builder fix); A2 open-water fauna ×18
+(agy1+agy2); A3 station kits ×14 (openencoder7's 06:04 forge bake was verified GOOD by
+grok's byte probe — +~16k tris/kit at radii HEAD had empty; packages aligned; accents per
+faction); A4 gratings ×2 + dock collar + radiator panel (plate was never built — added per
+fin comb in `build_wreck_aftermath_pack.py`) + bolus canal ribs (flat annuli → extruded
+bands + warm self-glow in `bolusCanal.js`/`bolusView.js`); bolus inner fauna ×16 (agy1,
+recovered after its 429 death — edits + queued captures landed, orchestrator applied);
+machines ×6 (4 passed; custodian+mason defects found by capture analysis, fixed, re-passed);
+ruckus + pressure-core (new `--character=` route); greebles 4 of 7; proc characters ×7 +
+optic cells ×8 + kestrel-hero (new `--proc-preview=` route); places ×18 (isolated +
+census-confirmed in-scene evidence); ordinary-play scope recorded for 32 (model, frame)
+pairs from the flythrough + positioned visibility logs.
+
+**The 4 remaining `needs follow-up` are owner-gated, not constructible here:**
+1. `place_customs_pylon` — external redesign workstream.
+2–4. greeble nav_lights / rcs / vents — routing gap in `partsLibrary.js` (mount branches
+unreachable; issues fields carry the full diagnosis). Commission a consumer, reroute, or
+retire from scope.
+
+**29 `pending`** = ROCK-family places + pressure-core companion — LOOK/ROCK packet lane.
+
+**Committed this session (master, unpushed):** `18bf8d2437` (--dist override),
+`d60fbad6bc` (ledger-tool coverage machinery), `9879b4ed42` (harness: character route,
+proc-preview, visibleObjectBounds, per-view --dist, positioned sector shots),
+`e61da309e3` (fauna/bolus/machine builder wave + tests). NOT committed (coordination
+needed): proc-ship builders (`visualFactory.js` carries foreign changes mixed with grok's
+work), grating/radiator/station-kit asset GLBs + render packages, and the generated
+metadata churn (`release_manifest.json`, `pilots.json`, `renderPackageManifest.js` — pins
+foreign agents' uncommitted packages; coordinate before any partial asset commit).
+
+**Worker session notes:** agy1 + agy2 both hit the 429 wall mid-task (~07:35–09:00);
+their edits landed and were recovered/verified by the orchestrator (see apply scripts in
+`~/.zcode/tmp/fleet-orchestrate/`). Two hung opencode zombies killed after ancestry +
+flat-CPU checks (00:32 and 05:42 dispatches). devin acct4 IS now real and in use by the
+packet lane (`scripts/fleet/run.mjs` uses acct4 profiles) — the §6 note above is stale.
+Rock-surface pixel checks and per-frame pixel diffs are in the workers' reports.
+
+**Remaining §4 work (the honest open scope):** broad ordinary-play confirmation for the
+other ~450 passed models (harness now exists: positioned sector-shots + per-family batch
+commands; the 32 recorded pairs cover the models actually visible in the 12 frames
+captured so far), motion/defense/retreat state captures, and the ordinary-play fleet
+flythrough families not yet framed (cargo yard, claim outposts beyond helios relay).
