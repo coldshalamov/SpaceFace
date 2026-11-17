@@ -17975,6 +17975,13 @@ function materialShareSignature(material, tags = {}) {
   const forge = !!(material.userData && material.userData.spacefaceFinish === 'forge-v1');
   const tintable = !forge && (role === 'hull' || role === 'accent' || role === 'dark' || role === 'thruster');
   const emissiveHex = colorSig(material.emissive);
+  // ROCK-04: a triplanar rock body takes its identity from its FAMILY, not from the authored
+  // colour — installTriplanarRock whitewashes `material.color` to 1,1,1 so the generated set
+  // supplies the albedo. That left every geological material in the shared pool with an
+  // identical signature, so the first rock admitted (a crystal monolith) owned the slot and
+  // every other substance — junk scrap included — drew it too. The family is the substance, so
+  // it has to be in the key.
+  const triplanar = String(material.userData && material.userData.spacefaceTriplanarRock || '');
   return [
     material.type || 'Material',
     material.transparent ? 1 : 0,
@@ -17985,6 +17992,7 @@ function materialShareSignature(material, tags = {}) {
     fixedSig(material.alphaTest, 2),
     fixedSig(material.opacity, 2),
     tintable ? `color:tintable:${role}` : colorSig(material.color),
+    triplanar ? `triplanar:${triplanar}` : '',
     fixedSig(material.roughness, 2),
     fixedSig(material.metalness, 2),
     emissiveHex,
@@ -18513,6 +18521,11 @@ export function sharedMaterialForProbe(base, tags, palette) {
 
 export function dedicatedMaterialForProbe(base, tags, palette, cache, instanceKey) {
   return dedicatedMaterialFor(base, tags, palette, cache, instanceKey);
+}
+
+/** ROCK-04 test seam: clear the shared pool so a probe sees a cold cache. */
+export function resetSharedMaterialsForProbe() {
+  sharedMaterialVariants.clear();
 }
 
 /** Contract/CI probe: immutable hull share keys must canonicalize negligible emissive deltas. */

@@ -52,6 +52,69 @@ function normalizeGeometryForMerge(geometry) {
   return geometry;
 }
 
+// Representation is not the only way a pack can disagree: one primitive in a material group can
+// carry a TANGENT (or a second UV set, or COLOR) while its sibling does not — `place_asteroid_graffiti`,
+// `place_container_rack`, and `place_transponder_gate` all ship `Material_Emissive_Warm` as one
+// tangent-set primitive plus two without. mergeGeometries refuses that with "same number of
+// attributes" and returns null, which used to throw out of the packaged-prop build and fail the
+// whole authored body closed: the prop drew nothing at all. Fill each group's missing streams with
+// their neutral value so the merge succeeds and the body publishes.
+const MERGE_ATTRIBUTE_DEFAULTS = Object.freeze({
+  // Tangent w is the handedness bit; 0 would flip every normal map on the filled primitives.
+  tangent: (array, itemSize) => { for (let i = 3; i < array.length; i += itemSize) array[i] = 1; },
+  // Vertex colour is a multiplier, so a missing stream is white, never black.
+  color: (array) => { for (let i = 0; i < array.length; i += 1) array[i] = 1; },
+});
+
+function fillAttribute(geometry, name, itemSize) {
+  const count = geometry.getAttribute('position').count;
+  const array = new Float32Array(count * itemSize);
+  const fill = MERGE_ATTRIBUTE_DEFAULTS[name];
+  if (fill) fill(array, itemSize);
+  geometry.setAttribute(name, new THREE.BufferAttribute(array, itemSize));
+  // A zero normal would shade the filled primitive black; derive the real surface instead.
+  if (name === 'normal') geometry.computeVertexNormals();
+}
+
+function reconcileMergeAttributes(geometries) {
+  const specs = new Map();
+  for (const geometry of geometries) {
+    for (const [name, attribute] of Object.entries(geometry.attributes)) {
+      const known = specs.get(name);
+      // A widened stream keeps the largest itemSize seen; narrower members are padded below.
+      if (!known || attribute.itemSize > known) specs.set(name, attribute.itemSize);
+    }
+  }
+  for (const geometry of geometries) {
+    for (const [name, itemSize] of specs) {
+      const attribute = geometry.getAttribute(name);
+      if (!attribute) { fillAttribute(geometry, name, itemSize); continue; }
+      if (attribute.itemSize !== itemSize) {
+        const count = attribute.count;
+        const widened = new Float32Array(count * itemSize);
+        for (let i = 0; i < count; i += 1) {
+          for (let c = 0; c < attribute.itemSize; c += 1) widened[i * itemSize + c] = attribute.getComponent(i, c);
+        }
+        geometry.setAttribute(name, new THREE.BufferAttribute(widened, itemSize));
+      }
+    }
+    // The merge also requires every member to agree on indexing; normalizeGeometryForMerge
+    // rebuilds the index representation, so only presence can still differ.
+  }
+  const indexed = geometries[0] && !!geometries[0].index;
+  for (const geometry of geometries) {
+    if (!!geometry.index === indexed) continue;
+    // normalizeGeometryForMerge hands every member a Uint32Array index, so the only way to get
+    // here is a geometry built without one. Give it the identity index instead of dropping its
+    // neighbours' — dropping an index on an indexed geometry would weld triangles onto vertex 0.
+    const count = geometry.getAttribute('position').count;
+    const array = new Uint32Array(count);
+    for (let i = 0; i < count; i += 1) array[i] = i;
+    geometry.setIndex(new THREE.BufferAttribute(array, 1));
+  }
+  return geometries;
+}
+
 function mergeOpaqueMeshes(root, meshes, batchName, { disposeSourceGeometry = true } = {}) {
   if (!root || !Array.isArray(meshes) || meshes.length < 2) return null;
   root.updateMatrixWorld(true);
@@ -63,7 +126,8 @@ function mergeOpaqueMeshes(root, meshes, batchName, { disposeSourceGeometry = tr
     geometry.applyMatrix4(RELATIVE);
     transformed.push(geometry);
   }
-  const geometry = mergeGeometries(transformed, false);
+  const reconciled = reconcileMergeAttributes(transformed);
+  const geometry = mergeGeometries(reconciled, false);
   for (const transformedGeometry of transformed) transformedGeometry.dispose();
   if (!geometry) throw new Error(`scenario prop batch failed for ${batchName}`);
   geometry.computeBoundingBox();

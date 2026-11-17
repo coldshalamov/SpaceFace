@@ -23,19 +23,26 @@ export const ROCK_TRIPLANAR_FAMILIES = Object.freeze({
   // contrast: value spread around mid-grey; rough: base roughness; ao: cavity strength from the normal slope;
   // ember: hot-vein emission (0 off); metal: bright-fleck metalness; frost: lifts pale facets;
   // floor (ROCK-03): minimum pigment so the darkest texels never crush to a pure-black hole;
-  // rim (ROCK-03): cool premultiplied limb emission, dim and broad, so a charcoal body still
-  // separates from black space without reading as a lamp.
-  silicate: Object.freeze({ files: { baseColor: `${ROOT}silicate_basecolor.jpg`, normal: `${ROOT}silicate_normal.png` }, tile: 38, normal: 1.15, tint: [1.16, 1.20, 1.34], sat: 0.20, contrast: 1.25, rough: 0.9, ao: 1.1, ember: 0, metal: 0, frost: 0, floor: 0.030, rim: [0.045, 0.058, 0.095] }),
+  // rim (ROCK-03/04): cool premultiplied limb emission, dim and broad, so a charcoal body still
+  // separates from black space without reading as a lamp. ROCK-04 raised the dark families'
+  // limb ~2-3x and their pigment floor a little: at chase zoom in Swarm round 10 the charcoal
+  // and scrap bodies were still reading as holes in space (ACCEPT-07 dark-rock crops).
+  silicate: Object.freeze({ files: { baseColor: `${ROOT}silicate_basecolor.jpg`, normal: `${ROOT}silicate_normal.png` }, tile: 38, normal: 1.15, tint: [1.16, 1.20, 1.34], sat: 0.20, contrast: 1.25, rough: 0.9, ao: 1.1, ember: 0, metal: 0, frost: 0, floor: 0.040, rim: [0.117, 0.151, 0.247] }),
   slag: Object.freeze({ files: null, alias: 'silicate', tile: 30, normal: 1.3, tint: [0.30, 0.29, 0.32], sat: 0.25, contrast: 1.5, rough: 0.34, ao: 1.0, ember: 3.4, metal: 0, frost: 0, floor: 0.050, rim: [0.070, 0.085, 0.140] }),
-  metal: Object.freeze({ files: { baseColor: `${ROOT}metal_basecolor.jpg`, normal: `${ROOT}metal_normal.png` }, tile: 34, normal: 1.2, tint: [1.0, 1.04, 1.16], sat: 0.55, contrast: 1.45, rough: 0.82, ao: 1.1, ember: 0, metal: 0.95, frost: 0, floor: 0.040, rim: [0.050, 0.062, 0.100] }),
+  metal: Object.freeze({ files: { baseColor: `${ROOT}metal_basecolor.jpg`, normal: `${ROOT}metal_normal.png` }, tile: 34, normal: 1.2, tint: [1.0, 1.04, 1.16], sat: 0.55, contrast: 1.45, rough: 0.82, ao: 1.1, ember: 0, metal: 0.95, frost: 0, floor: 0.050, rim: [0.110, 0.136, 0.220] }),
   crystal: Object.freeze({ files: { baseColor: `${ROOT}crystal_basecolor.jpg`, normal: `${ROOT}crystal_normal.png` }, tile: 30, normal: 1.0, tint: [1.0, 0.97, 1.08], sat: 0.7, contrast: 1.15, rough: 0.55, ao: 0.9, ember: 0, metal: 0, frost: 0, floor: 0.030, rim: [0.050, 0.052, 0.095] }),
   ice: Object.freeze({ files: { baseColor: `${ROOT}ice_basecolor.jpg`, normal: `${ROOT}ice_normal.png` }, tile: 36, normal: 0.9, tint: [1.55, 1.65, 1.8], sat: 0.7, contrast: 1.1, rough: 0.5, ao: 0.7, ember: 0, metal: 0, frost: 0.35, floor: 0.045, rim: [0.055, 0.080, 0.115] }),
-  cooked: Object.freeze({ files: null, alias: 'silicate', tile: 34, normal: 1.2, tint: [0.95, 0.76, 0.66], sat: 0.5, contrast: 1.35, rough: 0.85, ao: 1.1, ember: 0.9, metal: 0, frost: 0, floor: 0.035, rim: [0.050, 0.060, 0.100] }),
+  cooked: Object.freeze({ files: null, alias: 'silicate', tile: 34, normal: 1.2, tint: [0.95, 0.76, 0.66], sat: 0.5, contrast: 1.35, rough: 0.85, ao: 1.1, ember: 0.9, metal: 0, frost: 0, floor: 0.048, rim: [0.130, 0.156, 0.260] }),
+  // ROCK-04: `place_rock_junk_*` was missing from SUBSTANCE_FAMILY, so the whole scrap family
+  // fell through to its authored flat stone (base 0.068/0.042/0.030) with no limb at all — the
+  // near-black lump in the ACCEPT-07 round-10 crops. Salvage scrap, so the grain stays warm
+  // brown under the cool limb: dark, not grey.
+  junk: Object.freeze({ files: null, alias: 'silicate', tile: 32, normal: 1.2, tint: [0.78, 0.62, 0.52], sat: 0.35, contrast: 1.45, rough: 0.8, ao: 1.05, ember: 0, metal: 0.15, frost: 0, floor: 0.055, rim: [0.125, 0.140, 0.235] }),
 });
 
 const SUBSTANCE_FAMILY = Object.freeze({
   silicate: 'silicate', slag: 'slag', metallic_ore: 'metal', reef_metal: 'metal',
-  crystal: 'crystal', ice: 'ice', cooked_rock: 'cooked',
+  crystal: 'crystal', ice: 'ice', cooked_rock: 'cooked', junk: 'junk',
 });
 
 /** Family for a place id (`place_rock_<substance>_<pebble|boulder|monolith>`), else null. */

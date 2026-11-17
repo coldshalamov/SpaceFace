@@ -14,17 +14,41 @@ import {
   setRockTriplanarEnabled,
 } from '../src/render/rockTriplanar.js';
 import { canonicalizeObjectSurfaceProgramKeys } from '../src/render/illustratedSurface.js';
+import * as rockSubstances from '../src/data/rockSubstances.js';
 
 test('every authored place_rock substance resolves to a family, anything else to null', () => {
   for (const [id, family] of [
     ['place_rock_silicate_boulder', 'silicate'], ['place_rock_slag_monolith', 'slag'],
     ['place_rock_metallic_ore_pebble', 'metal'], ['place_rock_reef_metal_boulder', 'metal'],
     ['place_rock_crystal_monolith', 'crystal'], ['place_rock_ice_pebble', 'ice'],
-    ['place_rock_cooked_rock_boulder', 'cooked'],
+    ['place_rock_cooked_rock_boulder', 'cooked'], ['place_rock_junk_monolith', 'junk'],
   ]) assert.equal(rockTriplanarFamilyForAsset(id), family, id);
   assert.equal(rockTriplanarFamilyForAsset('SF_PLACE_ROCK_SILICATE_BOULDER'), 'silicate', 'the id the package metadata carries');
   assert.equal(rockTriplanarFamilyForAsset('place_asteroid_rock_a'), null);
   assert.equal(rockTriplanarFamilyForAsset('place_rock_unknown_boulder'), null);
+});
+
+test('every family-built rock substance on screen wears a family that separates it from space', () => {
+  // ROCK-04: `junk` had no family at all, so the scrap bodies kept their authored flat charcoal
+  // (base 0.068/0.042/0.030) with no limb and read as holes in space in the round-10 crops.
+  const { ROCK_PLACE_SUBSTANCES } = rockSubstances;
+  for (const substance of ROCK_PLACE_SUBSTANCES) {
+    const family = rockTriplanarFamilyForAsset(`place_rock_${substance}_monolith`);
+    assert.ok(family, `${substance} resolves to a family`);
+    const spec = ROCK_TRIPLANAR_FAMILIES[family];
+    assert.ok(spec.rim && spec.rim.some((channel) => channel > 0),
+      `${substance}: ${family} carries a limb so its silhouette reads against black space`);
+    assert.ok(spec.floor > 0, `${substance}: ${family} keeps a pigment floor`);
+  }
+  // The dark families the packet names: a thin cool edge, and never grey — the blue channel
+  // stays above red so the limb reads cool rather than as a chalky outline.
+  for (const dark of ['junk', 'cooked', 'silicate', 'metal']) {
+    const rim = ROCK_TRIPLANAR_FAMILIES[dark].rim;
+    assert.ok(rim[2] > rim[0] * 1.4, `${dark}: the limb stays cool (${rim.join(',')})`);
+    assert.ok(Math.max(...rim) < 0.36, `${dark}: the limb stays a thin edge, under the bloom knee`);
+  }
+  // Slag's hot veins remain the accent of the family that owns them.
+  assert.ok(ROCK_TRIPLANAR_FAMILIES.slag.ember > 3, 'slag keeps its ember veins');
 });
 
 test('every set the families name ships in the release tree', () => {
