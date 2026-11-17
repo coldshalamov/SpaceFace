@@ -22,7 +22,7 @@ export const ROCK_TRIPLANAR_FAMILIES = Object.freeze({
   // sat: how much of the generated colour survives (the Helios key light tints, the stone does not shout);
   // contrast: value spread around mid-grey; rough: base roughness; ao: cavity strength from the normal slope;
   // ember: hot-vein emission (0 off); metal: bright-fleck metalness; frost: lifts pale facets.
-  silicate: Object.freeze({ files: { baseColor: `${ROOT}silicate_basecolor.jpg`, normal: `${ROOT}silicate_normal.png` }, tile: 38, normal: 1.15, tint: [1.30, 1.33, 1.44], sat: 0.40, contrast: 1.25, rough: 0.9, ao: 1.1, ember: 0, metal: 0, frost: 0 }),
+  silicate: Object.freeze({ files: { baseColor: `${ROOT}silicate_basecolor.jpg`, normal: `${ROOT}silicate_normal.png` }, tile: 38, normal: 1.15, tint: [1.16, 1.20, 1.34], sat: 0.20, contrast: 1.25, rough: 0.9, ao: 1.1, ember: 0, metal: 0, frost: 0 }),
   slag: Object.freeze({ files: null, alias: 'silicate', tile: 30, normal: 1.3, tint: [0.30, 0.29, 0.32], sat: 0.25, contrast: 1.5, rough: 0.34, ao: 1.0, ember: 2.4, metal: 0, frost: 0 }),
   metal: Object.freeze({ files: { baseColor: `${ROOT}metal_basecolor.jpg`, normal: `${ROOT}metal_normal.png` }, tile: 34, normal: 1.2, tint: [1.0, 1.04, 1.16], sat: 0.55, contrast: 1.45, rough: 0.82, ao: 1.1, ember: 0, metal: 0.95, frost: 0 }),
   crystal: Object.freeze({ files: { baseColor: `${ROOT}crystal_basecolor.jpg`, normal: `${ROOT}crystal_normal.png` }, tile: 30, normal: 1.0, tint: [1.0, 0.97, 1.08], sat: 0.7, contrast: 1.15, rough: 0.55, ao: 0.9, ember: 0, metal: 0, frost: 0 }),

@@ -10,7 +10,8 @@
 //   surface   -> look.js tuneLook({surface})   (rockFill, rimStrength, coat, shadowTint[3], ...)
 //   lookPost  -> look.js tuneLook({post})      (contrast, saturation, vibrance, ink, shadowTint[3], ...)
 //   mood      -> snap to a named mood in src/data/lookMoods.js before the patches
-//   rig       -> sector light gains on the live rig: ambientGain / keyGain / rimGain / fillGain
+//   rig       -> sector light gains on the live rig: ambientGain / keyGain / rimGain / fillGain,
+//                and keyElevation (degrees above the horizon, azimuth kept; the shadow follow offset moves with it)
 //   post      -> sector post override merged over the authored one: exposure, bloomStrengthScale,
 //                bloomThresholdBias, grade, vignette
 // Every variant starts from the frame's captured baseline (uniforms snapped, lights and post put
@@ -139,7 +140,9 @@ const PAGE_BENCH = `(() => {
     const r = render(), rig = r && r._sectorPaletteRig;
     const lights = {};
     if (rig) for (const k of ['ambient', 'key', 'rim', 'fill']) if (rig.lights[k]) lights[k] = rig.lights[k].intensity;
-    bench.base = { mood: FL().mood(), lights, sectorPost: r._sectorPost || null };
+    bench.base = { mood: FL().mood(), lights, sectorPost: r._sectorPost || null,
+      keyPos: rig && rig.lights.key ? rig.lights.key.position.toArray() : null,
+      keyOffset: r._keyLightOffset ? { ...r._keyLightOffset } : null };
     return { mood: bench.base.mood, lights, post: bench.base.sectorPost };
   };
   bench.restore = () => {
@@ -147,6 +150,8 @@ const PAGE_BENCH = `(() => {
     FL().setMood(b.mood);                       // snap: also clears any tuneLook patch
     const rig = r._sectorPaletteRig;
     if (rig) for (const k of Object.keys(b.lights)) rig.lights[k].intensity = b.lights[k];
+    if (rig && rig.lights.key && b.keyPos) rig.lights.key.position.fromArray(b.keyPos);
+    r._keyLightOffset = b.keyOffset ? { ...b.keyOffset } : r._keyLightOffset;
     r._sectorPost = b.sectorPost; r._invalidatePostOptionsCache(); r._syncPostOptions(true);
     return true;
   };
@@ -158,7 +163,7 @@ const PAGE_BENCH = `(() => {
       const bad = [];
       for (const k of Object.keys(v.surface || {})) if (![...F.surfaceScalars, ...F.surfaceColors].includes(k)) bad.push('surface.' + k);
       for (const k of Object.keys(v.lookPost || {})) if (![...F.postScalars, ...F.postColors].includes(k)) bad.push('lookPost.' + k);
-      for (const k of Object.keys(v.rig || {})) if (!['ambientGain', 'keyGain', 'rimGain', 'fillGain'].includes(k)) bad.push('rig.' + k);
+      for (const k of Object.keys(v.rig || {})) if (!['ambientGain', 'keyGain', 'rimGain', 'fillGain', 'keyElevation'].includes(k)) bad.push('rig.' + k);
       if (bad.length) applied.unknownKeys = bad;
     }
     if (v.mood) { FL().setMood(v.mood); applied.mood = v.mood; }
@@ -169,6 +174,13 @@ const PAGE_BENCH = `(() => {
       else for (const k of ['ambient', 'key', 'rim', 'fill']) {
         const g = v.rig[k + 'Gain'];
         if (Number.isFinite(g) && rig.lights[k]) { rig.lights[k].intensity = bench.base.lights[k] * g; applied['light.' + k] = rig.lights[k].intensity; }
+      }
+      if (rig && Number.isFinite(v.rig.keyElevation) && rig.lights.key) {
+        // Keep the azimuth and horizontal reach, lower the key to the requested elevation.
+        const p = rig.lights.key.position; const horiz = Math.hypot(p.x, p.z) || 1;
+        const y = horiz * Math.tan(v.rig.keyElevation * Math.PI / 180);
+        p.y = y; applied.keyElevation = v.rig.keyElevation;
+        r._keyLightOffset = { x: p.x, y, z: p.z }; r._shadowMapDirty = true;
       }
     }
     // post: keys that are live Look post uniforms (toneNeutral, ink, contrast...) go through tuneLook;
@@ -421,6 +433,13 @@ try {
         if (rocks >= WANT_ROCKS) break; await sleep(1000);
       }
       log(`swarm: ${rocks} asteroids on screen (wanted ${WANT_ROCKS})`);
+      // Then wait (<=120 s) for authored place_rock bodies to admit (the triplanar surface is on those, not on the stand-ins).
+      let admitted = 0; const ta = Date.now();
+      while (Date.now() - ta < 120_000) {
+        admitted = await page.evaluate(() => { let n = 0; const r = window.SF.registry.get('render'); for (const e of window.SF.state.entityList || []) { if (e.type !== 'asteroid' || !(e.data && e.data.placeId)) continue; const root = r._meshes.get(e.id); if (root && root.userData.authoredAssetState === 'authored') n++; } return n; });
+        if (admitted >= WANT_ROCKS) break; await sleep(2000);
+      }
+      log(`swarm: ${admitted} authored rocks admitted`);
       if (rocks < WANT_ROCKS) warn(`swarm: only ${rocks} asteroids on screen, wanted ${WANT_ROCKS}`);
     }
     const info = await shootFrame(page, 'swarm', `Swarm round ${ROUND} mid-fight`);
