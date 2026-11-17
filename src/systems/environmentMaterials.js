@@ -1,5 +1,5 @@
 import { environmentMaterialOf, stampEnvironmentMaterial, environmentSurfaceData, CRYO_QUENCH } from '../data/environmentMaterials.js';
-import { applyRockSubstance, rockSubstanceForSlot, rockTierForRadius } from '../data/rockSubstances.js';
+import { applyRockSubstance, rockSubstanceForSlot, rockTierForRadius, authoredRockPlaceId } from '../data/rockSubstances.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { queryPhysicalBodies, deliverPhysicalImpulse } from '../combat/physicalEffects.js';
@@ -285,6 +285,9 @@ export const environmentMaterials = {
     const childData = environmentSurfaceData(material, { ...d, size: childRadius });
     const childSpec = { type: 'asteroid', radius: childRadius, mass: childMass, collides: true,
       physicsBody: { radius: asteroidColliderRadius(d.typeId || 'ast_crystalline', childRadius), mass: childMass }, data: childData };
+    // A piece is the size class it actually is, not the parent's: admission keys
+    // placeTargetRadius to the body's own radius, so the stamp is re-minted at childRadius.
+    const childPlaceId = authoredRockPlaceId(d.substance, childRadius);
     const positions = fracturePositions(this.state, this.registry, body, pose, childSpec, parentInertia);
     if (!positions) return false;
     const childInertia = resolvePhysicsBodySpec(childSpec).inertiaY;
@@ -323,6 +326,9 @@ export const environmentMaterials = {
           oreHP: Math.max(30, num(body.hullMax) / count), oreHPMax: Math.max(30, num(body.hullMax) / count),
           materialCondition: { heat: 0, reacted: true }, asteroidSlotId: `${d.asteroidSlotId ?? body.id}:shard:${i}`,
           materialFragmentOf: { ...environmentBodyRef(body), occupantGeneration: body.occupantGeneration },
+          authoredGeologySkin: childPlaceId ? true : undefined,
+          placeId: childPlaceId || undefined,
+          placeTargetRadius: childPlaceId ? childRadius : undefined,
           worldRecordId: undefined, resourceBodyId: undefined, despawnAt }) });
       if (child) { ids.push(child.id); this.bus?.emit('asteroid:chunked', { parentId: body.id, chunkId: child.id, massU: 0, count, pos: { x: num(body.pos?.x), z: num(body.pos?.z) } }); }
     }
@@ -477,6 +483,13 @@ export const environmentMaterials = {
         oreHP: 360, oreHPMax: 360, yieldU: 6, despawnAt: now + 120,
       };
       const density = applyRockSubstance(data, subId);
+      // Restocked ammunition asks for its authored body like every other arena rock.
+      const restockPlaceId = authoredRockPlaceId(subId, radius);
+      if (restockPlaceId) {
+        data.authoredGeologySkin = true;
+        data.placeId = restockPlaceId;
+        data.placeTargetRadius = radius;
+      }
       this.helpers.spawnEntity({
         type: 'asteroid',
         homeSectorId: player.homeSectorId || (player.data && player.data.homeSectorId) || null,

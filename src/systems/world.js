@@ -93,7 +93,7 @@ import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drif
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { isPlayerWanted } from './heat.js';            // WANTED threshold is heat-owned — never restate it
 import { adventureMaterialFor, environmentSurfaceData } from '../data/environmentMaterials.js';
-import { applyRockSubstance, rockSubstanceForSlot, rockTierForRadius, ROCK_LADDER_RADII, ROCK_LADDER_MIN_PER_TIER, ROCK_PLACE_SUBSTANCES } from '../data/rockSubstances.js';
+import { applyRockSubstance, rockSubstanceForSlot, rockTierForRadius, authoredRockPlaceId, ROCK_LADDER_RADII, ROCK_LADDER_MIN_PER_TIER, ROCK_PLACE_SUBSTANCES } from '../data/rockSubstances.js';
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import {
@@ -526,18 +526,10 @@ function authoredGeologyPlaceForField(fieldDef) {
   return asteroidDef && asteroidDef.authoredPlaceId || null;
 }
 
-// Row 495: the 24-body rock family — the authored body for a stamped substance at a spawn
-// radius, or null so the caller can keep its legacy authoredPlaceId.
-const AUTHORED_ROCK_SIZE_CLASSES = Object.freeze({ pebble: 14, boulder: 24 });
-export function authoredRockPlaceId(substanceId, radius) {
-  // Only the family-BUILT substances have place GLBs — ROCK_SUBSTANCES also lists vethari_bone
-  // and bloom_husk, which would mint a missing placeId. null keeps the legacy authored skin.
-  if (!ROCK_PLACE_SUBSTANCES.includes(substanceId)) return null;
-  const r = Number(radius) || 0;
-  const sizeClass = r < AUTHORED_ROCK_SIZE_CLASSES.pebble ? 'pebble'
-    : r < AUTHORED_ROCK_SIZE_CLASSES.boulder ? 'boulder' : 'monolith';
-  return `place_rock_${substanceId}_${sizeClass}`;
-}
+// Row 495: the 24-body rock family helper lives with the substance table
+// (data/rockSubstances.js) so every spawn lane — world, arena, fracture, anchors —
+// can mint the same id without a systems-import cycle. Re-exported for existing callers.
+export { authoredRockPlaceId };
 
 const CERES_ACTIVITY_OBJECT_SLOTS = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
   pocket.objectSlots.map((slot) => [slot.id, Object.freeze({ pocket, slot })])

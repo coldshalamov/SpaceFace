@@ -102,3 +102,16 @@ export function applyRockSubstance(data, substanceId) {
   if (data.tier >= 3) data.scaleCue = 'monolith';
   return sub.densityMult;
 }
+
+// Row 495: the 24-body rock family — the authored body for a stamped substance at a spawn
+// radius, or null so the caller can keep its legacy authoredPlaceId.
+const AUTHORED_ROCK_SIZE_CLASSES = Object.freeze({ pebble: 14, boulder: 24 });
+export function authoredRockPlaceId(substanceId, radius) {
+  // Only the family-BUILT substances have place GLBs — ROCK_SUBSTANCES also lists vethari_bone
+  // and bloom_husk, which would mint a missing placeId. null keeps the legacy authored skin.
+  if (!ROCK_PLACE_SUBSTANCES.includes(substanceId)) return null;
+  const r = Number(radius) || 0;
+  const sizeClass = r < AUTHORED_ROCK_SIZE_CLASSES.pebble ? 'pebble'
+    : r < AUTHORED_ROCK_SIZE_CLASSES.boulder ? 'boulder' : 'monolith';
+  return `place_rock_${substanceId}_${sizeClass}`;
+}

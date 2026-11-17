@@ -48,7 +48,7 @@ import { ENVIRONMENT_FAMILIES, environmentSurfaceData, environmentMaterialOf } f
 export function environmentFamiliesFor(arenaId) {
   return ENVIRONMENT_FAMILIES.filter(m => m !== 'crystal');
 }
-import { ROCK_PLACE_SUBSTANCES, ROCK_SUBSTANCES, applyRockSubstance } from '../data/rockSubstances.js';
+import { ROCK_PLACE_SUBSTANCES, ROCK_SUBSTANCES, applyRockSubstance, authoredRockPlaceId } from '../data/rockSubstances.js';
 import { swarmArenaTierForRun, swarmArenaDebrisLayout, planOpeningThrowables } from '../data/swarmArenaLadder.js';
 import { SWARM_MAW_OFFCUT, SWARM_MAW_OFFCUT_TAG } from '../data/swarmMawOffcut.js';
 import { swarmOpeningTerrainStage, planSwarmOpeningTerrain } from '../data/swarmOpeningTerrain.js';
@@ -1781,6 +1781,34 @@ export const swarmArena = {
         // pebble and boulder chunks are throwables too — not TOO HEAVY cover. The spec `mass`
         // keeps its authored r²·5 intent; the weight rule reads physicsBody.mass.
         const remnantMassT = swarmDebrisLiveMassT(radius, parentDensityMult);
+        const remnantData = withBankStone({
+          typeId: TYPE_ID,
+          tier: 0,
+          tierCap: 0,
+          oreHP,
+          oreHPMax: oreHP,
+          yieldU: 2,
+          size: radius,
+          [SWARM_DEBRIS_TAG]: true,
+          terrainAnchor: true,
+          terrainAnchorEncounterIds: [],
+          // Inherit the parent's clock — a drift-released rock must not leave orphans behind.
+          despawnAt: Math.min(
+            now + SWARM_DEBRIS_TTL_S,
+            Number.isFinite(d.despawnAt) ? d.despawnAt : Infinity,
+          ),
+          isChunk: true,
+          tetherPayload: true,
+        });
+        // A remnant keeps the parent's substance contract and asks for the family body at
+        // its own radius — the same authored geology stamp the spawner writes.
+        applyRockSubstance(remnantData, d.substance);
+        const remnantPlaceId = authoredRockPlaceId(d.substance, radius);
+        if (remnantPlaceId) {
+          remnantData.authoredGeologySkin = true;
+          remnantData.placeId = remnantPlaceId;
+          remnantData.placeTargetRadius = radius;
+        }
         children.push({
           type: 'asteroid',
           pos: {
@@ -1797,25 +1825,7 @@ export const swarmArena = {
           hull: oreHP,
           hullMax: oreHP,
           collides: true,
-          data: withBankStone({
-            typeId: TYPE_ID,
-            tier: 0,
-            tierCap: 0,
-            oreHP,
-            oreHPMax: oreHP,
-            yieldU: 2,
-            size: radius,
-            [SWARM_DEBRIS_TAG]: true,
-            terrainAnchor: true,
-            terrainAnchorEncounterIds: [],
-            // Inherit the parent's clock — a drift-released rock must not leave orphans behind.
-            despawnAt: Math.min(
-              now + SWARM_DEBRIS_TTL_S,
-              Number.isFinite(d.despawnAt) ? d.despawnAt : Infinity,
-            ),
-            isChunk: true,
-            tetherPayload: true,
-          }),
+          data: remnantData,
         });
       }
       const positions = fractureBirthPositions(state, this.registry?.get?.('physics')?._sg02, rock, children);
@@ -2107,6 +2117,39 @@ export const swarmArena = {
     if (!rockLive && helpers && typeof helpers.spawnEntity === 'function') {
       const size = radius;
       const oreHP = Math.round(360 + size * 14);
+      const lessonRng = mulberry32(debrisStreamSeed(
+        Number.isInteger(this.state?.run?.seed) ? this.state.run.seed : 1,
+        1,
+      ) ^ 0x1e55);
+      const lessonSubstance = pickDebrisSubstance('rock', lessonRng);
+      const lessonData = environmentSurfaceData('rock', {
+        typeId: TYPE_ID,
+        tier: 0,
+        tierCap: 0,
+        oreHP,
+        oreHPMax: oreHP,
+        yieldU: Math.round(6 + size * 0.4),
+        size,
+        [SWARM_DEBRIS_TAG]: true,
+        terrainAnchor: true,
+        terrainAnchorEncounterIds: [],
+        openingLesson: true,
+        // defaultDynamic only promotes asteroids that carry this flag, so the rope can throw it.
+        tetherPayload: true,
+        // THROW-02: the taught rock is ammunition like every other loose arena rock.
+        throwable: true,
+      });
+      // The taught rock wears the same authored family body the debris spawner stamps —
+      // its own substance at its own radius, admitted through the same queue. The mass
+      // keeps the pre-substance density contract: THROW-02 needs class-I ammunition, not
+      // the heavier live mass slag's density would author.
+      applyRockSubstance(lessonData, lessonSubstance);
+      const lessonPlaceId = authoredRockPlaceId(lessonSubstance, size);
+      if (lessonPlaceId) {
+        lessonData.authoredGeologySkin = true;
+        lessonData.placeId = lessonPlaceId;
+        lessonData.placeTargetRadius = size;
+      }
       // Light enough to be the body that moves — the taught rock is class-I ammunition
       // like every other loose pebble. Debris-derived mass would make an immovable wall.
       const lessonMassT = swarmDebrisLiveMassT(size, 1);
@@ -2126,23 +2169,7 @@ export const swarmArena = {
         hull: oreHP,
         hullMax: oreHP,
         collides: true,
-        data: withBankStone({
-          typeId: TYPE_ID,
-          tier: 0,
-          tierCap: 0,
-          oreHP,
-          oreHPMax: oreHP,
-          yieldU: Math.round(6 + size * 0.4),
-          size,
-          [SWARM_DEBRIS_TAG]: true,
-          terrainAnchor: true,
-          terrainAnchorEncounterIds: [],
-          openingLesson: true,
-          // defaultDynamic only promotes asteroids that carry this flag, so the rope can throw it.
-          tetherPayload: true,
-          // THROW-02: the taught rock is ammunition like every other loose arena rock.
-          throwable: true,
-        }),
+        data: withBankStone(lessonData),
       });
       const id = spawned && typeof spawned === 'object' ? spawned.id : spawned;
       if (id != null) {

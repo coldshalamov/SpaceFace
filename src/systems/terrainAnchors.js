@@ -18,7 +18,7 @@ import { massline2Flag } from '../data/featureFlags.js';
 import { sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
-import { applyRockSubstance, rockSubstanceForSlot } from '../data/rockSubstances.js';
+import { applyRockSubstance, authoredRockPlaceId, rockSubstanceForSlot } from '../data/rockSubstances.js';
 import { Masks } from '../core/entity.js';
 import { bumpCollidesFlipEpoch, indexedTypeScan } from '../world/livingWorldViews.js';
 import {
@@ -188,8 +188,16 @@ export const terrainAnchors = {
         ...ownership.dataExtras,
       };
       // Row 509: cover rocks carry the substance layer — the throw reads how the rock answers.
-      const anchorDensity = applyRockSubstance(data,
-        rockSubstanceForSlot(payload.encounterId || 'anchor', 'cover', i));
+      const anchorSubstance = rockSubstanceForSlot(payload.encounterId || 'anchor', 'cover', i);
+      const anchorDensity = applyRockSubstance(data, anchorSubstance);
+      // The same authored geology stamp the debris spawner writes: every anchor asks for the
+      // hand-made family body at its own radius, so the big cover admits through the same queue.
+      const anchorPlaceId = authoredRockPlaceId(anchorSubstance, size);
+      if (anchorPlaceId) {
+        data.authoredGeologySkin = true;
+        data.placeId = anchorPlaceId;
+        data.placeTargetRadius = size;
+      }
       this.helpers.spawnEntity({
         type: 'asteroid',
         homeSectorId: ownership.homeSectorId,
