@@ -303,3 +303,9 @@ html.sf-dyslexia #screens {
 }
 /* Don't space-out the mono telemetry (alignment matters more than tracking there). */
 html.sf-dyslexia .mono { letter-spacing: normal; word-spacing: normal; }
+
+/* The flight right dock is a keyboard-reachable group (tabindex 0). A mouse click must not leave the browser's
+   default white focus rectangle around the radar and contacts (ACCEPT-04); keyboard focus keeps a visible,
+   on-palette ring. */
+#hud .sf-rightdock:focus:not(:focus-visible) { outline: none; }
+#hud .sf-rightdock:focus-visible { outline: 1px solid rgba(255, 196, 120, .55); outline-offset: 3px; border-radius: 6px; }
