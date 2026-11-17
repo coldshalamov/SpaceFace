@@ -255,6 +255,8 @@ export const swarmJuice = {
     this._bossName = null;
     this._bossScanIn = 0;
     this._bossFrac = -1;
+    this._bossHpAlive = -1;         // last published census — a count change is an emit
+    this._bossHpTotal = -1;
     this._bossDownSent = false;
     this._cueQueue = [];            // { at, payload } sound cues due on the sim clock
     this._slamCueAt = -Infinity;    // last round-slam cue set, so one arrival is one moment
@@ -457,6 +459,8 @@ export const swarmJuice = {
       this._boss.clear();
       this._bossAlive = 0;
       this._bossFrac = -1;
+      this._bossHpAlive = -1;
+      this._bossHpTotal = -1;
       this._bossDownSent = false;
       this._bossScanIn = 0;
     }
@@ -771,7 +775,9 @@ export const swarmJuice = {
     const entities = state.entities;
     if (!entities || typeof entities.values !== 'function') return;
     for (const e of entities.values()) {
-      if (!e || e.alive === false) continue;
+      if (!e) continue;
+      // A champion felled inside the first scan window still counts toward the wing's
+      // census — `total` is what the wave fielded, not what happens to be standing.
       const data = e.data;
       if (data && data.swarmChampion === true && data.runWave === wave) this._addBossBody(e);
     }
@@ -809,10 +815,16 @@ export const swarmJuice = {
     }
     this._bossAlive = alive;
     const frac = hullMax > 0 ? Math.max(0, Math.min(1, hull / hullMax)) : (this._boss.size ? 0 : -1);
-    if (frac >= 0 && Math.abs(frac - this._bossFrac) >= 0.01) {
+    const total = this._boss.size;
+    // The bar's truth is the whole signature: pooled hull AND the census. A body joining
+    // or falling at an unchanged fraction still moves the card's N/M read.
+    if (frac >= 0 && (Math.abs(frac - this._bossFrac) >= 0.01
+      || alive !== this._bossHpAlive || total !== this._bossHpTotal)) {
       this._bossFrac = frac;
+      this._bossHpAlive = alive;
+      this._bossHpTotal = total;
       this._emit('swarm:bossHp', {
-        frac, alive, total: this._boss.size, name: this._bossName || 'CHAMPION', wave,
+        frac, alive, total, name: this._bossName || 'CHAMPION', wave,
       });
     }
   },

@@ -2,6 +2,7 @@
 // decision when the player caused or explicitly targeted that nearby field, or has
 // actual open raid custody. Leaving the field clears presentation, never the custody.
 import { getPromptDeck } from './promptDeck.js';
+import { isSwarmGlass } from './swarmGlass.js';
 
 const DECISION_ID = 'aftermath:field';
 const OBSERVE_DISTANCE_WU = 900;
@@ -60,6 +61,8 @@ export function createAftermathChoicePrompt(ctx = {}) {
     });
   };
   const show = (payload) => {
+    // FIX-05: the field-response card is an Adventure contract; a live Swarm run never mounts it.
+    if (isSwarmGlass(state)) { pending = null; waitingForObservation = false; close(); return false; }
     const choices = Array.isArray(payload?.choices) ? payload.choices : [];
     const deck = deckOf();
     if (!deck || typeof deck.offerDecision !== 'function') return false;

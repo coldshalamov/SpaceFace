@@ -64,7 +64,7 @@ ${D} .sf-crd-arenas .fh-tile-art img { width:100% !important; height:56px !impor
 ${D} .sf-crd-hulls { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:8px 14px !important; padding:0 !important; margin:0 !important; }
 ${D} .sf-crd-hull { min-height:106px !important; display:grid !important; grid-template-columns:86px minmax(0,1fr) !important; gap:8px !important; text-align:left !important; }
 ${D} .sf-crd-hull .fh-tile-art { width:86px !important; height:72px !important; }
-${D} .sf-crd-hull .fh-tile-art img { width:108px !important; height:82px !important; object-fit:contain !important; opacity:.92 !important; filter:none !important; transform:none !important; }
+${D} .sf-crd-hull .fh-tile-art > img { width:108px !important; height:82px !important; object-fit:contain !important; opacity:.92 !important; filter:none !important; transform:none !important; }
 ${D} .sf-crd-hull .fh-tile-legend { text-align:left !important; font-size:13px !important; }
 ${D} .orr-tile[disabled], ${D} .orr-tile[aria-disabled=true] { opacity:.5 !important; }
 ${D} .orr-prep-disclosure { padding:15px 0; border-bottom:1px solid var(--dp-line-faint); font-size:14px; }
@@ -130,7 +130,8 @@ ${A} .sf-cru-search { width:100% !important; max-width:none !important; order:2;
 ${A} .sf-cru-filters .orr-stationrow__rule { display:none !important; }
 ${A} .sf-cru-stage > .sf-cru-cards { display:flex !important; flex-direction:column !important; gap:0 !important; flex:1 1 auto !important; min-height:0 !important; max-height:none !important; height:auto !important; overflow:auto !important; padding:0 10px 16px 0 !important; mask-image:none !important; }
 ${A} .sf-cru-card.sf-cru-card { display:grid !important; grid-template-columns:58px minmax(0,1fr) auto !important; grid-template-rows:auto auto !important; align-items:center !important; gap:3px 12px !important; padding:12px 4px 12px 12px !important; margin:0 !important; min-height:88px !important; height:auto !important; flex:none !important; opacity:1 !important; width:100% !important; border:0 !important; border-bottom:1px solid var(--dp-line-faint) !important; border-radius:0 !important; background:none !important; text-align:left !important; }
-${A} .sf-cru-card > .orr-equipment-glyph { grid-column:1; grid-row:1 / 3; width:54px; height:54px; opacity:.8; }
+${A} .sf-cru-card > .orr-equipment-glyph, ${A} .sf-cru-card > .sf-thumb.orr-armory-card-thumb { grid-column:1; grid-row:1 / 3; }
+${A} .sf-cru-card > .orr-equipment-glyph { width:54px; height:54px; opacity:.8; }
 ${A} .sf-cru-card .sf-cru-name { grid-column:2 !important; grid-row:1 !important; font:600 16px/1.2 var(--dp-face-label) !important; white-space:normal !important; color:var(--dp-ink) !important; overflow-wrap:anywhere; }
 ${A} .sf-cru-card .sf-cru-price { grid-column:3 !important; grid-row:1 / 3 !important; font:500 13px var(--dp-face-numeral) !important; color:var(--dp-ink-dim) !important; padding-left:6px; white-space:nowrap; }
 ${A} .sf-cru-card .sf-cru-verb { display:block !important; grid-column:2 !important; grid-row:2 !important; font:400 12px/1.3 var(--dp-face-body,'Instrument Sans'),sans-serif !important; letter-spacing:0 !important; color:var(--dp-ink-dim) !important; }
@@ -232,21 +233,26 @@ ${A} .sf-cru-card .sf-cru-price::before { content:none !important; }
 ${A} .orr-armory-reading__buy { display:block !important; text-transform:none !important; letter-spacing:0 !important; }
 ${A} .orr-armory-purchase, ${A} .orr-armory-refusal { text-transform:none !important; letter-spacing:0 !important; }
 ${A} .orr-armory-item::before { width:210px; height:210px; inset:auto; }
-${D} .sf-crd-hull .fh-tile-art { grid-column:1; grid-row:1 / 4; }
+${D} .sf-crd-hull .fh-tile-art { grid-column:1; grid-row:1 / 4; position:relative; }
+${D} .sf-crd-hull .fh-tile-art .orr-prep-hullbadge { position:absolute; right:2px; bottom:2px; --sf-thumb-size:28px; width:28px; height:28px; padding:2px; border-radius:4px; }
+${D} .sf-crd-hull .fh-tile-art .orr-prep-hullbadge img { width:100% !important; height:100% !important; object-fit:contain !important; opacity:1 !important; }
 ${D} .sf-crd-hull .fh-tile-legend { grid-column:2; grid-row:1; align-self:center; }
 ${D} .orr-prep-hullsub { grid-column:2; grid-row:2; }
 ${D} .orr-prep-locknote { grid-column:2; grid-row:3; font:400 12px/1.4 var(--dp-face-body,'Instrument Sans'),sans-serif; color:var(--dp-ink-dim); text-transform:none; letter-spacing:0; }
 ${D} .sf-crd-hull[data-locked='1'] .fh-tile-art { opacity:.5 !important; }
 ${D} .sf-crd-hull[data-locked='1'] .fh-tile-legend { opacity:.7 !important; }
 ${D} .orr-prep-fitting .orr-equipment-glyph { width:38px; height:38px; }
+${D} .orr-prep-fitting .sf-thumb { flex:none; }
 ${D} .k-stage, ${D} .orr-prep-ship, ${A} .sf-cru-cards, ${A} .orr-armory-reading { scrollbar-width:thin; scrollbar-color:var(--dp-line-hi) transparent; }
 ${D} ::-webkit-scrollbar, ${A} ::-webkit-scrollbar { width:5px !important; height:5px !important; }
 ${D} ::-webkit-scrollbar-thumb, ${A} ::-webkit-scrollbar-thumb { background:var(--dp-line-hi); }
 ${A} .orr-armory-build { width:100%; font:400 12px/1.4 var(--dp-face-body,'Instrument Sans'),sans-serif; color:var(--dp-ink-dim); }
+${A} .orr-armory-build:not([open]) > :not(summary) { display:none !important; }
+${A}:has(.sf-cru-dealt:not([hidden])):has(.orr-armory-build[open]) .orr-armory-visual:not(:has(video)) { display:none !important; }
 ${A} .orr-armory-build summary { min-height:40px; padding:10px 0; cursor:pointer; color:var(--dp-ink); }
 ${A} .orr-armory-build ul { margin:0; padding:0; list-style:none; }
-${A} .orr-armory-build li { display:flex; align-items:center; gap:10px; padding:8px 0; border-top:1px solid var(--dp-line-faint); }
-${A} .orr-armory-build li .orr-equipment-glyph { width:30px; height:30px; }
+${A} .orr-armory-build li { display:flex; align-items:center; gap:10px; padding:6px 0; border-top:1px solid var(--dp-line-faint); }
+${A} .orr-armory-build li .orr-equipment-glyph, ${A} .orr-armory-build li .sf-thumb { width:32px; height:32px; flex:none; }
 ${A} .orr-armory-build li small { display:block; font-size:12px; color:var(--dp-ink-dim); }
 /* Brief reveal only; idle interfaces do not schedule work and hidden screens do not animate. */
 ${D} .orr-prep-panel:not([hidden]), ${D} .orr-prep-ship:not([hidden]) { animation:orr-prep-arrive 240ms var(--dp-ease-out) both; }
@@ -1024,7 +1030,7 @@ ${A} .orr-armory-wallet .orr-wallet-caption { margin:0; font:600 12px/1.3 var(--
 ${A} .orr-armory-wallet strong { display:flex; align-items:baseline; gap:6px; font:720 clamp(26px,2.4vw,40px)/1 var(--dp-face-display,'Archivo'),sans-serif; font-variation-settings:normal; letter-spacing:-.04em; color:var(--dp-ink); }
 ${A} .orr-armory-wallet .orr-wallet-amount { display:inline; margin:0; font:inherit; color:inherit !important; letter-spacing:inherit; font-variant-numeric:tabular-nums lining-nums; }
 ${A} .orr-armory-wallet small { font:650 14px/1 var(--dp-face-read),sans-serif; color:var(--dp-hand); letter-spacing:0; text-transform:uppercase; }
-${A} .sf-cru-stage { overflow:auto !important; overscroll-behavior:contain; padding:1px 4px 34px 1px !important; -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 30px),transparent) !important; mask-image:linear-gradient(to bottom,#000 calc(100% - 30px),transparent) !important; }
+${A} .sf-cru-stage { overflow:auto !important; overscroll-behavior:contain; padding:1px 4px 64px 1px !important; -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 56px),transparent) !important; mask-image:linear-gradient(to bottom,#000 calc(100% - 56px),transparent) !important; }
 ${A} .orr-armory-section { font:700 20px/1.2 var(--dp-face-display),sans-serif; letter-spacing:-.02em; color:var(--dp-ink); margin:0 0 14px; text-transform:none; flex:none; }
 ${A} .sf-cru-circuit { padding:12px 16px; margin:0 0 14px; border:1px solid var(--armory-rule); background:var(--armory-panel); }
 ${A} .sf-cru-dealt { gap:clamp(8px,1.1vw,18px) !important; margin:0 !important; }
@@ -1039,11 +1045,11 @@ ${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt::before { display:none !impor
 ${A} .sf-cru-dealt .sf-cru-dealtface {
   min-height:0 !important; height:clamp(100px,12.9vw,235px); width:auto; position:relative;
   margin:0 calc(-1 * clamp(12px,1.1vw,20px)) 3px !important;
-  background:radial-gradient(ellipse at 48% 68%,#3b4850 0%,#233037 38%,#132028 78%);
+  background:radial-gradient(ellipse at 48% 58%, rgb(var(--sf-thumb-rgb, 159 213 207) / .24) 0%,#233037 42%,#132028 80%);
   border-bottom:1px solid var(--armory-rule) !important; overflow:hidden;
 }
 ${A} .orr-equipment-plate { position:relative; display:grid; width:100%; height:100%; min-height:0; min-width:0; place-items:center; }
-${A} .orr-equipment-plate > img { position:absolute; inset:5% 5%; width:90%; height:90%; object-fit:contain; }
+${A} .orr-equipment-plate > img { position:absolute; inset:6% 6%; width:88%; height:88%; object-fit:contain; filter:drop-shadow(0 6px 14px rgb(0 0 0 / .65)); }
 ${A} .orr-equipment-plate > .orr-equipment-glyph { position:absolute; left:7px; bottom:7px; width:27px; height:27px; box-sizing:border-box; padding:4px; color:#dde7df; border:1px solid var(--armory-rule); background:#131b1f; }
 ${A} .orr-equipment-plate.is-schematic > .orr-equipment-glyph { position:static; width:64%; height:68%; background:none; border:none; }
 ${A} .sf-cru-dealt .sf-cru-dealtface > .orr-equipment-glyph { width:50% !important; height:60% !important; color:var(--armory-cool); }
@@ -1060,8 +1066,20 @@ ${A} .sf-cru-note:empty { min-height:0; margin:0 !important; }
 ${A} .sf-cru-stage > .sf-cru-cards { padding:4px !important; }
 ${A} .sf-cru-cards .sf-cru-card { border:1px solid var(--armory-rule) !important; padding:8px 14px !important; background:var(--armory-panel) !important; min-height:66px !important; }
 ${A} .sf-cru-cards .sf-cru-card + .sf-cru-card { margin-top:3px !important; }
-/* A dealt card cut by the bottom bar must read as "more below", not as a layout bug: the list fades out over its last 28px and keeps 30px of tail so the final card is whole once scrolled to the end. */
-${A} .sf-cru-stage > .sf-cru-cards { padding-bottom:30px !important; -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 28px),transparent) !important; mask-image:linear-gradient(to bottom,#000 calc(100% - 28px),transparent) !important; }
+/* A dealt card cut by the bottom bar must read as "more below", not as a layout bug: the list
+   fades over its last 56px — FIX-05, a line straddling the old 28px band printed at ~60% and
+   read as broken glyphs — and keeps 64px of tail so the final card is whole once scrolled to
+   the end. */
+${A} .sf-cru-stage > .sf-cru-cards { padding-bottom:64px !important; -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 56px),transparent) !important; mask-image:linear-gradient(to bottom,#000 calc(100% - 56px),transparent) !important; }
+/* The reading desk shares the same edge: its cut rows dissolve the same way, and the last
+   block scrolls clear of the fade instead of dying as a sliver behind the footer. */
+${A} .orr-armory-reading.orr-armory-reading { -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 48px),transparent) !important; mask-image:linear-gradient(to bottom,#000 calc(100% - 48px),transparent) !important; }
+${A} .orr-armory-reading > :last-child { margin-bottom:44px; }
+@media (max-width:760px) {
+  /* stacked armory: the reading stops scrolling, so the edge and the tail both stand down */
+  ${A} .orr-armory-reading.orr-armory-reading { -webkit-mask-image:none !important; mask-image:none !important; }
+  ${A} .orr-armory-reading > :last-child { margin-bottom:0; }
+}
 ${A} .sf-cru-cards .sf-cru-card:is(.is-lit,:focus-visible) { border-color:var(--dp-hand) !important; }
 ${A} .sf-cru-cards .sf-cru-card.is-unavail { opacity:.85 !important; }
 ${A} .sf-cru-cards .orr-equipment-glyph { color:var(--armory-cool); }
@@ -1077,16 +1095,22 @@ ${A} .orr-armory-reading__verb { color:var(--armory-cool) !important; }
 ${A} .orr-armory-reading__name { font-variation-settings:normal; margin:6px 0 10px !important; }
 ${A} .orr-armory-reading__compare, ${A} .orr-armory-reading__budget { margin:8px 0 !important; }
 ${A} .orr-armory-reading__buy { margin:10px 0 !important; }
-${A}:has(.sf-cru-dealt:not([hidden])) .orr-armory-visual:not(:has(video)) { display:none; }
-${A} .orr-armory-visual { display:grid; grid-template-columns:100%; gap:4px; margin:0 0 16px; width:100%; order:1; }
-${A} .orr-armory-item { width:100%; height:clamp(140px,18vh,215px); min-height:0; background:radial-gradient(ellipse,#35454b,#101b21 72%); margin:8px 0 0; border:1px solid var(--armory-rule); overflow:hidden; }
+${A} .orr-armory-visual { display:grid; grid-template-columns:100%; gap:4px; margin:0 0 12px; width:100%; order:1; }
+@media (max-height:800px) {
+  ${A}:has(.sf-cru-dealt:not([hidden])) .orr-armory-visual:not(:has(video)) { display:none; }
+}
+${A} .orr-armory-item { width:100%; height:clamp(108px,13.5vh,162px); min-height:0; background:radial-gradient(ellipse,#293840,#101b21 74%); margin:6px 0 0; border:1px solid var(--armory-rule); border-radius:4px; overflow:hidden; }
 ${A} .orr-armory-item::before { display:none; }
 ${A} .orr-armory-object-label { display:block; }
-${A} .orr-armory-support { order:2; margin-top:10px; border-top:1px solid var(--armory-rule); }
-${A} .orr-pip-spanner { border-top:1px solid var(--armory-rule); padding:10px 0 0; }
-${A} .orr-armory-reading__jig { width:100% !important; }
+${A} .orr-armory-support { order:2; margin-top:8px; border-top:1px solid var(--armory-rule); }
+${A} .orr-pip-spanner { border-top:1px solid var(--armory-rule); padding:8px 0 0; }
+${A} .orr-armory-reading__jig { width:100% !important; height:clamp(124px,16vh,176px) !important; min-height:110px !important; }
 ${A} .orr-crew-names { white-space:normal; }
-${A} .orr-armory-purchase { background:var(--armory-cool); color:#091215; clip-path:none; border:1px solid var(--armory-cool); border-radius:2px; }
+${A} .orr-armory-purchase { background:var(--armory-cool); color:#091215; clip-path:none; border:1px solid var(--armory-cool); border-radius:2px; font-weight:650 !important; }
+/* Gauntlet Rearm cards: feature rich hardware plate alongside clean type hierarchy */
+${RE} .sf-cru-cards .sf-cru-card.sf-cru-card { display:grid !important; grid-template-columns:76px minmax(0,1fr) !important; grid-auto-rows:max-content !important; column-gap:16px !important; row-gap:4px !important; align-content:start !important; }
+${RE} .sf-cru-card > .sf-thumb.orr-rearm-card-thumb { grid-column:1; grid-row:1 / span 5; align-self:start; }
+${RE} .sf-cru-card > :not(.sf-thumb) { grid-column:2; min-width:0; }
 ${A} .orr-armory-purchase:disabled { border-color:var(--armory-rule); }
 ${A} .orr-armory-purchase:enabled:is(:hover,:focus-visible) { background:#c3f1e8; }
 ${A} .sf-cru-foot { box-shadow:none !important; background:none !important; }

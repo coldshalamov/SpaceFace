@@ -808,7 +808,11 @@ export const survivalResults = {
     if (typeof label !== 'string' || !label || label === 'Unknown contact' || label === 'Environmental hazard') return;
     const run = this.state && this.state.run;
     if (!run || typeof run !== 'object' || Array.isArray(run)) return;
-    const ledger = run.recentKillerLabels || (run.recentKillerLabels = Object.create(null));
+    // FIX-05: the ledger rides the schema-free telemetry channel — an unknown top-level
+    // `run.*` key fails validateRunState and mutes the whole run (commits refuse,
+    // swarmJuice goes deaf, the boss bar freezes mid-fight).
+    if (!run.telemetry || typeof run.telemetry !== 'object' || Array.isArray(run.telemetry)) run.telemetry = {};
+    const ledger = run.telemetry.recentKillerLabels || (run.telemetry.recentKillerLabels = Object.create(null));
     const victim = this.state.entities && typeof this.state.entities.get === 'function'
       ? (this.state.entities.get(payload.id) || this.state.entities.get(Number(payload.id)) || null)
       : null;

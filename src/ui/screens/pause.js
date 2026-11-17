@@ -37,6 +37,7 @@ import { contract47aReadout } from '../sim/missionRecap.js';
 import { requestCodexTab } from '../codexRequests.js';
 import { writtenEndingArchive } from '../../story/endings/index.js';
 import { latestPlayerImpactFromTrace, pauseImpactCause } from '../../combat/presentationImpact.js';
+import { isSwarmGlass } from '../swarmGlass.js';
 import {
   PHOTO_EXPOSURE_DEFAULT,
   PHOTO_EXPOSURE_MAX,
@@ -462,6 +463,17 @@ export function pauseLastImpactLine(state) {
 }
 
 export function pauseStatusLines(state) {
+  // FIX-05: a live Swarm run owns no contract deck — its brief is the round itself, and
+  // Adventure mission coaching (TRACKED · Contract 47-A …) must never paint over it.
+  if (isSwarmGlass(state)) {
+    const wave = Number.isInteger(state.run.wave) ? state.run.wave : null;
+    return {
+      hit: pauseLastImpactLine(state),
+      objective: 'SWARM' + (wave != null ? ' · ROUND ' + wave : ''),
+      next: 'Next: clear the field.',
+      save: saveLine(state),
+    };
+  }
   const active = (state && state.missions && Array.isArray(state.missions.active) ? state.missions.active : [])
     .filter((m) => m && (!m.status || m.status === 'active'));
   const trackedId = state && state.ui && state.ui.trackedMissionId;
@@ -1156,7 +1168,7 @@ export const pauseScreen = {
     // pause anywhere in flight — fleet orders are a flight-time action ("recall to cash out"), so
     // the pause route fits better than a docked-only station tab (GDD 2.0 §12 keeps automation at
     // UI-polish scope this cycle; a first-class station tab would be promotion).
-    mk('Operations (Automation)', () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', bank: true, icon: 'industry' });
+    mk('Operations', () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', bank: true, icon: 'industry' });
     const mapAction = pauseMapAction(ctx && ctx.state);
     if (mapAction) mk(mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', bank: true, icon: 'route', keycap: true });
     // On a phone the keyboard reference means nothing: Help opens the touch guide the deck carries instead.

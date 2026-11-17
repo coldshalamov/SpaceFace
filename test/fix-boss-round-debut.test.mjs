@@ -2,7 +2,9 @@
 //
 // S14 (483dff172351) moved the Swarm champions from 10, 20, 30... to 5, 15, 25... It did not
 // move the debut clock. Wave 5 is now the Iron Maw AND the Detonator Dart's first body, and
-// wave 15 is the Foreman AND the Patrol Lawman's. The Brood's undertow (55) and pox sac (75)
+// wave 15 is the Foreman AND the Patrol Lawman's. (FIX-05 — C01-01, ca74e15f33, compressed the
+// Pit course to 5/10/15/20/25/30; the late Brood debuts 55/75 now land on ordinary deep rounds
+// with the Quiet Choir and the Tendril at 60/80.) The Brood's undertow (55) and pox sac (75)
 // debut under the Quiet Choir and the Tendril. Both readers let the boss win outright: the
 // slam sub-line said "BOSS · <champion>" (the versus card and the boss bar already say it),
 // and the wave-intro line returned before its "X is new." namecheck. So the hull that IS a
@@ -77,10 +79,15 @@ test('the S14 collision is real: wave 5 and wave 15 are champion rounds AND ship
     assert.equal(swarmBossFor(wave).id, bossId);
     assert.equal(swarmNewcomerFor(wave).enemyId, debutId, `wave ${wave} also debuts ${debutId}`);
   }
+  // FIX-05 — the deep-course rows moved with the compressed Pit (C01-01, ca74e15f33; the
+  // FIX-05 packet cited 2065539416): through the win the champions sit at 5/10/15/20/25/30,
+  // past it the old every-decade cadence resumes — so the late Brood debuts land on ordinary
+  // rounds (55, 75) and their champions hold the next decade (60, 80).
   assert.equal(swarmBroodNewcomerFor(55).id, 'undertow');
-  assert.equal(swarmBossFor(55).id, 'quiet_choir');
+  assert.equal(swarmBossFor(55), null, '55 is an ordinary deep round now');
+  assert.equal(swarmBossFor(60).id, 'quiet_choir');
   assert.equal(swarmBroodNewcomerFor(75).id, 'poxsac');
-  assert.equal(swarmBossFor(75).id, 'brood_tendril');
+  assert.equal(swarmBossFor(80).id, 'brood_tendril');
 });
 
 test('wave 5: the versus card names the Iron Maw and the slam names the Detonator Dart', () => {
@@ -113,14 +120,20 @@ test('wave 15: the Foreman round still names the Patrol Lawman', () => {
   assert.match(r.line, /Mirrorjaw Foreman\..*Patrol Lawman is new\./);
 });
 
-test('the Brood debuts under a champion keep their card: undertow at 55, pox sac at 75', () => {
-  for (const [wave, name, champion] of [[55, 'Undertow', 'The Quiet Choir'], [75, 'Pox Sac', 'The Tendril']]) {
+test('the deep Brood debuts keep the slam card on their ordinary rounds: undertow at 55, pox sac at 75', () => {
+  // FIX-05 — the compressed Pit (C01-01, ca74e15f33) moved the deep champions to decades, so
+  // the late Brood debuts no longer share a round with a champion card; the slam card itself
+  // (the debut named, marked brood) is the invariant the wave owes.
+  for (const [wave, name] of [[55, 'Undertow'], [75, 'Pox Sac']]) {
     const r = playIntro(wave);
     assert.equal(r.slam[0].payload.newcomer.name, name);
     assert.equal(r.slam[0].payload.newcomer.brood, true);
-    assert.equal(r.hudCard.title, champion, `wave ${wave} versus card`);
+    assert.equal(r.intro.length, 0, `wave ${wave} is an ordinary deep round — no versus card`);
+    assert.equal(r.hudCard, null, 'the champions hold the decades (60, 80), not the debut rounds');
     assert.equal(r.hudSlam.sub, `NEW THREAT · ${name}`, `wave ${wave} slam names the brood debut`);
   }
+  assert.equal(swarmBossFor(60).id, 'quiet_choir');
+  assert.equal(swarmBossFor(80).id, 'brood_tendril');
 });
 
 test('boundaries: a champion round with no debut still says BOSS; a plain debut is unchanged', () => {
