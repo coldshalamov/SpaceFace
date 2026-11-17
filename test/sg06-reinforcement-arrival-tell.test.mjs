@@ -4,8 +4,10 @@
 //   1. `ai:reinforcementScheduled` dropped the caller id, so barkDirector's only
 //      consumer (`_speakFromEvent` → 'reinforce') could never resolve a speaker.
 //   2. `ai:reinforcementSpawned` had zero subscribers — squads materialized
-//      silently. The first member of each squad now raises an annunciator line
-//      and a toast (the alert event also carries its own audio recipe).
+//      silently. The first member of each squad now raises ONE annunciator line
+//      (the alert event also carries its own audio recipe). BOT-02: that alert
+//      is the squad's only player-facing line — the parallel "have arrived"
+//      toast and the schedule-time INBOUND banner are log-only.
 //   3. `reaver_pirate`'s authored reinforcements declared no packageId, so the
 //      most common call beat never fired on the live route at all.
 //
@@ -138,8 +140,13 @@ test('arrival announces once per squad, not once per ship', () => {
   const arrived = eventsOf(h, 'alert').filter((e) => String(e.payload && e.payload.key || '').startsWith('reinforcements_arrived_'));
   assert.equal(arrived.length, 1, 'one annunciator line for the squad, not two');
   assert.equal(arrived[0].payload.sev, 'warn');
-  const toasts = eventsOf(h, 'toast').filter((e) => e.payload && e.payload.text === 'Reinforcements have arrived.');
-  assert.equal(toasts.length, 1);
+  // BOT-02: the arrival alert is the squad's ONLY player-facing line. The parallel toast and
+  // the schedule-time inbound banner said the same fact in second and third voices — both are
+  // log-only now (the ai:reinforcementScheduled/Spawned events above carry the record).
+  const toasts = eventsOf(h, 'toast').filter((e) => e.payload && /reinforcement/i.test(e.payload.text || ''));
+  assert.equal(toasts.length, 0, 'no second voice repeats the arrival');
+  const inbound = eventsOf(h, 'alert').filter((e) => String(e.payload && e.payload.key || '').startsWith('reinforcements_inbound_'));
+  assert.equal(inbound.length, 0, 'no schedule-time banner precedes the arrival line');
 });
 
 test('a callerless director command announces the arrival but speaks no bark', () => {

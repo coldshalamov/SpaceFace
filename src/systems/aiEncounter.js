@@ -455,15 +455,11 @@ export const aiEncounter = {
       entityId: command.callerId == null ? null : command.callerId,
       callerId: command.callerId == null ? null : command.callerId,
     });
-    // A director-paced call has no caller hull to bark — announce the approach itself so the
-    // squad reads as an inbound lane, not a pop-in.
-    if (command.callerId == null) {
-      emit(this.bus, 'alert', {
-        key: `reinforcements_inbound_${command.seq}`, sev: 'warn',
-        text: 'HOSTILE REINFORCEMENTS INBOUND', ttl: 2.5,
-      });
-      // One voice: the alert above says it; a second toast with the same sentence was a duplicate.
-    }
+    // BOT-02 one line per arrival: a callerless call stays log-only here — the
+    // `ai:reinforcementScheduled` event above is the record any observer needs. The squad's
+    // single player-facing line fires when it lands (`reinforcements_arrived_` in
+    // _materializePending); a schedule-time banner on top of the arrival line plus a toast
+    // read as three different announcements for one squad.
   },
 
   _spawnDue(owner, state) {
@@ -604,13 +600,16 @@ export const aiEncounter = {
     pushCapped(owner.spawned, record);
     emit(this.bus, 'ai:reinforcementSpawned', record);
     if (firstOfSquad) {
+      // BOT-02 one line per arrival: this alert is the squad's single player-facing line — it
+      // takes the one-voice floor through voiceArbiter. The "Reinforcements have arrived."
+      // toast that used to ride beside it spoke the same fact in a second voice;
+      // `ai:reinforcementSpawned` above is the log record for anything else that wants it.
       emit(this.bus, 'alert', {
         key: `reinforcements_arrived_${pending.commandSeq}`,
         sev: 'warn',
         text: 'REINFORCEMENTS ON FIELD',
         ttl: 2.5,
       });
-      emit(this.bus, 'toast', { text: 'Reinforcements have arrived.', kind: 'warn', ttl: 2.5 });
     }
   },
 

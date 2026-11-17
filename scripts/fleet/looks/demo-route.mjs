@@ -124,6 +124,7 @@ const HOOK = () => {
           const imp = p && p.impactorId != null && s && s.entities && s.entities.get(p.impactorId);
           const rec = { ev, t: D.rel(t), sim: s ? +(+s.simTime).toFixed(2) : null, clicks: D.clicks, id: p && (p.id ?? p.payloadId ?? p.victimId), cause: p && (p.cause || p.source), killer: p && p.killerId,
             type: p && p.type, victim: p && p.victimId, pos: p && p.pos ? [Math.round(p.pos.x), Math.round(p.pos.z)] : undefined,
+            impactorId: p && p.impactorId != null ? p.impactorId : undefined,
             impactor: imp ? `${imp.type}:${(imp.data && (imp.data.freight ? 'freight' : imp.data.shipClass || imp.data.kind)) || imp.defId || ''}` : undefined };
           if (ev === 'nav:waypoint' || ev === 'mission:updated' || ev === 'mission:accepted' || ev === 'mission:completed') rec.label = pickText(p && (p.label ? p : p.mission || p)).slice(0, 100);
           if (p && p.reason) rec.reason = p.reason;
@@ -450,12 +451,15 @@ async function swarmRoute() {
   const q0 = await qualityInfo(); R.quality_atFlight = q0;
   await shot('flight-start', { gameplay: true });
 
-  // The throw, run the way the Adventure door does it since OPENING-1b: latch with a real RMB
-  // press, swing, then keep the aim on a pack body and tap RMB only when the throw cue is
-  // shown/lit — the aim tag reads RMB · THROW and lights while the rope's release window is open.
-  // Each cycle logs the cue state at the tap and the line-end event that followed; a line that
-  // dies while waiting skips the tap, because a press on no line is just another latch/miss and
-  // hides the real end reason. Retried with a fresh light target while any cycle is untried.
+  // The throw, run the way the Adventure door does it since OPENING-1b — but at a person's pace
+  // (BOT-02): latch with a real RMB press, swing toward the nearest pack for 0.4–0.8 s, then tap
+  // RMB. The tap goes earlier the moment the throw cue lights (the aim tag reads RMB · THROW
+  // while the rope's release window is open) or the forecast window enters the 350 ms snap
+  // buffer — in Swarm the open window is ~1 tick, so a bot that waits for the lit cue holds the
+  // body until it dies on the rope and throws 0 times. Each cycle still logs the cue state at
+  // the tap and the line-end event that followed; a line that dies mid-swing skips the tap,
+  // because a press on no line is just another latch/miss and hides the real end reason.
+  // Retried with a fresh light target while any cycle is untried.
   const evCount = (name) => page.evaluate((n) => (window.__dr.ev || []).filter((e) => e.ev === n).length, name);
   const evLen = () => page.evaluate(() => (window.__dr.ev || []).length);
   const evSince = (k) => page.evaluate((m) => (window.__dr.ev || []).slice(m), k);
@@ -504,29 +508,33 @@ async function swarmRoute() {
     }
     if (!lc.tetherActive) { rec.end = { ev: 'none', reason: 'line dead before swing' }; R.throwCycles.push(rec); continue; }
     if (cycle === 0 || !R.screens.some((x) => x.label === 'latched')) await shot('latched', { gameplay: true });
-    await keyDown('KeyW'); await keyDown('KeyD');
-    for (let i = 0; i < 6; i++) { await page.mouse.move(VW / 2 + 260 * Math.cos(i * 0.6), VH / 2 + 200 * Math.sin(i * 0.6), { steps: 2 }); await sleep(200); if (i === 2 && !R.screens.some((x) => x.label === 'swing')) await shot('swing', { gameplay: true }); }
-    // Keep the swing fed (W+D held) and the aim on a pack body while watching the cue. The lit
-    // cue is sub-frame in Swarm (release windows open for ~1 tick), so the tap also goes when the
-    // forecast window enters the game's own 350 ms snap buffer — that press queues and fires on
-    // the open tick — and finally on a live-line deadline: any press on a live line registers a
-    // throw, only a press on a dead one is silent, so the deadline stays well inside line life.
+    // BOT-02: swing toward the nearest pack for 0.4–0.8 s, then tap. W+D feeds the arc while the
+    // aim rides a pack body so the release solve has a real target; the tap goes early on a lit
+    // cue or a forecast window inside the 350 ms snap buffer (that press queues and fires on the
+    // open tick), and unconditionally once the swing has run — any press on a live line
+    // registers a throw, only a press on a dead one is silent.
     const mark = await evLen();
     const rw0 = await evCount('massline:releaseWindow');
+    const swingMs = 400 + ((cycle * 173) % 401); // a person's vary: 0.4–0.8 s by cycle
+    const swingStart = Date.now();
+    const swingUntil = swingStart + swingMs;
     let cue = null; let lineGone = false; let lastCue = null; let why = null;
+    rec.swingMs = swingMs;
     rec.trail = [];
-    for (let i = 0; i < 60; i++) {
+    await keyDown('KeyW'); await keyDown('KeyD');
+    for (let i = 0; ; i++) {
       const aim = await throwAimQ();
       await page.mouse.move(cl(aim && Number.isFinite(aim.x) ? aim.x : VW / 2, 300, 980), cl(aim && Number.isFinite(aim.y) ? aim.y : 200, 140, 600), { steps: 2 });
-      await sleep(120);
+      if (i === 2 && !R.screens.some((x) => x.label === 'swing')) await shot('swing', { gameplay: true });
       const rt = await readThrowCue(); lastCue = rt;
       rec.trail.push({ i, on: rt.on, lit: rt.cueLit, enterS: rt.enterS, aimT: rt.aimTarget, thr: rt.throwable, ph: rt.phase, act: rt.tetherActive });
       if (!rt.tetherActive || !rt.throwable) { lineGone = true; break; }
       if ((await evSince(mark)).some((e) => LINE_END.has(e.ev))) { lineGone = true; break; }
       if (rt.on || rt.cueLit) why = 'cue lit';
       else if (rt.enterS != null && rt.enterS > 0 && rt.enterS <= 0.35) why = `window opens in ${rt.enterS}s`;
-      else if (i >= 30) why = 'deadline on a live line';
+      else if (Date.now() >= swingUntil) why = `swung ${Date.now() - swingStart} ms`;
       if (why) { cue = { i, ...rt, aim, windowEvents: (await evCount('massline:releaseWindow')) - rw0 }; break; }
+      await sleep(80);
     }
     await keyUp('KeyD');
     rec.cue = cue || { neverLit: true, last: lastCue, windowEvents: (await evCount('massline:releaseWindow')) - rw0 };
@@ -816,6 +824,12 @@ async function collect() {
   R.milestones = d.ms;
   R.events = d.ev.filter((e) => !/^(combat:collisionConsequence|massline:(tumbleEnd|recovering|recovered))$/.test(e.ev)).slice(0, 800);
   R.eventCounts = d.ev.reduce((m, e) => { m[e.ev] = (m[e.ev] || 0) + 1; return m; }, {});
+  // BOT-02: kills credited to a thrown body — the throw payload shows up as the kill's
+  // impactor (collision partner). Whip kills while the body is still on the rope stay out.
+  const thrownIds = new Set(d.ev.filter((e) => e.ev === 'massline:throw' && e.id != null).map((e) => e.id));
+  R.thrownIds = [...thrownIds];
+  R.thrownKills = d.ev.filter((e) => e.ev === 'entity:killed' && thrownIds.has(e.impactorId))
+    .map((e) => ({ id: e.id, type: e.type, impactorId: e.impactorId, cause: e.cause, sim: e.sim }));
   R.text = d.text.map(({ tAbs, src, text, kind }) => ({ t: d.t0 == null ? null : +((tAbs - d.t0) / 1000).toFixed(2), src, text, kind }));
   R.bus = { hooked: d.hooked, emitsSeen: d.emitted };
   R.quality_atEnd = await qualityInfo();
@@ -826,14 +840,16 @@ function toMd() {
   L.push(`# Demo route: ${R.route}`, '', `Run ${R.startedAt}; viewport ${R.viewport}; ${R.headed ? 'headed' : 'headless'}; intro mode ${R.intro}.`, '');
   L.push(`- Renderer: ${R.renderer}`, `- Quality preset at flight: ${JSON.stringify(R.quality_atFlight)}`, `- Quality at end: ${JSON.stringify(R.quality_atEnd)}`, `- Outcome: ${R.outcome}`);
   L.push(`- Total wall time ${R.wallSeconds} s; clicks from title click: ${R.clicks}; intro on screen ${R.intro_seconds ?? '?'} s`);
-  L.push('', '## Timings from the title click (wall s, mouse presses so far)', `- first flight frame: ${ms('firstFlight')}`, `- first Line latch: ${ms('firstLatch')}`, `- first throw: ${ms('firstThrow')}`, `- first kill: ${ms('firstKill')}`);
+  L.push('', '## Timings from the title click (wall s, mouse presses so far)', `- first flight frame: ${ms('firstFlight')}`, `- first Line latch: ${ms('firstLatch')}`, `- first throw: ${ms('firstThrow')}`, `- first kill: ${ms('firstKill')}`,
+    `- throws: ${(R.eventCounts && R.eventCounts['massline:throw']) || 0}`,
+    `- kills by a thrown body: ${(R.thrownKills || []).length}${R.thrownKills && R.thrownKills.length ? ' — ' + R.thrownKills.map((k) => `${k.id} (${k.cause || 'collision'})`).join(', ') : ''}`);
   if (m.firstFlight && m.firstThrow) L.push(`- first flight to first throw: ${(m.firstThrow.t - m.firstFlight.t).toFixed(2)} s`);
   if (R.throwCycles && R.throwCycles.length) {
     L.push('', '## Throw cycles');
     for (const c of R.throwCycles) {
       const tr = c.trail || []; const minEnter = tr.reduce((m, r) => (r.enterS != null && (m == null || r.enterS < m) ? r.enterS : m), null);
       const aimSeen = tr.some((r) => r.aimT != null);
-      L.push(`- cycle ${c.cycle}: target ${c.target ?? '-'} (${c.targetKind || 'ship'}) · cue ${JSON.stringify(c.cue || null)} · tap ${c.tap ? `${c.tap.presses || 1}x ${c.tap.why || ''}` : 'skipped (line ended)'} · minEnterS ${minEnter} · aim ${aimSeen} · end ${JSON.stringify(c.end || null)} · threw ${!!c.threw}`);
+      L.push(`- cycle ${c.cycle}: target ${c.target ?? '-'} (${c.targetKind || 'ship'}) · swing ${c.swingMs != null ? c.swingMs + ' ms' : '-'} · cue ${JSON.stringify(c.cue || null)} · tap ${c.tap ? `${c.tap.presses || 1}x ${c.tap.why || ''}` : 'skipped (line ended)'} · minEnterS ${minEnter} · aim ${aimSeen} · end ${JSON.stringify(c.end || null)} · threw ${!!c.threw}`);
     }
   }
   const f = R.frame_playable || {}; const g = R.frame_playable_excluding_screenshots || {};

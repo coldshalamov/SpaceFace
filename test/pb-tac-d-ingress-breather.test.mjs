@@ -161,14 +161,24 @@ test('SF-053: the squad lands on one shared lane, inbound, outside the pilot poc
   }
 });
 
-test('SF-053: a director-paced call announces the lane at schedule time', () => {
+test('SF-053: a director-paced call stays log-only until the squad lands', () => {
   const h = makeHarness();
   issueWing(h);
   h.aiEncounter.update(DT, h.state);
-  const inbound = eventsOf(h, 'alert').filter((e) => String(e.payload && e.payload.key || '').startsWith('reinforcements_inbound_'));
-  assert.equal(inbound.length, 1, 'a callerless squad telegraphs its approach when scheduled');
-  assert.equal(inbound[0].payload.sev, 'warn');
-  assert.ok(eventsOf(h, 'toast').some((e) => /inbound/i.test(e.payload && e.payload.text || '')));
+  // BOT-02 one line per arrival: the schedule lives on ai:reinforcementScheduled — no
+  // player-facing banner or toast runs ahead of the single landing line.
+  assert.equal(eventsOf(h, 'ai:reinforcementScheduled').length, 1, 'the call is still on record');
+  const inboundAlerts = eventsOf(h, 'alert').filter((e) => /inbound|reinforcements/i.test(`${e.payload && e.payload.key || ''} ${e.payload && e.payload.text || ''}`));
+  assert.equal(inboundAlerts.length, 0, 'schedule-time reinforcement banners are log-only');
+  const inboundToasts = eventsOf(h, 'toast').filter((e) => /inbound|reinforcement/i.test(e.payload && e.payload.text || ''));
+  assert.equal(inboundToasts.length, 0, 'schedule-time reinforcement toasts are log-only');
+
+  step(h, 1);
+  const arrived = eventsOf(h, 'alert').filter((e) => String(e.payload && e.payload.key || '').startsWith('reinforcements_arrived_'));
+  assert.equal(arrived.length, 1, 'the squad speaks once, when it lands');
+  assert.equal(arrived[0].payload.sev, 'warn');
+  assert.equal(eventsOf(h, 'toast').filter((e) => /reinforcement|arrived/i.test(e.payload && e.payload.text || '')).length, 0,
+    'no toast duplicates the arrival line');
 });
 
 test('SF-053: an anchor on the bound edge keeps the squad inside the playable bound', () => {
