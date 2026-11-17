@@ -1496,7 +1496,7 @@ export const masslineHud = {
     // THROW-01: a grade must not hide the aim tag of the NEXT target the pilot is already lining up.
     if (releaseVerdictYieldsToAim(state)) state.masslineReleaseVerdict = null;
     const verdict = state.masslineReleaseVerdict;
-    if (verdict && finite(state.simTime) < finite(verdict.untilSimTime)) {
+    if (verdict && !isSwarmGlass(state) && finite(state.simTime) < finite(verdict.untilSimTime)) {
       return this._renderVerdictPill(dom, state, player, w2s, verdict);
     }
     if (verdict) state.masslineReleaseVerdict = null;   // expired — free the quiescent path
