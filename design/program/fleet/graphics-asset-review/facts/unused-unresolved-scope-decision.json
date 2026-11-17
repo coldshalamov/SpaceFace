@@ -1,0 +1,18 @@
+{
+  "schema": "spaceface.graphicsCoverage.scopeDecision.v1",
+  "decidedAt": "2026-11-17T11:05:00-05:00",
+  "decidedBy": "orchestrator, graphics-asset-review lane",
+  "authority": "HANDOFF-REMAINING-20261117.md §7: 'The unused/unresolved set stays honestly ambiguous until you decide unreferenced-kit = excluded-from-scope.' Evidence: .devshots/fleet/dispatch-20261116/identity-resolution.json (scripts/fleet/identity-resolve.mjs; analysis only, 3048 records).",
+  "decision": {
+    "authoring-only": "EXCLUDED from review scope. 1130 records whose files are referenced by authoring sources but never reach a shipped form. They are source-kit inventory, not player-facing models; no captures or fixes are owed.",
+    "duplicate-of": "EXCLUDED from review scope. 74 records that are byte-identical or alternate-format siblings of files already linked (and reviewed where runtime-reachable).",
+    "ambiguous": "REMAINS honestly ambiguous and excluded from review scope as unproven. 1784 records, overwhelmingly assets/third_party/helios_v3 source candidates, with no traced runtime or authoring link. If any later resolves to runtime-reachable, it enters scope through the standard triage route (see runtime-reachable below).",
+    "runtime-reachable": "IN SCOPE. 60 records reach the shipped import graph and cannot be excluded as unreferenced. Triage wave dispatched 2026-11-17 (briefs: brief-devin2-triage-algrow.md 13 alien-growth groups, brief-devin3-triage-factory.md factory groups, brief-grok-triage-presentation.md 29 presentation/inclusion_kit/nyx candidate groups): per group, trace the ordinary route, capture through it or record covered-by against the already-passed ledger entry that renders the same content, then disposition through the standard orchestrator acceptance. Groups whose visible content is fully rendered by a passed sibling entry will be dispositioned covered-by, not separately passed."
+  },
+  "ledgerNote": "Excluded records keep the `unused/unresolved` status — that status IS the excluded bucket in coverage-status.json's coverageStates. No mass status rewrite is performed; this file is the decision record. coverageStatusCounts.unused/unresolved therefore reads as: excluded(2924: authoring-only+duplicate-of+ambiguous) + in-scope-triage(60) + resolved-into-passed-entries(count grows as triage lands).",
+  "crossRefs": [
+    "design/program/fleet/graphics-asset-review/HANDOFF-REMAINING-20261117.md (session addendum)",
+    ".devshots/fleet/dispatch-20261116/identity-resolution.md",
+    "docs/visual-assets/README.md"
+  ]
+}
