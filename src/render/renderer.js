@@ -251,6 +251,7 @@ import { entityIsMissionCritical, hasExplicitAuthoredPayloadPresentation } from 
 import { WHOLE_SHIP_LOD_RUNTIME_DEMOTION, isOrdinaryLodShip } from './wholeShipLodPolicy.js';
 import { ACE_MEMORY_META_KEYS, capitalBossWingRosterRows, liveSectorFullExtrasStubs, promotedAceShapeForRecord, queuedSpawnRequestRoster, saveEnvelopeFullExtrasStubs, saveEnvelopeSectorStubs, scriptedOnboardingRosterRows } from './saveEnvelopeSectorWarm.js';
 import { aceById, escalatedStyleFromMemory, returnCrewForAce, stanceForRecord, styleLoadoutForAce } from '../data/namedAces.js';
+import { ROCK_BODIES } from '../data/rockSubstances.js';
 import { clearCanonicalProgramSpecimens } from './programCanon.js';
 import {
   bindAuthoredAssetPerfCounters,
@@ -11253,6 +11254,12 @@ export const render = {
     // Hidden root holding one instantiated copy of every mountable accessory record — the
     // fitSeed picks mounts per entity id, so only the whole catalog covers every live spawn.
     this._rosterPartCatalogRoot = null;
+    // LOAD-03 menu sector-scene warm: the picked arena's sector recipe + rock pool program
+    // families warming during the pre-match dwell. `_menuSwarmSpec` is the latest embark
+    // speculation the door posted — the cohort (re)targets its sector, and the crucible
+    // screen's own re-emits retarget it when the arena pick changes.
+    this._menuSwarmSceneWarm = null;
+    this._menuSwarmSpec = null;
     this._sectorBoundaryPreparations = createSectorBoundaryGenerationManager({
       startBudgetPerTurn: RUNTIME_MESH_BUILD_BUDGET,
       captureBeforeStart: (record) => {
@@ -20982,7 +20989,21 @@ export const render = {
     // New-game embark dwell — the form's committed sector/starter (plus its seed once one is
     // decided) enumerate the whole first-sector authored cast, so Launch lands on warmed
     // files instead of paying every decode inside the loading window.
-    onBus('game:embarkSpeculation', (p) => this._prefetchEmbarkVisuals(p));
+    onBus('game:embarkSpeculation', (p) => {
+      this._prefetchEmbarkVisuals(p);
+      // LOAD-03: the crucible door's embark speculation carries the picked arena's sector.
+      // While the crucible menu warm is staged it (re)targets the sector-scene cohort —
+      // Adventure's own speculation never reaches the arm because no menu warm exists.
+      try {
+        const sectorId = p && typeof p.sectorId === 'string' && p.sectorId ? p.sectorId : null;
+        if (sectorId) {
+          this._menuSwarmSpec = { sectorId, seed: Number.isFinite(p.seed) ? p.seed : null };
+          if (this._earlyCrucibleWarmMenu === true) {
+            this._armMenuSwarmSceneWarm(this._menuSwarmSpec);
+          }
+        }
+      } catch (_) { /* scene warm speculation is best-effort */ }
+    });
     // Between-round roster warm: every swarm wave ends in the armory, and the next wave's
     // newcomer set is fixed by its number, so the eligible-minus-covered cohort builds and
     // compiles during the shop dwell rather than inside the launch cook or the next round.
@@ -23433,6 +23454,11 @@ export const render = {
       this._rosterPrewarmRoots.push(warm.root);
       this._earlyCrucibleWarm = warm;
       this._earlyCrucibleWarmMenu = true;
+      // LOAD-03: the same pre-match dwell also warms the picked arena's sector scene — the
+      // authored bodies, traffic hulls and instanced rock families the first survival cook
+      // otherwise links behind the veil. The latest embark speculation names its sector.
+      try { this._armMenuSwarmSceneWarm(this._menuSwarmSpec); }
+      catch (_) { /* scene warm is best-effort */ }
     } catch (error) {
       stormWarn('menu-crucible-roster-warm-begin-failed', '[render] menu crucible roster warm begin failed', error);
       this._earlyCrucibleWarm = null;
@@ -23491,6 +23517,10 @@ export const render = {
     const warm = this._earlyCrucibleWarm;
     this._earlyCrucibleWarm = null;
     this._earlyCrucibleWarmMenu = false;
+    // The sector-scene cohort dies with the menu warm that armed it — screen left, a
+    // non-survival launch, or a start failure all mean no survival cook claims it.
+    this._discardMenuSwarmSceneWarm();
+    this._menuSwarmSpec = null;
     if (!warm || !warm.root) return;
     // Decodes tag their residency to the warm owner — close it so a discarded warm does not
     // pin its GLB records as live forever.
@@ -23521,6 +23551,286 @@ export const render = {
       }
       // Never-mounted roots ride the paced lane too (sfDespawnNoted skips
       // the nets-to-nothing note) — see the sibling release sites.
+      if (!disposePreparedAuthoredBoundary(root)) {
+        if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
+        if (!wasMounted && root.userData) root.userData.sfDespawnNoted = true;
+        this._warmDisposeQueue.push(root);
+      } else if (wasMounted) {
+        this._noteShadowMeshRemoved?.(root);
+      }
+    } catch (_) { /* teardown is best-effort */ }
+  },
+
+  /**
+   * LOAD-03 — the Swarm door's sector-scene warm. The menu roster warm owns the wave-1 hull
+   * cohort; the rest of a first door's cost lives in the picked arena's sector recipe — the
+   * station/gate/POI-landmark/dressing/field-geology authored bodies, the ambient traffic
+   * hulls, the authored debris-rock family, and the instanced rock pool chunks. Those are
+   * the authored-upgrade-idle, post-opening-pipeline, first-frame-census and rock-pool rows
+   * a same-session second door already finds warm. Beginning them during the pre-match dwell
+   * leaves PLAY to find decodes settled and program families linked instead of compiling
+   * behind the veil. Everything mints through the shared lanes: loadAuthoredPart dedupes the
+   * decode a live boundary would post, compile/admit land under the same canonical program
+   * keys, and the pending promises ride _rosterPrewarmPending — a PLAY pressed mid-warm
+   * joins the same in-flight work rather than posting duplicates. The cohort is data-layer
+   * enumeration only; no sim state is read or written.
+   */
+  _beginMenuSwarmSceneWarm(spec) {
+    const { renderer, scene, state } = this;
+    if (!renderer || !scene || !state || !this.vf) return null;
+    const sectorId = spec && typeof spec.sectorId === 'string' && spec.sectorId
+      ? spec.sectorId : null;
+    if (!sectorId) return null;
+    // A live run owns its scene: mid-run crucible screens share the door ids, so the menu
+    // cohort refuses to mint behind flight the same way the roster warm refuses.
+    if (state.mode === 'flight' || survivalRunHoldsArena(state)) return null;
+    if (this._contextLost === true) return null;
+    const warm = {
+      root: new THREE.Group(),
+      sectorId,
+      building: true,
+    };
+    const root = warm.root;
+    root.name = 'SF_MenuSwarmSceneWarm';
+    root.visible = false;
+    root.userData.rosterPrewarm = 'menu-swarm-scene-warm';
+    // Building latch: the parked-root sweep skips boundaries still admitting, and every
+    // queued admission resolves its owner through warm.building.
+    root.userData.warmBuilding = true;
+    scene.add(root);
+    this._noteShadowMeshAdded?.(root);
+    // Same ownership lane as the roster/leaf warms: bare→PBR reskin sweeps, the cook's
+    // census visit and the run-end release all reach it through this list.
+    this._rosterPrewarmRoots.push(root);
+    this._menuSwarmSceneWarm = warm;
+    const run = Promise.resolve()
+      .then(() => this._runMenuSwarmSceneWarm(warm, spec))
+      .catch((error) => {
+        stormWarn('menu-swarm-scene-warm-failed', '[render] menu swarm scene warm failed', error);
+        try { this._discardMenuSwarmSceneWarm(warm); } catch (_) { /* best-effort */ }
+      });
+    observePipelineAdmission(run);
+    return warm;
+  },
+
+  async _runMenuSwarmSceneWarm(warm, spec) {
+    const { renderer, scene, state } = this;
+    const root = warm.root;
+    const sectorId = warm.sectorId;
+    const alive = () => this._menuSwarmSceneWarm === warm
+      && warm.building === true
+      && this._contextLost !== true;
+    // Pending promises register exactly like the roster warm's track(): the cook's settle
+    // hold covers them, so PLAY continues this work instead of duplicating it.
+    const track = (promise, label = 'swarm-scene-warm') => {
+      const settled = Promise.resolve(promise).catch(() => null);
+      if (this._rosterPrewarmPending) {
+        this._rosterPrewarmPending.add(settled);
+        if (this._rosterPrewarmPendingLabels) this._rosterPrewarmPendingLabels.set(settled, label);
+        observePipelineAdmission(settled.finally(() => {
+          if (this._rosterPrewarmPending) this._rosterPrewarmPending.delete(settled);
+        }));
+      }
+      return settled;
+    };
+    const compile = (subject) => (
+      state && state.render && typeof state.render.compileObjectPipelines === 'function'
+        ? state.render.compileObjectPipelines(subject, { explicit: true })
+        : Promise.resolve({ skipped: true })
+    );
+    // Menu-dwell pacing: the same 4 ms slice / paced-ledger shape the exemplar build loop
+    // uses, so pre-match frames stay under the ~33 ms budget while the cohort works.
+    const now = (typeof performance !== 'undefined' && typeof performance.now === 'function')
+      ? () => performance.now() : () => Date.now();
+    let sliceStartedAt = now();
+    let lastDebitAt = sliceStartedAt;
+    const paceIfDue = async () => {
+      const tick = now();
+      if (tick - sliceStartedAt <= 4 && pacedFrameSpend() < PACED_FRAME_BUDGET_MS) return;
+      notePacedFrameSpend(tick - lastDebitAt);
+      await yieldToBrowser();
+      sliceStartedAt = now();
+      lastDebitAt = sliceStartedAt;
+    };
+    try {
+      // Rock program families: the leaf/detail warm group, then the pool's variant and
+      // keyed instanced chunks — the same admissions cook.rockPools performs behind the
+      // veil. The buckets are pool-owned and persist past this root; minting them early
+      // is a no-op for the cook's later identical warm.
+      if (alive()) {
+        try {
+          const leafRoot = buildAsteroidLeafWarmGroup();
+          if (leafRoot) {
+            leafRoot.visible = false;
+            root.add(leafRoot);
+            await paceIfDue();
+            if (!alive()) return;
+            await track(compile(leafRoot), 'menu-scene:rock-leaf');
+          }
+        } catch (_) { /* leaf warm is best-effort */ }
+      }
+      if (alive() && this._asteroidInstancePool) {
+        try {
+          warmAsteroidInstanceVariants(this._asteroidInstancePool,
+            [0, 1, 2, 3, 4].map((variant) => asteroidLeafResources('ast_common_rock', variant)));
+          warmAsteroidInstanceKeys(this._asteroidInstancePool, asteroidPoolWarmResources());
+        } catch (_) { /* pool mint is best-effort */ }
+        await paceIfDue();
+        let poolRoots = null;
+        try { poolRoots = collectInstancePoolCompileRoots(scene); } catch (_) { poolRoots = null; }
+        for (const poolRoot of poolRoots || []) {
+          if (!alive()) return;
+          await track(compile(poolRoot), 'menu-scene:rock-pool');
+          await paceIfDue();
+        }
+      }
+      // The arena's sector recipe, enumerated the same way the save-envelope sector warm
+      // enumerates it: stations/gates, POI landmarks, palette dressing rows, field geology,
+      // world one-offs and the sector's ambient traffic hulls. The debris-rock family rides
+      // along unconditionally — every arena mints authored geology bodies the sector recipe
+      // cannot name (its substances come from the arena's own layout).
+      let requests = [];
+      if (alive()) {
+        try {
+          const seeded = spec && Number.isFinite(spec.seed);
+          const stubs = saveEnvelopeSectorStubs({
+            world: { currentSectorId: sectorId },
+            meta: seeded ? { seed: spec.seed } : {},
+          });
+          const entities = [...(stubs.placeStubs || []), ...(stubs.shipStubs || [])];
+          requests = (authoredPrewarmRequestsForEntities(entities, {
+            lodLevel: 'lod0',
+            includeSpawnableArchetypes: false,
+          }) || []).slice();
+        } catch (error) {
+          stormWarn('menu-swarm-scene-warm-enumerate-failed',
+            '[render] menu swarm scene enumerate failed', error);
+          requests = [];
+        }
+      }
+      const releaseRoot = (PART_LIBRARY_CONTRACT && PART_LIBRARY_CONTRACT.releaseRoot)
+        || 'assets/ships/release/parts/';
+      const seenUrls = new Set(requests.map((request) => `${request.url}::${request.slot}`));
+      for (const body of ROCK_BODIES || []) {
+        const placeId = `place_rock_${body.substance}_${body.sizeClass}`;
+        const url = `${releaseRoot}places/${placeId}.glb`;
+        if (seenUrls.has(`${url}::place`)) continue;
+        seenUrls.add(`${url}::place`);
+        requests.push({ url, slot: 'place' });
+      }
+      // Two decode lanes (the cook's catalog spends eight inside the loading window): the
+      // menu dwell is the longer runway and must keep pre-match frames light, so the same
+      // files spread across more of it.
+      let cursor = 0;
+      const worker = async () => {
+        while (cursor < requests.length && alive()) {
+          const request = requests[cursor++];
+          let record = null;
+          try {
+            record = await track(loadAuthoredPart(request.url, {
+              renderer,
+              slot: request.slot,
+              optional: true,
+              residencyRole: 'swarm-scene-menu-warm',
+              sectorId,
+              isResidencyOwnerActive: () => alive() && root.parent === scene,
+            }), `menu-scene:file:${request.url}`);
+          } catch (_) { record = null; }
+          if (!record || !alive()) continue;
+          const holder = new THREE.Group();
+          holder.visible = false;
+          root.add(holder);
+          try {
+            instantiatePackagedPrimitives(record, holder);
+            // Same count-0 instanced twins the part catalog mints: the live attach may
+            // draw through GLTFKit_InstancePool chunks, a different program variant the
+            // direct primitives never link.
+            const seenPairs = new Set();
+            for (const primitive of record.primitives || []) {
+              if (!primitive || !primitive.geometry || !primitive.material) continue;
+              const pairKey = `${primitive.geometry.uuid}:${primitive.material.uuid}`;
+              if (seenPairs.has(pairKey)) continue;
+              seenPairs.add(pairKey);
+              const twin = new THREE.InstancedMesh(primitive.geometry, primitive.material, 1);
+              twin.count = 0;
+              twin.visible = true;
+              twin.frustumCulled = false;
+              twin.name = 'SF_MenuSwarmSceneWarm_InstanceTwin';
+              holder.add(twin);
+            }
+          } catch (_) { /* instantiate is best-effort */ }
+          try { canonicalizeObjectSurfaceProgramKeys(holder); } catch (_) { /* best-effort */ }
+          await track(compile(holder), `menu-scene:compile:${request.url}`);
+          await paceIfDue();
+        }
+      };
+      const workers = [];
+      for (let i = 0, n = Math.min(2, requests.length); i < n; i++) workers.push(worker());
+      await Promise.allSettled(workers);
+      // The cook's opening.postResources row is small but links the post-chain programs —
+      // preparing them here keeps even that out of the veil.
+      if (alive() && this.bloom && typeof this.bloom.prepareResources === 'function') {
+        try { await track(this.bloom.prepareResources(yieldToBrowser), 'menu-scene:post'); }
+        catch (_) { /* post warm is best-effort */ }
+      }
+    } finally {
+      warm.building = false;
+      if (root.userData) root.userData.warmBuilding = false;
+      // Same settle contract as the part catalog: once the admissions drain, the hidden
+      // subtree leaves the presented scene so per-frame walks stop paying for it. The root
+      // stays reachable through _rosterPrewarmRoots — reskin sweeps, the cook census and
+      // the run-end release all tolerate an unparented warm root.
+      if (root.parent === scene) {
+        try {
+          scene.remove(root);
+          this._noteShadowMeshRemoved?.(root);
+        } catch (_) { /* detach is best-effort */ }
+      }
+    }
+  },
+
+  /**
+   * (Re)target the menu sector-scene warm. Called when the crucible menu warm is armed and
+   * whenever the door's embark speculation moves — the arena pick re-emits it with the new
+   * sector, and a same-sector re-arm is a no-op so picker dwell costs nothing.
+   */
+  _armMenuSwarmSceneWarm(spec) {
+    const sectorId = spec && typeof spec.sectorId === 'string' && spec.sectorId
+      ? spec.sectorId : null;
+    if (!sectorId) return;
+    const warm = this._menuSwarmSceneWarm;
+    if (warm && warm.sectorId === sectorId
+        && Array.isArray(this._rosterPrewarmRoots) && this._rosterPrewarmRoots.includes(warm.root)) {
+      return;
+    }
+    this._discardMenuSwarmSceneWarm();
+    try { this._beginMenuSwarmSceneWarm(spec); }
+    catch (error) {
+      stormWarn('menu-swarm-scene-warm-begin-failed',
+        '[render] menu swarm scene warm begin failed', error);
+      this._menuSwarmSceneWarm = null;
+    }
+  },
+
+  _discardMenuSwarmSceneWarm(expected) {
+    const warm = this._menuSwarmSceneWarm;
+    if (expected && warm !== expected) return;
+    this._menuSwarmSceneWarm = null;
+    if (!warm || !warm.root) return;
+    warm.building = false;
+    const root = warm.root;
+    if (root.userData) root.userData.warmBuilding = false;
+    const list = Array.isArray(this._rosterPrewarmRoots) ? this._rosterPrewarmRoots : [];
+    const index = list.indexOf(root);
+    if (index >= 0) list.splice(index, 1);
+    try {
+      const wasMounted = !!root.parent;
+      if (root.parent) root.parent.remove(root);
+      if (this._contextLost === true) {
+        if (wasMounted) this._noteShadowMeshRemoved?.(root);
+        if (root.userData) root.userData.sfDespawnNoted = true;
+        return;
+      }
       if (!disposePreparedAuthoredBoundary(root)) {
         if (!this._warmDisposeQueue) { this._warmDisposeQueue = []; this._warmDisposeHead = 0; }
         if (!wasMounted && root.userData) root.userData.sfDespawnNoted = true;
