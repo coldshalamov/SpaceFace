@@ -183,3 +183,36 @@ describes an unbuilt fix. The `unused/unresolved` set stays honestly ambiguous u
 you decide unreferenced-kit = excluded-from-scope (devin2's analysis gives you the
 evidence to decide: 60 runtime-reachable, 1,130 authoring-only, 74 duplicates,
 1,784 ambiguous).
+
+## 8. IN-FLIGHT AT HANDOFF (2026-11-17, all background OS processes — they run without a session)
+
+| Worker | Model | Task | Outputs on completion |
+| --- | --- | --- | --- |
+| cursor-agent `grok-4.7-xhigh` | proc-ship builder rework ×22 | events `events-grok/`, captures `proc-ships-*-fix-20261117/`, report `results/grok-procships.md` |
+| agy1 `hydrogen-xhigh` | fauna volume rebuilds (anchor_beast…needle_swarm, 9) | events `events-agy1/agy1-rebuild2-*`, captures `fauna-rebuild2-20261117/`, report `results/agy1-fauna-rebuild2.md` |
+| agy2 `hydrogen-xhigh` | fauna volume rebuilds (pilgrim_spine…furnace_maw, 9) | events `events-agy2/agy2-rebuild2-*`, same capture dir, report `results/agy2-fauna-rebuild2.md` |
+| devin acct1 `swe-2-max` | recaptures: dock_collar, radiator_panel, bolus ribs | `recaptures-20261117/`, report `results/devin1-recaptures.md` |
+| devin acct2 `swe-2-max` | grating sheet fix ×2 | `grating-fix-20261117/`, report `results/devin2-gratings.md` |
+| devin acct3 `swe-2-max` | ordinary-play flythroughs (5 clusters + bolus) | `ordinary-play-20261117/`, report `results/devin3-flythroughs.md` |
+| opencode `deepseek-v4.1-flash-free` | station-kit interior diagnose + fix ×14 | forge/GLB edits in tree, captures `station-kit-fix2-20261117/`, events `events-openencoder/openencoder7-*`, report `results/openencoder-stationkits2.md` |
+
+### Resume checklist for the next session (fresh context — do NOT resume this one)
+
+1. `node scripts/fleet/asset-review.mjs summary` — the ledger is the queue (364 passed / 123 flagged at handoff).
+2. For each completed worker above: validate its event JSONs (schema, evidence exists, LOD
+   target names — check `show <id>`; targets are `<asset>#lod0` / `wholeship_<asset>#lod0` /
+   `procedural:<...>:lod0` / `primary-or-contained-lods`), visually accept the captures
+   yourself (Read the `_sheet_*` images; the swarm/accept04 foreign runs may appear in
+   frames), then `record` + `status` per model — the apply-scripts pattern lives in
+   `~/.zcode/tmp/fleet-orchestrate/apply_*.py` (copy the pattern; that tmp dir may be gone).
+3. Station-kit caveat: openencoder7 was dispatched to DIAGNOSE why openencoder6's forge bake
+   didn't densify, then fix — check its report before trusting `station-kit-fix*` captures;
+   if its fix route was JS-side, `station-kit-fix2` captures are the evidence.
+4. Known-active pitfall: `--dist` override in fleet-look/fleetLook is UNCOMMITTED — commit
+   it with the next wave (wide-recapture statuses depend on it).
+5. Construction backlog after these land: 22 proc-ship reworks are in flight; 18 open-water
+   fauna rebuilds in flight; remaining = customs pylon (external redesign), ruckus viewer
+   character route, then the ordinary-play verification pass over all passed models (§4).
+6. Usage: agy accounts 429 on 5h windows (retryable); deepseek-free hangs silently on very
+   large briefs (force early output; prefer devin for long ones); devin acct4 is NOT an
+   account — only acct1-3 exist and are logged in.
