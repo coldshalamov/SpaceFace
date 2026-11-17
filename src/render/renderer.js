@@ -29825,7 +29825,13 @@ export const render = {
     const nx = Number(ndc[0]) || 0;
     const ny = Number(ndc[1]) || 0;
     const KEY_DIST = 160;
-    const KEY_HEIGHT = 96;
+    // LOOK-05A: the key sits at 45 degrees above the horizon, same azimuth, so faces turned away from it fall into shade and
+    // a rock reads as a form. Elevation = height / horizontal reach; a landmark dead centre keeps the old height.
+    const KEY_HORIZ = KEY_DIST * Math.hypot(nx, ny);
+    const KEY_HEIGHT = KEY_HORIZ > 40 ? KEY_HORIZ * Math.tan(Math.PI / 4) : 96;
+    // Rim and fill keep their old heights (96-based): hull rim is tuned and this change is about rocks.
+    const RIM_HEIGHT = 96 * 0.45;
+    const FILL_HEIGHT = 96 * 0.18;
     // Light POSITION is the direction light arrives FROM, so place it on the landmark's side.
     //
     // The offset is STORED, not just applied: _updateShadowFollow re-places the key light every
@@ -29835,7 +29841,7 @@ export const render = {
     this._shadowMapDirty = true;
     rig.lights.key.position.set(nx * KEY_DIST, KEY_HEIGHT, -ny * KEY_DIST);
     // Rim sits opposite and lower, so hulls get a cool separating edge away from the key.
-    rig.lights.rim.position.set(-nx * KEY_DIST * 0.9, KEY_HEIGHT * 0.45, ny * KEY_DIST * 0.9);
+    rig.lights.rim.position.set(-nx * KEY_DIST * 0.9, RIM_HEIGHT, ny * KEY_DIST * 0.9);
     // Fill becomes PLANET BOUNCE rather than a generic frontal lift.
     //
     // Review reports the ship as "dim" in every round. The cause is not too little key — it is that
@@ -29845,7 +29851,7 @@ export const render = {
     // (rather than frontal) makes the shadowed hull pick up the planet instead of going to black,
     // which is also review's "colored atmospheric fill" note — the fill takes the sector palette's
     // fill hue, so a warm giant bounces warm and an ice body bounces cold.
-    rig.lights.fill.position.set(nx * KEY_DIST * 0.7, -KEY_HEIGHT * 0.18, -ny * KEY_DIST * 0.7);
+    rig.lights.fill.position.set(nx * KEY_DIST * 0.7, -FILL_HEIGHT, -ny * KEY_DIST * 0.7);
   },
 
   _updateSectorPaletteTransition(frameDt) {

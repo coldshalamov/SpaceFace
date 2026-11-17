@@ -64,7 +64,7 @@ export const LOOK_BASE = deepFreeze({
     // Rough terrain receives a soft reflected fill and limb light even without lacquer.
     // Only rock-role materials consume these values; black space and hull paint stay put.
     // LOOK-04 sweep: the 0.85 fill flattened every rock into a pale cut-out; 0.45 keeps a shadow side.
-    rockFill: 0.45,
+    rockFill: 0.25,
     // Scene-linear pigment luminance floor for shadow-weighted rock fill. This lifts authored
     // dark geological faces without changing their hue or texture strata; it is never emission.
     rockFloor: 0.12,
