@@ -2,12 +2,13 @@
 // (same renderer, lights, env map, tone mapping and runtime material profiles as flight), from the
 // real chase pose, so a model can be judged by the picture the player actually sees.
 //
-// window.SF_fleetLook.shoot({ file | defId, view, heading, width, height }) -> JPEG data URL
+// window.SF_fleetLook.shoot({ file | defId, view, heading, width, height, dist }) -> JPEG data URL
 //   file   release wholeship path, e.g. 'wholeships/hornet_production_v1.glb' (blueprint path)
 //   defId  ship def id, e.g. 'ship_kestrel' (full visual-factory + authored-boundary path, which
 //          includes every runtime attachment the player sees)
 //   view   'chase' (D=144), 'close' (D=58), 'inspect' (3/4 at radius*2.6), 'side', 'top',
 //          'place' (whole bounding sphere at the in-game 60° chase tilt — for stations/places)
+//   dist   optional camera-distance multiplier (pulls every view back along its view ray)
 // Driver: scripts/fleet-look.mjs. Verification harness, not a shipped feature.
 import * as THREE from 'three';
 import { SHIPS } from '../data/ships.js';
@@ -233,11 +234,19 @@ function blueprintToGroup(blueprint) {
 
 const ORIGIN = new THREE.Vector3();
 
-function poseCamera(cam, view, radius, heading, center) {
+function poseCamera(cam, view, radius, heading, center, distMult) {
   const h = (heading || 0) * Math.PI / 180;
   // The XZ-recentred bounding-sphere centre: aim there, not at the world origin — placed
   // models (places, kits, rocks) carry a Y offset and unrecentred inspects clipped their tops.
   const aim = center || ORIGIN;
+  // Optional distance override (--dist=<multiplier>): pull the camera straight back along its
+  // view ray so oversized hulls/structures whose auto-framing sits inside the bounding radius
+  // still fit the frame. Applies to every view, including the fixed-144 WU chase.
+  const widen = () => {
+    if (!Number.isFinite(distMult) || distMult <= 0 || distMult === 1) return;
+    cam.position.sub(aim).multiplyScalar(distMult).add(aim);
+    cam.far = Math.max(cam.far, cam.position.distanceTo(aim) + radius * 4);
+  };
   const orbit = (dist, elev, az) => cam.position.set(
     aim.x + dist * Math.cos(elev) * Math.sin(az),
     aim.y + dist * Math.sin(elev),
@@ -260,6 +269,7 @@ function poseCamera(cam, view, radius, heading, center) {
     cam.far = Math.max(cam.far, radius * 20);
     cam.fov = 50;
     cam.near = 0.1;
+    widen();
     cam.lookAt(aim.x, aim.y, aim.z);
     cam.updateProjectionMatrix();
     return;
@@ -275,6 +285,7 @@ function poseCamera(cam, view, radius, heading, center) {
   else if (view === 'top') cam.position.set(aim.x, aim.y + radius * 3.4, aim.z - 0.001);
   else if (view === 'front') orbit(radius * 2.8, 0.35, Math.PI + 0.55 + h);
   else orbit(radius * 2.6, 0.62, 0.7 + h);
+  widen();
   cam.fov = 50;
   cam.near = 0.1;
   cam.lookAt(aim.x, aim.y, aim.z);
@@ -723,7 +734,7 @@ export function installFleetLook(SF) {
       // After the XZ recentre the bounding-sphere centre sits at (0, sphereY, 0) — the `place`
       // view frames and aims at that, so a tall station's mid-volume is what fills the picture.
       const placeCenter = new THREE.Vector3(0, sphere.center.y, 0);
-      poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
+      poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter, opts.dist);
       if (typeof built.root.userData?.updateLodForCamera === 'function') {
         built.root.userData.updateLodForCamera(cam, { width, height });
       }
@@ -749,7 +760,7 @@ export function installFleetLook(SF) {
       }
       // Draw through the normal route with the same private camera used for this view.
       setStage('captureReady');
-      const pose = () => poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
+      const pose = () => poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter, opts.dist);
       let lodObservation = null;
       const finalFrame = await captureReadyFleetLookFrame({
         root: built.root,

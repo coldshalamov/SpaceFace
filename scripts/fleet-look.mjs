@@ -7,6 +7,7 @@
 //   node scripts/fleet-look.mjs --machines=witness,debris_sorter,pylon --views=close,inspect
 //   node scripts/fleet-look.mjs --fleet            # every live wholeship, contact sheet per view
 //   node scripts/fleet-look.mjs --fleet --sector=sector_vesta_forge   # under that sector's light rig
+//   --dist=<multiplier> pulls every view's camera back along its view ray (oversized hulls).
 // Output: .devshots/fleet-look/<name>_<view>.png (+ report.json). Crops chase/close to the ship.
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
@@ -23,6 +24,12 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 const OUT = ROOT + (args.out || '.devshots/fleet-look') + '/';
 const views = String(args.views || (args['conduit-network'] ? 'work,site' : 'chase,close,inspect')).split(',');
 const SHOT_TIMEOUT_MS = Number(args.timeout || 600) * 1000;
+// --dist=<multiplier>: camera-distance override passed to the shot's camera math (oversized
+// hulls/structures whose auto-framing would otherwise sit inside the bounding radius).
+const DIST_MULT = args.dist != null && args.dist !== true ? Number(args.dist) : undefined;
+if (args.dist != null && (!Number.isFinite(DIST_MULT) || DIST_MULT <= 0)) {
+  throw new Error('--dist=<multiplier> requires a positive number');
+}
 const RUN_STARTED_AT_UTC = new Date().toISOString();
 const RUN_ID = `${process.pid}-${RUN_STARTED_AT_UTC.replace(/[:.]/g, '-')}`;
 const PARTIAL_REPORT_PATH = `${OUT}report.partial-${RUN_ID}.json`;
@@ -237,6 +244,7 @@ try {
             const attemptLabel = attempt + 1;
             shotState.stage = `prepare-shot-${attemptLabel}`;
             const shotSpec = { ...spec, view, heading: Number(args.heading || 0), yaw: Number(args.yaw || 0), ...(args.ab ? { ab: JSON.parse(String(args.ab)) } : {}),
+              ...(DIST_MULT !== undefined ? { dist: DIST_MULT } : {}),
               // --appearance='{"decalId":"concord"}' poses the hull with that paint record;
               // --factionId=<id> poses it as that faction's NPC (palette + default stencils).
               ...(args.appearance ? { appearance: JSON.parse(String(args.appearance)) } : {}),
