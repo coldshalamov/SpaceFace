@@ -313,7 +313,7 @@ jobs:
             !/tools/blender/
             !/docs/
       - name: Fetch authored ships for the hangar and equipment previews
-        if: startsWith(matrix.shot, 'crucible-')
+        if: startsWith(matrix.shot, 'crucible-') || matrix.shot == 'title' || matrix.shot == 'title-save'
         run: |
           git sparse-checkout add '/assets/ships/release/parts/**' '/assets/ships/release/render-packages/**'
       - uses: actions/setup-node@v4

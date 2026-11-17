@@ -2588,13 +2588,17 @@ export const crucibleScreen = {
     this._cabinetDoc?.addEventListener?.('visibilitychange', this._dailyVisibility);
     this._cabinetAttract?.start();
     const r = this._regions;
-    if (!r || !canAnimate()) return;
-    cue('open');
-    try {
-      settle(r.title, { from: 'top', state: 'crucible:open' });
-      settle(r.stage, { from: 'left', delay: 60, state: 'crucible:open' });
-      settle(r.foot, { from: 'bottom', delay: 120, state: 'crucible:open' });
-    } catch { /* motion is cosmetic */ }
+    if (!r) return;
+    if (canAnimate()) {
+      cue('open');
+      // Ship-preview warmup can delay animation frames. Hangar choices and launch/back
+      // controls must stay visible and stationary from arrival, without waiting on settle.
+      if (!this._preparation) try {
+        settle(r.title, { from: 'top', state: 'crucible:open' });
+        settle(r.stage, { from: 'left', delay: 60, state: 'crucible:open' });
+        settle(r.foot, { from: 'bottom', delay: 120, state: 'crucible:open' });
+      } catch { /* motion is cosmetic */ }
+    }
     if (this._preparation) this._preparation.focus();
     else if (r.enter && typeof r.enter.focus === 'function') {
       try { r.enter.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }

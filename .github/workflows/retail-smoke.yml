@@ -83,7 +83,7 @@ jobs:
           }, indent=2) + '\n')
           PY
           timeout --signal=TERM --kill-after=15s 690s node scripts/fleet/game-lock.mjs run -- \
-            node scripts/check-swarm-hangar-ux.mjs --live --viewports=1440x900 \
+            node scripts/check-swarm-hangar-ux.mjs --live-only \
               --out=.devshots/swarm-hangar-live 2>&1 | tee .devshots/swarm-hangar-live/journey.log
 
       - name: Upload the Swarm journey verdict and captures

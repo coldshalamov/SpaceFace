@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Public-input regression for title hit targets and ship-first Swarm preparation.
 // Run under the shared game lock:
-//   node scripts/fleet/game-lock.mjs run -- node scripts/check-swarm-hangar-ux.mjs [--live]
+//   node scripts/fleet/game-lock.mjs run -- node scripts/check-swarm-hangar-ux.mjs [--live | --live-only]
 // Bench evidence covers the actual screen modules and launch intent. --live additionally
-// proves a fresh-profile title -> hangar -> opening armory -> combat route. Neither is a
-// performance measurement or a substitute for looking at the captured screens.
+// checks a fresh-profile title -> hangar -> opening armory -> combat route. --live-only runs
+// that source route independently of the bench. Neither is a performance measurement or a
+// substitute for looking at the captured screens.
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -18,10 +19,15 @@ import { collectPageIssues } from './lib/browser-issues.mjs';
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const args = process.argv.slice(2);
 if (args.includes('--help')) {
-  console.log('check-swarm-hangar-ux.mjs [--live] [--viewports=1920x1080,1440x900,960x540,390x844] [--out=.devshots/swarm-hangar-ux]');
+  console.log('check-swarm-hangar-ux.mjs [--live | --live-only] [--viewports=1920x1080,1440x900,960x540,390x844] [--out=.devshots/swarm-hangar-ux]');
+  console.log('--live adds the live source route after the bench; --live-only runs only that route. --viewports configures the bench; the live route uses 1440x900.');
   process.exit(0);
 }
-for (const arg of args) assert.ok(arg === '--live' || arg.startsWith('--viewports=') || arg.startsWith('--out='), `Unknown option: ${arg}`);
+for (const arg of args) assert.ok(arg === '--live' || arg === '--live-only' || arg.startsWith('--viewports=') || arg.startsWith('--out='), `Unknown option: ${arg}`);
+const liveOnly = args.includes('--live-only');
+const runLive = liveOnly || args.includes('--live');
+assert.ok(!(liveOnly && args.includes('--live')), 'Use either --live or --live-only.');
+const LIVE_VIEWPORT = { width: 1440, height: 900 };
 const out = path.resolve(repo, args.find(arg => arg.startsWith('--out='))?.slice(6) || '.devshots/swarm-hangar-ux');
 const allowedOut = path.join(repo, '.devshots') + path.sep;
 assert.ok(out.startsWith(allowedOut), 'Probe output must stay inside the ignored .devshots tree.');
@@ -38,10 +44,13 @@ const S = {
   arena: '.sf-crd-arena-choice[data-arena-id]', difficulty: '.sf-crd-stake[data-stake-id]',
 };
 const report = {
-  pass: false, startedAt: new Date().toISOString(), viewports: sizes, checks: [], screenshots: [], previewCaptures: [],
+  pass: false, startedAt: new Date().toISOString(), viewports: liveOnly ? [LIVE_VIEWPORT] : sizes,
+  bench: { requested: !liveOnly, viewports: liveOnly ? [] : sizes }, checks: [], screenshots: [], previewCaptures: [],
   animationSettlements: [], equipmentGeometry: [],
-  browserErrors: [], requestFailures: [], live: { requested: args.includes('--live'), completed: false },
-  scope: 'Real mouse and keyboard input. DOM, bench log and runtime state are read-only observers. Bench launch is an intent, not proof of combat.',
+  browserErrors: [], requestFailures: [], live: { requested: runLive, completed: false, viewport: LIVE_VIEWPORT },
+  scope: 'Real mouse and keyboard input. DOM, bench log and runtime state are read-only observers. '
+    + (liveOnly ? 'Public source route only; no bench fixtures. Runtime combat evidence is required for completion.'
+      : 'Bench launch is an intent, not proof of combat.'),
 };
 const check = (name, evidence = {}) => { report.checks.push({ name, ...evidence }); console.log(`[hangar-ux] ${name}`); };
 let server, browser, currentPage;
@@ -384,13 +393,19 @@ async function changeRunOptions(page, build, { inputs = false } = {}) {
   // Keep the chosen identity after input: an "unselected" locator resolves to a
   // different control as soon as the intended selection succeeds.
   const otherDifficulty = page.locator(`${S.difficulty}[data-stake-id="${difficultyId}"]`);
-  const difficultyLabel = await otherDifficulty.locator('strong').innerText();
+  // CSS can capitalize a control independently of the summary. Compare its
+  // authored name while preserving the rendered words in the failure evidence.
+  const difficultyLabel = (await otherDifficulty.locator('strong').textContent()).trim();
   assert.ok((await otherDifficulty.getAttribute('aria-label')).length > difficultyLabel.length,
     'Difficulty has a name but no accessible explanation of its effects.');
   await clickAt(page, otherDifficulty);
   assert.equal(await otherDifficulty.getAttribute('aria-pressed'), 'true');
   assert.notEqual(await page.locator('.sf-crd-stake-sub').innerText(), before, 'Difficulty selection left the explanation stale.');
-  assert.ok((await page.locator('.sf-hangar-summary').innerText()).includes(difficultyLabel));
+  const difficultySummary = await page.locator('.sf-hangar-summary').innerText();
+  (report.runOptionSelections ||= []).push({ difficultyId, difficultyLabel,
+    renderedLabel: await otherDifficulty.locator('strong').innerText(), summary: difficultySummary });
+  assert.ok(difficultySummary.includes(difficultyLabel),
+    `Selected difficulty ${JSON.stringify(difficultyLabel)} is absent from summary ${JSON.stringify(difficultySummary)}.`);
   const arenaId = await page.locator(`${S.arena}:not([aria-pressed="true"]):not([aria-disabled="true"]):not([disabled])`).first().getAttribute('data-arena-id');
   const otherArena = page.locator(`${S.arena}[data-arena-id="${arenaId}"]`);
   const arenaName = (await otherArena.locator('.fh-tile-legend').innerText()).replace(/\s+/g, ' ').trim();
@@ -547,7 +562,7 @@ async function buyLiveEquipment(page, initial, rememberedName = null) {
 }
 
 async function liveRoute() {
-  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const context = await browser.newContext({ viewport: LIVE_VIEWPORT });
   const page = currentPage = await context.newPage();
   page.setDefaultTimeout(20000);
   observeErrors(page, 'live');
@@ -722,8 +737,8 @@ try {
   });
   browser = launched.browser;
   report.browser = { executable: process.env.SF_CHROMIUM || launched.executable, version: browser.version(), renderer: 'SwiftShader; no performance claim' };
-  for (const [index, size] of sizes.entries()) await benchViewport(size, index);
-  if (args.includes('--live')) await liveRoute();
+  if (!liveOnly) for (const [index, size] of sizes.entries()) await benchViewport(size, index);
+  if (runLive) await liveRoute();
   assert.deepEqual(report.browserErrors, [], 'Browser exceptions occurred on the tested route.');
   report.pass = true;
 } catch (error) {

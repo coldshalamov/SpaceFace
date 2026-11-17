@@ -80,7 +80,7 @@ ${H} .sf-hangar-stat meter::-moz-meter-bar { background:var(--dp-hand); }
 ${H} .sf-hangar-fit-title { display:flex; align-items:center; gap:10px; justify-content:space-between; margin:16px 0 10px; }
 ${H} .sf-hangar-fit-title h3 { font:600 15px/1.3 var(--dp-face-body,'Instrument Sans'); margin:0; }
 ${H} .sf-hangar-fit-title > span { font-size:12px; color:var(--dp-ink-dim); }
-${H} .sf-hangar-manifest { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; flex:0 0 auto; max-height:190px; overflow:auto; scrollbar-width:thin; }
+${H} .sf-hangar-manifest { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; flex:0 0 auto; max-height:190px; overflow:auto; scrollbar-width:thin; }
 ${H} .sf-hangar-fitting { display:flex; align-items:center; gap:8px; min-width:0; padding:9px; background:var(--dp-field-ink); border:1px solid var(--dp-line-faint); border-radius:3px; }
 ${H} .sf-hangar-fitting svg { width:26px; height:26px; flex:none; color:var(--dp-hand-hot); }
 ${H} .sf-hangar-fitting span { min-width:0; }
@@ -98,7 +98,7 @@ ${H} :is(.sf-crd-arenas,.sf-crd-stakes,.sf-crd-modes) > li { min-width:0; width:
 ${H} .orr-tile { display:flex !important; flex-direction:column !important; width:100% !important; min-height:88px !important;
   padding:12px !important; gap:6px !important; background:var(--sf-face) !important; border:1px solid var(--dp-line) !important;
   border-radius:4px !important; box-shadow:none !important; clip-path:none !important; color:var(--dp-ink) !important;
-  text-align:left; align-items:flex-start !important; overflow:visible !important; }
+  text-align:left; text-transform:none !important; letter-spacing:0 !important; align-items:flex-start !important; overflow:visible !important; }
 ${H} .orr-tile[aria-pressed=true] { border-color:var(--dp-hand) !important; box-shadow:inset 3px 0 var(--dp-hand) !important; }
 ${H} .orr-tile::after { display:none !important; }
 ${H} .orr-tile .fh-tile-art { height:56px !important; width:100% !important; display:flex !important; align-items:center; justify-content:center; }
