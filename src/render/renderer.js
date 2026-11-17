@@ -12469,7 +12469,58 @@ export const render = {
     // content mounted after it ran). Urgent joiners only join an urgent
     // admission — an ambient wait must not demote deadline work into the FIFO.
     const inFlightSubjectAdmissions = new Map();
+    // A strict admission is the point a capture/preview caller treats as "this subject may now
+    // be presented whole". Drawables under it can still carry their own queued admissions —
+    // bloom's unready-drawable lane admits a refused leaf mesh itself — and each such leaf
+    // stays latch-hidden until its own compile/residency/touch chain drains. A presented frame
+    // landing inside that window sees a half-admitted subject (the fleet-look mesh-drop race).
+    // For awaited strict admissions, join those outstanding descendant chains — re-swept until
+    // quiet so leaves queued mid-join are covered — and hold the resolution until the whole
+    // subtree has converged. Bounded: a lane that cannot settle releases the caller anyway.
+    const STRICT_ADMISSION_DESCENDANT_BOUND_MS = 20000;
+    const descendantAdmissionJoins = (root) => {
+      const joins = [];
+      for (const [other, records] of inFlightSubjectAdmissions) {
+        if (other === root || !records || records.size === 0) continue;
+        for (let node = other; node; node = node.parent) {
+          if (node === root) {
+            for (const record of records) joins.push(record && record.admission);
+            break;
+          }
+        }
+      }
+      return joins;
+    };
+    const descendantPendingLatch = (root) => {
+      for (const other of pendingPipelineSubjects) {
+        if (other === root) continue;
+        for (let node = other; node; node = node.parent) {
+          if (node === root) return true;
+        }
+      }
+      return false;
+    };
+    const settleDescendantAdmissions = async (inner, root) => {
+      const result = await inner;
+      const now = () => (globalThis.performance?.now?.() ?? Date.now());
+      const deadline = now() + STRICT_ADMISSION_DESCENDANT_BOUND_MS;
+      for (;;) {
+        if (now() >= deadline) return result;
+        const joins = descendantAdmissionJoins(root);
+        if (joins.length > 0) {
+          await Promise.all(joins.map((pending) => Promise.resolve(pending).catch(() => null)));
+          continue;
+        }
+        // A latch with no admission record (a counted hold from another lane) still hides the
+        // leaf — give it presented-frame beats to clear instead of certifying over it.
+        if (!descendantPendingLatch(root)) return result;
+        await admissionPaceYield();
+      }
+    };
     const admitSubjectPipelines = (subject, admissionOptions = {}) => {
+      const coverStrictAdmission = (inner) => (
+        admissionOptions.strict === true ? settleDescendantAdmissions(inner, subject) : inner
+      );
       const urgent = (admissionOptions && admissionOptions.urgent === true)
         || (state.mode === 'flight'
           && Number.isFinite(state.render && state.render.firstPlayableFrameAt)
@@ -12490,9 +12541,9 @@ export const render = {
           // A deadline-lane joiner joining an ambient outstanding admission would
           // inherit the starved ordinary lanes it exists to escape; it may only
           // join an admission that itself rides the deadline lane.
-          if (!deadlineLane) return existing.values().next().value.admission;
+          if (!deadlineLane) return coverStrictAdmission(existing.values().next().value.admission);
           for (const rec of existing) {
-            if (rec.urgent) return rec.admission;
+            if (rec.urgent) return coverStrictAdmission(rec.admission);
           }
         }
       }
@@ -12729,7 +12780,7 @@ export const render = {
       subjectAdmissions.add(admissionRecord);
       observePipelineAdmission(admission,
         (error) => console.warn('[render] background pipeline admission failed', error));
-      return admission;
+      return coverStrictAdmission(admission);
     };
     // Class methods outside this closure (the mesh-build drain) reach the counted hold
     // through state.render — a direct const reference is out of scope there.
