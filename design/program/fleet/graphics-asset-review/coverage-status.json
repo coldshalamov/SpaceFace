@@ -3,10 +3,10 @@
   "generatedAt": "2026-11-16T09:37:39.925Z",
   "note": "One durable status per model ID. `unused/unresolved` is a disposition for unresolved linkage or identity, not proof of non-use or permission to delete. Review details and evidence remain in the per-model facts and append-only journals. Index refreshes and status updates rewrite this whole file; serialize those commands and do not run concurrent status writers.",
   "statusCounts": {
-    "pending": 112,
+    "pending": 110,
     "in progress": 0,
-    "passed": 174,
-    "needs follow-up": 232,
+    "passed": 195,
+    "needs follow-up": 213,
     "unused/unresolved": 3048
   },
   "models": {
@@ -8086,7 +8086,7 @@
       "updatedAt": "2026-11-16T07:29:39.092Z"
     },
     "runtime:place_ore_bulk_container:place_ore_bulk_container": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -8109,53 +8109,60 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: A plain rectangular container carries two faceted rocks; large container surfaces lack visible detail. Package: 33 primitives, 5 materials; collision helper and Hoist_Center socket. No concrete safe removal established.",
-      "issues": "Ordinary world placement and lighting remain unverified; inspect visible flat surfaces in context and preserve sockets, collision and motion. Named LOD nodes do not prove runtime selection.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/infrastructure-20261116/place_ore_bulk_container_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/infrastructure-20261116/place_ore_bulk_container_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/infrastructure-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_ore_bulk_container_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_ore_bulk_container_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_ore_bulk_container_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.482Z"
+      "updatedAt": "2026-11-17T02:15:41.005Z"
     },
     "runtime:place_ore_sorter:place_ore_sorter": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/everyday_space_kit/source/ore_sorter.glb",
           "sha256": "478a4a066d241f73180a2cb60d59dff6f005b12a14f2919b50188475d9332e17",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/ore-sorter/render.glb",
           "sha256": "c710296b7e2454838ce987caba5c57728f185a8e4a8df9f21a080a140382a20a",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_ore_sorter.glb",
           "sha256": "50c0fab060cc465d117fa3d47322631c10d3a704d3024242d616ec6c9f3369f2",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "CPU Blender LOD0 detail preview from decoded release GLB, textures removed and colors substituted"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No asset changes; supplemental shape view inspected.",
-      "issues": "Hopper and tray read; some thin side supports appear disconnected from this angle. Release GLB SHA-256 50c0fab060cc465d117fa3d47322631c10d3a704d3024242d616ec6c9f3369f2. Runtime package, textured appearance, gameplay-scale view and practical efficiency remain unverified; this is not a pass.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/cpu-preview-20261116/place_ore_sorter.png",
-        "assets/ships/release/parts/places/place_ore_sorter.glb"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_ore_sorter_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_ore_sorter_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_ore_sorter_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T06:41:47.917Z"
+      "updatedAt": "2026-11-17T02:15:41.834Z"
     },
     "runtime:place_parts_rack:place_parts_rack": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -8178,16 +8185,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Rectangular sheets on simple A-frame; large plain untextured faces. Package: 12 primitives, 9 materials, no textures; collision helper. No safe removal established.",
-      "issues": "Ordinary placement, gameplay function and lighting remain unverified; address prominent plain surfaces and possible disconnected hopper while preserving collision, motion and sockets. Counts are not a performance measurement.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/industrial-20261116/place_parts_rack_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/industrial-20261116/place_parts_rack_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/industrial-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_parts_rack_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_parts_rack_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_parts_rack_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.493Z"
+      "updatedAt": "2026-11-17T02:15:42.581Z"
     },
     "runtime:place_passenger_platform:place_passenger_platform": {
       "status": "passed",
@@ -8504,50 +8514,46 @@
       ]
     },
     "runtime:place_salvage_clamp:place_salvage_clamp": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/everyday_space_kit/source/salvage_clamp.glb",
           "sha256": "d5293628a48badbeccdc58aa2bbb4dc42c9453d1e49e691b4e8ecdc432154c10",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/salvage-clamp/render.glb",
           "sha256": "62e383f48bf5caf373d4d5530afd8a04ea24cd14c0349e91fc7d1f3669eeadc3",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_salvage_clamp.glb",
           "sha256": "aa63a8271859ccece851976218372882c24e9e4c68d6597787a4bdf86d73b3d5",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "CPU Blender LOD0 studio view with release KTX2 textures transcoded to PNG",
-        "Isolated Direct3D game-renderer place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No asset changes; supplemental textured release view inspected. Runtime package structure inspected.",
-      "issues": "Two game-renderer views show a recognizable clamp but broad featureless barrel, plates and struts; consider appropriate surface detail and safe consolidation. Tripod and suspended clamp read, with simple surfaces. Release GLB SHA-256 aa63a8271859ccece851976218372882c24e9e4c68d6597787a4bdf86d73b3d5. Blender interpretation differs from game; current runtime package, gameplay-scale view and practical efficiency remain unverified. Current package SHA-256 62e383f48bf5caf373d4d5530afd8a04ea24cd14c0349e91fc7d1f3669eeadc3; static inspection: 18 primitives, 328 triangles, 5 materials, no embedded textures/animation. These counts do not establish simultaneous draws or performance; preserve external motion and semantic boundaries. Game-renderer batch aborted at first scaffold shot after a 120-second render timeout; no shots completed. Diagnose the failed capture before retrying; actual game views remain open. These views are isolated and do not establish ordinary gameplay acceptance.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/cpu-preview-20261116/place_salvage_clamp-textured.png",
-        "assets/ships/release/parts/places/place_salvage_clamp.glb",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/game-batch-20261116/dispatch.json",
-        "assets/ships/release/render-packages/salvage-clamp/render.glb",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/game-batch-20261116/report.partial-23136-2026-11-16T07-06-40-751Z.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/game-d3d11-batch-20261116/dispatch.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/game-d3d11-batch-20261116/place_salvage_clamp_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/game-d3d11-batch-20261116/place_salvage_clamp_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/game-d3d11-batch-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_salvage_clamp_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_salvage_clamp_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_salvage_clamp_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T07:20:35.422Z",
+      "updatedAt": "2026-11-17T02:15:42.997Z",
       "relatedModels": []
     },
     "runtime:place_scrap_cage:place_scrap_cage": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -8570,16 +8576,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Open rack with scrap pile and prominent illuminated rails; content reads as scrap. Package: 31 stored primitives across LODs, 10 materials; preserve collision, Gate socket and NAV hook. No concrete safe removal established.",
-      "issues": "Ordinary world placement, operation and lighting remain unverified. Preserve collision, sockets, named LOD and dynamic parts; check prominent simple or apparently detached elements in context.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/service-20261116/place_scrap_cage_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/service-20261116/place_scrap_cage_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/service-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_scrap_cage_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_scrap_cage_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_scrap_cage_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.542Z"
+      "updatedAt": "2026-11-17T02:15:43.256Z"
     },
     "runtime:place_sedna_ringworld_arc:place_sedna_ringworld_arc": {
       "status": "needs follow-up",
@@ -8701,7 +8710,7 @@
       "updatedAt": "2026-11-17T01:01:21.995Z"
     },
     "runtime:place_slurry_tank:place_slurry_tank": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -8724,16 +8733,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Three banded cylinders and support frame read as industrial tanks; lamps remain functional. Package: 28 primitives across stored LODs, 9 materials; preserve Pipe_Out socket and NAV hooks. No concrete safe removal established.",
-      "issues": "Ordinary world placement and lighting remain unverified; inspect visible flat surfaces in context and preserve sockets, collision and motion. Named LOD nodes do not prove runtime selection.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/infrastructure-20261116/place_slurry_tank_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/infrastructure-20261116/place_slurry_tank_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/infrastructure-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_slurry_tank_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_slurry_tank_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_slurry_tank_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.586Z"
+      "updatedAt": "2026-11-17T02:15:43.545Z"
     },
     "runtime:place_solar_array:place_solar_array": {
       "status": "needs follow-up",
@@ -8770,46 +8782,42 @@
       "updatedAt": "2026-11-16T06:48:09.763Z"
     },
     "runtime:place_tanker_coupling:place_tanker_coupling": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/everyday_space_kit/source/tanker_coupling.glb",
           "sha256": "4a757f274d98748389aee75b2e9b27a3e4345a338674a17f1c239c41d31bc321",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/tanker-coupling/render.glb",
           "sha256": "f34ba3650ce981653bacd99d2b1bf5bfa9d887cf73548a7a80cdb9eac9cf5ff1",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_tanker_coupling.glb",
           "sha256": "5a0797a2c8fdc08e0e5849c6de51cc826acb151c53173f0c63683a0e6a1f30fd",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "CPU Blender LOD0 studio view with release KTX2 textures transcoded to PNG",
-        "Isolated Direct3D game-renderer place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No asset changes; supplemental textured release view inspected. Runtime package structure inspected.",
-      "issues": "Two game-renderer views show broad plain plates and an apparently floating piece near the arm; inspect the separate base in its intended context and assess safe consolidation. Connectors and arm read; a pale piece appears detached near the arm. Release GLB SHA-256 5a0797a2c8fdc08e0e5849c6de51cc826acb151c53173f0c63683a0e6a1f30fd. Blender interpretation differs from game; current runtime package, gameplay-scale view and practical efficiency remain unverified. Current package SHA-256 f34ba3650ce981653bacd99d2b1bf5bfa9d887cf73548a7a80cdb9eac9cf5ff1; static inspection: 22 primitives, 712 triangles, 9 materials, no embedded textures/animation. These counts do not establish simultaneous draws or performance; preserve external motion and semantic boundaries. Game-renderer batch aborted at first scaffold shot after a 120-second render timeout; no shots completed. Diagnose the failed capture before retrying; actual game views remain open. These views are isolated and do not establish ordinary gameplay acceptance.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/cpu-preview-20261116/place_tanker_coupling-textured.png",
-        "assets/ships/release/parts/places/place_tanker_coupling.glb",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/game-batch-20261116/dispatch.json",
-        "assets/ships/release/render-packages/tanker-coupling/render.glb",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/game-batch-20261116/report.partial-23136-2026-11-16T07-06-40-751Z.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/game-d3d11-batch-20261116/dispatch.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/game-d3d11-batch-20261116/place_tanker_coupling_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/game-d3d11-batch-20261116/place_tanker_coupling_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/game-d3d11-batch-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_tanker_coupling_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_tanker_coupling_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/place_tanker_coupling_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-cargo-yard-20261116/cargo-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T07:20:35.693Z",
+      "updatedAt": "2026-11-17T02:15:43.855Z",
       "relatedModels": []
     },
     "runtime:place_traffic_signal:place_traffic_signal": {
@@ -10166,75 +10174,81 @@
       "updatedAt": "2026-11-16T23:15:43.796Z"
     },
     "runtime:SF_DRIFTER_ARCHIVE_CENSOR:drifter_archive_censor": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/drifter_archive_censor.glb",
           "sha256": "10efbd7beef5227649fafdbd403eb62e632fb34e68b78d928b6ee26d6017292f",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/drifter-archive-censor/render.glb",
           "sha256": "c34764e0820cdca6ddd523c21da1c8316acbdf534c0f33b2bb1a7680f6a1ba28",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/drifter_archive_censor.glb",
           "sha256": "0ae75752ee3771ca547fb6bc20d13980d61067d1295945b99397690fa5df760c",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Purple accents and a dark elongated hull read as the Archive variant; surface detail is subtle at chase scale. Package inspection: 85 stored primitives, 17 materials, named LOD0–2; preserve hull motion and 12 sockets.",
-      "issues": "Ordinary gameplay appearance and lighting remain unverified. Pre-edit scoped compiler check reported stale package metadata; no repack was performed.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/faction-ships-20261116/drifter_archive_censor_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/faction-ships-20261116/drifter_archive_censor_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/faction-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/drifter_archive_censor_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/drifter_archive_censor_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/drifter_archive_censor_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T08:29:12.926Z",
+      "updatedAt": "2026-11-17T02:30:52.385Z",
       "family": "Drifter variants"
     },
     "runtime:SF_DRIFTER_HELIX_COURIER:drifter_helix_courier": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/drifter_helix_courier.glb",
           "sha256": "e7f0b75c503f42ceed55126ad30c827754ffd52e60ae78c341f27c8d1523e49a",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/drifter-helix-courier/render.glb",
           "sha256": "60fd1fd989cad64f700ce6d4240256cc9cdcbbda0a2c37376e508a733612d6f6",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/drifter_helix_courier.glb",
           "sha256": "15811bf9c11e39977372007bcad203eaed8a585a60ffac3d43b2d4378bf181f8",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Cool white accents distinguish courier; same silhouette and dark body details as Archive variant. Package inspection: 85 stored primitives, 17 materials, named LOD0–2; preserve hull motion and 12 sockets.",
-      "issues": "Ordinary gameplay appearance and lighting remain unverified. Pre-edit scoped compiler check reported stale package metadata; no repack was performed.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/faction-ships-20261116/drifter_helix_courier_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/faction-ships-20261116/drifter_helix_courier_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/faction-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/drifter_helix_courier_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/drifter_helix_courier_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/drifter_helix_courier_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T08:29:13.036Z",
+      "updatedAt": "2026-11-17T02:30:53.641Z",
       "family": "Drifter variants"
     },
     "runtime:SF_DRIFTER_PRODUCTION_V1:drifter_production_v1": {
@@ -11031,42 +11045,45 @@
       "updatedAt": "2026-11-16T23:15:47.826Z"
     },
     "runtime:SF_HORNET_SCN_CUSTOMS_CUTTER:hornet_scn_customs_cutter": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/hornet_scn_customs_cutter.glb",
           "sha256": "8c4d100881b7a016a6472db2e3819cb4e6a0ed8c680729cbb869ad8835357133",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/hornet-scn-customs-cutter/render.glb",
           "sha256": "a6a9d41fa5e91cd9d7a45a0b00e0e67e89412699062b86827387d804dc6e8fd4",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/hornet_scn_customs_cutter.glb",
           "sha256": "d35dd4f58e9bd528a736bd758a20bc2b53e686a7001e0d3eef739173ce8a5d56",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: White-and-blue triangular craft reads clearly; long edge lights dominate its outline. Package inspection: 63 stored primitives, 11 materials, named LOD0–2; preserve canard/flap/tippod pivots and 13 sockets.",
-      "issues": "Ordinary gameplay appearance and lighting remain unverified. Pre-edit scoped compiler check reported stale package metadata; no repack was performed.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/faction-ships-20261116/hornet_scn_customs_cutter_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/faction-ships-20261116/hornet_scn_customs_cutter_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/faction-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/hornet_scn_customs_cutter_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/hornet_scn_customs_cutter_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/hornet_scn_customs_cutter_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T08:29:13.194Z"
+      "updatedAt": "2026-11-17T02:30:54.490Z"
     },
     "runtime:SF_HORNET_SCN_INTERDICTOR:hornet_scn_interdictor": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -11089,16 +11106,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: White-blue triangular hull reads sharply; bright edge strips dominate chase view. Package inspection: 62 stored primitives, 11 materials, 13 sockets, 21 dynamic groups, named LOD0/1/2; preserve hornet motion rig. All materials are referenced; no safe geometry removal established.",
-      "issues": "Ordinary gameplay appearance remains open; named LODs alone do not verify runtime selection. Preserve faction identity, dynamic parts, LODs and sockets; evaluate bright strips in context.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-variants-20261116/hornet_scn_interdictor_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-variants-20261116/hornet_scn_interdictor_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-variants-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/hornet_scn_interdictor_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/hornet_scn_interdictor_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/hornet_scn_interdictor_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.927Z"
+      "updatedAt": "2026-11-17T02:30:56.247Z"
     },
     "runtime:SF_HULL_CAPITAL:hull_capital": {
       "status": "passed",
@@ -11479,7 +11499,7 @@
       "updatedAt": "2026-11-16T22:36:06.564Z"
     },
     "runtime:SF_IRONBACK_PITBORN_JUNK:ironback_pitborn_junk": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -11502,16 +11522,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Rugged orange-brown armored hull and forked nose read; strips and lamps are strong. Package inspection: 68 stored primitives, 14 materials, 12 sockets, 24 dynamic groups, named LOD0/1/2; repeated geometry crosses semantic boundaries. All materials are referenced; no safe geometry removal established.",
-      "issues": "Ordinary gameplay appearance remains open; named LODs alone do not verify runtime selection. Preserve faction identity, dynamic parts, LODs and sockets; evaluate bright strips in context.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-variants-20261116/ironback_pitborn_junk_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-variants-20261116/ironback_pitborn_junk_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-variants-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/ironback_pitborn_junk_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/ironback_pitborn_junk_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/ironback_pitborn_junk_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:31.338Z"
+      "updatedAt": "2026-11-17T02:30:57.349Z"
     },
     "runtime:SF_IRONBACK_PRODUCTION_V1:ironback_production_v1": {
       "status": "passed",
@@ -11660,7 +11683,7 @@
       "updatedAt": "2026-11-16T23:15:52.113Z"
     },
     "runtime:SF_KESTREL_UNDERSTORY_GROWTH:kestrel_understory_growth": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -11683,16 +11706,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Dark olive hull and green accents read at scale, but visible growth character is subdued; inspect in ordinary light and story context. Package inspection: 115 stored primitives, 19 materials, nine sockets, 33 dynamic groups, named LOD0/1/2; preserve kestrel dish rig. All materials are referenced; no safe geometry removal established.",
-      "issues": "Ordinary gameplay appearance remains open; named LODs alone do not verify runtime selection. Preserve faction identity, dynamic parts, LODs and sockets; evaluate bright strips in context.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-variants-20261116/kestrel_understory_growth_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-variants-20261116/kestrel_understory_growth_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-variants-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/kestrel_understory_growth_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/kestrel_understory_growth_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/kestrel_understory_growth_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:31.580Z"
+      "updatedAt": "2026-11-17T02:30:58.507Z"
     },
     "runtime:SF_LANDMARK_PLACE_LANDMARK_WRECK_CATHEDRAL:place_landmark_wreck_cathedral": {
       "status": "pending",
@@ -11797,7 +11823,7 @@
       "updatedAt": "2026-11-16T23:15:54.084Z"
     },
     "runtime:SF_MULE_FULFILLMENT_HAULER:mule_fulfillment_hauler": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -11820,16 +11846,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Neutral cargo blocks and white center lights read as a working hauler. Package inspection: 65 stored primitives, 14 materials, 12 sockets, 30 dynamic groups, named LOD0/1/2; six images already shared. All materials are referenced; no safe geometry removal established.",
-      "issues": "Ordinary gameplay appearance remains open; named LODs alone do not verify runtime selection. Preserve faction identity, dynamic parts, LODs and sockets; evaluate bright strips in context.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-variants-20261116/mule_fulfillment_hauler_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-variants-20261116/mule_fulfillment_hauler_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-variants-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/mule_fulfillment_hauler_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/mule_fulfillment_hauler_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/mule_fulfillment_hauler_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-faction-variants-20261116/faction-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:31.990Z"
+      "updatedAt": "2026-11-17T02:31:00.174Z"
     },
     "runtime:SF_MULE_PITBORN_JUNK:mule_pitborn_junk": {
       "status": "needs follow-up",
@@ -16143,7 +16172,7 @@
       "updatedAt": "2026-11-16T23:52:14.050Z"
     },
     "runtime:SF_SHIP_ILEX_ARK:ilex_ark": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -16202,19 +16231,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Six green pods around long spine distinguish the ark; supports look narrow and require motion/context check. Package: 37 primitives, 6 materials; nine sockets, 30 dynamic groups, six vault pivots, seven collision nodes. LOD0 named; no safe geometry removal established.",
-      "issues": "Ordinary gameplay, story motion and appearance remain unverified. Preserve named dynamic pivots, sockets and collision; texture sharing remains an unqualified storage candidate.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/ilex_ark_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/ilex_ark_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/ilex_ark_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/ilex_ark_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/ilex_ark_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.016Z"
+      "updatedAt": "2026-11-17T02:31:01.230Z"
     },
     "runtime:SF_SHIP_KILNBACK:kilnback": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -16273,19 +16305,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Compact vessel with glowing grille and paired casks; brown finish supports industrial character. Package: 44 primitives, 14 materials; eight sockets, 36 dynamic groups, paired cask and six slat pivots, three collision nodes. LOD0 named; no safe geometry removal established.",
-      "issues": "Ordinary gameplay, story motion and appearance remain unverified. Preserve named dynamic pivots, sockets and collision; texture sharing remains an unqualified storage candidate.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/kilnback_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/kilnback_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/kilnback_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/kilnback_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/kilnback_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.044Z"
+      "updatedAt": "2026-11-17T02:32:43.460Z"
     },
     "runtime:SF_SHIP_LAST_ARGUMENT:last_argument": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -16307,14 +16342,23 @@
           "sha256Source": "release-manifest"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.661Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Capture limitation, not a model defect.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/last_argument_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/last_argument_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/last_argument_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:32:43.763Z"
     },
     "runtime:SF_SHIP_MOTHLIGHT_TENDER:mothlight": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -16373,19 +16417,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Dark triangular hull with two large amber discs is distinctive but discs have broad plain faces. Package: 35 primitives, 9 materials; nine sockets, 38 dynamic groups, hatch/iris/stock pivots, one collision node. LOD0 named; no safe geometry removal established.",
-      "issues": "Ordinary gameplay, story motion and appearance remain unverified. Preserve named dynamic pivots, sockets and collision; texture sharing remains an unqualified storage candidate.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/mothlight_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/mothlight_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/mothlight_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/mothlight_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/mothlight_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.065Z"
+      "updatedAt": "2026-11-17T02:32:44.211Z"
     },
     "runtime:SF_SHIP_PALLET_JACK:pallet_jack": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -16444,19 +16491,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Forks and compact cab clearly evoke handling equipment. Package: 27 primitives, 8 materials; nine sockets, five dynamic groups, clamp pivot, three collision nodes. LOD0 named; no safe geometry removal established.",
-      "issues": "Ordinary gameplay, story motion and appearance remain unverified. Preserve named dynamic pivots, sockets and collision; texture sharing remains an unqualified storage candidate.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/pallet_jack_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/pallet_jack_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/pallet_jack_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/pallet_jack_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/pallet_jack_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.080Z"
+      "updatedAt": "2026-11-17T02:32:44.544Z"
     },
     "runtime:SF_SHIP_RED_KITE:red_kite": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -16515,84 +16565,96 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Red swept wing silhouette is clear; broad wing faces remain relatively plain. Package: 19 primitives, 7 materials; six sockets, six dynamic groups, clamps and flap, nine collision nodes. LOD0 named; no safe geometry removal established.",
-      "issues": "Ordinary gameplay, story motion and appearance remain unverified. Preserve named dynamic pivots, sockets and collision; texture sharing remains an unqualified storage candidate.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/red_kite_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/red_kite_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/red_kite_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/red_kite_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/red_kite_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.106Z"
+      "updatedAt": "2026-11-17T02:32:44.904Z"
     },
     "runtime:SF_SHIP_SABLE_PATCHWORK:sable_patchwork": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/sable_patchwork_lod1.glb",
           "sha256": "266db71d6da5b79c2ea1120d02987974fc2980460bd4ec07c30bc0b07532fb5e",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/sable_patchwork_lod2.glb",
           "sha256": "7598462d3c2a420afb75a4e00ad8fc33f15ed015800ced3c8477f9db4b409d98",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/sable_patchwork.glb",
           "sha256": "65901daa1d913606283b04d4867134583e5e39724a3e4164ed8eedbc317ded1e",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/sable-patchwork-lod1/render.glb",
           "sha256": "bc8e1844e0affeb6d7d1585ec76893ec54a68eb628d2cef2e39a9b7e3e5e2ca6",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/sable-patchwork-lod2/render.glb",
           "sha256": "bb6fe1ccbab03332b2b5cc670c85b039a8f96cb259c201e4432ce4c1aef8cb44",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/sable-patchwork/render.glb",
           "sha256": "957befa3b4a59e8be3e1c170915e942744f6eb8c4ee9a0484dad15b320be38fa",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/sable_patchwork_lod1.glb",
           "sha256": "9f0964d6a7d3d2c49c093ad1226ce98b1c2152b0d6967b52d7a757529dbe6818",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/sable_patchwork_lod2.glb",
           "sha256": "aaf2fcd7ec6d0589e2f1d6cdbaf101a838d3c46d47c489d6f09ff5b3cfb7b0c7",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/sable_patchwork.glb",
           "sha256": "eee1214b4b9ebf65db677a2e6623e69ecb4a05843df46d8a70e79923fef5d78e",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.662Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/sable_patchwork_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/sable_patchwork_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/sable_patchwork_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:32:45.333Z"
     },
     "runtime:SF_SHIP_SCISSORWAKE:scissorwake": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -16651,16 +16713,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Long paired blades and small cabin read clearly; illuminated blade edges are prominent. Package: 20 primitives, 11 materials; seven sockets, 14 dynamic groups, paired blades and spool, one collision node. LOD0 named; no safe geometry removal established.",
-      "issues": "Ordinary gameplay, story motion and appearance remain unverified. Preserve named dynamic pivots, sockets and collision; texture sharing remains an unqualified storage candidate.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/scissorwake_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/scissorwake_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/scissorwake_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/scissorwake_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/scissorwake_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.122Z"
+      "updatedAt": "2026-11-17T02:32:45.732Z"
     },
     "runtime:SF_SHIP_TOWLINE_KIT:towline_kit": {
       "status": "needs follow-up",
