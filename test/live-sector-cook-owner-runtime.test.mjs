@@ -1094,6 +1094,8 @@ function preflightFixture() {
     // Full-sector cook is now the survival path; ordinary Adventure is tested below through
     // the required-picture owner rather than this broad-cook cancellation fixture.
     releaseOpeningGraphPublication() {}, survivalRunHoldsArena: () => true,
+    // LOAD-02: the lift flag is opt-in; fixtures keep the pre-flag broad-cook path.
+    swarmFirstPictureLiftEnabled: () => false,
     shouldAwaitOpeningGpuCook: () => true,
     resumeAuthoredUpgradeQueueAfterOpening() {},
     pipelineAdmissions: { resumeAutoFlush() {}, pendingCount: 0 },
@@ -1766,3 +1768,166 @@ for (const timing of ['early-sibling', 'late-sibling', 'superseded']) {
     assert.equal(f.state.render.openingCompositionSettle, undefined);
   });
 }
+
+// ===== LOAD-02 — swarm first-picture lift gate =====
+
+function swarmFixture(flagEnabled) {
+  const f = preflightFixture();
+  const player = { id: 1, type: 'ship', isPlayer: true, alive: true, pos: { x: 0, z: 0 }, data: {} };
+  const wasp = { id: 2, type: 'ship', alive: true, pos: { x: 30, z: 10 }, data: { archetypeId: 'wasp' } };
+  const pad = { id: 3, type: 'pickup', alive: true, pos: { x: 5, z: 5 }, data: {} };
+  const debris = { id: 4, type: 'asteroid', alive: true, pos: { x: 20, z: 0 },
+    data: { swarmArenaDebris: true, typeId: 'ast_common_rock', tint: null, poolKeys: ['k1'] } };
+  const farStation = { id: 5, type: 'station', alive: true, pos: { x: 90000, z: 0 }, data: {} };
+  f.state.playerId = player.id;
+  f.state.entityList = [player, wasp, pad, debris, farStation];
+  f.state.entities = new Map(f.state.entityList.map(e => [e.id, e]));
+  f.state.world.asteroidField = { rocks: [] };
+  for (const e of f.state.entityList) {
+    f.owner._meshes.set(e.id, { userData: { entity: e }, name: `mesh${e.id}` });
+  }
+  f.owner._asteroidInstancePool = {
+    variants: [null, null, { mesh: { name: 'chunk_v2' } }, null, null],
+    keyed: new Map(), disposed: false,
+  };
+  f.owner._shadowDepthEnabled = () => true;
+  f.owner._shadowDepthLight = () => null;
+  f.owner._depthCollectLightSig = () => null;
+  f.owner._livingHullPresentation = {
+    root: { name: 'living-hull' },
+    beginGpuWarmup: () => { f.marks.push('lh-warm'); return () => f.marks.push('lh-restore'); },
+  };
+  f.owner._openingAdmissionPendingCount = () => 0;
+  f.owner._parkBoundedWarmRoots = () => ({ roots: 0, nodes: 0 });
+  const admitted = [];
+  const tailCalls = [];
+  Object.assign(f.values, {
+    // The deferred-tail wait loop spins on this seam: a microtask yield starves
+    // the test's own nextTurn so openingFirstPictureReady could never flip.
+    yieldToBrowser: () => new Promise(r => setImmediate(r)),
+    resolveWorldPresentationEntity: (state, id) => state.entities.get(id),
+    swarmFirstPictureLiftEnabled: () => flagEnabled,
+    isEntityRenderRelevant: (e) => e.alive !== false,
+    makeHoldExemptScanContext: () => ({ player: { pos: { x: 0, z: 0 } }, glass: { halfX: 100, halfZ: 60 } }),
+    entityIsOnReadableGlassScan: (entity) => entity.pos && Math.abs(entity.pos.x) < 1000,
+    laneCommandSink: () => false,
+    firstFlightRockCookRadiusWu: () => 400,
+    queryAsteroidFieldNearestSteps: function* () {},
+    FIRST_FLIGHT_ROCK_COOK_CAP: 25,
+    asteroidFirstFlightCookKey: () => 'ast_common_rock||2',
+    asteroidPoolCensusKeys: (e) => (e.data && e.data.poolKeys) || [],
+    asteroidLeafResources: (t, v) => ({ variant: v, geometry: { uuid: 'g' + v }, material: { uuid: 'm' + v } }),
+    asteroidPoolWarmResources: () => [],
+    warmAsteroidInstanceVariants: (pool, resources) => { f.marks.push(`pool-warm-v${resources.length}`); },
+    warmAsteroidInstanceKeys: () => {},
+    requestAuthoredUpgrade: async () => {},
+    admitSubjectPipelines: async (root) => { admitted.push(root && root.name || String(root)); return { ok: true }; },
+    prepareMobileOpeningFirstPicture: async () => {
+      f.marks.push('exact-picture');
+      return { plan: { drawLeaves: [1] }, submission: { materials: 3 }, resources: {} };
+    },
+    driveCompileShadowDepthPipelines: async (opts) => {
+      f.marks.push('depth:' + (opts.subjects || []).map(s => s.name || '?').join('+'));
+      return { subjects: opts.subjects.length };
+    },
+    captureObjectHome: () => {}, restoreObjectHome: () => {},
+    THREE, survivalDefersArenaDressingJob: () => false,
+    stormWarn: () => {}, laneWarn: () => {}, noteLaneFault: () => {},
+    runCookSyncTwin: (name, fn, fallback) => { try { return fn(); } catch { return fallback; } },
+    closeCookStepsIter: () => {},
+    collectInstancePoolCompileRootsAndSubjectsSteps: function* () { return { roots: [], subjects: [] }; },
+    collectCompileSubjectsPaced: async () => [],
+    uniqueAdmissionUnits: () => ({ programSubjects: [], geometrySubjects: [] }),
+    admitOpeningUnitsAcrossSlices: async () => ({ ok: true }),
+    materialHasCompiledProgram: () => true,
+    openingCompileIssueKey: () => null,
+    beginScenePipelineReadinessBatch: () => ({ close() {} }),
+    stampSubjectEnvAsync: async () => {},
+    revealSubjectForCompile: () => () => {},
+    revealSubjectWithAncestors: () => () => {},
+    touchExactTargetSubject: async () => ({}),
+    touchExactTargetSubjects: async () => ({}),
+    mintTouchDrawableSession: async () => null,
+    armAdmissionShadows: () => () => {},
+    flushPipelinesBehindShell: () => {},
+    collectOpeningResidencySubjects: () => [],
+    isBoundedWarmRoot: () => false,
+    residencyPolicy: () => ({ geometryBatchDrawables: [], textureBatch: {} }),
+    recordAuthoredAdmissionBlockingSlice: () => {},
+    collectFirstFlightCookEntities: () => [player, wasp],
+  });
+  f.state.render.prepareLiveSectorBeforeFlight = async (opts) => {
+    tailCalls.push(opts);
+    return { skipped: false };
+  };
+  f.state.render.cookLiveSceneGpu = async () => {
+    f.marks.push('gpu-cook');
+    f.state.render.idsAtCook = f.state.render.liveSectorFirstFlightIds
+      ? [...f.state.render.liveSectorFirstFlightIds] : null;
+    return { ok: true };
+  };
+  f.state.render.preparePostOpeningPipelines = async () => { f.marks.push('post-opening'); };
+  return { ...f, admitted, tailCalls, player, wasp, pad, debris, farStation };
+}
+
+test('LOAD-02 flag-on: survival preflight seals the exact in-view picture and returns early', async () => {
+  const f = swarmFixture(true);
+  f.state.render.openingFirstPictureReady = true;
+  f.opening.resolve({ settled: true });
+  const result = await flush(f.preflight(), f.frames);
+  assert.equal(result.swarmFirstPicture, true);
+  assert.equal(result.exactFirstPicture, true);
+  assert.equal(f.marks.includes('gpu-cook'), false, 'the broad sector cook must not run inside the barrier');
+  assert.equal(f.marks.includes('exact-picture'), true, 'the exact first-picture seal must run');
+  // In-view roots admitted: player, wasp, pad, debris — plus the in-view pool chunk.
+  // The far Helios-class station stays on the deferred tail, never in the barrier.
+  assert.ok(f.admitted.includes('mesh1'), 'player hull admitted');
+  assert.ok(f.admitted.includes('mesh2'), 'round-1 wasp admitted');
+  assert.ok(f.admitted.includes('mesh3'), 'floor pad admitted');
+  assert.ok(f.admitted.includes('mesh4'), 'arena debris admitted');
+  assert.ok(f.admitted.includes('chunk_v2'), 'in-view rock pool chunk admitted');
+  assert.equal(f.admitted.includes('mesh5'), false, 'off-glass station must not enter the barrier');
+  assert.ok(f.marks.some(m => m.startsWith('depth:')), 'shadow-depth sweep ran for the picture subjects');
+  assert.ok(f.marks.includes('lh-warm'), 'living-hull depth variant warmed');
+  // The deferred tail leg was kicked with its marker option.
+  assert.equal(f.tailCalls.length, 1);
+  assert.equal(f.tailCalls[0].deferredAfterFirstPicture, true);
+  assert.equal(f.state.render.openingVfxFrozen, true, 'survival finally arms the VFX hold');
+});
+
+test('LOAD-02 flag-off: survival preflight runs the unchanged broad cook', async () => {
+  const f = swarmFixture(false);
+  f.values.prepareMobileOpeningFirstPicture = () => { throw new Error('flag-off must not seal'); };
+  f.opening.resolve({ settled: true });
+  const result = await flush(f.preflight(), f.frames);
+  assert.equal(f.marks.includes('gpu-cook'), true, 'the broad cook still runs with the flag off');
+  assert.ok(f.state.render.idsAtCook && f.state.render.idsAtCook.includes(5),
+    'the widened set still covers the whole arena incl. off-glass content');
+  assert.equal(f.tailCalls.length, 0, 'no deferred tail is kicked without the flag');
+  assert.equal(result.swarmFirstPicture, undefined);
+  assert.equal(f.state.render.sessionLiveSectorCookedId, 'ceres');
+});
+
+test('LOAD-02 deferred leg waits for the picture commit, then runs the full cook', async () => {
+  const f = swarmFixture(true);
+  f.state.render.openingFirstPictureReady = false;
+  f.opening.resolve({ settled: true });
+  let done = false;
+  const run = f.preflight({ deferredAfterFirstPicture: true }).then(r => { done = true; return r; });
+  await nextTurn();
+  assert.equal(done, false, 'the tail leg must hold until the outer gate commits the picture');
+  f.state.render.openingFirstPictureReady = true;
+  const result = await flush(run, f.frames);
+  assert.equal(result.skipped, false);
+  assert.equal(f.marks.includes('gpu-cook'), true, 'the released tail leg runs the ordinary full cook');
+  assert.equal(f.tailCalls.length, 0, 'the tail leg must not re-arm the barrier (no self-recursion)');
+});
+
+test('LOAD-02 deferred leg in flight mode proceeds without waiting', async () => {
+  const f = swarmFixture(true);
+  f.state.mode = 'flight';
+  f.opening.resolve({ settled: true });
+  const result = await flush(f.preflight({ deferredAfterFirstPicture: true }), f.frames);
+  assert.equal(result.skipped, false);
+  assert.equal(f.marks.includes('gpu-cook'), true);
+});

@@ -78,6 +78,7 @@ import {
   scanEnvPlayer,
   sectorPrewarmPopulationNeedsSynchronousRefresh,
   survivalRunHoldsArena,
+  swarmFirstPictureLiftEnabled,
   _landmarkKeepOptsFor,
   _landmarkKeepOptsForScan,
   entityHasOwnSectorPrewarmPlan,
@@ -13882,11 +13883,29 @@ export const render = {
       // parkOnly: the caller does not hold the loading shell for this cook (software GL's
       // fire-and-forget opening), so starting the whole-sector cook here would run it on into
       // presented flight. Do only what must not leak into flight: park the bounded warm roots.
-      if (state.mode !== 'loading' || (legOptions && legOptions.parkOnly === true)) {
+      // deferredAfterFirstPicture legs are the tail behind a swarm first-picture lift — they
+      // legitimately run past 'loading' into flight, so the mode gate must not refuse them.
+      if ((state.mode !== 'loading' && legOptions.deferredAfterFirstPicture !== true)
+          || (legOptions && legOptions.parkOnly === true)) {
         // A late invocation must still leave no bounded warm root mounted into flight —
         // the early return below is what used to strand SF_OpeningSpeciesWarm on scene.
         this._settleAndParkUnclaimedOpeningWarm();
         return { skipped: true, reason: state.mode !== 'loading' ? 'not-loading' : 'park-only' };
+      }
+      if (legOptions.deferredAfterFirstPicture === true) {
+        // This leg is the deferred cook tail behind a swarm first-picture lift: the barrier
+        // already returned its exact picture, and mounting arena roots before the outer gate
+        // commits that capture would leak half-built candidates into the plan. Wait for the
+        // commit (or for mode to leave loading on failure paths), then run the ordinary full
+        // cook. Staleness is the cook's own identity check — no outer gate owns this leg.
+        while (state.mode === 'loading' && state.render
+            && state.render.openingFirstPictureReady !== true) {
+          if (recookStale()) return { skipped: true, reason: 'sector-superseded' };
+          await yieldToBrowser();
+        }
+        if (recookStale() || (state.mode !== 'loading' && state.mode !== 'flight')) {
+          return { skipped: true, reason: 'sector-superseded' };
+        }
       }
       const recookSectorId = state.world && state.world.currentSectorId;
       // Same-sector evidence must stay valid across the whole keep-GPU path: a
@@ -14717,9 +14736,29 @@ export const render = {
         // Enqueue these builds BEFORE the widened entity set: the queue drains FIFO, and a
         // promoted rock left unbuilt never registers its leaf — the variant chunk then springs
         // into existence mid-round, cold, exactly what this exists to prevent.
+        // LOAD-02: with the first-picture lift armed the in-view keys are already promoted by
+        // the radius pass above — the whole-field ~2000-record coverage scan belongs to the
+        // deferred tail leg, not the veil-blocking barrier.
+        const swarmLift = swarmFirstPictureLiftEnabled(state);
+        // LOAD-02: which entities may sit on the arena's first frame — the same
+        // glass/runway band verdict survivalDefersArenaDressingJob enqueues by.
+        // Player and the authored arena debris are always in view; other field
+        // rocks keep the instanced-pool contract (radius promote covers keys);
+        // everything else must be provably on the glass, not staging-sector
+        // dressing outside it (Helios stations/wrecks/places).
+        const firstPictureScan = swarmLift ? makeHoldExemptScanContext(state) : null;
+        const swarmFirstPictureIncludesEntity = (entity) => {
+          if (entity.isPlayer === true || entity.id === state.playerId) return true;
+          if (entity.type === 'asteroid') {
+            return entity.data?.swarmArenaDebris === true;
+          }
+          if (!entity.pos) return true;
+          if (!firstPictureScan || !firstPictureScan.player) return true;
+          return entityIsOnReadableGlassScan(entity, state, firstPictureScan);
+        };
         let survivalSliceStart = openingProviderNow();
         let survivalSliceArmed = state.mode === 'flight';
-        if (player && player.pos && !laneCommandSink()) {
+        if (player && player.pos && !laneCommandSink() && !swarmLift) {
           const coveredKeys = new Set();
           let coveredSinceYield = 0;
           for (const entity of state.entityList || []) {
@@ -14839,6 +14878,7 @@ export const render = {
         for (const entity of state.entityList || []) {
           if (!entity || entity.id == null || cookSeen.has(entity.id)) continue;
           if (!isEntityRenderRelevant(entity, state)) continue;
+          if (swarmLift && !swarmFirstPictureIncludesEntity(entity)) continue;
           cookSeen.add(entity.id);
           firstFlightEntities.push(entity);
           if (openingProviderNow() - survivalSliceStart >= 8
@@ -15089,6 +15129,220 @@ export const render = {
         })),
       });
       if (cookStale()) return cookSuperseded;
+      // LOAD-02 — with the lift armed, the veil-blocking barrier ends here: admit only
+      // what the arena's first frame can show (player hull incl. living-hull depth,
+      // the round-1 on-glass roster, the room's pads/debris, the promoted in-view
+      // rock keys), seal the exact picture Adventure-style, and return. The whole
+      // remaining arena cook continues as a deferred tail leg once the outer gate
+      // commits the picture — hidden stragglers, off-view rock keys and the
+      // post-opening passes are exactly what it is for. The tail leg itself must
+      // fall through to the full cook (deferredAfterFirstPicture), not re-arm here.
+      if (!recook && legOptions.deferredAfterFirstPicture !== true
+          && swarmFirstPictureLiftEnabled(state) && survivalRunHoldsArena(state)) {
+        const barrierStarted = prepareNow();
+        const barrierIsActive = () => !cookStale();
+        let barrierDeadlineOpen = true;
+        const barrierDeadline = prepareNow() + Math.min(20000, remainingMs());
+        const barrierTimedIsActive = () => barrierDeadlineOpen && !cookStale();
+        try {
+          // Authored bodies still awaiting admission (floor pads, arena debris, a
+          // late roster hull) must finish before the picture census — the plan
+          // skips still-mounting roots and their commits would land in the round.
+          for (const [, mesh] of this._meshes || []) {
+            const data = mesh && mesh.userData;
+            if (data && data.authoredAssetState === 'awaiting-authored-admission'
+                && typeof data.requestAuthoredUpgrade === 'function') {
+              try {
+                requestAuthoredUpgrade(mesh, renderer, scene, { admissionVisible: true });
+              } catch (_) { /* a refused request leaves the live trigger armed */ }
+            }
+          }
+          const barrierIdle = await waitForAuthoredUpgradeQueueIdle(scene, {
+            stale: cookStale,
+            timeoutMs: Math.min(8000, remainingMs()),
+            yieldToMain: yieldAndFlushLiveSectorGpu,
+          });
+          if (cookStale()) return cookSuperseded;
+          recordOpeningCookStep(state.render, 'live.swarmFirstPictureUpgradeIdle', barrierStarted,
+            barrierIdle && barrierIdle.idle === true ? 'resolved' : 'timeout', {
+              pending: barrierIdle ? barrierIdle.pending : undefined,
+              inFlight: barrierIdle ? barrierIdle.inFlight : undefined,
+            });
+          // Strict per-root admission for the in-view set — the same call the
+          // Adventure actor path uses. A lapsed shared deadline stops NEW admits
+          // and flips isActive so an in-flight one bails before touching the GPU:
+          // the exact-picture drain below still covers whatever is left.
+          let barrierStepAt = prepareNow();
+          let barrierAdmitted = 0;
+          for (const entity of firstFlightEntities) {
+            if (!entity || entity.id == null) continue;
+            if (entity.alive === false || state.entities.get(entity.id) !== entity) continue;
+            const root = this._meshes.get(entity.id);
+            if (!root) continue;
+            if (cookStale()) return cookSuperseded;
+            if (prepareNow() > barrierDeadline) { barrierDeadlineOpen = false; break; }
+            await admitSubjectPipelines(root, {
+              openingRequired: true, strict: true, urgent: true,
+              isActive: () => barrierTimedIsActive()
+                && entity.alive !== false && state.entities.get(entity.id) === entity
+                && this._meshes.get(entity.id) === root,
+            });
+            barrierAdmitted += 1;
+            if (openingProviderNow() - barrierStepAt >= 8) {
+              await yieldLiveSectorGpu();
+            }
+          }
+          recordOpeningCookStep(state.render, 'live.swarmFirstPictureAdmit', barrierStepAt,
+            'resolved', { roots: barrierAdmitted });
+          // In-view rock pool chunks only — the field's remaining keys ride the
+          // deferred tail's normal warm, not ~2000 pool issues inside the veil.
+          barrierStepAt = prepareNow();
+          const picturePoolSubjects = [];
+          let pictureVariantCount = 0;
+          let pictureKeyCount = 0;
+          if (this._asteroidInstancePool) {
+            const pictureVariants = new Set();
+            const pictureKeys = new Set();
+            for (const entity of firstFlightEntities) {
+              if (!entity || entity.type !== 'asteroid') continue;
+              for (const poolKey of asteroidPoolCensusKeys(entity)) pictureKeys.add(poolKey);
+              const data = entity.data || {};
+              if (data.typeId === 'ast_common_rock' && data.tint == null) {
+                const key = asteroidFirstFlightCookKey(entity);
+                pictureVariants.add(Number(key.slice(key.lastIndexOf('|') + 1)) | 0);
+              }
+            }
+            pictureVariantCount = pictureVariants.size;
+            pictureKeyCount = pictureKeys.size;
+            // Chunks grow by power-of-two rebuilds; size to the field census so
+            // a mid-round registration never rebuilds (the cook's own contract).
+            const requiredByVariant = [0, 0, 0, 0, 0];
+            const requiredByKey = new Map();
+            const fieldRecords = state.world && state.world.asteroidField
+              && Array.isArray(state.world.asteroidField.rocks) ? state.world.asteroidField.rocks : [];
+            for (const rock of fieldRecords) {
+              if (!rock || rock.alive === false) continue;
+              for (const poolKey of asteroidPoolCensusKeys(rock)) {
+                requiredByKey.set(poolKey, (requiredByKey.get(poolKey) || 0) + 1);
+              }
+              const data = rock.data || {};
+              if (data.typeId !== 'ast_common_rock' || data.tint != null) continue;
+              const key = asteroidFirstFlightCookKey(rock);
+              const variant = Number(key.slice(key.lastIndexOf('|') + 1)) | 0;
+              if (variant >= 0 && variant < requiredByVariant.length) requiredByVariant[variant]++;
+            }
+            if (pictureVariants.size > 0) {
+              warmAsteroidInstanceVariants(this._asteroidInstancePool,
+                [...pictureVariants].map((variant) => asteroidLeafResources('ast_common_rock', variant)),
+                requiredByVariant);
+            }
+            if (pictureKeys.size > 0) {
+              const warmable = asteroidPoolWarmResources();
+              warmAsteroidInstanceKeys(this._asteroidInstancePool,
+                warmable.filter((res) => pictureKeys.has(res.key)), requiredByKey);
+              for (const res of warmable.filter((r) => pictureKeys.has(r.key))) {
+                const bucket = this._asteroidInstancePool.keyed.get(
+                  `${res.geometry.uuid}|${res.material.uuid}`);
+                if (bucket && bucket.mesh) picturePoolSubjects.push(bucket.mesh);
+              }
+            }
+            for (const variant of pictureVariants) {
+              const mesh = this._asteroidInstancePool.variants[variant]
+                && this._asteroidInstancePool.variants[variant].mesh;
+              if (mesh) picturePoolSubjects.push(mesh);
+            }
+          }
+          // Compile the warmed chunks behind the shell — instanced pool programs
+          // are what a mid-round registration links inside the fight otherwise.
+          for (const subject of picturePoolSubjects) {
+            if (cookStale()) return cookSuperseded;
+            if (prepareNow() > barrierDeadline) { barrierDeadlineOpen = false; break; }
+            await admitSubjectPipelines(subject, {
+              openingRequired: true, strict: true, urgent: true,
+              isActive: barrierTimedIsActive,
+            });
+          }
+          recordOpeningCookStep(state.render, 'live.swarmFirstPictureRockPools', barrierStepAt,
+            'resolved', {
+              variants: pictureVariantCount,
+              keys: pictureKeyCount,
+              chunks: picturePoolSubjects.length,
+            });
+          // Player hull incl. the detached living-hull subtree plus the fresh
+          // chunks: their shadow-depth variants link at first hit/refresh
+          // otherwise — the packet's named mid-round link.
+          if (this._shadowDepthEnabled()) {
+            barrierStepAt = prepareNow();
+            const depthSubjects = [...picturePoolSubjects];
+            const playerRoot = this._meshes.get(state.playerId);
+            if (playerRoot) depthSubjects.push(playerRoot);
+            const livingHullRoot = this._livingHullPresentation && this._livingHullPresentation.root;
+            let restoreLivingHullWarm = null;
+            if (livingHullRoot && typeof this._livingHullPresentation.beginGpuWarmup === 'function') {
+              try { restoreLivingHullWarm = this._livingHullPresentation.beginGpuWarmup() || null; }
+              catch (_) { /* warmup is cosmetic — the sweep still runs without it */ }
+            }
+            if (livingHullRoot) depthSubjects.push(livingHullRoot);
+            if (depthSubjects.length > 0) {
+              try {
+                await driveCompileShadowDepthPipelines({
+                  state: this.state,
+                  renderer,
+                  light: this._shadowDepthLight(),
+                  camera: this.cam && this.cam.obj,
+                  subjects: depthSubjects,
+                  forceEnable: true,
+                  THREE,
+                  captureObjectHome,
+                  restoreObjectHome,
+                  lightingScene: scene,
+                  lightSigFor: () => this._depthCollectLightSig(scene),
+                  stagingName: 'SF_SwarmFirstPictureShadowDepth',
+                }, yieldToBrowser);
+              } catch (error) {
+                if (cookStale()) return cookSuperseded;
+                console.warn('[render] swarm first-picture shadow depth failed', error);
+              } finally {
+                if (restoreLivingHullWarm) { try { restoreLivingHullWarm(); } catch (_) { /* best effort */ } }
+              }
+            } else if (restoreLivingHullWarm) {
+              try { restoreLivingHullWarm(); } catch (_) { /* best effort */ }
+            }
+          }
+          // The exact-picture barrier itself — identical to the Adventure/mobile
+          // path: publish seal → plan capture → submission drain → residency.
+          const admitted = await prepareMobileOpeningFirstPicture(state.render, {
+            timeoutMs: Math.max(openingGateBudgetMs(), Math.min(20000, remainingMs())),
+            yieldToMain: yieldAndFlushLiveSectorGpu,
+            isActive: barrierIsActive,
+          });
+          if (cookStale()) return cookSuperseded;
+          // Same reason as the Adventure path: registering already-awaited
+          // handles must happen while loading still owns the canvas.
+          this._openingAdmissionPendingCount();
+          recordOpeningCookStep(state.render, 'live.swarmFirstPicture', barrierStarted, 'resolved', {
+            drawLeaves: admitted.plan.drawLeaves.length,
+            materials: admitted.submission.materials,
+          });
+          // The rest of the arena cook continues detached: it re-enters this owner
+          // once the outer gate commits the picture and runs the ordinary
+          // survival path end to end. Newer invocations supersede it by
+          // generation; a dead/stale gate leaves only this leg's own bail.
+          const deferredTail = Promise.resolve().then(() => state.render.prepareLiveSectorBeforeFlight({
+            isActive: () => true,
+            deferredAfterFirstPicture: true,
+          }));
+          observePipelineAdmission(deferredTail);
+          state.render.swarmFirstPictureTail = deferredTail;
+          return { skipped: false, swarmFirstPicture: true, exactFirstPicture: true, ...admitted };
+        } catch (error) {
+          if (cookStale()) return cookSuperseded;
+          recordOpeningCookStep(state.render, 'live.swarmFirstPicture', barrierStarted, 'error', {
+            error: String(error && error.message || error),
+          });
+          throw error;
+        }
+      }
       const cook = recook
         ? { skipped: true, reason: 'session-recook-programs-resident' }
         : await state.render.cookLiveSceneGpu({

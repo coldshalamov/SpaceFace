@@ -409,6 +409,29 @@ export function survivalRunHoldsArena(state) {
 }
 
 /**
+ * LOAD-02: gate for the Swarm first-picture lift. When enabled, the live-sector
+ * preparation on a survival run returns after an Adventure-shaped exact-picture
+ * barrier (player hull + round-1 roster + in-view room + in-view rock keys)
+ * and lets the remaining arena cook continue as a deferred tail job instead
+ * of holding the veil for the whole staging-sector cook.
+ * Opt-in via `?swarmFirstPicture=1` (or `state.render.swarmFirstPictureLift`);
+ * `=0`/false force-off beats everything until the measured default flips.
+ */
+const SWARM_FIRST_PICTURE_DEFAULT = false;
+export function swarmFirstPictureLiftEnabled(state) {
+  const render = state && state.render;
+  if (render && render.swarmFirstPictureLift === false) return false;
+  let flag = null;
+  try {
+    flag = typeof location !== 'undefined' && location.search
+      ? new URLSearchParams(location.search).get('swarmFirstPicture') : null;
+  } catch (_) { flag = null; }
+  if (flag === '0') return false;
+  if (flag === '1' || (render && render.swarmFirstPictureLift === true)) return true;
+  return SWARM_FIRST_PICTURE_DEFAULT;
+}
+
+/**
  * Sector-arrival staging eligibility: does THIS body carry its own authored plan to prepare?
  * The request builder appends the sector-wide spawnable-archetype set by default, which made every
  * procedural rock, hidden site proxy and art-less fx "eligible". None of them can reach prepared
