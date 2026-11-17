@@ -20,7 +20,7 @@ export const IRON_MAW = freezeDeep({
     name: 'IRON MAW', missionDefinitionId: 'capital_boss', identity: 'commitment',
     rangeResponse: { minRange: 340, beatId: 'keelbreaker' },
     intro: 'IRON MAW: Hold your course. I only need one bearing.',
-    lesson: 'The bright lane is the shot. Cross the bow before it locks; strike the dark stern.',
+    lesson: 'Cross the bow; strike the dark stern.',
     lossLesson: 'A locked broadside cannot follow you. Cross its short edge, not its length.',
     victory: 'IRON MAW: Drive gone. Guns gone. Still moving.',
     escape: 'IRON MAW: Keep the bearing. We will meet on it again.',
