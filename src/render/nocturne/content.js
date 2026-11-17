@@ -1,7 +1,9 @@
 // Render-only bridge from world entities / authored model sockets into NOCTURNE.
 // Census is bounded and runs at 4 Hz. Hierarchies are inspected only when a model is admitted or
 // replaced; frame updates touch admitted sources and their socket parent chains, never the scene.
-import { Color, Object3D, Vector3 } from 'three';
+import { Box3, Color, Object3D, Vector3 } from 'three';
+
+const _mastBox = new Box3(), _mastSize = new Vector3();
 import {
   NOCTURNE_COMPOSITIONS, NOCTURNE_CONTENT_LIMITS, NOCTURNE_LAYOUTS,
   NOCTURNE_LIGHT_PROFILES, NOCTURNE_PROFILE_ALIASES, NOCTURNE_LUMINOUS_ASTEROID_TYPES,
@@ -230,7 +232,7 @@ export class NocturneContent {
       }
       // A declared named socket must resolve exactly. Never place it silently at the hull origin.
       if (definition.socket && !socket) { this.diagnostics.missingEmitters++; continue; }
-      let emitter = null;
+      let emitter = null, fallbackMast = false;
       if (socket && !explicit) {
         // A named socket can be the actual lamp mesh. Reserve it so a later fallback cannot
         // duplicate that same bulb, and observe its authored material power/color changes.
@@ -253,10 +255,23 @@ export class NocturneContent {
             + Math.abs(c.g / total - desired.g / target) + Math.abs(c.b / total - desired.b / target);
           if (difference < best) { best = difference; emitter = candidate; }
         }
-        // Automatic profiles never invent bulbs on dark geometry.
-        if (!emitter) { this.diagnostics.missingEmitters++; continue; }
-        usedEmitters.add(emitter);
-        socket = emitter.node;
+        // Automatic profiles never invent bulbs on dark geometry - with one exception: a dock STATION's
+        // approach floodlight (a spot fixture) hangs at its authored radius-fraction offset, because a yard lamp is a
+        // lamp on a mast, not an emissive mesh, and the owner wants stations to throw pools onto their own hull.
+        if (!emitter) {
+          if (entity.type === 'station' && archetype === 'dock' && profile.type === 'spot' && root) {
+            fallbackMast = true;
+            if (!record.mastRadius) {
+              // The drawn hull is bigger than the collision radius; hang the mast on the drawn hull.
+              root.updateWorldMatrix(true, true); _mastBox.setFromObject(root); _mastBox.getSize(_mastSize);
+              record.mastRadius = Math.max(record.radius, 0.5 * Math.max(_mastSize.x, _mastSize.z));
+            }
+          }
+          else { this.diagnostics.missingEmitters++; continue; }
+        } else {
+          usedEmitters.add(emitter);
+          socket = emitter.node;
+        }
       }
       if (!root && !explicit) continue;
       const id = `nocturne:entity:${entity.id}:${definition.id || i}`;
@@ -268,7 +283,7 @@ export class NocturneContent {
         // not also transform an owner/socket a second time.
       });
       if (!source) { this.diagnostics.rejectedCapacity++; continue; }
-      const entry = { id, source, definition, profile, socket, emitter, explicit,
+      const entry = { id, source, definition, profile, socket, emitter, explicit, fallbackMast,
         baseColor: emitter ? emitter.color.clone() : new Color(profile.color), hotColor: new Color(0xff5a23),
         intensity: finite(definition.intensity, profile.intensity), range: finite(definition.range, profile.range) };
       record.lights.push(entry);
@@ -360,7 +375,9 @@ export class NocturneContent {
       if (root) {
         if (root.localToWorld !== Object3D.prototype.localToWorld) root.updateWorldMatrix?.(true, false);
         this._sourcePosition.fromArray(offset);
-        root.localToWorld(this._sourcePosition);
+        // Automatic layouts give fractions of the physical radius in the root's yaw frame (not model units).
+        if (entry.fallbackMast) this._sourcePosition.multiplyScalar(record.mastRadius || record.radius).applyQuaternion(root.quaternion).add(root.position);
+        else root.localToWorld(this._sourcePosition);
       } else {
         membrane?.toLocal?.(record.entity.pos, this._local);
         this._sourcePosition.set(this._local.x + offset[0], offset[1], this._local.z + offset[2]);
@@ -373,7 +390,7 @@ export class NocturneContent {
       // model-local WU and the complete transform so scale/animation is respected.
       if (entry.explicit) { this._sourceTarget.fromArray(aim); root.localToWorld(this._sourceTarget); }
       else {
-        this._sourceTarget.fromArray(aim).multiplyScalar(record.radius).applyQuaternion(root.quaternion).add(root.position);
+        this._sourceTarget.fromArray(aim).multiplyScalar(record.mastRadius || record.radius).applyQuaternion(root.quaternion).add(root.position);
       }
     } else if (socket && (source.type === 'spot' || source.type === 'area')) {
       this._sourceTarget.set(1, -0.35, 0);

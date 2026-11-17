@@ -27,7 +27,9 @@ export const NOCTURNE_LIGHT_PROFILES = freeze({
   // The Foundry furnace's pour: a point light (the engine has no resident area-light slots to spend).
   pour_orange: light('point', 0xff6a2a, 6500, 200, 3),
   furnace: light('area', 0xff702b, 8500, 210, 2, { angle: 1.05, penumbra: 0.85 }),
-  dock: light('spot', 0xffce87, 4800, 220, 2, { angle: 0.72, penumbra: 0.6, shadow: true }),
+  // A station floodlight throws a pool at 100-200 WU: the same gentle falloff as the headlight family
+  // (inverse-square 4800 was ~0.5 at the hull, invisible).
+  dock: light('spot', 0xffce87, 2800, 260, 2, { angle: 0.72, penumbra: 0.7, shadow: true, decay: 1.3 }),
   gate: light('point', 0x9c83ff, 3800, 220, 2),
   gate_cyan: light('point', 0x61e5ff, 2800, 175, 2),
   research: light('spot', 0x85d5ff, 4600, 190, 2, { angle: 0.5, penumbra: 0.5, shadow: true }),

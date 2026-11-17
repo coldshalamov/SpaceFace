@@ -70,12 +70,17 @@ const heliosHullLamps = (() => {
     lamps.push({
       id: `hull_${k}`, profile: 'ore', color: cyan ? 0x75c8ff : LAMP_AMBER,
       intensity: cyan ? 2200 : 3200, range: cyan ? 85 : 105,
-      offset: [Math.cos(a) * 96, 16, Math.sin(a) * 104],
+      offset: [Math.cos(a) * 96, 16, Math.sin(a) * 104], priority: 2, importance: 1.4,
     });
   }
   return lamps;
 })();
-const HELIOS_STATION_LIGHTS = { profile: 'dock', lights: [...NOCTURNE_LAYOUTS.dock.map((f) => ({ ...f })), ...heliosHullLamps] };
+// The stock dock layout is written in FRACTIONS of the hull radius; an explicit list is read in model units, so the
+// copy must be scaled (it was copied raw: the approach floodlight sat at the hull centre aimed 1.5 m away - eight lights
+// 'on', nothing visible). The drawn hull is ~100 across, like the ring of hull lamps below.
+const HELIOS_HULL_R = 100;
+const scaled = (v) => v && v.map((x) => x * HELIOS_HULL_R);
+const HELIOS_STATION_LIGHTS = { profile: 'dock', lights: [...NOCTURNE_LAYOUTS.dock.map((f) => ({ ...f, offset: scaled(f.offset), aim: scaled(f.aim) })), ...heliosHullLamps] };
 
 const CORE_SECTORS = [
   {
