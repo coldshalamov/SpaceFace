@@ -3,10 +3,10 @@
   "generatedAt": "2026-11-16T09:37:39.925Z",
   "note": "One durable status per model ID. `unused/unresolved` is a disposition for unresolved linkage or identity, not proof of non-use or permission to delete. Review details and evidence remain in the per-model facts and append-only journals. Index refreshes and status updates rewrite this whole file; serialize those commands and do not run concurrent status writers.",
   "statusCounts": {
-    "pending": 47,
+    "pending": 31,
     "in progress": 0,
-    "passed": 357,
-    "needs follow-up": 114,
+    "passed": 363,
+    "needs follow-up": 124,
     "unused/unresolved": 3048
   },
   "models": {
@@ -4798,20 +4798,23 @@
           "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "Ordered loft stations from aft to nose to remove a full-length foldback; focused geometry check passed. Shared loft generator now provides UVs with a closed seam and preserves original normals; focused geometry checks passed.",
-      "issues": "No gameplay-scale view since shared UV/loft changes. Check corrected silhouette, cavity and lighting. Verify current builder selection and practical efficiency.",
-      "evidence": [
-        "src/render/ships/vaelSniper.js",
-        "src/render/visualOverrides.js",
-        "test/ship-kit-shared-roles.test.mjs",
-        "src/render/ships/shipKit.js",
-        "test/ship-kit-merge-uv.test.mjs"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
       ],
-      "updatedAt": "2026-11-16T09:37:29.595Z"
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe + lootTableId=lancer_sniper hook on ship_kestrel (draws 16/14/15, radius 4.18, size 8.12 x 1.22 x 1.55 WU, 0 errors; shrunk to 6/17 scale because fleetLook passes def.radius || 6 vs DESIGN_RADIUS 17). Strong alien faction grammar in silhouette and palette: dark [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/vael-sniper_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/vael-sniper_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/vael-sniper_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/report.vael-sniper.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:43.770Z"
     },
     "procedural:procedural-ship:bruiser_armor": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -4821,14 +4824,23 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_kestrel (draws 31/31/31, radius 10.81, size 13.27 x 11.75 x 12.39 WU, 0 errors). Intrinsic buildBruiserArmor (+Z forward) produces a bulky 6-sided flat-capped cylinder (edr:bruiserBody), 3 stacked dorsal armor slabs (edr:plate0..2), twin side turre [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/bruiser_armor_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/bruiser_armor_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/bruiser_armor_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/report.bruiser_armor.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:33.595Z"
     },
     "procedural:procedural-ship:capital": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -4838,14 +4850,23 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_colossus (draws 33/33/33, radius 10.88, size 13.55 x 12.33 x 11.75 WU, 0 errors; scaled to R=6 because fleetLook reads def.radius instead of collisionRadius 32). buildCapital (+X forward) constructs a multi-block spine (aft/mid/fore hullSlabGeo + 6 [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/capital_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/capital_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/capital_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/report.capital.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:33.918Z"
     },
     "procedural:procedural-ship:corsair_blade": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -4855,14 +4876,23 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_kestrel (draws 34/34/34, radius 10.67, size 13.27 x 11.75 x 11.88 WU, 0 errors). Intrinsic buildCorsairBlade (+Z forward) builds a 4-sided pyramid fuselage (edr:bladeFuse), thin swept wing extrusions (edr:bladeWing-1/1), two red wingtip lamps, and  [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/corsair_blade_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/corsair_blade_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/corsair_blade_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/report.corsair_blade.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:34.657Z"
     },
     "procedural:procedural-ship:detonator_dart": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -4872,14 +4902,23 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_kestrel (draws 32/32/32, radius 12.14, size 13.27 x 11.75 x 16.59 WU, 0 errors). Intrinsic buildDetonatorDart (+Z forward) places an oversized 12x8 SphereGeometry warhead (edr:dartWarhead) rendered in solid unshaded emissive accent material (emissi [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/detonator_dart_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/detonator_dart_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/detonator_dart_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/report.detonator_dart.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:34.992Z"
     },
     "procedural:procedural-ship:dreadnought_enemy": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -4889,14 +4928,23 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_kestrel (draws 30/30/30, radius 12.17, size 13.27 x 11.75 x 16.69 WU, 0 errors). Intrinsic buildDreadnoughtEnemy (+Z forward) distinguishes its outline from drone_swarm via a broader multi-block spine (edr:dreadFore, edr:dreadMid, edr:dreadAft), tw [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/dreadnought_enemy_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/dreadnought_enemy_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/dreadnought_enemy_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/report.dreadnought_enemy.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:35.299Z"
     },
     "procedural:procedural-ship:drone_swarm": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -4906,14 +4954,23 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_kestrel (draws 30/30/30, radius 11.22, size 13.27 x 11.75 x 13.76 WU, 0 errors). Intrinsic buildDroneSwarm (+Z forward) consists of 5 bare geometric primitives: an OctahedronGeometry center (edr:droneBody), 3 five-sided ConeGeometry spikes (front,  [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/drone_swarm_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/drone_swarm_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/drone_swarm_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/report.drone_swarm.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:35.960Z"
     },
     "procedural:procedural-ship:fighter": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -4923,14 +4980,23 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_wasp (draws 31/31/31, radius 11.67, size 13.83 x 11.75 x 14.67 WU, 0 errors). buildFighter (+X forward) establishes a clear swept delta-wing silhouette in chase (narrow hullSlabGeo fuselage, 8-sided noseConeGeo, swept BoxGeometry fighter:wing pair, [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/fighter_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/fighter_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/fighter_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/report.fighter.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:36.266Z"
     },
     "procedural:procedural-ship:freighter": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -4940,14 +5006,23 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_mule (draws 32/32/32, radius 10.65, size 13.32 x 11.75 x 11.75 WU, 0 errors). buildFreighter (+X forward) renders a long spine/bow/bridge slab hull with stacked cargo pods (hullSlabGeo), frt:cab, and a full-length spine accent strip (frt:strip). Cl [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/freighter_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/freighter_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/freighter_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/report.freighter.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:36.627Z"
     },
     "procedural:procedural-ship:frigate": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -4957,14 +5032,23 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_bastion (draws 30/30/30, radius 10.85, size 13.96 x 11.75 x 11.75 WU, 0 errors). buildFrigate (+X forward) forms a wedge hull with a 6-sided noseConeGeo prow, tiered frig:tower* boxes, broadside frig:spon* blocks, and twin frig:belt accent bars. Cl [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/frigate_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/frigate_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/frigate_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/report.frigate.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:37.273Z"
     },
     "procedural:procedural-ship:miner": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -4974,14 +5058,23 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_pelican (draws 33/33/33, radius 10.39, size 12.49 x 11.75 x 11.75 WU, 0 errors). buildMiner (+X forward) combines a short chunky body/bow slab with an enormous 8-sided cylinder miner:mount (radius 0.34..0.40 * R) on the nose, small side scoop arms  [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/miner_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/miner_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/miner_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/report.miner.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:38.534Z"
     },
     "procedural:procedural-ship:multirole": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -4991,14 +5084,23 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_drifter (draws 31/31/31, radius 10.73, size 13.58 x 11.75 x 11.75 WU, 0 errors). buildMultirole (+X forward) pairs an 8-sided tapered fuselage cylinder (mul:fus) and 8-sided noseConeGeo with twin pylon-mounted side cylinders (mul:nacelle0), flat wi [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/multirole_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/multirole_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/multirole_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/report.multirole.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:39.324Z"
     },
     "procedural:procedural-ship:patrol_interdict": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -5008,14 +5110,23 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_kestrel (draws 37/37/37, radius 10.80, size 13.27 x 11.75 x 12.33 WU, 0 errors). Intrinsic buildPatrolInterdict (+Z forward) pairs a smooth CapsuleGeometry cylinder (edr:interdictFuse) with 4 blue point lamps, two flat zero-thickness 2D RingGeometr [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/patrol_interdict_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/patrol_interdict_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/patrol_interdict_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/report.patrol_interdict.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:40.186Z"
     },
     "procedural:procedural-ship:pirate_swoop": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -5025,14 +5136,23 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_kestrel (draws 30/30/30, radius 11.06, size 13.27 x 11.75 x 13.22 WU, 0 errors). Intrinsic buildPirateSwoop (+Z forward) produces an asymmetric extruded pentagon slab (edr:swoopHull) that reads distinctively in chase, topped with 5 small identical  [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/pirate_swoop_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/pirate_swoop_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/pirate_swoop_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/report.pirate_swoop.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:40.817Z"
     },
     "procedural:procedural-ship:scout": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -5042,14 +5162,23 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_kestrel (draws 31/31/31, radius 11.34, size 15.44 x 11.75 x 11.75 WU, 0 errors). buildScout (+X forward) composes an aft hullSlabGeo (W*1.4), narrower fore hullSlabGeo (W*0.8), 8-sided noseConeGeo, and recessedCanopy. Close and inspect expose clear [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/scout_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/scout_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/scout_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-family-20261116/report.scout.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:42.402Z"
     },
     "procedural:procedural-ship:sniper_lance": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -5059,14 +5188,23 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_kestrel (draws 30/30/30, radius 12.90, size 13.27 x 11.75 x 18.74 WU, 0 errors). Intrinsic buildSniperLance (+Z forward) has a strong slim sniper outline in chase (capsule fuselage edr:lanceFuse, long tapered edr:lance barrel, 4 aft radiator boxes, [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/sniper_lance_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/sniper_lance_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/sniper_lance_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/report.sniper_lance.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:42.889Z"
     },
     "procedural:procedural-ship:trader_haul": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -5076,11 +5214,20 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.726Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe hook on ship_kestrel (draws 32/32/32, radius 10.78, size 13.27 x 11.75 x 12.27 WU, 0 errors). Intrinsic buildTraderHaul (+Z forward) composes a faceted 12x8 SphereGeometry egg hull (edr:hold), a faceted 8x6 SphereGeometry nose cockpit (edr:traderCock), 3 plain  [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/trader_haul_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/trader_haul_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/trader_haul_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-enemy-20261116/report.trader_haul.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:43.381Z"
     },
     "procedural:ship:concord-interdictor": {
       "status": "needs follow-up",
@@ -5093,18 +5240,20 @@
           "sha256Source": "handoff-captured"
         }
       ],
-      "views": [],
-      "changes": "Shared shipKit static merger now preserves UVs for compatible geometry and keeps mixed-UV meshes separate; focused regression checks passed. Shared loft generator now provides UVs with a closed seam and preserves original normals; focused geometry checks passed.",
-      "issues": "No gameplay-scale view since shared UV/loft changes. Check actual admission and nacelle batching. Verify current builder selection and practical efficiency.",
-      "evidence": [
-        "src/render/ships/concordPatrol.js",
-        "src/render/ships/shipKit.js",
-        "test/ship-kit-merge-uv.test.mjs",
-        "scripts/fleet/looks/procedural-ship-review.mjs",
-        "src/render/ships/shipKit.js",
-        "test/ship-kit-merge-uv.test.mjs"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
       ],
-      "updatedAt": "2026-11-16T06:36:46.438Z"
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe + lootTableId=patrol_lawman hook on ship_kestrel (draws 38/31/30, radius 5.26, size 9.83 x 1.29 x 3.51 WU, 0 errors; scaled 6/18 vs DESIGN_RADIUS 18 due to fleetLook def.radius || 6). Cleanest faction composition overall: cool blue-grey lofted Concord_Pressure_ [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/concord-interdictor_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/concord-interdictor_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/concord-interdictor_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/report.concord-interdictor.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:34.298Z"
     },
     "procedural:ship:drift-barge": {
       "status": "needs follow-up",
@@ -5117,17 +5266,20 @@
           "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "Moved the ore stain just above the deck plate; focused geometry check passed. Shared loft generator now provides UVs with a closed seam and preserves original normals; focused geometry checks passed.",
-      "issues": "No gameplay-scale view since shared UV/loft changes. Check raised deck grime, scoop shape and possible clamp batching. Verify current builder selection and practical efficiency.",
-      "evidence": [
-        "src/render/ships/driftBarge.js",
-        "src/render/visualOverrides.js",
-        "test/ship-kit-shared-roles.test.mjs",
-        "src/render/ships/shipKit.js",
-        "test/ship-kit-merge-uv.test.mjs"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
       ],
-      "updatedAt": "2026-11-16T09:37:29.623Z"
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe + lootTableId=bruiser_brawler hook on ship_kestrel (draws 29/23/24, radius 4.00, size 7.16 x 1.36 x 3.29 WU, 0 errors; scaled 6/19 vs DESIGN_RADIUS 19 due to fleetLook def.radius || 6). Squat tan/rust Drift_Pressure_Hull (1024x1024 Drift_Hull PBR+normal) reads  [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/drift-barge_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/drift-barge_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/drift-barge_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/report.drift-barge.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:35.605Z"
     },
     "procedural:ship:meridian-trader": {
       "status": "needs follow-up",
@@ -5140,17 +5292,20 @@
           "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "Removed unused drive material, isolated damage-controlled nav-light materials, and parented the shed cargo cap to its container; focused damage checks passed. Shared loft generator now provides UVs with a closed seam and preserves original normals; focused geometry checks passed.",
-      "issues": "No gameplay-scale view since shared UV/loft changes. Check cargo cap and independent lights in damaged and ordinary views. Verify current builder selection and practical efficiency.",
-      "evidence": [
-        "src/render/ships/meridianTrader.js",
-        "src/render/visualOverrides.js",
-        "test/ship-kit-shared-roles.test.mjs",
-        "src/render/ships/shipKit.js",
-        "test/ship-kit-merge-uv.test.mjs"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
       ],
-      "updatedAt": "2026-11-16T09:37:29.624Z"
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe + lootTableId=mule_trader hook on ship_kestrel (draws 20/19/18, radius 3.94, size 6.55 x 1.86 x 3.98 WU, 0 errors; scaled 6/20 vs DESIGN_RADIUS 20 due to fleetLook def.radius || 6). Clean cream-and-gold corporate livery (Meridian_Hull, Meridian_Container 1024x1 [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/meridian-trader_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/meridian-trader_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/meridian-trader_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/report.meridian-trader.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:37.860Z"
     },
     "procedural:ship:quiet-raider": {
       "status": "needs follow-up",
@@ -5163,18 +5318,20 @@
           "sha256Source": "handoff-captured"
         }
       ],
-      "views": [],
-      "changes": "Shared shipKit static merger now preserves UVs for compatible geometry and keeps mixed-UV meshes separate; focused regression checks passed. Shared loft generator now provides UVs with a closed seam and preserves original normals; focused geometry checks passed.",
-      "issues": "No gameplay-scale view since shared UV/loft changes. Check actual admission and dark material readability. Verify current builder selection and practical efficiency.",
-      "evidence": [
-        "src/render/ships/quietRaider.js",
-        "src/render/ships/shipKit.js",
-        "test/ship-kit-merge-uv.test.mjs",
-        "scripts/fleet/looks/procedural-ship-review.mjs",
-        "src/render/ships/shipKit.js",
-        "test/ship-kit-merge-uv.test.mjs"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
       ],
-      "updatedAt": "2026-11-16T06:36:46.830Z"
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe + lootTableId=corsair_raider hook on ship_kestrel (draws 16/12/12, radius 4.09, size 7.80 x 1.09 x 2.18 WU, 0 errors; scaled 6/16 vs DESIGN_RADIUS 16 due to fleetLook def.radius || 6). Matte dark violet-grey low-profile silhouette (Quiet_Pressure_Hull, 1024x102 [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/quiet-raider_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/quiet-raider_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/quiet-raider_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/report.quiet-raider.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:41.304Z"
     },
     "procedural:ship:reaver-pirate": {
       "status": "needs follow-up",
@@ -5187,17 +5344,20 @@
           "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "Isolated damage-controlled nav strobe material from drive and tag accents; focused damage check passed. Shared loft generator now provides UVs with a closed seam and preserves original normals; focused geometry checks passed.",
-      "issues": "No gameplay-scale view since shared UV/loft changes. Check tag occlusion/orientation and cannon socket in addition to the strobe. Verify current builder selection and practical efficiency.",
-      "evidence": [
-        "src/render/ships/reaverPirate.js",
-        "src/render/visualOverrides.js",
-        "test/ship-kit-shared-roles.test.mjs",
-        "src/render/ships/shipKit.js",
-        "test/ship-kit-merge-uv.test.mjs"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
       ],
-      "updatedAt": "2026-11-16T09:37:29.626Z"
+      "changes": "No asset change; capture-based review by agy1 applied by orchestrator.",
+      "issues": "Captured via corrected precompileProbe + lootTableId=reaver_pirate hook on ship_kestrel (draws 17/10/10, radius 4.47, size 8.00 x 1.69 x 3.60 WU, 0 errors; scaled 6/16 vs DESIGN_RADIUS 16 due to fleetLook def.radius || 6). Asymmetric stolen-drifter silhouette (pitched Reaver_BaseHull, off-center Rea [full defect detail in the recorded event]",
+      "evidence": [
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/reaver-pirate_chase.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/reaver-pirate_close.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/reaver-pirate_inspect.png",
+        ".devshots/fleet/graphics-overhaul-asset-review-current/proc-ships-faction-20261116/report.reaver-pirate.json"
+      ],
+      "updatedAt": "2026-11-17T06:07:41.918Z"
     },
     "runtime-character:pressure-core": {
       "status": "pending",
@@ -11963,42 +12123,37 @@
       "updatedAt": "2026-11-17T02:30:58.507Z"
     },
     "runtime:SF_LANDMARK_PLACE_LANDMARK_WRECK_CATHEDRAL:place_landmark_wreck_cathedral": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_landmark_wreck_cathedral.glb",
           "sha256": "7a7e4b02b7ed37814a402b6e7b33f900533bb10f10c074bd9f9a08574d53d05f",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/wreck-cathedral/render.glb",
           "sha256": "59d10b23d743b98731eb5d0ee7b8f9d1528aabef7b71ca58ac646df261d06cfc",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb",
           "sha256": "163ae51227a49827511a157ef8b1bffc1867a6f3c6c17da4fba4cbfff9af2f93",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "chase",
-        "close",
-        "inspect"
+        "chase wide-radius"
       ],
-      "changes": "No asset change; capture-based review.",
-      "issues": "Capture limitation (megastructure framing), not a model defect.",
+      "changes": "No asset change; recapture with the new --dist camera-radius override resolves the framing limitation.",
+      "issues": "Wide-radius isolated evidence; ordinary-play approach view pending.",
       "evidence": [
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/place_landmark_wreck_cathedral_chase.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/place_landmark_wreck_cathedral_close.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/place_landmark_wreck_cathedral_inspect.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/_sheet_chase.png"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/wide-recaptures-20261116/dist-16x/place_landmark_wreck_cathedral_chase.png"
       ],
-      "updatedAt": "2026-11-17T03:39:28.116Z"
+      "updatedAt": "2026-11-17T06:06:29.658Z"
     },
     "runtime:SF_LEVIATHAN_PRODUCTION_V1:leviathan_production_v1": {
       "status": "passed",
@@ -13770,118 +13925,103 @@
       "updatedAt": "2026-11-17T03:39:22.750Z"
     },
     "runtime:SF_PLACE_LANDMARK_CANDLE_FLEET:place_landmark_candle_fleet": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_landmark_candle_fleet.glb",
           "sha256": "21f576027833cadfc12d87e405e60c97ca2dbaf08c6dfb10d41809dc74e24b07",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/candle-fleet/render.glb",
           "sha256": "935a19645130f3230637de96c2059935650ed9887667bca3e5de81701713843b",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_landmark_candle_fleet.glb",
           "sha256": "a26de57dad99d386a29aded3785953a1ef047c054a68327b2de59222aacacb75",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "chase",
-        "close",
-        "inspect"
+        "chase wide-radius"
       ],
-      "changes": "No asset change; capture-based review.",
-      "issues": "Capture limitation (megastructure framing), not a model defect.",
+      "changes": "No asset change; recapture with the new --dist camera-radius override resolves the framing limitation.",
+      "issues": "Wide-radius isolated evidence; ordinary-play approach view pending.",
       "evidence": [
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/place_landmark_candle_fleet_chase.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/place_landmark_candle_fleet_close.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/place_landmark_candle_fleet_inspect.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/_sheet_chase.png"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/wide-recaptures-20261116/dist-8x/place_landmark_candle_fleet_chase.png"
       ],
-      "updatedAt": "2026-11-17T03:39:29.254Z"
+      "updatedAt": "2026-11-17T06:06:30.030Z"
     },
     "runtime:SF_PLACE_LANDMARK_RESONANT_CATHEDRAL:place_landmark_resonant_cathedral": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_landmark_resonant_cathedral.glb",
           "sha256": "2a9b10674c0589db15e02b0fc87661f02d5ce234e7518639aa1f587c7dbe3475",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/resonant-cathedral/render.glb",
           "sha256": "ba22adf575da482ad5627f7bc8d9eda2e6efbc6cc56e49f39970708da6968717",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_landmark_resonant_cathedral.glb",
           "sha256": "7f27ec6702ec8d1b673889e26bac356eea0cde84f60298b9674cb6bd95180484",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "chase",
-        "close",
-        "inspect"
+        "chase wide-radius"
       ],
-      "changes": "No asset change; capture-based review.",
-      "issues": "Capture limitation (megastructure framing), not a model defect.",
+      "changes": "No asset change; recapture with the new --dist camera-radius override resolves the framing limitation.",
+      "issues": "Wide-radius isolated evidence; ordinary-play approach view pending.",
       "evidence": [
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/place_landmark_resonant_cathedral_chase.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/place_landmark_resonant_cathedral_close.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/place_landmark_resonant_cathedral_inspect.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/_sheet_chase.png"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/wide-recaptures-20261116/dist-12x/place_landmark_resonant_cathedral_chase.png"
       ],
-      "updatedAt": "2026-11-17T03:39:29.858Z"
+      "updatedAt": "2026-11-17T06:06:30.380Z"
     },
     "runtime:SF_PLACE_LANDMARK_SKERRIS_THRONE:place_landmark_skerris_throne": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_landmark_skerris_throne.glb",
           "sha256": "d1a42249c8805b8c7cf86351db29fd5a7b9337decae16491d92b9da16bef0dde",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/skerris-throne/render.glb",
           "sha256": "148b3b86f8d0495a345845c62a447652f6a3f1a8cbce6ab84a6319c1af52b5c1",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_landmark_skerris_throne.glb",
           "sha256": "8646238a0de5d8ef579382cf2a57b2b5e8ab89d7e33e962282aaa3bec5f3f363",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "chase",
-        "close",
-        "inspect"
+        "chase wide-radius"
       ],
-      "changes": "No asset change; capture-based review.",
-      "issues": "Capture limitation (megastructure framing), not a model defect.",
+      "changes": "No asset change; recapture with the new --dist camera-radius override resolves the framing limitation.",
+      "issues": "Wide-radius isolated evidence; ordinary-play approach view pending.",
       "evidence": [
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/place_landmark_skerris_throne_chase.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/place_landmark_skerris_throne_close.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/place_landmark_skerris_throne_inspect.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-landmarks-20261116/_sheet_chase.png"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/wide-recaptures-20261116/dist-8x/place_landmark_skerris_throne_chase.png"
       ],
-      "updatedAt": "2026-11-17T03:39:30.236Z"
+      "updatedAt": "2026-11-17T06:06:34.878Z"
     },
     "runtime:SF_PLACE_LANE_PIN:place_lane_pin": {
       "status": "passed",
@@ -16965,42 +17105,37 @@
       "updatedAt": "2026-11-17T02:32:43.460Z"
     },
     "runtime:SF_SHIP_LAST_ARGUMENT:last_argument": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/last_argument.glb",
           "sha256": "f4ec6ee342dc89e641d47ba51bc6838163858c8a198fa30794c802cab58362f2",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/last_argument/render.glb",
           "sha256": "8907516de67ebbe10325d1a44b749be5852a7f4c279b3b3c01a596a1473d79cd",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/last_argument.glb",
           "sha256": "2112e4ca4d0c4157aad015fc0d8773b8638a8a5b17df413a51da0b2a85e2a390",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "chase",
-        "close",
-        "inspect"
+        "chase wide-radius"
       ],
-      "changes": "No asset change; capture-based review.",
-      "issues": "Capture limitation, not a model defect.",
+      "changes": "No asset change; recapture with the new --dist camera-radius override resolves the framing limitation.",
+      "issues": "Wide-radius isolated evidence; ordinary-play approach view pending.",
       "evidence": [
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/last_argument_chase.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/last_argument_close.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/last_argument_inspect.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-1/_sheet_chase.png"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/wide-recaptures-20261116/dist-8x/last_argument_chase.png"
       ],
-      "updatedAt": "2026-11-17T02:32:43.763Z"
+      "updatedAt": "2026-11-17T06:05:27.434Z"
     },
     "runtime:SF_SHIP_MOTHLIGHT_TENDER:mothlight": {
       "status": "passed",
@@ -18839,42 +18974,37 @@
       "updatedAt": "2026-11-17T02:41:06.764Z"
     },
     "runtime:SF_WHOLESHIP_CERES_BREAKER:ceres_breaker": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/ceres_breaker.glb",
           "sha256": "4308881fd08ea26d917f7e5cc37d1c68341ee5554f0c8226ddf1a631225e834b",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/ceres-breaker/render.glb",
           "sha256": "59e7e910672430e8158e2da846450c8560a4e2e2f6aa9782d498016c0404299a",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/ceres_breaker.glb",
           "sha256": "0edc8c7a224226347a6a11b0cb2a704cd0ecafafe2c40c13ea884d3282b4a69b",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "chase",
-        "close",
-        "inspect"
+        "chase wide-radius"
       ],
-      "changes": "No asset change; capture-based review.",
-      "issues": "Capture limitation, not a model defect.",
+      "changes": "No asset change; recapture with the new --dist camera-radius override resolves the framing limitation.",
+      "issues": "Wide-radius isolated evidence; ordinary-play approach view pending.",
       "evidence": [
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/ceres_breaker_chase.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/ceres_breaker_close.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/ceres_breaker_inspect.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/_sheet_chase.png"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/wide-recaptures-20261116/dist-4x/ceres_breaker_chase.png"
       ],
-      "updatedAt": "2026-11-17T02:41:08.843Z"
+      "updatedAt": "2026-11-17T06:05:27.755Z"
     },
     "runtime:SF_WHOLESHIP_HELIOS_ARCLIGHT:helios_arclight": {
       "status": "passed",
