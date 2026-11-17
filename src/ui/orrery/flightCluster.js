@@ -139,9 +139,9 @@ const CSS = `
 .orr-cluster__key.is-node .orr-cluster__keytag b { font-weight:500; color:rgb(232 226 212 / .88); }
 /* Inactive sockets keep their authored mark and live binding; the shared tip still carries the
    effective verb and its state. The unfolded choice and armed sockets keep their full words. */
-.orr-cluster__key.is-node:not(.is-armed) .orr-cluster__keyword { display:none; }
+.orr-cluster__key.is-node:not(.is-armed):not([data-power="rig"]) .orr-cluster__keyword { display:none; }
 .orr-cluster__keyshort { display:none; }
-.orr-cluster__key.is-node:not(.is-armed) .orr-cluster__keytag b:not(.is-glyph) {
+.orr-cluster__key.is-node:not(.is-armed):not([data-power="rig"]) .orr-cluster__keytag b:not(.is-glyph) {
   margin-left:0; padding-left:0; border-left:0; }
 
 .orr-cluster__key.is-armed .orr-cluster__keytag { color:var(--dp-hand, #f2b950); font-weight:600; }
@@ -164,7 +164,7 @@ const CSS = `
      frame; the full sentence stays on the socket's accessible name and tip. */
   .orr-cluster__key.is-node:not(.is-armed) .orr-cluster__keytag .orr-cluster__keyword { display:none; }
   .orr-cluster__key:is(.is-armed,:not(.is-node)) .orr-cluster__keyword { display:none; }
-  .orr-cluster__key:is(.is-armed,:not(.is-node)) .orr-cluster__keyshort {
+  .orr-cluster__key:is(.is-armed,:not(.is-node),[data-power="rig"]) .orr-cluster__keyshort {
     display:inline; min-width:0; overflow:hidden; text-overflow:ellipsis; }
   /* The next-decision line sits left of the key column on a phone — 250px of
      artboard width would run its tail under the keytags. Wrap it in the lane. */
@@ -753,8 +753,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', name = 'Hitch', c
         const shown = st.iconOnly ? '' : label;
         sk.labelNode.textContent = shown;
         // Keep the action on narrow screens; counts and secondary effects remain in the full tip.
-        sk.shortLabelNode.textContent = shown.replace(/\s+\+\s+.*$/, '').replace(/\s+×\d+.*$/, '')
-          .replace(/^Shove · Pushes away\b/i, 'Shove · Push away');
+        sk.shortLabelNode.textContent = st.iconOnly ? '' : (st.shortLabel || shown.replace(/\s+\+\s+.*$/, '').replace(/\s+×\d+.*$/, '')
+          .replace(/^Shove · Pushes away\b/i, 'Shove · Push away'));
       }
       // The verb's reveal phrase moves with its state ("Ready" → "Recharging — 3s"), so it is
       // rewritten only when the words change: a settled frame still writes nothing.

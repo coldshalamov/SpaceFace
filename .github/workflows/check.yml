@@ -108,6 +108,12 @@ jobs:
         if: ${{ !cancelled() && matrix.shard == 1 }}
         run: npm run check:ceres-presentation
 
+      # A sent key event alone is not an outcome: verify the field owner, persistent HUD
+      # state, rebinds and lifecycle cancellation before unrelated program-control checks.
+      - name: Validate power input outcomes and HUD feedback
+        if: ${{ !cancelled() && steps.install_dependencies.outcome == 'success' && matrix.shard == 1 }}
+        run: node --test test/power-interaction-outcomes.test.mjs test/power-hold-preview.test.mjs test/arsenal-presentation-input-integrity.test.mjs test/arsenal-presentation-cluster.test.mjs test/arsenal-presentation-projection.test.mjs test/power-activation-hud.test.mjs test/power-rail.test.mjs
+
       - name: Validate program control plane
         if: matrix.shard == 1
         run: |

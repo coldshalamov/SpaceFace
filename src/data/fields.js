@@ -197,12 +197,12 @@ export const FIELD_DEFS = Object.freeze({
   }),
   // CONE — "the Sluice". A player-attached sustained forward wedge (toggle). Follows ship heading;
   // clears a lane ahead. Not a spawned entity — its source is the player ship, so it ends on
-  // toggle-off, undock, death, sector change. No cooldown; it is a held tool, not a thrown one.
+  // toggle-off, undock, death, sector change. No cooldown; one tap switches it on or off.
   cone: Object.freeze({
     id: 'field_cone_standard',
     kind: FIELD_KINDS.CONE,
     volume: FIELD_VOLUMES.CONE,
-    sentence: 'Hold a forward wedge that plows a lane ahead of the nose.',
+    sentence: 'Tap Rig to open a forward wedge that clears debris. Tap again to turn it off.',
     radius: 260,
     strength: 260,
     damping: 0,

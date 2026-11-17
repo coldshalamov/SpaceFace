@@ -37,6 +37,9 @@ test/shield-restored-event.test.mjs
 test/ui-control-labels.test.mjs
 test/ui-gamepad-slider-select-nav.test.mjs
 test/ui-grammar-matrix.test.mjs
+# Input must reach its owner and keep truthful ON/OFF feedback after the edge expires.
+# This same focused group is independently observable in check.yml's static CI job.
+node --test test/power-interaction-outcomes.test.mjs test/power-hold-preview.test.mjs test/arsenal-presentation-input-integrity.test.mjs test/arsenal-presentation-cluster.test.mjs test/arsenal-presentation-projection.test.mjs test/power-activation-hud.test.mjs test/power-rail.test.mjs
 test/player-counts.test.mjs
 test/weapon-clips.test.mjs
 # The Q5 guards themselves: a new source-slice anti-pattern, a drifted tier manifest, or a

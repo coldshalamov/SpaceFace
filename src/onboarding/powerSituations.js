@@ -2,9 +2,9 @@
 //
 // The first ten minutes PLACE one situation per power — a small physical setup on the player's
 // path that suggests the verb (a tight pack suggests Pull, a drifter on the bow suggests Shove,
-// a tumbling pod suggests Pin, a knot of scrap suggests Bomb, a debris fan suggests Rig). The
-// held-key preview (src/data/powerPreview.js) is the teacher: the pilot holds the key, sees the
-// outlines, and the power is learned by trying it. "I've flown before" skips all of it — the
+// an anchor helps the Line, a knot of scrap suggests Bomb, a debris fan suggests Rig). The
+// aimed-power preview (src/data/powerPreview.js) can teach Pull, Pin and Bomb. Shove acts on tap;
+// Rig stays on after a tap. Each line describes its actual gesture. "I've flown before" skips it — the
 // system reads ob.pace.flownBefore before it places anything.
 //
 // Pure spec module (src/onboarding contract): no DOM, no bus, no Math.random. Placement jitter
@@ -29,12 +29,12 @@ const perpendicular = (speedWuS) => Object.freeze({ kind: 'perpendicular', speed
 
 /**
  * One line per situation (the single tutorial voice): imperative, names the ONE power by its
- * rail name, and asks for the HOLD so the preview can teach — ≤12 words, same voice law as BEATS.
+ * rail name and the gesture that uses it — ≤12 words, same voice law as BEATS.
  */
 export const POWER_SITUATIONS = Object.freeze([
   Object.freeze({
     power: 'pull',
-    line: 'A loose pack drifts ahead. Pull gathers it — hold Pull.',
+    line: 'A loose pack drifts ahead. Tap Pull to draw it together.',
     props: Object.freeze([
       prop(-7, 150, 10, 80, still),
       prop(4, 178, 11, 85, still),
@@ -43,21 +43,21 @@ export const POWER_SITUATIONS = Object.freeze([
   }),
   Object.freeze({
     power: 'shove',
-    line: 'A drifter crowds the bow. Shove answers — hold Shove.',
+    line: 'A drifter crowds the bow. Tap Shove to push it away.',
     props: Object.freeze([
       prop(3, 110, 14, 120, towardPlayer(16)),
     ]),
   }),
   Object.freeze({
     power: 'pin',
-    line: 'A pod tumbling free. Pin holds it — hold Pin.',
+    line: 'Pin places an anchor ahead. Tap Pin, then latch your Line.',
     props: Object.freeze([
       prop(-9, 120, 7, 40, perpendicular(10)),
     ]),
   }),
   Object.freeze({
     power: 'bomb',
-    line: 'A knot of scrap ahead. Bomb breaks packs — hold Bomb.',
+    line: 'Scrap ahead. Tap Bomb to deploy; Shove sets off armed explosives.',
     props: Object.freeze([
       prop(0, 150, 12, 150, still),
       prop(2, 168, 13, 160, still),
@@ -67,7 +67,7 @@ export const POWER_SITUATIONS = Object.freeze([
   }),
   Object.freeze({
     power: 'rig',
-    line: 'Debris across the lane. Rig sweeps a path — hold Rig.',
+    line: 'Debris ahead. Tap Rig once to clear it while you steer.',
     props: Object.freeze([
       prop(-16, 100, 5, 25, still),
       prop(-8, 120, 5, 25, still),

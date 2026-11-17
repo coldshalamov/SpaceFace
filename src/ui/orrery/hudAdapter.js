@@ -28,7 +28,7 @@ import { isSwarmControls, swarmRailSlotAllowed, SWARM_LINE_KEY_LABEL } from '../
 import { runPerkIds, SWARM_PERK_BY_ID } from '../../data/swarmPerks.js';
 import { travelFlag } from '../../data/featureFlags.js';
 import { formatBindingCode, resolveActionCodes, resolveActionLabel } from '../../systems/input.js';
-import { heldPower } from '../../systems/powerVerbs.js';
+import { heldPower, powerUsesReleasePreview } from '../../systems/powerVerbs.js';
 import { injectOrrery } from './tokens.js';
 import { createFlightCluster } from './flightCluster.js';
 import { applyOrreryHudSkin } from './hudSkin.js';
@@ -183,9 +183,9 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
     // the rig it will toggle, the cloak module fitted), never a fixed per-socket symbol.
     const arsenalId = pe && (isBomb || slot.index === 5 || slot.index === 8) ? pe.glyph : (SLOT_ARSENAL[slot.index] || '');
     const entry = { state: st, key: labels[slot.index] || '', arsenalId };
-    // S5 + X3: the flight rail draws icons and key caps, no words — the names live on the
-    // socket's tip and aria label. The Line socket wears RMB in Swarm (no keyboard tether).
-    entry.iconOnly = true;
+    // Rig is a persistent toggle: its ON/OFF state must remain readable after the key is
+    // released. Keep the other sockets compact until their layout is reviewed in play.
+    entry.iconOnly = slot.index !== 5;
     if (isSwarmControls(state) && slot.index === 6) entry.key = SWARM_LINE_KEY_LABEL;
     if (isBomb) entry.consumable = true;
     // SWARM-03: the rail's tactical-live flag rides beside the state so the Cluster can
@@ -196,25 +196,25 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
     if (r.absent === true) entry.hidden = true;
     if (slot.index === 8) entry.passive = true;
 
-    // Active & firing states: lighting up upon pressing number keys or hold-to-preview
-    const isHeld = (held && VERB_TO_SLOT[held] === slot.index)
+    // A held key is a preview only for aimed powers. A pulse or persistent toggle does
+    // not become a held action merely because the player has not lifted their finger.
+    const canHold = slot.index < 1 || slot.index > 5 || powerUsesReleasePreview(state, slot.action);
+    const isHeld = canHold && ((held && VERB_TO_SLOT[held] === slot.index)
       || (slot.index === 1 && acts?.pull?.held === true)
       || (slot.index === 2 && acts?.shove?.held === true)
       || (slot.index === 3 && acts?.pin?.held === true)
       || (slot.index === 4 && acts?.bomb?.held === true)
-      || (slot.index === 5 && acts?.rig?.held === true)
       || (slot.index === 6 && (acts?.massline?.held === true || acts?.massline?.source != null))
-      || (slot.index === 7 && acts?.gyreSnare === true);
+      || (slot.index === 7 && acts?.gyreSnare === true));
 
-    const isFiring = (firingUntil && firingUntil.has(slot.index) && nowWall < firingUntil.get(slot.index))
+    const isFiring = slot.index !== 5 && ((firingUntil && firingUntil.has(slot.index) && nowWall < firingUntil.get(slot.index))
       || (slot.index === 1 && (acts?.pull?.pressed === true || acts?.deployWell === true))
       || (slot.index === 2 && (acts?.shove?.pressed === true || acts?.deployRepulsor === true || acts?.chargeDetonate === true))
       || (slot.index === 3 && (acts?.pin?.pressed === true || acts?.deployMassSeed === true))
       || (slot.index === 4 && (acts?.bomb?.pressed === true || acts?.chargeThrow === true || acts?.dropBomb === true || acts?.swarmBombThrow === true))
-      || (slot.index === 5 && (acts?.rig?.pressed === true || acts?.toggleClearingCone === true || acts?.toggleSkimCollector === true))
       || (slot.index === 6 && (acts?.tetherFire === true || acts?.massline?.latch === true))
       || (slot.index === 7 && acts?.gyreSnare === true)
-      || (slot.index === 8 && acts?.cloakToggle === true);
+      || (slot.index === 8 && acts?.cloakToggle === true));
 
     if (isHeld) entry.held = true;
     if (isFiring) entry.firing = true;
@@ -222,6 +222,14 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
     // The socket's own words: the EFFECTIVE verb ("Rig · Scoop", "Line · Haul"), not the band
     // name — a bare "LINE" reads as jargon next to its key (owner 2026-10-28).
     if (pe && slot.index >= 1) entry.label = pe.label;
+    if (slot.index === 5 && pe) {
+      // The fields/planet owner supplies this state. A press attempt is never proof that
+      // a toggle is on, and releasing the key must not erase an active cone or scoop.
+      entry.active = pe.on === true;
+      entry.label = pe.label.replace(/^Rig · /, '');
+      entry.shortLabel = pe.on ? 'ON' : 'OFF';
+      entry.key = labels[slot.index] ? `Tap ${labels[slot.index]}` : '';
+    }
     if (pe && pe.charges && Number.isFinite(pe.charges.count)) entry.count = pe.charges.count;
     else {
       const count = /×(\d+)/.exec(String(r.name || ''));
@@ -411,14 +419,14 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
   const onActivateSocket = ({ id, power, slot }) => {
     const slotIdx = Number(id) || (slot && Number(slot.id)) || 0;
     const action = slot?.action || power || (slotIdx === 1 ? 'pull' : slotIdx === 2 ? 'shove' : slotIdx === 3 ? 'pin' : slotIdx === 4 ? 'bomb' : slotIdx === 5 ? 'rig' : slotIdx === 6 ? 'tether' : '');
-    const nowWall = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
-    if (slotIdx > 0) {
-      firingUntil.set(slotIdx, nowWall + FLASH_DURATION_MS);
-    }
     if (action && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
       const codes = resolveActionCodes(state, action);
-      const code = (codes && codes[0]) || (slotIdx >= 1 && slotIdx <= 5 ? `Digit${slotIdx}` : null);
+      const code = codes && codes[0];
       if (code) {
+        if (slotIdx > 0 && slotIdx !== 5) {
+          const nowWall = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+          firingUntil.set(slotIdx, nowWall + FLASH_DURATION_MS);
+        }
         const Ctor = typeof KeyboardEvent === 'function' ? KeyboardEvent
           : (typeof window.KeyboardEvent === 'function' ? window.KeyboardEvent : null);
         const downEvt = Ctor ? new Ctor('keydown', { code, bubbles: true }) : { type: 'keydown', code, bubbles: true };

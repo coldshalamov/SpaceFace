@@ -66,7 +66,7 @@ import { isSwarmControls } from '../data/swarmControls.js';
 export { isThrowArmPayload } from './masslineThrow.js';
 import { contextActionAllowed, contextStockBindings } from '../data/inputContexts.js';
 import {
-  POWER_VERBS, bombUsesCharge, powerVerbFor, powersFireOnPress, resolveRigTarget, savedCodesForPower, setHeldPower, swarmBombSelection,
+  POWER_VERBS, bombUsesCharge, powerVerbFor, powerUsesReleasePreview, resolveRigTarget, savedCodesForPower, setHeldPower, swarmBombSelection,
 } from './powerVerbs.js';
 
 // Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
@@ -707,6 +707,9 @@ function resetHoldToggleLatches(latches, edges) {
   if (edges) for (const verb of HOLD_TO_TOGGLE_ACTIONS) edges[verb] = false;
 }
 const KEY_EDGE_CAP = 64;
+// Touch snapshots can include a whole tap between fixed steps. Preserve discrete power presses
+// in the same bounded queue as keyboard edges; their final held levels alone cannot carry a tap.
+const SAMPLED_TOUCH_PRESS_ACTIONS = new Set([...POWER_VERBS, 'deployShieldPylon']);
 
 function flightEdgeQueue(host) {
   return host._keyEdgeQueue || (host._keyEdgeQueue = []);
@@ -755,7 +758,7 @@ export function applyFlightKeyEvent(host, event = {}) {
   return true;
 }
 
-// Touch pylon presses share the bounded sampled queue with keys. A worker can drain
+// Touch power and pylon presses share the bounded sampled queue with keys. A worker can drain
 // both the tap and its neutral frame before stepping; the final hold alone loses that tap.
 function discardSampledTouchPresses(host, action = null) {
   const queue = host._keyEdgeQueue;
@@ -1137,7 +1140,7 @@ export const input = {
     // G18-02 context-wheel latches: slice choices that read as "held" verbs until chosen again or
     // the flight context drops them (dock, modal, death — same contract as hold-to-toggle).
     this._wheelLatches = Object.create(null);
-    this._touchPylonQuarantined = false;
+    this._touchPressQuarantine = Object.create(null);
     this._masslineGrammar = createMasslineInputGrammar();
     // F4/G9: device arbitration uses deterministic (tick, sequence) activity stamps shared
     // across keyboard/gamepad/touch — never performance.now()/Date.now(). Sequence reflects
@@ -1254,21 +1257,26 @@ export const input = {
         // its resolved frame lands here — the lane touch reducer applies axes,
         // actions and cancelled-role resets into the sim-owned touch surface.
         if (this.touch && typeof this.touch.applyLaneFrame === 'function') {
-          const wasHeld = !!this.touch.actions?.deployShieldPylon?.held;
+          const wasHeld = Object.create(null);
+          for (const action of SAMPLED_TOUCH_PRESS_ACTIONS) wasHeld[action] = !!this.touch.actions?.[action]?.held;
           const tetherWasHeld = !!this.touch.actions?.tether?.held;
           this.touch.applyLaneFrame(d.frame, this);
-          const held = !!this.touch.actions?.deployShieldPylon?.held;
           const tetherHeld = !!this.touch.actions?.tether?.held;
-          if (d.frame?.active === false) {
-            discardSampledTouchPresses(this);
-            this._touchPylonQuarantined = false;
-          } else if (!held) {
-            this._touchPylonQuarantined = false;
-          } else if (!wasHeld && !this._touchPylonQuarantined) {
-            const queue = flightEdgeQueue(this);
-            queue.push({ action: 'deployShieldPylon', pressed: true, source: 'touch',
-              sector: this.state.world?.currentSectorId });
-            if (queue.length > KEY_EDGE_CAP) queue.splice(0, queue.length - KEY_EDGE_CAP);
+          const quarantine = this._touchPressQuarantine || (this._touchPressQuarantine = Object.create(null));
+          if (d.frame?.active === false) discardSampledTouchPresses(this);
+          for (const action of SAMPLED_TOUCH_PRESS_ACTIONS) {
+            const held = !!this.touch.actions?.[action]?.held;
+            if (d.frame?.cancelledRoles?.includes?.(action)) {
+              discardSampledTouchPresses(this, action);
+              quarantine[action] = held;
+            } else if (d.frame?.active === false || !held) {
+              quarantine[action] = false;
+            } else if (!wasHeld[action] && !quarantine[action]) {
+              const queue = flightEdgeQueue(this);
+              queue.push({ action, pressed: true, source: 'touch',
+                sector: this.state.world?.currentSectorId });
+              if (queue.length > KEY_EDGE_CAP) queue.splice(0, queue.length - KEY_EDGE_CAP);
+            }
           }
           if (d.frame?.active === false || d.frame?.cancelledRoles?.includes?.('tether')) {
             discardSampledTouchPresses(this, 'tether');
@@ -1522,7 +1530,8 @@ export const input = {
     discardSampledTouchPresses(this);
     this._touchThrow = null;
     // Only a real neutral touch descriptor re-arms the worker deck after interruption.
-    this._touchPylonQuarantined ||= !!this.touch?.actions?.deployShieldPylon?.held;
+    const touchQuarantine = this._touchPressQuarantine || (this._touchPressQuarantine = Object.create(null));
+    for (const action of SAMPLED_TOUCH_PRESS_ACTIONS) touchQuarantine[action] ||= !!this.touch?.actions?.[action]?.held;
     // A power grip is a flight context: focus loss or a hidden page cancels it without firing.
     this._cancelPowerHolds(this.state);
     if (this._swallowedFlightKeys) this._swallowedFlightKeys = Object.create(null);
@@ -1631,12 +1640,11 @@ export const input = {
     return !quarantine || quarantine[action] !== true;
   },
 
-  // Row 493 — which powers fire this update (see the call site). Grips live here, input-owned and
+  // Resolve each power's interaction. Aimed grips live here, input-owned and
   // never on state; the preview reads the newest live grip through powerVerbs.heldPower(state).
   _resolvePowerFire(state, gp, presses) {
     const fire = this._powerFire || (this._powerFire = { pull: false, shove: false, pin: false, bomb: false, rig: false });
     const holds = this._powerHolds || (this._powerHolds = Object.create(null));
-    const instant = powersFireOnPress(state);
     const sector = state.world ? state.world.currentSectorId : null;
     let newest = null;
     let newestPower = null;
@@ -1655,7 +1663,7 @@ export const input = {
         delete holds[power];
         hold = null;
       }
-      if (instant) { fire[power] = press; delete holds[power]; continue; }
+      if (!powerUsesReleasePreview(state, power)) { fire[power] = press; delete holds[power]; continue; }
       // The sampled queue (applyFlightKeyEvent) keeps presses, not releases, and a catch-up runs
       // several updates against the final key state. So a key press that lands on an open grip,
       // or that has another press of the same power still queued behind it, was let go before
@@ -2254,9 +2262,9 @@ export const input = {
     const edges = this._edgePrev || (this._edgePrev = {});
     const edge = (action) => {
       const sampled = takeSampledPress(this, state, action);
-      // Worker touch pylon edges were captured at descriptor ingest. Keep its final
+      // Worker touch power/pylon edges were captured at descriptor ingest. Keep their final
       // raw hold truthful without deriving another press (or replaying one after blur).
-      const held = action === 'deployShieldPylon' && typeof tp?.applyLaneFrame === 'function'
+      const held = SAMPLED_TOUCH_PRESS_ACTIONS.has(action) && typeof tp?.applyLaneFrame === 'function'
         ? input._held.call(this, state, action) : this._held(state, action);
       const was = !!edges[action];
       edges[action] = held;
@@ -2342,11 +2350,11 @@ export const input = {
     acts.pin = { held: this._held(state, 'pin') || this._padHeld(gp, 'pin'), pressed: pinEdge };
     acts.bomb = { held: this._held(state, 'bomb') || this._padHeld(gp, 'bomb'), pressed: bombEdge };
     acts.rig = { held: this._held(state, 'rig') || this._padHeld(gp, 'rig'), pressed: rigEdge };
-    // Row 493 — hold to preview, release to use. A press grips the power (the preview draws what it
-    // will move); letting go fires it, and a whole tap between two updates fires at once. A screen,
-    // focus loss, a sector change or a fenced pad cancels the grip without firing. Settings →
-    // Gameplay "Powers: use on press" restores fire-on-press. Bomb's charge-or-bomb choice and
-    // Rig's cone-or-scoop target are read at the moment the power fires.
+    // Pull, Pin and Bomb can hold to preview then release to use, or use on press per the saved
+    // aiming preference. Shove is a reaction pulse; Rig toggles a persistent tool. Both answer
+    // the press immediately, with no use on release and no repeat while held. A screen, focus
+    // loss, sector change or fenced pad cancels aimed grips without firing. Bomb's charge-or-bomb
+    // choice and Rig's cone-or-scoop target are read at the moment the power fires.
     const fire = this._resolvePowerFire(state, gp, { pull: pullEdge, shove: shoveEdge, pin: pinEdge, bomb: bombEdge, rig: rigEdge });
     const bombThrowsCharge = fire.bomb && bombUsesCharge(state);
     acts.chargeThrow = bombThrowsCharge;

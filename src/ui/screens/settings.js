@@ -264,10 +264,10 @@ export const REBIND_LABELS = {
   tether: 'Massline / the Line (RMB by default): tap latch/cut; hold line control',
   contextWheel: 'Context wheel: hold, aim a slice, release to choose',
   pull: 'Pull: gravity well at your aim',
-  shove: 'Shove: outward blast + set off armed ordnance',
+  shove: 'Shove: tap for outward blast + detonate armed explosives',
   pin: 'Pin: anchor seed for the Line',
   bomb: 'Bomb: sticky charge, or the chosen drift bomb',
-  rig: 'Rig: clearing cone / skim scoop',
+  rig: 'Rig: tap to turn clearing cone / ore scoop on or off',
   scanPulse: 'Scanner pulse',
   cruise: 'Cruise drive (charge/drop)',
   reelIn: 'Tether winch in',
@@ -300,7 +300,7 @@ export const GAMEPAD_REBINDABLE = [
 export const GAMEPAD_REBIND_LABELS = {
   accept: 'Accept',
   dock: 'Dock (when prompted)',
-  shove: 'Shove: outward blast + set off armed ordnance',
+  shove: 'Shove: tap for outward blast + detonate armed explosives',
   cancel: 'Back / cancel',
   massline: 'Massline / the Line: tap latch/cut; hold line control',
   contextWheel: 'Context wheel: hold, aim a slice, release to choose',
@@ -328,7 +328,7 @@ export const GAMEPAD_REBIND_LABELS = {
   siteBeam: 'World Site beam (selected target)',
   pin: 'Pin: anchor seed for the Line',
   pull: 'Pull: gravity well at your aim',
-  rig: 'Rig: clearing cone / skim scoop',
+  rig: 'Rig: tap to turn clearing cone / ore scoop on or off',
   deployBeacon: 'Nav beacon: deploy',
   jettisonLot: 'Cargo: jettison lot',
   gyreSnare: 'Gyre Snare: hold to lash, release to bowl',
@@ -1091,13 +1091,12 @@ export const settingsScreen = {
         ['light', 'Light'],
         ['off', 'Off'],
       ], (v) => this._set(ctx, 'gameplay', 'targetAssistStrength', v));
-      // Row 493: the five powers preview while held. Absent = hold (the shipped default);
-      // powerVerbs.powersFireOnPress reads only 'press'.
-      rowSelect('Powers', () => (g.powerFire === 'press' ? 'press' : 'hold'), [
-        ['hold', 'Hold to preview'],
-        ['press', 'Use on press'],
+      // Only aimed powers use this preference. Pulse/toggle gestures stay immediate.
+      rowSelect('Aim Pull, Pin and Bomb', () => (g.powerFire === 'press' ? 'press' : 'hold'), [
+        ['hold', 'Hold to preview, release to use'],
+        ['press', 'Use when pressed'],
       ], (v) => this._set(ctx, 'gameplay', 'powerFire', v));
-      build.note('Hold to preview: while you hold a power key (1–5), every body it will move is outlined with where it will go, and letting go uses it; a quick tap still uses it at once.');
+      build.note('In preview mode, hold Pull, Pin or Bomb to preview, then release to use. A quick tap also works. Use when pressed activates them immediately. Shove always acts when pressed. Rig stays on after one tap and turns off with the next tap.');
       rowToggle('Velocity vectoring assist', () => g.velocityVectoring !== false, (v) => this._set(ctx, 'gameplay', 'velocityVectoring', v));
       build.note('Turn your drift toward the nose while thrusting. Off leaves momentum unassisted.');
       const masslineFamilyOn = massline2Flag('enabled');

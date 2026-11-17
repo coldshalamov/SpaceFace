@@ -1,4 +1,4 @@
-// Row 493 (CRAFT-POWERS): the held-key preview. While a power's key is held, every body that
+// The held-key preview. While an aimed power's key is held, every body that
 // letting go will move is outlined in the power's colour, with its predicted path; the shapes the
 // power makes (a well ring, a blast ring, a throw line) are drawn with it. This module resolves
 // that truth; src/render/powerPreview.js draws it.
@@ -34,7 +34,7 @@ import { swarmFieldRadiusScale } from '../systems/playerModifiers.js';
 import { chargeThrowPlan } from './impulseChargeReadModel.js';
 import { bombDropPlan, proximityTriggerEligible } from '../systems/bombs.js';
 import {
-  POWER_VERBS, bombUsesCharge, heldPower, playerImpulseCharges, resolveRigTarget,
+  POWER_VERBS, bombUsesCharge, heldPower, playerImpulseCharges, powerUsesReleasePreview, resolveRigTarget,
 } from '../systems/powerVerbs.js';
 import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { readRailModel } from '../ui/powerRail.js';
@@ -78,18 +78,19 @@ const blastShoveEligible = (e) => !!e && e.physicsBody !== false
   && (isDynamicPhysicsBodyEntity(e) || isAnchoredPhysicalBody(e));
 
 /**
- * The power whose key is held right now, or null. input.js publishes the newest live grip through
+ * The aimed power being previewed right now, or null. input.js publishes the newest live grip through
  * powerVerbs.heldPower; a merged `state.input.actions[p].held` flag is read when no grip is
- * published (an input layer that writes one). The grip lives in the realm input runs in: every
- * player route runs the main lane (simLaneMain.resolveSimLaneFlags), so the renderer sees it; the
- * `?simLane=worker` diagnostic keeps it in the worker and draws no preview.
+ * published (an input or presentation layer that supplies one). The private grip is available
+ * only in the realm that owns input. The shared interaction policy excludes immediate
+ * pulses/toggles and the use-on-press setting: a held Rig key must never draw a pending cone.
  */
 export function powerHeld(state) {
   const grip = heldPower(state);
-  if (grip) return grip;
+  if (grip && powerUsesReleasePreview(state, grip)) return grip;
   const acts = state && state.input && state.input.actions;
   if (!acts) return null;
   for (const p of POWER_VERBS) {
+    if (!powerUsesReleasePreview(state, p)) continue;
     const a = acts[p];
     if (a && (a.held === true || a === true)) return p;
   }
@@ -548,7 +549,7 @@ function planRig(state, player, rail, opts) {
   const spec = playerFieldSpec(kind, player, state);
   const slot = rail[5];
   if (slot && slot.state === 'armed') {
-    // A rig that is on folds first: the release turns it off and moves nothing.
+    // An explicit inspection plan can show Rig; it folds on its next press and moves nothing.
     return { center: spec.center, radius: spec.radius, areas: [fieldArea('fold', spec)], moves: [], blocked: null, note: slot.why };
   }
   const drift = { x: finite(player.vel && player.vel.x), z: finite(player.vel && player.vel.z) };
