@@ -16,6 +16,8 @@ const round = Number(process.argv[3] || 20);
 mkdirSync(dirname(out), { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const server = spawn(process.execPath, ['server.js', String(PORT)], { cwd: process.cwd(), stdio: 'ignore' });
+// WATCHDOG: a probe must never hold the shared game lock. Hard stop after 180 s, whatever it is doing.
+setTimeout(() => { console.log('watchdog: probe timed out after 180 s'); try { server.kill(); } catch {} process.exit(2); }, 180_000).unref?.();
 
 try {
   await sleep(2500);
