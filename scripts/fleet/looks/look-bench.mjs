@@ -176,11 +176,14 @@ const PAGE_BENCH = `(() => {
         if (Number.isFinite(g) && rig.lights[k]) { rig.lights[k].intensity = bench.base.lights[k] * g; applied['light.' + k] = rig.lights[k].intensity; }
       }
       if (rig && Number.isFinite(v.rig.keyElevation) && rig.lights.key) {
-        // Keep the azimuth and horizontal reach, lower the key to the requested elevation.
-        const p = rig.lights.key.position; const horiz = Math.hypot(p.x, p.z) || 1;
+        // Keep the azimuth and horizontal reach of the key OFFSET (the key's world position is player + offset, so the
+        // offset, not the position, carries the angle), lower it to the requested elevation.
+        const off = r._keyLightOffset || { x: 60, y: 140, z: 40 };
+        const horiz = Math.hypot(off.x, off.z) || 1;
         const y = horiz * Math.tan(v.rig.keyElevation * Math.PI / 180);
-        p.y = y; applied.keyElevation = v.rig.keyElevation;
-        r._keyLightOffset = { x: p.x, y, z: p.z }; r._shadowMapDirty = true;
+        r._keyLightOffset = { x: off.x, y, z: off.z };
+        applied.keyElevation = v.rig.keyElevation; applied.keyElevationWas = Math.round(Math.atan2(off.y, horiz) * 1800 / Math.PI) / 10;
+        r._shadowMapDirty = true;
       }
     }
     // post: keys that are live Look post uniforms (toneNeutral, ink, contrast...) go through tuneLook;
