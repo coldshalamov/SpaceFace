@@ -1078,7 +1078,7 @@ ${A} .sf-cru-cards .sf-cru-card.is-unavail { opacity:.85 !important; }
 ${A} .sf-cru-cards .orr-equipment-glyph { color:var(--armory-cool); }
 ${A} .orr-armory-reading.orr-armory-reading {
   display:grid !important; grid-template-columns:minmax(0,1fr) !important; grid-template-rows:minmax(0,1fr) auto !important;
-  grid-auto-rows:max-content !important; gap:0 !important; align-content:start; box-sizing:border-box; overflow:hidden !important;
+  grid-auto-rows:max-content !important; gap:0 !important; align-content:start; align-items:stretch !important; box-sizing:border-box; overflow:hidden !important;
   background:linear-gradient(145deg,#17252b,var(--armory-panel) 68%); border:1px solid var(--armory-rule);
   border-radius:3px; padding:clamp(15px,1.55vw,28px) !important;
 }

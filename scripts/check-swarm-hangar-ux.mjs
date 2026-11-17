@@ -30,6 +30,7 @@ const liveOnly = args.includes('--live-only');
 const runLive = liveOnly || args.includes('--live');
 assert.ok(!(liveOnly && args.includes('--live')), 'Use either --live or --live-only.');
 const LIVE_VIEWPORT = { width: 1440, height: 900 };
+const CAPTURE_TIMEOUT_MS = 60000;
 const out = path.resolve(repo, args.find(arg => arg.startsWith('--out='))?.slice(6) || '.devshots/swarm-hangar-ux');
 const allowedOut = path.join(repo, '.devshots') + path.sep;
 assert.ok(out.startsWith(allowedOut), 'Probe output must stay inside the ignored .devshots tree.');
@@ -230,7 +231,7 @@ async function shot(page, name) {
   try {
     // Software GL can delay compositor readback after the controls are ready. Keep
     // input/readiness deadlines separate, and retain capture cost as evidence.
-    await page.screenshot({ path: path.join(out, filename), timeout: 60000 });
+    await page.screenshot({ path: path.join(out, filename), timeout: CAPTURE_TIMEOUT_MS });
     capture.completed = true;
   } finally { capture.elapsedMs = Math.round(performance.now() - started); }
   report.screenshots.push(filename);
@@ -276,29 +277,65 @@ async function shipShot(page, name, { hullId, posterUrl, selector = S.preview })
 async function settleFiniteAnimations(page, selector, capture) {
   // Observe the real finish; do not pause/finish animations or sample after a fixed sleep.
   // Infinite ambience and scroll-driven effects have no finite resting state to await.
+  const started = performance.now();
   await page.evaluate(() => document.fonts.ready);
   const pending = element => element.getAnimations({ subtree: true }).filter(animation =>
     (animation.playState === 'running' || animation.pending)
       && (!animation.timeline || animation.timeline === document.timeline)
-      && Number.isFinite(animation.effect?.getComputedTiming().endTime)).map(animation => ({
-    name: animation.animationName || animation.transitionProperty || animation.id || 'web-animation',
-    target: animation.effect?.target?.className?.toString() || '',
-    currentTime: animation.currentTime, endTime: animation.effect.getComputedTiming().endTime,
-  }));
+      && Number.isFinite(animation.effect?.getComputedTiming().endTime)).map(animation => {
+    const target = animation.effect?.target?.element || animation.effect?.target;
+    const rect = target?.getBoundingClientRect?.();
+    let visible = !!target?.isConnected && !!rect && rect.width > 0 && rect.height > 0;
+    let clip = rect && { left: Math.max(0, rect.left), top: Math.max(0, rect.top),
+      right: Math.min(innerWidth, rect.right), bottom: Math.min(innerHeight, rect.bottom) };
+    for (let node = target; node && visible; node = node.parentElement) {
+      const css = getComputedStyle(node);
+      if (node.hidden || css.display === 'none' || css.visibility === 'hidden' || Number(css.opacity) === 0) visible = false;
+      if (node === target) continue;
+      const r = node.getBoundingClientRect();
+      if (/^(auto|scroll|hidden|clip)$/.test(css.overflowX)) {
+        clip.left = Math.max(clip.left, r.left); clip.right = Math.min(clip.right, r.right);
+      }
+      if (/^(auto|scroll|hidden|clip)$/.test(css.overflowY)) {
+        clip.top = Math.max(clip.top, r.top); clip.bottom = Math.min(clip.bottom, r.bottom);
+      }
+    }
+    visible = visible && clip.right > clip.left && clip.bottom > clip.top;
+    const time = value => value == null ? null : typeof value === 'number' ? Math.round(value * 1000) / 1000 : String(value);
+    return {
+      name: animation.animationName || animation.transitionProperty || animation.id || 'web-animation',
+      target: target?.className?.toString() || '',
+      identity: target?.id || target?.dataset?.swarmHull || target?.dataset?.swarmKit || target?.dataset?.action
+        || target?.getAttribute?.('aria-label') || target?.textContent?.trim().replace(/\s+/g, ' ').slice(0, 80) || null,
+      visible, connected: !!target?.isConnected,
+      rect: rect ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null,
+      playState: animation.playState, pending: animation.pending,
+      currentTime: time(animation.currentTime), startTime: time(animation.startTime),
+      endTime: time(animation.effect.getComputedTiming().endTime),
+      timeline: animation.timeline === document.timeline ? 'document' : animation.timeline ? 'other' : 'none',
+      timelineCurrentTime: time(animation.timeline?.currentTime), documentVisibility: document.visibilityState,
+    };
+  });
   const before = await page.locator(selector).evaluate(pending);
-  const evidence = { capture, selector, pendingBefore: before, settled: false };
+  const evidence = { capture, selector, timeoutMs: CAPTURE_TIMEOUT_MS, pendingBefore: before, settled: false };
   report.animationSettlements.push(evidence);
   try {
+    // Authored rendering can delay a paint opportunity under software GL. This is
+    // capture preparation, with the same finite compositor budget as readback above;
+    // ordinary control deadlines stay unchanged, and transitions must actually finish.
     await page.waitForFunction(selector => {
       const element = document.querySelector(selector);
       return element && !element.getAnimations({ subtree: true }).some(animation =>
         (animation.playState === 'running' || animation.pending)
           && (!animation.timeline || animation.timeline === document.timeline)
           && Number.isFinite(animation.effect?.getComputedTiming().endTime));
-    }, selector, { polling: 'raf', timeout: 5000 });
+    }, selector, { polling: 'raf', timeout: CAPTURE_TIMEOUT_MS });
     evidence.settled = true;
   } finally {
-    evidence.pendingAfter = await page.locator(selector).evaluate(pending).catch(() => []);
+    evidence.elapsedMs = Math.round(performance.now() - started);
+    evidence.pendingAfter = await page.locator(selector).evaluate(pending).catch(error => {
+      evidence.observationError = String(error); return null;
+    });
   }
 }
 async function assertEquipmentGeometry(page, capture) {
