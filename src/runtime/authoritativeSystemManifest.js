@@ -361,6 +361,21 @@ export function isNodeSafeSystemId(id) {
   return true;
 }
 
+/**
+ * The worker/Node lane's materialization set: nodeSafe AND not main-lane
+ * presentation. nodeSafe platform-phase and domGuarded systems are owned by the
+ * main thread (core/registry.js isMainLanePresentationSystemId): their bus
+ * listeners are UI listeners, and a nodeSafeOnly runtime — the sim worker —
+ * must never order them. swarmJuiceHud subscribing `swarm:bossIntro` inside the
+ * worker and reading `document` is the leak this closes (FIX-04); their
+ * sim-side effects reach the main lane through the event bridge instead.
+ */
+function isWorkerLaneSystemId(id) {
+  if (!isNodeSafeSystemId(id)) return false;
+  const cap = getSystemCapability(id);
+  return cap.phase !== 'platform' && cap.domGuarded !== true;
+}
+
 export function getSystemCapability(id) {
   return SYSTEM_CAPABILITIES[id] || Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'gameplay' });
 }
@@ -1057,7 +1072,7 @@ export function getAuthoritativeInitOrder(systemSet, opts = {}) {
     ids = PRODUCTION_INIT_ORDER;
   }
   if (opts.nodeSafeOnly) {
-    return Object.freeze(ids.filter(isNodeSafeSystemId));
+    return Object.freeze(ids.filter(isWorkerLaneSystemId));
   }
   return ids;
 }
@@ -1075,7 +1090,7 @@ export function getAuthoritativeUpdateOrder(systemSet, opts = {}) {
     ids = PRODUCTION_UPDATE_ORDER;
   }
   if (opts.nodeSafeOnly) {
-    return Object.freeze(ids.filter(isNodeSafeSystemId));
+    return Object.freeze(ids.filter(isWorkerLaneSystemId));
   }
   return ids;
 }

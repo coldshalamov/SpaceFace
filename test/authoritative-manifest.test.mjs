@@ -4,7 +4,7 @@ import { test } from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
-import { createRegistry } from '../src/core/registry.js';
+import { createRegistry, isMainLanePresentationSystemId } from '../src/core/registry.js';
 import { createSimulation } from '../src/core/sim.js';
 import {
   PRESENTATION_PLATFORM_IDS,
@@ -140,17 +140,26 @@ test('Node production resolve (nodeSafeOnly) shares feature values and authorita
   assert.deepEqual(browserPath.features, nodePath.features);
   assert.equal(browserPath.profileHash, nodePath.profileHash);
 
-  // Node drops declared non-Node-safe systems, including presentation platform IDs.
+  // Node drops declared non-Node-safe systems, including presentation platform IDs,
+  // and the worker lane drops main-lane presentation entirely (platform-phase and
+  // domGuarded ids — their bus listeners own DOM; FIX-04).
   for (const id of PRESENTATION_PLATFORM_IDS) {
     assert.ok(browserPath.authoritativeSystemIds.includes(id));
     assert.ok(!nodePath.authoritativeSystemIds.includes(id));
   }
+  for (const id of browserPath.authoritativeSystemIds) {
+    if (isMainLanePresentationSystemId(id)) {
+      assert.ok(!nodePath.authoritativeSystemIds.includes(id), `worker lane excludes ${id}`);
+    }
+  }
 
-  const browserGameplayIds = browserPath.authoritativeSystemIds.filter(isNodeSafeSystemId);
+  const browserGameplayIds = browserPath.authoritativeSystemIds
+    .filter((id) => isNodeSafeSystemId(id) && !isMainLanePresentationSystemId(id));
   assert.deepEqual([...nodePath.authoritativeSystemIds], [...browserGameplayIds]);
   assert.ok(nodePath.authoritativeSystemIds.includes('heistFacilities'));
 
-  const browserUpdateGameplay = browserPath.authoritativeUpdateOrderIds.filter(isNodeSafeSystemId);
+  const browserUpdateGameplay = browserPath.authoritativeUpdateOrderIds
+    .filter((id) => isNodeSafeSystemId(id) && !isMainLanePresentationSystemId(id));
   assert.deepEqual([...nodePath.authoritativeUpdateOrderIds], [...browserUpdateGameplay]);
 });
 
@@ -168,13 +177,13 @@ test('createRegistry (browser path) and resolveRuntimeManifest (Node path) agree
   assert.equal(registry.runtimeManifest.profileId, nodeResolved.profileId);
   assert.deepEqual(registry.runtimeManifest.features, nodeResolved.features);
 
-  // Authoritative Node-safe IDs (excluding main-realm adapters/platform) match Node resolve.
+  // Authoritative worker-lane IDs (Node-safe minus main-lane presentation) match Node resolve.
   const registryGameplayIds = registry.runtimeManifest.authoritativeSystemIds
-    .filter(isNodeSafeSystemId);
+    .filter((id) => isNodeSafeSystemId(id) && !isMainLanePresentationSystemId(id));
   assert.deepEqual([...registryGameplayIds], [...nodeResolved.authoritativeSystemIds]);
 
   const registryUpdateGameplay = registry.runtimeManifest.authoritativeUpdateOrderIds
-    .filter(isNodeSafeSystemId);
+    .filter((id) => isNodeSafeSystemId(id) && !isMainLanePresentationSystemId(id));
   assert.deepEqual([...registryUpdateGameplay], [...nodeResolved.authoritativeUpdateOrderIds]);
 });
 
