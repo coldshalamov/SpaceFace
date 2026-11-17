@@ -5,8 +5,8 @@
   "statusCounts": {
     "pending": 31,
     "in progress": 0,
-    "passed": 363,
-    "needs follow-up": 124,
+    "passed": 364,
+    "needs follow-up": 123,
     "unused/unresolved": 3048
   },
   "models": {
@@ -11374,77 +11374,76 @@
       "family": "modular greebles"
     },
     "runtime:SF_HORNET_PRODUCTION_V1:hornet_production_v1": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/hornet_production_v1_lod1.glb",
-          "sha256": "4829bb9dcd6cad1f77f91b9ce2ec5d63f3307b88729249626d922e96aed54193",
-          "sha256Source": "release-manifest"
+          "sha256": "b64f0dd053760b3bfacdc97922473349f47409b27ed61b44d48024ccdc73fb62",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/hornet_production_v1_lod2.glb",
-          "sha256": "dbd147faa73c683ce19ba18494723519e158a692fda23b83cdaf8c5168be0b81",
-          "sha256Source": "release-manifest"
+          "sha256": "5ecdbe2f78c181fc87cdf25e83a9e15149adf9f85c95af258789a18a1abaca35",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/hornet_production_v1.glb",
-          "sha256": "95a034b6aea73a10a84c4c1d5b63b94d378823578fbe89917cc10ba61656ec15",
-          "sha256Source": "release-manifest"
+          "sha256": "61fdc2fa84fad774de2fbbe112f40e7fbbf9038106993cd102d247b55c820281",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/hornet-production-v1-lod1/render.glb",
-          "sha256": "d7bcc95d9df039ebc084a9e4df7a454e676b8ffad276a6c6983dc978aa5e70ca",
-          "sha256Source": "catalog-only"
+          "sha256": "c4cb2d11e34540a6b103b269700e75b0e87eb1b6045682e0996f2319b5014bce",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/hornet-production-v1-lod2/render.glb",
-          "sha256": "d65ca8b8916e439582168562957ce740d4bca9878b19f7780fced2ce1a0f284b",
-          "sha256Source": "catalog-only"
+          "sha256": "f9597a4095adac24c67f4722cb3c589b46f4f77ab2caaa23dc23922ebaabe5e0",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/hornet-production-v1/render.glb",
-          "sha256": "1fa4184dfadd3b30dc1a3e72223d0953182b3bfeeae38afbc36332f7149ad825",
-          "sha256Source": "catalog-only"
+          "sha256": "025dff70304933eba80e47e3c38fb8e392a4f27624970a0f97414fedc411ec69",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/hornet_production_v1_lod1.glb",
-          "sha256": "54e148824189dca7084471c7dcc6c519cfca5c6dcac53b44d3cc9504da0cd1c3",
-          "sha256Source": "release-manifest"
+          "sha256": "215b08b83cb9495a994035f9f6e7b7461a91d338536347bc8c9b959a0002fde5",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/hornet_production_v1_lod2.glb",
-          "sha256": "163c4d60a4e7f5833307694a3a3b6311bd0575f6097fa940cd457cae77c4345b",
-          "sha256Source": "release-manifest"
+          "sha256": "86a5744056fb0debfecba7451ce79ffdce5a8701d7acb1793917c34610118aa9",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/hornet_production_v1.glb",
-          "sha256": "62591c7a00df35682f490b510c2d6efb97f20e221e2f023cf11810e99e457a15",
-          "sha256Source": "release-manifest"
+          "sha256": "701ca39cb8abeacc723296e0d90e45d4ba157acf448bb946ea4ad01849d1c684",
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
         "chase lod0",
         "chase lod1",
-        "chase lod2"
+        "chase lod2 full silhouette"
       ],
-      "changes": "No asset change this pass; capture-based review completing the campaign trim work.",
-      "issues": "LOD2 mesh degenerate/missing — rebuild and recapture required.",
+      "changes": "LOD2 GLB rebuilt through the supported forge pipeline (near-identical bytes); asset verified via full-silhouette solo recapture + 18/18 lod check + hardpoints/routing/manifest/pilot checks.",
+      "issues": "Renderer presented-frame admission race can still drop meshes from first-frame captures (documented runtime defect for a renderer owner; recapture retry is the interim mitigation). 39 pre-existing authored zero-area tris in LOD0_Armor (also in lod1) are not the defect.",
       "evidence": [
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-production-20261116/hornet/hornet_production_v1_chase.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-production-20261116/hornet/_sheet_chase.png",
-        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-production-20261116/hornet/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/hornet-lod2-fix-20261116/repro2/hornet_production_v1_lod2_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/dispatch-20261116/results/devin2-hornet-lod2.md"
       ],
-      "updatedAt": "2026-11-16T23:15:47.826Z"
+      "updatedAt": "2026-11-17T06:16:43.463Z"
     },
     "runtime:SF_HORNET_SCN_CUSTOMS_CUTTER:hornet_scn_customs_cutter": {
       "status": "passed",
