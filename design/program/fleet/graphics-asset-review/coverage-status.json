@@ -3,92 +3,148 @@
   "generatedAt": "2026-11-16T09:37:39.925Z",
   "note": "One durable status per model ID. `unused/unresolved` is a disposition for unresolved linkage or identity, not proof of non-use or permission to delete. Review details and evidence remain in the per-model facts and append-only journals. Index refreshes and status updates rewrite this whole file; serialize those commands and do not run concurrent status writers.",
   "statusCounts": {
-    "pending": 55,
+    "pending": 47,
     "in progress": 0,
-    "passed": 349,
+    "passed": 357,
     "needs follow-up": 114,
     "unused/unresolved": 3048
   },
   "models": {
     "playable-variant:procedural:factory:volatile-pod:corrosive": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.716Z"
+      "views": [
+        "chase",
+        "close"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Staged capture, not ordinary-route admission.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-volatile-pods-20261116/volatile-pod-corrosive_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-volatile-pods-20261116/volatile-pod-corrosive_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-volatile-pods-20261116/report.volatile-pod-corrosive.json"
+      ],
+      "updatedAt": "2026-11-17T04:53:56.179Z"
     },
     "playable-variant:procedural:factory:volatile-pod:cryogenic": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.716Z"
+      "views": [
+        "chase",
+        "close"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Staged capture, not ordinary-route admission.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-volatile-pods-20261116/volatile-pod-cryogenic_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-volatile-pods-20261116/volatile-pod-cryogenic_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-volatile-pods-20261116/report.volatile-pod-cryogenic.json"
+      ],
+      "updatedAt": "2026-11-17T04:53:57.253Z"
     },
     "playable-variant:procedural:factory:volatile-pod:explosive": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.716Z"
+      "views": [
+        "chase",
+        "close"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Staged capture, not ordinary-route admission.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-volatile-pods-20261116/volatile-pod-explosive_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-volatile-pods-20261116/volatile-pod-explosive_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-volatile-pods-20261116/report.volatile-pod-explosive.json"
+      ],
+      "updatedAt": "2026-11-17T04:53:58.483Z"
     },
     "playable-variant:procedural:factory:volatile-pod:superdense": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.716Z"
+      "views": [
+        "chase",
+        "close"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Staged capture, not ordinary-route admission.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-volatile-pods-20261116/volatile-pod-superdense_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-volatile-pods-20261116/volatile-pod-superdense_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-volatile-pods-20261116/report.volatile-pod-superdense.json"
+      ],
+      "updatedAt": "2026-11-17T04:54:01.929Z"
     },
     "playable-variant:procedural:fauna:casket_worm:ashfall_choir": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.716Z"
+      "views": [
+        "chase",
+        "close"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Staged site capture; ordinary-encounter composition pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-fauna-strains-20261116/casket_worm_ashfall_choir_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-fauna-strains-20261116/casket_worm_ashfall_choir_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-fauna-strains-20261116/report.casket_worm_ashfall_choir.json"
+      ],
+      "updatedAt": "2026-11-17T04:54:02.835Z"
     },
     "playable-variant:procedural:fauna:casket_worm:charon_grave": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.716Z"
+      "views": [
+        "chase",
+        "close"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Staged site capture; ordinary-encounter composition pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-fauna-strains-20261116/casket_worm_charon_grave_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-fauna-strains-20261116/casket_worm_charon_grave_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-fauna-strains-20261116/report.casket_worm_charon_grave.json"
+      ],
+      "updatedAt": "2026-11-17T04:54:03.579Z"
     },
     "playable-variant:procedural:fauna:lantern_cyst:charon_grave": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.716Z"
+      "views": [
+        "chase",
+        "close"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Staged site capture; ordinary-encounter composition pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-fauna-strains-20261116/lantern_cyst_charon_grave_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-fauna-strains-20261116/lantern_cyst_charon_grave_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-fauna-strains-20261116/report.lantern_cyst_charon_grave.json"
+      ],
+      "updatedAt": "2026-11-17T04:54:04.099Z"
     },
     "playable-variant:procedural:fauna:lantern_cyst:veil_glass": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:20:33.716Z"
+      "views": [
+        "chase",
+        "close"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Staged site capture; ordinary-encounter composition pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-fauna-strains-20261116/lantern_cyst_veil_glass_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-fauna-strains-20261116/lantern_cyst_veil_glass_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/pv-fauna-strains-20261116/report.lantern_cyst_veil_glass.json"
+      ],
+      "updatedAt": "2026-11-17T04:54:04.577Z"
     },
     "procedural-asteroid:ast_common_rock:variant0": {
       "status": "passed",
@@ -1681,17 +1737,17 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "source-traced and synthetic update measured; current gameplay-camera visual review remains pending",
-      "issues": "source-traced and synthetic update measured; current gameplay-camera visual review remains pending",
-      "evidence": [
-        "src/render/bolusCanal.js",
-        "src/render/bolusView.js",
-        "test/bolus-rib-upload.test.mjs",
-        ".devshots/fleet/procedural-models/bolus-rib-compare.mjs",
-        ".devshots/fleet/procedural-models/REVIEW-LEDGER.md"
+      "views": [
+        "chase",
+        "close"
       ],
-      "updatedAt": "2026-11-16T06:20:33.722Z"
+      "changes": "No asset change; capture-based review.",
+      "issues": "Sector functionality evidenced; rib visibility inconclusive in the available frame.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-environment-bolus-20261116/sector_the_bolus.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-environment-bolus-20261116/sheet.png"
+      ],
+      "updatedAt": "2026-11-17T04:54:05.113Z"
     },
     "procedural:factory:beacon": {
       "status": "unused/unresolved",
