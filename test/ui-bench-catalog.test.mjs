@@ -6,6 +6,8 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runInNewContext } from 'node:vm';
+import { parse } from '@babel/parser';
 
 import { BACKDROPS, resolveShot, UI_BENCH_SHOTS } from '../scripts/lib/uiBenchCatalog.mjs';
 
@@ -45,4 +47,29 @@ test('backdrop stills exist and the bench page mounts every screen the catalog n
       : new RegExp(`\\n\\s+${screen}:\\s*\\(\\)`).test(page);
     assert.equal(mounted, true, `tools/ui-bench.js has no loader for ${screen}`);
   }
+});
+
+test('bench screen availability is correct before the first title mount and rejects missing destinations', () => {
+  const source = readFileSync(path.join(ROOT, 'tools', 'ui-bench.js'), 'utf8');
+  const ast = parse(source, { sourceType: 'module' });
+  const declarations = ast.program.body.filter(node => node.type === 'VariableDeclaration').flatMap(node => node.declarations);
+  const initializer = name => {
+    const node = declarations.find(declaration => declaration.id.name === name)?.init;
+    assert.ok(node, `${name} is declared by the real bench`);
+    return source.slice(node.start, node.end);
+  };
+  // Execute the real registry and manager definitions without importing the browser fixture.
+  // Loader functions remain lazy: no game screen, renderer or network work runs in this test.
+  const SCREENS = runInNewContext(`(${initializer('SCREENS')})`);
+  const stack = [];
+  const manager = runInNewContext(`(${initializer('manager')})`, { SCREENS, stack });
+  for (const id of ['mainMenu', 'newGame', 'crucible', 'settings', 'help']) {
+    assert.equal(manager.hasScreen(id), true, `${id} is available while the initial stack is empty`);
+  }
+  for (const id of [undefined, 'missing-screen', 'constructor', 'toString']) {
+    assert.equal(manager.hasScreen(id), false, 'an unsupported route must stay unavailable');
+  }
+  stack.push('mainMenu');
+  assert.equal(manager.hasScreen('crucible'), true);
+  assert.equal(manager.hasScreen('missing-screen'), false, 'opening a screen does not register every destination');
 });

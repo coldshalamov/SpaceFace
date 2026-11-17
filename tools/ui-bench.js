@@ -989,7 +989,9 @@ const manager = {
   popScreen() { void back(); },
   replaceScreen(id) { stack.length = 0; void goto(id); },
   closeAll() { stack.length = 0; screensEl.innerHTML = ''; },
-  hasScreen() { return stack.length > 0; },
+  // Match ScreenManager.hasScreen(id): availability belongs to the loader registry,
+  // not the navigation stack (which is still empty during the first title mount).
+  hasScreen(id) { return Object.hasOwn(SCREENS, id) && typeof SCREENS[id] === 'function'; },
   isOpen(id) { return stack.includes(id); },
   top() { return stack[stack.length - 1] || null; },
   getActiveScreenDef() { return currentScreen; },

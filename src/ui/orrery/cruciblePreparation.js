@@ -54,6 +54,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     return node;
   };
   const rosterSection = section('Choose your ship', 'Every hull has its own handling, defenses and weapon mounts.');
+  rosterSection.classList.add('sf-hangar-ship-choice');
   const rosterList = make('div', 'sf-hangar-roster'); rosterList.setAttribute('role', 'group');
   rosterList.setAttribute('aria-label', 'Ships');
   const selectionStatus = make('p', 'sf-hangar-selection-status'); selectionStatus.setAttribute('role', 'status');
@@ -76,6 +77,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   }
   rosterSection.append(rosterList, selectionStatus); shipPanel.append(rosterSection);
   const kitSection = section('Starting loadout', 'Presets are included. You can replace equipment before launching.');
+  kitSection.classList.add('sf-hangar-loadout-choice');
   const kitList = make('div', 'sf-hangar-kits'); kitList.setAttribute('role', 'group');
   kitList.setAttribute('aria-label', 'Starting loadouts for the selected ship');
   kitSection.append(kitList); shipPanel.append(kitSection);
@@ -167,6 +169,15 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   // It is created only when the screen is shown, never while ScreenManager prewarms a hidden door.
   let hullStage = null, active = false, step = 0, lastBuild = null, lastHull = null, latest = null;
   let previewReleased = false, shownPreview = null, shownHull = null;
+  const revealSelectedHull = () => {
+    const view = doc.defaultView;
+    if (!view?.matchMedia?.('(max-width:800px)').matches) return;
+    view.requestAnimationFrame?.(() => {
+      if (!active || step !== 0) return;
+      hullButtons.find(button => button.getAttribute('aria-pressed') === 'true')
+        ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+    });
+  };
   const summary = make('p', 'sf-hangar-summary'); summary.setAttribute('aria-live', 'polite');
   const next = make('button', 'sf-hangar-next', 'Choose arena →');
   next.addEventListener('click', () => { show(1); tabs[1].focus({ preventScroll: true }); });
@@ -281,8 +292,10 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     visible(next, step === 0); visible(enter, step === 1);
     for (let i = 0; i < tabs.length; i++) { tabs[i].setAttribute('aria-current', i === step ? 'step' : 'false'); }
     stage.scrollTop = 0;
+    if (doc.defaultView?.matchMedia?.('(max-width:800px)').matches) root.scrollTop = 0;
     if (!active || step !== 0) releasePreview();
     update();
+    if (step === 0) revealSelectedHull();
   }
   show(0);
   return {
@@ -290,7 +303,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     focus() { tabs[step].focus({ preventScroll: true }); },
     setActive(on) {
       active = !!on;
-      if (active) paintPreview(); else releasePreview();
+      if (active) { paintPreview(); revealSelectedHull(); } else releasePreview();
     },
     dispose() { active = false; hullStage?.dispose(); hullStage = null; onPreviewVisibility(false); },
   };

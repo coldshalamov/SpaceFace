@@ -16,7 +16,7 @@ ${H} { display:grid !important; grid-template-columns:minmax(370px,.9fr) minmax(
 ${H} *, ${H} *::before, ${H} *::after { box-sizing:border-box; }
 ${H} :is(input,textarea,[contenteditable=true]) { user-select:text; -webkit-user-select:text; }
 ${H} > .k-title { grid-column:1/-1 !important; grid-row:1 !important; position:static !important; margin:0 !important; padding:0 !important; }
-${H} > .k-title h1 { font:850 clamp(30px,3vw,48px)/1 var(--dp-face-display,'Archivo') !important;
+${H} > .k-title > h1.k-t-name.fh-hero { font:850 clamp(30px,3vw,48px)/1 var(--dp-face-display,'Archivo') !important;
   letter-spacing:.01em !important; margin:0 !important; text-transform:uppercase; }
 ${H} .sf-crd-sub { font:400 15px/1.4 var(--dp-face-body,'Instrument Sans') !important; letter-spacing:0 !important;
   text-transform:none !important; color:var(--dp-ink-dim) !important; margin:7px 0 0 !important; }
@@ -148,7 +148,7 @@ ${H} :is(button,summary,input,textarea):focus-visible { outline:2px solid var(--
 ${H} button:disabled { opacity:.5; cursor:not-allowed; }
 @media (max-height:760px) and (min-width:801px) {
   ${H} { padding:18px 26px 14px !important; gap:12px 20px !important; }
-  ${H} > .k-title h1 { font-size:32px !important; }
+  ${H} > .k-title > h1.k-t-name.fh-hero { font-size:32px !important; }
   ${H} .sf-crd-sub { margin-top:4px !important; }
   ${H} .sf-hangar-preview { padding:16px; }
   ${H} .sf-hangar-shipname { font-size:32px; }
@@ -165,17 +165,27 @@ ${H} button:disabled { opacity:.5; cursor:not-allowed; }
   ${H} .sf-hangar-summary { font-size:12px; }
 }
 @media (max-width:800px) {
-  ${H} { display:flex !important; flex-direction:column !important; overflow:auto !important; padding:20px 16px !important; gap:16px !important; }
-  ${H} > .k-title { flex:none; }
-  ${H} > .k-title h1 { font-size:32px !important; }
-  ${H} .sf-hangar-nav { flex:none; flex-wrap:wrap; gap:7px; }
+  ${H} { display:flex !important; flex-direction:column !important; overflow:auto !important; padding:20px 16px !important; gap:12px !important; }
+  ${H} > .k-title { flex:none; order:0; }
+  ${H} > .k-title > h1.k-t-name.fh-hero { font-size:32px !important; }
+  ${H} .sf-hangar-nav { flex:none; flex-wrap:wrap; gap:7px; order:1; }
   ${H} .sf-hangar-step { padding:8px 9px; font-size:13px; gap:6px; }
   ${H} .sf-hangar-step--next { margin:0; width:100%; min-height:20px; padding:0 9px; font-size:12px; }
-  ${H} > .k-stage { flex:none; height:auto !important; overflow:visible !important; padding:0 !important; }
-  ${H} .sf-hangar-roster { max-height:300px; }
-  ${H} .sf-hangar-preview, ${H} > .orr-door-hero { flex:none; height:auto !important; min-height:360px; overflow:hidden !important; }
+  ${H} > .k-stage { flex:none; height:auto !important; overflow:visible !important; padding:0 !important; order:2; }
+  /* On a narrow display, keep ship selection and the selected ship together. The
+     existing sections remain the controls; only their layout changes. */
+  ${H}[data-prep-step="0"] > .k-stage,
+  ${H}[data-prep-step="0"] #sf-hangar-ships { display:contents !important; }
+  ${H} .sf-hangar-ship-choice { order:2; margin:0; min-width:0; }
+  ${H} .sf-hangar-loadout-choice { order:4; margin:0; }
+  ${H} .sf-hangar-roster { grid-template-columns:none; grid-auto-flow:column; grid-auto-columns:106px;
+    max-height:none; max-width:100%; overflow-x:auto; overflow-y:hidden; overscroll-behavior-x:contain; scroll-snap-type:x proximity; }
+  ${H} .sf-hangar-hull { grid-template-rows:58px auto; scroll-snap-align:center; }
+  ${H} .sf-hangar-hull img { height:58px; }
+  ${H} .sf-hangar-hull > span { display:none; }
+  ${H} .sf-hangar-preview, ${H} > .orr-door-hero { flex:none; order:3; height:auto !important; min-height:360px; overflow:hidden !important; }
   ${H} .sf-hangar-preview { padding:18px; }
-  ${H} .sf-hangar-shipstage { min-height:230px; flex:none; }
+  ${H} .sf-hangar-shipstage { min-height:170px; flex:none; }
   ${H} .sf-hangar-shipname { font-size:36px; }
   ${H} .sf-hangar-stats { gap:10px 16px; }
   ${H} .sf-hangar-manifest { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -183,7 +193,8 @@ ${H} button:disabled { opacity:.5; cursor:not-allowed; }
   ${H} .sf-hangar-summary { order:3; flex-basis:100%; text-align:left; }
   ${H} :is(.sf-hangar-next,.sf-swarm-enter-key) { flex:1; min-width:160px !important; font-size:15px !important; }
   ${H} .sf-hangar-footer-note { text-align:left; }
-  ${H} > .k-foot { flex:none; position:sticky !important; bottom:-20px; background:var(--dp-void) !important; padding:12px 0 !important; z-index:5; }
+  ${H}[data-prep-step="0"] .sf-hangar-footer-note { display:none; }
+  ${H} > .k-foot { flex:none; order:5; position:sticky !important; bottom:-20px; background:var(--dp-void) !important; padding:12px 0 !important; z-index:5; }
 }
 @media (prefers-reduced-motion:reduce) { ${H} *, ${H} *::before, ${H} *::after { transition:none !important; animation:none !important; } }
 ${H.replace('html ', 'html.sf-reduce-motion ')} *, ${H.replace('html ', 'html.sf-reduce-motion ')} *::before, ${H.replace('html ', 'html.sf-reduce-motion ')} *::after { transition:none !important; animation:none !important; }

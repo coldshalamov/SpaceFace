@@ -117,8 +117,23 @@ async function pointFor(locator, fraction = { x: .5, y: .5 }) {
   assert.ok(box && box.width > 0 && box.height > 0, 'The public control has no clickable box.');
   return { x: box.x + box.width * fraction.x, y: box.y + box.height * fraction.y };
 }
+async function assertControlEnabled(locator, reason = 'Public control must accept input') {
+  const state = await locator.evaluate(element => {
+    const control = element.closest('button,summary,input,textarea,[role="button"]') || element;
+    return {
+      tag: control.tagName,
+      action: control.getAttribute('data-action'),
+      label: control.getAttribute('aria-label') || control.textContent.trim().replace(/\s+/g, ' ').slice(0, 160),
+      disabled: control.matches(':disabled'),
+      ariaDisabled: !!control.closest('[aria-disabled="true"]'),
+      inert: !!control.closest('[inert]'),
+    };
+  });
+  assert.ok(!state.disabled && !state.ariaDisabled && !state.inert, `${reason}: ${JSON.stringify(state)}`);
+}
 async function clickAt(page, locator, fraction) {
   const point = await pointFor(locator, fraction);
+  await assertControlEnabled(locator, 'Cannot click a disabled public control');
   const hit = await locator.evaluate((element, p) => {
     const control = element.closest('button,summary,input,textarea,[role="button"]') || element;
     const target = document.elementFromPoint(p.x, p.y);
@@ -181,6 +196,9 @@ async function openBenchTitle(page, size) {
   await page.waitForFunction(() => window.__BENCH_READY === true);
   await page.locator(S.title).waitFor({ state: 'visible' });
   await page.evaluate(() => document.fonts.ready);
+  // __BENCH_READY must mean the public screen can accept input. Fail at the
+  // actual readiness fault; do not disguise it as a later navigation timeout.
+  await assertControlEnabled(page.locator(S.title), 'Bench reported ready with Swarm unavailable');
 }
 async function titlePointerRoute(page, region, captureName) {
   const title = page.locator(S.title);
