@@ -205,6 +205,8 @@ function meshFromPart(row) {
     roughness: 0.92,
     metalness: 0,
     side: THREE.DoubleSide,
+    emissive: row.emissive || 0x000000,
+    emissiveIntensity: row.emissiveIntensity != null ? row.emissiveIntensity : 1,
   });
   return new THREE.Mesh(geometry, material);
 }

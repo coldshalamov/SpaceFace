@@ -16,11 +16,14 @@ function cached(key, make) {
 // folds and a raised root. Each side hinges at its anatomical keel, not its centre.
 function membranePoint(t, s, side, target) {
   const width = Math.sin(Math.PI * t) * (16 - t * 3);
+  const noseBlend = Math.min(1, t / 0.15);
+  const rootU = Math.max(0, Math.min(1, (t - 0.15) / 0.15));
+  const rootHalf = 0.34 * rootU * rootU * (3 - 2 * rootU);
   return target.set(15 - t * 27 - Math.sin(s * Math.PI) * t * 3,
-    (.8 + Math.sin(t * Math.PI) * .18) * (1 - s)
-      + Math.sin(t * Math.PI * 2 - .7) * s * .9
-      + Math.sin(t * Math.PI * 6) * s * s * .32,
-    side * (width * s + .34));
+    (.8 * (.45 + .55 * noseBlend) + Math.sin(t * Math.PI) * .18) * (1 - s * noseBlend)
+      + (Math.sin(t * Math.PI * 2 - .7) * s * .9
+        + Math.sin(t * Math.PI * 6) * s * s * .32) * noseBlend,
+    side * (width * s + rootHalf));
 }
 
 function membrane(side) {
@@ -62,12 +65,15 @@ function rayMaterials(colors, makeTissue) {
   return { tissue, bone, seams };
 }
 
-function addRay(root, mats) {
+function addRay(root, mats, hoverY = ADULT_HOVER_Y) {
   const wings = [];
+  let seamMatOwned = false;
   for (const side of [-1, 1]) {
     const hinge = new THREE.Group(); hinge.name = side < 0 ? 'Ray_Port_Membrane' : 'Ray_Starboard_Membrane';
-    hinge.position.y = ADULT_HOVER_Y;
-    hinge.add(new THREE.Mesh(membrane(side), mats.tissue)); root.add(hinge); wings.push(hinge);
+    hinge.position.y = hoverY;
+    const wingMesh = new THREE.Mesh(membrane(side), mats.tissue);
+    if (side > 0) wingMesh.userData.borrowedGeometryMaterial = true;
+    hinge.add(wingMesh); root.add(hinge); wings.push(hinge);
     // Structural fin rays, seated on the membrane's raised folds. Fine dark ribs
     // make the membrane readable at the ordinary camera without a luminous disc.
     for (let i = 0; i < 5; i++) {
@@ -79,15 +85,30 @@ function addRay(root, mats) {
         }
         return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 16, .07, 5, false);
       }), mats.seams);
+      if (seamMatOwned) rib.userData.borrowedGeometryMaterial = true;
+      seamMatOwned = true;
       hinge.add(rib);
     }
   }
-  const keel = new THREE.Mesh(bodyGeometry(), mats.bone); keel.position.y = ADULT_HOVER_Y;
+  const keel = new THREE.Mesh(bodyGeometry(), mats.bone); keel.position.y = hoverY;
   root.add(keel);
   const tail = new THREE.Mesh(cached('nursery-ray-tail', () => {
     const g = new THREE.ConeGeometry(.55, 13, 7); g.rotateZ(Math.PI / 2); return g;
-  }), mats.bone); tail.position.set(-17, ADULT_HOVER_Y, 0); root.add(tail);
+  }), mats.bone); tail.position.set(-17, hoverY, 0);
+  tail.userData.borrowedGeometryMaterial = true;
+  root.add(tail);
   return wings;
+}
+
+export function buildOpenVeilRay(colors, makeTissue) {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  const mats = rayMaterials(colors, makeTissue);
+  const wings = addRay(body, mats, 0);
+  root.add(body);
+  root.name = 'SF_Fauna_veil_ray';
+  root.userData.rayWings = wings;
+  return root;
 }
 
 export function buildNurseryRay(entity, colors, makeTissue) {
