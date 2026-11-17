@@ -1,4 +1,5 @@
 import { canonicalizeSurfaceProgramFamilyKey, installIllustratedSurface } from './illustratedSurface.js';
+import { installTriplanarRock, rockTriplanarFamilyForAsset } from './rockTriplanar.js';
 import { applyIllustratedMaterialResponse } from './industrialMaterialFamilies.js';
 import { resolveLookEmissiveGain } from '../data/lookMoods.js';
 import { illustratedPigmentForMaterial } from './illustratedLivery.js';
@@ -123,6 +124,15 @@ const FORGE_ENV_INTENSITY = Object.freeze({
   hull: 1.15, accent: 1.1, mechanical: 1.6, warning: 1.0, ceramic: 0.7, drive: 0.6, signal: 0.4,
 });
 
+// LOOK-05A: the stone faces of the UV-less `place_rock_*` bodies sample a generated set in object space
+// (rockTriplanar.js). Must run BEFORE installIllustratedSurface so the Look's governor wraps it.
+function installRockStoneSurface(material, assetId) {
+  if (!material || !/^material_stone/i.test(String(material.name || ''))) return false;
+  if (material.map || material.normalMap) return false;
+  const family = rockTriplanarFamilyForAsset(assetId);
+  return family ? installTriplanarRock(material, family) : false;
+}
+
 export function isForgeMaterial(material) {
   return !!material && material.userData && material.userData.spacefaceFinish === FORGE_FINISH;
 }
@@ -162,6 +172,7 @@ function applyForgeFinish(material, role, options = {}) {
     }
     material.emissiveIntensity = material.userData.spacefaceAuthoredEmissiveIntensity * emissiveGain;
   }
+  if (role === 'geology') installRockStoneSurface(material, options.assetId);
   if (role !== 'glass' && role !== 'drive' && role !== 'signal'
     && globalThis.__SF_FORGE_ILLUSTRATED__ !== false) installIllustratedSurface(material);
   // The Lamp Bus (src/render/lampBus.js): a lamp that belongs to a channel blinks. Which lamps those are is
@@ -328,6 +339,7 @@ export function applyAuthoredMaterialProfile(material, explicitRole = null, opti
     options.assetId, role, material.userData.spacefaceAuthoredMaterialName,
   );
   stampGeologySharedRole(material, role);
+  if (role === 'geology') installRockStoneSurface(material, options.assetId);
   if (role !== 'glass' && role !== 'drive' && role !== 'signal') installIllustratedSurface(material);
   applyMaterialRoleBand(material, role);
   material.needsUpdate = true;

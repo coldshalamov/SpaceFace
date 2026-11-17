@@ -205,6 +205,7 @@ function receiptFamilyTokens(material) {
   if (data.spacefacePackedOrmSingleSample === true) tokens.push(PACKED_ORM_FAMILY_TOKEN);
   if (data.spacefaceRoughnessBreakup === true) tokens.push(ROUGHNESS_BREAKUP_FAMILY_TOKEN);
   if (data.spacefaceIllustratedSurface) tokens.push(String(data.spacefaceIllustratedSurface));
+  if (data.spacefaceTriplanarRock) tokens.push('spaceface-rock-triplanar-v1');
   return tokens;
 }
 
@@ -254,6 +255,7 @@ function surfaceFamilyFlags(material) {
   return {
     packedOrm: !!data && data.spacefacePackedOrmSingleSample === true,
     breakup: !!data && data.spacefaceRoughnessBreakup === true,
+    triplanar: !!data && !!data.spacefaceTriplanarRock,
     // receiptFamilyTokens stringifies the version, so compare what it would push.
     illustrated: data && data.spacefaceIllustratedSurface ? String(data.spacefaceIllustratedSurface) : '',
   };
@@ -263,7 +265,7 @@ function memoDescribes(memo, material, keyFunction, compileHook) {
   if (memo.compileHook !== compileHook) return false;
   const flags = surfaceFamilyFlags(material);
   if (memo.packedOrm !== flags.packedOrm || memo.breakup !== flags.breakup
-      || memo.illustrated !== flags.illustrated) return false;
+      || memo.triplanar !== flags.triplanar || memo.illustrated !== flags.illustrated) return false;
   if (memo.keyFunction !== keyFunction) return false;
   // The installed closure is a constant: it answers `memo.current` for any receiver.
   if (memo.constant === true) return true;

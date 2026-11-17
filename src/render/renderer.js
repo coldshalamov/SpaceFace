@@ -537,6 +537,7 @@ import {
 } from './shadowDepthAdmission.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import { preloadRockFamilyLibrary } from './rockFamilyLibrary.js';
+import { preloadRockTriplanarLibrary } from './rockTriplanar.js';
 import { preloadCreatureSkinLibrary } from './creatureSkinLibrary.js';
 import { preloadPlanetDetailLibrary } from './planetDetailLibrary.js';
 import {
@@ -10507,6 +10508,8 @@ export const render = {
     // The generated surface families for metallic / crystalline / exotic rocks decode alongside. Never
     // fatal: on failure those types keep the flat tinted material (rockFamilyLibrary.js resolves null).
     this.rockFamilyLibraryReady = preloadRockFamilyLibrary(renderer);
+    // LOOK-05A: triplanar sets for the UV-less authored rock bodies (never fatal; rocks keep their authored look).
+    this.rockTriplanarLibraryReady = preloadRockTriplanarLibrary(renderer);
     // Alien fauna tissue and Verge-Layer machine nacre decode alongside (never fatal; flat colours on failure).
     this.creatureSkinLibraryReady = preloadCreatureSkinLibrary(renderer);
     // Planet-site relief tiles decode only when a site needs them; other modes pay no catalog cost.

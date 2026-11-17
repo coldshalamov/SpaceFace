@@ -3064,6 +3064,8 @@ export const world = {
           // entity data over the static catalog, so a catalog-only note would vanish once the
           // sector spawns. See src/ui/galaxyMap.js `findStationRecord`.
           chartNote: st.chartNote || null,
+          // LOOK-05A: authored local lights for the station body (a Nocturne descriptor; render-only).
+          ...(st.nocturne && typeof st.nocturne === 'object' ? { nocturne: st.nocturne } : {}),
           contested: !!st.contested, repGated: !!st.repGated,
           // The authored repGated flag means positive standing, not merely "not attack-on-sight".
           // An explicit minRep remains available for stations with a stricter local contract.

@@ -19,6 +19,7 @@ import { configureRacingCorridorSession, isRacingCorridorSession } from '../worl
 import { defaultShipAppearance } from './shipAppearance.js';
 import { mark47aPlayerActor, spawn47aOpeningScene } from '../data/scenarios/47aLiveScene.js';
 import { promoteAsteroidFieldRock } from '../world/asteroidField.js';
+import { NOCTURNE_LAYOUTS, NOCTURNE_LIGHT_PROFILES } from '../data/nocturneLighting.js';
 import { GameStartReadinessError } from './newGameStartTransition.js';
 import { shouldGrantKeepsake } from './newGamePlus.js';
 import { laneInputWrite } from './simLaneCommands.js';
@@ -119,6 +120,14 @@ export function light47aOpeningLandmarks(scene) {
   if (hulk && hulk.data) {
     hulk.data.emergencyLight = true;
     hulk.data.smoke = true;
+    // The stock warning fixtures, hotter and wider: the hulk's strobes are the beat-4 target, so they must
+    // pull the eye across the dark (a red pulse that throws light onto the plating, not a pinprick).
+    hulk.data.nocturne = {
+      lights: NOCTURNE_LAYOUTS.derelict.filter((f) => f.condition === 'emergency').map((f) => ({
+        id: f.id, profile: f.profile, offset: f.offset, phase: f.phase, condition: f.condition,
+        intensity: Math.round(NOCTURNE_LIGHT_PROFILES[f.profile].intensity * 2.8), range: 240,
+      })),
+    };
   }
 }
 

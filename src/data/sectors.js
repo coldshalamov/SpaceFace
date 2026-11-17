@@ -16,6 +16,7 @@ import { applyPlanetStateAssignments } from './planetStates.js';
 import { appendPq019FacilityPois } from './heistFacilities.js';
 import { BOLUS_PALETTE, bolusSectorCard } from './theBolus.js';
 import { appendSectorWonderPois } from './sectorWonders.js';
+import { NOCTURNE_LAYOUTS } from './nocturneLighting.js';
 // Per ARCHITECTURE §0.8:
 //   dangerTier(s) = clamp(round((1 - s.security) * 5), 0, 5)
 //   wealthIndex(s) = clamp(0.3 + 0.16*tier + 0.10*(1-security), 0.3, 1.6)
@@ -58,6 +59,23 @@ const poiLamp = (color, intensity = 2200, range = 110, y = 5) => ({
   lights: [{ id: 'lamp', profile: 'ore', color, intensity, range, offset: [0, y, 0] }],
 });
 const LAMP_AMBER = 0xffb45e;
+// LOOK-05A: Helios reads lit. The stock dock lights stay (approach spot + service lamp), and a ring of small hot
+// work lamps and floodlights sits on the hull so each one throws a pool onto the plating next to it, warm amber with
+// cold cyan work lamps between, over a dark body. Offsets are metres in the station's own frame (root scale 1).
+const heliosHullLamps = (() => {
+  const lamps = [];
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2 + 0.3;
+    const cyan = k % 2 === 1;
+    lamps.push({
+      id: `hull_${k}`, profile: 'ore', color: cyan ? 0x75c8ff : LAMP_AMBER,
+      intensity: cyan ? 2200 : 3200, range: cyan ? 85 : 105,
+      offset: [Math.cos(a) * 96, 16, Math.sin(a) * 104],
+    });
+  }
+  return lamps;
+})();
+const HELIOS_STATION_LIGHTS = { profile: 'dock', lights: [...NOCTURNE_LAYOUTS.dock.map((f) => ({ ...f })), ...heliosHullLamps] };
 
 const CORE_SECTORS = [
   {
@@ -71,6 +89,7 @@ const CORE_SECTORS = [
     neighbors: ['sector_ceres_belt', 'sector_tethys_junction', 'sector_vesta_forge'],
     stations: [
       { id: 'station_helios',     name: 'Helios Station',  type: 'trade_hub', factionId: 'faction_scn', size: 'L', services: ['trade','shipyard','refuel','repair','missions'],
+        nocturne: HELIOS_STATION_LIGHTS,
         // Helios keeps a standing shortage book for the starter seam's iron. This changes only the
         // listing's stock equilibrium; the commodity price curve and every other market stay shared.
         marketEquilibriumFactors: { cmdty_ore_iron: 0.09 },
