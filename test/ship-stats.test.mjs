@@ -292,14 +292,16 @@ test('Muscle is tow class; a cargo sweep never raises it and the wording stays t
           `${id} (${label}) Muscle rose with cargo ${previous} -> ${muscle.raw} at ${usedMass} t`);
         previous = muscle.raw;
         if (!hasTowRating(derived)) {
-          assert.match(muscle.meaning, /No Line load/i, `${id} (${label}) has no rating and says so`);
+          assert.equal(muscle.label, 'Ramming');
+          assert.match(muscle.meaning, /No towing rating/i, `${id} (${label}) has no rating and says so`);
           assert.ok(Math.abs(muscle.raw - 0.15 * derived.dryMass) < 0.06,
             `${id} (${label}) rams at 0.15 x dry mass (${muscle.raw} vs ${derived.dryMass})`);
         } else if (muscle.raw === 0) {
           assert.match(muscle.meaning, /Too loaded to tow/i,
             `${id} (${label}) has a rating but is overloaded at ${usedMass} t: ${muscle.meaning}`);
         } else {
-          assert.doesNotMatch(muscle.meaning, /No Line load|Too loaded to tow/i,
+          assert.equal(muscle.label, 'Towing');
+          assert.doesNotMatch(muscle.meaning, /No towing rating|Too loaded to tow/i,
             `${id} (${label}) still tows at ${usedMass} t: ${muscle.meaning}`);
         }
       }
@@ -313,7 +315,7 @@ test('Muscle is tow class; a cargo sweep never raises it and the wording stays t
   const ironback = shipStatSheet({ shipId: 'ship_ironback' });
   const ironbackDerived = getDerivedStats('ship_ironback', [], null);
   if (!hasTowRating(ironbackDerived)) {
-    assert.match(stat(ironback, 'muscle').meaning, /No Line load/i, 'a hull with no tow rating says it rams instead');
+    assert.match(stat(ironback, 'muscle').meaning, /No towing rating.*ramming/i, 'a hull with no tow rating says it rams instead');
     assert.ok(stat(ironback, 'muscle').tenths >= 10);
   }
   assert.ok(ironback.detail.ramWeight > 0, 'ram weight is kept in Details');

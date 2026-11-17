@@ -10,10 +10,11 @@ export const BACKDROPS = Object.freeze({
 });
 
 /** `ruleset` picks the Crucible run a draft/refit shot seeds (tools/ui-bench.js seedCrucibleShot).
+ *  `preparation: 'opening'` stages Swarm's initial equipment review before a round is planned.
  *  `drill` / `base` pick the populated seeds (seedDrillShot / seedBaseShot). `defeat` picks the
  *  Game Over fixture (seedGameOverShot): 'populated' mounts a real buildDefeatReceipt plate,
  *  'empty' the clean state. `seed` overrides the run seed a shot writes into state.meta.seed.
- *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string, chart?: string, route?: string, drill?: string, base?: string, manifestStake?: number, mobile?: string, defeat?: string, lawFine?: string, seed?: number}[]} */
+ *  @type {readonly {id: string, screen: string, backdrop: keyof typeof BACKDROPS, tab?: string, overlay?: string, focus?: string, ruleset?: string, preparation?: 'opening', chart?: string, route?: string, drill?: string, base?: string, manifestStake?: number, mobile?: string, defeat?: string, lawFine?: string, seed?: number}[]} */
 export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'title', screen: 'mainMenu', backdrop: 'title' },
   // TITLE-01: the title with a life on file (the Adventure door reads Continue; New Game stands on it).
@@ -128,6 +129,7 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'crucible', screen: 'crucible', backdrop: 'world' },
   { id: 'crucible-door', screen: 'crucible', backdrop: 'world' },
   { id: 'swarm-play', screen: 'swarmPlay', backdrop: 'world' },
+  { id: 'crucible-opening', screen: 'crucibleDraft', backdrop: 'world', ruleset: 'swarm', preparation: 'opening' },
   { id: 'crucible-draft', screen: 'crucibleDraft', backdrop: 'world' },
   { id: 'crucibleDraft', screen: 'crucibleDraft', backdrop: 'world' },
   { id: 'crucible-rearm', screen: 'crucibleDraft', backdrop: 'world', ruleset: 'scored' },

@@ -157,6 +157,49 @@ test('page/HTTP errors cannot be reported as successful capture', async t => {
 test('expected cancellation during context teardown is not a product failure', async t => {
   const r = rig(t, { cancelOnClose: true }); assert.equal((await runUiBenchBatch(r.options)).ok, true);
 });
+test('UI request failures preserve reload provenance without waiving same-document or navigation aborts', async t => {
+  const r = rig(t);
+  r.options.args.shots = ['crucible-draft'];
+  r.options.args.viewports = [{ width: 390, height: 844 }];
+  r.options.args.walk = true;
+  const url = 'http://127.0.0.1:9000/tools/ui-bench.html?screen=crucible-draft';
+  r.options.shoot = async page => {
+    let documentUrl = 'about:blank';
+    const frame = { url: () => documentUrl };
+    page.mainFrame = () => frame; page.url = () => documentUrl;
+    const request = (requestUrl, navigation = false) => ({
+      url: () => requestUrl, isNavigationRequest: () => navigation, frame: () => frame,
+      method: () => 'GET', resourceType: () => navigation ? 'document' : 'fetch',
+      failure: () => ({ errorText: 'net::ERR_ABORTED' }),
+    });
+    page.emit('request', request(url, true));
+    documentUrl = url; page.emit('framenavigated', frame);
+    const oldAsset = request('http://127.0.0.1:9000/assets/ships/release/render-packages/pod-utility/render.glb');
+    page.emit('request', oldAsset);
+    page.emit('request', request(url, true));
+    page.emit('requestfailed', oldAsset);
+    page.emit('framenavigated', frame);
+    const currentAsset = request('http://127.0.0.1:9000/assets/ships/release/render-packages/fighter-hornet/render.glb');
+    page.emit('request', currentAsset); page.emit('requestfailed', currentAsset);
+    return { ok: true };
+  };
+  const result = await runUiBenchBatch(r.options), cell = result.cells[0];
+  assert.equal(result.ok, false);
+  assert.equal(cell.ok, false);
+  assert.equal(cell.errors.length, 2, 'Recording provenance must not suppress either failure.');
+  const reload = cell.errors[0].provenance, active = cell.errors[1].provenance;
+  assert.equal(reload.startDocumentUrl, url);
+  assert.equal(reload.startDocumentGeneration, 1);
+  assert.equal(reload.startMainNavigationGeneration, 1);
+  assert.equal(reload.currentMainNavigationGeneration, 2);
+  assert.equal(reload.mainNavigationInProgress, true);
+  assert.equal(reload.probeMode, 'synthetic-control-walk');
+  assert.equal(active.startDocumentGeneration, 2);
+  assert.equal(active.currentDocumentGeneration, 2);
+  assert.equal(active.mainNavigationInProgress, false);
+  assert.equal(cell.mainNavigations.length, 2);
+  assert.ok(reload.startedAt && reload.failedAt && reload.elapsedMs >= 0);
+});
 test('incomplete walks and failed cleanup are not green', async t => {
   const r = rig(t, { closeError: true }); r.options.shoot = async () => ({ ok: false, walk: { complete: false, untried: 10 } });
   const result = await runUiBenchBatch(r.options);

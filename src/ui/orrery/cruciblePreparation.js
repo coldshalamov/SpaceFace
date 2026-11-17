@@ -195,7 +195,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   function paintPreview() {
     if (!active || step !== 0 || !latest) return;
     shipStage.querySelector('.sf-hangar-poster')?.remove();
-    if (!hullStage) hullStage = stageFactory(shipStage, { live: true, dock: false, zoom: 1 });
+    if (!hullStage) hullStage = stageFactory(shipStage, { live: true, dock: false, zoom: 1.3 });
     if (previewReleased) { hullStage.restore(); previewReleased = false; }
     const key = JSON.stringify([latest.hull.id, latest.fittings, latest.weapons]);
     if (shownPreview !== key) {

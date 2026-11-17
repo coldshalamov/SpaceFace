@@ -184,9 +184,64 @@ Run it under the repository's game lock:
 node scripts/fleet/game-lock.mjs run -- node scripts/check-swarm-hangar-ux.mjs --live
 ```
 
-The script passed `node --check` and its `--help` import path. Local browser automation was blocked
-in this environment. No browser pass, inspected screenshot or completed gameplay route for this
-patch is recorded here. The CI integration below can produce that evidence; it has not yet done so.
+Local browser automation is blocked in this environment, so actual Chromium captures and native
+input checks run through the GitHub Actions UI review. The first two captures were inspected and
+used to improve the implementation; neither is reported as a completed native journey:
+
+- [Run 44176198925](https://github.com/coldshalamov/SpaceFace/actions/runs/44176198925), head
+  `6ceb84c219543646702161fffa043164850122bc`: real title, hangar and armory arrivals were captured.
+  The native journey stopped on disabled title controls because the bench incorrectly equated
+  registered-screen availability with a nonempty screen stack. The bench now checks its actual
+  lazy registry, matching production. The controls' readiness guard was retained.
+- [Run 44179379386](https://github.com/coldshalamov/SpaceFace/actions/runs/44179379386), head
+  `38a403d5582e528d21cb03b230547db2f23a4511`: native input reached the hangar, selected Hitch and
+  changed its loadout, captured its live authored model, and selected Normal difficulty. The probe
+  then re-evaluated an “unselected difficulty” locator against a different button. Targets now
+  retain their stable data identity before input; the selected-state assertions remain strict.
+  The same run's draft phone walk reported an aborted render-package request. It remains a
+  failure pending causal classification; request failures are not broadly waived.
+
+Visual inspection of those captures also led to a compact horizontal ship rack on phones, with
+the selected ship immediately below it; correction of a legacy oversized title; and exclusion of
+the new hangar from obsolete door rules that hid arena art and faded its caption. The current
+probe records equipment-card and text-line geometry and observes finite animation completion so
+an apparent equipment-label overprint can be diagnosed from both layout and pixels.
+
+The latest native verdicts, exact revisions and reviewed artifacts belong to
+[draft PR 1119](https://github.com/coldshalamov/SpaceFace/pull/1119). These fixture runs do not establish
+that the optional title-to-combat `--live` route ran. A screenshot is visual evidence for its
+captured state, not proof of purchase accounting or subsequent gameplay.
+
+### Returning from opening equipment preparation
+
+The opening armory now exposes **Back to hangar**, with a visible explanation that it discards
+purchases from this preparation and keeps the ship and run settings. It is offered only before
+that run has planned its first round, including checkpoint openings. The existing run owner
+validates the current retirement token and returns an authoritative cancellation receipt before
+the UI navigates. Cancellation uses existing teardown, publishes no result or record, awards no
+payout, and cannot cancel a newer run. The UI returns to the cached hangar through the ordinary
+exit boundary and real screen manager, including deferred registration.
+
+An outstanding GPU-warm launch is bound to the exact run, wave, preparation, worker generation
+and screen lifetime. Cancelling or hiding its preparation invalidates that continuation, preventing
+an old loading promise from deploying a successor run.
+
+A targeted batch of **85 owner, native-worker, armory, ScreenManager and save-protection tests**
+passed. After listener cleanup, its affected **31 lifecycle tests** passed again; these counts
+overlap and are not additive. The native-worker cancellation test buys real equipment and verifies
+the terminal snapshot and receipt while paused, no result or persistent settlement, preservation
+of a pre-existing 680-credit balance, and normal starting funds/equipment when preparing again.
+The deterministic 47-A uninterrupted-versus-reload comparison also passed with identical hashes.
+The dedicated `crucible-opening` fixture captures the return control separately from the existing
+round-three armory; both fixtures preserve their actual run-state owners.
+
+The batch request-provenance checks passed **11 focused tests**, and the unlock-description suite
+passed **15 tests** against the actual catalog conditions. Aborted requests remain failures; the
+new provenance records are diagnostic.
+
+The targeted ship-stat, hangar-adapter, bench-registry and opening-fixture batch passed **28 tests**.
+The stat labels now distinguish firing endurance, equipment energy reserve, towing and ramming
+according to the value actually computed; the underlying scales and balance are unchanged.
 
 The following focused Node checks have run:
 

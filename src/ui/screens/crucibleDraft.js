@@ -73,6 +73,7 @@ import { injectCrucibleDoorLayouts } from '../orrery/crucible-doorLayouts.js';
 import { injectCruciblePreparation } from '../orrery/cruciblePreparationLayouts.js';
 import { injectCrucibleRefitLayouts } from '../orrery/crucible-refitLayouts.js';
 import { counted } from '../numberFormat.js';
+import { canCancelSwarmPreparation } from '../../core/runState.js';
 
 
 /**
@@ -976,7 +977,7 @@ export const crucibleDraftScreen = {
 
     // .k-stage — the three offers across on the sky, then the one status line.
     const stage = el('section', 'k-stage sf-cru-stage');
-    this._armoryHeading = el('h2', 'orr-armory-section', 'Dealt fittings');
+    this._armoryHeading = el('h2', 'orr-armory-section', 'Available equipment');
     stage.appendChild(this._armoryHeading);
     const filters = el('div', 'k-words k-words--row sf-cru-filters');
     filters.setAttribute('role', 'group');
@@ -1124,39 +1125,12 @@ export const crucibleDraftScreen = {
     const words = el('ul', 'k-words k-words--row');
     words.setAttribute('aria-label', 'Rearm');
     const skip = addWord(words, word('Keep current loadout', 'k-word--emph'));
-    skip.addEventListener('click', () => {
-      // A Circuit that owes a destination (or the finale) refuses the launch and says why; the
-      // press is not swallowed by a dead button.
-      if (this._circuitGate(ctx)) return;
-      // The render lane warms the next wave's newcomers behind this surface; launching
-      // before that batch links would pay its program links inside the round. The dwell
-      // is player-paced so the promise has normally already settled and this emits
-      // immediately — the button only shows a hold when the player out-clicks a compile
-      // that is still running.
-      const warm = ctx.state && ctx.state.render && ctx.state.render.swarmDeferredWarm;
-      if (warm && warm.pending === true && warm.promise && typeof warm.promise.then === 'function') {
-        if (this._warmHold === true) return;
-        this._warmHold = true;
-        skip.disabled = true;
-        skip.setAttribute('aria-disabled', 'true');
-        setKeyLabel(skip, 'Readying the field…', ctx.state?.run?.ruleset === 'swarm' ? '' : 'Esc', 'Escape');
-        // Bounded: a compile that never settles must not strand the player in the armory.
-        Promise.race([
-          Promise.resolve(warm.promise).catch(() => null),
-          new Promise((resolve) => setTimeout(resolve, 10000)),
-        ]).then(() => {
-          this._warmHold = false;
-          // The run could have ended while the batch settled — a stale emit must not
-          // resolve a draft that no longer waits on an answer.
-          if (ctx.state && ctx.state.run && ctx.state.run.phase === 'draft') {
-            ctx.bus.emit('run:draftPickRequested', { offerId: null });
-          }
-        });
-        return;
-      }
-      ctx.bus.emit('run:draftPickRequested', { offerId: null });
-    });
+    skip.addEventListener('click', () => this._launchCurrentDraft(this._ctx || ctx));
     this._skip = skip;
+    const back = addWord(words, word('Back to hangar', 'k-word--emph sf-cru-back-to-hangar'));
+    back.setAttribute('aria-describedby', 'sf-cru-preparation-return-note');
+    back.addEventListener('click', () => this._requestPreparationReturn(this._ctx || ctx));
+    this._backToHangar = back;
     const refit = addWord(words, word('Rearrange loadout', 'k-word--emph'));
     refit.addEventListener('click', () => ctx.bus.emit('ui:pushScreen', { id: 'crucibleRefit' }));
     this._refitBtn = refit;
@@ -1176,6 +1150,11 @@ export const crucibleDraftScreen = {
     });
     this._browseBtn = browse;
     foot.appendChild(words);
+    const returnNote = el('p', 'k-t-fine sf-cru-preparation-return-note',
+      'Back discards purchases from this preparation. Your ship choice and run settings are kept.');
+    returnNote.id = 'sf-cru-preparation-return-note';
+    foot.appendChild(returnNote);
+    this._preparationReturnNote = returnNote;
 
     const fine = el('p', 'k-t-fine k-38 sf-cru-fine');
     const wallet = el('span', 'sf-cru-wallet', '');
@@ -1268,6 +1247,15 @@ export const crucibleDraftScreen = {
     bindScreenResultRefresh(this, this._ctx, ARMORY_RESULT_REFRESH_EVENTS);
     if (this._ctx) this.refresh(this._ctx);
     this._visualArmory?.setActive(true);
+    this._offPreparationReturn?.();
+    this._offPreparationReturn = this._ctx?.bus.on('run:preparationCancelResolved', (receipt) => {
+      if (receipt?.token !== this._preparationReturnPending?.token) return;
+      this._preparationReturnPending = null;
+      if (receipt.ok !== true) {
+        this._flash = { text: 'Preparation has changed. Your current run was kept.', until: Date.now() + 8000 };
+        this.refresh(this._ctx);
+      }
+    });
     this._offCancel?.();
     this._offCancel = this._ctx?.bus.on('ui:cancel', () => {
       const ctx = this._ctx;
@@ -1284,6 +1272,10 @@ export const crucibleDraftScreen = {
   },
 
   onHide() {
+    this._invalidateWarmLaunch();
+    this._preparationReturnPending = null;
+    this._offPreparationReturn?.();
+    this._offPreparationReturn = null;
     this._offCancel?.();
     this._offCancel = null;
     unbindScreenResultRefresh(this);
@@ -1292,6 +1284,10 @@ export const crucibleDraftScreen = {
   },
 
   dispose() {
+    this._invalidateWarmLaunch();
+    this._preparationReturnPending = null;
+    this._offPreparationReturn?.();
+    this._offPreparationReturn = null;
     this._offCancel?.();
     this._offCancel = null;
     unbindScreenResultRefresh(this);
@@ -1381,7 +1377,63 @@ export const crucibleDraftScreen = {
   },
 
   _emitIntentAndRefresh(context, event, payload) {
+    if (this._preparationReturnPending) return;
     emitIntentAndRefresh(this, context, event, payload);
+  },
+
+  _invalidateWarmLaunch() {
+    this._warmLaunchVersion = (this._warmLaunchVersion || 0) + 1;
+    if (this._warmLaunchTimer != null) clearTimeout(this._warmLaunchTimer);
+    this._warmLaunchTimer = null;
+    this._warmHold = false;
+  },
+
+  _launchCurrentDraft(ctx) {
+    if (!ctx || ctx.state?.run?.phase !== 'draft' || this._preparationReturnPending
+      || this._warmHold === true || this._circuitGate(ctx)) return;
+    const warm = ctx.state.render?.swarmDeferredWarm;
+    if (!(warm?.pending === true && typeof warm.promise?.then === 'function')) {
+      ctx.bus.emit('run:draftPickRequested', { offerId: null });
+      return;
+    }
+    const run = ctx.state.run;
+    const ticket = {
+      token: run.retireToken, wave: run.wave,
+      generation: ctx.helpers?.workerReadGeneration?.(),
+      preparation: draftOwner(ctx)?.preparationGeneration?.(),
+      version: this._warmLaunchVersion = (this._warmLaunchVersion || 0) + 1,
+    };
+    this._warmHold = true;
+    this._skip.disabled = true;
+    this._skip.setAttribute('aria-disabled', 'true');
+    setKeyLabel(this._skip, 'Readying the field…', run.ruleset === 'swarm' ? '' : 'Esc', 'Escape');
+    // Keep the existing bounded GPU hold, but its completion belongs to this exact draft.
+    Promise.race([
+      Promise.resolve(warm.promise).catch(() => null),
+      new Promise((resolve) => { this._warmLaunchTimer = setTimeout(resolve, 10000); }),
+    ]).then(() => {
+      if (this._warmLaunchVersion !== ticket.version) return;
+      if (this._warmLaunchTimer != null) clearTimeout(this._warmLaunchTimer);
+      this._warmLaunchTimer = null;
+      this._warmHold = false;
+      const current = ctx.state?.run;
+      if (this._ctx === ctx && !this._preparationReturnPending && current?.phase === 'draft'
+        && current.retireToken === ticket.token && current.wave === ticket.wave
+        && ctx.helpers?.workerReadGeneration?.() === ticket.generation
+        && draftOwner(ctx)?.preparationGeneration?.() === ticket.preparation
+        && ctx.screenManager?.top?.() === this.id) {
+        ctx.bus.emit('run:draftPickRequested', { offerId: null });
+      } else if (this._ctx === ctx && ctx.screenManager?.top?.() === this.id) this.refresh(ctx);
+    });
+  },
+
+  _requestPreparationReturn(ctx) {
+    if (!ctx || this._preparationReturnPending || !canCancelSwarmPreparation(ctx.state?.run)) return;
+    this._invalidateWarmLaunch();
+    const token = ctx.state.run.retireToken;
+    this._preparationReturnPending = { token, generation: ctx.helpers?.workerReadGeneration?.() };
+    this.refresh(ctx);
+    ctx.bus.emit('ui:cancelSwarmPreparation', { token });
   },
 
   /**
@@ -1453,6 +1505,20 @@ export const crucibleDraftScreen = {
     const rerollState = owner && typeof owner.rerollState === 'function' ? owner.rerollState() : null;
     const lines = rerollControlLines(rerollState, notice);
     const shop = context.state?.run?.ruleset === 'swarm';
+    const pendingReturn = this._preparationReturnPending;
+    if (pendingReturn && (context.state?.run?.retireToken !== pendingReturn.token
+      || context.helpers?.workerReadGeneration?.() !== pendingReturn.generation)) {
+      this._preparationReturnPending = null;
+    }
+    const returning = !!this._preparationReturnPending;
+    const canReturn = canCancelSwarmPreparation(context.state?.run);
+    setWordShown(this._backToHangar, canReturn);
+    if (this._backToHangar) {
+      this._backToHangar.disabled = returning;
+      this._backToHangar.setAttribute('aria-disabled', String(returning));
+      setKeyLabel(this._backToHangar, returning ? 'Returning to hangar…' : 'Back to hangar', '', '');
+    }
+    setWordShown(this._preparationReturnNote, canReturn);
     rootEl.classList.toggle('sf-crucible-armory', shop);
     this._title.textContent = shop ? 'Armory' : 'Rearm';
     if (this._visualArmory) this._visualArmory.wallet(context.state?.run?.credits, shop);
@@ -1499,7 +1565,7 @@ export const crucibleDraftScreen = {
         ? 'Fit out before round 1 — the purse is already open. Each fitting bolts onto one hardpoint of the ship you chose; a full hardpoint swaps, and the old part waits in your spares.'
         : shop && runStart > 1 && wave === runStart - 1
           ? `Checkpoint start — the purse is stocked for Round ${runStart}.`
-          : shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
+          : shop ? `Round ${wave} cleared. Equip upgrades before the next wave.`
             : `Wave ${wave} cleared. Choose a new weapon.`)
       : `Wave ${wave} cleared. Nothing new fits this hull.`);
 
@@ -1548,7 +1614,7 @@ export const crucibleDraftScreen = {
       // The opening armory fits the door's free hull pick — it does not re-sell it. New hulls
       // go on sale once the run has begun (see _armoryExtras), so this line says where they are.
       this._cradle.textContent = cradleName
-        ? (wave === 0 ? `In the cradle — ${cradleName} · new hulls go on sale after round 1` : `In the cradle — ${cradleName}`)
+        ? (wave === 0 ? `Your ship — ${cradleName} · new hulls go on sale after round 1` : `Your ship — ${cradleName}`)
         : '';
       this._cradle.hidden = !cradleName;
     }
@@ -1562,7 +1628,7 @@ export const crucibleDraftScreen = {
       : [];
     const showHand = dealtOffers.length > 0 && !this._browse;
     this._armoryHeading.hidden = !shop;
-    this._armoryHeading.textContent = showHand ? 'Dealt fittings' : 'Equipment catalog';
+    this._armoryHeading.textContent = showHand ? 'Available equipment' : 'Equipment catalog';
     const dealtIds = new Set(showHand ? dealtOffers.map((offer) => offer.id) : []);
     const recommended = shop && this._browse && this._category === 'All' && !this._query
       && owner && typeof owner.recommendedOffers === 'function'
@@ -1680,8 +1746,8 @@ export const crucibleDraftScreen = {
     this._skip.classList.toggle('k-word--primary', shop && !circuitOwed);
     // A warm hold that resolved off-draft left the control disabled+relabelled; re-arm it here
     // (and keep it held while a hold is actually in flight, so a repaint cannot un-gate it).
-    this._skip.disabled = this._warmHold === true;
-    this._skip.setAttribute('aria-disabled', this._warmHold === true || circuitOwed ? 'true' : 'false');
+    this._skip.disabled = this._warmHold === true || returning;
+    this._skip.setAttribute('aria-disabled', this._warmHold === true || circuitOwed || returning ? 'true' : 'false');
 
     const reroll = this._rerollBtn;
     setKeyLabel(reroll, lines.label || 'Re-roll', 'R', 'R');

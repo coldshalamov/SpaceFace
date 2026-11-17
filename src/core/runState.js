@@ -9,6 +9,18 @@ export const RUN_KINDS = Object.freeze(['adventure', 'survival', 'lab']);
 
 export const RUN_OUTCOMES = Object.freeze(['victory', 'defeat', 'aborted']);
 
+export const PREPARATION_CANCEL_REASON = 'preparation_cancelled';
+
+/** The opening armory may be discarded before this run has planned its first round. */
+export function canCancelSwarmPreparation(run) {
+  if (!run || run.kind !== 'survival' || run.ruleset !== 'swarm' || run.phase !== 'draft'
+    || !Number.isSafeInteger(run.retireToken) || run.retireToken < 1) return false;
+  const startWave = Number.isInteger(run.telemetry?.startWave) && run.telemetry.startWave > 1
+    ? run.telemetry.startWave : 1;
+  // A checkpoint opener parks on the preceding round; wave zero alone misses those runs.
+  return run.wave === startWave - 1 && run.wavePlanId == null;
+}
+
 export const RUN_PHASES = Object.freeze([
   'inactive',
   'loadout',

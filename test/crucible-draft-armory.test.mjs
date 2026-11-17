@@ -18,7 +18,7 @@ const offer = (id, extra = {}) => ({
 });
 
 /** Mount the real draft screen over the stub DOM; `restore()` puts the global document back. */
-function mountShop({ ruleset = 'swarm', credits = 80, offers = [offer('a')] } = {}) {
+function mountShop({ ruleset = 'swarm', credits = 80, offers = [offer('a')], run = {} } = {}) {
   const savedDocument = globalThis.document;
   const doc = fakeDom();
   globalThis.document = doc;
@@ -27,13 +27,16 @@ function mountShop({ ruleset = 'swarm', credits = 80, offers = [offer('a')] } = 
   const listeners = new Map();
   const owner = {
     currentOffers: () => offers,
-    currentWave: () => 3,
+    currentWave: () => ctx.state.run.wave,
+    preparationGeneration: () => 1,
     lastNotice: () => null,
     rerollState: () => null,
     recommendedOffers: () => [],
   };
   const ctx = {
-    state: { run: { phase: 'draft', ruleset, credits }, player: { ownedShips: [] } },
+    state: { run: { kind: 'survival', phase: 'draft', ruleset, credits,
+      wave: 3, wavePlanId: 'round-three', retireToken: 1, ...run }, player: { ownedShips: [] } },
+    helpers: { workerReadGeneration: () => 1 },
     registry: { get: (name) => (name === 'survivalDraft' ? owner : null) },
     screenManager: { top: () => 'crucibleDraft' },
     bus: {
@@ -69,7 +72,7 @@ function mountShop({ ruleset = 'swarm', credits = 80, offers = [offer('a')] } = 
     if (savedDocument === undefined) delete globalThis.document;
     else globalThis.document = savedDocument;
   };
-  return { screen, ctx, press, picks, focused: () => focused, restore, offers };
+  return { screen, ctx, press, picks, emitted, focused: () => focused, restore, offers };
 }
 
 test('affordableOfferCount counts only what the wallet can buy now', () => {
@@ -238,4 +241,86 @@ test('Escape inside the search field still backs out of the field first, launchi
     assert.doesNotMatch(m.screen._note.textContent, /afford/, 'the guard is the shop key, not the field key');
     assert.equal(m.ctx.state.run.phase, 'draft');
   } finally { m.restore(); }
+});
+
+test('Back to hangar explains discarded purchases and is available only in opening preparation', () => {
+  for (const startWave of [1, 11]) {
+    const m = mountShop({ run: { wave: startWave - 1, wavePlanId: null, telemetry: { startWave } } });
+    try {
+      m.screen.onShow();
+      assert.equal(m.screen._backToHangar.hidden, false);
+      assert.equal(m.screen._preparationReturnNote.hidden, false);
+      assert.match(m.screen._preparationReturnNote.textContent, /purchases.*discard|discards purchases/i);
+      assert.match(m.screen._preparationReturnNote.textContent, /ship choice.*run settings.*kept/i);
+      assert.equal(m.screen._backToHangar.getAttribute('aria-describedby'), m.screen._preparationReturnNote.id);
+      m.screen._backToHangar.click();
+      m.screen._backToHangar.click();
+      assert.deepEqual(m.emitted.filter(([name]) => name === 'ui:cancelSwarmPreparation'),
+        [['ui:cancelSwarmPreparation', { token: 1 }]], 'one pending cancellation request');
+      assert.equal(m.ctx.state.run.phase, 'draft', 'the presentation cannot end the run itself');
+      assert.equal(m.screen._skip.disabled, true);
+      m.screen._skip.click();
+      assert.deepEqual(m.picks(), [], 'a pending return cannot also launch');
+      m.ctx.bus.emit('run:preparationCancelResolved', { token: 1, ok: false, reason: 'preparation_changed' });
+      assert.equal(m.screen._backToHangar.disabled, false, 'refusal releases the waiting control');
+      assert.equal(m.screen._skip.disabled, false);
+      m.ctx.state.run.wave = startWave;
+      m.ctx.state.run.wavePlanId = 'first-completed-round';
+      m.screen.refresh(m.ctx);
+      assert.equal(m.screen._backToHangar.hidden, true);
+      assert.equal(m.screen._preparationReturnNote.hidden, true);
+    } finally { m.screen.dispose(); m.restore(); }
+  }
+});
+
+test('a pending GPU warm may launch only the preparation that requested it', async () => {
+  const m = mountShop({ run: { wave: 0, wavePlanId: null } });
+  try {
+    let finishWarm;
+    m.ctx.state.render = { swarmDeferredWarm: { pending: true,
+      promise: new Promise(resolve => { finishWarm = resolve; }) } };
+    m.screen._skip.click();
+    assert.deepEqual(m.picks(), []);
+    finishWarm();
+    await new Promise(resolve => queueMicrotask(() => queueMicrotask(resolve)));
+    assert.equal(m.picks().length, 1, 'the original explicit launch continues after its own warm');
+    assert.equal(m.screen._warmLaunchTimer, null);
+  } finally { m.screen.dispose(); m.restore(); }
+});
+
+test('a late GPU warm cannot deploy a successor draft or a newer worker generation', async () => {
+  for (const changed of ['run', 'worker', 'hidden']) {
+    const m = mountShop({ run: { wave: 0, wavePlanId: null } });
+    try {
+      let finishWarm;
+      m.ctx.state.render = { swarmDeferredWarm: { pending: true,
+        promise: new Promise(resolve => { finishWarm = resolve; }) } };
+      m.screen._skip.click();
+      if (changed === 'run') m.ctx.state.run = { ...m.ctx.state.run, retireToken: 2 };
+      if (changed === 'worker') m.ctx.helpers.workerReadGeneration = () => 2;
+      if (changed === 'hidden') { m.screen.onHide(); m.screen.onShow(); }
+      finishWarm();
+      await new Promise(resolve => queueMicrotask(() => queueMicrotask(resolve)));
+      assert.deepEqual(m.picks(), [], changed);
+      assert.equal(m.ctx.state.run.phase, 'draft');
+      assert.equal(m.screen._warmHold, false);
+    } finally { m.screen.dispose(); m.restore(); }
+  }
+});
+
+test('Back invalidates the pending launch even if cancellation is refused', async () => {
+  const m = mountShop({ run: { wave: 0, wavePlanId: null } });
+  try {
+    m.screen.onShow();
+    let finishWarm;
+    m.ctx.state.render = { swarmDeferredWarm: { pending: true,
+      promise: new Promise(resolve => { finishWarm = resolve; }) } };
+    m.screen._skip.click();
+    m.screen._backToHangar.click();
+    m.ctx.bus.emit('run:preparationCancelResolved', { token: 1, ok: false });
+    finishWarm();
+    await new Promise(resolve => queueMicrotask(() => queueMicrotask(resolve)));
+    assert.deepEqual(m.picks(), []);
+    assert.equal(m.screen._skip.disabled, false, 'the next launch still needs an explicit press');
+  } finally { m.screen.dispose(); m.restore(); }
 });

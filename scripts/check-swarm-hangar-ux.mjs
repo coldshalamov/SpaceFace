@@ -38,6 +38,7 @@ const S = {
 };
 const report = {
   pass: false, startedAt: new Date().toISOString(), viewports: sizes, checks: [], screenshots: [], previewCaptures: [],
+  animationSettlements: [], equipmentGeometry: [],
   browserErrors: [], requestFailures: [], live: { requested: args.includes('--live'), completed: false },
   scope: 'Real mouse and keyboard input. DOM, bench log and runtime state are read-only observers. Bench launch is an intent, not proof of combat.',
 };
@@ -96,9 +97,102 @@ async function shipShot(page, name, { hullId, posterUrl, selector = S.preview })
   }, { selector, hullId, posterUrl });
   const evidence = await readiness.jsonValue();
   await readiness.dispose();
+  await settleFiniteAnimations(page, selector === S.preview ? S.root : selector, name);
+  if (selector === S.preview) await assertEquipmentGeometry(page, name);
   await shot(page, name);
   report.previewCaptures.push({ screenshot: `${name}.png`, selector, ...evidence });
   return evidence;
+}
+async function settleFiniteAnimations(page, selector, capture) {
+  // Observe the real finish; do not pause/finish animations or sample after a fixed sleep.
+  // Infinite ambience and scroll-driven effects have no finite resting state to await.
+  await page.evaluate(() => document.fonts.ready);
+  const pending = element => element.getAnimations({ subtree: true }).filter(animation =>
+    (animation.playState === 'running' || animation.pending)
+      && (!animation.timeline || animation.timeline === document.timeline)
+      && Number.isFinite(animation.effect?.getComputedTiming().endTime)).map(animation => ({
+    name: animation.animationName || animation.transitionProperty || animation.id || 'web-animation',
+    target: animation.effect?.target?.className?.toString() || '',
+    currentTime: animation.currentTime, endTime: animation.effect.getComputedTiming().endTime,
+  }));
+  const before = await page.locator(selector).evaluate(pending);
+  const evidence = { capture, selector, pendingBefore: before, settled: false };
+  report.animationSettlements.push(evidence);
+  try {
+    await page.waitForFunction(selector => {
+      const element = document.querySelector(selector);
+      return element && !element.getAnimations({ subtree: true }).some(animation =>
+        (animation.playState === 'running' || animation.pending)
+          && (!animation.timeline || animation.timeline === document.timeline)
+          && Number.isFinite(animation.effect?.getComputedTiming().endTime));
+    }, selector, { polling: 'raf', timeout: 5000 });
+    evidence.settled = true;
+  } finally {
+    evidence.pendingAfter = await page.locator(selector).evaluate(pending).catch(() => []);
+  }
+}
+async function assertEquipmentGeometry(page, capture) {
+  const geometry = await page.evaluate(() => {
+    const box = rect => ({ left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
+      width: rect.right - rect.left, height: rect.bottom - rect.top });
+    const intersect = (a, b) => {
+      if (!a || !b) return null;
+      const result = box({ left: Math.max(a.left, b.left), top: Math.max(a.top, b.top),
+        right: Math.min(a.right, b.right), bottom: Math.min(a.bottom, b.bottom) });
+      return result.width > 0 && result.height > 0 ? result : null;
+    };
+    const viewport = { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
+    const visibleClip = element => {
+      let clip = viewport;
+      for (let node = element; node && clip; node = node.parentElement) {
+        const css = getComputedStyle(node);
+        if (node.hidden || css.display === 'none' || css.visibility === 'hidden' || Number(css.opacity) === 0) return null;
+        const clipX = /^(auto|scroll|hidden|clip)$/.test(css.overflowX);
+        const clipY = /^(auto|scroll|hidden|clip)$/.test(css.overflowY);
+        if (!clipX && !clipY) continue;
+        const rect = node.getBoundingClientRect();
+        const scaleX = node.offsetWidth ? rect.width / node.offsetWidth : 1;
+        const scaleY = node.offsetHeight ? rect.height / node.offsetHeight : 1;
+        const left = rect.left + node.clientLeft * scaleX, top = rect.top + node.clientTop * scaleY;
+        clip = intersect(clip, {
+          left: clipX ? left : clip.left, right: clipX ? left + node.clientWidth * scaleX : clip.right,
+          top: clipY ? top : clip.top, bottom: clipY ? top + node.clientHeight * scaleY : clip.bottom,
+        });
+      }
+      return clip;
+    };
+    const manifest = document.querySelector('.sf-hangar-manifest');
+    const items = [...(manifest?.querySelectorAll('.sf-hangar-fitting') || [])].map((item, index) => {
+      const rect = box(item.getBoundingClientRect()), clip = visibleClip(item);
+      const labels = [...item.querySelectorAll('small,strong')].map(label => {
+        const range = document.createRange(); range.selectNodeContents(label);
+        const rects = [...range.getClientRects()].map(box); range.detach();
+        const textClip = visibleClip(label), css = getComputedStyle(label);
+        return { tag: label.tagName, text: label.textContent.trim(), rect: box(label.getBoundingClientRect()),
+          rects, visibleRects: rects.map(rect => intersect(rect, textClip)).filter(Boolean),
+          fontSize: css.fontSize, lineHeight: css.lineHeight, position: css.position, transform: css.transform };
+      });
+      return { index, text: item.textContent.trim(), rect, clip, visibleRect: intersect(rect, clip), labels };
+    });
+    const overlaps = [];
+    const add = (kind, a, b, rect, labels) => {
+      // Shared edges and subpixel rounding are not positive-area collisions.
+      if (rect && rect.width > .5 && rect.height > .5) overlaps.push({ kind, items: [a.index, b.index], rect, ...(labels ? { labels } : {}) });
+    };
+    for (let a = 0; a < items.length; a++) for (let b = a + 1; b < items.length; b++) {
+      const left = items[a], right = items[b];
+      add('item-boxes', left, right, intersect(left.visibleRect, right.visibleRect));
+      for (const first of left.labels) for (const second of right.labels)
+        for (const ra of first.visibleRects) for (const rb of second.visibleRects)
+          add('text-lines', left, right, intersect(ra, rb), [first.text, second.text]);
+    }
+    return { viewport: box(viewport), manifest: manifest ? { rect: box(manifest.getBoundingClientRect()),
+      scrollTop: manifest.scrollTop, scrollHeight: manifest.scrollHeight, clientHeight: manifest.clientHeight } : null,
+      items, visibleItems: items.filter(item => item.visibleRect).length, overlaps };
+  });
+  report.equipmentGeometry.push({ capture, ...geometry });
+  assert.ok(geometry.items.length, 'Selected ship has no installed-equipment entries to inspect.');
+  assert.deepEqual(geometry.overlaps, [], `Installed-equipment entries overlap at ${capture}; see equipmentGeometry in checks.json.`);
 }
 async function waitArenaImage(page) {
   await page.waitForFunction(async () => {
@@ -277,8 +371,10 @@ async function changeRunOptions(page, build, { inputs = false } = {}) {
   assert.equal(await page.locator(S.next).isVisible(), false);
   assert.equal(await page.locator(S.review).isVisible(), true);
   const before = await page.locator('.sf-crd-stake-sub').innerText();
-  const otherDifficulty = page.locator(`${S.difficulty}:not([aria-pressed="true"]):not([disabled])`).first();
-  const difficultyId = await otherDifficulty.getAttribute('data-stake-id');
+  const difficultyId = await page.locator(`${S.difficulty}:not([aria-pressed="true"]):not([disabled])`).first().getAttribute('data-stake-id');
+  // Keep the chosen identity after input: an "unselected" locator resolves to a
+  // different control as soon as the intended selection succeeds.
+  const otherDifficulty = page.locator(`${S.difficulty}[data-stake-id="${difficultyId}"]`);
   const difficultyLabel = await otherDifficulty.locator('strong').innerText();
   assert.ok((await otherDifficulty.getAttribute('aria-label')).length > difficultyLabel.length,
     'Difficulty has a name but no accessible explanation of its effects.');
@@ -286,8 +382,8 @@ async function changeRunOptions(page, build, { inputs = false } = {}) {
   assert.equal(await otherDifficulty.getAttribute('aria-pressed'), 'true');
   assert.notEqual(await page.locator('.sf-crd-stake-sub').innerText(), before, 'Difficulty selection left the explanation stale.');
   assert.ok((await page.locator('.sf-hangar-summary').innerText()).includes(difficultyLabel));
-  const otherArena = page.locator(`${S.arena}:not([aria-pressed="true"]):not([aria-disabled="true"]):not([disabled])`).first();
-  const arenaId = await otherArena.getAttribute('data-arena-id');
+  const arenaId = await page.locator(`${S.arena}:not([aria-pressed="true"]):not([aria-disabled="true"]):not([disabled])`).first().getAttribute('data-arena-id');
+  const otherArena = page.locator(`${S.arena}[data-arena-id="${arenaId}"]`);
   const arenaName = (await otherArena.locator('.fh-tile-legend').innerText()).replace(/\s+/g, ' ').trim();
   await page.waitForFunction(() => document.querySelector('.orr-door-hero__name')?.textContent.trim()
     && !document.querySelector('.orr-door-hero__words.is-turning'));

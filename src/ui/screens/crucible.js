@@ -68,6 +68,7 @@ import {
   SWARM_PERK_SLOTS,
 } from '../../data/swarmPerks.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
+import { draftCatalogFor, fittingName } from '../../data/survivalDraft.js';
 import { createStationRow } from '../orrery/stopDial.js';
 import { createCruciblePreparation } from '../orrery/cruciblePreparation.js';
 import { availableSwarmStarterId, swarmPreparationReadiness } from '../ship/swarmHangarModel.js';
@@ -144,7 +145,7 @@ import {
   SCENARIO_PRESETS,
 } from '../sandbox/sandboxSetup.js';
 import { ensurePhysicsLabRoute, notePracticeLaunch } from './crucibleLabControls.js';
-import { SURVIVAL_MUTATOR_BY_ID, SURVIVAL_TRIAL_BY_RULESET, POWERED_CONVEYOR_RULESET } from '../../data/survivalMutators.js';
+import { SURVIVAL_MUTATOR_BY_ID, SURVIVAL_TRIAL_BY_RULESET, POWERED_CONVEYOR_RULESET, SURVIVAL_PHYSICS_VERBS } from '../../data/survivalMutators.js';
 import { clearQueuedChallenge, queueGhostPlayback, queuePracticeRun, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
 import {
   availableOptions,
@@ -522,29 +523,45 @@ function arenaName() {
 /**
  * Phrase the earn condition as the thing the player would go and do.
  *
- * Every kind the catalog actually uses gets a real sentence. The generic fallback exists only so a
- * kind added later still renders something, and a test fails if a live kind ever reaches it — a
- * player reading "pick and waves 10" has been told nothing.
+ * Every live condition names the equipment and completed rounds the owner actually checks.
+ * Unknown conditions remain unavailable without exposing internal identifiers as instructions.
  *
  * Note the two different keys: pick_and_waves carries minWaves, the rest carry min. Reading only
  * `min` printed "clear wave 0" for four of the five starters.
  */
 export function unlockConditionText(entry) {
   if (!entry) return '';
-  if (entry.defaultUnlocked) return 'open from the start';
+  if (entry.defaultUnlocked) return 'Available from the start.';
   const earn = entry.earn;
-  if (!earn || typeof earn !== 'object') return 'condition not yet set';
+  const unavailable = 'This option is currently unavailable.';
+  if (!earn || typeof earn !== 'object') return unavailable;
   const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+  const equipmentName = (verb) => {
+    const offer = draftCatalogFor(SWARM_RULESET).find((row) => row.verb === verb);
+    return offer ? fittingName(offer.defId) : null;
+  };
+  const completeRun = `Win all ${SURVIVAL_RUN_WAVE_COUNT} rounds of Swarm or Gauntlet, starting at round 1.`
+    + ' One Hull and One Weapon challenges also count.';
+  const practiceNote = 'Practice runs do not count.';
   switch (earn.kind) {
     case 'pick_and_waves': {
       const waves = num(earn.minWaves != null ? earn.minWaves : earn.min);
-      return earn.verb ? `run ${earn.verb} to wave ${waves}` : `run it to wave ${waves}`;
+      const name = equipmentName(earn.verb);
+      return name && waves > 0
+        ? `Select ${name} from equipment offers and clear ${waves} rounds in the same run. ${practiceNote}`
+        : unavailable;
     }
-    case 'waves_cleared': return `clear wave ${num(earn.min)}`;
-    case 'deepest_wave': return `reach wave ${num(earn.min)}`;
-    case 'authored_victory': return 'win the authored run';
-    case 'victory_and_physics_pick': return 'win with a physics verb';
-    default: return `${String(earn.kind).replace(/_/g, ' ')} ${num(earn.min)}`;
+    case 'waves_cleared': return `Clear ${num(earn.min)} rounds in one run. ${practiceNote}`;
+    case 'deepest_wave': return `Reach round ${num(earn.min)}. ${practiceNote}`;
+    case 'authored_victory': return `${completeRun} ${practiceNote}`;
+    case 'victory_and_physics_pick': {
+      const names = SURVIVAL_PHYSICS_VERBS.map(equipmentName);
+      if (names.some((name) => !name)) return unavailable;
+      const choices = names.length > 1
+        ? `${names.slice(0, -1).join(', ')} or ${names.at(-1)}` : names[0];
+      return `${completeRun} Select ${choices} from equipment offers during that same run. ${practiceNote}`;
+    }
+    default: return unavailable;
   }
 }
 

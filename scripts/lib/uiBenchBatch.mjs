@@ -10,6 +10,7 @@ import { isGenericResourceLoadConsoleError } from './browser-issues.mjs';
 const MAX_PAGE_REQUESTS = 10_000;
 const MAX_OPTIONAL_RESPONSE_EVIDENCE = 64;
 const MAX_PENDING_OPTIONAL_CONSOLE_ERRORS = 32;
+const MAX_NAVIGATION_EVIDENCE = 64;
 
 export function parseBenchArgs(argv) {
   const { options: o, positional } = parseOptions(argv, {
@@ -93,7 +94,7 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
     summary.browserLaunches = 1;
     for (const viewport of args.viewports) for (const id of args.shots) {
       const cellStart = performance.now(), errors = [];
-      const cell = { id, viewport, ok: false, errors, requests: 0 };
+      const cell = { id, viewport, ok: false, errors, requests: 0, mainNavigations: [] };
       const folder = args.viewports.length > 1 ? path.join(out, `${viewport.width}x${viewport.height}`) : out;
       mkdirSync(folder, { recursive: true });
       let context, collecting = true;
@@ -105,6 +106,24 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
           ...(args.phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
         const page = await context.newPage();
         page.setDefaultTimeout(args.timeoutMs);
+        // A control walk deliberately reloads the fixture. Preserve request/document
+        // generations so an abort can be traced to that reload or to the preview owner.
+        // This is diagnostic only: every collected request failure still fails the cell.
+        const requestEvidence = new WeakMap();
+        let mainNavigationGeneration = 0, documentGeneration = 0, mainNavigationInProgress = false;
+        let lastMainNavigation = null;
+        const read = (fn, fallback = null) => { try { return fn(); } catch { return fallback; } };
+        const documentUrl = () => read(() => page.url(), '');
+        page.on('framenavigated', frame => {
+          if (!collecting || frame !== read(() => page.mainFrame())) return;
+          documentGeneration++;
+          mainNavigationInProgress = false;
+          if (lastMainNavigation) {
+            lastMainNavigation.committedAt = new Date().toISOString();
+            lastMainNavigation.documentGeneration = documentGeneration;
+            lastMainNavigation.committedUrl = read(() => frame.url(), '');
+          }
+        });
         const pendingOptionalConsole = [];
         const optionalResponseCredits = new Map();
         let optionalResponseCount = 0;
@@ -147,9 +166,42 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
             errors.push({ ...error, unmatchedOptional404: true });
           }
         });
-        page.on('request', () => { cell.requests = Math.min(cell.requests + 1, MAX_PAGE_REQUESTS); });
+        page.on('request', request => {
+          cell.requests = Math.min(cell.requests + 1, MAX_PAGE_REQUESTS);
+          if (!collecting) return;
+          const startedAt = Date.now();
+          const frame = read(() => request.frame());
+          const isMainNavigation = !!frame && read(() => request.isNavigationRequest(), false)
+            && frame === read(() => page.mainFrame());
+          if (isMainNavigation) {
+            mainNavigationGeneration++;
+            mainNavigationInProgress = true;
+            lastMainNavigation = { generation: mainNavigationGeneration, startedAt: new Date(startedAt).toISOString(),
+              fromDocumentUrl: documentUrl(), url: request.url() };
+            if (cell.mainNavigations.length < MAX_NAVIGATION_EVIDENCE) cell.mainNavigations.push(lastMainNavigation);
+          }
+          requestEvidence.set(request, { startedAt, url: request.url(), documentUrl: documentUrl(),
+            frameUrl: read(() => request.frame().url()), documentGeneration, mainNavigationGeneration,
+            mainNavigationInProgress, isMainNavigation });
+        });
         page.on('requestfailed', request => {
-          if (collecting) errors.push({ kind: 'requestfailed', url: request.url(), message: request.failure()?.errorText || 'request failed' });
+          if (!collecting) return;
+          const start = requestEvidence.get(request), failedAt = Date.now();
+          errors.push({ kind: 'requestfailed', url: request.url(), message: request.failure()?.errorText || 'request failed',
+            provenance: { startedAt: start ? new Date(start.startedAt).toISOString() : null,
+              failedAt: new Date(failedAt).toISOString(), elapsedMs: start ? failedAt - start.startedAt : null,
+              startUrl: start?.url || null, startDocumentUrl: start?.documentUrl || null,
+              startFrameUrl: start?.frameUrl || null, startDocumentGeneration: start?.documentGeneration ?? null,
+              startMainNavigationGeneration: start?.mainNavigationGeneration ?? null,
+              currentDocumentUrl: documentUrl(), currentDocumentGeneration: documentGeneration,
+              currentMainNavigationGeneration: mainNavigationGeneration, mainNavigationInProgress,
+              lastMainNavigation: lastMainNavigation ? { ...lastMainNavigation } : null,
+              resourceType: read(() => request.resourceType()), method: read(() => request.method()),
+              probeMode: args.walk ? 'synthetic-control-walk' : 'arrival-capture' } });
+          if (start?.isMainNavigation && start.mainNavigationGeneration === mainNavigationGeneration) {
+            mainNavigationInProgress = false;
+            if (lastMainNavigation) lastMainNavigation.failedAt = new Date(failedAt).toISOString();
+          }
         });
         page.on('response', response => {
           const url = response.url();

@@ -17,6 +17,8 @@ import {
   todayBoardFigures,
 } from '../src/ui/screens/crucible.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../src/data/survivalUnlocks.js';
+import { WEAPONS } from '../src/data/weapons.js';
+import { MODULES } from '../src/data/modules.js';
 import { emptyCrucibleProfile } from '../src/systems/survivalRecords.js';
 
 test('a fresh profile shows every closed entry with a condition, never a blank', () => {
@@ -155,16 +157,58 @@ test('today daily figures surface score and wave when a board row exists', () =>
 });
 
 test('every earn kind in the catalog has a readable phrasing', () => {
-  const kinds = new Set();
   for (const entry of SURVIVAL_UNLOCK_CATALOG) {
-    if (entry.earn && entry.earn.kind) kinds.add(entry.earn.kind);
+    if (!entry.earn) continue;
+    const text = unlockConditionText(entry);
+    assert.ok(text && !/\bundefined\b/.test(text), `${entry.id} has no phrasing: ${text}`);
+    assert.doesNotMatch(text, /currently unavailable|authored|physics verb|pick_and_waves/,
+      `${entry.id} needs a real instruction using its complete catalog condition`);
   }
-  for (const kind of kinds) {
-    const text = unlockConditionText({ earn: { kind, min: 7 } });
-    assert.ok(text && !/\bundefined\b/.test(text), `${kind} has no phrasing: ${text}`);
-    // The fallback path prints the raw kind with underscores swapped; that is legible, but a kind
-    // the catalog actually uses deserves a real sentence rather than the fallback.
-    assert.ok(!text.startsWith(String(kind).replace(/_/g, ' ')),
-      `${kind} is in the catalog but only hits the generic fallback phrasing`);
+});
+
+test('starter unlocks name the actual equipment and require clears in the same run', () => {
+  const fittings = new Map([...WEAPONS, ...MODULES].map(row => [row.id, row.name]));
+  for (const [id, defId, rounds] of [
+    ['unlock_kit_web', 'wpn_snarl_s', 5],
+    ['unlock_kit_physics', 'wpn_gravity_marker_s', 5],
+    ['unlock_kit_massline', 'mod_elastic_whip_m', 8],
+  ]) {
+    const text = unlockConditionText(SURVIVAL_UNLOCK_CATALOG.find(row => row.id === id));
+    assert.ok(text.includes(fittings.get(defId)), `${id} must use its canonical equipment name`);
+    assert.ok(text.includes(`clear ${rounds} rounds in the same run`));
+    assert.match(text, /Select .* from equipment offers/);
+    assert.match(text, /Practice runs do not count/);
+    assert.doesNotMatch(text, /run (?:Web|Tag|Whip)\b|to wave/);
+  }
+});
+
+test('round requirements distinguish clears from reaching a round', () => {
+  assert.match(unlockConditionText(SURVIVAL_UNLOCK_CATALOG.find(row => row.id === 'unlock_kit_bolt')),
+    /Clear 10 rounds in one run/);
+  assert.match(unlockConditionText(SURVIVAL_UNLOCK_CATALOG.find(row => row.id === 'unlock_mark_act_ii')),
+    /Reach round 20/);
+});
+
+test('full-course unlocks explain all thirty clears from the beginning and exclude Practice', () => {
+  for (const entry of SURVIVAL_UNLOCK_CATALOG.filter(row =>
+    ['authored_victory', 'victory_and_physics_pick'].includes(row.earn?.kind))) {
+    const text = unlockConditionText(entry);
+    assert.match(text, /Win all 30 rounds of Swarm or Gauntlet, starting at round 1/);
+    assert.match(text, /One Hull and One Weapon challenges also count/);
+    assert.match(text, /Practice runs do not count/);
+  }
+  const physics = unlockConditionText(SURVIVAL_UNLOCK_CATALOG.find(row => row.id === 'unlock_mutator_physics_only'));
+  for (const defId of ['wpn_concussion_cannon_m', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s',
+    'wpn_vector_mine_m', 'wpn_rcs_disruptor_m']) {
+    assert.ok(physics.includes(WEAPONS.find(row => row.id === defId).name),
+      'every qualifying equipment choice must be named');
+  }
+  assert.match(physics, /equipment offers during that same run/);
+});
+
+test('missing or unknown unlock conditions never expose internal identifiers', () => {
+  for (const entry of [{}, { earn: { kind: 'internal_future_kind', min: 7 } },
+    { earn: { kind: 'pick_and_waves', verb: 'unmapped_internal_verb', minWaves: 5 } }]) {
+    assert.equal(unlockConditionText(entry), 'This option is currently unavailable.');
   }
 });

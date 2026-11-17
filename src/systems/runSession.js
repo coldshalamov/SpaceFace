@@ -5,6 +5,8 @@
 
 import {
   RUN_OUTCOMES,
+  PREPARATION_CANCEL_REASON,
+  canCancelSwarmPreparation,
   canTransition,
   createRunState,
   runLevelForXp,
@@ -223,12 +225,29 @@ export const runSession = {
   },
 
   retire(request) {
+    const cancelling = request?.intent === 'cancel_preparation';
+    const token = Number.isSafeInteger(request?.token) ? request.token : null;
+    const refused = () => {
+      if (cancelling) this._emit('run:preparationCancelResolved', {
+        token, ok: false, reason: 'preparation_changed',
+      });
+      return false;
+    };
+    // Ordinary retirement retains its debrief. Only this explicit, opening-only intent
+    // discards preparation without a result, record or payout.
+    if (request?.intent != null && !cancelling) return false;
     const run = this._liveRun();
     if (!run || run.kind !== 'survival' || run.phase === 'inactive'
       || run.phase === 'ended' || run.phase === 'victory'
-      || !Number.isSafeInteger(request?.token) || request.token !== run.retireToken) return false;
-    this.end({ outcome: 'aborted', reason: 'player_retired', tick: this.state?.tick });
-    return this.state.run?.result?.reason === 'player_retired';
+      || token == null || token !== run.retireToken
+      || (cancelling && !canCancelSwarmPreparation(run))) return refused();
+    const reason = cancelling ? PREPARATION_CANCEL_REASON : 'player_retired';
+    this.end({ outcome: 'aborted', reason, tick: this.state?.tick });
+    const ended = this.state.run;
+    if (ended?.retireToken !== token || ended?.phase !== 'ended'
+      || ended?.result?.reason !== reason) return refused();
+    if (cancelling) this._emit('run:preparationCancelResolved', { token, ok: true, reason });
+    return true;
   },
 
   end(request) {
@@ -238,6 +257,7 @@ export const runSession = {
     const outcome = request && request.outcome;
     if (!OUTCOME_SET.has(outcome)) return;
     const reason = toReason(request && request.reason);
+    if (reason === PREPARATION_CANCEL_REASON && !canCancelSwarmPreparation(run)) return;
     const tick = toFiniteInt(request && request.tick, 0);
     const phase = outcome === 'victory' ? 'victory' : 'ended';
     if (!canTransition(run.phase, phase)) return;

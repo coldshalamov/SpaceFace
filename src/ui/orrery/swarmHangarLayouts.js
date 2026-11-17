@@ -120,15 +120,15 @@ ${H} .sf-hangar-lesson { margin-top:20px; padding:14px; border:1px solid var(--d
 ${H} .sf-hangar-lesson .sf-hangar-section-title { font-size:17px; }
 ${H} button[data-swarm-training] { min-height:42px !important; padding:10px 16px !important; border:1px solid var(--dp-line) !important; background:var(--dp-field-ink) !important; font:600 14px/1.3 var(--dp-face-body,'Instrument Sans') !important; letter-spacing:0 !important; }
 ${H} button[data-swarm-training][aria-pressed=true] { border-color:var(--dp-hand) !important; color:var(--dp-hand-hot) !important; }
-${H} > .orr-door-hero { overflow:hidden !important; isolation:isolate; }
+${H} > .orr-door-hero { overflow:hidden !important; isolation:isolate; mask:none; -webkit-mask:none; }
 ${H} .orr-door-hero__art { position:absolute !important; inset:0 !important; width:100% !important; height:100% !important;
   object-fit:cover !important; object-position:center; mask:none !important; -webkit-mask:none !important; opacity:0; }
 ${H} .orr-door-hero__art.is-on { opacity:1; }
 ${H} .orr-door-hero::after { content:''; position:absolute; inset:0; height:auto !important; z-index:1;
   background:linear-gradient(0deg,var(--dp-void) 0%,transparent 80%) !important; pointer-events:none; }
-${H} .orr-door-hero__words { position:absolute !important; inset:auto 26px 28px !important; z-index:2; padding:0 !important; width:auto !important; max-width:none !important; }
+${H} .orr-door-hero__words { position:absolute !important; inset:auto 26px 28px !important; z-index:2; padding:0 !important; width:auto !important; max-width:none !important; text-align:left; color:var(--dp-ink); }
 ${H} .orr-door-hero__name { font:800 clamp(26px,3.5vw,46px)/1.1 var(--dp-face-display,'Archivo') !important; letter-spacing:-.02em !important; margin:0 0 12px; }
-${H} .orr-door-hero__line { font:400 17px/1.5 var(--dp-face-body,'Instrument Sans') !important; max-width:42ch; }
+${H} .orr-door-hero__line { font:400 17px/1.5 var(--dp-face-body,'Instrument Sans') !important; max-width:42ch; margin:0; color:var(--dp-ink); }
 ${H} > .k-foot { grid-column:1/-1 !important; grid-row:4 !important; position:static !important; display:block !important;
   margin:0 !important; padding:14px 0 0 !important; border-top:1px solid var(--dp-line) !important; background:none !important; }
 ${H} .sf-hangar-actions { display:flex; align-items:center; gap:14px; }

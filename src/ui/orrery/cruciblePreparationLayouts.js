@@ -1262,6 +1262,13 @@ ${A} .orr-armory-budget__spend { stroke:var(--dp-hand); }
   /* the slot jig's hull art is laid out for a taller box and spilled past it under the price line; the Current build list below carries the same fitted count */
   ${A} .orr-armory-reading__jig { display:none !important; }
 }
+/* Opening preparation adds a reversible return path. Its explanation has its own
+   wrapping row, including the compact footer compositions above. */
+${A} > .k-foot:has(.sf-cru-preparation-return-note:not([hidden])) { flex-wrap:wrap !important; row-gap:6px !important; }
+${A} .sf-cru-preparation-return-note { flex:1 0 100%; order:3; min-width:0; width:100%; margin:3px 0 0 !important;
+  white-space:normal !important; font:400 12px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif !important;
+  letter-spacing:0 !important; text-transform:none !important; color:var(--dp-ink-dim); }
+${A} .sf-cru-preparation-return-note[hidden] { display:none !important; }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
   if (!doc?.head || doc.getElementById('orr-crucible-preparation-style')) return;

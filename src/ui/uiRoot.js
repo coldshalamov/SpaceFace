@@ -22,6 +22,7 @@ import { ensureHudStylesheet } from './views/hudStylesheet.js';
 import { isHostileToPlayer, isWreckLike, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { targetDisplayName } from './targetPanel.js';
 import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
+import { canCancelSwarmPreparation, PREPARATION_CANCEL_REASON } from '../core/runState.js';
 import { dedupError } from '../core/warnDedup.js';
 import {
   presentationAllowsPlayerFacingAction,
@@ -435,6 +436,58 @@ export function reconcileGameStartedScreens(owner) {
   return true;
 }
 
+/** Record presentation identity before sending the command: native receipts may be synchronous. */
+export function requestSwarmPreparationCancellation(owner, request) {
+  const run = owner?.state?.run;
+  if (!canCancelSwarmPreparation(run) || request?.token !== run.retireToken
+    || owner.screenManager?.top?.() !== 'crucibleDraft') return false;
+  const generation = owner.helpers?.workerReadGeneration?.();
+  const pending = owner._swarmPreparationCancellation;
+  if (pending?.token === run.retireToken && pending.generation === generation) return false;
+  owner._swarmPreparationCancellation = { token: run.retireToken, generation };
+  owner.bus.emit('run:retireRequested', { token: run.retireToken, intent: 'cancel_preparation' });
+  return true;
+}
+
+/** Navigation follows the native owner's receipt, never a speculative screen replacement. */
+export function reconcileSwarmPreparationCancellation(owner, receipt) {
+  const pending = owner?._swarmPreparationCancellation;
+  if (!pending || receipt?.token !== pending.token) return false;
+  owner._swarmPreparationCancellation = null;
+  if (owner.helpers?.workerReadGeneration?.() !== pending.generation) return false;
+  const run = owner.state?.run;
+  if (run?.retireToken !== pending.token) return false;
+  if (receipt.ok !== true) {
+    owner.bus.emit('toast', { text: 'Preparation has changed. Your current run was kept.', kind: 'info', ttl: 5000 });
+    owner.screenManager?.refreshTop?.();
+    return false;
+  }
+  if (run.phase !== 'ended' || run.result?.reason !== PREPARATION_CANCEL_REASON) return false;
+  // The existing exit boundary cancels outstanding startup/render admission before hiding the
+  // paused draft. Keep the cached hangar: it owns the player's complete selection, not purchases.
+  owner.bus.emit('game:exitToMenu', { source: 'swarm_preparation_cancelled' });
+  owner.screenManager.closeAll();
+  const returning = { generation: pending.generation, manager: owner.screenManager };
+  owner._swarmPreparationReturn = returning;
+  const isLive = () => owner._swarmPreparationReturn === returning
+    && owner.screenManager === returning.manager
+    && owner.helpers?.workerReadGeneration?.() === returning.generation
+    && [null, 'mainMenu'].includes(owner.screenManager.top());
+  const finish = () => {
+    if (owner._swarmPreparationReturn === returning) owner._swarmPreparationReturn = null;
+  };
+  // Normally both screens are already cached. The same route also waits for deferred screen
+  // registration, and yields if the player opens another screen or starts a newer game.
+  owner._pushScreenWhenRegistered('mainMenu', 60, {
+    isLive,
+    onSettled: (opened) => {
+      if (!opened || !isLive()) { finish(); return; }
+      owner._pushScreenWhenRegistered('crucible', 60, { isLive, onSettled: finish });
+    },
+  });
+  return true;
+}
+
 function screenPushRequestIsLive(owner, id) {
   switch (id) {
     case 'station':
@@ -639,6 +692,10 @@ export const ui = {
   name: 'ui',
 
   init(ctx) {
+    for (const off of this._swarmPreparationUnsubs || []) off?.();
+    this._swarmPreparationUnsubs = [];
+    this._swarmPreparationCancellation = null;
+    this._swarmPreparationReturn = null;
     this.proExperiences?.destroy();
     this.proExperiences = null;
     invalidateDockedStationPresentation(this);
@@ -1783,7 +1840,13 @@ export const ui = {
       this._crucibleResultsShown = true;
       this._pushScreenWhenRegistered('crucibleResults', 60);
     });
+    this._swarmPreparationUnsubs = [
+      this.bus.on('ui:cancelSwarmPreparation', (payload) => requestSwarmPreparationCancellation(this, payload)),
+      this.bus.on('run:preparationCancelResolved', (payload) => reconcileSwarmPreparationCancellation(this, payload)),
+    ];
     this.bus.on('run:started', () => {
+      this._swarmPreparationCancellation = null;
+      this._swarmPreparationReturn = null;
       this._cancelPendingScreenRetry();
       this._crucibleResultsShown = false;
     });
@@ -1793,10 +1856,17 @@ export const ui = {
       this._gameOverShown = false;
     });
     this.bus.on('game:exitToMenu', () => {
+      this._swarmPreparationCancellation = null;
+      this._swarmPreparationReturn = null;
       invalidateDockedStationPresentation(this);
       this._cancelPendingScreenRetry();
     });
-    this.bus.on('game:new', () => { invalidateDockedStationPresentation(this); });
+    this.bus.on('game:new', () => {
+      this._swarmPreparationCancellation = null;
+      if (this._swarmPreparationReturn) this._cancelPendingScreenRetry();
+      this._swarmPreparationReturn = null;
+      invalidateDockedStationPresentation(this);
+    });
     this.bus.on('game:started', () => { this._gameOverShown = false; });
     this.bus.on('save:restoring', () => { invalidateDockedStationPresentation(this); });
     this.bus.on('save:loaded', () => {
@@ -1998,7 +2068,8 @@ export const ui = {
       registrationCycle,
       screenManager,
       token: (Number(this._screenRetryToken) || 0) + 1,
-      isLive: (owner) => screenPushRequestIsLive(owner, id),
+      isLive: (owner) => screenPushRequestIsLive(owner, id)
+        && (typeof options.isLive !== 'function' || options.isLive(owner)),
       timerId: null,
       cancelled: false,
       onSettled: options.onSettled,
@@ -2281,6 +2352,10 @@ export const ui = {
   },
 
   destroy() {
+    for (const off of this._swarmPreparationUnsubs || []) off?.();
+    this._swarmPreparationUnsubs = [];
+    this._swarmPreparationCancellation = null;
+    this._swarmPreparationReturn = null;
     this.proExperiences?.destroy();
     this.proExperiences = null;
     this.blackFlagPrompt?.dispose();
