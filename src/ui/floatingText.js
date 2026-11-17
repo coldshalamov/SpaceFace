@@ -333,7 +333,10 @@ export function createFloatingText(ctx) {
         node.seat.h = node.h;
         padObstacles.push(node.seat);
       }
-      const transform = `translate3d(${px}px,${py}px,0) translate(-50%,-50%)`;
+      // Integer px like the Swarm kill-popups: subpixel projection noise used to mint a
+      // new transform string (and a style mutation) every frame even when the chip held
+      // its seat. Same picture; unchanged frames now skip the write entirely.
+      const transform = `translate3d(${Math.round(px)}px,${Math.round(py)}px,0) translate(-50%,-50%)`;
       if (node.transform !== transform) { node.transform = transform; node.el.style.transform = transform; }
       const opacity = fade < 1 ? (phoneDeck ? '0' : String(fade)) : '';
       if (node.op !== opacity) { node.op = opacity; node.el.style.opacity = opacity; }

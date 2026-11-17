@@ -462,7 +462,14 @@ export const swarmJuiceHud = {
     entry.refresh = (t) => {
       rec.text = t; node.textContent = t; rec.w = 0; rec.h = 0;
       rec.at = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : rec.at;
-      node.style.animation = 'none'; void node.offsetWidth; node.style.animation = '';
+      // Restart the pop-in without `void offsetWidth` (forced sync layout mid-write): the
+      // 'none' state commits for one frame, then the restore replays the animation. The
+      // token keeps a stale restore from cancelling a newer refresh on the pooled node.
+      node.style.animation = 'none';
+      const token = (node._sfSJAnimToken = (node._sfSJAnimToken | 0) + 1);
+      const nextFrame = typeof requestAnimationFrame === 'function'
+        ? requestAnimationFrame : (fn) => setTimeout(fn, 0);
+      nextFrame(() => { if (node._sfSJAnimToken === token) node.style.animation = ''; });
     };
     entry.evict = () => {
       const i = this._popups.indexOf(rec);

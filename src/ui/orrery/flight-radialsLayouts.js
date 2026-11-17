@@ -83,7 +83,7 @@ ${W} .sf-wradial__hub { transition:transform .22s cubic-bezier(.22, 1, .36, 1); 
 ${W} .sf-wradial__hub:active { transform:translate(-50%, -50%) scale(.97); }
 ${W} .sf-wradial__face { transition:transform .12s cubic-bezier(.2, .9, .3, 1.2); }
 ${W} .sf-wradial__wedge:not(.sf-wradial__wedge--disabled):active .sf-wradial__face { transform:translate(-50%, -50%) scale(.95); }
-${W} .sf-wradial__wedge:not(.sf-wradial__wedge--disabled):active .sf-wradial__seg path { stroke-width:4; }
+${W} .sf-wradial__wedge:not(.sf-wradial__wedge--disabled):active .sf-wradial__seg .sf-wradial__segarc { stroke-width:4; }
 
 /* ── comms fan: the keys ride the token key height (--fan-key-h: written by commsRadial.js) ── */
 ${F} .sf-commsfan__wedge { height:var(--fan-key-h, 40px); }

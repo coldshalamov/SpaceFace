@@ -106,7 +106,7 @@ export function createWingmanRadial(ctx) {
     const d = sectorPath(a);
     wedge.style.clipPath = `path('${d}')`;
     wedge.innerHTML =
-      `<svg class="sf-wradial__seg" viewBox="0 0 400 400" aria-hidden="true" focusable="false"><path d="${d}"/></svg>` +
+      `<svg class="sf-wradial__seg" viewBox="0 0 400 400" aria-hidden="true" focusable="false"><path class="sf-wradial__segarc" d="${d}"/></svg>` +
       `<span class="sf-wradial__face" style="left:${polarX(R_FACE, a).toFixed(1)}px;top:${polarY(R_FACE, a).toFixed(1)}px">` +
       `<span class="sf-wradial__glyph">${dpIcon(opt.icon, 24)}</span>` +
       `<span class="sf-wradial__label">${opt.label}</span>` +
@@ -405,7 +405,7 @@ function injectCss() {
   .sf-wradial__wedge--left { --wr-delay:75ms; }
   .sf-wradial--in .sf-wradial__wedge { transform:none; opacity:1; }
   .sf-wradial__seg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; }
-  .sf-wradial__seg path { fill:rgb(12 15 20 / .55); stroke:rgb(232 226 212 / .35); stroke-width:1px; transition:stroke .12s, fill .12s; }
+  .sf-wradial__seg .sf-wradial__segarc { fill:rgb(12 15 20 / .55); stroke:rgb(232 226 212 / .35); stroke-width:1px; transition:stroke .12s, fill .12s; }
   /* one sheet of glass, one reflection: a crisp-edged plane across the upper dial, so the top key
      catches most of it, the side keys its lower edge, the bottom key none; plus an inner shadow
      where the key seats into the ring */
@@ -443,7 +443,7 @@ function injectCss() {
     color:var(--dp-phos, rgb(205 222 255));
     font-size:12px;
   }
-  .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__seg path {
+  .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__seg .sf-wradial__segarc {
     stroke:var(--dp-lamp, #f2b950); stroke-width:4; }
   .sf-wradial:has(.sf-wradial__wedge--top:is(:hover, :focus-visible)) .sf-wradial__lamp--top,
   .sf-wradial:has(.sf-wradial__wedge--right:is(:hover, :focus-visible)) .sf-wradial__lamp--right,
@@ -465,7 +465,7 @@ function injectCss() {
   .sf-wradial--in .sf-wradial__wedge--disabled { opacity:.4; cursor:not-allowed; }
   .sf-wradial__wedge--disabled:hover { color:var(--dp-ink-dim, #b7b4a6); }
   .sf-wradial__wedge--disabled:hover .sf-wradial__glyph, .sf-wradial__wedge--disabled:hover .sf-wradial__key { color:var(--dp-ink, #e8e2d4); }
-  .sf-wradial__wedge--disabled:hover .sf-wradial__seg path { stroke:rgb(255 236 204 / .13); stroke-width:2; filter:none; }
+  .sf-wradial__wedge--disabled:hover .sf-wradial__seg .sf-wradial__segarc { stroke:rgb(255 236 204 / .13); stroke-width:2; filter:none; }
 
   /* the hub: glass seated in a machined collar, naming who the order goes to */
   .sf-wradial__hub { position:absolute; left:50%; top:50%; width:124px; height:124px; transform:translate(-50%,-50%) scale(.9);
@@ -496,12 +496,12 @@ function injectCss() {
 
   @media (prefers-reduced-motion:reduce) { .sf-wradial, .sf-wradial__hub, .sf-wradial__wedge { transition:none; } }
   html.sf-reduce-motion .sf-wradial, html.sf-reduce-motion .sf-wradial__hub, html.sf-reduce-motion .sf-wradial__wedge { transition:none; }
-  html.sf-high-contrast .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__seg path { stroke:#fff; }
+  html.sf-high-contrast .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__seg .sf-wradial__segarc { stroke:#fff; }
   @media (forced-colors:active) {
-    .sf-wradial__bed, .sf-wradial__seg path { fill:Canvas; stroke:CanvasText; filter:none; }
+    .sf-wradial__bed, .sf-wradial__seg .sf-wradial__segarc { fill:Canvas; stroke:CanvasText; filter:none; }
     .sf-wradial__bezel-edge, .sf-wradial__graticule { stroke:CanvasText; }
     .sf-wradial__wedge { color:ButtonText; }
-    .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__seg path { stroke:Highlight; }
+    .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__seg .sf-wradial__segarc { stroke:Highlight; }
     .sf-wradial__hub { border:1px solid ButtonText; background:ButtonFace; color:ButtonText; box-shadow:none; }
     .sf-wradial__key, .sf-wradial__hub-scope { border-image:none; border:1px solid ButtonText; background:ButtonFace; color:ButtonText; }
     .sf-wradial__lamp { forced-color-adjust:none; background:Canvas; box-shadow:0 0 0 1px CanvasText; }

@@ -15,7 +15,7 @@ const owners = [];
 const extraNames = new Set(['placeExternalFlightCaptions', 'restoreYieldedFlightVisuals',
   'yieldFlightVisual', 'registerExternalFlightCaption', 'refreshExternalFlightCaption',
   'releaseExternalFlightCaption', 'clearExternalFlightCaptionPlacement',
-  'refreshFlightTextObstacleSnapshot', 'plateBox', 'objectiveEdgeObstacles',
+  'refreshFlightTextObstacleSnapshot', 'plateBox', 'objectiveEdgeObstacles', 'membersUnchanged',
   'invalidateObjectiveEdgeBoxes', 'invalidateTransientOverlayGeometry', 'invalidateAndPlaceHudOverlays']);
 const extraOwners = new Map();
 let overlayResizeOwner;
@@ -132,7 +132,8 @@ function fixture({ mode = 'shared', cards = 1, captionHeight = 56, captionSlot =
     let receiptGeometryReusable = false;
     let receiptGeometryKeep = false;
     let flightTextObstacleSnapshotAt = -Infinity;
-    let flightTextObstacleRetry = null;
+    let flightTextObstacleGeomStale = true;
+    let flightTextObstacleMembers = null;
     const FLIGHT_TEXT_OBSTACLE_MIN_MS = 100;
     // placeReceiptLane reads the Swarm column observer that ac5fde80c2 added beside it.
     let observedSwarmColumn = null;
@@ -404,6 +405,7 @@ test('transient invalidation preserves structural boxes; resize batches objectiv
     externalCaptionsStale: false, flightTextObstaclesStale: false, alertLanePlacementStale: false,
     receiptLanePlacementDirty: false,
     invalidateReceiptLane() { context.receiptLanePlacementDirty = true; },
+    invalidateAvoidRects() {},
   };
   const api = runInNewContext([...extraOwners].filter(([name]) =>
     ['plateBox', 'objectiveEdgeObstacles', 'invalidateObjectiveEdgeBoxes',

@@ -475,6 +475,7 @@ test('caption bands reserve sibling touch controls and refresh only their layout
     objectiveEdgeBoxes: { stale: false },
     externalCaptionsStale: false,
     invalidateReceiptLane: () => { placements++; },
+    invalidateAvoidRects: () => {},
     MutationObserver: class {
       constructor(callback) { this.callback = callback; configObserver = this; }
       observe(el, options) { this.element = el; this.options = options; }
@@ -582,6 +583,7 @@ test('the mobile voice lane moves below open Details and View controls, then re-
     objectiveEdgeObstacles: () => ({}),
     overlaySafeSlot: () => ({ x: 12, width: 366 }),
     setStyle: (el, key, value) => { if (el.style[key] !== value) el.style[key] = value; },
+    invalidateAvoidRects: () => {},
   };
   const { freeOverlayBands, placeAlertLaneInSafeBands, invalidateObjectiveEdgeBoxes } = runInNewContext(
     `${alertStyleDeclaration}\n${[...functions.values()].join('\n')}; ({ freeOverlayBands, placeAlertLaneInSafeBands, invalidateObjectiveEdgeBoxes })`, context);

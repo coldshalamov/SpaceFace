@@ -77,12 +77,18 @@ function readRectRows(doc, query, exclude) {
 const DEFAULT_TTL_MS = 800;
 const defaultQuery = AVOID_SELECTORS.join(',');
 const sharedHudSnapshots = new WeakMap();
+const docSnapshots = new WeakMap();
 
 function createRectSnapshot(doc, query, ttl, exclude) {
   let rows = [];
   let at = -Infinity;
   const invalidate = () => { at = -Infinity; };
   doc?.defaultView?.addEventListener?.('resize', invalidate, { passive: true });
+  if (doc) {
+    let live = docSnapshots.get(doc);
+    if (!live) docSnapshots.set(doc, live = new Set());
+    live.add(invalidate);
+  }
   return {
     get(t) {
       if (t - at >= ttl) {
@@ -93,6 +99,17 @@ function createRectSnapshot(doc, query, ttl, exclude) {
     },
     invalidate,
   };
+}
+
+/**
+ * The HUD's own invalidation funnels (receipt lane, caption placement, panel open/close,
+ * resize) already know when obstacles moved; callers that re-publish text-obstacle
+ * geometry poke this so every snapshot re-reads on its next get() instead of waiting for
+ * its TTL. Rect reads therefore follow real layout changes, not the wall clock.
+ */
+export function invalidateAvoidRects(doc) {
+  const live = doc && docSnapshots.get(doc);
+  if (live) for (const invalidate of live) invalidate();
 }
 
 /**

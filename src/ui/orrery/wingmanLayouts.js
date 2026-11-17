@@ -36,8 +36,8 @@ ${W} .sf-wradial__graticule { stroke:rgb(${BONE} / .55); stroke-width:1.5; }
 
 /* the keys: arcs of light, no glass reflection, no filter */
 ${W} .sf-wradial__wedge::after { display:none; }
-${W} .sf-wradial__seg path { fill:rgb(${BONE} / .05); stroke:rgb(${BONE} / .56); stroke-width:1.6px; filter:none !important; }
-${W} .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__seg path { fill:rgb(242 185 80 / .15); stroke:var(--dp-hand, #f2b950); stroke-width:3.4; filter:none !important; }
+${W} .sf-wradial__seg .sf-wradial__segarc { fill:rgb(${BONE} / .05); stroke:rgb(${BONE} / .56); stroke-width:1.6px; filter:none !important; }
+${W} .sf-wradial__wedge:is(:hover, :focus-visible) .sf-wradial__seg .sf-wradial__segarc { fill:rgb(242 185 80 / .15); stroke:var(--dp-hand, #f2b950); stroke-width:3.4; filter:none !important; }
 ${W} .sf-wradial__wedge { color:rgb(${BONE} / .9); }
 ${W} .sf-wradial__label { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-variation-settings:"wdth" 112, "wght" 650; font-size:var(--wr-type); letter-spacing:.14em;
   color:rgb(${BONE} / .94); text-shadow:0 0 1px rgb(3 4 7 / .9), 0 0 6px rgb(3 4 7 / .7); }
@@ -62,7 +62,7 @@ ${W}:has(.sf-wradial__wedge--left:is(:hover, :focus-visible)) .sf-wradial__lamp-
 
 /* one Hand: while the pointer is over a key, only that key is lit (the one holding keyboard focus stands down) */
 ${STAND} { color:rgb(${BONE} / .9); }
-${STAND} .sf-wradial__seg path { fill:rgb(${BONE} / .05); stroke:rgb(${BONE} / .56); stroke-width:1.6px; }
+${STAND} .sf-wradial__seg .sf-wradial__segarc { fill:rgb(${BONE} / .05); stroke:rgb(${BONE} / .56); stroke-width:1.6px; }
 ${STAND} .sf-wradial__label { color:rgb(${BONE} / .94); text-shadow:0 0 1px rgb(3 4 7 / .9), 0 0 6px rgb(3 4 7 / .7); }
 ${STAND} .sf-wradial__glyph { opacity:.78; }
 ${STAND} .sf-wradial__key { color:var(--dp-phos, #dfeeff); }

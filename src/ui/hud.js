@@ -20,7 +20,7 @@ import { mountIonStormHud } from './ionStormHud.js';
 import { mountTravelVectorHud } from './travelVectorHud.js';
 import { createTargetPanel, targetDisplayName, authoredSiteRosterDetail, isWorldSiteWorkTarget as isWorldSiteWorkTargetEntity } from './targetPanel.js';
 import { createFloatingText } from './floatingText.js';
-import { createAvoidRects } from './hudAvoidRects.js';
+import { createAvoidRects, invalidateAvoidRects } from './hudAvoidRects.js';
 import { seatPhoneTell } from './phoneTellSeat.js';
 import { createDamageIndicators } from './damageIndicators.js';
 import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
@@ -2076,6 +2076,10 @@ export function createHud(ctx, alerts) {
   let receiptGeometryKeep = false;
   function invalidateReceiptLane(clearGeometry = true) {
     receiptLanePlacementDirty = true;
+    // The lane, its cards and the caption may move — even an unchanged obstacle member
+    // set must re-measure on the next snapshot refresh.
+    flightTextObstacleGeomStale = true;
+    invalidateAvoidRects(document);
     if (clearGeometry) {
       receiptGeometryReusable = false;
       receiptGeometryKeep = false;
@@ -3270,7 +3274,10 @@ export function createHud(ctx, alerts) {
     return el;
   })();
   const tellSlots = [];
-  const tellPhoneAvoid = createAvoidRects(document, { ttlMs: 90, exclude: (el) => !!el.closest?.('.sf-tells') });
+  // Real layout moves arrive through invalidateAvoidRects (receipt lane, captions, panels,
+  // resize); the TTL only bounds a change none of those funnels saw, so it can be longer
+  // than the old 90 ms churn interval.
+  const tellPhoneAvoid = createAvoidRects(document, { ttlMs: 400, exclude: (el) => !!el.closest?.('.sf-tells') });
   // updateDoctrineTells runs every frame and its blocker list only changes when a panel appears
   // or moves, so the rect rows are written into reused `{x,y,width,height}` slots instead of a
   // fresh object per obstacle per frame. The pool only grows; the live list is its prefix.
@@ -3350,6 +3357,8 @@ export function createHud(ctx, alerts) {
     slot.el.hidden = true;
     slot.linkEl.hidden = true;
     slot.layoutOffset = null;
+    slot.needsGeometry = false;
+    slot.pulseToken = (slot.pulseToken | 0) + 1;
     slot.iconGlyph = null;
     slot.iconEl.innerHTML = '';
     setText(slot.iconEl, '');
@@ -3413,12 +3422,11 @@ export function createHud(ctx, alerts) {
     setText(slot.hintEl, hint);
     slot.el.hidden = false;
     slot.el.classList.add('is-on');
-    // A new kind changes its text width. Measure only on the tell event; the
-    // observer maintains this cache on later responsive/font-size changes.
-    if (!wasSame) {
-      const tellBox = slot.el.getBoundingClientRect?.();
-      if (tellBox?.width > 0 && tellBox?.height > 0) slot.geometry = { width: tellBox.width + 8, height: tellBox.height + 8 };
-    }
+    // A new kind changes its text width. Measuring here reads layout right after a batch of
+    // writes (forced sync layout mid-event); mark it and let updateDoctrineTells' own read
+    // phase measure before seating. The observer maintains this cache on later
+    // responsive/font-size changes.
+    if (!wasSame) slot.needsGeometry = true;
     // Visual chips are non-live (aria-hidden); one shared assertive region announces once.
     const announce = `${kindLabel}. ${hint}`.trim();
     if (announce !== slot.announced) {
@@ -3431,10 +3439,16 @@ export function createHud(ctx, alerts) {
       && !(typeof document !== 'undefined' && document.documentElement
         && (document.documentElement.classList.contains('sf-reduce-motion')
           || document.documentElement.classList.contains('sf-reduce-flash')));
+    // The pulse restart used to force a sync layout (`void offsetWidth`). Removing the class
+    // now and re-adding it on the next animation frame applies the same restart without the
+    // read — the same pattern as restartCreditsChipPulse. The token cancels a stale re-add.
+    slot.pulseToken = (slot.pulseToken | 0) + 1;
     if (!wasSame && allowPulse) {
       slot.el.classList.remove('is-pulse');
-      void slot.el.offsetWidth;
-      slot.el.classList.add('is-pulse');
+      const token = slot.pulseToken;
+      const nextFrame = typeof requestAnimationFrame === 'function'
+        ? requestAnimationFrame.bind(globalThis) : (fn) => setTimeout(fn, 0);
+      nextFrame(() => { if (slot.pulseToken === token) slot.el.classList.add('is-pulse'); });
     } else {
       slot.el.classList.remove('is-pulse');
     }
@@ -3449,6 +3463,15 @@ export function createHud(ctx, alerts) {
     const w = (typeof window !== 'undefined' && window.innerWidth) || 1280;
     const h = (typeof window !== 'undefined' && window.innerHeight) || 720;
     refreshFlightTextObstacleSnapshot();
+    // Deferred tell measures land here, in the frame's read phase, instead of a forced
+    // layout inside the push handler. Seating uses the result in the same pass.
+    for (const slot of tellSlots) {
+      if (slot.needsGeometry && slot.age < Infinity) {
+        slot.needsGeometry = false;
+        const tellBox = slot.el.getBoundingClientRect?.();
+        if (tellBox?.width > 0 && tellBox?.height > 0) slot.geometry = { width: tellBox.width + 8, height: tellBox.height + 8 };
+      }
+    }
     const phoneTells = document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
     // Blocker rows are written into the reused pool above: same values, same order, no per-frame
     // array plus one object literal per measured obstacle.
@@ -4644,6 +4667,9 @@ export function createHud(ctx, alerts) {
     cargoPanelOpen = !cargoPanelOpen;
     if (state.ui) state.ui.cargoPanelOpen = cargoPanelOpen;
     cargoPanel.classList.toggle('open', cargoPanelOpen);
+    // The ORRERY skin lowers #alerts while the hold is up. A :has() mirror here re-scanned the
+    // whole document on every alert/attribute change — a JS-toggled body class is the same fact.
+    document.body?.classList.toggle('sf-cargo-open', cargoPanelOpen);
 
     gridFx.setActive(cargoPanelOpen);
     hexFx.setActive(cargoPanelOpen);
@@ -4672,6 +4698,7 @@ export function createHud(ctx, alerts) {
     cargoPanelOpen = false;
     if (state.ui) state.ui.cargoPanelOpen = false;
     cargoPanel.classList.remove('open');
+    document.body?.classList.remove('sf-cargo-open');
     if (cargoOpener?.isConnected && !cargoOpener.closest('[inert]')) cargoOpener.focus?.({ preventScroll: true });
     cargoOpener = null;
 
@@ -6583,7 +6610,9 @@ export function createHud(ctx, alerts) {
     objectiveEdgeBoxes.stale = true;
     externalCaptionsStale = true;
     flightTextObstaclesStale = true;
+    flightTextObstacleGeomStale = true;
     alertLanePlacementStale = true;
+    invalidateAvoidRects(document);
   }
   function invalidateTransientOverlayGeometry() {
     // A fixed callout appearing/moving cannot change the structural HUD plates. Keep their
@@ -6650,12 +6679,15 @@ export function createHud(ctx, alerts) {
   const flightTextObstacleCache = createFlightTextObstacleCache();
   let externalCaptionsStale = true;
   // Receipt churn can invalidate the obstacle set many times per second and each
-  // snapshot re-measures the whole DOM. A 100 ms floor bounds the layout storm;
-  // a trailing retry guarantees convergence when the caller stops calling.
+  // snapshot re-measures the whole DOM. A 100 ms floor bounds the layout storm and the
+  // callers run every frame, so convergence needs no timer — the next call after the
+  // floor republishes. Geometry-moving invalidations (receipt lane, edge plates) also
+  // raise flightTextObstacleGeomStale so an unchanged member set still re-measures.
   const FLIGHT_TEXT_OBSTACLE_MIN_MS = 100;
   let flightTextObstacleSnapshotAt = -Infinity;
-  let flightTextObstacleRetry = null;
   let flightTextObstaclesStale = true;
+  let flightTextObstacleGeomStale = true;
+  let flightTextObstacleMembers = null;
   let alertLanePlacementStale = true;
   let alertLanePlacementActive = false;
   let alertLaneOriginalStyle = null;
@@ -6667,15 +6699,7 @@ export function createHud(ctx, alerts) {
     const nowMs = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function')
       ? performance.now() : Date.now();
     const sinceLast = nowMs - flightTextObstacleSnapshotAt;
-    if (sinceLast < FLIGHT_TEXT_OBSTACLE_MIN_MS) {
-      if (flightTextObstacleRetry === null && typeof setTimeout === 'function') {
-        flightTextObstacleRetry = setTimeout(() => {
-          flightTextObstacleRetry = null;
-          refreshFlightTextObstacleSnapshot();
-        }, Math.ceil(FLIGHT_TEXT_OBSTACLE_MIN_MS - sinceLast) + 4);
-      }
-      return;
-    }
+    if (sinceLast < FLIGHT_TEXT_OBSTACLE_MIN_MS) return;
     const qsa = (scope, selector) => {
       if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
       const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
@@ -6684,9 +6708,13 @@ export function createHud(ctx, alerts) {
       return hit;
     };
     const measured = objectiveEdgeObstacles();
-    const entries = [];
+    // Phase 1 — membership. The same cheap filters add() applies before its expensive reads
+    // decide the candidate set. If the set (identity, class, inline visibility signature)
+    // is unchanged and no geometry invalidation landed, the published snapshot is still
+    // right: skip every computed-style and rectangle read.
+    const candidates = [];
     const seen = new Set();
-    const add = (owner, el, cachedRect = null) => {
+    const consider = (owner, el, cachedRect = null) => {
       if (!el || seen.has(el) || el.isConnected === false || el.hidden || el.style?.display === 'none') return;
       const enteringOverlay = (owner === 'receipt' && el.classList?.contains('sf-toast')
         && !el.classList.contains('sf-toast--out'))
@@ -6694,26 +6722,14 @@ export function createHud(ctx, alerts) {
           && el.classList.contains('show'));
       if (el.style?.visibility === 'hidden' || el.style?.visibility === 'collapse'
         || (!enteringOverlay && Number.parseFloat(el.style?.opacity) === 0)) return;
-      const getStyle = document.defaultView?.getComputedStyle || globalThis.getComputedStyle;
-      if (typeof getStyle === 'function') {
-        try {
-          const style = getStyle.call(document.defaultView || globalThis, el);
-          if (style?.display === 'none' || style?.visibility === 'hidden' || style?.visibility === 'collapse'
-            || (!enteringOverlay && Number.parseFloat(style?.opacity) === 0)) return;
-        } catch (_) { /* geometry remains the visibility fallback for partial DOM hosts */ }
-      }
-      // The dock alert's legacy readout writer runs after allocation and owns its fixed box.
-      const rect = cachedRect || (owner === 'alert' ? el.getBoundingClientRect?.() : readReceiptRect(el));
-      if (!rect || !(rect.width > 0) || !(rect.height > 0)) return;
       seen.add(el);
-      entries.push({ owner, rect });
+      candidates.push({ owner, el, cachedRect,
+        sig: `${el.getAttribute?.('class') ?? ''}|${el.style?.display ?? ''}|${el.style?.visibility ?? ''}|${el.style?.opacity ?? ''}` });
     };
-
-    // Reuse the objective/radar/rail geometry already cached by the HUD's layout owner.
-    add('objective', leftContext, measured.left);
-    add('radar', rightDock, measured.right);
-    add('hud-rail', measured.railEl, measured.rail);
-    add('orrery', measured.orreryEl, measured.orrery);
+    consider('objective', leftContext, measured.left);
+    consider('radar', rightDock, measured.right);
+    consider('hud-rail', measured.railEl, measured.rail);
+    consider('orrery', measured.orreryEl, measured.orrery);
     const rootGroups = [
       ['objective-text', '.sf-mt-obj, .sf-nav-readout, .sf-nav-label, .sf-commtape'],
       ['vitals', '.sf-vitals, .sf-status'],
@@ -6722,27 +6738,62 @@ export function createHud(ctx, alerts) {
       ['receipt', '.sf-toast:not(.sf-toast--out)'],
     ];
     for (const [owner, selector] of rootGroups) {
-      for (const el of qsa(root, selector)) add(owner, el);
+      for (const el of qsa(root, selector)) consider(owner, el);
     }
-    add('caption', caption);
-    for (const el of toastsLaneEl?.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || []) add('receipt', el);
-    for (const el of qsa(document, '#alerts .sf-alert:not([hidden])')) add('alert', el);
-    for (const el of qsa(document, '.sf-stuntcall:not([hidden])')) add('stunt', el);
+    consider('caption', caption);
+    for (const el of toastsLaneEl?.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || []) consider('receipt', el);
+    for (const el of qsa(document, '#alerts .sf-alert:not([hidden])')) consider('alert', el);
+    for (const el of qsa(document, '.sf-stuntcall:not([hidden])')) consider('stunt', el);
     if (state.run?.ruleset === 'swarm') {
-      for (const el of document.querySelectorAll('.sf-crun, .sf-sj__col > :not([hidden])')) add('swarm-callout', el);
+      for (const el of document.querySelectorAll('.sf-crun, .sf-sj__col > :not([hidden])')) consider('swarm-callout', el);
     }
-    for (const el of externalFlightCaptions) add('flight-caption', el);
+    for (const el of externalFlightCaptions) consider('flight-caption', el);
     for (const el of responsiveOverlayObstacles()) {
-      add(el.closest?.('#sf-touch-overlay') ? 'touch-control' : 'responsive-overlay', el);
+      consider(el.closest?.('#sf-touch-overlay') ? 'touch-control' : 'responsive-overlay', el);
+    }
+    if (!flightTextObstacleGeomStale && membersUnchanged(flightTextObstacleMembers, candidates)) {
+      flightTextObstaclesStale = false;
+      flightTextObstacleSnapshotAt = nowMs;
+      return;
+    }
+    // Phase 2 — the reads, only when membership or geometry actually changed.
+    const entries = [];
+    for (const { owner, el, cachedRect } of candidates) {
+      const enteringOverlay = (owner === 'receipt' && el.classList?.contains('sf-toast')
+        && !el.classList.contains('sf-toast--out'))
+        || (owner === 'caption' && el.classList?.contains('sf-caption')
+          && el.classList.contains('show'));
+      const getStyle = document.defaultView?.getComputedStyle || globalThis.getComputedStyle;
+      if (typeof getStyle === 'function') {
+        try {
+          const style = getStyle.call(document.defaultView || globalThis, el);
+          if (style?.display === 'none' || style?.visibility === 'hidden' || style?.visibility === 'collapse'
+            || (!enteringOverlay && Number.parseFloat(style?.opacity) === 0)) continue;
+        } catch (_) { /* geometry remains the visibility fallback for partial DOM hosts */ }
+      }
+      // The dock alert's legacy readout writer runs after allocation and owns its fixed box.
+      const rect = cachedRect || (owner === 'alert' ? el.getBoundingClientRect?.() : readReceiptRect(el));
+      if (!rect || !(rect.width > 0) || !(rect.height > 0)) continue;
+      entries.push({ owner, rect });
     }
 
     flightTextObstacleCache.publish(entries);
+    flightTextObstacleMembers = candidates;
     flightTextObstacleSnapshotAt = nowMs;
     flightTextObstaclesStale = false;
+    flightTextObstacleGeomStale = false;
   }
 
   function getFlightTextObstacles() {
     return flightTextObstacleCache.read();
+  }
+  function membersUnchanged(prev, next) {
+    if (!prev || prev.length !== next.length) return false;
+    for (let i = 0; i < next.length; i++) {
+      const a = prev[i], b = next[i];
+      if (a.el !== b.el || a.owner !== b.owner || a.sig !== b.sig) return false;
+    }
+    return true;
   }
   let overlayLayoutObserver = null;
   const responsiveOverlayElements = new Set();
@@ -6760,12 +6811,6 @@ export function createHud(ctx, alerts) {
     if (leftContext) overlayLayoutObserver.observe(leftContext);
     hudUnsubscribers.push(() => overlayLayoutObserver?.disconnect());
   }
-  hudUnsubscribers.push(() => {
-    if (flightTextObstacleRetry !== null) {
-      clearTimeout(flightTextObstacleRetry);
-      flightTextObstacleRetry = null;
-    }
-  });
   on('hud:layoutChanged', invalidateAndPlaceHudOverlays);
   on('settings:changed', invalidateAndPlaceHudOverlays);
   hudUnsubscribers.push(() => {
@@ -7700,6 +7745,7 @@ export function createHud(ctx, alerts) {
       for (const el of externalFlightCaptions) clearExternalFlightCaptionPlacement(el);
       restoreYieldedFlightVisuals();
       externalFlightCaptions.clear();
+      document.body?.classList.remove('sf-cargo-open');
       clearCargoGaugeSettle(cargoGaugeSettle.used);
       if (radar && typeof radar.destroy === 'function') radar.destroy();
       if (floatingText && typeof floatingText.destroy === 'function') floatingText.destroy();

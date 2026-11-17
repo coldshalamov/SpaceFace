@@ -39,7 +39,7 @@ ${S} #hud .sf-discovery-plate__meta { font-family:var(--dp-face-numeral); font-w
 
 /* The feed owns a seat above world markers. Its individual receipts still receive pointer events. */
 ${S} #hud #toasts, ${S} #hud #sf-stage-feed { z-index:80; }
-${S}:has(#hud .sf-cargo-panel.open):not(.ui-modal-open):not(.ui-live-screen) #alerts { z-index:9 !important; }
+${S}.sf-cargo-open:not(.ui-modal-open):not(.ui-live-screen) #alerts { z-index:9 !important; }
 /* Receipts share the popup seam and an opaque text bed over the moving flight scene. */
 ${S} #hud .sf-toast {
   --receipt-mark: var(--dp-phos);
