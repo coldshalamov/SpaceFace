@@ -292,3 +292,14 @@ paused mid-run (workers killed cleanly; partials preserved):
 
 Rocks ×29 applied (pending bucket 0). Ordinary-play recorded pairs: 32. Scope decision:
 facts/unused-unresolved-scope-decision.json (commit 3098531edd).
+
+### ADDENDUM (agy2 usage wall #2)
+
+agy2's fauna-rebuild batch 2 (9 species: pilgrim_spine, suture_mite, stone_lung,
+spindle_mother, veil_ray, void_carrier, wake_eel, cold_bell, furnace_maw) died mid-wave
+on the agy 5h usage window (429). Before rebuilding those species, the next session must:
+(1) check `src/render/` fauna builder files for PARTIAL agy2 edits (`node --check` each),
+(2) count which `events-agy2/agy2-rebuild2-*` event JSONs exist (completed species),
+(3) check `fauna-rebuild2-20261117/` capture subdirs for completed batches. agy1's batch 1
+completed successfully and its events/captures are trustworthy. agy usage is wall-limited:
+re-dispatch agy rebuilds only after the 5h window resets, or split to deepseek/devin.
