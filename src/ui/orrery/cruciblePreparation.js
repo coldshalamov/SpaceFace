@@ -171,11 +171,22 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
   let previewReleased = false, shownPreview = null, shownHull = null;
   const revealSelectedHull = () => {
     const view = doc.defaultView;
-    if (!view?.matchMedia?.('(max-width:800px)').matches) return;
-    view.requestAnimationFrame?.(() => {
+    view?.requestAnimationFrame?.(() => {
       if (!active || step !== 0) return;
-      hullButtons.find(button => button.getAttribute('aria-pressed') === 'true')
-        ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+      const selected = hullButtons.find(button => button.getAttribute('aria-pressed') === 'true');
+      if (!selected || !rosterList.clientWidth || !rosterList.clientHeight) return;
+      const frame = rosterList.getBoundingClientRect(), item = selected.getBoundingClientRect();
+      const scaleX = frame.width / (rosterList.offsetWidth || frame.width || 1);
+      const scaleY = frame.height / (rosterList.offsetHeight || frame.height || 1);
+      if (!(scaleX > 0 && scaleY > 0)) return;
+      const left = frame.left + rosterList.clientLeft * scaleX;
+      const top = frame.top + rosterList.clientTop * scaleY;
+      const right = left + rosterList.clientWidth * scaleX;
+      const bottom = top + rosterList.clientHeight * scaleY;
+      // Keep the selected card in its own roster viewport. scrollIntoView would also
+      // move the outer page, pulling the loadout or ship preview away from the player.
+      rosterList.scrollLeft += (item.left < left ? item.left - left : item.right > right ? item.right - right : 0) / scaleX;
+      rosterList.scrollTop += (item.top < top ? item.top - top : item.bottom > bottom ? item.bottom - bottom : 0) / scaleY;
     });
   };
   const summary = make('p', 'sf-hangar-summary'); summary.setAttribute('aria-live', 'polite');
@@ -215,7 +226,7 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
       else if (!kit.bare) button.append(make('small', '', kit.equipmentNames.join(' · ')));
       button.addEventListener('click', () => {
         if (kit.locked) { selectionStatus.textContent = kit.earnText || 'Earn this loadout in Swarm.'; return; }
-        controls.get(kit.id)?.click(); selectionStatus.textContent = ''; update();
+        controls.get(kit.id)?.click(); selectionStatus.textContent = ''; update(); revealSelectedHull();
       });
       kitList.append(button);
     }
@@ -302,8 +313,13 @@ export function createCruciblePreparation({ root, stage, title, foot, enter, rea
     update, attractHost: null, get previewVisible() { return false; },
     focus() { tabs[step].focus({ preventScroll: true }); },
     setActive(on) {
+      const entering = !!on && !active;
       active = !!on;
-      if (active) { paintPreview(); revealSelectedHull(); } else releasePreview();
+      // The cached hangar returns to the selected ship after equipment preparation or a
+      // title visit. Only the visible step resets; the canonical ship and run choices stay.
+      if (entering) show(0);
+      else if (active) { paintPreview(); revealSelectedHull(); }
+      else releasePreview();
     },
     dispose() { active = false; hullStage?.dispose(); hullStage = null; onPreviewVisibility(false); },
   };

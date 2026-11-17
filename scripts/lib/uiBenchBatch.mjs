@@ -11,6 +11,7 @@ const MAX_PAGE_REQUESTS = 10_000;
 const MAX_OPTIONAL_RESPONSE_EVIDENCE = 64;
 const MAX_PENDING_OPTIONAL_CONSOLE_ERRORS = 32;
 const MAX_NAVIGATION_EVIDENCE = 64;
+const MAX_NAVIGATION_CANCELLATIONS = 256;
 
 export function parseBenchArgs(argv) {
   const { options: o, positional } = parseOptions(argv, {
@@ -77,6 +78,39 @@ function timeout(promise, ms, message) {
   return Promise.race([promise, deadline]).finally(() => clearTimeout(timer));
 }
 
+// No URL-only abort exemption: require the harness's explicit navigation marker,
+// an observed main-document commit, and a request belonging to the retired document.
+export function benchNavigationCancellation(error, navigations, baseUrl) {
+  const p = error?.provenance;
+  if (error?.kind !== 'requestfailed' || error.message !== 'net::ERR_ABORTED'
+    || p?.method !== 'GET' || p.startInMainFrame !== true || p.resourceType === 'document') return null;
+  const navigation = navigations.find(entry => entry.generation === p.currentMainNavigationGeneration);
+  const marker = navigation?.harnessNavigation;
+  if (!marker?.committed || !navigation.committedAt || navigation.failedAt
+    || navigation.fromDocumentGeneration !== p.startDocumentGeneration
+    || navigation.documentGeneration !== p.startDocumentGeneration + 1
+    || marker.fromDocumentGeneration !== p.startDocumentGeneration) return null;
+  try {
+    const base = new URL(baseUrl), source = new URL(p.startDocumentUrl), target = new URL(navigation.url);
+    if (source.origin !== base.origin || source.pathname !== '/tools/ui-bench.html'
+      || target.href !== source.href || navigation.fromDocumentUrl !== source.href
+      || navigation.committedUrl !== source.href || marker.url !== source.href
+      || marker.fromDocumentUrl !== source.href || p.startFrameUrl !== source.href
+      || new URL(error.url).origin !== base.origin || p.startUrl !== error.url) return null;
+  } catch { return null; }
+  const [started, failed, marked, requested, committed, completed] = [p.startedAt, p.failedAt,
+    marker.startedAt, navigation.startedAt, navigation.committedAt, marker.completedAt].map(Date.parse);
+  if (![started, failed, marked, requested, committed, completed].every(Number.isFinite)
+    || started > committed || marked > requested || requested > committed || committed > completed
+    || failed < requested || failed > completed) return null;
+  const oldDocumentInFlight = p.currentDocumentGeneration === p.startDocumentGeneration && p.mainNavigationInProgress === true;
+  const replacedDocument = p.currentDocumentGeneration === navigation.documentGeneration;
+  if (!oldDocumentInFlight && !replacedDocument) return null;
+  return { reason: 'harness-document-replacement', navigationGeneration: navigation.generation,
+    fromDocumentGeneration: navigation.fromDocumentGeneration, toDocumentGeneration: navigation.documentGeneration,
+    requestedAt: navigation.startedAt, committedAt: navigation.committedAt, completedAt: marker.completedAt };
+}
+
 export async function runUiBenchBatch({ args, root, loadPlaywright, startServer, shoot }) {
   const out = path.resolve(root, args.out || '.devshots/ui-bench');
   mkdirSync(out, { recursive: true });
@@ -94,7 +128,7 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
     summary.browserLaunches = 1;
     for (const viewport of args.viewports) for (const id of args.shots) {
       const cellStart = performance.now(), errors = [];
-      const cell = { id, viewport, ok: false, errors, requests: 0, mainNavigations: [] };
+      const cell = { id, viewport, ok: false, errors, requests: 0, mainNavigations: [], navigationCancellations: [] };
       const folder = args.viewports.length > 1 ? path.join(out, `${viewport.width}x${viewport.height}`) : out;
       mkdirSync(folder, { recursive: true });
       let context, collecting = true;
@@ -108,12 +142,25 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
         page.setDefaultTimeout(args.timeoutMs);
         // A control walk deliberately reloads the fixture. Preserve request/document
         // generations so an abort can be traced to that reload or to the preview owner.
-        // This is diagnostic only: every collected request failure still fails the cell.
+        // Only an explicitly marked, completed fixture reload can classify its old-document
+        // cancellations separately; every unproven request failure still fails the cell.
         const requestEvidence = new WeakMap();
         let mainNavigationGeneration = 0, documentGeneration = 0, mainNavigationInProgress = false;
         let lastMainNavigation = null;
+        let activeHarnessNavigation = null;
         const read = (fn, fallback = null) => { try { return fn(); } catch { return fallback; } };
         const documentUrl = () => read(() => page.url(), '');
+        page.on('spaceface:bench-navigation-start', marker => {
+          activeHarnessNavigation = { sequence: marker.sequence, url: marker.url, startedAt: new Date().toISOString(),
+            fromDocumentUrl: documentUrl(), fromDocumentGeneration: documentGeneration, committed: false };
+        });
+        page.on('spaceface:bench-navigation-end', marker => {
+          if (!activeHarnessNavigation || activeHarnessNavigation.sequence !== marker.sequence
+            || activeHarnessNavigation.url !== marker.url) return;
+          activeHarnessNavigation.committed = marker.committed === true;
+          activeHarnessNavigation.completedAt = new Date().toISOString();
+          activeHarnessNavigation = null;
+        });
         page.on('framenavigated', frame => {
           if (!collecting || frame !== read(() => page.mainFrame())) return;
           documentGeneration++;
@@ -177,12 +224,13 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
             mainNavigationGeneration++;
             mainNavigationInProgress = true;
             lastMainNavigation = { generation: mainNavigationGeneration, startedAt: new Date(startedAt).toISOString(),
-              fromDocumentUrl: documentUrl(), url: request.url() };
+              fromDocumentUrl: documentUrl(), fromDocumentGeneration: documentGeneration, url: request.url(),
+              harnessNavigation: activeHarnessNavigation?.url === request.url() ? activeHarnessNavigation : null };
             if (cell.mainNavigations.length < MAX_NAVIGATION_EVIDENCE) cell.mainNavigations.push(lastMainNavigation);
           }
           requestEvidence.set(request, { startedAt, url: request.url(), documentUrl: documentUrl(),
             frameUrl: read(() => request.frame().url()), documentGeneration, mainNavigationGeneration,
-            mainNavigationInProgress, isMainNavigation });
+            mainNavigationInProgress, isMainNavigation, inMainFrame: !!frame && frame === read(() => page.mainFrame()) });
         });
         page.on('requestfailed', request => {
           if (!collecting) return;
@@ -192,6 +240,7 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
               failedAt: new Date(failedAt).toISOString(), elapsedMs: start ? failedAt - start.startedAt : null,
               startUrl: start?.url || null, startDocumentUrl: start?.documentUrl || null,
               startFrameUrl: start?.frameUrl || null, startDocumentGeneration: start?.documentGeneration ?? null,
+              startInMainFrame: start?.inMainFrame === true,
               startMainNavigationGeneration: start?.mainNavigationGeneration ?? null,
               currentDocumentUrl: documentUrl(), currentDocumentGeneration: documentGeneration,
               currentMainNavigationGeneration: mainNavigationGeneration, mainNavigationInProgress,
@@ -219,6 +268,12 @@ export async function runUiBenchBatch({ args, root, loadPlaywright, startServer,
         // A Chrome resource error may arrive before its response event. Only a
         // response observed in this page can close that candidate.
         flushPendingOptionalConsole();
+        for (let index = 0; index < errors.length;) {
+          const classification = benchNavigationCancellation(errors[index], cell.mainNavigations, server.baseUrl);
+          if (!classification || cell.navigationCancellations.length >= MAX_NAVIGATION_CANCELLATIONS) { index++; continue; }
+          cell.navigationCancellations.push({ ...errors[index], classification });
+          errors.splice(index, 1);
+        }
         Object.assign(cell, result, { ok: result?.ok === true && errors.length === 0 });
       } catch (error) {
         flushPendingOptionalConsole();

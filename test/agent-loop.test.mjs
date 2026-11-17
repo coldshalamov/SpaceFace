@@ -7,7 +7,8 @@ import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
 import { parseOptions, planForFiles, failureKey, insideRoot, aggregateRows } from '../scripts/lib/agentLoopPlan.mjs';
 import { summarizeTrace, compareHandling, handlingHtml } from '../scripts/lib/labTraceReport.mjs';
-import { parseBenchArgs, runUiBenchBatch } from '../scripts/lib/uiBenchBatch.mjs';
+import { parseBenchArgs, runUiBenchBatch, benchNavigationCancellation } from '../scripts/lib/uiBenchBatch.mjs';
+import { createBenchArrival } from '../scripts/lib/uiBenchArrival.mjs';
 
 function temp(t) { const dir = mkdtempSync(join(tmpdir(), 'sf-loop-')); t.after(() => rmSync(dir, { recursive: true, force: true })); return dir; }
 const sample = (tick, x = tick, vx = 1, rot = 0) => ({ tick, playerX: x, playerZ: 0, playerVelX: vx, playerVelZ: 0, playerRot: rot });
@@ -199,6 +200,72 @@ test('UI request failures preserve reload provenance without waiving same-docume
   assert.equal(active.mainNavigationInProgress, false);
   assert.equal(cell.mainNavigations.length, 2);
   assert.ok(reload.startedAt && reload.failedAt && reload.elapsedMs >= 0);
+});
+test('UI batch retains proven fixture-reload cancellations separately while same-document aborts stay red', async t => {
+  const r = rig(t);
+  r.options.args.shots = ['title']; r.options.args.viewports = [{ width: 960, height: 540 }];
+  const url = 'http://127.0.0.1:9000/tools/ui-bench.html?screen=title&chrome=0';
+  r.options.shoot = async page => {
+    let documentUrl = 'about:blank', oldAsset = null;
+    const frame = { url: () => documentUrl };
+    page.mainFrame = () => frame; page.url = () => documentUrl;
+    page.addInitScript = async () => {}; page.waitForFunction = async () => {};
+    const request = (requestUrl, navigation = false) => ({ url: () => requestUrl,
+      frame: () => frame, isNavigationRequest: () => navigation, resourceType: () => navigation ? 'document' : 'fetch',
+      method: () => 'GET', failure: () => ({ errorText: 'net::ERR_ABORTED' }) });
+    page.goto = async () => {
+      page.emit('request', request(url, true));
+      if (oldAsset) page.emit('requestfailed', oldAsset);
+      documentUrl = url; page.emit('framenavigated', frame);
+    };
+    const arrive = await createBenchArrival(page, url, { timeoutMs: 1000 });
+    await arrive();
+    oldAsset = request('http://127.0.0.1:9000/retired-preview.glb'); page.emit('request', oldAsset);
+    await arrive();
+    const activeAsset = request('http://127.0.0.1:9000/active-preview.glb');
+    page.emit('request', activeAsset); page.emit('requestfailed', activeAsset);
+    return { ok: true };
+  };
+  const result = await runUiBenchBatch(r.options), cell = result.cells[0];
+  assert.equal(result.ok, false);
+  assert.equal(cell.errors.length, 1);
+  assert.match(cell.errors[0].url, /active-preview/);
+  assert.equal(cell.navigationCancellations.length, 1);
+  assert.match(cell.navigationCancellations[0].url, /retired-preview/);
+  assert.equal(cell.navigationCancellations[0].classification.reason, 'harness-document-replacement');
+});
+test('bench reload cancellation requires committed harness provenance and never exempts current-document or HTTP failures', () => {
+  const base = 'http://127.0.0.1:9000/', url = base + 'tools/ui-bench.html?screen=title&chrome=0';
+  const at = n => new Date(1700000000000 + n).toISOString();
+  const navigation = { generation: 3, startedAt: at(100), committedAt: at(125), fromDocumentGeneration: 2,
+    documentGeneration: 3, fromDocumentUrl: url, url, committedUrl: url,
+    harnessNavigation: { committed: true, startedAt: at(90), completedAt: at(130), fromDocumentGeneration: 2, fromDocumentUrl: url, url } };
+  const error = { kind: 'requestfailed', url: base + 'old-preview.glb', message: 'net::ERR_ABORTED', provenance: {
+    method: 'GET', resourceType: 'fetch', startInMainFrame: true, startDocumentGeneration: 2,
+    currentDocumentGeneration: 2, currentMainNavigationGeneration: 3, mainNavigationInProgress: true,
+    startDocumentUrl: url, startFrameUrl: url, startUrl: base + 'old-preview.glb', startedAt: at(110), failedAt: at(120) } };
+  assert.equal(benchNavigationCancellation(error, [navigation], base)?.reason, 'harness-document-replacement');
+  for (const change of [
+    (e, n) => { n.harnessNavigation = null; },
+    (e, n) => { n.harnessNavigation.committed = false; },
+    (e, n) => { n.committedAt = null; },
+    (e, n) => { n.failedAt = at(124); },
+    (e, n) => { n.committedUrl = base + 'another-page'; },
+    e => { e.provenance.startInMainFrame = false; },
+    e => { e.provenance.method = 'POST'; },
+    e => { e.provenance.resourceType = 'document'; },
+    e => { e.provenance.mainNavigationInProgress = false; },
+    e => { e.provenance.startDocumentGeneration = 3; e.provenance.currentDocumentGeneration = 3; },
+    e => { e.provenance.failedAt = at(99); },
+    e => { e.provenance.failedAt = at(131); },
+    e => { e.provenance.startedAt = at(126); },
+    e => { e.url = 'https://other.example/old-preview.glb'; e.provenance.startUrl = e.url; },
+    e => { e.message = 'net::ERR_CONNECTION_RESET'; },
+    e => { e.kind = 'http'; e.status = 404; },
+  ]) {
+    const e = structuredClone(error), n = structuredClone(navigation); change(e, n);
+    assert.equal(benchNavigationCancellation(e, [n], base), null);
+  }
 });
 test('incomplete walks and failed cleanup are not green', async t => {
   const r = rig(t, { closeError: true }); r.options.shoot = async () => ({ ok: false, walk: { complete: false, untried: 10 } });

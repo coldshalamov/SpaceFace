@@ -321,7 +321,7 @@ export function resolveSimLaneFlags(search) {
     && typeof SharedArrayBuffer === 'function';
   // The worker lane auto-arms the SAB journal wherever the realm can host it;
   // ?simSab=0 keeps the transfer channel, unrecognized values decline to it.
-  const sab = !sabOptedOut && sabCapable
+  let sab = !sabOptedOut && sabCapable
     && (sabExplicit || (sabParam == null && lane === SIM_LANE.WORKER));
   const sabEnvelope = sab && params?.get('simEnvelope') === '1';
   if (sabExplicit && !sabCapable) {

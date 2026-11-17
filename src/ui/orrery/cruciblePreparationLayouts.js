@@ -1027,6 +1027,17 @@ ${A} .orr-armory-wallet small { font:650 14px/1 var(--dp-face-read),sans-serif; 
 ${A} .sf-cru-stage { overflow:auto !important; overscroll-behavior:contain; padding:1px 4px 34px 1px !important; -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 30px),transparent) !important; mask-image:linear-gradient(to bottom,#000 calc(100% - 30px),transparent) !important; }
 ${A} .orr-armory-section { font:700 20px/1.2 var(--dp-face-display),sans-serif; letter-spacing:-.02em; color:var(--dp-ink); margin:0 0 14px; text-transform:none; flex:none; }
 ${A} .sf-cru-circuit { padding:12px 16px; margin:0 0 14px; border:1px solid var(--armory-rule); background:var(--armory-panel); }
+${A} .sf-cru-circuit__summary { min-height:44px; padding:12px 0; cursor:pointer; color:var(--armory-cool);
+  font:600 14px/1.4 var(--dp-face-read,'Instrument Sans'),sans-serif; }
+${A} .sf-cru-circuit__summary:focus-visible { outline:2px solid var(--dp-hand); outline-offset:4px; }
+${A} .sf-cru-circuit:not([open]) { padding-block:0; flex:none; }
+${A} .sf-cru-circuit__head { margin:6px 0 10px; font:650 20px/1.2 var(--dp-face-read,'Instrument Sans'),sans-serif; }
+${A} .sf-cru-circuit__choices { display:flex; flex-wrap:wrap; gap:12px; margin:14px 0 0; padding:0; }
+${A} .sf-cru-circuit__choice { display:flex; flex-direction:column; align-items:flex-start; gap:8px; min-width:0; list-style:none; }
+${A} .sf-cru-circuit__choice > button { min-height:44px; padding:10px 16px; border:1px solid var(--armory-rule);
+  border-radius:3px; background:var(--armory-panel); color:var(--dp-ink); cursor:pointer; font:600 14px/1.3 var(--dp-face-read,'Instrument Sans'),sans-serif; }
+${A} .sf-cru-circuit__choice > button:is(:hover,:focus-visible) { border-color:var(--dp-hand); outline:2px solid var(--dp-hand); outline-offset:2px; }
+${A} .sf-cru-circuit__line { display:block; max-width:65ch; margin:0; white-space:normal; color:var(--dp-ink-dim); font:400 13px/1.45 var(--dp-face-read,'Instrument Sans'),sans-serif; }
 ${A} .sf-cru-dealt { gap:clamp(8px,1.1vw,18px) !important; margin:0 !important; }
 ${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt {
   box-sizing:border-box; padding:0 clamp(12px,1.1vw,20px) 16px !important; gap:8px !important;

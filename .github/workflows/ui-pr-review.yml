@@ -95,6 +95,9 @@ jobs:
           route('src/ui/orrery/settingsLayouts.js src/ui/screens/settings.js', 'settings')
           route('src/ui/orrery/achievementsLayouts.js src/ui/screens/achievements.js', 'achievements')
           route('src/ui/orrery/titleDoorsLayouts.js src/ui/screens/mainMenu.js', 'title title-save crucible-door')
+          # Retired helpers still require their former screen owners to be reviewed on deletion.
+          route('src/ui/orrery/titleAsideLayouts.js', 'title title-save')
+          route('src/ui/orrery/hullRing.js src/ui/orrery/buildSigils.js', 'crucible-door')
           route('src/ui/orrery/swarmHangarLayouts.js src/ui/orrery/cruciblePreparation.js', 'crucible-door')
           route('src/ui/orrery/swarmArmoryShipLayouts.js src/ui/ship/swarmArmoryShipPreview.js', 'crucible-draft crucible-opening')
           route('src/ui/orrery/crucible-doorLayouts.js src/ui/screens/crucible.js',
@@ -143,6 +146,7 @@ jobs:
                 'footprint footprint-clean')
           all_shots = set().union(*routes.values())
           routes['src/ui/orrery/screenLayouts.js'] = all_shots
+          routes['src/ui/uiRoot.js'] = all_shots
 
           # Follow relative module/style dependencies backwards to the first known
           # screen owner. A new helper no longer expands every PR to every fixture.

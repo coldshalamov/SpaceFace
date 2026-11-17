@@ -663,8 +663,10 @@ export function circuitPanelLines(run) {
   const route = circuitRouteView(run);
   if (!route) return error || choices.length ? {
     heading: 'The Circuit',
-    status: error || 'Sixteen rounds, four stages, four champions. Choose Circuit or launch ordinary Swarm.',
-    next: null, choices, stages: [],
+    status: error || 'A 16-round challenge across four stages, each ending with a boss. Finish after stage four or continue with endless rounds.',
+    next: null, choices: choices.map(choice => choice.kind === 'start' ? {
+      ...choice, label: 'Choose Circuit', line: 'Use your current ship, equipment and run credits. Launch round 1 when you are ready.',
+    } : choice), stages: [],
   } : null;
   const circuit = circuitFor(run);
   const wave = run && Number.isInteger(run.wave) ? run.wave : 0;
@@ -1028,15 +1030,14 @@ export const crucibleDraftScreen = {
     this._note = note;
     rootEl.appendChild(stage);
 
-    // SWARM-08 B5 — the Circuit panel. It offers entry, then shows the route as four stage
-    // positions, the choice owed right now (enter, destination, finish or Overtime), and the
-    // one-line read on the round coming. Reserve space inside the shelf's flex column rather
-    // than adding a second root grid stage. Long route choices scroll within their own share
-    // of the column so the filters and shopping rail remain reachable.
-    const circuitPanel = el('section', 'sf-cru-circuit');
+    // Optional run rules stay in their own disclosure before the equipment section. Once
+    // Circuit is chosen, its progress and required route decisions open here automatically.
+    // Long route choices retain a bounded scroll area so equipment remains reachable.
+    const circuitPanel = el('details', 'sf-cru-circuit');
     Object.assign(circuitPanel.style, { flex: '0 0 auto', maxHeight: '40%', overflow: 'auto' });
     circuitPanel.hidden = true;
-    circuitPanel.setAttribute('aria-label', 'The Circuit');
+    circuitPanel.setAttribute('aria-label', 'Optional run format');
+    const circuitSummary = el('summary', 'sf-cru-circuit__summary', 'Optional run format');
     const circuitHead = el('h2', 'k-t-emph sf-cru-circuit__head', 'The Circuit');
     const circuitStatus = el('p', 'k-sentence sf-cru-circuit__status', '');
     const circuitGraphic = el('div', 'orr-circuit-route');
@@ -1045,10 +1046,12 @@ export const crucibleDraftScreen = {
     const circuitNext = el('p', 'k-sentence sf-cru-circuit__next', '');
     const circuitChoices = el('ul', 'k-words k-words--row sf-cru-circuit__choices');
     circuitChoices.setAttribute('aria-label', 'Circuit choices');
-    circuitPanel.append(circuitHead, circuitStatus, circuitGraphic, circuitRoute, circuitNext, circuitChoices);
-    stage.insertBefore(circuitPanel, filters);
+    circuitPanel.append(circuitSummary, circuitHead, circuitStatus, circuitGraphic, circuitRoute, circuitNext, circuitChoices);
+    stage.insertBefore(circuitPanel, this._armoryHeading);
     this._circuit = {
       el: circuitPanel,
+      summary: circuitSummary,
+      presentationKey: null,
       status: circuitStatus,
       graphic: circuitGraphic,
       route: circuitRoute,
@@ -1457,6 +1460,7 @@ export const crucibleDraftScreen = {
           ? 'Choose a destination before launching.'
           : 'Finish the Circuit or enter Overtime.');
     if (this._note) this._note.textContent = text;
+    if (this._circuit?.el) this._circuit.el.open = true;
     const first = this._circuit && this._circuit.choices
       ? this._circuit.choices.querySelector('button')
       : null;
@@ -1554,20 +1558,20 @@ export const crucibleDraftScreen = {
       }
     }
 
-    // SWARM-04: a checkpoint start's opening armory parks run.wave one below the bought
-    // entry — "Round 10 cleared" would claim a fight this run never flew. The bought purse
-    // and the round ahead are the honest words.
+    // A checkpoint opening is preparation for the selected round, not a completed fight.
     const runStart = context.state?.run?.telemetry
       && Number.isInteger(context.state.run.telemetry.startWave)
       ? context.state.run.telemetry.startWave : 1;
     this._sub.textContent = firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
       ? (wave === 0
-        ? 'Fit out before round 1 — the purse is already open. Each fitting bolts onto one hardpoint of the ship you chose; a full hardpoint swaps, and the old part waits in your spares.'
+        ? 'Keep your loadout or use run credits to change it before round 1. Replaced equipment stays in your spares.'
         : shop && runStart > 1 && wave === runStart - 1
-          ? `Checkpoint start — the purse is stocked for Round ${runStart}.`
+          ? `Prepare for round ${runStart}. Use run credits to change your loadout; replaced equipment stays in your spares.`
           : shop ? `Round ${wave} cleared. Equip upgrades before the next wave.`
             : `Wave ${wave} cleared. Choose a new weapon.`)
-      : `Wave ${wave} cleared. Nothing new fits this hull.`);
+      : shop && runStart > 1 && wave === runStart - 1
+        ? `Prepare for round ${runStart}. No equipment is available. Keep your current loadout and launch when ready.`
+        : `Wave ${wave} cleared. Nothing new fits this hull.`);
 
     // SWARM-04 §6.5 — plan around the next fight. `wave` is the round just cleared (0 before
     // the opener), so the preview is always wave + 1. Zone/event remain authored ladder copy;
@@ -1588,9 +1592,20 @@ export const crucibleDraftScreen = {
     // round. Ordinary Swarm only shows the opening invitation.
     const runNow = context.state && context.state.run;
     const circuitPanel = shop && runNow ? circuitPanelLines(runNow) : null;
+    const circuitRun = runNow ? circuitFor(runNow) : null;
+    const circuitError = circuitStateError(runNow);
     if (this._circuit) {
       this._circuit.el.hidden = !circuitPanel;
       if (circuitPanel) {
+        const optional = !circuitRun && !circuitError;
+        const label = optional ? 'Optional run format' : 'Circuit progress';
+        if (this._circuit.summary) this._circuit.summary.textContent = label;
+        this._circuit.el.setAttribute('aria-label', label);
+        const presentationKey = `${runNow.retireToken ?? runNow.seed}:${optional ? 'optional' : `${circuitRun?.status || 'error'}:${circuitRun?.clearedStages || 0}`}`;
+        if (presentationKey !== this._circuit.presentationKey) {
+          this._circuit.el.open = !optional;
+          this._circuit.presentationKey = presentationKey;
+        }
         this._circuit.status.textContent = circuitPanel.status;
         this._paintCircuitRoute(circuitPanel.stages);
         this._circuit.route.textContent = circuitPanel.stages
@@ -1599,10 +1614,8 @@ export const crucibleDraftScreen = {
         this._circuit.next.textContent = circuitPanel.next || '';
         this._circuit.next.hidden = !circuitPanel.next;
         this._paintCircuitChoices(context, circuitPanel.choices);
-      }
+      } else this._circuit.presentationKey = null;
     }
-    const circuitRun = runNow ? circuitFor(runNow) : null;
-    const circuitError = circuitStateError(runNow);
     const circuitOwed = !!circuitError || !!(circuitPanel && circuitRun
       && (circuitRun.status === 'route' || circuitRun.status === 'finale'));
 

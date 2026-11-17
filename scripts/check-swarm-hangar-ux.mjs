@@ -13,6 +13,7 @@ import { startBenchServer } from './lib/benchServer.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { launchChromium } from './player-truth/browser.mjs';
 import { bootToMenu, waitBootOverlayGone } from './player-truth/routes.mjs';
+import { collectPageIssues } from './lib/browser-issues.mjs';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const args = process.argv.slice(2);
@@ -62,7 +63,15 @@ function observeErrors(page, label) {
 }
 async function shot(page, name) {
   const filename = `${name}.png`;
-  await page.screenshot({ path: path.join(out, filename) });
+  const capture = { screenshot: filename, startedAt: new Date().toISOString(), completed: false };
+  (report.captureTimings ||= []).push(capture);
+  const started = performance.now();
+  try {
+    // Software GL can delay compositor readback after the controls are ready. Keep
+    // input/readiness deadlines separate, and retain capture cost as evidence.
+    await page.screenshot({ path: path.join(out, filename), timeout: 60000 });
+    capture.completed = true;
+  } finally { capture.elapsedMs = Math.round(performance.now() - started); }
   report.screenshots.push(filename);
 }
 async function shipShot(page, name, { hullId, posterUrl, selector = S.preview }) {
@@ -460,59 +469,250 @@ async function benchViewport(size, index) {
     throw error;
   } finally { await context.close(); }
 }
+// Runtime snapshots verify the consequences of public input. They never choose a control,
+// change a fitting, emit an intent, or advance the simulation.
+async function livePreparation(page) {
+  return page.evaluate(() => {
+    const sf = window.SF, s = sf.state, run = s.run;
+    const ship = s.player?.ownedShips?.[s.player.activeShipIndex];
+    const entity = s.entities?.get?.(s.playerId);
+    return {
+      phase: run?.phase, mode: s.mode, token: run?.retireToken, wave: run?.wave,
+      top: sf.ctx.screenManager.top(),
+      hull: ship?.defId || entity?.data?.defId,
+      fittings: [...(ship?.fittings || entity?.data?.fittings || [])],
+      inventory: (s.player?.moduleInventory || []).map(item => item.defId).sort(),
+      credits: run?.credits,
+      settings: {
+        ruleset: run?.ruleset, arenaId: run?.arenaId, seed: run?.seed, practice: run?.practice,
+        stake: run?.telemetry?.swarmStake, startWave: run?.telemetry?.startWave || 1,
+      },
+      receipt: sf.registry.get('survivalDraft')?.preparationReceipt?.() || null,
+      result: sf.registry.get('survivalResults')?.lastResult?.() || null,
+      worker: sf.ctx.simLane === 'worker',
+      lane: sf.ctx.simLane,
+    };
+  });
+}
+
+async function buyLiveEquipment(page, initial, rememberedName = null) {
+  const screen = page.locator('[data-screen="crucibleDraft"]');
+  const currentBuild = screen.locator('.orr-armory-build');
+  if (await currentBuild.getAttribute('open') === null) await clickAt(page, currentBuild.locator('summary'));
+  const installedNames = await currentBuild.locator('li > span > span').allTextContents();
+  assert.ok(installedNames.some(name => name.trim() && name.trim() !== 'Empty'),
+    'The Current build disclosure does not identify the selected preset equipment.');
+  const browse = screen.locator('.sf-cru-foot button').filter({ hasText: /^Browse all\b/ });
+  if (await browse.isVisible()) await clickAt(page, browse);
+  await clickAt(page, screen.locator('[data-category="Weapons"]'));
+  await screen.locator('.sf-cru-cards').waitFor({ state: 'visible' });
+  // The actor chooses only from the visible catalog, its price/availability treatment, and
+  // the Current build disclosure. Hidden owner offers are not an input to this decision.
+  const offers = await screen.locator('.sf-cru-cards .sf-cru-card:not(.is-unavail):not(.is-fitted)').evaluateAll(rows =>
+    rows.map(row => ({
+      id: row.dataset.offerId,
+      name: row.querySelector('.sf-cru-name')?.textContent.trim(),
+      price: Number((row.querySelector('.sf-cru-price')?.textContent.match(/[\d,]+/)?.[0] || '').replaceAll(',', '')),
+    })));
+  const choice = offers.find(row => row.name && row.price > 0
+    && !installedNames.map(name => name.trim()).includes(row.name)
+    && (!rememberedName || row.name === rememberedName));
+  assert.ok(choice, 'The public Weapons catalog has no affordable distinct fitting' + (rememberedName ? ': ' + rememberedName : '.'));
+  await clickAt(page, screen.locator('.sf-cru-cards [data-offer-id=' + JSON.stringify(choice.id) + ']'));
+  assert.equal((await screen.locator('.orr-armory-reading__name').textContent()).trim(), choice.name);
+  const inspected = await livePreparation(page);
+  assert.deepEqual(inspected.fittings, initial.fittings, 'Inspecting an item changed installed equipment before purchase.');
+  assert.equal(inspected.credits, initial.credits, 'Inspecting an item spent credits before purchase.');
+  const install = screen.locator('.orr-armory-purchase');
+  await assertControlEnabled(install, 'The advertised affordable fitting cannot be installed');
+  assert.ok((await install.getAttribute('aria-label')).includes(choice.name), 'Install refers to a different item than the inspected one.');
+  await clickAt(page, install);
+  await page.waitForFunction(offerId => {
+    const receipt = window.SF.registry.get('survivalDraft')?.preparationReceipt?.();
+    return receipt?.offerId === offerId && receipt.outcome !== 'pending';
+  }, choice.id, { timeout: 20000 });
+  const purchased = await livePreparation(page), receipt = purchased.receipt;
+  assert.equal(receipt.outcome, 'accepted', 'The fitting authority refused the public purchase: ' + JSON.stringify(receipt));
+  assert.equal(receipt.charged, true);
+  assert.equal(receipt.price, choice.price, 'The receipt charged a different price than the public offer.');
+  assert.equal(purchased.credits, initial.credits - choice.price, 'The run wallet did not pay exactly once.');
+  assert.equal(purchased.hull, initial.hull, 'An equipment purchase changed the chosen ship.');
+  assert.ok(Number.isInteger(receipt.slotIndex) && receipt.defId && !initial.fittings.includes(receipt.defId));
+  const expected = [...initial.fittings]; expected[receipt.slotIndex] = receipt.defId;
+  assert.deepEqual(purchased.fittings, expected, 'The committed fitting differs from the accepted purchase.');
+  await page.waitForFunction(name => [...document.querySelectorAll(
+    '[data-screen="crucibleDraft"] .orr-armory-build li > span > span',
+  )].some(node => node.textContent.trim() === name), choice.name);
+  return { ...choice, defId: receipt.defId, slotIndex: receipt.slotIndex, purchased };
+}
+
 async function liveRoute() {
-  const size = { width: 1440, height: 900 };
-  const context = await browser.newContext({ viewport: size });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = currentPage = await context.newPage();
   page.setDefaultTimeout(20000);
   observeErrors(page, 'live');
-  try {
-    await bootToMenu(page, server.baseUrl, (name, pass, detail) => check(`Live: ${name}`, { pass, detail }));
-    await waitBootOverlayGone(page, 180000);
-    await titlePointerRoute(page, 'padding', 'live-title');
-    const { build, posterUrl } = await chooseShip(page, { requirePreset: true });
-    const hangarPreview = await shipShot(page, 'live-selected-ship', { hullId: build.hull, posterUrl });
-    const run = await changeRunOptions(page, build);
-    const before = await page.evaluate(() => ({ phase: window.SF.state.run?.phase, mode: window.SF.state.mode }));
-    assert.ok(!['active', 'wave_intro', 'draft'].includes(before.phase), 'Combat/run preparation started before Review equipment.');
+  const issues = collectPageIssues(page);
+  const live = report.live;
+  const progress = () => page.evaluate(() => ({
+    meta: localStorage.getItem('sf.save.crucible_meta'),
+    campaign: localStorage.getItem('sf.save.auto'),
+  }));
+  const navigate = async (label, action) => {
+    // Snapshot only requests already in flight before this deliberate transition. End
+    // attribution BEFORE input or its waits: new-route requests must remain strict even
+    // while the previous screen is being replaced. HTTP failures are never excused.
+    const token = issues.beginExpectedNavigation(label);
+    issues.endExpectedNavigation(token);
+    return action();
+  };
+  const noAssetFailures = () => assert.deepEqual(issues.errorIssues(), [],
+    'The live route has HTTP, network, console or page failures; see live.browserIssues.');
+  const openArmory = async (label) => navigate(label, async () => {
     await clickAt(page, page.locator(S.review));
     await page.locator('[data-screen="crucibleDraft"]').waitFor({ state: 'visible', timeout: 180000 });
-    await page.waitForFunction(() => window.SF.state.run?.phase === 'draft', null, { timeout: 180000 });
+    await page.waitForFunction(() => window.SF.state.run?.phase === 'draft', null, { timeout: 20000 });
     await waitBootOverlayGone(page, 180000);
-    const runtimeBuild = () => page.evaluate(() => {
-      const s = window.SF.state;
-      const ship = s.player?.ownedShips?.[s.player.activeShipIndex];
-      const entity = s.entities?.get?.(s.playerId);
-      return { phase: s.run?.phase, hull: ship?.defId || entity?.data?.defId, fittings: ship?.fittings || entity?.data?.fittings };
-    });
-    const armory = await runtimeBuild();
+  });
+  try {
+    await navigate('fresh title navigation', () => bootToMenu(page, server.baseUrl,
+      (name, pass, detail) => check('Live: ' + name, { pass, detail })));
+    await waitBootOverlayGone(page, 180000);
+    await navigate('title to hangar', () => titlePointerRoute(page, 'padding', 'live-title'));
+    const { build, posterUrl } = await navigate('selected ship preview', () => chooseShip(page, { requirePreset: true }));
+    live.build = build;
+    live.hangarPreview = await shipShot(page, 'live-selected-ship', { hullId: build.hull, posterUrl });
+    const run = live.run = await navigate('ship to run options', () => changeRunOptions(page, build));
+    const before = await page.evaluate(() => ({ phase: window.SF.state.run?.phase, mode: window.SF.state.mode }));
+    assert.ok(!['active', 'wave_intro', 'draft'].includes(before.phase), 'Combat/run preparation started before Review equipment.');
+    await openArmory('opening equipment preparation');
+    const armory = live.armory = await livePreparation(page);
     assert.equal(armory.hull, build.hull, 'Opening armory substituted a different ship.');
-    const armoryPreview = await shipShot(page, 'live-opening-armory', {
+    assert.ok(armory.credits > 0, 'The selected difficulty needs a positive equipment allowance for this purchase route.');
+    assert.equal(armory.settings.arenaId, run.arenaId);
+    assert.equal(armory.settings.stake, run.difficultyId);
+    live.armoryPreview = await shipShot(page, 'live-opening-armory', {
+      hullId: build.hull, posterUrl, selector: '[data-screen="crucibleDraft"] .orr-armory-ship-stage',
+    });
+    noAssetFailures();
+    const permanentBefore = await progress();
+    const purchase = live.purchase = await navigate('inspect and install equipment', () => buyLiveEquipment(page, armory));
+    await shipShot(page, 'live-purchased-equipment', {
+      hullId: build.hull, posterUrl, selector: '[data-screen="crucibleDraft"] .orr-armory-ship-stage',
+    });
+    const back = page.locator('[data-screen="crucibleDraft"] .sf-cru-back-to-hangar');
+    const note = page.locator('#sf-cru-preparation-return-note');
+    await back.waitFor({ state: 'visible' });
+    assert.equal(await note.isVisible(), true, 'Back to hangar has no visible explanation of discarded purchases.');
+    live.returnNotice = await note.innerText();
+    // Subscribe only to receipts. This observer cannot retire the run or alter screen state.
+    const [returned] = await Promise.all([
+      page.evaluate(token => new Promise(resolve => {
+        const bus = window.SF.bus, forbidden = [], unsubs = [];
+        const finish = receipt => {
+          clearTimeout(timer); for (const off of unsubs) off();
+          resolve({ receipt, forbidden });
+        };
+        for (const name of ['run:resultsReady', 'player:death', 'run:waveCleared'])
+          unsubs.push(bus.on(name, () => forbidden.push(name)));
+        unsubs.push(bus.on('run:preparationCancelResolved', receipt => {
+          if (receipt?.token === token) finish({ ...receipt });
+        }));
+        const timer = setTimeout(() => finish(null), 20000);
+      }), armory.token),
+      navigate('Back to hangar after purchase', async () => {
+        await clickAt(page, back);
+        await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucible'
+          && window.SF.state.mode === 'menu' && window.SF.state.run?.phase === 'inactive',
+        null, { timeout: 20000 });
+        await hangarReady(page);
+      }),
+    ]);
+    live.cancellation = returned;
+    assert.deepEqual(returned.receipt, { token: armory.token, ok: true, reason: 'preparation_cancelled' });
+    assert.deepEqual(returned.forbidden, [], 'Cancelling initial preparation produced combat or results events.');
+    assert.equal(await page.locator('[data-screen="crucibleResults"]:visible,[data-screen="crucibleDraft"]:visible').count(), 0);
+    assert.deepEqual(await progress(), permanentBefore, 'Cancelling preparation changed persistent progress or the campaign save.');
+    assert.equal((await livePreparation(page)).result, null, 'Cancelling preparation fabricated a run result.');
+    assert.deepEqual(await selectedBuild(page), build, 'Back to hangar lost the selected ship or preset.');
+    await shipShot(page, 'live-returned-hangar', { hullId: build.hull, posterUrl });
+    await navigate('review retained run settings', async () => {
+      await clickAt(page, page.locator('[data-swarm-step="1"]'));
+      assert.equal(await page.locator(S.difficulty + '[data-stake-id="' + run.difficultyId + '"]').getAttribute('aria-pressed'), 'true');
+      assert.equal(await page.locator(S.arena + '[data-arena-id="' + run.arenaId + '"]').getAttribute('aria-pressed'), 'true');
+    });
+    await openArmory('reopen equipment preparation');
+    const reopened = live.reopened = await livePreparation(page);
+    assert.notEqual(reopened.token, armory.token, 'Re-entry reused the cancelled run.');
+    assert.equal(reopened.hull, armory.hull);
+    assert.deepEqual(reopened.settings, armory.settings, 'Re-entry changed the selected run settings.');
+    assert.equal(reopened.credits, armory.credits, 'New preparation did not receive its original equipment allowance.');
+    assert.deepEqual(reopened.fittings, armory.fittings, 'The cancelled purchase survived in installed equipment.');
+    assert.deepEqual(reopened.inventory, armory.inventory, 'The cancelled purchase or displaced fitting survived as a free spare.');
+    assert.equal(reopened.receipt, null, 'New preparation retained the old purchase receipt.');
+    assert.equal(reopened.result, null);
+    assert.deepEqual(await progress(), permanentBefore, 'Re-entry changed persistent progress before combat.');
+    check('Live: Back discards only preparation purchases and preserves ship, preset, settings and permanent progress', {
+      token: armory.token, successor: reopened.token, discardedItem: purchase.name,
+      originalCredits: armory.credits, spentCredits: purchase.purchased.credits, reopenedCredits: reopened.credits,
+    });
+
+    // Reinstall the same publicly named item to prove that a purchase the player DOES accept
+    // reaches combat. The previous transaction was discarded, not credited as free inventory.
+    live.acceptedPurchase = await navigate('reinstall chosen equipment', () => buyLiveEquipment(page, reopened, purchase.name));
+    const prepared = live.acceptedPurchase.purchased;
+    assert.equal(live.acceptedPurchase.defId, purchase.defId);
+    await shipShot(page, 'live-equipped-to-launch', {
       hullId: build.hull, posterUrl, selector: '[data-screen="crucibleDraft"] .orr-armory-ship-stage',
     });
     const deploy = page.locator('[data-screen="crucibleDraft"] .sf-cru-foot .k-word--primary');
     assert.equal(await deploy.count(), 1, 'Opening armory needs one clear deployment control.');
-    const deployLabel = await deploy.innerText();
-    // Cancel must remain non-deploying even when repeated; Enter on the actual native
-    // deployment button is the player's explicit acceptance of the prepared loadout.
+    live.deployLabel = await deploy.innerText();
     await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
-    assert.equal((await runtimeBuild()).phase, 'draft', 'Cancel unexpectedly deployed the prepared ship.');
-    await tabTo(page, deploy);
-    await page.keyboard.press('Enter');
-    await page.waitForFunction(() => ['active', 'wave_intro'].includes(window.SF.state.run?.phase), null, { timeout: 60000 });
-    await waitBootOverlayGone(page, 60000);
-    const combat = await runtimeBuild();
+    assert.equal((await livePreparation(page)).phase, 'draft', 'Cancel unexpectedly deployed the prepared ship.');
+    await navigate('explicit deployment', async () => {
+      await tabTo(page, deploy);
+      await page.keyboard.press('Enter');
+      await page.waitForFunction(() => ['active', 'wave_intro'].includes(window.SF.state.run?.phase)
+        && window.SF.state.mode === 'flight', null, { timeout: 60000 });
+      await waitBootOverlayGone(page, 60000);
+    });
+    // Phase alone is insufficient: demand the engine's required authored assets and a real
+    // submitted flight frame, then observe a subsequent submitted frame without stepping it.
+    const frame = await page.waitForFunction(() => {
+      const sf = window.SF, picture = sf.loop?.getPresentationFrame?.();
+      const readiness = sf.authoredVisualReadiness?.();
+      return sf.state.mode === 'flight' && readiness?.ready === true
+        && picture?.worldSubmitted === true && Number.isFinite(picture.completedTick?.simTime)
+        ? { sequence: picture.sequence, tick: picture.completedTick.tick,
+          simTime: picture.completedTick.simTime, playerStatus: readiness.playerStatus } : false;
+    }, null, { timeout: 60000 });
+    live.firstCombatFrame = await frame.jsonValue(); await frame.dispose();
+    await page.waitForFunction(previous => {
+      const frame = window.SF.loop?.getPresentationFrame?.();
+      return window.SF.state.mode === 'flight' && frame?.worldSubmitted === true
+        && frame.sequence > previous.sequence && frame.completedTick?.simTime > previous.simTime;
+    }, live.firstCombatFrame, { timeout: 20000 });
+    const combat = live.combat = await livePreparation(page);
     assert.equal(combat.hull, build.hull, 'Deployment substituted a different ship.');
+    assert.deepEqual(combat.fittings, prepared.fittings, 'Deployment changed the purchased loadout.');
+    assert.deepEqual(combat.inventory, prepared.inventory, 'Deployment changed the prepared spare equipment.');
+    assert.equal(combat.token, reopened.token, 'Deployment launched a different run.');
     await shot(page, 'live-deployed');
-    report.live = { requested: true, completed: true, build, hangarPreview, armoryPreview, run, armory, combat, deployLabel };
-    check('Live public route: chosen hull reaches opening armory, then combat only after deployment', report.live);
+    noAssetFailures();
   } catch (error) {
     await shot(page, 'live-failure').catch(() => {});
     throw error;
-  } finally { await context.close(); }
+  } finally {
+    const token = issues.beginExpectedNavigation('completed live probe context teardown');
+    try { await context.close(); } finally { issues.endExpectedNavigation(token); }
+    live.browserIssues = issues.errorIssues();
+    live.expectedNavigationDiagnostics = issues.ignoredIssues;
+  }
+  noAssetFailures();
+  live.completed = true;
+  check('Live public route: purchase, return, fresh preparation and explicit deployment retain the chosen build', live);
 }
-
 try {
   server = await startBenchServer();
   const { chromium } = await loadPlaywright();

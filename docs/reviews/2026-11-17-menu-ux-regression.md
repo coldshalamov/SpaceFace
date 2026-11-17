@@ -171,12 +171,17 @@ under `.devshots/swarm-hangar-ux/`. Arena checks wait for the selected caption t
 captures wait for a decoded poster matching the selected hull or the stage owner's authored live
 canvas; the structured evidence records whether each preview was a fallback image or live render.
 
-The optional `--live` pass boots a fresh profile through the public title route, chooses an
-equipped alternate hull, opens the canonical armory, and verifies the runtime hull before and
-after explicit keyboard deployment. It checks that two Escape presses leave the run in draft,
-then uses Tab/Enter on the actual deployment button. A bench result does not satisfy this live-route claim. Purchase
-accounting, rendered model quality, controller/touch behavior and visual judgment remain separate
-checks; this script does not declare them proved by a DOM attribute or screenshot file existing.
+The prepared optional `--live` pass boots a fresh profile through the public title route, chooses
+an equipped alternate hull, and opens the canonical armory. Its public actor inspects and buys an
+affordable weapon; its observers verify the accepted receipt, exact run-wallet debit and fitted
+slot. It then uses Back to hangar, checks retained choices and unchanged permanent progress,
+reopens equipment with the original allowance and loadout, and buys again before explicit
+keyboard deployment. Two Escape presses must leave the run in draft. The final observers require
+the chosen hull and purchased equipment in flight, authored-asset readiness and advancing
+submitted simulation frames. **At the evidence record through head `7994b0a6db5b3ae1ade046ba5fe2d5e840b5c446`, this expanded
+live pass had not passed in a browser.** Its code and unit coverage do not replace that missing
+result; later exact-head outcomes belong in the PR check record. Controller/touch behavior, rendered model
+quality and visual judgment also remain separate from DOM or state assertions.
 
 Run it under the repository's game lock:
 
@@ -185,8 +190,8 @@ node scripts/fleet/game-lock.mjs run -- node scripts/check-swarm-hangar-ux.mjs -
 ```
 
 Local browser automation is blocked in this environment, so actual Chromium captures and native
-input checks run through the GitHub Actions UI review. The first two captures were inspected and
-used to improve the implementation; neither is reported as a completed native journey:
+input checks run through the GitHub Actions UI review. Captures from three revisions were
+inspected and used to improve the implementation; none is reported as a completed native journey:
 
 - [Run 44176198925](https://github.com/coldshalamov/SpaceFace/actions/runs/44176198925), head
   `6ceb84c219543646702161fffa043164850122bc`: real title, hangar and armory arrivals were captured.
@@ -199,13 +204,80 @@ used to improve the implementation; neither is reported as a completed native jo
   then re-evaluated an “unselected difficulty” locator against a different button. Targets now
   retain their stable data identity before input; the selected-state assertions remain strict.
   The same run's draft phone walk reported an aborted render-package request. It remains a
-  failure pending causal classification; request failures are not broadly waived.
+  failed historical result: that artifact did not record enough timing to establish the cause.
+- [Run 44182977357](https://github.com/coldshalamov/SpaceFace/actions/runs/44182977357), head
+  `7994b0a6db5b3ae1ade046ba5fe2d5e840b5c446`: the native route reached selected-ship readiness.
+  Its equipment diagnostic measured seven visible items and zero positive-area cross-item
+  collisions; finite-animation observations were empty before and after settlement. There were
+  no recorded browser exceptions or failed requests. The next `page.screenshot` call exceeded
+  its 15-second deadline after fonts had loaded. A later failure screenshot succeeded. The
+  actual `checks.json` is `pass:false`, with no completed viewport verdict. Arrivals artifact
+  `14371629691` contains this evidence; it does not establish a complete four-size journey.
+
+The third revision's final required-evidence outcomes were also inspected, rather than treating
+the normalized `continue-on-error` step conclusion as a pass:
+
+| Fixture / job | Actual remaining failure at head `7994b0a6` |
+|---|---|
+| Hangar, `134392206271` | Native capture timeout; the independent phone control walk exceeded its 240,000 ms cell deadline at control 26; unmapped `src/ui/uiRoot.js`. |
+| Opening equipment, `134392206279` | Unmapped `src/ui/uiRoot.js` only. Arrival and walk phases completed, with no request failures recorded. |
+| Round equipment, `134392206368` | Desktop walk with one aborted request; unmapped `src/ui/uiRoot.js`. |
+| Title, `134392206323` | Desktop walk with 29 aborted requests; unmapped `src/ui/uiRoot.js`. |
+| Title with a save, `134392206266` | Desktop and phone walks with 64 aborted requests; unmapped `src/ui/uiRoot.js`. |
+
+The title walk's new provenance gives a specific causal boundary: all 29 failures belonged to
+document generation 2 and arrived at `21:46:48.815Z`, during main navigation generation 3. That
+navigation had requested the same title fixture at `.578Z` and committed its replacement at
+`.823Z`. The report retains each URL and timestamp. This is evidence of the bench replacing its
+old document, not grounds for a blanket exception for aborted ship assets. The draft and
+title-save failures are not reclassified as passing by analogy.
 
 Visual inspection of those captures also led to a compact horizontal ship rack on phones, with
 the selected ship immediately below it; correction of a legacy oversized title; and exclusion of
 the new hangar from obsolete door rules that hid arena art and faded its caption. The current
 probe records equipment-card and text-line geometry and observes finite animation completion so
 an apparent equipment-label overprint can be diagnosed from both layout and pixels.
+
+### Prepared corrections after the third capture
+
+The following changes are prepared for the next revision. They are **not** a successful rerun of
+head `7994b0a6`, and the full native and live-route verdicts remain pending:
+
+- The existing bench arrival helper now marks its own document replacement explicitly.
+  Request classification requires that marker, a verified committed replacement of the exact
+  fixture, an old-main-document GET, exact `net::ERR_ABORTED`, and event timing within that
+  completed navigation. Proven cancellations remain in `navigationCancellations` with their
+  full provenance. Current-document aborts, unmarked navigation, POSTs, HTTP failures, failed
+  navigation and other network errors remain failures; diagnostic capacity is bounded and
+  excess/unproven errors remain red. This does not waive any historical failed run.
+- `src/ui/uiRoot.js`, changed by the acknowledged return-to-hangar route, now maps explicitly
+  to the complete fixture set. The correction removes the unmapped-owner error without
+  removing selected coverage. Priority order puts hangar, opening equipment, title, round
+  equipment and saved title first.
+- Screenshot readback has a separate 60-second deadline and records capture duration. The
+  15-second bench and 20-second live input/readiness defaults are unchanged. No animation is
+  forcibly finished or paused to make the new native probe pass. The separate phone-walk
+  deadline failure above remains an incomplete check, not a successful native interaction.
+- Production bundling exposed a preexisting `const sab` followed by `sab = false` in
+  [`simLaneMain.js`](../../src/core/simLaneMain.js). Both statements are present at the inspected
+  immutable baseline. The prepared `let` correction permits the existing SharedArrayBuffer
+  fallback branch; it does not alter lane selection or introduce a new fallback policy.
+- The optional Circuit invitation is separated from equipment into a collapsed **Optional run
+  format** disclosure, with a literal description of its 16 rounds and four stages. Required
+  Circuit route decisions open that disclosure when applicable. This addresses the observed
+  mixing of run rules with shopping; its revised appearance still needs a capture.
+- Empty equipment cells use subdued text/icon colors rather than whole-card opacity, and the
+  manifest receives a nonshrinking 190-pixel maximum scroll area. The third run's zero measured
+  overlap does not prove that every suspicious pixel was resolved. These further appearance
+  changes require fresh screenshot inspection.
+
+Independent source review checked the expanded live purchase and return selectors against their
+actual owners. The observer subscribes to the cancellation receipt before the public Back action;
+it does not issue a cancellation or mutate run state. That review caught two preparation gaps:
+the cached hangar now restores the ship step while preserving choices, and the live observer now
+attributes only requests already in flight before a transition, leaving newly started requests
+strict throughout purchase and launch waits. Worker reporting reads the actual context lane.
+These are prepared corrections, not a public title-to-purchase-to-combat pass.
 
 The latest native verdicts, exact revisions and reviewed artifacts belong to
 [draft PR 1119](https://github.com/coldshalamov/SpaceFace/pull/1119). These fixture runs do not establish
@@ -235,9 +307,12 @@ The deterministic 47-A uninterrupted-versus-reload comparison also passed with i
 The dedicated `crucible-opening` fixture captures the return control separately from the existing
 round-three armory; both fixtures preserve their actual run-state owners.
 
-The batch request-provenance checks passed **11 focused tests**, and the unlock-description suite
-passed **15 tests** against the actual catalog conditions. Aborted requests remain failures; the
-new provenance records are diagnostic.
+The initial request-provenance batch passed **11 focused tests**. Its expanded navigation-marker
+and classification batch passed **14 focused tests**, including marker cleanup after a failed
+navigation, a proven reload cancellation retained as diagnostic evidence, and sixteen adverse
+classification cases. These two batches overlap and are not additive. The unlock-description
+suite separately passed **15 tests** against the actual catalog conditions. No broad aborted-
+request exemption was added.
 
 The targeted ship-stat, hangar-adapter, bench-registry and opening-fixture batch passed **28 tests**.
 The stat labels now distinguish firing endurance, equipment energy reserve, towing and ramming

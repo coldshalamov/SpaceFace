@@ -80,6 +80,43 @@ test('the hangar keeps its GPU preview out of prewarm, the arena step and hidden
   } finally { f.close(); }
 });
 
+test('returning to a cached hangar reopens the selected ship without resetting its loadout or run choices', () => {
+  const f = fixture();
+  try {
+    f.adapter.setActive(true);
+    f.root.querySelectorAll('.sf-hangar-hull').find(node => node.dataset.swarmHull === 'ship_kestrel').click();
+    assert.equal(f.state.starterId, 'energy_baseline');
+    f.state.stake = 'veteran'; f.state.arenaLabel = 'Ceres Belt';
+    f.adapter.update();
+    const chosen = structuredClone(f.state);
+    const manifest = f.root.querySelector('.sf-hangar-manifest').textContent;
+    const fit = f.calls.filter(call => call[0] === 'show').at(-1);
+    f.steps[1].click();
+    assert.equal(f.root.dataset.prepStep, '1');
+    f.adapter.setActive(false);
+    const hidden = f.calls.length;
+    f.adapter.update();
+    assert.equal(f.calls.length, hidden, 'the hidden cached hangar must not draw while the armory is active');
+
+    f.adapter.setActive(true);
+    f.adapter.focus();
+    assert.equal(f.root.dataset.prepStep, '0');
+    assert.equal(f.steps[0].getAttribute('aria-current'), 'step');
+    assert.equal(f.root.querySelector('#sf-hangar-ships').hidden, false);
+    assert.equal(f.root.querySelector('#sf-hangar-run').hidden, true);
+    assert.equal(f.enter.hidden, true, 'returning cannot expose equipment review ahead of the ship');
+    assert.deepEqual(f.state, chosen, 'returning must preserve the canonical preset, arena and difficulty');
+    assert.equal(f.root.querySelector('.sf-hangar-manifest').textContent, manifest);
+    assert.equal(f.root.querySelectorAll('.sf-hangar-hull').find(node => node.dataset.swarmHull === 'ship_kestrel')
+      .getAttribute('aria-pressed'), 'true');
+    assert.equal(f.root.querySelectorAll('.sf-hangar-kit').find(node => node.dataset.swarmKit === 'energy_baseline')
+      .getAttribute('aria-pressed'), 'true');
+    assert.deepEqual(f.calls.filter(call => call[0] === 'show').at(-1), fit,
+      'the restored preview must show the same real hull and fitted equipment');
+    assert.equal(f.root.ownerDocument.activeElement, f.steps[0]);
+  } finally { f.close(); }
+});
+
 test('changing only the rules or funds updates readiness and explains how to finish equipment', () => {
   const f = fixture();
   try {

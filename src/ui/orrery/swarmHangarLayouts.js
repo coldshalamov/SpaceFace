@@ -80,13 +80,14 @@ ${H} .sf-hangar-stat meter::-moz-meter-bar { background:var(--dp-hand); }
 ${H} .sf-hangar-fit-title { display:flex; align-items:center; gap:10px; justify-content:space-between; margin:16px 0 10px; }
 ${H} .sf-hangar-fit-title h3 { font:600 15px/1.3 var(--dp-face-body,'Instrument Sans'); margin:0; }
 ${H} .sf-hangar-fit-title > span { font-size:12px; color:var(--dp-ink-dim); }
-${H} .sf-hangar-manifest { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; max-height:165px; overflow:auto; scrollbar-width:thin; }
+${H} .sf-hangar-manifest { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; flex:0 0 auto; max-height:190px; overflow:auto; scrollbar-width:thin; }
 ${H} .sf-hangar-fitting { display:flex; align-items:center; gap:8px; min-width:0; padding:9px; background:var(--dp-field-ink); border:1px solid var(--dp-line-faint); border-radius:3px; }
 ${H} .sf-hangar-fitting svg { width:26px; height:26px; flex:none; color:var(--dp-hand-hot); }
 ${H} .sf-hangar-fitting span { min-width:0; }
 ${H} .sf-hangar-fitting small { display:block; font-size:12px; color:var(--dp-ink-dim); }
 ${H} .sf-hangar-fitting strong { display:block; font:500 13px/1.3 var(--dp-face-body,'Instrument Sans'); overflow-wrap:anywhere; }
-${H} .sf-hangar-fitting.is-empty { opacity:.65; }
+${H} .sf-hangar-fitting.is-empty { color:var(--dp-ink-dim); }
+${H} .sf-hangar-fitting.is-empty svg { color:var(--dp-ink-dim); }
 ${H} .sf-hangar-fit-note { font-size:13px; color:var(--dp-ink-dim); margin:10px 0 0; }
 ${H} .sf-hangar-fit-note.is-empty { color:var(--dp-hand-hot); }
 ${H} .sf-hangar-options { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:20px; }

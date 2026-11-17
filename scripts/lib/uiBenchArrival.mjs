@@ -10,8 +10,19 @@ export async function createBenchArrival(page, url, { timeoutMs }) {
     localStorage.clear();
     sessionStorage.clear();
   }, { origin, pathname });
+  let navigationSequence = 0;
   return async () => {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
+    // Tool-side provenance only. The batch collector must distinguish our deliberate
+    // document replacement from an asset abort inside the screen being measured.
+    const marker = { url, sequence: ++navigationSequence };
+    page.emit?.('spaceface:bench-navigation-start', marker);
+    let committed = false;
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
+      committed = true;
+    } finally {
+      page.emit?.('spaceface:bench-navigation-end', { ...marker, committed });
+    }
     await page.waitForFunction(() => window.__BENCH_READY === true, null, { timeout: timeoutMs });
   };
 }
