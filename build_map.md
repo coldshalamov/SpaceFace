@@ -7100,3 +7100,89 @@ Audit artefacts (machine-local): `%TEMP%\praudit\` (survival.json = per-PR line 
 - **Tests:** test:fast HEAD vs 8ef4225cd0 — one new red (fixed), two old reds unchanged. Gate PASS (`--budget-scale` on a loaded host).
 - **Performance:** headless sim (47-A 7200 ticks, Swarm physics fixture) shows no attributable per-tick regression (identical replay hash). **Live Adventure flight was drawing ~25–35 % fewer frames than at 8ef4225cd0**: style recalculation ~4× (root-anchored `:has()` invalidations 1,185 vs 7). Fixed (`perf(AUDIT-P1…P6)`): hidden station type governance kept off flight frames; the New Game Loadout `:has(> ul[aria-label="Loadout"])` rules (re-matched page-wide on every radar aria-label change) replaced by a class; HUD, speed, radar and damage readouts update their text node instead of rebuilding it. Root invalidations 1,185 → 175; a later HEAD flight drew 9.46 world frames/s vs 9.77 at BASE (descriptive — the BASE/HEAD asset packages could not be fully matched). Other root-anchored `:has()` rules remain a standing hazard (mobileCssSource.js, hud-flight).
 - **Still open:** real-GPU look check of the PRI-01 places, Frontier rings, Old Hob's anchors, outpost annexes and the two new rooms; Ledger gate families in `stationTabsLayouts.js` still layered (needs 800×600/1000×640 parity shots); a 390-wide *desktop* window squeezes the Factions tab (phone mode is fine).
+
+## 38. The FIX-05 play-through polish batch, the three background helpers, and what the checklist replay still owes (2026-11-17)
+
+**Context.** The previous orchestrator session died on a usage wall mid-dispatch: the FIX-05 packet
+(`design/program/fleet/packets/FIX-05-swarm-leaks-boss-bar-armory.md`) had crashed twice on Devin
+accounts, three helpers were still running in the background, and the FIX-05 code sat unverified and
+uncommitted in the working tree. This session reconstructed that state, verified it, finished item 5
+and item 4, and landed the batch. Evidence: `.devshots/fleet/accept07/` (the play-through the packet
+cites), `.devshots/fleet/runs/` (worker receipts), `.devshots/ui-bench/` (fresh armory shots).
+
+### 38.1 Landed — `fleet(FIX-05)` bb76c66adf (master, 2026-11-17)
+1. **Swarm keeps its own glass.** The `AFTERMATH / FIELD RESPONSE` card, Adventure's pause brief
+   (`TRACKED · Contract 47-A …`) and the `OFFICIAL DENIAL` scenario beat are all gated with
+   `isSwarmGlass(state)` at their owners (`aftermathChoicePrompt.js`, `pause.js`,
+   `presentationOrchestrator.js`). Regression suite `test/fix05-swarm-leaks-boss-bar.test.mjs` 7/7.
+2. **One boss-bar truth.** The round-10 freeze had two halves: `swarm:bossHp` stopped emitting for a
+   multi-body wing (the emitter ignored census changes at an unchanged fraction and dropped bodies
+   felled inside the first scan window), and — the deeper cause — `survivalResults` banked a
+   killer-label ledger on an unknown top-level `run.recentKillerLabels` key, which failed
+   `validateRunState` and deafened every `liveSwarmRun` consumer mid-fight. The emitter now publishes
+   pooled hull + alive/total on every change; the ledger rides `run.telemetry`. The top-centre bar
+   (`swarmJuiceHud.js`) already rendered `alive/total` and the pooled fill — it went live the moment
+   the emitter stopped lying.
+3. **Armory edge (1280×720).** The dealt list's 28px fade band let a straddling text line print at
+   ~60 % opacity (reads as broken glyphs), and the reading desk had no edge at all — the `Current
+   build` row died as a sliver behind the footer. Bands deepened to 56/48px floor-zero with 64px
+   scroll tails; the stacked armory (≤760px) stands down. Verified with
+   `node scripts/ui-bench.mjs --shot=crucible-draft --viewports=1280x720 --walk` (all controls
+   reachable, `Current build` prints clean) and the 1920×1080 shot (everything fits, no regression).
+   Note: the fix edits `cruciblePreparationLayouts.js` and `pause.js`, which carry foreign uncommitted
+   work — only the FIX-05 hunks were committed; the foreign hunks (item thumbnails, field-build
+   wiring in `uiRoot.js`, the `Operations` pause label) remain in the working tree for their owners.
+4. **Boss-order tests follow the compressed course** (C01-01 `ca74e15f33`; the FIX-05 packet cited
+   `2065539416`, which is the wing's five-ace body count). `rc-02-iron-maw-boss-score` re-pointed at
+   wave 5 — the row, hull and score are unchanged — 4/4 green. The S14 collision pin and the deep
+   Brood-debut pin updated: the champions hold 5/10/15/20/25/30 through the win and decades past it
+   (Quiet Choir 60, Tendril 80); `fix-boss-round-debut` now 2/5 green.
+5. `npm run check:sim` green; the touched-area regression bundle (fix05 + rc-02 + swarm-win +
+   crucible-run-state + swarm-fortify-screen) 47/47.
+
+### 38.2 Left red on purpose — C01-04 superseded the debut card, not the rotation
+Three tests of `test/fix-boss-round-debut.test.mjs` still fail, and NOT because of the rotation:
+C01-04 (`4757ab20`, "each round fields its cast") deliberately made the round slam read the PLAN's
+own newcomer — "the plan's own newcomer is the honest card" (`swarmJuice.js` `_onWavePlanned`). The
+probed current truth, so the finish is mechanical (owner: `KNOWN-REDS-SWARM`, devin1):
+- **wave 5**: slam sub names the BROOD debut `NEW THREAT · Spore Drift` (brood: true), NOT
+  `Detonator Dart`; the ship debut stages as a normal 5-body package (`debut` flag gone); the
+  opening line drops the `Detonator Dart is new.` namecheck. Versus card/bar still
+  `Dreadnought 'Iron Maw'`.
+- **wave 15**: slam sub names `Wake Eel` (brood), NOT `Patrol Lawman`; card/bar still
+  `Mirrorjaw Foreman`.
+- **wave 6**: slam sub names `Bruiser Brawler` (the cast's staged debut), NOT `Mine-Layer Jackal`;
+  line reads `Bruiser Brawler is new.`
+- **wave 25** (boundaries test): `BOSS · The Anvil` (was Forge Regent — that half IS the rotation).
+Also rotation-stale and left for `KNOWN-REDS-SWARM`: `test/fb-027-swarm-champion-tricks.test.mjs`
+boots the corsair wing at wave 35, which stopped being a boss round when the deep course moved to
+decades (C01-03) — the wing holds wave 40 now; the "rotation rows name a shipped trick" data check
+fails with it.
+
+### 38.3 The three background helpers — all concluded and landed
+- **CHIP-CHECK-01 (credit chips still render)** — DONE `14256de891`. Nothing was broken: a live
+  chip's instanced parts match the pre-instancing draw byte-for-byte (0 differing pixels in
+  921,600). The accept01 "no chips" sighting was timing — the loot magnet scoops a chip at a median
+  0.87 s of life. Guard test added.
+- **LOAD-02 (title helper: first-picture lift + hidden-animation cut)** — DONE
+  `13c120f80a` + runtime fix `8f7338bb63` (barrier skips bodiless authored roots, absorbs
+  owner-inactive bail).
+- **LOAD-03 (loading helper: warm the Swarm door's arena during the pre-match dwell)** — DONE
+  `5934f96ba9` (the measured first-door gain is smaller than hoped; honest numbers in its receipt).
+- **ROCK-04 (DeepSeek: dark rocks + the merge error chorus)** — DONE `9ff604082a` (dark substances
+  keep a pigment floor and a cool limb; `mergeGeometries` attribute reconciliation killed the 6–13
+  per-run errors).
+
+### 38.4 Still owed from the checklist play-through (rows now on the queue)
+- **PLAYTHROUGH-REPLAY (lead):** the full checklist play-through again — both modes — plus the
+  `TOO HEAVY` count in Swarm. This was the previous session's declared next step once the three
+  helpers landed; it is the acceptance pass for this whole batch.
+- **Two interface overlaps in later Adventure story beats** (ACCEPT-07 evidence) — small FE fixes.
+- **The Swarm test pilot wanders off to chase faraway ships** — bot focus, not game code.
+- **KNOWN-REDS-SWARM extras** (§38.2): the three C01-04-superseded debut tests and fb-027's wave-35
+  reds, with the probed truth above.
+- **Graphics-asset-review campaign** continues on its own ledger
+  (`node scripts/fleet/asset-review.mjs summary`; state at handoff and resume instructions:
+  `design/program/fleet/graphics-asset-review/HANDOFF-REMAINING-20261117.md` — 485 passed /
+  4 owner-gated / 29 pending ROCK-family at the last addendum, plus the ordinary-play
+  verification pass over the ~450 passed models and the motion-state captures).
