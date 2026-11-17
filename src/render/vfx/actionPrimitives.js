@@ -3,6 +3,25 @@ import { SweptSurfaceBatch, SURFACE_FLOATS } from '../forceLanguage/sweptSurface
 export const ACTION_PRIMITIVES = Object.freeze({
   compression: 1, connection: 2, deposition: 3, pressure: 4, induction: 5, capture: 6,
 });
+
+// Committed-lane light shaft. The corridor's footprint stays the exact permitted angular width
+// (that is the telegraph's contract), but the FILL is a thin axial spine plus a soft shoulder
+// that has died by ~45% of the half-width — never a filled trapezoid. `t` is 0 at the muzzle and
+// 1 at the contact end, `across` is -1..1 across the corridor. Pure; mirrors the shader's
+// kind>6.5 branch so a headless test can prove the shaft's shape without a GPU.
+export const LANE_SHAFT_SPINE_WIDTH = 0.14;
+export const LANE_SHAFT_SHOULDER_WIDTH = 0.42;
+export function committedLaneShaftProfile(t, across) {
+  const along = Math.max(0, Math.min(1, Number.isFinite(t) ? t : 0));
+  const a = Math.min(1, Math.abs(Number.isFinite(across) ? across : 0));
+  const lengthFade = Math.pow(1 - along, 1.15);
+  const spine = Math.exp(-Math.pow(a / LANE_SHAFT_SPINE_WIDTH, 2));
+  const shoulder = Math.exp(-Math.pow(a / LANE_SHAFT_SHOULDER_WIDTH, 2)) * 0.34;
+  const body = (spine * 0.30 + shoulder * 0.16) * lengthFade;
+  const hot = (spine * 1.25 + shoulder * 0.55) * (0.24 + 0.76 * lengthFade);
+  return { body, hot, lengthFade };
+}
+
 const BY_VERB = Object.freeze({ ignition: 'compression', vent: 'compression',
   transfer: 'connection', latch: 'connection', cut: 'connection',
   repair: 'deposition', grind: 'deposition', cool: 'deposition', harvest: 'deposition',
@@ -80,7 +99,11 @@ vec3 actionPoint(float t,float v){
     p.z+=sign(cos(curl))*pow(abs(cos(curl)),.38)*width;
     p.y=sign(sin(curl))*pow(abs(sin(curl)),.38)*lift;
   }else{
-    // A committed lane is a flat wedge: its edges follow the exact permitted shot angles.
+    // A committed lane is a LIGHT SHAFT, not a filled plane. It still opens from a point source
+    // to the exact permitted shot angles (the telegraph's whole job is that footprint), but the
+    // cross-section is a thin spine with a soft shoulder instead of an opaque card lying on the
+    // floor: width falls off radially and the reach fades with distance, so a 480-1200 WU
+    // corridor can never blanket the arena or the ships fighting in it.
     p.z=v*width*t;
     p.y=.02;
   }
@@ -124,6 +147,11 @@ void main(){
   float hot=crest*(.32+1.25*pow(flow,3.0));
   float dark=band(v+.04+.17*sin(t*9.0-time*2.8+phase),.22);
   float edge=1.0-smoothstep(.90,1.0,abs(v));
+  // A committed lane is the one primitive that spans a whole firing corridor, so it is the one
+  // that needs its own optical caps: the shared body limits are sized for an event the player
+  // stands next to, not for a wedge that reaches 2000 WU past the bow.
+  float coverageCap=0.68;
+  float emissionGain=1.0;
   if(kind>1.5&&kind<2.5){
     bool shoulder=abs(vConductor)>.5;
     edge=shoulder?1.0-smoothstep(.82,1.0,abs(v)):1.0;
@@ -142,8 +170,22 @@ void main(){
     float knot=pow(wave(t*19.0-time*7.0+phase),5.0);
     hot=crest*(.38+1.7*knot);body*=.62;dark=band(v,.30);
   }else if(kind>6.5){
-    edge=1.0; body=.45; dark=0.0;
-    hot=band(abs(v)-.94,.08)*.45;
+    // Committed lane (the FLYBY "break the beam" corridor). The descriptor still carries the
+    // TRUE permitted angles, and they stay readable as two hairline boundaries at |v| = 1.
+    // Everything between them is a light shaft instead of a filled trapezoid: a thin axial
+    // spine with a soft radial shoulder that dies inside the first fifth of the width, so the
+    // 480-2000 WU corridor can never blanket the arena and the ships fighting inside it.
+    float across=abs(v);
+    float lengthFade=pow(max(0.0,1.0-t),1.15);
+    float spine=exp(-pow(across/0.14,2.0));
+    float shoulder=exp(-pow(across/0.42,2.0))*0.34;
+    float rails=band(across-1.0,.030);
+    edge=1.0;
+    body=(spine*.30+shoulder*.16)*lengthFade;
+    dark=0.0;
+    hot=(spine*1.25+shoulder*.55+rails*1.15)*(0.24+0.76*lengthFade);
+    coverageCap=0.30;
+    emissionGain=0.42;
   }else if(kind>5.5){
     edge=1.0;body=.35;dark=.6;
     hot=(band(v-.72,.15)+band(v+.72,.15))*(.32+wave(t*18.0-time*3.0+phase));
@@ -161,9 +203,9 @@ void main(){
   // Optical coverage stays translucent; the small transported crests must still
   // carry HDR energy after alpha compositing, or the volume reads like dyed plastic.
   float core=pow(max(0.0,hot-.52),2.0);
-  vec3 emission=vTint.rgb*hot*vAction.w*uFlash*(3.7+.65*grazing)
-    +mix(vec3(1.0),vTint.rgb,.24)*core*2.2*vAction.w*uFlash;
-  float coverage=min(.68,body+hot*.13)*(1.0-dark*.28);
+  vec3 emission=vTint.rgb*hot*vAction.w*uFlash*(3.7+.65*grazing)*emissionGain
+    +mix(vec3(1.0),vTint.rgb,.24)*core*2.2*vAction.w*uFlash*emissionGain;
+  float coverage=min(coverageCap,body+hot*.13)*(1.0-dark*.28);
   float alpha=edge*ends*arrival*cutoff*vTint.a*coverage;
   if(alpha<.003)discard;
   gl_FragColor=vec4(pigment+emission,alpha);
@@ -216,6 +258,11 @@ export class ActionPrimitiveComposer {
     if(!lane)return;
     const x=s.x,z=s.z,y=s.y;
     this.slot=s;s.x=origin.x;s.z=origin.z;s.y=0;
+    // The descriptor keeps the corridor's TRUE permitted angular width — that footprint is the
+    // telegraph's contract (test/ai-committed-lane-vfx.test.mjs) and the shader draws its edge
+    // rails there. What changed is the FILL: ActionPrimitiveComposer's lane branch paints a thin
+    // axial spine with a soft shoulder inside that width instead of a filled trapezoid, so a
+    // long committed pass reads as a light shaft, not a slab over the arena.
     this._piece(7,s.x,s.z,lane.bearing,0,lane.range,lane.range*Math.tan(lane.capRad),0,
       0,0,0,0,flash?.24:.32,1,-.1,.16);
     s.x=x;s.z=z;s.y=y;

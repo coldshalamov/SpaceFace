@@ -720,6 +720,21 @@ const INSTANCED_MATRIX_BUFFER = 0;
 const INSTANCED_COLOR_BUFFER = 1;
 const PARTICLE_BUFFER_BINDINGS = SHARD_BUFFER_BINDINGS;
 const SPRITE_CAP = 256;
+// VFX-02 smoke proximity cap: the hulls a smoke body may never bury. The player is always one of
+// them; the wave's champion (the capital/champion hull the round is built around) is the other.
+// `SMOKE_NEAR_BODY_MIN_OPACITY` is the floor a smoke body keeps while its disc overlaps a
+// protected hull — enough to still read as matter, never enough to hide what the player is shooting.
+const SMOKE_NEAR_BODY_MIN_OPACITY = 0.12;
+/** A hull a smoke body may never bury: the player, and any hull the wave stamped as its champion. */
+function smokeProtectedHull(state, id) {
+  if (id == null || !state || !state.entities) return null;
+  const body = typeof state.entities.get === 'function' ? state.entities.get(id) : null;
+  if (!body || body.alive === false || !body.pos) return null;
+  if (id === state.playerId) return body;
+  const data = body.data;
+  if (data && (data.swarmChampion === true || data.isBoss === true || data.bossId != null)) return body;
+  return null;
+}
 // Dedicated procedural streak-mesh pool (ShaderMaterial planes) — not the additive sprite pool.
 const TRAIL_STREAK_CAP = 96;
 const CONTACT_SPARK_COOLDOWN_TICKS = 6;
@@ -3240,6 +3255,65 @@ export const vfx = {
       }
     }
     return this._particlePriorityIndex.peek();
+  },
+
+  /**
+   * VFX-02 — how much of a smoke body's authored opacity may be drawn at (x, z).
+   *
+   * A kill's lingering smoke used to be free to grow over anything. Three.js cannot sort the
+   * instances inside one transparent batch, so a billow parked over a boss or over the player's own
+   * hull is drawn either in front of it (hiding the fight) or behind it (a grey halo leaking around
+   * the silhouette). Both read as "the game is covering what I am shooting at".
+   *
+   * The answer is a proximity cap, not a deletion: a smoke body still draws at full authored
+   * opacity in open space, and fades to SMOKE_NEAR_BODY_MIN_OPACITY as its radius closes on a
+   * protected hull. It is measured in world units against the hull's own drawn radius, so it holds
+   * at any zoom or aspect. Nothing here writes simulation state; it only scales an alpha.
+   */
+  /**
+   * The hulls a smoke body may never bury, rebuilt once per smoke publish (the writer clears
+   * `_smokeProtectedFrame` at the top of each pass). Once per pass, not once per billow: smoke
+   * instances are few and the entity list can be long, so a per-billow scan would be the expensive
+   * way to answer a question whose answer cannot change inside one frame. Rebuilding per pass also
+   * keeps a hull that dies mid-fight honest on the very next frame.
+   */
+  _smokeProtectedHulls() {
+    if (this._smokeProtectedFrame === true) return this._smokeProtectedList;
+    const state = this.state;
+    const list = [];
+    const player = smokeProtectedHull(state, state && state.playerId);
+    if (player) list.push(player);
+    const entities = state && state.entityList;
+    if (Array.isArray(entities)) {
+      for (let i = 0; i < entities.length; i++) {
+        const e = entities[i];
+        if (!e || e.alive === false || e.id === state.playerId) continue;
+        const data = e.data;
+        if (!data || (data.swarmChampion !== true && data.isBoss !== true && data.bossId == null)) continue;
+        list.push(e);
+      }
+    }
+    this._smokeProtectedFrame = true;
+    this._smokeProtectedList = list;
+    return list;
+  },
+
+  _smokeOpacityCapNear(x, z, scale) {
+    const hulls = this._smokeProtectedHulls();
+    if (!hulls.length) return 1;
+    const radius = Math.max(0.5, Number(scale) || 0);
+    let cap = 1;
+    for (let i = 0; i < hulls.length; i++) {
+      const hull = hulls[i];
+      const bodyRadius = Math.max(2, Number(hull.radius) || 2);
+      const distance = Math.hypot((hull.pos.x || 0) - x, (hull.pos.z || 0) - z);
+      // Overlap begins when the billow's own disc reaches the hull's disc.
+      const overlap = distance - (radius * 0.5 + bodyRadius);
+      const t = Math.max(0, Math.min(1, overlap / Math.max(8, bodyRadius * 2.4)));
+      const allowed = SMOKE_NEAR_BODY_MIN_OPACITY + (1 - SMOKE_NEAR_BODY_MIN_OPACITY) * t;
+      if (allowed < cap) cap = allowed;
+    }
+    return cap;
   },
 
   _lowestPrioritySpriteSlot() {
@@ -15996,6 +16070,8 @@ export const vfx = {
     // in their cheaper additive path. Insertion sort is allocation-free and efficient for this
     // bounded, usually small pool whose ordering changes gradually between adjacent frames.
     const camera = this.state && this.state.render && this.state.render.camera;
+    // VFX-02: the protected-hull census is built once here for the whole smoke pass.
+    this._smokeProtectedFrame = false;
     const camX = camera && camera.position ? camera.position.x : 0;
     const camY = camera && camera.position ? camera.position.y : 0;
     const camZ = camera && camera.position ? camera.position.z : 0;
@@ -16023,11 +16099,16 @@ export const vfx = {
       const s = st[smokeOrder[orderIndex]];
       const t = s.age / s.life;
       const scale = s.size0 + (s.size1 - s.size0) * spritePuffGrowth(t, s.seed);
+      // VFX-02: a smoke body may not bury a boss or the player. The cap is measured where the
+      // sprite is actually written, so every emitter (residue billows, pressure shears, dust
+      // vents) obeys the same rule instead of each one re-deriving it.
+      const cap = this._smokeOpacityCapNear(s.x, s.z, scale);
+      const smokeOpacity = (s.op0 + (s.op1 - s.op0) * t) * cap;
       if (this._spriteBatches.flip) {
         writeInstancedSpriteFields(
           this._spriteBatches, 'flipSmoke',
           s.x, s.y, s.z, scale * 1.3, scale * 1.3, scale * 1.3,
-          s.roll, s.r, s.g, s.b, s.op0 + (s.op1 - s.op0) * t, t, s.seed, s.axis,
+          s.roll, s.r, s.g, s.b, smokeOpacity, t, s.seed, s.axis,
         );
         continue;
       }
@@ -16044,7 +16125,7 @@ export const vfx = {
         s.r,
         s.g,
         s.b,
-        s.op0 + (s.op1 - s.op0) * t,
+        smokeOpacity,
         t,
         s.seed,
         s.axis,
