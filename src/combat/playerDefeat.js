@@ -154,13 +154,14 @@ function entityById(state, id) {
 
 /**
  * A dead contact keeps its name for a short window. survivalResults stamps
- * `run.recentKillerLabels[id] -> {label, factionId, tick}` at kill time while the body is
- * still named, so a champion's last volley — landing after the body is reaped — still
- * credits the champion, not 'Unknown contact'.
+ * `run.telemetry.recentKillerLabels[id] -> {label, factionId, tick}` at kill time while the
+ * body is still named, so a champion's last volley — landing after the body is reaped —
+ * still credits the champion, not 'Unknown contact'.
  */
 const RECENT_KILLER_LABEL_TTL_TICKS = 7200; // 120 s at 60 Hz
 function recentKillerEntry(state, attackerId) {
-  const ledger = state && state.run && state.run.recentKillerLabels;
+  const run = state && state.run;
+  const ledger = run && run.telemetry && run.telemetry.recentKillerLabels;
   if (!ledger || typeof ledger !== 'object') return null;
   const entry = ledger[String(attackerId)];
   if (!entry || typeof entry !== 'object' || typeof entry.label !== 'string' || !entry.label) return null;
