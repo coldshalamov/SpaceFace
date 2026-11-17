@@ -386,6 +386,20 @@ function playerHullScreenRect(player, w2s) {
   return { x: screen.x - size / 2, y: screen.y - size / 2, w: size, h: size };
 }
 
+function pointUnderHud(x, y, rects) {
+  if (!Array.isArray(rects) && !(rects && typeof rects.length === 'number')) return false;
+  for (let i = 0; i < rects.length; i++) {
+    const r = rects[i];
+    const left = Number(r?.left ?? r?.x);
+    const top = Number(r?.top ?? r?.y);
+    const w = Number(r?.width ?? r?.w);
+    const h = Number(r?.height ?? r?.h);
+    if (![left, top, w, h].every(Number.isFinite) || !(w > 0) || !(h > 0)) continue;
+    if (x >= left && x <= left + w && y >= top && y <= top + h) return true;
+  }
+  return false;
+}
+
 function placeHudBracketWords(owner, element, text, mark, player, w2s, viewport) {
   return placeBracketWords(mark, playerHullScreenRect(player, w2s),
     bracketWordSize(element, text, viewport), viewport, owner._flightTextObstacles);
@@ -1528,6 +1542,10 @@ export const masslineHud = {
     const pinned = offscreen ? pinToCueRing(targetScreen.x, targetScreen.y, viewportWidth, viewportHeight) : null;
     const cueX = pinned ? pinned.x : targetScreen.x;
     const cueY = pinned ? pinned.y : targetScreen.y;
+    // World markers stay out of HUD rects: a diamond under the action wheel, the radar or a card
+    // is not on the object any more, it is on the furniture. The mark waits for the cursor to
+    // leave (the aria state is simply not announced while hidden).
+    if (!offscreen && pointUnderHud(cueX, cueY, this._flightTextObstacles)) return this._hideAcquisitionPreview(dom);
     const ready = selected.status === 'ready';
     const read = resolveMasslineBracketRead(selected.status, selected.reason);
     const seedPreview = target.type === 'massSeed' ? massSeedLatchPreview(target) : null;

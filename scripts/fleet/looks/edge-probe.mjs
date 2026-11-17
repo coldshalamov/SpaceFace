@@ -43,7 +43,7 @@ try {
   await page.screenshot({ path: `${out}-frame.png` });
   const report = await page.evaluate(() => {
     const out = [];
-    for (const [x, y] of [[1262, 360], [1266, 380], [1270, 345], [1275, 395], [10, 330], [10, 380]]) {
+    for (const [x, y] of [[850, 287], [720, 287], [1000, 287], [860, 150]]) {
       const els = document.elementsFromPoint(x, y).filter((e) => e !== document.documentElement && e !== document.body).slice(0, 5);
       out.push({ at: [x, y], els: els.map((e) => `${e.tagName.toLowerCase()}.${String(e.className && e.className.baseVal !== undefined ? e.className.baseVal : e.className).slice(0, 80)}#${e.id || ''}`) });
     }

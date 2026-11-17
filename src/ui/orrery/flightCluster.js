@@ -83,8 +83,8 @@ const CSS = `
 /* SFQ-B202 / B208 / B209 — the next decision sits under the legend, off the hull art and off
    the arrival fade. Large text uses the same scale token as the rest of the UI. Reduced motion
    never waits on this line: it is not an orr-cluster__fade child. */
-.orr-cluster__next { position:absolute; top:${P.y + 146}px; width:250px; margin:0;
-  left: calc(${P.x - 62}px - (12px / var(--orr-cluster-scale, 1) - 12px) * 5);
+.orr-cluster__next { position:absolute; top:${P.y + 146}px; width:214px; margin:0;
+  left: calc(${P.x - 62 + 36}px - (12px / var(--orr-cluster-scale, 1) - 12px) * 5);
   font-family:var(--dp-face-label, inherit); font-weight:560; line-height:1.25;
   font-size:max(12px, calc(13px * var(--sf-text-scale, 1))); color:var(--dp-danger, #ff5038);
   pointer-events:none; animation:none !important; }

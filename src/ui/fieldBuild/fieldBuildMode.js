@@ -1,6 +1,7 @@
 // Field Architect — Seamless No-Loading-Screen Asteroid Field Command & Build Mode.
 // Operates live inside state.mode === 'flight', shifting the chase camera into tactical
 // overview and projecting interactive Mindustry/StarCraft/Alpha-Centauri controls directly over the 3D belt.
+import { isSwarmGlass } from '../swarmGlass.js';
 import { classifySiteSpecialization } from '../../data/sites.js';
 import { ASTEROIDS, ASTEROID_SCAN_GLYPH_BY_TYPE } from '../../data/mining.js';
 import {
@@ -935,7 +936,12 @@ export function createFieldBuildMode(ctx) {
     // The badge rides the pill in ordinary flight, so it still has to track the sector count —
     // but touching textContent/hidden every frame was a steady invalidation source even when
     // nothing changed. Write only when the pill is shown and only when the value differs.
-    const pillHidden = !(inFlight && (hudVisible || active));
+    // The pill is an ordinary-flight convenience: it steps out of the way of a fight (the target
+    // card, the WANTED banner and the radio all live in its corner) and of a Swarm round.
+    const hudJob = typeof document !== 'undefined' && document.body && document.body.dataset
+      ? document.body.dataset.sfHudJob : '';
+    const busyCorner = !active && (hudJob === 'fight' || hudJob === 'hurt' || isSwarmGlass(state));
+    const pillHidden = !(inFlight && (hudVisible || active)) || busyCorner;
     if (pillBtn.hidden !== pillHidden) pillBtn.hidden = pillHidden;
     if (!pillHidden) {
       const sys = currentSiteSys();

@@ -22,6 +22,7 @@ export const AVOID_SELECTORS = Object.freeze([
   '.sf-cargo-panel',
   '#sf-sector-law',
   '.sf-commtape',
+  '.fb-pill-btn:not([hidden])',   // Field Build chip: world tags keep out of its slot
   // The flight cluster (speed dial, hull/shield, power ring): 'CONCUSSION CANNON S · 500' printed over the speed
   // numeral in a Swarm fight (lead look, round 12).
   '#hud .orr-speeddial',
