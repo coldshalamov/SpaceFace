@@ -3,10 +3,10 @@
   "generatedAt": "2026-11-16T09:37:39.925Z",
   "note": "One durable status per model ID. `unused/unresolved` is a disposition for unresolved linkage or identity, not proof of non-use or permission to delete. Review details and evidence remain in the per-model facts and append-only journals. Index refreshes and status updates rewrite this whole file; serialize those commands and do not run concurrent status writers.",
   "statusCounts": {
-    "pending": 59,
+    "pending": 55,
     "in progress": 0,
-    "passed": 331,
-    "needs follow-up": 128,
+    "passed": 349,
+    "needs follow-up": 114,
     "unused/unresolved": 3048
   },
   "models": {
@@ -5560,7 +5560,7 @@
       "updatedAt": "2026-11-17T03:54:30.369Z"
     },
     "runtime:place_aftermath_deb_corvette_armor_belt:place_aftermath_deb_corvette_armor_belt": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -5583,19 +5583,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Separated dark armor strips with red markings and thin structural rods; some small fragments float. Package: 20 primitives, 4 materials.",
-      "issues": "Ordinary wreck-field appearance and any condition variants remain unverified. Preserve salvage/hazard sockets and condition semantics; no FPS claim.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_deb_corvette_armor_belt_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_deb_corvette_armor_belt_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_corvette_armor_belt_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_corvette_armor_belt_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_corvette_armor_belt_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.678Z"
+      "updatedAt": "2026-11-17T04:14:51.189Z"
     },
     "runtime:place_aftermath_deb_corvette_barbette_ring:place_aftermath_deb_corvette_barbette_ring": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -5618,19 +5621,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Dark circular armored mount with radial blocks; surface remains subdued. Package: 10 primitives, 5 materials; dead-condition finish.",
-      "issues": "Ordinary wreck-field appearance and any condition variants remain unverified. Preserve salvage/hazard sockets and condition semantics; no FPS claim.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_deb_corvette_barbette_ring_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_deb_corvette_barbette_ring_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_corvette_barbette_ring_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_corvette_barbette_ring_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_corvette_barbette_ring_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.696Z"
+      "updatedAt": "2026-11-17T04:14:52.386Z"
     },
     "runtime:place_aftermath_deb_liner_drive_pod:place_aftermath_deb_liner_drive_pod": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -5653,87 +5659,98 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Broken drive segment and protruding plates visible from close angle, dark at place scale. Package: 33 primitives, 8 materials; preserve dead drive finish.",
-      "issues": "Ordinary wreck-field appearance and any condition variants remain unverified. Preserve salvage/hazard sockets and condition semantics; no FPS claim.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_deb_liner_drive_pod_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_deb_liner_drive_pod_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_liner_drive_pod_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_liner_drive_pod_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_liner_drive_pod_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.710Z"
+      "updatedAt": "2026-11-17T04:14:53.376Z"
     },
     "runtime:place_aftermath_deb_liner_hull_panel_authored_down:place_aftermath_deb_liner_hull_panel_authored_down": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/wreck_aftermath_pack/authored_down/deb_liner_hull_panel.glb",
           "sha256": "fe186bf50c2c884c03ce94994da3b4e93d67d0fff6b8cedab414b4ab6f361453",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/aftermath-deb-liner-hull-panel-authored-down/render.glb",
-          "sha256": "61b24013177e52b0975193652a16165ce98985e1c8d057e4a69371374750dca5",
-          "sha256Source": "catalog-only"
+          "sha256": "50d2b99af5e9ccc2ccfde7f41aa20ce18d4e231903784a0b66b9129b9f2a5aff",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_aftermath_deb_liner_hull_panel_authored_down.glb",
           "sha256": "1ab99adecd6265e270534b312cae2f8f46e61c328c21dc00462f3430864d976d",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views."
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No change; the authored-down liner panel has a strong curved plated silhouette and blue inset band.",
-      "issues": "Check the added perched detail and cyan point light in an ordinary wreck composition; retain functional cueing but avoid a light that reads detached from the hull.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_deb_liner_hull_panel_authored_down_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_deb_liner_hull_panel_authored_down_inspect.png"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_liner_hull_panel_authored_down_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_liner_hull_panel_authored_down_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_liner_hull_panel_authored_down_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T15:06:55.084Z"
+      "updatedAt": "2026-11-17T04:14:53.861Z"
     },
     "runtime:place_aftermath_deb_liner_hull_panel:place_aftermath_deb_liner_hull_panel": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/wreck_aftermath_pack/source/deb_liner_hull_panel.glb",
           "sha256": "dad08e62d83367f9f03d15a7ebb9c8ea96d4be30e88293e2f1e5a92cbe5894fa",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/aftermath-deb-liner-hull-panel/render.glb",
           "sha256": "19959f1dac90cda5338c2f54770ab5f1cb36f9e622c8494ae56cbc7b2be71342",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_aftermath_deb_liner_hull_panel.glb",
           "sha256": "9440b250ddb599805d7a372f93c6ed39a53f58a6208dc0fae10396da3fbcc38b",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views."
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No change; the liner panel carries a readable plated hull face and bright lower service lamps.",
-      "issues": "Check the lower lamps against the gameplay scene so their glow remains a functional cue rather than a washed-out visual anchor.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_deb_liner_hull_panel_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_deb_liner_hull_panel_inspect.png"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_liner_hull_panel_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_liner_hull_panel_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_liner_hull_panel_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T15:06:55.277Z"
+      "updatedAt": "2026-11-17T04:14:55.113Z"
     },
     "runtime:place_aftermath_deb_ore_freighter_drive_bell:place_aftermath_deb_ore_freighter_drive_bell": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -5756,87 +5773,98 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Fractured engine frame and bell forms visible close, dark and narrow at place scale. Package: 42 primitives, 9 materials; preserve dead drive finish.",
-      "issues": "Ordinary wreck-field appearance and any condition variants remain unverified. Preserve salvage/hazard sockets and condition semantics; no FPS claim.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_deb_ore_freighter_drive_bell_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_deb_ore_freighter_drive_bell_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_ore_freighter_drive_bell_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_ore_freighter_drive_bell_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_ore_freighter_drive_bell_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.723Z"
+      "updatedAt": "2026-11-17T04:14:56.100Z"
     },
     "runtime:place_aftermath_deb_ore_freighter_hopper_lid_authored_down:place_aftermath_deb_ore_freighter_hopper_lid_authored_down": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/wreck_aftermath_pack/authored_down/deb_ore_freighter_hopper_lid.glb",
           "sha256": "036c86b7e57c5c3dfbd2763ea2bd3ec1a2ef3b33b0ebc60416aa7844ccf985a4",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/aftermath-deb-ore-freighter-hopper-lid-authored-down/render.glb",
           "sha256": "faed2284a55aa37976c7dabad6cb99fb1f9d08b3a7ad11224869447372581713",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_hopper_lid_authored_down.glb",
           "sha256": "3cf8e771f5fd04c261e5d122f4d14693def01f6177bdcba90c2463e465e8e102",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views."
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No change; the authored-down hopper lid presents layered brown wreck plates and scatter.",
-      "issues": "Need a contextual debris-field view to tell whether the layered plates form a readable damaged unit or collapse into a uniformly brown pile.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_deb_ore_freighter_hopper_lid_authored_down_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_deb_ore_freighter_hopper_lid_authored_down_inspect.png"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_ore_freighter_hopper_lid_authored_down_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_ore_freighter_hopper_lid_authored_down_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_ore_freighter_hopper_lid_authored_down_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T15:06:55.518Z"
+      "updatedAt": "2026-11-17T04:14:57.896Z"
     },
     "runtime:place_aftermath_deb_ore_freighter_hopper_lid:place_aftermath_deb_ore_freighter_hopper_lid": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/wreck_aftermath_pack/source/deb_ore_freighter_hopper_lid.glb",
           "sha256": "b23be11b613007b6ad75bfdfc3b23919e297325c41356ca294deb2d0dc626117",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/aftermath-deb-ore-freighter-hopper-lid/render.glb",
           "sha256": "6f80ba1782de928730372bc9d4ada9b8940d9926cd8f2b0ff0e07377954334e0",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_hopper_lid.glb",
           "sha256": "a3e3c11ccc72c24050c6fe1a0a09901e22514d2980b1275d2d0c28f11d05e117",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views."
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No change; the hopper lid keeps the layered wreck silhouette with brighter lower rails.",
-      "issues": "Need a contextual debris-field view to distinguish this from its authored-down version and test whether the rails read as construction rather than loose strips.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_deb_ore_freighter_hopper_lid_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_deb_ore_freighter_hopper_lid_inspect.png"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_ore_freighter_hopper_lid_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_ore_freighter_hopper_lid_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_ore_freighter_hopper_lid_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T15:06:55.703Z"
+      "updatedAt": "2026-11-17T04:14:58.819Z"
     },
     "runtime:place_aftermath_deb_ore_freighter_ring_span:place_aftermath_deb_ore_freighter_ring_span": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -5859,16 +5887,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Partial ring and isolated plates read as debris close; very narrow in place view. Package: 8 primitives, 2 materials; no declared sockets. No safe geometry removal established.",
-      "issues": "Ordinary placement and motion remain unverified; preserve condition, hazard, salvage and dynamic boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/place_aftermath_deb_ore_freighter_ring_span_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/place_aftermath_deb_ore_freighter_ring_span_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_ore_freighter_ring_span_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_ore_freighter_ring_span_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/place_aftermath_deb_ore_freighter_ring_span_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-deb-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.739Z"
+      "updatedAt": "2026-11-17T04:14:59.866Z"
     },
     "runtime:place_aftermath_frag_cable_bundle:place_aftermath_frag_cable_bundle": {
       "status": "passed",
@@ -7359,7 +7390,7 @@
       "updatedAt": "2026-11-17T01:11:14.068Z"
     },
     "runtime:place_dead_hulk:place_dead_hulk": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -7382,16 +7413,18 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Long dark broken hulk with exposed midsection reads as debris, but details are subdued. Package: 34 stored primitives across LODs, 11 materials; preserve collision, Hazard_Core and Salvage_Core sockets and NAV hooks. No concrete safe removal established.",
-      "issues": "Ordinary world placement, operation and lighting remain unverified. Preserve collision, sockets, named LOD and dynamic parts; check prominent simple or apparently detached elements in context.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/service-20261116/place_dead_hulk_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/service-20261116/place_dead_hulk_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/service-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_dead_hulk_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_dead_hulk_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_dead_hulk_inspect.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.299Z"
+      "updatedAt": "2026-11-17T04:13:08.702Z"
     },
     "runtime:place_debris_chunk:place_debris_chunk": {
       "status": "passed",
@@ -7719,23 +7752,18 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views",
-        "Corrected scratch candidate Direct3D place and inspect"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Two flat untextured slabs and a central gap; reads as placeholder geometry in isolation. Package: 2 primitives, 36 triangles, 2 materials. No textures or named LOD/socket/dynamic metadata; no safe removal established. Scratch story-informed candidate created; production release remains unchanged. Corrected scratch candidate loaded; Ice stripes are very regular and bright; the object still reads as two flat panels rather than a natural fracture.",
-      "issues": "Trace ordinary use, placement and story intent before designing replacement detail. Isolated placeholder-like appearance needs substantial visual work; do not infer unused or delete. Candidate loader and visual review queued. First candidate render failed authored-part metadata contract; no visual pass. Scratch metadata correction in progress. Second load rejected missing LOD0 tags; no visual pass. Correction in progress. Candidate is not accepted or integrated; loader success is not visual acceptance. Revisit material and story-led construction after broader coverage.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Capture limitation (megastructure framing), not a model defect.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_haumea_fracture_mouth_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_haumea_fracture_mouth_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/report.json",
-        ".devshots/fleet/landmark-candidates-20261116/place_haumea_fracture_mouth.glb",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-corrected-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_haumea_fracture_mouth_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_haumea_fracture_mouth_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_haumea_fracture_mouth_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_haumea_fracture_mouth_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_haumea_fracture_mouth_inspect.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.402Z",
+      "updatedAt": "2026-11-17T04:13:09.398Z",
       "family": "World landmarks"
     },
     "runtime:place_hull_rack:place_hull_rack": {
@@ -7800,23 +7828,18 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views",
-        "Corrected scratch candidate Direct3D place and inspect"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: A single plain dark disc, with no visible surface detail. Package: 1 primitive, 256 triangles, 1 material. No textures or named LOD/socket/dynamic metadata; no safe removal established. Scratch story-informed candidate created; production release remains unchanged. Corrected scratch candidate loaded; The intentionally empty gap remains a flat dark disc; unchanged concept needs world-context evaluation, not a claimed visual upgrade.",
-      "issues": "Trace ordinary use, placement and story intent before designing replacement detail. Isolated placeholder-like appearance needs substantial visual work; do not infer unused or delete. Candidate loader and visual review queued. First candidate render failed authored-part metadata contract; no visual pass. Scratch metadata correction in progress. Second load rejected missing LOD0 tags; no visual pass. Correction in progress. Candidate is not accepted or integrated; loader success is not visual acceptance. Revisit material and story-led construction after broader coverage.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Capture limitation (megastructure framing), not a model defect.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_hush_gap_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_hush_gap_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/report.json",
-        ".devshots/fleet/landmark-candidates-b/place_hush_gap.glb",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-corrected-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_hush_gap_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_hush_gap_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_hush_gap_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_hush_gap_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_hush_gap_inspect.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.406Z",
+      "updatedAt": "2026-11-17T04:13:11.864Z",
       "family": "World landmarks"
     },
     "runtime:place_hyperion_caved_shaft:place_hyperion_caved_shaft": {
@@ -7843,23 +7866,18 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views",
-        "Corrected scratch candidate Direct3D place and inspect"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Simple brown ring with tooth-like inner edge and crossbar; broad faces are flat. Package: 2 primitives, 260 triangles, 2 materials. No textures or named LOD/socket/dynamic metadata; no safe removal established. Scratch story-informed candidate created; production release remains unchanged. Corrected scratch candidate loaded; Faceted ring is more rocky, but remains a uniform low-poly doughnut with a straight bar.",
-      "issues": "Trace ordinary use, placement and story intent before designing replacement detail. Isolated placeholder-like appearance needs substantial visual work; do not infer unused or delete. Candidate loader and visual review queued. First candidate render failed authored-part metadata contract; no visual pass. Scratch metadata correction in progress. Second load rejected missing LOD0 tags; no visual pass. Correction in progress. Candidate is not accepted or integrated; loader success is not visual acceptance. Revisit material and story-led construction after broader coverage.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Capture limitation (megastructure framing), not a model defect.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_hyperion_caved_shaft_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_hyperion_caved_shaft_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/report.json",
-        ".devshots/fleet/landmark-candidates-b/place_hyperion_caved_shaft.glb",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-corrected-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_hyperion_caved_shaft_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_hyperion_caved_shaft_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_hyperion_caved_shaft_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_hyperion_caved_shaft_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_hyperion_caved_shaft_inspect.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.412Z",
+      "updatedAt": "2026-11-17T04:13:12.484Z",
       "family": "World landmarks"
     },
     "runtime:place_illicit_transfer_frame:place_illicit_transfer_frame": {
@@ -8034,23 +8052,18 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views",
-        "Corrected scratch candidate Direct3D place and inspect"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Two overlapping rectangular beams; no visible wreck detail. Package: 2 primitives, 72 triangles, 2 materials. No textures or named LOD/socket/dynamic metadata; no safe removal established. Scratch story-informed candidate created; production release remains unchanged. Corrected scratch candidate loaded; Added regular ribs and panels add structure, but the silhouette still reads as an abstract box rather than a broken cruiser.",
-      "issues": "Trace ordinary use, placement and story intent before designing replacement detail. Isolated placeholder-like appearance needs substantial visual work; do not infer unused or delete. Candidate loader and visual review queued. First candidate render failed authored-part metadata contract; no visual pass. Scratch metadata correction in progress. Second load rejected missing LOD0 tags; no visual pass. Correction in progress. Candidate is not accepted or integrated; loader success is not visual acceptance. Revisit material and story-led construction after broader coverage.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Capture limitation (megastructure framing), not a model defect.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_io_reach_wreck_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_io_reach_wreck_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/report.json",
-        ".devshots/fleet/landmark-candidates-20261116/place_io_reach_wreck.glb",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-corrected-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_io_reach_wreck_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_io_reach_wreck_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_io_reach_wreck_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_io_reach_wreck_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_io_reach_wreck_inspect.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.455Z",
+      "updatedAt": "2026-11-17T04:13:13.070Z",
       "family": "World landmarks"
     },
     "runtime:place_last_shift_fairlead:place_last_shift_fairlead": {
@@ -8077,15 +8090,18 @@
         }
       ],
       "views": [
-        "CPU Blender LOD0 studio view with release KTX2 textures transcoded to PNG"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No asset changes; supplemental textured release view inspected.",
-      "issues": "Broken-end panel and central fairlead read with visible engraved surface detail. Release GLB SHA-256 d380aecb39c89319cecfb886faf3b258851456ae3c3806087dc9990d967ec78c. Blender interpretation differs from game; runtime package, gameplay scale and practical efficiency remain unverified.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Capture limitation (megastructure framing), not a model defect.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/cpu-preview-20261116/place_last_shift_fairlead-textured.png",
-        "assets/ships/release/parts/places/place_last_shift_fairlead.glb"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_last_shift_fairlead_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_last_shift_fairlead_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-1/place_last_shift_fairlead_inspect.png"
       ],
-      "updatedAt": "2026-11-16T07:29:38.964Z"
+      "updatedAt": "2026-11-17T04:13:13.643Z"
     },
     "runtime:place_maintenance_gantry:place_maintenance_gantry": {
       "status": "passed",
@@ -8149,23 +8165,18 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views",
-        "Corrected scratch candidate Direct3D place and inspect"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Plain ring with orange bar and dark triangular inner edge. Package: 2 primitives, 292 triangles, 2 materials. No textures or named LOD/socket/dynamic metadata; no safe removal established. Scratch story-informed candidate created; production release remains unchanged. Corrected scratch candidate loaded; Ring segmentation adds detail but the orange bar and simple ring still look schematic.",
-      "issues": "Trace ordinary use, placement and story intent before designing replacement detail. Isolated placeholder-like appearance needs substantial visual work; do not infer unused or delete. Candidate loader and visual review queued. First candidate render failed authored-part metadata contract; no visual pass. Scratch metadata correction in progress. Second load rejected missing LOD0 tags; no visual pass. Correction in progress. Candidate is not accepted or integrated; loader success is not visual acceptance. Revisit material and story-led construction after broader coverage.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Capture limitation (megastructure framing), not a model defect.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_nyx_false_gate_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_nyx_false_gate_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/report.json",
-        ".devshots/fleet/landmark-candidates-20261116/place_nyx_false_gate.glb",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-corrected-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_nyx_false_gate_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_nyx_false_gate_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-2/place_nyx_false_gate_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-2/place_nyx_false_gate_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-2/place_nyx_false_gate_inspect.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.460Z",
+      "updatedAt": "2026-11-17T04:13:15.240Z",
       "family": "World landmarks"
     },
     "runtime:place_observation_blister:place_observation_blister": {
@@ -8231,15 +8242,18 @@
         }
       ],
       "views": [
-        "CPU Blender LOD0 studio view with release KTX2 textures transcoded to PNG"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No asset changes; supplemental textured release view inspected.",
-      "issues": "Rectangular post and lamp are stark and very pale under studio lighting; game context is needed. Release GLB SHA-256 f364d4d2455f6d78bae25b7c3f3984f441ac9e397396e4fc65bfe3e46cdf8654. Blender interpretation differs from game; runtime package, gameplay scale and practical efficiency remain unverified.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Capture limitation (megastructure framing), not a model defect.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/cpu-preview-20261116/place_orcus_signal_plinth-textured.png",
-        "assets/ships/release/parts/places/place_orcus_signal_plinth.glb"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-2/place_orcus_signal_plinth_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-2/place_orcus_signal_plinth_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-2/place_orcus_signal_plinth_inspect.png"
       ],
-      "updatedAt": "2026-11-16T07:29:39.092Z"
+      "updatedAt": "2026-11-17T04:13:15.977Z"
     },
     "runtime:place_ore_bulk_container:place_ore_bulk_container": {
       "status": "passed",
@@ -8417,23 +8431,18 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views",
-        "Corrected scratch candidate Direct3D place and inspect"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Loose sphere of rectangular gray blocks; shape reads but shards are extremely simple. Package: 60 primitives, 720 triangles, 1 material; possible static batching subject to shard ownership and culling. No textures or named LOD/socket/dynamic metadata; no safe removal established. Scratch story-informed candidate created; production release remains unchanged. Corrected scratch candidate loaded; Individual tapered shards are nearly invisible at place scale and target draws doubled from 60 to 120.",
-      "issues": "Trace ordinary use, placement and story intent before designing replacement detail. Isolated placeholder-like appearance needs substantial visual work; do not infer unused or delete. Candidate loader and visual review queued. First candidate render failed authored-part metadata contract; no visual pass. Scratch metadata correction in progress. Second load rejected missing LOD0 tags; no visual pass. Correction in progress. Candidate is not accepted or integrated; loader success is not visual acceptance. Revisit material and story-led construction after broader coverage.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Capture limitation (megastructure framing), not a model defect.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_phoebe_shard_sphere_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_phoebe_shard_sphere_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/report.json",
-        ".devshots/fleet/landmark-candidates-b/place_phoebe_shard_sphere.glb",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-corrected-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_phoebe_shard_sphere_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_phoebe_shard_sphere_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-2/place_phoebe_shard_sphere_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-2/place_phoebe_shard_sphere_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-2/place_phoebe_shard_sphere_inspect.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.503Z",
+      "updatedAt": "2026-11-17T04:13:17.215Z",
       "family": "World landmarks"
     },
     "runtime:place_pirate_sensor_mast:place_pirate_sensor_mast": {
@@ -8770,23 +8779,18 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views",
-        "Corrected scratch candidate Direct3D place and inspect"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Brown C-shaped arc with repeated boxes; surfaces lack texture or detail. Package: 2 primitives, 824 triangles, 2 materials. No textures or named LOD/socket/dynamic metadata; no safe removal established. Scratch story-informed candidate created; production release remains unchanged. Corrected scratch candidate loaded; Faceted boxes add color but do not yet convey the ancient basins and city grid.",
-      "issues": "Trace ordinary use, placement and story intent before designing replacement detail. Isolated placeholder-like appearance needs substantial visual work; do not infer unused or delete. Candidate loader and visual review queued. First candidate render failed authored-part metadata contract; no visual pass. Scratch metadata correction in progress. Second load rejected missing LOD0 tags; no visual pass. Correction in progress. Candidate is not accepted or integrated; loader success is not visual acceptance. Revisit material and story-led construction after broader coverage.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Capture limitation (megastructure framing), not a model defect.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_sedna_ringworld_arc_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_sedna_ringworld_arc_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/report.json",
-        ".devshots/fleet/landmark-candidates-b/place_sedna_ringworld_arc.glb",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-corrected-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_sedna_ringworld_arc_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_sedna_ringworld_arc_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-2/place_sedna_ringworld_arc_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-2/place_sedna_ringworld_arc_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-2/place_sedna_ringworld_arc_inspect.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.559Z",
+      "updatedAt": "2026-11-17T04:13:17.692Z",
       "family": "World landmarks"
     },
     "runtime:place_sensor_mast:place_sensor_mast": {
@@ -9115,23 +9119,18 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views",
-        "Corrected scratch candidate Direct3D place and inspect"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Bare rectangular aperture with a cyan cube; broad untextured faces. Package: 2 primitives, 60 triangles, 2 materials. No textures or named LOD/socket/dynamic metadata; no safe removal established. Scratch story-informed candidate created; production release remains unchanged. Corrected scratch candidate loaded; Incisions add minor detail but broad flat faces and a bright cube remain dominant.",
-      "issues": "Trace ordinary use, placement and story intent before designing replacement detail. Isolated placeholder-like appearance needs substantial visual work; do not infer unused or delete. Candidate loader and visual review queued. First candidate render failed authored-part metadata contract; no visual pass. Scratch metadata correction in progress. Second load rejected missing LOD0 tags; no visual pass. Correction in progress. Candidate is not accepted or integrated; loader success is not visual acceptance. Revisit material and story-led construction after broader coverage.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Capture limitation (megastructure framing), not a model defect.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_triton_aperture_monolith_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/place_triton_aperture_monolith_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmarks-20261116/report.json",
-        ".devshots/fleet/landmark-candidates-20261116/place_triton_aperture_monolith.glb",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-corrected-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_triton_aperture_monolith_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/place_triton_aperture_monolith_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/landmark-candidates-lod0-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-2/place_triton_aperture_monolith_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-2/place_triton_aperture_monolith_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-megasites-20261116/mega-2/place_triton_aperture_monolith_inspect.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.634Z",
+      "updatedAt": "2026-11-17T04:13:20.069Z",
       "family": "World landmarks"
     },
     "runtime:place_utility_module:place_utility_module": {
@@ -13438,36 +13437,45 @@
       "updatedAt": "2026-11-17T04:08:10.174Z"
     },
     "runtime:SF_PLACE_DOCK_INTERIOR_MILITARY:place_dock_interior_military": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_dock_interior_military.glb",
           "sha256": "0e8e70f2e0d626178b60d7d101b63943f59d47f78712aa9cac404aa0f72137ba",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/dock-interior-military/render.glb",
           "sha256": "70a5e9b4dea5d719966e7ff7bd6eb2bd1141e91d4ac99d2e459668116a2308fe",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_dock_interior_military.glb",
           "sha256": "95441b07e5c62120f9d0f6d4bd2b5bb6c3ef1433b2aa6c9869dfe865f1cfbcfc",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.659Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_dock_interior_military_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_dock_interior_military_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_dock_interior_military_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/_sheet_close.png"
+      ],
+      "updatedAt": "2026-11-17T04:13:02.074Z"
     },
     "runtime:SF_PLACE_GATE_JUMP_RING:place_gate_jump_ring": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -13490,16 +13498,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Segmented gate ring with strong cyan aperture cues and dense detail; light function must remain. Package: 109 stored primitives, 12 materials; five sockets, six dynamic groups, twelve gate-tip pivots and collision. Named LOD0–2; no safe merge established.",
-      "issues": "Ordinary gameplay, motion and lighting remain unverified. Preserve functional lights, LODs, collision and named moving/socket boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/place-objects-20261116/place_gate_jump_ring_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/place-objects-20261116/place_gate_jump_ring_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/place-objects-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_gate_jump_ring_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_gate_jump_ring_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_gate_jump_ring_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:32.839Z"
+      "updatedAt": "2026-11-17T04:13:02.829Z"
     },
     "runtime:SF_PLACE_HELIOS_NAV_SPIRE:place_nav_buoy": {
       "status": "passed",
@@ -13855,7 +13866,7 @@
       "updatedAt": "2026-11-17T03:39:23.186Z"
     },
     "runtime:SF_PLACE_LATCH_NINE:place_latch_nine": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -13878,74 +13889,95 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Square latch with rails, paddles and moving parts reads as machinery. Package: 93 stored primitives, 11 materials; eight sockets, 70 dynamic groups, paddles/shutter. Named LOD0–2; no safe merge established.",
-      "issues": "Ordinary gameplay, motion and lighting remain unverified. Preserve functional lights, LODs, collision and named moving/socket boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/place-objects-20261116/place_latch_nine_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/place-objects-20261116/place_latch_nine_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/place-objects-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_latch_nine_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_latch_nine_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_latch_nine_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:33.005Z"
+      "updatedAt": "2026-11-17T04:13:03.151Z"
     },
     "runtime:SF_PLACE_MEMORIAL_ARRAY:place_memorial_array": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_memorial_array.glb",
           "sha256": "cba5f17809aebdf549d3dabf258b1825b9c4043f96f303720267453528b9ef04",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/memorial-array/render.glb",
           "sha256": "65726ca19bc66a99ef03297fd0060409bf061973544850a7d1cfdeaa5c5ffad5",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_memorial_array.glb",
           "sha256": "ce9de7995339c46e5013c31404a76d3a3e2f7553c5ab18ab733463b5e445a4ac",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.659Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_memorial_array_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_memorial_array_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_memorial_array_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/_sheet_close.png"
+      ],
+      "updatedAt": "2026-11-17T04:13:03.833Z"
     },
     "runtime:SF_PLACE_PROTEUS_FUNNEL:place_proteus_funnel": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_proteus_funnel.glb",
           "sha256": "c95ebf38b0b714eaf9adb61e09fcd971b422fb6aab05fdbdbfc38dc502824021",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/proteus-funnel/render.glb",
           "sha256": "4a4d6b6403cde652299f13a4845051dd3b84d47620fa195766dba48dd7824778",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_proteus_funnel.glb",
           "sha256": "9afec20d1b7c23ff291ed97907e3b4f0fde6df597587f4bc86ba69d45595751d",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.659Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_proteus_funnel_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_proteus_funnel_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_proteus_funnel_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/_sheet_close.png"
+      ],
+      "updatedAt": "2026-11-17T04:13:04.384Z"
     },
     "runtime:SF_PLACE_QUIESSENCE_FREIGHTER_A:place_quiessence_freighter_a": {
       "status": "passed",
@@ -15683,103 +15715,118 @@
       "updatedAt": "2026-11-17T00:48:19.681Z"
     },
     "runtime:SF_PLACE_TALLY_3:place_tally_three": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_tally_three.glb",
           "sha256": "b0dfd8a8ea542221e9ea755b3768162f3bdb5f10fe71e4d184d0fb22728c705c",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/tally-three/render.glb",
           "sha256": "a13751f405017be38f1bd094fd297b8d54f8e9afaa7467764d47a8079cdc55e5",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_tally_three.glb",
           "sha256": "84572b9c39b347cc2c373837e881c3340a15219bc2972f7d368172e266c8e943",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.661Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_tally_three_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_tally_three_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_tally_three_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/_sheet_close.png"
+      ],
+      "updatedAt": "2026-11-17T04:13:05.391Z"
     },
     "runtime:SF_PLACE_TALLY_POST:place_tally_post": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_tally_post.glb",
           "sha256": "b2c8a55e3432a114975069a7da935da4e2e0075f12dd1db4a786d5019b333ee1",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/tally-post/render.glb",
-          "sha256": "de48bd564bec50404e78247689b649b404301f0f13bc413e8c3e49523c6bae93",
-          "sha256Source": "catalog-only"
+          "sha256": "337851d3f270f6dfd939c4f281558b7bf47cf5342c1f6f260df50f0ac71631db",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_tally_post.glb",
           "sha256": "c529024582cfa4cfc79a1abaae120847cdf40dfab6e9d68bc0540c658ae493d4",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "CPU Blender LOD0 detail preview of decoded release GLB; textures removed and colors substituted"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No asset changes; supplemental shape view inspected.",
-      "issues": "LOD0 gate shape reads, but lower structure is dark in the supplemental lighting. Release GLB SHA-256 c529024582cfa4cfc79a1abaae120847cdf40dfab6e9d68bc0540c658ae493d4. Runtime package, textures, gameplay-scale view and practical efficiency remain unverified; preview is not a pass.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/cpu-preview-20261116/place_tally_post.png",
-        "assets/ships/release/parts/places/place_tally_post.glb"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_tally_post_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_tally_post_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_tally_post_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T06:39:14.259Z"
+      "updatedAt": "2026-11-17T04:13:06.051Z"
     },
     "runtime:SF_PLACE_WHISTLE:place_whistle": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_whistle.glb",
           "sha256": "d6d16cad7e286d56174f361e9a1a93880b6d3aa56ac81d2f5f771e9d99b1aa8b",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/whistle/render.glb",
           "sha256": "0a6aae57ec0348b9f6fe6b938e9e78278c6ecda953ff492b7fbee74cd59f15d4",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_whistle.glb",
           "sha256": "cdb0fb45a6a5628b245b112ed57b066ce224346576a6c8792a447ac9bd90bbb6",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "CPU Blender LOD0 shape view with substituted materials",
-        "CPU Blender LOD0 studio view with embedded KTX2 textures transcoded to PNG"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No asset changes; reviewed supplemental CPU views including decoded release textures.",
-      "issues": "Horn panel texture is visible and the horn/truss reads in the CPU studio view. Blender interpretation and lighting differ from the game; current runtime package, gameplay-scale appearance and practical efficiency need review.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/cpu-preview-20261116/place_whistle.png",
-        "assets/ships/release/parts/places/place_whistle.glb",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/cpu-preview-20261116/place_whistle-textured.png"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_whistle_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_whistle_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/place_whistle_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T06:49:30.859Z"
+      "updatedAt": "2026-11-17T04:13:07.578Z"
     },
     "runtime:SF_POD_47A_EVIDENCE_SPINDLE:pod_47a_evidence_spindle": {
       "status": "passed",
