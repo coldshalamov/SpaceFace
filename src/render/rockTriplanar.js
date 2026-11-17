@@ -19,12 +19,15 @@ const ROOT = '/assets/ships/release/surfaces/rock-triplanar/';
 
 /** world units one tile covers; tint multiplies the generated albedo (value governor per substance). */
 export const ROCK_TRIPLANAR_FAMILIES = Object.freeze({
-  silicate: Object.freeze({ files: { baseColor: `${ROOT}silicate_basecolor.jpg`, normal: `${ROOT}silicate_normal.png` }, tile: 38, normal: 1.0, tint: [0.92, 0.9, 0.88], metal: 0 }),
-  slag: Object.freeze({ files: null, alias: 'silicate', tile: 30, normal: 1.15, tint: [0.62, 0.58, 0.56], metal: 0 }),
-  metal: Object.freeze({ files: { baseColor: `${ROOT}metal_basecolor.jpg`, normal: `${ROOT}metal_normal.png` }, tile: 34, normal: 1.1, tint: [1.0, 1.0, 1.02], metal: 0.55 }),
-  crystal: Object.freeze({ files: { baseColor: `${ROOT}crystal_basecolor.jpg`, normal: `${ROOT}crystal_normal.png` }, tile: 30, normal: 1.0, tint: [0.95, 0.92, 1.0], metal: 0 }),
-  ice: Object.freeze({ files: { baseColor: `${ROOT}ice_basecolor.jpg`, normal: `${ROOT}ice_normal.png` }, tile: 36, normal: 0.9, tint: [0.78, 0.82, 0.86], metal: 0 }),
-  cooked: Object.freeze({ files: null, alias: 'silicate', tile: 34, normal: 1.1, tint: [0.78, 0.62, 0.52], metal: 0 }),
+  // sat: how much of the generated colour survives (the Helios key light tints, the stone does not shout);
+  // contrast: value spread around mid-grey; rough: base roughness; ao: cavity strength from the normal slope;
+  // ember: hot-vein emission (0 off); metal: bright-fleck metalness; frost: lifts pale facets.
+  silicate: Object.freeze({ files: { baseColor: `${ROOT}silicate_basecolor.jpg`, normal: `${ROOT}silicate_normal.png` }, tile: 38, normal: 1.15, tint: [1.30, 1.33, 1.44], sat: 0.40, contrast: 1.25, rough: 0.9, ao: 1.1, ember: 0, metal: 0, frost: 0 }),
+  slag: Object.freeze({ files: null, alias: 'silicate', tile: 30, normal: 1.3, tint: [0.30, 0.29, 0.32], sat: 0.25, contrast: 1.5, rough: 0.34, ao: 1.0, ember: 2.4, metal: 0, frost: 0 }),
+  metal: Object.freeze({ files: { baseColor: `${ROOT}metal_basecolor.jpg`, normal: `${ROOT}metal_normal.png` }, tile: 34, normal: 1.2, tint: [1.0, 1.04, 1.16], sat: 0.55, contrast: 1.45, rough: 0.82, ao: 1.1, ember: 0, metal: 0.95, frost: 0 }),
+  crystal: Object.freeze({ files: { baseColor: `${ROOT}crystal_basecolor.jpg`, normal: `${ROOT}crystal_normal.png` }, tile: 30, normal: 1.0, tint: [1.0, 0.97, 1.08], sat: 0.7, contrast: 1.15, rough: 0.55, ao: 0.9, ember: 0, metal: 0, frost: 0 }),
+  ice: Object.freeze({ files: { baseColor: `${ROOT}ice_basecolor.jpg`, normal: `${ROOT}ice_normal.png` }, tile: 36, normal: 0.9, tint: [1.55, 1.65, 1.8], sat: 0.7, contrast: 1.1, rough: 0.5, ao: 0.7, ember: 0, metal: 0, frost: 0.35 }),
+  cooked: Object.freeze({ files: null, alias: 'silicate', tile: 34, normal: 1.2, tint: [0.95, 0.76, 0.66], sat: 0.5, contrast: 1.35, rough: 0.85, ao: 1.1, ember: 0.9, metal: 0, frost: 0 }),
 });
 
 const SUBSTANCE_FAMILY = Object.freeze({
@@ -124,6 +127,12 @@ uniform float sfTpOn;
 uniform float sfTpTile;
 uniform float sfTpNormalScale;
 uniform float sfTpMetal;
+uniform float sfTpSat;
+uniform float sfTpContrast;
+uniform float sfTpRough;
+uniform float sfTpAo;
+uniform float sfTpEmber;
+uniform float sfTpFrost;
 uniform vec3 sfTpTint;
 uniform mat3 normalMatrix;
 `;
@@ -134,6 +143,8 @@ vec3 sfTpWeights = vec3(1.0, 0.0, 0.0);
 vec3 sfTpObjN = normalize(vTpNrm);
 vec3 sfTpNormalOut = sfTpObjN;
 float sfTpLum = 0.5;
+float sfTpEmberMask = 0.0;
+float sfTpCavity = 1.0;
 if (sfTpOn > 0.5) {
   vec3 sfTpA = pow(abs(sfTpObjN), vec3(6.0));
   sfTpWeights = sfTpA / (sfTpA.x + sfTpA.y + sfTpA.z + 1e-5);
@@ -156,9 +167,18 @@ if (sfTpOn > 0.5) {
   }
   sfTpAlb /= max(dot(vec3(1.0), step(vec3(0.02), sfTpWeights) * sfTpWeights), 1e-4);
   sfTpLum = dot(sfTpAlb, vec3(0.2126, 0.7152, 0.0722));
-  diffuseColor.rgb *= sfTpAlb * sfTpTint;
+  // Identity: pull saturation down, spread values, then multiply the family tint. The raw warm oxide (before the
+  // desaturation) is what the ember veins key on, so the hot veins stay small and specific.
+  sfTpEmberMask = smoothstep(0.26, 0.34, sfTpAlb.r - sfTpAlb.b) * smoothstep(0.18, 0.28, sfTpLum);
+  vec3 sfTpCol = mix(vec3(sfTpLum), sfTpAlb, sfTpSat);
+  sfTpCol = max((sfTpCol - 0.16) * sfTpContrast + 0.16, 0.0);
+  sfTpCol += vec3(sfTpFrost * smoothstep(0.30, 0.55, sfTpLum) * 0.5);
   // Whiteout blend: reorient each projection's tangent normal to the object normal, then mix.
   sfTpNx.xy *= sfTpNormalScale; sfTpNy.xy *= sfTpNormalScale; sfTpNz.xy *= sfTpNormalScale;
+  // Cavity: where the sampled relief leans hard the surface is a crack or a lip, and it gets dark (read as form).
+  float sfTpSlope = dot(vec3(length(sfTpNx.xy), length(sfTpNy.xy), length(sfTpNz.xy)), sfTpWeights);
+  sfTpCavity = clamp(1.0 - sfTpAo * sfTpSlope * 0.9, 0.38, 1.0);
+  diffuseColor.rgb *= sfTpCol * sfTpTint * mix(0.55, 1.0, sfTpCavity) * sfTpCavity;
   sfTpNx = vec3(sfTpNx.xy + sfTpObjN.zy, abs(sfTpNx.z) * sfTpObjN.x);
   sfTpNy = vec3(sfTpNy.xy + sfTpObjN.xz, abs(sfTpNy.z) * sfTpObjN.y);
   sfTpNz = vec3(sfTpNz.xy + sfTpObjN.xy, abs(sfTpNz.z) * sfTpObjN.z);
@@ -167,12 +187,19 @@ if (sfTpOn > 0.5) {
 `;
 const FRAGMENT_ROUGH = `
 if (sfTpOn > 0.5) {
-  roughnessFactor = clamp(0.98 - 0.42 * sfTpLum * 2.4, 0.5, 0.96);
+  roughnessFactor = clamp(sfTpRough - 0.28 * (sfTpLum - 0.22), 0.2, 0.98);
+  // Bright flecks (metal) are polished: they catch the key and the rim.
+  roughnessFactor = mix(roughnessFactor, 0.28, sfTpMetal * smoothstep(0.22, 0.32, sfTpLum));
 }
 `;
 const FRAGMENT_METAL = `
 if (sfTpOn > 0.5) {
-  metalnessFactor = max(metalnessFactor, sfTpMetal * smoothstep(0.30, 0.62, sfTpLum));
+  metalnessFactor = max(metalnessFactor, sfTpMetal * smoothstep(0.22, 0.32, sfTpLum));
+}
+`;
+const FRAGMENT_EMISSIVE = `
+if (sfTpOn > 0.5 && sfTpEmber > 0.0) {
+  totalEmissiveRadiance += vec3(1.0, 0.34, 0.08) * (sfTpEmber * sfTpEmberMask * sfTpEmberMask);
 }
 `;
 const FRAGMENT_NORMAL = `
@@ -202,6 +229,8 @@ export function installTriplanarRock(material, family) {
     sfTpAlbedo: slot.albedo, sfTpNormal: slot.normal, sfTpOn: TP_ON,
     sfTpTile: { value: 1 / spec.tile }, sfTpNormalScale: { value: spec.normal },
     sfTpMetal: { value: spec.metal }, sfTpTint: { value: tint },
+    sfTpSat: { value: spec.sat }, sfTpContrast: { value: spec.contrast }, sfTpRough: { value: spec.rough },
+    sfTpAo: { value: spec.ao }, sfTpEmber: { value: spec.ember }, sfTpFrost: { value: spec.frost },
   };
   material.color.setRGB(1, 1, 1);
   function triplanarRockShader(shader, renderer) {
@@ -215,6 +244,7 @@ export function installTriplanarRock(material, family) {
       .replace('#include <color_fragment>', `#include <color_fragment>${FRAGMENT_COLOR}`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>${FRAGMENT_ROUGH}`)
       .replace('#include <metalnessmap_fragment>', `#include <metalnessmap_fragment>${FRAGMENT_METAL}`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>${FRAGMENT_EMISSIVE}`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>${FRAGMENT_NORMAL}`);
   }
   Object.assign(triplanarRockShader, previousHook);
