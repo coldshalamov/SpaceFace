@@ -11,7 +11,10 @@ import { dirname } from 'node:path';
 
 const PORT = 8174;
 const out = process.argv[2] || '.devshots/fleet/looks/light/geo';
-const round = Number(process.argv[3] || 20);
+const mode = process.argv[3] || 'swarm'; // swarm | helios
+const round = Number(process.argv[4] || 20);
+// variants: height:aimDistance:intensity[:decay] comma list (defaults to the shipped lamp, then raised mounts)
+const variants = (process.argv[5] || '20:105:440,60:90:440,90:90:440,90:90:900,120:80:900').split(',');
 mkdirSync(dirname(out), { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const server = spawn(process.execPath, ['server.js', String(PORT)], { cwd: process.cwd(), stdio: 'ignore' });
@@ -21,21 +24,22 @@ try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   page.on('pageerror', (e) => console.log('pageerror', e.message.slice(0, 160)));
   await page.addInitScript(() => { try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {} });
-  await page.goto(`http://127.0.0.1:${PORT}/?swarmRound=${round}`, { waitUntil: 'commit', timeout: 120_000 });
+  await page.goto(mode === 'swarm' ? `http://127.0.0.1:${PORT}/?swarmRound=${round}` : `http://127.0.0.1:${PORT}/?sector=helios_core&shot=1`, { waitUntil: 'commit', timeout: 120_000 });
   const t0 = Date.now();
   while (Date.now() - t0 < 420_000) {
     const ok = page.locator('.sf-confirm__ok');
     if (await ok.first().isVisible().catch(() => false)) await ok.first().click().catch(() => {});
     const launch = page.getByText(/Launch round/i).first();
     if (await launch.isVisible().catch(() => false)) await launch.click({ force: true, timeout: 5000 }).catch(() => {});
-    const live = await page.evaluate(() => { const s = window.SF && window.SF.state; return !!s && s.mode === 'flight'
-      && (s.entityList || []).filter((e) => e && e.alive !== false && e.type === 'ship' && !e.isPlayer && e.team !== 0).length >= 3; }).catch(() => false);
+    const live = mode === 'swarm' ? await page.evaluate(() => { const s = window.SF && window.SF.state; return !!s && s.mode === 'flight'
+      && (s.entityList || []).filter((e) => e && e.alive !== false && e.type === 'ship' && !e.isPlayer && e.team !== 0).length >= 3; }).catch(() => false)
+      : await page.evaluate(() => window.__sfShotReady === true).catch(() => false);
     if (live) break;
     await sleep(1500);
   }
   await sleep(4000);
   // Park the nearest big rock 45 WU past the drawn bow, in the drawn forward direction.
-  const placed = await page.evaluate(async () => {
+  const placed = mode !== 'swarm' ? null : await page.evaluate(async () => {
     const st = window.SF.state, n = st.render.nocturne, meshes = n._options.meshes;
     const p = st.entities.get(st.playerId), root = meshes.get(p.id);
     const fwd = { x: 1, z: 0 };
@@ -55,6 +59,7 @@ try {
     window.SF.timeEffects.set('bench:freeze', { scale: 0 });
     return { rock: best.id, radius: best.radius, fwd, simRot: p.rot };
   });
+  if (mode !== 'swarm') await page.evaluate(() => window.SF.timeEffects.set('bench:freeze', { scale: 0 }));
   console.log('placed', JSON.stringify(placed));
   await sleep(2500);
   const geo = await page.evaluate(() => {
@@ -87,7 +92,7 @@ try {
       hull: rootPos.toArray().map((x) => +x.toFixed(1)), rocks: rows.slice(0, 6), screen: { hull: sc(rootPos), rock: rows[0] && sc(meshes.get(rows[0].id).position) } };
   });
   console.log(JSON.stringify(geo));
-  const c = geo.screen && geo.screen.rock ? geo.screen.rock : { x: 640, y: 360 };
+  const c = mode === 'swarm' && geo.screen && geo.screen.rock ? { x: (geo.screen.rock.x + geo.screen.hull.x) / 2, y: geo.screen.rock.y } : (geo.screen && geo.screen.hull) || { x: 640, y: 360 };
   const clip = { x: Math.max(0, Math.min(1280 - 520, c.x - 260)), y: Math.max(0, Math.min(720 - 360, c.y - 180)), width: 520, height: 360 };
   const lamps = (on) => page.evaluate(async (o) => {
     const n = window.SF.state.render.nocturne;
@@ -98,6 +103,16 @@ try {
   }, on);
   await lamps(false); await page.screenshot({ path: `${out}-off.png`, clip });
   await lamps(true); await page.screenshot({ path: `${out}-on.png`, clip });
+  for (const v of variants) {
+    const [h, aim, inten, dec] = v.split(':').map(Number);
+    await page.evaluate(async ([h, aim, inten, dec]) => {
+      const n = window.SF.state.render.nocturne; if (!window.__look0) window.__look0 = n.headlights.look;
+      n.headlights.look = { ...window.__look0, height: h, aimDistance: aim, intensity: inten };
+      for (const r of n.headlights.rows) if (r.source && dec) r.source.decay = dec;
+      n.director.invalidate(); await new Promise((r) => setTimeout(r, 3000));
+    }, [h, aim, inten, dec]);
+    await page.screenshot({ path: `${out}-h${h}_a${aim}_i${inten}.png`, clip });
+  }
   await page.screenshot({ path: `${out}-on-full.png` });
   await browser.close();
 } finally { server.kill(); setTimeout(() => process.exit(0), 500); }
