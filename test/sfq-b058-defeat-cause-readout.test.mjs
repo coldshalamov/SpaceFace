@@ -179,6 +179,68 @@ test('SFQ-B058: buildSurvivalResults deathCause names the physical cause', () =>
   }
 });
 
+// --- C01: the champion that died still names its last volley ---------------------
+
+test('a dead champion names the volley that outlived its body; an unbanked id stays unknown', () => {
+  const harness = boot(4242);
+  const { bus } = beginSurvivalRun(harness, 4242);
+  try {
+    const boss = {
+      id: 42, alive: true, type: 'ship', team: 1,
+      pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+      data: { lootTableId: 'dreadnought_boss', runWave: 5, swarmChampion: true },
+    };
+    harness.state.entities.set(boss.id, boss);
+    // The boss falls to the player; its body is reaped before the last volley lands.
+    bus.emit('entity:killed', { id: boss.id, killerId: harness.state.playerId, type: 'ship', pos: { x: 0, z: 0 } });
+    boss.alive = false;
+    harness.state.entities.delete(boss.id);
+    const receipt = defeatOf(harness, {
+      weaponId: 'wpn_pulse_laser_s',
+      origin: { kind: 'weapon', id: 'wpn_pulse_laser_s' },
+      packet: { source: { kind: 'weapon', weaponId: 'wpn_pulse_laser_s' }, hit: { pos: { x: 0, z: 10 } } },
+      dominantLayer: 'hull',
+      result: { after: { shield: 0, shieldMax: 55, armor: 0, armorMax: 30, hull: 0, hullMax: 140 } },
+    }, boss.id);
+    assert.match(String(receipt.attacker), /Iron Maw/, 'the banked name, not Unknown contact');
+    assert.doesNotMatch(JSON.stringify(receipt), /Unknown contact/i);
+    // The contract stands: a contact nobody banked is still honestly unknown.
+    const lost = defeatOf(harness, {
+      weaponId: 'wpn_pulse_laser_s',
+      packet: { source: { kind: 'weapon', weaponId: 'wpn_pulse_laser_s' } },
+      dominantLayer: 'hull',
+      result: { after: { shield: 0, shieldMax: 55, armor: 0, armorMax: 30, hull: 0, hullMax: 140 } },
+    }, 777);
+    assert.equal(lost.attacker, 'Unknown contact');
+  } finally {
+    survivalResults.destroy();
+    runSession.destroy();
+  }
+});
+
+test('a stringified attacker id reads the same live body the sim aimed at', () => {
+  const harness = boot(4242);
+  beginSurvivalRun(harness, 4242);
+  try {
+    const escort = {
+      id: 33, alive: true, type: 'ship', team: 1,
+      pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+      data: { lootTableId: 'corsair_raider', runWave: 10 },
+    };
+    harness.state.entities.set(escort.id, escort);
+    const receipt = defeatOf(harness, {
+      weaponId: 'wpn_pulse_laser_s',
+      packet: { source: { kind: 'weapon', weaponId: 'wpn_pulse_laser_s' } },
+      dominantLayer: 'hull',
+      result: { after: { shield: 0, shieldMax: 55, armor: 0, armorMax: 30, hull: 0, hullMax: 140 } },
+    }, '33');
+    assert.equal(receipt.attacker, 'Corsair Raider', 'ids that re-crossed a lane as strings still resolve');
+  } finally {
+    survivalResults.destroy();
+    runSession.destroy();
+  }
+});
+
 // --- negative/quiet: a real gun keeps its name ----------------------------------
 
 test('SFQ-B058: a fatal Pulse Laser S hit still names Pulse Laser S', () => {

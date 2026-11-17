@@ -294,3 +294,34 @@ test('shared-owner R3: Foundry idle installs authored reflective geometry from w
   const install = planArenaInstall({ arenaId: ARENA, arenaPhase: 'idle', wave: 1, seed: SEED });
   assert.ok(install.toys?.some(toy => toy.kind === 'plate'), 'Foundry must teach banks in its first room');
 });
+
+// C01 — 12_SWARM_THE_PIT: every tenth round is the room-changing round — "the crusher wakes
+// and the conveyor carries bodies toward it." The press is a law toy (field verdict, not a
+// wall) parked at the freight lane's east mouth.
+test('the room-changing round wakes the crusher; rounds 1–9 plan no crusher', () => {
+  for (let wave = 1; wave <= 9; wave++) {
+    for (const phase of ['idle', 'boss']) {
+      const install = planArenaInstall({ arenaId: ARENA, arenaPhase: phase, wave, seed: SEED });
+      assert.ok(!install.toys?.some(t => t.kind === 'crusher'), `round ${wave} (${phase}) plans no crusher`);
+    }
+  }
+  const install = planArenaInstall({ arenaId: ARENA, arenaPhase: 'boss', wave: 10, seed: SEED });
+  const crusher = install.toys?.find(t => t.kind === 'crusher');
+  assert.ok(crusher, "round 10's plan wakes the crusher");
+  // A readable, usable hazard — the pilot can throw bodies into the jaws.
+  assert.equal(crusher.solid, undefined, 'the press is a law toy, not a wall');
+  assert.equal(crusher.usable, true);
+  assert.equal(crusher.throwable, false);
+  assert.ok(crusher.pos && crusher.anvil && crusher.dir && crusher.cycle,
+    'the press carries its jaw geometry and warning/surge/calm clock');
+  assert.equal(crusher.dir.x, 1, 'the jaws face the conveyor flow');
+  // Same plate/gate/furnace furniture the round-5 boss room shipped.
+  for (const kind of ['plate', 'gate', 'furnace']) {
+    assert.ok(install.toys.some(t => t.kind === kind), `round 10 keeps the round-5 ${kind}`);
+  }
+  const wrapped = planArenaInstall({ arenaId: ARENA, arenaPhase: 'boss', wave: 20, seed: SEED });
+  assert.ok(wrapped.toys?.some(t => t.kind === 'crusher'), 'the wrapped room-changing round wakes it again');
+  // Determinism: same inputs, same press.
+  const again = planArenaInstall({ arenaId: ARENA, arenaPhase: 'boss', wave: 10, seed: SEED });
+  assert.deepEqual(again.toys.find(t => t.kind === 'crusher'), crusher);
+});

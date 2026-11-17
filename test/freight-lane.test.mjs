@@ -74,8 +74,9 @@ function boot({ wave = FREIGHT_DEBUT_WAVE } = {}) {
   // PIT-01: the lane debuts on 'Mind the Gap' — the harness rides its first legal round.
   bus.emit('run:wavePlanned', { wave, plan: planWave({ seed: 7, arenaId: FOUNDRY_ARENA_ID, wave }) });
   const kernel = getCombatKernel(ctx);
-  const events = { warnings: [], departures: [], clears: [], contacts: [], released: [], retired: [], kills: [], horn: [] };
+  const events = { warnings: [], departures: [], clears: [], contacts: [], released: [], retired: [], kills: [], horn: [], alerts: [] };
   bus.on('freight:warning', (p) => events.warnings.push({ ...p }));
+  bus.on('alert', (p) => events.alerts.push({ ...p }));
   bus.on('freight:departed', (p) => events.departures.push({ ...p }));
   bus.on('freight:clear', (p) => events.clears.push({ ...p }));
   bus.on('freight:contact', (p) => events.contacts.push({ ...p }));
@@ -142,6 +143,8 @@ test('the lane holds its debut: rounds 1–3 run no traffic, round 4 departs at 
       assert.equal(h.events.warnings.length, 0, `round ${wave} lights no lane warning`);
       assert.equal(h.events.departures.length, 0, `round ${wave} sends no string`);
       assert.equal(h.events.horn.length, 0, `round ${wave} never sounds the horn`);
+      assert.equal(h.events.alerts.filter(a => a && typeof a.key === 'string' && a.key.startsWith('freight:')).length, 0,
+        `round ${wave} raises no HUD cue`);
       assert.equal(h.freightMembers().length, 0, `round ${wave} fields no containers`);
     } finally { h.destroy(); }
   }
@@ -167,6 +170,13 @@ test('freight timetable: warning exactly 3 s before departure, first string at 2
     assert.equal(w0.blinkHz, 2, 'warning carries the authored 2 Hz blink truth');
     assert.equal(w0.x0, -400); assert.equal(w0.x1, 400);
     assert.equal(h.events.horn.length, 2, 'the foghorn plays at each warning');
+    // C01 — the warning also raises ONE short HUD cue through the one-voice floor, so a muted
+    // or off-lane pilot still gets told; the amber lights ride the same freight:warning event.
+    const cues = h.events.alerts.filter(a => a && typeof a.key === 'string' && a.key.startsWith('freight:'));
+    assert.equal(cues.length, 2, 'each warning raises exactly one HUD cue through the one-voice floor');
+    assert.match(cues[0].text || '', /freight/i);
+    assert.match(cues[0].text || '', /lane/i);
+    assert.ok((cues[0].ttl || 0) >= FREIGHT_WARN_LEAD_S, 'the cue outlives the amber blink lead');
     assert.ok(Math.abs(h.events.horn[0].position.x - w0.x0) < 1e-9, 'the horn sounds at the west end');
     // Five containers, 30 WU apart, at 140 WU/s on the rail.
     const members = h.freightMembers().sort((a, b) => a.data.freightIndex - b.data.freightIndex);

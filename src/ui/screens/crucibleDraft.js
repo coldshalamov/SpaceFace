@@ -1208,13 +1208,12 @@ export const crucibleDraftScreen = {
         ...(cards.hidden ? [] : cards.querySelectorAll('.sf-cru-card')),
       ];
       const index = '123'.indexOf(event.key);
-      if (!inSearch && index >= 0 && all[index]) {
+      if (!inSearch && index >= 0 && this._pickDigitCard(index)) {
         event.preventDefault();
         // A card click can resolve the draft and pop this screen inside THIS keydown (Gauntlet
         // picks); the same event must not then fall through to flight, where 1/2/3 are live
         // ordnance keys.
         event.stopPropagation();
-        all[index].click();
         return;
       }
       if (event.key === 'Escape') {
@@ -1262,6 +1261,31 @@ export const crucibleDraftScreen = {
     // the armory sheet (crucible-doorLayouts.js documents what it carries).
     injectCrucibleDoorLayouts(rootEl.ownerDocument || document);
     rootEl.dataset.kReady = '1';
+  },
+
+  /**
+   * The input owner's lane for 1/2/3 (src/ui/input.js routes modal keys through def.onKey).
+   * The rootEl keydown only sees keys that land inside the screen — focus on body or a HUD
+   * control skips it entirely, and the footer's '1–3 BUY & FIT' claim then does nothing while
+   * the digits fall to flight as ordnance keys. This handler answers regardless of where
+   * focus sits. It clicks the same card DOM the click path uses, so buying stays inside the
+   * run:draftPickRequested intent — never a direct purchase.
+   */
+  onKey(ev) {
+    if (!ev || ev.defaultPrevented || ev.altKey || ev.ctrlKey || ev.metaKey) return false;
+    // The search field keeps its own keyboard: typing '1' filters the shelf, it never picks.
+    if (this._search && ev.target === this._search) return false;
+    const index = '123'.indexOf(ev.key);
+    if (index < 0) return false;
+    return this._pickDigitCard(index);
+  },
+
+  _pickDigitCard(index) {
+    const cards = this._digitCards;
+    const card = cards && cards[index];
+    if (!card || typeof card.click !== 'function') return false;
+    card.click();
+    return true;
   },
 
   onShow(ctx) {
@@ -1604,12 +1628,17 @@ export const crucibleDraftScreen = {
     this._filters.hidden = !shelfShown;
     cards.hidden = !shelfShown;
     if (this._railScale) this._railScale.hidden = !shelfShown;
+    // The card list the 1/2/3 keys click, in on-screen key order: visible dealt hand first,
+    // then the shelf. The screen keeps its own truth — a DOM query is a second opinion.
+    const digitCards = [];
     if (this._dealt) {
       this._dealt.hidden = !showHand;
       this._dealt.innerHTML = '';
       let dkey = 1;
       for (const offer of showHand ? dealtOffers : []) {
-        this._dealt.appendChild(this._buildDealtCard(context, offer, dkey));
+        const card = this._buildDealtCard(context, offer, dkey);
+        this._dealt.appendChild(card);
+        digitCards.push(card);
         dkey += 1;
       }
     }
@@ -1622,7 +1651,9 @@ export const crucibleDraftScreen = {
       shelfHead.setAttribute('aria-hidden', 'true');
       cards.appendChild(shelfHead);
       for (const offer of recommended) {
-        cards.appendChild(this._buildCard(context, offer, key));
+        const card = this._buildCard(context, offer, key);
+        cards.appendChild(card);
+        digitCards.push(card);
         key += 1;
       }
       const shelfRest = el('p', 'orr-rail-divider', 'The whole shelf');
@@ -1649,7 +1680,9 @@ export const crucibleDraftScreen = {
       const card = this._buildCard(context, offer, key);
       key += 1;
       cards.appendChild(card);
+      digitCards.push(card);
     }
+    this._digitCards = digitCards;
 
     if (shop && !visibleOffers.length && !recommended.length
         && typeof document.createElementNS === 'function') {

@@ -466,6 +466,14 @@ export function createFreightLaneDirector(ctx) {
         blinkHz: FREIGHT_BLINK_HZ,
       };
       emit('freight:warning', warnEmit);
+      // The one-voice floor carries the only HUD cue a muted or off-lane pilot gets; the
+      // amber lane lights themselves are vfx's read of the warning above.
+      emit('alert', {
+        key: `freight:${warnEmit.stringId}`,
+        sev: 'warn',
+        text: 'FREIGHT INBOUND — CLEAR THE LANE',
+        ttl: FREIGHT_WARN_LEAD_S + 1,
+      });
       emit('audio:cue', { id: FREIGHT_HORN, position: { x: lane.x0, z: lane.z0 }, gain: 0.9 });
       armed.warnAt = null;
     }
@@ -571,6 +579,12 @@ export function createFreightLaneDirector(ctx) {
       requestedBy: payload && typeof payload.requestedBy === 'string' ? payload.requestedBy : 'swarm:yardmaster',
     };
     emit('freight:warning', warnEmit);
+    emit('alert', {
+      key: `freight:${warnEmit.stringId}`,
+      sev: 'warn',
+      text: 'FREIGHT INBOUND — CLEAR THE LANE',
+      ttl: FREIGHT_WARN_LEAD_S + 1,
+    });
     emit('audio:cue', { id: FREIGHT_HORN, position: { x: lane.x1, z: lane.z1 }, gain: 0.9 });
   }
 

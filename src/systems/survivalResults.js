@@ -27,6 +27,9 @@ import { counted } from '../core/numberFormat.js';
 
 /** How many recent hits on the player the summary keeps. Bounded: this is a ring, not a log. */
 export const DAMAGE_TRAIL_LENGTH = 8;
+// Dead contacts keep their names this long on the run — covers the longest realistic
+// post-mortem ordnance flight, not an identity archive.
+const RECENT_KILLER_LABEL_MAX = 96;
 
 /** How many telegraphed tells before a death the summary keeps. Bounded ring, same as damage. */
 export const TELEGRAPH_TRAIL_LENGTH = 16;
@@ -726,6 +729,7 @@ export const survivalResults = {
 
   _onEntityKilled(payload) {
     if (!liveSurvivalRun(this.state)) return;
+    this._recordRecentKiller(payload);
     if (!payload || payload.killerId !== this.state.playerId) return;
     const victim = this.state.entities && typeof this.state.entities.get === 'function'
       ? this.state.entities.get(payload.id)
@@ -789,6 +793,32 @@ export const survivalResults = {
         points: 140,
       });
     }
+  },
+
+  /**
+   * A dead contact keeps its name on the run: post-mortem ordnance (a champion's last volley,
+   * an escort's torpedo) can still kill the pilot after the shooter's body is reaped, and the
+   * defeat receipt's 'Unknown contact' rule only applies to contacts nobody banked. Stamped at
+   * kill time while the victim is still addressable; the receipt owner reads it with a TTL.
+   */
+  _recordRecentKiller(payload) {
+    if (!payload || payload.id == null || payload.id === this.state.playerId) return;
+    let label = null;
+    try { label = attackerLabel(this.state, payload.id); } catch { label = null; }
+    if (typeof label !== 'string' || !label || label === 'Unknown contact' || label === 'Environmental hazard') return;
+    const run = this.state && this.state.run;
+    if (!run || typeof run !== 'object' || Array.isArray(run)) return;
+    const ledger = run.recentKillerLabels || (run.recentKillerLabels = Object.create(null));
+    const victim = this.state.entities && typeof this.state.entities.get === 'function'
+      ? (this.state.entities.get(payload.id) || this.state.entities.get(Number(payload.id)) || null)
+      : null;
+    ledger[String(payload.id)] = {
+      label,
+      factionId: (victim && (victim.factionId || (victim.data && victim.data.factionId))) || null,
+      tick: this._tickNow(),
+    };
+    const keys = Object.keys(ledger);
+    for (let i = 0; i <= keys.length - RECENT_KILLER_LABEL_MAX; i++) delete ledger[keys[i]];
   },
 
   _onBroodKills(payload) {

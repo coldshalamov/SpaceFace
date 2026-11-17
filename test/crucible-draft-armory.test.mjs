@@ -213,6 +213,35 @@ test('a repaint with cards still affordable warns again instead of launching on 
   } finally { m.restore(); }
 });
 
+test('Digit1–3 through the input owner click the dealt cards the footer advertises', () => {
+  // dealt:true marks the dealt hand — the '1–3 BUY & FIT' claim only prints for it.
+  const m = mountShop({ credits: 900, offers: [
+    offer('a', { dealt: true }), offer('b', { dealt: true }), offer('c', { dealt: true }),
+  ] });
+  try {
+    assert.equal(m.screen._hint.textContent.includes('buy & fit'), true, 'the footer claim is on');
+    const onKey = (key, target = m.screen._root) =>
+      m.screen.onKey({ key, target, defaultPrevented: false, altKey: false, ctrlKey: false, metaKey: false });
+    assert.equal(onKey('1'), true, 'the owner seam owns the digit');
+    assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: 'a' }]],
+      'one press, one pick intent — buying stays inside the owner, never a DOM purchase');
+    m.screen.refresh(m.ctx);
+    assert.equal(onKey('2'), true);
+    assert.equal(m.picks().length, 2);
+    assert.equal(m.picks()[1][1].offerId, 'b', 'the second dealt card is next');
+    m.screen.refresh(m.ctx);
+    assert.equal(onKey('3'), true);
+    assert.equal(m.picks()[2][1].offerId, 'c');
+    // Typing digits in the search field filters the shelf — it never picks.
+    m.screen.refresh(m.ctx);
+    assert.equal(onKey('1', m.screen._search), false, 'search owns its own digits');
+    assert.equal(m.picks().length, 3);
+    // A key the footer never advertised is not consumed.
+    assert.equal(onKey('4'), false);
+    assert.equal(onKey('r'), false, 'onKey leaves R to the root handler');
+  } finally { m.restore(); }
+});
+
 test('Escape inside the search field still backs out of the field first, launching nothing', () => {
   const m = mountShop({ offers: [offer('a')] });
   try {
