@@ -15,6 +15,7 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 import { launchChromium } from './player-truth/browser.mjs';
 import { bootToMenu, waitBootOverlayGone } from './player-truth/routes.mjs';
 import { collectPageIssues } from './lib/browser-issues.mjs';
+import { swarmPreviewLoadout } from '../src/ui/ship/swarmHangarModel.js';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
 const args = process.argv.slice(2);
@@ -591,7 +592,7 @@ async function changeRunOptions(page, build, { inputs = false } = {}) {
   assert.equal(await challenges.locator(S.hull).count(), 0);
   if (inputs) {
     const disclosure = page.locator('details').filter({ has: page.locator('summary', { hasText: /^Custom runs & records$/ }) });
-    await clickAt(page, disclosure.locator('summary'));
+    await clickAt(page, disclosure.locator(':scope>summary'));
     const seed = page.getByRole('textbox', { name: 'Run seed', exact: true });
     const previous = await seed.inputValue();
     await clickAt(page, seed);
@@ -602,7 +603,7 @@ async function changeRunOptions(page, build, { inputs = false } = {}) {
     assert.deepEqual(selection, { value: '424242', start: 0, end: 6 }, 'Text selection must remain available in editable inputs.');
     await page.keyboard.type(previous);
     await page.keyboard.press('Tab');
-    await clickAt(page, disclosure.locator('summary'));
+    await clickAt(page, disclosure.locator(':scope>summary'));
   }
   await clickAt(page, page.locator('[data-swarm-step="0"]'));
   assert.deepEqual(await selectedBuild(page), build, 'Ship or loadout changed while visiting run settings.');
@@ -686,9 +687,15 @@ async function buyLiveEquipment(page, initial, rememberedName = null) {
   const installedNames = await currentBuild.locator('li > span > span').allTextContents();
   assert.ok(installedNames.some(name => name.trim() && name.trim() !== 'Empty'),
     'The Current build disclosure does not identify the selected preset equipment.');
-  const browse = screen.locator('.sf-cru-foot button').filter({ hasText: /^Browse all\b/ });
-  if (await browse.isVisible()) await clickAt(page, browse);
-  await clickAt(page, screen.locator('[data-category="Weapons"]'));
+  const weapons = screen.locator('[data-category="Weapons"]');
+  if (!(await weapons.isVisible())) {
+    // The key badge is an adjacent aria-hidden span: raw text is "Browse allB".
+    // Use the public accessible name, then observe the catalog becoming available.
+    await clickAt(page, screen.getByRole('button', { name: 'Browse all', exact: true }));
+    await weapons.waitFor({ state: 'visible' });
+  }
+  await clickAt(page, weapons);
+  assert.equal(await weapons.getAttribute('aria-pressed'), 'true', 'The Weapons catalog did not open.');
   await screen.locator('.sf-cru-cards').waitFor({ state: 'visible' });
   // The actor chooses only from the visible catalog, its price/availability treatment, and
   // the Current build disclosure. Hidden owner offers are not an input to this decision.
@@ -764,6 +771,12 @@ async function liveRoute() {
     await navigate('title to hangar', () => titlePointerRoute(page, 'padding', 'live-title', { allowPosterFallback: true }));
     const { build, posterUrl } = await navigate('selected ship preview', () => chooseShip(page, { requirePreset: true }));
     live.build = build;
+    // This is an observer oracle for the already chosen public preset, never an input
+    // to ship/offer selection or a runtime write. Empty mounts must remain empty.
+    const expectedLoadout = swarmPreviewLoadout(build.kit);
+    assert.ok(expectedLoadout, 'The selected loadout has no canonical preview projection.');
+    assert.equal(expectedLoadout.hull.id, build.hull, 'The selected preset belongs to a different hull.');
+    live.expectedStartingFittings = [...expectedLoadout.fittings];
     live.hangarPreview = await shipShot(page, 'live-selected-ship', { hullId: build.hull, posterUrl });
     const run = live.run = await navigate('ship to run options', () => changeRunOptions(page, build));
     const before = await page.evaluate(() => ({ phase: window.SF.state.run?.phase, mode: window.SF.state.mode }));
@@ -771,6 +784,7 @@ async function liveRoute() {
     await openArmory('opening equipment preparation');
     const armory = live.armory = await livePreparation(page);
     assert.equal(armory.hull, build.hull, 'Opening armory substituted a different ship.');
+    assert.deepEqual(armory.fittings, expectedLoadout.fittings, 'Opening armory changed the equipment shown in the selected hangar loadout.');
     assert.ok(armory.credits > 0, 'The selected difficulty needs a positive equipment allowance for this purchase route.');
     assert.equal(armory.settings.arenaId, run.arenaId);
     assert.equal(armory.settings.stake, run.difficultyId);
@@ -830,6 +844,7 @@ async function liveRoute() {
     assert.equal(reopened.hull, armory.hull);
     assert.deepEqual(reopened.settings, armory.settings, 'Re-entry changed the selected run settings.');
     assert.equal(reopened.credits, armory.credits, 'New preparation did not receive its original equipment allowance.');
+    assert.deepEqual(reopened.fittings, expectedLoadout.fittings, 'Re-entry changed the equipment shown in the selected hangar loadout.');
     assert.deepEqual(reopened.fittings, armory.fittings, 'The cancelled purchase survived in installed equipment.');
     assert.deepEqual(reopened.inventory, armory.inventory, 'The cancelled purchase or displaced fitting survived as a free spare.');
     assert.equal(reopened.receipt, null, 'New preparation retained the old purchase receipt.');

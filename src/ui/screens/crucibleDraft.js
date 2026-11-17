@@ -347,12 +347,7 @@ function spareOptionLabel(spare) {
   const base = spare.name || prettyDefId(spare.defId);
   const def = spare && WEAPON_DEF_BY_ID.get(spare.defId);
   const dps = finiteNum(def && def.dps);
-  const impulse = finiteNum(def && def.impulsePerHit);
-  if (dps == null && impulse == null) return base;
-  const parts = [];
-  if (dps != null) parts.push(`${shortNum(dps)} dps`);
-  if (impulse != null) parts.push(`impulse ${shortNum(impulse)}`);
-  return `${base} — ${parts.join(' · ')}`;
+  return dps == null ? base : `${base} — ${shortNum(dps)} damage per second`;
 }
 
 /**
@@ -382,10 +377,27 @@ export function weaponSpareContrast(spares) {
     if (entry.impulse > shove.impulse) shove = entry;
   }
   if (fire === shove) {
-    return `${fire.name} leads sustained fire (${shortNum(fire.dps)} dps) and shove (impulse ${shortNum(fire.impulse)}).`;
+    return `${fire.name} has the highest damage per second (${shortNum(fire.dps)}) and strongest knockback per hit.`;
   }
-  return `Most sustained fire: ${fire.name} (${shortNum(fire.dps)} dps). `
-    + `Hardest shove: ${shove.name} (impulse ${shortNum(shove.impulse)}).`;
+  return `Highest damage per second: ${fire.name} (${shortNum(fire.dps)}). `
+    + `Strongest knockback per hit: ${shove.name}.`;
+}
+
+// Text remains native HTML above each track so responsive SVG scaling cannot shrink labels.
+// Knockback uses the real authored comparison without exposing a unitless impulse number.
+function weaponComparisonRow(label, width, trackClass = '') {
+  const row = el('div', 'orr-weapon-comparison__row');
+  const head = el('div', 'orr-weapon-comparison__head');
+  const value = el('span', 'orr-weapon-comparison__value');
+  head.append(el('span', 'orr-weapon-comparison__label', label), value);
+  const track = svgNode('svg', { viewBox: `0 0 ${width} 20`, width, height: 20,
+    class: `orr-svg orr-weapon-comparison__track ${trackClass}`, 'aria-hidden': 'true' });
+  row.append(head, track);
+  return { row, value, track };
+}
+
+function weaponComparisonNote() {
+  return el('p', 'orr-weapon-comparison__note', 'Base weapon stats. Lighter targets are pushed farther.');
 }
 
 /**
@@ -406,32 +418,27 @@ function spareScales(spares) {
     for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
     return n;
   };
-  const W = 300; const x0 = 62; const x1 = 222;
-  const root = node('svg', { viewBox: `0 0 ${W} 58`, width: W, height: 58, class: 'orr-svg orr-hp__scales', 'aria-hidden': 'true' });
+  const W = 300; const x0 = 1; const x1 = W - 1; const y = 10;
+  const root = el('div', 'orr-hp__scales orr-weapon-comparison');
   const readouts = [];
   const ticks = [];
-  [['dps', 'Fire', 17], ['impulse', 'Shove', 45]].forEach(([key, word, y]) => {
+  [['dps', 'Damage per second'], ['impulse', 'Knockback per hit']].forEach(([key, word]) => {
     const max = Math.max(...entries.map((e) => e[key])) || 1;
-    const label = node('text', { x: 0, y: y + 4, class: 'orr-hp__scale-word' });
-    label.textContent = word.toUpperCase();
-    root.appendChild(label);
-    // the track from zero to the best spare on this axis, its best figure at the end
-    root.appendChild(node('path', { d: `M ${x0} ${y} L ${x1} ${y}`, class: 'orr-hp__track' }));
-    root.appendChild(node('path', { d: `M ${x0} ${y - 4} L ${x0} ${y + 4}`, class: 'orr-hp__track-end' }));
-    const top = node('text', { x: x1, y: y - 7, class: 'orr-hp__scale-max', 'text-anchor': 'end' });
-    top.textContent = shortNum(max);
-    root.appendChild(top);
+    const { row, value, track } = weaponComparisonRow(word, W);
+    root.appendChild(row);
+    // The same zero-to-best authored scale; marks compare the available spares.
+    track.appendChild(node('path', { d: `M ${x0} ${y} L ${x1} ${y}`, class: 'orr-hp__track' }));
+    track.appendChild(node('path', { d: `M ${x0} ${y - 4} L ${x0} ${y + 4}`, class: 'orr-hp__track-end' }));
     for (const e of entries) {
       const x = x0 + ((x1 - x0) * e[key]) / max;
       const tick = node('path', { d: `M ${x.toFixed(1)} ${y - 5} L ${x.toFixed(1)} ${y + 5}`, class: 'orr-hp__tick', 'data-id': e.id });
       ticks.push(tick);
-      root.appendChild(tick);
+      track.appendChild(tick);
     }
-    const readout = node('text', { x: x1 + 12, y: y + 5, class: 'orr-hp__scale-val' });
-    const delta = node('tspan', { class: 'orr-hp__scale-delta', dx: 6 });
-    readouts.push([readout, delta, key]);
-    root.appendChild(readout);
+    const delta = el('span', 'orr-weapon-comparison__delta');
+    readouts.push([value, delta, key]);
   });
+  root.appendChild(weaponComparisonNote());
   return {
     el: root,
     update(chosenId) {
@@ -447,9 +454,13 @@ function spareScales(spares) {
       for (const [readout, delta, key] of readouts) {
         const best = Math.max(...entries.filter((e) => e !== chosen).map((e) => e[key]));
         const diff = chosen[key] - best;
-        readout.textContent = shortNum(chosen[key]);
-        delta.textContent = diff === 0 ? '' : `${diff > 0 ? '+' : '−'}${shortNum(Math.abs(diff))}`;
-        readout.appendChild(delta);
+        if (key === 'dps') {
+          readout.textContent = shortNum(chosen[key]);
+          delta.textContent = diff === 0 ? '' : ` (${diff > 0 ? '+' : '−'}${shortNum(Math.abs(diff))})`;
+          readout.appendChild(delta);
+        } else {
+          readout.textContent = diff > 0 ? 'Strongest spare' : diff === 0 ? 'Joint strongest spare' : 'Less than strongest spare';
+        }
       }
     },
   };
@@ -465,42 +476,43 @@ function svgNode(tag, attrs = {}) {
 
 /**
  * The armory reading's comparison: a weapon offer against the weapon it would replace, on the two
- * axes combat pays (sustained fire, shove). The offer's mark is lit and taller, the fitted one a
- * bone notch, the difference in ice. Null for anything that is not a weapon-for-weapon swap.
+ * base damage per second and knockback per hit. The offer's mark is lit and taller; the fitted
+ * one is a notch. Knockback compares the actual impulse without an unexplained numeric rating.
  */
 function offerCompare(offer, best = {}) {
   const def = offer && WEAPON_DEF_BY_ID.get(offer.defId);
   if (!def) return null;
   const fitted = offer.replaces ? WEAPON_DEF_BY_ID.get(offer.replaces) : null;
-  const root = svgNode('svg', { viewBox: '0 0 360 64', width: 360, height: 64, class: 'orr-svg orr-armory-compare', 'aria-hidden': 'true' });
-  if (!root) return null;
-  const x0 = 70; const x1 = 290;
-  [['dps', 'Fire', 20], ['impulsePerHit', 'Shove', 50]].forEach(([key, word, y]) => {
+  if (typeof document === 'undefined' || typeof document.createElementNS !== 'function') return null;
+  const root = el('div', 'orr-weapon-comparison');
+  const x0 = 1; const x1 = 359; const y = 10;
+  [['dps', 'Damage per second'], ['impulsePerHit', 'Knockback per hit']].forEach(([key, word]) => {
     const mine = finiteNum(def[key]);
     if (mine == null) return;
     const theirs = fitted ? finiteNum(fitted[key]) : null;
     const max = Math.max(mine, theirs || 0, Number(best[key]) || 0) || 1;
-    const label = svgNode('text', { x: 0, y: y + 4, class: 'orr-armory-compare__word' });
-    label.textContent = word.toUpperCase();
-    root.appendChild(label);
-    root.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${x1} ${y}`, class: 'orr-armory-compare__track' }));
-    root.appendChild(svgNode('path', { d: `M ${x0} ${y - 4} L ${x0} ${y + 4}`, class: 'orr-armory-compare__track' }));
+    const { row, value, track } = weaponComparisonRow(word, 360, 'orr-armory-compare');
+    root.appendChild(row);
+    track.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${x1} ${y}`, class: 'orr-armory-compare__track' }));
+    track.appendChild(svgNode('path', { d: `M ${x0} ${y - 4} L ${x0} ${y + 4}`, class: 'orr-armory-compare__track' }));
     if (theirs != null) {
       const tx = x0 + ((x1 - x0) * theirs) / max;
-      root.appendChild(svgNode('path', { d: `M ${tx.toFixed(1)} ${y - 5} L ${tx.toFixed(1)} ${y + 5}`, class: 'orr-armory-compare__fitted' }));
+      track.appendChild(svgNode('path', { d: `M ${tx.toFixed(1)} ${y - 5} L ${tx.toFixed(1)} ${y + 5}`, class: 'orr-armory-compare__fitted' }));
     }
     const mx = x0 + ((x1 - x0) * mine) / max;
-    root.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${mx.toFixed(1)} ${y}`, class: 'orr-armory-compare__fill' }));
-    root.appendChild(svgNode('path', { d: `M ${mx.toFixed(1)} ${y - 7} L ${mx.toFixed(1)} ${y + 7}`, class: 'orr-armory-compare__mark' }));
-    const val = svgNode('text', { x: x1 + 12, y: y + 5, class: 'orr-armory-compare__val' });
-    val.textContent = shortNum(mine);
-    if (theirs != null && theirs !== mine) {
-      const d = svgNode('tspan', { dx: 6, class: 'orr-armory-compare__delta' });
-      d.textContent = `${mine > theirs ? '+' : '\u2212'}${shortNum(Math.abs(mine - theirs))}`;
-      val.appendChild(d);
+    track.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${mx.toFixed(1)} ${y}`, class: 'orr-armory-compare__fill' }));
+    track.appendChild(svgNode('path', { d: `M ${mx.toFixed(1)} ${y - 7} L ${mx.toFixed(1)} ${y + 7}`, class: 'orr-armory-compare__mark' }));
+    if (key === 'dps') {
+      value.textContent = shortNum(mine);
+      if (theirs != null && theirs !== mine) {
+        value.appendChild(el('span', 'orr-weapon-comparison__delta',
+          ` (${mine > theirs ? '+' : '\u2212'}${shortNum(Math.abs(mine - theirs))})`));
+      }
+    } else if (theirs != null) {
+      value.textContent = mine > theirs ? 'More than fitted' : mine < theirs ? 'Less than fitted' : 'Same as fitted';
     }
-    root.appendChild(val);
   });
+  root.appendChild(weaponComparisonNote());
   return root;
 }
 

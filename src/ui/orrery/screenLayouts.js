@@ -360,6 +360,21 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open:n
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-row:not(.is-lit) :is(.orr-hp__scales, .orr-hp__contrast) { display:none; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__contrast--drawn { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales { display:block; margin-top:6px; overflow:visible; }
+/* Weapon comparison copy stays HTML-sized while only its tracks scale to a narrow panel. */
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison { width:100%; max-width:360px; min-width:0; }
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__row + .orr-weapon-comparison__row { margin-top:8px; }
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:3px 12px; }
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__label,
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__value {
+  font:600 14px/1.4 var(--dp-face-body, 'Instrument Sans'), sans-serif; letter-spacing:0; text-transform:none; color:var(--dp-ink);
+}
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__value { font-variant-numeric:tabular-nums; }
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__value:empty { display:none; }
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__delta { color:var(--dp-ice); }
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__track { display:block; width:100%; height:20px !important; }
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__note {
+  margin:5px 0 0; font:400 13px/1.4 var(--dp-face-body, 'Instrument Sans'), sans-serif; letter-spacing:0; text-transform:none; color:var(--dp-ink-dim);
+}
 /* the lit open hardpoint stacks its choice: spares, their scales, then the verb, all on the ship's side */
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open.is-lit .orr-hp__line { flex-direction:column; align-items:flex-start; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-left.is-open.is-lit .orr-hp__line { align-items:flex-end; }
