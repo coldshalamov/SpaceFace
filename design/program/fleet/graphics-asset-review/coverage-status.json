@@ -3,10 +3,10 @@
   "generatedAt": "2026-11-16T09:37:39.925Z",
   "note": "One durable status per model ID. `unused/unresolved` is a disposition for unresolved linkage or identity, not proof of non-use or permission to delete. Review details and evidence remain in the per-model facts and append-only journals. Index refreshes and status updates rewrite this whole file; serialize those commands and do not run concurrent status writers.",
   "statusCounts": {
-    "pending": 66,
+    "pending": 59,
     "in progress": 0,
-    "passed": 281,
-    "needs follow-up": 171,
+    "passed": 331,
+    "needs follow-up": 128,
     "unused/unresolved": 3048
   },
   "models": {
@@ -5218,41 +5218,45 @@
       "family": "RUCKUS"
     },
     "runtime:place_aftermath_aft_armor_slab_authored_down:place_aftermath_aft_armor_slab_authored_down": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/wreck_aftermath_pack/authored_down/aft_armor_slab.glb",
           "sha256": "e2dc54c93e897c91864b1d99a4c3e44fae19fe42931f5541826f45a649af1676",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/aftermath-aft-armor-slab-authored-down/render.glb",
           "sha256": "76acc9dc54d5bc9304fb02dd924e3b707544b4a8687d10a2cb2f63e21ce7281a",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_aftermath_aft_armor_slab_authored_down.glb",
           "sha256": "c17cd61cfa7ca7f6be3462fe227b0e073898ccf923e561da0da75935558353d4",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views."
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No change; the authored-down armor slab has a dark amber slab silhouette with separated fragments.",
-      "issues": "Assess its connection to the surrounding wreck in an ordinary route; the isolated views cannot establish whether the small separated pieces communicate damage or read as accidental floating geometry.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_aft_armor_slab_authored_down_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_aft_armor_slab_authored_down_inspect.png"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_armor_slab_authored_down_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_armor_slab_authored_down_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_armor_slab_authored_down_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T15:06:54.898Z"
+      "updatedAt": "2026-11-17T03:54:26.855Z"
     },
     "runtime:place_aftermath_aft_armor_slab:place_aftermath_aft_armor_slab": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -5275,80 +5279,95 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Long dark slab and detached square fragment; sparse visible surface detail. Package: 6 primitives, 3 materials; authored-down sibling exists.",
-      "issues": "Ordinary wreck-field appearance and any condition variants remain unverified. Preserve salvage/hazard sockets and condition semantics; no FPS claim.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_aft_armor_slab_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_aft_armor_slab_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_armor_slab_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_armor_slab_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_armor_slab_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.630Z"
+      "updatedAt": "2026-11-17T03:54:27.274Z"
     },
     "runtime:place_aftermath_aft_cargo_module:place_aftermath_aft_cargo_module": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/wreck_aftermath_pack/source/aft_cargo_module.glb",
           "sha256": "f672111a10eea73c0666f7a92072b3080db86534bb95c5f4c8881b8724e4e48e",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/aftermath-aft-cargo-module/render.glb",
           "sha256": "34f2d2f87b256e71e01f5ab95af4ba472e7bb44badeb4452f16bb9f50448c8eb",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_aftermath_aft_cargo_module.glb",
           "sha256": "b6df77638d8943cb6b31ea2e316019d4c201dea95d0f20443f21ccacaca6d74f",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No model changes; runtime route and release structure inspected.",
-      "issues": "Release GLB SHA-256 prefix b6df7763; 38 meshes, 57 primitives, 5,836 triangles, 13 materials, 6 images. Static counts are not runtime draws. Capture gameplay-scale and close views and assess actual draw costs; no visual pass.",
-      "evidence": [
-        "src/data/wreckAftermathDressing.js",
-        "assets/ships/release/parts/places/place_aftermath_aft_cargo_module.glb"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
       ],
-      "updatedAt": "2026-11-16T06:25:13.127Z"
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_cargo_module_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_cargo_module_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_cargo_module_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/_sheet_close.png"
+      ],
+      "updatedAt": "2026-11-17T03:54:27.715Z"
     },
     "runtime:place_aftermath_aft_cockpit_section:place_aftermath_aft_cockpit_section": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/wreck_aftermath_pack/source/aft_cockpit_section.glb",
           "sha256": "36e6110750df7c93940595c2a22139cecdc243014620db34e8abe739fec2d0cc",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/aftermath-aft-cockpit-section/render.glb",
           "sha256": "c3c45c6a2f2be7c964c6c878ee6c3c2d83ce85a2193b3427bb28934602d994ec",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_aftermath_aft_cockpit_section.glb",
           "sha256": "32f36c764537d0e52833e3d3328875086ab76d771d0b774ce38810cb0fc7478f",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No model changes; runtime route and release structure inspected.",
-      "issues": "Release GLB SHA-256 prefix 32f36c76; 28 meshes, 31 primitives, 4,956 triangles, 9 materials, 6 images. Static counts are not runtime draws. Capture gameplay-scale and close views and assess actual draw costs; no visual pass.",
-      "evidence": [
-        "src/data/wreckAftermathDressing.js",
-        "assets/ships/release/parts/places/place_aftermath_aft_cockpit_section.glb"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
       ],
-      "updatedAt": "2026-11-16T06:25:13.241Z"
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_cockpit_section_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_cockpit_section_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_cockpit_section_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/_sheet_close.png"
+      ],
+      "updatedAt": "2026-11-17T03:54:28.169Z"
     },
     "runtime:place_aftermath_aft_dock_collar:place_aftermath_aft_dock_collar": {
       "status": "needs follow-up",
@@ -5373,49 +5392,61 @@
           "sha256Source": "release-manifest"
         }
       ],
-      "views": [],
-      "changes": "No model changes; runtime route and release structure inspected.",
-      "issues": "Release GLB SHA-256 prefix e89eb53f; 14 meshes, 15 primitives, 1,118 triangles, 7 materials, 6 images. Static counts are not runtime draws. Capture gameplay-scale and close views and assess actual draw costs; no visual pass.",
-      "evidence": [
-        "src/data/wreckAftermathDressing.js",
-        "assets/ships/release/parts/places/place_aftermath_aft_dock_collar.glb"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
       ],
-      "updatedAt": "2026-11-16T06:25:13.350Z"
+      "changes": "No asset change; capture-based review.",
+      "issues": "UNREADABLE FRAME: close view shows only a tiny corner fragment — capture framing issue (piece too small for auto-framing); recapture needed.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_dock_collar_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_dock_collar_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_dock_collar_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/_sheet_close.png"
+      ],
+      "updatedAt": "2026-11-17T03:54:28.636Z"
     },
     "runtime:place_aftermath_aft_engine_section:place_aftermath_aft_engine_section": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/wreck_aftermath_pack/source/aft_engine_section.glb",
           "sha256": "e4eae28d9a66d633b6f3b341eeb9995e9f7dff6916738c48f395ce484447260a",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/aftermath-aft-engine-section/render.glb",
           "sha256": "76c08e444271472d34e1f8afbc4d05b04b068fa68c6d6354a30995d4c629d71c",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_aftermath_aft_engine_section.glb",
           "sha256": "dbcf64fa6791f972ff03495dc27b78f04236a688cc502cf8fb8c5f30137993ce",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No model changes; runtime route and release structure inspected.",
-      "issues": "Release GLB SHA-256 prefix dbcf64fa; 44 meshes, 61 primitives, 9,838 triangles, 12 materials, 6 images. Static counts are not runtime draws. Capture gameplay-scale and close views and assess actual draw costs; no visual pass.",
-      "evidence": [
-        "src/data/wreckAftermathDressing.js",
-        "assets/ships/release/parts/places/place_aftermath_aft_engine_section.glb"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
       ],
-      "updatedAt": "2026-11-16T06:25:13.462Z"
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_engine_section_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_engine_section_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_engine_section_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/_sheet_close.png"
+      ],
+      "updatedAt": "2026-11-17T03:54:29.034Z"
     },
     "runtime:place_aftermath_aft_pressure_tank:place_aftermath_aft_pressure_tank": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -5438,16 +5469,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Cylindrical tank with torn opening, blue exposed panels and ribbed shell. Package: 4 primitives, 4 materials; preserve volatile hazard socket.",
-      "issues": "Ordinary wreck-field appearance and any condition variants remain unverified. Preserve salvage/hazard sockets and condition semantics; no FPS claim.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_aft_pressure_tank_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_aft_pressure_tank_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_pressure_tank_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_pressure_tank_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_pressure_tank_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.648Z"
+      "updatedAt": "2026-11-17T03:54:29.355Z"
     },
     "runtime:place_aftermath_aft_radiator_panel:place_aftermath_aft_radiator_panel": {
       "status": "needs follow-up",
@@ -5473,24 +5507,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views",
-        "Scratch merged candidate Direct3D place and inspect"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Both angles show only two thin lines and small isolated pieces; intended radiator body is not visually legible. Package: 20 primitives, 2 materials; salvage radiator socket. Scratch two-group merge reduces 20 to 4 primitives but is unintegrated and lacks visual/runtime verification. Scratch merge loaded and drew four primitives; source-node extras and salvage socket transform were preserved, but it remains unintegrated.",
-      "issues": "Ordinary wreck-field appearance and any condition variants remain unverified. Preserve salvage/hazard sockets and condition semantics; no FPS claim. Scratch view retains the same visually incomplete two-line appearance; resolve intended radiator construction before considering integration. No FPS claim.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "UNREADABLE FRAME: panel captured edge-on as two thin lines — no surface visible; recapture at an angle needed.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_aft_radiator_panel_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_aft_radiator_panel_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/report.json",
-        ".devshots/radiator-merge-candidate.mjs",
-        ".devshots/radiator-merge-candidate/place.png",
-        ".devshots/radiator-merge-candidate/inspect.png",
-        ".devshots/radiator-merge-candidate/runner-d3d.out"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_radiator_panel_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_radiator_panel_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_radiator_panel_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.657Z"
+      "updatedAt": "2026-11-17T03:54:29.824Z"
     },
     "runtime:place_aftermath_aft_weapon_spar:place_aftermath_aft_weapon_spar": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -5513,16 +5545,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Twin barrels on broken spar and turret housing read as a wreck fragment. Package: 8 primitives, 8 materials; preserve weapon salvage socket.",
-      "issues": "Ordinary wreck-field appearance and any condition variants remain unverified. Preserve salvage/hazard sockets and condition semantics; no FPS claim.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_aft_weapon_spar_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/place_aftermath_aft_weapon_spar_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fragments-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_weapon_spar_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_weapon_spar_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/place_aftermath_aft_weapon_spar_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-aft-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.670Z"
+      "updatedAt": "2026-11-17T03:54:30.369Z"
     },
     "runtime:place_aftermath_deb_corvette_armor_belt:place_aftermath_deb_corvette_armor_belt": {
       "status": "needs follow-up",
@@ -5836,38 +5871,42 @@
       "updatedAt": "2026-11-16T09:37:29.739Z"
     },
     "runtime:place_aftermath_frag_cable_bundle:place_aftermath_frag_cable_bundle": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/wreck_aftermath_pack/source/frag_cable_bundle.glb",
           "sha256": "ddddca90ce813c2effa93951df64ee091160b8beb2a8fd7e1d75257f190742a8",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/aftermath-frag-cable-bundle/render.glb",
           "sha256": "5e8f7e3f94a6c5cd36dbd37086ea43b72d1c0e023eee30d618618e8254d92810",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_aftermath_frag_cable_bundle.glb",
           "sha256": "e6b1572b1689e2d5b0ba20d71b4afb455c809770394a43df8f010c484ad2a87a",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Historical authoring image, not bound to current package bytes"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No model changes; source view and runtime route examined.",
-      "issues": "Historic view suggests rigid straight beams. Current package SHA-256 5e8f7e3f94a6c5cd36dbd37086ea43b72d1c0e023eee30d618618e8254d92810. Verify current package at gameplay and close scales and assess runtime batching; this historic image is not a pass.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        "assets/incubator/wreck_aftermath_pack/evidence/frag_cable_bundle.png",
-        "src/data/wreckAftermathDressing.js"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_cable_bundle_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_cable_bundle_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_cable_bundle_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T06:34:05.182Z"
+      "updatedAt": "2026-11-17T03:54:30.767Z"
     },
     "runtime:place_aftermath_frag_grating_sheet_authored_down:place_aftermath_frag_grating_sheet_authored_down": {
       "status": "needs follow-up",
@@ -5893,15 +5932,19 @@
         }
       ],
       "views": [
-        "Current isolated place and inspect views."
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No change; the authored-down grating is a flat red panel with exposed rods.",
-      "issues": "At place scale it reads as a flat sign-like rectangle; review material breakup and physical attachment in its ordinary salvage setting before changing geometry.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Authored-down grate sheet — same standing flat/dark finding applies.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_frag_grating_sheet_authored_down_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_frag_grating_sheet_authored_down_inspect.png"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_grating_sheet_authored_down_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_grating_sheet_authored_down_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_grating_sheet_authored_down_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T15:06:55.907Z"
+      "updatedAt": "2026-11-17T03:54:31.144Z"
     },
     "runtime:place_aftermath_frag_grating_sheet:place_aftermath_frag_grating_sheet": {
       "status": "needs follow-up",
@@ -5927,154 +5970,174 @@
         }
       ],
       "views": [
-        "Current isolated place and inspect views."
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No change; the normal grating preserves the rods but its dark face loses internal detail.",
-      "issues": "At place scale the panel is nearly black while the rods detach visually; assess a material or contrast correction in context before any mesh merge.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Grate sheet with support legs — the standing flat/dark-at-approach finding from the 20261115 batch still holds in current bytes.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_frag_grating_sheet_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_frag_grating_sheet_inspect.png"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_grating_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_grating_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_grating_sheet_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T15:06:56.181Z"
+      "updatedAt": "2026-11-17T03:54:31.537Z"
     },
     "runtime:place_aftermath_frag_pipe_tangle:place_aftermath_frag_pipe_tangle": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/wreck_aftermath_pack/source/frag_pipe_tangle.glb",
           "sha256": "1a1897a7cd35f691d0b92236e3bb2a46ac59e4b652f456046c90d7cbd45e8590",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/aftermath-frag-pipe-tangle/render.glb",
           "sha256": "dd3c89c653e7cba64ce37bd40d4f7b8e76d5edbfbad4043df112d9734bda0c1a",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_aftermath_frag_pipe_tangle.glb",
           "sha256": "037c88a355c8f3ee7890c9f3507fca70553fe48df3ec6d2d9223581b5b9a77f2",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Historical authoring image, not bound to current package bytes"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No model changes; source view and runtime route examined.",
-      "issues": "Historic view suggests separated rectangular bars. Current package SHA-256 dd3c89c653e7cba64ce37bd40d4f7b8e76d5edbfbad4043df112d9734bda0c1a. Verify current package at gameplay and close scales and assess runtime batching; this historic image is not a pass.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        "assets/incubator/wreck_aftermath_pack/evidence/frag_pipe_tangle.png",
-        "src/data/wreckAftermathDressing.js"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_pipe_tangle_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_pipe_tangle_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_pipe_tangle_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T06:34:05.318Z"
+      "updatedAt": "2026-11-17T03:54:32.024Z"
     },
     "runtime:place_aftermath_frag_plate_curl:place_aftermath_frag_plate_curl": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/wreck_aftermath_pack/source/frag_plate_curl.glb",
           "sha256": "c4c17973545e08ff1878286cae9d626dd15fad8040818eefb308f22c95980fc8",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/aftermath-frag-plate-curl/render.glb",
           "sha256": "1376da048fd4f832e1fc5b48c0a868679c4041c8921093dc7bd1319fd3225a4a",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_aftermath_frag_plate_curl.glb",
           "sha256": "eb0d11f7fde6e3ba98de24a528fbc07d57d604503d4a53fe894f271654a9239d",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Historical authoring image, not bound to current package bytes"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No model changes; source view and runtime route examined.",
-      "issues": "Historic view suggests three straight pieces with little visible curl. Current package SHA-256 1376da048fd4f832e1fc5b48c0a868679c4041c8921093dc7bd1319fd3225a4a. Verify current package at gameplay and close scales and assess runtime batching; this historic image is not a pass.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        "assets/incubator/wreck_aftermath_pack/evidence/frag_plate_curl.png",
-        "src/data/wreckAftermathDressing.js"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_plate_curl_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_plate_curl_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_plate_curl_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T06:34:05.460Z"
+      "updatedAt": "2026-11-17T03:54:32.503Z"
     },
     "runtime:place_aftermath_frag_rib_cluster:place_aftermath_frag_rib_cluster": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/wreck_aftermath_pack/source/frag_rib_cluster.glb",
           "sha256": "27716b85ce1872292e7a149519989af79df1bdd1a47a927ae5aac902a54303ca",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/aftermath-frag-rib-cluster/render.glb",
           "sha256": "4a0842cbd14e8f146a2b2b34e88d62a062190758dd0a1202236f8046d97982e2",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_aftermath_frag_rib_cluster.glb",
           "sha256": "d14bc8cfeb75c5b61c65f775b45df0c9f70baf785c03c241412f0806b914262d",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Historical authoring image, not bound to current package bytes"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No model changes; source view and runtime route examined.",
-      "issues": "Historic view suggests dark disconnected bars. Current package SHA-256 4a0842cbd14e8f146a2b2b34e88d62a062190758dd0a1202236f8046d97982e2. Verify current package at gameplay and close scales and assess runtime batching; this historic image is not a pass.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        "assets/incubator/wreck_aftermath_pack/evidence/frag_rib_cluster.png",
-        "src/data/wreckAftermathDressing.js"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_rib_cluster_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_rib_cluster_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_rib_cluster_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T06:34:05.611Z"
+      "updatedAt": "2026-11-17T03:54:33.230Z"
     },
     "runtime:place_aftermath_frag_strut_shard:place_aftermath_frag_strut_shard": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/incubator/wreck_aftermath_pack/source/frag_strut_shard.glb",
           "sha256": "0cee3d55b3269844511728ba21fc99354520085f7b4932209648cb1ab6e458eb",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/aftermath-frag-strut-shard/render.glb",
           "sha256": "ec32caa775bae167e93c14e959f1d20e0e95bd3a38a6eda5c227be4fba9af59f",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_aftermath_frag_strut_shard.glb",
           "sha256": "8b54c143a4a80343614e274bfedef01c43b82cd32e81f8e8f702c2e0d0a90853",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "Current isolated place and inspect views."
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No change; the strut shard has a narrow ribbed silhouette with disconnected end fragments.",
-      "issues": "The long narrow member loses presence at place scale; inspect its actual placement before deciding whether stronger material contrast or an attachment change is needed.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_frag_strut_shard_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/debris-variants-20261116/place_aftermath_frag_strut_shard_inspect.png"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_strut_shard_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_strut_shard_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/place_aftermath_frag_strut_shard_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-frag-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T15:06:56.377Z"
+      "updatedAt": "2026-11-17T03:54:39.467Z"
     },
     "runtime:place_aftermath_wreck_corvette_engine:place_aftermath_wreck_corvette_engine": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6097,19 +6160,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views of base wreck"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Dark engine segment has fractured ends and exposed framing; colored lights remain visible. Package: 64 mesh objects, 85 primitives, 12 materials; reactor and drive salvage sockets. No concrete safe waste removal established.",
-      "issues": "Review ordinary wreck-field placement and any separate condition/authored-down variants; preserve hazard, evidence and salvage sockets. Primitive counts alone are not performance measurements.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_corvette_engine_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_corvette_engine_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_corvette_engine_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_corvette_engine_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_corvette_engine_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.743Z"
+      "updatedAt": "2026-11-17T04:06:42.981Z"
     },
     "runtime:place_aftermath_wreck_corvette_forward__fresh:place_aftermath_wreck_corvette_forward__fresh": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6132,23 +6198,26 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views of condition variant"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Colored intact forward shell resembles base with added emergency lights. Package: 95 primitives, 11 materials; same four sockets as base. No safe optimization established.",
-      "issues": "Ordinary wreck-field appearance and condition selection remain unverified; preserve LOD and socket boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/place_aftermath_wreck_corvette_forward__fresh_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/place_aftermath_wreck_corvette_forward__fresh_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_corvette_forward__fresh_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_corvette_forward__fresh_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_corvette_forward__fresh_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.762Z",
+      "updatedAt": "2026-11-17T04:06:43.285Z",
       "family": "place_aftermath_wreck_corvette_forward",
       "relatedModels": [
         "runtime:place_aftermath_wreck_corvette_forward:place_aftermath_wreck_corvette_forward"
       ]
     },
     "runtime:place_aftermath_wreck_corvette_forward__stripped_heavy:place_aftermath_wreck_corvette_forward__stripped_heavy": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6171,23 +6240,26 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views of condition variant"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Darker stripped hull loses much of its color and some surface detail; frame still reads. Package: 128 primitives, 10 materials; same four sockets; geometry differs from base. No safe optimization established.",
-      "issues": "Ordinary wreck-field appearance and condition selection remain unverified; preserve LOD and socket boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/place_aftermath_wreck_corvette_forward__stripped_heavy_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/place_aftermath_wreck_corvette_forward__stripped_heavy_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_corvette_forward__stripped_heavy_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_corvette_forward__stripped_heavy_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_corvette_forward__stripped_heavy_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.783Z",
+      "updatedAt": "2026-11-17T04:06:43.582Z",
       "family": "place_aftermath_wreck_corvette_forward",
       "relatedModels": [
         "runtime:place_aftermath_wreck_corvette_forward:place_aftermath_wreck_corvette_forward"
       ]
     },
     "runtime:place_aftermath_wreck_corvette_forward:place_aftermath_wreck_corvette_forward": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6210,16 +6282,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views of base wreck"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Pointed forward section has open framing and red/blue markings; fracture is less obvious from above. Package: 66 mesh objects, 93 primitives, 10 materials; black box, evidence, hazard and salvage sockets; fresh and stripped-heavy variants exist. No concrete safe waste removal established.",
-      "issues": "Review ordinary wreck-field placement and any separate condition/authored-down variants; preserve hazard, evidence and salvage sockets. Primitive counts alone are not performance measurements.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_corvette_forward_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_corvette_forward_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_corvette_forward_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_corvette_forward_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_corvette_forward_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.800Z",
+      "updatedAt": "2026-11-17T04:06:43.934Z",
       "family": "place_aftermath_wreck_corvette_forward",
       "relatedModels": [
         "runtime:place_aftermath_wreck_corvette_forward__fresh:place_aftermath_wreck_corvette_forward__fresh",
@@ -6227,7 +6302,7 @@
       ]
     },
     "runtime:place_aftermath_wreck_corvette_turret:place_aftermath_wreck_corvette_turret": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6250,19 +6325,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views of base wreck"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Twin-barrel detached turret reads clearly but looks relatively intact. Package: 1 mesh object, 6 primitives, 6 materials; weapon salvage socket. No concrete safe waste removal established.",
-      "issues": "Review ordinary wreck-field placement and any separate condition/authored-down variants; preserve hazard, evidence and salvage sockets. Primitive counts alone are not performance measurements.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_corvette_turret_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_corvette_turret_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_corvette_turret_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_corvette_turret_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_corvette_turret_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.857Z"
+      "updatedAt": "2026-11-17T04:06:44.224Z"
     },
     "runtime:place_aftermath_wreck_liner_boatbay_authored_down:place_aftermath_wreck_liner_boatbay_authored_down": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6285,23 +6363,26 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views of condition variant"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Dark curved hull and open torn end; lower contrast than base. Package: 14 primitives, 5 materials with named LOD0/1/2; same two sockets. No safe optimization established.",
-      "issues": "Ordinary wreck-field appearance and condition selection remain unverified; preserve LOD and socket boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/place_aftermath_wreck_liner_boatbay_authored_down_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/place_aftermath_wreck_liner_boatbay_authored_down_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_liner_boatbay_authored_down_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_liner_boatbay_authored_down_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_liner_boatbay_authored_down_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.869Z",
+      "updatedAt": "2026-11-17T04:06:44.551Z",
       "family": "place_aftermath_wreck_liner_boatbay",
       "relatedModels": [
         "runtime:place_aftermath_wreck_liner_boatbay:place_aftermath_wreck_liner_boatbay"
       ]
     },
     "runtime:place_aftermath_wreck_liner_boatbay:place_aftermath_wreck_liner_boatbay": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6324,23 +6405,26 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views of base wreck"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Curved passenger hull with open broken end and illuminated window rows; surface looks quite clean. Package: 110 mesh objects, 125 primitives, 12 materials; evidence and bay salvage sockets; authored-down sibling exists. No concrete safe waste removal established.",
-      "issues": "Review ordinary wreck-field placement and any separate condition/authored-down variants; preserve hazard, evidence and salvage sockets. Primitive counts alone are not performance measurements.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_liner_boatbay_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_liner_boatbay_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_liner_boatbay_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_liner_boatbay_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_liner_boatbay_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.922Z",
+      "updatedAt": "2026-11-17T04:06:44.871Z",
       "family": "place_aftermath_wreck_liner_boatbay",
       "relatedModels": [
         "runtime:place_aftermath_wreck_liner_boatbay_authored_down:place_aftermath_wreck_liner_boatbay_authored_down"
       ]
     },
     "runtime:place_aftermath_wreck_liner_bow_authored_down:place_aftermath_wreck_liner_bow_authored_down": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6363,24 +6447,26 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views of condition variant"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Close view shows a very dark curved bow; place view is almost completely absent despite successful renderer receipt. Package: 14 primitives, 5 materials with named LOD0/1/2; same two sockets. No safe optimization established.",
-      "issues": "Place-scale image is effectively missing the body despite an ok receipt; investigate actual LOD/visibility and do not count this view as a pass. Ordinary wreck-field appearance and condition selection remain unverified; preserve LOD and socket boundaries. Source tracing found both views select LOD0 and static bounds intersect the place frustum; a targeted diagnostic stalled before producing data, so the cause remains unresolved.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/place_aftermath_wreck_liner_bow_authored_down_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/place_aftermath_wreck_liner_bow_authored_down_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/report.json",
-        ".devshots/liner-bow-diagnostic.mjs"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_liner_bow_authored_down_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_liner_bow_authored_down_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_liner_bow_authored_down_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.938Z",
+      "updatedAt": "2026-11-17T04:06:45.191Z",
       "family": "place_aftermath_wreck_liner_bow",
       "relatedModels": [
         "runtime:place_aftermath_wreck_liner_bow:place_aftermath_wreck_liner_bow"
       ]
     },
     "runtime:place_aftermath_wreck_liner_bow:place_aftermath_wreck_liner_bow": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6403,23 +6489,26 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views of base wreck"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Clean curved bow and teal band retain liner identity; broken rear end needs in-context judgment. Package: 50 mesh objects, 70 primitives, 12 materials; black-box and bridge salvage sockets; authored-down sibling exists. No concrete safe waste removal established.",
-      "issues": "Review ordinary wreck-field placement and any separate condition/authored-down variants; preserve hazard, evidence and salvage sockets. Primitive counts alone are not performance measurements.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_liner_bow_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_liner_bow_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_liner_bow_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_liner_bow_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_liner_bow_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:29.996Z",
+      "updatedAt": "2026-11-17T04:06:45.503Z",
       "family": "place_aftermath_wreck_liner_bow",
       "relatedModels": [
         "runtime:place_aftermath_wreck_liner_bow_authored_down:place_aftermath_wreck_liner_bow_authored_down"
       ]
     },
     "runtime:place_aftermath_wreck_liner_drum__derelict:place_aftermath_wreck_liner_drum__derelict": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6442,23 +6531,26 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views of condition variant"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Open drum and broken beams are dark with windows unlit, matching derelict condition. Package: 85 primitives, 9 materials; same three sockets; dead material variants. No safe optimization established.",
-      "issues": "Ordinary wreck-field appearance and condition selection remain unverified; preserve LOD and socket boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/place_aftermath_wreck_liner_drum__derelict_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/place_aftermath_wreck_liner_drum__derelict_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_liner_drum__derelict_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_liner_drum__derelict_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/place_aftermath_wreck_liner_drum__derelict_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-1/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.019Z",
+      "updatedAt": "2026-11-17T04:06:45.808Z",
       "family": "place_aftermath_wreck_liner_drum",
       "relatedModels": [
         "runtime:place_aftermath_wreck_liner_drum:place_aftermath_wreck_liner_drum"
       ]
     },
     "runtime:place_aftermath_wreck_liner_drum__fresh:place_aftermath_wreck_liner_drum__fresh": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6481,23 +6573,26 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views of condition variant"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Broken drum retains lit windows and a small red cue. Package: 87 primitives, 10 materials; same three sockets; emergency material/geometry added. No safe optimization established.",
-      "issues": "Ordinary wreck-field appearance and condition selection remain unverified; preserve LOD and socket boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/place_aftermath_wreck_liner_drum__fresh_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/place_aftermath_wreck_liner_drum__fresh_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_liner_drum__fresh_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_liner_drum__fresh_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_liner_drum__fresh_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.046Z",
+      "updatedAt": "2026-11-17T04:06:46.135Z",
       "family": "place_aftermath_wreck_liner_drum",
       "relatedModels": [
         "runtime:place_aftermath_wreck_liner_drum:place_aftermath_wreck_liner_drum"
       ]
     },
     "runtime:place_aftermath_wreck_liner_drum:place_aftermath_wreck_liner_drum": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6520,16 +6615,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views of base wreck"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Open drum has hanging plates and exposed beams; window rows remain bright. Package: 74 mesh objects, 85 primitives, 9 materials; black-box, hazard and habitation salvage sockets; fresh and derelict siblings exist. No concrete safe waste removal established.",
-      "issues": "Review ordinary wreck-field placement and any separate condition/authored-down variants; preserve hazard, evidence and salvage sockets. Primitive counts alone are not performance measurements.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_liner_drum_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_liner_drum_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_liner_drum_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_liner_drum_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_liner_drum_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.062Z",
+      "updatedAt": "2026-11-17T04:06:46.463Z",
       "family": "place_aftermath_wreck_liner_drum",
       "relatedModels": [
         "runtime:place_aftermath_wreck_liner_drum__derelict:place_aftermath_wreck_liner_drum__derelict",
@@ -6537,7 +6635,7 @@
       ]
     },
     "runtime:place_aftermath_wreck_mining_barge_authored_down:place_aftermath_wreck_mining_barge_authored_down": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6560,19 +6658,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Long broken barge segments linked by thin beams; ore and bridge remain visible. Package: 196 primitives, 17 materials; preserve six hazard, evidence and salvage sockets. No safe geometry removal established.",
-      "issues": "Ordinary placement and motion remain unverified; preserve condition, hazard, salvage and dynamic boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/place_aftermath_wreck_mining_barge_authored_down_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/place_aftermath_wreck_mining_barge_authored_down_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_mining_barge_authored_down_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_mining_barge_authored_down_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_mining_barge_authored_down_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.091Z"
+      "updatedAt": "2026-11-17T04:06:46.789Z"
     },
     "runtime:place_aftermath_wreck_ore_freighter_bow__derelict:place_aftermath_wreck_ore_freighter_bow__derelict": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6595,16 +6696,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Dark, unlit condition retains ore and broken frame. Package: 166 primitives, 14 materials; same four sockets. No safe geometry removal established.",
-      "issues": "Ordinary placement and motion remain unverified; preserve condition, hazard, salvage and dynamic boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/place_aftermath_wreck_ore_freighter_bow__derelict_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/place_aftermath_wreck_ore_freighter_bow__derelict_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_bow__derelict_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_bow__derelict_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_bow__derelict_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.098Z",
+      "updatedAt": "2026-11-17T04:06:47.219Z",
       "family": "Ore freighter bow",
       "relatedModels": [
         "runtime:place_aftermath_wreck_ore_freighter_bow__fresh:place_aftermath_wreck_ore_freighter_bow__fresh",
@@ -6613,7 +6717,7 @@
       ]
     },
     "runtime:place_aftermath_wreck_ore_freighter_bow__fresh:place_aftermath_wreck_ore_freighter_bow__fresh": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6636,15 +6740,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D inspect view; place view failed"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Close view shows same bow with small emergency lights; place view failed before capture. Package: 168 primitives, 15 materials; same four sockets as base. No safe geometry removal established.",
-      "issues": "Place view failed with WebGL buffer-resize error during scene render; owner unknown and failed view is not a pass. Ordinary placement and motion remain unverified; preserve condition, hazard, salvage and dynamic boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/place_aftermath_wreck_ore_freighter_bow__fresh_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_bow__fresh_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_bow__fresh_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_bow__fresh_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.125Z",
+      "updatedAt": "2026-11-17T04:06:47.858Z",
       "family": "Ore freighter bow",
       "relatedModels": [
         "runtime:place_aftermath_wreck_ore_freighter_bow__derelict:place_aftermath_wreck_ore_freighter_bow__derelict",
@@ -6653,7 +6761,7 @@
       ]
     },
     "runtime:place_aftermath_wreck_ore_freighter_bow__stripped:place_aftermath_wreck_ore_freighter_bow__stripped": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6676,16 +6784,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: More stripped bow retains open frame and cargo. Package: 308 primitives, 15 materials; same four sockets. Static batching is a candidate, but semantics and safety are unqualified. No safe geometry removal established.",
-      "issues": "Ordinary placement and motion remain unverified; preserve condition, hazard, salvage and dynamic boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/place_aftermath_wreck_ore_freighter_bow__stripped_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/place_aftermath_wreck_ore_freighter_bow__stripped_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_bow__stripped_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_bow__stripped_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_bow__stripped_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.131Z",
+      "updatedAt": "2026-11-17T04:06:48.478Z",
       "family": "Ore freighter bow",
       "relatedModels": [
         "runtime:place_aftermath_wreck_ore_freighter_bow__derelict:place_aftermath_wreck_ore_freighter_bow__derelict",
@@ -6694,7 +6805,7 @@
       ]
     },
     "runtime:place_aftermath_wreck_ore_freighter_bow:place_aftermath_wreck_ore_freighter_bow": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6717,16 +6828,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Ore-filled broken bow and two exposed rings read clearly; remains relatively clean. Package: 166 primitives, 14 materials; BlackBox, Hazard_Break, Salvage_Bridge and Salvage_Hopper sockets. No safe geometry removal established.",
-      "issues": "Ordinary placement and motion remain unverified; preserve condition, hazard, salvage and dynamic boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/place_aftermath_wreck_ore_freighter_bow_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/place_aftermath_wreck_ore_freighter_bow_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-industrial-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_bow_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_bow_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_bow_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.136Z",
+      "updatedAt": "2026-11-17T04:06:49.015Z",
       "family": "Ore freighter bow",
       "relatedModels": [
         "runtime:place_aftermath_wreck_ore_freighter_bow__derelict:place_aftermath_wreck_ore_freighter_bow__derelict",
@@ -6735,7 +6849,7 @@
       ]
     },
     "runtime:place_aftermath_wreck_ore_freighter_hopper_authored_down:place_aftermath_wreck_ore_freighter_hopper_authored_down": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6758,23 +6872,26 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views of condition variant"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Ore and exposed frame read, with orange-red coloration differing from base. Package: 6 primitives, 2 materials with named LOD0/1/2; same salvage socket. No safe optimization established.",
-      "issues": "Ordinary wreck-field appearance and condition selection remain unverified; preserve LOD and socket boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/place_aftermath_wreck_ore_freighter_hopper_authored_down_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/place_aftermath_wreck_ore_freighter_hopper_authored_down_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wreck-variants-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_hopper_authored_down_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_hopper_authored_down_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_hopper_authored_down_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.141Z",
+      "updatedAt": "2026-11-17T04:06:49.488Z",
       "family": "place_aftermath_wreck_ore_freighter_hopper",
       "relatedModels": [
         "runtime:place_aftermath_wreck_ore_freighter_hopper:place_aftermath_wreck_ore_freighter_hopper"
       ]
     },
     "runtime:place_aftermath_wreck_ore_freighter_hopper:place_aftermath_wreck_ore_freighter_hopper": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6797,23 +6914,26 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views of base wreck"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Ore and fractured frame read as cargo debris; some small pieces float around the open end. Package: 60 mesh objects, 89 primitives, 11 materials; ore salvage socket; authored-down sibling exists. No concrete safe waste removal established.",
-      "issues": "Review ordinary wreck-field placement and any separate condition/authored-down variants; preserve hazard, evidence and salvage sockets. Primitive counts alone are not performance measurements.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_ore_freighter_hopper_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_ore_freighter_hopper_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_hopper_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_hopper_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_hopper_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.176Z",
+      "updatedAt": "2026-11-17T04:06:49.906Z",
       "family": "place_aftermath_wreck_ore_freighter_hopper",
       "relatedModels": [
         "runtime:place_aftermath_wreck_ore_freighter_hopper_authored_down:place_aftermath_wreck_ore_freighter_hopper_authored_down"
       ]
     },
     "runtime:place_aftermath_wreck_ore_freighter_stern:place_aftermath_wreck_ore_freighter_stern": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -6836,16 +6956,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views of base wreck"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Ore bed and intact bridge distinguish this stern; broken framing and debris visible. Package: 99 mesh objects, 131 primitives, 19 materials; reactor, drive and radiator sockets. No concrete safe waste removal established.",
-      "issues": "Review ordinary wreck-field placement and any separate condition/authored-down variants; preserve hazard, evidence and salvage sockets. Primitive counts alone are not performance measurements.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_ore_freighter_stern_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/place_aftermath_wreck_ore_freighter_stern_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/wrecks-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_stern_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_stern_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/place_aftermath_wreck_ore_freighter_stern_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-aftermath-wreck-20261116/wreck-2/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:30.192Z"
+      "updatedAt": "2026-11-17T04:06:50.199Z"
     },
     "runtime:place_cargo_pod_hazmat:place_cargo_pod_hazmat": {
       "status": "passed",
@@ -12122,33 +12245,42 @@
       "family": "modular greebles"
     },
     "runtime:SF_PART_PLACE_MINING_DRONE:place_mining_drone": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_mining_drone.glb",
           "sha256": "5390ead0e2bfbcb1ceec3506e950701d655be14bb1791e95cbffc86b1d0526fd",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/mining-drone/render.glb",
           "sha256": "49a7d077a55477f662873f260939f43eb0154fffab2aaa19cbd05c6f2b1b9551",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_mining_drone.glb",
           "sha256": "91294b3376110e72248889d06965b0222b17e06d90af108483e1447295acb0e2",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.657Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/place_mining_drone_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/place_mining_drone_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/place_mining_drone_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/_sheet_close.png"
+      ],
+      "updatedAt": "2026-11-17T04:08:11.565Z"
     },
     "runtime:SF_PELICAN_PRODUCTION_V1:pelican_production_v1": {
       "status": "passed",
@@ -12262,7 +12394,7 @@
       "updatedAt": "2026-11-17T03:28:21.484Z"
     },
     "runtime:SF_PLACE_ANVIL_CONDENSATE_POD:place_anvil_condensate_pod": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -12285,48 +12417,60 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Orange cylindrical pod with two bright bars; material seams visible. Package: 13 stored primitives, 4 materials; camera/coupler/Massline sockets and pressure-vessel collision. Named LOD0–2; no safe merge established.",
-      "issues": "Ordinary gameplay, motion and lighting remain unverified. Preserve functional lights, LODs, collision and named moving/socket boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/place-objects-20261116/place_anvil_condensate_pod_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/place-objects-20261116/place_anvil_condensate_pod_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/place-objects-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/place_anvil_condensate_pod_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/place_anvil_condensate_pod_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/place_anvil_condensate_pod_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:32.658Z"
+      "updatedAt": "2026-11-17T04:08:04.435Z"
     },
     "runtime:SF_PLACE_ANVIL_STORM_ORCHARD:place_anvil_storm_orchard": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_anvil_storm_orchard.glb",
           "sha256": "0b425bc62b694737db3110cb01a677aa96aa0c47e7a792d6224554b72e18de64",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/anvil-storm-orchard/render.glb",
           "sha256": "43294e92cef7b06d2d4bf5cbfaec70783dd1cb72cd11716fdfeb92067cfcdfba",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_anvil_storm_orchard.glb",
           "sha256": "3fb008e52abfdfd4b3108b0ebd732dd09ff242939954a96b98bd6ee3e4823ff6",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.657Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/place_anvil_storm_orchard_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/place_anvil_storm_orchard_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/place_anvil_storm_orchard_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/_sheet_close.png"
+      ],
+      "updatedAt": "2026-11-17T04:08:04.858Z"
     },
     "runtime:SF_PLACE_ASH_PIN:place_ash_pin": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -12349,16 +12493,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Small dark pedestal with upright fixture; body is subdued in place view. Package: 22 stored primitives, 7 materials; collision hull. Named LOD0–2; no safe merge established.",
-      "issues": "Ordinary gameplay, motion and lighting remain unverified. Preserve functional lights, LODs, collision and named moving/socket boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/place-objects-20261116/place_ash_pin_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/place-objects-20261116/place_ash_pin_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/place-objects-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/place_ash_pin_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/place_ash_pin_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/place_ash_pin_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:32.693Z"
+      "updatedAt": "2026-11-17T04:08:05.330Z"
     },
     "runtime:SF_PLACE_ASTEROID_GRAFFITI_GEOLOGY_V3:place_asteroid_graffiti": {
       "status": "pending",
@@ -12419,101 +12566,119 @@
       "updatedAt": "2026-11-16T06:23:14.658Z"
     },
     "runtime:SF_PLACE_BORROWED_VOICE_RING:borrowed_voice_ring": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/borrowed_voice_ring_lod1.glb",
           "sha256": "3abe6cb9df675c1cf6711cb9ba26cd912bdbb617b5b51da0c1f9db978b1b5189",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/borrowed_voice_ring_lod2.glb",
           "sha256": "1f18f6cd3c98f981330e0313d32282ed6b6b92a92404822332649c3a4141b718",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/borrowed_voice_ring.glb",
           "sha256": "2bb35cb8e1fd917841551dd2c276cb4c326231cf53c50a5cdb9ecc58b8ca49cf",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/borrowed-voice-ring-lod1/render.glb",
           "sha256": "5ac120086b933147ff627640007efd1daba28dddc530bd1a02d896e0f3c6258d",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/borrowed-voice-ring-lod2/render.glb",
           "sha256": "026c5b9f7c71f5190a72c726caabf428d9a939a0502f5af442085c2bfc52a6d9",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/borrowed-voice-ring/render.glb",
           "sha256": "bfbcb3fc5f48778b96ecd3ba314e285f5c63fb952bef760dd42f9e105e3d36ec",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/borrowed_voice_ring_lod1.glb",
           "sha256": "f5fcaad22808128ad4eb9ae0fd2fa3c4d7375e520458958ea008c5f069ea70a9",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/borrowed_voice_ring_lod2.glb",
           "sha256": "7f5d0cfd579f43302901ee251a62aaa5de9b02baa87277477c2c3811851a1f8a",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/borrowed_voice_ring.glb",
           "sha256": "5e3f9e0e135d461a5c84588fefb8ba0a8a654450393968a4444b14ef8740aef9",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.658Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/borrowed_voice_ring_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/borrowed_voice_ring_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/borrowed_voice_ring_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/_sheet_close.png"
+      ],
+      "updatedAt": "2026-11-17T04:08:05.731Z"
     },
     "runtime:SF_PLACE_BREAKAWAY_FORK:place_breakaway_fork": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_breakaway_fork.glb",
           "sha256": "4a68d5a83bbc754ffc3d1af70df7a6236b69867b79ab0332e4b36d5d4799ff64",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/breakaway-fork/render.glb",
-          "sha256": "7e718867cbdf269cc06f73e6e0ab868bff773d0700fa5e4f735c319892969356",
-          "sha256Source": "catalog-only"
+          "sha256": "380d9b69b12aef3797fa1636f006808aa60d8f7d67938fd9d7983841832afaa7",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_breakaway_fork.glb",
           "sha256": "15f2ae4cc576669180e9e281260338cda8b23141f3d4d0a5b88309b599c1c054",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.658Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/borrowed_voice_ring_lod1_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/borrowed_voice_ring_lod1_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/borrowed_voice_ring_lod1_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/_sheet_close.png"
+      ],
+      "updatedAt": "2026-11-17T04:08:06.707Z"
     },
     "runtime:SF_PLACE_BREAKAWAY_SP07:place_breakaway_sp07": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -12536,16 +12701,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Open frame and central ring with signal lights read as machinery. Package: 37 stored primitives, 12 materials; six dynamic groups and collision hull. Named LOD0–2; no safe merge established.",
-      "issues": "Ordinary gameplay, motion and lighting remain unverified. Preserve functional lights, LODs, collision and named moving/socket boundaries.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/place-objects-20261116/place_breakaway_sp07_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/place-objects-20261116/place_breakaway_sp07_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/place-objects-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/borrowed_voice_ring_lod2_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/borrowed_voice_ring_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/borrowed_voice_ring_lod2_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:32.721Z"
+      "updatedAt": "2026-11-17T04:08:07.915Z"
     },
     "runtime:SF_PLACE_CERES_BAIT_WRECK:place_ceres_bait_wreck": {
       "status": "passed",
@@ -13156,38 +13324,42 @@
       "updatedAt": "2026-11-17T03:39:26.137Z"
     },
     "runtime:SF_PLACE_COLD_LOCKER:place_cold_locker": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_cold_locker.glb",
           "sha256": "9eb14831390a34659156771e09d54b8b9dadf897bd27151a13c873a209c47d64",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/cold-locker/render.glb",
-          "sha256": "db2674cbd046d73aa77e2d0c1e59cb16b637bdfa269d0a85e8cbe4e4b36d04dd",
-          "sha256Source": "catalog-only"
+          "sha256": "2ef45c056d2cd7c8e3f462d0efcdb8c1665b7ed8729bdb22bbc342fe88739f7c",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_cold_locker.glb",
           "sha256": "def6397781560e3889d0ece05b28109840bc055c03ac2a7b98bd9025f8e7a939",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
       "views": [
-        "CPU Blender LOD0 detail preview of decoded release GLB; textures removed and colors substituted"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "No asset changes; supplemental shape view inspected.",
-      "issues": "LOD0 container silhouette and marker placement appear coherent in supplemental view. Release GLB SHA-256 def6397781560e3889d0ece05b28109840bc055c03ac2a7b98bd9025f8e7a939. Runtime package, textures, gameplay-scale view and practical efficiency remain unverified; preview is not a pass.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/cpu-preview-20261116/place_cold_locker.png",
-        "assets/ships/release/parts/places/place_cold_locker.glb"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/place_breakaway_fork_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/place_breakaway_fork_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/place_breakaway_fork_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T06:39:14.473Z"
+      "updatedAt": "2026-11-17T04:08:09.061Z"
     },
     "runtime:SF_PLACE_CONVEYOR_BARGE:place_conveyor_barge": {
       "status": "passed",
@@ -13228,33 +13400,42 @@
       "updatedAt": "2026-11-17T03:28:22.631Z"
     },
     "runtime:SF_PLACE_DOCK_INTERIOR_GRIT:place_dock_interior_grit": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_dock_interior_grit.glb",
           "sha256": "a8fd60b0d50bfa8c72625742e3c1cdcdcfb50a55ee1fa55893219da12cd85199",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/dock-interior-grit/render.glb",
           "sha256": "a4851a20af878cbb500b2d1a8b8b2249ea4fd1727e6cd2f37a530124f4f4549a",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_dock_interior_grit.glb",
           "sha256": "5e6d078ed81084104ebbe97b80c956b1daf7dbf66c367b754e67c35374bf8c70",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.659Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/place_breakaway_sp07_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/place_breakaway_sp07_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/place_breakaway_sp07_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-places-sites-20261116/sites-1/_sheet_close.png"
+      ],
+      "updatedAt": "2026-11-17T04:08:10.174Z"
     },
     "runtime:SF_PLACE_DOCK_INTERIOR_MILITARY:place_dock_interior_military": {
       "status": "pending",
@@ -15753,72 +15934,81 @@
       "updatedAt": "2026-11-17T03:26:55.952Z"
     },
     "runtime:SF_PROP_BORROWED_VOICE_A:borrowed_voice_a": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/borrowed_voice_a_lod1.glb",
           "sha256": "81eff0a40f83c38b66faa29ed1d2b1d48eea2107f247e9c4b2dcf316c1485892",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/borrowed_voice_a_lod2.glb",
           "sha256": "03f9f90a221c9717c5c7d55baf3e32788bcacc3b0453df999b9bfea37ea6f249",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/borrowed_voice_a.glb",
           "sha256": "eeb82edf94ad35cb90d10b6c3c25ca7d74cb78fc5381819b509e531a48df0dc8",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/borrowed-voice-a-lod1/render.glb",
           "sha256": "cae2fee863799ace094964c7decc70412ad28c0f5b5b534cacdbcd4605f7cc94",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/borrowed-voice-a-lod2/render.glb",
           "sha256": "71ef81a5166af697950c643c75580623faddaa8f11475fa22288078fb5d55020",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/borrowed-voice-a/render.glb",
           "sha256": "3830704abb82d60cab937170a72c3b29c65be697912e45dc4a087d3a4b2d563e",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/borrowed_voice_a_lod1.glb",
           "sha256": "eb90c9abe308b520b9f7c619c46e6be73474f1c5966ed774ac3ac3ea431c3c07",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/borrowed_voice_a_lod2.glb",
           "sha256": "ab1d37c096050cec43ae95da00802b88a339b78a2ff3ede448808687b4547280",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/borrowed_voice_a.glb",
           "sha256": "9b131ce66ddba870937e80d410975a587b06ba43010b054584c48e3e247cbddb",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.661Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_a_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_a_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_a_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/_sheet_close.png"
+      ],
+      "updatedAt": "2026-11-17T04:08:13.139Z"
     },
     "runtime:SF_PROP_BORROWED_VOICE_B:borrowed_voice_b": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -15877,20 +16067,23 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Receiver and handles on detailed box distinguish the prop; retain visible signal panel. Package: 8 primitives, 6 materials; receiver/camera/Massline sockets, receiver pivot and collision. No safe geometry removal established.",
-      "issues": "Ordinary gameplay, story interaction and motion remain unverified. Preserve collision, sockets, functional lights and variant-specific cues; texture sharing needs scoped qualification.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/borrowed_voice_b_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/borrowed_voice_b_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_a_lod1_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_a_lod1_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_a_lod1_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:37.443Z",
+      "updatedAt": "2026-11-17T04:08:14.426Z",
       "family": "Borrowed Voice props"
     },
     "runtime:SF_PROP_BORROWED_VOICE_C:borrowed_voice_c": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -15949,20 +16142,23 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Related receiver box has an altered head and similar panel; preserve individual story state. Package: 9 primitives, 6 materials; three sockets, receiver pivot and collision. No safe geometry removal established.",
-      "issues": "Ordinary gameplay, story interaction and motion remain unverified. Preserve collision, sockets, functional lights and variant-specific cues; texture sharing needs scoped qualification.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/borrowed_voice_c_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/borrowed_voice_c_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_a_lod2_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_a_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_a_lod2_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:37.460Z",
+      "updatedAt": "2026-11-17T04:08:15.372Z",
       "family": "Borrowed Voice props"
     },
     "runtime:SF_PROP_ILEX_VAULT:ilex_vault": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -16021,19 +16217,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Green capsule with marked panel reads as a vault; body panel seams are visible. Package: 6 primitives, 5 materials; camera/Massline sockets and collision. No safe geometry removal established.",
-      "issues": "Ordinary gameplay, story interaction and motion remain unverified. Preserve collision, sockets, functional lights and variant-specific cues; texture sharing needs scoped qualification.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/ilex_vault_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/ilex_vault_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_b_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_b_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_b_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:37.710Z"
+      "updatedAt": "2026-11-17T04:08:16.486Z"
     },
     "runtime:SF_PROP_KILNBACK_CASK:kilnback_cask": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -16092,19 +16291,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Ribbed cylindrical cask and status strip read clearly. Package: 6 primitives, 5 materials; camera/Massline sockets and collision. No safe geometry removal established.",
-      "issues": "Ordinary gameplay, story interaction and motion remain unverified. Preserve collision, sockets, functional lights and variant-specific cues; texture sharing needs scoped qualification.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/kilnback_cask_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/kilnback_cask_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_b_lod1_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_b_lod1_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_b_lod1_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:37.957Z"
+      "updatedAt": "2026-11-17T04:08:17.889Z"
     },
     "runtime:SF_PROP_MOTHLIGHT_LAMP:mothlight_lamp": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -16163,19 +16365,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Small finned cylindrical lamp with warm lit face reads at close range. Package: 5 primitives, 4 materials; camera socket and collision. No safe geometry removal established.",
-      "issues": "Ordinary gameplay, story interaction and motion remain unverified. Preserve collision, sockets, functional lights and variant-specific cues; texture sharing needs scoped qualification.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/mothlight_lamp_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/mothlight_lamp_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_b_lod2_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_b_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_b_lod2_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:37.989Z"
+      "updatedAt": "2026-11-17T04:08:18.841Z"
     },
     "runtime:SF_PROP_THIMBLE_RECORDER:thimble_recorder": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -16198,19 +16403,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Compact box with tow eye and paneled lid; broad faces are subdued. Package: 5 primitives, 4 materials; camera/tow-eye sockets and collision. No safe geometry removal established.",
-      "issues": "Ordinary gameplay, story interaction and motion remain unverified. Preserve collision, sockets, functional lights and variant-specific cues; texture sharing needs scoped qualification.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/thimble_recorder_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/thimble_recorder_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_c_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_c_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_c_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.000Z"
+      "updatedAt": "2026-11-17T04:08:20.226Z"
     },
     "runtime:SF_PROP_TOWLINE_DEBRIS:towline_debris": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -16269,16 +16477,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D place and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: U-shaped structural fragment with panel seams; open shape appears intact rather than jagged in isolation. Package: 6 primitives, 2 materials; camera/Massline sockets and four separate collisions. No safe geometry removal established.",
-      "issues": "Ordinary gameplay, story interaction and motion remain unverified. Preserve collision, sockets, functional lights and variant-specific cues; texture sharing needs scoped qualification.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/towline_debris_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/towline_debris_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-props-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_c_lod1_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_c_lod1_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_c_lod1_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/_sheet_close.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.005Z"
+      "updatedAt": "2026-11-17T04:08:22.139Z"
     },
     "runtime:SF_RANGER_ARCHIVE_CENSOR:ranger_archive_censor": {
       "status": "passed",
@@ -19321,33 +19532,42 @@
       "updatedAt": "2026-11-17T02:41:35.317Z"
     },
     "runtime:sf20_19_pip_spanner:place_pip_spanner": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/places/place_pip_spanner.glb",
           "sha256": "97bed27a6f138a08a3f28a0bbf54752ce1a20f8a80afa4bd3be4352973ba4f66",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/pip-spanner/render.glb",
           "sha256": "f54364ce6e366c768c50911423a149e11ef0b2474e979e5c3f70136b6cb4ba65",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/places/place_pip_spanner.glb",
           "sha256": "b3461cfd2d66740f84f505e8d8635bbbc8ec56fe7a0712bd79dca55cc5697a71",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.663Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; in-scene composition view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_c_lod2_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_c_lod2_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/borrowed_voice_c_lod2_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-props-20261116/_sheet_close.png"
+      ],
+      "updatedAt": "2026-11-17T04:08:23.108Z"
     },
     "source-candidate:assets/characters/ruckus/ruckus": {
       "status": "unused/unresolved",
