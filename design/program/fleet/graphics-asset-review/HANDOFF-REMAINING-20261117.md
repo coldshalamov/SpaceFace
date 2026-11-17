@@ -268,3 +268,27 @@ other ~450 passed models (harness now exists: positioned sector-shots + per-fami
 commands; the 32 recorded pairs cover the models actually visible in the 12 frames
 captured so far), motion/defense/retreat state captures, and the ordinary-play fleet
 flythrough families not yet framed (cargo yard, claim outposts beyond helios relay).
+
+### ADDENDUM 2 (2026-11-17 ~14:40) — triage paused for owner playtest; resume notes
+
+Owner asked for a clean machine to playtest. Two runtime-reachable triage waves were
+paused mid-run (workers killed cleanly; partials preserved):
+
+- **alien-growth ×13** (devin2): route FULLY traced — `buildAlienGrowthProp` via
+  `placeId = 'alien_growth_<moduleId>'` dressing at ALIEN_SITES (see
+  results/devin2-triage-algrow.md for the complete route table + module multisets).
+  Site captures (seed 424242) at `.devshots/fleet/dispatch-20261116/algrow/<site>/`
+  (7 sites + `_diag_refinery`); batch3/batch5 capture scripts alongside. RESUME: review
+  the 7 site frames, judge the 13 groups, stage events + report.
+- **factory ×18** (devin3): 5 events staged at `events-devin3/` (grep triage-factory);
+  captures under `.devshots/fleet/dispatch-20261116/triage-factory/` (beacon done,
+  others pending). RESUME: continue from its brief
+  (brief-devin3-triage-factory.md), skipping the staged 5.
+- **presentation ×29+1** (grok): COMPLETE and applied — 10 passed (ordinary-route
+  captures), 7 covered-by recorded, 13 hidden-until-state triaged-unused/unresolved with
+  route evidence (see results/grok-triage-presentation.md). Flag carried for the owner:
+  swarm rounds 7/30 hit GameStartReadinessError / BUILDING-THE-SCENE stall under
+  shot-mode boots — worth a look before a swarm playtest.
+
+Rocks ×29 applied (pending bucket 0). Ordinary-play recorded pairs: 32. Scope decision:
+facts/unused-unresolved-scope-decision.json (commit 3098531edd).
