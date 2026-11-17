@@ -126,7 +126,7 @@ export const LOOK_HEADLIGHT = deepFreeze({
   // anything near the bow went past the surface ceiling into a flat chalky plateau. A gentler falloff and a
   // much lower intensity keep the pool's centre near the surface knee: warm, textured, shaded rock.
   colorHex: 0xffd6a0,      // warm sodium
-  intensity: 440,          // lit centre near the 0.5 surface knee on a tan rock at decay 1.2
+  intensity: 2500,         // swept 440-4000 on live rocks (LIGHT 2026-11-17): 2500 reads warm and textured at 130 WU, no chalk
   decay: 1.2,              // art-directed falloff (≈4x across 25–105 WU, not 17x)
   range: 450,              // WU; hard cutoff of the light
   angle: 0.55,             // radians, half-angle of the cone (~32°): a wider pool
@@ -138,6 +138,9 @@ export const LOOK_HEADLIGHT = deepFreeze({
   npcReach: 380,           // NPC hulls within this distance of the player may carry a lit lamp
   npcIntensity: 0.75,      // NPC lamp gain relative to the player's
   fadeSeconds: 0.35,       // a lamp hand-off fades out and back in, never pops
+  // The player's lamp also lights a faint soft volume of dust ahead of the bow (a NOCTURNE medium, a raymarched
+  // volume - never beam geometry). density 0 turns it off. One sphere, one of NOCTURNE's four media slots.
+  beam: { radius: 70, forward: 0.85, yCenter: 8, yRadius: 34, density: 0.0005, anisotropy: 0.5, colorHex: 0xffd6a0 },
 });
 
 // Named moods. Only differences from LOOK_BASE.
