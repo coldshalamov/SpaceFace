@@ -125,7 +125,9 @@ export const swarmJuiceHud = {
     this._resetModel();
     this._unsubs = [];
     if (!this.bus || typeof this.bus.on !== 'function') return;
-    this._unsubs.push(this.bus.on('swarm:killPopup', (p) => this._onPopup(p)));
+    // FIX-04: `swarm:killPopup` keeps emitting (the juice event is the kill ledger the
+    // score/tally read), but the world-anchored "+100 PUNCHED"-style score words no
+    // longer paint — the centre callout and the SCORE figure already carry the news.
     this._unsubs.push(this.bus.on('swarm:announce', (p) => this._onAnnounce(p)));
     this._unsubs.push(this.bus.on('swarm:roundSlam', (p) => this._onSlam(p)));
     this._unsubs.push(this.bus.on('swarm:roundClear', (p) => this._onClear(p)));
@@ -546,8 +548,10 @@ export const swarmJuiceHud = {
     if (!p || typeof p.name !== 'string' || !p.name) return;
     const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
     // Phone: no separate boss card. The intro line becomes one compact clause on the boss bar for
-    // the card's duration (the bar already names the boss).
-    if (document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1') {
+    // the card's duration (the bar already names the boss). The DOM probe is guarded — a
+    // DOM-less lane (the sim worker, a headless Node runtime) must never read `document`.
+    if (typeof document !== 'undefined'
+        && document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1') {
       const clause = String(p.line || '').split(/[.—–:]/)[0].trim();
       this._card = null;
       this._bossMove = clause.length > 34 ? `${clause.slice(0, 33).trim()}…` : clause;
