@@ -1164,6 +1164,17 @@ async function finishShot(shot) {
   window.__BENCH_READY = true;
 }
 
+function releaseCurrentBenchScreen() {
+  const outgoing = currentScreen;
+  currentScreen = null;
+  if (!outgoing) return;
+  const ctx = { state, bus, screenManager: manager, registry, screenMemory, writeStorePage() {}, publishStoreStill() {} };
+  // The bench replaces the root rather than caching it. Follow ScreenManager.releaseScreen:
+  // stop visible work while the root still exists, then dispose its retained resources.
+  try { outgoing.onHide?.(ctx); }
+  finally { outgoing.dispose?.(); }
+}
+
 async function goto(rawId) {
   releaseFlightPopup?.();
   releaseFlightPopup = null;
@@ -1182,21 +1193,14 @@ async function goto(rawId) {
   }
   currentAlias = null;
   window.__BENCH_READY = false;
+  releaseCurrentBenchScreen();
   if (manifestFixture) {
-    currentScreen?.dispose?.();
     manifestFixture.table.dispose();
     state.player.credits = manifestFixture.credits;
     state.ui.manifestOpponent = manifestFixture.opponent;
     manifestFixture = null;
   }
-  // The drill module owns a live session and its own frame loop. Retire that instance before
-  // replacing its DOM or reseeding the next shot; otherwise its singleton still says _active
-  // and onShow skips the new board, leaving the walk on the empty claim screen.
-  if (current === 'drill' && currentScreen) {
-    currentScreen.onHide?.();
-    currentScreen._cleanup?.();
-    currentScreen = null;
-  }
+  // Drill's onHide owns its session cleanup; the shared release above invokes it once.
   window.__BENCH_OVERLAY = '';
   window.__BENCH_OVERLAY_EL = null;
   if (window.__benchMobile) { try { window.__benchMobile.destroy(); } catch { /* already gone */ } window.__benchMobile = null; }

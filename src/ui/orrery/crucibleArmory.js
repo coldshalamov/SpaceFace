@@ -64,6 +64,11 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
   const shipHost = make('div', 'orr-armory-ship-stage');
   const shipNote = make('p', 'orr-armory-ship-note');
   ship.append(shipHead, shipHost, shipNote); reading.prepend(ship);
+  // Inspection can grow with the ship, comparisons and build details. Its purchase
+  // action keeps its own row so a longer description never clips the Install key.
+  const content = make('div', 'orr-armory-reading__content');
+  content.append(...Array.from(reading.children));
+  reading.replaceChildren(content, parts.buy);
   const shipPreview = createSwarmArmoryShipPreview({ host: shipHost, name: shipName,
     note: shipNote, motionReduced });
   const preview = createArmoryPreviewMedia({ motionReduced });
@@ -96,9 +101,9 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
       const offerKey = JSON.stringify([offer.kind, offer.id ?? offer.defId ?? offer.hullId, offer._ownedIndex]);
       if (offerKey !== lastOffer) {
         lastOffer = offerKey;
-        // A new selection starts at its sentence, not at the previous item's scrolled schematic.
+        // A new selection starts at the top of its inspection, not the previous item's scroll.
         // Do not scroll the outer phone page or reset inspection during a wallet/receipt refresh.
-        reading.scrollTop = 0;
+        content.scrollTop = 0;
       }
       const fitKey = JSON.stringify([hullId, rows.map(row => [row.defId, row.name, row.slotIndex,
         row.slotType, row.slotSize, row.intrinsicDefId, row.intrinsicName])]);

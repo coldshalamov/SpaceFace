@@ -10,6 +10,7 @@ import { runInNewContext } from 'node:vm';
 import { parse } from '@babel/parser';
 
 import { BACKDROPS, resolveShot, UI_BENCH_SHOTS } from '../scripts/lib/uiBenchCatalog.mjs';
+import { crucibleScreen } from '../src/ui/screens/crucible.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -72,4 +73,60 @@ test('bench screen availability is correct before the first title mount and reje
   stack.push('mainMenu');
   assert.equal(manager.hasScreen('crucible'), true);
   assert.equal(manager.hasScreen('missing-screen'), false, 'opening a screen does not register every destination');
+});
+
+test('bench replacement retires the real hangar preview before discarding its screen', async () => {
+  const source = readFileSync(path.join(ROOT, 'tools', 'ui-bench.js'), 'utf8');
+  const ast = parse(source, { sourceType: 'module' });
+  const releaseNode = ast.program.body.find(node => node.type === 'FunctionDeclaration'
+    && node.id.name === 'releaseCurrentBenchScreen');
+  const gotoNode = ast.program.body.find(node => node.type === 'FunctionDeclaration' && node.id.name === 'goto');
+  assert.ok(releaseNode, 'the real bench owns outgoing screen retirement');
+  assert.ok(gotoNode, 'exercise the real navigation caller');
+  const events = [], screen = Object.create(crucibleScreen);
+  const context = { currentScreen: screen, state: {}, bus: {}, manager: {}, registry: {}, screenMemory: {} };
+  screen._embarkSpecActive = true;
+  screen._armEmbarkSpec = () => assert.fail('a retired hangar must not speculate');
+  screen._preparation = {
+    setActive(active) {
+      assert.equal(active, false, 'the outgoing preview stops drawing');
+      assert.equal(context.currentScreen, null, 'nested navigation cannot release the same owner again');
+      events.push('preview stopped');
+    },
+    dispose() { events.push('preview disposed'); },
+  };
+  const release = runInNewContext(`(${source.slice(releaseNode.start, releaseNode.end)})`, context);
+  const nextFixture = new Error('next fixture boundary');
+  Object.assign(context, {
+    releaseCurrentBenchScreen: release, releaseFlightPopup: null, currentAlias: null,
+    window: {}, manifestFixture: null, resolveShot: id => ({ id, screen: id }),
+    applyBackdrop() {
+      assert.deepEqual(events, ['preview stopped', 'preview disposed'],
+        'retire the outgoing owner before replacing visuals or reseeding the fixture');
+      throw nextFixture;
+    },
+  });
+  const navigate = runInNewContext(`(${source.slice(gotoNode.start, gotoNode.end)})`, context);
+  await assert.rejects(navigate('mainMenu'), error => error === nextFixture);
+  assert.deepEqual(events, ['preview stopped', 'preview disposed']);
+  assert.equal(screen._preparation, null, 'the real screen no longer retains its old WebGL preview');
+  assert.equal(screen._armEmbarkSpec, null);
+  assert.equal(screen._embarkSpecActive, false);
+  release();
+  assert.equal(events.length, 2, 'an already retired screen cannot be disposed twice');
+
+  let cleanupCalls = 0;
+  context.currentScreen = { _cleanup() { cleanupCalls++; }, onHide(ctx) {
+    assert.equal(ctx.state, context.state);
+    assert.equal(ctx.screenManager, context.manager);
+    this._cleanup();
+  } };
+  release();
+  assert.equal(cleanupCalls, 1, 'session owners such as Drill perform their own cleanup once');
+
+  let disposedAfterFailure = false;
+  context.currentScreen = { onHide() { throw new Error('hide failed'); }, dispose() { disposedAfterFailure = true; } };
+  assert.throws(release, /hide failed/);
+  assert.equal(disposedAfterFailure, true, 'a hide failure cannot strand the discarded renderer');
+  assert.equal(context.currentScreen, null);
 });

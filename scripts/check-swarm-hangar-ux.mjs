@@ -7,6 +7,7 @@
 // that source route independently of the bench. Neither is a performance measurement or a
 // substitute for looking at the captured screens.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,7 +49,7 @@ const report = {
   pass: false, startedAt: new Date().toISOString(), viewports: liveOnly ? [LIVE_VIEWPORT] : sizes,
   bench: { requested: !liveOnly, viewports: liveOnly ? [] : sizes }, checks: [], screenshots: [], previewCaptures: [],
   animationSettlements: [], equipmentGeometry: [], initialReadiness: [], pointerGeometry: [],
-  browserErrors: [], requestFailures: [], live: { requested: runLive, completed: false, viewport: LIVE_VIEWPORT },
+  browserErrors: [], requestFailures: [], live: { requested: runLive, completed: false, functionalCompleted: false, viewport: LIVE_VIEWPORT },
   scope: 'Real mouse and keyboard input. DOM, bench log and runtime state are read-only observers. '
     + (liveOnly ? 'Public source route only; no bench fixtures. Runtime combat evidence is required for completion.'
       : 'Bench launch is an intent, not proof of combat.'),
@@ -87,6 +88,139 @@ function observeErrors(page, label) {
     report.requestFailures.push({ route: label, url: request.url(), error: request.failure()?.errorText });
     finishAsset(request, request.failure()?.errorText || 'failed');
   });
+}
+
+function liveRouteNetworkIssues(issues, storeHttpIssues = []) {
+  // A transition may excuse a retired image request. A store PUT still represents a write,
+  // including when the shared collector attributed its abort to context teardown.
+  return [...issues.errorIssues(), ...issues.ignoredIssues.filter(issue =>
+    issue.method === 'PUT' && (issue.storeRequest || /\/__spaceface_player_store(?:[\s?#:]|$)/.test(issue.text || ''))),
+  ...storeHttpIssues];
+}
+
+function observeLiveStore(page, live) {
+  const timeline = live.storeTimeline = { limit: 160, dropped: 0, events: [] };
+  const pending = new Map(), requests = new WeakMap(), httpIssues = [];
+  let requestId = 0, workerId = 0, lastWriteActivity = performance.now();
+  const record = (type, details = {}) => {
+    if (timeline.events.length === timeline.limit) { timeline.events.shift(); timeline.dropped++; }
+    timeline.events.push({ at: new Date().toISOString(), type, ...details });
+  };
+  const safeUrl = value => {
+    try {
+      const url = new URL(value); url.search = ''; url.hash = ''; url.username = ''; url.password = '';
+      return url.href.slice(0, 512);
+    } catch { return null; }
+  };
+  const isStore = request => {
+    try { return new URL(request.url()).pathname === '/__spaceface_player_store'; } catch { return false; }
+  };
+  const digest = value => createHash('sha256').update(value).digest('hex');
+  const payloadSummary = request => {
+    const body = request.postDataBuffer();
+    if (!body) return { bodyBytes: 0, keys: [] };
+    const summary = { bodyBytes: body.byteLength, sha256: digest(body) };
+    // Bound parsing and retention; raw payloads never enter the report.
+    if (body.byteLength > 2 * 1024 * 1024) return { ...summary, keysOmitted: 'payload-size' };
+    try {
+      const entries = Object.entries(JSON.parse(body.toString('utf8')).keys || {});
+      summary.keyCount = entries.length;
+      summary.keys = entries.slice(0, 64).map(([key, raw]) => {
+        const item = { key: key.slice(0, 128), removed: raw === null };
+        if (typeof raw !== 'string') return item;
+        item.sha256 = digest(raw);
+        try {
+          const envelope = JSON.parse(raw);
+          if (Number.isFinite(envelope.version)) item.version = envelope.version;
+          for (const name of ['updatedAt', 'savedAt', 'deletedAt']) {
+            const value = envelope[name];
+            if (typeof value === 'string' && value.length <= 40 && Number.isFinite(Date.parse(value)))
+              item[name] = new Date(value).toISOString();
+          }
+        } catch { /* An opaque value is represented only by its hash. */ }
+        return item;
+      });
+    } catch { summary.keysOmitted = 'invalid-json'; }
+    return summary;
+  };
+  page.on('request', request => {
+    if (!isStore(request)) return;
+    const entry = { id: ++requestId, method: request.method(), startedMs: performance.now() };
+    requests.set(request, entry); pending.set(request, entry);
+    if (entry.method === 'PUT') lastWriteActivity = entry.startedMs;
+    let payload = {}, frameUrl = null;
+    try { payload = payloadSummary(request); } catch { payload = { keysOmitted: 'unavailable' }; }
+    try { frameUrl = safeUrl(request.frame().url()); } catch { /* A worker need not expose a frame. */ }
+    record('request', { id: entry.id, method: entry.method, frameUrl, ...payload });
+  });
+  page.on('response', response => {
+    const entry = requests.get(response.request());
+    if (!entry) return;
+    const status = response.status();
+    record('response', { id: entry.id, method: entry.method, status });
+    // The generic collector treats an optional store 404 as absent. This probe mounts the
+    // real store, so even that status on a PUT must remain a failure.
+    if (entry.method === 'PUT' && status === 404) httpIssues.push({
+      type: 'error', method: 'PUT', text: 'HTTP 404 /__spaceface_player_store', at: new Date().toISOString(),
+    });
+  });
+  const finish = (request, type) => {
+    const entry = requests.get(request);
+    if (!entry) return;
+    pending.delete(request);
+    if (entry.method === 'PUT') lastWriteActivity = performance.now();
+    record(type, { id: entry.id, method: entry.method,
+      elapsedMs: Math.round(performance.now() - entry.startedMs),
+      ...(type === 'failed' ? { error: request.failure()?.errorText || 'unknown' } : {}),
+    });
+  };
+  page.on('requestfinished', request => finish(request, 'finished'));
+  page.on('requestfailed', request => finish(request, 'failed'));
+  const watchWorker = worker => {
+    const id = ++workerId;
+    record('worker-created', { id, url: safeUrl(worker.url()) });
+    worker.on('close', () => record('worker-closed', { id }));
+  };
+  page.on('worker', watchWorker);
+  for (const worker of page.workers()) watchWorker(worker);
+  page.on('framenavigated', frame => {
+    if (frame === page.mainFrame()) record('document-navigation', { url: safeUrl(frame.url()) });
+  });
+  page.on('close', () => record('page-closed'));
+  page.on('crash', () => record('page-crashed'));
+  record('page-observed', { url: safeUrl(page.url()) });
+  return {
+    httpIssues,
+    async sample(label) {
+      let timer;
+      try {
+        const state = await Promise.race([
+          page.evaluate(() => {
+            const sf = window.SF, status = sf?.state?.save?.sharedStoreStatus;
+            return { lane: sf?.ctx?.simLane || null, sharedStoreStatus: status
+              ? { syncPending: status.syncPending, mirrorHealthy: status.mirrorHealthy } : null };
+          }),
+          new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('observer-timeout')), 1500); }),
+        ]);
+        record('save-owner-status', { label, ...state });
+      } catch { record('save-owner-status', { label, unavailable: true }); }
+      finally { clearTimeout(timer); }
+    },
+    async settleBeforeClose() {
+      const timeoutMs = 5000, quietMs = 250, started = performance.now();
+      const writes = () => [...pending.values()].filter(entry => entry.method === 'PUT').map(entry => entry.id);
+      const initialPending = writes();
+      // Observe only: no save flush, retry, settings change or simulation step.
+      while (!page.isClosed() && performance.now() - started < timeoutMs) {
+        if (writes().length === 0 && performance.now() - Math.max(started, lastWriteActivity) >= quietMs) break;
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      const remainingPending = writes(), elapsedMs = Math.round(performance.now() - started);
+      live.storeSettlement = { timeoutMs, quietMs, initialPending, remainingPending, elapsedMs,
+        settled: remainingPending.length === 0, timedOut: remainingPending.length > 0 && elapsedMs >= timeoutMs };
+      record('before-context-close', live.storeSettlement);
+    },
+  };
 }
 async function shot(page, name) {
   const filename = `${name}.png`;
@@ -475,12 +609,23 @@ async function launchIntents(page) {
 async function openBenchTitle(page, size) {
   await page.setViewportSize(size);
   await page.goto(`${server.baseUrl}tools/ui-bench.html?screen=title&chrome=0`, { waitUntil: 'domcontentloaded' });
+  await waitForBenchTitle(page);
+}
+async function waitForBenchTitle(page) {
   await page.waitForFunction(() => window.__BENCH_READY === true);
   await page.locator(S.title).waitFor({ state: 'visible' });
   await page.evaluate(() => document.fonts.ready);
   // __BENCH_READY must mean the public screen can accept input. Fail at the
   // actual readiness fault; do not disguise it as a later navigation timeout.
   await assertControlEnabled(page.locator(S.title), 'Bench reported ready with Swarm unavailable');
+}
+async function returnToBenchTitle(page) {
+  const before = { build: await selectedBuild(page), launchIntents: await launchIntents(page) };
+  await clickAt(page, page.locator(S.root).getByRole('button', { name: 'Back to main menu', exact: true }));
+  await waitForBenchTitle(page);
+  assert.equal(await page.locator(S.root).isVisible(), false, 'Main menu return left the hangar visible.');
+  assert.equal(await launchIntents(page), before.launchIntents, 'Returning to the main menu launched a run.');
+  return before;
 }
 async function titlePointerRoute(page, region, captureName, { allowPosterFallback = false } = {}) {
   const title = page.locator(S.title);
@@ -635,7 +780,9 @@ async function benchViewport(size, index) {
     check(`${label}: title ${pointer.region} click, hull/loadout, settings, reachable equipment review`, { pointer, build, preview, run, hullCount: roster.length });
     if (index === 0) {
       for (const key of ['Enter', 'Space']) {
-        await openBenchTitle(page, size);
+        // Follow the player's return control. Repeated hard reloads exercise document
+        // teardown, not this menu journey. Keep the log and compare intent deltas.
+        const returnedFrom = await returnToBenchTitle(page);
         const tabs = await tabTo(page, page.locator(S.title));
         const focus = await page.locator(S.title).evaluate(element => {
           const css = getComputedStyle(element);
@@ -645,8 +792,12 @@ async function benchViewport(size, index) {
           'Keyboard focus has no visible treatment.');
         await page.keyboard.press(key);
         await hangarReady(page, { initialAuthored: true });
-        assert.equal(await launchIntents(page), 0);
-        check(`Native title ${key} opens ship setup without launching`, { tabs, focus });
+        assert.equal(await launchIntents(page), returnedFrom.launchIntents);
+        // The bench remounts each screen; production cached-choice preservation is
+        // asserted by the live Back/re-entry route below. Here require a coherent fit.
+        const reopenedBuild = await selectedBuild(page);
+        assert.equal(reopenedBuild.previewHull, reopenedBuild.hull);
+        check(`Native title ${key} opens ship setup without launching`, { tabs, focus, returnedFrom, reopenedBuild });
       }
     }
   } catch (error) {
@@ -744,6 +895,7 @@ async function liveRoute() {
   observeErrors(page, 'live');
   const issues = collectPageIssues(page);
   const live = report.live;
+  const store = observeLiveStore(page, live);
   const progress = () => page.evaluate(() => ({
     meta: localStorage.getItem('sf.save.crucible_meta'),
     campaign: localStorage.getItem('sf.save.auto'),
@@ -756,7 +908,7 @@ async function liveRoute() {
     issues.endExpectedNavigation(token);
     return action();
   };
-  const noAssetFailures = () => assert.deepEqual(issues.errorIssues(), [],
+  const noAssetFailures = () => assert.deepEqual(liveRouteNetworkIssues(issues, store.httpIssues), [],
     'The live route has HTTP, network, console or page failures; see live.browserIssues.');
   const openArmory = async (label) => navigate(label, async () => {
     await clickAt(page, page.locator(S.review));
@@ -768,6 +920,7 @@ async function liveRoute() {
     await navigate('fresh title navigation', () => bootToMenu(page, server.baseUrl,
       (name, pass, detail) => check('Live: ' + name, { pass, detail })));
     await waitBootOverlayGone(page, 180000);
+    await store.sample('title-ready');
     await navigate('title to hangar', () => titlePointerRoute(page, 'padding', 'live-title', { allowPosterFallback: true }));
     const { build, posterUrl } = await navigate('selected ship preview', () => chooseShip(page, { requirePreset: true }));
     live.build = build;
@@ -791,7 +944,7 @@ async function liveRoute() {
     live.armoryPreview = await shipShot(page, 'live-opening-armory', {
       hullId: build.hull, posterUrl, selector: '[data-screen="crucibleDraft"] .orr-armory-ship-stage',
     });
-    noAssetFailures();
+    await store.sample('opening-armory');
     const permanentBefore = await progress();
     const purchase = live.purchase = await navigate('inspect and install equipment', () => buyLiveEquipment(page, armory));
     await shipShot(page, 'live-purchased-equipment', {
@@ -850,6 +1003,7 @@ async function liveRoute() {
     assert.equal(reopened.receipt, null, 'New preparation retained the old purchase receipt.');
     assert.equal(reopened.result, null);
     assert.deepEqual(await progress(), permanentBefore, 'Re-entry changed persistent progress before combat.');
+    await store.sample('reopened-armory');
     check('Live: Back discards only preparation purchases and preserves ship, preset, settings and permanent progress', {
       token: armory.token, successor: reopened.token, discardedItem: purchase.name,
       originalCredits: armory.credits, spentCredits: purchase.purchased.credits, reopenedCredits: reopened.credits,
@@ -898,15 +1052,20 @@ async function liveRoute() {
     assert.deepEqual(combat.inventory, prepared.inventory, 'Deployment changed the prepared spare equipment.');
     assert.equal(combat.token, reopened.token, 'Deployment launched a different run.');
     await shot(page, 'live-deployed');
-    noAssetFailures();
+    live.functionalCompleted = true;
+    await store.sample('functional-route-complete');
   } catch (error) {
     await shot(page, 'live-failure').catch(() => {});
     throw error;
   } finally {
+    await store.sample('before-context-close');
+    await store.settleBeforeClose();
     const token = issues.beginExpectedNavigation('completed live probe context teardown');
-    try { await context.close(); } finally { issues.endExpectedNavigation(token); }
-    live.browserIssues = issues.errorIssues();
-    live.expectedNavigationDiagnostics = issues.ignoredIssues;
+    try { await context.close(); } finally {
+      issues.endExpectedNavigation(token);
+      live.browserIssues = liveRouteNetworkIssues(issues, store.httpIssues);
+      live.expectedNavigationDiagnostics = issues.ignoredIssues;
+    }
   }
   noAssetFailures();
   live.completed = true;
