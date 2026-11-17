@@ -1027,6 +1027,17 @@ ${A} .orr-armory-wallet small { font:650 14px/1 var(--dp-face-read),sans-serif; 
 ${A} .sf-cru-stage { overflow:auto !important; overscroll-behavior:contain; padding:1px 4px 34px 1px !important; -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 30px),transparent) !important; mask-image:linear-gradient(to bottom,#000 calc(100% - 30px),transparent) !important; }
 ${A} .orr-armory-section { font:700 20px/1.2 var(--dp-face-display),sans-serif; letter-spacing:-.02em; color:var(--dp-ink); margin:0 0 14px; text-transform:none; flex:none; }
 ${A} .sf-cru-circuit { padding:12px 16px; margin:0 0 14px; border:1px solid var(--armory-rule); background:var(--armory-panel); }
+${A} .sf-cru-circuit__summary { min-height:44px; padding:12px 0; cursor:pointer; color:var(--armory-cool);
+  font:600 14px/1.4 var(--dp-face-read,'Instrument Sans'),sans-serif; }
+${A} .sf-cru-circuit__summary:focus-visible { outline:2px solid var(--dp-hand); outline-offset:4px; }
+${A} .sf-cru-circuit:not([open]) { padding-block:0; flex:none; }
+${A} .sf-cru-circuit__head { margin:6px 0 10px; font:650 20px/1.2 var(--dp-face-read,'Instrument Sans'),sans-serif; }
+${A} .sf-cru-circuit__choices { display:flex; flex-wrap:wrap; gap:12px; margin:14px 0 0; padding:0; }
+${A} .sf-cru-circuit__choice { display:flex; flex-direction:column; align-items:flex-start; gap:8px; min-width:0; list-style:none; }
+${A} .sf-cru-circuit__choice > button { min-height:44px; padding:10px 16px; border:1px solid var(--armory-rule);
+  border-radius:3px; background:var(--armory-panel); color:var(--dp-ink); cursor:pointer; font:600 14px/1.3 var(--dp-face-read,'Instrument Sans'),sans-serif; }
+${A} .sf-cru-circuit__choice > button:is(:hover,:focus-visible) { border-color:var(--dp-hand); outline:2px solid var(--dp-hand); outline-offset:2px; }
+${A} .sf-cru-circuit__line { display:block; max-width:65ch; margin:0; white-space:normal; color:var(--dp-ink-dim); font:400 13px/1.45 var(--dp-face-read,'Instrument Sans'),sans-serif; }
 ${A} .sf-cru-dealt { gap:clamp(8px,1.1vw,18px) !important; margin:0 !important; }
 ${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt {
   box-sizing:border-box; padding:0 clamp(12px,1.1vw,20px) 16px !important; gap:8px !important;
@@ -1066,12 +1077,15 @@ ${A} .sf-cru-cards .sf-cru-card:is(.is-lit,:focus-visible) { border-color:var(--
 ${A} .sf-cru-cards .sf-cru-card.is-unavail { opacity:.85 !important; }
 ${A} .sf-cru-cards .orr-equipment-glyph { color:var(--armory-cool); }
 ${A} .orr-armory-reading.orr-armory-reading {
-  display:grid !important; grid-template-columns:minmax(0,1fr) !important; grid-template-rows:none !important;
-  grid-auto-rows:max-content !important; gap:0 !important; align-content:start; box-sizing:border-box;
+  display:grid !important; grid-template-columns:minmax(0,1fr) !important; grid-template-rows:minmax(0,1fr) auto !important;
+  grid-auto-rows:max-content !important; gap:0 !important; align-content:start; align-items:stretch !important; box-sizing:border-box; overflow:hidden !important;
   background:linear-gradient(145deg,#17252b,var(--armory-panel) 68%); border:1px solid var(--armory-rule);
   border-radius:3px; padding:clamp(15px,1.55vw,28px) !important;
 }
 ${A} .orr-armory-reading.orr-armory-reading[hidden] { display:none !important; }
+${A} .orr-armory-reading__content { grid-row:1; min-width:0; min-height:0; display:flex; flex-direction:column; overflow:auto; scrollbar-width:thin; scrollbar-color:var(--dp-line-hi) transparent; }
+${A} .orr-armory-reading__content > * { flex:none; }
+${A} .orr-armory-reading > .orr-armory-reading__buy { grid-row:2; margin:0 !important; padding:10px 0 0; border-top:1px solid var(--armory-rule); }
 ${A} .orr-armory-reading__words { order:0; }
 ${A} .orr-armory-reading__verb { color:var(--armory-cool) !important; }
 ${A} .orr-armory-reading__name { font-variation-settings:normal; margin:6px 0 10px !important; }
@@ -1117,6 +1131,7 @@ ${A} .orr-armory-budget__spend { stroke:var(--dp-hand); }
   ${A} .sf-cru-stage > .sf-cru-cards:not([hidden]) { flex:auto !important; height:clamp(255px,50svh,500px) !important; max-height:clamp(255px,50svh,500px) !important; }
   ${A} .sf-cru-dealt { grid-template-columns:1fr !important; }
   ${A} .orr-armory-reading.orr-armory-reading { overflow:visible !important; height:auto !important; }
+  ${A} .orr-armory-reading__content { overflow:visible; }
   ${A} .k-foot .sf-cru-fine { display:none !important; }
 }
 @media (max-width:1080px) {
@@ -1176,7 +1191,8 @@ ${A} .orr-armory-budget__spend { stroke:var(--dp-hand); }
   ${A} .sf-cru-dealt .sf-cru-name { grid-area:2 / 2 !important; margin:0 !important; font-size:16px !important; }
   ${A} .sf-cru-dealt .sf-cru-card--dealt :is(.sf-cru-blurb,.sf-cru-activation,.sf-cru-slot,.sf-cru-afford) { display:none !important; }
   ${A} .sf-cru-stage > .sf-cru-cards:not([hidden]) { min-height:80px !important; height:auto !important; flex:1 1 auto !important; }
-  ${A} .orr-armory-reading.orr-armory-reading { grid-area:2 / 2 !important; min-height:0 !important; height:100% !important; overflow:auto !important; padding:10px 12px !important; }
+  ${A} .orr-armory-reading.orr-armory-reading { grid-area:2 / 2 !important; min-height:0 !important; height:100% !important; overflow:hidden !important; padding:10px 12px !important; }
+  ${A} .orr-armory-reading__content { overflow:auto; }
   ${A} .orr-armory-reading__words { display:flex !important; flex-direction:column; align-items:stretch; }
   ${A} .orr-armory-reading__verb { order:-3; }
   ${A} .orr-armory-reading__name { order:-2; font-size:22px !important; margin:2px 0 5px !important; }
@@ -1262,6 +1278,13 @@ ${A} .orr-armory-budget__spend { stroke:var(--dp-hand); }
   /* the slot jig's hull art is laid out for a taller box and spilled past it under the price line; the Current build list below carries the same fitted count */
   ${A} .orr-armory-reading__jig { display:none !important; }
 }
+/* Opening preparation adds a reversible return path. Its explanation has its own
+   wrapping row, including the compact footer compositions above. */
+${A} > .k-foot:has(.sf-cru-preparation-return-note:not([hidden])) { flex-wrap:wrap !important; row-gap:6px !important; }
+${A} .sf-cru-preparation-return-note { flex:1 0 100%; order:3; min-width:0; width:100%; margin:3px 0 0 !important;
+  white-space:normal !important; font:400 12px/1.45 var(--dp-face-body,'Instrument Sans'),sans-serif !important;
+  letter-spacing:0 !important; text-transform:none !important; color:var(--dp-ink-dim); }
+${A} .sf-cru-preparation-return-note[hidden] { display:none !important; }
 `;
 export function injectCruciblePreparation(doc = globalThis.document) {
   if (!doc?.head || doc.getElementById('orr-crucible-preparation-style')) return;

@@ -1009,6 +1009,11 @@ export function applyCombatLabSetup(ctx, validatedSetup) {
   if (!ctx || !ctx.state || !ctx.state.player || !validatedSetup || typeof validatedSetup !== 'object') {
     return receipt;
   }
+  // Validate every definition and slot before replacing anything on the current ship.
+  // Callers normally carry an already-validated setup; this is also the public owner seam.
+  const validation = validateCombatLabSetup(validatedSetup);
+  if (!validation.ok) return receipt;
+  validatedSetup = validation.value;
   const ships = sys(ctx, 'ships');
   if (!ships || typeof ships.buyShip !== 'function') return receipt;
 
@@ -1020,8 +1025,24 @@ export function applyCombatLabSetup(ctx, validatedSetup) {
   } else if (hullId && ships.buyShip({ defId: hullId, setActive: true, grant: true })) {
     receipt.hullApplied = true;
   }
+  if (!receipt.hullApplied) return receipt;
 
-  const loadout = Array.isArray(validatedSetup.loadout) ? validatedSetup.loadout : [];
+  const loadout = validatedSetup.loadout;
+  const wanted = new Map(loadout.map(entry => [entry.slotIndex, entry.defId]));
+  const active = p.ownedShips[p.activeShipIndex];
+  // A setup is a complete fit, not an overlay on Adventure's starter equipment. A Hitch
+  // otherwise keeps its free shield, engine and mining tools because no hull swap occurs.
+  // Consume only mismatches through ships: matching item identities and existing spares stay,
+  // while discarded boot equipment must not turn into free inventory in an arena run.
+  for (let slotIndex = 0; slotIndex < (active.fittings || []).length; slotIndex++) {
+    const defId = active.fittings[slotIndex];
+    if (!defId || wanted.get(slotIndex) === defId) continue;
+    if (typeof ships.takeFittedModuleInstance !== 'function'
+      || !ships.takeFittedModuleInstance(p.activeShipIndex, slotIndex)) {
+      receipt.notFitted.push({ slotIndex, defId: wanted.get(slotIndex) || null });
+      return receipt;
+    }
+  }
   for (const entry of loadout) {
     if (!entry || typeof entry !== 'object') continue;
     const slotIndex = entry.slotIndex;

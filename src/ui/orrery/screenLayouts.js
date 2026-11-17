@@ -360,6 +360,21 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open:n
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .sf-cru-row:not(.is-lit) :is(.orr-hp__scales, .orr-hp__contrast) { display:none; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__contrast--drawn { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hp__scales { display:block; margin-top:6px; overflow:visible; }
+/* Weapon comparison copy stays HTML-sized while only its tracks scale to a narrow panel. */
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison { width:100%; max-width:360px; min-width:0; }
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__row + .orr-weapon-comparison__row { margin-top:8px; }
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__head { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:3px 12px; }
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__label,
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__value {
+  font:600 14px/1.4 var(--dp-face-body, 'Instrument Sans'), sans-serif; letter-spacing:0; text-transform:none; color:var(--dp-ink);
+}
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__value { font-variant-numeric:tabular-nums; }
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__value:empty { display:none; }
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__delta { color:var(--dp-ice); }
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__track { display:block; width:100%; height:20px !important; }
+html body #screens > .k-screen.orr-crucible .orr-weapon-comparison__note {
+  margin:5px 0 0; font:400 13px/1.4 var(--dp-face-body, 'Instrument Sans'), sans-serif; letter-spacing:0; text-transform:none; color:var(--dp-ink-dim);
+}
 /* the lit open hardpoint stacks its choice: spares, their scales, then the verb, all on the ship's side */
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-open.is-lit .orr-hp__line { flex-direction:column; align-items:flex-start; }
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .is-left.is-open.is-lit .orr-hp__line { align-items:flex-end; }
@@ -623,97 +638,97 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .k-foot
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-fine { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-draft.orr-armory .sf-cru-hint { display:inline-flex; align-items:center; margin-left:18px; }
 
-/* the door: the arena as hero art at the right, the form at the left, the share codes in a drawer */
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .orr-door-hero { position:absolute; top:0; right:0; bottom:0; width:calc(100vw - max(40vw, 680px)); z-index:0; pointer-events:none;
+/* Legacy non-hangar door: the Swarm hangar has its own composition owner. */
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) > .orr-door-hero { position:absolute; top:0; right:0; bottom:0; width:calc(100vw - max(40vw, 680px)); z-index:0; pointer-events:none;
   -webkit-mask-image:linear-gradient(90deg, transparent 0, rgb(0 0 0 / .5) 22%, #000 46%), linear-gradient(0deg, transparent 0, #000 22%);
   -webkit-mask-composite:source-in; mask-image:linear-gradient(90deg, transparent 0, rgb(0 0 0 / .5) 22%, #000 46%), linear-gradient(0deg, transparent 0, #000 22%);
   mask-composite:intersect; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__art { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:60% 50%; opacity:0;
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-door-hero__art { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:60% 50%; opacity:0;
   transition:opacity .3s var(--dp-ease-out, ease-out); filter:saturate(.95) brightness(.92); }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__art.is-on { opacity:1; }
-html.sf-reduce-motion body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__art { transition:none; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__words { position:absolute; right:max(64px, 4vw); bottom:clamp(120px, 15vh, 170px); text-align:right; max-width:36ch;
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-door-hero__art.is-on { opacity:1; }
+html.sf-reduce-motion body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-door-hero__art { transition:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-door-hero__words { position:absolute; right:max(64px, 4vw); bottom:clamp(120px, 15vh, 170px); text-align:right; max-width:36ch;
   transition:opacity .15s linear, transform .15s var(--dp-ease-out, ease-out); }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__words.is-turning { opacity:0; transform:translateY(6px); }
-html.sf-reduce-motion body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__words { transition:none; }
-html.sf-reduce-motion body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__words.is-turning { opacity:1; transform:none; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__name { margin:0; font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 800, "wdth" 125; font-size:clamp(28px, 3.6vh, 44px);
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-door-hero__words.is-turning { opacity:0; transform:translateY(6px); }
+html.sf-reduce-motion body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-door-hero__words { transition:none; }
+html.sf-reduce-motion body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-door-hero__words.is-turning { opacity:1; transform:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-door-hero__name { margin:0; font-family:var(--dp-face-display, "Archivo"); font-variation-settings:"wght" 800, "wdth" 125; font-size:clamp(28px, 3.6vh, 44px);
   letter-spacing:.04em; text-transform:uppercase; color:rgb(246 241 230); text-shadow:0 2px 24px rgb(0 0 0 / .8); }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hero__line { margin:8px 0 0; font-size:15px; line-height:1.45; color:rgb(236 230 216 / .85); text-shadow:0 1px 12px rgb(0 0 0 / .9); }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .k-title, html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .k-stage, html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .k-foot { position:relative; z-index:1; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .k-stage { max-width:min(900px, 50vw); background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-door-hero__line { margin:8px 0 0; font-size:15px; line-height:1.45; color:rgb(236 230 216 / .85); text-shadow:0 1px 12px rgb(0 0 0 / .9); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) > .k-title, html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) > .k-stage, html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) > .k-foot { position:relative; z-index:1; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) > .k-stage { max-width:min(900px, 50vw); background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important;
   backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
 /* the form: arenas as words (the hero shows the pick), room between the blocks, captions at the floor */
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-arenas .fh-tile-art { display:none !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-arenas .orr-tile { min-height:0 !important; padding:6px 0 !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-arena { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings > .k-row { margin-bottom:22px !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings > .k-row > .k-row__name { font-size: 12px !important; letter-spacing:.24em !important; color:rgb(236 230 216 / .7) !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-seed input { font-size:clamp(18px, 2.2vh, 22px) !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .fh-tile[data-locked='1'] .fh-tile-legend { opacity:.45; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-records summary { font-size: 12px !important; letter-spacing:.22em; color:rgb(236 230 216 / .7) !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-practice { display:flex !important; align-items:baseline; gap:14px; flex-wrap:wrap; border:0 !important; padding:0 !important; min-height:0 !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-practice .k-word { font-size:12px !important; letter-spacing:.22em !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-practice .k-word::after { content:" ›"; background:none !important; position:static !important; transform:none !important; width:auto !important; height:auto !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-arenas .fh-tile-art { display:none !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-arenas .orr-tile { min-height:0 !important; padding:6px 0 !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-arena { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-settings > .k-row { margin-bottom:22px !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-settings > .k-row > .k-row__name { font-size: 12px !important; letter-spacing:.24em !important; color:rgb(236 230 216 / .7) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-seed input { font-size:clamp(18px, 2.2vh, 22px) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .fh-tile[data-locked='1'] .fh-tile-legend { opacity:.45; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-records summary { font-size: 12px !important; letter-spacing:.22em; color:rgb(236 230 216 / .7) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-practice { display:flex !important; align-items:baseline; gap:14px; flex-wrap:wrap; border:0 !important; padding:0 !important; min-height:0 !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-practice .k-word { font-size:12px !important; letter-spacing:.22em !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-practice .k-word::after { content:" ›"; background:none !important; position:static !important; transform:none !important; width:auto !important; height:auto !important; }
 /* one amber: Launch rests in bone until the player reaches for it */
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-key--primary { color:rgb(246 241 230) !important; text-shadow:0 0 16px rgb(0 0 0 / .6) !important;
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-key--primary { color:rgb(246 241 230) !important; text-shadow:0 0 16px rgb(0 0 0 / .6) !important;
   background-image:linear-gradient(90deg, rgb(236 230 216 / .55), rgb(236 230 216 / 0)) !important; }
 /* a short plate keeps the seed in view: one-line descriptions, tighter blocks. Nothing
    interactive vanishes: the records row and the practice room's line stay above the fold. */
 @media (max-height:800px) {
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings > .k-row { margin-bottom:6px !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings .k-sentence { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:46vw; margin:4px 0 0 !important; font-size:13px !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-ghost-sub { display:none; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-practice .k-t-fine { display:block !important; flex:1 1 200px; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0 !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-modes .fh-tile-art img { width:34px !important; height:34px !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-modes .orr-tile, html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-hulls .orr-tile { min-height:0 !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-records { margin-top:6px !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-records summary { padding:6px 0 !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-settings > .k-row { margin-bottom:6px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-settings .k-sentence { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:46vw; margin:4px 0 0 !important; font-size:13px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-ghost-sub { display:none; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-practice .k-t-fine { display:block !important; flex:1 1 200px; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin:0 !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-modes .fh-tile-art img { width:34px !important; height:34px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-modes .orr-tile, html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-hulls .orr-tile { min-height:0 !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-records { margin-top:6px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-records summary { padding:6px 0 !important; }
 }
 /* ...and a shorter plate still keeps the records row above the fold: deeper cuts, same voices */
 @media (max-height:720px) {
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings > .k-row { margin-bottom:3px !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings .k-row > .k-row__name { margin-bottom:2px !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-settings .k-sentence { margin-top:2px !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) :is(.sf-crd-modes, .sf-crd-hulls, .sf-crd-arenas) .orr-tile { padding-top:4px !important; padding-bottom:4px !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-stationrow { padding-bottom:20px !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-records { margin-top:4px !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-records summary { padding:4px 0 !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-foot :is(.orr-key--hazard, .orr-key--primary) { padding:8px 4px 10px !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-foot .orr-key--small { padding:4px 2px !important; }
-  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hint { margin-top:0 !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-settings > .k-row { margin-bottom:3px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-settings .k-row > .k-row__name { margin-bottom:2px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-settings .k-sentence { margin-top:2px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) :is(.sf-crd-modes, .sf-crd-hulls, .sf-crd-arenas) .orr-tile { padding-top:4px !important; padding-bottom:4px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-stationrow { padding-bottom:20px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-records { margin-top:4px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-records summary { padding:4px 0 !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-foot :is(.orr-key--hazard, .orr-key--primary) { padding:8px 4px 10px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-foot .orr-key--small { padding:4px 2px !important; }
+  html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-door-hint { margin-top:0 !important; }
 }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .k-title .k-t-name { font-size:clamp(56px, 8.5vh, 104px) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) > .k-title .k-t-name { font-size:clamp(56px, 8.5vh, 104px) !important; }
 /* the door's form reads over the dark side of the plate */
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results)::before { background:linear-gradient(90deg, rgb(4 6 9 / .9) 0, rgb(4 6 9 / .82) max(720px, 44vw), rgb(4 6 9 / .3) calc(max(720px, 44vw) + 18vw), rgb(4 6 9 / .15) 100%) !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-row--share:not(.is-open) { display:none !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar)::before { background:linear-gradient(90deg, rgb(4 6 9 / .9) 0, rgb(4 6 9 / .82) max(720px, 44vw), rgb(4 6 9 / .3) calc(max(720px, 44vw) + 18vw), rgb(4 6 9 / .15) 100%) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-row--share:not(.is-open) { display:none !important; }
 /* the smoked window's pool ended at the stage's edge: the seam through the arena */
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .k-stage::before, html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) > .k-stage::after { display:none !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) > .k-stage::before, html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) > .k-stage::after { display:none !important; }
 /* modes as words too; the padlocks go (a locked build's dimmed word says so, its name says how) */
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-modes .fh-tile-art { display:none !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-modes .orr-tile { min-height:0 !important; padding:6px 0 !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-lock { display:none !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-modes .fh-tile-art { display:none !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-modes .orr-tile { min-height:0 !important; padding:6px 0 !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-lock { display:none !important; }
 /* builds as words too: the stock glyphs leave; every selector stays inside the dark field */
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-hulls .fh-tile-art { display:none !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-hulls .orr-tile { min-height:0 !important; padding:6px 0 !important; width:auto !important; min-width:0 !important; max-width:96px; flex:none !important; }
-@media (min-width:1400px) { html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-hulls .orr-tile { width:84px !important; } }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-hulls .fh-tile-art { display:none !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-hulls .orr-tile { min-height:0 !important; padding:6px 0 !important; width:auto !important; min-width:0 !important; max-width:96px; flex:none !important; }
+@media (min-width:1400px) { html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-hulls .orr-tile { width:84px !important; } }
 /* a legend word wider than one cell is clipped by the tile's cut, not wrapped: the wide mark spans
    two cells (crucible.css) and the tile fills both. */
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-hulls .orr-tile.sf-crd-hull--wide { width:100% !important; max-width:none; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) :is(.sf-crd-modes, .sf-crd-arenas) .orr-tile { flex:none !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) :is(.sf-crd-modes, .sf-crd-hulls, .sf-crd-arenas) { max-width:max(40vw, 640px); flex-wrap:nowrap !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) :is(.sf-crd-modes, .sf-crd-hulls, .sf-crd-arenas) .fh-tile-legend { font-size:clamp(12px, .66vw, 12.5px) !important; letter-spacing:clamp(.08em, .12vw, .16em) !important; line-height:1.3 !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-stationrow { gap:clamp(12px, 1.1vw, 22px) !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) :is(.sf-crd-modes, .sf-crd-hulls, .sf-crd-arenas) .orr-tile[aria-pressed="true"] .fh-tile-legend { color:rgb(246 241 230) !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-practice .k-word.k-word::after { content:" ›" !important; display:inline !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-practice .k-t-fine { max-width:520px; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-seed { align-items:baseline; column-gap:28px !important; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-drawer { all:unset; cursor:pointer; display:inline-flex; align-items:center; gap:10px; padding:4px 0; font-family:var(--dp-face-label, "Archivo");
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-hulls .orr-tile.sf-crd-hull--wide { width:100% !important; max-width:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) :is(.sf-crd-modes, .sf-crd-arenas) .orr-tile { flex:none !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) :is(.sf-crd-modes, .sf-crd-hulls, .sf-crd-arenas) { max-width:max(40vw, 640px); flex-wrap:nowrap !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) :is(.sf-crd-modes, .sf-crd-hulls, .sf-crd-arenas) .fh-tile-legend { font-size:clamp(12px, .66vw, 12.5px) !important; letter-spacing:clamp(.08em, .12vw, .16em) !important; line-height:1.3 !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-stationrow { gap:clamp(12px, 1.1vw, 22px) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) :is(.sf-crd-modes, .sf-crd-hulls, .sf-crd-arenas) .orr-tile[aria-pressed="true"] .fh-tile-legend { color:rgb(246 241 230) !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-practice .k-word.k-word::after { content:" ›" !important; display:inline !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-practice .k-t-fine { max-width:520px; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-seed { align-items:baseline; column-gap:28px !important; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-door-drawer { all:unset; cursor:pointer; display:inline-flex; align-items:center; gap:10px; padding:4px 0; font-family:var(--dp-face-label, "Archivo");
   font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.24em; text-transform:uppercase; color:rgb(236 230 216 / .72); }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-drawer::after { content:""; width:7px; height:7px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor;
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-door-drawer::after { content:""; width:7px; height:7px; border-right:1.5px solid currentColor; border-bottom:1.5px solid currentColor;
   transform:rotate(-45deg); transition:transform .2s var(--dp-ease-out, ease-out); }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-drawer[aria-expanded="true"]::after { transform:rotate(45deg); }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-drawer:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c); outline:none; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-door-drawer[aria-expanded="true"]::after { transform:rotate(45deg); }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-door-drawer:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c); outline:none; }
 
 /* new game: the Field Hardware form becomes instruments. Selectors carry #screens so they meet the
    retired kit sheet's own specificity instead of losing to it. */
@@ -1045,12 +1060,12 @@ html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hull-
 html body #screens > .k-screen.orr-refit > .sf-cru-stage.orr-hull--on .orr-hull-fitcount[hidden] { display:none; }
 
 /* door: GHOST unreadable-at-1.9 becomes a bone word with a dotted strike when no ghost is on file */
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-tile.sf-crd-ghost.is-unavail { opacity:1; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-tile.sf-crd-ghost.is-unavail .fh-tile-legend { color:rgb(236 230 216 / .8) !important;
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-tile.sf-crd-ghost.is-unavail { opacity:1; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-tile.sf-crd-ghost.is-unavail .fh-tile-legend { color:rgb(236 230 216 / .8) !important;
   text-decoration:line-through dotted rgb(236 230 216 / .55); text-underline-offset:3px; }
 /* the door documents its input: one quiet line under the keys */
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .sf-crd-foot { flex-wrap:wrap; row-gap:8px; }
-html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results) .orr-door-hint { flex:0 0 100%; order:9; margin:2px 0 0; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .sf-crd-foot { flex-wrap:wrap; row-gap:8px; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-door:not(.sf-crucible-results):not(.orr-swarm-hangar) .orr-door-hint { flex:0 0 100%; order:9; margin:2px 0 0; font-family:var(--dp-face-label, "Archivo"); font-stretch:112%;
   font-weight:650; font-size:12px; letter-spacing:.2em; color:rgb(236 230 216 / .55); }
 
 /* results: the Lamp rule spans the verb's own words, not the key beside them */

@@ -3,6 +3,7 @@
 
 import { quoteLoadError } from './environment.mjs';
 import { consumePageConditionValue } from '../lib/playwrightCspPolling.mjs';
+import { pressTitleAction } from '../lib/titleRoute.mjs';
 
 // Readiness budgets are wall-clock: a saturated machine makes a healthy route read as broken.
 // SF_CHECK_BUDGET_SCALE multiplies every fresh budget below (check-game-playable.mjs and
@@ -463,103 +464,129 @@ export async function waitBootOverlayGone(page, timeout = 300000) {
   }, null, { timeout: T(timeout) });
 }
 
-export async function listDoorArenas(page) {
-  return page.evaluate(() => [...document.querySelectorAll('#screens .sf-crd-row--arena button')]
-    .map((b) => ({ name: b.textContent.replace(/\s+/g, ' ').trim(), disabled: !!b.disabled || b.getAttribute('aria-disabled') === 'true', pressed: b.getAttribute('aria-pressed') === 'true' || b.getAttribute('aria-checked') === 'true' })));
+const HANGAR = '[data-screen="crucible"].orr-swarm-hangar';
+
+/** The public title entry always opens the ship step, before a run has started. */
+export async function openSwarmHangar(page) {
+  await pressTitleAction(page, 'swarm', { timeout: T(60000) });
+  await page.locator(`${HANGAR}[data-prep-step="0"]`).waitFor({ state: 'visible', timeout: T(60000) });
+  await page.locator(`${HANGAR} [data-swarm-hull][aria-pressed="true"]`).waitFor({ state: 'visible' });
 }
 
-/** Every hull tile the Crucible ship step offers: starter id, face word, locked flag. */
-export async function listHulls(page) {
-  return page.evaluate(() => [...document.querySelectorAll('#screens .sf-crd-hull')].map((b) => ({ id: b.dataset.starterId, face: b.textContent.replace(/\s+/g, ' ').trim().slice(0, 40), locked: b.dataset.locked === '1' || !!b.disabled })));
+export async function showHangarShips(page) {
+  await page.locator(`${HANGAR} [data-swarm-step="0"]`).click();
+  await page.locator(`${HANGAR} [data-swarm-hull][aria-pressed="true"]`).waitFor({ state: 'visible' });
 }
 
-/** Crucible door → ruleset → arena → seed → ship & kit → armory. Returns what the door showed.
- *  `hooks.onShip(doorPrep)` runs after the hull is selected and before the launch click, so a
- *  caller can photograph the ship step. Gauntlet never opens an armory; the door sentence is the preparation. */
-export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantHull = null }, step, hooks = {}) {
-  const modeAction = page.locator('[data-screen="mainMenu"] [data-action="crucible"]').first();
-  if (!(await modeAction.isVisible())) {
-    const more = page.locator('[data-screen="mainMenu"] [data-title-more]').first();
-    if (await more.isVisible()) await more.click({ timeout: T(60000) });
+/** Open the second step with its visible navigation and select the advertised run type. */
+export async function showHangarRunOptions(page, ruleset = null) {
+  await page.locator(`${HANGAR} [data-swarm-step="1"]`).click();
+  await page.locator(`${HANGAR} .sf-crd-row--arena`).waitFor({ state: 'visible' });
+  if (ruleset) {
+    const selector = ruleset === 'block' ? '.sf-crd-block' : `.sf-crd-mode[data-ruleset="${ruleset}"]`;
+    const mode = page.locator(`${HANGAR} ${selector}:visible`);
+    await mode.click();
+    if (await mode.getAttribute('aria-pressed') !== 'true') {
+      throw new Error(`Run type "${ruleset}" did not select through its public control`);
+    }
   }
-  await modeAction.click({ timeout: T(60000) });
-  await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucible', null, { timeout: T(60000) });
-  await page.locator(`#screens .sf-crd-mode[data-ruleset="${ruleset}"]`).click();
+}
+
+export async function listDoorArenas(page) {
+  return page.locator(`${HANGAR} .sf-crd-row--arena button:visible`).evaluateAll(buttons => buttons
+    .map(b => ({ id: b.dataset.arenaId, name: b.textContent.replace(/\s+/g, ' ').trim(),
+      disabled: !!b.disabled || b.getAttribute('aria-disabled') === 'true',
+      pressed: b.getAttribute('aria-pressed') === 'true' || b.getAttribute('aria-checked') === 'true' })));
+}
+
+/** Distinct, visible hull choices, with their actual ship IDs rather than preset identities. */
+export async function listHulls(page) {
+  return page.locator(`${HANGAR} [data-swarm-hull]:visible`).evaluateAll(buttons => buttons.map(b => ({
+    id: b.dataset.swarmHull, face: (b.querySelector('strong')?.textContent || b.textContent).replace(/\s+/g, ' ').trim(),
+    locked: !!b.disabled || b.getAttribute('aria-disabled') === 'true',
+    pressed: b.getAttribute('aria-pressed') === 'true',
+  })));
+}
+
+/** Select a hull by ID/name, or a legacy preset ID by inspecting each hull's visible loadouts. */
+export async function chooseHangarHull(page, wanted) {
+  const hulls = await listHulls(page);
+  const want = String(wanted);
+  const id = want.startsWith('hull:') ? want.slice(5) : want;
+  const hull = hulls.find(row => row.id === id || row.face.toLowerCase() === want.toLowerCase());
+  const selectHull = async row => {
+    await page.locator(`${HANGAR} [data-swarm-hull="${row.id}"]`).click();
+    await page.locator(`${HANGAR} [data-swarm-hull="${row.id}"][aria-pressed="true"]`).waitFor({ state: 'visible' });
+  };
+  if (hull) {
+    if (hull.locked) throw new Error(`hull "${wanted}" is locked for this profile`);
+    await selectHull(hull);
+    if (!want.startsWith('hull:')) return hull;
+  }
+  // Older --hull arguments named a preset. Retain that route using only the new
+  // player-facing roster/loadout controls; the hidden compatibility buttons are not actors.
+  const candidates = hull ? [hull] : hulls.filter(row => !row.locked).sort((a, b) => Number(b.pressed) - Number(a.pressed));
+  for (const candidate of candidates) {
+    if (!hull) await selectHull(candidate);
+    const kits = await page.locator(`${HANGAR} [data-swarm-kit]:visible`).evaluateAll(buttons => buttons.map(b => ({
+      id: b.dataset.swarmKit, locked: !!b.disabled || b.getAttribute('aria-disabled') === 'true',
+    })));
+    const kit = kits.find(row => row.id === want);
+    if (!kit) continue;
+    if (kit.locked) throw new Error(`loadout "${wanted}" is locked for this profile`);
+    await page.locator(`${HANGAR} [data-swarm-kit="${kit.id}"]`).click();
+    await page.locator(`${HANGAR} [data-swarm-kit="${kit.id}"][aria-pressed="true"]`).waitFor({ state: 'visible' });
+    return candidate;
+  }
+  throw new Error(`hull or loadout "${wanted}" not offered (ships: ${hulls.map(row => row.id).join(', ')})`);
+}
+
+/** Title → ship/loadout → run settings → equipment review. Returns the player's preparation.
+ *  `hooks.onShip(doorPrep)` runs on the visible ship step after all settings are chosen.
+ *  Gauntlet uses its explicitly labeled challenge launch instead of an opening armory. */
+export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantHull = null }, step, hooks = {}) {
+  await openSwarmHangar(page);
+  const hulls = await listHulls(page);
+  if (wantHull) await chooseHangarHull(page, wantHull);
+  await showHangarRunOptions(page, ruleset);
   const arenas = await listDoorArenas(page);
   if (arena) {
-    const a = page.locator('#screens .sf-crd-row--arena button').filter({ hasText: arena }).first();
-    await a.click({ timeout: T(15000) });
+    const offered = arenas.find(row => row.id === arena || row.name.toLowerCase() === String(arena).toLowerCase());
+    if (!offered) throw new Error(`arena "${arena}" not offered (arenas: ${arenas.map(row => row.name).join(', ')})`);
+    if (offered.disabled) throw new Error(`arena "${arena}" is locked for this profile`);
+    await page.locator(`${HANGAR} .sf-crd-arena-choice[data-arena-id="${offered.id}"]`).click();
   }
   let seedSet = false;
-  const seedInput = page.locator('#screens .sf-crd-seed input').first();
-  const trySeed = async () => {
-    if (seed == null || seedSet) return;
-    // The seed is a settings row on the door, often below the fold at 960x540. Scroll it into
-    // the centre the way a player does, then replace the digits. A collapsed disclosure is the
-    // older door; open that too if it is still there.
-    const closed = page.locator('#screens details:not([open]):has(.sf-crd-seed) > summary').first();
-    if (await closed.count().catch(() => 0)) await closed.click({ timeout: T(15000) }).catch(() => {});
-    if (!(await seedInput.count().catch(() => 0))) return;
-    await seedInput.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' })).catch(() => {});
+  if (seed != null) {
+    const custom = page.locator(`${HANGAR} details`).filter({ has: page.locator('summary', { hasText: /^Custom runs & records$/ }) });
+    if (await custom.getAttribute('open') === null) await custom.locator('summary').click();
+    const seedInput = page.getByRole('textbox', { name: 'Run seed', exact: true });
     const want = String(seed);
-    try {
-      await seedInput.fill(want, { timeout: T(5000) });
-      await seedInput.press('Tab');
-    } catch {
-      // The row is in the DOM but Playwright still calls it hidden (overflow clip). Click the
-      // centre and type, which is what a player does once the row is on screen.
-      const bb = await seedInput.boundingBox().catch(() => null);
-      if (!bb) return;
-      await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2);
-      await page.keyboard.press('ControlOrMeta+a');
-      await page.keyboard.type(want, { delay: 15 });
-      await page.keyboard.press('Tab');
-    }
-    const got = await seedInput.inputValue().catch(() => '');
-    if (String(got).trim() === want) seedSet = true;
-  };
-  await trySeed();
-  const chosen = await listDoorArenas(page);
-  step('mode select', true, `Crucible · ${ruleset} · arena ${(chosen.find((x) => x.pressed) || {}).name || arena || 'default'} · seed ${seedSet ? seed : 'field not visible'}`);
-  await clickText(page, 'Choose ship');
-  await trySeed();
-  const hulls = await listHulls(page);
-  if (wantHull) {
-    const pick = hulls.find((h) => h.id === wantHull || h.face.toLowerCase() === String(wantHull).toLowerCase());
-    if (!pick) throw new Error(`hull "${wantHull}" not offered (offered: ${hulls.map((h) => h.id).join(', ')})`);
-    if (pick.locked) throw new Error(`hull "${wantHull}" is locked for this profile`);
-    // The tile idles in a perpetual CSS motion, so Playwright's "stable" wait never settles under
-    // software GL. Click it the way a player does: a trusted mouse click at the tile's centre.
-    const tile = page.locator(`#screens .sf-crd-hull[data-starter-id="${pick.id}"]`).first();
-    await tile.scrollIntoViewIfNeeded({ timeout: T(15000) }).catch(() => {});
-    const bb = await tile.boundingBox();
-    if (!bb) throw new Error(`hull "${pick.id}" tile has no box on screen`);
-    const picked = (id) => { const t = document.querySelector(`#screens .sf-crd-hull[data-starter-id="${id}"]`); return !!t && t.getAttribute('aria-pressed') === 'true'; };
-    await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2);
-    let ok = await page.waitForFunction(picked, pick.id, { timeout: T(4000) }).then(() => true, () => false);
-    if (!ok) {
-      // Mouse missed (the tile is covered or reflowing): Tab-focus the tile and press Enter, as a keyboard player does.
-      const hit = await page.evaluate(([x, y]) => { const e = document.elementFromPoint(x, y); return e ? `${e.tagName.toLowerCase()}.${[...e.classList].slice(0, 3).join('.')}` : 'nothing'; }, [bb.x + bb.width / 2, bb.y + bb.height / 2]);
-      await tile.focus();
-      await page.keyboard.press('Enter');
-      ok = await page.waitForFunction(picked, pick.id, { timeout: T(8000) }).then(() => true, () => false);
-      if (!ok) throw new Error(`hull "${pick.id}" did not select by mouse (centre hits ${hit}) or keyboard`);
-    }
-    await page.waitForTimeout(400);
+    await seedInput.fill(want);
+    await seedInput.press('Tab');
+    seedSet = String(await seedInput.inputValue()).trim() === want;
+    if (!seedSet) throw new Error(`Run seed field did not retain ${want}`);
+    await custom.locator('summary').click();
   }
-  const hull = await page.evaluate(() => { const b = [...document.querySelectorAll('#screens .sf-crd-hull')].find((x) => x.getAttribute('aria-pressed') === 'true' || x.getAttribute('aria-checked') === 'true' || x.classList.contains('is-selected')); return b ? b.textContent.replace(/\s+/g, ' ').trim().slice(0, 60) : null; });
+  const chosen = await listDoorArenas(page);
+  step('mode select', true, `Swarm hangar · ${ruleset} · arena ${(chosen.find(x => x.pressed) || {}).name || arena || 'default'} · seed ${seedSet ? seed : 'default'}`);
+  await showHangarShips(page);
   const doorPrep = await readDoorPreparation(page);
+  const hull = doorPrep.face;
   if (hooks && typeof hooks.onShip === 'function') await hooks.onShip(doorPrep);
+  await showHangarRunOptions(page);
+  const enter = page.locator(`${HANGAR} .sf-swarm-enter-key:visible`);
+  const verb = norm(await enter.innerText());
+  if (await enter.isDisabled()) {
+    throw new Error(`${verb || 'Launch'} is unavailable: ${await page.locator(`${HANGAR} .sf-hangar-footer-note`).innerText()}`);
+  }
+  await enter.click();
   if (ruleset === 'swarm') {
-    await clickText(page, 'Open armory');
     // #318: a Training Derelict fallthrough fails immediately. Any other non-draft
     // world still gets the 60 s named miss (mode, kind, phase, top, helios_core spawn).
-    await waitForArmory(page, { failOnTutorial: true });
+    await waitForArmory(page, { failOnTutorial: true, verb });
   } else {
-    // Gauntlet does not stop on the draft screen. A survival run is the landing.
-    // The same adventure/inactive flight that swallows Swarm is still a miss.
-    await clickText(page, 'Enter the Gauntlet');
-    await waitForArmory(page, { acceptSurvival: true, verb: 'Enter the Gauntlet' });
+    await waitForArmory(page, { acceptSurvival: true, verb });
   }
   const runSeed = await readLaunchedRunSeed(page);
   if (seedSet && Number.isSafeInteger(seed) && runSeed !== seed) {
@@ -715,16 +742,20 @@ export function classifyOfferRead({ cards = [], allCount = null, strayNames = []
   return { offerSource: 'harness-miss', offerQuote: quote || 'armory showed no cards and no empty-shelf sentence' };
 }
 
-/** The selected hull's face and the door's hull sentence, before the launch click. */
+/** Read the visible ship preview and installed-slot manifest before the launch click. */
 export async function readDoorPreparation(page) {
-  const snap = await page.evaluate(() => {
+  const snap = await page.locator(`${HANGAR} .sf-hangar-preview:visible`).evaluate(preview => {
     const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
-    const hull = [...document.querySelectorAll('#screens .sf-crd-hull')].find((x) => x.getAttribute('aria-pressed') === 'true' || x.getAttribute('aria-checked') === 'true' || x.classList.contains('is-selected'));
-    const sub = document.querySelector('#screens .sf-crd-hull-sub');
-    return { face: hull ? norm(hull.textContent).slice(0, 120) : '', sub: sub ? norm(sub.textContent).slice(0, 240) : '' };
+    const face = norm(preview.querySelector('.sf-hangar-shipname')?.textContent);
+    const role = norm(preview.querySelector('.sf-hangar-shiprole')?.textContent);
+    const slots = [...preview.querySelectorAll('.sf-hangar-fitting')].map(slot => ({
+      text: norm(slot.textContent), fitted: !slot.classList.contains('is-empty'),
+    }));
+    return { face, sub: [role, ...slots.map(slot => slot.text)].filter(Boolean).join(' · '),
+      fittedClaimed: slots.filter(slot => slot.fitted).length, fittedClaimSource: 'visible installed-slot manifest' };
   });
   const quote = [snap.face, snap.sub].filter(Boolean).join(' · ');
-  return { ...snap, quote, fittedClaimed: fittedClaimFromText(quote) };
+  return { ...snap, quote };
 }
 
 /** Offer cards plus the shelf census that says whether zero cards is the game or the harness. */

@@ -513,6 +513,7 @@
     "check:crucible:route": "node scripts/check-crucible-route.mjs",
     "player-truth": "node scripts/player-truth/run.mjs",
     "gate": "node scripts/fleet/game-lock.mjs run -- node scripts/fleet/gate.mjs",
+    "check:swarm-hangar-ux": "node scripts/check-swarm-hangar-ux.mjs",
     "check:player-truth": "node --test test/player-truth-*.test.mjs test/main-lane-force-provenance.test.mjs test/swarm-overhaul-offscreen-release.test.mjs",
     "check:crucible:run": "node scripts/check-crucible-run.mjs",
     "check:playable:desktop": "node scripts/check-game-playable.mjs --electron",

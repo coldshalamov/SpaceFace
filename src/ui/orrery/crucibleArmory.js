@@ -7,6 +7,8 @@ import { hullPosterUrl } from '../hullPosters.js';
 import { injectCruciblePreparation } from './cruciblePreparationLayouts.js';
 import { createPipSpannerCrew } from './pipSpannerCrew.js';
 import { createArmoryPreviewMedia } from './armoryPreviewMedia.js';
+import { createSwarmArmoryShipPreview } from '../ship/swarmArmoryShipPreview.js';
+import { injectSwarmArmoryShip } from './swarmArmoryShipLayouts.js';
 
 // Missing/unsupported clips are requested once per session. Aborted loads and transient
 // network errors are not permanent catalog misses.
@@ -16,6 +18,7 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
   const doc = root?.ownerDocument;
   if (!doc?.createElementNS || !reading || !parts) return null;
   injectCruciblePreparation(doc); root.classList.add('orr-visual-armory');
+  injectSwarmArmoryShip(doc);
   reading.removeAttribute('aria-hidden'); reading.setAttribute('aria-label', 'Inspect equipment and purchase');
   const make = (tag, cls, text) => {
     const n = doc.createElement(tag); n.className = cls;
@@ -54,10 +57,33 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
   const motionQuery = doc.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)');
   const motionReduced = () => !!doc.documentElement?.classList.contains('sf-reduce-motion')
     || !!motionQuery?.matches;
+  const ship = make('section', 'orr-armory-ship');
+  const shipHead = make('div', 'orr-armory-ship-head');
+  const shipName = make('h3', 'orr-armory-ship-name', 'Your ship');
+  shipHead.append(make('span', '', 'Your ship'), shipName);
+  const shipHost = make('div', 'orr-armory-ship-stage');
+  const shipNote = make('p', 'orr-armory-ship-note');
+  ship.append(shipHead, shipHost, shipNote); reading.prepend(ship);
+  // Inspection can grow with the ship, comparisons and build details. Its purchase
+  // action keeps its own row so a longer description never clips the Install key.
+  const content = make('div', 'orr-armory-reading__content');
+  content.append(...Array.from(reading.children));
+  reading.replaceChildren(content, parts.buy);
+  const shipPreview = createSwarmArmoryShipPreview({ host: shipHost, name: shipName,
+    note: shipNote, motionReduced });
   const preview = createArmoryPreviewMedia({ motionReduced });
   let lastArt = null, lastFit = null, lastOffer = null, disposed = false;
+  let active = false, shopVisible = false, readingVisible = false, projectedActive = null;
+  function syncActive() {
+    const shown = active && shopVisible && readingVisible;
+    if (shown === projectedActive) return;
+    projectedActive = shown;
+    preview.setActive(shown); crew?.setActive(shown); shipPreview.setActive(shown);
+  }
+  syncActive();
   return {
     wallet(credits, visible = true) {
+      shopVisible = !!visible; syncActive();
       wallet.hidden = !visible;
       amount.textContent = Math.max(0, Number(credits) || 0).toLocaleString('en-US');
       // One narrow scrollport contains header, catalog and detail. The action rail owns
@@ -75,14 +101,15 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
       const offerKey = JSON.stringify([offer.kind, offer.id ?? offer.defId ?? offer.hullId, offer._ownedIndex]);
       if (offerKey !== lastOffer) {
         lastOffer = offerKey;
-        // A new selection starts at its sentence, not at the previous item's scrolled schematic.
+        // A new selection starts at the top of its inspection, not the previous item's scroll.
         // Do not scroll the outer phone page or reset inspection during a wallet/receipt refresh.
-        reading.scrollTop = 0;
+        content.scrollTop = 0;
       }
       const fitKey = JSON.stringify([hullId, rows.map(row => [row.defId, row.name, row.slotIndex,
         row.slotType, row.slotSize, row.intrinsicDefId, row.intrinsicName])]);
       if (fitKey !== lastFit) {
         lastFit = fitKey; buildList.replaceChildren();
+        shipPreview.show(hullId, rows);
         buildSummary.textContent = `Current build · ${rows.filter(row => row.defId).length} fitted`
           + (rows.some(row => row.intrinsicDefId) ? ' · alien emitters built in' : ` / ${rows.length}`);
         for (const row of rows) {
@@ -153,11 +180,17 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
       crew?.scope(generation); crew?.inspect(offer); crew?.receipt(receipt);
     },
     pending(offer) { crew?.pending(offer); buy.disabled = true; buy.setAttribute('aria-disabled', 'true'); },
-    setActive(value) { if (!disposed) { preview.setActive(value); crew?.setActive(value); } },
+    setReadingVisible(value) {
+      if (!disposed) { readingVisible = !!value; syncActive(); }
+    },
+    setActive(value) {
+      if (!disposed) { active = !!value; syncActive(); }
+    },
     dispose() {
       if (disposed) return;
       disposed = true; lastArt = null;
       preview.dispose();
+      shipPreview.dispose();
       buy.removeEventListener('click', onPurchase);
       crew?.dispose();
     },

@@ -9,7 +9,7 @@
 //          into design/program/player-truth/<label>/; scratch frames stay) · --prune-frames (opt-in delete of scratch frames after --evidence; default off)
 //   gate:  --gate (idle pass + active pass to round 3; UNKNOWN on core checks = FAIL)
 //          --gate=idle or --gate=active runs one of those passes · --viewports=960x540,1280x720,1920x1080
-//          --hull=all|<starter id> · --baseline=<git ref> (before/after table) · --baseline-source=<manifest>
+//          --hull=all|<ship id>|<starter id> · --baseline=<git ref> (before/after table) · --baseline-source=<manifest>
 //          --candidate-source=<manifest> tests explicit uncommitted source/assets; it is not a Git baseline
 //   diagnostic: --vfx-attribution enumerates per-draw VFX deltas only at a threat-hidden sample (up to 65 extra draws)
 //          browser: bundled Chromium
@@ -46,7 +46,7 @@ import { analyzeReadability } from './readability.mjs';
 import { buildContactSheet } from './contactSheet.mjs';
 import { renderVerdict, printSummary } from './verdict.mjs';
 import { verifyHarnessEnvironment, ENVIRONMENT_EXIT, renderEnvironmentAbort, quoteLoadError } from './environment.mjs';
-import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, waitForPreparationLaunch, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls, installFirstLightPromptHandler, readLaunchedRunSeed, T } from './routes.mjs';
+import { bootToMenu, crucibleToArmory, readLoadError, waitUntilFlight, readArmoryShelf, classifyOfferRead, readFittedRows, auditItems, swapProbe, armoryLaunchWord, waitForPreparationLaunch, clickText, waitBootOverlayGone, adventureToFlight, racingToFlight, listDoorArenas, listHulls, openSwarmHangar, showHangarShips, showHangarRunOptions, installFirstLightPromptHandler, readLaunchedRunSeed, T } from './routes.mjs';
 import { waitSim, simNow, wallNow, controlProbes, fightBeat, cruiseBeat, readPlaySample, drainPlayerTruth, noteKey, foldTargetRejections } from './driver.mjs';
 import { createPlayWatch, formatPlayStop } from './playWatch.mjs';
 import { createFreezeWatch, readHostPressure } from './freezeWatch.mjs';
@@ -1344,31 +1344,32 @@ async function main() {
   process.env.SPACEFACE_PLAYER_STORE_DIR = '';
   await assertHarnessEnvironment(args.baselineSource, args.candidateSource);
   let arenas = [args.arena];
-  if (args.arena === 'all' && (args.mode === 'swarm' || args.mode === 'gauntlet')) {
-    const server = await startBenchServer({ sourceOverlay: args.baselineSource?.path || null }); const { chromium } = await loadPlaywright();
-    const { browser } = await launchChromium(chromium, { headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-    await bootToMenu(page, server.baseUrl, () => {});
-    await clickText(page, 'Crucible', { exact: true });
-    await page.locator(`#screens .sf-crd-mode[data-ruleset="${RULESET[args.mode] || args.mode}"]`).click();
-    const door = await listDoorArenas(page);
-    arenas = door.filter((a) => !a.disabled).map((a) => a.name);
-    if (args.hull === 'all') { await clickText(page, 'Choose ship'); args.hullList = (await listHulls(page)).filter((h) => !h.locked).map((h) => h.id); }
-    await browser.close(); await server.close();
-    const locked = door.filter((a) => a.disabled).map((a) => a.name);
-    console.log(`arenas reachable from the door: ${arenas.join(', ')}${locked.length ? ` · locked for a fresh profile: ${locked.join(', ')}` : ''}`);
-  }
-  if (args.hull === 'all' && !args.hullList && (args.mode === 'swarm' || args.mode === 'gauntlet')) {
-    const server = await startBenchServer({ sourceOverlay: args.baselineSource?.path || null }); const { chromium } = await loadPlaywright();
-    const { browser } = await launchChromium(chromium, { headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-    await bootToMenu(page, server.baseUrl, () => {});
-    await clickText(page, 'Crucible', { exact: true });
-    await page.locator(`#screens .sf-crd-mode[data-ruleset="${RULESET[args.mode] || args.mode}"]`).click();
-    await clickText(page, 'Choose ship');
-    const all = await listHulls(page); args.hullList = all.filter((h) => !h.locked).map((h) => h.id);
-    console.log(`hulls offered: ${all.map((h) => `${h.face} (${h.id}${h.locked ? ', locked' : ''})`).join(', ')}`);
-    await browser.close(); await server.close();
+  if ((args.arena === 'all' || args.hull === 'all') && (args.mode === 'swarm' || args.mode === 'gauntlet')) {
+    const server = await startBenchServer({ sourceOverlay: args.baselineSource?.path || null });
+    let browser;
+    try {
+      const { chromium } = await loadPlaywright();
+      ({ browser } = await launchChromium(chromium, { headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] }));
+      const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+      await bootToMenu(page, server.baseUrl, () => {});
+      await openSwarmHangar(page);
+      await showHangarRunOptions(page, RULESET[args.mode] || args.mode);
+      if (args.arena === 'all') {
+        const offered = await listDoorArenas(page);
+        arenas = offered.filter(row => !row.disabled).map(row => row.name);
+        const locked = offered.filter(row => row.disabled).map(row => row.name);
+        console.log(`arenas reachable from run settings: ${arenas.join(', ')}${locked.length ? ` · locked for a fresh profile: ${locked.join(', ')}` : ''}`);
+      }
+      if (args.hull === 'all') {
+        await showHangarShips(page);
+        const offered = await listHulls(page);
+        args.hullList = offered.filter(row => !row.locked).map(row => row.id);
+        console.log(`hulls offered: ${offered.map(row => `${row.face} (${row.id}${row.locked ? ', locked' : ''})`).join(', ')}`);
+      }
+    } finally {
+      await browser?.close().catch(() => {});
+      await server.close();
+    }
   }
   const hulls = args.hullList || [args.hull && args.hull !== 'all' ? args.hull : null];
   // --gate: an idle pass (passive kills/reward/spawn motion, the whole first round with no input) and an

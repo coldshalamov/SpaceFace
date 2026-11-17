@@ -1124,7 +1124,9 @@ export function createShipPreviewMount(canvas, opts) {
   }
 
   function renderNow() {
-    if (disposed) return;
+    // Async asset/upload completions also reach this function. Deactivation must
+    // fence those draws as well as the RAF loop while the ship's menu is hidden.
+    if (disposed || !active) return;
     resize();
     if (current && rotating) {
       yaw += 0.012;

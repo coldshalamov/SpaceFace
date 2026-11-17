@@ -1,10 +1,7 @@
-// S4 — "one press to the fight", pinned seam by seam.
-//
-// The title's SWARM verb must (a) build a validated setup out of the frozen quick-start
-// record, (b) reach run telemetry through the SAME begin request the Crucible door rides —
-// never a side channel — and (c) enter round 1 in flight: loadout -> arena_intro ->
-// wave_intro -> active, with the draft stop never entered. The door's own launch keeps its
-// authored opening: without the flag the first stop stays the armory.
+// Compatibility contract for explicitly requested quick-start configurations.
+// The public title now opens the ship-first hangar (title-doors-route.test.mjs); it does
+// not invoke this record. Existing recorded configurations still use the canonical launch
+// and phase owners. Ordinary preparation, without the opt-out, opens the armory first.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
@@ -53,7 +50,7 @@ function resetMeta() {
 
 // The real launch harness: requestCrucibleRun stages the config, game:started runs
 // applySandboxSetup, and the true owners answer every bus seam — the same calls the
-// title's SWARM verb makes.
+// compatibility launch makes.
 let launchBus = null;
 let launchCtx = null;
 
@@ -98,9 +95,9 @@ function bootDoor() {
   return { state, bus, emitted, ctx };
 }
 
-// The title's press, distilled: the quick-start extras through the same setup builder and
-// launch request the door uses.
-function pressSwarm(h) {
+// An explicit quick-start configuration through the same setup builder and launch
+// request the normal hangar uses.
+function requestQuickStart(h) {
   const extras = swarmQuickStartExtras();
   assert.ok(extras, 'the record validates on this catalog');
   const setup = crucibleSetupFor({ ...extras, seed: SEED });
@@ -136,7 +133,7 @@ test('the quick-start record is frozen, complete, and every id resolves', () => 
 test('quick-start: the flag rides the ordinary begin request and round 1 opens in flight', () => {
   resetMeta();
   const h = bootDoor();
-  pressSwarm(h);
+  requestQuickStart(h);
 
   // Seam 1: the begin request itself carried the opt-out — no hidden flag, no second path.
   const begin = h.emitted.filter((e) => e.event === 'run:beginRequested').at(-1);

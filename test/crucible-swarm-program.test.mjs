@@ -152,10 +152,19 @@ test('stakes are pure frozen data with an honest ordering and one default', () =
     assert.ok(Number.isFinite(stake.pressure) && stake.pressure > 0);
     assert.ok(Number.isFinite(stake.earn) && stake.earn > 0);
     const pitch = swarmStakePitch(stake.id);
-    assert.ok(
-      stake.purse > 0 ? pitch.includes(`${stake.purse} cr`) : pitch.includes('no purse'),
-      `${stake.id} pitch names its purse`,
-    );
+    const creditFigure = pitch.match(/([\d,]+) starting credits/i);
+    assert.ok(creditFigure, `${stake.id} explains the starting equipment budget`);
+    assert.equal(Number(creditFigure[1].replaceAll(',', '')), stake.purse,
+      `${stake.id} must show the same budget the armory receives, including zero`);
+    if (stake.pressure === 1) assert.match(pitch, /standard enemy numbers/i);
+    else {
+      const enemyFigure = pitch.match(/(\d+)% (fewer|more) enemies/i);
+      assert.ok(enemyFigure, `${stake.id} explains how enemy numbers change`);
+      assert.equal(Number(enemyFigure[1]), Math.round(Math.abs(stake.pressure - 1) * 100));
+      assert.equal(enemyFigure[2].toLowerCase(), stake.pressure < 1 ? 'fewer' : 'more');
+    }
+    assert.equal(Number(pitch.match(/round rewards ×([\d.]+)/i)?.[1]), stake.earn);
+    assert.equal(Number(pitch.match(/score ×([\d.]+)/i)?.[1]), stake.score);
   }
   const audit = validateSwarmStakes();
   assert.ok(audit.ok, `stake validation clean: ${audit.issues.join('; ')}`);
@@ -576,7 +585,10 @@ test('a catalog gun carries its figures; a stake tile carries its yield', () => 
   const rig = MODULES.find((m) => m.slotType === 'utility');
   assert.equal(catalogBlurbFor(rig).includes('dps'), false, 'a rig keeps its sentence');
   for (const stake of SWARM_STAKES) {
-    assert.equal(swarmStakeYield(stake.id), `pays ×${stake.earn} · scores ×${stake.score}`);
+    const yieldLine = swarmStakeYield(stake.id);
+    assert.equal(Number(yieldLine.match(/round rewards ×([\d.]+)/i)?.[1]), stake.earn,
+      'The player can distinguish spendable round rewards from points.');
+    assert.equal(Number(yieldLine.match(/score ×([\d.]+)/i)?.[1]), stake.score);
   }
 });
 

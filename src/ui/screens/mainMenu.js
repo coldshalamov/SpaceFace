@@ -16,10 +16,8 @@ import { isSaveSlotId, selectLatestOccupiedSlot } from '../../save/saveSlotIdent
 import { isTitleSaveReadFailure, saveErrorText } from '../saveFeedback.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
-import { injectTitleAsideLayouts } from '../orrery/titleAsideLayouts.js';
 import { injectTitleDoorsLayouts } from '../orrery/titleDoorsLayouts.js';
 import { shouldOfferFirstLight, applyFirstLightPreset } from '../accessibility.js';
-import { requestSwarmPlayEntry } from '../crucibleLaunch.js';
 import { laneWriteSetting } from '../../core/simLaneCommands.js';
 import { confirm, dismissConfirm, isConfirmOpen } from '../confirm.js';
 import {
@@ -106,19 +104,14 @@ function publishAccessibilityChange(ctx, key, value) {
   bus.emit('settings:changed', { section: 'accessibility', key, value });
 }
 
-/** Show or hide Continue's row on the dial, and re-seat the dial when it changes. */
+/** Continue exists only when a usable save is present. */
 function bContinueRow(r, show) {
   const li = r && r.bContinue && r.bContinue.closest ? r.bContinue.closest('li') : null;
   if (!li || li.hidden === !show) return;
   li.hidden = !show;
-  if (arcRail) arcRail.layout();
 }
 /** The attention lamp's listeners, released when the screen unmounts. */
 let detachLamp = null;
-/** ORRERY: the verbs ride the rim of the emblem's dial (design/frontend/ORRERY.md §6 Title). */
-let arcRail = null;
-// The dial's face is drawn in its own line language (arcRail drawFace); the raster emblem is the
-// loading ring's (bootRing.js).
 // spec2/03 §3: the still begins its slow drift after this much idle time. Input re-arms the window.
 const ATTRACT_IDLE_MS = 6_000;
 
@@ -345,30 +338,48 @@ export function titlePrimaryAction(hasSave) {
  * already promised ("the scored ten-wave Survival run", "the authored intro cinematics").
  */
 export const MENU_MODE_GLOSSES = Object.freeze({
-  swarm: 'Hold off the horde: pick the room, then PLAY',
+  swarm: 'Choose your ship, equip your weapons, survive the waves',
   crucible: 'A scored ten-wave survival run',
-  archive: 'Authored intro reels, in the Codex',
+  archive: 'Replay story cinematics in the Codex',
   circuits: 'Race rivals or run time trials',
   sandbox: 'Free flight sandbox',
   physics: 'Orbital physics challenges',
 });
 
-/** TITLE-01: the Adventure door's line (the glosses above are the secondary verbs'). */
-const ADVENTURE_DOOR_GLOSS = 'The campaign — your ship, the Helios Reach';
+/** A first-time player can understand the campaign before starting it. */
+const ADVENTURE_DOOR_GLOSS = 'Explore, trade and fight across the Helios Reach.';
 
 export function titleVerbOrder() {
-  return ['continue', 'swarm', 'newGame', 'load', 'crucible', 'settings', 'quit'];
+  return ['continue', 'swarm', 'newGame', 'load', 'settings', 'help', 'quit'];
 }
 
 /** The title's Tab order, in reading order: the verb ladder, the reference line, the fine line —
  *  every word on screen. A hidden Continue is not on screen, so it is not in the ladder. */
-function titleTabLadder(r) {
-  if (!r || !r.list) return [];
-  const groups = [r.list, r.root && r.root.querySelector('.of-title-aside')].filter(Boolean);
-  const out = [];
-  for (const g of groups) for (const b of g.querySelectorAll('button[data-action]')) out.push(b);
-  out.push(r.bCredits, r.bAchievements);
-  return out.filter((b) => b && typeof b.getClientRects === 'function' && b.getClientRects().length > 0);
+export function titleTabLadder(r) {
+  if (!r || !r.root) return [];
+  return [...r.root.querySelectorAll('button[data-action], button[data-title-more]')]
+    .filter((button) => titleVerbUsable(button)
+      && typeof button.getClientRects === 'function' && button.getClientRects().length > 0);
+}
+
+/** A mode tile is one native button. Its picture, padding, title, summary and call to action
+ * share that button's hit target, rather than decorating an inert list item around a text link. */
+export function composeTitleModeButton(button, { title, category, action } = {}) {
+  if (!button) return;
+  const oldNote = button.parentElement?.querySelector('.dp-lit__note, .dp-menu__note');
+  const note = el('span', oldNote?.className || 'dp-lit__note', oldNote?.textContent || '');
+  if (oldNote) oldNote.remove();
+  note.id = `title-mode-${button.dataset.action}-description`;
+  button.setAttribute('aria-describedby', note.id);
+  button.replaceChildren(
+    el('span', 'of-title-door-type', category),
+    el('span', 'of-title-door-name', title),
+    note,
+    el('span', 'of-title-door-action', action),
+  );
+  const arrow = el('span', 'of-title-door-arrow', '→');
+  arrow.setAttribute('aria-hidden', 'true');
+  button.appendChild(arrow);
 }
 /** A Tab stop is a word that can act: a still-loading verb is passed over, the same rule the arrow
  *  keys' roving follows. */
@@ -405,37 +416,21 @@ export const mainMenuScreen = {
     rootEl.dataset.kReady = '0';
 
     const { backdrop, title, stage, status } = createTitleFrame(rootEl);
-    // The eyebrow's standing line (the localized contract line). The gloss writer below restores
-    // exactly this when no verb is awake, and _render may replace it with the Continue summary.
-    // TITLE-01: no tech words on the way in. The standing line is empty; a save's Continue summary and a
-    // load failure still write here.
+    // The save summary belongs to Continue. Only a recoverable load failure needs a heading alert.
     status.textContent = '';
     this._statusDefault = status.textContent;
 
-    // The words. Visible words follow the sheet; the accessible names keep the game's core copy
-    // (coreText) so every route that finds "New Game" / "Continue" / "Quit Game" still does.
-    // THE COLUMN IS FIVE VERBS, and one of them is the reason a stranger opened the game. Until
-    // 2026-09-22 it was eight words at identical weight, so NEW GAME weighed exactly as much as
-    // SANDBOX and the screen had made no decision. Everything that is a REFERENCE rather than a way
-    // into the game moved to the footer line with Credits and Achievements; what is left is play,
-    // resume, the other mode, the settings, and the way out.
-    //
-    // `primary` is resolved after the save scan (_applySave): Continue when there is something to
-    // continue, New Game when there is not. Marking it here would light a dead verb on first paint.
-    // titleVerbOrder owns the reading order.
+    // Accessible action names keep the existing routes stable. The visible mode name and
+    // description are part of that same native control, with an explicit action below them.
     const labels = {
-      // TITLE-01: the two doors. Visible words are the door names; the accessible names keep the core copy.
+      // Familiar game verbs, with mode descriptions visible before the player commits.
       newGame: coreText('newGame'),
       continue: coreText('continue'),
-      load: 'Load',
-      // "Swarm" — the mode the title sells (S4): one press straight into round 1 through the
-      // ordinary New Game route. The authored armory opening is skipped for this entry only;
-      // every later wave drafts normally, so the shop is never more than a round away.
+      load: 'Load Game',
+      // Swarm opens its hangar. A first-time player sees their ship and equipment before launching.
       swarm: 'Swarm',
-      // "Crucible" — the scored ten-wave Survival run (PQ-133 §12.2: direct main-menu entry). It
-      // launches through the ordinary New Game path and never touches the Adventure save.
-      crucible: 'Swarm setup',
       settings: coreText('settings'),
+      help: 'Help',
       quit: 'Quit',
     };
     const items = titleVerbOrder().map((action) => ({
@@ -446,38 +441,23 @@ export const mainMenuScreen = {
       ...(action === 'newGame' ? { sub: ADVENTURE_DOOR_GLOSS } : {}),
       ...(action === 'quit' ? { danger: true } : {}),
     }));
-    // The quiet line: reference and dev, at etch size, out of the way of the decision.
-    // "Archive" opens the Codex on its Archive tab, where the authored intro cinematics replay.
-    // Wave B11: Physics lab / Sandbox toy on front door.
     const asideItems = [
-      { action: 'help', label: 'Help' },
-      { action: 'archive', label: 'Archive', sub: MENU_MODE_GLOSSES.archive },
-      { action: 'circuits', label: 'Circuits', sub: MENU_MODE_GLOSSES.circuits },
-      // Sandbox before Physics challenges: on the dial the line sets as three short lines (title
-      // aside overlay), and the longest label closes the block on a line of its own.
-      { action: 'sandbox', label: 'Sandbox', sub: MENU_MODE_GLOSSES.sandbox },
+      { action: 'archive', label: 'Story archive', sub: MENU_MODE_GLOSSES.archive },
+      { action: 'circuits', label: 'Racing', sub: MENU_MODE_GLOSSES.circuits },
+      { action: 'sandbox', label: 'Free flight', sub: MENU_MODE_GLOSSES.sandbox },
       { action: 'physics', label: 'Physics challenges', sub: MENU_MODE_GLOSSES.physics },
     ];
 
-    // The decorative legend rail is gone (2026-09-22). It was a 64x787 nine-slice plate whose only
-    // job was to stand beside the verbs; the bench measured it as painted and empty, and in the
-    // picture it read as a black bar somebody forgot to fill. Every menu item now carries its own
-    // lamp rail, which is the same piece of hardware doing the same job while also saying which
-    // verb is awake. An ornament became an instrument. design/frontend/THE_BAR.md §3.
-    // The POSTER variant: there is no hardware in front of a player looking at a title screen, so
-    // a verb is a word of light rather than a machined plate with a lamp rail. Weight 0.05.
     const list = words(items, {
       ariaLabel: 'Title menu',
       system: 'light',
       onPick: (action) => this._pick(ctx, action),
     });
-    // Focus is a light source, not a ring: the focused word lights its neighbours and the rest of
-    // the column recedes. This replaces the gold rectangle that read as a browser focus ring.
+    // Shared menu feedback stays local to the navigation surface.
     stage.classList.add('dp-attend');
     stage.appendChild(list);
 
-    // The quiet line sits under the column, in the same substance one size down, so reference verbs
-    // are reachable without competing with the decision.
+    // Optional modes form their own disclosure, with their descriptions inside the hit targets.
     const aside = words(asideItems, {
       ariaLabel: 'Reference',
       system: 'light',
@@ -485,55 +465,37 @@ export const mainMenuScreen = {
       onPick: (action) => this._pick(ctx, action),
     });
     aside.classList.add('of-title-aside');
-    injectTitleAsideLayouts();
     injectTitleDoorsLayouts();
-    stage.appendChild(aside);
-    // TITLE-01: everything that is not a door or the small row waits behind one quiet "More".
-    const bMore = el('button', 'dp-menu__item dp-menu__item--fine of-title-more', 'More');
+    aside.id = 'title-additional-modes';
+    // Optional activities stay together; campaign recovery, Settings and Help remain visible.
+    const bMore = el('button', 'dp-menu__item dp-menu__item--fine of-title-more', 'More modes & extras');
     bMore.type = 'button';
     bMore.dataset.titleMore = '1';
     bMore.setAttribute('aria-expanded', 'false');
+    bMore.setAttribute('aria-controls', aside.id);
+    aside.hidden = true;
     bMore.addEventListener('click', () => {
       const open = !stage.classList.contains('is-more-open');
       stage.classList.toggle('is-more-open', open);
       bMore.setAttribute('aria-expanded', open ? 'true' : 'false');
-      bMore.textContent = open ? 'Less' : 'More';
+      bMore.textContent = open ? 'Close extras' : 'More modes & extras';
+      aside.hidden = !open;
       cue('confirm');
     });
-    if (globalThis.matchMedia?.('(max-width:700px)').matches) {
-      stage.classList.add('is-more-open');
-      bMore.setAttribute('aria-expanded', 'true');
-      bMore.textContent = 'Less';
-    }
-    stage.appendChild(bMore);
+    stage.append(bMore, aside);
     detachLamp = attachAttentionLamp(stage);
-    // ORRERY: the same buttons, set round the rim of the emblem's dial; the amber Hand swings from
-    // its pivot to whichever verb is awake. The rail only positions the list and draws behind it.
-    if (arcRail) arcRail.dispose();
     injectOrreryScreens();
-    // A phone has no room for the dial (its rim is wider than the screen): the verbs stand as the plain
-    // Deckplate column under the logotype, in big thumb-sized words, and the world is the backdrop.
     const phone = isPhoneLayout();
     rootEl.classList.add(phone ? 'orr-title--phone' : 'orr-title');
-    // TITLE-01: on a desktop the title is two doors over the live scene, not the dial. The same buttons
-    // (data-action, aria, order) stand as a door pair, a small row, and a closed "More".
     rootEl.classList.add('orr-title--doors');
-    // The emblem sits BEHIND the logotype (ORRERY 6): its upper third runs under the name, its rim is
-    // lettered, and the verbs ride its right side from just above east down to the south-east, so the name
-    // and the choice are one object and the lower left goes back to the key art.
-    // Without Quit (web build) the dial carries one stop fewer. A line of air before the reference
-    // line holds every stop where it sits with Quit, instead of spreading four verbs down the whole
-    // arc onto the console prop.
     const quitShown = canQuit();
-    // TITLE-01: no dial. The doors are CSS over the same buttons (src/ui/orrery/titleDoorsLayouts.js).
-    arcRail = null;
-    void quitShown;
+    stage.classList.toggle('can-quit', quitShown);
 
     const byAction = (action) => stage.querySelector('[data-action="' + action + '"]');
     const bContinue = byAction('continue');
     const bNew = byAction('newGame');
     const bLoad = byAction('load');
-    const bCrucible = byAction('crucible');
+    const bSwarm = byAction('swarm');
     const bArchive = byAction('archive');
     const bHelp = byAction('help');
     const bCircuits = byAction('circuits');
@@ -541,6 +503,14 @@ export const mainMenuScreen = {
     const bSettings = byAction('settings');
     const bSandbox = byAction('sandbox');
     const bQuit = byAction('quit');
+    composeTitleModeButton(bContinue, { title: 'Adventure', category: 'Campaign', action: coreText('continue') });
+    composeTitleModeButton(bNew, { title: 'Adventure', category: 'Campaign', action: coreText('newGame') });
+    composeTitleModeButton(bSwarm, { title: 'Swarm', category: 'Wave survival', action: 'Open hangar' });
+    for (const button of [bArchive, bCircuits, bSandbox, bPhysics]) {
+      composeTitleModeButton(button, { title: button.textContent });
+    }
+    if (bContinue) bContinue.setAttribute('aria-label', coreText('continue'));
+    if (bSwarm) bSwarm.setAttribute('aria-label', 'Swarm');
     if (bNew) bNew.setAttribute('aria-label', coreText('newGame'));
     if (bLoad) bLoad.setAttribute('aria-label', coreText('loadGame'));
     bArchive.setAttribute('aria-label', coreText('signalArchive'));
@@ -591,82 +561,30 @@ export const mainMenuScreen = {
 
     refs = {
       root: rootEl, backdrop, title, stage, aside, list, version, versionText, bCredits, bAchievements, saveSummary, status,
-      bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive, bCircuits, bHelp, bPhysics,
+      bNew, bContinue, bSwarm, bMore, bLoad, bSettings, bSandbox, bQuit, bArchive, bCircuits, bHelp, bPhysics,
       titleContinueFailure: null,
-      buttons: [bContinue, bNew, bLoad, bCrucible, bHelp, bArchive, bCircuits, bPhysics, bSettings, bSandbox, bQuit].filter(Boolean),
+      buttons: [bContinue, bSwarm, bNew, bLoad, bHelp, bArchive, bCircuits, bPhysics, bSettings, bSandbox, bQuit].filter(Boolean),
     };
 
-    // Tab walks the screen the way it reads: down the verb ladder, along the reference line, then the
-    // fine line (Credits, Achievements), and round again. Each words() group keeps its single roving
-    // stop for the arrow keys; without this the reference line had no Tab stop at all and the first
-    // Tab from the lit verb jumped straight to Credits in the footer.
-    if (this._onTabKey) rootEl.removeEventListener('keydown', this._onTabKey);
+    // The visible controls are the navigation contract. Capture before words() roving so a hidden
+    // Continue or closed extra cannot swallow an arrow key or send focus outside the visible menu.
+    if (this._onTabKey) rootEl.removeEventListener('keydown', this._onTabKey, true);
     this._onTabKey = (ev) => {
-      if (ev.key !== 'Tab' || ev.altKey || ev.ctrlKey || ev.metaKey || !refs) return;
+      const keys = ['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
+      if (!keys.includes(ev.key) || ev.altKey || ev.ctrlKey || ev.metaKey || !refs) return;
       const ladder = titleTabLadder(refs);
       const at = ladder.indexOf(document.activeElement);
-      if (at < 0) return;
-      const step = ev.shiftKey ? -1 : 1;
-      let next = null;
-      for (let k = 1; k < ladder.length && !next; k += 1) {
-        const b = ladder[(at + step * k + ladder.length * k) % ladder.length];
-        if (titleVerbUsable(b)) next = b;
-      }
-      if (!next) return;
+      if (at < 0 || ladder.length < 2) return;
+      const previous = ev.key === 'ArrowUp' || ev.key === 'ArrowLeft' || (ev.key === 'Tab' && ev.shiftKey);
+      const index = ev.key === 'Home' ? 0 : ev.key === 'End' ? ladder.length - 1
+        : (at + (previous ? -1 : 1) + ladder.length) % ladder.length;
+      const next = ladder[index];
       ev.preventDefault();
-      // the screen manager's focus trap (document) would otherwise see the moved focus and wrap it
       ev.stopPropagation();
       try { next.focus({ preventScroll: true }); } catch (_) { next.focus(); }
+      next.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
     };
-    rootEl.addEventListener('keydown', this._onTabKey);
-
-    // SEED-ST-01 follow-through: on the dial the kit's sub note is visually hidden — it stays for
-    // the accessibility tree only, because the arc rail's contract is "the dial shows the fact
-    // elsewhere (the eyebrow)" (src/ui/orrery/arcRail.js). The mode glosses rode along invisibly,
-    // so a sighted stranger never saw them. While a glossed verb is AWAKE — hover or focus, the
-    // same wake the Hand answers — the eyebrow names it with its gloss; on leave it returns to
-    // the standing line, or the Continue summary when a save is present. A presented Continue
-    // failure owns the line until it is cleared.
-    if (this._glossDetach) this._glossDetach();
-    this._glossAwake = null;
-    let glossOutTimer = null;
-    const glossOf = (b) => { const a = b && b.dataset ? b.dataset.action : null; return (a && MENU_MODE_GLOSSES[a]) || null; };
-    const writeGloss = (b) => {
-      if (!refs || !refs.status || refs.titleContinueFailure) return;
-      const gloss = glossOf(b);
-      if (!gloss) return;
-      this._glossAwake = b;
-      refs.status.textContent = (b.textContent || '').trim() + ' · ' + gloss;
-    };
-    const writeRest = () => {
-      this._glossAwake = null;
-      if (!refs || !refs.status || refs.titleContinueFailure) return;
-      const rest = this._titleStatusRest();
-      if (rest != null && refs.status.textContent !== rest) refs.status.textContent = rest;
-    };
-    const onAwake = (ev) => {
-      const b = ev.target && typeof ev.target.closest === 'function' ? ev.target.closest('button[data-action]') : null;
-      if (glossOutTimer) { clearTimeout(glossOutTimer); glossOutTimer = null; }
-      if (b && glossOf(b)) writeGloss(b); else writeRest();
-    };
-    // A focusout fires before the focusin of the verb focus is moving TO (the arc rail defers its
-    // leave the same way), so the restore waits a task and the next awake cancels it.
-    const onGlossOut = () => {
-      if (glossOutTimer) clearTimeout(glossOutTimer);
-      glossOutTimer = setTimeout(() => { glossOutTimer = null; writeRest(); }, 0);
-    };
-    rootEl.addEventListener('pointerover', onAwake);
-    rootEl.addEventListener('focusin', onAwake);
-    rootEl.addEventListener('pointerleave', writeRest);
-    rootEl.addEventListener('focusout', onGlossOut);
-    this._glossDetach = () => {
-      if (glossOutTimer) clearTimeout(glossOutTimer);
-      glossOutTimer = null;
-      rootEl.removeEventListener('pointerover', onAwake);
-      rootEl.removeEventListener('focusin', onAwake);
-      rootEl.removeEventListener('pointerleave', writeRest);
-      rootEl.removeEventListener('focusout', onGlossOut);
-    };
+    rootEl.addEventListener('keydown', this._onTabKey, true);
 
     // data-k-ready is owned by the screen manager once `stage` is declared: live, plate, or
     // unavailable. The still is already in the tree as `.k-world--plate`.
@@ -728,7 +646,7 @@ export const mainMenuScreen = {
         return;
       }
       case 'newGame': {
-        // TITLE-01: with a save on disk the door is Continue and New Game is its secondary key; starting over
+        // With a save on disk Continue is prominent and New Game is a secondary action; starting over
         // asks first, so a fumbled press cannot walk a returning player away from their run.
         if (this._latestSave) {
           this._confirmFirstLight({
@@ -744,10 +662,7 @@ export const mainMenuScreen = {
       }
       case 'load': pushWhenReady(ctx, 'saveLoad', 'Load Game'); return;
       case 'swarm': {
-        // TITLE-01 — the SWARM door opens the Swarm entrance in its one-button PLAY state: PLAY is the
-        // shipped defaults (Ricochet Foundry, the default ship and kit, Exhibition for a first-timer and
-        // the last-used stake after), one press to round 1; Customise opens the full entrance.
-        requestSwarmPlayEntry();
+        // The hangar is the ordinary entry: inspect the ship, choose the loadout, then launch.
         pushWhenReady(ctx, 'crucible', 'Swarm');
         return;
       }
@@ -784,9 +699,8 @@ export const mainMenuScreen = {
     ].join('');
   },
 
-  // TITLE-01: the doors and the small row. The Adventure door is New Game for a new player and Continue when a
-  // save exists; then New Game stands on the door as its secondary key (never behind More). The small row
-  // (Settings, Help, Quit) is centred under the doors by how many of its words show.
+  // A saved campaign keeps Continue prominent and exposes New Game beside Load Game.
+  // The canonical title stylesheet owns placement; no inline layout coordinates compete with it.
   _layoutTitleRow() {
     if (!refs || !refs.stage) return;
     const stage = refs.stage;
@@ -799,14 +713,14 @@ export const mainMenuScreen = {
     const adventure = hasSave ? cont : ng;
     if (adventure) adventure.classList.add('of-title-door', 'is-adventure');
     if (hasSave && ng) ng.classList.add('of-title-door-secondary');
-    // The door draws ADVENTURE from data-door-label; the button's own text stays the core copy so every
-    // route, probe and screen reader that looks for New Game or Continue still finds exactly that.
+    // Adventure retains its mode name; Continue/New Game remains an explicit action inside it.
     if (refs.bContinue) { if (hasSave) refs.bContinue.dataset.doorLabel = 'Adventure'; else delete refs.bContinue.dataset.doorLabel; }
-    if (refs.bNew) { if (hasSave) delete refs.bNew.dataset.doorLabel; else refs.bNew.dataset.doorLabel = 'Adventure'; }
-    if (isPhoneLayout()) return; // the phone's rows are CSS
-    const lis = ['settings', 'help', 'quit'].map(liOf).filter((li) => li && !li.hidden);
-    const start = Math.floor((24 - 6 * lis.length) / 2) + 1;
-    lis.forEach((li, i) => { li.style.gridColumn = (start + 6 * i) + ' / span 6'; li.style.gridRow = hasSave ? '3' : '2'; });
+    if (refs.bNew) {
+      if (hasSave) delete refs.bNew.dataset.doorLabel; else refs.bNew.dataset.doorLabel = 'Adventure';
+      const name = refs.bNew.querySelector('.of-title-door-name');
+      if (name) name.textContent = hasSave ? coreText('newGame') : 'Adventure';
+    }
+
   },
 
   _render(ctx) {
@@ -821,7 +735,7 @@ export const mainMenuScreen = {
     if (refs.bHelp) setScreenButtonReady(refs.bHelp, ctx, 'help', 'Help');
     if (refs.bCircuits) setScreenButtonReady(refs.bCircuits, ctx, 'raceBoard', 'Circuits');
     if (refs.bPhysics) setScreenButtonReady(refs.bPhysics, ctx, 'physicsVenues', 'Physics challenges');
-    if (refs.bCrucible) setScreenButtonReady(refs.bCrucible, ctx, 'crucible', 'Swarm setup');
+    if (refs.bSwarm) setScreenButtonReady(refs.bSwarm, ctx, 'crucible', 'Swarm hangar');
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
     const syncPending = !!(sys && typeof sys.isSharedStoreSyncPending === 'function' && sys.isSharedStoreSyncPending());
     const latest = latestSave(readSaveIndex(ctx));
@@ -836,6 +750,11 @@ export const mainMenuScreen = {
       setDisabled(refs.bContinue, true, 'Checking saves');
       refs.saveSummary.classList.remove('has-save');
       refs.saveSummary.textContent = 'Checking saves...';
+      // A slow save mirror must not leave the first title frame as unclassified text buttons.
+      // Adventure and Swarm remain usable while the validated Continue slot is discovered.
+      bContinueRow(refs, false);
+      this._setPrimary(refs.bNew);
+      this._layoutTitleRow();
       this._syncCurrent();
       reapplyTitleContinueLoadFailure(refs);
       return;
@@ -846,14 +765,12 @@ export const mainMenuScreen = {
       const summary = saveSummaryText(latest.slot, latest.meta);
       refs.saveSummary.textContent = coreText('continueSummary', { summary });
       setDisabled(refs.bContinue, false, 'Load ' + summary);
-      // ORRERY: the dial shows no sentence under a verb; what Continue would load is the eyebrow.
-      if (refs.status) refs.status.textContent = coreText('continue') + ' · ' + summary;
+      if (refs.status) refs.status.textContent = this._statusDefault;
       bContinueRow(refs, true);
     } else {
       refs.saveSummary.textContent = coreText('noSave');
       setDisabled(refs.bContinue, true, 'No save found yet');
-      // A dial does not show a dead verb: with no save there is nothing to continue, so the word
-      // leaves the dial (the Continue probes all run with a save present).
+      // An unavailable Continue is hidden; New Game becomes the visible campaign action.
       bContinueRow(refs, false);
     }
     // ONE primary verb, and it is whichever one actually starts play. Continue is the primary when
@@ -864,13 +781,9 @@ export const mainMenuScreen = {
     this._syncCurrent();
     this._layoutTitleRow();
     reapplyTitleContinueLoadFailure(refs);
-    // With the failure state settled, the eyebrow returns to its rest line — the re-render that
-    // clears a stale failure must not leave the error words standing on the calmest screen in
-    // the game. A live gloss (the pointer is on a verb right now) keeps its line instead.
-    if (!this._glossAwake) {
-      const rest = this._titleStatusRest();
-      if (rest != null) refs.status.textContent = rest;
-    }
+    // Preserve a recoverable load failure; ordinary save details stay inside Continue.
+    const rest = this._titleStatusRest();
+    if (rest != null) refs.status.textContent = rest;
   },
 
   /** The one lit verb. Exactly one item carries the primary treatment at any time. */
@@ -895,13 +808,10 @@ export const mainMenuScreen = {
     return refs.buttons.find((b) => !isDisabled(b)) || null;
   },
 
-  /** What the eyebrow says when no verb is awake: the Continue summary when a save is present,
-   *  else the frame's standing contract line. null means leave the line exactly as it is — a
-   *  presented Continue failure owns it until cleared. */
+  /** The heading stays clear unless a recoverable Continue failure needs attention. */
   _titleStatusRest() {
     if (!refs || refs.titleContinueFailure) return null;
-    const latest = this._latestSave;
-    return latest ? coreText('continue') + ' · ' + saveSummaryText(latest.slot, latest.meta) : this._statusDefault;
+    return this._statusDefault;
   },
 
   _syncCurrent() {
@@ -912,7 +822,6 @@ export const mainMenuScreen = {
       if (current) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
       b.tabIndex = current ? 0 : -1;
     }
-    if (arcRail) arcRail.rest();
   },
 
   onShow(ctx) {
@@ -1045,11 +954,8 @@ export const mainMenuScreen = {
     this._firstLightPending = null;
     this._firstLightConfirm = false;
     this._stopIdleAttract();
-    if (arcRail) { arcRail.dispose(); arcRail = null; }
-    if (this._onTabKey && refs && refs.root) refs.root.removeEventListener('keydown', this._onTabKey);
+    if (this._onTabKey && refs && refs.root) refs.root.removeEventListener('keydown', this._onTabKey, true);
     this._onTabKey = null;
-    if (this._glossDetach) { this._glossDetach(); this._glossDetach = null; }
-    this._glossAwake = null;
     for (const off of this._offBus || []) { try { off(); } catch (_) {} }
     this._offBus = [];
     refs = null;

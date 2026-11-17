@@ -177,26 +177,30 @@ test('actual results screen saves, refreshes card, retries refused storage, skip
   });
 });
 
-test('Daily stays outside disclosures and the original control launches a paired UTC date/seed', () => {
+test('Daily is an optional challenge and its public controls retain the paired UTC date/seed', () => {
   fixture();
   withDocument(cabinetDom({svg:true}), doc => {
     const screen = Object.create(crucibleScreen), root = doc.createElement('div'), emitted = [];
     const state = createGameState(4242);
     const ctx = {state,bus:{emit:(...e)=>emitted.push(e),on(){},off(){},once(){}},registry:{get:()=>null}};
     screen.mount(root,ctx);
-    doc.documentElement.classList.add('sf-reduce-motion');
-    screen.onShow(); assert.ok(doc.listenerCount()>=4,'cabinet lifecycle starts before the reduced-motion early return');
-    const visibility = [], attract = screen._cabinetAttract, setVisible = attract.setVisible;
-    attract.setVisible = value => { visibility.push(value); setVisible(value); };
-    root.querySelector('#sf-prep-tab-1').click(); assert.equal(visibility.at(-1),false);
-    root.querySelector('#sf-prep-tab-0').click(); assert.equal(visibility.at(-1),true);
+    assert.equal(root.dataset.prepStep,'0','preparation begins with the ship');
+    findAll(root,n=>n.dataset.swarmStep==='1')[0].click();
+    assert.equal(root.dataset.prepStep,'1');
     findAll(root,n=>n.classList.contains('sf-crd-mode') && n.dataset.ruleset==='scored')[0].click();
-    assert.equal(visibility.at(-1),false);
-    const daily = root.querySelector('.sf-crd-daily'), reading = root.querySelector('.orr-prep-daily');
-    assert.ok(daily); assert.ok(reading); assert.equal(daily.closest('details'),null);
-    assert.equal(reading.closest('details'),null); assert.match(reading.textContent,/Today · 2026-10-20 UTC/);
-    assert.ok(reading.textContent.endsWith(`seed ${dailySeedForDateKey('2026-10-20')}`));
+    const daily = root.querySelector('.sf-crd-daily'), reading = root.querySelector('.sf-crd-mode-sub');
+    assert.ok(daily); assert.ok(reading);
+    const optional = daily.closest('details');
+    assert.ok(optional,'daily runs are separate from the standard ship and run choices');
+    assert.equal(optional.querySelector('summary').textContent,'Optional challenges');
+    assert.notEqual(optional.open,true);
+    optional.querySelector('summary').click(); assert.equal(optional.open,true);
     daily.click();
+    assert.match(reading.textContent,/Today's challenge 2026-10-20/);
+    assert.ok(reading.textContent.includes(`seed ${dailySeedForDateKey('2026-10-20')}`));
+    const custom = findAll(root,n=>n.tagName==='summary' && n.textContent==='Custom runs & records')[0];
+    custom.click(); assert.equal(custom.parentElement.open,true);
+    findButton(root,'Share codes').click();
     const copy = findButton(root,'Copy code'); copy.click();
     const codeField = root.querySelector('.sf-crd-code');
     const code = codeField?.value || findAll(root,n=>typeof n.value==='string' && n.value.startsWith('SFC1-'))[0]?.value;
@@ -204,8 +208,9 @@ test('Daily stays outside disclosures and the original control launches a paired
     assert.equal(decoded.seed,dailySeedForDateKey('2026-10-20')); assert.equal(decoded.dailyDateKey,'2026-10-20');
     assert.notEqual(state.meta.seed,decoded.seed,'the daily is a separately constructed seeded state');
     useCrucibleMetaClock(()=>'2026-10-21T00:00:00.001Z');
-    doc.hidden=true; doc.dispatch({type:'visibilitychange'});
-    doc.hidden=false; doc.dispatch({type:'visibilitychange'});
+    // Exercise the same UTC refresh callback used on show/visibility without starting a
+    // WebGL renderer inside this focused date/serialization test.
+    screen._refreshDaily();
     assert.match(reading.textContent,/2026-10-21/); copy.click();
     const nextCode = findAll(root,n=>typeof n.value==='string' && n.value.startsWith('SFC1-'))[0].value;
     const next = applyRunShareCode(nextCode); assert.equal(next.seed,dailySeedForDateKey(next.dailyDateKey));
@@ -216,7 +221,7 @@ test('Daily stays outside disclosures and the original control launches a paired
     assert.equal(payload.seed,next.seed);
     assert.equal(peekQueuedChallenge().dailyDateKey,next.dailyDateKey);
     assert.equal(lastCrucibleSetup().dailyDateKey,next.dailyDateKey);
-    screen.onHide(); assert.equal(doc.listenerCount(),0); screen.dispose();
+    screen.dispose(); assert.equal(doc.listenerCount(),0);
   });
   let reads = 0; useCrucibleMetaClock(()=>++reads===1?'2026-10-20T23:59:59.999Z':'2026-10-21T00:00:00.001Z');
   const snap = cabinetDailySnapshot(); assert.equal(reads,1); assert.equal(snap.seed,dailySeedForDateKey(snap.dateKey));
@@ -316,7 +321,7 @@ test('attract idle/input/visibility/disposal lifecycle, reduced motion and playb
   optional.start(); optional.stop(); optional.dispose(); assert.equal(clock.timers.size,0);
 });
 
-test('the actual door respects reduced motion even when browser animation APIs are available', () => {
+test('reduced-motion hangar lifecycle preserves the selected ship without an idle attract takeover', () => {
   fixture();
   const clock=fakeClock(), keys=['requestAnimationFrame','cancelAnimationFrame','setTimeout','clearTimeout','HTMLElement'];
   const previous=Object.fromEntries(keys.map(k=>[k,globalThis[k]]));
@@ -328,11 +333,23 @@ test('the actual door respects reduced motion even when browser animation APIs a
       const screen=Object.create(crucibleScreen),root=doc.createElement('div');
       const ctx={state:createGameState(4242),bus:{emit(){},on(){},off(){},once(){}},registry:{get:()=>null}};
       try {
-        screen.mount(root,ctx); clock.frame(); screen.onShow();
+        screen.mount(root,ctx); clock.frame();
+        const previewLifetime=[];
+        // Renderer behavior has its own mount-injection tests. Keep this actual screen
+        // lifecycle test about idle takeover, motion scheduling and input listener cleanup.
+        screen._preparation.setActive=active=>previewLifetime.push(active);
+        const ship = root.querySelector('.sf-hangar-shipname').textContent;
+        screen.onShow();
         clock.advance(8000);
-        assert.equal(screen._preparation.attractHost.hidden,false);
-        assert.ok(doc.canvasCalls.length>0); assert.equal(clock.raf.size,0,'static demo schedules no animation');
+        assert.equal(screen._preparation.attractHost,null);
+        assert.equal(screen._preparation.previewVisible,false,'the recorded arena demo is not the chosen ship');
+        assert.equal(root.querySelector('.sf-hangar-shipname').textContent,ship);
+        assert.equal(root.dataset.prepStep,'0','idling cannot change the setup step');
+        assert.equal(root.querySelector('.orr-cabinet-canvas'),null);
+        assert.equal(clock.raf.size,0,'reduced-motion screen chrome schedules no animation');
+        assert.deepEqual(previewLifetime,[true]);
         screen.onHide(); assert.equal(clock.timers.size,0); assert.equal(doc.listenerCount(),0);
+        assert.deepEqual(previewLifetime,[true,false]);
       } finally {screen.dispose();}
     });
   } finally { for(const key of keys){if(previous[key]===undefined)delete globalThis[key];else globalThis[key]=previous[key];} }
@@ -386,12 +403,17 @@ function cabinetDom({svg=false,canvas=true}={}) {
     n.replaceChild=function(child,old){const index=this.children.indexOf(old);if(index<0)throw new Error('replaceChild: node not found');
       child.parentNode?.removeChild(child);child.parentNode=this;this.children.splice(index,1,child);old.parentNode=null;return old;};
     n.replaceChildren=function(...children){for(const c of [...this.children])this.removeChild(c);this.append(...children);};
+    n.prepend=function(...children){const first=this.children[0]||null;for(const child of children)this.insertBefore(child,first);};
     n.remove=function(){this.parentNode?.removeChild(this);};
     n.matches=s=>matches(n,s); n.querySelectorAll=s=>descendants(n).filter(c=>matches(c,s));
     n.querySelector=s=>n.querySelectorAll(s)[0]||null;
     n.closest=function(s){let p=this;while(p){if(matches(p,s))return p;p=p.parentNode;}return null;};
     n.removeEventListener=(name,fn)=>{n.listeners[name]=(n.listeners[name]||[]).filter(f=>f!==fn);};
     n.focus=()=>{doc.activeElement=n;}; n.select=()=>{n.selected=true;}; n.setSelectionRange=()=>{n.selected=true;};
+    if(tag==='summary') {
+      const click=n.click.bind(n);
+      n.click=()=>{click();if(n.parentElement?.tagName==='details')n.parentElement.open=!n.parentElement.open;};
+    }
     if(tag==='canvas')n.getContext=()=>canvas?new Proxy({}, {get:(_target,key)=>(...args)=>calls.push([key,...args])}):null;
     return n;
   };

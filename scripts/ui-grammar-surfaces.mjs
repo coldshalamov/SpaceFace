@@ -449,15 +449,14 @@ const RAW_SURFACES = Object.freeze([
     ownerFile: 'src/ui/screens/crucible.js',
     screenId: 'crucible',
     root: ['[data-screen="crucible"]'],
-    // A REAL public route: the title screen carries a "Crucible" button (mainMenu.js:243, PQ-133
-    // §12.2 direct main-menu entry). It is pressed before Launch, so this is a menu-phase surface.
+    // The public Swarm control opens the hangar before any run launches.
     entry: {
       kind: 'boot-nested',
       parent: 'title',
-      selector: '[data-screen="mainMenu"] [data-action="crucible"]',
-      text: 'Crucible',
+      selector: '[data-screen="mainMenu"] [data-action="swarm"]',
+      text: 'Swarm',
       evidence: 'public-route',
-      detail: 'title → Crucible',
+      detail: 'title → Swarm hangar',
     },
     owner: 'PQ-182',
     ownerLeaf: 'crucible-screens',

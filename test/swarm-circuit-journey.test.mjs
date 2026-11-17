@@ -1430,7 +1430,7 @@ function withDraftDom(h, callback) {
   screen._visualArmory = null;
   screen._category = 'All';
   screen._clipRailToWholeRows = () => {};
-  screen._circuit = Object.fromEntries(['el', 'status', 'graphic', 'route', 'next', 'choices']
+  screen._circuit = Object.fromEntries(['el', 'summary', 'status', 'graphic', 'route', 'next', 'choices']
     .map(key => [key, node()]));
   const ctx = { ...h.ctx, registry: { get: () => ({
     currentOffers: () => [], currentWave: () => h.state.run.wave,
@@ -1439,7 +1439,7 @@ function withDraftDom(h, callback) {
   try { callback(screen, ctx); } finally { globalThis.document = oldDocument; }
 }
 
-test('Circuit choices occupy bounded space inside the shopping stage', () => {
+test('optional Circuit format stays collapsed and separate from equipment offers', () => {
   const h = makeHarness();
   openArmory(h);
   withDraftDom(h, (screen, ctx) => {
@@ -1447,20 +1447,25 @@ test('Circuit choices occupy bounded space inside the shopping stage', () => {
     try {
       const panel = screen._circuit.el;
       const stage = screen._regions.stage;
+      assert.equal(panel.tag, 'details');
+      assert.equal(screen._circuit.summary.tag, 'summary', 'native disclosure keeps keyboard activation');
+      assert.equal(screen._circuit.summary.textContent, 'Optional run format');
+      assert.equal(panel.open, false, 'ordinary Swarm does not present a challenge among equipment offers');
       assert.equal(panel.parentNode, stage);
       assert.equal(panel.className.split(' ').includes('k-stage'), false);
       assert.equal(screen._root.children.filter(child => child.className.split(' ').includes('k-stage')).length, 1);
-      assert.ok(stage.children.indexOf(panel) < stage.children.indexOf(screen._filters));
+      assert.ok(stage.children.indexOf(panel) < stage.children.indexOf(screen._armoryHeading),
+        'run rules precede the separately headed equipment section');
       assert.ok(stage.children.includes(screen._cards), 'shopping remains in the same column');
       assert.equal(panel.style.maxHeight, '40%', 'Circuit choices reserve a bounded share of the shelf');
       assert.equal(panel.style.overflow, 'auto', 'long destination choices remain scrollable');
       assert.equal(panel.hidden, false);
-      assert.match(panel.textContent, /Start Circuit/);
+      assert.match(panel.textContent, /Choose Circuit/);
     } finally { screen.dispose(); }
   });
 });
 
-test('normal opening screen refresh exposes Start Circuit and its button enters through draft-pick', () => {
+test('opening Circuit choice preserves the prepared build and reveals its progress after acceptance', () => {
   const h = makeHarness();
   survivalDraft.init(h.ctx);
   const run = openArmory(h);
@@ -1468,16 +1473,22 @@ test('normal opening screen refresh exposes Start Circuit and its button enters 
   withDraftDom(h, (screen, ctx) => {
     screen.refresh(ctx);
     assert.equal(screen._circuit.el.hidden, false);
+    assert.equal(screen._circuit.el.open, false);
+    screen._circuit.el.open = true;
+    screen.refresh(ctx);
+    assert.equal(screen._circuit.el.open, true, 'refresh preserves the player opening the disclosure');
     const button = screen._circuit.choices.children[0]?.children[0];
     assert.ok(button, 'refresh renders the opening choice without Circuit telemetry');
     assert.equal(button.tag, 'button');
-    assert.match(button.textContent, /Start Circuit/);
+    assert.equal(button.textContent, 'Choose Circuit');
     button.listeners.click();
     assert.equal(named(h.emitted, 'run:draftPickRequested').at(-1).payload.offerId, START_ID);
     assert.equal(circuitFor(run).status, 'running');
     assert.equal(run.phase, 'draft');
     assert.equal(JSON.stringify({ credits: run.credits, ships: h.state.player.ownedShips }), before);
     screen.refresh(ctx);
+    assert.equal(screen._circuit.summary.textContent, 'Circuit progress');
+    assert.equal(screen._circuit.el.open, true, 'accepted format reveals current progress');
     assert.match(screen._circuit.status.textContent, /Stage 1/);
     assert.equal(screen._circuit.choices.hidden, true, 'accepted entry is no longer offered');
   });
@@ -1542,7 +1553,9 @@ test('malformed active Circuit visibly refuses entry and launch instead of falli
     screen.refresh(ctx);
     assert.equal(screen._circuit.el.hidden, false);
     assert.match(screen._circuit.status.textContent, /Circuit.*invalid/i);
+    screen._circuit.el.open = false;
     assert.equal(screen._circuitGate(ctx), true);
+    assert.equal(screen._circuit.el.open, true, 'a blocked launch reveals the issue instead of focusing hidden content');
     assert.equal(screen._skip.attrs['aria-disabled'], 'true');
     assert.equal(screen._preview.hidden, true, 'no ordinary preview for a damaged Circuit');
   });

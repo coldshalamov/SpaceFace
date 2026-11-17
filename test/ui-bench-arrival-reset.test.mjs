@@ -5,6 +5,22 @@ import { startBenchServer } from '../scripts/lib/benchServer.mjs';
 import { loadPlaywright } from '../scripts/lib/load-playwright.mjs';
 import { createBenchArrival } from '../scripts/lib/uiBenchArrival.mjs';
 
+test('arrival marks only its own document navigation and closes the marker on failure', async () => {
+  const events = [], url = 'http://127.0.0.1:9000/tools/ui-bench.html?screen=title&chrome=0';
+  let fail = false;
+  const page = { addInitScript: async () => {}, emit: (name, marker) => events.push({ name, ...marker }),
+    goto: async target => { assert.equal(target, url); events.push({ name: 'goto' }); if (fail) throw new Error('navigation failed'); },
+    waitForFunction: async () => events.push({ name: 'ready' }) };
+  const arrive = await createBenchArrival(page, url, { timeoutMs: 1000 });
+  await arrive();
+  assert.deepEqual(events.map(row => row.name), ['spaceface:bench-navigation-start', 'goto', 'spaceface:bench-navigation-end', 'ready']);
+  assert.equal(events[0].sequence, 1); assert.equal(events[2].committed, true);
+  fail = true; events.length = 0;
+  await assert.rejects(arrive, /navigation failed/);
+  assert.deepEqual(events.map(row => row.name), ['spaceface:bench-navigation-start', 'goto', 'spaceface:bench-navigation-end']);
+  assert.equal(events[0].sequence, 2); assert.equal(events[2].committed, false);
+});
+
 // Browser fixture evidence only. These checks do not boot the game or certify player routes.
 // A missing browser is a failure, so CI cannot silently turn this regression into a skip.
 test('walk arrival restores actual Help and station owners before the next control', { timeout: 240000 }, async t => {

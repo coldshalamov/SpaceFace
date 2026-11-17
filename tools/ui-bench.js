@@ -21,6 +21,7 @@ import { runSession } from '../src/systems/runSession.js';
 import { TRAVEL_FLAGS, applyFeatureConfigToMaps, PRODUCTION_FEATURES } from '../src/data/featureFlags.js';
 import { TECH_NODES } from '../src/data/tech.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
+import { swarmStakeFor } from '../src/data/swarmStakes.js';
 import { survivalDraft } from '../src/systems/survivalDraft.js';
 import { ships as shipsSystem } from '../src/systems/ships.js';
 import { economy as economySystem } from '../src/systems/economy.js';
@@ -322,12 +323,13 @@ function benchOwnerBus(gameState) {
  * ships owner and charges a bench wallet (benchOwnerBus), and it hears the screen's intents on the
  * bench bus, so --walk strips, fits, buys and re-rolls the way a run does.
  *
- * Shots: crucible-draft is the Swarm armory after round 3; crucible-rearm is the Gauntlet's
+ * Shots: crucible-opening is the Swarm armory before any round is planned; crucible-draft
+ * remains the armory after round 3; crucible-rearm is the Gauntlet's
  * three-card rearm after wave 3; crucible-refit is the Gauntlet's wave-30 refit (Continue and the
  * win both live); crucible-refit-swarm is the Swarm refit after round 10 (Extract live).
  * `?ruleset=` on the page URL still overrides the shot's ruleset.
  */
-function seedCrucibleRun(gameState, { ruleset, phase, wave, credits, score, fittings = null, spares = [] }) {
+function seedCrucibleRun(gameState, { ruleset, phase, wave, credits, score, swarmStake = null, fittings = null, spares = [] }) {
   const starter = COMBAT_LAB_STARTER_PACKAGES.find((entry) => entry.id === 'ricochet_runner');
   const fitted = [];
   for (const slot of starter.loadout) fitted[slot.slotIndex] = slot.defId;
@@ -343,9 +345,18 @@ function seedCrucibleRun(gameState, { ruleset, phase, wave, credits, score, fitt
   gameState.run = createRunState();
   const runOwner = Object.create(runSession);
   Object.assign(runOwner, { state: gameState, bus: { emit() {} } });
-  runOwner.begin({ kind: 'survival', ruleset, seed: 4242, arenaId: 'helios_core' });
+  runOwner.begin({ kind: 'survival', ruleset, seed: 4242, arenaId: 'helios_core',
+    ...(swarmStake ? { swarmStake } : {}) });
+  if (phase === 'draft' && wave === 0) {
+    // Initial preparation uses the same owner transitions and allowance as a new run.
+    // No combat round or cancellation receipt is fabricated for this capture fixture.
+    runOwner.award({ credits, reason: `swarm:stake:${swarmStake}` });
+    runOwner.transition({ expectedPhase: 'loadout', nextPhase: 'draft' });
+  }
   const run = gameState.run;
-  Object.assign(run, { arenaId: 'helios_core', phase, wave, credits, score, xp: wave * 110 });
+  if (wave !== 0 || phase !== 'draft') {
+    Object.assign(run, { arenaId: 'helios_core', phase, wave, credits, score, xp: wave * 110 });
+  }
   gameState.run = run;
   const ownerBus = benchOwnerBus(gameState);
   const shipsOwner = Object.create(shipsSystem);
@@ -447,7 +458,10 @@ function seedCrucibleShot(screenId, shot) {
   if (screenId === 'crucibleDraft') {
     seedCrucibleRun(state, ruleset === 'scored'
       ? { ruleset: 'scored', phase: 'draft', wave: 3, credits: 64, score: 1180 }
-      : { ruleset: 'swarm', phase: 'draft', wave: 3, credits: 64, score: 1180 });
+      : shot.preparation === 'opening'
+        ? { ruleset: 'swarm', phase: 'draft', wave: 0, credits: swarmStakeFor('exhibition').purse,
+          score: 0, swarmStake: 'exhibition' }
+        : { ruleset: 'swarm', phase: 'draft', wave: 3, credits: 64, score: 1180 });
     return;
   }
   if (screenId === 'crucibleRefit') {
@@ -989,7 +1003,9 @@ const manager = {
   popScreen() { void back(); },
   replaceScreen(id) { stack.length = 0; void goto(id); },
   closeAll() { stack.length = 0; screensEl.innerHTML = ''; },
-  hasScreen() { return stack.length > 0; },
+  // Match ScreenManager.hasScreen(id): availability belongs to the loader registry,
+  // not the navigation stack (which is still empty during the first title mount).
+  hasScreen(id) { return Object.hasOwn(SCREENS, id) && typeof SCREENS[id] === 'function'; },
   isOpen(id) { return stack.includes(id); },
   top() { return stack[stack.length - 1] || null; },
   getActiveScreenDef() { return currentScreen; },
@@ -1148,6 +1164,17 @@ async function finishShot(shot) {
   window.__BENCH_READY = true;
 }
 
+function releaseCurrentBenchScreen() {
+  const outgoing = currentScreen;
+  currentScreen = null;
+  if (!outgoing) return;
+  const ctx = { state, bus, screenManager: manager, registry, screenMemory, writeStorePage() {}, publishStoreStill() {} };
+  // The bench replaces the root rather than caching it. Follow ScreenManager.releaseScreen:
+  // stop visible work while the root still exists, then dispose its retained resources.
+  try { outgoing.onHide?.(ctx); }
+  finally { outgoing.dispose?.(); }
+}
+
 async function goto(rawId) {
   releaseFlightPopup?.();
   releaseFlightPopup = null;
@@ -1166,21 +1193,14 @@ async function goto(rawId) {
   }
   currentAlias = null;
   window.__BENCH_READY = false;
+  releaseCurrentBenchScreen();
   if (manifestFixture) {
-    currentScreen?.dispose?.();
     manifestFixture.table.dispose();
     state.player.credits = manifestFixture.credits;
     state.ui.manifestOpponent = manifestFixture.opponent;
     manifestFixture = null;
   }
-  // The drill module owns a live session and its own frame loop. Retire that instance before
-  // replacing its DOM or reseeding the next shot; otherwise its singleton still says _active
-  // and onShow skips the new board, leaving the walk on the empty claim screen.
-  if (current === 'drill' && currentScreen) {
-    currentScreen.onHide?.();
-    currentScreen._cleanup?.();
-    currentScreen = null;
-  }
+  // Drill's onHide owns its session cleanup; the shared release above invokes it once.
   window.__BENCH_OVERLAY = '';
   window.__BENCH_OVERLAY_EL = null;
   if (window.__benchMobile) { try { window.__benchMobile.destroy(); } catch { /* already gone */ } window.__benchMobile = null; }

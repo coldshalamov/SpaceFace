@@ -9,7 +9,7 @@
 import { COLLISION_CONSEQUENCE_LIMITS } from '../combat/impulseKernel.js';
 import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { attackerLabel, physicalWeaponLabelFromDamage, weaponLabel } from '../combat/playerDefeat.js';
-import { validateRunState } from '../core/runState.js';
+import { PREPARATION_CANCEL_REASON, validateRunState } from '../core/runState.js';
 import { SWARM_RULESET } from '../data/swarmMode.js';
 import { swarmZoneIndexFor } from '../data/swarmLadder.js';
 import { SURVIVAL_ARC_LENGTH } from '../data/survivalActs.js';
@@ -1019,6 +1019,9 @@ export const survivalResults = {
   _publish(outcome) {
     const run = this.state && this.state.run;
     if (!run || run.kind !== 'survival') return;
+    // An unlaunched preparation is discarded, not scored. Read the owner's terminal reason
+    // so a late/redundant ending cannot manufacture a result or settlement afterward.
+    if (run.result?.reason === PREPARATION_CANCEL_REASON) return;
     // A terminal record is locked: redundant run:ended/transition receipts while the run sits
     // ended cannot rewrite it. A publish that ran while the run was still live — a raw abort
     // receipt landing in loadout — is not a terminal record: the same run may still reach a

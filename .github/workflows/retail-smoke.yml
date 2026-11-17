@@ -55,10 +55,45 @@ jobs:
             playwright-${{ runner.os }}-
 
       - name: Install Playwright Chromium
+        id: chromium
         run: npx playwright install --with-deps chromium
 
       - name: Build the retail bundle, serve it, boot it to the title menu
         run: npm run check:retail-boot
+
+      # This functional journey uses the public source route and read-only SF observers.
+      # It is distinct from the packaged boot above. Reuse this full asset checkout rather
+      # than pretending the UI fixture's sparse assets can prove a real combat launch.
+      - name: Verify public source-route Swarm preparation and deployment
+        if: ${{ !cancelled() && steps.chromium.outcome == 'success' }}
+        timeout-minutes: 12
+        shell: bash
+        env:
+          REQUESTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p .devshots/swarm-hangar-live
+          python - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          read = lambda ref: subprocess.check_output(['git', 'rev-parse', ref], text=True).strip()
+          Path('.devshots/swarm-hangar-live/provenance.json').write_text(json.dumps({
+              'requestedHead': os.environ['REQUESTED_HEAD'], 'checkedOutCommit': read('HEAD'),
+              'checkedOutTree': read('HEAD^{tree}'), 'run': os.environ['GITHUB_RUN_ID'],
+              'scope': 'Native input through the public source route; software GL; not packaged-route or performance acceptance'
+          }, indent=2) + '\n')
+          PY
+          timeout --signal=TERM --kill-after=15s 690s node scripts/fleet/game-lock.mjs run -- \
+            node scripts/check-swarm-hangar-ux.mjs --live-only \
+              --out=.devshots/swarm-hangar-live 2>&1 | tee .devshots/swarm-hangar-live/journey.log
+
+      - name: Upload the Swarm journey verdict and captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swarm-hangar-live
+          path: .devshots/swarm-hangar-live/
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload the retail boot report and picture
         if: always()

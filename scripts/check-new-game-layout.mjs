@@ -122,8 +122,8 @@ try {
       const mainMenuModal = await collectModalSemantics(page);
       assertModalSemantics(viewport, mainMenuModal, 'mainMenu');
       assert.equal(
-        mainMenuModal.activeControlText,
-        'New Game',
+        mainMenuModal.activeControlAction,
+        'newGame',
         `${viewport.width}x${viewport.height}: Back must restore focus to the New Game opener`,
       );
       result.modalSemantics = { newGame: newGameModal, mainMenu: mainMenuModal };
@@ -205,7 +205,7 @@ async function openNewGameWithKeyboard(page, url = null) {
   // reachable; a player answers it. 'Play' keeps the default cut and releases focus to the menu.
   await answerFirstRunPrompt(page);
   await page.locator('#sf-confirm-root .sf-confirm').waitFor({ state: 'detached', timeout: 5000 });
-  await focusButtonWithKeyboard(page, 'New Game');
+  await focusButtonWithKeyboard(page, 'New Game', '[data-screen="mainMenu"] button[data-action="newGame"]');
   await page.keyboard.press('Enter');
   await waitForVisible(page, '[data-screen="newGame"]', 'New Game');
   await page.waitForFunction(() => {
@@ -214,11 +214,13 @@ async function openNewGameWithKeyboard(page, url = null) {
   }, null, { timeout: 15000 });
 }
 
-async function focusButtonWithKeyboard(page, label) {
-  const focused = async () => page.evaluate((wanted) => {
+async function focusButtonWithKeyboard(page, label, selector = null) {
+  const focused = async () => page.evaluate(({ wanted, selector }) => {
     const active = document.activeElement;
-    return !!(active && active.tagName === 'BUTTON' && active.textContent.trim() === wanted);
-  }, label);
+    return !!(active && active.tagName === 'BUTTON' && (selector
+      ? active.matches(selector)
+      : (active.getAttribute('aria-label') || active.textContent).trim() === wanted));
+  }, { wanted: label, selector });
   if (await focused()) return;
   for (let i = 0; i < 12; i++) {
     await page.keyboard.press('Tab');
@@ -383,6 +385,7 @@ async function collectModalSemantics(page) {
         inert: screens?.inert === true,
       },
       backdropAriaHidden: backdrop?.getAttribute('aria-hidden') ?? null,
+      activeControlAction: document.activeElement?.dataset?.action ?? null,
       activeControlText: String(document.activeElement?.textContent || '').trim(),
     };
   });

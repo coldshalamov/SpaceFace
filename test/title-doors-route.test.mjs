@@ -1,12 +1,10 @@
-// TITLE-01: the title is two doors; New Game stays reachable with and without a save, and the tooling
-// helper presses it the same way in both states.
+// Title player routes: campaign recovery remains available; Swarm opens its hangar before flight.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { pressNewGame, pressTitleAction } from '../scripts/lib/titleRoute.mjs';
 
-const MENU = readFileSync(new URL('../src/ui/screens/mainMenu.js', import.meta.url), 'utf8');
-const CSS = readFileSync(new URL('../src/ui/orrery/titleDoorsLayouts.js', import.meta.url), 'utf8');
+import { mainMenuScreen, titleVerbOrder } from '../src/ui/screens/mainMenu.js';
+import { consumeSwarmPlayEntry } from '../src/ui/crucibleLaunch.js';
 
 function fakePage({ moreVisible = false } = {}) {
   const log = [];
@@ -44,13 +42,31 @@ test('pressTitleAction opens More first for an action that lives behind it', asy
   assert.ok(page.log[1][1].includes('[data-action="circuits"]'));
 });
 
-test('with a save the Adventure door is Continue and New Game stays a visible key on it, never behind More', () => {
-  assert.match(MENU, /hasSave \? cont : ng/);
-  assert.match(MENU, /of-title-door-secondary/);
-  assert.match(CSS, /li\.of-title-door-secondary/);
-  // New Game is not one of the actions folded behind More
-  assert.match(CSS, /const MORE_ACTIONS = \['load', 'crucible', 'archive', 'circuits', 'sandbox', 'physics'\]/);
-  // the button's own text is the core copy, so the door's word is drawn from data-door-label
-  assert.match(MENU, /doorLabel = 'Adventure'/);
-  assert.match(MENU, /Start a new game\?/);
+test('older Crucible probe calls use the same visible Swarm control', async () => {
+  const page = fakePage();
+  await pressTitleAction(page, 'crucible');
+  assert.deepEqual(page.log, [['click', '[data-screen="mainMenu"] [data-action="swarm"]']]);
+});
+
+test('Swarm opens the normal setup screen without arming a quick-play bypass', () => {
+  consumeSwarmPlayEntry();
+  const screens = [];
+  const events = [];
+  const ctx = {
+    screenManager: { hasScreen: () => true, syncVisibility() {}, pushScreen: (id) => screens.push(id) },
+    bus: { emit: (...event) => events.push(event) },
+  };
+  mainMenuScreen._pick(ctx, 'swarm');
+  assert.deepEqual(screens, ['crucible']);
+  assert.equal(consumeSwarmPlayEntry(), false, 'entering Swarm must not hide ship/loadout setup');
+  assert.deepEqual(events, [], 'the title must not emit game:new before setup');
+});
+
+test('the title has distinct campaign, hangar, recovery, help and settings actions', () => {
+  const actions = titleVerbOrder();
+  for (const action of ['continue', 'newGame', 'swarm', 'load', 'settings', 'help']) {
+    assert.ok(actions.includes(action), `${action} remains reachable`);
+  }
+  assert.equal(actions.filter((action) => action === 'swarm').length, 1);
+  assert.equal(actions.includes('crucible'), false, 'do not duplicate Swarm as an unexplained second entry');
 });

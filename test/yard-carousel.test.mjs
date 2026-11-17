@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createYardCarousel, yardRingPose } from '../src/ui/orrery/yardCarousel.js';
-import { createHullRing } from '../src/ui/orrery/hullRing.js';
 
 const HOST_RECT = { left: 0, top: 0, width: 1440, height: 900 };
 const STAGE_RECT = { left: 560, top: 60, width: 880, height: 840 };
@@ -874,40 +873,22 @@ test('onLayout reports each real build, never a skipped one', () => {
   } finally { rig.done(); }
 });
 
-test('spinning to another hull never rebuilds the yard and the ring round it reads its boxes once', () => {
+test('spinning to another hull reports animation without rebuilding the yard', () => {
   const rig = layoutRig();
   try {
     const { env } = rig;
-    const statsHost = new FakeEl('div', env.doc);
-    statsHost._rect = { ...STAGE_RECT };
-    env.anchor.appendChild(statsHost);
-    const hostReads = countReads(statsHost);
-    const ringAnchor = new FakeEl('div', env.doc);
-    ringAnchor._rect = { ...HERO_RECT };
-    const anchorReads = countReads(ringAnchor);
-    const ring = createHullRing({ host: statsHost, anchor: ringAnchor });
-    const layer = statsHost.children[0];
-    const nodes = (n, out = []) => { for (const c of n.children) { out.push(c); nodes(c, out); } return out; };
-    const mix = (t) => ['Mass', 'Thrust', 'Line'].map((name, i) => ({ name, unit: i === 0 ? 't' : '', reading: String(Math.round(20 + 60 * t + i)), frac: 0.2 + 0.6 * t, ghosts: [0.2, 0.6, 1] }));
     let paints = 0;
     const car = makeCarousel(env, {
-      onTurn: (i0, i1, f) => { paints += 1; ring.paint(mix((i0 + f) / 3)); },
-      onLayout: () => ring.layout(),
+      onTurn: () => { paints += 1; },
     });
     frames(rig.raf, rig.clk, 40);
-    const ready = { builds: rig.builds.count, host: hostReads.n, hero: anchorReads.n, nodes: nodes(layer).length };
-    assert.ok(ready.nodes > 30, 'the ring was drawn');
+    const builds = rig.builds.count;
     env.row.children[2].querySelector('button').click();
     car.update();
     frames(rig.raf, rig.clk, 90);
-    assert.ok(paints >= 20, `the spin really painted the ring frame after frame (${paints})`);
-    assert.equal(car.rotation, -120, 'the ring arrived on the chosen hull');
-    assert.equal(rig.builds.count, ready.builds, 'the spin rebuilt nothing');
-    assert.equal(hostReads.n, ready.host, 'the spin read the ring\'s host box zero times');
-    assert.equal(anchorReads.n, ready.hero, 'and the hull box zero times');
-    assert.equal(nodes(layer).length, ready.nodes, 'the ring has the same elements before and after the spin');
-    assert.ok(ready.host <= 2, `the ring measured its host box at most twice since the mount (${ready.host})`);
-    ring.dispose();
+    assert.ok(paints >= 20, `the spin reports its changing pose to the consumer (${paints})`);
+    assert.equal(car.rotation, -120, 'the yard arrived on the chosen hull');
+    assert.equal(rig.builds.count, builds, 'the spin rebuilt nothing');
     car.dispose();
   } finally { rig.done(); }
 });

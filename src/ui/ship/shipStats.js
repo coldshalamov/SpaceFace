@@ -84,7 +84,7 @@ export const SHIP_STAT_DEFS = Object.freeze([
   }),
   Object.freeze({
     id: 'power',
-    label: 'Power',
+    label: 'Firing endurance',
     meaning: 'How long you can keep firing before the capacitor or the heat stops you.',
     // Seconds of sustained fire. A fit with no gun (or one that never runs dry) falls back to the
     // capacitor's reserve at POWER_REFERENCE_DRAW_PER_S, so the reading is always a duration.
@@ -94,8 +94,8 @@ export const SHIP_STAT_DEFS = Object.freeze([
   }),
   Object.freeze({
     id: 'muscle',
-    label: 'Muscle',
-    meaning: 'How much Line load this hull can hold and move.',
+    label: 'Towing',
+    meaning: 'How much mass this ship can hold and move with a tether.',
     floor: 8,
     ceiling: 4000,
     unit: 'tow tonnes',
@@ -400,6 +400,7 @@ export function shipStatSheet(input = {}) {
     // One rounding path: the tenths are authoritative, the headline is those tenths read whole.
     const tenths = statTenthsFor(score);
     const value = clamp(Math.round(tenths / 10), 1, 10);
+    let label = def.label;
     let meaning = def.meaning;
     let note = null;
     if (def.id === 'firepower' && (!hasGuns || !(raw > 0))) {
@@ -407,13 +408,15 @@ export function shipStatSheet(input = {}) {
       meaning = 'No damaging gun fitted. Nothing on this fit puts damage on a target.';
     }
     if (def.id === 'power' && !hasDamagingGuns) {
-      note = 'Capacitor reserve — no gun fitted.';
-      meaning = 'No gun fitted, so this is the capacitor reserve at the reference draw, not a gun clock.';
+      label = 'Energy reserve';
+      note = 'Capacitor reserve — stored energy for equipment.';
+      meaning = 'No damaging weapon is fitted. This is the capacitor reserve: stored energy available to equipment.';
     }
     if (def.id === 'muscle') {
       if (!towRating) {
-        note = 'No Line load — it rams instead.';
-        meaning = 'No Line load — this hull rams instead.';
+        label = 'Ramming';
+        note = 'No towing rating. This hull can ram.';
+        meaning = 'No towing rating. This measures the hull\'s ramming weight instead.';
       } else if (!(liveTow > 0)) {
         note = 'Too loaded to tow.';
         meaning = 'Too loaded to tow — the hold is heavier than the drive is rated for.';
@@ -421,7 +424,7 @@ export function shipStatSheet(input = {}) {
     }
     return Object.freeze({
       id: def.id,
-      label: def.label,
+      label,
       meaning,
       note,
       unit: def.unit,

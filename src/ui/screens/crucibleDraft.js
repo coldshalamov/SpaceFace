@@ -73,6 +73,7 @@ import { injectCrucibleDoorLayouts } from '../orrery/crucible-doorLayouts.js';
 import { injectCruciblePreparation } from '../orrery/cruciblePreparationLayouts.js';
 import { injectCrucibleRefitLayouts } from '../orrery/crucible-refitLayouts.js';
 import { counted } from '../numberFormat.js';
+import { canCancelSwarmPreparation } from '../../core/runState.js';
 
 
 /**
@@ -324,10 +325,11 @@ export function affordableOfferCount(offers) {
   return count;
 }
 
-/** The one line the first Escape leaves behind when it spared the player's unspent credits. */
+/** Cancel keeps preparation open and points to the explicit launch control. */
 export function launchGuardLine(count) {
   const n = Math.max(0, Math.floor(Number(count) || 0));
-  return `You can still afford ${counted(n, 'card', 'cards')} — Esc again or Launch to go`;
+  return n ? `You can still afford ${counted(n, 'item', 'items')}. Choose Launch round when you are ready.`
+    : 'Choose Launch round when you are ready. Your ship stays here until you launch.';
 }
 
 const WEAPON_DEF_BY_ID = new Map(WEAPONS.map((def) => [def && def.id, def]));
@@ -345,12 +347,7 @@ function spareOptionLabel(spare) {
   const base = spare.name || prettyDefId(spare.defId);
   const def = spare && WEAPON_DEF_BY_ID.get(spare.defId);
   const dps = finiteNum(def && def.dps);
-  const impulse = finiteNum(def && def.impulsePerHit);
-  if (dps == null && impulse == null) return base;
-  const parts = [];
-  if (dps != null) parts.push(`${shortNum(dps)} dps`);
-  if (impulse != null) parts.push(`impulse ${shortNum(impulse)}`);
-  return `${base} — ${parts.join(' · ')}`;
+  return dps == null ? base : `${base} — ${shortNum(dps)} damage per second`;
 }
 
 /**
@@ -380,10 +377,27 @@ export function weaponSpareContrast(spares) {
     if (entry.impulse > shove.impulse) shove = entry;
   }
   if (fire === shove) {
-    return `${fire.name} leads sustained fire (${shortNum(fire.dps)} dps) and shove (impulse ${shortNum(fire.impulse)}).`;
+    return `${fire.name} has the highest damage per second (${shortNum(fire.dps)}) and strongest knockback per hit.`;
   }
-  return `Most sustained fire: ${fire.name} (${shortNum(fire.dps)} dps). `
-    + `Hardest shove: ${shove.name} (impulse ${shortNum(shove.impulse)}).`;
+  return `Highest damage per second: ${fire.name} (${shortNum(fire.dps)}). `
+    + `Strongest knockback per hit: ${shove.name}.`;
+}
+
+// Text remains native HTML above each track so responsive SVG scaling cannot shrink labels.
+// Knockback uses the real authored comparison without exposing a unitless impulse number.
+function weaponComparisonRow(label, width, trackClass = '') {
+  const row = el('div', 'orr-weapon-comparison__row');
+  const head = el('div', 'orr-weapon-comparison__head');
+  const value = el('span', 'orr-weapon-comparison__value');
+  head.append(el('span', 'orr-weapon-comparison__label', label), value);
+  const track = svgNode('svg', { viewBox: `0 0 ${width} 20`, width, height: 20,
+    class: `orr-svg orr-weapon-comparison__track ${trackClass}`, 'aria-hidden': 'true' });
+  row.append(head, track);
+  return { row, value, track };
+}
+
+function weaponComparisonNote() {
+  return el('p', 'orr-weapon-comparison__note', 'Base weapon stats. Lighter targets are pushed farther.');
 }
 
 /**
@@ -404,32 +418,27 @@ function spareScales(spares) {
     for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
     return n;
   };
-  const W = 300; const x0 = 62; const x1 = 222;
-  const root = node('svg', { viewBox: `0 0 ${W} 58`, width: W, height: 58, class: 'orr-svg orr-hp__scales', 'aria-hidden': 'true' });
+  const W = 300; const x0 = 1; const x1 = W - 1; const y = 10;
+  const root = el('div', 'orr-hp__scales orr-weapon-comparison');
   const readouts = [];
   const ticks = [];
-  [['dps', 'Fire', 17], ['impulse', 'Shove', 45]].forEach(([key, word, y]) => {
+  [['dps', 'Damage per second'], ['impulse', 'Knockback per hit']].forEach(([key, word]) => {
     const max = Math.max(...entries.map((e) => e[key])) || 1;
-    const label = node('text', { x: 0, y: y + 4, class: 'orr-hp__scale-word' });
-    label.textContent = word.toUpperCase();
-    root.appendChild(label);
-    // the track from zero to the best spare on this axis, its best figure at the end
-    root.appendChild(node('path', { d: `M ${x0} ${y} L ${x1} ${y}`, class: 'orr-hp__track' }));
-    root.appendChild(node('path', { d: `M ${x0} ${y - 4} L ${x0} ${y + 4}`, class: 'orr-hp__track-end' }));
-    const top = node('text', { x: x1, y: y - 7, class: 'orr-hp__scale-max', 'text-anchor': 'end' });
-    top.textContent = shortNum(max);
-    root.appendChild(top);
+    const { row, value, track } = weaponComparisonRow(word, W);
+    root.appendChild(row);
+    // The same zero-to-best authored scale; marks compare the available spares.
+    track.appendChild(node('path', { d: `M ${x0} ${y} L ${x1} ${y}`, class: 'orr-hp__track' }));
+    track.appendChild(node('path', { d: `M ${x0} ${y - 4} L ${x0} ${y + 4}`, class: 'orr-hp__track-end' }));
     for (const e of entries) {
       const x = x0 + ((x1 - x0) * e[key]) / max;
       const tick = node('path', { d: `M ${x.toFixed(1)} ${y - 5} L ${x.toFixed(1)} ${y + 5}`, class: 'orr-hp__tick', 'data-id': e.id });
       ticks.push(tick);
-      root.appendChild(tick);
+      track.appendChild(tick);
     }
-    const readout = node('text', { x: x1 + 12, y: y + 5, class: 'orr-hp__scale-val' });
-    const delta = node('tspan', { class: 'orr-hp__scale-delta', dx: 6 });
-    readouts.push([readout, delta, key]);
-    root.appendChild(readout);
+    const delta = el('span', 'orr-weapon-comparison__delta');
+    readouts.push([value, delta, key]);
   });
+  root.appendChild(weaponComparisonNote());
   return {
     el: root,
     update(chosenId) {
@@ -445,9 +454,13 @@ function spareScales(spares) {
       for (const [readout, delta, key] of readouts) {
         const best = Math.max(...entries.filter((e) => e !== chosen).map((e) => e[key]));
         const diff = chosen[key] - best;
-        readout.textContent = shortNum(chosen[key]);
-        delta.textContent = diff === 0 ? '' : `${diff > 0 ? '+' : '−'}${shortNum(Math.abs(diff))}`;
-        readout.appendChild(delta);
+        if (key === 'dps') {
+          readout.textContent = shortNum(chosen[key]);
+          delta.textContent = diff === 0 ? '' : ` (${diff > 0 ? '+' : '−'}${shortNum(Math.abs(diff))})`;
+          readout.appendChild(delta);
+        } else {
+          readout.textContent = diff > 0 ? 'Strongest spare' : diff === 0 ? 'Joint strongest spare' : 'Less than strongest spare';
+        }
       }
     },
   };
@@ -463,42 +476,43 @@ function svgNode(tag, attrs = {}) {
 
 /**
  * The armory reading's comparison: a weapon offer against the weapon it would replace, on the two
- * axes combat pays (sustained fire, shove). The offer's mark is lit and taller, the fitted one a
- * bone notch, the difference in ice. Null for anything that is not a weapon-for-weapon swap.
+ * base damage per second and knockback per hit. The offer's mark is lit and taller; the fitted
+ * one is a notch. Knockback compares the actual impulse without an unexplained numeric rating.
  */
 function offerCompare(offer, best = {}) {
   const def = offer && WEAPON_DEF_BY_ID.get(offer.defId);
   if (!def) return null;
   const fitted = offer.replaces ? WEAPON_DEF_BY_ID.get(offer.replaces) : null;
-  const root = svgNode('svg', { viewBox: '0 0 360 64', width: 360, height: 64, class: 'orr-svg orr-armory-compare', 'aria-hidden': 'true' });
-  if (!root) return null;
-  const x0 = 70; const x1 = 290;
-  [['dps', 'Fire', 20], ['impulsePerHit', 'Shove', 50]].forEach(([key, word, y]) => {
+  if (typeof document === 'undefined' || typeof document.createElementNS !== 'function') return null;
+  const root = el('div', 'orr-weapon-comparison');
+  const x0 = 1; const x1 = 359; const y = 10;
+  [['dps', 'Damage per second'], ['impulsePerHit', 'Knockback per hit']].forEach(([key, word]) => {
     const mine = finiteNum(def[key]);
     if (mine == null) return;
     const theirs = fitted ? finiteNum(fitted[key]) : null;
     const max = Math.max(mine, theirs || 0, Number(best[key]) || 0) || 1;
-    const label = svgNode('text', { x: 0, y: y + 4, class: 'orr-armory-compare__word' });
-    label.textContent = word.toUpperCase();
-    root.appendChild(label);
-    root.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${x1} ${y}`, class: 'orr-armory-compare__track' }));
-    root.appendChild(svgNode('path', { d: `M ${x0} ${y - 4} L ${x0} ${y + 4}`, class: 'orr-armory-compare__track' }));
+    const { row, value, track } = weaponComparisonRow(word, 360, 'orr-armory-compare');
+    root.appendChild(row);
+    track.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${x1} ${y}`, class: 'orr-armory-compare__track' }));
+    track.appendChild(svgNode('path', { d: `M ${x0} ${y - 4} L ${x0} ${y + 4}`, class: 'orr-armory-compare__track' }));
     if (theirs != null) {
       const tx = x0 + ((x1 - x0) * theirs) / max;
-      root.appendChild(svgNode('path', { d: `M ${tx.toFixed(1)} ${y - 5} L ${tx.toFixed(1)} ${y + 5}`, class: 'orr-armory-compare__fitted' }));
+      track.appendChild(svgNode('path', { d: `M ${tx.toFixed(1)} ${y - 5} L ${tx.toFixed(1)} ${y + 5}`, class: 'orr-armory-compare__fitted' }));
     }
     const mx = x0 + ((x1 - x0) * mine) / max;
-    root.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${mx.toFixed(1)} ${y}`, class: 'orr-armory-compare__fill' }));
-    root.appendChild(svgNode('path', { d: `M ${mx.toFixed(1)} ${y - 7} L ${mx.toFixed(1)} ${y + 7}`, class: 'orr-armory-compare__mark' }));
-    const val = svgNode('text', { x: x1 + 12, y: y + 5, class: 'orr-armory-compare__val' });
-    val.textContent = shortNum(mine);
-    if (theirs != null && theirs !== mine) {
-      const d = svgNode('tspan', { dx: 6, class: 'orr-armory-compare__delta' });
-      d.textContent = `${mine > theirs ? '+' : '\u2212'}${shortNum(Math.abs(mine - theirs))}`;
-      val.appendChild(d);
+    track.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${mx.toFixed(1)} ${y}`, class: 'orr-armory-compare__fill' }));
+    track.appendChild(svgNode('path', { d: `M ${mx.toFixed(1)} ${y - 7} L ${mx.toFixed(1)} ${y + 7}`, class: 'orr-armory-compare__mark' }));
+    if (key === 'dps') {
+      value.textContent = shortNum(mine);
+      if (theirs != null && theirs !== mine) {
+        value.appendChild(el('span', 'orr-weapon-comparison__delta',
+          ` (${mine > theirs ? '+' : '\u2212'}${shortNum(Math.abs(mine - theirs))})`));
+      }
+    } else if (theirs != null) {
+      value.textContent = mine > theirs ? 'More than fitted' : mine < theirs ? 'Less than fitted' : 'Same as fitted';
     }
-    root.appendChild(val);
   });
+  root.appendChild(weaponComparisonNote());
   return root;
 }
 
@@ -661,8 +675,10 @@ export function circuitPanelLines(run) {
   const route = circuitRouteView(run);
   if (!route) return error || choices.length ? {
     heading: 'The Circuit',
-    status: error || 'Sixteen rounds, four stages, four champions. Choose Circuit or launch ordinary Swarm.',
-    next: null, choices, stages: [],
+    status: error || 'A 16-round challenge across four stages, each ending with a boss. Finish after stage four or continue with endless rounds.',
+    next: null, choices: choices.map(choice => choice.kind === 'start' ? {
+      ...choice, label: 'Choose Circuit', line: 'Use your current ship, equipment and run credits. Launch round 1 when you are ready.',
+    } : choice), stages: [],
   } : null;
   const circuit = circuitFor(run);
   const wave = run && Number.isInteger(run.wave) ? run.wave : 0;
@@ -975,7 +991,7 @@ export const crucibleDraftScreen = {
 
     // .k-stage — the three offers across on the sky, then the one status line.
     const stage = el('section', 'k-stage sf-cru-stage');
-    this._armoryHeading = el('h2', 'orr-armory-section', 'Dealt fittings');
+    this._armoryHeading = el('h2', 'orr-armory-section', 'Available equipment');
     stage.appendChild(this._armoryHeading);
     const filters = el('div', 'k-words k-words--row sf-cru-filters');
     filters.setAttribute('role', 'group');
@@ -1026,15 +1042,14 @@ export const crucibleDraftScreen = {
     this._note = note;
     rootEl.appendChild(stage);
 
-    // SWARM-08 B5 — the Circuit panel. It offers entry, then shows the route as four stage
-    // positions, the choice owed right now (enter, destination, finish or Overtime), and the
-    // one-line read on the round coming. Reserve space inside the shelf's flex column rather
-    // than adding a second root grid stage. Long route choices scroll within their own share
-    // of the column so the filters and shopping rail remain reachable.
-    const circuitPanel = el('section', 'sf-cru-circuit');
+    // Optional run rules stay in their own disclosure before the equipment section. Once
+    // Circuit is chosen, its progress and required route decisions open here automatically.
+    // Long route choices retain a bounded scroll area so equipment remains reachable.
+    const circuitPanel = el('details', 'sf-cru-circuit');
     Object.assign(circuitPanel.style, { flex: '0 0 auto', maxHeight: '40%', overflow: 'auto' });
     circuitPanel.hidden = true;
-    circuitPanel.setAttribute('aria-label', 'The Circuit');
+    circuitPanel.setAttribute('aria-label', 'Optional run format');
+    const circuitSummary = el('summary', 'sf-cru-circuit__summary', 'Optional run format');
     const circuitHead = el('h2', 'k-t-emph sf-cru-circuit__head', 'The Circuit');
     const circuitStatus = el('p', 'k-sentence sf-cru-circuit__status', '');
     const circuitGraphic = el('div', 'orr-circuit-route');
@@ -1043,10 +1058,12 @@ export const crucibleDraftScreen = {
     const circuitNext = el('p', 'k-sentence sf-cru-circuit__next', '');
     const circuitChoices = el('ul', 'k-words k-words--row sf-cru-circuit__choices');
     circuitChoices.setAttribute('aria-label', 'Circuit choices');
-    circuitPanel.append(circuitHead, circuitStatus, circuitGraphic, circuitRoute, circuitNext, circuitChoices);
-    stage.insertBefore(circuitPanel, filters);
+    circuitPanel.append(circuitSummary, circuitHead, circuitStatus, circuitGraphic, circuitRoute, circuitNext, circuitChoices);
+    stage.insertBefore(circuitPanel, this._armoryHeading);
     this._circuit = {
       el: circuitPanel,
+      summary: circuitSummary,
+      presentationKey: null,
       status: circuitStatus,
       graphic: circuitGraphic,
       route: circuitRoute,
@@ -1123,39 +1140,12 @@ export const crucibleDraftScreen = {
     const words = el('ul', 'k-words k-words--row');
     words.setAttribute('aria-label', 'Rearm');
     const skip = addWord(words, word('Keep current loadout', 'k-word--emph'));
-    skip.addEventListener('click', () => {
-      // A Circuit that owes a destination (or the finale) refuses the launch and says why; the
-      // press is not swallowed by a dead button.
-      if (this._circuitGate(ctx)) return;
-      // The render lane warms the next wave's newcomers behind this surface; launching
-      // before that batch links would pay its program links inside the round. The dwell
-      // is player-paced so the promise has normally already settled and this emits
-      // immediately — the button only shows a hold when the player out-clicks a compile
-      // that is still running.
-      const warm = ctx.state && ctx.state.render && ctx.state.render.swarmDeferredWarm;
-      if (warm && warm.pending === true && warm.promise && typeof warm.promise.then === 'function') {
-        if (this._warmHold === true) return;
-        this._warmHold = true;
-        skip.disabled = true;
-        skip.setAttribute('aria-disabled', 'true');
-        setKeyLabel(skip, 'Readying the field…', 'Esc', 'Escape');
-        // Bounded: a compile that never settles must not strand the player in the armory.
-        Promise.race([
-          Promise.resolve(warm.promise).catch(() => null),
-          new Promise((resolve) => setTimeout(resolve, 10000)),
-        ]).then(() => {
-          this._warmHold = false;
-          // The run could have ended while the batch settled — a stale emit must not
-          // resolve a draft that no longer waits on an answer.
-          if (ctx.state && ctx.state.run && ctx.state.run.phase === 'draft') {
-            ctx.bus.emit('run:draftPickRequested', { offerId: null });
-          }
-        });
-        return;
-      }
-      ctx.bus.emit('run:draftPickRequested', { offerId: null });
-    });
+    skip.addEventListener('click', () => this._launchCurrentDraft(this._ctx || ctx));
     this._skip = skip;
+    const back = addWord(words, word('Back to hangar', 'k-word--emph sf-cru-back-to-hangar'));
+    back.setAttribute('aria-describedby', 'sf-cru-preparation-return-note');
+    back.addEventListener('click', () => this._requestPreparationReturn(this._ctx || ctx));
+    this._backToHangar = back;
     const refit = addWord(words, word('Rearrange loadout', 'k-word--emph'));
     refit.addEventListener('click', () => ctx.bus.emit('ui:pushScreen', { id: 'crucibleRefit' }));
     this._refitBtn = refit;
@@ -1175,6 +1165,11 @@ export const crucibleDraftScreen = {
     });
     this._browseBtn = browse;
     foot.appendChild(words);
+    const returnNote = el('p', 'k-t-fine sf-cru-preparation-return-note',
+      'Back discards purchases from this preparation. Your ship choice and run settings are kept.');
+    returnNote.id = 'sf-cru-preparation-return-note';
+    foot.appendChild(returnNote);
+    this._preparationReturnNote = returnNote;
 
     const fine = el('p', 'k-t-fine k-38 sf-cru-fine');
     const wallet = el('span', 'sf-cru-wallet', '');
@@ -1187,9 +1182,8 @@ export const crucibleDraftScreen = {
     rootEl.appendChild(foot);
 
     // The run is fully paused on this choice, so it must be answerable from the keyboard: 1/2/3
-    // pick, arrows move, R buys another draw, Escape keeps the current loadout. Escape is
-    // otherwise dead here (the screen is locked so the manager will not pop it), which would
-    // leave a paused player with a key that does nothing.
+    // pick, arrows move, R buys another draw. In Swarm, Escape points to the explicit launch
+    // control and keeps preparation paused. Rearm keeps its existing skip behavior.
     rootEl.addEventListener('keydown', (event) => {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       // While the search field owns the keyboard, the rails' keys stand down: typing 'r'
@@ -1223,8 +1217,7 @@ export const crucibleDraftScreen = {
         // would reach the document-level flight handler with no modal open and Escape would
         // also push Pause — one key, two consequences. Own it here end to end.
         event.stopPropagation();
-        // In the armory Esc is a way out, not a launch: while the wallet still buys something on
-        // the shelf, the first press spends itself on a warning and the second one goes.
+        // A cancel gesture cannot deploy the player, even with zero credits or an empty shelf.
         if (this._guardLaunch(ctx)) return;
         skip.click();
         return;
@@ -1267,8 +1260,17 @@ export const crucibleDraftScreen = {
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
     bindScreenResultRefresh(this, this._ctx, ARMORY_RESULT_REFRESH_EVENTS);
-    this._visualArmory?.setActive(true);
     if (this._ctx) this.refresh(this._ctx);
+    this._visualArmory?.setActive(true);
+    this._offPreparationReturn?.();
+    this._offPreparationReturn = this._ctx?.bus.on('run:preparationCancelResolved', (receipt) => {
+      if (receipt?.token !== this._preparationReturnPending?.token) return;
+      this._preparationReturnPending = null;
+      if (receipt.ok !== true) {
+        this._flash = { text: 'Preparation has changed. Your current run was kept.', until: Date.now() + 8000 };
+        this.refresh(this._ctx);
+      }
+    });
     this._offCancel?.();
     this._offCancel = this._ctx?.bus.on('ui:cancel', () => {
       const ctx = this._ctx;
@@ -1285,6 +1287,10 @@ export const crucibleDraftScreen = {
   },
 
   onHide() {
+    this._invalidateWarmLaunch();
+    this._preparationReturnPending = null;
+    this._offPreparationReturn?.();
+    this._offPreparationReturn = null;
     this._offCancel?.();
     this._offCancel = null;
     unbindScreenResultRefresh(this);
@@ -1293,6 +1299,10 @@ export const crucibleDraftScreen = {
   },
 
   dispose() {
+    this._invalidateWarmLaunch();
+    this._preparationReturnPending = null;
+    this._offPreparationReturn?.();
+    this._offPreparationReturn = null;
     this._offCancel?.();
     this._offCancel = null;
     unbindScreenResultRefresh(this);
@@ -1317,14 +1327,6 @@ export const crucibleDraftScreen = {
     this._emitIntentAndRefresh(context, 'run:draftRerollRequested', {});
   },
 
-  /**
-   * The armory's Escape guard. Esc (and a pad's B) used to launch the next round on the spot,
-   * with whatever the player had not spent. In the swarm shop, while at least one current offer is
-   * still buyable, the first Esc only moves focus to Launch and says what is left to buy; the
-   * second Esc — or a click or Enter on Launch, which never comes through here — goes. Nothing
-   * buyable, or the Gauntlet's Rearm, behaves exactly as before. Returns true when this press
-   * was spent on the warning and must not resolve the draft.
-   */
   /** Four stage positions and the paths between them, drawn with the ORRERY vector helpers. */
   _paintCircuitRoute(stages) {
     const host = this._circuit && this._circuit.graphic;
@@ -1390,7 +1392,63 @@ export const crucibleDraftScreen = {
   },
 
   _emitIntentAndRefresh(context, event, payload) {
+    if (this._preparationReturnPending) return;
     emitIntentAndRefresh(this, context, event, payload);
+  },
+
+  _invalidateWarmLaunch() {
+    this._warmLaunchVersion = (this._warmLaunchVersion || 0) + 1;
+    if (this._warmLaunchTimer != null) clearTimeout(this._warmLaunchTimer);
+    this._warmLaunchTimer = null;
+    this._warmHold = false;
+  },
+
+  _launchCurrentDraft(ctx) {
+    if (!ctx || ctx.state?.run?.phase !== 'draft' || this._preparationReturnPending
+      || this._warmHold === true || this._circuitGate(ctx)) return;
+    const warm = ctx.state.render?.swarmDeferredWarm;
+    if (!(warm?.pending === true && typeof warm.promise?.then === 'function')) {
+      ctx.bus.emit('run:draftPickRequested', { offerId: null });
+      return;
+    }
+    const run = ctx.state.run;
+    const ticket = {
+      token: run.retireToken, wave: run.wave,
+      generation: ctx.helpers?.workerReadGeneration?.(),
+      preparation: draftOwner(ctx)?.preparationGeneration?.(),
+      version: this._warmLaunchVersion = (this._warmLaunchVersion || 0) + 1,
+    };
+    this._warmHold = true;
+    this._skip.disabled = true;
+    this._skip.setAttribute('aria-disabled', 'true');
+    setKeyLabel(this._skip, 'Readying the field…', run.ruleset === 'swarm' ? '' : 'Esc', 'Escape');
+    // Keep the existing bounded GPU hold, but its completion belongs to this exact draft.
+    Promise.race([
+      Promise.resolve(warm.promise).catch(() => null),
+      new Promise((resolve) => { this._warmLaunchTimer = setTimeout(resolve, 10000); }),
+    ]).then(() => {
+      if (this._warmLaunchVersion !== ticket.version) return;
+      if (this._warmLaunchTimer != null) clearTimeout(this._warmLaunchTimer);
+      this._warmLaunchTimer = null;
+      this._warmHold = false;
+      const current = ctx.state?.run;
+      if (this._ctx === ctx && !this._preparationReturnPending && current?.phase === 'draft'
+        && current.retireToken === ticket.token && current.wave === ticket.wave
+        && ctx.helpers?.workerReadGeneration?.() === ticket.generation
+        && draftOwner(ctx)?.preparationGeneration?.() === ticket.preparation
+        && ctx.screenManager?.top?.() === this.id) {
+        ctx.bus.emit('run:draftPickRequested', { offerId: null });
+      } else if (this._ctx === ctx && ctx.screenManager?.top?.() === this.id) this.refresh(ctx);
+    });
+  },
+
+  _requestPreparationReturn(ctx) {
+    if (!ctx || this._preparationReturnPending || !canCancelSwarmPreparation(ctx.state?.run)) return;
+    this._invalidateWarmLaunch();
+    const token = ctx.state.run.retireToken;
+    this._preparationReturnPending = { token, generation: ctx.helpers?.workerReadGeneration?.() };
+    this.refresh(ctx);
+    ctx.bus.emit('ui:cancelSwarmPreparation', { token });
   },
 
   /**
@@ -1414,6 +1472,7 @@ export const crucibleDraftScreen = {
           ? 'Choose a destination before launching.'
           : 'Finish the Circuit or enter Overtime.');
     if (this._note) this._note.textContent = text;
+    if (this._circuit?.el) this._circuit.el.open = true;
     const first = this._circuit && this._circuit.choices
       ? this._circuit.choices.querySelector('button')
       : null;
@@ -1427,15 +1486,9 @@ export const crucibleDraftScreen = {
     const run = ctx && ctx.state && ctx.state.run;
     if (!run || run.ruleset !== 'swarm') return false;
     if (this._circuitGate(ctx)) return true;
-    if (this._launchWarned === true) {
-      this._launchWarned = false;
-      return false;
-    }
-    // Search and category filters only change the view. An empty shelf must not turn Cancel
-    // into an unannounced launch, and an old card must not warn about already-spent credits.
+    // Cancel always stays in preparation. Only the explicit launch control (including native
+    // Enter/Space or controller confirm on that button) can deploy a Swarm run.
     const count = affordableOfferCount(draftOwner(ctx)?.currentOffers?.());
-    if (count < 1) return false;
-    this._launchWarned = true;
     const text = launchGuardLine(count);
     this._flash = { text, until: Date.now() + 8000, guard: true };
     if (this._note) this._note.textContent = text;
@@ -1458,9 +1511,7 @@ export const crucibleDraftScreen = {
     const cards = this._cards;
     if (!context || !rootEl || !cards) return;
     this._ctx = context;
-    // A rebuilt shelf (a purchase, a re-roll, a filter) is a different shelf: the Escape warning
-    // and its line described the old one, so the next Esc reads the new one fresh.
-    this._launchWarned = false;
+    // A rebuilt shelf changes the affordable-item count in the Cancel explanation.
     if (this._flash && this._flash.guard) this._flash = null;
 
     const owner = draftOwner(context);
@@ -1470,6 +1521,20 @@ export const crucibleDraftScreen = {
     const rerollState = owner && typeof owner.rerollState === 'function' ? owner.rerollState() : null;
     const lines = rerollControlLines(rerollState, notice);
     const shop = context.state?.run?.ruleset === 'swarm';
+    const pendingReturn = this._preparationReturnPending;
+    if (pendingReturn && (context.state?.run?.retireToken !== pendingReturn.token
+      || context.helpers?.workerReadGeneration?.() !== pendingReturn.generation)) {
+      this._preparationReturnPending = null;
+    }
+    const returning = !!this._preparationReturnPending;
+    const canReturn = canCancelSwarmPreparation(context.state?.run);
+    setWordShown(this._backToHangar, canReturn);
+    if (this._backToHangar) {
+      this._backToHangar.disabled = returning;
+      this._backToHangar.setAttribute('aria-disabled', String(returning));
+      setKeyLabel(this._backToHangar, returning ? 'Returning to hangar…' : 'Back to hangar', '', '');
+    }
+    setWordShown(this._preparationReturnNote, canReturn);
     rootEl.classList.toggle('sf-crucible-armory', shop);
     this._title.textContent = shop ? 'Armory' : 'Rearm';
     if (this._visualArmory) this._visualArmory.wallet(context.state?.run?.credits, shop);
@@ -1505,20 +1570,20 @@ export const crucibleDraftScreen = {
       }
     }
 
-    // SWARM-04: a checkpoint start's opening armory parks run.wave one below the bought
-    // entry — "Round 10 cleared" would claim a fight this run never flew. The bought purse
-    // and the round ahead are the honest words.
+    // A checkpoint opening is preparation for the selected round, not a completed fight.
     const runStart = context.state?.run?.telemetry
       && Number.isInteger(context.state.run.telemetry.startWave)
       ? context.state.run.telemetry.startWave : 1;
     this._sub.textContent = firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
       ? (wave === 0
-        ? 'Fit out before round 1 — the purse is already open. Each fitting bolts onto one hardpoint of the ship you chose; a full hardpoint swaps, and the old part waits in your spares.'
+        ? 'Keep your loadout or use run credits to change it before round 1. Replaced equipment stays in your spares.'
         : shop && runStart > 1 && wave === runStart - 1
-          ? `Checkpoint start — the purse is stocked for Round ${runStart}.`
-          : shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
+          ? `Prepare for round ${runStart}. Use run credits to change your loadout; replaced equipment stays in your spares.`
+          : shop ? `Round ${wave} cleared. Equip upgrades before the next wave.`
             : `Wave ${wave} cleared. Choose a new weapon.`)
-      : `Wave ${wave} cleared. Nothing new fits this hull.`);
+      : shop && runStart > 1 && wave === runStart - 1
+        ? `Prepare for round ${runStart}. No equipment is available. Keep your current loadout and launch when ready.`
+        : `Wave ${wave} cleared. Nothing new fits this hull.`);
 
     // SWARM-04 §6.5 — plan around the next fight. `wave` is the round just cleared (0 before
     // the opener), so the preview is always wave + 1. Zone/event remain authored ladder copy;
@@ -1539,9 +1604,20 @@ export const crucibleDraftScreen = {
     // round. Ordinary Swarm only shows the opening invitation.
     const runNow = context.state && context.state.run;
     const circuitPanel = shop && runNow ? circuitPanelLines(runNow) : null;
+    const circuitRun = runNow ? circuitFor(runNow) : null;
+    const circuitError = circuitStateError(runNow);
     if (this._circuit) {
       this._circuit.el.hidden = !circuitPanel;
       if (circuitPanel) {
+        const optional = !circuitRun && !circuitError;
+        const label = optional ? 'Optional run format' : 'Circuit progress';
+        if (this._circuit.summary) this._circuit.summary.textContent = label;
+        this._circuit.el.setAttribute('aria-label', label);
+        const presentationKey = `${runNow.retireToken ?? runNow.seed}:${optional ? 'optional' : `${circuitRun?.status || 'error'}:${circuitRun?.clearedStages || 0}`}`;
+        if (presentationKey !== this._circuit.presentationKey) {
+          this._circuit.el.open = !optional;
+          this._circuit.presentationKey = presentationKey;
+        }
         this._circuit.status.textContent = circuitPanel.status;
         this._paintCircuitRoute(circuitPanel.stages);
         this._circuit.route.textContent = circuitPanel.stages
@@ -1550,10 +1626,8 @@ export const crucibleDraftScreen = {
         this._circuit.next.textContent = circuitPanel.next || '';
         this._circuit.next.hidden = !circuitPanel.next;
         this._paintCircuitChoices(context, circuitPanel.choices);
-      }
+      } else this._circuit.presentationKey = null;
     }
-    const circuitRun = runNow ? circuitFor(runNow) : null;
-    const circuitError = circuitStateError(runNow);
     const circuitOwed = !!circuitError || !!(circuitPanel && circuitRun
       && (circuitRun.status === 'route' || circuitRun.status === 'finale'));
 
@@ -1565,7 +1639,7 @@ export const crucibleDraftScreen = {
       // The opening armory fits the door's free hull pick — it does not re-sell it. New hulls
       // go on sale once the run has begun (see _armoryExtras), so this line says where they are.
       this._cradle.textContent = cradleName
-        ? (wave === 0 ? `In the cradle — ${cradleName} · new hulls go on sale after round 1` : `In the cradle — ${cradleName}`)
+        ? (wave === 0 ? `Your ship — ${cradleName} · new hulls go on sale after round 1` : `Your ship — ${cradleName}`)
         : '';
       this._cradle.hidden = !cradleName;
     }
@@ -1579,7 +1653,7 @@ export const crucibleDraftScreen = {
       : [];
     const showHand = dealtOffers.length > 0 && !this._browse;
     this._armoryHeading.hidden = !shop;
-    this._armoryHeading.textContent = showHand ? 'Dealt fittings' : 'Equipment catalog';
+    this._armoryHeading.textContent = showHand ? 'Available equipment' : 'Equipment catalog';
     const dealtIds = new Set(showHand ? dealtOffers.map((offer) => offer.id) : []);
     const recommended = shop && this._browse && this._category === 'All' && !this._query
       && owner && typeof owner.recommendedOffers === 'function'
@@ -1682,6 +1756,7 @@ export const crucibleDraftScreen = {
       const keep = visible.find(offer => offer.id === this._reading.offerId);
       const first = keep || visible.find(offer => offer.available) || visible[0];
       if (shop && first) this._paintReading(context, first);
+      this._visualArmory?.setReadingVisible?.(!this._reading.el.hidden);
     }
 
     setKeyLabel(this._skip,
@@ -1690,15 +1765,14 @@ export const crucibleDraftScreen = {
           ? (circuitError ? 'Circuit data invalid — start a new run'
             : circuitRun.status === 'route' ? 'Choose a destination first' : 'Finish or enter Overtime first')
           : shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue'),
-      // Launch carries no Esc badge in the armory: Esc is the way out of the screen, never a launch
-      // key a player should learn (the guard below still stops a stray Esc from launching).
-      shop && !circuitOwed ? '' : 'Esc', 'Escape');
+      // Cancel remains in preparation; only explicit confirmation on this control deploys.
+      shop ? '' : 'Esc', 'Escape');
     // In the armory the way forward is the one consequential key; buying happens on the cards.
     this._skip.classList.toggle('k-word--primary', shop && !circuitOwed);
     // A warm hold that resolved off-draft left the control disabled+relabelled; re-arm it here
     // (and keep it held while a hold is actually in flight, so a repaint cannot un-gate it).
-    this._skip.disabled = this._warmHold === true;
-    this._skip.setAttribute('aria-disabled', this._warmHold === true || circuitOwed ? 'true' : 'false');
+    this._skip.disabled = this._warmHold === true || returning;
+    this._skip.setAttribute('aria-disabled', this._warmHold === true || circuitOwed || returning ? 'true' : 'false');
 
     const reroll = this._rerollBtn;
     setKeyLabel(reroll, lines.label || 'Re-roll', 'R', 'R');

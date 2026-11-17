@@ -977,6 +977,7 @@ const BRIDGE_EVENTS = [
   'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
   'survivalArena:stormWarning', 'survivalArena:stormResolve', 'survivalArena:stormCancel',
   'automation:fleetChanged', 'combat:chainKill', 'comms:log', 'run:resultsReady',
+  'run:preparationCancelResolved',
   'breakwaterSpur:offer', 'breakwaterSpur:close', 'breakwaterSpur:receipt', 'breakwaterSpur:cue',
   'cinderglassJob:offer', 'cinderglassJob:view', 'cinderglassJob:servicePrompt', 'cinderglassJob:fact', 'cinderglassJob:refused', 'cinderglassJob:serviceEnd', 'cinderglassJob:close',
 ];
@@ -1427,6 +1428,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     // the complete current run snapshot urgent before that reply's domain diff.
     // Generic run awards are intentionally excluded: combat emits those often.
     const runShopResultEvents = [
+      'run:preparationCancelResolved', // return only after this paused reply mirrors the ended run
       'run:draftOffered',       // opening shop / reroll stock snapshot
       'run:refitOffered',       // opening refit screen
       'run:shopPurchased',      // successful armory purchase
