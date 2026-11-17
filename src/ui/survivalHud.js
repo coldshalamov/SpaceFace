@@ -134,6 +134,16 @@ export function chainWindowRemaining(chainAt, simNow) {
   return Math.max(0, chainAt + SWARM_CHAIN_WINDOW_S - simNow);
 }
 
+/**
+ * The boss row's figure is a percent of its own meter — hull fraction, or the
+ * attached-plate fraction for a score-backed colossus. Never a bare N/M: "2/2"
+ * read as a second boss census beside the announcer's alive/total (FIX-04).
+ */
+export function survivalBossFigureText(vitals) {
+  const pct = vitals && Number.isFinite(vitals.pct) ? Math.max(0, Math.min(1, vitals.pct)) : null;
+  return pct == null ? '—' : `${Math.round(pct * 100)}%`;
+}
+
 /** Live census for the wave: how many bodies are still out there, and how many are owed. */
 export function threatCensus(run) {
   const planned = Number.isInteger(run && run.threatBudget) ? run.threatBudget : 0;
@@ -549,12 +559,12 @@ export const survivalHud = {
           ? bossVitals.name
           : (bossVitals.count > 1 ? `BOSS ×${bossVitals.count}` : 'BOSS');
         this._setText(dom.bossWord, bossLabel);
-        // W-COLOSSI (row 547): the bar is the parts — a score-backed colossus reads
-        // "parts remaining" (figure N/M, no percent), never its hull.
+        // W-COLOSSI (row 547): the bar is the parts — a score-backed colossus drains
+        // as plates tear free, never its hull. The figure is a percent of that same
+        // fraction: a bare "2/2" read as a second boss census beside the announcer's
+        // alive/total (FIX-04); the parts count still speaks in the aria-label.
         const parts = bossVitals.parts || null;
-        this._setText(dom.bossFig, parts
-          ? `${parts.attached}/${parts.total}`
-          : (pct == null ? '—' : `${Math.round(pct * 100)}%`));
+        this._setText(dom.bossFig, survivalBossFigureText(bossVitals));
         this._setStyle(dom.bossFill, 'width', `${pct == null ? 0 : Math.round(pct * 100)}%`);
         const hullWord = bossVitals.name || 'Boss';
         this._setAttr(dom.boss, 'aria-label', parts
