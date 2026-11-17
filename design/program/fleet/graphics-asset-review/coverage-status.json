@@ -3,10 +3,10 @@
   "generatedAt": "2026-11-16T09:37:39.925Z",
   "note": "One durable status per model ID. `unused/unresolved` is a disposition for unresolved linkage or identity, not proof of non-use or permission to delete. Review details and evidence remain in the per-model facts and append-only journals. Index refreshes and status updates rewrite this whole file; serialize those commands and do not run concurrent status writers.",
   "statusCounts": {
-    "pending": 110,
+    "pending": 94,
     "in progress": 0,
-    "passed": 195,
-    "needs follow-up": 213,
+    "passed": 230,
+    "needs follow-up": 194,
     "unused/unresolved": 3048
   },
   "models": {
@@ -16728,80 +16728,81 @@
       "updatedAt": "2026-11-17T02:32:45.732Z"
     },
     "runtime:SF_SHIP_TOWLINE_KIT:towline_kit": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/towline_kit_lod1.glb",
           "sha256": "db4a5f4964e159a05bcc1f49723044293527e8792e8b04cd662aa1f9a3f9e2ef",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/towline_kit_lod2.glb",
           "sha256": "783dc8aedd497ab9dfdd1fe64db42f878ec37d6d16f45f31476cdea3aaa2292b",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/towline_kit.glb",
           "sha256": "f535f9369f1ef0916018a3e5417f6acf2240bda95b793583e1b54f0357d3f519",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/towline-kit-lod1/render.glb",
-          "sha256": "3fe1e618d1202c28286e97c4de5955cc22819421bbca25f7e5722c026a053342",
-          "sha256Source": "catalog-only"
+          "sha256": "89d2363cb46609b1eafa9c310820fa3cec432aa9413c2ff0f8127df8067a3c46",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/towline-kit-lod2/render.glb",
-          "sha256": "bcb1bb476ef4399528c498b07095ab6625f162f007f182e91ad4c3c12c17138e",
-          "sha256Source": "catalog-only"
+          "sha256": "b7d5a7e8b2a68e576333ad3e1d8d6c667f704964216c71e5fb60946a09f67612",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/towline-kit/render.glb",
-          "sha256": "ad2919dd47f5d91c08fef6b063b2df8b84831c2752a01f054649a9c7eacb5e37",
-          "sha256Source": "catalog-only"
+          "sha256": "daf79e638f7344037c71325da87134c75ae530946ae6ad32e65d1113f00f7de9",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/towline_kit_lod1.glb",
           "sha256": "63d87f7cb110bbdf85cdffacfa8d04acb109efed0a7a55616dc6536697f9e89b",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/towline_kit_lod2.glb",
           "sha256": "d3b04f86dbae1953cf08b9dc767bc49140bec70159d05041fd1b05b9deef556f",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/towline_kit.glb",
           "sha256": "06b366f0ecdd8c3e0dabc19ca55db5b3f007b97f8e653e29da9c1c92d67e7339",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "reviewed geometry and LOD shading built into all three released packages; current isolated package views reviewed, ordinary Ceres gameplay review pending",
-      "issues": "reviewed geometry and LOD shading built into all three released packages; current isolated package views reviewed, ordinary Ceres gameplay review pending",
-      "evidence": [
-        ".devshots/fleet/towline-kit-astra/publish-state.json",
-        ".devshots/fleet/towline-kit-astra/shipping-shared-textures.json",
-        ".devshots/fleet/towline-kit-astra/shipping-package/_sheet_chase.png",
-        ".devshots/fleet/towline-kit-astra/shipping-package/_sheet_side.png",
-        ".devshots/fleet/towline-kit-astra/shipping-package/_sheet_close.png",
-        ".devshots/fleet/towline-kit-astra/shipping-package/report.json",
-        "test/towline-table-visuals.test.mjs"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
       ],
-      "updatedAt": "2026-11-16T06:23:14.662Z"
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/towline_kit_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/towline_kit_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/towline_kit_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:53:34.335Z"
     },
     "runtime:SF_SHIP_TOWLINE_MARA:towline_mara": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -16860,20 +16861,23 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Twin orange jaws and central hull form a readable tug; jaw faces are large and simple. Package: 11 primitives, 6 materials; four sockets, four dynamic groups, jaw pivots, three collision nodes. LOD0 named; no safe geometry removal established.",
-      "issues": "Ordinary gameplay, story motion and appearance remain unverified. Preserve named dynamic pivots, sockets and collision; texture sharing remains an unqualified storage candidate.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/towline_mara_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/towline_mara_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/towline_mara_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/towline_mara_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/towline_mara_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.137Z",
+      "updatedAt": "2026-11-17T02:53:35.516Z",
       "family": "Towline ships"
     },
     "runtime:SF_SHIP_TOWLINE_ODO:towline_odo": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -16932,16 +16936,19 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Teal tapered tug with aft winch reads clearly; large hull and winch faces are simple. Package: 11 primitives, 6 materials; four sockets, four dynamic groups, winch pivot, two collision nodes. LOD0 named; no safe geometry removal established.",
-      "issues": "Ordinary gameplay, story motion and appearance remain unverified. Preserve named dynamic pivots, sockets and collision; texture sharing remains an unqualified storage candidate.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/towline_odo_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/towline_odo_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/story-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/towline_odo_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/towline_odo_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/towline_odo_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.150Z",
+      "updatedAt": "2026-11-17T02:53:37.059Z",
       "family": "Towline ships"
     },
     "runtime:SF_SKID_QUAD:skid_quad": {
@@ -17015,149 +17022,194 @@
       "updatedAt": "2026-11-16T09:37:38.167Z"
     },
     "runtime:SF_STORMSHIFT_COLLECTOR_V01:ship_stormshift_collector_v01": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/ship_stormshift_collector_v01.glb",
           "sha256": "2566c9b8d60115fd32cb3857c69da7c5183aa949dca9936a64e37e98eea4d422",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/stormshift-collector/render.glb",
           "sha256": "5f8d4491c48ebbcb0982a9e392e97ce3caacabdcac7e3ae96dee1252e714efc2",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/ship_stormshift_collector_v01.glb",
           "sha256": "bdd4a42836559232877c17d393d6a97b8738e008f2c21496e1f43e2b8f1aa61c",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.662Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/ship_stormshift_collector_v01_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/ship_stormshift_collector_v01_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/ship_stormshift_collector_v01_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:53:39.036Z"
     },
     "runtime:SF_STORMSHIFT_RECEIVER_V01:ship_stormshift_receiver_v01": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/ship_stormshift_receiver_v01.glb",
           "sha256": "62496358cb6c10313931b47d942d3fe7abbac917726c2405670b36b201806801",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/stormshift-receiver/render.glb",
           "sha256": "cdb1643837ec201971b250ad7b32ccdc9905c642c340531e4015b06d3dfd43e4",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/ship_stormshift_receiver_v01.glb",
           "sha256": "a52eab433d89cb52c1995d5dde990a02049c0f2e5b7cfdcb483f3aaebc8cb471",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.662Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/ship_stormshift_receiver_v01_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/ship_stormshift_receiver_v01_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/ship_stormshift_receiver_v01_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:53:40.087Z"
     },
     "runtime:SF_SWARM_ANCHOR:swarm_anchor": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/swarm_anchor.glb",
           "sha256": "9c612770a56392cecfff074dcbcd0ce7afa537a0bbdcc6735bbd7fc5d9b54886",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/swarm-anchor/render.glb",
           "sha256": "b5f30fa1f843e1124270738c57ed53a7cab3f28bb41ff59d6b3e03467f868dde",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/swarm_anchor.glb",
           "sha256": "7fd55107ab68732e11cfd3377c714cd8fe90887f6406ae27f85487caf6de1ae1",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.662Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/swarm_anchor_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/swarm_anchor_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/swarm_anchor_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:53:41.245Z"
     },
     "runtime:SF_SWARM_JACKAL:swarm_jackal": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/swarm_jackal.glb",
           "sha256": "8a8a18f9d02b99b71c15479e64453b376f724158662fb53381f0ab74084d377b",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/swarm-jackal/render.glb",
           "sha256": "e7395d02d2f8df137ab9c52e2fad8d733d8b31531c654570ef8db2ced8e10273",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/swarm_jackal.glb",
           "sha256": "81ffb0b25fdb2548a402eebe2b445c87b15fcac22af5ae23cedc0b4869b533f7",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.662Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/swarm_jackal_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/swarm_jackal_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/swarm_jackal_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:53:42.978Z"
     },
     "runtime:SF_SWARM_WARDEN:swarm_warden": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/swarm_warden.glb",
           "sha256": "da8b1335706628bc9c0265afd929ae1c7d683173caf30260d7dcde8e3ca221aa",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/swarm-warden/render.glb",
           "sha256": "aa8532b2d76da75239e57944d1206369f53e9c0788e463f074a43d5398d48949",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/swarm_warden.glb",
           "sha256": "5e491d108ea3a2de03a7171185bbf7e559d14121f8f69660f516610d4a5f46e2",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.662Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/swarm_warden_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/swarm_warden_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/swarm_warden_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-named-npc-20261116/named-2/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:53:44.201Z"
     },
     "runtime:SF_WARDEN_PRODUCTION_V1:warden_production_v1": {
       "status": "passed",
@@ -17730,7 +17782,7 @@
       "updatedAt": "2026-11-16T22:45:30.675Z"
     },
     "runtime:SF_WHOLESHIP_APRON_SHUTTLE:apron_shuttle": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -17753,23 +17805,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views",
-        "Post-sharing Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Viewed current package; Passenger windows and teal accents identify a shuttle; numerous illuminated windows dominate the surface. Package inspection: 39 primitives, 13 materials; named LOD0/1/2 approximately 25.9k/10.3k/4.1k triangles. Six embedded textures used; no unused materials, textures or duplicate material definitions found. No safe runtime waste established. Repacked package to reference six already-existing shared textures; scoped compiler check and loader tests passed. The repacked package rendered successfully in both isolated views.",
-      "issues": "Ordinary in-game appearance remains open; runtime LOD selection was not verified. Review prominent lighting in context while preserving functional lights; isolated views are not gameplay acceptance.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/apron_shuttle_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/apron_shuttle_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-shared-post-20261116/apron_shuttle_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-shared-post-20261116/apron_shuttle_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-shared-post-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/apron_shuttle_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/apron_shuttle_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/apron_shuttle_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.236Z"
+      "updatedAt": "2026-11-17T02:39:45.942Z"
     },
     "runtime:SF_WHOLESHIP_ASHLINE_DART_CHOIR:ashline_dart_choir": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -17792,84 +17843,96 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Slender spear hull with magenta accents; bright strips dominate the chase silhouette. Package: 43 primitives, 14 materials, 12 sockets, nine dynamic groups; named LOD0–2 and hull-core pivot. No safe geometry merge established.",
-      "issues": "Ordinary gameplay and motion remain unverified; preserve LOD, collision, sockets and functional lights. Shared texture opportunity is unqualified; no performance measurement.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/ashline_dart_choir_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/ashline_dart_choir_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_dart_choir_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_dart_choir_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_dart_choir_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.373Z"
+      "updatedAt": "2026-11-17T02:39:46.535Z"
     },
     "runtime:SF_WHOLESHIP_ASHLINE_DART:ashline_dart": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/ashline_dart_lod1.glb",
           "sha256": "8cec199d937d34cc7f02a5bca06d1a99723b71a65e03f9955a0f5e2125e53b87",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/ashline_dart_lod2.glb",
           "sha256": "99add23cc6f39da9115d5aac9c6ed6ff30a83d767950e615a27c9811f83cfa70",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/ashline_dart.glb",
           "sha256": "480837e7a054dbee7ecf49b9ffc7fab7270ead958e17531b8c1b5022f98fb489",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/ashline-dart-lod1/render.glb",
           "sha256": "66db7fe8d577c11faf8fc55d2dc0500bf3fed562d37bbca7f2d6bd200f58673f",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/ashline-dart-lod2/render.glb",
           "sha256": "7c342568c7eca882d37d1c68ee5648c65b632243194fb133c40cbf626ebe0b97",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/ashline-dart/render.glb",
           "sha256": "79b7688b166609089afdc817fc11a9646ae6131e8893f6862b7625f442a7c158",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/ashline_dart_lod1.glb",
           "sha256": "fe54fccab7275578b1ddd318c29535cd91e8eefd0ac64e178f00064887ab88d9",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/ashline_dart_lod2.glb",
           "sha256": "9b938687bedd39b54f2330b89a80cbde90fc15cdd43fa34d5f1787cc00eb07be",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/ashline_dart.glb",
           "sha256": "7cd7680caac82056c10644e433e40057e5f94ff2b2ac9290c7c6f03805a557c8",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.663Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_dart_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_dart_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_dart_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:39:47.901Z"
     },
     "runtime:SF_WHOLESHIP_ASHLINE_LODE_VAEL:ashline_lode_vael": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -17892,48 +17955,60 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Green-accented wedge and layered hull reads clearly; illuminated strips are prominent. Package: 40 primitives, 13 materials, 12 sockets, nine dynamic groups; named LOD0–2 and hull-core pivot. No safe geometry merge established.",
-      "issues": "Ordinary gameplay and motion remain unverified; preserve LOD, collision, sockets and functional lights. Shared texture opportunity is unqualified; no performance measurement.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/ashline_lode_vael_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/ashline_lode_vael_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_lode_vael_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_lode_vael_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_lode_vael_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.456Z"
+      "updatedAt": "2026-11-17T02:41:01.351Z"
     },
     "runtime:SF_WHOLESHIP_ASHLINE_LODE:ashline_lode": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/ashline_lode.glb",
           "sha256": "fb1b2376277dd9ca870a23e4aa6adb162d2b9920cedfc97a43ae5dae84e255c1",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/ashline-lode/render.glb",
           "sha256": "349324184e621f6a59cf4be69c5691fbc2151dd66183c8bfdc67d4b25f380f94",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/ashline_lode.glb",
           "sha256": "e8f76ac2346a803235abfc66874cfbbe91228dbdfe2a82ae1b45ebb576706161",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.663Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_lode_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_lode_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_lode_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:41:03.252Z"
     },
     "runtime:SF_WHOLESHIP_ASHLINE_RIG_CORSAIR_BLADE:ashline_rig_corsair_blade": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -17956,113 +18031,134 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Long blade-like skeletal hull has orange edge lighting and thin forward spars. Package: 43 primitives, 14 materials, 12 sockets, nine dynamic groups; named LOD0–2 and hull-core pivot. No safe geometry merge established.",
-      "issues": "Ordinary gameplay and motion remain unverified; preserve LOD, collision, sockets and functional lights. Shared texture opportunity is unqualified; no performance measurement.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/ashline_rig_corsair_blade_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/ashline_rig_corsair_blade_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_rig_corsair_blade_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_rig_corsair_blade_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_rig_corsair_blade_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.472Z"
+      "updatedAt": "2026-11-17T02:41:05.211Z"
     },
     "runtime:SF_WHOLESHIP_ASHLINE_RIG_QUIET:ashline_rig_quiet": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/ashline_rig_quiet.glb",
           "sha256": "42a20b7bf53ac9c9bf735b8faa1edb99c89eb6f379f177664e4d0a3092d17558",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/ashline-rig-quiet/render.glb",
           "sha256": "98a2b4c25213a577cc547fe5e75675f20b1aac904ba33c38b932d3cd53cacb64",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/ashline_rig_quiet.glb",
           "sha256": "efd7836b81d1cffd2e73e188d356ddda3de9e48d0b823d2f5f4e4d22e7d8755d",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.663Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_rig_quiet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_rig_quiet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/ashline_rig_quiet_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-1/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:41:06.148Z"
     },
     "runtime:SF_WHOLESHIP_ASHLINE_RIG:ashline_rig": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/ashline_rig_lod1.glb",
           "sha256": "d1b0227e783932417e859c2c009380fbd1eca90137e27f710ca735e5faa608ee",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/ashline_rig_lod2.glb",
           "sha256": "e349cfc5733c40b595513d1fe781fe7c9294bbf020d72e5bf0c3e8397b2e5ccf",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/ashline_rig.glb",
           "sha256": "7c300c2cb3f2043bc3ae7921ed4f75b5c47bdaa561c1a4d732cae961b8917992",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/ashline-rig-lod1/render.glb",
           "sha256": "371f7386aa0c23c07c17ae0fb55e38195085bd5d7b9668a4936cf28f50355581",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/ashline-rig-lod2/render.glb",
           "sha256": "c6fe5bc6e9c4aaf9dd30015fa4e090f623d3c17444ffe67789973eefd28719e7",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/ashline-rig/render.glb",
           "sha256": "2aed1e8fade89babcd196ac0524c80d1b51a52a4f7aa90875a3b8eabf630c4da",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/ashline_rig_lod1.glb",
           "sha256": "81e8797e89795e7fe0adf43ab637d359edce4fdd1d56f9ac31b3074b68631fc2",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/ashline_rig_lod2.glb",
           "sha256": "fb6ce1a8a34099edd5033dff0f12761de15d348261d46b68e43a1a781a5526e9",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/ashline_rig.glb",
           "sha256": "5b701ee4bc90bf81af8246c4c10ef2f51b3b97415e07bee3c90a382f7f4ebe00",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.663Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/ashline_rig_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/ashline_rig_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/ashline_rig_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:41:06.764Z"
     },
     "runtime:SF_WHOLESHIP_CERES_BREAKER:ceres_breaker": {
-      "status": "pending",
+      "status": "needs follow-up",
       "current": true,
       "version": [
         {
@@ -18084,14 +18180,23 @@
           "sha256Source": "release-manifest"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.663Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Capture limitation, not a model defect.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/ceres_breaker_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/ceres_breaker_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/ceres_breaker_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:41:08.843Z"
     },
     "runtime:SF_WHOLESHIP_HELIOS_ARCLIGHT:helios_arclight": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -18114,48 +18219,60 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Twin-pronged hauler and arched cyan brace form a distinctive silhouette. Package: 42 primitives, 14 materials, 12 sockets, nine dynamic groups; named LOD0–2 and hull-core pivot. No safe geometry merge established.",
-      "issues": "Ordinary gameplay and motion remain unverified; preserve LOD, collision, sockets and functional lights. Shared texture opportunity is unqualified; no performance measurement.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/helios_arclight_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/helios_arclight_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/helios_arclight_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/helios_arclight_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/helios_arclight_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.484Z"
+      "updatedAt": "2026-11-17T02:41:10.225Z"
     },
     "runtime:SF_WHOLESHIP_HELIOS_CRADLE_DMC:helios_cradle_dmc": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/helios_cradle_dmc.glb",
           "sha256": "932a7f1e9508189fe189fa1e136ad9d866a98d1a76d0c511a3686b31476dff37",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/helios-cradle-dmc/render.glb",
           "sha256": "ab655a97e7793f705b6807c1ebf286fde43d4e8c19b894611d961e62c47b34d2",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/helios_cradle_dmc.glb",
           "sha256": "6bdaf3274282e16f17256434488c5f451f342002088bb5cbec21bbdcdb0587da",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.663Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/helios_cradle_dmc_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/helios_cradle_dmc_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/helios_cradle_dmc_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:41:12.406Z"
     },
     "runtime:SF_WHOLESHIP_HELIOS_CRADLE:helios_cradle": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -18178,139 +18295,174 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Viewed current package; Cargo cradle reads clearly with paneled hull and visible rocks; bright strips dominate some edges. Package inspection: 45 primitives, 16 materials; named LOD0/1/2 approximately 43.7k/17.4k/7.2k triangles. Six embedded textures used; no unused materials, textures or duplicate material definitions found. No safe runtime waste established.",
-      "issues": "Ordinary in-game appearance remains open; runtime LOD selection was not verified. Review prominent lighting in context while preserving functional lights; isolated views are not gameplay acceptance.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/helios_cradle_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/helios_cradle_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/helios_cradle_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/helios_cradle_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/helios_cradle_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.521Z"
+      "updatedAt": "2026-11-17T02:41:14.174Z"
     },
     "runtime:SF_WHOLESHIP_HELIOS_LARK:helios_lark": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/helios_lark.glb",
           "sha256": "fb2a333053afc504882602122bedd04d28e1087782ea522a76a61ce23b32b1b3",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/helios-lark/render.glb",
-          "sha256": "147e53c265e2dc6ce5ae4cb50653fb23a8824dbaa31ebbdf528d6f171c801fa0",
-          "sha256Source": "catalog-only"
+          "sha256": "2bd473d83866c83e6d0e9b9cde22bef98c0e7522368d1118297a15e69e8596f2",
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/helios_lark.glb",
           "sha256": "04a6ed74e88ec68c88877012ed7b2d048780b51f973c2e41f7effde20bc2c645",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "canonical source, release and render package promoted; packaged-loader close/chase check passed; ordinary courier gameplay remains unverified",
-      "issues": "canonical source, release and render package promoted; packaged-loader close/chase check passed; ordinary courier gameplay remains unverified",
-      "evidence": [
-        ".devshots/fleet/lark-surface-astra/render-256/_sheet_close.png",
-        ".devshots/fleet/lark-surface-astra/render-256/_sheet_chase.png",
-        ".devshots/fleet/lark-surface-astra/render-256/report.json"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
       ],
-      "updatedAt": "2026-11-16T06:23:14.663Z"
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/helios_lark_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/helios_lark_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/helios_lark_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:41:16.087Z"
     },
     "runtime:SF_WHOLESHIP_HELIOS_SPAN_DMC:helios_span_dmc": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/helios_span_dmc.glb",
           "sha256": "4ed0f930853b9e6d72c33a46efd1f723c9bd70917b9189e839a8265ffc6bb94f",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/helios-span-dmc/render.glb",
           "sha256": "430ea44678dfef7ca3d368a936975524abf2b8ffe2e443ffcb3998a6fd3e6646",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/helios_span_dmc.glb",
           "sha256": "f6f91ae8079eaed5217f1a55548fed5c3d929397a5d3d49abb7a5dba1e315109",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.663Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/helios_span_dmc_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/helios_span_dmc_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/helios_span_dmc_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-2/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:41:17.398Z"
     },
     "runtime:SF_WHOLESHIP_HELIOS_SPAN_MTS:helios_span_mts": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/helios_span_mts.glb",
           "sha256": "443bcb53ef5dbafc1387df07597dbfa7e0eb38dbba0500955228d0874f954136",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/helios-span-mts/render.glb",
           "sha256": "aa6c1c491fe3b15c2dd08f55185cf1b0f86891e0100d4312723de46038b25a91",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/helios_span_mts.glb",
           "sha256": "171d0120501fd1762f0eba7b1a72160b4057061d7a62fbf705e929c32c3bc6df",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.663Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/helios_span_mts_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/helios_span_mts_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/helios_span_mts_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:41:18.600Z"
     },
     "runtime:SF_WHOLESHIP_HELIOS_SPAN_REACH:helios_span_reach": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/helios_span_reach.glb",
           "sha256": "e770c29ef1d156e6cf8003ebea5044e1a0dcfd2b81b06d8a76e8eb80b718d6d5",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/helios-span-reach/render.glb",
           "sha256": "e54c86948552de657e801438ea0016ef1412ee88ca47f89e27bd5ff9ff758635",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/helios_span_reach.glb",
           "sha256": "75b27ee6640f8a25450c471f59ee96d01b1b30cd3ac42e003a7d021f514caf4a",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.663Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/helios_span_reach_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/helios_span_reach_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/helios_span_reach_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:41:20.387Z"
     },
     "runtime:SF_WHOLESHIP_HELIOS_SPAN:helios_span": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -18333,19 +18485,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Viewed current package; Cargo modules and supporting ribs read clearly; central blue strip is prominent. Package inspection: 55 primitives, 17 materials; named LOD0/1/2 approximately 32.7k/12.9k/5.4k triangles; secondary-gun hooks. Six embedded textures used; no unused materials, textures or duplicate material definitions found. No safe runtime waste established.",
-      "issues": "Ordinary in-game appearance remains open; runtime LOD selection was not verified. Review prominent lighting in context while preserving functional lights; isolated views are not gameplay acceptance.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/helios_span_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/helios_span_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/helios_span_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/helios_span_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/helios_span_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.609Z"
+      "updatedAt": "2026-11-17T02:41:21.364Z"
     },
     "runtime:SF_WHOLESHIP_INSPECTION_CUTTER:inspection_cutter": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -18368,19 +18523,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Blue-white cutter and tall antenna convey inspection role; lights are strong. Package: 58 primitives, 13 materials, 12 sockets, nine dynamic groups; named LOD0–2 and arm/scanring pivots. No safe geometry merge established.",
-      "issues": "Ordinary gameplay and motion remain unverified; preserve LOD, collision, sockets and functional lights. Shared texture opportunity is unqualified; no performance measurement.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/inspection_cutter_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/inspection_cutter_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/inspection_cutter_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/inspection_cutter_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/inspection_cutter_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.642Z"
+      "updatedAt": "2026-11-17T02:41:21.746Z"
     },
     "runtime:SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1:massline_express_liner_v1": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -18439,48 +18597,60 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Broad white-teal passenger liner with window rows reads clearly at scale. Package: 14 primitives, 13 materials, 15 sockets, three dynamic groups; named LOD0 only. No safe geometry merge established.",
-      "issues": "Ordinary gameplay and motion remain unverified; preserve LOD, collision, sockets and functional lights. Shared texture opportunity is unqualified; no performance measurement.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/massline_express_liner_v1_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/massline_express_liner_v1_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/massline_express_liner_v1_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/massline_express_liner_v1_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/massline_express_liner_v1_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.659Z"
+      "updatedAt": "2026-11-17T02:41:22.817Z"
     },
     "runtime:SF_WHOLESHIP_ORE_BARGE:ore_barge": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/ore_barge.glb",
           "sha256": "cf2650ec9dfe29a78ef60e1a2b8e35f6fc03b2ea7138327f5c08c82ec5f53546",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/ore-barge/render.glb",
           "sha256": "54fa7af6be24253423ad2613c9a973c100e2cf75d749c8eee7f841eeeab8902b",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/ore_barge.glb",
           "sha256": "06fabcbb0cfcb509a500d72cc914d26f0de1d024343c12c17d94f2fb8b90b990",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.663Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/ore_barge_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/ore_barge_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/ore_barge_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-3/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:41:23.739Z"
     },
     "runtime:SF_WHOLESHIP_PROSPECTOR_SKIFF:prospector_skiff": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -18503,23 +18673,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views",
-        "Post-sharing Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Viewed current package; Drill, tanks and cargo tubes distinguish role; dark hull at chase distance loses detail. Package inspection: 48 primitives, 16 materials; named LOD0/1/2 approximately 24.4k/9.7k/4.1k triangles. Six embedded textures used; no unused materials, textures or duplicate material definitions found. No safe runtime waste established. Repacked package to reference six already-existing shared textures; scoped compiler check and loader tests passed. The repacked package rendered successfully in both isolated views.",
-      "issues": "Ordinary in-game appearance remains open; runtime LOD selection was not verified. Review prominent lighting in context while preserving functional lights; isolated views are not gameplay acceptance.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/prospector_skiff_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/prospector_skiff_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-shared-post-20261116/prospector_skiff_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-shared-post-20261116/prospector_skiff_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-shared-post-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/prospector_skiff_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/prospector_skiff_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/prospector_skiff_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.686Z"
+      "updatedAt": "2026-11-17T02:41:24.415Z"
     },
     "runtime:SF_WHOLESHIP_REPAIR_TENDER:repair_tender": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -18542,23 +18711,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views",
-        "Post-sharing Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Viewed current package; Distinct repair arms and deck details read clearly; long yellow strips are visually prominent. Package inspection: 46 primitives, 15 materials; named LOD0/1/2 approximately 34.6k/13.8k/3.8k triangles. Six embedded textures used; no unused materials, textures or duplicate material definitions found. No safe runtime waste established. Repacked package to reference six already-existing shared textures; scoped compiler check and loader tests passed. The repacked package rendered successfully in both isolated views.",
-      "issues": "Ordinary in-game appearance remains open; runtime LOD selection was not verified. Review prominent lighting in context while preserving functional lights; isolated views are not gameplay acceptance.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/repair_tender_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/repair_tender_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-shared-post-20261116/repair_tender_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-shared-post-20261116/repair_tender_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ship-shared-post-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/repair_tender_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/repair_tender_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/repair_tender_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.716Z"
+      "updatedAt": "2026-11-17T02:41:25.784Z"
     },
     "runtime:SF_WHOLESHIP_RESCUE_LIFTER:rescue_lifter": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -18581,19 +18749,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Viewed current package; Orange rescue markings, warning bar and twin rear arms read clearly; lights must retain their function. Package inspection: 45 primitives, 15 materials; named LOD0/1/2 approximately 43.5k/17.2k/6.8k triangles. Six embedded textures used; no unused materials, textures or duplicate material definitions found. No safe runtime waste established.",
-      "issues": "Ordinary in-game appearance remains open; runtime LOD selection was not verified. Review prominent lighting in context while preserving functional lights; isolated views are not gameplay acceptance.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/rescue_lifter_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/rescue_lifter_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/rescue_lifter_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/rescue_lifter_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/rescue_lifter_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.748Z"
+      "updatedAt": "2026-11-17T02:41:27.571Z"
     },
     "runtime:SF_WHOLESHIP_SALVAGE_CUTTER:salvage_cutter": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -18616,19 +18787,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Viewed current package; Cutter jaws and cargo rack are clear; bright jaw strips dominate the silhouette and warrant contextual review. Package inspection: 81 primitives, 16 materials; named LOD0/1/2 approximately 23.7k/9.4k/3.6k triangles; preserve separate jaw and ram motion nodes. Six embedded textures used; no unused materials, textures or duplicate material definitions found. No safe runtime waste established.",
-      "issues": "Ordinary in-game appearance remains open; runtime LOD selection was not verified. Review prominent lighting in context while preserving functional lights; isolated views are not gameplay acceptance.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/salvage_cutter_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/salvage_cutter_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/salvage_cutter_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/salvage_cutter_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/salvage_cutter_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:38.858Z"
+      "updatedAt": "2026-11-17T02:41:29.325Z"
     },
     "runtime:SF_WHOLESHIP_SCRAP_SWEEPER:scrap_sweeper": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -18651,19 +18825,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Open front grid and scrap bed identify the service role. Package: 49 primitives, 16 materials, 12 sockets, nine dynamic groups; named LOD0–2. No safe geometry merge established.",
-      "issues": "Ordinary gameplay and motion remain unverified; preserve LOD, collision, sockets and functional lights. Shared texture opportunity is unqualified; no performance measurement.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/scrap_sweeper_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/scrap_sweeper_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/scrap_sweeper_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/scrap_sweeper_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/scrap_sweeper_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:39.016Z"
+      "updatedAt": "2026-11-17T02:41:30.408Z"
     },
     "runtime:SF_WHOLESHIP_SURVEY_PIN:survey_pin": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -18686,19 +18863,22 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Viewed current package; Sensor dish, dome, antenna and solar-panel-like wings distinguish its purpose; cyan rings are bright. Package inspection: 37 primitives, 12 materials; named LOD0/1/2 approximately 31.6k/12.5k/5.0k triangles. Six embedded textures used; no unused materials, textures or duplicate material definitions found. No safe runtime waste established.",
-      "issues": "Ordinary in-game appearance remains open; runtime LOD selection was not verified. Review prominent lighting in context while preserving functional lights; isolated views are not gameplay acceptance.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/survey_pin_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/survey_pin_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/civilian-ships-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/survey_pin_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/survey_pin_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/survey_pin_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:39.087Z"
+      "updatedAt": "2026-11-17T02:41:32.247Z"
     },
     "runtime:SF_WHOLESHIP_VOLATILES_TANKER:volatiles_tanker": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
@@ -18721,45 +18901,57 @@
         }
       ],
       "views": [
-        "Isolated Direct3D chase and inspect views"
+        "chase",
+        "close",
+        "inspect"
       ],
-      "changes": "Visual: Tanks within a framed long hull and warning lights read as hazardous transport. Package: 43 primitives, 14 materials, 12 sockets, nine dynamic groups; named LOD0–2. No safe geometry merge established.",
-      "issues": "Ordinary gameplay and motion remain unverified; preserve LOD, collision, sockets and functional lights. Shared texture opportunity is unqualified; no performance measurement.",
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/volatiles_tanker_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/volatiles_tanker_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/ships-varied-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/volatiles_tanker_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/volatiles_tanker_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/volatiles_tanker_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/_sheet_chase.png"
       ],
-      "updatedAt": "2026-11-16T09:37:39.222Z"
+      "updatedAt": "2026-11-17T02:41:33.561Z"
     },
     "runtime:SF_WHOLESHIP_YARD_TUG:yard_tug": {
-      "status": "pending",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "authoring",
           "path": "assets/ships/parts/wholeships/yard_tug.glb",
           "sha256": "4ceac593d5489242577fde8f0c1157c390c289be179832cb28bb5d5d63c383fa",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "package",
           "path": "assets/ships/release/render-packages/yard-tug/render.glb",
           "sha256": "3efafeb55d06938317d06bef90622ce3da31616660aaacf3becbb4c7fe500aee",
-          "sha256Source": "catalog-only"
+          "sha256Source": "current-file-bytes"
         },
         {
           "role": "release",
           "path": "assets/ships/release/parts/wholeships/yard_tug.glb",
           "sha256": "9f33875afb48a38986d1232a46f43857fe9255c7e7e9b308266b303e9fdd2003",
-          "sha256Source": "release-manifest"
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "No review change recorded.",
-      "issues": "Visual and practical efficiency review is pending.",
-      "evidence": [],
-      "updatedAt": "2026-11-16T06:23:14.663Z"
+      "views": [
+        "chase",
+        "close",
+        "inspect"
+      ],
+      "changes": "No asset change; capture-based review.",
+      "issues": "Isolated evidence only; ordinary-play encounter view pending.",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/yard_tug_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/yard_tug_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/yard_tug_inspect.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/rt-ships-civilian-20261116/civ-4/_sheet_chase.png"
+      ],
+      "updatedAt": "2026-11-17T02:41:35.317Z"
     },
     "runtime:sf20_19_pip_spanner:place_pip_spanner": {
       "status": "pending",
