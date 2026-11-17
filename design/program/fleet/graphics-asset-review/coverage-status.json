@@ -5,8 +5,8 @@
   "statusCounts": {
     "pending": 66,
     "in progress": 0,
-    "passed": 279,
-    "needs follow-up": 173,
+    "passed": 281,
+    "needs follow-up": 171,
     "unused/unresolved": 3048
   },
   "models": {
@@ -2002,14 +2002,20 @@
           "sha256Source": null
         }
       ],
-      "views": [],
-      "changes": "Retain separate per-creature finishes with single-owner teardown (commit 031a88181019).",
-      "issues": "Inspect the silhouette, glow balance and repeated spikes from the gameplay camera.",
-      "evidence": [
-        "src/render/faunaVisuals.js",
-        "test/sfq-b175-fauna-body-expression.test.mjs"
+      "views": [
+        "chase",
+        "close"
       ],
-      "updatedAt": "2026-11-16T06:20:33.723Z"
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/anchor_beast_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/anchor_beast_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/report.json"
+      ],
+      "updatedAt": "2026-11-17T03:51:20.795Z"
     },
     "procedural:fauna:archive_crab": {
       "status": "needs follow-up",
@@ -2023,22 +2029,19 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state chase and close views",
-        "Uncropped Direct3D place and inspect views at 45-degree yaw"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Wrinkled brown body with angular orange plates and legs; plates read as flat layered shapes. Source efficiency: 11 meshes; cached geometry; six identical per-creature leg materials are a qualified-sharing candidate. Shared identical appendage material within each creature, retaining independent motion and material ownership. Focused disposal, animation and late-binding checks pass. Follow-up: The whole crab is visible after material sharing; layered plates remain simple.",
-      "issues": "Ordinary gameplay, motion and other strains remain unverified. Preserve per-creature animation, glass and mutable material ownership. Other motion states and normal gameplay remain open.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/archive_crab_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/archive_crab_close.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/report.json",
-        ".devshots/fauna-material-check.mjs",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/dispatch.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/archive_crab_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/archive_crab_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/archive_crab_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/archive_crab_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.536Z"
+      "updatedAt": "2026-11-17T03:51:21.313Z"
     },
     "procedural:fauna:black_sail": {
       "status": "needs follow-up",
@@ -2052,20 +2055,19 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state chase and close views",
-        "Uncropped Direct3D place and inspect views at 45-degree yaw"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Both views show an edge-on sliver, so the sail shape cannot be reviewed. Source efficiency: 2 meshes with distinct materials and cached geometry. Follow-up: Angled views reveal a broad, nearly featureless brown oval with two faint lines.",
-      "issues": "Ordinary gameplay, motion and other strains remain unverified. View is edge-on or cropped and is not an adequate complete visual pass. Preserve per-creature animation, glass and mutable material ownership. Other motion states and normal gameplay remain open.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/black_sail_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/black_sail_close.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/black_sail_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/black_sail_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/black_sail_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/black_sail_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.537Z"
+      "updatedAt": "2026-11-17T03:51:21.794Z"
     },
     "procedural:fauna:blind_shepherd": {
       "status": "needs follow-up",
@@ -2079,20 +2081,19 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state chase and close views",
-        "Uncropped Direct3D place and inspect views at 45-degree yaw"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Brown wrinkled shell and bright central organ; chase and close frames crop much of the creature. Source efficiency: 3 meshes with distinct finishes and cached geometry. Follow-up: The whole body is visible; wrinkled brown shell and central organ remain simple.",
-      "issues": "Ordinary gameplay, motion and other strains remain unverified. View is edge-on or cropped and is not an adequate complete visual pass. Preserve per-creature animation, glass and mutable material ownership. Other motion states and normal gameplay remain open.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/blind_shepherd_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/blind_shepherd_close.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/report.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/blind_shepherd_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/blind_shepherd_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/blind_shepherd_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/blind_shepherd_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.538Z"
+      "updatedAt": "2026-11-17T03:51:22.386Z"
     },
     "procedural:fauna:bolus_baleen": {
       "status": "passed",
@@ -3265,38 +3266,45 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state chase and close views"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Brown wrinkled body with quills; geometry is legible but spines and front details are simple. Source efficiency: 11 meshes; cached geometry and shared per-creature quill material; preserve animated quills.",
-      "issues": "Ordinary gameplay, motion and other strains remain unverified. Preserve per-creature animation, glass and mutable material ownership.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/bristle_ram_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/bristle_ram_close.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/bristle_ram_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/bristle_ram_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-1/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.573Z"
+      "updatedAt": "2026-11-17T03:51:22.908Z"
     },
     "procedural:fauna:casket_worm": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/faunaVisuals.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "9e4ef1d18504a4e486f2d823e42b2a0843677351e6df066662cee1b0cbfa43f8",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "Two site-cast color variants traced in source and sampled at the current gameplay camera after diagnostic relocation; ordinary encounters remain unverified.",
-      "issues": "Two site-cast color variants traced in source and sampled at the current gameplay camera after diagnostic relocation; ordinary encounters remain unverified.",
-      "evidence": [
-        ".devshots/fleet/procedural-models/casket-production-camera/casket-choir-production-chase.png",
-        ".devshots/fleet/procedural-models/casket-production-camera/observations.json",
-        "src/render/faunaVisuals.js",
-        "src/render/casketWormGeometry.js"
+      "views": [
+        "chase",
+        "close"
       ],
-      "updatedAt": "2026-11-16T06:20:33.723Z"
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Isolated evidence only; motion states, alternate strains, and ordinary-play encounters pending (per agy1 notes).",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/casket_worm_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/casket_worm_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/report.json"
+      ],
+      "updatedAt": "2026-11-17T03:51:23.406Z"
     },
     "procedural:fauna:cold_bell": {
       "status": "needs follow-up",
@@ -3310,22 +3318,19 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state chase and close views",
-        "Uncropped Direct3D place and inspect views at 45-degree yaw"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Brown cup and orange clapper with upper ribs cropped; full construction cannot be judged from these views. Source efficiency: 8 meshes; six identical per-creature rib materials are a sharing candidate. Shared identical appendage material within each creature, retaining independent motion and material ownership. Focused disposal, animation and late-binding checks pass. Follow-up: Whole view shows cup and separated-looking ribs; motion/context needed to judge connection.",
-      "issues": "Ordinary gameplay, motion and other strains remain unverified. View is edge-on or cropped and is not an adequate complete visual pass. Preserve per-creature animation, glass and mutable material ownership. Other motion states and normal gameplay remain open.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/cold_bell_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/cold_bell_close.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/report.json",
-        ".devshots/fauna-material-check.mjs",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/dispatch.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/cold_bell_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/cold_bell_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/cold_bell_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/cold_bell_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.575Z"
+      "updatedAt": "2026-11-17T03:51:23.932Z"
     },
     "procedural:fauna:furnace_maw": {
       "status": "needs follow-up",
@@ -3339,22 +3344,19 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state chase and close views",
-        "Uncropped Direct3D place and inspect views at 45-degree yaw"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Brown folded bowl with radiating jaws; open-mouth state is not shown. Source efficiency: 9 meshes; seven identical per-creature jaw materials are a sharing candidate. Shared identical appendage material within each creature, retaining independent motion and material ownership. Focused disposal, animation and late-binding checks pass. Follow-up: Whole view shows folded bowl and jaws after material sharing; open state remains unviewed.",
-      "issues": "Ordinary gameplay, motion and other strains remain unverified. Preserve per-creature animation, glass and mutable material ownership. Other motion states and normal gameplay remain open.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/furnace_maw_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/furnace_maw_close.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/report.json",
-        ".devshots/fauna-material-check.mjs",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/dispatch.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/furnace_maw_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/furnace_maw_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/furnace_maw_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/furnace_maw_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.575Z"
+      "updatedAt": "2026-11-17T03:51:24.325Z"
     },
     "procedural:fauna:glassback": {
       "status": "needs follow-up",
@@ -3368,22 +3370,19 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state chase and close views",
-        "Uncropped Direct3D place and inspect views at 45-degree yaw"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Translucent pale dome over limbs and luminous organ; glass must remain transparent. Source efficiency: 6 meshes; four identical per-creature leg materials are a sharing candidate. Shared identical appendage material within each creature, retaining independent motion and material ownership. Focused disposal, animation and late-binding checks pass. Follow-up: Translucent dome and limbs remain visible after material sharing.",
-      "issues": "Ordinary gameplay, motion and other strains remain unverified. Preserve per-creature animation, glass and mutable material ownership. Other motion states and normal gameplay remain open.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/glassback_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/glassback_close.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/report.json",
-        ".devshots/fauna-material-check.mjs",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/dispatch.json",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/glassback_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/glassback_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-followup-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/glassback_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/glassback_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.576Z"
+      "updatedAt": "2026-11-17T03:51:24.740Z"
     },
     "procedural:fauna:hull_leech": {
       "status": "needs follow-up",
@@ -3397,38 +3396,45 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state chase and close views"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Orange-brown center and six radial arms are legible but geometrically simple. Source efficiency: 8 meshes; arm geometry and per-creature arm material already shared.",
-      "issues": "Ordinary gameplay, motion and other strains remain unverified. Preserve per-creature animation, glass and mutable material ownership.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/hull_leech_chase.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/hull_leech_close.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/hull_leech_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/hull_leech_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-2/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.578Z"
+      "updatedAt": "2026-11-17T03:51:25.122Z"
     },
     "procedural:fauna:lantern_cyst": {
-      "status": "needs follow-up",
+      "status": "passed",
       "current": true,
       "version": [
         {
           "role": "builder",
           "path": "src/render/faunaVisuals.js",
-          "sha256": null,
-          "sha256Source": null
+          "sha256": "9e4ef1d18504a4e486f2d823e42b2a0843677351e6df066662cee1b0cbfa43f8",
+          "sha256Source": "current-file-bytes"
         }
       ],
-      "views": [],
-      "changes": "Two site-cast color strains traced in source and inspected after diagnostic relocation. A public-map New Game journey reached a Charon cyst with the new geometry and shared skin, but its marked view was partly covered by the ship; an unobstructed ordinary view and a natural Veil encounter remain unverified.",
-      "issues": "Two site-cast color strains traced in source and inspected after diagnostic relocation. A public-map New Game journey reached a Charon cyst with the new geometry and shared skin, but its marked view was partly covered by the ship; an unobstructed ordinary view and a natural Veil encounter remain unverified.",
-      "evidence": [
-        ".devshots/fleet/procedural-models/lantern-ordinary-route-visible/observations.json",
-        ".devshots/fleet/procedural-models/lantern-ordinary-route-visible/failure.png",
-        ".devshots/fleet/procedural-models/lantern-ordinary-route/observations.json",
-        ".devshots/fleet/procedural-models/lantern-v4-camera/comparison-check.json"
+      "views": [
+        "chase",
+        "close"
       ],
-      "updatedAt": "2026-11-16T06:20:33.724Z"
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Isolated evidence only; motion states, alternate strains, and ordinary-play encounters pending (per agy1 notes).",
+      "evidence": [
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/lantern_cyst_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/lantern_cyst_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/report.json"
+      ],
+      "updatedAt": "2026-11-17T03:51:25.523Z"
     },
     "procedural:fauna:mourning_kite": {
       "status": "needs follow-up",
@@ -3442,16 +3448,19 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state Direct3D place and inspect"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Pale translucent oval sail with small bright core; preserve transparency, though outline is simple. Source efficiency: 3 meshes with distinct finishes; no safe material sharing found. Focused ownership, motion and late-binding checks passed for changed species.",
-      "issues": "Ordinary gameplay, motion and alternate strains remain unverified; preserve creature-local materials and any functional glow or transparency.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/mourning_kite_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/mourning_kite_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/mourning_kite_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/mourning_kite_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.580Z"
+      "updatedAt": "2026-11-17T03:51:25.958Z"
     },
     "procedural:fauna:needle_swarm": {
       "status": "needs follow-up",
@@ -3465,16 +3474,19 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state Direct3D place and inspect"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Orange core and thin radial darts are visible, but simple at this static pose. Source efficiency: Default nine darts plus core; cached geometry and per-creature material; later darts now borrow ownership. Focused ownership, motion and late-binding checks passed for changed species.",
-      "issues": "Ordinary gameplay, motion and alternate strains remain unverified; preserve creature-local materials and any functional glow or transparency.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/needle_swarm_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/needle_swarm_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/needle_swarm_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/needle_swarm_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.581Z"
+      "updatedAt": "2026-11-17T03:51:26.354Z"
     },
     "procedural:fauna:pilgrim_spine": {
       "status": "needs follow-up",
@@ -3488,16 +3500,19 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state Direct3D place and inspect"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Tapered triangular body and long stem are legible but strongly geometric. Source efficiency: 3 meshes with distinct tissue/filament/glow. Focused ownership, motion and late-binding checks passed for changed species.",
-      "issues": "Ordinary gameplay, motion and alternate strains remain unverified; preserve creature-local materials and any functional glow or transparency.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/pilgrim_spine_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/pilgrim_spine_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/pilgrim_spine_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/pilgrim_spine_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.582Z"
+      "updatedAt": "2026-11-17T03:51:26.741Z"
     },
     "procedural:fauna:spindle_mother": {
       "status": "needs follow-up",
@@ -3511,16 +3526,19 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state Direct3D place and inspect"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Tall textured trunk with bright yellow sacs; glow dominates the shape. Source efficiency: 20 meshes including 18 sacs; later sacs now borrow shared material ownership. Focused ownership, motion and late-binding checks passed for changed species.",
-      "issues": "Ordinary gameplay, motion and alternate strains remain unverified; preserve creature-local materials and any functional glow or transparency.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/spindle_mother_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/spindle_mother_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/spindle_mother_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/spindle_mother_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-3/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.582Z"
+      "updatedAt": "2026-11-17T03:51:27.107Z"
     },
     "procedural:fauna:stone_lung": {
       "status": "needs follow-up",
@@ -3534,16 +3552,19 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state Direct3D place and inspect"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Brown mound with raised core; broad simple shape. Source efficiency: 3 meshes with distinct finishes. Focused ownership, motion and late-binding checks passed for changed species.",
-      "issues": "Ordinary gameplay, motion and alternate strains remain unverified; preserve creature-local materials and any functional glow or transparency.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/stone_lung_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/stone_lung_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/stone_lung_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/stone_lung_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.583Z"
+      "updatedAt": "2026-11-17T03:51:27.462Z"
     },
     "procedural:fauna:suture_mite": {
       "status": "needs follow-up",
@@ -3557,16 +3578,19 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state Direct3D place and inspect"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Textured rounded brown body with tiny orange protrusions; motion needed to judge spinnerets. Source efficiency: 4 meshes; spinnerets now share one per-creature material. Focused ownership, motion and late-binding checks passed for changed species.",
-      "issues": "Ordinary gameplay, motion and alternate strains remain unverified; preserve creature-local materials and any functional glow or transparency.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/suture_mite_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/suture_mite_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/suture_mite_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/suture_mite_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.584Z"
+      "updatedAt": "2026-11-17T03:51:27.896Z"
     },
     "procedural:fauna:veil_ray": {
       "status": "needs follow-up",
@@ -3580,16 +3604,19 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state Direct3D place and inspect"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Brown wing with visible vein lines and tail; retain separate moving transforms. Source efficiency: 3 meshes; ordinary ray body/tail now share one per-creature material; nursery path unchanged. Focused ownership, motion and late-binding checks passed for changed species.",
-      "issues": "Ordinary gameplay, motion and alternate strains remain unverified; preserve creature-local materials and any functional glow or transparency.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/veil_ray_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/veil_ray_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/veil_ray_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/veil_ray_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.585Z"
+      "updatedAt": "2026-11-17T03:51:28.264Z"
     },
     "procedural:fauna:void_carrier": {
       "status": "needs follow-up",
@@ -3603,16 +3630,19 @@
         }
       ],
       "views": [
-        "Isolated live-factory initial-state Direct3D place and inspect"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Enlarged spindle silhouette with prominent bright sacs; glow and scale need gameplay context. Source efficiency: 20 meshes inherited from spindle; later sacs now borrow shared material ownership. Focused ownership, motion and late-binding checks passed for changed species.",
-      "issues": "Ordinary gameplay, motion and alternate strains remain unverified; preserve creature-local materials and any functional glow or transparency.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/void_carrier_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/void_carrier_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-updated-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/void_carrier_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/void_carrier_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.586Z"
+      "updatedAt": "2026-11-17T03:51:28.704Z"
     },
     "procedural:fauna:wake_eel": {
       "status": "needs follow-up",
@@ -3626,16 +3656,19 @@
         }
       ],
       "views": [
-        "Isolated live-factory Direct3D place and inspect initial state"
+        "chase",
+        "close"
       ],
-      "changes": "Visual: Segmented brown eel with bright orange head reads in the isolated view; motion remains unviewed. Source: Nine independently moving segments, shared geometry/tissue and separate glowing head. No safe geometry removal established.",
-      "issues": "Ordinary gameplay and motion remain unverified; preserve part identities and functional cues.",
+      "changes": "No asset change; capture-based review by agy1, applied by orchestrator.",
+      "issues": "Construction defects per agy1 inspection — rebuild wave required (see event observation for exact mesh names).",
       "evidence": [
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-third-20261116/wake_eel_place.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-third-20261116/wake_eel_inspect.png",
-        ".devshots/fleet/graphics-overhaul-asset-review-current/fauna-third-20261116/report.json"
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/wake_eel_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/wake_eel_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/_sheet_chase.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/_sheet_close.png",
+        "C:/Users/93rob/Documents/GitHub/SpaceFace/.devshots/fleet/graphics-overhaul-asset-review-current/proc-fauna-open-20261116/open-4/report.json"
       ],
-      "updatedAt": "2026-11-16T09:37:29.587Z"
+      "updatedAt": "2026-11-17T03:51:29.144Z"
     },
     "procedural:machine-prop:dock_arm": {
       "status": "passed",
