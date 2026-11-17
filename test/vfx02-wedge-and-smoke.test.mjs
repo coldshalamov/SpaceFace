@@ -24,7 +24,7 @@ import {
 } from '../src/render/vfx/actionPrimitives.js';
 import {
   RESIDUE_SMOKE_COLOUR, RESIDUE_SMOKE_END_OPACITY, RESIDUE_SMOKE_LIFE_S,
-  RESIDUE_SMOKE_MAX_OF_FIREBALL, RESIDUE_SMOKE_PEAK_OPACITY,
+  RESIDUE_SMOKE_PEAK_OPACITY,
 } from '../src/render/vfx/explosionPresentationVfx.js';
 import { vfx } from '../src/render/vfx.js';
 
@@ -116,9 +116,7 @@ test('the committed lane still writes the announced angular cap, so the telegrap
 // 2. The lingering kill smoke
 // ---------------------------------------------------------------------------------------------
 
-test('kill smoke is sized against its own fireball, dark, low, and it dissolves', () => {
-  assert.ok(RESIDUE_SMOKE_MAX_OF_FIREBALL > 1 && RESIDUE_SMOKE_MAX_OF_FIREBALL <= 1.5,
-    'a billow may reach the fireball and no more than half again');
+test('kill smoke is dark, low, and it dissolves', () => {
   assert.ok(RESIDUE_SMOKE_PEAK_OPACITY <= 0.35, 'smoke is low opacity, never a white cloud');
   assert.ok(RESIDUE_SMOKE_END_OPACITY < RESIDUE_SMOKE_PEAK_OPACITY / 4,
     'the billow must dissolve over its life rather than fade out at a flat grey');

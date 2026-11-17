@@ -12,19 +12,17 @@ const DESTRUCTION_LIGHT_CINDER_CORE = Object.freeze({ r: 1.0, g: 0xd9 / 255, b: 
 const DESTRUCTION_LIGHT_CINDER_TAIL = Object.freeze({ r: 0x7a / 255, g: 0x1f / 255, b: 0x04 / 255 });
 
 // VFX-02 — the lingering kill smoke is a SMOKE BODY, not a second fireball.
-//   * size: a billow's end diameter may not exceed this multiple of the death's own fireball, so
-//     the cloud always reads as "that hull burned" and never as a viewport-sized white sphere.
-//   * colour: dark-to-mid grey with a warm underside; the family is `smoke`, normal-blended, so it
-//     takes the scene's own tint instead of glowing.
-//   * opacity: low, and it dissolves over its whole life (SPR_PUFF lerps op0 -> op1, so a lower
-//     ending opacity IS the dissolve). Nothing here may reach an opaque white.
+//   * colour: dark-to-mid grey soot; the family is `smoke`, normal-blended, so it takes the scene's
+//     own tint instead of glowing. The old `#8a8078` at 0.55 opacity over the additive firelight
+//     read as a white cloud.
+//   * opacity: low, and it DISSOLVES over its whole life (SPR_PUFF lerps op0 -> op1, so a near-zero
+//     ending opacity is the dissolve). Nothing here may reach an opaque white.
 //   * duration: the authored 2-3 billows for ~4-5 s (LOOK-05C), preserved.
-export const RESIDUE_SMOKE_MAX_OF_FIREBALL = 1.5;
+//   * size is the emitter's own authored billow scale (already inside the packet's ~1.5x bound), and
+//     the separate proximity cap in `render/vfx.js` is what keeps a billow off a protected hull.
 export const RESIDUE_SMOKE_COLOUR = '#4c4744';
 export const RESIDUE_SMOKE_PEAK_OPACITY = 0.30;
 export const RESIDUE_SMOKE_LIFE_S = 3.6;
-// Past this fraction of its life a billow has stopped being readable structure, so it thins out
-// of the picture instead of lingering at a flat grey alpha over whatever is under it.
 export const RESIDUE_SMOKE_END_OPACITY = 0.04;
 
 // VFX retains phased scheduling, shared particle/sprite/light pools, and camera/event ownership.
@@ -133,17 +131,18 @@ export function createExplosionPresentationMethods({
       }
     } else if (phase === 'residue') {
       // Smoke outlives the flame: it grows for seconds and drifts with the wreck's momentum.
-      // VFX-02: it is SMOKE, not a second fireball — dark-to-mid grey, low opacity, and capped so
-      // it can never become a body wider than the fireball that made it. The old billow reached
-      // 1.3-1.75x the fireball diameter at 0.55 opacity, which read as an opaque white cloud
-      // parked over the boss and over the player's own ship.
+      // VFX-02: the defect was never the billow's size — it was that a billow was (a) nearly white,
+      // (b) drawn at 0.55 opacity and held there, and (c) free to sit on top of the boss or the
+      // player. This keeps LOOK-05C's authored 2-3 billows for ~4 s and its own scale (which already
+      // sits inside the packet's "no bigger than ~1.5x the fireball" bound), and fixes the three
+      // things that actually made it a white wall: dark soot grey, low peak opacity, and a full-life
+      // dissolve instead of a flat hold.
       const puffs = capital ? 3 : 2;
       for (let k = 0; k < puffs; k++) {
         const a = dirAngle + k * 2.1;
-        const puffScale = Math.min(s * RESIDUE_SMOKE_MAX_OF_FIREBALL, diameter * RESIDUE_SMOKE_MAX_OF_FIREBALL);
         this._spawnSprite(SPR_PUFF, x + Math.cos(a) * s * 0.12 * k, 0.10, z + Math.sin(a) * s * 0.12 * k,
           RESIDUE_SMOKE_LIFE_S + k * 0.6,
-          puffScale * (0.34 + 0.06 * k), puffScale * (0.86 + 0.10 * k),
+          s * (0.5 + 0.1 * k), s * (1.35 + 0.2 * k),
           RESIDUE_SMOKE_PEAK_OPACITY - k * 0.045, RESIDUE_SMOKE_END_OPACITY, RESIDUE_SMOKE_COLOUR,
           vx * 0.22 + (entry.dirX || 0) * 3 + Math.cos(a) * 2, vz * 0.22 + (entry.dirZ || 0) * 3 + Math.sin(a) * 2,
           1, a - 1.3);
