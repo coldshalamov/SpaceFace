@@ -112,6 +112,9 @@ ${S} > .orr-set-more.is-on { display:inline-block; animation:orr-more-bob 2.4s e
 ${S} > .orr-set-more:hover { color:rgb(${BONE}) !important; }
 @keyframes orr-more-bob { 0%, 100% { transform:translateY(0); } 50% { transform:translateY(3px); } }
 @media (prefers-reduced-motion:reduce) { ${S} > .orr-set-more.is-on { animation:none; } }
+/* ui-polish-539: while Settings' own More chip is up, the shared scroll-extent foot cue stood as a second
+   MORE chip over the value column (on the last row's 70% at 1280x720 / 960x540). One cue: the chip. */
+${S}:has(> .orr-set-more.is-on) > .orr-extent--foot { display:none !important; }
 ${S} #sf-settings-pane.is-scrolled { -webkit-mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 88px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important;
   mask-image:linear-gradient(180deg, transparent 0, #000 34px, #000 calc(100% - 88px), rgb(0 0 0 / var(--sf-fade-a, 1)) 100%) !important; }
 ${S} #sf-settings-pane .k-row { scroll-margin:40px 0 80px; }
