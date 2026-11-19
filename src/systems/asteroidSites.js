@@ -26,6 +26,7 @@ const CERES_NPC_AUTHORITY=Symbol('ceres-site-operation');
 // (generateDrillField + cleared list) to recompute machine contact rings with no live session —
 // the contact ring (brief §1) is sacred: hollowing a neighbor permanently costs that contact.
 import { generateDrillField, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, normalizeClearedTiles, tileIndex, drillSessionTarget, DRILL_CONST, EMPTY_TILE } from './drill.js';
+import { markFieldRockAtRest } from './spawnClearance.js';
 import { applySealedDeadDropCap, sealedDeadDropCapMissing } from './boreDeadDrop.js';
 import { addCargo, removeCargo, sellableCargoQuantity } from './cargo.js';
 import {
@@ -2103,6 +2104,7 @@ export const asteroidSites = {
         },
       });
       if (rock) {
+        markFieldRockAtRest(rock, { simTime: state.simTime });
         site.asteroidId = rock.id;
         this._rt.delete(site.id);
         this.bus.emit('site:rematerialized', { siteId: site.id, asteroidId: rock.id, sectorId });

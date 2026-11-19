@@ -14,6 +14,7 @@ import { shouldSkipFullTickSystems } from '../core/presentationFreeze.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { findClearSpawnPoint, resolveClearSpawnPos } from './spawnClearance.js';
 import { primitiveBlocksSegment, segmentHitsProxy } from '../combat/lineOfSight.js';
 import { attachmentBindsOccupant } from '../combat/attachments.js';
 import { proxyWorldPrimitives, proxyScaleFor, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
@@ -271,6 +272,16 @@ export const lawSecurity = {
   name: 'lawSecurity',
   // serialize() already cloneLawPlain's every returned field — skip the second defensive clone.
   saveSnapshotOwned: true,
+
+  /**
+   * R11 admission for a computed law hull seat: the shared contract relocates a blocked or
+   * collision-course point along its bounded deterministic walk. On exhaustion the authored
+   * point stands — law retries and budget releases already own the defer path, and an
+   * unanswered response is worse than a stacked one.
+   */
+  _admitSpawnPos(spec) {
+    resolveClearSpawnPos(this.state, spec);
+  },
 
   init(ctx) {
     this.state = ctx.state;
@@ -1963,6 +1974,7 @@ export const lawSecurity = {
       // A frame that stays crowded through every retry (a parked fleet that never moves) launches at the
       // authored slot: a late, stacked response beats none, and crime must never go unanswered.
       spec.pos = clearPos || pos;
+      this._admitSpawnPos(spec);
       // D207: sector ownership rides the body — an unstamped reserve roams untagged past residency
       // teardown, and the durable kill/capture chain (worldRecords ambient-ship lane) needs it too.
       const homeSectorId = station?.data?.sectorId || station?.sectorId || currentSectorId(state);
@@ -4469,6 +4481,7 @@ export const lawSecurity = {
       if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
       return;
     }
+    this._admitSpawnPos(hull);
     let spawned;
     try {
       spawned = this.helpers.spawnEntity(hull);
@@ -4942,6 +4955,7 @@ export const lawSecurity = {
       if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
       return;
     }
+    this._admitSpawnPos(hull);
     let spawned;
     try {
       spawned = this.helpers.spawnEntity(hull);
@@ -5312,6 +5326,7 @@ export const lawSecurity = {
       if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
       return;
     }
+    this._admitSpawnPos(hull);
     let spawned;
     try {
       spawned = this.helpers.spawnEntity(hull);
@@ -5572,13 +5587,15 @@ export const lawSecurity = {
       return;
     }
 
-    const coneHeading = Math.atan2(player.pos.z - lane.z, player.pos.x - lane.x);
+    const netSeat = findClearSpawnPoint(state, { x: lane.x, z: lane.z, radius: WANTED_NET_RADIUS });
+    if (!netSeat) { own.wantedCheckpointRetryTick = (state.tick | 0) + 15; return; }
+    const coneHeading = Math.atan2(player.pos.z - netSeat.z, player.pos.x - netSeat.x);
     let net;
     try {
       net = this.helpers.spawnEntity({
         type: 'ship',
         team: 2,
-        pos: { x: lane.x, z: lane.z },
+        pos: { x: netSeat.x, z: netSeat.z },
         vel: { x: 0, z: 0 },
         rot: coneHeading,
         radius: WANTED_NET_RADIUS,
@@ -5682,6 +5699,7 @@ export const lawSecurity = {
     intent.fire = false;
     intent.mode = 'wanted_checkpoint';
 
+    this._admitSpawnPos(hull);
     let spawned = null;
     try {
       spawned = this.helpers.spawnEntity(hull);
@@ -5887,12 +5905,14 @@ export const lawSecurity = {
       return;
     }
 
+    const yardSeat = findClearSpawnPoint(state, { x: yardPos.x, z: yardPos.z, radius: WANTED_IMPOUND_YARD_RADIUS });
+    if (!yardSeat) { own.wantedImpoundRetryTick = (state.tick | 0) + 15; return; }
     let yard;
     try {
       yard = this.helpers.spawnEntity({
         type: 'ship',
         team: 2,
-        pos: { x: yardPos.x, z: yardPos.z },
+        pos: { x: yardSeat.x, z: yardSeat.z },
         vel: { x: 0, z: 0 },
         rot: heading,
         radius: WANTED_IMPOUND_YARD_RADIUS,
@@ -5918,12 +5938,14 @@ export const lawSecurity = {
       return;
     }
 
+    const lockSeat = findClearSpawnPoint(state, { x: lockPos.x, z: lockPos.z, radius: WANTED_IMPOUND_PAD_RADIUS });
+    if (!lockSeat) { own.wantedImpoundRetryTick = (state.tick | 0) + 15; return; }
     let lock = null;
     try {
       lock = this.helpers.spawnEntity({
         type: 'ship',
         team: 2,
-        pos: { x: lockPos.x, z: lockPos.z },
+        pos: { x: lockSeat.x, z: lockSeat.z },
         vel: { x: 0, z: 0 },
         rot: heading,
         radius: WANTED_IMPOUND_PAD_RADIUS,
@@ -6028,6 +6050,7 @@ export const lawSecurity = {
     intent.fire = false;
     intent.mode = 'wanted_impound';
 
+    this._admitSpawnPos(hull);
     let spawned = null;
     try {
       spawned = this.helpers.spawnEntity(hull);

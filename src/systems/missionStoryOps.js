@@ -2862,7 +2862,7 @@ export const missionStoryOps = {
     return this._activateBookContractOnDeparture(4);
   },
 
-  newGame() {
+  newGame({ campaign = !this.state.world?.swarmArenaOnly } = {}) {
     this._racingOpponents?.stop('new_game');
     this._racingSetPieces?.stop('new_game');
     resetRacingGhostSession(this.state);
@@ -2889,7 +2889,7 @@ export const missionStoryOps = {
     state.missions.config = MISSION_TUNING;
     // Clear story spine + any prior campaign47a sidecar (nested under state.story).
     state.story = { beatIndex: 0, branch: null, flags: {}, chainProgress: 0, persistentCargo: [], journeyActs: { seen: [], current: null } };
-    if (!racingSession) {
+    if (campaign && !racingSession) {
       initCampaignSidecar(state, state.simTime || 0);
       // Act I owns a durable receipt even while the tutorial owns opening direction.
       this._announceJourneyAct(journeyActForBeat(state.story.beatIndex));
@@ -2904,7 +2904,7 @@ export const missionStoryOps = {
     this._lastWaypointRouteAt = 0;
     // Session latch — the dock:undocked clear never runs across a quit-while-docked New Game.
     this._lastDockedStation = null;
-    if (racingSession) return;
+    if (!campaign || racingSession) return;
     const tutorialOwnsOpening = this._tutorialOwnsOpening();
     if (!tutorialOwnsOpening) {
       this._refreshNavigation({ forceStory: true, silent: true });

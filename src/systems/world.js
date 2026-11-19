@@ -125,6 +125,10 @@ import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { chooseLawfulStation, recoveryCostQuote } from '../combat/playerDefeat.js';
 import { tetherMemorialPresentation } from '../data/tetherMemorialPresentation.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { SWARM_RULESET } from '../data/swarmMode.js';
+import {
+  findClearSpawnPoint, markFieldRockAtRest, resolveClearSpawnPos, spawnPointIsClear,
+} from './spawnClearance.js';
 import { planZoneSpawns, zoneAt, zoneThreat, zonesForSector } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
 import {
   CERES_ACTIVITY_POCKETS,
@@ -722,8 +726,7 @@ export const world = {
 
     // Load a mutable copy of the static graph into world.sectors (owner field stays mutable).
     if (!state.world.sectors || Object.keys(state.world.sectors).length === 0) {
-      state.world.sectors = {};
-      for (const s of SECTORS) state.world.sectors[s.id] = { ...s, owner: s.factionId };
+      state.world.sectors = freshCampaignSectorCatalog();
     }
     this._registerFreeDriveRingPoi();
     if (!state.world.discovery) state.world.discovery = {};
@@ -776,13 +779,16 @@ export const world = {
 
     // --- event wiring (§4.4) ---
     bus.on('player:death', () => recordPlayerHullLoss(state));
-    bus.on('world:requestJump', (p) => this._onRequestJump(p || {}));
-    bus.on('world:requestUnfiledJump', () => this._onRequestUnfiledJump());
-    bus.on('world:confirmUnfiledJump', () => this._confirmUnfiledJump());
-    bus.on('world:abortJumpCharge', (p) => this._abortCharge((p && p.reason) || 'requested'));
-    bus.on('world:requestRoute', (p) => this._onRequestRoute(p || {}));
-    bus.on('world:requestSectorScan', () => this._beginScan());
-    bus.on('ui:setCourse', (p) => this._onSetCourse(p || {}));
+    const onCampaignTravel = (event, handle) => bus.on(event, (p) => {
+      if (!state.world.swarmArenaOnly) handle(p || {});
+    });
+    onCampaignTravel('world:requestJump', (p) => this._onRequestJump(p));
+    onCampaignTravel('world:requestUnfiledJump', () => this._onRequestUnfiledJump());
+    onCampaignTravel('world:confirmUnfiledJump', () => this._confirmUnfiledJump());
+    onCampaignTravel('world:abortJumpCharge', (p) => this._abortCharge(p.reason || 'requested'));
+    onCampaignTravel('world:requestRoute', (p) => this._onRequestRoute(p));
+    onCampaignTravel('world:requestSectorScan', () => this._beginScan());
+    onCampaignTravel('ui:setCourse', (p) => this._onSetCourse(p));
     bus.on('fuel:crackCell', () => this._onCrackFuelCell());
     bus.on('combat:lockChanged', (p) => this._onLockChanged(p || {}));
     bus.on('combat:damage', (p) => this._onSpoolStrike(p || {}));
@@ -1218,6 +1224,10 @@ export const world = {
     const state = this.state;
     const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
     if (!sector) { dedupWarn('world/unknown-sector', '[world] enterSector: unknown sector', sectorId); return null; }
+    const arenaOnly = opts.arenaOnly === true;
+    if (state.world.swarmArenaOnly) return null;
+    if (arenaOnly && (state.run?.kind !== 'survival' || state.run.ruleset !== SWARM_RULESET
+        || state.run.phase !== 'loadout' || state.world.currentSectorId != null)) return null;
     // Producer identity for the whole generator. The restore lane drives this across
     // awaited paint frames; a route/listener that resets the world or enters another
     // sector inside one of those gaps must not let this stale producer publish later.
@@ -1272,10 +1282,12 @@ export const world = {
 
     // Discovery overlay bookkeeping (§3.8) — entering reveals the sector + one hop.
     // Free-flight membership jitter must not inflate visitedCount.
-    const disc = this._discoveryFor(sectorId);
-    const firstVisit = !disc.discovered;
-    disc.discovered = true;
-    if (!continuous) disc.visitedCount = (disc.visitedCount || 0) + 1;
+    const disc = arenaOnly ? null : this._discoveryFor(sectorId);
+    const firstVisit = !!disc && !disc.discovered;
+    if (disc) {
+      disc.discovered = true;
+      if (!continuous) disc.visitedCount = (disc.visitedCount || 0) + 1;
+    }
 
     // Corridor-global outer fence (not a per-sector disk trap). Non-corridor intentional
     // enters still get a sector-local soft fence so legacy far systems stay bounded.
@@ -1291,7 +1303,7 @@ export const world = {
     state.world.entryPoint = entryPoint;
 
     // Membership + residency plan (materialize FULL current + REDUCED neighbors, evict over cap).
-    const reason = continuous
+    const reason = arenaOnly ? 'swarm-arena' : continuous
       ? 'free_flight'
       : (opts.fromJump ? (opts.via || 'jump') : 'enter');
     // placePlayer: rank from destination entry. Free-flight / noTeleport: rank from live player pose.
@@ -1309,7 +1321,11 @@ export const world = {
       // restore inside one of the plan's own yields supersedes it mid-flight.
       stale: superseded,
     };
-    if (this._applyResidencyPlan !== world._applyResidencyPlan) {
+    // The arena keeps the sector's visual identity and frame coordinates. Its
+    // own run systems supply bodies; there is no campaign residency plan to drain.
+    if (arenaOnly) {
+      this._pendingResidency = [];
+    } else if (this._applyResidencyPlan !== world._applyResidencyPlan) {
       this._applyResidencyPlan(sectorId, planOpts);
     } else {
       // Resume-gated delegation: each paint point re-checks the producer before the
@@ -1326,11 +1342,13 @@ export const world = {
       || (state.world.sectorContents[sectorId] = this._emptySectorBag());
     state.world.activeSector = active;
     state.world.currentSectorId = sectorId;
-    this._spawnVestaOreCachePickup(sectorId);
-    this._presentVestaOreCacheDecision('sector-enter');
-    this._spawnPallasHiddenCachePickup(sectorId);
-    this._presentPallasHiddenCacheDecision('sector-enter');
-    this._ensureTethysEntranceRun(sectorId);
+    if (!arenaOnly) {
+      this._spawnVestaOreCachePickup(sectorId);
+      this._presentVestaOreCacheDecision('sector-enter');
+      this._spawnPallasHiddenCachePickup(sectorId);
+      this._presentPallasHiddenCacheDecision('sector-enter');
+      this._ensureTethysEntranceRun(sectorId);
+    }
     if (!this._hazardSet) this._hazardSet = new Set();
     if (!this._hazardNextSet) this._hazardNextSet = new Set();
     this._hazardSet.clear();
@@ -1338,6 +1356,13 @@ export const world = {
 
     if (placePlayer) this._placePlayer(entryPoint);
     this._resolveShipModules();
+    if (arenaOnly) {
+      // The sky has a sector identity, but entering it cannot activate campaign listeners.
+      state.world.sectors[sectorId] = { ...sector, owner: sector.factionId };
+      state.world.swarmArenaOnly = true;
+      this.bus.emit('swarm:arenaEntered', { sectorId, enterEpoch: producerEpoch });
+      return superseded() ? null : active;
+    }
     this._flushPendingSpawns(sectorId, sector);
 
     // One paint point before the atomic emit tail — sector:enter listeners see a fully
@@ -3250,9 +3275,25 @@ export const world = {
       ? { x: positionBinding.pos.x, z: positionBinding.pos.z }
       : scatteredPos;
     // Map positions only, after every legacy draw. Pinned geology/activity/collision slots win.
-    const pos = arrangement
+    let pos = arrangement
       ? arrangement.place(originalPos, asteroidColliderRadius(def.id, size), slotIndex, !!(positionBinding || authoredGeologyPlaceId))
       : originalPos;
+    if (!arrangement && !positionBinding && !authoredGeologyPlaceId) {
+      // No composition grammar owns this field — the raw scatter has no peer, keepout or
+      // live-body clearance at all. R11: retry the same disc-uniform draw (two rng draws
+      // per candidate, same shape as the original) until the rock is clear of live bodies
+      // and dormant shelf records, bounded by the shared contract.
+      const colliderR = asteroidColliderRadius(def.id, size);
+      const clear = findClearSpawnPoint(this.state, {
+        x: pos.x, z: pos.z, radius: colliderR, rng,
+        candidateAt: () => {
+          const retryAng = rng() * Math.PI * 2;
+          const retryR = clusterR * Math.sqrt(rng());
+          return { x: center.x + Math.cos(retryAng) * retryR, z: center.z + Math.sin(retryAng) * retryR };
+        },
+      });
+      if (clear) pos = { x: clear.x, z: clear.z };
+    }
 
     const data = environmentSurfaceData(adventureMaterialFor(def.id, this.state.meta.seed, fdef.id, slotIndex), {
       typeId: def.id, tier: def.tierCap, tierCap,
@@ -3310,6 +3351,7 @@ export const world = {
       });
     // Asteroid fields are always spawned for a concrete sector bag — recover id from field center bag via caller.
     // homeSectorId is stamped by _spawnAsteroidInSector when available; fallback leaves data open.
+    if (keepLive) markFieldRockAtRest(ent, { simTime: this.state.simTime });
     if (params && params._homeSectorId) this._stampHomeSector(ent, params._homeSectorId);
     ent.data.seams = deriveAsteroidSeams(this.state.meta.seed, ent.id, ent.radius, {
       hash32: this.helpers.hash32,
@@ -4935,6 +4977,7 @@ export const world = {
           spec.data.ai.standingHostileBelow = intent.standingHostileBelow;
         }
         tagAiSpawnContext(spec, sector, sec, intent.context);
+        if (!this._resolveNpcSpawnClearance(this.state, spec, rng)) continue;
         const ent = this.helpers.spawnEntity(spec);
         if (!ent) continue;
         if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, ambientRequester);
@@ -4955,6 +4998,7 @@ export const world = {
         if (!pos) continue;
         const spec = makeEnemySpawnSpec(typeId, clamp(level, lvLo, lvHi), pos, { startedTick: this.state.tick });
         tagAiSpawnContext(spec, sector, sec, 'ambient');
+        if (!this._resolveNpcSpawnClearance(this.state, spec, rng)) continue;
         const ent = this.helpers.spawnEntity(spec);
         if (!ent) continue;
         if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, ambientRequester);
@@ -5004,6 +5048,7 @@ export const world = {
         const level = Math.round(lvHi + (lvHi - lvLo) * 0.5 * rng()); // tough: top of band or above
         const spec = makeEnemySpawnSpec('patrol_lawman', clamp(level, lvLo, lvHi + 2), pos, { startedTick: this.state.tick });
         tagAiSpawnContext(spec, sector, sec, 'bounty_hunter');
+        if (!this._resolveNpcSpawnClearance(this.state, spec, rng)) continue;
         const ent = this.helpers.spawnEntity(spec);
         if (!ent) continue;
         if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, hunterRequester);
@@ -5906,6 +5951,8 @@ export const world = {
     try {
       // A lease publishes only the ACCEPTED quantity; the free seam keeps its full batch.
       const units = lease ? Math.min(batch, lease.qty) : batch;
+      // Same-batch rocks are obstacles for each other before the index publishes them.
+      const reserved = [];
       for (let i = 0; i < units; i++) {
         const ang = rng() * Math.PI * 2;
         const r = clusterR * Math.sqrt(rng());
@@ -5919,17 +5966,29 @@ export const world = {
         const yieldU = Math.max(1, Math.round(baseYieldU * richness * FIELD_REGROWTH_YIELD_SCALE));
         const px = field.center.x + Math.cos(ang) * r;
         const pz = field.center.z + Math.sin(ang) * r;
-        // No rock may materialize inside a live hull — a spawned collider on a ship is a
-        // depenetration yeet, not a seam. Applies to the free seam too: a pilot parked in
-        // a dead belt still deserves to keep their ship.
+        // No rock may materialize inside a live body or on its 2 s path — a spawned collider
+        // is a depenetration yeet, not a seam. R11: the shared contract retries the same
+        // scatter draw (two rng draws per candidate) before the unit is refused, and covers
+        // every solid + this batch's own accepted rocks, not only hulls.
         const colliderR = asteroidColliderRadius(def.id, size);
-        if (!this._seamCandidateClearOfHulls(state, px, pz, colliderR)) continue;
+        const clear = findClearSpawnPoint(state, {
+          x: px, z: pz, radius: colliderR, rng, reserved,
+          candidateAt: () => {
+            const retryAng = rng() * Math.PI * 2;
+            const retryR = clusterR * Math.sqrt(rng());
+            return { x: field.center.x + Math.cos(retryAng) * retryR,
+              z: field.center.z + Math.sin(retryAng) * retryR };
+          },
+        });
+        if (!clear) continue;
+        const rx = clear.x;
+        const rz = clear.z;
         // The remaining clearance applies to published rocks only; the free seam keeps its
         // authored scatter against anchors and the sector envelope.
-        if (lease && !this._resourceWorkCandidateClear(state, sector, px, pz, size)) continue;
+        if (lease && !this._resourceWorkCandidateClear(state, sector, rx, rz, size)) continue;
         const ent = helpers.spawnEntity({
           type: 'asteroid',
-          pos: { x: px, z: pz },
+          pos: { x: rx, z: rz },
           radius: size,
           mass: asteroidMass(sector && sector.id, size),
           angVel: (rng() - 0.5) * 0.35,
@@ -5950,6 +6009,8 @@ export const world = {
           },
         });
         if (!ent) continue;
+        markFieldRockAtRest(ent, { simTime: state.simTime });
+        reserved.push({ alive: true, pos: { x: rx, z: rz }, radius: colliderR, vel: { x: 0, z: 0 } });
         this._stampHomeSector(ent, sector.id);
         ent.data.seams = deriveAsteroidSeams(seed, ent.id, ent.radius, {
           hash32: helpers.hash32,
@@ -6146,9 +6207,10 @@ export const world = {
       const size = 8;
       const oreHP = 200;
       const colliderR = asteroidColliderRadius(def && def.id, size);
-      // A spot under a live hull is a depenetration yeet, not a rock — the frozen spot stays
-      // canonical and retries on the next materialization when the hull has moved.
-      if (!this._seamCandidateClearOfHulls(state, rock.x, rock.z, colliderR)) continue;
+      // A spot under a live body or on its 2 s path is a depenetration yeet, not a rock —
+      // the frozen spot stays canonical and retries on the next materialization when the
+      // body has moved. R11: the shared contract supersedes the hull-only check.
+      if (!spawnPointIsClear(state, { x: rock.x, z: rock.z, radius: colliderR })) continue;
       const ent = helpers.spawnEntity({
         type: 'asteroid',
         pos: { x: rock.x, z: rock.z },
@@ -6174,6 +6236,7 @@ export const world = {
         },
       });
       if (!ent) continue;
+      markFieldRockAtRest(ent, { simTime: state.simTime });
       placed += 1;
       this._stampHomeSector(ent, sector.id);
       // On rematerialize a rock the player already mined comes back suppressed by its
@@ -6334,6 +6397,17 @@ export const world = {
       }
     }
     return this._seamCandidateClearOfHulls(state, x, z, radius);
+  },
+
+  /**
+   * R11 admission for a computed NPC spawn point: keep the point when it is clear of live
+   * bodies, dormant field records and their 2 s predicted paths; retry a bounded
+   * deterministic walk through the shared contract when it is not. The spec's own radius
+   * and velocity measure the check — a hull born moving must not be born on a collision
+   * course. Returns false when every bounded candidate fails; the caller skips the unit.
+   */
+  _resolveNpcSpawnClearance(state, spec, rng) {
+    return resolveClearSpawnPos(state, spec, { rng });
   },
 
   /** True when a spawned disc at (x,z) would not intersect a live hull. Radius should be the
@@ -6713,6 +6787,7 @@ export const world = {
         tagAiSpawnContext(spec, sector, sector, origin ? 'spawn_request' : 'interdiction');
         if (requestMeta && requestMeta.refId) spec.data.spawnRefId = requestMeta.refId;
         if (requestMeta && requestMeta.tags && requestMeta.tags.length) spec.data.spawnTags = [...requestMeta.tags];
+        if (!this._resolveNpcSpawnClearance(this.state, spec, rng)) continue;
         const ent = this.helpers.spawnEntity(spec);
         if (!ent || ent.id == null) continue;
         if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
@@ -8630,6 +8705,10 @@ export const world = {
     const arrangementVersion = readArrangementVersion(data.arrangementVersion);
     const state = this.state;
     state.world.arrangementVersion = arrangementVersion;
+    if (state.world.swarmArenaOnly) {
+      delete state.world.swarmArenaOnly;
+      state.world.sectors = freshCampaignSectorCatalog();
+    }
     this._registerFreeDriveRingPoi();
     // Sector entities are runtime-only and save load clears them before re-entering the saved
     // sector. Drop all residency bags as well, otherwise stale structural IDs make the
@@ -8706,17 +8785,15 @@ export const world = {
     // world.records rematerialize inside _ensureSectorMaterialized during that enter.
   },
 
-  newGame() {
+  newGame({ campaign = true } = {}) {
     const state = this.state;
     this._clearAdoptedSalvorApproachState(state);
     // reset overlay + jump/fuel to defaults; the home sector is entered by main.js post-boot.
     // main.startNewGame replaces state.world with a fresh record after system init, so rebuild the
     // mutable ownership/map table here instead of relying on init's now-discarded copy.
-    state.world.sectors = {};
-    for (const sector of SECTORS) {
-      state.world.sectors[sector.id] = { ...sector, owner: sector.factionId };
-    }
-    this._registerFreeDriveRingPoi();
+    delete state.world.swarmArenaOnly;
+    state.world.sectors = campaign ? freshCampaignSectorCatalog() : {};
+    if (campaign) this._registerFreeDriveRingPoi();
     state.world.discovery = {};
     state.world.wreckCourtRulings = normalizeCourtRulings(null);
     state.world.scanPings = {};
@@ -8757,7 +8834,7 @@ export const world = {
       state.world.frameOrigin.z = 0;
     }
     state.world.frameOriginSeq = 0;
-    this._seedChartedDiscovery();
+    if (campaign) this._seedChartedDiscovery();
     state.jump.state = 'IDLE'; state.jump.targetSectorId = null; state.jump.via = null;
     state.jump.chargeT = 0; state.jump.chargeNeeded = 0; state.jump.cooldownT = 0;
     state.jump._unfiled = false; state.jump._unfiledConfirmed = false;
@@ -8766,6 +8843,12 @@ export const world = {
     state.nav.autopilot = { active: false, target: null, targetEntityId: null, label: '', arrivalRadius: 36, status: 'idle' };
   },
 };
+
+function freshCampaignSectorCatalog() {
+  const sectors = {};
+  for (const sector of SECTORS) sectors[sector.id] = { ...sector, owner: sector.factionId };
+  return sectors;
+}
 
 function cloneSaveTree(value) {
   if (value == null || typeof value !== 'object') return value;

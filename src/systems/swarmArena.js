@@ -55,6 +55,7 @@ import { swarmOpeningTerrainStage, planSwarmOpeningTerrain } from '../data/swarm
 import { swarmFloorKeepClear } from '../data/swarmFloor.js';
 import { mulberry32 } from '../core/rng.js';
 import { clearanceFootprint, swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
+import { markFieldRockAtRest } from './spawnClearance.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { articulatedColliderRadius } from '../core/articulatedColliderBounds.js';
 import { hullEnvelopeWu, proxyOuterRadiusWu, proxyScaleFor, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
@@ -1832,6 +1833,7 @@ export const swarmArena = {
       if (!positions) return false;
       for (let i = 0; i < children.length; i++) {
         const spawned = helpers.spawnEntity({ ...children[i], pos: positions[i] });
+        markFieldRockAtRest(spawned, { simTime: now });
         const id = spawned && typeof spawned === 'object' ? spawned.id : spawned;
         if (id != null) {
           ids.push(id);
@@ -2006,6 +2008,12 @@ export const swarmArena = {
       collides: true,
       data: withBankStone(data),
     });
+    // R11 item 1: born at rest — zero linear velocity (kept by the spec above) and the
+    // dormant sleep stamp, so the cover does not integrate until something touches it.
+    // Wreck-material debris is the same loose rock — ballast included.
+    if (spawned && typeof spawned === 'object' && (spawned.type === 'asteroid' || spawned.type === 'wreck')) {
+      markFieldRockAtRest(spawned, { simTime: now });
+    }
     return spawned && typeof spawned === 'object' ? spawned.id : spawned;
   },
 
@@ -2171,6 +2179,7 @@ export const swarmArena = {
         collides: true,
         data: withBankStone(lessonData),
       });
+      markFieldRockAtRest(spawned, { simTime: this.state && this.state.simTime });
       const id = spawned && typeof spawned === 'object' ? spawned.id : spawned;
       if (id != null) {
         this._lessonRockId = id;
@@ -2316,7 +2325,10 @@ export const swarmArena = {
           [SWARM_OPTIC_TAG]: true,
         },
       });
-      if (ent && ent.id != null) spawned.push(ent.id);
+      if (ent && ent.id != null) {
+        markFieldRockAtRest(ent, { simTime: state.simTime });
+        spawned.push(ent.id);
+      }
     }
     if (spawned.length !== layout.bodies.length) {
       // A refused birth cannot publish half a fuse or retire the still-coherent old stamp.

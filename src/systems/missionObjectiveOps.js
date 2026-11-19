@@ -6,6 +6,7 @@ import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { starterBuoySpec, starterMiningReceiptMatches, isOriginalStarterBuoyTow, playerHoldsStarterBuoy } from '../missions/starterWorkday.js';
 import { authoredCinderRoute, observeCinderKill, cinderExtrasSatisfied, acceptCinderRookReceipt, driveCinderRoute } from '../missions/cinderRoute.js';
 import { recordFurnaceAftermathFact, prepareFurnaceSettlement } from '../missions/furnaceWorksiteRuntime.js';
+import { resolveClearSpawnPos } from './spawnClearance.js';
 import { authoredFurnaceWorksite, furnaceAccounting, isFurnaceOwnedLot, furnaceLots, furnaceReceiptMatches, furnaceLotCallout, newFurnaceCasingRecord } from '../missions/furnaceWorksite.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
@@ -1873,6 +1874,7 @@ export const missionObjectiveOps = {
       return slot;
     };
     const spawnAt = (durableSlot, spec) => {
+      resolveClearSpawnPos(this.state, spec);
       const ent = helpers.spawnEntity(spec);
       if (!ent) return null;
       this._stampMissionTargetIdentity(ent, m, durableSlot);
@@ -2134,6 +2136,7 @@ export const missionObjectiveOps = {
         spec.data.scanLabel = actor.scanLabel || actor.role;
         if (spec.type === 'wreck') spec.collisionMask = MISSION_WRECK_COLLISION_MASK;
         if (actor.tetherable) spec.data.tetherable = true;
+        resolveClearSpawnPos(this.state, spec);
         const ent = helpers.spawnEntity(spec);
         if (!ent) continue;
         this._stampMissionTargetIdentity(ent, m, durableSlot);
@@ -2302,6 +2305,7 @@ export const missionObjectiveOps = {
     }
     let ent = null;
     try {
+      resolveClearSpawnPos(this.state, spec);
       ent = helpers.spawnEntity(spec);
     } catch (error) {
       if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);

@@ -13,6 +13,7 @@
 // team-0 wings — wingmen just join it.
 
 import { makeShipEntitySpec } from './ships.js';
+import { resolveClearSpawnPos } from './spawnClearance.js';
 import { deferSectorEnterMaterialization, deferredEnterTick } from '../core/sectorEnterDefer.js';
 import {
   WING_ORDER,
@@ -367,6 +368,8 @@ export const wingmen = {
       if (!spec) continue;
       const owned = this.registry?.get('ships')?.fleetOwnedHull?.(fs.id);
       if (owned?.vesselId && state.ui?.docked) continue;
+      // R11: a wingman re-materializing beside the pilot must not be born inside a hull.
+      resolveClearSpawnPos(state, spec);
       const e = owned?.vesselId
         ? this.registry?.get('shipjack')?.spawnFleetVessel?.(fs, spec)
         : this.helpers.spawnEntity(spec);

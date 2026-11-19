@@ -6,6 +6,7 @@ import { registerMassScaleTow } from './cargoCustody.js';
 import { authoredStarterSite, registerStarterBuoyTow } from '../missions/starterWorkday.js';
 import { authoredCinderRoute, cinderTargetOwner, cinderAvailableSlots, cinderWaspPosition, stampCinderWasp, observeCinderEscape } from '../missions/cinderRoute.js';
 import { fleeOrderActive, EGRESS_DISTANCE_WU, EGRESS_FADE_S } from '../ai/egressExit.js';
+import { resolveClearSpawnPos } from './spawnClearance.js';
 import { syncFurnaceWorksite } from '../missions/furnaceWorksiteRuntime.js';
 import { spawnJettisonedCargoPod } from './lootShards.js';
 import {
@@ -1061,6 +1062,7 @@ export const missionSpawningOps = {
           scanLabel: follow.targetLabel,
         },
       };
+      resolveClearSpawnPos(this.state, spec);
       const ent = helpers.spawnEntity(spec);
       if (ent) {
         this._stampMissionTargetIdentity(ent, m, 0);
@@ -1170,6 +1172,7 @@ export const missionSpawningOps = {
         }
         let ent;
         try {
+          resolveClearSpawnPos(this.state, spec);
           ent = helpers.spawnEntity(spec);
         } catch (error) {
           if (budget && typeof budget.releaseSome === 'function') {
@@ -1266,6 +1269,7 @@ export const missionSpawningOps = {
         spec.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0 };
         let ent;
         try {
+          resolveClearSpawnPos(this.state, spec);
           ent = helpers.spawnEntity(spec);
         } catch (error) {
           if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, convoyGrant - spawned);
@@ -1327,6 +1331,7 @@ export const missionSpawningOps = {
               spec.data.escortAmbushOf = String(m.id);
               let ent;
               try {
+                resolveClearSpawnPos(this.state, spec);
                 ent = helpers.spawnEntity(spec);
               } catch (error) {
                 if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, ambushGrant - sprung);
@@ -1381,6 +1386,7 @@ export const missionSpawningOps = {
           });
           let ent = null;
           try {
+            if (pocket && pocket.spec) resolveClearSpawnPos(this.state, pocket.spec);
             ent = pocket && helpers.spawnEntity ? helpers.spawnEntity(pocket.spec) : null;
           } catch (error) {
             if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
@@ -1576,7 +1582,7 @@ export const missionSpawningOps = {
 
     if (!transport && this.helpers && typeof this.helpers.spawnEntity === 'function') {
       const pose = p.pose || QUIET_PASSAGE.transportStartPos;
-      transport = this.helpers.spawnEntity({
+      const transportSpec = {
         type: 'ship',
         team: 0,
         pos: { x: pose.x, z: pose.z },
@@ -1592,7 +1598,9 @@ export const missionSpawningOps = {
           factionId: 'faction_free',
           intent: { moveX: 0, moveZ: 0, boost: false, fire: false, aimAngle: 0 },
         },
-      });
+      };
+      resolveClearSpawnPos(this.state, transportSpec);
+      transport = this.helpers.spawnEntity(transportSpec);
       if (transport) {
         m._transportId = transport.id;
         m.targetEntityIds = [transport.id];

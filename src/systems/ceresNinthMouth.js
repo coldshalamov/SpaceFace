@@ -10,6 +10,7 @@ import { refreshPhysicsPartition, requestActivityReclassify } from '../world/act
 import { hullEnvelopeWu, proxyOuterRadiusWu } from '../data/collisionProxyManifests.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { asteroidMass } from '../data/sectorPhysical.js';
+import { findClearSpawnPoint, markFieldRockAtRest } from './spawnClearance.js';
 
 const ROLES = [...CUT.definitions.map(d => d.role), 'barge'];
 const ID = role => `${CUT.id}:${role}`;
@@ -407,10 +408,17 @@ function releaseLooseRock(owner, at, r) {
   const count = Math.min(room, 2 + Math.floor(rng() * 5));
   for (let i = 0; i < count; i++) {
     const radius = 4 + Math.floor(rng() * 6), hull = 40 + radius * 8;
+    // R11: loose rock rests — no self-motion at birth, no seat under a live body. The wall
+    // still gives way at `at`; the shared contract just refuses to pop a rock into a hull.
+    const seat = findClearSpawnPoint(s, {
+      x: at.x + (rng() * 2 - 1) * 26, z: at.z + (rng() * 2 - 1) * 16,
+      radius, rng,
+    });
+    if (!seat) break;
     const e = owner.helpers.spawnEntity({
       type: 'asteroid', name: 'Ninth Mouth loose rock',
-      pos: { x: at.x + (rng() * 2 - 1) * 26, z: at.z + (rng() * 2 - 1) * 16 },
-      vel: { x: (rng() * 2 - 1) * 2.5, z: (rng() * 2 - 1) * 2.5 },
+      pos: { x: seat.x, z: seat.z },
+      vel: { x: 0, z: 0 },
       rot: rng() * Math.PI * 2, angVel: (rng() - .5) * .4,
       radius, mass: asteroidMass(CUT.sectorId, radius),
       hull, hullMax: hull, collides: true,
@@ -420,6 +428,7 @@ function releaseLooseRock(owner, at, r) {
         name: 'Ninth Mouth loose rock', scanLabel: 'Ninth Mouth loose rock', lifetimeS: Infinity },
     });
     if (!e) break;
+    markFieldRockAtRest(e, { simTime: s.simTime });
     r.debris = (r.debris | 0) + 1;
   }
 }

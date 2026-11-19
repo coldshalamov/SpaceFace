@@ -95,6 +95,7 @@ export const trafficTugOps = {
         spawnContext: 'convoy_civilian',
       },
     });
+    this._resolveSpawnClearance(spec);
     const ent = this.helpers.spawnEntity(spec);
     if (!ent) return null;
     this._stampTrafficDurableIdentity(ent, sectorId, 'tug', def, 900 + (seq | 0));

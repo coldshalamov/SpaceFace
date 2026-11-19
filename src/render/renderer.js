@@ -21107,7 +21107,7 @@ export const render = {
         sectorId: sector && sector.id || null,
       };
     };
-    onBus('sector:enter', ({ sectorId, sector, continuous, enterEpoch } = {}) => {
+    const onSectorEntered = ({ sectorId, sector, continuous, enterEpoch } = {}) => {
       const exactSectorId = String(sectorId || sector && sector.id || '');
       // A queued emit's evicted tail can deliver this listener inside a newer enter's live
       // window (the pendingSlicedEmits cap force-drains stale emits whole), and an epochless
@@ -21546,7 +21546,11 @@ export const render = {
       // rejects for whoever awaits the gate, but in flight nothing awaits it, and the rejection
       // escaped as an uncaught page error while ordinary residency went on drawing the sector.
       preparation.catch(() => {});
-    });
+    };
+    onBus('sector:enter', onSectorEntered);
+    onBus('swarm:arenaEntered', payload => onSectorEntered({
+      ...payload, sector: state.world?.sectors?.[payload.sectorId],
+    }));
     onBus('mode:changed', ({ mode } = {}) => {
       // Backstop for the armed foundry promotion: the sector-load yields and the un-awaited
       // preparePostOpeningPipelines normally drain it under the veil, but a route that reaches

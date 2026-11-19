@@ -73,6 +73,7 @@ import {
 import { getAsteroidFieldRock, promoteAsteroidFieldRock } from '../world/asteroidField.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { getFarActor } from '../world/farActorTable.js';
+import { resolveClearSpawnPos } from './spawnClearance.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -2299,6 +2300,7 @@ export const traffic = {
         pos,
         ai: aiSpec,
       });
+      this._resolveSpawnClearance(spec);
       this._stageHeliosCutterSpawn(spec, station, sectorId, role);
       const ent = this.helpers.spawnEntity(spec);
       if (!ent) continue;
@@ -2669,7 +2671,10 @@ export const traffic = {
       canonicalSpec.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
 
       const wasFresh = !entity;
-      if (wasFresh) entity = this.helpers.spawnEntity(canonicalSpec);
+      if (wasFresh) {
+        this._resolveSpawnClearance(canonicalSpec);
+        entity = this.helpers.spawnEntity(canonicalSpec);
+      }
       if (!entity) continue;
       if (wasFresh) {
         // spawnEntity(makeShipEntitySpec(...)) already installed the canonical static, derived,
@@ -2872,7 +2877,10 @@ export const traffic = {
         canonicalSpec.homeSectorId = sectorId;
 
         const wasFresh = !entity;
-        if (wasFresh) entity = this.helpers.spawnEntity(canonicalSpec);
+        if (wasFresh) {
+          this._resolveSpawnClearance(canonicalSpec);
+          entity = this.helpers.spawnEntity(canonicalSpec);
+        }
         if (!entity) continue;
         if (wasFresh) spawned += 1;
         if (!ownsWinnowRecoveryHull(this.state, entity) && !ownsCharonSupplyHull(this.state, entity)) {
@@ -3217,6 +3225,7 @@ export const traffic = {
         contact.ship || factionHullFor(def.ship, laneFaction, () => this._rng()),
         { team: def.team, factionId: laneFaction, pos, ai: aiSpec },
       );
+      this._resolveSpawnClearance(spec);
       ent = this.helpers.spawnEntity(spec);
       if (!ent) return;
       this._stampTrafficDurableIdentity(ent, sectorId, role, def, list.length);
@@ -3274,6 +3283,7 @@ export const traffic = {
         spawnContext: 'convoy_civilian',
       },
     });
+    this._resolveSpawnClearance(spec);
     const ent = this.helpers.spawnEntity(spec);
     if (!ent) return;
     this._stampTrafficDurableIdentity(ent, sectorId, 'arclight', def, 700);
@@ -3328,6 +3338,7 @@ export const traffic = {
         spawnContext: 'convoy_civilian',
       },
     });
+    this._resolveSpawnClearance(spec);
     const ent = this.helpers.spawnEntity(spec);
     if (!ent) return;
     this._stampTrafficDurableIdentity(ent, sectorId, 'tanker', def, 710);
@@ -3382,6 +3393,7 @@ export const traffic = {
         spawnContext: 'convoy_civilian',
       },
     });
+    this._resolveSpawnClearance(spec);
     const ent = this.helpers.spawnEntity(spec);
     if (!ent) return;
     this._stampTrafficDurableIdentity(ent, sectorId, 'customs', def, 720);
@@ -3426,13 +3438,14 @@ export const traffic = {
       pos,
       ai: { archetype: def.archetype, passive: true, spawnContext: 'convoy_civilian' },
     });
+    this._resolveSpawnClearance(spec);
     const ent = this.helpers.spawnEntity(spec);
     if (!ent) return;
     this._stampTrafficDurableIdentity(ent, sectorId, 'tourist', def, 4242);
     ent.data.trafficRole = 'tourist';
     ent.data.tourist = true;
     ent.data.trafficLabel = def.label;
-    ent.pos = pos;
+    ent.pos = spec.pos;
     if (!this._active) this._active = [];
     this._active.push(ent.id);
     const station = (stations && stations[0]) || null;
@@ -3693,6 +3706,16 @@ export const traffic = {
 
   _pickStation(stations) {
     return stations[Math.floor(this._rng() * stations.length)] || stations[0];
+  },
+
+  /**
+   * R11 admission for a computed traffic spec: the ring draw keeps its seat when clear of
+   * live bodies and their 2 s predicted paths, otherwise the shared contract walks a
+   * bounded deterministic retry through this system's own stream. When every candidate
+   * fails the spec keeps its drawn point — never a worse seat than today's unchecked one.
+   */
+  _resolveSpawnClearance(spec) {
+    resolveClearSpawnPos(this.state, spec, { rng: () => this._rng() });
   },
 
   _pickExpressDestination(stations, origin) {

@@ -21,6 +21,7 @@ import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { applyRockSubstance, authoredRockPlaceId, rockSubstanceForSlot } from '../data/rockSubstances.js';
 import { Masks } from '../core/entity.js';
 import { bumpCollidesFlipEpoch, indexedTypeScan } from '../world/livingWorldViews.js';
+import { markFieldRockAtRest } from './spawnClearance.js';
 import {
   PALLAS_REEF_MINES,
   PALLAS_REEF_MINE_BODY,
@@ -198,7 +199,7 @@ export const terrainAnchors = {
         data.placeId = anchorPlaceId;
         data.placeTargetRadius = size;
       }
-      this.helpers.spawnEntity({
+      markFieldRockAtRest(this.helpers.spawnEntity({
         type: 'asteroid',
         homeSectorId: ownership.homeSectorId,
         pos: { x: pos.x + dx, z: pos.z + dz },
@@ -211,7 +212,7 @@ export const terrainAnchors = {
         hull: oreHP, hullMax: oreHP,
         collides: true,
         data: survivalCover ? withBankStone(data) : data,
-      });
+      }), { simTime: now });
     };
     // INF-017: the opening wave of a swarm run leads with one substantial anchor on a clear
     // sling corridor. Inbound enemies converge player-ward through its neighborhood; the

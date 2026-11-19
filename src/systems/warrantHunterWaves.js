@@ -51,6 +51,7 @@ import {
   warrantRecoverSeconds,
 } from '../data/warrantHunters.js';
 import { WANTED_TIER, wantedTierFor } from './heat.js';
+import { findClearSpawnPoint } from './spawnClearance.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { applyStyleLoadoutToSpec } from './aceMemory.js';
 import { isRunSealed } from '../core/runSeal.js';
@@ -308,6 +309,18 @@ export function createWarrantHunterWaves(host) {
     const wave = { waveId, tier: p.tier, boldness, returning, style, bossPos: null, targetId: player.id, court: p.trigger === 'court' };
     for (let i = 0; i < ships.length && spawned.length < grant; i++) {
       const spec = buildSpec(s, hunter, ships[i], i, wave);
+      // R11: the arrival ring never checked live bodies — a licensed contractor must not be
+      // born inside one or on its 2 s path. A blocked seat walks the shared bounded retry;
+      // an exhausted one drops the hull and hands its grant back.
+      const seat = spec && spec.pos && findClearSpawnPoint(s, {
+        x: spec.pos.x, z: spec.pos.z,
+        radius: Number.isFinite(spec.radius) ? spec.radius : 10,
+        vel: spec.vel || null,
+      });
+      if (!spec || !spec.pos || !seat) continue;
+      spec.pos.x = seat.x;
+      spec.pos.z = seat.z;
+      if (i === 0) wave.bossPos = { x: seat.x, z: seat.z };
       let entity = null;
       try { entity = helpers.spawnEntity(spec); } catch (err) { entity = null; }
       if (!entity || entity.id == null) continue;

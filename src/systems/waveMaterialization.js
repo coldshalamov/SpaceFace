@@ -13,6 +13,7 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { findSwarmArrival, SWARM_ARRIVAL_GRACE_S } from './swarmSafety.js';
+import { findClearSpawnPoint } from './spawnClearance.js';
 import { makeEnemySpawnSpec } from './enemySpawnSpec.js';
 import { swarmDoctrineStamp, SWARM_MIN_ARRIVAL_WU } from '../data/swarmMode.js';
 import { swarmCharacterFor } from '../data/swarmCharacter.js';
@@ -365,9 +366,25 @@ export function materializeWaveBatch(ctx, request) {
           z: anchor.z + Math.sin(angle) * radius,
         };
       }
-      if (req.swarm !== true) clearOfRocks(ctx && ctx.state, pos);
       const spec = makeEnemySpawnSpec(req.enemyId, level, pos);
       if (!spec) continue;
+      if (req.swarm !== true && !pinned) {
+        // R11 shared admission: live bodies + dormant field rocks + 2 s paths, then a
+        // bounded deterministic walk through the batch stream. The legacy shove stays as
+        // the exhaustion fallback — it is never a worse seat than the one it replaces.
+        const clear = findClearSpawnPoint(ctx && ctx.state, {
+          x: pos.x, z: pos.z,
+          radius: Number.isFinite(spec.radius) ? spec.radius : 10,
+          vel: spec.vel || null,
+          rng,
+        });
+        if (clear) {
+          spec.pos.x = clear.x;
+          spec.pos.z = clear.z;
+        } else {
+          clearOfRocks(ctx && ctx.state, spec.pos);
+        }
+      }
       if (pinned && (Number.isFinite(pinned.vx) || Number.isFinite(pinned.vz))) {
         spec.vel = { x: Number.isFinite(pinned.vx) ? pinned.vx : 0, z: Number.isFinite(pinned.vz) ? pinned.vz : 0 };
       }

@@ -996,7 +996,7 @@ const BRIDGE_EVENTS = [
   'scenario:factChanged', 'scenario:branchResolved', 'game:started',
   'presentation:vfxCue', 'presentation:audioCue', 'presentation:uiCue',
   'presentation:cameraCue', 'presentation:caption', 'audio:cue', 'alert',
-  'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
+  'camera:shake', 'presentation:cueApplied', 'sector:enter', 'swarm:arenaEntered', 'cargo:changed',
   'survivalArena:stormWarning', 'survivalArena:stormResolve', 'survivalArena:stormCancel',
   'automation:fleetChanged', 'combat:chainKill', 'comms:log', 'run:resultsReady',
   'breakwaterSpur:offer', 'breakwaterSpur:close', 'breakwaterSpur:receipt', 'breakwaterSpur:cue',
