@@ -352,6 +352,10 @@ ${NG} > .sf-ng-footer .k-word.sf-back:focus-visible::after {
   ${NGD} .orr-hullring text.orr-hullring__label { font-variation-settings:"wght" 600, "wdth" 100 !important; letter-spacing:.16em !important; }
   ${NGD} .orr-hullring text.orr-hullring__gloss { font-stretch:75% !important; font-variation-settings:"wght" 500, "wdth" 75 !important; letter-spacing:.02em !important; }
 }
+/* ui-polish-541: the hull sheet's STARTER · class line sat straight under the last loadout row (DRILL AMP),
+   so it read as a sixth item. A hairline and a beat of air separate what it carries from what it is. */
+${NGD} .sf-ng-sheet { margin-top:10px !important; padding-top:8px !important; border-top:1px solid rgb(${BONE} / .1); }
+@media (max-height:600px) { ${NGD} .sf-ng-sheet { margin-top:6px !important; padding-top:6px !important; } }
 /* windows narrower than 1561px: the stage is too small for six stat rows beside the dial rings (the
    numbers ran under the hull, MUSCLE sat on the MASS reading, the left arc cut through the bars).
    The ship sheet becomes a 2-column block of name + number cells that stays above the rings. */
