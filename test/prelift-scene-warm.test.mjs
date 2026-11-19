@@ -12,6 +12,7 @@ import {
   PRELIFT_WARM_ROOT_NAME,
   PRELIFT_WARM_ROCK_MATERIAL,
   __resetPreliftSceneWarmForTests,
+  attachPreliftSceneWarm,
 } from '../src/render/preliftSceneWarm.js';
 
 // Headless canvas so the visual factory can paint hull textures (same stub as
@@ -357,4 +358,39 @@ test('no visual factory: freighter exemplars skipped, the rest still warm', () =
     assert.equal(f.warm.sceneWarm.causeMarks, true);
     assert.equal(f.warm.sceneWarm.rockInstanced, true);
   } finally { f.warm.releaseWarmSamples(); f.owner._disposeEnergy(); }
+});
+
+// scenewarm3 GC-pause check: exemplar-owned geometry (cause marks, per-body rock from the pooled
+// material, instanced rock, every freighter leaf) is disposed on release, which the first-picture
+// cook calls right after the warm root's pipelines are admitted; shared materials never are, and the
+// freighter cache keeps attribute layouts only (no built-freighter geometry stays module-retained).
+test('release right after compile disposes every exemplar-owned geometry, never a shared material', () => {
+  invalidateVisualFactoryCaches();
+  const vf = createVisualFactory();
+  const f = fixture({ withBody: false, vf });
+  const root = warmRoot(f.warm);
+  assert.equal(f.warm.sceneWarm.rockSource, 'pooled-material:SF_CommonRockInstances_v3');
+  const leaves = [];
+  root.traverse((n) => { if (n.isMesh || n.isLine) leaves.push(n); });
+  const owned = leaves.filter((n) => !n.name.includes(':plume') && !(n.parent && n.parent.name.includes(':plume')));
+  for (const want of [':cause-marks', ':rock', ':rock-instanced', ':freighter:']) {
+    assert.ok(owned.some((n) => n.name.includes(want)), `${want} exemplar mounted`);
+  }
+  const geoDisposed = new Set();
+  const matDisposed = [];
+  for (const n of owned) {
+    n.geometry.addEventListener('dispose', () => geoDisposed.add(n.geometry));
+    n.material.addEventListener('dispose', () => matDisposed.push(n.material.name || n.material.type));
+  }
+  assert.equal(f.warm.releaseWarmSamples(), true);
+  for (const n of owned) assert.ok(geoDisposed.has(n.geometry), `${n.name} geometry disposed on release`);
+  assert.deepEqual(matDisposed, []);
+  assert.equal(root.children.length, 0);
+  // Re-warm reuses the layout-only freighter cache: fresh degenerate geometry, same shared materials.
+  const again = attachPreliftSceneWarm(new THREE.Group(), f.scene, { visualFactory: vf });
+  try {
+    for (const n of again.root.children.filter((c) => c.name.includes(':freighter:'))) {
+      assert.ok(!geoDisposed.has(n.geometry));
+    }
+  } finally { again.release(); f.owner._disposeEnergy(); invalidateVisualFactoryCaches(); }
 });
