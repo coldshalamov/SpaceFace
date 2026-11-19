@@ -57,6 +57,11 @@ limit), batches that still need its review are built, verified and **parked as c
 Their changes are live in the working folder the owner plays from. On Codex's return: review the park
 commits as one batch, fix, then land them on master.
 
+**2026-11-19, the owner: "finish".** The three-batch cap is lifted: everything that does not need Codex
+keeps being built, checked and parked. The Pilot Tree chain parks as successive commits on
+`refs/heads/park/pilot-tree` (`park-one.mjs --base=park/pilot-tree`), each proven from its own export;
+nothing stacks on `park/w3-foundry` (the Foundry there has open must-fixes).
+
 | ID | What the player gets | Builder | State |
 |---|---|---|---|
 | SHARP-01 | A sharp picture: integrated graphics draw at the screen's native pixels | Director | **Landed** e9b9ab5118. GPU timers (2×2, owner's laptop, Low): native costs ~3 ms in a plain arena (9.5 vs 6.4 ms) and nothing measurable with the Foundry; 30 Hz holds either way. |
@@ -69,7 +74,12 @@ commits as one batch, fix, then land them on master.
 | OVH-03a | The Ricochet Foundry as a lit set: factory deck, conveyors, furnace light, one shop-light shadow | Codex | **Parked** on top of W3. Frames: a dramatic step from black space. **Cost: ~17–20 ms of GPU per frame** (6–9 → ~26 ms, measured): holds 30 Hz, no room for 60. Before landing: cut the cost, fix the furnace casing that vanishes in some frames, respect Shadows Off. |
 | OVH-08a | Every gun measured on damage against kick | zcode | Built. Review found three bench errors (cadence rounding, the mortar lifecycle, a 121-tick probe); the fix is Codex's on return. |
 | OVH-01a | The Pilot Tree engine: 81 nodes (with the Conjurer bends), banked picks, the three-card draw | zcode | **Parked** on `refs/heads/park/pilot-tree` (the harvest dropped another agent's refund ledger). Clean-HEAD: 254 pass, the same 12 pre-existing failures; check:sim unchanged. Its XP-curve retune is live in the working folder. |
-| OVH-01b | Level up without a pause; three cards in the breath [FE] | Sonnet | Packet written; after OVH-01a |
+| OVH-01a2 | The route: the sim deals a hand the moment a pick is banked (never the screen); the screen asks by intent; only built nodes are dealt (`src/data/pilotLive.js`) | zcode | **Building** (session `sess_4a85eebd-4402-47b1-b034-9dd1a99883dd`, resumed from OVH-01a). Parks on `park/pilot-tree`. |
+| OVH-01b | Level up without a pause; three cards in the breath [FE] | Sonnet (`cards`) | **Building** since 2026-11-19 10:31. Parks on `park/pilot-tree`. |
+| OVH-01c1 | Skill effects, wave 1 — the body: all Juggernaut (9 of 10) and the Bruiser kick chain (Heavy Slugs, Stagger, Billiards, Pass It On, Wall Splat, Newton's Cradle) on one kick stamp | Devin `devin3` | **Building** (`.devshots/fleet/runs/OVH-01c1-body-effects.devin3.2026-11-19T15-31-50`). |
+| OVH-01c2 | Skill effects, wave 1 — the rope and the powers: Long Reel, Quick Latch, Free Hand, Sweet Spot, Crane, Second Line, Whip Snap; Quick Cast, Wide Bore, Deep Cast, Echo, Combo | zcode | **Building** (session `sess_94991cd7-4ec5-4a45-bffe-b399af9a1d5f`). |
+| OVH-01c3 | Skill effects, wave 1 — the guns: Hollow Point, Steady Hands, Drum, Spin-Up, Execution, Ricochet | — | After OVH-01c1 (same owner files). |
+| OVH-01c4 | The rest of the tree: the bends (with OVH-05), Coupler (OVH-07), cue line, energised stamp, plough, stealth (OVH-15) nodes, capstones | — | Each node turns on for the draw only when its effect is built and tested; the director edits `pilotLive.js`. |
 | OVH-08b | Guns tuned to the curve; heat as rhythm (feathering, per-mount lockout) | — | After OVH-08a |
 | OVH-09b | Pilots brake for each other | — | **Hold:** another agent's crossing-brake work is in `src/ai/maneuver.js` |
 | LOOK-THREAT-b | The gun-ready cue rides the hull (muzzle / running lights) now the emblem is gone | — | Review note (non-blocking) |
