@@ -18,26 +18,51 @@ const TARGET_PROGRAMS = [
   'plume:family_industrial_main_plume:core',
   'plume:family_industrial_main_plume:distortion',
   PRELIFT_WARM_ROCK_MATERIAL,
+  `${PRELIFT_WARM_ROCK_MATERIAL}#instanced`,
 ];
 
-function rockScene(scene) {
-  const material = new THREE.MeshStandardMaterial({ name: PRELIFT_WARM_ROCK_MATERIAL });
+function rockScene(scene, { withPool = true } = {}) {
+  const material = new THREE.MeshStandardMaterial({ name: PRELIFT_WARM_ROCK_MATERIAL, vertexColors: true });
   const geometry = new THREE.IcosahedronGeometry(1, 1);
-  const instanced = new THREE.InstancedMesh(geometry, material, 4);
-  instanced.name = 'SF_CommonRockInstances_v0';
+  geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(geometry.attributes.position.count * 3), 3));
+  // Live pool chunk as asteroidInstancePool.ensureCapacity publishes it: hidden, count 0.
+  const instanced = new THREE.InstancedMesh(geometry, material, 64);
+  instanced.name = 'SF_CommonRockInstances_v3';
+  instanced.count = 0;
+  instanced.visible = false;
+  instanced.castShadow = true;
+  instanced.receiveShadow = true;
   const body = new THREE.Mesh(geometry, material);
   body.receiveShadow = true;
   const asteroid = new THREE.Group();
   asteroid.name = 'Asteroid_604';
   asteroid.add(body);
-  scene.add(instanced, asteroid);
-  return { material, geometry, body };
+  if (withPool) scene.add(instanced);
+  scene.add(asteroid);
+  return { material, geometry, body, instanced };
 }
 
-function fixture({ withRock = true } = {}) {
+// three.js WebGLPrograms.getProgramCacheKey inputs that differ between program variants of one
+// material: the instancing / instancingColor / vertexColors / morph booleans and the attribute
+// layout. A tiny exemplar matches the live pool chunk iff all of these match.
+function programShape(mesh) {
+  const g = mesh.geometry;
+  return {
+    material: mesh.material,
+    instancing: mesh.isInstancedMesh === true,
+    instancingColor: mesh.isInstancedMesh === true && mesh.instanceColor !== null,
+    instancingMorph: mesh.isInstancedMesh === true && mesh.morphTexture !== null,
+    batching: mesh.isBatchedMesh === true,
+    skinning: mesh.isSkinnedMesh === true,
+    attributes: Object.keys(g.attributes).sort().map((k) => `${k}:${g.attributes[k].itemSize}:${g.attributes[k].normalized}`),
+    morph: Object.keys(g.morphAttributes || {}).length,
+  };
+}
+
+function fixture({ withRock = true, withPool = true } = {}) {
   __resetPreliftSceneWarmForTests();
   const owner = Object.create(vfx), scene = new THREE.Scene();
-  const rock = withRock ? rockScene(scene) : null;
+  const rock = withRock ? rockScene(scene, { withPool }) : null;
   const player = { id: 1, type: 'ship', alive: true, data: {}, pos: { x: 0, z: 0 } };
   Object.assign(owner, {
     _scene: scene, _energy: null, _destroyed: false,
@@ -77,12 +102,14 @@ test('the strict plasma admission root carries an exemplar for every targeted pr
     const covered = new Set();
     for (const leaf of leaves) {
       if (leaf.isLineSegments && leaf.material.vertexColors) covered.add('sf-cause-marks');
-      if (leaf.material.name) covered.add(leaf.material.name);
+      const name = leaf.material.name;
+      if (name) covered.add(name === PRELIFT_WARM_ROCK_MATERIAL && leaf.isInstancedMesh ? `${name}#instanced` : name);
     }
     for (const name of TARGET_PROGRAMS) assert.ok(covered.has(name), `warm covers ${name}`);
     assert.deepEqual(f.warm.sceneWarm, {
       causeMarks: true, plumeLayers: f.warm.sceneWarm.plumeLayers,
       plumeRecipe: 'family_industrial_main_plume', rock: true, rockSource: 'Asteroid_604',
+      rockInstanced: true, rockInstancedSource: 'SF_CommonRockInstances_v3',
     });
     assert.ok(f.warm.sceneWarm.plumeLayers >= 2);
     assert.equal(f.owner._energy, null, 'no fleet init');
@@ -121,6 +148,32 @@ test('exemplars resolve the live program keys', () => {
       assert.equal(rock.geometry.attributes[k].itemSize, f.rock.geometry.attributes[k].itemSize);
     }
     assert.notEqual(rock.geometry, f.rock.geometry, 'exemplar never borrows the live geometry');
+    // Instanced rock: same program shape as the pooled SF_CommonRockInstances chunk.
+    const inst = root.children.find((c) => c.name.endsWith(':rock-instanced'));
+    assert.ok(inst && inst.isInstancedMesh, 'instanced rock exemplar is an InstancedMesh');
+    assert.equal(inst.count, 1);
+    assert.equal(inst.visible, true);
+    assert.deepEqual(programShape(inst), programShape(f.rock.instanced));
+    assert.equal(inst.castShadow, f.rock.instanced.castShadow, 'depth variant warmed iff the chunk casts');
+    assert.equal(inst.receiveShadow, f.rock.instanced.receiveShadow);
+    assert.notEqual(inst.geometry, f.rock.instanced.geometry, 'exemplar never borrows the pool geometry');
+    // The per-body exemplar must stay non-instanced: it and the pooled chunk are two programs.
+    assert.notDeepEqual(programShape(rock), programShape(f.rock.instanced));
+  } finally { f.warm.releaseWarmSamples(); f.owner._disposeEnergy(); }
+});
+
+test('no pooled chunk yet: instanced exemplar falls back to the per-body rock material', () => {
+  const f = fixture({ withPool: false });
+  try {
+    const root = warmRoot(f.warm);
+    const inst = root.children.find((c) => c.name.endsWith(':rock-instanced'));
+    assert.ok(inst && inst.isInstancedMesh);
+    assert.equal(inst.material, f.rock.material);
+    assert.equal(f.warm.sceneWarm.rockInstancedSource, 'per-body-material');
+    // Same shape as the chunk the pool would publish over this leaf (ensureCapacity).
+    const chunk = new THREE.InstancedMesh(f.rock.geometry, f.rock.material, 64);
+    const shape = programShape(inst); const want = programShape(chunk);
+    assert.deepEqual(shape, want);
   } finally { f.warm.releaseWarmSamples(); f.owner._disposeEnergy(); }
 });
 
@@ -141,6 +194,7 @@ test('no per-body rock in the scene: cause marks and plume still warm, rock skip
   const f = fixture({ withRock: false });
   try {
     assert.equal(f.warm.sceneWarm.rock, false);
+    assert.equal(f.warm.sceneWarm.rockInstanced, false);
     assert.equal(f.warm.sceneWarm.causeMarks, true);
     assert.ok(f.warm.sceneWarm.plumeLayers >= 2);
   } finally { f.warm.releaseWarmSamples(); f.owner._disposeEnergy(); }
