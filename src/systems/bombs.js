@@ -1564,7 +1564,10 @@ export const bombs = {
         source: { kind: 'bomb', payloadId: def.id, bombId: bomb.id, phase: crush ? 'crush' : 'tar' },
       });
       packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
-      this._routeDamage({ attackerId: d.ownerId, targetId: ent.id, packet, origin: { kind: 'bomb', id: bomb.id, payloadId: def.id } });
+      // The damage receipt carries the origin alone: name the phase there too, so Run Over's hit
+      // history reads a lingering well's crush as 'crush', not as the detonation's 'blast'.
+      this._routeDamage({ attackerId: d.ownerId, targetId: ent.id, packet,
+        origin: { kind: 'bomb', id: bomb.id, payloadId: def.id, phase: crush ? 'crush' : 'tar' } });
     }
   },
 

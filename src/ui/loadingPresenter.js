@@ -4,6 +4,7 @@ import { createLoadingProgressDriver } from './loadingProgressDriver.js';
 import { observeBootWork, createBootWorkAccumulator } from '../core/bootWork.js';
 import { dataState } from './uiPrimitives.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
+import { SWARM_RULESET } from '../data/swarmMode.js';
 
 const DEFAULT_STAGE = Object.freeze({ id: 'restoring-save', progress: .05,
   label: 'Restoring flight state', detail: 'Rebuilding the current sector and critical visuals' });
@@ -28,6 +29,13 @@ const SPECIALIZED_ROUTES = Object.freeze({
   racingSession: 'Circuits',
   physicsVenueSession: 'Physics challenges',
 });
+// Route keys stay internal; the player reads the mode's own name (design/overhaul/08_INTERFACE.md §5:
+// "Crucible" never reaches a player-facing string — the mode is "Swarm" everywhere the player sees it).
+const ROUTE_DISPLAY_NAMES = Object.freeze({ Crucible: 'Swarm' });
+// The Crucible route itself splits by selected ruleset: the swarm floor and the scored gauntlet are
+// two different runs, so the slate names the one launching. 'scored' is the Gauntlet's internal id
+// and stays internal exactly the way "Crucible" does.
+const CRUCIBLE_RULESET_DISPLAY_NAMES = Object.freeze({ [SWARM_RULESET]: 'Swarm', scored: 'Gauntlet' });
 // Longest the flight reveal waits on the opening first draw before lifting the veil anyway.
 export const FIRST_DRAW_REVEAL_CAP_MS = 20000;
 export const FIRST_DRAW_STAGE_LABEL_MS = 3000;
@@ -132,7 +140,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   }
   function setDestination(route, text) {
     destinationRoute = route;
-    destinationText = typeof text === 'string' ? text : '';
+    destinationText = typeof text === 'string' ? (ROUTE_DISPLAY_NAMES[text] || text) : '';
     paintDestination();
   }
   /** A sector's display name from the live world, tolerating a lane facade / headless state. */
@@ -193,7 +201,16 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     loadingSlot = null;
     destinationRoute = null;
     const mark = Object.keys(SPECIALIZED_ROUTES).find((key) => opts[key] === true);
-    if (mark) { setDestination(SPECIALIZED_ROUTES[mark], SPECIALIZED_ROUTES[mark]); return; }
+    if (mark) {
+      // A Crucible launch names its ruleset, not just its route: both modes ride the same
+      // internal `Crucible` route, and the slate must say which one is loading.
+      const routeName = SPECIALIZED_ROUTES[mark];
+      const setup = opts.crucibleSetup && typeof opts.crucibleSetup === 'object' ? opts.crucibleSetup : null;
+      const rulesetName = mark === 'crucibleLaunch' && setup
+        ? CRUCIBLE_RULESET_DISPLAY_NAMES[setup.survivalRuleset] || null : null;
+      setDestination(routeName, rulesetName || routeName);
+      return;
+    }
     // A plain Sandbox/toy launch (pendingConfig without a route mark) rides game:new with no
     // embark picks: it is not the Adventure opening and not one of the named modes, so it reads
     // the friendly generic slate.

@@ -30012,7 +30012,7 @@ export const render = {
               ? (liveCam.getWorldQuaternion(_swarmThreatCameraQuat) || _swarmThreatCameraQuat)
               : null;
           }
-          syncSwarmThreatPlate(mesh, entity, liveCam, threatCameraQuat);
+          syncSwarmThreatPlate(mesh, entity, liveCam, threatCameraQuat, this.state.player?.targetId ?? null);
         }
         const glassSpan = Math.max(bounds.glassHalfX || 0, bounds.glassHalfZ || 0, 1);
         let planarSpeed = 0;

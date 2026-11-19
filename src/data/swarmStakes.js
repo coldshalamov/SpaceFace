@@ -74,12 +74,12 @@ export function swarmStakeFor(stakeId) {
 /** One legible line for the door: what the purse buys and what it costs. */
 export function swarmStakePitch(stakeId) {
   const stake = swarmStakeFor(stakeId);
-  const purse = stake.purse > 0 ? `${stake.purse} cr to open` : 'no purse';
-  const pressure = stake.pressure === 1 ? 'the tuned pack'
-    : stake.pressure < 1 ? `${Math.round(stake.pressure * 100)}% pressure`
-    : `${Math.round(stake.pressure * 100)}% pressure`;
+  // Plain words (design/overhaul/08_INTERFACE.md §5): no "% pressure" on a player-facing line.
+  const purse = stake.purse > 0 ? `${stake.purse} cr to start` : 'no purse';
+  const pressure = stake.pressure === 1 ? 'standard waves'
+    : stake.pressure < 1 ? 'fewer enemies' : 'more enemies';
   const earn = stake.earn === 1 ? 'standard pay' : `pays ×${stake.earn}`;
-  const score = stake.score === 1 ? 'true tally' : `scores ×${stake.score}`;
+  const score = stake.score === 1 ? 'standard score' : `scores ×${stake.score}`;
   return `${purse} · ${pressure} · ${earn} · ${score}`;
 }
 

@@ -1151,11 +1151,14 @@ export const pauseScreen = {
     // `hint` draws a keycap at the row's right edge; only keys that are live over this modal get
     // one — Esc resumes (this screen's own onKey), F5/F9 quick save/load through the modal input
     // branch, and the flight bindings the label already names (J, M) come through `keycap`.
+    // OVH-04b: inside a run the sheet is the Bench's menu (design/overhaul/04 §6.1): no save, no
+    // Adventure screens. Same predicate End run already reads.
+    const inRun = pauseSurvivalRunActive(ctx && ctx.state);
     const resumeAction = mk(coreText('resume'), () => this._resume(ctx), { primary: true, current: true, icon: 'chevron-right', hint: 'Esc', keys: 'Escape' });
-    mk(coreText('settings'), () => nav(ctx, 'pushScreen', 'settings'), { group: 'Game', bank: true, icon: 'settings' });
-    mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'), { group: 'Game', bank: true, icon: 'install', hint: 'F5', keys: 'F5' });
+    mk(coreText('settings'), () => nav(ctx, 'pushScreen', 'settings'), { group: inRun ? 'Run' : 'Game', bank: true, icon: 'settings' });
+    if (!inRun) mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'), { group: 'Game', bank: true, icon: 'install', hint: 'F5', keys: 'F5' });
     // Load discards unsaved current progress after a slot is chosen — confirm with the live run context first.
-    mk(coreText('load'), async () => {
+    if (!inRun) mk(coreText('load'), async () => {
       const ok = await confirm({
         title: 'Open load screen?',
         body: pauseExitConfirmBody(ctx && ctx.state, 'load'),
@@ -1164,32 +1167,32 @@ export const pauseScreen = {
       });
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
     }, { group: 'Game', bank: true, icon: 'remove', hint: 'F9', keys: 'F9' });
-    mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'), { group: 'Ship', bank: true, icon: 'missions', keycap: true });
+    if (!inRun) mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'), { group: 'Ship', bank: true, icon: 'missions', keycap: true });
     // THE SHIP (F2 in flight; SCREENS_B §1.2 route wiring). From pause the same instrument opens
     // with its pause-menu entry; the key case lives in the flight-only key router.
-    mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'), { group: 'Ship', bank: true, icon: 'shipworks' });
+    if (!inRun) mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'), { group: 'Ship', bank: true, icon: 'shipworks' });
     // Operations = the Automation ops board (drones / traders / outposts / fleet). Reachable from
     // pause anywhere in flight — fleet orders are a flight-time action ("recall to cash out"), so
     // the pause route fits better than a docked-only station tab (GDD 2.0 §12 keeps automation at
     // UI-polish scope this cycle; a first-class station tab would be promotion).
-    mk('Operations (Automation)', () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', bank: true, icon: 'industry' });
+    if (!inRun) mk('Operations (Automation)', () => nav(ctx, 'pushScreen', 'automation'), { group: 'Ship', bank: true, icon: 'industry' });
     const mapAction = pauseMapAction(ctx && ctx.state);
-    if (mapAction) mk(mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', bank: true, icon: 'route', keycap: true });
+    if (mapAction && !inRun) mk(mapAction.label, () => openPauseMapReview(ctx, mapAction), { group: 'Ship', bank: true, icon: 'route', keycap: true });
     // On a phone the keyboard reference means nothing: Help opens the touch guide the deck carries instead.
-    mk(coreText('helpControls'), () => { if (isPhoneLayout() && ctx.bus && ctx.bus.emit) ctx.bus.emit('touch:guide', {}); else nav(ctx, 'pushScreen', 'help'); }, { group: 'Reference', bank: true, icon: 'help' });
-    mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'), { group: 'Reference', bank: true, icon: 'info' });
+    mk(coreText('helpControls'), () => { if (isPhoneLayout() && ctx.bus && ctx.bus.emit) ctx.bus.emit('touch:guide', {}); else nav(ctx, 'pushScreen', 'help'); }, { group: inRun ? 'Run' : 'Reference', bank: true, icon: 'help' });
+    if (!inRun) mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'), { group: 'Reference', bank: true, icon: 'info' });
     // Achievements (PQ-033.03): the local ledger — the same screen the title's fine line opens.
-    mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'), { group: 'Reference', bank: true, icon: 'ready' });
-    mk('Records Wall', () => nav(ctx, 'pushScreen', 'statistics'), { group: 'Reference', bank: true, icon: 'info' });
+    if (!inRun) mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'), { group: 'Reference', bank: true, icon: 'ready' });
+    mk('Records Wall', () => nav(ctx, 'pushScreen', 'statistics'), { group: inRun ? 'Run' : 'Reference', bank: true, icon: 'info' });
     // Photo mode (Task B §1.7 / PQ-159.03): HUD gone, free camera, exposure, capture for store
     // assets; filters off by default. Esc returns here. Do not restyle this sheet.
-    mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx), { group: 'Media', bank: true, icon: 'scan' });
+    mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx), { group: inRun ? 'Run' : 'Media', bank: true, icon: 'scan' });
     // Replay (PQ-160.00): the deterministic last thirty seconds, played back with the photo-mode
     // presentation. Opens over this sheet; Esc or Exit returns to pause.
-    mk(REPLAY_LABEL, () => { forceCloseClips(); openReplay(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'clock' });
+    if (!inRun) mk(REPLAY_LABEL, () => { forceCloseClips(); openReplay(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'clock' });
     // Clips (PQ-160.01): the auto-clip clip list from the moment detector. Opens over this sheet;
     // Esc or Exit returns. This screen owns presentation only, not export encoding.
-    mk(CLIPS_LABEL, () => { forceCloseReplay(); openClips(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'record' });
+    if (!inRun) mk(CLIPS_LABEL, () => { forceCloseReplay(); openClips(rootEl, ctx); }, { group: 'Media', bank: true, icon: 'record' });
     // Ending Archive (B7): once the story owner has filed the written ending
     // (state.story.writtenFinale — the same record its ui:endingArchiveOpen handler serves), the
     // manuscript re-opens on demand. The codex deep-links to its Archive tab and the story owner
@@ -1198,20 +1201,20 @@ export const pauseScreen = {
     // The sheet stays mounted across pause opens, so the row's gate must be re-checkable later:
     // onShow remounts once if a finale gets filed after this mount.
     this._endingArchiveAtMount = !!endingArchive;
-    if (endingArchive) mk(ENDING_ARCHIVE_LABEL, () => {
+    if (endingArchive && !inRun) mk(ENDING_ARCHIVE_LABEL, () => {
       requestCodexTab('Archive');
       nav(ctx, 'pushScreen', 'codex');
       if (ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('ui:endingArchiveOpen');
     }, { group: 'Media', bank: true, icon: 'ledger' });
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
-    mk('Physics challenges', () => nav(ctx, 'pushScreen', 'physicsVenues'), { group: 'Play', bank: true, icon: 'utility' });
+    if (!inRun) mk('Physics challenges', () => nav(ctx, 'pushScreen', 'physicsVenues'), { group: 'Play', bank: true, icon: 'utility' });
     // MOB-02: the phone flight HUD dropped its "View & circuits" chip; the board (routes, best times, chase/overhead)
     // is reached from here instead, so the phone loses no verb.
-    if (isPhoneLayout()) mk('Circuits', () => nav(ctx, 'pushScreen', 'raceBoard'), { group: 'Play', bank: true, icon: 'utility' });
-    if (ctx.state?.mercyServicePublic?.bodies?.length) mk('Rescue tools', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.mercy(); }, { group: 'Field work', bank: true, icon: 'utility' });
-    if (ctx.state?.wreckCourtPublic?.bodies?.length) mk('Wreck Court notebook', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.court(); }, { group: 'Field work', bank: true, icon: 'utility' });
-    if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
+    if (isPhoneLayout() && !inRun) mk('Circuits', () => nav(ctx, 'pushScreen', 'raceBoard'), { group: 'Play', bank: true, icon: 'utility' });
+    if (!inRun && ctx.state?.mercyServicePublic?.bodies?.length) mk('Rescue tools', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.mercy(); }, { group: 'Field work', bank: true, icon: 'utility' });
+    if (!inRun && ctx.state?.wreckCourtPublic?.bodies?.length) mk('Wreck Court notebook', () => { nav(ctx, 'popScreen'); ctx.registry?.get('ui')?.physicalJobsPrompt?.court(); }, { group: 'Field work', bank: true, icon: 'utility' });
+    if (IS_DEV && !inRun) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true, group: 'Dev', bank: true, icon: 'utility' });
     // Main Menu discards the current session entirely — confirm with the live run context first.
     this._retireAtMount = pauseSurvivalRunActive(ctx && ctx.state);
     mk(this._retireAtMount ? 'End run' : coreText('mainMenu'), async () => {
@@ -1241,7 +1244,7 @@ export const pauseScreen = {
     }, { danger: true, group: 'Exit', bank: true, icon: 'undock' });
 
     // Web build: Main Menu above is the way out; Quit Game is offered only where the shell can quit.
-    if (canQuit()) mk(coreText('quitGame'), async () => {
+    if (canQuit() && !inRun) mk(coreText('quitGame'), async () => {
       const ok = await confirm({
         title: 'Quit game?',
         body: 'Quitting closes the game.\n' + pauseExitSaveFact(ctx && ctx.state),
@@ -1351,8 +1354,10 @@ export const pauseScreen = {
     };
     keyHint('Esc', 'Resume');
     keyHint('P', 'Photo');
-    keyHint('F5', 'Quick Save');
-    keyHint('F9', 'Quick Load');
+    if (!inRun) {
+      keyHint('F5', 'Quick Save');
+      keyHint('F9', 'Quick Load');
+    }
     // the dial is two levels deep, and the strip says so: up/down steps between the categories on
     // the rim, left/right along the one you are in. Without this the arrow keys read as a mystery.
     // The column has no dial: one flat list, up/down steps verb by verb and left/right does nothing,

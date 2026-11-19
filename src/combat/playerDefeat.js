@@ -108,12 +108,23 @@ export function physicalWeaponLabelFromDamage(packet = {}) {
     record.tag,
     origin && origin.tag,
     source && source.tag,
+    source && source.chargeId,
+    origin && origin.chargeId,
     source && source.impulseProvenance,
     link && link.tag,
   ];
   for (const tag of tags) {
     if (tag === 'massline_whip' || tag === 'massline_whip_recoil' || tag === 'massline_tumble_impact'
       || tag === 'massline_throw' || tag === 'rope_throw') return 'thrown mass';
+  }
+  // A blast carries no weapon id: a Detonator Dart's own detonation, or a bomb. Name the physical fact
+  // instead of "Unknown weapon" on the death screen (design/overhaul/04_SWARM.md §8). The dart's
+  // victim damage rides a generic impulse_charge provenance, so the charge id travels with the tags;
+  // a bomb field's crush tick keeps its own phase — a lingering well crushes, it does not detonate.
+  const crushTick = (origin && origin.phase) === 'crush' || (source && source.phase) === 'crush';
+  for (const tag of tags) {
+    if (tag === 'detonator_dart') return 'dart blast';
+    if (tag === 'bomb') return crushTick ? 'crush' : 'blast';
   }
   for (const tag of tags) {
     if (tag === 'terrain_collision' || tag === 'collision_terrain') return 'arena impact';
@@ -548,7 +559,12 @@ export function defeatRangeOffer(state, lethal, read = {}) {
   // typeof gate, not Number(): Number(null) is 0, which would read a missing cap as dry.
   const capMax = typeof cause.capMax === 'number' ? cause.capMax : NaN;
   const cap = typeof cause.cap === 'number' ? cause.cap : NaN;
-  if (sourceKind === 'contact' && !cause.physicalLabel
+  // A plain-word display label ('blast', 'dart blast', 'crush') names the physical fact; it is
+  // not a taught row. Only a label that keys a row below displaces the dry-cap lesson, so the
+  // blast labels leave it exactly as eligible as before they existed.
+  const taughtLabel = cause.physicalLabel
+    && DEFEAT_RUNG_ROWS.some((rule) => rule.label === cause.physicalLabel);
+  if (sourceKind === 'contact' && !taughtLabel
     && Number.isFinite(capMax) && capMax > 0 && Number.isFinite(cap) && cap <= 0.05 * capMax) {
     if (!rungOfferedBefore(state, 'you_can_run_dry')) {
       return rangeOfferFor('you_can_run_dry', 'Ran the cap dry.');

@@ -51,24 +51,30 @@ Each landing is reported in plain words: what changed in the game, what was chec
 
 ## 4. Board
 
+**Codex is out of usage until 2026-11-24 15:52.** Per the owner's rule (never swap agents on a usage
+limit), batches that still need its review are built, verified and **parked as commits on
+`refs/heads/park/w3-foundry`** (made with a private index, so the shared tree and index are untouched).
+Their changes are live in the working folder the owner plays from. On Codex's return: review the park
+commits as one batch, fix, then land them on master.
+
 | ID | What the player gets | Builder | State |
 |---|---|---|---|
-| SHARP-01 | A sharp picture: integrated graphics draw at the screen's native pixels again | Director | **Landed** e9b9ab5118. Measured headed on the owner's laptop: native 1920×912 held the same 30 Hz present rate as 1×. |
+| SHARP-01 | A sharp picture: integrated graphics draw at the screen's native pixels | Director | **Landed** e9b9ab5118. GPU timers (2×2, owner's laptop, Low): native costs ~3 ms in a plain arena (9.5 vs 6.4 ms) and nothing measurable with the Foundry; 30 Hz holds either way. |
 | T2 | No flat brown fog cone ahead of every ship | Director | **Landed** fbdf528e84 |
-| T1 + T1C | The rope never refuses; the HUD says who moves (TOW / TUG / ANCHOR); briefs teach it | Director + Sonnet | **Landed** 343cd4f569 — two Codex reviews, clean-HEAD green, check:sim unchanged |
-| T3/T4 + B2C | Fodder take a thrown hull; the starter pistol hits like a gun (NPCs keep theirs) | Director + Sonnet | **Landed** fb79e4172d |
-| B3C | Loading names Swarm or Gauntlet; dart, blast and crush deaths named; no duplicate build sentence | zcode | Harvested (foreign lines removed by hand); Codex wave-2 review running |
-| LOOK-THREAT | Enemies read as lit hulls; the 2D emblem only on your target and bosses | Sonnet | Harvested; frames judged (before/after in `.devshots/fleet/LOOK-THREAT/`); wave-2 review running |
-| T8C | One-press "Calm preset" in Settings › Access | Sonnet | Harvested; seen on screen by the director; wave-2 review running |
-| OVH-08a | Every gun measured on damage against kick (7 pass, 13 miss, 28 unbanded) | zcode | Harvested; wave-2 review running. Table: `.devshots/fleet/OVH-08a/gun-curve.md` |
-| OVH-04 | A Swarm run lives in its own space; loading ~4 s faster (43.1 → 38.8 s measured) | Codex | Built; leaned on another agent's unfinished hull-selection code — a Sonnet is porting it onto HEAD |
-| OVH-09a | Loose rocks rest; every spawner checks clear space and a 2 s path | Devin (acct3) | Built (25 files, check:sim unchanged); porting with OVH-04 (two shared files) |
-| OVH-04b | The pause menu in a run offers only what a run needs (today: Save/Load, Mission Log, Sandbox) | — | Next packet |
-| OVH-01a | The Pilot Tree engine: 70 nodes, banked picks, the three-card draw | zcode | Building |
-| OVH-01b | The level-up cards in the breath [FE] | Sonnet | After OVH-01a |
-| OVH-03a | The Foundry as a lit set: a deck under the fight and one sun | Codex | Building |
-| OVH-08b | Guns tuned to the curve; heat as rhythm (feathering, per-mount lockout) | — | After OVH-08a lands |
-| OVH-09b | Pilots brake for each other instead of pinballing | — | **Hold:** another agent's uncommitted crossing-brake work is in `src/ai/maneuver.js` |
+| T1 + T1C | The rope never refuses; TOW / TUG / ANCHOR; briefs teach it | Director + Sonnet | **Landed** 343cd4f569 |
+| T3/T4 + B2C | Fodder take a thrown hull; the starter pistol hits like a gun | Director + Sonnet | **Landed** fb79e4172d |
+| LOOK-THREAT | Enemies read as lit hulls; the 2D emblem only on your target and bosses | Sonnet | **Landed** 0e10e3f29d |
+| Front door (B3, B3C, T8C, OVH-04b) | No First-light modal; one-press calm preset; Swarm/Gauntlet and death words; the run's own pause menu | Director, zcode, Sonnet | **Landed** 5a0ca1eb0d |
+| W3 = OVH-04 + OVH-09a | A Swarm run in its own space (load 43.1 → 38.8 s); loose rocks rest; every spawn clear | Codex, Devin, Sonnet porter | **Parked** (park/w3-foundry). Tests 28/28 from the park export; check:sim unchanged; an Adventure new game seen starting clean. Waiting for Codex's review. |
+| OVH-03a | The Ricochet Foundry as a lit set: factory deck, conveyors, furnace light, one shop-light shadow | Codex | **Parked** on top of W3. Frames: a dramatic step from black space. **Cost: ~17–20 ms of GPU per frame** (6–9 → ~26 ms, measured): holds 30 Hz, no room for 60. Before landing: cut the cost, fix the furnace casing that vanishes in some frames, respect Shadows Off. |
+| OVH-08a | Every gun measured on damage against kick | zcode | Built. Review found three bench errors (cadence rounding, the mortar lifecycle, a 121-tick probe); the fix is Codex's on return. |
+| OVH-01a | The Pilot Tree engine: 70 nodes, banked picks, the three-card draw | zcode | Building (zcode session `sess_4a85eebd-4402-47b1-b034-9dd1a99883dd`; resumed after its own limit). Its XP-curve retune is already live in the working folder. |
+| OVH-01b | Level up without a pause; three cards in the breath [FE] | Sonnet | Packet written; after OVH-01a |
+| OVH-08b | Guns tuned to the curve; heat as rhythm (feathering, per-mount lockout) | — | After OVH-08a |
+| OVH-09b | Pilots brake for each other | — | **Hold:** another agent's crossing-brake work is in `src/ai/maneuver.js` |
+| LOOK-THREAT-b | The gun-ready cue rides the hull (muzzle / running lights) now the emblem is gone | — | Review note (non-blocking) |
+| HUD-TAG-01 | The hover tag never prints over a floor sign ("F · TOW" on THE CRATE card) | — | Seen in Swarm frames |
 
 **Agents on hand (2026-11-19):** Devin `acct1`/`acct2` report "Upgrade to Pro" for SWE-2 Max and `acct4`
-needs an interactive login, so Devin runs on `devin3` only. zcode runs two at once without trouble.
+needs an interactive login, so Devin runs on `devin3` only. zcode runs two at once; it resumes with
+`zcode -r <session>`. Sonnet subagents resume with SendMessage after a limit.

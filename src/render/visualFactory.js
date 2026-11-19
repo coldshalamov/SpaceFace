@@ -3058,10 +3058,27 @@ function swarmThreatHandles(mesh) {
   return cached;
 }
 
-export function syncSwarmThreatPlate(mesh, entity, camera, cameraWorldQuat = null) {
+/**
+ * A hostile wears the 2D emblem only when it is the player's current target or a boss/champion
+ * (design/overhaul/07 section 6): every other hull reads by its own silhouette and paint.
+ * `playerTargetId === undefined` means the caller does not filter (legacy: every hostile marked).
+ */
+export function swarmThreatPlateWanted(entity, playerTargetId) {
+  if (playerTargetId === undefined) return true;
+  if (!entity) return false;
+  if (playerTargetId != null && entity.id === playerTargetId) return true;
+  const data = entity.data;
+  // Same boss test the survival wave uses (src/systems/survivalWave.js), plus the Swarm champion.
+  if (data && (data.isBoss === true || data.swarmChampion === true || data.bossId != null
+    || data.missionTag === 'capital_boss' || data.bossDressing != null)) return true;
+  return !!(entity.flags && entity.flags.boss);
+}
+
+export function syncSwarmThreatPlate(mesh, entity, camera, cameraWorldQuat = null, playerTargetId = undefined) {
   if (!mesh || typeof mesh.getObjectByName !== 'function') return;
   if (!entity || entity.type !== 'ship' || entity.team == null || entity.team === 0 || entity.team === 2
-    || (entity.data && entity.data.circuitNode === true)) {
+    || (entity.data && entity.data.circuitNode === true)
+    || !swarmThreatPlateWanted(entity, playerTargetId)) {
     hideSwarmThreatMarks(mesh);
     return;
   }

@@ -2864,7 +2864,7 @@ export function buildSteps(picks) {
 /** The sentence over the build chain. */
 export function buildLead(picks) {
   const count = buildSteps(picks).length;
-  if (!count) return 'No draft taken — you flew the loadout you launched with.';
+  if (!count) return 'You flew the loadout you launched with.';
   if (count === 1) return '1 draft changed what your guns do:';
   return `${count} drafts changed what your guns do:`;
 }
@@ -3107,9 +3107,8 @@ export function storySentences(result) {
     const text = typeof moment === 'string' ? moment : (moment && moment.text);
     if (typeof text === 'string' && text) say(text);
   }
-  if (typeof result.buildName === 'string' && result.buildName) {
-    say(`You converged on ${result.buildName}.`);
-  }
+  // The build name lives in its own band below (renderBuild's build-name line); the story no
+  // longer repeats it as a sentence.
   if (typeof result.buildCode === 'string' && result.buildCode) {
     lines.push(`Build code ${result.buildCode}`);
   }
@@ -4268,8 +4267,8 @@ export function resultCelebration(result) {
   const chest = Number.isFinite(result.hangarBounty) ? result.hangarBounty : null;
   if (banked != null && chest != null) {
     lines.push(banked > 0
-      ? `${banked} cr banked into the hangar — the bounty now stands at ${chest} cr.`
-      : `The hangar bounty stands at ${chest} cr.`);
+      ? `Hangar +${banked} cr · ${chest} cr in all.`
+      : `Hangar: ${chest} cr.`);
     if (result.outcome === 'defeat' && result.stopReason !== 'player_retired') {
       lines.push('Defeat banks 50% of the remaining run purse, including its starting funds.');
     }

@@ -1425,7 +1425,9 @@ export const impulseCharges = {
           attackerId: ownerId,
           targetId: ent.id,
           packet,
-          origin: { kind: 'impulse_charge', id: opts.originId != null ? opts.originId : opts.sourceId },
+          // The charge id rides the origin too: the combat:damage receipt carries the origin
+          // alone, and a Detonator Dart blast must stay named in the hit history.
+          origin: { kind: 'impulse_charge', id: opts.originId != null ? opts.originId : opts.sourceId, chargeId: opts.chargeId },
         });
       }
     };

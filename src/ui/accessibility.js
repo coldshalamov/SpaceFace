@@ -613,15 +613,14 @@ export const FIRST_LIGHT_PRESET = Object.freeze({
 });
 
 /**
- * True until the first-light offer has been SHOWN once. Only the literal `firstLightOffered === true`
- * suppresses it — a hand-edited or migrated profile carrying junk must not silently swallow the
- * offer, and an absent accessibility subtree is simply "not offered yet".
+ * Never: the title does not stop a new player with a modal (design/overhaul/08_INTERFACE.md §2,
+ * director 2026-11-18 — the captured first frame after boot was a dialog titled "First light" that no
+ * stranger could read). The calm preset stays whole in Settings › Access (applyFirstLightPreset), and
+ * the OS reduced-motion question (screens/motionAsk.js, shouldAskMotionPreference) still asks once when
+ * the system requests reduced motion. Kept as a function so every caller keeps its shape.
  */
-export function shouldOfferFirstLight(settings) {
-  const a = settings && settings.accessibility && typeof settings.accessibility === 'object'
-    ? settings.accessibility
-    : null;
-  return !(a && a.firstLightOffered === true);
+export function shouldOfferFirstLight(_settings) {
+  return false;
 }
 
 /**
