@@ -31,6 +31,18 @@ committed**.
 
 Status here is updated as each lands; the ledger (`02`) records what was seen after.
 
+**Paused 2026-11-18 (usage limit).** T1–T5 and T8 are built in the working tree, **uncommitted**. The exact
+patches (HEAD + only the director's lines, safe beside other agents' work) and their staged copies are in
+`.devshots/director/pending/`; reviews land in `.devshots/director/reviews/`. Commit only after review is
+clean, staging with `node .devshots/director/dual-edit.mjs --stage --stage-dir=<dir> -- <files>`.
+T1's second Codex review asked for six more fixes before commit: (1) publish `fixedBody`/`bodyMassT`
+through the vitals diff with explicit clears, live `physicsBody.dynamic` winning; (2) the bracket must use
+`lineBodyMassT(player)` like the hover tag; (3) drive the hover verb from the ready acquisition receipt,
+not the mining/inspect branch; (4) the Maw brief, Maw objective and Foreman briefing
+(`missionObjectiveOps.js`, `missionStoryOps.js`) and already-saved slag-core briefs still teach strain;
+(5) Tally/Maw advice must follow the hull-to-load relationship, not line class; (6) the twin-bridle denial
+needs endpoint wording, not "ANCHOR". B2 and B3 reviews were still running.
+
 **Orbit-fire, specified for OVH-07** (from T10): while latched to an ANCHOR and holding fire, fixed-mount
 guns may gimbal up to ±110° toward the cursor — "the rope steadies your aim at what you're tied to" —
 and the orbit assist keeps steering the hull along the swing while the guns face inward. Done when the
