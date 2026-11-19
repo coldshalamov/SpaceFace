@@ -24,12 +24,14 @@ below states four things, and a packet built from it must repeat them:
 
 | Target vs your hull | Tag on the aim reticle | What happens |
 |---|---|---|
-| ≥ 3× your mass, or immovable (station, monolith, capital wreck) | **ANCHOR** | The line goes taut and *you* swing. Thrust becomes orbit. Reel in and you zip toward it. Let go and you are flung. |
-| ≤ ⅓ of your mass | **TOW** | It swings around you. Drag it, whip it, throw it. |
-| Between | **TUG** | Both move. Whoever thrusts harder wins; a boost wins the tug. |
+| 3× your mass or more, or bolted down (station, monolith, capital wreck) | **ANCHOR** | The line goes taut and *you* swing. Thrust becomes orbit. Reel in and you zip toward it. Let go and you are flung. |
+| No heavier than you | **TOW** | It swings around you. Drag it, whip it, throw it. |
+| Heavier, but under 3× | **TUG** | Both move. Whoever thrusts harder wins; a boost wins the tug. |
 
-The words replace **TOO HEAVY**, which is deleted from the game. The ratio thresholds are starting
-values; tune by play.
+The words replace **TOO HEAVY**, which is deleted from the game. **Built 2026-11-18** in
+`src/ui/lineRelation.js` (one owner for the Massline bracket and the hover tag). TOW starts at "no heavier
+than you" rather than ⅓ so the core Swarm act — a 16 t Wasp on an 18 t Hitch — reads as the throw it is,
+not a tug. Thresholds tune by play.
 
 **The mosquito** (Hitch 18 t on a Bruiser or an 80 t boulder): the player holds the cursor on the
 anchor and fires while the rope carries them round it. **The crane** (Atlas 200 t on a 16 t Wasp): the

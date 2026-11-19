@@ -17,19 +17,25 @@ committed**.
 
 | # | Tweak | Page | Status |
 |---|---|---|---|
-| T1 | The rope never refuses: delete TOO HEAVY and the overclass snap; tags ANCHOR / TOW / TUG | `03` §2 | in progress |
-| T2 | Headlight beam medium off in clear space | `07` §3 | queued |
-| T3 | Fodder never dodges thrown bodies; dodge by tier | `03` §9 | queued |
-| T4 | Starter gun competent; feathering instead of the forced vent | `03` §3 | queued |
-| T5 | Banned words out of player strings (Crucible, STALE, Unknown weapon, ledger prose on Run Over…) | `08` §5 | queued |
-| T6 | Hide unbound verbs (Gyre, Cloak) and truncated labels on the power bar | `08` §4 | queued |
-| T7 | DEV · SANDBOX out of the player pause menu | `08` §6 | queued |
-| T8 | "First light" prompt replaced by defaults + OS reduced-motion | `08` §2 | queued |
-| T9 | The calm-world safety net (non-energised contacts cannot kill) | `03` §5 | queued |
-| T10 | Release the assisted-turn bound while latched to an anchor | `03` §2.2 | queued |
-| T11 | Swarm starts at zero purse; Kiln's mood labels | `04` §5 | queued |
+| T1 | The rope never refuses: delete TOO HEAVY and the overclass snap; tags ANCHOR / TOW / TUG from one owner (`src/ui/lineRelation.js`), worker mirror carries the body truth; Adventure job copy stops teaching heat | `03` §2 | built, Codex-reviewed once, re-review running |
+| T2 | Headlight beam medium off in clear space | `07` §3 | built; review running |
+| T3 | Fodder never dodges thrown bodies (Swarm `mass`/`fodder` roles) | `03` §9 | built; review running |
+| T4 | Starter gun a competent pistol: dmg 9, heat half as fast (feathering moved to OVH-08 — it needs HUD work) | `03` §3 | built; review running |
+| T5 | Banned words: "Crucible" on the loading line, "Unknown weapon" for dart/bomb blasts, Run Over hangar prose, "No draft taken", "Converged on", "% pressure" | `08` §5 | built; review running ("STALE" follows T1's commit — same file) |
+| T6 | Hide unbound verbs on the power bar | `08` §4 | **no change needed**: the ordinary Swarm route already limits the bar to slots 1–6 (`src/data/swarmControls.js`); the 9-slot bar was the `?swarmRound=` developer route |
+| T7 | DEV · SANDBOX out of the player pause menu | `08` §6 | **no change needed**: already `IS_DEV`-only (`src/ui/screens/pause.js:1214`); the capture came from a dev server |
+| T8 | "First light" modal no longer interrupts the title | `08` §2 | built; review running |
+| T9 | The calm-world safety net | `03` §5 | **moved to OVH-09**: needs an "energised" stamp at every impulse source (guns, throws, powers, hazards) to be safe — a production, not a tweak |
+| T10 | Orbit-fire for the mosquito | `03` §2.2 | **moved to OVH-07**: Codex review found the orbit assist keeps the nose on the swing's tangent and fixed guns gimbal only a few degrees, so pouring fire into the anchor needs a designed mechanic (see OVH-07) |
+| T11 | Swarm starts at zero purse | `04` §5 | **moved to OVH-02**: a zero purse without the economy rebuild would starve rounds 1–3 against today's shop |
 
 Status here is updated as each lands; the ledger (`02`) records what was seen after.
+
+**Orbit-fire, specified for OVH-07** (from T10): while latched to an ANCHOR and holding fire, fixed-mount
+guns may gimbal up to ±110° toward the cursor — "the rope steadies your aim at what you're tied to" —
+and the orbit assist keeps steering the hull along the swing while the guns face inward. Done when the
+`03` §2.3 mosquito test passes: ≥ 80 % of shots aimed at an 80 t anchor hit it during a 3 s orbit at
+cruise, and nothing changes when unlatched.
 
 ## 2. Category 2 — built by agents from the build map
 
