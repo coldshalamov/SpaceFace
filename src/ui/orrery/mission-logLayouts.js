@@ -68,9 +68,10 @@ export function injectMissionLogLayouts(doc = globalThis.document) {
 
   @media (max-width: 639px) {
     /* phones: the card is one column, so the side inset comes straight out of the sentence and
-       the terms' values; 8px sides and a 96px label column (archive 104px) keep master's wraps */
+       the terms' values. A fixed 96px label column ran AUTHORIZATION (~140px tracked) into its
+       value, so each term stacks its label over a full-width value (as 761-860 already does) */
     ${ML} .sf-mlog-card { padding: 12px 8px 14px; }
-    ${ML} .sf-mlog-card .sf-mlog-terms > .k-row:not(#_) { grid-template-columns: 96px minmax(0, 1fr) !important; }
+    ${ML} .sf-mlog-card .sf-mlog-terms > .k-row:not(#_) { grid-template-columns: minmax(0, 1fr) !important; row-gap: 1px; }
     ${ML} .sf-mlog-commission-card > .sf-mlog-side { display: none !important; }
   }
   @media (max-width: 639px) and (max-height: 400px) {
