@@ -19,6 +19,7 @@ quality that anyone would notice".
 | [09 Sound](09_SOUND.md) | The last lane; the game reads muted |
 | [10 Engine](10_ENGINE.md) | Targets, measured costs, Swarm in its own space |
 | [11 Order of work](11_ORDER_OF_WORK.md) | Category 1 (tweaked now) and category 2 (built from `build_map.md` §40), the order, the checks |
+| [12 The pipeline](12_PIPELINE.md) | Who builds what (Devin, zcode, Sonnet, Codex), the line every change walks, the live board |
 
 **Authority:** the owner's words → `design/VISION.md` → this folder → `design/game/` → the rest
 (`00_RULINGS.md` top). **Work:** category 1 is the director's; category 2 is `build_map.md` §40,
