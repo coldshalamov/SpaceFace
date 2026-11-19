@@ -110,7 +110,7 @@ export {
 };
 import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
 import { applyMasslineReleaseCameraCue, createChaseCamera, IMPACT_KICK_WU_MAX, PHOTO_EXPOSURE_MIN, PHOTO_EXPOSURE_MAX, shakeDistanceAttenuation } from './camera.js';
-import { createCameraGate, createShakeAdmission } from './shakeAdmission.js';
+import { createShakeAdmission } from './shakeAdmission.js';
 import {
   clearanceCellInRange,
   clearanceLayoutFromBox,
@@ -421,6 +421,8 @@ import { globalInfrastructureMotion } from './infrastructureMotion.js';
 import { globalProjectileMotion } from './projectileMotionPresentation.js';
 import { globalOrdnanceMotion } from './ordnanceMotionPresentation.js';
 import { createLivingHullPresentation } from './livingHullPresentation.js';
+import { syncHullHitFlash } from './hullHitFlash.js';
+import { resolveVfxAccessibilityProfile as resolveHitFlashAccessibility } from './vfxAccessibility.js';
 import { createCrucibleGhostPresentation } from './crucibleGhost.js';
 import { createPhaseBlinkPresentation, createPhaseBlinkWarmSubject } from './phaseBlinkPresentation.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
@@ -11644,8 +11646,6 @@ export const render = {
       state.render.asteroidInstanceMembershipForEntity = membershipReader;
     }
     state.render.cameraCtrl = cam;   // controller (addTrauma/pushZoom) — exposed for feel.js / ui
-    // OVH-06a / R10: the one gate every camera motion passes (cause-tagged; room events refused).
-    if (!state.render.cameraGate) state.render.cameraGate = createCameraGate();
     state.render.vf = vf;   // exposed for the dev-only ship turntable preview (shipPreview.js)
     state.render.warmPostProcess = () => {
       const dynamicBufferEpoch = dynamicBuffers.arm();
@@ -20031,15 +20031,9 @@ export const render = {
           scaled = amount * shakeDistanceAttenuation(Math.hypot(at.x - p.pos.x, at.z - p.pos.z));
         }
       }
-      // OVH-06a / R10: with the gate attached it owns admission (class, taper, per-cause
-      // counters) inside the camera controller; this handler only routes the cause.
-      const gate = state.render && state.render.cameraGate;
-      const cause = payload && typeof payload.cause === 'string' ? payload.cause : undefined;
-      if (scaled <= 0.001) { if (gate) gate.refuse(cause, state.simTime, 'trauma'); return; }
-      if (!gate) {
-        scaled = shakeAdmission.admit(scaled, state.simTime);
-        if (scaled <= 0.001) return;
-      }
+      if (scaled <= 0.001) return;
+      scaled = shakeAdmission.admit(scaled, state.simTime);
+      if (scaled <= 0.001) return;
       // FB-072 — a shake that carries a direction is a knock, not noise: the view is pushed
       // along the real hit axis via the kick envelope instead of undirected trauma. The kick
       // controller itself drops the motion under motion-reduce, so this stays vestibular-safe.
@@ -20047,10 +20041,10 @@ export const render = {
       if (dir && Number.isFinite(dir.x) && Number.isFinite(dir.z)
         && (dir.x * dir.x + dir.z * dir.z) > 1e-12
         && typeof cam.impactKick === 'function') {
-        cam.impactKick(dir.x, dir.z, Math.min(IMPACT_KICK_WU_MAX, scaled * 12), cause);
+        cam.impactKick(dir.x, dir.z, Math.min(IMPACT_KICK_WU_MAX, scaled * 12));
         return;
       }
-      cam.addTrauma(scaled, cause);
+      cam.addTrauma(scaled);
     });
     onBus('camera:kill', () => cam.killCam && cam.killCam());
     // Boost release leaves velocity lookahead in place. The chase camera already eases its small
@@ -30185,6 +30179,12 @@ export const render = {
         if (entity && runClosures && !farSpeck && userData.livingMachineAwake !== false
             && userData.updateWorldSitePresentation) {
           userData.updateWorldSitePresentation(entity, this.state.simTime, _worldSiteA11y);
+        }
+        // OVH-06b: the two-frame emissive flash on the struck hull (a private material clone swapped
+        // in only while the flash is live; one slot scan per body per frame when idle).
+        if (entity && !farSpeck) {
+          syncHullHitFlash(entity.id, mesh, this.state.simTime,
+            resolveHitFlashAccessibility(this.state.settings).flashOpacityScale < 1);
         }
         if (entity && runClosures && userData.updateDamageState) {
           if (entity.hull !== userData._dmgHull || entity.shield !== userData._dmgShield
