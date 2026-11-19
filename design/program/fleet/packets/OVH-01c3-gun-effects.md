@@ -21,6 +21,8 @@
 - **Deterministic:** `state.rng`, `state.simTime`; never `Math.random`, `Date`, `performance.now`.
 - **Single writers:** change a value inside the system that owns it.
 - **A node that needs a system that does not exist** (name it) is **not built**: no stub. Report it.
+- **Do not edit `src/systems/combat.js`** (another builder is tagging its camera events right now): damage
+  changes go in `src/combat/damage.js`, the damage router.
 - **Do not edit** `src/data/pilotTree.js`, `src/data/pilotLive.js`, `src/systems/runSession.js`,
   `src/core/runState.js`, any UI file, or the rope/power owners (`masslineController.js`,
   `massline*.js`, `powerVerbs.js`).
