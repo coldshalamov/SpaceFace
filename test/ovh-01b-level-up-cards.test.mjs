@@ -315,6 +315,26 @@ test('the round-end breath is pushed over the draft once, never while a hand is 
   assert.equal(bus2.of('ui:pushScreen').length, 0, 'no hand, no breath');
 });
 
+test('the breath rises over a PAUSED draft: no HUD tick needed, once per draft', async () => {
+  // A played round found it: the run HUD ticks with the simulation, and the draft pauses the
+  // simulation, so the tick never saw the draft go up. The draft's own events must carry it.
+  const state = runState();
+  const bus = fakeBus();
+  const ctl = createPilotBreathController({ state, bus, doc: fakeDoc() });
+  ctl.tick(state); // the fight's last tick, before the pause
+  bus.emit('run:draftOffered', { wave: state.run.wave });
+  state.ui.screenStack = ['crucibleDraft']; // the screen manager lands the draft a moment later
+  bus.emit('ui:pushScreen', { id: 'crucibleDraft' });
+  await new Promise((r) => setTimeout(r, 200)); // no ticks: the game is paused
+  const cardPushes = () => bus.of('ui:pushScreen').filter((p) => p && p.id === PILOT_CARDS_SCREEN_ID);
+  assert.equal(cardPushes().length, 1, 'the cards are pushed over the paused draft');
+  state.ui.screenStack = ['crucibleDraft', PILOT_CARDS_SCREEN_ID];
+  bus.emit('run:draftOffered', { wave: state.run.wave }); // a re-offer inside the same draft
+  await new Promise((r) => setTimeout(r, 200));
+  assert.equal(cardPushes().length, 1, 'still once per draft');
+  ctl.destroy();
+});
+
 test('Pick at once raises the cards over the fight and slows the presented clock to 15 % until a choice', () => {
   const state = runState();
   state.settings.gameplay.pilotPickAtOnce = true;

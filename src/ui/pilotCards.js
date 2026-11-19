@@ -523,6 +523,44 @@ export function createPilotBreathController({ state, bus, doc = globalThis.docum
   let overlay = null;         // { view, timer }
   let dismissedSignature = null;
   let slowed = false;
+  let latest = state;         // the state the run HUD last ticked with
+  let breathPoll = null;
+  const offs = [];
+
+  // THE BREATH WHILE PAUSED. The run HUD's tick is a simulation system: it stops the moment the
+  // between-round draft pauses the game, so a tick-only check never sees the draft go up (found in
+  // a played round: level 4, three picks banked, a hand dealt, no cards). The draft's own events
+  // still fire, so the opening is caught here, and a short wall-clock poll waits until the draft
+  // is actually on the stack before pushing the cards on top of it.
+  function tryBreath() {
+    const st = latest;
+    const run = liveSurvival(st);
+    const hand = run ? readPilotHand(st) : null;
+    if (!run || !hand) return false;
+    const stack = screenStackOf(st);
+    if (stack.includes(PILOT_CARDS_SCREEN_ID)) return true;
+    if (!stack.includes('crucibleDraft')) return false;
+    const key = `${run.seed}:${run.wave}`;
+    if (breathKey === key) return true;
+    breathKey = key;
+    if (bus && typeof bus.emit === 'function') bus.emit('ui:pushScreen', { id: PILOT_CARDS_SCREEN_ID });
+    return true;
+  }
+  function stopBreathPoll() { if (breathPoll) { clearInterval(breathPoll); breathPoll = null; } }
+  function startBreathPoll() {
+    stopBreathPoll();
+    let tries = 0;
+    breathPoll = setInterval(() => {
+      tries += 1;
+      if (tryBreath() || tries >= 60) stopBreathPoll(); // ~3 s, then the next tick or draft retries
+    }, 50);
+    if (breathPoll && typeof breathPoll.unref === 'function') breathPoll.unref();
+  }
+  if (bus && typeof bus.on === 'function') {
+    const listen = (event, fn) => { const off = bus.on(event, fn); if (typeof off === 'function') offs.push(off); };
+    listen('run:draftOffered', () => startBreathPoll());
+    listen('ui:pushScreen', (p) => { if (p && p.id === 'crucibleDraft') startBreathPoll(); });
+  }
 
   function setSlow(on) {
     if (!effects || slowed === on) return;
@@ -585,6 +623,7 @@ export function createPilotBreathController({ state, bus, doc = globalThis.docum
   }
 
   function tick(st = state) {
+    if (st) latest = st;
     const run = liveSurvival(st);
     const hand = run ? readPilotHand(st) : null;
     const stack = screenStackOf(st);
@@ -616,7 +655,12 @@ export function createPilotBreathController({ state, bus, doc = globalThis.docum
     }
   }
 
-  function destroy() { closeOverlay(); breathKey = null; }
+  function destroy() {
+    closeOverlay();
+    stopBreathPoll();
+    while (offs.length) { try { offs.pop()(); } catch { /* bus already gone */ } }
+    breathKey = null;
+  }
 
   return { tick, destroy, get overlayOpen() { return !!overlay; }, get slowed() { return slowed; } };
 }
