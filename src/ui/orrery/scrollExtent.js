@@ -42,9 +42,12 @@ function paint(el) {
     const vw = globalThis.innerWidth || 1440;
     const vh = globalThis.innerHeight || 900;
     // a scroller that reaches the viewport's bottom-right corner would seat its cue on the foot's
-    // primary verb (the factions stage ran onto UNDOCK, bench 1440x900) — those seat bottom-left
-    const leftSeat = r.right > vw - 240;
+    // primary verb (the factions stage ran onto UNDOCK, bench 1440x900) — those seat bottom-left.
+    // Only when the cue would actually reach that bottom band: on a phone every full-width list
+    // passes the right-edge test, and the left seat parked MORE on the last visible row's name
+    // (Industry's blueprint ladder, 390x844) where the right seat is open space.
     const seatTop = Math.max(r.top + 8, Math.min(r.bottom - 38, vh - 104));
+    const leftSeat = r.right > vw - 240 && seatTop > vh - 180;
     foot.style.top = `${Math.max(0, Math.round(seatTop))}px`;
     foot.style.left = `${Math.max(0, Math.round(leftSeat ? r.left + 14 : r.right - 132))}px`;
   }
