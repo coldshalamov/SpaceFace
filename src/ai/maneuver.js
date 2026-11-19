@@ -1337,6 +1337,8 @@ function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, enti
     countContactVisit(counters, counterMode);
     if (!contact || contact.kind !== ContactKind.SHIP || contact.id === self.id || contact.alive === false) continue;
     if (contact.id === intent.targetId && seeksHullContact(intent, self)) continue;
+    // Fodder (bodyDodge false) takes the thrown hull it exists for: no pass-around for a tumbling ship.
+    if (self.bodyDodge === false && contact.tumbling === true) continue;
     const dx = contact.pos.x - self.pos.x;
     const dz = contact.pos.z - self.pos.z;
     const distance = Math.hypot(dx, dz);

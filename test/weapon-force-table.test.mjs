@@ -71,12 +71,11 @@ test('damage and ROF remain unchanged while force table is set', () => {
   const concussion = BY_ID.get('wpn_concussion_cannon_m');
   const mine = BY_ID.get('wpn_vector_mine_m');
 
-  // ROW 482 (ROCK-GUN, build_map §33.1) guns-nudge retune 2026-10-23: the starter bolt's
-  // payload was lowered 8 -> 5 (dps 44 -> 27.5) so committed thrown mass is the killer and
-  // the gun is the nudge/finisher. ROF and every impulse value are untouched — this test's
-  // protective point (the force table never silently rewrites damage/ROF) is unchanged.
-  // Pinned alongside test/zc-a34-guns-nudge.test.mjs.
-  assert.equal(pulse.dmg, 5);
+  // Ruling R5 (design/overhaul/00_RULINGS.md, 2026-11-18) made the starter a competent pistol: dmg 9
+  // (row 482 had lowered it 8 -> 5). ROF and every impulse value are untouched — this test's protective
+  // point (the force table never silently rewrites damage/ROF) is unchanged. Pinned alongside
+  // test/zc-a34-guns-nudge.test.mjs.
+  assert.equal(pulse.dmg, 9);
   assert.equal(pulse.rof, 5.5);
 
   assert.equal(railgun.dmg, 60);

@@ -39,13 +39,12 @@ test('fresh Crucible starts with a readable gun, bank-shot rig and escape tool',
   assert.ok(!kit.loadout.some((slot) => slot.defId === 'wpn_railgun_m'));
   const pulse = WEAPONS.find((w) => w.id === 'wpn_pulse_laser_s');
   assert.ok(pulse.dmg > 0 && pulse.rof > 0, 'Pulse stays a readable starter gun');
-  // ROW 482 (ROCK-GUN, build_map §33.1) guns-nudge retune 2026-10-23: starter payload
-  // 8 -> 5 (dps 44 -> 27.5) — the gun is the nudge/finisher, committed thrown mass is the
-  // killer. Cadence, impulse and heat are untouched. Pinned by test/zc-a34-guns-nudge.test.mjs.
-  assert.equal(pulse.dmg, 5);
+  // Ruling R5 (design/overhaul/00_RULINGS.md, 2026-11-18): the starter is a competent pistol — dmg 9,
+  // heat 6/shot. Cadence and impulse are untouched. Pinned by test/zc-a34-guns-nudge.test.mjs.
+  assert.equal(pulse.dmg, 9);
   assert.equal(pulse.rof, 5.5);
   assert.equal(pulse.impulsePerHit, 84, 'B4 starter 5% cruise impulse is intact');
-  assert.equal(pulse.heatPerShot, 8, 'kit-balance vent lever; not a deleted gun');
+  assert.equal(pulse.heatPerShot, 6, 'kit-balance vent lever; not a deleted gun');
 });
 
 test('countKitKills splits hostile vs physics-attributed vs gun on the real helpers', () => {

@@ -279,6 +279,16 @@ test('a fuse-lit detonator_run hull never body-dodges', () => {
   assert.equal(firstDodge(frames), null, 'a dart on its run does not flinch');
 });
 
+// design/overhaul/03_COMBAT.md §9 (owner 2026-11-18): fodder is ammunition. The same alert pilot that
+// sidesteps a thrown wreck as an ordinary light hull never does when it flies as fodder.
+test('fodder (bodyDodge false) never body-dodges; the same alert pilot otherwise does', () => {
+  const pilot = pilotWhere((id) => notices(id, 'wreck-1', ALERT));
+  const ordinary = run(pilot, (tick) => [thrownAt(tick)], { self: selfFrame(), ticks: 48 });
+  assert.ok(firstDodge(ordinary), 'control: an alert light pilot sidesteps the thrown wreck');
+  const fodder = run(pilot, (tick) => [thrownAt(tick)], { self: selfFrame({ bodyDodge: false }), ticks: 48 });
+  assert.equal(firstDodge(fodder), null, 'a Wasp in the swarm takes the throw it exists for');
+});
+
 test('a heavy ship between pilot and body blocks sight just like a rock', () => {
   const pilot = pilotWhere((id) => notices(id, 'wreck-1', ALERT));
   const lane = (tick) => thrownAt(tick, { etaStart: 1.0 });
@@ -398,4 +408,40 @@ test('through the real planner a static rock in the dodge path owns the hull and
     const row = blocked.find((c) => c.tick === f.tick);
     if (row && row.obstacleAvoidance === true) assert.equal(f.reflex, null, 'lastReflex agrees with the veto');
   }
+});
+
+// design/overhaul/03_COMBAT.md §9: the ship-collision pass-around is a second way to sidestep a thrown
+// hull. Fodder must not take it for a tumbling (thrown) ship; ordinary traffic and non-fodder keep it.
+function shipAvoidRun({ bodyDodge, tumbling, withShip = true, entityId = 7 }) {
+  const planner = new ManeuverPlanner({ seed: SEED });
+  const target = { id: 1, kind: 'ship', pos: { x: 500, z: 0 }, vel: { x: 0, z: 0 }, radius: 10, tags: [], confidence: 1, hostile: true };
+  const maneuver = { kind: ManeuverKind.INTERCEPT, targetId: 1, flightPoint: { x: 500, z: 0 },
+    formationSlot: { x: 500, z: 0 }, formationBound: 170, breakFormation: true };
+  const directive = { squadId: 'b045s', formation: { slot: { x: 500, z: 0 }, bound: 170, breakFormation: true } };
+  let maxRight = 0;
+  for (let tick = 1; tick <= 40; tick += TICK_STEP) {
+    const thrown = { id: 'ship-thrown', kind: ContactKind.SHIP, team: 1, hostile: false, alive: true, radius: 12, tags: [],
+      confidence: 1, tumbling, operationalMassBand: 'light',
+      pos: { x: 150 - 150 * (tick / 60), z: 2 }, vel: { x: -150, z: 0 } };
+    const perception = {
+      tick,
+      self: { id: entityId, team: 2, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0, radius: 12,
+        energyFraction: 1, heatFraction: 0, combatDoctrineId: 'interceptor_flyby', operationalMassBand: 'light', bodyDodge },
+      contacts: withShip ? [target, thrown] : [target],
+    };
+    const request = planner.plan({ entityId, tick, perception, behavior: { maneuver }, directive });
+    maxRight = Math.max(maxRight, Math.abs(request.forceLocal.right));
+  }
+  return maxRight;
+}
+
+test('through the real planner fodder takes a thrown hull without ship-collision avoidance; others still steer', () => {
+  const baseline = shipAvoidRun({ bodyDodge: false, tumbling: true, withShip: false });
+  const fodder = shipAvoidRun({ bodyDodge: false, tumbling: true });
+  const ordinary = shipAvoidRun({ bodyDodge: true, tumbling: true });
+  const trafficFodder = shipAvoidRun({ bodyDodge: false, tumbling: false });
+  const trafficAlert = shipAvoidRun({ bodyDodge: true, tumbling: false });
+  assert.ok(ordinary > baseline + 0.2, `control: a non-fodder pilot sidesteps the thrown hull (${ordinary} vs ${baseline})`);
+  assert.equal(fodder, baseline, 'fodder applies no lateral avoidance thrust for a thrown hull');
+  assert.equal(trafficFodder, trafficAlert, 'fodder treats ordinary (non-tumbling) traffic exactly as any pilot does');
 });

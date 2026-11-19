@@ -1,7 +1,7 @@
 // Canonical deterministic hostile-spec builder shared by simulation and worker materializers.
 // combat.js re-exports this API; its bounded repeat caches stay with the builder so callers that
 // only create spawn specs do not load the damage/update system.
-import { WEAPONS } from '../data/weapons.js';
+import { WEAPONS, npcWeaponDef } from '../data/weapons.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { SHIPS } from '../data/ships.js';
 import { dedupWarn } from '../core/warnDedup.js';
@@ -115,7 +115,7 @@ function enemyWeaponTemplateKey(w) {
 }
 
 function resolveEnemyWeapon(w, slotIndex) {
-  const base = WPN.get(w.id);
+  const base = npcWeaponDef(WPN.get(w.id));
   if (!base) return null;
   const templateKey = enemyWeaponTemplateKey(w);
   let template = weaponTemplateCache.get(templateKey);
@@ -147,6 +147,9 @@ function resolveEnemyWeapon(w, slotIndex) {
       tracking: isTurret ? 'auto_turret' : (base.tracking || 'fixed'),
       arc: isTurret ? { turret: base.turretArcDeg || 180 } : 'fixed',
       heatMax: base.heatMax ?? 100, lockTimeS: base.lockTimeS ?? 0,
+      // systems/weapons.js reads instance `heat` before the shared catalog def, so carry the resolved
+      // per-shot heat (npcWeaponDef keeps the pre-R5 starter value for every non-player copy).
+      ...(base.heatPerShot != null ? { heat: base.heatPerShot } : null),
       // Mount roles authored in enemies.js: `occasional` fires in deterministic windows,
       // `defensiveOnly` answers only inside its own close envelope. weapons.js gates on
       // these — they must survive resolution or the mounts read as always-on primaries.

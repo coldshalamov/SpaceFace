@@ -141,7 +141,7 @@ test('every primitive compiles to a frozen AttackSpec whose recursion cap is 4',
   assert.equal(sticky.propagation.split.count, 7);
   assert.equal(prism.trajectory.bounces, 4);
   const pulse = WEAPONS.find((weapon) => weapon.id === 'wpn_pulse_laser_s');
-  assert.equal(pulse.heatPerShot, 8);
+  assert.equal(pulse.heatPerShot, 6); // R5 (2026-11-18): the starter heats half as fast
   assert.equal(pulse.rof, 5.5);
   assert.equal(pulse.energyCost, 2);
   const bombs = PRODUCTION_UPDATE_ORDER.indexOf('bombs');

@@ -45,20 +45,24 @@ const SHIPPED_WEAPONS = [
     id: 'wpn_pulse_laser_s', name: 'Pulse Laser S', slotType: 'weapon', size: 'S', tier: 1, mass: 2, price: 4500,
     sentence: 'A reliable starter bolt: steady damage, and enough push to slide a light hull off its line.',
     // Starter reliability: a long, readable engagement burst rather than five-shot lockout or
-    // infinite fire. Heat is the kit-balance lever against the physics kit — Pulse still dumps
-    // a real burst (dmg 5 at 5.5 rps), then a short forced vent, instead of grinding the room
-    // forever. Impulse is 5 % of Wasp cruise (mass 16, governed 105 WU/s) per full hit: 84 momentum.
-    // ROW 482 (ROCK-GUN, build_map §33.1) "guns become the nudge and the finisher": dmg was 8
-    // (dps 44) — that killed a swarm-tier hull (Wasp 55/8/25) in ~2.4 s, FASTER than a committed
-    // thrown boulder per hull (~1.8 s at 2 kills/throw), so the optimal swarm play was standing
-    // off and grinding. dmg 5 (dps 27.5) puts the starter bolt at ~2× the throw cadence on the
-    // wave-1–5 mass hulls — the nudge/finisher role; committed mass is the killer. Swarm rule 1
-    // holds: no enemy HP was padded to force this. NPC copies of this gun carry their own
-    // dmgOverride in src/data/enemies.js (wasp 6, zealot 4, reaver 6), so NPC lethality is
-    // unchanged. Pinned by test/zc-a34-guns-nudge.test.mjs.
-    dmg: 5, rof: 5.5, dps: 27.5, damageType: 'energy', energyCost: 2,
+    // infinite fire — about six seconds of steady fire (dmg 9 at 5.5 rps), then a short forced vent.
+    // Impulse is 5 % of Wasp cruise (mass 16, governed 105 WU/s) per full hit: 84 momentum — a
+    // pistol walks a light hull back; it does not throw it.
+    // Ruling R5 (design/overhaul/00_RULINGS.md, owner 2026-11-18): damage and kick are a trade, not a
+    // hierarchy — "a pistol type weapon… they do damage, and you can lay into enemies". Row 482 had cut
+    // this gun to dmg 5 / dps 27.5 so grinding lost to throwing by 2×; that made minute one limp. The
+    // starter is now a competent pistol (the Pew family, design/overhaul/03_COMBAT.md §3.1): dmg 9,
+    // dps 49.5 — a Wasp (55/8/25) dies in ~2.2 s of fire — and it heats half as fast (6/shot, 16/s
+    // dissipation: ~6 s of continuous fire before the vent, not ~3 s). A committed throw still clears a
+    // packed hull at least as fast and pays more Scrap, so the room stays the louder path. NPC copies of
+    // this gun carry their own dmgOverride in src/data/enemies.js (wasp 6, zealot 4, reaver 6), so NPC
+    // lethality is unchanged. Pinned by test/zc-a34-guns-nudge.test.mjs.
+    dmg: 9, rof: 5.5, dps: 49.5, damageType: 'energy', energyCost: 2,
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.6,
-    heatPerShot: 8, heatMax: 100, heatDissip: 12,
+    heatPerShot: 6, heatMax: 100, heatDissip: 16,
+    // R5 is the PLAYER's starter. Every non-player copy of this gun (catalog enemies, the 47-A harasser,
+    // Reavers) keeps the pre-R5 payload and heat through npcWeaponDef() below.
+    npcProfile: { dmg: 5, dps: 27.5, heatPerShot: 8, heatDissip: 12 },
     impulsePerHit: 84, tumbleTorque: 0.05, impulseProvenance: 'starter_pulse_plink',
   },
   {
@@ -373,9 +377,9 @@ const SHIPPED_WEAPONS = [
     // can still fly volley+bank+chain when Twin Mount occupies the utility slot.
     id: 'unique_mirrorjaw_pulse', baseId: 'wpn_pulse_laser_s', name: 'Mirrorjaw Pulse', slotType: 'weapon', size: 'S', tier: 2, mass: 2, price: 0,
     sentence: 'The starter bolt reborn meaner: the same push, faster and meaner on the follow-up.',
-    // dmg follows the row-482 rock-gun retune of its base (was 8): the unique stays the starter
-    // bolt (heat 5 + Bank Shot/Relay), not a return of the pre-tune grind gun.
-    dmg: 5, rof: 5.5, dps: 27.5, damageType: 'energy', energyCost: 2,
+    // dmg follows its base, the starter bolt (R5, 2026-11-18: dmg 9): the unique keeps its own
+    // cooler heat (5/shot) and Bank Shot/Relay — the same pistol, meaner on the follow-up.
+    dmg: 9, rof: 5.5, dps: 49.5, damageType: 'energy', energyCost: 2,
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.6,
     heatPerShot: 5, heatMax: 100, heatDissip: 12,
     impulsePerHit: 84, tumbleTorque: 0.05, impulseProvenance: 'starter_pulse_plink',
@@ -489,6 +493,11 @@ export { USER_WEAPON_KEYS };
 // it is a real part of the weapon's answer (>= 10 momentum). Setup-tool pings (1) and flak
 // fragments (5) read honest without it — their verbs are the status, the contact, or the burst.
 export const SHOVE_METRIC_MIN = 10;
+
+/** The weapon def a NON-player hull fires: a def's `npcProfile` overlays its stats (R5 retunes the player's gun only). */
+export function npcWeaponDef(def) {
+  return def && def.npcProfile ? { ...def, ...def.npcProfile } : def;
+}
 export function shoveMetricValue(def) {
   const n = Number(def && def.impulsePerHit);
   return Number.isFinite(n) && n >= SHOVE_METRIC_MIN ? n : null;

@@ -339,7 +339,11 @@ test('every starter hull lands on a distinct, peaking shape and a unique rail la
         `${sheets[i].shipId} and ${sheets[j].shipId} must differ by at least two whole bars (got ${diffs})`);
     }
     assert.ok(sheets[i].stats.some((row) => row.value >= 5), `${sheets[i].shipId} has a real strength`);
-    assert.ok(sheets[i].stats.some((row) => row.value <= 2), `${sheets[i].shipId} has a real weakness`);
+    // R5 (2026-11-18) lifted the gun-derived bars (Firepower, Power) of the fitted starter pistol from 2 to
+    // 3-4 on every starter, so the weakness is read against the card's own peak: a bar at most 3 and at
+    // least 3 bars under the card's strongest one. The hull stats (Toughness) carry it; the gun does not.
+    const peak = Math.max(...sheets[i].stats.map((row) => row.value));
+    assert.ok(sheets[i].stats.some((row) => row.value <= 3 && peak - row.value >= 3), `${sheets[i].shipId} has a real weakness`);
   }
   for (const sheet of sheets) {
     assert.ok(sheet.stats.some((row) => row.value >= 6), `${sheet.shipId} starter has a peak`);

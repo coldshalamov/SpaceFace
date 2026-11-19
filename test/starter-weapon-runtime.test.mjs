@@ -154,12 +154,12 @@ test('starter Pulse Laser S has a readable burst and a clearly bounded vent/reco
   const a = deterministicStarterCycle();
   const b = deterministicStarterCycle();
   assert.deepEqual(b, a, 'starter thermal cycle is deterministic across identical runs');
-  // PQ-137.05 kit-balance: heat 8 keeps Pulse a gun (a burst, not a five-shot lockout) and
-  // forces a vent before it can grind a room. Live numbers on this pin: 18 shots / ~3.2 s.
-  assert.ok(a.shotsAtVent >= 14, `starter must fire a real burst before vent, got ${a.shotsAtVent}`);
-  assert.ok(a.shotsAtVent <= 24, `starter must vent before it grinds a room, got ${a.shotsAtVent} shots`);
-  assert.ok(a.ventStart >= 2.5 && a.ventStart <= 4.5,
-    `starter vent should begin after a useful 2.5-4.5s burst, got ${a.ventStart}s`);
+  // Ruling R5 (design/overhaul/00_RULINGS.md, 2026-11-18): heat 6/shot, dissipation 16/s — about six
+  // seconds of steady fire, then the forced vent. Live numbers on this pin: 37 shots / ~6.2 s.
+  assert.ok(a.shotsAtVent >= 30, `R5: guns trade damage for kick — the starter runs hot: starter must fire a real burst before vent, got ${a.shotsAtVent}`);
+  assert.ok(a.shotsAtVent <= 44, `R5: guns trade damage for kick — the starter runs hot: starter must still vent before it grinds a room, got ${a.shotsAtVent} shots`);
+  assert.ok(a.ventStart >= 5 && a.ventStart <= 7.5,
+    `R5: guns trade damage for kick — the starter runs hot: starter vent should begin after a 5-7.5s burst, got ${a.ventStart}s`);
   assert.equal(a.shotsDuringVent, 0, 'vent lockout never leaks a projectile');
   assert.ok(a.ventEnd - a.ventStart >= 1.5 && a.ventEnd - a.ventStart <= 2,
     `vent duration must be readable and bounded, got ${a.ventEnd - a.ventStart}s`);
@@ -179,8 +179,8 @@ test('releasing the starter trigger produces predictable cooling and reliable re
   h.state.input.fire = false;
   h.tick(60 * 2);
   const heatAfterCooling = mount._heat || 0;
-  assert.ok(heatAtRelease >= 80 && heatAtRelease <= 100,
-    `three-second burst should nearly fill the heat bar, got ${heatAtRelease}`);
+  assert.ok(heatAtRelease >= 40 && heatAtRelease <= 60,
+    `R5: guns trade damage for kick — the starter runs hot: a three-second burst fills about half the heat bar, got ${heatAtRelease}`);
   assert.ok(heatAtRelease - heatAfterCooling >= 20,
     `two-second release should shed at least 20 heat, shed ${heatAtRelease - heatAfterCooling}`);
   assert.equal(h.fireTimes.length, shotsAtRelease, 'release never emits a stray shot');
@@ -195,7 +195,8 @@ test('releasing the starter trigger produces predictable cooling and reliable re
 
 test('live NPC starter pulse obeys the same thermal lockout without claiming player presentation', () => {
   const h = starterHarness({ withNpc: true });
-  while (!h.vents.some((event) => event.phase === 'start') && h.state.simTime < 12) h.tick();
+  // The NPC keeps the pre-R5 heat (npcWeaponDef), so its lockout opens before the player's R5 vent does.
+  while (!(h.npc.data.weaponVentUntil > h.state.simTime) && h.state.simTime < 12) h.tick();
   assert.ok(h.npc.data.weaponVentUntil > h.state.simTime,
     'NPC pulse enters the same live thermal lockout as the player');
   assert.equal(h.vents.filter((event) => event.ownerId === h.npc.id).length, 0,
