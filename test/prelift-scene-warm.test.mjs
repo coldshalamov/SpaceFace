@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { vfx } from '../src/render/vfx.js';
 import { CauseMarkLayer } from '../src/render/vfx/causeMarks.js';
@@ -143,4 +144,20 @@ test('no per-body rock in the scene: cause marks and plume still warm, rock skip
     assert.equal(f.warm.sceneWarm.causeMarks, true);
     assert.ok(f.warm.sceneWarm.plumeLayers >= 2);
   } finally { f.warm.releaseWarmSamples(); f.owner._disposeEnergy(); }
+});
+
+// LOAD-03 (5934f96ba9) warms the Swarm door's arena scene only while the crucible menu warm is
+// staged; ordinary Adventure never arms it, so the pre-lift exemplars stay on the plasma warm the
+// Adventure first-picture cook admits. If LOAD-03 ever arms on Adventure, fold these exemplars
+// into it instead of keeping two hooks.
+test('LOAD-03 stays crucible-menu-only; Adventure reaches the pre-lift warm through the plasma warm', () => {
+  const renderer = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(renderer, /warmPlayerPlasma\(\{ playerPlasmaOnly: true \}\)/,
+    'Adventure first-picture cook still runs the plasma-only warm');
+  const arm = renderer.indexOf('this._armMenuSwarmSceneWarm(this._menuSwarmSpec)');
+  assert.ok(arm > 0, 'LOAD-03 arm call present');
+  const before = renderer.slice(Math.max(0, arm - 400), arm);
+  assert.ok(/_earlyCrucibleWarmMenu/.test(before), 'LOAD-03 arm gated on the crucible menu warm');
+  const vfxSrc = readFileSync(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
+  assert.match(vfxSrc, /attachPreliftSceneWarm\(plasmaStream\.group/);
 });
