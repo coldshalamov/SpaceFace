@@ -360,12 +360,15 @@ test('no visual factory: freighter exemplars skipped, the rest still warm', () =
   } finally { f.warm.releaseWarmSamples(); f.owner._disposeEnergy(); }
 });
 
-// scenewarm3 GC-pause check: exemplar-owned geometry (cause marks, per-body rock from the pooled
-// material, instanced rock, every freighter leaf) is disposed on release, which the first-picture
-// cook calls right after the warm root's pipelines are admitted; shared materials never are, and the
-// freighter cache keeps attribute layouts only (no built-freighter geometry stays module-retained).
-test('release right after compile disposes every exemplar-owned geometry, never a shared material', () => {
+// scenewarm5 GC check (supersedes scenewarm3's dispose-on-release pin): the warm's short-lived garbage
+// was collected in the first second after the lift (scenewarm4 8v8 profiler GC 0-1 s 35.7 vs 19.9 ms/run).
+// Every exemplar (cause marks, per-body rock from the pooled material, instanced rock, every freighter
+// leaf) now draws a module-retained degenerate geometry shared per attribute layout: a re-warm allocates
+// no geometry, release disposes neither geometry nor material, and no exemplar ever borrows the live
+// owner's geometry. The program key only reads the attribute layout, so the warmed keys are unchanged.
+test('exemplars share module-retained degenerate geometry per layout: re-warm allocates none, release disposes none', () => {
   invalidateVisualFactoryCaches();
+  __resetPreliftSceneWarmForTests();
   const vf = createVisualFactory();
   const f = fixture({ withBody: false, vf });
   const root = warmRoot(f.warm);
@@ -376,21 +379,34 @@ test('release right after compile disposes every exemplar-owned geometry, never 
   for (const want of [':cause-marks', ':rock', ':rock-instanced', ':freighter:']) {
     assert.ok(owned.some((n) => n.name.includes(want)), `${want} exemplar mounted`);
   }
-  const geoDisposed = new Set();
-  const matDisposed = [];
+  const live = new Set();
+  f.scene.traverse((n) => { if (n.geometry && !owned.includes(n)) live.add(n.geometry); });
+  const rockShared = owned.find((n) => n.name.endsWith(':rock')).geometry;
+  assert.equal(owned.find((n) => n.name.endsWith(':rock-instanced')).geometry, rockShared,
+    'per-body and instanced rock exemplars share one degenerate geometry (same chunk layout)');
+  const distinct = new Set(owned.map((n) => n.geometry));
+  assert.ok(distinct.size < owned.length, 'exemplars with one layout share one geometry');
   for (const n of owned) {
-    n.geometry.addEventListener('dispose', () => geoDisposed.add(n.geometry));
-    n.material.addEventListener('dispose', () => matDisposed.push(n.material.name || n.material.type));
+    assert.ok(!live.has(n.geometry), `${n.name} never borrows a live owner's geometry`);
+    assert.ok(n.geometry.attributes.position.count <= 3, `${n.name} geometry is degenerate`);
   }
+  const geoDisposed = [];
+  const matDisposed = [];
+  for (const g of distinct) g.addEventListener('dispose', () => geoDisposed.push(g));
+  for (const n of owned) n.material.addEventListener('dispose', () => matDisposed.push(n.material.name || n.material.type));
   assert.equal(f.warm.releaseWarmSamples(), true);
-  for (const n of owned) assert.ok(geoDisposed.has(n.geometry), `${n.name} geometry disposed on release`);
+  assert.deepEqual(geoDisposed, [], 'release disposes no shared degenerate geometry');
   assert.deepEqual(matDisposed, []);
   assert.equal(root.children.length, 0);
-  // Re-warm reuses the layout-only freighter cache: fresh degenerate geometry, same shared materials.
+  // Re-warm (next loading window): the same geometry objects, no new BufferGeometry.
   const again = attachPreliftSceneWarm(new THREE.Group(), f.scene, { visualFactory: vf });
   try {
-    for (const n of again.root.children.filter((c) => c.name.includes(':freighter:'))) {
-      assert.ok(!geoDisposed.has(n.geometry));
-    }
+    const re = [];
+    again.root.traverse((n) => { if ((n.isMesh || n.isLine) && !n.name.includes(':plume') && !(n.parent && n.parent.name.includes(':plume'))) re.push(n); });
+    assert.equal(re.length, owned.length);
+    for (const n of re) assert.ok(distinct.has(n.geometry), `${n.name} reuses the retained geometry`);
   } finally { again.release(); f.owner._disposeEnergy(); invalidateVisualFactoryCaches(); }
+  // The test seam drops (and disposes) the retained geometry.
+  __resetPreliftSceneWarmForTests();
+  assert.equal(new Set(geoDisposed).size, distinct.size);
 });

@@ -28,8 +28,9 @@
 // roster warm, which this route never begins (no receipt in any of the 12 verdicts).
 //
 // The exemplars ride the player plasma warm root (vfx warmupOpeningEffectSubsetForLoading),
-// which the first-picture cook already admits strictly before the lift. Exemplars are tiny,
-// degenerate and own their geometry; materials are either built from the same factory as the
+// which the first-picture cook already admits strictly before the lift. Exemplars are tiny and
+// degenerate: they draw one module-retained degenerate geometry per attribute layout (never the
+// live owner's geometry), so a warm window allocates no geometry of its own; materials are either built from the same factory as the
 // live owner or are the live material itself, so the warmed key is the played key. Materials
 // are never disposed here: disposing would release the linked program.
 
@@ -56,6 +57,13 @@ let causeMaterial = null;
 let plume = null;
 let freighterLeaves = null;
 let freighterFactory = null;
+// scenewarm5: one degenerate geometry per attribute layout, module-retained like the materials and
+// shared by every exemplar with that layout (rock, instanced rock, freighter leaves) across loading
+// windows. A warm window then allocates no BufferGeometry / Float32Array / GPU buffer of its own, and
+// release has nothing left to dispose, so the warm leaves no exemplar garbage for the first
+// collection after the lift (scenewarm4 8v8: profiler GC 0-1 s after lift 35.7 vs 19.9 ms/run).
+const degenerateGeometries = new Map();
+let causeGeometry = null;
 
 function degenerateAttribute(source, vertices) {
   const itemSize = Math.max(1, source.itemSize | 0);
@@ -70,12 +78,35 @@ function attributeLayout(geometry) {
     normalized: attributes[name].normalized === true }));
 }
 
-function layoutClone(geometryOrLayout, vertices) {
+const DEGENERATE_VERTICES = 3;
+
+function layoutSignature(layout) {
+  return layout.map((attr) => `${attr.name}:${Math.max(1, attr.itemSize | 0)}:${attr.normalized === true}`).sort().join(',');
+}
+
+// The shared degenerate geometry for a layout (an exemplar's geometry only feeds the program key
+// through its attribute names/sizes; it never borrows the live owner's geometry).
+function sharedDegenerateGeometry(geometryOrLayout) {
   const layout = Array.isArray(geometryOrLayout) ? geometryOrLayout : attributeLayout(geometryOrLayout);
-  const out = new THREE.BufferGeometry();
-  for (const attr of layout) out.setAttribute(attr.name, degenerateAttribute(attr, vertices));
-  out.setDrawRange(0, vertices);
+  const signature = layoutSignature(layout);
+  let out = degenerateGeometries.get(signature);
+  if (out) return out;
+  out = new THREE.BufferGeometry();
+  for (const attr of layout) out.setAttribute(attr.name, degenerateAttribute(attr, DEGENERATE_VERTICES));
+  out.setDrawRange(0, DEGENERATE_VERTICES);
+  out.name = `${PRELIFT_WARM_ROOT_NAME}:degenerate`;
+  degenerateGeometries.set(signature, out);
   return out;
+}
+
+function sharedCauseGeometry() {
+  if (causeGeometry) return causeGeometry;
+  causeGeometry = new THREE.BufferGeometry();
+  causeGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+  causeGeometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(6), 3));
+  causeGeometry.setDrawRange(0, 2);
+  causeGeometry.name = `${PRELIFT_WARM_ROOT_NAME}:cause-marks`;
+  return causeGeometry;
 }
 
 function findNonInstancedRock(scene, skip) {
@@ -171,8 +202,8 @@ function plumeLayers(system) {
 
 /**
  * Mount the warm exemplars under `parent` (the plasma warm root) and return
- * { root, receipt, release }. `release()` detaches everything, frees only exemplar-owned
- * geometry and is idempotent.
+ * { root, receipt, release }. `release()` detaches everything, frees only the per-window instance
+ * buffers (degenerate geometries and materials are module-retained and shared) and is idempotent.
  */
 export function attachPreliftSceneWarm(parent, scene, { visualFactory = null } = {}) {
   const receipt = { causeMarks: false, plumeLayers: 0, plumeRecipe: null, rock: false, rockSource: null,
@@ -180,16 +211,10 @@ export function attachPreliftSceneWarm(parent, scene, { visualFactory = null } =
   if (!parent || typeof parent.add !== 'function') return { root: null, receipt, release: () => false };
   const root = new THREE.Group();
   root.name = PRELIFT_WARM_ROOT_NAME;
-  const ownedGeometries = [];
   const ownedInstanced = [];
 
   if (!causeMaterial) causeMaterial = createCauseMarkMaterial();
-  const causeGeo = new THREE.BufferGeometry();
-  causeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
-  causeGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(6), 3));
-  causeGeo.setDrawRange(0, 2);
-  ownedGeometries.push(causeGeo);
-  const cause = new THREE.LineSegments(causeGeo, causeMaterial);
+  const cause = new THREE.LineSegments(sharedCauseGeometry(), causeMaterial);
   cause.name = `${PRELIFT_WARM_ROOT_NAME}:cause-marks`;
   cause.frustumCulled = false;
   root.add(cause);
@@ -216,9 +241,7 @@ export function attachPreliftSceneWarm(parent, scene, { visualFactory = null } =
         receiveShadow: inst.mesh.receiveShadow, source: `pooled-material:${inst.mesh.name}` }
       : null);
   if (perBody) {
-    const geo = layoutClone(perBody.geometry, 3);
-    ownedGeometries.push(geo);
-    const mesh = new THREE.Mesh(geo, perBody.material);
+    const mesh = new THREE.Mesh(sharedDegenerateGeometry(perBody.geometry), perBody.material);
     mesh.name = `${PRELIFT_WARM_ROOT_NAME}:rock`;
     mesh.castShadow = perBody.castShadow === true;
     mesh.receiveShadow = perBody.receiveShadow === true;
@@ -231,9 +254,7 @@ export function attachPreliftSceneWarm(parent, scene, { visualFactory = null } =
   if (inst) {
     // count 1, identity matrix, degenerate geometry: draws nothing visible but binds the
     // instanceMatrix attribute, so the program carries the instancing define like the pool chunk.
-    const geo = layoutClone(inst.geometry, 3);
-    ownedGeometries.push(geo);
-    const mesh = new THREE.InstancedMesh(geo, inst.material, 1);
+    const mesh = new THREE.InstancedMesh(sharedDegenerateGeometry(inst.geometry), inst.material, 1);
     mesh.setMatrixAt(0, new THREE.Matrix4());
     mesh.count = 1;
     mesh.name = `${PRELIFT_WARM_ROOT_NAME}:rock-instanced`;
@@ -250,8 +271,7 @@ export function attachPreliftSceneWarm(parent, scene, { visualFactory = null } =
   try { leaves = ensureFreighterLeaves(visualFactory); } catch (_) { leaves = []; }
   for (let i = 0; i < leaves.length; i++) {
     const leaf = leaves[i];
-    const geo = layoutClone(leaf.layout, 3);
-    ownedGeometries.push(geo);
+    const geo = sharedDegenerateGeometry(leaf.layout);
     let mesh;
     if (leaf.instanced) {
       mesh = new THREE.InstancedMesh(geo, leaf.material, 1);
@@ -279,8 +299,8 @@ export function attachPreliftSceneWarm(parent, scene, { visualFactory = null } =
     if (root.parent) root.parent.remove(root);
     if (system && system.group && system.group.parent === root) root.remove(system.group);
     for (const mesh of layers) { mesh.count = 0; mesh.visible = false; }
+    // Per-window instance buffers only; the degenerate geometries and materials stay module-retained.
     for (const mesh of ownedInstanced) mesh.dispose();
-    for (const geo of ownedGeometries) geo.dispose();
     root.clear();
     return true;
   };
@@ -293,4 +313,8 @@ export function __resetPreliftSceneWarmForTests() {
   plume = null;
   freighterLeaves = null;
   freighterFactory = null;
+  for (const geo of degenerateGeometries.values()) geo.dispose();
+  degenerateGeometries.clear();
+  if (causeGeometry) causeGeometry.dispose();
+  causeGeometry = null;
 }
