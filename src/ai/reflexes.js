@@ -455,7 +455,9 @@ function bodyOccluded(self, body, contacts) {
 function nearestIncomingBody(seed, entityId, tick, self, contacts, temperament, rs) {
   const band = self.operationalMassBand;
   const bandAmp = Object.prototype.hasOwnProperty.call(BODY_MASS_AMP, band) ? BODY_MASS_AMP[band] : 1;
-  const stoic = self.combatDoctrineId === 'detonator_run';
+  // A detonator run, and fodder (self.bodyDodge false — Wasps and Zealots in Swarm), never dodges a thrown
+  // body: they are the ammunition the throw exists for (design/overhaul/03_COMBAT.md §9).
+  const stoic = self.combatDoctrineId === 'detonator_run' || self.bodyDodge === false;
   let best = null;
   let qualifying = null;
   if (bandAmp > 0 && !stoic && self.pos) {

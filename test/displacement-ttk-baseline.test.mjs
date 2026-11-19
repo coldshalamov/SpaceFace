@@ -9,6 +9,19 @@ import {
   buildDisplacementTtkBaseline,
   stableStringify,
 } from '../scripts/bench-displacement-ttk.mjs';
+import { WEAPONS } from '../src/data/weapons.js';
+
+// The checked-in tuned artifact was generated against the starter gun as it stood then (dmg 5, heat 8/12).
+// R5 (2026-11-18) retuned the live gun, so the historical fixture carries its own explicit weapon profile
+// instead of reading the live one. Applied in memory for the build only, then restored.
+const HISTORICAL_STARTER_PROFILE = Object.freeze({ dmg: 5, dps: 27.5, heatPerShot: 8, heatDissip: 12 });
+function withHistoricalStarterGun(fn) {
+  const gun = WEAPONS.find((entry) => entry.id === 'wpn_pulse_laser_s');
+  const saved = {};
+  for (const key of Object.keys(HISTORICAL_STARTER_PROFILE)) saved[key] = gun[key];
+  Object.assign(gun, HISTORICAL_STARTER_PROFILE);
+  try { return fn(); } finally { Object.assign(gun, saved); }
+}
 
 function assertPinnedSchema(pinned, packet) {
   assert.equal(pinned.schemaVersion, 1);
@@ -58,8 +71,8 @@ test('U11 tuned displacement-vs-TTK artifact is pinned and regenerable', () => {
     packet: 'U11-TUNED',
     title: pinned.title,
   };
-  const first = stableStringify(buildDisplacementTtkBaseline(options));
-  const second = stableStringify(buildDisplacementTtkBaseline(options));
+  const first = stableStringify(withHistoricalStarterGun(() => buildDisplacementTtkBaseline(options)));
+  const second = stableStringify(withHistoricalStarterGun(() => buildDisplacementTtkBaseline(options)));
   assert.equal(first, second, 'two generated tuned runs must be byte-identical');
   assert.equal(first, pinnedText, 'checked-in tuned artifact must match the deterministic harness output');
 });

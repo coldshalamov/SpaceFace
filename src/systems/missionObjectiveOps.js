@@ -2908,7 +2908,7 @@ export const missionObjectiveOps = {
         }
         delete m._extrasAnnounced;
         this._sayStoryLine(m.params.mawStuns >= m.params.mawStunsNeeded
-          ? (hasMawReceiving(m) ? 'Three hits logged. Latch the 120t Maw, then move it east to the exterior receiving beacon. Class I needs brief pulls and early releases.' : 'The maw is stunned. Latch its body and tow it to Ceres yard, or sling it into the berth.')
+          ? (hasMawReceiving(m) ? 'Three hits logged. Latch the 120t Maw, then move it east to the exterior receiving beacon. It anchors a light hull and barely moves: hold a steady pull, build speed slowly, then release.' : 'The maw is stunned. Latch its body and tow it to Ceres yard, or sling it into the berth.')
           : `The maw shudders — stun ${m.params.mawStuns}/${m.params.mawStunsNeeded}.${isMawWorksite(m) ? ' Use another marked hot-slag pod.' : ''}`, 6);
         this._refreshTrackedMissionNav(m);
         this.bus.emit('mission:updated', { missionId: m.id });

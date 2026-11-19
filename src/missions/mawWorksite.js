@@ -1,5 +1,5 @@
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
-import { lineClassForIndex } from '../data/lineProgression.js';
+import { lineRelationWord, linePlayerMassT, lineHandlingAdvice } from '../ui/lineRelation.js';
 // A finite Ceres worksite owned by missions, using existing massline bodies and visuals.
 // No ecology AI, inventory, rewards, or second world-record writer.
 export const MAW_WORKSITE_VERSION = 1;
@@ -22,8 +22,9 @@ export function mawReceivingLayout() {
   return { receiver: sectorLocalToGlobalForSector({ x: 2100, z: 2140 }, SECTOR), radius: 80, maxSpeed: 18 };
 }
 export function mawHandlingRead(state, mass = 40) {
-  const cls = lineClassForIndex(state.lineProgression?.classIndex || 1);
-  return `${mass}t load; Class ${cls.label} controls ${cls.fullControlMassT}t. ${mass > cls.fullControlMassT ? 'Use brief pulls and release before the line strains; cool before relatching.' : 'Build speed under control, then release.'}`;
+  // R12: the read comes from the hull-to-load relationship (TOW / TUG / ANCHOR), not from line class.
+  const word = lineRelationWord({ mass }, linePlayerMassT(state));
+  return word ? `${mass}t load · ${word}. ${lineHandlingAdvice(word)}` : `${mass}t load. Build speed slowly, then release.`;
 }
 export function isMawWorksite(m) {
   return m?.storyTag === TAG && m.type === 'tow_recovery' && m.destSectorId === SECTOR

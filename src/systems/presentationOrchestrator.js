@@ -22,6 +22,7 @@ import {
 import { bindAttackCausalBus } from '../combat/attackHit.js';
 import { endRichSeamGlint } from '../render/vfx/worldCueRecipes.js';
 import { telegraphAdmissionPriority } from '../presentation/telegraphPriority.js';
+import { isSwarmGlass } from '../ui/swarmGlass.js';
 
 export const PRESENTATION_ORCHESTRATOR_SCHEMA_VERSION = 1;
 
@@ -347,6 +348,9 @@ export const presentationOrchestrator = {
   },
 
   _onScenarioBeat(payload) {
+    // FIX-05: a scenario beat is Adventure narrative — its comms hails (OFFICIAL DENIAL)
+    // and objective cards must never present inside a live Swarm round.
+    if (isSwarmGlass(this.state)) return;
     for (const cueId of payload.presentationEventIds || []) {
       if (!cueId.startsWith('scenario.')) continue;
       const actorId = SCENARIO_CUE_TARGET_ACTORS[cueId] || null;

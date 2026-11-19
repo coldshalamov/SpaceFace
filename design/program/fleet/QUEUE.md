@@ -113,6 +113,7 @@ reviews every commit; lane agents do not take them.
 | WRITE G09 one next | Write the packet: one guidance voice (EC-G09) | READY |
 | WRITE G19-02 honest hold | Written: `packets/G19-02-honest-hold.md` (Lane 2) | DONE |
 | WRITE S01 Helios | Write the town packets for Helios (`design/game/13`, `09` Town Recipe, EC-S01) | READY |
+| PLAYTHROUGH-REPLAY | The full checklist play-through again — both modes — plus the `TOO HEAVY` count in Swarm. The acceptance pass for FIX-05 (bb76c66adf) now that CHIP-CHECK-01/LOAD-02/LOAD-03 all landed; checklist evidence format: `.devshots/fleet/runs/ACCEPT-07-later-content.hydrogen.2026-11-17T09-00-21/RECEIPT.md` | READY (lead) |
 
 ## Lane 2 — large engineering with a named seam
 
@@ -151,7 +152,7 @@ reviews every commit; lane agents do not take them.
 | MOB-02-phone-hud [FE] | Phone flight HUD ≤ 25 % of the screen: compact vitals, one-line objective, mini radar, contrast plates | BUILT b0268fe6 (devin2 layout, lead finished from looks; 25.0%/23.8% worst case) — real-route pinch look pending |
 | MOB-05 flick to throw | On a phone, drag-and-release with a throwable body on the Line aims and releases through the canonical throw owner (`drafts/MOB.md` §7 q1) | BUILT 9b6018fb3250 + bc18ca94075d (focused checks pass; live phone throw pending) |
 | KNOWN-REDS | Tests already failing on master (list in `HANDOFF.md` §5): fix each cause, or retire a test whose claim is obsolete with a one-line reason. One commit per test | BUILT 965fc1a9..704ee553 + lead 54e6b7de, 66a4a691, 6db15505ffb9 (comms-log-surface and special500-comms-backlog pass, log seen) |
-| KNOWN-REDS-SWARM | ~29 failing Swarm/survival tests: fix the cause, follow deliberate changes, or retire — the suite goes green | TAKEN agent2 (devin1) |
+| KNOWN-REDS-SWARM | ~29 failing Swarm/survival tests: fix the cause, follow deliberate changes, or retire — the suite goes green. NEW: the three C01-04-superseded debut tests + fb-027's wave-35 reds now carry probed current-truth values in `build_map.md` §38.2 — mechanical finish | TAKEN agent2 (devin1) |
 | SWARM-GRIND-01 | The Fortify Gravity Beacon gathers enemies into a ring instead of crushing them on its body (10 free kills in 5 s, lead look) | BUILT 45c4040c59e2 + 424bab64bb32 (Rapier and v27 pass; rounds 1–5 had zero beacon kill credits, placed Fortify look pending) |
 | PRX-HIVE | Keep newly formed Hive walls clear of live hulls and the pilot's immediate flight path | BUILT e995bf59787f (27 focused cases, live Hive route pending) |
 | PRX-NEXT | Finish the next leftover PR from `.dev/pr-expansion/HANDOFF.md` — only rows marked "live bug" or "top priority" (#994, #988, #978, #955) | READY (repeat) |
@@ -187,6 +188,8 @@ reviews every commit; lane agents do not take them.
 | RECON-NEXT | Draft code facts for the next `NEEDS-PACKET` row (none open now; use for any `WRITE` row Lane 1 asks for) | READY (repeat) |
 | AUDIT-14b-frame-retakes | Six AUDIT-14 captures re-framed to the lead's INDEX verdicts (capture-only, no game code) | DONE — 15/17 lead-judged PASS (INDEX current); yard + pods UNGRADEABLE, finding below |
 | QUARANTINE-GANTRY-VISUAL | The furnace intake capstan gantry entity (`place_maintenance_gantry`) resolves to **no mesh** — on-screen arch is the intake beacon's Group, so the quarantine yard has no readable close-up look; lots never read as glowing. AUDIT-14b run 3 evidence: `.devshots/fleet/runs/AUDIT-14b-frame-retakes.devin3.2026-11-16T08-*/run.log` + its `_meshes` probe | NEEDS-PACKET (Lane 2/3: mount a real gantry visual or confirm by-design) |
+| PLAYCHECK-01-adventure-beat-hud [FE] | The two later-Adventure-beat HUD overlaps ACCEPT-07 caught: the `WANTED` banner runs through `FIELD BUILD SHIFT+B` (beat-claimed-0..3), and `Overhead [\] \| Circuits` slices behind `● RADIO OFF` and the `Wasp · FIGHTER` card (beat-raid-1..3). Evidence + frame coords: `.devshots/fleet/runs/ACCEPT-07-later-content.hydrogen.2026-11-17T09-00-21/RECEIPT.md` §screens | READY |
+| BOT-03-swarm-pilot-focus | The Swarm play-through bot chases faraway ships and drifts off the fight (`HOSTILE SHIPS` frozen with distant Helios Prime bodies counted; the round stalls in a quiet 40 s watch). Fix the bot's target discipline (near-field first, re-engage on wave change), not the game's hostility rules. Receipt §telemetry above | READY |
 
 ## Lane 4 — mechanical, cannot go wrong
 

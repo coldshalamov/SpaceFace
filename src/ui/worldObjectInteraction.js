@@ -16,6 +16,9 @@ import { targetDisplayName } from './targetPanel.js';
 import { createHoverTag, placeHoverTag, paintHoverTagVitals } from './orrery/hoverTag.js';
 import { laneInputWrite, laneSetComponentSelection, reconcileLaneComponentSelection } from '../core/simLaneCommands.js';
 import { formatDistance } from './units.js';
+import { lineRelationWord, lineBodyMassT } from './lineRelation.js';
+import { lineLessonBody } from '../data/lineProgression.js';
+import { openingQuiet } from '../onboarding/openingQuiet.js';
 
 function hasOwn(o, k) {
   return !!o && Object.prototype.hasOwnProperty.call(o, k);
@@ -29,6 +32,19 @@ function beamVerbWord(entity) {
   if (t === 'payload') return 'split';
   if (t === 'ship' || t === 'drone') return 'weld';
   return 'beam';
+}
+
+// R12: the rope verb follows the acquisition verdict the latch itself uses (state.masslineAcquisition: a READY
+// receipt for this very body and occupant, still inside its window) - never the mining / inspect branch. A
+// bolted frame, a protected body or anything the latch refuses reads no rope verb at all.
+export function ropeVerdictWord(state, entity, player) {
+  const receipt = state && state.masslineAcquisition;
+  const sel = receipt && receipt.selected;
+  if (!entity || !sel || sel.status !== 'ready' || sel.targetId !== entity.id) return '';
+  const life = occupantGenerationOf(entity);
+  if (sel.occupantGeneration != null && life != null && sel.occupantGeneration !== life) return '';
+  if (Number.isFinite(receipt.validUntil) && Number.isFinite(state.simTime) && state.simTime > receipt.validUntil) return '';
+  return lineRelationWord(entity, lineBodyMassT(player)) || 'LATCH';
 }
 
 export function classWord(entity) {
@@ -461,7 +477,25 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     }
   }
 
+  function ropeVerbText(entity, player) {
+    const lineWord = ropeVerdictWord(state, entity, player);
+    if (!lineWord) return '';
+    // OPENING-1b's hush: before the first throw lands, a body you would only swing round stays unlabelled
+    // so the light lesson rock is the one thing that speaks.
+    const hushed = lineWord === 'ANCHOR' && openingQuiet(state)
+      && !(state.onboarding && state.onboarding.firstThrowSeen === true) && !lineLessonBody(entity);
+    return hushed ? '' : verbChip(state, 'tether', lineWord);
+  }
+  // The rope verb (who moves) and the work-tool / wheel guidance are separate segments of one hint.
   function beamHint(entity, player) {
+    const hint = beamHintBase(entity, player);
+    if (hint.sling) return hint;
+    const lineText = ropeVerbText(entity, player);
+    const wheelText = hint.text;
+    return { ...hint, lineText, wheelText, text: lineText && wheelText ? lineText + ' · ' + wheelText : (lineText || wheelText) };
+  }
+
+  function beamHintBase(entity, player) {
     const lane = initialMouseToolLane(state, entity && entity.id);
     if (lane === 'sling') {
       // G18-02: RMB is the Line — while a throwable is latched it arms the throw.
@@ -472,19 +506,21 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       // a prop only selects a tool subject, a friendly or neutral hull only informs. RMB still
       // selects under the cursor; under G18-02 the same press also fires the Line.
       // One verb chip, whatever the pick intent: the press latches the Line (guns still lock).
-      return { sling: false, text: verbChip(state, 'tether', 'LATCH'), beam: false };
+      // R12 (design/overhaul/03_COMBAT.md §2.1): the rope verb itself (TOW / TUG / ANCHOR, with OPENING-1b's
+      // hush) is added by beamHint from the acquisition verdict; this lane carries no guidance of its own.
+      return { sling: false, text: '', beam: false };
     }
     // Packet 02: say WHY at the point of intent, in the shared denial vocabulary, in the order the
     // player can fix it — you cannot beam what your sensors do not hold. The beam itself now lives
     // on the context wheel (hold Q → MINE/SITE BEAM).
     if (intentDenial(state, entity, null) === DENIAL.UNOBSERVED) {
-      return { sling: false, text: `RMB Line · ${denialText(DENIAL.UNOBSERVED)}`, beam: false };
+      return { sling: false, text: denialText(DENIAL.UNOBSERVED), beam: false };
     }
     if (!isBeamTargetEligible(entity, state)) {
       const depleted = !!(entity && entity.data && entity.data.respawnAt != null);
       return {
         sling: false,
-        text: `RMB Line · ${beamVerbWord(entity)} ${depleted ? 'depleted' : 'unavailable'}`,
+        text: `${beamVerbWord(entity)} ${depleted ? 'depleted' : 'unavailable'}`,
         beam: false,
       };
     }
@@ -492,10 +528,10 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     if (range != null && player && player.pos && entity.pos) {
       const d = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
       if (d > range + (entity.radius || 0)) {
-        return { sling: false, text: `RMB Line · ${beamVerbWord(entity)} ${denialText(DENIAL.OUT_OF_RANGE)}`, beam: false };
+        return { sling: false, text: `${beamVerbWord(entity)} ${denialText(DENIAL.OUT_OF_RANGE)}`, beam: false };
       }
     }
-    return { sling: false, text: 'RMB Line · Q wheel — ' + beamVerbWord(entity), beam: true };
+    return { sling: false, text: 'Q wheel — ' + beamVerbWord(entity), beam: true };
   }
 
   function previewFor(entity) {

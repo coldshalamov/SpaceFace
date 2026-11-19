@@ -11,7 +11,7 @@ import { resolveCollisionProxyManifest } from '../data/collisionProxyManifests.j
 import { isModelTruthCensusLoaded } from '../data/modelTruth.js';
 import { SAUCER_ID, SAUCER_WEAPON_SLOTS, saucerFittingRefusal } from '../data/saucer.js';
 import { FLIGHT_TUNING } from '../data/flightTuning.js';
-import { HARDPOINT_ACCEPTS, TURRET_RING_OUTPUT, WEAPONS, WEAPON_MOUNT_CLASSES } from '../data/weapons.js';
+import { HARDPOINT_ACCEPTS, TURRET_RING_OUTPUT, WEAPONS, WEAPON_MOUNT_CLASSES, npcWeaponDef } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { BEAMS } from '../data/mining.js';
@@ -1788,6 +1788,7 @@ export function buildWeaponList(shipDef, fittings, isPlayer, derivedStats = null
 }
 
 function makeWeaponRuntime(def, slot, slotIndex, isPlayer = false, derivedStats = null) {
+  if (!isPlayer) def = npcWeaponDef(def); // R5 retunes the player's starter only
   // Hardpoint facing (Phase 2): turret/gimbal tracking determines how a gun acquires its aim.
   const tracking = def.tracking || 'fixed';
   const facing = (slot && slot.facing) || 'front';

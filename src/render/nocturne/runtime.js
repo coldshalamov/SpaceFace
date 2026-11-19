@@ -1,6 +1,6 @@
 // One owner for source admission, fixed direct lights, local indirect fields, atmosphere and
 // constrained exposure. Game entities and their data are read-only inputs to this adapter.
-import { PointLight, Vector2 } from 'three';
+import { Color, PointLight, Vector2, Vector3 } from 'three';
 import { NocturneRegistry } from './registry.js';
 import { NocturneDirector } from './director.js';
 import { NocturneContent } from './content.js';
@@ -62,6 +62,9 @@ export class NocturneRuntime {
     this._lastOrigin = { x: NaN, z: NaN };
     this._originScratch = { x: 0, z: 0 };
     this._focusScratch = { x: 0, z: 0 };
+    // The player's headlight volume: one soft sphere in front of the bow, lit by the lamp itself.
+    this._beam = { id: 'nocturne-medium:headlight-beam', center: new Vector3(), radii: new Vector3(1, 1, 1), density: 0,
+      color: new Color(0xffd6a0), anisotropy: 0.5, extinction: 1, noise: 0.25, enabled: true };
     this._originGlobal = { x: 0, z: 0 };
     const video = state?.settings?.video || EMPTY;
     this.enabled = video.nocturne !== false;
@@ -146,6 +149,7 @@ export class NocturneRuntime {
     this.content.probes.enabled = enabled;
     this.content.update(this.state, step, membrane, options);
     this.headlights.update(this.state, step, membrane, options);
+    this._updateBeamMedium();
     if (membrane?.toLocal) {
       membrane.toLocal(this._originGlobal, this._originScratch);
       if (Number.isFinite(this._lastOrigin.x)
@@ -179,6 +183,25 @@ export class NocturneRuntime {
     const diag = this._diagnostics;
     diag.enabled = enabled; diag.quality = this.quality; diag.composition = this.content.compositionId;
     diag.exposure = this.exposure;
+  }
+
+  /** A faint warm volume ahead of the bow so the player lamp reads as light in space, not only a patch. */
+  _updateBeamMedium() {
+    const look = this.headlights.look.beam, row = this.headlights.rows[0], src = row?.source, beam = this._beam;
+    if (!look || !(look.density > 0) || !src || !row.entity || row.entity.id !== this.state?.playerId
+      || !src.enabled || !(src.gain > 0) || !(src.intensity > 0)) return;
+    let dx = src.target.x - src.position.x, dz = src.target.z - src.position.z;
+    const n = Math.hypot(dx, dz) || 1; dx /= n; dz /= n;
+    const R = look.radius;
+    beam.center.set(src.position.x + dx * R * look.forward, look.yCenter, src.position.z + dz * R * look.forward);
+    beam.radii.set(R, look.yRadius, R);
+    beam.density = look.density * Math.min(1, src.gain);
+    beam.anisotropy = look.anisotropy;
+    beam.color.setHex(look.colorHex);
+    // Take the first of the four slots: the nearest, lit-by-me medium beats a distant composition haze.
+    const media = this.content.media;
+    if (media.length >= 4) media.length = 3;
+    media.unshift(beam);
   }
 
   /** VFX runs after prepareFrame; publish its same-frame requests without advancing clocks twice. */

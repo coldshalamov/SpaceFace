@@ -1,30 +1,23 @@
 // LINE-03/04/05 (build_map rows 498–501): the Line's own memory. Tonnage the player has
-// actually held on the line advances the Line Class ladder; the current class sets the
-// control ceiling the strain contract reads (`fullControlMassT`), and record holds /
-// class-ups stamp CORRECT. marks on the wall. The bag lives at `state.lineProgression`
-// and serializes through the standard system-bag envelope so old saves normalize to
-// defaults. Strain (row 499): while a held body exceeds the class ceiling the Line
-// strains — the bag exposes `overClass`/`winchHeat`, the reel/turn clamps below are
-// exported for the tether owner to read, and at the heat cap this system cuts the line
-// through the shared attachments authority after the grace window so the break emits
-// the ordinary receipts (tether:broke + release rating) and stays honest in replays.
+// actually held on the line advances the Line Class ladder, and record holds / class-ups
+// stamp CORRECT. marks on the wall. The bag lives at `state.lineProgression` and serializes
+// through the standard system-bag envelope so old saves normalize to defaults.
+//
+// Row 499's over-class strain (winch heat → a timed snap, reel and turn clamps) was retired on
+// 2026-11-18 by ruling R12 (design/overhaul/00_RULINGS.md): the rope never refuses or snaps for
+// mass. The bag keeps its `overClass` / `winchHeat` / factor fields at their neutral values so
+// every reader (tether owner, cable visual, worker view) keeps working unchanged.
 
 import {
   normalizeLineProgression,
   lineClassForTonnage,
   lineClassForIndex,
-  isOverLineClass,
   lineLessonBody,
   stampLineRecord,
 } from '../data/lineProgression.js';
 
-// Sustained-overclass strain constants. Heat is normalized 0→1 at the cap.
-const OVERCLASS_REEL_FACTOR = 0.62;
-const OVERCLASS_TURN_FACTOR = 0.55;
-const OVERCLASS_SNAP_TENSION_FACTOR = 1.35;
-const OVERCLASS_HEAT_PER_S = 0.16;
-const OVERCLASS_HEAT_DECAY_PER_S = 0.22;
-const OVERCLASS_SNAP_GRACE_S = 1.6;
+// Saved winch heat from an older build cools away; nothing adds heat any more. Normalized 0→1.
+const WINCH_HEAT_DECAY_PER_S = 0.22;
 
 function bodyMassOf(entity) {
   const pb = entity && entity.physicsBody && Number(entity.physicsBody.mass);
@@ -190,32 +183,20 @@ export const lineProgression = {
     this._reconcileLoadedHold();
     const bag = this._ensureBag(state);
     const cls = lineClassForIndex(bag.classIndex);
-    const over = isOverLineClass(this._heldMassT, bag.classIndex);
-    bag.overClass = over === true;
+    // Ruling R12 (design/overhaul/00_RULINGS.md, owner 2026-11-18): the rope never refuses and never
+    // snaps for mass. Mass decides who moves — the physics owner (Rapier, masslineController) already
+    // swings a light ship round a heavy body and drags a light body behind a heavy ship, and the
+    // controller's own overload break still answers a violent yank. The class ladder (tonnage →
+    // class) stays; its budget meaning (tension, yank, reel, reach) is build-map OVH-07. So the
+    // over-class strain no longer exists: no heat accrues from mass, nothing clamps reel or turn,
+    // and old saved heat simply cools.
+    bag.overClass = false;
     bag.classFullControlMassT = cls.fullControlMassT;
-    bag.overClassReelFactor = over ? OVERCLASS_REEL_FACTOR : 1;
-    bag.overClassTurnFactor = over ? OVERCLASS_TURN_FACTOR : 1;
-    bag.overClassSnapTensionFactor = over ? OVERCLASS_SNAP_TENSION_FACTOR : 1;
-    if (over) {
-      bag.winchHeat = Math.min(1, (bag.winchHeat || 0) + OVERCLASS_HEAT_PER_S * dt);
-      if (bag.winchHeat >= 1 && this._heldTargetId != null) {
-        const now = simNow(state);
-        if (!this._snapGraceUntil) this._snapGraceUntil = now + OVERCLASS_SNAP_GRACE_S;
-        if (now >= this._snapGraceUntil) {
-          const player = this._player();
-          const attachments = this._attachments();
-          if (player && attachments && this._heldAttachmentId != null
-              && typeof attachments.cut === 'function') {
-            attachments.cut(this._heldAttachmentId, player.id, 'line_overclass_snap');
-          }
-          bag.winchHeat = 0;
-          this._snapGraceUntil = 0;
-        }
-      }
-    } else {
-      bag.winchHeat = Math.max(0, (bag.winchHeat || 0) - OVERCLASS_HEAT_DECAY_PER_S * dt);
-      this._snapGraceUntil = 0;
-    }
+    bag.overClassReelFactor = 1;
+    bag.overClassTurnFactor = 1;
+    bag.overClassSnapTensionFactor = 1;
+    bag.winchHeat = Math.max(0, (bag.winchHeat || 0) - WINCH_HEAT_DECAY_PER_S * dt);
+    this._snapGraceUntil = 0;
   },
 
   // FRESH_RUN_SYSTEMS — New Game starts at class I with an empty ledger and no held body.

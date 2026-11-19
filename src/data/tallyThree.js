@@ -1,4 +1,5 @@
 import {normalizeLineProgression,lineClassForIndex} from './lineProgression.js';
+import {lineRelationWord,linePlayerMassT,lineHandlingAdvice} from '../ui/lineRelation.js';
 // SF20-03: one finite claim crate. Salvage owns this source; Tally only reads its facts.
 import { CERES_SECOND_MEASURE_LOCAL_POS } from './sectorAnchors.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
@@ -63,11 +64,8 @@ export function tallyThreeTowAssessment(state) {
   const progress=normalizeLineProgression(state?.lineProgression);
   const cls=lineClassForIndex(progress.classIndex),overClass=massT>cls.fullControlMassT;
   const amount=n=>Number(n.toFixed(2)).toString();
-  // Preserve the strict over-class distinction when compact rounding would hide it.
-  const massLabel=overClass&&Number(amount(massT))<=cls.fullControlMassT
-    ?'>'+amount(cls.fullControlMassT):amount(massT);
-  return {available:true,massT,classIndex:cls.index,fullControlMassT:cls.fullControlMassT,overClass,
-    text:`${massLabel}T load · Class ${cls.label} controls ${amount(cls.fullControlMassT)}T. ${overClass
-      ?'Temporary hold: heat can snap the line.'
-      :'Keep custody; settle below 8 WU/s.'}`};
+  // R12: advice comes from the hull-to-load relationship (TOW / TUG / ANCHOR), never from line class.
+  const relation=lineRelationWord(crate,linePlayerMassT(state)),advice=lineHandlingAdvice(relation,crate);
+  return {available:true,massT,classIndex:cls.index,fullControlMassT:cls.fullControlMassT,overClass,relation,
+    text:`${amount(massT)}T load${relation?' · '+relation+'. '+advice:'.'} Tow slow; settle below 8 u/s.`};
 }

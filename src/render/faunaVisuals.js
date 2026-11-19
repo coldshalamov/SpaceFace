@@ -7,10 +7,50 @@ import * as THREE from 'three';
 import { faunaSpeciesById, FAUNA_SPECIES } from '../data/alienFauna.js';
 import { alienStrainById } from '../data/alienEcology.js';
 import { bindCreatureSkin } from './creatureSkinLibrary.js';
-import { buildNurseryRay, buildNurseryFlock } from './veilRayNurseryVisuals.js';
+import { buildNurseryRay, buildNurseryFlock, buildOpenVeilRay } from './veilRayNurseryVisuals.js';
 import { bolusSilhouette } from './bolusSilhouettes.js';
 import { createCasketSegmentGeometry, createCasketHeadGeometry } from './casketWormGeometry.js';
 import { createLanternSacGeometry, createLanternCoreGeometry, createLanternRootletGeometry } from './lanternCystGeometry.js';
+import {
+  buildLoftedLobeData,
+  createFoldedMembraneGeometry,
+  createFoldedTorusGeometry,
+  createLoftedLobeGeometry,
+  createSculptedCarapaceGeometry,
+  mergePartsGeometry,
+} from './faunaOpenGeometry.js';
+import {
+  createColdBellClapperGeometry,
+  createColdBellRibsGeometry,
+  createColdBellShellGeometry,
+  createFurnaceBowlGeometry,
+  createFurnaceJawGeometry,
+  createFurnaceThroatGeometry,
+  createPilgrimCordGeometry,
+  createPilgrimGanglionGeometry,
+  createPilgrimVertebraGeometry,
+  createSpindleMotherBodyGeometry,
+  createSpindleMotherCalyxesGeometry,
+  createSpindleMotherCrownGeometry,
+  createSpindleMotherJuvenilesGeometry,
+  createSpindleMotherSacsGeometry,
+  createStoneLungCoreGeometry,
+  createStoneLungMoundGeometry,
+  createStoneLungThroatGeometry,
+  createSutureMiteBodyGeometry,
+  createSutureMiteEyeGeometry,
+  createSutureMiteLegsGeometry,
+  createSutureMiteMandiblesGeometry,
+  createSutureMiteSpinneretsGeometry,
+  createVoidCarrierHullGeometry,
+  createVoidCarrierLayersGeometry,
+  createVoidCarrierNodesGeometry,
+  createVoidCarrierRelayGeometry,
+  createVoidCarrierStreamersGeometry,
+  createWakeEelBodyGeometry,
+  createWakeEelFinsGeometry,
+  createWakeEelGlowGeometry,
+} from './openFaunaBatch2Geometry.js';
 import { readFaunaMotion } from '../data/faunaMotionRead.js';
 
 const TISSUE = 0x9aa08e;
@@ -51,6 +91,72 @@ function glowMat(color, intensity = 1.2) {
   });
 }
 
+function mixColor(hexA, hexB, t) {
+  return new THREE.Color(hexA).lerp(new THREE.Color(hexB), t).getHex();
+}
+
+// Track per-creature material ownership so shared finishes retire once in disposeObjectNode.
+function ownMat(mesh, material, owned) {
+  if (owned.has(material)) {
+    mesh.userData.borrowedGeometryMaterial = true;
+  } else {
+    owned.add(material);
+  }
+  return mesh;
+}
+
+function darkTissueMat(color, glowColor, {
+  mixBase = 0x1a1e24,
+  mixAmount = 0.82,
+  roughness = 0.58,
+  metalness = 0.14,
+  normalScale = 0.85,
+  emissiveIntensity = 0.02,
+} = {}) {
+  const tinted = mixColor(color, mixBase, mixAmount);
+  const material = new THREE.MeshStandardMaterial({
+    color: tinted,
+    normalScale: new THREE.Vector2(normalScale, normalScale),
+    roughness,
+    metalness,
+    emissive: glowColor,
+    emissiveIntensity,
+  });
+  bindCreatureSkin(material, 'tissue', (skin) => {
+    material.color.setHex(tinted);
+    material.map = skin.baseColor;
+    material.normalMap = skin.normal;
+    material.needsUpdate = true;
+  });
+  return material;
+}
+
+function translucentTissueMat(color, glowColor, {
+  opacity = 0.58,
+  roughness = 0.25,
+  metalness = 0.06,
+  normalScale = 0.5,
+  emissiveIntensity = 0.14,
+} = {}) {
+  const material = new THREE.MeshStandardMaterial({
+    color,
+    normalScale: new THREE.Vector2(normalScale, normalScale),
+    roughness,
+    metalness,
+    transparent: true,
+    opacity,
+    emissive: glowColor,
+    emissiveIntensity,
+  });
+  bindCreatureSkin(material, 'tissue', (skin) => {
+    material.color.set(0xffffff).lerp(new THREE.Color(color), 0.72);
+    material.map = skin.baseColor;
+    material.normalMap = skin.normal;
+    material.needsUpdate = true;
+  });
+  return material;
+}
+
 function geo(key, make) {
   const cache = (geo._cache ||= new Map());
   if (!cache.has(key)) {
@@ -65,139 +171,257 @@ function geo(key, make) {
 
 // ── species builders — top-down game reads XZ; bodies stay mostly flat-ish, y is height ──────
 
-// Veil-Ray: a broad flat membrane wing — like a manta made of pale tissue with a filament keel.
+// Veil-Ray: unified scalloped ribbed membrane wings, dorsal keel, and tapered tail across all sites.
 function buildVeilRay(colors) {
-  const g = new THREE.Group();
-  const wing = geo('ray_wing', () => {
-    const s = new THREE.SphereGeometry(1, 20, 10);
-    s.scale(1.6, 0.16, 1.05);
-    return s;
-  });
-  const body = new THREE.Mesh(wing, tissueMat(colors.tissue));
-  body.scale.setScalar(14);
-  g.add(body);
-  const keel = new THREE.Mesh(
-    geo('ray_keel', () => {
-      const s = new THREE.SphereGeometry(1, 12, 6);
-      s.scale(0.5, 0.28, 1.35);
-      return s;
-    }),
-    glowMat(colors.filament, 0.9),
-  );
-  keel.scale.setScalar(11);
-  keel.position.y = 0.4;
-  g.add(keel);
-  const tail = new THREE.Mesh(
-    geo('ray_tail', () => {
-      const s = new THREE.CylinderGeometry(0.06, 0.42, 3.2, 8);
-      s.rotateX(Math.PI / 2);
-      return s;
-    }),
-    tissueMat(colors.tissue),
-  );
-  tail.position.z = -2.4 * 11;
-  tail.scale.setScalar(8);
-  g.add(tail);
-  g.rotation.x = 0;
-  g.name = 'SF_Fauna_veil_ray';
-  return g;
+  return buildOpenVeilRay(colors, tissueMat);
 }
 
-// Needle Swarm: one entity, a cloud of thin darts orbiting a dim core — reads as "many".
+// Needle Swarm: one entity, a school of sculpted chitinous darts swirling around a dim filament keel.
 function buildNeedleSwarm(colors, species) {
   const g = new THREE.Group();
+  const owned = new Set();
   const n = species.members || 9;
-  const dart = geo('ns_dart', () => {
-    const s = new THREE.ConeGeometry(0.22, 2.6, 5);
-    s.rotateX(Math.PI / 2); // point along +Z (heading)
-    return s;
+  const keelMat = tissueMat(mixColor(colors.tissue, 0x5c4033, 0.3));
+  const coreMat = glowMat(colors.glow, 0.46);
+  const dartMat = tissueMat(mixColor(colors.filament, 0x5e3428, 0.34));
+
+  const keelGeo = geo('ns_keel_v2', () => {
+    const arms = [];
+    for (let k = 0; k < 3; k += 1) {
+      const a = (k / 3) * Math.PI * 2;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      arms.push(buildLoftedLobeData([
+        [-1.8 * ca, -0.3, -1.5 * sa, 0.28, 0.25],
+        [-0.4 * ca + 0.5 * sa, 0.35, -0.3 * sa - 0.4 * ca, 0.72, 0.58],
+        [1.1 * ca - 0.3 * sa, 0.15, 0.9 * sa + 0.3 * ca, 0.65, 0.52],
+        [2.2 * ca, -0.25, 1.8 * sa, 0.22, 0.20],
+      ], { folds: 4, depth: 0.16, rings: 10, sides: 8 }));
+    }
+    return mergePartsGeometry(arms, 'NeedleSwarm_Keel');
   });
-  const dartMat = tissueMat(colors.filament);
+  const keel = ownMat(new THREE.Mesh(keelGeo, keelMat), keelMat, owned);
+  keel.name = 'ns_keel';
+  g.add(keel);
+
+  const coreGeo = geo('ns_core_v2', () => createLoftedLobeGeometry([
+    [-1.1, -0.1, -0.3, 0.45, 0.40],
+    [0.0, 0.15, 0.2, 0.85, 0.75],
+    [1.1, -0.05, -0.2, 0.42, 0.38],
+  ], { folds: 5, depth: 0.16, rings: 10, sides: 10 }, 'NeedleSwarm_Core'));
+  const core = ownMat(new THREE.Mesh(coreGeo, coreMat), coreMat, owned);
+  core.name = 'ns_core';
+  core.position.y = 0.05;
+  g.add(core);
+
+  const dartGeo = geo('ns_dart_v2', () => createLoftedLobeGeometry([
+    [0, -0.05, -2.2, 0.10, 0.09],
+    [0.08, 0.12, -0.7, 0.42, 0.30],
+    [-0.04, 0.08, 0.7, 0.36, 0.26],
+    [0, -0.02, 2.25, 0.08, 0.07],
+  ], { folds: 4, depth: 0.15, rings: 12, sides: 8, keel: 0.26 }, 'NeedleSwarm_Dart'));
+
   for (let i = 0; i < n; i += 1) {
-    const d = new THREE.Mesh(dart, dartMat);
-    const a = (i / n) * Math.PI * 2;
-    const r = 4.5 + (i % 3) * 2.2;
-    d.position.set(Math.cos(a) * r, (i % 2 ? 0.5 : -0.4) * (1 + i * 0.12), Math.sin(a) * r);
-    d.rotation.y = a + Math.PI / 2;
+    const d = ownMat(new THREE.Mesh(dartGeo, dartMat), dartMat, owned);
+    d.name = 'ns_dart';
+    const a = (i / n) * Math.PI * 2 + (i % 2) * 0.22;
+    const rx = 6.2 + (i % 3) * 1.35;
+    const rz = 3.8 + ((i + 1) % 3) * 0.85;
+    d.position.set(
+      Math.cos(a) * rx,
+      (i % 2 ? 0.85 : -0.75) * (0.85 + (i % 3) * 0.42),
+      Math.sin(a) * rz,
+    );
+    const tx = -rx * Math.sin(a);
+    const tz = rz * Math.cos(a);
+    d.rotation.y = Math.atan2(tx, tz);
+    d.rotation.z = (i % 2 ? 0.26 : -0.24);
+    d.rotation.x = Math.sin(i * 1.7) * 0.16;
     g.add(d);
   }
-  const core = new THREE.Mesh(
-    geo('ns_core', () => new THREE.SphereGeometry(1.4, 10, 8)),
-    glowMat(colors.glow, 0.8),
-  );
-  core.scale.setScalar(2.2);
-  g.add(core);
   g.name = 'SF_Fauna_needle_swarm';
   return g;
 }
 
-// Blind Shepherd: a heavy pale torus-shell with a luminous relay organ — deliberately alien,
-// bigger than everything else on the site.
+// Blind Shepherd: a folded toroidal pressure-hull skirt with bridging tendon ribs and a recessed relay crown.
 function buildBlindShepherd(colors) {
   const g = new THREE.Group();
-  const shell = new THREE.Mesh(
-    geo('bs_shell', () => {
-      const s = new THREE.SphereGeometry(1, 24, 14);
-      s.scale(1.9, 0.55, 1.9);
-      return s;
-    }),
-    tissueMat(colors.tissue),
-  );
-  shell.scale.setScalar(16);
+  const owned = new Set();
+  const shellMat = tissueMat(colors.tissue);
+  const skirtMat = tissueMat(mixColor(colors.filament, 0x56392f, 0.42));
+  const organMat = glowMat(colors.glow, 0.55);
+
+  const shellGeo = geo('bs_shell_v2', () => createSculptedCarapaceGeometry({
+    rx: 13.5,
+    rz: 13.5,
+    radialRings: 14,
+    sides: 32,
+    lobeFreq: 8,
+    lobeAmp: 0.11,
+    dorsalY: (r, theta) => {
+      const crater = 1.9 + 4.3 * Math.sin(Math.min(1, r / 0.52) * Math.PI * 0.5);
+      const slope = 6.2 * Math.cos(Math.max(0, (r - 0.46) / 0.54) * Math.PI * 0.5);
+      const base = r < 0.48 ? crater : slope;
+      return base + 0.55 * Math.sin(r * Math.PI) * Math.cos(8 * theta);
+    },
+    ventralY: (r, theta) => -2.0 * Math.cos(r * Math.PI * 0.5) + 0.25 * Math.cos(8 * theta) * r,
+    name: 'BlindShepherd_Shell',
+  }));
+  const shell = ownMat(new THREE.Mesh(shellGeo, shellMat), shellMat, owned);
+  shell.name = 'bs_shell';
+  shell.scale.set(1.02, 1.0, 0.84);
   g.add(shell);
-  const organ = new THREE.Mesh(
-    geo('bs_organ', () => new THREE.SphereGeometry(0.5, 12, 8)),
-    glowMat(colors.glow, 1.6),
-  );
-  organ.scale.setScalar(16);
-  organ.position.y = 4.4;
-  g.add(organ);
-  const skirt = new THREE.Mesh(
-    geo('bs_skirt', () => new THREE.TorusGeometry(1.4, 0.22, 8, 28)),
-    tissueMat(colors.filament),
-  );
-  skirt.rotation.x = Math.PI / 2;
-  skirt.scale.setScalar(16);
-  skirt.position.y = -1.2;
+
+  const skirtGeo = geo('bs_skirt_v2', () => createFoldedTorusGeometry({
+    R: 17.8,
+    tubeRx: 3.9,
+    tubeRy: 2.7,
+    majorSegs: 36,
+    minorSegs: 14,
+    majorFolds: 8,
+    majorAmp: 0.11,
+    minorFolds: 5,
+    minorAmp: 0.15,
+    waveY: 0.85,
+    waveFreq: 4,
+    name: 'BlindShepherd_Skirt',
+  }));
+  const skirt = ownMat(new THREE.Mesh(skirtGeo, skirtMat), skirtMat, owned);
+  skirt.name = 'bs_skirt';
+  skirt.position.y = -0.5;
+  skirt.scale.set(1.04, 1.0, 0.84);
   g.add(skirt);
+
+  const ribsGeo = geo('bs_ribs_v2', () => {
+    const parts = [];
+    for (let i = 0; i < 8; i += 1) {
+      const a = (i / 8) * Math.PI * 2;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      parts.push(buildLoftedLobeData([
+        [9.4 * ca, 2.8, 9.4 * sa, 1.30, 0.92],
+        [13.4 * ca, 3.5, 13.4 * sa, 1.55, 1.18],
+        [16.8 * ca, 1.2, 16.8 * sa, 1.35, 1.00],
+        [19.2 * ca, -0.5, 19.2 * sa, 0.72, 0.62],
+      ], { folds: 4, depth: 0.14, rings: 10, sides: 8 }));
+    }
+    return mergePartsGeometry(parts, 'BlindShepherd_Ribs');
+  });
+  const ribs = ownMat(new THREE.Mesh(ribsGeo, skirtMat), skirtMat, owned);
+  ribs.name = 'bs_ribs';
+  ribs.scale.set(1.04, 1.0, 0.84);
+  g.add(ribs);
+
+  const organGeo = geo('bs_organ_v2', () => {
+    const parts = [
+      buildLoftedLobeData([
+        [-2.2, 0.0, 0.0, 1.2, 1.0],
+        [0.0, 0.85, 0.0, 2.35, 1.85],
+        [2.2, 0.0, 0.0, 1.2, 1.0],
+      ], { folds: 5, depth: 0.15, rings: 10, sides: 10 }),
+    ];
+    for (let i = 0; i < 5; i += 1) {
+      const a = (i / 5) * Math.PI * 2;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      parts.push(buildLoftedLobeData([
+        [1.1 * ca, -0.05, 1.1 * sa, 0.56, 0.45],
+        [2.4 * ca, 0.42, 2.4 * sa, 0.68, 0.52],
+        [3.8 * ca, 0.14, 3.8 * sa, 0.32, 0.28],
+      ], { folds: 4, depth: 0.12, rings: 8, sides: 8 }));
+    }
+    return mergePartsGeometry(parts, 'BlindShepherd_Organ');
+  });
+  const organ = ownMat(new THREE.Mesh(organGeo, organMat), organMat, owned);
+  organ.name = 'bs_organ';
+  organ.position.y = 2.9;
+  g.add(organ);
+
   g.name = 'SF_Fauna_blind_shepherd';
   return g;
 }
 
-// Hull Leech: a flat disc with radial gripping arms — low, wide, obviously latched-on posture.
+// Hull Leech: a pleated radial gripper disc with fleshy attachment collar, recessed maw, and curved tendril arms.
 function buildHullLeech(colors) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(
-    geo('hl_body', () => {
-      const s = new THREE.SphereGeometry(1, 14, 8);
-      s.scale(1.1, 0.22, 1.1);
-      return s;
-    }),
-    tissueMat(colors.filament),
-  );
-  body.scale.setScalar(7);
+  const owned = new Set();
+  const discMat = tissueMat(mixColor(colors.filament, 0x5c2f26, 0.36));
+  const collarMat = tissueMat(colors.tissue);
+  const mawMat = glowMat(colors.glow, 0.50);
+
+  const bodyGeo = geo('hl_body_v2', () => createSculptedCarapaceGeometry({
+    rx: 8.2,
+    rz: 6.2,
+    radialRings: 12,
+    sides: 30,
+    lobeFreq: 6,
+    lobeAmp: 0.14,
+    dorsalY: (r, theta) => {
+      const basin = r < 0.46
+        ? 0.4 + 2.1 * Math.sin((r / 0.46) * Math.PI * 0.5)
+        : 2.5 * Math.cos(((r - 0.46) / 0.54) * Math.PI * 0.5);
+      return basin + 0.32 * Math.sin(r * Math.PI) * Math.cos(6 * theta);
+    },
+    ventralY: (r, theta) => -1.3 * Math.cos(r * Math.PI * 0.5) + 0.18 * Math.cos(6 * theta) * r,
+    name: 'HullLeech_Disc',
+  }));
+  const body = ownMat(new THREE.Mesh(bodyGeo, discMat), discMat, owned);
+  body.name = 'hl_body';
   g.add(body);
-  const arm = geo('hl_arm', () => {
-    const s = new THREE.CylinderGeometry(0.12, 0.3, 2.4, 5);
-    s.rotateZ(Math.PI / 2);
-    return s;
-  });
-  const armMat = tissueMat(colors.tissue);
-  for (let i = 0; i < 6; i += 1) {
-    const a = (i / 6) * Math.PI * 2;
-    const m = new THREE.Mesh(arm, armMat);
-    m.scale.setScalar(6);
-    m.position.set(Math.cos(a) * 7.2, -0.4, Math.sin(a) * 7.2);
-    m.rotation.y = -a;
+
+  const collarGeo = geo('hl_collar_v2', () => createFoldedTorusGeometry({
+    R: 3.1,
+    tubeRx: 1.32,
+    tubeRy: 1.12,
+    majorSegs: 24,
+    minorSegs: 12,
+    majorFolds: 6,
+    majorAmp: 0.14,
+    minorFolds: 4,
+    minorAmp: 0.12,
+    waveY: 0.25,
+    waveFreq: 3,
+    name: 'HullLeech_Collar',
+  }));
+  const collar = ownMat(new THREE.Mesh(collarGeo, collarMat), collarMat, owned);
+  collar.name = 'hl_collar';
+  collar.position.y = 1.95;
+  g.add(collar);
+
+  const mawGeo = geo('hl_maw_v2', () => mergePartsGeometry([
+    buildLoftedLobeData([
+      [-1.5, -0.1, -0.3, 0.55, 0.48],
+      [0.0, 0.45, 0.0, 1.05, 0.85],
+      [1.5, -0.1, 0.3, 0.55, 0.48],
+    ], { folds: 4, depth: 0.16, rings: 10, sides: 8 }),
+    buildLoftedLobeData([
+      [-0.3, -0.1, -1.5, 0.52, 0.45],
+      [0.0, 0.35, 0.0, 0.95, 0.80],
+      [0.3, -0.1, 1.5, 0.52, 0.45],
+    ], { folds: 4, depth: 0.16, rings: 10, sides: 8 }),
+  ], 'HullLeech_Maw'));
+  const maw = ownMat(new THREE.Mesh(mawGeo, mawMat), mawMat, owned);
+  maw.name = 'hl_maw';
+  maw.position.y = 1.45;
+  g.add(maw);
+
+  const armGeo = geo('hl_arm_v2', () => createLoftedLobeGeometry([
+    [4.2, -0.45, 0.0, 1.05, 0.85],
+    [7.2, 0.35, 1.15, 0.82, 0.68],
+    [10.2, -0.35, 1.45, 0.58, 0.48],
+    [11.7, -1.65, 0.45, 0.24, 0.22],
+  ], { folds: 4, depth: 0.16, rings: 12, sides: 8 }, 'HullLeech_Arm'));
+
+  const armAngles = [-0.56, 0.0, 0.56, Math.PI - 0.56, Math.PI, Math.PI + 0.56];
+  for (let i = 0; i < armAngles.length; i += 1) {
+    const a = armAngles[i];
+    const m = ownMat(new THREE.Mesh(armGeo, collarMat), collarMat, owned);
+    m.name = 'hl_arm';
+    m.rotation.y = a;
+    if (i % 2 === 1) m.scale.set(1.04, 1.0, -0.92); // alternate S-curl handedness organically
+    else m.scale.set(1.04, 1.0, 0.92);
     g.add(m);
   }
-  const maw = new THREE.Mesh(
-    geo('hl_maw', () => new THREE.SphereGeometry(0.35, 8, 6)),
-    glowMat(colors.glow, 1.1),
-  );
-  maw.scale.setScalar(6);
-  maw.position.y = 1.4;
-  g.add(maw);
   g.name = 'SF_Fauna_hull_leech';
   return g;
 }
@@ -265,403 +489,793 @@ function buildCasketWorm(colors) {
   return g;
 }
 
-// Bristle Ram: a blunt wedge of plate and quill — reads dangerous at a glance.
+// Bristle Ram: sculpted armored body with a calcified battering-ram prow and flared dorsal bristle mat.
 function buildBristleRam(colors) {
   const g = new THREE.Group();
-  const hull = new THREE.Mesh(geo('br_hull', () => {
-    const s = new THREE.SphereGeometry(1, 14, 8);
-    s.scale(1.5, 0.5, 1.1);
-    return s;
-  }), tissueMat(colors.tissue));
-  hull.scale.setScalar(11);
+  const owned = new Set();
+  const hullMat = tissueMat(mixColor(colors.tissue, 0x5c4230, 0.28));
+  const prowMat = tissueMat(mixColor(colors.tissue, 0xf2e6d0, 0.75));
+  const quillMat = tissueMat(mixColor(colors.filament, 0x3b1f14, 0.52));
+
+  const hullGeo = geo('br_hull_v2', () => createLoftedLobeGeometry([
+    [0, -0.2, -8.4, 2.2, 1.7],
+    [0, 0.7, -4.4, 7.6, 4.0],
+    [0, 1.2, 0.4, 9.8, 4.9],
+    [0, 0.9, 5.2, 8.8, 4.3],
+    [0, 0.0, 8.8, 4.6, 2.6],
+  ], { folds: 6, depth: 0.14, rings: 16, sides: 16, ventralScale: 0.65, keel: 0.16 }, 'BristleRam_Hull'));
+  const hull = ownMat(new THREE.Mesh(hullGeo, hullMat), hullMat, owned);
+  hull.name = 'br_hull';
   g.add(hull);
-  const wedge = new THREE.Mesh(geo('br_wedge', () => {
-    const s = new THREE.ConeGeometry(0.7, 2.8, 4);
-    s.rotateX(Math.PI / 2);
-    return s;
-  }), tissueMat(colors.filament));
-  wedge.position.z = 13;
-  wedge.scale.set(10, 8, 10);
+
+  const wedgeGeo = geo('br_wedge_v2', () => mergePartsGeometry([
+    // Central heavy curved calcified battering prow thrusting prominently forward.
+    buildLoftedLobeData([
+      [0, 3.0, 2.4, 3.8, 2.2],
+      [0, 2.6, 7.2, 4.6, 2.7],
+      [0, 1.5, 11.6, 3.3, 2.1],
+      [0, 0.4, 14.8, 1.25, 1.0],
+    ], { folds: 4, depth: 0.12, rings: 12, sides: 10, keel: 0.24 }),
+    // Paired lateral cheek armor shields flanking the ram prow.
+    buildLoftedLobeData([
+      [-4.6, 1.8, 3.4, 2.1, 1.4],
+      [-6.4, 1.3, 7.8, 2.4, 1.6],
+      [-4.2, 0.4, 11.8, 1.2, 0.95],
+    ], { folds: 4, depth: 0.12, rings: 10, sides: 8 }),
+    buildLoftedLobeData([
+      [4.6, 1.8, 3.4, 2.1, 1.4],
+      [6.4, 1.3, 7.8, 2.4, 1.6],
+      [4.2, 0.4, 11.8, 1.2, 0.95],
+    ], { folds: 4, depth: 0.12, rings: 10, sides: 8 }),
+  ], 'BristleRam_Prow'));
+  const wedge = ownMat(new THREE.Mesh(wedgeGeo, prowMat), prowMat, owned);
+  wedge.name = 'br_wedge';
   g.add(wedge);
-  const quill = geo('br_quill', () => {
-    const s = new THREE.ConeGeometry(0.09, 1.8, 4);
-    s.translate(0, 0.9, 0);
-    return s;
-  });
-  const quillMat = tissueMat(colors.filament);
+
+  const quillGeo = geo('br_quill_v2', () => createLoftedLobeGeometry([
+    [0, -0.8, 0.6, 1.18, 0.92],
+    [0, 2.2, -1.0, 0.96, 0.74],
+    [0, 5.2, -3.4, 0.56, 0.44],
+    [0, 7.2, -5.8, 0.16, 0.14],
+  ], { folds: 4, depth: 0.14, rings: 12, sides: 8 }, 'BristleRam_Quill'));
+
   for (let i = 0; i < 9; i += 1) {
-    const q = new THREE.Mesh(quill, quillMat);
+    const q = ownMat(new THREE.Mesh(quillGeo, quillMat), quillMat, owned);
     q.name = 'br_quill';
-    const a = -0.8 + (i / 8) * 1.6;
-    q.position.set(Math.sin(a) * 8, 4.2, -Math.cos(a) * 6);
-    q.rotation.z = a * 0.6;
-    q.rotation.x = -0.7;
-    q.scale.setScalar(5);
+    const a = -1.2 + (i / 8) * 2.4;
+    const rank = i % 2 === 0 ? 1.05 : 0.88;
+    q.position.set(
+      Math.sin(a) * 6.8,
+      3.4 - Math.abs(a) * 0.6,
+      1.6 - Math.cos(a) * 4.4,
+    );
+    q.rotation.z = -a * 0.88;
+    q.rotation.x = 0.12 - Math.abs(a) * 0.18;
+    q.scale.setScalar(rank);
     g.add(q);
   }
   g.name = 'SF_Fauna_bristle_ram';
   return g;
 }
 
-// Mourning Kite: a tall thin sail on a filament tether — reads mournful and aware.
+// Mourning Kite: a pleated translucent diamond-kite membrane with organic spars, tether, and recessed grief-loop.
 function buildMourningKite(colors) {
   const g = new THREE.Group();
-  const sail = new THREE.Mesh(geo('mk_sail', () => {
-    const s = new THREE.SphereGeometry(1, 10, 14);
-    s.scale(0.35, 2.6, 1.4);
-    return s;
-  }), new THREE.MeshStandardMaterial({
-    color: colors.tissue, roughness: 0.5, metalness: 0.0,
-    transparent: true, opacity: 0.7, emissive: colors.glow, emissiveIntensity: 0.15,
+  const owned = new Set();
+  const sailMat = translucentTissueMat(mixColor(0xb6d2de, colors.tissue, 0.35), colors.glow, {
+    opacity: 0.72,
+    roughness: 0.34,
+    metalness: 0.04,
+    normalScale: 0.55,
+    emissiveIntensity: 0.14,
+  });
+  const sparMat = tissueMat(mixColor(colors.filament, 0x4b626c, 0.35));
+  const knotMat = glowMat(colors.glow, 0.55);
+
+  const sailGeo = geo('mk_sail_v2', () => createFoldedMembraneGeometry({
+    uSegs: 24,
+    vSegs: 14,
+    surfacePoint: (u, v) => {
+      const s = (u - 0.5) * 2; // -1..1 across wingspan
+      const absS = Math.abs(s);
+      const env = Math.max(0.14, Math.sin(u * Math.PI));
+      const span = 14.5 * (0.72 * s + 0.28 * Math.sin(s * Math.PI * 0.5));
+      const chord = 1.8 + 10.2 * Math.pow(env, 0.75);
+      const zCenter = 2.6 - absS * 6.5;
+      const z = zCenter + (v - 0.5) * chord;
+      const arch = 3.6 * Math.cos(s * Math.PI * 0.5) - 1.0 * (1 - v);
+      const pleat = 0.62 * Math.cos(s * Math.PI * 3.5) * Math.sin(v * Math.PI);
+      const thick = 0.20 + 0.34 * Math.sin(v * Math.PI) * (1 - 0.55 * absS);
+      return { pos: [span, arch + pleat, z], halfThick: thick };
+    },
+    name: 'MourningKite_Sail',
   }));
-  sail.scale.setScalar(9);
+  const sail = ownMat(new THREE.Mesh(sailGeo, sailMat), sailMat, owned);
+  sail.name = 'mk_sail';
   g.add(sail);
-  const line = new THREE.Mesh(geo('mk_line', () => new THREE.CylinderGeometry(0.05, 0.05, 9, 4)), tissueMat(colors.filament));
-  line.position.y = -11;
+
+  const ribsGeo = geo('mk_ribs_v2', () => mergePartsGeometry([
+    // Central dorsal keel spar.
+    buildLoftedLobeData([
+      [0, 2.0, -3.0, 0.36, 0.30],
+      [0, 3.4, 2.6, 0.48, 0.40],
+      [0, 2.7, 7.6, 0.24, 0.20],
+    ], { folds: 4, depth: 0.12, rings: 10, sides: 8 }),
+    // Port & starboard swept leading wing ribs.
+    buildLoftedLobeData([
+      [0, 3.1, 6.2, 0.34, 0.28],
+      [-7.0, 2.4, 3.4, 0.30, 0.25],
+      [-13.8, 0.2, -2.2, 0.16, 0.14],
+    ], { folds: 3, depth: 0.12, rings: 10, sides: 8 }),
+    buildLoftedLobeData([
+      [0, 3.1, 6.2, 0.34, 0.28],
+      [7.0, 2.4, 3.4, 0.30, 0.25],
+      [13.8, 0.2, -2.2, 0.16, 0.14],
+    ], { folds: 3, depth: 0.12, rings: 10, sides: 8 }),
+  ], 'MourningKite_Ribs'));
+  const ribs = ownMat(new THREE.Mesh(ribsGeo, sparMat), sparMat, owned);
+  ribs.name = 'mk_ribs';
+  g.add(ribs);
+
+  const lineGeo = geo('mk_line_v2', () => createLoftedLobeGeometry([
+    [0.0, 2.0, 1.8, 0.44, 0.38],
+    [0.35, -0.3, -0.8, 0.36, 0.30],
+    [0.85, -2.2, -3.6, 0.30, 0.26],
+    [0.70, -3.6, -6.0, 0.34, 0.28],
+  ], { folds: 4, depth: 0.14, rings: 12, sides: 8 }, 'MourningKite_Tether'));
+  const line = ownMat(new THREE.Mesh(lineGeo, sparMat), sparMat, owned);
+  line.name = 'mk_line';
   g.add(line);
-  const knot = new THREE.Mesh(geo('mk_knot', () => new THREE.SphereGeometry(0.3, 8, 6)), glowMat(colors.glow, 0.9));
-  knot.position.y = -15.5;
-  knot.scale.setScalar(6);
+
+  const cradleGeo = geo('mk_cradle_v2', () => createFoldedTorusGeometry({
+    R: 1.25,
+    tubeRx: 0.52,
+    tubeRy: 0.42,
+    majorSegs: 20,
+    minorSegs: 10,
+    majorFolds: 5,
+    majorAmp: 0.14,
+    minorFolds: 4,
+    minorAmp: 0.12,
+    waveY: 0.18,
+    waveFreq: 3,
+    name: 'MourningKite_Cradle',
+  }));
+  const cradle = ownMat(new THREE.Mesh(cradleGeo, sparMat), sparMat, owned);
+  cradle.name = 'mk_cradle';
+  cradle.position.set(0.70, -3.6, -6.0);
+  cradle.rotation.x = 0.4;
+  g.add(cradle);
+
+  const knotGeo = geo('mk_knot_v2', () => createLoftedLobeGeometry([
+    [-0.75, 0.0, -0.15, 0.45, 0.40],
+    [0.0, 0.18, 0.0, 0.85, 0.72],
+    [0.75, -0.05, 0.15, 0.42, 0.38],
+  ], { folds: 4, depth: 0.14, rings: 10, sides: 8 }, 'MourningKite_Knot'));
+  const knot = ownMat(new THREE.Mesh(knotGeo, knotMat), knotMat, owned);
+  knot.name = 'mk_knot';
+  knot.position.set(0.70, -3.6, -6.0);
   g.add(knot);
+
   g.name = 'SF_Fauna_mourning_kite';
   return g;
 }
 
-// Anchor Beast: a mound fused to the wreck — sessile, the size of a small station module.
+// Anchor Beast: a massive folded mineral-processing mantle anchored by curved fungal tendrils and recessed glow organs.
 function buildAnchorBeast(colors) {
   const g = new THREE.Group();
-  // These parts wear identical tissue or signal finishes and receive the same creature-wide
-  // motion envelope. Share only within this creature so separate beasts animate independently.
+  const owned = new Set();
+  // Preserve test/sfq-b175 single-owner contract: children[0] owns `tissue` (6 total meshes),
+  // children[1] owns `glow`.
   const tissue = tissueMat(colors.tissue);
-  const spikeGlow = glowMat(colors.glow, 0.6);
-  const mound = new THREE.Mesh(geo('ab_mound', () => {
-    const s = new THREE.SphereGeometry(1, 18, 10);
-    s.scale(1.4, 0.6, 1.4);
-    return s;
-  }), tissue);
-  mound.scale.setScalar(26);
+  const spikeGlow = glowMat(colors.glow, 0.55);
+  const buttressMat = tissueMat(mixColor(colors.filament, 0x4c3528, 0.45));
+
+  const moundGeo = geo('ab_mound_v2', () => createSculptedCarapaceGeometry({
+    rx: 26.5,
+    rz: 18.0,
+    radialRings: 14,
+    sides: 32,
+    lobeFreq: 7,
+    lobeAmp: 0.13,
+    dorsalY: (r, theta) => {
+      const basin = r < 0.44
+        ? 4.2 + 6.4 * Math.sin((r / 0.44) * Math.PI * 0.5)
+        : 10.6 * Math.cos(((r - 0.44) / 0.56) * Math.PI * 0.5);
+      const ribs = 1.45 * Math.sin(r * Math.PI) * Math.cos(7 * theta + 0.5 * r);
+      const step = 0.65 * Math.sin(r * Math.PI * 3.0) * (1 - r);
+      return basin + ribs + step - 1.2 * r;
+    },
+    ventralY: (r, theta) => -3.5 * Math.cos(r * Math.PI * 0.5) - 1.2 * r + 0.4 * Math.cos(7 * theta) * r,
+    name: 'AnchorBeast_Mantle',
+  }));
+  const mound = ownMat(new THREE.Mesh(moundGeo, tissue), tissue, owned);
+  mound.name = 'ab_mound';
   g.add(mound);
-  const spike = geo('ab_spike', () => {
-    const s = new THREE.ConeGeometry(0.4, 3.4, 6);
-    s.translate(0, 1.7, 0);
-    return s;
+
+  const crownGeo = geo('ab_crown_v2', () => {
+    const parts = [
+      buildLoftedLobeData([
+        [-3.4, -0.4, -0.8, 1.5, 1.2],
+        [0.0, 1.2, 0.2, 2.8, 2.1],
+        [3.4, -0.3, 0.6, 1.4, 1.1],
+      ], { folds: 5, depth: 0.16, rings: 10, sides: 10 }),
+      buildLoftedLobeData([
+        [-0.6, -0.3, -3.2, 1.4, 1.1],
+        [0.1, 1.0, 0.0, 2.4, 1.8],
+        [0.6, -0.4, 3.2, 1.3, 1.0],
+      ], { folds: 5, depth: 0.16, rings: 10, sides: 10 }),
+    ];
+    return mergePartsGeometry(parts, 'AnchorBeast_Crown');
   });
-  for (let i = 0; i < 8; i += 1) {
-    const a = (i / 8) * Math.PI * 2;
-    const sp = new THREE.Mesh(spike, i % 3 ? tissue : spikeGlow);
-    // The mound owns the tissue and the first spike owns the glow. Every other
-    // spike borrows both its finish and cached geometry during root teardown.
-    if (i > 0) sp.userData.borrowedGeometryMaterial = true;
-    sp.position.set(Math.cos(a) * 24, 6, Math.sin(a) * 24);
-    sp.rotation.z = Math.cos(a) * 1.1;
-    sp.rotation.x = -Math.sin(a) * 1.1;
-    sp.scale.setScalar(9);
+  const crown = ownMat(new THREE.Mesh(crownGeo, spikeGlow), spikeGlow, owned);
+  crown.name = 'ab_crown';
+  crown.position.y = 6.0;
+  g.add(crown);
+
+  // 5 anchor tendrils sharing `tissue` (total `tissue` meshes = 1 mound + 5 tendrils = 6).
+  const tendrilGeo = geo('ab_spike_v2', () => createLoftedLobeGeometry([
+    [11.0, 4.0, 0.0, 2.1, 1.6],
+    [15.4, 4.2, 1.1, 1.8, 1.4],
+    [19.2, 1.1, 1.6, 1.2, 0.95],
+    [21.6, -1.8, 1.1, 0.50, 0.44],
+  ], { folds: 5, depth: 0.14, rings: 14, sides: 10 }, 'AnchorBeast_Tendril'));
+
+  for (let i = 0; i < 5; i += 1) {
+    const a = (i / 5) * Math.PI * 2 + Math.PI / 5;
+    const sp = ownMat(new THREE.Mesh(tendrilGeo, tissue), tissue, owned);
+    sp.name = 'ab_spike';
+    sp.rotation.y = a;
+    if (i % 2 === 1) sp.scale.set(1.0, 1.04, -0.92);
+    else sp.scale.set(1.0, 1.0, 0.92);
     g.add(sp);
   }
-  const crown = new THREE.Mesh(geo('ab_crown', () => new THREE.SphereGeometry(0.5, 12, 8)), glowMat(colors.glow, 1.2));
-  crown.position.y = 18;
-  crown.scale.setScalar(14);
-  g.add(crown);
+
+  // 2 small recessed bioluminescent pocket nodules tucked deep inside mantle creases.
+  const noduleGeo = geo('ab_nodule_v2', () => createLoftedLobeGeometry([
+    [-1.1, -0.15, 0.0, 0.55, 0.45],
+    [0.0, 0.25, 0.15, 0.90, 0.68],
+    [1.1, -0.15, 0.0, 0.52, 0.42],
+  ], { folds: 4, depth: 0.14, rings: 8, sides: 8 }, 'AnchorBeast_Nodule'));
+
+  for (let i = 0; i < 2; i += 1) {
+    const a = i * Math.PI + 0.9;
+    const nod = ownMat(new THREE.Mesh(noduleGeo, spikeGlow), spikeGlow, owned);
+    nod.name = 'ab_nodule';
+    nod.position.set(Math.cos(a) * 14.5, 5.1, Math.sin(a) * 11.2);
+    nod.rotation.y = a;
+    g.add(nod);
+  }
+
+  // Merged calcified mineral ridge buttresses cradling the central processing basin.
+  const buttressGeo = geo('ab_buttress_v2', () => {
+    const parts = [];
+    for (let i = 0; i < 5; i += 1) {
+      const a = (i / 5) * Math.PI * 2 + 0.85;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a) * 0.75;
+      parts.push(buildLoftedLobeData([
+        [8.4 * ca, 6.4, 8.4 * sa, 1.35, 1.05],
+        [13.2 * ca, 8.2, 13.2 * sa, 1.65, 1.20],
+        [17.8 * ca, 4.8, 17.8 * sa, 1.40, 1.05],
+        [20.8 * ca, 1.2, 20.8 * sa, 0.85, 0.70],
+      ], { folds: 4, depth: 0.14, rings: 12, sides: 8 }));
+    }
+    return mergePartsGeometry(parts, 'AnchorBeast_Buttress');
+  });
+  const buttress = ownMat(new THREE.Mesh(buttressGeo, buttressMat), buttressMat, owned);
+  buttress.name = 'ab_buttress';
+  g.add(buttress);
+
   g.name = 'SF_Fauna_anchor_beast';
   return g;
 }
 
-// Furnace Maw: a squat vent-bowl with a heat core — reads as a static hazard until it moves.
+// Furnace Maw: thick-walled open heat-radiating crater with visible glowing gullet and 7 curved fangs.
 function buildFurnaceMaw(colors) {
   const g = new THREE.Group();
-  const bowl = new THREE.Mesh(geo('fm_bowl', () => {
-    const s = new THREE.SphereGeometry(1, 16, 10, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.55);
-    return s;
-  }), tissueMat(colors.tissue));
-  bowl.scale.set(18, 14, 18);
-  bowl.rotation.x = Math.PI;
+  const owned = new Set();
+  const bowlMat = tissueMat(mixColor(colors.tissue, 0x503a2d, 0.32));
+  const throatMat = tissueMat(0x5c220c);
+  throatMat.emissive.setHex(0xff5a1e);
+  throatMat.emissiveIntensity = 0.52;
+  const jawMat = tissueMat(mixColor(colors.filament, 0x5c2e20, 0.32));
+
+  const bowl = ownMat(new THREE.Mesh(geo('fm_bowl_v2', createFurnaceBowlGeometry), bowlMat), bowlMat, owned);
+  bowl.name = 'fm_bowl';
   g.add(bowl);
-  const throat = new THREE.Mesh(geo('fm_throat', () => new THREE.SphereGeometry(0.55, 12, 8)), glowMat(0xff6a28, 2.2));
-  throat.position.y = 2;
-  throat.scale.setScalar(16);
+
+  const throat = ownMat(new THREE.Mesh(geo('fm_throat_v2', createFurnaceThroatGeometry), throatMat), throatMat, owned);
+  throat.name = 'fm_throat';
+  throat.position.y = -0.35;
   g.add(throat);
-  const jaw = geo('fm_jaw', () => {
-    const s = new THREE.ConeGeometry(0.3, 2.2, 5);
-    s.translate(0, 1.1, 0);
-    return s;
-  });
+
+  const jawGeo = geo('fm_jaw_v2', createFurnaceJawGeometry);
   for (let i = 0; i < 7; i += 1) {
     const a = (i / 7) * Math.PI * 2;
-    const j = new THREE.Mesh(jaw, tissueMat(colors.filament));
-    j.position.set(Math.cos(a) * 13, 8, Math.sin(a) * 13);
-    j.rotation.z = Math.cos(a) * 0.9;
-    j.rotation.x = -Math.sin(a) * 0.9;
-    j.scale.setScalar(7);
+    const j = ownMat(new THREE.Mesh(jawGeo, jawMat), jawMat, owned);
+    j.name = 'fm_jaw';
+    j.position.set(Math.cos(a) * 12.6, 2.4, Math.sin(a) * 12.6);
+    j.rotation.y = Math.PI / 2 - a;
     g.add(j);
   }
   g.name = 'SF_Fauna_furnace_maw';
   return g;
 }
 
-// Glassback: a translucent dome-carapace quadruped — beam-resistant, reads delicate.
+// Glassback: a fluted translucent silicate grazing carapace over seam veins, recessed organ, and curved limbs.
 function buildGlassback(colors) {
   const g = new THREE.Group();
-  const dome = new THREE.Mesh(geo('gb_dome', () => {
-    const s = new THREE.SphereGeometry(1, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2);
-    return s;
-  }), new THREE.MeshStandardMaterial({
-    color: 0xbfd8d4, roughness: 0.15, metalness: 0.1,
-    transparent: true, opacity: 0.5, emissive: colors.glow, emissiveIntensity: 0.2,
+  const owned = new Set();
+  const domeMat = translucentTissueMat(mixColor(0xc2dbd6, colors.tissue, 0.28), colors.glow, {
+    opacity: 0.56,
+    roughness: 0.20,
+    metalness: 0.08,
+    normalScale: 0.48,
+    emissiveIntensity: 0.12,
+  });
+  domeMat.depthWrite = false;
+  const seamMat = tissueMat(mixColor(colors.filament, 0x5c432d, 0.42));
+  const legMat = tissueMat(colors.tissue);
+  const nodeMat = glowMat(colors.glow, 0.52);
+
+  const domeGeo = geo('gb_dome_v2', () => createSculptedCarapaceGeometry({
+    rx: 11.8,
+    rz: 8.4,
+    radialRings: 14,
+    sides: 32,
+    lobeFreq: 8,
+    lobeAmp: 0.09,
+    dorsalY: (r, theta) => {
+      const vault = 7.2 * Math.cos(r * Math.PI * 0.5);
+      const terrace = 0.55 * Math.sin(r * Math.PI * 3.0) * (1 - 0.3 * r);
+      const flute = 0.42 * Math.sin(r * Math.PI) * Math.cos(8 * theta);
+      return -1.2 + vault + terrace + flute;
+    },
+    ventralY: (r, theta) => 1.5 * Math.cos(r * Math.PI * 0.65) - 1.2 + 0.22 * Math.cos(8 * theta) * r,
+    name: 'Glassback_Carapace',
   }));
-  dome.scale.setScalar(10);
+  const dome = ownMat(new THREE.Mesh(domeGeo, domeMat), domeMat, owned);
+  dome.name = 'gb_dome';
   g.add(dome);
-  const leg = geo('gb_leg', () => new THREE.CylinderGeometry(0.14, 0.22, 3.2, 5));
+
+  const seamGeo = geo('gb_seam_v2', () => {
+    const parts = [];
+    for (let i = 0; i < 8; i += 1) {
+      const a = (i / 8) * Math.PI * 2;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a) * 0.72;
+      parts.push(buildLoftedLobeData([
+        [1.2 * ca, 4.2, 1.2 * sa, 0.42, 0.34],
+        [4.8 * ca, 3.4, 4.8 * sa, 0.54, 0.42],
+        [8.4 * ca, 1.0, 8.4 * sa, 0.46, 0.36],
+        [10.6 * ca, -1.0, 10.6 * sa, 0.28, 0.24],
+      ], { folds: 3, depth: 0.12, rings: 10, sides: 8 }));
+    }
+    return mergePartsGeometry(parts, 'Glassback_SeamVeins');
+  });
+  const seam = ownMat(new THREE.Mesh(seamGeo, seamMat), seamMat, owned);
+  seam.name = 'gb_seam';
+  g.add(seam);
+
+  const nodeGeo = geo('gb_node_v2', () => mergePartsGeometry([
+    buildLoftedLobeData([
+      [-2.1, 0.0, -0.4, 0.85, 0.72],
+      [0.0, 0.65, 0.1, 1.45, 1.15],
+      [2.1, -0.1, 0.4, 0.82, 0.68],
+    ], { folds: 4, depth: 0.14, rings: 10, sides: 8 }),
+    buildLoftedLobeData([
+      [-0.3, -0.1, -2.0, 0.78, 0.65],
+      [0.0, 0.55, 0.0, 1.30, 1.05],
+      [0.3, -0.1, 2.0, 0.78, 0.65],
+    ], { folds: 4, depth: 0.14, rings: 10, sides: 8 }),
+  ], 'Glassback_Organ'));
+  const node = ownMat(new THREE.Mesh(nodeGeo, nodeMat), nodeMat, owned);
+  node.name = 'gb_node';
+  node.position.y = 2.0;
+  g.add(node);
+
+  const legGeo = geo('gb_leg_v2', () => createLoftedLobeGeometry([
+    [6.2, -0.5, 0.0, 0.88, 0.72],
+    [8.8, -1.1, 0.8, 0.74, 0.60],
+    [10.0, -2.8, 1.2, 0.54, 0.44],
+    [9.1, -4.2, 1.4, 0.24, 0.22],
+  ], { folds: 4, depth: 0.15, rings: 12, sides: 8 }, 'Glassback_Leg'));
+
   for (let i = 0; i < 4; i += 1) {
     const a = Math.PI / 4 + (i / 4) * Math.PI * 2;
-    const l = new THREE.Mesh(leg, tissueMat(colors.tissue));
+    const l = ownMat(new THREE.Mesh(legGeo, legMat), legMat, owned);
     l.name = 'gb_leg';
-    l.position.set(Math.cos(a) * 7, -3.5, Math.sin(a) * 7);
-    l.rotation.z = Math.cos(a) * 0.5;
-    l.rotation.x = -Math.sin(a) * 0.5;
-    l.scale.setScalar(4);
+    l.rotation.y = -a;
+    if (i % 2 === 1) l.scale.set(1.06, 1.0, -0.82);
+    else l.scale.set(1.06, 1.0, 0.82);
     g.add(l);
   }
-  const node = new THREE.Mesh(geo('gb_node', () => new THREE.SphereGeometry(0.22, 8, 6)), glowMat(colors.glow, 1.0));
-  node.position.y = 3;
-  node.scale.setScalar(8);
-  g.add(node);
   g.name = 'SF_Fauna_glassback';
   return g;
 }
 
-// Wake Eel: a ribbon of tapering segments — its visual IS its motion.
+// Wake Eel: continuous sinuous S-curved folded body with sweeping wake-fins and restrained signal nodes.
 function buildWakeEel(colors) {
   const g = new THREE.Group();
-  const segMat = tissueMat(colors.tissue);
-  const seg = geo('we_seg', () => {
-    const s = new THREE.SphereGeometry(1, 8, 6);
-    s.scale(0.9, 0.5, 1.3);
-    return s;
-  });
-  for (let i = 0; i < 9; i += 1) {
-    const m = new THREE.Mesh(seg, i === 0 ? glowMat(colors.glow, 0.7) : segMat);
-    const w = 1 - i * 0.09;
-    m.scale.setScalar(7 * w);
-    m.position.set(Math.sin(i * 0.7) * 3.5, 0, -i * 4.5);
-    g.add(m);
-  }
+  const core = new THREE.Group();
+  const owned = new Set();
+  const bodyMat = tissueMat(colors.tissue);
+  const finMat = tissueMat(mixColor(colors.filament, 0x542e24, 0.35));
+  finMat.side = THREE.DoubleSide;
+  const signalMat = glowMat(colors.glow, 0.58);
+
+  const body = ownMat(new THREE.Mesh(geo('we_body_v2', createWakeEelBodyGeometry), bodyMat), bodyMat, owned);
+  body.name = 'we_body';
+  core.add(body);
+
+  const fins = ownMat(new THREE.Mesh(geo('we_fins_v2', createWakeEelFinsGeometry), finMat), finMat, owned);
+  fins.name = 'we_fins';
+  core.add(fins);
+
+  const signal = ownMat(new THREE.Mesh(geo('we_glow_v2', createWakeEelGlowGeometry), signalMat), signalMat, owned);
+  signal.name = 'we_glow';
+  core.add(signal);
+
+  g.add(core);
   g.name = 'SF_Fauna_wake_eel';
   return g;
 }
 
-// Spindle Mother: a vertical spindle ringed with spore sacs — unmistakably a carrier.
+// Spindle Mother: tapered fluted organic spindle with nestled spore sacs, crown seed, and juvenile cloud.
 function buildSpindleMother(colors) {
   const g = new THREE.Group();
-  const spindle = new THREE.Mesh(geo('sm_spindle', () => {
-    const s = new THREE.CylinderGeometry(0.35, 0.55, 4.6, 10);
-    s.translate(0, 2.3, 0);
-    return s;
-  }), tissueMat(colors.tissue));
-  spindle.scale.setScalar(8);
-  g.add(spindle);
-  const sacMat = glowMat(colors.glow, 0.8);
-  const sac = geo('sm_sac', () => new THREE.SphereGeometry(0.34, 8, 6));
-  for (let ring = 0; ring < 3; ring += 1) {
-    const y = 6 + ring * 8;
-    const rr = 5.5 - ring * 1.2;
-    for (let i = 0; i < 6; i += 1) {
-      const a = (i / 6) * Math.PI * 2 + ring * 0.5;
-      const s = new THREE.Mesh(sac, sacMat);
-      s.position.set(Math.cos(a) * rr, y, Math.sin(a) * rr);
-      s.scale.setScalar(5);
-      g.add(s);
-    }
-  }
-  const crown = new THREE.Mesh(geo('sm_crown', () => new THREE.SphereGeometry(0.5, 10, 8)), glowMat(colors.glow, 1.4));
-  crown.position.y = 32;
-  crown.scale.setScalar(8);
-  g.add(crown);
+  const core = new THREE.Group();
+  const owned = new Set();
+  const spindleMat = tissueMat(colors.tissue);
+  const calyxMat = tissueMat(mixColor(colors.filament, 0x523127, 0.38));
+  const sacMat = glowMat(colors.glow, 0.38);
+  const crownMat = glowMat(colors.glow, 0.55);
+
+  const spindle = ownMat(new THREE.Mesh(geo('sm_spindle_v2', createSpindleMotherBodyGeometry), spindleMat), spindleMat, owned);
+  spindle.name = 'sm_spindle';
+  core.add(spindle);
+
+  const calyx = ownMat(new THREE.Mesh(geo('sm_calyx_v2', createSpindleMotherCalyxesGeometry), calyxMat), calyxMat, owned);
+  calyx.name = 'sm_calyx';
+  core.add(calyx);
+
+  const sacs = ownMat(new THREE.Mesh(geo('sm_sac_v2', createSpindleMotherSacsGeometry), sacMat), sacMat, owned);
+  sacs.name = 'sm_sac';
+  core.add(sacs);
+
+  const crown = ownMat(new THREE.Mesh(geo('sm_crown_v2', createSpindleMotherCrownGeometry), crownMat), crownMat, owned);
+  crown.name = 'sm_crown';
+  core.add(crown);
+
+  g.add(core);
+
+  const juveniles = ownMat(new THREE.Mesh(geo('sm_juveniles_v2', createSpindleMotherJuvenilesGeometry), calyxMat), calyxMat, owned);
+  juveniles.name = 'sm_juveniles';
+  g.add(juveniles);
+
   g.name = 'SF_Fauna_spindle_mother';
   return g;
 }
 
-// Archive Crab: a low scavenger platform carrying stacked debris plates on its back.
+// Void Carrier: distinct vessel-scale horizontal stratified buoyant ark with nestled brood galleries.
+function buildVoidCarrier(colors) {
+  const g = new THREE.Group();
+  const core = new THREE.Group();
+  const owned = new Set();
+  const hullMat = tissueMat(mixColor(colors.tissue, 0x5e4a3c, 0.3));
+  const layerMat = tissueMat(mixColor(colors.filament, 0x482b24, 0.42));
+  const nodeMat = glowMat(colors.glow, 0.45);
+  const relayMat = glowMat(colors.glow, 0.62);
+
+  const hull = ownMat(new THREE.Mesh(geo('vc_hull_v2', createVoidCarrierHullGeometry), hullMat), hullMat, owned);
+  hull.name = 'vc_hull';
+  core.add(hull);
+
+  const layers = ownMat(new THREE.Mesh(geo('vc_layers_v2', createVoidCarrierLayersGeometry), layerMat), layerMat, owned);
+  layers.name = 'vc_layers';
+  core.add(layers);
+
+  const nodes = ownMat(new THREE.Mesh(geo('vc_nodes_v2', createVoidCarrierNodesGeometry), nodeMat), nodeMat, owned);
+  nodes.name = 'vc_nodes';
+  core.add(nodes);
+
+  const relay = ownMat(new THREE.Mesh(geo('vc_relay_v2', createVoidCarrierRelayGeometry), relayMat), relayMat, owned);
+  relay.name = 'vc_relay';
+  core.add(relay);
+
+  g.add(core);
+
+  const streamers = ownMat(new THREE.Mesh(geo('vc_streamers_v2', createVoidCarrierStreamersGeometry), layerMat), layerMat, owned);
+  streamers.name = 'vc_streamers';
+  g.add(streamers);
+
+  g.name = 'SF_Fauna_void_carrier';
+  return g;
+}
+
+// Archive Crab: a folded scavenger carapace with sculpted 3D dorsal salvage scutes and curved collector limbs.
 function buildArchiveCrab(colors) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(geo('ac_body', () => {
-    const s = new THREE.SphereGeometry(1, 12, 7);
-    s.scale(1.6, 0.4, 1.2);
-    return s;
-  }), tissueMat(colors.tissue));
-  body.scale.setScalar(7);
+  const owned = new Set();
+  const bodyMat = tissueMat(colors.tissue);
+  const plateMat = tissueMat(mixColor(colors.filament, 0x5c3626, 0.42));
+  const crestMat = tissueMat(mixColor(colors.tissue, 0xcab89c, 0.35));
+  const legMat = tissueMat(mixColor(colors.tissue, 0x4c3a2c, 0.35));
+
+  const bodyGeo = geo('ac_body_v2', () => createSculptedCarapaceGeometry({
+    rx: 8.6,
+    rz: 6.4,
+    radialRings: 12,
+    sides: 30,
+    lobeFreq: 7,
+    lobeAmp: 0.12,
+    dorsalY: (r, theta) => 2.5 * Math.cos(r * Math.PI * 0.5) + 0.38 * Math.sin(r * Math.PI) * Math.cos(7 * theta),
+    ventralY: (r, theta) => -1.5 * Math.cos(r * Math.PI * 0.5) + 0.18 * Math.cos(7 * theta) * r,
+    name: 'ArchiveCrab_Carapace',
+  }));
+  const body = ownMat(new THREE.Mesh(bodyGeo, bodyMat), bodyMat, owned);
+  body.name = 'ac_body';
   g.add(body);
-  const plate = geo('ac_plate', () => new THREE.BoxGeometry(1.6, 0.12, 1.1));
-  const plateMat = tissueMat(colors.filament);
-  for (let i = 0; i < 4; i += 1) {
-    const p = new THREE.Mesh(plate, plateMat);
-    p.position.set((i % 2) * 2 - 1, 2.6 + i * 0.5, -1 + i * 0.6);
-    p.rotation.y = i * 0.4;
-    p.rotation.z = (i % 2 ? 1 : -1) * 0.12;
-    p.scale.setScalar(6);
+
+  const plateGeo = geo('ac_plate_v2', () => createFoldedMembraneGeometry({
+    uSegs: 14,
+    vSegs: 10,
+    surfacePoint: (u, v) => {
+      const su = (u - 0.5) * 2;
+      const sv = (v - 0.5) * 2;
+      const taper = 0.72 + 0.28 * Math.sin(v * Math.PI);
+      const x = su * 3.8 * taper + 0.35 * Math.sin(sv * Math.PI);
+      const z = sv * 2.6 * (0.76 + 0.24 * Math.sin(u * Math.PI));
+      const dome = 0.75 * Math.cos(su * Math.PI * 0.45) * Math.cos(sv * Math.PI * 0.45);
+      const pleat = 0.28 * Math.cos(su * Math.PI * 2.5) * Math.sin(v * Math.PI);
+      return { pos: [x, dome + pleat, z], halfThick: 0.44 + 0.22 * Math.sin(u * Math.PI) };
+    },
+    name: 'ArchiveCrab_Plate',
+  }));
+
+  const placements = [
+    { pos: [-1.4, 2.0, -1.0], rot: [0.06, -0.35, 0.10], scale: [1.02, 1.0, 0.96], mat: plateMat },
+    { pos: [1.6, 2.35, 0.4], rot: [-0.08, 0.42, -0.12], scale: [0.95, 1.05, 0.92], mat: plateMat },
+    { pos: [-0.3, 2.75, 1.3], rot: [0.10, 0.15, 0.05], scale: [0.84, 1.0, 0.85], mat: crestMat },
+  ];
+  for (const spec of placements) {
+    const p = ownMat(new THREE.Mesh(plateGeo, spec.mat), spec.mat, owned);
+    p.name = 'ac_plate';
+    p.position.set(...spec.pos);
+    p.rotation.set(...spec.rot);
+    p.scale.set(...spec.scale);
     g.add(p);
   }
-  const leg = geo('ac_leg', () => new THREE.CylinderGeometry(0.1, 0.16, 2.4, 4));
-  for (let i = 0; i < 6; i += 1) {
-    const a = (i / 6) * Math.PI * 2;
-    const l = new THREE.Mesh(leg, segLegMat(colors));
-    l.position.set(Math.cos(a) * 8, -2, Math.sin(a) * 8);
-    l.rotation.z = Math.cos(a) * 1.0;
-    l.rotation.x = -Math.sin(a) * 1.0;
-    l.scale.setScalar(3);
+
+  const legGeo = geo('ac_leg_v2', () => createLoftedLobeGeometry([
+    [5.8, -0.6, 0.0, 0.78, 0.64],
+    [8.8, 0.35, 0.65, 0.64, 0.52],
+    [11.2, -0.55, 1.55, 0.45, 0.38],
+    [11.8, -2.0, 2.25, 0.18, 0.16],
+  ], { folds: 4, depth: 0.15, rings: 12, sides: 8 }, 'ArchiveCrab_Limb'));
+
+  const legAngles = [-0.62, 0.0, 0.62, Math.PI - 0.62, Math.PI, Math.PI + 0.62];
+  for (let i = 0; i < legAngles.length; i += 1) {
+    const l = ownMat(new THREE.Mesh(legGeo, legMat), legMat, owned);
+    l.name = 'ac_leg';
+    l.rotation.y = legAngles[i];
+    if (i >= 3) l.scale.set(1.0, 1.0, -1.0); // mirror port side so claws sweep forward (+Z)
     g.add(l);
   }
   g.name = 'SF_Fauna_archive_crab';
   return g;
 }
 
-function segLegMat(colors) {
-  return tissueMat(colors.tissue);
-}
-
-// Cold Bell (AE-160): a hollow resonant bell — inverted cup of tissue over a glowing
-// piezo clapper. Reads motionless between tolls.
+// Cold Bell (AE-160): closed thick-walled pleated resonant bell canopy with integrated ribs and piezo clapper.
 function buildColdBell(colors) {
   const g = new THREE.Group();
-  const shell = new THREE.Mesh(geo('cb_shell', () => {
-    const s = new THREE.SphereGeometry(1, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.62);
-    s.scale(1, 1.35, 1);
-    return s;
-  }), tissueMat(colors.tissue));
-  shell.scale.setScalar(16);
-  shell.rotation.x = Math.PI; // cup faces down
-  g.add(shell);
-  const clapper = new THREE.Mesh(geo('cb_clapper', () => new THREE.SphereGeometry(0.3, 10, 8)),
-    glowMat(colors.glow, 0.7));
-  clapper.position.y = -14;
-  clapper.scale.setScalar(10);
+  const canopy = new THREE.Group();
+  const owned = new Set();
+  const shellMat = tissueMat(colors.tissue);
+  const ribMat = tissueMat(mixColor(colors.filament, 0x4f3028, 0.35));
+  const clapperMat = glowMat(colors.glow, 0.62);
+
+  const shell = ownMat(new THREE.Mesh(geo('cb_shell_v2', createColdBellShellGeometry), shellMat), shellMat, owned);
+  shell.name = 'cb_shell';
+  canopy.add(shell);
+
+  const ribs = ownMat(new THREE.Mesh(geo('cb_rib_v2', createColdBellRibsGeometry), ribMat), ribMat, owned);
+  ribs.name = 'cb_rib';
+  canopy.add(ribs);
+
+  g.add(canopy);
+
+  const clapper = ownMat(new THREE.Mesh(geo('cb_clapper_v2', createColdBellClapperGeometry), clapperMat), clapperMat, owned);
+  clapper.name = 'cb_clapper';
+  clapper.position.set(0, -0.13, 2.60);
   g.add(clapper);
-  const ribs = geo('cb_rib', () => {
-    const s = new THREE.BoxGeometry(0.06, 1.4, 0.06);
-    s.translate(0, 0.7, 0);
-    return s;
-  });
-  for (let i = 0; i < 6; i += 1) {
-    const rib = new THREE.Mesh(ribs, tissueMat(colors.filament));
-    const a = (i / 6) * Math.PI * 2;
-    rib.position.set(Math.cos(a) * 9, -2, Math.sin(a) * 9);
-    rib.rotation.z = Math.cos(a) * 0.5;
-    rib.rotation.x = Math.sin(a) * 0.5;
-    rib.scale.setScalar(8);
-    g.add(rib);
-  }
+
   g.name = 'SF_Fauna_cold_bell';
   return g;
 }
 
-// Suture Mite (AE-161): a palm-sized knitter — a low crab body with two spinneret cones.
+// Suture Mite (AE-161): segmented folded carapace knitter with curved mandibles, brow sensory eye, legs, and spinnerets.
 function buildSutureMite(colors) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(geo('sm_body', () => {
-    const s = new THREE.SphereGeometry(1, 10, 7);
-    s.scale(1.1, 0.5, 1.5);
-    return s;
-  }), tissueMat(colors.tissue));
-  body.scale.setScalar(3);
-  g.add(body);
-  const spinneret = geo('sm_spin', () => {
-    const s = new THREE.ConeGeometry(0.16, 0.9, 5);
-    s.rotateX(Math.PI / 2);
-    return s;
-  });
-  for (const side of [-1, 1]) {
-    const sp = new THREE.Mesh(spinneret, tissueMat(colors.filament));
-    sp.position.set(side * 1.4, 0.4, -3.4);
-    sp.rotation.y = side * 0.4;
-    g.add(sp);
-  }
-  const eye = new THREE.Mesh(geo('sm_eye', () => new THREE.SphereGeometry(0.22, 6, 5)),
-    glowMat(colors.glow, 0.8));
-  eye.position.set(0, 0.8, 2.6);
-  g.add(eye);
+  const core = new THREE.Group();
+  const owned = new Set();
+  const bodyMat = tissueMat(colors.tissue);
+  const appendageMat = tissueMat(mixColor(colors.filament, 0x543025, 0.32));
+  const eyeMat = glowMat(colors.glow, 0.72);
+
+  const body = ownMat(new THREE.Mesh(geo('sm_body_v2', createSutureMiteBodyGeometry), bodyMat), bodyMat, owned);
+  body.name = 'sm_body';
+  core.add(body);
+
+  const eye = ownMat(new THREE.Mesh(geo('sm_eye_v2', createSutureMiteEyeGeometry), eyeMat), eyeMat, owned);
+  eye.name = 'sm_eye';
+  eye.position.set(0, 0.72, 2.05);
+  core.add(eye);
+
+  g.add(core);
+
+  const legs = ownMat(new THREE.Mesh(geo('sm_legs_v2', createSutureMiteLegsGeometry), appendageMat), appendageMat, owned);
+  legs.name = 'sm_legs';
+  g.add(legs);
+
+  const mandibles = ownMat(new THREE.Mesh(geo('sm_mandibles_v2', createSutureMiteMandiblesGeometry), appendageMat), appendageMat, owned);
+  mandibles.name = 'sm_mandibles';
+  mandibles.position.set(0, 0.05, 1.8);
+  g.add(mandibles);
+
+  const spin = ownMat(new THREE.Mesh(geo('sm_spin_v2', createSutureMiteSpinneretsGeometry), appendageMat), appendageMat, owned);
+  spin.name = 'sm_spin';
+  spin.position.set(0, 0.15, -1.9);
+  g.add(spin);
+
   g.name = 'SF_Fauna_suture_mite';
   return g;
 }
 
-// Black Sail (AE-162): an edge-on photophore sheet — a tall thin membrane that reads as
-// a debris panel until it turns broadside.
+// Black Sail (AE-162): an S-cambered, pleated dark photophore sail with stiffener cord and recessed photophore seam.
 function buildBlackSail(colors) {
   const g = new THREE.Group();
-  const sail = new THREE.Mesh(geo('bs_sail', () => {
-    const s = new THREE.SphereGeometry(1, 20, 12);
-    s.scale(0.06, 1.15, 1.5);
-    return s;
-  }), new THREE.MeshStandardMaterial({
-    color: 0x14161a, roughness: 0.4, metalness: 0.35,
-    emissive: colors.glow, emissiveIntensity: 0.12,
+  const owned = new Set();
+  const sailMat = darkTissueMat(colors.tissue, colors.glow, {
+    mixBase: 0x181c24,
+    mixAmount: 0.88,
+    roughness: 0.56,
+    metalness: 0.15,
+    normalScale: 0.85,
+    emissiveIntensity: 0.02,
+  });
+  const cordMat = darkTissueMat(colors.filament, colors.glow, {
+    mixBase: 0x2c1b18,
+    mixAmount: 0.78,
+    roughness: 0.74,
+    metalness: 0.06,
+    normalScale: 0.9,
+    emissiveIntensity: 0.02,
+  });
+  const photophoreMat = glowMat(colors.glow, 0.45);
+
+  const spineAt = (t) => [
+    12.0 * t + 1.5 * Math.sin(t * Math.PI),
+    3.0 * Math.sin(t * Math.PI * 0.5) + 1.3 * Math.cos(t * Math.PI),
+    5.4 * t - 1.8 * Math.cos(t * Math.PI),
+  ];
+
+  const sailGeo = geo('bs_sail_v2', () => createFoldedMembraneGeometry({
+    uSegs: 26,
+    vSegs: 14,
+    surfacePoint: (u, v) => {
+      const t = (u - 0.5) * 2; // -1..1 along sail length
+      const sp = spineAt(t);
+      const env = Math.pow(Math.max(0.06, Math.sin(u * Math.PI)), 0.65);
+      const chord = 1.4 + 7.8 * env;
+      const drop = (1 - v) * chord;
+      const billow = 2.4 * Math.sin(v * Math.PI) * Math.sin(t * Math.PI);
+      const pleats = 0.68 * Math.cos(t * Math.PI * 3.5) * Math.sin(v * Math.PI);
+      const scallop = 0.70 * (1 - v) * Math.cos(t * Math.PI * 4.0);
+      return {
+        pos: [
+          sp[0] - drop * 0.24 + billow * 0.45,
+          sp[1] - drop * 0.72 + pleats * 0.55 - scallop * 0.3,
+          sp[2] - drop * 0.52 + pleats * 0.75 + scallop * 0.4,
+        ],
+        halfThick: 0.20 + 0.44 * Math.sin(v * Math.PI) * env,
+      };
+    },
+    name: 'BlackSail_Membrane',
   }));
-  sail.scale.setScalar(18);
+  const sail = ownMat(new THREE.Mesh(sailGeo, sailMat), sailMat, owned);
+  sail.name = 'bs_sail';
   g.add(sail);
-  const cord = new THREE.Mesh(geo('bs_cord', () => {
-    const s = new THREE.CylinderGeometry(0.08, 0.08, 2.4, 6);
-    s.rotateX(Math.PI / 2);
-    return s;
-  }), tissueMat(colors.filament));
-  cord.scale.setScalar(14);
+
+  const cordGeo = geo('bs_cord_v2', () => {
+    const stations = [];
+    for (let i = 0; i <= 6; i += 1) {
+      const u = i / 6;
+      const t = (u - 0.5) * 2;
+      const sp = spineAt(t);
+      const r = 0.32 + 0.48 * Math.sin(u * Math.PI);
+      stations.push([sp[0], sp[1], sp[2], r, r * 0.85]);
+    }
+    return createLoftedLobeGeometry(stations, { folds: 5, depth: 0.14, rings: 18, sides: 10 }, 'BlackSail_Cord');
+  });
+  const cord = ownMat(new THREE.Mesh(cordGeo, cordMat), cordMat, owned);
+  cord.name = 'bs_cord';
   g.add(cord);
+
+  const photophoreGeo = geo('bs_photophore_v2', () => {
+    const parts = [];
+    for (let i = 0; i < 4; i += 1) {
+      const u = 0.22 + (i / 3) * 0.56;
+      const t = (u - 0.5) * 2;
+      const sp = spineAt(t);
+      parts.push(buildLoftedLobeData([
+        [sp[0] - 0.8, sp[1] - 0.35, sp[2] - 0.45, 0.14, 0.12],
+        [sp[0] - 0.2, sp[1] + 0.05, sp[2] - 0.55, 0.22, 0.18],
+        [sp[0] + 0.5, sp[1] - 0.25, sp[2] - 0.35, 0.14, 0.12],
+      ], { folds: 3, depth: 0.14, rings: 8, sides: 8 }));
+    }
+    return mergePartsGeometry(parts, 'BlackSail_Photophore');
+  });
+  const photophore = ownMat(new THREE.Mesh(photophoreGeo, photophoreMat), photophoreMat, owned);
+  photophore.name = 'bs_photophore';
+  g.add(photophore);
+
   g.name = 'SF_Fauna_black_sail';
   return g;
 }
 
-// Stone Lung (AE-163): an asteroid that breathes — a rock-textured mound with a vent
-// throat that cycles open on the exhale period.
+// Stone Lung (AE-163): sculpted rock-mantle crater with folded gill throat exposing the pulsing spore bladder.
 function buildStoneLung(colors) {
   const g = new THREE.Group();
-  const mound = new THREE.Mesh(geo('sl_mound', () => {
-    const s = new THREE.DodecahedronGeometry(1, 1);
-    s.scale(1.2, 0.6, 1.2);
-    return s;
-  }), new THREE.MeshStandardMaterial({
-    color: 0x5c564d, roughness: 0.95, metalness: 0.05,
-    emissive: colors.tissue, emissiveIntensity: 0.06,
-  }));
-  mound.scale.setScalar(22);
+  const owned = new Set();
+  const rockMat = tissueMat(mixColor(colors.tissue, 0x4e483f, 0.65));
+  const throatMat = tissueMat(colors.tissue);
+  const coreMat = tissueMat(mixColor(colors.glow, 0x4a2410, 0.55));
+  coreMat.emissive.setHex(colors.glow);
+  coreMat.emissiveIntensity = 0.52;
+
+  const mound = ownMat(new THREE.Mesh(geo('sl_mound_v2', createStoneLungMoundGeometry), rockMat), rockMat, owned);
+  mound.name = 'sl_mound';
   g.add(mound);
-  const throat = new THREE.Mesh(geo('sl_throat', () => {
-    const s = new THREE.CylinderGeometry(0.4, 0.9, 0.7, 12);
-    s.translate(0, 0.35, 0);
-    return s;
-  }), tissueMat(colors.tissue));
-  throat.scale.setScalar(18);
-  throat.position.y = 10;
+
+  const throat = ownMat(new THREE.Mesh(geo('sl_throat_v2', createStoneLungThroatGeometry), throatMat), throatMat, owned);
+  throat.name = 'sl_throat';
   g.add(throat);
-  const wetCore = new THREE.Mesh(geo('sl_core', () => new THREE.SphereGeometry(0.3, 10, 8)),
-    glowMat(colors.glow, 0.5));
-  wetCore.position.y = 14;
-  wetCore.scale.setScalar(16);
+
+  const wetCore = ownMat(new THREE.Mesh(geo('sl_core_v2', createStoneLungCoreGeometry), coreMat), coreMat, owned);
+  wetCore.name = 'sl_core';
+  wetCore.position.set(0, 0.4, 0.1);
   g.add(wetCore);
+
   g.name = 'SF_Fauna_stone_lung';
   return g;
 }
 
-// Pilgrim Spine (AE-164): a linked vertebra segment — wedge head, cord tail; a line of
-// them reads as a procession when chainFollowed.
+// Pilgrim Spine (AE-164): sculpted folded vertebra link segment with swept processes, route ganglion, and sinuous cord.
 function buildPilgrimSpine(colors) {
   const g = new THREE.Group();
-  const wedge = new THREE.Mesh(geo('ps_wedge', () => {
-    const s = new THREE.ConeGeometry(0.8, 2.4, 6);
-    s.rotateX(Math.PI / 2);
-    return s;
-  }), tissueMat(colors.tissue));
-  wedge.scale.setScalar(7);
-  g.add(wedge);
-  const cord = new THREE.Mesh(geo('ps_cord', () => {
-    const s = new THREE.CylinderGeometry(0.12, 0.22, 2.2, 6);
-    s.rotateX(-Math.PI / 2);
-    s.translate(0, 0, -1.4);
-    return s;
-  }), tissueMat(colors.filament));
-  cord.scale.setScalar(8);
+  const core = new THREE.Group();
+  const owned = new Set();
+  const vertebraMat = tissueMat(colors.tissue);
+  const glowNodeMat = glowMat(colors.glow, 0.58);
+  const cordMat = tissueMat(mixColor(colors.filament, 0x4b5c42, 0.35));
+
+  const wedge = ownMat(new THREE.Mesh(geo('ps_wedge_v2', createPilgrimVertebraGeometry), vertebraMat), vertebraMat, owned);
+  wedge.name = 'ps_wedge';
+  core.add(wedge);
+
+  const nodeGlow = ownMat(new THREE.Mesh(geo('ps_glow_v2', createPilgrimGanglionGeometry), glowNodeMat), glowNodeMat, owned);
+  nodeGlow.name = 'ps_glow';
+  core.add(nodeGlow);
+
+  g.add(core);
+
+  const cord = ownMat(new THREE.Mesh(geo('ps_cord_v2', createPilgrimCordGeometry), cordMat), cordMat, owned);
+  cord.name = 'ps_cord';
+  cord.position.set(0, -0.22, -3.55);
   g.add(cord);
-  const nodeGlow = new THREE.Mesh(geo('ps_glow', () => new THREE.SphereGeometry(0.2, 8, 6)),
-    glowMat(colors.glow, 1.0));
-  nodeGlow.position.set(0, 1.2, 0);
-  nodeGlow.scale.setScalar(8);
-  g.add(nodeGlow);
+
   g.name = 'SF_Fauna_pilgrim_spine';
   return g;
 }
@@ -686,11 +1300,13 @@ function buildBolusFauna(colors, species) {
       return buffer;
     });
     const color = part.glow ? part.color : part.color || colors.tissue;
-    const key = `${part.glow ? 'glow' : 'tissue'}:${color}`;
+    const glowStrength = part.glow ? (Number.isFinite(part.emissiveIntensity) ? part.emissiveIntensity : 0.55) : 0;
+    const key = `${part.glow ? `glow:${glowStrength}` : 'tissue'}:${color}:${part.doubleSided ? 'double' : 'front'}`;
     let material = materials?.get(key);
     const borrowed = !!material;
     if (!material) {
-      material = part.glow ? glowMat(color, 0.9) : tissueMat(color);
+      material = part.glow ? glowMat(color, glowStrength) : tissueMat(color);
+      if (part.doubleSided) material.side = THREE.DoubleSide;
       materials?.set(key, material);
     }
     const mesh = new THREE.Mesh(geometry, material);
@@ -720,8 +1336,8 @@ const BUILDERS = {
   wake_eel: (c) => buildWakeEel(c),
   spindle_mother: (c) => buildSpindleMother(c),
   archive_crab: (c) => buildArchiveCrab(c),
-  // AE-112: hull-scale carrier — the spindle-mother body plan at vessel scale.
-  void_carrier: (c) => { const m = buildSpindleMother(c); m.scale.setScalar(3.6); return m; },
+  // AE-112: hull-scale carrier — distinct vessel-scale stratified buoyant hull-mass.
+  void_carrier: (c) => buildVoidCarrier(c),
   // ── Phase 16 species (AE-160..AE-164) ──
   cold_bell: (c) => buildColdBell(c),
   suture_mite: (c) => buildSutureMite(c),
@@ -867,6 +1483,20 @@ export function buildFaunaMesh(entity) {
     root.userData.kind = 'fauna';
     root.userData.speciesId = species.id;
     installFaunaMotion(root, entity, species, colors);
+    if (root.userData.rayWings && typeof root.userData.updateAuthoredMotion === 'function') {
+      const baseMotion = root.userData.updateAuthoredMotion;
+      const wings = root.userData.rayWings;
+      root.userData.updateAuthoredMotion = (current, now = 0, a11y = {}, state = null) => {
+        baseMotion(current, now, a11y, state);
+        const drive = current?.data?.ecology?.driveState || 'drift';
+        const reduced = a11y?.reducedMotion === true;
+        const amp = reduced ? 0 : drive === 'flee' ? 0.16 : drive === 'charge' ? 0.12 : 0.05;
+        const flap = Math.sin(now * (drive === 'flee' ? 3.8 : 1.2)) * amp;
+        wings[0].rotation.x = flap;
+        wings[1].rotation.x = -flap;
+      };
+      root.userData.updateAuthoredMotion(entity, 0, {}, null);
+    }
   }
   return root;
 }

@@ -255,6 +255,8 @@ export const swarmJuice = {
     this._bossName = null;
     this._bossScanIn = 0;
     this._bossFrac = -1;
+    this._bossHpAlive = -1;         // last published census — a count change is an emit
+    this._bossHpTotal = -1;
     this._bossDownSent = false;
     this._cueQueue = [];            // { at, payload } sound cues due on the sim clock
     this._slamCueAt = -Infinity;    // last round-slam cue set, so one arrival is one moment
@@ -313,6 +315,14 @@ export const swarmJuice = {
       this._emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL', count: 1 });
     }
 
+    // A champion may die before any 15-tick sweep collected it — and a LIVE straggler may
+    // have landed since the last sweep. One fresh sweep at champion-death time makes the
+    // down decision (and the census) against the whole wing, not the bodies the collector
+    // happened to have seen (REVIEW-FIX05-BATCH finding 2).
+    if (victim && victim.data && victim.data.swarmChampion === true
+      && victim.data.runWave === run.wave && !this._bossDownSent) {
+      this._collectChampions(st, run.wave);
+    }
     if (this._boss.has(victim)) this._markBossDead(st, run.wave);
   },
 
@@ -457,6 +467,8 @@ export const swarmJuice = {
       this._boss.clear();
       this._bossAlive = 0;
       this._bossFrac = -1;
+      this._bossHpAlive = -1;
+      this._bossHpTotal = -1;
       this._bossDownSent = false;
       this._bossScanIn = 0;
     }
@@ -771,29 +783,16 @@ export const swarmJuice = {
     const entities = state.entities;
     if (!entities || typeof entities.values !== 'function') return;
     for (const e of entities.values()) {
-      if (!e || e.alive === false) continue;
+      if (!e) continue;
+      // A champion felled inside the first scan window still counts toward the wing's
+      // census — `total` is what the wave fielded, not what happens to be standing.
       const data = e.data;
       if (data && data.swarmChampion === true && data.runWave === wave) this._addBossBody(e);
     }
   },
 
   _markBossDead(state, wave) {
-    let alive = 0;
-    for (const [entity, row] of this._boss) {
-      if (entity.alive === false) row.dead = true;
-      if (!row.dead) alive += 1;
-    }
-    this._bossAlive = alive;
     this._publishBossHp(state, wave);
-    if (alive === 0 && this._boss.size > 0 && !this._bossDownSent) {
-      this._bossDownSent = true;
-      const name = this._bossName || 'CHAMPION';
-      this._emit('swarm:bossDown', { name, wave });
-      this._emit('swarm:announce', { kind: 'bossdown', text: 'BOSS DOWN', count: 1 });
-      this._requestHitStop(null, 1);
-      this._emit('camera:shake', { amount: 1 });
-      this._emit('audio:cue', { id: 'moment.stinger', gain: 0.9, duck: true });
-    }
   },
 
   _publishBossHp(state, wave) {
@@ -809,11 +808,29 @@ export const swarmJuice = {
     }
     this._bossAlive = alive;
     const frac = hullMax > 0 ? Math.max(0, Math.min(1, hull / hullMax)) : (this._boss.size ? 0 : -1);
-    if (frac >= 0 && Math.abs(frac - this._bossFrac) >= 0.01) {
+    const total = this._boss.size;
+    // The bar's truth is the whole signature: pooled hull AND the census. A body joining
+    // or falling at an unchanged fraction still moves the card's N/M read.
+    if (frac >= 0 && (Math.abs(frac - this._bossFrac) >= 0.01
+      || alive !== this._bossHpAlive || total !== this._bossHpTotal)) {
       this._bossFrac = frac;
+      this._bossHpAlive = alive;
+      this._bossHpTotal = total;
       this._emit('swarm:bossHp', {
-        frac, alive, total: this._boss.size, name: this._bossName || 'CHAMPION', wave,
+        frac, alive, total, name: this._bossName || 'CHAMPION', wave,
       });
+    }
+    // The down verdict rides the census, not the kill path alone: a wing emptied by any
+    // route — a kill the collector never saw, a body the wave reaped without a kill
+    // receipt — still says BOSS DOWN exactly once, here where the sweep itself answers.
+    if (alive === 0 && this._boss.size > 0 && !this._bossDownSent) {
+      this._bossDownSent = true;
+      const name = this._bossName || 'CHAMPION';
+      this._emit('swarm:bossDown', { name, wave });
+      this._emit('swarm:announce', { kind: 'bossdown', text: 'BOSS DOWN', count: 1 });
+      this._requestHitStop(null, 1);
+      this._emit('camera:shake', { amount: 1 });
+      this._emit('audio:cue', { id: 'moment.stinger', gain: 0.9, duck: true });
     }
   },
 

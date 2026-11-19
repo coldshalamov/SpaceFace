@@ -141,11 +141,44 @@ export function physicalWeaponLabelFromDamage(packet = {}) {
   return null;
 }
 
+/** Ids cross lanes serialized — 42 arrives as "42". aceMemory already resolves both directions;
+ * attribution must read the same body the sim aimed. */
+function entityById(state, id) {
+  const entities = state && state.entities;
+  if (!entities || typeof entities.get !== 'function' || id == null) return null;
+  const entity = entities.get(id) || null;
+  if (entity) return entity;
+  const num = Number(id);
+  return Number.isFinite(num) ? entities.get(num) || null : null;
+}
+
+/**
+ * A dead contact keeps its name for a short window. survivalResults stamps
+ * `run.telemetry.recentKillerLabels[id] -> {label, factionId, tick}` at kill time while the
+ * body is still named, so a champion's last volley — landing after the body is reaped —
+ * still credits the champion, not 'Unknown contact'.
+ */
+const RECENT_KILLER_LABEL_TTL_TICKS = 7200; // 120 s at 60 Hz
+function recentKillerEntry(state, attackerId) {
+  const run = state && state.run;
+  const ledger = run && run.telemetry && run.telemetry.recentKillerLabels;
+  if (!ledger || typeof ledger !== 'object') return null;
+  const entry = ledger[String(attackerId)];
+  if (!entry || typeof entry !== 'object' || typeof entry.label !== 'string' || !entry.label) return null;
+  const stamp = Number(entry.tick);
+  const now = Number(state && state.tick);
+  if (Number.isFinite(stamp) && Number.isFinite(now) && now - stamp > RECENT_KILLER_LABEL_TTL_TICKS) return null;
+  return entry;
+}
+
 export function attackerLabel(state, attackerId) {
   if (attackerId == null) return 'Environmental hazard';
-  if (attackerId === state.playerId) return 'Own ship';
-  const attacker = state.entities && typeof state.entities.get === 'function' ? state.entities.get(attackerId) : null;
-  if (!attacker) return 'Unknown contact';
+  if (state.playerId != null && String(attackerId) === String(state.playerId)) return 'Own ship';
+  const attacker = entityById(state, attackerId);
+  if (!attacker) {
+    const recent = recentKillerEntry(state, attackerId);
+    return recent ? recent.label : 'Unknown contact';
+  }
   const data = attacker.data || {};
   const enemy = ENEMY_BY_ID.get(data.lootTableId || data.enemyTypeId);
   if (enemy) return enemy.name;
@@ -172,12 +205,26 @@ export function defeatSource(state, attackerId, context = null) {
       faction: null,
     };
   }
-  if (attackerId === state.playerId) {
+  if (state.playerId != null && String(attackerId) === String(state.playerId)) {
     return { kind: 'self', entityId: attackerId, label: 'Own ship', factionId: null, faction: null };
   }
-  const entity = state.entities && typeof state.entities.get === 'function' ? state.entities.get(attackerId) : null;
+  const entity = entityById(state, attackerId);
   if (!entity) {
-    return { kind: 'unknown', entityId: attackerId, label: 'Unknown contact', factionId: null, faction: null };
+    // A despawned contact is unknown UNLESS its name was banked at kill time — a champion's
+    // post-mortem ordnance still names the champion.
+    const recent = recentKillerEntry(state, attackerId);
+    if (!recent) {
+      return { kind: 'unknown', entityId: attackerId, label: 'Unknown contact', factionId: null, faction: null };
+    }
+    const factionId = typeof recent.factionId === 'string' && recent.factionId ? recent.factionId : null;
+    const faction = factionId ? FACTION_BY_ID.get(factionId) : null;
+    return {
+      kind: 'contact',
+      entityId: attackerId,
+      label: recent.label,
+      factionId,
+      faction: faction ? faction.name : (factionId ? titleWords(factionId) : null),
+    };
   }
   const data = entity.data || {};
   const factionId = entity.factionId || data.factionId || null;
@@ -203,8 +250,7 @@ export function weaponLabel(weaponId) {
 
 export function impactDirection(state, attackerId, hitPos = null) {
   const player = state.entities && typeof state.entities.get === 'function' ? state.entities.get(state.playerId) : null;
-  const attacker = attackerId == null || !state.entities || typeof state.entities.get !== 'function'
-    ? null : state.entities.get(attackerId);
+  const attacker = entityById(state, attackerId);
   const source = attacker && attacker.pos || hitPos;
   if (!player || !player.pos || !source) return 'UNKNOWN';
   const dx = Number(source.x) - Number(player.pos.x);

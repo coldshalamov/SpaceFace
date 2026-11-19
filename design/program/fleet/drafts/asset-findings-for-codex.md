@@ -51,3 +51,9 @@ Looked at: look-bench hull grid (`.devshots/look05d/before/hulls.png`, per-row c
 Pads no longer draw the pickup gem. `src/data/swarmFloor.js` `swarmPadBody` stamps `data.packagedPropFile` (the same route the 47-A story props use): wall gun = `weapons/weapon_turret_dual.glb`, Crate = `pods/pod_cargo_container.glb`, Forge = `places/place_drill_platform.glb`, Tap = `places/place_slurry_tank.glb`.
 **Missing from the repo (please author):** a **furnace / forge press / anvil** for the Forge pad (nothing in assets/ is a furnace; the drill platform is a stand-in), a **gun emplacement** (the turret is a ship weapon mount, not a plinth with a shield), and a **tap/valve rig** (the slurry tank is a tank, not a dispensing tap). The Foundry also has no model for the furnace block beyond the procedural box in `visualFactory.js buildFoundryToy`.
 **Crystal:** the Foundry's authored opening court and its seeded rotation now skip the `crystal` family (`environmentFamiliesFor` in `swarmArena.js`, opening stations in `swarmOpeningTerrain.js`); delete the filter and restore the two stations when the crystal asset is real.
+
+**Lead, 2026-11-17 — station windows.** The owner asked for "spotlights on the sides of stations or glowing things". Floodlights
+are now fixed in data (7ee4360bc4: dock lamps were authored in hull-radius fractions but read as metres). What is missing is
+on the models: Helios Station and the other first-hour stations need rows of small warm lit windows — authored emissive
+panes (an emissive map or a separate emissive material slot on the hull GLB, bloom-eligible, small and many, not big flat
+panels), consistent across station families. This is a model/material job for the 3D-asset thread.

@@ -126,7 +126,7 @@ export const LOOK_HEADLIGHT = deepFreeze({
   // anything near the bow went past the surface ceiling into a flat chalky plateau. A gentler falloff and a
   // much lower intensity keep the pool's centre near the surface knee: warm, textured, shaded rock.
   colorHex: 0xffd6a0,      // warm sodium
-  intensity: 440,          // lit centre near the 0.5 surface knee on a tan rock at decay 1.2
+  intensity: 2500,         // swept 440-4000 on live rocks (LIGHT 2026-11-17): 2500 reads warm and textured at 130 WU, no chalk
   decay: 1.2,              // art-directed falloff (≈4x across 25–105 WU, not 17x)
   range: 450,              // WU; hard cutoff of the light
   angle: 0.55,             // radians, half-angle of the cone (~32°): a wider pool
@@ -138,6 +138,12 @@ export const LOOK_HEADLIGHT = deepFreeze({
   npcReach: 380,           // NPC hulls within this distance of the player may carry a lit lamp
   npcIntensity: 0.75,      // NPC lamp gain relative to the player's
   fadeSeconds: 0.35,       // a lamp hand-off fades out and back in, never pops
+  // The bow volume (a NOCTURNE medium, one of its four slots) is OFF: in clear space there is nothing to
+  // scatter the lamp, and the volume read on screen as a flat brown fog cone ahead of every ship — the
+  // "blurry shit" the owner rejected (design/overhaul/07_LOOK_AND_LIGHT.md §3, 2026-11-18). The lamp is seen
+  // where its pool lands on hulls and rock. A beam may only be visible inside real dust or gas, cut by the
+  // shadow map (build_map §40 OVH-10); until then density stays 0, which also skips the atmosphere pass.
+  beam: { radius: 70, forward: 0.85, yCenter: 8, yRadius: 34, density: 0, anisotropy: 0.5, colorHex: 0xffd6a0 },
 });
 
 // Named moods. Only differences from LOOK_BASE.

@@ -50,7 +50,8 @@ import { isCrackerRunWorkLoad } from './crackerRunGuidance.js';
 import { isSwarmGlass } from './swarmGlass.js';
 import { verbChip } from './controlPrompts.js';
 import { releaseWindowOpen } from './throwCue.js';
-import { entityOverLineClass } from '../data/lineProgression.js';
+import { lineLessonBody } from '../data/lineProgression.js';
+import { lineRelationWord, lineBodyMassT } from './lineRelation.js';
 import { isAdventureFlight } from './attentionGlass.js';
 import { openingQuiet } from '../onboarding/openingQuiet.js';
 
@@ -173,7 +174,9 @@ const BRACKET_DENIAL_REASON = Object.freeze({
   'COOLDOWN': 'LINE ON COOLDOWN',
   'ENDPOINT LOST': 'ENDPOINT WAS LOST',
   'REACQUIRE': 'AIM AND REACQUIRE',
-  'ONE HEAVY ENDPOINT MAX': 'PAIR TOO HEAVY',
+  // The pair validator (tetherGameplay isLargeBridleEndpoint) rejects two station / rock / planet / bolted /
+  // 1800 t+ endpoints by type, not by the player-relative ANCHOR word.
+  'ONE HEAVY ENDPOINT MAX': 'ONE FIXTURE MAX',
   'WOULD FORM LOOP': 'WOULD FORM LOOP',
   'CUT ACTIVE LINE': 'CUT ACTIVE LINE',
   'NO TARGET': 'NO BODY AIMED',
@@ -1555,14 +1558,18 @@ export const masslineHud = {
     }
     const seedText = masslineSeedPreviewText(seedPreview);
     // F4: a latchable body with mass answers the swing question on the same caption line.
-    const playerMass = finite(player && player.physicsBody && player.physicsBody.mass) || finite(player && player.mass);
+    // The same body mass the hover tag reads (physics body, mirrored bodyMassT, then nominal), so both presenters agree.
+    const playerMass = lineBodyMassT(player);
     const massRead = massPreviewRead(target, playerMass);
-    // OPENING-1b: no TOO HEAVY until the first throw has landed - the first latch is the light rock. After it,
-    // a heavy body says TOO HEAVY before the latch rather than snapping the line after.
-    const heavyHushed = openingQuiet(state) && !(state.onboarding && state.onboarding.firstThrowSeen === true) && entityOverLineClass(state, target);
+    // R12: the quiet glass names the relationship with the live binding — `RMB · TOW`, `RMB · TUG`,
+    // `RMB · ANCHOR` — and never refuses. OPENING-1b's hush stays: until the first throw lands, a body you
+    // would only swing round (ANCHOR) stays unlabelled so the light lesson rock is the one thing that speaks.
+    const relation = seedPreview ? '' : lineRelationWord(target, playerMass);
+    const heavyHushed = openingQuiet(state) && !(state.onboarding && state.onboarding.firstThrowSeen === true)
+      && relation === 'ANCHOR' && !lineLessonBody(target);
     const massText = !seedPreview && ready && !heavyHushed
       ? (quietTelemetry
-        ? (entityOverLineClass(state, target) ? 'TOO HEAVY' : verbChip(state, 'tether', 'LATCH'))
+        ? verbChip(state, 'tether', relation || 'LATCH')
         : massPreviewWord(target, playerMass, state))
       : '';
     const text = seedText || massText || bracketReadText(read);

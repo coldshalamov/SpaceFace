@@ -3,6 +3,7 @@ import { swarmWardCandidateId } from '../ai/swarmSpecialistRuntime.js';
 import { currentSolidDressingRows, physicalObstacleRadius } from '../core/physicalObstacleQuery.js';
 import { PHYSICS_MATERIALS } from '../data/physicsMaterials.js';
 import { mothlightGunCadence } from '../data/mothlight.js';
+import { swarmCharacterFor } from '../data/swarmCharacter.js';
 import {
   AI_CONTRACT_VERSION,
   ContactKind,
@@ -1124,6 +1125,10 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     hullFraction: fraction(entity.hull, entity.hullMax, 1),
     moraleImmune: ai.moraleImmune === true,
     arenaPursuit: entity.data?.runCohort === 'survival' && ai.forcePlayerTarget === true,
+    // design/overhaul/03_COMBAT.md §9: fodder exists to be thrown. A Swarm hull whose character-sheet tier
+    // (src/data/swarmCharacter.js) is 'fodder' never dodges a thrown body; every other pilot keeps its dodge.
+    bodyDodge: !(entity.data?.runCohort === 'survival'
+      && swarmCharacterFor(entity.data?.enemyTypeId || entity.data?.lootTableId)?.tier === 'fodder'),
     swarmSpecialistKind: specialistKind,
     swarmWardTargetId: specialistKind === 'warden' ? swarmWardCandidateId(state, entity) : null,
     energyFraction: fraction(entity.cap, entity.capMax, 1),

@@ -452,3 +452,20 @@ test('lost-context content disposal restores reflection materials without dispat
     geometry.dispose(); material.dispose(); texture.dispose();
   }
 });
+
+test('a dock station without authored sockets still hangs its approach floodlight on its own hull, never a bulb', () => {
+  const r = rig();
+  const entity = { ...station(3, 1000), data: { archetypeGlb: 'place_station_trade_hub' } };
+  const root = r.add(entity, []);
+  root.add(new Mesh(new SphereGeometry(5, 8, 6), new MeshStandardMaterial({ color: 0x555555 })));
+  r.update();
+  const lamp = r.registry.get('nocturne:entity:3:approach');
+  assert.ok(lamp, 'approach floodlight admitted');
+  assert.equal(lamp.type, 'spot');
+  assert.equal(r.registry.get('nocturne:entity:3:service'), null, 'no invented work bulb');
+  // the mast sits out on the hull (0.65 of the radius), not at the origin, and aims past it
+  const out = lamp.position.clone().sub(root.position);
+  assert.ok(Math.hypot(out.x, out.z) > 20, `mast ${Math.hypot(out.x, out.z)} WU from the centre`);
+  assert.ok(lamp.target.distanceTo(lamp.position) > 20);
+  r.content.dispose();
+});

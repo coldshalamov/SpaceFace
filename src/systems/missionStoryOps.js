@@ -2749,7 +2749,7 @@ export const missionStoryOps = {
     }
     if (scene === 'variance_delivery' && isSlateCore(inst)) {
       const custody = this.state.story?.flags?.elroy_outcome === 'custody';
-      popup('SLATE', `${custody ? 'Elroy is in custody. ' : ''}One 36-tonne core waits southeast of Ceres Refinery. Tow it 110 WU west to my receiving beacon, below 18 WU/s. A 20t Class I line is overmatched; pull briefly and release early. Brake before release; payment does not stop its drift.`, 10);
+      popup('SLATE', `${custody ? 'Elroy is in custody. ' : ''}One 36-tonne core waits southeast of Ceres Refinery. Tow it 110 WU west to my receiving beacon, below 18 WU/s. On a light hull a load that heavy drags you as much as you drag it; pull slowly and release early. Brake before release; payment does not stop its drift.`, 10);
       return true;
     }
     if (scene === 'variance_delivery') {
@@ -2765,7 +2765,7 @@ export const missionStoryOps = {
       return true;
     }
     if (scene === 'foreman_feud') {
-      popup('YARD FEED', 'Vesta Forge. Let the charge lock, cross its line, then work the stern; move before the vent. A Class I line is rated 20t against 180t ballast: brief pulls, early releases. Forge repairs hulls; Refuel Depot has the pump.', 10);
+      popup('YARD FEED', 'Vesta Forge. Let the charge lock, cross its line, then work the stern; move before the vent. Ballast that heavy anchors a light hull and barely moves: pull steadily, release early. Forge repairs hulls; Refuel Depot has the pump.', 10);
       return true;
     }
     if (scene === 'spine_break') {

@@ -188,8 +188,9 @@ test('A5: starter tools stay on: no heat lockout, no ammo, no cooldown added', (
   assert.equal(pulseS.ammo, undefined, 'Starter pulse laser must not require ammo');
   assert.equal(pulseS.cooldown, undefined, 'Starter pulse laser must not have a cooldown');
   assert.equal(pulseS.heatMax, 100, 'heatMax must be 100');
-  assert.equal(pulseS.heatPerShot, 8, 'heatPerShot must be 8');
-  assert.equal(pulseS.heatDissip, 12, 'heatDissip must be 12');
+  // R5 (design/overhaul/00_RULINGS.md, 2026-11-18): the starter heats half as fast (~6 s of steady fire).
+  assert.equal(pulseS.heatPerShot, 6, 'heatPerShot must be 6');
+  assert.equal(pulseS.heatDissip, 16, 'heatDissip must be 16');
 });
 
 for (const seed of SEEDS) {

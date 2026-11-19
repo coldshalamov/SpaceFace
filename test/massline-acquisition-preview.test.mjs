@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import * as scoring from '../src/combat/masslineTargetScoring.js';
 import { isAttachable, tetherGameplay } from '../src/systems/tetherGameplay.js';
 import { createBus } from '../src/core/eventBus.js';
-import { masslineHud } from '../src/ui/masslineHud.js';
+import { masslineHud, resolveMasslineBracketRead } from '../src/ui/masslineHud.js';
 import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
 import { createDomainDiffer, applyDomainPathUpdate } from '../scripts/lib/simReadModel.mjs';
 
@@ -433,17 +433,17 @@ test('the acquisition preview marks the candidate itself and never draws a cable
     // the target"): a valid target says CAN as the open-diamond shape, and F4 gave the mark's
     // accessible label the mass verdict — assistive tech hears what the swing will feel like,
     // not a bare CAN. The caption stays quiet; a sentence on the bracket is for denied reads.
-    // X3 (c4f6627ba9) then put ordinary flight on the quiet glass: the bracket says the plain verb
-    // "TOO HEAVY" instead of the tonnage register, which stays on the target dossier.
+    // X3 (c4f6627ba9) then put ordinary flight on the quiet glass; R12 (owner 2026-11-18) made the plain
+    // verb name who moves — `F · ANCHOR` here — instead of refusing; the tonnage stays on the dossier.
     assert.equal(mark.classList.contains('ml2-shape-can'), true,
       'a valid target shows the open-diamond CAN shape on the mark');
-    assert.equal(mark.attributes['aria-label'], 'TOO HEAVY',
+    assert.match(mark.attributes['aria-label'], /^\S+ · ANCHOR$/,
       'the mark must still speak an honest label to assistive tech');
     assert.equal(preview.attributes['data-bracket-state'], 'CAN',
       'the bracket state must be machine-readable before the press');
     assert.equal(preview.style.display, 'block',
       'a latchable body with mass prints the swing verdict on the caption line');
-    assert.equal(preview.textContent, 'TOO HEAVY',
+    assert.match(preview.textContent, /^\S+ · ANCHOR$/,
       'the caption is the same swing verdict the mark speaks');
 
     assert.equal(line.parentNode.style.display, 'none',
@@ -844,6 +844,7 @@ function fakeDocument() {
         setProperty(name, value) { this[name] = value; },
       },
       appendChild(child) { child.parentNode = this; this.children.push(child); return child; },
+      append(...kids) { for (const kid of kids) this.appendChild(kid); },
       removeChild(child) { this.children = this.children.filter((entry) => entry !== child); child.parentNode = null; },
       setAttribute(name, value) {
         this.attributes[name] = String(value);
@@ -932,9 +933,9 @@ test('cached HUD geometry moves the mass words without moving the world mark or 
     assert.notEqual(words.style.transform, oldPosition, 'a changed HUD snapshot repaints even in a stationary world');
     assert.equal(mark.style.transform, anchored);
     assert.equal(words.style.display, 'block');
-    // X3 (c4f6627ba9) put ordinary flight on the quiet glass: the bracket prints the plain latch
-    // verb instead of the mass register, which stays on the target dossier.
-    assert.match(words.textContent, /LATCH/);
+    // X3 (c4f6627ba9) put ordinary flight on the quiet glass; R12: the bracket prints who moves (a 12 T
+    // rock is lighter than the hull, so it TOWs) instead of the mass register, which stays on the dossier.
+    assert.match(words.textContent, /TOW/);
     const measured = measurements;
     hud.update(1 / 60, state);
     assert.equal(measurements, measured, 'an unchanged frame does not measure the label again');
@@ -942,11 +943,57 @@ test('cached HUD geometry moves the mass words without moving the world mark or 
     hud.update(1 / 60, state);
     assert.equal(words.style.display, 'none');
     assert.equal(mark.style.display, 'block');
-    assert.match(mark.attributes['aria-label'], /LATCH/, 'the anchored mark retains its accessible latch read');
+    assert.match(mark.attributes['aria-label'], /TOW/, 'the anchored mark retains its accessible latch read');
     assert.equal(mark.style.transform, anchored);
   } finally {
     hud.destroy(); MASSLINE2_FLAGS.enabled = previousEnabled;
     if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
     if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow;
   }
+});
+
+test('R12: the bracket reads the player body mass the hover tag reads (mirrored bodyMassT), not the nominal mass', () => {
+  const previousEnabled = MASSLINE2_FLAGS.enabled;
+  const previousThrow = MASSLINE2_FLAGS.throw;
+  const previousDocument = globalThis.document;
+  const previousWindow = globalThis.window;
+  globalThis.document = fakeDocument();
+  globalThis.window = { innerWidth: 1440, innerHeight: 900 };
+  MASSLINE2_FLAGS.enabled = true;
+  MASSLINE2_FLAGS.throw = true;
+  let hud;
+  try {
+    // Worker player row: nominal 18 t, body 24 t. A 60 t target is 3.3x nominal (ANCHOR) but 2.5x body (TUG).
+    const p = { ...player(), mass: 18, bodyMassT: 24 };
+    const rock = target(20, 'asteroid', 150, 145, { mass: 60, radius: 12 });
+    const state = {
+      mode: 'flight', playerId: p.id, player: { tether: { active: false, targetId: null } },
+      entities: new Map([[p.id, p], [rock.id, rock]]),
+      settings: { video: { motionReduce: true }, accessibility: { motionPreference: 'reduce' } },
+      massline2: {},
+      masslineAcquisition: { id: 'massline-acquisition:9', selected: {
+        targetId: rock.id, targetLabel: 'Rock', context: 'massive-anchor-sling', intentLabel: 'ORBIT',
+        confidence: 0.78, status: 'ready', reason: null }, alternatives: [] },
+    };
+    hud = Object.assign({}, masslineHud);
+    hud.init({ state, helpers: { worldToScreen: ({ x, z }) => ({ x: x + 300, y: z + 200, onScreen: true }) } });
+    hud.update(1 / 60, state);
+    const mark = findByClass(document.getElementById('sf-ml2'), 'ml2-preview-mark');
+    assert.match(mark.attributes['aria-label'], /TUG/, 'bracket word follows lineBodyMassT(player), as the hover tag does');
+    assert.doesNotMatch(mark.attributes['aria-label'], /ANCHOR/);
+  } finally {
+    hud?.destroy();
+    MASSLINE2_FLAGS.enabled = previousEnabled;
+    MASSLINE2_FLAGS.throw = previousThrow;
+    if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
+    if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow;
+  }
+});
+
+test('Twin Bridle denial copy names the endpoint rule the pair validator enforces, not the player-relative ANCHOR word', () => {
+  const read = resolveMasslineBracketRead('denied', 'two_heavy_endpoints');
+  assert.equal(read.state, 'DENIED');
+  assert.equal(read.reason, 'ONE FIXTURE MAX');
+  assert.ok(read.reason.length <= 18);
+  assert.doesNotMatch(read.reason, /ANCHOR/);
 });

@@ -117,13 +117,14 @@ function buildToolArm(parent, { pivot, stowRotX = 0.5, workRotX = -0.6, length =
 }
 
 // A telescoping spindle that extends along -Y while working (drill/weld/read).
-function buildToolSpindle(parent, { length = 18, y = 0, tipScale = 5, tipIntensity = 2.4 } = {}) {
+function buildToolSpindle(parent, { length = 18, y = 0, tipScale = 5, tipIntensity = 2.4, rodScale = 1 } = {}) {
   const rod = new THREE.Mesh(geo('tool_spindle', () => {
     const s = new THREE.CylinderGeometry(0.07, 0.05, 1, 6);
     s.translate(0, -0.5, 0);
     return s;
   }), metalMat());
   rod.position.y = y;
+  rod.scale.set(rodScale, 1, rodScale);
   const tipMat = lightMat(tipIntensity);
   const tip = new THREE.Mesh(geo('tool_spindle_tip', () => new THREE.SphereGeometry(0.12, 8, 6)), tipMat);
   tip.position.y = y;
@@ -204,20 +205,23 @@ function buildCustodian(entity = null) {
     const m = new THREE.Mesh(arm, armMat);
     if (i > 0) m.userData.borrowedGeometryMaterial = true;
     m.position.set(Math.cos(a) * 12, -3, Math.sin(a) * 12);
-    m.rotation.y = -a;
+    // Yaw around Y before local X pitch so all four arms aim radially outward
+    // and deploy symmetrically downward without piercing the dome.
+    m.rotation.order = 'YXZ';
+    m.rotation.y = -a - Math.PI / 2;
     m.scale.setScalar(8);
     g.add(m);
     arms.push(m);
     const tip = new THREE.Mesh(geo('cust_tip', () => new THREE.SphereGeometry(0.14, 8, 6)), tipMat);
     tip.name = 'cust_tip';
     if (i > 0) tip.userData.borrowedGeometryMaterial = true;
-    // Child of the arm: the tip rides the deploy pitch instead of floating at the
-    // flat pose. Local z -1.75 lands where the world offset -14 used to put it.
-    tip.position.set(0, 0, -1.75);
-    tip.scale.setScalar(0.75);
+    // Child of the arm: the tip rides the deploy pitch at the distal end of the arm.
+    tip.position.set(0, 0, -2.1);
+    tip.scale.setScalar(0.9);
     m.add(tip);
   }
-  const eye = new THREE.Mesh(geo('cust_eye', () => new THREE.SphereGeometry(0.22, 8, 6)), lightMat(1.5));
+  const eyeMat = lightMat(0.55);
+  const eye = new THREE.Mesh(geo('cust_eye', () => new THREE.SphereGeometry(0.22, 8, 6)), eyeMat);
   eye.position.y = 5;
   eye.scale.setScalar(10);
   g.add(eye);
@@ -227,9 +231,11 @@ function buildCustodian(entity = null) {
   g.userData.updateAuthoredMotion = registerWorkMotion(entity,
     (live) => Boolean(live?.data?.machine?.repairing),
     (deploy, motionTime) => {
-      const targetIntensity = 0.25 + deploy * (1.55 + (Math.sin(motionTime * 6) * 0.5 + 0.5) * 0.6);
+      const pulse = Math.sin(motionTime * 6) * 0.5 + 0.5;
+      const targetIntensity = 0.25 + deploy * (1.55 + pulse * 0.6);
       tipMat.emissiveIntensity = targetIntensity;
-      for (const a of arms) a.rotation.x = 0.35 - deploy * 0.9;
+      eyeMat.emissiveIntensity = 0.55 + deploy * (1.4 + pulse * 0.5);
+      for (const a of arms) a.rotation.x = 0.25 - deploy * 0.68;
       spindle.apply(deploy);
       spindle.tipMat.emissiveIntensity = 0.4 + deploy * 2.0;
     });
@@ -341,15 +347,55 @@ function buildShepherd() {
   return g;
 }
 
+function buildCappedHalfTorusGeometry(radius, tube, radialSegments, tubularSegments) {
+  const geom = new THREE.TorusGeometry(radius, tube, radialSegments, tubularSegments, Math.PI);
+  const pos = geom.getAttribute('position');
+  const norm = geom.getAttribute('normal');
+  const uv = geom.getAttribute('uv');
+  const idx = geom.getIndex();
+  const positions = Array.from(pos.array);
+  const normals = Array.from(norm.array);
+  const uvs = Array.from(uv.array);
+  const indices = Array.from(idx.array);
+  let nextVertex = pos.count;
+
+  // Both ends of an arc=Math.PI torus sit on y=0 and face -Y outward.
+  for (const end of [{ u: 0, flip: false }, { u: Math.PI, flip: true }]) {
+    const centerIndex = nextVertex++;
+    positions.push(radius * Math.cos(end.u), radius * Math.sin(end.u), 0);
+    normals.push(0, -1, 0);
+    uvs.push(0.5, 0.5);
+    const ringStart = nextVertex;
+    for (let j = 0; j <= radialSegments; j += 1) {
+      const v = (j / radialSegments) * Math.PI * 2;
+      const cosV = Math.cos(v);
+      const sinV = Math.sin(v);
+      positions.push((radius + tube * cosV) * Math.cos(end.u), (radius + tube * cosV) * Math.sin(end.u), tube * sinV);
+      normals.push(0, -1, 0);
+      uvs.push(0.5 + 0.5 * cosV, 0.5 + 0.5 * sinV);
+      nextVertex += 1;
+    }
+    for (let j = 0; j < radialSegments; j += 1) {
+      const a = ringStart + j;
+      const b = ringStart + j + 1;
+      if (end.flip) indices.push(centerIndex, b, a);
+      else indices.push(centerIndex, a, b);
+    }
+  }
+
+  geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geom.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  geom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geom.setIndex(indices);
+  return geom;
+}
+
 // Mason: an assembly cradle — two open gantries holding an empty axis.
 // While `machine.working` the weld spindle thrusts forward through the cradle and
 // the gantry arms flex open (row 384).
 function buildMason(entity = null) {
   const g = new THREE.Group();
-  const arm = geo('msn_arm', () => {
-    const s = new THREE.TorusGeometry(1.0, 0.09, 6, 24, Math.PI);
-    return s;
-  });
+  const arm = geo('msn_arm', () => buildCappedHalfTorusGeometry(1.0, 0.09, 6, 24));
   const gantry = [];
   const gantryMaterial = metalMat();
   for (let i = 0; i < 2; i += 1) {
@@ -361,12 +407,39 @@ function buildMason(entity = null) {
     g.add(a);
     gantry.push(a);
   }
+  const axle = new THREE.Mesh(geo('msn_axle', () => {
+    const s = new THREE.CylinderGeometry(0.045, 0.045, 2.28, 6);
+    s.rotateZ(Math.PI / 2);
+    return s;
+  }), gantryMaterial);
+  axle.name = 'msn_axle';
+  axle.userData.borrowedGeometryMaterial = true;
+  axle.scale.setScalar(14);
+  g.add(axle);
+
+  const hubMat = seamMat();
+  const hub = new THREE.Mesh(geo('msn_hub', () => new THREE.BoxGeometry(0.22, 0.16, 0.14)), hubMat);
+  hub.name = 'msn_hub';
+  hub.scale.setScalar(14);
+  g.add(hub);
+
+  const boom = new THREE.Mesh(geo('msn_boom', () => {
+    const s = new THREE.BoxGeometry(0.08, 0.07, 1.0);
+    s.translate(0, 0, -0.5);
+    return s;
+  }), hubMat);
+  boom.name = 'msn_boom';
+  boom.userData.borrowedGeometryMaterial = true;
+  boom.scale.set(14, 14, 0.001);
+  boom.visible = false;
+  g.add(boom);
+
   const weldMat = lightMat(2.8);
   const weld = new THREE.Mesh(geo('msn_weld', () => new THREE.SphereGeometry(0.12, 8, 6)), weldMat);
   weld.name = 'msn_weld';
   weld.scale.setScalar(14);
   g.add(weld);
-  const spindle = buildToolSpindle(g, { length: 20, y: 0, tipScale: 6 });
+  const spindle = buildToolSpindle(g, { length: 20, y: 0, tipScale: 6, rodScale: 8 });
   g.name = 'SF_Machine_mason';
 
   g.userData.updateAuthoredMotion = registerWorkMotion(entity,
@@ -375,10 +448,13 @@ function buildMason(entity = null) {
       const targetIntensity = 0.25 + deploy * (2.55 + (Math.sin(motionTime * 8) * 0.5 + 0.5) * 0.8);
       weldMat.emissiveIntensity = targetIntensity;
       if (weld.material) weld.material.emissiveIntensity = targetIntensity;
-      gantry[0].rotation.y = -deploy * 0.5;
-      gantry[1].rotation.y = deploy * 0.5;
+      // Hinge both half-arches on the X cross-axle so they flex open symmetrically without self-intersecting.
+      gantry[0].rotation.x = deploy * 0.32;
+      gantry[1].rotation.x = -deploy * 0.32;
       spindle.apply(deploy);
       spindle.tipMat.emissiveIntensity = 0.4 + deploy * 2.4;
+      boom.visible = deploy > 0.02;
+      boom.scale.z = Math.max(0.001, 14 * deploy);
       weld.position.z = deploy * -14;
     });
 

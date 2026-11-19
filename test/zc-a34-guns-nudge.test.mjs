@@ -30,7 +30,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { WEAPONS } from '../src/data/weapons.js';
+import { WEAPONS, npcWeaponDef } from '../src/data/weapons.js';
+import { SHIPS } from '../src/data/ships.js';
+import { buildWeaponList, fittingsFromDefaultModules } from '../src/systems/ships.js';
+import { makeEnemySpawnSpec } from '../src/systems/enemySpawnSpec.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { DAMAGE_MODEL } from '../src/data/combatDefs.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
@@ -153,14 +156,20 @@ const TYPICAL_THROW_CLOSING = 60;
 
 // ─── 1. the tuned tables ──────────────────────────────────────────────────────
 
-test('zc-a34: the starter bolt is retuned to the nudge role (dmg 8 -> 5, dps 44 -> 27.5)', () => {
+// Ruling R5 (design/overhaul/00_RULINGS.md, owner 2026-11-18): "a pistol type weapon… they do damage, and
+// you can lay into enemies". The row-482 nerf (dmg 8 -> 5) is reversed past its origin: the starter is a
+// competent pistol, and it heats half as fast so it is not venting every three seconds.
+test('R5: the starter bolt is a competent pistol (dmg 9, dps 49.5, ~6 s of steady fire)', () => {
   const pulse = weapon('wpn_pulse_laser_s');
-  assert.equal(pulse.dmg, 5);          // BEFORE: 8
-  assert.equal(pulse.dps, 27.5);       // BEFORE: 44
-  assert.equal(pulse.rof, 5.5, 'the burst cadence is untouched — only the payload shrank');
+  assert.equal(pulse.dmg, 9);          // row 482 had 5; before that 8
+  assert.equal(pulse.dps, 49.5);
+  assert.equal(pulse.rof, 5.5, 'the burst cadence is untouched');
+  const netHeatPerS = pulse.rof * pulse.heatPerShot - pulse.heatDissip;
+  assert.ok(pulse.heatMax / netHeatPerS >= 5.5,
+    `continuous fire lasts ${(pulse.heatMax / netHeatPerS).toFixed(1)} s before the vent (must be >= 5.5 s)`);
   const mirrorjaw = weapon('unique_mirrorjaw_pulse');
-  assert.equal(mirrorjaw.dmg, 5);      // BEFORE: 8 — the unique stays the starter bolt
-  assert.equal(mirrorjaw.dps, 27.5);   // BEFORE: 44
+  assert.equal(mirrorjaw.dmg, 9, 'the unique follows its base, the starter bolt');
+  assert.equal(mirrorjaw.dps, 49.5);
 });
 
 test('zc-a34: no enemy HP was inflated — the waves-1-10 roster stats are byte-identical', () => {
@@ -182,6 +191,24 @@ test('zc-a34: no enemy HP was inflated — the waves-1-10 roster stats are byte-
       assert.equal(live[key], before[key], `${id}.${key} must stay at the pre-retune value`);
     }
   }
+});
+
+test('R5: non-player copies of the starter bolt keep the pre-R5 payload and heat (npcWeaponDef)', () => {
+  const pulse = weapon('wpn_pulse_laser_s');
+  assert.equal(pulse.heatPerShot, 6, 'the player starter runs the R5 heat');
+  const npc = npcWeaponDef(pulse);
+  assert.deepEqual([npc.dmg, npc.dps, npc.heatPerShot, npc.heatDissip], [5, 27.5, 8, 12],
+    'NPC copies keep the old pulse payload and heat: R5 retunes the player starter only');
+  // The real build paths: the 47-A harasser's fitted Pulse and a catalog Reaver, vs the player build.
+  const fit = fittingsFromDefaultModules('ship_wasp', ['wpn_pulse_laser_s']);
+  const harasser = buildWeaponList(SHIPS.find((s) => s.id === 'ship_wasp'), fit, false)[0];
+  assert.deepEqual([harasser.dmg, harasser.heat, harasser.heatDissip], [5, 8, 12], 'the 47-A harasser fires the old pulse');
+  const mine = buildWeaponList(SHIPS.find((s) => s.id === 'ship_wasp'), fit, true)[0];
+  assert.deepEqual([mine.dmg, mine.heat, mine.heatDissip], [9, 6, 16], 'the same fitting on the player is the R5 pulse');
+  const reaverPulse = makeEnemySpawnSpec('reaver_pirate', 1, { x: 0, z: 0 }).data.weapons.find((w) => w.defId === 'wpn_pulse_laser_s');
+  assert.equal(reaverPulse.heatPerShot, 8, 'a catalog Reaver keeps the old heat per shot');
+  assert.equal(reaverPulse.heat, 8, 'the runtime reads instance heat first (systems/weapons.js): a Reaver shot spends the old 8');
+  assert.equal(reaverPulse.dmg, 6, 'and its authored damage override');
 });
 
 test('zc-a34: every swarm-roster NPC firing the starter bolt keeps its authored damage', () => {
@@ -211,20 +238,19 @@ test('zc-a34: the concussion cannon follows the nudge law down — the shove is 
 
 // ─── 2. the 2x law: gun TTK vs thrown-mass TTK ────────────────────────────────
 
-test('zc-a34: the starter gun kills swarm mass hulls roughly 2x slower than a committed throw', () => {
+test('R5: the pistol lays into mass hulls; a committed throw is still at least as fast per hull', () => {
   const pulse = weapon('wpn_pulse_laser_s');
-  // Mass hulls (the throw food of waves 1-5): gun TTK ~2x the throw cadence per hull.
+  // Mass hulls (the throw food of waves 1-5): the pistol is a real way to kill them (Pew family:
+  // 1.5-2.5 s per light hull, design/overhaul/03_COMBAT.md §3.1), and the room path is never slower.
   for (const id of ['wasp_swarmer', 'choir_zealot']) {
     const gun = gunTtk(pulse, id);
+    assert.ok(gun.seconds <= 2.6,
+      `${id}: the pistol kills in ${gun.seconds.toFixed(2)} s of fire (must be <= 2.6 s — "you can lay into enemies")`);
     const ratio = gun.seconds / THROW_SECONDS_PER_HULL;
-    assert.ok(ratio >= 1.9 && ratio <= 2.6,
+    assert.ok(ratio >= 1.0,
       `${id}: gun ${gun.seconds.toFixed(2)} s vs throw ${THROW_SECONDS_PER_HULL.toFixed(2)} s/hull`
-      + ` — ratio ${ratio.toFixed(2)}x must sit in the "roughly 2x" band [1.9, 2.6]`);
+      + ` — a committed throw must stay at least as fast per hull (ratio ${ratio.toFixed(2)}x >= 1)`);
   }
-  // The retune actually moved the needle: BEFORE dmg 8 killed a Wasp in 13 shots / 2.36 s.
-  const tuned = gunTtk(pulse, 'wasp_swarmer');
-  assert.ok(tuned.shots >= 19, `tuned Wasp kill takes ${tuned.shots} shots (BEFORE 13)`);
-  assert.ok(tuned.seconds >= 1.5 * 2.36, `lethality cut by at least a third (BEFORE 2.36 s)`);
 });
 
 test('zc-a34: the kinetic starter already sits in the nudge band without further nerfing', () => {
@@ -235,16 +261,17 @@ test('zc-a34: the kinetic starter already sits in the nudge band without further
     `autocannon S ratio ${ratio.toFixed(2)}x — slow-cadence armor chewer, already nudge-paced`);
 });
 
-test('zc-a34: the pressure hull stays honestly slower by gun than by committed slams', () => {
+test('R5: the pressure hull takes the pistol real commitment; two committed slams still finish it', () => {
   const pulse = weapon('wpn_pulse_laser_s');
   const gun = gunTtk(pulse, 'reaver_pirate');
+  const wasp = gunTtk(pulse, 'wasp_swarmer');
   // A committed boulder slam chunks the Reaver (mass-relative crumple cap binds); two slams kill.
   const slam = boulderSlam('reaver_pirate', TYPICAL_THROW_CLOSING).impactDamage;
   assert.ok(!onePacketKills('reaver_pirate', slam), 'one slam must not delete the pressure hull');
   assert.ok(onePacketKills('reaver_pirate', slam * 2 - 1), 'two committed slams finish it');
-  const throwSeconds = 2 * TAPE_THROW_PERIOD_S;
-  assert.ok(gun.seconds >= throwSeconds,
-    `reaver by gun ${gun.seconds.toFixed(1)} s >= two committed throw cycles ${throwSeconds} s`);
+  // R5: the pistol is for light hulls; a medium pressure hull takes at least twice as long as a Wasp.
+  assert.ok(gun.seconds >= 2 * wasp.seconds,
+    `reaver by gun ${gun.seconds.toFixed(1)} s >= twice a Wasp ${(2 * wasp.seconds).toFixed(1)} s`);
 });
 
 // ─── 3. impact payoff: energy threshold, KE slope, multi-kill packing ─────────
@@ -318,8 +345,13 @@ test('zc-a34: the thrown body pays for being the club — recoil scales with mas
 
 // ─── 4. the whole-tape claim: guns-only wave 5 >= 2x the throw tape ────────────
 
-test('zc-a34: a guns-only wave-5 tape clears at least 2x slower than the throw tape', () => {
-  // Live gun-tape: the wave-5 roster (wasp/reaver/zealot/dart by SWARM_ROSTER weight) killed
+// R5 (owner 2026-11-18): a guns-only build must be VIABLE (Crimsonland) and the room must stay FASTER.
+// Two-sided bar: guns-only clears the wave-5 REGULAR roster between 1.2x and 2.0x the throw tape's time.
+// Scope, stated honestly: this is the weighted regular mix only. It excludes the Iron Maw boss and any
+// weapon vent downtime (the pistol vents after ~6 s of fire), so it is a per-hull TTK comparison, not a
+// whole-wave clear claim.
+test('R5: a guns-only wave-5 regular-roster tape (no boss, no vent downtime) is viable but slower than the throw tape (1.2x to 2.0x)', () => {
+  // Live gun-tape: the wave-5 regular roster (wasp/reaver/zealot/dart by SWARM_ROSTER weight) killed
   // one hull at a time by the tuned starter bolt, vs the rock tape's packed throws.
   const pulse = weapon('wpn_pulse_laser_s');
   const roster = swarmRosterFor(5).filter((r) => r.fromWave <= 5);
@@ -330,9 +362,10 @@ test('zc-a34: a guns-only wave-5 tape clears at least 2x slower than the throw t
     gunSeconds += (n * entry.weight / weightSum) * gunTtk(pulse, entry.enemyId).seconds;
   }
   const rockSeconds = tapeWaveClearSeconds(5, 'rocks');
-  assert.ok(gunSeconds / rockSeconds >= 2,
+  const ratio = gunSeconds / rockSeconds;
+  assert.ok(ratio >= 1.2 && ratio <= 2.0,
     `guns-only wave 5: ${gunSeconds.toFixed(1)} s vs throw tape ${rockSeconds.toFixed(1)} s`
-    + ` = ${(gunSeconds / rockSeconds).toFixed(2)}x (row 482 bar: >= 2x)`);
+    + ` = ${ratio.toFixed(2)}x (R5 bar: viable but slower, 1.2x-2.0x)`);
   // The tape model's own slowdown claim still holds with its strategy-level gun TTK.
   assert.ok(tapeGunsOnlySlowdownAll() >= 2, 'the analytical tape still clears the 2x bar');
   assert.ok(ROCK_GUN_WAVE_MAX === 10, 'the share ledger still covers waves 1-10');

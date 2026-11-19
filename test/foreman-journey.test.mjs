@@ -19,7 +19,7 @@ function boot(){
 }
 test('next Book 3 offer names actual Vesta counters, line burden and services',()=>{
  const {offer}=boot();assert.equal(offer.destSectorId,'sector_vesta_forge');assert.equal(offer.destStationId,'station_forge');assert.equal(offer.params.foremanBriefVersion,1);assert.equal(offer.reward_cr,2200);
- for(const read of [/locked charge/,/exposed stern/,/heavily resists/,/three 180t/,/Class I line is rated 20t/,/early releases/,/stern vent/,/Refuel Depot/])assert.match(offer.brief,read);
+ for(const read of [/locked charge/,/exposed stern/,/heavily resists/,/three 180t/,/each anchors a light hull/,/early releases/,/stern vent/,/Refuel Depot/])assert.match(offer.brief,read);
  const cast=capitalBossEncounter(offer.params.encounterId);assert.equal(cast.actors.find(a=>a.role==='throw_mass').mass,180);assert.equal(cast.actors.find(a=>a.role==='throw_mass').count,3);
  const vesta=SECTORS.find(s=>s.id===offer.destSectorId);assert.ok(vesta.stations.find(s=>s.id==='station_forge').services.includes('repair'));assert.equal(vesta.stations.find(s=>s.id==='station_forge').services.includes('refuel'),false);assert.ok(vesta.stations.some(s=>s.name==='Refuel Depot'&&s.services.includes('refuel')));
 });
@@ -34,7 +34,7 @@ test('accepted legacy Foreman is tracked unchanged, never replaced or reaccepted
  assert.equal(owner._activateBookContractOnDeparture(3),true);assert.equal(tracked,'active');assert.equal(active.brief,'accepted terms');assert.deepEqual(active.params,{});
 });
 test('acceptance preparation is readable without writing fuel, money or progression',()=>{
- const {state,owner,events,offer}=boot();const before=JSON.stringify({player:state.player,fuel:state.fuel,story:state.story});assert.equal(owner._onBookContractAccepted({...offer,id:'active'}),true);assert.equal(events.length,1);assert.match(events[0].text,/charge lock/);assert.match(events[0].text,/20t against 180t/);assert.match(events[0].text,/Refuel Depot/);assert.equal(JSON.stringify({player:state.player,fuel:state.fuel,story:state.story}),before);
+ const {state,owner,events,offer}=boot();const before=JSON.stringify({player:state.player,fuel:state.fuel,story:state.story});assert.equal(owner._onBookContractAccepted({...offer,id:'active'}),true);assert.equal(events.length,1);assert.match(events[0].text,/charge lock/);assert.match(events[0].text,/Ballast that heavy anchors a light hull/);assert.match(events[0].text,/Refuel Depot/);assert.equal(JSON.stringify({player:state.player,fuel:state.fuel,story:state.story}),before);
 });
 test('completed Foreman closes the actual book without inventing lane ownership or a ship',()=>{
  const {state,owner,events,offer}=boot();assert.equal(owner._advanceEmbodiedStoryMission({...offer,id:'m_test',status:'completed',params:{...offer.params,completionMethod:'outgun_the_capital'}}),true);assert.equal(state.story.beatIndex,4);assert.equal(state.story.flags.foreman_settled,true);const line=events.find(p=>p.id==='b3_foreman_m_test');assert.ok(line);assert.match(line.text,/next introductions wait at Helios/);assert.doesNotMatch(line.text,/lane is yours|free ship|hand over/);assert.equal(state.player.credits,1610);assert.equal(state.player.debt,160);

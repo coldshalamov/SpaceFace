@@ -1,9 +1,13 @@
-// RC-02 — the round-10 boss runs its AUTHORED Iron Maw score, not a stock dreadnought carrying
+// RC-02 — the Iron Maw runs its AUTHORED score, not a stock dreadnought carrying
 // a hunter trick. The `iron_maw` rotation row now wires `enemyId`+`scoreId` like every other
 // capital row (FB-024), so the wave owner materializes the same one dreadnought_boss hull it
 // always fielded and hands it to `capital_boss_hulk`: `capitalBoss:start` opens the fight, the
 // score's orders gate its fire, the acts advance on hull thresholds, and the named beats
 // (SOUNDING SHOT, PORT BATTERY, KEELBREAKER) telegraph and fire on the roster clock.
+// FIX-05 — the stale wave pin moved to the current course: C01-01 (ca74e15f33) compressed the
+// Pit to six champions at 5/10/15/20/25/30 (deep course fields them on decades), so the Iron
+// Maw holds wave 5 — the row, hull and score are unchanged from the round-10 era this test
+// was written against (the FIX-05 packet referenced 2065539416, the wing's five-ace body).
 // Same seed-4242 harness as fb-024-swarm-capital-champions — the real wave owner and the real
 // production ports, no stub score.
 
@@ -110,8 +114,8 @@ function named(h, event) {
   return h.emitted.filter((e) => e.event === event);
 }
 
-test('the wave-10 row resolves the authored script id and the same single hull', () => {
-  const boss = swarmBossFor(10);
+test('the wave-5 row resolves the authored script id and the same single hull', () => {
+  const boss = swarmBossFor(5);
   assert.equal(boss.id, 'iron_maw');
   assert.equal(boss.scoreId, 'capital_boss_hulk');
   assert.equal(boss.enemyId, 'dreadnought_boss', 'the Iron Maw hull def, unchanged');
@@ -120,7 +124,7 @@ test('the wave-10 row resolves the authored script id and the same single hull',
   // The implied package is exactly what the old compositional row fielded: one elite hull.
   assert.deepEqual(bossPackagesFor(boss), [{ enemyId: 'dreadnought_boss', count: 1, role: 'elite' }]);
 
-  const plan = planFor(10);
+  const plan = planFor(5);
   const swarm = plan.swarm;
   assert.equal(swarm.bossScoreId, 'capital_boss_hulk');
   assert.equal(swarm.bossEnemyId, 'dreadnought_boss');
@@ -133,23 +137,23 @@ test('the wave-10 row resolves the authored script id and the same single hull',
   // The score id must name a shipped encounter and the hull a catalog id — the validator
   // is the tripwire a typo'd wiring trips on.
   assert.equal(requireCapitalBossEncounter('capital_boss_hulk').score.name, 'IRON MAW');
-  assert.ok(swarmEligibleEnemyIds(10).has('dreadnought_boss'), 'the boss hull stays prewarmed');
+  assert.ok(swarmEligibleEnemyIds(5).has('dreadnought_boss'), 'the boss hull stays prewarmed');
   assert.deepEqual(swarmCatalogIssues(), [], 'the whole swarm catalog still resolves');
 });
 
 test('the landed champion opens the Iron Maw score and the script moves', () => {
-  const h = boot(10);
-  startWave(h, 10);
+  const h = boot(5);
+  startWave(h, 5);
   const boss = capitalBody(h);
   assert.ok(boss, 'the dreadnought hull is a real cohort body stamped capital_boss');
   assert.equal(boss.data.lootTableId, 'dreadnought_boss');
-  assert.equal(boss.data.runWave, 10);
+  assert.equal(boss.data.runWave, 5);
   assert.equal(boss.data.bountyHunt, undefined, 'no hunter trick on a capital champion');
 
   const start = named(h, 'capitalBoss:start');
   assert.equal(start.length, 1, 'capitalBoss:start fired exactly once');
   assert.equal(start[0].payload.encounterId, 'capital_boss_hulk');
-  const fight = fightStore(h).fights['swarm:w10'];
+  const fight = fightStore(h).fights['swarm:w5'];
   assert.ok(fight, 'the fight record opened under the wave fight id');
   assert.equal(fight.encounterId, 'capital_boss_hulk');
   assert.equal(fight.bossId, boss.id);
@@ -179,11 +183,11 @@ test('the landed champion opens the Iron Maw score and the script moves', () => 
 });
 
 test('the act structure is the authored one: act II calls the maw screen wing', () => {
-  const h = boot(10);
-  startWave(h, 10);
+  const h = boot(5);
+  startWave(h, 5);
   const boss = capitalBody(h);
   tick(h, 400);
-  const fight = fightStore(h).fights['swarm:w10'];
+  const fight = fightStore(h).fights['swarm:w5'];
   assert.equal(fight.started, true);
 
   // Push the hull under act II's authored threshold — II · THE BROKEN RUDDER requests the
@@ -203,8 +207,8 @@ test('the act structure is the authored one: act II calls the maw screen wing', 
 });
 
 test('killing the champion resolves the score as a victory, not a disappearance', () => {
-  const h = boot(10);
-  startWave(h, 10);
+  const h = boot(5);
+  startWave(h, 5);
   const boss = capitalBody(h);
   tick(h, 200);
 
@@ -212,9 +216,9 @@ test('killing the champion resolves the score as a victory, not a disappearance'
   boss.hull = 0;
   h.bus.emit('entity:killed', { id: boss.id });
   tick(h, 3);
-  const fight = fightStore(h).fights['swarm:w10'];
+  const fight = fightStore(h).fights['swarm:w5'];
   assert.equal(fight.terminal, 'victory', 'champion death is the score\u2019s authored ending');
 
-  h.bus.emit('run:wavePlanned', { wave: 11, plan: planFor(11) });
-  assert.equal(fightStore(h).fights['swarm:w10'], undefined, 'the fight detaches with the wave');
+  h.bus.emit('run:wavePlanned', { wave: 6, plan: planFor(6) });
+  assert.equal(fightStore(h).fights['swarm:w5'], undefined, 'the fight detaches with the wave');
 });

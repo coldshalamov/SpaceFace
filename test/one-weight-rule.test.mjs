@@ -5,20 +5,20 @@ import { LINE_CLASSES, lineClassForIndex, entityOverLineClass, isOverLineClass }
 const body = (mass) => ({ mass });
 const at = (classIndex) => ({ lineProgression: { classIndex } });
 
-test('a body at or under the class ceiling is latchable and never snaps for weight', () => {
+test('a body at or under the class full-control figure reads within class (advice reads only; R12: nothing refuses or snaps)', () => {
   const cap = lineClassForIndex(1).fullControlMassT;
   assert.equal(entityOverLineClass(at(1), body(cap)), false);
   assert.equal(entityOverLineClass(at(1), body(cap * 0.5)), false);
   assert.equal(isOverLineClass(cap, 1), false);
 });
 
-test('anything over the ceiling reads TOO HEAVY (same rule the snap uses)', () => {
+test('anything over the full-control figure reads over class — a pure read for advisors, never a refusal (R12)', () => {
   const cap = lineClassForIndex(1).fullControlMassT;
   assert.equal(entityOverLineClass(at(1), body(cap + 1)), true);
   assert.equal(isOverLineClass(cap + 1, 1), true);
 });
 
-test('a better line class raises the ceiling for both the tag and the snap', () => {
+test('a better line class raises the full-control figure', () => {
   assert.ok(LINE_CLASSES.length > 1);
   const cap2 = lineClassForIndex(2).fullControlMassT;
   const cap1 = lineClassForIndex(1).fullControlMassT;

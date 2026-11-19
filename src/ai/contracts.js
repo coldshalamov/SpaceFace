@@ -268,6 +268,7 @@ function neutralSelf(entityId) {
     hullFraction: 1,
     moraleImmune: false,
     arenaPursuit: false,
+    bodyDodge: true,
     swarmSpecialistKind: null,
     swarmWardTargetId: null,
     energyFraction: 1,
@@ -305,6 +306,7 @@ function normalizeSelf(value, entityId) {
     hullFraction: saturate(finite(value.hullFraction, 1)),
     moraleImmune: value.moraleImmune === true,
     arenaPursuit: value.arenaPursuit === true,
+    bodyDodge: value.bodyDodge !== false,
     swarmSpecialistKind: ['warden', 'jackal', 'anchor'].includes(value.swarmSpecialistKind)
       ? value.swarmSpecialistKind : null,
     swarmWardTargetId: value.swarmSpecialistKind === 'warden'

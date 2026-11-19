@@ -2,12 +2,18 @@
 // (same renderer, lights, env map, tone mapping and runtime material profiles as flight), from the
 // real chase pose, so a model can be judged by the picture the player actually sees.
 //
-// window.SF_fleetLook.shoot({ file | defId, view, heading, width, height }) -> JPEG data URL
+// window.SF_fleetLook.shoot({ file | defId, view, heading, width, height, dist }) -> JPEG data URL
 //   file   release wholeship path, e.g. 'wholeships/hornet_production_v1.glb' (blueprint path)
 //   defId  ship def id, e.g. 'ship_kestrel' (full visual-factory + authored-boundary path, which
 //          includes every runtime attachment the player sees)
+//   character  runtime character id, e.g. 'ruckus' (entity spec -> visualFactory route, not a
+//          raw GLB; characterPart 'body'|'core'|'pulse'|'memorial', characterLod pins a LOD level)
+//   procPreview  {character|optic|kestrelHero} procedural presentation route: story characters
+//          via their system entity specs, optic cells via the asteroid optic skin, kestrel-hero
+//          via buildKestrelHero (the Shipworks preview body)
 //   view   'chase' (D=144), 'close' (D=58), 'inspect' (3/4 at radius*2.6), 'side', 'top',
 //          'place' (whole bounding sphere at the in-game 60° chase tilt — for stations/places)
+//   dist   optional camera-distance multiplier (pulls every view back along its view ray)
 // Driver: scripts/fleet-look.mjs. Verification harness, not a shipped feature.
 import * as THREE from 'three';
 import { SHIPS } from '../data/ships.js';
@@ -32,9 +38,96 @@ import { RESIDENCY_HELD } from './residencyManager.js';
 import { beginLookMood, currentLookMoodId, tuneLook } from './look.js';
 import { resolveLookPost } from '../data/lookMoods.js';
 import { measureFleetLookCost } from './fleetLookCost.js';
+import { ruckusEntitySpec } from '../systems/ruckus.js';
+import { warmRuckusModel } from './characters/ruckusModel.js';
+import { bracketEntitySpec } from '../systems/bracket.js';
+import { morrowEntitySpec } from '../systems/morrow.js';
+import { ravelEntitySpec } from '../systems/ravel.js';
+import { rubricEntitySpec } from '../systems/rubric.js';
+import { ruudEntitySpec } from '../systems/ruud.js';
+import { solsticeEntitySpec } from '../systems/solstice.js';
+import { vesperEntitySpec } from '../systems/vesper.js';
+import { OPTIC_MATERIALS } from '../combat/opticField.js';
+import { buildKestrelHero } from './ships/kestrelHero.js';
 
 const RELEASE_ROOT = 'assets/ships/release/parts/';
 const TILT = 60 * Math.PI / 180;
+const RUCKUS_PARTS = Object.freeze(['body', 'core', 'pulse', 'memorial']);
+// Procedural preview families (--proc-preview): the seven story characters route through the
+// same entity-spec -> visualFactory character dispatch flight uses; optic cells ride the ordinary
+// asteroid builder with data.opticMaterial set (visualFactory.js buildAsteroid optic branch);
+// kestrel-hero is the shipPreviewMount isPlayerKestrel fallback body (buildKestrelHero).
+const PROC_CHARACTER_PARTS = Object.freeze({
+  bracket: Object.freeze(['keeper', 'ball', 'post-left', 'post-right', 'bumper-left', 'bumper-right']),
+  morrow: Object.freeze(['hub']),
+  ravel: Object.freeze(['core', 'spool0', 'spool1', 'spool2', 'spool3']),
+  rubric: Object.freeze(['body', 'mark']),
+  ruud: Object.freeze(['fin', 'suit', 'buoy', 'bladder']),
+  solstice: Object.freeze(['core', 'prism0', 'prism1', 'prism2', 'wisp']),
+  vesper: Object.freeze(['hub', 'bell0', 'bell1', 'bell2']),
+});
+const PROC_CHARACTER_FLAGS = Object.freeze({
+  bracket: 'bracket', morrow: 'morrow', ravel: 'ravel',
+  rubric: 'rubric', ruud: 'ruud', solstice: 'solstice', vesper: 'vesper',
+});
+const PROC_CHARACTER_POSE_KEYS = Object.freeze({
+  bracket: 'bracketPose', morrow: 'morrowPose', ravel: 'ravelPose',
+  rubric: 'rubricPose', ruud: 'ruudPose', solstice: 'solsticePose', vesper: 'vesperPose',
+});
+const PROC_OPTIC_KINDS = Object.freeze(['stone', 'metal', 'diamond', 'spent']);
+// Per-kind id seeds keep the deterministic variant search (hashId(id)%5, the factory's pick)
+// from giving every kind the same entity id — inclusion jitter then differs per cell like it does
+// in a real lattice.
+const PROC_OPTIC_ID_SEED = Object.freeze({ stone: 0, metal: 1000, diamond: 2000, spent: 3000 });
+// Mid-action pose hints merged over each spec's own pose record so the still reads as the live
+// character, not the sleep stance. Field names mirror what each *Model.js update reads.
+const PROC_CHARACTER_POSE_HINTS = Object.freeze({
+  bracket: { phase: 'play', simTime: 6, bumpAt: -100 },
+  morrow: { phase: 'awake', simTime: 6, awake: true, sweep: 0.35, gaze: 0.2 },
+  ravel: { phase: 'cast', simTime: 6, charge: 0.8, angle: 0.7, waveRadius: 10, freed: 0, broken: 0, quiet: false },
+  rubric: { mode: 'mark', simTime: 6, progress: 0.45, smear: 0.3, aim: { x: 0, z: 0, live: true }, look: 0.4 },
+  ruud: { simTime: 6 },
+  solstice: { phase: 'awake', simTime: 6, beamAngle: 0.4, beamActive: true, beamIntensity: 1, bloomProgress: 0.35, prismResonance: [true, false, true], wispActive: true },
+  vesper: { phase: 'listen', simTime: 6, met: true, gaze: 0.3, noteAt: 4, notePower: 0.7, progress: 0.6, following: true, bellAlive: [true, true, true] },
+});
+// Default hero part per character — the body the ledger's single model id stands for.
+const PROC_CHARACTER_DEFAULT_PART = Object.freeze({
+  bracket: 'keeper', morrow: 'hub', ravel: 'core', rubric: 'body',
+  ruud: 'suit', solstice: 'core', vesper: 'hub',
+});
+
+// The factory's optic variant pick is hashId(entity.id) % 5 (visualFactory.js buildAsteroid).
+// Search upward from the kind's seed for an id that lands on the requested bucket — same
+// construction the --asteroids route uses for its displacement variants.
+function opticVariantEntityId(kind, variant) {
+  for (let id = PROC_OPTIC_ID_SEED[kind] || 0; ; id++) {
+    let h = 2166136261;
+    for (const ch of String(id)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+    if ((h >>> 0) % 5 === variant) return id;
+  }
+}
+
+function procCharacterEntity(name, part) {
+  switch (name) {
+    case 'bracket': return bracketEntitySpec(part);
+    case 'morrow': return morrowEntitySpec();
+    case 'ravel': {
+      const m = /^spool([0-3])$/.exec(part);
+      return ravelEntitySpec(m ? 'spool' : 'core', m ? Number(m[1]) : 0);
+    }
+    case 'rubric': return rubricEntitySpec(part === 'mark' ? 'mark' : 'body');
+    case 'ruud': return ruudEntitySpec(undefined, part);
+    case 'solstice': {
+      const m = /^prism([0-2])$/.exec(part);
+      return solsticeEntitySpec(m ? 'prism' : part === 'wisp' ? 'wisp' : 'core', m ? Number(m[1]) : 0);
+    }
+    case 'vesper': {
+      const m = /^bell([0-2])$/.exec(part);
+      return vesperEntitySpec(undefined, m ? Number(m[1]) : -1);
+    }
+    default: throw new Error('no procedural character ' + name);
+  }
+}
 const CONDUIT_CELL_WU = 2.2;
 const CONDUIT_CELL_RADIUS = CONDUIT_CELL_WU * Math.SQRT1_2;
 // Connected layout covering all 6 Works conduit shapes per family (end/straight/corner/t/cross/junction)
@@ -233,11 +326,37 @@ function blueprintToGroup(blueprint) {
 
 const ORIGIN = new THREE.Vector3();
 
-function poseCamera(cam, view, radius, heading, center) {
+// Review framing must measure what is actually drawn. Character rigs carry hidden charge/pulse
+// furniture (the RU-7 core's warning hoop sits at pulseRadius 125) that inflates
+// Box3.setFromObject far past the visible mesh, shrinking the subject to a speck. Returns null
+// when nothing visible remains so callers can fall back to the full bounds.
+function visibleObjectBounds(root) {
+  const meshes = [];
+  const walk = (o) => {
+    if (!o.visible) return;
+    if (o.isMesh && o.geometry) meshes.push(o);
+    for (const child of o.children) walk(child);
+  };
+  walk(root);
+  if (!meshes.length) return null;
+  const box = new THREE.Box3();
+  for (const mesh of meshes) box.expandByObject(mesh);
+  return box.isEmpty() ? null : box;
+}
+
+function poseCamera(cam, view, radius, heading, center, distMult) {
   const h = (heading || 0) * Math.PI / 180;
   // The XZ-recentred bounding-sphere centre: aim there, not at the world origin — placed
   // models (places, kits, rocks) carry a Y offset and unrecentred inspects clipped their tops.
   const aim = center || ORIGIN;
+  // Optional distance override (--dist=<multiplier>): pull the camera straight back along its
+  // view ray so oversized hulls/structures whose auto-framing sits inside the bounding radius
+  // still fit the frame. Applies to every view, including the fixed-144 WU chase.
+  const widen = () => {
+    if (!Number.isFinite(distMult) || distMult <= 0 || distMult === 1) return;
+    cam.position.sub(aim).multiplyScalar(distMult).add(aim);
+    cam.far = Math.max(cam.far, cam.position.distanceTo(aim) + radius * 4);
+  };
   const orbit = (dist, elev, az) => cam.position.set(
     aim.x + dist * Math.cos(elev) * Math.sin(az),
     aim.y + dist * Math.sin(elev),
@@ -260,6 +379,7 @@ function poseCamera(cam, view, radius, heading, center) {
     cam.far = Math.max(cam.far, radius * 20);
     cam.fov = 50;
     cam.near = 0.1;
+    widen();
     cam.lookAt(aim.x, aim.y, aim.z);
     cam.updateProjectionMatrix();
     return;
@@ -275,6 +395,7 @@ function poseCamera(cam, view, radius, heading, center) {
   else if (view === 'top') cam.position.set(aim.x, aim.y + radius * 3.4, aim.z - 0.001);
   else if (view === 'front') orbit(radius * 2.8, 0.35, Math.PI + 0.55 + h);
   else orbit(radius * 2.6, 0.62, 0.7 + h);
+  widen();
   cam.fov = 50;
   cam.near = 0.1;
   cam.lookAt(aim.x, aim.y, aim.z);
@@ -294,7 +415,7 @@ export function inspectFleetLookAuthored(root) {
     if (!status) return;
     if (['awaiting-authored-admission', 'loading', 'compiling-pipelines', 'procedural-fallback',
       'authored-prepared', 'same-semantic-fallback-prepared'].includes(status)) {
-      if (pending.length < 12) pending.push(status);
+      if (pending.length < 12) pending.push(`${status}:${String(o.name || o.type || 'object').slice(0, 60)}`);
     } else if (!['authored', 'authored-with-cleanup-error', 'procedural-settled',
       'same-semantic-fallback'].includes(status)) {
       if (failed.length < 12) failed.push(String(status).slice(0, 100));
@@ -588,6 +709,169 @@ export function installFleetLook(SF) {
     throw new Error('no machine or machine prop ' + rawId);
   }
 
+  // Authored characters do not follow the ship/place part contract, so they cannot come through
+  // --file/--def. Build them through the same route flight uses: ruckusEntitySpec -> visualFactory
+  // dispatch -> buildRuckusVisual, after the demand warm that production awaits on New Game.
+  async function buildCharacterPreview(opts, renderer) {
+    const characterId = String(opts.characterId || '');
+    const part = opts.characterPart || 'body';
+    if (characterId !== 'ruckus') throw new Error('no character ' + characterId);
+    if (!RUCKUS_PARTS.includes(part)) throw new Error('no ruckus part ' + part);
+    await warmRuckusModel();
+    const entity = ruckusEntitySpec(part);
+    // A mid-chase pose so jaws/tail/drum read as the live character, not the sleep stance.
+    Object.assign(entity.data.ruckusPose, {
+      phase: 'chase', simTime: 4, bond: 3, speed: 60, held: false, charge: 0, countdown: 0, pulseAge: -100,
+    });
+    const vf = state.render.vf || (await import('./visualFactory.js')).createVisualFactory();
+    const root = vf.build(entity);
+    if (!root || root.userData?.ruckus !== true) throw new Error('ruckus visual identity mismatch: ' + part);
+    // The override wrapper's packaged-prop policy also claims type:'payload' entities — the
+    // pressure core's spec type — and stamps a GENERIC_TOW admission boundary on the ruckus root.
+    // That boundary only resolves for a registered live entity; this preview entity is
+    // synthetic, so it would sit 'awaiting-authored-admission' forever (the ruckus meshes stay
+    // drawn either way — hideImmediately is false — so the pixels are identical). Restore the
+    // character's own authored stamp; whether live flight should exempt ruckus parts from the
+    // packaged-prop policy is a separate live-route question for the orchestrator.
+    if (root.userData.authoredPackageUrl) {
+      delete root.userData.authoredPackageUrl;
+      delete root.userData.authoredPackageSlot;
+      delete root.userData.requestAuthoredUpgrade;
+      delete root.userData.authoredUpgradePromise;
+      root.userData.authoredAssetState = 'authored';
+      root.userData.authoredVisualRoot = 'authored-root';
+    }
+    // The body rigs a THREE.LOD whose levels the renderer picks from camera distance (0/240/650 WU).
+    // For review captures pin one level per shot so each authored LOD GLB is judged on its own;
+    // without an explicit index the gameplay distances would always land on lod0.
+    let forcedLod = null;
+    root.traverse((o) => {
+      if (!o.isLOD || forcedLod !== null) return;
+      const count = o.levels.length;
+      const want = Number.isInteger(opts.characterLod) ? opts.characterLod : 0;
+      const index = Math.max(0, Math.min(want, count - 1));
+      forcedLod = index;
+      o.update = () => {
+        for (let i = 0; i < count; i++) o.levels[i].object.visible = i === index;
+      };
+    });
+    return {
+      root,
+      radius: null,
+      identity: {
+        type: 'character', characterId, part,
+        ...(forcedLod !== null ? { lod: forcedLod, lodLevels: 'pinned' } : {}),
+      },
+    };
+  }
+
+  // The seven procedural story characters share one route: the owning system's entity spec
+  // (src/systems/<name>.js — the same record the live spawner publishes) -> visualFactory.build
+  // -> the character dispatch in visualFactory.js that calls the src/render/characters/ builder.
+  // No GLB and no second factory: state.render.vf is the live overridden factory flight uses.
+  async function buildProcCharacterPreview(spec) {
+    const name = String(spec.character || '');
+    const allowed = PROC_CHARACTER_PARTS[name];
+    if (!allowed) throw new Error('no procedural character ' + name);
+    const part = spec.part || PROC_CHARACTER_DEFAULT_PART[name];
+    if (!allowed.includes(part)) throw new Error(`no ${name} part ${part}`);
+    const entity = procCharacterEntity(name, part);
+    const poseKey = PROC_CHARACTER_POSE_KEYS[name];
+    if (poseKey && entity.data) {
+      entity.data[poseKey] = { ...(entity.data[poseKey] || {}), ...PROC_CHARACTER_POSE_HINTS[name] };
+    }
+    const vf = state.render.vf || (await import('./visualFactory.js')).createVisualFactory();
+    const root = vf.build(entity);
+    const flag = PROC_CHARACTER_FLAGS[name];
+    if (!root || root.userData?.[flag] !== true) {
+      throw new Error(`procedural character identity mismatch: ${name}/${part}`);
+    }
+    return {
+      root,
+      radius: null,
+      identity: { type: 'character', characterId: name, part, procPreview: true },
+    };
+  }
+
+  // Optic lattice cells are ordinary asteroid entities whose data.opticMaterial selects the
+  // opticCellPresentation skin inside buildAsteroid (visualFactory.js optic branch). The entity
+  // record mirrors what world.js/swarmArena.js publish for a real cell; the id is searched so
+  // hashId(id)%5 lands on the requested displacement/surface variant, exactly like --asteroids.
+  async function buildProcOpticPreview(spec) {
+    const kind = String(spec.optic || '');
+    const def = OPTIC_MATERIALS[kind];
+    if (!def || !PROC_OPTIC_KINDS.includes(kind)) throw new Error('no optic cell kind ' + kind);
+    const variant = Number.isInteger(spec.variant) && spec.variant >= 0 && spec.variant <= 4 ? spec.variant : 0;
+    // Stone's body material is keyed ':bare' until the rock surface library decodes; a cell built
+    // early would capture the flat untextured fallback. The renderer preloads the library during
+    // boot — join that promise so the shot lands on the mapped material.
+    const rockReady = state.render && state.render.rockSurfaceLibraryReady;
+    if (rockReady && typeof rockReady.then === 'function') await rockReady.catch(() => null);
+    const id = opticVariantEntityId(kind, variant);
+    const entity = {
+      id, type: 'asteroid', radius: def.radius,
+      pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+      data: {
+        typeId: def.typeId, tint: def.tint, opticMaterial: kind,
+        opticStructureId: 'procpreview', opticCell: '0,0',
+        surfaceMaterial: def.surfaceMaterial, size: def.radius,
+        masslineTetherable: false,
+        material: kind === 'metal' ? 'metal' : kind === 'diamond' || kind === 'spent' ? 'crystal' : 'rock',
+      },
+    };
+    const vf = state.render.vf || (await import('./visualFactory.js')).createVisualFactory();
+    const root = vf.build(entity);
+    if (!root || root.userData?.kind !== 'asteroid'
+      || root.userData.sfOpticSkin !== kind || !root.userData.sfOpticMaterial) {
+      throw new Error(`optic cell identity mismatch: ${kind}/variant${variant}`);
+    }
+    return {
+      root,
+      radius: def.radius,
+      identity: {
+        type: 'optic-cell', opticKind: kind, variant, entityId: id, typeId: def.typeId,
+        opticSkin: root.userData.sfOpticSkin, opticFinal: root.userData.sfOpticFinal === true,
+      },
+    };
+  }
+
+  // The procedural Kestrel hero is the Shipworks/preview body: the live player Kestrel mounts the
+  // authored GLB through the directAuthoredMount override, while shipPreviewMount's factory (no
+  // direct mount) reaches the same isPlayerKestrel fallback this calls — buildKestrelHero. A
+  // cruising velocity keeps the drive plume/emissive live for the chase frame, matching what a
+  // player sees in flight rather than the parked Shipworks iris.
+  async function buildProcKestrelPreview() {
+    const def = SHIPS.find((s) => s.id === 'ship_kestrel');
+    if (!def) throw new Error('no ship def ship_kestrel');
+    const entity = {
+      id: 900000 + stablePreviewId('kestrel-hero'), type: 'ship', isPlayer: true,
+      team: 0, factionId: 'faction_free',
+      pos: { x: 0, z: 0 }, vel: { x: 80, z: 0 },
+      radius: def.collisionRadius || 14,
+      hull: def.hull, maxHull: def.hull,
+      data: {
+        defId: 'ship_kestrel', fittings: [], weapons: [], miningBeam: null,
+        appearance: defaultShipAppearance('ship_kestrel'), visualTier: 0,
+      },
+    };
+    const root = buildKestrelHero(entity);
+    if (!root || root.userData?.assetId !== 'SF_K0_KESTREL_BORROWED_TIME') {
+      throw new Error('kestrel hero identity mismatch');
+    }
+    try { root.userData.updateDriveState?.(entity); } catch (_) {}
+    try { root.userData.updateDamageState?.(entity, 0); } catch (_) {}
+    try { root.userData.updateLod?.('lod0'); } catch (_) {}
+    return {
+      root,
+      radius: null,
+      identity: {
+        type: 'presentation', presentationId: 'kestrel-hero',
+        assetId: root.userData.assetId, visualTier: 0,
+        route: 'buildKestrelHero (shipPreviewMount isPlayerKestrel fallback)',
+      },
+    };
+  }
+
   async function build(opts) {
     const { renderer, scene } = handles();
     if (opts.file) {
@@ -601,6 +885,14 @@ export function installFleetLook(SF) {
     }
     if (opts.conduitNetworkFamily) return buildConduitNetwork(opts.conduitNetworkFamily, renderer);
     if (opts.machineId) return buildMachinePreview(opts, renderer);
+    if (opts.procPreview) {
+      const spec = opts.procPreview;
+      if (spec.kestrelHero) return buildProcKestrelPreview();
+      if (spec.character) return buildProcCharacterPreview(spec);
+      if (spec.optic) return buildProcOpticPreview(spec);
+      throw new Error('empty --proc-preview spec');
+    }
+    if (opts.characterId) return buildCharacterPreview(opts, renderer);
     if (opts.asteroidType) {
       const types = ['ast_common_rock', 'ast_metallic', 'ast_icy', 'ast_crystalline', 'ast_gas_cloud', 'ast_rare_exotic'];
       const variant = opts.asteroidVariant;
@@ -716,14 +1008,15 @@ export function installFleetLook(SF) {
       if (opts.defId || opts.file) verdict = await waitForAuthored(renderer, scene, cam, built.root);
       if (!verdict.ready) throw new Error(`fleet-look authored preview not ready: ${JSON.stringify(verdict)}`);
       setStage('poseCamera');
-      const box = new THREE.Box3().setFromObject(built.root);
+      const box = ((opts.characterId || opts.procPreview) && visibleObjectBounds(built.root))
+        || new THREE.Box3().setFromObject(built.root);
       const sphere = box.getBoundingSphere(new THREE.Sphere());
       const radius = opts.radius || sphere.radius || built.radius || 6;
       built.root.position.sub(new THREE.Vector3(sphere.center.x, 0, sphere.center.z));
       // After the XZ recentre the bounding-sphere centre sits at (0, sphereY, 0) — the `place`
       // view frames and aims at that, so a tall station's mid-volume is what fills the picture.
       const placeCenter = new THREE.Vector3(0, sphere.center.y, 0);
-      poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
+      poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter, opts.dist);
       if (typeof built.root.userData?.updateLodForCamera === 'function') {
         built.root.userData.updateLodForCamera(cam, { width, height });
       }
@@ -749,7 +1042,7 @@ export function installFleetLook(SF) {
       }
       // Draw through the normal route with the same private camera used for this view.
       setStage('captureReady');
-      const pose = () => poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter);
+      const pose = () => poseCamera(cam, opts.view || 'inspect', radius, opts.heading || 0, placeCenter, opts.dist);
       let lodObservation = null;
       const finalFrame = await captureReadyFleetLookFrame({
         root: built.root,

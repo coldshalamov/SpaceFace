@@ -7100,3 +7100,158 @@ Audit artefacts (machine-local): `%TEMP%\praudit\` (survival.json = per-PR line 
 - **Tests:** test:fast HEAD vs 8ef4225cd0 — one new red (fixed), two old reds unchanged. Gate PASS (`--budget-scale` on a loaded host).
 - **Performance:** headless sim (47-A 7200 ticks, Swarm physics fixture) shows no attributable per-tick regression (identical replay hash). **Live Adventure flight was drawing ~25–35 % fewer frames than at 8ef4225cd0**: style recalculation ~4× (root-anchored `:has()` invalidations 1,185 vs 7). Fixed (`perf(AUDIT-P1…P6)`): hidden station type governance kept off flight frames; the New Game Loadout `:has(> ul[aria-label="Loadout"])` rules (re-matched page-wide on every radar aria-label change) replaced by a class; HUD, speed, radar and damage readouts update their text node instead of rebuilding it. Root invalidations 1,185 → 175; a later HEAD flight drew 9.46 world frames/s vs 9.77 at BASE (descriptive — the BASE/HEAD asset packages could not be fully matched). Other root-anchored `:has()` rules remain a standing hazard (mobileCssSource.js, hud-flight).
 - **Still open:** real-GPU look check of the PRI-01 places, Frontier rings, Old Hob's anchors, outpost annexes and the two new rooms; Ledger gate families in `stationTabsLayouts.js` still layered (needs 800×600/1000×640 parity shots); a 390-wide *desktop* window squeezes the Factions tab (phone mode is fine).
+
+## 38. The FIX-05 play-through polish batch, the three background helpers, and what the checklist replay still owes (2026-11-17)
+
+**Context.** The previous orchestrator session died on a usage wall mid-dispatch: the FIX-05 packet
+(`design/program/fleet/packets/FIX-05-swarm-leaks-boss-bar-armory.md`) had crashed twice on Devin
+accounts, three helpers were still running in the background, and the FIX-05 code sat unverified and
+uncommitted in the working tree. This session reconstructed that state, verified it, finished item 5
+and item 4, and landed the batch. Evidence: `.devshots/fleet/accept07/` (the play-through the packet
+cites), `.devshots/fleet/runs/` (worker receipts), `.devshots/ui-bench/` (fresh armory shots).
+
+### 38.1 Landed — `fleet(FIX-05)` bb76c66adf (master, 2026-11-17)
+1. **Swarm keeps its own glass.** The `AFTERMATH / FIELD RESPONSE` card, Adventure's pause brief
+   (`TRACKED · Contract 47-A …`) and the `OFFICIAL DENIAL` scenario beat are all gated with
+   `isSwarmGlass(state)` at their owners (`aftermathChoicePrompt.js`, `pause.js`,
+   `presentationOrchestrator.js`). Regression suite `test/fix05-swarm-leaks-boss-bar.test.mjs` 7/7.
+2. **One boss-bar truth.** The round-10 freeze had two halves: `swarm:bossHp` stopped emitting for a
+   multi-body wing (the emitter ignored census changes at an unchanged fraction and dropped bodies
+   felled inside the first scan window), and — the deeper cause — `survivalResults` banked a
+   killer-label ledger on an unknown top-level `run.recentKillerLabels` key, which failed
+   `validateRunState` and deafened every `liveSwarmRun` consumer mid-fight. The emitter now publishes
+   pooled hull + alive/total on every change; the ledger rides `run.telemetry`. The top-centre bar
+   (`swarmJuiceHud.js`) already rendered `alive/total` and the pooled fill — it went live the moment
+   the emitter stopped lying.
+3. **Armory edge (1280×720).** The dealt list's 28px fade band let a straddling text line print at
+   ~60 % opacity (reads as broken glyphs), and the reading desk had no edge at all — the `Current
+   build` row died as a sliver behind the footer. Bands deepened to 56/48px floor-zero with 64px
+   scroll tails; the stacked armory (≤760px) stands down. Verified with
+   `node scripts/ui-bench.mjs --shot=crucible-draft --viewports=1280x720 --walk` (all controls
+   reachable, `Current build` prints clean) and the 1920×1080 shot (everything fits, no regression).
+   Note: the fix edits `cruciblePreparationLayouts.js` and `pause.js`, which carry foreign uncommitted
+   work — only the FIX-05 hunks were committed; the foreign hunks (item thumbnails, field-build
+   wiring in `uiRoot.js`, the `Operations` pause label) remain in the working tree for their owners.
+4. **Boss-order tests follow the compressed course** (C01-01 `ca74e15f33`; the FIX-05 packet cited
+   `2065539416`, which is the wing's five-ace body count). `rc-02-iron-maw-boss-score` re-pointed at
+   wave 5 — the row, hull and score are unchanged — 4/4 green. The S14 collision pin and the deep
+   Brood-debut pin updated: the champions hold 5/10/15/20/25/30 through the win and decades past it
+   (Quiet Choir 60, Tendril 80); `fix-boss-round-debut` now 2/5 green.
+5. `npm run check:sim` green; the touched-area regression bundle (fix05 + rc-02 + swarm-win +
+   crucible-run-state + swarm-fortify-screen) 47/47.
+
+### 38.2 Left red on purpose — C01-04 superseded the debut card, not the rotation
+Three tests of `test/fix-boss-round-debut.test.mjs` still fail, and NOT because of the rotation:
+C01-04 (`4757ab20`, "each round fields its cast") deliberately made the round slam read the PLAN's
+own newcomer — "the plan's own newcomer is the honest card" (`swarmJuice.js` `_onWavePlanned`). The
+probed current truth, so the finish is mechanical (owner: `KNOWN-REDS-SWARM`, devin1):
+- **wave 5**: slam sub names the BROOD debut `NEW THREAT · Spore Drift` (brood: true), NOT
+  `Detonator Dart`; the ship debut stages as a normal 5-body package (`debut` flag gone); the
+  opening line drops the `Detonator Dart is new.` namecheck. Versus card/bar still
+  `Dreadnought 'Iron Maw'`.
+- **wave 15**: slam sub names `Wake Eel` (brood), NOT `Patrol Lawman`; card/bar still
+  `Mirrorjaw Foreman`.
+- **wave 6**: slam sub names `Bruiser Brawler` (the cast's staged debut), NOT `Mine-Layer Jackal`;
+  line reads `Bruiser Brawler is new.`
+- **wave 25** (boundaries test): `BOSS · The Anvil` (was Forge Regent — that half IS the rotation).
+Also rotation-stale and left for `KNOWN-REDS-SWARM`: `test/fb-027-swarm-champion-tricks.test.mjs`
+boots the corsair wing at wave 35, which stopped being a boss round when the deep course moved to
+decades (C01-03) — the wing holds wave 40 now; the "rotation rows name a shipped trick" data check
+fails with it.
+
+### 38.3 The three background helpers — all concluded and landed
+- **CHIP-CHECK-01 (credit chips still render)** — DONE `14256de891`. Nothing was broken: a live
+  chip's instanced parts match the pre-instancing draw byte-for-byte (0 differing pixels in
+  921,600). The accept01 "no chips" sighting was timing — the loot magnet scoops a chip at a median
+  0.87 s of life. Guard test added.
+- **LOAD-02 (title helper: first-picture lift + hidden-animation cut)** — DONE
+  `13c120f80a` + runtime fix `8f7338bb63` (barrier skips bodiless authored roots, absorbs
+  owner-inactive bail).
+- **LOAD-03 (loading helper: warm the Swarm door's arena during the pre-match dwell)** — DONE
+  `5934f96ba9` (the measured first-door gain is smaller than hoped; honest numbers in its receipt).
+- **ROCK-04 (DeepSeek: dark rocks + the merge error chorus)** — DONE `9ff604082a` (dark substances
+  keep a pigment floor and a cool limb; `mergeGeometries` attribute reconciliation killed the 6–13
+  per-run errors).
+
+### 38.4 Still owed from the checklist play-through (rows now on the queue)
+- **PLAYTHROUGH-REPLAY (lead):** the full checklist play-through again — both modes — plus the
+  `TOO HEAVY` count in Swarm. This was the previous session's declared next step once the three
+  helpers landed; it is the acceptance pass for this whole batch.
+- **Two interface overlaps in later Adventure story beats** (ACCEPT-07 evidence) — small FE fixes.
+- **The Swarm test pilot wanders off to chase faraway ships** — bot focus, not game code.
+- **KNOWN-REDS-SWARM extras** (§38.2): the three C01-04-superseded debut tests and fb-027's wave-35
+  reds, with the probed truth above.
+- **Graphics-asset-review campaign** continues on its own ledger
+  (`node scripts/fleet/asset-review.mjs summary`; state at handoff and resume instructions:
+  `design/program/fleet/graphics-asset-review/HANDOFF-REMAINING-20261117.md` — 485 passed /
+  4 owner-gated / 29 pending ROCK-family at the last addendum, plus the ordinary-play
+  verification pass over the ~450 passed models and the motion-state captures).
+
+### 38.5 Review outcome (addendum, 2026-11-17 later)
+The adversarial pass ran as three read-only reviewers — devin3 (SWE-2 Max, acct3), grok
+(grok-4.7-high) and hydrogen (gemini-4-hydrogen-xhigh, 429-walled mid-run, its quota spent; two
+reviewers covered the packet). Receipts: `.devshots/fleet/runs/REVIEW-FIX05-BATCH.*`.
+Acted on and landed in `ede705fa62` (+ `258576773b`, + the scope repair `d95323ff50`):
+- **HIGH (devin3):** bb76c66adf moved the killer-label writer to `run.telemetry` but committed the
+  reader still on the dead top-level key — at that commit every reaped-killer attribution answered
+  'Unknown contact'. Writer and reader move together (`258576773b`).
+- **MED (both):** `swarm:bossDown` lived only in the kill path — a champion felled inside the
+  15-tick pre-collection window (or a wing emptied without a kill receipt) froze the top bar while
+  the side row cleared. The kill-time sweep collects the whole wing before the verdict (a live
+  straggler holds it alive), and `_publishBossHp` owns the exactly-once down emit. Two regression
+  cases added; suite 10/10.
+- **MED (grok):** a paused Swarm Circuit said "Next: clear the field." — the brief reads
+  `run.telemetry.circuit` (sole writer `survivalRun.js:442`) and names the same closing rule the
+  announcer uses (`swarmCircuitClosingLine`, exported from `survivalAnnounce.js`).
+- **MED (grok):** the fades stayed on under `forced-colors: active` — decoration; every armory
+  edge stands down there.
+- **MED (grok):** the laptop-height block zeroed the catalog scroll tail under the 56px fade —
+  tail holds; reading tail 44→48 so the last block clears its own band.
+- **LOW:** the knowingly-red debut tests disclose their state in the file header (→ §38.2).
+Not acted, design follow-ups for the look lane: grok's plate-tear divergence (the side row reads
+its own plate-aware meter per FIX-04 `f61a9720f3` while the top bar reads pooled hull — a rope
+tear moves one and not the other) and survivalHud's ungated percent tick.
+Also recorded: bb76c66adf accidentally shipped the foreign thumbnails/Rearm CSS + the Operations
+label inside itself (`git commit -- <paths>` commits working-tree contents; the index surgery was
+silently discarded). `d95323ff50` stripped those hunks from master and the working tree was
+restored to carry them again as their owners' uncommitted state — nothing of theirs is lost; the
+lesson for workers is on the record: commit from the index, never by pathspec, when foreign work
+shares a file. `2f83306430` verified CLEAN by both reviewers.
+State for the next playtest: `check:sim` green; fix05 suite 10/10; crucible-announce/inf50 43/43;
+the armory verified on the bench at 1280×720, 1920×1080 and 390×844. The full checklist
+play-through (both modes + the TOO HEAVY count) remains the queued acceptance pass
+(`PLAYTHROUGH-REPLAY`).
+
+## 40. The A-list overhaul — productions for agents (director, 2026-11-18)
+
+The owner asked the creative director to inspect the whole game, fill its blanks, and split the work
+in two: **category 1**, small and medium fixes the director makes directly (tracked in
+[`design/overhaul/11_ORDER_OF_WORK.md`](design/overhaul/11_ORDER_OF_WORK.md) §1), and **category 2**,
+the big productions below, built by agents. The design is
+[`design/overhaul/`](design/overhaul/README.md); its [rulings](design/overhaul/00_RULINGS.md) override
+older documents where they conflict. Dispatch through the [fleet queue](design/program/fleet/QUEUE.md);
+no more than six in flight; never two writers on one file. Every row is done only when seen on screen
+through the ordinary route **and** its number is met; the [inspection ledger](design/overhaul/02_INSPECTION_LEDGER.md)
+records the frame.
+
+| ID | Production | Lane / who | Seam | Done when | Must not return |
+|---|---|---|---|---|---|
+| OVH-01 | **The Pilot Tree** — six combat branches + Industry, ~70 nodes, capstones, evolutions ([06 §2](design/overhaul/06_PROGRESSION_AND_ECONOMY.md)); Swarm level-up cards in the breath ([04 §3](design/overhaul/04_SWARM.md)); the Adventure tree screen | Lane 1 designs node effects; Lane 2 builds | `src/core/runState.js`, `src/systems/runSession.js` (`run:levelUp`), new tree data under `src/data/`, `src/ui/screens/techTree.js` rebuilt, a new card screen through the Stage | a level-up banks a pick; three cards in the breath; a stranger describes three different builds after three runs | levelling that grants nothing; percentage-soup nodes; research points |
+| OVH-02 | **Swarm loop rebuild** — retire the between-round Armory and Browse all; one Scrap economy from zero; fourteen systems to four ([04 §2, §5](design/overhaul/04_SWARM.md)) | Lane 2 | `src/data/swarmStakes.js`, `survivalDraft.js`, `swarmDraft.js`, `swarmCatalog.js`, `swarmWeaponLevels.js`, `swarmHangar.js`, `swarmPerks.js`, `swarmFloor.js`, `swarmMods.js`, the crucible draft/refit screens | ≥ 6 floor purchases by flying in a ten-round run; no menu between rounds except the Bench; old profiles load | a shop between every round; 18 cr prices beside 5,000 cr prices; stat tracks that persist between runs |
+| OVH-03 | **The Foundry as a lit set**, then each arena — deck under the play plane, readable banks, lit gates, lamps over pads, a room sun ([04 §6.2](design/overhaul/04_SWARM.md), [07 §4](design/overhaul/07_LOOK_AND_LIGHT.md)) | Codex (3D, per the owner's asset split) + Lane 1 look | arena installs (`survivalArenas`, `src/render/arenaFinish.js`, `foundryBankSurface.js`), new set assets via `design/program/fleet/drafts/asset-findings-for-codex.md` | the in-flight Foundry reads like its PLAY-screen key art; a wall is in view most of the time; cost inside the [10 §4](design/overhaul/10_ENGINE.md) budget | a round fought over empty black space |
+| OVH-04 | **Swarm in its own space** — no campaign entity, notice, objective, count or voice in a run ([04 §6.1](design/overhaul/04_SWARM.md), [10 §3](design/overhaul/10_ENGINE.md)) | Codex (engine owner) | sector/arena admission; INV-08's load budget | a round-start census lists only run bodies and the arena set; no added load time | AFTERMATH cards, Helios ships counted as hostiles, Contract 47-A in a run |
+| OVH-05 | **The five powers rebuilt as force + light + matter**, and the 25-rock plough ([03 §4](design/overhaul/03_COMBAT.md), [07 §7](design/overhaul/07_LOOK_AND_LIGHT.md)) | Lane 1 look + Lane 2 physics | `src/systems/powerVerbs.js`, `src/render/forceLanguage/`, `src/render/vfx/` | a stranger names each power from a muted 5 s clip; effects-off paths identical; plough captures ≥ 20 of 40 rocks, holds them through a 90° turn, launches ≥ 15 three screens | a white smear for Pull, crescent sprites for Shove, any status chip standing in for an effect |
+| OVH-06 | **Hit feel on the body** — flashes, spark sprays, shield ripples, decals that stay, damage states, breakable hulls, the 3D tumble ([03 §6–§7](design/overhaul/03_COMBAT.md)) | Lane 2 + Lane 1 look | `src/render/feel.js`, `src/render/shakeAdmission.js`, `src/render/vfx/combatContactVfx.js`, wreck owners | a round-10 recording moves the camera only on player hits and hero beats; a muted clip still reads every hit; FEEL_CONTRACT B9 rewritten | camera trauma from room events; floating damage numbers |
+| OVH-07 | **Line heads and the rope budget** — one head list (Hook, Coupler, Breaker, Harpoon, Chain, Reel); Line Class scales tension/yank/reel/reach ([03 §2](design/overhaul/03_COMBAT.md), [06 §3](design/overhaul/06_PROGRESSION_AND_ECONOMY.md)) | Lane 2 | `src/combat/attachments.js`, `src/core/constraints/masslineController.js`, `src/data/lineProgression.js`, module heads in `src/data/modules.js` | a stranger names each head from a 10 s clip; the Coupler ties two enemies and they fight each other's thrust | data-only heads offered to players; TOO HEAVY; a timed snap |
+| OVH-08 | **The gun curve** — every family on damage vs kick, measured; the cue line on rocks ([03 §3](design/overhaul/03_COMBAT.md)) | Lane 2 + Lane 1 feel review | `src/data/weapons.js`, `src/systems/weapons.js`, `test/zc-a34-guns-nudge.test.mjs` | the family table met in seeded traces; a gun-only bot and a room-only bot both clear Swarm r10 on Fair | a deliberately weak starter; Hose with visible kick |
+| OVH-09 | **NPC flight competence and spawn clearance**; the ambient census ([03 §5](design/overhaul/03_COMBAT.md)) | Lane 2 | `src/ai/maneuver.js`, `src/ai/reflexes.js`, spawners | ≤ 1 unintended hard contact per NPC per 10 min in the driving bench; census: zero kills and law incidents nobody caused | pinball chains the player did not start |
+| OVH-10 | **The light recipe** — fitted sun shadow, light that lands from every hot source, media only in matter, skies per region, surfaces under every fight ([07 §2, §4](design/overhaul/07_LOOK_AND_LIGHT.md)) | Lane 1 look + Codex (sky panoramas, 3D surfaces) | `src/render/nocturne/`, `src/render/bloom.js`, `src/render/spaceBackground.js`, `src/data/lookMoods.js` | golden frames show light landing in every frame and no medium in clear space; ≤ 4 ms total look cost at preset low | fog blobs in vacuum, radial halo sprites, paper-cutout ships |
+| OVH-11 | **The board inside the rock** — lamp-lit geology, block rules, chains, backfill, readable consequences ([05 §3](design/overhaul/05_ADVENTURE.md)) | Lane 1 + Lane 2 | `src/systems/drill.js`, `drillFieldModel.js`, `src/data/sites.js`, `src/systems/siteProduction.js`, the asteroid-works screens | a stranger says why one machine out-produces its neighbour; rover 0.12 s per cell | a repeated photographic tile with grid seams; a credit charge per move |
+| OVH-12 | **The yard outside**, drones on real lanes, raids as Swarm rounds on your ground, the passive-income cap removed ([05 §4–§5](design/overhaul/05_ADVENTURE.md)) | Lane 2 + Codex (assets) | `src/systems/automation.js`, `asteroidSites.js`, `beltEmpireSystem.js`, Fortify devices from `src/data/swarmFortify.js` | a claim is visible from the cockpit; a raid fires and is fought; no global token bucket; the Base and Automation screens retired | a screen whose main content is credits per minute |
+| OVH-13 | **The station as a hangar**; **the Chart simplified** ([08 §7–§8](design/overhaul/08_INTERFACE.md)) | Lane 1 + Sonnet [FE] | `src/ui/station/`, the chart screens | the docked frame shows your fitted ship as its hero; four places + Undock; three Chart tabs in plain words | Ctrl+K palette, news crawls, nine-tab inspectors |
+| OVH-14 | **The god-tier earned** — the Tumbler, Forged guns, bends, heads as Adventure stories; the stage killers: sinkhole, planet limb, corona ([05 §6](design/overhaul/05_ADVENTURE.md), [03 §10](design/overhaul/03_COMBAT.md)) | Lane 1 writes, Lane 2 builds | `src/data/swarmCrossover.js`, missions, new hazard sites | every Swarm favourite has a place to be earned, shown in the catalogue; a body punted into a sinkhole is gone with a named kill | god-tier items sold as plain shop rows |
+| OVH-15 | **Ghost** — cold drift, real shadows, sensor cones, ambush, sabotage ([03 §11](design/overhaul/03_COMBAT.md)) | Lane 2 | `src/systems/cloak.js`, AI perception | a heist can be done unseen and is harder done loud | a cloak that is only a translucency effect |
+| OVH-16 | **Factions to four or five**, the warfront, heat tiers ([05 §7](design/overhaul/05_ADVENTURE.md)) | Lane 1 + Lane 2 | `src/data/factions.js` (14 today), law and standing owners | a player names the factions and what each wants; law escalates patrol → interceptors → cutter → capital | fourteen standings on screen |
+| OVH-17 | **The economy bench and re-pricing**; ledgers consolidated ([06 §5–§6](design/overhaul/06_PROGRESSION_AND_ECONOMY.md)) | Lane 2 (bench) + Lane 1 (prices) | `src/data/economyDerived.js`, missions, ships, careers | every activity at a stage pays within a third of every other; the purchase table holds; the player sees six ledgers | research points, the second Ledger, scan-risk |
+| OVH-18 | **Boot to title** — a bright film, the title as a lit place, no "First light" ([08 §2](design/overhaul/08_INTERFACE.md)) | Lane 1 + Codex (load) | `src/ui/bootEntry.js`, `bootMediaPlayback.js`, the title stage | the first frame after launch is bright and specific; ≤ 10 s to the title | a black first frame; a developer prompt |
+| OVH-19 | **Sound** — last ([09](design/overhaul/09_SOUND.md)) | Lane 1 + Lane 3 | `src/audio/`, `assets/audio/` | thirty hero sounds; ≤ 20 MB; every sound has a visual twin | oscillator loops as the score |

@@ -1024,7 +1024,7 @@ ${A} .orr-armory-wallet .orr-wallet-caption { margin:0; font:600 12px/1.3 var(--
 ${A} .orr-armory-wallet strong { display:flex; align-items:baseline; gap:6px; font:720 clamp(26px,2.4vw,40px)/1 var(--dp-face-display,'Archivo'),sans-serif; font-variation-settings:normal; letter-spacing:-.04em; color:var(--dp-ink); }
 ${A} .orr-armory-wallet .orr-wallet-amount { display:inline; margin:0; font:inherit; color:inherit !important; letter-spacing:inherit; font-variant-numeric:tabular-nums lining-nums; }
 ${A} .orr-armory-wallet small { font:650 14px/1 var(--dp-face-read),sans-serif; color:var(--dp-hand); letter-spacing:0; text-transform:uppercase; }
-${A} .sf-cru-stage { overflow:auto !important; overscroll-behavior:contain; padding:1px 4px 34px 1px !important; -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 30px),transparent) !important; mask-image:linear-gradient(to bottom,#000 calc(100% - 30px),transparent) !important; }
+${A} .sf-cru-stage { overflow:auto !important; overscroll-behavior:contain; padding:1px 4px 64px 1px !important; -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 56px),transparent) !important; mask-image:linear-gradient(to bottom,#000 calc(100% - 56px),transparent) !important; }
 ${A} .orr-armory-section { font:700 20px/1.2 var(--dp-face-display),sans-serif; letter-spacing:-.02em; color:var(--dp-ink); margin:0 0 14px; text-transform:none; flex:none; }
 ${A} .sf-cru-circuit { padding:12px 16px; margin:0 0 14px; border:1px solid var(--armory-rule); background:var(--armory-panel); }
 ${A} .sf-cru-dealt { gap:clamp(8px,1.1vw,18px) !important; margin:0 !important; }
@@ -1060,8 +1060,24 @@ ${A} .sf-cru-note:empty { min-height:0; margin:0 !important; }
 ${A} .sf-cru-stage > .sf-cru-cards { padding:4px !important; }
 ${A} .sf-cru-cards .sf-cru-card { border:1px solid var(--armory-rule) !important; padding:8px 14px !important; background:var(--armory-panel) !important; min-height:66px !important; }
 ${A} .sf-cru-cards .sf-cru-card + .sf-cru-card { margin-top:3px !important; }
-/* A dealt card cut by the bottom bar must read as "more below", not as a layout bug: the list fades out over its last 28px and keeps 30px of tail so the final card is whole once scrolled to the end. */
-${A} .sf-cru-stage > .sf-cru-cards { padding-bottom:30px !important; -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 28px),transparent) !important; mask-image:linear-gradient(to bottom,#000 calc(100% - 28px),transparent) !important; }
+/* A dealt card cut by the bottom bar must read as "more below", not as a layout bug: the list
+   fades over its last 56px — FIX-05, a line straddling the old 28px band printed at ~60% and
+   read as broken glyphs — and keeps 64px of tail so the final card is whole once scrolled to
+   the end. */
+${A} .sf-cru-stage > .sf-cru-cards { padding-bottom:64px !important; -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 56px),transparent) !important; mask-image:linear-gradient(to bottom,#000 calc(100% - 56px),transparent) !important; }
+/* The reading desk shares the same edge: its cut rows dissolve the same way, and the last
+   block scrolls clear of the fade instead of dying as a sliver behind the footer. */
+${A} .orr-armory-reading.orr-armory-reading { -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 48px),transparent) !important; mask-image:linear-gradient(to bottom,#000 calc(100% - 48px),transparent) !important; }
+${A} .orr-armory-reading > :last-child { margin-bottom:48px; }
+@media (max-width:760px) {
+  /* stacked armory: the reading stops scrolling, so the edge and the tail both stand down */
+  ${A} .orr-armory-reading.orr-armory-reading { -webkit-mask-image:none !important; mask-image:none !important; }
+  ${A} .orr-armory-reading > :last-child { margin-bottom:0; }
+  /* the stacked stage scrolls inside the armory body, not itself — a mask on its own box
+     would sit on static content and fade the aria-live refusal line the player must read
+     (REVIEW-FIX05-BATCH finding 3) */
+  ${A} .sf-cru-stage { -webkit-mask-image:none !important; mask-image:none !important; padding-bottom:0 !important; }
+}
 ${A} .sf-cru-cards .sf-cru-card:is(.is-lit,:focus-visible) { border-color:var(--dp-hand) !important; }
 ${A} .sf-cru-cards .sf-cru-card.is-unavail { opacity:.85 !important; }
 ${A} .sf-cru-cards .orr-equipment-glyph { color:var(--armory-cool); }
@@ -1177,6 +1193,10 @@ ${A} .orr-armory-budget__spend { stroke:var(--dp-hand); }
   ${A} .sf-cru-dealt .sf-cru-card--dealt :is(.sf-cru-blurb,.sf-cru-activation,.sf-cru-slot,.sf-cru-afford) { display:none !important; }
   ${A} .sf-cru-stage > .sf-cru-cards:not([hidden]) { min-height:80px !important; height:auto !important; flex:1 1 auto !important; }
   ${A} .orr-armory-reading.orr-armory-reading { grid-area:2 / 2 !important; min-height:0 !important; height:100% !important; overflow:auto !important; padding:10px 12px !important; }
+  /* landscape handheld: this branch scrolls the reading again, so the dissolve comes back —
+     the ≤760 stand-down above would otherwise leave the hardest-scrolling branch a hard cut
+     (REVIEW-FIX05-BATCH finding 4) */
+  ${A} .orr-armory-reading.orr-armory-reading { -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 48px),transparent) !important; mask-image:linear-gradient(to bottom,#000 calc(100% - 48px),transparent) !important; }
   ${A} .orr-armory-reading__words { display:flex !important; flex-direction:column; align-items:stretch; }
   ${A} .orr-armory-reading__verb { order:-3; }
   ${A} .orr-armory-reading__name { order:-2; font-size:22px !important; margin:2px 0 5px !important; }
@@ -1192,6 +1212,9 @@ ${A} .orr-armory-budget__spend { stroke:var(--dp-hand); }
 @media (forced-colors:active) {
   ${A} :is(.orr-armory-reading,.sf-cru-dealtface,.orr-armory-wallet) { border-color:CanvasText; }
   ${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt.is-lit { outline:2px solid Highlight !important; }
+  /* the dissolve is decoration: under an overridden palette a half-faded glyph is just a
+     pale glyph, so every armory edge stands down (REVIEW-FIX05-BATCH finding 4, grok) */
+  ${A} :is(.sf-cru-stage, .sf-cru-stage > .sf-cru-cards, .orr-armory-reading) { -webkit-mask-image:none !important; mask-image:none !important; }
 }
 
 
@@ -1209,7 +1232,8 @@ ${A} .orr-armory-budget__spend { stroke:var(--dp-hand); }
   ${A} .orr-armory-wallet strong { font-size:32px; }
   ${A} .orr-armory-wallet span { margin-top:2px; }
   ${A} .sf-cru-dealt { grid-template-columns:minmax(0,1fr) !important; gap:8px !important; margin:0 !important; }
-  ${A} .sf-cru-stage > .sf-cru-cards { padding-bottom:0 !important; }
+  /* the catalog scroller keeps its fade tail even at laptop heights — a masked edge with no tail parks the last row inside the dissolve (REVIEW-FIX05-BATCH finding 5, grok) */
+  ${A} .sf-cru-stage > .sf-cru-cards { padding-bottom:64px !important; }
   ${A} .sf-cru-dealt .sf-cru-card.sf-cru-card--dealt { display:grid !important; grid-template-columns:64px minmax(0,1fr) !important; column-gap:12px !important; row-gap:2px !important; align-content:start !important; min-height:0 !important; padding:10px 12px !important; }
   ${A} .sf-cru-dealt .sf-cru-dealtface { grid-column:1 !important; grid-row:1 / span 6 !important; min-height:0 !important; border-bottom:0 !important; margin:0 !important; align-self:start !important; }
   ${A} .sf-cru-dealt .sf-cru-dealtface > .orr-equipment-glyph, ${A} .sf-cru-dealt .sf-cru-dealtface > svg { width:56px !important; height:56px !important; }

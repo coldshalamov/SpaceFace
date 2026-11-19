@@ -15,7 +15,8 @@ export const BOLUS_CANAL_COLORS = Object.freeze({
   lumen: 0x2a0c10,
   iris: 0x6a2030,
   cilia: 0x7a3840,
-  rib: 0x4a2420,
+  rib: 0x54302a,
+  ribEmber: 0x8a4a30,
   baleen: 0x7a4038,
   collar: 0xc4b59a,
   buoy: 0x8a847c,
@@ -304,28 +305,56 @@ export function irisBlades(openAmount = 0) {
   return blades;
 }
 
-function ringPart(id, z, radius, color, kind, rng) {
+function ringPart(id, z, radius, color, kind, rng, tube = 10, depth = 0) {
   const wobble = rng ? (rng() - 0.5) * 3 : 0;
   const r = radius + wobble;
   const N = 16;
   const positions = [];
   const indices = [];
-  const tube = 10;
-  for (let i = 0; i < N; i++) {
-    const a = (i / N) * Math.PI * 2;
-    const cx = Math.cos(a) * r;
-    const cy = Math.sin(a) * r * 0.55 + 24;
-    positions.push(cx, cy, z);
-    positions.push(Math.cos(a) * (r + tube), Math.sin(a) * (r * 0.55 + tube) + 24, z);
-  }
-  for (let i = 0; i < N; i++) {
-    const i2 = (i + 1) % N;
-    const inner = i * 2;
-    const outer = inner + 1;
-    const inner2 = i2 * 2;
-    const outer2 = inner2 + 1;
-    indices.push(inner, outer, outer2);
-    indices.push(inner, outer2, inner2);
+  if (depth > 0) {
+    // Extruded band (inner/outer radius x front/back z). The flat annulus was a
+    // zero-thickness sliver: edge-on from overhead it collapsed to a line and the
+    // interior fog swallowed it at range.
+    const hz = depth / 2;
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      const x0 = ca * r;
+      const y0 = sa * r * 0.55 + 24;
+      const x1 = ca * (r + tube);
+      const y1 = sa * (r * 0.55 + tube) + 24;
+      positions.push(
+        x0, y0, z - hz, x1, y1, z - hz,
+        x1, y1, z + hz, x0, y0, z + hz,
+      );
+    }
+    for (let i = 0; i < N; i++) {
+      const i2 = (i + 1) % N;
+      const a0 = i * 4;
+      const b0 = i2 * 4;
+      indices.push(a0, b0, b0 + 1, a0, b0 + 1, a0 + 1);
+      indices.push(a0 + 3, a0 + 2, b0 + 2, a0 + 3, b0 + 2, b0 + 3);
+      indices.push(a0 + 1, b0 + 1, b0 + 2, a0 + 1, b0 + 2, a0 + 2);
+      indices.push(a0, a0 + 3, b0 + 3, a0, b0 + 3, b0);
+    }
+  } else {
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * Math.PI * 2;
+      const cx = Math.cos(a) * r;
+      const cy = Math.sin(a) * r * 0.55 + 24;
+      positions.push(cx, cy, z);
+      positions.push(Math.cos(a) * (r + tube), Math.sin(a) * (r * 0.55 + tube) + 24, z);
+    }
+    for (let i = 0; i < N; i++) {
+      const i2 = (i + 1) % N;
+      const inner = i * 2;
+      const outer = inner + 1;
+      const inner2 = i2 * 2;
+      const outer2 = inner2 + 1;
+      indices.push(inner, outer, outer2);
+      indices.push(inner, outer2, inner2);
+    }
   }
   return part(id, positions, indices, color, kind);
 }
@@ -335,7 +364,13 @@ export function ribRings(seed) {
   const rings = [];
   let n = 0;
   for (let z = -2400; z <= 1200; z += 200) {
-    rings.push(ringPart(`rib_${n}`, z, 280, BOLUS_CANAL_COLORS.rib, 'rib', rng));
+    // 16 WU band x 30 WU deep: the old 10 WU zero-depth sliver read as nothing at
+    // player scale. A restrained warm self-glow keeps the hoops separable from the
+    // flesh palette -- they sit ~560 WU from every lantern shaft, outside its range.
+    const ring = ringPart(`rib_${n}`, z, 280, BOLUS_CANAL_COLORS.rib, 'rib', rng, 16, 30);
+    ring.emissive = BOLUS_CANAL_COLORS.ribEmber;
+    ring.emissiveIntensity = 0.55;
+    rings.push(ring);
     n += 1;
   }
   return rings;

@@ -12,6 +12,7 @@ const sourceInventoryPath = `${root}/source-model-inventory.json`;
 const durable = 'design/program/fleet/graphics-asset-review';
 const eventsDir = `${durable}/iterations`;
 const factsDir = `${durable}/facts`;
+const coverageStatusPath = `${durable}/coverage-status.json`;
 const catalogPath = `${root}/catalog-v2.json`;
 const proceduralSeedPath = `${durable}/procedural-seed.json`;
 const releasePath = 'assets/ships/release/release_manifest.json';
@@ -22,6 +23,7 @@ const factsPath = (id) => `${factsDir}/${assetFileStem(id)}.json`;
 const readRows = (path) => !existsSync(path) ? [] : readFileSync(path, 'utf8').split('\n').filter(Boolean).map(JSON.parse);
 const rows = (id = null) => id ? readRows(eventsPath(id)) : !existsSync(eventsDir) ? []
   : readdirSync(eventsDir).filter((name) => name.endsWith('.jsonl')).sort().flatMap((name) => readRows(`${eventsDir}/${name}`));
+const coverageStates = ['pending', 'in progress', 'passed', 'needs follow-up', 'unused/unresolved'];
 const stem = (path) => basename(path, extname(path)).replace(/(?:_|-)lod\d+$/i, '');
 const lod = (path) => /(?:_|-)lod(\d+)\.glb$/i.exec(path)?.[1] ?? 'primary-or-contained-lods';
 
@@ -109,6 +111,121 @@ function buildSourceInventory(models, catalogByFile) {
     summary: { files: files.length, byClass, unresolved }, unseenKnownPaths, excludedDirectories, files };
 }
 
+function coverageVersion(model, facts) {
+  const versions = new Map();
+  const add = (role, representation) => {
+    if (!representation?.path) return;
+    const sha256Source = role === 'builder' && facts?.sourceSha256 ? 'handoff-captured'
+      : ['authoring', 'release'].includes(role) && representation.sha256 ? 'release-manifest'
+        : representation.sha256 ? 'catalog-only' : null;
+    const value = { role, path: representation.path, sha256: representation.sha256 ?? null, sha256Source };
+    versions.set(`${role}\0${representation.path}`, value);
+  };
+  for (const variant of model.variants) {
+    for (const role of ['authoring', 'release', 'package', 'runtimeFile', 'sourceFile']) add(role, variant[role]);
+  }
+  if (model.deployment?.source) add('builder', { path: model.deployment.source, sha256: facts?.sourceSha256 ?? null });
+  if (model.id.startsWith('procedural:fauna:bolus_')) add('builder', { path: 'src/render/bolusSilhouettes.js' });
+  return [...versions.values()].sort((a, b) => a.role.localeCompare(b.role) || a.path.localeCompare(b.path));
+}
+
+function hashFile(path) {
+  const fd = openSync(path, 'r'), hash = createHash('sha256'), chunk = Buffer.alloc(1024 * 1024);
+  try {
+    let count;
+    while ((count = readSync(fd, chunk, 0, chunk.length, null)) > 0) hash.update(chunk.subarray(0, count));
+    return hash.digest('hex');
+  } finally { closeSync(fd); }
+}
+
+function currentFileVersion(version) {
+  return version.map((entry) => existsSync(entry.path)
+    ? { ...entry, sha256: hashFile(entry.path), sha256Source: 'current-file-bytes' }
+    : { ...entry, sha256: null, sha256Source: 'missing-file' });
+}
+
+function coverageDisposition(model) {
+  return model.deployment?.status === 'runtime-use-unresolved'
+    || model.identityStatus === 'group-needs-individual-identities'
+    || model.id.startsWith('source-candidate:')
+    || model.id.startsWith('unmapped-release:');
+}
+
+function refreshCoverageStatuses(models) {
+  const previous = existsSync(coverageStatusPath) ? readJson(coverageStatusPath) : { models: {} };
+  const statuses = { ...(previous.models || {}) };
+  const history = new Map();
+  for (const event of rows()) {
+    const list = history.get(event.modelId) || [];
+    list.push(event);
+    history.set(event.modelId, list);
+  }
+
+  for (const model of models) {
+    const existing = statuses[model.id];
+    const facts = existsSync(factsPath(model.id)) ? readJson(factsPath(model.id)) : null;
+    const events = history.get(model.id) || [];
+    const unresolved = coverageDisposition(model);
+    const version = coverageVersion(model, facts);
+    if (!existing) {
+      const status = unresolved ? 'unused/unresolved' : (facts || events.length ? 'needs follow-up' : 'pending');
+      const latest = events.at(-1);
+      statuses[model.id] = {
+        status,
+        current: true,
+        version,
+        views: [],
+        changes: facts?.status || latest?.decision || 'No review change recorded.',
+        issues: unresolved
+          ? 'Runtime use or individual model identity is unresolved. This status does not establish that the file is unused and does not authorize deletion.'
+          : facts?.status || latest?.next || 'Visual and practical efficiency review is pending.',
+        evidence: [...new Set([...(facts?.diagnostics || []), ...(latest?.evidence || [])])],
+        updatedAt: new Date().toISOString(),
+      };
+      continue;
+    }
+
+    const versionChanged = JSON.stringify(existing.version || []) !== JSON.stringify(version);
+    const nextStatus = { ...existing, current: true, version,
+      ...(versionChanged ? { updatedAt: new Date().toISOString() } : {}) };
+    // Preserve and refresh versions pinned by a partial review as well as completed passes;
+    // otherwise an index refresh replaces their actual byte hashes with older catalog metadata.
+    if (existing.status === 'passed' || (existing.version || []).some((entry) => entry.sha256Source === 'current-file-bytes')) {
+      const currentVersion = currentFileVersion(version);
+      const pathsMatch = JSON.stringify((existing.version || []).map(({ role, path }) => [role, path]))
+        === JSON.stringify(currentVersion.map(({ role, path }) => [role, path]));
+      const hashesPinned = (existing.version || []).length > 0
+        && existing.version.every((entry) => entry.sha256Source === 'current-file-bytes' && entry.sha256);
+      const bytesMatch = hashesPinned && pathsMatch && JSON.stringify(existing.version.map((entry) => entry.sha256))
+        === JSON.stringify(currentVersion.map((entry) => entry.sha256));
+      nextStatus.version = currentVersion;
+      if (!bytesMatch && existing.status === 'passed') {
+        nextStatus.status = 'needs follow-up';
+        nextStatus.priorVersion = existing.version;
+        nextStatus.issues = 'Current source, release, or package bytes changed or were not pinned at pass time; review this version before restoring passed status.';
+        nextStatus.updatedAt = new Date().toISOString();
+      }
+    }
+    statuses[model.id] = nextStatus;
+  }
+
+  const currentIds = new Set(models.map((model) => model.id));
+  for (const [id, entry] of Object.entries(statuses)) {
+    if (currentIds.has(id)) continue;
+    statuses[id] = { ...entry, status: 'unused/unresolved', current: false,
+      issues: 'This model ID is absent from the refreshed index. Its runtime/source relationship is unresolved; absence does not authorize deletion.',
+      updatedAt: new Date().toISOString() };
+  }
+
+  const counts = Object.fromEntries(coverageStates.map((status) => [status, 0]));
+  for (const entry of Object.values(statuses)) counts[entry.status] = (counts[entry.status] || 0) + 1;
+  const document = { schema: 'spaceface.assetCoverageStatus.v1', generatedAt: new Date().toISOString(),
+    note: 'One durable status per model ID. `unused/unresolved` is a disposition for unresolved linkage or identity, not proof of non-use or permission to delete. Review details and evidence remain in the per-model facts and append-only journals. Index refreshes and status updates rewrite this whole file; serialize those commands and do not run concurrent status writers.',
+    statusCounts: counts, models: Object.fromEntries(Object.entries(statuses).sort(([a], [b]) => a.localeCompare(b))) };
+  writeFileSync(coverageStatusPath, `${JSON.stringify(document, null, 2)}\n`);
+  return document;
+}
+
 function buildIndex({ useCatalog = true } = {}) {
   const catalog = useCatalog && existsSync(catalogPath) ? readJson(catalogPath) : { generatedAt: null, rows: [] };
   const old = readJson(proceduralSeedPath), release = readJson(releasePath);
@@ -127,7 +244,7 @@ function buildIndex({ useCatalog = true } = {}) {
     const part = catalogByFile.get(pilot.sourceUrl), pkg = catalogByFile.get(packagePath);
     const id = `runtime:${pilot.runtimeAssetId}:${stem(pilot.sourceUrl)}`;
     const model = add(id, { category: pilot.slot, runtimeAssetId: pilot.runtimeAssetId,
-      iterationTarget: 20, deployment: { status: 'mapping-needs-review',
+      deployment: { status: 'mapping-needs-review',
         common: ['src/render/assetLoader.js', 'src/render/renderPackageLoader.js', 'src/render/renderPackageManifest.js'],
         literalReferenceCandidates: [] } });
     const refs = part?.sourceReferenceFiles || [];
@@ -180,7 +297,7 @@ function buildIndex({ useCatalog = true } = {}) {
     }
     const uncertain = /^(?:factory|presentation|alien-growth):/.test(row.id);
     add(`procedural:${row.id}`, { category: 'procedural', runtimeAssetId: row.id,
-      iterationTarget: 20, identityStatus: uncertain ? 'group-needs-individual-identities' : 'registry-or-builder-id',
+      identityStatus: uncertain ? 'group-needs-individual-identities' : 'registry-or-builder-id',
       deployment: { status: 'builder-identified', source: row.source },
       structuralInspection: row.structuralInspection || null });
   }
@@ -216,7 +333,7 @@ function buildIndex({ useCatalog = true } = {}) {
       }
       const id = `playable-variant:${base.id}:${variant.id}`;
       const model = add(id, { category: 'playable-variant', baseModelId: base.id,
-        runtimeAssetId: null, iterationTarget: 20, identityStatus: 'source-traced-variant',
+        runtimeAssetId: null, identityStatus: 'source-traced-variant',
         description: variant.description, evidence: variant.evidence,
         missingVariantEvidence: variant.evidence.filter((path) => !existsSync(path)),
         deployment: { status: 'see-base-and-variant-evidence' } });
@@ -257,6 +374,9 @@ function buildIndex({ useCatalog = true } = {}) {
       thirdPartyCandidateGroups: thirdPartyCandidateIds.size },
     warnings: { missingRelease, unmatchedPackages, unseenKnownPaths: sourceInventory.unseenKnownPaths },
     models: [...models.values()].sort((a, b) => a.id.localeCompare(b.id)) };
+  const coverageStatus = refreshCoverageStatuses(output.models);
+  output.summary.coverageStatusCounts = coverageStatus.statusCounts;
+  output.summary.coverageStatusModels = output.models.length;
   writeFileSync(indexPath, `${JSON.stringify(output, null, 2)}\n`);
   console.log(JSON.stringify({ indexPath, summary: output.summary, warnings: output.warnings }, null, 2));
 }
@@ -275,14 +395,14 @@ else if (command === 'show') {
   const model = lookup(readJson(indexPath), argument);
   const iterations = rows(model.id);
   const facts = existsSync(factsPath(model.id)) ? readJson(factsPath(model.id)) : null;
+  const coverage = existsSync(coverageStatusPath) ? readJson(coverageStatusPath).models?.[model.id] ?? null : null;
   const missingEvidence = [...new Set(iterations.flatMap((r) => r.evidence).filter((path) => !existsSync(path)))];
   const targets = model.variants.flatMap((variant) => variant.reviewTargets || []);
   const variantCoverage = targets.map((target) => ({ target,
     observations: iterations.flatMap((iteration) => (iteration.variantCoverage || [])
       .filter((coverage) => coverage.target === target).map((coverage) => ({ iteration: iteration.iteration, ...coverage }))) }));
-  console.log(JSON.stringify({ model, factsPath: factsPath(model.id), journalPath: eventsPath(model.id),
-    tracedFacts: facts, recordedIterations: iterations.length, variantCoverage, iterations, missingEvidence,
-    remainingToRequestedCount: Math.max(0, model.iterationTarget - iterations.length) }, null, 2));
+  console.log(JSON.stringify({ model, coverageStatusPath, coverage, factsPath: factsPath(model.id), journalPath: eventsPath(model.id),
+    tracedFacts: facts, recordedIterations: iterations.length, variantCoverage, iterations, missingEvidence }, null, 2));
 } else if (command === 'record') {
   const event = readJson(argument), model = lookup(readJson(indexPath), event.modelId);
   for (const field of ['performedBy', 'action', 'observation', 'decision', 'next', 'evidenceScope', 'performance']) {
@@ -316,15 +436,10 @@ else if (command === 'show') {
   const currentVisual = new Set(all.flatMap((r) => (r.variantCoverage || [])
     .filter((coverage) => ['current-isolated', 'ordinary-play'].includes(coverage.scope))
     .map((coverage) => `${r.modelId}\0${coverage.target}`)));
-  const atRequestedCount = index.models.filter((model) => (counts.get(model.id) || 0) >= model.iterationTarget);
-  const atCountWithOpenTargets = atRequestedCount.filter((model) => {
-    const targets = model.variants.flatMap((variant) => variant.reviewTargets || []);
-    return model.variationDiscovery !== 'complete' || !targets.length
-      || targets.some((target) => !currentVisual.has(`${model.id}\0${target}`));
-  }).length;
-  console.log(JSON.stringify({ ...index.summary, modelsWithRecordedIterations: counts.size,
-    totalRecordedIterations: all.length, modelsAtRequestedCount: atRequestedCount.length,
-    modelsAtRequestedCountWithUnreviewedTargets: atCountWithOpenTargets,
+  const coverage = existsSync(coverageStatusPath) ? readJson(coverageStatusPath) : null;
+  console.log(JSON.stringify({ ...index.summary, coverageStatusCounts: coverage?.statusCounts ?? null,
+    coverageStatusModels: Object.keys(coverage?.models || {}).length, modelsWithRecordedIterations: counts.size,
+    totalRecordedIterations: all.length,
     recordedModelLodTargets: modelLods.length, modelLodTargetsWithCurrentVisualEvidence: modelLods.filter((key) => currentVisual.has(key)).length,
     orphanedEventIds: unknown, missingEvidence }, null, 2));
 } else if (command === 'source') {
@@ -332,7 +447,25 @@ else if (command === 'show') {
   const found = inventory.files.find((file) => file.path === argument);
   if (!found) throw new Error(`Source file not in inventory: ${argument}`);
   console.log(JSON.stringify(found, null, 2));
+} else if (command === 'status') {
+  const model = lookup(readJson(indexPath), argument), update = readJson(process.argv[4]);
+  const document = readJson(coverageStatusPath), current = document.models[model.id];
+  if (!coverageStates.includes(update.status)) throw new Error(`status must be one of: ${coverageStates.join(', ')}`);
+  for (const field of ['changes', 'issues']) if (typeof update[field] !== 'string' || !update[field].trim()) throw new Error(`Missing ${field}`);
+  if (!Array.isArray(update.views) || !Array.isArray(update.evidence)) throw new Error('views and evidence must be arrays');
+  for (const path of update.evidence) if (typeof path !== 'string' || !existsSync(path)) throw new Error(`Missing evidence: ${path}`);
+  if (update.status === 'passed' && (!update.views.length || !update.evidence.length)) throw new Error('A passed status requires at least one actual view and existing evidence path');
+  const version = update.status === 'passed' ? currentFileVersion(current.version) : (update.version ?? current.version);
+  if (update.status === 'passed' && version.some((entry) => entry.sha256Source !== 'current-file-bytes' || !entry.sha256)) {
+    throw new Error('A passed status requires current byte hashes for every model representation');
+  }
+  document.models[model.id] = { ...current, ...update, version,
+    current: true, updatedAt: new Date().toISOString() };
+  document.statusCounts = Object.fromEntries(coverageStates.map((status) => [status,
+    Object.values(document.models).filter((entry) => entry.status === status).length]));
+  writeFileSync(coverageStatusPath, `${JSON.stringify(document, null, 2)}\n`);
+  console.log(JSON.stringify(document.models[model.id], null, 2));
 } else {
-  console.error('Usage: node scripts/fleet/asset-review.mjs index [--no-catalog] | show <id> | source <path> | record <json-file> | summary');
+  console.error('Usage: node scripts/fleet/asset-review.mjs index [--no-catalog] | show <id> | source <path> | record <json-file> | status <id> <json-file> | summary');
   process.exitCode = 2;
 }

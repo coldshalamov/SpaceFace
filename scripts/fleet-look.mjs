@@ -5,8 +5,16 @@
 //   node scripts/fleet-look.mjs --fauna=archive_crab,black_sail --views=chase,close
 //   node scripts/fleet-look.mjs --conduit-network=lane,power --views=work,site
 //   node scripts/fleet-look.mjs --machines=witness,debris_sorter,pylon --views=close,inspect
+//   node scripts/fleet-look.mjs --character=ruckus --views=chase,close,inspect   # per-LOD body shots
+//     (--character-parts=body,core --character-lods=0,1,2 narrow the matrix; characters build
+//      through the live visual-factory route, not the ship/place GLB part contract)
+//   node scripts/fleet-look.mjs --proc-preview=character:bracket,optic-cell:stone:variant2,kestrel-hero \
+//     --views=chase,close,inspect   # procedural presentation route (story characters via their
+//     system entity specs, optic cells via the asteroid optic skin, kestrel-hero via
+//     buildKestrelHero — the Shipworks preview body)
 //   node scripts/fleet-look.mjs --fleet            # every live wholeship, contact sheet per view
 //   node scripts/fleet-look.mjs --fleet --sector=sector_vesta_forge   # under that sector's light rig
+//   --dist=<multiplier> pulls every view's camera back along its view ray (oversized hulls).
 // Output: .devshots/fleet-look/<name>_<view>.png (+ report.json). Crops chase/close to the ship.
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
@@ -23,6 +31,30 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 const OUT = ROOT + (args.out || '.devshots/fleet-look') + '/';
 const views = String(args.views || (args['conduit-network'] ? 'work,site' : 'chase,close,inspect')).split(',');
 const SHOT_TIMEOUT_MS = Number(args.timeout || 600) * 1000;
+// --dist=<multiplier>: camera-distance override passed to the shot's camera math (oversized
+// hulls/structures whose auto-framing would otherwise sit inside the bounding radius). A scalar
+// applies to every view; 'view:mult' pairs (comma-separated) override per view, e.g.
+// --dist=chase:0.2 pulls only the chase camera in.
+const DIST_SPEC = args.dist != null && args.dist !== true ? String(args.dist) : undefined;
+let DIST_MULT;
+const DIST_BY_VIEW = {};
+if (DIST_SPEC != null) {
+  if (/^\d*\.?\d+$/.test(DIST_SPEC)) {
+    DIST_MULT = Number(DIST_SPEC);
+  } else {
+    for (const pair of DIST_SPEC.split(',')) {
+      const [view, raw] = pair.split(':');
+      const value = Number(raw);
+      if (!view || !Number.isFinite(value) || value <= 0) {
+        throw new Error(`--dist pair requires <view>:<positive number>, got '${pair}'`);
+      }
+      DIST_BY_VIEW[view] = value;
+    }
+  }
+}
+if (DIST_MULT !== undefined && (!Number.isFinite(DIST_MULT) || DIST_MULT <= 0)) {
+  throw new Error('--dist=<multiplier> requires a positive number');
+}
 const RUN_STARTED_AT_UTC = new Date().toISOString();
 const RUN_ID = `${process.pid}-${RUN_STARTED_AT_UTC.replace(/[:.]/g, '-')}`;
 const PARTIAL_REPORT_PATH = `${OUT}report.partial-${RUN_ID}.json`;
@@ -220,11 +252,58 @@ try {
       },
     ]));
   }
+  else if (args.character) {
+    const ids = String(args.character).split(',');
+    const parts = String(args['character-parts'] || 'body').split(',');
+    const lods = String(args['character-lods'] || '0,1,2').split(',').map(Number);
+    if (args.character === true || ids.some((id) => !/^[a-z0-9_]+$/.test(id))
+      || parts.some((p) => !/^[a-z0-9_]+$/.test(p))
+      || lods.some((l) => !Number.isInteger(l) || l < 0 || l > 2)) {
+      throw new Error('--character requires comma-separated character IDs '
+        + '(--character-parts, --character-lods=0..2 optional)');
+    }
+    targets = ids.flatMap((id) => parts.flatMap((part) => lods.map((lod) => [
+      `${id}-${part}-lod${lod}`,
+      { characterId: id, characterPart: part, characterLod: lod },
+    ])));
+  }
+  else if (args['proc-preview']) {
+    const PROC_CHARACTERS = ['bracket', 'morrow', 'ravel', 'rubric', 'ruud', 'solstice', 'vesper'];
+    const PROC_OPTIC_KINDS = ['stone', 'metal', 'diamond', 'spent'];
+    const specs = String(args['proc-preview']).split(',');
+    if (args['proc-preview'] === true) throw new Error('--proc-preview requires comma-separated specs');
+    targets = specs.map((raw) => {
+      const seg = raw.split(':');
+      const family = seg[0];
+      if (family === 'kestrel-hero' || (family === 'presentation' && seg[1] === 'kestrel-hero')) {
+        return ['procpreview-kestrel-hero', { procPreview: { kestrelHero: true } }];
+      }
+      if (family === 'character' && PROC_CHARACTERS.includes(seg[1])) {
+        const name = seg[1];
+        const part = seg[2] || undefined;
+        if (part && !/^[a-z0-9]+$/.test(part)) throw new Error(`bad character part in --proc-preview=${raw}`);
+        const label = part && part !== ({ bracket: 'keeper', ravel: 'core', rubric: 'body', ruud: 'suit', solstice: 'core', vesper: 'hub' }[name] || 'hub')
+          ? `${name}-${part}` : name;
+        return [`procpreview-character-${label}`, { procPreview: { character: name, ...(part ? { part } : {}) } }];
+      }
+      if (family === 'optic-cell' && PROC_OPTIC_KINDS.includes(seg[1])) {
+        const kind = seg[1];
+        let variant = 0;
+        if (seg[2] !== undefined) {
+          const m = /^variant([0-4])$/.exec(seg[2]);
+          if (!m) throw new Error(`bad optic variant in --proc-preview=${raw} (want variant0..4)`);
+          variant = Number(m[1]);
+        }
+        return [`procpreview-optic-cell-${kind}-variant${variant}`, { procPreview: { optic: kind, variant } }];
+      }
+      throw new Error(`unknown --proc-preview spec '${raw}' (want character:<name>[:part], optic-cell:<kind>[:variantN], kestrel-hero)`);
+    });
+  }
   else if (args.fleet) targets = LIVE_FLEET.filter(([n]) => !args.only || String(args.only).split(',').includes(n));
   else if (args.files) targets = String(args.files).split(',').map((f) => [f.split('/').pop().replace('.glb', ''), { file: f }]);
   else if (args.file) targets = [[args.name || String(args.file).split('/').pop().replace('.glb', ''), { file: args.file }]];
   else if (args.def) targets = [[args.name || String(args.def).replace('ship_', ''), { defId: args.def }]];
-  else throw new Error('pass --fauna, --bombs, --conduit-network, --machines, --file, --def or --fleet');
+  else throw new Error('pass --fauna, --bombs, --conduit-network, --machines, --character, --proc-preview, --file, --def or --fleet');
 
   for (const [name, spec] of targets) {
     for (const view of views) {
@@ -237,6 +316,8 @@ try {
             const attemptLabel = attempt + 1;
             shotState.stage = `prepare-shot-${attemptLabel}`;
             const shotSpec = { ...spec, view, heading: Number(args.heading || 0), yaw: Number(args.yaw || 0), ...(args.ab ? { ab: JSON.parse(String(args.ab)) } : {}),
+              ...(DIST_MULT !== undefined || DIST_BY_VIEW[view] !== undefined
+                ? { dist: DIST_BY_VIEW[view] ?? DIST_MULT } : {}),
               // --appearance='{"decalId":"concord"}' poses the hull with that paint record;
               // --factionId=<id> poses it as that faction's NPC (palette + default stencils).
               ...(args.appearance ? { appearance: JSON.parse(String(args.appearance)) } : {}),
