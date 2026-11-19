@@ -171,7 +171,7 @@ ${H} .orr-hreg__row > .orr-hkey--none:not(.orr-hkey--text) { color:rgb(${BONE} /
 ${H} .orr-hreg__row.is-echo > .orr-hkey:not(.orr-hkey--text) { color:rgb(255 255 255); text-shadow:none; border-color:rgb(255 255 255 / .85);
   box-shadow:inset 0 -1px 0 rgb(0 0 0 / .4), 0 0 0 1px rgb(143 203 255 / .35), 0 0 10px rgb(143 203 255 / .45); }
 ${H} .orr-hreg__fine { margin:10px 0 0; padding-left:30px; font-family:var(--dp-face-body, "Instrument Sans"), system-ui, sans-serif; font-size:clamp(12px, .6vw, 15px); line-height:1.4; color:rgb(${BONE} / .84); }
-${H} .orr-hreg .orr-extent::before { left:7px; width:2px; }
+${H} .orr-hreg .orr-extent:not(.orr-extent--foot)::before { left:7px; width:2px; }
 
 /* ------------------------------------------------ the shared ladder + reading ------------------ */
 ${H} .orr-help-list { position:relative; display:grid; grid-template-columns:clamp(222px, 16vw, 340px) minmax(0, 1fr); grid-template-rows:minmax(0, 1fr);
