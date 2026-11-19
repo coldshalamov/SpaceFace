@@ -152,7 +152,7 @@ the whole pack rides your bow).
 
 ### 2.4 The screen
 
-The existing radial **Research** screen (`02` C9, `src/ui/...techTree`) is the right shape: rebuild it
+The existing radial **Research** screen (`02` C9, `src/ui/screens/techTree.js`) is the right shape: rebuild it
 as the Pilot Tree — seven sectors, rings as tiers, the capstone at the rim. Research points and the
 credits column go. In Swarm the same nodes appear as cards; the full tree is shown on Run Over (your
 run's path lit) and in the Hangar.
