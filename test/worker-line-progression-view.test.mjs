@@ -9,7 +9,7 @@ import { combat } from '../src/systems/combat.js';
 import { tetherGameplay } from '../src/systems/tetherGameplay.js';
 import { lineProgression } from '../src/systems/lineProgression.js';
 
-test('native heavy anchor carries the owner class and heat through the worker view, then clears and restores', async () => {
+test('native heavy anchor carries the owner class through the worker view without an over-class verdict (R12), then clears and restores', async () => {
   const h = await bootRealPath({ seed: 10,
     systems: ['actions', 'flightV3', 'aiPorts', 'physics', combat, tetherGameplay, lineProgression],
     hulls: [{ hullId: 'ship_wasp', isPlayer: true, pos: { x: 0, z: 0 } }] });
@@ -32,21 +32,21 @@ test('native heavy anchor carries the owner class and heat through the worker vi
     h.step(1, { before() { h.state.input.actions.tetherFire = true; }, after: sync });
     h.step(60, { before() { h.state.input.actions.tetherFire = false; }, after: sync });
     assert.equal(h.state.player.tether.targetId, rock.id, 'the real latch owner acquired the anchor');
-    assert.equal(h.state.lineProgression.overClass, true);
+    assert.equal(h.state.lineProgression.overClass, false, 'R12: an anchor never strains the line');
     h.state.lineProgression.privateScratch = { shouldNotShip: 'private' };
     view = sync();
     assert.equal(view.lineProgression.presentationHold.targetId, rock.id);
     assert.equal(view.lineProgression.presentationHold.attachmentId, h.state.player.tether.attachmentId);
     assert.equal(view.lineProgression.privateScratch, undefined);
     assert.equal(view.lineProgression.classFullControlMassT, 20);
-    assert.equal(view.lineProgression.overClass, true);
+    assert.equal(view.lineProgression.overClass, false);
     assert.equal(view.lineProgression.winchHeat, h.state.lineProgression.winchHeat);
     const profile = readLineVisualProfile(view);
-    assert.equal(profile.overClass, true);
+    assert.equal(profile.overClass, false);
     assert.equal(profile.verdictKnown, true);
     assert.equal(profile.heat, h.state.lineProgression.winchHeat);
     assert.equal(profile.ceilingT, 20);
-    assert.equal(readLineVisualProfile(h.state).overClass, true, 'the authoritative main lane still reads its own bag');
+    assert.equal(readLineVisualProfile(h.state).overClass, false, 'the authoritative main lane still reads its own bag');
 
     h.step(1, { before() { h.state.input.actions.tetherCut = true; }, after: sync });
     h.step(2, { before() { h.state.input.actions.tetherCut = false; }, after: sync });

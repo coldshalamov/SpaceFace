@@ -1,5 +1,5 @@
 // w-498/499: the Line remembers tonnage, the class ladder advances on real holds,
-// record holds stamp CORRECT., an over-class body strains the winch to a grace snap,
+// record holds stamp CORRECT., a heavy body never strains or snaps the line (ruling R12),
 // and the bag survives a save/restore round trip normalized.
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -82,24 +82,25 @@ test('w-498: a record heaviest hold stamps once and tonnage never double-credits
   assert.equal(state.lineProgression.tonnageLoggedT, 530);
 });
 
-test('w-499: an over-class hold heats the winch to a grace-window snap', () => {
+// Ruling R12 (design/overhaul/00_RULINGS.md, owner 2026-11-18): "when you're small the tether makes you
+// swing around THEM… when you play a huge ship… YOU PULL THEM." The rope never refuses or snaps for mass;
+// the physics owner decides who moves. Row 499's heat-to-snap strain is retired.
+test('R12: a heavy hold never heats, clamps or snaps the line — mass decides who moves', () => {
   const { state, bus, sys, attachments, cutCalls } = harness();
-  // Class I controls 20 T; the 500 T heavy1 is far over the ceiling.
+  // Class I's full-control figure is 20 T; the 500 T heavy1 is an anchor the pilot swings round.
   attachments.listForEntity = () => [{ id: 'att9', state: 'active', targetId: 'heavy1' }];
   bus.emit('tether:latched', { targetId: 'heavy1' });
-  sys.update(1 / 60, state);
-  assert.equal(state.lineProgression.overClass, true);
-  assert.ok(state.lineProgression.overClassReelFactor < 1, 'reel clamp exposed');
-  assert.ok(state.lineProgression.overClassTurnFactor < 1, 'turn clamp exposed');
-  // Burn through the heat cap and the grace window.
-  for (let i = 0; i < 60 * 10; i += 1) {
+  for (let i = 0; i < 60 * 12; i += 1) {
     state.simTime += 1 / 60;
     sys.update(1 / 60, state);
-    if (cutCalls.length) break;
   }
-  assert.equal(cutCalls.length, 1, 'exactly one grace snap');
-  assert.equal(cutCalls[0].reason, 'line_overclass_snap');
-  assert.equal(state.lineProgression.winchHeat, 0, 'heat resets after the snap');
+  assert.equal(state.lineProgression.overClass, false, 'the rope never strains for mass (R12)');
+  assert.equal(state.lineProgression.overClassReelFactor, 1, 'no reel clamp');
+  assert.equal(state.lineProgression.overClassTurnFactor, 1, 'no turn clamp: an orbiting pilot keeps the nose');
+  assert.equal(state.lineProgression.winchHeat, 0, 'mass adds no winch heat');
+  assert.equal(cutCalls.length, 0, 'no timed snap for mass');
+  bus.emit('tether:released', { targetId: 'heavy1' });
+  assert.equal(state.lineProgression.tonnageLoggedT, 500, 'the heavy hold still logs its tonnage toward the ladder');
 });
 
 // NOTICE-01: the opening's second throw — "Latch the raider. Swing him into the rock." — must
@@ -124,23 +125,24 @@ test('notice-01: a latched tutorial raider counts no held mass — no heat, no s
   bus.emit('tether:released', { targetId: 'raider1' });
   assert.equal(state.lineProgression.tonnageLoggedT, 0,
     'the lesson hold logs no tonnage — same as the rock');
-  // Control: the same mass without the raid tag is a real over-class hold.
+  // Control: the same mass without the raid tag logs as an ordinary hold — and still never strains (R12).
   state.entities.set('plainHeavy', { id: 'plainHeavy', mass: 220, data: {} });
   attachments.listForEntity = (id) => (id === 'p1'
     ? [{ id: 'att-plain', state: 'active', targetId: 'plainHeavy' }]
     : []);
   bus.emit('tether:latched', { targetId: 'plainHeavy' });
   sys.update(1 / 60, state);
-  assert.equal(state.lineProgression.overClass, true, 'ordinary 220 T still strains the line');
+  assert.equal(state.lineProgression.overClass, false, 'R12: ordinary 220 T never strains the line either');
 });
 
-test('w-499: a within-class hold never heats, and a stale bag normalizes clean', () => {
+test('w-499: no hold heats the winch, saved heat cools, and a stale bag normalizes clean', () => {
   const { state, bus, sys } = harness();
   bus.emit('tether:latched', { targetId: 'rock1' });
+  state.lineProgression.winchHeat = 0.6; // heat saved by an older build
   for (let i = 0; i < 60; i += 1) sys.update(1 / 60, state);
-  // 30 T is over the 20 T class-I cap — the winch heats.
-  assert.ok(state.lineProgression.winchHeat > 0, 'over-class hold heats');
-  assert.equal(state.lineProgression.overClass, true);
+  // 30 T is above class I's 20 T full-control figure: under R12 that is not a strain, only who moves.
+  assert.ok(state.lineProgression.winchHeat < 0.6, 'saved heat cools; nothing adds heat (R12)');
+  assert.equal(state.lineProgression.overClass, false);
   const small = { id: 'pebble', mass: 5 };
   state.entities.set('pebble', small);
   bus.emit('tether:released', { targetId: 'rock1' });

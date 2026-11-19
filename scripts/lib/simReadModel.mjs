@@ -332,6 +332,9 @@ export function applySpawnInfos(readModel, spawnInfos, state = null, worldGenera
       _noMesh: info.noMesh === true,
       sectorId: info.sectorId || null,
       flags: info.flags || {},
+      // R12 aim tag: the worker's physics-body truth for who moves on the rope (src/ui/lineRelation.js).
+      ...(info.fixedBody === true ? { fixedBody: true } : {}),
+      ...(Number.isFinite(info.bodyMassT) && info.bodyMassT > 0 ? { bodyMassT: info.bodyMassT } : {}),
       data: info.data && typeof info.data === 'object'
         ? canonicalClone(info.data)
         : {

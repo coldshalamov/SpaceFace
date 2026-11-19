@@ -444,6 +444,10 @@ export function entityVitalsOf(e, krakenFrame = VITAL_SHADOW_MISSING, state = nu
   const orchardPod = orchardPodPublicValue(e);
   if (orchardPod !== VITAL_SHADOW_MISSING) fields.orchardPodPublic = orchardPod;
   if (krakenFrame !== VITAL_SHADOW_MISSING) fields.ironKrakenMotionFrame = krakenFrame;
+  // R12 aim tag: posture and body mass ride the vitals diff with explicit clear values (false / 0), so a body
+  // that turns dynamic again (the Orchard pod after release) stops reading ANCHOR on the main lane.
+  fields.fixedBody = ropeFixedValue(e);
+  fields.bodyMassT = ropeBodyMassValue(e);
   return fields;
 }
 
@@ -465,6 +469,14 @@ function orchardPodPublicValue(e) {
     || typeof e.data.masslineTetherable !== 'boolean') return VITAL_SHADOW_MISSING;
   return JSON.stringify([e.occupantGeneration, e.data.worldRecordId, e.physicsBody.dynamic,
     e.physicsBody.revision, e.data.masslineTetherable, e.data.amount]);
+}
+
+function ropeFixedValue(e) {
+  return !!(e && e.physicsBody && e.physicsBody.dynamic === false);
+}
+function ropeBodyMassValue(e) {
+  const m = e && e.physicsBody ? e.physicsBody.mass : undefined;
+  return Number.isFinite(m) && m > 0 && m !== e.mass ? m : 0;
 }
 
 function swarmSpecialistFrameValue(e) {
@@ -623,6 +635,9 @@ function vitalShadowMatches(e, shadow, krakenFrame, state) {
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     if (authoredMotionFrameValue(e, key) !== shadow[i++]) return false;
   }
+  // Rope posture / body mass sit BEFORE the tail slots: collectEntityVitals reads the tail by length-relative index.
+  if (ropeFixedValue(e) !== shadow[i++]) return false;
+  if (ropeBodyMassValue(e) !== shadow[i++]) return false;
   if (mawPresentationRadius(e) !== shadow[i++]) return false;
   if (orchardPodPublicValue(e) !== shadow[i++]) return false;
   if (krakenFrame !== shadow[i++]) return false;
@@ -730,6 +745,8 @@ function writeVitalShadow(e, shadow, krakenFrame, state) {
   for (const key of AUTHORED_MOTION_FRAME_FIELDS) {
     shadow[i++] = authoredMotionFrameValue(e, key);
   }
+  shadow[i++] = ropeFixedValue(e);
+  shadow[i++] = ropeBodyMassValue(e);
   shadow[i++] = mawPresentationRadius(e);
   shadow[i++] = orchardPodPublicValue(e);
   shadow[i++] = krakenFrame;
@@ -779,6 +796,11 @@ function entityInfoBlock(state, entityId, host) {
     ...(isPromotedFieldRock(e) ? { promotedFieldRock: true } : {}),
     noMesh: e._noMesh === true,
     flags: flatFlags,
+    // R12 aim tag (design/overhaul/03_COMBAT.md §2.1): who moves on the rope is the physics body's truth — a
+    // bolted body is an anchor whatever its nominal mass, and the body's own mass can differ from `mass`.
+    ...(e.physicsBody && e.physicsBody.dynamic === false ? { fixedBody: true } : {}),
+    ...(e.physicsBody && Number.isFinite(e.physicsBody.mass) && e.physicsBody.mass > 0 && e.physicsBody.mass !== e.mass
+      ? { bodyMassT: e.physicsBody.mass } : {}),
     ...(isOrchardFrame(e) ? { physicsBody: canonicalClone(e.physicsBody) }
       : isOrchardPod(e) ? { physicsBody: orchardPodBodySpec({
         dynamic: e.physicsBody.dynamic, revision: e.physicsBody.revision,

@@ -73,8 +73,9 @@ export async function inspectTallyHailAdvice() {
   assert.ok(offer.actions.some(a=>a.id==='tally_deliver'));
 
   assert.match(offer.towAdvice,/180T load/);
-  assert.match(offer.towAdvice,/Class I controls 20T/);
-  assert.match(offer.towAdvice,/Temporary hold: heat can snap/);
+  assert.match(offer.towAdvice,/\b(TOW|TUG|ANCHOR)\b/,'R12: advice names the hull-to-load relation, not line class');
+  assert.doesNotMatch(offer.towAdvice,/Class I/);
+  assert.match(offer.towAdvice,/below 8/);
   const rows=prompt.el.querySelector('[data-k="lines"]').children;
   assert.equal(rows.length,3);assert.equal(rows[2].textContent,offer.towAdvice);
   assert.match(rows[2].className,/tow-advice/);
@@ -103,5 +104,5 @@ export function makeHailTestDocument(){
   contains(e){return this.children.includes(e)}
  }
  const root=new Element(),head=new Element();
- return {head,createElement:()=>new Element(),getElementById:id=>id==='ui-root'?root:null,addEventListener(){},removeEventListener(){}};
+ return {head,createElement:()=>new Element(),getElementById:id=>id==='ui-root'?root:null,querySelector:()=>null,querySelectorAll:()=>[],addEventListener(){},removeEventListener(){}};
 }

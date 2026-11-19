@@ -350,7 +350,7 @@ test('Adventure flight: the acquisition bracket says a plain verdict, not mass t
     hud.update(1 / 60, state);
     const bracket = findAll(t.doc.getElementById('sf-ml2'), (n) => n.classList && n.classList.contains('ml2-preview'))[0];
     assert.ok(bracket);
-    assert.equal(bracket.textContent, 'TOO HEAVY', 'the bracket answers the swing question in plain words');
+    assert.match(bracket.textContent, /^\S+ · ANCHOR$/, 'R12: the bracket says who moves, with the live key, never TOO HEAVY');
     assert.doesNotMatch(bracket.textContent, /MASS|BUDGE|2000/);
   } finally {
     hud.destroy();

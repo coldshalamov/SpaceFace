@@ -8,17 +8,22 @@ import {createContactHailPrompt} from '../src/ui/contactHailPrompt.js';
 test('Tally assesses original live mass against normalized effective line class without writes',()=>{
  assert.equal(typeof tally.tallyThreeTowAssessment,'function');
  const body={id:9,alive:true,mass:17,physicsBody:{mass:180},data:{worldRecordId:tally.TALLY_THREE.worldRecordId}};
- const state={entityList:[body,{id:10,alive:true,mass:9999,data:{worldRecordId:tally.TALLY_THREE.assessorId}}],lineProgression:{classIndex:8,tonnageLoggedT:0,grantedClassSteps:0,trialClassSteps:0,winchHeat:.4}};
+ const player={id:1,alive:true,mass:18,data:{}};
+ const state={playerId:1,entities:new Map([[1,player]]),entityList:[body,{id:10,alive:true,mass:9999,data:{worldRecordId:tally.TALLY_THREE.assessorId}}],lineProgression:{classIndex:8,tonnageLoggedT:0,grantedClassSteps:0,trialClassSteps:0,winchHeat:.4}};
  const before=JSON.stringify(state);
  let view=tally.tallyThreeTowAssessment(state);
  assert.equal(view.massT,180);assert.equal(view.classIndex,1);assert.equal(view.fullControlMassT,20);assert.equal(view.overClass,true);
- assert.match(view.text,/temporary hold/i);assert.match(view.text,/heat can snap/i);
+ assert.equal(view.relation,'ANCHOR','180 t load against an 18 t hull is an ANCHOR');assert.match(view.text,/^180T load · ANCHOR./);assert.match(view.text,/swing round it/i);assert.doesNotMatch(view.text,/drags you as much as you drag it|Class/i,'advice comes from the hull-to-load relation, not line class');assert.match(view.text,/below 8/i);assert.doesNotMatch(view.text,/heat|snap/i,'R12: the rope never snaps for mass');
  assert.equal(JSON.stringify(state),before);
- body.physicsBody.mass=20.001;view=tally.tallyThreeTowAssessment(state);
- assert.equal(view.overClass,true);assert.match(view.text,/^>20T load/,'rounded mass must still visibly exceed the class ceiling');
+ body.physicsBody.mass=40;view=tally.tallyThreeTowAssessment(state);
+ assert.equal(view.relation,'TUG');assert.match(view.text,/drags you as much as you drag it/i);assert.match(view.text,/below 8/i);
+ body.physicsBody.mass=12;view=tally.tallyThreeTowAssessment(state);
+ assert.equal(view.relation,'TOW');assert.match(view.text,/trails you/i);
+ player.mass=0;view=tally.tallyThreeTowAssessment(state);
+ assert.equal(view.relation,'');assert.doesNotMatch(view.text,/TOW|TUG|ANCHOR/);assert.match(view.text,/below 8/i,'unknown hull mass: neutral advice keeps the settling rule');player.mass=18;
  body.physicsBody.mass=180;
  for(const progress of [{tonnageLoggedT:15000},{grantedClassSteps:2},{trialClassSteps:2}]){
-  state.lineProgression={...progress,classIndex:1};view=tally.tallyThreeTowAssessment(state);assert.equal(view.classIndex,3);assert.equal(view.overClass,false);assert.match(view.text,/below 8/);assert.doesNotMatch(view.text,/safe|unbreakable/i);
+  state.lineProgression={...progress,classIndex:1};view=tally.tallyThreeTowAssessment(state);assert.equal(view.classIndex,3);assert.equal(view.overClass,false);assert.equal(view.relation,'ANCHOR','line class never changes the hull-to-load word');assert.match(view.text,/below 8/);assert.doesNotMatch(view.text,/safe|unbreakable/i);
  }
  state.lineProgression={};body.physicsBody.mass=20;assert.equal(tally.tallyThreeTowAssessment(state).overClass,false);
  body.physicsBody.mass=NaN;body.mass=180;assert.equal(tally.tallyThreeTowAssessment(state).massT,180);
@@ -33,7 +38,7 @@ test('actual hail presenter shows one bounded wrapped Tally advice row and aria 
  const prompt=createContactHailPrompt({state,bus});
  try{
   const lines=['TALLY-3 · OWNED · 4u / 140 cr','Ceres Refinery · CERES-RECOVERY-03 · Ceres receiver'];
-  const offer={kind:'tally_three',targetId:9,requestId:'real-offer',expiresAt:8,lines,actions:[{id:'tally_deliver',label:'DELIVER'},{id:'tally_contest',label:'CITE MANIFEST'},{id:'tally_receiver',label:'RECEIVER COURSE'}],towAdvice:'180T load · Class I controls 20T. Temporary hold: heat can snap the line.'};
+  const offer={kind:'tally_three',targetId:9,requestId:'real-offer',expiresAt:8,lines,actions:[{id:'tally_deliver',label:'DELIVER'},{id:'tally_contest',label:'CITE MANIFEST'},{id:'tally_receiver',label:'RECEIVER COURSE'}],towAdvice:'180T load · ANCHOR. It outweighs you many times over: it moves slowly while you swing round it. Pull steadily, release early. Tow slow; settle below 8 u/s.'};
   bus.emit('contactHail:offer',offer);
   const rows=prompt.el.querySelector('[data-k="lines"]').children;
   assert.equal(rows.length,3,'advice is not discarded by original two-line renderer');
@@ -66,5 +71,5 @@ export function makeHailTestDocument(){
   contains(e){return this.children.includes(e)}
  }
  const root=new Element(),head=new Element();
- return {head,createElement:()=>new Element(),getElementById:id=>id==='ui-root'?root:null,addEventListener(){},removeEventListener(){}};
+ return {head,createElement:()=>new Element(),getElementById:id=>id==='ui-root'?root:null,querySelector:()=>null,querySelectorAll:()=>[],addEventListener(){},removeEventListener(){}};
 }
