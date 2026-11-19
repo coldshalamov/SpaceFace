@@ -305,8 +305,10 @@ Earlier the same day, correcting the previous agent:
 > least every implementation I've seen. light is supposed to look leke these imaged in games.
 
 (The three reference frames — Fable's blue braziers on rain-wet stone stairs, Freelancer's sunlit
-station before an emerald nebula, the Dead Space remake's light shaft through a corridor — are copied
-to `design/overhaul/references/`.)
+station before an emerald nebula, the Dead Space remake's light shaft through a corridor — are
+third-party screenshots, so they are kept **local only** at `.devshots/director/references/` on the
+owner's machine and never committed to this public repository. `07_LOOK_AND_LIGHT.md` §1 describes
+each one in words.)
 
 And to this director, the same evening:
 
