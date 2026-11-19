@@ -2121,6 +2121,10 @@ ${T} .sx-bar__hang:is(:hover, :focus-within)::after { background:${SPINE(3, .62)
   ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) :is(.orr-chain__name, .orr-chain__count) { display:inline !important; font-size:12px !important; line-height:14px !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__count { margin-left:.5em !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb { display:block !important; margin-top:2px !important; }
+  /* the yard word ("yard holds 32") is its own line under the count: in the shared name/count flow it
+     ran straight on from "short" with no gap and read as "SHORTYARD HOLDS 32"; the 12px name's own space was too thin, so "Iron Ore" read as "IronOre" (ui-polish-532) */
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__yard { display:block !important; margin-top:1px !important; line-height:14px !important; }
+  ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__name { word-spacing:.14em !important; }
   ${D} .orr-ind-chain .orr-chain__label.is-left:not(:has(> .orr-chain__reason)) .orr-chain__verb > .orr-chain__source { display:block !important; box-sizing:border-box; width:fit-content !important; max-width:100% !important; min-height:0 !important; margin-top:0 !important; padding:5px 7px !important; line-height:14px !important; text-align:left !important; white-space:normal !important; overflow-wrap:normal !important; letter-spacing:.04em !important; }
   ${D} .orr-ind-chain .orr-chain__label:has(> .orr-chain__reason) .orr-chain__verb > .orr-chain__wayout { padding:5px 7px !important; line-height:14px !important; text-align:left !important; letter-spacing:.04em !important; }
   ${D} .orr-ind-chain .orr-chain__verb > :is(.orr-chain__source, .orr-chain__wayout)::before { content:none !important; }
