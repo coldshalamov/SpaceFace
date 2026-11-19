@@ -17,6 +17,13 @@
 //     later, after this warm, so the exemplars come from a freighter the renderer's own visual
 //     factory builds here: same factory, same module-cached materials, so the played keys. All
 //     eight lane variants share one program set (pinned by test).
+//   - SF_CommonRock_GeologicalPBR_v5 per-body key with the scene environment (cubeUV envMap,
+//     instancing bit clear): scenewarm3 6v6 still linked it post-lift on Asteroid_604 in 3/5
+//     candidate runs (250-374 ms) — the warm runs ~15 s before the lift, before any per-body
+//     asteroid exists, so findNonInstancedRock found nothing and only the instanced key was warmed.
+//     The pooled chunk draws the same shared library material, so a plain Mesh over it with the
+//     chunk's attribute layout resolves exactly the per-body key (the two keys differ only in the
+//     instancing bit).
 // openingEffectWarm.js names the first two, but its sweep is only reached from the opening
 // roster warm, which this route never begins (no receipt in any of the 12 verdicts).
 //
@@ -55,11 +62,18 @@ function degenerateAttribute(source, vertices) {
   return new THREE.BufferAttribute(new Float32Array(itemSize * vertices), itemSize, source.normalized === true);
 }
 
-function layoutClone(geometry, vertices) {
+// Attribute layout only ({ name, itemSize, normalized }): what the program key reads. Keeping the
+// layout instead of the source geometry lets a built-and-dropped source (the freighter) be collected.
+function attributeLayout(geometry) {
+  const attributes = geometry && geometry.attributes ? geometry.attributes : {};
+  return Object.keys(attributes).map((name) => ({ name, itemSize: attributes[name].itemSize,
+    normalized: attributes[name].normalized === true }));
+}
+
+function layoutClone(geometryOrLayout, vertices) {
+  const layout = Array.isArray(geometryOrLayout) ? geometryOrLayout : attributeLayout(geometryOrLayout);
   const out = new THREE.BufferGeometry();
-  for (const name of Object.keys(geometry.attributes || {})) {
-    out.setAttribute(name, degenerateAttribute(geometry.attributes[name], vertices));
-  }
+  for (const attr of layout) out.setAttribute(attr.name, degenerateAttribute(attr, vertices));
   out.setDrawRange(0, vertices);
   return out;
 }
@@ -129,7 +143,7 @@ function ensureFreighterLeaves(visualFactory) {
     const key = `${node.material.uuid}|${attributeSignature(node.geometry)}|${instanced}|${instanced && !!node.instanceColor}|${flip}|${node.castShadow === true}`;
     if (seen.has(key)) return;
     seen.add(key);
-    freighterLeaves.push({ material: node.material, geometry: node.geometry, instanced,
+    freighterLeaves.push({ material: node.material, layout: attributeLayout(node.geometry), instanced,
       instanceColor: instanced && !!node.instanceColor, flip,
       castShadow: node.castShadow === true, receiveShadow: node.receiveShadow === true });
   });
@@ -191,20 +205,29 @@ export function attachPreliftSceneWarm(parent, scene, { visualFactory = null } =
   }
 
   const rock = findNonInstancedRock(scene, parent);
-  if (rock) {
-    const geo = layoutClone(rock.geometry, 3);
+  const inst = findInstancedRockSource(scene, parent, rock);
+  // Per-body (non-instanced) key: the live per-body mesh when one exists, else the pooled chunk's
+  // shared library material and layout as a plain Mesh (no per-body asteroid exists this early).
+  const perBody = rock
+    ? { material: rock.material, geometry: rock.geometry, castShadow: rock.castShadow, receiveShadow: rock.receiveShadow,
+      source: String((rock.parent && rock.parent.name) || rock.name || '') }
+    : (inst && inst.pooled
+      ? { material: inst.material, geometry: inst.geometry, castShadow: inst.mesh.castShadow,
+        receiveShadow: inst.mesh.receiveShadow, source: `pooled-material:${inst.mesh.name}` }
+      : null);
+  if (perBody) {
+    const geo = layoutClone(perBody.geometry, 3);
     ownedGeometries.push(geo);
-    const mesh = new THREE.Mesh(geo, rock.material);
+    const mesh = new THREE.Mesh(geo, perBody.material);
     mesh.name = `${PRELIFT_WARM_ROOT_NAME}:rock`;
-    mesh.castShadow = rock.castShadow === true;
-    mesh.receiveShadow = rock.receiveShadow === true;
+    mesh.castShadow = perBody.castShadow === true;
+    mesh.receiveShadow = perBody.receiveShadow === true;
     mesh.frustumCulled = false;
     root.add(mesh);
     receipt.rock = true;
-    receipt.rockSource = String((rock.parent && rock.parent.name) || rock.name || '');
+    receipt.rockSource = perBody.source;
   }
 
-  const inst = findInstancedRockSource(scene, parent, rock);
   if (inst) {
     // count 1, identity matrix, degenerate geometry: draws nothing visible but binds the
     // instanceMatrix attribute, so the program carries the instancing define like the pool chunk.
@@ -227,7 +250,7 @@ export function attachPreliftSceneWarm(parent, scene, { visualFactory = null } =
   try { leaves = ensureFreighterLeaves(visualFactory); } catch (_) { leaves = []; }
   for (let i = 0; i < leaves.length; i++) {
     const leaf = leaves[i];
-    const geo = layoutClone(leaf.geometry, 3);
+    const geo = layoutClone(leaf.layout, 3);
     ownedGeometries.push(geo);
     let mesh;
     if (leaf.instanced) {

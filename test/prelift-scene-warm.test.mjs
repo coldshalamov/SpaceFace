@@ -45,7 +45,7 @@ const TARGET_PROGRAMS = [
   `${PRELIFT_WARM_ROCK_MATERIAL}#instanced`,
 ];
 
-function rockScene(scene, { withPool = true } = {}) {
+function rockScene(scene, { withPool = true, withBody = true } = {}) {
   const material = new THREE.MeshStandardMaterial({ name: PRELIFT_WARM_ROCK_MATERIAL, vertexColors: true });
   const geometry = new THREE.IcosahedronGeometry(1, 1);
   geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(geometry.attributes.position.count * 3), 3));
@@ -62,7 +62,7 @@ function rockScene(scene, { withPool = true } = {}) {
   asteroid.name = 'Asteroid_604';
   asteroid.add(body);
   if (withPool) scene.add(instanced);
-  scene.add(asteroid);
+  if (withBody) scene.add(asteroid);
   return { material, geometry, body, instanced };
 }
 
@@ -83,10 +83,10 @@ function programShape(mesh) {
   };
 }
 
-function fixture({ withRock = true, withPool = true, vf = undefined } = {}) {
+function fixture({ withRock = true, withPool = true, withBody = true, vf = undefined } = {}) {
   __resetPreliftSceneWarmForTests();
   const owner = Object.create(vfx), scene = new THREE.Scene();
-  const rock = withRock ? rockScene(scene, { withPool }) : null;
+  const rock = withRock ? rockScene(scene, { withPool, withBody }) : null;
   const player = { id: 1, type: 'ship', alive: true, data: {}, pos: { x: 0, z: 0 } };
   Object.assign(owner, {
     _scene: scene, _energy: null, _destroyed: false,
@@ -202,6 +202,44 @@ test('no pooled chunk yet: instanced exemplar falls back to the per-body rock ma
     const shape = programShape(inst); const want = programShape(chunk);
     assert.deepEqual(shape, want);
   } finally { f.warm.releaseWarmSamples(); f.owner._disposeEnergy(); }
+});
+
+// scenewarm3 6v6: the warm runs ~15 s before the lift, before any per-body asteroid exists, so the
+// per-body key (envMap, instancing bit clear) still linked post-lift on Asteroid_604 in 3/5 runs.
+test('no per-body asteroid yet: the per-body key is warmed from the pooled chunk material', () => {
+  const f = fixture({ withBody: false });
+  try {
+    const root = warmRoot(f.warm);
+    const rock = root.children.find((c) => c.name.endsWith(':rock'));
+    assert.ok(rock, 'per-body rock exemplar present without a per-body asteroid');
+    assert.equal(rock.isInstancedMesh, undefined);
+    assert.equal(rock.material, f.rock.instanced.material, 'shared library material, never a copy');
+    assert.equal(f.warm.sceneWarm.rock, true);
+    assert.equal(f.warm.sceneWarm.rockSource, 'pooled-material:SF_CommonRockInstances_v3');
+    // Exactly the program a per-body asteroid over the library material resolves.
+    const body = new THREE.Mesh(f.rock.geometry, f.rock.material);
+    assert.deepEqual(programShape(rock), programShape(body));
+    // ...and differs from the instanced exemplar only in the instancing bit.
+    const inst = root.children.find((c) => c.name.endsWith(':rock-instanced'));
+    assert.deepEqual({ ...programShape(inst), instancing: false, instancingColor: false, instancingMorph: false },
+      { ...programShape(rock), instancingColor: false, instancingMorph: false });
+    assert.notEqual(rock.geometry, f.rock.instanced.geometry, 'exemplar never borrows the pool geometry');
+    assert.ok(drawnLeaves(root).includes(rock), 'per-body exemplar actually draws');
+  } finally { f.warm.releaseWarmSamples(); f.owner._disposeEnergy(); }
+});
+
+test('freighter exemplars keep only the attribute layout, not the built freighter geometry', () => {
+  invalidateVisualFactoryCaches();
+  const vf = createVisualFactory();
+  const built = [];
+  const spy = { build: (e) => { const o = vf.build(e); o.traverse((n) => { if (n.geometry) built.push(n.geometry); }); return o; } };
+  const f = fixture({ vf: spy });
+  try {
+    const root = warmRoot(f.warm);
+    const leaves = root.children.filter((c) => c.name.includes(':freighter:'));
+    assert.ok(leaves.length > 0);
+    for (const leaf of leaves) assert.ok(!built.includes(leaf.geometry), 'own degenerate geometry');
+  } finally { f.warm.releaseWarmSamples(); f.owner._disposeEnergy(); invalidateVisualFactoryCaches(); }
 });
 
 test('release detaches every exemplar and never disposes a shared material', () => {
