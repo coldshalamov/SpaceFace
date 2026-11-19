@@ -4564,8 +4564,8 @@ export function createHud(ctx, alerts) {
         <span class="sf-cargo-block-top">
           <span class="sf-cargo-block-name">${name}</span>
           ${isLocked ? `<span class="sf-cargo-lock-icon" title="Locked — needed for an active contract or the story">${icon('lock', 12)}</span>` : ''}
-        </div>
-        <div class="sf-cargo-block-bottom">
+        </span>
+        <span class="sf-cargo-block-bottom">
           <span class="sf-cargo-block-qty">${name} · ${qty} · ≈ ${formatCount(rowWorth, state)} cr</span>
           <span class="sf-cargo-block-vol">${vol.toFixed(1)} space</span>
           ${badgeHtml}

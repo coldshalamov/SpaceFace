@@ -184,6 +184,19 @@ ${S} #hud .sf-cargo-panel:not([hidden]):not(:empty) {
   ${S} #hud .sf-inspector-content { height:auto; }
   ${S} #hud .sf-cargo-body:not([data-has-selection]) :is(.sf-cargo-inspector, .sf-cargo-supply-tree) { display:none; }
 }
+/* cargo hold cards (ui-polish-531): the name, the qty line and the volume stack in one column. The fixed
+   120px card left the stacked qty/volume cut off under the schematic's fold on desktop, so the card
+   sizes to its three lines; on short desktops (960x540) the schematic keeps the cards whole and the
+   supply chart gives up the height instead (it scales: its svg is width/height auto). */
+@media (min-width:761px) {
+  ${S} #hud .sf-cargo-block { height:auto; min-height:84px; gap:8px; }
+}
+@media (min-width:761px) and (max-height:640px) {
+  ${S} #hud .sf-cargo-schematic { flex:0 0 auto; padding:12px 16px; overflow:visible; }
+  ${S} #hud .sf-cargo-supply-tree { flex:1 1 0; height:auto; min-height:0; padding:10px 20px; }
+  ${S} #hud .sf-cargo-supply-chart { height:calc(100% - 22px); }
+  ${S} #hud .sf-cargo-supply-chart svg { display:block; width:100%; height:100%; }
+}
 ${S} #hud .sf-target { text-align:left !important; gap:6px !important; }
 ${S} #hud .sf-target__head { align-items:flex-start !important; justify-content:space-between !important; gap:8px !important; }
 ${S} #hud .sf-target__name {
