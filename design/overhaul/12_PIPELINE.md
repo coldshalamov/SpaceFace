@@ -53,15 +53,22 @@ Each landing is reported in plain words: what changed in the game, what was chec
 
 | ID | What the player gets | Builder | State |
 |---|---|---|---|
-| SHARP-01 | A sharp picture: integrated graphics draw at the screen's native pixels again | Director | **Landed** — pin `test/sharp-picture-native-dpr.test.mjs` (e9b9ab5118). Measured headed on the owner's laptop: native 1920×912 held the same 30 Hz present rate as 1×. |
+| SHARP-01 | A sharp picture: integrated graphics draw at the screen's native pixels again | Director | **Landed** e9b9ab5118. Measured headed on the owner's laptop: native 1920×912 held the same 30 Hz present rate as 1×. |
 | T2 | No flat brown fog cone ahead of every ship | Director | **Landed** fbdf528e84 |
-| T1 + T1C | The rope never refuses; the HUD says who moves (TOW / TUG / ANCHOR); briefs teach it | Director + Sonnet | Harvested; clean-HEAD green except known reds; Codex delta review running |
-| T3/T4 + B2C | Fodder take a thrown hull instead of sidestepping it; the starter pistol hits like a gun (NPCs keep theirs) | Director + Sonnet | Same batch as above |
-| B3C | Death and loading words: Gauntlet named right, dart and crush kills named | zcode | Building |
-| T8 + calm preset | No "First light" modal; one-press calm preset in Settings › Access | Sonnet (next) | Waiting for a free Sonnet |
-| OVH-04 | A Swarm run lives in its own space — no campaign anything inside it | Codex | Building |
-| OVH-09a | Loose rocks rest; nothing spawns onto a body or a collision course | Devin | Building |
-| OVH-09b | Pilots brake for each other instead of pinballing | — | **Hold:** another agent has uncommitted crossing-brake work in `src/ai/maneuver.js`; take it after that lands |
-| OVH-08a | Every gun measured on damage against kick | Devin | Building (bench only) |
-| OVH-08b | Guns tuned to the curve; heat as rhythm (feathering, per-mount lockout) | — | After OVH-08a |
-| LOOK-THREAT | Enemies read as lit hulls, not white smudges in red rings (the 2D threat plates go) | — | Packet next; seen in the native frame `.devshots/director/sharp/run1/B-manual-native-full.png` |
+| T1 + T1C | The rope never refuses; the HUD says who moves (TOW / TUG / ANCHOR); briefs teach it | Director + Sonnet | **Landed** 343cd4f569 — two Codex reviews, clean-HEAD green, check:sim unchanged |
+| T3/T4 + B2C | Fodder take a thrown hull; the starter pistol hits like a gun (NPCs keep theirs) | Director + Sonnet | **Landed** fb79e4172d |
+| B3C | Loading names Swarm or Gauntlet; dart, blast and crush deaths named; no duplicate build sentence | zcode | Harvested (foreign lines removed by hand); Codex wave-2 review running |
+| LOOK-THREAT | Enemies read as lit hulls; the 2D emblem only on your target and bosses | Sonnet | Harvested; frames judged (before/after in `.devshots/fleet/LOOK-THREAT/`); wave-2 review running |
+| T8C | One-press "Calm preset" in Settings › Access | Sonnet | Harvested; seen on screen by the director; wave-2 review running |
+| OVH-08a | Every gun measured on damage against kick (7 pass, 13 miss, 28 unbanded) | zcode | Harvested; wave-2 review running. Table: `.devshots/fleet/OVH-08a/gun-curve.md` |
+| OVH-04 | A Swarm run lives in its own space; loading ~4 s faster (43.1 → 38.8 s measured) | Codex | Built; leaned on another agent's unfinished hull-selection code — a Sonnet is porting it onto HEAD |
+| OVH-09a | Loose rocks rest; every spawner checks clear space and a 2 s path | Devin (acct3) | Built (25 files, check:sim unchanged); porting with OVH-04 (two shared files) |
+| OVH-04b | The pause menu in a run offers only what a run needs (today: Save/Load, Mission Log, Sandbox) | — | Next packet |
+| OVH-01a | The Pilot Tree engine: 70 nodes, banked picks, the three-card draw | zcode | Building |
+| OVH-01b | The level-up cards in the breath [FE] | Sonnet | After OVH-01a |
+| OVH-03a | The Foundry as a lit set: a deck under the fight and one sun | Codex | Building |
+| OVH-08b | Guns tuned to the curve; heat as rhythm (feathering, per-mount lockout) | — | After OVH-08a lands |
+| OVH-09b | Pilots brake for each other instead of pinballing | — | **Hold:** another agent's uncommitted crossing-brake work is in `src/ai/maneuver.js` |
+
+**Agents on hand (2026-11-19):** Devin `acct1`/`acct2` report "Upgrade to Pro" for SWE-2 Max and `acct4`
+needs an interactive login, so Devin runs on `devin3` only. zcode runs two at once without trouble.
