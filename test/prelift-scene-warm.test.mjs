@@ -6,11 +6,35 @@ import { vfx } from '../src/render/vfx.js';
 import { CauseMarkLayer } from '../src/render/vfx/causeMarks.js';
 import { ContinuousPlumeSystem } from '../src/render/thruster/systems/continuousPlume.js';
 import { resolveThrusterRecipes } from '../src/render/thruster/recipes/registry.js';
+import { createVisualFactory, invalidateVisualFactoryCaches } from '../src/render/visualFactory.js';
 import {
+  PRELIFT_WARM_FREIGHTER_ENTITY,
   PRELIFT_WARM_ROOT_NAME,
   PRELIFT_WARM_ROCK_MATERIAL,
   __resetPreliftSceneWarmForTests,
 } from '../src/render/preliftSceneWarm.js';
+
+// Headless canvas so the visual factory can paint hull textures (same stub as
+// runtime-visual-type-coverage.test.mjs).
+function stubCanvas() {
+  const context = {
+    createImageData(width, height) {
+      return { data: new Uint8ClampedArray(width * height * 4), width, height };
+    },
+    putImageData() {}, fillRect() {}, strokeRect() {}, clearRect() {}, drawImage() {},
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {}, setTransform() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arc() {}, rect() {}, fill() {}, stroke() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arcTo() {}, ellipse() {}, fillText() {},
+    measureText() { return { width: 0 }; },
+    createLinearGradient() { return { addColorStop() {} }; },
+    createRadialGradient() { return { addColorStop() {} }; },
+  };
+  return { width: 256, height: 256, getContext: () => context };
+}
+
+globalThis.document ||= { createElement: () => stubCanvas() };
+
+globalThis.document ||= { createElement: () => stubCanvas() };
 
 // Post-lift first-use links this warm exists for (perf lane impactgc traces, both arms).
 const TARGET_PROGRAMS = [
@@ -59,7 +83,7 @@ function programShape(mesh) {
   };
 }
 
-function fixture({ withRock = true, withPool = true } = {}) {
+function fixture({ withRock = true, withPool = true, vf = undefined } = {}) {
   __resetPreliftSceneWarmForTests();
   const owner = Object.create(vfx), scene = new THREE.Scene();
   const rock = withRock ? rockScene(scene, { withPool }) : null;
@@ -67,7 +91,8 @@ function fixture({ withRock = true, withPool = true } = {}) {
   Object.assign(owner, {
     _scene: scene, _energy: null, _destroyed: false,
     state: { mode: 'loading', playerId: 1, entities: new Map([[1, player]]),
-      contextRestoreSeq: 0, render: { admissionRunGeneration: 1 }, settings: { video: {} } },
+      contextRestoreSeq: 0, render: { admissionRunGeneration: 1, vf: vf === undefined ? createVisualFactory() : vf },
+      settings: { video: {} } },
     _productionThrusterEnabled: () => true, _extendedEngineTrailsEnabled: () => false,
     _writeProductionPlumeSockets: () => 1,
     _productionPlumeSocketView: [{ x: -12, y: 0, z: -1, ax: 1, ay: 0, az: 0 }],
@@ -110,7 +135,9 @@ test('the strict plasma admission root carries an exemplar for every targeted pr
       causeMarks: true, plumeLayers: f.warm.sceneWarm.plumeLayers,
       plumeRecipe: 'family_industrial_main_plume', rock: true, rockSource: 'Asteroid_604',
       rockInstanced: true, rockInstancedSource: 'SF_CommonRockInstances_v3',
+      freighterLeaves: f.warm.sceneWarm.freighterLeaves,
     });
+    assert.ok(f.warm.sceneWarm.freighterLeaves >= 3);
     assert.ok(f.warm.sceneWarm.plumeLayers >= 2);
     assert.equal(f.owner._energy, null, 'no fleet init');
   } finally { f.warm.releaseWarmSamples(); f.owner._disposeEnergy(); }
@@ -214,4 +241,82 @@ test('LOAD-03 stays crucible-menu-only; Adventure reaches the pre-lift warm thro
   assert.ok(/_earlyCrucibleWarmMenu/.test(before), 'LOAD-03 arm gated on the crucible menu warm');
   const vfxSrc = readFileSync(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
   assert.match(vfxSrc, /attachPreliftSceneWarm\(plasmaStream\.group/);
+});
+
+// Lane-traffic freighter (Mesh<Group<Group<Scene in the scenewarm2 traces; who-tap diag v3who1:
+// root userData kind 'ship', presentationEntityType 'freighter', generatedVisualProducer
+// 'visual-factory-procedural'). The three programs that linked post-lift on both arms were the
+// illustrated hull (map + normal + roughness), the transparent map-only grime/patch overlay and
+// the MeshPhysicalMaterial canopy.
+// Every material input three.js WebGLPrograms folds into the program cache key (per-build
+// materials such as the shield bubble are fresh objects but resolve the same key).
+const MAP_SLOTS = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'alphaMap',
+  'bumpMap', 'displacementMap', 'lightMap', 'envMap', 'clearcoatMap', 'clearcoatNormalMap', 'clearcoatRoughnessMap',
+  'transmissionMap', 'thicknessMap', 'sheenColorMap', 'specularIntensityMap', 'specularColorMap', 'iridescenceMap'];
+function programSig(m) {
+  return JSON.stringify([m.type, m.customProgramCacheKey ? m.customProgramCacheKey() : '',
+    m.isShaderMaterial ? [m.vertexShader, m.fragmentShader, m.defines || {}] : null,
+    MAP_SLOTS.map((k) => !!m[k]), m.transparent, m.vertexColors, m.side, m.alphaTest > 0, m.alphaHash,
+    m.flatShading, m.fog, m.toneMapped, m.premultipliedAlpha, m.dithering, m.blending,
+    m.clearcoat > 0, m.transmission > 0, m.sheen > 0, m.iridescence > 0, m.anisotropy > 0, m.dispersion > 0,
+    m.normalMapType, m.envMapIntensity !== undefined]);
+}
+function leafShape(node) {
+  return [programSig(node.material), node.isInstancedMesh === true, node.isInstancedMesh === true && !!node.instanceColor,
+    Object.keys(node.geometry.attributes).sort().map((k) => `${k}:${node.geometry.attributes[k].itemSize}:${node.geometry.attributes[k].normalized === true}`).join(',')].join('|');
+}
+function builtShapes(vf, laneVariant) {
+  const root = vf.build({ ...PRELIFT_WARM_FREIGHTER_ENTITY, id: 900 + laneVariant,
+    data: { parentType: 'lane_traffic', laneVariant } });
+  const out = new Set();
+  root.traverse((n) => { if (n.isMesh && n.material && !Array.isArray(n.material) && !n.isBatchedMesh) out.add(leafShape(n)); });
+  return out;
+}
+
+test('freighter exemplars share the factory materials of every lane variant and cover the post-lift programs', () => {
+  invalidateVisualFactoryCaches();
+  const vf = createVisualFactory();
+  const f = fixture({ vf });
+  try {
+    const root = warmRoot(f.warm);
+    const leaves = root.children.filter((c) => c.name.includes(':freighter:'));
+    assert.equal(leaves.length, f.warm.sceneWarm.freighterLeaves);
+    const warmed = new Set(leaves.map(leafShape));
+    for (let v = 0; v < 8; v++) {
+      for (const shape of builtShapes(vf, v)) assert.ok(warmed.has(shape), `lane variant ${v} leaf ${shape} warmed`);
+    }
+    const mats = leaves.map((l) => l.material);
+    assert.ok(mats.some((m) => m.isMeshStandardMaterial && m.map && m.normalMap && m.roughnessMap
+      && m.userData.spacefaceIllustratedSurface), 'illustrated hull (map/normal/roughness)');
+    assert.ok(mats.some((m) => m.isMeshStandardMaterial && m.map && !m.normalMap && m.transparent), 'transparent overlay');
+    assert.ok(mats.some((m) => m.isMeshPhysicalMaterial), 'canopy physical');
+    for (const leaf of leaves) {
+      assert.equal(leaf.frustumCulled, false);
+      assert.ok(leaf.geometry.drawRange.count > 0 && leaf.geometry.attributes.position.count === 3, 'degenerate own geometry');
+      assert.ok([...leaf.geometry.attributes.position.array].every((x) => x === 0));
+    }
+  } finally { f.warm.releaseWarmSamples(); f.owner._disposeEnergy(); invalidateVisualFactoryCaches(); }
+});
+
+test('freighter release never disposes the module-cached factory materials', () => {
+  invalidateVisualFactoryCaches();
+  const f = fixture({ vf: createVisualFactory() });
+  const root = warmRoot(f.warm);
+  const disposed = [];
+  for (const leaf of root.children.filter((c) => c.name.includes(':freighter:'))) {
+    leaf.material.addEventListener('dispose', () => disposed.push(leaf.material.uuid));
+  }
+  f.warm.releaseWarmSamples();
+  assert.deepEqual(disposed, []);
+  f.owner._disposeEnergy();
+  invalidateVisualFactoryCaches();
+});
+
+test('no visual factory: freighter exemplars skipped, the rest still warm', () => {
+  const f = fixture({ vf: null });
+  try {
+    assert.equal(f.warm.sceneWarm.freighterLeaves, 0);
+    assert.equal(f.warm.sceneWarm.causeMarks, true);
+    assert.equal(f.warm.sceneWarm.rockInstanced, true);
+  } finally { f.warm.releaseWarmSamples(); f.owner._disposeEnergy(); }
 });

@@ -13069,10 +13069,12 @@ export const vfx = {
     }
     if (playerPlasmaOnly) {
       // Ride the strict pre-lift plasma admission with the first-use programs that otherwise link
-      // inside presented flight (cause marks, industrial plume core/distortion, per-body rock).
+      // inside presented flight (cause marks, industrial plume core/distortion, per-body and instanced
+      // rock, lane-traffic freighter hull/overlay/canopy).
       let sceneWarm = null;
       try {
-        sceneWarm = attachPreliftSceneWarm(plasmaStream.group, this._scene);
+        sceneWarm = attachPreliftSceneWarm(plasmaStream.group, this._scene,
+          { visualFactory: this.state?.render?.vf || null });
       } catch (error) {
         sceneWarm = null;
         if (typeof console !== 'undefined') console.warn('[vfx] pre-lift scene warm failed', error);
