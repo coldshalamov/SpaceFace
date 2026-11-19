@@ -179,6 +179,10 @@ export function createLedgerTape(host, { onPick = null, purseHost = null, readin
     const y = Math.round(H * 0.46);
     const maxUp = Math.max(18, Math.min(y - 30, H - y - 30 - LEADER_STRIP));
     const maxDown = maxUp;
+    // the half-major numerals sit maxUp / 2 from the ceiling's: on a short tape (maxUp under 40, as on
+    // 960x540 and 1280x720) the 12px "1,250" sat a hair under "2,500 cr" and the axis read as a smudge,
+    // so there the half majors keep their ticks and only the ceilings are numbered (ui-polish-536)
+    const halfLabels = maxUp >= 40;
     // the now cursor keeps the right end: the tape ends there, it draws no future
     const nowX = x1 - 44;
 
@@ -324,7 +328,7 @@ export function createLedgerTape(host, { onPick = null, purseHost = null, readin
           const yy = sign > 0 ? y - len : y + len;
           if (k % 2 === 0) majors += `M ${f(x0)} ${f(yy)} L ${f(x0 + 6)} ${f(yy)} `;
           else minors += `M ${f(x0)} ${f(yy)} L ${f(x0 + 3)} ${f(yy)} `;
-          if (k % 2 === 0) {
+          if (k % 2 === 0 && (k === 4 || halfLabels)) {
             const t = svg('text', { x: f(x0 + 9), y: f(yy + 3.5), 'text-anchor': 'start', class: 'orr-ltape__key orr-ltape__axis-n' });
             t.textContent = `${sign < 0 ? '\u2212' : ''}${fmt(v)}${k === 4 && sign > 0 ? ' cr' : ''}`;
             rg.appendChild(t);
@@ -345,7 +349,7 @@ export function createLedgerTape(host, { onPick = null, purseHost = null, readin
       const ghostCeil = 2500;
       const gLen = (v) => (v / ghostCeil) * maxUp;
       let majors = '';
-      for (const sign of [1, -1]) for (let k = 2; k <= 4; k += 2) { const yy = sign > 0 ? y - gLen((ghostCeil * k) / 4) : y + gLen((ghostCeil * k) / 4); majors += `M ${f(x0)} ${f(yy)} L ${f(x0 + 6)} ${f(yy)} `; { const t = svg('text', { x: f(x0 + 9), y: f(yy + 3.5), 'text-anchor': 'start', class: 'orr-ltape__key orr-ltape__axis-n' }); t.textContent = `${sign < 0 ? '\u2212' : ''}${fmt((ghostCeil * k) / 4)}${k === 4 && sign > 0 ? ' cr' : ''}`; rg.appendChild(t); } }
+      for (const sign of [1, -1]) for (let k = 2; k <= 4; k += 2) { const yy = sign > 0 ? y - gLen((ghostCeil * k) / 4) : y + gLen((ghostCeil * k) / 4); majors += `M ${f(x0)} ${f(yy)} L ${f(x0 + 6)} ${f(yy)} `; if (k === 4 || halfLabels) { const t = svg('text', { x: f(x0 + 9), y: f(yy + 3.5), 'text-anchor': 'start', class: 'orr-ltape__key orr-ltape__axis-n' }); t.textContent = `${sign < 0 ? '\u2212' : ''}${fmt((ghostCeil * k) / 4)}${k === 4 && sign > 0 ? ' cr' : ''}`; rg.appendChild(t); } }
       rg.appendChild(svg('path', { d: `M ${f(x0 + 1)} ${f(y - gLen(ghostCeil))} L ${f(x0 + 1)} ${f(y + gLen(ghostCeil))}`, class: 'orr-band orr-ltape__axis-band' }));
       rg.appendChild(svg('path', { d: `M ${f(x0 + 1)} ${f(y - gLen(ghostCeil))} L ${f(x0 + 1)} ${f(y + gLen(ghostCeil))}`, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 2, 'shape-rendering': 'crispEdges' }));
       rg.appendChild(svg('path', { d: majors, class: 'orr-core orr-ltape__axis-line', 'stroke-width': 2 }));
