@@ -2251,6 +2251,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let enabled = true;
   let strength = DEFAULT_BLOOM_STRENGTH;
   let maxLevelsCap = BALANCED_BLOOM_MAX_LEVELS;
+  let compactBloom = false;
   let sharpenAmount = 0;
   let threshold = 1.0;
   // Owner 2026-10-27 bloom discipline: the knee is the emissive gate. A wide knee (the old 0.25)
@@ -3172,6 +3173,23 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
 
   function renderDownsamplePass(tier1) {
+    if (compactBloom) {
+      // Use the retained quarter-resolution level directly on budget-constrained sets.
+      // Two-source-texel spacing keeps the filter's footprint proportional to the target.
+      const target = down[1] || down[0];
+      const divisor = down[1] ? 4 : 2;
+      const width = Math.max(1, Math.floor(contentW / divisor));
+      const height = Math.max(1, Math.floor(contentH / divisor));
+      downsampleMat.uniforms.tDiffuse.value = rtScene.texture;
+      downsampleMat.uniforms.uTexel.value.set(divisor / (2 * W), divisor / (2 * H));
+      downsampleMat.uniforms.uUvScale.value.set(contentW / W, contentH / H);
+      downsampleMat.uniforms.uUvOffset.value.set(0, 0);
+      downsampleMat.uniforms.uThreshold.value = threshold;
+      downsampleMat.uniforms.uBright.value = 1;
+      blit(downsampleMat, target, width, height);
+      if (tier1) tier1.countRenderPassPixels(width * height, 'bloom-downsample');
+      return;
+    }
     let src = rtScene.texture;
     for (let i = 0; i < levels; i++) {
       // Allocated source size (max pool) vs active content size (dyn-res sub-rect).
@@ -3217,7 +3235,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     // Bind initialized scene color when bloom is inactive. Zero weights would normally be enough,
     // but sampling an uninitialized pyramid and multiplying by zero is not guaranteed to suppress a
     // driver NaN. The canonical presentation pass therefore remains deterministic at off/zero.
-    const fine = bloomActive ? down[0].texture : rtScene.texture;
+    const fine = bloomActive ? (compactBloom && down[1] ? down[1] : down[0]).texture : rtScene.texture;
     const mid = bloomActive && levels > 1 ? down[Math.min(2, levels - 1)].texture : fine;
     const wide = bloomActive && levels > 2 ? down[levels - 1].texture : fine;
     compositeMat.uniforms.tScene.value = rtScene.texture;
@@ -3234,7 +3252,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       compositeMat.uniforms.tNocturneSceneDepth.value = rtScene.texture;
     }
     // The upsample chain folded every level into down[0]; one read, renormalized.
-    compositeMat.uniforms.uBloomW0.value = bloomActive ? bloomChainWeights(levels).composite : 0.0;
+    compositeMat.uniforms.uBloomW0.value = bloomActive ? bloomChainWeights(compactBloom ? 1 : levels).composite : 0.0;
     compositeMat.uniforms.uBloomW1.value = 0.0;
     compositeMat.uniforms.uBloomW2.value = 0.0;
     compositeMat.uniforms.uStrength.value = bloomActive ? strength : 0.0;
@@ -3578,6 +3596,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     }
     if (typeof o.enabled === 'boolean') enabled = o.enabled;
     if (typeof o.bloom === 'boolean') enabled = o.bloom; // settings.video.bloom alias
+    if (typeof o.compactBloom === 'boolean') compactBloom = o.compactBloom;
     if (typeof o.strength === 'number') {
       strength = Math.max(0, o.strength);
       compositeMat.uniforms.uStrength.value = strength;
@@ -3655,6 +3674,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       width: W,
       height: H,
       levels,
+      compactBloom,
       sceneSamples,
       maxLevels: BALANCED_BLOOM_MAX_LEVELS,
       halfWidth: halfW,

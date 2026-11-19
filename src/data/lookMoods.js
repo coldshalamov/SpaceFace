@@ -224,6 +224,23 @@ export const LOOK_MOODS = deepFreeze({
     rig: { keyHex: 0xffc98f, rimHex: 0x2fe0d0, fillHex: 0xd0703a, ambientHex: 0x3a2c34 },
   },
 
+  // Swarm's Ricochet Foundry: dirty steel under a high warm key, with neutral hull fill.
+  foundry: {
+    surface: {
+      shadowTint: [0.78, 0.89, 1.06],
+      lightTint: [1.10, 1.01, 0.91],
+      rim: [0.45, 0.72, 0.92],
+      rimStrength: 0.53,
+    },
+    post: {
+      grade: 0.27, vignette: 0.13,
+      highlightTint: [1.08, 1.01, 0.91],
+      shadowTint: [0.90, 0.98, 1.06],
+      bloomTint: [1.12, 0.95, 0.79],
+    },
+    rig: { keyHex: 0xffddaf, rimHex: 0x9ec9ed, fillHex: 0xaebdd1, ambientHex: 0x98908b },
+  },
+
   // Pallas Drift: ice. Blue-white key, violet edge, steel shadows, the highest gloss.
   cold_drift: {
     surface: {
@@ -383,6 +400,17 @@ const LIGHTING_BY_PROFILE = new WeakMap();
 function gained(value, gain) {
   return Number.isFinite(value) ? value * (Number.isFinite(gain) ? gain : 1) : value;
 }
+
+export const FOUNDRY_LIGHT = deepFreeze({
+  keyOffset: { x: -195, y: 425, z: -316 },
+  shadowExtent: 515,
+  shadowFar: 1050,
+  rig: { key: 1.55, rim: 0.66, fill: 0.52, ambient: 0.36 },
+  furnaceCore: 0xff8638,
+  lampCore: 0xffd5a0,
+  furnace: { color: 0xff8439, intensity: 4200, range: 118, priority: 3 },
+  workLamp: { color: 0xffbc87, intensity: 2350, range: 107, priority: 2 },
+});
 
 export function resolveLookLighting(profile) {
   // One frozen object per profile: the renderer's transition guard compares rigs by identity.

@@ -440,7 +440,9 @@ import { prepareNocturneShadowCamera } from './nocturne/shadows.js';
 import { syncBolusView, disposeBolusView } from './bolusView.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { resolveLookLighting, resolveLookMoodId, resolveLookPost } from '../data/lookMoods.js';
-import { beginLookMood, updateLook } from './look.js';
+import { beginLookMood, foundryLookProfile, updateLook } from './look.js';
+import { FOUNDRY_LIGHT } from '../data/lookMoods.js';
+import { createFoundrySet, isFoundrySetEntry } from './arenaSets/foundrySet.js';
 import { tickLampBus } from './lampBus.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
@@ -8524,6 +8526,8 @@ export function retireAppearanceGpuGeneration(owner, reason = 'renderer-destroye
 export function disposeRendererOwnedResources(owner, options = {}) {
   if (!owner || owner._rendererResourcesDisposed === true) return false;
   owner._rendererResourcesDisposed = true;
+  owner._foundrySet?.dispose();
+  owner._foundrySet = null;
   // Stop the residency drain first: its timer must not outlive this renderer generation,
   // and every hold it owns must be released before the scene below is retired.
   try { owner._releaseResidencyManager?.(); } catch (_) { /* cleanup only */ }
@@ -20162,7 +20166,7 @@ export const render = {
       this._syncPostOptions();
       if (p.key === 'shadows' || p.key == null) {
         const shadowSettingWasOff = this._shadowSettingOn !== true;
-        const nextShadowSetting = vd.shadows !== false;
+        const nextShadowSetting = !!this._foundrySet || vd.shadows !== false;
         const shadowSettingChanged = this._shadowSettingOn !== nextShadowSetting;
         this._shadowSettingOn = nextShadowSetting;
         // A whole-settings re-emit carrying no shadows delta must not mark the
@@ -21107,7 +21111,7 @@ export const render = {
         sectorId: sector && sector.id || null,
       };
     };
-    const onSectorEntered = ({ sectorId, sector, continuous, enterEpoch } = {}) => {
+    const onSectorEntered = ({ sectorId, sector, continuous, enterEpoch } = {}, event = 'sector:enter') => {
       const exactSectorId = String(sectorId || sector && sector.id || '');
       // A queued emit's evicted tail can deliver this listener inside a newer enter's live
       // window (the pendingSlicedEmits cap force-drains stale emits whole), and an epochless
@@ -21164,10 +21168,11 @@ export const render = {
         }
       };
       try {
+      const foundryChanged = this._syncFoundrySet(event, state.run);
       // A sector is a new admission context: renderer-latched build failures retry here even
       // when the GPU set is kept, so a transient outage cannot strand a live entity invisible.
       clearRendererMeshLatches(state);
-      if (this._sessionRecookKeepGpu === true) {
+      if (this._sessionRecookKeepGpu === true && !foundryChanged) {
         // Same-sector F9: keep the cooked GPU set. Releasing prewarms and
         // rotating residency disposed programs the kept meshes still referenced
         // (headed reattach run68 TDR / CONTEXT_LOST ~0.5s after instant enter).
@@ -21209,7 +21214,8 @@ export const render = {
       }
       this._meshReconcileDirty = true;
       if (cam.snapToPlayer) cam.snapToPlayer();
-      const sectorVisualProfile = resolveSectorVisualProfile(sector);
+      const sectorVisualProfile = this._foundrySet
+        ? foundryLookProfile(resolveSectorVisualProfile(sector)) : resolveSectorVisualProfile(sector);
       this._beginSectorPaletteTransition(sector, sectorVisualProfile);
       this.setSectorPostProfile(resolveLookPost(sectorVisualProfile));
       // The continuous map presentation eases its palette, post, and background identity at the
@@ -21550,8 +21556,9 @@ export const render = {
     onBus('sector:enter', onSectorEntered);
     onBus('swarm:arenaEntered', payload => onSectorEntered({
       ...payload, sector: state.world?.sectors?.[payload.sectorId],
-    }));
+    }, 'swarm:arenaEntered'));
     onBus('mode:changed', ({ mode } = {}) => {
+      if (mode === 'menu') this._syncFoundrySet();
       // Backstop for the armed foundry promotion: the sector-load yields and the un-awaited
       // preparePostOpeningPipelines normally drain it under the veil, but a route that reaches
       // flight without either (real-GPU readiness, Continue) still bakes before the first frame.
@@ -26045,7 +26052,8 @@ export const render = {
     const vd = (this.state && this.state.settings && this.state.settings.video) || {};
     const norm = this._applySectorPost(this._normalizePostVideo(vd));
     const sceneSamples = this._resolvePostSceneSamples();
-    const sig = this._postOptionsSignature(norm, vd, sceneSamples);
+    const compactBloom = !!this._foundrySet && vd.qualityPreset === 'low';
+    const sig = this._postOptionsSignature(norm, vd, sceneSamples) + (compactBloom ? '|compact-bloom' : '');
     if (!force && this._postOptionsSig === sig) return;
     this._postOptionsSig = sig;
     this._nocturne?.setExposureBase(norm.exposure);
@@ -26058,6 +26066,7 @@ export const render = {
       exposure: norm.exposure,
       acesToneMapping: norm.acesToneMapping,
       bloomLevels: norm.bloomLevels,
+      compactBloom,
       sharpen: norm.sharpen === true,
       grade: norm.grade,
       vignette: norm.vignette,
@@ -30451,6 +30460,40 @@ export const render = {
     this._hazardVisuals = [];
   },
 
+  _syncFoundrySet(event, run) {
+    const active = isFoundrySetEntry(event, run?.arenaId);
+    if (active === !!this._foundrySet) return false;
+    if (active) {
+      const set = createFoundrySet(this.scene, { renderer: this.renderer, nocturne: this._nocturne });
+      this._foundrySet = set;
+      const pos = this.state.entities.get(this.state.playerId)?.pos;
+      if (pos) { set.center.x = pos.x; set.center.z = pos.z; }
+      set.frame(0, this._frameMembrane);
+      set.ready.then(() => {
+        if (this._foundrySet === set) this._markShadowReceiversDirty();
+      }).catch(error => stormWarn('foundry-set-assets', '[render] Foundry scenery asset admission failed', error));
+    } else {
+      this._foundrySet.dispose();
+      this._foundrySet = null;
+      this._keyLightOffset = null;
+    }
+    this._shadowSettingOn = active || this.state.settings?.video?.shadows !== false;
+    this._markShadowReceiversDirty();
+    this._ensureKeyLightShadows();
+    this._syncShadowMapEnabled();
+    this._updateShadowFollow(true);
+    return true;
+  },
+
+  _advanceFoundrySet(dt) {
+    const set = this._foundrySet;
+    if (!set) return;
+    // An install event can precede publication of the worker's entity rows. Use
+    // the current room's actual collision poses, including any spawn relocation.
+    if (set.installBanks(this.state.entityList, this.state.run?.wave)) this._shadowMapDirty = true;
+    set.frame(dt, this._frameMembrane);
+  },
+
   _beginSectorPaletteTransition(sector, profile = null) {
     const rig = this._sectorPaletteRig;
     if (!rig) return;
@@ -30497,6 +30540,11 @@ export const render = {
   _aimKeyLightAtSignatureHero(profile) {
     const rig = this._sectorPaletteRig;
     if (!rig || !rig.lights) return;
+    if (this._foundrySet) {
+      this._keyLightOffset = FOUNDRY_LIGHT.keyOffset;
+      this._updateShadowFollow(true);
+      return;
+    }
     const hero = profile && profile.background
       && profile.background.composition && profile.background.composition.signatureHero;
     const ndc = hero && Array.isArray(hero.screenNdc) ? hero.screenNdc : null;
@@ -31218,7 +31266,7 @@ export const render = {
     yield;
     tryPresentedCall(this, 'opening-nocturne', () => this._nocturne?.prepare(0,
       this.cam?.obj, this._frameMembrane, this._meshes,
-      !(this._marrowSpot && this._marrowSpot.intensity > 0)));
+      !(this._marrowSpot && this._marrowSpot.intensity > 0), !!this._foundrySet));
     yield;
     tryPresentedCall(this, 'contact-shadow-pool', () => {
       syncContactShadowPool(this._contactShadowPool, this._entityFrame);
@@ -31242,6 +31290,7 @@ export const render = {
       () => liveShadowCastRadius(state),
       Number.isFinite(this._frameShadowCastRadius) ? this._frameShadowCastRadius : SHADOW_ORTHO_EXTENT);
     this._frameShadowCastRadius = openingShadowRadius;
+    this._advanceFoundrySet(0);
     tryPresentedCall(this, 'authored-instances', () => {
       this._syncAuthoredInstanceSubmission(openingShadowRadius);
     });
@@ -32261,7 +32310,8 @@ export const render = {
     tryPresentedCall(this, 'marrow-cone', () => syncMarrowCone(this));
     // The Bolus nose cone owns the player's bow light inside that sector; elsewhere it is ours.
     tryPresentedCall(this, 'nocturne', () => this._nocturne?.prepare(frameDt, this.cam.obj,
-      this._frameMembrane, this._meshes, !(this._marrowSpot && this._marrowSpot.intensity > 0)));
+      this._frameMembrane, this._meshes, !(this._marrowSpot && this._marrowSpot.intensity > 0),
+      !!this._foundrySet));
     // DUST P3b — hero rim rake follows the presented player hull (no-op until flight).
     tryPresentedCall(this, 'hero-rig', () => this._heroRig
       && this._heroRig.update(this.state, frameDt, this._frameMembrane, this._meshes));
@@ -32271,6 +32321,7 @@ export const render = {
     // live decor over a frozen frame.
     const worldDt = frameDt * presentedAdvanceRatio(typeof performance !== 'undefined' ? performance.now() : NaN);
     this._bgTime = (this._bgTime || 0) + worldDt * presentationTs;
+    this._advanceFoundrySet(worldDt * presentationTs);
     if (!holdOpeningPicture && !holdLoadingGpu) {
       tryPresentedCall(this, 'backdrop', () => {
         if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position); // wall dt paces plate uploads; _bgTime is the drawn-world clock
@@ -32298,11 +32349,11 @@ export const render = {
       // P5: the first-20 s shadow hold is deleted — it dodged a stall the refresh gate below
       // already removed, and it blinded shadows through exactly the first-encounter window.
       const holdFirstFlightShadow = holdLoadingGpu;
-      const refreshShadow = !holdFirstFlightShadow && shouldRefreshRealtimeShadowMap({
+      const refreshShadow = !holdFirstFlightShadow && (this._foundrySet ? dirty : shouldRefreshRealtimeShadowMap({
         lastPresentDtMs: this.state && this.state.render && this.state.render.lastPresentDtMs,
         skippedLast: this._shadowPresentSkipped === true || refreshWasPending,
         dirty,
-      });
+      }));
       this._shadowRefreshScheduled = tryPresentedCall(this, 'shadow-refresh-schedule', () => scheduleRealtimeShadowRefresh(
         this.renderer, this._keyLight, shadowMapActive && refreshShadow), false);
       this._shadowPresentSkipped = dirty && !refreshShadow;
@@ -33266,8 +33317,9 @@ export const render = {
     const p = this.state.playerId ? (this.state.entities && this.state.entities.get(this.state.playerId)) : null;
     let px = 0;
     let pz = 0;
-    if (p && p.pos && this._frameMembrane) {
-      const local = this._frameMembrane.toLocal(p.pos, _shadowLocalXZ);
+    const focus = this._foundrySet?.center || p?.pos;
+    if (focus && this._frameMembrane) {
+      const local = this._frameMembrane.toLocal(focus, _shadowLocalXZ);
       px = local.x;
       pz = local.z;
     }
@@ -34500,7 +34552,7 @@ export const render = {
     const key = this._keyLight;
     if (!key || !key.shadow || !key.shadow.camera) return false;
     const numeric = Number(radius);
-    const extent = Math.max(
+    const extent = this._foundrySet ? FOUNDRY_LIGHT.shadowExtent : Math.max(
       80,
       Math.min(SHADOW_ORTHO_EXTENT, Math.round(Number.isFinite(numeric) ? numeric : SHADOW_ORTHO_EXTENT)),
     );
@@ -34522,21 +34574,27 @@ export const render = {
     // PCFShadowMap is the soft sampler in r184 — the soft-PCF enum is deprecated upstream and
     // falls back here anyway (it warns on every assignment). Do not reintroduce it.
     renderer.shadowMap.type = THREE.PCFShadowMap;
-    if (!key.userData.spacefaceShadowConfigured) {
-      key.castShadow = false;
-      key.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+    const foundry = !!this._foundrySet;
+    const tier = this.state.render?.gpu?.tier;
+    const mapSize = foundry && (tier === 'integrated' || tier === 'software') ? 1024 : SHADOW_MAP_SIZE;
+    if (!key.userData.spacefaceShadowConfigured || this._foundryShadowConfigured !== foundry) {
+      if (key.shadow.mapSize.x !== mapSize) {
+        key.shadow.map?.dispose();
+        key.shadow.map = null;
+        key.shadow.mapSize.set(mapSize, mapSize);
+      }
       const camera = key.shadow.camera;
-      camera.near = 10; camera.far = 600;
-      camera.left = -SHADOW_ORTHO_EXTENT; camera.right = SHADOW_ORTHO_EXTENT;
-      camera.top = SHADOW_ORTHO_EXTENT; camera.bottom = -SHADOW_ORTHO_EXTENT;
-      camera.updateProjectionMatrix();
+      camera.near = 10;
+      camera.far = foundry ? FOUNDRY_LIGHT.shadowFar : 600;
+      this._shadowOrthoExtent = null;
+      this._syncKeyLightShadowFrustum(SHADOW_ORTHO_EXTENT);
       // normalBias tracks the shadow texel (~0.59 WU at the capped extent): the old 0.04 was an
       // order of magnitude under one texel, so depth acne crawled across hulls.
       key.shadow.bias = -0.0004;
       key.shadow.normalBias = 0.5;
       if (key.target && !key.target.parent && this.scene) this.scene.add(key.target);
       key.userData.spacefaceShadowConfigured = true;
-      this._shadowOrthoExtent = SHADOW_ORTHO_EXTENT;
+      this._foundryShadowConfigured = foundry;
       this._shadowMapDirty = true;
     }
     if (!this._shadowSettingOn) {
