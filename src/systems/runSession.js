@@ -125,6 +125,10 @@ export const runSession = {
     this._unsubs.push(this.bus.on('run:awardRequested', (payload) => this.award(payload)));
     this._unsubs.push(this.bus.on('run:spendRequested', (payload) => this.spend(payload)));
     this._unsubs.push(this.bus.on('run:modifierRecordRequested', (payload) => this.recordModifier(payload)));
+    // OVH-01a2: the screen asks through intents; the owner answers (and refuses in words —
+    // run:pilotCardRejected / run:pilotRerollRejected receipts ride every player-facing no).
+    this._unsubs.push(this.bus.on('run:pilotCardRequested', (payload) => this.choosePilotCard(this.state, payload && payload.index)));
+    this._unsubs.push(this.bus.on('run:pilotRerollRequested', () => this.rerollPilotOffer(this.state)));
     this._unsubs.push(this.bus.on('run:threatRequested', (payload) => this.setThreat(payload)));
     this._unsubs.push(this.bus.on('game:exitToMenu', (payload) => this._onExitToMenu(payload)));
     // save:restoring fires first (before save:loaded). Reset here so a loaded Adventure
@@ -320,6 +324,10 @@ export const runSession = {
     });
     if (committed && levelsGained > 0) {
       this._emit('run:levelUp', { level: next.level, previousLevel, xp: next.xp, banked: next.pilot.banked });
+      // OVH-01a2: the owner deals at a fixed moment — right after a level-up commit that banked
+      // a pick, when no offer is open. The moment (and the state.rng it consumes) is the same
+      // whatever the player's display settings are; the screen never draws.
+      this._dealPilotHand();
     }
     return committed;
   },
@@ -508,19 +516,26 @@ export const runSession = {
     });
   },
 
-  // OVH-01a — the Pilot Tree engine (design/overhaul/06 §2, 04 §3). Level-ups bank picks in
-  // award(); the breath draws through these owner seams. All randomness is state.rng, so one seed
-  // always draws the same offers, and every mutation walks the same clone-validate-commit
+  // OVH-01a/01a2 — the Pilot Tree engine (design/overhaul/06 §2, 04 §3). Level-ups bank picks in
+  // award(); the owner deals the hands at fixed moments (_dealPilotHand) and the screen asks
+  // through intents (run:pilotCardRequested / run:pilotRerollRequested above). All randomness is
+  // state.rng at owner-owned moments, so one seed always deals the same hands whatever the
+  // player's display settings are, and every mutation walks the same clone-validate-commit
   // discipline as the rest of the run. Free-function wrappers with the packet's signatures live
   // at the module foot.
 
-  /** Draw the three-card offer into run.pilot.offer; returns the card ids, or null when refused. */
+  /**
+   * The owner's deal primitive: draw cards and publish run.pilot.offer. An empty draw opens NO
+   * offer (OVH-01a2 step 2) — nothing eligible leaves the offer untouched (null after a fresh
+   * deal moment) and the pick stays banked for the next moment to try again. Returns the card
+   * ids, [] when nothing is eligible, or null when refused outright.
+   */
   drawPilotOffer(state = this.state) {
     if (state !== this.state) return null;
     const run = this._pilotRun(state);
     if (!run) return null;
     const cards = this._drawPilotCards(state, run);
-    if (cards === null) return null;
+    if (!cards || cards.length === 0) return cards || null;
     const next = cloneRun(run);
     if (!next) return null;
     next.pilot.offer = { cards, rerolls: 0 };
@@ -535,15 +550,24 @@ export const runSession = {
   choosePilotCard(state = this.state, index) {
     if (state !== this.state) return false;
     const run = this._pilotRun(state);
-    if (!run || !run.pilot.offer) return false;
+    if (!run) return false;
+    if (!run.pilot.offer) {
+      this._emit('run:pilotCardRejected', { index, reason: 'no_offer' });
+      return false;
+    }
     const cards = run.pilot.offer.cards;
     if (!Array.isArray(cards) || !Number.isInteger(index) || index < 0 || index >= cards.length) {
+      this._emit('run:pilotCardRejected', { index, reason: 'invalid_index' });
       return false;
     }
     const card = getPilotCard(cards[index]);
-    // The offer may be stale — a bend taken mid-offer locks its siblings — so the choose re-runs
-    // the same pure eligibility gate the draw used rather than trusting the drawn list.
-    if (!card || !isPilotCardEligible(card, run.pilot, pilotDoorForRun(run))) return false;
+    // The offer may be stale — a bend taken mid-offer locks its siblings, and the live set may
+    // have changed under a frozen hand — so the choose re-runs the same pure eligibility gate
+    // the draw used rather than trusting the drawn list.
+    if (!card || !isPilotCardEligible(card, run.pilot, pilotDoorForRun(run))) {
+      this._emit('run:pilotCardRejected', { index, nodeId: cards[index], reason: 'not_eligible' });
+      return false;
+    }
     const next = cloneRun(run);
     if (!next) return false;
     next.pilot.nodes.push(card.id);
@@ -557,6 +581,8 @@ export const runSession = {
       branch: card.kind === 'evolution' ? null : card.branch,
       banked: next.pilot.banked,
     });
+    // OVH-01a2: a second banked pick gets a fresh hand the moment this choice commits.
+    if (committed && next.pilot.banked > 0) this._dealPilotHand();
     return committed;
   },
 
@@ -564,10 +590,26 @@ export const runSession = {
   rerollPilotOffer(state = this.state) {
     if (state !== this.state) return false;
     const run = this._pilotRun(state);
-    if (!run || !run.pilot.offer) return false;
+    if (!run) return false;
+    if (!run.pilot.offer) {
+      this._emit('run:pilotRerollRejected', { reason: 'no_offer' });
+      return false;
+    }
     // Nothing eligible anywhere means the redraw cannot produce a card; refuse without charging.
-    if (eligiblePilotCards(run.pilot, pilotDoorForRun(run)).length === 0) return false;
-    if (!this.spend({ credits: PILOT_REROLL_SCRAP, reason: 'pilot_reroll' })) return false;
+    if (eligiblePilotCards(run.pilot, pilotDoorForRun(run)).length === 0) {
+      this._emit('run:pilotRerollRejected', { reason: 'nothing_eligible' });
+      return false;
+    }
+    if (!this.spend({ credits: PILOT_REROLL_SCRAP, reason: 'pilot_reroll' })) {
+      // spend() already said why (run:spendRejected); this receipt names the pilot intent.
+      const live = this._liveRun();
+      this._emit('run:pilotRerollRejected', {
+        reason: 'insufficient_credits',
+        price: PILOT_REROLL_SCRAP,
+        credits: live ? live.credits : 0,
+      });
+      return false;
+    }
     // spend() published a fresh run object; redraw against the live one.
     const live = this._pilotRun(this.state);
     if (!live) return false;
@@ -636,6 +678,28 @@ export const runSession = {
     return pickedIds;
   },
 
+  /**
+   * OVH-01a2 — the fixed deal moments. Called right after a level-up commit that banked a pick
+   * and right after a choose commits while picks still wait: deals a fresh hand only when no
+   * offer is open and a pick is banked. An empty draw (nothing eligible, or nothing live) opens
+   * no offer and keeps the pick banked — the next deal moment tries again. Nothing outside the
+   * owner deals; a display preference can never change when (or from which state.rng draws) a
+   * hand is dealt.
+   */
+  _dealPilotHand() {
+    const run = this._pilotRun(this.state);
+    if (!run || run.pilot.offer || run.pilot.banked <= 0) return false;
+    const cards = this._drawPilotCards(this.state, run);
+    if (!cards || cards.length === 0) return false;
+    const next = cloneRun(run);
+    if (!next) return false;
+    next.pilot.offer = { cards, rerolls: 0 };
+    return this._commitRun(next, 'run:pilotOffered', {
+      cards,
+      banked: next.pilot.banked,
+    });
+  },
+
   _onExitToMenu(payload) {
     const run = this._liveRun();
     if (!run) return;
@@ -686,7 +750,9 @@ export const runSession = {
 
 // OVH-01a free-function API with the packet's signatures. The run owner must be initialized on
 // the same state (single writer): a foreign or uninitialized state is refused — null/false —
-// rather than mutated blind.
+// rather than mutated blind. OVH-01a2: these are owner seams — the run itself deals at its fixed
+// moments and the screen asks through the run:pilot*Requested intents; nothing outside the owner
+// (and its tests) calls drawPilotOffer.
 export function drawPilotOffer(state) {
   return runSession.drawPilotOffer(state);
 }

@@ -23,6 +23,11 @@
 //  * Door restrictions are transcribed per node: Industry lives only in Adventure, and the four
 //    Ghost nodes 06 §2.2 marks *(Adventure)* are Adventure-only, so Swarm offers Ghost tiers 1–2
 //    and the capstone exactly as the branch header promises.
+//  * OVH-01a2: only LIVE nodes are dealt — isPilotCardEligible also gates on the director's
+//    live set (src/data/pilotLive.js), so a card whose effect is not built yet never reaches a
+//    hand, a re-roll or a choose.
+
+import { pilotLiveNodeIds } from './pilotLive.js';
 
 function snake(name) {
   return name.replace(/['’]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -280,6 +285,8 @@ function tierGate(tier) {
 /** A single card's eligibility under the run's pilot record and door. Pure; used by draw and choose alike. */
 export function isPilotCardEligible(card, pilot, door) {
   if (!card) return false;
+  // OVH-01a2: a node joins the tree only when its effect is built and tested (pilotLive.js).
+  if (!pilotLiveNodeIds().has(card.id)) return false;
   const taken = new Set(Array.isArray(pilot?.nodes) ? pilot.nodes : []);
   if (taken.has(card.id)) return false;
   if (lockedPilotNodeIds(pilot).has(card.id)) return false;
