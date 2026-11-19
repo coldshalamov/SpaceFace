@@ -230,6 +230,13 @@ test('two runs with the same seed and inputs deal identical hands', () => withAl
   assert.ok(a.hands.some((hand) => hand !== null), 'the script actually dealt');
 }));
 
+test('the forward set contains both pilot intents', () => {
+  assert.ok(MAIN_TO_SIM_BUS_EVENTS.has('run:pilotCardRequested'),
+    'run:pilotCardRequested crosses the main→sim lane');
+  assert.ok(MAIN_TO_SIM_BUS_EVENTS.has('run:pilotRerollRequested'),
+    'run:pilotRerollRequested crosses the main→sim lane');
+});
+
 test('state.run.pilot reaches the main side through the worker-lane domain mirror', () => {
   // `run` is a mirrored domain root (scripts/lib/simReadModel.mjs DOMAIN_MIRROR_KEYS); the differ
   // expands run.pilot and signs its leaves like any other run container — the same route the

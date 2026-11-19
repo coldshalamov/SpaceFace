@@ -181,6 +181,8 @@ const SCREEN_MODULES = [
   { path: './screens/crucibleDraft.js', load: () => import('./screens/crucibleDraft.js'), name: 'crucibleDraftScreen' },
   { path: './screens/crucibleDraft.js', load: () => import('./screens/crucibleDraft.js'), name: 'crucibleRefitScreen' },
   { path: './swarmFortifyPanel.js', load: () => import('./swarmFortifyPanel.js'), name: 'crucibleFortifyScreen' },
+  // OVH-01b: the Pilot Tree's three cards, pushed over the between-round draft.
+  { path: './pilotCards.js', load: () => import('./pilotCards.js'), name: 'pilotCardsScreen' },
   { path: './screens/crucible.js', load: () => import('./screens/crucible.js'), name: 'crucibleScreen' },
   { path: './screens/crucible.js', load: () => import('./screens/crucible.js'), name: 'crucibleResultsScreen' },
   { path: './screens/settings.js', load: () => import('./screens/settings.js'), name: 'settingsScreen' },

@@ -132,6 +132,7 @@ const CHANGES = {
     velocityVectoring: false,
     pauseOnFocusLoss: false,
     powerFire: 'press',
+    pilotPickAtOnce: true,
     pursuitSlotAssist: true,
     hitPips: false,
     steeringView: 'racing',

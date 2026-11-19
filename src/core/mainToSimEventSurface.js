@@ -128,6 +128,8 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'run:loadoutReady',
   'run:openingPrepareRequested',
   'run:partialBankRequested',
+  'run:pilotCardRequested',
+  'run:pilotRerollRequested',
   'run:refitCloseRequested',
   'run:refitFitRequested',
   'run:refitSellRequested',
@@ -314,6 +316,7 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'ui:closeAll',
   'ui:closeCargo',
   'ui:closeComms',
+  'ui:closeScreen',
   'ui:confirm',
   'ui:cycleComponent',
   'ui:cycleTarget',
@@ -344,4 +347,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=191 dynamic=42 legacy=18 excluded=6 total=223 knownUnforwarded=88
+// provenance: census=193 dynamic=42 legacy=18 excluded=6 total=225 knownUnforwarded=89

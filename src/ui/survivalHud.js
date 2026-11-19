@@ -27,10 +27,14 @@ import { SWARM_CHAIN_VARIED_STEP, SWARM_CHAIN_WARN_S, SWARM_CHAIN_WINDOW_S } fro
 import { resolveActionLabel } from '../systems/input.js';
 import { swarmOwnedTapMods } from '../systems/playerModifiers.js';
 import { indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
+import { createPilotBreathController } from './pilotCards.js';
 
 const STYLE_ID = 'sf-crun-css';
 /** How long an earn receipt stays on screen, in sim seconds. */
 export const EARN_RECEIPT_S = 2.6;
+/** OVH-01b: "LEVEL n" rides the bar this long; the bar's one flash is shorter. Sim seconds. */
+export const LEVEL_RIDE_S = 1.2;
+export const XP_FLASH_S = 0.6;
 
 /** Phase word the player reads. Never a phase id — 'wave_intro' is not a thing anyone says. */
 export const PHASE_WORDS = Object.freeze({
@@ -352,6 +356,8 @@ export const survivalHud = {
     this._tapMods = [];
     this._modsText = '';
     this._unsubs = [];
+    this._xpFlashUntil = -1;
+    this._pilot = null;
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:awarded', (p) => this._onAwarded(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
@@ -381,6 +387,7 @@ export const survivalHud = {
   },
 
   destroy() {
+    if (this._pilot) { this._pilot.destroy(); this._pilot = null; }
     if (typeof document !== 'undefined') document.body?.classList?.remove('sf-swarm-flight', 'sf-run-flight');
     this._swarmFlightClass = null;
     this._runFlightClass = null;
@@ -404,6 +411,9 @@ export const survivalHud = {
     if (typeof document === 'undefined') return;
     const st = state || this.state;
     if (!st) return;
+    // OVH-01b: the Pilot Tree breath / "Pick at once" cards. No HUD DOM; reads state, acts on edges.
+    if (!this._pilot && this.bus) this._pilot = createPilotBreathController({ state: st, bus: this.bus });
+    if (this._pilot) this._pilot.tick(st);
     const run = st.run;
     const live = !!(run && run.kind === 'survival' && run.phase !== 'inactive');
     const swarmFlight = live && run.ruleset === 'swarm' && st.mode === 'flight';
@@ -676,6 +686,11 @@ export const survivalHud = {
     this._setStyle(dom.xpFill, 'width', `${Math.round(levelProgress(run) * 100)}%`);
 
     const simTime = Number.isFinite(st.simTime) ? st.simTime : 0;
+    // OVH-01b: one flash on the bar at a level-up, and a "+1 pick" chip while picks are banked.
+    this._setClass(dom.xpTrack, 'sf-crun__track sf-crun__track--xp' + (simTime <= this._xpFlashUntil ? ' sf-crun__track--flash' : ''));
+    const banked = run.pilot && Number.isInteger(run.pilot.banked) ? run.pilot.banked : 0;
+    this._setHidden(dom.pick, banked <= 0);
+    if (banked > 0) this._setText(dom.pick, banked === 1 ? '+1 pick' : `+${banked} picks`);
     if (this._earn && simTime <= this._earnUntil) {
       this._setHidden(dom.earn, false);
       this._setText(dom.earn, this._earn);
@@ -825,13 +840,17 @@ export const survivalHud = {
   _onLevelUp(payload) {
     const level = payload && payload.level;
     if (!Number.isInteger(level)) return;
-    this._pushEarn(`LEVEL ${level}`);
+    this._pushEarn(`LEVEL ${level}`, LEVEL_RIDE_S);
+    const simTime = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    this._xpFlashUntil = simTime + XP_FLASH_S;
+    // The chime: the existing confirm voice, short and quiet. Nothing here pauses the fight.
+    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('audio:cue', { id: 'ui_confirm', gain: 0.5 });
   },
 
-  _pushEarn(text) {
+  _pushEarn(text, seconds = EARN_RECEIPT_S) {
     this._earn = text;
     const simTime = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
-    this._earnUntil = simTime + EARN_RECEIPT_S;
+    this._earnUntil = simTime + seconds;
   },
 
   _clearEarn() {
@@ -1091,6 +1110,9 @@ export const survivalHud = {
 
     const xpTrack = make('div', 'sf-crun__track sf-crun__track--xp', root);
     const xpFill = make('span', 'sf-crun__fill sf-crun__fill--you', xpTrack);
+    // OVH-01b: picks banked by levelling, beside the bar — words, never colour alone.
+    const pick = make('span', 'sf-crun__pick', root);
+    pick.hidden = true;
 
     const earn = make('div', 'sf-crun__earn', root);
     earn.hidden = true;
@@ -1115,7 +1137,7 @@ export const survivalHud = {
       root, brief, label, waveN, phase, hero, intro, twist, threat, threatWord, threatFill, threatFig,
       boss, bossWord, bossFill, bossFig,
       chainRow, chainFig, chainCause, chainBest, chainDeplete,
-      score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn, death, line,
+      score, killWord, killFig, credits, level, styleWord, styleFig, xpTrack, xpFill, pick, earn, death, line,
       mods, modsList,
     };
     // Rebuilt nodes reuse the same __crunKey values: drop the last-written cache so the first
@@ -1168,6 +1190,12 @@ export const survivalHud = {
     border-radius:1px; background:var(--dp-rule-hi, rgb(232 226 212 / .22));
     box-shadow:none; }
   .sf-crun__track--xp { height:5px; }
+  /* OVH-01b: the level-up flash is one pulse on the bar; reduced motion gets the same bright state, held, with no keyframes. */
+  .sf-crun__track--flash { animation:sf-crun-xp-flash .6s ease-out 1; background:var(--dp-lamp, #f2b950); }
+  @keyframes sf-crun-xp-flash { 0% { background:var(--dp-lamp-hot, #ffd98a); } 100% { background:var(--dp-rule-hi, rgb(232 226 212 / .22)); } }
+  html.sf-reduce-motion .sf-crun__track--flash { animation:none; }
+  .sf-crun__pick { align-self:flex-start; font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 740, "wdth" 64;
+    font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--dp-lamp-hot, var(--sf-goal)); }
   /* Bloom is geometry, not a filter: the printed track + the full-saturation fill carry the lit
      reading; no live glow shadow rides a bar whose width changes every frame. */
   .sf-crun__fill { position:absolute; inset:0 auto 0 0; width:0; }

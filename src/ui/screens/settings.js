@@ -563,7 +563,7 @@ const RESET_SKIP = Object.freeze({
 const RESET_FALLBACKS = Object.freeze({
   gameplay: Object.freeze({
     steeringView: 'overhead', racingDistance: 58, racingHeight: 22, racingLookAhead: 36,
-    velocityVectoring: true, damageNumbers: true, powerFire: 'hold',
+    velocityVectoring: true, damageNumbers: true, powerFire: 'hold', pilotPickAtOnce: false,
   }),
   accessibility: Object.freeze({ textScale: 1 }),
 });
@@ -1089,6 +1089,9 @@ export const settingsScreen = {
       rowToggle('Pause when the window loses focus', () => g.pauseOnFocusLoss !== false, (v) => this._set(ctx, 'gameplay', 'pauseOnFocusLoss', v));
       rowSelect('Stunt moments', () => g.stuntMoments || 'cinematic', [['cinematic', 'Cinematic · brief slowdown'], ['flow', 'Flow · continuous play']], (v) => this._set(ctx, 'gameplay', 'stuntMoments', v));
       rowSelect('Game speed', () => String(g.gameSpeed ?? 1), [['1', '100% · full speed'], ['0.9', '90%'], ['0.8', '80%'], ['0.7', '70% · assisted']], (v) => this._set(ctx, 'gameplay', 'gameSpeed', Number(v)));
+      // OVH-01b: when a level-up's cards appear. Absent = at the round's end (the shipped default).
+      rowToggle('Pick level-ups at once', () => g.pilotPickAtOnce === true, (v) => this._set(ctx, 'gameplay', 'pilotPickAtOnce', v === true));
+      build.note('Off: level-up cards wait for the end of the round. On: the cards appear the moment you level up and the fight slows to 15 % until you choose.');
       rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
       rowSelect('Massline orbit assist', () => g.orbitAssistStrength || 'standard', [
         ['full', 'Full'],
