@@ -138,9 +138,12 @@ export const LOOK_HEADLIGHT = deepFreeze({
   npcReach: 380,           // NPC hulls within this distance of the player may carry a lit lamp
   npcIntensity: 0.75,      // NPC lamp gain relative to the player's
   fadeSeconds: 0.35,       // a lamp hand-off fades out and back in, never pops
-  // The player's lamp also lights a faint soft volume of dust ahead of the bow (a NOCTURNE medium, a raymarched
-  // volume - never beam geometry). density 0 turns it off. One sphere, one of NOCTURNE's four media slots.
-  beam: { radius: 70, forward: 0.85, yCenter: 8, yRadius: 34, density: 0.0005, anisotropy: 0.5, colorHex: 0xffd6a0 },
+  // The bow volume (a NOCTURNE medium, one of its four slots) is OFF: in clear space there is nothing to
+  // scatter the lamp, and the volume read on screen as a flat brown fog cone ahead of every ship — the
+  // "blurry shit" the owner rejected (design/overhaul/07_LOOK_AND_LIGHT.md §3, 2026-11-18). The lamp is seen
+  // where its pool lands on hulls and rock. A beam may only be visible inside real dust or gas, cut by the
+  // shadow map (build_map §40 OVH-10); until then density stays 0, which also skips the atmosphere pass.
+  beam: { radius: 70, forward: 0.85, yCenter: 8, yRadius: 34, density: 0, anisotropy: 0.5, colorHex: 0xffd6a0 },
 });
 
 // Named moods. Only differences from LOOK_BASE.
