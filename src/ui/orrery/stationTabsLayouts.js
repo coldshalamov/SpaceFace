@@ -339,6 +339,12 @@ ${T} .sx-ct-commit .k-word-sub, ${T} .sx-dossier__foot .k-word-sub { font-size: 
   /* the dossier plate sat 26px in from the left but flush right, its rounded hairline merging into the panel frame: an even
      12px inset on both sides keeps the plate's width (the title still holds one line) and shows all four corners */
   ${D} .sx-ct__dossier { padding-left:12px !important; padding-right:12px !important; }
+  /* the board half is ~105px at 390×844: POSTED HERE's 22px cap and the board's own 22px head pad left one row and no hint of a
+     second, and the dossier's 26px pool sat over the plate. Tighter heads show the first row whole with the next peeking under
+     it (the list reads as a list), and the plate opens nearer its title (ui-polish-534). */
+  ${D} .sx-ct__hang > .fh-legend:not(.sx-ct__yours) { padding-top:8px !important; }
+  ${D} .sx-ct__hang > .sx-ct__board { padding-top:6px !important; }
+  ${D} .sx-ct__dossier { padding-top:10px !important; }
 }
 /* ≤650 wide and only 601–800 tall the head leaves the Missions body 100–200px (640×601: 101, 600×700: 184, 390×700: 182 for board
    and dossier together): the dossier's 26px pool inset above and below took half of it and cut ACCEPT at the foot (640×601 by 7px,
