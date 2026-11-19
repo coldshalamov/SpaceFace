@@ -36,6 +36,14 @@ import { MODULES } from '../data/modules.js';
 import { swarmPilotHasActed } from './swarmSafety.js';
 import { swarmFieldCooldownScale, swarmFieldRadiusScale } from './playerModifiers.js';
 import {
+  PILOT_ECHO_DELAY_S,
+  PILOT_ECHO_STRENGTH,
+  pilotHas,
+  pilotPowerCooldownScale,
+  pilotPowerDepthScale,
+  pilotPowerReachScale,
+} from './powerVerbs.js';
+import {
   activePlayerFittings, BOMB_PROPULSION_DIALS, bombPropulsionAvailable, chargeThrowPlan,
   repulsionTrapFitted, resolveImpulseChargeCapacity,
 } from '../data/impulseChargeReadModel.js';
@@ -261,6 +269,7 @@ export const impulseCharges = {
 
     this._tickCharges(dt, state);
     this._handleThrow(player, rt, state);
+    this._drainPilotEcho(state, player, rt);
     this._handleDetonate(player, state);
   },
 
@@ -277,6 +286,8 @@ export const impulseCharges = {
     // Entity-object keyed, not id keyed: core recycles ids into freeIds the same step a body
     // dies, so an id-keyed once-gate would mark the NEXT dart dealt that id as spent forever.
     this._detonatedEnts = new WeakSet();
+    // OVH-01c2 — a pending conjurer_echo throw never crosses a run/sector boundary.
+    this._pilotEcho = [];
     this._cookoffDepth = 0;
     this._slamScratch = [];
     // A staged save record dies with the chain it describes — init/game:new/sector:exit all
@@ -993,6 +1004,41 @@ export const impulseCharges = {
     return result;
   },
 
+  /**
+   * OVH-01c2 conjurer_combo — the Bomb's blast at 60 % strength at one body, credited to the
+   * player: the standard plate's impulse and damage × 0.6 through the SAME blast primitive every
+   * other detonation here uses (fields.js owns the two-power touch ledger and calls this; the
+   * receipt keeps the blast player-owned and visible like any plate).
+   */
+  comboBlast(state, pos, playerId, opts = {}) {
+    if (!state || !pos || playerId == null) return null;
+    const def = chargeDef('charge_standard');
+    const blastPos = { x: pos.x, z: pos.z };
+    const result = this._blastVictims(state, {
+      pos: blastPos,
+      ownerId: playerId,
+      radius: def.radius,
+      impulse: def.impulse * 0.6,
+      damage: def.damage * 0.6,
+      chargeId: null,
+      excludeId: null,
+      sourceId: null,
+      trigger: opts.trigger || 'pilot_combo',
+      link: 1,
+    });
+    this.bus.emit('charge:detonated', {
+      pos: blastPos,
+      hits: result.hits,
+      radius: def.radius,
+      shoves: result.shoves,
+      ownerId: playerId,
+      trigger: opts.trigger || 'pilot_combo',
+      hostId: null,
+    });
+    this.bus.emit('audio:cue', { id: 'sfx_explosion_small', position: blastPos, gain: 0.5 });
+    return result;
+  },
+
   _tickCharges(dt, state) {
     const charges = liveChargeList(state);
     for (const e of charges) {
@@ -1154,7 +1200,10 @@ export const impulseCharges = {
         localRot: null,
         armed: !trap && aftDrop,
         // A01-05 Wide Bore: the thrower's blast reach, stamped at the throw (player only).
-        radiusScale: swarmFieldRadiusScale(state),
+        // OVH-01c2: the pilot record's own reach (conjurer_wide_bore ×1.4) and depth
+        // (conjurer_deep_cast — the detonation reads the stamp below) ride the same stamps.
+        radiusScale: swarmFieldRadiusScale(state) * pilotPowerReachScale(state),
+        strengthScale: pilotPowerDepthScale(state, 'bomb'),
         aftDrop,
         propulsionImpulseMult: !trap && aftDrop ? BOMB_PROPULSION_DIALS.selfImpulseMult : 1,
         spawnedAt: state.simTime,
@@ -1168,7 +1217,7 @@ export const impulseCharges = {
       return;
     }
 
-    rt.throwCdT = def.armTimeS * swarmFieldCooldownScale(state);
+    rt.throwCdT = def.armTimeS * swarmFieldCooldownScale(state) * pilotPowerCooldownScale(state);
     this.bus.emit('charge:thrown', { chargeId: charge.id, ownerId: player.id, pos: { x: charge.pos.x, z: charge.pos.z } });
     // AE-124: the lure is registered at the throw point — where the charge leaves the hull.
     if (heatLureFitted(state)) {
@@ -1187,6 +1236,73 @@ export const impulseCharges = {
         standoff: spawnDistance,
       });
       this.bus.emit('audio:cue', { id: 'massline.bombDrop', position: { x: charge.pos.x, z: charge.pos.z } });
+    }
+    // OVH-01c2 conjurer_echo — the plain aimed throw fires twice: the second charge leaves 0.5 s
+    // of sim time later along the same aim at half strength (drained in update; the trap and the
+    // aft-drop are alternate verbs of the same key and stay single-shot).
+    if (!trap && !aftDrop && pilotHas(state, 'conjurer_echo')) {
+      const queue = this._pilotEcho || (this._pilotEcho = []);
+      if (queue.length >= 4) queue.shift();
+      queue.push({ at: simNow(state), cf, sf, dir, spawnDistance, throwSpeed });
+    }
+  },
+
+  /**
+   * conjurer_echo — the Bomb key's second fire: one charge along the remembered aim, at half
+   * strength, consuming cargo exactly like a thrown one (no echo when the hold is empty).
+   */
+  _drainPilotEcho(state, player, rt) {
+    const queue = this._pilotEcho;
+    if (!queue || queue.length === 0) return;
+    const now = simNow(state);
+    for (let i = queue.length - 1; i >= 0; i--) {
+      const rec = queue[i];
+      if (rec.at + PILOT_ECHO_DELAY_S > now) continue;
+      queue.splice(i, 1);
+      if (!player || player.alive === false || (player.flags && player.flags.docked)) continue;
+      if (state.ui && state.ui.screenStack && state.ui.screenStack.length > 0) continue;
+      if (removeCargo(state, CHARGE_COMMODITY, 1) <= 0) continue;
+      const active = activeCharges(state, player.id);
+      const capacity = resolveImpulseChargeCapacity(state);
+      while (active.length >= capacity) {
+        const oldest = active.shift();
+        if (oldest) oldest.alive = false;
+      }
+      const spawnPos = { x: player.pos.x + rec.cf * rec.spawnDistance, z: player.pos.z + rec.sf * rec.spawnDistance };
+      const charge = this.helpers.spawnEntity({
+        type: 'charge',
+        pos: { x: spawnPos.x, z: spawnPos.z },
+        vel: {
+          x: rec.cf * rec.throwSpeed + player.vel.x,
+          z: rec.sf * rec.throwSpeed + player.vel.z,
+        },
+        rot: rec.dir,
+        radius: 1.2,
+        mass: 0.5,
+        collides: false,
+        team: player.team,
+        ownerId: player.id,
+        data: {
+          kind: 'impulse_charge',
+          chargeId: 'charge_standard',
+          ownerId: player.id,
+          hostId: null,
+          localOffset: null,
+          localRot: null,
+          armed: false,
+          radiusScale: swarmFieldRadiusScale(state) * pilotPowerReachScale(state),
+          strengthScale: PILOT_ECHO_STRENGTH,
+          aftDrop: false,
+          propulsionImpulseMult: 1,
+          spawnedAt: state.simTime,
+          spawnPos: { x: spawnPos.x, z: spawnPos.z },
+          pilotEcho: true,
+        },
+      });
+      if (!charge) { addCargo(state, CHARGE_COMMODITY, 1); continue; }
+      this.bus.emit('charge:thrown', {
+        chargeId: charge.id, ownerId: player.id, pos: { x: charge.pos.x, z: charge.pos.z }, echo: true,
+      });
     }
   },
 
@@ -1267,8 +1383,13 @@ export const impulseCharges = {
       radius: blastRadius,
       impulse: def.impulse,
       damage: def.damage,
-      impulseMult: combo && combo.combo === 'slingBomb' ? combo.def.impulseMult : 1,
-      damageMult: combo && combo.combo === 'slingBomb' ? combo.def.damageMult : 1,
+      // OVH-01c2 conjurer_deep_cast / conjurer_echo — the throw stamped the pilot's depth (a held
+      // Bomb key) or the echo's half strength; it folds into the SAME mults the massline combo
+      // uses, so one blast budget stays the single writer.
+      impulseMult: (combo && combo.combo === 'slingBomb' ? combo.def.impulseMult : 1)
+        * (Number(d.strengthScale) > 0 ? Number(d.strengthScale) : 1),
+      damageMult: (combo && combo.combo === 'slingBomb' ? combo.def.damageMult : 1)
+        * (Number(d.strengthScale) > 0 ? Number(d.strengthScale) : 1),
       chargeId: d.chargeId,
       excludeId: charge.id,
       originId: charge.id,

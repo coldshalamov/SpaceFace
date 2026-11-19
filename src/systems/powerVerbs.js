@@ -20,6 +20,9 @@
 
 import { PLANET_REGION_RANK } from '../data/planets.js';
 import { swarmCallinCount } from '../data/swarmDraft.js';
+import { pilotHas } from '../data/pilotTree.js';
+// OVH-01c2: re-exported so the power owners (fields, impulseCharges) read the pilot record through this seam.
+export { pilotHas };
 
 /** The five power verbs, in rail and number-row order. */
 export const POWER_VERBS = Object.freeze(['pull', 'shove', 'pin', 'bomb', 'rig']);
@@ -86,15 +89,38 @@ export function powersFireOnPress(state) {
 
 // The held-key preview's read seam (row 493): which power the pilot is gripping right now, keyed
 // by the simulation state it belongs to. input.js writes it; the preview reads it. Presentation
-// only — never on `state`, so it cannot enter a save, a replay or a determinism hash.
+// and the Deep Cast depth read (below) — never on `state`, so it cannot enter a save, a replay or
+// a determinism hash: the grip is a pure function of the input event sequence.
 const heldPowers = new WeakMap();
 export function setHeldPower(state, power) {
   if (!state || typeof state !== 'object') return;
-  if (POWER_VERBS.includes(power)) heldPowers.set(state, power);
-  else heldPowers.delete(state);
+  const now = Number.isFinite(state.simTime) ? state.simTime
+    : (Number.isFinite(state.tick) ? state.tick / 60 : 0);
+  const tick = Number.isFinite(state.tick) ? Math.trunc(state.tick) : 0;
+  let grip = heldPowers.get(state);
+  if (!grip) grip = { power: null, since: 0, releases: null };
+  if (POWER_VERBS.includes(power)) {
+    if (grip.power !== power) {
+      if (grip.power != null) noteGripRelease(grip, grip.power, now, tick);
+      grip.power = power;
+      grip.since = now;
+    }
+  } else if (grip.power != null) {
+    // A release (or a newer grip displacing the tracked one) records how long the key was held,
+    // stamped with the tick so a deploy reads only its own power's release on its own fire tick.
+    noteGripRelease(grip, grip.power, now, tick);
+    grip.power = null;
+    grip.since = 0;
+  }
+  heldPowers.set(state, grip);
+}
+function noteGripRelease(grip, power, now, tick) {
+  const releases = grip.releases || (grip.releases = Object.create(null));
+  releases[power] = { tick, heldS: Math.max(0, now - grip.since) };
 }
 export function heldPower(state) {
-  return (state && typeof state === 'object' && heldPowers.get(state)) || null;
+  const grip = state && typeof state === 'object' ? heldPowers.get(state) : null;
+  return (grip && grip.power) || null;
 }
 
 /** Impulse charges the player carries (cargo owns the count). */
@@ -147,4 +173,43 @@ export function resolveRigTarget(state) {
   const rank = rec ? Number(rec.regionRank) : 0;
   if (rec && Number.isFinite(rank) && rank >= PLANET_REGION_RANK.skim) return 'skim';
   return 'cone';
+}
+
+// ── OVH-01c2 — the Conjurer's Pilot Tree reads (06 §2.2) ────────────────────────────────────
+// One pure seam for every number the tree bends in the five power owners. Each helper reads only
+// the run's pilot record through pilotHas (never state.run.pilot directly) and returns the
+// identity value without it, so a run with no pilot record is byte-identical. The pilot record is
+// the player's own — NPCs never carry one, so no site needs a second owner check beyond the ones
+// that already separate player deploys from NPC ones.
+
+/** conjurer_quick_cast — each power's recovery time × 0.75. */
+export function pilotPowerCooldownScale(state) {
+  return pilotHas(state, 'conjurer_quick_cast') ? 0.75 : 1;
+}
+
+/** conjurer_wide_bore — each power's radius or range × 1.4. */
+export function pilotPowerReachScale(state) {
+  return pilotHas(state, 'conjurer_wide_bore') ? 1.4 : 1;
+}
+
+/** conjurer_echo — the second fire lands this much sim time later (06 §2.2 "half a second"). */
+export const PILOT_ECHO_DELAY_S = 0.5;
+/** conjurer_echo — the second fire's strength fraction. */
+export const PILOT_ECHO_STRENGTH = 0.5;
+
+// conjurer_deep_cast — hold a power key before release to deepen it: strength ×1 at 0.4 s of
+// hold rising to ×1.5 at 1.2 s. A tap (or a press-mode fire, which never opens a grip) is ×1.
+// Built on the held-key grip above: the release tick's record is the only input.
+export const POWER_DEPTH_HOLD_MIN_S = 0.4;
+export const POWER_DEPTH_HOLD_MAX_S = 1.2;
+export const POWER_DEPTH_MAX_MULT = 1.5;
+export function pilotPowerDepthScale(state, power) {
+  if (!power || !pilotHas(state, 'conjurer_deep_cast')) return 1;
+  const grip = state && typeof state === 'object' ? heldPowers.get(state) : null;
+  const rec = grip && grip.releases ? grip.releases[powerVerbFor(power)] : null;
+  if (!rec || rec.tick !== Math.trunc(Number.isFinite(state.tick) ? state.tick : 0)) return 1;
+  if (!(rec.heldS > POWER_DEPTH_HOLD_MIN_S)) return 1;
+  const span = POWER_DEPTH_HOLD_MAX_S - POWER_DEPTH_HOLD_MIN_S;
+  const t = Math.min(1, (rec.heldS - POWER_DEPTH_HOLD_MIN_S) / span);
+  return 1 + (POWER_DEPTH_MAX_MULT - 1) * t;
 }

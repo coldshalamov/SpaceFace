@@ -12,6 +12,14 @@ import { BOMB_CHARGE_CHOICE, BOMB_DEFS, BOMB_DRIFT, BOMB_RACK, BOMB_STARTER_KIT,
 import { playerImpulseCharges } from './powerVerbs.js';
 import { shipworksStationAccess } from './ships.js';
 import { swarmFieldCooldownScale, swarmFieldRadiusScale } from './playerModifiers.js';
+import {
+  PILOT_ECHO_DELAY_S,
+  PILOT_ECHO_STRENGTH,
+  pilotHas,
+  pilotPowerCooldownScale,
+  pilotPowerDepthScale,
+  pilotPowerReachScale,
+} from './powerVerbs.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
 import {
@@ -673,6 +681,7 @@ export const bombs = {
     this._motion = {};
     this._viscosity = { x: 0, y: 0, z: 0 };
     this._ownerCooldowns = new Map();
+    this._pilotEcho = [];
     this._bombsQuiet = null;
     this._prepQuotes = new WeakMap();
     this._preparationInFlight = false;
@@ -730,6 +739,9 @@ export const bombs = {
   newGame() { this._resetRuntime('new_game'); },
   update(dt, state) {
     if (state.mode !== 'flight' || !(dt > 0) || !Number.isFinite(dt)) return;
+    // OVH-01c2 conjurer_echo — drain the pending second drop BEFORE the empty quiet latch: a
+    // fast first fuze must not starve the echo of its tick.
+    this._drainPilotEcho(state);
     const actions = state.input && state.input.actions;
     const dropEdge = !!(actions && actions.dropBomb);
     const detonateEdge = !!(actions && actions.chargeDetonate);
@@ -787,12 +799,44 @@ export const bombs = {
           this.drop(player, rt.selectedId, state);
           // A live bomb means the empty latch must not re-arm until the bay drains.
           this._bombsQuiet = null;
+          // OVH-01c2 conjurer_echo — the Bomb key fires twice: the second drop leaves 0.5 s of
+          // sim time later, same payload, half strength (drained above the quiet latch so a
+          // detonated first bomb cannot starve it).
+          if (pilotHas(state, 'conjurer_echo')) {
+            const queue = this._pilotEcho || (this._pilotEcho = []);
+            if (queue.length >= 4) queue.shift();
+            queue.push({ payloadId: rt.selectedId, at: simNow(state) });
+          }
         } else {
           this.bus.emit('toast', { text: 'Bomb rack empty — rearm at a station shipworks.', kind: 'info', ttl: 1.6 });
         }
       }
     }
     publishBombsQuiet(state, false);
+  },
+
+  /**
+   * conjurer_echo — the second drop: the ordinary drop() path (rack ammo, bay caps, cooldowns)
+   * with a half-strength stamp on the bomb it returns. No rack unit, no echo — exactly like the
+   * key itself would answer.
+   */
+  _drainPilotEcho(state) {
+    const queue = this._pilotEcho;
+    if (!queue || queue.length === 0) return;
+    const now = simNow(state);
+    for (let i = queue.length - 1; i >= 0; i--) {
+      const rec = queue[i];
+      if (rec.at + PILOT_ECHO_DELAY_S > now) continue;
+      queue.splice(i, 1);
+      const player = state.entities.get(state.playerId);
+      if (blocked(state, player)) continue;
+      const rt = ensureRuntime(state);
+      const cell = rt.rack.cells.find((c) => c && c.id === rec.payloadId && c.count > 0) || null;
+      if (!cell) continue;
+      const bomb = this.drop(player, rec.payloadId, state);
+      if (bomb && bomb.data) bomb.data.strengthScale = PILOT_ECHO_STRENGTH;
+      this._bombsQuiet = null;
+    }
   },
 
   // In-flight cycle walks only LOADED rack sockets — the catalogue order (BOMB_IDS) is the
@@ -1125,8 +1169,12 @@ export const bombs = {
     const def = bombDef(payloadId);
     // A01-05 Wide Bore: the player's Bomb blast reaches x1.4 and cools x1.35, stamped on the bomb
     // at the drop so the effect, the preview and the presentation all read one resolved radius.
-    const radiusScale = isPlayer ? swarmFieldRadiusScale(state) : 1;
-    const cooldownScale = isPlayer ? swarmFieldCooldownScale(state) : 1;
+    // OVH-01c2: the pilot record's own reach (conjurer_wide_bore), recovery
+    // (conjurer_quick_cast) and depth (conjurer_deep_cast — read at the detonation) ride the
+    // same stamps, player drops only.
+    const radiusScale = isPlayer ? swarmFieldRadiusScale(state) * pilotPowerReachScale(state) : 1;
+    const cooldownScale = isPlayer
+      ? swarmFieldCooldownScale(state) * pilotPowerCooldownScale(state) : 1;
     const { pos, vx, vz, heading } = bombDropPlan(owner);
     const bomb = this.helpers.spawnEntity({
       type: BOMB_TYPE, pos, vel: { x: vx, z: vz }, rot: heading,
@@ -1134,6 +1182,7 @@ export const bombs = {
       collisionMask: Masks.PROJECTILE, team: owner.team, ownerId: owner.id,
       data: {
         kind: 'bomb', bombId: def.id, ownerId: owner.id, phase: 'drift', armed: false, radiusScale,
+        strengthScale: isPlayer ? pilotPowerDepthScale(state, 'bomb') : 1,
         armedAt: now + BOMB_DRIFT.armS, detonateAt: now + def.fuzeS,
         spawnedAt: now, fieldStartedAt: 0, fieldEndsAt: 0, nextFieldTick: 0,
         triggered: false, spinRadS: 0, sectorId: state.world?.currentSectorId || null,
@@ -1275,8 +1324,15 @@ export const bombs = {
     if (!bomb.alive || !d || d.retired || d.triggered || (d.phase !== 'drift' && d.phase !== 'warning')) return false;
     const def = resolvedBombDef(d), pos = { x: bomb.pos.x, z: bomb.pos.z };
     d.triggered = true; d.detonatedTick = state.tick;
+    // OVH-01c2 — conjurer_deep_cast (a held Bomb key) and conjurer_echo stamped the drop; the
+    // blast's impulse and damage carry the stamp, the resolved radius above already does.
+    const strengthScale = Number(d.strengthScale) > 0 ? Number(d.strengthScale) : 1;
     const result = def.field?.kind === 'singularity' ? null
-      : this._blastVictims(state, { pos, def, ownerId: d.ownerId, originId: bomb.id, trigger });
+      : this._blastVictims(state, {
+        pos, def, ownerId: d.ownerId, originId: bomb.id, trigger,
+        impulseOverride: strengthScale !== 1 ? def.impulse * strengthScale : null,
+        damageOverride: strengthScale !== 1 ? def.damage * strengthScale : null,
+      });
     this._spawnSweep(bomb, def, pos, state);
     if (def.field) {
       d.phase = 'field'; d.fieldStartedAt = simNow(state); d.fieldEndsAt = d.fieldStartedAt + def.field.durationS;
@@ -1715,6 +1771,8 @@ export const bombs = {
     this._sweeps = [];
     this._prepQuotes = new WeakMap();
     this._preparationInFlight = false;
+    // OVH-01c2 — a pending conjurer_echo drop never crosses a run boundary.
+    this._pilotEcho = [];
     if (!this.state) return;
     const rt = ensureRuntime(this.state);
     applyStarterKit(rt);

@@ -24,6 +24,7 @@
 
 import { MASS_SEED_DEF, MASS_SEED_CUT_REASONS } from '../data/massSeed.js';
 import { Masks } from '../core/entity.js';
+import { pilotPowerCooldownScale, pilotPowerDepthScale, pilotPowerReachScale } from './powerVerbs.js';
 
 const TRAVEL_MATERIAL = 'projectile'; // ghost collider family: zero solver contacts in flight
 const ANCHOR_MATERIAL = 'rock';       // solid fixed body once frame-locked
@@ -95,12 +96,15 @@ export function massSeedLaunchPlan(player, state) {
     x: player.pos.x + dir.x * spawnDistance,
     z: player.pos.z + dir.z * spawnDistance,
   };
-  const travelDistance = MASS_SEED_DEF.travelSpeed * MASS_SEED_DEF.travelTimeS;
+  // OVH-01c2 conjurer_wide_bore — the pin's reach is the bolt's flight: ×1.4 with the node, in
+  // the SAME plan the deploy and the row-493 preview read, so the marker never drifts from it.
+  const travelSpeed = MASS_SEED_DEF.travelSpeed * pilotPowerReachScale(state);
+  const travelDistance = travelSpeed * MASS_SEED_DEF.travelTimeS;
   const lockPos = {
     x: spawnPos.x + dir.x * travelDistance,
     z: spawnPos.z + dir.z * travelDistance,
   };
-  return { dir, spawnPos, lockPos };
+  return { dir, spawnPos, lockPos, travelSpeed };
 }
 
 // Same aim convention as impulse charges: aim point direction from the player when the cursor
@@ -192,14 +196,16 @@ export const massSeed = {
       }
     }
 
-    const { dir, spawnPos, lockPos } = massSeedLaunchPlan(player, state);
+    const { dir, spawnPos, lockPos, travelSpeed } = massSeedLaunchPlan(player, state);
 
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     if (typeof spawnEntity !== 'function') return;
     const deployedAt = now;
     const lockAt = deployedAt + MASS_SEED_DEF.travelTimeS;
     const activeAt = lockAt + MASS_SEED_DEF.lockingS;
-    const expireAt = activeAt + MASS_SEED_DEF.anchorTtlS;
+    // OVH-01c2 conjurer_deep_cast — a held Pin key deepens the anchor it releases: its hold
+    // scales with the same depth curve the other aimed powers use (×1 at a tap, ×1.5 at 1.2 s).
+    const expireAt = activeAt + MASS_SEED_DEF.anchorTtlS * pilotPowerDepthScale(state, 'pin');
     const warnAt = expireAt - MASS_SEED_DEF.warningS;
     const entity = spawnEntity({
       type: 'massSeed',
@@ -258,7 +264,7 @@ export const massSeed = {
     ms.spawnPos = spawnPos;
     ms.dir = dir;
     ms.lockPos = lockPos;
-    ms.travelSpeed = MASS_SEED_DEF.travelSpeed;
+    ms.travelSpeed = travelSpeed;
     ms.travelTimeS = MASS_SEED_DEF.travelTimeS;
     ms.lastDenial = null;
 
@@ -561,7 +567,9 @@ export const massSeed = {
     // Cooldown starts only when the LAST seed actually leaves the field — a replacement deploy
     // already launched its successor and never restarts the clock.
     if (reason !== MASS_SEED_CUT_REASONS.replaced) {
-      ensurePlayerSeed(state).cooldownUntil = nowOf(state) + MASS_SEED_DEF.cooldownS;
+      // OVH-01c2 conjurer_quick_cast — the pin's recovery reads the pilot record (×0.75).
+      ensurePlayerSeed(state).cooldownUntil = nowOf(state)
+        + MASS_SEED_DEF.cooldownS * pilotPowerCooldownScale(state);
     }
     this.bus.emit('massSeed:collapsed', { seedId: ms.seedId, reason });
     this._flushDying(state, ms);
@@ -592,7 +600,8 @@ export const massSeed = {
     });
     this.bus.emit('massSeed:destroyed', { seedId: ms.seedId, reason });
     this.bus.emit('massSeed:collapsing', { seedId: ms.seedId, reason });
-    ensurePlayerSeed(state).cooldownUntil = nowOf(state) + MASS_SEED_DEF.cooldownS;
+    ensurePlayerSeed(state).cooldownUntil = nowOf(state)
+      + MASS_SEED_DEF.cooldownS * pilotPowerCooldownScale(state);
     this.bus.emit('massSeed:collapsed', { seedId: ms.seedId, reason });
     this.bus.emit('audio:cue', { id: 'sfx_explosion_small', gain: 0.45 });
     this._flushDying(state, ms);
