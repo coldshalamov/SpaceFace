@@ -58,6 +58,8 @@ import {
 } from '../combat/attackSpec.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, queueProjectileContinuation } from '../core/physicsAuthority.js';
 import { queryPhysicalBodies, deliverPhysicalImpulseDetailed, deliverPhysicalImpulse, deliverPhysicalAcceleration, schedulePhysicalBlast } from '../combat/physicalEffects.js';
+import { pilotHas } from '../data/pilotTree.js';
+import { gunFamilyOf } from '../data/gunFamilies.js';
 import { isEnvironmentalBody } from '../core/physicalResponse.js';
 import { clearEmergentRay, launchEmergent, setEmergentRay } from './emergentPrimitives.js';
 import {
@@ -709,7 +711,12 @@ export const weapons = {
     for (const e of ships) {
       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
       const intent = e.data && e.data.intent;
+      // OVH-01c1 bruiser_stagger — a kicked hull is gun-deaf until its stamp's sim-time
+      // window closes. The field only ever exists after a player kick stamped it.
+      const staggered = !!(e.data && Number.isFinite(e.data.kickStaggerUntil)
+        && e.data.kickStaggerUntil > (Number.isFinite(state.simTime) ? state.simTime : 0));
       const firing = !!(intent && intent.fire)
+        && !staggered
         && presentationAllowsPlayerFacingAction(e, state)
         && mothlightAllowsFire(state, e);
       if (e.physicsSleeping === true && !firing) continue;
@@ -2901,13 +2908,42 @@ export function applyProjectilePhysicalContact(host, payload) {
   const source = packet?.source || {};
   if (Math.hypot(ix || 0, iz || 0) > 0 && (!source.impulseProvenance || combatFlag('weaponImpulseConsequences'))) {
     const provenance = { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: source.impulseProvenance || 'weapon_hit', appliedTick: state.tick };
+    // OVH-01c1 bruiser_heavy_slugs — a Thump-family shot from the player carries 30 % more kick
+    // (impulse, never damage): scale the delivered momentum before the physics read.
+    if (provenance.actorId === state.playerId
+      && pilotHas(state, 'bruiser_heavy_slugs')
+      && gunFamilyOf(data.weaponId) === 'thump') {
+      ix *= 1.3;
+      iz *= 1.3;
+    }
     const delivery = deliverPhysicalImpulseDetailed(state, target, { x: ix || 0, z: iz || 0 },
       { ...provenance, provenance, point: payload.pos, maxTorque: packet?.tumbleTorque },
       // Scenery contacts obey the same authored momentum as the damage route.
       { port: host.helpers?.combatPhysics, scaleEnvironment: false,
         referenceImpulse: isEnvironmentalBody(target) ? source.environmentImpulse : undefined });
     if (delivery.accepted) {
-      recordImpulseProvenance(target, { ...provenance, magnitude: Math.hypot(delivery.impulse.x, delivery.impulse.z) });
+      // OVH-01c1 kick stamp — "a body you kicked" is the player-authored slice of this same
+      // provenance record: { by, at, impulse } written once, here, the player-projectile impulse
+      // site. Fresh for KICK_STAMP_WINDOW_S of sim time (readKickStamp).
+      const playerKick = provenance.actorId === state.playerId && target.id !== state.playerId;
+      recordImpulseProvenance(target, {
+        ...provenance,
+        magnitude: Math.hypot(delivery.impulse.x, delivery.impulse.z),
+        ...(playerKick ? {
+          by: provenance.actorId,
+          at: Number.isFinite(state.simTime) ? state.simTime : 0,
+          impulse: { x: delivery.impulse.x, z: delivery.impulse.z },
+          kickHops: 0,
+        } : {}),
+      });
+      // OVH-01c1 bruiser_stagger — a body the player kicked cannot fire for 1 s of sim time.
+      // weapons owns the NPC fire gate (the `firing` read below); the stamp is plain data on
+      // the victim's own data bag so save/load and entity lifecycle behave like arenaSlamAt.
+      if (playerKick && pilotHas(state, 'bruiser_stagger')
+        && (target.type === 'ship' || target.type === 'drone')) {
+        const bag = target.data || (target.data = {});
+        bag.kickStaggerUntil = (Number.isFinite(state.simTime) ? state.simTime : 0) + 1;
+      }
       if (combatFlag('weaponImpulseConsequences') && target.id !== state.playerId) {
         const owner = state.entities.get(provenance.actorId);
         publishHitstunImpulse(host.bus, { source: 'gun', victimId: target.id, attackerId: provenance.actorId,

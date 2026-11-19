@@ -359,6 +359,20 @@ export function recordImpulseProvenance(entity, input = {}) {
     magnitude: nonNegative(input.magnitude),
     ...(input.sourceOwnerId != null ? { sourceOwnerId: input.sourceOwnerId } : {}),
     ...(inheritedHold != null ? { holdUntilTick: inheritedHold } : {}),
+    // OVH-01c1 kick stamp — "a body you kicked" carries { by, at, impulse } on the SAME
+    // provenance record (the packet's contract: extend the existing attribution, never a
+    // parallel field). `at` is simTime seconds; `impulse` is the applied momentum vector;
+    // `kickHops` counts hand-offs between bodies (0 on the projectile kick itself).
+    ...(input.by != null ? {
+      by: input.by,
+      at: Number.isFinite(input.at) ? input.at : 0,
+      impulse: input.impulse && Number.isFinite(input.impulse.x) && Number.isFinite(input.impulse.z)
+        ? Object.freeze({ x: input.impulse.x, z: input.impulse.z }) : null,
+      kickHops: nonNegativeInteger(input.kickHops),
+      // A handed-on stamp keeps the original kick's identity so "once per kick"
+      // (billiards' single kill) survives the hop onto the next body.
+      ...(input.kickRoot ? { kickRoot: input.kickRoot } : {}),
+    } : {}),
   });
   RECENT_IMPULSES.set(entity, record);
   IMPULSE_PROVENANCE_GENERATION = (IMPULSE_PROVENANCE_GENERATION + 1) >>> 0 || 1;
@@ -419,6 +433,50 @@ export function holdImpulseProvenance(entity, untilTick, nowTick, causeAppliedTi
   const held = Object.freeze({ ...record, holdUntilTick: until });
   RECENT_IMPULSES.set(entity, held);
   return held;
+}
+
+// OVH-01c1 — the kick stamp's freshness window: 4 s of simulation time, measured off the
+// record's `at` (simTime at the kick), not the tick window the ordinary provenance uses.
+export const KICK_STAMP_WINDOW_S = 4;
+
+/**
+ * Read a body's fresh player kick stamp, or null. The stamp is the player-only slice of the
+ * ordinary impulse-provenance record (`by`), so NPC kicks never carry one and a stale record
+ * reads as no kick. Pure read — it never mutates the maps.
+ */
+export function readKickStamp(entity, state) {
+  if (!entity || typeof entity !== 'object' || !state) return null;
+  const record = RECENT_IMPULSES.get(entity) || null;
+  if (!record || record.by == null || record.by !== state.playerId) return null;
+  const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+  const at = Number.isFinite(record.at) ? record.at : -Infinity;
+  if (!(now - at >= 0 && now - at <= KICK_STAMP_WINDOW_S)) return null;
+  return Object.freeze({
+    by: record.by,
+    at,
+    impulse: record.impulse || null,
+    kickHops: Number.isInteger(record.kickHops) ? record.kickHops : 0,
+    record,
+  });
+}
+
+// Once-per-kick bookkeeping for bruiser_billiards: a stamp spends its single killing hit on
+// the body carrying it — and the spend keys on the kick's ROOT record, so a stamp that hopped
+// onto a second body (kickRoot) still counts the same kick. WeakSet-backed like the rest of
+// this module so saves never see it; a fresh kick writes a fresh root and earns a new allowance.
+const KICK_STAMP_SPENT = new WeakSet();
+function kickStampRoot(stamp) {
+  const record = stamp && stamp.record;
+  return record ? (record.kickRoot || record) : null;
+}
+export function isKickStampSpent(entity, stamp) {
+  const root = kickStampRoot(stamp);
+  return !!entity && !!root && KICK_STAMP_SPENT.has(root);
+}
+export function markKickStampSpent(entity, stamp) {
+  const root = kickStampRoot(stamp);
+  if (!entity || !root) return;
+  KICK_STAMP_SPENT.add(root);
 }
 
 // Immutable insertion-order view for consumers that must not lose an earlier same-tick impulse when

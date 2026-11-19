@@ -16,7 +16,7 @@ import { MAIN_TO_SIM_BUS_EVENTS } from '../src/core/mainToSimEventSurface.js';
 // main side. Proven at the differ level, like test/domain-differ-node-lifecycle.test.mjs.
 import * as simReadModel from '../scripts/lib/simReadModel.mjs';
 import { PILOT_LIVE_NODE_IDS, withPilotLiveNodesForTest } from '../src/data/pilotLive.js';
-import { PILOT_EVOLUTIONS, PILOT_NODES, getPilotCard, pilotPoints } from '../src/data/pilotTree.js';
+import { PILOT_EVOLUTIONS, PILOT_NODES, eligiblePilotCards, getPilotCard, pilotPoints } from '../src/data/pilotTree.js';
 import { runSession } from '../src/systems/runSession.js';
 
 const ALL_PILOT_CARDS = Object.freeze([
@@ -105,9 +105,10 @@ test('a second banked pick deals after the first choice', () => withAllCardsLive
 }));
 
 test('an empty live set opens no offer and keeps the pick banked', () => {
-  // The director's real live list is empty in this packet — no seam, no injections.
-  assert.equal(PILOT_LIVE_NODE_IDS.size, 0);
+  // An empty live set — the state between effect packets — injected, so this does not depend on
+  // which nodes the director has turned on.
   const harness = boot(23);
+  withPilotLiveNodesForTest([], () => {
   beginSwarm(harness, 23);
   harness.bus.emit('run:awardRequested', { xp: 16, reason: 'kill' });
   assert.equal(harness.state.run.level, 2);
@@ -120,6 +121,7 @@ test('an empty live set opens no offer and keeps the pick banked', () => {
   assert.equal(harness.state.run.pilot.banked, 2);
   assert.equal(harness.state.run.pilot.offer, null);
   assert.equal(named(harness.emitted, 'run:pilotOffered').length, 0);
+  });
   // And once nodes go live, the very next deal moment deals.
   withAllCardsLive(() => {
     harness.bus.emit('run:awardRequested', { xp: 32, reason: 'kill' });
@@ -276,4 +278,33 @@ test('state.run.pilot reaches the main side through the worker-lane domain mirro
   }
   assert.ok(shipped, 'the changed pilot hand ships within the run root cadence window');
   assert.deepEqual(mirror.get('run').pilot, run.pilot);
+});
+
+test('the shipped live list deals a card at every one of 13 picks, deep, wide or mixed', () => {
+  // OVH-01 never-return: levelling that grants nothing. Whatever the director has turned on,
+  // a pick must always find at least one card for any style of play.
+  for (const id of PILOT_LIVE_NODE_IDS) assert.ok(getPilotCard(id), `live id ${id} is a real card`);
+  const branchesOf = (pilot) => Object.keys(pilot.points).filter((b) => pilot.points[b] > 0);
+  const styles = {
+    deep: (cards, pilot) => {
+      const best = Math.max(...cards.map((c) => (c.branch ? pilot.points[c.branch] || 0 : -1)));
+      return cards.find((c) => (c.branch ? pilot.points[c.branch] || 0 : -1) === best);
+    },
+    wide: (cards, pilot) => {
+      const low = Math.min(...cards.map((c) => (c.branch ? pilot.points[c.branch] || 0 : 99)));
+      return cards.find((c) => (c.branch ? pilot.points[c.branch] || 0 : 99) === low);
+    },
+    mixed: (cards, pilot, pick) => (pick % 2 === 0 ? styles.deep(cards, pilot) : styles.wide(cards, pilot)),
+  };
+  for (const [style, choose] of Object.entries(styles)) {
+    const pilot = { nodes: [], points: {}, banked: 0, offer: null };
+    for (let pick = 0; pick < 13; pick += 1) {
+      const cards = eligiblePilotCards(pilot, 'swarm');
+      assert.ok(cards.length >= 1, `${style} picker: pick ${pick + 1} has a card (held ${JSON.stringify(pilot.points)})`);
+      const card = choose(cards, pilot, pick);
+      pilot.nodes.push(card.id);
+      if (card.kind !== 'evolution') pilot.points[card.branch] = (pilot.points[card.branch] || 0) + 1;
+    }
+    assert.ok(branchesOf(pilot).length >= 1);
+  }
 });

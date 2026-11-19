@@ -10,12 +10,16 @@ import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { isRecovering, readTumbleStatus } from '../combat/tumbleStatus.js';
 import { bodyLife, evidenceForConsequenceLive } from '../combat/stuntEvidence.js';
 import {
+  COLLISION_CONSEQUENCE_LIMITS,
   HEAVY_AS_TERRAIN_MASS,
   hitstunAttackerMassForCollision,
   isWorldHitstunBody,
   holdImpulseProvenance,
   IMPULSE_PROVENANCE_MAX_AGE_TICKS,
+  isKickStampSpent,
+  markKickStampSpent,
   publishHitstunImpulse,
+  readKickStamp,
   readRecentImpulseProvenance,
   readRecentImpulseProvenanceHistory,
   recordImpulseProvenance,
@@ -24,6 +28,10 @@ import {
 } from '../combat/impulseKernel.js';
 import { appendCombatTrace } from '../combat/trace.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
+import { pilotHas } from '../data/pilotTree.js';
+import { WEAPONS } from '../data/weapons.js';
+import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { isPloughing, trackPloughReleases, ploughKill } from '../combat/ploughFlight.js';
 import {
   clearPendingSlam,
@@ -79,6 +87,13 @@ const TEAROFF_MIN_DEBRIS_COUNT = 10;
 const TEAROFF_SECOND_PIECE_COUNT = 14;
 const TEAROFF_COOLDOWN_TICKS = 120;
 const TEAROFF_LIVE_CAP = 20;
+
+// OVH-01c1 — the canonical Thump kick for juggernaut_shoulder_check: the medium concussion
+// cannon's authored impulsePerHit (read live so a data retune follows it).
+const PILOT_THUMP_KICK_MOMENTUM = (() => {
+  const def = WEAPONS.find((w) => w && w.id === 'wpn_concussion_cannon_m');
+  return Number.isFinite(def && def.impulsePerHit) ? def.impulsePerHit : 920;
+})();
 
 export const collisionConsequences = {
   id: 'collisionConsequences',
@@ -353,6 +368,12 @@ export const collisionConsequences = {
 
   _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, strikerLoose = false, chainContact = null) {
     const state = this.state;
+    // OVH-01c1 — the pilot body-effects seam. Every read inside is a pilotHas/kick-stamp
+    // query, so with no pilot record this returns { dealtMult: 1, kill: null } without
+    // touching the contact (off = byte-identical). Runs before the wreck branch: a kicked
+    // wreck is a loose body too. Detection only — kills flush after the slam note arms.
+    const pilot = this._pilotContactEffects(target, other, payload, tick);
+    const pilotDealtMult = pilot.dealtMult;
     if (target.type === 'wreck') {
       // Wrecks share the contact damage law and combat's hull/death writer, but never
       // enter ship helm-loss or fracture paths. The pair cooldown already admitted this hit.
@@ -363,6 +384,8 @@ export const collisionConsequences = {
       });
       const damage = receipt ? scaledImpactForHotDebris(receipt, other, state) : 0;
       if (damage > 0) this._routeImpactDamage(target, other, receipt, damage);
+      // OVH-01c1 — a wreck carries no fracture slam, so its pilot kill flushes here.
+      if (pilot.kill) this._routePilotCollisionKill(target, pilot.kill.attackerId, pilot.kill.sourceKind, tick);
       return;
     }
     if (!DAMAGEABLE_MOTION.has(target.type) || target.id === state.playerId) return;
@@ -417,7 +440,9 @@ export const collisionConsequences = {
     _consequenceArgs.exchangedMomentum = exchangedMomentum;
     _consequenceArgs.tick = tick;
     _consequenceArgs.provenance = provenance;
-    _consequenceArgs.craftDamageMultiplier = ramPlate?.damageMultiplier;
+    _consequenceArgs.craftDamageMultiplier = pilotDealtMult !== 1
+      ? (ramPlate ? ramPlate.damageMultiplier : 1) * pilotDealtMult
+      : ramPlate?.damageMultiplier;
     _consequenceArgs.suppressCraftDamage = suppressCraftDamage;
     _consequenceArgs.pos = payload.pos;
     _consequenceArgs.normal = payload.normal;
@@ -486,6 +511,16 @@ export const collisionConsequences = {
       _slamArg.tick = tick;
       notePendingSlam(target, _slamArg);
     }
+    // OVH-01c1 — a pilot kill lands in the ordinary kill slot: after the pending-slam note
+    // arms the existing hull-burst fling, before the contact's own damage is routed.
+    if (pilot.kill) {
+      const pilotKillResult = this._routePilotCollisionKill(
+        target, pilot.kill.attackerId, pilot.kill.sourceKind, tick);
+      this._maybeLastStandRepair(
+        entityById(state, state.playerId),
+        { provenance: { actorId: pilot.kill.attackerId } },
+        pilotKillResult);
+    }
     // FIGHT-13 — hot capital debris gate: a fresh capital fragment deals the kernel's
     // debris damage decaying over its authored window; a settled/expired fragment is
     // salvage and deals none. Ordinary bodies read scale 1 (no behavior change).
@@ -493,6 +528,9 @@ export const collisionConsequences = {
     const damageResult = scaledImpact > 0
       ? this._routeImpactDamage(target, other, receipt, scaledImpact, chainContact)
       : null;
+    // OVH-01c1 juggernaut_last_stand — below 15 % hull, collision damage the player dealt
+    // repairs their hull by the same amount, never above 30 % of max from this source.
+    this._maybeLastStandRepair(other, receipt, damageResult);
     if (target.alive !== false) clearPendingSlam(target.id);
 
     // fields spread into the trace's own raw record — the arg object is never retained.
@@ -648,6 +686,196 @@ export const collisionConsequences = {
     // THROW-01 plough: each kill costs the thrown body a share of its speed.
     if (ploughing && target.alive === false) ploughKill(this.state, other);
     return routed;
+  },
+
+  /**
+   * OVH-01c1 — one seam for every collision-domain pilot node. Returns { dealtMult, kill }:
+   * the multiplier this direction applies to craft contact damage (1 = no pilot effect) and
+   * an optional deferred stamp/plough kill descriptor ({ attackerId, sourceKind }) the caller
+   * flushes after the pending-slam note arms the ordinary hull-burst fling. The Bruiser
+   * kick-stamp chain effects live here because a stamped body only ever speaks when it meets
+   * another body — this contact — and the Juggernaut dealt-side nodes because
+   * `other === player` is exactly "the player hit it". Everything gates on
+   * pilotHas/readKickStamp; with no pilot record the stamp maps are empty and every branch is
+   * a false read.
+   */
+  _pilotContactEffects(target, other, payload, tick) {
+    const state = this.state;
+    const out = { dealtMult: 1, kill: null };
+    const player = entityById(state, state.playerId);
+    const throwSign = target.id === payload.bId ? 1 : target.id === payload.aId ? -1 : 0;
+    const nx = finite(payload.normal && payload.normal.x);
+    const nz = finite(payload.normal && payload.normal.z);
+    const closing = closingSpeedFromImpact(payload);
+
+    // ── Bruiser: bodies carrying a fresh player kick stamp. ────────────────
+    const strikerStamp = readKickStamp(other, state);
+    if (strikerStamp && target.alive !== false && target.id !== state.playerId
+      && !isWorldHitstunBody(target)) {
+      // newtons_cradle (capstone) takes precedence: the striker stops dead and the receiver
+      // gets its whole momentum, stamped as the player's, up to five hops per kick.
+      if (pilotHas(state, 'bruiser_newtons_cradle') && strikerStamp.kickHops < 5) {
+        const mass = positiveMass(other);
+        const mx = finite(other.vel && other.vel.x) * mass;
+        const mz = finite(other.vel && other.vel.z) * mass;
+        if (Math.hypot(mx, mz) > 0) {
+          queuePhysicsImpulse(other, { x: -mx, z: -mz });
+          if (queuePhysicsImpulse(target, { x: mx, z: mz })) {
+            this._propagateKickStamp(target, strikerStamp, { x: mx, z: mz }, tick);
+          }
+        }
+      } else if (pilotHas(state, 'bruiser_pass_it_on') && strikerStamp.kickHops < 1
+        && strikerStamp.impulse) {
+        // pass_it_on: the same kick impulse along the contact normal — one hop only.
+        const mag = Math.hypot(strikerStamp.impulse.x, strikerStamp.impulse.z);
+        if (mag > 0) {
+          const dir = throwSign !== 0 && (nx !== 0 || nz !== 0)
+            ? { x: nx * throwSign, z: nz * throwSign }
+            : { x: strikerStamp.impulse.x / mag, z: strikerStamp.impulse.z / mag };
+          const impulse = { x: dir.x * mag, z: dir.z * mag };
+          if (queuePhysicsImpulse(target, impulse)) {
+            this._propagateKickStamp(target, strikerStamp, impulse, tick);
+          }
+        }
+      }
+      // billiards: a stamped body kills the first enemy it meets above the speed where
+      // collisions begin to deal damage — whatever that enemy's hull — once per kick.
+      if (pilotHas(state, 'bruiser_billiards')
+        && target.alive !== false
+        && !isKickStampSpent(other, strikerStamp)
+        && closing > COLLISION_CONSEQUENCE_LIMITS.damageDeltaV
+        && (target.type === 'ship' || target.type === 'drone')
+        && isHostileForAI(state, target, player)) {
+        markKickStampSpent(other, strikerStamp);
+        out.kill = { attackerId: strikerStamp.by, sourceKind: 'collision_bruiser_billiards' };
+      }
+    }
+
+    // wall_splat: a stamped body meeting a wall or fixed body above the damage speed dies.
+    // Terrain/structure reads isWorldHitstunBody; authored non-dynamic bodies are fixed too.
+    // (No sim-side wall-scorch decal exists to stamp — the ordinary kill presentation stands.)
+    const targetStamp = readKickStamp(target, state);
+    if (targetStamp && target.alive !== false && other.alive !== false
+      && target.id !== state.playerId
+      && pilotHas(state, 'bruiser_wall_splat')
+      && (isWorldHitstunBody(other)
+        || (other.physicsBody && other.physicsBody.dynamic === false))
+      && closing > COLLISION_CONSEQUENCE_LIMITS.damageDeltaV) {
+      out.kill = { attackerId: targetStamp.by, sourceKind: 'collision_bruiser_wall_splat' };
+    }
+
+    // ── Juggernaut dealt-side: only ever reads when `other` IS the player. ──
+    if (other === player && target.alive !== false) {
+      const cruise = resolveGovernedCombatSpeed(other, state, 0);
+      const playerSpeed = Math.hypot(
+        finite(other.vel && other.vel.x), finite(other.vel && other.vel.z));
+      // juggernaut (capstone): above cruise, whatever the player hits takes double.
+      if (cruise > 0 && playerSpeed > cruise && pilotHas(state, 'juggernaut_juggernaut')) {
+        out.dealtMult = 2;
+      }
+      // snowplough: ramming an enemy no heavier than you at ≥ 50 % of cruise kills it; the
+      // kill routes through the collision family so the pending-slam fracture throws the
+      // pieces forward along your velocity (the existing hull-burst fling).
+      if (pilotHas(state, 'juggernaut_snowplough')
+        && payload.causalActorId === state.playerId
+        && cruise > 0 && closing >= 0.5 * cruise
+        && (target.type === 'ship' || target.type === 'drone')
+        && isHostileForAI(state, target, player)
+        && positiveMass(target) <= positiveMass(other)) {
+        out.kill = { attackerId: state.playerId, sourceKind: 'collision_craft' };
+      }
+      // shoulder_check: boosting into a body applies the Thump family's kick along the
+      // contact normal, on top of the collision. The kick writes a stamp of its own —
+      // a body you shoulder-checked IS a body you kicked for the Bruiser chain.
+      if (pilotHas(state, 'juggernaut_shoulder_check')
+        && other.flags && other.flags.boosting === true
+        && target.id !== state.playerId
+        && throwSign !== 0 && (nx !== 0 || nz !== 0)) {
+        const impulse = { x: nx * throwSign * PILOT_THUMP_KICK_MOMENTUM, z: nz * throwSign * PILOT_THUMP_KICK_MOMENTUM };
+        if (queuePhysicsImpulse(target, impulse)) {
+          recordImpulseProvenance(target, {
+            actorId: state.playerId,
+            weaponId: 'wpn_concussion_cannon_m',
+            tag: 'pilot_kick',
+            appliedTick: tick,
+            magnitude: PILOT_THUMP_KICK_MOMENTUM,
+            by: state.playerId,
+            at: Number.isFinite(state.simTime) ? state.simTime : 0,
+            impulse,
+            kickHops: 0,
+          });
+        }
+      }
+    }
+    return out;
+  },
+
+  /** Hand the kick on: a fresh stamp on the receiver, one hop deeper, same window. */
+  _propagateKickStamp(target, stamp, impulse, tick) {
+    const state = this.state;
+    if (!state || !target || target.id === state.playerId) return;
+    recordImpulseProvenance(target, {
+      actorId: stamp.by,
+      weaponId: null,
+      tag: 'pilot_kick',
+      appliedTick: tick,
+      magnitude: impulse ? Math.hypot(impulse.x, impulse.z) : 0,
+      by: stamp.by,
+      at: stamp.at,
+      impulse: impulse ? { x: impulse.x, z: impulse.z } : null,
+      kickHops: stamp.kickHops + 1,
+      kickRoot: stamp.record && stamp.record.kickRoot ? stamp.record.kickRoot : stamp.record,
+    });
+  },
+
+  /**
+   * The stamped ram/splat kill: "whatever its hull" means the packet carries the victim's
+   * entire remaining pool through the structural route, and the stamp's `by` is the cause.
+   */
+  _routePilotCollisionKill(target, attackerId, sourceKind, tick) {
+    const kernel = combatKernel(this);
+    if (!kernel || typeof kernel.routeDamage !== 'function' || !target || target.alive === false) return null;
+    const left = Math.max(0, Number(target.hull) || 0)
+      + Math.max(0, Number(target.shield) || 0)
+      + Math.max(0, Number(target.armorHp) || 0);
+    const packet = scalarHitToDamagePacket({
+      damage: left + 1,
+      damageType: 'kinetic',
+      pos: target.pos ? { x: Number(target.pos.x) || 0, z: Number(target.pos.z) || 0 } : null,
+      shieldBypass: 1,
+      source: { kind: sourceKind, impulseProvenance: 'pilot_kick' },
+    });
+    packet.flags = { allowAnyTarget: true, ignoreFriendlyFire: true, structuralHull: true };
+    return kernel.routeDamage({
+      attackerId,
+      targetId: target.id,
+      packet,
+      origin: { kind: 'collision', id: sourceKind },
+    });
+  },
+
+  /**
+   * juggernaut_last_stand: below 15 % hull, collision hull damage the player dealt repairs
+   * their hull by the applied amount, never lifting the hull above 30 % of hullMax; it works again in
+   * every later low-hull moment of the run (a lifetime ledger would let the node go dead).
+   */
+  _maybeLastStandRepair(other, receipt, damageResult) {
+    const state = this.state;
+    if (!state || !other || other.id !== state.playerId) return;
+    if (!pilotHas(state, 'juggernaut_last_stand')) return;
+    if (!damageResult || damageResult.ok !== true) return;
+    if (!receipt || !receipt.provenance || receipt.provenance.actorId !== other.id) return;
+    const hullMax = Math.max(0, Number(other.hullMax) || 0);
+    if (!(hullMax > 0)) return;
+    const hullNow = Math.max(0, Number(other.hull) || 0);
+    if (!(hullNow < 0.15 * hullMax)) return;
+    const dealt = Math.max(0, Number(damageResult.hullDamage) || 0);
+    if (!(dealt > 0)) return;
+    const amount = Math.min(dealt, Math.max(0, 0.30 * hullMax - hullNow));
+    if (!(amount > 0)) return;
+    const kernel = combatKernel(this);
+    if (!kernel || typeof kernel.repairHulls !== 'function') return;
+    kernel.repairHulls([{ entityId: other.id, amount }], 'juggernaut_last_stand');
   },
 
   _admitPair(aId, bId, tick, internedKey = null) {

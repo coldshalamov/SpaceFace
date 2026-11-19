@@ -8,7 +8,25 @@
 // Tests that need eligible cards inject a live set with withPilotLiveNodesForTest below — the
 // exported set itself is frozen and is never mutated.
 
-export const PILOT_LIVE_NODE_IDS = Object.freeze(new Set([]));
+export const PILOT_LIVE_NODE_IDS = Object.freeze(new Set([
+  // OVH-01c1 (director review 2026-11-19): Juggernaut and the Bruiser kick chain.
+  // juggernaut_unstoppable stays out: the player already never loses the helm to a contact,
+  // so the card would grant nothing — it needs a new effect first (board OVH-01c4).
+  'juggernaut_ram_plate',
+  'juggernaut_ballast',
+  'juggernaut_thick_skin',
+  'juggernaut_run_up',
+  'juggernaut_shoulder_check',
+  'juggernaut_snowplough',
+  'juggernaut_last_stand',
+  'juggernaut_juggernaut',
+  'bruiser_heavy_slugs',
+  'bruiser_stagger',
+  'bruiser_billiards',
+  'bruiser_pass_it_on',
+  'bruiser_wall_splat',
+  'bruiser_newtons_cradle',
+]));
 
 let liveOverride = null;
 
