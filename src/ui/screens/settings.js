@@ -563,7 +563,7 @@ const RESET_SKIP = Object.freeze({
 const RESET_FALLBACKS = Object.freeze({
   gameplay: Object.freeze({
     steeringView: 'overhead', racingDistance: 58, racingHeight: 22, racingLookAhead: 36,
-    velocityVectoring: true, damageNumbers: true, powerFire: 'hold', pilotPickAtOnce: false,
+    velocityVectoring: true, damageNumbers: false, powerFire: 'hold', pilotPickAtOnce: false,
   }),
   accessibility: Object.freeze({ textScale: 1 }),
 });
@@ -1145,11 +1145,9 @@ export const settingsScreen = {
       }
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
-      // `!== false`, not `!!`: gameplay.damageNumbers is ABSENT from the shipped defaults (gameState.js
-      // carries root showDamageNumbers, which nothing reads), and floatingText suppresses numbers
-      // only on `=== false`. So the old `!!` read showed Off on a fresh profile while damage
-      // numbers were on — the toggle contradicted the game.
-      rowToggle('Damage numbers', () => g.damageNumbers !== false, (v) => this._set(ctx, 'gameplay', 'damageNumbers', v));
+      // OVH-06a / R10: damage numbers default OFF (gameState.js carries gameplay.damageNumbers:
+      // false) and floatingText suppresses them on `=== false`, so the toggle reads `=== true`.
+      rowToggle('Damage numbers', () => g.damageNumbers === true, (v) => this._set(ctx, 'gameplay', 'damageNumbers', v));
       // Installed content packs (PQ-172.00): JSON the loader validated at boot. Content is
       // read-only here — mods are installed by dropping files into the content directory.
       const mods = listUserMods();

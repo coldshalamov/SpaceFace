@@ -787,7 +787,7 @@ export const tetherGameplay = {
       previewMatched: !!(selectedEntry && selectedEntry.targetId === target.id)
         && (publishedTargetId == null || publishedTargetId === target.id),
     });
-    this.bus.emit('camera:shake', { amount: 0.06 });
+    this.bus.emit('camera:shake', { amount: 0.06, cause: 'tether' });
     // FB-013 — the tractor's defining moment is the capture: one distinct receipt naming the
     // pull, and the head's first-use line once. Other heads announce on their own events.
     const captureHeadId = player && player.data && player.data.derived

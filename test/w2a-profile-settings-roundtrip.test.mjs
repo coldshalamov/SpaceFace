@@ -126,7 +126,7 @@ const CHANGES = {
     masslineReleaseAssist: 'arm',
     orbitAssistStrength: 'off',
     targetAssistStrength: 'light',
-    damageNumbers: false,
+    damageNumbers: true,
     stuntMoments: 'flow',
     gameSpeed: 0.8,
     velocityVectoring: false,

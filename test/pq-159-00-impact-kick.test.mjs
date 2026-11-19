@@ -200,14 +200,14 @@ test('the resolved record carries a directed kick beside the scalar beat', () =>
   assert.ok(blind.kickWu > 0 && blind.kickX === 0 && blind.kickZ === 0);
 });
 
-test('fixed seed: a real physics exchange kicks the live chase camera in player units', () => {
+test('fixed seed: a real physics exchange is refused at the live chase camera (R10) while the table stays in player units', () => {
   // resolvePair mutates its bodies (pushApart/impulse), so the live fixture keeps its OWN
   // thrown hull (id 3 at x=0) and T4 rock (id 2 at x=54) — matching the receipt's aId/bId —
   // and the measured payload supplies the physics truth. Stationary player = exact focus control.
   const { impact, consequence } = measuredImpact();
   const rock = makeBody({ id: 2, type: 'asteroid', x: 54, z: 0, radius: 46, mass: 220 });
   const thrown = makeBody({ id: 3, type: 'ship', x: 0, z: 0, radius: 10, mass: 20 });
-  const { state, bus, camera, frame } = liveFixture({ entities: [rock, thrown] });
+  const { state, bus, host, camera, frame } = liveFixture({ entities: [rock, thrown] });
 
   const before = { x: state.camera.focus.x, z: state.camera.focus.z };
   bus.emit('combat:collisionConsequence', consequence);
@@ -222,23 +222,23 @@ test('fixed seed: a real physics exchange kicks the live chase camera in player 
   console.log(`[seed ${SEED}] exchanged momentum dp=${impact.dp.toFixed(1)} mass·wu/s; ` +
     `table kick=${expected.toFixed(3)} wu; peak applied offset=${peak.toFixed(3)} wu`);
   assert.ok(expected > 0.05, 'the seeded exchange must be above the kick floor');
-  assert.ok(peak > expected * 0.9,
-    `peak ${peak.toFixed(3)} must reach the authored impulse ${expected.toFixed(3)} wu`);
-  assert.ok(peak <= IMPACT_KICK_WU_MAX + 1e-9, 'kick respects the displacement ceiling');
-  // Direction: away from the contact point toward the knocked hull — the player sits at x<18.
-  assert.ok(state.camera.kickOffset.x < 0 || state.camera.kickOffset.x === 0,
-    'the seeded head-on contact kicks the frame backward (-x)');
-  // The kick decays back to a still frame — no permanent displacement.
+  // OVH-06a / R10: that exchange is a room contact (a thrown hull into a rock). The table still
+  // prices it in player units, but the camera is never kicked: the gate refuses it and counts it.
+  assert.equal(peak, 0, 'a room contact never moves the live chase camera');
+  assert.equal(state.camera.trauma, 0, 'and adds no trauma');
+  assert.equal(host._cameraGate().counts().refused.collision, 1, 'the refusal is counted per cause');
+  assert.ok(expected <= IMPACT_KICK_WU_MAX, 'the table still respects the displacement ceiling');
+  // The frame stays still - no displacement to decay.
   for (let i = 0; i < 120; i++) camera.follow(DT);
   assert.ok(Math.hypot(state.camera.kickOffset.x, state.camera.kickOffset.z) < 0.02,
-    'the kick eases fully back inside ~2.5 s');
+    'the frame is still');
   // The damped follow focus was never polluted by the kick (stationary player = exact control).
   assert.ok(Math.abs(state.camera.focus.x - before.x) < 1e-6);
   assert.ok(Math.abs(state.camera.focus.z - before.z) < 1e-6);
 });
 
-test('the kick is rate-limited by the shared collision cooldown', () => {
-  const { bus, calls, frame } = feelFixture({
+test('the contact beat is rate-limited by the shared collision cooldown (and never kicks the camera)', () => {
+  const { bus, host, calls, frame } = feelFixture({
     extraEntities: [makeBody({ id: 4, type: 'ship', x: 14, z: 0, radius: 46, mass: 20 })],
   });
   const hit = (dp, tick) => bus.emit('combat:collisionConsequence', {
@@ -246,26 +246,32 @@ test('the kick is rate-limited by the shared collision cooldown', () => {
     pos: { x: 14, z: 0 }, normal: { x: 1, z: 0 },
     provenance: { actorId: 1, weaponId: null, tag: 'massline', appliedTick: tick },
   });
+  // OVH-06a / R10: the camera is never kicked by a contact. The pacing this test pins (one beat
+  // per contact, duplicates silent, only a real escalation re-arms) is read from the gate's
+  // per-cause refusal counter: each flushed contact beat is counted once as a refused 'collision'.
+  const beats = () => (host._cameraGate().counts().refused.collision || 0);
   hit(1200, 10);
   frame(DT);
-  assert.equal(calls.kick.length, 1);
-  // Same pair, same tick: a duplicate deferred receipt cannot re-kick.
+  assert.equal(beats(), 1);
+  // Same pair, same tick: a duplicate deferred receipt cannot re-arm.
   hit(4000, 10);
   frame(DT);
-  assert.equal(calls.kick.length, 1);
+  assert.equal(beats(), 1);
   // Inside the cooldown, only a meaningfully harder exchange re-arms.
   hit(1300, 11);
   frame(DT);
-  assert.equal(calls.kick.length, 1);
+  assert.equal(beats(), 1);
   hit(4000, 12);
   frame(DT);
-  assert.equal(calls.kick.length, 2, 'a real escalation interrupts the armed beat');
+  assert.equal(beats(), 2, 'a real escalation interrupts the armed beat');
   // After the cooldown the next ordinary contact answers again — drain half a second of
   // frames, comfortably past any contact pacing gate.
   for (let i = 0; i < 30; i++) frame(DT);
   hit(1200, 20);
   frame(DT);
-  assert.equal(calls.kick.length, 3);
+  assert.equal(beats(), 3);
+  assert.equal(calls.kick.length, 0, 'R10: no contact ever kicks the camera');
+  assert.equal(calls.trauma.length, 0, 'R10: no contact ever adds trauma');
 });
 
 test('small remote impacts and direct player contacts do not direct-kick the camera', () => {

@@ -184,7 +184,7 @@ test('live combat queue: an incoming railgun crunch arms a 1–2 frame window an
   assert.equal(state.timeScale, 1, `${VISION}: a presentation beat never writes the world clock`);
   assert.ok(!state.render.holdInterpolation,
     `${SMOOTH}: nothing asks the renderer to reuse last frame's poses`);
-  assert.ok(traumas.length >= 1, `${VISION}: railgun crunch adds camera trauma`);
+  assert.equal(traumas.length, 0, `${VISION}: OVH-06a / R10 - a railgun crunch is felt on the hull, not at the camera (no trauma)`);
   assert.ok(host._fovPunch > 0, `${VISION}: railgun crunch punches FOV`);
 
   frame(CRUNCH_HOLD_MAX_S + 0.001);
@@ -224,7 +224,7 @@ test('torpedo and pulse recoil and incoming-hit queues stay distinct on the live
   });
   assert.ok(beatWindow(host) > 0, `${VISION}: a torpedo hit keeps its authored window`);
   assert.equal(state.timeScale, 1, `${VISION}: a presentation beat never writes the clock`);
-  assert.ok(traumas.length >= 1);
+  assert.equal(traumas.length, 0, 'OVH-06a / R10: an incoming torpedo under the hard-hit floor adds no camera trauma');
   frame(1 / 60);
   assert.ok(beatWindow(host) < CRUNCH_HOLD_MAX_S);
 });

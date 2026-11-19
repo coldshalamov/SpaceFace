@@ -172,6 +172,7 @@ export function createExplosionPresentationMethods({
         if (phase === 'rupture') this.bus.emit('camera:shake', {
           amount: (accessibility.id === 'full' ? 0.28 : 0.12) * (entry.classId === 'capital' ? 1.5 : 1),
           position: { x: entry.x, z: entry.z },
+          cause: 'explosion',
         });
       }
       return;
@@ -469,7 +470,7 @@ export function createExplosionPresentationMethods({
       // A ship blowing up is a WORLD event: send where it happened so the consumer can fall it off
       // with distance. Untagged, this kicked the player's camera identically whether the wreck was on
       // their nose or across the sector — measured as six unearned kicks in ~30 s of tutorial flight.
-      this.bus.emit('camera:shake', { amount: reduced ? shake * 0.55 : shake, position: { x, z } });
+      this.bus.emit('camera:shake', { amount: reduced ? shake * 0.55 : shake, position: { x, z }, cause: 'explosion' });
       return;
     }
 
@@ -818,6 +819,7 @@ export function createExplosionPresentationMethods({
       this.bus.emit('camera:shake', {
         amount: (reduced ? 0.16 : 0.30) * (entry.classId === 'capital' ? 1.5 : 1),
         position: { x, z },
+        cause: 'explosion',
       });
       return;
     }

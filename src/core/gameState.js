@@ -54,6 +54,9 @@ function defaultSettings() {
       // playability tradeoff. Still selectable Off/60/120/300 in Settings.
       autosaveIntervalS: 300,
       tutorialHints: true,
+      // OVH-06a / R10: no floating damage numbers by default - damage is read on the hull. The
+      // toggle (Settings -> Gameplay) stays for pilots who want them.
+      damageNumbers: false,
       difficulty: 'standard',
       pauseOnFocusLoss: true,
       physicsBackend: 'rapier-dynamic',

@@ -59,7 +59,7 @@ export const PROFILE_GAMEPLAY_PICKERS = Object.freeze({
   // would only duplicate the rule and risk disagreeing with it.
   orbitAssistStrength: (g) => g.orbitAssistStrength,
   targetAssistStrength: (g) => g.targetAssistStrength,
-  damageNumbers: (g) => g.damageNumbers,
+  damageNumbers: (g) => g.damageNumbers === true,
   stuntMoments: (g) => (g.stuntMoments === 'flow' ? 'flow' : 'cinematic'),
   gameSpeed: (g) => normalizeGameSpeed(g.gameSpeed),
   velocityVectoring: (g) => g.velocityVectoring !== false,

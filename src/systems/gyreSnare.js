@@ -549,6 +549,7 @@ export const gyreSnare = {
         // (mass-scaled like the launch kick, smaller since nothing was thrown).
         if (reason === 'strained') {
           this.bus.emit('camera:shake', {
+            cause: 'strain',
             amount: 0.15 + 0.1 * Math.min(1, droppedMass / D.maxClumpMass),
           });
           // Text channel parity with the file's own convention — cap_dry toasts
@@ -1242,7 +1243,7 @@ export const gyreSnare = {
       // /200 grades against a realistic snag mass, not the 2400t cap — a ~40t
       // pebble lands ~0.12 and a 200t wreck the full 0.20; versus maxClumpMass
       // every real snag was a flat ~0.10 and the differentiation was dead code.
-      this.bus.emit('camera:shake', { amount: 0.10 + 0.10 * Math.min(1, rt.clumpMass / 200) });
+      this.bus.emit('camera:shake', { amount: 0.10 + 0.10 * Math.min(1, rt.clumpMass / 200), cause: 'gyreLaunch' });
     }
     return true;
   },
@@ -1632,7 +1633,7 @@ export const gyreSnare = {
         // Continuous like the rest of the meal-size grading (knock speedK, cue
         // rate, gulp mealK): em/2000 rises 0.005->0.04 across 10-80t instead of
         // stepping, floored at the 10t whisper and capped at the 80t wreck shake.
-        if (em >= 10) this.bus.emit('camera:shake', { amount: Math.max(0.01, Math.min(0.04, em / 2000)) });
+        if (em >= 10) this.bus.emit('camera:shake', { amount: Math.max(0.01, Math.min(0.04, em / 2000)), cause: 'gyre' });
       }
       // Saturation beat: the absorb that first crosses the cap gets its own voice so
       // the FULL moment lands through the ear, not just the HUD flag.
@@ -2859,7 +2860,7 @@ export const gyreSnare = {
           // +0.02·massFrac tail grades the bow like every sibling launch beat
           // (thrownBeat shake, windup voice, whoosh tail) — a capped moon's
           // draw leans harder than a pebble's.
-          this.bus.emit('camera:shake', { amount: 0.025 + 0.02 * Math.min(1, rt.ballMass / D.maxClumpMass) });
+          this.bus.emit('camera:shake', { amount: 0.025 + 0.02 * Math.min(1, rt.ballMass / D.maxClumpMass), cause: 'gyre' });
         }
         if (this.bus) {
           // The draw CRESCENDOS: a shimmer per coil tick, gain + rate ramping
@@ -2940,6 +2941,7 @@ export const gyreSnare = {
               mass: rt.ballMass,
             });
             this.bus.emit('camera:shake', {
+              cause: 'gyreLaunch',
               amount: 0.3 + 0.25 * Math.min(1, rt.ballMass / D.maxClumpMass),
             });
             // Mass-graded launch voice lands ON the release tick with the rest of the

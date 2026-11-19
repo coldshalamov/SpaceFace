@@ -123,13 +123,13 @@ test('a corrupt ui scale renders a number, not NaNx', () => {
   assert.equal(fmtUiScale(null), '1.00x');
 });
 
-test('a fresh profile shows damage numbers ON, matching what the game actually does', () => {
-  // The shipped defaults have no gameplay.damageNumbers, and floatingText suppresses the numbers
-  // only on an explicit false. A `!!` read therefore showed Off while they were on.
+test('a fresh profile shows damage numbers OFF, matching what the game actually does', () => {
+  // OVH-06a / R10: damage is read on the hull. The shipped default is an explicit false, which
+  // floatingText honours and the toggle (`=== true`) shows as Off.
   const state = createGameState(4242);
-  assert.equal(state.settings.gameplay.damageNumbers, undefined);
-  assert.equal(state.settings.gameplay.damageNumbers !== false, true,
-    'damage numbers default to on, which is what the toggle must show');
+  assert.equal(state.settings.gameplay.damageNumbers, false);
+  assert.equal(state.settings.gameplay.damageNumbers === true, false,
+    'damage numbers default to off, which is what the toggle must show');
 });
 
 test('the damage-numbers choice persists, so the toggle is not a lie over two sessions', () => {
@@ -143,15 +143,15 @@ test('the damage-numbers choice persists, so the toggle is not a lie over two se
   const state = createGameState(4242);
   save.init({ state, bus: createBus(), helpers: {}, registry: { get: () => null } });
 
-  state.settings.gameplay.damageNumbers = false;
+  state.settings.gameplay.damageNumbers = true;
   save._writeProfileSettings();
   const profile = JSON.parse(storage.getItem('sf.settings.profile.v1'));
-  assert.equal(profile.settings.gameplay.damageNumbers, false,
-    'turning damage numbers off must survive the next launch');
+  assert.equal(profile.settings.gameplay.damageNumbers, true,
+    'turning damage numbers on must survive the next launch');
 
   const next = createGameState(4242);
   save.init({ state: next, bus: createBus(), helpers: {}, registry: { get: () => null } });
-  assert.equal(next.settings.gameplay.damageNumbers, false);
+  assert.equal(next.settings.gameplay.damageNumbers, true);
 });
 
 test('the screen no longer renders a second editor for either key', () => {

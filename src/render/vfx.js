@@ -13854,7 +13854,7 @@ export const vfx = {
     if (deliberateBrake && !this._retroBrakeEngaged && !(a11y && a11y.reducedMotion)) {
       const ctrl = this.state.render && this.state.render.cameraCtrl;
       if (ctrl && typeof ctrl.pushZoom === 'function') ctrl.pushZoom(-0.014, 0.32);
-      if (ctrl && typeof ctrl.impactKick === 'function') ctrl.impactKick(-vx, -vz, 0.34);
+      if (ctrl && typeof ctrl.impactKick === 'function') ctrl.impactKick(-vx, -vz, 0.34, 'boost');
     }
     this._retroBrakeEngaged = deliberateBrake;
 

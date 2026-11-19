@@ -742,7 +742,7 @@ export function createShipMicroMotionTracker() {
   const rcsPulsePayload = { x: 0, z: 0, dirX: 1, dirZ: 0, intensity: 0, radius: 6, shipId: 0, runaway: false };
   const deathPopPayload = { x: 0, z: 0, radius: 6, shipId: 0, seam: 0 };
   const deathFlashPayload = { x: 0, z: 0, radius: 6, shipId: 0 };
-  const spiralShakePayload = { amount: 0, position: { x: 0, z: 0 } };
+  const spiralShakePayload = { amount: 0, position: { x: 0, z: 0 }, cause: 'explosion' };
   const spiralAudioPayload = { id: '' };
 
   function getRecord(entityId) {

@@ -568,7 +568,7 @@ export const flybyFocus = {
         ttl: 1.6,
       });
       // Juice: brief camera kiss + audio cue so the window is felt, not only text.
-      this.bus.emit('camera:shake', { amount: 0.08 });
+      this.bus.emit('camera:shake', { amount: 0.08, cause: 'flyby' });
       this.bus.emit('audio:cue', { id: 'ui_confirm' });
     }
   },

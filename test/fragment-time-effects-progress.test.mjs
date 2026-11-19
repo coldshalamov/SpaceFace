@@ -324,7 +324,11 @@ for (const [label, frameDt] of [['60 fps', FRAME_60], ['20 fps', FRAME_20]]) {
     assert.ok(samples.some((s) => s.beat > 0 || s.fov > 0), 'beats still arm their authored windows');
     assert.ok(samples.some((s) => s.fov > 0), 'the storm must still land its FOV punch');
     assert.ok(fx.calls.trauma.length > 0, 'impact trauma must still land');
-    assert.ok(fx.calls.kick.length > 0, 'directed impact kicks must still land');
+    // OVH-06a / R10: a fragment contact is a room event - it never kicks the camera. The refusal is
+    // counted per cause on the gate, so the storm's contacts are still accounted for.
+    assert.equal(fx.calls.kick.length, 0, 'R10: room contacts never kick the camera');
+    assert.ok((fx.host._cameraGate().counts().refused.collision || 0) > 0,
+      'the storm contact beats are counted as refused camera events');
     assert.ok(fx.calls.killCam.length > 0, 'kill cam must still answer player-caused kills');
     assert.ok(fx.calls.hold.length > 0, 'the rated-moment camera hold must still arm');
     assert.ok(

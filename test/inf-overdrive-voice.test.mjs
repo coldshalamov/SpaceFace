@@ -99,7 +99,8 @@ test('crossing the score cap names the overdrive once, with the rate the guns re
     assert.equal(chime.length, 1, 'the climb\'s top chime marks it');
     const tierRates = SWARM_CHAIN_TIERS.map((_, i) => swarmClimbRate(i));
     assert.ok(!tierRates.includes(chime[0].rate), 'no tier mark uses that pitch, so it never reads as another rung');
-    assert.ok(h.effects.describeRequests()[SWARM_HITSTOP_SOURCE], 'the chain\'s own dip lands with it');
+    // OVH-06a / R10: no Swarm beat leases simulation time any more - hitstop is a presentation hold.
+    assert.equal(h.effects.describeRequests()[SWARM_HITSTOP_SOURCE], undefined, 'the chain\'s overdrive never dips the simulation');
 
     // The chain keeps climbing inside the same window: the overdrive is said once, not per kill.
     tick(h, 0.5);

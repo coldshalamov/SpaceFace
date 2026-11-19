@@ -10352,10 +10352,9 @@ function sanitizeRestoredSettings(settings) {
   if (!VALID_TARGET_ASSIST_STRENGTHS.has(s.gameplay.targetAssistStrength)) {
     s.gameplay.targetAssistStrength = DEFAULT_TARGET_ASSIST_STRENGTH;
   }
-  // Absent from the shipped defaults, so absent means "on" — floatingText suppresses damage
-  // numbers only on an explicit false. Leaving it undefined is honest; forcing it would let an
-  // old save pin Off forever.
-  if (typeof s.gameplay.damageNumbers !== 'boolean') delete s.gameplay.damageNumbers;
+  // OVH-06a / R10: damage numbers default OFF. An old save that never stored the key (or stored
+  // junk) gets the shipped default; an explicit true/false is the pilot's own choice.
+  if (typeof s.gameplay.damageNumbers !== 'boolean') s.gameplay.damageNumbers = false;
   s.gameplay.pauseOnFocusLoss = s.gameplay.pauseOnFocusLoss !== false;
   // Profile-scoped Settings that used to reset on every launch. Defaults live in gameState.js; the
   // camera keys are absent from them on purpose (their readers fall back), so an invalid value

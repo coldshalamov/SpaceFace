@@ -1070,7 +1070,7 @@ export const survivalAnnounce = {
     // No `position`: renderer.js:3537 treats a positionless payload as player-scoped by
     // construction, which is right for a scripted arrival beat. 0.55 sits inside the 0.2-0.9
     // range combat already uses. Not counted against the line budget — a shake is not a line.
-    this.bus.emit('camera:shake', { amount: 0.55 });
+    this.bus.emit('camera:shake', { amount: 0.55, cause: 'announce' });
     return true;
   },
 

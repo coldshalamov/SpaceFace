@@ -573,7 +573,7 @@ export const swarmDrops = {
     if (fields && typeof fields.deployOneOffShove === 'function') {
       fields.deployOneOffShove(SWARM_DROP_ARENA_RADIUS);
     }
-    this._emit('camera:shake', { amount: 0.8 });
+    this._emit('camera:shake', { amount: 0.8, cause: 'pickup' });
   },
 
   // ---- Double Scrap -----------------------------------------------------------------------

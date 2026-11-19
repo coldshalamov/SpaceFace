@@ -46,7 +46,7 @@ test('collision feel ramps the beat window and trauma with exchanged momentum', 
   // PQ-139/PQ-158 and are recorded unreachable in the bench registry). The beat window is
   // presentation only — the clock is never written.
   const B9_SENTENCE =
-    'Every collision with ΔV ≥ 8 WU/s produces hitstop and camera trauma scaled by exchanged momentum.';
+    "Only the player's own hull and the hero beats reach the camera: a blow of at least 8 % of max hull to the player kicks the view toward the hit side and pulses the screen edge red on that side, and the hero beats (a throw kill on a heavy, a perfect release, a plough launch that kills at least 5, a boss phase break) are admitted one at a time, while every other collision is answered on the body that was hit and adds no camera trauma.";
   if (COLLISION_BEAT_COOLDOWN != null) {
     assert.ok(COLLISION_BEAT_COOLDOWN > HS_IMPACT_MAX,
       `${VISION}: grind cooldown outlasts the longest collision beat — ${B9_SENTENCE}`);
@@ -138,8 +138,9 @@ test('a grind that creeps up cannot machine-gun the beat; a real slam still inte
   for (const dv of [10, 11, 12, 11, 13, 12, 14, 13]) flush(dv);
   assert.equal(triggers.length, 1,
     `${VISION}: a grind is ONE beat, not one per frame (fired ${triggers.length} times for a creeping deltaV)`);
-  assert.equal(traumas.length, 1,
-    `${VISION}: a grind adds camera trauma once, not once per frame`);
+  // OVH-06a / R10 (B9 rewritten): a collision is a room event - it never adds camera trauma.
+  assert.equal(traumas.length, 0,
+    `${VISION}: a grind adds no camera trauma at all - the body that was hit answers it`);
 
   // A genuinely harder hit during the same cooldown still gets through.
   flush(10 * UPGRADE_RATIO + 1);   // 16 WU/s after a 10 WU/s beat — a real escalation
