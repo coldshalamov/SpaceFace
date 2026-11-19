@@ -26,6 +26,13 @@ export const PILOT_LIVE_NODE_IDS = Object.freeze(new Set([
   'bruiser_pass_it_on',
   'bruiser_wall_splat',
   'bruiser_newtons_cradle',
+  // OVH-01c3 (director review 2026-11-19): the Gunner wave.
+  'gunner_hollow_point',
+  'gunner_steady_hands',
+  'gunner_drum',
+  'gunner_spin_up',
+  'gunner_execution',
+  'gunner_ricochet',
 ]));
 
 let liveOverride = null;

@@ -386,14 +386,32 @@ export function createDamageRouter(context, statusService, options = {}) {
     const pilotTaken = target.id === state.playerId
       ? pilotCollisionTakenScale(state, target, packet, origin, srcKind)
       : 1;
+    // OVH-01c3 — the Gunner dealt-side gate, folded in beside pilotTaken: 1 for
+    // every non-player attack and every shielded or non-weapon hit, so a run
+    // without the node is bit-identical and NPC fire never reads it.
+    const pilotDealt = input && input.attackerId === state.playerId
+      ? pilotGunHullScale(state, target, origin)
+      : 1;
     let hullDamage = 0;
     const hullByChannel = emptyChannels(model.channelOrder);
     for (const channel of model.channelOrder) {
-      const applied = (hullInput[channel] || 0) * positiveMultiplier(model.hullMultipliers[channel]) * damageReduction * ramTaken * pilotTaken;
+      const applied = (hullInput[channel] || 0) * positiveMultiplier(model.hullMultipliers[channel]) * damageReduction * ramTaken * pilotTaken * pilotDealt;
       hullByChannel[channel] = applied;
       hullDamage += applied;
     }
     hullDamage = Math.min(Math.max(0, target.hull || 0), hullDamage);
+    // OVH-01c3 gunner_execution — a hull already under 20 % dies to the player's
+    // next hull-reaching hit. Routing the full remainder through the ordinary
+    // hullDamage write keeps the kill on the same lethal path (burst, credit);
+    // a packet that never reaches the hull cannot spend the node.
+    if (hullDamage > 0
+      && input && input.attackerId === state.playerId
+      && pilotHas(state, 'gunner_execution')) {
+      const hullMax = Number(target.hullMax) || 0;
+      if (hullMax > 0 && (target.hull || 0) / hullMax < 0.2) {
+        hullDamage = Math.max(0, target.hull || 0);
+      }
+    }
     target.hull = Math.max(0, (target.hull || 0) - hullDamage);
     target.lastDamageT = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
     // PIC-31: a hull carried into the damaged band by this hit starts venting where it was
@@ -1165,6 +1183,20 @@ function pilotCollisionTakenScale(state, player, packet, origin, srcKind) {
     }
   }
   return 1;
+}
+
+// OVH-01c3 — the Gunner dealt-side gate.
+//
+// gunner_hollow_point — "Shots tear unshielded hulls 50 % faster." Read after
+// this packet's own shield absorption, so the shot that strips the last point
+// of shield already counts the hull it exposes; a hull still holding shield
+// (penetrating channels notwithstanding) and every non-weapon origin keep the
+// authored damage. Player fire only — the caller gates on attackerId.
+function pilotGunHullScale(state, target, origin) {
+  if (!pilotHas(state, 'gunner_hollow_point')) return 1;
+  if (!origin || origin.kind !== 'weapon') return 1;
+  if ((Number(target && target.shield) || 0) > 0) return 1;
+  return 1.5;
 }
 
 function clamp01(value) {
