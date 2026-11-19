@@ -1,6 +1,6 @@
-// RC-473: the first-light offer asks once — the calm accessibility preset is offered, never
-// applied, and the "asked" marker survives a save/profile round-trip so a returning player
-// never sees it again.
+// RC-473, revised 2026-11-18 (design/overhaul/08_INTERFACE.md §2): the first-light offer no longer
+// interrupts the title. The calm accessibility preset stays whole and available in Settings › Access,
+// and its markers still survive a save/profile round-trip.
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -48,62 +48,32 @@ function resetOfferState() {
 test.beforeEach(resetOfferState);
 test.after(() => { resetOfferState(); delete mainMenuScreen._confirmFirstLight; });
 
-test('first launch offers the calm preset once and records the asked marker up front', async () => {
+// design/overhaul/08_INTERFACE.md §2 (director, 2026-11-18): the title never stops a new player with a
+// modal. The calm preset is still one press away in Settings › Access (applyFirstLightPreset), and the
+// OS reduced-motion question (screens/motionAsk.js) still asks when the system requests reduced motion.
+test('a fresh profile is never interrupted at the title by the first-light offer', async () => {
   const settings = {};
   const ctx = makeCtx(settings);
   let asked = 0;
-  mainMenuScreen._confirmFirstLight = (options) => {
-    asked += 1;
-    assert.equal(options, FIRST_LIGHT_OFFER, 'the offer is the authored First light copy');
-    assert.equal(settings.accessibility.firstLightOffered, true,
-      'the marker is written before the dialog answers — a reload mid-dialog cannot ask twice');
-    return Promise.resolve('calm');
-  };
+  mainMenuScreen._confirmFirstLight = () => { asked += 1; return Promise.resolve('calm'); };
   mainMenuScreen._shown = true;
-
-  assert.equal(mainMenuScreen._maybeOfferFirstLight(ctx), true, 'the offer opens');
+  assert.equal(shouldOfferFirstLight(settings), false, 'no new player is stopped at the title');
+  assert.equal(mainMenuScreen._maybeOfferFirstLight(ctx), false, 'the offer never opens');
   await tick(); await tick();
+  assert.equal(asked, 0);
+  assert.equal(settings.accessibility, undefined, "nothing is written on the player's behalf");
+});
 
-  assert.equal(asked, 1);
+test('the calm preset still applies whole when the player chooses it in Settings › Access', () => {
+  const settings = { video: {}, accessibility: {} };
+  applyFirstLightPreset(settings, null);
   const access = settings.accessibility;
-  assert.equal(access.firstLightChoice, 'applied');
   assert.equal(access.motionPreference, 'reduce');
-  assert.equal(access.motionAsked, true, 'the preset also settles the motion question');
   assert.equal(access.flashReduce, FIRST_LIGHT_PRESET.flashReduce);
   assert.equal(access.highContrast, FIRST_LIGHT_PRESET.highContrast);
   assert.equal(access.textScale, FIRST_LIGHT_PRESET.textScale);
   assert.equal(access.captions, FIRST_LIGHT_PRESET.captions);
-  assert.equal(access.captionSize, FIRST_LIGHT_PRESET.captionSize);
-  assert.equal(access.captionBackground, FIRST_LIGHT_PRESET.captionBackground);
   assert.equal(settings.video.motionReduce, true, 'the runtime contract follows the reduce answer');
-  assert.ok(ctx.bus.events.some(([k, p]) => k === 'settings:changed' && p && p.key === 'firstLightChoice'),
-    'the settled choice publishes its own receipt so the profile owner writes it');
-
-  // The gate is latched: any later call — a second loading-hidden receipt, a refresh, a remount —
-  // can never ask again.
-  assert.equal(mainMenuScreen._maybeOfferFirstLight(ctx), false, 'the offer never repeats');
-  assert.equal(shouldOfferFirstLight(settings), false);
-  assert.equal(asked, 1);
-});
-
-test('Play or an away-dismiss keeps the shipped settings and still counts as answered', async () => {
-  for (const answer of [true, 'play', false]) {
-    resetOfferState();
-    const settings = {};
-    const ctx = makeCtx(settings);
-    mainMenuScreen._confirmFirstLight = () => Promise.resolve(answer);
-    mainMenuScreen._shown = true;
-
-    assert.equal(mainMenuScreen._maybeOfferFirstLight(ctx), true);
-    await tick(); await tick();
-
-    const access = settings.accessibility;
-    assert.equal(access.firstLightOffered, true, `answer ${answer} still marks the offer shown`);
-    assert.equal(access.firstLightChoice, 'kept', `answer ${answer} keeps the player's settings`);
-    assert.equal(access.textScale, undefined, 'the preset is never partially applied');
-    assert.equal(access.highContrast, undefined);
-    assert.equal(mainMenuScreen._maybeOfferFirstLight(ctx), false);
-  }
 });
 
 test('the offer waits for an unobstructed title — overlay up, menu away, or a pending ask', () => {
@@ -142,7 +112,7 @@ test('the offer waits for an unobstructed title — overlay up, menu away, or a 
   }
 });
 
-test('the loading-hidden receipt is what actually opens the offer', () => {
+test('the loading-hidden receipt never opens an offer: the title is never interrupted', () => {
   const settings = {};
   const ctx = makeCtx(settings);
   mainMenuScreen._bindLoadingHidden(ctx);
@@ -151,8 +121,8 @@ test('the loading-hidden receipt is what actually opens the offer', () => {
   mainMenuScreen._shown = true;
 
   ctx.bus.emit('ui:loadingHidden', { mode: 'menu' });
-  assert.equal(asked, 1, 'the shell-gone receipt raises the offer');
-  assert.equal(settings.accessibility.firstLightOffered, true);
+  assert.equal(asked, 0, 'the shell-gone receipt goes straight to the title');
+  assert.equal(settings.accessibility, undefined);
 });
 
 test('a save/profile round-trip keeps the asked flag and the settled choice', async () => {

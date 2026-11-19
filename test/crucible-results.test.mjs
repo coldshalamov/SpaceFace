@@ -502,8 +502,8 @@ test('a draft pick with no verb still names itself, and an empty draft says so p
 
   assert.deepEqual(buildSteps([]), []);
   assert.deepEqual(buildSteps(null), []);
-  assert.equal(buildLead([]), 'No draft taken — you flew the loadout you launched with.');
-  assert.equal(buildLead(null), 'No draft taken — you flew the loadout you launched with.');
+  assert.equal(buildLead([]), 'You flew the loadout you launched with.');
+  assert.equal(buildLead(null), 'You flew the loadout you launched with.');
 });
 
 test('the kill chain names who, with what, from where, and through which layer', () => {
@@ -772,7 +772,7 @@ test('the plate renders rather than throwing on every empty shape the owner can 
   assert.ok(noReceiptText.includes('The last seconds'));
 
   // 3. Empty picks.
-  assert.ok(noReceiptText.includes('No draft taken — you flew the loadout you launched with.'));
+  assert.ok(noReceiptText.includes('You flew the loadout you launched with.'));
 
   // 4. Empty damage trail.
   assert.ok(noReceiptText.includes('Nothing landed on you in the last seconds of the run.'));

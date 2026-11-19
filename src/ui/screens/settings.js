@@ -48,7 +48,7 @@ import {
   CHECKLIST_ITEMS,
   evaluateChecklist,
 } from '../accessibilityChecklist.js';
-import { recordMotionChoice, applyTextScaleFromSettings } from '../accessibility.js';
+import { recordMotionChoice, applyTextScaleFromSettings, applyFirstLightPreset, FIRST_LIGHT_PRESET } from '../accessibility.js';
 import { el, words, settle, cue } from '../kit/index.js';
 // ORRERY (design/frontend/ORRERY.md §6 Meta): the categories on a Ladder with the Hand, the sliders as
 // graduated Scales, and a live preview of what the focused row changes beside the list.
@@ -751,6 +751,30 @@ export const settingsScreen = {
     laneWriteSetting(ctx.state, 'settings.' + (section ? section + '.' : '') + key, value);
     ctx.bus.emit('settings:changed', payload);
     try { if (refs && refs.preview) refs.preview.changed(section, key, s); } catch (e) { /* the preview is cosmetic */ }
+    // The calm preset's "· on" follows every value it bundles, the moment any one of them changes.
+    if (refs && refs.calmPreset && (section === 'accessibility' || (section === 'video' && key === 'motionReduce'))) {
+      refs.calmPreset.textContent = this._calmPresetOn(s) ? 'Calm preset · on' : 'Calm preset';
+    }
+  },
+
+  // The calm preset in one press (Settings > Access). Same bundle the retired first-run offer applied;
+  // every value is then published through `_set` so persistence, the worker lane and live readers see it.
+  _calmPresetOn(settings) {
+    const a = (settings && settings.accessibility) || {};
+    return a.motionPreference === 'reduce'
+      && Object.keys(FIRST_LIGHT_PRESET).every((k) => a[k] === FIRST_LIGHT_PRESET[k]);
+  },
+
+  _applyCalmPreset(ctx) {
+    const s = ctx.state.settings;
+    const keys = [...Object.keys(FIRST_LIGHT_PRESET), 'motionPreference', 'motionAsked', 'motionPrompted', 'firstLightChoice'];
+    const before = Object.fromEntries(keys.map((k) => [k, s.accessibility ? s.accessibility[k] : undefined]));
+    const motionBefore = s.video ? s.video.motionReduce : undefined;
+    if (!applyFirstLightPreset(s)) return false;
+    for (const k of keys) if (s.accessibility[k] !== before[k]) this._set(ctx, 'accessibility', k, s.accessibility[k]);
+    if (s.video.motionReduce !== motionBefore) this._set(ctx, 'video', 'motionReduce', s.video.motionReduce);
+    this._render(ctx);
+    return true;
   },
 
   // Apply a High performance / Balanced / High quality mode (or a hardware bundle). `applyQualityPreset`
@@ -1197,6 +1221,9 @@ export const settingsScreen = {
     } else if (refs.active === 'Access') {
       const ac = s.accessibility || (s.accessibility = { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
         motionPreference: 'full', motionAsked: false, captions: true, audioCues: true, captionSize: 'medium', captionBackground: true });
+      // One press for the calm bundle (high contrast, no flashing, reduced motion, larger text, large captions).
+      refs.calmPreset = build.word(this._calmPresetOn(s) ? 'Calm preset · on' : 'Calm preset', () => { this._applyCalmPreset(ctx); },
+        'High contrast, reduced flashing and motion, 115% text, large captions on a solid backing.');
       // Language: the default route is English; choosing here switches the live locale and re-renders
       // every mounted screen through the shared document bridge (no reload).
       rowSelect('Language', () => chosenLocale(s), LANGUAGE_OPTIONS.map((option) => [option.id, option.label]),

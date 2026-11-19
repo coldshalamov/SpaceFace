@@ -416,7 +416,7 @@ html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .s
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="build"] { display:flex; flex-direction:column; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="build"] .sf-crres__build { order:2; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="build"] .sf-crres__build-name { order:3; margin-top:8px; font-size:13px; color:rgb(236 230 216 / .72); }
-html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="build"] .sf-crres__build-name::before { content:"Converged on "; }
+html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__band[data-band="build"] .sf-crres__build-name::before { content:"Build: "; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial :is(.sf-crres__causal, .sf-crres__causal-lead, .sf-crres__build-code) { position:absolute !important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__build { display:flex !important; position:relative; margin-top:10px !important; padding-top:16px !important; border:0 !important; }
 html body #screens > .k-screen.orr-crucible.sf-crucible-results.has-deathdial .sf-crres__build::before { content:""; position:absolute; left:5px; right:12%; top:4px; height:1px; background:rgb(236 230 216 / .34); }

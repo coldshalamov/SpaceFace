@@ -384,12 +384,18 @@ test('PQ-174.06: the mounted plate carries the story band from live telemetry', 
       { verb: 'Pierce', defId: 'wpn_railgun_m', wave: 3 },
     ],
   });
-  const { lines } = mountResults(resultA);
+  const { lines, root } = mountResults(resultA);
   const text = lines.join('\n');
   assert.ok(lines.includes('The run'), 'the story band leads the plate');
   assert.ok(text.includes('Best kill chain 11 on wave 2'), 'the best kill chain with its wave');
   assert.ok(text.includes('12 kills'), 'a moment with its number');
-  assert.ok(text.includes('You converged on'), 'the converged build');
+  // B3C review: "You converged on …" was a duplicate of the build band's own name line, so the
+  // story dropped the sentence and the build band carries the name instead.
+  assert.ok(!text.includes('You converged on'),
+    'the duplicate build sentence is gone — the build band owns the build name');
+  const buildBand = nodeWithClass(root, 'sf-crres__build-name');
+  assert.ok(buildBand && buildBand.textContent === resultA.buildName,
+    `the converged build is named in the build band (${resultA.buildName})`);
   assert.ok(text.includes('Build code W2:Volume / W3:Pierce'), 'the shareable code');
   assert.match(text, /Earlier damage:.*ms before the fatal hit/, 'earlier damage is not a missed tell');
 });
@@ -475,7 +481,7 @@ test('PQ-174.06: run purse and defeat banking disclose starting funds without ch
   assert.equal(rows.get('Score'), '0');
   const text = mountResults(result).lines.join('\n');
   assert.match(text, /Run purse/);
-  assert.match(text, /399 cr banked into the hangar/);
+  assert.match(text, /Hangar \+399 cr/);
   assert.match(text, /Defeat banks 50% of the remaining run purse, including its starting funds/);
   assert.doesNotMatch(text, /Stunt score|799.*earned/);
   assert.deepEqual(result, before);
@@ -512,6 +518,16 @@ function textLines(node, out = []) {
     out.push(node.textContent);
   }
   return out;
+}
+
+/** First node carrying a class, so a band can be checked where it renders (not just in flat text). */
+function nodeWithClass(node, className) {
+  if (node.className && node.className.split(/\s+/).includes(className)) return node;
+  for (const child of node.children || []) {
+    const found = nodeWithClass(child, className);
+    if (found) return found;
+  }
+  return null;
 }
 
 function mountResults(result) {
