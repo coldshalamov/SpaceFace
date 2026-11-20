@@ -549,6 +549,91 @@ async function boot() {
     // point — the shell can lift a beat before uiRoot pushes it, so poll the DOM.
     markTitleInteractiveWhenScreenMounts();
 
+    // Title-dwell warm (LOAD-TIME-1): the opening sector cook pays a first-use
+    // program compile for every pipeline the first scene draws (~460 ms each on
+    // hardware GL; a full CPU shader build under SwiftShader, which is what the
+    // headless probe and low-end machines actually run). A large share of that
+    // set is sector-independent — authored canopy/opaque variants, rock PBR,
+    // weapon + beam, and the VFX salvo families. Compile that global set during
+    // menu dwell, off-scene, paced per pipeline family; the keepalive root
+    // retains the programs so the cook's exact-scene compile hits the program
+    // cache instead of re-linking under the loading veil. Never awaited and
+    // never gates anything; the task-queue yield between bursts keeps input and
+    // menu paint live on software GL, where a link is a synchronous CPU stretch.
+    // A mid-warm New Game press does not strand the work: the queue finishes
+    // alongside the cook and both write the same program cache, so remaining
+    // bursts are still useful admission rather than duplication.
+    if (state.render?.renderer && state.render.scene && state.render.camera) {
+      const warmOwner = state.render;
+      const MAX_WARM_UNIT_MATERIALS = 4;
+      const titlePipelineWarm = async () => {
+        if (state.mode !== 'menu' || state.render !== warmOwner) return;
+        // Hold compile CPU until the title is actually usable — the first
+        // bursts must not contend with the screen-mount frames that define
+        // 'title-interactive' (measured: warm boot regresses ~1 s without this).
+        for (let i = 0; i < 300; i++) {
+          if (window.__SF_BOOT_TIMELINE__?.marks?.some((m) => m.name === 'title-interactive')) break;
+          if (state.mode !== 'menu' || state.render !== warmOwner) return;
+          await new Promise((resolve) => setTimeout(resolve, 150));
+        }
+        let precompile, compileModule;
+        try {
+          [precompile, compileModule] = await Promise.all([
+            import('./render/precompile.js'),
+            import('./render/compilePipelinesSafely.js'),
+          ]);
+        } catch (error) { console.warn('[boot] title pipeline warm failed', error); return; }
+        if (!precompile || !compileModule || state.mode !== 'menu' || state.render !== warmOwner) return;
+        const { renderer, scene, camera } = warmOwner;
+        const compileSafely = compileModule.compileScenePipelinesSafely;
+        // Host contract: preparePipelines(subject) compiles every pipeline under
+        // that subject. Split it into small units — a subtree of a few programs,
+        // or one material-owning node — so software-GL bursts stay bounded and a
+        // menu task always gets a slot between them.
+        const unitsFor = (subject) => {
+          const units = [];
+          const push = (node) => {
+            let materials = 0;
+            node.traverse((o) => { if (o.material) materials++; });
+            if (!materials) return;
+            if (materials <= MAX_WARM_UNIT_MATERIALS || node.material) {
+              units.push({ node, materials });
+              return;
+            }
+            for (const child of node.children) push(child);
+          };
+          // A material-owning subject compiles its whole subtree as one unit —
+          // compileAsync always covers descendants, so queuing children beside
+          // it would link the same programs twice.
+          if (subject.material) return [{ node: subject, materials: Infinity }];
+          for (const child of subject.children) push(child);
+          // Densest families first: the authored canopy/opaque/rock cohorts are
+          // exactly what the cook's required-first-picture links, so they get
+          // the earliest dwell share; thinner families follow.
+          return units.sort((a, b) => b.materials - a.materials);
+        };
+        const preparePipelines = async (subject) => {
+          for (const unit of unitsFor(subject)) {
+            await compileSafely(renderer, unit.node, camera, scene);
+            await new Promise((resolve) => setTimeout(resolve, 0));
+          }
+        };
+        bootMark('title-pipeline-warm-start');
+        return precompile.precompileGlobalPipelines(renderer, scene, camera, {
+          incremental: true,
+          preparePipelines,
+        }).then((result) => {
+          bootMark('title-pipeline-warm-done',
+            result && (result.reason || `${result.programs ?? '?'} programs`));
+        }).catch((error) => console.warn('[boot] title pipeline warm failed', error));
+      };
+      void titlePipelineWarm();
+      // A player who dives into a route and returns still earns the warm: every
+      // menu re-entry re-offers it — the module dedupes a compiled set and a
+      // rejected run clears its cache entry, so re-kicks are free.
+      bus.on('mode:changed', ({ mode } = {}) => { if (mode === 'menu') void titlePipelineWarm(); });
+    }
+
     // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)
     SF_DEBUG_ONLY: if (SF_DEBUG) {
       window.SF = Object.assign(window.SF || {}, {
