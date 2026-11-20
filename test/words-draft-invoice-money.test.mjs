@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 
 test('the draft, invoice and bore-cost money sites build grouped amounts', () => {
   for (const [file, pattern] of [
-    ['../src/ui/screens/crucibleDraft.js', /Re-roll · \$\{Number\(price\)\.toLocaleString\('en-US'\)\} cr/],
+    ['../src/ui/screens/crucibleDraft.js', /Re-roll · \$\{Number\(price\)\.toLocaleString\('en-US'\)\} Scrap/],
     ['../src/ui/special500InvoicePrompt.js', /PAID · \$\{Number\(amount\)\.toLocaleString\('en-US'\)\} cr transferred/],
     ['../src/ui/special500InvoicePrompt.js', /LATE FEE ON STANDBY FEE · \$\{Number\(amount\)\.toLocaleString\('en-US'\)\} cr charged/],
     ['../src/ui/asteroid/asteroidController.js', /\$\{Number\(pv\.cost\)\.toLocaleString\('en-US'\)\} cr/],

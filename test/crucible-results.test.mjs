@@ -413,8 +413,8 @@ test('the results grid states outcome, depth, kills, score, run purse, level and
   assert.equal(map.get('Outcome'), 'Lost');
   assert.equal(map.get('Reached'), 'Wave 6 of 30');
   assert.equal(map.get('Kills'), '31');
-  // "Run purse" is the shipped label: credits are the run's stake, not salvage you towed home.
-  assert.equal(map.get('Run purse'), '88 cr');
+  // One Swarm money word (director 2026-11-20): what is left in the run, in Scrap.
+  assert.equal(map.get('Scrap left'), '88 Scrap');
   assert.equal(map.get('Seed'), '4242');
   assert.equal(new Map(resultRows({ outcome: 'victory', deepestWave: 10 })).get('Outcome'), 'Survived');
   assert.deepEqual(resultRows(null), []);

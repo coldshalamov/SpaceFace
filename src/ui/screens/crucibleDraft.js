@@ -758,6 +758,8 @@ export function circuitPanelLines(run) {
   };
 }
 
+const FIRST_SWARM_SHOP_WAVE = 5;
+
 // One short handoff on the existing Armory subtitle. Reads the same currentOffers
 // receipt as the shelf; it neither quotes repairs itself nor owns a purchase.
 export function firstSwarmIntermission(run, offers) {
@@ -768,7 +770,8 @@ export function firstSwarmIntermission(run, offers) {
   if (run.wave === 0 && offers.length === 0) {
     return 'Before round 1 — no stock is available. Keep your current loadout and launch when ready.';
   }
-  if (run.wave !== 1) return null;
+  // The first shop is after round 5's boss (the shop opens every fifth round, R3).
+  if (run.wave !== FIRST_SWARM_SHOP_WAVE) return null;
   const wallet = Number.isFinite(run.credits) && run.credits >= 0 ? run.credits : null;
   const buyable = offer => offer?.available === true && offer.purchased !== true
     && Number.isFinite(offer.price) && offer.price >= 0 && wallet != null && offer.price <= wallet;
@@ -778,9 +781,9 @@ export function firstSwarmIntermission(run, offers) {
   const choice = repair
     ? `Service: ${repair.name.trim()} (${repair.price} cr).`
     : offers.some(buyable)
-      ? 'Buy for round 2, or keep your salvage.'
-      : 'Keep your salvage; no purchase is available now.';
-  return `Round 1 cleared. ${choice} Rearrange loadout for spares, or Fortify the field. Launch round 2 when ready.`;
+      ? `Buy for round ${run.wave + 1}, or keep your Scrap.`
+      : 'Keep your Scrap; no purchase is available now.';
+  return `Round ${run.wave} cleared. ${choice} Rearrange loadout for spares. Launch round ${run.wave + 1} when ready.`;
 }
 
 /** SWARM-04 §6.5 — the next-round sentence shared by the armory and the refit bench. */

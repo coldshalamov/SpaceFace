@@ -8,7 +8,7 @@ import { survivalDraft } from '../src/systems/survivalDraft.js';
 
 function run() {
   return { ...createRunState({ kind: 'survival', ruleset: 'swarm', seed: 4242 }),
-    phase: 'draft', wave: 1, credits: 40, arenaId: 'helios_core', arenaMutators: [], modifiers: [] };
+    phase: 'draft', wave: 5, credits: 40, arenaId: 'helios_core', arenaMutators: [], modifiers: [] };
 }
 const weld = { id: 'svc_weld', kind: 'service', service: 'weld', name: 'Hull weld', price: 30, available: true };
 const patch = { id: 'svc_hull_patch', kind: 'service', service: 'hull_patch', name: 'Hull patch', price: 8, available: true };
@@ -24,7 +24,7 @@ test('canonical draft owner supplies actual live repair quote and sound-hull ref
     const offers = owner.currentOffers();
     const quoted = offers.find(o => o.service === 'hull_patch');
     assert.equal(quoted.price, 25); assert.equal(quoted.available, true);
-    assert.match(firstSwarmIntermission(state.run, offers), /Hull patch \(25 cr\)/);
+    assert.match(firstSwarmIntermission(state.run, offers), /Hull patch \(25 Scrap\)/);
     ship.hull = 100;
     const repaired = owner.currentOffers();
     assert.equal(repaired.find(o => o.service === 'hull_patch').unavailableReason, 'Hull already sound');
@@ -38,9 +38,9 @@ test('canonical draft owner supplies actual live repair quote and sound-hull ref
 test('first intermission points to the actual cheapest available repair and existing routes', () => {
   const r = run(), offers = [weld, patch]; const before = structuredClone({ r, offers });
   const line = firstSwarmIntermission(r, offers);
-  assert.match(line, /Service: Hull patch \(8 cr\)/);
-  assert.match(line, /Rearrange loadout for spares/); assert.match(line, /Fortify the field/);
-  assert.match(line, /Launch round 2/); assert.doesNotMatch(line, /earned|paid|bonus/i);
+  assert.match(line, /Service: Hull patch \(8 Scrap\)/);
+  assert.match(line, /Rearrange loadout for spares/); assert.doesNotMatch(line, /Fortify the field/, 'Fortify left Swarm (04_SWARM.md §5)');
+  assert.match(line, /Launch round 6/); assert.doesNotMatch(line, /earned|paid|bonus/i);
   assert.deepEqual({ r, offers }, before);
 });
 
@@ -50,7 +50,7 @@ test('repaired, purchased, unaffordable or invalid quotes do not recommend a rep
     assert.doesNotMatch(firstSwarmIntermission(run(), [offer]), /Service:/);
   }
   assert.match(firstSwarmIntermission({ ...run(), credits: 0 }, [patch]), /no purchase is available/);
-  assert.match(firstSwarmIntermission(run(), [{ ...patch, kind: 'fitting' }]), /Buy for round 2/);
+  assert.match(firstSwarmIntermission(run(), [{ ...patch, kind: 'fitting' }]), /Buy for round 6/);
 });
 
 test('no-stock opening does not invent a cleared wave; checkpoint and Circuit copy stay with owners', () => {
@@ -70,12 +70,12 @@ function screenHarness(r) {
     rerollState: () => ({ open: false }), recommendedOffers: () => [] };
   const ctx = { state: { run: r }, bus, registry: { get: () => owner } };
   const button = () => ({ dataset: {}, childNodes: [], style: {}, classList: { toggle() {} },
-    setAttribute() {}, querySelector: () => null, appendChild(n) { this.childNodes.push(n); } });
+    setAttribute() {}, removeAttribute() {}, querySelector: () => null, appendChild(n) { this.childNodes.push(n); } });
   const screen = Object.assign(Object.create(crucibleDraftScreen), {
     _ctx: ctx, _root: { classList: { toggle() {} }, contains: () => false },
     _cards: { innerHTML: '', appendChild() {}, querySelectorAll: () => [], querySelector: () => null },
     _title: {}, _filters: { children: [] }, _refitBtn: {}, _sub: {}, _preview: {}, _briefing: {},
-    _armoryHeading: {},
+    _armoryHeading: {}, _launchSummary: { textContent: '', hidden: true, id: 'launch-summary' },
     _skip: button(), _rerollBtn: button(), _wallet: {}, _hint: {}, _note: {},
     _category: 'unmatched-filter', _query: '', _clipRailToWholeRows() {}, _claimFocus() {},
     _buildCard: button,
@@ -91,9 +91,9 @@ test('real Armory refresh reads delayed offer receipts, then withdraws the repai
     const h = screenHarness(run());
     h.screen.onShow(h.ctx); assert.match(h.screen._sub.textContent, /no purchase is available/);
     // The existing production refresh is invoked after the canonical owner reply, not a click-time quote.
-    h.publish([weld, patch]); h.bus.emit('run:draftOffered', { wave: 1 });
+    h.publish([weld, patch]); h.bus.emit('run:draftOffered', { wave: 5 });
     await new Promise(resolve => queueMicrotask(resolve));
-    assert.match(h.screen._sub.textContent, /Hull patch \(8 cr\)/);
+    assert.match(h.screen._sub.textContent, /Hull patch \(8 Scrap\)/);
     h.ctx.state.run.credits = 32; h.publish([{ ...patch, available: false, purchased: true }, { ...weld, available: false }]);
     h.bus.emit('run:shopPurchased', { offerId: patch.id });
     await new Promise(resolve => queueMicrotask(resolve));

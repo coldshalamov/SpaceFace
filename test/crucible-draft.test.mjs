@@ -507,8 +507,8 @@ test('the re-roll control reads as unavailable rather than looking live and doin
     open: true, wave: 2, rerolls: 0, price: 12, credits: 40, available: true, reason: null, note: '',
   });
   assert.equal(live.visible, true);
-  assert.equal(live.label, 'Re-roll · 12 cr');
-  assert.equal(live.wallet, 'Run wallet 40 cr');
+  assert.equal(live.label, 'Re-roll · 12 Scrap'); // one Swarm money word (director 2026-11-20)
+  assert.equal(live.wallet, '40 Scrap');
   assert.equal(live.disabled, false);
   assert.equal(live.notice, '');
 
@@ -519,7 +519,7 @@ test('the re-roll control reads as unavailable rather than looking live and doin
   assert.equal(short.disabled, true, 'unaffordable is drawn dead');
   assert.match(short.notice, /12 cr/);
   assert.match(short.notice, /5 cr/);
-  assert.equal(short.wallet, 'Run wallet 5 cr');
+  assert.equal(short.wallet, '5 Scrap');
 
   const dry = rerollControlLines({
     open: true, wave: 9, rerolls: 3, price: 132, credits: 400, available: false,

@@ -496,7 +496,7 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     armory.bus.emit('run:draftRerollRejected', { reason: 'insufficient_credits' });
     await flushUiMicrotasks();
     assert.equal(armoryRefreshes, afterOpen + 2, 'the rejection pair coalesces into one repaint');
-    assert.equal(armory.screen._wallet.textContent, '214 cr to spend');
+    assert.equal(armory.screen._wallet.textContent, '214 Scrap to spend');
     assert.equal(armory.screen._note.textContent, 'Not enough run credits. Save for the next round.');
 
     // A main-thread owner can emit the result inside the intent. Suppression plus the direct
@@ -520,7 +520,7 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     armory.bus.emit('run:shopPurchased', { wave: 1, offerId: 'cannon', price: 83 });
     await flushUiMicrotasks();
     assert.equal(armoryRefreshes, asyncPurchaseBase + 1);
-    assert.equal(armory.screen._wallet.textContent, '97 cr to spend');
+    assert.equal(armory.screen._wallet.textContent, '97 Scrap to spend');
     assert.match(armory.screen._note.textContent, /fitted/);
 
     // Hiding cancels an already queued result; reopening twice still leaves only one result
@@ -737,7 +737,7 @@ test('production domain wire, lane facade and result bridge repaint the merged s
     armory.bus.emit('run:shopPurchased', structuredClone(wireReceipt.flat));
     await flushUiMicrotasks();
     assert.equal(repaintCount, beforeAck + 1);
-    assert.equal(armory.screen._wallet.textContent, '214 cr to spend');
+    assert.equal(armory.screen._wallet.textContent, '214 Scrap to spend');
     assert.equal(armory.screen._note.textContent, mirroredDraft.notice);
     assert.equal(armory.screen._preview.textContent, swarmNextLine(swarmForecastForRun(mirroredRun, 2)));
     assert.match(armory.screen._preview.textContent, /clear 12/);

@@ -647,7 +647,7 @@ export function historyRunRows(profile) {
     const tally = [
       Number.isInteger(run && run.kills) && run.kills > 0 ? `${run.kills} kills` : '',
       Number.isInteger(run && run.wavesCleared) && run.wavesCleared > 0 ? `${run.wavesCleared} cleared` : '',
-      Number.isInteger(run && run.credits) && run.credits > 0 ? `${run.credits} cr` : '',
+      Number.isInteger(run && run.credits) && run.credits > 0 ? `${run.credits} Scrap` : '',
     ].filter(Boolean).join(' · ');
     return {
       outcome: OUTCOME_WORD[run && run.outcome] || String((run && run.outcome) || '—').toUpperCase(),
@@ -2002,8 +2002,8 @@ export const crucibleScreen = {
         ? ` ${pluralWord(pickedOpen.length, 'The next star wants', 'The next stars want')} ${pickedOpen.join(' and ')}.`
         : '';
       els.zoneSentence.textContent = (startWave > 1
-        ? `${picked.name} — checkpoint start at Round ${startWave}. The opening armory holds `
-          + `${swarmCheckpointPurseFor(swarmZoneIndexFor(startWave))} cr for a mid-build.`
+        ? `${picked.name} — checkpoint start at Round ${startWave}, with `
+          + `${swarmCheckpointPurseFor(swarmZoneIndexFor(startWave))} Scrap like every run.`
         : `${picked.name} — from Round 1. Clear each zone's boss for stars and the next checkpoint.`)
         + pickedAsk;
       // The verb says where Play goes (§7.2): only on the ladder's own door — weekly, daily
@@ -2717,7 +2717,7 @@ export function resultRows(result) {
       ? [['Stake', `${swarmStakeFor(result.swarmStake).label} — ${swarmStakePitch(result.swarmStake)}`]]
       : []),
     ['Score', String(result.score || 0)],
-    ['Run purse', `${result.credits || 0} cr`],
+    ['Scrap left', `${result.credits || 0} Scrap`],
     ['Level', `${result.level || 1} · ${result.xp || 0} xp`],
     ['Seed', String(result.seed || 0)],
     // The stamp stays on the record (pq-ids and all). The row is the same grammar as Seed:

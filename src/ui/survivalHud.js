@@ -30,6 +30,9 @@ import { indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
 import { FOUNDRY_APPROACH_ALERT, FOUNDRY_RETURN_ALERT } from './alerts.js';
 import { runRulesetLabel } from './windowTitle.js';
 import { createPilotBreathController } from './pilotCards.js';
+import { loadCrucibleMeta } from '../systems/survivalRecords.js';
+import { ENEMY_JOB_WORDS, castJobs } from '../data/enemyJobs.js';
+import { CONTACT_JOB_PALETTE, CONTACT_ROLE_GLYPHS } from './map/tacticalMapGrammar.js';
 
 const STYLE_ID = 'sf-crun-css';
 /** How long an earn receipt stays on screen, in sim seconds. */
@@ -37,6 +40,82 @@ export const EARN_RECEIPT_S = 2.6;
 /** OVH-01b: "LEVEL n" rides the bar this long; the bar's one flash is shorter. Sim seconds. */
 export const LEVEL_RIDE_S = 1.2;
 export const XP_FLASH_S = 0.6;
+/** HUD-2 Item 11: how long the composed cast banner sits on the round card, in sim seconds. */
+export const CAST_ANNOUNCE_S = 3.2;
+/** Show the tactical counter hint only on a player's first few Swarm runs. */
+export const CAST_ANSWER_RUN_LIMIT = 3;
+
+export function shouldShowCastAnswer(profile = null) {
+  if (!profile || !Array.isArray(profile.history)) return true;
+  return profile.history.length < CAST_ANSWER_RUN_LIMIT;
+}
+
+/** Miniature inline SVG matching the exact contact-job silhouettes in tacticalMapGrammar.js. */
+export function castJobGlyphSvg(jobId) {
+  const color = CONTACT_JOB_PALETTE[jobId] || '#ff6fae';
+  const label = CONTACT_ROLE_GLYPHS[jobId]?.word || jobId;
+  let inner = '';
+  if (jobId === 'rush') {
+    inner = `<path d="M0-5.8L4 4.4 0 1.6-4 4.4Z" fill="${color}" stroke="#040b12" stroke-width="1"/>`;
+  } else if (jobId === 'burst') {
+    inner = `<path d="M0-7L1.7-1.7 5.6 0 1.7 1.7 0 5.6-1.7 1.7-5.6 0-1.7-1.7Z" fill="${color}" stroke="#040b12" stroke-width=".9"/><circle r="1.4" fill="#fff1cf"/>`;
+  } else if (jobId === 'reach') {
+    inner = `<path d="M0-6.2L1.9 1.2 4.4 4.6 0 3.2-4.4 4.6-1.9 1.2Z" fill="${color}" stroke="#040b12" stroke-width=".9"/><path d="M0-7.6V-9.8" stroke="${color}" stroke-width="1.4" stroke-linecap="round"/>`;
+  } else if (jobId === 'wall') {
+    inner = `<path d="M-5.4-3.4L-3.2-5.4H3.2L5.4-3.4V4.6H-5.4Z" fill="${color}" stroke="#040b12" stroke-width="1"/><path d="M-3.2-1.8H3.2M-3.2 1.4H3.2" stroke="#040b12" stroke-width="1.2"/>`;
+  } else if (jobId === 'skirmish') {
+    inner = `<path d="M0-5.4Q4.6-3.6 6.2 4.2Q3.2.6 0 .4Q-3.2.6-6.2 4.2Q-4.6-3.6 0-5.4Z" fill="${color}" stroke="#040b12" stroke-width=".9"/>`;
+  } else if (jobId === 'deny') {
+    inner = `<circle r="3.2" fill="${color}" stroke="#040b12" stroke-width=".9"/><circle r="6" fill="none" stroke="${color}" stroke-width="1.3" stroke-dasharray="4.5 3"/>`;
+  } else if (jobId === 'seize') {
+    inner = `<path d="M-4.6 4.6L-4.8-1.6-2.4-6-1.6-1.8 0-.6 1.6-1.8 2.4-6 4.8-1.6 4.6 4.6Z" fill="${color}" stroke="#040b12" stroke-width=".9"/>`;
+  } else if (jobId === 'source') {
+    inner = `<polygon points="5.2,0 2.6,4.5 -2.6,4.5 -5.2,0 -2.6,-4.5 2.6,-4.5" fill="${color}" stroke="#040b12" stroke-width=".9"/><circle r="1.5" fill="#fff1cf"/><circle cx="0" cy="-7.6" r="1.2" fill="${color}"/><circle cx="6.6" cy="3.8" r="1.2" fill="${color}"/><circle cx="-6.6" cy="3.8" r="1.2" fill="${color}"/>`;
+  } else {
+    inner = `<circle r="4.2" fill="${color}" stroke="#040b12" stroke-width="1"/>`;
+  }
+  return `<svg class="sf-crun__castglyph" viewBox="-10 -10 20 20" width="14" height="14" aria-label="${label}" role="img">${inner}</svg>`;
+}
+
+/** Build the cast readout model from an `encounter:castAnnounced` payload. */
+export function buildCastAnnouncementModel(payload, { showAnswer = true } = {}) {
+  if (!payload || typeof payload !== 'object') return null;
+  const jobs = [];
+  if (Array.isArray(payload.jobs)) {
+    for (const j of payload.jobs) {
+      if (typeof j === 'string' && CONTACT_JOB_PALETTE[j] && !jobs.includes(j)) jobs.push(j);
+    }
+  }
+  if (!jobs.length && Array.isArray(payload.groups)) {
+    const flatCast = [];
+    for (const g of payload.groups) {
+      if (Array.isArray(g?.cast)) flatCast.push(...g.cast);
+    }
+    for (const j of castJobs(flatCast)) {
+      if (CONTACT_JOB_PALETTE[j] && !jobs.includes(j)) jobs.push(j);
+    }
+  }
+  let line = typeof payload.line === 'string' ? payload.line.trim() : '';
+  if (!line && jobs.length) {
+    const phrases = jobs.slice(0, 2).map((j) => ENEMY_JOB_WORDS[j]?.one).filter(Boolean);
+    if (phrases.length) {
+      const joined = phrases.join(' with ');
+      line = joined.charAt(0).toUpperCase() + joined.slice(1);
+    }
+  }
+  if (!line && !jobs.length) return null;
+  let answer = '';
+  if (showAnswer) {
+    answer = typeof payload.answer === 'string' ? payload.answer.trim() : '';
+    if (!answer && jobs.length) answer = ENEMY_JOB_WORDS[jobs[0]]?.answer || '';
+  }
+  return {
+    wave: Number.isInteger(payload.wave) ? payload.wave : null,
+    jobs: jobs.slice(0, 4),
+    line,
+    answer,
+  };
+}
 
 /** Phase word the player reads. Never a phase id — 'wave_intro' is not a thing anyone says. */
 export const PHASE_WORDS = Object.freeze({
@@ -342,6 +421,12 @@ export const survivalHud = {
     this._chainCause = null;
     this._chainStep = 0;
     this._chainAt = null;
+    this._overdriveRate = 0;
+    this._cast = null;
+    this._castUntil = -1;
+    this._castSig = '';
+    this._profileCache = null;
+    this._profileRunKey = '';
     this._waveProgress = null;
     this._foundryGuidance = new Map();
     this._death = null;
@@ -382,9 +467,14 @@ export const survivalHud = {
       this._chainCause = null;
       this._chainStep = 0;
       this._chainAt = null;
+      this._overdriveRate = 0;
+      this._cast = null;
+      this._castUntil = -1;
+      this._castSig = '';
     }));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveProgress', (p) => this._onWaveProgress(p)));
+    this._unsubs.push(this.bus.on('encounter:castAnnounced', (p) => this._onCastAnnounced(p)));
     this._unsubs.push(this.bus.on('alert', (p) => {
       const key = p?.key;
       if (key !== FOUNDRY_APPROACH_ALERT && key !== FOUNDRY_RETURN_ALERT) return;
@@ -393,6 +483,7 @@ export const survivalHud = {
     }));
     this._unsubs.push(this.bus.on('swarm:chain', (p) => this._onChain(p)));
     this._unsubs.push(this.bus.on('swarm:chainBroken', () => this._onChainBroken()));
+    this._unsubs.push(this.bus.on('swarm:overdrive', (p) => this._onOverdrive(p)));
     // PQ-174.06: the death line on the glass. Read-only like everything else here — it names
     // the cause and the missed telegraph, and never emits.
     this._unsubs.push(this.bus.on('ai:telegraph', (p) => this._onTell(p)));
@@ -418,6 +509,10 @@ export const survivalHud = {
     this._foundryGuidance?.clear();
     this._death = null;
     this._lastTells = [];
+    this._overdriveRate = 0;
+    this._cast = null;
+    this._castUntil = -1;
+    this._castSig = '';
   },
 
   update(dt, state) {
@@ -603,28 +698,29 @@ export const survivalHud = {
       }
     }
 
-    // The chain, if the ruleset has one. A swarm run shows the chain and hides the style
-    // multiplier: they measure the same instinct — vary how you kill — and the chain is the one
-    // that says so in a number the player is already watching.
+    // The chain, if the ruleset has one. Lives as the second hero figure beside the wave clock /
+    // count in the round card, carrying Overdrive as well now that the top-centre hero is retired.
     const chain = swarm ? this._chain : 0;
     const showChain = swarm && chain > 0;
     this._setHidden(dom.chainRow, !showChain);
     if (showChain) {
       this._setText(dom.chainFig, `${chain}`);
       this._setText(dom.chainBest, this._chainBest > chain ? `best ${this._chainBest}` : '');
-      // The cause glyph: what the last kill arrived as, and +2 when it varied the chain.
-      const badge = chainCauseBadge(this._chainCause, this._chainStep);
+      const overdrive = this._overdriveRate > 0;
+      const badge = overdrive
+        ? `OVERDRIVE ×${this._overdriveRate}`
+        : chainCauseBadge(this._chainCause, this._chainStep);
       this._setText(dom.chainCause, badge || '');
-      if (dom.chainCause) dom.chainCause.hidden = !badge;
+      if (dom.chainCause) {
+        dom.chainCause.hidden = !badge;
+        dom.chainCause.dataset.overdrive = overdrive ? '1' : '0';
+      }
       const tier = chain >= 50 ? 'peak' : (chain >= 15 ? 'hot' : 'warm');
       if (dom.chainRow.dataset.tier !== tier) dom.chainRow.dataset.tier = tier;
-      // The depletion mark: what share of the four-second window is left, from the kill's own
-      // sim-time anchor. A 2px underline, never a second panel, and the number is untouched.
       const simNow = Number.isFinite(st.simTime) ? st.simTime : 0;
       const remaining = chainWindowRemaining(this._chainAt, simNow);
       const deplete = Math.max(0, Math.min(1, remaining / SWARM_CHAIN_WINDOW_S));
       this._setStyle(dom.chainDeplete, 'width', `${Math.round(deplete * 100)}%`);
-      // The last second reads as colour plus a word — never flashing, never motion. INF-032.
       const final = remaining <= SWARM_CHAIN_WARN_S;
       if (final) {
         if (dom.chainRow.dataset.urgency !== 'final') dom.chainRow.dataset.urgency = 'final';
@@ -632,8 +728,33 @@ export const survivalHud = {
         delete dom.chainRow.dataset.urgency;
       }
       this._setAttr(dom.chainRow, 'aria-label', badge
-        ? `Kill chain ${chain}, last kill ${badge}${final ? ', ending' : ''}`
+        ? `Kill chain ${chain}, ${overdrive ? badge : `last kill ${badge}`}${final ? ', ending' : ''}`
         : `Kill chain ${chain}${final ? ', ending' : ''}`);
+    }
+
+    // HUD-2 Item 11: composed cast announcement on the round card (~3s hold).
+    const simNowCast = Number.isFinite(st.simTime) ? st.simTime : 0;
+    const castLive = !!(swarm && this._cast && simNowCast <= this._castUntil
+      && (this._cast.wave == null || this._cast.wave === run.wave));
+    if (dom.cast) {
+      this._setHidden(dom.cast, !castLive);
+      if (castLive) {
+        const sig = `${this._cast.jobs.join(',')}|${this._cast.line}|${this._cast.answer}`;
+        if (this._castSig !== sig) {
+          this._castSig = sig;
+          if (dom.castGlyphs) {
+            dom.castGlyphs.innerHTML = this._cast.jobs.map((j) => castJobGlyphSvg(j)).join('');
+            dom.castGlyphs.hidden = !this._cast.jobs.length;
+          }
+          this._setText(dom.castLine, this._cast.line);
+          this._setHidden(dom.castAnswer, !this._cast.answer);
+          if (this._cast.answer) this._setText(dom.castAnswer, this._cast.answer);
+        }
+      } else if (this._cast && simNowCast > this._castUntil) {
+        this._cast = null;
+        this._castUntil = -1;
+        this._castSig = '';
+      }
     }
 
     // Style is a live figure, not a phase readout: it decays as you repeat yourself and climbs as
@@ -807,6 +928,33 @@ export const survivalHud = {
     this._chainCause = null;
     this._chainStep = 0;
     this._chainAt = null;
+    this._overdriveRate = 0;
+  },
+
+  _onOverdrive(payload) {
+    this._overdriveRate = payload && payload.active ? Math.max(0, Number(payload.rate) || 0) : 0;
+  },
+
+  _readProfile() {
+    const run = this.state?.run;
+    const key = run ? `${run.kind || ''}:${run.seed || ''}:${run.phase || ''}` : 'none';
+    if (key !== this._profileRunKey) {
+      this._profileRunKey = key;
+      try { this._profileCache = loadCrucibleMeta(); } catch { this._profileCache = null; }
+    }
+    return this._profileCache;
+  },
+
+  _onCastAnnounced(payload) {
+    if (!payload || typeof payload !== 'object') return;
+    const explicitAnswer = typeof payload.showAnswer === 'boolean' ? payload.showAnswer : null;
+    const showAnswer = explicitAnswer != null ? explicitAnswer : shouldShowCastAnswer(this._readProfile());
+    const model = buildCastAnnouncementModel(payload, { showAnswer });
+    if (!model) return;
+    const simNow = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    this._cast = model;
+    this._castUntil = simNow + CAST_ANNOUNCE_S;
+    this._castSig = '';
   },
 
   _onWavePlanned(payload) {
@@ -1033,11 +1181,47 @@ export const survivalHud = {
       brief.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
 
-    const label = make('div', 'sf-crun__label', root);
-
-    const waveRow = make('div', 'sf-crun__row', root);
+    const head = make('div', 'sf-crun__head', root);
+    const label = make('div', 'sf-crun__label', head);
+    const waveRow = make('div', 'sf-crun__row sf-crun__waverow', head);
     const waveN = make('span', 'sf-crun__wave', waveRow);
     const phase = make('span', 'sf-crun__phase', waveRow);
+
+    // HUD-2 Item 6: TWO large hero figures (wave remaining/clock + chain) on one clear row,
+    // so the player reads the fight at a glance instead of parsing seven equal-weight numbers.
+    const heroes = make('div', 'sf-crun__heroes', root);
+
+    const threat = make('div', 'sf-crun__threat', heroes);
+    threat.setAttribute('role', 'meter');
+    threat.setAttribute('aria-valuemin', '0');
+    threat.setAttribute('aria-label', 'Hostiles remaining');
+    const threatWord = make('span', 'sf-crun__word', threat);
+    threatWord.textContent = 'THREAT';
+    const threatFig = make('span', 'sf-crun__fig sf-crun__hero-num', threat);
+    const threatTrack = make('span', 'sf-crun__track', threat);
+    const threatFill = make('span', 'sf-crun__fill sf-crun__fill--foe', threatTrack);
+
+    const chainRow = make('div', 'sf-crun__chain', heroes);
+    const chainTop = make('div', 'sf-crun__chaintop', chainRow);
+    const chainWord = make('span', 'sf-crun__word', chainTop);
+    chainWord.textContent = 'CHAIN';
+    const chainBest = make('span', 'sf-crun__chainbest', chainTop);
+    const chainMid = make('div', 'sf-crun__chainmid', chainRow);
+    const chainFig = make('span', 'sf-crun__chainfig', chainMid);
+    const chainCause = make('span', 'sf-crun__chaincause', chainMid);
+    const chainDepleteTrack = make('span', 'sf-crun__track sf-crun__track--chain', chainRow);
+    const chainDeplete = make('span', 'sf-crun__fill sf-crun__fill--you', chainDepleteTrack);
+    chainRow.hidden = true;
+
+    // HUD-2 Item 11: ~3-second cast announcement on the round card (job glyphs + plain line +
+    // tactical answer on the player's first few runs).
+    const cast = make('div', 'sf-crun__cast', root);
+    cast.hidden = true;
+    const castRow = make('div', 'sf-crun__castrow', cast);
+    const castGlyphs = make('span', 'sf-crun__castglyphs', castRow);
+    const castLine = make('span', 'sf-crun__castline', castRow);
+    const castAnswer = make('div', 'sf-crun__castanswer', cast);
+    castAnswer.hidden = true;
 
     const hero = make('div', 'sf-crun__hero', root);
     hero.hidden = true;
@@ -1054,21 +1238,8 @@ export const survivalHud = {
     twist.hidden = true;
     twist.setAttribute('aria-live', 'off');
 
-    const threat = make('div', 'sf-crun__threat', root);
-    threat.setAttribute('role', 'meter');
-    threat.setAttribute('aria-valuemin', '0');
-    threat.setAttribute('aria-label', 'Hostiles remaining');
-    const threatWord = make('span', 'sf-crun__word', threat);
-    threatWord.textContent = 'THREAT';
-    const threatTrack = make('span', 'sf-crun__track', threat);
-    const threatFill = make('span', 'sf-crun__fill sf-crun__fill--foe', threatTrack);
-    const threatFig = make('span', 'sf-crun__fig', threat);
-
-    // SWARM-05 §7.5 — the boss bar. The wave's champion bodies carry the swarmChampion mark
-    // stamped at materialization (SWARM-02 left it for exactly this surface), so the readout
-    // scans the live entities and never asks an owner to publish. It rides the same
-    // word/track/figure grammar as the threat meter, and leaves when the last boss falls.
-    const boss = make('div', 'sf-crun__threat sf-crun__boss', root);
+    // SWARM-05 §7.5 — the boss bar.
+    const boss = make('div', 'sf-crun__boss', root);
     boss.setAttribute('role', 'meter');
     boss.setAttribute('aria-valuemin', '0');
     boss.setAttribute('aria-valuemax', '100');
@@ -1079,46 +1250,22 @@ export const survivalHud = {
     const bossFill = make('span', 'sf-crun__fill sf-crun__fill--foe sf-crun__fill--boss', bossTrack);
     const bossFig = make('span', 'sf-crun__fig', boss);
 
-    // THE CHAIN GETS ITS OWN LINE, and it is the biggest thing here.
-    //
-    // Everything else in this readout is a status you glance at between fights. The chain is the
-    // one figure a player is watching WHILE they fly, and it is the thing that makes them take the
-    // risk that makes the mode fun. It is not going in the small-figures row with the credits.
-    const chainRow = make('div', 'sf-crun__chain', root);
-    const chainWord = make('span', 'sf-crun__word', chainRow);
-    chainWord.textContent = 'CHAIN';
-    const chainFig = make('span', 'sf-crun__chainfig', chainRow);
-    const chainCause = make('span', 'sf-crun__chaincause', chainRow);
-    const chainBest = make('span', 'sf-crun__chainbest', chainRow);
-    // The window depletion mark: a 2px underline on its own flex line, reusing the threat
-    // track/fill grammar. The number above it is never touched. INF-032.
-    const chainDepleteTrack = make('span', 'sf-crun__track sf-crun__track--chain', chainRow);
-    const chainDeplete = make('span', 'sf-crun__fill sf-crun__fill--you', chainDepleteTrack);
-    chainRow.hidden = true;
-
+    // Quiet single-line muted footer for secondary totals (score, kills, credits, level).
     const figures = make('div', 'sf-crun__row sf-crun__row--figs', root);
-    const scoreWord = make('span', 'sf-crun__word', figures);
+    const scoreWord = make('span', 'sf-crun__word sf-crun__footword', figures);
     scoreWord.textContent = 'SCORE';
-    const score = make('span', 'sf-crun__fig sf-crun__fig--you', figures);
-    const killWord = make('span', 'sf-crun__word', figures);
+    const score = make('span', 'sf-crun__fig sf-crun__footfig', figures);
+    const killWord = make('span', 'sf-crun__word sf-crun__footword', figures);
     killWord.textContent = 'KILLS';
-    const killFig = make('span', 'sf-crun__fig', figures);
+    const killFig = make('span', 'sf-crun__fig sf-crun__footfig', figures);
     killWord.hidden = true;
     killFig.hidden = true;
-    const crWord = make('span', 'sf-crun__word', figures);
-    crWord.textContent = 'CR';
-    const credits = make('span', 'sf-crun__fig sf-crun__fig--you', figures);
-    const level = make('span', 'sf-crun__fig sf-crun__fig--you', figures);
+    const crWord = make('span', 'sf-crun__word sf-crun__footword', figures);
+    crWord.textContent = 'SCRAP';
+    const credits = make('span', 'sf-crun__fig sf-crun__footfig', figures);
+    const level = make('span', 'sf-crun__fig sf-crun__footfig sf-crun__footlv', figures);
 
-    // THE STYLE MULTIPLIER, ON GLASS.
-    //
-    // survivalStyle.js has always rewarded VARIETY of kill cause — a terrain kill, an explosive
-    // kill and a direct kill in a row score far better than three of the same — and the player
-    // could never see it. In a mode whose premise is that the arena is a weapon, the number that
-    // says "using the room is worth more" has to be visible or the loop never closes. It appears
-    // only while it is above 1x, so a plain fight is not carrying a permanent "1.0x" it has not
-    // earned. The word travels with the figure: colour is never the only channel.
-    const styleWord = make('span', 'sf-crun__word', figures);
+    const styleWord = make('span', 'sf-crun__word sf-crun__footword', figures);
     styleWord.textContent = 'STYLE';
     const styleFig = make('span', 'sf-crun__fig sf-crun__fig--goal', figures);
     styleWord.hidden = true;
@@ -1139,11 +1286,10 @@ export const survivalHud = {
     death.hidden = true;
     death.setAttribute('role', 'status');
 
-    // A01-05: the run's bought Tap bottles — icon + name, never colour alone. The row
-    // leaves the glass entirely until the till has sold the run something.
+    // A01-05: the run's bought Tap bottles — icon + name, never colour alone.
     const mods = make('div', 'sf-crun__mods', root);
     mods.hidden = true;
-    mods.setAttribute('aria-label', 'Bought tap modifiers');
+    mods.setAttribute('aria-label', 'Bought modifiers');
     const modsWord = make('span', 'sf-crun__word', mods);
     modsWord.textContent = 'MODS';
     const modsList = make('span', 'sf-crun__modslist', mods);
@@ -1153,6 +1299,7 @@ export const survivalHud = {
       root, brief, label, waveN, phase, hero, intro, twist, threat, threatWord, threatFill, threatFig,
       boss, bossWord, bossFill, bossFig,
       chainRow, chainFig, chainCause, chainBest, chainDeplete,
+      cast, castGlyphs, castLine, castAnswer,
       score, killWord, killFig, credits, level, styleWord, styleFig, xpTrack, xpFill, pick, earn, death, line,
       mods, modsList,
     };
@@ -1168,94 +1315,110 @@ export const survivalHud = {
     style.id = STYLE_ID;
     // Own lease: this block styles only .sf-crun*. It never redefines a shared selector.
     style.textContent = `
-  /* PQ-210.05: the Crucible readout is an instrument in the comms strip, not a CSS card.
-     Parent .sf-leftcontext already supplies the machined bezel; this sheet only paints the
-     legends, lamps and channels. No overlay fill, no hairline border, no second palette. */
-  .sf-crun { display:flex; flex-direction:column; gap:6px; min-width:0;
+  .sf-crun { display:flex; flex-direction:column; gap:7px; min-width:0;
     padding:0; border:0; background:none; color:var(--dp-ink, var(--sf-paper)); }
-  .sf-crun__label { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 720, "wdth" 62;
-    font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
-    color:var(--dp-ink-mute, var(--sf-calm)); text-shadow:var(--dp-etch-shadow, none); }
-  .sf-crun__row { display:flex; align-items:baseline; gap:9px; }
+  .sf-crun__head { display:flex; flex-direction:column; gap:2px; }
+  .sf-crun__label { font-family:var(--dp-face-read, var(--sf-subhead-face));
+    font-weight:600; font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+    color:rgb(184 208 218 / .72); }
+  .sf-crun__row { display:flex; align-items:baseline; gap:8px; }
+  .sf-crun__waverow { justify-content:space-between; align-items:center; }
   .sf-crun__brief { display:none; }
+  .sf-crun__wave { font-family:var(--dp-face-read, var(--sf-data-face));
+    font-weight:650; font-size:13px; font-variant-numeric:tabular-nums; letter-spacing:.06em;
+    color:#a9edf4; }
+  .sf-crun__phase { font-family:var(--dp-face-read, var(--sf-subhead-face));
+    font-weight:650; font-size:12px; letter-spacing:.09em; text-transform:uppercase;
+    color:rgb(184 208 218 / .76); }
+  .sf-crun__phase--hot { color:var(--dp-danger-hot, #ff806b); }
+  /* Two-hero row: Wave clock/remaining on the left, Chain + Overdrive on the right. */
+  .sf-crun__heroes { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:14px; align-items:end;
+    padding-top:2px; }
+  .sf-crun__threat { display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .sf-crun__threat[hidden] { display:none; }
+  .sf-crun__hero-num { font-family:var(--dp-face-numeral, var(--dp-face-read, sans-serif));
+    font-weight:750; font-size:28px; line-height:1; font-variant-numeric:tabular-nums;
+    letter-spacing:-.01em; color:#f4f8fa; text-shadow:0 1px 4px rgb(3 8 12 / .82); }
+  .sf-crun__chain { display:flex; flex-direction:column; gap:3px; min-width:94px;
+    padding-left:12px; border-left:1px solid rgb(166 210 224 / .28); }
+  .sf-crun__chain[hidden] { display:none; }
+  .sf-crun__chaintop { display:flex; align-items:baseline; justify-content:space-between; gap:6px; }
+  .sf-crun__chainmid { display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; }
+  .sf-crun__chainfig { font-family:var(--dp-face-numeral, var(--dp-face-read, sans-serif));
+    font-weight:780; font-size:28px; line-height:1; font-variant-numeric:tabular-nums;
+    color:var(--dp-lamp-hot, #ffd98c); text-shadow:0 1px 4px rgb(3 8 12 / .82); }
+  .sf-crun__chain[data-tier="hot"] .sf-crun__chainfig { color:#ffbe55; }
+  .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig,
+  .sf-crun__chain[data-urgency="final"] .sf-crun__chainfig { color:var(--dp-danger-hot, #ff7159); }
+  .sf-crun__chainbest { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
+    font-variant-numeric:tabular-nums; color:rgb(184 208 218 / .68); }
+  .sf-crun__chaincause { font-family:var(--dp-face-read, var(--sf-subhead-face)); font-weight:700; font-size:12px;
+    letter-spacing:.06em; text-transform:uppercase; font-variant-numeric:tabular-nums;
+    color:#d8ecf2; }
+  .sf-crun__chaincause[data-overdrive="1"] { padding:1px 5px; border-radius:2px;
+    background:rgb(255 110 74 / .22); border:1px solid rgb(255 138 112 / .7);
+    color:#ffd3c7; }
+  .sf-crun__track--chain { width:100%; min-width:0; height:3px; flex:none; }
+  /* Cast announcement strip (Item 11): miniature job glyphs + plain line + early-run counter hint. */
+  .sf-crun__cast { display:flex; flex-direction:column; gap:3px; padding:6px 0 4px;
+    border-top:1px solid rgb(166 210 224 / .24); }
+  .sf-crun__cast[hidden] { display:none; }
+  .sf-crun__castrow { display:flex; align-items:flex-start; gap:7px; }
+  .sf-crun__castglyphs { display:inline-flex; align-items:center; gap:3px; flex:none; padding-top:2px; }
+  .sf-crun__castglyph { display:block; width:14px; height:14px; flex:none; }
+  .sf-crun__castline { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:13px;
+    line-height:1.28; color:#eef5f7; }
+  .sf-crun__castanswer { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
+    line-height:1.25; color:#a9edf4; }
   .sf-crun__hero { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
     color:var(--dp-phos, var(--sf-paper)); line-height:1.35; }
   .sf-crun__hero[data-state="blocked"], .sf-crun__hero[data-state="hidden"] { color:var(--dp-ink-mute, var(--sf-calm)); }
-  .sf-crun__row--figs { flex-wrap:wrap; gap:4px 10px; }
-  /* The round figure is a READING — the world's count — so it reads phos, not lamp: the amber
-     leader in this panel is the chain (the one figure watched while flying), never two. */
-  .sf-crun__wave { font-family:var(--dp-face-etch, var(--sf-data-face)); font-variation-settings:"wght" 820, "wdth" 80;
-    font-weight:700; font-size:20px; font-variant-numeric:tabular-nums; letter-spacing:.04em;
-    color:var(--dp-phos, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
-  .sf-crun__phase { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 720, "wdth" 68;
-    font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
-    color:var(--dp-ink-mute, var(--sf-calm)); margin-left:auto; }
-  .sf-crun__phase--hot { color:var(--dp-danger-hot, var(--sf-foe)); }
-  /* FB-025: the intro window's opening line — a full-width sentence in the paper ink, not a
-     figure and not a word-pair, so it cannot be mistaken for a live gauge. */
   .sf-crun__intro, .sf-crun__guidance { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
-    letter-spacing:.02em; color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
+    letter-spacing:.02em; color:var(--dp-ink, var(--sf-paper)); }
   .sf-crun__guidance--warn { color:var(--dp-lamp-hot, var(--sf-goal)); }
-  .sf-crun__threat { display:flex; align-items:center; gap:7px; }
-  .sf-crun__word { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 700, "wdth" 62;
-    font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
-    color:var(--dp-ink-mute, var(--sf-calm)); }
-  /* A bar is a printed track with a flat lit fill (ONE_PHOTOGRAPH section 9): the track is drawn so
-     a part-spent bar reads as a gauge, not as a loose coloured slab, and the fill is one flat colour
-     that glows -- no top-lit ramp pretending to be a rounded rod. */
-  .sf-crun__track { position:relative; flex:1 1 auto; min-width:44px; height:8px; overflow:hidden;
-    border-radius:1px; background:var(--dp-rule-hi, rgb(232 226 212 / .22));
-    box-shadow:none; }
-  .sf-crun__track--xp { height:5px; }
-  /* OVH-01b: the level-up flash is one pulse on the bar; reduced motion gets the same bright state, held, with no keyframes. */
+  .sf-crun__boss { display:flex; align-items:center; gap:7px; }
+  .sf-crun__boss[hidden] { display:none; }
+  .sf-crun__word { font-family:var(--dp-face-read, var(--sf-subhead-face));
+    font-weight:650; font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+    color:rgb(184 208 218 / .72); }
+  .sf-crun__track { position:relative; flex:1 1 auto; min-width:44px; height:5px; overflow:hidden;
+    border-radius:1px; background:rgb(176 210 224 / .20); box-shadow:none; }
+  .sf-crun__threat .sf-crun__track { width:100%; flex:none; }
+  .sf-crun__track--xp { height:4px; }
   .sf-crun__track--flash { animation:sf-crun-xp-flash .6s ease-out 1; background:var(--dp-lamp, #f2b950); }
-  @keyframes sf-crun-xp-flash { 0% { background:var(--dp-lamp-hot, #ffd98a); } 100% { background:var(--dp-rule-hi, rgb(232 226 212 / .22)); } }
+  @keyframes sf-crun-xp-flash { 0% { background:var(--dp-lamp-hot, #ffd98a); } 100% { background:rgb(176 210 224 / .20); } }
   html.sf-reduce-motion .sf-crun__track--flash { animation:none; }
-  .sf-crun__pick { align-self:flex-start; font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 740, "wdth" 64;
-    font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--dp-lamp-hot, var(--sf-goal)); }
-  /* Bloom is geometry, not a filter: the printed track + the full-saturation fill carry the lit
-     reading; no live glow shadow rides a bar whose width changes every frame. */
+  .sf-crun__pick { align-self:flex-start; font-family:var(--dp-face-read, var(--sf-subhead-face));
+    font-weight:700; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--dp-lamp-hot, var(--sf-goal)); }
   .sf-crun__fill { position:absolute; inset:0 auto 0 0; width:0; }
-  .sf-crun__fill--foe { background:var(--dp-danger, #ff5038); }
+  .sf-crun__fill--foe { background:var(--dp-danger, #ff644c); }
   .sf-crun__fill--you { background:var(--dp-lamp, #f2b950); }
-  .sf-crun__fig { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:650; font-size:13px;
-    font-variant-numeric:tabular-nums; color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
-  .sf-crun__fig--you { color:var(--dp-ink, var(--sf-you)); }
-  .sf-crun__fig--goal { color:var(--dp-phos, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
-  /* The chain. Three channels as always — the word, the figure and its colour — so a forced-colors
-     or colour-blind reader loses nothing. No animation, so reduced-motion needs no variant. */
-  .sf-crun__chain { display:flex; align-items:baseline; flex-wrap:wrap; gap:2px 8px; }
-  .sf-crun__track--chain { flex:1 1 100%; min-width:0; height:2px; }
-  .sf-crun__chain[data-urgency="final"] .sf-crun__chainfig { color:var(--dp-danger-hot, var(--sf-foe)); }
-  .sf-crun__chainfig { font-family:var(--dp-face-etch, var(--sf-data-face)); font-variation-settings:"wght" 820, "wdth" 84;
-    font-weight:700; font-size:26px; line-height:1.05; font-variant-numeric:tabular-nums;
-    color:var(--dp-lamp-hot, var(--sf-you)); text-shadow:var(--dp-emit-lamp, none); }
-  .sf-crun__chain[data-tier="hot"] .sf-crun__chainfig { color:var(--dp-lamp-hot, var(--sf-goal, #e3a13d)); }
-  .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig { color:var(--dp-danger-hot, var(--sf-foe)); }
-  .sf-crun__chainbest { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
-    font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
-  .sf-crun__chaincause { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-weight:700; font-size:12px;
-    letter-spacing:.09em; text-transform:uppercase; font-variant-numeric:tabular-nums;
-    color:var(--dp-ink-dim, var(--sf-calm)); }
+  .sf-crun__fig { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
+    font-variant-numeric:tabular-nums; color:var(--dp-ink, var(--sf-paper)); }
+  .sf-crun__fig--goal { color:var(--dp-phos, var(--sf-paper)); }
+  /* Quiet single-line muted footer: Score, Kills, CR, Level stay subordinate to the two hero numbers. */
+  .sf-crun__row--figs { flex-wrap:nowrap; align-items:baseline; gap:4px 6px; padding-top:4px;
+    border-top:1px solid rgb(166 210 224 / .20); white-space:nowrap; overflow:hidden; }
+  .sf-crun__footword { font-size:12px; font-weight:550; letter-spacing:.04em; color:rgb(176 202 214 / .62); }
+  .sf-crun__footfig { font-size:12px; font-weight:600; color:rgb(214 230 236 / .82); margin-right:5px; }
+  .sf-crun__footlv { margin-left:auto; margin-right:0; color:rgb(184 212 222 / .78); }
   .sf-crun__earn { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:650; font-size:12px;
-    font-variant-numeric:tabular-nums; color:var(--dp-phos, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
+    font-variant-numeric:tabular-nums; color:var(--dp-phos, var(--sf-paper)); }
   .sf-crun__death { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:500; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--dp-danger-hot, var(--sf-foe)); }
   .sf-crun__mods { display:flex; gap:8px; align-items:baseline; }
   .sf-crun__modslist { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--dp-ink-dim, var(--sf-calm)); }
-  /* forced-colors strips the fills; the figure beside each bar is the surviving channel. */
   @media (forced-colors: active) {
     .sf-crun { border:0; background:Canvas; color:CanvasText; }
     .sf-crun__fill { background:Highlight; forced-color-adjust:none; }
-    .sf-crun__wave, .sf-crun__chainfig, .sf-crun__chaincause, .sf-crun__fig--goal, .sf-crun__earn { color:CanvasText; text-shadow:none; }
+    .sf-crun__wave, .sf-crun__hero-num, .sf-crun__chainfig, .sf-crun__chaincause, .sf-crun__fig--goal, .sf-crun__earn { color:CanvasText; text-shadow:none; }
     .sf-crun__phase--hot, .sf-crun__guidance--warn, .sf-crun__death, .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig,
     .sf-crun__chain[data-urgency="final"] .sf-crun__chainfig { color:Highlight; text-shadow:none; }
   }
   @media (max-width: 900px) {
     .sf-crun { min-width:0; }
-    .sf-crun__wave { font-size:16px; }
-    .sf-crun__chainfig { font-size:22px; }
+    .sf-crun__hero-num, .sf-crun__chainfig { font-size:22px; }
   }
 `;
     document.head.appendChild(style);

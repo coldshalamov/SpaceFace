@@ -477,11 +477,11 @@ test('PQ-174.06: results show the run purse separately from earned-credit bankin
     bankedBounty: 399, hangarBounty: 399, defeat: { attacker: 'Wasp Swarmer' } };
   const before = structuredClone(result);
   const rows = new Map(resultRows(result));
-  assert.equal(rows.get('Run purse'), '799 cr');
+  assert.equal(rows.get('Scrap left'), '799 Scrap');
   assert.equal(rows.has('Salvage'), false);
   assert.equal(rows.get('Score'), '0');
   const text = mountResults(result).lines.join('\n');
-  assert.match(text, /Run purse/);
+  assert.match(text, /Scrap left/);
   assert.match(text, /Hangar \+399 cr/);
   assert.match(text, /Defeat banks 50% of your remaining earned credits/);
   assert.doesNotMatch(text, /Stunt score|799.*earned/);
