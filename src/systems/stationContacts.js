@@ -463,7 +463,7 @@ export const stationContacts = {
     const qty = Math.max(0, Math.round(Number(payload.totalQty) || 0));
     const cargo = commodityLabel(commodityId);
     const text = kind === 'arrival'
-      ? `${cargo} shipment cleared berth${qty ? ` · ${qty}u` : ''}.`
+      ? `${cargo} shipment cleared berth${qty ? ` · ${qty} units` : ''}.`
       : `Inbound ${cargo} delayed after a freight loss.`;
     const model = ensureLifeState(this.state);
     const rec = {

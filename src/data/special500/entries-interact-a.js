@@ -265,7 +265,7 @@ export const ENTRIES_INTERACT_A = [
     channel: 'memory',
     followup: 'Standoff read from two active attachments on one ore-pod target (src/combat/attachments.js, numbered ambient encounter): cut one line (the loser hates you, the winner pays), catch the pod yourself (nobody pays, everyone respects), or watch physics settle it and collect from both as an independent witness.',
     payload: {
-      text: 'Two salvagers have both latched the same ore pod and are having a towing argument at thirty u/s, screaming over the band about line seniority. The pod, notably, has opinions, and it is gaining on a rock.',
+      text: 'Two salvagers have both latched the same ore pod and are having a towing argument at thirty m/s, screaming over the band about line seniority. The pod, notably, has opinions, and it is gaining on a rock.',
     },
   },
 

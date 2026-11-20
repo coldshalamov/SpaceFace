@@ -146,7 +146,7 @@ export function crucibleCombatLines(state) {
         ? 'no clear landing'
         : energy < commitCost ? `needs ${Math.ceil(commitCost)} energy to release` : 'release to jump';
       rows.push({ id: 'veil-step', status: canRelease ? 'armed' : 'cooldown',
-        text: `Veil Step — ${binding(state, 'boost')} held · ${runtime.active ? `${Math.round(runtime.dist)} WU` : 'no clear landing'} · ${releaseStatus}` });
+        text: `Veil Step — ${binding(state, 'boost')} held · ${runtime.active ? `${Math.round(runtime.dist)} m` : 'no clear landing'} · ${releaseStatus}` });
     } else {
       const ready = !cooling && energy >= PHASE_BLINK.minEnergy;
       const reason = cooling ? 'cooling' : energy < PHASE_BLINK.minEnergy

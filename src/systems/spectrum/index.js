@@ -33,7 +33,7 @@ function rowFromPublic(model, view) {
   if (focus && focus.contradiction) bits.push('claim disagrees');
   if (focus && focus.echo) bits.push('echo off a charted wall');
   if (view.reversed) bits.push('lock reversed');
-  if (view.reason === 'jammed') bits.push(`${Math.max(0, Math.round(Number(view.jamWu) || 0))} WU to leave the curtain`);
+  if (view.reason === 'jammed') bits.push(`${Math.max(0, Math.round(Number(view.jamWu) || 0))} m to leave the curtain`);
   if (view.revealed) bits.push('fix held — the case payoff is its own mechanism, not a stop on the mark');
   else bits.push('move and pulse again');
   const detail = bits.join('. ').replace(/^\w/, (c) => c.toUpperCase());

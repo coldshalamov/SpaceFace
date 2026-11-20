@@ -104,7 +104,7 @@ export const runtime = Object.freeze({
     d.say(live, 'info',
       'A hand-built marker buoy floats in nothing, transponder-labeled VHL-4471-T / TESSERA, '
       + 'transmitter off. Wired to it is a paper tag \u2014 the only readable surface for two '
-      + 'thousand WU in any direction.',
+      + 'thousand meters in any direction.',
       null, { literal: true, primary: true });
     return null;
   },

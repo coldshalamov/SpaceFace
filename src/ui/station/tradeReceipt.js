@@ -175,13 +175,13 @@ function formatTradeClearedReceipt(state, p, expectation) {
       if (Math.abs(settledTotal - expectedTotal) > 1) {
         return {
           title: 'TRADE CLEARED',
-          line: `${verb} ${fmtCr(executedQty)}u ${name}`,
+          line: `${verb} ${fmtCr(executedQty)} units ${name}`,
           detail: `${sign}${fmtCr(settledTotal)} cr — the station result differs from the stated ${fmtCr(expectedTotal)} cr` + premium + residue,
         };
       }
       return {
         title: 'TRADE CLEARED',
-        line: `${verb} ${fmtCr(executedQty)}u ${name}`,
+        line: `${verb} ${fmtCr(executedQty)} units ${name}`,
         detail: `${sign}${fmtCr(settledTotal)} cr · settled as confirmed` + premium + residue,
       };
     }
@@ -199,20 +199,20 @@ function formatTradeClearedReceipt(state, p, expectation) {
       if (outcome.totalAgrees === false) {
         return {
           title: 'TRADE CLEARED',
-          line: `${verb} ${fmtCr(outcome.executedQty)}u ${name}`,
+          line: `${verb} ${fmtCr(outcome.executedQty)} units ${name}`,
           detail: `${sign}${fmtCr(p.total)} cr — the ledger reads ${fmtCr(outcome.receipt.total)} cr, not the stated ${fmtCr(expectation.total)}` + premium + sealedResidueClause(outcome, name),
         };
       }
       return {
         title: 'TRADE CLEARED',
-        line: `${verb} ${fmtCr(outcome.executedQty)}u ${name}`,
+        line: `${verb} ${fmtCr(outcome.executedQty)} units ${name}`,
         detail: `${sign}${fmtCr(p.total)} cr · settled as confirmed` + premium + sealedResidueClause(outcome, name),
       };
     }
   }
   return {
     title: 'TRADE CLEARED',
-    line: `${verb} ${fmtCr(p.qty)}u ${name}`,
+    line: `${verb} ${fmtCr(p.qty)} units ${name}`,
     detail: `${sign}${fmtCr(p.total)} cr` + premium,
   };
 }

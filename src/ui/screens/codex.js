@@ -862,7 +862,7 @@ const WORLD_ROW_COPY_14 = Object.freeze({
     sub: 'Apron texture', open: 'Overlapping approach calls, berth assignments, one voice always slightly behind the '
       + 'others. It ducks under anything urgent and fills the rest.',
     sealed: 'The choir keeps no secrets. The choir is made of work.',
-    note: 'The Helios apron approach — inside 250 u at rush.',
+    note: 'The Helios apron approach — inside 250 m at rush.',
   }),
   chain: Object.freeze({
     sub: 'Enclosed text', open: 'The letter denies itself in writing: not a chain letter, do not forward it, '
@@ -930,13 +930,13 @@ const WORLD_ROW_COPY_B = Object.freeze({
     sub: 'Listening note', open: 'Hold still and the machinery composes: cranes, pumps, welders, all in tune, from '
       + 'exactly this bearing.',
     sealed: 'Move, and it degrades back into machinery. It was always the same machinery. You are what changed.',
-    note: 'Off the Sker market — the 80 u zone, thrust under five percent, thirty seconds.',
+    note: 'Off the Sker market — the 80 m zone, thrust under five percent, thirty seconds.',
   }),
   flock: Object.freeze({
     sub: 'Herd receipt', open: 'The rigs detach, piece by piece, and gather the fresh wreckage into a quiet orbit. The '
       + 'one working PA loops softer each cycle.',
     sealed: 'COUNTED. COUNTED. COUNTED. The count is correct; the page keeps it at that.',
-    note: 'The Broken Shepherd — Charon Expanse, inside 600 u.',
+    note: 'The Broken Shepherd — Charon Expanse, inside 600 m.',
   }),
   eye: Object.freeze({
     sub: 'Season filing', open: 'A calm pocket the storm flows around: lightning stops, drag vanishes, debris hangs '

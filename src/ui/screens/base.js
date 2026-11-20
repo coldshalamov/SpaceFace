@@ -870,7 +870,7 @@ export const baseScreen = {
 
       const grid = document.createElement('div');
       grid.className = 'base-ledger-grid';
-      appendLedgerCell(grid, 'Upkeep', ledgerValue(ledger.upkeepPerMin, ' cr/min'));
+      appendLedgerCell(grid, 'Upkeep', ledgerValue(ledger.upkeepPerMin, ' cr per minute'));
       appendLedgerCell(grid, 'Input', ledgerValue(ledger.stores && ledger.stores.inputU, 'u') + ' / ' + ledgerValue(ledger.stores && ledger.stores.inputCapU, 'u'));
       appendLedgerCell(grid, 'Output', ledgerValue(ledger.stores && ledger.stores.outputU, 'u') + ' / ' + ledgerValue(ledger.stores && ledger.stores.outputCapU, 'u'));
       appendLedgerCell(grid, 'Defense', ledgerValue(ledger.defense && ledger.defense.rating));

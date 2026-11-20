@@ -118,7 +118,7 @@ export function buildBulkHaulTag(chunk, state, options = {}) {
     asteroidId: chunk.id,
     massU,
     commodityId: chunkCommodityId(chunk),
-    text: `${prefix} \u00b7 ${formatMassU(massU)}u`,
+    text: `${prefix} \u00b7 ${formatMassU(massU)} units`,
     routeHint,
     position: chunk.pos ? { x: chunk.pos.x, z: chunk.pos.z } : null,
     t: state && Number.isFinite(state.simTime) ? state.simTime : 0,

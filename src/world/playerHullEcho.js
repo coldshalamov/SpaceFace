@@ -22,7 +22,7 @@ export function playerHullEchoReadout(loss) {
   return `${loss.name} — ${loss.shipClass} class. Your hull, lost in ${loss.sectorName} `
     + `at flight time ${loss.lostAt.toFixed(1)}s. `
     + (loss.echo?.recovered ? `Flight recorder recovered. Final approach heading: ${(loss.rot * 180 / Math.PI).toFixed(0)}°.`
-      : 'Observe with the scanner; follow the two recorded bearings; align with the final heading, then scoop the recorder. Requires 0.4 u of free cargo space. You can leave and return.');
+      : 'Observe with the scanner; follow the two recorded bearings; align with the final heading, then scoop the recorder. Requires 0.4 units of free cargo space. You can leave and return.');
 }
 
 function position(world, site, loss, distance = 0) {
@@ -132,7 +132,7 @@ export function tickPlayerHullEcho(world, site) {
     echo.leg++;
     world.bus.emit('comms:log', { from: loss.name, kind: 'ecology',
       text: echo.leg < 2 ? 'First bearing matched. Follow the second return.'
-        : `Both bearings match. Align to heading ${(loss.rot * 180 / Math.PI).toFixed(0)}° near the cockpit and slow below 24 WU/s. Scoop the released recorder; 0.4 u of free cargo space required.` });
+        : `Both bearings match. Align to heading ${(loss.rot * 180 / Math.PI).toFixed(0)}° near the cockpit and slow below 24 m/s. Scoop the released recorder; 0.4 units of free cargo space required.` });
     publishReadout(world, site, loss, world.active || state.world.activeSector);
   }
   const wreck = state.entities.get(live?.wreckId);

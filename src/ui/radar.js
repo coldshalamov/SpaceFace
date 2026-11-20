@@ -75,9 +75,9 @@ export const SWARM_DENSITY_THRESHOLD = 8;
  * display layer strips it here and the bare number rides the same scale as the RANGE label.
  */
 function dialDistance(worldUnits) {
-  // The shared formatter now emits `u` (owner 2026-10-27); strip either unit spelling so the
-  // dial prints a bare number on the RANGE scale, never "457 U".
-  return String(formatRadarDistance(worldUnits)).replace(/\s+(?:wu|u)$/i, '');
+  // The shared formatter emits `m`/`km` (plain-units sweep 2026-11-20); strip either unit
+  // spelling so the dial prints a bare number on the RANGE scale, never "457 M".
+  return String(formatRadarDistance(worldUnits)).replace(/\s+(?:wu|u|km|m)$/i, '');
 }
 
 /** Clock bearing of the nearest hostile glyph that this draw actually painted. */

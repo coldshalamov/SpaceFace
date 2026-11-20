@@ -1363,7 +1363,7 @@ export const missionObjectiveOps = {
     }, this.state.simTime || 0);
     this._refreshTrackedMissionNav(m);
     this.bus.emit('mission:updated', { missionId: m.id, investigationStage: 'identified' });
-    this._sayStoryLine('Registry match: civilian maintenance vessel. For custody, keep the living vessel on your Line within 60 WU and reel. Force remains a choice.', 10);
+    this._sayStoryLine('Registry match: civilian maintenance vessel. For custody, keep the living vessel on your Line within 60 m and reel. Force remains a choice.', 10);
     return true;
   },
 
@@ -2768,13 +2768,13 @@ export const missionObjectiveOps = {
       if (isSlateCore(m) && m.params.slateCore?.entityId === target.id
           && (p.sourceId === this.state.playerId || p.ownerId === this.state.playerId || p.actorId === this.state.playerId || p.controllerId === this.state.playerId)) {
         m.params.slateCore.handled = true;
-        this._sayStoryLine('Slate: Bring it 110 WU west to the receiving beacon. Within 70 WU, below 18 WU/s. Keep the line or release it clean.', 8);
+        this._sayStoryLine('Slate: Bring it 110 m west to the receiving beacon. Within 70 m, below 18 m/s. Keep the line or release it clean.', 8);
       }
       if (hasMawReceiving(m) && m.params.mawStuns === 3
           && m.params.mawBodies?.[0]?.entityId === target.id
           && (p.sourceId === this.state.playerId || p.ownerId === this.state.playerId || p.actorId === this.state.playerId || p.controllerId === this.state.playerId)) {
         m.params.mawHandledAfterStun = true;
-        this._sayStoryLine('Ceres traffic: receiving beacon east of the worksite. Within 80 WU, below 18 WU/s. Short pulls, early release. Keep clear of its drift.', 8);
+        this._sayStoryLine('Ceres traffic: receiving beacon east of the worksite. Within 80 m, below 18 m/s. Short pulls, early release. Keep clear of its drift.', 8);
       }
       m.params.latchedRole = role;
       m.params.latchedTargetId = p.targetId;

@@ -99,7 +99,7 @@ export const ENTRIES_VISUAL_A = [
     channel: 'spectacle',
     payload: {
       from: 'Forge floor',
-      text: 'The foundry spine opens and the pour runs: a white-orange channel of melt light landing on every hull parked within two hundred u — real event light — while the glow itself walks the spine gate by gate. The final mould flashes once and goes dark, and the annealing afterglow fades over the next minute, the sector’s whole economy made visible and then put away.',
+      text: 'The foundry spine opens and the pour runs: a white-orange channel of melt light landing on every hull parked within two hundred meters — real event light — while the glow itself walks the spine gate by gate. The final mould flashes once and goes dark, and the annealing afterglow fades over the next minute, the sector’s whole economy made visible and then put away.',
     },
   },
 
@@ -115,7 +115,7 @@ export const ENTRIES_VISUAL_A = [
     channel: 'spectacle',
     payload: {
       from: 'Reef approach',
-      text: 'Two matched boulders orbit a common point about a ship-length apart, their orbit plane hazed faint with abraded dust — a clockwork the belt wound itself. The period is exactly one 600-second day; miners set watches by them and don’t argue about whose watch is right. Inside 600 u the pair throws sparks at the close pass. Beyond that they keep the time in silence.',
+      text: 'Two matched boulders orbit a common point about a ship-length apart, their orbit plane hazed faint with abraded dust — a clockwork the belt wound itself. The period is exactly one 600-second day; miners set watches by them and don’t argue about whose watch is right. Inside 600 m the pair throws sparks at the close pass. Beyond that they keep the time in silence.',
     },
   },
 
@@ -365,7 +365,7 @@ export const ENTRIES_VISUAL_A = [
     trigger: { type: 'receipt', event: 'aceMemory:heirNamed' },
     channel: 'news',
     payload: {
-      text: 'REACH BURIAL — a Reach pack takes a dead captain home on the long burn: casket-rigged hull in slow column toward the star, engines dim, a wasp peeling off every hundred u like a gun salute. The pack has declared hands-off for the tow, and is keeping it. You should too; every Reach pack will remember it otherwise.',
+      text: 'REACH BURIAL — a Reach pack takes a dead captain home on the long burn: casket-rigged hull in slow column toward the star, engines dim, a wasp peeling off every hundred meters like a gun salute. The pack has declared hands-off for the tow, and is keeping it. You should too; every Reach pack will remember it otherwise.',
       kind: 'incidents',
     },
   },

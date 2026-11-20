@@ -279,7 +279,7 @@ export function marketRowHtml({ id, name, category = '', buy, sell, stock, held 
   return `<tr id="sx-market-tab-${escapeHtml(id)}" class="sx-mkt-row${selected ? ' is-active' : ''}${tracked ? ' is-tracked' : ''}" data-cmdty="${escapeHtml(id)}" role="tab" aria-selected="${!!selected}" tabindex="0" aria-controls="sx-market-instrument" data-family="${family}"${stagger}
     aria-label="${escapeHtml(name)}, ${quoteFmt(buy)} credits, ${escapeHtml(demandWord)} demand${soldOut ? `, sold out, ${restockSpoken}` : ''}${held ? `, ${fmt(held)} units held` : ''}${profitBadge ? `, ${Math.round(profitPct)} percent over your cost basis` : ''}${tracked ? ', tracked for your active contract' : ''}. ${escapeHtml(driversSummary)}">
     <td class="k-name sx-mkt-row__name">${icon}${tracked ? '<span class="sx-mkt-row__flag k-t-fine k-signal" aria-hidden="true">◆ </span>' : ''}${escapeHtml(name)}${profitBadge}${soldOut ? `<br><span class="sx-mkt-row__none" style="white-space:normal">SOLD OUT · ${escapeHtml(restock)}</span>` : ''}</td>
-    <td class="k-num sx-mkt-row__price">${quoteFmt(buy)} ${trendHtml(hist)}</td><td class="k-num sx-mkt-row__sell">${quoteFmt(sell)}</td><td class="k-num sx-mkt-row__stock">${soldOut ? '0u' : held > 0 ? `<span class="sx-mkt-row__heldtag">held ${fmt(held)}u</span>` : (stock > 0 ? `${fmt(stock)}u` : '<span class="sx-mkt-row__none">\u2014</span>')}</td><td class="k-t-data k-62 sx-mkt-row__held">${held > 0 ? fmt(held) + ' u' : '—'}</td></tr>`;
+    <td class="k-num sx-mkt-row__price">${quoteFmt(buy)} ${trendHtml(hist)}</td><td class="k-num sx-mkt-row__sell">${quoteFmt(sell)}</td><td class="k-num sx-mkt-row__stock">${soldOut ? '0 units' : held > 0 ? `<span class="sx-mkt-row__heldtag">held ${fmt(held)} units</span>` : (stock > 0 ? `${fmt(stock)} units` : '<span class="sx-mkt-row__none">\u2014</span>')}</td><td class="k-t-data k-62 sx-mkt-row__held">${held > 0 ? fmt(held) + ' units' : '—'}</td></tr>`;
 }
 export function statRow(k, v, sub) {
   return `<li class="k-row k-row--static sx-stat"><span class="sx-stat__k">${escapeHtml(k)}${sub ? ` <span class="k-row__sub">${escapeHtml(sub)}</span>` : ''}</span><span class="k-row__num sx-stat__v">${escapeHtml(v)}</span></li>`;
@@ -410,7 +410,7 @@ export function saleLineHtml({ sell, saleQty, saleQuote }) {
     const q = Math.max(1, Math.floor(Number(saleQuote.qty) || qty));
     const avg = Math.round(Number(saleQuote.unitAvg));
     const gross = Math.round(Number(saleQuote.total));
-    const partial = saleQuote.partial ? ` · fills ${fmt(q)} u` : '';
+    const partial = saleQuote.partial ? ` · fills ${fmt(q)} units` : '';
     const hasTravel = saleQuote.travelCost != null && Number.isFinite(Number(saleQuote.travelCost));
     const hasOperating = saleQuote.operatingCost != null && Number.isFinite(Number(saleQuote.operatingCost));
     if (hasTravel || hasOperating) {
@@ -420,10 +420,10 @@ export function saleLineHtml({ sell, saleQty, saleQuote }) {
       const attrs = `data-sale-line data-sale-qty="${q}" data-sale-credits="${net}" data-sale-gross="${gross}" data-sale-travel="${travel}" data-sale-operating="${operating}" data-sale-net="${net}"`;
       // A cost that is zero is not a cost: the line only itemises what actually comes off the sale.
       if (!travel && !operating) {
-        return `<p class="k-sentence sx-mkt-sale" ${attrs}>If sold: ${fmt(q)} u → ${fmt(gross)} cr${partial}</p>`;
+        return `<p class="k-sentence sx-mkt-sale" ${attrs}>If sold: ${fmt(q)} units → ${fmt(gross)} cr${partial}</p>`;
       }
       const costs = (travel ? ` − ${fmt(travel)} cr travel` : '') + (operating ? ` − ${fmt(operating)} cr operating` : '');
-      return `<p class="k-sentence sx-mkt-sale" ${attrs}>If sold: ${fmt(q)} u → ${fmt(gross)} cr after slippage${costs} = ${fmt(net)} cr net${partial}</p>`;
+      return `<p class="k-sentence sx-mkt-sale" ${attrs}>If sold: ${fmt(q)} units → ${fmt(gross)} cr after slippage${costs} = ${fmt(net)} cr net${partial}</p>`;
     }
     return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${q}" data-sale-credits="${gross}">If sold: ${fmt(q)} × ${fmt(avg)} cr = ${fmt(gross)} cr${partial}</p>`;
   }

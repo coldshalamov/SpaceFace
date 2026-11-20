@@ -112,7 +112,7 @@ test('passive hub identifies credits as its output without pretending it needs a
 
   assert.deepEqual(readout.inputs, []);
   assert.equal(readout.output.label, 'Credits');
-  assert.equal(readout.output.unit, 'cr/min');
+  assert.equal(readout.output.unit, 'cr per minute');
   assert.equal(readout.output.actualPerMin, 720);
   assert.equal(readout.feeders.state, 'not-needed');
   assert.equal(readout.feeders.availability, 'Self-contained');

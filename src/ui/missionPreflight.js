@@ -400,7 +400,7 @@ function tenderRackOutsLine(slotRanks) {
     const units = tenderLadderUnits(def);
     const price = Math.max(0, Math.round(Number(def.price) || 0));
     const techGated = def.requiresTech ? ', tech-gated' : '';
-    return `${def.name} (+${units}u @${price.toLocaleString('en-US')} cr${techGated})`;
+    return `${def.name} (+${units} units @${price.toLocaleString('en-US')} cr${techGated})`;
   }).filter(Boolean);
   return outs.length ? outs.join(', ') : 'fit a bigger hold at the shipworks';
 }
@@ -573,7 +573,7 @@ export function missionRouteScope(m, state) {
     };
   }
   if (Number.isFinite(distance) && distance > 0) {
-    return { kind: 'info', text: `${Math.round(distance).toLocaleString('en-US')}u route` };
+    return { kind: 'info', text: `${Math.round(distance).toLocaleString('en-US')} m route` };
   }
   return null;
 }
@@ -639,7 +639,7 @@ export function missionBriefingDiagram(m, state, originLabel) {
   const distance = Number(m && m.distance);
   const span = jumps > 0
     ? `${counted(jumps, 'jump', 'jumps')}`
-    : (Number.isFinite(distance) && distance > 0 ? `${Math.round(distance).toLocaleString('en-US')}u` : null);
+    : (Number.isFinite(distance) && distance > 0 ? `${Math.round(distance).toLocaleString('en-US')} m` : null);
   const danger = intel ? intel.danger : null;
   // missionTimePacing prefixes its chip 'Critical ' / 'Tight ' exactly when those bands apply.
   const chipText = (pacing && pacing.chip && pacing.chip.text) || '';
@@ -866,13 +866,13 @@ export function missionPreflight(m, state) {
     if (oneLoad) {
       // The sim's _acceptPreflight rejects on free hold, before collateral/upfront charges. Keep
       // this exact gate here so the dossier cannot expose an accept button the sim will refuse.
-      if (free < cargoNeed.volume) blockers.push(`Need ${fmtHoldUnits(cargoNeed.volume)}u cargo capacity for this contract`);
+      if (free < cargoNeed.volume) blockers.push(`Need ${fmtHoldUnits(cargoNeed.volume)} units of cargo capacity for this contract`);
       chips.push({
         kind: free < cargoNeed.volume ? 'bad' : 'ok',
-        text: `${fmtHoldUnits(cargoNeed.volume)}u hold required`,
+        text: `${fmtHoldUnits(cargoNeed.volume)} units hold required`,
       });
     } else {
-      chips.push({ kind: 'info', text: `${cargoNeed.qty.toLocaleString('en-US')}u quota` });
+      chips.push({ kind: 'info', text: `${cargoNeed.qty.toLocaleString('en-US')} units quota` });
     }
     const staging = missionCargoStaging(m, state);
     if (staging && staging.chip) chips.push(staging.chip);
@@ -927,7 +927,7 @@ export function missionPreflight(m, state) {
     if (lotUnits > 0 && freeHold < lotUnits) {
       chips.push({
         kind: 'warn',
-        text: `CAUTION — the lot is ${fmtHoldUnits(lotUnits)}u; this hold carries ${fmtHoldUnits(freeHold)}u`,
+        text: `CAUTION — the lot is ${fmtHoldUnits(lotUnits)} units; this hold carries ${fmtHoldUnits(freeHold)} units`,
       });
       // Only the racks this hull's cargo slots can take are named. When even the fullest fit
       // (the hull's base hold plus the best rack in every cargo slot — a rack already fitted is
@@ -941,7 +941,7 @@ export function missionPreflight(m, state) {
         ? null
         : Math.max(capVolume, baseHold + bestRack) - usedVolume;
       if (fullFitFree != null && fullFitFree < lotUnits) {
-        warnings.push(`The lot cannot ride one hold on this hull, even fully racked (${fmtHoldUnits(Math.max(0, fullFitFree))}u at best). The honest plan is two runs: haul what fits, sell it into the desk, and come back for the rest — the window is already running.`);
+        warnings.push(`The lot cannot ride one hold on this hull, even fully racked (${fmtHoldUnits(Math.max(0, fullFitFree))} units at best). The honest plan is two runs: haul what fits, sell it into the desk, and come back for the rest — the window is already running.`);
       } else {
         warnings.push(`The lot cannot ride one hold at this fit. The honest outs: ${tenderRackOutsLine(slotRanks)}. A two-run plan under-racked still accepts — the window is already running.`);
       }

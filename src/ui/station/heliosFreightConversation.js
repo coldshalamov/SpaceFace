@@ -84,7 +84,7 @@ export function kesslerFreightReply(state, stationId, selectedId) {
   const line = remainingLine(row, cause);
   const people = Object.values(row.survivors);
   const pending = people.filter((person) => person?.outcome === 'pending').length;
-  const freight = line ? `${line.qty - line.returnedQty}u ${commodityDisplayName(line.commodityId)} remain unreturned.`
+  const freight = line ? `${line.qty - line.returnedQty} units ${commodityDisplayName(line.commodityId)} remain unreturned.`
     : row.lines.some((entry) => entry?.manifestId === cause.manifestId && entry.commodityId === cause.commodityId
       && Number.isFinite(entry.qty) && entry.qty > 0 && entry.returnedQty >= entry.qty)
       ? 'The recorded freight has been returned.' : 'I have no remaining freight quantity on this record.';
@@ -92,7 +92,7 @@ export function kesslerFreightReply(state, stationId, selectedId) {
   const work = matchingWork(state, cause, row, line);
   if (work.active) return { text: `${outcome} ${freight}${crew} Your recovery ticket is open; the Mission Log has it.` };
   if (work.offer) return {
-    text: `${outcome} ${freight}${crew} The recovery ticket is posted for ${work.offer.params.qty}u ${commodityDisplayName(line.commodityId)}; the current outstanding amount is ${line.qty - line.returnedQty}u. The dock checks the custody record at handback; partial returns are accepted.`,
+    text: `${outcome} ${freight}${crew} The recovery ticket is posted for ${work.offer.params.qty} units ${commodityDisplayName(line.commodityId)}; the current outstanding amount is ${line.qty - line.returnedQty} units. The dock checks the custody record at handback; partial returns are accepted.`,
     missionOffer: work.offer,
   };
   return { text: `${outcome} ${freight}${crew}` };

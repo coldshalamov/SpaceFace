@@ -610,7 +610,7 @@ const GAUGES = Object.freeze([
   // price is what the hull costs: lower is the better side of this gauge
   { key: 'price', name: 'Price', fmt: (v) => Math.round(v).toLocaleString('en-US'), unit: 'cr', lowerIsBetter: true, centre: true },
   { key: 'handling', name: 'Handling', fmt: (v) => v.toFixed(2) },
-  { key: 'cargo', name: 'Cargo', fmt: (v) => Math.round(v).toLocaleString('en-US'), unit: 'u' },
+  { key: 'cargo', name: 'Cargo', fmt: (v) => Math.round(v).toLocaleString('en-US'), unit: 'units' },
   { key: 'hull', name: 'Hull', fmt: (v) => Math.round(v).toLocaleString('en-US') },
   { key: 'shield', name: 'Shield', fmt: (v) => Math.round(v).toLocaleString('en-US') },
 ]);

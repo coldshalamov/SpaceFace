@@ -1157,11 +1157,11 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
         : service.remainingS===0 ? 'RENDEZVOUS BUDGET EXHAUSTED; tender resumes its route.' : null;
       return { requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
         lines: [serviceLine || (towQuote ? `STORMSHIFT SPILL · Optional tow ${towQuote.feeCr}CR on dispatch; kept on cancellation/loss. Continue refunds. No delivery guarantee.` : 'STORMSHIFT · ORIGINAL GAS SPILL'),
-          returnQuote ? `Return ${returnQuote.amount}u to this tender for its Tethys delivery. No payment; no change to the law record.`
+          returnQuote ? `Return ${returnQuote.amount} units to this tender for its Tethys delivery. No payment; no change to the law record.`
             : spill.claimed ? 'Original gas is claimed by a salvage crew. Return is unavailable while that claim remains; attaching a line does not clear it.'
             : facts && !facts.amount ? 'TENDER HOLD FULL. Keep the original pod intact until there is room.'
             : 'Massline the original loose gas pod to the planet-facing service side of this tender. Match speed, then Hail to RETURN GAS. Keeping or leaving it does not restore the delivery.'],
-        actions: [...(returnQuote ? [{id: ANVIL_RETURN_GAS,label: `RETURN GAS · ${returnQuote.amount}u`}] : []),
+        actions: [...(returnQuote ? [{id: ANVIL_RETURN_GAS,label: `RETURN GAS · ${returnQuote.amount} units`}] : []),
           ...(service.active ? [{id:ANVIL_CANCEL_RENDEZVOUS,label:'CANCEL RENDEZVOUS'}]
             : rendezvousQuote ? [{id:ANVIL_RENDEZVOUS,label:'REQUEST RENDEZVOUS'}]
             : towQuote ? [{id:CONTACT_HAIL_ACTION_TOW_ASSIST,label:`HIRE ORCHARD TOW · ${towQuote.feeCr}CR`}] : []),
@@ -1171,7 +1171,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     const quote=orchardTowQuote(state,availability.entity);
     return {requestId,targetId:availability.targetId,kind:'worker',expiresAt,
       lines:quote
-        ? [`ORCHARD RETRIEVAL · ${quote.amount}u · ${quote.feeCr}CR on dispatch. Fee kept on cancellation or loss.`,
+        ? [`ORCHARD RETRIEVAL · ${quote.amount} units · ${quote.feeCr}CR on dispatch. Fee kept on cancellation or loss.`,
           'Risk of damage or loss; delivery not guaranteed. Follow the pickup marker and fly close to collect. Continue cancels and refunds.']
         : ['STORMSHIFT RECEIVING TENDER · ORCHARD RETRIEVAL','NO FREE RELEASED POD IN SAFE REACH · RELEASE A POD FIRST.'],
       actions:quote?[{id:CONTACT_HAIL_ACTION_TOW_ASSIST,label:`HIRE TOW · ${quote.feeCr}CR`},{id:'status',label:'STATUS'}]:[{id:'status',label:'STATUS'}],
@@ -1700,7 +1700,7 @@ export function livingWorkStatusText(entity, opts = {}) {
   const passengerStatus = passengerLinerStatusText(opts.state || null, entity);
   if (passengerStatus) return passengerStatus.replace(/^STATUS · /, 'SERVICE · ');
   const salvorSource = salvorSourceTruth(opts.state || null, entity);
-  if (salvorSource?.state === 'held') return `WORK · SALVAGE HELD · ${salvorSource.qty}u ABOARD · NO YARD INTAKE`;
+  if (salvorSource?.state === 'held') return `WORK · SALVAGE HELD · ${salvorSource.qty} units ABOARD · NO YARD INTAKE`;
   if (salvorSource && salvorSource.state === 'aboard') return 'WORK · SALVAGE ABOARD · FORGE';
   if (salvorSource && salvorSource.state === 'disputed') return 'WORK · SALVAGE DISPUTED';
   if (salvorSource && salvorSource.state === 'cutting') return 'WORK · CUTTING';
@@ -1850,7 +1850,7 @@ function workerStatusText(target, state = null) {
       const distance = Math.hypot(dx, dz);
       if (!Number.isFinite(distance)) return 'STATUS · FIELD READING UNAVAILABLE';
       const location = distance < 25 ? 'NEAR YOUR POSITION'
-        : `ABOUT ${Math.round(distance / 25) * 25} WU ${playerBearingHyphen(dx, dz).toUpperCase()} OF YOU`;
+        : `ABOUT ${Math.round(distance / 25) * 25} m ${playerBearingHyphen(dx, dz).toUpperCase()} OF YOU`;
       return `FIELD REPORT · ${Math.round(mark.depletion * 100)}% DEPLETED WHEN MEASURED · ${Math.floor(now - mark.measuredAt)}s AGO · RECORDED POSITION ${location}`;
     }
     if (truth.unavailable) return 'STATUS · WORK UNAVAILABLE';
@@ -1861,7 +1861,7 @@ function workerStatusText(target, state = null) {
   if (orchard) return `STATUS · ${orchard.replace(/^STORMSHIFT · /, '').replace(/ · HULL .*/, '')}`;
   const data = target && target.data || {};
   const salvorSource = salvorSourceTruth(state, target);
-  if (salvorSource?.state === 'held') return `STATUS · SALVAGE HELD ABOARD · ${salvorSource.qty}u REMAINING · YARD CANNOT ACCEPT THIS CARGO`;
+  if (salvorSource?.state === 'held') return `STATUS · SALVAGE HELD ABOARD · ${salvorSource.qty} units REMAINING · YARD CANNOT ACCEPT THIS CARGO`;
   if (salvorSource && salvorSource.state === 'aboard') return 'STATUS · SALVAGE ABOARD · FORGE INBOUND';
   if (salvorSource && salvorSource.state === 'disputed') return 'STATUS · SALVAGE DISPUTED · WRECK STRIPPED';
   if (salvorSource && salvorSource.state === 'cutting') return 'STATUS · CUTTING · DEAD FREIGHTER DRIFT';
@@ -1893,7 +1893,7 @@ function workerStatusText(target, state = null) {
         break;
       }
     }
-    return `STATUS · RICH SEAM · +${richOpportunity ? richOpportunity.bonusU : 8}u · HOT CUT · HOLD OFF`;
+    return `STATUS · RICH SEAM · +${richOpportunity ? richOpportunity.bonusU : 8} units · HOT CUT · HOLD OFF`;
   }
   const phase = data.ceresCausalPhase || null;
   const cue = data.ceresCausalCue || null;
@@ -2097,14 +2097,14 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
         .find((candidate) => candidate && candidate.sectorId === CERES_ACTIVITY_SECTOR_ID
           && candidate.state === 'open' && !candidate.reservationId)
       : null;
-    line = opportunity ? `HELP · RICH SEAM · +${opportunity.bonusU}u BONUS ON OFFER` : 'HELP · NO OPEN SEAM';
+    line = opportunity ? `HELP · RICH SEAM · +${opportunity.bonusU} units BONUS ON OFFER` : 'HELP · NO OPEN SEAM';
   } else if (offer.kind === 'worker' && id === ANVIL_RENDEZVOUS) {
     const r=authority.anvilRendezvous;line=r?.ok ? `RENDEZVOUS · BRAKING FOR UP TO ${Math.ceil(r.remainingS)}s. Tow the original gas to the service side, match speed, then Hail RETURN GAS.` : 'RENDEZVOUS UNAVAILABLE · Hail again with the original unclaimed pod on your line.';
   } else if (offer.kind === 'worker' && id === ANVIL_CANCEL_RENDEZVOUS) {
     const r=authority.anvilRendezvous;line=r?.ok ? `RENDEZVOUS CANCELLED · ROUTE RESUMES. ${Math.ceil(r.remainingS)}s braking budget remains.` : 'NO ACTIVE RENDEZVOUS.';
   } else if (offer.kind === 'worker' && id === ANVIL_RETURN_GAS) {
     const returned = authority.anvilReturn;
-    line = returned?.ok ? `RETURN GAS · ${returned.qty}u BACK ABOARD FOR TETHYS.${returned.remaining ? ` ${returned.remaining}u STILL ON YOUR LINE.` : ''}`
+    line = returned?.ok ? `RETURN GAS · ${returned.qty} units BACK ABOARD FOR TETHYS.${returned.remaining ? ` ${returned.remaining} units STILL ON YOUR LINE.` : ''}`
       : 'RETURN GAS · NOT TRANSFERRED. Match the original pod to the tender service side and Hail again.';
   } else if (offer.kind === 'worker' && id === CONTACT_HAIL_ACTION_TOW_ASSIST) {
     const hire = authority.towAssist || {};

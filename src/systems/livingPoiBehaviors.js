@@ -290,7 +290,7 @@ export const livingPoiBehaviors = {
         });
         if (def === VEIL_FAR_SOUNDING_INTERACTION && authored[0]) {
           authored[0].entryLine = 'Far Sounding: take a scanner reading in each range band.';
-          authored[0].contract.objective = 'Scan Far Sounding at close <105 WU, middle 105–<210 WU, and far 210–300 WU.';
+          authored[0].contract.objective = 'Scan Far Sounding at close <105 m, middle 105–<210 m, and far 210–300 m.';
         }
         rows.push(...authored);
       }
@@ -637,7 +637,7 @@ export const livingPoiBehaviors = {
     if (authoredInteraction(row) === VEIL_FAR_SOUNDING_INTERACTION
         && phase !== 'outcome' && phase !== 'aftermath') {
       row._rangeGuidanceAt = Number(this.state.simTime) || 0;
-      const bands = ['close <105 WU', 'middle 105–<210 WU', 'far 210–300 WU'];
+      const bands = ['close <105 m', 'middle 105–<210 m', 'far 210–300 m'];
       const missing = bands.filter((_, i) => !(row._soundedBands || []).includes(i));
       text = `FAR SOUNDING · SCAN ${row.progress || 0}/3 · Next: ${missing.join('; ')}`;
     }

@@ -193,7 +193,7 @@ function evalAwaitStep(d, live, state, v, step, now) {
         // Latch before the voice callback so a synchronous revisit cannot repeat it.
         if (lost && (v.formationBreakSaidAt == null || now - v.formationBreakSaidAt >= 3)) {
           v.formationBreakSaidAt = now;
-          d.say(live, 'info', `Formation lost. Rejoin ${min}-${max} WU from the lead; the hold starts again.`, null, { literal: true });
+          d.say(live, 'info', `Formation lost. Rejoin ${min}-${max} m from the lead; the hold starts again.`, null, { literal: true });
         }
         return false;
       }

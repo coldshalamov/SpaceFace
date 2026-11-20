@@ -241,7 +241,7 @@ export const ENTRIES_VISUAL_B = [
     channel: 'spectacle',
     payload: {
       from: 'Inside',
-      text: 'Inside 900 u of the throat you stop hearing the pulse and start feeling it: a sub-bass beat every eight seconds, older than the chart that named it. Match your thrust to it — long burn on the swell, coast on the sink — and the approach runs measurably smoother; the biology settles for things that move like it does. Fight the rhythm and the mouth eventually notices. Pilots who have been in say you learn to breathe on the eight-count without deciding to.',
+      text: 'Inside 900 m of the throat you stop hearing the pulse and start feeling it: a sub-bass beat every eight seconds, older than the chart that named it. Match your thrust to it — long burn on the swell, coast on the sink — and the approach runs measurably smoother; the biology settles for things that move like it does. Fight the rhythm and the mouth eventually notices. Pilots who have been in say you learn to breathe on the eight-count without deciding to.',
     },
     followup: 'bespoke leg: audio pulse only — one low oscillator gated on simTime mod 8 inside the proximity radius; no HUD band-edge breathing (honed out); codex bio-rhythm page.',
   },

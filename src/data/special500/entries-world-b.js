@@ -313,7 +313,7 @@ export const ENTRIES_WORLD_B = [
     channel: 'spectacle',
     payload: {
       from: 'Gulf Survey',
-      text: 'A house-sized boulder beside the Stepwell, survey pins hammered every ten u along one seam, brass plate reading: "STILL SHRINKING. — Gulf Survey, year 12." Fresh filings glitter at the newest pin. Somebody has measured it every day for years, and it is measurably, honestly smaller each visit. The joke keeps a straight face.',
+      text: 'A house-sized boulder beside the Stepwell, survey pins hammered every ten meters along one seam, brass plate reading: "STILL SHRINKING. — Gulf Survey, year 12." Fresh filings glitter at the newest pin. Somebody has measured it every day for years, and it is measurably, honestly smaller each visit. The joke keeps a straight face.',
     },
   },
 

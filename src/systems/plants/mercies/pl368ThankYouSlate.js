@@ -63,7 +63,7 @@ export function shortPartFor(tag, t = THANK_YOU_SLATE_TUNING) {
 
 /** Pure: the public engraving for a leave — slates engrave what they weigh. */
 export function engravingFor(commodityId, amount, tag) {
-  return `${commodityId} — ${amount} u — tag ${tag}`;
+  return `${commodityId} — ${amount} units — tag ${tag}`;
 }
 
 /** Pure: the slate's prop spec; its public book rides the data everyone scans. */
@@ -187,7 +187,7 @@ export function createPl368ThankYouSlate() {
           pod.data.engraving = SLATE_THANKS_WORD;
           pod.data.forTag = r.tag;
           pod.data.scanLabel = r.junk
-            ? `The slate engraves what it weighs: ${r.amount} u of ${r.commodityId}. Tag: ${r.tag}.`
+            ? `The slate engraves what it weighs: ${r.amount} units of ${r.commodityId}. Tag: ${r.tag}.`
             : `Engraved ${SLATE_THANKS_WORD} — and the small part you were short of. Tag: ${r.tag}.`;
           pod.data.swarmFloorPad = { label: r.junk ? 'Weighs what it weighs' : 'Tag: THANKS' };
           if (r.junk) {

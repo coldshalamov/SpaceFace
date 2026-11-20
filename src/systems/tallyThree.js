@@ -15,7 +15,7 @@ const REFUSAL=Object.freeze({
   'player-custody-required':'Keep your Massline attached until the receiver accepts.',
   'crate-outside-receiver':'Tow the whole crate inside the receiver ring first.',
   'pilot-outside-receiver':'Bring your ship to the receiving ring with the crate.',
-  'relative-speed-too-high':'Settle below 8 WU/s relative to the receiver.',
+  'relative-speed-too-high':'Settle below 8 m/s relative to the receiver.',
   'value-quote-changed':'The value basis changed. Hail for the current quote.',
   'manifest-not-observed':'Scan this actual crate to read its surviving manifest.',
   'claim-agrees-with-manifest':'The active claim agrees with the manifest. No correction is justified.',
@@ -104,7 +104,7 @@ export const tallyThree={
     return {requestId,targetId:availability.targetId,kind:'tally_three',expiresAt,
       towAdvice:delivered?null:tallyThreeTowAssessment(state).text,
       lines:delivered?[`${speaker} · DELIVERED`,`${TALLY_THREE.manifestId} · one accepted crate; no second payment.`]
-        :[`${speaker} · ${tallyThreeClaimStatus(source)} · ${value?.ok?`${value.qty}u / ${value.quoteCr} cr`:'VALUE UNAVAILABLE'}`,
+        :[`${speaker} · ${tallyThreeClaimStatus(source)} · ${value?.ok?`${value.qty} units / ${value.quoteCr} cr`:'VALUE UNAVAILABLE'}`,
           `${source.claimId===TALLY_THREE.claimId?'Ceres Refinery':source.claimId||'No active claim'} · ${TALLY_THREE.manifestId} · Ceres receiver`],
       actions:delivered?[]:[{id:'tally_deliver',label:'DELIVER'},{id:'tally_contest',label:'CITE MANIFEST'},{id:'tally_receiver',label:'RECEIVER COURSE'}]};
   },
@@ -122,7 +122,7 @@ export const tallyThree={
       text=result?.ok?'The scanned manifest corrects the claimant. The old quote is void; hail again.':REFUSAL[result?.reason]||'No surviving evidence supports a correction.';
     }else if(choice==='tally_deliver'){
       result=deliverTallyThreeCrate(this.state,active.quote,this.registry);
-      text=result.ok?`${result.duplicate?'Already accepted':'Returned intact'} · ${result.qty}u · ${result.creditedCr} cr credited${result.duplicate?' once':''}.`
+      text=result.ok?`${result.duplicate?'Already accepted':'Returned intact'} · ${result.qty} units · ${result.creditedCr} cr credited${result.duplicate?' once':''}.`
         :result.custodyAccepted?'Crate accepted by Ceres Refinery. Payment is pending on the accepted receipt.'
           :REFUSAL[result.reason]||'Receiver declined. Custody and payment remain unaccepted.';
       const actor=tallyThreeBody(this.state,TALLY_THREE.assessorId);

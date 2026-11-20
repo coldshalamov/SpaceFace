@@ -577,9 +577,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       const legality = titleCaseWords(def.legality || 'legal');
       // One row per commodity: name · category, quantity, the station's quote, and Sell as a word.
       return `<li><button type="button" ${stationControlAttrs('hold-row')} class="k-row sx-holdrow" data-hold-item="${escapeHtml(id)}" data-hold-volume="${volume.toFixed(2)}" aria-label="Sell ${escapeHtml(CMDTY_NAME.get(id) || id)}. ${fmtCr(qty)} units, ${fmtCr(volume)} hold units, ${unit != null ? fmtCr(unit * qty) + ' credits' : 'no quote'}.">` +
-        `<span class="sx-holdrow__body"><span class="k-row__name">${escapeHtml(CMDTY_NAME.get(id) || id)}</span><span class="k-row__sub">${escapeHtml(titleCaseWords(def.category || 'cargo'))} · ${escapeHtml(legality)} · ${fmtCr(volume)} u · ${fmtCr(mass)} t</span></span>` +
-        `<span class="k-row__num sx-holdrow__load">${fmtCr(qty)}<span class="k-t-data k-38"> u</span></span>` +
-        `<span class="k-row__num sx-holdrow__quote">${unit != null ? fmtCr(unit * qty) : '—'}<span class="k-t-data k-38">${unit != null ? ' cr · ' + fmtCr(unit) + ' / u' : ' no local quote'}</span></span>` +
+        `<span class="sx-holdrow__body"><span class="k-row__name">${escapeHtml(CMDTY_NAME.get(id) || id)}</span><span class="k-row__sub">${escapeHtml(titleCaseWords(def.category || 'cargo'))} · ${escapeHtml(legality)} · ${fmtCr(volume)} units · ${fmtCr(mass)} t</span></span>` +
+        `<span class="k-row__num sx-holdrow__load">${fmtCr(qty)}<span class="k-t-data k-38"> units</span></span>` +
+        `<span class="k-row__num sx-holdrow__quote">${unit != null ? fmtCr(unit * qty) : '—'}<span class="k-t-data k-38">${unit != null ? ' cr · ' + fmtCr(unit) + ' / unit' : ' no local quote'}</span></span>` +
         `<span class="k-word k-word--fine k-word--primary sx-holdrow__go" aria-hidden="true">Sell</span></button></li>`;
     }).join('');
     const used = Number(cargo.usedVolume) || 0;
@@ -587,7 +587,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const usedPct = cap > 0 ? Math.max(0, Math.min(100, used / cap * 100)) : 0;
     // The bay is one 2 px k-bar (no per-segment reveal: the rows below name every commodity).
     openPop(
-      `<div class="sx-pop__head k-t-emph">Cargo hold <em class="k-62">${fmtCr(used)} / ${fmtCr(cap)} u · ${usedPct.toFixed(0)}%</em></div>` +
+      `<div class="sx-pop__head k-t-emph">Cargo hold <em class="k-62">${fmtCr(used)} / ${fmtCr(cap)} units · ${usedPct.toFixed(0)}%</em></div>` +
       `<div class="k-bar sx-holdbay" role="img" aria-label="Cargo hold ${usedPct.toFixed(0)} percent full, ${fmtCr(used)} of ${fmtCr(cap)} hold units used">` +
         `<span class="k-bar__fill sx-holdbay__used" style="width:${usedPct.toFixed(2)}%"></span>` +
       `</div>` +
@@ -1449,7 +1449,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       },
       {
         k: 'hold', label: 'Hold', frac: holdF, tone: vitalTone(holdF, 'hold'), openHold: true,
-        value: `${fmtCr(cargo.usedVolume)} / ${fmtCr(cargo.capVolume)} u`,
+        value: `${fmtCr(cargo.usedVolume)} / ${fmtCr(cargo.capVolume)} units`,
         aria: `Cargo hold ${fmtCr(cargo.usedVolume)} of ${fmtCr(cargo.capVolume)} units`,
         acts: [carrying
           ? `<button type="button" ${stationControlAttrs('sell')} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="sell"` +

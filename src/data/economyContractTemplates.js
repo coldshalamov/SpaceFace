@@ -39,9 +39,9 @@ export function isShortageGateRepair(offer) {
 export function shortageGateRepairProse({ station, commodity, supplier, volume }) {
   return {
     title: `Shortage at the gate: restore ${station}'s ${commodity} stock`,
-    line: `${station}'s gate-side parts counter has run dry: deliver ${SHORTAGE_GATE_REPAIR.qty}u ${commodity}.`,
+    line: `${station}'s gate-side parts counter has run dry: deliver ${SHORTAGE_GATE_REPAIR.qty} units ${commodity}.`,
     brief: `Buy replacements at ${supplier}'s market, or cut equivalent parts from the marked approach wreck with a salvage-capable beam (fit a mining beam at Helios Station's outfitter if needed). `
-      + `The wreck is claimed: cutting or towing it can provoke the crew. Need ${volume}u cargo room and permission to dock at ${station}; no deposit or supplied cargo. `
+      + `The wreck is claimed: cutting or towing it can provoke the crew. Need ${volume} units of cargo room and permission to dock at ${station}; no deposit or supplied cargo. `
       + 'The public gate route stays open. Decline by leaving this offer; abort from the Mission Log. '
       + 'Wrong or short loads stay yours and the job stays open: replace lost parts, or finish sourcing the lot, then return. '
       + `Delivery restocks the listed parts counter and applies a ${SHORTAGE_GATE_REPAIR.correctionDurationS}s price correction.`,
@@ -461,7 +461,7 @@ export function fillCause(template, tokens) {
  * `rivalStillHungry` lets a refreshed row admit the other berth was fed. PURE.
  */
 export function starvedOfferProse({ qty, commodity, destName, rivalName = null, rivalStillHungry = true }) {
-  const amount = `${Math.max(1, Math.floor(Number(qty) || 1))}u ${commodity || 'cargo'}`;
+  const amount = `${Math.max(1, Math.floor(Number(qty) || 1))} units ${commodity || 'cargo'}`;
   if (rivalName) {
     const line = rivalStillHungry
       ? `${destName} and ${rivalName} are bidding on the same ${commodity} — one hold of `

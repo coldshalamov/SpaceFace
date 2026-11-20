@@ -364,8 +364,8 @@ export function tileLensModel({
     else if (cut?.kept > 0 && cut.bank === 0) chips.push(lensChip('hold'));
     else if (cut?.spent > 0 && cut.bank === 0) chips.push(lensChip('spent'));
     else if ((cut?.bank ?? yieldU) > 0) {
-      chips.push(lensChip(telemetry?.remainingS === 0 ? 'collect' : 'bore', `${cut?.bank ?? yieldU}u`));
-      if (cut?.kept > 0) chips.push(lensChip('kept', `${cut.kept}u`));
+      chips.push(lensChip(telemetry?.remainingS === 0 ? 'collect' : 'bore', `${cut?.bank ?? yieldU} units`));
+      if (cut?.kept > 0) chips.push(lensChip('kept', `${cut.kept} units`));
     }
     chips.push(lensChip('farm'));
     if (splits) chips.push(lensChip('splits'));
@@ -383,7 +383,7 @@ export function tileLensModel({
     : (type === 'vein' ? 'Preserve for continuous extraction' : 'Preserve for silicate production');
   if (type === 'vein' && ore) {
     const rate = oreContactRate(ore);
-    body = rate >= 0.1 ? `Preserve: up to ${Number(rate.toFixed(2))}u/min per extractor`
+    body = rate >= 0.1 ? `Preserve: up to ${Number(rate.toFixed(2))} units per minute per extractor`
       : 'Rare harvest now · preserve for steady supply';
   }
   if (anomaly && anomaly.status !== 'breached') {
@@ -452,7 +452,7 @@ export function machineLensModel(pm) {
   const cap = pm.capability;
   const actual = pm.status?.ratePerMin || {};
   const goods = Object.keys(actual).sort();
-  if (goods.length) numerals.push(`${Object.values(actual).reduce((sum, n) => sum + (Number(n) || 0), 0).toFixed(1)}u/min`);
+  if (goods.length) numerals.push(`${Object.values(actual).reduce((sum, n) => sum + (Number(n) || 0), 0).toFixed(1)} units per minute`);
   else if (cap && Object.keys(cap.outputsPerMin || {}).length) numerals.push('0u/min');
   if (!numerals.length && cap && cap.powerGen > 0) numerals.push(`${cap.powerGen.toFixed(0)} MW`);
   if (!numerals.length && SUPPORT_MACHINE_NUMERAL[pm.defId]) numerals.push(SUPPORT_MACHINE_NUMERAL[pm.defId]);

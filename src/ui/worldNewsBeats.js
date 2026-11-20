@@ -297,7 +297,7 @@ export function registerWorldBeats(on, state) {
     const credited = payload && Number(payload.creditedCr) > 0 ? Math.round(Number(payload.creditedCr)) : 0;
     const buyer = payload && payload.stationId ? displayNameFor('station', payload.stationId) : null;
     const line = buyer && units
-      ? `${units}u delivered to ${buyer}${credited ? ` — ${credited} cr banked` : ''}.`
+      ? `${units} units delivered to ${buyer}${credited ? ` — ${credited} cr banked` : ''}.`
       : 'The courier delivered.';
     return publish(cite(line, 'courier_delivered', `site:courierDelivered:${id}`));
   });

@@ -105,7 +105,7 @@ const BRUISER = branchNodes('bruiser', [
 
 const RIGGER = branchNodes('rigger', [
   [1, 'Long Reel', 'The line reaches 50 % further.'],
-  [1, 'Quick Latch', 'Inside 120 WU the latch is instant.'],
+  [1, 'Quick Latch', 'Inside 120 m the latch is instant.'],
   [1, 'Free Hand', 'Firing while latched has no aim penalty.'],
   [2, 'Hummingbird', 'Orbiting an ANCHOR, you move and fire 30 % faster. (best on light hulls)'],
   [2, 'Crane', 'A body you tow hits as if it were twice as heavy. (best on heavy hulls)'],

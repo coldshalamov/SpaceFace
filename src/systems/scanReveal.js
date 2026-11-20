@@ -816,8 +816,8 @@ function capabilityLesson(state, entity) {
     }
     if (door.kind === 'slam') {
       sentence = door.ready
-        ? `The way in wants a ${door.required} u/s slam. ${door.unbreakable ? 'No rock can break this hull' : 'This hull walks away from it'} — ready.`
-        : `The way in wants a ${door.required} u/s slam. This hull would not walk away — not yet.`;
+        ? `The way in wants a ${door.required} m/s slam. ${door.unbreakable ? 'No rock can break this hull' : 'This hull walks away from it'} — ready.`
+        : `The way in wants a ${door.required} m/s slam. This hull would not walk away — not yet.`;
       return {
         sf: 'SF-174',
         sentence,
@@ -844,14 +844,14 @@ function capabilityLesson(state, entity) {
           ? 'an Elastic Whip'
           : `a ${door.requiredHeadId} head`;
         sentence = door.ready
-          ? `The swing wants ${headWord} rated for a ${door.required} u/s load. Your whip holds — ready.`
+          ? `The swing wants ${headWord} rated for a ${door.required} m/s load. Your whip holds — ready.`
           : door.headReady === false
-            ? `The swing wants ${headWord} rated for a ${door.required} u/s load. This fit lacks the named head — not yet.`
-            : `The swing wants ${headWord} rated for a ${door.required} u/s load. This line would part — not yet.`;
+            ? `The swing wants ${headWord} rated for a ${door.required} m/s load. This fit lacks the named head — not yet.`
+            : `The swing wants ${headWord} rated for a ${door.required} m/s load. This line would part — not yet.`;
       } else {
         sentence = door.ready
-          ? `The swing wants a line rated for a ${door.required} u/s load. ${door.reachable === false ? 'Your line holds anything you can build' : 'Your line holds'} — ready.`
-          : `The swing wants a line rated for a ${door.required} u/s load. This line would part — not yet.`;
+          ? `The swing wants a line rated for a ${door.required} m/s load. ${door.reachable === false ? 'Your line holds anything you can build' : 'Your line holds'} — ready.`
+          : `The swing wants a line rated for a ${door.required} m/s load. This line would part — not yet.`;
       }
       return {
         sf: 'SF-174',
@@ -1291,7 +1291,7 @@ function landmarkLesson() {
   const hold = CERES_WRECK_CATHEDRAL_CHASE_READ_CORRIDOR.hold;
   return {
     sf: 'SF-179',
-    sentence: `Cathedral approach ${Math.round(approach)} WU out at scale ${scale}. The course stays outside the solid hull.`,
+    sentence: `Cathedral approach ${Math.round(approach)} m out at scale ${scale}. The course stays outside the solid hull.`,
     pos: { x: course.x, z: course.z },
     trackable: true,
     paid: 0,
@@ -1583,7 +1583,7 @@ export function anomalyRuleLesson(player, bodies, focus, skipId = null) {
     return {
       sf: 'SF-171',
       control: 'moving-metal',
-      sentence: 'Moving metal answers. A still hull does not, and rock does not. The cleared lane is 180 u along that motion.',
+      sentence: 'Moving metal answers. A still hull does not, and rock does not. The cleared lane is 180 m along that motion.',
       pos: lane,
       trackable: false,
       paid: 0,

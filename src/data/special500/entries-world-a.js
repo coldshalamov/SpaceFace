@@ -473,7 +473,7 @@ export const ENTRIES_WORLD_A = [
     channel: 'spectacle',
     payload: {
       from: 'Tethys Junction',
-      text: 'One lonely light rides the influence edge on a slow orbit, sweeping the dark side of the disc once every thirteen seconds — the only structure for a thousand u. Pilots time their sling-band approaches by it, and the light is always exactly on time.',
+      text: 'One lonely light rides the influence edge on a slow orbit, sweeping the dark side of the disc once every thirteen seconds — the only structure for a thousand meters. Pilots time their sling-band approaches by it, and the light is always exactly on time.',
     },
   },
 

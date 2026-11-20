@@ -1447,7 +1447,7 @@ export const asteroidScreen = {
           if (res.ok) {
             projDirty = true;
             announce(`${item.name} ${on ? 'laid' : 'cleared'} at ${cell.col},${cell.row}.`
-              + (res.spilled > 0 ? ` Spilled ${Math.floor(res.spilled)}u.` : ''));
+              + (res.spilled > 0 ? ` Spilled ${Math.floor(res.spilled)} units.` : ''));
             if (on) recordRouteCell(run, item.id, cell, advance);
           } else if (res.reason !== 'would-spill') {
             const text = placementReason({ reason: res.reason });
@@ -1527,7 +1527,7 @@ export const asteroidScreen = {
           return settleSiteMutation(attemptOverlayChange(kind, cursor, false), (res) => {
             if (res.ok) {
               announce(`${kind === 'lane' ? 'Material lane' : 'Power cable'} cleared.`
-                + (res.spilled > 0 ? ` Spilled ${Math.floor(res.spilled)}u.` : ''));
+                + (res.spilled > 0 ? ` Spilled ${Math.floor(res.spilled)} units.` : ''));
               projDirty = true;
             }
             return res;
@@ -1777,7 +1777,7 @@ export const asteroidScreen = {
     });
 
     const setNodeText = (el, text) => { if (el && el.textContent !== text) el.textContent = text; };
-    const unitText = (n) => `${Math.round(Number(n) || 0)}u`;
+    const unitText = (n) => `${Math.round(Number(n) || 0)} units`;
 
     // ---------- Ledger: the manifest tape, silent (law §6.6) ----------
     // Newest first, a mono clock, one line per event, severity as a small coloured dot. It NEVER
@@ -2102,7 +2102,7 @@ export const asteroidScreen = {
       settleSiteMutation(verb.apply(goodId, next), (res) => {
         if (res.ok) {
           projDirty = true;
-          pushLedgerLine('info', `${row.name} reserve floor set to ${next}u.`);
+          pushLedgerLine('info', `${row.name} reserve floor set to ${next} units.`);
           announce(`${row.name} reserve ${next} units.`);
         }
         refreshDrawer();
@@ -2220,7 +2220,7 @@ export const asteroidScreen = {
       settleSiteMutation(verb.apply(machineId, goodId, quantity, dir), (res) => {
         if (res.ok) {
           projDirty = true;
-          pushLedgerLine('info', `${dir === 'deposit' ? 'Loaded' : 'Recovered'} ${res.moved}u ${name}.`);
+          pushLedgerLine('info', `${dir === 'deposit' ? 'Loaded' : 'Recovered'} ${res.moved} units ${name}.`);
           // words-field-counts: the announcement can count to one (the ledger keeps its own u).
           announce(res.moved === 1
             ? `1 unit of ${name} moved to the ${dir === 'deposit' ? 'site' : 'rover'}.`
@@ -2249,7 +2249,7 @@ export const asteroidScreen = {
       setNodeText(siteUi.running, String(t.running));
       setNodeText(siteUi.dark, String(t.dark));
       setNodeText(siteUi.powerBudget, `${t.generatedMw.toFixed(1)} / ${t.drawMw.toFixed(1)} MW`);
-      setNodeText(siteUi.stored, `${t.stored} / ${t.capacity}u`);
+      setNodeText(siteUi.stored, `${t.stored} / ${t.capacity} units`);
       setNodeText(siteUi.signature, t.signatureLabel);
       setNodeText(siteUi.thermal, t.thermalBand);
       setNodeText(siteUi.specialization, t.specializationLabel || 'Anchored claim');
@@ -2389,7 +2389,7 @@ export const asteroidScreen = {
       const xferId = syncSelect(siteUi.xferMachine, xferVerb.machines);
       const xferMachine = xferVerb.machines.find((m) => m.id === xferId) || null;
       const goodRows = xferMachine
-        ? xferMachine.goods.map((g) => ({ id: g.id, name: `${g.name} — ${g.onSite}u here, ${g.onShip}u aboard` }))
+        ? xferMachine.goods.map((g) => ({ id: g.id, name: `${g.name} — ${g.onSite} units here, ${g.onShip} units aboard` }))
         : [];
       syncSelect(siteUi.xferGood, goodRows);
       setNodeText(siteUi.xferQty, unitText(transferQty));
@@ -2817,7 +2817,7 @@ export const asteroidScreen = {
       if (!d) return;
       let total = 0;
       for (const k in d.yieldLog) total += d.yieldLog[k] || 0;
-      setText(hudEls.yield, 'y', `${total}u`);
+      setText(hudEls.yield, 'y', `${total} units`);
 
       // hold gauge — mint → gold → coral as it fills (crest, law §6.1)
       const cargo = state.player.cargo;
@@ -3282,7 +3282,7 @@ export const asteroidScreen = {
         name.textContent = `${commodityName(goodId)} × ${qty}`;
         const val = document.createElement('span');
         val.className = 'val';
-        val.textContent = `+${qty}u`;
+        val.textContent = `+${qty} units`;
         row.append(name, val);
         box.appendChild(row);
       }

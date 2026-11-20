@@ -250,7 +250,7 @@ function veilStepReadiness(state) {
   const status = aiming ? (validLanding && energy >= cost ? 'armed' : 'blocked')
     : (!cooling && energy >= PHASE_BLINK.minEnergy ? 'armed' : 'blocked');
   const text = aiming
-    ? `${Math.round(distance)} WU · ${reason.replaceAll('_', ' ')}`
+    ? `${Math.round(distance)} m · ${reason.replaceAll('_', ' ')}`
     : reason === 'ready' ? `ready · ${Math.floor(energy)} energy` : reason.replaceAll('_', ' ');
   return { mode: 'veil_step', phase: aiming ? 'aiming' : 'ready', status, reason,
     text, distance, validLanding, energy, cost, readyAt, updatedTick: Math.max(0, Math.trunc(finite(state?.tick))) };

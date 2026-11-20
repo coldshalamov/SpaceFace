@@ -1489,12 +1489,12 @@ export function describeClaimMapMarker(body = {}, ledger = null, liveEntity = nu
   const pieces = [];
   if (specId === 'spec_refinery') {
     const stores = ledger && ledger.stores || {};
-    pieces.push(`${whole(stores.inputU)}/${whole(stores.inputCapU)}u ore`);
-    pieces.push(`${whole(stores.outputU)}/${whole(stores.outputCapU)}u ready`);
+    pieces.push(`${whole(stores.inputU)}/${whole(stores.inputCapU)} units ore`);
+    pieces.push(`${whole(stores.outputU)}/${whole(stores.outputCapU)} units ready`);
     if (ledger && ledger.throughput) pieces.push(`${Number(ledger.throughput.refineRatePerS || 0).toFixed(1)} ore/s`);
   } else if (specId === 'spec_relay') {
     const stores = ledger && ledger.stores || {};
-    pieces.push(`${whole(stores.inputU)}/${whole(stores.inputCapU)}u freight`);
+    pieces.push(`${whole(stores.inputU)}/${whole(stores.inputCapU)} units freight`);
     pieces.push(ledger && ledger.convoy ? `convoy ${whole(ledger.convoy.etaS)}s` : 'convoy standing by');
     pieces.push(`${whole(ledger && ledger.flows && ledger.flows.soldTotalCr)} cr sold`);
   } else if (specId === 'spec_bastion') {
@@ -6425,7 +6425,7 @@ _stepAnimation(now) {
       html += `
         <div class="gm-ins-section">
           <div class="gm-ins-title">Navigation</div>
-          <div class="gm-ins-row"><span>Distance</span><span class="gm-ins-row-val">${stationDist != null ? stationDist + ' u' : 'Unknown'}</span></div>
+          <div class="gm-ins-row"><span>Distance</span><span class="gm-ins-row-val">${stationDist != null ? stationDist + ' m' : 'Unknown'}</span></div>
         </div>
       `;
 
@@ -6501,7 +6501,7 @@ _stepAnimation(now) {
 
         <div class="gm-ins-section">
           <div class="gm-ins-title">Manual search area</div>
-          <div class="gm-ins-row"><span>Range</span><span class="gm-ins-row-val">±${Math.round(Math.max(0, Number(t.radius) || 0))} u</span></div>
+          <div class="gm-ins-row"><span>Range</span><span class="gm-ins-row-val">±${Math.round(Math.max(0, Number(t.radius) || 0))} m</span></div>
           <div class="gm-ins-note">${escapeMapHtml(t.detail || 'Approximate frontier intelligence.')}</div>
           <div class="gm-ins-note">${escapeMapHtml(t.objective || 'Fly the area manually and pulse the scanner. No waypoint is set.')}</div>
         </div>
@@ -6563,7 +6563,7 @@ _stepAnimation(now) {
           </div>
           <div class="gm-ins-row">
             <span>Range</span>
-            <span class="gm-ins-row-val">${dist != null ? dist + ' u' : 'Unknown'}</span>
+            <span class="gm-ins-row-val">${dist != null ? dist + ' m' : 'Unknown'}</span>
           </div>
         </div>
 
@@ -6596,8 +6596,8 @@ _stepAnimation(now) {
           <div class="gm-ins-row"><span>Type</span><span class="gm-ins-row-val">${workLoad ? escapeMapHtml(workLoad.classLine) : t.kind ? t.kind.toUpperCase() : 'UNKNOWN'}</span></div>
           <div class="gm-ins-row"><span>Faction</span><span class="gm-ins-row-val" style="color:${factionColorOf(t.factionId)}"><span${entityAttr('faction:' + t.factionId)}>${escapeMapHtml(contactFaction)}</span></span></div>
           <div class="gm-ins-row"><span>Hostile</span><span class="gm-ins-row-val" style="color:${t.hostile ? INK.red : INK.good}">${t.hostile ? 'YES' : 'NO'}</span></div>
-          <div class="gm-ins-row"><span>Distance</span><span class="gm-ins-row-val">${contactDist != null ? contactDist + ' u' : 'Unknown'}</span></div>
-          <div class="gm-ins-row"><span>Speed</span><span class="gm-ins-row-val">${contactSpeed} u/s</span></div>
+          <div class="gm-ins-row"><span>Distance</span><span class="gm-ins-row-val">${contactDist != null ? contactDist + ' m' : 'Unknown'}</span></div>
+          <div class="gm-ins-row"><span>Speed</span><span class="gm-ins-row-val">${contactSpeed} m/s</span></div>
         </div>
       `;
       buttonLabel = 'Track Target';
@@ -6976,7 +6976,7 @@ _stepAnimation(now) {
         <div class="gm-ins-row"><span>Jurisdiction</span><span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span> · ${escapeMapHtml(law.level)} ${securityPips(sec)}</span></div>
         <div class="gm-ins-row"><span>Local zone</span><span class="gm-ins-row-val">${escapeMapHtml(zoneLine)}</span></div>
         ${hereChatterHtml}
-        <div class="gm-ins-row"><span>Ship fix</span><span class="gm-ins-row-val">(${Math.round(localPos.x)}, ${Math.round(localPos.z)}) u · Hdg ${headingBrg} · ${speed} u/s</span></div>
+        <div class="gm-ins-row"><span>Your position</span><span class="gm-ins-row-val">(${Math.round(localPos.x)}, ${Math.round(localPos.z)}) m · Heading ${headingBrg} · ${speed} m/s</span></div>
         ${careersInner}
       </div>
       <div class="gm-ins-section">
@@ -7083,7 +7083,7 @@ _stepAnimation(now) {
         return `
         <button ${mapControlAttrs('lane')} class="gm-tl-row" type="button" data-gm-lane="${escapeMapHtml(lane.destinationId)}">
           <span class="gm-tl-head"><span>${sourceGlyph} ${escapeMapHtml(lane.commodityName)}</span><span class="gm-tl-profit" style="color:${relColor}">${modelish ? '~' : ''}+${profit} cr</span></span>
-          <span class="gm-tl-sub">${escapeMapHtml(lanePath)} · ${Math.max(0, Math.floor(lane.units))}u · ${perMin}/min · risk ${riskPct}%${ageLabel}${modelDelta}</span>
+          <span class="gm-tl-sub">${escapeMapHtml(lanePath)} · ${Math.max(0, Math.floor(lane.units))} units · ${perMin} per minute · risk ${riskPct}%${ageLabel}${modelDelta}</span>
         </button>`;
       }).join('')
       // The build map's named live symptom (§11.11 #8): this pane was correct-but-blank until two
@@ -7137,7 +7137,7 @@ _stepAnimation(now) {
       <div class="gm-ins-section">
         <div class="gm-ins-title">Hold</div>
         <div class="gm-ins-row"><span>Credits</span><span class="gm-ins-row-val">${credits} cr</span></div>
-        <div class="gm-ins-row"><span>Cargo</span><span class="gm-ins-row-val">${cargo}/${cargoCap} u</span></div>
+        <div class="gm-ins-row"><span>Cargo</span><span class="gm-ins-row-val">${cargo}/${cargoCap}</span></div>
       </div>
       <div class="gm-ins-section">
         <div class="gm-ins-title">Trade lanes · profit/min</div>

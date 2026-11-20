@@ -40,7 +40,7 @@ const BASE_BOUNTY_CR = 520;
 const GUARD_PATROL_RADIUS = 130;
 const RAID_DEADLINE_S = 130;
 const EXTRACTION_RANGE_WU = 360;
-const CAMP_BRIEF = `LANE WATCH: a press camp holds a captive Mule and the take on its hardstand. Break the garrison, burn the base, or tow the Mule ${EXTRACTION_RANGE_WU} WU off the camp and cut the Line so it can run.`;
+const CAMP_BRIEF = `LANE WATCH: a press camp holds a captive Mule and the take on its hardstand. Break the garrison, burn the base, or tow the Mule ${EXTRACTION_RANGE_WU} m off the camp and cut the Line so it can run.`;
 
 function releaseCast(live) {
   if (!live) return;
@@ -115,7 +115,7 @@ function beginExtractionTow(d, live, state, proof, payload) {
   if (!proof.towAnnounced) {
     proof.towAnnounced = true;
     d.emit('comms:log', { from: 'PRESSED MULE', kind: 'encounter',
-      text: `You have me. Tow me ${EXTRACTION_RANGE_WU} WU off the camp; I will call clear. Then cut the Line. My drive still works.` });
+      text: `You have me. Tow me ${EXTRACTION_RANGE_WU} m off the camp; I will call clear. Then cut the Line. My drive still works.` });
   }
 }
 

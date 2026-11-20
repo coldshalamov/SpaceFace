@@ -81,14 +81,14 @@ export function registryContactReadout(m) {
     return {
       objective: 'Registry identified — choose custody or force',
       where,
-      next: 'Civilian maintenance vessel. For custody, tether the living vessel, close within 60 WU and reel the Line to 60 WU or less. A short spool alone is not custody. Or destroy the vessel to resolve by force.',
+      next: 'Civilian maintenance vessel. For custody, tether the living vessel, close within 60 m and reel the Line to 60 m or less. A short spool alone is not custody. Or destroy the vessel to resolve by force.',
     };
   }
   if (p.investigationStage != null) return null;
   return {
     objective: 'Identify the marked vessel — scan before choosing a response',
     where,
-    next: 'Find the marked vessel off Ashfall in Charon Expanse. Select it, move within 1,200 u, and pulse scan to identify it before choosing a response.',
+    next: 'Find the marked vessel off Ashfall in Charon Expanse. Select it, move within 1,200 m, and pulse scan to identify it before choosing a response.',
   };
 }
 
@@ -136,7 +136,7 @@ export function objectiveText(m) {
     if (c.outcome === 'clean_delivery') return 'Delivered to Expanse — cylinder clean';
     return c.objective || (c.phase === 'retreat' ? 'Return to the entry refuge together'
       : c.phase === 'delivery' ? 'Escort the charge to Expanse, then dock to settle'
-        : 'Join the charge at the entry refuge — within 420 u, relative speed below 12 u/s');
+        : 'Join the charge at the entry refuge — within 420 m, relative speed below 12 m/s');
   }
   const prog = m.objectiveProgress || 0;
   const tgt = m.objectiveTarget || 1;
@@ -158,7 +158,7 @@ export function objectiveText(m) {
   switch (m.type) {
     case 'cargo_delivery': {
       const serviceClass = `${m.originChoiceId || ''} ${m.title || ''} ${m.mapLabel || ''}`.toLowerCase();
-      const cargo = `${Math.max(1, Number(p.qty) || tgt)}u ${cmdtyName(p.cmdtyId)}`;
+      const cargo = `${Math.max(1, Number(p.qty) || tgt)} units ${cmdtyName(p.cmdtyId)}`;
       if (m.originCareer === 'hauler' && serviceClass.includes('bonded express')) {
         return `EXPRESS · Deliver ${cargo} to ${dest} · short clock · ${m.collateral_cr || 0} cr bond at risk`;
       }
@@ -174,7 +174,7 @@ export function objectiveText(m) {
       return `Sell ${prog}/${tgt} ${cmdtyName(p.cmdtyId)}`;
     // W-TENDER: the desk sale settles the run — name what the desk still needs, where.
     case 'tender_haul':
-      return `Sell ${Math.max(0, tgt - prog)}u ${cmdtyName(p.cmdtyId)} at ${dest}`;
+      return `Sell ${Math.max(0, tgt - prog)} units ${cmdtyName(p.cmdtyId)} at ${dest}`;
     case 'mining_quota':
       return `Mine ${prog}/${tgt} ${cmdtyName(p.cmdtyId)}`;
     case 'bounty_hunt':
@@ -220,7 +220,7 @@ export function objectiveText(m) {
       return tgt > 1 ? `Run ${course} in order · ${prog}/${tgt} cleared` : `Run ${course} and finish`;
     }
     case 'bulk_haul':
-      return `Tether-haul ${prog}/${tgt}u bulk ore to ${dest}`;
+      return `Tether-haul ${prog}/${tgt} units bulk ore to ${dest}`;
     case 'capital_boss':
       return `Destroy the capital ship${inSector(m)}`;
     case 'authored_set_piece':

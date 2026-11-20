@@ -319,7 +319,7 @@ function offerCopy(candidate, radius) {
   const sectorName = candidate.sector.name || candidate.sector.id;
   const bearing = octantFor(candidate.localPos);
   if (candidate.kind === 'hunter') {
-    return `A contract hunter's drive was logged ${bearing} of ${sectorName}. The card marks a ${radius} WU patrol search, not a live transponder.`;
+    return `A contract hunter's drive was logged ${bearing} of ${sectorName}. The card marks a ${radius} m patrol search, not a live transponder.`;
   }
   if (candidate.kind === 'vein') {
     return `Shift crews are whispering about a ${candidate.targetName} ${bearing} of ${sectorName}. The card marks the working patch, not a rock lock.`;

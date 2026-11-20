@@ -60,7 +60,7 @@ function pairs(obj) {
 export function statisticsModel({ career = {}, playerStats = {}, law = null } = {}) {
   const stats = playerStats && typeof playerStats === 'object' ? playerStats : {};
   const flight = [
-    ['Distance flown', formatStat(career.distanceFlownWu, 'wu')],
+    ['Distance flown', formatStat(career.distanceFlownWu, 'm')],
     ...pairs(career.timeBySector).map(([name, , raw]) => [name + ' time', formatDuration(raw)]),
     counted('Jumps', counter(career, 'jumps')),
     counted('Docks', counter(career, 'docks')),
@@ -82,7 +82,7 @@ export function statisticsModel({ career = {}, playerStats = {}, law = null } = 
     ['Biggest profit', formatStat(stats.biggestSingleProfit, 'cr')],
     ['Smuggled', formatStat(stats.smuggledValue, 'cr')],
     ['Passive earned', formatStat(stats.totalPassiveEarnedLifetime, 'cr')],
-    ['Ore hauled · career', formatStat(counter(career, 'oreUnits'), 'u')],
+    ['Ore hauled · career', formatStat(counter(career, 'oreUnits'), 'units')],
     counted('Contracts · career', counter(career, 'contracts')),
   ].filter(Boolean);
   const lawRows = [];
@@ -97,7 +97,7 @@ export function statisticsModel({ career = {}, playerStats = {}, law = null } = 
   return {
     groups: [
       { id: 'flight', label: 'Flight · career', rows: flight },
-      { id: 'line', label: 'Line · career', rows: [['Biggest throw', formatStat(career.biggestThrowSpeed, 'wu/s')], ...lineExtras] },
+      { id: 'line', label: 'Line · career', rows: [['Biggest throw', formatStat(career.biggestThrowSpeed, 'm/s')], ...lineExtras] },
       { id: 'fight', label: 'Fight · career', rows: fight },
       { id: 'trade', label: 'Trade · this save', rows: trade },
       lawGroup,

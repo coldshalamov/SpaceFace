@@ -411,7 +411,7 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
     }
     icon(ctx, 'ship', self.x, self.y, SELF, (Number(player.rot) || 0) - Math.PI / 2 + rotation, width > 335 ? 1.56 : 1.08);
 
-    const rangeText = range < 1000 ? `${Math.round(range)} u` : `${(range / 1000).toFixed(1)}k u`;
+    const rangeText = range < 1000 ? `${Math.round(range)} m` : `${(range / 1000).toFixed(1)} km`;
     ctx.textBaseline = 'top'; ctx.textAlign = 'right';
     ctx.font = canvasFont(630, width > 335 ? 16 : 12, 'read'); ctx.fillStyle = CHART_INK;
     ctx.textAlign = 'center';

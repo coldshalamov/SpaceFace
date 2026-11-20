@@ -660,17 +660,17 @@ export function shipCapabilityVerbs({ derived, fittings = [] } = {}) {
     isWall,
     verb: slamResult.unbreakable
       ? 'No rock can break this hull'
-      : `Survives rock up to ${round(slamResult.speedWuPerS, 0)} u/s`,
+      : `Survives rock up to ${round(slamResult.speedWuPerS, 0)} m/s`,
     sub: isWall
       ? 'and you are the wall now'
-      : (slamResult.unbreakable ? 'rock-proof' : `${round(slamResult.speedWuPerS, 0)} u/s into rock`),
+      : (slamResult.unbreakable ? 'rock-proof' : `${round(slamResult.speedWuPerS, 0)} m/s into rock`),
     why: (slamResult.unbreakable
-      ? `Rock crumples a hull above ${TERRAIN_CRUMPLE_LAW.threshold} u/s closing, and the harder it bites the `
+      ? `Rock crumples a hull above ${TERRAIN_CRUMPLE_LAW.threshold} m/s closing, and the harder it bites the `
         + `lighter you are. At ${round(massT, 0)} t the crumple can never reach `
         + `${round(finite(derived.hullMax, 0), 0)} points of structure at any speed.`
-      : `Rock crumples a hull above ${TERRAIN_CRUMPLE_LAW.threshold} u/s closing, and the harder it bites the `
+      : `Rock crumples a hull above ${TERRAIN_CRUMPLE_LAW.threshold} m/s closing, and the harder it bites the `
         + `lighter you are. At ${round(massT, 0)} t, ${round(finite(derived.hullMax, 0), 0)} points of structure `
-        + `go at ${round(slamResult.speedWuPerS, 0)} u/s. Your shields buffer the bill; they do not move the speed.`)
+        + `go at ${round(slamResult.speedWuPerS, 0)} m/s. Your shields buffer the bill; they do not move the speed.`)
       + (isWall
         ? ` Past ${HEAVY_AS_TERRAIN_MASS} t your hull IS terrain: anything light that meets you takes the wall's arithmetic.`
         : ''),
@@ -685,14 +685,14 @@ export function shipCapabilityVerbs({ derived, fittings = [] } = {}) {
     specialist: lineLoad.specialist === true,
     reachable,
     verb: reachable
-      ? `Line holds a ${round(lineLoad.speedWuPerS, 0)} u/s swing`
+      ? `Line holds a ${round(lineLoad.speedWuPerS, 0)} m/s swing`
       : 'Line holds any swing you can build',
     // When the rating is past anything the hull can reach, printing the figure beside a verb that
     // already says "any swing" only draws the eye to a number that means nothing. The figure stays
     // in the why, where a player who wants it can read it with its geometry.
-    sub: reachable ? `${round(lineLoad.speedWuPerS, 0)} u/s on a 100 m line` : 'past anything you can fly',
+    sub: reachable ? `${round(lineLoad.speedWuPerS, 0)} m/s on a 100 m line` : 'past anything you can fly',
     why: `On a ${CAPABILITY_LAW.lineSwingRadiusWu} m line around a heavy anchor your line reaches its rated load at `
-      + `${round(lineLoad.speedWuPerS, 0)} u/s. Everything you carry pulls that number down; a bigger spool pushes it up.`,
+      + `${round(lineLoad.speedWuPerS, 0)} m/s. Everything you carry pulls that number down; a bigger spool pushes it up.`,
   };
 
   const fieldRow = fieldDeployFor(fittings);

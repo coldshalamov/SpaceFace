@@ -2758,7 +2758,7 @@ export const missionStoryOps = {
     }
     if (scene === 'variance_delivery' && isSlateCore(inst)) {
       const custody = this.state.story?.flags?.elroy_outcome === 'custody';
-      popup('SLATE', `${custody ? 'Elroy is in custody. ' : ''}One 36-tonne core waits southeast of Ceres Refinery. Tow it 110 WU west to my receiving beacon, below 18 WU/s. On a light hull a load that heavy drags you as much as you drag it; pull slowly and release early. Brake before release; payment does not stop its drift.`, 10);
+      popup('SLATE', `${custody ? 'Elroy is in custody. ' : ''}One 36-tonne core waits southeast of Ceres Refinery. Tow it 110 m west to my receiving beacon, below 18 m/s. On a light hull a load that heavy drags you as much as you drag it; pull slowly and release early. Brake before release; payment does not stop its drift.`, 10);
       return true;
     }
     if (scene === 'variance_delivery') {
@@ -2766,7 +2766,7 @@ export const missionStoryOps = {
       return true;
     }
     if (scene === 'feed_the_maw' && hasMawReceiving(inst)) {
-      popup('CERES TRAFFIC', `Three marked 40t hot-slag pods, three solid hits. ${mawHandlingRead(this.state)} Then latch the 120t Maw and move it east to the exterior receiver: within 80 WU, below 18 WU/s. Lost pods void this detail.`, 10);
+      popup('CERES TRAFFIC', `Three marked 40t hot-slag pods, three solid hits. ${mawHandlingRead(this.state)} Then latch the 120t Maw and move it east to the exterior receiver: within 80 m, below 18 m/s. Lost pods void this detail.`, 10);
       return;
     }
     if (scene === 'feed_the_maw') {

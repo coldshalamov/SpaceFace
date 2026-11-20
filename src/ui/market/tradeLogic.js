@@ -674,7 +674,7 @@ export function formatRouteCard(trade) {
     ? 'credits bind'
     : trade && trade.loadBound === 'stock' ? 'station stock binds'
     : trade && trade.loadBound === 'margin' ? 'smaller load preserves margin'
-    : `hold fits ${Math.max(0, Math.floor(Number(trade && trade.holdUnits) || 0))} u`;
+    : `hold fits ${Math.max(0, Math.floor(Number(trade && trade.holdUnits) || 0))} units`;
   // SFQ-B084: the handling cost of the load, forecast before purchase. The tonnes ride the
   // same cargo.usedMass carrier the flight kernel feels; a penalty-free load prints the mass
   // alone (a full hold of feathers reads full volume, full thrust).
@@ -693,7 +693,7 @@ export function formatRouteCard(trade) {
   const lane = trade && trade.laneRisk && trade.laneRisk.word ? ` · ${trade.laneRisk.word}` : '';
   return {
     units,
-    sub: `${units} u · cost ${cost.toLocaleString('en-US')} · buy ${buy.toLocaleString('en-US')} → sell ${sell.toLocaleString('en-US')}${lane} · ${intel} · ${bound}${mass}${demand} · ${basis}${cash}`,
+    sub: `${units} units · cost ${cost.toLocaleString('en-US')} · buy ${buy.toLocaleString('en-US')} → sell ${sell.toLocaleString('en-US')}${lane} · ${intel} · ${bound}${mass}${demand} · ${basis}${cash}`,
     profitText: net > 0 ? `${quoted ? 'Est. ' : ''}+${net.toLocaleString('en-US')} cr` : '—',
   };
 }

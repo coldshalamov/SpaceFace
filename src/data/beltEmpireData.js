@@ -148,7 +148,7 @@ export const SUBTERRANEAN_ANOMALIES = Object.freeze([
     bonusType: 'link_boost',
     magnitude: 10,
     lumpLoot: Object.freeze({ cmdty_ore_iron: 8, cmdty_ore_bronzium: 3 }),
-    summary: 'Natural superconducting iron vein that accelerates mass-driver and cargo lane throughput by +10 u/min.',
+    summary: 'Natural superconducting iron vein that accelerates mass-driver and cargo lane throughput by +10 units per minute.',
   }),
 ]);
 
@@ -223,7 +223,7 @@ export const BELT_ORBITAL_STRUCTURES = Object.freeze({
     powerDeltaMw: -4,
     linkRangeMult: 1.75,
     linkRateBonusPerMin: 24,
-    summary: 'Accelerates inter-asteroid transfer packets (+24 u/min link speed, 1.75x tether span).',
+    summary: 'Accelerates inter-asteroid transfer packets (+24 units per minute link speed, 1.75x tether span).',
   }),
   shield_dome: Object.freeze({
     id: 'shield_dome',
@@ -263,7 +263,7 @@ export const BELT_ORBITAL_STRUCTURES = Object.freeze({
     defenseRating: 8,
     powerDeltaMw: -3,
     passiveRegocretePerMin: 1.5,
-    summary: 'Automated vacuum-kiln barge that sinters local silicate + iron dust into 1.5 u/min Regocrete.',
+    summary: 'Automated vacuum-kiln barge that sinters local silicate + iron dust into 1.5 units per minute of Regocrete.',
   }),
   trade_terminal: Object.freeze({
     id: 'trade_terminal',
@@ -337,7 +337,7 @@ export const BELT_DRONE_TYPES = Object.freeze({
     harvestRatePerMin: 4.5,
     rangeWu: 1100,
     defenseRating: 4,
-    summary: 'Flies out to unclaimed asteroids within 1,100 WU and hauls raw ores back into connected lane stores.',
+    summary: 'Flies out to unclaimed asteroids within 1,100 m and hauls raw ores back into connected lane stores.',
   }),
   shuttle: Object.freeze({
     id: 'shuttle',
@@ -348,7 +348,7 @@ export const BELT_DRONE_TYPES = Object.freeze({
     linkBoostPerMin: 12,
     podSpeedBonus: 0.1,
     defenseRating: 4,
-    summary: 'Escorts active belt links (+12 u/min inter-asteroid transfer) and speeds station courier runs (+10%).',
+    summary: 'Escorts active belt links (+12 units per minute inter-asteroid transfer) and speeds station courier runs (+10%).',
   }),
   patrol: Object.freeze({
     id: 'patrol',
@@ -544,7 +544,7 @@ export const BELT_DOCTRINES = Object.freeze([
     prereq: null,
     effectKey: 'linkRateBonus',
     effectValue: 8,
-    summary: '+8 u/min base material transfer rate on every inter-asteroid link.',
+    summary: '+8 units per minute base material transfer rate on every inter-asteroid link.',
   }),
   Object.freeze({
     id: 'doc_swarm_2',

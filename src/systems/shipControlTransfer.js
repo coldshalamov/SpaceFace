@@ -127,7 +127,7 @@ export function captureAndTransfer(owner, request = {}) {
   if (!from.pos || !to.pos || !from.vel || !to.vel
     || ![from.pos.x, from.pos.z, to.pos.x, to.pos.z, from.vel.x, from.vel.z, to.vel.x, to.vel.z].every(Number.isFinite)) return fail('invalid_motion');
   const range = Math.hypot(to.pos.x - from.pos.x, to.pos.z - from.pos.z);
-  if (range > SHIPJACK_HANDOFF_RANGE_WU) return fail('Close within 115 WU before crossing the airlock link.');
+  if (range > SHIPJACK_HANDOFF_RANGE_WU) return fail('Close within 115 m before crossing the airlock link.');
   if (Math.hypot(to.vel.x - from.vel.x, to.vel.z - from.vel.z) > 16
     || Math.abs(Number(to.angularVel?.y ?? to.angVel ?? 0)) > 0.9) return fail('transfer_unstable');
   const def = HULLS.get(to.data?.defId);

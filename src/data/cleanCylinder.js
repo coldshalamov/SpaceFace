@@ -18,8 +18,8 @@ export function buildCleanCylinderOffer() {
     stationId: CLEAN_CYLINDER.stationId, destStationId: CLEAN_CYLINDER.stationId,
     destSectorId: CLEAN_CYLINDER.sectorId, factionId: 'faction_dmc',
     title: 'The clean cylinder', summary: 'Escort a Shepherd-class charge through the Broken Shepherd corridor.',
-    brief: 'Join the charge at the entry refuge. Stay within its 420 u pocket and match velocity within 12 u/s. '
-      + 'To repair, target the charge within 100 u and match within 8 u/s for 6 seconds; onboard purge supplies are included. '
+    brief: 'Join the charge at the entry refuge. Stay within its 420 m pocket and match velocity within 12 m/s. '
+      + 'To repair, target the charge within 100 m and match within 8 m/s for 6 seconds; onboard purge supplies are included. '
       + 'When the field spikes, fly back toward the entry refuge to lead a retreat. '
       + 'Full fee for clean delivery, 50% for contaminated delivery, 25% for returning together to refuge. No cargo, purchase or special equipment required.',
     reward_cr: 1200, collateral_cr: 0, duration_s: null, time_limit_s: null,

@@ -1353,7 +1353,7 @@ export const cargo = {
       || !vessel || target.data?.vesselId !== vesselId || vessel.location?.entityId !== target.id
       || vessel.generation !== target.data?.shipjackGeneration) return refuse('Vessel identity or physical occupant changed');
     if (!player || player.alive === false || Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z) > 115) {
-      return refuse('Close within 115 WU to maintain the cargo-door link');
+      return refuse('Close within 115 m to maintain the cargo-door link');
     }
     if (attempt?.phase !== 'foothold' || !(attempt.windowUntil >= state.simTime)) return refuse('Establish a live electronic foothold first');
     if (target.data.violenceCargoSpilled || target.data.freightRewardOwner === 'manifest_custody'

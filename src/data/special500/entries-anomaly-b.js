@@ -108,7 +108,7 @@ export const ENTRIES_ANOMALY_B = [
     trigger: { type: 'receipt', event: 'combat:kill' },
     channel: 'memory',
     payload: {
-      text: 'Break a hull inside six hundred u of the Broken Shepherd and its wreck-herding rigs detach, piece by piece, and gather the fresh wreckage into a quiet orbit around it — the flock, re-flocked. Its one working PA loops, softer each cycle: "COUNTED. COUNTED. COUNTED." The count is correct.',
+      text: 'Break a hull inside six hundred meters of the Broken Shepherd and its wreck-herding rigs detach, piece by piece, and gather the fresh wreckage into a quiet orbit around it — the flock, re-flocked. Its one working PA loops, softer each cycle: "COUNTED. COUNTED. COUNTED." The count is correct.',
     },
     followup: 'kill-event proximity check (600 WU of poi_charon_broken_shepherd) + wreck-herding presentation on the uniqueWrecks seam orbiting the fresh wreckage; flag flock_reflocked; the wreckage stays collectible salvage for anyone (Understory first claim); codex page "Re-Flocked"',
   },
@@ -140,7 +140,7 @@ export const ENTRIES_ANOMALY_B = [
     trigger: { type: 'sectorEntry' },
     channel: 'memory',
     payload: {
-      text: 'Inside the Anvil\'s storm band there is one circle of nothing — eighty u across, fixed-seeded, drifting one band-width per season — where the lightning stops, the drag vanishes, and loose debris hangs motionless, glittering. A calm pocket the storm flows around. Heat cools at the out-of-band rate inside. The pilots who track it call it the only honest repair berth in the sector, and they do not share the coordinates. They do share the season math.',
+      text: 'Inside the Anvil\'s storm band there is one circle of nothing — eighty meters across, fixed-seeded, drifting one band-width per season — where the lightning stops, the drag vanishes, and loose debris hangs motionless, glittering. A calm pocket the storm flows around. Heat cools at the out-of-band rate inside. The pilots who track it call it the only honest repair berth in the sector, and they do not share the coordinates. They do share the season math.',
     },
     followup: 'sectorZones zone record (anomaly_deep type, no presence) whose position steps one band-width per season from a season hash; drag/heat exemption keyed by the same predicate as the planets.js storm bands; codex entry; tracking it across seasons is the pilot skill',
   },
@@ -156,7 +156,7 @@ export const ENTRIES_ANOMALY_B = [
     channel: 'spectacle',
     payload: {
       from: 'Helios weather desk',
-      text: 'One small patch off the tutorial lane is a storm that does not exist: a registered weather cell, forty u of crawling static and curtain flickers, running every day in every season. The forecast line for that exact patch reads CLEAR. It has read clear every day since the charts began. The cell\'s footprint is exactly the size of a station that isn\'t there anymore. The weather remembers the station. The forecast does not.',
+      text: 'One small patch off the tutorial lane is a storm that does not exist: a registered weather cell, forty meters of crawling static and curtain flickers, running every day in every season. The forecast line for that exact patch reads CLEAR. It has read clear every day since the charts began. The cell\'s footprint is exactly the size of a station that isn\'t there anymore. The weather remembers the station. The forecast does not.',
     },
   },
 
@@ -504,7 +504,7 @@ export const ENTRIES_ANOMALY_B = [
     channel: 'spectacle',
     payload: {
       from: 'Lung Marker',
-      text: 'Inside a hundred u of the lane marker its speaker crackles and plays forty seconds of year-old traffic chatter — real voices, real idioms, the sector\'s own contact ledger played back degraded — then stops, mid-word. The wire has no comment. It does this once per visit and never the same transcript twice in a row. The lane remembers more than anyone on it.',
+      text: 'Inside a hundred meters of the lane marker its speaker crackles and plays forty seconds of year-old traffic chatter — real voices, real idioms, the sector\'s own contact ledger played back degraded — then stops, mid-word. The wire has no comment. It does this once per visit and never the same transcript twice in a row. The lane remembers more than anyone on it.',
     },
   },
 ];

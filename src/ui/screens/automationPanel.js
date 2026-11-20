@@ -62,7 +62,7 @@ export function describeDroneEarnings(state, assetOrDef = {}) {
   }
   const cappedPerMin = Math.min(grossPerMin, capPerMin);
   return { settlement: 'passive', grossPerMin, capPerMin, cappedPerMin,
-    text: `Up to ~${Math.round(cappedPerMin)} cr/min capped · shared ceiling, before upkeep` };
+    text: `Up to ~${Math.round(cappedPerMin)} cr per minute, capped · shared ceiling, before upkeep` };
 }
 
 function droneRecoveryText(state, drone) {
@@ -269,8 +269,8 @@ export function describeOutpostOperation(outpost = {}, def = {}) {
   } else if (state === 'starved') {
     statusLabel = limitingLabel ? `Starved: ${limitingLabel}` : 'Starved';
     detail = limitingLabel
-      ? `${limitingLabel} feed is short. Bring it within 450 wu.`
-      : 'Inputs are not arriving. Bring feedstock within 450 wu.';
+      ? `${limitingLabel} feed is short. Bring it within 450 m.`
+      : 'Inputs are not arriving. Bring feedstock within 450 m.';
     tone = 'warn';
   } else if (state === 'storage_full') {
     statusLabel = 'Storage full';
@@ -304,7 +304,7 @@ export function describeOutpostOperation(outpost = {}, def = {}) {
     label: outputGoodId === 'credits' ? 'Credits' : commodityName(outputGoodId),
     actualPerMin: actualRate == null ? null : roundFlow(actualRate * 60),
     targetPerMin: requestedRate == null ? null : roundFlow(requestedRate * 60),
-    unit: outputGoodId === 'credits' ? 'cr/min' : 'u/min',
+    unit: outputGoodId === 'credits' ? 'cr per minute' : 'units per minute',
   };
   const capacity = Math.max(0, Number(outpost.storageCap != null ? outpost.storageCap : def.storageCap) || 0);
   const stored = Math.max(0, Number(outpost.storage) || 0);
@@ -1073,7 +1073,7 @@ export const automationScreen = {
           </svg>
           <div class="au-meter">
             <span class="lbl">EST. NET VALUE</span>
-            <span class="val" data-rate>0 cr/min</span>
+            <span class="val" data-rate>0 cr per minute</span>
             <span class="au-captxt" data-captxt>cap —</span>
           </div>
           <div class="au-flow" data-flow></div>
@@ -1251,7 +1251,7 @@ export const automationScreen = {
     const rate = this._currentRatePerMin();
     const cap = this._passiveCapPerMin();
     const rateEl = this._els && this._els.rate;
-    if (rateEl) setRollingCounter(rateEl, `${Math.round(rate)} cr/min`);
+    if (rateEl) setRollingCounter(rateEl, `${Math.round(rate)} cr per minute`);
     // A4: Arc Gauge — bone fill to the drawn rate, ghost arc for the headroom beyond it.
     const pct = cap > 0 ? Math.max(0, Math.min(100, (Math.max(0, rate) / cap) * 100)) : 0;
     const headPct = cap > 0 ? Math.max(0, Math.min(100 - pct, ((cap - Math.max(0, rate)) / cap) * 100)) : 0;
@@ -1276,7 +1276,7 @@ export const automationScreen = {
       const over = Math.max(0, rate) - cap;
       captxt.textContent = over > 0.5
         ? `over +${fmtCr(over)} — payout limited`
-        : `+${fmtCr(Math.max(0, cap - Math.max(0, rate)))} headroom`;
+        : `+${fmtCr(Math.max(0, cap - Math.max(0, rate)))} cr left under the cap`;
       captxt.dataset.state = over > 0.5 ? 'over' : 'headroom';
     }
     this._syncFlow(rate, cap);
@@ -1299,7 +1299,7 @@ export const automationScreen = {
         </div>`).join('') + `
         <div class="au-node au-node--purse" data-node="purse">
           <span class="au-node__ring" aria-hidden="true"></span>
-          <span class="au-node__t"><b data-n-total>0</b><i data-n-sub>est. cr/min</i></span>
+          <span class="au-node__t"><b data-n-total>0</b><i data-n-sub>est. cr per minute</i></span>
         </div>`;
     }
     const st = this._ctx.state;
@@ -1347,8 +1347,8 @@ export const automationScreen = {
     const sub = el.querySelector('[data-n-sub]');
     if (sub) {
       sub.textContent = this._conduct && classRate[this._conduct] != null
-        ? `${this._conduct} ${fmtCr(Math.max(0, classRate[this._conduct]))}/min`
-        : 'est. cr/min';
+        ? `${this._conduct} ${fmtCr(Math.max(0, classRate[this._conduct]))} per minute`
+        : 'est. cr per minute';
     }
     el.setAttribute('aria-label', `Conduct the machine — asset flow: ${counts.drones} drones, `
       + `${counts.traders} traders, ${counts.outposts} outposts, ${counts.fleet} escorts; total `
@@ -1554,7 +1554,7 @@ export const automationScreen = {
       </div>
       <div class="au-summary" aria-label="Automation summary">
         ${metricHtml('Assets', String(summary.activeAssets), [`${summary.drones} drones /`, `${summary.traders} traders /`, `${summary.outposts} outposts`])}
-        ${metricHtml('Est. net value', `${fmtCr(summary.netRatePerMin)} cr/min`, [`output ${fmtCr(summary.grossRatePerMin)} -`, `upkeep ${fmtCr(summary.upkeepPerMin)}`, 'before payout limits'])}
+        ${metricHtml('Est. net value', `${fmtCr(summary.netRatePerMin)} cr per minute`, [`output ${fmtCr(summary.grossRatePerMin)} -`, `upkeep ${fmtCr(summary.upkeepPerMin)}`, 'before payout limits'])}
         ${metricHtml('Cap Load', capLoad.label, capLoad.detail)}
         ${metricHtml('Lifetime paid', `${fmtCr(summary.totalPassiveEarnedLifetime)} cr`, summary.distressedAssets ? `before upkeep · ${summary.distressedAssets} distressed` : 'before upkeep')}
       </div>`;
@@ -1595,7 +1595,7 @@ export const automationScreen = {
               <div><span class="au-flow-k">Limit</span><strong class="au-operation-status ${escapeHtml(readout.tone)}">${escapeHtml(readout.statusLabel)}</strong></div>
               <div><span class="au-flow-k">Last sale</span><strong>${escapeHtml(readout.lastText)}</strong></div>
             </div>
-            <div class="au-note">Operating cost ${escapeHtml(String(readout.operatingCostPerMin))} cr/min · estimated net ${fmtCr(readout.netThroughputPerMin)}/min. ${escapeHtml(readout.reason)}</div>
+            <div class="au-note">Operating cost ${escapeHtml(String(readout.operatingCostPerMin))} cr per minute · estimated net ${fmtCr(readout.netThroughputPerMin)} per minute. ${escapeHtml(readout.reason)}</div>
             ${readout.cycleText ? `<div class="au-note">${escapeHtml(readout.cycleText)}</div>` : ''}`
           : `<div class="au-note">${escapeHtml(programMeta)}</div>`;
         const stranded = d.status === 'stranded';
@@ -1613,7 +1613,7 @@ export const automationScreen = {
               <span>${escapeHtml(earnings.text)}</span>
               <span>buffer ${Math.round(buf)}/${bufCap} ${miniBar(buf / bufCap)}</span>
               <span>fuel ${miniBar(fuelPct)}</span>
-              <span>upkeep ${def.upkeepPerMin}/min</span>
+              <span>upkeep ${def.upkeepPerMin} per minute</span>
             </div>
             <div class="au-program-row">
               <span class="au-program-label">Program:</span>
@@ -1698,11 +1698,11 @@ export const automationScreen = {
           <div class="grow">
             <div class="nm">${prettyId(def.id)} ${statusPill(t.status)}</div>
             <div class="meta">
-              <span>cargo ${def.cargoVol}u</span>
+              <span>cargo ${def.cargoVol} units</span>
               <span>cycle ${def.cycleTime}s</span>
               <span>route ${route}</span>
               <span>route heat ${hot}%</span>
-              <span>upkeep ${def.upkeepPerMin}/min</span>
+              <span>upkeep ${def.upkeepPerMin} per minute</span>
             </div>
             <div class="au-note">${stallNote}</div>
             ${receiptLine ? `<div class="au-note">${receiptLine}</div>` : ''}
@@ -1722,7 +1722,7 @@ export const automationScreen = {
     if (charter) {
       const credits = Math.max(0, Number(st.player && st.player.credits) || 0);
       const missing = Math.max(0, charter.costCr - credits);
-      const terms = `One fully crewed Hauler: ${fmtCr(charter.costCr)} cr once, ${charter.upkeepPerMin} cr/min upkeep; ${charter.cycleTime}s per run. No fleet research needed or unlocked. The crew trades on live prices; a run can pay nothing, and the ship can be lost. Reroute or dismiss it from Traders.`;
+      const terms = `One fully crewed Hauler: ${fmtCr(charter.costCr)} cr once, ${charter.upkeepPerMin} cr per minute upkeep; ${charter.cycleTime}s per run. No fleet research needed or unlocked. The crew trades on live prices; a run can pay nothing, and the ship can be lost. Reroute or dismiss it from Traders.`;
       const why = !charter.atDesk ? 'One first-run charter is held at the Belt Outpost berth in Ceres — dock there to commission it.'
         : !charter.affordable ? `The crewed charter costs ${fmtCr(charter.costCr)} cr. You need ${fmtCr(missing)} more credits.`
         : 'Commission the one crewed Hauler charter held at this berth.';
@@ -1754,7 +1754,7 @@ export const automationScreen = {
         <div class="grow">
           <div class="nm">${prettyId(def.id)}</div>
           <div class="meta">
-            <span>cargo ${def.cargoVol}u</span>
+            <span>cargo ${def.cargoVol} units</span>
             <span>cycle ${def.cycleTime}s</span>
             <span>eff ${Math.round(def.tradeEff * 100)}%</span>
             <span>loss/cycle ${Math.round(def.baseLossPerCycle * 100)}%</span>
@@ -1792,7 +1792,7 @@ export const automationScreen = {
         const saleText = o.lastSale
           ? `Last receipt +${fmtCr(o.lastSale.credited)} cr · realized ${fmtCr(o.totalSaleCredits || 0)} cr`
           : 'No receipts yet. Stored output is not income.';
-        const accessHint = near ? 'In range — transfers ready.' : 'Fly within 450 wu to transfer.';
+        const accessHint = near ? 'In range — transfers ready.' : 'Fly within 450 m to transfer.';
         const inputGoods = outpostInputIds(o, def);
         const inputUsed = outpostInputUsed(o);
         const inputCap = outpostInputCapacity(o, def);
@@ -1803,16 +1803,16 @@ export const automationScreen = {
         const outputVol = outputGood ? cargoUnitVolume(st, outputGood) : 0;
         const holdFitsOutput = !outputGood || (outputVol > 0 ? holdFree >= outputVol : holdFree > 0);
         const arrears = Math.floor(a.accumulators?.upkeepDebt || 0);
-        const supplyWhy = !near ? 'Fly within 450 wu'
+        const supplyWhy = !near ? 'Fly within 450 m'
           : inputUsed >= inputCap ? 'Inputs full'
           : !hasFeedstock ? 'No feedstock in hold' : '';
-        const collectWhy = !near ? 'Fly within 450 wu'
+        const collectWhy = !near ? 'Fly within 450 m'
           : o.storage < 1 ? 'Nothing stored'
           : !holdFitsOutput ? 'Hold is full' : '';
         const settleWhy = o.storage < 1 ? 'Nothing stored'
           : o.status === 'distressed' ? 'Pay arrears first'
           : o.status === 'raided' ? 'Raided' : '';
-        const recoverWhy = !near ? 'Fly within 450 wu'
+        const recoverWhy = !near ? 'Fly within 450 m'
           : inputUsed < 1 ? 'Nothing stored'
           : holdFree <= 0 ? 'Hold is full' : '';
         const upgradeWhy = stopped ? 'Facility stopped'
@@ -1821,7 +1821,7 @@ export const automationScreen = {
         const inputHtml = operation.inputs.length
           ? operation.inputs.map((input) => `
               <strong>${entitySpanHtml('commodity:' + input.goodId, escapeHtml(input.label))}</strong>
-              <span class="au-flow-v">${escapeHtml(rateText(input.actualPerMin, 'u/min'))}${input.short ? ' · short' : ''} · ${escapeHtml(displayFlowNumber(input.stored))} stored</span>`).join('')
+              <span class="au-flow-v">${escapeHtml(rateText(input.actualPerMin, 'units per minute'))}${input.short ? ' · short' : ''} · ${escapeHtml(displayFlowNumber(input.stored))} stored</span>`).join('')
           : `<strong>No feedstock</strong><span class="au-flow-v">self-contained facility</span>`;
         const outputRate = comparisonRateText(operation.output.actualPerMin, operation.output.targetPerMin, operation.output.unit);
         const storageText = `${displayFlowNumber(operation.storage.stored)}/${displayFlowNumber(operation.storage.capacity)} ${operation.storage.unit} stored`;
@@ -1877,8 +1877,8 @@ export const automationScreen = {
               <div class="au-detail-row">
                 <span>${escapeHtml(recipeText(def.recipe))}</span>
                 <span>defense ${escapeHtml((def.defense || 0) + 15 * (level - 1))}</span>
-                <span>upkeep ${escapeHtml(displayFlowNumber((def.upkeepPerMin || 0) * Math.pow(1.5, level - 1)))} cr/min</span>
-                ${!passive ? `<span>input storage ${displayFlowNumber(inputUsed)}/${inputCap} u</span><span>buyer: ${escapeHtml(buyer)}</span>` : ''}
+                <span>upkeep ${escapeHtml(displayFlowNumber((def.upkeepPerMin || 0) * Math.pow(1.5, level - 1)))} cr per minute</span>
+                ${!passive ? `<span>input storage ${displayFlowNumber(inputUsed)}/${inputCap} units</span><span>buyer: ${escapeHtml(buyer)}</span>` : ''}
               </div>
             </details>
           </div>`;
@@ -2325,7 +2325,7 @@ export function describeAutomationCapLoad(summary = {}) {
     return {
       state: 'over-cap',
       label,
-      detail: fmtCr(overage) + ' cr/min over cap; ' + automationCapConsequence(summary),
+      detail: fmtCr(overage) + ' cr per minute above the cap; ' + automationCapConsequence(summary),
       overagePerMin: overage,
       headroomPerMin: 0,
     };
@@ -2334,7 +2334,7 @@ export function describeAutomationCapLoad(summary = {}) {
   return {
     state: pctValue >= 90 ? 'tight' : 'healthy',
     label,
-    detail: fmtCr(headroom) + ' cr/min headroom',
+    detail: fmtCr(headroom) + ' cr per minute below the cap',
     overagePerMin: 0,
     headroomPerMin: headroom,
   };
@@ -2417,7 +2417,7 @@ export function automationNextAction(state) {
   }
   const charter = seedCharterOffer(state);
   if (charter) {
-    const terms = `One fully crewed Hauler: ${fmtCr(charter.costCr)} cr once, ${charter.upkeepPerMin} cr/min upkeep; ${charter.cycleTime}s per run. No fleet research needed or unlocked. The crew trades on live prices; a run can pay nothing, and the ship can be lost. Reroute or dismiss it from Traders.`;
+    const terms = `One fully crewed Hauler: ${fmtCr(charter.costCr)} cr once, ${charter.upkeepPerMin} cr per minute upkeep; ${charter.cycleTime}s per run. No fleet research needed or unlocked. The crew trades on live prices; a run can pay nothing, and the ship can be lost. Reroute or dismiss it from Traders.`;
     const action = !charter.atDesk ? 'openSeedCharterRoute' : charter.affordable ? 'commissionSeedCharter' : 'switchTab';
     return nextAction('traders', 'A crew for your first run',
       (!charter.atDesk ? 'Belt Outpost has one first-run charter after Book 5. ' : 'Dispatch leaves the receipt face down. “Pay the crew. Read the clearing line when it comes back.” ') + terms,
@@ -2470,7 +2470,7 @@ export function automationNextAction(state) {
       overCap
         ? `Output value is over the payout cap: ${automationCapConsequence(summary)}. Research logistics tiers or rebalance before buying more.`
         : 'Production is near the cap. Research logistics tiers or rebalance before buying more.',
-      overCap ? `${fmtCr(capLoad.overagePerMin)} cr/min over cap` : `${Math.round(summary.capUsedPct)}% cap load`,
+      overCap ? `${fmtCr(capLoad.overagePerMin)} cr per minute above the cap` : `${Math.round(summary.capUsedPct)}% of the cap in use`,
       'Review Drones');
   }
   if (!(a.traders || []).length) {
@@ -2523,7 +2523,7 @@ export function automationNextAction(state) {
   }
   return nextAction('fleet', 'Keep routes defended',
     'Your automation stack is online. Keep the cap healthy, rotate hot trader routes, and add escorts before dangerous expansion.',
-    `${fmtCr(summary.netRatePerMin)} cr/min net`, 'Review Fleet');
+    `${fmtCr(summary.netRatePerMin)} cr per minute net`, 'Review Fleet');
 }
 
 function nextAction(tab, title, body, meta, cta, options = {}) {
@@ -2655,7 +2655,7 @@ function recipeText(r) {
 export function formatTraderReceipt(t) {
   const r = t && t.lastReceipt;
   if (!r) return '';
-  const legs = `${escapeHtml(String(r.qty))}u ${escapeHtml(traderPortLine(r.from, r.to))} · bought @${fmtCr(r.buyUnit)} · sold @${fmtCr(r.sellUnit)} · fuel ${fmtCr(r.fuelCost)}`;
+  const legs = `${escapeHtml(String(r.qty))} units ${escapeHtml(traderPortLine(r.from, r.to))} · bought @${fmtCr(r.buyUnit)} · sold @${fmtCr(r.sellUnit)} · fuel ${fmtCr(r.fuelCost)}`;
   if (r.result === 'paid') return `Last delivery #${r.n}: ${legs} · net +${fmtCr(r.credited)} cr${r.overflowDropped > 0 ? ` · ${fmtCr(r.overflowDropped)} cr withheld by the passive income cap` : ''}${r.walletWithheld > 0 ? ` · ${fmtCr(r.walletWithheld)} cr above the credit limit` : ''}`;
   if (r.result === 'capped') return `Last delivery #${r.n}: ${legs} · no payout — passive income cap reached`;
   if (r.result === 'wallet_full') return `Last delivery #${r.n}: ${legs} · no payout — credit limit reached`;

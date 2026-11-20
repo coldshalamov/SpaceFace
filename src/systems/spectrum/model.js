@@ -582,7 +582,7 @@ export function applyMeasure(model, origin, velocity, simTime) {
     if (!model.flags.jammed) {
       model.flags.jammed = true;
       const leave = Math.round(model.jamWu);
-      model.receipts.push(`Noise floor high. Leave the curtain (${leave} WU) and pulse again.`);
+      model.receipts.push(`Noise floor high. Leave the curtain (${leave} m) and pulse again.`);
     }
     pushLog(model, {
       t: round3(time),

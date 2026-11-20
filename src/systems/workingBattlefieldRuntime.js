@@ -194,7 +194,7 @@ export const WORKING_BATTLEFIELD_RUNTIME = Object.freeze({
       reward_cr: MISSION_TUNING.BASE.demolition, collateral_cr: 0,
       brief: 'Time the crusher into the tower, or cut its plate and use guns. Then contain it or leave.',
       summary: 'No fee. Bring a mining beam and a gun; both are available at the Helios shipyard. '
-        + 'Two job polymers need 2.4u free hold space, once only. Lost output deducts 180 cr. Abandon from the Mission Log.',
+        + 'Two job polymers need 2.4 units of free hold space, once only. Lost output deducts 180 cr. Abandon from the Mission Log.',
       params: { workingBattlefield: { machineId: MACHINE.id }, physicalVerb: 'knock_down',
         completionMethods: ['wrecking_ball', 'cut_down'] },
     });

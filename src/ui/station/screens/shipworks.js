@@ -1419,7 +1419,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       ['Cap max', `${fmt(d.capMax)}`],
       ['Cap regen', `${Math.round(finite(d.capRegen, 0) * 10) / 10}/s`],
       ['Continuous drain', `${Math.round(finite(d.continuousDrain, 0) * 10) / 10}/s`],
-      ['Cargo cap', `${fmt(d.cargoCap)} u`],
+      ['Cargo cap', `${fmt(d.cargoCap)} units`],
       ['Operational mass', `${fmt(d.operationalMass)} t`],
       ['Turn rate', turnRecordText(d)],
       // NXB-030: 'Thrust' and 'Fight speed' quote the live propulsion profile (the numbers
@@ -4669,7 +4669,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         const move = inSocket ? Math.min(d.magazine - inSocket, stock) : Math.min(d.magazine, stock);
         if (move > 0) {
           const word = inSocket ? 'Top up' : elsewhereIndex >= 0 ? 'Move here' : 'Load';
-          verbs.push(`<button type="button" ${stationControlAttrs('payload-fit')} class="k-word k-word--fine k-word--primary sx-modrow__buy" data-payload-fit="${escapeHtml(d.id)}" ${outfit ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${word} <small class="k-38">${move} u</small></button>`);
+          verbs.push(`<button type="button" ${stationControlAttrs('payload-fit')} class="k-word k-word--fine k-word--primary sx-modrow__buy" data-payload-fit="${escapeHtml(d.id)}" ${outfit ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${word} <small class="k-38">${move} units</small></button>`);
         }
       }
       const buyLabel = !outfit ? 'Dock to buy' : afford ? 'Buy' : `Need ${fmt(d.price)} cr`;

@@ -124,7 +124,7 @@ export const ENTRIES_ANNEX = [
     trigger: { type: 'proximity', nearStation: 'poi_eunomia_debris', wu: 250 },
     channel: 'memory',
     payload: {
-      text: 'Forty impact fragments lie exactly on a circle 120 u across, every long axis pointed at the center — not scattered, arranged. A survey pin at the circle\'s edge reads: CIRCUMFERENCE RE-CHECKED, DAY 40, UNCHANGED. Nothing explains the circle.',
+      text: 'Forty impact fragments lie exactly on a circle 120 m across, every long axis pointed at the center — not scattered, arranged. A survey pin at the circle\'s edge reads: CIRCUMFERENCE RE-CHECKED, DAY 40, UNCHANGED. Nothing explains the circle.',
     },
     followup: 'opticScatterSpecsFor-style seeded placement on a circle constraint + claim-mark donor prop; Archive scan bonus + codex anomaly page',
   },

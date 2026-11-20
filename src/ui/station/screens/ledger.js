@@ -88,7 +88,7 @@ export function readingOf(entry) {
       const effect = [perUnit != null ? `${perUnit.toLocaleString('en-US')} cr per unit` : '', str(t.station)].filter(Boolean).join(' · ');
       // one label says the direction (TRADE · SOLD); the unit is only the unit, on the numeral's baseline
       return { hero: Number.isFinite(credits) ? `${sold ? '+' : '\u2212'}${credits.toLocaleString('en-US')}` : str(t.credits), unit: 'cr',
-        title: [qty > 0 ? `${qty}u` : '', str(t.commodity)].filter(Boolean).join(' '), kicker: kick(type, sold ? 'sold' : 'bought'), line: effect };
+        title: [qty > 0 ? `${qty} units` : '', str(t.commodity)].filter(Boolean).join(' '), kicker: kick(type, sold ? 'sold' : 'bought'), line: effect };
     }
     case 'witness':
       return t.credits
@@ -438,7 +438,7 @@ export function createLedgerScreen(ctx) {
       if (line) {
         line.textContent = '';
         const item = document.createElement('span'); item.className = 'sx-ledger__item';
-        item.textContent = `${verb.charAt(0).toUpperCase()}${verb.slice(1)} ${t.qty != null ? `${t.qty}u ` : ''}${t.commodity || ''} \u00b7 ${t.station || ''}`;
+        item.textContent = `${verb.charAt(0).toUpperCase()}${verb.slice(1)} ${t.qty != null ? `${t.qty} units ` : ''}${t.commodity || ''} \u00b7 ${t.station || ''}`;
         const fig = document.createElement('span'); fig.className = 'sx-ledger__fig';
         fig.textContent = `${sold ? '+' : '\u2212'}${credits.toLocaleString('en-US')} cr`;
         line.append(item, fig);

@@ -883,7 +883,7 @@ const distress = {
           ? Math.round(Math.hypot(player.pos.x - pos.x, player.pos.z - pos.z))
           : null;
         d.say(live, 'info', range != null
-          ? `The mayday is ${range} WU out. Close in before a scan will hold.`
+          ? `The mayday is ${range} m out. Close in before a scan will hold.`
           : 'The mayday will not read from here.', null, { literal: true });
       }
       // A successful read is information, not a commitment to abandon the rescue. Re-open
@@ -3771,7 +3771,7 @@ const whisper = {
     if (dist2(player.pos.x, player.pos.z, src.pos.x, src.pos.z) > tellR * tellR) return;
     live.data.toldHint = true;
     d.say(live, 'info', 'whisper_scan_hint', {
-      range: `${Math.round(Math.sqrt(dist2(player.pos.x, player.pos.z, src.pos.x, src.pos.z)))} WU`,
+      range: `${Math.round(Math.sqrt(dist2(player.pos.x, player.pos.z, src.pos.x, src.pos.z)))} m`,
     });
   },
 };

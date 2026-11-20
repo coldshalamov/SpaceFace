@@ -238,7 +238,7 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
     const statsRow = el('div', 'fb-kv-row');
     statsRow.append(
       el('span', '', `Core Reserve · R${vm.selectedAsteroid.radius}`),
-      el('span', 'fb-kv-val', `${vm.selectedAsteroid.yieldU}u`),
+      el('span', 'fb-kv-val', `${vm.selectedAsteroid.yieldU} units`),
     );
     geoSec.appendChild(statsRow);
     for (const c of vm.selectedAsteroid.composition) {
@@ -281,7 +281,7 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
   const capRow = el('div', 'fb-kv-row');
   capRow.append(el('span', '', 'Capacitor Reserve'), el('span', 'fb-kv-val', `${Math.round(site.capacitorMwS || 0)} MwS (${capPct}%)`));
   const storRow = el('div', 'fb-kv-row');
-  storRow.append(el('span', '', 'Lane Storage'), el('span', 'fb-kv-val', `${site.storedU} / ${site.capacityU}u`));
+  storRow.append(el('span', '', 'Lane Storage'), el('span', 'fb-kv-val', `${site.storedU} / ${site.capacityU} units`));
   const defRow = el('div', 'fb-kv-row');
   defRow.append(el('span', '', 'Orbital & Drones'), el('span', 'fb-kv-val', `${site.defenses.length} orb · ${site.drones?.length || 0}/${site.maxDrones || 6} drn`));
   panel.append(pwrRow, capRow, storRow, defRow);
@@ -412,12 +412,12 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
       const minus = el('button', 'fb-mini-btn', '−5');
       minus.type = 'button';
       minus.addEventListener('click', () => runSiteOp(sys.setReserveFloor(site.siteId, goodId, Math.max(0, reserve - 5))));
-      const lbl = el('span', 'fb-kv-val', `${reserve}u`);
+      const lbl = el('span', 'fb-kv-val', `${reserve} units`);
       const plus = el('button', 'fb-mini-btn', '+5');
       plus.type = 'button';
       plus.addEventListener('click', () => runSiteOp(sys.setReserveFloor(site.siteId, goodId, Math.min(500, reserve + 5))));
       ctrl.append(minus, lbl, plus);
-      row.append(el('span', '', `${commodityDisplayName(goodId)}: ${qty}u`), ctrl);
+      row.append(el('span', '', `${commodityDisplayName(goodId)}: ${qty} units`), ctrl);
       stockList.appendChild(row);
     }
   }
@@ -435,7 +435,7 @@ function renderSiteTab({ panel, vm, sys, callbacks }) {
     const rm = el('button', 'fb-mini-btn danger', '×');
     rm.type = 'button';
     rm.addEventListener('click', () => runSiteOp(sys.removeSiteLink(site.siteId, l.targetSiteId, l.kind), 'Link removed.'));
-    row.append(el('span', '', `${desc} (${l.kind === 'power' ? `${l.ratePerMin || 0} MW` : `${Math.round(l.transferredU || 0)}u`})`), rm);
+    row.append(el('span', '', `${desc} (${l.kind === 'power' ? `${l.ratePerMin || 0} MW` : `${Math.round(l.transferredU || 0)} units`})`), rm);
     linkList.appendChild(row);
   }
   if (vm.peerSites.length) {
@@ -631,7 +631,7 @@ function renderMatrixTab({ panel, vm, sys, callbacks }) {
   }
 
   const sec = el('div', 'fb-section');
-  sec.appendChild(el('h4', 'fb-sec-title', 'Commodity Balance (u/min)'));
+  sec.appendChild(el('h4', 'fb-sec-title', 'Commodity Balance (units per minute)'));
   const list = el('div', 'fb-list');
   if (!m.commodities?.length) {
     list.appendChild(el('div', 'fb-tool-sub', 'No active extraction or refining chains in this sector yet.'));
@@ -641,7 +641,7 @@ function renderMatrixTab({ panel, vm, sys, callbacks }) {
       const row = el('div', 'fb-kv-row');
       const tone = c.bottleneck === 'deficit' ? 'danger-txt' : (c.bottleneck === 'surplus' ? 'mint-txt' : '');
       row.append(
-        el('span', '', `${c.name} (${Math.round(c.stockU)}u)`),
+        el('span', '', `${c.name} (${Math.round(c.stockU)} units)`),
         el('span', `fb-kv-val ${tone}`, `+${c.prodPerMin} / −${c.consPerMin} (${c.netPerMin >= 0 ? '+' : ''}${c.netPerMin})`),
       );
       const totalFlow = Math.max(0.1, Number(c.prodPerMin || 0) + Number(c.consPerMin || 0));

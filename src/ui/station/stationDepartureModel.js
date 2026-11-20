@@ -145,7 +145,7 @@ function departureCargoChip(state) {
   return {
     kind,
     label: 'Hold',
-    text: fmtDepartUnits(free) + 'u free' + (sealed ? ' · ' + sealed : ''),
+    text: fmtDepartUnits(free) + ' units free' + (sealed ? ' · ' + sealed : ''),
     targetTab: 'market',
     actionLabel: kind === 'ok' ? 'Open Market to review cargo' : 'Open Market to sell cargo',
   };

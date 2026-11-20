@@ -524,7 +524,7 @@ function rowsByName(fx) {
 }
 function distanceOf(row) {
   const distance = row.querySelector('.sf-overview-row__right').children
-    .find(child => /^\d+ world units$/.test(child.getAttribute('aria-label') || ''));
+    .find(child => /^\d+ meters$/.test(child.getAttribute('aria-label') || ''));
   assert.ok(distance, 'the contact has a real accessible distance datum');
   return distance.textContent;
 }

@@ -48,7 +48,7 @@ function objective(st) {
   if (st.phase === P.RECON) return 'Read the visible CG-7 plate, then scan the original pod and external latch through a clear sightline.';
   if (st.phase === P.DECIDE) return 'Negotiate with Dask at inspection, service the external latch unseen, or use ordinary force and face the law.';
   if (st.phase === P.RECOVERY) return `${st.custody === C.RELEASED && !st.hardwareObservation && !cinderglassJobBeaconFixValid(st.beaconFix, st.operationId)
-    ? 'Tune the CG-7 cargo beacon to locate the drifting original. ' : ''}Tow the same CG-7 pod to Tala’s cradle below ${CINDERGLASS_JOB_RECEIVE_SPEED} WU/s. Khand accepts only an intact original.`;
+    ? 'Tune the CG-7 cargo beacon to locate the drifting original. ' : ''}Tow the same CG-7 pod to Tala’s cradle below ${CINDERGLASS_JOB_RECEIVE_SPEED} m/s. Khand accepts only an intact original.`;
   if (st.phase === P.HANDOFF) return 'Read the condition quote, accept the receiving terms and hold the original slowly at the physical clamp.';
   return null;
 }

@@ -90,7 +90,7 @@ function commitmentVeinLine(prefix, vein, commitment) {
   if (commitment.depleted) return `${prefix}: ${name}. Played out — no cargo.`;
   if (commitment.cargoBlocked) return `${prefix}: ${name}. Holds are full.`;
   const holds = Math.max(0, Math.floor(Number(vein.yieldU) || 0));
-  return holds > 0 ? `${prefix}: ${name}, ${holds}u.` : `${prefix}: ${name}. The vein holds nothing.`;
+  return holds > 0 ? `${prefix}: ${name}, ${holds} units.` : `${prefix}: ${name}. The vein holds nothing.`;
 }
 
 function sameCommitmentCell(a, b) {
@@ -130,7 +130,7 @@ export function formatDrillCommitment(commitment) {
       } else {
         const holds = Math.max(0, Math.floor(Number(facing.yieldU) || 0));
         lines.push(holds > 0
-          ? `Known ore ${name}. Next bore can pay ${holds}u.`
+          ? `Known ore ${name}. Next bore can pay ${holds} units.`
           : `Known ore ${name}. The vein holds nothing.`);
       }
     } else if (facing.evidence === 'known' && facing.type === 'gas') {
@@ -2835,7 +2835,7 @@ export const drillScreen = {
       const cargoUsed = cap > 0 ? Math.round((used / cap) * 100) : 0;
       const cargoFull = cargoUsed >= 100 || (cap > 0 && freeU <= 0);
       setText(hudEls.cargo, 'cargo',
-        cargoFull ? '100% FULL' : `${cargoUsed}% · ${freeU}u free`);
+        cargoFull ? '100% FULL' : `${cargoUsed}% · ${freeU} units free`);
       setClassName(hudEls.cargo, 'cargoCn', cargoFull ? 'bad' : 'v');
       if (cargoFull) {
         showStatusBanner('cargo', DRILL_CARGO_FULL_BANNER);

@@ -316,7 +316,7 @@ function drawHoveredAsteroidReticle(g, row, w, h) {
   g.fillStyle = '#d8d3c8';
   if (row.site) {
     const netMw = Math.round((row.site.totalPowerGenMw || 0) - (row.site.totalPowerDrawMw || 0));
-    g.fillText(`${netMw >= 0 ? '+' : ''}${netMw} MW · ${row.site.storedU}u · ${row.site.drones?.length || 0} drn`, bx + 9, by + 33);
+    g.fillText(`${netMw >= 0 ? '+' : ''}${netMw} MW · ${row.site.storedU} units · ${row.site.drones?.length || 0} drn`, bx + 9, by + 33);
     g.fillStyle = '#92b4c7';
     g.fillText('Click inspect · [2] Link · [8] Works', bx + 9, by + 48);
   } else {
@@ -498,7 +498,7 @@ export function renderFieldTacticalCanvas({
     g.font = '600 12px monospace';
     g.textAlign = 'center';
     g.fillStyle = isPower ? '#f2b949' : '#9ee3ff';
-    const label = isPower ? `${link.ratePerMin || 0} MW` : `${link.ratePerMin || 0} u/m`;
+    const label = isPower ? `${link.ratePerMin || 0} MW` : `${link.ratePerMin || 0} units per minute`;
     g.fillText(label, mx, my - 7);
   }
 
@@ -651,7 +651,7 @@ export function renderFieldTacticalCanvas({
       // Mode-aware pill text above hex
       g.font = '700 12px sans-serif';
       g.textAlign = 'center';
-      let label = `${a.site.specialization?.tag || 'SITE'} · ${a.site.storedU}u`;
+      let label = `${a.site.specialization?.tag || 'SITE'} · ${a.site.storedU} units`;
       if (mapMode === 'power_thermal') {
         label = `${netMw >= 0 ? '+' : ''}${Math.round(netMw)} MW · ${a.site.thermal?.worstBand?.toUpperCase() || 'OK'}`;
       } else if (mapMode === 'defense_threat') {

@@ -24,7 +24,7 @@ const WHY = Object.freeze({
   original_requires_your_massline: 'Keep your MassLine on the original component for the handover.',
   another_line_has_custody: 'Another line still holds this part. Release it before handover.',
   bring_original_inside_receiver: 'Tow the whole component inside the receiving ring.',
-  slow_and_steady_for_weighing: 'Brake below 7 WU/s and stop the spin so the scale can accept it.',
+  slow_and_steady_for_weighing: 'Brake below 7 m/s and stop the spin so the scale can accept it.',
   pilot_outside_receiver: 'Bring your ship close to the scale with the load.',
   original_body_not_ready: 'The original body is unavailable or still entering native physics.',
   already_settled_or_lost: 'That original has already been delivered or lost.',
@@ -214,7 +214,7 @@ export const shipbreakingYard = {
     const range = Math.round(distance(this._player().pos, this.receiver()));
     this.bus.emit('shipbreakingYard:offer', { kind: 'catalog', revision: this._row.revision,
       title: 'CERES SHIPBREAKERS · OPEN FOR WORK',
-      detail: `The receiving scale is ${range} WU away, off Ceres station’s working apron. Three retired hulls await inspection. You can look before paying.`,
+      detail: `The receiving scale is ${range} m away, off Ceres station’s working apron. Three retired hulls await inspection. You can look before paying.`,
       actions: [{ id: 'course', label: 'MARK THE YARD RECEIVING SCALE' }, { id: 'leave', label: 'KEEP FLYING', cancel: true }] });
     return true;
   },

@@ -345,7 +345,7 @@ const SECTOR_OVERLAYS = Object.freeze({
     + 'The weigh-slip buoy\'s abutment stone keeps a season of chalk: every hull that ever idled there, massed and dated, whether or not it asked. '
     + 'Cross the Anvil sling band fast and tangential and the band becomes audible for a moment: one harmonic, every hull singing the '
     + 'same note at the same place on the curve. Mass made audible; even the pirates cross it politely. '
-    + 'Inside the band there is also one calm pocket the storm flows around — eighty WU where the lightning stops, the drag vanishes '
+    + 'Inside the band there is also one calm pocket the storm flows around — eighty meters where the lightning stops, the drag vanishes '
     + 'and heat cools at the out-of-band rate. It steps one band-width per season, and the pilots who track it do not share '
     + 'the coordinates. They share the season math.',
   sector_vesta_forge: 'Foundry sector; the glow is honest work and the smoke is somebody\'s claim. '
@@ -381,7 +381,7 @@ const SECTOR_OVERLAYS = Object.freeze({
     + 'Drift quiet near the Bounty Wrecks field and you may pass through a hunter stakeout\'s open channel — target '
     + 'descriptions, shift changes, crisp argot, none of it about you. Professionals mid-job; the band is their workplace. '
     + 'The plan is worth money to exactly two parties, and only one of them is the hunters. '
-    + 'And at one bearing off the market, if you hold still inside the eighty-WU zone, the hum every hull half-notices resolves '
+    + 'And at one bearing off the market, if you hold still inside the eighty-meter zone, the hum every hull half-notices resolves '
     + 'into a slow melody: the yard\'s cranes, pumps and welders are all in tune, and from here they compose. Move, and it '
     + 'degrades back into machinery. It was always the same machinery. You are what changed.',
   sector_veil_nebula: 'Research Station Veil and the things Dr. Suhl has not translated yet. '

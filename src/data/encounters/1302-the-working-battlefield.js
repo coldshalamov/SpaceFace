@@ -14,7 +14,7 @@ export default defineEncounter(trigger, {
   title: 'The Working Battlefield', factionId: 'faction_mts',
   primaryLine: 'CERES YARD: The crusher keeps working under guard. Bring down its control tower. '
     + 'Ride the warning, shove the heavy workpiece into the jaw on the surge, or mine the breaking plate and use guns. '
-    + 'Bring a mining beam and a gun; the Helios shipyard stocks both. No fee; two job polymers need 2.4u free hold space. Lost output costs 180 cr. '
+    + 'Bring a mining beam and a gun; the Helios shipyard stocks both. No fee; two job polymers need 2.4 units of free hold space. Lost output costs 180 cr. '
     + 'Contain the aftermath or leave the yard; you can abandon the contract from the Mission Log.',
   choices: [{ id: 'accept', label: 'Take the demolition job' }, { id: 'decline', label: 'Leave the yard working' }],
   receipts: {

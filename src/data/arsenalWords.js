@@ -19,7 +19,7 @@ export const finite = (v, d = 0) => (Number.isFinite(Number(v)) ? Number(v) : d)
 export const sec = (n) => `${Math.round(n * 10) / 10}s`;
 // Distances read as bare numbers with a plain word ("520 units out"), never the internal "wu"
 // shorthand — a new player cannot read it (owner 2026-10-27).
-export const wu = (n) => `${Math.round(n)} units`;
+export const wu = (n) => `${Math.round(n)} m`;
 export { pluralWord as plural };
 
 /** A payload's short label: the catalogue's `shortName`, except two retired payloads whose short name is a power's name. */
@@ -187,7 +187,7 @@ export function gyreWords() {
   const g = GYRE_SNARE;
   return {
     name: 'Gyre', verb: 'Gathers rocks', role: 'Gather', glyph: 'power_gyre',
-    sentence: `Hold to gather loose rocks and wrecks (${wu(g.basinRadius)} basin, ${wu(g.mawDist)} ahead) into one growing ball. Release to throw it ahead at up to ${Math.round(g.launchSpeed)} u/s; a full-size ball leaves ${Math.round(g.launchMassPenalty * 100)}% slower.`,
+    sentence: `Hold to gather loose rocks and wrecks (${wu(g.basinRadius)} basin, ${wu(g.mawDist)} ahead) into one growing ball. Release to throw it ahead at up to ${Math.round(g.launchSpeed)} m/s; a full-size ball leaves ${Math.round(g.launchMassPenalty * 100)}% slower.`,
     limits: [`Needs ${g.capActivateMin} charge to start and drains it while held. Cargo, quest wrecks and anchored scenery are towed or skipped, never swallowed; bodies wider than ${wu(g.maxClumpRadius)} do not fit.`],
     target: 'ahead of your nose',
     range: { shape: 'basin', radiusWu: g.basinRadius, reachWu: g.mawDist },

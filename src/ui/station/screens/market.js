@@ -346,7 +346,7 @@ export function trackedCargoGuidance(state, cmdtyId, commodityName) {
     const fullCr = Math.max(0, Math.round(Number(mission.reward_cr) || 0));
     return {
       state: 'partial',
-      text: `Delivers ${fmt(settlement.deliverQty)} of ${fmt(settlement.needQty)}u as held — the dock pays ${fmt(settlement.payCr)} cr, not the full ${fmt(fullCr)} cr. Load ${fmt(shortfall)}u more to settle in full.`,
+      text: `Delivers ${fmt(settlement.deliverQty)} of ${fmt(settlement.needQty)} units as held — the dock pays ${fmt(settlement.payCr)} cr, not the full ${fmt(fullCr)} cr. Load ${fmt(shortfall)} units more to settle in full.`,
     };
   }
   let aboard = held >= requested;
@@ -373,7 +373,7 @@ export function trackedCargoGuidance(state, cmdtyId, commodityName) {
   }
   return {
     state: 'missing',
-    text: `Load ${fmt(remaining)}u more ${commodityName} before undocking${sealedElsewhere > 0 ? ` — ${fmt(sealedElsewhere)}u aboard is sealed to other contracts` : ''}.`,
+    text: `Load ${fmt(remaining)} units more ${commodityName} before undocking${sealedElsewhere > 0 ? ` — ${fmt(sealedElsewhere)} units aboard are sealed to other contracts` : ''}.`,
   };
 }
 
@@ -506,7 +506,7 @@ function holdArcHtml(used, cap) {
         + `<path d="${fill}" fill="none" stroke="rgb(248 244 234)" stroke-width="2.5" stroke-linecap="round"/>`
       : '')
     + `<circle cx="${r2(bx)}" cy="${r2(by)}" r="3" fill="rgb(248 244 234)"/>`
-    + `</svg><span class="orr-mkt-holdarc__t">Hold after<b>${fmt(used)} / ${fmt(cap)} u</b></span>`;
+    + `</svg><span class="orr-mkt-holdarc__t">Hold after<b>${fmt(used)} / ${fmt(cap)} units</b></span>`;
 }
 
 /**
@@ -538,7 +538,7 @@ export function marketLaunderLedgerHtml(state) {
   return `<section data-launder-ledger aria-label="Laundering ledger">` +
     `<p class="k-caps">Laundering ledger · last wash here</p>` +
     `<ul class="k-rows sx-mkt-stats">` +
-      rowKV('Papers washed', `${fmt(units)} u · ${names.join(', ')}`) +
+      rowKV('Papers washed', `${fmt(units)} units · ${names.join(', ')}`) +
       rowKV(`Cut paid (${fmt((Number(receipt.cutFrac) || 0) * 100)}%)`, `${fmt(receipt.cut)} cr`, 'loss') +
     `</ul></section>`;
 }
@@ -597,13 +597,13 @@ export function heldFreightCustodyRows(state, commodityId, held) {
     const raiderLineage = pods.some((pod) => pod && pod.custodySourceKind === 'hostile_raider');
     const owner = freightOwnerWord(record);
     if (record.lawTheftIncidentReceiptId) {
-      rows.push({ text: `up to ${units} u aboard is reported ${owner} — the take is on the warrant ledger` });
+      rows.push({ text: `up to ${units} units aboard is reported ${owner} — the take is on the warrant ledger` });
     } else if (lawfulLineage) {
-      rows.push({ text: `up to ${units} u aboard is still ${owner} — custody open, no report logged` });
+      rows.push({ text: `up to ${units} units aboard is still ${owner} — custody open, no report logged` });
     } else if (raiderLineage) {
-      rows.push({ text: `up to ${units} u aboard was recovered from raiders — yours to settle` });
+      rows.push({ text: `up to ${units} units aboard was recovered from raiders — yours to settle` });
     } else {
-      rows.push({ text: `up to ${units} u aboard traces to an open freight claim` });
+      rows.push({ text: `up to ${units} units aboard traces to an open freight claim` });
     }
   }
   return rows;
@@ -2305,8 +2305,8 @@ export function createMarketScreen(ctx) {
       : pendingTrade && !pendingAtOriginalStation ? 'The original order is still unresolved. Return to the original station to retry these same confirmed terms; do not place a fresh order.'
       : pendingTrade ? 'A trade result is still unknown. Its original lot and quantity stay selected so you can safely retry the same order.'
       : sealedHold ? 'Sealed contract cargo cannot be sold'
-      : sealedWithoutMarket ? `${sealedUnits} u sealed on contract. This station does not trade ${def.name}.`
-      : sealedUnits > 0 ? `${sealedUnits} u sealed on contract — sell limit is ${freeSell} u`
+      : sealedWithoutMarket ? `${sealedUnits} units sealed on contract. This station does not trade ${def.name}.`
+      : sealedUnits > 0 ? `${sealedUnits} units sealed on contract — sell limit is ${freeSell} units`
       : maxQty < 1 ? (mode === 'buy' ? 'Not enough credits, stock, or hold space.' : 'Nothing to sell here.')
       : qty < 1 ? ''
       : qty > maxQty ? 'This quantity exceeds available stock or hold space.'

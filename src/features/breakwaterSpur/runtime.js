@@ -242,7 +242,7 @@ export function createBreakwaterSpurSystem() {
       else if (!this._destinationOffer && !this._offerRevision) {
         this._destinationOffer=true;
         const offer={revision:`destination:${row.seq}`,kind:'bonded',title:'Belt Outpost receiver',
-          detail:'Approach from the southeast. Keep the ship clear; tow the sealed load to the receiving mark, settle below 4 WU/s and keep the line attached.',
+          detail:'Approach from the southeast. Keep the ship clear; tow the sealed load to the receiving mark, settle below 4 m/s and keep the line attached.',
           actions:[{id:'deliver:consignment',label:'Hand off consignment'},{id:'course:receiver',label:'Mark southeast receiving berth'},{id:'close',label:'Leave'}],
           expiresAt:this.state.simTime+BREAKWATER_OFFER_TTL_S};
         this._offerRevision=offer.revision; this.state.breakwaterSpurOffer=offer; this.bus.emit('breakwaterSpur:offer',offer);

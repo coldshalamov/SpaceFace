@@ -737,10 +737,10 @@ function tradeRouteAction(state) {
   const owned = tradeRouteCargoUnits(state, waypoint.commodityId);
   const mapAction = tradeRouteMapAction(state, waypoint);
   const body = owned > 0
-    ? `Sell ${formatUnits(owned)}u ${commodityName} at ${stationName}; use the map handoff if the route needs a jump.`
+    ? `Sell ${formatUnits(owned)} units ${commodityName} at ${stationName}; use the map handoff if the route needs a jump.`
     : `Route set to ${stationName} for ${commodityName}. Load cargo from the Market, or review the destination before launch.`;
   const meta = [
-    owned > 0 ? `${formatUnits(owned)}u aboard` : 'No cargo aboard',
+    owned > 0 ? `${formatUnits(owned)} units aboard` : 'No cargo aboard',
     sectorName,
   ].filter(Boolean).join(' · ');
   return {
@@ -1942,7 +1942,7 @@ export function storyActionForBeat(beat, state) {
         tone: 'primary',
         label: 'CINDER CONTRACT',
         title: 'Three clearances, one real hull',
-        body: 'Read Rook’s Cinder posting at Tethys. In Charon, clear Cinder One, Two and Three and tow one actual marked hull to Rook’s 100-WU ring at Expanse at 8 WU/s or slower. Quiet Line payment is not Rook proof; losing every hull closes clearance for no contract pay.',
+        body: 'Read Rook’s Cinder posting at Tethys. In Charon, clear Cinder One, Two and Three and tow one actual marked hull to Rook’s 100-m ring at Expanse at 8 m/s or slower. Quiet Line payment is not Rook proof; losing every hull closes clearance for no contract pay.',
         meta: 'Tethys desk → Charon lane → Expanse ring',
         ...(boardFix ? {
           markerLabel: waypoint.label,
@@ -1985,7 +1985,7 @@ export function storyActionForBeat(beat, state) {
         const record = paper ? paper.body.replace(' Deploy a drone, trader, or outpost to start earning while you fly.', '') : '';
         return { tone: 'primary', label: 'FIRST RUN', title: 'Meet the crew at Belt Outpost',
           body: 'Belt Outpost in Ceres offers one fully crewed Hauler for ' + charter.costCr.toLocaleString()
-            + ' cr, plus ' + charter.upkeepPerMin + ' cr/min upkeep. Dock there and open Automation. Read the first paid receipt in Traders; buying the charter is not income. Deploy a drone through research if you prefer that route.'
+            + ' cr, plus ' + charter.upkeepPerMin + ' cr per minute upkeep. Dock there and open Automation. Read the first paid receipt in Traders; buying the charter is not income. Deploy a drone through research if you prefer that route.'
             + (record ? ' ' + record : ''),
           meta: 'Crewed service · no research grant', mapAction: stationRouteAction(SEED_CHARTER_STATION, 'Plot route to Belt Outpost') };
       }
@@ -2142,7 +2142,7 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
       label: 'HOLD',
       title: 'Unload cargo',
       body: 'The hold is nearly full. Sell goods or finish a delivery before taking another one-load contract.',
-      meta: cargo.free.toFixed(cargo.free < 10 ? 1 : 0) + 'u free',
+      meta: cargo.free.toFixed(cargo.free < 10 ? 1 : 0) + ' units free',
     });
   } else if (!active.length && cargo.cap > 0 && storyBeat && (storyBeat.beat === 0 || storyBeat.beat === 1)) {
     actions.push({
@@ -2150,7 +2150,7 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
       label: 'READINESS',
       title: 'Keep the hold open',
       body: 'Early mining and haul jobs pay fastest when you leave enough room for contract cargo.',
-      meta: cargo.free.toFixed(cargo.free < 10 ? 1 : 0) + 'u free',
+      meta: cargo.free.toFixed(cargo.free < 10 ? 1 : 0) + ' units free',
     });
   }
 

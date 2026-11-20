@@ -51,7 +51,7 @@ export function createLiveMercyServiceSystem() {
       });
       on('mercyService:tool', (p) => {
         const result = this.seatTool(p); ctx.bus.emit('mercyService:toolResult', result);
-        ctx.bus.emit('toast', { text: result.ok ? `${p.tool} seated on rescue body.` : `Cannot seat tool: ${result.reason}. Move within 16 WU and match velocity.`, kind: result.ok ? 'info' : 'warn', ttl: 4 });
+        ctx.bus.emit('toast', { text: result.ok ? `${p.tool} seated on rescue body.` : `Cannot seat tool: ${result.reason}. Move within 16 m and match velocity.`, kind: result.ok ? 'info' : 'warn', ttl: 4 });
       });
       on('mercyService:order', (p) => {
         const inc = this.rt?.focus;

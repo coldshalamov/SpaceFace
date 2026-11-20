@@ -329,15 +329,15 @@ export function richSeamTargetReadout(target, state) {
       return Object.freeze({
         state: 'open',
         text: opportunity.reservationId
-          ? `${seamLabel} · ALREADY CLAIMED · +${opportunity.bonusU}u`
-          : `${seamLabel} · +${opportunity.bonusU}u · OPEN`,
+          ? `${seamLabel} · ALREADY CLAIMED · +${opportunity.bonusU} units`
+          : `${seamLabel} · +${opportunity.bonusU} units · OPEN`,
         opportunityId: opportunity.opportunityId,
       });
     }
     if (opportunity.state === 'worked') {
       return Object.freeze({
         state: 'worked',
-        text: `WORKED SEAM · ${opportunity.claimedBonusU}u BONUS TAKEN`,
+        text: `WORKED SEAM · ${opportunity.claimedBonusU} units BONUS TAKEN`,
         opportunityId: opportunity.opportunityId,
       });
     }

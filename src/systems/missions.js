@@ -2706,7 +2706,7 @@ export const missions = {
           ...heistBase,
           label: `${PQ019_FACILITIES.lawful_catcher.name} fork`,
           pos: sectorLocalToGlobalForSector({ x: mouth.x, z: mouth.z }, PQ019C_HEIST_SECTOR_ID),
-          reason: 'Bring the assembly through the open end of the fork under 100 u/s',
+          reason: 'Bring the assembly through the open end of the fork under 100 m/s',
         };
       }
       if (liveLoad) {
@@ -2822,7 +2822,7 @@ export const missions = {
             sectorId: params.courseSectorId || m.destSectorId,
             pos: line ? { x: line.x, z: line.z } : null,
             reason: params.phase === 'approach'
-              ? 'Stop within 70 u of the start line, slow to 8 u/s or less, align with the first leg and release any tether'
+              ? 'Stop within 70 m of the start line, slow to 8 m/s or less, align with the first leg and release any tether'
               : 'Hold on the start line until the green light',
           };
         }
@@ -5640,7 +5640,7 @@ export const missions = {
         ? `Make restitution — replace the lost ${lostQty}u and deliver to ${destName}`
         : `Make restitution — report to ${destName}`,
       brief: lostCmdtyId
-        ? `Customs took the lot. ${destName} still wants ${lostQty}u — your credits bought the lesson, not the cargo.`
+        ? `Customs took the lot. ${destName} still wants ${lostQty} units — your credits bought the lesson, not the cargo.`
         : `The clause is broken and the client keeps the book open. Report to ${destName}.`,
       params: {
         ...(lostCmdtyId ? { cmdtyId: lostCmdtyId, qty: lostQty } : {}),

@@ -1275,7 +1275,7 @@ export const MAIL_LETTERS = Object.freeze([
   {
     id: 'mail_special500_spx-c-03', kind: 'cast', from: 'Research Station Veil',
     subject: 'ALL BANDS NOMINAL',
-    body: 'You held station inside four hundred u through the surge, so the wire assumes you '
+    body: 'You held station inside four hundred meters through the surge, so the wire assumes you '
       + 'heard it, and the wire would rather file this than be asked. Under the storm noise, one '
       + 'narrow band is carrying a pattern that is not weather and not any code on the books. It '
       + 'is not interference. Interference does not keep a schedule. The station\'s position, '

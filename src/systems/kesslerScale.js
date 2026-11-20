@@ -316,7 +316,7 @@ export function createKesslerScale() {
             (this._deckPods || (this._deckPods = new Set())).add(e.id);
             if (!this._settlingPods?.has(e.id)) this.bus?.emit('comms:popup', {
               id: `kessler_settle_${e.id}`, sender: KESSLER_SCALE.sender, category: 'story',
-              text: `Scale 4 · load moving at ${check.speed.toFixed(1)} WU/s. Reading waits at ${KESSLER_SCALE.restSpeed} WU/s or below. Freight stays yours.`,
+              text: `Scale 4 · load moving at ${check.speed.toFixed(1)} m/s. Reading waits at ${KESSLER_SCALE.restSpeed} m/s or below. Freight stays yours.`,
               ttl: 5, persist: false,
             });
           } else {

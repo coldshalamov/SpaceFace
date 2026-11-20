@@ -496,7 +496,7 @@ export function missionDossierHtml(m, state, options = {}) {
     routeHtml: `${originEntityHtml(state, origin)} → ${destEntityHtml(m)} · ${escapeHtml(routeText)}`,
     briefingHtml: briefingDiagramHtml(briefing),
     riskHtml: riskSentence(m, consequences, facShort),
-    termsHtml: (cargoName ? termRow('Payload', cargoEntityHtml(cargo, cargoName), cargo.qty ? `${num(cargo.qty)} u` : '') : '')
+    termsHtml: (cargoName ? termRow('Payload', cargoEntityHtml(cargo, cargoName), cargo.qty ? `${num(cargo.qty)} units` : '') : '')
       + termRow('Time', escapeHtml(m.timeLabel || (m.timeLimitMin ? m.timeLimitMin + ' min' : 'Flexible')))
       // a forfeit is a loss: the one term that carries the threat channel's red tick
       // the collateral term always holds its line, so the commit key never moves between missions

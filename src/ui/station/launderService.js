@@ -52,7 +52,7 @@ export function createLaunderService({ bus, getState, document }) {
     for (const quote of quotes) {
       const row = node('div', '', 'k-row');
       row.style.gridTemplateColumns = 'minmax(0, 1fr)';
-      const label = node('span', `${quote.label || names.get(quote.commodityId) || 'Cargo pod'} · ${quote.amount} u · ${quote.distance ?? '?'} u · title: ${quote.ownerName || 'unnamed owner'}${quote.factionId ? ' · cargo faction: ' + (FACTION_LABELS[quote.factionId] || quote.factionId.replace(/^faction_/, '').replaceAll('_', ' ')) : ''} · pod reference ${quote.podId} · cut ${Math.round(quote.cutFrac * 100)}%`);
+      const label = node('span', `${quote.label || names.get(quote.commodityId) || 'Cargo pod'} · ${quote.amount} units · ${quote.distance ?? '?'} m · title: ${quote.ownerName || 'unnamed owner'}${quote.factionId ? ' · cargo faction: ' + (FACTION_LABELS[quote.factionId] || quote.factionId.replace(/^faction_/, '').replaceAll('_', ' ')) : ''} · pod reference ${quote.podId} · cut ${Math.round(quote.cutFrac * 100)}%`);
       label.style.minWidth = '0';
       label.style.overflowWrap = 'anywhere';
       row.appendChild(label);

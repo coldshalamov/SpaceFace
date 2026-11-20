@@ -117,7 +117,7 @@ function offer(world, rec, force = false) {
   if (!force && offers.get(rec) === stamp) return;
   rec.declined = false; offers.set(rec, stamp);
   world.bus.emit('siteEvidence:offer', { siteId: site.siteId, headline: 'A fossil made of motion',
-    detail: 'Two strain controls carry the same old docking fragment. Compare their baseline, hold at least 480 WU clear of each animal (south of the emitter), then play the archived signal. Follow each recorded bearing within 160 WU. The freighter emitter needs no cargo or fee; a fitted Echo Recorder can substitute out to 1300 WU. Weapons interrupt observation; you can leave and retry. '
+    detail: 'Two strain controls carry the same old docking fragment. Compare their baseline, hold at least 480 m clear of each animal (south of the emitter), then play the archived signal. Follow each recorded bearing within 160 m. The freighter emitter needs no cargo or fee; a fitted Echo Recorder can substitute out to 1300 m. Weapons interrupt observation; you can leave and retry. '
       + (rec.path.length ? `Recorded path: ${rec.path.map(p => `${Math.round(p.x)}, ${Math.round(p.z)}`).join(' → ')}.` : `Emitter ${rec.emitterOnline ? 'online' : 'offline — restore it here'}.`),
     choices: [
       { id: 'compare', label: 'Compare the two strain controls' },
@@ -134,7 +134,7 @@ export function handleMotionFossilAction(world, request = {}) {
   const rec = record(world.state);
   const refuse = reason => { log(world, reason); return { ok: false, reason }; };
   if (!playerAtSite(world)) {
-    const reason = 'Move within 460 WU of the Warm Freighter emitter, or within 1300 WU with a fitted Echo Recorder.';
+    const reason = 'Move within 460 m of the Warm Freighter emitter, or within 1300 m with a fitted Echo Recorder.';
     return request.verb === 'observe' ? { ok: false, reason } : refuse(reason);
   }
   if (rec.outcome) return { ok: true, settled: true, outcome: { ...rec.outcome } };
@@ -175,7 +175,7 @@ export function handleMotionFossilAction(world, request = {}) {
     const pair = hosts(world);
     if (pair.some(e => !e)) return refuse('A sampled host is unavailable. No response can be attributed to a missing host.');
     const player = world.state.entities.get(world.state.playerId);
-    if (pair.some(e => distance(player.pos, e.pos) < 480)) return refuse('Hull proximity masks the signal. Hold at least 480 WU clear of each strain control, south of the emitter.');
+    if (pair.some(e => distance(player.pos, e.pos) < 480)) return refuse('Hull proximity masks the signal. Hold at least 480 m clear of each strain control, south of the emitter.');
     rec.signalId = MOTION_FOSSIL_SIGNAL; rec.status = 'observing'; rec.observedFor = 0;
     rec.samples = pair.map(e => ({ faunaKey: e.data.ecology.faunaKey, strainId: e.data.strainId,
       pos: localPoint(world, e.pos), reaction: 'pending' }));

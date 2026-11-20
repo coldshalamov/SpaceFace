@@ -95,8 +95,8 @@ export function winnowRecoveryHailLines(state,entity) {
   const totals={original:0,delivered:0,aboard:0,loose:0,playerRecovered:0,playerHeld:0,playerDisposed:0,lost:0,otherConsumed:0};
   for(const b of batches){const facts=winnowRecoveryFacts(state,b.id);for(const key of Object.keys(totals))totals[key]+=facts[key];}
   const lines=[
-    `WINNOW · ${totals.original}u original. Forge accepted ${totals.delivered}u; aboard ${totals.aboard}u; loose ${totals.loose}u.`,
-    `YOUR SALVAGE · ${totals.playerRecovered}u recovered: ${totals.playerHeld}u held, ${totals.playerDisposed}u no longer held. Confirmed lost ${totals.lost}u; other consumption ${totals.otherConsumed}u.`,
+    `WINNOW · ${totals.original} units original. Forge accepted ${totals.delivered} units; aboard ${totals.aboard} units; loose ${totals.loose} units.`,
+    `YOUR SALVAGE · ${totals.playerRecovered} units recovered: ${totals.playerHeld} units held, ${totals.playerDisposed} units no longer held. Confirmed lost ${totals.lost} units; other consumption ${totals.otherConsumed} units.`,
   ];
   const active=batches.find(b=>['collect','deliver'].includes(b.phase)&&entity.data.vestaWinnowRecovery?.batchId===b.id);
   if(active&&ownsWinnowRecoveryHull(state,entity)) {
@@ -550,7 +550,7 @@ export function reconcileWinnowRecovery(owner) {
       clearTarget(s,b);b.phase='carrier_lost';
       const facts=winnowRecoveryFacts(s,b.id);
       owner.bus.emit('comms:log',{from:'FORGE TRAFFIC',kind:'encounter',
-        text:`Tann's carrier is lost. Winnow: ${facts.loose}u loose; ${facts.lost}u confirmed lost. Loose copper remains legal salvage; sell recovered copper at Forge's Market.`});
+        text:`Tann's carrier is lost. Winnow: ${facts.loose} units loose; ${facts.lost} units confirmed lost. Loose copper remains legal salvage; sell recovered copper at Forge's Market.`});
     }
   }
 }

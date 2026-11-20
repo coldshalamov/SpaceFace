@@ -32,14 +32,14 @@ test('FB-103 the statistics model prints every supplied counter and does not inv
     ...(group.rows || []).map((row) => row.join(' ')),
     group.note || '',
   ]).join('\n');
-  assert.match(text, /Distance flown 1,200 wu/);
+  assert.match(text, /Distance flown 1,200 m/);
   assert.match(text, /Helios Prime time 30 s/);
-  assert.match(text, /Biggest throw 88 wu\/s/);
+  assert.match(text, /Biggest throw 88 m\/s/);
   assert.match(text, /Railgun kills 4/);
   assert.match(text, /Ships lost 2/);
   assert.match(text, /Smuggled 4,242 cr/);
   assert.match(text, /Passive earned 70 cr/);
-  assert.match(text, /Ore hauled · career 0 u/);
+  assert.match(text, /Ore hauled · career 0 units/);
   assert.equal(text.includes('Jumps'), false, 'a zero jump count stays off the sheet');
   assert.match(text, /No law reading available/);
   assert.equal(text.includes('helios_prime'), false);
@@ -51,7 +51,7 @@ test('FB-103 the statistics model prints every supplied counter and does not inv
     playerStats: {},
   });
   const livedText = lived.groups.flatMap((group) => (group.rows || []).map((row) => row.join(' '))).join('\n');
-  assert.match(livedText, /Ore hauled · career 4,242 u/);
+  assert.match(livedText, /Ore hauled · career 4,242 units/);
   assert.match(livedText, /Jumps 3/);
   assert.match(livedText, /Throws 2/);
   assert.match(livedText, /Contracts · career 1/);
@@ -96,7 +96,7 @@ test('RC-40 a fresh save shows one sentence and no zero rows', () => {
   globalThis.document = fakeDom();
   try {
     const node = renderStatistics(lived);
-    assert.match(textLines(node).join(' '), /Distance flown 40 wu/);
+    assert.match(textLines(node).join(' '), /Distance flown 40 m/);
   } finally {
     globalThis.document = previous;
   }

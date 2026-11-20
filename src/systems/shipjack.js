@@ -152,7 +152,7 @@ export const shipjack = {
     const a=this.attempt(vessel,entity);if(!a)return deny('Too many active custody links. Break an old link first.');
     const time=now(state),ready=captureReadiness(state,entity,a);
     if(payload.action==='scan'){
-      if(ready.distance>1200)return deny('Identify within 1,200 WU.');
+      if(ready.distance>1200)return deny('Identify within 1,200 m.');
       a.scanned=true;
       if(TERMINAL.has(a.phase)){a.phase='probed';a.deadline=time+180;a.dwell=0;a.windowUntil=0;}
       else if(a.phase==='observed')a.phase='probed';
@@ -204,7 +204,7 @@ export const shipjack = {
       this.cue('hail',entity);this.dirty();return this.result(payload,{ok:true,reason:'Crew passage accepted. Match speed, approach the service port, and secure the bridge.'});
     }
     if(payload.action==='isolator'){
-      if(ready.distance>180||finite(entity.shield)>1)return deny('Pulse requires an exposed shield and range below 180 WU.');
+      if(ready.distance>180||finite(entity.shield)>1)return deny('Pulse requires an exposed shield and range below 180 m.');
       if(pilot.cap<18)return deny('Pulse isolator needs 18 capacitor energy.');
       // Combat owns both the finite cost and targeted subsystem damage through its action seam.
       const receipt=this.helpers.requestShipjackPulse?.({actorId:pilot.id,targetId:entity.id,generation:vessel.generation});
@@ -213,7 +213,7 @@ export const shipjack = {
       this.cue('isolator',entity);this.dirty();return this.result(payload,{ok:true,reason:'Ion pulse struck the drive bus. Repeated pulses risk the internals; momentum is unchanged.'});
     }
     if(payload.action==='probe'){
-      if(ready.distance>350)return deny('Maintenance handshake needs range below 350 WU.');
+      if(ready.distance>350)return deny('Maintenance handshake needs range below 350 m.');
       if(finite(entity.shield)>1)return deny('Shield noise denies the handshake. Lower it or negotiate.');
       if(!(fittedBlackFlagTool(state,'mod_quiet_intrusion_s')&&a.tries===0))a.adaptation++;
       a.tries++;
@@ -223,14 +223,14 @@ export const shipjack = {
       this.cue('probe',entity);return this.result(payload,{ok:true,reason:'Maintenance access found. Hold a physical approach before the key rotates.'});
     }
     if(payload.action==='drone'){
-      if(ready.distance>300)return deny('Service drone launch range is 300 WU.');
+      if(ready.distance>300)return deny('Service drone launch range is 300 m.');
       if(a.droneId&&state.entities.get(a.droneId)?.alive)return deny('Your service drone is already approaching.');
       if(state.player.credits<45)return deny('A vulnerable service drone costs 45 cr.');
       const charge={amount:45,requireFull:true,expectedCredits:state.player.credits,result:false,reason:`shipjack:pod:${vessel.vesselId}:${a.tries}`};
       this.bus.emit('economy:chargeCredits',charge);if(!charge.result)return deny('Drone launch payment was refused.');
       const e=this.helpers.spawnEntity({type:'drone',team:0,factionId:'faction_player',pos:vec(pilot.pos),vel:vec(pilot.vel),radius:4,mass:6,hull:20,hullMax:20,ttl:25,collides:false,data:{kind:'mining_drone',shipjackServicePod:true,targetVesselId:vessel.vesselId},physicsBody:{shape:'circle',radius:4,dynamic:true}});
       a.droneId=e.id;a.droneLaunchedAt=time;a.droneDwell=0;a.tries++;
-      this.cue('drone',e);return this.result(payload,{ok:true,reason:'Service pod away. Cross the aft port below 25 WU/s; enemy fire can destroy it. Match your own Massline approach to exploit its key.'});
+      this.cue('drone',e);return this.result(payload,{ok:true,reason:'Service pod away. Cross the aft port below 25 m/s; enemy fire can destroy it. Match your own Massline approach to exploit its key.'});
     }
     if(payload.action==='port'){
       if(a.phase!=='exposed')return deny('Expose a maintenance handshake or obtain a crew key first.');

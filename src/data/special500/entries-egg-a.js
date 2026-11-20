@@ -51,7 +51,7 @@ export const ENTRIES_EGG_A = [
     trigger: { type: 'proximity', nearStation: 'poi_charon_star_marker', wu: 120 },
     channel: 'memory',
     payload: {
-      text: 'One star in the wake is too bright for its magnitude, and no parallax ever moves it. From a hundred u out it stops being a star: the oldest navigation beacon on the chart, still burning on a scrap panel, its registration plate older than the colony. Survey pilots trim against its rhythm like a compass, and have never once agreed on who planted it.',
+      text: 'One star in the wake is too bright for its magnitude, and no parallax ever moves it. From a hundred meters out it stops being a star: the oldest navigation beacon on the chart, still burning on a scrap panel, its registration plate older than the colony. Survey pilots trim against its rhythm like a compass, and have never once agreed on who planted it.',
     },
     followup: 'chartable place record per src/data/PLACE_REGISTRATION.md + codex page; the beacon joins the background star row',
   },
@@ -252,7 +252,7 @@ export const ENTRIES_EGG_A = [
     channel: 'commsLog',
     payload: {
       from: 'Outer dark, Ashfall Reach',
-      text: 'Two thousand u from anything with a name, a hand-built marker buoy floats in nothing: transponder VHL-4471-T / TESSERA, transmitter off. Wired to it, a paper tag — the only readable surface for a very long way in any direction: FOR WHOEVER FLIES HER NEXT. SHE PULLS LEFT. SHE IS WORTH IT. — W.',
+      text: 'Two thousand meters from anything with a name, a hand-built marker buoy floats in nothing: transponder VHL-4471-T / TESSERA, transmitter off. Wired to it, a paper tag — the only readable surface for a very long way in any direction: FOR WHOEVER FLIES HER NEXT. SHE PULLS LEFT. SHE IS WORTH IT. — W.',
     },
     followup: 'worldOneOffs row gated on the spine end-state flag; shipScreen hull-notes row ("she pulls left")',
   },

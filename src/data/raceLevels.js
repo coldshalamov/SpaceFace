@@ -557,9 +557,9 @@ const CONTRACTS = Object.freeze([
     reward_cr: 1100,
     duration_s: 900,
     title: 'Burned canopy',
-    brief: 'Customs cooked the overhead picture on the tally. Approach within 70 u of the line at 8 u/s or less, align with the first leg and release any tether; fly the course, then dock at the destination station to file.',
-    summary: 'Stop and align at the start line (within 70 u, at 8 u/s or less, no tether), run the tally, then dock at the destination station. Chase view during countdown and course.',
-    gridLine: 'Approach within 70 u, slow to 8 u/s or less, align with the first leg and release any tether. Dock at the destination after the finish.',
+    brief: 'Customs cooked the overhead picture on the tally. Approach within 70 m of the line at 8 m/s or less, align with the first leg and release any tether; fly the course, then dock at the destination station to file.',
+    summary: 'Stop and align at the start line (within 70 m, at 8 m/s or less, no tether), run the tally, then dock at the destination station. Chase view during countdown and course.',
+    gridLine: 'Approach within 70 m, slow to 8 m/s or less, align with the first leg and release any tether. Dock at the destination after the finish.',
   }),
   Object.freeze({
     id: 'contract_veil_laps',

@@ -291,7 +291,7 @@ export function createSpeedDial({ visor = false } = {}) {
   const foot = el('div', 'orr-cluster__speedfoot');
   const unit = el('span', 'orr-label');
   unit.appendChild(el('span', 'orr-speeddial__word', 'Speed · '));
-  unit.appendChild(el('span', null, 'u/s')); // plain unit char; the internal "wu/s" is jargon (owner 2026-10-27)
+  unit.appendChild(el('span', null, 'm/s')); // plain unit; the internal "wu/s" is jargon (owner 2026-10-27)
   foot.appendChild(unit);
   read.append(numeral, foot);
   root.appendChild(read);

@@ -206,8 +206,8 @@ export function createMasslineCadenceReadout(parent) {
     <div class="ml-cadence__stats">
       <span><span class="ml-cadence__label">Phase </span><span class="ml-cadence__value" data-ml="phase"></span></span>
       <span><span class="ml-cadence__label">Release speed </span><span class="ml-cadence__value" data-ml="speed"></span></span>
-      <span><span class="ml-cadence__label">Clearance / u </span><span class="ml-cadence__value" data-ml="clearance"></span></span>
-      <span><span class="ml-cadence__label">Line / u </span><span class="ml-cadence__value" data-ml="length"></span></span>
+      <span><span class="ml-cadence__label">Clearance / m </span><span class="ml-cadence__value" data-ml="clearance"></span></span>
+      <span><span class="ml-cadence__label">Line / m </span><span class="ml-cadence__value" data-ml="length"></span></span>
       <span><span class="ml-cadence__label">Load </span><span class="ml-cadence__value" data-ml="load"></span></span>
       <span><span class="ml-cadence__label">Energy </span><span class="ml-cadence__value" data-ml="energy"></span></span>
       <span><span class="ml-cadence__label">Apex </span><span class="ml-cadence__value" data-ml="apex"></span></span>

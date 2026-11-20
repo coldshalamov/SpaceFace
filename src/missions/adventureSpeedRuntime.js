@@ -6,15 +6,15 @@ const round = value => Math.round(value * 100) / 100;
 const empty = () => ({ patch: {}, outcome: 'active', reason: null, finishedEvent: null });
 
 function hintFor(config, state, elapsed, nextGate, count) {
-  if (!state) return 'Reach the start marker. The pressure clock begins when you cross it.';
+  if (!state) return 'Reach the start marker. The run clock begins when you cross it.';
   if (state.outcome === 'failed') return state.reason === 'speed_handoff_too_fast'
-    ? `Handoff missed: cross the final marker below ${config.finishSpeedLimit} wu/s.`
+    ? `Handoff missed: cross the final marker below ${config.finishSpeedLimit} m/s.`
     : config.failureText;
   if (state.outcome === 'complete') return 'Passage complete.';
   const left = Math.max(0, state.deadlineElapsedS - elapsed).toFixed(1);
   if (config.kind === 'escape') return `ESCAPE MARGIN ${left}s · Clear the next gate to extend it`;
   if (config.kind === 'windows') return `GATE ${Math.min(count, nextGate + 1)} CLOSES IN ${left}s`
-    + (nextGate === count - 1 ? ` · Finish below ${config.finishSpeedLimit} wu/s` : '');
+    + (nextGate === count - 1 ? ` · Finish below ${config.finishSpeedLimit} m/s` : '');
   return `PASSAGE ${left}s · Draft the projected pace light; burn ring at gate 3`;
 }
 
@@ -100,11 +100,11 @@ export function stepAdventureSpeed(params, { events = [], player, simTime, setPi
       const exposure = Math.round(Number(observation.exposure) || 0);
       const mode = observation.listenerMode || 'listening';
       patch.adventureSpeedHint = mode === 'cleared' ? 'HUNTER DISABLED · Finish the transfer'
-        : mode === 'engaged' ? `HUNTER ENGAGED · ${exposure}% exposure · Coast beyond 700 wu for eight quiet seconds to lose it`
+        : mode === 'engaged' ? `HUNTER ENGAGED · ${exposure}% exposure · Coast beyond 700 m for eight quiet seconds to lose it`
         : mode === 'searching' ? `HUNTER SEARCHING · ${exposure}% exposure · Keep engines quiet and build separation`
         : `LISTENER ${exposure}% EXPOSURE · Ordinary thrust is quiet; boost and gunfire are loud`;
       if (state) patch.adventureSpeedHint += ` · ${Math.max(0, state.deadlineElapsedS - currentElapsed).toFixed(1)}s TRANSFER WINDOW`;
-      if (params.nextGate === count - 1) patch.adventureSpeedHint += ` · Handoff below ${config.finishSpeedLimit} wu/s`;
+      if (params.nextGate === count - 1) patch.adventureSpeedHint += ` · Handoff below ${config.finishSpeedLimit} m/s`;
     } else if (state.reason === 'speed_listener_unavailable') patch.adventureSpeedHint = 'The transfer lost contact with its hunter. Request a fresh passage.';
   }
   if (state) {
@@ -181,14 +181,14 @@ function stepCargoPassage(params, { events, player, simTime, setPiece }) {
   let hint;
   if (thermal) hint = `PAYLOAD ${Math.round(state.temperature)}° · QUALITY ${Math.round(state.quality)}% · ${config.thermal.units - state.spoiledUnits}/${config.thermal.units} PACKS`
     + (setPiece?.sheltered ? ` · COOLING: ${setPiece.shelterName || 'solid cover'}` : ' · EXPOSED: shelter east of solid cover');
-  else hint = setPiece?.attached ? `POD IN TOW · ${Math.round(Number(setPiece.podSpeed) || 0)} wu/s · Handoff below ${config.finishSpeedLimit} wu/s`
+  else hint = setPiece?.attached ? `POD IN TOW · ${Math.round(Number(setPiece.podSpeed) || 0)} m/s · Handoff below ${config.finishSpeedLimit} m/s`
     : 'ATTACH MASSLINE TO EVACUATION POD · The pod must cross every gate';
   if (left != null) hint += ` · ${left.toFixed(1)}s TRANSFER WINDOW`;
   if (state.outcome === 'complete') hint = thermal ? `DELIVERED · ${Math.round(state.quality)}% quality · ${config.thermal.units - state.spoiledUnits} medical packs` : 'EVACUATION POD HANDED OVER';
   if (state.outcome === 'failed') {
     const reasons = { speed_payload_missing: 'The sealed medical load is missing.', speed_payload_spoiled: 'The medical load overheated and spoiled.',
       speed_rescue_pod_lost: 'The evacuation pod was lost.', speed_rescue_not_towed: 'The pod did not complete a physical tow.',
-      speed_handoff_too_fast: `Handoff missed: both ship and pod must be below ${config.finishSpeedLimit} wu/s.` };
+      speed_handoff_too_fast: `Handoff missed: both ship and pod must be below ${config.finishSpeedLimit} m/s.` };
     hint = reasons[state.reason] || config.failureText;
   }
   const patch = { adventureSpeedState: state, adventureSpeedHint: hint, raceLease: running,

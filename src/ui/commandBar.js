@@ -101,7 +101,7 @@ export function createCommandBar(ctx) {
     </div>
     <div class="sf-cb-cell sf-cb-cell--cargo">
       <span class="sf-cb-k">CARGO</span>
-      <span class="sf-cb-v sf-cb-v--cargo" data-k="cargo">0 / 40 u</span>
+      <span class="sf-cb-v sf-cb-v--cargo" data-k="cargo">0 / 40</span>
     </div>
     <div class="sf-cb-cell sf-cb-cell--credits">
       <span class="sf-cb-k">CREDITS</span>

@@ -7455,7 +7455,7 @@ export const world = {
     }
     if (!best || best.depletion < 0.12) return null; // every seam still rich; nothing to lead to
     const reopen = best.regrown ? ', reopening' : '';
-    return `freshest seam ${Math.round(best.d)} WU ${compassLabel(best.dx, best.dz)}${reopen}`;
+    return `freshest seam ${Math.round(best.d)} m ${compassLabel(best.dx, best.dz)}${reopen}`;
   },
 
   _tickScan(dt, state) {
