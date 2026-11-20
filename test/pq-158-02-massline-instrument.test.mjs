@@ -75,8 +75,8 @@ test('release snap is distinct from break: recipe, caption, and pitch contour', 
   assert.equal(broken.recipeId, 'sfx.tetherSnap');
   assert.notEqual(release.recipeId, broken.recipeId);
   assert.notEqual(release.caption, broken.caption);
-  assert.equal(release.caption, 'Massline release.');
-  assert.equal(broken.caption, 'Massline break.');
+  assert.equal(release.caption, 'Line release.');
+  assert.equal(broken.caption, 'Line break.');
   assert.ok(release.rate > broken.rate, 'release is the higher taut let-go; break is the lower failure');
   assert.equal(release.play, true);
   assert.equal(messy.play, false, 'messy release stays on the 158.06 snap so the two leaves do not double');
@@ -116,7 +116,7 @@ test('reel, bridle, attach, strain, and break all speak on the instrument', () =
   assert.equal(attach.play, true);
   assert.equal(strain.play, true);
   assert.equal(broken.play, true);
-  assert.equal(reel.caption, 'Massline reel.');
+  assert.equal(reel.caption, 'Line reel.');
   assert.equal(bridle.caption, 'Twin bridle chord.');
   assert.ok(reel.rate > 1, 'a real winch-in is a rising whine');
 });
@@ -143,12 +143,12 @@ test('_onMasslineInstrument plays all six events and captions them', () => {
   assert.ok(recipes.includes('sfx_massline_bridle_chord'));
   assert.ok(recipes.includes('sfx.tetherSnap'), 'break plays on the instrument');
   const texts = captions.filter((c) => c.ev === 'presentation:caption').map((c) => c.p.text);
-  assert.ok(texts.includes('Massline attached.'));
-  assert.ok(texts.includes('Massline strain.'));
-  assert.ok(texts.includes('Massline reel.'));
-  assert.ok(texts.includes('Massline release.'));
+  assert.ok(texts.includes('Line attached.'));
+  assert.ok(texts.includes('Line strain.'));
+  assert.ok(texts.includes('Line reel.'));
+  assert.ok(texts.includes('Line release.'));
   assert.ok(texts.includes('Twin bridle chord.'));
-  assert.ok(texts.includes('Massline break.'));
+  assert.ok(texts.includes('Line break.'));
   console.log(`[pq-158.02 wiring] plays=${recipes.join(',')} captions=${texts.join(' | ')}`);
 });
 

@@ -132,7 +132,7 @@ test('oversized cores stay whole and report TOO HEAVY instead of IN NET', () => 
   assert.equal(t.state.gyreSnare.tooHeavyCount, 2);
   const hud = Object.create(gyreHud);
   hud.init({ state: t.state });
-  assert.match(hud._resolve(t.state.gyreSnare, t.state.simTime).text, /TOO HEAVY ×2/);
+  assert.match(hud._resolve(t.state.gyreSnare, t.state.simTime).text, /TOO BIG ×2/);
 });
 
 test('quest and recoverable cargo wrecks remain tug-only at snag and absorb boundaries', () => {
@@ -214,13 +214,13 @@ test('net feedback distinguishes legal meals, towed cargo and bodies that cannot
   const text = hud._resolve(t.state.gyreSnare, t.state.simTime).text;
   assert.match(text, /×1 IN NET/);
   assert.match(text, /TOWING ×1/);
-  assert.match(text, /TOO HEAVY ×1/);
-  assert.equal((text.match(/TOO HEAVY/g) || []).length, 1,
+  assert.match(text, /TOO BIG ×1/);
+  assert.equal((text.match(/TOO BIG/g) || []).length, 1,
     'a mixed net prints the refusal once — handlingTxt already carries it');
   const holdingText = hud._resolve({ phase: 'holding', clumpMass: 2300, maxClumpMass: 2400,
     basinCount: 0, tooHeavyCount: 1, towCount: 1 }, t.state.simTime).text;
   assert.doesNotMatch(holdingText, /\+1/);
-  assert.match(holdingText, /TOWING ×1.*TOO HEAVY ×1/);
+  assert.match(holdingText, /TOWING ×1.*TOO BIG ×1/);
 });
 
 // ── golden inertness ─────────────────────────────────────────────────────────────

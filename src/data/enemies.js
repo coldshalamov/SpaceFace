@@ -433,7 +433,7 @@ export const ENEMY_TYPES = [
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 260, leashRadius: 2800 },
     rareSpecialist: true,
     physicalClass: 'specialist',
-    telegraph: { bark: 'warn', line: 'Enemy Massline spooling. Displace, break anchor, or outmass it.', cue: 'attach_spool' },
+    telegraph: { bark: 'warn', line: 'Enemy reeling a line onto you. Move, break its anchor, or outweigh it.', cue: 'attach_spool' },
     counterHint: 'displace_break_anchor_or_outmass',
     behavior: 'rare specialist; telegraphs a Massline attach then contests the player line until displaced, broken, or outmassed',
     bountyCr: 700, shipClass: 'gunship',

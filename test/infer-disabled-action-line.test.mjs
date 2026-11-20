@@ -7,11 +7,11 @@ import { combatDenialToastSpec, formatCombatActionRejectLine } from '../src/ui/t
 test('a dead part is named only when the capability gate fired', () => {
   assert.equal(
     formatCombatActionRejectLine('disabled:capability:tether'),
-    'Massline spool out — the rope will not hold',
+    'Line spool out — the rope will not hold',
   );
   assert.equal(
     formatCombatActionRejectLine('disabled:tag:reel'),
-    'Massline spool out — the rope will not hold',
+    'Line spool out — the rope will not hold',
   );
   assert.equal(
     formatCombatActionRejectLine('disabled:capability:transport_clamp'),

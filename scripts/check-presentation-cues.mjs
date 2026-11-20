@@ -174,7 +174,7 @@ assert.equal(appliedRecords.length, 2, 'presentation adapter should consume the 
 assert.equal(cameraRecords.at(-1).amount, 0.12, 'tether attach should route camera trauma from the recipe budget');
 assert.equal(audioRecords.at(-1).id, 'presentation.tether.attach', 'tether attach should route to a semantic audio cue');
 assert.equal(uiRecords.at(-1).shape, 'arc', 'tether attach UI cue should use shape coding');
-assert.equal(captionRecords.at(-1).text, 'Massline attached.', 'tether attach should route an accessibility caption');
+assert.equal(captionRecords.at(-1).text, 'Line attached.', 'tether attach should route an accessibility caption');
 assert.deepEqual(appliedRecords.at(-1).outputs.camera,
   { event: 'camera:shake', amount: 0.12, reducedMotion: false },
   'applied record should summarize the concrete camera output');

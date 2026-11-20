@@ -17,8 +17,8 @@ const firstLightHandlerActivePages = new WeakSet();
 export function isFirstLightPrompt(title, cancelLabel, confirmLabel = '') {
   // confirm.js appends an aria-hidden ESC keycap inside the button.
   const cancel = norm(cancelLabel).toUpperCase().replace(/\s*ESC$/, '');
-  return norm(title) === 'First light' && (cancel === 'KEEP MY SETTINGS'
-    || cancel === 'USE FIRST LIGHT' && norm(confirmLabel).toUpperCase() === 'PLAY');
+  return norm(title) === 'Comfort preset' && (cancel === 'KEEP MY SETTINGS'
+    || cancel === 'TURN ON COMFORT PRESET' && norm(confirmLabel).toUpperCase() === 'PLAY');
 }
 
 // First light is scheduled after the title is painted. On a busy renderer it can appear
@@ -28,7 +28,7 @@ export function isFirstLightPrompt(title, cancelLabel, confirmLabel = '') {
 // because a locator action from inside its own locator handler waits on that same handler.
 export async function installFirstLightPromptHandler(page, step) {
   if (firstLightHandlerPages.has(page) || typeof page.addLocatorHandler !== 'function') return;
-  await page.addLocatorHandler(page.locator('#sf-confirm-root.sf-confirm--in #sf-confirm-title').filter({ hasText: /^First light$/ }), async () => {
+  await page.addLocatorHandler(page.locator('#sf-confirm-root.sf-confirm--in #sf-confirm-title').filter({ hasText: /^Comfort preset$/ }), async () => {
     try {
       await answerFirstRunPrompt(page, step);
     } catch (error) {
@@ -162,7 +162,7 @@ export async function bootToMenu(page, baseUrl, step) {
 }
 
 // A fresh profile can be asked a first-run question on the menu (the shared confirm surface, e.g.
-// "First light", the accessibility preset offer). A measured run keeps the shipped settings, so it
+// "Comfort preset", the accessibility preset offer). A measured run keeps the shipped settings, so it
 // chooses the actual "Play" control (legacy "keep" cancel) and records the answer; nothing else is
 // dismissed. The dialog and its choices are selected by their public accessible names.
 export async function answerFirstRunPrompt(page, step = () => {}) {
@@ -183,8 +183,8 @@ async function answerFirstRunPromptOnce(page, step) {
     if (prompt.dialogPresent) await waitForFirstLightInputRelease(page);
     return false;
   }
-  const title = 'First light';
-  const dialog = page.getByRole('dialog', { name: 'First light', exact: true });
+  const title = 'Comfort preset';
+  const dialog = page.getByRole('dialog', { name: 'Comfort preset', exact: true });
   const play = dialog.getByRole('button', { name: /^Play$/i });
   const keep = dialog.getByRole('button', { name: /^Keep my settings$/i });
   const playCount = await play.count();
@@ -205,7 +205,7 @@ async function answerFirstRunPromptOnce(page, step) {
       if ((await readFirstLightDialogState(page)).dialogPresent) await waitForFirstLightInputRelease(page);
       return false;
     }
-    throw new Error(`First light has no uniquely supported settings choice (expected Play or Keep my settings); controls: ${JSON.stringify(labels.map(norm))}`);
+    throw new Error(`The comfort preset prompt has no uniquely supported settings choice (expected Play or Keep my settings); controls: ${JSON.stringify(labels.map(norm))}`);
   }
   // Keep the semantic accessible-name lookup, then click the actual visible control with trusted
   // mouse input. Locator.click() here re-enters the active locator handler and can wait on itself.
@@ -219,7 +219,7 @@ async function answerFirstRunPromptOnce(page, step) {
       if (current.dialogPresent) await waitForFirstLightInputRelease(page);
       return false;
     }
-    throw new Error(`First light ${choice.name} control is not visibly actionable`);
+    throw new Error(`The comfort preset prompt's ${choice.name} control is not visibly actionable`);
   }
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await waitForFirstLightInputRelease(page);
@@ -232,8 +232,8 @@ async function readFirstLightDialogState(page) {
     const root = document.getElementById('sf-confirm-root');
     const dialog = root?.querySelector('[role="dialog"]');
     const title = String(dialog?.querySelector('#sf-confirm-title')?.textContent || '').replace(/\s+/g, ' ').trim();
-    return { active: !!(root?.classList.contains('sf-confirm--in') && title === 'First light'),
-      dialogPresent: !!(dialog && title === 'First light') };
+    return { active: !!(root?.classList.contains('sf-confirm--in') && title === 'Comfort preset'),
+      dialogPresent: !!(dialog && title === 'Comfort preset') };
   });
 }
 
@@ -242,16 +242,16 @@ async function waitForFirstLightInputRelease(page) {
     const root = document.getElementById('sf-confirm-root');
     const dialog = root?.querySelector('[role="dialog"]');
     const currentTitle = String(dialog?.querySelector('#sf-confirm-title')?.textContent || '').replace(/\s+/g, ' ').trim();
-    if (dialog && currentTitle !== 'First light') return { superseded: true, title: currentTitle || 'another confirmation' };
+    if (dialog && currentTitle !== 'Comfort preset') return { superseded: true, title: currentTitle || 'another confirmation' };
     if (dialog) return false;
     if (root && (root._sfConfirmToken != null || root.innerHTML.trim())) return false;
     return { released: true };
   }, null, { timeout: T(5000) });
   const cleanup = await consumePageConditionValue(cleanupHandle);
   if (cleanup?.superseded) {
-    throw new Error(`First light was superseded before input release; preserving ${cleanup.title}`);
+    throw new Error(`The comfort preset prompt was superseded before input release; preserving ${cleanup.title}`);
   }
-  if (cleanup?.released !== true) throw new Error('First light dialog did not release its modal input fence');
+  if (cleanup?.released !== true) throw new Error('The comfort preset dialog did not release its modal input fence');
   return true;
 }
 
@@ -263,17 +263,17 @@ async function waitForFirstLightOpenOrRelease(page, timeout) {
       const root = document.getElementById('sf-confirm-root');
       const dialog = root?.querySelector('[role="dialog"]');
       const title = String(dialog?.querySelector('#sf-confirm-title')?.textContent || '').replace(/\s+/g, ' ').trim();
-      if (dialog && title !== 'First light') return { superseded: true, title: title || 'another confirmation' };
+      if (dialog && title !== 'Comfort preset') return { superseded: true, title: title || 'another confirmation' };
       if (dialog) return root.classList.contains('sf-confirm--in') ? { opened: true } : false;
       if (root && (root._sfConfirmToken != null || root.innerHTML.trim())) return false;
       return { released: true };
     }, null, { timeout });
     const outcome = await consumePageConditionValue(outcomeHandle);
     if (outcome?.superseded) {
-      throw new Error(`First light was superseded before input release; preserving ${outcome.title}`);
+      throw new Error(`The comfort preset prompt was superseded before input release; preserving ${outcome.title}`);
     }
     if (outcome?.opened !== true && outcome?.released !== true) {
-      throw new Error('First light did not open or release its modal input fence');
+      throw new Error('The comfort preset prompt did not open or release its modal input fence');
     }
   } catch (error) {
     if (error?.name !== 'TimeoutError') throw error;
@@ -286,7 +286,7 @@ async function isActiveFirstLightPrompt(page) {
     if (!root || !root.classList.contains('sf-confirm--in')) return false;
     const dialog = root.querySelector('[role="dialog"]');
     const title = dialog?.querySelector('#sf-confirm-title');
-    if (!title || String(title.textContent || '').replace(/\s+/g, ' ').trim() !== 'First light') return false;
+    if (!title || String(title.textContent || '').replace(/\s+/g, ' ').trim() !== 'Comfort preset') return false;
     const style = getComputedStyle(title);
     return style.display !== 'none' && style.visibility !== 'hidden' && title.getClientRects().length > 0;
   }).catch(() => false);
@@ -302,7 +302,7 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
   const finish = () => {
     if (shown) {
       const message = spacePresses ? 'visible cinematic dismissed with Space' : 'visible cinematic finished';
-      const interruption = promptAnswers ? ` after ${promptAnswers} First light interruption` : '';
+      const interruption = promptAnswers ? ` after ${promptAnswers} comfort preset interruption` : '';
       step('intro-dismissed', true, message + interruption);
     } else step('intro-not-shown', true, 'fresh route reached the menu without a visible cinematic');
     return { shown, spacePresses, promptAnswers };
@@ -321,7 +321,7 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
       const root = document.getElementById('sf-confirm-root');
       const dialog = root?.querySelector('[role="dialog"]');
       const title = dialog?.querySelector('#sf-confirm-title');
-      const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'First light');
+      const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'Comfort preset');
       const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
       const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
         if (node.id === 'cinematic-splash') return false;
@@ -374,7 +374,7 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
         const splash = document.getElementById('cinematic-splash');
         const root = document.getElementById('sf-confirm-root');
         const title = root?.querySelector('[role="dialog"] #sf-confirm-title');
-        const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'First light');
+        const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'Comfort preset');
         const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
         const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
           if (node.id === 'cinematic-splash') return false;
@@ -407,7 +407,7 @@ export async function dismissCinematicIntro(page, step = () => {}, { timeout = 1
     const root = document.getElementById('sf-confirm-root');
     const dialog = root?.querySelector('[role="dialog"]');
     const title = dialog?.querySelector('#sf-confirm-title');
-    const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'First light');
+    const firstLightDialogPresent = !!(title && String(title.textContent || '').replace(/\s+/g, ' ').trim() === 'Comfort preset');
     const firstLightVisible = !!(root?.classList.contains('sf-confirm--in') && firstLightDialogPresent && visible(title));
     const otherModal = [...document.querySelectorAll('[aria-modal="true"]')].find((node) => {
       if (node.id === 'cinematic-splash') return false;
@@ -1152,7 +1152,7 @@ export async function adventureToFlight(page, step, { seed = null } = {}) {
     if (window.SF.ctx.screenManager.top() === 'newGame') return 'newGame';
     const root = document.getElementById('sf-confirm-root');
     if (root?.classList.contains('sf-confirm--in')
-      && root.querySelector('#sf-confirm-title')?.textContent?.trim() === 'First light') return 'firstLight';
+      && root.querySelector('#sf-confirm-title')?.textContent?.trim() === 'Comfort preset') return 'firstLight';
     return false;
   }, null, { timeout: T(60000) });
   if (await consumePageConditionValue(opened) === 'firstLight') {

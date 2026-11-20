@@ -75,8 +75,8 @@ assert(details, 'the inspector should mount a dedicated details container beside
 assert.match(details.innerHTML, /Current Conditions/, 'a known sector exposes its compact live condition readout');
 assert.match(details.innerHTML, /Danger[\s\S]*55%[\s\S]*rising/i,
   'current danger is shown at honest whole-percent precision with its direction');
-assert.match(details.innerHTML, /Price pressure[\s\S]*\+30%[\s\S]*climbing/i,
-  'current price pressure is shown as a signed whole percent with its direction');
+assert.match(details.innerHTML, /Price swing[\s\S]*\+30%[\s\S]*climbing/i,
+  'current price swing is shown as a signed whole percent with its direction');
 assert.match(details.innerHTML, /Control[\s\S]*Concord[\s\S]*50%[\s\S]*holding/i,
   'dominant influence/control and trend are legible without conflating them with legal ownership');
 assert.match(details.innerHTML, /Why it changed/, 'the condition snapshot includes its causal receipt heading');

@@ -160,7 +160,7 @@ test('tier gates: 2 / 4 / 6 points in-branch with the point in hand, bends at th
 test('spot transcriptions: names and sentences straight from 06 §2.2', () => {
   const spots = [
     ['gunner_gold_thread', 'capstone', 'Gold Thread',
-      'Your Hose stream pierces everything in a line; held for three seconds it becomes a beam that lights the room.'],
+      'Your rapid-fire stream pierces everything in a line; held for three seconds it becomes a beam that lights the room.'],
     ['bruiser_newtons_cradle', 'capstone', 'Newton\'s Cradle',
       'Momentum you give passes from body to body without loss, up to five times.'],
     ['rigger_untouchable_wrecking_train', 'capstone', 'Untouchable / Wrecking Train',
@@ -168,7 +168,7 @@ test('spot transcriptions: names and sentences straight from 06 §2.2', () => {
     ['rigger_hummingbird', 2, 'Hummingbird',
       'Orbiting an ANCHOR, you move and fire 30 % faster. (best on light hulls)'],
     ['conjurer_avalanche', 'capstone', 'Avalanche',
-      'The plough holds twice as many bodies, captures enemies as well as rocks, and launches them at double speed.'],
+      'The plow holds twice as many bodies, captures enemies as well as rocks, and launches them at double speed.'],
     ['juggernaut_juggernaut', 'capstone', 'Juggernaut',
       'Above cruise speed, you take no damage from anything you hit, and everything you hit takes double.'],
     ['ghost_undertaker', 'capstone', 'Undertaker',
@@ -176,7 +176,7 @@ test('spot transcriptions: names and sentences straight from 06 §2.2', () => {
     ['industry_foreman', 'capstone', 'Foreman',
       'Mark a module on the board and your yard builds it from its own stock.'],
     ['bruiser_through_and_through', 2, 'Through and Through',
-      'Needle shots nail the last body they reach to whatever is behind it for two seconds.'],
+      'Piercing shots nail the last body they reach to whatever is behind it for two seconds.'],
   ];
   for (const [id, tier, name, text] of spots) {
     const node = getPilotCard(id);

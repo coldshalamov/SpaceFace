@@ -39,7 +39,7 @@ export const TETHER_CONTROL_RAIDER_TELEGRAPH = Object.freeze({
   kind: 'tether_control_raider',
   cue: 'attach_spool',
   shape: 'split-anchor-line',
-  caption: 'Enemy Massline spool',
+  caption: 'Enemy line spool',
   durationTicks: 30,
 });
 

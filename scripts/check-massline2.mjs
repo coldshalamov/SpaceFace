@@ -197,7 +197,7 @@ section('release-assist setting and slow-time indicator presentation are reachab
   assert.equal(releaseAssistMode({ settings: { gameplay: { masslineReleaseAssist: 'arm' } } }), 'arm');
   assert.equal(releaseAssistMode({ settings: { gameplay: { masslineReleaseAssist: 'off' } } }), 'off');
   const settingsSrc = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');
-  assert.match(settingsSrc, /Massline release assist/);
+  assert.match(settingsSrc, /Line release assist/);
   assert.match(settingsSrc, /'bulletTime', 'cloak'/,
     'bullet-time and cloak verbs must remain visible in the rebind list');
   assert.doesNotMatch(settingsSrc.match(/const REBINDABLE = \[[\s\S]*?\];/)?.[0] || '', /throwArm/,

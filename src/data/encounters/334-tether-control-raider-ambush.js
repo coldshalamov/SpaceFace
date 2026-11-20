@@ -50,9 +50,9 @@ export default defineEncounter(trigger, {
     terrain: 'lee',
   },
   bark: 'ambush_tele',
-  telegraph: 'Enemy Massline spooling. Displace, break anchor, or outmass it.',
+  telegraph: 'Enemy reeling a line onto you. Move, break its anchor, or outweigh it.',
   aftermath: {
     flee: 'The specialist drops the contested line and burns out of the wake.',
-    kill: 'The hostile Massline dies with the specialist hull.',
+    kill: 'The hostile line dies with the specialist hull.',
   },
 });

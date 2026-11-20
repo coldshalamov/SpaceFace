@@ -62,17 +62,17 @@ test('SEED-HF-14 seed 4242 crushing reads heavier than solid, and glance is the 
   const glance = h.alerts[0];
   const solid = h.alerts[1];
   const crushing = h.alerts[2];
-  assert.equal(glance.text, 'MASSLINE GLANCE');
-  assert.equal(solid.text, 'MASSLINE IMPACT');
-  assert.equal(crushing.text, 'MASSLINE CRUSHING');
+  assert.equal(glance.text, 'LINE GRAZED');
+  assert.equal(solid.text, 'LINE IMPACT');
+  assert.equal(crushing.text, 'LINE CRUSHING');
   assert.equal(glance.sev, 'info');
   assert.equal(solid.sev, 'info');
   assert.equal(crushing.sev, 'warn');
   assert.ok(weight(crushing) > weight(solid) && weight(solid) > weight(glance));
 
-  assert.equal(h.captions[0].text, 'Glancing massline impact.');
-  assert.equal(h.captions[1].text, 'Massline impact landed.');
-  assert.equal(h.captions[2].text, 'Crushing massline impact.');
+  assert.equal(h.captions[0].text, 'Glancing line impact.');
+  assert.equal(h.captions[1].text, 'Line impact landed.');
+  assert.equal(h.captions[2].text, 'Crushing line impact.');
   assert.equal(h.captions[0].id, 'tether.whip_impact');
   assert.equal(h.captions[2].id, 'tether.whip_impact');
 });

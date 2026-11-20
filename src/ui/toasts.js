@@ -604,7 +604,7 @@ function disabledActionLine(rest) {
   const name = String(parts[1] || '').toLowerCase();
   const cause = parts.slice(2).join(':');
   if (kind === 'capability') {
-    if (name === 'tether') return 'Massline spool out — the rope will not hold';
+    if (name === 'tether') return 'Line spool out — the rope will not hold';
     if (name === 'transport_clamp') return 'Clamp out — the load is no longer held';
     if (name === 'drive') return 'Drive out — the ship is not pushing';
     if (name === 'weapon') return 'Guns out — the battery is dark';
@@ -613,9 +613,9 @@ function disabledActionLine(rest) {
     return '';
   }
   if (kind === 'tag') {
-    if (name === 'attach' || name === 'reel') return 'Massline spool out — the rope will not hold';
+    if (name === 'attach' || name === 'reel') return 'Line spool out — the rope will not hold';
     if (name === 'clamp') return 'Clamp out — the load is no longer held';
-    if (name === 'sling') return 'Can\'t throw — the drive or the Massline spool is out';
+    if (name === 'sling') return 'Can\'t throw — the drive or the line spool is out';
     if (name === 'dash') return 'Can\'t dash — the ship is tumbling';
     if (name === 'tether') return 'Can\'t use the rope — the ship is tumbling';
     if (name === 'weapon' || name === 'burst') {

@@ -13,11 +13,11 @@ export const MASSLINE_INSTRUMENT_EVENTS = Object.freeze([
 ]);
 
 export const MASSLINE_CAPTIONS = Object.freeze({
-  attach: 'Massline attached.',
-  strain: 'Massline strain.',
-  reel: 'Massline reel.',
-  release: 'Massline release.',
-  break: 'Massline break.',
+  attach: 'Line attached.',
+  strain: 'Line strain.',
+  reel: 'Line reel.',
+  release: 'Line release.',
+  break: 'Line break.',
   bridle: 'Twin bridle chord.',
 });
 

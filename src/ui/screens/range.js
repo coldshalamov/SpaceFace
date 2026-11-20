@@ -591,7 +591,7 @@ export {
 
 // PQ-030.02 — blind-reviewer path. Tokens only (silhouette / telegraph / verb / sweep). No plan id.
 export const TETHER_CUTTER_THREAT_FROM_VISIBLE_READ =
-  'Cuts your taut Massline with a corsair-blade sweep.';
+  'Cuts your taut line with a corsair-blade sweep.';
 
 function telegraphToken(tokens) {
   const raw = tokens && (tokens.telegraphKind ?? tokens.telegraph);
@@ -675,7 +675,7 @@ export function masslineCutterBestiaryFacts() {
   if (!visible || !threat) return [];
   return [
     ['Silhouette', 'Corsair blade'],
-    ['Telegraph', 'Massline spool'],
+    ['Telegraph', 'Line spool'],
     ['Threat', threat],
   ];
 }
