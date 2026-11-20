@@ -629,10 +629,13 @@ export function createTouch(ctx) {
           e.preventDefault();
           b.classList.add('held');
           this._btnHeld[act] = true;
-          this._btnPulse[act] = true;
           this._activityPending = true;
           this.lastActiveMs = nowMs(); // diagnostic only
-          if (isMenuAction(act) && bus && bus.emit) bus.emit('touch:uiAction', { action: act });
+          if (isMenuAction(act)) {
+            // Menu toggles ride the uiAction event only — a pressed edge would re-toggle the
+            // screen the tap just opened (one tap = open then instantly close).
+            if (bus && bus.emit) bus.emit('touch:uiAction', { action: act });
+          } else this._btnPulse[act] = true;
         };
         const up = (e) => { e.preventDefault(); b.classList.remove('held'); this._btnHeld[act] = false; };
         b.addEventListener('touchstart', down, { passive: false });
@@ -667,6 +670,7 @@ export function createTouch(ctx) {
       // Translate button-held flags into action state (pressed/released edges computed in input.js
       // merge; here we only reflect current held state, matching gamepad.js's approach).
       for (const act of ['fire', 'mine', 'boost', 'dock', 'localmap', 'missionLog', 'starmap', 'pause']) {
+        if (isMenuAction(act)) continue;
         const held = !!this._btnHeld[act];
         const pulse = !!this._btnPulse[act];
         const prev = !!this.actions[act] && this.actions[act].held;
