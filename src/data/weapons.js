@@ -110,7 +110,7 @@ const SHIPPED_WEAPONS = [
     heatPerShot: 10, heatMax: 100, heatDissip: 24,
     // Gun-curve bench 2026-11-20: one hit moved a Wasp 0.52 depth in 2 s; Thump needs >= 1 ("the
     // cannon gun that wallops them… knocks them back so hard they become a weapon themselves").
-    impulsePerHit: 1100, environmentImpulsePerHit: 1024, tumbleTorque: 35, impulseProvenance: 'concussion_slug_s',
+    impulsePerHit: 1100, environmentImpulsePerHit: 1024, rockKickDv: 95, tumbleTorque: 35, impulseProvenance: 'concussion_slug_s',
     // CW-WPN (INV-22 item 7): recoil is on the hull, never the camera. A light kicker still
     // answers on the firing ship through the shared physical-impulse path.
     recoilImpulse: 180,
@@ -180,7 +180,7 @@ const SHIPPED_WEAPONS = [
     // bats loose rocks now (owner: "free to blast at asteroids to knock them into enemies").
     dmg: 140, rof: 0.6, dps: 84, damageType: 'kinetic', energyCost: 14,
     projSpeed: 700, range: 1100, tracking: 'fixed', armorPierce: 0.5,
-    impulsePerHit: 168, environmentImpulsePerHit: 900, tumbleTorque: 16, impulseProvenance: 'railgun_penetrator',
+    impulsePerHit: 168, environmentImpulsePerHit: 900, rockKickDv: 70, tumbleTorque: 16, impulseProvenance: 'railgun_penetrator',
     // CW-WPN (INV-22 item 7): the needle answers on the hull (03_COMBAT.md:131-132) - a small
     // backward nudge per shot through the existing physical-impulse path.
     recoilImpulse: 140,
@@ -198,7 +198,7 @@ const SHIPPED_WEAPONS = [
     mount: 'launcher',
     dmg: 70, splashDmg: 35, splashRadius: 40, rof: 0.8, dps: 56, damageType: 'explosive', energyCost: 4,
     projSpeed: 320, projSpeedMin: 180, range: 280, tracking: 'homing', turnRate: 1.5, lockTimeS: 1.2,
-    impulsePerHit: 150, tumbleTorque: 22, impulseProvenance: 'missile_detonation',
+    impulsePerHit: 150, rockKickDv: 60, tumbleTorque: 22, impulseProvenance: 'missile_detonation',
   },
   {
     id: 'unique_nestbreaker_rack', baseId: 'wpn_missile_rack_m', name: 'Nestbreaker Rack', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 0,
@@ -239,7 +239,7 @@ const SHIPPED_WEAPONS = [
     mount: 'launcher',
     dmg: 320, splashDmg: 120, splashRadius: 70, rof: 0.25, dps: 80, damageType: 'explosive', energyCost: 10,
     projSpeed: 240, projSpeedMin: 140, range: 1400, tracking: 'homing', turnRate: 1.4, lockTimeS: 2.5,
-    impulsePerHit: 320, tumbleTorque: 48, impulseProvenance: 'torpedo_detonation',
+    impulsePerHit: 320, rockKickDv: 100, tumbleTorque: 48, impulseProvenance: 'torpedo_detonation',
   },
   {
     id: 'wpn_siege_lance_l', name: 'Siege Lance L', slotType: 'weapon', size: 'L', tier: 5, mass: 24, price: 310000, requiresTech: 'tech_flagship_command',
@@ -329,7 +329,7 @@ const SHIPPED_WEAPONS = [
     heatPerShot: 16, heatMax: 100, heatDissip: 26,
     // Gun-curve bench 2026-11-20: one hit moved a Wasp 0.91 depth in 2 s; Thump needs >= 1 and the
     // M must wallop harder than the S. (Rock kick stays the authored 1024: see the report's rock-mass note.)
-    impulsePerHit: 1400, environmentImpulsePerHit: 1024, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
+    impulsePerHit: 1400, environmentImpulsePerHit: 1024, rockKickDv: 130, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
     // CW-WPN (INV-22 item 7): the hull pays part of the throw it deals - recoil on the ship,
     // never the camera (03_COMBAT.md:131-132), through the existing physical-impulse path.
     recoilImpulse: 320,
@@ -497,7 +497,7 @@ const SHIPPED_WEAPONS = [
     dmg: 1, rof: 0.6, dps: 0.6, damageType: 'kinetic', energyCost: 16, pureImpulse: true,
     projSpeed: 1400, range: 1300, tracking: 'fixed', spreadDeg: 0.2,
     heatPerShot: 30, heatMax: 100, heatDissip: 22,
-    impulsePerHit: 1500, environmentImpulsePerHit: 2600, tumbleTorque: 140, impulseProvenance: 'tumbler_gravity_bolt',
+    impulsePerHit: 1500, environmentImpulsePerHit: 2600, rockKickDv: 110, tumbleTorque: 140, impulseProvenance: 'tumbler_gravity_bolt',
     recoilImpulse: 90,
     sentence: 'A long gravity bolt: no damage, it sends them tumbling into whatever is behind them.',
     swarmReason: 'Knock them end over end into the rocks — the room does the killing.',

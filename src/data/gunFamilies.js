@@ -156,6 +156,32 @@ export function gunFamilyOf(weaponId) {
   return GUN_FAMILY_BY_WEAPON_ID[weaponId] || null;
 }
 
+// Ruling 2026-11-20 (the owner: "the cannon gun that wallops them… and it's free to blast at
+// asteroids to knock them into enemies"). A kick gun pushes a loose rock by the rock's SIZE CLASS,
+// not by a fixed momentum (asteroid mass grows with the cube of the radius, so one number either
+// did nothing to a mid rock or launched a pebble at 1000 wu/s). `rockKickDv` on the gun is the
+// speed one hit gives a MID rock; the class scales it:
+//   small  (radius <= 14 wu, a ship's size or less): flies like a thrown body  ×1.6
+//   mid    (<= 26 wu): kills a light hull it meets, travels a screen or more    ×1
+//   large  (<= 45 wu): shrugs but drifts                                       ×0.2
+//   huge   (> 45 wu): does not move                                            ×0
+export const ROCK_SIZE_CLASS = Object.freeze([
+  Object.freeze({ id: 'small', maxRadius: 14, scale: 1.6 }),
+  Object.freeze({ id: 'mid', maxRadius: 26, scale: 1 }),
+  Object.freeze({ id: 'large', maxRadius: 45, scale: 0.2 }),
+  Object.freeze({ id: 'huge', maxRadius: Infinity, scale: 0 }),
+]);
+export function rockSizeClass(radius) {
+  const r = Number.isFinite(radius) ? radius : 0;
+  return ROCK_SIZE_CLASS.find((c) => r <= c.maxRadius) || ROCK_SIZE_CLASS[ROCK_SIZE_CLASS.length - 1];
+}
+/** Speed (wu/s) one hit of this gun gives a rock of this radius, or null when the gun pushes no rock. */
+export function rockKickSpeed(def, radius) {
+  const base = def && Number(def.rockKickDv);
+  if (!(base > 0)) return null;
+  return base * rockSizeClass(radius).scale;
+}
+
 // Owner polish list: the shop shows rate, punch, reach and kick, plus how long the gun fires
 // before it overheats. One pure read the shop screen and the draft cards can share. Heat pacing
 // mirrors src/systems/weapons.js (player dissipation runs 15 % hot). `sustainS` is null for a

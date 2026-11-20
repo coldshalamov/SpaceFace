@@ -6,6 +6,7 @@
 // adapter or a live effect), and bodies those generators produce in play (environmentMaterials
 // crystal-fracture shards). The only hand-placed entities are the player ship, the
 // tool/effect entities a case deploys, and one deployed vector mine — per the packet contract.
+import { rockKickSpeed } from '../src/data/gunFamilies.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -387,7 +388,9 @@ test('crucible route: a concussion round out-throws a pulse round on comparable 
     const pulse = WEAPONS.find(w => w.id === 'wpn_pulse_laser_s');
     const concussion = WEAPONS.find(w => w.id === 'wpn_concussion_cannon_m');
     const expectedPulse = pulse.impulsePerHit / resolvePhysicsBodySpec(best.a).mass;
-    const expectedConc = concussion.environmentImpulsePerHit / resolvePhysicsBodySpec(best.b).mass;
+    // Ruling 2026-11-20: a kick gun pushes a rock by its size class (rockKickSpeed), not by a fixed
+    // momentum — "free to blast at asteroids to knock them into enemies".
+    const expectedConc = rockKickSpeed(concussion, Number(best.b.radius));
     assert.ok(Math.abs(dvPulse - expectedPulse) < Math.max(1e-5, expectedPulse * 0.3),
       `the generated rock receives pulse momentum / mass (${dvPulse} versus ${expectedPulse})`);
     assert.ok(Math.abs(dvConc - expectedConc) < Math.max(1e-5, expectedConc * 0.3),

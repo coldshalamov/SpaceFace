@@ -65,7 +65,8 @@ import {
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, queueProjectileContinuation } from '../core/physicsAuthority.js';
 import { queryPhysicalBodies, deliverPhysicalImpulseDetailed, deliverPhysicalImpulse, deliverPhysicalAcceleration, schedulePhysicalBlast } from '../combat/physicalEffects.js';
 import { pilotHas } from '../data/pilotTree.js';
-import { gunFamilyOf } from '../data/gunFamilies.js';
+import { gunFamilyOf, rockKickSpeed } from '../data/gunFamilies.js';
+import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import { isEnvironmentalBody } from '../core/physicalResponse.js';
 import { clearEmergentRay, launchEmergent, setEmergentRay } from './emergentPrimitives.js';
@@ -285,6 +286,11 @@ function isWeaponVentEnabled(state) {
 }
 
 const DEG2 = WEAPONS; // keep import referenced even if tree-shaken oddly (no-op)
+let ROCK_KICK_DEFS = null;
+function rockKickDef(weaponId) {
+  if (!ROCK_KICK_DEFS) ROCK_KICK_DEFS = new Map(WEAPONS.map((w) => [w.id, w]));
+  return ROCK_KICK_DEFS.get(weaponId) || null;
+}
 
 // The hostile ship/drone the player's Massline currently owns the guns for, or null. One rule,
 // shared with combat/autoTargetMode via masslineOwnsGuns, so the fire path, the missile lock and the
@@ -3175,11 +3181,25 @@ export function applyProjectilePhysicalContact(host, payload) {
       ix *= 1.3;
       iz *= 1.3;
     }
+    // Ruling 2026-11-20: a kick gun pushes a loose rock by its size class (gunFamilies.rockKickSpeed):
+    // the reference momentum is that speed × the rock's own mass, so a mid rock leaves at a lethal
+    // speed and a huge one does not move. Guns without rockKickDv keep the authored momentum.
+    const envBody = isEnvironmentalBody(target);
+    // Rocks only (asteroids): payloads, wrecks and debris keep the authored momentum.
+    const rockSpeed = envBody && target.type === 'asteroid'
+      ? rockKickSpeed(rockKickDef(data.weaponId), Number(target.radius) || Number(target.physicsBody?.radius) || 0) : null;
+    const rockMass = rockSpeed != null ? Number(resolvePhysicsBodySpec(target)?.mass) || 0 : 0;
+    const referenceImpulse = !envBody ? undefined
+      : (rockSpeed != null ? rockSpeed * rockMass : source.environmentImpulse);
     const delivery = deliverPhysicalImpulseDetailed(state, target, { x: ix || 0, z: iz || 0 },
       { ...provenance, provenance, point: payload.pos, maxTorque: packet?.tumbleTorque },
       // Scenery contacts obey the same authored momentum as the damage route.
-      { port: host.helpers?.combatPhysics, scaleEnvironment: false,
-        referenceImpulse: isEnvironmentalBody(target) ? source.environmentImpulse : undefined });
+      { port: host.helpers?.combatPhysics, scaleEnvironment: false, referenceImpulse });
+    if (envBody && rockSpeed > 0 && delivery.accepted && target.data && provenance.actorId === state.playerId) {
+      // A rock sent by the player's shot is energised: what it hits is the player's doing.
+      target.data.energisedUntil = (Number(state.simTime) || 0) + 3;
+      target.data.energisedHop = 0;
+    }
     if (delivery.accepted) {
       // OVH-01c1 kick stamp — "a body you kicked" is the player-authored slice of this same
       // provenance record: { by, at, impulse } written once, here, the player-projectile impulse

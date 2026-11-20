@@ -1,3 +1,4 @@
+import { rockKickSpeed } from '../src/data/gunFamilies.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createGameState } from '../src/core/gameState.js';
@@ -87,7 +88,8 @@ test('missile splash physically reaches scenery and delivers once at a direct im
   const payload = { projectileId: projectile.id, targetId: direct.id, pos: { x: -16, z: 0 }, damagePacket: projectile.data.damagePacket };
   applyProjectilePhysicalContact(host, payload); applyProjectilePhysicalContact(host, { ...payload });
   projectile.alive = false;
-  const directSpeed = def.impulsePerHit / resolvePhysicsBodySpec(direct).mass;
+  // Ruling 2026-11-20: the direct hit pushes a rock by its size class (rockKickSpeed).
+  const directSpeed = rockKickSpeed(def, Number(direct.radius)) ?? def.impulsePerHit / resolvePhysicsBodySpec(direct).mass;
   const falloff = 1 - (36 + 16 - nearby.radius) / def.splashRadius;
   const splashSpeed = def.impulsePerHit * falloff / resolvePhysicsBodySpec(nearby).mass;
   const owner = await createSg02DynamicBodyOwner({ fixedDt: DT, publishTelemetry: false });
