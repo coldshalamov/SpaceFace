@@ -1,5 +1,9 @@
 # 11 — Order of work: tweak now, build next
 
+> **2026-11-20 (ruling R13).** How work is dispatched, reviewed and landed is `12_PIPELINE.md`. This
+> page keeps the list of tweaks and productions. Its old steps that required a review before a
+> commit, a fixed order, or a cap on work in flight no longer apply.
+
 **Director, 2026-11-18.** The owner's instruction for executing this folder (same evening):
 
 > everything that needs to be done for this to be an amazing game is all going to fit in 2 categories:
@@ -12,8 +16,7 @@
 
 Small and medium changes where writing the fix costs about what specifying it would. The director
 implements them (or hands a straightforward one to a Sonnet sub-agent, or a fully scoped mechanical one
-to Devin SWE-2 Max), and **every batch is reviewed by Codex (GPT-6.2 Sol, xhigh) before it is
-committed**.
+to Devin SWE-2 Max).
 
 | # | Tweak | Page | Status |
 |---|---|---|---|
@@ -31,17 +34,7 @@ committed**.
 
 Status here is updated as each lands; the ledger (`02`) records what was seen after.
 
-**Paused 2026-11-18 (usage limit).** T1–T5 and T8 are built in the working tree, **uncommitted**. The exact
-patches (HEAD + only the director's lines, safe beside other agents' work) and their staged copies are in
-`.devshots/director/pending/`; reviews land in `.devshots/director/reviews/`. Commit only after review is
-clean, staging with `node .devshots/director/dual-edit.mjs --stage --stage-dir=<dir> -- <files>`.
-T1's second Codex review asked for six more fixes before commit: (1) publish `fixedBody`/`bodyMassT`
-through the vitals diff with explicit clears, live `physicsBody.dynamic` winning; (2) the bracket must use
-`lineBodyMassT(player)` like the hover tag; (3) drive the hover verb from the ready acquisition receipt,
-not the mining/inspect branch; (4) the Maw brief, Maw objective and Foreman briefing
-(`missionObjectiveOps.js`, `missionStoryOps.js`) and already-saved slag-core briefs still teach strain;
-(5) Tally/Maw advice must follow the hull-to-load relationship, not line class; (6) the twin-bridle denial
-needs endpoint wording, not "ANCHOR". B2 and B3 reviews were still running.
+T1–T5 and T8 landed on 2026-11-19 (`12_PIPELINE.md`, "Landed before 2026-11-20").
 
 **Orbit-fire, specified for OVH-07** (from T10): while latched to an ANCHOR and holding fire, fixed-mount
 guns may gimbal up to ±110° toward the cursor — "the rope steadies your aim at what you're tied to" —
@@ -78,23 +71,14 @@ The big productions are rows in **`build_map.md` §40** (IDs `OVH-*`), each with
 
 ## 3. The order
 
-1. **Category 1, in the order of the table.** Each tweak is small; together they remove most of the
-   wonkiness a stranger sees in the first ten minutes.
-2. **Swarm to the bar** (the demo): OVH-04 → OVH-02 → OVH-01 → OVH-03 → OVH-05 → OVH-06 → OVH-08.
-   Swarm is the proof (doc 10 D2) and the owner's demo.
-3. **Adventure's first hours:** OVH-13 → OVH-17 → OVH-07 → OVH-11 → OVH-10 (places).
-4. **The long game:** OVH-12 → OVH-14 → OVH-15 → OVH-16.
-5. **Last:** OVH-18 polish pass and OVH-19 sound.
+There is no fixed order. The departments in `12_PIPELINE.md` §3 run in parallel; within each, the
+biggest thing a player would feel goes first. The original intent stands as a tie-break: the fight
+and Swarm first, then Adventure's first hours, then the long game, sound last.
 
-No more than six productions in flight (doc 10 §6), never two writers on one file.
+## 4. How every change is checked
 
-## 4. How every batch is checked
-
-1. The focused tests for the changed owner, red-first where behaviour changes.
-2. **Codex review** of the batch diff (GPT-6.2 Sol, xhigh, read-only) — findings with file:line;
-   the director verifies each finding before acting on it.
-3. Commit only the batch's own paths; where a file carries another agent's uncommitted work, stage
-   only the batch's hunks.
-4. `npm run gate -- --quick` after every few batches; red means fix or revert first.
-5. Anything visible is looked at on screen through the ordinary route before it is called done, and
-   the ledger row is updated with the frame.
+1. The focused tests for the changed owner; red first where behaviour changes.
+2. A number before and after for anything about speed or balance.
+3. Anything visible is looked at on screen through the ordinary route.
+4. The builder commits its own files; the director or the area's lead reads the commit and fixes
+   forward.

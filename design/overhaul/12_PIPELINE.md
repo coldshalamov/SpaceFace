@@ -44,14 +44,17 @@ the director does it then and there.
 |---|---|---|
 | `engine` | The clock between simulation and picture; the cost of a simulation step | "It freezes locations of all objects until a blip moves them" |
 | `streaming` | Models arriving on screen: admission, stand-ins, levels of detail | "I crash into nothing and then a model appears" |
-| `ai` | Enemy brains and the enemy roster | "Tons of units with complex behaviour instead of something basic… each enemy should have its own character" |
+| `ai` | Enemy brains, senses and the enemy roster, sized for a horde | "Tons of units with complex behaviour instead of something basic… each enemy should have its own character" |
+| `combat` | What guns, powers and the Line do; the control scheme | "The weapons don't really work the way I'd think… my actions don't do what I'd expect" |
+| `swarm` | The Swarm run loop: getting in, round size and pace, money, upgrades, the end of a run | "The addictive slam-bang… advance quickly and splay out into a branch of the tree" |
 | `world` | What persists off screen, rock regrowth, who populates a sector, the first five minutes | "Not respawn instantly, not depopulate the galaxy… some places feel overcrowded" |
+| `adventure` | Work, trade, mining, the rover, building inside rocks, drones, prices | "You'd progress naturally from labor to capital deployment" |
 | `vfx` | Powers, weapons, impacts, explosions | "A blurry blanket, not a cool real VFX" |
-| interface (director + Gemini Neon) | HUD, power bar, words, screens | "I can't tell what any of the powers do… gibberish language" |
-| `plans` | The index of every unbuilt or unwired plan in the repo | "Work that sat done for weeks and was never wired up" |
+| interface (director + Gemini Neon + GLM) | HUD, power bar, words, screens | "I can't tell what any of the powers do… gibberish language" |
+| `plans` | The index of every unbuilt or unwired plan (`.devshots/director/fable/plans/INDEX.md`) | "Work that sat done for weeks and was never wired up" |
 
-More departments open as these land: the Swarm loop, Adventure's economy and jobs, the asteroid
-board and yard, stations, sound.
+Still to open: drawing speed for a horde (instanced hulls, the Foundry set's cost, the model-cost
+audit's findings), stations, the story's first hour, sound.
 
 ## 4. The measure
 
@@ -64,6 +67,8 @@ Taken on a quiet machine before any agent was running (2026-11-20, working copy 
 | Same flight: visible freezes (no new positions for over 0.35 s) | 5, longest 3.6 s | 0 |
 | Same flight: simulation step in the worker | 8.6 ms median, 13.6 ms at the 95th percentile | under 8 ms at the 95th |
 | Swarm wave 15 headless: simulation step | 9.5 ms mean, 14.8 at the 95th, 58 worst | under 8 ms at the 95th, worst under 16 |
+| Enemies attacking at once in a late Swarm round | 11 ships (plus brood bodies) at wave 15 | 200–300 |
+| Boot check (`npm run check:playable`) and replay (`npm run check:sim`) | 18/18 and green at the checkpoint | stay green |
 
 Probes: `.devshots/director/travel-probe.mjs` (through the game lock) and
 `node scripts/sim-crowd-stress.mjs --ticks=600 --warmup=240`. Numbers taken while agents are working
@@ -74,33 +79,39 @@ are not comparable to these: the same build measured 22.6 ms a step last night u
 | ID | What the player gets | Builder | State |
 |---|---|---|---|
 | CHECKPOINT | `master` is the game the owner actually runs | Director | **Landed** 9b3b0f1930 (code), 62539fd891 (assets), 1db5ddcbf0 (plans) |
-| FRONT-DOOR | One rule; old queues, holds and claims boards are history | Director | **Landed** e027b513ad |
-| ENGINE-0 | The freeze explained to its exact mechanism; the cure in slices | `engine` | Investigating |
-| STREAM-0 | Why nearby ships never get their real model; the rule that makes it impossible | `streaming` | Investigating |
-| AI-0 | Cheap swarm brains, a group mind, a roster of characters | `ai` | Investigating |
-| WORLD-0 | What persistence really does today; the regrowth and population design | `world` | Investigating |
+| FRONT-DOOR | One rule; old queues, holds and claims boards are history; the modern-technique bar | Director | **Landed** e027b513ad, d480208bdb, eabea3daac |
+| RULINGS | R13–R18: the horde, senses, calm populated sectors, powers that say what they do, plain words | Director | **Landed** 249f4c74b3 |
+| ENGINE-1 | The picture never holds dead and never teleports; corrections ease | `engine` | Building (after: smooth slow-down under load, spikes, predicted player ship) |
+| AI-1 | Horde brains: context steering, group mind, no attack cap, 200–300 attackers | `ai` | Building (S0 landed 3ab03c4d4b) |
+| WORLD-1 | A calm harbour opening; no silent respawn or empty sectors; rocks that visibly regrow | `world` | Building slices 0–3 |
+| COMBAT-1 | Every verb does what its name says; one input rule; Pin, Bomb and Plow fixed; real keys | `combat` | Investigating, then building |
+| SWARM-1 | One press to round 1; no shop every round; one money; rounds sized for a horde | `swarm` | Investigating, then building |
+| ADV-0 | The owner's Adventure ladder audited rung by rung | `adventure` (Sonnet) | Investigating |
+| STREAM-0 | Why nearby ships and rocks never get their real model; the rule that makes it impossible | `streaming` | Investigating |
 | VFX-0 | Why effects read as a blanket; the replacement technique, power by power | `vfx` | Investigating |
-| PLANS-0 | Every unbuilt and unwired plan, ranked by what a player would feel | `plans` (Sonnet) | Investigating |
+| PLANS-0 | Every unbuilt and unwired plan, ranked | `plans` (Sonnet) | **Done**: 9 unwired groups, ~110 unbuilt plans, 29 blocking rules |
+| UX-FRESH-EYES | Where a stranger gets lost; the ten changes that fix it | Gemini Neon | **Done**: `.devshots/director/fable/ux/FRESH-EYES.md` |
+| HUD-POWER-BAR | Six tiles that explain themselves; a quiet flight screen; edge chevrons | Gemini Neon | Building |
+| COPY-SWEEP | Plain English and human units everywhere; a check that fails on jargon | GLM | Building |
+| DOCS-HYGIENE | The 29 leftover "wait / hold / get review" rules removed from other documents | GLM | Building |
 | PERF-09 | Three repeated costs out of every simulation step | Devin | Building |
 | ASSET-COST-AUDIT | What every model costs to draw, and which cost too much | GLM | Building |
-| UX-FRESH-EYES | Where a stranger gets lost; the ten changes that fix it | Gemini Neon | Investigating |
+
+Queued behind these, from the plans index: wire the five finished encounters sitting on
+`codex/pro-five-integration` (TOWJAW, GLASSWAKE, SWITCHBACK, BLACKBOX RUNS, Kinetic Catalysts) once
+the population owner exists; the live bugs left in `.dev/pr-expansion/HANDOFF.md`; the Foundry set's
+cost, vanishing furnace casing and Shadows Off bypass; instanced enemy hulls; the Katamari line
+(a run rating that grows with impact kills; everything breaks down a tier); boss plates the Line can
+rip off; the enemy "Mind" shown on screen.
 
 ## 6. Landed before 2026-11-20
+
+Every row below that reads **Parked** is on `master` (merged with 3474e87069 or the 9b3b0f1930
+checkpoint). The lit Foundry (OVH-03a) is live with its defects open.
 
 **2026-11-20, owner rule: no holds.** Finished work is never parked waiting for a reviewer: the director reviews it (with agy2 as the second eye when it is free) and lands it. Red master (callers importing uncommitted pieces after sweep commits) is repaired on sight: 96d40380cc, 65b2046fbd.
 
 **2026-11-20 05:30: the Pilot Tree chain LANDED on master as 3474e87069** — OVH-01a/a2/b/b2/c1/c2/c2b/c3, OVH-06a, OVH-06b, OVH-08a + fix, PT-FIX-A, PT-FIX-C, CW-WPN (14 commits of park/pilot-tree merged onto master; 30 skills live). 787 test files on the merged tip vs master: 0 new failures after one pinned-curve test followed the retune; key tests 159/159 on the landed master; check:sim matches its (re-recorded) golden; every core module loads. agy2 delta re-review running in parallel; findings are fixed forward.
-
-**Codex is out of usage until 2026-11-24 15:52.** Per the owner's rule (never swap agents on a usage
-limit), batches that still need its review are built, verified and **parked as commits on
-`refs/heads/park/w3-foundry`** (made with a private index, so the shared tree and index are untouched).
-Their changes are live in the working folder the owner plays from. On Codex's return: review the park
-commits as one batch, fix, then land them on master.
-
-**2026-11-19, the owner: "finish".** The three-batch cap is lifted: everything that does not need Codex
-keeps being built, checked and parked. The Pilot Tree chain parks as successive commits on
-`refs/heads/park/pilot-tree` (`park-one.mjs --base=park/pilot-tree`), each proven from its own export;
-nothing stacks on `park/w3-foundry` (the Foundry there has open must-fixes).
 
 | ID | What the player gets | Builder | State |
 |---|---|---|---|
