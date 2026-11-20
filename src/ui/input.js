@@ -384,12 +384,43 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
   function doFlightInteract() {
     if (isUiInteractionFenced(state) || state.mode !== 'flight' || state.ui?.docked) return false;
     if (dockInRange) { doDock(); return true; }
+    // Capture-bot finding (2026-11-20): a stranger could not dock by flying at the ring. Near a
+    // station, the interact key hands the approach to the autopilot, which flies the corridor
+    // mouth and then the berth (the same berth plan the dock prompt uses); any flight key takes
+    // the helm back. In range, the same key docks.
+    const berth = nearestDockableStation();
+    if (berth) {
+      bus.emit('ui:setCourse', { pos: { x: berth.pos.x, z: berth.pos.z }, targetEntityId: berth.id,
+        label: berth.name || berth.data?.name || 'Station berth', waypointKind: 'local', autopilot: true });
+      bus.emit('toast', { text: `Autopilot: flying to the ${berth.name || 'station'} berth — steer to take the helm back`, kind: 'info', ttl: 3 });
+      bus.emit('audio:cue', { id: 'ui_confirm' });
+      state.ui = state.ui || {};
+      state.ui.berthAutopilotStationId = berth.id;
+      return true;
+    }
     const quote = swarmFloorPadQuote(nearestSwarmFloorPad(state));
     if (!quote) return false;
     const terms = document.querySelector(`#sf-floorpads [data-floor-quote="${quote.entityId}"]`);
     if (!terms?.getClientRects().length || Number(getComputedStyle(terms).opacity) < 0.5) return false;
     bus.emit(SWARM_FLOOR_ARM_REQUEST, quote);
     return true;
+  }
+
+  // The nearest station the interact key can fly the ship to (published for the HUD's
+  // "[E] Fly to berth" prompt on state.ui.berthOfferStationId).
+  const BERTH_OFFER_RANGE_WU = 4000;
+  function nearestDockableStation() {
+    const me = state.entities && typeof state.entities.get === 'function' ? state.entities.get(state.playerId) : null;
+    if (!me || !me.pos) return null;
+    let best = null;
+    let bestD = BERTH_OFFER_RANGE_WU;
+    for (const e of state.entityList || []) {
+      if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
+      if (e.data && (e.data.hostile === true || e.data.dockable === false)) continue;
+      const d = Math.hypot(e.pos.x - me.pos.x, e.pos.z - me.pos.z);
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    return best;
   }
 
   function matchesBinding(ev, binding) {

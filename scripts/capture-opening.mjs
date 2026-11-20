@@ -475,7 +475,11 @@ async function toggleWheel(action, wantOn, { waitVisible = true } = {}) {
   throw new Error(`context wheel did not open for ${action}`);
 }
 
-const toggleMine = (page, wantOn) => toggleWheel('aimedMine', wantOn);
+// R17: the mining beam is held on G (a real key a stranger is told about), not a Q-wheel slice.
+const toggleMine = async (page, wantOn) => {
+  if (wantOn) { noteKey(page, 'KeyG'); await page.keyboard.down('KeyG'); }
+  else await page.keyboard.up('KeyG');
+};
 
 // The beam's own truth: the rock the mining system locked, or null while it scans.
 const readMiningLock = () => page.evaluate(() => {
@@ -614,11 +618,24 @@ async function stepDock(deadline) {
       || window.SF?.ctx?.screenManager?.top?.() === 'station', null, { timeout: 6000 })
       .then(() => true, () => false);
   };
+  let askedAutopilot = false;
   try {
     while (Date.now() - t0 < 150000 && !deadlineHit(deadline)) {
       const s = await readStation();
       if (!s) { await hold('KeyW', false); await hold('KeyS', false); await sleep(400); continue; }
       if (s.docked) return 'docked';
+      // R17 / capture finding: near a station a stranger presses E and the autopilot flies the
+      // corridor and the berth. Try that first; the manual lane approach below is the fallback.
+      if (!askedAutopilot && !s.inRange && (s.d ?? Infinity) < 4000) {
+        askedAutopilot = true;
+        await hold('KeyW', false); await hold('KeyS', false);
+        noteKey(page, 'KeyE');
+        await page.keyboard.press('KeyE');
+        const reached = await page.waitForFunction(() => !!window.SF?.state?.ui?.dockInRange || !!window.SF?.state?.ui?.docked,
+          null, { timeout: 90000 }).then(() => true, () => false);
+        if (reached) { if (await tryDock()) return `docked on E after the E autopilot at ${s.name}`; }
+        continue;
+      }
       if (s.inRange || (s.berthD != null && s.berthD <= s.radius * 1.5 && s.speed <= s.gate)) {
         await hold('KeyW', false); await hold('KeyS', false);
         if (s.inRange) {
@@ -636,11 +653,9 @@ async function stepDock(deadline) {
       // cannot bleed a burn/cruise approach. Latch it on whenever we are well over target.
       const nearGate = inLane ? (s.captureGate ?? 20) : Math.min(160, Math.max(12, (s.mouthD ?? s.d ?? 400) * 0.12));
       const needHardBrake = s.speed > Math.max(30, nearGate * 1.4);
-      const brakingNow = await page.evaluate(() => !!(window.SF?.state?.input?.wheelLatches?.brake)).catch(() => false);
-      if (needHardBrake !== brakingNow) {
-        await hold('KeyW', false); await hold('KeyS', false);
-        await toggleWheel('brake', needHardBrake).catch(() => {});
-      }
+      // R17: X is full stop (a real key now, not a wheel latch).
+      await hold('KeyW', false); await hold('KeyS', false);
+      await hold('KeyX', needHardBrake);
       if (needHardBrake) { await sleep(300); continue; }
       if (inLane) {
         // ride the lane: nose to the berth, speed under the capture gate — the PD assist
