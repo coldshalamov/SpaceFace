@@ -115,6 +115,13 @@ if (devin) {
   cmdArgs = ['/d', '/s', '/c', join(HOME, 'bin', 'agy-acct.cmd'), acct[0], '--acct', acct[1], '--print',
     // Windows command lines mangle a long quoted prompt: hand agy one line that points at the prompt file.
     `Read the file ${join(runDir, 'PROMPT.txt')} and follow it exactly. Work in ${REPO}.`, '--model', 'gemini-4-neon-xhigh', '--dangerously-skip-permissions', '--output-format', 'text'];
+} else if (backend === 'zcode') {
+  // ZCode harness on the Z.ai coding plan, GLM 5.3 at max effort: a second GLM seat with its own limit.
+  // It rewrites CRLF files as LF: check `git diff --stat` on its commits and restore endings if needed.
+  cmd = process.env.ComSpec || 'C:\\Windows\\System32\\cmd.exe';
+  cmdArgs = ['/d', '/s', '/c', join(HOME, 'bin', 'zcode.cmd'), '-p',
+    `Read the file ${join(runDir, 'PROMPT.txt')} and follow it exactly. Work in ${REPO}.`,
+    '-m', 'glm-5.3', '--provider', 'account:zai-individual-coding-plan', '--mode', 'build', '--effort', 'max', '-C', REPO];
 } else if (backend === 'codex') {
   // The senior agent (owner, 2026-11-11): GPT 6.1 Sol, high effort, via the npm codex 0.163 shim
   // (the codex.exe on PATH is an old desktop bundle). Prompt on stdin. Use for hard backend /
