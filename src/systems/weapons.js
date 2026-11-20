@@ -1498,7 +1498,7 @@ export const weapons = {
     let beamAim = aimAngle;
     const arcadeTarget = fireGate?.target || forceTarget;
     const arcadeAim = arcadeGunTarget(e, arcadeTarget, state);
-    const pilotAim = e.id === state.playerId && state.settings?.gameplay?.controlScheme === 'pilot';
+    const pilotAim = e.id === state.playerId && state.settings?.gameplay?.controlScheme !== 'classic';  // R17: mouse-aimed fire in Standard and Pilot
     let solutionBlocked = false;
     if (!fireGate && forceTarget && forceTarget.pos) {
       // Hitscan has no travel time. A mixed battery may have computed the ship-level aim angle for
@@ -1654,7 +1654,7 @@ export const weapons = {
 
   // Projectile weapon: gate on cooldown/cap/heat (+lock/+arc), spawn a projectile, emit combat:fire.
   _serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget, fireGate = null) {
-    const pilotAim = isPlayer && state.settings?.gameplay?.controlScheme === 'pilot';
+    const pilotAim = isPlayer && state.settings?.gameplay?.controlScheme !== 'classic';  // R17: mouse-aimed fire in Standard and Pilot
     const tracking = w.tracking || def.tracking || 'fixed';
     const isMissile = tracking === 'homing';
     const isTurret = (w.facing === 'turret') || (tracking === 'auto_turret');

@@ -21,10 +21,11 @@ const STYLE_ID = 'sf-wingman-radial-style';
 // visual language as the rest of the HUD — the old ⛊/✦ Unicode marks rendered at mixed weights
 // and ⛊ has no consistent cross-platform glyph.
 const OPTIONS = [
-  { key: '1', order: 'attack', label: 'Attack Target', icon: 'target', pos: 'top', needsTarget: true },
-  { key: '2', order: 'screen', label: 'Screen', icon: 'shield', pos: 'right' },
-  { key: '3', order: 'regroup', label: 'Regroup', icon: 'beacon', pos: 'bottom' },
-  { key: '4', order: 'hold', label: 'Hold', icon: 'clock', pos: 'left' },
+  // R17: radial orders ride 6–9; 1–5 stay the powers.
+  { key: '6', order: 'attack', label: 'Attack Target', icon: 'target', pos: 'top', needsTarget: true },
+  { key: '7', order: 'screen', label: 'Screen', icon: 'shield', pos: 'right' },
+  { key: '8', order: 'regroup', label: 'Regroup', icon: 'beacon', pos: 'bottom' },
+  { key: '9', order: 'hold', label: 'Hold', icon: 'clock', pos: 'left' },
 ];
 
 // The dial's geometry, in its own 400-unit box (the overlay is 400px square).

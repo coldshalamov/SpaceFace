@@ -31,6 +31,20 @@ import {
 
 export const INPUT_CONTEXTS = Object.freeze(['swarm', 'station', 'map', 'combat', 'flight']);
 
+// R17 (2026-11-20): "Nothing may steal keys 1–5 in flight." Decision cards, the hail panel and
+// the comms / wingman radials answer on the five digits the powers never use: 6, 7, 8, 9, 0.
+export const PROMPT_ANSWER_KEYS = Object.freeze(['6', '7', '8', '9', '0']);
+export const PROMPT_ANSWER_SLOTS = PROMPT_ANSWER_KEYS.length;
+/** Slot index (0-based) a key answers, or -1. Accepts KeyboardEvent.code or .key. */
+export function promptAnswerSlot(key) {
+  const m = /^(?:Digit|Numpad)?([0-9])$/.exec(String(key || ''));
+  return m ? PROMPT_ANSWER_KEYS.indexOf(m[1]) : -1;
+}
+/** The keycap printed for an answer slot ('' past the last answer key). */
+export function promptAnswerKey(slot) {
+  return PROMPT_ANSWER_KEYS[slot] || '';
+}
+
 /** The unified map surface plus the legacy ids the normal route no longer opens. */
 export const MAP_CONTEXT_SCREEN_IDS = Object.freeze(['galaxyMap', 'localmap', 'starmap']);
 
@@ -44,6 +58,8 @@ export const FLIGHT_ACTIONS = Object.freeze([
   'cycleBomb', 'jettisonLot', 'travelBurn', 'massline', 'contextWheel',
   // R17: the planet-band skim scoop left key 5; it is its own labelled wheel slice.
   'scoop',
+  // R17: the mining beam has a real key (G), held.
+  'mine',
 ]);
 
 // The fight set: movement, the gun, the Line, the five powers, the defensive/utility verbs that

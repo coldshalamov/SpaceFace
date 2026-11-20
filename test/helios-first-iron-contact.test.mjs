@@ -134,7 +134,7 @@ async function mountHails(f,{radial=false}={}){
 }
 
 test('mounted pointer and keyboard hail plot exactly once through the ordinary world owner, without autopilot', async () => {
-  for (const mode of ['pointer', 'Digit3', 'Numpad3']) {
+  for (const mode of ['pointer', 'Digit8', 'Numpad8']) {
     const f = fixture(); let mounted; try {
       mounted = await mountHails(f); const { ui, doc } = mounted;
       const courses = [], responses = [];
@@ -144,7 +144,7 @@ test('mounted pointer and keyboard hail plot exactly once through the ordinary w
       const panel = ui.el.querySelector('[data-k="panel"]'), actions = panel.querySelector('[data-k="actions"]');
       assert.deepEqual(actions.children.map(e => e.dataset.choice), ['status', 'identify', 'route']);
       if (mode === 'pointer') for (const fn of panel.listeners.click) fn({ target: actions.children[2] });
-      else assert.equal(doc.key('3', mode).defaultPrevented, true);
+      else assert.equal(doc.key('8', mode).defaultPrevented, true);
       assert.equal(courses.length, 1); assert.equal(f.state.nav.autopilot.active, false);
       assert.deepEqual(f.state.nav.waypoint.pos, courses[0].pos); assert.equal(f.state.nav.waypoint.targetEntityId, undefined);
       f.bus.emit('contactHail:response', responses[0]); assert.equal(courses.length, 1);
@@ -202,7 +202,7 @@ test('native Hitch follows the chosen working fix, brakes and cuts first-ticket 
       h.bus.on('mining:yield', p => yields.push(p));
       h.bus.on('ui:setCourse', c => world._onSetCourse.call({ state: s, bus: h.bus }, c));
       mounted = await mountHails(f); h.bus.emit('contactHail:availability', contactHailAvailability(s));
-      mounted.ui.request(); mounted.doc.key('3', 'Digit3');
+      mounted.ui.request(); mounted.doc.key('8', 'Digit8');
       const fix = { ...s.nav.waypoint.pos }; assert.equal(s.nav.autopilot.active, false);
       for (let i = 0; i < 3600; i++) {
         const p = h.player, dx = fix.x - p.pos.x, dz = fix.z - p.pos.z;

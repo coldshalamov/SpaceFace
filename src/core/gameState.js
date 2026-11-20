@@ -64,7 +64,9 @@ function defaultSettings() {
       flightBackend: 'v3',
       // Explicit runtime profile (Phase 2). Never inferred from host environment.
       runtimeProfile: 'production',
-      controlScheme: 'pilot',
+      // R17 (2026-11-20): new profiles fly the scheme a stranger expects — the ship faces the cursor,
+      // W/S thrust and brake, A/D strafe. Pilot (A/D turn) stays one Settings row away.
+      controlScheme: 'helm-assist',
       controlSchemeV2: true,
       orbitAssistStrength: 'standard',
       // FB-001: the pursuit-slot chase assist, re-surfaced as an opt-in assisted-flight option.

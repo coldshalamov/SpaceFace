@@ -116,6 +116,13 @@ export const cruise = {
       }
     }
 
+    // R17 / capture-bot finding (2026-11-20): the brake a stranger reaches for — the brake key or
+    // reverse throttle — always drops cruise. A pilot pinned at cruise speed with no way to bleed
+    // it overshot the station.
+    const inp = state.input;
+    const braking = !!(inp && (inp.brake || (inp.actions && inp.actions.brake) || Number(inp.moveZ) < -0.3));
+    if (braking && cruise.phase !== 'off') this._drop(DROP_REASONS.MANUAL);
+
     if (cruise.phase === 'charging') {
       // VERB-36: on a laid route the bow must be on the course before the burn. More than
       // 30° off holds the spool (the clock does not advance) until the pilot steers onto

@@ -1174,7 +1174,7 @@ export const crucibleDraftScreen = {
         this._warmHold = true;
         skip.disabled = true;
         skip.setAttribute('aria-disabled', 'true');
-        setKeyLabel(skip, 'Readying the field…', 'Esc', 'Escape');
+        setKeyLabel(skip, 'Readying the field…', 'Enter', 'Enter');
         // Bounded: a compile that never settles must not strand the player in the armory.
         Promise.race([
           Promise.resolve(warm.promise).catch(() => null),
@@ -1255,15 +1255,23 @@ export const crucibleDraftScreen = {
       }
       if (event.key === 'Escape') {
         event.preventDefault();
-        // The skip resolves the draft and pops this screen synchronously, so the SAME keydown
-        // would reach the document-level flight handler with no modal open and Escape would
-        // also push Pause — one key, two consequences. Own it here end to end.
         event.stopPropagation();
-        // In the armory Esc is a way out, not a launch: while the wallet still buys something on
-        // the shelf, the first press spends itself on a warning and the second one goes.
-        if (this._guardLaunch(ctx)) return;
-        skip.click();
+        // R17 (2026-11-20): Esc never starts a round. It only puts focus on Launch, so the next
+        // deliberate Enter (or click) is the launch.
+        if (typeof skip.focus === 'function') skip.focus();
         return;
+      }
+      if (event.key === 'Enter' && !inSearch) {
+        const a = typeof document !== 'undefined' ? document.activeElement : null;
+        const tag = a && a.tagName;
+        // A focused control answers its own Enter; on the bare screen Enter is the launch key.
+        if (!a || a === rootEl || (tag !== 'BUTTON' && tag !== 'SELECT' && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'A')) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (this._guardLaunch(ctx)) return;
+          skip.click();
+          return;
+        }
       }
       if (inSearch) return;
       // Not reroll.click(): the button is drawn dead when the price is out of reach, and a dead
@@ -1818,9 +1826,8 @@ export const crucibleDraftScreen = {
             : circuitRun.status === 'route' ? 'Choose a destination first' : 'Finish or enter Overtime first')
           : launchesWithoutGun ? 'Launch round 1 without a gun'
             : shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue'),
-      // Launch carries no Esc badge in the armory: Esc is the way out of the screen, never a launch
-      // key a player should learn (the guard below still stops a stray Esc from launching).
-      shop && !circuitOwed ? '' : 'Esc', 'Escape');
+      // R17: Enter launches; Esc never does.
+      circuitOwed ? '' : 'Enter', 'Enter');
     const canFitStarter = starterOnly && openingChoice && launchesWithoutGun;
     this._skip.classList.toggle('k-word--primary', shop && !circuitOwed && !canFitStarter);
     // A warm hold that resolved off-draft left the control disabled+relabelled; re-arm it here
@@ -2434,14 +2441,21 @@ export const crucibleRefitScreen = {
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       if (event.key === 'Escape') {
         event.preventDefault();
-        // done.click() can pop this screen synchronously; without stopping propagation the same
-        // keydown then reaches the flight handler's Escape branch and also pushes Pause.
         event.stopPropagation();
-        // Escape resumes (launch the next block, back to the armory); it never ends a run -- the
-        // last wave's "take the win" is pressed, not escaped into.
-        if (refitFootLines(ctx.state && ctx.state.run).finishes) { cue('deny'); return; }
-        done.click();
+        // R17: Esc never starts a round (or ends a run). It puts focus on the primary button.
+        if (typeof done.focus === 'function') done.focus();
         return;
+      }
+      if (event.key === 'Enter') {
+        const a = document.activeElement;
+        const tag = a && a.tagName;
+        if (!a || a === rootEl || (tag !== 'BUTTON' && tag !== 'SELECT' && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'A')) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (refitFootLines(ctx.state && ctx.state.run).finishes) { cue('deny'); return; }
+          done.click();
+          return;
+        }
       }
       // D30: Space taps Keep Going; F is the hold-to-fire "end the run". Neither steals a key a
       // focused control owns (buttons click on Space, selects keep their arrows), and both work
@@ -2620,7 +2634,7 @@ export const crucibleRefitScreen = {
     // D30 caps: the launch key answers to Escape, endless-continue to Space / pad Y, and the
     // run-ending word (the win or the walk-away) to a 0.6 s hold of F / pad X — the ring on the
     // word is the hold's progress, so the cap is what fires it, not a tooltip.
-    setKeyLabel(this._done, lines.primary, lines.finishes ? 'hold F·X' : '', lines.finishes ? 'f' : 'Escape');
+    setKeyLabel(this._done, lines.primary, lines.finishes ? 'hold F·X' : 'Enter', lines.finishes ? 'f' : 'Enter');
     // The run-ending commit takes the Lamp; every other key rests in bone. (The first refresh
     // runs before the foot exists, like every other word here.)
     if (this._done) this._done.classList.toggle('is-lamp', !!lines.finishes);

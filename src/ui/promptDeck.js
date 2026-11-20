@@ -42,6 +42,7 @@ import { arcGauge } from './orrery/instruments.js';
 import { injectOrrery } from './orrery/tokens.js';
 import { setLocalizedTextTemplate } from '../localization/domBridge.js';
 import { counted } from './numberFormat.js';
+import { promptAnswerKey, promptAnswerSlot } from '../data/inputContexts.js';
 
 
 const FULL_SLOTS = 2;          // full glass frames on the ladder before collapse to chips
@@ -119,11 +120,9 @@ export function deadlineText(deadlineAt, simTime, statusFlag) {
   return `Choose a response · ${counted(seconds, 'second', 'seconds')}`;
 }
 
+// R17: answers ride 6–9 so a card that pops mid-fight can never eat a power key (1–5).
 export function digitIndex(key) {
-  const k = String(key || '');
-  if (/^[1-9]$/.test(k)) return Number(k) - 1;
-  const m = /^(?:Digit|Numpad)([1-9])$/.exec(k);
-  return m ? Number(m[1]) - 1 : -1;
+  return promptAnswerSlot(key);
 }
 
 /** The power-rail claim payload for the current display line: which digit slots the deck owns and
@@ -255,7 +254,8 @@ export function createPromptDeck(ctx = {}) {
   // claim releases whenever the deck cannot capture keys (hidden, fenced, modal, docked, dead), so
   // a prompt that vanishes without resolving can never leave the rail showing dead answers.
   function syncClaim() {
-    const active = !destroyed && entries.size && !root.hidden && !fenced() && !modalOpen() && inFlight();
+    // R17: the deck answers on 6–9 now, so it never borrows a power socket (1–5) — always release.
+    const active = false;
     let payload = null;
     let sig = '';
     if (active) {
@@ -419,7 +419,7 @@ export function createPromptDeck(ctx = {}) {
       btn.disabled = !!choice.disabled;
       if (choice.reason || choice.title) btn.title = choice.reason || choice.title || '';
       else btn.removeAttribute('title');
-      const keyNum = choice.disabled ? '' : String(base + printable + 1);
+      const keyNum = choice.disabled ? '' : promptAnswerKey(base + printable);
       btn.setAttribute('aria-label', `${choice.label}.${choice.disabled ? ' Unavailable.' : ''}${keyNum ? ` Key ${keyNum}.` : ''}`);
       setText(btn.firstElementChild, keyNum);
       setText(btn.lastElementChild, choice.label);
@@ -555,7 +555,7 @@ export function createPromptDeck(ctx = {}) {
     for (const id of chips) {
       const entry = entries.get(id);
       if (!entry.chipEl) entry.chipEl = buildChip(entry);
-      setText(entry.chipKeyEl, String(digitSlot + 1));
+      setText(entry.chipKeyEl, promptAnswerKey(digitSlot));
       setText(entry.chipLabelEl, entry.spec.headline || entry.spec.id);
       // The chip's children concatenate into a name with no separators ("5PIRATE DEMAND12s") —
       // give the button an explicit name that names the verb, the card, and the key.

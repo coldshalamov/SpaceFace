@@ -70,6 +70,9 @@ import {
   POWER_VERBS, bombUsesCharge, powerVerbFor, powerUsesReleasePreview, savedCodesForPower, setHeldPower,
 } from './powerVerbs.js';
 
+// R17: S held above this forward speed (wu/s) is a brake; below it, S reverses.
+const S_BRAKE_MIN_FORWARD_SPEED = 25;
+
 // Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
 // so the ship's own yaw controller (rate caps, banking, class tuning) shapes the actual turn.
 const HELM_SOFT_ANGLE = 0.55;
@@ -287,7 +290,8 @@ const VERB_BINDINGS = {
   shove:          ['Digit2'],
   pin:            ['Digit3'],
   rig:            ['Digit5'],
-  scanPulse:      [],   // edge: scanner pulse (8 s cd owned by scanner system)
+  scanPulse:      ['KeyC'], // edge: scanner pulse (8 s cd owned by scanner system) — R17: a real key
+  mine:           ['KeyG'], // level: hold to run the mining beam at the cursor — R17: a real key
   scoop:          [],   // edge: the planet-band skim scoop (R17: its own wheel slice, not key 5)
   cruise:         [],   // edge: toggle cruise charge (cruise system owns state)
   autopursuit:    [],   // retired; retained as an inert save/input compatibility field.
@@ -326,7 +330,7 @@ const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
   strafeLeft:  [],
   strafeRight: [],
   fire:     [],                 // LMB fires
-  brake:    [],                 // full stop is a wheel latch; S/Down commands governed reverse thrust
+  brake:    ['KeyX'],           // R17: X is full stop; S/Down commands governed reverse thrust
   autoFire: [],
   countermeasure: [],          // deploy chaff/ECM (P1-7) — wheel tap by default, remappable
   bomb: ['Digit4'],            // the BOMB power's hotbar seat
@@ -346,7 +350,7 @@ const HELM_BINDINGS = {      // HELM ASSIST: mouse owns the nose, so A/D stay st
   strafeLeft:  ['KeyA', 'ArrowLeft'],
   strafeRight: ['KeyD', 'ArrowRight'],
   fire:     [],                // LMB only
-  brake:    [],                // full stop is a wheel latch; S/Down commands governed reverse thrust
+  brake:    ['KeyX'],          // R17: X is full stop; S/Down commands governed reverse thrust
   autoFire: [],
   countermeasure: [],
   bomb: ['Digit4'],
@@ -364,7 +368,7 @@ export const PILOT_BINDINGS = {     // PILOT (default): keyboard flies, mouse fi
   strafeLeft:  [],
   strafeRight: [],
   fire:     [],                      // LMB fires — the mouse is a weapon, not a rudder
-  brake:    [],                      // full stop is a wheel latch; S/Down commands governed reverse thrust
+  brake:    ['KeyX'],                // R17: X is full stop; S/Down commands governed reverse thrust
   autoFire: [],
   countermeasure: [],
   bomb: ['Digit4'],                  // the BOMB power's hotbar seat
@@ -380,7 +384,7 @@ const SCHEME_BINDINGS = { pilot: PILOT_BINDINGS, classic: DEFAULT_BINDINGS, 'hel
 // remains selectable for players who prefer cursor steering.
 function activeScheme(state) {
   const s = state.settings && state.settings.gameplay && state.settings.gameplay.controlScheme;
-  return SCHEME_BINDINGS[s] ? s : 'pilot';
+  return SCHEME_BINDINGS[s] ? s : 'helm-assist';
 }
 
 /**
@@ -2205,6 +2209,14 @@ export const input = {
       keyboardBrake || gpBrake, toggleLive('brake')) || wheelOn('brake');
     inp.boost = boostHeld;
     inp.brake = brakeHeld;
+    // R17 / capture-bot finding: the obvious key slows the ship. Holding S (reverse) while the
+    // ship is still moving forward brakes with the full brake law (which also drops cruise and
+    // breaks the travel latch); once it is nearly stopped, S backs up. Not while the Line is held:
+    // there hold + S pays the line out.
+    if (!inp.brake && inp.moveZ < -0.1 && p && p.vel && !(this._m2 === true || this._held(state, 'tether'))) {
+      const fwd = p.vel.x * Math.cos(p.rot || 0) + p.vel.z * Math.sin(p.rot || 0);
+      if (fwd > S_BRAKE_MIN_FORWARD_SPEED) { inp.brake = true; inp.moveZ = 0; }
+    }
     inp.fire = kbdFire || gpFire || tpFire;
     // Explicit device input interrupts the drawn route without switching off gun targeting.
     // Do not infer this from the auto pilot's axes one system later: those include reverse
@@ -2223,7 +2235,7 @@ export const input = {
     // selected. Both claim the selected-site lane, never ordinary rock mining.
     const gamepadSiteBeam = (gpMine || this._padHeld(gp, 'siteBeam')) && !!selectedSite;
     const siteBeamHeld = !!(contextualSiteBeam || gamepadSiteBeam);
-    const anyMineHeld = !swarmLive && !!(gpMine || tpMine || wheelOn('aimedMine'));
+    const anyMineHeld = !swarmLive && !!(gpMine || tpMine || wheelOn('aimedMine') || this._held(state, 'mine'));
     // Wheel and pad mining are cursor-aimed even when a World Site remains selected. Only the
     // explicit site-beam routes claim the selected-site lane; preserving this provenance prevents
     // a stale site selection from stealing ordinary rock mining.

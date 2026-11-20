@@ -662,8 +662,15 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
     // A deliberately focused flight control owns its native Tab/Enter/Space and other keys.
     // Do not prevent their defaults; only keep document/window flight shortcuts from firing.
     if (state.mode === 'flight' && flightHudControl(t)) {
-      if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
-      return;
+      // Capture-bot finding (2026-11-20): a power tile or HUD button left focused by a click
+      // swallowed Esc and M, so pause and the map silently did nothing. Esc always pauses and M/N
+      // always open the map: they take focus back from the control and go on.
+      const always = key === 'Escape' || matchesBinding(ev, BINDINGS.localmap) || matchesBinding(ev, BINDINGS.starmap);
+      if (!always) {
+        if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+        return;
+      }
+      if (t && typeof t.blur === 'function') t.blur();
     }
 
     // --- pure flight: UI-owned global keys only (mode must be flight) ---

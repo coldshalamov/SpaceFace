@@ -173,11 +173,11 @@ test('the mounted Cluster follows live rebinds, prompt key ownership, and an int
     assert.equal(key('2'), '2');
     setPromptDeck({ claimedDigits: [2, 3] });
     mounted.update(state, player, false);
-    assert.equal(key('1'), '', 'a decision borrows the actual key, including when the power was remapped');
-    assert.match(socket('1').getAttribute('aria-label'), /number key answers the call/i);
-    assert.equal(key('2'), 'R', 'a second binding stays available and visible');
-    assert.doesNotMatch(socket('2').getAttribute('data-why'), /\(2/);
-    assert.equal(key(), 'RMB / U', 'Line does not change when a number is borrowed');
+    // R17 (2026-11-20): "Nothing may steal keys 1–5 in flight." Decisions answer on 6–9 and 0, so a
+    // live decision never takes a power's key away from its socket.
+    assert.equal(key('1'), '3', 'R17: a decision never borrows a power key');
+    assert.equal(key('2'), '2', 'R17: a decision never borrows a power key');
+    assert.equal(key(), 'RMB / U', 'Line does not change while a decision is up');
     setPromptDeck(null);
     mounted.update(state, player, false);
     assert.equal(key('1'), '3');

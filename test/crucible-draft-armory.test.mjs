@@ -113,6 +113,17 @@ function mountShop({ ruleset = 'swarm', wave = 3, credits = 80, offers = [offer(
   return { screen, ctx, root, emitted, press, picks, focused: () => focused, restore, offers };
 }
 
+test('R17: Escape never starts a round — it only puts focus on Launch', () => {
+  for (const credits of [0, 100000]) {
+    const m = mountShop({ credits });
+    try {
+      m.press('Escape');
+      m.press('Escape');
+      assert.equal(m.picks().length, 0, 'R17 (2026-11-20): "Esc must never start a round" — Enter or a click launches');
+    } finally { m.restore?.(); }
+  }
+});
+
 test('affordableOfferCount counts only what the wallet can buy now', () => {
   assert.equal(affordableOfferCount([]), 0);
   assert.equal(affordableOfferCount(null), 0);
@@ -135,7 +146,7 @@ test('wallet that affords a card: first Escape spares the credits, second Escape
   const m = mountShop({ credits: 80, offers: [offer('a'), offer('b', { available: false, price: 500 })] });
   try {
     assert.equal(m.screen._skip.dataset.label, 'Launch round 4', 'the shop button is the launch');
-    const first = m.press('Escape');
+    const first = m.press('Enter');
     assert.equal(first.event.defaultPrevented, true, 'the key is still owned end to end');
     assert.equal(first.stopped, 1, 'and still never reaches the flight handler');
     assert.equal(m.picks().length, 0, 'the first Escape launches nothing');
@@ -143,7 +154,7 @@ test('wallet that affords a card: first Escape spares the credits, second Escape
     assert.equal(m.screen._note.textContent, 'You can still afford 1 card — Esc again or Launch to go');
     assert.equal(m.screen._note.attributes.role, 'status', 'announced politely to a screen reader');
 
-    m.press('Escape');
+    m.press('Enter');
     assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: null }]], 'the second Escape resolves as ever');
   } finally { m.restore(); }
 });
@@ -151,7 +162,7 @@ test('wallet that affords a card: first Escape spares the credits, second Escape
 test('nothing affordable: the first Escape launches at once, exactly as before', () => {
   const m = mountShop({ credits: 0, offers: [offer('a', { available: false }), offer('b', { available: false })] });
   try {
-    m.press('Escape');
+    m.press('Enter');
     assert.equal(m.picks().length, 1);
     assert.equal(m.focused(), 0, 'no detour through the warning');
     assert.doesNotMatch(m.screen._note.textContent, /afford/);
@@ -191,7 +202,7 @@ test('pad cancel with no affordable card launches immediately', () => {
 test('an empty shelf launches at once too', () => {
   const m = mountShop({ credits: 900, offers: [] });
   try {
-    m.press('Escape');
+    m.press('Enter');
     assert.equal(m.picks().length, 1);
   } finally { m.restore(); }
 });
@@ -200,7 +211,7 @@ test('the Gauntlet keeps its loadout on the first Escape, whatever the wallet', 
   const m = mountShop({ ruleset: 'scored', credits: 900, offers: [offer('a'), offer('b'), offer('c')] });
   try {
     assert.equal(m.screen._skip.dataset.label, 'Keep current loadout');
-    m.press('Escape');
+    m.press('Enter');
     assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: null }]]);
     assert.equal(m.focused(), 0);
   } finally { m.restore(); }
@@ -209,7 +220,7 @@ test('the Gauntlet keeps its loadout on the first Escape, whatever the wallet', 
 test('clicking Launch after the warning resolves, and a click alone never needs the warning', () => {
   const warned = mountShop({ offers: [offer('a'), offer('b')] });
   try {
-    warned.press('Escape');
+    warned.press('Enter');
     assert.equal(warned.picks().length, 0);
     warned.screen._skip.click();
     assert.equal(warned.picks().length, 1, 'explicit Launch resolves as today');
@@ -225,7 +236,7 @@ test('clicking Launch after the warning resolves, and a click alone never needs 
 test('a rebuilt shelf re-reads: spending the last credits turns the next Escape into a launch', () => {
   const m = mountShop({ credits: 80, offers: [offer('a')] });
   try {
-    m.press('Escape');
+    m.press('Enter');
     assert.equal(m.picks().length, 0);
     // The player buys the card: the owner's shelf now has nothing buyable, and the screen repaints.
     m.offers[0].purchased = true;
@@ -233,7 +244,7 @@ test('a rebuilt shelf re-reads: spending the last credits turns the next Escape 
     m.ctx.state.run.credits = 30;
     m.screen.refresh(m.ctx);
     assert.doesNotMatch(m.screen._note.textContent, /afford/, 'the old count is not left on the line');
-    m.press('Escape');
+    m.press('Enter');
     assert.equal(m.picks().length, 1, 'nothing left to spend: one Escape goes');
   } finally { m.restore(); }
 });
@@ -241,15 +252,15 @@ test('a rebuilt shelf re-reads: spending the last credits turns the next Escape 
 test('a repaint with cards still affordable warns again instead of launching on a stale second press', () => {
   const m = mountShop({ credits: 200, offers: [offer('a'), offer('b')] });
   try {
-    m.press('Escape');
+    m.press('Enter');
     m.offers[0].purchased = true;
     m.offers[0].available = false;
     m.ctx.state.run.credits = 150;
     m.screen.refresh(m.ctx);
-    m.press('Escape');
+    m.press('Enter');
     assert.equal(m.picks().length, 0, 'the shelf changed since the warning, so it is read fresh');
     assert.equal(m.screen._note.textContent, 'You can still afford 1 card — Esc again or Launch to go');
-    m.press('Escape');
+    m.press('Enter');
     assert.equal(m.picks().length, 1);
   } finally { m.restore(); }
 });
@@ -326,8 +337,8 @@ test('Equipment shows the free starting gun, its slot and an explicit launch wit
     assert.match(m.screen._launchSummary.textContent, /0 Scrap left/);
     assert.equal(m.screen._skip.dataset.label, 'Launch round 1 without a gun');
     assert.deepEqual(m.picks(), [], 'mounting Equipment does not choose a starter');
-    m.press('Escape');
-    m.press('Escape');
+    m.press('Enter');
+    m.press('Enter');
     assert.equal(m.focused(), 2);
     assert.match(m.screen._note.textContent, /choose Launch round 1 without a gun/);
     assert.deepEqual(m.picks(), []);

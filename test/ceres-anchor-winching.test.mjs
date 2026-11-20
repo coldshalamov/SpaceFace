@@ -1,3 +1,4 @@
+import { promptAnswerKey } from '../src/data/inputContexts.js';
 import { PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
 import { snapshotFeatureMaps, applyFeatureConfigToMaps, restoreFeatureMaps } from '../src/data/featureFlags.js';
 import test from 'node:test';
@@ -211,7 +212,7 @@ test('mounted Prompt Deck keyboard opens valves, switches anchor, returns from c
   const deck = createPromptDeck({ document: doc, state: h.state, bus: h.sim.bus }); setPromptDeck(deck);
   const prompt = createCeresWinchingPrompt({ state: h.state, bus: h.sim.bus });
   const buttons = () => { const found=[]; const walk=n=>{if(n.dataset?.choiceId)found.push(n);for(const c of n.children||[])walk(c);};walk(deck.el);return found; };
-  const press = id => { prompt.frame(); const index=buttons().filter(b=>!b.disabled).findIndex(b=>b.dataset.choiceId===id); assert.ok(index>=0, `rendered ${id}`); doc.dispatch('keydown', {key:String(index+1)}); prompt.frame(); };
+  const press = id => { prompt.frame(); const index=buttons().filter(b=>!b.disabled).findIndex(b=>b.dataset.choiceId===id); assert.ok(index>=0, `rendered ${id}`); doc.dispatch('keydown', {key:promptAnswerKey(index)}); prompt.frame(); };
   try {
     press('anchor:0'); assert.equal(h.state.npcJobs.ceresAnchorSwing.anchorIndex, 0);
     press('in'); assert.equal(h.state.npcJobs.ceresAnchorSwing.command, 'in');

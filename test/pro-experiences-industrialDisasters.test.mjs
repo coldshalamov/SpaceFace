@@ -206,7 +206,7 @@ test('authored remote distress uses the real decision deck, preserves the route,
     assert.equal(deck.size, 0); assert.equal(h.state.nav.waypoint, priorRoute);
     encounterRuntime.fire(director, { id: 'remote-hinge-fixture-again' }, h.state);
     assert.equal(deck.size, 1);
-    for (const listener of listeners.get('keydown') || []) listener({ key: '1', preventDefault() {}, stopImmediatePropagation() {} });
+    for (const listener of listeners.get('keydown') || []) listener({ key: '6', preventDefault() {}, stopImmediatePropagation() {} });
     assert.equal(deck.size, 0, 'the actual deck keyboard path consumes the explicit mark-site choice');
     assert.equal(navChanges.length, 1); assert.deepEqual(h.state.nav.waypoint.pos, SITE.anchor);
     assert.equal(h.record(), null); assert.equal(Object.keys(h.bodies()).length, 0);

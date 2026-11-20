@@ -35,10 +35,27 @@ function pairKeys(state, leftAction, rightAction) {
 
 function schemeOf(state) {
   const s = state && state.settings && state.settings.gameplay && state.settings.gameplay.controlScheme;
-  return (s === 'classic' || s === 'helm-assist' || s === 'pilot') ? s : 'pilot';
+  return (s === 'classic' || s === 'helm-assist' || s === 'pilot') ? s : 'helm-assist';
+}
+
+// R17: "No prompt may ever print a blank or the word 'unbound' — an unbound verb's hint simply
+// does not show." A list segment or a sentence that begins with an empty key is dropped.
+function dropUnboundHints(text) {
+  if (typeof text !== 'string') return text;
+  const segs = text.split('  •  ').filter((seg) => seg.trim() && !/^\s/.test(seg) && !/\bunbound\b/i.test(seg));
+  let out = segs.join('  •  ');
+  out = out.replace(/(^|[.:] )\s+[^.•]*\.\s?/g, '$1').trim();
+  return out.replace(/\bMassline\b/g, 'Line');
 }
 
 function buildKbmPrompts(state) {
+  const built = buildKbmPromptsRaw(state);
+  const out = {};
+  for (const [k, v] of Object.entries(built)) out[k] = dropUnboundHints(v);
+  return out;
+}
+
+function buildKbmPromptsRaw(state) {
   const scheme = schemeOf(state);
   const forward = promptKey(state, 'forward');
   const forwardFirst = firstKey(state, 'forward');
@@ -48,9 +65,9 @@ function buildKbmPrompts(state) {
   const yaw = pairKeys(state, 'yawLeft', 'yawRight');
   const strafe = pairKeys(state, 'strafeLeft', 'strafeRight');
   const fire = promptKey(state, 'fire') || MOUSE_ACTION_LABELS.fire;
-  // G18-02 renamed the mouse verb `mine` -> `tether` (the Line lives on RMB in every door);
-  // reading the old name printed "undefined select" on the live mining prompt.
-  const mine = MOUSE_ACTION_LABELS.tether;
+  // R17: mining is held on its own key (G); the Line is RMB / F. The tutorial used to say
+  // "Hold RMB on the marked rock to mine", which fired the Line instead.
+  const mine = promptKey(state, 'mine') || 'G';
   const tether = promptKey(state, 'tether');
   const shove = promptKey(state, 'shove');
   const boost = promptKey(state, 'boost');
@@ -136,11 +153,11 @@ const TOUCH_PROMPTS = Object.freeze({
 });
 
 // Active kbm scheme — uiRoot keeps this current from settings (boot + settings:changed).
-let _kbmScheme = 'pilot';
+let _kbmScheme = 'helm-assist';
 let _promptState = null;
 
 export function setPromptScheme(scheme) {
-  _kbmScheme = (scheme === 'classic' || scheme === 'helm-assist' || scheme === 'pilot') ? scheme : 'pilot';
+  _kbmScheme = (scheme === 'classic' || scheme === 'helm-assist' || scheme === 'pilot') ? scheme : 'helm-assist';
 }
 
 /** Live bindings pointer so a remap re-labels every prompt without a restart. */

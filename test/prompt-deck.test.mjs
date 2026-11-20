@@ -52,10 +52,10 @@ test('equally urgent player decisions precede passive information and collapse a
   assert.equal(slots, 1, '900 px wide reserves one full card');
   assert.equal(fullSlotsForViewport(390, 844), 1, 'phone layout uses the same compact ladder');
   assert.equal(fullSlotsForViewport(1440, 900), 1, 'desktop keeps one decision clear of the pilot');
-  assert.deepEqual(routeDigit(entries, null, '1', slots), {
+  assert.deepEqual(routeDigit(entries, null, '6', slots), {
     type: 'choose', id: 'scan-return', choiceId: 'investigate',
   });
-  assert.deepEqual(routeDigit(entries, null, '2', slots), { type: 'raise', id: 'fit-check' },
+  assert.deepEqual(routeDigit(entries, null, '7', slots), { type: 'raise', id: 'fit-check' },
     'the passive Fit Check remains reachable as a collapsed chip');
   assert.deepEqual(planSlotClaim(entries, null, slots), {
     slots: [1, 2], answers: ['INVESTIGATE', 'RAISE CAPABILITY DOOR'],
@@ -90,10 +90,10 @@ test('mounted 900 px deck gives Scan Return the full card, routes Digit1, and ke
     assert.equal(deck.el.children[1].dataset.deckId, 'fit-check');
     assert.match(deck.el.children[1].getAttribute('aria-label'), /CAPABILITY DOOR/);
 
-    assert.deepEqual(deck.claimedDigits, [1, 2], 'the active choices and chip own the digits they print');
-    doc.dispatch('keydown', { key: '&', code: 'Digit1', repeat: true });
+    assert.equal(deck.claimedDigits, null, 'R17: answers ride 6–9 and 0, so the deck never borrows a power key');
+    doc.dispatch('keydown', { key: '&', code: 'Digit6', repeat: true });
     assert.deepEqual(chosen, [], 'a flight key held through an incoming offer cannot answer it');
-    doc.dispatch('keydown', { key: '&', code: 'Digit1' });
+    doc.dispatch('keydown', { key: '&', code: 'Digit6' });
     assert.deepEqual(chosen, [{ choiceId: 'investigate', source: 'keyboard' }],
       'the visible action owns Digit1');
 
@@ -124,8 +124,8 @@ test('an open Cargo hold keeps a timed decision and its digits without donating 
     doc.dispatch('keydown', { key: 'Escape', code: 'Escape' });
     assert.deepEqual(chosen, [], 'Cargo can close before the decision receives a cancel');
     assert.equal(deck.hasDecision('custody'), true);
-    assert.deepEqual(deck.claimedDigits, [1, 2]);
-    doc.dispatch('keydown', { key: '1', code: 'Digit1' });
+    assert.equal(deck.claimedDigits, null, 'R17: no power key is borrowed');
+    doc.dispatch('keydown', { key: '6', code: 'Digit6' });
     assert.deepEqual(chosen, [{ id: 'help', source: 'keyboard' }]);
     offer();
     state.ui.cargoPanelOpen = false;
@@ -156,15 +156,15 @@ test('Counterweight page changes keep the registrar ahead of an unsolicited Work
     bus.emit('rigWorkshop:prompt', { id: 'rig-workshop', revision: 1, title: 'RATCHET · A workshop, two loan machines',
       options: [{ id: 'visit', label: 'Plot route to the workshop' }, { id: 'later', label: 'Not now' }] });
     assert.equal(deck.raisedId, CIRCUIT_PROMPT_ID);
-    doc.dispatch('keydown', { key: '1' });
+    doc.dispatch('keydown', { key: '6' });
     assert.ok(deck.el.children[0] === registrar, 'the same registrar card holds its place while the simulation replies');
-    doc.dispatch('keydown', { key: '1' });
+    doc.dispatch('keydown', { key: '6' });
     assert.deepEqual(choices.map(({ action }) => action), ['events'], 'repeat input cannot send a second in-flight choice');
 
     bus.emit('counterweightCircuit:offer', { id: 'counterweight:events', generation: 4, headline: 'COURSES',
       choices: [{ id: 'preview:long_arm', label: '2. THE LONG ARM' }] });
     assert.ok(deck.el.children[0] === registrar);
-    doc.dispatch('keydown', { key: '1' });
+    doc.dispatch('keydown', { key: '6' });
     assert.equal(choices.at(-1).eventId, 'long_arm');
     bus.emit('counterweightCircuit:offer', { id: 'counterweight:preview:long_arm', generation: 5, headline: '2. THE LONG ARM',
       choices: [{ id: 'attempt:long_arm', label: 'Ranked attempt' }] });
@@ -248,14 +248,14 @@ test('digits are global display-line slots: every printed keycap fires, chips cl
   ];
   // Display line: parley (raised) + law full; encounter is the one chip.
   // Walk: comply=1 refuse=2 run=3 law-comply=4, chip encounter=5.
-  assert.deepEqual(routeDigit(entries, 'parley', '1'), { type: 'choose', id: 'parley', choiceId: 'comply' });
-  assert.deepEqual(routeDigit(entries, 'parley', '3'), { type: 'choose', id: 'parley', choiceId: 'run' });
-  assert.deepEqual(routeDigit(entries, 'parley', '4'), { type: 'choose', id: 'law', choiceId: 'comply' });
-  assert.deepEqual(routeDigit(entries, 'parley', '5'), { type: 'raise', id: 'encounter' });
-  assert.equal(routeDigit(entries, 'parley', '6'), null);
+  assert.deepEqual(routeDigit(entries, 'parley', '6'), { type: 'choose', id: 'parley', choiceId: 'comply' });
+  assert.deepEqual(routeDigit(entries, 'parley', '8'), { type: 'choose', id: 'parley', choiceId: 'run' });
+  assert.deepEqual(routeDigit(entries, 'parley', '9'), { type: 'choose', id: 'law', choiceId: 'comply' });
+  assert.deepEqual(routeDigit(entries, 'parley', '0'), { type: 'raise', id: 'encounter' });
+  assert.equal(routeDigit(entries, 'parley', '1'), null);
   // numpad and bare digit keys route identically
-  assert.deepEqual(routeDigit(entries, 'parley', 'Digit2'), { type: 'choose', id: 'parley', choiceId: 'refuse' });
-  assert.deepEqual(routeDigit(entries, 'parley', 'Numpad3'), { type: 'choose', id: 'parley', choiceId: 'run' });
+  assert.deepEqual(routeDigit(entries, 'parley', 'Digit7'), { type: 'choose', id: 'parley', choiceId: 'refuse' });
+  assert.deepEqual(routeDigit(entries, 'parley', 'Numpad8'), { type: 'choose', id: 'parley', choiceId: 'run' });
 });
 
 test('a player raise re-orders the display line and the digit walk follows what is printed', () => {
@@ -265,12 +265,12 @@ test('a player raise re-orders the display line and the digit walk follows what 
     entry('c', 40, 3, [{ id: 'z' }]),
   ];
   // 'c' was raised: display line c, a, b — full c+a, chip b. Walk: z=1, x=2, chip b=3.
-  assert.deepEqual(routeDigit(entries, 'c', '1'), { type: 'choose', id: 'c', choiceId: 'z' });
-  assert.deepEqual(routeDigit(entries, 'c', '2'), { type: 'choose', id: 'a', choiceId: 'x' });
-  assert.deepEqual(routeDigit(entries, 'c', '3'), { type: 'raise', id: 'b' });
-  assert.equal(routeDigit(entries, 'c', '4'), null);
+  assert.deepEqual(routeDigit(entries, 'c', '6'), { type: 'choose', id: 'c', choiceId: 'z' });
+  assert.deepEqual(routeDigit(entries, 'c', '7'), { type: 'choose', id: 'a', choiceId: 'x' });
+  assert.deepEqual(routeDigit(entries, 'c', '8'), { type: 'raise', id: 'b' });
+  assert.equal(routeDigit(entries, 'c', '9'), null);
   // a stale raised id falls back to the ladder head
-  assert.deepEqual(routeDigit(entries, 'gone', '1'), { type: 'choose', id: 'a', choiceId: 'x' });
+  assert.deepEqual(routeDigit(entries, 'gone', '6'), { type: 'choose', id: 'a', choiceId: 'x' });
 });
 
 test('disabled choices never claim a digit — the key routes to the next visible thing', () => {
@@ -278,8 +278,8 @@ test('disabled choices never claim a digit — the key routes to the next visibl
     entry('law', 30, 1, [{ id: 'comply', disabled: true }, { id: 'flee' }]),
   ];
   // digit 1 targets the first NON-disabled choice (flee), digit 2 raises (no chips → null)
-  assert.deepEqual(routeDigit(entries, 'law', '1'), { type: 'choose', id: 'law', choiceId: 'flee' });
-  assert.equal(routeDigit(entries, 'law', '2'), null);
+  assert.deepEqual(routeDigit(entries, 'law', '6'), { type: 'choose', id: 'law', choiceId: 'flee' });
+  assert.equal(routeDigit(entries, 'law', '7'), null);
 });
 
 test('countdown grammar counts whole seconds and stands down to the flight-active line', () => {
@@ -322,11 +322,14 @@ test('slot claim releases when nothing routes — disabled choices and empty lad
   assert.deepEqual(planSlotClaim(mixed, 'law'), { slots: [1], answers: ['FLEE'] });
 });
 
-test('digit parsing covers bare keys and both keypad code families', () => {
-  assert.equal(digitIndex('5'), 4);
-  assert.equal(digitIndex('Digit9'), 8);
-  assert.equal(digitIndex('Numpad1'), 0);
-  assert.equal(digitIndex('Digit0'), -1);
+test('digit parsing covers bare keys and both keypad code families — answers ride 6–9 and 0 (R17)', () => {
+  assert.equal(digitIndex('6'), 0);
+  assert.equal(digitIndex('Digit9'), 3);
+  assert.equal(digitIndex('Numpad7'), 1);
+  assert.equal(digitIndex('Digit0'), 4);
+  for (const power of ['1', 'Digit2', 'Numpad3', 'Digit4', '5']) {
+    assert.equal(digitIndex(power), -1, `R17: "Nothing may steal keys 1–5 in flight" (${power})`);
+  }
   assert.equal(digitIndex('Tab'), -1);
 });
 

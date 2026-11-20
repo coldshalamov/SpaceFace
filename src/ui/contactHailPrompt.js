@@ -16,6 +16,7 @@ import {
   resolveHailVisual,
 } from './commsRadial.js';
 import { getPromptDeck } from './promptDeck.js';
+import { promptAnswerKey, promptAnswerSlot } from '../data/inputContexts.js';
 
 const ROUTE_READING_GRACE_S = 30;
 
@@ -255,8 +256,8 @@ export function createContactHailPrompt(ctx) {
       const button = document.createElement('button');
       button.type = 'button';
       button.dataset.choice = action.id;
-      button.textContent = `${index + 1} · ${action.label}`;
-      button.setAttribute('aria-label', `${action.label}. Choice ${index + 1}.`);
+      button.textContent = `${promptAnswerKey(index) || '·'} · ${action.label}`;
+      button.setAttribute('aria-label', `${action.label}. Key ${promptAnswerKey(index)}.`);
       return button;
     }));
     panel.hidden = false;
@@ -329,9 +330,8 @@ export function createContactHailPrompt(ctx) {
     // choices step aside rather than race it (pre-deck, both capture listeners fired).
     const deck = getPromptDeck();
     if (deck && deck.size > 0) return;
-    const index = event.code === 'Digit1' || event.code === 'Numpad1' ? 0
-      : event.code === 'Digit2' || event.code === 'Numpad2' ? 1
-        : event.code === 'Digit3' || event.code === 'Numpad3' ? 2 : -1;
+    // R17: the hail answers on 6/7/8 — keys 1–5 stay the powers in flight.
+    const index = promptAnswerSlot(event.code);
     if (index < 0) return;
     const action = active.actions && active.actions[index];
     if (!action) return;

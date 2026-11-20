@@ -124,7 +124,7 @@ test('workshop decisions use the existing prompt deck slots, disable invalid edi
   bus.emit('rigWorkshop:prompt', payload);
   const spec = entries.get('rig-workshop:confirm');
   assert.ok(spec);
-  assert.deepEqual(routeDigit([...entries.values()], spec.id, 'Digit1'), {
+  assert.deepEqual(routeDigit([...entries.values()], spec.id, 'Digit6'), {
     type: 'choose', id: spec.id, choiceId: 'cancel',
   });
   assert.deepEqual(planSlotClaim([...entries.values()], spec.id), {

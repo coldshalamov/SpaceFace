@@ -3,6 +3,7 @@
 // across Save/Continue, canonical debit, both charters' first jobs, cost and
 // progress publication, and destroyed/duplicate-event safety — through the real
 // native physics, economy, cargo and npcJobs owners, not stand-ins.
+import { promptAnswerKey } from '../src/data/inputContexts.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -146,7 +147,7 @@ test('crowded co-op renders every action across two bounded menus with Leave and
  globalThis.document=doc;const deck=createPromptDeck({document:doc,state:h.s,bus:h.sim.bus});setPromptDeck(deck);
  const prompt=createBreakwaterSpurPromptSystem();prompt.init({state:h.s,bus:h.sim.bus});
  const buttons=()=>{const found=[];const walk=n=>{if(n.dataset?.choiceId)found.push(n);for(const c of n.children||[])walk(c);};walk(deck.el);return found;};
- const click=id=>{const rendered=buttons();const index=rendered.findIndex(b=>b.dataset.choiceId===id);assert.ok(index>=0,`rendered ${id}`);doc.dispatch('keydown',{key:String(index+1)});};
+ const click=id=>{const rendered=buttons();const index=rendered.findIndex(b=>b.dataset.choiceId===id);assert.ok(index>=0,`rendered ${id}`);const k=promptAnswerKey(index);if(k)doc.dispatch('keydown',{key:k});else{const t=rendered[index];t.closest||=()=>t;for(let n=t;n;n=n.parentNode)for(const fn of n.listeners?.click||[])fn({target:t,preventDefault(){},stopPropagation(){}});}};// R17: answers ride 6–9, 0; a sixth+ choice is mouse/pad
  const ids=()=>buttons().map(b=>b.dataset.choiceId);
  try{
  const row=h.s.world.breakwaterSpur;
@@ -158,7 +159,7 @@ test('crowded co-op renders every action across two bounded menus with Leave and
  h.emit({actionId:'service:fuel:budget',revision:mainRevision});await Promise.resolve();assert.equal(h.s.player.credits,10,'main-page revision cannot authorize service purchase');
  click('service:back');assert.ok(ids().includes('close'));assert.ok(ids().includes('job:defend'));
  click('service:menu');
- const fuelIndex=ids().indexOf('service:fuel:budget');doc.dispatch('keydown',{key:String(fuelIndex+1)});await Promise.resolve();
+ const fuelIndex=ids().indexOf('service:fuel:budget');doc.dispatch('keydown',{key:promptAnswerKey(fuelIndex)});await Promise.resolve();
  assert.equal(h.s.fuel.current,3);assert.equal(h.s.player.credits,1);assert.ok(ids().includes('close'),'refreshed main retains Leave');
  click('close');assert.deepEqual(ids(),[]);assert.equal(h.s.breakwaterSpurOffer,null);
  }finally{prompt.destroy();deck.destroy();setPromptDeck(null);globalThis.document=previous;h.close();}

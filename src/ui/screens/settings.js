@@ -337,9 +337,9 @@ export const GAMEPAD_REBIND_LABELS = {
 };
 
 function controlSchemeFor(settings) {
-  const scheme = settings && settings.gameplay && settings.gameplay.controlScheme || 'pilot';
+  const scheme = settings && settings.gameplay && settings.gameplay.controlScheme || 'helm-assist';
   const schemes = INPUT_DEFAULTS.SCHEMES || {};
-  return schemes[scheme] ? scheme : 'pilot';
+  return schemes[scheme] ? scheme : 'helm-assist';
 }
 
 function schemeBindingsFor(settings) {
@@ -1297,8 +1297,8 @@ export const settingsScreen = {
       uiScaleRow(build, s, true, (section, key, value, persist) => this._set(ctx, section, key, value, persist));
       build.note('Colorblind mode also recolors radar blips and adds redundant shapes.');
     } else if (refs.active === 'Controls') {
-      rowSelect('Control Scheme', () => s.gameplay.controlScheme || 'pilot',
-        [['pilot', 'Pilot (keyboard steers, mouse aims)'], ['helm-assist', 'Helm Assist (mouse steering)'], ['classic', 'Classic Throttle']],
+      rowSelect('Control Scheme', () => s.gameplay.controlScheme || 'helm-assist',
+        [['helm-assist', 'Standard (ship faces the cursor, A/D strafe)'], ['pilot', 'Pilot (A/D turn the ship, mouse aims the guns)'], ['classic', 'Classic Throttle']],
         (v) => {
           this._set(ctx, 'gameplay', 'controlScheme', v);
           // Explicit choice: stop the one-time pilot migration (saveSystem) from overriding it.

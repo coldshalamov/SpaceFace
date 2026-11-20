@@ -199,7 +199,7 @@ test('prompt-deck adapter routes refuse/cancel and rejects stale callbacks witho
     const before = clone(state);
     bus.emit('salvageOutfits:offer', payload);
     const first = offered.at(-1);
-    assert.deepEqual(routeDigit([{ ...first, seq: 0 }], first.id, '2'),
+    assert.deepEqual(routeDigit([{ ...first, seq: 0 }], first.id, '7'),
       { type: 'choose', id: first.id, choiceId: 'refuse' }, 'existing deck digit policy owns the answer');
     bus.emit('salvageOutfits:offer', { ...payload, offerId: 'terms:2' });
     first.onChoose('split', 'keyboard');

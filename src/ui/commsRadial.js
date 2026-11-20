@@ -29,6 +29,7 @@ import { injectFlightRadialsLayouts, syncRadialOwnsFrame } from './orrery/flight
 import { FACTION_META } from '../data/factions.js';
 import { tierFor, factionStandingGuidance } from './factionStanding.js';
 import { resolveEntity } from './entityResolver.js';
+import { promptAnswerKey, promptAnswerSlot } from '../data/inputContexts.js';
 
 const MODULE_BY_ID = new Map(MODULES.map((row) => [row.id, row]));
 const SHIP_BY_ID = new Map(SHIPS.map((row) => [row.id, row]));
@@ -498,7 +499,7 @@ export function createCommsRadial(ctx) {
       button.className = 'sf-commsfan__wedge';
       button.dataset.choice = action.id;
       button.dataset.why = why;
-      const keyDigit = i + 1;
+      const keyDigit = promptAnswerKey(i) || '';
       button.setAttribute('aria-keyshortcuts', String(keyDigit));
       button.setAttribute('aria-label', `${action.label} (key ${keyDigit})${why ? `. ${why}` : ''}`);
       button.innerHTML = `
@@ -797,8 +798,8 @@ export function createCommsRadial(ctx) {
       focusSafely(choices[next]);
       return;
     }
-    if (open && event.key >= '1' && event.key <= '9') {
-      const idx = Number(event.key) - 1;
+    if (open && promptAnswerSlot(event.key) >= 0) {
+      const idx = promptAnswerSlot(event.key);
       if (idx >= 0 && idx < wedgeButtons.length) {
         const btn = wedgeButtons[idx];
         if (btn && !btn.classList.contains('is-dim') && btn.dataset && btn.dataset.choice) {

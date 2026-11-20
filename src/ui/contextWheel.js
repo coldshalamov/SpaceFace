@@ -33,23 +33,20 @@ const CHOOSE_DEADZONE = 0.32;         // stick/pointer this far inside the hub p
 // phase 'toggle' = latch slice; 'tap' = one edge. Order is the authored seat on the ring —
 // combat context re-filters the list, so every seat lands on a live slice wherever it opens.
 // Exported so help/settings surfaces can ask "is this verb a wheel slice" from one source.
+// R17 (2026-11-20): the wheel holds only rarely-used actions, at most WHEEL_MAX_SLICES at once.
+// Full stop (X), scan (C) and the mining beam (G) have real keys; reel is the Line's own hold
+// (hold + S pays out); strafe is A/D in the default scheme. Contextual slices (site beam, call-in,
+// scoop) come first so they always fit.
+export const WHEEL_MAX_SLICES = 8;
 export const SLICES = Object.freeze([
-  { action: 'brake',            label: 'Full Stop',    icon: 'brake',    phase: 'toggle' },
-  { action: 'aimedMine',        label: 'Mine Beam',    icon: 'mining',   phase: 'toggle', mineSlice: true },
   { action: 'siteBeam',         label: 'Site Beam',    icon: 'asteroid', phase: 'toggle', needsSite: true },
-  { action: 'reelIn',           label: 'Winch In',     icon: 'line',     phase: 'toggle' },
-  { action: 'reelOut',          label: 'Winch Out',    icon: 'line',     phase: 'toggle' },
-  { action: 'strafeLeft',       label: 'Strafe ←',     icon: 'chevron-left',  phase: 'toggle' },
-  { action: 'strafeRight',      label: 'Strafe →',     icon: 'chevron-right', phase: 'toggle' },
   { action: 'bulletTime',       label: 'Bullet Time',  icon: 'clock',    phase: 'toggle' },
-  { action: 'gyreSnare',        label: 'Gather',      icon: 'cone',     phase: 'toggle' },
   // R17: the skim scoop is a deliberate, labelled choice inside a planet's skim band (it used to
   // hide behind key 5). Shown only where it harvests.
   { action: 'scoop',            label: 'Scoop',        icon: 'cargo',    phase: 'tap', needsBand: true },
   { action: 'cloak',            label: 'Cloak',        icon: 'pod',      phase: 'tap' },
   { action: 'countermeasure',   label: 'Counter',      icon: 'shield',   phase: 'tap' },
-  { action: 'scanPulse',        label: 'Scan',         icon: 'scan',     phase: 'tap' },
-  { action: 'cycleBomb',        label: 'Ordnance',     icon: 'munitions', phase: 'tap' },
+  { action: 'cycleBomb',        label: 'Bomb type',    icon: 'munitions', phase: 'tap' },
   { action: 'autoFire',         label: 'Auto-Aim',     icon: 'target',   phase: 'tap' },
   { action: 'travelBurn',       label: 'Travel Burn',  icon: 'drive',    phase: 'tap' },
   { action: 'cruise',           label: 'Cruise',       icon: 'engine',   phase: 'tap' },
@@ -88,7 +85,10 @@ function sliceAllowed(state, slice, callinPending = 0) {
 
 /** The live slices, in ring order. Exported so tests can pin reachability. */
 export function contextWheelSlices(state, callinPending = 0) {
-  return SLICES.filter((slice) => sliceAllowed(state, slice, callinPending));
+  const live = SLICES.filter((slice) => sliceAllowed(state, slice, callinPending));
+  const contextual = live.filter((s) => s.needsSite || s.needsCallin || s.needsBand);
+  const rest = live.filter((s) => !(s.needsSite || s.needsCallin || s.needsBand));
+  return [...contextual, ...rest].slice(0, WHEEL_MAX_SLICES);
 }
 
 export function createContextWheel(ctx) {
