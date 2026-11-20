@@ -70,7 +70,7 @@ test('FB-029 seed 4242: 24 sectors do not share one traffic mix', () => {
     assert.ok(trafficRoleMixForSector(sector).tourist > 0, `${id} is scenic`);
   }
   const helios = SECTORS.find((row) => row.id === 'sector_helios_prime');
-  assert.equal(ambientCountForSector(helios), 6, 'scenic flags must not raise the Helios ambient count');
+  assert.equal(ambientCountForSector(helios), 4, 'scenic flags must not raise the Helios ambient count');
   const samples = ['sector_helios_prime', 'sector_tethys_junction', 'sector_nyx_march'].map((id) => {
     const sector = SECTORS.find((row) => row.id === id);
     const sim = enterSector(sector);

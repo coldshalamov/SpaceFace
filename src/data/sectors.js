@@ -90,7 +90,9 @@ const CORE_SECTORS = [
     palette: SECTOR_PALETTE_CLASSES.core,
     // Tutorial home sector: NO hostile spawns (enemyDensity 0). A brand-new pilot must not be
     // hunted before learning the ropes; danger ramps up only in neighbouring sectors.
-    trafficPerMin: 18, enemyDensity: 0, enemyLevel: [1, 2],
+    // CROWD-THIN: tpm 12 -> ambientCountForSector 4 (tpm/3 at the core floor), matching the
+    // authored activity cast so no filler top-up spawns onto the opening frame. 18 drew six-plus.
+    trafficPerMin: 12, enemyDensity: 0, enemyLevel: [1, 2],
     neighbors: ['sector_ceres_belt', 'sector_tethys_junction', 'sector_vesta_forge'],
     stations: [
       { id: 'station_helios',     name: 'Helios Station',  type: 'trade_hub', factionId: 'faction_scn', size: 'L', services: ['trade','shipyard','refuel','repair','missions'],

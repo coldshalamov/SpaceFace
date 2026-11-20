@@ -47,6 +47,10 @@ export const FULFILLMENT_FIXED_ROUTES = freeze([
     sectors: ['sector_tethys_junction', 'sector_helios_prime'],
     holdingStations: ['station_tethys', 'station_helios'],
     hulls: ['ship_mule', 'ship_atlas'],
+    // CROWD-THIN: convoy size is per-sector authored data. The Adventure spawn pocket keeps the
+    // route alive with a single hull instead of a three-abreast line on the player's opening
+    // frame; sectors not listed keep the authored three-ship formation.
+    convoySizeBySector: freeze({ sector_helios_prime: 1 }),
   },
 ]);
 
@@ -335,7 +339,13 @@ export function planFactionPresence({
     const length = Math.hypot(dx, dz) || 1;
     const px = -dz / length;
     const pz = dx / length;
-    for (let formationIndex = 0; formationIndex < 3; formationIndex++) {
+    // CROWD-THIN: convoy size is per-sector authored data (route.convoySizeBySector); a sector
+    // not listed there keeps the authored three-ship line.
+    const convoySize = (route.convoySizeBySector
+      && Number.isFinite(route.convoySizeBySector[sectorId]))
+      ? Math.max(1, route.convoySizeBySector[sectorId] | 0)
+      : 3;
+    for (let formationIndex = 0; formationIndex < convoySize; formationIndex++) {
       const offset = (formationIndex - 1) * frame.spacing;
       plans.push(plan({
         factionId: 'faction_fulfillment',
@@ -353,7 +363,7 @@ export function planFactionPresence({
         routePeriodS: frame.periodS,
         formation: 'line',
         formationIndex,
-        formationCount: 3,
+        formationCount: convoySize,
         formationSpacing: frame.spacing,
       }));
     }
