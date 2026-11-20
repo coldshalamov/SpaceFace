@@ -1423,7 +1423,15 @@ async function dispatchDirective(msg) {
       localClock.sabArena = arena;
       if (arena) {
         sabEnv = bindSabEnvelopeChannel(arena);
-        if (sabEnv) void sabParkLoop();
+        if (sabEnv) {
+          sabParkLoop().catch((error) => {
+            // The post-arm pump owns every queued command; a silent rejection would leave
+            // the lane waiting on a dead reader with only the stall watchdog to notice.
+            try {
+              self.postMessage({ kind: 'error', message: `sabParkLoop failed: ${error?.message || String(error)}`, stack: error?.stack || null });
+            } catch (_) { /* the channel itself may be down */ }
+          });
+        }
       }
     } else if (msg.kind === 'clockControl') {
       await handleLocalClockControl(msg);
