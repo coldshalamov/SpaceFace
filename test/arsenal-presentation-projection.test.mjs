@@ -105,23 +105,40 @@ test('the labels name what the NEXT press does: Pull well, Shove with a detonati
 test('RIG shows the CURRENT function before use, and a context change swaps the label with the action', () => {
   const state = makeState();
   let { entries } = read(state);
-  assert.equal(entries.rig.label, 'Rig · Clear a path');
+  assert.equal(entries.rig.label, 'Rig · Cone OFF');
   assert.equal(entries.rig.glyph, 'field_cone_standard');
-  assert.match(entries.rig.limits[0], /planet band this same key opens the skim scoop/, 'the other function is stated before it surprises');
+  assert.match(entries.rig.limits[0], /planet band, Rig uses the ore scoop/, 'the other function is stated before it surprises');
   state.planet = { active: true, player: { regionRank: PLANET_REGION_RANK.skim } };
   ({ entries } = read(state));
-  assert.equal(entries.rig.label, 'Rig · Harvest ore', 'inside a planet band the same key harvests ore');
+  assert.equal(entries.rig.label, 'Rig · Scoop OFF', 'inside a planet band the same key harvests ore');
   assert.equal(entries.rig.glyph, 'field_skim_standard', 'and its mark changes with it');
   assert.match(entries.rig.limits[0], /clearing cone instead/);
   state.planet.player.collectorOn = true;
   ({ entries } = read(state));
-  assert.equal(entries.rig.label, 'Rig · Harvesting ore');
-  assert.match(entries.rig.sentence, /Press to close it/);
+  assert.equal(entries.rig.label, 'Rig · Scoop ON');
+  assert.match(entries.rig.sentence, /Tap Rig again to turn it off/);
   // An open cone folds first, even inside a band (resolveRigTarget): the label follows the press.
   state.fields.coneActive = true;
   ({ entries } = read(state));
-  assert.equal(entries.rig.label, 'Rig · Clearing a path');
-  assert.match(entries.rig.sentence, /Press to fold it/);
+  assert.equal(entries.rig.label, 'Rig · Cone ON');
+  assert.match(entries.rig.sentence, /Tap Rig again to turn it off/);
+});
+
+test('gesture hints follow current bindings and the aimed-power preference without turning Rig into a hold', () => {
+  const state = makeState({ settings: {
+    gameplay: { powerFire: 'hold' },
+    controls: { bindings: { pull: ['KeyU'], shove: ['KeyI'], rig: ['KeyJ'] } },
+  } });
+  const reader = createArsenalPresentation();
+  let entries = reader.read(state).entries;
+  assert.match(entries.pull.hints.join(' '), /Hold U to preview, then release to use/);
+  assert.match(entries.shove.hints.join(' '), /Tap I to use immediately/);
+  assert.match(entries.rig.hints.join(' '), /Tap J to turn it on/);
+  state.settings.gameplay.powerFire = 'press';
+  entries = reader.read(state).entries;
+  assert.match(entries.pull.hints.join(' '), /Tap U to use immediately/);
+  assert.doesNotMatch(entries.pull.hints.join(' '), /Hold/);
+  assert.match(entries.rig.hints.join(' '), /Tap J to turn it on/);
 });
 
 test('BOMB names the exact payload, its stock, and whether the next press throws, calls in or drops', () => {
@@ -131,7 +148,7 @@ test('BOMB names the exact payload, its stock, and whether the next press throws
   assert.equal(entries.bomb.label, 'Bomb · drop Frag ×4');
   assert.deepEqual(entries.bomb.payload, { id: 'bomb_frag', name: BOMB_DEFS.bomb_frag.name, stock: 4, capacity: BOMB_DEFS.bomb_frag.magazine, next: 'drop' });
   assert.equal(entries.bomb.glyph, 'bomb_frag');
-  assert.match(entries.bomb.sentence, /^Next press: drop Frag cassette ×4\./);
+  assert.match(entries.bomb.sentence, /^Next use: drop Frag cassette ×4\./);
   // a sticky charge aboard becomes the default ordnance
   state.player.cargo.items.cmdty_impulse_charge = 3;
   ({ entries } = read(state));
@@ -218,10 +235,10 @@ test('the label agrees with the real press: charge throws, swarm call-in calls i
   assert.deepEqual(press('Digit4'), ['dropBomb']);
   // 5. rig: the cone in open space, the scoop in a planet band — the same key, the label before the press
   t.state.player.cargo.items.cmdty_impulse_charge = 0;
-  assert.equal(read(t.state).entries.rig.label, 'Rig · Clear a path');
+  assert.equal(read(t.state).entries.rig.label, 'Rig · Cone OFF');
   assert.deepEqual(press('Digit5'), ['toggleClearingCone']);
   t.state.planet = { active: true, player: { regionRank: PLANET_REGION_RANK.skim } };
-  assert.equal(read(t.state).entries.rig.label, 'Rig · Harvest ore');
+  assert.equal(read(t.state).entries.rig.label, 'Rig · Scoop OFF');
   assert.deepEqual(press('Digit5'), ['toggleSkimCollector']);
 });
 

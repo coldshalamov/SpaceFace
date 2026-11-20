@@ -242,7 +242,7 @@ test('readRailModel answers WHY a verb is not ready, not only that it is not', (
   assert.equal(model[POWER_SLOT.pull].why, 'Recharging — 3s');
   assert.equal(model[POWER_SLOT.shove].why, 'Ready', 'nothing armed: SHOVE is the repulsor, ready');
   assert.equal(model[POWER_SLOT.pin].why, 'Ready');
-  assert.equal(model[POWER_SLOT.rig].why, 'Cone is on — press to fold it');
+  assert.equal(model[POWER_SLOT.rig].why, 'Cone ON — tap Rig to turn it off');
   assert.equal(model[POWER_SLOT.line].why, 'Ready');
   // With charges aboard the charge leads, and BOMB answers with the charge's capacity.
   const charged = { ...state, player: { ...state.player, cargo: { items: { cmdty_impulse_charge: 2 } } } };

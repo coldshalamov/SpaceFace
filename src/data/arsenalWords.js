@@ -87,11 +87,11 @@ export function rigWords(target, on) {
   const skim = FIELD_DEFS.skim;
   if (target === 'skim') {
     return {
-      name: 'Rig', verb: on ? 'Harvesting ore' : 'Harvest ore', role: 'Harvest', glyph: 'field_skim_standard',
+      name: 'Rig', verb: `Scoop ${on ? 'ON' : 'OFF'}`, role: 'Harvest', glyph: 'field_skim_standard',
       sentence: on
-        ? 'The skim scoop is open. Press to close it.'
-        : `You are in a planet band, so Rig opens the skim scoop (${wu(skim.radius)} sheet) and harvests by grazing. Open space has nothing to collect.`,
-      limits: ['Outside a planet band this same key opens the clearing cone instead. Hitch heavy mass and the scoop shrugs.'],
+        ? 'The ore scoop stays on while you fly. Tap Rig again to turn it off.'
+        : 'Tap Rig once to turn on the ore scoop, then graze the planet band to collect ore.',
+      limits: [`Collects through a ${wu(skim.radius)} sheet. Outside a planet band, Rig uses the clearing cone instead.`],
       target: 'along your flight line',
       range: { shape: 'sheet', radiusWu: skim.radius, reachWu: skim.originGap },
       cost: null, cooldownS: 0,
@@ -102,11 +102,11 @@ export function rigWords(target, on) {
     };
   }
   return {
-    name: 'Rig', verb: on ? 'Clearing a path' : 'Clear a path', role: 'Clear', glyph: 'field_cone_standard',
+    name: 'Rig', verb: `Cone ${on ? 'ON' : 'OFF'}`, role: 'Clear', glyph: 'field_cone_standard',
     sentence: on
-      ? 'The clearing cone is open. Press to fold it.'
-      : `Open a forward plow (${wu(cone.radius)}, ${Math.round(cone.halfAngleRad * 2 * 180 / Math.PI)} degree wedge) that sweeps loose bodies into each other. Press again to fold it.`,
-    limits: ['In a planet band this same key opens the skim scoop instead. Strafe out of the wedge to escape it.'],
+      ? 'The clearing cone stays on while you fly. Tap Rig again to turn it off.'
+      : 'Tap Rig once to turn on the forward cone. It pushes loose debris out of your path.',
+    limits: [`Reaches ${wu(cone.radius)} ahead in a ${Math.round(cone.halfAngleRad * 2 * 180 / Math.PI)} degree wedge. In a planet band, Rig uses the ore scoop instead.`],
     target: 'ahead of your nose',
     range: { shape: 'wedge', radiusWu: cone.radius, reachWu: cone.originGap },
     cost: null, cooldownS: 0,

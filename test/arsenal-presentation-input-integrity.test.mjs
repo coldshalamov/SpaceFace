@@ -1,5 +1,5 @@
-// Packet 01 — input integrity for the powers. Hold-to-preview / release-to-use is a supported policy,
-// so every way a held power can be taken away from the pilot must cancel it WITHOUT firing it: a modal,
+// Packet 01 — input integrity for the aimed powers. Hold-to-preview / release-to-use is a supported policy,
+// so every way an aimed grip can be taken away from the pilot must cancel it WITHOUT firing it: a modal,
 // lost focus, docking, a pad that vanishes, pointer cancel, pause, a new sector. Releasing one key never
 // fires another key's preview, a remap or an explicit unbind is respected, and picking a bomb type never
 // throws it. Each case drives the shipped input owner, not a copy of its logic.
@@ -18,7 +18,9 @@ import { makeShipEntitySpec } from '../src/systems/ships.js';
 
 const POWER_FLAGS = ['deployWell', 'deployRepulsor', 'chargeDetonate', 'deployMassSeed', 'dropBomb', 'chargeThrow',
   'swarmBombThrow', 'toggleClearingCone', 'toggleSkimCollector'];
-const POWER_KEYS = { pull: 'Digit1', shove: 'Digit2', pin: 'Digit3', bomb: 'Digit4', rig: 'Digit5' };
+// Shove (pulse) and Rig (toggle) commit on press. Their domain outcomes and cancellation
+// behavior are covered in power-interaction-outcomes.test.mjs; they do not create a grip.
+const AIMED_POWER_KEYS = { pull: 'Digit1', pin: 'Digit3', bomb: 'Digit4' };
 
 function boot({ bindings = null } = {}) {
   const sim = createSimulation({ seed: 4931, bus: createBus(), systems: [input] });
@@ -53,7 +55,7 @@ const CANCELS = {
 
 for (const [name, cancel] of Object.entries(CANCELS)) {
   test(`${name}: a held power never fires — not on the cancel, not on the later key-up — and the next press works`, () => {
-    for (const [power, code] of Object.entries(POWER_KEYS)) {
+    for (const [power, code] of Object.entries(AIMED_POWER_KEYS)) {
       const t = boot();
       t.key(code, true);
       assert.deepEqual(t.step(), [], `${power}: gripped, nothing fires yet`);
@@ -87,53 +89,53 @@ test('a pad that disconnects mid-grip cancels the power instead of firing it', (
   t.host.gamepad = gp;
   t.state.settings.controls.gamepad = { ...(t.state.settings.controls.gamepad || {}), enabled: true };
   assert.deepEqual(t.step(), [], 'the pad is seen at rest first');
-  gp.actions.shove = { held: true, pressed: true, released: false, value: 1 };
+  gp.actions.pull = { held: true, pressed: true, released: false, value: 1 };
   assert.deepEqual(t.step(), []);
-  assert.equal(heldPower(t.state), 'shove', 'the pad grips Shove');
+  assert.equal(heldPower(t.state), 'pull', 'the pad grips Pull');
   // The pad vanishes with the button still down: no key-up will ever arrive, and the pilot did not let go.
   connected = false;
-  gp.actions.shove = idle();
+  gp.actions.pull = idle();
   assert.deepEqual(t.step(), [], 'a vanished pad is not a release');
   assert.equal(heldPower(t.state), null);
   // …and when it comes back, nothing was left half-committed.
   connected = true;
   assert.deepEqual(t.step(), []);
-  gp.actions.shove = { held: true, pressed: true, released: false, value: 1 };
+  gp.actions.pull = { held: true, pressed: true, released: false, value: 1 };
   t.step();
-  gp.actions.shove = { held: false, pressed: false, released: true, value: 0 };
-  assert.deepEqual(t.step(), ['deployRepulsor', 'chargeDetonate'], 'a deliberate release on a live pad still uses the power');
+  gp.actions.pull = { held: false, pressed: false, released: true, value: 0 };
+  assert.deepEqual(t.step(), ['deployWell'], 'a deliberate release on a live pad still uses the power');
 });
 
 test('releasing one held key fires only that key; the other keeps its preview and fires on its own release', () => {
   const t = boot();
   t.key('Digit1', true); // Pull — older
   t.step();
-  t.key('Digit2', true); // Shove — the most recent grip, the one previewed
+  t.key('Digit3', true); // Pin — the most recent grip, the one previewed
   assert.deepEqual(t.step(), []);
-  assert.equal(heldPower(t.state), 'shove');
+  assert.equal(heldPower(t.state), 'pin');
   t.key('Digit1', false);
-  assert.deepEqual(t.step(), ['deployWell'], 'letting go of Pull fires Pull, not the previewed Shove');
-  assert.equal(heldPower(t.state), 'shove', 'Shove is still gripped and still previewed');
+  assert.deepEqual(t.step(), ['deployWell'], 'letting go of Pull fires Pull, not the previewed Pin');
+  assert.equal(heldPower(t.state), 'pin', 'Pin is still gripped and still previewed');
   assert.deepEqual(t.step(), [], 'and nothing else fires on its own');
-  t.key('Digit2', false);
-  assert.deepEqual(t.step(), ['deployRepulsor', 'chargeDetonate']);
+  t.key('Digit3', false);
+  assert.deepEqual(t.step(), ['deployMassSeed']);
   assert.equal(heldPower(t.state), null);
 });
 
 test('a power bound to two keys fires once per use from either key, and the other key stays a different key', () => {
   // G18-02 seats each power on its digit alone; a saved remap may still give a power two keys.
-  const t = boot({ bindings: { shove: ['Digit2', 'KeyR'] } });
-  // Shove answers to both 2 and R. Gripping and releasing R uses it once; the unused key adds nothing.
+  const t = boot({ bindings: { pull: ['Digit1', 'KeyR'] } });
+  // Pull answers to both 1 and R. Gripping and releasing R uses it once; the unused key adds nothing.
   t.key('KeyR', true);
   assert.deepEqual(t.step(), []);
-  assert.equal(heldPower(t.state), 'shove');
+  assert.equal(heldPower(t.state), 'pull');
   t.key('KeyR', false);
-  assert.deepEqual(t.step(), ['deployRepulsor', 'chargeDetonate']);
+  assert.deepEqual(t.step(), ['deployWell']);
   assert.deepEqual(t.step(), []);
-  t.key('Digit2', true);
+  t.key('Digit1', true);
   assert.deepEqual(t.step(), []);
-  t.key('Digit2', false);
-  assert.deepEqual(t.step(), ['deployRepulsor', 'chargeDetonate'], 'the digit uses it just the same');
+  t.key('Digit1', false);
+  assert.deepEqual(t.step(), ['deployWell'], 'the digit uses it just the same');
   assert.deepEqual(t.step(), []);
 });
 
