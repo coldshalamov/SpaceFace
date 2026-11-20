@@ -9,41 +9,51 @@ import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { collidesFlipEpoch, entityIndexVersion } from '../world/livingWorldViews.js';
 import { sweepCompactHullInto } from '../core/collisionProxySweep.js';
 const point = p => p && Number.isFinite(p.x) && Number.isFinite(p.z);
-function pointSegmentDistance(p,a,b) {
-  const dx=b.x-a.x,dz=b.z-a.z, square=dx*dx+dz*dz;
-  const t=square ? Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.z-a.z)*dz)/square)) : 0;
-  return Math.hypot(p.x-a.x-t*dx,p.z-a.z-t*dz);
+// Scalar, allocation-free geometry (ENGINE spikes): these run thousands of times per tick under
+// the law/witness and AI line-of-sight queries; the old object/closure/array forms were the
+// single largest allocator in the Adventure step (~1.1 MB per tick). Verdicts are unchanged.
+function pointSegmentDistanceXZ(px, pz, ax, az, bx, bz) {
+  const dx = bx - ax, dz = bz - az, square = dx * dx + dz * dz;
+  const t = square ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / square)) : 0;
+  return Math.hypot(px - ax - t * dx, pz - az - t * dz);
 }
-function crossesBox(a,b,p) {
-  const c=Math.cos(-p.rot),s=Math.sin(-p.rot);
-  const rotate=v=>({x:(v.x-p.x)*c-(v.z-p.z)*s,z:(v.x-p.x)*s+(v.z-p.z)*c});
-  const from=rotate(a),to=rotate(b); let low=0,high=1;
-  for (const [axis,half] of [['x',p.hx],['z',p.hz]]) {
-    const d=to[axis]-from[axis];
-    if(Math.abs(d)<1e-9) { if(Math.abs(from[axis])>half)return false;continue; }
-    const t1=(-half-from[axis])/d,t2=(half-from[axis])/d;
-    low=Math.max(low,Math.min(t1,t2));high=Math.min(high,Math.max(t1,t2));if(low>high)return false;
+function pointSegmentDistance(p, a, b) {
+  return pointSegmentDistanceXZ(p.x, p.z, a.x, a.z, b.x, b.z);
+}
+function crossesBox(a, b, p) {
+  const c = Math.cos(-p.rot), s = Math.sin(-p.rot);
+  const ax = a.x - p.x, az = a.z - p.z, bx = b.x - p.x, bz = b.z - p.z;
+  const fromX = ax * c - az * s, fromZ = ax * s + az * c;
+  const toX = bx * c - bz * s, toZ = bx * s + bz * c;
+  let low = 0, high = 1;
+  for (let axis = 0; axis < 2; axis++) {
+    const from = axis === 0 ? fromX : fromZ;
+    const half = axis === 0 ? p.hx : p.hz;
+    const d = (axis === 0 ? toX : toZ) - from;
+    if (Math.abs(d) < 1e-9) { if (Math.abs(from) > half) return false; continue; }
+    const t1 = (-half - from) / d, t2 = (half - from) / d;
+    low = Math.max(low, Math.min(t1, t2)); high = Math.min(high, Math.max(t1, t2)); if (low > high) return false;
   }
-  return high>0&&low<1;
+  return high > 0 && low < 1;
 }
-function segmentIntersects(a,b,c,d) {
-  if(Math.max(a.x,b.x)<Math.min(c.x,d.x)||Math.max(c.x,d.x)<Math.min(a.x,b.x)
-    ||Math.max(a.z,b.z)<Math.min(c.z,d.z)||Math.max(c.z,d.z)<Math.min(a.z,b.z))return false;
-  const cross=(p,q,r)=>(q.x-p.x)*(r.z-p.z)-(r.x-p.x)*(q.z-p.z);
-  return cross(a,b,c)*cross(a,b,d)<=0&&cross(c,d,a)*cross(c,d,b)<=0;
+function cross3(px, pz, qx, qz, rx, rz) { return (qx - px) * (rz - pz) - (rx - px) * (qz - pz); }
+function segmentIntersectsXZ(ax, az, bx, bz, cx, cz, dx, dz) {
+  if (Math.max(ax, bx) < Math.min(cx, dx) || Math.max(cx, dx) < Math.min(ax, bx)
+    || Math.max(az, bz) < Math.min(cz, dz) || Math.max(cz, dz) < Math.min(az, bz)) return false;
+  return cross3(ax, az, bx, bz, cx, cz) * cross3(ax, az, bx, bz, dx, dz) <= 0
+    && cross3(cx, cz, dx, dz, ax, az) * cross3(cx, cz, dx, dz, bx, bz) <= 0;
 }
 export function primitiveBlocksSegment(a, b, p) {
-  if (p.kind === 'circle' && p.r > 0 && pointSegmentDistance(p, a, b) < p.r) return true;
+  if (p.kind === 'circle' && p.r > 0 && pointSegmentDistanceXZ(p.x, p.z, a.x, a.z, b.x, b.z) < p.r) return true;
   if (p.kind === 'obb' && crossesBox(a, b, p)) return true;
   if (p.kind === 'capsule') {
-    const start = { x: p.ax, z: p.az };
-    const end = { x: p.bx, z: p.bz };
-    if (segmentIntersects(a, b, start, end)
+    const sx = p.ax, sz = p.az, ex = p.bx, ez = p.bz;
+    if (segmentIntersectsXZ(a.x, a.z, b.x, b.z, sx, sz, ex, ez)
       || Math.min(
-        pointSegmentDistance(start, a, b),
-        pointSegmentDistance(end, a, b),
-        pointSegmentDistance(a, start, end),
-        pointSegmentDistance(b, start, end),
+        pointSegmentDistanceXZ(sx, sz, a.x, a.z, b.x, b.z),
+        pointSegmentDistanceXZ(ex, ez, a.x, a.z, b.x, b.z),
+        pointSegmentDistanceXZ(a.x, a.z, sx, sz, ex, ez),
+        pointSegmentDistanceXZ(b.x, b.z, sx, sz, ex, ez),
       ) < p.r) return true;
   }
   return false;

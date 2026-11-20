@@ -633,9 +633,32 @@ function rotateProxyPrimitives(primitives, rad) {
 
 /** World-space primitives for an entity (registration + debug publication). Entity rotation is
  * applied to local offsets; primitive-local orientations become world orientations. */
+// Per-body memo of the last world primitive set (ENGINE spikes): line-of-sight, sweeps and law
+// witnesses re-ask for the same static bodies many times per tick, and each answer used to mint a
+// fresh array of fresh objects. The key is the full input space of the expansion (manifest, scale,
+// corridor bearing, approach bearing, pose); a Ceres slide pose reads live slide state, so those
+// bodies are never memoized. Callers treat the result as read-only.
+const _worldPrimitiveMemo = new WeakMap();
 export function proxyWorldPrimitives(entity, manifest) {
   const scale = proxyScaleFor(entity, manifest);
   const corridorDeg = effectiveCorridorBearingDeg(manifest, entity);
+  const memoable = entity && typeof entity === 'object' && !ceresWorkfleetSlideRole(entity, manifest);
+  const rot0 = finite(entity && entity.rot);
+  const px0 = finite(entity && entity.pos && entity.pos.x);
+  const pz0 = finite(entity && entity.pos && entity.pos.z);
+  const approach = entity && entity.data ? entity.data.corridorBearingDeg : undefined;
+  if (memoable) {
+    const hit = _worldPrimitiveMemo.get(entity);
+    if (hit && hit.manifest === manifest && hit.scale === scale && hit.corridorDeg === corridorDeg
+      && hit.approach === approach && hit.rot === rot0 && hit.px === px0 && hit.pz === pz0) return hit.result;
+    const result = buildProxyWorldPrimitives(entity, manifest, scale, corridorDeg);
+    _worldPrimitiveMemo.set(entity, { manifest, scale, corridorDeg, approach, rot: rot0, px: px0, pz: pz0, result });
+    return result;
+  }
+  return buildProxyWorldPrimitives(entity, manifest, scale, corridorDeg);
+}
+
+function buildProxyWorldPrimitives(entity, manifest, scale, corridorDeg) {
   // Pass the entity through: 'approach'-framed manifests (gates) rotate by the stamped bearing,
   // and a debug/test path that omits it would silently publish unrotated primitives.
   const local = expandProxyPrimitives(manifest, { corridorBearingDeg: corridorDeg, entity });
