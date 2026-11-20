@@ -8,7 +8,7 @@
 //   SHOVE  (2) the repulsor pulse at the ship, plus every armed charge and drift bomb goes off.
 //   PIN    (3) fire the anchor Mass Seed. It locks where it lands, ready for the Line.
 //   BOMB   (4) throw the sticky impulse charge, or the drift bomb the ordnance cycle chose.
-//   RIG    (5) toggle the rig: the clearing cone in open space, the skim scoop in a planet band.
+//   RIG    (5) toggle the Plow (the clearing cone) — always; R17 removed the planet-band scoop flip.
 //
 // The old names did not go away. They are still the INTERNAL action flags every owner consumes
 // (fields, massSeed, bombs, impulseCharges, planetRuntime), so those systems and their tests are
@@ -18,7 +18,6 @@
 //
 // Pure module: no bus, no registry, no DOM. input.js, gamepad.js, the rail and tests share it.
 
-import { PLANET_REGION_RANK } from '../data/planets.js';
 import { swarmCallinCount } from '../data/swarmDraft.js';
 import { pilotHas } from '../data/pilotTree.js';
 // OVH-01c2: re-exported so the power owners (fields, impulseCharges) read the pilot record through this seam.
@@ -157,19 +156,12 @@ export function bombUsesCharge(state) {
 }
 
 /**
- * Which rig a Rig press toggles. The cone is the open-space rig, the skim scoop the planet-band
- * rig. A rig that is on is turned off first, so the cone stays reachable inside a planet sector
- * and the scoop is never left running by accident. "In the band" is planetRuntime's own test:
- * the player's region rank at or past the skim band, where the collector actually harvests.
+ * Which rig a press of 5 toggles: the Plow, always (R17, 2026-11-20). It used to flip silently to
+ * the skim scoop inside a planet band, so the same key did two unlabelled things. The scoop keeps
+ * its owner (planetRuntime) but no longer rides this key. Kept as a function so every reader
+ * (rail, preview, words) asks one place.
  */
-export function resolveRigTarget(state) {
-  const coneOn = !!(state && state.fields && state.fields.coneActive);
-  if (coneOn) return 'cone';
-  const planet = state && state.planet;
-  const rec = planet && planet.active && planet.player ? planet.player : null;
-  if (rec && rec.collectorOn === true) return 'skim';
-  const rank = rec ? Number(rec.regionRank) : 0;
-  if (rec && Number.isFinite(rank) && rank >= PLANET_REGION_RANK.skim) return 'skim';
+export function resolveRigTarget() {
   return 'cone';
 }
 

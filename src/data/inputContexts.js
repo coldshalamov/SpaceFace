@@ -42,6 +42,8 @@ export const FLIGHT_ACTIONS = Object.freeze([
   'siteBeam', 'tether', 'pull', 'shove', 'pin', 'rig', 'scanPulse', 'cruise',
   'deployShieldPylon', 'deployBeacon', 'bulletTime', 'cloak', 'gyreSnare',
   'cycleBomb', 'jettisonLot', 'travelBurn', 'massline', 'contextWheel',
+  // R17: the planet-band skim scoop left key 5; it is its own labelled wheel slice.
+  'scoop',
 ]);
 
 // The fight set: movement, the gun, the Line, the five powers, the defensive/utility verbs that
@@ -51,7 +53,7 @@ export const COMBAT_ACTIONS = Object.freeze([
   'forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'brake', 'boost',
   'fire', 'countermeasure', 'bomb', 'reelIn', 'reelOut', 'massline', 'tether',
   'pull', 'shove', 'pin', 'rig', 'scanPulse', 'bulletTime', 'cloak', 'gyreSnare',
-  'cycleBomb', 'jettisonLot', 'deployShieldPylon', 'contextWheel',
+  'cycleBomb', 'jettisonLot', 'deployShieldPylon', 'contextWheel', 'scoop',
 ]);
 
 /** A pilot under this hull fraction is in the fight whether or not they have a lock. */

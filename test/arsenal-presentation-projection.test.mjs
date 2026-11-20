@@ -158,15 +158,13 @@ test('BOMB names the exact payload, its stock, and whether the next press throws
   state.bombs.bombChosen = true;
   ({ entries } = read(state));
   assert.equal(entries.bomb.label, 'Bomb · drop Frag ×4');
-  // a stocked swarm call-in outranks the bay bomb on the press, so the label names it
+  // R17: a stocked swarm call-in is not on 4 (it lives on the wheel's Call-in slice) — the bay bomb stays
   state.bombs.bombChosen = false; delete state.bombs.bombChosen;
   state.player.cargo.items.cmdty_impulse_charge = 0;
   state.run = { kind: 'survival', phase: 'active', ruleset: SWARM_RULESET,
     modifiers: [{ kind: SWARM_CALLIN_RECORD_KIND, callinId: 'smart_bomb', count: 2 }] };
   ({ entries } = read(state));
-  assert.equal(entries.bomb.label, 'Bomb · call in Smart Bomb ×2');
-  assert.equal(entries.bomb.glyph, 'callin_smart_bomb');
-  assert.equal(entries.bomb.payload.next, 'callin');
+  assert.equal(entries.bomb.label, 'Bomb · drop Frag ×4', 'R17: one behaviour per bomb type; no hidden call-in fallback');
   // an empty rack says so instead of showing a stale payload
   state.run = null;
   state.bombs = { selectedId: null, rack: { cells: [null, null] } };
@@ -208,22 +206,20 @@ function bootInput() {
   return { sim, state, tap, flags };
 }
 
-test('the label agrees with the real press: charge throws, swarm call-in calls in, bay bomb drops, rig follows the band', () => {
+test('the label agrees with the real press: charge throws, bay bomb drops, a second press detonates, 5 is always the Plow', () => {
   const t = bootInput();
   const press = (code) => { t.tap(code); return t.flags(); };
   // 1. a charge aboard
   t.state.player.cargo = { items: { cmdty_impulse_charge: 2 } };
   assert.equal(resolveBombAction(t.state).action, 'throw');
   assert.deepEqual(press('Digit4'), ['chargeThrow']);
-  // 2. no charge, a stocked call-in
+  // 2. no charge, a stocked call-in: R17 keeps call-ins off 4 (they are the wheel's Call-in slice)
   t.state.player.cargo.items.cmdty_impulse_charge = 0;
   t.state.bombs = { selectedId: 'bomb_frag', rack: { cells: [{ id: 'bomb_frag', count: 2 }] } };
   t.state.run = { kind: 'survival', phase: 'active', ruleset: SWARM_RULESET,
     modifiers: [{ kind: SWARM_CALLIN_RECORD_KIND, callinId: 'orbital_lance', count: 1 }] };
-  assert.equal(resolveBombAction(t.state).action, 'callin');
-  assert.equal(resolveBombAction(t.state).kind, 'orbital_lance');
-  assert.deepEqual(press('Digit4'), ['swarmBombThrow']);
-  // 3. no call-in either: the bay bomb drops
+  assert.equal(resolveBombAction(t.state).action, 'drop', 'R17: one behaviour per bomb type');
+  // 3. the bay bomb drops
   t.state.run = null;
   assert.equal(resolveBombAction(t.state).action, 'drop');
   assert.deepEqual(press('Digit4'), ['dropBomb']);
@@ -233,13 +229,14 @@ test('the label agrees with the real press: charge throws, swarm call-in calls i
   const entry = read(t.state).entries.bomb;
   assert.equal(entry.payload.next, 'drop');
   assert.deepEqual(press('Digit4'), ['dropBomb']);
-  // 5. rig: the cone in open space, the scoop in a planet band — the same key, the label before the press
+  // 5. R17: "Power 5 is the Plow, always" — the same label and action inside a planet band
   t.state.player.cargo.items.cmdty_impulse_charge = 0;
-  assert.equal(read(t.state).entries.rig.label, 'Rig · Cone OFF');
+  const openLabel = read(t.state).entries.rig.label;
   assert.deepEqual(press('Digit5'), ['toggleClearingCone']);
   t.state.planet = { active: true, player: { regionRank: PLANET_REGION_RANK.skim } };
-  assert.equal(read(t.state).entries.rig.label, 'Rig · Scoop OFF');
-  assert.deepEqual(press('Digit5'), ['toggleSkimCollector']);
+  assert.doesNotMatch(read(t.state).entries.rig.label, /Scoop/, 'R17: no silent flip to the scoop');
+  assert.ok(openLabel, 'the Plow has a label');
+  assert.deepEqual(press('Digit5'), ['toggleClearingCone']);
 });
 
 test('bindings come from the remappable owner: a remap moves the label, an unbound action shows no phantom key, legacy aliases are kept', () => {
@@ -383,9 +380,7 @@ test('the static part is cached on the fitting / mode / binding signature; readi
   assert.equal(reader.builds, 4, 'a mode change rebuilds');
   state.planet = { active: true, player: { regionRank: PLANET_REGION_RANK.skim } };
   reader.read(state);
-  assert.equal(reader.builds, 5, 'the rig target changing rebuilds');
-  reader.read(state);
-  assert.equal(reader.builds, 5);
+  assert.equal(reader.builds, 4, 'R17: entering a planet band no longer changes what 5 does, so nothing rebuilds');
 });
 
 test('the combination example is the production sequence: Pull, then Gyre, then release to throw', () => {

@@ -45,9 +45,9 @@ test('the five powers keep 1-5 and the digits are their only seats in every sche
     assert.deepEqual(resolveActionCodes(st, 'pin'), ['Digit3'], `${scheme} pin`);
     assert.equal(resolveActionCodes(st, 'bomb')[0], 'Digit4', `${scheme} bomb seat`);
     assert.deepEqual(resolveActionCodes(st, 'rig'), ['Digit5'], `${scheme} rig`);
-    // G18-02: the Line left the keyboard (RMB in every door); the letter aliases moved to
-    // the one context wheel — the digits are the ONLY power seats.
-    assert.deepEqual(resolveActionCodes(st, 'tether'), [], `${scheme} line has no keyboard seat`);
+    // R17: the Line is RMB and F — one button, one grammar (tap latch, tap throw, hold reel).
+    // The letter aliases moved to the one context wheel — the digits are the ONLY power seats.
+    assert.deepEqual(resolveActionCodes(st, 'tether'), ['KeyF'], `${scheme}: R17 "F and right mouse button are the same button"`);
     assert.deepEqual(resolveActionCodes(st, 'cycleBomb'), [], `${scheme} ordnance cycle is a wheel slice`);
     assert.deepEqual(resolveActionCodes(st, 'contextWheel'), ['KeyQ'], `${scheme} the wheel is held on Q`);
   }
@@ -100,14 +100,12 @@ test('old names resolve to the power keys; saved custom codes under old names ca
   assert.deepEqual(pad.deployShieldPylon, [], 'the new action stays honestly unbound instead of changing an existing remap');
 });
 
-test('RIG picks the cone in open space and the scoop inside a planet band; an open rig folds first', () => {
+test('RIG is the Plow everywhere: no silent flip to the scoop inside a planet band (R17)', () => {
   assert.equal(resolveRigTarget({}), 'cone');
   const band = { planet: { active: true, player: { regionRank: PLANET_REGION_RANK.skim, collectorOn: false } } };
-  assert.equal(resolveRigTarget(band), 'skim');
-  const approach = { planet: { active: true, player: { regionRank: PLANET_REGION_RANK.sling, collectorOn: false } } };
-  assert.equal(resolveRigTarget(approach), 'cone', 'outside the skim band the scoop would harvest nothing');
-  assert.equal(resolveRigTarget({ ...band, fields: { coneActive: true } }), 'cone', 'an open cone folds before the scoop opens');
-  assert.equal(resolveRigTarget({ planet: { active: true, player: { regionRank: 0, collectorOn: true } } }), 'skim', 'an open scoop closes');
+  assert.equal(resolveRigTarget(band), 'cone', 'R17: "Power 5 is the Plow, always"');
+  assert.equal(resolveRigTarget({ planet: { active: true, player: { regionRank: 0, collectorOn: true } } }), 'cone',
+    'R17: a running scoop does not change what 5 means');
 });
 
 test('BOMB throws the sticky charge whenever one is aboard, unless the cycle chose a drift bomb', () => {
@@ -144,7 +142,7 @@ test('real key codes drive exactly the internal flags each power owns', () => {
   };
   const on = (a) => FLAGS.filter((f) => a[f] === true).sort();
   assert.deepEqual(on(press('Digit1')), ['deployWell']);
-  assert.deepEqual(on(press('Digit2')), ['chargeDetonate', 'deployRepulsor']);
+  assert.deepEqual(on(press('Digit2')), ['deployRepulsor'], 'R17: Shove no longer detonates anything by key rule');
   // G18-02: the old letter aliases are gone — only the digit seats fire a power.
   assert.deepEqual(on(press('KeyR')), [], 'the old Shove letter is a wheel seat now, not a key');
   assert.deepEqual(on(press('Digit3')), ['deployMassSeed']);
@@ -157,7 +155,12 @@ test('real key codes drive exactly the internal flags each power owns', () => {
   assert.deepEqual(on(press('KeyY')), [], 'the old bomb letter is free — Digit4 owns BOMB alone');
   assert.deepEqual(on(press('Digit5')), ['toggleClearingCone']);
   state.planet = { active: true, player: { regionRank: PLANET_REGION_RANK.skim, collectorOn: false } };
-  assert.deepEqual(on(press('Digit5')), ['toggleSkimCollector']);
+  assert.deepEqual(on(press('Digit5')), ['toggleClearingCone'], 'R17: 5 is the Plow inside a planet band too');
+  // R17: "pressing 4 again detonates the armed charge(s)" — the second press blows what the first threw.
+  const charge = sim.spawn({ type: 'charge', pos: { x: 40, z: 0 }, vel: { x: 0, z: 0 }, radius: 4, mass: 1,
+    data: { ownerId: state.playerId, armed: true } });
+  assert.deepEqual(on(press('Digit4')), ['chargeDetonate'], 'R17: with a charge armed out there, 4 detonates it');
+  charge.alive = false;
   assert.deepEqual(on(press('Comma')), [], 'the ordnance cycle is a wheel tap, not the comma key');
   assert.deepEqual(on(press('Digit6')), [], 'the old Repulsor digit is free');
   assert.deepEqual(on(press('Digit9')), [], 'the old bomb digit is free');

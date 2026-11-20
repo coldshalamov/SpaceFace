@@ -13,6 +13,7 @@
 // main lane, a 'wheelVerb' DOM descriptor through the lane facade under worker sim.
 
 import { contextActionAllowed } from '../data/inputContexts.js';
+import { PLANET_REGION_RANK } from '../data/planets.js';
 import { isSwarmControls } from '../data/swarmControls.js';
 import { selectedWorldSiteTarget } from '../systems/input.js';
 import { injectFlightRadialsLayouts, syncRadialOwnsFrame } from './orrery/flight-radialsLayouts.js';
@@ -42,6 +43,9 @@ export const SLICES = Object.freeze([
   { action: 'strafeRight',      label: 'Strafe →',     icon: 'chevron-right', phase: 'toggle' },
   { action: 'bulletTime',       label: 'Bullet Time',  icon: 'clock',    phase: 'toggle' },
   { action: 'gyreSnare',        label: 'Gather',      icon: 'cone',     phase: 'toggle' },
+  // R17: the skim scoop is a deliberate, labelled choice inside a planet's skim band (it used to
+  // hide behind key 5). Shown only where it harvests.
+  { action: 'scoop',            label: 'Scoop',        icon: 'cargo',    phase: 'tap', needsBand: true },
   { action: 'cloak',            label: 'Cloak',        icon: 'pod',      phase: 'tap' },
   { action: 'countermeasure',   label: 'Counter',      icon: 'shield',   phase: 'tap' },
   { action: 'scanPulse',        label: 'Scan',         icon: 'scan',     phase: 'tap' },
@@ -73,6 +77,12 @@ function sliceAllowed(state, slice, callinPending = 0) {
   if (!contextActionAllowed(state, slice.action)) return false;
   if (slice.needsSite && !selectedWorldSiteTarget(state)) return false;
   if (slice.needsCallin && callinPending <= 0) return false;
+  if (slice.needsBand) {
+    const rec = state && state.planet && state.planet.active ? state.planet.player : null;
+    if (!rec) return false;
+    if (rec.collectorOn === true) return true;
+    return Number(rec.regionRank) >= PLANET_REGION_RANK.skim;
+  }
   return true;
 }
 

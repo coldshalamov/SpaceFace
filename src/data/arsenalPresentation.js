@@ -120,21 +120,16 @@ export function armedOrdnanceCounts(state, nowS = simNow(state)) {
 // ── the effective BOMB action ───────────────────────────────────────────────────────────────────
 
 /**
- * What the Bomb key does on the NEXT press — the same precedence input.js uses: the sticky charge
- * while one is aboard (unless a bay bomb was explicitly chosen), then a stocked swarm call-in,
- * then the chosen drift bomb. `action` is 'throw' | 'callin' | 'drop' | 'empty'.
+ * What the Bomb key throws on its NEXT throwing press — the same precedence input.js uses: the
+ * sticky charge while one is aboard (unless a bay bomb was explicitly chosen), then the chosen
+ * drift bomb. `action` is 'throw' | 'drop' | 'empty'. While your own ordnance is armed out there
+ * the press detonates it instead (armedOrdnanceCounts; R17). Swarm call-ins are not on this key.
  */
 export function resolveBombAction(state) {
   const charges = playerImpulseCharges(state);
   if (bombUsesCharge(state)) {
     return { action: 'throw', kind: 'charge', id: 'power_charge', name: 'Impulse charge', short: 'Charge', stock: charges,
       capacity: resolveImpulseChargeCapacity(state), owner: 'cargo.items.cmdty_impulse_charge' };
-  }
-  const callin = swarmBombSelection(state);
-  if (callin) {
-    const row = swarmCallinById(callin);
-    return { action: 'callin', kind: callin, id: `callin_${callin}`, name: row ? row.name : callin, short: row ? row.name : callin,
-      stock: swarmCallinCount(state && state.run, callin), capacity: null, owner: 'run.modifiers swarm_callin' };
   }
   const bays = state && state.bombs ? state.bombs : {};
   const cells = bays.rack && Array.isArray(bays.rack.cells) ? bays.rack.cells : null;

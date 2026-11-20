@@ -65,8 +65,9 @@ import { noteSwarmPilotAction, swarmPilotHasActed, swarmPilotIsActing } from './
 import { FLIGHT_CORE_KEYS, isSwarmControls } from '../data/swarmControls.js';
 export { isThrowArmPayload } from './masslineThrow.js';
 import { contextActionAllowed, contextStockBindings } from '../data/inputContexts.js';
+import { armedOrdnanceCounts } from '../data/arsenalPresentation.js';
 import {
-  POWER_VERBS, bombUsesCharge, powerVerbFor, powerUsesReleasePreview, resolveRigTarget, savedCodesForPower, setHeldPower, swarmBombSelection,
+  POWER_VERBS, bombUsesCharge, powerVerbFor, powerUsesReleasePreview, savedCodesForPower, setHeldPower,
 } from './powerVerbs.js';
 
 // Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
@@ -287,6 +288,7 @@ const VERB_BINDINGS = {
   pin:            ['Digit3'],
   rig:            ['Digit5'],
   scanPulse:      [],   // edge: scanner pulse (8 s cd owned by scanner system)
+  scoop:          [],   // edge: the planet-band skim scoop (R17: its own wheel slice, not key 5)
   cruise:         [],   // edge: toggle cruise charge (cruise system owns state)
   autopursuit:    [],   // retired; retained as an inert save/input compatibility field.
   // Linked shield pylons (Controlled Chaos packet 06): ONE labeled edge whose meaning is named by
@@ -2416,11 +2418,13 @@ export const input = {
     // flags the owners already consume, so fields/massSeed/bombs/impulseCharges/planetRuntime are
     // unchanged:
     //   PULL  → deployWell
-    //   SHOVE → deployRepulsor + chargeDetonate (every armed charge and drift bomb goes off)
+    //   SHOVE → deployRepulsor (a pulse; it detonates nothing by key rule — R17)
     //   PIN   → deployMassSeed
-    //   BOMB  → chargeThrow while an impulse charge is aboard (unless the ordnance cycle chose a
-    //           drift bomb), else dropBomb
-    //   RIG   → toggleClearingCone, or toggleSkimCollector in a planet band (resolveRigTarget)
+    //   BOMB  → with your own ordnance armed out there: chargeDetonate (every armed charge, drift
+    //           bomb and sticky plant goes off — "press 4 again to blow it"). Otherwise chargeThrow
+    //           while an impulse charge is aboard (unless the ordnance cycle chose a drift bomb),
+    //           else dropBomb. Swarm call-ins live on the wheel's Call-in slice, not on 4 (R17).
+    //   RIG   → toggleClearingCone: the Plow, always (R17: no silent flip to the skim scoop)
     const pullEdge = edge('pull') || this._padEdge(gp, 'pull');
     const shoveEdge = edge('shove') || this._padEdge(gp, 'shove');
     const pinEdge = edge('pin') || this._padEdge(gp, 'pin');
@@ -2441,14 +2445,14 @@ export const input = {
     // loss, sector change or fenced pad cancels aimed grips without firing. Bomb's charge-or-bomb
     // choice and Rig's cone-or-scoop target are read at the moment the power fires.
     const fire = this._resolvePowerFire(state, gp, { pull: pullEdge, shove: shoveEdge, pin: pinEdge, bomb: bombEdge, rig: rigEdge });
-    const bombThrowsCharge = fire.bomb && bombUsesCharge(state);
+    // R17: the second press of 4 blows what the first press threw. Read at the moment the power
+    // fires, from the same armed count the Bomb tile shows ("Detonate — press again").
+    const bombDetonates = fire.bomb && armedOrdnanceCounts(state).total > 0;
+    const bombThrowsCharge = fire.bomb && !bombDetonates && bombUsesCharge(state);
     acts.chargeThrow = bombThrowsCharge;
-    // SEED-SW-01/03 — the stocked swarm charges (smart bomb, then lance) are the next ordnance
-    // in the fallback before the bay's own bomb. The director owns the resolution; this only
-    // routes the press, with no new power slot or key.
-    acts.swarmBombThrow = fire.bomb && !bombThrowsCharge && !!swarmBombSelection(state);
-    acts.dropBomb = fire.bomb && !bombThrowsCharge && !acts.swarmBombThrow;
-    acts.chargeDetonate = fire.shove;
+    acts.swarmBombThrow = false;
+    acts.dropBomb = fire.bomb && !bombDetonates && !bombThrowsCharge;
+    acts.chargeDetonate = bombDetonates;
     acts.scanPulse = edge('scanPulse') || this._padEdge(gp, 'scanPulse');
     acts.cruise = edge('cruise') || this._padEdge(gp, 'cruise');
     acts.autopursuit = false;
@@ -2468,9 +2472,11 @@ export const input = {
     acts.chargeThrowHoldTicks = bombThrowsCharge ? holdTicks.bomb : 0;
     acts.swarmBombThrowHoldTicks = acts.swarmBombThrow ? holdTicks.bomb : 0;
     acts.dropBombHoldTicks = acts.dropBomb ? holdTicks.bomb : 0;
-    const rigTarget = fire.rig ? resolveRigTarget(state) : null;
-    acts.toggleClearingCone = rigTarget === 'cone';
-    acts.toggleSkimCollector = rigTarget === 'skim';
+    // R17: 5 is the Plow, always. The skim scoop has no key of its own on the power bar; a scoop
+    // the planet runtime left running is turned off by the same press so it can never run unseen.
+    acts.toggleClearingCone = fire.rig;
+    acts.toggleSkimCollector = (fire.rig && state.planet?.player?.collectorOn === true)
+      || edge('scoop') || this._padEdge(gp, 'scoop');
     // Ordnance cycle (Comma / pad dLeft) behind the same lifecycle gate as travelBurn. The bombs
     // system owns the selection, including the charge choice the BOMB power reads above.
     acts.cycleBomb = edge('cycleBomb') || !!(gp && gp.isConnected()

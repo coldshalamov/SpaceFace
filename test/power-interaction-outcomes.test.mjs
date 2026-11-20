@@ -157,13 +157,13 @@ fieldTest('focus loss and modal resume do not synthesize a Rig toggle or replay 
   assert.deepEqual(t.coneEvents(), [true, false]);
 });
 
-fieldTest('Shove deploys its real repulsor and requests detonation on press, never on repeat or release', () => {
+fieldTest('Shove deploys its real repulsor on press, never on repeat or release, and detonates nothing (R17)', () => {
   for (const powerFire of ['aim', 'press']) {
     const t = boot({ powerFire });
     t.key('Digit2', true); t.step();
     const deployed = () => t.events.filter((e) => e.name === 'fields:deployed' && e.payload.kind === 'repulsor');
     assert.equal(deployed().length, 1, 'ship-centered repulsor is deployed on key-down');
-    assert.equal(t.state.input.actions.chargeDetonate, true, 'the same press requests armed-ordnance detonation');
+    assert.equal(t.state.input.actions.chargeDetonate, false, 'R17: Shove no longer detonates anything by key rule');
     assert.equal(heldPower(t.state), null);
     assert.equal(powerHeld(t.state), null, 'a ship-centered pulse never enters an aiming preview');
     t.key('Digit2', true, { repeat: true }); t.step();
@@ -231,7 +231,7 @@ fieldTest('worker touch preserves quick Shove pulses while aimed Pull still prev
   frame({ shove: true }); frame({ shove: true }); frame({}); t.step();
   assert.equal(t.events.filter((e) => e.name === 'fields:deployed' && e.payload.kind === 'repulsor').length, 1,
     'a collapsed quick Shove deploys its actual repulsor exactly once');
-  assert.equal(t.state.input.actions.chargeDetonate, true);
+  assert.equal(t.state.input.actions.chargeDetonate, false, 'R17: Shove detonates nothing');
   assert.equal(heldPower(t.state), null);
   assert.equal(powerHeld(t.state), null);
   t.step();

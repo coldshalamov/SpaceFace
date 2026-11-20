@@ -69,7 +69,7 @@ test('production worker carries the Anvil player band and heat to the flight HUD
     hud.update(0, main);
     assert.match(dom.pillText.textContent, /WORKING BAND.*HEAT 5%/,
       'the visible HUD should present the sim-owned band and heat after the actual worker reply');
-    assert.equal(resolveRigTarget(main), 'skim', 'the same mirrored band selects the scoop');
+    assert.equal(resolveRigTarget(main), 'cone', 'R17: 5 is the Plow in the mirrored band too (the scoop is its own wheel slice)');
     const frame = state.entities.get(state.planet.orchardFrameId);
     const mirroredFrame = main.entities.get(frame.id);
     assert.ok(mirroredFrame, 'the actual journal includes the authored orchard frame');
