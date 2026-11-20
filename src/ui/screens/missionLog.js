@@ -1,4 +1,4 @@
-import { cinderJournalAction } from '../../missions/cinderRoute.js';
+import { authoredCinderRoute, cinderJournalAction, CINDER_TAG } from '../../missions/cinderRoute.js';
 import { patrolPaperworkAction, patrolContractBrief } from '../../missions/patrolPaperwork.js';
 import { seedCharterOffer, SEED_CHARTER_STATION } from '../../systems/seedCharter.js';
 import { cinderglassJobJournalReceipt } from '../../features/cinderglassJob/integration.js';
@@ -57,7 +57,7 @@ import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
 import { book4ChoiceAction } from '../book4Choice.js';
 import { isReportInRestitution } from '../../missions/restitutionReadout.js';
 import { resolveContract47aRecoveryTarget, resolveWaypointPresentationPosition } from '../navigationWaypoint.js';
-import { kesslerScaleWaypoint } from '../../systems/kesslerScaleWorksite.js';
+import { kesslerScalePending, kesslerScaleWaypoint } from '../../systems/kesslerScaleWorksite.js';
 import {
   buildMissionLogCareerChip,
   buildMissionLogOriginChoiceModel,
@@ -528,6 +528,7 @@ function nextStepText(m, state) {
       return `Next: travel to ${sectorName} — ${dest} is another sector over.`;
     }
   }
+  if (isReportInRestitution(m)) return `Next: dock at ${dest} to report in. No cargo is required.`;
   switch (m.type) {
     case 'cargo_delivery':
     case 'passenger_transport':
@@ -565,6 +566,7 @@ function stripNextPrefix(text) {
 }
 
 function missionPurposeText(m) {
+  if (isReportInRestitution(m)) return 'Dock at ' + destStationName(m.destStationId) + ' to settle this separate report-in. No cargo is required; the original contract’s outcome stays on record.';
   if (registryContactReadout(m)) return 'Check the named vessel’s registry and choose how to resolve the writ.';
   if (!m) return 'Complete the contract and secure its payout.';
   // Paperwork deep-read: authorization / admin field / full contract body (B0 mass story).
@@ -865,7 +867,8 @@ function contract47aPaperwork(m) {
 export function activeMissionContractTerms(m, state) {
   if (!m) return [];
   const terms = [];
-  const consequences = missionConsequenceSummary(m);
+  const consequences = missionConsequenceSummary(m, state);
+  terms.push(...consequences.chips.filter(chip => chip.label === 'Branch' || chip.label === 'Book 4'));
   const paperwork = contract47aPaperwork(m);
   const pays = [];
   if (consequences.reward > 0) pays.push('+' + formatCredits(consequences.reward));
@@ -1224,7 +1227,7 @@ function careerConsequencePreview(chip, state) {
   if (linkedId && state && state.missions && Array.isArray(state.missions.active)) {
     const m = state.missions.active.find((x) => x && x.id === linkedId);
     if (m) {
-      const c = missionConsequenceSummary(m);
+      const c = missionConsequenceSummary(m, state);
       const bits = [];
       if (c.reward > 0) bits.push('+' + formatCredits(c.reward));
       if (c.repReward > 0) bits.push('+' + c.repReward + ' rep');
@@ -1804,20 +1807,9 @@ export function journalJourneyActStrip(state) {
   return {
     actNum: act.num,
     label: localizeText(journeyActLabel(act)),
-    goal: localizeText(act.goal || ''),
+    goal: story.beatIndex === 1 ? '' : localizeText(act.goal || ''),
     verb: localizeText(act.verb || ''),
   };
-}
-
-/** The chosen B4 door's authored operation, from the same book data that posts it. */
-function b4DoorOperation(branch) {
-  if (!branch) return null;
-  const beat = embodiedMissionAt(4);
-  const contract = ((beat && beat.bookContracts) || []).find((row) => row && row.branch === branch);
-  if (!contract) return null;
-  const title = String(contract.title || '').trim();
-  const name = title.split(/\s+[—–-]\s+/)[0].trim();
-  return name ? { name, title } : null;
 }
 
 export function storyActionForBeat(beat, state) {
@@ -1839,13 +1831,25 @@ export function storyActionForBeat(beat, state) {
       };
     case 1: {
       const scale = kesslerScaleWaypoint(state);
-      if (scale) return {
-        tone: 'primary',
-        label: 'STORY',
-        title: `Check the manifest · ${scale.sectorName}`,
-        body: 'The manifest was re-coded. The desk kept your delivered alloy crate on Scale 4 — it stays on the plate until the read latches. To weigh your own freight: brake below 2 WU/s inside the ring, then jettison a lot; the calm set-down settles the pod.',
-        meta: 'Scale 4',
-      };
+      if (scale) {
+        const waypoint = state.nav?.waypoint;
+        const localFix = state.world?.currentSectorId === scale.sectorId
+          && waypoint?.sectorId === scale.sectorId && waypoint.kind === 'story'
+          && waypoint.storyBeat === scale.storyBeat && waypoint.label === scale.label
+          && waypoint.pos?.x === scale.pos.x && waypoint.pos?.z === scale.pos.z;
+        return {
+          tone: 'primary',
+          label: 'STORY',
+          title: `Check the manifest · ${scale.sectorName}`,
+          body: scale.reason,
+          meta: 'Scale 4',
+          ...(localFix ? {
+            markerLabel: scale.label,
+            mapAction: mapHandoffAction({ focus: MAP_FOCUS.LOCAL, sectorId: scale.sectorId,
+              pos: scale.pos, selectionTarget: 'active-waypoint', title: 'Open Scale 4 on the Chart' }),
+          } : {}),
+        };
+      }
       const completed = story.campaign47a?.stepProgress?.['1']?.completed;
       if (Array.isArray(completed) && completed.includes('alloy_run')
           && completed.includes('scale_4') && !completed.includes('infested')) {
@@ -1853,14 +1857,28 @@ export function storyActionForBeat(beat, state) {
         const active = (state?.missions?.active || []).some((mission) =>
           mission?.status === 'active' && mission.storyTag === tag);
         const slots = state?.missions?.boards?.station_tethys?.slots;
-        if (!active && Array.isArray(slots) && slots.some((offer) =>
-          offer?.storyTag === tag && offer.stationId === 'station_tethys')) {
+        const offer = Array.isArray(slots) && slots.find((row) =>
+          row?.storyTag === tag && row.stationId === 'station_tethys');
+        if (!active && offer) {
+          const station = STATION_INFO.get(offer.stationId);
+          const waypoint = state.nav?.waypoint;
+          const boardFix = station && waypoint?.kind === 'story' && waypoint.storyBeat === 1
+            && waypoint.stationId === offer.stationId && waypoint.sectorId === station.sectorId
+            && waypoint.label === offer.title;
           return {
             tone: 'primary',
             label: 'CONTRACT',
             title: 'Furnace Detail · the infested hauler',
             body: 'At Tethys Junction, take Furnace Detail from Missions. Read the brief and prepare for the Ceres refinery.',
             meta: 'Tethys board',
+            ...(boardFix ? {
+              markerLabel: waypoint.label,
+              mapAction: mapHandoffAction({
+                focus: state.world?.currentSectorId === station.sectorId ? MAP_FOCUS.LOCAL : MAP_FOCUS.GALAXY,
+                sectorId: station.sectorId, stationId: offer.stationId, source: 'missionLog-story',
+                title: `Open ${station.name} on the Chart`,
+              }),
+            } : {}),
           };
         }
         return null;
@@ -1910,12 +1928,30 @@ export function storyActionForBeat(beat, state) {
       }
       const cinder = cinderJournalAction(state);
       if (cinder) return cinder;
+      const deskId = 'station_tethys';
+      const desk = STATION_INFO.get(deskId);
+      const slots = state?.missions?.boards?.[deskId]?.slots;
+      const posted = desk && Array.isArray(slots) && slots.some(offer => authoredCinderRoute(offer)
+        && offer.stationId === deskId && offer.type === 'patrol_clear');
+      const signed = (state?.missions?.active || []).some(m => m?.storyTag === CINDER_TAG && m.status === 'active');
+      const waypoint = state?.nav?.waypoint;
+      const boardFix = posted && !signed && !completed.has('cinder_board')
+        && waypoint?.kind === 'story' && waypoint.storyBeat === beat.beat
+        && waypoint.stationId === deskId && waypoint.sectorId === desk.sectorId && waypoint.label;
       return {
         tone: 'primary',
         label: 'CINDER CONTRACT',
         title: 'Three clearances, one real hull',
         body: 'Read Rook’s Cinder posting at Tethys. In Charon, clear Cinder One, Two and Three and tow one actual marked hull to Rook’s 100-WU ring at Expanse at 8 WU/s or slower. Quiet Line payment is not Rook proof; losing every hull closes clearance for no contract pay.',
         meta: 'Tethys desk → Charon lane → Expanse ring',
+        ...(boardFix ? {
+          markerLabel: waypoint.label,
+          mapAction: mapHandoffAction({
+            focus: state.world?.currentSectorId === desk.sectorId ? MAP_FOCUS.LOCAL : MAP_FOCUS.GALAXY,
+            sectorId: desk.sectorId, stationId: deskId, source: 'missionLog-story',
+            title: `Open ${desk.name} on the Chart`,
+          }),
+        } : {}),
       };
     }
     case 3:
@@ -2033,6 +2069,17 @@ export function stagedOpeningOwnsCommand(state) {
   return !!(ob && ob.active && !ob.finished);
 }
 
+function openingRecoveryMapAction(state, mission) {
+  const waypoint = state?.nav?.waypoint;
+  if (!waypoint || !stagedOpeningOwnsCommand(state) || state.story?.beatIndex !== 0
+    || mission?.storyTag !== 'campaign47a:b0:recovery') return null;
+  const seamMarker = waypoint.onboarding === true && waypoint.markerId === 'onboarding:seam';
+  const trackedMarker = waypoint.kind === 'mission' && waypoint.missionId === mission.id;
+  if ((!seamMarker && !trackedMarker) || waypoint.label !== '47-A Recovery Site') return null;
+  const action = missionMapAction(state, mission, true);
+  return action?.selectionTarget === '47a-recovery-fix' ? action : null;
+}
+
 export function recommendedActions(state, activeMissions, trackedMissionId) {
   const active = (activeMissions || []).filter((m) => m && m.status === 'active');
   const tracked = trackedMissionId ? active.find((m) => m.id === trackedMissionId) : null;
@@ -2050,6 +2097,8 @@ export function recommendedActions(state, activeMissions, trackedMissionId) {
   const openingOwns = stagedOpeningOwnsCommand(state);
 
   if (openingOwns && storyAction) {
+    const recovery = active.find(m => m.storyTag === 'campaign47a:b0:recovery');
+    if (openingRecoveryMapAction(state, recovery)) storyAction.markerLabel = state.nav.waypoint.label;
     actions.push(storyAction);
   } else if (tracked) {
     const mapAction = missionMapAction(state, tracked, true);
@@ -2247,6 +2296,7 @@ export const missionLogScreen = {
   _recommendEl: null,
   _focusedId: null,
   _subbed: false,
+  _offs: [],
 
   mount(rootEl, ctx) {
 
@@ -2582,7 +2632,7 @@ export const missionLogScreen = {
         const active = (ctx.state.missions && ctx.state.missions.active) || [];
         const m = active.find((x) => x.id === missionId);
         const title = (m && (m.title || m.name)) || 'this mission';
-        const consequences = m ? missionConsequenceSummary(m) : null;
+        const consequences = m ? missionConsequenceSummary(m, ctx.state) : null;
         const loss = ['You will lose all progress on this contract.'];
         if (consequences && consequences.collateral > 0) loss.push(formatCredits(consequences.collateral) + ' stake forfeited');
         if (consequences && consequences.repPenalty < 0) loss.push(consequences.repPenalty + ' contract standing');
@@ -2714,37 +2764,43 @@ export const missionLogScreen = {
     this._subbed = true;
     const bus = this._ctx.bus;
     const refresh = () => { if (this._visible()) this._render(); };
-    bus.on('counterweightCircuit:view', refresh);
-    bus.on('counterweightCircuit:close', refresh);
-    bus.on('breakwaterSpur:offer', refresh);
-    bus.on('breakwaterSpur:receipt', refresh);
-    bus.on('cinderglassJob:view', refresh);
-    bus.on('cinderglassJob:refused', refresh);
-    bus.on('mission:updated', refresh);
-    bus.on('mission:accepted', refresh);
-    bus.on('mission:completed', refresh);
-    bus.on('mission:failed', refresh);
-    bus.on('mission:expired', refresh);
-    bus.on('career:ladder:progress', refresh);
-    bus.on('career:ladder:stepActive', refresh);
-    bus.on('career:ladder:stepFailed', refresh);
-    bus.on('career:ladder:stepDone', refresh);
-    bus.on('career:ladder:stepRecovered', refresh);
-    bus.on('career:ladder:choiceResolved', refresh);
-    bus.on('career:ladder:completed', refresh);
-    bus.on('career:origins:offered', refresh);
-    bus.on('career:origins:accepted', refresh);
-    bus.on('career:origins:declined', refresh);
-    bus.on('career:origins:progress', refresh);
-    bus.on('endgame:eligibility', refresh);
-    bus.on('endgame:confirmRequired', refresh);
-    bus.on('endgame:chosen', refresh);
-    bus.on('endgame:sandboxContinued', refresh);
-    bus.on('story:postEndingProgress', refresh);
-    bus.on('story:postEndingContinuity', refresh);
-    bus.on('story:replayHookUnlocked', refresh);
-    bus.on('postEndingReplay:route', refresh);
-    bus.on('postEndingReplay:cycleCompleted', refresh);
+    this._offs.push(bus.on('counterweightCircuit:view', refresh));
+    this._offs.push(bus.on('counterweightCircuit:close', refresh));
+    this._offs.push(bus.on('breakwaterSpur:offer', refresh));
+    this._offs.push(bus.on('breakwaterSpur:receipt', refresh));
+    this._offs.push(bus.on('cinderglassJob:view', refresh));
+    this._offs.push(bus.on('cinderglassJob:refused', refresh));
+    this._offs.push(bus.on('mission:updated', refresh));
+    this._offs.push(bus.on('mission:accepted', refresh));
+    this._offs.push(bus.on('mission:completed', refresh));
+    this._offs.push(bus.on('mission:failed', refresh));
+    this._offs.push(bus.on('mission:expired', refresh));
+    this._offs.push(bus.on('career:ladder:progress', refresh));
+    this._offs.push(bus.on('career:ladder:stepActive', refresh));
+    this._offs.push(bus.on('career:ladder:stepFailed', refresh));
+    this._offs.push(bus.on('career:ladder:stepDone', refresh));
+    this._offs.push(bus.on('career:ladder:stepRecovered', refresh));
+    this._offs.push(bus.on('career:ladder:choiceResolved', refresh));
+    this._offs.push(bus.on('career:ladder:completed', refresh));
+    this._offs.push(bus.on('career:origins:offered', refresh));
+    this._offs.push(bus.on('career:origins:accepted', refresh));
+    this._offs.push(bus.on('career:origins:declined', refresh));
+    this._offs.push(bus.on('career:origins:progress', refresh));
+    this._offs.push(bus.on('endgame:eligibility', refresh));
+    this._offs.push(bus.on('endgame:confirmRequired', refresh));
+    this._offs.push(bus.on('endgame:chosen', refresh));
+    this._offs.push(bus.on('endgame:sandboxContinued', refresh));
+    this._offs.push(bus.on('story:postEndingProgress', refresh));
+    this._offs.push(bus.on('story:postEndingContinuity', refresh));
+    this._offs.push(bus.on('story:replayHookUnlocked', refresh));
+    this._offs.push(bus.on('postEndingReplay:route', refresh));
+    this._offs.push(bus.on('postEndingReplay:cycleCompleted', refresh));
+  },
+
+  dispose() {
+    for (const off of this._offs || []) { try { off(); } catch (_) { /* gone */ } }
+    this._offs = [];
+    this._subbed = false;
   },
 
   _visible() {
@@ -2761,9 +2817,10 @@ export const missionLogScreen = {
     const activeMissions = active.filter((m) => m && m.status === 'active');
     const tracked = state.ui && state.ui.trackedMissionId;
     const simTime = state.simTime || 0;
+    const scaleWork = kesslerScalePending(state);
 
     const entries = commissionEntries(state);
-    if (this._activeHeader) this._activeHeader.hidden = !activeMissions.length && entries.length > 0;
+    if (this._activeHeader) this._activeHeader.hidden = !activeMissions.length && (entries.length > 0 || scaleWork);
     if (this._commissionSelection && !entries.some((entry) => entry.key === this._commissionSelection.key && entry.life === this._commissionSelection.life)) {
       this._commissionSelection = null;
       this._focusedId = null;
@@ -2785,7 +2842,9 @@ export const missionLogScreen = {
     this._listEl.innerHTML = '';
 
     if (!activeMissions.length) {
-      if (!entries.length) this._listEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-62">No active contracts. Visit a station board or bar to accept work.</p></div>';
+      if (!entries.length && !scaleWork) {
+        this._listEl.innerHTML = '<div class="sf-mlog-empty"><p class="k-sentence k-62">No active contracts. Visit a station board or bar to accept work.</p></div>';
+      }
       this._renderChosen(state, null, tracked, entries);
       if (this._compVisible) this._renderCompleted();
       if (this._corrVisible) this._renderCorridorLog();
@@ -3145,8 +3204,13 @@ export const missionLogScreen = {
     this._floorArt = m ? destArtUrl(m) : (sectorArtUrl(state && state.world && state.world.currentSectorId) || RELAY_STILL);
     if (this._floorEl) this._floorEl.classList.remove('is-tracing');
     if (!m) {
-      // No contract on the beam: the dial stands bare beside the one sentence that says how to get one.
       const empty = el('article', 'sf-mlog-card is-empty');
+      if (kesslerScalePending(state)) {
+        empty.appendChild(el('p', 'sf-mlog-kicker', 'Campaign'));
+        empty.appendChild(el('h2', 'k-display k-t-title', storyBeatDisplayName(STORY_BEATS[1].id)));
+        stage.appendChild(empty);
+        return;
+      }
       empty.appendChild(el('p', 'sf-mlog-kicker', 'No contract'));
       const side = el('div', 'sf-mlog-side');
       const dial = el('div', 'orr-mdial is-empty');
@@ -3218,15 +3282,16 @@ export const missionLogScreen = {
 
     // Words: Track/Tracked (aria-pressed), the chart handoff, Abandon (confirm kept). Track is the
     // screen's one primary while the focused mission is not yet tracked.
-    const mapAction = missionMapAction(state, m, isTracked);
+    const openingMap = openingRecoveryMapAction(state, m);
+    const mapAction = openingMap || missionMapAction(state, m, isTracked);
     const btns = el('div', 'sf-mlog-btns');
     btns.innerHTML =
       '<ul class="k-words k-words--row" aria-label="Mission actions">' +
-        '<li><button class="k-word k-word--emph' + (isTracked ? '' : ' k-word--primary') + ' sf-mlog-btn-track" type="button" data-act="track" data-mid="' + escapeHtml(m.id) + '" aria-pressed="' + (isTracked ? 'true' : 'false') + '" aria-label="' + escapeHtml(isTracked ? 'Tracking ' + titleText : 'Track navigation for ' + titleText) + '">' +
+        (openingMap ? '' : '<li><button class="k-word k-word--emph' + (isTracked ? '' : ' k-word--primary') + ' sf-mlog-btn-track" type="button" data-act="track" data-mid="' + escapeHtml(m.id) + '" aria-pressed="' + (isTracked ? 'true' : 'false') + '" aria-label="' + escapeHtml(isTracked ? 'Tracking ' + titleText : 'Track navigation for ' + titleText) + '">' +
           (isTracked ? 'Tracked' : 'Track') +
-        '</button></li>' +
+        '</button></li>') +
         (mapAction
-          ? '<li><button class="k-word k-word--emph sf-mlog-btn-map" type="button" data-act="openMap"' + mapActionButtonAttrs(mapAction, m.id) + ' aria-label="' + escapeHtml(mapAction.title) + '">Open on the chart</button>' +
+          ? '<li><button class="k-word k-word--emph' + (openingMap ? ' k-word--primary' : '') + ' sf-mlog-btn-map" type="button" data-act="openMap"' + mapActionButtonAttrs(mapAction, m.id) + ' aria-label="' + escapeHtml(mapAction.title) + '">Open on the chart</button>' +
             '<div class="k-word-sub">' + escapeHtml(wordText(mapAction.label)) + '</div></li>'
           : '') +
         abandonSlotHtml(m, titleText) +
@@ -3362,9 +3427,10 @@ export const missionLogScreen = {
           '<span class="k-row__name sf-mlog-rec-title">' + (a.titleRef ? entitySpanHtml(a.titleRef, escapeHtml(a.title || 'Next action')) : escapeHtml(a.title || 'Next action')) + '</span>' +
           '<div class="k-row__sub sf-mlog-rec-body">' + escapeHtml((a.brief && a.brief.how) || a.body || '') + '</div>' +
           (a.meta ? '<div class="k-row__sub sf-mlog-rec-meta">' + escapeHtml(wordText(a.meta)) + '</div>' : '') +
-          (a.commission ? '' : '<div class="k-row__sub sf-mlog-rec-marker">' + escapeHtml(wordText(a.mapAction
-            ? '◆ THE AMBER DIAMOND IS YOUR CURRENT GOAL'
-            : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET'))) + '</div>') +
+          (a.commission ? '' : '<div class="k-row__sub sf-mlog-rec-marker">' + escapeHtml(a.markerLabel
+            ? '◆ ' + a.markerLabel
+            : wordText(a.mapAction ? '◆ THE AMBER DIAMOND IS YOUR CURRENT GOAL'
+              : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET'))) + '</div>') +
         '</div>' +
         '<span class="k-row__num sf-mlog-rec-label">' + escapeHtml(wordText(a.label || 'NEXT')) + '</span>' +
       '</div></div>' +
@@ -3450,8 +3516,10 @@ export const missionLogScreen = {
     }
     if (this._careerHeader) {
       this._careerHeader.hidden = false;
+      const completedContract = state.missions?.receipts?.some(receipt => receipt?.outcome === 'completed')
+        || state.story?.campaign47a?.stepProgress?.['1']?.completed?.includes('alloy_run');
       this._careerHeader.textContent = chips.some((chip) => chip && chip.originChoice)
-        ? (commissionEntries(state).length ? 'CAREER' : 'CHOOSE A FIRST CONTRACT') : 'CAREER LADDER';
+        ? (completedContract || commissionEntries(state).length ? 'CAREER' : 'CHOOSE A FIRST CONTRACT') : 'CAREER LADDER';
     }
     this._careerEl.hidden = false;
     this._careerEl.innerHTML = chips.map((chip) => careerChipHtml(chip, state)).join('');

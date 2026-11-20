@@ -497,6 +497,10 @@ function flightParent() {
 function hideFlightToy() {
   if (flightControls && typeof flightControls.dispose === 'function') flightControls.dispose();
   flightControls = null;
+  // A sub-1x lab scale is an ungated ordinary time request; dropping the toy must return
+  // the sim to 1x or the session stays slowed until the next new game or restore.
+  const effects = getTimeEffects(liveCtx);
+  if (effects && typeof effects.clear === 'function') effects.clear(CRUCIBLE_LAB_SPEED_SOURCE);
   const host = flightHost;
   flightHost = null;
   if (!host) return;
@@ -859,6 +863,8 @@ export function mountCrucibleLabControls(ctx, hostEl, options = {}) {
 
   function dispose() {
     if (countedScreen && screenMounts > 0) screenMounts -= 1;
+    const effects = getTimeEffects(ctx);
+    if (effects && typeof effects.clear === 'function') effects.clear(CRUCIBLE_LAB_SPEED_SOURCE);
     for (const off of unsubs) off();
     unsubs.length = 0;
   }

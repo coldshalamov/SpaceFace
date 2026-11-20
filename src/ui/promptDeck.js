@@ -914,6 +914,8 @@ export function createPromptDeck(ctx = {}) {
     syncClaim(); // release the rail claim — layout() no-ops once destroyed, so it cannot reach it
     doc.removeEventListener('keydown', onKeyDown, true);
     doc.defaultView?.removeEventListener?.('resize', onViewportResize);
+    for (const off of lifecycleOffs) { try { off(); } catch (_) { /* gone */ } }
+    lifecycleOffs.length = 0;
     clearAll();
     root.remove();
     live.remove();
@@ -926,12 +928,13 @@ export function createPromptDeck(ctx = {}) {
   // ONE lifecycle owner for the whole family. The old cards each subscribed to their own subset
   // of these and drifted; on any of these transitions every flight decision is void — producers
   // re-assert or resolve through their own events.
+  const lifecycleOffs = [];
   if (bus && typeof bus.on === 'function') {
     const voidAll = () => clearAll();
-    bus.on('sector:exit', voidAll);
-    bus.on('game:new', voidAll);
-    bus.on('game:load', voidAll);
-    bus.on('dock:docked', voidAll);
+    lifecycleOffs.push(bus.on('sector:exit', voidAll));
+    lifecycleOffs.push(bus.on('game:new', voidAll));
+    lifecycleOffs.push(bus.on('game:load', voidAll));
+    lifecycleOffs.push(bus.on('dock:docked', voidAll));
   }
 
   const api = {
