@@ -67,10 +67,19 @@ const LOCAL_MAX_STEPS = 4;
 // A heavy scene's ~28 ms step overshot the old 24 ms budget alone, so each
 // directive paid that tail for a single executed step — ~40% overhead on top
 // of step time. Three-step batches amortize the same tail without touching
-// step semantics; the hitch cap and accumulator bound still govern bursts.
+// step semantics; the work budget, dilation and the hard debt cap govern bursts.
 const LOCAL_WORK_BUDGET_MS = 72;
-const LOCAL_HITCH_CATCHUP_STEPS = 2;
-const LOCAL_MAX_DEBT_SECONDS = 0.25;
+// ENGINE slice 5 — dilate, do not shed. The world clock owes elapsed × scale × dilation. When the
+// worker cannot keep up, dilation eases down (never faster than LOCAL_DILATION_DOWN_PER_S) so the
+// whole world — sim, and the picture that measures its rate — slows smoothly instead of dropping
+// lumps of time; it eases back to 1 as soon as debt clears. Only a debt beyond the hard cap (a
+// multi-hundred-ms spike) is dropped, as one honest pause.
+const LOCAL_MAX_DEBT_SECONDS = 1.0;
+const LOCAL_DILATION_MIN = 0.5;
+const LOCAL_DILATION_DOWN_PER_S = 0.6;
+const LOCAL_DILATION_UP_PER_S = 0.4;
+const LOCAL_DEBT_HIGH_TICKS = 4;
+const LOCAL_DEBT_LOW_TICKS = 2;
 const LOCAL_DURABLE_LIMIT = 4096;
 // Presentation-trigger rows replay onto the main bus only when a reply is
 // actually published. Rows retained across a long ACK wait are stale by the
@@ -115,7 +124,10 @@ const LOCAL_MAX_CONSECUTIVE_TASK_WAKES = 4;
 // The fence has ~150-300 ms of history, so after that it holds the picture. If the worker kept
 // stepping through the stall, the first frame after it would re-seat seconds ahead — the
 // freeze-then-teleport jump. Hold the clock instead; the world resumes from the held pose.
-const LOCAL_HEARTBEAT_HOLD_MS = 250;
+// ENGINE slice 5: a hidden/backgrounded page already stops the clock through the lifecycle
+// (presentationRunner → clockControl). The hold remains only as a dead-main-thread guard, so an
+// ordinary 250–900 ms render stall no longer stops the world; the fence plays the backlog out.
+const LOCAL_HEARTBEAT_HOLD_MS = 1000;
 // PERF-02 lane accounting window. The clockDiagnostics scalars already diff
 // across any two reads; a completed window adds the distribution facts (per-step
 // worker cost, measured wake cadence) that bare counters cannot carry. Samples
@@ -178,6 +190,15 @@ const localClock = {
   timerFires: 0,
   stepCount: 0,
   shedStepCount: 0,
+  // Smoothed world-clock dilation in [LOCAL_DILATION_MIN, 1] (ENGINE slice 5).
+  dilation: 1,
+  // Worker-silence attribution: a timer turn whose wall gap exceeds the previous turn's own work
+  // by > LOCAL_LONG_GAP_MS was not step cost — the event loop was starved (GC, a long message
+  // handler, timer clamping). Bounded ledger of the last few, shipped in clockDiagnostics.
+  lastWorkMs: 0,
+  lastWakeLateMs: 0,
+  lastWakeViaTask: false,
+  longGaps: [],
   budgetDeferredStepCount: 0,
   commandCount: 0,
   // E1 stall harness state (?simStall=): cycle of ms values, one consumed per local-clock tick.
@@ -257,6 +278,38 @@ export function nextLocalClockDeadline(deadlineMs, nowMs, intervalMs = LOCAL_TIM
   return next;
 }
 
+/**
+ * Ease the world-clock dilation from the debt left after this turn. Debt above HIGH means the
+ * worker is not keeping up: slow the world (rate-limited, so it reads as a smooth slowdown).
+ * Debt below LOW: recover toward real time. Between them: hold. Wall-clock policy only — the
+ * fixed 60 Hz step and everything it computes are untouched.
+ */
+const LOCAL_LONG_GAP_MS = 120;
+function noteLocalLongGap(elapsedMs, now) {
+  const idleMs = elapsedMs - (localClock.lastWorkMs || 0);
+  if (!(idleMs > LOCAL_LONG_GAP_MS)) return;
+  if (localClock.longGaps.length >= 8) localClock.longGaps.shift();
+  localClock.longGaps.push({
+    atMs: Math.round(now),
+    gapMs: Math.round(elapsedMs),
+    prevWorkMs: Math.round(localClock.lastWorkMs || 0),
+    wakeLateMs: Math.round(localClock.lastWakeLateMs || 0),
+    viaTask: localClock.lastWakeViaTask === true,
+    heartbeatAgeMs: localClock.lastHeartbeatAtMs > 0 ? Math.round(now - localClock.lastHeartbeatAtMs) : null,
+  });
+}
+
+function updateLocalDilation(elapsedMs) {
+  const wallS = Math.min(0.25, localElapsedSeconds(elapsedMs));
+  if (!(wallS > 0)) return;
+  const debtTicks = localClock.accumulator / LOCAL_FIXED_DT;
+  if (debtTicks > LOCAL_DEBT_HIGH_TICKS) {
+    localClock.dilation = Math.max(LOCAL_DILATION_MIN, localClock.dilation - LOCAL_DILATION_DOWN_PER_S * wallS);
+  } else if (debtTicks < LOCAL_DEBT_LOW_TICKS && localClock.dilation < 1) {
+    localClock.dilation = Math.min(1, localClock.dilation + LOCAL_DILATION_UP_PER_S * wallS);
+  }
+}
+
 function localElapsedSeconds(elapsedMs) {
   const seconds = Number.isFinite(elapsedMs) ? Math.max(0, elapsedMs / 1000) : 0;
   return seconds;
@@ -267,6 +320,7 @@ function resetLocalClockTiming() {
   localClock.consecutiveTaskWakes = 0;
   localClock.anchorMs = localNowMs();
   localClock.deadlineMs = 0;
+  localClock.dilation = 1;
   // A pause/rate/epoch boundary starts a new wall interval. Preserve only the sub-tick phase;
   // old whole-step debt must not execute at a new rate or after a hidden/paused interval.
   localClock.accumulator %= LOCAL_FIXED_DT;
@@ -971,19 +1025,18 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
   if (hasExplicitSteps) {
     steps = Math.min(LOCAL_MAX_STEPS, explicitSteps);
   } else if (localClock.active && localClock.scale > 0) {
+    // Wall owes elapsed × scale; the world clock receives that × dilation (ENGINE slice 5).
     const owedSeconds = localElapsedSeconds(elapsedMs) * localClock.scale;
-    localClock.accumulator += owedSeconds;
+    localClock.accumulator += owedSeconds * localClock.dilation;
     localClock.owedTicks += owedSeconds / LOCAL_FIXED_DT;
-    // Cap carried simulation debt, not the work consumed by this one timer turn. A late wake
-    // must not permanently slow the sim by dropping every tick beyond its small work batch.
+    // Hard cap only: a spike longer than the cap is one honest pause, never a replayed backlog.
     if (localClock.accumulator > LOCAL_MAX_DEBT_SECONDS) {
       shedSteps = Math.max(0, Math.ceil(
         (localClock.accumulator - LOCAL_MAX_DEBT_SECONDS) / LOCAL_FIXED_DT - 1e-9,
       ));
       localClock.accumulator -= shedSteps * LOCAL_FIXED_DT;
     }
-    const hitch = elapsedMs > LOCAL_FIXED_DT * 1000 * 6.5;
-    const cap = hitch ? LOCAL_HITCH_CATCHUP_STEPS : LOCAL_MAX_STEPS;
+    const cap = LOCAL_MAX_STEPS;
     while (localClock.accumulator + 1e-12 >= LOCAL_FIXED_DT && steps < cap) {
       localClock.accumulator -= LOCAL_FIXED_DT;
       steps++;
@@ -1029,6 +1082,11 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
       localClock.budgetDeferredStepCount += deferred;
     }
   }
+  if (!hasExplicitSteps && localClock.active && localClock.scale > 0) {
+    if (!force) noteLocalLongGap(elapsedMs, now);
+    updateLocalDilation(elapsedMs);
+  }
+  localClock.lastWorkMs = Number.isFinite(reply.workMs) ? reply.workMs : 0;
   localPerfSample(reply, elapsedMs, !force && !hasExplicitSteps);
   refreshLocalClockScale();
   // Only advance the watermark after tick() returns. A thrown authoritative
@@ -1054,6 +1112,8 @@ async function runLocalClockTick(force = false, explicitSteps = 0, publishReply 
     directiveTicks: localClock.directiveTick,
     steps: localClock.stepCount,
     shedSteps: localClock.shedStepCount,
+    dilation: localPerfRound(localClock.dilation),
+    longGaps: localClock.longGaps.slice(),
     budgetDeferredSteps: localClock.budgetDeferredStepCount,
     commands: localClock.commandCount,
     pendingCommands: localClock.pendingCommands.length,
@@ -1212,6 +1272,8 @@ function scheduleLocalClock() {
     if (localClock.wake !== wake) return;
     cancelLocalClockWake();
     localClock.timerFires++;
+    localClock.lastWakeLateMs = Math.max(0, localNowMs() - wake.dueAtMs);
+    localClock.lastWakeViaTask = !!wake.token;
     if (!isCurrent()) return;
     localClock.consecutiveTaskWakes = wake.token ? localClock.consecutiveTaskWakes + 1 : 0;
     localClock.deadlineMs = nextLocalClockDeadline(localClock.deadlineMs, localNowMs());

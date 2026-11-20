@@ -325,8 +325,11 @@ test('recoverable late worker wakes retain debt and catch up through bounded yie
     },
   });
   await f.until(1000);
-  assert.ok(f.clock.stepCount >= 59, 'recoverable scheduling delays do not permanently ratchet simulation below wall time');
-  assert.equal(f.clock.shedStepCount, 0, 'debt within 250 ms is carried instead of discarded after each batch');
+  // ENGINE slice 5: a late wake dips the world clock (dilation) instead of dropping steps; it
+  // recovers toward real time as soon as the debt clears.
+  assert.ok(f.clock.stepCount >= 50, 'recoverable scheduling delays dip the clock, not ratchet it down');
+  assert.equal(f.clock.shedStepCount, 0, 'debt within the hard cap is carried, never discarded');
+  assert.ok(f.clock.dilation > 0.8, 'the world clock recovers toward real time once debt clears');
   assert.ok(f.batches.every(batch => batch.steps <= 4), 'catch-up never turns into a fifteen-step uninterruptible batch');
   assert.ok(f.timerDelays.some(delay => delay === 0), 'remaining whole-step debt gets a prompt yielded task');
   // Two bounded timers: the fixed-step clock and the stale-ACK watchdog. The
@@ -345,8 +348,11 @@ test('intrinsically overloaded worker carries bounded debt without growing a tim
   await f.until(1000);
   await f.until(2000);
   assert.ok(f.clock.stepCount < 70, '39 ms authoritative steps cannot become 60 Hz through scheduler accounting');
-  assert.ok(f.clock.shedStepCount > 0, 'only actual debt beyond the bound is shed under sustained overload');
-  assert.ok(f.clock.accumulator >= 0 && f.clock.accumulator <= 0.25 + 1e-12);
+  // ENGINE slice 5: sustained overload slows the whole world smoothly (dilation) rather than
+  // shedding steps; only debt beyond the 1 s hard cap would ever be dropped.
+  assert.equal(f.clock.shedStepCount, 0, 'sustained overload dilates the world instead of shedding steps');
+  assert.ok(f.clock.dilation < 1, 'the world clock is dilated under overload');
+  assert.ok(f.clock.accumulator >= 0 && f.clock.accumulator <= 1.0 + 1e-12);
   assert.ok(f.batches.every(batch => batch.steps <= 4));
   assert.ok(f.maxPendingTimers() <= 2, 'clock timer plus stale-ACK watchdog, no queue growth');
   assert.equal(f.clock.backpressured, false, 'this fixture isolates clock overload from consumer pressure');
@@ -380,20 +386,24 @@ test('pause discards whole old debt and resume does not charge the hidden wall i
 });
 
 test('stopped presentation heartbeats hold the world until foreground beats resume', async t => {
+  // ENGINE slice 5: the hold is a dead-main-thread guard at 1 s; an ordinary render stall shorter
+  // than that keeps the world running and the fence plays the backlog out.
   const f = await fixture(t, { bodies: 4 });
   await f.releaseAcks();
   f.lane.runner.heartbeat();
   await f.until(100);
   assert.ok(f.clock.stepCount >= 5);
   assert.equal(f.clock.heartbeatHeld, false);
+  await f.until(700);
+  assert.equal(f.clock.heartbeatHeld, false, 'a sub-second stall does not hold the world');
 
-  await f.until(400);
+  await f.until(1300);
   assert.equal(f.clock.heartbeatHeld, true, 'the real worker clock enters its heartbeat hold');
   const heldTick = f.clock.stepCount;
-  await f.until(900);
+  await f.until(1800);
   assert.equal(f.clock.stepCount, heldTick, 'ticks stay parked during the hold');
 
-  for (let elapsed = 920; elapsed <= 1100; elapsed += 20) {
+  for (let elapsed = 1820; elapsed <= 2000; elapsed += 20) {
     f.lane.runner.heartbeat();
     await f.until(elapsed);
   }

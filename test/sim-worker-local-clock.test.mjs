@@ -1021,7 +1021,9 @@ test('a foreground heartbeat arriving before a throttled timer discards the hidd
     send({ kind: 'clockControl', active: true, generation: 1, timeScale: 1 });
     await settle();
     send({ kind: 'laneHeartbeat' });
-    now += 1000;
+    // ENGINE slice 5: the hold is a dead-main-thread guard (LOCAL_HEARTBEAT_HOLD_MS = 1000), so the
+    // gap must exceed it to be a hidden interval.
+    now += 1500;
     send({ kind: 'laneHeartbeat' });
     await fireClock();
     assert.equal(replies.filter((reply) => reply.kind === 'clockTick').length, 0,
