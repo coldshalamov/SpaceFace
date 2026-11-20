@@ -44,7 +44,7 @@ if (args[0] === '--list') {
 const [packetId, backend] = args;
 const timeoutMin = Number((args.find((a) => a.startsWith('--timeout-min=')) || '=90').split('=')[1]);
 if (!packetId || !backend) {
-  console.error('usage: node scripts/fleet/run.mjs <PACKET-ID> <devin1|devin2|devin3|sonnet1|sonnet2|deepseek|flash|codex|hydrogen|grok|dsx> [--timeout-min=90]');
+  console.error('usage: node scripts/fleet/run.mjs <PACKET-ID> <devin1|devin2|devin3|sonnet1|sonnet2|deepseek|glm|neon1|neon2|flash|codex|hydrogen|grok|dsx> [--timeout-min=90]');
   process.exit(2);
 }
 const packetPath = join(PACKETS, `${packetId}.md`);
@@ -75,11 +75,10 @@ const receiptRel = `.devshots/fleet/runs/${packetId}.${backend}.${stamp}/RECEIPT
 
 const prompt = [
   `You are a worker on the SpaceFace game repository (current folder).`,
-  `Step 1: read design/program/fleet/PROTOCOL.md in full and obey it.`,
+  `Step 1: read AGENTS.md, then design/program/fleet/PROTOCOL.md in full.`,
   `Step 2: read design/program/fleet/packets/${packetId}.md in full. It is your whole job: do all of it.`,
   `Step 3: write your receipt to ${receiptRel} using the protocol's headings.`,
   `MACHINE SAFETY: anything that starts the game, a browser or Electron (check:playable, player-truth, probes, ui-bench, the gate) must run through the lock: node scripts/fleet/game-lock.mjs run -- <command>. Never run two at once. Never run the whole test suite.`,
-  `Do not edit design/program/fleet/QUEUE.md — the lead keeps it while you run headless.`,
   `Work until the packet is finished or genuinely blocked. Do not ask questions; nobody will answer.`,
 ].join('\n');
 writeFileSync(join(runDir, 'PROMPT.txt'), prompt);
@@ -104,6 +103,17 @@ if (devin) {
 } else if (backend === 'deepseek') {
   cmd = OPENCODE;
   cmdArgs = ['run', '-m', 'opencode-go/deepseek-v4.1-flash#max', '--auto', prompt];
+} else if (backend === 'glm') {
+  // OpenCode Go, GLM 5.3 at max reasoning (owner 2026-11-20): the default outside coder. No vision.
+  cmd = OPENCODE;
+  cmdArgs = ['run', '-m', 'opencode-go/glm-5.3#max', '--auto', prompt];
+} else if (backend === 'neon1' || backend === 'neon2') {
+  // Gemini Neon XHigh via agy under an isolated account profile (owner 2026-11-20): a different mind for
+  // second opinions, frontend and frames. neon1 = devteamrob account, neon2 = the owner's account.
+  cmd = process.env.ComSpec || 'C:\\Windows\\System32\\cmd.exe';
+  const acct = backend === 'neon1' ? ['agy1', 'devteamrob.helix@gmail.com'] : ['agy2', '93robingattis@gmail.com'];
+  cmdArgs = ['/d', '/s', '/c', join(HOME, 'bin', 'agy-acct.cmd'), acct[0], '--acct', acct[1], '--print',
+    prompt.replace(/\r?\n/g, ' ').replace(/"/g, "'"), '--model', 'gemini-4-neon-xhigh', '--dangerously-skip-permissions', '--output-format', 'text'];
 } else if (backend === 'codex') {
   // The senior agent (owner, 2026-11-11): GPT 6.1 Sol, high effort, via the npm codex 0.163 shim
   // (the codex.exe on PATH is an old desktop bundle). Prompt on stdin. Use for hard backend /
