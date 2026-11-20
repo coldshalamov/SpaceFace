@@ -64,16 +64,20 @@ void main(){
       // Threat ring: the enemy's JOB by shape (same language as the minimap glyphs).
       //  1 rush: 3 short arcs (fodder, faint)   2 burst: full ring, fast fuse blink
       //  3 reach: 2 bracket arcs                4 wall: heavy double ring
-      //  5 skirmish: 4 arcs                     6 deny: 8 dots
+      //  5 skirmish: 2 swept arcs               6 deny: 4 arcs + a faint filled core
+      //  (+10: a boss — the same job, with four command brackets outside it)
       //  7 seize: 2 arcs + inner ring           8 source: 8 dashes + outer ring
       float pat=vParam.x;
+      float boss=step(9.5,pat);
+      pat-=boss*10.0;
       float ang=atan(vUv.y,vUv.x)+vParam.y;
       float n=4.0, duty=0.55;
       if(pat<1.5&&pat>0.5){n=3.0;duty=0.32;}
       else if(pat<2.5&&pat>1.5){n=1.0;duty=1.0;}
       else if(pat<3.5&&pat>2.5){n=2.0;duty=0.28;}
       else if(pat<4.5&&pat>3.5){n=1.0;duty=1.0;}
-      else if(pat<6.5&&pat>5.5){n=8.0;duty=0.25;}
+      else if(pat<5.5&&pat>4.5){n=2.0;duty=0.3;}
+      else if(pat<6.5&&pat>5.5){n=4.0;duty=0.55;}
       else if(pat<7.5&&pat>6.5){n=2.0;duty=0.6;}
       else if(pat>7.5){n=8.0;duty=0.6;}
       float seg=fract(ang*n/6.2831853);
@@ -83,6 +87,12 @@ void main(){
       if(pat>6.5&&pat<7.5) ring=max(ring,exp(-pow((r-0.55)*26.0,2.0))*0.8);
       if(pat>7.5) ring=max(ring,exp(-pow((r-0.97)*30.0,2.0)));
       if(pat>1.5&&pat<2.5) ring*=0.55+0.45*step(0.5,fract(uTime*3.0+vParam.y));
+      if(pat>5.5&&pat<6.5) ring=max(ring,(1.0-smoothstep(0.0,0.5,r))*0.18);
+      if(boss>0.5){
+        float b=fract((atan(vUv.y,vUv.x)+0.7853982)/1.5707963);
+        float bracket=exp(-pow((r-0.99)*30.0,2.0))*(1.0-smoothstep(0.1,0.16,abs(b-0.5)));
+        ring=max(ring,bracket);
+      }
     }
     o=vec4(vColor.rgb*ring*vColor.a,0.0);
   }else{
@@ -143,6 +153,15 @@ export function jobStyleFor(e) {
   const job = (d && typeof d.combatJob === 'string' && d.combatJob)
     || (enemyJobFor(d && (d.enemyTypeId || d.lootTableId || d.archetypeId)) || {}).job;
   return (job && JOB_STYLE[job]) || JOB_DEFAULT;
+}
+
+/** A boss: drawn as its job, larger, with command brackets (the minimap's isBossContact rule). */
+export function isBossShip(e) {
+  const d = e && e.data;
+  if (!d) return false;
+  if (d.isBoss === true || d.encounterBoss != null || d.missionBoss != null) return true;
+  const row = enemyJobFor(d.enemyTypeId || d.lootTableId || d.archetypeId);
+  return !!(row && row.brain === 'tactical' && row.cost >= 16);
 }
 
 export const TEAM_COLORS = Object.freeze({
@@ -227,8 +246,9 @@ export class ShipMarkers {
           this._push(x + Math.cos(heading) * rad * 1.75, y, z + Math.sin(heading) * rad * 1.75, rad * 0.55, TEAM_COLORS.player, TYPE_CHEVRON, heading, 0.35 + 0.75 * v, 0);
         } else if (hostile) {
           const st = jobStyleFor(e);
+          const boss = isBossShip(e);
           this._push(x, y - 0.3, z, rad * 1.9, st.rgb, TYPE_POOL, 0, st.pool, 0);
-          this._push(x, y, z, rad * st.size, st.rgb, TYPE_RING_THREAT, 0, st.alpha, spin, st.pat);
+          this._push(x, y, z, rad * st.size * (boss ? 1.25 : 1), st.rgb, TYPE_RING_THREAT, 0, boss ? 1 : st.alpha, boss ? 0 : spin, st.pat + (boss ? 10 : 0));
         } else {
           this._push(x, y - 0.3, z, rad * 1.9, TEAM_COLORS.neutral, TYPE_POOL, 0, 0.45, 0);
           this._push(x, y, z, rad * 1.35, TEAM_COLORS.neutral, TYPE_RING_FULL, 0, 0.35, spin);
