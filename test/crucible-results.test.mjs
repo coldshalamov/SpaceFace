@@ -618,7 +618,7 @@ test('the kill chain names who, with what, from where, and through which layer',
   // A receipt missing every optional field still produces four complete rows, never a blank value.
   const bare = new Map(killChainRows({}));
   assert.equal(bare.get('Killed by'), 'Unidentified attacker');
-  assert.equal(bare.get('Its weapon'), 'Unidentified weapon');
+  assert.equal(bare.get('Its weapon'), 'Its own hull — a ram or a blast', 'the death screen always names what killed you');
   assert.equal(bare.size, 4);
   assert.equal(new Map(killChainRows({ attacker: 'Wreck' })).get('Killed by'), 'Wreck');
 

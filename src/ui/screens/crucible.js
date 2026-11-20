@@ -2929,11 +2929,13 @@ export function killChainRows(defeat, death = null) {
   const attacker = environmental ? defeat.source.label || 'Environmental hazard'
     : defeat.attacker || defeat.source?.label || 'Unidentified attacker';
   const killer = !environmental && defeat.faction ? `${attacker} — ${defeat.faction}` : attacker;
+  // Polish list: the death screen always names what killed you — never "Unidentified weapon" or
+  // "?". With no recorded weapon the row says the hull itself did it (a ram or a blast is a body).
   const rows = [
     ['Killed by', killer],
     environmental || defeat.physicalLabel
       ? ['Damage cause', defeat.physicalLabel || 'Environmental damage']
-      : ['Its weapon', defeat.weapon || 'Unidentified weapon'],
+      : ['Its weapon', defeat.weapon || 'Its own hull — a ram or a blast'],
     ['It came from', bearingWord(defeat.direction)],
     ['It got in', breachPhrase(defeat.dominantLayer)],
   ];

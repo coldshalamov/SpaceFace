@@ -47,5 +47,6 @@ test('environmental kill chain displays the recorded physical cause', () => {
   assert.equal(rows.get('Damage cause'), 'Environmental damage');
   const impact = new Map(killChainRows({ source: envReceipt.source, physicalLabel: 'arena impact' }));
   assert.equal(impact.get('Damage cause'), 'arena impact');
-  assert.equal(new Map(killChainRows({ attacker: 'Wasp' })).get('Its weapon'), 'Unidentified weapon');
+  assert.equal(new Map(killChainRows({ attacker: 'Wasp' })).get('Its weapon'), 'Its own hull — a ram or a blast',
+    'the death screen always names what killed you');
 });
