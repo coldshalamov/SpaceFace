@@ -81,6 +81,27 @@ Taken on a quiet machine before any agent was running (2026-11-20, working copy 
 | Enemies attacking at once in a late Swarm round | 11 ships (plus brood bodies) at wave 15 | dozens, in composed groups, as many as hold a smooth frame (R19); measured, not assumed |
 | Boot check (`npm run check:playable`) and replay (`npm run check:sim`) | 18/18 and green at the checkpoint | stay green |
 
+### The opening capture (the R24 measure)
+
+`npm run capture:opening -- --mode=adventure|swarm --minutes=N --out=<dir>` (through the game lock)
+plays a mode's opening by real key and mouse input and writes a contact sheet, a per-second
+smoothness trace, every word seen, and mechanical findings. It is rerun after every wave; the
+table below is the scoreboard. A step that a script pressing ordinary keys cannot do is a step a
+stranger will fail.
+
+| Adventure opening, 12 minutes | First run (2026-11-20 12:40 EST, machine under agent load) | Bar |
+|---|---|---|
+| Title reachable | 65 s | under 10 s |
+| In flight after New Game | 114 s (2 presses) | under 20 s |
+| Frames per second | 28 average; 420 of 713 seconds under 30 | 60, never under 30 |
+| Freezes over 0.35 s | 11 | 0 |
+| Steps passed | 7 of 13: look, reach objective, use powers, throw a rock, fly to a job, fight pass | 13 of 13 |
+| Steps failed | mine (78 s of beam, empty hold), dock (overshot at 435 m/s; S does not brake cruise), station, undock, map (M did nothing), pause (Esc did nothing) | none |
+| Words that break the plain-words rule | 11 (Pin's "Seed…" lines, "Massline only…", "Universe seed") | 0 |
+| Stand-in models on screen over 3 s | 1 (a hauler, 31.5 s at 234 m) | 0 |
+
+Swarm's first capture is still to run.
+
 Probes: `.devshots/director/travel-probe.mjs` (through the game lock) and
 `node scripts/sim-crowd-stress.mjs --ticks=600 --warmup=240`. Numbers taken while agents are working
 are not comparable to these: the same build measured 22.6 ms a step last night under load.
