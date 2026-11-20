@@ -44,7 +44,7 @@ the director does it then and there.
 |---|---|---|
 | `engine` | The clock between simulation and picture; the cost of a simulation step | "It freezes locations of all objects until a blip moves them" |
 | `streaming` | Models arriving on screen: admission, stand-ins, levels of detail | "I crash into nothing and then a model appears" |
-| `ai` | Enemy brains, senses and the enemy roster, sized for a horde | "Tons of units with complex behaviour instead of something basic… each enemy should have its own character" |
+| `ai` | Enemy brains, senses, the enemy roster and composed encounters (R19) | "Tons of units with complex behaviour instead of something basic… each enemy should have its own character" |
 | `combat` | What guns, powers and the Line do; the control scheme | "The weapons don't really work the way I'd think… my actions don't do what I'd expect" |
 | `swarm` | The Swarm run loop: getting in, round size and pace, money, upgrades, the end of a run | "The addictive slam-bang… advance quickly and splay out into a branch of the tree" |
 | `world` | What persists off screen, rock regrowth, who populates a sector, the first five minutes | "Not respawn instantly, not depopulate the galaxy… some places feel overcrowded" |
@@ -53,8 +53,19 @@ the director does it then and there.
 | interface (director + Gemini Neon + GLM) | HUD, power bar, words, screens | "I can't tell what any of the powers do… gibberish language" |
 | `plans` | The index of every unbuilt or unwired plan (`.devshots/director/fable/plans/INDEX.md`) | "Work that sat done for weeks and was never wired up" |
 
-Still to open: drawing speed for a horde (instanced hulls, the Foundry set's cost, the model-cost
-audit's findings), stations, the story's first hour, sound.
+Added 2026-11-20 (later), from the owner's second brief (R19–R24):
+
+| Lane | Owns | The owner's words |
+|---|---|---|
+| maps | The minimap and the big chart | "The minimap looks really cool, I wish we could make it even cooler… the big map might need an upgrade too" |
+| cargo | The hold as a bag of stacking slots; drag out to jettison (R22) | "Packs of 20 items stack and then take a new slot… dragging it out of the bag drops it" |
+| economy | Prices from stored curves and events, off the flight step (R20); trading as its own game (R21) | "Realistic price swings from events… a gold rush for a while until an event happens" |
+| menus | Every menu and station screen; how the skill tree works | "There's probably a lot about the UI and the menus that we could upgrade, or the way the skill tree works" |
+| harmony | Everything that moves the player's ship or the camera, and every trigger (R23) | "My ship would be swinging weird ways and the camera would move weird sometimes" |
+| backlog | The rated plans in `plans/INDEX.md` and the build map, wired first, built second | "There's more plans in the build map I think to do" |
+
+Still to open: the Foundry set's drawing cost, stations, the story's first hour, sound. Instanced
+hulls for hundreds of ships is dropped (R19).
 
 ## 4. The measure
 
@@ -67,7 +78,7 @@ Taken on a quiet machine before any agent was running (2026-11-20, working copy 
 | Same flight: visible freezes (no new positions for over 0.35 s) | 5, longest 3.6 s | 0 |
 | Same flight: simulation step in the worker | 8.6 ms median, 13.6 ms at the 95th percentile | under 8 ms at the 95th |
 | Swarm wave 15 headless: simulation step | 9.5 ms mean, 14.8 at the 95th, 58 worst | under 8 ms at the 95th, worst under 16 |
-| Enemies attacking at once in a late Swarm round | 11 ships (plus brood bodies) at wave 15 | 200–300 |
+| Enemies attacking at once in a late Swarm round | 11 ships (plus brood bodies) at wave 15 | dozens, in composed groups, as many as hold a smooth frame (R19); measured, not assumed |
 | Boot check (`npm run check:playable`) and replay (`npm run check:sim`) | 18/18 and green at the checkpoint | stay green |
 
 Probes: `.devshots/director/travel-probe.mjs` (through the game lock) and
@@ -82,20 +93,26 @@ are not comparable to these: the same build measured 22.6 ms a step last night u
 | FRONT-DOOR | One rule; old queues, holds and claims boards are history; the modern-technique bar | Director | **Landed** e027b513ad, d480208bdb, eabea3daac |
 | RULINGS | R13–R18: the horde, senses, calm populated sectors, powers that say what they do, plain words | Director | **Landed** 249f4c74b3 |
 | ENGINE-1 | The picture never holds dead and never teleports; corrections ease | `engine` | Building (after: smooth slow-down under load, spikes, predicted player ship) |
-| AI-1 | Horde brains: context steering, group mind, no attack cap, 200–300 attackers | `ai` | Building (S0 landed 3ab03c4d4b) |
+| AI-1 | Enemy kinds with one job each, cheap pack brains, no attack cap, composed encounters (R19) | `ai` | Building (S0 landed 3ab03c4d4b; S1 parked, resumes re-scoped) |
 | WORLD-1 | A calm harbour opening; no silent respawn or empty sectors; rocks that visibly regrow | `world` | Building slices 0–3 |
 | COMBAT-1 | Every verb does what its name says; one input rule; Pin, Bomb and Plow fixed; real keys | `combat` | Investigating, then building |
-| SWARM-1 | One press to round 1; no shop every round; one money; rounds sized for a horde | `swarm` | Investigating, then building |
+| SWARM-1 | One press to round 1; no shop every round; one money; rounds built from composed waves (R19) | `swarm` | Building (slice 2 half done, uncommitted) |
 | ADV-0 | The owner's Adventure ladder audited rung by rung | `adventure` (Sonnet) | Investigating |
 | STREAM-0 | Why nearby ships and rocks never get their real model; the rule that makes it impossible | `streaming` | Investigating |
 | VFX-0 | Why effects read as a blanket; the replacement technique, power by power | `vfx` | Investigating |
 | PLANS-0 | Every unbuilt and unwired plan, ranked | `plans` (Sonnet) | **Done**: 9 unwired groups, ~110 unbuilt plans, 29 blocking rules |
 | UX-FRESH-EYES | Where a stranger gets lost; the ten changes that fix it | Gemini Neon | **Done**: `.devshots/director/fable/ux/FRESH-EYES.md` |
-| HUD-POWER-BAR | Six tiles that explain themselves; a quiet flight screen; edge chevrons | Gemini Neon | Building |
-| COPY-SWEEP | Plain English and human units everywhere; a check that fails on jargon | GLM | Building |
-| DOCS-HYGIENE | The 29 leftover "wait / hold / get review" rules removed from other documents | GLM | Building |
-| PERF-09 | Three repeated costs out of every simulation step | Devin | Building |
-| ASSET-COST-AUDIT | What every model costs to draw, and which cost too much | GLM | Building |
+| HUD-POWER-BAR | Six tiles that explain themselves; a quiet flight screen; edge chevrons | Gemini Neon | **Landed** f10cd0fe03 (bench stills judged; live frames still to judge) |
+| COPY-SWEEP | Plain English and human units everywhere; a check that fails on jargon | GLM | Four batches landed (df01ea648d, 8bc22b0484, 0f5a510731, c7aef99cfe); run died on an API error; COPY-SWEEP-2 finishes it |
+| DOCS-HYGIENE | The 29 leftover "wait / hold / get review" rules removed from other documents | GLM | **Landed** 9d0c514ae8, 84f0800472, 5fd218b028 |
+| PERF-09 | Three repeated costs out of every simulation step | Devin | **Landed** 6ff08d5ac8 |
+| ASSET-COST-AUDIT | What every model costs to draw, and which cost too much | GLM | **Done** 930259fa2f |
+| TEXTURE-DOWNSIZE | Small props stop carrying big textures (about 94 MB of graphics memory back) | GLM | **Landed** 81f649ede9, 9bae17b8dd |
+| STREAM-BUILD-1 | A body you can hit is a body you can see: nearby ships and rocks jump the model queue | Devin | **Landed** fdc58b8503, 2b4ae4d07b, 8954fd5c79 (probe passes; director to watch it in play) |
+| ROCK-LOOK | Fractured rocks in stone, iron, ice and crystal; no painted ships in the sky | Gemini Neon | **Landed** 544d361c22; iron rocks still read as blurry foil, second pass queued |
+| DRAW-COST-1 | Ships draw at the detail their size on screen needs, without a blink | Devin | Building |
+| BUG-SWEEP-1 | Wrong-behaviour bugs, one commit each | zcode | Two landed (ccf2c47460, 1a3b4cb5d1); the seat times out at 30 minutes a turn, so jobs for it stay small |
+| RULINGS-2 | R19–R24: composed encounters, the economy, the ladder, the cargo bag, one hand on ship and camera, the finish line | Director | **Landed** with this edit |
 
 Queued behind these, from the plans index: wire the five finished encounters sitting on
 `codex/pro-five-integration` (TOWJAW, GLASSWAKE, SWITCHBACK, BLACKBOX RUNS, Kinetic Catalysts) once
