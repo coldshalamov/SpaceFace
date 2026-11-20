@@ -30472,6 +30472,19 @@ export const render = {
     // hull only ever continues its own motion. Player row only; every other entity keeps
     // the raw fence pose.
     const entityId = world.entityIds[slot];
+    // ENGINE slice 3: the lead body (the player's ship) is posed from the fence's lead pair —
+    // the stream's estimated now — instead of the playout-delayed pair every other body uses.
+    if (!currentOnly && entityId && fence && typeof fence.leadActive === 'function' && fence.leadActive(entityId)) {
+      const lead = fence.presentedRawPose(entityId, this._leadPoseScratch || (this._leadPoseScratch = {}), slot);
+      if (lead && Number.isFinite(lead.x) && Number.isFinite(lead.z)) {
+        const lx = Number.isFinite(origin.x) ? origin.x : 0;
+        const lz = Number.isFinite(origin.z) ? origin.z : 0;
+        mesh.position.x = lead.x - lx;
+        mesh.position.z = lead.z - lz;
+        mesh.rotation.y = lead.rot;
+        if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
+      }
+    }
     // ENGINE slice 1: when new history lands, every body (player included) keeps drawing a
     // continuous pose — the fence turns the discontinuity into an offset that heals over ~150 ms
     // instead of snapping from a coast guess to the true pose. Interpolation-only frames pass raw.
@@ -33405,6 +33418,10 @@ export const render = {
         updateShipPitchPresentation(this.state, this._presentationFrameDt);
       });
       if (this._snapshotFence) {
+        // ENGINE slice 3: the ship the camera rides is drawn at the stream's estimated now.
+        if (typeof this._snapshotFence.setLeadEntity === 'function') {
+          this._snapshotFence.setLeadEntity(this.state && this.state.mode === 'flight' ? this.state.playerId : -1);
+        }
         this._snapshotPresentationAlpha = this._snapshotFence.samplePresentationAlpha(
           this._presentationFrameDt,
           this.state ? this.state.accumulator : 0,
