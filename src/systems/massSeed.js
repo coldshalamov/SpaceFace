@@ -24,6 +24,7 @@
 
 import { MASS_SEED_DEF, MASS_SEED_CUT_REASONS } from '../data/massSeed.js';
 import { Masks } from '../core/entity.js';
+import { isDynamicPhysicsBodyEntity, queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { pilotPowerCooldownScale, pilotPowerDepthScale, pilotPowerReachScale } from './powerVerbs.js';
 
 const TRAVEL_MATERIAL = 'projectile'; // ghost collider family: zero solver contacts in flight
@@ -96,15 +97,74 @@ export function massSeedLaunchPlan(player, state) {
     x: player.pos.x + dir.x * spawnDistance,
     z: player.pos.z + dir.z * spawnDistance,
   };
-  // OVH-01c2 conjurer_wide_bore — the pin's reach is the bolt's flight: ×1.4 with the node, in
-  // the SAME plan the deploy and the row-493 preview read, so the marker never drifts from it.
-  const travelSpeed = MASS_SEED_DEF.travelSpeed * pilotPowerReachScale(state);
-  const travelDistance = travelSpeed * MASS_SEED_DEF.travelTimeS;
+  // OVH-01c2 conjurer_wide_bore — the pin's reach: ×1.4 with the node, in the SAME plan the
+  // deploy and the row-493 preview read, so the marker never drifts from it.
+  const reach = MASS_SEED_DEF.travelSpeed * MASS_SEED_DEF.travelTimeS * pilotPowerReachScale(state);
+  // R17: the post lands AT the cursor (clamped to the reach), not at a fixed distance.
+  const aim = state.input && state.input.aimWorld;
+  const aimDistance = aim && Number.isFinite(aim.x) && Number.isFinite(aim.z)
+    ? Math.hypot(aim.x - spawnPos.x, aim.z - spawnPos.z) : reach;
+  const travelDistance = Math.max(MASS_SEED_DEF.minReach, Math.min(reach, aimDistance));
+  const travelSpeed = MASS_SEED_DEF.boltSpeed;
+  const travelTimeS = travelDistance / travelSpeed;
   const lockPos = {
     x: spawnPos.x + dir.x * travelDistance,
     z: spawnPos.z + dir.z * travelDistance,
   };
-  return { dir, spawnPos, lockPos, travelSpeed };
+  return { dir, spawnPos, lockPos, travelSpeed, travelTimeS, reach };
+}
+
+/** Bodies a Pin may stake: anything that moves under physics, except the player and devices. */
+const UNSTAKEABLE_TYPES = new Set(['massSeed', 'projectile', 'charge', 'bomb', 'mine', 'pickup', 'beacon']);
+function stakeable(entity, state) {
+  return !!(entity && entity.alive !== false && entity.id !== state.playerId && entity.pos
+    && !UNSTAKEABLE_TYPES.has(entity.type) && !(entity.flags && entity.flags.docked)
+    && isDynamicPhysicsBodyEntity(entity));
+}
+
+/**
+ * The body under the cursor that a Pin press would stake, or null (then it plants a post). Pure
+ * read of state.input.aimWorld against live bodies within the Pin's reach; the body whose centre
+ * is nearest the cursor wins. One scan per press, never per tick.
+ */
+export function massSeedStakeTarget(player, state) {
+  const aim = state && state.input && state.input.aimWorld;
+  if (!player || !player.pos || !aim || !Number.isFinite(aim.x) || !Number.isFinite(aim.z)) return null;
+  const reach = MASS_SEED_DEF.travelSpeed * MASS_SEED_DEF.travelTimeS * pilotPowerReachScale(state)
+    + finite(player.radius, 6) + MASS_SEED_DEF.radius + MASS_SEED_DEF.spawnGap;
+  const pad = MASS_SEED_DEF.stake.pickPad;
+  let best = null;
+  let bestD = Infinity;
+  const list = state.entityList || [];
+  for (let i = 0; i < list.length; i++) {
+    const e = list[i];
+    if (!stakeable(e, state)) continue;
+    const r = Math.max(0, finite(e.radius, 0)) + pad;
+    const dx = e.pos.x - aim.x;
+    const dz = e.pos.z - aim.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 > r * r || d2 >= bestD) continue;
+    if (Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z) > reach + finite(e.radius, 0)) continue;
+    best = e;
+    bestD = d2;
+  }
+  return best;
+}
+
+/** How long a stake holds a body of this mass (s), and the most it can accelerate it (wu/s²). */
+export function massSeedStakeTuning(mass) {
+  const k = MASS_SEED_DEF.stake;
+  const m = Math.max(0.1, finite(mass, k.refMass));
+  const scale = Math.max(k.minScale, Math.min(k.maxScale, Math.sqrt(k.refMass / m)));
+  const maxAccel = Math.max(k.accelMin, k.accelRef * k.accelRefMass / m);
+  return { holdS: k.holdS * scale, maxAccel };
+}
+
+function ensureStakes(state) {
+  const s = state.massSeedStakes;
+  if (s && s.schemaVersion === 1 && Array.isArray(s.list)) return s;
+  state.massSeedStakes = { schemaVersion: 1, list: [] };
+  return state.massSeedStakes;
 }
 
 // Same aim convention as impulse charges: aim point direction from the player when the cursor
@@ -143,6 +203,9 @@ export const massSeed = {
         this.bus.on('sector:enter', () => this._clearSeed(MASS_SEED_CUT_REASONS.cleared, 'sector_enter')),
         this.bus.on('game:new', () => this._clearSeed(MASS_SEED_CUT_REASONS.cleared, 'new_game')),
         this.bus.on('save:loaded', () => this._onSaveLoaded()),
+        this.bus.on('sector:exit', () => this._clearStakes('sector_exit')),
+        this.bus.on('game:new', () => this._clearStakes('new_game')),
+        this.bus.on('save:loaded', () => this._clearStakes('save_loaded')),
       ];
     }
   },
@@ -158,6 +221,7 @@ export const massSeed = {
     if (state.mode !== 'flight') return;
     this._handleDeploy(state, ms);
     this._tickSeed(state, ms, dt);
+    this._tickStakes(state, dt);
     if (ms.phase === 'idle') ms.latchPreview = null;
   },
 
@@ -186,6 +250,14 @@ export const massSeed = {
       return;
     }
 
+    // R17: cast ON a body, Pin stakes that body where the bolt hits it. The post in space is left
+    // alone (a stake is not a post), and the stake has its own, shorter recharge.
+    const stakeTarget = massSeedStakeTarget(player, state);
+    if (stakeTarget) {
+      this._beginStake(state, player, stakeTarget, now, ps);
+      return;
+    }
+
     // Deterministic replacement: deploying while a seed is live retires it into a bounded
     // collapse beat (the mirror is about to be handed to the new seed, so the old one's beat
     // is tracked in ms.dying — never orphaned).
@@ -196,12 +268,12 @@ export const massSeed = {
       }
     }
 
-    const { dir, spawnPos, lockPos, travelSpeed } = massSeedLaunchPlan(player, state);
+    const { dir, spawnPos, lockPos, travelSpeed, travelTimeS } = massSeedLaunchPlan(player, state);
 
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     if (typeof spawnEntity !== 'function') return;
     const deployedAt = now;
-    const lockAt = deployedAt + MASS_SEED_DEF.travelTimeS;
+    const lockAt = deployedAt + travelTimeS;
     const activeAt = lockAt + MASS_SEED_DEF.lockingS;
     // OVH-01c2 conjurer_deep_cast — a held Pin key deepens the anchor it releases: its hold
     // scales with the same depth curve the other aimed powers use (×1 at a tap, ×1.5 at 1.2 s).
@@ -265,7 +337,7 @@ export const massSeed = {
     ms.dir = dir;
     ms.lockPos = lockPos;
     ms.travelSpeed = travelSpeed;
-    ms.travelTimeS = MASS_SEED_DEF.travelTimeS;
+    ms.travelTimeS = travelTimeS;
     ms.lastDenial = null;
 
     this.bus.emit('massSeed:deployed', {
@@ -279,6 +351,89 @@ export const massSeed = {
     });
     // FB-010: the deploy voice is the authored sfx_massseed_deploy, routed in audioSystem from
     // the event above — the generic menu-register 'confirm' blip is retired, not doubled.
+  },
+
+  // ── stakes (R17: Pin cast on a body) ───────────────────────────────────────────────────────
+
+  _beginStake(state, player, target, now, ps) {
+    const stakes = ensureStakes(state);
+    const dist = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
+    const flightS = Math.max(0, dist - finite(target.radius, 0)) / MASS_SEED_DEF.boltSpeed;
+    const { holdS, maxAccel } = massSeedStakeTuning(target.mass);
+    // A second stake on the same body refreshes it instead of stacking two springs.
+    for (let i = stakes.list.length - 1; i >= 0; i--) if (stakes.list[i].targetId === target.id) stakes.list.splice(i, 1);
+    const rec = {
+      targetId: target.id,
+      ownerId: player.id,
+      castAt: now,
+      startAt: now + flightS,
+      endAt: now + flightS + holdS * pilotPowerDepthScale(state, 'pin'),
+      maxAccel,
+      started: false,
+      pos: { x: target.pos.x, z: target.pos.z },
+    };
+    stakes.list.push(rec);
+    ps.cooldownUntil = now + MASS_SEED_DEF.stake.cooldownS * pilotPowerCooldownScale(state);
+    this.bus.emit('massSeed:stakeCast', {
+      targetId: target.id, ownerId: player.id,
+      from: { x: player.pos.x, z: player.pos.z }, to: { x: target.pos.x, z: target.pos.z },
+      startAt: rec.startAt, endAt: rec.endAt, mass: finite(target.mass, 0),
+    });
+  },
+
+  _tickStakes(state, dt) {
+    const stakes = state.massSeedStakes;
+    if (!stakes || !Array.isArray(stakes.list) || stakes.list.length === 0) return;
+    const now = nowOf(state);
+    const step = Number.isFinite(dt) && dt > 0 ? dt : 1 / 60;
+    const omega = MASS_SEED_DEF.stake.omega;
+    for (let i = stakes.list.length - 1; i >= 0; i--) {
+      const rec = stakes.list[i];
+      const target = state.entities && state.entities.get ? state.entities.get(rec.targetId) : null;
+      const gone = !target || target.alive === false || !target.pos;
+      if (gone || now >= rec.endAt) {
+        stakes.list.splice(i, 1);
+        if (rec.started) {
+          this.bus.emit('massSeed:stakeReleased', {
+            targetId: rec.targetId, reason: gone ? 'target_lost' : 'expired', pos: { ...rec.pos },
+          });
+        }
+        continue;
+      }
+      if (now < rec.startAt) continue; // the bolt is still in flight
+      if (!rec.started) {
+        rec.started = true;
+        rec.pos.x = target.pos.x;
+        rec.pos.z = target.pos.z;
+        this.bus.emit('massSeed:staked', {
+          targetId: rec.targetId, pos: { ...rec.pos }, endAt: rec.endAt,
+          holdS: rec.endAt - rec.startAt, maxAccel: rec.maxAccel, mass: finite(target.mass, 0),
+        });
+      }
+      // Critically damped spring toward the stake point, through the physics membrane. The
+      // body's own thrust and anything that hits it fight a capped acceleration: it strains.
+      const ex = target.pos.x - rec.pos.x;
+      const ez = target.pos.z - rec.pos.z;
+      const vx = finite(target.vel && target.vel.x);
+      const vz = finite(target.vel && target.vel.z);
+      let ax = -omega * omega * ex - 2 * omega * vx;
+      let az = -omega * omega * ez - 2 * omega * vz;
+      const a = Math.hypot(ax, az);
+      if (a > rec.maxAccel) { ax *= rec.maxAccel / a; az *= rec.maxAccel / a; }
+      const mass = Math.max(0.1, finite(target.mass, 1));
+      queuePhysicsImpulse(target, { x: ax * step * mass, z: az * step * mass },
+        { tick: state.tick, provenance: 'pin_stake' });
+    }
+  },
+
+  _clearStakes(why) {
+    const state = this.state;
+    if (!state || !state.massSeedStakes) return;
+    const list = state.massSeedStakes.list || [];
+    for (const rec of list) {
+      if (rec.started) this.bus.emit('massSeed:stakeReleased', { targetId: rec.targetId, reason: why, pos: { ...rec.pos } });
+    }
+    state.massSeedStakes = { schemaVersion: 1, list: [] };
   },
 
   // ── lifecycle tick ───────────────────────────────────────────────────────────────────────

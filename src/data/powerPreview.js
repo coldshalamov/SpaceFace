@@ -31,7 +31,7 @@ import {
   activeFieldSnapshot, fieldBodyProfile, fieldEntityIsPrimed, fieldLifecyclePhase, fieldVelocityTermApplies,
   isForceableFieldBody, playerFieldSpec, pullMarkTargetEligible,
 } from '../core/fields/fieldReadModel.js';
-import { massSeedLaunchPlan } from '../systems/massSeed.js';
+import { massSeedLaunchPlan, massSeedStakeTarget } from '../systems/massSeed.js';
 import { swarmFieldRadiusScale } from '../systems/playerModifiers.js';
 import { chargeThrowPlan } from './impulseChargeReadModel.js';
 import { bombDropPlan, ordnanceClassVerdict, proximityTriggerEligible } from '../systems/bombs.js';
@@ -427,17 +427,31 @@ function planShove(state, player, rail, opts) {
 }
 
 function planPin(state, player, rail) {
+  const slot = rail[3];
+  // R17: cast on a body, Pin stakes it where it is; in empty space it plants a post at the cursor.
+  const stake = massSeedStakeTarget(player, state);
+  if (stake) {
+    return {
+      center: { x: stake.pos.x, z: stake.pos.z }, radius: stake.radius || FIELD_DEFS.seed.radius,
+      areas: [
+        { kind: 'route', role: 'route', points: [player.pos.x, player.pos.z, stake.pos.x, stake.pos.z] },
+        ring('lock', stake.pos.x, stake.pos.z, (stake.radius || 0) + 6),
+      ],
+      moves: [],
+      blocked: slot && slot.state === 'cooling' ? slot.why : null,
+      note: 'Stakes it here — it strains, it cannot leave',
+    };
+  }
   const { spawnPos, lockPos } = massSeedLaunchPlan(player, state);
   const areas = [
     { kind: 'route', role: 'route', points: [spawnPos.x, spawnPos.z, lockPos.x, lockPos.z] },
     ring('lock', lockPos.x, lockPos.z, FIELD_DEFS.seed.radius),
   ];
-  const slot = rail[3];
-  // Pin moves nothing: the seed flies as a ghost and locks into a fixed anchor the Line latches to.
+  // Pin in empty space moves nothing: the bolt locks into a fixed post the Line latches to.
   return {
     center: lockPos, radius: FIELD_DEFS.seed.radius, areas, moves: [],
     blocked: slot && slot.state === 'cooling' ? slot.why : null,
-    note: 'Anchors here — the Line latches to it',
+    note: 'Post here — swing on it with the Line',
   };
 }
 

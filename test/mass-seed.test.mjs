@@ -49,7 +49,8 @@ const DT = SIM_DT;
 // Independent contract values (published in src/data/massSeed.js and on the HUD at deploy time):
 const TRAVEL_DISTANCE = 416; // 260 wu/s × 1.6 s — the HUD lock marker is published from this
 const SPAWN_OFFSET = 12 + MASS_SEED_DEF.radius + MASS_SEED_DEF.spawnGap; // player radius 12 → 22
-const TICKS = { travel: 96, locking: 18, warning: 360, anchor: 1800, collapse: 27, cooldown: 480 };
+// R17: the bolt flies at boltSpeed (900 wu/s) to the cursor; the 416 wu reach takes 0.462 s = 28 ticks.
+const TICKS = { travel: 28, locking: 18, warning: 360, anchor: 1800, collapse: 27, cooldown: 480 };
 
 const LIFECYCLE_EVENTS = [
   'massSeed:deployed', 'massSeed:locking', 'massSeed:locked', 'massSeed:warning',
@@ -219,8 +220,8 @@ test('pre-lock: seed is ineligible in travel AND locking; latch denied through t
     deployNow(t);
     const seedId = t.state.massSeed.seedId;
 
-    // Mid-travel, in tether range (seed ~126 wu out): the gate is eligibility, not distance.
-    runUntil(t, () => t.state.tick >= 30, 40);
+    // Mid-travel, in tether range (seed ~232 wu out): the gate is eligibility, not distance.
+    runUntil(t, () => t.state.tick >= 14, 20);
     let seed = seedEntity(t);
     assert.equal(t.state.massSeed.phase, 'travel');
     assert.equal(isMassSeedTetherEligible(seed), false, 'published eligibility false in travel');
@@ -327,10 +328,10 @@ test('determinism: lock position/timing exact across runs and independent of rng
   assert.deepEqual(a.deployed.lockPos, { x: 438, z: 0 }, 'lockPos = spawn(22,0) + dir×416');
   assert.deepEqual(a.entityPosAtLock, { x: 438, z: 0 }, 'frame lock lands EXACTLY on the published point');
   assert.deepEqual(a.velAtLock, { x: 0, z: 0, angVel: 0 }, 'velocity reconciled to zero at lock');
-  withinTick(a.lockingTick, a.deployed.lockAt, 'lock lands at the published time (deploy + 1.6s)');
+  withinTick(a.lockingTick, a.deployed.lockAt, 'lock lands at the published time (deploy + 416/900 s)');
   withinTick(a.activeTick, a.deployed.activeAt, 'anchor active after the 0.3s clamp spin-up');
   assert(a.lockingTick - 1 >= TICKS.travel - 1 && a.lockingTick - 1 <= TICKS.travel + 1,
-    'travel lasts 1.6s ± one tick of boundary quantization');
+    'R17 "a bolt that reaches the cursor in ≤ 0.5 s": travel lasts 416/900 s ± one tick');
 });
 
 // ── 5. one-seed cap / deterministic replacement ───────────────────────────────────────────
