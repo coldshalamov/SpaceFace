@@ -249,12 +249,15 @@ test('crucible route: cone, repulsor, and well move generated debris the authore
     const cdir = unitTo(player.pos, nearest.pos);
     const coneStart = { x: nearest.pos.x, z: nearest.pos.z };
     const coneDrift = (nearest.vel?.x || 0) * cdir.x + (nearest.vel?.z || 0) * cdir.z;
+    // R17 / 03 §4: the first press scoops, the second fires the pack along the nose.
     state.input.actions.toggleClearingCone = true;
-    for (let i = 0; i < 90; i++) sim.step(DT);
+    for (let i = 0; i < 45; i++) sim.step(DT);
+    state.input.actions.toggleClearingCone = true; // the launch press — real edge, real teardown
+    for (let i = 0; i < 45; i++) sim.step(DT);
     const coneDisp = (nearest.pos.x - coneStart.x) * cdir.x + (nearest.pos.z - coneStart.z) * cdir.z - coneDrift * 90 * DT;
     assert.ok(coneDisp >= nearest.radius,
-      `cone displaces the nearest generated rock by at least its radius (got ${coneDisp.toFixed(2)} of ${nearest.radius.toFixed(2)})`);
-    state.input.actions.toggleClearingCone = true; // toggle back off — real edge, real teardown
+      `the Plow's launch drives the nearest generated rock out by at least its radius (got ${coneDisp.toFixed(2)} of ${nearest.radius.toFixed(2)})`);
+    assert.equal(state.fields.coneActive, false, 'the launch press closes the Plow');
     sim.step(DT);
 
     // Repulsor — dropped at the ship inside a generated cluster: every covered rock gets a

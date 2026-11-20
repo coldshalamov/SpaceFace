@@ -202,7 +202,7 @@ export const FIELD_DEFS = Object.freeze({
     id: 'field_cone_standard',
     kind: FIELD_KINDS.CONE,
     volume: FIELD_VOLUMES.CONE,
-    sentence: 'Tap Rig to open a forward wedge that clears debris. Tap again to turn it off.',
+    sentence: 'Tap Plow to scoop loose rocks into a wall at your bow. Tap again to fire them all forward.',
     radius: 260,
     strength: 260,
     damping: 0,
@@ -212,6 +212,21 @@ export const FIELD_DEFS = Object.freeze({
     durationS: Infinity,  // sustained while toggled on
     cooldownS: 0,
     originGap: 10,        // wedge apex sits just ahead of the hull nose
+    // R17 / 03 §4 — the Plow captures loose mass instead of only pushing it (src/systems/plow.js).
+    // The wedge field above now pushes SHIPS only; rocks, wrecks and debris are taken into the pocket.
+    plow: Object.freeze({
+      capacity: 25,         // 03 §4: "Capacity 25 bodies" (desktop)
+      maxMass: 2500,        // t (an r≈21 rock; asteroid mass ≈ r³/4): heavier is shoved aside, not taken
+      omega: 6,             // 1/s: the pocket spring (critically damped) that holds each slot
+      maxAccel: 1600,       // wu/s²: how hard the pocket can drag a body into its slot
+      pocketGap: 14,        // wu clear of the hull: a captured rock never strikes the player
+      pocketDepth: 0.7,     // slots sit no deeper than this fraction of the wedge
+      dropDistance: 170,    // wu out of its slot (knocked loose) → it leaves the pack
+      scanEveryTicks: 3,
+      pushAccel: 420,       // wu/s² sideways shove for over-budget bodies
+      launchSpeed: 340,     // wu/s added along the nose on launch (on top of the ship's own speed)
+      energisedS: 3,        // 03 §5: a launched body is the player's kick for this long
+    }),
   }),
   // SKIM COLLECTOR — RIG (5) inside a planet band. A ship-attached scoop SHEET (toggle). Harvests by grazing; pulls
   // loose mass onto the flight line. Not a spawned entity. PlanetRuntime owns collectorOn;

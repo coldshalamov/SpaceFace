@@ -156,15 +156,19 @@ test('Repulsor PUSHES a light body outward (consumer 2)', async () => {
   });
 });
 
-test('Cone CLEARS forward and ignores bodies behind it (consumer 3)', async () => {
+test('the Plow takes loose mass ahead into its pocket and ignores bodies behind it (R17, 03 §4)', async () => {
   await withFlag(true, async () => {
     const t = await bootPhysics(); // player faces +x (rot 0)
     const ahead = lightBody(t.sim, 120, 0);   // in the forward wedge
     const behind = lightBody(t.sim, -120, 0); // behind the apex → outside the wedge
     t.state.input.actions.toggleClearingCone = true; t.sim.step();
     for (let i = 0; i < 40; i++) t.sim.step();
-    assert.ok(ahead.vel.x > 0.5, `forward body driven downstream (+x), got vel.x=${ahead.vel.x}`);
-    assert.ok(speed(behind) < 0.05, `body behind the cone is untouched, got speed=${speed(behind)}`);
+    const held = (t.state.fields.plow && t.state.fields.plow.held || []).map((r) => r.id);
+    assert.ok(held.includes(ahead.id), '03 §4: "a wedge field at the bow captures loose bodies"');
+    assert.ok(!held.includes(behind.id) && speed(behind) < 0.05, `body behind the Plow is untouched, got speed=${speed(behind)}`);
+    t.state.input.actions.toggleClearingCone = true; t.sim.step();
+    for (let i = 0; i < 20; i++) t.sim.step();
+    assert.ok(ahead.vel.x > 100, `03 §4: "press again to launch them all forward" (vel.x=${ahead.vel.x})`);
     t.cleanup();
   });
 });

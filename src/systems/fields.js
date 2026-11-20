@@ -80,6 +80,7 @@ import {
 } from './powerVerbs.js';
 import { syncRookReceivingBrake, noteRookPadSpawned, resetRookPadIndex, resolveRookPadEntity } from './rookReceivingBrake.js';
 import { syncKesslerDeckDamping } from './kesslerDeckDamping.js';
+import { ensurePlow, launchPlow, tickPlow } from './plow.js';
 
 const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can hit it, ships don't broadphase against it
 // PQ-147.01 — NPC tools share the kernel but not the player's four-slot cap.
@@ -1615,6 +1616,11 @@ export const fields = {
   _toggleCone(state, rt) {
     const player = this._player(state);
     if (this._deployBlocked(state, player)) return;
+    // R17 / 03 §4: the second press fires the pack. Everything aboard leaves along the nose,
+    // energised, and the Plow closes.
+    if (rt.coneActive && ensurePlow(rt).held.length > 0) {
+      launchPlow({ state, rt, player, bus: this.bus });
+    }
     this._setConeActive(state, rt, !rt.coneActive, FIELD_END_REASONS.toggledOff);
   },
 
@@ -1628,7 +1634,12 @@ export const fields = {
       const fieldId = `field_cone_${player.id}`;
       const coneSpec = playerFieldSpec('cone', player, state);
       const center = coneSpec.center;
-      this._kernel.register({ ...coneSpec, id: fieldId, sourceId: player.id, createdAt: now });
+      // R17: the wedge force shoves SHIPS aside; loose mass is captured by the Plow (plow.js).
+      this._kernel.register({
+        ...coneSpec, id: fieldId, sourceId: player.id, createdAt: now,
+        filters: { ...(coneSpec.filters || {}), types: ['ship'] },
+      });
+      ensurePlow(rt).held.length = 0;
       rt.coneActive = true;
       rt.coneFieldId = fieldId;
       // CV-EAR: the cone's deploy is a fields:deployed emit like every other power (the wedge
@@ -1640,6 +1651,10 @@ export const fields = {
     } else {
       if (rt.coneFieldId) this._kernel.unregister(rt.coneFieldId);
       const wasId = rt.coneFieldId;
+      // Closing for any other reason (disrupted, docked, toggled with nothing aboard) lets go.
+      const dropped = ensurePlow(rt).held.length;
+      ensurePlow(rt).held.length = 0;
+      if (dropped > 0) this.bus.emit('fields:plowDropped', { count: dropped, reason: offReason });
       rt.coneActive = false;
       rt.coneFieldId = null;
       this.bus.emit('fields:coneToggled', { active: false, fieldId: wasId, reason: offReason });
@@ -1660,6 +1675,7 @@ export const fields = {
     this._coneCenter.x = player.pos.x + this._coneDir.x * def.originGap;
     this._coneCenter.z = player.pos.z + this._coneDir.z * def.originGap;
     this._kernel.update(rt.coneFieldId, { center: this._coneCenter, dir: this._coneDir });
+    tickPlow({ state, rt, player, dt: this._familyDt, helpers: this.helpers, bus: this.bus });
   },
 
   /**

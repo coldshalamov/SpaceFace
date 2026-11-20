@@ -24,7 +24,7 @@
 
 import { MASS_SEED_DEF, MASS_SEED_CUT_REASONS } from '../data/massSeed.js';
 import { Masks } from '../core/entity.js';
-import { isDynamicPhysicsBodyEntity, queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { isDynamicPhysicsBodyEntity, queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { pilotPowerCooldownScale, pilotPowerDepthScale, pilotPowerReachScale } from './powerVerbs.js';
 
 const TRAVEL_MATERIAL = 'projectile'; // ghost collider family: zero solver contacts in flight
@@ -158,6 +158,12 @@ export function massSeedStakeTuning(mass) {
   const scale = Math.max(k.minScale, Math.min(k.maxScale, Math.sqrt(k.refMass / m)));
   const maxAccel = Math.max(k.accelMin, k.accelRef * k.accelRefMass / m);
   return { holdS: k.holdS * scale, maxAccel };
+}
+
+/** The mass the solver uses, so the stake's impulse buys exactly the acceleration it asks for. */
+function stakeBodyMass(e) {
+  const spec = resolvePhysicsBodySpec(e);
+  return Math.max(0.1, finite(spec && spec.mass, finite(e.mass, 1)));
 }
 
 function ensureStakes(state) {
@@ -359,7 +365,7 @@ export const massSeed = {
     const stakes = ensureStakes(state);
     const dist = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
     const flightS = Math.max(0, dist - finite(target.radius, 0)) / MASS_SEED_DEF.boltSpeed;
-    const { holdS, maxAccel } = massSeedStakeTuning(target.mass);
+    const { holdS, maxAccel } = massSeedStakeTuning(stakeBodyMass(target));
     // A second stake on the same body refreshes it instead of stacking two springs.
     for (let i = stakes.list.length - 1; i >= 0; i--) if (stakes.list[i].targetId === target.id) stakes.list.splice(i, 1);
     const rec = {
@@ -420,7 +426,7 @@ export const massSeed = {
       let az = -omega * omega * ez - 2 * omega * vz;
       const a = Math.hypot(ax, az);
       if (a > rec.maxAccel) { ax *= rec.maxAccel / a; az *= rec.maxAccel / a; }
-      const mass = Math.max(0.1, finite(target.mass, 1));
+      const mass = stakeBodyMass(target);
       queuePhysicsImpulse(target, { x: ax * step * mass, z: az * step * mass },
         { tick: state.tick, provenance: 'pin_stake' });
     }

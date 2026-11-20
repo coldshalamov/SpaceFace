@@ -39,8 +39,14 @@ for (const kind of ['cone', 'repulsor']) test(`${kind} tumbles a light hull, spi
     }
     assert.ok(didTumble, `light hull must lose its helm under ${kind}`);
     assert.ok(victim.vel.x > 20, `hull leaves the cone at ${victim.vel.x}`);
-    assert.ok(Math.abs(rock.angVel) > 0.05, `loose rock rotates at ${rock.angVel}`);
-    assert.equal(readRecentImpulseProvenance(rock, state.tick)?.actorId, player.id);
+    if (kind === 'cone') {
+      // R17 / 03 §4: the Plow captures loose rock into its pocket instead of spinning it away;
+      // ships in the wedge are still shoved aside (the assertions above).
+      assert.ok((state.fields.plow?.held || []).some((r) => r.id === rock.id), 'the Plow holds the loose rock');
+    } else {
+      assert.ok(Math.abs(rock.angVel) > 0.05, `loose rock rotates at ${rock.angVel}`);
+      assert.equal(readRecentImpulseProvenance(rock, state.tick)?.actorId, player.id);
+    }
     assert.equal(readTumbleStatus(state, player), null);
     assert.equal(player.angVel, 0);
   } finally {
@@ -70,6 +76,10 @@ test('a cone-launched rock hits a hull through real contacts and causes player-a
   sim.bus.on('combat:damage', p => { if (p.targetId === victim.id) damage.push(p); });
   try {
     assert.equal(await physicsSys.prepareBackend(state), true);
+    // R17 / 03 §4: the first press of 5 scoops the rock into the Plow, the second fires it.
+    state.input.actions.toggleClearingCone = true;
+    for (let i = 0; i < 20; i++) { fieldsSys._combatKernel.prePhysics(SIM_DT); sim.step(); impacts.update(SIM_DT, state); }
+    assert.ok((state.fields.plow?.held || []).some((r) => r.id === rock.id), 'the Plow scoops the rock');
     state.input.actions.toggleClearingCone = true;
     for (let i = 0; i < 240 && victim.hull === 500; i++) {
       fieldsSys._combatKernel.prePhysics(SIM_DT); sim.step(); impacts.update(SIM_DT, state);

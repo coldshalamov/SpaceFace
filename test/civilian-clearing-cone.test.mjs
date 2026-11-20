@@ -211,7 +211,12 @@ test('player and combat-scavenger cones retain their full physical targeting and
       assert.equal(field.radius, FIELD_DEFS.cone.radius);
       assert.equal(field.strength, FIELD_DEFS.cone.strength);
       assert.equal(field.filters.includeId, undefined);
-      assert.ok(Math.hypot(rock.vel.x, rock.vel.z) > 20, 'a combat/player cone still throws real rock');
+      if (options.playerCone) {
+        // R17 / 03 §4: the player's Plow captures loose rock into its pocket; its wedge pushes ships.
+        assert.ok((ctx.state.fields.plow?.held || []).some((r) => r.id === rock.id), 'the player Plow holds real rock');
+      } else {
+        assert.ok(Math.hypot(rock.vel.x, rock.vel.z) > 20, 'a combat cone still throws real rock');
+      }
       assert.ok(Math.hypot(hull.vel.x, hull.vel.z) > 20, 'a combat/player cone still pushes a hull');
     } finally { ctx.cleanup(); }
   }
