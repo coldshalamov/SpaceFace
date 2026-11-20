@@ -69,7 +69,9 @@ test('Book 1 route files the played verb and method, and the Ashfall plate callb
   assert.equal(rows[0].kind, 'plate');
   const log = state.story.campaign47a.choiceLog.filter((r) => r.kind === 'spine_solved' && r.beat === 1);
   assert.ok(log.some((r) => r.method === 'mites_then_furnace' && r.verb === 'burn'));
-  assert.match(spineRoadFrom(state).cite, /hauler fed to the furnace/);
+  // W-BOOKS-0-2 rule: completion alone is never evidence that a pod reached CR-FEED — a
+  // completion without the worksite settlement speaks the honest fallback, not the furnace.
+  assert.match(spineRoadFrom(state).cite, /the refinery detail closed/);
 });
 
 test('retired knock methods still map to the retired callbacks', () => {
@@ -122,7 +124,11 @@ test('a Book 1 miss files a live ask and does not talk about a tower', () => {
 function furnaceRun(state) {
   state.story.campaign47a.flags.spine = {
     v: 1,
-    solved: { 1: { verb: 'burn', method: 'mites_then_furnace', stepId: 'infested', atS: 5 } },
+    // A settled B1 furnace row carries the worksite's own evidence — campaignTransitions
+    // attaches it on the live route — and the greetings speak the CR-FEED counts from it.
+    solved: { 1: { verb: 'burn', method: 'mites_then_furnace', stepId: 'infested', atS: 5,
+      signal: 'mission:completed', storyTag: 'campaign47a:b1:infested', furnaceMissionId: 'eco_forge_b1',
+      furnaceFeeds: 3, furnaceLosses: 0, furnaceOutcome: 'full_disposal' } },
     closed: [{ beat: 1, attempt: 1, reason: 'x', askId: 'b1_a1_scar', instruction: 'Miss.' }],
   };
 }
@@ -137,18 +143,20 @@ test('door and R-07 are not shadowed by the persistent furnace row or by a close
   assert.equal(spineGreeting('contact_yune', state), 'Your door is sealed. The fee still stands.');
   assert.equal(spineGreeting('contact_orrin', state), 'The audit names your patrol. Clean enough.');
 
-  // With no door taken, the filed furnace row still leads — R-07 speaks only when
-  // nothing fresher is on file (matching the long-standing greeting order).
+  // With no door taken, the filed furnace row still leads — and an evidenced furnace speaks
+  // its CR-FEED counts, not the pre-settlement wording.
   const earlier = fresh(2, null);
   furnaceRun(earlier);
   earlier.morrow = { met: true, destroyed: false, launches: 0, visits: 1 };
-  assert.equal(spineGreeting('contact_maera_vols', earlier), 'You fed the hauler to the furnace.');
-  assert.equal(spineGreeting('contact_halev_doss', earlier), 'Filed: a miss, then the furnace.');
+  assert.equal(spineGreeting('contact_maera_vols', earlier), 'Four mites cleared. All three ore pods fed to CR-FEED.');
+  assert.equal(spineGreeting('contact_halev_doss', earlier), 'Filed after a miss: all three pods fed to CR-FEED.');
 
+  // A furnace row with no settlement evidence stays honest: the detail closed, the cargo
+  // result is unknown, and no pod is claimed for the player.
   const furnaceOnly = fresh(2, null);
   furnaceOnly.story.campaign47a.flags.spine = { v: 1, solved: { 1: { verb: 'burn', stepId: 'infested' } } };
-  assert.equal(spineGreeting('contact_maera_vols', furnaceOnly), 'You fed the hauler to the furnace.');
-  assert.equal(spineGreeting('contact_halev_doss', furnaceOnly), 'Filed: the furnace. The scale still lies.');
+  assert.equal(spineGreeting('contact_maera_vols', furnaceOnly), 'The refinery detail closed.');
+  assert.equal(spineGreeting('contact_halev_doss', furnaceOnly), 'Filed: the refinery detail closed; cargo result unknown.');
 });
 
 test('the filed ending names the door before the furnace, and the furnace when no door was taken', () => {
@@ -160,8 +168,14 @@ test('the filed ending names the door before the furnace, and the furnace when n
   const bare = fresh(7, null);
   bare.story.campaign47a.flags.spine = { v: 1, solved: { 1: { verb: 'burn', stepId: 'infested' } } };
   bare.story.endgameChoice = 'ending_a';
-  assert.equal(spineGreeting('contact_maera_vols', bare), 'You fed the furnace. I watched you file and leave.');
-  assert.equal(spineGreeting('contact_halev_doss', bare), 'Filed: the furnace, then the disposition.');
+  assert.equal(spineGreeting('contact_maera_vols', bare), 'The refinery detail closed. I watched you file and leave.');
+  assert.equal(spineGreeting('contact_halev_doss', bare), 'Filed: the refinery detail closed; cargo result unknown.');
+  // With worksite evidence and no door, the filed furnace speaks its counts to the end.
+  const evidenced = fresh(7, null);
+  furnaceRun(evidenced);
+  evidenced.story.endgameChoice = 'ending_a';
+  assert.equal(spineGreeting('contact_maera_vols', evidenced), 'Three ore pods fed to CR-FEED. You filed.');
+  assert.equal(spineGreeting('contact_halev_doss', evidenced), 'Filed after a miss: all three pods fed to CR-FEED.');
 });
 
 test('every spoken line stays inside twelve words', () => {
