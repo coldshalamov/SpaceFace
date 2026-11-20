@@ -112,6 +112,9 @@ export const swarmSupply = {
     this._unsubs.push(this.bus.on('pickup:collected', (p) => this._onCollected(p)));
     this._unsubs.push(this.bus.on('entity:destroyed', (p) => this._onDestroyed(p)));
     this._unsubs.push(this.bus.on('run:ended', () => this._reset()));
+    // Victory transitions straight into run:started without run:ended — the charge ledger
+    // resets on both edges or the next run opens with the old one's supply state.
+    this._unsubs.push(this.bus.on('run:started', () => this._reset()));
   },
 
   destroy() {

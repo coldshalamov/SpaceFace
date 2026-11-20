@@ -648,6 +648,9 @@ export const swarmCourseTwists = {
     on('run:waveStarted', (p) => this._onWaveStarted(p));
     on('run:waveCleared', () => this._teardown());
     on('run:ended', () => this._teardown());
+    // Victory hands the next run over via run:started without run:ended — tear down the
+    // armed twist on both edges.
+    on('run:started', () => this._teardown());
     on('save:loaded', () => this._teardown());
     on('run:transitioned', (p) => {
       if (p && p.phase && p.phase !== 'active') this._suspend();

@@ -165,6 +165,9 @@ export const swarmChain = {
     // writer of chain state: this path walks the same continue/step/milestone logic per body.
     this._unsubs.push(this.bus.on('swarm:broodKills', (p) => this._onBroodKills(p)));
     this._unsubs.push(this.bus.on('run:ended', () => this._onRunEnded()));
+    // Victory reaches the next run through run:started without run:ended — the chain
+    // ledger must reset on both edges or the streak carries over.
+    this._unsubs.push(this.bus.on('run:started', () => this._onRunEnded()));
   },
 
   destroy() {

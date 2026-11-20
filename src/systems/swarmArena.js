@@ -889,17 +889,10 @@ export const swarmArena = {
     // PRI-11a — the Brood's round-one hold ends on the wave owner's single release
     // event; the arena never times the beat itself.
     this._unsubs.push(this.bus.on('swarm:openingBeatEnded', (p) => this._onOpeningBeatEnded(p)));
-    this._unsubs.push(this.bus.on('run:ended', () => {
-      this._broodHeldUntil = null;
-      this._beatHold = null;
-      this._lessonHoldS = null;
-      this._law = null;
-      this._lawAnnounced = null;
-      if (this._brood) this._brood.clear('run_ended');
-      this._hiveRelease('run_ended');
-      this._millOres.clear();
-      this._release('run_ended');
-    }));
+    this._unsubs.push(this.bus.on('run:ended', () => this._onRunBoundary('run_ended')));
+    // A victory hands the next run to us through run:started without run:ended — the same
+    // holds/law/mill state must clear on both edges or it leaks into the new run.
+    this._unsubs.push(this.bus.on('run:started', () => this._onRunBoundary('run_started')));
     // The room owner's install/release pair is the law-phase seam: the receipt carries the
     // wave's arenaPhase, its authored note, the install simTime and the live toy specs.
     this._unsubs.push(this.bus.on('survivalArena:installed', (p) => this._onLawInstalled(p)));
@@ -929,6 +922,18 @@ export const swarmArena = {
     this._hiveRelease('destroyed');
     if (this._millOres) this._millOres.clear();
     this._hive = null;
+  },
+
+  _onRunBoundary(reason) {
+    this._broodHeldUntil = null;
+    this._beatHold = null;
+    this._lessonHoldS = null;
+    this._law = null;
+    this._lawAnnounced = null;
+    if (this._brood) this._brood.clear(reason);
+    this._hiveRelease(reason);
+    this._millOres.clear();
+    this._release(reason);
   },
 
   newGame() {
