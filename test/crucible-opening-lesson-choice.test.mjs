@@ -138,7 +138,7 @@ test('the one-enemy start leaves checkpoint launches alone and restores the choi
     assert.equal(thinPurse.hidden, false);
     thinPurse.click();
     assert.match(summary.textContent, /cr to spend/);
-    assert.ok(purseTiles().includes('2,400 cr'));
+    assert.ok(!purseTiles().some((tile) => /2,400/.test(tile)), 'no stake funds a run: every run starts at zero');
     assert.equal(toggle.disabled, true);
     assert.equal(toggle.getAttribute('aria-pressed'), 'false');
     assert.match(toggle.textContent, /Round 1 only/);
@@ -204,7 +204,7 @@ test('the one-enemy start leaves checkpoint launches alone and restores the choi
     field.value = share.code;
     button('Use code').click();
     assert.equal(thinPurse.hidden, false);
-    assert.match(summary.textContent, /2,400 cr to spend/);
+    assert.match(summary.textContent, /0 cr to spend/, 'every run starts at zero (04_SWARM.md §5)');
     root.querySelector('.sf-swarm-enter-key').click();
     assert.equal(launches[3].survivalSetup.hullId, 'ship_hornet');
     assert.deepEqual(launches[3].survivalSetup.loadout, []);

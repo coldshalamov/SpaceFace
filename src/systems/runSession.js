@@ -227,7 +227,10 @@ export const runSession = {
       const ghostHash = request?.ghostHash;
       if (Number.isInteger(ghostHash) && ghostHash >= 0 && ghostHash <= 0xffffffff) next.telemetry.ghostHash = ghostHash;
       const profile = loadCrucibleMeta();
-      next.telemetry.hangar = migrateHangar(profile && profile.hangar);
+      // NOTHING CARRIES POWER INTO A RUN (04_SWARM.md §9, release list 2026-11-19): the Hangar's
+      // ranks (plating, shield, war chest, broker, re-rolls, magnet) no longer reach the run; only the
+      // hulls it unlocked do. Every run reads this stamp, so ranks: {} is the one switch.
+      next.telemetry.hangar = { ...migrateHangar(profile && profile.hangar), ranks: {} };
       // SWARM-06: the Threat wager and the perk loadout ride telemetry the same way the stake
       // does — schema-free, run-lifelong, never serialized. Threats normalize against the
       // catalog so a door or a hand-rolled request can never name a wager that does not exist.

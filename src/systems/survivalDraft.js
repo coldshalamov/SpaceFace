@@ -551,7 +551,7 @@ export const survivalDraft = {
     // cleanup has no legal edge straight back to wave_intro — so if the armory cadence ever
     // thins again, the off-wave pass-through resolves here instead of opening a surface for
     // one frame. Without it that cadence would flash a menu on every wave boundary.
-    if (isSwarmRuleset(run.ruleset) && !isSwarmDraftWave(run.wave) && !isSwarmRefitWave(run.wave)) {
+    if (isSwarmRuleset(run.ruleset) && !isSwarmDraftWave(run.wave) && run.telemetry?.circuit == null && !isSwarmRefitWave(run.wave)) {
       this._offers = null;
       this._wave = run.wave;
       this._resolved = false;

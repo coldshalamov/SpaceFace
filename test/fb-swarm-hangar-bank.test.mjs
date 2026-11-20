@@ -92,6 +92,11 @@ function launchEasySwarm(t, storage) {
   }, crucibleLaunchConfig(setup, 'swarm', { openingLesson: false, swarmStake: 'exhibition' }));
   assert.equal(launch.ok, true);
   state.mode = 'flight';
+  // Every Swarm run starts at zero Scrap (04_SWARM.md §5, release list 2026-11-19).
+  assert.equal(state.run.credits, 0, 'no stake funds a run any more');
+  // The bank rules below still guard run-only money (a pact's purse, a sell-back, a legacy run's
+  // stake): fund the run with the same run-only award reason the old stake used.
+  bus.emit('run:awardRequested', { credits: 2400, reason: 'swarm:stake:exhibition' });
   assert.equal(state.run.credits, 2400);
   return { runtime, state, bus, ships, results: runtime.getSystem('survivalResults') };
 }
@@ -378,7 +383,7 @@ test('magnet multiplier applies only for survival', () => {
   assert.equal(playerPickupMagnetRange(unranked), MAGNET_RANGE);
 });
 
-test('purse award happens only when run credits are still 0', () => {
+test('no Hangar purse reaches a run; a run funded another way keeps its own credits', () => {
   resetMeta();
   const storage = memoryStorage();
   useCrucibleMetaStorage(storage);
@@ -397,9 +402,11 @@ test('purse award happens only when run credits are still 0', () => {
   runSession.init({ state, bus });
   try {
     runSession.begin({ kind: 'survival', ruleset: 'swarm', seed: SEED });
-    assert.equal(state.run.credits, 200);
-    assert.equal(state.run.telemetry.hangar.ranks.war_chest, 2);
-    assert.deepEqual(reasons, ['hangar_war_chest']);
+    // Nothing carries power into a run (release list 2026-11-19): the War Chest rank stays on the
+    // profile but never reaches the run, so the run opens at zero with no war-chest award.
+    assert.equal(state.run.credits, 0);
+    assert.deepEqual(state.run.telemetry.hangar.ranks, {});
+    assert.deepEqual(reasons, []);
     assert.equal(state.player.credits, 4242);
     assert.deepEqual(economy, []);
 
@@ -409,7 +416,7 @@ test('purse award happens only when run credits are still 0', () => {
     });
     runSession.begin({ kind: 'survival', ruleset: 'swarm', seed: SEED });
     assert.equal(state.run.credits, 40);
-    assert.deepEqual(reasons, ['hangar_war_chest', 'already_funded']);
+    assert.deepEqual(reasons, ['already_funded']);
     assert.equal(state.player.credits, 4242);
     assert.deepEqual(economy, []);
   } finally {

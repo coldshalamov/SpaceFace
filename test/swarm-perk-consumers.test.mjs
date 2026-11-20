@@ -219,17 +219,18 @@ test('bounty_hunter: a champion\'s chip pays triple; a plain elite and an unperk
   killBody(h, cohortBody(1, 5, { champion: true, role: 'elite' }));
   killBody(h, cohortBody(2, 5, { role: 'elite' }));
   const drops = named(h, 'loot:drop').map((e) => e.payload.items[0].credits);
-  // Elite threat pays 60; the perk triples the champion's entitlement on the same chip.
-  assert.deepEqual(drops, [180, 60], 'only the marked hull pays the bounty');
-  assert.equal(survivalRewards.sweepChips('test'), 240);
+  // Elite threat pays 60; a champion pays like a boss (x5, release list 2026-11-19) and the perk
+  // triples that on the same chip: 60 x 5 x 3 = 900.
+  assert.deepEqual(drops, [900, 60], 'only the marked hull pays the bounty');
+  assert.equal(survivalRewards.sweepChips('test'), 960);
   // The perk pays credits, not score — the award row stays the threat table's.
   const score = named(h, 'run:awardRequested').find((e) => e.payload?.score > 0);
   assert.equal(score.payload.score, 600);
 
   const off = fieldHarness({ perks: [] });
   killBody(off, cohortBody(1, 5, { champion: true, role: 'elite' }));
-  assert.equal(named(off, 'loot:drop')[0].payload.items[0].credits, 60,
-    'a champion without the perk pays the table price');
+  assert.equal(named(off, 'loot:drop')[0].payload.items[0].credits, 300,
+    'a champion without the perk pays the boss price (x5)');
 });
 
 /* ---- gambler: two more re-rolls on the bench, then paid draws at half --------- */
@@ -307,15 +308,15 @@ test('gambler: two free draws ride after the Hangar\'s, then the bench sells at 
   let info = survivalDraft.rerollState();
   assert.equal(info.available, true);
   assert.equal(info.reason, 'hangar_reroll');
-  assert.equal(info.freeRerolls, 3, 'the perk\'s two ride on top of the Hangar\'s one');
+  // Nothing carries power into a run (release list 2026-11-19): the Hangar's re-roll rank no longer
+  // reaches the run, so only the perk's two free draws remain.
+  assert.equal(info.freeRerolls, 2, 'the perk\'s two, and no Hangar draw');
   assert.equal(info.gambler, true);
-  assert.equal(survivalDraft.requestReroll(), true);
-  assert.equal(h.state.run.telemetry.hangar.rerollsUsed, 1, 'the Hangar\'s draw spends first');
   assert.equal(survivalDraft.requestReroll(), true);
   assert.equal(survivalDraft.requestReroll(), true);
   const freeDeals = named(h, 'run:draftRerolled');
-  assert.equal(freeDeals.length, 3);
-  assert.ok(freeDeals.every((e) => e.payload.price === 0), 'all three rode free');
+  assert.equal(freeDeals.length, 2);
+  assert.ok(freeDeals.every((e) => e.payload.price === 0), 'both rode free');
 
   info = survivalDraft.rerollState();
   assert.equal(info.reason, 'gambler_paid');
@@ -328,26 +329,20 @@ test('gambler: two free draws ride after the Hangar\'s, then the bench sells at 
     .find((e) => e.payload?.reason === CRUCIBLE_REROLL_SPEND_REASON);
   assert.equal(charge.payload.credits, info.price, 'the wallet was asked the halved figure');
   assert.equal(h.state.run.credits, credits - info.price, 'the draw was bought, not given');
-  assert.equal(survivalDraft.rerollCount(), 4);
+  assert.equal(survivalDraft.rerollCount(), 3);
 });
 
-test('without gambler the same armory spends the Hangar\'s draw, then the bench is dead', () => {
+test('without gambler the swarm armory has no free draw: a Hangar rank no longer reaches the run', () => {
   const h = draftBoot();
   saveCrucibleMeta({ ladder: ladderWithStars(8), hangar: migrateHangar({ ranks: { rerolls: 1 } }) });
   waveArmory(h, null, 5);
   assert.equal(h.state.run.telemetry.perks, undefined, 'no pick was stamped');
 
-  const info = survivalDraft.rerollState();
-  assert.equal(info.available, true);
-  assert.equal(info.freeRerolls, 1, 'just the Hangar\'s own draw');
-  assert.ok(!info.gambler, 'no gambler flag rides an unperked bench');
-  assert.equal(survivalDraft.requestReroll(), true);
-  assert.equal(named(h, 'run:draftRerolled').length, 1);
-
   const after = survivalDraft.rerollState();
+  assert.ok(!after.gambler, 'no gambler flag rides an unperked bench');
   assert.equal(after.open, false, 'the swarm armory has no paid bench without the perk');
   assert.equal(survivalDraft.requestReroll(), false);
-  assert.equal(named(h, 'run:draftRerolled').length, 1, 'no second deal happened');
+  assert.equal(named(h, 'run:draftRerolled').length, 0, 'no deal happened');
   assert.equal(
     named(h, 'run:spendRequested')
       .filter((e) => e.payload?.reason === CRUCIBLE_REROLL_SPEND_REASON).length,

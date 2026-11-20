@@ -14,21 +14,23 @@
 
 export const SWARM_STAKE_SCHEMA_VERSION = 1;
 
+// Every run starts at zero Scrap (04_SWARM.md §5: "Kiln's mood — pressure, earn and score only;
+// purse fixed at 0"). The purse field stays so old records and the door still read it.
 export const SWARM_STAKES = Object.freeze([
   Object.freeze({
     id: 'exhibition',
     label: 'Easy',
-    purse: 2400,
+    purse: 0,
     pressure: 0.65,
     earn: 0.75,
     score: 0.5,
-    blurb: 'Fewer enemies and more starting credits. Rounds pay less and earn fewer points.',
+    blurb: 'Fewer enemies. Rounds pay less and earn fewer points.',
     openingBlurb: 'Fewer enemies. Rounds pay less and earn fewer points.',
   }),
   Object.freeze({
     id: 'contender',
     label: 'Standard',
-    purse: 750,
+    purse: 0,
     pressure: 1.0,
     earn: 1.0,
     score: 1.0,
@@ -37,11 +39,11 @@ export const SWARM_STAKES = Object.freeze([
   Object.freeze({
     id: 'veteran',
     label: 'Hard',
-    purse: 250,
+    purse: 0,
     pressure: 1.15,
     earn: 1.25,
     score: 1.5,
-    blurb: 'More enemies and fewer starting credits. Rounds pay more and earn more points.',
+    blurb: 'More enemies. Rounds pay more and earn more points.',
     openingBlurb: 'More enemies. Rounds pay more and earn more points.',
   }),
   Object.freeze({
@@ -51,7 +53,7 @@ export const SWARM_STAKES = Object.freeze([
     pressure: 1.3,
     earn: 1.5,
     score: 2.0,
-    blurb: 'The largest waves and no starting credits. Borrow a compatible gun for the first round.',
+    blurb: 'The largest waves, highest round payouts, and highest scores.',
     openingBlurb: 'The largest waves, highest round payouts, and highest scores.',
   }),
 ]);

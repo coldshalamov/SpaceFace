@@ -71,7 +71,7 @@ function makeHarness() {
   return { state, bus, helpers, player };
 }
 
-function openDraft(h, wave = 1, credits = 5000) {
+function openDraft(h, wave = 5, credits = 5000) {
   h.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'swarm', seed: SEED, arenaId: ARENA });
   h.bus.emit('run:transitionRequested', { expectedPhase: 'loadout', nextPhase: 'draft', reason: 't', tick: 0 });
   h.state.run.wave = wave;
@@ -100,8 +100,8 @@ test('SW-14: the armory sells the stack, each copy applies its effect once, and 
   // active -> draft transition, which re-opens the shelf (the spent set lives one visit).
   for (let visit = 0; visit < SWARM_PASSIVE_STACK_MAX - 1; visit += 1) {
     h.state.run.phase = 'active';
+    h.state.run.wave = 5 * (visit + 2); // each visit is the next shop round (every fifth, R3)
     h.bus.emit('run:transitionRequested', { expectedPhase: 'active', nextPhase: 'draft', reason: 't', tick: 0 });
-    h.state.run.wave = 2 + visit;
     assert.ok(survivalDraft.currentOffers().some((r) => r.id === 'passive_plated_hull'), `visit ${visit} offers the stack`);
     h.bus.emit('run:draftPickRequested', { offerId: 'passive_plated_hull' });
   }

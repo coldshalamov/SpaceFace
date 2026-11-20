@@ -54,8 +54,9 @@ test('public Swarm preparation settles the selected native hull and kit before b
       commands: bootCommands('prepared-arena', opts) });
     const ack = reply.rpcAcks.find(row => row.id === 'prepared-arena');
     assert.equal(ack.ok, true, JSON.stringify(ack));
-    assert.equal(state.run.credits, 950, 'a legacy preset retains Standard stake funding plus its 200-credit War Chest');
-    assert.deepEqual(legacyAwards, ['hangar_war_chest', 'swarm:stake:contender']);
+    // Every run starts at zero (04_SWARM.md §5, release list 2026-11-19): no stake purse, no War Chest.
+    assert.equal(state.run.credits, 0, 'a legacy preset opens at zero Scrap');
+    assert.deepEqual(legacyAwards, [], 'neither the stake nor the Hangar funds the run');
     assert.equal(state.run.telemetry.zeroScrapOpening, undefined);
     const result = ack.result;
     assert.equal(result.ok, true, JSON.stringify(result));
@@ -135,7 +136,7 @@ test('ordinary Swarm, including a shared v2 opening, offers one permanent gun or
       assert.equal(state.run.phase, 'draft');
       assert.equal(state.run.credits, 0);
       assert.equal(state.run.telemetry.zeroScrapOpening, true);
-      assert.equal(state.run.telemetry.hangar.ranks.war_chest, 2);
+      assert.deepEqual(state.run.telemetry.hangar.ranks, {}, 'Hangar ranks never reach the run');
       assert.equal(state.run.telemetry.swarmStake, 'exhibition');
       assert.deepEqual(state.run.telemetry.threats, ['thick_pack']);
       assert.ok(reply.events.some(event => event.t === 'run:started' && event.p.openingLesson === prepareGun));

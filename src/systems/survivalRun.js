@@ -65,6 +65,11 @@ import { POWERED_CONVEYOR_RULESET, POWERED_CONVEYOR_DEMO_TICKS } from '../data/s
 
 export const SURVIVAL_RUN_WAVE_COUNT = SURVIVAL_ARC_LENGTH;
 export const SURVIVAL_REFIT_EVERY = 10;
+/** Does this Swarm wave end at the shop? Every fifth round — and every round of a Circuit, whose
+ *  authored route is chosen at the stop (its stages and nodes live in survivalCircuit.js). */
+export function swarmShopsThisWave(run) {
+  return !!run && (isSwarmDraftWave(run.wave) || run.telemetry?.circuit != null);
+}
 // FB-025 — real intro beats: two seconds for the arena, a second and a half for each wave.
 // survivalAnnounce owns the completion emit at window end; these constants are the machine's
 // floor AND its backstop when the announce voice is muted or absent. Never freezes the player.
@@ -330,7 +335,7 @@ export const survivalRun = {
     if (phase === 'draft' && (
       compileChallenge(run.seed, run.arenaMutators, run.ruleset).skipDraft
       || isBossCircuitRuleset(run.ruleset)
-      || (isSwarmRuleset(run.ruleset) && !isSwarmDraftWave(run.wave) && !isSwarmRefitWave(run.wave))
+      || (isSwarmRuleset(run.ruleset) && !swarmShopsThisWave(run) && !isSwarmRefitWave(run.wave))
     )) {
       this._draftResolved = true;
     }
@@ -850,7 +855,7 @@ export const survivalRun = {
    */
   _breathHolds(run) {
     if (!isSwarmRuleset(run && run.ruleset) || this._breathEnded) return false;
-    if (isSwarmDraftWave(run.wave) || this._isRefitWave(run)) return false;
+    if (swarmShopsThisWave(run) || this._isRefitWave(run)) return false;
     const pilot = run.pilot;
     if (!pilot || !(pilot.banked > 0) || !pilot.offer) return false;
     return this._phaseTicks < SWARM_BREATH_GRACE_TICKS;
@@ -976,7 +981,7 @@ export const survivalRun = {
     // so a wave-10 stop is draft then bench rather than a bench instead of the draft the player
     // came for. The arc keeps its own shape: there, wave 10 has always been a bench and nothing
     // else, and the two rulesets are not obliged to agree.
-    if (isSwarmRuleset(run && run.ruleset) && isSwarmDraftWave(run && run.wave)) {
+    if (isSwarmRuleset(run && run.ruleset) && swarmShopsThisWave(run)) {
       this._requestTransition('cleanup', 'draft', REASON_DRAFT_OPEN);
       return;
     }
