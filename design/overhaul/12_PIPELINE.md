@@ -112,7 +112,23 @@ are not comparable to these: the same build measured 22.6 ms a step last night u
 | ROCK-LOOK | Fractured rocks in stone, iron, ice and crystal; no painted ships in the sky | Gemini Neon | **Landed** 544d361c22; iron rocks still read as blurry foil, second pass queued |
 | DRAW-COST-1 | Ships draw at the detail their size on screen needs, without a blink | Devin | Building |
 | BUG-SWEEP-1 | Wrong-behaviour bugs, one commit each | zcode | Two landed (ccf2c47460, 1a3b4cb5d1); the seat times out at 30 minutes a turn, so jobs for it stay small |
-| RULINGS-2 | R19–R24: composed encounters, the economy, the ladder, the cargo bag, one hand on ship and camera, the finish line | Director | **Landed** with this edit |
+| RULINGS-2 | R19–R24: composed encounters, the economy, the ladder, the cargo bag, one hand on ship and camera, the finish line | Director | **Landed** 295689c58b; design in `03` §9A and `06` §2.1, §5.4, §5.5 (0d4987862c) |
+| CAPTURE | One command plays each mode's opening and records frames, smoothness, words and findings (the R24 measure) | Devin | Queued behind DRAW-COST-1 |
+| HARMONY-AUDIT | Every system that moves the player's ship, the camera or the keys, and the ten worst clashes | GLM | Running → `.devshots/director/fable/harmony/AUDIT.md` |
+| ECON-AUDIT | What the economy costs in flight; today's price formula; a sized proposal for R20 | GLM | Running → `.devshots/director/fable/econ/AUDIT.md` |
+| CARGO-AUDIT | How the hold works today, and the slot model that replaces it | zcode | Running → `.devshots/director/fable/cargo/AUDIT.md` |
+| COPY-SWEEP-2 | Tests repaired to the new wording; remaining batches; one unit for distance | GLM | Running |
+| MAPS-1 | The minimap as the hero instrument: sweep, role glyphs, the room drawn, rings, breathing range | Gemini Neon | Running |
+| MAPS-2 | The big chart: a real survey of the sector, decision layers on the galaxy, four tabs not nine | Gemini Neon | Queued behind MAPS-1 |
+| SCREENS-1 | The station: an arrival page with one service button and five doors; market as a trading desk | Gemini Neon (second seat) | Running |
+| SCREENS-AUDIT | Every other screen shot, measured, scored 1–5, grouped into jobs | DeepSeek (vision) | Running → `.devshots/director/fable/screens/AUDIT.md` |
+| ROCK-LOOK-2 | Iron that reads as iron; crisp Foundry debris; the stray white card removed | Gemini Neon | Queued behind MAPS-2 |
+| HUD-2 | Eight leftovers on the flight screen (stray box, mixed units, crawl, chips, ship panel, round card, prompts, shop cards) | Gemini Neon | Queued behind ROCK-LOOK-2 |
+| PERF-AB | Old build against new, flown alternately on the same machine, so the frame-rate change is attributed and fixed | `engine` | First job at the next Claude window (today's re-flight read 23 fps against 36, under 75 % outside load: not comparable) |
+| PROGRESSION | One Pilot Tree for both doors, nine branches, built out and on one screen (`06` §2) | new Opus lead | To open |
+| ECON-BUILD | R20 prices and the trading game, from the audit | Opus lead or Devin | To open when the audit lands |
+| CARGO-BUILD | R22 the bag: simulation side, then the screen | Devin, then Gemini Neon | To open when the audit lands |
+| BACKLOG | A-rated and finished-but-unwired plans from `plans/INDEX.md`, wired before anything new is built | Sonnet | To open at the next Claude window |
 
 Queued behind these, from the plans index: wire the five finished encounters sitting on
 `codex/pro-five-integration` (TOWJAW, GLASSWAKE, SWITCHBACK, BLACKBOX RUNS, Kinetic Catalysts) once
