@@ -201,7 +201,18 @@ export function createDiscoveryPlate(ctx) {
     });
   }
 
+  // HARMONY-FIX 8: the establishing beat names the place it is zooming toward. The trailer staging
+  // only emitted `setPiece:staged`; nothing drew it, so the camera moved with no words. The moment
+  // plate shows the authored title right now (it is not a codex receipt and never queues).
+  function onSetPieceStaged(p) {
+    if (!p || !p.title) return;
+    const st = getState();
+    const sector = sectorOf(st, p.sectorId);
+    show({ key: `setpiece:${p.id}`, title: String(p.title), lines: sector && sector.name ? [String(sector.name)] : [], ttlS: 4 });
+  }
+
   const unsubs = [
+    bus.on('setPiece:staged', onSetPieceStaged),
     bus.on('discovery:plateUnlocked', onPlateUnlocked),
     bus.on('uniqueWreck:bearingFixed', onWreckFixed),
     bus.on('aceMemory:transition', onAceTransition),

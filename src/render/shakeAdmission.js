@@ -85,6 +85,8 @@ export const CAMERA_CAUSE_CLASS = Object.freeze({
   gyre: 'own',
   jump: 'own',
   // field-of-view: only the player's own acts widen or punch the view (HARMONY-FIX 5)
+  // the establishing zoom as the player flies up to an authored place (HARMONY-FIX 8)
+  establishing: 'own',
   boostFov: 'own',
   jumpFov: 'own',
   // room events: named so the refusal counter says what was refused
@@ -163,12 +165,21 @@ export function createCameraGate(law = SHAKE_ADMISSION_LAW) {
   return {
     classOf(cause) { return typeof cause === 'string' && CAMERA_CAUSE_CLASS[cause] || 'room'; },
     /**
-     * @param {'trauma'|'kick'|'fov'} kind  ('fov' amounts are degrees and may be negative: a dip)
+     * @param {'trauma'|'kick'|'fov'|'zoom'} kind  ('fov' amounts are degrees and may be negative: a dip)
      * @returns {number} the amount to apply (0 = refused).
      */
     motion(kind, cause, amount, nowS) {
       const key = typeof cause === 'string' && cause ? cause : 'untagged';
       const a = Number(amount);
+      if (kind === 'zoom') {
+        // A zoom beat (push-in) is admitted by cause class alone; callers that know the room is
+        // hostile refuse it themselves with gate.refuse so the counter says why.
+        if (!(a !== 0) || !Number.isFinite(a)) return 0;
+        const zcls = typeof cause === 'string' && CAMERA_CAUSE_CLASS[cause] || 'room';
+        if (zcls === 'room') { note(kind, key, a, nowS, false); return 0; }
+        note(kind, key, a, nowS, true);
+        return a;
+      }
       if (kind === 'fov') {
         if (!(Math.abs(a) > 0) || !Number.isFinite(a)) return 0;
         const fcls = typeof cause === 'string' && CAMERA_CAUSE_CLASS[cause] || 'room';

@@ -100,3 +100,50 @@ test('ordinary early Forge approach requests the two existing physical scripts t
   tickEarlyTrailerEncounters(director, dir, state, 301);
   assert.equal(requests.length, count, 'a completed introduction does not duplicate');
 });
+
+test('HARMONY-FIX 8: the establishing zoom goes through the gate as `establishing`, never fires while a hostile is engaged, and its caption renders', async () => {
+  const { createCameraGate } = await import('../src/render/shakeAdmission.js');
+  const { createBus } = await import('../src/core/eventBus.js');
+  const { createDiscoveryPlate } = await import('../src/ui/discoveryPlate.js');
+  const row = TRAILER_MOMENTS[4];
+  const player = { id: 1, alive: true, team: 1, pos: { x: 0, z: 0 } };
+  const source = { id: 2, alive: true, pos: { x: 50, z: 0 }, data: { oneOffId: row.id } };
+  const hostile = { id: 3, alive: true, hull: 40, team: 3, pos: { x: 300, z: 0 }, data: { combat: { targetId: 1 } } };
+  const gate = createCameraGate();
+  const state = { meta: { seed: 1 }, mode: 'flight', simTime: 20, tick: 0, playerId: 1,
+    entities: new Map([[1, player]]), entityList: [player, source, hostile],
+    world: { currentSectorId: row.sectorId, sectors: { [row.sectorId]: { name: 'Test Sector' } } },
+    settings: { video: {} }, render: { cameraGate: gate } };
+  const bus = createBus();
+  const zooms = [], staged = [];
+  bus.on('setPiece:staged', p => staged.push(p));
+  const stage = createTrailerStaging(state, bus);
+  const camera = { pushZoom: (...a) => zooms.push(a) };
+
+  stage.step(camera);
+  assert.equal(zooms.length, 0, 'an engaged hostile holds the whole beat');
+  assert.equal(staged.length, 0);
+  assert.ok(!stage.seen.has(row.id), 'the held beat is not spent, it fires later');
+  assert.ok(gate.counts().refused.establishing >= 1, 'the refusal is counted under its cause');
+
+  hostile.alive = false; state.simTime += 1;
+  stage.step(camera);
+  assert.equal(zooms.length, 1, 'the zoom fires once the fight is over');
+  assert.ok(gate.counts().admitted.establishing >= 1, 'and it went through the gate as `establishing`');
+  assert.equal(staged.length, 1);
+
+  // The caption: the plate listens for the staged event and draws the authored title.
+  const shown = [];
+  const plateBus = createBus();
+  const plate = createDiscoveryPlate({ bus: plateBus, state });
+  const realShow = plate.show;
+  const prevDoc = globalThis.document;
+  const made = [];
+  const el = () => ({ className: '', textContent: '', children: [], appendChild(c) { this.children.push(c); }, setAttribute() {}, classList: { add() {}, remove() {} }, style: {} });
+  globalThis.document = { createElement: () => { const e = el(); made.push(e); return e; }, getElementById: () => ({ appendChild(c) { shown.push(c); } }), body: { appendChild(c) { shown.push(c); } } };
+  try {
+    plateBus.emit('setPiece:staged', staged[0]);
+    assert.equal(shown.length, 1, 'the caption plate is mounted');
+    assert.ok(made.some(e => e.textContent === staged[0].title), 'it carries the place title');
+  } finally { globalThis.document = prevDoc; plate.destroy(); void realShow; }
+});

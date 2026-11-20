@@ -1,15 +1,41 @@
 import { TRAILER_MOMENTS, trailerMomentMatches } from '../data/trailerMoments.js';
+import { createCameraGate } from './shakeAdmission.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 
 // Cosmetic, once-per-run approach beats. It never changes follow focus, input, time or outcomes.
+// HARMONY-FIX 8: the zoom asks the camera gate under the cause `establishing`, and the whole beat
+// (zoom, music, caption) waits while a hostile is engaged - it stays unseen and fires later.
+const ENGAGED_RANGE_WU = 700;
+function hostileEngaged(state, player) {
+  for (const e of state.entityList || []) {
+    if (!e || e === player || e.alive === false || !e.pos || !(e.hull > 0)) continue;
+    if (!isHostileToPlayer(e, player.team, state)) continue;
+    const combat = e.data && e.data.combat;
+    if (combat && (combat.targetId === player.id || combat.lockTarget === player.id)) return true;
+    if (Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z) <= ENGAGED_RANGE_WU) return true;
+  }
+  return false;
+}
 // Poll at 5 Hz using one entity pass; ordinary render frames allocate nothing.
 export function createTrailerStaging(state, bus) {
   const seen = new Set();
   let nextAt = -Infinity, lastAt = -Infinity, epoch = state.meta?.seed;
+  let privateGate = null, refusalNoted = false;
+  const gateOf = () => state.render?.cameraGate || privateGate || (privateGate = createCameraGate());
   const admit = (moment, e, camera, now, sectorId) => {
     if (Math.hypot(e.pos.x - state.entities.get(state.playerId).pos.x, e.pos.z - state.entities.get(state.playerId).pos.z) > moment.approachWu) return false;
+    const here = state.entities.get(state.playerId);
+    if (hostileEngaged(state, here)) {
+      if (!refusalNoted) { gateOf().refuse('establishing', now, 'zoom'); refusalNoted = true; }
+      return false;
+    }
+    refusalNoted = false;
     seen.add(moment.id); lastAt = now;
     const reduced = state.settings?.video?.motionReduce || state.settings?.accessibility?.reducedMotion;
-    if (!reduced) camera.pushZoom(moment.camera.zoom, moment.camera.seconds);
+    if (!reduced) {
+      const zoom = gateOf().motion('zoom', 'establishing', moment.camera.zoom, now);
+      if (zoom !== 0) camera.pushZoom(zoom, moment.camera.seconds);
+    }
     bus?.emit('audio:cue', { id: moment.music.cue, gain: moment.music.gain, importance: 0.55 });
     bus?.emit('setPiece:staged', {
       id: moment.id, title: moment.title, sectorId, entityId: e.id, tick: state.tick,
