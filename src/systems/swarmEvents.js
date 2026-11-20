@@ -113,6 +113,8 @@ export function createSwarmEventDirector(ctx) {
         this._unsubs.push(this._bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
         this._unsubs.push(this._bus.on('run:waveCleared', () => this.teardown('wave_cleared')));
         this._unsubs.push(this._bus.on('run:ended', () => this.teardown('run_ended')));
+        // Victory skips run:ended; the next run:started must still tear down armed event timers.
+        this._unsubs.push(this._bus.on('run:started', () => this.teardown('run_started')));
         this._unsubs.push(this._bus.on('pickup:collected', (p) => this._onPodCollected(p)));
         this._unsubs.push(this._bus.on('swarm:eventVerdict', (p) => this._onVerdict(p)));
       }

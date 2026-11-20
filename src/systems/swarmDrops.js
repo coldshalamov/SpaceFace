@@ -104,6 +104,9 @@ export const swarmDrops = {
     // that DOES survive a save is the doubled gun value on the player's mounts. Put every gun back.
     this._unsubs.push(this.bus.on('save:loaded', () => this._reset()));
     this._unsubs.push(this.bus.on('run:ended', () => this._reset()));
+    // Victory reaches the next run via run:started with no run:ended — drop state, placed
+    // turrets, and the seeded drop index must reset there too (siblings already do).
+    this._unsubs.push(this.bus.on('run:started', () => this._reset()));
   },
 
   destroy() {

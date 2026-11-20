@@ -248,6 +248,10 @@ export const survivalWave = {
       this._emit('capitalBoss:detach', { fightId: this._characterFightId });
       this._characterFightId = null;
     }
+    if (this._capitalFightId) {
+      this._emit('capitalBoss:detach', { fightId: this._capitalFightId });
+      this._capitalFightId = null;
+    }
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
   },
