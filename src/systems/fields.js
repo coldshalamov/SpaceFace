@@ -470,6 +470,11 @@ export const fields = {
         this.bus.on('game:new', () => this._clearAll(FIELD_END_REASONS.cleared, 'new_game')),
         this.bus.on('run:waveCleared', () => this._releaseSwarmSpecialistAnchors('wave_cleared')),
         this.bus.on('run:ended', () => this._releaseSwarmSpecialistAnchors('run_ended')),
+        // Victory is a terminal phase reached by transition — no run:ended follows it, and the
+        // wave owner may carry cohort bodies across run:started, so anchors release here.
+        this.bus.on('run:transitioned', (p) => {
+          if (p && (p.phase === 'victory' || p.phase === 'ended')) this._releaseSwarmSpecialistAnchors('run_transitioned');
+        }),
         this.bus.on('save:loaded', () => {
           if(!this._restoredOnLoad)this._clearAll(FIELD_END_REASONS.cleared, 'save_loaded');
           this._restoredOnLoad=false;

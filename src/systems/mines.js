@@ -121,6 +121,11 @@ export const mines = {
       this.bus.on('save:loaded', () => this.releaseAll('save_loaded'));
       this.bus.on('run:waveCleared', () => this.releaseSwarmSpecialistMines('wave_cleared'));
       this.bus.on('run:ended', () => this.releaseSwarmSpecialistMines('run_ended'));
+      // Victory is a terminal phase reached by transition — no run:ended follows it, and the
+      // wave owner may carry cohort bodies across run:started, so specialist mines release here.
+      this.bus.on('run:transitioned', (p) => {
+        if (p && (p.phase === 'victory' || p.phase === 'ended')) this.releaseSwarmSpecialistMines('run_transitioned');
+      });
     }
   },
 
