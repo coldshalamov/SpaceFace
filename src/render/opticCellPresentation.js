@@ -27,8 +27,10 @@
 // allocates or compiles a second program per cell.
 
 import * as THREE from 'three';
+import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 
 import { OPTIC_MATERIALS } from '../combat/opticField.js';
+import { familySilhouette } from './objectSpaceGeology.js';
 import { getReadyRockSurfaceTextures, rockSurfaceVariantSpec } from './rockSurfaceLibrary.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 import { installIllustratedSurface } from './illustratedSurface.js';
@@ -90,26 +92,19 @@ export function opticCellKindOf(entity) {
 // Stone keeps the authored displaced common-rock body (organic lump). Mirror and
 // prism get dedicated silhouettes — silhouette is half of "name the three kinds".
 
-/** Flat-faceted, faintly irregular metal chunk — reads as a cut mirror, not a rock. */
+/** Sculpted cleaved dark-iron reflector monolith — crisp planar bevels + rock shoulders, never a geodesic sphere. */
 function buildOpticMirrorGeometry() {
-  const geo = new THREE.IcosahedronGeometry(1, 1);
+  const geo = new THREE.IcosahedronGeometry(1, 4);
   const pos = geo.attributes.position;
-  const rnd = mulberryLite(0x51f0a7);
-  // Subtle hammered offset per distinct vertex so the facets read cut, not CAD-perfect.
-  const seen = new Map();
   const v = new THREE.Vector3();
   for (let i = 0; i < pos.count; i++) {
-    v.fromBufferAttribute(pos, i);
-    const key = `${v.x.toFixed(4)},${v.y.toFixed(4)},${v.z.toFixed(4)}`;
-    let d = seen.get(key);
-    if (d == null) { d = 1 + (rnd() - 0.5) * 0.09; seen.set(key, d); }
-    v.multiplyScalar(d);
-    pos.setXYZ(i, v.x, v.y, v.z);
+    v.fromBufferAttribute(pos, i).normalize();
+    const r = familySilhouette(v.x, v.y, v.z, 'optic_mirror', 0);
+    pos.setXYZ(i, v.x * r, v.y * r, v.z * r);
   }
-  // Slightly non-uniform: a metal ingot, not a disco ball.
-  geo.scale(1.0, 0.84, 1.06);
-  geo.computeBoundingSphere();
-  return geo;
+  const surfaced = toCreasedNormals(geo, THREE.MathUtils.degToRad(20));
+  surfaced.computeBoundingSphere();
+  return surfaced;
 }
 
 /** Tall four-sided shard — the prism silhouette at top-down range. */
@@ -137,46 +132,97 @@ export function opticCellGeometry(kind) {
 function buildOpticStoneMaterial(variantIdx) {
   const surf = getReadyRockSurfaceTextures(); // null until the decode lands — see factory contract
   const spec = rockSurfaceVariantSpec(variantIdx);
-  // The authored tint is a dark basalt; the shared maps and vertex colours darken it
-  // further, so the base colour starts well up — the multiply must land matte-grey,
-  // not void-black (measured on-glass: ~0x96897a read 33–50 lum, under-lit for "name it
-  // before firing"; ~0xa89d8b lands the dull lump around 50–65).
-  const color = new THREE.Color(0xbdb5a5).multiply(new THREE.Color(spec.tint[0], spec.tint[1], spec.tint[2]));
-  return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+  // Cool slate-basalt stone with neutral desaturation so optic absorber monoliths in Foundry and
+  // Helios read as solid dark cut basalt rather than fuzzy brown clay blobs.
+  const color = new THREE.Color(0xa6b0bc).multiply(new THREE.Color(spec.tint[0], spec.tint[1], spec.tint[2]));
+  const material = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color,
     map: surf ? surf.baseColor : null,
     normalMap: surf ? surf.normal : null,
-    normalScale: new THREE.Vector2(spec.normalScale, spec.normalScale),
+    normalScale: new THREE.Vector2(spec.normalScale * 1.25, spec.normalScale * 1.25),
     aoMap: surf ? surf.orm : null,
     aoMapIntensity: surf ? spec.aoIntensity : 1,
     roughnessMap: surf ? surf.orm : null,
     metalnessMap: surf ? surf.orm : null,
     // The ORM's metal lane rides ~0 on rock; this is the dull absorber, never a sheen.
-    roughness: surf ? Math.min(1, spec.roughness + 0.05) : 0.97,
+    roughness: surf ? Math.min(1, Math.max(0.92, spec.roughness + 0.04)) : 0.97,
     metalness: surf ? 1 : 0.02,
     vertexColors: !!surf,
     // The absorber carries no self-light — the same "no molten blanket" contract the
     // common-rock material test asserts.
     emissive: new THREE.Color(0x000000),
     emissiveIntensity: 0,
-    envMapIntensity: 0.8,
+    envMapIntensity: 0.48,
     flatShading: false,
   }), SHARED_MATERIAL_ROLE.ROCK);
+  if (surf) {
+    material.customProgramCacheKey = () => 'spaceface-optic-stone-basalt-v1';
+    material.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <map_fragment>',
+        [
+          '#include <map_fragment>',
+          'float sfOpticStoneY = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));',
+          'vec3 sfOpticBasalt = mix(diffuseColor.rgb, vec3(sfOpticStoneY) * vec3(0.90, 0.95, 1.05), 0.88);',
+          'diffuseColor.rgb = max((sfOpticBasalt - 0.06) * 1.42 + 0.09, vec3(0.03));',
+        ].join('\n'),
+      );
+    };
+  }
+  return material;
 }
 
 function buildOpticMetalMaterial() {
-  // The mirror: full metalness, tight roughness, strong environment response so the
-  // PMREM rig's warm key/cool rim ride the facets as moving speculars. A whisper of
-  // cool emissive keeps the shade side legible before the env bake lands.
-  return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-    color: new THREE.Color(0xe8eef6),
-    roughness: 0.11,
-    metalness: 1.0,
-    envMapIntensity: 2.3,
-    emissive: new THREE.Color(0x0e1620),
-    emissiveIntensity: 0.22,
-    flatShading: true,
+  // Heavy hammered forged-iron reflector: broad cleaved iron planes catch clear directional glints
+  // while object-space forged-iron grain + roughness breakup prevents a smooth chrome/mirror look.
+  const material = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: new THREE.Color(0x4a5664),
+    roughness: 0.36,
+    metalness: 0.78,
+    envMapIntensity: 0.98,
+    emissive: new THREE.Color(0x080e16),
+    emissiveIntensity: 0.05,
+    flatShading: false,
   }), SHARED_MATERIAL_ROLE.ROCK);
+  material.customProgramCacheKey = () => 'spaceface-optic-forged-iron-v1';
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vSfIronPos;\nvarying vec3 vSfIronNrm;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfIronPos = position;\nvSfIronNrm = normal;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', [
+        '#include <common>',
+        'varying vec3 vSfIronPos;',
+        'varying vec3 vSfIronNrm;',
+        'float sfIronGrain(vec3 p) {',
+        '  vec3 q = p * 7.5;',
+        '  float a = sin(q.x * 1.7 + cos(q.z * 2.1 + q.y * 1.3));',
+        '  float b = cos(q.y * 2.3 - sin(q.x * 1.9 - q.z * 2.4));',
+        '  float c = sin((q.x + q.y - q.z) * 3.7);',
+        '  return clamp(0.5 + 0.24 * a + 0.18 * b + 0.12 * c, 0.0, 1.0);',
+        '}',
+      ].join('\n'))
+      .replace('#include <color_fragment>', [
+        '#include <color_fragment>',
+        'float sfIronG = sfIronGrain(vSfIronPos);',
+        'float sfIronFine = sfIronGrain(vSfIronPos * 2.6 + vec3(3.1, 1.7, 4.3));',
+        'float sfIronEdge = smoothstep(0.60, 0.92, sfIronG * 0.65 + sfIronFine * 0.35);',
+        '// Dark mill-scale iron flats with brighter worn/burnished steel ridges.',
+        'diffuseColor.rgb *= mix(0.62, 1.35, sfIronG * 0.6 + sfIronFine * 0.4);',
+        'diffuseColor.rgb += vec3(0.08, 0.10, 0.13) * sfIronEdge;',
+      ].join('\n'))
+      .replace('#include <roughnessmap_fragment>', [
+        '#include <roughnessmap_fragment>',
+        'float sfIronR = sfIronGrain(vSfIronPos * 1.4 + vec3(1.9, 2.7, 0.8));',
+        'roughnessFactor = clamp(mix(0.60, 0.32, sfIronR), 0.28, 0.72);',
+      ].join('\n'))
+      .replace('#include <metalnessmap_fragment>', [
+        '#include <metalnessmap_fragment>',
+        'float sfIronM = sfIronGrain(vSfIronPos * 1.4 + vec3(1.9, 2.7, 0.8));',
+        'metalnessFactor = clamp(mix(0.42, 0.78, sfIronM), 0.35, 0.82);',
+      ].join('\n'));
+  };
+  return material;
 }
 
 function buildOpticDiamondMaterial() {

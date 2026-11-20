@@ -114,23 +114,10 @@ export const DEEP_FIELD_STRUCTURE_RECIPES = deepFreeze({
     // `scale` is the baked quad's world HEIGHT as a fraction of the macro scale; the width follows
     // the painter's authored aspect. `color` is the object's mid value — keep it near the void, not
     // above it.
-    structures: [
-      {
-        // Long-hauler hull, broken amidships, in profile so its length, bridge, cargo modules,
-        // engine bells and severed midsection are all legible at distance.
-        id: 'helios-derelict-hauler',
-        art: { kind: 'derelict_hauler' },
-        scale: 0.17, offset: [1.30, -0.18], opacity: 0.9, color: '#253141',
-      },
-      {
-        // Relay mast: a tapering lattice tower with cross-arms, a parabolic dish and an apex beacon.
-        // A second, much smaller object at a different apparent distance is what turns one silhouette
-        // into a sense of depth.
-        id: 'helios-relay-mast',
-        art: { kind: 'relay_mast' },
-        scale: 0.22, offset: [0.80, -0.10], opacity: 0.9, color: '#263644',
-      },
-    ],
+    // No flat ship-like or mast-like cutout cards in the sky: top-down painted silhouettes at
+    // ship scale read as untouchable ghost ships beside the player. The backdrop stays clean sky,
+    // stars, planets, and distant nebula glow.
+    structures: [],
   }),
 
   core_trade_constellation: R({

@@ -17,11 +17,11 @@ export const ROCK_SURFACE_TEXTURE_REPEAT = 1.65;
  * fracture sheen — without cloning textures or touching the pool or the mesh.
  */
 export const ROCK_SURFACE_VARIANTS = Object.freeze([
-  Object.freeze({ tint: [0.90, 0.88, 0.84], roughness: 1.0, aoIntensity: 0.78, normalScale: 0.72 }),
-  Object.freeze({ tint: [0.70, 0.72, 0.74], roughness: 1.06, aoIntensity: 0.86, normalScale: 0.62 }),
-  Object.freeze({ tint: [0.74, 0.58, 0.46], roughness: 0.92, aoIntensity: 0.74, normalScale: 0.78 }),
-  Object.freeze({ tint: [0.84, 0.82, 0.78], roughness: 0.85, aoIntensity: 0.7, normalScale: 0.82 }),
-  Object.freeze({ tint: [0.58, 0.56, 0.54], roughness: 1.12, aoIntensity: 0.92, normalScale: 0.58 }),
+  Object.freeze({ tint: [0.88, 0.89, 0.91], roughness: 0.96, aoIntensity: 0.95, normalScale: 1.30 }),
+  Object.freeze({ tint: [0.72, 0.75, 0.77], roughness: 1.02, aoIntensity: 1.00, normalScale: 1.18 }),
+  Object.freeze({ tint: [0.82, 0.79, 0.75], roughness: 0.94, aoIntensity: 0.92, normalScale: 1.35 }),
+  Object.freeze({ tint: [0.92, 0.91, 0.89], roughness: 0.90, aoIntensity: 0.88, normalScale: 1.28 }),
+  Object.freeze({ tint: [0.64, 0.65, 0.68], roughness: 1.04, aoIntensity: 1.05, normalScale: 1.22 }),
 ]);
 
 export function rockSurfaceVariantSpec(variantIdx) {

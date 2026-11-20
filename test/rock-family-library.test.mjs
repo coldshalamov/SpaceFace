@@ -121,7 +121,7 @@ test('decoded families are configured and GPU-warmed once each; field ores keep 
   const rare = bodyMaterial('ast_rare_exotic');
   assert.equal(metallic.userData.spacefaceTriplanarRock, 'metal');
   assert.equal(crystalline.userData.spacefaceTriplanarRock, 'crystal');
-  assert.equal(rare.userData.spacefaceTriplanarRock, 'crystal');
+  assert.equal(rare.userData.spacefaceTriplanarRock, 'exotic');
   assert.equal(metallic.customProgramCacheKey(), crystalline.customProgramCacheKey(),
     'every triplanar field rock shares the one program family');
   assert.equal(rare.customProgramCacheKey(), metallic.customProgramCacheKey());
@@ -131,7 +131,8 @@ test('decoded families are configured and GPU-warmed once each; field ores keep 
       'the triplanar install whitens the albedo multiplier so the family set carries the surface');
   }
 
-  assert.equal(bodyMaterial('ast_icy').map, null, 'ice keeps its glass material');
+  assert.equal(bodyMaterial('ast_icy').map, null, 'ice rides triplanar surfacing without a UV map');
+  assert.equal(bodyMaterial('ast_icy').userData.spacefaceTriplanarRock, 'ice');
 });
 
 test('a familyless-tagged rock re-skins onto the live material — now the shared triplanar family', () => {

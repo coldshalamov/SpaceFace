@@ -231,6 +231,10 @@ export const LOOK_MOODS = deepFreeze({
       lightTint: [1.10, 1.01, 0.91],
       rim: [0.45, 0.72, 0.92],
       rimStrength: 0.53,
+      // Over the lit Foundry deck, rocks already separate by form and cast shadow; keeping rockRim
+      // and rockFill tight stops boulders from wearing a pale fuzzy halo over the steel floor.
+      rockFill: 0.14,
+      rockRim: 0.06,
     },
     post: {
       grade: 0.27, vignette: 0.13,

@@ -88,10 +88,14 @@ test('the three live kinds produce measurably different body materials', () => {
   assert.ok(!stone.metalnessMap ? stone.metalness <= 0.05 : true, 'bare stone stays non-metallic');
   assert.ok(stone.envMapIntensity <= 1.0, 'stone must not chase the environment');
 
-  // metal — the mirror: full metalness, tight roughness, strong environment response.
-  assert.equal(metal.metalness, 1.0);
-  assert.ok(metal.roughness <= 0.2, `metal roughness ${metal.roughness} must read polished`);
-  assert.ok(metal.envMapIntensity >= 1.5, 'a mirror must ride the reflection environment');
+  // metal — dark forged iron reflector: cleaved metallic faces catch directional glints without
+  // reading as a mirror-chrome disco ball (ROCK-LOOK).
+  assert.ok(metal.metalness >= 0.65 && metal.metalness < 0.95,
+    `metal metalness ${metal.metalness} reads as forged iron, not chrome`);
+  assert.ok(metal.roughness >= 0.28 && metal.roughness <= 0.42,
+    `metal roughness ${metal.roughness} reads as brushed iron reflector, not mirror chrome`);
+  assert.ok(metal.envMapIntensity >= 0.9 && metal.envMapIntensity <= 1.4,
+    'a forged reflector catches the environment without blowing out');
   assert.equal(metal.transmission || 0, 0);
 
   // diamond — the prism: reflective alpha glass, the only live kind that lets light through.

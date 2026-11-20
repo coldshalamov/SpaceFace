@@ -16,15 +16,16 @@ import {
 import { canonicalizeObjectSurfaceProgramKeys } from '../src/render/illustratedSurface.js';
 import * as rockSubstances from '../src/data/rockSubstances.js';
 
-test('every authored place_rock substance resolves to a family, anything else to null', () => {
+test('every authored rock asset resolves to a triplanar family, non-rocks to null', () => {
   for (const [id, family] of [
     ['place_rock_silicate_boulder', 'silicate'], ['place_rock_slag_monolith', 'slag'],
     ['place_rock_metallic_ore_pebble', 'metal'], ['place_rock_reef_metal_boulder', 'metal'],
     ['place_rock_crystal_monolith', 'crystal'], ['place_rock_ice_pebble', 'ice'],
     ['place_rock_cooked_rock_boulder', 'cooked'], ['place_rock_junk_monolith', 'junk'],
+    ['place_asteroid_rock_a', 'silicate'], ['place_asteroid_seamed', 'silicate'],
   ]) assert.equal(rockTriplanarFamilyForAsset(id), family, id);
   assert.equal(rockTriplanarFamilyForAsset('SF_PLACE_ROCK_SILICATE_BOULDER'), 'silicate', 'the id the package metadata carries');
-  assert.equal(rockTriplanarFamilyForAsset('place_asteroid_rock_a'), null);
+  assert.equal(rockTriplanarFamilyForAsset('place_station_hub'), null);
   assert.equal(rockTriplanarFamilyForAsset('place_rock_unknown_boulder'), null);
 });
 

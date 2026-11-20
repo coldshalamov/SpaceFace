@@ -58,6 +58,7 @@ import {
   COMMON_ROCK_UV_TRANSFORMS,
   COMMON_ROCK_VARIANTS,
   displacementScalar as geologyDisplacement,
+  familySilhouette as geologyFamilySilhouette,
   silhouetteRadius as geologySilhouetteRadius,
   surfaceResponse as geologySurfaceResponse,
 } from './objectSpaceGeology.js';
@@ -2393,18 +2394,19 @@ function mulberryLite(seed) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// ASTEROIDS — noise-displaced icospheres, per-type tint/roughness + crystal/metal variants.
+// ASTEROIDS — fractured geological silhouettes with rough stone + selective ore/crystal accents.
 // ---------------------------------------------------------------------------------------------
 const AST_TYPE = {
-  // colors pushed toward the cyberpunk-noir neon palette: valuable ores glow in saturated magenta/
-  // cyan/violet so they read as prizes against the moody backdrop. Common rock stays dull grey to
-  // maximize the value contrast (a neon crystal cluster is instantly "that's the good stuff").
-  ast_common_rock: { color: 0xffffff, rough: 0.86, metal: 0.04, emissive: 0x000000, ei: 0,    detail: 2, displace: 0.20, flat: false, variant: 'rock' },
-  ast_metallic:    { color: 0x5a6470, rough: 0.45, metal: 0.7,  emissive: 0x183040, ei: 0.18, detail: 1, displace: 0.30, flat: true,  variant: 'metal', veinColor: '#3fd0ff' },
-  ast_icy:         { color: 0x8fd8f0, rough: 0.18, metal: 0.12, emissive: 0x105080, ei: 0.45, detail: 1, displace: 0.28, flat: false, variant: 'ice',  veinColor: '#5fe0ff' },
-  ast_crystalline: { color: 0x5a3aa0, rough: 0.22, metal: 0.25, emissive: 0x9030e0, ei: 0.85, detail: 1, displace: 0.45, flat: true,  variant: 'crystal', veinColor: '#c060ff' },
-  ast_gas_cloud:   { color: 0x2a5a4a, rough: 1.0,  metal: 0,    emissive: 0x10a060, ei: 0.55, detail: 1, displace: 0.40, flat: true,  variant: 'gas' },
-  ast_rare_exotic: { color: 0x282038, rough: 0.6,  metal: 0.5,  emissive: 0x7030d0, ei: 0.8,  detail: 2, displace: 0.32, flat: true,  variant: 'exotic', veinColor: '#ff40c0' },
+  // Every procedural family builds broken fracture-plane silhouettes at sensible hero detail
+  // (500–720 tris) and rough, low-metal stone surfaces. Only worn iron ridges and protruding
+  // crystal faces catch bright speculars or controlled inner glow — never mirror-chrome balls
+  // or neon-blanketed icospheres.
+  ast_common_rock: { color: 0xffffff, rough: 0.88, metal: 0.02, emissive: 0x000000, ei: 0, detail: 4, displace: 0.24, flat: false, variant: 'rock' },
+  ast_metallic:    { color: 0x56606c, rough: 0.86, metal: 0.06, emissive: 0x000000, ei: 0, detail: 4, displace: 0.22, flat: false, variant: 'metal' },
+  ast_icy:         { color: 0x8fd8f0, rough: 0.46, metal: 0.00, emissive: 0x000000, ei: 0, detail: 4, displace: 0.18, flat: false, variant: 'ice' },
+  ast_crystalline: { color: 0x3b3448, rough: 0.84, metal: 0.04, emissive: 0x000000, ei: 0, detail: 4, displace: 0.24, flat: false, variant: 'crystal' },
+  ast_gas_cloud:   { color: 0x2f433e, rough: 0.92, metal: 0.00, emissive: 0x000000, ei: 0, detail: 3, displace: 0.22, flat: false, variant: 'gas' },
+  ast_rare_exotic: { color: 0x2a2434, rough: 0.84, metal: 0.06, emissive: 0x000000, ei: 0, detail: 4, displace: 0.24, flat: false, variant: 'exotic' },
 };
 
 // Legacy/alias ids used by live spawners. `ast_rock` is what src/main.js seeds the opening belt with,
@@ -2487,14 +2489,14 @@ function transformCommonRockUvs(geometry, variantIdx) {
 }
 
 function astDisplacedGeometry(typeId, def, variantIdx) {
-  const key = `ast:geology-v6:${typeId}:${variantIdx}`;
+  const key = `ast:geology-v7:${typeId}:${variantIdx}`;
   return getGeometry(key, () => {
     const geo = new THREE.IcosahedronGeometry(1, def.detail + 1);
     const pos = geo.attributes.position;
     const normal = geo.attributes.normal;
     const isCommonRock = typeId === 'ast_common_rock';
     const isIce = typeId === 'ast_icy';
-    const colors = (isCommonRock || isIce) ? new Float32Array(pos.count * 3) : null;
+    const colors = isCommonRock ? new Float32Array(pos.count * 3) : null;
     const geologyPbr = isCommonRock ? new Float32Array(pos.count * 4) : null;
     const dominantRoleCounts = { matrix: 0, fracture: 0, regolith: 0, ferrite: 0 };
     const responseRanges = {
@@ -2511,7 +2513,7 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
     const ox = rnd() * 100, oy = rnd() * 100, oz = rnd() * 100;
     for (let i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i);
-      // Micro-breakup stays subordinate to the common rocks' object-space strata and joint fields.
+      // Micro-breakup stays subordinate to the object-space fracture planes and strata fields.
       surfaceNormal.copy(v).normalize();
       let d = 0, amp = 1, f = 1.7;
       for (let o = 0; o < 3; o++) {
@@ -2522,12 +2524,12 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
       }
       const silhouetteRadius = isCommonRock
         ? geologySilhouetteRadius(surfaceNormal.x, surfaceNormal.y, surfaceNormal.z, variantIdx)
-        : 1;
+        : geologyFamilySilhouette(surfaceNormal.x, surfaceNormal.y, surfaceNormal.z, def.variant, variantIdx);
       const scale = isCommonRock
         ? silhouetteRadius
           + geologyDisplacement(surfaceNormal.x, surfaceNormal.y, surfaceNormal.z, variantIdx) * 1.9
-          + def.displace * d * 0.18
-        : 1 + def.displace * d;
+          + def.displace * d * 0.16
+        : silhouetteRadius + def.displace * d * 0.14;
       v.multiplyScalar(Math.max(0.5, scale));
       pos.setXYZ(i, v.x, v.y, v.z);
       // Keep an intermediate radial normal for deterministic geology tone sampling. Final normals
@@ -2561,13 +2563,6 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
           responseRanges[field][0] = Math.min(responseRanges[field][0], value);
           responseRanges[field][1] = Math.max(responseRanges[field][1], value);
         }
-      } else if (isIce) {
-        // Subtle crevice-to-ridge tonal depth (deep cobalt-slate recesses, frosted pale ridges)
-        // keeps opaque glacial ice readable instead of a flat monochrome block.
-        const t = Math.max(0, Math.min(1, (scale - 0.72) / 0.56));
-        colors[i * 3] = 0.64 + 0.30 * t;
-        colors[i * 3 + 1] = 0.80 + 0.18 * t;
-        colors[i * 3 + 2] = 0.96 + 0.06 * t;
       }
     }
     normal.needsUpdate = true;
@@ -2582,8 +2577,8 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
     const uvTransform = isCommonRock ? transformCommonRockUvs(geo, variantIdx) : null;
     if (isCommonRock) {
       // toCreasedNormals merges exclusively on quantized position, preserving smooth intra-plane
-      // normals across UV projection boundaries as well as crisp 42-degree geological breaks.
-      const denseSmooth = toCreasedNormals(geo, THREE.MathUtils.degToRad(42));
+      // normals across UV projection boundaries as well as crisp 34-degree geological fracture breaks.
+      const denseSmooth = toCreasedNormals(geo, THREE.MathUtils.degToRad(34));
       denseSmooth.computeBoundingSphere();
       denseSmooth.userData.spacefaceGeology = {
         schema: 'spaceface.commonRockGeology.v4',
@@ -2597,11 +2592,11 @@ function astDisplacedGeometry(typeId, def, variantIdx) {
         deterministic: true,
         pbrAttribute: 'sfGeologyPbr',
         pbrAttributeChannels: ['ao', 'roughness', 'metalness', 'normalStrength'],
-        normalPolicy: '42-degree selective crease with smooth intra-plane normals',
+        normalPolicy: '34-degree selective crease with smooth intra-plane normals',
       };
       return denseSmooth;
     }
-    const creaseDegrees = isIce ? 52 : (def.flat ? 34 : 48);
+    const creaseDegrees = isIce ? 30 : (def.variant === 'metal' || def.variant === 'exotic' ? 32 : def.variant === 'crystal' ? 34 : 38);
     const surfaced = toCreasedNormals(geo, THREE.MathUtils.degToRad(creaseDegrees));
     surfaced.computeBoundingSphere();
     surfaced.userData.spacefaceGeology = {
@@ -2671,9 +2666,10 @@ function configureCommonRockPbr(material) {
       '#include <map_fragment>',
       [
         '#include <map_fragment>',
-        '// Retain the scanned substrate while letting broad authored geology lead the read.',
+        '// Neutralize muddy brown scan bias toward cut weathered grey/slate stone and lift lit contrast.',
         'float sfRockLuma = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));',
-        'diffuseColor.rgb = mix(diffuseColor.rgb, vec3(sfRockLuma), 0.28);',
+        'vec3 sfStoneNeutral = mix(diffuseColor.rgb, vec3(sfRockLuma) * vec3(0.92, 0.96, 1.04), 0.86);',
+        'diffuseColor.rgb = max((sfStoneNeutral - 0.07) * 1.48 + 0.12, vec3(0.035));',
         'float sfMineralExposure = smoothstep(0.10, 0.55, vSfGeologyPbr.b);',
         `diffuseColor.rgb = mix(diffuseColor.rgb, vec3(sfRockLuma) * vec3(${COMMON_ROCK_MINERAL_SHEEN.join(', ')}), sfMineralExposure * 0.68);`,
       ].join('\n'),
@@ -2778,32 +2774,58 @@ function makeIceNormalTexture() {
   return tex;
 }
 
-// ROCK-03: field ores (Metallic Asteroid, Helios field rocks, crystals, exotics) ride the shared
-// object-space triplanar family — the same program the authored place_rock bodies wear — by
-// substance: metallic → metal ore, crystalline/exotic → crystal. No per-rock materials; one
-// cached material per type still serves the whole instanced pool.
-const AST_VARIANT_TRIPLANAR = Object.freeze({ metal: 'metal', crystal: 'crystal', exotic: 'crystal' });
+// ROCK-03: every non-common procedural asteroid AND every tinted/substance-tagged common rock
+// rides the shared object-space triplanar family — the same shader program the authored place_rock
+// bodies wear — so no rock ever falls through to a flat untextured plastic sphere or glowing ball.
+const AST_VARIANT_TRIPLANAR = Object.freeze({
+  metal: 'metal', crystal: 'crystal', exotic: 'exotic', ice: 'ice', gas: 'gas',
+});
+const TINTED_SUBSTANCE_TRIPLANAR = Object.freeze({
+  silicate: 'silicate', calcite: 'silicate', rock: 'silicate',
+  slag: 'slag', cooked_rock: 'cooked', volatile: 'cooked',
+  metallic_ore: 'metal', reef_metal: 'metal', metal: 'metal',
+  ice: 'ice', cryo: 'ice', crystal: 'crystal',
+  junk: 'junk', debris: 'junk',
+});
 
-function astMaterial(typeId, def, tint, variantIdx = 0) {
-  const wantsCommonSurface = typeId === 'ast_common_rock' && tint == null;
+const SPECIALIZED_SUBSTANCE_TRIPLANAR = Object.freeze({
+  slag: 'slag', cooked_rock: 'cooked',
+  metallic_ore: 'metal', reef_metal: 'metal',
+  ice: 'ice', crystal: 'crystal', junk: 'junk',
+});
+
+function resolveTintedRockTriplanar(substance, envMaterial) {
+  const s = typeof substance === 'string' ? substance.toLowerCase() : '';
+  if (s && TINTED_SUBSTANCE_TRIPLANAR[s]) return TINTED_SUBSTANCE_TRIPLANAR[s];
+  const m = typeof envMaterial === 'string' ? envMaterial.toLowerCase() : '';
+  if (m && TINTED_SUBSTANCE_TRIPLANAR[m]) return TINTED_SUBSTANCE_TRIPLANAR[m];
+  return 'silicate';
+}
+
+function resolveCommonRockTriplanar(tint, substance, envMaterial) {
+  if (tint != null) return resolveTintedRockTriplanar(substance, envMaterial);
+  const s = typeof substance === 'string' ? substance.toLowerCase() : '';
+  return (s && SPECIALIZED_SUBSTANCE_TRIPLANAR[s]) || null;
+}
+
+function astMaterial(typeId, def, tint, variantIdx = 0, substance = null, envMaterial = null) {
+  const tpFamily = typeId === 'ast_common_rock'
+    ? resolveCommonRockTriplanar(tint, substance, envMaterial)
+    : (AST_VARIANT_TRIPLANAR[def.variant] || null);
+  const wantsCommonSurface = typeId === 'ast_common_rock' && !tpFamily;
   const commonSurfaceReady = wantsCommonSurface ? getReadyRockSurfaceTextures() : null;
   const bare = wantsCommonSurface && !commonSurfaceReady;
   // PIC-02: each displacement variant answers the shared maps with its own tint/ORM response so
-  // the five pooled chunks are not one texture painted five times. The library spec owns the
-  // numbers; this key keeps one cached material per variant.
+  // the five pooled chunks are not one texture painted five times.
   const variantSpec = commonSurfaceReady ? rockSurfaceVariantSpec(variantIdx) : null;
   const variantKey = variantSpec ? `:v${ROCK_SURFACE_VARIANTS.indexOf(variantSpec)}` : '';
-  // ROCK-03: variants on the triplanar map skip the UV family path entirely — it decoded late or
-  // never in flight and left the rocks as smooth flat icosahedra. A triplanar material needs no
-  // decoded map to hold the right program: the shared sfTpOn uniform flips it on when the set lands.
-  const tpFamily = typeId === 'ast_common_rock' ? null : (AST_VARIANT_TRIPLANAR[def.variant] || null);
   const family = (typeId === 'ast_common_rock' || tpFamily) ? null : rockFamilyFor(def.variant);
-  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}${family ? ':fam' : ''}${tpFamily ? ':tp' : ''}`;
+  const tpKey = tpFamily ? `:tp:${tpFamily}` : '';
+  const key = `astmat:${typeId}:${tint || 'def'}${variantKey}${bare ? ':bare' : ''}${family ? ':fam' : ''}${tpKey}`;
   return getMaterial(key, () => {
     const commonSurface = commonSurfaceReady;
     let color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
     if (variantSpec) color.multiply(new THREE.Color(...variantSpec.tint));
-    // The texture carries the surface, so the type colour only tints it rather than multiplying it dark.
     if (family) color = new THREE.Color(0xffffff).lerp(color, ROCK_FAMILY_TINT_MIX[def.variant] ?? 0.25);
     const skipRoughNoise = !!commonSurface || !!tpFamily || def.variant === 'crystal' || def.variant === 'ice';
     const rough = skipRoughNoise
@@ -2811,43 +2833,9 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
       : getTexture('noise:astrough', () =>
         makeNoiseTexture({ size: 256, seed: 41, octaves: 4, baseCells: 6, contrast: 1.4, brightness: -0.05 }));
 
-    // Procedural surfaces only. (The generated ore_*_hero.jpg assets are LABELLED contact-sheet
-    // references — multiple views + caption text — and were being emissive-mapped onto crystals, so
-    // valuable rocks literally glowed reference text. Valuable ores still pop via emissive colour +
-    // the crystal shards added in buildAsteroid.)
-    let eiBoost = def.ei;
-    const t = (typeId || '').toLowerCase();
-    if (t.includes('luminite') || t.includes('crystal') || def.variant === 'crystal') eiBoost = Math.max(eiBoost, 0.9);
-    else if (t.includes('xenium') || t.includes('exotic') || def.variant === 'exotic') eiBoost = Math.max(eiBoost, 0.75);
-
-    if (def.variant === 'ice') {
-      // LOOK-04 (owner 2026-11-13: "why do they wash out white like that?"): ordinary world ice was a see-through,
-      // mirror-smooth, clear-coated body reflecting the environment at full strength — on screen a pale blue-white
-      // blob brighter than any ship, sorted as a transparent with depthWrite off. Ice is now stylised and opaque: a
-      // cool blue-grey stone with a satin sheen and a faint cold glow, so it reads as ice beside tan rock, sits in the
-      // terrain value band (bible LOOK §3: terrain 25–50 lit) and draws as an ordinary opaque rock.
-      const iceColor = color.clone().lerp(new THREE.Color('#5d8aa6'), 0.55);
-      const hasCanvas = typeof document !== 'undefined';
-      const iceRough = hasCanvas
-        ? getTexture('ast:icerough', () =>
-          makeNoiseTexture({ size: 256, seed: 73, octaves: 4, baseCells: 5, contrast: 1.5, brightness: 0.14 }))
-        : null;
-      const iceNormal = hasCanvas ? getTexture('ast:icenormal', makeIceNormalTexture) : null;
-      const material = new THREE.MeshStandardMaterial({
-        color: iceColor,
-        normalMap: iceNormal,
-        normalScale: new THREE.Vector2(0.55, 0.55),
-        roughnessMap: iceRough,
-        roughness: 0.48,
-        metalness: 0.0,
-        vertexColors: true,
-        emissive: new THREE.Color(def.emissive || '#2a5f80'),
-        emissiveIntensity: Math.min(eiBoost, 0.10),
-        envMapIntensity: 0.55,
-        fog: true,
-      });
-      return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
-    }
+    // Keep host rock bodies non-emissive when using triplanar surfacing: crystals and exotic seams
+    // glow through their dedicated shard meshes and fissure masks, never as a whole-body neon lamp.
+    const eiBoost = tpFamily ? 0 : def.ei;
 
     const material = new THREE.MeshStandardMaterial({
       color,
@@ -2865,8 +2853,7 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
         || (def.variant === 'crystal' ? null : rough),
       metalnessMap: commonSurface && commonSurface.orm || null,
       vertexColors: !!commonSurface,
-      emissive: new THREE.Color(def.emissive),
-      // A glow map confines the glow to the crystals / veins, so the intensity is lifted to keep them readable.
+      emissive: new THREE.Color(tpFamily ? 0x000000 : def.emissive),
       emissiveIntensity: family && family.emissive ? Math.min(3.2, eiBoost * ROCK_FAMILY_EMISSIVE_LIFT) : eiBoost,
       flatShading: def.flat,
     });
@@ -2880,10 +2867,6 @@ function astMaterial(typeId, def, tint, variantIdx = 0) {
     // which is exactly the order the shared family is built for — the Look's governor, rim and
     // rock fill keep working on top of the substance surface.
     if (tpFamily) installTriplanarRock(material, tpFamily);
-    // Non-common rocks built before their family maps decode keep the procedural tint/noise
-    // material. Tag them so the family-ready continuation can re-material them onto the decoded
-    // maps; without this an old rock sits on the poorer surface AND on a program the family
-    // warm never links, so its first draw pays the whole illustrated-surface link in flight.
     if (!family && !tpFamily && typeId !== 'ast_common_rock' && def.variant !== 'ice') {
       material.userData = {
         ...(material.userData || {}),
@@ -2999,24 +2982,64 @@ function pickUniqueAsteroidFaces(geo, count, rnd) {
   return chosen;
 }
 
+function buildCrystalShardMaterial(key, colorHex, emissiveHex, emissiveIntensity, metalness = 0.12) {
+  return getMaterial(key, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: new THREE.Color(colorHex),
+    roughness: 0.14,
+    metalness,
+    emissive: new THREE.Color(emissiveHex),
+    emissiveIntensity,
+    envMapIntensity: 1.45,
+    flatShading: true,
+  }), SHARED_MATERIAL_ROLE.ROCK));
+}
+
+function pickCrystalClusterFaces(geo, count, rnd) {
+  const pos = geo.getAttribute('position');
+  const idx = geo.getIndex();
+  const faceCount = Math.floor((idx ? idx.count : (pos ? pos.count : 0)) / 3);
+  if (faceCount <= 0) return [];
+  // Prefer distinct azimuth sectors with upward/equatorial facing so crystal clusters always read
+  // cleanly from the top-down gameplay camera as well as when tumbling.
+  const chosen = [];
+  const used = new Set();
+  const baseYaw = rnd() * Math.PI * 2;
+  for (let slot = 0; slot < count; slot++) {
+    const targetYaw = baseYaw + (slot * (Math.PI * 2)) / count;
+    const tx = Math.cos(targetYaw), tz = Math.sin(targetYaw);
+    let bestFace = -1, bestScore = -Infinity;
+    for (let k = 0; k < 28; k++) {
+      const f = Math.floor(rnd() * faceCount);
+      if (used.has(f)) continue;
+      sampleAsteroidSurfaceFace(geo, f);
+      const horiz = _astNormal.x * tx + _astNormal.z * tz;
+      const upBias = slot < 2 ? _astNormal.y * 1.1 : _astNormal.y * 0.45;
+      const score = horiz + upBias;
+      if (score > bestScore) { bestScore = score; bestFace = f; }
+    }
+    if (bestFace >= 0) { used.add(bestFace); chosen.push(bestFace); }
+  }
+  return chosen;
+}
+
 function buildAsteroid(e) {
   const R = e.radius || 12;
   const typeId = canonicalAstTypeId(e.data && e.data.typeId);
   const def = AST_TYPE[typeId] || AST_TYPE.ast_common_rock;
   const tint = e.data && e.data.tint; // optional sector tint override
+  const substance = e.data && e.data.substance;
+  const envMaterial = e.data && e.data.material;
   const variantIdx = hashId(e.id) % 5; // 5 displacement variants per type
   // Optic lattice cells are tinted asteroids — they ride this same constructor but wear a
-  // dedicated skin (opticCellPresentation.js): matte rock / mirror / clear prism / burned
-  // prism instead of the shared sector-material flat tint.
+  // dedicated skin (opticCellPresentation.js): matte rock / forged iron reflector / clear prism.
   const opticKind = opticCellKindOf(e);
   const geo = (opticKind && opticCellGeometry(opticKind)) || astDisplacedGeometry(typeId, def, variantIdx);
   const mesh = new THREE.Mesh(geo,
-    opticKind ? opticCellBodyMaterial(opticKind, variantIdx) : astMaterial(typeId, def, tint, variantIdx));
+    opticKind
+      ? opticCellBodyMaterial(opticKind, variantIdx)
+      : astMaterial(typeId, def, tint, variantIdx, substance, envMaterial));
   mesh.scale.setScalar(R);
-  // GR-2: large asteroids are shadow receivers (and casters). A ship mining an asteroid should see
-  // its shadow drape across the rock's sunlit side, and the asteroid's own shadow should fall on the
-  // station pad when nearby. Both castShadow and receiveShadow engage the renderer's auto-gated
-  // shadow system (renderer._syncShadowMapEnabled flips the map on only when receivers exist).
+  // GR-2: large asteroids are shadow receivers (and casters).
   mesh.castShadow = true;
   mesh.receiveShadow = true;
 
@@ -3025,53 +3048,94 @@ function buildAsteroid(e) {
   g.userData.asteroidBody = mesh;
   mesh.userData.animated = true;
   g.userData.animated = true;
-  // Every opaque body leaf is an instance-pool candidate now — the pool's keyed buckets
-  // group by the exact shared (geometry, material) pair. Untinted common rocks keep the
-  // dedicated variant chunks via the leaf stamps below.
   g.userData.asteroidInstanceBody = mesh;
-  if (typeId === 'ast_common_rock' && tint == null) {
+  if (typeId === 'ast_common_rock' && !resolveCommonRockTriplanar(tint, substance, envMaterial)) {
     mesh.userData.asteroidInstanceTypeId = 'ast_common_rock';
     mesh.userData.asteroidInstanceVariant = variantIdx;
   }
-  // Optic cells wear their own detail language — neon ore shards, gas hulls and glowing
-  // veins would fight the matte-rock / mirror / prism read (and veins mean "mineral
-  // wealth", which an optic stone is not).
-  if (!opticKind && def.variant === 'crystal') {
+  // Glossy faceted crystal clusters & exotic mineral blades erupting from rough dark host stone.
+  if (!opticKind && (def.variant === 'crystal' || def.variant === 'exotic')) {
     const rnd = mulberryLite(hashId(e.id));
-    const shardMat = emissiveMaterial('#c878ff', 1.1, SHARED_MATERIAL_ROLE.ROCK);
-    const shardFaces = pickUniqueAsteroidFaces(geo, 6, rnd);
-    for (let i = 0; i < shardFaces.length; i++) {
-      const shard = new THREE.Mesh(getGeometry('ast:shard', () => new THREE.OctahedronGeometry(0.18, 0)), shardMat);
-      sampleAsteroidSurfaceFace(geo, shardFaces[i]);
-      const baseScale = 0.55 + rnd() * 0.45;
-      // Seat each crystal spire into its displaced facet so it sprouts outward from the surface.
-      shard.position.copy(_astCenter).addScaledVector(_astNormal, -0.03 * baseScale).multiplyScalar(R);
-      shard.quaternion.setFromUnitVectors(_astUp, _astNormal);
-      shard.rotateX((rnd() - 0.5) * 0.45);
-      shard.rotateZ((rnd() - 0.5) * 0.45);
-      shard.scale.set(R * baseScale, R * baseScale * 1.45, R * baseScale);
-      shard.userData.spacefaceTags = { greeble: true };
-      shard.userData.asteroidInstanceDetail = true;
-      g.add(shard);
+    const isExotic = def.variant === 'exotic';
+    const shardMat = isExotic
+      ? buildCrystalShardMaterial('ast:exotic_shard', 0xd82e86, 0xa41c60, 0.62, 0.25)
+      : buildCrystalShardMaterial('ast:crystal_shard', 0x864cf4, 0x6226d6, 0.58, 0.12);
+    const clusterCount = 3;
+    const perCluster = isExotic ? 3 : 4;
+    const anchorFaces = pickCrystalClusterFaces(geo, clusterCount, rnd);
+    const shardGeo = getGeometry('ast:shard', () => new THREE.OctahedronGeometry(0.18, 0));
+    const _clusterOffset = new THREE.Vector3();
+    for (let c = 0; c < anchorFaces.length; c++) {
+      sampleAsteroidSurfaceFace(geo, anchorFaces[c]);
+      const cx = _astCenter.x, cy = _astCenter.y, cz = _astCenter.z;
+      const nx = _astNormal.x, ny = _astNormal.y, nz = _astNormal.z;
+      const tx = _astTangent.x, ty = _astTangent.y, tz = _astTangent.z;
+      const bx = _astBitangent.x, by = _astBitangent.y, bz = _astBitangent.z;
+      for (let j = 0; j < perCluster; j++) {
+        const shard = new THREE.Mesh(shardGeo, shardMat);
+        const lead = j === 0;
+        const baseScale = lead
+          ? ((isExotic ? 0.92 : 1.02) + rnd() * 0.32)
+          : ((isExotic ? 0.55 : 0.62) + rnd() * 0.36);
+        const spread = lead ? 0 : (0.07 + rnd() * 0.08);
+        const ang = (j * 2.15) + rnd() * 0.8;
+        _clusterOffset.set(
+          tx * Math.cos(ang) * spread + bx * Math.sin(ang) * spread,
+          ty * Math.cos(ang) * spread + by * Math.sin(ang) * spread,
+          tz * Math.cos(ang) * spread + bz * Math.sin(ang) * spread,
+        );
+        // Seat each faceted crystal prism deep into the host fracture crevice so clusters erupt organically.
+        shard.position.set(cx, cy, cz)
+          .add(_clusterOffset)
+          .addScaledVector(_astNormal.set(nx, ny, nz), -0.04 * baseScale)
+          .multiplyScalar(R);
+        shard.quaternion.setFromUnitVectors(_astUp, _astNormal);
+        const splay = lead ? 0.22 : 0.58;
+        shard.rotateX((rnd() - 0.5) * splay);
+        shard.rotateZ((rnd() - 0.5) * splay);
+        shard.scale.set(
+          R * baseScale * (isExotic ? 0.68 : 0.86),
+          R * baseScale * (isExotic ? 2.05 : 1.78),
+          R * baseScale * (isExotic ? 0.68 : 0.86),
+        );
+        shard.userData.spacefaceTags = { greeble: true };
+        shard.userData.asteroidInstanceDetail = true;
+        g.add(shard);
+      }
     }
   } else if (!opticKind && def.variant === 'gas') {
+    // Subtle craggy volatile vapor clinging tightly to the porous core (never a geometric bubble).
+    const shroudGeo = getGeometry('ast:gas_shroud', () => {
+      const s = new THREE.IcosahedronGeometry(1, 2);
+      const p = s.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < p.count; i++) {
+        v.fromBufferAttribute(p, i).normalize();
+        const r = geologyFamilySilhouette(v.x, v.y, v.z, 'gas', 0) * 0.55 + 0.45;
+        v.multiplyScalar(r);
+        p.setXYZ(i, v.x, v.y, v.z);
+      }
+      s.computeVertexNormals();
+      s.computeBoundingSphere();
+      return s;
+    });
     const hull = new THREE.Mesh(
-      geo,
+      shroudGeo,
       getMaterial('ast:gashull', () => {
         const material = new THREE.MeshPhysicalMaterial({
-          color: new THREE.Color('#2d6a52'),
-          roughness: 0.42,
+          color: new THREE.Color('#275f4c'),
+          roughness: 0.85,
           metalness: 0,
           transmission: 0.88,
           ior: 1.04,
-          thickness: 3.6,
+          thickness: 2.0,
           attenuationColor: new THREE.Color('#3dff9a'),
           attenuationDistance: 2.1,
-          emissive: new THREE.Color('#10a060'),
-          emissiveIntensity: 0.28,
+          emissive: new THREE.Color('#127a52'),
+          emissiveIntensity: 0.14,
           transparent: true,
           depthWrite: false,
-          side: THREE.DoubleSide,
+          side: THREE.FrontSide,
           fog: true,
         });
         material.userData.spacefaceTransmissionBudget = {
@@ -3080,11 +3144,11 @@ function buildAsteroid(e) {
             transparent: material.transparent, depthWrite: material.depthWrite },
         };
         material.transmission = 0;
-        material.opacity = Math.min(material.opacity, 0.70);
+        material.opacity = 0.16;
         return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
       }),
     );
-    hull.scale.setScalar(R * 1.22);
+    hull.scale.setScalar(R * 1.07);
     hull.userData.spacefaceTags = { greeble: true };
     g.add(hull);
   }
@@ -4982,7 +5046,15 @@ export function asteroidPoolWarmResources() {
       resources.push({
         key: 'd:shard',
         geometry: getGeometry('ast:shard', () => new THREE.OctahedronGeometry(0.18, 0)),
-        material: emissiveMaterial('#c878ff', 1.1, SHARED_MATERIAL_ROLE.ROCK),
+        material: buildCrystalShardMaterial('ast:crystal_shard', 0x864cf4, 0x6226d6, 0.58, 0.12),
+        castShadow: false,
+        receiveShadow: false,
+      });
+    } else if (def.variant === 'exotic') {
+      resources.push({
+        key: 'd:exotic_shard',
+        geometry: getGeometry('ast:shard', () => new THREE.OctahedronGeometry(0.18, 0)),
+        material: buildCrystalShardMaterial('ast:exotic_shard', 0xd82e86, 0xa41c60, 0.62, 0.25),
         castShadow: false,
         receiveShadow: false,
       });
@@ -5017,14 +5089,15 @@ export function asteroidPoolCensusKeys(entity) {
     return keys;
   }
   const typeId = canonicalAstTypeId(data.typeId);
-  if (typeId === 'ast_common_rock' && data.tint == null) return keys;
+  if (typeId === 'ast_common_rock' && !resolveCommonRockTriplanar(data.tint, data.substance, data.material)) return keys;
   const def = AST_TYPE[typeId] || AST_TYPE.ast_common_rock;
   keys.push(`b:${typeId}:${variant}`);
   if (def.veinColor) {
     const veinCount = def.variant === 'crystal' || def.variant === 'exotic' ? 5 : 3;
     for (let i = 0; i < veinCount; i++) keys.push(`v:${def.veinColor}`);
   }
-  if (def.variant === 'crystal') for (let i = 0; i < 6; i++) keys.push('d:shard');
+  if (def.variant === 'crystal') for (let i = 0; i < 12; i++) keys.push('d:shard');
+  if (def.variant === 'exotic') for (let i = 0; i < 9; i++) keys.push('d:exotic_shard');
   return keys;
 }
 
