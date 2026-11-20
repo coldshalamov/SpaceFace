@@ -54,6 +54,7 @@ import { SWARM_MAW_OFFCUT, SWARM_MAW_OFFCUT_TAG } from '../data/swarmMawOffcut.j
 import { swarmOpeningTerrainStage, planSwarmOpeningTerrain } from '../data/swarmOpeningTerrain.js';
 import { swarmFloorKeepClear } from '../data/swarmFloor.js';
 import { mulberry32 } from '../core/rng.js';
+import { finiteWholePickupAmount } from '../core/pickupAcceptance.js';
 import { clearanceFootprint, swarmPlacementIsClear, sweptDiscsOverlap } from './swarmSafety.js';
 import { markFieldRockAtRest } from './spawnClearance.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
@@ -1980,14 +1981,23 @@ export const swarmArena = {
   /**
    * The ore ledger: collection is physics-contact truth (`pickup:collected`), the pay
    * rides the run's own award seam. Same collector gate as the supply pod — a drone or
-   * NPC scoop consumes the chunk but never pays the pilot's wallet. Claims follow the
+   * NPC scoop never pays the pilot's wallet, and the refusal it stamps on the receipt
+   * leaves the chunk alive on the field instead of eating it. Claims follow the
    * live pickup so neither expiry nor a delayed destruction can affect a recycled ID.
    */
   _onPickupCollected(payload) {
     if (payload?.pickupId == null || (payload.kind != null && payload.kind !== MILL_ORE_KIND)) return;
     const pickup = this.state?.entities?.get(payload.pickupId);
-    if (!pickup || !this._millOres?.delete(pickup)) return;
+    if (!pickup || !this._millOres?.has(pickup)) return;
+    // Refuse on the receipt before the ledger is spent: every physical collector resolves
+    // acceptance off this same payload, so a wrong collector's touch leaves the chunk for
+    // the pilot. The chunk's worth is also its physical quantity, so the stamps speak in credits.
+    payload.acceptedAmount = 0;
+    payload.rejectedAmount = finiteWholePickupAmount(MILL_ORE_CREDITS);
     if (payload.collectorId != null && payload.collectorId !== this.state.playerId) return;
+    this._millOres.delete(pickup);
+    payload.acceptedAmount = payload.rejectedAmount;
+    payload.rejectedAmount = 0;
     this._emit('run:awardRequested', { credits: MILL_ORE_CREDITS, reason: 'swarm:millOre' });
   },
 

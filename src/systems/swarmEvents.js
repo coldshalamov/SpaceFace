@@ -21,6 +21,7 @@
 // mine caps and the teardown on rearm/ended are inherited, not re-declared.
 
 import { mulberry32 } from '../core/rng.js';
+import { finiteWholePickupAmount } from '../core/pickupAcceptance.js';
 import { gateBearing } from './waveMaterialization.js';
 import { swarmEventFor, swarmMinorEventFor, SWARM_EVENT_BY_ID } from '../data/swarmEvents.js';
 
@@ -337,10 +338,18 @@ export function createSwarmEventDirector(ctx) {
       const id = payload && payload.pickupId;
       if (id == null || !this._pods.has(id)) return;
       const credits = this._pods.get(id);
-      this._pods.delete(id);
-      // Same collector gate as the repair cell: NPC/drone collection consumes the pod but
-      // never pays the player's wallet (the publishers disagree on shape, so absent still claims).
+      // Refuse on the receipt before anything is spent: every physical collector resolves
+      // acceptance off this same payload, so a wrong collector's touch leaves the pod alive
+      // on the field for the pilot instead of voiding pod and credits in one contact.
+      // The pod's worth is also its physical quantity, so the stamps speak in credits.
+      payload.acceptedAmount = 0;
+      payload.rejectedAmount = finiteWholePickupAmount(credits);
+      // Same collector gate as the repair cell: NPC/drone collection never pays the player's
+      // wallet (the publishers disagree on shape, so absent still claims).
       if (payload.collectorId != null && this._state && payload.collectorId !== this._state.playerId) return;
+      this._pods.delete(id);
+      payload.acceptedAmount = payload.rejectedAmount;
+      payload.rejectedAmount = 0;
       // The run wallet takes the pod's stamped worth — award is the only credits write path.
       // Supply events finish the same tick they spend (windowS 0), so _live is already gone
       // at collect time; the pod's own ledger entry is the truth.
