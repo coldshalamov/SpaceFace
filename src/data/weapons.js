@@ -480,6 +480,25 @@ const SHIPPED_WEAPONS = [
     sentence: 'Flies out, carves back through you — a hit on each pass.',
     swarmReason: 'The bolt comes back; whatever stands in the return path eats it.',
   },
+  {
+    // THE TUMBLER — 03_COMBAT.md §10; the owner: "that long-distance gravity blast laser thing that
+    // shoots pretty far away and doesn't do any damage but it sends them tumbling… end over end and
+    // they do get damage when they smash into an object or crash into a black hole — like Mortal
+    // Kombat trying to use the stage as a weapon." Trick family. Zero damage: the payload is a
+    // long, fast gravity bolt whose impulse knocks a light hull loose (the universal hitstun law
+    // turns that delta-v into helm loss and the §7 tumble) and sends it along the beam; the kill is
+    // whatever it hits, which the collision law credits to the shooter. Rocks take it too.
+    id: 'wpn_tumbler_m', name: 'Tumbler', slotType: 'weapon', size: 'M', tier: 3, mass: 8, price: 34000,
+    requiresTech: 'tech_graviton_drives',
+    // dmg 1 is a token so every live hit path routes the packet; the impulse is the payload.
+    dmg: 1, rof: 0.6, dps: 0.6, damageType: 'kinetic', energyCost: 16, pureImpulse: true,
+    projSpeed: 1400, range: 1300, tracking: 'fixed', spreadDeg: 0.2,
+    heatPerShot: 30, heatMax: 100, heatDissip: 22,
+    impulsePerHit: 1500, environmentImpulsePerHit: 2600, tumbleTorque: 140, impulseProvenance: 'tumbler_gravity_bolt',
+    recoilImpulse: 90,
+    sentence: 'A long gravity bolt: no damage, it sends them tumbling into whatever is behind them.',
+    swarmReason: 'Knock them end over end into the rocks — the room does the killing.',
+  },
   ...EMERGENT_WEAPON_DEFS,
 ];
 

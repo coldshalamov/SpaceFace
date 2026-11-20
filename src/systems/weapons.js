@@ -3703,6 +3703,7 @@ export function buildWeaponDamagePacket(w, def, damage, damageType, pos = null) 
     impulsePerHit: w.impulsePerHit != null ? w.impulsePerHit : def.impulsePerHit,
     tumbleTorque: w.tumbleTorque != null ? w.tumbleTorque : def.tumbleTorque,
     impulseProvenance: w.impulseProvenance || def.impulseProvenance,
+    pureImpulse: (w.pureImpulse ?? def.pureImpulse) === true,   // 03 §10 the Tumbler: no damage, full kick
   };
   const impulseIdentity = applicationEnabled ? resolveWeaponImpulseForHit(effective, damage) : null;
   const packet = scalarHitToDamagePacket({

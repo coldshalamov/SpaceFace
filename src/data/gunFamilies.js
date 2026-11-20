@@ -132,6 +132,7 @@ export const GUN_FAMILY_BY_WEAPON_ID = Object.freeze({
   // ── Trick: none or little damage, special — the outcome is not on the damage/kick axes.
   wpn_snarl_s: 'trick',            // the ion webcaster: catch, not kill.
   wpn_gravity_marker_s: 'trick',   // marks a hull so wells grip it harder.
+  wpn_tumbler_m: 'trick',          // 03 §10 the Tumbler: zero damage, sends them tumbling into the room.
   wpn_momentum_sink_s: 'trick',    // latch/slingshot setup ping.
   wpn_inertial_shunt_s: 'trick',   // the ram plate; the contact is the hit.
   wpn_gravity_well_m: 'trick',     // a sustained pull, never a detonation.

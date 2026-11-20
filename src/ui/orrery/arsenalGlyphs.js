@@ -24,6 +24,8 @@ const raw = {
   shunt: [P('M3 5H8L13 12 8 19H3L8 12Z M14 5 20 12 14 19 M20 3V8 M20 16V21')],
   'vector-mine': [C(12,12,4), P('M12 2V6 M12 18V22 M2 12H6 M18 12H22 M8 4 12 2 16 4 M20 8 22 12 20 16 M8 20 12 22 16 20 M4 8 2 12 4 16')],
   carom: [P('M4 19 11 12 4 5 M11 12 18 19 M11 12 18 5'), C(18,12,2)],
+  // The Tumbler: a long bolt into a body that spins end over end.
+  tumble: [P('M2 12H10'), P('M16 6A6 6 0 1 1 11 15'), P('M11 15 14 16 13 13')],
   swarm: [P('M5 19V9L7 5 9 9V19Z M11 19V9L13 5 15 9V19Z M17 19V9L19 5 21 9V19Z M3 22H9 M11 22H17 M17 22H23')],
   // The plasma fan is a WEAPON (a spread of bolts); the Rig's forward plow below keeps `cone`. They were
   // both literally `cone`, the later literal silently replaced the earlier, and two different jobs

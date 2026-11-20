@@ -330,7 +330,8 @@ export function resolveWeaponImpulseForHit(weapon, damage) {
   if (!weapon || typeof weapon !== 'object') return null;
   const authoredDamage = positive(weapon.dmg, 0);
   const actualDamage = nonNegative(damage);
-  const fraction = authoredDamage > 0 ? clamp(actualDamage / authoredDamage, 0, 4) : 0;
+  // A pure-kick gun (the Tumbler, 03 §10) authors no damage: a landed hit carries its full impulse.
+  const fraction = authoredDamage > 0 ? clamp(actualDamage / authoredDamage, 0, 4) : (weapon.pureImpulse === true ? 1 : 0);
   const magnitude = nonNegative(weapon.impulsePerHit) * fraction;
   const tumbleTorque = nonNegative(weapon.tumbleTorque) * fraction;
   const provenance = stableTag(weapon.impulseProvenance);
