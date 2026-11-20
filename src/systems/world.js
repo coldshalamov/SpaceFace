@@ -1403,7 +1403,7 @@ export const world = {
       // The sky has a sector identity, but entering it cannot activate campaign listeners.
       state.world.sectors[sectorId] = { ...sector, owner: sector.factionId };
       state.world.swarmArenaOnly = true;
-      this.bus.emit('swarm:arenaEntered', { sectorId, enterEpoch: producerEpoch });
+      this.bus.emit('swarm:arenaEntered', { sectorId, enterEpoch: producerEpoch, arenaId: state.run?.arenaId ?? null });
       return superseded() ? null : active;
     }
     this._flushPendingSpawns(sectorId, sector);
