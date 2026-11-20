@@ -1,14 +1,14 @@
 {
   "builder": "tools/blender/build_wreck_aftermath_pack.py",
-  "builderSha256": "0355979276a22e78b0859052d7e67d089c782e7c64bcd501cbafe923ede5ae73",
+  "builderSha256": "8ad7a00a218d6c809aaad29b378931513e5e9d7a3091e09c7f8b6aa936600b03",
   "blender": "5.1.2",
   "command": "blender --background --factory-startup --python tools/blender/build_wreck_aftermath_pack.py -- --render --distances --sheets --silhouettes --states --gaps --compositions",
   "fiction": "design/fiction/THE_LONG_AFTERMATH.md",
   "audit": "assets/incubator/wreck_aftermath_pack/evidence/EXISTING_COVERAGE.md",
   "sourceOnly": true,
   "rng": "none - every dimension, break, drift and state is authored",
-  "playerHullM": 28.0,
-  "minGapClearRadiusM": 20.0,
+  "playerHullM": 28,
+  "minGapClearRadiusM": 20,
   "assets": [
     {
       "id": "wreck_ore_freighter_bow",
@@ -28,14 +28,14 @@
         70.12
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         58.89,
-        0.0,
-        0.0
+        0,
+        0
       ],
       "sockets": [
         "INTERACTION_RibcageGap",
@@ -53,14 +53,14 @@
           "name": "INTERACTION_RibcageGap",
           "atM": [
             -19.1,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "clearRadiusM": 24.22,
           "nearest": "woundFore_t_tear5",
           "clearSpanM": 48.45,
-          "playerHullM": 28.0,
-          "requiredRadiusM": 20.0,
+          "playerHullM": 28,
+          "requiredRadiusM": 20,
           "pass": true
         }
       ],
@@ -87,14 +87,14 @@
       "generator": "Khronos glTF Blender I/O v5.1.20",
       "tris": 22360,
       "sizeM": [
-        145.0,
+        145,
         64.88,
         62.73
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -81.9,
@@ -110,16 +110,16 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          -34.0,
-          -19.0,
-          7.0
+          -34,
+          -19,
+          7
         ],
         "tumbleAxis": [
           0.201,
           -0.301,
           0.932
         ],
-        "tumbleDeg": 24.0,
+        "tumbleDeg": 24,
         "driftDistanceM": 39.57,
         "note": "the drive end took the momentum; it backs away from the break"
       },
@@ -129,7 +129,7 @@
         "kind": "compound-box",
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
-          145.0,
+          145,
           64.88,
           62.73
         ]
@@ -148,14 +148,14 @@
       "generator": "Khronos glTF Blender I/O v5.1.20",
       "tris": 5744,
       "sizeM": [
-        49.0,
+        49,
         47.13,
         25.44
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         63.7,
@@ -174,7 +174,7 @@
         "kind": "compound-box",
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
-          49.0,
+          49,
           47.13,
           25.44
         ]
@@ -194,13 +194,13 @@
       "tris": 304,
       "sizeM": [
         10.14,
-        53.0,
+        53,
         51.85
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         0.52,
@@ -218,7 +218,7 @@
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
           10.14,
-          53.0,
+          53,
           51.85
         ]
       }
@@ -241,9 +241,9 @@
         30.57
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         42.97,
@@ -284,14 +284,14 @@
         9.88
       ],
       "centredResidualM": [
-        -0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -34.04,
         0.01,
-        -0.0
+        0
       ],
       "sockets": [],
       "socketsMissing": [],
@@ -327,13 +327,13 @@
         30.91
       ],
       "centredResidualM": [
-        -0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         18.37,
-        0.0,
+        0,
         2.38
       ],
       "sockets": [
@@ -346,16 +346,16 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          16.0,
-          22.0,
-          -4.0
+          16,
+          22,
+          -4
         ],
         "tumbleAxis": [
           0.902,
           0.1,
           0.421
         ],
-        "tumbleDeg": 31.0,
+        "tumbleDeg": 31,
         "driftDistanceM": 27.5,
         "note": "the bow spun away on the forward vector"
       },
@@ -384,18 +384,18 @@
       "generator": "Khronos glTF Blender I/O v5.1.20",
       "tris": 14164,
       "sizeM": [
-        73.0,
+        73,
         49.05,
         43.71
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -42.28,
-        0.0,
+        0,
         6.85
       ],
       "sockets": [
@@ -406,16 +406,16 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          -26.0,
-          -11.0,
-          5.0
+          -26,
+          -11,
+          5
         ],
         "tumbleAxis": [
           -0.301,
           0.501,
           0.812
         ],
-        "tumbleDeg": 18.0,
+        "tumbleDeg": 18,
         "driftDistanceM": 28.67,
         "note": "it fell off the break under the drive's dead momentum"
       },
@@ -425,7 +425,7 @@
         "kind": "compound-box",
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
-          73.0,
+          73,
           49.05,
           43.71
         ]
@@ -444,14 +444,14 @@
       "generator": "Khronos glTF Blender I/O v5.1.20",
       "tris": 4220,
       "sizeM": [
-        16.0,
+        16,
         7.3,
         6.55
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         20.97,
@@ -465,16 +465,16 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          -6.0,
-          30.0,
-          9.0
+          -6,
+          30,
+          9
         ],
         "tumbleAxis": [
           0.398,
           -0.697,
           0.597
         ],
-        "tumbleDeg": 67.0,
+        "tumbleDeg": 67,
         "driftDistanceM": 31.89,
         "note": "it tumbles like the thing that threw it was still exploding"
       },
@@ -484,7 +484,7 @@
         "kind": "compound-box",
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
-          16.0,
+          16,
           7.3,
           6.55
         ]
@@ -508,13 +508,13 @@
         11.4
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -8.84,
-        0.0,
+        0,
         -0.86
       ],
       "sockets": [],
@@ -547,13 +547,13 @@
       "tris": 1422,
       "sizeM": [
         10.43,
-        11.0,
+        11,
         7.15
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        -0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         6.66,
@@ -571,7 +571,7 @@
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
           10.43,
-          11.0,
+          11,
           7.15
         ]
       }
@@ -589,14 +589,14 @@
       "generator": "Khronos glTF Blender I/O v5.1.20",
       "tris": 8750,
       "sizeM": [
-        87.0,
+        87,
         80.99,
-        50.0
+        50
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -50.81,
@@ -618,14 +618,14 @@
           "name": "INTERACTION_DrumBore",
           "atM": [
             -0.3,
-            0.0,
+            0,
             -0.6
           ],
           "clearRadiusM": 22.05,
           "nearest": "Drum",
           "clearSpanM": 44.11,
-          "playerHullM": 28.0,
-          "requiredRadiusM": 20.0,
+          "playerHullM": 28,
+          "requiredRadiusM": 20,
           "pass": true
         }
       ],
@@ -633,9 +633,9 @@
         "kind": "compound-box",
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
-          87.0,
+          87,
           80.99,
-          50.0
+          50
         ]
       }
     },
@@ -652,14 +652,14 @@
       "generator": "Khronos glTF Blender I/O v5.1.20",
       "tris": 10052,
       "sizeM": [
-        69.0,
+        69,
         68.11,
         39.69
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         34.17,
@@ -674,16 +674,16 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          30.0,
-          14.0,
-          -6.0
+          30,
+          14,
+          -6
         ],
         "tumbleAxis": [
           0.14,
           0.361,
           0.922
         ],
-        "tumbleDeg": 21.0,
+        "tumbleDeg": 21,
         "driftDistanceM": 33.65,
         "note": "barely tumbled: it parted cleanly and kept the ship attitude"
       },
@@ -693,7 +693,7 @@
         "kind": "compound-box",
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
-          69.0,
+          69,
           68.11,
           39.69
         ]
@@ -717,9 +717,9 @@
         32.62
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         9.33,
@@ -760,12 +760,12 @@
       "sizeM": [
         16.14,
         27.12,
-        29.0
+        29
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -40.64,
@@ -784,7 +784,7 @@
         "aabbM": [
           16.14,
           27.12,
-          29.0
+          29
         ]
       }
     },
@@ -802,13 +802,13 @@
       "tris": 2132,
       "sizeM": [
         8.62,
-        18.0,
+        18,
         13.07
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -26.23,
@@ -826,7 +826,7 @@
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
           8.62,
-          18.0,
+          18,
           13.07
         ]
       }
@@ -845,17 +845,17 @@
       "tris": 9838,
       "sizeM": [
         19.19,
-        25.0,
+        25,
         14.85
       ],
       "centredResidualM": [
-        -0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -50.33,
-        0.0,
+        0,
         -0.05
       ],
       "sockets": [
@@ -872,7 +872,7 @@
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
           19.19,
-          25.0,
+          25,
           14.85
         ]
       }
@@ -890,18 +890,18 @@
       "generator": "Khronos glTF Blender I/O v5.1.20",
       "tris": 4848,
       "sizeM": [
-        28.0,
+        28,
         5.33,
-        7.0
+        7
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -0.15,
-        0.0,
+        0,
         3.13
       ],
       "sockets": [
@@ -916,9 +916,9 @@
         "kind": "box",
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
-          28.0,
+          28,
           5.33,
-          7.0
+          7
         ]
       }
     },
@@ -940,9 +940,9 @@
         14.77
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         7.3,
@@ -982,16 +982,16 @@
       "sizeM": [
         12.5,
         15.63,
-        21.0
+        21
       ],
       "centredResidualM": [
-        -0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -41.83,
-        0.0,
+        0,
         8.36
       ],
       "sockets": [
@@ -1009,7 +1009,7 @@
         "aabbM": [
           12.5,
           15.63,
-          21.0
+          21
         ]
       }
     },
@@ -1021,14 +1021,14 @@
       "was": "A radiator fin array off the ore barge stern.",
       "reads": "A comb of dark fins \u2014 reads as cooling surface from any angle.",
       "file": "assets/incubator/wreck_aftermath_pack/source/aft_radiator_panel.glb",
-      "sha256": "47556fbc1367076942992cec6adb317b7e1fb0b04d5c55d5511bbb5a7dff6afb",
-      "bytes": 285212,
+      "sha256": "5ff8a3bedd14938bc10e562061d804273022fbaa9257d872448dec00e8e62a30",
+      "bytes": 331840,
       "generator": "Khronos glTF Blender I/O v5.1.20",
-      "tris": 2000,
+      "tris": 2376,
       "sizeM": [
         24.0,
-        4.55,
-        0.9
+        4.46,
+        1.14
       ],
       "centredResidualM": [
         0.0,
@@ -1036,9 +1036,9 @@
         0.0
       ],
       "shipFrameOriginM": [
-        -1.95,
+        -2.16,
         0.0,
-        1.26
+        1.36
       ],
       "sockets": [
         "SOCKET_Salvage_Radiator"
@@ -1053,8 +1053,8 @@
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
           24.0,
-          4.55,
-          0.9
+          4.46,
+          1.14
         ]
       }
     },
@@ -1071,14 +1071,14 @@
       "generator": "Khronos glTF Blender I/O v5.1.20",
       "tris": 1464,
       "sizeM": [
-        17.0,
+        17,
         11.36,
         12.8
       ],
       "centredResidualM": [
-        -0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -4.06,
@@ -1097,7 +1097,7 @@
         "kind": "box",
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
-          17.0,
+          17,
           11.36,
           12.8
         ]
@@ -1121,9 +1121,9 @@
         14.63
       ],
       "centredResidualM": [
-        -0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -16.96,
@@ -1160,13 +1160,13 @@
       "tris": 1118,
       "sizeM": [
         6.92,
-        16.0,
+        16,
         2.5
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         0.89,
@@ -1186,7 +1186,7 @@
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
           6.92,
-          16.0,
+          16,
           2.5
         ]
       }
@@ -1204,14 +1204,14 @@
       "generator": "Khronos glTF Blender I/O v5.1.20",
       "tris": 36,
       "sizeM": [
-        6.0,
+        6,
         3.67,
         2.99
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -0.53,
@@ -1223,17 +1223,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.722,
           0.309,
           0.619
         ],
-        "tumbleDeg": 140.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 140,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1241,7 +1241,7 @@
         "kind": "box",
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
-          6.0,
+          6,
           3.67,
           2.99
         ]
@@ -1261,13 +1261,13 @@
       "tris": 108,
       "sizeM": [
         4.82,
-        6.0,
+        6,
         5.51
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         1.55,
@@ -1279,17 +1279,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.398,
           0.597,
           0.697
         ],
-        "tumbleDeg": 110.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 110,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1298,7 +1298,7 @@
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
           4.82,
-          6.0,
+          6,
           5.51
         ]
       }
@@ -1316,14 +1316,14 @@
       "generator": "Khronos glTF Blender I/O v5.1.20",
       "tris": 172,
       "sizeM": [
-        8.0,
+        8,
         4.46,
-        5.0
+        5
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -0.11,
@@ -1335,17 +1335,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.722,
           0.309,
           0.619
         ],
-        "tumbleDeg": 150.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 150,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1353,9 +1353,9 @@
         "kind": "box",
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
-          8.0,
+          8,
           4.46,
-          5.0
+          5
         ]
       }
     },
@@ -1367,41 +1367,41 @@
       "was": "One bay of deck grating.",
       "reads": "There was a floor here, and therefore people.",
       "file": "assets/incubator/wreck_aftermath_pack/source/frag_grating_sheet.glb",
-      "sha256": "3203e560f21c55722fc9ade6060cccd5b029e80b011f1a37b8feb17fc9c32f1e",
-      "bytes": 73880,
+      "sha256": "80a946be67b7d9528e71e7ad8c012d429aae360d54e0a018d0caa7940578a87f",
+      "bytes": 250248,
       "generator": "Khronos glTF Blender I/O v5.1.20",
-      "tris": 76,
+      "tris": 232,
       "sizeM": [
-        8.0,
-        7.13,
-        7.57
+        7.14,
+        8,
+        4.24
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
-        0.27,
-        -0.37,
-        0.48
+        0,
+        -1.01,
+        -0.33
       ],
       "sockets": [],
       "socketsMissing": [],
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.508,
           0.609,
           0.609
         ],
-        "tumbleDeg": 61.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 61,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1409,9 +1409,9 @@
         "kind": "box",
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
-          8.0,
-          7.13,
-          7.57
+          7.14,
+          8,
+          4.24
         ]
       }
     },
@@ -1428,14 +1428,14 @@
       "generator": "Khronos glTF Blender I/O v5.1.20",
       "tris": 144,
       "sizeM": [
-        5.0,
+        5,
         3.94,
         3.9
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         -0.08,
@@ -1447,17 +1447,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.66,
           0.5,
           0.56
         ],
-        "tumbleDeg": 97.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 97,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1465,7 +1465,7 @@
         "kind": "box",
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
-          5.0,
+          5,
           3.94,
           3.9
         ]
@@ -1484,14 +1484,14 @@
       "generator": "Khronos glTF Blender I/O v5.1.20",
       "tris": 84,
       "sizeM": [
-        11.0,
+        11,
         5.17,
         5.49
       ],
       "centredResidualM": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "shipFrameOriginM": [
         1.04,
@@ -1503,17 +1503,17 @@
       "floatingMarks": [],
       "drift": {
         "offsetM": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ],
         "tumbleAxis": [
           0.42,
           0.68,
           0.6
         ],
-        "tumbleDeg": 133.0,
-        "driftDistanceM": 0.0
+        "tumbleDeg": 133,
+        "driftDistanceM": 0
       },
       "driftNote": null,
       "gaps": [],
@@ -1521,7 +1521,7 @@
         "kind": "box",
         "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
         "aabbM": [
-          11.0,
+          11,
           5.17,
           5.49
         ]
@@ -1559,22 +1559,22 @@
           "name": "INTERACTION_RibcageGap",
           "atM": [
             -19.1,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "clearRadiusM": 24.22,
           "nearest": "woundFore_t_tear5",
           "clearSpanM": 48.45,
-          "playerHullM": 28.0,
-          "requiredRadiusM": 20.0,
+          "playerHullM": 28,
+          "requiredRadiusM": 20,
           "pass": true
         }
       ],
       "drift": null,
       "shipFrameOriginM": [
         58.89,
-        0.0,
-        0.0
+        0,
+        0
       ]
     },
     {
@@ -1609,22 +1609,22 @@
           "name": "INTERACTION_RibcageGap",
           "atM": [
             -19.1,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "clearRadiusM": 24.22,
           "nearest": "woundFore_t_tear5",
           "clearSpanM": 48.45,
-          "playerHullM": 28.0,
-          "requiredRadiusM": 20.0,
+          "playerHullM": 28,
+          "requiredRadiusM": 20,
           "pass": true
         }
       ],
       "drift": null,
       "shipFrameOriginM": [
         58.89,
-        0.0,
-        0.0
+        0,
+        0
       ]
     },
     {
@@ -1641,7 +1641,7 @@
       "generator": "Khronos glTF Blender I/O v5.1.20",
       "tris": 9888,
       "sizeM": [
-        179.0,
+        179,
         69.87,
         69.87
       ],
@@ -1659,22 +1659,22 @@
           "name": "INTERACTION_RibcageGap",
           "atM": [
             -18.8,
-            0.0,
-            0.0
+            0,
+            0
           ],
           "clearRadiusM": 24.02,
           "nearest": "woundFore_t_tear5_xrib49a",
           "clearSpanM": 48.05,
-          "playerHullM": 28.0,
-          "requiredRadiusM": 20.0,
+          "playerHullM": 28,
+          "requiredRadiusM": 20,
           "pass": true
         }
       ],
       "drift": null,
       "shipFrameOriginM": [
         58.38,
-        0.0,
-        0.0
+        0,
+        0
       ]
     },
     {
@@ -1706,22 +1706,22 @@
       "gaps": [],
       "drift": {
         "offsetM": [
-          16.0,
-          22.0,
-          -4.0
+          16,
+          22,
+          -4
         ],
         "tumbleAxis": [
           0.902,
           0.1,
           0.421
         ],
-        "tumbleDeg": 31.0,
+        "tumbleDeg": 31,
         "driftDistanceM": 27.5,
         "note": "the bow spun away on the forward vector"
       },
       "shipFrameOriginM": [
         18.37,
-        0.0,
+        0,
         2.38
       ]
     },
@@ -1739,7 +1739,7 @@
       "generator": "Khronos glTF Blender I/O v5.1.20",
       "tris": 9300,
       "sizeM": [
-        89.0,
+        89,
         52.96,
         30.85
       ],
@@ -1754,22 +1754,22 @@
       "gaps": [],
       "drift": {
         "offsetM": [
-          16.0,
-          22.0,
-          -4.0
+          16,
+          22,
+          -4
         ],
         "tumbleAxis": [
           0.902,
           0.1,
           0.421
         ],
-        "tumbleDeg": 31.0,
+        "tumbleDeg": 31,
         "driftDistanceM": 27.5,
         "note": "the bow spun away on the forward vector"
       },
       "shipFrameOriginM": [
         18.44,
-        0.0,
+        0,
         2.01
       ]
     },
@@ -1804,14 +1804,14 @@
           "name": "INTERACTION_DrumBore",
           "atM": [
             -0.3,
-            0.0,
+            0,
             -0.6
           ],
           "clearRadiusM": 20.19,
           "nearest": "Drum",
           "clearSpanM": 40.38,
-          "playerHullM": 28.0,
-          "requiredRadiusM": 20.0,
+          "playerHullM": 28,
+          "requiredRadiusM": 20,
           "pass": true
         }
       ],
@@ -1836,9 +1836,9 @@
       "generator": "Khronos glTF Blender I/O v5.1.20",
       "tris": 8750,
       "sizeM": [
-        87.0,
+        87,
         80.99,
-        50.0
+        50
       ],
       "sockets": [
         "INTERACTION_DrumBore",
@@ -1853,14 +1853,14 @@
           "name": "INTERACTION_DrumBore",
           "atM": [
             -0.3,
-            0.0,
+            0,
             -0.6
           ],
           "clearRadiusM": 22.05,
           "nearest": "Drum",
           "clearSpanM": 44.11,
-          "playerHullM": 28.0,
-          "requiredRadiusM": 20.0,
+          "playerHullM": 28,
+          "requiredRadiusM": 20,
           "pass": true
         }
       ],

@@ -1,0 +1,19 @@
+{
+  "schema": "spaceface.generatedArt.v1",
+  "generator": "Codex built-in ImageGen",
+  "date": "2026-11-18",
+  "prompt": "Create a single wide landscape, purely pictorial backdrop texture for the full-screen navigation atlas in the original industrial spacefaring game SpaceFace. 3:2 or wider. A late-nineteenth-century astronomical lithograph reimagined as a matte dark instrument chart. Fine ink stipple and high-craft hand-engraved dust tendrils through midnight blue-grey and charcoal slate, a few muted copper and cool sea-grey traces of distant galactic dust. Barely lit and low contrast but certainly textured; good detail for a player who spends time looking closely. The composition is mostly even open dark space with broad, organic, subtly differentiated masses of dust toward the lower left and upper right, with a darker continuous field through the middle and enough detail there to feel like a printed atlas. Very sparse small stars worked into the printing. Draw only deep-space texture, with no text, labels, symbols, geometric grids, borders, frames, compass, planets, stations, routes, lines connecting points, UI mockup, bright stars, luminous hot spots, fluorescent colors, or neon. Downstream code will overlay real spatial topography, faction borders, icons and type. No vignette to black across half of the image. Full bleed. Original artwork.",
+  "files": [
+    {
+      "file": "atlas-relief.webp",
+      "subject": "Matte deep-space texture behind the navigation chart",
+      "sha256": "1b548516b77f7fb4eb8347cb7ed34a1d6ae88fc701975569f3cccb031ff9772a"
+    },
+    {
+      "file": "atlas-engravings.webp",
+      "subject": "Four etched chart materials for dust, storms, ore and planetary gravity zones",
+      "sha256": "5a1850aec1dc89bdd4ad51e6be23ddfdbd7fe1f312fd6c787e2ae5e643438155",
+      "prompt": "Create an original grayscale source texture atlas for the live WebGL navigation map of SpaceFace, an original industrial space game. One image with exactly four equal square quadrants, edge to edge, 2 columns and 2 rows. No gutter, no inset frames, no text, no symbols, no stars or planets, no illustrative borders, no typography. Output monochrome, neutral black ink ground with fine light gray tones, restrained contrast, like extremely fine late 19th century intaglio and lithography. The game will clip each material to real charted geographical boundaries and tint it. Top left: broad low-contrast flowing ridges of fine contour hatching, evocative of tranquil interstellar dust layers, fine hairline density, directional engraved stippling. Top right: turbulent wisps of dark ink curled into eddies, broken lightning-like ink channels, fine oblique stipple like a violently overturned weather chart with no recognizable ring or specific objects. Bottom left: a mineral survey engraving of loose sparse small pointillist flecks and sporadically grouped finely etched dark gray rock fragment silhouettes, charcoal negative space between groups, rich tactile gravure grain. Bottom right: an etched planetary gravity relief material, broad shaded fields of fine slate-gray engraved relief and curved overlapping hairline striations like tidal orbital topography, no object outlines. Design distinct texture silhouettes for every quadrant, balanced density across each entire quadrant. No fluorescent or white hot spots. No labels or ornamental graphical elements. Strictly a 2 by 2 source sheet intended to be sampled by a cartographic graphics shader, beautifully detailed and matte."
+    }
+  ]
+}

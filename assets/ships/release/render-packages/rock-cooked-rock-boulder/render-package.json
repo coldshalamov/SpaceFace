@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f97a7790e6407e7aa0a80d52728e3d7d77059a5aaa01318f8ebea04375294651",
+  "contentHash": "b8c3ede5ab02f628211363737d2fce29e48ddecc0f8371d311ea25a01052bead",
   "dynamicGroups": [
     {
       "id": "sf.render.rock-cooked-rock-boulder.mesh.lod0-hook-nav-starboard.dynamic",
@@ -1411,8 +1411,8 @@
       "uri": "place_rock_cooked_rock_boulder.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "bytes": 352463,
+      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
       "uri": "pilots.json"
     }
   },
@@ -2479,7 +2479,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_cooked_rock_boulder.glb"
   },
-  "runtimeHash": "bc274d3c2eb956e41866614ebd6a8bf69e1d2aace3e970cf9331086cb7f41777",
+  "runtimeHash": "8ffd5ebf16dfb165ac5ebdb89e9e1271ec37611532f2d52dbd12c4df49b11e59",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -559,208 +559,208 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "c1b8476b3bf7f5d85837471dc17c533a40cec28b35f1c6d358d2e651db4e4d4a",
+  "contentHash": "416bcc971525742e8d5a4e359d3e9aeaa8572197f4a439e1c5474b298742b959",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
           52.82780248234677,
-          38.99819606490017,
+          38.99733063438812,
           52.92489242553711
         ],
         "min": [
           -53.0228899152081,
-          8.961803973246804,
+          -3.9973325417367533,
           -53.11997985839844
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ba01ae1453c53033c42efa5d3f3d6552de0823223bceab859a2c086069d02e7b",
+      "geometryHash": "0686ace4f4241d3c2f83ca9c61033a53956ff184dc749135a595fb2708e9901d",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-armor.primitive.0",
-      "indexCount": 6204,
+      "indexCount": 13764,
       "indexed": true,
       "materialHash": "159339aead07efa1e551a5785cadb5020f0a7347a2f9bd107d5fcdeab43af9a2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 1932
+      "vertexCount": 4280
     },
     {
       "bounds": {
         "max": [
           53.12964725759238,
-          43.878180927580814,
+          43.880779313943634,
           53.368125915527344
         ],
         "min": [
           -54.42066288259238,
-          21.244316631012936,
+          -1.3507824419953955,
           -54.36630630493164
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bc7c2ea16cf8ee0396183446f110c7e13909ccfdd07251193a908a10594c2e9c",
+      "geometryHash": "980433ff391c2af0b16648a6983b5d418253ca5d42f7a8c717662ce465b657f3",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-beacon-amber-pit.primitive.0",
-      "indexCount": 1116,
+      "indexCount": 8640,
       "indexed": true,
       "materialHash": "f7ca6eac4073b60a74d2da312f07b6ad0dd97cd89abcf5b8fcfb027b6ca68755",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Beacon_Amber_pit",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-beacon-amber-pit",
       "primitiveIndex": 0,
-      "vertexCount": 744
+      "vertexCount": 5760
     },
     {
       "bounds": {
         "max": [
           52.82734680175781,
-          38.998618833596765,
+          39.00053095296592,
           53.0229792236194
         ],
         "min": [
           -53.11997985839844,
-          12.821380861227457,
+          3.999468570196928,
           -52.73034616697878
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b7180ac25c321516ef63d467c2852997634401ed6b3e2c9865229abea631aad9",
+      "geometryHash": "5c359902ee5e5e0b0345ebc953a858072a4b1817c286a7b015c81e2dbd0670b0",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull-scrap.primitive.0",
-      "indexCount": 6204,
+      "indexCount": 11844,
       "indexed": true,
       "materialHash": "9a15f2fe9613f779c53f31b96237525a6a618bf1bfc9ec4cbf8dfbf397512959",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_scrap",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull-scrap",
       "primitiveIndex": 0,
-      "vertexCount": 1936
+      "vertexCount": 3696
     },
     {
       "bounds": {
         "max": [
           54.03759002685547,
-          30.999433479212456,
+          30.99609350952226,
           53.546859083444296
         ],
         "min": [
           -53.55000305175781,
-          9.000566520787546,
+          6.803906681212602,
           -53.80432826069039
         ]
       },
       "drawMode": 4,
-      "geometryHash": "f22cceea3399648d0413d9f944edb4f3ab2bf377597e358471dcf451d27092bf",
+      "geometryHash": "cd57563a3efb4aba93b4c8e0034e2b63e7d3ef62f29a668ea4ba588b00ff317e",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull-scrapb.primitive.0",
-      "indexCount": 7332,
+      "indexCount": 11844,
       "indexed": true,
       "materialHash": "32993b504a0ea05a1a73782748716f8987c7d63a0f73c4ffc1c3c1e7c3d342d1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_scrapb",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull-scrapb",
       "primitiveIndex": 0,
-      "vertexCount": 2350
+      "vertexCount": 3774
     },
     {
       "bounds": {
         "max": [
           52.70000076293945,
-          24.996594726946565,
+          25.001986177271693,
           52.70000076293945
         ],
         "min": [
           -52.70000076293945,
-          9.003406226727751,
+          5.9980123922168325,
           -52.70000076293945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c1197bb5ad9a5f3b88daa2a0cc647d89edf998788f9f30b902f1fed3b5070f53",
+      "geometryHash": "30dbff2ff705afd677305c9ed9f2b0ac373d63c37fa0bb1c4fffd436ae64ae56",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull.primitive.0",
-      "indexCount": 7728,
+      "indexCount": 12636,
       "indexed": true,
       "materialHash": "6020f8ea4ae401fd1d77d4fb4efeff1b49f55183d52a86e5f5f644da0f710bea",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-hull",
       "primitiveIndex": 0,
-      "vertexCount": 3808
+      "vertexCount": 5344
     },
     {
       "bounds": {
         "max": [
           52.95000076293945,
-          25.99771417081165,
+          31.65041132542191,
           52.95000076293945
         ],
         "min": [
           -52.95000076293945,
-          25.00228582918835,
+          -3.8004116592079207,
           -52.95000076293945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "d19e3dab36dbe2be226dde4cc0932e94ab9784c71c45fae98aa588222495062c",
+      "geometryHash": "2fd1f3e930ff065e1118e0aaee9df83be8cb39f7d442f6fab7074692d45eebde",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-livery.primitive.0",
-      "indexCount": 7728,
+      "indexCount": 15516,
       "indexed": true,
       "materialHash": "0fa8ccee1983c94475058953e2f689f72aa3ebb8afd05db1e14a63945f7bddcb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-livery",
       "primitiveIndex": 0,
-      "vertexCount": 3808
+      "vertexCount": 6396
     },
     {
       "bounds": {
         "max": [
           50.647550873816506,
-          42.997677006850864,
+          43.00052666200631,
           50.65061950683594
         ],
         "min": [
           -50.264860444129006,
-          10.37232383238253,
+          -4.300526852741175,
           -50.45927810668945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b551aa0012e6eda64ce04f2cbaffedd1231ee8d9effc6abcbc568ac731011183",
+      "geometryHash": "78f371e488f61bc526015eff13a037cdb75cfc8fa10e4e8df51a9681500bd556",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-mechanical.primitive.0",
-      "indexCount": 5940,
+      "indexCount": 20688,
       "indexed": true,
       "materialHash": "a0b2e7a03fafafc1005506ccaf5996a55787e811a3bb47b30fec0669803a6050",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 1812
+      "vertexCount": 6638
     },
     {
       "bounds": {
         "max": [
           53.765004519704355,
-          29.083218957629338,
+          33.97545309305722,
           54.16123962402344
         ],
         "min": [
           -54.28466165471412,
-          21.911444280896053,
+          20.412595078939848,
           -54.232460021972656
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7a923211a84bb2482771b8cae124e629228f4b16309500b7e16bb9d2eabfddd4",
+      "geometryHash": "da3c241611fd25e257380bb6d4ba0291af34e169f4730f68c136c6b57ea1cd86",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-mechanicaldark.primitive.0",
-      "indexCount": 780,
+      "indexCount": 2184,
       "indexed": true,
       "materialHash": "716b537ff8330bd52247c037987d718348b67b9cd8ceda34ab0ccb21db99fd08",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod0-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 328
+      "vertexCount": 776
     },
     {
       "bounds": {
@@ -791,201 +791,201 @@
       "bounds": {
         "max": [
           52.8223212807311,
-          38.99247708493645,
+          38.982142641007584,
           52.91939926147461
         ],
         "min": [
           -53.01740871359243,
-          8.972139690576244,
+          -3.9951238173839236,
           -53.1144905090332
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1b1a4ed37305c8086a77d02d4542328208d3129118ecdca39108187961f6a263",
+      "geometryHash": "b0072303fedbd11939ec53c9e5ad69edc2e8426f7dc026d2efdfffd416f1f30c",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-armor.primitive.0",
-      "indexCount": 720,
+      "indexCount": 2838,
       "indexed": true,
       "materialHash": "159339aead07efa1e551a5785cadb5020f0a7347a2f9bd107d5fcdeab43af9a2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-armor",
       "primitiveIndex": 0,
-      "vertexCount": 370
+      "vertexCount": 1106
     },
     {
       "bounds": {
         "max": [
           53.12964725759238,
-          43.878180927580814,
+          43.880779313943634,
           53.368125915527344
         ],
         "min": [
           -54.42066288259238,
-          21.244316631012936,
+          -1.3507824419953955,
           -54.36630630493164
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3f1acbca10f93bae229a6b8e4bd0b47516a910320c0597222886a53c090e2201",
+      "geometryHash": "28da359445df7be8a638d7ba70ee1d7e089ce412a452ed7c2f3fc738f0224dd3",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-beacon-amber-pit.primitive.0",
-      "indexCount": 1116,
+      "indexCount": 8640,
       "indexed": true,
       "materialHash": "f7ca6eac4073b60a74d2da312f07b6ad0dd97cd89abcf5b8fcfb027b6ca68755",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Beacon_Amber_pit",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-beacon-amber-pit",
       "primitiveIndex": 0,
-      "vertexCount": 744
+      "vertexCount": 5760
     },
     {
       "bounds": {
         "max": [
           52.82185745239258,
-          38.993400028948344,
+          38.98411169960046,
           53.01749992585981
         ],
         "min": [
           -53.1144905090332,
-          12.831806727643452,
+          4.012540426711798,
           -52.724866869219184
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a4feab4c0985db0a2fc8ac18e0c0b59f64fcb8a413a23a9869944b728bdb715e",
+      "geometryHash": "65edd53840363366bd3250ba6d7cb2a89087681f180c7f1bb7444d7e37cccd74",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull-scrap.primitive.0",
-      "indexCount": 744,
+      "indexCount": 816,
       "indexed": true,
       "materialHash": "9a15f2fe9613f779c53f31b96237525a6a618bf1bfc9ec4cbf8dfbf397512959",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_scrap",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull-scrap",
       "primitiveIndex": 0,
-      "vertexCount": 380
+      "vertexCount": 524
     },
     {
       "bounds": {
         "max": [
           54.03396224975586,
-          30.993211159755738,
+          30.99032433820927,
           53.53744357749926
         ],
         "min": [
           -53.54050064086914,
-          9.010161032627074,
+          6.814222017991902,
           -53.80064243003832
         ]
       },
       "drawMode": 4,
-      "geometryHash": "37ebaae7bc2f38d47e3e0d0e844b429ad10760349f31f04945ee8a8e434f8729",
+      "geometryHash": "e6eef52a882ca5a2f8d281f6486171aa012864ea0ca137da247fffb5dcc42004",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull-scrapb.primitive.0",
-      "indexCount": 960,
+      "indexCount": 1236,
       "indexed": true,
       "materialHash": "32993b504a0ea05a1a73782748716f8987c7d63a0f73c4ffc1c3c1e7c3d342d1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_scrapb",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull-scrapb",
       "primitiveIndex": 0,
-      "vertexCount": 460
+      "vertexCount": 650
     },
     {
       "bounds": {
         "max": [
           52.70000076293945,
-          24.996594726946565,
+          24.997588731627964,
           52.70000076293945
         ],
         "min": [
           -52.70000076293945,
-          9.003406226727751,
+          6.006481550354456,
           -52.70000076293945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e97d4a0443dd4fecccea447a34352102ae7a1fccb112e46d30561c83336d3a6b",
+      "geometryHash": "7c1780737585f84a55f884f740efb84453c7de1c7b2f83bb00046441f4f35a2c",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull.primitive.0",
-      "indexCount": 7728,
+      "indexCount": 9282,
       "indexed": true,
       "materialHash": "6020f8ea4ae401fd1d77d4fb4efeff1b49f55183d52a86e5f5f644da0f710bea",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-hull",
       "primitiveIndex": 0,
-      "vertexCount": 3808
+      "vertexCount": 4351
     },
     {
       "bounds": {
         "max": [
           52.95000076293945,
-          25.99771417081165,
+          31.63758930405215,
           52.95000076293945
         ],
         "min": [
           -52.95000076293945,
-          25.00228582918835,
+          -3.7873783989770757,
           -52.95000076293945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "58153616df39e81836285119327d1dcfa304bf04a6d97f6b175f818a7cac4885",
+      "geometryHash": "eb7d0ebb5ad36248502e59445ed12eb66218d44f6abc7648e66f3c1e16c8f8be",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-livery.primitive.0",
-      "indexCount": 7728,
+      "indexCount": 9708,
       "indexed": true,
       "materialHash": "0fa8ccee1983c94475058953e2f689f72aa3ebb8afd05db1e14a63945f7bddcb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-livery",
       "primitiveIndex": 0,
-      "vertexCount": 3808
+      "vertexCount": 4704
     },
     {
       "bounds": {
         "max": [
           50.644259512979275,
-          42.99328366352451,
+          42.99439624357286,
           50.64731979370117
         ],
         "min": [
           -50.26156526859451,
-          10.382402028308984,
+          -4.2912278513914615,
           -50.45597839355469
         ]
       },
       "drawMode": 4,
-      "geometryHash": "211025e5457d153617df6c6b7848af53f774591a849a09d601f14058c4a534f7",
+      "geometryHash": "4b1bf8bd303a3914011852b8ca15c4ad57f6d0d78c3467cc894fc183ab56d977",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-mechanical.primitive.0",
-      "indexCount": 468,
+      "indexCount": 7518,
       "indexed": true,
       "materialHash": "a0b2e7a03fafafc1005506ccaf5996a55787e811a3bb47b30fec0669803a6050",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 264
+      "vertexCount": 2977
     },
     {
       "bounds": {
         "max": [
           53.765004519704355,
-          29.083218957629338,
+          33.97545309305722,
           54.16123962402344
         ],
         "min": [
           -54.28466165471412,
-          21.911444280896053,
+          20.412595078939848,
           -54.232460021972656
         ]
       },
       "drawMode": 4,
-      "geometryHash": "38e82137c214d337e796c605e96cfe3f8086703c71967104892795e517c7069c",
+      "geometryHash": "d9a0b86d07684efe065292d36663597e3270e21c4a861ab4de3ed9052bdc9da1",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-mechanicaldark.primitive.0",
-      "indexCount": 780,
+      "indexCount": 1842,
       "indexed": true,
       "materialHash": "716b537ff8330bd52247c037987d718348b67b9cd8ceda34ab0ccb21db99fd08",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod1-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 328
+      "vertexCount": 719
     },
     {
       "bounds": {
@@ -1015,202 +1015,202 @@
     {
       "bounds": {
         "max": [
-          7.565312342920669,
-          38.02133304687802,
-          7.817330360412598
+          51.409175872802734,
+          38.017943942350755,
+          33.314678350002666
         ],
         "min": [
-          -5.587725596704849,
-          35.97866695312198,
-          -7.436097145080566
+          -51.409175872802734,
+          -2.0243237851089297,
+          -33.31470123818626
         ]
       },
       "drawMode": 4,
-      "geometryHash": "987fd60780099062c8acc3659ea46a2bf733be8762f38e5ff486eeab1262a46f",
+      "geometryHash": "fa8d48dbd1744ad18ef56618714c635dfd56385764016c2e7368af42c8ee9e92",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-armor.primitive.0",
-      "indexCount": 9,
+      "indexCount": 39,
       "indexed": true,
       "materialHash": "159339aead07efa1e551a5785cadb5020f0a7347a2f9bd107d5fcdeab43af9a2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-armor",
       "primitiveIndex": 0,
-      "vertexCount": 9
+      "vertexCount": 39
     },
     {
       "bounds": {
         "max": [
           53.129649161681286,
-          43.69268050117969,
+          43.69540385883874,
           53.368125915527344
         ],
         "min": [
           -54.420664786681286,
-          21.34815011100293,
+          20.02256412822181,
           -54.366310119628906
         ]
       },
       "drawMode": 4,
-      "geometryHash": "79d15d6dc34b72650caab7b200e7f529fdda286ff25e20dfe11bb9b98c2c96d2",
+      "geometryHash": "7a39b442f6cb6931e0231b59e917c58b2c331f74d49d251134762b89dc826f7e",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-beacon-amber-pit.primitive.0",
-      "indexCount": 93,
+      "indexCount": 144,
       "indexed": true,
       "materialHash": "f7ca6eac4073b60a74d2da312f07b6ad0dd97cd89abcf5b8fcfb027b6ca68755",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Beacon_Amber_pit",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-beacon-amber-pit",
       "primitiveIndex": 0,
-      "vertexCount": 93
+      "vertexCount": 144
     },
     {
       "bounds": {
         "max": [
-          5.662387847900391,
-          38.020851419781636,
-          5.805008182578896
+          42.276527404785156,
+          38.01882907625528,
+          36.64195322503641
         ],
         "min": [
-          -8.25755500793457,
-          36.00042696156602,
-          -7.542282829337929
+          -42.011802673339844,
+          3.4849739384999694,
+          -40.19683908929422
         ]
       },
       "drawMode": 4,
-      "geometryHash": "da861c27809d1ec1815b6ef8cfa3f8dac009a83d97a7e3f46e673f6d834b1eb2",
+      "geometryHash": "86bfc973ccd239d22b4b1fe504e825448e9b8f3ba99a4c2498aaf6173ece3b36",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull-scrap.primitive.0",
-      "indexCount": 9,
+      "indexCount": 39,
       "indexed": true,
       "materialHash": "9a15f2fe9613f779c53f31b96237525a6a618bf1bfc9ec4cbf8dfbf397512959",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_scrap",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull-scrap",
       "primitiveIndex": 0,
-      "vertexCount": 9
+      "vertexCount": 39
     },
     {
       "bounds": {
         "max": [
           52.66316270282534,
-          32.4767686149026,
+          32.47740098974377,
           48.57489013671875
         ],
         "min": [
           -46.94127320697573,
-          8.539409516200914,
+          6.478495387819706,
           -52.39774703979492
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a163571754fdce4529a0a54188e2277d9f9fecf61dd5add03f9516d91c2e482d",
+      "geometryHash": "cde68a101e6ce2ca9e784fd57a4ed0d8c91f16311c11b24f489a2a33f0ede445",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull-scrapb.primitive.0",
-      "indexCount": 15,
+      "indexCount": 39,
       "indexed": true,
       "materialHash": "32993b504a0ea05a1a73782748716f8987c7d63a0f73c4ffc1c3c1e7c3d342d1",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_scrapb",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull-scrapb",
       "primitiveIndex": 0,
-      "vertexCount": 15
+      "vertexCount": 39
     },
     {
       "bounds": {
         "max": [
           52.70000076293945,
-          24.996594726946565,
+          24.996622068093906,
           52.70000076293945
         ],
         "min": [
           -52.70000076293945,
-          9.003406226727751,
+          4.538722055746426,
           -52.70000076293945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e97d4a0443dd4fecccea447a34352102ae7a1fccb112e46d30561c83336d3a6b",
+      "geometryHash": "0cf6117b96cc4d73e051e7d5be2775bc129feae7b8ec9cbdb3635d4f2551772a",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull.primitive.0",
-      "indexCount": 7728,
+      "indexCount": 7749,
       "indexed": true,
       "materialHash": "6020f8ea4ae401fd1d77d4fb4efeff1b49f55183d52a86e5f5f644da0f710bea",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull",
       "primitiveIndex": 0,
-      "vertexCount": 3808
+      "vertexCount": 3829
     },
     {
       "bounds": {
         "max": [
           52.95000076293945,
-          25.99771417081165,
+          31.402663241926685,
           52.95000076293945
         ],
         "min": [
           -52.95000076293945,
-          25.00228582918835,
+          -3.918883334700123,
           -52.95000076293945
         ]
       },
       "drawMode": 4,
-      "geometryHash": "58153616df39e81836285119327d1dcfa304bf04a6d97f6b175f818a7cac4885",
+      "geometryHash": "d520d98967db9028661a65f1e2b07a8d11e402dc85de6a73a7766460789675fd",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-livery.primitive.0",
-      "indexCount": 7728,
+      "indexCount": 7851,
       "indexed": true,
       "materialHash": "0fa8ccee1983c94475058953e2f689f72aa3ebb8afd05db1e14a63945f7bddcb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-livery",
       "primitiveIndex": 0,
-      "vertexCount": 3808
+      "vertexCount": 3903
     },
     {
       "bounds": {
         "max": [
-          1.1012922329112746,
-          43.40986251831055,
-          0.3396489223306783
+          49.49427032470703,
+          43.40809574495954,
+          49.451976566685495
         ],
         "min": [
-          -1.0962662500545242,
-          35.81174087524414,
-          -0.34116058552914935
+          -49.49427032470703,
+          -4.701054004542062,
+          -49.451976566685495
         ]
       },
       "drawMode": 4,
-      "geometryHash": "33a85d556e7e444418ba4426bb5e7ef4c44d01e91217adb2ae137d3023a7648d",
+      "geometryHash": "7341809e0830027998101e176ede69b2c304be8b1f26c3500ba9fa5ac18dce5b",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-mechanical.primitive.0",
-      "indexCount": 3,
+      "indexCount": 582,
       "indexed": true,
       "materialHash": "a0b2e7a03fafafc1005506ccaf5996a55787e811a3bb47b30fec0669803a6050",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-mechanical",
       "primitiveIndex": 0,
-      "vertexCount": 3
+      "vertexCount": 492
     },
     {
       "bounds": {
         "max": [
           54.366321786197176,
-          28.00610773353904,
+          32.427085067848445,
           54.97150421142578
         ],
         "min": [
           -53.841350777896395,
-          21.978828026959008,
+          20.292517516990422,
           -54.262939453125
         ]
       },
       "drawMode": 4,
-      "geometryHash": "974cba694d4c095b7786d3ac562ed20af0ac9d8fbe9984812464f3d101aa0254",
+      "geometryHash": "b6a8ffe240a6a1b9b1192d373e29ee93d38f0711656f6c61d48d83dac0467cf2",
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-mechanicaldark.primitive.0",
-      "indexCount": 15,
+      "indexCount": 30,
       "indexed": true,
       "materialHash": "716b537ff8330bd52247c037987d718348b67b9cd8ceda34ab0ccb21db99fd08",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-mechanicaldark",
       "primitiveIndex": 0,
-      "vertexCount": 15
+      "vertexCount": 30
     }
   ],
   "hlods": [],
@@ -1498,7 +1498,7 @@
         53.02243614196777,
         0,
         -0.09754371643066406,
-        23.980000019073486,
+        17.499999046325684,
         -0.09754371643066406,
         1
       ],
@@ -1526,7 +1526,7 @@
         53.02243614196777,
         0,
         -0.09754371643066406,
-        23.980000019073486,
+        17.499999046325684,
         -0.09754371643066406,
         1
       ]
@@ -1547,7 +1547,7 @@
         53.86721611022949,
         0,
         -0.6455078125,
-        32.561248779296875,
+        21.26499843597412,
         -0.49909019470214844,
         1
       ],
@@ -1575,7 +1575,7 @@
         53.86721611022949,
         0,
         -0.6455078125,
-        32.561248779296875,
+        21.26499843597412,
         -0.49909019470214844,
         1
       ]
@@ -1596,7 +1596,7 @@
         52.70000076293945,
         0,
         0,
-        17.000000476837158,
+        15.499999284744263,
         0,
         1
       ],
@@ -1624,7 +1624,7 @@
         52.70000076293945,
         0,
         0,
-        17.000000476837158,
+        15.499999284744263,
         0,
         1
       ]
@@ -1645,7 +1645,7 @@
         52.973663330078125,
         0,
         -0.1463165283203125,
-        25.90999984741211,
+        21.49999976158142,
         0.1463165283203125,
         1
       ],
@@ -1673,7 +1673,7 @@
         52.973663330078125,
         0,
         -0.1463165283203125,
-        25.90999984741211,
+        21.49999976158142,
         0.1463165283203125,
         1
       ]
@@ -1694,7 +1694,7 @@
         53.79379653930664,
         0,
         0.24379348754882812,
-        20,
+        18.90000009536743,
         -0.12873458862304688,
         1
       ],
@@ -1722,7 +1722,7 @@
         53.79379653930664,
         0,
         0.24379348754882812,
-        20,
+        18.90000009536743,
         -0.12873458862304688,
         1
       ]
@@ -1743,7 +1743,7 @@
         52.95000076293945,
         0,
         0,
-        25.5,
+        13.924999833106995,
         0,
         1
       ],
@@ -1771,7 +1771,7 @@
         52.95000076293945,
         0,
         0,
-        25.5,
+        13.924999833106995,
         0,
         1
       ]
@@ -1792,7 +1792,7 @@
         50.554948806762695,
         0,
         0.19134521484375,
-        26.6850004196167,
+        19.34999990463257,
         0.09567070007324219,
         1
       ],
@@ -1820,7 +1820,7 @@
         50.554948806762695,
         0,
         0.19134521484375,
-        26.6850004196167,
+        19.34999990463257,
         0.09567070007324219,
         1
       ]
@@ -1841,7 +1841,7 @@
         54.19684982299805,
         0,
         -0.2598285675048828,
-        25.497331619262695,
+        27.194024085998535,
         -0.035610198974609375,
         1
       ],
@@ -1869,7 +1869,7 @@
         54.19684982299805,
         0,
         -0.2598285675048828,
-        25.497331619262695,
+        27.194024085998535,
         -0.035610198974609375,
         1
       ]
@@ -1939,7 +1939,7 @@
         53.016944885253906,
         0,
         -0.09754371643066406,
-        23.982308387756348,
+        17.49350941181183,
         -0.09754562377929688,
         1
       ],
@@ -1967,7 +1967,7 @@
         53.016944885253906,
         0,
         -0.09754371643066406,
-        23.982308387756348,
+        17.49350941181183,
         -0.09754562377929688,
         1
       ]
@@ -1988,7 +1988,7 @@
         53.86721611022949,
         0,
         -0.6455078125,
-        32.561248779296875,
+        21.26499843597412,
         -0.49909019470214844,
         1
       ],
@@ -2016,7 +2016,7 @@
         53.86721611022949,
         0,
         -0.6455078125,
-        32.561248779296875,
+        21.26499843597412,
         -0.49909019470214844,
         1
       ]
@@ -2037,7 +2037,7 @@
         52.70000076293945,
         0,
         0,
-        17.000000476837158,
+        15.502035140991211,
         0,
         1
       ],
@@ -2065,7 +2065,7 @@
         52.70000076293945,
         0,
         0,
-        17.000000476837158,
+        15.502035140991211,
         0,
         1
       ]
@@ -2086,7 +2086,7 @@
         52.96817398071289,
         0,
         -0.1463165283203125,
-        25.9126033782959,
+        21.498326063156128,
         0.1463165283203125,
         1
       ],
@@ -2114,7 +2114,7 @@
         52.96817398071289,
         0,
         -0.1463165283203125,
-        25.9126033782959,
+        21.498326063156128,
         0.1463165283203125,
         1
       ]
@@ -2135,7 +2135,7 @@
         53.7872314453125,
         0,
         0.24673080444335938,
-        20.001686096191406,
+        18.902273178100586,
         -0.13159942626953125,
         1
       ],
@@ -2163,7 +2163,7 @@
         53.7872314453125,
         0,
         0.24673080444335938,
-        20.001686096191406,
+        18.902273178100586,
         -0.13159942626953125,
         1
       ]
@@ -2184,7 +2184,7 @@
         52.95000076293945,
         0,
         0,
-        25.5,
+        13.925105452537537,
         0,
         1
       ],
@@ -2212,7 +2212,7 @@
         52.95000076293945,
         0,
         0,
-        25.5,
+        13.925105452537537,
         0,
         1
       ]
@@ -2233,7 +2233,7 @@
         50.55164909362793,
         0,
         0.1913471221923828,
-        26.687842845916748,
+        19.3515841960907,
         0.09567070007324219,
         1
       ],
@@ -2261,7 +2261,7 @@
         50.55164909362793,
         0,
         0.1913471221923828,
-        26.687842845916748,
+        19.3515841960907,
         0.09567070007324219,
         1
       ]
@@ -2282,7 +2282,7 @@
         54.19684982299805,
         0,
         -0.2598285675048828,
-        25.497331619262695,
+        27.194024085998535,
         -0.035610198974609375,
         1
       ],
@@ -2310,7 +2310,7 @@
         54.19684982299805,
         0,
         -0.2598285675048828,
-        25.497331619262695,
+        27.194024085998535,
         -0.035610198974609375,
         1
       ]
@@ -2367,21 +2367,21 @@
     {
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-armor",
       "localTransform": [
-        7.626713752746582,
+        51.409175872802734,
         0,
         0,
         0,
         0,
-        7.626713752746582,
+        51.409175872802734,
         0,
         0,
         0,
         0,
-        7.626713752746582,
+        51.409175872802734,
         0,
-        0.9887933731079102,
-        37,
-        0.19061660766601562,
+        0,
+        17.99681007862091,
+        -0.000011444091796875,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2395,21 +2395,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
       "worldTransform": [
-        7.626713752746582,
+        51.409175872802734,
         0,
         0,
         0,
         0,
-        7.626713752746582,
+        51.409175872802734,
         0,
         0,
         0,
         0,
-        7.626713752746582,
+        51.409175872802734,
         0,
-        0.9887933731079102,
-        37,
-        0.19061660766601562,
+        0,
+        17.99681007862091,
+        -0.000011444091796875,
         1
       ]
     },
@@ -2429,7 +2429,7 @@
         53.867218017578125,
         0,
         -0.6455078125,
-        32.52041530609131,
+        31.858983993530273,
         -0.49909210205078125,
         1
       ],
@@ -2457,7 +2457,7 @@
         53.867218017578125,
         0,
         -0.6455078125,
-        32.52041530609131,
+        31.858983993530273,
         -0.49909210205078125,
         1
       ]
@@ -2478,7 +2478,7 @@
         52.70000076293945,
         0,
         0,
-        17.000000476837158,
+        14.767672061920166,
         0,
         1
       ],
@@ -2506,7 +2506,7 @@
         52.70000076293945,
         0,
         0,
-        17.000000476837158,
+        14.767672061920166,
         0,
         1
       ]
@@ -2514,21 +2514,21 @@
     {
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-hull-scrap",
       "localTransform": [
-        6.9599714279174805,
+        42.1441650390625,
         0,
         0,
         0,
         0,
-        6.9599714279174805,
+        42.1441650390625,
         0,
         0,
         0,
         0,
-        6.9599714279174805,
+        42.1441650390625,
         0,
-        -1.2975835800170898,
-        37.01063919067383,
-        -0.8686373233795166,
+        0.13236236572265625,
+        20.751901507377625,
+        -1.7774429321289062,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2542,21 +2542,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
       "worldTransform": [
-        6.9599714279174805,
+        42.1441650390625,
         0,
         0,
         0,
         0,
-        6.9599714279174805,
+        42.1441650390625,
         0,
         0,
         0,
         0,
-        6.9599714279174805,
+        42.1441650390625,
         0,
-        -1.2975835800170898,
-        37.01063919067383,
-        -0.8686373233795166,
+        0.13236236572265625,
+        20.751901507377625,
+        -1.7774429321289062,
         1
       ]
     },
@@ -2576,7 +2576,7 @@
         50.486318588256836,
         0,
         2.8609447479248047,
-        20.508089065551758,
+        19.47794818878174,
         -1.911428451538086,
         1
       ],
@@ -2604,7 +2604,7 @@
         50.486318588256836,
         0,
         2.8609447479248047,
-        20.508089065551758,
+        19.47794818878174,
         -1.911428451538086,
         1
       ]
@@ -2625,7 +2625,7 @@
         52.95000076293945,
         0,
         0,
-        25.5,
+        13.741889953613281,
         0,
         1
       ],
@@ -2653,7 +2653,7 @@
         52.95000076293945,
         0,
         0,
-        25.5,
+        13.741889953613281,
         0,
         1
       ]
@@ -2661,21 +2661,21 @@
     {
       "id": "sf.render.var-station-kit-pitborn-v01.mesh.lod2-mechanical",
       "localTransform": [
-        3.799060821533203,
+        49.49427032470703,
         0,
         0,
         0,
         0,
-        3.799060821533203,
+        49.49427032470703,
         0,
         0,
         0,
         0,
-        3.799060821533203,
+        49.49427032470703,
         0,
-        0.002512991428375244,
-        39.610801696777344,
-        -0.0007558315992355347,
+        0,
+        19.35352087020874,
+        0,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2689,21 +2689,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.var-station-kit-pitborn-v01.body",
       "worldTransform": [
-        3.799060821533203,
+        49.49427032470703,
         0,
         0,
         0,
         0,
-        3.799060821533203,
+        49.49427032470703,
         0,
         0,
         0,
         0,
-        3.799060821533203,
+        49.49427032470703,
         0,
-        0.002512991428375244,
-        39.610801696777344,
-        -0.0007558315992355347,
+        0,
+        19.35352087020874,
+        0,
         1
       ]
     },
@@ -2723,7 +2723,7 @@
         54.61722183227539,
         0,
         0.2624855041503906,
-        24.992467880249023,
+        26.359801292419434,
         0.3542823791503906,
         1
       ],
@@ -2751,7 +2751,7 @@
         54.61722183227539,
         0,
         0.2624855041503906,
-        24.992467880249023,
+        26.359801292419434,
         0.3542823791503906,
         1
       ]
@@ -2810,41 +2810,41 @@
       "sha256": "f95c6c9a08a6044ebbca384e7cba1fc3e07e0995dc72c585cdaf499e655c5a36"
     },
     "sourceGlb": {
-      "bytes": 605664,
-      "sha256": "9409ead7079e9c72e43001e97780c94306a9e87f84dc59bf5d7d872e7623ed6a",
+      "bytes": 1171136,
+      "sha256": "d1ca9ded5292cb9252ccf115c2f568ef1572c3435a30503f013d60ea54975074",
       "uri": "var_station_kit_pitborn_v01.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "bytes": 352463,
+      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 613036,
-    "sha256": "de2efd8f4737717e15856389e3c4cd8d368af4f02ebec61f584a37fbea422eed",
+    "bytes": 1164280,
+    "sha256": "baf40a36d6d4ff06bca413175d786dfb71172399df2894f5ee29ecafde94f2bf",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
         -0.027171500242054947,
-        26.208795221890863,
+        19.589862654700788,
         0.3025970458984375
       ],
       "max": [
         54.366321786197176,
-        43.878180927580814,
+        43.880779313943634,
         54.97150421142578
       ],
       "min": [
         -54.420664786681286,
-        8.539409516200914,
+        -4.701054004542062,
         -54.366310119628906
       ],
       "size": [
         108.78698657287846,
-        35.3387714113799,
+        48.58183331848569,
         109.33781433105469
       ]
     },
@@ -3621,7 +3621,7 @@
           53.02243614196777,
           0,
           -0.09754371643066406,
-          23.980000019073486,
+          17.499999046325684,
           -0.09754371643066406,
           1
         ],
@@ -3648,7 +3648,7 @@
           53.86721611022949,
           0,
           -0.6455078125,
-          32.561248779296875,
+          21.26499843597412,
           -0.49909019470214844,
           1
         ],
@@ -3675,7 +3675,7 @@
           52.70000076293945,
           0,
           0,
-          17.000000476837158,
+          15.499999284744263,
           0,
           1
         ],
@@ -3702,7 +3702,7 @@
           52.973663330078125,
           0,
           -0.1463165283203125,
-          25.90999984741211,
+          21.49999976158142,
           0.1463165283203125,
           1
         ],
@@ -3729,7 +3729,7 @@
           53.79379653930664,
           0,
           0.24379348754882812,
-          20,
+          18.90000009536743,
           -0.12873458862304688,
           1
         ],
@@ -3756,7 +3756,7 @@
           52.95000076293945,
           0,
           0,
-          25.5,
+          13.924999833106995,
           0,
           1
         ],
@@ -3783,7 +3783,7 @@
           50.554948806762695,
           0,
           0.19134521484375,
-          26.6850004196167,
+          19.34999990463257,
           0.09567070007324219,
           1
         ],
@@ -3810,7 +3810,7 @@
           54.19684982299805,
           0,
           -0.2598285675048828,
-          25.497331619262695,
+          27.194024085998535,
           -0.035610198974609375,
           1
         ],
@@ -3864,7 +3864,7 @@
           53.016944885253906,
           0,
           -0.09754371643066406,
-          23.982308387756348,
+          17.49350941181183,
           -0.09754562377929688,
           1
         ],
@@ -3891,7 +3891,7 @@
           53.86721611022949,
           0,
           -0.6455078125,
-          32.561248779296875,
+          21.26499843597412,
           -0.49909019470214844,
           1
         ],
@@ -3918,7 +3918,7 @@
           52.70000076293945,
           0,
           0,
-          17.000000476837158,
+          15.502035140991211,
           0,
           1
         ],
@@ -3945,7 +3945,7 @@
           52.96817398071289,
           0,
           -0.1463165283203125,
-          25.9126033782959,
+          21.498326063156128,
           0.1463165283203125,
           1
         ],
@@ -3972,7 +3972,7 @@
           53.7872314453125,
           0,
           0.24673080444335938,
-          20.001686096191406,
+          18.902273178100586,
           -0.13159942626953125,
           1
         ],
@@ -3999,7 +3999,7 @@
           52.95000076293945,
           0,
           0,
-          25.5,
+          13.925105452537537,
           0,
           1
         ],
@@ -4026,7 +4026,7 @@
           50.55164909362793,
           0,
           0.1913471221923828,
-          26.687842845916748,
+          19.3515841960907,
           0.09567070007324219,
           1
         ],
@@ -4053,7 +4053,7 @@
           54.19684982299805,
           0,
           -0.2598285675048828,
-          25.497331619262695,
+          27.194024085998535,
           -0.035610198974609375,
           1
         ],
@@ -4094,21 +4094,21 @@
       {
         "canopy": false,
         "matrix": [
-          7.626713752746582,
+          51.409175872802734,
           0,
           0,
           0,
           0,
-          7.626713752746582,
+          51.409175872802734,
           0,
           0,
           0,
           0,
-          7.626713752746582,
+          51.409175872802734,
           0,
-          0.9887933731079102,
-          37,
-          0.19061660766601562,
+          0,
+          17.99681007862091,
+          -0.000011444091796875,
           1
         ],
         "name": "LOD2_Armor",
@@ -4134,7 +4134,7 @@
           53.867218017578125,
           0,
           -0.6455078125,
-          32.52041530609131,
+          31.858983993530273,
           -0.49909210205078125,
           1
         ],
@@ -4161,7 +4161,7 @@
           52.70000076293945,
           0,
           0,
-          17.000000476837158,
+          14.767672061920166,
           0,
           1
         ],
@@ -4175,21 +4175,21 @@
       {
         "canopy": false,
         "matrix": [
-          6.9599714279174805,
+          42.1441650390625,
           0,
           0,
           0,
           0,
-          6.9599714279174805,
+          42.1441650390625,
           0,
           0,
           0,
           0,
-          6.9599714279174805,
+          42.1441650390625,
           0,
-          -1.2975835800170898,
-          37.01063919067383,
-          -0.8686373233795166,
+          0.13236236572265625,
+          20.751901507377625,
+          -1.7774429321289062,
           1
         ],
         "name": "LOD2_Hull_scrap",
@@ -4215,7 +4215,7 @@
           50.486318588256836,
           0,
           2.8609447479248047,
-          20.508089065551758,
+          19.47794818878174,
           -1.911428451538086,
           1
         ],
@@ -4242,7 +4242,7 @@
           52.95000076293945,
           0,
           0,
-          25.5,
+          13.741889953613281,
           0,
           1
         ],
@@ -4256,21 +4256,21 @@
       {
         "canopy": false,
         "matrix": [
-          3.799060821533203,
+          49.49427032470703,
           0,
           0,
           0,
           0,
-          3.799060821533203,
+          49.49427032470703,
           0,
           0,
           0,
           0,
-          3.799060821533203,
+          49.49427032470703,
           0,
-          0.002512991428375244,
-          39.610801696777344,
-          -0.0007558315992355347,
+          0,
+          19.35352087020874,
+          0,
           1
         ],
         "name": "LOD2_Mechanical",
@@ -4296,7 +4296,7 @@
           54.61722183227539,
           0,
           0.2624855041503906,
-          24.992467880249023,
+          26.359801292419434,
           0.3542823791503906,
           1
         ],
@@ -4312,19 +4312,19 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/var_station_kit_pitborn_v01.glb"
   },
-  "runtimeHash": "da62a9a330288b1837358711564c144271fc9abdb4c27b2cb4f80a7c2b953f7e",
+  "runtimeHash": "a0b57be2f52c4172603183c3fa6549b3bea04da604f1f4906aa18160271d862f",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
           54.366321786197176,
-          43.878180927580814,
+          43.880779313943634,
           54.97150421142578
         ],
         "min": [
           -54.420664786681286,
-          8.539409516200914,
+          -4.701054004542062,
           -54.366310119628906
         ]
       },

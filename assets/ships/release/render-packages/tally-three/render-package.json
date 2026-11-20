@@ -243,7 +243,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "12444b1864313b1593a385088b98bae7eee6493b10fdbec05aeb65fe356238e8",
+  "contentHash": "2490df566bc4becf05092fd9ff831e0a77025133ccb5d0934232432180206e33",
   "dynamicGroups": [
     {
       "id": "sf.render.tally-three.node.lod0-motion-tally-arm-left-mechanical.dynamic",
@@ -3518,8 +3518,8 @@
       "uri": "place_tally_three.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "bytes": 352463,
+      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
       "uri": "pilots.json"
     }
   },
@@ -5712,7 +5712,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_tally_three.glb"
   },
-  "runtimeHash": "4b94fe2e4249d2906136255ff4af4b1ab620adcff39681e4d8d46731ca43a67c",
+  "runtimeHash": "d06c5f02668508d664e223bc85e047913ecb6defcaa0a8b89eaab244e7b7dab2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

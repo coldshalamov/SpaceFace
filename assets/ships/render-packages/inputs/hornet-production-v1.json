@@ -32,8 +32,8 @@
     "metadataUrl": "assets/ships/release/render-packages/hornet-production-v1/render-package.json",
     "outputDir": "assets/ships/release/render-packages/hornet-production-v1",
     "releaseAssetId": "wholeship_hornet_production_v1",
-    "releaseBytes": 582256,
-    "releaseSha256": "62591c7a00df35682f490b510c2d6efb97f20e221e2f023cf11810e99e457a15",
+    "releaseBytes": 582172,
+    "releaseSha256": "701ca39cb8abeacc723296e0d90e45d4ba157acf448bb946ea4ad01849d1c684",
     "runtimeAssetId": "SF_HORNET_PRODUCTION_V1",
     "sceneRoot": true,
     "slot": "hull",
@@ -46,11 +46,11 @@
     "ktx2Textures": 6,
     "meshoptBufferViews": 86,
     "release": "assets/ships/release/parts/wholeships/hornet_production_v1.glb",
-    "releaseBytes": 582256,
-    "releaseSha256": "62591c7a00df35682f490b510c2d6efb97f20e221e2f023cf11810e99e457a15",
+    "releaseBytes": 582172,
+    "releaseSha256": "701ca39cb8abeacc723296e0d90e45d4ba157acf448bb946ea4ad01849d1c684",
     "source": "assets/ships/parts/wholeships/hornet_production_v1.glb",
-    "sourceBytes": 1167972,
-    "sourceSha256": "95a034b6aea73a10a84c4c1d5b63b94d378823578fbe89917cc10ba61656ec15",
+    "sourceBytes": 1167896,
+    "sourceSha256": "61fdc2fa84fad774de2fbbe112f40e7fbbf9038106993cd102d247b55c820281",
     "textures": 6
   },
   "runtime": {
@@ -58,7 +58,7 @@
     "motionBank": {
       "bytes": 14421,
       "rigId": "hornet",
-      "sha256": "79cdf6a0653e930a1aad537f5dc6a1c1671a91e5617043bb50821c181435dbe6",
+      "sha256": "6242c558ce48c7e1025f603544894e21505c559f7153bea3d47497e8d1c0b2f8",
       "uri": "assets/ships/motions/hornet-production-v1.motion.json"
     },
     "slot": "hull",
@@ -745,8 +745,8 @@
     ]
   },
   "sourceGlb": {
-    "bytes": 582256,
-    "sha256": "62591c7a00df35682f490b510c2d6efb97f20e221e2f023cf11810e99e457a15",
+    "bytes": 582172,
+    "sha256": "701ca39cb8abeacc723296e0d90e45d4ba157acf448bb946ea4ad01849d1c684",
     "uri": "assets/ships/release/parts/wholeships/hornet_production_v1.glb"
   }
 }

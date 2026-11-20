@@ -1,0 +1,355 @@
+{
+  "builder": "tools/blender/build_wreck_aftermath_pack.py",
+  "builderSha256": "a378f8b33994a9e2723ee428a1ac0a640c8809b917312bca3d7cd0acccb956ef",
+  "blender": "5.1.2",
+  "command": "blender --background --factory-startup --python tools/blender/build_wreck_aftermath_pack.py -- --render --distances --sheets --silhouettes --states --gaps --compositions",
+  "fiction": "design/fiction/THE_LONG_AFTERMATH.md",
+  "audit": "assets/incubator/wreck_aftermath_pack/evidence/EXISTING_COVERAGE.md",
+  "sourceOnly": true,
+  "rng": "none - every dimension, break, drift and state is authored",
+  "playerHullM": 28.0,
+  "minGapClearRadiusM": 20.0,
+  "assets": [
+    {
+      "id": "frag_plate_curl",
+      "family": "fragments",
+      "kind": "fragment",
+      "state": "cooling",
+      "was": "Skin plating, rolled open like paper.",
+      "reads": "Three curls off the same hull \u2014 the field's confetti.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/frag_plate_curl.glb",
+      "sha256": "022384a85b88fa0b8e92b05e3eab8d9b749d2334beccf47827fb67afb0d7b3ce",
+      "bytes": 225604,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 36,
+      "sizeM": [
+        6.0,
+        3.67,
+        2.99
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -0.53,
+        0.2,
+        0.44
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "tumbleAxis": [
+          0.722,
+          0.309,
+          0.619
+        ],
+        "tumbleDeg": 140.0,
+        "driftDistanceM": 0.0
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          6.0,
+          3.67,
+          2.99
+        ]
+      }
+    },
+    {
+      "id": "frag_rib_cluster",
+      "family": "fragments",
+      "kind": "fragment",
+      "state": "cooling",
+      "was": "A frame joint with its ribs still on it.",
+      "reads": "The skeleton's knuckle \u2014 the piece that makes the rest of the debris read as bones.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/frag_rib_cluster.glb",
+      "sha256": "27716b85ce1872292e7a149519989af79df1bdd1a47a927ae5aac902a54303ca",
+      "bytes": 77524,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 108,
+      "sizeM": [
+        4.82,
+        6.0,
+        5.51
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        1.55,
+        0.71,
+        0.56
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "tumbleAxis": [
+          0.398,
+          0.597,
+          0.697
+        ],
+        "tumbleDeg": 110.0,
+        "driftDistanceM": 0.0
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          4.82,
+          6.0,
+          5.51
+        ]
+      }
+    },
+    {
+      "id": "frag_cable_bundle",
+      "family": "fragments",
+      "kind": "fragment",
+      "state": "cooling",
+      "was": "Severed cable trunking off a ship's spine.",
+      "reads": "Bent ends, not cut \u2014 this came out with the wall.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/frag_cable_bundle.glb",
+      "sha256": "86fdda996c030d2c2acda8feffb54e1aef8e648655ae18746dcfe200e847cee1",
+      "bytes": 241592,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 172,
+      "sizeM": [
+        8.0,
+        4.46,
+        5.0
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -0.11,
+        0.11,
+        -0.62
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "tumbleAxis": [
+          0.722,
+          0.309,
+          0.619
+        ],
+        "tumbleDeg": 150.0,
+        "driftDistanceM": 0.0
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          8.0,
+          4.46,
+          5.0
+        ]
+      }
+    },
+    {
+      "id": "frag_grating_sheet",
+      "family": "fragments",
+      "kind": "fragment",
+      "state": "derelict",
+      "was": "One bay of deck grating.",
+      "reads": "There was a floor here, and therefore people.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/frag_grating_sheet.glb",
+      "sha256": "80a946be67b7d9528e71e7ad8c012d429aae360d54e0a018d0caa7940578a87f",
+      "bytes": 250248,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 232,
+      "sizeM": [
+        7.14,
+        8.0,
+        4.24
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -0.0,
+        -1.01,
+        -0.33
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "tumbleAxis": [
+          0.508,
+          0.609,
+          0.609
+        ],
+        "tumbleDeg": 61.0,
+        "driftDistanceM": 0.0
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          7.14,
+          8.0,
+          4.24
+        ]
+      }
+    },
+    {
+      "id": "frag_pipe_tangle",
+      "family": "fragments",
+      "kind": "fragment",
+      "state": "cooling",
+      "was": "Service pipework torn out of a run.",
+      "reads": "A tangle that still remembers the wall it came off.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/frag_pipe_tangle.glb",
+      "sha256": "372b7d0312ba46ead63bf465abdcbd4bb106aa5915e27e5943bc501db76a5775",
+      "bytes": 238308,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 144,
+      "sizeM": [
+        5.0,
+        3.94,
+        3.9
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        -0.08,
+        -0.01,
+        0.07
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "tumbleAxis": [
+          0.66,
+          0.5,
+          0.56
+        ],
+        "tumbleDeg": 97.0,
+        "driftDistanceM": 0.0
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          5.0,
+          3.94,
+          3.9
+        ]
+      }
+    },
+    {
+      "id": "frag_strut_shard",
+      "family": "fragments",
+      "kind": "fragment",
+      "state": "cooling",
+      "was": "A structural strut, snapped.",
+      "reads": "One end frayed, the other cleanly attached to nothing.",
+      "file": "assets/incubator/wreck_aftermath_pack/source/frag_strut_shard.glb",
+      "sha256": "0cee3d55b3269844511728ba21fc99354520085f7b4932209648cb1ab6e458eb",
+      "bytes": 73972,
+      "generator": "Khronos glTF Blender I/O v5.1.20",
+      "tris": 84,
+      "sizeM": [
+        11.0,
+        5.17,
+        5.49
+      ],
+      "centredResidualM": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "shipFrameOriginM": [
+        1.04,
+        0.35,
+        0.77
+      ],
+      "sockets": [],
+      "socketsMissing": [],
+      "floatingMarks": [],
+      "drift": {
+        "offsetM": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "tumbleAxis": [
+          0.42,
+          0.68,
+          0.6
+        ],
+        "tumbleDeg": 133.0,
+        "driftDistanceM": 0.0
+      },
+      "driftNote": null,
+      "gaps": [],
+      "collisionProxy": {
+        "kind": "box",
+        "suggestion": "One box per named section for hero pieces so the navigable gap stays open; a single AABB would seal it. Debris and components take one box.",
+        "aabbM": [
+          11.0,
+          5.17,
+          5.49
+        ]
+      }
+    }
+  ],
+  "socketFailures": [],
+  "gapFailures": [],
+  "floatingMarkFailures": [],
+  "renderFailures": [],
+  "assetCount": 6
+}

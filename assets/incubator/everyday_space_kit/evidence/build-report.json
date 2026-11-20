@@ -390,13 +390,13 @@
     {
       "id": "crusher_module",
       "status": "design_candidate",
-      "triangles": 628,
+      "triangles": 640,
       "sizeM": [
         11.954,
         10.889,
         9.25
       ],
-      "parts": 19,
+      "parts": 20,
       "sockets": [
         "SOCKET_Discharge",
         "SOCKET_Feed"
@@ -414,8 +414,8 @@
           4.625
         ]
       },
-      "bytes": 47568,
-      "sha256": "6f2a31ac721155c675ee5cffd897ff2a3cf38de3b4fa8ca9388aa04d6d494544",
+      "bytes": 62516,
+      "sha256": "60a635505ba228622fe5b3d392854beac35368c3af7736b56741be9dc1a5e0fe",
       "family": "mining",
       "role": "jaw crusher: funnel hopper, armored cheeks, scorched discharge chute",
       "states": "active=feed lumps+amber light; cold=empty hopper, no light",

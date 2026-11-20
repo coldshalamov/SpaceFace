@@ -703,7 +703,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "f53b826da5a3ede7bb61a96359d31a78249a00b451e0e935c5f3817724aad063",
+  "contentHash": "4d7e31678670b271c2d3d0441a293d21da911e0fdaf7ed9f277edb9f63df687f",
   "dynamicGroups": [
     {
       "id": "sf.render.swarm-warden.node.lod0-hook-drive-core.dynamic",
@@ -5516,8 +5516,8 @@
       "uri": "swarm_warden.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "bytes": 352463,
+      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
       "uri": "pilots.json"
     }
   },
@@ -9028,7 +9028,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/swarm_warden.glb"
   },
-  "runtimeHash": "5d3b5c4701b1fceb718ab8945f94536ad8fcd982ac185e86cf7854d22ec62804",
+  "runtimeHash": "b1c00eb5b49158f6c81cf645af4403b4b04811d6fe8517ee2051dfd49683390d",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

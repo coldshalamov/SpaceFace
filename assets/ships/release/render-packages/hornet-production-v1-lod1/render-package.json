@@ -611,7 +611,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1e8764ead9a8a6c1badba9f239e43fe9c116330cf12d26c98cac3a311df6be1e",
+  "contentHash": "20c3c16eb9d23241ea418550f283219af25eeb9b42272f56b946c1351f9dfaf9",
   "dynamicGroups": [
     {
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-hook-drive-core.dynamic",
@@ -694,7 +694,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "79cc94706857eac99b5dcceaae0e2cbdfa0c25580da4e5dbdafa38915c08b805",
+      "geometryHash": "20b989a674aad0259bd5618cd57dbdc1d0a4aae7be359f92061c745fdaff5517",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-armor.primitive.0",
       "indexCount": 2448,
       "indexed": true,
@@ -703,7 +703,7 @@
       "meshName": "LOD0_Armor.001",
       "nodeId": "sf.render.hornet-production-v1-lod1.mesh.lod0-armor",
       "primitiveIndex": 0,
-      "vertexCount": 941
+      "vertexCount": 942
     },
     {
       "bounds": {
@@ -873,7 +873,7 @@
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-lights-cyan-jacket.primitive.0",
       "indexCount": 222,
       "indexed": true,
-      "materialHash": "9182254bf8128fe374ad95ff593c4ee62b7e72c04a0bd82698b6d84e4b16fec2",
+      "materialHash": "128154c4f90a769d3872f1564fbf708e29d287a51b551b45ee32a47917d267d2",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Lights_Cyan_jacket.001",
       "nodeId": "sf.render.hornet-production-v1-lod1.mesh.lod0-lights-cyan-jacket",
@@ -983,18 +983,18 @@
     {
       "bounds": {
         "max": [
-          2.8908112049102783,
-          0.05928368144817724,
-          1.4994802170230992
+          2.890822410583496,
+          0.05927834662054462,
+          1.4995462387949379
         ],
         "min": [
-          1.557103157043457,
-          -0.04003110589259378,
-          0.3806828565166348
+          1.5572576522827148,
+          -0.040025770639317636,
+          0.3805434912293999
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9bde35bae18a99681af5dc81c320bfb75dea10309aa412d949df2b1441e53d8f",
+      "geometryHash": "945ace4b27958a9599d64c6485a00079b9125cf9829c942b2731f5e48975782e",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-motion-hornet-canard-s-armor.primitive.0",
       "indexCount": 348,
       "indexed": true,
@@ -1033,18 +1033,18 @@
     {
       "bounds": {
         "max": [
-          -3.3683013420689694,
-          0.05916205689086604,
+          -3.3682638463289454,
+          0.059154531458389836,
           -2.36246657371521
         ],
         "min": [
-          -4.615231086672486,
-          -0.09003377228750872,
-          -4.007385730743408
+          -4.61526858241251,
+          -0.09002624685503252,
+          -4.0072197914123535
         ]
       },
       "drawMode": 4,
-      "geometryHash": "91d6f0a87f77dff2c52b9508bd665038b61433659139b13a2c18c780205871b2",
+      "geometryHash": "2369da5fd6ef26d3d105889feadaaf1e1f9092296e33f007c0d7d60e900fd85a",
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-motion-hornet-flap-p-hook-armor-flap-armor.primitive.0",
       "indexCount": 408,
       "indexed": true,
@@ -1268,6 +1268,13 @@
       ]
     },
     {
+      "hash": "128154c4f90a769d3872f1564fbf708e29d287a51b551b45ee32a47917d267d2",
+      "id": "material:128154c4f90a769d3872f156",
+      "name": "Material_Emissive_Cyan_jacket",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
       "hash": "16564286e97aa95590d4d5ecfb274bd36657b089a6d1c4a84d934ae2ea6ff6d5",
       "id": "material:16564286e97aa95590d4d5ec",
       "name": "Material_Emissive_Amber_beacon",
@@ -1383,13 +1390,6 @@
           "uri": null
         }
       ]
-    },
-    {
-      "hash": "9182254bf8128fe374ad95ff593c4ee62b7e72c04a0bd82698b6d84e4b16fec2",
-      "id": "material:9182254bf8128fe374ad95ff",
-      "name": "Material_Emissive_Cyan_jacket",
-      "pipelineKey": "opaque:front",
-      "textures": []
     },
     {
       "hash": "be05a75f6364bf5672ea650343a77f801ba6d5341ae96a6a3777198c903e5642",
@@ -2080,21 +2080,21 @@
     {
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-motion-hornet-canard-s-armor",
       "localTransform": [
-        0.6668540239334106,
+        0.6667823791503906,
         0,
         0,
         0,
         0,
-        0.6668540239334106,
+        0.6667823791503906,
         0,
         0,
         0,
         0,
-        0.6668540239334106,
+        0.6667823791503906,
         0,
-        -0.17604291439056396,
-        0.04962628688372206,
-        -0.05991846323013306,
+        -0.17596006393432617,
+        0.04962628709654382,
+        -0.059955134987831116,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2109,21 +2109,21 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.hornet-production-v1-lod1.body",
       "worldTransform": [
-        0.6668540239334106,
+        0.6667823791503906,
         0,
         0,
         0,
         0,
-        0.6668540239334106,
+        0.6667823791503906,
         0,
         0,
         0,
         0,
-        0.6668540239334106,
+        0.6667823791503906,
         0,
-        2.2239571809768677,
-        0.009626287777791731,
-        0.9400815367698669,
+        2.2240400314331055,
+        0.009626287990613491,
+        0.9400448650121689,
         1
       ]
     },
@@ -2180,21 +2180,21 @@
     {
       "id": "sf.render.hornet-production-v1-lod1.mesh.lod0-motion-hornet-flap-p-hook-armor-flap-armor",
       "localTransform": [
-        0.8224595785140991,
+        0.8223766088485718,
         0,
         0,
         0,
         0,
-        0.8224595785140991,
+        0.8223766088485718,
         0,
         0,
         0,
         0,
-        0.8224595785140991,
+        0.8223766088485718,
         0,
         -0.19176626205444336,
         0.07456414587795734,
-        -0.7849260568618774,
+        -0.7848430871963501,
         1
       ],
       "materialPipelineKey": "opaque",
@@ -2209,21 +2209,21 @@
       "role": "dynamic",
       "spatialClusterId": "sf.render.hornet-production-v1-lod1.body",
       "worldTransform": [
-        0.8224595785140991,
+        0.8223766088485718,
         0,
         0,
         0,
         0,
-        0.8224595785140991,
+        0.8223766088485718,
         0,
         0,
         0,
         0,
-        0.8224595785140991,
+        0.8223766088485718,
         0,
         -3.9917662143707275,
         -0.015435857698321342,
-        -3.184926152229309,
+        -3.1848431825637817,
         1
       ]
     },
@@ -2925,19 +2925,19 @@
       "sha256": "d82095f4b57c638f209d83842e8af7796b6a33d3b2cdb7e4b0d947ebee0e187e"
     },
     "sourceGlb": {
-      "bytes": 437320,
-      "sha256": "54e148824189dca7084471c7dcc6c519cfca5c6dcac53b44d3cc9504da0cd1c3",
+      "bytes": 437244,
+      "sha256": "215b08b83cb9495a994035f9f6e7b7461a91d338536347bc8c9b959a0002fde5",
       "uri": "hornet_production_v1_lod1.glb"
     },
     "sourceManifest": {
       "bytes": 23489,
-      "sha256": "f6efb7db7a24dd91d74c70f1f7b89ed1cf35b02ce0227b6fba7ef07c45055bd2",
+      "sha256": "8811e1f957ab2f9ee390cb2a8643b02964c1035a368dd44a8135e6cb0a80345c",
       "uri": "assets/ships/render-packages/inputs/hornet-production-v1-lod1.json"
     }
   },
   "render": {
-    "bytes": 444712,
-    "sha256": "474d8ef8486cd6494aa4b9bd9382f58e070ed4d69c07153354228b2deedb8aed",
+    "bytes": 444636,
+    "sha256": "c4cb2d11e34540a6b103b269700e75b0e87eb1b6045682e0996f2319b5014bce",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3312,21 +3312,21 @@
       },
       {
         "matrix": [
-          0.8224595785140991,
+          0.8223766088485718,
           0,
           0,
           0,
           0,
-          0.8224595785140991,
+          0.8223766088485718,
           0,
           0,
           0,
           0,
-          0.8224595785140991,
+          0.8223766088485718,
           0,
           -3.9917662143707275,
           -0.015435857698321342,
-          -3.184926152229309,
+          -3.1848431825637817,
           1
         ],
         "name": "LOD0_MOTION_HORNET_FLAP_P_HOOK_ARMOR_FLAP_Armor",
@@ -4440,7 +4440,7 @@
     "motionBank": {
       "bytes": 14421,
       "rigId": "hornet",
-      "sha256": "79cdf6a0653e930a1aad537f5dc6a1c1671a91e5617043bb50821c181435dbe6",
+      "sha256": "6242c558ce48c7e1025f603544894e21505c559f7153bea3d47497e8d1c0b2f8",
       "uri": "assets/ships/motions/hornet-production-v1.motion.json"
     },
     "nodeCount": 52,
@@ -4795,21 +4795,21 @@
       {
         "canopy": false,
         "matrix": [
-          0.6668540239334106,
+          0.6667823791503906,
           0,
           0,
           0,
           0,
-          0.6668540239334106,
+          0.6667823791503906,
           0,
           0,
           0,
           0,
-          0.6668540239334106,
+          0.6667823791503906,
           0,
-          2.2239571809768677,
-          0.009626287777791731,
-          0.9400815367698669,
+          2.2240400314331055,
+          0.009626287990613491,
+          0.9400448650121689,
           1
         ],
         "name": "LOD0_MOTION_HORNET_CANARD_S_Armor",
@@ -4851,21 +4851,21 @@
       {
         "canopy": false,
         "matrix": [
-          0.8224595785140991,
+          0.8223766088485718,
           0,
           0,
           0,
           0,
-          0.8224595785140991,
+          0.8223766088485718,
           0,
           0,
           0,
           0,
-          0.8224595785140991,
+          0.8223766088485718,
           0,
           -3.9917662143707275,
           -0.015435857698321342,
-          -3.184926152229309,
+          -3.1848431825637817,
           1
         ],
         "name": "LOD0_MOTION_HORNET_FLAP_P_HOOK_ARMOR_FLAP_Armor001",
@@ -5081,7 +5081,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/hornet_production_v1_lod1.glb"
   },
-  "runtimeHash": "12e76a715e949fb9752950f9e215320154b1d0af1005c4aa842e923974ac60a1",
+  "runtimeHash": "0704971ad35ba2f8180faa8cc850652401224e2bcb9306868d1199901c7b16e5",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

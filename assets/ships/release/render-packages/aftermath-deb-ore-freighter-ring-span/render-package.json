@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ccc80c473ea67109f35946eb5f8a16b9ceeb7bdd807196435de2c33d90294dbd",
+  "contentHash": "27573740122a2510af522ad54028c47f7383730178d76cde23aac620dbe6bfd8",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -731,8 +731,8 @@
       "uri": "place_aftermath_deb_ore_freighter_ring_span.glb"
     },
     "sourceManifest": {
-      "bytes": 340541,
-      "sha256": "d53c9767f7988fdb15e53af5a279d024fe3bc5ef5d667af2e4759a049fbba284",
+      "bytes": 352463,
+      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
       "uri": "pilots.json"
     }
   },
@@ -1035,7 +1035,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_ore_freighter_ring_span.glb"
   },
-  "runtimeHash": "d8f945f6f8a2a8315ecb7ba3761f70b098db13178427d97c5c55aa0331ca8c74",
+  "runtimeHash": "491dbb6d3d190e6c0972edbbadd875fff41a6e4f7640d48b8932bee703d20496",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

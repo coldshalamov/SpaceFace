@@ -2,7 +2,7 @@
  "schema": "spaceface.rigidMotionBank.v1",
  "rigId": "hornet",
  "sourceAssetId": "SF_HORNET_PRODUCTION_V1",
- "sourceGlbSha256": "2ba4631ed577d0e49c5d145746400e81bc5880696dd47a7c1522038f667e4879",
+ "sourceGlbSha256": "61fdc2fa84fad774de2fbbe112f40e7fbbf9038106993cd102d247b55c820281",
  "fps": 60,
  "bindings": [
   {

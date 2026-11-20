@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a804502f3dba68beddd731e0e1d6571786a93382e871440a2850f2a56ff45ad5",
+  "contentHash": "9dbfc3265a2be6eea3060f5e51bef168d38ed6e999c728ff55e2b161227fb0cb",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -262,22 +262,34 @@
       "uri": "greeble_vents.glb"
     },
     "sourceManifest": {
-      "bytes": 4034,
-      "sha256": "9bcdde4cad2085da1110104bcfec0c0db86c21529fd197e759a9ed851a253da6",
+      "bytes": 4330,
+      "sha256": "4b835b0743d04077cb4c60d70ff88ef6d2e1a6eb339eb7aa7999a1cb6967ff17",
       "uri": "assets/ships/render-packages/inputs/greeble-vents.json"
     }
   },
   "render": {
-    "bytes": 205824,
+    "bytes": 22456,
     "resources": [
       {
         "bytes": 209600,
         "mimeType": "image/ktx2",
         "sha256": "830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd",
         "uri": "../_shared/images/830f03af281802085a1ccabfb9abdb7cb736c593a0bafb0ac595d153613867dd.ktx2"
+      },
+      {
+        "bytes": 178960,
+        "mimeType": "image/ktx2",
+        "sha256": "bc15ce72e7c570bf275bddce59a1cc72313b287161e2bcaaea93a7edca66142c",
+        "uri": "../_shared/images/bc15ce72e7c570bf275bddce59a1cc72313b287161e2bcaaea93a7edca66142c.ktx2"
+      },
+      {
+        "bytes": 4453,
+        "mimeType": "image/ktx2",
+        "sha256": "c83d93e155a49edddc5c3ffccba87aff7963f04502375c743fa8d5acd464ebba",
+        "uri": "../_shared/images/c83d93e155a49edddc5c3ffccba87aff7963f04502375c743fa8d5acd464ebba.ktx2"
       }
     ],
-    "sha256": "fca33f028d3610e3c43b039c62e2258603a3c8f2c74d70eeb24a58c40f1d2bb0",
+    "sha256": "3d31d0bd447ee88cf22df19b0edcd55c3c22a32bf44239f1cb6e97b1101385b4",
     "uri": "render.glb"
   },
   "runtime": {
@@ -381,7 +393,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_vents.glb"
   },
-  "runtimeHash": "2afa65c0221817bd0956161989e64d5da509810e1403942871fb2d23d45eaf36",
+  "runtimeHash": "79eba597506cb39d64639c68093fcc3dbed081514266e226e232cff40572d044",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

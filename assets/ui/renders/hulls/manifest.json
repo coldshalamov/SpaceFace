@@ -486,12 +486,12 @@
   },
   "ship_pelican": {
    "sourceGlb": "assets/ships/parts/wholeships/pelican_production_v1.glb",
-   "sourceGlbSha256": "D824B6C2338B5D7709D77F50949F46B911E6A8F020DD6B507326156D1CF7A836",
+   "sourceGlbSha256": "B8E88754055E08A3BBA0ACF67F8E450B03327C8A6568988554CBB929CA0D70BD",
    "hero": {
     "file": "ship_pelican.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 109392,
+    "bytes": 116594,
     "hullSize": [
      14.71,
      6.26,
@@ -575,7 +575,7 @@
     "file": "ship_pelican.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 59458,
+    "bytes": 62872,
     "hullSize": [
      14.71,
      6.26,
@@ -659,7 +659,7 @@
     "file": "ship_pelican.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 40058,
+    "bytes": 42236,
     "hullSize": [
      14.71,
      6.26,
@@ -1359,12 +1359,12 @@
   },
   "ship_mule": {
    "sourceGlb": "assets/ships/parts/wholeships/mule_production_v1.glb",
-   "sourceGlbSha256": "1A9789F3DA83CD77D27D571101B265B32D4222BE4589A6FE911A9147089C45F2",
+   "sourceGlbSha256": "52009BCA2E3B73E82B9377767FE361BD5A19B31031F84410B431228E6129FCE5",
    "hero": {
     "file": "ship_mule.hero.webp",
     "width": 2400,
     "height": 1350,
-    "bytes": 127650,
+    "bytes": 127104,
     "hullSize": [
      16.15,
      6.925,
@@ -1448,7 +1448,7 @@
     "file": "ship_mule.side.webp",
     "width": 2400,
     "height": 1100,
-    "bytes": 52538,
+    "bytes": 52152,
     "hullSize": [
      16.15,
      6.925,
@@ -1532,7 +1532,7 @@
     "file": "ship_mule.top.webp",
     "width": 1024,
     "height": 1024,
-    "bytes": 48384,
+    "bytes": 48428,
     "hullSize": [
      16.15,
      6.925,

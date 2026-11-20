@@ -32,8 +32,8 @@
     "metadataUrl": "assets/ships/release/render-packages/hornet-production-v1-lod2/render-package.json",
     "outputDir": "assets/ships/release/render-packages/hornet-production-v1-lod2",
     "releaseAssetId": "wholeship_hornet_production_v1_lod2",
-    "releaseBytes": 373712,
-    "releaseSha256": "163c4d60a4e7f5833307694a3a3b6311bd0575f6097fa940cd457cae77c4345b",
+    "releaseBytes": 373756,
+    "releaseSha256": "86a5744056fb0debfecba7451ce79ffdce5a8701d7acb1793917c34610118aa9",
     "rootNode": "HORNET_LOD2_ROOT",
     "runtimeAssetId": "SF_HORNET_PRODUCTION_V1",
     "slot": "hull",
@@ -46,11 +46,11 @@
     "ktx2Textures": 6,
     "meshoptBufferViews": 63,
     "release": "assets/ships/release/parts/wholeships/hornet_production_v1_lod2.glb",
-    "releaseBytes": 373712,
-    "releaseSha256": "163c4d60a4e7f5833307694a3a3b6311bd0575f6097fa940cd457cae77c4345b",
+    "releaseBytes": 373756,
+    "releaseSha256": "86a5744056fb0debfecba7451ce79ffdce5a8701d7acb1793917c34610118aa9",
     "source": "assets/ships/parts/wholeships/hornet_production_v1_lod2.glb",
-    "sourceBytes": 363528,
-    "sourceSha256": "dbd147faa73c683ce19ba18494723519e158a692fda23b83cdaf8c5168be0b81",
+    "sourceBytes": 363452,
+    "sourceSha256": "5ecdbe2f78c181fc87cdf25e83a9e15149adf9f85c95af258789a18a1abaca35",
     "textures": 6
   },
   "runtime": {
@@ -58,7 +58,7 @@
     "motionBank": {
       "bytes": 14421,
       "rigId": "hornet",
-      "sha256": "79cdf6a0653e930a1aad537f5dc6a1c1671a91e5617043bb50821c181435dbe6",
+      "sha256": "6242c558ce48c7e1025f603544894e21505c559f7153bea3d47497e8d1c0b2f8",
       "uri": "assets/ships/motions/hornet-production-v1.motion.json"
     },
     "slot": "hull",
@@ -478,8 +478,8 @@
     ]
   },
   "sourceGlb": {
-    "bytes": 373712,
-    "sha256": "163c4d60a4e7f5833307694a3a3b6311bd0575f6097fa940cd457cae77c4345b",
+    "bytes": 373756,
+    "sha256": "86a5744056fb0debfecba7451ce79ffdce5a8701d7acb1793917c34610118aa9",
     "uri": "assets/ships/release/parts/wholeships/hornet_production_v1_lod2.glb"
   }
 }

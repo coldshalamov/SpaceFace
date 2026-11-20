@@ -24,7 +24,7 @@
       "nodeName": "SOCKET_Discharge",
       "nodePath": [
         0,
-        19
+        20
       ],
       "parentNodeId": "sf.render.crusher-module.node.crusher-module",
       "worldTransform": [
@@ -70,7 +70,7 @@
       "nodeName": "SOCKET_Feed",
       "nodePath": [
         0,
-        20
+        21
       ],
       "parentNodeId": "sf.render.crusher-module.node.crusher-module",
       "worldTransform": [
@@ -105,24 +105,24 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2c1d2ab0ff48b0b2745936fac9bfcc806a53b7f467764e938c33aa099c498671",
+  "contentHash": "3798cd13622fc0ea150dd246d837e9e4382013c98e5af9b42e4f7656eb9056d3",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          3.500000238418579,
-          2.0003757877178425,
-          3.5499950392469555
+          3.5,
+          2.000375786044321,
+          3.549994969577535
         ],
         "min": [
-          -3.4997492695937433,
-          -2.0000265725062722,
-          -2.500325234633295
+          -3.4997493412859413,
+          -2.0000264788945827,
+          -2.500325160190701
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0b8cc84865ccbe64cc862edc642c8ee3510b94b25465acba4946e4b2637d1d74",
+      "geometryHash": "5aa7eb469f19f3e2815e863ad6645c741c4fec6837ae3745845d80305751a668",
       "id": "sf.render.crusher-module.node.belt-guard.primitive.0",
       "indexCount": 72,
       "indexed": true,
@@ -136,18 +136,18 @@
     {
       "bounds": {
         "max": [
-          2.4998614634673553,
-          1.7999814577337245,
-          2.799585478871976
+          2.499861248870989,
+          1.799981460833377,
+          2.799585427076491
         ],
         "min": [
-          -2.500068713384861,
-          -1.3999127596193817,
-          -2.7996948129632275
+          -2.5000688088883574,
+          -1.399912680301747,
+          -2.799694731389977
         ]
       },
       "drawMode": 4,
-      "geometryHash": "0c9c5d9a07379075d32592cc258d18d44901cc2dbb5bf4cd83b50d927126d4a4",
+      "geometryHash": "ad1b339b1e291402e75e7cf913b087b13219fc3163e4fdc36a49d2c48f07c943",
       "id": "sf.render.crusher-module.node.belt-guard.primitive.1",
       "indexCount": 72,
       "indexed": true,
@@ -161,18 +161,18 @@
     {
       "bounds": {
         "max": [
-          2.4393765894782464,
-          5.59983674839294,
-          2.439731026552935
+          2.439376376322563,
+          5.599836660984194,
+          2.4397309833287895
         ],
         "min": [
           -6.5096354484558105,
-          -2.695297144219463,
-          -2.4398403606441863
+          -2.6952970340471882,
+          -2.4398402876422756
         ]
       },
       "drawMode": 4,
-      "geometryHash": "09f0a8494660bbe65dde5e3f84c6182f04f58d9cd5e953c20db5407be29526a4",
+      "geometryHash": "e397c6c31ea2911c65407e04355be33f898b1c04ea57442fe40ea19b22304c96",
       "id": "sf.render.crusher-module.node.belt-guard.primitive.2",
       "indexCount": 72,
       "indexed": true,
@@ -186,18 +186,18 @@
     {
       "bounds": {
         "max": [
-          1.3676029511409316,
-          5.539962832726954,
-          1.199943849356984
+          1.3676027635137245,
+          5.539962746744339,
+          1.199943835663214
         ],
         "min": [
-          -1.1706234022707114,
-          4.459788517446707,
-          -1.2000531834482357
+          -1.1706235294401415,
+          4.459788457192664,
+          -1.2000531399767005
         ]
       },
       "drawMode": 4,
-      "geometryHash": "edc92e3263362c9cb11c1a95b7f80063fd45ce5febf5584cbfc691fed1385641",
+      "geometryHash": "b0fc701d68fae38d05e2a971770932bb56aa19d3636bd0b4fc7bdb58e9cea4dd",
       "id": "sf.render.crusher-module.node.belt-guard.primitive.3",
       "indexCount": 900,
       "indexed": true,
@@ -211,18 +211,18 @@
     {
       "bounds": {
         "max": [
-          3.4627317807081184,
-          6.555528305337017,
-          3.4626279990404645
+          3.4627315431772328,
+          6.555528195164742,
+          3.462627931452032
         ],
         "min": [
-          2.686814710342782,
-          5.511247791540205,
-          2.6865581890943484
+          2.6868144912933936,
+          5.5112477062415515,
+          2.68655813999105
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bea9e9503cd6af1062ff7865e4061e5fe675c2863a4f29795a791752b8f9772d",
+      "geometryHash": "002172dc19a37879b87e335579467dae25b5c1023b4d52eb7456fd208a746229",
       "id": "sf.render.crusher-module.node.belt-guard.primitive.4",
       "indexCount": 96,
       "indexed": true,
@@ -236,18 +236,18 @@
     {
       "bounds": {
         "max": [
-          3.2996059084344607,
-          6.3135888093805805,
-          3.300724043413052
+          3.2996056747890554,
+          6.313588704971041,
+          3.3007239796809946
         ],
         "min": [
-          2.7931214585660644,
-          6.050876730437987,
-          2.792864937317631
+          2.7931212369845655,
+          6.050876632285962,
+          2.792864885682222
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ee7077f4cef04bc6f1e7965faac194dfe2ac0cd8dcc1cdfcbf1f44a6538fd093",
+      "geometryHash": "8a4d97fe312ea58fe6f2d74b8b171b7e1109f9b468704bca285215056dc240e2",
       "id": "sf.render.crusher-module.node.belt-guard.primitive.5",
       "indexCount": 36,
       "indexed": true,
@@ -261,18 +261,18 @@
     {
       "bounds": {
         "max": [
-          3.500000238418579,
-          5.400053376731945,
-          4.200054695049095
+          3.5,
+          5.40005329408182,
+          4.200054609895965
         ],
         "min": [
-          -2.7224575430013824,
-          -1.5746468400323628,
-          -2.722103105926694
+          -2.72245763320782,
+          -1.5746467565527533,
+          -2.7221030262015935
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b8c73186ea2c220827ffea0ec8f1474c8236c1b27ac4e288331979af02f6ce98",
+      "geometryHash": "a60205abbfe37bc2016267d2d4b5900639fee80e590cd6e7bff4816607fef013",
       "id": "sf.render.crusher-module.node.belt-guard.primitive.6",
       "indexCount": 192,
       "indexed": true,
@@ -281,57 +281,82 @@
       "meshName": "render:sf.render.crusher-module.flight-static-lane.1",
       "nodeId": "sf.render.crusher-module.node.belt-guard",
       "primitiveIndex": 6,
-      "vertexCount": 80
+      "vertexCount": 108
     },
     {
       "bounds": {
         "max": [
-          2.9501377476084985,
-          5.609612081562897,
-          2.949881226360065
+          0.8768505021549107,
+          2.170222195826768,
+          0.8767468904297094
         ],
         "min": [
-          -2.9498867787836627,
-          5.390278043561988,
-          -2.9499905604513166
+          -0.8767525830179944,
+          1.9496662464330152,
+          -0.8768561947431956
         ]
       },
       "drawMode": 4,
-      "geometryHash": "44c91f44f69c2fe2d33d8fc9630d201e4cbbc5a8dccaa8b0d813d727ecb5f20c",
+      "geometryHash": "c98a8bf86de9e51befbd37f4d8f6a874401fc3b57df81ea750bebb432cd4bcde",
       "id": "sf.render.crusher-module.node.belt-guard.primitive.7",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "143624083cd581b0939afdceab5c899bf657b2aed5f3b564889a38aa774950fe",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "meshName": "render:sf.render.crusher-module.flight-static-lane.1",
+      "nodeId": "sf.render.crusher-module.node.belt-guard",
+      "primitiveIndex": 7,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          2.9501375222870427,
+          5.609611993921313,
+          2.9498811709846997
+        ],
+        "min": [
+          -2.9498868635729845,
+          5.390277961144701,
+          -2.949990475298186
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "102075f685ab3d673724a485f3e368ab186efe1dd3b2ffb0e8a69dc6f68e714a",
+      "id": "sf.render.crusher-module.node.belt-guard.primitive.8",
       "indexCount": 144,
       "indexed": true,
       "materialHash": "5305fc668e4d72b1033337139ca107da7ea825b4e3f7570330e1052d54f1585a",
       "materialPipelineKey": "flight-static:opaque:lodalways",
       "meshName": "render:sf.render.crusher-module.flight-static-lane.1",
       "nodeId": "sf.render.crusher-module.node.belt-guard",
-      "primitiveIndex": 7,
+      "primitiveIndex": 8,
       "vertexCount": 96
     },
     {
       "bounds": {
         "max": [
-          0.20907323092024832,
-          6.020328814281871,
-          2.970042851023101
+          0.2090730708879529,
+          6.020328716857463,
+          2.970042795167508
         ],
         "min": [
-          -0.20943322041853474,
-          5.5796751237299045,
-          2.530152858375037
+          -0.20943337048246424,
+          5.579675036801386,
+          2.5301528129971427
         ]
       },
       "drawMode": 4,
-      "geometryHash": "612ef16f4ab20c9fd254a402d559633119121b39a792ae1875b0d9ac396d681e",
-      "id": "sf.render.crusher-module.node.belt-guard.primitive.8",
+      "geometryHash": "81ac7b2dc8577019d6fccae41dfe555b514af390c442515939ae6b4c5a2e3f17",
+      "id": "sf.render.crusher-module.node.belt-guard.primitive.9",
       "indexCount": 300,
       "indexed": true,
       "materialHash": "34f564162e21bc0296927f4f484f55f128310b56bf176f29079c2ac33b4a2504",
       "materialPipelineKey": "flight-static:opaque:lodalways",
       "meshName": "render:sf.render.crusher-module.flight-static-lane.1",
       "nodeId": "sf.render.crusher-module.node.belt-guard",
-      "primitiveIndex": 8,
-      "vertexCount": 142
+      "primitiveIndex": 9,
+      "vertexCount": 220
     }
   ],
   "hlods": [],
@@ -406,19 +431,19 @@
     {
       "id": "sf.render.crusher-module.node.belt-guard",
       "localTransform": [
-        5.004817843437195,
+        5.004817724227905,
         0,
         0,
         0,
         0,
-        5.004817843437195,
+        5.004817724227905,
         0,
         0,
         0,
         0,
-        5.004817843437195,
+        5.004817724227905,
         0,
-        -1.5048176050186157,
+        -1.5048177242279053,
         1.9301155805587769,
         0.6250320672988892,
         1
@@ -434,19 +459,19 @@
       "role": "immutable",
       "spatialClusterId": "sf.render.crusher-module.body",
       "worldTransform": [
-        5.004817843437195,
+        5.004817724227905,
         0,
         0,
         0,
         0,
-        5.004817843437195,
+        5.004817724227905,
         0,
         0,
         0,
         0,
-        5.004817843437195,
+        5.004817724227905,
         0,
-        -1.5048176050186157,
+        -1.5048177242279053,
         1.9301155805587769,
         0.6250320672988892,
         1
@@ -1138,6 +1163,55 @@
       ]
     },
     {
+      "id": "sf.render.crusher-module.node.hopper-throat-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
+      "nodeName": "hopper_throat_collar",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.crusher-module.node.crusher-module",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.crusher-module.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
       "id": "sf.render.crusher-module.node.motor",
       "localTransform": [
         1,
@@ -1162,7 +1236,7 @@
       "nodeName": "motor",
       "nodePath": [
         0,
-        14
+        15
       ],
       "parentId": "sf.render.crusher-module.node.crusher-module",
       "role": "immutable",
@@ -1211,7 +1285,7 @@
       "nodeName": "rim_e",
       "nodePath": [
         0,
-        15
+        16
       ],
       "parentId": "sf.render.crusher-module.node.crusher-module",
       "role": "immutable",
@@ -1260,7 +1334,7 @@
       "nodeName": "rim_n",
       "nodePath": [
         0,
-        16
+        17
       ],
       "parentId": "sf.render.crusher-module.node.crusher-module",
       "role": "immutable",
@@ -1309,7 +1383,7 @@
       "nodeName": "rim_s",
       "nodePath": [
         0,
-        17
+        18
       ],
       "parentId": "sf.render.crusher-module.node.crusher-module",
       "role": "immutable",
@@ -1358,7 +1432,7 @@
       "nodeName": "rim_w",
       "nodePath": [
         0,
-        18
+        19
       ],
       "parentId": "sf.render.crusher-module.node.crusher-module",
       "role": "immutable",
@@ -1407,7 +1481,7 @@
       "nodeName": "SOCKET_Discharge",
       "nodePath": [
         0,
-        19
+        20
       ],
       "parentId": "sf.render.crusher-module.node.crusher-module",
       "role": "immutable",
@@ -1456,7 +1530,7 @@
       "nodeName": "SOCKET_Feed",
       "nodePath": [
         0,
-        20
+        21
       ],
       "parentId": "sf.render.crusher-module.node.crusher-module",
       "role": "immutable",
@@ -1505,7 +1579,7 @@
       "nodeName": "strobe",
       "nodePath": [
         0,
-        21
+        22
       ],
       "parentId": "sf.render.crusher-module.node.crusher-module",
       "role": "immutable",
@@ -1532,45 +1606,45 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "a2ea8b0e60b4fa23f433fb8eb90bf8d31d9a7b7c9eccc76fe8d6577ac8343f7a"
+      "sha256": "e7710fb6debe310e838167ec1f5d5485f709170d96c5dc6836f92e5e220c3280"
     },
     "sourceGlb": {
-      "bytes": 28708,
-      "sha256": "d8c92aaf8dab4e889c5c47fbf3120dcbae61ce33be7a9e39c5bf9e7d5df93bf9",
+      "bytes": 44864,
+      "sha256": "e8bd397433f88126424c9d469eddbf8a94aea3c4a6ad31022091f957bef53e42",
       "uri": "place_crusher_module.glb"
     },
     "sourceManifest": {
-      "bytes": 341383,
-      "sha256": "f585257e9f525212c4fe1a4d400cfab51470fdd9eca83025279659074f3433c1",
-      "uri": "pilots.json"
+      "bytes": 15953,
+      "sha256": "791ee831b88e3b16eb118b681ff516e7d70ea72221d50398d787132d122727d2",
+      "uri": "assets/ships/render-packages/inputs/crusher-module.json"
     }
   },
   "render": {
-    "bytes": 27840,
-    "sha256": "29659afcb6f98835daf0f39a68f645be626a7662734e86b408b40fb57c0391a8",
+    "bytes": 41136,
+    "sha256": "cc7e784d957fecb25e1fd21f6ea832450ff5e37133b37a712a5dea9241710077",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        -1.5048176050186157,
+        -1.5048177242279053,
         1.9301155805587769,
         0.6250320672988894
       ],
       "max": [
-        3.500000238418579,
-        6.555528305337017,
-        4.200054695049095
+        3.5,
+        6.555528195164742,
+        4.200054609895965
       ],
       "min": [
         -6.5096354484558105,
-        -2.695297144219463,
-        -2.9499905604513166
+        -2.6952970340471882,
+        -2.949990475298186
       ],
       "size": [
-        10.00963568687439,
-        9.25082544955648,
-        7.150045255500412
+        10.00963544845581,
+        9.25082522921193,
+        7.150045085194151
       ]
     },
     "hidden": [],
@@ -1596,7 +1670,7 @@
           1
         ],
         "name": "SOCKET_Discharge",
-        "planIndex": 30,
+        "planIndex": 32,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -1634,7 +1708,7 @@
           1
         ],
         "name": "SOCKET_Feed",
-        "planIndex": 31,
+        "planIndex": 33,
         "tags": {
           "lod": "lod0",
           "socket": true,
@@ -1655,76 +1729,81 @@
     ],
     "materialProfileRoles": {
       "hull": 2,
-      "mechanical": 3,
+      "mechanical": 4,
       "rubber": 1,
       "signal": 2,
       "warning": 1
     },
     "materialProfiles": [
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 3,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 4,
         "role": "hull"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 5,
         "role": "rubber"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 6,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 7,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 8,
         "role": "signal"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 9,
         "role": "mechanical"
       },
       {
-        "allowTextures": false,
+        "allowTextures": true,
         "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
         "role": "warning"
       },
       {
-        "allowTextures": false,
-        "planIndex": 11,
+        "allowTextures": true,
+        "planIndex": 12,
         "role": "signal"
       }
     ],
-    "nodeCount": 33,
+    "nodeCount": 35,
     "primitives": [
       {
         "canopy": false,
         "matrix": [
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
-          -1.5048176050186157,
+          -1.5048177242279053,
           1.9301155805587769,
           0.6250320672988892,
           1
@@ -1739,19 +1818,19 @@
       {
         "canopy": false,
         "matrix": [
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
-          -1.5048176050186157,
+          -1.5048177242279053,
           1.9301155805587769,
           0.6250320672988892,
           1
@@ -1766,19 +1845,19 @@
       {
         "canopy": false,
         "matrix": [
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
-          -1.5048176050186157,
+          -1.5048177242279053,
           1.9301155805587769,
           0.6250320672988892,
           1
@@ -1793,19 +1872,19 @@
       {
         "canopy": false,
         "matrix": [
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
-          -1.5048176050186157,
+          -1.5048177242279053,
           1.9301155805587769,
           0.6250320672988892,
           1
@@ -1820,19 +1899,19 @@
       {
         "canopy": false,
         "matrix": [
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
-          -1.5048176050186157,
+          -1.5048177242279053,
           1.9301155805587769,
           0.6250320672988892,
           1
@@ -1847,19 +1926,19 @@
       {
         "canopy": false,
         "matrix": [
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
-          -1.5048176050186157,
+          -1.5048177242279053,
           1.9301155805587769,
           0.6250320672988892,
           1
@@ -1874,19 +1953,19 @@
       {
         "canopy": false,
         "matrix": [
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
-          -1.5048176050186157,
+          -1.5048177242279053,
           1.9301155805587769,
           0.6250320672988892,
           1
@@ -1901,19 +1980,19 @@
       {
         "canopy": false,
         "matrix": [
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
-          -1.5048176050186157,
+          -1.5048177242279053,
           1.9301155805587769,
           0.6250320672988892,
           1
@@ -1928,19 +2007,19 @@
       {
         "canopy": false,
         "matrix": [
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
           0,
           0,
           0,
-          5.004817843437195,
+          5.004817724227905,
           0,
-          -1.5048176050186157,
+          -1.5048177242279053,
           1.9301155805587769,
           0.6250320672988892,
           1
@@ -1951,26 +2030,53 @@
           "canopy": false,
           "lod": "lod0"
         }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          5.004817724227905,
+          0,
+          0,
+          0,
+          0,
+          5.004817724227905,
+          0,
+          0,
+          0,
+          0,
+          5.004817724227905,
+          0,
+          -1.5048177242279053,
+          1.9301155805587769,
+          0.6250320672988892,
+          1
+        ],
+        "name": "rendersfrendercrusher-moduleflight-static-lane1_9",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
       }
     ],
     "schema": "spaceface.renderPackageRuntime.v1",
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_crusher_module.glb"
   },
-  "runtimeHash": "fa009406979b22891cab024b60b8100bf8520761ec8190e2958fa6d148601da2",
+  "runtimeHash": "166a9682bfe84ae128d0819552853a431c2c0d057bc95d15e727feef9111aa20",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          3.500000238418579,
-          6.555528305337017,
-          4.200054695049095
+          3.5,
+          6.555528195164742,
+          4.200054609895965
         ],
         "min": [
           -6.5096354484558105,
-          -2.695297144219463,
-          -2.9499905604513166
+          -2.6952970340471882,
+          -2.949990475298186
         ]
       },
       "id": "sf.render.crusher-module.body",
@@ -1990,6 +2096,7 @@
         "sf.render.crusher-module.node.hopper-fl-lens",
         "sf.render.crusher-module.node.hopper-shell",
         "sf.render.crusher-module.node.hopper-throat",
+        "sf.render.crusher-module.node.hopper-throat-collar",
         "sf.render.crusher-module.node.motor",
         "sf.render.crusher-module.node.rim-e",
         "sf.render.crusher-module.node.rim-n",
