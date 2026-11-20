@@ -24,6 +24,7 @@ import { createSimulation } from '../src/core/sim.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
+import { BOOMERANG_BOMB_RUN } from '../src/data/heroManeuvers.js';
 import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { materializeWaveBatch } from '../src/systems/waveMaterialization.js';
 import { bombs } from '../src/systems/bombs.js';
@@ -632,9 +633,10 @@ test('one Bomb command makes a physical V3 bank, drops one canonical bomb, and p
 });
 
 for (const m02Case of [
-  { warmupTicks: 30, minRange: 190, maxRange: 300 },
-  { warmupTicks: 120, minRange: 120, maxRange: 150 },
-]) test(`M02 commits against a moving production wave-1 target at ${m02Case.minRange}-${m02Case.maxRange} WU`, async () => {
+  // The wasp's pass cycle (shared pack brain, 2026-11-20) decides which law this sortie proves:
+  { warmupTicks: 30, outcome: 'commit' },   // still ingressing — the bank flanks it and commits
+  { warmupTicks: 120, outcome: 'refuse' },  // mid extend-leg at ~120 wu/s — the envelope law holds
+]) test(`M02 vs a moving production wave-1 target after ${m02Case.warmupTicks} ticks: ${m02Case.outcome === 'commit' ? 'the sortie commits' : 'the paid return envelope is never exceeded'}`, async () => {
   const tactical = createTacticalAISystem({ config: { enemyMind: { enabled: false } } });
   const sim = createSimulation({ seed: 4242,
     systems: [aiPorts, tactical, heroManeuvers, bombs],
@@ -685,8 +687,12 @@ for (const m02Case of [
     assert.ok(Math.hypot(target.pos.x - initial.x, target.pos.z - initial.z) > 4,
       `the production AI/flight/Rapier path moved the admitted hostile before the command (start=${JSON.stringify(initial)} end=${JSON.stringify(target.pos)} intent=${JSON.stringify(target.data.intent)} ai=${JSON.stringify(target.data.ai)} diagnostics=${JSON.stringify(sim.helpers.inspectAIPorts?.())})`);
     const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
-    assert.ok(distance >= m02Case.minRange && distance <= m02Case.maxRange,
-      `ordinary first-wave target distance ${distance.toFixed(1)} WU is inside the selected live lock band`);
+    // Arrivals enter at SWARM_SPAWN_DISTANCE and walk in; how fast they close is the shared pack
+    // brain's, not this test's, to choose. What M02 needs is the module's own lock band.
+    assert.ok(distance >= BOOMERANG_BOMB_RUN.minTargetRangeWu && distance <= BOOMERANG_BOMB_RUN.maxTargetRangeWu,
+      `first-wave target distance ${distance.toFixed(1)} m sits inside the module's live lock band ` +
+      `(${BOOMERANG_BOMB_RUN.minTargetRangeWu}-${BOOMERANG_BOMB_RUN.maxTargetRangeWu} m); ` +
+      'the old hand-calibrated 120-150 band pinned the pre-pack-brain closing speed');
     player.rot = Math.atan2(target.pos.z - player.pos.z, target.pos.x - player.pos.x);
     assert.equal(heroManeuverReadiness(state).status, 'armed', heroManeuverReadiness(state).reason);
     player.data = { ...(player.data || {}), derived: getDerivedStats('ship_kestrel', ['wpn_pulse_laser_s', 'mod_boomerang_run']) };
@@ -744,6 +750,24 @@ for (const m02Case of [
     const bankTargetTravel = Math.hypot(target.pos.x - originalTargetPos.x, target.pos.z - originalTargetPos.z);
     assert.ok(bankTargetTravel > 4,
       `the target continues moving under the real wave AI during the bank (travel=${bankTargetTravel.toFixed(1)}, alive=${target.alive}, hull=${target.hull}, terminal=${state.flightRuntime.heroManeuverStatus.phase}/${state.flightRuntime.heroManeuverStatus.reason})`);
+    if (m02Case.outcome === 'refuse') {
+      // Commanded mid extend-leg, the wasp runs ~120 wu/s and the bank follows. The sortie's
+      // contract is the reservation, not the kill: the tick the bank crosses the 520 WU
+      // envelope paid up front, it must abort with the bomb unspent and every lease released.
+      const terminal = state.flightRuntime.heroManeuverStatus;
+      assert.equal(terminal.phase, 'return_blocked',
+        `a running target ends the sortie through the envelope refusal (reason=${terminal.reason})`);
+      assert.equal(terminal.reason, 'outside_reserved_return_envelope');
+      assert.equal(state.bombs.rack.cells[0].count, 4,
+        'the reserved bomb is never spent on a refused sortie');
+      assert.ok(!releasePose, 'no bomb release is recorded on a refused sortie');
+      assert.ok(maxAnchorDistance <= BOOMERANG_BOMB_RUN.returnMaxDistanceWu + 3,
+        `the abort fires within a tick of crossing the paid envelope (max ${maxAnchorDistance.toFixed(1)} m` +
+          ` vs ${BOOMERANG_BOMB_RUN.returnMaxDistanceWu} paid)`);
+      assert.equal(state.flightRuntime.heroManeuverIntent, null, 'the physical control lease is cleared on refusal');
+      assert.equal(state.flightRuntime.heroManeuverBoost, null, 'the refusal leaks no boost request');
+      return;
+    }
     assert.equal(state.bombs.rack.cells[0].count, 3,
       `a normal wave-1 M02 sortie must commit one canonical bomb (terminal=${state.flightRuntime.heroManeuverStatus.phase}, reason=${state.flightRuntime.heroManeuverStatus.reason}, player=${JSON.stringify(player.pos)}, target=${JSON.stringify(target.pos)}, targetRot=${target.rot}, targetTravel=${Math.hypot(target.pos.x - originalTargetPos.x, target.pos.z - originalTargetPos.z).toFixed(1)}, maxAnchor=${maxAnchorDistance.toFixed(1)}, samples=${JSON.stringify(bankSamples)})`);
     assert.ok(releasePose && releaseTargetPose, 'bomb release records the live player and target poses');
@@ -1006,7 +1030,9 @@ test('Crucible rail names the live lock, rebindable Bomb command, and current re
   const s = prepareScenario();
   try {
     const line = () => crucibleCombatLines(s.state).find(row => row.id === 'boomerang-bomb-run');
-    assert.match(line().text, /4\/Y.*ready.*bomb_frag/i);
+    // G18-02's one set of keys: Bomb lives on its hotbar seat 4 alone (the old Y charge-throw
+    // alias is gone), and the rail still names the live lock, readiness and rack selection.
+    assert.match(line().text, /lock a hostile · 4 · ready.*bomb_frag/i);
     s.state.player.targetId = null;
     s.state.tick = 6;
     s.state.simTime += 0.1;
