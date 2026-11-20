@@ -7061,13 +7061,16 @@ export const vfx = {
     const verb = beam.verb || 'extract';
     // Substantial three-dimensional channels, independent of arrival/cutoff. The shader moves
     // material through them and articulates the receiving surface, including the cooling tail.
-    beam.shaderShared.coreRadius.value = verb === 'cut' ? 1.4 : verb === 'repair' ? 2.5 : 2.8;
-    beam.shaderShared.sheathRadius.value = verb === 'cut' ? 2.3 : verb === 'repair' ? 3.5 : 4.2;
+    // A tight beam, not a searchlight: a thin hot core in a narrow sheath; the CONTACT carries the
+    // energy (kit: hot point, chips and sparks at the rock), so the line itself stays slim.
+    beam.shaderShared.coreRadius.value = verb === 'cut' ? 0.7 : verb === 'repair' ? 0.9 : 0.8;
+    beam.shaderShared.sheathRadius.value = verb === 'cut' ? 1.2 : verb === 'repair' ? 1.5 : 1.4;
+    if (beam.active && !reduced) this._ensurePowerFx()?.miningContact(txG, tzG, dx / dist, dz / dist, verb, dt);
     beam.shaderShared.contactRadius.value = Math.max(3.6, Math.min(8, r * .65));
     beam.shaderShared.targetRadius.value = r;
     beam.mesh.visible = beam.glow.visible = true;
     beam.mesh.material.opacity = verb === 'cut' ? .82 : .72;
-    beam.glow.material.opacity = .24;
+    beam.glow.material.opacity = .14;
     if (verb === 'cut' && beam.active && !reduced) {
       // Fixed cadence and seeded direction avoid frame-rate dependent spark showers.
       beam.sparkAcc += dt;

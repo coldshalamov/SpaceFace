@@ -33,7 +33,10 @@ test('moving tool endpoints bind local uniforms without uploading new mesh verti
   assert.equal(beam.shaderShared.end.value.x, 100);
   assert.equal(position.version, initialVersion);
   assert.ok(position.count > 4);
-  assert.equal(system._scene.children.length, 2);
+  // The beam is its two conduit draws; the hot contact point, sparks and chips at the rock are the
+  // VFX kit's (SF_Kit_* meshes), which a mining beam now lights up.
+  assert.equal(system._scene.children.filter((c) => !String(c.name).startsWith('SF_Kit_')).length, 2);
+  assert.ok(system._powerFx && system._powerFx.stats.particles > 0, 'the contact throws sparks at the rock');
 });
 
 test('tool verbs select distinct shapes and transport direction; reduced motion and flash reach both draws', () => {

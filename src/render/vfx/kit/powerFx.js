@@ -839,6 +839,31 @@ export class PowerFx {
     }
   }
 
+  /**
+   * MINING contact: the beam's energy shows where it lands — a hot point on the rock, chips and
+   * sparks kicked back toward the ship. Called every frame while the beam is on (fixed cadence).
+   */
+  miningContact(gx, gz, nx, nz, verb, dt) {
+    this._mineAcc = (this._mineAcc || 0) + Math.max(0, dt || 0);
+    const { x, z } = this._toLocal(gx, gz);
+    const t = this.time;
+    const hot = verb === 'repair' ? [1.6, 4.5, 3.2] : [6, 4.6, 2.6];
+    this._spark(x, 2.2, z, 0, 0, 0, t, 0.06, 5, 6, 0, 0, hot[0], hot[1], hot[2], hot[0] * 0.5, hot[1] * 0.5, hot[2] * 0.5, SPARK_SHAPE.GLOW, SPARK_ADD);
+    if (this._mineAcc < 0.06) return;
+    this._mineAcc %= 0.06;
+    this._mineN = (this._mineN || 0) + 1;
+    const base = Math.atan2(nz, nx);
+    for (let i = 0; i < 4; i++) {
+      const a = base + (unit(this._mineN, i) - 0.5) * 1.6;
+      const v = 120 + 200 * unit(this._mineN, 10 + i);
+      this._spark(x, 2, z, Math.cos(a) * v, 0, Math.sin(a) * v, t, 0.2, 1.4, 0.4, 5, 0.04, hot[0], hot[1], hot[2], hot[0] * 0.3, hot[1] * 0.2, hot[2] * 0.1, SPARK_SHAPE.STREAK, SPARK_ADD);
+    }
+    if (verb !== 'repair') {
+      const a = base + (unit(this._mineN, 20) - 0.5) * 1.2;
+      this._spark(x, 2, z, Math.cos(a) * 60, 0, Math.sin(a) * 60, t, 0.7, 1.8, 1.4, 1.6, 0.004, 0.55, 0.45, 0.38, 0.3, 0.27, 0.25, SPARK_SHAPE.CHIP, 0.8);
+    }
+  }
+
   _bodyHits(state, gx, gz, cx, cz, R, t0, seed, scale) {
     const list = state && state.entityList;
     if (!list || !list.length) return;
