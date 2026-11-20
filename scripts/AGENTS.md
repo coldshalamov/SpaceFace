@@ -1,10 +1,11 @@
 <!-- LIFETIME: STABLE -->
 # `scripts/` agent notes
 
+Rules: see the root `AGENTS.md`. This file lists facts about this folder.
+
 Executable checks, probes, index builders, launch helpers, and control-plane readers. Find the
 public command in `package.json`, then inspect only its direct script/imports. The 660+ scripts
 are tiered by prefix — read [`SCRIPT_TIERS.md`](./SCRIPT_TIERS.md) first.
-`program-dispatch.mjs` is a direct read-only command; it needs no coordination window.
 
 **Development iteration starts without a full boot:** `node scripts/agent-loop.mjs plan` names
 small proof surfaces; `sim <scenarios...>` batches the existing authoritative lab, and
@@ -13,9 +14,7 @@ small proof surfaces; `sim <scenarios...>` batches the existing authoritative la
 a screen the bench mounts, or repeat an unchanged expensive failure. Fast diagnostics are not
 public-route acceptance; run the affected real route at the coherent integration boundary below.
 
-Proof selection lives in [`../docs/VALIDATION_WORKFLOW.md`](../docs/VALIDATION_WORKFLOW.md). Finite
-state machine: [`../design/program/roadmap/00_EXECUTION_PROTOCOL.md`](../design/program/roadmap/00_EXECUTION_PROTOCOL.md).
-Checkpoint / NOW protocol: root `AGENTS.md` §3.
+Proof selection lives in [`../docs/VALIDATION_WORKFLOW.md`](../docs/VALIDATION_WORKFLOW.md).
 
 ## Rules
 
@@ -31,8 +30,7 @@ Checkpoint / NOW protocol: root `AGENTS.md` §3.
 - Probes clean up browser/server/process resources and write only to the designated ignored tree.
 - Acceptance actors use public controls. Observers may collect approved evidence but may not mutate
   gameplay or tell the actor hidden facts.
-- Use the current Finish Program's claim-specific verification rule. `scripts/player-truth/`
-  remains an available ordinary-route harness: `npm run player-truth -- --mode=swarm --gate`
+- `scripts/player-truth/` is an available ordinary-route harness: `npm run player-truth -- --mode=swarm --gate`
   (also gauntlet, adventure, racing). Choose it when it answers the changed gameplay claim;
   there is no blanket per-PR verdict or contact-sheet quota. Fix relevant failed checks before
   repeating them. Its actor stays public-input only; its reader stays observer-only.
@@ -48,7 +46,6 @@ Checkpoint / NOW protocol: root `AGENTS.md` §3.
 
 ## Routing
 
-- Program: `board-chunks.mjs` for the live §1C seams. `program-dispatch.mjs --next` / `--ready` / `--id PQ-XXX` only for the old packet queue. A drained dispatch is the board, not an empty plan.
 - Simulation: `node scripts/agent-loop.mjs sim <scenario...>` for a no-boot batch; `sf-sim.mjs` and focused `check-*-sim`/compare scripts remain the owner doors. `--trace` adds diagnostic handling artifacts, never a second simulator.
 - Runtime liveness: `probe-runtime-witness.mjs` → `.devshots/runtime-witness/`.
 - Stability gate: `npm run gate` (`scripts/fleet/gate.mjs`) — source syntax → import lint → playable boot → headless Swarm boot → 47-A sim replay, one verdict. `--quick` stops after playable boot.

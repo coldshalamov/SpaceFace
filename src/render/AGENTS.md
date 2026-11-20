@@ -1,6 +1,6 @@
 # src/render/ — Agent Notes
 
-Presentation / GPU layer. Never writes sim state. Root `AGENTS.md` §6 first. Asset pipeline:
+Presentation / GPU layer. Never writes sim state. Read root `AGENTS.md` first. Asset pipeline:
 `assets/AGENTS.md`. For player-visible VFX, compositor, lighting, or camera changes use
 `docs/visual-assets/README.md` as the visual-work front door and follow the relevant subsystem
 standard for the affected behavior.
@@ -38,8 +38,7 @@ release manifest, and the appropriate `partsLibrary.js` map. Failure modes:
 - Nested hazard notes: `combat/`, `ships/`, `vfx/`, `forceLanguage/`. Parent note is enough for
   `characters/`, `energy/`, `post/`, `thruster/`, and `weapons/`.
 
-No per-frame allocations in render loops. Coordinate before editing a currently owned
-release/lock/output.
+No per-frame allocations in render loops.
 
 Authored async admissions use cancellation/deadline scopes. Observe fire-and-forget pipeline
 promises with `observePipelineAdmission` without changing the original rejection for awaited owners.

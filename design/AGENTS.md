@@ -1,20 +1,12 @@
 <!-- LIFETIME: STABLE -->
 # design/ agent orientation
 
-Do not read this directory wholesale. Start at `program/finish/MASTER_PLAN.md` for the current
-campaigns and `program/finish/MASTER_LANES.md` for dispatch; use `design/PLAN_REGISTRY.md` to select
-the smallest relevant plan family. `program/NOW.md` records only live write claims.
+What the game should be: [`design/overhaul/`](./overhaul/README.md). The rule and the live board are
+in the root `AGENTS.md`; nothing in this folder assigns, orders or blocks work.
 
-## Authority
-
-1. Root `ARCHITECTURE.md` — technical contract.
-2. `VISION.md` — the owner's statement of the fantasy and UVP; wins on product emphasis.
-3. `GDD_2_0.md` — product pillars and intended experience.
-4. `program/finish/MASTER_PLAN.md` — current campaigns, order and finish criteria.
-5. `program/finish/MASTER_LANES.md` — current lane dispatch and path-collision map.
-6. `program/finish/EXECUTION_STATUS_2026-11-06.md` — live claimed/verified/next state.
-7. The specific activated plan/spec — task detail.
-8. Current code, checks, and player-route evidence — implementation truth.
+`ARCHITECTURE.md` is the technical contract, `VISION.md` the owner's statement of the fantasy and
+UVP, and `GDD_2_0.md` the product pillars and intended experience. Current code, checks, and
+player-route evidence are the implementation truth.
 
 Archived documents, handoffs, reviews, worker packets, transcripts, and tool plans are history, not
 current authority. Superseded ADRs and retired plan suites live in git history — retrieve by commit,
@@ -34,12 +26,10 @@ Both spec2 and spec3 may be active for different tasks. `spec2/00_MASTER_TASTE.m
 taste context: its non-diegetic HUD decision remains, while palette, glow, radius, surface, asset,
 and process recipes are non-binding.
 
-## Rules
+## Facts that still hold
 
-- Read only the selected plan and the GDD/architecture sections it cites.
 - Preserve valuable future intent, but label it retained/partial instead of claiming it is admitted
   or implemented.
-- Do not copy global status outside `design/program/`.
 - Plans specify outcomes and contracts, not universal visual recipes, asset ceilings, technique
   quotas, iteration counts, or permanent ownership lanes.
 - Runtime/build dependencies and authored media follow

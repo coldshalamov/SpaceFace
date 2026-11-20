@@ -23,7 +23,7 @@ Changes need adversarial false-positive coverage, not only a happy path.
 Copy the nearest scenario; validate against `spaceface.simScenario.v1`. Fixed seed/ticks,
 tick-indexed input, `state.rng` / `state.simTime` — never wall-time gameplay control. A single-arm
 scenario uses `sf lab run`; declared equivalence must use its parent command. Lab rendering is
-detached; player-visible quality still needs the packet's live route.
+detached; player-visible quality still needs the live route.
 
 ## Verification
 

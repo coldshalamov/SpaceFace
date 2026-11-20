@@ -16,6 +16,5 @@ regression fixtures.
   exact-path staging; intent-to-add entries can prevent a concurrent merge from preserving its state.
 - UI/render claims still need a representative runtime probe or screenshot when feasible; DOM/source
   assertions alone are not visual acceptance.
-- Follow the active Finish Program's claim-specific direct verification rule for gameplay changes.
-  Use the ordinary player route for player-facing claims; the player-truth harness is available
+- Use the ordinary player route for player-facing claims; the player-truth harness is available
   when it answers that claim. Record failed or unverified outcomes honestly and fix material failures.

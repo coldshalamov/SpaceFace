@@ -2,7 +2,6 @@
 
 DOM/CSS overlay. Reads state and emits gameplay intents. Narrow direct-write exception:
 UI/input-owned selection such as `state.player.targetId`. Read the root `AGENTS.md` first.
-The root operating agreement, architecture and active Finish assignment govern this subtree.
 Use [`../../design/frontend/STATION_STANDARD.md`](../../design/frontend/STATION_STANDARD.md) for current
 visual guidance and the amendment in [`../../design/frontend/ORRERY.md`](../../design/frontend/ORRERY.md)
 for the retained visual language. Their examples support design judgment; screen purpose, usable
@@ -47,7 +46,7 @@ below the 12px floor to force a desktop composition into a smaller frame.
 - `hud.js` — always-mounted flight HUD. Attention pass: `design/HUD_FLIGHT_ATTENTION.md`.
 - `input.js` here is UI input; `src/systems/input.js` owns the sim contract.
 - `asteroid/` is live Asteroid Works (`drill` screen). `screens/drill.js` is a helper, not the shell.
-  Campaign: `design/program/ASTEROID_WORKS_PLAYFIELD.md` / `PQ-130`.
+  Context: `design/program/ASTEROID_WORKS_PLAYFIELD.md`.
 
 DOM layering (ARCHITECTURE §1.2): canvas z0 < vignette z5 < hud+receipts z10–11 < prompt-deck z20
 < modal-backdrop z90 < screens z100 < alerts z1100. `#ui-root` is `pointer-events:none`;
