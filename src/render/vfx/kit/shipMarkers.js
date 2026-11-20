@@ -265,6 +265,15 @@ export class ShipMarkers {
     return this.count;
   }
 
+  /** One hidden draw so the program links and the buffers upload before any fight. */
+  warm() {
+    this.count = 0;
+    this._push(0, -5000, 0, 0.01, [0, 0, 0], 0, 0, 0, 0);
+    this.attrA.needsUpdate = true; this.attrB.needsUpdate = true; this.attrC.needsUpdate = true;
+    this.geometry.instanceCount = 1;
+    this.mesh.visible = true;
+  }
+
   dispose() {
     this.mesh.removeFromParent();
     this.geometry.dispose();

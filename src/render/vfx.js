@@ -2580,6 +2580,10 @@ export const vfx = {
     this._initEventLights();
     this._initRibbonTrails();
     this._initMiningBeam();
+    // The VFX kit draws once, hidden, as soon as the scene exists: its programs link and its
+    // instanced buffers upload behind the menu / armory, never inside the first fight frame.
+    if (this._ensurePowerFx()) this._powerFx.warm();
+    if (this._scene && typeof this._scene.add === 'function' && !this._shipMarkers) { this._shipMarkers = new ShipMarkers(this._scene); this._shipMarkers.warm(); }
     this._initTetherCable();
     this._npcCableFx = new NpcCableFx(this._scene, this._combatBeamLocalizer, resolveMasslineAccessibilityPolicy);
     this._initArcPreview();
