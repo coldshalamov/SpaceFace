@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "2ddea27063554e2cbf643311a0625ecf43f33ee0547f38256116d039ddb7ab2c",
+    "authoritativeHash": "aa9a843c517be0cf0f9dfa440c6a5d58efbfbe98a76f307a56dd8618304b389d",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,

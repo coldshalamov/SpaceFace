@@ -209,7 +209,7 @@
       "speakerActorId": "contact_kessler",
       "speaker": "KESSLER",
       "channel": "comms",
-      "text": "Massline only. If the spool lies, believe the spool.",
+      "text": "Use the Line only. If the reading lies, trust the strain on the line.",
       "presentationEventId": "scenario.comms.kessler"
     },
     {
