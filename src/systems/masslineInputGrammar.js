@@ -1,11 +1,12 @@
 // Fixed-tick Massline gesture grammar. Device bindings remain in input.js.
-// CADENCE: a tap cuts; a hold NEVER cuts on release, even when the pilot did not move an axis.
+// CADENCE: a tap releases (throws a held body, or lets you go from an anchor); a hold reels in and
+// NEVER cuts on release (R17: hold = reel in, hold + S = pay out — input.js feeds the axis).
 // Intent memory helps ENTER line control, but never keeps winding after an axis returns neutral.
 export const MASSLINE_HOLD_S = 0.16;
 
 /** Shown on an unbound reel rebind row. Names the hold path; does not invent a key. */
 export function reelUnboundHoldSentence() {
-  return `Hold the tether, then push to reel. A press shorter than ${MASSLINE_HOLD_S}s still cuts.`;
+  return `Hold the Line to reel in; hold it with S to pay out. A tap (under ${MASSLINE_HOLD_S}s) throws or lets go.`;
 }
 
 /** Unbound reel rows name the hold path. A bound row returns '' so the key label wins. */
