@@ -53,7 +53,13 @@ function setupSwarmHarness(seed = 4242) {
   noteSwarmPilotAction(state);
 
   const awards = [];
+  // A room kill pays 2.5x experience, so a kill can level the pilot and the dealt hand
+  // re-commits the run: re-stamp the last award on whichever run object is current.
+  let lastAward = null;
+  const stamp = () => { if (lastAward && state.run) Object.defineProperty(state.run, 'lastEarned', { value: lastAward, writable: true, configurable: true, enumerable: false }); };
+  bus.on('run:pilotOffered', stamp);
   bus.on('run:awarded', (award) => {
+    lastAward = { reason: award.causePhrase, score: award.score, xp: award.xp, credits: award.credits, line: earnLine(award) };
     Object.defineProperty(state.run, 'lastEarned', {
       value: {
         reason: award.causePhrase,

@@ -59,8 +59,14 @@ export function fortifyReadiness(model) {
       SWARM_FORTIFY_DEVICES[row.deviceId].name + ' at ' + shortSocket(row.socketId)).join(', ') : null,
   };
 }
+/**
+ * UNHOOKED from Swarm (04_SWARM.md §5: "Fortify moves to Adventure as yard defence"; release list
+ * 2026-11-19). The tower-placement screen, its devices (src/data/swarmFortify.js) and its worker
+ * owner stay intact for the Adventure lead to rehome in the yard; the Swarm shop no longer offers it.
+ */
+export const SWARM_FORTIFY_IN_SWARM = false;
 export function fortifyAvailable(run) {
-  return run?.kind === 'survival' && run.ruleset === 'swarm' && run.wave >= 1
+  return SWARM_FORTIFY_IN_SWARM && run?.kind === 'survival' && run.ruleset === 'swarm' && run.wave >= 1
     && (run.phase === 'draft' || run.phase === 'refit');
 }
 

@@ -99,6 +99,8 @@ import { addCargo } from './cargo.js';
 import { counted } from '../core/numberFormat.js';
 
 
+/** Weapon levels are no longer sold in Swarm (see the shelf below). */
+const SWARM_WEAPON_LEVELS_ON_SALE = false;
 export const CRUCIBLE_DRAFT_SCREEN_ID = 'crucibleDraft';
 export const CRUCIBLE_REFIT_SCREEN_ID = 'crucibleRefit';
 
@@ -1439,9 +1441,11 @@ export const survivalDraft = {
         _passiveHeld: held,
       });
     }
-    // SEED-SW-13 — one next-level row per gun that is actually bolted on. Shelf stock
-    // that is only in the hold gets nothing, and a gun already at five is not offered a sixth.
-    const fittedIds = Array.isArray(loadout && loadout.fittings) ? loadout.fittings : [];
+    // SEED-SW-13 — one next-level row per gun that is actually bolted on. RETIRED from sale
+    // (04_SWARM.md §5, release list 2026-11-19): +12 % fire rate per level was stat soup that
+    // erased each gun's damage-or-kick trade. No row is offered; a level already on an old run
+    // still applies through ships.js so a resumed run does not change under the player.
+    const fittedIds = SWARM_WEAPON_LEVELS_ON_SALE && Array.isArray(loadout && loadout.fittings) ? loadout.fittings : [];
     const seenGuns = new Set();
     for (const defId of fittedIds) {
       if (typeof defId !== 'string' || defId.length === 0 || seenGuns.has(defId)) continue;

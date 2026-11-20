@@ -137,10 +137,11 @@ test('repairs use the structure command and screen cancellation returns to the p
   } finally { h.cleanup(); }
 });
 
-test('Fortify is an inter-wave Swarm action rather than a Gauntlet or active-flight overlay', () => {
+test('Fortify is unhooked from Swarm (it moves to the Adventure yard) and never an active-flight overlay', () => {
+  // 04_SWARM.md §5 / release list 2026-11-19: "The tower-placement mini-game moves out of Swarm".
   const run = { kind: 'survival', ruleset: 'swarm', phase: 'draft', wave: 1 };
-  assert.equal(fortifyAvailable(run), true);
-  assert.equal(fortifyAvailable({ ...run, phase: 'refit' }), true);
+  assert.equal(fortifyAvailable(run), false);
+  assert.equal(fortifyAvailable({ ...run, phase: 'refit' }), false);
   assert.equal(fortifyAvailable({ ...run, phase: 'active' }), false);
   assert.equal(fortifyAvailable({ ...run, ruleset: 'scored' }), false);
 });

@@ -45,6 +45,14 @@ const WEAPON_NAME_BY_ID = new Map([
   ['mod_mass_flail_rig', 'Tow Flail'],
 ]);
 
+// THE ROOM PAYS (04_SWARM.md §5, release list 2026-11-19): a Swarm kill by the room — a throw,
+// a ram, a wall, the furnace, a chain blast — pays 2.5x the Scrap and experience of a gun kill,
+// and a champion (the boss of a fifth round) pays like a boss.
+export const SWARM_ROOM_KILL_PAY = 2.5;
+export const SWARM_BOSS_SCRAP_MULT = 5;
+export const SWARM_BOSS_KILL_XP = 100;
+const ROOM_KILL_PHRASES = new Set(Object.values(PHYSICAL_CAUSE_WORDS));
+
 function provenanceTag(receipt) {
   if (!receipt) return '';
   if (typeof receipt.tag === 'string' && receipt.tag) return receipt.tag;
@@ -174,7 +182,9 @@ export const survivalRewards = {
     const victim = this._entity(id);
     if (!runOwnsReward(victim) || victim.alive !== false) return;
     const threat = victim.data?.stuntThreat || this._admit(victim);
-    if (!threat || !threat.credits) return;
+    if (!threat) return;
+    // A body worth no Scrap (a brood spawn) still pays its experience in Swarm.
+    if (!threat.credits && (!isSwarmRuleset(run.ruleset) || victim.type !== 'ship')) return;
     const r = this._ensure();
     const lifeId = threat.lifeId;
     if (r.deaths[lifeId]) return;
@@ -183,8 +193,13 @@ export const survivalRewards = {
     const killerId = payload.killerId ?? payload.provenance?.actorId;
     const playerOwned = playerId != null && killerId === playerId;
     const causePhrase = rewardCausePhrase(payload, victim, this.state && this.state.tick);
+    const swarm = isSwarmRuleset(run.ruleset);
+    const roomKill = swarm && ROOM_KILL_PHRASES.has(causePhrase);
+    const bossKill = swarm && (victim.data?.swarmChampion === true || threat.threatClass === 'boss');
+    const xp = Math.round(killXpFor(victim.data?.level) * (roomKill ? SWARM_ROOM_KILL_PAY : 1))
+      + (bossKill ? SWARM_BOSS_KILL_XP : 0);
     this._emit('run:awardRequested', {
-      xp: killXpFor(victim.data?.level),
+      xp,
       score: playerOwned ? threat.baseScore : 0,
       reason: 'kill',
       wave: run.wave,
@@ -193,7 +208,9 @@ export const survivalRewards = {
     // SWARM-06: Bounty Hunter pays triple on champions — the perk's whole contract. The scale
     // rides the same entitlement, so the chip the body drops IS the triple, not a side award.
     const bountyMult = runHasPerk(run, 'bounty_hunter') && victim.data?.swarmChampion === true ? 3 : 1;
-    const credits = Math.max(0, Math.round(threat.credits * this._creditScale(run) * bountyMult));
+    const roomMult = (roomKill ? SWARM_ROOM_KILL_PAY : 1) * (bossKill ? SWARM_BOSS_SCRAP_MULT : 1);
+    const credits = Math.max(0, Math.round((threat.credits || 0) * this._creditScale(run) * bountyMult * roomMult));
+    if (credits <= 0) { this._payStipend(); return; }
     if (bountyMult > 1) this._emit('swarm:perkTrigger', { perkId: 'bounty_hunter', wave: run.wave });
     r.baseCash += credits;
     r.entitlements[lifeId] = { credits, settled: false, wave: run.wave };
