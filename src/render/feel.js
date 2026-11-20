@@ -1613,7 +1613,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
 
       if (p.brokeShield) {
         const fov = isPlayer ? FOV_PUNCH_HEAVY : FOV_PUNCH_HEAVY * 0.4;
-        this._trigger(HS_SHIELD_BREAK, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null);
+        this._trigger(HS_SHIELD_BREAK, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null, 'hitFov');
         // OVH-06a: no trauma here - a hard blow's kick and edge pulse come from _onPlayerBlow.
         // Heavy kinetic/explosive shield strikes also get the presentation crunch. FOV is
         // already punched by the shield-break beat; the hold + extra trauma are the mass term.
@@ -1629,12 +1629,12 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       }
       if (p.armorHit) {
         const fov = isPlayer ? FOV_PUNCH_HEAVY * 0.7 : FOV_PUNCH_HEAVY * 0.3;
-        this._trigger(HS_ARMOR_HIT, fov, isPlayer ? VIG_HEAVY * 0.6 : 0, isPlayer ? 'hit' : null);
+        this._trigger(HS_ARMOR_HIT, fov, isPlayer ? VIG_HEAVY * 0.6 : 0, isPlayer ? 'hit' : null, 'hitFov');
         return;
       }
       if (p.hullHit) {
         const fov = isPlayer ? FOV_PUNCH_HEAVY * 0.7 : FOV_PUNCH_HEAVY * 0.3;
-        this._trigger(HS_HULL_HIT, fov, isPlayer ? VIG_HEAVY * 0.6 : 0, isPlayer ? 'hit' : null);
+        this._trigger(HS_HULL_HIT, fov, isPlayer ? VIG_HEAVY * 0.6 : 0, isPlayer ? 'hit' : null, 'hitFov');
         return;
       }
 
@@ -1642,7 +1642,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       if (!big) return;
       const dur = isPlayer ? HS_HEAVY * 1.3 : HS_HEAVY * 0.6;
       const fov = isPlayer ? FOV_PUNCH_HEAVY : FOV_PUNCH_HEAVY * 0.4;
-      this._trigger(dur, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null);
+      this._trigger(dur, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null, 'hitFov');
     }, { presentation: true });
 
     // Spec2/02 §3: small kill = 60 ms hit-stop + kill-cam kiss; capital kill = 0.5 trauma scaled
@@ -1662,7 +1662,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
         // Remote NPC kills stay silent at the camera; a local off-player kill keeps the small
         // world-event punch so nearby action remains readable without stealing the beat.
         if (!killCameraIsMeaningfullyNearby(state, p.pos)) return;
-        this._trigger(0, FOV_PUNCH_KILL * 0.3, 0, null);
+        this._trigger(0, FOV_PUNCH_KILL * 0.3, 0, null, 'killFov');
         return;
       }
       if (isCapital) {
@@ -1677,7 +1677,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
         if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(trauma, throwKill ? 'throwKillHeavy' : 'kill');
         // killCam's cause already freezes the hero frame; hold here only without a kill cam.
         if (throwKill && !(ctrl && typeof ctrl.killCam === 'function')) this._holdCameraBeat(HS_CAMERA_HOLD_MAX, 'throwKillHeavy');
-        this._trigger(HS_CAPITAL_KILL, FOV_PUNCH_KILL, 0, null);
+        this._trigger(HS_CAPITAL_KILL, FOV_PUNCH_KILL, 0, null, 'killFov');
         // FB-084: the capital tier of the weight-keyed kill beat (deep push + hold), keyed on
         // the same acoustic mass the kill audio resolves.
         if (ctrl && typeof ctrl.killCam === 'function') {
@@ -1693,7 +1693,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       // Small kill: short hit-stop + camera beat, now weighted (FB-084): the light tier nudges
       // along the kill direction the presentation receipt carries (G18-03); medium+ keeps the
       // zoom beat by the mass law.
-      this._trigger(HS_KILL, FOV_PUNCH_KILL, 0, null);
+      this._trigger(HS_KILL, FOV_PUNCH_KILL, 0, null, 'killFov');
       if (heavyThrowKill && ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.35, 'throwKillHeavy');
       if (heavyThrowKill && !(ctrl && typeof ctrl.killCam === 'function')) this._holdCameraBeat(HS_CAMERA_HOLD_MAX, 'throwKillHeavy');
       if (ctrl && typeof ctrl.killCam === 'function') {
@@ -1709,7 +1709,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     // Player death is the single biggest beat in the game — long dip, big FOV punch, red wash,
     // and a death cam (PQ-159.02) so the wreck is a picture, not a cut.
     bus.on('player:death', () => {
-      this._trigger(HS_DEATH, FOV_PUNCH_DEATH, VIG_DEATH, 'death');
+      this._trigger(HS_DEATH, FOV_PUNCH_DEATH, VIG_DEATH, 'death', 'deathFov');
       const ctrl = this.state && this.state.render && this.state.render.cameraCtrl;
       if (ctrl && typeof ctrl.deathCam === 'function') ctrl.deathCam();
     });
@@ -1739,7 +1739,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       if (this.state.mode !== 'flight' || !this._modalClear()) return;
       const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
       if (mr) return;
-      this._fovPunch = addFovPunch(this._fovPunch, 2.0);
+      this._postFov(2.0, 'boostFov');
     });
 
     // Jump / warp camera response. The warp particle VFX + audio already fire on charge→start→arrive,
@@ -1754,11 +1754,11 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     const _warpCtrl = () => this.state.render && this.state.render.cameraCtrl;
     bus.on('jump:chargeStart', () => {
       if (!_warpGate()) return;
-      this._fovPunch = addFovPunch(this._fovPunch, 2.5);   // anticipation kick
+      this._postFov(2.5, 'jumpFov');   // anticipation kick
     });
     bus.on('jump:start', () => {
       if (!_warpGate()) return;
-      this._fovPunch = addFovPunch(this._fovPunch, 6.0);   // warp-out punch
+      this._postFov(6.0, 'jumpFov');   // warp-out punch
       const ctrl = _warpCtrl();
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.18, 'jump');
     });
@@ -1766,7 +1766,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       if (!_warpGate()) return;
       // arrival: a brief fov DIP (negative punch) then it eases back — reads as decelerating out of warp.
       // We model the dip as a negative fov offset clamped so the composite never goes below ~0.5° floor.
-      this._fovPunch = addFovPunch(this._fovPunch, -3.0);
+      this._postFov(-3.0, 'jumpFov');
       const ctrl = _warpCtrl();
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(p && p.interdicted ? 0.28 : 0.15, 'jump');
     });
@@ -2085,7 +2085,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     // NPC against NPC, a bump the player merely witnessed - is refused there and counted as
     // 'collisionFov', so a pending record here is always the player's own beat.
     const gate = this._cameraGate();
-    this._trigger(pending.hsDur, pending.fov, 0, null);
+    this._trigger(pending.hsDur, pending.fov, 0, null, 'collisionFov');
     if (gate) gate.refuse('collision', this.state.simTime, 'trauma');
     this._collisionHitstopCooldown = COLLISION_HITSTOP_COOLDOWN;
     this._armedCollisionDeltaV = pending.deltaV;
@@ -2110,7 +2110,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       mode: this.state.mode,
     });
     if (!beat) return;
-    this._trigger(beat.dipS, beat.fov, 0, null);
+    this._trigger(beat.dipS, beat.fov, 0, null, 'momentFov');
     applyMomentBeat(this, beat);
     const ctrl = this.state.render && this.state.render.cameraCtrl;
     if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(beat.trauma, 'moment');
@@ -2125,7 +2125,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     });
     if (!punch) return;
     if (punch.hsDur > 0 || punch.fov > 0 || punch.vig > 0) {
-      this._trigger(punch.hsDur || 0, punch.fov || 0, punch.vig || 0, punch.vig > 0 ? 'hit' : null);
+      this._trigger(punch.hsDur || 0, punch.fov || 0, punch.vig || 0, punch.vig > 0 ? 'hit' : null, 'masslineFov');
     }
     if (punch.trauma > 0) {
       const ctrl = this.state.render && this.state.render.cameraCtrl;
@@ -2157,7 +2157,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     const traumaScale = scales && Number.isFinite(scales.traumaScale) ? scales.traumaScale : 1;
     // Heavy contacts bite with a 1–2 frame hit-stop; _trigger keeps the longer of any dip already
     // running and stacks the FOV punch. Rhythmic ticks (hsDur = 0) only punch the FOV.
-    this._trigger(crunch.hsDur || 0, Math.max(0, crunch.fov * fovScale), 0, null);
+    this._trigger(crunch.hsDur || 0, Math.max(0, crunch.fov * fovScale), 0, null, 'crunchFov');
     // OVH-06a / R10: a crunch is felt on the body, not at the camera - no trauma, no hold. The
     // refusal is counted so the camera trace shows what the room asked for.
     const gate = this._cameraGate();
@@ -2294,8 +2294,21 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     return ctrl.hold(Math.min(HS_CAMERA_HOLD_MAX, seconds), cause) !== false;
   },
 
+  /** HARMONY-FIX 5 (R23): every field-of-view change asks the camera gate; only the player's own
+   *  acts (boost, jump) are admitted, one beat per 250 ms. Hits, kills, collisions, moments are not. */
+  _postFov(deg, cause) {
+    if (!(Math.abs(Number(deg)) > 0)) return 0;
+    // The renderer owns the shared gate; a bare rig without one gets a private gate so the same
+    // rule applies without conjuring the shared ledger (which changes how the camera admits kills).
+    const shared = this.state && this.state.render && this.state.render.cameraGate;
+    const gate = shared || this._fovGate || (this._fovGate = createCameraGate());
+    const out = gate.motion('fov', cause, deg, this.state.simTime);
+    if (out !== 0) this._fovPunch = addFovPunch(this._fovPunch, out);
+    return out;
+  },
+
   // Arm a punch. `vigCls` selects which vignette gradient ('hit'|'death'|null).
-  _trigger(beatDuration, fovAdd, vigPeak, vigCls) {
+  _trigger(beatDuration, fovAdd, vigPeak, vigCls, fovCause = 'presentation') {
     // Keep camera feedback out of modal screens and non-flight routes.
     if (this.state.mode !== 'flight') return;
     if (!this._modalClear()) return;
@@ -2308,7 +2321,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       // render can delay that accent, but has no effect on simulation progress.
       this._beatTimer = Math.max(this._beatTimer || 0, beatDuration || 0);
       // FOV punch: stack onto the envelope (peak preserved; applied FOV rises in frame()).
-      this._fovPunch = addFovPunch(this._fovPunch, fovAdd);
+      this._postFov(fovAdd, fovCause);
     }
 
     // Vignette: swap gradient class and raise opacity toward the peak. The full profile snaps to
@@ -2407,7 +2420,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     if (this._chainBeatQueued > 0 && this._beatTimer <= 0) {
       const dipS = this._chainBeatQueued;
       this._chainBeatQueued = 0;
-      this._trigger(dipS, CHAIN_BEAT_FOV, 0, null);
+      this._trigger(dipS, CHAIN_BEAT_FOV, 0, null, 'collisionFov');
     }
 
     const photoFeel = photoModeFeelPresentation(this.state);

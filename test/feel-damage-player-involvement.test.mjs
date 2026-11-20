@@ -78,7 +78,7 @@ test('player shield damage keeps its full feedback; a player-fired shield break 
     const { state, bus, effects, host, traumas, kicks } = feelHost();
     bus.emit('combat:damage', { ...participants, brokeShield: true, amount: 60 });
     assert.equal(state.timeScale, 1, 'the shield-break beat is presentation only');
-    assert.ok(host._fovPunch > 0, 'a hit on the player keeps its FOV punch');
+    assert.equal(host._fovPunch, 0, 'HARMONY-FIX 5: a hit on the player never punches the FOV');
     assert.deepEqual(traumas, [], 'OVH-06a / R10: a shield break under the hard-hit floor adds no camera trauma (the hull answers it)');
     assert.deepEqual(kicks, [], 'the directional kick belongs to the own-shot path, not to getting hit');
     assert.deepEqual(effects.describeRequests(), {});
@@ -113,7 +113,7 @@ test('large hits on the player keep their beat window; player-fired big or ordin
       const { state, bus, host, kicks } = feelHost();
       bus.emit('combat:damage', { attackerId: 8, targetId: 1, ...receipt });
       assert.equal(state.timeScale, 1, 'no damage beat may ever write the clock');
-      assert.ok(host._fovPunch > 0, 'a hit on the player keeps its FOV punch');
+      assert.equal(host._fovPunch, 0, 'HARMONY-FIX 5: a hit on the player never punches the FOV');
       assert.deepEqual(kicks, [], 'getting hit never takes the player-shot kick');
       if (rhythmic) {
         assert.equal(beatWindow(host), 0, 'ordinary hits stay rhythmic — no held window');
@@ -170,7 +170,7 @@ test('far NPC kills leave the camera alone while nearby action keeps its light f
     victimClass: 'interceptor',
   });
   assert.equal(nearby.state.timeScale, 1, 'nearby NPC feedback stays a camera punch, not a freeze');
-  assert.ok(nearby.host._fovPunch > 0, 'nearby NPC action keeps its authored light punch');
+  assert.equal(nearby.host._fovPunch, 0, 'HARMONY-FIX 5: nearby NPC action never punches the FOV');
 });
 
 test('player kills keep the full kill beat — presentation only, clock untouched', () => {
@@ -183,7 +183,7 @@ test('player kills keep the full kill beat — presentation only, clock untouche
   });
   assert.equal(state.timeScale, 1, 'the kill beat never writes the clock');
   assert.ok(beatWindow(host) > 0);
-  assert.ok(host._fovPunch > 0);
+  assert.equal(host._fovPunch, 0, 'HARMONY-FIX 5: a kill never punches the FOV');
   assert.deepEqual(effects.describeRequests(), {});
 });
 
@@ -191,7 +191,7 @@ test('player death keeps its independent death punch — presentation only', () 
   const { state, bus, host } = feelHost();
   bus.emit('player:death');
   assert.ok(beatWindow(host) > 0);
-  assert.ok(host._fovPunch >= 7);
+  assert.equal(host._fovPunch, 0, 'HARMONY-FIX 5: death keeps its dip and wash but no FOV punch');
   host.frame(0.3, state);
   assert.equal(state.timeScale, 1, 'the death beat is presentation only — the clock stays put');
 });

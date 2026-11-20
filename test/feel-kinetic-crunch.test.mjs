@@ -185,7 +185,7 @@ test('live combat queue: an incoming railgun crunch arms a 1–2 frame window an
   assert.ok(!state.render.holdInterpolation,
     `${SMOOTH}: nothing asks the renderer to reuse last frame's poses`);
   assert.equal(traumas.length, 0, `${VISION}: OVH-06a / R10 - a railgun crunch is felt on the hull, not at the camera (no trauma)`);
-  assert.ok(host._fovPunch > 0, `${VISION}: railgun crunch punches FOV`);
+  assert.equal(host._fovPunch, 0, `${VISION}: HARMONY-FIX 5 - a railgun crunch never punches the FOV (collisions and hits do not move the view)`);
 
   frame(CRUNCH_HOLD_MAX_S + 0.001);
   assert.equal(beatWindow(host), 0);

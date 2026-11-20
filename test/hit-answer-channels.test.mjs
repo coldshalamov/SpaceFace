@@ -304,8 +304,8 @@ for (const { id } of DEFAULT_KIT) {
         origin: { kind: 'weapon', id, weaponId: id },
       });
       assert.equal(result.ok, true, `${id}: the real router must accept the hit on the player`);
-      assert.ok(feel._fovPunch > 0 || beatWindow(feel) > 0,
-        `${id}: getting hit keeps the kinetic-crunch beat (FOV punch or authored window)`);
+      assert.equal(feel._fovPunch, 0,
+        `${id}: HARMONY-FIX 5 - getting hit never punches the FOV`);
       assert.deepEqual(live.camera.kicks, [],
         `${id}: the directional weapon kick belongs to the player's own shot, not to getting hit`);
       assert.ok(!live.hitStopWrites.includes('feel:hit-stop'),

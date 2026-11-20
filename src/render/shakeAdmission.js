@@ -84,13 +84,22 @@ export const CAMERA_CAUSE_CLASS = Object.freeze({
   tether: 'own',
   gyre: 'own',
   jump: 'own',
+  // field-of-view: only the player's own acts widen or punch the view (HARMONY-FIX 5)
+  boostFov: 'own',
+  jumpFov: 'own',
   // room events: named so the refusal counter says what was refused
   hullHitEvent: 'room',   // the camera:shake mirror of a hit on the player; the damage receipt owns it
   hullChip: 'room',       // a blow under the hard-hit floor
   weaponKick: 'room',     // the player's own shot landing on something else
   recoil: 'room',         // muzzle kick; the shot is felt on the weapon and the target
   collision: 'room',
-  collisionFov: 'room',   // the FOV punch of a contact the player is not part of
+  collisionFov: 'room',   // the FOV punch of any contact
+  hitFov: 'room',         // being hit never zooms the view (the vignette and the hit itself carry it)
+  killFov: 'room',
+  deathFov: 'room',
+  momentFov: 'room',
+  crunchFov: 'room',
+  masslineFov: 'room',
   crunch: 'room',
   explosion: 'room',
   kill: 'room',
@@ -112,6 +121,8 @@ export const CAMERA_CAUSE_CLASS = Object.freeze({
 export const HULL_BLOW_MIN_FRACTION = 0.08;
 export const HERO_BEAT_GAP_S = 0.25;
 export const HERO_SAME_BEAT_S = 0.05;
+// One field-of-view beat per window, whatever its cause (HARMONY-FIX 5).
+export const FOV_BEAT_GAP_S = 0.25;
 export const HITSTOP_MIN_S = 0.04;
 export const HITSTOP_MAX_S = 0.06;
 export const HITSTOP_REARM_S = 0.8;
@@ -133,6 +144,7 @@ export function createCameraGate(law = SHAKE_ADMISSION_LAW) {
   let log = [];
   let heroAt = -Infinity;
   let heroCause = null;
+  let fovAt = -Infinity;
   let hitstopAt = -Infinity;
   const bump = (map, key) => { map[key] = (map[key] || 0) + 1; };
   const note = (kind, cause, amount, nowS, ok) => {
@@ -151,12 +163,22 @@ export function createCameraGate(law = SHAKE_ADMISSION_LAW) {
   return {
     classOf(cause) { return typeof cause === 'string' && CAMERA_CAUSE_CLASS[cause] || 'room'; },
     /**
-     * @param {'trauma'|'kick'} kind
+     * @param {'trauma'|'kick'|'fov'} kind  ('fov' amounts are degrees and may be negative: a dip)
      * @returns {number} the amount to apply (0 = refused).
      */
     motion(kind, cause, amount, nowS) {
       const key = typeof cause === 'string' && cause ? cause : 'untagged';
       const a = Number(amount);
+      if (kind === 'fov') {
+        if (!(Math.abs(a) > 0) || !Number.isFinite(a)) return 0;
+        const fcls = typeof cause === 'string' && CAMERA_CAUSE_CLASS[cause] || 'room';
+        if (fcls === 'room') { note(kind, key, a, nowS, false); return 0; }
+        // one beat per window, the same 250 ms rule hero beats keep
+        if (Number.isFinite(nowS) && nowS >= fovAt && nowS - fovAt < FOV_BEAT_GAP_S) { note(kind, key, a, nowS, false); return 0; }
+        if (Number.isFinite(nowS)) fovAt = nowS;
+        note(kind, key, a, nowS, true);
+        return a;
+      }
       if (!(a > 0) || !Number.isFinite(a)) return 0;
       const cls = typeof cause === 'string' && CAMERA_CAUSE_CLASS[cause] || 'room';
       if (cls === 'room') { note(kind, key, a, nowS, false); return 0; }
@@ -194,6 +216,7 @@ export function createCameraGate(law = SHAKE_ADMISSION_LAW) {
       log = [];
       heroAt = -Infinity;
       heroCause = null;
+      fovAt = -Infinity;
       hitstopAt = -Infinity;
     },
   };
