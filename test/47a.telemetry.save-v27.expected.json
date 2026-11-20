@@ -67,7 +67,7 @@
     "tether:attached": 1
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "c0557999b5591d77be8b62ada467c72b3c58888cdc86d3d49a22dde4e6447ab3",
+    "authoritativeHash": "1cd89045950e5347099bdd6c9b24f255607f423a6483d4ddfccea1d220aaf811",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -256,6 +256,8 @@
     "phase0ObservedTraceCounts are UNCHANGED: identical fires, hits, tether attach/break ticks, damage, economy. The alert family present in runs is a post-envelope instrumentation superset, identical across solvers.",
     "v24: W1 Act I announcement adds story.flags.journey_act_I_announced and one comms:popup. sim-golden-diff: CONTENT_ONLY, zero motion fields. v23 retained for rollback.",
     "v26: P1 starter loadout (Hitch shield liner; dry 35->33, shield 345->210, max speed 136.8->142.1) and W1 story.journeyActs. sim-golden-diff: motion 63, no flight/gunnery code change. v24/v25 retained.",
-    "v27: PARK-01 Lane B lands tender-haul data + dock store sentence, economySlicing still OFF. Delta vs v26 is one leaf: missions.config.BASE_REP.tender_haul; zero motion fields. v26 retained for rollback."
+    "v27: PARK-01 Lane B lands tender-haul data + dock store sentence, economySlicing still OFF. Delta vs v26 is one leaf: missions.config.BASE_REP.tender_haul; zero motion fields. v26 retained for rollback.",
+    "[reference] v1 recorded 2026-11-20T09:29:25.577Z by scripts/reference.mjs; ticket E2-ECON-SLICING; reason: economySlicing ON: the 5 s economy pass drains per fixed tick; receipts land exactly on",
+    "(cont.) 300/600 instead of one tick late; owner no-holds ruling 2026-11-19; previous hash: c0557999b5591d77be8b62ada467c72b3c58888cdc86d3d49a22dde4e6447ab3."
   ]
 }

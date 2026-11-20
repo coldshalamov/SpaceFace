@@ -29,7 +29,7 @@ const DEFAULTS = Object.freeze({
    * working-tree changes, so v26 cannot be recorded honestly. v24 (`1fedbd09…`) stays active;
    * v25 (`080c5bd9…`) is the obsolete un-drained shape. Flip this on only with a clean v26.
    */
-  economySlicing: false,
+  economySlicing: true,
   /** The quantized per-body SG-02 snapshot is built lazily at a checkpoint, not every tick. */
   lazySg02Snapshot: true,
 });
