@@ -83,6 +83,6 @@ test('a 400 ms delivery burst is caught up, not re-seated or leapt', () => {
   assert.ok(r.maxStillMs < 100, `held ${r.maxStillMs} ms`);
   // The burst's coast-to-truth offset heals exponentially (first heal frame is the largest);
   // bound it well under the old one-frame re-seat (~60+ wu at this speed).
-  assert.ok(r.maxShock < 10, `worst per-frame jump beyond continuation ${r.maxShock.toFixed(2)} wu`);
+  assert.ok(r.maxShock < 4, `worst per-frame jump beyond continuation ${r.maxShock.toFixed(2)} wu`);
   assert.equal(r.gapResets, 0);
 });

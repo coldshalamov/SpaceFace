@@ -28,6 +28,8 @@ export const PLAYOUT_RESEAT_GAP_S = 2.0;
 export const PLAYOUT_RESEAT_FRAME_S = 1.0;
 /** Correction blending: discontinuities above JUMP heal over DECAY; above TELEPORT they snap. */
 export const BLEND_DECAY_S = 0.15;
+/** Critically damped heal rate (1/s): ~90 % of a correction heals in 0.3 s, starting at rest. */
+const BLEND_HEAL_OMEGA = 13;
 const BLEND_JUMP_WU = 0.05;
 const BLEND_TELEPORT_WU = 150;
 const BLEND_YAW_JUMP_RAD = 0.01;
@@ -649,10 +651,11 @@ export function createSnapshotFence(options = {}) {
     const fresh = !rec || rec.gen !== gen || rec.frame < blendFrame - 1;
     if (fresh) {
       if (!rec) {
-        rec = { gen, frame: 0, rx: 0, rz: 0, ryaw: 0, ox: 0, oz: 0, oyaw: 0 };
+        rec = { gen, frame: 0, rx: 0, rz: 0, ryaw: 0, ox: 0, oz: 0, oyaw: 0, wx: 0, wz: 0, wyaw: 0,
+          dx: 0, dz: 0, sx: 0, sz: 0, sv: false };
         drawnRecords.set(id, rec);
       }
-      rec.gen = gen; rec.ox = 0; rec.oz = 0; rec.oyaw = 0;
+      rec.gen = gen; rec.ox = 0; rec.oz = 0; rec.oyaw = 0; rec.wx = 0; rec.wz = 0; rec.wyaw = 0;
     } else if (rec.frame !== blendFrame) {
       if (blendHistoryChanged && blendPrevValid) {
         const was = rawPoseForPair(blendPrevPair, id, blendScratch, slotHint);
@@ -661,21 +664,45 @@ export function createSnapshotFence(options = {}) {
           const dz = was.z - rec.rz;
           const jump = Math.hypot(dx, dz);
           if (jump > BLEND_TELEPORT_WU) {
-            rec.ox = 0; rec.oz = 0; rec.oyaw = 0;
+            rec.ox = 0; rec.oz = 0; rec.oyaw = 0; rec.wx = 0; rec.wz = 0; rec.wyaw = 0;
           } else if (jump > BLEND_JUMP_WU) {
             rec.ox -= dx; rec.oz -= dz;
+            // Match velocity too (C1): the offset starts moving so the drawn body keeps last
+            // frame's speed, then the heal eases it onto the stream's own speed.
+            if (blendDt > 0 && rec.sv) {
+              rec.wx = (rec.sx - (x - was.x)) / blendDt;
+              rec.wz = (rec.sz - (z - was.z)) / blendDt;
+            }
           }
           const dyaw = wrapPi(was.rot - rec.ryaw);
           if (Math.abs(dyaw) > BLEND_YAW_JUMP_RAD && Math.abs(dyaw) < Math.PI * 0.75) rec.oyaw = wrapPi(rec.oyaw - dyaw);
         }
       }
-      const decay = blendDt > 0 ? Math.exp(-blendDt / BLEND_DECAY_S) : 1;
-      rec.ox *= decay; rec.oz *= decay; rec.oyaw *= decay;
-      if (Math.abs(rec.ox) + Math.abs(rec.oz) < BLEND_SETTLE_WU) { rec.ox = 0; rec.oz = 0; }
-      if (Math.abs(rec.oyaw) < 1e-4) rec.oyaw = 0;
+      // Critically damped heal (exact step): the offset starts healing at zero speed and eases
+      // in and out, so absorbing a correction never adds a velocity step to the drawn pose.
+      if (blendDt > 0 && (rec.ox !== 0 || rec.oz !== 0 || rec.oyaw !== 0 || rec.wx !== 0 || rec.wz !== 0 || rec.wyaw !== 0)) {
+        const w = BLEND_HEAL_OMEGA;
+        const e = Math.exp(-w * blendDt);
+        const kx = rec.wx + w * rec.ox; const kz = rec.wz + w * rec.oz; const ky = rec.wyaw + w * rec.oyaw;
+        rec.ox = (rec.ox + kx * blendDt) * e; rec.wx = (rec.wx - w * kx * blendDt) * e;
+        rec.oz = (rec.oz + kz * blendDt) * e; rec.wz = (rec.wz - w * kz * blendDt) * e;
+        rec.oyaw = (rec.oyaw + ky * blendDt) * e; rec.wyaw = (rec.wyaw - w * ky * blendDt) * e;
+        if (Math.abs(rec.ox) + Math.abs(rec.oz) < BLEND_SETTLE_WU && Math.abs(rec.wx) + Math.abs(rec.wz) < BLEND_SETTLE_WU * 10) {
+          rec.ox = 0; rec.oz = 0; rec.wx = 0; rec.wz = 0;
+        }
+        if (Math.abs(rec.oyaw) < 1e-4 && Math.abs(rec.wyaw) < 1e-3) { rec.oyaw = 0; rec.wyaw = 0; }
+      }
     }
+    const drawnX = x + rec.ox;
+    const drawnZ = z + rec.oz;
+    if (!fresh && rec.frame === blendFrame - 1 && blendDt > 0) {
+      rec.sx = drawnX - rec.dx; rec.sz = drawnZ - rec.dz; rec.sv = true;
+    } else if (fresh) {
+      rec.sv = false;
+    }
+    rec.dx = drawnX; rec.dz = drawnZ;
     rec.rx = x; rec.rz = z; rec.ryaw = yaw; rec.frame = blendFrame;
-    out.x = x + rec.ox; out.z = z + rec.oz; out.yaw = rec.oyaw === 0 ? yaw : wrapPi(yaw + rec.oyaw);
+    out.x = drawnX; out.z = drawnZ; out.yaw = rec.oyaw === 0 ? yaw : wrapPi(yaw + rec.oyaw);
     return out;
   }
 
