@@ -800,6 +800,12 @@ html body #screens #sf-automation.au-orrery .au-summary { gap: 14px; align-conte
   ${AU_NARROW} .au-next-body { -webkit-line-clamp: 3; }
   ${AU_NARROW} .au-next-row { flex-wrap: wrap; justify-content: flex-start; row-gap: 8px; }
   ${AU_NARROW} .au-next-meta { flex: 1 0 100%; }
+  /* ui-polish-535: the phone body is a 440px scroller under a 300px head, and its fold sliced DEPLOYED DRONES
+     in half right on the plate's bottom rule (390×844). The body takes the desktop bands' 24px foot fade,
+     with the padding to let the last row scroll clear of it, so the fold reads as a scroll edge. */
+  ${AU_NARROW} .au-body { padding-bottom: 28px;
+    -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(180deg, #000 calc(100% - 24px), transparent); }
   ${AU_NARROW} .au-shop { flex-wrap: wrap; row-gap: 4px; column-gap: 20px; }
   ${AU_NARROW} .au-shop .grow { flex: 1 0 100%; }
   ${AU_NARROW} .au-shop .meta { display: flex; flex-wrap: wrap; gap: 2px 16px; }
