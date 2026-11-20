@@ -247,6 +247,7 @@ import { voiceArbiter } from '../ui/voiceArbiter.js';                // "one voi
 // BP-11 Sector Atmosphere (Wave 3, design/revamp/detail/A_sector_station.md) — SYSTEMS-only
 // surfacing modules (event-driven; no update; DOM fully guarded; voice via ctx.helpers.voice).
 import { sectorPostcard } from '../ui/sectorPostcard.js';             // A1: arrival identity card + one 'news' rumor line
+import { sectorArrivalPlate } from '../ui/sectorArrivalPlate.js';     // PLACES-1: one-shot arrival name plate + the sector's first greeting bark
 import { dockDenyBanner } from '../ui/dockDenyBanner.js';             // A3: dockDeny.js surfaced — scan line + one 'comms' denial
 import { stationBroadcast } from '../systems/stationBroadcast.js';    // A5: ambient station flavor (window-timer only; lowest voice priority)
 import { hazardHints } from '../data/hazardLanguage.js';               // A7: once-per-type counterplay hint (tutorial channel) + state.ui.hazardRead
@@ -603,6 +604,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['planetHud', planetHud],
     ['miningHud', miningHud],
     ['sectorPostcard', sectorPostcard],
+    ['sectorArrivalPlate', sectorArrivalPlate],
     ['dockDenyBanner', dockDenyBanner],
     ['stationBroadcast', stationBroadcast],
     ['hazardHints', hazardHints],
@@ -893,6 +895,10 @@ export function createRegistry(ctx) {
   byName.set('flight', flightSlot);
   byName.set('aiSlot', aiSlot);
   byName.set('flightSlot', flightSlot);
+  // Manifest ids that differ from the runtime .name (like the slot aliases above):
+  // get('v2FlavorRuntime')/get('moralTrapSystem') resolve the same objects.
+  byName.set('v2FlavorRuntime', v2FlavorRuntime);
+  byName.set('moralTrapSystem', moralTrapSystem);
 
   const lifecycle = createSystemLifecycle({
     systems: SYSTEMS,

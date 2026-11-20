@@ -1,6 +1,7 @@
 // Synchronous event bus with a deferred queue (ARCHITECTURE §4). Most events fire
-// synchronously; entity spawn/destroy are queued and flushed at the end of a sim step
-// so the entity set is never mutated mid-iteration.
+// synchronously; entity:destroyed is queued and flushed at the end of a sim step so the
+// entity set is not mutated mid-iteration. entity:spawned emits synchronously inside the
+// spawning call stack — handlers must not spawn or remove entities themselves.
 //
 // `sector:enter` may be count-sliced: the first budget of listeners still runs inside
 // enterSector, leftover presentation listeners drain after present. Default budget 0
