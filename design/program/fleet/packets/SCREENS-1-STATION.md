@@ -19,6 +19,32 @@ Rulings that apply (`design/overhaul/00_RULINGS.md`): R3 gear on the floor, R4 t
 R18 plain words, R20 prices move in readable trends and flip on news, R21 each trade is its own
 game, R22 the hold is a bag of slots.
 
+## Where this stands (read before anything else)
+
+**Part A is built and landed** (commit ccf4b9f7e9: `src/ui/station/concourseModel.js`,
+`src/ui/station/screens/concourse.js`, `stationApp.js`, `dock.js`, `stationBindingMap.js`,
+`src/ui/orrery/stationStandard.js`, `test/station-concourse.test.mjs`). The director looked at it
+(`.devshots/director/fable/screens2/station.png`) and it is right: the station's name and one line
+of character, `Service ship · 142 cr` with the three prices itemised, four doors with live
+one-liners, Undock bottom-right. Two things to tidy on it: the wide empty band in the middle
+should carry the station's art or the docked ship at a size that reads (today it is a dim
+backdrop), and the first-visit card ("STEP 3 OF 3 · OPEN YOUR HOLD") must not sit on top of the
+service row.
+
+**Do Parts B, C and D.** Two things landed since this brief was written and Part C should use
+them:
+- **The price model** (commit 6fddfd284f; `src/economy/marketModel.js`): every price is a curve in
+  one of six named regimes (steady, climb, slide, swing, squeeze, glut) that events flip; the
+  market data now carries the regime's name, how long it has run, an event flag, observed versus
+  modelled chart points, and remembered prices at other stations with their age ("seen 14 min
+  ago"). Read the receipt under `.devshots/fleet/runs/ECON-BUILD-1.devin3.*/RECEIPT.md` for the
+  fields. The chart is the hero: draw observed points solid and the modelled curve lighter, name
+  the regime in plain words ("Climbing for 12 min"), flag an event with its news line.
+- **The hold is a bag of slots** (commit 7592bb895f; `src/systems/cargo.js`): stacks of 20 (10 for
+  bulky goods), with split, merge, move, sort and jettison intents. A separate job
+  (`CARGO-BAG-UI`) builds the bag grid itself; here, the market's "your hold" side just needs to
+  list stacks cleanly until that grid arrives.
+
 ## Look first
 
 `node scripts/ui-bench.mjs --shot=station,station-dock,station-market,station-shipworks,station-industry,station-contracts,station-factions,station-bar,station-ledger,station-law-desk --viewports=1280x720,1366x768,1920x1080 --out=.devshots/screens1/before`

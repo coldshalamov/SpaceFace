@@ -39,6 +39,27 @@ adding `?hudState=` fixtures as the first pass did) and look for more of the sam
    mid-fight beside the gauges. They show only when the player is close to the pad and not under
    fire, and they anchor to the pad, not to the HUD.
 
+9. **Fight headlines stack up.** In live frames the top of the screen carries a huge word
+   ("SHIELD BACK", "SWARM WIPE", "COLLATERAL", "ROUND 02"), a chain number, "OVERDRIVE · GUNS",
+   "TAP · STRIPPED · 1500", and a prompt ("FLYBY Break the beam", "INCOMING Sidestep or send it
+   back") at once (open `.devshots/director/fable/vfx/pull/pull-c0-0250ms.png` and
+   `…/vfx/bomb/bomb-c1-0000ms.png`). One headline at a time, smaller than today, for at most 1.5 s,
+   never over the ship; the chain number lives in the round card; internal words ("TAP · STRIPPED",
+   "COLLATERAL") become plain ones or go. A threat prompt appears only for the single most urgent
+   threat and sits near the edge the threat comes from.
+10. **The shield-collapse "glitch" covers the whole picture with horizontal stripes**
+    (`sf-hud-glitch-overlay` in `src/ui/hud.js`; visible across
+    `.devshots/director/fable/ai/frames/new-r1/f05.png`). It makes the game look low-resolution.
+    Confine the effect to the shield meter and a brief flash of the screen edge; nothing may
+    stripe or tint the 3D view.
+11. **The round card names the cast.** The simulation now emits `encounter:castAnnounced` when a
+    composed Swarm round begins (payload: `{wave, recipeId, line, answer, jobs[], groups[], tick}`;
+    `line` is the cast in plain words, `answer` the best answer; job words in `ENEMY_JOB_WORDS`,
+    `src/data/enemyJobs.js`). Show `line` on the round card as the round starts, with the job
+    glyphs the minimap uses (`src/ui/map/tacticalMapGrammar.js`), for about three seconds; show
+    `answer` only on a player's first few runs. If the event does not reach the main thread
+    (check the event replay in `src/core/simLaneMain.js`), say so in your receipt.
+
 Keep everything the first pass got right: the six tiles, state on the tile, the attention modes,
 plain words, 12 px minimum type, keyboard, controller and touch reach.
 
