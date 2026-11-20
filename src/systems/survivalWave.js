@@ -16,6 +16,7 @@
 // Never writes state.run (runSession is the sole writer) and never touches campaign economy.
 
 import { mulberry32 } from '../core/rng.js';
+import { swarmCastFor } from '../data/swarmCourseCast.js';
 import { validateRunStateForTick } from '../core/runState.js';
 import {
   SWARM_SPAWN_RETRY_TICKS,
@@ -447,6 +448,21 @@ export const survivalWave = {
     // gap before topping up rather than doubling the arrival on tick 0.
     this._lastReinforceTick = 0;
     this._reinforceIndex = 0;
+    // R19: a composed round names its cast before contact — the round card and the minimap read
+    // this one receipt (the jobs of each arriving group, the cast in plain words, the answer).
+    const castRow = this._swarm ? swarmCastFor(wave) : null;
+    if (castRow && castRow.plan) {
+      this._emit('encounter:castAnnounced', {
+        wave,
+        recipeId: castRow.plan.id,
+        line: castRow.plan.line,
+        answer: castRow.answer || null,
+        jobs: castRow.plan.jobs,
+        groups: castRow.plan.groups.map((g) => ({ id: g.id, jobs: g.jobs, formation: g.formation,
+          cast: g.cast.map((c) => ({ enemyId: c.enemyId, count: c.count })) })),
+        tick: this._cursor,
+      });
+    }
     this._dispatchDue();
     this._shapeSwarmFire();
     this._publishWaveProgress({ force: true });

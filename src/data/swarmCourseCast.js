@@ -45,6 +45,7 @@
 
 import { SURVIVAL_GATE_GROUPS } from './survivalWaves.js';
 import { swarmCharacterFor } from './swarmCharacter.js';
+import { composeEncounter } from '../systems/encounterComposer.js';
 
 function spec(entry) {
   return Object.freeze(entry);
@@ -58,84 +59,115 @@ function castRound(round, stream, packages) {
   });
 }
 
+/**
+ * A composed round: the recipe is built by the one encounter composer (R19), so the row carries
+ * its plan (jobs, plain-words line, groups) and its one best answer beside the packages the wave
+ * owner already understands.
+ */
+function recipeRound(round, stream, recipe, answer) {
+  const plan = composeEncounter({ id: `swarm:r${round}`, ...recipe });
+  return Object.freeze({
+    round,
+    stream: Object.freeze(stream.map(spec)),
+    packages: Object.freeze(plan.packages.map(spec)),
+    plan,
+    answer,
+  });
+}
+
 const W = (enemyId, weight) => ({ enemyId, weight });
 const P = (enemyId, count, extra = {}) => ({ enemyId, count, ...extra });
 
 export const SWARM_COURSE_CAST = Object.freeze([
-  // 1 — ten Wasps, one gate, in two arrivals. The first three land at tick 0 and stand
-  // alone while the newcomer's eye finds them; the other seven stay owed to the opening
-  // beat and follow through the same gate the tick it ends (PRI-11a). The row's body
-  // count is still ten, so the opening-pressure law below reads the same wave.
-  castRound(1, [W('wasp_swarmer', 10)], [
-    P('wasp_swarmer', 3, { gateIndex: 0, atTick: 0 }),
-    P('wasp_swarmer', 7, { gateIndex: 0, atTick: 0, afterOpeningBeat: true }),
-  ]),
-  // 2 — Wasps from two gates: front and rear doors at once.
-  castRound(2, [W('wasp_swarmer', 10)], [
-    P('wasp_swarmer', 5, { gate: 'front', atTick: 0 }),
-    P('wasp_swarmer', 5, { gate: 'rear', atTick: 12 }),
-  ]),
-  // 3 — Detonator Darts: the round that teaches throwing things back. Wasps open as the
-  // targets; the dart's first sighting steps out alone on the debut beat, its pack behind.
-  castRound(3, [W('detonator_dart', 7), W('wasp_swarmer', 3)], [
-    P('detonator_dart', 1, { debut: true }),
-    P('wasp_swarmer', 3, { gate: 'front', atTick: 0 }),
-    P('wasp_swarmer', 3, { gate: 'rear', atTick: 12 }),
-    P('detonator_dart', 3, { gate: 'diagonal_a', atTick: 252 }),
-  ]),
-  // 4 — the lane runs for the first time, with Wasps on both sides of it: the two
-  // literal side bearings flank the freight lane wherever it runs.
-  castRound(4, [W('wasp_swarmer', 10)], [
-    P('wasp_swarmer', 5, { gate: 'diagonal_a', atTick: 0 }),
-    P('wasp_swarmer', 5, { gate: 'diagonal_b', atTick: 12 }),
-  ]),
-  // 5 — Iron Maw (boss). Four Darts arrive immediately. The staged Dart uses
-  // the normal queue on a separate approach with time for a latch before its fuse.
-  castRound(5, [W('detonator_dart', 6), W('wasp_swarmer', 4)], [
-    P('detonator_dart', 4, { gateIndex: 1, atTick: 0 }),
-    P('detonator_dart', 1, { gate: 'free', atTick: 0, staged: true, distance: 335 }),
-    P('wasp_swarmer', 4, { gateIndex: 3, atTick: 12 }),
-  ]),
-  // 6 — Bruisers. Wasps land first as the bait wall; the first sighting commits alone on
-  // the debut beat, then the charge packs in behind it.
-  castRound(6, [W('bruiser_brawler', 7), W('wasp_swarmer', 3)], [
-    P('bruiser_brawler', 1, { debut: true }),
-    P('wasp_swarmer', 3, { gateIndex: 0, atTick: 0 }),
-    P('wasp_swarmer', 3, { gateIndex: 2, atTick: 12 }),
-    P('bruiser_brawler', 3, { gateIndex: 4, atTick: 252 }),
-  ]),
-  // 7 — Lancers at the edges, Wasps in the middle. Wasps open on the middle bearings;
-  // the first lancer steps out alone on the debut beat, then the packs hold the
-  // literal side doors behind it (diagonal_a west, diagonal_b east).
-  castRound(7, [W('lancer_sniper', 6), W('wasp_swarmer', 4)], [
-    P('lancer_sniper', 1, { debut: true }),
-    P('wasp_swarmer', 4, { gate: 'front', atTick: 0 }),
-    P('wasp_swarmer', 3, { gate: 'rear', atTick: 24 }),
-    P('lancer_sniper', 2, { gate: 'diagonal_a', atTick: 252 }),
-    P('lancer_sniper', 1, { gate: 'diagonal_b', atTick: 264 }),
-  ]),
-  // 8 — Jackals: Wasp fodder opens, a first solo sowing lands on the debut beat, then
-  // the mine-lane pack behind it.
-  castRound(8, [W('mine_layer_jackal', 7), W('wasp_swarmer', 3)], [
-    P('mine_layer_jackal', 1, { debut: true }),
-    P('wasp_swarmer', 4, { gateIndex: 0, atTick: 0 }),
-    P('wasp_swarmer', 3, { gateIndex: 2, atTick: 12 }),
-    P('mine_layer_jackal', 4, { gateIndex: 4, atTick: 252 }),
-  ]),
-  // 9 — Tether Raiders: fodder first, the rope's first cast alone on the debut beat, then
-  // the pack that keeps the player attached for half the round.
-  castRound(9, [W('tether_control_raider', 7), W('wasp_swarmer', 3)], [
-    P('tether_control_raider', 1, { debut: true }),
-    P('wasp_swarmer', 4, { gateIndex: 0, atTick: 0 }),
-    P('wasp_swarmer', 3, { gateIndex: 2, atTick: 12 }),
-    P('tether_control_raider', 4, { gateIndex: 4, atTick: 252 }),
-  ]),
-  // 10 — Corsair Wing (boss): five raider aces flying as one. Light chaff — the wing's
-  // own bank-and-tear is the fight.
-  castRound(10, [W('wasp_swarmer', 6), W('choir_zealot', 4)], [
-    P('wasp_swarmer', 3, { gate: 'front', atTick: 0 }),
-    P('choir_zealot', 3, { gate: 'rear', atTick: 12 }),
-  ]),
+  // ROUNDS 1–10 ARE COMPOSED RECIPES (R19, 03_COMBAT §9A.3): each is a cast of jobs with an
+  // entrance and a formation, built by the one encounter composer, named in plain words and
+  // carrying its one best answer. Ten casts, ten answers.
+  recipeRound(1, [W('wasp_swarmer', 10)], {
+    // Three Wasps land first and stand alone while the newcomer's eye finds them; the other seven
+    // stay owed to the opening beat and follow through the same gate the tick it ends (PRI-11a).
+    groups: [
+      { cast: [{ enemyId: 'wasp_swarmer', count: 3 }], entrance: { gateIndex: 0, atTick: 0 }, formation: 'river' },
+      { cast: [{ enemyId: 'wasp_swarmer', count: 7 }], entrance: { gateIndex: 0, atTick: 0, afterOpeningBeat: true }, formation: 'river' },
+    ],
+  }, 'Catch one Wasp on the Line and whip it through the pack'),
+  recipeRound(2, [W('wasp_swarmer', 10)], {
+    // A pincer: front and rear doors at once.
+    groups: [
+      { cast: [{ enemyId: 'wasp_swarmer', count: 5 }], entrance: { gate: 'front', atTick: 0 }, formation: 'river' },
+      { cast: [{ enemyId: 'wasp_swarmer', count: 5 }], entrance: { gate: 'rear', atTick: 12 }, formation: 'river' },
+    ],
+  }, 'Turn so both packs come from one side, then bowl one into the other'),
+  recipeRound(3, [W('detonator_dart', 7), W('wasp_swarmer', 3)], {
+    // The dart's first sighting steps out alone on the debut beat; the Wasps are its targets.
+    groups: [
+      { cast: [{ enemyId: 'detonator_dart', count: 1 }], entrance: { debut: true }, formation: 'solo' },
+      { cast: [{ enemyId: 'wasp_swarmer', count: 3 }], entrance: { gate: 'front', atTick: 0 }, formation: 'river' },
+      { cast: [{ enemyId: 'wasp_swarmer', count: 3 }], entrance: { gate: 'rear', atTick: 12 }, formation: 'river' },
+      { cast: [{ enemyId: 'detonator_dart', count: 3 }], entrance: { gate: 'diagonal_a', atTick: 252 }, formation: 'arc' },
+    ],
+  }, 'Rope a Dart and throw it back into the Wasps'),
+  recipeRound(4, [W('wasp_swarmer', 9), W('choir_zealot', 1)], {
+    // The lane runs for the first time, with Wasps on both sides of it; one side's river carries a
+    // Zealot inside it, so that side holds together around the freight.
+    groups: [
+      { cast: [{ enemyId: 'wasp_swarmer', count: 4 }, { enemyId: 'choir_zealot', count: 1 }],
+        entrance: { gate: 'diagonal_a', atTick: 0 }, formation: 'river' },
+      { cast: [{ enemyId: 'wasp_swarmer', count: 5 }], entrance: { gate: 'diagonal_b', atTick: 12 }, formation: 'river' },
+    ],
+  }, 'Shove the pack under the freight'),
+  recipeRound(5, [W('detonator_dart', 6), W('wasp_swarmer', 4)], {
+    // Iron Maw (boss): four Darts at once, one staged Dart with time for a latch before its fuse.
+    groups: [
+      { cast: [{ enemyId: 'detonator_dart', count: 4 }], entrance: { gateIndex: 1, atTick: 0 }, formation: 'arc' },
+      { cast: [{ enemyId: 'detonator_dart', count: 1 }], entrance: { gate: 'free', atTick: 0, staged: true, distance: 335 }, formation: 'solo' },
+      { cast: [{ enemyId: 'wasp_swarmer', count: 4 }], entrance: { gateIndex: 3, atTick: 12 }, formation: 'river' },
+    ],
+  }, 'Feed the Maw a Detonator'),
+  recipeRound(6, [W('bruiser_brawler', 6), W('wasp_swarmer', 4)], {
+    // Wall with chaff: the first Bruiser commits alone; then three Bruisers charge with their own
+    // Wasps trailing on the same bearing — sidestep and the charge bowls its own pack.
+    groups: [
+      { cast: [{ enemyId: 'bruiser_brawler', count: 1 }], entrance: { debut: true }, formation: 'solo' },
+      { cast: [{ enemyId: 'wasp_swarmer', count: 3 }], entrance: { gateIndex: 0, atTick: 0 }, formation: 'river' },
+      { cast: [{ enemyId: 'bruiser_brawler', count: 3 }, { enemyId: 'wasp_swarmer', count: 3 }],
+        entrance: { gateIndex: 4, atTick: 252 }, formation: 'escort' },
+    ],
+  }, 'Sidestep in front of a rock: the Bruiser bowls its own Wasps'),
+  recipeRound(7, [W('lancer_sniper', 6), W('wasp_swarmer', 4)], {
+    // Reach + Rush: Lancers at the edges, Wasps in the middle keeping you moving.
+    groups: [
+      { cast: [{ enemyId: 'lancer_sniper', count: 1 }], entrance: { debut: true }, formation: 'solo' },
+      { cast: [{ enemyId: 'wasp_swarmer', count: 4 }], entrance: { gate: 'front', atTick: 0 }, formation: 'river' },
+      { cast: [{ enemyId: 'wasp_swarmer', count: 3 }], entrance: { gate: 'rear', atTick: 24 }, formation: 'river' },
+      { cast: [{ enemyId: 'lancer_sniper', count: 2 }], entrance: { gate: 'diagonal_a', atTick: 252 }, formation: 'line' },
+      { cast: [{ enemyId: 'lancer_sniper', count: 1 }], entrance: { gate: 'diagonal_b', atTick: 264 }, formation: 'line' },
+    ],
+  }, 'Put a rock between you and the Lancer, then close on the Line'),
+  recipeRound(8, [W('mine_layer_jackal', 6), W('detonator_dart', 3), W('wasp_swarmer', 3)], {
+    // Deny + Burst: Darts through a minefield — a gift to anyone who Shoves.
+    groups: [
+      { cast: [{ enemyId: 'mine_layer_jackal', count: 1 }], entrance: { debut: true }, formation: 'solo' },
+      { cast: [{ enemyId: 'wasp_swarmer', count: 4 }], entrance: { gateIndex: 0, atTick: 0 }, formation: 'river' },
+      { cast: [{ enemyId: 'mine_layer_jackal', count: 4 }, { enemyId: 'detonator_dart', count: 3 }],
+        entrance: { gateIndex: 4, atTick: 252 }, formation: 'arc' },
+    ],
+  }, "Shove the Darts into the Jackal's own mines"),
+  recipeRound(9, [W('tether_control_raider', 6), W('bruiser_brawler', 2), W('wasp_swarmer', 3)], {
+    // Seize + Wall: the rope holds you while the Bruiser lines up its charge.
+    groups: [
+      { cast: [{ enemyId: 'tether_control_raider', count: 1 }], entrance: { debut: true }, formation: 'solo' },
+      { cast: [{ enemyId: 'wasp_swarmer', count: 4 }], entrance: { gateIndex: 0, atTick: 0 }, formation: 'river' },
+      { cast: [{ enemyId: 'tether_control_raider', count: 4 }, { enemyId: 'bruiser_brawler', count: 3 }],
+        entrance: { gateIndex: 4, atTick: 252 }, formation: 'escort' },
+    ],
+  }, 'Swing the Tether Raider into its own Bruiser'),
+  recipeRound(10, [W('wasp_swarmer', 6), W('choir_zealot', 4)], {
+    // Corsair Wing (boss): five raider aces flying as one; light chaff — the wing is the fight.
+    groups: [
+      { cast: [{ enemyId: 'wasp_swarmer', count: 3 }], entrance: { gate: 'front', atTick: 0 }, formation: 'river' },
+      { cast: [{ enemyId: 'choir_zealot', count: 3 }], entrance: { gate: 'rear', atTick: 12 }, formation: 'river' },
+    ],
+  }, 'Pin one Corsair mid-pass and the wing breaks'),
   // 11 — a Warden shielding gunners: the warden's first sighting steps out alone
   // on the debut beat; the dome screens whatever pack it lands beside.
   castRound(11, [W('lancer_sniper', 5), W('wasp_swarmer', 4), W('warden_escort', 3)], [
