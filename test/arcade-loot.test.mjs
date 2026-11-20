@@ -131,13 +131,16 @@ test('partial acceptance converts only the refused remainder', () => {
   });
 });
 
-test('overflow never touches ordinary ore, run wallets, non-ore loot, or the flag-off profile', () => {
+test('a refused pulled pickup becomes credits and never parks on the hull; run wallets and the flag-off profile are untouched', () => {
   withFlag(true, () => {
+    // Owner 2026-11-20: refused pickups stayed alive on a retry loop while the vacuum pressed them
+    // into the hull ("dots stuck to the front, back and sides of my ship"). Whatever the hold
+    // cannot take is paid out as credits and removed.
     const ordinary = harness({ pickupX: 10, pickupData: { kind: 'ore', commodityId: 'cmdty_scrap_metal', amount: 15 }, acceptUnits: 0 });
     ordinary.state.simTime = 1;
     mining.update(DT, ordinary.state);
-    assert.equal(ordinary.grants.length, 0, 'ordinary ore a full hold refuses stays for the pilot (a mined lot is the pilot\'s to haul)');
-    assert.equal(ordinary.pickup.alive, true);
+    assert.equal(ordinary.grants.length, 1, 'refused ore at the hull pays credits');
+    assert.equal(ordinary.pickup.alive, false, 'and is gone, not parked against the ship');
 
     const run = harness({ pickupX: 10, pickupData: COMBAT_ORE({ wallet: 'run' }), acceptUnits: 0 });
     run.state.simTime = 1;

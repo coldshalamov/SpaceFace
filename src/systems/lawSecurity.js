@@ -256,6 +256,12 @@ const WANTED_SWEEP_RETRY_TICKS = 30;
 // already adjudicates: unprovoked-hit chips still never convict on their own.
 const SUSTAINED_HARM_WINDOW_S = 10;
 const SUSTAINED_HARM_MIN_EVENTS = 3;
+// Bodies nobody pilots. When direct-contact physics names one as the impactor (a bumped cargo can,
+// a drifting wreck, debris), the contact is an accident, never hostile fire: a crate cannot be an
+// aggressor. A THROWN body carries its responsible actor's id instead, so throws still count.
+const INERT_IMPACTOR_TYPES = new Set([
+  'asteroid', 'payload', 'wreck', 'debris', 'pickup', 'cargo', 'beacon', 'fx', 'machine', 'prop', 'structure',
+]);
 const SUSTAINED_HARM_VICTIM_CAP = 24;
 const SUSTAINED_HARM_EVENT_CAP = 16;
 
@@ -1118,9 +1124,10 @@ export const lawSecurity = {
     const attacker = entityById(state, payload.attackerId);
     const target = entityById(state, payload.targetId);
     if (!attacker || !target || attacker.id === target.id) return;
-    // Direct-contact physics can identify the rock itself as the impactor. A thrown rock
-    // carries its responsible actor's id instead; only that actor can be an aggressor.
-    if (payload.origin?.kind === 'collision' && attacker.type === 'asteroid') return;
+    // Direct-contact physics can identify the inert body itself as the impactor (a rock, a cargo
+    // can, a wreck). A thrown body carries its responsible actor's id instead; only that actor can
+    // be an aggressor (owner 2026-11-19: a bumped crate opened a navy intercept in the tutorial).
+    if (payload.origin?.kind === 'collision' && INERT_IMPACTOR_TYPES.has(attacker.type)) return;
     // OPENING-1b: the tutorial swing must never criminalise a new pilot - until the raid is done, harm the
     // pilot (or their thrown rock) does opens no law case. The first consequence is the claimed-salvage choice.
     if (attacker.id === state.playerId && openingBeforeClaim(state)) return;

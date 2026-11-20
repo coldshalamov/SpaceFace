@@ -2794,9 +2794,15 @@ export const mining = {
       this.state && this.state.simTime,
       { state: this.state, pickup, collector: player },
     )) {
+      const parked = finiteWholePickupAmount(pickup.data.amount);
+      if (this._convertOverflowToCredits(pickup, parked)) {
+        pickup.alive = false;
+        clearPickupAcceptanceRetry(pickup.data);
+        return { accepted: 0, rejected: parked, legacyFullConsume: false, converted: true };
+      }
       return {
         accepted: 0,
-        rejected: finiteWholePickupAmount(pickup.data.amount),
+        rejected: parked,
         legacyFullConsume: false,
         deferred: true,
       };
@@ -2895,13 +2901,18 @@ export const mining = {
   _convertOverflowToCredits(pickup, rejectedUnits) {
     if (!combatFlag('arcadeLoot')) return false;
     const data = pickup && pickup.data;
-    if (!data || data.combatLoot !== true) return false;
-    if (data.kind !== 'ore' && data.kind !== 'cargo') return false;
+    if (!data) return false;
+    // Only loot the vacuum is allowed to pull (the same test as the homing write): owned chips,
+    // marked salvage, site and custody freight keep their own rules. Credit chips are credits.
+    if (data.claimedCargo === true || data.physicalCustodyOnly === true) return false;
+    if (data.npcMiningSource && typeof data.npcMiningSource === 'object') return false;
+    if (data.worldSiteId || data.richLotSource || data.heistFacilityRole) return false;
+    if (isCreditChipPickup(data)) return false;
     if (data.wallet === 'run') return false;
     const units = finiteWholePickupAmount(rejectedUnits);
     if (units <= 0) return false;
     const commodity = COMMODITY_BY_ID.get(data.commodityId);
-    const unitValue = commodity && Number.isFinite(commodity.basePrice) ? commodity.basePrice : 0;
+    const unitValue = commodity && Number.isFinite(commodity.basePrice) ? commodity.basePrice : 10;
     const credits = Math.max(1, Math.floor(units * unitValue * LOOT_OVERFLOW_SCRAP_RATE));
     this.bus.emit('economy:grantCredits', {
       amount: credits,
