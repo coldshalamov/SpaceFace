@@ -2751,7 +2751,9 @@ export const claims = {
 
   _normalizeStationGrowth(raw) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-    const out = {};
+    // Null-prototype map, same contract normalizeSupplyReceipts documents: an adversarial
+    // stationId ('__proto__') becomes an own key, never a prototype-setter write on `out`.
+    const out = Object.create(null);
     let any = false;
     for (const stationId of Object.keys(raw)) {
       const rec = raw[stationId];
@@ -3256,11 +3258,28 @@ export const claims = {
       _nextClaimId = 1;
       return;
     }
-    const bodies = Array.isArray(data.bodies) ? data.bodies : [];
+    const bodies = (Array.isArray(data.bodies) ? data.bodies : [])
+      .filter((b) => b && typeof b === 'object' && !Array.isArray(b));
     for (const b of bodies) {
       // versioned default: bodies from older saves have no spec — they stay unspecialized
       // Presence in the claims store is the ownership proof. Older saves predate the explicit bit.
       b.owned = true;
+      // A restored record is save data, not a live shape: heal the scalar fields the runtime
+      // gates trust verbatim. modules is always the built-id array (a crafted string would
+      // reach buildModule's push() after the credit charge, and satisfy the teleporter's
+      // .includes() for free). size must be a real BODY_SLOTS_BY_SIZE key — a crafted
+      // '__proto__' is truthy through the plain-object lookup and would hand Object.prototype
+      // to every `BODY_SLOTS_BY_SIZE[size] || 3` fallback downstream; then slots re-derives
+      // from size exactly like claim(). The rest coerce to string-or-null / finite.
+      if (!Object.prototype.hasOwnProperty.call(BODY_SLOTS_BY_SIZE, b.size)) b.size = 'M';
+      b.slots = BODY_SLOTS_BY_SIZE[b.size];
+      b.modules = Array.isArray(b.modules)
+        ? b.modules.filter((id) => typeof id === 'string' && BODY_MODULE_BY_ID.has(id))
+        : [];
+      b.id = typeof b.id === 'string' && b.id ? b.id : null;
+      b.linkedStationId = typeof b.linkedStationId === 'string' && b.linkedStationId ? b.linkedStationId : null;
+      b.x = Number.isFinite(Number(b.x)) ? Number(b.x) : 0;
+      b.z = Number.isFinite(Number(b.z)) ? Number(b.z) : 0;
       const needsRecipeNote = !!(b.spec && typeof b.spec === 'object'
         && b.spec.id === 'spec_refinery' && b.spec.recipeBook == null);
       b.spec = 'spec' in b ? this._normalizeSpec(b.spec) : null;
