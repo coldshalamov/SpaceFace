@@ -268,11 +268,12 @@ export function resolveFittedWeapons(state, bindings = readArsenalBindings(state
 export function combinationExample(entries) {
   const pull = entries.pull;
   const gyre = entries.gyre;
-  const key = (e) => (e && e.binding && e.binding.bound ? e.binding.label : 'unbound');
+  // An unbound verb shows no key hint at all — never the word "unbound", never an empty parenthetical.
+  const key = (e) => (e && e.binding && e.binding.bound ? ` (${e.binding.label})` : '');
   const steps = [
-    { id: 'pull', key: key(pull), text: `Pull (${key(pull)}) drops a well on a pile of loose rocks and they gather.` },
-    { id: 'gyre', key: key(gyre), text: `Hold Gather (${key(gyre)}) over the pile: it scoops the rocks into one growing ball.` },
-    { id: 'throw', key: key(gyre), text: `Release Gather to throw the ball through the pack. The collision does the damage.` },
+    { id: 'pull', key: key(pull).trim(), text: `Pull${key(pull)} drops a well on a pile of loose rocks and they gather.` },
+    { id: 'gyre', key: key(gyre).trim(), text: `Hold Gather${key(gyre)} over the pile: it scoops the rocks into one growing ball.` },
+    { id: 'throw', key: key(gyre).trim(), text: `Release Gather to throw the ball through the pack. The collision does the damage.` },
   ];
   return {
     id: 'pull-gyre-throw',
