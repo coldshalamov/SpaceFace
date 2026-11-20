@@ -967,6 +967,16 @@ export const feel = {
       }
       this._unsubs = [];
     }
+    // init() nulls the refs and re-mounts; a node the ref forgot stays connected forever —
+    // worst case a mid-flash vignette pins its last opacity as a permanent red wash.
+    for (const key of ['_vigEl', '_hullCritEl', '_slCanvas', '_edgeEl']) {
+      const node = this[key];
+      if (node) {
+        try { node.remove(); } catch (_) { /* detached */ }
+        this[key] = null;
+      }
+    }
+    this._hullCritOn = false;
   },
 
   _injectStyle() {
