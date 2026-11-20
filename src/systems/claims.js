@@ -56,7 +56,7 @@ import {
   DEPOT_SUPPORT_GRACE_S, DEPOT_PATROL_SHAPE_ID, DEPOT_PATROL_FACTION_ID,
   DEPOT_PATROL_ANCHOR_FRAC, DEPOT_PATROL_ZONE_RADIUS_WU, DEPOT_PATROL_ID_PREFIX,
   SECTOR_BY_ID, readyClaimRecipe, sumStore, raidTripChance, repelChance,
-  claimDefenseRating, claimsReadMethods, cachedRelayDestination,
+  claimDefenseRating, claimsReadMethods, cachedRelayDestination, relayDispatchReadiness,
 } from './claimsReadModel.js';
 export {
   SPEC_RAID_EVERY_S, RAID_SECURITY_FLOOR, SPEC_RAID_LOSS_FRAC, DEPOT_SUPPORT_GRACE_S,
@@ -1267,6 +1267,15 @@ export const claims = {
     return moved;
   },
 
+  requestRelayDispatch(bodyId, expectedConvoySeq) {
+    const body = this._body(bodyId);
+    if (relayDispatchReadiness(body).state !== 'ready'
+      || expectedConvoySeq !== (body.spec.convoySeq || 0)
+      || !this._economyPeer() || !this._relayDestination(body)) return false;
+    body.spec.nextDispatchAt = this.state.simTime || 0;
+    return true;
+  },
+
   _tickSpecRelay(body, def, state) {
     const spec = body.spec;
     const t = state.simTime || 0;
@@ -1310,38 +1319,31 @@ export const claims = {
     // scheduled dispatch — only while staffed, only with a real destination + market truth
     if (!spec.convoy && spec.status === 'active' && t >= (spec.nextDispatchAt || 0)) {
       spec.nextDispatchAt = t + def.dispatchEveryS;
+      const load = relayDispatchReadiness(body);
       const dest = this._relayDestination(body);
-      const economy = this._economyPeer();
-      if (dest && economy) {
-        let bestGood = null, bestQty = 0;
-        for (const id in spec.store.input) {
-          const q = spec.store.input[id] || 0;
-          if (q > bestQty) { bestQty = q; bestGood = id; }
-        }
-        if (bestGood && bestQty >= def.minLoadU) {
-          const qty = Math.min(def.convoyLoadU, bestQty);
-          spec.store.input[bestGood] -= qty;
-          if (spec.store.input[bestGood] <= 0) delete spec.store.input[bestGood];
-          const convoySeq = (spec.convoySeq || 0) + 1;
-          spec.convoySeq = convoySeq;
-          spec.convoy = {
-            goodId: bestGood, qty, destStationId: dest, departedAt: t, arriveAt: t + def.transitS,
-            convoyId: body.id + ':cv' + convoySeq,
-            bodyId: body.id,
-            // Durable identity minted at dispatch: traffic materializes the carrier under this
-            // record id, so kill/shelf/relink paths all name the same ship.
-            worldRecordId: stableRecordId(
-              (state.meta && state.meta.seed) || 1,
-              body.sectorId || (state.world && state.world.currentSectorId) || 'sector',
-              RECORD_KIND.CONVOY,
-              'claim-convoy:' + body.id + ':' + convoySeq,
-            ),
-            manifested: false,
-            entityId: null,
-          };
-          this._receipt(body, 'convoy_dispatched', 'Convoy away — ' + qty + 'u to ' + (this._stationName(dest) || dest),
-            { goodId: bestGood, qty, destStationId: dest });
-        }
+      if (load.state === 'ready' && dest && this._economyPeer()) {
+        const { goodId, qty } = load;
+        spec.store.input[goodId] -= qty;
+        if (spec.store.input[goodId] <= 0) delete spec.store.input[goodId];
+        const convoySeq = (spec.convoySeq || 0) + 1;
+        spec.convoySeq = convoySeq;
+        spec.convoy = {
+          goodId, qty, destStationId: dest, departedAt: t, arriveAt: t + def.transitS,
+          convoyId: body.id + ':cv' + convoySeq,
+          bodyId: body.id,
+          // Durable identity minted at dispatch: traffic materializes the carrier under this
+          // record id, so kill/shelf/relink paths all name the same ship.
+          worldRecordId: stableRecordId(
+            (state.meta && state.meta.seed) || 1,
+            body.sectorId || (state.world && state.world.currentSectorId) || 'sector',
+            RECORD_KIND.CONVOY,
+            'claim-convoy:' + body.id + ':' + convoySeq,
+          ),
+          manifested: false,
+          entityId: null,
+        };
+        this._receipt(body, 'convoy_dispatched', 'Convoy away — ' + qty + 'u to ' + (this._stationName(dest) || dest),
+          { goodId, qty, destStationId: dest });
       }
     }
   },
@@ -1362,10 +1364,14 @@ export const claims = {
     const entry = stationMarket && stationMarket[convoy.goodId];
     const listed = listedMarketSell(entry);
     // The arrived lot already belongs to the convoy, separate from the player's hold.
-    const unit = listed != null && economy && economy.priceOf
-      ? economy.priceOf(convoy.destStationId, convoy.goodId, 'sell', { operationCustody: true })
+    // Quote the whole lot, not the one-unit spot price — the sell-side quote integrates the
+    // price curve over the stock interval, so a 40u landing no longer earns 40x spot.
+    const quoted = listed != null && economy && typeof economy.quote === 'function'
+      ? economy.quote(convoy.destStationId, convoy.goodId, 'sell', qty, { operationCustody: true })
       : null;
-    if (!(listed > 0) || !(unit > 0)) {
+    const saleTotal = quoted && quoted.ok === true && Number.isFinite(quoted.total) && quoted.total > 0
+      ? quoted.total : null;
+    if (!(listed > 0) || !(saleTotal > 0)) {
       spec.store.input[convoy.goodId] = (spec.store.input[convoy.goodId] || 0) + qty;
       if (convoy.qtyLedger) convoy.qtyLedger.returned = qty;
       this._receipt(
@@ -1378,7 +1384,7 @@ export const claims = {
     }
     // PQ-170.01: a station the player's freight grew keeps less of the sale.
     const saleFee = this._relaySaleFee(def, convoy.destStationId);
-    const revenue = Math.round(qty * unit * (1 - saleFee));
+    const revenue = Math.round(saleTotal * (1 - saleFee));
     if (convoy.qtyLedger) convoy.qtyLedger.sold = qty;
     this.bus.emit('economy:grantCredits', { amount: revenue, reason: 'claim_relay_sale' });
     this.bus.emit('economy:applyTradePressure', { stationId: convoy.destStationId, good: convoy.goodId, vol: qty });

@@ -282,7 +282,7 @@ const toll = {
     if (live.phase !== 'offer') return;
     if (choiceId === 'pay') {
       const amount = live.vars.amount | 0;
-      if ((state.player.credits | 0) < amount) {
+      if ((Number(state.player.credits) || 0) < amount) {
         d.say(live, 'bark', 'toll_broke_ack');
         return toll.choose(d, live, state, 'refuse');
       }
@@ -425,7 +425,7 @@ const patrolScan = {
       const fine = d.fineEstimate();
       if (fine <= 0) return;
       const cost = Math.round(fine * 0.3);
-      if ((state.player.credits | 0) < cost) return;    // cannot afford → choice unavailable
+      if ((Number(state.player.credits) || 0) < cost) return; // cannot afford → choice unavailable
       // The economy writer returns its decision on this synchronous intent. Do not tell the
       // patrol the pilot paid (or despawn/close the offer) unless the wallet debit committed.
       const payment = { fine, encounterId: live.id, result: null };
@@ -647,7 +647,7 @@ const ambush = {
     if (choiceId === 'buyout') {
       // Credits-priced contract buyout (327 ghost): the quiet honors a paid contract.
       const amount = live.vars.amount | 0;
-      if (((state.player && state.player.credits) | 0) < amount) {
+      if ((Number(state.player && state.player.credits) || 0) < amount) {
         d.say(live, 'bark', ack.broke || 'toll_broke_ack');
         return ambush.choose(d, live, state, 'refuse');
       }

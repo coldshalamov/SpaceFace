@@ -637,7 +637,7 @@ export const factions = {
     if (cost <= 0) {
       return { ok: false, reason: 'not_hostile', factionId, cost: 0, shortfall: 0 };
     }
-    const credits = Math.max(0, state.player && state.player.credits | 0);
+    const credits = Math.max(0, Number(state.player && state.player.credits) || 0);
     if (credits < cost) {
       return { ok: false, reason: 'short', factionId, cost, shortfall: cost - credits };
     }

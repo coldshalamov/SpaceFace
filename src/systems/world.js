@@ -5319,7 +5319,7 @@ export const world = {
     }
 
     const price = surveyDataPrice(sector);
-    const credits = (this.state.player && this.state.player.credits) | 0;
+    const credits = Number(this.state.player && this.state.player.credits) || 0;
     if (credits < price) {
       this.bus.emit('toast', { text: `Survey data costs ${price.toLocaleString('en-US')} cr`, kind: 'warn', ttl: 3 });
       return false;
@@ -6855,7 +6855,7 @@ export const world = {
     let gateToll = 0;
     if (via === 'gate') {
       gateToll = this._gateToll(target);
-      if (gateToll > 0 && ((state.player && state.player.credits) | 0) < gateToll) {
+      if (gateToll > 0 && (Number(state.player && state.player.credits) || 0) < gateToll) {
         return reject('credits', {
           creditsNeeded: gateToll,
           creditsHeld: Math.floor((state.player && state.player.credits) || 0),
@@ -8695,7 +8695,15 @@ export const world = {
       state.jump._unfiled = false;
       state.jump._unfiledConfirmed = false;
     }
-    if (data.fuel) state.fuel = { current: data.fuel.current, max: data.fuel.max };
+    if (data.fuel) {
+      // The save envelope normalizes fuel on write, but corrupted or hand-edited
+      // saves can still carry NaN/negative fields — every fuel check against a NaN
+      // current silently fails and soft-locks jumping. Clamp to sane bounds.
+      const max = Number(data.fuel.max);
+      const cur = Number(data.fuel.current);
+      const safeMax = Number.isFinite(max) && max > 0 ? max : 100;
+      state.fuel = { current: Math.min(safeMax, Math.max(0, Number.isFinite(cur) ? cur : safeMax)), max: safeMax };
+    }
     if (data.sectorOwners) {
       for (const id in data.sectorOwners) {
         if (state.world.sectors[id]) state.world.sectors[id].owner = data.sectorOwners[id];
