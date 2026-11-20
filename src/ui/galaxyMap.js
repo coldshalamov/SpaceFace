@@ -11,6 +11,8 @@ import { bindMapMarkup, MAP_CONTROLS, mapControlAttrs, mapControlLabel } from '.
 import { MAP_WORKBENCH_CSS } from './map/mapWorkbenchCss.js';
 import { chartContactRead } from './map/contactVisibility.js';
 import { createAtlasRelief } from './map/atlasRelief.js';
+import { createRockFieldPainter } from './map/rockFieldRegion.js';
+import { CONTACT_JOB_PALETTE, TACTICAL_MAP_PALETTE, classifyContactRole, drawRoleGlyph, isBossContact } from './map/tacticalMapGrammar.js';
 import { injectChartLayouts } from './orrery/chartLayouts.js';
 import {
   CHART_INK, chartFont, setTracking, drawBand, drawBandRing, drawBead, drawHandBeam, drawLaneComet,
@@ -745,7 +747,7 @@ export function activeMapGoal(state) {
       (wp && (wp.label || wp.sectorName || wp.reason))
       || (tracked && (tracked.title || tracked.name))
       || 'Plotted course',
-    ).replace(/\s+/g, ' ').trim(),
+    ).replace(/\s+\d+(?:\.\d+)?\s*(?:wu|u)\b/gi, '').replace(/\s+/g, ' ').trim(),
   };
 }
 
@@ -6902,7 +6904,7 @@ _stepAnimation(now) {
           : wp.type === 'gate'
             ? 'Jump Gate'
             : 'Navigation Fix';
-      const wpReason = String(wp.reason || wp.label || 'Manual course fix').trim();
+      const wpReason = String(wp.reason || wp.label || 'Manual course fix').replace(/\s+\d+(?:\.\d+)?\s*(?:wu|u)\b/gi, '').trim();
       wpHtml = `
         <div class="gm-ov-wp-box">
           <div class="gm-ins-row"><span>Waypoint pin</span><span class="gm-ins-row-val" style="color:${INK.amberHot};">◆ ${escapeMapHtml(waypointMapLabel(wp))}</span></div>
@@ -9137,7 +9139,7 @@ _onCanvasDblClick(ev) {
     if (this._g) this._g.setTransform(dpr, 0, 0, dpr, 0, 0);
   },
 
-  _paintAtlas(w, h, originX, originY, tile, features = []) {
+  _paintAtlas(w, h, originX, originY, tile, features = [], opts = {}) {
     if (!this._atlasCanvas || !(w > 2 && h > 2)) return false;
     if (this._atlas === undefined) {
       this._atlas = createAtlasRelief(this._atlasCanvas, () => {
@@ -9145,7 +9147,7 @@ _onCanvasDblClick(ev) {
         this._wake();
       });
     }
-    return this._atlas?.paint(w, h, originX, originY, Math.max(w * 0.9, h, tile), features) || false;
+    return this._atlas?.paint(w, h, originX, originY, Math.max(w * 0.9, h, tile), features, opts) || false;
   },
 
 _draw() {
@@ -11190,6 +11192,209 @@ _drawSystem(g, state, w, h) {
     return model;
   },
 
+  /** Every rock of the current sector (dormant field records + woken live rocks), cached per field version. */
+  _surveyRocks(state, sectorId) {
+    const field = state.world && state.world.asteroidField;
+    const version = field && Number.isFinite(field.version) ? field.version : 0;
+    const key = `${sectorId}|${version}|${state.entityList ? state.entityList.length : 0}`;
+    if (this._surveyRockKey === key && this._surveyRockList) return this._surveyRockList;
+    const list = [];
+    for (const rec of (field && Array.isArray(field.rocks)) ? field.rocks : []) {
+      if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) continue;
+      if (rec.homeSectorId && sectorId && rec.homeSectorId !== sectorId) continue;
+      list.push(rec);
+    }
+    for (const e of Array.isArray(state.entityList) ? state.entityList : []) {
+      if (e && e.type === 'asteroid' && e.alive !== false && e.pos) list.push(e);
+    }
+    this._surveyRockKey = key;
+    this._surveyRockList = list;
+    return list;
+  },
+
+  /**
+   * The local survey under the marks: a quiet grid, hazards hatched, the lanes traffic flies, the
+   * rock fields shaped by the actual rocks, and the fog past the ship's sensor range with the scan
+   * bubble as one ring. Drawn inside the field clip, before contacts.
+   */
+  _drawLocalSurvey(g, state, model, { sx, sz, localScale, field, origin, focus, shipX, shipY, reduced, labelCandidates }) {
+    // 1. Survey grid, aligned to the sector origin, in round metres.
+    const step = surveyGridStep(localScale);
+    const stepPx = step * localScale;
+    const ox = sx(origin.x);
+    const oy = sz(origin.z);
+    g.save();
+    g.strokeStyle = 'rgba(150, 196, 216, 0.055)';
+    g.lineWidth = 1;
+    g.beginPath();
+    for (let x = ox + Math.ceil((field.x - ox) / stepPx) * stepPx; x <= field.x + field.width; x += stepPx) {
+      g.moveTo(Math.round(x) + 0.5, field.y); g.lineTo(Math.round(x) + 0.5, field.y + field.height);
+    }
+    for (let y = oy + Math.ceil((field.y - oy) / stepPx) * stepPx; y <= field.y + field.height; y += stepPx) {
+      g.moveTo(field.x, Math.round(y) + 0.5); g.lineTo(field.x + field.width, Math.round(y) + 0.5);
+    }
+    g.stroke();
+    g.restore();
+
+    // 2. Lanes traffic flies: faint dashed corridors station↔station and station↔its nearest gate.
+    const ports = model.contacts.filter((c) => (c.kind === 'station' || c.kind === 'gate') && !c.foreign && !c.remembered);
+    const stations = ports.filter((c) => c.kind === 'station' && !c.hostile);
+    const gates = ports.filter((c) => c.kind === 'gate');
+    const lanes = [];
+    for (let i = 0; i < stations.length; i += 1) {
+      for (let j = i + 1; j < stations.length; j += 1) lanes.push([stations[i], stations[j]]);
+      let best = null;
+      let bestD = Infinity;
+      for (const gt of gates) {
+        const d = Math.hypot(gt.x - stations[i].x, gt.z - stations[i].z);
+        if (d < bestD) { bestD = d; best = gt; }
+      }
+      if (best) lanes.push([stations[i], best]);
+    }
+    if (lanes.length) {
+      const half = Math.max(5, Math.min(14, 45 * localScale));
+      g.save();
+      g.strokeStyle = 'rgba(176, 210, 226, 0.16)';
+      g.lineWidth = 1;
+      g.setLineDash([6, 7]);
+      g.beginPath();
+      for (const [a, b] of lanes) {
+        const ax = sx(a.x); const ay = sz(a.z); const bx = sx(b.x); const by = sz(b.z);
+        const len = Math.hypot(bx - ax, by - ay);
+        if (len < 30) continue;
+        const nx = -(by - ay) / len * half;
+        const ny = (bx - ax) / len * half;
+        g.moveTo(ax + nx, ay + ny); g.lineTo(bx + nx, by + ny);
+        g.moveTo(ax - nx, ay - ny); g.lineTo(bx - nx, by - ny);
+      }
+      g.stroke();
+      g.setLineDash([]);
+      g.restore();
+    }
+
+    // 3. Hazards, hatched, with a plain name.
+    const record = sectorRecordById(state, model.sectorId);
+    const HAZARD_WORD = { nebula: 'Nebula', radiation: 'Radiation', debris: 'Debris', dense_asteroid: 'Dense rocks' };
+    for (const hz of (record && record.hazards) || []) {
+      if (!hz || !hz.center || !(hz.radius > 0)) continue;
+      const x = sx(origin.x + hz.center.x);
+      const y = sz(origin.z + hz.center.z);
+      const r = hz.radius * localScale;
+      if (x + r < field.x || x - r > field.x + field.width || y + r < field.y || y - r > field.y + field.height) continue;
+      const hot = hz.type === 'radiation';
+      g.save();
+      g.beginPath();
+      g.arc(x, y, r, 0, Math.PI * 2);
+      g.fillStyle = surveyHatch(g, hot ? '255, 120, 80' : '160, 196, 224') || (hot ? 'rgba(255,120,80,0.08)' : 'rgba(160,196,224,0.06)');
+      g.globalAlpha = hot ? 0.9 : 0.6;
+      g.fill();
+      g.globalAlpha = 1;
+      g.strokeStyle = hot ? 'rgba(255, 128, 88, 0.5)' : 'rgba(170, 200, 224, 0.32)';
+      g.setLineDash([5, 5]);
+      g.stroke();
+      g.setLineDash([]);
+      g.restore();
+      const word = HAZARD_WORD[hz.type] || 'Hazard';
+      if (r > 24) {
+        labelCandidates.push(makeMapLabelCandidate(g, { id: `hazard:${hz.type}:${hz.center.x}:${hz.center.z}`, kind: 'zone', text: word,
+          lines: [word], x, y, anchorRadius: Math.min(r, 60), area: true, priority: 480, color: hot ? '#ff9a7a' : CHART_INK.bone(0.8) }));
+      }
+    }
+
+    // 4. Rock fields shaped by the actual rocks (the minimap's painter), cached on an oversized
+    // layer so a pan only moves it; rebuilt on zoom, sector, a far pan, or a changed field (lazily).
+    const rocks = this._surveyRocks(state, model.sectorId);
+    if (rocks.length && typeof document !== 'undefined') {
+      const pad = 160;
+      const dpr = this._dpr || 1;
+      const layerW = field.width + pad * 2;
+      const layerH = field.height + pad * 2;
+      if (!this._surveyRockCanvas) {
+        this._surveyRockCanvas = document.createElement('canvas');
+        this._surveyRockPainter = createRockFieldPainter(document);
+      }
+      const L = this._surveyRockLayer || (this._surveyRockLayer = { key: '', fx: NaN, fz: NaN, s: NaN, cx: 0, cy: 0, version: -1, at: -Infinity });
+      const fieldVersion = state.world?.asteroidField?.version ?? 0;
+      const now = this._nowMs();
+      const sizeKey = `${model.sectorId}|${Math.round(layerW)}|${Math.round(layerH)}|${dpr}`;
+      const shiftX = (L.fx - focus.x) * localScale;
+      const shiftY = (L.fz - focus.z) * localScale;
+      const stale = sizeKey !== L.key
+        || !(Math.abs(localScale / L.s - 1) < 0.004)
+        || !(Math.abs(shiftX) < pad * 0.8 && Math.abs(shiftY) < pad * 0.8)
+        || (fieldVersion !== L.version && now - L.at > 1500);
+      if (stale) {
+        const c = this._surveyRockCanvas;
+        const pw = Math.max(1, Math.round(layerW * dpr));
+        const ph = Math.max(1, Math.round(layerH * dpr));
+        if (c.width !== pw) c.width = pw;
+        if (c.height !== ph) c.height = ph;
+        const rg = c.getContext('2d');
+        rg.setTransform(1, 0, 0, 1, 0, 0);
+        rg.clearRect(0, 0, pw, ph);
+        rg.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const baseX = field.x - pad;
+        const baseY = field.y - pad;
+        this._surveyRockPainter.paint(rg, rocks, (x, z) => ({ x: sx(x) - baseX, y: sz(z) - baseY }), localScale, layerW, layerH, {
+          dpr, padWorld: 60, minPx: 4, maxPx: 40, density: true,
+          fill: 'rgba(96, 146, 172, 0.12)', contour: 'rgba(168, 214, 234, 0.5)',
+        });
+        Object.assign(L, { key: sizeKey, fx: focus.x, fz: focus.z, s: localScale, cx: baseX, cy: baseY, version: fieldVersion, at: now });
+        this._surveyRockRebuilds = (this._surveyRockRebuilds || 0) + 1;
+      }
+      const dx = L.cx + (L.fx - focus.x) * localScale;
+      const dy = L.cy + (L.fz - focus.z) * localScale;
+      g.drawImage(this._surveyRockCanvas, dx, dy, layerW, layerH);
+    }
+
+    // 4b. A charted field whose rocks are not loaded yet still shows where it lies: a faint dashed
+    // outline at its authored extent, so its name never floats over nothing.
+    for (const deposit of (record && record.fields) || []) {
+      const c0 = deposit && deposit.center;
+      if (!c0) continue;
+      const gx = origin.x + (Number(c0.x) || 0);
+      const gz = origin.z + (Number(c0.z) || 0);
+      const rW = Number(deposit.clusterRadius || deposit.radius) || 300;
+      let near = 0;
+      for (let i = 0; i < rocks.length && near < 3; i += 1) {
+        const rp = rocks[i].pos;
+        if ((rp.x - gx) ** 2 + (rp.z - gz) ** 2 < rW * rW) near += 1;
+      }
+      if (near >= 3) continue;
+      const r = rW * localScale;
+      if (r < 10) continue;
+      g.save();
+      g.strokeStyle = 'rgba(168, 214, 234, 0.26)';
+      g.lineWidth = 1;
+      g.setLineDash([2, 5]);
+      g.beginPath();
+      g.arc(sx(gx), sz(gz), r, 0, Math.PI * 2);
+      g.stroke();
+      g.setLineDash([]);
+      g.restore();
+    }
+
+    // 5. What the ship senses is sharp; past its sensor range the chart is fogged. The scan bubble
+    // is one ring.
+    const sensorRange = Number(state.ui && state.ui.radarRange) > 0 ? Number(state.ui.radarRange) : 4000;
+    const rangePx = sensorRange * localScale;
+    if (rangePx > 24) {
+      g.save();
+      g.beginPath();
+      g.rect(field.x - 8, field.y - 8, field.width + 16, field.height + 16);
+      g.arc(shipX, shipY, rangePx, 0, Math.PI * 2, true);
+      g.fillStyle = 'rgba(2, 5, 9, 0.46)';
+      g.fill('evenodd');
+      g.strokeStyle = CHART_INK.ice(0.34);
+      g.lineWidth = 1.2;
+      g.beginPath();
+      g.arc(shipX, shipY, rangePx, 0, Math.PI * 2);
+      g.stroke();
+      g.restore();
+    }
+    void reduced;
+  },
+
 _drawLocal(g, state, w, h) {
     // Fed by _draw before dispatch, so memory survives a trip out to SYSTEM and back.
     const model = this._localModelForState(state);
@@ -11247,8 +11452,9 @@ _drawLocal(g, state, w, h) {
     };
 
     const origin = sectorGlobalOrigin(model.sectorId) || { x: 0, z: 0 };
-    const relief = this._paintAtlas(w, h, sx(origin.x), sz(origin.z), localScale * 3200,
-      atlasFeatures(state, model.sectorId, this._layers, sx, sz, localScale, origin.x, origin.z));
+    // MAPS-2: the local survey sits on a quiet dark chart ground (the atlas paper, no sky art, no
+    // ore smudges); rock fields are drawn from the real rocks by _drawLocalSurvey.
+    const relief = this._paintAtlas(w, h, sx(origin.x), sz(origin.z), localScale * 3200, [], { quiet: true });
 
     if (this._layers.discovery || this._layers.market) {
       for (const deposit of sectorRecordById(state, model.sectorId)?.fields || []) {
@@ -11270,6 +11476,7 @@ _drawLocal(g, state, w, h) {
     g.beginPath();
     g.rect(field.x - 8, field.y - 8, field.width + 16, field.height + 16);
     g.clip();
+    this._drawLocalSurvey(g, state, model, { sx, sz, localScale, field, origin, focus, shipX, shipY, reduced, labelCandidates });
 
     if (this._layers.discovery) {
       for (const site of model.circuitSites || []) {
@@ -11379,19 +11586,8 @@ _drawLocal(g, state, w, h) {
       }
     }
 
-    // Scan sweep: a wedge of ice turning round the ship while the scope is reading contacts.
-    if (!reduced && this._scanPhase != null) {
-      const a0 = this._scanPhase;
-      g.save();
-      const grad = g.createRadialGradient ? g.createRadialGradient(shipX, shipY, 0, shipX, shipY, ringBase) : null;
-      if (grad) { grad.addColorStop(0, CHART_INK.ice(0.0)); grad.addColorStop(1, CHART_INK.ice(0.10)); }
-      g.fillStyle = grad || CHART_INK.ice(0.05);
-      g.beginPath(); g.moveTo(shipX, shipY); g.arc(shipX, shipY, ringBase, a0 - 0.5, a0); g.closePath(); g.fill();
-      g.strokeStyle = CHART_INK.ice(0.45);
-      g.lineWidth = 1.5;
-      g.beginPath(); g.moveTo(shipX, shipY); g.lineTo(shipX + Math.cos(a0) * ringBase, shipY + Math.sin(a0) * ringBase); g.stroke();
-      g.restore();
-    }
+    // (MAPS-2: the turning scan wedge is gone; the scan bubble is the one sensor ring drawn by
+    // _drawLocalSurvey, and the fog past it says what the ship has not sensed.)
 
     // THE HAND at local scale: the course from the ship to its fix, drawn in, a packet running it.
     const courseKey = wpPos ? `${Math.round(wpPos.x)},${Math.round(wpPos.z)}` : null;
@@ -11528,28 +11724,52 @@ _drawLocal(g, state, w, h) {
       } else if (c.kind === 'gate') {
         drawGateMark(g, x, y, Math.atan2(c.z - pz, c.x - px));
       } else if (c.kind === 'station') {
-        drawStationMark(g, x, y);
-      } else if (c.hostile) {
-        // Hostile: a red diamond and its velocity, in red.
+        // MAPS-2: the station's type inside the minimap's hexagon, its services as pips beneath.
+        const stEntity = resolveEntityById(state, c.id);
+        const stHostile = !!(stEntity && this._isHostile && player && this._isHostile(stEntity, player.team, state))
+          || /pirate|camp/.test(String(c.stationTypeId || ''));
+        drawSurveyStation(g, x, y, c.stationTypeId, c.closed ? [] : stationServiceIds(state, c.stationId || c.id, model.sectorId),
+          { hostile: stHostile });
+      } else {
+        // MAPS-2: live ships use the minimap's grammar — a hostile is drawn by its job (shape and
+        // hue), traffic by its role, a friend hollow with a pip — with a short velocity tail.
+        const ent = resolveEntityById(state, c.id);
+        const classified = classifyContactRole(ent || { type: 'ship', data: {} });
+        const role = c.hostile && classified === 'civilian' ? 'skirmish' : classified;
+        const friendly = !c.hostile && !!(ent && player && ent.team != null && ent.team === player.team);
+        const stance = c.hostile ? 'hostile' : friendly ? 'friendly' : 'neutral';
+        const color = c.hostile ? (CONTACT_JOB_PALETTE[role] || TACTICAL_MAP_PALETTE.hostile)
+          : friendly ? TACTICAL_MAP_PALETTE.friendly : TACTICAL_MAP_PALETTE.neutral;
+        let heading = Number.isFinite(c.rot) ? c.rot : 0;
         if (c.vx != null) {
           const pvx = (c.vx / 3) * localScale;
           const pvz = (c.vz / 3) * localScale;
           const len = Math.hypot(pvx, pvz);
           if (len > 0.1) {
-            const mult = len > 26 ? 26 / len : 1;
-            drawBand(g, (cx) => { cx.moveTo(x, y); cx.lineTo(x + pvx * mult, y + pvz * mult); }, { rgb: '255,80,56', band: 4, bandA: 0.22, edge: 1.6, edgeA: 0.9 });
+            heading = Math.atan2(c.vz, c.vx);
+            const mult = len > 26 ? 26 / len : len < 8 ? 8 / len : 1;
+            g.save();
+            g.strokeStyle = color;
+            g.globalAlpha = c.hostile ? 0.8 : 0.5;
+            g.lineWidth = 1.4;
+            g.lineCap = 'round';
+            g.beginPath(); g.moveTo(x, y); g.lineTo(x + pvx * mult, y + pvz * mult); g.stroke();
+            g.restore();
           }
         }
-        drawHostileMark(g, x, y, c.rot || 0);
-      } else {
-        drawShipChevron(g, x, y, c.rot || 0, null);
+        drawRoleGlyph(g, role, stance, x, y, heading + Math.PI / 2, {
+          color, scale: 1.25, selected: !!(this._selectedTarget && this._selectedTarget.id === c.id),
+          boss: c.hostile && !!ent && isBossContact(ent),
+        });
       }
       if (foreignFade) g.restore();
 
       const selected = !!(this._selectedTarget && this._selectedTarget.id === c.id);
       if ((c.kind === 'station' || c.kind === 'gate' || selected || c.hostile || c.named)
         && (!foreignFade || selected)) {
-        const context = c.statusLine || services;
+        // A gate says where it goes.
+        const gateTo = c.kind === 'gate' ? resolveEntityById(state, c.id)?.data?.gateTo : null;
+        const context = c.statusLine || services || (gateTo ? 'to ' + (SECTOR_NAME_BY_ID.get(gateTo) || humanizeId(gateTo)) : '');
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `contact:${c.id}`,
           kind: c.kind,
@@ -11896,6 +12116,108 @@ function drawRumorCorroborationArrows(g, arrows, cx, cy, alpha = 1) {
 // ---------------------------------------------------------------------------------------------
 
 // Opaque landmark marks stay legible over the terrain.
+// ── MAPS-2 local survey marks ────────────────────────────────────────────────────────────────
+// Service pips under a station icon: one small square per service, the same colour every time.
+const SURVEY_SERVICE_PIP = Object.freeze({
+  trade: '#f2b950', repair: '#4fbf8f', refuel: '#6ec3d8', shipyard: '#a89ae0',
+  missions: '#e8e2d4', refine: '#ff9a5c', ore_buy: '#c9a26a',
+});
+const SURVEY_SERVICE_ORDER = Object.freeze(['trade', 'refuel', 'repair', 'shipyard', 'refine', 'ore_buy', 'missions']);
+
+/**
+ * A station on the survey: the minimap's hexagon (so the two maps speak one language) with its
+ * type drawn inside — market crate, refinery flame, mine pick, foundry gear, military chevron,
+ * cache diamond, research star — and its services as pips beneath. A hostile station is red.
+ */
+export function drawSurveyStation(g, x, y, typeId, services = [], { hostile = false, foreign = false, size = 9 } = {}) {
+  const ink = hostile ? '#ff6a52' : '#8fd3e6';
+  g.save();
+  g.translate(x, y);
+  g.globalAlpha = foreign ? 0.45 : 1;
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+  g.beginPath();
+  for (let i = 0; i < 6; i += 1) {
+    const a = (Math.PI / 3) * i - Math.PI / 6;
+    if (i === 0) g.moveTo(Math.cos(a) * size, Math.sin(a) * size); else g.lineTo(Math.cos(a) * size, Math.sin(a) * size);
+  }
+  g.closePath();
+  g.fillStyle = 'rgba(8, 18, 26, 0.94)';
+  g.fill();
+  g.strokeStyle = ink;
+  g.lineWidth = 1.6;
+  g.stroke();
+  const k = size * 0.42;
+  g.fillStyle = ink;
+  g.strokeStyle = ink;
+  g.lineWidth = 1.4;
+  g.beginPath();
+  const type = String(typeId || '');
+  if (/trade|hub|market/.test(type)) {
+    g.rect(-k, -k, k * 2, k * 2); g.stroke();
+    g.beginPath(); g.moveTo(-k, 0); g.lineTo(k, 0); g.stroke();
+  } else if (/refin/.test(type)) {
+    g.moveTo(0, -k * 1.2); g.quadraticCurveTo(k * 1.1, 0, 0, k); g.quadraticCurveTo(-k * 1.1, 0, 0, -k * 1.2); g.fill();
+  } else if (/min/.test(type)) {
+    g.moveTo(-k, k); g.lineTo(k * 0.6, -k * 0.6); g.moveTo(-k * 0.2, -k); g.quadraticCurveTo(k * 0.9, -k * 1.1, k, k * 0.1); g.stroke();
+  } else if (/fab|foundry/.test(type)) {
+    g.arc(0, 0, k * 0.62, 0, Math.PI * 2); g.stroke();
+    g.beginPath();
+    for (let i = 0; i < 4; i += 1) {
+      const a = (Math.PI / 2) * i + Math.PI / 4;
+      g.moveTo(Math.cos(a) * k * 0.62, Math.sin(a) * k * 0.62); g.lineTo(Math.cos(a) * k * 1.15, Math.sin(a) * k * 1.15);
+    }
+    g.stroke();
+  } else if (/milit|customs|navy/.test(type)) {
+    g.moveTo(-k, -k * 0.4); g.lineTo(0, k * 0.7); g.lineTo(k, -k * 0.4); g.moveTo(-k, -k * 1.1); g.lineTo(0, 0); g.lineTo(k, -k * 1.1); g.stroke();
+  } else if (/black|pirate|cache|camp/.test(type)) {
+    g.moveTo(0, -k * 1.15); g.lineTo(k * 1.05, 0); g.lineTo(0, k * 1.15); g.lineTo(-k * 1.05, 0); g.closePath(); g.stroke();
+    g.beginPath(); g.arc(0, 0, k * 0.3, 0, Math.PI * 2); g.fill();
+  } else if (/research|lab|science/.test(type)) {
+    g.moveTo(0, -k * 1.2); g.lineTo(k * 0.3, -k * 0.3); g.lineTo(k * 1.2, 0); g.lineTo(k * 0.3, k * 0.3);
+    g.lineTo(0, k * 1.2); g.lineTo(-k * 0.3, k * 0.3); g.lineTo(-k * 1.2, 0); g.lineTo(-k * 0.3, -k * 0.3); g.closePath(); g.fill();
+  } else {
+    g.rect(-k * 0.5, -k * 0.5, k, k); g.fill();
+  }
+  // Service pips: a short row under the hexagon.
+  const pips = SURVEY_SERVICE_ORDER.filter((s) => services.includes(s));
+  if (pips.length && !foreign) {
+    const pip = 4;
+    const gap = 2;
+    const total = pips.length * pip + (pips.length - 1) * gap;
+    let px0 = -total / 2;
+    for (const s of pips) {
+      g.fillStyle = SURVEY_SERVICE_PIP[s];
+      g.fillRect(px0, size + 4, pip, pip);
+      px0 += pip + gap;
+    }
+  }
+  g.restore();
+}
+
+let surveyHatchPattern = null;
+let surveyHatchFor = null;
+function surveyHatch(g, rgb) {
+  if (surveyHatchPattern && surveyHatchFor === g) return surveyHatchPattern;
+  if (typeof document === 'undefined' || typeof g.createPattern !== 'function') return null;
+  const c = document.createElement('canvas');
+  c.width = 8; c.height = 8;
+  const hg = c.getContext('2d');
+  if (!hg) return null;
+  hg.strokeStyle = `rgba(${rgb}, 0.42)`;
+  hg.lineWidth = 1.1;
+  hg.beginPath(); hg.moveTo(-1, 9); hg.lineTo(9, -1); hg.moveTo(-1, 1); hg.lineTo(1, -1); hg.moveTo(7, 9); hg.lineTo(9, 7); hg.stroke();
+  surveyHatchPattern = g.createPattern(c, 'repeat');
+  surveyHatchFor = g;
+  return surveyHatchPattern;
+}
+
+/** The survey grid step in metres: the smallest round step that leaves at least `minPx` between lines. */
+export function surveyGridStep(pxPerMetre, minPx = 72) {
+  for (const step of [50, 100, 250, 500, 1000, 2500, 5000, 10000]) if (step * pxPerMetre >= minPx) return step;
+  return 25000;
+}
+
 function drawStationMark(g, x, y) {
   g.save();
   g.translate(x, y);
@@ -12459,8 +12781,11 @@ function drawMapLabelBlock(g, placement) {
 function waypointMapLabel(wp) {
   const mapLabel = wp?.onboarding ? wp.label || wp.mapLabel : wp?.mapLabel;
   const raw = mapLabel || wp?.label || wp?.reason || wp?.sectorName || 'Waypoint';
-  const label = String(raw || 'Waypoint').replace(/\s+/g, ' ').trim();
-  return (label || 'Waypoint').slice(0, 28);
+  // Producers append a distance with a unit ("Beacon 419 u"); the chart prints its own distance in
+  // metres, so the producer's number goes (the radar strips it the same way). A label fits whole
+  // or reads "Waypoint" — never clipped mid-word.
+  const label = String(raw || 'Waypoint').replace(/\s+\d+(?:\.\d+)?\s*(?:wu|u)\b/gi, '').replace(/\s+/g, ' ').trim();
+  return label && label.length <= 28 ? label : 'Waypoint';
 }
 
 /**

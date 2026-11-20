@@ -16,7 +16,7 @@ precision highp float;
 in vec2 vUv;
 out vec4 ink;
 uniform vec2 uSize, uOrigin;
-uniform float uTile;
+uniform float uTile, uQuiet;
 uniform sampler2D uArt, uEngraving;
 uniform bool uHasEngraving;
 uniform int uCount;
@@ -50,8 +50,11 @@ void main() {
   vec3 texel = texture(uArt, sky).rgb;
   float fibre = grain(gl_FragCoord.xy);
   float broad = inkNoise(sky * 7. + vec2(2.1, .7));
-  vec3 plate = mix(vec3(.045, .066, .080), vec3(.087, .118, .141), broad);
-  plate += texel * .64 + (fibre - .5) * .017;
+  // Quiet (the local survey): the same paper and grain, a faint tonal drift, no sky art. The marks
+  // drawn over it carry the picture.
+  vec3 plate = mix(vec3(.045, .066, .080), vec3(.087, .118, .141), broad * mix(1., .38, uQuiet));
+  plate = mix(plate, plate * .9 + vec3(.004, .008, .012), uQuiet);
+  plate += texel * mix(.64, .05, uQuiet) + (fibre - .5) * mix(.017, .024, uQuiet);
 
   vec3 wash = vec3(0.);
   float relief = 0.;
@@ -141,7 +144,7 @@ export function createAtlasRelief(canvas, invalidate) {
     const engravedTexture = allocateTexture(gl.TEXTURE1, gl.CLAMP_TO_EDGE);
     gl.useProgram(program);
     const location = (name) => gl.getUniformLocation(program, name);
-    resources = { program, texture, engravedTexture, size: location('uSize'), origin: location('uOrigin'), tile: location('uTile'),
+    resources = { program, texture, engravedTexture, size: location('uSize'), origin: location('uOrigin'), tile: location('uTile'), quiet: location('uQuiet'),
       count: location('uCount'), features: location('uFeature[0]'), hasEngraving: location('uHasEngraving') };
     gl.uniform1i(location('uArt'), 0);
     gl.uniform1i(location('uEngraving'), 1);
@@ -178,10 +181,10 @@ export function createAtlasRelief(canvas, invalidate) {
   canvas.addEventListener('webglcontextrestored', onRestored);
 
   return {
-    paint(width, height, originX, originY, tile, features) {
+    paint(width, height, originX, originY, tile, features, { quiet = false } = {}) {
       if (!resources || !(width > 0 && height > 0)) return false;
       const count = Math.min(MAX_FEATURES, features.length);
-      const key = `${width},${height},${originX.toFixed(1)},${originY.toFixed(1)},${tile.toFixed(1)}|${features.slice(0, count).join('|')}`;
+      const key = `${quiet ? 'q' : ''}${width},${height},${originX.toFixed(1)},${originY.toFixed(1)},${tile.toFixed(1)}|${features.slice(0, count).join('|')}`;
       if (key === lastKey) return true;
       lastKey = key;
       const scale = Math.min(1, 1440 / width, 960 / height);
@@ -193,6 +196,7 @@ export function createAtlasRelief(canvas, invalidate) {
       gl.uniform2f(resources.size, width, height);
       gl.uniform2f(resources.origin, originX, originY);
       gl.uniform1f(resources.tile, tile);
+      gl.uniform1f(resources.quiet, quiet ? 1 : 0);
       gl.uniform1i(resources.hasEngraving, engraving ? 1 : 0);
       gl.uniform1i(resources.count, count);
       for (let i = 0; i < count; i += 1) featureData.set(features[i], i * 4);
