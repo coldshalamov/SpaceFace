@@ -124,6 +124,9 @@ const TWO_PI = Math.PI * 2;
 // barrel is on that solution. A close, fast orbit out-turns a capital battery; a stationary hull
 // is still punished. The design's ceiling is 1.5 rad/s (03_COMBAT.md:280).
 export const TURRET_SLEW_RAD_S = 1.5;
+// bruiser_stagger's kick floor — the same 140 as PILOT_KICK_MIN_IMPULSE in collisionConsequences.js
+// (Pew's heaviest round carries 126 and a Hose stream 12; Needle starts at 168, Boom at 150).
+export const STAGGER_MIN_KICK_IMPULSE = 140;
 export const TURRET_ON_SOLUTION_RAD = 1.0 * RAD;
 
 // SEED-SW-22 — bodies the Debris Orbit will claim. Loose room matter only; the list stays
@@ -3143,7 +3146,14 @@ export function applyProjectilePhysicalContact(host, payload) {
       // OVH-01c1 bruiser_stagger — a body the player kicked cannot fire for 1 s of sim time.
       // weapons owns the NPC fire gate (the `firing` read below); the stamp is plain data on
       // the victim's own data bag so save/load and entity lifecycle behave like arenaSlamAt.
+      // PT-FIX-B: only a real kick staggers (the Bruiser chain's floor, so a Pew/Hose stream can
+      // never gun-lock a hull), and a boss is never stun-locked.
+      const kickMagnitude = Math.hypot(delivery.impulse.x, delivery.impulse.z);
+      const bossData = target.data;
+      const bossTarget = !!(bossData && (bossData.isBoss === true || bossData.bossId != null
+        || bossData.missionTag === 'capital_boss' || bossData.bossDressing != null));
       if (playerKick && pilotHas(state, 'bruiser_stagger')
+        && kickMagnitude >= STAGGER_MIN_KICK_IMPULSE && !bossTarget
         && (target.type === 'ship' || target.type === 'drone')) {
         const bag = target.data || (target.data = {});
         bag.kickStaggerUntil = (Number.isFinite(state.simTime) ? state.simTime : 0) + 1;
