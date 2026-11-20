@@ -94,7 +94,8 @@ test('objective guidance degrades gracefully under threat and general contact de
   assert.equal(cue.corridorMode, 'terminal');
   // A label fits whole or becomes the role word; it is never clipped mid-name ("MASS SAMPL").
   assert.equal(cue.label, 'OBJECTIVE');
-  assert.ok(cue.start.x > cue.end.x, 'corridor follows mirrored east bearing');
+  // Minimap, chart and the 3D view agree: world +x (east) is screen LEFT on the flight camera.
+  assert.ok(cue.start.x > cue.end.x, 'an east objective sits screen-left, as the flight camera shows it');
 
   const unresolved = planUnresolvedObjectiveCue({ label: 'Ceres transfer' });
   assert.equal(unresolved.resolved, false);

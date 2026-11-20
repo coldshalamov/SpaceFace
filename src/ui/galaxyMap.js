@@ -135,6 +135,7 @@ import {
   cameraLevel,
   pixelsPerWU,
   screenToGlobal,
+  MAP_SCREEN_AXIS,
   framePreset,
   MAP_PRESET_SPAN_WU,
   MAP_SPAN_MIN_WU,
@@ -9035,7 +9036,7 @@ _onMouseMove(ev) {
 
       const pxPerWU = pixelsPerWU(this._dragStart.camera, { width: rect.width, height: rect.height });
       if (pxPerWU > 0) {
-        this._camera = panBy(this._dragStart.camera, { x: -dx / pxPerWU, z: -dy / pxPerWU });
+        this._camera = panBy(this._dragStart.camera, { x: -MAP_SCREEN_AXIS * dx / pxPerWU, z: -MAP_SCREEN_AXIS * dy / pxPerWU });
         this._syncLegacyFromCamera();
       }
       this._draw();
@@ -9996,8 +9997,8 @@ _draw() {
     const cam = this._cams.galaxy;
 
     this._view = { level: 'galaxy', baseScale: graphScale, pxPerWU: pixelsPerWU(camera, viewport), camera };
-    const sx = (x) => viewport.x + w / 2 + (x - cam.cx) * graphScale;
-    const sy = (y) => viewport.y + h / 2 + (y - cam.cy) * graphScale;
+    const sx = (x) => viewport.x + w / 2 + MAP_SCREEN_AXIS * (x - cam.cx) * graphScale;
+    const sy = (y) => viewport.y + h / 2 + MAP_SCREEN_AXIS * (y - cam.cy) * graphScale;
     const nodeById = new Map(model.nodes.map((n) => [n.id, n]));
     const reduced = !!this._reduceMotion;
     const now = this._nowMs();
@@ -10773,8 +10774,8 @@ _drawSystem(g, state, w, h) {
     const cam = this._cams.system;
 
     this._view = { level: 'system', baseScale: pxPerWU, pxPerWU, camera, contentSpanWU: span };
-    const sx = (x) => viewport.x + w / 2 + (x - cam.cx) * pxPerWU;
-    const sz = (z) => viewport.y + h / 2 + (z - cam.cy) * pxPerWU;
+    const sx = (x) => viewport.x + w / 2 + MAP_SCREEN_AXIS * (x - cam.cx) * pxPerWU;
+    const sz = (z) => viewport.y + h / 2 + MAP_SCREEN_AXIS * (z - cam.cy) * pxPerWU;
     const labelCandidates = [];
     const edgeTicks = [];
     const reduced = !!this._reduceMotion;
@@ -11036,11 +11037,23 @@ _drawSystem(g, state, w, h) {
 
         const phaseLabel = bearing.statusLabel || (bearing.manualSearch ? 'RUMOR SEARCH'
           : bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING');
+        // MAPS-2: a rumoured find says what it is and what to do, beside a search marker.
+        const rumourNoun = /cache/i.test(String(bearing.name || '')) ? 'cache' : String(bearing.name || 'find').toLowerCase();
+        const isRumourSearch = !!(rumorTarget || bearing.manualSearch || /rumou?r/i.test(String(bearing.statusLabel || "")));
+        const bearingText = isRumourSearch ? `Rumoured ${rumourNoun}: search here` : `${phaseLabel} · ${bearing.name}`;
+        if (isRumourSearch) {
+          g.save();
+          g.strokeStyle = CHART_INK.lit(0.92);
+          g.lineWidth = 1.8;
+          g.beginPath(); g.arc(x - 2, y - 2, 6, 0, Math.PI * 2); g.stroke();
+          g.beginPath(); g.moveTo(x + 2.5, y + 2.5); g.lineTo(x + 7.5, y + 7.5); g.stroke();
+          g.restore();
+        }
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `bearing:${bearing.wreckId}`,
           kind: 'bearing',
-          text: `${phaseLabel} · ${bearing.name}`,
-          lines: [`${phaseLabel} · ${bearing.name}`],
+          text: bearingText,
+          lines: [bearingText],
           x,
           y,
           anchorRadius: fixed ? 10 : radiusPx + 6,
@@ -11539,8 +11552,8 @@ _drawSystem(g, state, w, h) {
       const fieldVersion = state.world?.asteroidField?.version ?? 0;
       const now = this._nowMs();
       const sizeKey = `${model.sectorId}|${Math.round(layerW)}|${Math.round(layerH)}|${dpr}`;
-      const shiftX = (L.fx - focus.x) * localScale;
-      const shiftY = (L.fz - focus.z) * localScale;
+      const shiftX = MAP_SCREEN_AXIS * (L.fx - focus.x) * localScale;
+      const shiftY = MAP_SCREEN_AXIS * (L.fz - focus.z) * localScale;
       const stale = sizeKey !== L.key
         || !(Math.abs(localScale / L.s - 1) < 0.004)
         || !(Math.abs(shiftX) < pad * 0.8 && Math.abs(shiftY) < pad * 0.8)
@@ -11564,8 +11577,8 @@ _drawSystem(g, state, w, h) {
         Object.assign(L, { key: sizeKey, fx: focus.x, fz: focus.z, s: localScale, cx: baseX, cy: baseY, version: fieldVersion, at: now });
         this._surveyRockRebuilds = (this._surveyRockRebuilds || 0) + 1;
       }
-      const dx = L.cx + (L.fx - focus.x) * localScale;
-      const dy = L.cy + (L.fz - focus.z) * localScale;
+      const dx = L.cx + MAP_SCREEN_AXIS * (L.fx - focus.x) * localScale;
+      const dy = L.cy + MAP_SCREEN_AXIS * (L.fz - focus.z) * localScale;
       g.drawImage(this._surveyRockCanvas, dx, dy, layerW, layerH);
     }
 
@@ -11585,15 +11598,23 @@ _drawSystem(g, state, w, h) {
       if (near >= 3) continue;
       const r = rW * localScale;
       if (r < 10) continue;
-      g.save();
-      g.strokeStyle = 'rgba(168, 214, 234, 0.26)';
-      g.lineWidth = 1;
-      g.setLineDash([2, 5]);
-      g.beginPath();
-      g.arc(sx(gx), sz(gz), r, 0, Math.PI * 2);
-      g.stroke();
-      g.setLineDash([]);
-      g.restore();
+      // Not loaded yet: the same painter over stand-in rocks scattered (deterministically, from the
+      // field id) across its authored extent, at lower contrast — a field shape, not a guess at rocks.
+      const n = Math.max(18, Math.min(60, Number(deposit.count) || 36));
+      let seed = 2166136261;
+      for (const ch of String(deposit.id || 'field')) seed = Math.imul(seed ^ ch.charCodeAt(0), 16777619) >>> 0;
+      const rnd = () => { seed = (Math.imul(seed, 1103515245) + 12345) >>> 0; return seed / 4294967296; };
+      const standIns = [];
+      for (let i = 0; i < n; i += 1) {
+        const a = rnd() * Math.PI * 2;
+        const d = Math.sqrt(rnd()) * rW * 0.9;
+        standIns.push({ type: 'asteroid', alive: true, radius: 14, pos: { x: gx + Math.cos(a) * d, z: gz + Math.sin(a) * d } });
+      }
+      if (!this._surveyRockPainter) this._surveyRockPainter = createRockFieldPainter(document);
+      this._surveyRockPainter.paint(g, standIns, (x, z) => ({ x: sx(x), y: sz(z) }), localScale, field.x + field.width + 16, field.y + field.height + 16, {
+        dpr: this._dpr || 1, padWorld: Math.max(60, rW * 0.22), minPx: 5, maxPx: 22,
+        fill: 'rgba(96, 146, 172, 0.07)', contour: 'rgba(168, 214, 234, 0.26)',
+      });
     }
 
     // 5. What the ship senses is sharp; past its sensor range the chart is fogged. The scan bubble
@@ -11659,8 +11680,8 @@ _drawLocal(g, state, w, h) {
     const fieldCx = field.x + field.width / 2;
     const fieldCy = field.y + field.height / 2;
     this._view = { level: 'local', baseScale: localScale, pxPerWU: localScale, camera };
-    const sx = (x) => fieldCx + (x - focus.x) * localScale;
-    const sz = (z) => fieldCy + (z - focus.z) * localScale;
+    const sx = (x) => fieldCx + MAP_SCREEN_AXIS * (x - focus.x) * localScale;
+    const sz = (z) => fieldCy + MAP_SCREEN_AXIS * (z - focus.z) * localScale;
     const labelCandidates = [];
     const edgeTicks = [];
     setMapCanvasAriaLabel(this._canvas, 'local', this._layers.holdings ? model.ownership : []);
@@ -11755,11 +11776,23 @@ _drawLocal(g, state, w, h) {
 
         const phaseLabel = bearing.statusLabel || (bearing.manualSearch ? 'RUMOR SEARCH'
           : bearing.phase === 'salvaged' ? 'SALVAGED' : fixed ? 'FIXED' : 'READ BEARING');
+        // MAPS-2: a rumoured find says what it is and what to do, beside a search marker.
+        const isRumourSearch = !!(rumorTarget || bearing.manualSearch || /rumou?r/i.test(String(bearing.statusLabel || "")));
+        const rumourNoun = /cache/i.test(String(bearing.name || '')) ? 'cache' : String(bearing.name || 'find').toLowerCase();
+        const bearingText = isRumourSearch ? `Rumoured ${rumourNoun}: search here` : `${phaseLabel} · ${bearing.name}`;
+        if (isRumourSearch) {
+          g.save();
+          g.strokeStyle = CHART_INK.lit(0.92);
+          g.lineWidth = 1.8;
+          g.beginPath(); g.arc(x - 2, y - 2, 6, 0, Math.PI * 2); g.stroke();
+          g.beginPath(); g.moveTo(x + 2.5, y + 2.5); g.lineTo(x + 7.5, y + 7.5); g.stroke();
+          g.restore();
+        }
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `bearing:${bearing.wreckId}`,
           kind: 'bearing',
-          text: `${phaseLabel} · ${bearing.name}`,
-          lines: [`${phaseLabel} · ${bearing.name}`],
+          text: bearingText,
+          lines: [bearingText],
           x,
           y,
           anchorRadius: fixed ? 10 : radiusPx + 6,
@@ -11944,7 +11977,7 @@ _drawLocal(g, state, w, h) {
           g.restore();
         }
       } else if (c.kind === 'gate') {
-        drawGateMark(g, x, y, Math.atan2(c.z - pz, c.x - px));
+        drawGateMark(g, x, y, Math.atan2(MAP_SCREEN_AXIS * (c.z - pz), MAP_SCREEN_AXIS * (c.x - px)));
       } else if (c.kind === 'station') {
         // MAPS-2: the station's type inside the minimap's hexagon, its services as pips beneath.
         const stEntity = resolveEntityById(state, c.id);
@@ -11964,8 +11997,8 @@ _drawLocal(g, state, w, h) {
           : friendly ? TACTICAL_MAP_PALETTE.friendly : TACTICAL_MAP_PALETTE.neutral;
         let heading = Number.isFinite(c.rot) ? c.rot : 0;
         if (c.vx != null) {
-          const pvx = (c.vx / 3) * localScale;
-          const pvz = (c.vz / 3) * localScale;
+          const pvx = MAP_SCREEN_AXIS * (c.vx / 3) * localScale;
+          const pvz = MAP_SCREEN_AXIS * (c.vz / 3) * localScale;
           const len = Math.hypot(pvx, pvz);
           if (len > 0.1) {
             heading = Math.atan2(c.vz, c.vx);
@@ -11979,7 +12012,8 @@ _drawLocal(g, state, w, h) {
             g.restore();
           }
         }
-        drawRoleGlyph(g, role, stance, x, y, heading + Math.PI / 2, {
+        // Screen heading of world heading h is atan2(AX·sin h, AX·cos h); the glyph's nose is −y.
+        drawRoleGlyph(g, role, stance, x, y, Math.atan2(MAP_SCREEN_AXIS * Math.sin(heading), MAP_SCREEN_AXIS * Math.cos(heading)) + Math.PI / 2, {
           color, scale: 1.25, selected: !!(this._selectedTarget && this._selectedTarget.id === c.id),
           boss: c.hostile && !!ent && isBossContact(ent),
         });
@@ -12612,7 +12646,8 @@ function drawPlayerFixMark(g, x, y, rot, options = {}) {
   }
 
   // Heading in the chart camera's global axes.
-  g.rotate(rot || 0);
+  // World heading → screen heading through the chart's axis (the flight camera's picture).
+  g.rotate(Math.atan2(MAP_SCREEN_AXIS * Math.sin(rot || 0), MAP_SCREEN_AXIS * Math.cos(rot || 0)));
   g.fillStyle = CHART_INK.lit(1);
   g.beginPath();
   g.moveTo(6 * scale, 0);

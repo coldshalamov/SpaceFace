@@ -276,12 +276,19 @@ function viewportCenter(viewport) {
  * @param {{width:number, height:number, x?:number, y?:number}} viewport
  * @returns {{x:number, y:number}} canvas pixels
  */
+/**
+ * The chart draws the world the way the flight camera shows it (measured live 2026-11-20 through
+ * the renderer's worldToScreen): world +x is screen LEFT and world +z is screen UP. The minimap
+ * draws the same way, so the three pictures agree. Every chart projection reads this one sign.
+ */
+export const MAP_SCREEN_AXIS = -1;
+
 export function globalToScreen(camera, globalPos, viewport) {
   const p = pixelsPerWU(camera, viewport);
   const center = viewportCenter(viewport);
   const focus = readXZ(camera && camera.focusGlobal);
   const g = readXZ(globalPos);
-  return { x: center.x + (g.x - focus.x) * p, y: center.y + (g.z - focus.z) * p };
+  return { x: center.x + MAP_SCREEN_AXIS * (g.x - focus.x) * p, y: center.y + MAP_SCREEN_AXIS * (g.z - focus.z) * p };
 }
 
 /**
@@ -299,7 +306,7 @@ export function screenToGlobal(camera, screenPos, viewport) {
   const sx = finite(screenPos && screenPos.x, 0);
   const sy = finite(screenPos && screenPos.y, 0);
   if (!(p > 0)) return { x: focus.x, z: focus.z };
-  return { x: focus.x + (sx - center.x) / p, z: focus.z + (sy - center.y) / p };
+  return { x: focus.x + MAP_SCREEN_AXIS * (sx - center.x) / p, z: focus.z + MAP_SCREEN_AXIS * (sy - center.y) / p };
 }
 
 /**
