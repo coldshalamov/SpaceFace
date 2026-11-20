@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "90f0aeb3f33c202145a53fbb5fefe8a508fc19dc2d688d85114046ecdefbc076",
+  "contentHash": "68a550b75220e5a64e5a22f3c2339472202b7f0c5451a5efd9a0bc8302ac9e18",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -177,7 +177,7 @@
       "id": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette.primitive.0",
       "indexCount": 162,
       "indexed": true,
-      "materialHash": "bb214da1a961e9e1a335e7118af24d3f52311c4228ed2864f8c495c467ab71f4",
+      "materialHash": "826c0dca4e2cf44abc6a479f73d5df2d81b2e7ee325b30931da1adbc383f0e42",
       "materialPipelineKey": "opaque",
       "meshName": "TurretBBarbette",
       "nodeId": "sf.render.aftermath-deb-corvette-barbette-ring.mesh.turretbbarbette",
@@ -329,8 +329,8 @@
       ]
     },
     {
-      "hash": "bb214da1a961e9e1a335e7118af24d3f52311c4228ed2864f8c495c467ab71f4",
-      "id": "material:bb214da1a961e9e1a335e711",
+      "hash": "826c0dca4e2cf44abc6a479f73d5df2d81b2e7ee325b30931da1adbc383f0e42",
+      "id": "material:826c0dca4e2cf44abc6a479f",
       "name": "Forge_bastion_paint2__dead",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -921,19 +921,19 @@
       "sha256": "e5b0a7dea6c99cd8563f8142672263e58b96c3959b81857acd1db18aaeadb7f4"
     },
     "sourceGlb": {
-      "bytes": 146876,
-      "sha256": "69d7ff4da08aca892e5df5d86a77239943393facbbd95ec4d3b612cf22acd89b",
+      "bytes": 112908,
+      "sha256": "0d4d3a138f22467ae2e00b8b47420b5d64b0637c7a8ac240953af4681d9d7e99",
       "uri": "place_aftermath_deb_corvette_barbette_ring.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 148820,
-    "sha256": "b8d45b249e3b7cc0e729498edc80738864dd3e090c8fbfced335a1277e063e61",
+    "bytes": 114852,
+    "sha256": "b0fce27d33246e59732c9379c1e9606758a07c52ded681fd66522c5159a55d5a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1295,7 +1295,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_deb_corvette_barbette_ring.glb"
   },
-  "runtimeHash": "febbd7463042ee16850f12b7cc70d6a368bdd57354cd11d406fa06ab78b6b651",
+  "runtimeHash": "283865162f77ce8e70e653943a72b22cf8c1d1f5719df6b652d031b75ebb04ef",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

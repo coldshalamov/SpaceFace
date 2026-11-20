@@ -11,8 +11,8 @@
       "slot": "place",
       "releaseAssetId": "place_47a_rescue_capsule",
       "sourceUrl": "assets/ships/release/parts/places/place_47a_rescue_capsule.glb",
-      "releaseSha256": "4820c1f0eaa9e9379cf1503d07f4f42f78d0de23f366503bcfd24a93542fc48c",
-      "releaseBytes": 316012,
+      "releaseSha256": "cc50383574be24c7007f1c50e45491e9fd750fe542be68ac89a83d56b6d58db6",
+      "releaseBytes": 230860,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -24,12 +24,12 @@
       "metadataUrl": "assets/ships/release/render-packages/47a-rescue-capsule/render-package.json",
       "sceneRoot": true,
       "sharedKtx2Hashes": [
-        "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
-        "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
-        "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
-        "81942b1db56160ed6ba4d271582c658199748a9598a4666c6a20aab8c4ed4161",
-        "b6d2cc065eab33f76847a512a70331fc803650cb76170154a4233a9ad93ae38a",
-        "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3"
+        "5eb890f90d16f70945624637bdc4cd5f11ee4a282f5eae929c0d29fd09abb6e7",
+        "6b07c649b317b521a5893aeb849ed7c0251e7892b8542626203c8c040a0645c7",
+        "8180e3b20cd099e64a2998b71edb3a263bbfa0fd13a014046d39c1ed8dd7f21c",
+        "919b14b149d72fa3c038e6719180cd3fc58a61c13b279c6862cf63909ea07131",
+        "be229111d7e5059db7d3a1c89d4e79f1fec535ff16d99d0c9e6019dd1e138db2",
+        "d77b0b5ff69216c310225376753e27073e65d55c7c07397056118d4e0245832d"
       ]
     },
     {
@@ -230,8 +230,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_deb_corvette_barbette_ring",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_deb_corvette_barbette_ring.glb",
-      "releaseSha256": "69d7ff4da08aca892e5df5d86a77239943393facbbd95ec4d3b612cf22acd89b",
-      "releaseBytes": 146876,
+      "releaseSha256": "0d4d3a138f22467ae2e00b8b47420b5d64b0637c7a8ac240953af4681d9d7e99",
+      "releaseBytes": 112908,
       "rootNode": "deb_corvette_barbette_ring",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-deb-corvette-barbette-ring",
@@ -354,8 +354,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_frag_cable_bundle",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_frag_cable_bundle.glb",
-      "releaseSha256": "e6b1572b1689e2d5b0ba20d71b4afb455c809770394a43df8f010c484ad2a87a",
-      "releaseBytes": 131520,
+      "releaseSha256": "0ecd5d7637d75fba2454529da6fcd8bc0537e30183734f8c608a796b921050a7",
+      "releaseBytes": 97548,
       "rootNode": "frag_cable_bundle",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-frag-cable-bundle",
@@ -399,8 +399,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_frag_pipe_tangle",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_frag_pipe_tangle.glb",
-      "releaseSha256": "037c88a355c8f3ee7890c9f3507fca70553fe48df3ec6d2d9223581b5b9a77f2",
-      "releaseBytes": 127904,
+      "releaseSha256": "974221dab95b529fe9f13298606a78d9187cfc8b716738073193e85228d09845",
+      "releaseBytes": 58424,
       "rootNode": "frag_pipe_tangle",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-frag-pipe-tangle",
@@ -414,8 +414,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_frag_plate_curl",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_frag_plate_curl.glb",
-      "releaseSha256": "eb0d11f7fde6e3ba98de24a528fbc07d57d604503d4a53fe894f271654a9239d",
-      "releaseBytes": 115636,
+      "releaseSha256": "ae7c92bcc6d843de7e0fb6e3bb42b112455df42ae9461f24194a39485f91cdf3",
+      "releaseBytes": 46172,
       "rootNode": "frag_plate_curl",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-frag-plate-curl",
@@ -429,8 +429,8 @@
       "slot": "place",
       "releaseAssetId": "place_aftermath_frag_rib_cluster",
       "sourceUrl": "assets/ships/release/parts/places/place_aftermath_frag_rib_cluster.glb",
-      "releaseSha256": "d14bc8cfeb75c5b61c65f775b45df0c9f70baf785c03c241412f0806b914262d",
-      "releaseBytes": 48844,
+      "releaseSha256": "3dee246c68fcdbbc71c3b321684273345202e06e468ae5897122032034bbf093",
+      "releaseBytes": 31580,
       "rootNode": "frag_rib_cluster",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/aftermath-frag-rib-cluster",
@@ -804,8 +804,8 @@
       "slot": "place",
       "releaseAssetId": "place_ash_pin",
       "sourceUrl": "assets/ships/release/parts/places/place_ash_pin.glb",
-      "releaseSha256": "b655b5057c5db95de37ec60f117c0888fb0674eeaea91c32c3e885edee235944",
-      "releaseBytes": 268472,
+      "releaseSha256": "72c67717eff38f589981c86506ffe6c273c375af7f4ed761a5fd649502f84540",
+      "releaseBytes": 183304,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1440,8 +1440,8 @@
       "slot": "place",
       "releaseAssetId": "place_cargo_pod_standard",
       "sourceUrl": "assets/ships/release/parts/places/place_cargo_pod_standard.glb",
-      "releaseSha256": "e2067c1de43533121f575a67147de67d70c11bcf515ecf81894e37c09995622a",
-      "releaseBytes": 538732,
+      "releaseSha256": "eec9672d4f859554665204e18beb4c9365b78aca4c9757ceadb2ea644bc296e7",
+      "releaseBytes": 453608,
       "rootNode": "SF_PLACE_CARGO_POD_STANDARD_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -1779,8 +1779,8 @@
       "slot": "place",
       "releaseAssetId": "place_cold_locker",
       "sourceUrl": "assets/ships/release/parts/places/place_cold_locker.glb",
-      "releaseSha256": "def6397781560e3889d0ece05b28109840bc055c03ac2a7b98bd9025f8e7a939",
-      "releaseBytes": 324392,
+      "releaseSha256": "9c8df51b38602dbb1372d224394bbe16041d4857d444d8ecd5e1b1096e3d1f7e",
+      "releaseBytes": 278000,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -1893,8 +1893,8 @@
       "slot": "place",
       "releaseAssetId": "place_container_rack",
       "sourceUrl": "assets/ships/release/parts/places/place_container_rack.glb",
-      "releaseSha256": "45f4572076c2a23ceaf4af60bb27cb93ec05de492429e6ae29b7e1335bc7d45e",
-      "releaseBytes": 912940,
+      "releaseSha256": "2ac816b5194ae440342cde0067f3857fcfbe17d5dce7d0cce6c45b28034785df",
+      "releaseBytes": 693740,
       "rootNode": "SF_PLACE_CONTAINER_RACK_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -2311,8 +2311,8 @@
       "slot": "place",
       "releaseAssetId": "place_extraction_mast",
       "sourceUrl": "assets/ships/release/parts/places/place_extraction_mast.glb",
-      "releaseSha256": "3d05ff38798bfe7c8237d91669d7411650b33eba2728bd541f8d6bd1b1430d13",
-      "releaseBytes": 408692,
+      "releaseSha256": "a629e25c61f448f0ec31201bc99c684d9c77be6a48ed83e1e1ae6c5f7d06725e",
+      "releaseBytes": 362352,
       "rootNode": "SF_PLACE_EXTRACTION_MAST_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -3318,8 +3318,8 @@
       "slot": "place",
       "releaseAssetId": "place_improvised_dock",
       "sourceUrl": "assets/ships/release/parts/places/place_improvised_dock.glb",
-      "releaseSha256": "ed527b4fbaceb0394b4bd9b8e69c726f0614a874182543b019e05e370678e1fd",
-      "releaseBytes": 285712,
+      "releaseSha256": "ac3fbee88436389b0c61295328592a9de9d6e74c80e0703d0465e518c9b7cd62",
+      "releaseBytes": 239308,
       "rootNode": "SF_PLACE_IMPROVISED_DOCK_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -3375,8 +3375,8 @@
       "slot": "place",
       "releaseAssetId": "place_interdiction_buoy",
       "sourceUrl": "assets/ships/release/parts/places/place_interdiction_buoy.glb",
-      "releaseSha256": "9374c2cb59eca180ad99ca931533c6205bb0d8fd201602a0bf47e50c83c85bee",
-      "releaseBytes": 362052,
+      "releaseSha256": "5fbca2d9503e0f103f1e9c27a24255de7f673f9446804e48e7ce46d911c71169",
+      "releaseBytes": 276576,
       "rootNode": "SF_PLACE_INTERDICTION_BUOY_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -3388,12 +3388,12 @@
       "outputDir": "assets/ships/release/render-packages/interdiction-buoy",
       "metadataUrl": "assets/ships/release/render-packages/interdiction-buoy/render-package.json",
       "sharedKtx2Hashes": [
-        "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
-        "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
-        "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
-        "81942b1db56160ed6ba4d271582c658199748a9598a4666c6a20aab8c4ed4161",
-        "b6d2cc065eab33f76847a512a70331fc803650cb76170154a4233a9ad93ae38a",
-        "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3"
+        "5eb890f90d16f70945624637bdc4cd5f11ee4a282f5eae929c0d29fd09abb6e7",
+        "6b07c649b317b521a5893aeb849ed7c0251e7892b8542626203c8c040a0645c7",
+        "8180e3b20cd099e64a2998b71edb3a263bbfa0fd13a014046d39c1ed8dd7f21c",
+        "919b14b149d72fa3c038e6719180cd3fc58a61c13b279c6862cf63909ea07131",
+        "be229111d7e5059db7d3a1c89d4e79f1fec535ff16d99d0c9e6019dd1e138db2",
+        "d77b0b5ff69216c310225376753e27073e65d55c7c07397056118d4e0245832d"
       ]
     },
     {
@@ -3684,8 +3684,8 @@
       "slot": "place",
       "releaseAssetId": "place_lane_beacon",
       "sourceUrl": "assets/ships/release/parts/places/place_lane_beacon.glb",
-      "releaseSha256": "a1612f22413b61ea06458631af03a3ff0bbb56ca7621ced13ee9fa86cb650551",
-      "releaseBytes": 684496,
+      "releaseSha256": "14f95bd66871e0fcae03d0e4f18200159c50766edf9334d52bb047143287eade",
+      "releaseBytes": 638108,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3700,9 +3700,9 @@
         "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
         "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
         "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
-        "81942b1db56160ed6ba4d271582c658199748a9598a4666c6a20aab8c4ed4161",
-        "b6d2cc065eab33f76847a512a70331fc803650cb76170154a4233a9ad93ae38a",
-        "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3"
+        "6de8052659abf15109f5f6de1a260e4a22fd9357b05c8648d48893ad681c3ae0",
+        "b7ebf7b3da6f9e157bee85673016ad0ffcb9735934551bee2c67866935f5f4cc",
+        "e1f28afced262dce432ec140c095db44dd71d88bed5b6f984fbe24423d91a2e5"
       ]
     },
     {
@@ -3713,8 +3713,8 @@
       "slot": "place",
       "releaseAssetId": "place_lane_pin",
       "sourceUrl": "assets/ships/release/parts/places/place_lane_pin.glb",
-      "releaseSha256": "c4625a605681d63fd6e997b4ef2f37a7fa2d2de0a386f3cb26fbcf285d1acd3a",
-      "releaseBytes": 339904,
+      "releaseSha256": "db0a6f177ee7710edc199f270ecea5f46060927871174b1fbbee9f429a2044e4",
+      "releaseBytes": 293516,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3729,9 +3729,9 @@
         "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
         "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
         "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
-        "81942b1db56160ed6ba4d271582c658199748a9598a4666c6a20aab8c4ed4161",
-        "b6d2cc065eab33f76847a512a70331fc803650cb76170154a4233a9ad93ae38a",
-        "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3"
+        "6de8052659abf15109f5f6de1a260e4a22fd9357b05c8648d48893ad681c3ae0",
+        "b7ebf7b3da6f9e157bee85673016ad0ffcb9735934551bee2c67866935f5f4cc",
+        "e1f28afced262dce432ec140c095db44dd71d88bed5b6f984fbe24423d91a2e5"
       ]
     },
     {
@@ -3844,8 +3844,8 @@
       "slot": "place",
       "releaseAssetId": "place_claim_mark",
       "sourceUrl": "assets/ships/release/parts/places/place_claim_mark.glb",
-      "releaseSha256": "ab2db3f7e66536490d1875310ee2165d9f066f036db5d0068cce0fe534988682",
-      "releaseBytes": 239288,
+      "releaseSha256": "a1542c852d954de0913332d5b43fc1b3371ecdd944be0149339db85a121a60d8",
+      "releaseBytes": 154112,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3857,12 +3857,12 @@
       "metadataUrl": "assets/ships/release/render-packages/mark/render-package.json",
       "sceneRoot": true,
       "sharedKtx2Hashes": [
-        "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
-        "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
-        "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
-        "81942b1db56160ed6ba4d271582c658199748a9598a4666c6a20aab8c4ed4161",
-        "b6d2cc065eab33f76847a512a70331fc803650cb76170154a4233a9ad93ae38a",
-        "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3"
+        "5eb890f90d16f70945624637bdc4cd5f11ee4a282f5eae929c0d29fd09abb6e7",
+        "6b07c649b317b521a5893aeb849ed7c0251e7892b8542626203c8c040a0645c7",
+        "8180e3b20cd099e64a2998b71edb3a263bbfa0fd13a014046d39c1ed8dd7f21c",
+        "919b14b149d72fa3c038e6719180cd3fc58a61c13b279c6862cf63909ea07131",
+        "be229111d7e5059db7d3a1c89d4e79f1fec535ff16d99d0c9e6019dd1e138db2",
+        "d77b0b5ff69216c310225376753e27073e65d55c7c07397056118d4e0245832d"
       ]
     },
     {
@@ -3936,8 +3936,8 @@
       "slot": "place",
       "releaseAssetId": "place_memorial_array",
       "sourceUrl": "assets/ships/release/parts/places/place_memorial_array.glb",
-      "releaseSha256": "ce9de7995339c46e5013c31404a76d3a3e2f7553c5ab18ab733463b5e445a4ac",
-      "releaseBytes": 733776,
+      "releaseSha256": "c75d94adac2f1a24b1487cd5dda29ca17c0e4d2618c7d5403a64e7950e92b295",
+      "releaseBytes": 513520,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -3999,8 +3999,8 @@
       "slot": "place",
       "releaseAssetId": "place_mining_drone",
       "sourceUrl": "assets/ships/release/parts/places/place_mining_drone.glb",
-      "releaseSha256": "91294b3376110e72248889d06965b0222b17e06d90af108483e1447295acb0e2",
-      "releaseBytes": 551088,
+      "releaseSha256": "29af5f1832206cb471cbf2d04d97f031c009ee12259a56417bd6c6c422968bc4",
+      "releaseBytes": 465964,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4012,12 +4012,12 @@
       "metadataUrl": "assets/ships/release/render-packages/mining-drone/render-package.json",
       "sceneRoot": true,
       "sharedKtx2Hashes": [
-        "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
-        "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
-        "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
-        "81942b1db56160ed6ba4d271582c658199748a9598a4666c6a20aab8c4ed4161",
-        "b6d2cc065eab33f76847a512a70331fc803650cb76170154a4233a9ad93ae38a",
-        "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3"
+        "5eb890f90d16f70945624637bdc4cd5f11ee4a282f5eae929c0d29fd09abb6e7",
+        "6b07c649b317b521a5893aeb849ed7c0251e7892b8542626203c8c040a0645c7",
+        "8180e3b20cd099e64a2998b71edb3a263bbfa0fd13a014046d39c1ed8dd7f21c",
+        "919b14b149d72fa3c038e6719180cd3fc58a61c13b279c6862cf63909ea07131",
+        "be229111d7e5059db7d3a1c89d4e79f1fec535ff16d99d0c9e6019dd1e138db2",
+        "d77b0b5ff69216c310225376753e27073e65d55c7c07397056118d4e0245832d"
       ]
     },
     {
@@ -4228,8 +4228,8 @@
       "slot": "place",
       "releaseAssetId": "place_nav_buoy",
       "sourceUrl": "assets/ships/release/parts/places/place_nav_buoy.glb",
-      "releaseSha256": "f432d970bb444f4dd50bede6743043cc2858420c08273800bb04faa70c98d5b8",
-      "releaseBytes": 581416,
+      "releaseSha256": "0809359378de04bddf762f9d526bed95a956e62993a4bf0e88ed4890fb2b7ac0",
+      "releaseBytes": 496292,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4285,8 +4285,8 @@
       "slot": "place",
       "releaseAssetId": "place_ore_bulk_container",
       "sourceUrl": "assets/ships/release/parts/places/place_ore_bulk_container.glb",
-      "releaseSha256": "4117d8c43c032c66e0ebccb16916b87881f49239aa4cfcb4a8b5884e5b4e593d",
-      "releaseBytes": 345524,
+      "releaseSha256": "7b397d72efb5bffc6e009ddcb1c76e35b66da4721c7c8b878df8eeb837b75ec2",
+      "releaseBytes": 224920,
       "rootNode": "ore_bulk_container",
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/ore-bulk-container",
@@ -4559,8 +4559,8 @@
       "slot": "pod",
       "releaseAssetId": "pod_47a_evidence_spindle",
       "sourceUrl": "assets/ships/release/parts/pods/pod_47a_evidence_spindle.glb",
-      "releaseSha256": "2d66d08afb61a662883c8be8c2ef2139fee53187aa34ff6cfd896a6be7ac0f2d",
-      "releaseBytes": 451804,
+      "releaseSha256": "c735d8241cca70bb8e6e412391979ac7f2c09c96aeab60832230bff16c2150c6",
+      "releaseBytes": 333508,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4580,8 +4580,8 @@
       "slot": "pod",
       "releaseAssetId": "pod_cargo_container",
       "sourceUrl": "assets/ships/release/parts/pods/pod_cargo_container.glb",
-      "releaseSha256": "07de4fc313dff07e952bdd85c126d1df8eebd71f495519a68a03621c8836043e",
-      "releaseBytes": 419972,
+      "releaseSha256": "766d86c9ed80d497e9f6d534c29544d8df6550f45b8251809d90ac229c3209e7",
+      "releaseBytes": 301676,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -4594,11 +4594,11 @@
       "sceneRoot": true,
       "sharedKtx2Hashes": [
         "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
-        "884bbcbe84ab33145fea429c34b4449673ded6de8b62030df2ddfcbc5b7649d5",
         "a03642a3514a022dbcb614a6bf4f25dc429b28ac3f63e74b47b38af11bf398a4",
-        "adcfa5e58c377955c526929e74127f71d02f2cdf4149ad5339a79b9a203225a3",
+        "bb031c9f35917242dea3f67c747dd2d03f59a1b159ae06660895f745eb6d2be0",
         "d73dd0e53f86d9885c33a38b9634ea7132c379beb39c26db6668a9d2b7e8d065",
-        "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3"
+        "e1f28afced262dce432ec140c095db44dd71d88bed5b6f984fbe24423d91a2e5",
+        "e5ab332c6d49e4bc2f4015b3595cac854f962477c764be63537393a8a6788cfb"
       ]
     },
     {
@@ -5248,8 +5248,8 @@
       "slot": "place",
       "releaseAssetId": "place_scrap_cage",
       "sourceUrl": "assets/ships/release/parts/places/place_scrap_cage.glb",
-      "releaseSha256": "14168a53f86b750f084321a97c6ece7f90a482ed5039fc9e43dd17b933ba922d",
-      "releaseBytes": 326136,
+      "releaseSha256": "f92b2510cf2bfcf44fbc95108344b758880643f3aec16bf02aff8a34d43e3f85",
+      "releaseBytes": 279992,
       "rootNode": "SF_PLACE_SCRAP_CAGE_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -5311,8 +5311,8 @@
       "slot": "place",
       "releaseAssetId": "place_sensor_mast",
       "sourceUrl": "assets/ships/release/parts/places/place_sensor_mast.glb",
-      "releaseSha256": "588fc7523fce3fc80a1ecef529e3219588dd30893151d24c8e34461b96d68c6a",
-      "releaseBytes": 531488,
+      "releaseSha256": "b42b8fbeb861bf190b7414aab9d1801e7aef3e78f5f46c0bc73053e033480008",
+      "releaseBytes": 446352,
       "rootNode": "SF_PLACE_SENSOR_MAST_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -5398,8 +5398,8 @@
       "slot": "place",
       "releaseAssetId": "place_slurry_tank",
       "sourceUrl": "assets/ships/release/parts/places/place_slurry_tank.glb",
-      "releaseSha256": "7125c5cb9c52c631b0d8e7810e6f56b974f05ed63948e509ca10d8921817c23c",
-      "releaseBytes": 614228,
+      "releaseSha256": "edf2fe0267b111ddb54c4294a9e3abba49c449b7641d29a907f0c2717a3493d2",
+      "releaseBytes": 393184,
       "rootNode": "SF_PLACE_SLURRY_TANK_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -5497,8 +5497,8 @@
       "slot": "place",
       "releaseAssetId": "place_tally_post",
       "sourceUrl": "assets/ships/release/parts/places/place_tally_post.glb",
-      "releaseSha256": "c529024582cfa4cfc79a1abaae120847cdf40dfab6e9d68bc0540c658ae493d4",
-      "releaseBytes": 274432,
+      "releaseSha256": "a7bd305bdf663bdcb2b69a58340e38f6811dea068f71d2c46c9c78e65b4798f2",
+      "releaseBytes": 228032,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -5513,9 +5513,9 @@
         "26f5c34bdf227c3412908eed6d3eab9b2ed3aa3b908f95aa68e1fc38623ceee9",
         "4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e",
         "622555580f4775692a54878084d292dc830a78bcfc1dc01645279ceaa584d1c0",
-        "81942b1db56160ed6ba4d271582c658199748a9598a4666c6a20aab8c4ed4161",
-        "b6d2cc065eab33f76847a512a70331fc803650cb76170154a4233a9ad93ae38a",
-        "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3"
+        "6de8052659abf15109f5f6de1a260e4a22fd9357b05c8648d48893ad681c3ae0",
+        "b7ebf7b3da6f9e157bee85673016ad0ffcb9735934551bee2c67866935f5f4cc",
+        "e1f28afced262dce432ec140c095db44dd71d88bed5b6f984fbe24423d91a2e5"
       ]
     },
     {
@@ -6307,8 +6307,8 @@
       "slot": "place",
       "releaseAssetId": "place_whistle",
       "sourceUrl": "assets/ships/release/parts/places/place_whistle.glb",
-      "releaseSha256": "cdb0fb45a6a5628b245b112ed57b066ce224346576a6c8792a447ac9bd90bbb6",
-      "releaseBytes": 440352,
+      "releaseSha256": "9d65450e5e20432d3822525e189e5ed3fc663ac1c17ea6820e6e2b1846684d7c",
+      "releaseBytes": 181212,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
         "HOOK_NAV",
@@ -6328,8 +6328,8 @@
       "slot": "place",
       "releaseAssetId": "place_worklight_tower",
       "sourceUrl": "assets/ships/release/parts/places/place_worklight_tower.glb",
-      "releaseSha256": "cb1a67dc3dfcfdfeed131caf3a8f924a3185d1636563b13d79a3e372c9da79a1",
-      "releaseBytes": 612752,
+      "releaseSha256": "2ebeb833015529120b6c0521ea021c20045093cce178ad14855c88eb20071840",
+      "releaseBytes": 527632,
       "rootNode": "SF_PLACE_WORKLIGHT_TOWER_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -6811,8 +6811,8 @@
       "slot": "place",
       "releaseAssetId": "place_anvil_condensate_pod",
       "sourceUrl": "assets/ships/release/parts/places/place_anvil_condensate_pod.glb",
-      "releaseSha256": "aedba02cf4262ced915a82827144b259637fba9ed8e1b1cdd5637770f085c274",
-      "releaseBytes": 192204,
+      "releaseSha256": "6f401321a81afd6810dc75643eebd92a644c6b9b4bc8b8de450b9303cf7eb608",
+      "releaseBytes": 107036,
       "sceneRoot": true,
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -7165,8 +7165,8 @@
       "slot": "place",
       "releaseAssetId": "place_rock_ice_pebble",
       "sourceUrl": "assets/ships/release/parts/places/place_rock_ice_pebble.glb",
-      "releaseSha256": "2dfc9bb2c03667de38feb256ebb4323bcda5bd8da8ba7035f38b17c909627cae",
-      "releaseBytes": 197676,
+      "releaseSha256": "778088645621e420e26dd1c6227d2613d7e6f1e1bddfccba52967279631add0d",
+      "releaseBytes": 180396,
       "rootNode": "SF_PLACE_ROCK_ICE_PEBBLE_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -7186,8 +7186,8 @@
       "slot": "place",
       "releaseAssetId": "place_rock_junk_boulder",
       "sourceUrl": "assets/ships/release/parts/places/place_rock_junk_boulder.glb",
-      "releaseSha256": "908821c91ba2489cbd403482a5ab087bf6f3fc3f2082da60494364765bf22a71",
-      "releaseBytes": 445604,
+      "releaseSha256": "bc14bdcdffcf5aef361ae4b91827b9c01e05918618d2e4100b0a563aa3d5b229",
+      "releaseBytes": 399208,
       "rootNode": "SF_PLACE_ROCK_JUNK_BOULDER_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -7228,8 +7228,8 @@
       "slot": "place",
       "releaseAssetId": "place_rock_junk_pebble",
       "sourceUrl": "assets/ships/release/parts/places/place_rock_junk_pebble.glb",
-      "releaseSha256": "5ae7ab5b44c64d63ebaea0d40cc49667c34606bb5063aa9128816c82b9da8876",
-      "releaseBytes": 304512,
+      "releaseSha256": "5a0e9e22356307da98b2a2d8bba5d2293e7dd40d2fca42b172df588ea3584f8f",
+      "releaseBytes": 219368,
       "rootNode": "SF_PLACE_ROCK_JUNK_PEBBLE_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -7249,8 +7249,8 @@
       "slot": "place",
       "releaseAssetId": "place_rock_metallic_ore_boulder",
       "sourceUrl": "assets/ships/release/parts/places/place_rock_metallic_ore_boulder.glb",
-      "releaseSha256": "9db9d2f2b1329c4a23c5f47fd8211496e9adbee259168782903cf65d1ae57f4a",
-      "releaseBytes": 410956,
+      "releaseSha256": "d078045ecab95463f5cdb2a998a032318651466ea466e4810ae1bc0a98abeb85",
+      "releaseBytes": 364564,
       "rootNode": "SF_PLACE_ROCK_METALLIC_ORE_BOULDER_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -7291,8 +7291,8 @@
       "slot": "place",
       "releaseAssetId": "place_rock_metallic_ore_pebble",
       "sourceUrl": "assets/ships/release/parts/places/place_rock_metallic_ore_pebble.glb",
-      "releaseSha256": "06aecb300b6bcd5beece74f2a8499d9b8a16e1342a409bdccdc64e8279d26037",
-      "releaseBytes": 255176,
+      "releaseSha256": "ab84e453cabb6d1dbeed5b85d65ce66e309ac61d2ffa8452434ca539cadff389",
+      "releaseBytes": 187296,
       "rootNode": "SF_PLACE_ROCK_METALLIC_ORE_PEBBLE_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -7312,8 +7312,8 @@
       "slot": "place",
       "releaseAssetId": "place_rock_reef_metal_boulder",
       "sourceUrl": "assets/ships/release/parts/places/place_rock_reef_metal_boulder.glb",
-      "releaseSha256": "c5bfb5945a4f206b980b1d689e664bc8664e27564563730b3958a08d84f11155",
-      "releaseBytes": 408928,
+      "releaseSha256": "38248e4ff64afdbd5c8c7531ba521b100d5f1b10771424c8d168452486f1362e",
+      "releaseBytes": 362532,
       "rootNode": "SF_PLACE_ROCK_REEF_METAL_BOULDER_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",
@@ -7354,8 +7354,8 @@
       "slot": "place",
       "releaseAssetId": "place_rock_reef_metal_pebble",
       "sourceUrl": "assets/ships/release/parts/places/place_rock_reef_metal_pebble.glb",
-      "releaseSha256": "e78613d31640247bc49b842356fe815a1bd6c4869eaf1b37e4287f782fbdbc51",
-      "releaseBytes": 256420,
+      "releaseSha256": "b245600fc76244309ffc22633343d1e3b605d01e91cf8b2eb50b1c37caa87044",
+      "releaseBytes": 188544,
       "rootNode": "SF_PLACE_ROCK_REEF_METAL_PEBBLE_ROOT",
       "dynamicNameIncludes": [
         "HOOK_DRIVE",

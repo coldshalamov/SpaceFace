@@ -30,6 +30,7 @@ import {
 } from '../tools/art/lib/ktx2MaterialRoleValidation.mjs';
 import { publishFileSetTransaction } from '../tools/art/lib/multiFileTransaction.mjs';
 import { parseStrictEmbeddedGlb } from '../tools/art/lib/strictGlbValidation.mjs';
+import { downsampleRgbaRgba } from './build-place-release-assets.mjs';
 import { RELEASE_MESHOPT_OPTIONS } from './lib/releaseMeshoptProfile.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -115,6 +116,26 @@ export const PACK_TEXTURE_PROFILES = Object.freeze({
     }),
   }),
 });
+
+// Texture budget per pack asset: the longest edge its maps are allowed to ship at.
+// TEXTURE-DOWNSIZE (2026-11-20 asset-cost audit): the small wreck fragments and the kit ore
+// bulk container cover 35-93 px of glass at the closest normal gameplay framing (chase-close
+// 58 WU) while shipping 1024 px texture sets. The budget is the smallest power-of-two edge at
+// least twice that framing, so the camera can still resolve every texel the body can show;
+// anything not listed keeps its authored resolution.
+export const PACK_TEXTURE_BUDGET = Object.freeze({
+  place_aftermath_deb_corvette_barbette_ring: 512,
+  place_aftermath_frag_cable_bundle: 512,
+  place_ore_bulk_container: 512,
+  place_aftermath_frag_pipe_tangle: 256,
+  place_aftermath_frag_plate_curl: 256,
+  place_aftermath_frag_rib_cluster: 256,
+});
+
+/** Longest edge this asset's maps may ship at, or 0 for "leave authored". */
+export function packTextureBudget(assetId) {
+  return Number(PACK_TEXTURE_BUDGET[assetId]) || 0;
+}
 
 export const PACK_RELEASE_ASSETS = Object.freeze(buildReleaseCatalog());
 
@@ -258,12 +279,18 @@ async function stageReleaseAsset(asset, { root, buildRoot, io }) {
   const document = await io.read(sourceAbs);
   splitIncompatibleTextureSlots(document);
   const textureCount = Number(sourceInspection.metrics.textureCount) || 0;
+  // Right-size this asset's maps before they are encoded. 0 leaves the authored resolution.
+  // The edge rides inside the ktx2 options so the shared encode cache can never serve one
+  // budget's output to another.
+  const textureEdgeBudget = packTextureBudget(asset.id);
+  const decodeForAsset = (buffer) => decodeImage(buffer, textureEdgeBudget);
   const transforms = [];
   if (textureCount > 0) {
     transforms.push(
       ktx2({
         slots: /^(baseColorTexture|emissiveTexture)$/,
-        imageDecoder: decodeImage,
+        imageDecoder: decodeForAsset,
+        textureEdgeBudget,
         ...PACK_TEXTURE_PROFILES.color.options,
         generateMipmap: true,
         needSupercompression: false,
@@ -272,7 +299,8 @@ async function stageReleaseAsset(asset, { root, buildRoot, io }) {
       }),
       ktx2({
         slots: /^(normalTexture|clearcoatNormalTexture)$/,
-        imageDecoder: decodeImage,
+        imageDecoder: decodeForAsset,
+        textureEdgeBudget,
         ...PACK_TEXTURE_PROFILES.normal.options,
         generateMipmap: true,
         isNormalMap: true,
@@ -281,7 +309,8 @@ async function stageReleaseAsset(asset, { root, buildRoot, io }) {
       }),
       ktx2({
         slots: /^(occlusionTexture|metallicRoughnessTexture|roughnessTexture|metalnessTexture|clearcoatTexture|clearcoatRoughnessTexture)$/,
-        imageDecoder: decodeImage,
+        imageDecoder: decodeForAsset,
+        textureEdgeBudget,
         ...PACK_TEXTURE_PROFILES.orm.options,
         generateMipmap: true,
         needSupercompression: false,
@@ -874,21 +903,21 @@ function sumBytes(entries, field) {
   return entries.reduce((sum, entry) => sum + Number(entry[field] || 0), 0);
 }
 
-function decodeImage(buffer) {
+function decodeImage(buffer, maxEdge = 0) {
   try {
     const png = PNG.sync.read(Buffer.from(buffer));
-    return {
+    return downsampleRgbaRgba({
       width: png.width,
       height: png.height,
       data: new Uint8Array(png.data.buffer, png.data.byteOffset, png.data.byteLength),
-    };
+    }, maxEdge);
   } catch {
     const jpeg = JPEG.decode(Buffer.from(buffer), { useTArray: true });
-    return {
+    return downsampleRgbaRgba({
       width: jpeg.width,
       height: jpeg.height,
       data: new Uint8Array(jpeg.data.buffer, jpeg.data.byteOffset, jpeg.data.byteLength),
-    };
+    }, maxEdge);
   }
 }
 

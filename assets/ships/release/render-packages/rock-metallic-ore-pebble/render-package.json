@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d873f75de18ce189f4321b6dc0316da4c56bbf4349e4d3f18296492bbac5b68f",
+  "contentHash": "461e43269ad2e835c2cc38ddd1d5d882eec47a9435be886df3606d8297fb9bc2",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -611,7 +611,7 @@
       "id": "sf.render.rock-metallic-ore-pebble.mesh.lod0-brushedmetal.primitive.0",
       "indexCount": 1692,
       "indexed": true,
-      "materialHash": "4f4084b60dd786db58e1613eec28999ba18f20d078174d15031031416f208090",
+      "materialHash": "646a7e07743ec01459b8b7b75f6df33d9b48b20bc87c143da28452e3873732eb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_BrushedMetal",
       "nodeId": "sf.render.rock-metallic-ore-pebble.mesh.lod0-brushedmetal",
@@ -711,7 +711,7 @@
       "id": "sf.render.rock-metallic-ore-pebble.mesh.lod1-brushedmetal.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "4f4084b60dd786db58e1613eec28999ba18f20d078174d15031031416f208090",
+      "materialHash": "646a7e07743ec01459b8b7b75f6df33d9b48b20bc87c143da28452e3873732eb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_BrushedMetal",
       "nodeId": "sf.render.rock-metallic-ore-pebble.mesh.lod1-brushedmetal",
@@ -811,7 +811,7 @@
       "id": "sf.render.rock-metallic-ore-pebble.mesh.lod2-brushedmetal.primitive.0",
       "indexCount": 42,
       "indexed": true,
-      "materialHash": "4f4084b60dd786db58e1613eec28999ba18f20d078174d15031031416f208090",
+      "materialHash": "646a7e07743ec01459b8b7b75f6df33d9b48b20bc87c143da28452e3873732eb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_BrushedMetal",
       "nodeId": "sf.render.rock-metallic-ore-pebble.mesh.lod2-brushedmetal",
@@ -913,8 +913,8 @@
       "textures": []
     },
     {
-      "hash": "4f4084b60dd786db58e1613eec28999ba18f20d078174d15031031416f208090",
-      "id": "material:4f4084b60dd786db58e1613e",
+      "hash": "646a7e07743ec01459b8b7b75f6df33d9b48b20bc87c143da28452e3873732eb",
+      "id": "material:646a7e07743ec01459b8b7b7",
       "name": "Material_BrushedMetal",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1644,19 +1644,19 @@
       "sha256": "f2d91c85b3be8cd16495289b0da7ac874533ab419bbc9b168c1c9600b70ae2c3"
     },
     "sourceGlb": {
-      "bytes": 255176,
-      "sha256": "06aecb300b6bcd5beece74f2a8499d9b8a16e1342a409bdccdc64e8279d26037",
+      "bytes": 187296,
+      "sha256": "ab84e453cabb6d1dbeed5b85d65ce66e309ac61d2ffa8452434ca539cadff389",
       "uri": "place_rock_metallic_ore_pebble.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 259804,
-    "sha256": "d2f6f66b0a784f3c7472dd7cf4bddf0a6b094b9fbf00957d88cb79e19ed1a6fe",
+    "bytes": 191928,
+    "sha256": "415035441bf180e3ce27914006c395cd2ea0e5796404cf6e3081bf54dbf624f8",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2703,7 +2703,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_metallic_ore_pebble.glb"
   },
-  "runtimeHash": "a0a082d259e34edb2efe3fb6622594b431663528f2186b406611a26092cb25a3",
+  "runtimeHash": "3e25fd9d205494bdc188df9a06c698cc76533e39c02e526db615d371ea897589",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

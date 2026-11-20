@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9189e2967fa39b016876f02c9ab7b98abc9574f28ae259eb2e04c2e8fe61c12d",
+  "contentHash": "e63590a435ba11b7bf6c8b9a7efddc36c2f8c423d9db31dd27b5d3936e21428d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -611,7 +611,7 @@
       "id": "sf.render.rock-metallic-ore-boulder.mesh.lod0-brushedmetal.primitive.0",
       "indexCount": 2256,
       "indexed": true,
-      "materialHash": "4f4084b60dd786db58e1613eec28999ba18f20d078174d15031031416f208090",
+      "materialHash": "1172110e23f340871f0e055d0857138997df8bccba432b3f5ccafa06424ec62e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_BrushedMetal",
       "nodeId": "sf.render.rock-metallic-ore-boulder.mesh.lod0-brushedmetal",
@@ -761,7 +761,7 @@
       "id": "sf.render.rock-metallic-ore-boulder.mesh.lod1-brushedmetal.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "4f4084b60dd786db58e1613eec28999ba18f20d078174d15031031416f208090",
+      "materialHash": "1172110e23f340871f0e055d0857138997df8bccba432b3f5ccafa06424ec62e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_BrushedMetal",
       "nodeId": "sf.render.rock-metallic-ore-boulder.mesh.lod1-brushedmetal",
@@ -886,7 +886,7 @@
       "id": "sf.render.rock-metallic-ore-boulder.mesh.lod2-brushedmetal.primitive.0",
       "indexCount": 66,
       "indexed": true,
-      "materialHash": "4f4084b60dd786db58e1613eec28999ba18f20d078174d15031031416f208090",
+      "materialHash": "1172110e23f340871f0e055d0857138997df8bccba432b3f5ccafa06424ec62e",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_BrushedMetal",
       "nodeId": "sf.render.rock-metallic-ore-boulder.mesh.lod2-brushedmetal",
@@ -999,22 +999,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "22ddd88fbba3d9a4f0302d029f0e065a9d9d894193d605d619dbd3b9ff8ab6af",
-      "id": "material:22ddd88fbba3d9a4f0302d02",
-      "name": "Material_Stone_strata",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "4eea944d981e1b078c551ac6c5a43e2167de1e84fa41ecc1888b463e1d5ea3cf",
-      "id": "material:4eea944d981e1b078c551ac6",
-      "name": "Material_Emissive_Cyan",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "4f4084b60dd786db58e1613eec28999ba18f20d078174d15031031416f208090",
-      "id": "material:4f4084b60dd786db58e1613e",
+      "hash": "1172110e23f340871f0e055d0857138997df8bccba432b3f5ccafa06424ec62e",
+      "id": "material:1172110e23f340871f0e055d",
       "name": "Material_BrushedMetal",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1043,6 +1029,20 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "22ddd88fbba3d9a4f0302d029f0e065a9d9d894193d605d619dbd3b9ff8ab6af",
+      "id": "material:22ddd88fbba3d9a4f0302d02",
+      "name": "Material_Stone_strata",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "4eea944d981e1b078c551ac6c5a43e2167de1e84fa41ecc1888b463e1d5ea3cf",
+      "id": "material:4eea944d981e1b078c551ac6",
+      "name": "Material_Emissive_Cyan",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "90b1cfcdaf4e557bb810e203f0e1e5b3bb854e6bc18a07483785d95dc1b19116",
@@ -1954,19 +1954,19 @@
       "sha256": "bff9580714982640279115aad296f9d82578cfb3ee7ddf842700dd5c0b7b2448"
     },
     "sourceGlb": {
-      "bytes": 410956,
-      "sha256": "9db9d2f2b1329c4a23c5f47fd8211496e9adbee259168782903cf65d1ae57f4a",
+      "bytes": 364564,
+      "sha256": "d078045ecab95463f5cdb2a998a032318651466ea466e4810ae1bc0a98abeb85",
       "uri": "place_rock_metallic_ore_boulder.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 416180,
-    "sha256": "c0a6b6ea4c9aecb15b69e865ad528ddda7ea0f8048f32eb60a64220df2feb0f6",
+    "bytes": 369788,
+    "sha256": "f4989080dd8719f9a3ec2d723c07431c3369fe66ee1d5ba94db8051f3145abce",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3141,7 +3141,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_metallic_ore_boulder.glb"
   },
-  "runtimeHash": "1f9298afe246341470c8cea337b50a0f030442df4dab60ef4121f13292c39f01",
+  "runtimeHash": "8fb8d8e759bacb32d0c2c53feb2cc77020da12940905251f766f7f449b0fa21e",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a4e704a4f85342f484df4bd3aab164868eec0aec6a8fb8a7bef0142980891552",
+  "contentHash": "c71caae245968db709372b86eaef36039e0ebcbdf7275bd72efcca2f4d31e537",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab00.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
       "materialPipelineKey": "opaque",
       "meshName": "cab00",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab00",
@@ -52,7 +52,7 @@
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab01.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
       "materialPipelineKey": "opaque",
       "meshName": "cab01",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab01",
@@ -77,7 +77,7 @@
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab10.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
       "materialPipelineKey": "opaque",
       "meshName": "cab10",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab10",
@@ -102,7 +102,7 @@
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab11.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
       "materialPipelineKey": "opaque",
       "meshName": "cab11",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab11",
@@ -127,7 +127,7 @@
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab20.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
       "materialPipelineKey": "opaque",
       "meshName": "cab20",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab20",
@@ -152,7 +152,7 @@
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab21.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
       "materialPipelineKey": "opaque",
       "meshName": "cab21",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab21",
@@ -177,7 +177,7 @@
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab30.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
       "materialPipelineKey": "opaque",
       "meshName": "cab30",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab30",
@@ -202,7 +202,7 @@
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab31.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
       "materialPipelineKey": "opaque",
       "meshName": "cab31",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab31",
@@ -227,7 +227,7 @@
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab40.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
       "materialPipelineKey": "opaque",
       "meshName": "cab40",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab40",
@@ -252,7 +252,7 @@
       "id": "sf.render.aftermath-frag-cable-bundle.mesh.cab41.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
       "materialPipelineKey": "opaque",
       "meshName": "cab41",
       "nodeId": "sf.render.aftermath-frag-cable-bundle.mesh.cab41",
@@ -290,8 +290,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
-      "id": "material:c0150f1f713f896c624a3e15",
+      "hash": "5e5673c01b361dc88bdec8781c0e24366bd502b11c9206f042c338b284410cad",
+      "id": "material:5e5673c01b361dc88bdec878",
       "name": "Forge_ore_barge_wk_cut",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -948,19 +948,19 @@
       "sha256": "639c6fb492716ed5260433caf4812c371717965dcae8e772bc5e66f8d302f68b"
     },
     "sourceGlb": {
-      "bytes": 131520,
-      "sha256": "e6b1572b1689e2d5b0ba20d71b4afb455c809770394a43df8f010c484ad2a87a",
+      "bytes": 97548,
+      "sha256": "0ecd5d7637d75fba2454529da6fcd8bc0537e30183734f8c608a796b921050a7",
       "uri": "place_aftermath_frag_cable_bundle.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 133528,
-    "sha256": "5e8f7e3f94a6c5cd36dbd37086ea43b72d1c0e023eee30d618618e8254d92810",
+    "bytes": 99556,
+    "sha256": "fd0bfe90831473831b880595a069c6c24859455cc12cd239d80fbc8776075ad4",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1353,7 +1353,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_cable_bundle.glb"
   },
-  "runtimeHash": "6af5956ba42db03e9ced25c8ad0c1f3e8e7230d4c57d6187b697184bee4c8de4",
+  "runtimeHash": "2043dcf72783abb6f21eec61146e4d9442349c6c3645bef083b52d6fcf5ac66c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

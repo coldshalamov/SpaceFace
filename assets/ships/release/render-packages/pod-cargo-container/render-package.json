@@ -12,7 +12,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1371bd801501f7ba444ceda6d5b91c930bd97749205869f4d0546bae70935bb1",
+  "contentHash": "618b519c90a4fde7d41144cb6b871c72600da14cf2ef3cc0578a1b2ede4b8b6d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -83,7 +83,7 @@
       "id": "sf.render.pod-cargo-container.node.lod0-motion-pod-shell-hull.primitive.0",
       "indexCount": 10716,
       "indexed": true,
-      "materialHash": "cbc25e45427852c8ddeb7be39352e2be129285951f443498d6a5c0cc50089426",
+      "materialHash": "4ad8ed7d20633ef3e8a8be01831b7242955d4a1bfb56978551f73cc7af90253a",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_POD_SHELL_Hull",
       "nodeId": "sf.render.pod-cargo-container.node.lod0-motion-pod-shell-hull",
@@ -108,7 +108,7 @@
       "id": "sf.render.pod-cargo-container.node.lod0-motion-pod-shell-livery.primitive.0",
       "indexCount": 1692,
       "indexed": true,
-      "materialHash": "eede30cc7efca9acb0cb65bd32d5932002d0b54e02ee1833497781d012066aa6",
+      "materialHash": "c2d14d0be769afa7c858d8a7a5e17e892d0124d060174297c32e9848097eceb5",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_POD_SHELL_Livery",
       "nodeId": "sf.render.pod-cargo-container.node.lod0-motion-pod-shell-livery",
@@ -203,6 +203,38 @@
       ]
     },
     {
+      "hash": "4ad8ed7d20633ef3e8a8be01831b7242955d4a1bfb56978551f73cc7af90253a",
+      "id": "material:4ad8ed7d20633ef3e8a8be01",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
       "hash": "7dbce0f058ce69aeee64664b13c1f6a7c44518a289954c95410062a18e415876",
       "id": "material:7dbce0f058ce69aeee64664b",
       "name": "Material_Mechanical",
@@ -242,40 +274,8 @@
       "textures": []
     },
     {
-      "hash": "cbc25e45427852c8ddeb7be39352e2be129285951f443498d6a5c0cc50089426",
-      "id": "material:cbc25e45427852c8ddeb7be3",
-      "name": "Material_Hull",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "eede30cc7efca9acb0cb65bd32d5932002d0b54e02ee1833497781d012066aa6",
-      "id": "material:eede30cc7efca9acb0cb65bd",
+      "hash": "c2d14d0be769afa7c858d8a7a5e17e892d0124d060174297c32e9848097eceb5",
+      "id": "material:c2d14d0be769afa7c858d8a7",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -758,13 +758,13 @@
       "sha256": "5080c336547481abe008bc65eaf6cb3743d122f93815bf0beadb5dc4f205238a"
     },
     "sourceGlb": {
-      "bytes": 419972,
-      "sha256": "07de4fc313dff07e952bdd85c126d1df8eebd71f495519a68a03621c8836043e",
+      "bytes": 301676,
+      "sha256": "766d86c9ed80d497e9f6d534c29544d8df6550f45b8251809d90ac229c3209e7",
       "uri": "pod_cargo_container.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
@@ -778,22 +778,16 @@
         "uri": "../_shared/images/4993f33a8ebc93a831f53b4e186fb9b973f0c6bff795d4fa6ab62e577c54536e.ktx2"
       },
       {
-        "bytes": 72992,
-        "mimeType": "image/ktx2",
-        "sha256": "884bbcbe84ab33145fea429c34b4449673ded6de8b62030df2ddfcbc5b7649d5",
-        "uri": "../_shared/images/884bbcbe84ab33145fea429c34b4449673ded6de8b62030df2ddfcbc5b7649d5.ktx2"
-      },
-      {
         "bytes": 58536,
         "mimeType": "image/ktx2",
         "sha256": "a03642a3514a022dbcb614a6bf4f25dc429b28ac3f63e74b47b38af11bf398a4",
         "uri": "../_shared/images/a03642a3514a022dbcb614a6bf4f25dc429b28ac3f63e74b47b38af11bf398a4.ktx2"
       },
       {
-        "bytes": 114191,
+        "bytes": 34733,
         "mimeType": "image/ktx2",
-        "sha256": "adcfa5e58c377955c526929e74127f71d02f2cdf4149ad5339a79b9a203225a3",
-        "uri": "../_shared/images/adcfa5e58c377955c526929e74127f71d02f2cdf4149ad5339a79b9a203225a3.ktx2"
+        "sha256": "bb031c9f35917242dea3f67c747dd2d03f59a1b159ae06660895f745eb6d2be0",
+        "uri": "../_shared/images/bb031c9f35917242dea3f67c747dd2d03f59a1b159ae06660895f745eb6d2be0.ktx2"
       },
       {
         "bytes": 6409,
@@ -802,13 +796,19 @@
         "uri": "../_shared/images/d73dd0e53f86d9885c33a38b9634ea7132c379beb39c26db6668a9d2b7e8d065.ktx2"
       },
       {
-        "bytes": 35770,
+        "bytes": 20967,
         "mimeType": "image/ktx2",
-        "sha256": "d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3",
-        "uri": "../_shared/images/d885628d06409dacfb6baa69d8c90cd130e5215ec40a49da91e4e60bd6e05ab3.ktx2"
+        "sha256": "e1f28afced262dce432ec140c095db44dd71d88bed5b6f984fbe24423d91a2e5",
+        "uri": "../_shared/images/e1f28afced262dce432ec140c095db44dd71d88bed5b6f984fbe24423d91a2e5.ktx2"
+      },
+      {
+        "bytes": 48955,
+        "mimeType": "image/ktx2",
+        "sha256": "e5ab332c6d49e4bc2f4015b3595cac854f962477c764be63537393a8a6788cfb",
+        "uri": "../_shared/images/e5ab332c6d49e4bc2f4015b3595cac854f962477c764be63537393a8a6788cfb.ktx2"
       }
     ],
-    "sha256": "b51c5074d4acdebfb2b010d17e90f0cd1ce27090cd858abb2258009c474ced5e",
+    "sha256": "b787252fad65d79ae1f994d5a39c6a6bc59bb6722dfc33894079f87d8179dbe9",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1161,7 +1161,7 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/pods/pod_cargo_container.glb"
   },
-  "runtimeHash": "600cf5719844bc459fb87157f6b9d128760ec6e1c1f014a3fcfae2dcfb78d0eb",
+  "runtimeHash": "a8d41af09cddca17431d00735ba5d0c9428b285bb7f5beb94fd31de572e9c8e2",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

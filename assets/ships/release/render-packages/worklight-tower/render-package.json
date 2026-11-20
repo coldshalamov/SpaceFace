@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "727e5c11110054d5096e5cade951bbedd52d935adf7fea376cb7d88aaa9dce3e",
+  "contentHash": "089dca32a4fb4bc8afeffae6af836d5cb6e6ca44282ea3581ff2cb9ba1fc8f08",
   "dynamicGroups": [
     {
       "id": "sf.render.worklight-tower.mesh.lod0-hook-nav-port.dynamic",
@@ -136,7 +136,7 @@
       "id": "sf.render.worklight-tower.mesh.lod0-armor.primitive.0",
       "indexCount": 23604,
       "indexed": true,
-      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialHash": "eb963534943a5b3e37b868af6a2f181ba83a1c17d4318ecbccbdce17f2cd059b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.worklight-tower.mesh.lod0-armor",
@@ -236,7 +236,7 @@
       "id": "sf.render.worklight-tower.mesh.lod0-hull.primitive.0",
       "indexCount": 7272,
       "indexed": true,
-      "materialHash": "e8cfb02f22fc0d7ac32ccffc62faef762f39ec4d2006b43dc2907a2db19242a7",
+      "materialHash": "32f88cd84c2034a1f948806911407d3b02373acf3d12bdaca7ce2db220ecd1be",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull",
       "nodeId": "sf.render.worklight-tower.mesh.lod0-hull",
@@ -286,7 +286,7 @@
       "id": "sf.render.worklight-tower.mesh.lod0-mechanical.primitive.0",
       "indexCount": 5760,
       "indexed": true,
-      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialHash": "f7b8081d097927b49203e7e505bb98db0e995fd43d5c2e05cada9c03b816cfb3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Mechanical",
       "nodeId": "sf.render.worklight-tower.mesh.lod0-mechanical",
@@ -311,7 +311,7 @@
       "id": "sf.render.worklight-tower.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 4746,
       "indexed": true,
-      "materialHash": "647b3573b7c8c31a116596a3b3c8841fd48e6733ae8401dfc08963712b14e0a8",
+      "materialHash": "637c2265fd03376a62b409797e27070de867108fac045f17d15d4887b897fc2d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MechanicalDark",
       "nodeId": "sf.render.worklight-tower.mesh.lod0-mechanicaldark",
@@ -336,7 +336,7 @@
       "id": "sf.render.worklight-tower.mesh.lod0-warning.primitive.0",
       "indexCount": 300,
       "indexed": true,
-      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "materialHash": "25b46049f874046cc82c308d68037aa3cfb115f9869ca9665531d7753465e5bd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.worklight-tower.mesh.lod0-warning",
@@ -361,7 +361,7 @@
       "id": "sf.render.worklight-tower.mesh.lod1-armor.primitive.0",
       "indexCount": 5409,
       "indexed": true,
-      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialHash": "eb963534943a5b3e37b868af6a2f181ba83a1c17d4318ecbccbdce17f2cd059b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.worklight-tower.mesh.lod1-armor",
@@ -461,7 +461,7 @@
       "id": "sf.render.worklight-tower.mesh.lod1-hull.primitive.0",
       "indexCount": 3585,
       "indexed": true,
-      "materialHash": "e8cfb02f22fc0d7ac32ccffc62faef762f39ec4d2006b43dc2907a2db19242a7",
+      "materialHash": "32f88cd84c2034a1f948806911407d3b02373acf3d12bdaca7ce2db220ecd1be",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull",
       "nodeId": "sf.render.worklight-tower.mesh.lod1-hull",
@@ -511,7 +511,7 @@
       "id": "sf.render.worklight-tower.mesh.lod1-mechanical.primitive.0",
       "indexCount": 1158,
       "indexed": true,
-      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialHash": "f7b8081d097927b49203e7e505bb98db0e995fd43d5c2e05cada9c03b816cfb3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Mechanical",
       "nodeId": "sf.render.worklight-tower.mesh.lod1-mechanical",
@@ -536,7 +536,7 @@
       "id": "sf.render.worklight-tower.mesh.lod1-mechanicaldark.primitive.0",
       "indexCount": 2406,
       "indexed": true,
-      "materialHash": "647b3573b7c8c31a116596a3b3c8841fd48e6733ae8401dfc08963712b14e0a8",
+      "materialHash": "637c2265fd03376a62b409797e27070de867108fac045f17d15d4887b897fc2d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MechanicalDark",
       "nodeId": "sf.render.worklight-tower.mesh.lod1-mechanicaldark",
@@ -561,7 +561,7 @@
       "id": "sf.render.worklight-tower.mesh.lod1-warning.primitive.0",
       "indexCount": 66,
       "indexed": true,
-      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "materialHash": "25b46049f874046cc82c308d68037aa3cfb115f9869ca9665531d7753465e5bd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.worklight-tower.mesh.lod1-warning",
@@ -586,7 +586,7 @@
       "id": "sf.render.worklight-tower.mesh.lod2-armor.primitive.0",
       "indexCount": 1917,
       "indexed": true,
-      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialHash": "eb963534943a5b3e37b868af6a2f181ba83a1c17d4318ecbccbdce17f2cd059b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.worklight-tower.mesh.lod2-armor",
@@ -686,7 +686,7 @@
       "id": "sf.render.worklight-tower.mesh.lod2-hull.primitive.0",
       "indexCount": 2205,
       "indexed": true,
-      "materialHash": "e8cfb02f22fc0d7ac32ccffc62faef762f39ec4d2006b43dc2907a2db19242a7",
+      "materialHash": "32f88cd84c2034a1f948806911407d3b02373acf3d12bdaca7ce2db220ecd1be",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull",
       "nodeId": "sf.render.worklight-tower.mesh.lod2-hull",
@@ -736,7 +736,7 @@
       "id": "sf.render.worklight-tower.mesh.lod2-mechanical.primitive.0",
       "indexCount": 315,
       "indexed": true,
-      "materialHash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
+      "materialHash": "f7b8081d097927b49203e7e505bb98db0e995fd43d5c2e05cada9c03b816cfb3",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Mechanical",
       "nodeId": "sf.render.worklight-tower.mesh.lod2-mechanical",
@@ -761,7 +761,7 @@
       "id": "sf.render.worklight-tower.mesh.lod2-mechanicaldark.primitive.0",
       "indexCount": 1044,
       "indexed": true,
-      "materialHash": "647b3573b7c8c31a116596a3b3c8841fd48e6733ae8401dfc08963712b14e0a8",
+      "materialHash": "637c2265fd03376a62b409797e27070de867108fac045f17d15d4887b897fc2d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MechanicalDark",
       "nodeId": "sf.render.worklight-tower.mesh.lod2-mechanicaldark",
@@ -786,7 +786,7 @@
       "id": "sf.render.worklight-tower.mesh.lod2-warning.primitive.0",
       "indexCount": 66,
       "indexed": true,
-      "materialHash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
+      "materialHash": "25b46049f874046cc82c308d68037aa3cfb115f9869ca9665531d7753465e5bd",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.worklight-tower.mesh.lod2-warning",
@@ -799,8 +799,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "051dfdb6635940b963d81db531ce04a48e21448017b7093a23e3de64d0b3701d",
-      "id": "material:051dfdb6635940b963d81db5",
+      "hash": "25b46049f874046cc82c308d68037aa3cfb115f9869ca9665531d7753465e5bd",
+      "id": "material:25b46049f874046cc82c308d",
       "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -838,16 +838,9 @@
       "textures": []
     },
     {
-      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
-      "id": "material:35c00bfb4e1adf84176a4a79",
-      "name": "Material_Emissive_Amber",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
-      "id": "material:3fdf83f5cb4a7ed64bc4eb10",
-      "name": "Material_Armor",
+      "hash": "32f88cd84c2034a1f948806911407d3b02373acf3d12bdaca7ce2db220ecd1be",
+      "id": "material:32f88cd84c2034a1f9488069",
+      "name": "Material_Hull",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -877,8 +870,15 @@
       ]
     },
     {
-      "hash": "647b3573b7c8c31a116596a3b3c8841fd48e6733ae8401dfc08963712b14e0a8",
-      "id": "material:647b3573b7c8c31a116596a3",
+      "hash": "35c00bfb4e1adf84176a4a79f152cfd9f3b3bbcfd7bf7cdcd53715b747fb9bae",
+      "id": "material:35c00bfb4e1adf84176a4a79",
+      "name": "Material_Emissive_Amber",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "637c2265fd03376a62b409797e27070de867108fac045f17d15d4887b897fc2d",
+      "id": "material:637c2265fd03376a62b40979",
       "name": "Material_MechanicalDark",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -923,9 +923,9 @@
       "textures": []
     },
     {
-      "hash": "e8cfb02f22fc0d7ac32ccffc62faef762f39ec4d2006b43dc2907a2db19242a7",
-      "id": "material:e8cfb02f22fc0d7ac32ccffc",
-      "name": "Material_Hull",
+      "hash": "eb963534943a5b3e37b868af6a2f181ba83a1c17d4318ecbccbdce17f2cd059b",
+      "id": "material:eb963534943a5b3e37b868af",
+      "name": "Material_Armor",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -955,8 +955,8 @@
       ]
     },
     {
-      "hash": "f543c846d70e4889bb87a4e1ab0515033b15d13c109c84ad4dee2fda6734e0b7",
-      "id": "material:f543c846d70e4889bb87a4e1",
+      "hash": "f7b8081d097927b49203e7e505bb98db0e995fd43d5c2e05cada9c03b816cfb3",
+      "id": "material:f7b8081d097927b49203e7e5",
       "name": "Material_Mechanical",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -2414,19 +2414,19 @@
       "sha256": "485e7809f51305f21183d6fe52c69fe9a083bebc4592f637b2a1e67b5af77d57"
     },
     "sourceGlb": {
-      "bytes": 612752,
-      "sha256": "cb1a67dc3dfcfdfeed131caf3a8f924a3185d1636563b13d79a3e372c9da79a1",
+      "bytes": 527632,
+      "sha256": "2ebeb833015529120b6c0521ea021c20045093cce178ad14855c88eb20071840",
       "uri": "place_worklight_tower.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 616676,
-    "sha256": "68f9aaea183a18ec96dd8e745208cbbfd41e2df2384b5509960993f9b41d4ef8",
+    "bytes": 531540,
+    "sha256": "04cb3756c5ac0ba07ecba8e619a3ac50b2b39cc1f2ab4caef68beadaba9bf0ee",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3605,7 +3605,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_worklight_tower.glb"
   },
-  "runtimeHash": "1342b0a53ac68ddae0ab7e4a1f1c34d739d933300ae4b2419b88482ccc8564be",
+  "runtimeHash": "0c70d1989e34406bea3531a57077da1823c79315ffe8cde3478baf492611231b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

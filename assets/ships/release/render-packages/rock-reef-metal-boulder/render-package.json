@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "3d670f3baf1cf104ec4599aabc992f2b969dada79a1d0a4cae6c6783869cce00",
+  "contentHash": "49b1339e109bd09537f929ac095801e9865ea52621be85c2a9c661c7a22e9fc4",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -611,7 +611,7 @@
       "id": "sf.render.rock-reef-metal-boulder.mesh.lod0-brushedmetal.primitive.0",
       "indexCount": 2256,
       "indexed": true,
-      "materialHash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
+      "materialHash": "4931979e6478c0f2d547ad99c9f73fd8acec0ac6232fa0de9e3a6a8349c38c0b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_BrushedMetal",
       "nodeId": "sf.render.rock-reef-metal-boulder.mesh.lod0-brushedmetal",
@@ -736,7 +736,7 @@
       "id": "sf.render.rock-reef-metal-boulder.mesh.lod1-brushedmetal.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
+      "materialHash": "4931979e6478c0f2d547ad99c9f73fd8acec0ac6232fa0de9e3a6a8349c38c0b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_BrushedMetal",
       "nodeId": "sf.render.rock-reef-metal-boulder.mesh.lod1-brushedmetal",
@@ -861,7 +861,7 @@
       "id": "sf.render.rock-reef-metal-boulder.mesh.lod2-brushedmetal.primitive.0",
       "indexCount": 54,
       "indexed": true,
-      "materialHash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
+      "materialHash": "4931979e6478c0f2d547ad99c9f73fd8acec0ac6232fa0de9e3a6a8349c38c0b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_BrushedMetal",
       "nodeId": "sf.render.rock-reef-metal-boulder.mesh.lod2-brushedmetal",
@@ -974,15 +974,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "56145e710d0d685ce7e25def6f8b41789d37cf84f7b550268d087431fcd8758a",
-      "id": "material:56145e710d0d685ce7e25def",
-      "name": "Material_Stone_strata",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
-      "id": "material:74b914c054ab2b7acf53bc78",
+      "hash": "4931979e6478c0f2d547ad99c9f73fd8acec0ac6232fa0de9e3a6a8349c38c0b",
+      "id": "material:4931979e6478c0f2d547ad99",
       "name": "Material_BrushedMetal",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1011,6 +1004,13 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "56145e710d0d685ce7e25def6f8b41789d37cf84f7b550268d087431fcd8758a",
+      "id": "material:56145e710d0d685ce7e25def",
+      "name": "Material_Stone_strata",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "8e47ccb7104aae16d78c2a76321711925c446bd71b02c82a37ce9e04c2f06341",
@@ -1873,19 +1873,19 @@
       "sha256": "9aaed730ea842af057834e3f4a8d3d200919b512fa8ce53a1418681b81f9d6ab"
     },
     "sourceGlb": {
-      "bytes": 408928,
-      "sha256": "c5bfb5945a4f206b980b1d689e664bc8664e27564563730b3958a08d84f11155",
+      "bytes": 362532,
+      "sha256": "38248e4ff64afdbd5c8c7531ba521b100d5f1b10771424c8d168452486f1362e",
       "uri": "place_rock_reef_metal_boulder.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 413652,
-    "sha256": "d0ba3bd0136b19ac3da601ce345dfbf8dfe59a118fa6e68f253cd88fe49841fa",
+    "bytes": 367260,
+    "sha256": "f67482002c764025faf66540fae6238ab7c5eb0ee503c555a19affe01e8047ea",
     "uri": "render.glb"
   },
   "runtime": {
@@ -3028,7 +3028,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_reef_metal_boulder.glb"
   },
-  "runtimeHash": "91d56103b0e3b57b8fa354b3ec94247282c2dcd162bbcd34de41bba05ba45772",
+  "runtimeHash": "a274a529ddaa02b21d67819d42d050fe3583345b3478783148fa0af0bdfde725",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

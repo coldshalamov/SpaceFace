@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "1b9ec1a65e385e13e96071af9036ef23f1e3818f369d6d72005edeb02087e9df",
+  "contentHash": "6183900041872dffc5af1dac1ec16257711b85fb008c685c43236dc9c5f466e8",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -636,7 +636,7 @@
       "id": "sf.render.rock-ice-pebble.mesh.lod0-ceramic-ice.primitive.0",
       "indexCount": 2088,
       "indexed": true,
-      "materialHash": "cacd824ab7cc6c4bc407c6f49131e4b2925d46d23eaf75134c92045427a8c4bb",
+      "materialHash": "006c8718bd416f9e1bd91fb409d8f73fe95bd5412a2d8fa23cdec74beafcbadb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Ceramic_ice",
       "nodeId": "sf.render.rock-ice-pebble.mesh.lod0-ceramic-ice",
@@ -736,7 +736,7 @@
       "id": "sf.render.rock-ice-pebble.mesh.lod1-ceramic-ice.primitive.0",
       "indexCount": 162,
       "indexed": true,
-      "materialHash": "cacd824ab7cc6c4bc407c6f49131e4b2925d46d23eaf75134c92045427a8c4bb",
+      "materialHash": "006c8718bd416f9e1bd91fb409d8f73fe95bd5412a2d8fa23cdec74beafcbadb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Ceramic_ice",
       "nodeId": "sf.render.rock-ice-pebble.mesh.lod1-ceramic-ice",
@@ -836,7 +836,7 @@
       "id": "sf.render.rock-ice-pebble.mesh.lod2-ceramic-ice.primitive.0",
       "indexCount": 54,
       "indexed": true,
-      "materialHash": "cacd824ab7cc6c4bc407c6f49131e4b2925d46d23eaf75134c92045427a8c4bb",
+      "materialHash": "006c8718bd416f9e1bd91fb409d8f73fe95bd5412a2d8fa23cdec74beafcbadb",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Ceramic_ice",
       "nodeId": "sf.render.rock-ice-pebble.mesh.lod2-ceramic-ice",
@@ -899,22 +899,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "88376496eeb3b746e34adfda578731a54d9c655d82e730f636d2b5b729a7975c",
-      "id": "material:88376496eeb3b746e34adfda",
-      "name": "Material_Canopy",
-      "pipelineKey": "opaque:double",
-      "textures": []
-    },
-    {
-      "hash": "a5762cabfe07811549184ae09a09c1990e48b554f18847148f90263121a4ecd2",
-      "id": "material:a5762cabfe07811549184ae0",
-      "name": "Material_Stone_strata",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "cacd824ab7cc6c4bc407c6f49131e4b2925d46d23eaf75134c92045427a8c4bb",
-      "id": "material:cacd824ab7cc6c4bc407c6f4",
+      "hash": "006c8718bd416f9e1bd91fb409d8f73fe95bd5412a2d8fa23cdec74beafcbadb",
+      "id": "material:006c8718bd416f9e1bd91fb4",
       "name": "Material_Ceramic_ice",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -943,6 +929,20 @@
           "uri": null
         }
       ]
+    },
+    {
+      "hash": "88376496eeb3b746e34adfda578731a54d9c655d82e730f636d2b5b729a7975c",
+      "id": "material:88376496eeb3b746e34adfda",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "a5762cabfe07811549184ae09a09c1990e48b554f18847148f90263121a4ecd2",
+      "id": "material:a5762cabfe07811549184ae0",
+      "name": "Material_Stone_strata",
+      "pipelineKey": "opaque:front",
+      "textures": []
     },
     {
       "hash": "da6a680cb98def57b5b632687b54272016b508500d30b415176dfcfa50ba1a0a",
@@ -1644,19 +1644,19 @@
       "sha256": "d8aa2ac928fb7692a188aa9bb4d319d2bfdaa5b6e417acf64d7f895f5e3aecc1"
     },
     "sourceGlb": {
-      "bytes": 197676,
-      "sha256": "2dfc9bb2c03667de38feb256ebb4323bcda5bd8da8ba7035f38b17c909627cae",
+      "bytes": 180396,
+      "sha256": "778088645621e420e26dd1c6227d2613d7e6f1e1bddfccba52967279631add0d",
       "uri": "place_rock_ice_pebble.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 202056,
-    "sha256": "483ee9986f064767c16b9a724f9297a85fadff04eacfd6a62a4f980f195a918c",
+    "bytes": 184776,
+    "sha256": "c963db60dfb7e3f80f6e1e9f1c6778bfdcbc7c332d1783454fca828f9fe3bfc4",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2703,7 +2703,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_ice_pebble.glb"
   },
-  "runtimeHash": "20c8a4b68c395aa3b6fcaa5228030732010997e7ffba4e87063745d4c92954b0",
+  "runtimeHash": "f8478a10de1baee809e6a5ab40f400b8e72cc1166e7467fd40ae0b661ed1c168",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

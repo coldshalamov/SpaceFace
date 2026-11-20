@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "49293fe574473acdcf5e1bcb2c55d812ca5d118a1579698cbd3eeb08a87fa4bb",
+  "contentHash": "358d32af8363ffbb2b7ab8e07e551de1847069c82f009ef3de9d17ee5f510dd5",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -27,7 +27,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe00.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "fc0c3a20b82570292153c469c9abab26c3f682375f78b0b8eab85f7a3f0a7242",
       "materialPipelineKey": "opaque",
       "meshName": "pipe00",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe00",
@@ -52,7 +52,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe01.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "fc0c3a20b82570292153c469c9abab26c3f682375f78b0b8eab85f7a3f0a7242",
       "materialPipelineKey": "opaque",
       "meshName": "pipe01",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe01",
@@ -77,7 +77,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe10.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "fc0c3a20b82570292153c469c9abab26c3f682375f78b0b8eab85f7a3f0a7242",
       "materialPipelineKey": "opaque",
       "meshName": "pipe10",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe10",
@@ -102,7 +102,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe11.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "fc0c3a20b82570292153c469c9abab26c3f682375f78b0b8eab85f7a3f0a7242",
       "materialPipelineKey": "opaque",
       "meshName": "pipe11",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe11",
@@ -127,7 +127,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe20.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "fc0c3a20b82570292153c469c9abab26c3f682375f78b0b8eab85f7a3f0a7242",
       "materialPipelineKey": "opaque",
       "meshName": "pipe20",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe20",
@@ -152,7 +152,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe21.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "fc0c3a20b82570292153c469c9abab26c3f682375f78b0b8eab85f7a3f0a7242",
       "materialPipelineKey": "opaque",
       "meshName": "pipe21",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe21",
@@ -177,7 +177,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe30.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "fc0c3a20b82570292153c469c9abab26c3f682375f78b0b8eab85f7a3f0a7242",
       "materialPipelineKey": "opaque",
       "meshName": "pipe30",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe30",
@@ -202,7 +202,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe31.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
+      "materialHash": "fc0c3a20b82570292153c469c9abab26c3f682375f78b0b8eab85f7a3f0a7242",
       "materialPipelineKey": "opaque",
       "meshName": "pipe31",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipe31",
@@ -227,7 +227,7 @@
       "id": "sf.render.aftermath-frag-pipe-tangle.mesh.pipebracket.primitive.0",
       "indexCount": 48,
       "indexed": true,
-      "materialHash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
+      "materialHash": "ed77a507a94960a224fe4789377007cf6080d682c28937f54112123c121c0a60",
       "materialPipelineKey": "opaque",
       "meshName": "pipeBracket",
       "nodeId": "sf.render.aftermath-frag-pipe-tangle.mesh.pipebracket",
@@ -240,40 +240,8 @@
   "lods": [],
   "materials": [
     {
-      "hash": "c0150f1f713f896c624a3e150a64ba12585ba7f3706fe66575e9dcafae96160e",
-      "id": "material:c0150f1f713f896c624a3e15",
-      "name": "Forge_ore_barge_wk_cut",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "cd333b2cda5928c0c354680090b7bd00921bcc04d8583b5cc997d28ae451e830",
-      "id": "material:cd333b2cda5928c0c3546800",
+      "hash": "ed77a507a94960a224fe4789377007cf6080d682c28937f54112123c121c0a60",
+      "id": "material:ed77a507a94960a224fe4789",
       "name": "Forge_ore_barge_wk_frame",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -298,6 +266,38 @@
         {
           "colorSpace": "linear",
           "name": "forge_machinery_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "fc0c3a20b82570292153c469c9abab26c3f682375f78b0b8eab85f7a3f0a7242",
+      "id": "material:fc0c3a20b82570292153c469",
+      "name": "Forge_ore_barge_wk_cut",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -800,19 +800,19 @@
       "sha256": "199599e42723776cab8261722302f97275bd61702275820e70ddb823066c9ea8"
     },
     "sourceGlb": {
-      "bytes": 127904,
-      "sha256": "037c88a355c8f3ee7890c9f3507fca70553fe48df3ec6d2d9223581b5b9a77f2",
+      "bytes": 58424,
+      "sha256": "974221dab95b529fe9f13298606a78d9187cfc8b716738073193e85228d09845",
       "uri": "place_aftermath_frag_pipe_tangle.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 129468,
-    "sha256": "dd3c89c653e7cba64ce37bd40d4f7b8e76d5edbfbad4043df112d9734bda0c1a",
+    "bytes": 59988,
+    "sha256": "2160ca746ceec888b5771458abad8052db2e8017a54eb635bf1f3b03a8da95ab",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1141,7 +1141,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_aftermath_frag_pipe_tangle.glb"
   },
-  "runtimeHash": "b55a7ef0084b38af83a0c7483d3806edcf0c9a474a677f95afd91b0fc2ffafa3",
+  "runtimeHash": "1e5eb1739abfff9f01055e42d7ec802e9133292b637c2352d23c8ade53643eba",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

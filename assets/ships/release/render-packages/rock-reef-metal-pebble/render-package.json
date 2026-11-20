@@ -565,7 +565,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5dccf96eddd3d3ad791484fdf64d6e5b233777e9503a0bc2f58d640efd8ca760",
+  "contentHash": "4bbd06bbc4ab8b4260af19ae4146946f0b561f941d053382210c2a587bc44db1",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -611,7 +611,7 @@
       "id": "sf.render.rock-reef-metal-pebble.mesh.lod0-brushedmetal.primitive.0",
       "indexCount": 1692,
       "indexed": true,
-      "materialHash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
+      "materialHash": "6d27357c7842a246ef720f12bc32742c0984d37a4b4de4596d75e8f1f076a13b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_BrushedMetal",
       "nodeId": "sf.render.rock-reef-metal-pebble.mesh.lod0-brushedmetal",
@@ -711,7 +711,7 @@
       "id": "sf.render.rock-reef-metal-pebble.mesh.lod1-brushedmetal.primitive.0",
       "indexCount": 108,
       "indexed": true,
-      "materialHash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
+      "materialHash": "6d27357c7842a246ef720f12bc32742c0984d37a4b4de4596d75e8f1f076a13b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_BrushedMetal",
       "nodeId": "sf.render.rock-reef-metal-pebble.mesh.lod1-brushedmetal",
@@ -811,7 +811,7 @@
       "id": "sf.render.rock-reef-metal-pebble.mesh.lod2-brushedmetal.primitive.0",
       "indexCount": 54,
       "indexed": true,
-      "materialHash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
+      "materialHash": "6d27357c7842a246ef720f12bc32742c0984d37a4b4de4596d75e8f1f076a13b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_BrushedMetal",
       "nodeId": "sf.render.rock-reef-metal-pebble.mesh.lod2-brushedmetal",
@@ -906,8 +906,8 @@
       "textures": []
     },
     {
-      "hash": "74b914c054ab2b7acf53bc783d6b648594a9f32ee80bd8596943c3fd62d2c7a5",
-      "id": "material:74b914c054ab2b7acf53bc78",
+      "hash": "6d27357c7842a246ef720f12bc32742c0984d37a4b4de4596d75e8f1f076a13b",
+      "id": "material:6d27357c7842a246ef720f12",
       "name": "Material_BrushedMetal",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1644,19 +1644,19 @@
       "sha256": "80832b8fd515471d7516aa7af302be5bbd5135d37ecdc44a6ac82bb4c8836790"
     },
     "sourceGlb": {
-      "bytes": 256420,
-      "sha256": "e78613d31640247bc49b842356fe815a1bd6c4869eaf1b37e4287f782fbdbc51",
+      "bytes": 188544,
+      "sha256": "b245600fc76244309ffc22633343d1e3b605d01e91cf8b2eb50b1c37caa87044",
       "uri": "place_rock_reef_metal_pebble.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 260996,
-    "sha256": "81d59b4d012904cd696b9421933a51ea671e693d86cde94b6b98f802e447ea28",
+    "bytes": 193120,
+    "sha256": "93904b9c0b611f345e749f976aa855182e26cfff3793c8bbd49146746202c28c",
     "uri": "render.glb"
   },
   "runtime": {
@@ -2703,7 +2703,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_rock_reef_metal_pebble.glb"
   },
-  "runtimeHash": "0c418aebfb89a506a34347a6440ed4562f90374d68c5ea233d25f288c109658e",
+  "runtimeHash": "1d6dc365e3453e7dfcf1d41206f9de27b06d23a612e322be0fad11e912e9554c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

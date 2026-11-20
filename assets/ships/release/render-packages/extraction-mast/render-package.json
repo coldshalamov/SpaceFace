@@ -59,7 +59,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "67ba20bfa516eb2ac05eda68e211d7b97ab878c6c722ec1b8a89a84af6664f18",
+  "contentHash": "fff6279070d58d30fc23875986f88e96973a9f4d390b025f84230f8302121396",
   "dynamicGroups": [
     {
       "id": "sf.render.extraction-mast.mesh.lod0-hook-nav-port.dynamic",
@@ -117,11 +117,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a435c85356b632b35591af109a1281f54c4145bb54436006741dc53b539acf52",
+      "geometryHash": "836de18ca5a4ce1a27954a8694a4fab2bcf04ae60b80a7ade03cf663f062718d",
       "id": "sf.render.extraction-mast.mesh.lod0-armor.primitive.0",
       "indexCount": 6372,
       "indexed": true,
-      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialHash": "072c934e735b3bcaf0d22cf2ee3b36a25b99ab2d54ab1451cfe3f7ebbe75ce0d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Armor",
       "nodeId": "sf.render.extraction-mast.mesh.lod0-armor",
@@ -142,7 +142,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "322239fd456fa633379eb60485cc59e7d28749a330557062faed163e4069c4c1",
+      "geometryHash": "25951401ae65598cbe91784207dbf077f72286fe5c43600509af3b177f64124b",
       "id": "sf.render.extraction-mast.mesh.lod0-beacon-amber.primitive.0",
       "indexCount": 2736,
       "indexed": true,
@@ -167,7 +167,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c48b721e868812fc209e0fcc5bee38ea32a44e6dd17081ec87e2046f867b581c",
+      "geometryHash": "e87b8ad39e6a791be4a0d697abe156df3ae61d1b40a4dd0f7d0e4b1171f970b1",
       "id": "sf.render.extraction-mast.mesh.lod0-hook-nav-port.primitive.0",
       "indexCount": 468,
       "indexed": true,
@@ -192,11 +192,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "371e1a6802d7c06e60d61aba9ea577f0012ef46a381220f530c56d285e69522a",
+      "geometryHash": "34200818dc42dcdea0117d510db75a8d30ce0b5cc3345fca795c216389e94754",
       "id": "sf.render.extraction-mast.mesh.lod0-hull-aged.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
+      "materialHash": "c9dc74bd3167eea6154ae85f222287ca765458dbf600af89b880040a7c2d4e13",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Hull_aged",
       "nodeId": "sf.render.extraction-mast.mesh.lod0-hull-aged",
@@ -221,7 +221,7 @@
       "id": "sf.render.extraction-mast.mesh.lod0-livery.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "c12264d30e7b2c912f1bfbb9f16d4dd46ece206468223c6161b35f8a93a2d736",
+      "materialHash": "7f8dd5605a2c4bdb19f08632c819602d29fba1a8c59d0c830a9dfc8bff029646",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Livery",
       "nodeId": "sf.render.extraction-mast.mesh.lod0-livery",
@@ -242,7 +242,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "5048da5b58eef1096659cd205c6242529179698edf2ca7831cb9a8bc1d601e04",
+      "geometryHash": "2c310d2e142c8ce024916e2970265437cfc70c7e360c6d49818c1bdb287082a3",
       "id": "sf.render.extraction-mast.mesh.lod0-mechanical.primitive.0",
       "indexCount": 4548,
       "indexed": true,
@@ -267,7 +267,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "309ba64491be3ab8402126f5165d00db0e141caafe4a24250beb4fcf3a0ca2d1",
+      "geometryHash": "2e54d6ee76333e4c28d9b797547d2d5a75948df0b8132024290a32c523995532",
       "id": "sf.render.extraction-mast.mesh.lod0-mechanicaldark.primitive.0",
       "indexCount": 720,
       "indexed": true,
@@ -292,11 +292,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "76d049f63406dfeac6da6d40752d7a78f301d3ae86479e9577ac626057bf7982",
+      "geometryHash": "ab8a00abf2b471783c918c8a1d5af95e1c0a5ec531a28a1ad529173a1ce6262b",
       "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-armor.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialHash": "072c934e735b3bcaf0d22cf2ee3b36a25b99ab2d54ab1451cfe3f7ebbe75ce0d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_MAST_BEAM_Armor",
       "nodeId": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-armor",
@@ -317,11 +317,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "bbdf0ebf67fdc24726fdc06c58ed8912aa94763c2eb37b0d8b7f8c0ce78c6af2",
+      "geometryHash": "c35a7b67bad3447a3800c3ed5503ea178ceca56abcd871b196e1db2d107d919c",
       "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-warning.primitive.0",
       "indexCount": 564,
       "indexed": true,
-      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialHash": "2f5eaa7cc6864295409304afeeb09c04d6f82acff78080bdf76b2e0647a5df3b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_MAST_BEAM_Warning",
       "nodeId": "sf.render.extraction-mast.mesh.lod0-motion-mast-beam-warning",
@@ -342,11 +342,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a0c15bad0fb9bef528f09e83f868ea1ac2e55716d87ec278d9170683b4469a1b",
+      "geometryHash": "90d8fe96f4d6c7031b515fb760a736963ff2822e9e7150f09e68a4e3692754e0",
       "id": "sf.render.extraction-mast.mesh.lod0-motion-mast-rod-brushedmetal.primitive.0",
       "indexCount": 1428,
       "indexed": true,
-      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialHash": "b45dd92c03d307b57278a4da1d2f0f517219d72a806d75537827a2c5d424ae04",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_MOTION_MAST_ROD_BrushedMetal",
       "nodeId": "sf.render.extraction-mast.mesh.lod0-motion-mast-rod-brushedmetal",
@@ -367,11 +367,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e5c0ec46a83e77f229ea07b3691a4013349b6b20abb7f11bc9ffd7ba06df0e2d",
+      "geometryHash": "152323c0e8aaaa524aadd66143888055322a478c5125df6f4cdbe9ac832c2184",
       "id": "sf.render.extraction-mast.mesh.lod0-warning.primitive.0",
       "indexCount": 1836,
       "indexed": true,
-      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialHash": "2f5eaa7cc6864295409304afeeb09c04d6f82acff78080bdf76b2e0647a5df3b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Warning",
       "nodeId": "sf.render.extraction-mast.mesh.lod0-warning",
@@ -392,11 +392,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "afd94cc1d26dbd4a15057076f58aacb5b4e68f5e495c3c875c6898e3edd8af19",
+      "geometryHash": "7cacdc0efde0f8499f48bf91dc3cb84b44914a3d94483ed67f13f91b507a2236",
       "id": "sf.render.extraction-mast.mesh.lod1-armor.primitive.0",
       "indexCount": 3888,
       "indexed": true,
-      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialHash": "072c934e735b3bcaf0d22cf2ee3b36a25b99ab2d54ab1451cfe3f7ebbe75ce0d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Armor",
       "nodeId": "sf.render.extraction-mast.mesh.lod1-armor",
@@ -417,7 +417,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "450fca4ee55184c7fdcb26f31b1a468e30483fb7ad41a71b08792c22191f3675",
+      "geometryHash": "be621abd8f8aec24fe63b41d41561c1cdbba7dcb9bae0387ecf573b3f1e0846f",
       "id": "sf.render.extraction-mast.mesh.lod1-beacon-amber.primitive.0",
       "indexCount": 1356,
       "indexed": true,
@@ -442,7 +442,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "a997fd57929cef282229f9f1ac41f992d99dfcd52243c3f7dcd200f8526ef056",
+      "geometryHash": "ca8468df91984d3ffa07610de9ea6f277211db6978dc22f2156d9c9deacae1b0",
       "id": "sf.render.extraction-mast.mesh.lod1-hook-nav-port.primitive.0",
       "indexCount": 102,
       "indexed": true,
@@ -467,11 +467,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "2a72b8699e7fd25a43d221270e8f23e2ba39b53a2d9cebcb7f6bb505c5dc421a",
+      "geometryHash": "7d56ac89ff95f94153d12353ece29c8cb7d6e9a5538ba657f5391fdb7621e98b",
       "id": "sf.render.extraction-mast.mesh.lod1-hull-aged.primitive.0",
       "indexCount": 138,
       "indexed": true,
-      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
+      "materialHash": "c9dc74bd3167eea6154ae85f222287ca765458dbf600af89b880040a7c2d4e13",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Hull_aged",
       "nodeId": "sf.render.extraction-mast.mesh.lod1-hull-aged",
@@ -496,7 +496,7 @@
       "id": "sf.render.extraction-mast.mesh.lod1-livery.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "c12264d30e7b2c912f1bfbb9f16d4dd46ece206468223c6161b35f8a93a2d736",
+      "materialHash": "7f8dd5605a2c4bdb19f08632c819602d29fba1a8c59d0c830a9dfc8bff029646",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Livery",
       "nodeId": "sf.render.extraction-mast.mesh.lod1-livery",
@@ -567,11 +567,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "e1fa2a2a75d1fab0bf95b1ca63389efe922a5c4427db4c490de9353791017de8",
+      "geometryHash": "d2677c928ba5d0254d026442dc068d4d1761d5cb2712c8cdd67fec9fea9facf7",
       "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-armor.primitive.0",
       "indexCount": 276,
       "indexed": true,
-      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialHash": "072c934e735b3bcaf0d22cf2ee3b36a25b99ab2d54ab1451cfe3f7ebbe75ce0d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_MAST_BEAM_Armor",
       "nodeId": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-armor",
@@ -592,11 +592,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "801428e5185b2224c2a847a02583e2bf6af30e7d5c48c934143f2740894e065b",
+      "geometryHash": "e42f1bd5d098b13291720144b4ce4392916c40156930d79836aaf7a8b5768ccd",
       "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-warning.primitive.0",
       "indexCount": 174,
       "indexed": true,
-      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialHash": "2f5eaa7cc6864295409304afeeb09c04d6f82acff78080bdf76b2e0647a5df3b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_MAST_BEAM_Warning",
       "nodeId": "sf.render.extraction-mast.mesh.lod1-motion-mast-beam-warning",
@@ -617,11 +617,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "9e5b61bbbdf9075911be22dd790aeaf0ef7661207a4d762e971b087b868e3d43",
+      "geometryHash": "2f2f2e80ad5d1481ff77ee9da4a0fd3e8a9e8e812444ed2dc0c546652c3d469c",
       "id": "sf.render.extraction-mast.mesh.lod1-motion-mast-rod-brushedmetal.primitive.0",
       "indexCount": 570,
       "indexed": true,
-      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialHash": "b45dd92c03d307b57278a4da1d2f0f517219d72a806d75537827a2c5d424ae04",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_MOTION_MAST_ROD_BrushedMetal",
       "nodeId": "sf.render.extraction-mast.mesh.lod1-motion-mast-rod-brushedmetal",
@@ -646,7 +646,7 @@
       "id": "sf.render.extraction-mast.mesh.lod1-warning.primitive.0",
       "indexCount": 444,
       "indexed": true,
-      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialHash": "2f5eaa7cc6864295409304afeeb09c04d6f82acff78080bdf76b2e0647a5df3b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Warning",
       "nodeId": "sf.render.extraction-mast.mesh.lod1-warning",
@@ -671,7 +671,7 @@
       "id": "sf.render.extraction-mast.mesh.lod2-armor.primitive.0",
       "indexCount": 1830,
       "indexed": true,
-      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialHash": "072c934e735b3bcaf0d22cf2ee3b36a25b99ab2d54ab1451cfe3f7ebbe75ce0d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Armor",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-armor",
@@ -692,7 +692,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "70db1222a507aebf296522e6c107da3e1c336dc5b50bf04c649643ef4c9cc0e6",
+      "geometryHash": "802dc76e48591b2c652c4444d980fcf6557e2be449dbf7589b01cb1cdc25ad25",
       "id": "sf.render.extraction-mast.mesh.lod2-beacon-amber.primitive.0",
       "indexCount": 429,
       "indexed": true,
@@ -701,7 +701,7 @@
       "meshName": "LOD2_Beacon_Amber",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-beacon-amber",
       "primitiveIndex": 0,
-      "vertexCount": 364
+      "vertexCount": 365
     },
     {
       "bounds": {
@@ -717,7 +717,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "7cdf8405acf861739245196cae870a42698ddf6f0a06b43c8307774c9f4159bc",
+      "geometryHash": "5ed39ad10f454f5d83955588a96c717a341e013deaa3b5d32122f71623498aae",
       "id": "sf.render.extraction-mast.mesh.lod2-hook-nav-port.primitive.0",
       "indexCount": 42,
       "indexed": true,
@@ -746,7 +746,7 @@
       "id": "sf.render.extraction-mast.mesh.lod2-hull-aged.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
+      "materialHash": "c9dc74bd3167eea6154ae85f222287ca765458dbf600af89b880040a7c2d4e13",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Hull_aged",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-hull-aged",
@@ -771,7 +771,7 @@
       "id": "sf.render.extraction-mast.mesh.lod2-livery.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "c12264d30e7b2c912f1bfbb9f16d4dd46ece206468223c6161b35f8a93a2d736",
+      "materialHash": "7f8dd5605a2c4bdb19f08632c819602d29fba1a8c59d0c830a9dfc8bff029646",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Livery",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-livery",
@@ -792,7 +792,7 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "dccc7ec4e7b516e84419e879f67e1d57f8eca96c8f4bd0c3df4e9a474ec1f4a2",
+      "geometryHash": "e0e20081b3ce127d9e1fb54afd6999605a4217c667ac2d94708c660e86ab8dee",
       "id": "sf.render.extraction-mast.mesh.lod2-mechanical.primitive.0",
       "indexCount": 318,
       "indexed": true,
@@ -842,11 +842,11 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "29f5f4e34c4dca0588497bcf11e4863efbb3b1dd29863345c6002e64c3e72d59",
+      "geometryHash": "0c95ad84f3412677835a1f3c6cfd54639fd523bbb39ec8a9b2928f8906c44fe0",
       "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-armor.primitive.0",
       "indexCount": 132,
       "indexed": true,
-      "materialHash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
+      "materialHash": "072c934e735b3bcaf0d22cf2ee3b36a25b99ab2d54ab1451cfe3f7ebbe75ce0d",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_MAST_BEAM_Armor",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-armor",
@@ -871,7 +871,7 @@
       "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-warning.primitive.0",
       "indexCount": 66,
       "indexed": true,
-      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialHash": "2f5eaa7cc6864295409304afeeb09c04d6f82acff78080bdf76b2e0647a5df3b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_MAST_BEAM_Warning",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-motion-mast-beam-warning",
@@ -896,7 +896,7 @@
       "id": "sf.render.extraction-mast.mesh.lod2-motion-mast-rod-brushedmetal.primitive.0",
       "indexCount": 252,
       "indexed": true,
-      "materialHash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
+      "materialHash": "b45dd92c03d307b57278a4da1d2f0f517219d72a806d75537827a2c5d424ae04",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_MOTION_MAST_ROD_BrushedMetal",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-motion-mast-rod-brushedmetal",
@@ -921,7 +921,7 @@
       "id": "sf.render.extraction-mast.mesh.lod2-warning.primitive.0",
       "indexCount": 348,
       "indexed": true,
-      "materialHash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
+      "materialHash": "2f5eaa7cc6864295409304afeeb09c04d6f82acff78080bdf76b2e0647a5df3b",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Warning",
       "nodeId": "sf.render.extraction-mast.mesh.lod2-warning",
@@ -934,9 +934,41 @@
   "lods": [],
   "materials": [
     {
-      "hash": "18d0ea13c3be0a94dbbd42b5fbd7606e0af20cfa8f54531e2d6316854afd4ce1",
-      "id": "material:18d0ea13c3be0a94dbbd42b5",
-      "name": "Material_BrushedMetal",
+      "hash": "072c934e735b3bcaf0d22cf2ee3b36a25b99ab2d54ab1451cfe3f7ebbe75ce0d",
+      "id": "material:072c934e735b3bcaf0d22cf2",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "2f5eaa7cc6864295409304afeeb09c04d6f82acff78080bdf76b2e0647a5df3b",
+      "id": "material:2f5eaa7cc6864295409304af",
+      "name": "Material_Warning",
       "pipelineKey": "opaque:front",
       "textures": [
         {
@@ -971,38 +1003,6 @@
       "name": "Material_Emissive_Amber",
       "pipelineKey": "opaque:front",
       "textures": []
-    },
-    {
-      "hash": "3fdf83f5cb4a7ed64bc4eb10daa7d230674d9a4fe6c89acbc77b5876e62261ae",
-      "id": "material:3fdf83f5cb4a7ed64bc4eb10",
-      "name": "Material_Armor",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
     },
     {
       "hash": "5ef013365e942f1ac873c307ca54a13fa701007aa7b44366c2578f5021f209c3",
@@ -1044,40 +1044,8 @@
       "textures": []
     },
     {
-      "hash": "ab17b13dc8559ae23c6f811ce161feb70cde245b1a0b56a5276df68c3fcd4508",
-      "id": "material:ab17b13dc8559ae23c6f811c",
-      "name": "Material_Warning",
-      "pipelineKey": "opaque:front",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "forge_panel_albedo",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "forge_panel_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "c12264d30e7b2c912f1bfbb9f16d4dd46ece206468223c6161b35f8a93a2d736",
-      "id": "material:c12264d30e7b2c912f1bfbb9",
+      "hash": "7f8dd5605a2c4bdb19f08632c819602d29fba1a8c59d0c830a9dfc8bff029646",
+      "id": "material:7f8dd5605a2c4bdb19f08632",
       "name": "Material_Accent",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -1108,8 +1076,40 @@
       ]
     },
     {
-      "hash": "eb6bbae95702790bb530b9a9b183b944e44e4379df1d81330fc0fd136fd9a95f",
-      "id": "material:eb6bbae95702790bb530b9a9",
+      "hash": "b45dd92c03d307b57278a4da1d2f0f517219d72a806d75537827a2c5d424ae04",
+      "id": "material:b45dd92c03d307b57278a4da",
+      "name": "Material_BrushedMetal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "forge_panel_albedo",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "forge_panel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c9dc74bd3167eea6154ae85f222287ca765458dbf600af89b880040a7c2d4e13",
+      "id": "material:c9dc74bd3167eea6154ae85f",
       "name": "Material_Hull_aged",
       "pipelineKey": "opaque:front",
       "textures": [
@@ -3000,19 +3000,19 @@
       "sha256": "20ac7bee8695fd39221ccda7fdc5792abbdd262adbb9f5220a53111cf129c024"
     },
     "sourceGlb": {
-      "bytes": 408692,
-      "sha256": "3d05ff38798bfe7c8237d91669d7411650b33eba2728bd541f8d6bd1b1430d13",
+      "bytes": 362352,
+      "sha256": "a629e25c61f448f0ec31201bc99c684d9c77be6a48ed83e1e1ae6c5f7d06725e",
       "uri": "place_extraction_mast.glb"
     },
     "sourceManifest": {
-      "bytes": 352463,
-      "sha256": "22abde706123a67ee3822da396af009785272aa23d58cc5f3b88346bf01e9c6a",
+      "bytes": 352460,
+      "sha256": "7b29a65ee148539881ae9782eccdf6b975daa858f6ccb23db9554e3ec5c293f7",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 415508,
-    "sha256": "7476c3fd4aa6d3f6fc2f5a77f1240e8a7fea51a98754406d4163e858ddef7880",
+    "bytes": 369128,
+    "sha256": "1f4b5a3c75581ce0745ab71ce481cc53b4dbad64c502277569d790fc74e90380",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4418,7 +4418,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_extraction_mast.glb"
   },
-  "runtimeHash": "4c43e4334c644840fc4d23ba782e10742762f494a173417fb198cc7c8331f6ec",
+  "runtimeHash": "3c52e1fd60a2fc7c2e79645e113945c8564fb4431297f70a5172a722ae3df5ef",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
