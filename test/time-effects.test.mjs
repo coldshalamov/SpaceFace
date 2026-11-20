@@ -1080,7 +1080,9 @@ function testWriterAndRuntimeContracts(auditWriters, formatFindings) {
   }
   assert.match(
     main,
-    /bus\.on\('game:new',[\s\S]*const startNewGameTransition\s*=\s*\(\)\s*=>\s*\{[\s\S]*runTransitionGuard\.begin\('new-game'\)[\s\S]*startNewGame\([\s\S]*registry\.get\('save'\)[\s\S]*deferRunTransition\(startNewGameTransition\)[\s\S]*startNewGameTransition\(\)/,
+    // The transition closure may carry parameters (it takes the prepared opening room for the
+    // retry path); the serialized order behind an active save restore is what is pinned here.
+    /bus\.on\('game:new',[\s\S]*const startNewGameTransition\s*=\s*\([^)]*\)\s*=>\s*\{[\s\S]*runTransitionGuard\.begin\('new-game'\)[\s\S]*startNewGame\([\s\S]*registry\.get\('save'\)[\s\S]*deferRunTransition\(startNewGameTransition\)[\s\S]*startNewGameTransition\(\)/,
     'the entire new-game token/start operation must serialize behind an active save restore',
   );
   assert((main.match(/runTransitionGuard\.isCurrent\(transitionToken\)/g) || []).length >= 7,
