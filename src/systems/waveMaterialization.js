@@ -409,6 +409,14 @@ export function materializeWaveBatch(ctx, request) {
       // forward, without a runtime transform correction fighting the native helm.
       if (spec.data.ironKraken) spec.rot = Math.atan2(anchor.z - spec.pos.z, anchor.x - spec.pos.x);
       spec.data.ai = spec.data.ai || {};
+      // CW-AI item 6 — a Swarm gate group fights as a flight, not twenty soloists. A lightweight
+      // wing id lets the existing auto-squad recipes split the group into four-ship frames.
+      // Role-problem clusters keep their authored squadId (autoSquadKeyFor prefers it) and fodder
+      // cohorts keep their recipe grouping (gatherCohorts reads squadId, not wingId).
+      if (req.swarm === true && !spec.data.ai.wingId) {
+        const flightGroup = typeof ingressGroup === 'string' && ingressGroup ? ingressGroup : 'gate';
+        spec.data.ai.wingId = `swarm:${Number.isInteger(req.wave) ? req.wave : 0}:${flightGroup}`;
+      }
       spec.data.ai.spawnContext = 'encounter';
       // Admission owns the initial hold: the AI may run before the next wave update.
       if (req.swarm === true) {
