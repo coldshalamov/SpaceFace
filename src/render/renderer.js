@@ -7379,16 +7379,69 @@ export function tickShieldShellClock(pool, state) {
   return setShieldShellClock(material, state && state.simTime, motionReduce);
 }
 
+// Presentation-owned lamp-flash latches live on state.render.lampFlashes
+// ({ ship: Map, dock: Map } of entityId -> { until, generation }). Render never
+// writes entity.data — the worker lane mirrors entities read-only, and
+// snapshotEntity hashes data — so the event bus handlers park the flash window
+// here instead of on the entity. A record also stamps the occupant generation
+// it was written for so a recycled id cannot inherit a dead occupant's flash.
+function lampFlashChannels(state) {
+  if (!state || typeof state !== 'object') return null;
+  const render = state.render || (state.render = {});
+  let channels = render.lampFlashes;
+  if (!channels || !(channels.ship instanceof Map) || !(channels.dock instanceof Map)) {
+    channels = { ship: new Map(), dock: new Map() };
+    render.lampFlashes = channels;
+  }
+  return channels;
+}
+
+// A dead occupant's latch must not outlive it: prune records stamped for the
+// destroyed generation. A receipt without a generation clears by id outright —
+// the death itself is the authoritative fact. Generation-stamped pruning keeps
+// a replacement occupant's fresh flash alive through journal replay.
+function prunePresentationLampFlashes(state, id, generation) {
+  const flashes = state && state.render && state.render.lampFlashes;
+  if (!flashes) return;
+  const ship = flashes.ship && flashes.ship.get(id);
+  if (ship && (generation == null || ship.generation === generation)) flashes.ship.delete(id);
+  const dock = flashes.dock && flashes.dock.get(id);
+  if (dock && (generation == null || dock.generation === generation)) flashes.dock.delete(id);
+}
+
+/**
+ * Resolve the active lamp-flash window end for an entity: the presentation
+ * latch written by the bus handler (generation-checked) OR the sim-owned
+ * entity.data flag, which render reads but never writes. Returns null when no
+ * source is flashing. An expired or generation-stale latch is pruned here —
+ * deleting a Map record is presentation bookkeeping, not a sim write.
+ */
+function lampFlashUntilFor(entity, flashes, flagKey, untilKey, now, fallbackWindow) {
+  if (!entity) return null;
+  let until = null;
+  const record = flashes ? flashes.get(entity.id) : null;
+  if (record) {
+    if (record.generation === (entity.occupantGeneration ?? null)) until = record.until;
+    else flashes.delete(entity.id); // a different occupant owns this id now
+  }
+  const data = entity.data;
+  if (data && data[flagKey]) {
+    const dataUntil = Number.isFinite(data[untilKey]) ? data[untilKey] : (now + fallbackWindow);
+    until = until == null ? dataUntil : Math.max(until, dataUntil);
+  }
+  return until;
+}
+
 /**
  * Compute the near-miss flash multiplier for a ship's running/nav lights (PL-01).
  * Emits two flashes across the flash window, respecting reduced flash,
- * and expires lampsFlashing when the duration is over.
+ * and expires the presentation latch when the duration is over.
  */
-export function computeNearMissLampFlash(entity, now, reducedFlash = false) {
-  if (!entity || !entity.data || !entity.data.lampsFlashing) return 1.0;
-  const until = Number.isFinite(entity.data.lampFlashUntil) ? entity.data.lampFlashUntil : (now + 2.0);
+export function computeNearMissLampFlash(entity, now, reducedFlash = false, flashes = null) {
+  const until = lampFlashUntilFor(entity, flashes, 'lampsFlashing', 'lampFlashUntil', now, 2.0);
+  if (until == null) return 1.0;
   if (now >= until) {
-    entity.data.lampsFlashing = false;
+    if (flashes) flashes.delete(entity.id);
     return 1.0;
   }
   const duration = 2.0;
@@ -7407,17 +7460,17 @@ export function computeNearMissLampFlash(entity, now, reducedFlash = false) {
 /**
  * Compute the applause dock lamp flash multiplier for a station (PL-08).
  * Emits two flashes across the flash window, respecting reduced flash,
- * and expires dockLampsFlashing when the duration is over.
+ * and expires the presentation latch when the duration is over.
  */
-export function computeStationDockLampFlash(stationEntity, now, reducedFlash = false) {
-  if (!stationEntity || !stationEntity.data || !stationEntity.data.dockLampsFlashing) return 1.0;
+export function computeStationDockLampFlash(stationEntity, now, reducedFlash = false, flashes = null) {
   // Packet PL-08: on 0.15 s, off 0.15 s, on 0.15 s, off; the window is 0.45 s.
   const duration = 0.45;
-  const until = Number.isFinite(stationEntity.data.dockLampFlashUntil)
-    ? stationEntity.data.dockLampFlashUntil
-    : (now + duration);
+  const until = lampFlashUntilFor(
+    stationEntity, flashes, 'dockLampsFlashing', 'dockLampFlashUntil', now, duration,
+  );
+  if (until == null) return 1.0;
   if (now >= until) {
-    stationEntity.data.dockLampsFlashing = false;
+    if (flashes) flashes.delete(stationEntity.id);
     return 1.0;
   }
   const elapsed = Math.max(0, duration - (until - now));
@@ -7430,9 +7483,9 @@ export function computeStationDockLampFlash(stationEntity, now, reducedFlash = f
 /**
  * Apply the applause dock lamp flash to all blinkers/lamps on the station mesh hierarchy.
  */
-export function applyStationDockLampFlash(mesh, stationEntity, now, reducedFlash = false) {
+export function applyStationDockLampFlash(mesh, stationEntity, now, reducedFlash = false, flashes = null) {
   if (!mesh || !stationEntity) return 1.0;
-  const mult = computeStationDockLampFlash(stationEntity, now, reducedFlash);
+  const mult = computeStationDockLampFlash(stationEntity, now, reducedFlash, flashes);
   if (mesh.traverse) {
     mesh.traverse((child) => {
       const bl = child.userData && child.userData.blink;
@@ -7601,6 +7654,10 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes, state = pool && 
     : null;
   const entities = classifiedFrame ? classifiedFrame.shipAux : frameOrEntities;
   if (!Array.isArray(entities)) return;
+  // Presentation-owned flash latches (worker lane carries the flash on the bus,
+  // not in entity.data); resolved once outside the per-entity loop.
+  const shipLampFlashes = state && state.render && state.render.lampFlashes
+    && state.render.lampFlashes.ship instanceof Map ? state.render.lampFlashes.ship : null;
   let shieldCount = 0;
   let navCount = 0;
   let shieldMatrixDirty = false;
@@ -7680,8 +7737,8 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes, state = pool && 
       const mat = Array.isArray(source.material) ? source.material[0] : source.material;
       const base = mat && mat.emissive && mat.emissive.isColor ? mat.emissive : (mat && mat.color && mat.color.isColor ? mat.color : SHIP_AUX_COLOR.set(0x88eeff));
       let intensity = mat && Number.isFinite(mat.emissiveIntensity) ? mat.emissiveIntensity : 1;
-      if (entity.data && entity.data.lampsFlashing) {
-        intensity *= computeNearMissLampFlash(entity, now, reducedFlash);
+      if ((entity.data && entity.data.lampsFlashing) || (shipLampFlashes && shipLampFlashes.has(entity.id))) {
+        intensity *= computeNearMissLampFlash(entity, now, reducedFlash, shipLampFlashes);
       }
       SHIP_AUX_COLOR.copy(base).multiplyScalar(Math.max(0, intensity));
       if (mat && Number.isFinite(mat.opacity)) SHIP_AUX_COLOR.multiplyScalar(Math.max(0, mat.opacity));
@@ -20052,39 +20109,47 @@ export const render = {
     onBus('massline:selfSling', (payload) => applyMasslineReleaseCameraCue(cam, state, payload));
     onBus('massline:throw', (payload) => applyMasslineReleaseCameraCue(cam, state, payload));
     // PL-02 fender bender: the bumped hull's alarm strobe uses the same lamp channel (sim data does not
-    // reach the drawn entity, so the event carries it).
+    // reach the drawn entity, so the event carries it). The flash window is a presentation latch on
+    // state.render — never a write into entity.data.
     onBus('traffic:fenderBenderAlarm', (payload) => {
       if (!payload || !payload.entityId) return;
       const ent = state && state.entities && state.entities.get(payload.entityId);
       if (!ent) return;
-      if (!ent.data) ent.data = {};
-      ent.data.lampsFlashing = true;
-      ent.data.lampFlashUntil = Number.isFinite(payload.until)
-        ? payload.until
-        : ((Number(state && state.simTime) || 0) + (Number(payload.duration) || 2.0));
+      const flashes = lampFlashChannels(state);
+      if (!flashes) return;
+      flashes.ship.set(payload.entityId, {
+        generation: ent.occupantGeneration ?? null,
+        until: Number.isFinite(payload.until)
+          ? payload.until
+          : ((Number(state && state.simTime) || 0) + (Number(payload.duration) || 2.0)),
+      });
     });
     onBus('traffic:nearMissFlash', (payload) => {
       if (!payload || !payload.entityId) return;
       const ent = state && state.entities && state.entities.get(payload.entityId);
-      if (ent) {
-        if (!ent.data) ent.data = {};
-        ent.data.lampsFlashing = true;
-        ent.data.lampFlashUntil = Number.isFinite(payload.until)
+      if (!ent) return;
+      const flashes = lampFlashChannels(state);
+      if (!flashes) return;
+      flashes.ship.set(payload.entityId, {
+        generation: ent.occupantGeneration ?? null,
+        until: Number.isFinite(payload.until)
           ? payload.until
-          : ((Number(state && state.simTime) || 0) + (Number(payload.duration) || 2.0));
-      }
+          : ((Number(state && state.simTime) || 0) + (Number(payload.duration) || 2.0)),
+      });
     });
     onBus('station:dockLampFlash', (payload) => {
       if (!payload) return;
       const targetId = payload.entityId || payload.stationId;
       const ent = state && state.entities && state.entities.get && targetId ? state.entities.get(targetId) : null;
-      if (ent) {
-        if (!ent.data) ent.data = {};
-        ent.data.dockLampsFlashing = true;
-        ent.data.dockLampFlashUntil = Number.isFinite(payload.until)
+      if (!ent) return;
+      const flashes = lampFlashChannels(state);
+      if (!flashes) return;
+      flashes.dock.set(targetId, {
+        generation: ent.occupantGeneration ?? null,
+        until: Number.isFinite(payload.until)
           ? payload.until
-          : ((Number(state && state.simTime) || 0) + (Number(payload.duration) || 0.45));
-      }
+          : ((Number(state && state.simTime) || 0) + (Number(payload.duration) || 0.45)),
+      });
     });
     onBus('camera:zoom', ({ delta, level }) => { if (level != null) cam.setZoom(level); else cam.setZoom(state.camera.zoom + (delta || 0)); });
     onBus('game:started', () => { if (cam.endDeathCam) cam.endDeathCam(); if (cam.snapToPlayer) cam.snapToPlayer(); });
@@ -26512,6 +26577,9 @@ export const render = {
 
   _onPresentationEntityDestroyed(receipt = {}) {
     const { id } = receipt;
+    prunePresentationLampFlashes(
+      this.state, id, receipt.occupantGeneration ?? receipt.entity?.occupantGeneration ?? null,
+    );
     const still = resolveWorldPresentationEntity(this.state, id);
     const previousMesh = this._meshes.get(id);
     if (!destructionReceiptMatchesPresentationOwner(receipt, still, previousMesh)) {
@@ -30261,8 +30329,10 @@ export const render = {
               globalInfrastructureMotion.updateGateMotion(entity, mesh, simTime, frameDt, playerEntity, _worldSiteA11y);
             } else {
               globalInfrastructureMotion.updateStationMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
-              if (entity.data && entity.data.dockLampsFlashing) {
-                applyStationDockLampFlash(mesh, entity, simTime, _worldSiteA11y?.reducedFlash);
+              const dockFlashes = this.state && this.state.render && this.state.render.lampFlashes
+                && this.state.render.lampFlashes.dock instanceof Map ? this.state.render.lampFlashes.dock : null;
+              if ((entity.data && entity.data.dockLampsFlashing) || (dockFlashes && dockFlashes.has(entity.id))) {
+                applyStationDockLampFlash(mesh, entity, simTime, _worldSiteA11y?.reducedFlash, dockFlashes);
               }
             }
           } else if (typeName === 'place' && machineAwake) {

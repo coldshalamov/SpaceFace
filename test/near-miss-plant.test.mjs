@@ -299,10 +299,24 @@ test('near-miss lamp presentation: two flashes, respecting reduced flash, and cl
   assert.ok(reducedPulse < flash1, 'reduced flash is strictly dimmer than normal flash');
   assert.ok(reducedPulse > 1.2, 'reduced flash still visibly indicates the flash');
 
-  // 7. Expiry at or past lampFlashUntil: flag cleared, multiplier 1.0
+  // 7. Expiry at or past lampFlashUntil: multiplier 1.0. Render never writes the
+  // sim-owned flag — the plant clears it on its own tick.
   const expired = computeNearMissLampFlash(civ, 102.0, false);
   assert.equal(expired, 1.0, 'expired lamp returns to resting multiplier');
-  assert.equal(civ.data.lampsFlashing, false, 'lampsFlashing cleared upon expiry');
+  assert.equal(civ.data.lampsFlashing, true, 'render does not write the sim lamp flag');
+
+  // 8. Presentation latch path (worker lane): the event parks the flash window on
+  // a render-owned map keyed by id + occupant generation, then prunes on expiry.
+  const drawnCiv = makeCivilian('civ_flash_2');
+  drawnCiv.occupantGeneration = 7;
+  const flashes = new Map([['civ_flash_2', { generation: 7, until: 102.0 }]]);
+  assert.ok(computeNearMissLampFlash(drawnCiv, 100.1, false, flashes) > 3.0, 'latch drives pulse 1');
+  assert.equal(computeNearMissLampFlash(drawnCiv, 102.0, false, flashes), 1.0, 'expired latch rests');
+  assert.equal(flashes.has('civ_flash_2'), false, 'expired latch pruned');
+  // A recycled id under a different occupant generation must not inherit the flash.
+  const recycled = new Map([['civ_flash_2', { generation: 6, until: 102.0 }]]);
+  assert.equal(computeNearMissLampFlash(drawnCiv, 100.1, false, recycled), 1.0, 'stale-generation latch ignored');
+  assert.equal(recycled.has('civ_flash_2'), false, 'stale latch pruned');
 });
 
 test('aux nav pool sync modulates drawn nav-light intensity on near-miss flash', () => {

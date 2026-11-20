@@ -158,7 +158,19 @@ test('station dock lamp presentation: on 0.15, off 0.15, on 0.15, then off', () 
   const reduced = computeStationDockLampFlash(station, 100.10, true);
   assert.ok(reduced < flash1 && reduced > 1.4, 'reduced flash dimmer but visible');
   assert.equal(computeStationDockLampFlash(station, 100.45, false), 1.0);
-  assert.equal(station.data.dockLampsFlashing, false);
+  assert.equal(station.data.dockLampsFlashing, true, 'render does not write the sim lamp flag');
+
+  // Presentation latch path (worker lane): a keyed render-owned record drives the
+  // window identically and is pruned on expiry — entity.data is never written.
+  const drawnStation = makeStation('station_latch');
+  drawnStation.occupantGeneration = 3;
+  const flashes = new Map([['station_latch', { generation: 3, until: 100.45 }]]);
+  assert.ok(computeStationDockLampFlash(drawnStation, 100.10, false, flashes) >= 4.0, 'latch drives pulse 1');
+  assert.equal(computeStationDockLampFlash(drawnStation, 100.46, false, flashes), 1.0);
+  assert.equal(flashes.has('station_latch'), false, 'expired latch pruned');
+  const recycled = new Map([['station_latch', { generation: 2, until: 100.45 }]]);
+  assert.equal(computeStationDockLampFlash(drawnStation, 100.10, false, recycled), 1.0, 'stale-generation latch ignored');
+  assert.equal(recycled.has('station_latch'), false, 'stale latch pruned');
 });
 
 test('applyStationDockLampFlash modulates mesh blinker emissiveIntensity', () => {
@@ -179,5 +191,5 @@ test('applyStationDockLampFlash modulates mesh blinker emissiveIntensity', () =>
   assert.ok(applyStationDockLampFlash(group, station, 100.38, false) >= 4.0);
   assert.equal(applyStationDockLampFlash(group, station, 100.46, false), 1.0);
   assert.equal(lens.material.emissiveIntensity, 3.4);
-  assert.equal(station.data.dockLampsFlashing, false);
+  assert.equal(station.data.dockLampsFlashing, true, 'render does not write the sim lamp flag');
 });
