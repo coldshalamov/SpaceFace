@@ -65,14 +65,18 @@ export function createCommandDock(cfg) {
   });
 
   function setActive(id) {
-    el.querySelectorAll('[data-nav]').forEach((t) => {
-      const on = t.getAttribute('data-nav') === id;
+    const tabs = [...el.querySelectorAll('[data-nav]')];
+    let anyActive = false;
+    tabs.forEach((t) => {
+      const on = id != null && t.getAttribute('data-nav') === id;
+      if (on) anyActive = true;
       t.classList.toggle('is-active', on);
       t.setAttribute('aria-selected', on ? 'true' : 'false');
       if (on) t.setAttribute('aria-current', 'true'); else t.removeAttribute('aria-current');
       t.setAttribute('tabindex', on ? '0' : '-1');
       if (on) t.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); // roving tab stop
     });
+    if (!anyActive && tabs[0]) tabs[0].setAttribute('tabindex', '0');
   }
 
   // Arrow / Home / End move between destinations (Enter+Space activate natively on <button>).

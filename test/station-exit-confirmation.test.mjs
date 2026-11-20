@@ -759,8 +759,9 @@ for (const scenario of [
 }
 
 
-// Returning from Manifest uncovers the same berth. Only another physical arrival
-// should redirect a player from their chosen destination to a ready mission.
+// Returning from Manifest uncovers the same berth. A fresh physical arrival always lands on
+// the calm Concourse (with ready work badged on the Jobs door), while returning from a child
+// screen preserves the door the pilot had open.
 {
   installDom();
   const ctx = makeCtx(4242);
@@ -768,7 +769,7 @@ for (const scenario of [
     title: 'Return convoy', destStationId: 'station_helios', objectives: [] }];
   const { app, rootEl } = mountStationApp(ctx);
   app.onShow();
-  assert.equal(rootEl.dataset.operation, 'contracts', 'the first dock surfaces ready work');
+  assert.equal(rootEl.dataset.operation, 'concourse', 'the first dock lands on the arrival concourse');
   app.navigate('bar');
   app.onHide();
   app.onShow();
@@ -776,9 +777,9 @@ for (const scenario of [
   app.onHide();
   ctx.bus.emit('dock:undocked', { committed: true, source: 'test' });
   app.onShow();
-  assert.equal(rootEl.dataset.operation, 'contracts', 'the next physical arrival surfaces work again');
+  assert.equal(rootEl.dataset.operation, 'concourse', 'the next physical arrival lands on the concourse again');
   app.dispose();
-  console.log('ok   returning from Manifest preserves the active bar until a new dock');
+  console.log('ok   returning from Manifest preserves the active door until a new dock');
 }
 
 console.log('station-exit-confirmation: all acceptance tests PASS');

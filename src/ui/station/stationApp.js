@@ -36,6 +36,8 @@ import { createShipworksScreen } from './screens/shipworks.js';
 import { createIndustryScreen } from './screens/industry.js';
 import { createBarScreen } from './screens/bar.js';
 import { createLedgerScreen } from './screens/ledger.js';
+import { createConcourseScreen } from './screens/concourse.js';
+import { buildServiceBundle } from './concourseModel.js';
 import { SECTORS } from '../../data/sectors.js';
 import { stationInfoFor } from '../../systems/missions.js';
 import { FACTION_META } from '../../data/factions.js';
@@ -169,6 +171,7 @@ const DESTINATIONS = [
  *  longer glosses ellipsised at rest on every tab); the rail plate and aria-label carry the same
  *  line, so nothing is lost to the seat. */
 export const STATION_HELP = {
+  concourse: ['Concourse', 'Service your ship and choose a door into the station.'],
   market: ['Market', 'Prices, demand and stock.'],
   shipworks: ['Shipworks', 'Pick a ship or slot, then fit it.'],
   industry: ['Industry', 'Trace raw stock into refined goods.'],
@@ -341,6 +344,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const popEl = app.querySelector('.sx-pop');
   const helpEl = app.querySelector('.sxb-help');
   const footEl = app.querySelector('.sxb-ops');
+  const facilityRailEl = app.querySelector('.of-facility-rail');
   const commsEl = app.querySelector('.sx-comms');
   const commsToggle = app.querySelector('.sx-comms__toggle');
   const commsCount = app.querySelector('.sx-comms__count');
@@ -370,6 +374,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     root: app, trigger: app.querySelector('.so-command-trigger'),
     canOpen: () => shown && !document.hidden && rootEl.isConnected,
     getCommands: () => [
+      { label: 'Concourse', detail: 'Return to the arrival concourse and ship services', keywords: 'home arrival service doors', icon: 'signal',
+        run: () => navigate('concourse') },
       ...DESTINATIONS.map(d => ({ label: d.label, detail: HELP[d.id]?.[1] || 'Open station facility', icon: d.id,
         run: () => { navigate(d.id); dock.el.querySelector(`[data-nav="${d.id}"]`)?.focus({ preventScroll: true }); } })),
       { label: 'Sell cargo', detail: 'Open your hold in Sell mode', keywords: 'trade unload ore', icon: 'hold', run: () => navigate('market', { tradeMode: 'sell', cargoOnly: true }) },
@@ -526,6 +532,32 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     }
   };
   window.addEventListener('keydown', onEscCapture, true);
+
+  const onDigitShortcut = (ev) => {
+    if (!shown || commands.isOpen || !popEl.hidden || kiteOpen) return;
+    if (ev.altKey || ev.ctrlKey || ev.metaKey || ev.repeat) return;
+    const t = ev.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    if (activeId === 'bar') return; // Bar owns 1–3 for dialogue choices
+    const m = /^(?:Digit|Numpad)([1-5])$/.exec(ev.code || '') || /^([1-5])$/.exec(ev.key || '');
+    if (!m) return;
+    const n = Number(m[1]);
+    if (activeId === 'concourse') {
+      if (concourseScreen.openDoorByKey(n)) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+      return;
+    }
+    const order = ['market', 'contracts', 'shipworks', 'bar', 'industry'];
+    const target = order[n - 1];
+    if (target) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      navigate(target);
+    }
+  };
+  window.addEventListener('keydown', onDigitShortcut);
 
   // ---------- departure readiness ----------
   function departureNow() {
@@ -709,6 +741,36 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   });
 
   // ---------- screens ----------
+  const concourseScreen = createConcourseScreen(ctx, {
+    serviceQuote: opts.serviceQuote,
+    peopleTarget: 'bar',
+    getAttention: () => lastMissionAttention,
+    resolveHandoffTarget: (tab) => resolveTarget(tab),
+    onOpenDoor: (dest, options = {}) => navigate(dest, options),
+    onServiceAll: () => runAction('service-all'),
+    onServiceOne: (id) => {
+      if (id === 'resupply') {
+        const bundle = buildServiceBundle(state(), playerEntity(state()), opts.serviceQuote);
+        const item = bundle.items.find((i) => i.id === 'resupply');
+        if (item && item.done) {
+          if (ctx?.bus) ctx.bus.emit('toast', { text: 'Munitions already stocked', kind: 'info', ttl: 2 });
+          return;
+        }
+        if (item && item.actionable && item.amount > 0) {
+          runAction('resupply', { amount: item.amount });
+          return;
+        }
+      }
+      runAction(id);
+    },
+    onDismissHandoff: () => {
+      if (ctx && ctx.screenMemory) ctx.screenMemory.set('station', { firstDockHandoffDismissed: true });
+      renderHandoff();
+    },
+    onHandoffAction: (act) => runAction(act),
+  });
+  screenCache.set('concourse', concourseScreen);
+
   function screenFor(dest) {
     if (screenCache.has(dest.id)) return screenCache.get(dest.id);
     let screen;
@@ -762,8 +824,39 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   syncKiteEntry();
 
   function navigate(id, options = {}) {
+    if (id === 'people') id = 'bar';
+    if (id === 'concourse') {
+      const leavingKite = kiteOpen;
+      if (leavingKite) closeKite(false);
+      if (titleBlock) titleBlock.hidden = true;
+      if (facilityRailEl) facilityRailEl.hidden = true;
+      if (activeId === 'concourse') {
+        concourseScreen.onShow();
+        return;
+      }
+      const prev = activeId && screenCache.get(activeId);
+      if (!leavingKite && prev && typeof prev.onHide === 'function') { try { prev.onHide(); } catch (_) {} }
+      activeId = 'concourse';
+      app.dataset.operation = 'concourse';
+      app.dataset.view = 'concourse';
+      if (rootEl && rootEl.dataset) {
+        rootEl.dataset.operation = 'concourse';
+        rootEl.dataset.view = 'concourse';
+      }
+      dock.setActive(null);
+      bodyEl.removeAttribute('aria-labelledby');
+      applyDestinationRegister('concourse');
+      bodyEl.replaceChildren(concourseScreen.el);
+      concourseScreen.onShow();
+      effects.navigate();
+      if (ctx && ctx.bus && prev) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+      closePop();
+      return;
+    }
     const dest = DESTINATIONS.find((d) => d.id === id);
     if (!dest) return;
+    if (titleBlock) titleBlock.hidden = false;
+    if (facilityRailEl) facilityRailEl.hidden = false;
     const leavingKite = kiteOpen;
     if (leavingKite) closeKite(false);
     if (id === activeId) {
@@ -949,8 +1042,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     // INF-095: a hidden app takes no navigation — it would corrupt the active tab for the
     // next dock. onShow re-renders the current destination from live state.
     if (!shown) return;
-    const destination = DESTINATIONS.some((d) => d.id === request.destination)
-      ? request.destination : null;
+    const raw = request.destination === 'people' ? 'bar' : request.destination;
+    const destination = raw === 'concourse' || DESTINATIONS.some((d) => d.id === raw)
+      ? raw : null;
     if (!destination) return;
     navigate(destination, request.options && typeof request.options === 'object' ? request.options : {});
   });
@@ -1195,12 +1289,35 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (ctx && ctx.bus) ctx.bus.emit('dock:undocked', { committed: true, intent: 'explicit', source: 'sx-dock' });
   }
 
-  function runAction(id) {
+  function runAction(id, actionOpts = {}) {
     const bus = ctx && ctx.bus;
     if (id === 'undock') {
       const dep = departureNow();
       if (dep.state !== 'ready') { openDeparturePop(); return false; } // surface the risk, don't strand them
       commitUndock();
+      return true;
+    }
+    if (id === 'service-all') {
+      const bundle = buildServiceBundle(state(), playerEntity(state()), opts.serviceQuote);
+      if (bundle.ready) {
+        if (bus) bus.emit('toast', { text: 'Ship is ready — hull, fuel, and munitions are topped off', kind: 'info', ttl: 2 });
+        return false;
+      }
+      if (!bundle.actionableItems.length) {
+        if (bus) bus.emit('toast', { text: bundle.blockedReason || 'Ship service unavailable here', kind: 'warn', ttl: 3 });
+        return false;
+      }
+      if (bus) {
+        for (const item of bundle.actionableItems) {
+          bus.emit('ui:service', {
+            type: item.type,
+            amount: Number.isFinite(Number(item.amount)) && Number(item.amount) > 0 ? Number(item.amount) : undefined,
+          });
+        }
+        bus.emit('audio:cue', { id: 'ui_click' });
+      }
+      refresh();
+      setTimeout(refresh, 60);
       return true;
     }
     if (id === 'decant') {
@@ -1237,7 +1354,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         if (quote) void runInsuranceService(quote);
         return false;
       }
-      bus.emit('ui:service', { type, amount: quote && Number.isFinite(Number(quote.amount)) ? Number(quote.amount) : undefined });
+      const explicitAmount = Number.isFinite(Number(actionOpts.amount)) && Number(actionOpts.amount) > 0
+        ? Number(actionOpts.amount) : null;
+      bus.emit('ui:service', {
+        type,
+        amount: explicitAmount != null
+          ? explicitAmount
+          : (quote && Number.isFinite(Number(quote.amount)) ? Number(quote.amount) : undefined),
+      });
       bus.emit('audio:cue', { id: 'ui_click' });
     }
     setTimeout(refresh, 60);
@@ -1674,6 +1798,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     // Station operation screens are event-driven and contain real pointer targets. Rebuilding them
     // on that cadence replaces hovered nodes and briefly leaves new Shipworks labels at their
     // unprojected/default position until the following animation frame.
+    if (activeId === 'concourse') {
+      concourseScreen.refresh();
+      return;
+    }
     if (options.periodic) return;
     const dest = DESTINATIONS.find((d) => d.id === activeId);
     if (dest) {
@@ -1707,10 +1835,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
 
   renderStatus();
   berth.show(state());
-  // Restore the last destination this save left on, unless mission attention re-routes.
+  // Arrival lands on the calm Concourse — five doors, not a dashboard.
   arriving = true; // the first navigate does not settle the panel: arrive() choreographs it
-  const remembered = ctx && ctx.screenMemory && ctx.screenMemory.read('station', 'destination', null);
-  navigate(DESTINATIONS.some((d) => d.id === remembered) ? remembered : 'market');
+  navigate('concourse');
   arriving = false;
   let pendingArrival = true;
   function resetDockAttention() {
@@ -1718,15 +1845,15 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     attentionAutoOpenedThisDock = false;
   }
   for (const event of ['game:new', 'game:newGame', 'save:loaded']) subscribe(event, resetDockAttention);
-  // Undock (moment 5): the panel and the foot k-out in 140 ms before uiRoot's existing fade.
+  // Undock (moment 5): the panel fades out cleanly; keep footer controls live until screen closes.
   subscribe('dock:undocked', () => {
     resetDockAttention();
     bodyEl.classList.add('k-out');
-    footEl.classList.add('k-out');
   });
 
   function activeScreen() {
     if (kiteOpen) return kiteScreen;
+    if (activeId === 'concourse') return concourseScreen;
     const dest = DESTINATIONS.find((d) => d.id === activeId);
     return dest ? screenCache.get(dest.id) : null;
   }
@@ -1738,11 +1865,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     onShow() {
       shown = true; commands.setEnabled(true); effects.show();
       lawFineDesk.setActive(true);
-      // A child screen such as Manifest covers this same dock. Returning must resume the
-      // player's chosen destination, even when a ready mission still deserves a badge.
+      // A child screen such as Manifest covers this same dock. Returning resumes the player's
+      // active view; a fresh dock arrival always opens on the Concourse.
       const enteringDock = pendingArrival;
       bodyEl.classList.remove('k-out');
       footEl.classList.remove('k-out');
+      if (enteringDock && activeId !== 'concourse') {
+        navigate('concourse');
+      }
       renderStatus();
       berth.show(state());
       berth.setActive(activeId !== 'shipworks');
@@ -1759,30 +1889,24 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       presentOwedStoreSentence();
       arrivalPresenter.show();
       lifePresenter.show();
-      const allowAutoOpen = enteringDock && !kiteOpen && !attentionAutoOpenedThisDock;
-      const attention = applyDockAttention({ allowAutoOpen, refreshActive: false });
-      if (!(allowAutoOpen && attention?.autoOpen)) {
-        const scr = activeScreen();
-        if (scr && typeof scr.onShow === 'function') {
-          try {
-            scr.onShow({
-              ...ctx,
-              missionId: lastMissionAttention && lastMissionAttention.focusMissionId,
-              attention: lastMissionAttention,
-              focusSurface: lastMissionAttention?.surface,
-            });
-          } catch (_) {}
-        }
+      // Badge doors/rail on arrival without yanking the player off the Concourse.
+      applyDockAttention({ allowAutoOpen: false, refreshActive: false });
+      const scr = activeScreen();
+      if (scr && typeof scr.onShow === 'function') {
+        try {
+          scr.onShow({
+            ...ctx,
+            missionId: lastMissionAttention && lastMissionAttention.focusMissionId,
+            attention: lastMissionAttention,
+            focusSurface: lastMissionAttention?.surface,
+          });
+        } catch (_) {}
       }
-      // First focus lands on the active dock tile. screenManager focuses the first focusable in DOM
-      // order when a screen has not chosen one, and the topbar's HOLD gauge button precedes the
-      // dock — so every keyboard-driven arrival painted a focus ring on the cargo readout. The tile
-      // is the roving-tabindex owner the dock already maintains; focusing it changes no tabindex.
-      const activeTile = dock.el && dock.el.querySelector('.sx-tile.is-active');
+      // First focus lands cleanly on the active dock tile (or primary service/door on Concourse).
+      const activeTile = activeId === 'concourse'
+        ? (concourseScreen.el.querySelector('.sx-cc-door') || concourseScreen.el.querySelector('.sx-cc-svc__primary'))
+        : (dock.el && dock.el.querySelector('.sx-tile.is-active'));
       if (activeTile) {
-        // Mark this arrival focus as quiet, the station's and not the player's: the wide-rail
-        // caption plate (station.css, 1701+ × 901+) stays off for it, so it can't cover the body at
-        // rest. The first key on the tab, or focus leaving it, hands the focus back to the player.
         activeTile.setAttribute('data-sx-quiet-focus', '');
         activeTile.addEventListener('keydown', clearQuietFocus);
         activeTile.addEventListener('blur', clearQuietFocus);
@@ -1830,6 +1954,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       window.removeEventListener('resize', refreshReceiptPlacement);
       rootEl.removeEventListener('scroll', refreshReceiptPlacement, true);
       window.removeEventListener('keydown', onEscCapture, true);
+      window.removeEventListener('keydown', onDigitShortcut);
       if (offExit) offExit();
       subscriptions.splice(0).forEach((off) => off());
       try { dock.dispose && dock.dispose(); } catch (_) {}
