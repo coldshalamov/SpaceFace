@@ -24,7 +24,7 @@ function fieldTest(name, body) {
   });
 }
 
-function boot({ powerFire = 'hold', bindings = {} } = {}) {
+function boot({ powerFire = 'aim', bindings = {} } = {}) {
   const sim = createSimulation({ seed: 5172026, bus: createBus(), systems: [input, fields] });
   const { state } = sim;
   state.mode = 'flight';
@@ -65,7 +65,7 @@ function attachWorkerTouch(t) {
 }
 
 fieldTest('Rig toggles on key-down while W+D steer; repeats and key-up neither retrigger nor steal movement', () => {
-  for (const powerFire of ['hold', 'press']) {
+  for (const powerFire of ['aim', 'press']) {
     const t = boot({ powerFire });
     t.key('KeyW', true); t.key('KeyD', true); t.key('Digit5', true); t.step();
     assertCone(t, true, `${powerFire}: first press`);
@@ -158,7 +158,7 @@ fieldTest('focus loss and modal resume do not synthesize a Rig toggle or replay 
 });
 
 fieldTest('Shove deploys its real repulsor and requests detonation on press, never on repeat or release', () => {
-  for (const powerFire of ['hold', 'press']) {
+  for (const powerFire of ['aim', 'press']) {
     const t = boot({ powerFire });
     t.key('Digit2', true); t.step();
     const deployed = () => t.events.filter((e) => e.name === 'fields:deployed' && e.payload.kind === 'repulsor');
@@ -246,7 +246,7 @@ fieldTest('worker touch preserves quick Shove pulses while aimed Pull still prev
 });
 
 test('only aimed powers obey the existing release-preview preference, including legacy saved action names', () => {
-  const state = { settings: { gameplay: { powerFire: 'hold' } } };
+  const state = { settings: { gameplay: { powerFire: 'aim' } } };
   for (const verb of ['pull', 'pin', 'bomb', 'deployWell', 'deployMassSeed', 'chargeThrow']) {
     assert.equal(powerUsesReleasePreview(state, verb), true, verb);
   }

@@ -18,6 +18,8 @@ function boot() {
   const sim = createSimulation({ seed: 4931, bus: createBus(), systems: [input] });
   const { state } = sim;
   state.mode = 'flight';
+  // R17 (2026-11-20): powers act on press by default; this file pins the opt-in "Aim first".
+  state.settings.gameplay.powerFire = 'aim';
   const p = sim.spawn({ ...makeShipEntitySpec('ship_kestrel', { pos: { x: 0, z: 0 }, rot: 0 }), isPlayer: true });
   state.playerId = p.id;
   state.world = { ...(state.world || {}), currentSectorId: 'sector_a' };
@@ -30,7 +32,7 @@ function boot() {
 
 test('a held key grips and previews; the key-up fires it once; a whole tap fires at once', () => {
   const t = boot();
-  assert.equal(powersFireOnPress(t.state), false, 'hold to preview is the shipped default');
+  assert.equal(powersFireOnPress(t.state), false, 'Aim first holds to preview');
   t.key('Digit1', true);
   assert.deepEqual(t.step(), [], 'held: nothing fires yet');
   assert.equal(heldPower(t.state), 'pull', 'the preview reads the grip');

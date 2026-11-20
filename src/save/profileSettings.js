@@ -64,8 +64,9 @@ export const PROFILE_GAMEPLAY_PICKERS = Object.freeze({
   gameSpeed: (g) => normalizeGameSpeed(g.gameSpeed),
   velocityVectoring: (g) => g.velocityVectoring !== false,
   pauseOnFocusLoss: (g) => g.pauseOnFocusLoss !== false,
-  // Row 493: Settings → Gameplay → Powers. Only 'press' changes behaviour (powersFireOnPress).
-  powerFire: (g) => (g.powerFire === 'press' ? 'press' : 'hold'),
+  // Settings → Gameplay → "Aim first". Powers act on press; only 'aim' opts into hold-to-preview
+  // (powersFireOnPress). The old stored default 'hold' normalises to 'press' (ruling 2026-11-20).
+  powerFire: (g) => (g.powerFire === 'aim' ? 'aim' : 'press'),
   // OVH-01b: level-up cards at once (fight at 15 %) instead of at the round's end. Opt-in.
   pilotPickAtOnce: (g) => g.pilotPickAtOnce === true,
   // FB-001 opt-in chase assist; flightV3 gates on strict `=== true`.

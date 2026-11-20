@@ -300,8 +300,8 @@ export function controlSections(state) {
       // The five powers (owner 2026-10-22): one row each, in number-row order. Row 493: how a
       // power key behaves follows Settings → Gameplay → Powers.
       powersFireOnPress(state)
-        ? ['Powers: each is used the moment you press its key (Settings → Gameplay → Powers)', null, '1–5']
-        : ['Powers: hold a key to outline every body it will move and where it goes; let go to use it', null, '1–5'],
+        ? ['Powers: each acts the moment you press its key, at the cursor', null, '1–5']
+        : ['Powers (aim first is on): hold Pull, Pin or Bomb to see what it moves, let go to use it', null, '1–5'],
       power('pull', 'pull'),
       power('shove', 'shove'),
       power('pin', 'pin'),

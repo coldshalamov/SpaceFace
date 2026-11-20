@@ -92,11 +92,13 @@ export function savedCodesForPower(saved, power) {
 }
 
 /**
- * Does the player prefer aimed powers to fire on press instead of previewing until release?
- * The existing saved setting is unchanged. Shove and Rig always answer the press independently.
+ * Every power acts on press, at the cursor (director ruling 2026-11-20: one input rule for all
+ * five). Settings → Gameplay → "Aim first" (`powerFire: 'aim'`) is the opt-in: Pull, Pin and Bomb
+ * then preview while held and act on release. Profiles saved before the ruling stored the old
+ * default 'hold'; it reads as press, because that was never a choice the player made.
  */
 export function powersFireOnPress(state) {
-  return !!(state && state.settings && state.settings.gameplay && state.settings.gameplay.powerFire === 'press');
+  return !(state && state.settings && state.settings.gameplay && state.settings.gameplay.powerFire === 'aim');
 }
 
 /** Only aimed powers create a release-to-use grip, including their saved legacy action names. */

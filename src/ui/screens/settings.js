@@ -565,7 +565,7 @@ const RESET_SKIP = Object.freeze({
 const RESET_FALLBACKS = Object.freeze({
   gameplay: Object.freeze({
     steeringView: 'overhead', racingDistance: 58, racingHeight: 22, racingLookAhead: 36,
-    velocityVectoring: true, damageNumbers: false, powerFire: 'hold', pilotPickAtOnce: false,
+    velocityVectoring: true, damageNumbers: false, powerFire: 'press', pilotPickAtOnce: false,
   }),
   accessibility: Object.freeze({ textScale: 1 }),
 });
@@ -1125,11 +1125,8 @@ export const settingsScreen = {
         ['off', 'Off'],
       ], (v) => this._set(ctx, 'gameplay', 'targetAssistStrength', v));
       // Only aimed powers use this preference. Pulse/toggle gestures stay immediate.
-      rowSelect('Aim Pull, Pin and Bomb', () => (g.powerFire === 'press' ? 'press' : 'hold'), [
-        ['hold', 'Hold to preview, release to use'],
-        ['press', 'Use when pressed'],
-      ], (v) => this._set(ctx, 'gameplay', 'powerFire', v));
-      build.note('In preview mode, hold Pull, Pin or Bomb to preview, then release to use. A quick tap also works. Use when pressed activates them immediately. Shove always acts when pressed. Rig stays on after one tap and turns off with the next tap.');
+      rowToggle('Powers: aim first', () => g.powerFire === 'aim', (v) => this._set(ctx, 'gameplay', 'powerFire', v ? 'aim' : 'press'));
+      build.note('Off: every power acts the moment you press its key, at the cursor. On: hold Pull, Pin or Bomb to see what it will move, and let go to use it. Shove and Plow always act on the press.');
       rowToggle('Velocity vectoring assist', () => g.velocityVectoring !== false, (v) => this._set(ctx, 'gameplay', 'velocityVectoring', v));
       build.note('Turn your drift toward the nose while thrusting. Off leaves momentum unassisted.');
       const masslineFamilyOn = massline2Flag('enabled');

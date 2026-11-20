@@ -131,7 +131,7 @@ test('Furnace flight cues show progress, the usable controls and the next action
     const hint = () => furnaceWorksiteFocus(job, state).reason;
     job.objectiveProgress = 2;
     state.bombs = { rack: { cells: [{ id: 'bomb_frag', count: 1 }] } };
-    state.settings.gameplay.powerFire = 'hold';
+    state.settings.gameplay.powerFire = 'aim';
     assert.equal(hint(), '2/4 marked repair-mite sites clear. Use Frag from the east. Hold Bomb. Dashes warn of a mite moving clear. Double rings warn of Casket damage.');
     state.settings.gameplay.powerFire = 'press';
     state.bombs.rack.cells[0].count = 0;
