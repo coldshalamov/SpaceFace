@@ -186,6 +186,7 @@ import {
   entityHasDurableMarkers,
   entityIsDurableCandidate,
   findLiveEntityForRecord,
+  isAmbientSlotRecord,
   markRecordDestroyed,
   missionIdentityOf,
   normalizeRecord,
@@ -479,6 +480,36 @@ const AMBUSH_SPAWN_MIN_RADIUS = 1500;
 const AMBUSH_SPAWN_MAX_RADIUS = 2300;
 const ZONE_HOSTILE_PLAYER_CLEARANCE = 1200; // zone-anchored hostiles never spawn this close to the player
 const AMBIENT_HEADROOM = 8; // REVAMP 2.1 — max live-ship slots ambient may reserve; the rest (MAX-8) stays for encounters
+// Ambient cast (WORLD slice 2): a sector's standing hostiles are rolled ONCE, then persist as
+// slots. Survivors come back where they live; a killed member's slot stays empty until its
+// replacement arrives through one of the sector's gates, one game day later. Never re-rolled,
+// never forgotten (the old 180 s memory window re-rolled a fresh crowd; one tombstone emptied
+// the sector for good).
+export const AMBIENT_REPLACE_DELAY_S = 600;
+const AMBIENT_REFILL_SCAN_TICKS = 300;
+const AMBIENT_GATE_ARRIVAL_OFFSET_WU = 160;
+const AMBIENT_MAX_VACANCIES = 16;
+
+/** Repair a saved ambient-cast ledger: { [sectorId]: { target, vacancies:[{diedAtT, home, ...}], refills } }. */
+export function normalizeAmbientCast(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const sectorId of Object.keys(raw)) {
+    const row = raw[sectorId];
+    if (!row || typeof row !== 'object') continue;
+    const vacancies = Array.isArray(row.vacancies) ? row.vacancies
+      .filter((v) => v && typeof v === 'object' && Number.isFinite(v.diedAtT)
+        && v.home && Number.isFinite(v.home.x) && Number.isFinite(v.home.z))
+      .slice(-AMBIENT_MAX_VACANCIES)
+      .map((v) => JSON.parse(JSON.stringify(v))) : [];
+    out[sectorId] = {
+      target: Number.isFinite(row.target) ? Math.max(0, Math.floor(row.target)) : 0,
+      vacancies,
+      refills: Number.isFinite(row.refills) ? Math.max(0, Math.floor(row.refills)) : 0,
+    };
+  }
+  return out;
+}
 const CRITICAL_SPAWN_RETRY_TICKS = 15;
 const WORLD_RECORD_GC_TICKS = 60;
 // Observational proximity scans run at 30 Hz. Every output of _tickResidency /
@@ -1046,6 +1077,7 @@ export const world = {
     if (!p || p.id == null) return;
     const e = this.state.entities.get(p.id);
     if (!e) return;
+    this._noteAmbientVacancy(e);
     const d = e.data || (e.data = {});
     if (d.tethysEntranceRunId === TETHYS_BLACK_MARKET_RUN.runId) return;
     // Boss path already recorded outcome:defeated — do not clobber with destroyed.
@@ -1861,12 +1893,16 @@ export const world = {
         if (abortIfStale()) return;
         yield 'materialize:dressing';
         if (abortIfStale()) return;
-        // Only re-roll ambient combatants when this sector has no prior durable NPC/convoy history.
-        if (!rematerialized.hadCombatHistory) {
+        // The ambient cast rolls once per sector, ever (world.ambientCast). Afterwards survivors
+        // come back from their records and vacancies refill through a gate after a game day.
+        if (this._ambientRollWanted(sectorId, rematerialized)) {
           yield* this._spawnEnemiesChunks(sector, active, rng, stale);
           if (abortIfStale()) return;
           this._spawnBossIfDue(sector, active, rng);
         } else {
+          yield* this._spawnEnemiesChunks(sector, active, rng, stale, { ambient: false });
+          if (abortIfStale()) return;
+          this._refillAmbientVacancies(sector, active);
           // Boss still respects discovery.bossDefeated when no boss record was rematerialized.
           if (!rematerialized.spawnedBoss) this._spawnBossIfDue(sector, active, rng);
         }
@@ -2013,6 +2049,7 @@ export const world = {
           this.helpers.hash32(state.meta.seed, sectorId, epoch, 'full_extra_boss'));
         this._spawnBossIfDue(sector, active, bossRng);
       }
+      this._applyAmbientCastPlan(sector, active, rematerialized, null);
       this._ensureOpticStructures(sector, active);
       active.fullExtrasBuilt = true;
       return;
@@ -2023,8 +2060,7 @@ export const world = {
     state.world.rng = this.helpers.mulberry32(this.helpers.hash32(state.meta.seed, sectorId, epoch, 'full_extra'));
     const rng = state.world.rng;
     this._spawnDressing(sector, active, rng);
-    if (!rematerialized.hadCombatHistory) {
-      this._spawnEnemies(sector, active, rng);
+    if (this._applyAmbientCastPlan(sector, active, rematerialized, rng)) {
       this._spawnBossIfDue(sector, active, rng);
     } else if (!rematerialized.spawnedBoss) {
       this._spawnBossIfDue(sector, active, rng);
@@ -2338,6 +2374,15 @@ export const world = {
         }
         aliveConvoyRecords++;
       }
+      const ambientSlot = e.data && e.data.ambientSlot;
+      if (ambientSlot && typeof ambientSlot === 'object' && ambientSlot.home) {
+        // A standing cast member is remembered where it lives, at rest — not wherever its
+        // last dogfight left it, drifting ballistically for the hours the player is away.
+        captured.extra = { ...(captured.extra || {}), ambientSlot: JSON.parse(JSON.stringify(ambientSlot)) };
+        captured.pos = { x: ambientSlot.home.x, z: ambientSlot.home.z };
+        captured.vel = { x: 0, z: 0 };
+        captured.angVel = 0;
+      }
       upsertRecord(bag, captured);
       if (e.data) e.data.worldRecordId = captured.recordId;
       // Register the stamp with the counted lane — the delete path above registers its clear;
@@ -2389,16 +2434,23 @@ export const world = {
     const deferredRecordIds = restoreEnvelopeRecordIds(state);
     let spawned = 0;
     let hadCombatHistory = false;
+    let hadAliveNpc = false;
+    const legacyAmbientIds = [];
     let spawnedBoss = false;
     let processed = 0;
     for (const rec of list) {
       if ((++processed & 7) === 0) {
         yield 'materialize:records-batch';
-        if (aborted()) return { spawned, hadCombatHistory, spawnedBoss };
+        if (aborted()) return { spawned, hadCombatHistory, hadAliveNpc, legacyAmbientIds, spawnedBoss };
       }
       if (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.isBoss) {
         hadCombatHistory = true;
       }
+      // Standing population, as opposed to history: a living NPC that is not a boss. A dead
+      // tombstone no longer blocks a sector's first ambient roll (it used to empty it for good).
+      const standingNpc = rec.kind === RECORD_KIND.NPC && !rec.isBoss && rec.alive !== false
+        && rec.outcome !== 'destroyed' && rec.outcome !== 'defeated';
+      if (standingNpc) hadAliveNpc = true;
       // A marker-bound wreck's live body belongs to aftermathWrecks — the marker is its durable
       // record and sector:enter respawns the full hulk (pool, provenance, drift). Materializing
       // the thin record shell beside it was the D89 duplicate. World-owned AFTERMATH rows (the
@@ -2436,8 +2488,13 @@ export const world = {
         if (!active.enemies) active.enemies = [];
         if (!active.enemies.includes(ent.id)) active.enemies.push(ent.id);
       }
+      // A pre-ledger save's ordinary hostile: adopted into the cast below if the sector has none.
+      if (standingNpc && ent.type === 'ship' && !isAmbientSlotRecord(rec) && !rec.missionId
+        && rec.recordSource !== 'sector_embodiment' && ent.data && !ent.data.ambientSlot) {
+        legacyAmbientIds.push(ent.id);
+      }
     }
-    return { spawned, hadCombatHistory, spawnedBoss };
+    return { spawned, hadCombatHistory, hadAliveNpc, legacyAmbientIds, spawnedBoss };
   },
 
   /**
@@ -2602,6 +2659,9 @@ export const world = {
     // contract so the bucket answer stays current for this rematerialized durable.
     syncEntitySectorMembership(state && state.entityIndex, ent);
     this._decorateOrrinWitnessRecorder(ent, advanced);
+    if (isAmbientSlotRecord(advanced) && ent.data) {
+      ent.data.ambientSlot = JSON.parse(JSON.stringify(advanced.extra.ambientSlot));
+    }
     this._stampHomeSector(ent, advanced.homeSectorId || sectorId);
     // Restore pose after stamp (global — never re-add sector origin). Catch-up is simTime-closed-form.
     if (ent.pos && advanced.pos) {
@@ -4920,15 +4980,15 @@ export const world = {
   },
 
   // Enemy spawns sized by enemyDensity / enemyLevel via makeEnemySpawnSpec (combat).
-  _spawnEnemies(sector, active, rng) {
-    for (const _ of this._spawnEnemiesChunks(sector, active, rng)) { /* inline */ }
+  _spawnEnemies(sector, active, rng, opts = {}) {
+    for (const _ of this._spawnEnemiesChunks(sector, active, rng, null, opts)) { /* inline */ }
   },
 
   /**
    * Generator twin of _spawnEnemies: yields every 8 spawned combatants so the restore lane
    * paints inside a dense ambient roll. The sync wrapper drains inline — identical rng draws.
    */
-  *_spawnEnemiesChunks(sector, active, rng, stale = null) {
+  *_spawnEnemiesChunks(sector, active, rng, stale = null, opts = {}) {
     if (isRacingCorridorSession(this.state)) return;
     const aborted = () => !!(stale && stale());
     // If sectorSim has drifted this sector while the player was away, use the drifted density/
@@ -4938,8 +4998,12 @@ export const world = {
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
     const density = sec.enemyDensity || 0;
     if (density <= 0) return;
+    // A sector whose cast is already on the ledger never re-rolls it: survivors rematerialize from
+    // their records and vacancies refill through a gate (_refillAmbientVacancies). Only the
+    // heat-driven bounty hunters below still roll per entry.
+    const rollAmbient = opts.ambient !== false;
     const di = dangerIndex(sec);
-    const count = Math.min(10, Math.round(density * 8 + di * 2 + rng() * 1.5));
+    const count = rollAmbient ? Math.min(10, Math.round(density * 8 + di * 2 + rng() * 1.5)) : 0;
     const [lvLo, lvHi] = sector.enemyLevel || [1, 2];
 
     // REVAMP 2.1 — ambient is a spawnBudget CLIENT with static headroom: reserve at most AMBIENT_HEADROOM
@@ -4950,7 +5014,7 @@ export const world = {
     const budget = this.helpers && this.helpers.spawnBudget;
     const ambientRequester = `world:ambient:${sector.id}`;
     let grant = Math.min(count, AMBIENT_HEADROOM);
-    if (budget && typeof budget.request === 'function') grant = budget.request(grant, ambientRequester);
+    if (grant > 0 && budget && typeof budget.request === 'function') grant = budget.request(grant, ambientRequester);
     const enemiesBefore = active.enemies.length;
 
     // Purposeful presence (WORLD_OVERHAUL_2_1): place ambient hostiles/patrols onto NAMED zones —
@@ -4994,6 +5058,12 @@ export const world = {
         if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, ambientRequester);
         this._stampHomeSector(ent, sector.id);
         this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, intent.archetypeId || 'npc', active);
+        this._stampAmbientSlot(ent, {
+          typeId: intent.archetypeId, level: clamp(intent.level, lvLo, lvHi + 2),
+          factionId: intent.factionId || ent.factionId || null, context: intent.context,
+          squadId: intent.squadId, doctrine: intent.doctrine, formation: intent.formation,
+          zoneId: intent.zoneId, zoneName: intent.zoneName,
+        });
         active.enemies.push(ent.id);
         if ((++spawned & 7) === 0) {
           yield 'materialize:enemies-batch';
@@ -5015,6 +5085,7 @@ export const world = {
         if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, ambientRequester);
         this._stampHomeSector(ent, sector.id);
         this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, typeId || 'npc', active);
+        this._stampAmbientSlot(ent, { typeId, level: clamp(level, lvLo, lvHi), factionId: ent.factionId || null, context: 'ambient' });
         active.enemies.push(ent.id);
         if ((++spawned & 7) === 0) {
           yield 'materialize:enemies-batch';
@@ -5023,10 +5094,12 @@ export const world = {
       }
     }
     if (aborted()) return;
+    const spawnedAmbient = active.enemies.length - enemiesBefore;
+    // The roll happened once: the sector's cast is now on the ledger and is never re-rolled.
+    if (rollAmbient) this._ambientCastFor(sector.id, true).target = spawnedAmbient;
     // Return any reserved-but-unspent ambient slots (safe-zone skips / no valid pos) so the
     // encounterDirector can use them. Reserve/release keeps the shared cap honest (REVAMP 2.1 risk #1).
     if (budget && typeof budget.releaseSome === 'function') {
-      const spawnedAmbient = active.enemies.length - enemiesBefore;
       if (spawnedAmbient < grant) budget.releaseSome(ambientRequester, grant - spawnedAmbient);
     }
     // WANTED hunters (V2 §20b / cut-list #15): if the player is hot, bounty-hunter lawful patrols
@@ -5109,6 +5182,168 @@ export const world = {
     ent.data.recordCreatedTick = this.state.tick | 0;
     registerEntityWorldRecordId(this.state && this.state.entityIndex, ent);
     return recordId;
+  },
+
+  // ---------------------------------------------------------------------------------------------
+  // Ambient cast (WORLD slice 2). state.world.ambientCast[sectorId] = { target, vacancies, refills }.
+  // Present ⇒ the sector rolled its standing hostiles once and never rolls them again.
+  // ---------------------------------------------------------------------------------------------
+
+  _ambientCastFor(sectorId, create = false) {
+    const world = this.state && this.state.world;
+    if (!world || !sectorId) return null;
+    if (!world.ambientCast || typeof world.ambientCast !== 'object') {
+      if (!create) return null;
+      world.ambientCast = {};
+    }
+    let cast = world.ambientCast[sectorId];
+    if (!cast && create) {
+      cast = world.ambientCast[sectorId] = { target: 0, vacancies: [], refills: 0 };
+    }
+    return cast || null;
+  },
+
+  /** Stamp a standing cast member with its slot: who it is and where it lives. */
+  _stampAmbientSlot(ent, info = {}) {
+    if (!ent || !ent.data) return null;
+    const home = info.home && Number.isFinite(info.home.x) && Number.isFinite(info.home.z)
+      ? { x: info.home.x, z: info.home.z }
+      : { x: ent.pos ? ent.pos.x : 0, z: ent.pos ? ent.pos.z : 0 };
+    const slot = { home };
+    for (const key of ['typeId', 'level', 'factionId', 'context', 'squadId', 'doctrine', 'formation', 'zoneId', 'zoneName']) {
+      if (info[key] != null) slot[key] = info[key];
+    }
+    ent.data.ambientSlot = slot;
+    return slot;
+  },
+
+  /**
+   * First FULL build of a sector decides whether its ambient cast rolls. Rolls exactly once: a
+   * sector with a ledger never rolls again; a pre-ledger save with living hostiles adopts them as
+   * the cast instead of rolling a second crowd on top.
+   */
+  _ambientRollWanted(sectorId, rematerialized = {}) {
+    if (this._ambientCastFor(sectorId, false)) return false;
+    const legacy = Array.isArray(rematerialized.legacyAmbientIds) ? rematerialized.legacyAmbientIds : [];
+    if (rematerialized.hadAliveNpc || legacy.length) {
+      const cast = this._ambientCastFor(sectorId, true);
+      for (const id of legacy) {
+        const ent = this.state.entities.get(id);
+        if (!ent || ent.alive === false) continue;
+        const d = ent.data || {};
+        this._stampAmbientSlot(ent, {
+          typeId: d.enemyTypeId || d.enemyId || d.defId, level: d.level,
+          factionId: ent.factionId, context: d.ai && d.ai.spawnContext,
+          squadId: d.ai && d.ai.squadId, zoneId: d.ai && d.ai.zoneId,
+        });
+        cast.target++;
+      }
+      return false;
+    }
+    return true;
+  },
+
+  /** Sync twin used by the REDUCED→FULL promote. Returns true when the cast rolled now. */
+  _applyAmbientCastPlan(sector, active, rematerialized, rng) {
+    const roll = this._ambientRollWanted(sector.id, rematerialized);
+    if (rng) this._spawnEnemies(sector, active, rng, roll ? {} : { ambient: false });
+    if (!roll) this._refillAmbientVacancies(sector, active);
+    return roll && !!rng;
+  },
+
+  /** A standing cast member died: its slot opens, and a replacement is due a game day later. */
+  _noteAmbientVacancy(e) {
+    const slot = e && e.data && e.data.ambientSlot;
+    if (!slot || typeof slot !== 'object') return;
+    const sectorId = e.homeSectorId || e.data.homeSectorId;
+    const cast = this._ambientCastFor(sectorId, true);
+    if (!cast) return;
+    if (e.data._ambientVacancyNoted) return;
+    e.data._ambientVacancyNoted = true;
+    const simTime = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    cast.vacancies.push({ ...JSON.parse(JSON.stringify(slot)), diedAtT: simTime });
+    if (cast.vacancies.length > AMBIENT_MAX_VACANCIES) cast.vacancies.shift();
+  },
+
+  /**
+   * Fill vacancies whose replacement is due. A replacement never appears from nothing: it
+   * arrives at the gate nearest its slot's home and is stamped with that home. Returns arrivals.
+   */
+  _refillAmbientVacancies(sector, active) {
+    const state = this.state;
+    const cast = sector && this._ambientCastFor(sector.id, false);
+    if (!cast || !Array.isArray(cast.vacancies) || !cast.vacancies.length || !active) return 0;
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return 0;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const due = cast.vacancies.filter((v) => v && Number.isFinite(v.diedAtT) && now >= v.diedAtT + AMBIENT_REPLACE_DELAY_S);
+    if (!due.length) return 0;
+    // Gate rows are { id, to, pos }; the live gate body supplies its radius when present.
+    const gates = (active.gates || []).map((row) => {
+      if (!row || typeof row !== 'object' || !row.pos) return null;
+      const body = state.entities.get(row.id);
+      return { id: row.id, pos: row.pos, radius: (body && body.radius) || 40 };
+    }).filter(Boolean);
+    if (!gates.length) return 0; // no door, no arrival — the slot waits
+    const sec = effectiveSectorFor(state, sector.id) || sector;
+    const [lvLo, lvHi] = sector.enemyLevel || [1, 2];
+    const seed = (state.meta && state.meta.seed) || 1;
+    const budget = this.helpers.spawnBudget;
+    let arrived = 0;
+    for (const v of due) {
+      const home = v.home && Number.isFinite(v.home.x) ? v.home : gates[0].pos;
+      let gate = gates[0]; let best = Infinity;
+      for (const g of gates) { const d = dist2(g.pos, home); if (d < best) { best = d; gate = g; } }
+      const dx = home.x - gate.pos.x, dz = home.z - gate.pos.z;
+      const len = Math.hypot(dx, dz) || 1;
+      const off = (gate.radius || 40) + AMBIENT_GATE_ARRIVAL_OFFSET_WU;
+      const pos = { x: gate.pos.x + (dx / len) * off, z: gate.pos.z + (dz / len) * off };
+      const requester = `world:ambient:${sector.id}`;
+      if (budget && typeof budget.request === 'function' && budget.request(1, requester) <= 0) break;
+      const typeId = v.typeId || this._enemyPool(sector)[0];
+      const spec = makeEnemySpawnSpec(typeId, clamp(Number.isFinite(v.level) ? v.level : lvLo, lvLo, lvHi + 2), pos, {
+        factionId: v.factionId || undefined, startedTick: state.tick,
+      });
+      if (!spec) { if (budget && budget.releaseSome) budget.releaseSome(requester, 1); continue; }
+      spec.data = spec.data || {};
+      spec.data.ai = spec.data.ai || {};
+      for (const key of ['squadId', 'doctrine', 'formation', 'zoneId', 'zoneName']) {
+        if (v[key] != null) spec.data.ai[key] = v[key];
+      }
+      tagAiSpawnContext(spec, sector, sec, v.context || 'ambient');
+      const rng = this.helpers.mulberry32(this.helpers.hash32(seed, sector.id, 'ambient-refill', cast.refills | 0));
+      if (!this._resolveNpcSpawnClearance(state, spec, rng)) {
+        if (budget && budget.releaseSome) budget.releaseSome(requester, 1);
+        continue;
+      }
+      const ent = this.helpers.spawnEntity(spec);
+      if (!ent) { if (budget && budget.releaseSome) budget.releaseSome(requester, 1); continue; }
+      if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+      cast.refills = (cast.refills | 0) + 1;
+      this._stampHomeSector(ent, sector.id);
+      this._assignDurableRecordId(ent, sector.id, RECORD_KIND.NPC, `${typeId || 'npc'}:arrival:${cast.refills}`, active);
+      const { diedAtT, ...slot } = v;
+      this._stampAmbientSlot(ent, slot);
+      active.enemies.push(ent.id);
+      cast.vacancies.splice(cast.vacancies.indexOf(v), 1);
+      arrived++;
+      this.bus.emit('world:ambientArrival', {
+        sectorId: sector.id, entityId: ent.id, gateId: gate.id, typeId, home: { x: home.x, z: home.z },
+      });
+    }
+    return arrived;
+  },
+
+  /** Live sector: a due replacement arrives through its gate while the player is there too. */
+  _tickAmbientRefill(state) {
+    if ((state.tick | 0) % AMBIENT_REFILL_SCAN_TICKS !== 0) return 0;
+    const sectorId = state.world && state.world.currentSectorId;
+    const cast = this._ambientCastFor(sectorId, false);
+    if (!cast || !cast.vacancies || !cast.vacancies.length) return 0;
+    const rec = state.world.residentSectors && state.world.residentSectors[sectorId];
+    if (!rec || rec.tier !== RESIDENCY_TIER.FULL) return 0;
+    const sector = state.world.sectors[sectorId] || SECTOR_BY_ID.get(sectorId);
+    const active = state.world.sectorContents && state.world.sectorContents[sectorId];
+    return sector && active ? this._refillAmbientVacancies(sector, active) : 0;
   },
 
   // Boss encounter (V2 § frontier capstone): a sector authored with a `poi_boss` POI hosts the
@@ -5533,6 +5768,7 @@ export const world = {
     this._tickAsteroidFieldInteractions(state);
     this._tickFieldRegrowth(state);
     this._tickUsedUpFieldOpportunity(state);
+    this._tickAmbientRefill(state);
     // 180 s expiry window: a 1 Hz sweep is exact enough and removes a per-tick Object.keys +
     // full-bag scan. Tick-modulo gating keeps the sweep deterministic across replays and catch-up.
     // Runs BEFORE tickFarActors so rows orphaned by this sweep are evicted by the far-row
@@ -8700,6 +8936,10 @@ export const world = {
       // state lives as { structureId: { cell: spentAtT } } against absolute sim time. A cell
       // whose quiet stretch elapsed while the game was closed simply loads live.
       opticSpent: cloneSaveTree(state.world.opticSpent || {}),
+      // Ambient cast ledger (slot targets + open vacancies). Written only once a sector has rolled,
+      // so a save that never met a hostile sector keeps its exact old shape.
+      ...(state.world.ambientCast && Object.keys(state.world.ambientCast).length
+        ? { ambientCast: cloneSaveTree(state.world.ambientCast) } : {}),
       // Alien Ecology: revelation tier, site aftermath, taxonomy unlocks (doc 08 §persist).
       alienEcology: serializeAlienEcologyState(state),
       sectorOwners: this._ownerOverlay(),
@@ -8773,6 +9013,9 @@ export const world = {
     // Dark optic cells come back through _ensureOpticStructures on the next materialize;
     // absent (older saves) normalizes to an empty ledger.
     state.world.opticSpent = normalizeOpticSpendLedger(data.opticSpent);
+    // Absent (pre-ledger saves): every sector adopts its living hostiles as its cast on the next
+    // FULL build, or rolls once if it has none (see _ambientRollWanted).
+    state.world.ambientCast = normalizeAmbientCast(data.ambientCast);
     state.world.embodiment = normalizeEmbodimentCache(data.embodiment);
     deserializeAlienEcologyState(state, data.alienEcology);
     yield 'world-alien-ecology';
@@ -8844,6 +9087,7 @@ export const world = {
     state.world.records = createEmptyRecordsBag();
     state.world.resourceBodies = createEmptyResourceBodyBag();
     state.world.opticSpent = {};
+    state.world.ambientCast = {};
     state.world.embodiment = createEmptyEmbodimentCache();
     state.world.residentSectors = {};
     state.world.sectorContents = {};

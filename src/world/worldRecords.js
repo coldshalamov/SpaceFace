@@ -176,9 +176,21 @@ export function isPermanentWorldRecord(rec) {
 /** Only unprotected, expired recent memory may be reclaimed by a generic retention pass. */
 export function isReclaimableRecentWorldRecord(rec) {
   if (!rec || retentionClassOf(rec) !== RETENTION_CLASS.RECENT) return false;
+  // A sector's standing cast (world ambient slots) is the sector's population, not memory of a
+  // sighting: forgetting it made the whole crowd re-roll brand new 180 s after the player left.
+  if (isAmbientSlotRecord(rec)) return false;
   if (isPermanentWorldRecord(rec)) return false;
   if (rec.outcome === 'defeated' || rec.outcome === 'destroyed' || rec.alive === false) return false;
   return true;
+}
+
+/**
+ * A world ambient-cast row: one standing member of a sector's population. It carries its slot
+ * (home pose, archetype, squad) under extra.ambientSlot. Alive, it comes back at home on every
+ * return; dead, its vacancy lives on world.ambientCast until a replacement arrives through a door.
+ */
+export function isAmbientSlotRecord(rec) {
+  return !!(rec && rec.extra && rec.extra.ambientSlot && typeof rec.extra.ambientSlot === 'object');
 }
 
 export function gcExpiredRecentMemory(bag, simTime, windowS = RECENT_MEMORY_WINDOW_S) {
