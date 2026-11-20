@@ -520,7 +520,13 @@ export function materializeBoundaryResolvingMarker(boundary) {
   let record = null;
   if (standInFile && resolveStandIn) {
     try { record = resolveStandIn(entity, standInFile) || null; } catch { record = null; }
-    if (record) marker = lodStandInFor(entity, record, standInTarget);
+    if (record) {
+      // A malformed record's stand-in build must not throw into the submit row — a thrown
+      // materialize faults the seat every frame, quarantines it, and leaves the pending
+      // body invisible for good. The abstract marker still gives the player an affordance.
+      try { marker = lodStandInFor(entity, record, standInTarget); }
+      catch { marker = null; }
+    }
   }
   if (!marker) {
     marker = resolvingMarkerFor(entity, boundaryStandInDrawnX(data, standInTarget));

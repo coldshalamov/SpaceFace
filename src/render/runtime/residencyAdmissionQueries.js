@@ -500,6 +500,14 @@ export function isHoldExemptMeshBuildCore(entity, state, glassIds, onReadableGla
   // player cannot see; a row on the live glass is work the player is looking at the absence of.
   // Builds stay inside the ordinary per-poll budget and time slice.
   if (onReadableGlass(entity)) return true;
+  // Contact horizon (STREAM-BUILD-1): a solid body inside 600 WU can be hit inside one
+  // approach window however the runway horizon grades it — an unbuilt mesh there is the
+  // "crash into nothing" hole the census counts, so the contact horizon earns the same
+  // exemption the live glass does. The drawn envelope counts, matching the band's grading.
+  if (entity.collides !== false
+      && (playerPlanarDistance(entity, state) - admissionVisualRadiusWu(entity)) <= 600) {
+    return true;
+  }
   // Lane C — residency prefetch window under the hold. Waiting until a row crosses the
   // glass band pays first mesh build on-glass (crucible soft-GPU: asteroid builds at
   // +11.5 s while hold still owns streaming). Approach time uses the same seconds×speed

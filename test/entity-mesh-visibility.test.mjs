@@ -243,7 +243,8 @@ test('live entity view sync hides off-runway roots through the helper', async ()
   assert.match(source, /this\.state\.mode === 'flight' && retainShownCameraGlass\(\{/);
   assert.match(source, /if \(!retainShown\) this\._queueHiddenSubtreeFreeze\(mesh\)/,
     'a retained survival body stays on the live compose path');
-  assert.match(source, /_submitVisibilityOptions\.hidden\s*=\s*true/);
+  assert.match(source, /_submitVisibilityOptions\.hidden\s*=\s*contactSolid !== true/,
+    'the hidden pass keeps a contact-horizon solid submitted instead of hiding it outright');
   assert.match(source, /_submitVisibilityOptions\.hidden\s*=\s*false/);
   assert.match(source, /_submitVisibilityOptions\.snapshotMissing\s*=\s*!posed/);
   assert.match(source, /else\s*\{\s*(?:\/\/[^\r\n]*\r?\n\s*)*posed = this\._hasCompletedPresentationPose\(slot,\s*entityId\)/,
