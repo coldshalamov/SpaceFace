@@ -61,7 +61,7 @@
 // cheap no-op unless that law is live.
 
 import { mulberry32 } from '../core/rng.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { Masks } from '../core/entity.js';
 import { readPhysicsTelemetry, requestPhysicsTelemetry, writePhysicsControl, queuePhysicsImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { ensureCombatant } from '../combat/runtime.js';
@@ -1137,7 +1137,7 @@ function liveSurvivalRun(state) {
   if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive') return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 

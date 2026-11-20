@@ -306,10 +306,152 @@ function authoredProxyManifest(entity) {
   return manifest;
 }
 
+// Every input the resolver reads, captured as one flat key on the entity. The
+// SG-02 body owner compares proxy ids every sync and the projectile broadphase
+// walks every collidable each sweep; both paid the resolver's internal key walk
+// per call. When the fingerprint still matches, no read the resolver makes can
+// have moved — the cached manifest is the same object it would return.
+// Mutating the body in place must bump body.revision (the spec contract the
+// owner already relies on); the fingerprint carries the whole data.* read set
+// because canonical identity is allowed to rewrite those fields in place.
+const PROXY_FP_BODY = 0;
+const PROXY_FP_BODY_REVISION = 1;
+const PROXY_FP_BODY_MANIFEST = 2;
+const PROXY_FP_BODY_MATERIAL = 3;
+const PROXY_FP_BODY_MEASURED_SKIN = 4;
+const PROXY_FP_BODY_SHAPE = 5;
+const PROXY_FP_BODY_DYNAMIC = 6;
+const PROXY_FP_COLLIDES = 7;
+const PROXY_FP_TYPE = 8;
+const PROXY_FP_ID = 9;
+const PROXY_FP_RADIUS = 10;
+const PROXY_FP_KIND = 11;
+const PROXY_FP_DATA = 12;
+const PROXY_FP_DATA_PROXY = 13;
+const PROXY_FP_DATA_ROOM_OWNER = 14;
+const PROXY_FP_DATA_ROOM_KIND = 15;
+const PROXY_FP_DATA_COMPOUND_SKIN = 16;
+const PROXY_FP_DATA_DEF_ID = 17;
+const PROXY_FP_DATA_TYPE_ID = 18;
+const PROXY_FP_DATA_SILHOUETTE = 19;
+const PROXY_FP_DATA_MAJOR_WRECK = 20;
+const PROXY_FP_DATA_PLACE_ID = 21;
+const PROXY_FP_DATA_ARCHETYPE_GLB = 22;
+const PROXY_FP_DATA_STATION_TYPE_ID = 23;
+const PROXY_FP_DATA_LOOT_TABLE_ID = 24;
+const PROXY_FP_DATA_TRAFFIC_ROLE = 25;
+const PROXY_FP_DATA_IS_GATE = 26;
+const PROXY_FP_DATA_IS_WORMHOLE = 27;
+// isFixedPhysicsEntity (inside the dynamic-mode read) also keys on landmark
+// markers and the body/entity radius fallback — every one changes the fixed/dynamic
+// verdict, so all belong to the key.
+const PROXY_FP_DATA_IS_LANDMARK = 28;
+const PROXY_FP_DATA_IS_LANDMARK_ROCK = 29;
+const PROXY_FP_DATA_LANDMARK = 30;
+const PROXY_FP_DATA_ARCHETYPE = 31;
+const PROXY_FP_BODY_RADIUS = 32;
+const PROXY_FP_LENGTH = 33;
+
+function captureProxyFingerprint(entity, fp) {
+  const body = entity.physicsBody && typeof entity.physicsBody === 'object' ? entity.physicsBody : null;
+  const data = entity.data && typeof entity.data === 'object' ? entity.data : null;
+  fp[PROXY_FP_BODY] = entity.physicsBody;
+  fp[PROXY_FP_BODY_REVISION] = body ? body.revision : entity.physicsBody;
+  fp[PROXY_FP_BODY_MANIFEST] = body ? body.collisionProxyManifest : undefined;
+  fp[PROXY_FP_BODY_MATERIAL] = body ? body.material : undefined;
+  fp[PROXY_FP_BODY_MEASURED_SKIN] = body ? body.useMeasuredSkin : undefined;
+  fp[PROXY_FP_BODY_SHAPE] = body ? body.shape : undefined;
+  fp[PROXY_FP_BODY_DYNAMIC] = body ? body.dynamic : undefined;
+  fp[PROXY_FP_COLLIDES] = entity.collides;
+  fp[PROXY_FP_TYPE] = entity.type;
+  fp[PROXY_FP_ID] = entity.id;
+  fp[PROXY_FP_RADIUS] = entity.radius;
+  fp[PROXY_FP_KIND] = entity.kind;
+  fp[PROXY_FP_DATA] = entity.data;
+  fp[PROXY_FP_DATA_PROXY] = data ? data.collisionProxy : undefined;
+  fp[PROXY_FP_DATA_ROOM_OWNER] = data ? data.roomOwner : undefined;
+  fp[PROXY_FP_DATA_ROOM_KIND] = data ? data.roomKind : undefined;
+  fp[PROXY_FP_DATA_COMPOUND_SKIN] = data ? data.compoundSkin : undefined;
+  fp[PROXY_FP_DATA_DEF_ID] = data ? data.defId : undefined;
+  fp[PROXY_FP_DATA_TYPE_ID] = data ? data.typeId : undefined;
+  fp[PROXY_FP_DATA_SILHOUETTE] = data ? data.silhouette : undefined;
+  fp[PROXY_FP_DATA_MAJOR_WRECK] = data ? data.isMajorWreck : undefined;
+  fp[PROXY_FP_DATA_PLACE_ID] = data ? data.placeId : undefined;
+  fp[PROXY_FP_DATA_ARCHETYPE_GLB] = data ? data.archetypeGlb : undefined;
+  fp[PROXY_FP_DATA_STATION_TYPE_ID] = data ? data.stationTypeId : undefined;
+  fp[PROXY_FP_DATA_LOOT_TABLE_ID] = data ? data.lootTableId : undefined;
+  fp[PROXY_FP_DATA_TRAFFIC_ROLE] = data ? data.trafficRole : undefined;
+  fp[PROXY_FP_DATA_IS_GATE] = data ? data.isGate : undefined;
+  fp[PROXY_FP_DATA_IS_WORMHOLE] = data ? data.isWormhole : undefined;
+  fp[PROXY_FP_DATA_IS_LANDMARK] = data ? data.isLandmark : undefined;
+  fp[PROXY_FP_DATA_IS_LANDMARK_ROCK] = data ? data.isLandmarkRock : undefined;
+  fp[PROXY_FP_DATA_LANDMARK] = data ? data.landmark : undefined;
+  fp[PROXY_FP_DATA_ARCHETYPE] = data ? data.archetype : undefined;
+  fp[PROXY_FP_BODY_RADIUS] = body ? body.radius : undefined;
+  return fp;
+}
+
+function proxyFingerprintMatches(entity, fp) {
+  if (!fp || fp.length !== PROXY_FP_LENGTH) return false;
+  const body = entity.physicsBody && typeof entity.physicsBody === 'object' ? entity.physicsBody : null;
+  const data = entity.data && typeof entity.data === 'object' ? entity.data : null;
+  return fp[PROXY_FP_BODY] === entity.physicsBody
+    && fp[PROXY_FP_BODY_REVISION] === (body ? body.revision : entity.physicsBody)
+    && fp[PROXY_FP_BODY_MANIFEST] === (body ? body.collisionProxyManifest : undefined)
+    && fp[PROXY_FP_BODY_MATERIAL] === (body ? body.material : undefined)
+    && fp[PROXY_FP_BODY_MEASURED_SKIN] === (body ? body.useMeasuredSkin : undefined)
+    && fp[PROXY_FP_BODY_SHAPE] === (body ? body.shape : undefined)
+    && fp[PROXY_FP_BODY_DYNAMIC] === (body ? body.dynamic : undefined)
+    && fp[PROXY_FP_COLLIDES] === entity.collides
+    && fp[PROXY_FP_TYPE] === entity.type
+    && fp[PROXY_FP_ID] === entity.id
+    && fp[PROXY_FP_RADIUS] === entity.radius
+    && fp[PROXY_FP_KIND] === entity.kind
+    && fp[PROXY_FP_DATA] === entity.data
+    && fp[PROXY_FP_DATA_PROXY] === (data ? data.collisionProxy : undefined)
+    && fp[PROXY_FP_DATA_ROOM_OWNER] === (data ? data.roomOwner : undefined)
+    && fp[PROXY_FP_DATA_ROOM_KIND] === (data ? data.roomKind : undefined)
+    && fp[PROXY_FP_DATA_COMPOUND_SKIN] === (data ? data.compoundSkin : undefined)
+    && fp[PROXY_FP_DATA_DEF_ID] === (data ? data.defId : undefined)
+    && fp[PROXY_FP_DATA_TYPE_ID] === (data ? data.typeId : undefined)
+    && fp[PROXY_FP_DATA_SILHOUETTE] === (data ? data.silhouette : undefined)
+    && fp[PROXY_FP_DATA_MAJOR_WRECK] === (data ? data.isMajorWreck : undefined)
+    && fp[PROXY_FP_DATA_PLACE_ID] === (data ? data.placeId : undefined)
+    && fp[PROXY_FP_DATA_ARCHETYPE_GLB] === (data ? data.archetypeGlb : undefined)
+    && fp[PROXY_FP_DATA_STATION_TYPE_ID] === (data ? data.stationTypeId : undefined)
+    && fp[PROXY_FP_DATA_LOOT_TABLE_ID] === (data ? data.lootTableId : undefined)
+    && fp[PROXY_FP_DATA_TRAFFIC_ROLE] === (data ? data.trafficRole : undefined)
+    && fp[PROXY_FP_DATA_IS_GATE] === (data ? data.isGate : undefined)
+    && fp[PROXY_FP_DATA_IS_WORMHOLE] === (data ? data.isWormhole : undefined)
+    && fp[PROXY_FP_DATA_IS_LANDMARK] === (data ? data.isLandmark : undefined)
+    && fp[PROXY_FP_DATA_IS_LANDMARK_ROCK] === (data ? data.isLandmarkRock : undefined)
+    && fp[PROXY_FP_DATA_LANDMARK] === (data ? data.landmark : undefined)
+    && fp[PROXY_FP_DATA_ARCHETYPE] === (data ? data.archetype : undefined)
+    && fp[PROXY_FP_BODY_RADIUS] === (body ? body.radius : undefined);
+}
+
 /** Declared manifests and adopted measured skins resolve here. An authored
  * physicsBody.collisionProxyManifest wins when valid; a declared non-skin proxy id beats a skin;
  * an eligible entity that declares nothing still takes its measured skin on older saves. */
 export function resolveCollisionProxyManifest(entity) {
+  if (entity && typeof entity === 'object') {
+    const slot = entity._collisionProxyResolve;
+    if (slot && proxyFingerprintMatches(entity, slot.fp)) return slot.manifest;
+    const manifest = resolveCollisionProxyManifestInner(entity);
+    // A sealed or frozen body can't take the slot — it resolves fresh every call,
+    // exactly as before the cache existed.
+    if (Object.isExtensible(entity)) {
+      entity._collisionProxyResolve = {
+        fp: captureProxyFingerprint(entity, slot && slot.fp ? slot.fp : new Array(PROXY_FP_LENGTH)),
+        manifest,
+      };
+    }
+    return manifest;
+  }
+  return resolveCollisionProxyManifestInner(entity);
+}
+
+function resolveCollisionProxyManifestInner(entity) {
   const authored = authoredProxyManifest(entity);
   if (authored) return authored;
   const data = entity && entity.data;

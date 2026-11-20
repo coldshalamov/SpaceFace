@@ -8,7 +8,7 @@ import { aftermathChoices, applyAftermathChoice } from '../combat/aftermathChoic
 import { compactKillCausality, KillCause } from '../combat/killCausality.js';
 import { selectionIsRecycled } from '../combat/targetIdentity.js';
 import { occupantGenerationOf } from '../core/entity.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { isHostileToPlayer } from './scanner.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { indexedShipLikeScan, indexedTypeScan, entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
@@ -46,7 +46,7 @@ function liveSurvivalRun(state) {
   const run = state && state.run;
   if (!run || typeof run !== 'object' || Array.isArray(run)) return false;
   if (run.kind !== 'survival' || run.phase === 'inactive') return false;
-  return validateRunState(run).ok === true;
+  return validateRunStateForTick(run, state.tick).ok === true;
 }
 
 const STATE_VERSION = 2;

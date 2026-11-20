@@ -4,7 +4,7 @@
 // Strict no-op without a live, valid survival run (absent / malformed / non-survival / inactive).
 // Never infers a phase from entity counts. Never writes campaign credits, entities, or fittings.
 
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import {
   SURVIVAL_ARC_LENGTH,
   SURVIVAL_TEMPLATE_BLOCK,
@@ -103,7 +103,7 @@ function liveSurvivalRun(state) {
   if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive') return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 

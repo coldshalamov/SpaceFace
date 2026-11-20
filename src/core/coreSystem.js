@@ -840,6 +840,12 @@ function ensureEntityIndex(state) {
   state.entityIndex = {
     __spacefaceEntityIndexV1: true,
     version: 0,
+    // Classifier-domain membership: every `version` bump except bare projectile
+    // append/remove. The activity classifier's discovery paths (unstamped rescan,
+    // shelved-member cell map) can never find anything new when only projectiles
+    // churned — the projectiles lane already visits every live round — so its
+    // staleness gates latch this counter instead of the global version.
+    classifiableVersion: 0,
     // Per-lane membership counters: the global version dies on every projectile/fx churn,
     // so readers whose domain is a fixed lane set latch the laneVersions sum instead.
     laneVersions: Object.create(null),
@@ -949,6 +955,11 @@ function repairEntityIndex(index) {
   // to rebuild rather than wait out the cadence on a corrupt index.
   if (!index.laneVersions) index.laneVersions = Object.create(null);
   if (!Number.isFinite(index.laneEpoch)) index.laneEpoch = 0;
+  // A pre-field index keeps counting projectile churn as classifier membership —
+  // never a missed rescan, only the old wasted one.
+  if (!Number.isFinite(index.classifiableVersion)) {
+    index.classifiableVersion = Number.isFinite(index.version) ? index.version : 0;
+  }
   if (!Array.isArray(index.aiShips)) { index.aiShips = []; index._volatileReady = false; }
   if (!Array.isArray(index.weaponShips)) { index.weaponShips = []; index._volatileReady = false; }
   if (!Array.isArray(index.collidables)) index.collidables = [];
@@ -997,6 +1008,7 @@ function clearEntityIndex(index) {
   // the wholesale-save path). Version-latched caches must see a bump so no stale row outlives
   // the wipe — an extra bump only costs a re-walk, a missed one leaks a dead entity.
   index.version = (Number.isFinite(index.version) ? index.version : 0) + 1;
+  index.classifiableVersion = (Number.isFinite(index.classifiableVersion) ? index.classifiableVersion : 0) + 1;
   index.ships.length = 0;
   index.drones.length = 0;
   index.shipLike.length = 0;
@@ -1072,7 +1084,7 @@ export function refreshEntityPhysicsIndex(state, entity, occupantGeneration) {
   set(index.physicsBodies,physical);
   set(index.physicsStatics,physical&&!dynamic);set(index.physicsDynamics,physical&&dynamic);
   set(index.movables,movable);
-  if(membershipChanged)index.version++;
+  if(membershipChanged){index.version++;index.classifiableVersion++;}
   index.physicsStaticVersion++;
   index.spatialStaticVersion++;
   return true;
@@ -1177,6 +1189,9 @@ function appendEntityIndex(index, e) {
 
   appendTypedLaneMembership(index, e);
   index.version++;
+  // Projectiles are the one member the classifier never needs discovery for — the
+  // live lane is visited every pass — so their churn stays off classifiableVersion.
+  if (e.type !== 'projectile') index.classifiableVersion++;
 }
 
 // Type-keyed lane membership for appendEntityIndex — extracted so post-spawn type flips
@@ -1285,6 +1300,9 @@ function removeEntityIndex(index, e) {
   repairEntityIndex(index);
   if (e.id != null && !index._indexedIds.has(e.id)) return;
   if (e.id != null) index._indexedIds.delete(e.id);
+  // Capture before the stamps clear below: the type the entity was indexed under
+  // decides whether its removal ever mattered to classifier discovery.
+  const stampedType = e._indexType !== undefined ? e._indexType : e.type;
   if (removeFromIndexArray(index.collidables, e)) bumpLaneVersion(index, 'collidables');
   const removedSpatialStatic = removeFromIndexArray(index.spatialStatics, e);
   if (removeFromIndexArray(index.spatialDynamics, e)) index.spatialDynamicsVersion++;
@@ -1357,6 +1375,7 @@ function removeEntityIndex(index, e) {
   if (removedSpatialStatic) index.spatialStaticVersion++;
   if (removedPhysicsStatic) index.physicsStaticVersion++;
   index.version++;
+  if (stampedType !== 'projectile') index.classifiableVersion++;
 }
 
 function bumpLaneVersion(index, lane) {
@@ -1519,6 +1538,7 @@ export function syncEntityTypeLaneMembership(index, e) {
     }
   }
   index.version++;
+  index.classifiableVersion++;
 }
 
 /**
@@ -1616,6 +1636,7 @@ export function syncEntityCollisionIndexMembership(index, e) {
     if (removeFromIndexArray(index.spatialDynamics, e)) index.spatialDynamicsVersion++;
   }
   index.version++;
+  index.classifiableVersion++;
 }
 
 // Batch counterpart of removeEntityIndex for multi-corpse ticks (sweep, sector despawn). One
@@ -1629,12 +1650,16 @@ function removeEntitiesFromIndex(index, corpses) {
   // removeEntityIndex applies per entity, so they must not be filtered a second time.
   const removed = new Set();
   let indexed = 0;
+  let classifiableIndexed = 0;
   for (let i = 0; i < corpses.length; i++) {
     const e = corpses[i];
     if (!e || (e.id != null && !index._indexedIds.has(e.id))) continue;
     if (e.id != null) index._indexedIds.delete(e.id);
     removed.add(e);
     indexed++;
+    // Same stamp rule as removeEntityIndex, read before the stamps clear below.
+    const stampedType = e._indexType !== undefined ? e._indexType : e.type;
+    if (stampedType !== 'projectile') classifiableIndexed++;
   }
   if (indexed === 0) return;
   index.laneVersions.collidables = (index.laneVersions.collidables || 0)
@@ -1771,6 +1796,7 @@ function removeEntitiesFromIndex(index, corpses) {
     }
   }
   index.version += indexed;
+  index.classifiableVersion += classifiableIndexed;
 }
 
 // In-place order-preserving removal of every corpse in `removed` from one index bucket.

@@ -35,7 +35,7 @@
 // with the room. Crate pulls and the spot cursor are run-scoped — they survive the room's
 // per-wave re-arm and reset only when the run ends.
 
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { makeStream } from '../core/rng.js';
 import { clearPickupAcceptanceRetry } from '../core/pickupAcceptance.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
@@ -109,7 +109,7 @@ function liveSwarmRun(state) {
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive') return null;
   if (!isSwarmRuleset(run.ruleset)) return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 

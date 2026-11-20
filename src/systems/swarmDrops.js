@@ -20,7 +20,7 @@
 
 import { mulberry32 } from '../core/rng.js';
 import { WEAPONS } from '../data/weapons.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { HEAVY_AS_TERRAIN_MASS } from '../combat/impulseKernel.js';
 import { runOwnsReward, createRewardDeathLedger } from '../combat/rewardEligibility.js';
@@ -66,7 +66,7 @@ function liveSwarmRun(state) {
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive') return null;
   if (!isSwarmRuleset(run.ruleset)) return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 

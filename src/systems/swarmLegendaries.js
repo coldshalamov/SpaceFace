@@ -29,7 +29,7 @@ import { deliverPhysicalImpulse, queryPhysicalBodies } from '../combat/physicalE
 import { schedulePhysicalBlast } from '../combat/physicalEffects.js';
 import { createRewardDeathLedger, runOwnsReward } from '../combat/rewardEligibility.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { ownedSwarmLegendaryIds } from '../data/swarmDraft.js';
 import { runLifetime } from './runSession.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
@@ -510,7 +510,7 @@ export function createSwarmLegendaryDirector(ctx) {
       if (run.kind !== 'survival') return null;
       if (!isSwarmRuleset(run.ruleset)) return null;
       if (run.phase === 'inactive') return null;
-      if (!validateRunState(run).ok) return null;
+      if (!validateRunStateForTick(run, state.tick).ok) return null;
       return run;
     },
 

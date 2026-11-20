@@ -52,7 +52,7 @@ import { findDivePull, livePullsOf } from './swarmDiveSeek.js';
 import { createRewardDeathLedger, runOwnsReward } from '../combat/rewardEligibility.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { addSwarmHullMaxBonus, maintainSwarmPlayerMods, swarmRamDealtScale } from './playerModifiers.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { findClearSpawnPoint } from './spawnClearance.js';
@@ -136,7 +136,7 @@ function liveSwarmRun(state) {
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive' || run.phase === 'ended') return null;
   if (!isSwarmRuleset(run.ruleset)) return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 
@@ -928,9 +928,10 @@ export const swarmElites = {
 
   _onImpact(payload) {
     // Cheap gates first: the crowd's impact fanout is almost entirely NPC↔NPC contacts,
-    // and liveSwarmRun pays a full validateRunState + runPerkIds array build per emit.
-    // Every gate below is a pure read, so testing player involvement before the run
-    // admits nothing the old order rejected (and rejects nothing it admitted).
+    // and liveSwarmRun pays a tick-memoized validateRunStateForTick + runPerkIds array
+    // build per emit. Every gate below is a pure read, so testing player involvement
+    // before the run admits nothing the old order rejected (and rejects nothing it
+    // admitted).
     if (!payload || payload.playerInvolved !== true) return;
     const playerId = this.state.playerId;
     if (playerId == null) return;

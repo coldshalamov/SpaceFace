@@ -36,7 +36,7 @@ import { physicalProblemFromPackages, shippedQuestionFor } from '../data/surviva
 import { SWARM_CHAMPION_LEAD_WAVES, swarmNextBossFor } from '../data/swarmMode.js';
 import { swarmCourseFor } from '../data/swarmCourse.js';
 import { SWARM_AFFIX_BY_ID } from '../data/swarmThreats.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import {
   SURVIVAL_ARENA_INTRO_TICKS,
@@ -168,7 +168,7 @@ function liveSurvivalRun(state) {
   if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive') return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 

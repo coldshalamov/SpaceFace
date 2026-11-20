@@ -33,7 +33,7 @@
 // which needs a clock.
 
 import { runOwnsReward } from '../combat/rewardEligibility.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { styleCauseFromKill } from './survivalStyle.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { ownedSwarmLegendaryIds, swarmPassiveFireRateScale } from '../data/swarmDraft.js';
@@ -138,7 +138,7 @@ function liveSwarmRun(state) {
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive' || run.phase === 'ended') return null;
   if (!isSwarmRuleset(run.ruleset)) return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 

@@ -34,7 +34,7 @@
 // Init-order only: event-driven, never ticks.
 
 import { mulberry32 } from '../core/rng.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { runOwnsReward, createRewardDeathLedger } from '../combat/rewardEligibility.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { addCargo } from './cargo.js';
@@ -86,7 +86,7 @@ function liveSwarmRun(state) {
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive') return null;
   if (!isSwarmRuleset(run.ruleset)) return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 

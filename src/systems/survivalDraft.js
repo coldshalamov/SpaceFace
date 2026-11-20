@@ -24,7 +24,7 @@ import { SAUCER_ID, saucerFittingRefusal, SAUCER_BRIEF, SAUCER_WEAPON_SLOTS } fr
 //
 // Init-order only: event-driven, never registered in PRODUCTION_UPDATE_ORDER, never ticks.
 
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { runLifetime } from './runSession.js';
 import { MODULES } from '../data/modules.js';
 import { SHIPS } from '../data/ships.js';
@@ -174,7 +174,7 @@ function liveSurvivalRun(state) {
   if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive') return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 

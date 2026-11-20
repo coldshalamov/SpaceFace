@@ -23,7 +23,7 @@
 // republish, the passive stack's own add) is re-adopted as the new base rather
 // than fought. Every clock is sim time; the ledger is the only write.
 
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { buildSlotList } from './ships.js';
 import { SHIPS } from '../data/ships.js';
@@ -54,7 +54,7 @@ export function liveSwarmRun(state) {
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive') return null;
   if (!isSwarmRuleset(run.ruleset)) return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 

@@ -185,6 +185,10 @@ function ensureRuntime(state) {
     runtime = {
       classifiedTick: -1,
       classifiedMembership: null,
+      // Classifier-domain membership at the last classify — the entity-index
+      // classifiableVersion, which excludes bare projectile churn the discovery
+      // paths could never see anyway.
+      classifiedClassifiableMembership: null,
       classifiedStaticAuthority: null,
       ready: false,
       physicsReachWu: 0,
@@ -813,10 +817,12 @@ function pushActivityIds(runtime, entity, stamp) {
 }
 
 /**
- * Sanctioned membership is the entity-index version. When it is unchanged,
- * no new ids exist and the incremental classifier must not rescan the fat
- * list just to prove that. A missing index cannot skip — raw entityList
- * edits have no cheap change signal.
+ * Sanctioned membership for the rescan is the entity-index classifiableVersion:
+ * every membership move except bare projectile churn. When it is unchanged no
+ * new classifiable ids exist — live projectiles reach the visit through the
+ * projectiles lane, not this walk — and the incremental classifier must not
+ * rescan the fat list just to prove that. A missing index cannot skip — raw
+ * entityList edits have no cheap change signal.
  */
 export function skipUnstampedRescan(membershipVersion, lastMembershipVersion) {
   return Number.isFinite(membershipVersion)
@@ -990,7 +996,7 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
   }
   const unstamped = runtime.unstampedScratch || (runtime.unstampedScratch = []);
   unstamped.length = 0;
-  if (!skipUnstampedRescan(entityIndexVersion(state), runtime.classifiedMembership)) {
+  if (!skipUnstampedRescan(entityIndexClassifiableVersion(state), runtime.classifiedClassifiableMembership)) {
     for (let i = 0; i < list.length; i++) {
       const entity = list[i];
       // Entity ids are recycled through state.freeIds, so a live entity can carry an id that
@@ -1081,19 +1087,20 @@ function selectClassifyEntities(state, runtime, list, origin, reach, discoverWu)
       queries: 0,
     });
     shelved.pass += 1;
-    const indexVersion = entityIndexVersion(state);
+    const indexVersion = entityIndexClassifiableVersion(state);
     const auditDue = (shelved.pass % CLASSIFY_DISCOVERY_AUDIT_EVERY) === 0;
-    // A membership-only bump (projectile/debris spawn or despawn) used to force the full O(list)
-    // cell rebuild every tick. The unstamped scan above already collected every newly added
-    // entity, and dead members are skipped by the alive checks, so bucketing just those new
-    // entities keeps the cells equivalent until the next epoch change or audit rebuild.
+    // Only classifiable membership reaches this map — projectile-only churn keeps the
+    // version identical and the band query replays. On a real bump, the unstamped scan
+    // above already collected every newly added entity, and dead members are skipped by
+    // the alive checks, so bucketing just those new entities keeps the cells equivalent
+    // until the next epoch change or audit rebuild.
     let incrementalBump = false;
     if (shelved.cells !== null && !auditDue
       && shelved.epoch === PHYSICS_PARTITION_EPOCH
       && shelved.indexVersion !== indexVersion
       && Number.isFinite(indexVersion) && Number.isFinite(shelved.indexVersion)
       && shelved.listRef === list
-      && shelved.syncedMembership === runtime.classifiedMembership) {
+      && shelved.syncedMembership === runtime.classifiedClassifiableMembership) {
       incrementalBump = true;
       for (let i = 0; i < unstamped.length; i++) {
         const entity = unstamped[i];
@@ -2174,6 +2181,7 @@ export function ensureActivityClassified(state) {
   runtime.physicsInterestWithdrawals?.clear();
   runtime.classifiedTick = tick;
   runtime.classifiedMembership = membership;
+  runtime.classifiedClassifiableMembership = entityIndexClassifiableVersion(state);
   runtime.classifiedStaticAuthority = staticAuthority;
   runtime.lastEntityList = list;
   runtime.lastLiveCount = list.length;
@@ -2187,6 +2195,21 @@ function entityIndexVersion(state) {
   return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
     ? index.version
     : null;
+}
+
+/**
+ * The membership version the classifier's discovery paths actually read: every
+ * index membership move except bare projectile append/remove. Live projectiles
+ * are always visited through the projectiles lane and never enter the partition-0
+ * discovery map, so their churn cannot change what a rescan or cell rebuild finds.
+ * A pre-field index (or a plain version) falls back to the full version — that
+ * over-invalidates exactly like the old single-counter behavior, never under.
+ */
+function entityIndexClassifiableVersion(state) {
+  const index = state && state.entityIndex;
+  if (!index || !index.__spacefaceEntityIndexV1) return null;
+  if (Number.isFinite(index.classifiableVersion)) return index.classifiableVersion;
+  return Number.isFinite(index.version) ? index.version : null;
 }
 
 function entityIndexPhysicsStaticVersion(state) {

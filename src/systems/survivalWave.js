@@ -16,7 +16,7 @@
 // Never writes state.run (runSession is the sole writer) and never touches campaign economy.
 
 import { mulberry32 } from '../core/rng.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import {
   SWARM_ARRIVAL_GRACE_S,
   SWARM_SPAWN_RETRY_TICKS,
@@ -151,7 +151,7 @@ function liveSurvivalRun(state) {
   if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive') return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 

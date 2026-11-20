@@ -5,7 +5,7 @@ import { admitStuntThreat, threatReward } from '../combat/stuntScoring.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { bodyLife } from '../combat/stuntEvidence.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { CREDIT_CHIP_KIND } from '../data/killRewards.js';
 import { runHasPerk } from '../data/swarmPerks.js';
 import { swarmStakeFor } from '../data/swarmStakes.js';
@@ -85,7 +85,7 @@ function rewardCausePhrase(payload, victim, tick) {
 
 function liveRun(state) {
   const run = state?.run;
-  return run?.kind === 'survival' && run.phase !== 'inactive' && validateRunState(run).ok ? run : null;
+  return run?.kind === 'survival' && run.phase !== 'inactive' && validateRunStateForTick(run, state?.tick).ok ? run : null;
 }
 function freshRewards() {
   return { version: 2, wave: 0, deaths: {}, entitlements: {}, chips: {}, lastBankId: 0,

@@ -62,7 +62,7 @@ import { hullEnvelopeWu, proxyOuterRadiusWu, proxyScaleFor, resolveCollisionProx
 import { OPTIC_LATTICE_SPACING } from '../combat/opticField.js';
 import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { createBroodEngine } from './swarmBrood.js';
 import { BANK_STONE_MIN_DISTANCE, BANK_STONE_MAX_DISTANCE } from './swarmBank.js';
 import { OPENING_LESSON_RELEASE_TICKS } from './survivalWave.js';
@@ -669,7 +669,7 @@ function liveSwarmRun(state) {
   if (run.kind !== 'survival') return null;
   if (run.phase === 'inactive') return null;
   if (!isSwarmRuleset(run.ruleset)) return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 

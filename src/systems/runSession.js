@@ -10,6 +10,7 @@ import {
   createRunState,
   runLevelForXp,
   validateRunState,
+  validateRunStateForTick,
 } from '../core/runState.js';
 import {
   PILOT_REROLL_SCRAP,
@@ -698,7 +699,7 @@ export const runSession = {
     if (!run || typeof run !== 'object' || run.kind === 'adventure') return null;
     if (run.phase === 'inactive' || run.phase === 'ended' || run.phase === 'victory') return null;
     if (!run.pilot || typeof run.pilot !== 'object' || Array.isArray(run.pilot)) return null;
-    if (!validateRunState(run).ok) return null;
+    if (!validateRunStateForTick(run, state.tick).ok) return null;
     return run;
   },
 
@@ -806,7 +807,7 @@ export const runSession = {
     if (!this.state) return null;
     const run = this.state.run;
     if (!run || typeof run !== 'object') return null;
-    if (!validateRunState(run).ok) return null;
+    if (!validateRunStateForTick(run, this.state.tick).ok) return null;
     return run;
   },
 };

@@ -12,7 +12,7 @@ import { ownsFiniteCharonSupplyManifest } from '../world/charonSalvageSupply.js'
 import { hash32 } from '../core/rng.js';
 import { syncEntitySectorMembership } from '../core/coreSystem.js';
 import { deferSectorEnterMaterialization, deferredEnterNow } from '../core/sectorEnterDefer.js';
-import { validateRunState } from '../core/runState.js';
+import { validateRunStateForTick } from '../core/runState.js';
 import { salvagePoolFromManifest, spawnJettisonedCargoPod } from './lootShards.js';
 import { peekPendingSlam, IMPACT_TEAROFF_LAW, spawnCollisionTearOff } from './hullFracture.js';
 import { combatFlag } from '../data/featureFlags.js';
@@ -445,7 +445,7 @@ function liveSurvivalRunFor(state) {
   const run = state && state.run;
   if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
   if (run.kind !== 'survival' || run.phase === 'inactive') return null;
-  if (!validateRunState(run).ok) return null;
+  if (!validateRunStateForTick(run, state.tick).ok) return null;
   return run;
 }
 
