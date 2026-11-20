@@ -1681,11 +1681,11 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       if (ctrl && typeof ctrl.deathCam === 'function') ctrl.deathCam();
     });
 
-    // Weapon recoil on the player's own shots. Firing currently produces VFX + audio but ZERO camera
-    // response, so every shot feels like a laser pointer. We add a small weapon-class-scaled fov kick
-    // (via the shared punch mechanism) + a tiny camera shake via the controller's addTrauma. No
-    // hit-stop/vignette — those belong to impacts, not muzzle. Gated to the player's shots only so an
-    // NPC furball doesn't jitter your view.
+    // Weapon recoil on the player's own shots. R10 / 03_COMBAT §3.2: recoil is on the ship, never
+    // the camera - the cannon or needle nudges the firing hull (weapons.js delivers recoilImpulse
+    // through the physical-impulse path), so this listener no longer punches the FOV. The trauma
+    // call stays only so the OVH-06a gate records the refusal it already makes for 'recoil'; the
+    // shot is felt on the weapon and the target, not on the view.
     bus.on('combat:fire', (p) => {
       if (!p || p.ownerId !== state.playerId) return;
       if (this.state.mode !== 'flight' || !this._modalClear()) return;
@@ -1693,7 +1693,6 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       if (mr) return;
       const recoil = resolveKineticRecoil(p.weaponId, { motionReduce: false, mode: 'flight', state: this.state });
       if (!recoil) return;
-      this._fovPunch = addFovPunch(this._fovPunch, recoil.fov);
       const ctrl = this.state.render && this.state.render.cameraCtrl;
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(recoil.trauma, 'recoil');
     });

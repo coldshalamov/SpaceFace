@@ -106,6 +106,9 @@ const SHIPPED_WEAPONS = [
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 1.0,
     heatPerShot: 10, heatMax: 100, heatDissip: 24,
     impulsePerHit: 520, environmentImpulsePerHit: 1024, tumbleTorque: 35, impulseProvenance: 'concussion_slug_s',
+    // CW-WPN (INV-22 item 7): recoil is on the hull, never the camera. A light kicker still
+    // answers on the firing ship through the shared physical-impulse path.
+    recoilImpulse: 180,
   },
 
   // --- MEDIUM (M slot) ---
@@ -170,6 +173,9 @@ const SHIPPED_WEAPONS = [
     dmg: 60, rof: 0.8, dps: 48, damageType: 'kinetic', energyCost: 14,
     projSpeed: 700, range: 1100, tracking: 'fixed', armorPierce: 0.5,
     impulsePerHit: 168, tumbleTorque: 16, impulseProvenance: 'railgun_penetrator',
+    // CW-WPN (INV-22 item 7): the needle answers on the hull (03_COMBAT.md:131-132) - a small
+    // backward nudge per shot through the existing physical-impulse path.
+    recoilImpulse: 140,
   },
   {
     id: 'wpn_plasma_cannon_m', name: 'Plasma Cannon M', slotType: 'weapon', size: 'M', tier: 3, mass: 8, price: 42000, requiresTech: 'tech_plasma_dynamics',
@@ -314,6 +320,9 @@ const SHIPPED_WEAPONS = [
     projSpeed: 340, range: 260, tracking: 'fixed', spreadDeg: 1.2,
     heatPerShot: 16, heatMax: 100, heatDissip: 26,
     impulsePerHit: 920, environmentImpulsePerHit: 1024, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
+    // CW-WPN (INV-22 item 7): the hull pays part of the throw it deals - recoil on the ship,
+    // never the camera (03_COMBAT.md:131-132), through the existing physical-impulse path.
+    recoilImpulse: 320,
   },
   {
     // VECTOR MINE — deployable ordnance whose payload is a RADIAL IMPULSE, not a burn: zero hull

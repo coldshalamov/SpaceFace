@@ -44,6 +44,7 @@ import {
 import { isHostileToPlayer } from './scanner.js';
 import { cloakHidesEntityFrom } from './cloak.js';
 import { towedLureSignature } from '../ai/towedLure.js';
+import { temperamentFor } from '../ai/temperament.js';
 import { lockLineageSuppressed } from './countermeasures.js';
 import { targetIdentityGeneration } from '../ai/perception.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
@@ -117,6 +118,13 @@ import {
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
+
+// CW-WPN (INV-21 item 4) — a real turret slew. A turret cradle carries its own world bearing,
+// converges on the firing solution at no more than this rate, and releases a round only when the
+// barrel is on that solution. A close, fast orbit out-turns a capital battery; a stationary hull
+// is still punished. The design's ceiling is 1.5 rad/s (03_COMBAT.md:280).
+export const TURRET_SLEW_RAD_S = 1.5;
+export const TURRET_ON_SOLUTION_RAD = 1.0 * RAD;
 
 // SEED-SW-22 — bodies the Debris Orbit will claim. Loose room matter only; the list stays
 // narrow so the ring can never reach out and pin a hull.
@@ -429,10 +437,60 @@ function armedCooldown(playerGun, rof, fallback, state = null) {
 
 // gunner_steady_hands — "Your fire does not spread while you move": above 20 %
 // of the governed cruise speed the player's authored spreadDeg collapses to 0.
-// Below the threshold (and for every NPC mount) the authored value flows on.
-function gunnerSpreadDeg(e, def, isPlayer, state) {
+// Below the threshold the authored value flows on; NPC mounts add their quiver (below).
+//
+// CW-WPN (INV-21 item 2) — a pilot quiver, not a perfect firing solution. Every NPC mount widens
+// its authored spread by the pilot's temperament aim and by how fast the target crosses the line
+// of fire: a low-aim pilot firing at a strafing target sprays, while the same pilot firing at a
+// stationary target still hits. Pure arithmetic over data the sim already carries — no rng draws,
+// no wall time — so it cannot disturb the weapon stream's draw order.
+export const NPC_QUIVER_AIM_SCALE = 1.5;            // authored spread multiplier at aim = 0
+export const NPC_QUIVER_FLOOR_DEG = 1.8;            // degrees a zero-aim pilot adds to any mount
+export const NPC_QUIVER_LATERAL_DEG_PER_WU_S = 0.02; // crossing WU/s -> extra degrees
+export const NPC_QUIVER_LATERAL_MAX_DEG = 3;        // bound on the crossing term
+
+export function npcQuiverSpreadDeg(authoredDeg, aim, crossWuPerS) {
+  const authored = Number.isFinite(authoredDeg) && authoredDeg > 0 ? authoredDeg : 0;
+  const a = Number.isFinite(aim) ? Math.max(0, Math.min(1, aim)) : 0.55;
+  const cross = Number.isFinite(crossWuPerS) && crossWuPerS > 0 ? crossWuPerS : 0;
+  return authored * (1 + (1 - a) * NPC_QUIVER_AIM_SCALE)
+    + NPC_QUIVER_FLOOR_DEG * (1 - a)
+    + Math.min(NPC_QUIVER_LATERAL_MAX_DEG, cross * NPC_QUIVER_LATERAL_DEG_PER_WU_S);
+}
+
+// The same mass bands the sensor self carries (src/systems/aiPorts.js operationalMassBand), so a
+// gun's quiver reads the pilot the planner gave the hull rather than a second weight table.
+function quiverMassBand(e) {
+  const mass = Number(e && e.mass);
+  if (!Number.isFinite(mass) || mass <= 0) return null;
+  return mass < 40 ? 'light' : mass < 140 ? 'medium' : mass < 700 ? 'heavy' : 'capital';
+}
+
+// Perpendicular closing speed of the target across this mount's line of fire. A target running
+// straight at or away from the shooter is an easy prediction; a target crossing the line is the
+// one a pilot can guess wrong. Relative velocity, so a fast shooter's own sweep counts.
+function targetCrossSpeed(e, target) {
+  if (!e || !target || !e.pos || !target.pos) return 0;
+  const dx = (Number(target.pos.x) || 0) - (Number(e.pos.x) || 0);
+  const dz = (Number(target.pos.z) || 0) - (Number(e.pos.z) || 0);
+  const dist = Math.hypot(dx, dz);
+  if (!(dist > 1e-6)) return 0;
+  const ux = dx / dist;
+  const uz = dz / dist;
+  const rvx = (Number(target.vel && target.vel.x) || 0) - (Number(e.vel && e.vel.x) || 0);
+  const rvz = (Number(target.vel && target.vel.z) || 0) - (Number(e.vel && e.vel.z) || 0);
+  return Math.abs(rvx * -uz + rvz * ux);
+}
+
+function gunnerSpreadDeg(e, def, isPlayer, state, target = null) {
   const authored = def && Number.isFinite(def.spreadDeg) ? def.spreadDeg : 0;
-  if (!isPlayer || !(authored > 0) || !pilotHas(state, 'gunner_steady_hands')) return authored;
+  if (!isPlayer) {
+    const doctrineId = e && e.data && e.data.ai ? e.data.ai.combatDoctrineId || null : null;
+    const seed = (state && state.meta && state.meta.seed) || 1;
+    const t = temperamentFor(e && e.id, { seed, doctrineId, massBand: quiverMassBand(e) });
+    return npcQuiverSpreadDeg(authored, t.aim, targetCrossSpeed(e, target));
+  }
+  if (!(authored > 0) || !pilotHas(state, 'gunner_steady_hands')) return authored;
   const cruise = resolveGovernedCombatSpeed(e, state, 0);
   if (!(cruise > 0)) return authored;
   const speed = Math.hypot(Number(e && e.vel && e.vel.x) || 0, Number(e && e.vel && e.vel.z) || 0);
@@ -904,6 +962,13 @@ export const weapons = {
       if (e.physicsSleeping === true && !npcWeaponsNeedTick(e, state)) continue;
       const ws = e.data && e.data.weapons;
       if (ws) {
+        const intent = e.data && e.data.intent;
+        // CW-WPN item 4: a turret cradle between shots still traverses at the same slew limit.
+        // Firing ticks step in _serviceProjectileWeapon; stepping here too would double the rate,
+        // so this pass only owns the idle traverse (and the return-to-nose of a turret with no aim).
+        const firingIntent = !!(intent && intent.fire);
+        const idleTurret = !firingIntent && e.id !== state.playerId;
+        const idleAim = intent && Number.isFinite(intent.aimAngle) ? intent.aimAngle : e.rot;
         for (const w of ws) {
           const def = this._byId.get(w.defId) || {};
           if (w._cooldown > 0) w._cooldown = Math.max(0, w._cooldown - dt);
@@ -911,6 +976,10 @@ export const weapons = {
           const dissip = baseDissip * WEAPON_RECHARGE_MULT * weaponHeatDissipScale(state, e);
           if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
           applyPilotHeatDrum(state, e, w, def);   // OVH-01c3 gunner_drum
+          if (idleTurret && this._isTurretMount(w, def)
+            && (w.tracking || def.tracking) !== 'homing') {
+            this._stepTurretBearing(e, w, def, idleAim, dt);
+          }
         }
         applyCryoQuench(state, e, dt, quenchHooks);
         // Forced-vent lockout (player only) — see WEAPON_VENT_S. Runs after the normal cooldown so a
@@ -1568,6 +1637,18 @@ export const weapons = {
   // Projectile weapon: gate on cooldown/cap/heat (+lock/+arc), spawn a projectile, emit combat:fire.
   _serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget, fireGate = null) {
     const pilotAim = isPlayer && state.settings?.gameplay?.controlScheme === 'pilot';
+    const tracking = w.tracking || def.tracking || 'fixed';
+    const isMissile = tracking === 'homing';
+    const isTurret = (w.facing === 'turret') || (tracking === 'auto_turret');
+    // CW-WPN item 4: step the cradle before the cooldown gate. A battery must traverse on every
+    // firing tick, not one step per released round, or its real slew would read as a slow crab.
+    let turretSolution = null;
+    if (isTurret && !isMissile && !isPlayer) {
+      const bTgt = forceTarget || this._resolveTarget(e);
+      const bSpeed = w.projSpeed != null ? w.projSpeed : def.projSpeed || 1;
+      turretSolution = bTgt && bTgt.pos ? this._arcadeMountAngle(e, w, bTgt, bSpeed) : e.rot;
+      this._stepTurretBearing(e, w, def, turretSolution, dt);
+    }
     if ((w._cooldown || 0) > 0) return capLeft;
     if (this._releaseMomentumSinkIfReady(e, w, def, state)) return capLeft;
 
@@ -1593,9 +1674,6 @@ export const weapons = {
       return capLeft;
     }
 
-    const tracking = w.tracking || def.tracking || 'fixed';
-    const isMissile = tracking === 'homing';
-    const isTurret = (w.facing === 'turret') || (tracking === 'auto_turret');
     const mountProjSpeed = w.projSpeed != null ? w.projSpeed : def.projSpeed || 1;
     // A mixed battery may carry shells, bolts, and plasma at different speeds. Re-solve for this
     // mount instead of reusing the representative primary-gun angle; otherwise every non-primary
@@ -1656,11 +1734,22 @@ export const weapons = {
         ? mountGate.muzzleAngle
         : (isPlayer
           ? this._leadAngle(e, tgt, mountProjSpeed)
-          : this._arcadeMountAngle(e, w, tgt, mountProjSpeed));
+          : (turretSolution != null ? turretSolution : this._arcadeMountAngle(e, w, tgt, mountProjSpeed)));
       const arc = w.gimbalArc != null ? w.gimbalArc : (def.turretArcDeg ? def.turretArcDeg * RAD : Math.PI);
       // turret arc is measured about the hull centre; outside it the mount can't bear.
       if (!arcadeAim && Math.abs(wrapAngle(aim - e.rot)) > arc / 2) return capLeft;
-      dir = arcadeAim && !mountGate ? this._arcadeMountAngle(e, w, arcadeTarget, mountProjSpeed) : aim;
+      // CW-WPN item 4: an NPC battery fires only once its cradle is on the solution. A knife-range
+      // orbit the traverse cannot follow keeps the barrel off the aim and the gun silent — the
+      // "mosquito" answer. Spread is read once and widened into the tolerance so the gate and the
+      // round agree; the released round leaves along the barrel, not along a snapped ideal line.
+      const spreadDeg = gunnerSpreadDeg(e, def, isPlayer, state, tgt);
+      if (!isPlayer && turretSolution != null) {
+        const tol = Math.max(TURRET_ON_SOLUTION_RAD, spreadDeg * RAD);
+        if (Math.abs(wrapAngle(w._turretAngle - turretSolution)) > tol) return capLeft;
+        dir = w._turretAngle + (spreadDeg ? this._spread(spreadDeg) : 0);
+      } else {
+        dir = arcadeAim && !mountGate ? this._arcadeMountAngle(e, w, arcadeTarget, mountProjSpeed) : aim;
+      }
     } else {
       // Tether-lock solution gate (massline2.fireControl, player only): withhold the round unless
       // the barrel — after gimbal clamp, before spread — can actually lie on the solution this
@@ -1671,7 +1760,8 @@ export const weapons = {
       // OVH-01c3 gunner_steady_hands — the player's barrel spread collapses while the
       // ship is actually moving (> 20 % of governed cruise). One read feeds the withhold
       // gate, the gimbal cone and the pilot scheme so gate and round can never disagree.
-      const spreadDeg = gunnerSpreadDeg(e, def, isPlayer, state);
+      const spreadDeg = gunnerSpreadDeg(e, def, isPlayer, state,
+        isPlayer ? null : (arcadeTarget || this._resolveTarget(e)));
       if (mountGate && !arcadeAim && !pilotAim) {
         const spreadRad = spreadDeg * RAD;
         const gateTol = Math.max(mountGate.tolRad, spreadRad + 0.5 * RAD);
@@ -2682,8 +2772,43 @@ export const weapons = {
   // Approx gaussian spread (sum of two uniforms) in radians, from our own deterministic stream.
   _spread(spreadDeg) {
     if (!spreadDeg) return 0;
+    // A mount serviced without init() (a direct focused fixture) has no weapons stream to draw
+    // from; the production system always binds one in init(). Never crash the shot for it.
+    if (typeof this._rng !== 'function') return 0;
     const g = (this._rng() + this._rng() - 1); // ~[-1,1], triangular
     return g * spreadDeg * RAD;
+  },
+
+  // CW-WPN item 4: a turret is a traversing cradle, not a hull-locked gun. `w._turretAngle` is
+  // the barrel's current world bearing; it steps toward the requested aim at the slew limit and is
+  // dragged inside its stops when the hull turns under it. Player turrets keep their authored
+  // instant aim (the ring is the player's own hand); enemy capital/heavy mounts get the real cradle.
+  _isTurretMount(w, def) {
+    const tracking = (w && w.tracking) || (def && def.tracking) || 'fixed';
+    return !!(w && (w.facing === 'turret' || tracking === 'auto_turret'));
+  },
+
+  _stepTurretBearing(e, w, def, aimAngle, dt) {
+    const arc = w.gimbalArc != null ? w.gimbalArc
+      : (def && def.turretArcDeg ? def.turretArcDeg * RAD : Math.PI);
+    const half = Math.max(0, arc) / 2;
+    const hull = Number.isFinite(e && e.rot) ? e.rot : 0;
+    const solve = Number.isFinite(aimAngle) ? aimAngle : hull;
+    let bearing = Number.isFinite(w._turretAngle) ? w._turretAngle : hull;
+    // The hull turned; a cradle already at its stop is pushed along rather than left outside it.
+    const rel = wrapAngle(bearing - hull);
+    if (rel > half) bearing = hull + half;
+    else if (rel < -half) bearing = hull - half;
+    const maxStep = TURRET_SLEW_RAD_S * (Number.isFinite(dt) && dt > 0 ? dt : 1 / 60);
+    const delta = wrapAngle(solve - bearing);
+    if (delta > maxStep) bearing += maxStep;
+    else if (delta < -maxStep) bearing -= maxStep;
+    else bearing = solve;
+    const relAfter = wrapAngle(bearing - hull);
+    if (relAfter > half) bearing = hull + half;
+    else if (relAfter < -half) bearing = hull - half;
+    w._turretAngle = bearing;
+    return bearing;
   },
 
   // ---- Phase 2: hardpoint facing + gimbal + muzzle offsets --------------------------------
