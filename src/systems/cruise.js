@@ -15,8 +15,6 @@ import { WEAPONS } from '../data/weapons.js';
 const CHARGE_NEEDED = 3.0;          // s (spec §1)
 const MASS_LOCK_RADIUS = 180;       // wu
 const MASS_LOCK_ENTITY_RADIUS = 60; // wu
-const STUMBLE_S = 0.5;
-const STUMBLE_REARM_S = 1.5;        // s — a drop inside the window does not re-arm the yaw stumble
 const DAMAGE_DROP_FLOOR = 25;       // authored def.dmg — one heavy packet is a real hit at any mercy scale
 const CHIP_WINDOW_S = 1.25;         // rolling window for sustained weapon pressure
 const CHIP_WINDOW_FLOOR = 36;       // applied dmg in-window — above sustained starter fire (~31), below beams
@@ -238,14 +236,8 @@ export const cruise = {
     cruise.phase = 'off';
     cruise.wrestle = null;
     cruise.t = 0;
-    // Re-arm cooldown: a drop inside the window does not stack a second yaw stumble — under
-    // sustained real fire the stick otherwise stays spongy for as long as the hits keep landing.
-    // The authored snare always stumbles; the interdiction beat is supposed to be felt.
-    if (reason !== DROP_REASONS.DRIVE && reason !== DROP_REASONS.POWER && reason !== DROP_REASONS.JUMP
-        && (reason === DROP_REASONS.SNARED || cruise.stumbleCdT <= 0)) {
-      cruise.stumbleT = STUMBLE_S;
-      cruise.stumbleCdT = STUMBLE_REARM_S;
-    }
+    // HARMONY-FIX 3 (R23): being hit never changes how the ship steers. Dropping out of cruise
+    // (with its toast) is the whole consequence; the old 0.5 s yaw-profile stumble is gone.
     if (reason === DROP_REASONS.SNARED) this.bus.emit('cruise:snared', { sourceId, playerId: this.state.playerId });
     this.bus.emit('cruise:dropped', { reason, was, playerId: this.state.playerId, snare: reason === DROP_REASONS.SNARED });
     // A manual cut is the pilot's own verb. Mass lock is the one that kills cruise

@@ -59,7 +59,7 @@ test('distinguishes a shield plink (no drop) from a meaningful hit (drop) on see
     brokeShield: false,
   });
   assert.equal(sys.state.player.cruise.phase, 'off', 'meaningful hull damage must drop cruise');
-  assert.equal(sys.state.player.cruise.stumbleT > 0, true, 'meaningful drop arms stumble');
+  assert.equal(sys.state.player.cruise.stumbleT, 0, 'HARMONY-FIX 3: a hit drops cruise but never arms a steering penalty');
 });
 
 test('a snare that drops cruise names the snare', () => {
