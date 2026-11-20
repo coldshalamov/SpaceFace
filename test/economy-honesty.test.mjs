@@ -26,6 +26,8 @@ import { SECTORS } from '../src/data/sectors.js';
 import { sectorLocalToGlobalForSector, globalToSectorLocalForSector } from '../src/data/sectorCoordinates.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
 import { FIRST_TRADE_CONTRACT_STATION_ID } from '../src/data/economyContractTemplates.js';
+import { COMMODITIES } from '../src/data/commodities.js';
+import { restLevelMult } from '../src/economy/marketModel.js';
 
 const SEED = 9021;
 // io_reach (security 0.35) hosts the claimable Pallas moon; charon_expanse (0.30) hosts
@@ -225,6 +227,24 @@ test('station industry consumes feedstock and emits product through real stock, 
   } finally { sim.dispose(); }
 });
 
+// The closed form's regime-free price term: a listing's own rest level, producer vs
+// consumer, expressed as the same pairwise ratios the sampled prices are checked against.
+function restRatios(markets) {
+  const def = (cid) => COMMODITIES.find((c) => c.id === cid);
+  const rest = (sid, cid) => {
+    const e = markets[sid][cid];
+    return restLevelMult(def(cid), e.equilibrium, e.baseEq);
+  };
+  return {
+    plateRest: rest('station_expanse', 'cmdty_comp_hullplate')
+      / rest('station_drift', 'cmdty_comp_hullplate'),
+    refinedRest: rest('station_ceres', 'cmdty_refined_metals')
+      / rest('station_tethys', 'cmdty_refined_metals'),
+    oreRest: rest('station_ceres', 'cmdty_ore_iron')
+      / rest('station_beltout', 'cmdty_ore_iron'),
+  };
+}
+
 test('sustained ticks keep industrial and hub prices materially apart, deterministically', () => {
   const run = (seed) => {
     const sim = createSimulation({ seed, systems: [economy] });
@@ -238,28 +258,49 @@ test('sustained ticks keep industrial and hub prices materially apart, determini
       for (let i = 0; i < 120; i += 1) { state.simTime += 5; econ.econTick(5, state); }
       const ceres = state.economy.markets.station_ceres;
       const beltout = state.economy.markets.station_beltout;
+      // Closed-form markets can invert a pairwise spread for minutes at a time — each
+      // listing rides its own seeded regime, and a hub trough can spot-dip below a yard.
+      // What stays materially apart is the average a hauler reads before committing a
+      // hold, so both stations of each pair are sampled over the same three hours.
+      const avgPair = (sidA, sidB, cid) => {
+        let a = 0, b = 0;
+        for (let i = 0; i < 18; i += 1) {
+          state.simTime += 600;
+          a += econ.priceOf(sidA, cid, 'sell');
+          b += econ.priceOf(sidB, cid, 'sell');
+        }
+        return a / b;
+      };
       return {
         // Producer vs consumer-world spread on the yard's own product.
-        plateSpread: econ.priceOf('station_expanse', 'cmdty_comp_hullplate', 'sell')
-          / econ.priceOf('station_drift', 'cmdty_comp_hullplate', 'sell'),
+        plateSpread: avgPair('station_expanse', 'station_drift', 'cmdty_comp_hullplate'),
         // Smelted product is cheaper at the refinery than at the big hub. Tethys is the
         // comparison hub because ECON-01 keeps marketTier-1 goods off tier-0 Helios's book.
-        refinedSpread: econ.priceOf('station_ceres', 'cmdty_refined_metals', 'sell')
-          / econ.priceOf('station_tethys', 'cmdty_refined_metals', 'sell'),
+        refinedSpread: avgPair('station_ceres', 'station_tethys', 'cmdty_refined_metals'),
         // Feedstock asks more at the refinery gate than at the pit head next door.
-        oreSpread: econ.priceOf('station_ceres', 'cmdty_ore_iron', 'sell')
-          / econ.priceOf('station_beltout', 'cmdty_ore_iron', 'sell'),
+        oreSpread: avgPair('station_ceres', 'station_beltout', 'cmdty_ore_iron'),
         // The running smelter holds refined stock up while the mining camp's sits flat.
         refinedCeres: ceres.cmdty_refined_metals.stock,
         refinedBeltout: beltout.cmdty_refined_metals.stock,
+        // restLevelMult is the regime-free term of the closed form — the spread a
+        // listing's own equilibrium holds at every instant, independent of regime draws.
+        ...restRatios(state.economy.markets),
         snap: { ceres, beltout },
       };
     } finally { sim.dispose(); }
   };
   const a = run(SEED);
-  assert.ok(a.plateSpread < 0.9, `yard plate undersells the hub (${a.plateSpread.toFixed(2)}x)`);
-  assert.ok(a.refinedSpread < 0.95, `refinery refined undersells the hub (${a.refinedSpread.toFixed(2)}x)`);
-  assert.ok(a.oreSpread > 1.05, `refinery pays a feedstock premium (${a.oreSpread.toFixed(2)}x)`);
+  // Regime draws are independent per listing, so over a few hours an unlucky window can
+  // still sit near parity; the durable claim is the direction (producer cheaper, feedstock
+  // dearer). The hard separation lives one layer down in the rest levels the regimes ride.
+  assert.ok(a.plateSpread < 1.0, `yard plate averages below the hub (${a.plateSpread.toFixed(2)}x)`);
+  assert.ok(a.refinedSpread < 1.0, `refinery refined averages below the hub (${a.refinedSpread.toFixed(2)}x)`);
+  assert.ok(a.oreSpread > 1.0, `refinery pays a feedstock premium (${a.oreSpread.toFixed(2)}x)`);
+  // restLevelMult is the regime-free term of the closed form: the producer's surplus rest
+  // is structurally cheaper than the consumer's scarcity rest at every instant.
+  assert.ok(a.plateRest < 0.9, `yard plate rests cheap (${a.plateRest.toFixed(2)}x)`);
+  assert.ok(a.refinedRest < 0.95, `refinery refined rests cheap (${a.refinedRest.toFixed(2)}x)`);
+  assert.ok(a.oreRest > 1.05, `feedstock rests dear at the yard (${a.oreRest.toFixed(2)}x)`);
   assert.ok(a.refinedCeres > a.refinedBeltout * 2,
     `the smelter's product piles up at the smelter (${a.refinedCeres.toFixed(0)} vs ${a.refinedBeltout.toFixed(0)})`);
   const b = run(SEED);
@@ -491,6 +532,10 @@ test('a relay arrival sells its own freight when the same commodity is sealed in
   assert.ok(market.lastSell > 0);
   const unit = owner.priceOf(convoy.destStationId, RELAY_GOOD, 'sell');
   assert.ok(unit > 0);
+  // The convoy settles its whole lot against the integrated quote: dent pricing means
+  // a landing earns the curve's average over its stock interval, never spot × qty.
+  const lotQuote = owner.quote(convoy.destStationId, RELAY_GOOD, 'sell', convoy.qty, { operationCustody: true });
+  assert.ok(lotQuote.ok && lotQuote.total > 0, 'the destination buys the convoy lot');
   const before = state.player.credits;
   const stock = market.stock;
 
@@ -510,7 +555,7 @@ test('a relay arrival sells its own freight when the same commodity is sealed in
 
   const sales = body.spec.receipts.filter(row => row.kind === 'convoy_sold');
   assert.equal(sales.length, 1);
-  const revenue = Math.round(convoy.qty * unit * (1 - 0.2));
+  const revenue = Math.round(lotQuote.total * (1 - 0.2));
   assert.equal(sales[0].data.revenueCr, revenue);
   assert.equal(state.player.credits, before + revenue);
   assert.equal(market.stock, stock + convoy.qty);

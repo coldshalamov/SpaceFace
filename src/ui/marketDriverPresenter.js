@@ -7,6 +7,7 @@ import { hash32 } from '../core/rng.js';
 import { causeFor } from './causeLedger.js';
 import { forecastFor } from './priceForecast.js';
 import { regimeLabel } from '../systems/economyCycles.js';
+import { marketRegimeStateFor } from '../economy/marketModel.js';
 import { generateHeadline } from './marketNews.js';
 import { summarizeDemandDrivers } from './demandDriverSummary.js';
 import { FACTION_META } from '../data/factions.js';
@@ -57,7 +58,7 @@ export function marketCardDrivers(primary = []) {
     if (!item || item.id === 'geography' || item.id === 'standing') return false;
     if (item.id === 'role') return item.direction !== 'flat';
     if (item.id === 'conflict') return item.direction !== 'flat';
-    if (item.id === 'cycle') return item.value !== 'stable';
+    if (item.id === 'cycle') return item.value !== 'stable' && item.value !== 'steady';
     return true;
   });
 }
@@ -168,11 +169,13 @@ export function presentMarketDrivers({ state, stationId, commodity, entry, cycle
     ? driver('conflict', demandSummary.label, demandSummary.shortLabel, demandSummary.explanation, demandSummary.direction, entry.demandMult)
     : driver('conflict', 'No sector demand modifier', 'No conflict', 'No persistent war, blockade, or industrial expansion currently changes this commodity quote.', 'flat', 1);
 
-  const liveCycle = cycle || (state && state.economy && state.economy.cycles
-    && state.economy.cycles[stationId] && commodity && state.economy.cycles[stationId][commodity.id]);
-  const regime = liveCycle && (liveCycle.regime || liveCycle.family) || 'stable';
-  const regimeText = regimeLabel(regime);
-  const cycleDirection = regime === 'rising' ? 'up' : regime === 'falling' ? 'down' : 'variable';
+  const regimeState = cycle || (state && stationId && commodity
+    ? marketRegimeStateFor(state, stationId, commodity.id, state.simTime || 0)
+    : null);
+  const regime = regimeState ? regimeState.kind : 'steady';
+  const regimeText = regimeState ? regimeState.label : regimeLabel(regime);
+  const cycleDirection = regime === 'climb' || regime === 'squeeze' ? 'up'
+    : regime === 'slide' || regime === 'glut' ? 'down' : 'variable';
   const cycleDriver = driver('cycle', 'Short-term trend', regimeText.replace(/ demand| pricing| market| curve/i, ''), `The current short-term formula regime is ${regimeText.toLocaleLowerCase()}.`, cycleDirection, regime);
 
   const standing = standingDriver(state, station, entry, reputation);
@@ -240,27 +243,18 @@ export function depletionMover(entry) {
  */
 export function lastMoveCause({ state, stationId, commodity, entry } = {}) {
   const seed = (state && state.meta && (hash32(state.meta.seed) >>> 0)) || 0;
-  const ids = [];
-  for (const m of (entry && Array.isArray(entry.eventMods) ? entry.eventMods : [])) {
-    if (m && m.eventId != null && !ids.includes(m.eventId)) ids.push(m.eventId);
-  }
+  // Live movers come from the closed form: scheduled + injected windows touching this
+  // listing right now, newest start first. Scheduled rows ride the same eventId/headline
+  // path dynamic rows did.
   let newest = null;
   let newestT = -Infinity;
-  if (ids.length) {
-    const events = (state && state.economy && state.economy.econEvents) || [];
-    for (const id of ids) {
-      const ev = events.find((e) => e && e.id === id);
-      if (!ev) continue;
-      const startT = Number(ev.startT);
-      if (Number.isFinite(startT)) {
-        if (startT >= newestT) { newest = ev; newestT = startT; }
-      } else if (!newest) {
-        // A restored row clamps malformed timing to startT 0 (normalizeRestoredEconomyEvent),
-        // so this is only a defensive fallback. It cannot outrank a datable cause, but it still
-        // stands in when nothing else does.
-        newest = ev;
-      }
-    }
+  const regimeState = state && stationId && commodity
+    ? marketRegimeStateFor(state, stationId, commodity.id, state.simTime || 0)
+    : null;
+  for (const ev of (regimeState && regimeState.events) || []) {
+    const startT = Number(ev && (ev.tStart != null ? ev.tStart : ev.startT));
+    // >= : two movers at the same instant still rank the freshest fact last.
+    if (Number.isFinite(startT) && startT >= newestT) { newest = ev; newestT = startT; }
   }
   const name = COMMODITY_NAME_FALLBACK(commodity, commodity && commodity.id);
   const mine = playerTradeMover(state, stationId, commodity && commodity.id);
@@ -294,8 +288,6 @@ export function lastMoveCause({ state, stationId, commodity, entry } = {}) {
       kind: 'depletion',
     });
   }
-  const liveCycle = state && state.economy && state.economy.cycles
-    && state.economy.cycles[stationId] && commodity && state.economy.cycles[stationId][commodity.id];
-  const regime = (liveCycle && (liveCycle.regime || liveCycle.family)) || 'stable';
+  const regime = (regimeState && regimeState.kind) || 'steady';
   return Object.freeze({ text: `Last move: ${regimeLabel(regime)}`, eventId: null, kind: 'cycle' });
 }

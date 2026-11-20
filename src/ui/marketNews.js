@@ -203,8 +203,8 @@ export function buildEventCard(ev, opts = {}) {
  */
 export function cardsForStation(state, stationId, opts = {}) {
   const seed = (opts.seed >>> 0) || ((state && state.meta && (hash32(state.meta.seed) >>> 0)) || 0);
-  const econ = state && state.economy;
-  const events = (econ && econ.econEvents) || [];
+  // Scheduled windows + injected rows — the closed form enumerates both, live at t.
+  const events = stationLiveEvents(state, stationId);
   const out = [];
   for (const ev of events) {
     if (ev.stationId !== stationId) continue;

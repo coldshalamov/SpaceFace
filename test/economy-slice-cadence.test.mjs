@@ -32,42 +32,6 @@ function bootEconomy(seed = 0xEC07_CADE) {
   return { sim, state: sim.state, econ };
 }
 
-function instrument(econ) {
-  const observed = {
-    events: 0,
-    started: 0,
-    completed: 0,
-    clobbered: 0,
-    advances: 0,
-    firstPass: null,
-  };
-  const realEconTick = econ.econTick;
-  const realAdvance = econ._advanceEconPass;
-  const realFinish = econ._finishEconTick;
-  econ.econTick = function measuredEconTick(dt, state, options) {
-    if (this._econPass) observed.clobbered++;
-    observed.started++;
-    return realEconTick.call(this, dt, state, options);
-  };
-  econ._advanceEconPass = function measuredAdvance(state) {
-    if (!observed.firstPass && this._econPass) {
-      const pass = this._econPass;
-      observed.firstPass = {
-        recipeStep: pass.recipeStep,
-        stationStep: pass.stationStep,
-        stationCount: pass.stationIds.length,
-      };
-    }
-    observed.advances++;
-    return realAdvance.call(this, state);
-  };
-  econ._finishEconTick = function measuredFinish(...args) {
-    observed.completed++;
-    return realFinish.apply(this, args);
-  };
-  return observed;
-}
-
 function countEvents(sim) {
   let events = 0;
   sim.bus.on('economy:tick', () => { events++; });
@@ -97,97 +61,72 @@ test.after(() => {
   resetSimCoreFlags();
 });
 
-test('2100 production ticks: one economy receipt per 5 s, a completed pass, and no clobber', () => {
-  const { sim, state, econ } = bootEconomy();
+// ECON-BUILD-1 — the sliced market pass, its cursor and its drift/slice profiler
+// rows are deleted. What remains on the same ~5 s calendar is a synchronous
+// bookkeeping sweep (station conditions, event edges, docked intel, industry
+// dents) that emits one economy:tick receipt per run. The new-rule contract:
+// receipts track completed sweeps exactly, prices are time not ticks, and a
+// save/load boundary reproduces the uninterrupted book bit-for-bit.
+
+test('2100 production ticks: one economy receipt per completed sweep, none dropped', () => {
+  const { sim, state } = bootEconomy();
   const events = countEvents(sim);
-  const observed = instrument(econ);
-  const profiler = getSimStepProfiler();
-  profiler.reset();
-  profiler.setEnabled(true);
   try {
     for (let i = 0; i < 2100; i++) sim.step(DT);
-    const report = profiler.snapshot();
-    const drift = report.systems.find((row) => row.id === 'economy.drift');
-    const slice = report.systems.find((row) => row.id === 'economy.slice');
-
-    assert.equal(observed.clobbered, 0, 'a due tick must never be entered while a pass is in flight');
-    assert.equal(events(), Math.floor((state.simTime + 1e-6) / 5),
-      `receipt count must match the due periods (simTime ${state.simTime})`);
-    assert.ok(observed.started >= 6, `expected one pass per due period, got ${observed.started}`);
-    assert.ok(observed.completed >= observed.started - 1,
-      `only the final in-flight pass may be uncompleted (${observed.completed}/${observed.started})`);
-    assert.ok(drift && drift.calls > 0, 'the drift phase must actually run');
-    assert.ok(slice && slice.calls > 0, 'the slice advance sub-phase must actually run');
-
-    // The quantum covers each phase inside its three advances. This is the production data check
-    // for the current recipe and station counts, not a hard-coded assumption in the test.
-    assert.ok(observed.firstPass, 'the first due pass was captured');
-    assert.ok(observed.firstPass.recipeStep * 3 >= REGIONAL_RECIPES.length,
-      `recipe quantum ${observed.firstPass.recipeStep} x 3 must cover ${REGIONAL_RECIPES.length}`);
-    assert.ok(observed.firstPass.stationStep * 3 >= observed.firstPass.stationCount,
-      `station quantum ${observed.firstPass.stationStep} x 3 must cover ${observed.firstPass.stationCount}`);
-    assert.ok(observed.advances / Math.max(1, observed.started) <= 9,
-      `a pass must finish inside 9 advances, got ${observed.advances}/${observed.started}`);
+    const elapsed = state.economy.econClock.ticksElapsed;
+    assert.equal(events(), elapsed,
+      `every completed sweep emits exactly one receipt (events ${events()} vs sweeps ${elapsed})`);
+    const due = Math.floor((state.simTime + 1e-6) / 5);
+    assert.ok(events() >= due - 1 && events() <= due,
+      `sweep count stays within one boundary of due periods (got ${events()}, due ${due})`);
+    assert.ok(events() >= 6, `35 s of production time ran at least six sweeps, got ${events()}`);
   } finally {
-    profiler.setEnabled(false);
     sim.dispose();
   }
 });
 
-test('60 s production profile: 12 receipts, non-zero drift, no dropped pass', () => {
-  const { sim, state, econ } = bootEconomy(0xEC07_CAFE);
+test('60 s production profile: receipts track the sweep calendar', () => {
+  const { sim, state } = bootEconomy(0xEC07_CAFE);
   const events = countEvents(sim);
-  const observed = instrument(econ);
-  const profiler = getSimStepProfiler();
-  profiler.reset();
-  profiler.setEnabled(true);
   try {
     for (let i = 0; i < 3600; i++) sim.step(DT);
-    const report = profiler.snapshot();
-    const drift = report.systems.find((row) => row.id === 'economy.drift');
-    assert.equal(observed.clobbered, 0);
-    assert.equal(events(), 12, '60 s of production time must emit 12 economy receipts');
-    assert.equal(Math.floor((state.simTime + 1e-6) / 5), 12);
-    assert.ok(drift && drift.calls > 0, 'drift must run on the shipped 60 s profile');
-    assert.ok(state.economy.econClock.ticksElapsed >= 11,
-      `completed passes must track the receipts, got ${state.economy.econClock.ticksElapsed}`);
+    const elapsed = state.economy.econClock.ticksElapsed;
+    assert.equal(events(), elapsed, 'receipts equal completed sweeps — no dropped or doubled emit');
+    assert.ok(events() >= 11 && events() <= 13,
+      `~12 sweeps land inside 60 s of production time (got ${events()})`);
+    const lag = state.simTime - state.economy.econClock.lastTickT;
+    assert.ok(lag >= 0 && lag <= 2,
+      `the clock mirrors a recent sweep instant (lag ${lag.toFixed(2)}s)`);
   } finally {
-    profiler.setEnabled(false);
     sim.dispose();
   }
 });
 
-test('serialize snapshots an in-flight pass without advancing, emitting, or changing stock', () => {
+test('serialize snapshots live market state without advancing, emitting, or changing stock', () => {
   const { sim, state, econ } = bootEconomy(0xEC07_BEEF);
   const events = countEvents(sim);
-  // Run until a pass is genuinely in flight, then stop.
-  let guard = 0;
-  while (!econ._econPass && guard++ < 3600) sim.step(DT);
-  assert.ok(econ._econPass, 'a due pass is in flight');
-  const cursor = { phase: econ._econPass.phase, index: econ._econPass.index };
+  for (let i = 0; i < 660; i++) sim.step(DT); // ~11 s — a couple of sweeps have run
   const beforeMarkets = JSON.stringify(state.economy.markets);
   const beforeEvents = events();
   const data = econ.serialize();
-  assert.ok(data.econPass, 'the save carries the pass cursor');
-  assert.equal(econ._econPass.phase, cursor.phase, 'serialize must not advance the phase');
-  assert.equal(econ._econPass.index, cursor.index, 'serialize must not advance the index');
+  assert.ok(!data.econPass, 'no pass cursor exists to persist — the machinery is gone');
   assert.equal(JSON.stringify(state.economy.markets), beforeMarkets,
     'a save must not change stock or prices');
   assert.equal(events(), beforeEvents, 'a save must not emit economy:tick');
   sim.dispose();
 });
 
-test('a saved in-flight pass resumes and matches an uninterrupted pass', () => {
+test('a saved market state resumes and matches the uninterrupted run', () => {
   const a = bootEconomy(0xEC07_D00D);
   const b = bootEconomy(0xEC07_D00D);
-  let guard = 0;
-  while (!a.econ._econPass && guard++ < 3600) a.sim.step(DT);
-  assert.ok(a.econ._econPass);
+  // Both sims reach the save tick identically, then a's economy blob lands in b —
+  // the same boundary check:sim runs: no simTime surgery, no catch-up burst.
+  for (let i = 0; i < 660; i++) { a.sim.step(DT); b.sim.step(DT); }
   const saved = a.econ.serialize();
   b.econ.deserialize(saved);
   b.state.tick = a.state.tick;
-  b.state.simTime = a.state.simTime;
-  // Run both through the rest of the pass and a little beyond.
+  // Run both forward through the same stretch: the sweep accumulator and the event
+  // edge cursor persist on econClock, so dents stamp at identical instants.
   for (let i = 0; i < 30; i++) {
     a.sim.step(DT);
     b.sim.step(DT);
@@ -196,11 +135,12 @@ test('a saved in-flight pass resumes and matches an uninterrupted pass', () => {
     [sid, Object.fromEntries(Object.entries(market).map(([cid, row]) => [cid, {
       stock: row.stock, lastMid: row.lastMid, lastBuy: row.lastBuy, lastSell: row.lastSell,
       equilibrium: row.equilibrium, demandMult: row.demandMult,
+      dents: row.dents,
     }]))]));
   assert.deepEqual(priced(b.state), priced(a.state),
-    'the restored cursor must not replay or drop the pass remainder');
+    'the restored market must not replay or drop any sweep work');
   assert.equal(b.state.economy.econClock.ticksElapsed, a.state.economy.econClock.ticksElapsed,
-    'completed-pass counts must agree after resume');
+    'completed-sweep counts must agree after resume');
   a.sim.dispose();
   b.sim.dispose();
 });

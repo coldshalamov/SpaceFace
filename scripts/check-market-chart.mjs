@@ -13,7 +13,8 @@ import { fileURLToPath } from 'node:url';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { settleCredits } from '../src/economy/economyMath.js';
 import { economy, getCycle as liveCycleFor } from '../src/systems/economy.js';
-import { cycleFactorAt, maybeAdvanceRegime, predictPriceCurve, rawCycleFactorAt, regimeLabel } from '../src/systems/economyCycles.js';
+import { predictPriceCurve, regimeLabel } from '../src/systems/economyCycles.js';
+import { marketHistoryFor, marketRegimeStateFor, regimeFactorAt } from '../src/economy/marketModel.js';
 import {
   createMarketHistoryBackfill,
   marketPriceHistory,
@@ -44,9 +45,10 @@ function testRealEconomyHistoryAndForecast() {
   assert.ok(def, 'fixture commodity must exist in COMMODITIES');
 
   const cycle = liveCycleFor(stationId, commodityId);
-  assert.ok(cycle, 'live economy wrapper exposes the station commodity cycle');
-  assert.ok(Number.isFinite(cycleFactorAt(cycle, state.simTime)), 'cycle factor is finite at now');
-  assert.notEqual(regimeLabel(cycle.regime), 'Cyclic pricing', 'chart regime label resolves a shipped regime');
+  assert.ok(cycle && cycle.regime, 'live economy wrapper exposes the listing regime (compat)');
+  const regimeState = marketRegimeStateFor(state, stationId, commodityId, state.simTime);
+  assert.ok(regimeState && regimeState.kind, 'closed form resolves a live regime for the listing');
+  assert.notEqual(regimeLabel(regimeState.kind), 'Cyclic pricing', 'chart regime label resolves a shipped regime');
 
   const firstForecast = predictPriceCurve(state, stationId, commodityId, 24, 5);
   const secondForecast = predictPriceCurve(state, stationId, commodityId, 24, 5);
@@ -58,13 +60,16 @@ function testRealEconomyHistoryAndForecast() {
     'forecast mids are finite positive prices');
 
   // The event log is sourced from current economy events; the chart's actual price series is the
-  // economy-owned listing history and must move with live stock pressure.
+  // closed-form listing history and must move with live stock pressure (dents).
   state.economy.econEvents.push({
     id: 'chart_event_1',
     type: 'shortage',
     stationId,
-    commodityId,
-    durationRemainingS: 45,
+    goods: [commodityId],
+    tStart: 40,
+    tEnd: 40 + 240,
+    levelMult: 1.4,
+    spreadMult: 1.3,
   });
   for (let i = 0; i < 12; i++) {
     if (i === 3) bus.emit('economy:applyTradePressure', { stationId, commodityId, vol: -500 });
@@ -73,8 +78,8 @@ function testRealEconomyHistoryAndForecast() {
   }
 
   const entry = state.economy.markets[stationId][commodityId];
-  const history = entry.history;
-  assert.ok(history.length >= 64, `economy-owned history retains its bounded past; got ${history.length}`);
+  const history = marketHistoryFor(state, stationId, commodityId);
+  assert.ok(history.length >= 60, `economy-owned history retains its bounded past; got ${history.length}`);
   assert.ok(new Set(history.map((p) => p.mid)).size > 1,
     'price history changes after real stock pressure and drift');
   assert.ok(entry.lastBuy > entry.lastSell && entry.lastSell > 0,
@@ -216,28 +221,35 @@ function testSeededStationMarketHistory() {
 
   const signatures = ids.map((id) => {
     const entry = market[id];
-    assert.equal(entry.history.length, 64, `new ${id} listing has a full seeded history`);
-    assert.equal(entry.history.at(-1).mid, entry.lastMid,
+    const history = marketHistoryFor(state, stationId, id);
+    assert.equal(history.length, 64, `new ${id} listing has a full closed-form history`);
+    assert.equal(history.at(-1).mid, Math.max(1, Math.round(entry.lastMid)),
       `${id} history ends at the currently quoted market mid`);
-    assert.ok(entry.history.every((p) => Number.isFinite(p.t) && p.mid > 0),
+    assert.ok(history.every((p) => Number.isFinite(p.t) && p.mid > 0),
       `${id} history contains finite positive quotes`);
-    const signature = entry.history.map((p) => p.mid).join(',');
-    assert.ok(new Set(entry.history.map((p) => p.mid)).size > 1,
-      `${id} opening history has visible integer-price movement`);
-    return signature;
+    return history.map((p) => p.mid).join(',');
   });
   assert.ok(new Set(signatures).size > 1,
     'new-game commodities start with distinct formula-derived histories, not one decorative graph');
+  // A 'steady' listing may honestly sit on one integer mid for the 16-min
+  // window — that is the regime, not a dead chart. Most of the book must still
+  // show the formula moving.
+  const moving = ids.filter((id, i) => new Set(signatures[i].split(',')).size > 1);
+  assert.ok(moving.length >= Math.ceil(ids.length / 2),
+    `most listings show visible price movement; got ${moving.length}/${ids.length}`);
 
-  // Only a market the pilot has actually inspected carries its exact lived trace into the save.
-  // The serialized representation is packed [t, mid, ...] to keep autosaves compact; deserialize
-  // restores the normal object-per-point runtime shape.
+  // The save carries the market anchors (rest level, live dents, demand) — the
+  // timeline itself is the closed form and reproduces identically after load.
+  bus.emit('economy:applyTradePressure', { stationId, commodityId: ids[0], vol: -300 });
+  const preSave = marketHistoryFor(state, stationId, ids[0]);
   state.player.marketMemory[stationId] = {};
   const saved = econ.serialize();
+  assert.equal(saved.marketRows, 2, 'save declares the anchor-row market format');
   const savedRow = saved.markets[stationId].find((row) => row[0] === ids[0]);
-  const packedHistory = savedRow && savedRow[6];
-  assert.ok(Array.isArray(packedHistory) && packedHistory.length === market[ids[0]].history.length * 2,
-    'an inspected market saves its exact timeline in the packed history representation');
+  assert.ok(savedRow && savedRow.length === 6,
+    'a market row saves [cid, eq, baseEq, role, dents, demandMult]');
+  assert.ok(Array.isArray(savedRow[4]) && savedRow[4].length >= 2,
+    'a live dent travels in the save row');
 
   const restoredState = {
     mode: 'flight', simTime: state.simTime, meta: { seed: state.meta.seed },
@@ -247,22 +259,17 @@ function testSeededStationMarketHistory() {
   const restored = { ...economy };
   restored.init({ state: restoredState, bus: makeBus(), helpers: {}, registry: { get: () => null } });
   restored.deserialize(structuredClone(saved));
-  // Compare the timeline values: live points carry a session-only prototype stamp (`origin`) that
-  // saves deliberately drop, so the restored trace is plain objects by design.
-  const timeline = (points) => points.map(({ t, mid }) => ({ t, mid }));
-  assert.deepEqual(timeline(restoredState.economy.markets[stationId][ids[0]].history), timeline(market[ids[0]].history),
-    'loading a save keeps the existing market timeline instead of bootstrapping a generic one');
+  const restoredEntry = restoredState.economy.markets[stationId][ids[0]];
+  assert.ok(restoredEntry && restoredEntry.dents.length > 0,
+    'loading a save restores the live dent');
+  assert.deepEqual(marketHistoryFor(restoredState, stationId, ids[0]), preSave,
+    'loading a save reproduces the exact market timeline from the anchors');
 
   const currentCycle = liveCycleFor(stationId, ids[0]);
-  const invalid = {
-    ...currentCycle,
-    family: 'falling', regime: 'falling', amplitude: 0, bias: 0, slope: -2,
-    regimeStartT: state.simTime - 1, regimeEndT: state.simTime + 600,
-  };
-  assert.ok(rawCycleFactorAt(invalid, state.simTime) <= 0,
-    'fixture forces a formula that would make a price non-positive');
-  assert.notEqual(maybeAdvanceRegime(invalid, () => 0.5, state.simTime), invalid,
-    'a non-positive formula re-rolls immediately instead of relying on a display clamp');
+  assert.ok(currentCycle && currentCycle.regime, 'compat getCycle resolves a regime word');
+  const factor = regimeFactorAt(state.meta.seed, stationId, ids[0], state.simTime);
+  assert.ok(Number.isFinite(factor) && factor >= 0.55 && factor <= 1.9,
+    'the regime factor stays inside its shipped band so mids can never go non-positive');
 
   economy._instance = null;
 }

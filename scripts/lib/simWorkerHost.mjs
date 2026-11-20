@@ -27,6 +27,7 @@ import { readPhysicsTelemetry } from '../../src/core/physicsAuthority.js';
 import { combat } from '../../src/systems/combat.js';
 import { cargo } from '../../src/systems/cargo.js';
 import { economy } from '../../src/systems/economy.js';
+import { marketRowsFor, marketHistoryFor, marketRegimeStateFor } from '../../src/economy/marketModel.js';
 import { missions } from '../../src/systems/missions.js';
 import { story } from '../../src/systems/story.js';
 import { save } from '../../src/save/saveSystem.js';
@@ -1668,18 +1669,16 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       ['inspectListing', (args) => {
         const e = registry.get('economy');
         const market = (state.economy.markets || {})[args.stationId] || null;
-        const pending = e && e._pendingMints ? e._pendingMints.get(args.stationId) : null;
-        const entry = (market && market[args.commodityId]) || (pending && pending.listings[args.commodityId]) || null;
-        const cycle = ((state.economy.cycles || {})[args.stationId] || {})[args.commodityId]
-          || (pending && pending.cycles[args.commodityId]) || null;
+        const entry = (market && market[args.commodityId]) || null;
+        const regime = marketRegimeStateFor(state, args.stationId, args.commodityId, state.simTime || 0);
         return {
           entry: entry ? {
             stock: entry.stock, equilibrium: entry.equilibrium, baseEq: entry.baseEq,
             role: entry.role, lastMid: entry.lastMid, lastBuy: entry.lastBuy, lastSell: entry.lastSell,
-            demandMult: entry.demandMult,
+            demandMult: entry.demandMult, dents: entry.dents,
           } : null,
-          cycle: cycle ? { regime: cycle.regime, startedAt: cycle.startedAt, phase: cycle.phase } : null,
-          pending: pending ? { market: !!pending.market, listings: Object.keys(pending.listings), cycles: Object.keys(pending.cycles) } : null,
+          cycle: regime ? { regime: regime.kind, startedAt: (state.simTime || 0) - regime.elapsed, phase: null } : null,
+          pending: null,
         };
       }],
       // Station market history — the render lane's on-demand backfill for the
@@ -1687,26 +1686,27 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       // (stage-7 item B): iterate-all readers keep mid/buy/sell/stock on the
       // wire, the 64-point rings come through here only when a UI asks.
       ['marketHistory', (args) => {
-        const market = (state.economy.markets || {})[(args && args.stationId) || ''];
-        if (!market) return { stationId: args && args.stationId, histories: null };
+        const stationId = (args && args.stationId) || '';
+        const rows = marketRowsFor(state, stationId);
+        if (!rows || !Object.keys(rows).length) return { stationId, histories: null };
         if (args && args.commodityId) {
-          const entry = market[args.commodityId];
-          return { stationId: args.stationId, commodityId: args.commodityId, history: (entry && entry.history) || null };
+          return { stationId, commodityId: args.commodityId,
+            history: marketHistoryFor(state, stationId, args.commodityId) };
         }
-        const result = { stationId: args.stationId };
+        const result = { stationId };
         if (args.includeObservedComparisons !== true) {
           const histories = {};
-          for (const cid of Object.keys(market)) histories[cid] = (market[cid] && market[cid].history) || null;
+          for (const cid of Object.keys(rows)) histories[cid] = marketHistoryFor(state, stationId, cid);
           result.histories = histories;
         }
         if (args.includeObservedComparisons === true && state.ui?.docked
           && state.ui.dockedStationId === args.stationId) {
           const now = Number(state.simTime) || 0;
           const comparisons = {};
-          for (const [cid, entry] of Object.entries(market)) {
-            if (!Number.isFinite(entry?.lastMid) || !Array.isArray(entry.history)) continue;
+          for (const [cid, entry] of Object.entries(rows)) {
+            if (!Number.isFinite(entry?.lastMid)) continue;
             let reference = null;
-            for (const point of entry.history) {
+            for (const point of (entry.history || [])) {
               if (point?.origin !== 'observed' || !Number.isFinite(point.t)
                 || !Number.isFinite(point.mid) || now - point.t < 120) continue;
               if (!reference || point.t > reference.t) reference = point;

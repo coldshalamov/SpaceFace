@@ -33,6 +33,7 @@ import { FACTION_META } from '../../data/factions.js';
 import { BINDINGS } from '../bindings.js';
 import { SECTORS, surveyDataPrice } from '../../data/sectors.js';
 import { COMMODITIES }  from '../../data/commodities.js';
+import { economyLiveEvents } from '../../economy/marketModel.js';
 import { missionPreflight } from '../missionPreflight.js';
 import { CONTACT_VOICE_REGISTERS, barGreetingBarkFor, barApproachBarkFor } from '../../data/barks.js';
 import { depthContactsForStation } from '../../story/campaign47a/embodiedDialogue.js';
@@ -925,7 +926,8 @@ export function getChoices(role, contact = null) {
 
 // Helpers to safely dig into ctx.state
 function getEconEvents(state) {
-  return (state && state.economy && state.economy.econEvents) || [];
+  // Scheduled windows + injected rows — rumormongers hear both.
+  return economyLiveEvents(state, (state && state.simTime) || 0);
 }
 function getMarketIntel(state) {
   return (state && state.economy && state.economy.marketIntel) || {};

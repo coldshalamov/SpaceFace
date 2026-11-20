@@ -35,6 +35,7 @@ import { MISSION_TYPES, MISSION_TUNING, withBountyHeadMoney } from '../data/miss
 import { hash32, mulberry32 } from '../core/rng.js';
 import { sectorSignalFor, effectiveDangerTierFor } from './sectorSim.js';
 import { starvedIndustryNeedFor, marketStockStatus } from './economy.js';
+import { economyLiveEvents } from '../economy/marketModel.js';
 import { isPlayerWanted, heatLevelFor, wantedTierFor } from './heat.js'; // READ-ONLY heat reads (C11)
 import {
   DENIABLE_PAY_SCALE, DENIABLE_CAUSE_TAG, DENIABLE_AMBUSH_CLAUSE, OUTLAW_FRIENDLY_PERSONALITIES,
@@ -53,6 +54,7 @@ import {
 import {
   massDeclarationForTarget, massDiscrepancy, normalizeMassScaleState, physicalMassT,
 } from './cargoCustody.js';
+import { slotFitFor } from './cargo.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -449,8 +451,10 @@ export const economyContracts = {
 
       // A newly posted shortage (or an aborted repair) can arrive after this epoch's field
       // evaluation. Retry this real need before the ambient cadence latch, without charging.
+      // An already-boarded repair falls through: scheduled shortage windows run ~40 min,
+      // and a live one must not starve every field evaluation of the berth's epoch cadence.
       const repair = this.planShortageRepairOffer(info, epoch);
-      if (repair && (this._offerOnBoard(stationId, repair.id) || this._emitOfferForBoard(stationId, repair))) return;
+      if (repair && !this._offerOnBoard(stationId, repair.id) && this._emitOfferForBoard(stationId, repair)) return;
 
       // C11: a WANTED pilot at an outlaw-friendly berth is offered the deniable job. It rides its
       // own per-station-epoch latch (separate from the field evaluation below) so a crime
@@ -801,8 +805,12 @@ export const economyContracts = {
   planShortageRepairOffer(info, epoch) {
     const state = this.state;
     const sectors = new Set([info.sectorId, ...(SECTOR_BY_ID.get(info.sectorId)?.neighbors || [])]);
-    const events = (state.economy?.econEvents || []).filter((event) => event.type === 'shortage'
-      && event.id && state.simTime < event.startT + event.duration).slice().sort((a, b) => a.id.localeCompare(b.id));
+    // Scheduled windows + injected rows — the closed form enumerates every live
+    // event, not just the persisted dynamic list.
+    const events = economyLiveEvents(state, state.simTime || 0)
+      .filter((event) => event.type === 'shortage'
+        && event.id && state.simTime < event.startT + event.duration)
+      .slice().sort((a, b) => a.id.localeCompare(b.id));
     for (const event of events) {
       const dest = STATION_INFO.get(event.stationId);
       const sector = dest && SECTOR_BY_ID.get(dest.sectorId);
@@ -869,8 +877,12 @@ export const economyContracts = {
       correctionDurationS: SHORTAGE_GATE_REPAIR.correctionDurationS, text };
     // Persist before publication: a matching freight replay can never repeat the aftermath.
     (own.shortageRepairs || (own.shortageRepairs = {}))[eventId] = receipt;
+    // The correction is a price-only window: no boom stock-flood (skipStartDent), and
+    // the relief cancels the shortage's still-live shelf residual so the counter
+    // actually restocks — the delivered units plus what the event had stripped.
     this.bus.emit('mission:forceEvent', { type: 'boom', stationId: fact.stationId,
-      commodityId: fact.commodityId, duration: SHORTAGE_GATE_REPAIR.correctionDurationS });
+      commodityId: fact.commodityId, duration: SHORTAGE_GATE_REPAIR.correctionDurationS,
+      relieves: eventId, skipStartDent: true });
     this.bus.emit('economy:shortageRepairRestored', { ...receipt });
   },
 
@@ -970,8 +982,7 @@ export const economyContracts = {
     if (typeId === 'cargo_delivery') {
       const cargo = state.player?.cargo || {};
       const qty = affordableContractQuantity({desired:6+Math.floor(rng()*16),
-        freeVolume:(cargo.capVolume || 0)-(cargo.usedVolume || 0),
-        volumePerUnit:CMDTY_BY_ID.get(cmdtyId)?.volPerU || 1});
+        fitUnits: slotFitFor(state, cmdtyId)});
       if (qty < 1) return null;
       const unitVal = (CMDTY_BY_ID.get(cmdtyId) && CMDTY_BY_ID.get(cmdtyId).basePrice) || 50;
       const cargoValue = unitVal * qty;
@@ -1132,8 +1143,7 @@ export const economyContracts = {
     const cargoDef = CMDTY_BY_ID.get(cmdtyId);
     const qty = affordableContractQuantity({
       desired: Math.min(20, starved.need.deficitUnits),
-      freeVolume: (cargo.capVolume || 0) - (cargo.usedVolume || 0),
-      volumePerUnit: cargoDef?.volPerU || 1,
+      fitUnits: slotFitFor(state, cmdtyId),
     });
     if (qty < 1) return null;
     const distance = sectorDistanceWu(info.sectorId, destSectorId);
@@ -1330,8 +1340,7 @@ export const economyContracts = {
     const cargo = state.player?.cargo || {};
     const qty = affordableContractQuantity({
       desired: Math.round((6 + Math.floor(rng() * 16)) * shape.qtyMult),
-      freeVolume: (cargo.capVolume || 0) - (cargo.usedVolume || 0),
-      volumePerUnit: CMDTY_BY_ID.get(cmdtyId)?.volPerU || 1,
+      fitUnits: slotFitFor(state, cmdtyId),
     });
     if (qty < 1) return null;
     const unitVal = (CMDTY_BY_ID.get(cmdtyId) && CMDTY_BY_ID.get(cmdtyId).basePrice) || 50;
@@ -1428,8 +1437,7 @@ export const economyContracts = {
     const cargo = state.player?.cargo || {};
     const qty = affordableContractQuantity({
       desired: 12,
-      freeVolume: (cargo.capVolume || 0) - (cargo.usedVolume || 0),
-      volumePerUnit: CMDTY_BY_ID.get(cmdtyId)?.volPerU || 1,
+      fitUnits: slotFitFor(state, cmdtyId),
     });
     if (qty < 1) return null;
     const unitVal = (CMDTY_BY_ID.get(cmdtyId) && CMDTY_BY_ID.get(cmdtyId).basePrice) || 50;

@@ -22,12 +22,14 @@ import { isPhoneLayout } from '../../../systems/mobile/model.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { arcD, polar } from '../../orrery/svg.js';
 import { SECTORS } from '../../../data/sectors.js';
-import { isUnsellableCargo, releasableContractUnits, reservedCargoQuantity, sellableCargoQuantity } from '../../../systems/cargo.js';
+import { isUnsellableCargo, releasableContractUnits, reservedCargoQuantity, sellableCargoQuantity, slotFitFor, unitsPerSlotFor } from '../../../systems/cargo.js';
+import { fillSlots, freeSlotCount } from '../../../data/cargoSlots.js';
 import { compareDockedFreight, formatFreightComparison, marketStockStatus } from '../../../systems/economy.js';
 import { economyPulseReport } from '../../../economy/economyPulse.js';
 import { marketPulseRead, marketPulseHtml } from '../../marketPulsePresenter.js';
 import { partialDeliverySettlement } from '../../../systems/missions.js';
 import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.js';
+import { marketRegimeStateFor } from '../../../economy/marketModel.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
@@ -455,6 +457,10 @@ function heldQty(state, id) {
 function credits(state) { return Math.max(0, Math.floor(Number(state && state.player && state.player.credits) || 0)); }
 function holdFree(state) {
   const c = state && state.player && state.player.cargo;
+  // Slot law: open bag slots are the promise; a hold without slot data keeps the volume read.
+  if (c && (Array.isArray(c.slots) || Number.isFinite(c.slotCount))) {
+    return freeSlotCount(c.slots, c.slotCount);
+  }
   if (!c || !(c.capVolume > 0)) return Infinity;
   return Math.max(0, c.capVolume - (c.usedVolume || 0));
 }
@@ -887,9 +893,10 @@ export function marketPriceHistorySeries(points, entry, def, nowS) {
 }
 
 function liveRegimeWord(state, sid, commodityId) {
-  const cycle = state && state.economy && state.economy.cycles
-    && sid && commodityId && state.economy.cycles[sid] && state.economy.cycles[sid][commodityId];
-  return regimeLabel(cycle && (cycle.regime || cycle.family) || 'stable');
+  const regime = state && sid && commodityId
+    ? marketRegimeStateFor(state, sid, commodityId, state.simTime || 0)
+    : null;
+  return regimeLabel(regime ? regime.kind : 'steady');
 }
 
 // The docked chart says "fresh quote" from the live feed in renderStage.
@@ -1494,10 +1501,8 @@ export function createMarketScreen(ctx) {
 
   function tradeQuantityLimit(state, row) {
     if (mode === 'sell' && row) return marketSellQuantity(state, row.id);
-    const free = holdFree(state);
-    const volume = Number(row.def.volPerU) > 0 ? Number(row.def.volPerU) : 1;
     const stock = Math.max(0, Math.floor(Number(row.entry && row.entry.stock) || 0) - 1);
-    const limit = Math.min(stock, free === Infinity ? stock : Math.floor(free / volume));
+    const limit = Math.min(stock, slotFitFor(state, row.id));
     return maxAffordableQuantity({ limit, credits: credits(state), quote: (n) => selectedTradeQuote(state, row, n) });
   }
 
@@ -2207,7 +2212,13 @@ export function createMarketScreen(ctx) {
     const total = tradeEl.querySelector('.so-trade-total');
     if (!total || typeof document === 'undefined' || typeof document.createElement !== 'function') return;
     const cargo = state && state.player && state.player.cargo;
-    const cap = Math.max(0, Number(cargo && cargo.capVolume) || 0);
+    // Slot law: the arc draws stacks-aboard against the hull's slot count. A buy shadows the
+    // same fillSlots pass the commit runs; a sell drains the commodity's own stacks. A hold
+    // without slot data keeps the volume arc it shipped with.
+    const slotted = !!(cargo && (Array.isArray(cargo.slots) || Number.isFinite(cargo.slotCount)));
+    const cap = slotted
+      ? Math.max(0, Number(cargo.slotCount) || 0)
+      : Math.max(0, Number(cargo && cargo.capVolume) || 0);
     const kids = total.children ? [...total.children] : [];
     const host = kids.find((k) => k.classList && typeof k.classList.contains === 'function' && k.classList.contains('orr-mkt-holdarc')) || null;
     if (!(cap > 0)) {
@@ -2222,10 +2233,30 @@ export function createMarketScreen(ctx) {
       total.appendChild(box);
     }
     box.hidden = false;
-    const used = Math.max(0, Number(cargo && cargo.usedVolume) || 0);
-    const vol = Number(def && def.volPerU) > 0 ? Number(def.volPerU) : 1;
-    const amount = Math.max(0, qty);
-    const after = mode === 'buy' ? used + amount * vol : Math.max(0, used - amount * vol);
+    let after;
+    if (slotted) {
+      const shadow = (cargo.slots || []).map((s) => ({ ...s }));
+      const amount = Math.max(0, Math.floor(Number(qty) || 0));
+      if (mode === 'buy' && amount > 0) {
+        fillSlots(shadow, cargo.slotCount || 0, r.id, amount, unitsPerSlotFor(state, r.id));
+      } else if (amount > 0) {
+        let left = amount;
+        for (let i = shadow.length - 1; i >= 0 && left > 0; i--) {
+          const s = shadow[i];
+          if (!s || s.commodityId !== r.id) continue;
+          const take = Math.min(left, s.qty);
+          s.qty -= take;
+          left -= take;
+          if (s.qty <= 0) shadow.splice(i, 1);
+        }
+      }
+      after = Math.min(shadow.length, cap);
+    } else {
+      const used = Math.max(0, Number(cargo && cargo.usedVolume) || 0);
+      const vol = Number(def && def.volPerU) > 0 ? Number(def.volPerU) : 1;
+      const amount = Math.max(0, qty);
+      after = mode === 'buy' ? used + amount * vol : Math.max(0, used - amount * vol);
+    }
     const html = holdArcHtml(after, cap);
     if (box.innerHTML !== html) box.innerHTML = html;
   }
@@ -2291,7 +2322,7 @@ export function createMarketScreen(ctx) {
       (quoteReady && quote.shortagePremium ? rowKV('Shortage premium', 'Included in sale price', 'gain') : '') +
       rowKV('You hold', fmt(held) + ' u') + rowKV('Credits', fmt(cr) + ' cr') +
       (quoteReady ? rowKV('Credits after', fmt(mode === 'buy' ? cr - total : cr + total) + ' cr') : '') +
-      (free !== Infinity ? rowKV('Hold free', fmt(free) + ' u') : '') +
+      (free !== Infinity ? rowKV('Open slots', fmt(free)) : '') +
       intelRows.map((intelRow) => rowKV(intelRow.label, intelRow.value,
         intelRow.tone === 'good' ? 'gain' : (intelRow.tone === 'danger' || intelRow.tone === 'warn' ? 'loss' : ''))).join('');
     // Priority matters: with no quote yet (qty 0, or nothing affordable) creditReady is false by

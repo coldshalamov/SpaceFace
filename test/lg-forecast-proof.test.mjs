@@ -179,8 +179,12 @@ test('a reader of the cone out-earns a non-reader by at least 30 % over a seeded
     const tape = new Map(plans.map((p) => [key(p), []]));
     for (let tick = 0; tick <= HOUR / STEP; tick++) {
       for (const p of plans) {
-        const e = state.economy.markets[p.sid][p.cid];
-        tape.get(key(p)).push({ buy: e.lastBuy, sell: e.lastSell });
+        // Closed-form markets stamp lazily: the live price is the quoted one —
+        // the same number the market screen shows when the player opens it.
+        tape.get(key(p)).push({
+          buy: econ.priceOf(p.sid, p.cid, 'buy'),
+          sell: econ.priceOf(p.sid, p.cid, 'sell'),
+        });
       }
       if (tick < HOUR / STEP) advance(state, econ, STEP);
     }

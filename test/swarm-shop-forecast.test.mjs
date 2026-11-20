@@ -71,7 +71,7 @@ function fakeButton(label, key) {
   const button = {
     dataset: { label, key }, childNodes: [{}], disabled: false, hidden: false,
     classList: { toggle() {} }, style: {},
-    setAttribute() {},
+    setAttribute() {}, removeAttribute() {},
     querySelector: () => null,
     appendChild(node) { this.childNodes.push(node); },
   };
@@ -114,7 +114,7 @@ function armoryFor(run, preview) {
     _ctx: ctx,
     _root: root,
     _cards: { innerHTML: '', querySelectorAll: () => [], querySelector: () => null },
-    _title: { textContent: '' },
+    _title: { textContent: '', parentNode: { appendChild() {} } },
     _filters: { hidden: false, children: [] },
     _refitBtn: { hidden: false },
     _sub: { textContent: '' },
@@ -122,6 +122,7 @@ function armoryFor(run, preview) {
     _briefing: { hidden: false },
     _armoryHeading: { hidden: false, textContent: '' },
     _skip: fakeButton(`Launch round ${run.wave + 1}`, 'Esc'),
+    _launchSummary: { textContent: '', hidden: true, id: 'sf-armory-launch-summary' },
     _rerollBtn: Object.assign(fakeButton('Re-roll', 'R'), { style: {} }),
     _wallet: { textContent: '' },
     _hint: { textContent: '' },
@@ -212,6 +213,7 @@ function circuitWidgets() {
     status: { textContent: '' },
     route: { textContent: '' },
     next: { textContent: '', hidden: true },
+    options: { hidden: true, parentNode: null, removeAttribute() {}, setAttribute() {} },
   };
 }
 
@@ -587,7 +589,7 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     await flushUiMicrotasks();
     assert.equal(refitRefreshes, beforeRefitIntent + 2);
     assert.equal(refit.screen._note.textContent, 'That fitting will not fit this hardpoint.');
-    assert.match(refit.screen._bankNote.textContent, /140 cr moves to the hangar chest now.*140 cr stays in the purse/);
+    assert.match(refit.screen._bankNote.textContent, /140 cr is secured for the hangar when this run ends\.\s*140 cr stays in the purse/);
 
     const beforeBankReject = refitRefreshes;
     refit.publish({ credits: 280, notice: 'The bank window closed before the spend landed.' });
@@ -647,7 +649,7 @@ test('Armory and Refit repaint once from delayed worker receipts and unbind acro
     refit.publish({ refitRows: [] });
     refit.screen.onShow(refit.ctx);
     assert.equal(refit.screen._note.textContent, 'Late fit receipt: Corsair mount is live.');
-    assert.match(refit.screen._bankNote.textContent, /59 cr moves to the hangar chest now.*59 cr stays in the purse/);
+    assert.match(refit.screen._bankNote.textContent, /59 cr is secured for the hangar when this run ends\.\s*59 cr stays in the purse/);
     assert.match(refit.screen._preview.textContent, /Round 11 .*clear 27/);
     refit.screen.onShow(refit.ctx);
     assert.equal(refit.bus.listenerCount('run:refitChanged'), 2);
