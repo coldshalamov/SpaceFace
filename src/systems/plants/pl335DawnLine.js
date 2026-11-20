@@ -22,6 +22,7 @@
 //   unsubscribe). Bounded ledgers (tuning.memoryCap); per-day and per-hull cooldowns.
 
 import { hash32 } from '../../core/rng.js';
+import { queuePlayerImpulse } from './playerImpulse.js';
 
 export const PL_335_FOLLOWED_EVENT = 'plants:pl335:followed';
 export const PL_335_CORRECTION_EVENT = 'plants:pl335:correction';
@@ -314,14 +315,15 @@ export const pl335DawnLine = {
       return;
     }
 
-    // Follow the chalk: the anonymous hand's line takes a little of your weight.
+    // Follow the chalk: the anonymous hand's line takes a little of your weight —
+    // through the membrane (the chalk line is the visible source), never a raw vel write.
     if (onLineIndex >= 0 && onLineIndex < ents.length - 1) {
       const next = ents[onLineIndex + 1].pos;
       const nx = next.x - player.pos.x;
       const nz = next.z - player.pos.z;
       const nd = Math.hypot(nx, nz) || 1;
-      player.vel.x += (nx / nd) * t.pullAlongWu * step;
-      player.vel.z += (nz / nd) * t.pullAlongWu * step;
+      queuePlayerImpulse(s, player, (nx / nd) * t.pullAlongWu * step, (nz / nd) * t.pullAlongWu * step,
+        'plantsPl335DawnLine', { continuous: true, dt: step });
       if (this._followedDay !== day) {
         this._followedDay = day;
         this.bus?.emit(PL_335_FOLLOWED_EVENT, { hullKey, day, t: now });

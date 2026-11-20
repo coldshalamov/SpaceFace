@@ -50,6 +50,7 @@ import { faunaFamilyId, faunaFamily } from '../data/discoveryPresentation.js';
 import { tickDiscoverySound } from './discoverySound.js';
 import { noteHeatTrial } from '../data/heatProximityTrial.js';
 import { normalizeFoodWeb, stepFoodWeb } from '../data/faunaFoodWeb.js';
+import { queuePlayerImpulse } from './plants/playerImpulse.js';
 import { echoApplies, stepEchoIndex, ECHO_REACH } from '../data/faunaRouteEcho.js';
 import { HUMAN_DOCK_CHART, chartPlace } from '../data/routeChart.js';
 import { copyLifeRead, lifeSampleFromSite, readSiteLife } from '../data/siteLifeRead.js';
@@ -3413,12 +3414,15 @@ function runEcologyHazards(world, sectorId, now, dt, sites) {
 
     // M02 — adhesive tendrils: sites seeded with nerve_lace drag the hull while it is
     // inside the ring (a slow field, never a stop — the field wants you slow, not caught).
+    // The grip is a membrane impulse with provenance (the ring site is the visible
+    // source); the hull's vel is never written directly.
     if (inside && !site.sterile && Array.isArray(site.morphologyMix) && site.morphologyMix.includes('nerve_lace')) {
       const awake = rec.state === 'awake' || rec.state === 'bloom';
       if (awake && player.vel) {
         const damp = Math.max(0, 1 - 0.35 * dt);
-        player.vel.x *= damp;
-        player.vel.z *= damp;
+        queuePlayerImpulse(state, player,
+          player.vel.x * (damp - 1), player.vel.z * (damp - 1),
+          'alienEcologyTendrilGrip', { continuous: true, dt });
         if (!rec.beats.tendrilGrip) {
           rec.beats.tendrilGrip = true;
           world.bus.emit('toast', {

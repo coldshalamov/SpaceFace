@@ -22,6 +22,7 @@
 // - Velocity writes touch only the claiming hull; NO economy mutations ("no fee" is the point).
 
 import { hash32 } from '../../core/rng.js';
+import { queuePlayerImpulse } from './playerImpulse.js';
 
 export const PL_349_TOWED_EVENT = 'plants:pl349:towed';
 export const PL_349_BUSY_EVENT = 'plants:pl349:busy';
@@ -245,11 +246,13 @@ export const pl349MercyTug = {
     // A tow in progress: bounded pull toward the station.
     const towUntil = this._towing.get(hullKey);
     if (Number.isFinite(towUntil) && now < towUntil) {
+      // A tow in progress: a bounded pull toward the station — through the membrane
+      // (the dusk tug is the visible source), never a raw vel write.
       const sx = station.pos.x - player.pos.x;
       const sz = station.pos.z - player.pos.z;
       const sd = Math.hypot(sx, sz) || 1;
-      player.vel.x += (sx / sd) * t.towSpeedWu * step;
-      player.vel.z += (sz / sd) * t.towSpeedWu * step;
+      queuePlayerImpulse(s, player, (sx / sd) * t.towSpeedWu * step, (sz / sd) * t.towSpeedWu * step,
+        'plantsPl349MercyTug', { continuous: true, dt: step });
     }
 
     if (!dusk) return;

@@ -21,6 +21,7 @@ import {
   fulfillmentOrderLabel,
 } from '../data/factions/fulfillment.js';
 import { removeCargo } from './cargo.js';
+import { queuePlayerImpulse } from './plants/playerImpulse.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 
 const FACTION_ID = 'faction_fulfillment';
@@ -305,8 +306,12 @@ export const fulfillmentRoutes = {
     const riding = player && player.alive !== false && train && train.alive !== false
       && train.data?.fulfillmentTrain === true && !f.trains[train.id]?.derailed;
     if (riding) {
-      player.vel.x = train.vel.x;
-      player.vel.z = train.vel.z;
+      // The haul takes you with it as a membrane pull toward the train's velocity —
+      // the latched hauler is the visible source; the hull's vel is never hard-locked.
+      queuePlayerImpulse(state, player,
+        (train.vel?.x || 0) - (player.vel?.x || 0),
+        (train.vel?.z || 0) - (player.vel?.z || 0),
+        'fulfillmentHitchhike', { continuous: true });
       if (f.hitchedTrainId !== train.id) {
         f.hitchedTrainId = train.id;
         this.bus.emit('fulfillment:hitchhike', { trainId: train.id, routeId: train.data.routeId, tick: state.tick });

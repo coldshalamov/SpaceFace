@@ -15,7 +15,8 @@
 // away from the pool: the pool forgets your hull, politely and forever (covered cleared,
 // receipt flag plantsPl285Forgot). The prepaid tow: while covered, a hull below the
 // critical fraction gets one real rescue — a pool tug (team 2, passive) that comes out
-// and shoves you toward the pool. The day-your-hull-dies integration is documented as a
+// to you and calls the tow in (R23: a visible tug and a line, never a shove on the hull).
+// The day-your-hull-dies integration is documented as a
 // handoff: PL_285_RESCUE_DUE_EVENT is emitted on the player's entity:killed receipt for
 // the death/respawn owner to consume; no economy or respawn code is touched here.
 //
@@ -50,7 +51,6 @@ export const FARE_POOL_TUNING = Object.freeze({
   rescueHullFraction: 0.2,
   rescueOncePerSession: true,
   tugSpeedWu: 26,
-  tugImpulseWu: 70,
   memoryCap: 8,
   sender: 'Fare pool',
 });
@@ -329,10 +329,7 @@ export function createFarePool() {
           tug.pos.x += (dx / d) * step;
           tug.pos.z += (dz / d) * step;
         } else {
-          player.vel = player.vel || { x: 0, z: 0 };
-          const toward = Math.hypot(this._boxPoint.x - player.pos.x, this._boxPoint.z - player.pos.z) || 1;
-          player.vel.x += ((this._boxPoint.x - player.pos.x) / toward) * t.tugImpulseWu;
-          player.vel.z += ((this._boxPoint.z - player.pos.z) / toward) * t.tugImpulseWu;
+          // R23: the tug arrives and calls the tow in — no invisible shove on the hull.
           this._rescueDone = true;
           this.helpers?.removeEntity?.(this._tugId);
           this._tugId = null;

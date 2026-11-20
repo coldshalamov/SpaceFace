@@ -22,6 +22,7 @@
 // - Velocity writes touch only the interacting hull, never another system's writer.
 
 import { hash32 } from '../../core/rng.js';
+import { queuePlayerImpulse } from './playerImpulse.js';
 
 export const PL_334_HANDLED_EVENT = 'plants:pl334:handled';
 export const PL_334_MARK_EVENT = 'plants:pl334:mark';
@@ -47,7 +48,6 @@ export const WIND_BREAK_TUNING = Object.freeze({
   skipSpeedWu: 90,           // blasting the reach above this pace skips the chain
   skipGraceS: 20,            // crossing without any handle use inside this window skips it
   chainBrokenS: 3 * 240,     // handles stop being chained: three mercy days
-  gustImpulseWu: 26,         // the wind argues with you alone
   gustCooldownS: 5,
   gustCountCap: 24,          // bounded gusts per broken window per hull
   memoryCap: 6,
@@ -262,13 +262,14 @@ export const pl334WindBreakChain = {
         this._lastHandledAt.set(idx, now);
         this._handledThisPass = true;
         this._passWindowStart = null;
-        // Pull along the chain toward the mark: deterministic, capped, small.
+        // Pull along the chain toward the mark: deterministic, capped, small — through
+        // the membrane (the handles are the visible source), never a raw vel write.
         const mark = positions.handles[t.chainCount - 1];
         const mx = mark.x - player.pos.x;
         const mz = mark.z - player.pos.z;
         const md = Math.hypot(mx, mz) || 1;
-        player.vel.x += (mx / md) * t.pullAlongWu * step;
-        player.vel.z += (mz / md) * t.pullAlongWu * step;
+        queuePlayerImpulse(s, player, (mx / md) * t.pullAlongWu * step, (mz / md) * t.pullAlongWu * step,
+          'plantsPl334HandlePull', { continuous: true, dt: step });
         if (idx === t.chainCount - 1) {
           this.bus?.emit(PL_334_MARK_EVENT, { hullKey, t: now });
           this.bus?.emit('audio:cue', { id: 'confirm', position: { x: e.pos.x, z: e.pos.z }, gain: 0.5, rate: 1 });
@@ -290,10 +291,7 @@ export const pl334WindBreakChain = {
       if (nearChain && rec.gusts < t.gustCountCap && now - lastGust >= t.gustCooldownS) {
         rec.lastGust = now;
         rec.gusts += 1;
-        const h = hash32('plantsPl334gust', Math.floor(now));
-        const ang = (h % 628) / 100;
-        player.vel.x += Math.cos(ang) * t.gustImpulseWu;
-        player.vel.z += Math.sin(ang) * t.gustImpulseWu;
+        // R23: the wind argues aloud now — no invisible shove on the hull.
         this.bus?.emit('audio:cue', { id: 'warning', position: { x: player.pos.x, z: player.pos.z }, gain: 0.35, rate: 0.9 });
       }
     } else if (!brokenNow) {

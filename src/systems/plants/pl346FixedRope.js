@@ -24,6 +24,7 @@
 // - The rope itself is never permanently destroyed for everyone: cutting is remembered per hull.
 
 import { hash32 } from '../../core/rng.js';
+import { queuePlayerImpulse } from './playerImpulse.js';
 import { BOLUS_SECTOR_ID, BOLUS_MOUTH_POS, BOLUS_COUGH_POS } from '../../data/theBolus.js';
 
 export const PL_346_ROPE_EVENT = 'plants:pl346:rope';
@@ -47,9 +48,6 @@ export const FIXED_ROPE_TUNING = Object.freeze({
   cutSpeedWu: 80,
   restSpeedWu: 6,
   corridorRadiusWu: 900,       // "inside the iris" — the mouth-to-cough corridor
-  moodGustWu: 20,
-  moodGustCooldownS: 6,
-  moodGustCap: 30,
   memoryCap: 6,
 });
 
@@ -99,7 +97,6 @@ export const pl346FixedRope = {
     this._frayDay = -1;
     this._cutUntil = new Map();    // hullKey -> until they mend (simTime = +Inf until then)
     this._menders = new Map();     // hullKey -> simTime mended at (bounded)
-    this._gusts = new Map();       // hullKey -> { count, lastGust } (bounded)
     this._toldCutAt = new Map();
     const on = (event, fn) => {
       const off = this.bus?.on?.(event, fn);
@@ -120,7 +117,6 @@ export const pl346FixedRope = {
     this._drop();
     this._cutUntil.clear();
     this._menders.clear();
-    this._gusts.clear();
     this._toldCutAt.clear();
     this._saidHold = null;
     this.state = null;
@@ -131,7 +127,6 @@ export const pl346FixedRope = {
   _resetSession() {
     this._cutUntil.clear();
     this._menders.clear();
-    this._gusts.clear();
     this._toldCutAt.clear();
     this._saidHold = null;   // a new game restarts simTime: no stale beat may silence the line
     this._drop();
@@ -264,7 +259,6 @@ export const pl346FixedRope = {
           if (this._menders.size > t.memoryCap) this._menders.delete(this._menders.keys().next().value);
           // Standing right again: mending lifts the no-mood bite.
           this._cutUntil.delete(hullKey);
-          this._gusts.delete(hullKey);
           this.bus?.emit(PL_346_MENDED_EVENT, { hullKey, knotId: id, day, t: now });
           this._voice('plants:pl346:mended', MENDED_LINE, 5);
           this._popup('plants:pl346:mended', ROPE_SENDER, MENDED_LINE, 6);
@@ -296,8 +290,6 @@ export const pl346FixedRope = {
         // Your next transit finds the line gone and the iris in no mood.
         this._cutUntil.set(hullKey, now + 365 * t.MERCY_DAY_S);
         if (this._cutUntil.size > t.memoryCap) this._cutUntil.delete(this._cutUntil.keys().next().value);
-        this._gusts.set(hullKey, { count: 0, lastGust: -Infinity });
-        if (this._gusts.size > t.memoryCap) this._gusts.delete(this._gusts.keys().next().value);
         const last = this._toldCutAt.get(hullKey) ?? -Infinity;
         if (now - last >= t.MERCY_DAY_S) {
           this._toldCutAt.set(hullKey, now);
@@ -315,8 +307,9 @@ export const pl346FixedRope = {
         const nx = next.x - player.pos.x;
         const nz = next.z - player.pos.z;
         const nd = Math.hypot(nx, nz) || 1;
-        player.vel.x += (nx / nd) * t.ropePullWu * step;
-        player.vel.z += (nz / nd) * t.ropePullWu * step;
+        // Through the membrane — the knots are the visible source, never a raw vel write.
+        queuePlayerImpulse(s, player, (nx / nd) * t.ropePullWu * step, (nz / nd) * t.ropePullWu * step,
+          'plantsPl346FixedRope', { continuous: true, dt: step });
         if (!this._saidHold || now - this._saidHold >= t.MERCY_DAY_S) {
           this._saidHold = now;
           this.bus?.emit(PL_346_ROPE_EVENT, { hullKey, knotIndex: i, t: now });
@@ -324,19 +317,8 @@ export const pl346FixedRope = {
         }
       }
     }
-
-    // The iris in no mood: capped mood-gusts for cutters inside the corridor.
-    if (inNoMood && nearRope) {
-      const rec = this._gusts.get(hullKey);
-      if (rec && rec.count < t.moodGustCap && now - rec.lastGust >= t.moodGustCooldownS) {
-        rec.lastGust = now;
-        rec.count += 1;
-        const h = hash32('plantsPl346gust', Math.floor(now));
-        const ang = (h % 628) / 100;
-        player.vel.x += Math.cos(ang) * t.moodGustWu * step;
-        player.vel.z += Math.sin(ang) * t.moodGustWu * step;
-      }
-    }
+    // The iris in no mood keeps its mood in words and lamp flashes alone (R23: no
+    // invisible gust on the hull — a shove with no visible source is deleted).
   },
 };
 

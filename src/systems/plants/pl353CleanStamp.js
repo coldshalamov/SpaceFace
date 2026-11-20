@@ -25,6 +25,7 @@
 //   memory for them (station.data.plantsPl353Slow) — ECONOMY-OWNER HANDOFF documented.
 
 import { hash32 } from '../../core/rng.js';
+import { queuePlayerImpulse } from './playerImpulse.js';
 
 export const PL_353_CLEAN_EVENT = 'plants:pl353:clean';
 export const PL_353_SMUGGLED_EVENT = 'plants:pl353:smuggled';
@@ -236,11 +237,13 @@ export const pl353CleanStamp = {
 
     // Smuggled once, a year of memory: the line moves slower for you inside the funnel.
     if (smuggled && !clean) {
+      // The line moves slower for you: a drag toward the cap, through the membrane (the
+      // funnel buoy is the visible source) — never a raw hard clamp on the hull's vel.
       const cap = t.funnelSpeedCapWu;
-      if (speed > cap) {
+      if (speed > cap && player.vel) {
         const scale = cap / speed;
-        player.vel.x *= scale;
-        player.vel.z *= scale;
+        queuePlayerImpulse(s, player, player.vel.x * (scale - 1), player.vel.z * (scale - 1),
+          'plantsPl353Funnel', { continuous: true, dt: step });
       }
       if (funnelMark?.data) {
         funnelMark.data.scanLabel = 'The funnel — your hull is remembered here. The line moves slower.';

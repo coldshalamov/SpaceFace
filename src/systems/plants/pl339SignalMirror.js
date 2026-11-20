@@ -42,9 +42,6 @@ export const SIGNAL_MIRROR_TUNING = Object.freeze({
   flashLoudS: 20,            // how often the flash event may fire while you wait
   turnBackWindowS: 30,
   mutedDays: 90,             // a season: the keeper stops flashing for your hull
-  gustImpulseWu: 22,         // the dead trip argues with you
-  gustCooldownS: 6,
-  gustCountCap: 30,
   memoryCap: 6,
 });
 
@@ -85,7 +82,6 @@ export const pl339SignalMirror = {
     this._approachAt = null;         // when the hull entered the approach while closed
     this._sawFlash = false;
     this._mutedUntil = new Map();    // hullKey -> simTime (bounded)
-    this._gusts = new Map();         // hullKey -> { count, lastGust } (bounded)
     this._toldMutedAt = new Map();
     this._lastFlashEventAt = -Infinity;
     const on = (event, fn) => {
@@ -106,7 +102,6 @@ export const pl339SignalMirror = {
     this._unsubs = [];
     this._drop();
     this._mutedUntil.clear();
-    this._gusts.clear();
     this._toldMutedAt.clear();
     this.state = null;
     this.bus = null;
@@ -115,7 +110,6 @@ export const pl339SignalMirror = {
 
   _resetSession() {
     this._mutedUntil.clear();
-    this._gusts.clear();
     this._toldMutedAt.clear();
     this._drop();
   },
@@ -255,8 +249,6 @@ export const pl339SignalMirror = {
       const until = now + t.mutedDays * t.MERCY_DAY_S;
       this._mutedUntil.set(hullKey, until);
       if (this._mutedUntil.size > t.memoryCap) this._mutedUntil.delete(this._mutedUntil.keys().next().value);
-      this._gusts.set(hullKey, { count: 0, lastGust: -Infinity });
-      if (this._gusts.size > t.memoryCap) this._gusts.delete(this._gusts.keys().next().value);
       const stationData = station.data || (station.data = {});
       stationData.plantsPl339Muted = hullKey;
       this.bus?.emit(PL_339_IGNORED_EVENT, { hullKey, until, t: now });
@@ -264,19 +256,8 @@ export const pl339SignalMirror = {
       this._popup('plants:pl339:muted', MIRROR_SENDER, MUTED_LINE, 6);
       this.bus?.emit('audio:cue', { id: 'ui_deny', position: { x: pos.x, z: pos.z }, gain: 0.45, rate: 0.9 });
     }
-
-    // The dead trip argues with you: capped gusts bite hulls inside the closed reach.
-    if (closed && dist <= t.closedRadiusWu) {
-      const rec = this._gusts.get(hullKey);
-      if (rec && rec.count < t.gustCountCap && now - rec.lastGust >= t.gustCooldownS) {
-        rec.lastGust = now;
-        rec.count += 1;
-        const h = hash32('plantsPl339gust', Math.floor(now));
-        const ang = (h % 628) / 100;
-        player.vel.x += Math.cos(ang) * t.gustImpulseWu * step;
-        player.vel.z += Math.sin(ang) * t.gustImpulseWu * step;
-      }
-    }
+    // The dead trip argues in words alone now (R23: the old invisible gusts are gone —
+    // a shove with no visible source is deleted, never routed).
   },
 };
 

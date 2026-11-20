@@ -20,6 +20,7 @@
 // - NO economy mutations: "no fee" is the plant's whole point, and the ration is a stamp.
 
 import { hash32 } from '../../core/rng.js';
+import { queuePlayerImpulse } from './playerImpulse.js';
 
 export const PL_338_LENT_EVENT = 'plants:pl338:lent';
 export const PL_338_RATIONED_EVENT = 'plants:pl338:rationed';
@@ -223,12 +224,13 @@ export const pl338TowPost = {
       const week = weekKeyFor(now, t);
       const rec = this._lends.get(hullKey);
       if (rec && rec.week === week && now < (rec.towUntil ?? 0)) {
-        // Tow in progress: keep the strain toward the station gate.
+        // Tow in progress: keep the strain toward the station gate — through the
+        // membrane (the lending post is the visible source), never a raw vel write.
         const sx = station.pos.x - player.pos.x;
         const sz = station.pos.z - player.pos.z;
         const sd = Math.hypot(sx, sz) || 1;
-        player.vel.x += (sx / sd) * t.towSpeedWu * step;
-        player.vel.z += (sz / sd) * t.towSpeedWu * step;
+        queuePlayerImpulse(s, player, (sx / sd) * t.towSpeedWu * step, (sz / sd) * t.towSpeedWu * step,
+          'plantsPl338TowPost', { continuous: true, dt: step });
         return;
       }
       if (rec && rec.week === week) {
