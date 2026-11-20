@@ -550,6 +550,15 @@ export function createLaneSystemFacade(ctx) {
           relocatePlayerInSector: (pose, opts) =>
             laneRpc('worldCall', { method: 'relocatePlayerInSector', pose, opts }),
         };
+      case 'derelictExpedition':
+        // PORT-PRO-FIVE BLACKBOX RUNS: the worker publishes the bounded HUD
+        // projection to state.derelictExpeditionView each fixed tick; the host
+        // reads it here instead of re-deriving layout/bodies on the wrong lane.
+        return {
+          name: 'derelictExpedition',
+          presentation: () => cloneReadValue(st?.derelictExpeditionView ?? null),
+          getStatus: () => (st?.derelictExpeditionView ? { presentation: cloneReadValue(st.derelictExpeditionView) } : null),
+        };
       default:
         _noteLaneFacadeMiss(name);
         return undefined;
