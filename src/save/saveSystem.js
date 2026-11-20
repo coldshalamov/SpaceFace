@@ -1102,6 +1102,7 @@ export const save = {
       // Packet 09: executable capital boss scores. The system owns serialize() (score clocks,
       // casts, victim receipts, orders); absent owner (headless fixtures) serializes nothing.
       ['capitalBoss', () => this._callSerialize('capitalBossEncounters')],
+      ['convoyRaid', () => this._callSerialize('convoyRaid')],
       ['careerOrigins', () => this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {})],
       ['careerLadders', () => this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {})],
       ['scenario', () => this._callSerialize('scenarioRuntime') || clonePlain(state.scenario || {})],
@@ -1321,6 +1322,8 @@ export const save = {
     yield 'serialize:missions';
     data.capitalBoss = this._callSerialize('capitalBossEncounters');
     yield 'serialize:capitalBoss';
+    data.convoyRaid = this._callSerialize('convoyRaid');
+    yield 'serialize:convoyRaid';
     data.careerOrigins = this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {});
     yield 'serialize:careerOrigins';
     data.careerLadders = this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {});
@@ -7674,6 +7677,9 @@ export const save = {
       // stale world-space geometry and grant the resume warmup). Absent slice (old saves) is a
       // no-op; a present slice without its owner is a hard error rather than silent loss.
       yield* this._restoreCapitalBossFightsChunked(data.capitalBoss);
+      // PORT-PRO-FIVE SWITCHBACK: rebinding waits for save:loaded; absent slice (old saves)
+      // stages an empty raid ledger.
+      this._callDeserialize('convoyRaid', data.convoyRaid);
       // Transient systems are not persisted: salvage wrecks are non-persistent entities (gone after
       // load), drill sessions are closed on load, and SG-06 encounter commands/owner state are
       // reconstructed from the live director. Clear tracking so stale cross-save references and

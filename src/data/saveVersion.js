@@ -25,4 +25,6 @@
 // v23: Lantern Ward finite work/custody and once-only service settlement.
 // v24: CARGO-BUILD-1 — the hold is a slot bag: cargo.slots/slotCount and salvageBay slots
 //      persist; legacy items maps pack greedily into stacks (over-cap stays aboard).
-export const CURRENT_VERSION = 24;
+// v25: PORT-PRO-FIVE — physical expeditions, the Towjaw encounter and fitted kinetic
+//      catalyst state (towjaw/derelictExpedition/convoyRaid/stormChase/kineticCatalysts).
+export const CURRENT_VERSION = 25;

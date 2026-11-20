@@ -485,6 +485,19 @@ export const MIGRATIONS = [
       }
     },
   },
+  {
+    from: 24,
+    to: 25,
+    // PORT-PRO-FIVE: five physical expeditions (TOWJAW, SWITCHBACK, BLACKBOX RUNS,
+    // GLASSWAKE, Kinetic Catalysts) join the envelope. Pre-v25 saves never had them —
+    // seed absent keys the way the pro-experience owners landed at v21.
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      for (const key of ['towjaw', 'derelictExpedition', 'convoyRaid', 'stormChase', 'kineticCatalysts']) {
+        if (!Object.hasOwn(data, key)) data[key] = null;
+      }
+    },
+  },
 ];
 
 // v23→v24 lookup: authored stack size per static commodity; persistent story items stack 1.

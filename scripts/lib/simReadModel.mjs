@@ -910,6 +910,8 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'counterweightCircuitOffer', 'counterweightCircuitView', 'counterweightCircuitGhost',
   'breakwaterSpurOffer', 'breakwaterSpurView',
   'cinderglassJobView', 'cinderglassJobToken', 'cinderglassJobPresentationReady',
+  // PORT-PRO-FIVE: SWITCHBACK's active raid/train mirror reaches the presenting thread.
+  'convoyRaid',
   'replay.latestPoseSample', 'mercyServicePublic', 'wreckCourtPublic',
   // leaf-path mirrors (root stays on the facade; only the subtree ships)
   'flightRuntime.angularIntent',
@@ -1024,7 +1026,7 @@ export function resolveDomainValue(state, key) {
 // at worst — the signed digest still describes the shipped content).
 // massline2: 2 — the throw's release window (massline2.throw.solution) lasts a few ticks; as one big leaf it re-signed
 // on the cold/warm cadence and the main-thread throw cue lit late or never. Split, it ships every pass.
-export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1, salvageOutfits: 2, massline2: 2 });
+export const DOMAIN_EXPAND = Object.freeze({ economy: 2, combat: 1, story: 1, input: 1, meta: 1, player: 1, run: 1, salvageOutfits: 2, massline2: 2, convoyRaid: 3 });
 // player: 1 — the wallet/cargo fields the UI reads hot (player.credits,
 // player.cargo) sign every pass instead of trailing the monolithic player
 // leaf's cold-tier 60-tick interval: a settled trade used to leave the facade

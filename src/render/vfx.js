@@ -79,6 +79,8 @@ import {
 import { createToolConduitGeometry, installToolConduitShader } from './toolConduit.js';
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
 import { GyreSnarePresentation } from './forceLanguage/gyreSnarePresentation.js';
+import { createSwitchbackView } from '../features/convoyRaid/view.js';
+import { getPromptDeck } from '../ui/promptDeck.js';
 import { createEmergentPrimitivePools } from './forceLanguage/emergentPrimitivePools.js';
 import { EmergentPayloadPresentation } from './forceLanguage/emergentPayloadPresentation.js';
 import { fieldSignature } from './forceLanguage/catalog.js';
@@ -2057,6 +2059,8 @@ export const vfx = {
     // return permanently muting gyre VFX after a scene rebuild.
     invokeVfxDisposer(this._gyreSnareFx, 'gyre snare');
     this._gyreSnareFx = null;
+    invokeVfxDisposer(this._switchback, 'Switchback convoy');
+    this._switchback = null;
 
     invokeVfxDisposer(this._overflowJets, 'overflow jets');
     this._overflowJets = null;
@@ -2907,6 +2911,10 @@ export const vfx = {
       add(name, () => {
         this._ironKrakenDeathEpoch = (this._ironKrakenDeathEpoch || 0) + 1;
         this._ironKrakenDebris?.clear();
+      });
+      add(name, () => {
+        invokeVfxDisposer(this._switchback, 'Switchback boundary');
+        this._switchback = null;
       });
       add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); this._emergentPayloads?.clear(); this._retireEventLightSlot(this._findSustainedEventLight('gyre-payload')); this._releaseTransientEventLights(); });
       add(name, () => this._clearWorldTransientMatter());
@@ -11256,6 +11264,18 @@ export const vfx = {
       toLocal: this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)),
     });
   },
+  // PORT-PRO-FIVE expedition presentations. Each adapter owns bounded geometry and
+  // reads the sim's public view/mirror; creation is lazy so an idle frame allocates nothing.
+  _updateProBuildPresentations() {
+    const state = this.state;
+    if (!state || !this._scene) return;
+    const localize = this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out));
+    if (!this._switchback) {
+      this._switchback = createSwitchbackView({ THREE, state, bus: this.bus,
+        getDeck: getPromptDeck, toLocalXZ: localize });
+    }
+    this._switchback?.update();
+  },
   _updateGyreSnare(dt) {
     if (!this._gyreSnareFx && this._gyreRelevant()) this._initGyreSnare();
     if (this._gyreSnareFx) this._gyreSnareFx.update(dt, this.state);
@@ -11642,6 +11662,7 @@ export const vfx = {
     this._updatePowerFx(dt);
     this._updateShipMarkers();
     if (this._gyreRelevant() || this._gyreSnareFx) this._updateGyreSnare(dt);
+    this._updateProBuildPresentations();
     if (this._actionVfx) this._actionVfx.update(this.state);
     if (this._bombDetonationVfx) this._bombDetonationVfx.update(this.state);
     if (this._statusMatterVfx) this._statusMatterVfx.update(this.state);

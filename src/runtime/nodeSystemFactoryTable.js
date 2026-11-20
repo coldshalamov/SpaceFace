@@ -186,6 +186,7 @@ import { nemesis } from '../systems/nemesis.js';
 import { nemesisEncounter } from '../systems/nemesisEncounter.js';
 import { nemesisSignals } from '../systems/nemesisSignals.js';
 import { capitalBossEncounters } from '../systems/capitalBossRuntime.js';
+import { createConvoyRaidProductionSystem } from '../features/convoyRaid/production.js';
 import { createChronicler } from '../systems/chronicler.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { livingPoiBehaviors } from '../systems/livingPoiBehaviors.js';
@@ -404,6 +405,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     // Packet 09: production construction lives in capitalBossRuntime (shared with the browser
     // registry) so Node runs the identical observe/spawnWing ports.
     ['capitalBossEncounters', capitalBossEncounters],
+    ['convoyRaid', createConvoyRaidProductionSystem()],
     ['uniqueWrecks', uniqueWrecks],
     ['titles', titlesSystem],
     ['wingMorale', wingMorale],
