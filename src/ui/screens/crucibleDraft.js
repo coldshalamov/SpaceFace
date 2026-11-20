@@ -269,7 +269,7 @@ function launchEquipmentSummary(ctx, rows, offers, starterOnly = false) {
   const credits = ctx.state.run.credits;
   const currency = ctx.state.run.telemetry?.zeroScrapOpening ? 'Scrap' : 'cr';
   const available = canChooseStarter ? 'One free starting gun available' : borrow ? 'Free gun loan available'
-    : starterOnly ? '' : Number.isFinite(price) ? `Guns from ${price} cr` : 'No gun within budget';
+    : starterOnly ? '' : Number.isFinite(price) ? `Guns from ${price} Scrap` : 'No gun within budget';
   const armed = fitted.length ? fitted.join(', ') : mounts.length ? 'No guns fitted' : '';
   const tether = !weapons.length && derived && hasTowRating(derived) && towClassMassFor(derived) > 0
     ? 'Tether and throw debris to fight' : '';
@@ -343,8 +343,8 @@ export function rerollControlLines(state, notice = null) {
   const exhausted = s.reason === 'pool_exhausted';
   return {
     visible: true,
-    label: exhausted ? 'Re-roll' : `Re-roll · ${Number(price).toLocaleString('en-US')} cr`,
-    wallet: `Run wallet ${credits} cr`,
+    label: exhausted ? 'Re-roll' : `Re-roll · ${Number(price).toLocaleString('en-US')} Scrap`,
+    wallet: `${credits} Scrap`,
     draw: s.rerolls > 0 ? `Draw ${s.rerolls + 1}` : '',
     disabled: !s.available,
     notice: notice || s.note || '',
@@ -779,7 +779,7 @@ export function firstSwarmIntermission(run, offers) {
     && (offer.service === 'weld' || offer.service === 'hull_patch')
     && typeof offer.name === 'string' && offer.name.trim()).sort((a, b) => a.price - b.price)[0];
   const choice = repair
-    ? `Service: ${repair.name.trim()} (${repair.price} cr).`
+    ? `Service: ${repair.name.trim()} (${repair.price} Scrap).`
     : offers.some(buyable)
       ? `Buy for round ${run.wave + 1}, or keep your Scrap.`
       : 'Keep your Scrap; no purchase is available now.';
@@ -1763,13 +1763,13 @@ export const crucibleDraftScreen = {
       // as a line where the rail passes what the run can pay
       if (shop && !starterOnly && this._reading && Number.isFinite(offer.price)) {
         if (!walletDrawn && offer.price > credits && !offer.purchased) {
-          const line = el('p', 'orr-rail-wallet', `Wallet ${credits} cr`);
+          const line = el('p', 'orr-rail-wallet', `${credits} Scrap`);
           line.setAttribute('aria-hidden', 'true');
           cards.appendChild(line);
           walletDrawn = true;
         }
         if (offer.price !== lastPrice) {
-          const divider = el('p', 'orr-rail-divider', `${offer.price} cr`);
+          const divider = el('p', 'orr-rail-divider', `${offer.price} Scrap`);
           divider.setAttribute('aria-hidden', 'true');
           cards.appendChild(divider);
           lastPrice = offer.price;
@@ -1844,7 +1844,7 @@ export const crucibleDraftScreen = {
     reroll.setAttribute('aria-disabled', lines.disabled ? 'true' : 'false');
     setWordShown(reroll, !starterOnly && lines.visible);
     // The balance, and which draw this is — a player who has paid twice should be able to see it.
-    this._wallet.textContent = shop ? (this._reading ? '' : `${context.state.run.credits} cr to spend`) : lines.visible
+    this._wallet.textContent = shop ? (this._reading ? '' : `${context.state.run.credits} Scrap to spend`) : lines.visible
       ? (lines.draw ? `${lines.wallet} · ${lines.draw}` : lines.wallet)
       : '';
     // The keys a card cannot print on itself. Esc and R ride inside their own keys; the offer
@@ -2157,7 +2157,7 @@ export const crucibleDraftScreen = {
     head.appendChild(key);
     head.appendChild(el('p', 'k-caps sf-cru-verb', lines.verb));
     if (Number.isFinite(offer.price)) {
-      head.appendChild(el('p', 'k-t-emph sf-cru-price', offer.purchased ? (status || 'Fitted') : `${offer.price} cr`));
+      head.appendChild(el('p', 'k-t-emph sf-cru-price', offer.purchased ? (status || 'Fitted') : `${offer.price} Scrap`));
     }
     card.appendChild(head);
     card.appendChild(el('h2', 'k-display k-t-sub sf-cru-name', lines.name));
@@ -2226,7 +2226,7 @@ export const crucibleDraftScreen = {
       // a manifest hull is a switch, not a sale — "On manifest", never "0 cr".
       const onManifest = offer.kind === 'hull' && Number.isInteger(offer._ownedIndex);
       head.appendChild(el('p', 'k-t-emph sf-cru-price',
-        offer.purchased ? (status || 'FITTED') : onManifest ? 'On manifest' : offer.startingEquipment ? 'Free' : `${offer.price} cr`));
+        offer.purchased ? (status || 'FITTED') : onManifest ? 'On manifest' : offer.startingEquipment ? 'Free' : `${offer.price} Scrap`));
       // A hold badge rides the same head line: the card this armory carried in (lockedIn) or
       // the one a hold now rides on for the next (held).
       if (offer.lockedIn || offer.held) {
@@ -2848,7 +2848,7 @@ export const crucibleRefitScreen = {
         const sellPrice = part?.defId && !part.startingEquipment ? swarmSellPrice(part.defId) : null;
         if (sellPrice != null && sellPrice > 0) {
           const sellTarget = row.defId ? { slotIndex: row.slotIndex } : { instanceId: part.instanceId };
-          const sell = word(`Sell · ${sellPrice} cr`, 'k-word--fine');
+          const sell = word(`Sell · ${sellPrice} Scrap`, 'k-word--fine');
           sell.classList.add('sf-cru-act', 'sf-cru-sell');
           sell.disabled = pending;
           sell.addEventListener('click', () => {
