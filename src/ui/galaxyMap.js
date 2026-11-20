@@ -9,10 +9,12 @@ import { navigationFrameHtml } from './views/navigationFrame.js';
 import { CSS } from './views/navigationStyles.js';
 import { bindMapMarkup, MAP_CONTROLS, mapControlAttrs, mapControlLabel } from './map/mapControlMap.js';
 import { MAP_WORKBENCH_CSS } from './map/mapWorkbenchCss.js';
+import { chartContactRead } from './map/contactVisibility.js';
+import { createAtlasRelief } from './map/atlasRelief.js';
 import { injectChartLayouts } from './orrery/chartLayouts.js';
 import {
   CHART_INK, chartFont, setTracking, drawBand, drawBandRing, drawBead, drawHandBeam, drawLaneComet,
-  drawGlint, drawSensorLattice, drawSectorToken, drawLineReading, drawHoldRing, retrySectorTokens,
+  drawGlint, drawSectorToken, drawLineReading, drawHoldRing, retrySectorTokens,
   createZoomLever, createTabScale, drawFactionCrest, drawLineReadingLarge, drawPathPulse,
   sectorTokenUrl, factionCrestUrl, drawLabelLeader, trimPolylineSegments,
 } from './orrery/chartInstruments.js';
@@ -45,10 +47,11 @@ import { SECTORS } from '../data/sectors.js';
 import { lanternWardCradleApproach } from '../data/lanternWardNavigation.js';
 import { glyphForStationType } from '../data/stationGlyphs.js';
 import { gateTollFor } from '../data/travelChoices.js';
+import { estimatedFine, onboardIllicitCargo } from '../economy/customsRisk.js';
 import { wreckEcologyMarkers } from './wreckEcologyMarkers.js';
 import { chartMarkSizes } from '../data/modelTruth.js';
 import { asteroidScanGlyph } from '../data/mining.js';
-import { drawGlyph } from './glyphs.js';
+import { drawGlyph, glyphSvg } from './glyphs.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { BODY_SPECIALIZATION_BY_ID } from '../data/claimableBodies.js';
@@ -65,8 +68,10 @@ import { PLANET_SITE, anvilOrchardFramePosition } from '../data/planets.js';
 import {
   auditEdgeKey,
   gateAuditCatalogEntry,
+  gateTransitClosed,
   tideBand,
 } from '../data/worldPressure.js';
+import { activeDriveForState, routeEdgeDist, ROUTE_BASE_FUEL } from '../systems/routePlanner.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus, setMapOpen } from './mapAuthority.js';
 import { enhanceSelects, dataStateHtml } from './uiPrimitives.js';
 import { dpIcon, injectDeckplate } from './deckplate/index.js';
@@ -80,7 +85,7 @@ import { canNavigateToKnowledge, discoveryKnowledge, selectionKnowledgeLine } fr
 import {
   careersTabAvailability, careersTabHtml, careersOverviewLineHtml,
 } from './map/careersReadout.js';
-import { resolveWaypointPresentationPosition, resolveContract47aRecoveryTarget } from './navigationWaypoint.js';
+import { resolveWaypointPresentationEntity, resolveWaypointPresentationPosition, resolveContract47aRecoveryTarget } from './navigationWaypoint.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
 import { uniqueWreckMapReadouts } from './uniqueWreckMapLayer.js';
@@ -98,6 +103,7 @@ import { chartFilingBounty, normalizeChartFiling } from '../data/surveyCharts.js
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
 import { sectorSignalFor, forecastTransitFor } from '../systems/sectorSim.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { kesslerScaleWaypoint } from '../systems/kesslerScaleWorksite.js';
 import { conflictPairsForSector, CONTESTED_SECTOR_BY_PAIR } from '../data/conflictZones.js';
 import { isPlayerWanted, heatLevelFor, heatClearSecondsForLevel } from '../systems/heat.js';
 import { regionalEcologyReadout } from '../systems/regionalEcology.js';
@@ -700,6 +706,12 @@ export function localMapWaypointPosition(state, waypoint) {
   const sector = mapWaypointSector(state, waypoint);
   const current = currentSectorId(state);
   if (sector && current && sector !== current) return null;
+  const target = waypoint.stable ? resolveEntitySelection(state, waypoint.stable)
+    : resolveWaypointPresentationEntity(state, waypoint);
+  if ((target?.type === 'ship' || target?.type === 'drone')
+    && !chartContactRead(state, playerEntity(state)).sees(target)) {
+    return Number.isFinite(waypoint.pos?.x) && Number.isFinite(waypoint.pos?.z) ? waypoint.pos : null;
+  }
   return resolveWaypointPresentationPosition(state, waypoint);
 }
 
@@ -709,7 +721,7 @@ export function activeMapGoal(state) {
   const wpSector = mapWaypointSector(state, wp);
   const wpPos = wpSector && currentSectorId(state) && wpSector !== currentSectorId(state)
     ? (wp?.pos && Number.isFinite(wp.pos.x) && Number.isFinite(wp.pos.z) ? wp.pos : null)
-    : resolveWaypointPresentationPosition(state, wp);
+    : localMapWaypointPosition(state, wp);
   const trackedId = state.ui && state.ui.trackedMissionId;
   const active = (state.missions && state.missions.active) || [];
   const tracked = trackedId ? active.find((m) => m && m.status === 'active' && m.id === trackedId) : null;
@@ -923,6 +935,19 @@ export function resolveMapOpenTarget(state, intent) {
         const midSector = mission.destSectorId || (mission.params && mission.params.sectorId) || null;
         if (midSector != null) sectorId = String(midSector);
       }
+    }
+  }
+
+  if (!missionId && !stationId && intent.selectionTarget === 'active-waypoint'
+      && normalizeMapFocus(intent.focus) === MAP_FOCUS.LOCAL) {
+    const scale = kesslerScaleWaypoint(state);
+    const waypoint = state?.nav?.waypoint;
+    if (scale && sectorId === scale.sectorId && currentSectorId(state) === scale.sectorId
+        && waypoint?.sectorId === scale.sectorId && waypoint.kind === 'story'
+        && waypoint.storyBeat === scale.storyBeat && waypoint.label === scale.label
+        && waypoint.pos?.x === scale.pos.x && waypoint.pos?.z === scale.pos.z
+        && intent.pos?.x === scale.pos.x && intent.pos?.z === scale.pos.z) {
+      return waypointClickTarget(waypoint, scale.pos, 0, 0, state);
     }
   }
 
@@ -1210,6 +1235,16 @@ function attachJumpToll(state, action) {
   action.tollCr = tollCr;
   action.tollLine = tollCr > 0 ? `${tollCr} cr toll` : '';
   return action;
+}
+
+/** Expected exposure before the jump owner rolls a departure scan. */
+export function resolveChartCustomsWarning(state) {
+  const exposed = [...onboardIllicitCargo(state).values()];
+  if (!exposed.length) return '';
+  const units = exposed.reduce((sum, stack) => sum + stack.qty, 0);
+  const fine = estimatedFine(exposed);
+  const fineLine = fine > 0 ? ` and fine you ${fine.toLocaleString('en-US')} cr` : '';
+  return `Customs may seize ${counted(units, 'unit', 'units')}${fineLine}. Check Cargo before jumping.`;
 }
 
 /** One line under the jump verb. The verb label itself stays the pinned words. */
@@ -2207,7 +2242,7 @@ export function systemZoneTarget(zone, sectorId, playerPos = null) {
   const approach = isAnvil ? planetaryApproach(pos, playerPos) : null;
   return { kind: 'zone', id: zone.id, sectorId, x: pos.x, z: pos.z,
     drawPos: { x: zone.x, z: zone.z }, radius: zone.radius, name: zone.name,
-    factionId: zone.factionId, threat: zone.threat,
+    factionId: zone.factionId, threat: zone.threat, chartNote: zone.reason,
     // Generic zone arrival stops inside Anvil's atmosphere. The authored planet has a
     // separate perimeter fix; an unrecognized planetary zone remains inspection-only.
     ...(isAnvil && approach ? { coursePos: approach, courseArrivalRadius: 80,
@@ -2494,6 +2529,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
   const contacts = [];
   const hostileFn = typeof isHostile === 'function' ? isHostile : null;
   const playerTeam = player && player.team;
+  const sensors = options.sensors || chartContactRead(state, player);
   visitLocalChartContacts(state, (e) => {
     if (!e || e.alive === false || !e.pos) return;
     if (player && e.id === player.id) return;
@@ -2504,6 +2540,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
       && !(kind === 'payload' && explicitWorldSite) && !workLoad) return;
     let hostile = false;
     if (kind === 'ship' || kind === 'drone') {
+      if (!sensors.sees(e)) return;
       hostile = hostileFn ? !!hostileFn(e, playerTeam, state) : !!(e.data && e.data.hostile);
     }
     const mapKind = e.type === 'station' && e.data && e.data.isGate
@@ -2803,6 +2840,33 @@ export function commitCoursePayload(state, target) {
     const liveId = resolveCourseEntityId(state, target);
     if (liveId == null) delete payload.targetEntityId;
     else { payload.targetEntityId = liveId; payload.stable = target.stable; }
+  }
+  const waypoint = state?.nav?.waypoint;
+  if (payload?.pos && target?.kind === 'waypoint' && target.objective === true
+      && waypoint?.kind === 'mission' && target.missionId === waypoint.missionId
+      && state.ui?.trackedMissionId === waypoint.missionId
+      && (!waypoint.sectorId || waypoint.sectorId === currentSectorId(state))) {
+    const sameBody = waypoint.stable && payload.stable && payload.targetEntityId != null
+      && resolveEntitySelection(state, waypoint.stable)?.id === payload.targetEntityId;
+    const sameFix = !waypoint.stable && waypoint.targetEntityId == null && payload.targetEntityId == null
+      && payload.pos.x === waypoint.pos?.x && payload.pos.z === waypoint.pos?.z;
+    if (sameBody || sameFix) {
+      payload.waypointKind = 'mission';
+      payload.missionId = waypoint.missionId;
+    }
+  }
+  if (payload?.pos && target?.kind === 'waypoint' && target.objective === true
+      && waypoint?.kind === 'story' && waypoint.storyBeat === 1
+      && (target.id === 'active-map-goal' || target.id === 'active-waypoint')) {
+    const scale = kesslerScaleWaypoint(state);
+    if (scale && scale.sectorId === currentSectorId(state)
+        && waypoint.label === scale.label
+        && target.name === (target.id === 'active-waypoint' ? waypointMapLabel(waypoint) : scale.label)
+        && payload.pos.x === scale.pos.x && payload.pos.z === scale.pos.z
+        && payload.pos.x === waypoint.pos?.x && payload.pos.z === waypoint.pos?.z) {
+      Object.assign(payload, { waypointKind: 'story', storyBeat: scale.storyBeat,
+        label: scale.label, reason: scale.reason });
+    }
   }
   if (payload && target?.recoverySource) {
     payload.missionId = target.missionId;
@@ -3156,6 +3220,12 @@ export function resolveRouteEngageAction(state) {
     const total = executorLegCount(executor);
     const where = leg && total ? ` (leg ${leg}/${total})` : '';
     if (status === 'interrupted') {
+      const planned = nav.route?.legs?.[executor.legIndex];
+      const interrupted = executor.legs?.[executor.legIndex];
+      const sameLeg = planned && interrupted && planned.from === interrupted.fromSectorId
+        && planned.to === interrupted.toSectorId && planned.travelVia === interrupted.via;
+      const fuelBlock = driveFuelBlock(state, sameLeg ? planned : nav.route?.legs?.[0]);
+      if (fuelBlock) return { ...hidden, visible: true, label: mapControlLabel('resume'), reason: fuelBlock };
       const why = executor && executor.interruptReason
         ? ` — ${String(executor.interruptReason).replace(/[-_]+/g, ' ')}`
         : '';
@@ -3181,8 +3251,10 @@ export function resolveRouteEngageAction(state) {
         payload: { targetSectorId: dest.sectorId, mode: 'fuel' },
       };
     }
-    return { visible: true, enabled: false, label: mapControlLabel('engage'), reason: 'Click a destination on the chart, then Plot Course', event: null };
+    return { visible: true, enabled: false, label: mapControlLabel('engage'), reason: 'Plot a route to a distant sector to engage it here.', event: null };
   }
+  const fuelBlock = driveFuelBlock(state, nav.route.legs?.[0]);
+  if (fuelBlock) return { ...hidden, visible: true, reason: fuelBlock };
   const legs = routeLegCount(nav.route);
   return {
     visible: true,
@@ -3191,6 +3263,28 @@ export function resolveRouteEngageAction(state) {
     reason: legs ? `${counted(legs, 'leg', 'legs')} plotted — ready to fly` : 'Route plotted — ready to fly',
     event: 'nav:engageRoute',
   };
+}
+
+function driveFuelBlock(state, leg) {
+  const aboard = state.fuel?.current;
+  if (leg?.travelVia !== 'drive' || !Number.isFinite(leg.fuel) || !Number.isFinite(aboard)) return null;
+  const sectors = state.world?.sectors;
+  const from = sectors?.[leg.from] || SECTOR_BY_ID.get(leg.from);
+  const to = sectors?.[leg.to] || SECTOR_BY_ID.get(leg.to);
+  const tier = playerEntity(state)?.data?.derived?.jumpDriveTier;
+  const drive = tier ? activeDriveForState(state, tier) : null;
+  // A pilot may refit after plotting. The active drive and edge match the jump owner's quote;
+  // if the fit is absent from this view, keep the saved planner's quote.
+  const needed = drive && from && to
+    ? Math.ceil(ROUTE_BASE_FUEL * routeEdgeDist(from, to) * drive.tierFuelMult)
+    : leg.fuel;
+  if (aboard >= needed) return null;
+  const destination = sectorNameOf(state, leg.to);
+  const toll = jumpTollCr(state, leg.to);
+  const openGate = state.world?.currentSectorId === leg.from && from?.gates?.some(gate => gate?.to === leg.to)
+    && !gateTransitClosed(state, leg.from, leg.to) && (toll === 0 || state.player?.credits >= toll);
+  const next = openGate ? `Refuel or use Gate → ${destination}${toll ? ` (${toll} cr toll)` : ''}.` : 'Refuel before engaging.';
+  return `Drive leg to ${destination} needs ${needed} fuel (${Math.max(0, Math.floor(aboard))} aboard). ${next}`;
 }
 
 /** Legs on a plotted route. `world.computeRoute` returns `{legs:[...]}` — there is no `path`. */
@@ -3242,7 +3336,7 @@ const SCAN_RING_MS = 400;
 const LAYER_KIT_ICON = Object.freeze({
   route: 'route', mission: 'missions', market: 'market', events: 'warning',
   security: 'patrol', faction: 'factions', hazard: 'danger', services: 'station',
-  holdings: 'cargo', discovery: 'scan',
+  holdings: 'cargo', discovery: 'scan', traffic: 'shipworks',
 });
 const SERVICE_KIT_ICON = Object.freeze({
   trade: 'market', shipyard: 'shipworks', repair: 'repair', refuel: 'fuel',
@@ -3289,7 +3383,7 @@ function injectStyle() {
 const LAYER_DEFS = Object.freeze([
   { id: 'route', name: 'Route', icon: '<path d="M4 19 L10 12 L15 15 L20 5"/><circle cx="4" cy="19" r="1.8"/><circle cx="20" cy="5" r="1.8"/>' },
   { id: 'mission', name: 'Mission', icon: '<path d="M12 3 L21 12 L12 21 L3 12 Z"/><circle cx="12" cy="12" r="2"/>' },
-  { id: 'market', name: 'Pressure', icon: '<path d="M4 20h16"/><path d="M7.5 16v-5M12 16V7M16.5 16v-8"/>' },
+  { id: 'market', name: 'Markets', icon: '<path d="M4 20h16"/><path d="M7.5 16v-5M12 16V7M16.5 16v-8"/>' },
   { id: 'events', name: 'Events', icon: '<circle cx="12" cy="12" r="8"/><path d="M6 12h12M12 6v12"/>' },
   { id: 'security', name: 'Security', icon: '<path d="M12 3 L19 6 V11 C19 16 15.5 19.5 12 21 C8.5 19.5 5 16 5 11 V6 Z"/>' },
   { id: 'faction', name: 'Faction', icon: '<path d="M6 21V4"/><path d="M6 4h11l-3 4 3 4H6"/>' },
@@ -3297,12 +3391,13 @@ const LAYER_DEFS = Object.freeze([
   { id: 'services', name: 'Services', icon: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6.2 6.2l2 2M15.8 15.8l2 2M17.8 6.2l-2 2M8.2 15.8l-2 2"/>' },
   { id: 'holdings', name: 'Holdings', icon: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="M4 7.5l8 4.5 8-4.5"/>' },
   { id: 'discovery', name: 'Discovery', icon: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>' },
+  { id: 'traffic', name: 'Passing traffic', icon: '<path d="M4 8h13l3 4v5H4Z M9 8v9m5-9v9"/>' },
 ]);
 
 const LAYER_BANKS = Object.freeze([
-  { id: 'place', label: 'PLACE', layers: Object.freeze(['services', 'holdings', 'discovery']) },
-  { id: 'flow', label: 'FLOW', layers: Object.freeze(['route', 'mission', 'market']) },
-  { id: 'trouble', label: 'TROUBLE', layers: Object.freeze(['events', 'security', 'faction', 'hazard']) },
+  { id: 'place', label: 'Places', layers: Object.freeze(['services', 'holdings', 'discovery']) },
+  { id: 'flow', label: 'Navigation', layers: Object.freeze(['route', 'mission', 'market', 'traffic']) },
+  { id: 'trouble', label: 'Conditions', layers: Object.freeze(['events', 'security', 'faction', 'hazard']) },
 ]);
 
 const SERVICE_ICON_PATHS = Object.freeze({
@@ -3343,6 +3438,20 @@ export function serviceIconSvg(service) {
 }
 
 const LEGEND_SERVICES = Object.freeze(['trade', 'shipyard', 'repair', 'refuel', 'refine', 'missions']);
+const SERVICE_WORDS = Object.freeze({ trade: 'Market', shipyard: 'Shipyard', repair: 'Repair', refuel: 'Fuel',
+  refine: 'Refinery', missions: 'Jobs', ore_buy: 'Ore buyer' });
+const PLACE_SERVICES = Object.freeze(['trade', 'refuel', 'repair', 'shipyard', 'refine', 'ore_buy', 'missions']);
+const PLACE_SERVICE_TERMS = Object.freeze({
+  trade: 'market trader trade buy sell shop cargo', refuel: 'fuel refuel', repair: 'repair service hull',
+  shipyard: 'shipyard ships outfit upgrades', refine: 'refine refinery smelter',
+  ore_buy: 'ore buyer sell ore mining', missions: 'jobs missions contracts bounty',
+});
+const MAP_QUICK_KEY = Object.freeze([
+  { tone: 'station', name: 'Station', svg: strokeSvg('<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.8"/><path d="M1 10h4m-4 4h4m14-4h4m-4 4h4"/>') },
+  { tone: 'gate', name: 'Jump gate', svg: strokeSvg('<path d="M9 4C4 6 4 18 9 20m6-16c5 2 5 14 0 16M10 12h4"/>') },
+  { tone: 'goal', name: 'Destination', svg: glyphSvg('guns_lock', 18) },
+  { tone: 'hostile', name: 'Hostile ship', svg: glyphSvg('fighter', 18) },
+]);
 
 // Chart marks that are not service pictograms. Anything the canvas invents a silhouette for should
 // be readable off the rail without a manual — otherwise the shape is decoration, not language.
@@ -3362,9 +3471,10 @@ const LEGEND_MARKS = Object.freeze([
 ]);
 
 const HINT_ROWS = Object.freeze([
-  ['Zoom / pan the table', 'Wheel · Drag'],
-  ['Inspect a mark', 'Click'],
-  ['Lay a course', 'Dbl-click'],
+  ['Move around the map', 'Drag'],
+  ['Zoom in or out', 'Scroll'],
+  ['Inspect a place', 'Click'],
+  ['Set a course', 'Double-click'],
   ['Lay the line (preview, release to set)', 'Drag from you'],
   ['Toggle overlays', 'Click a lens'],
   ['Inspector tabs', '← →'],
@@ -3548,6 +3658,36 @@ function findStationRecord(state, stationId) {
     }
   }
   return null;
+}
+
+function stationServiceIds(state, stationId, sectorId) {
+  const live = findStationRecord(state, stationId)?.services;
+  const services = Array.isArray(live) ? live
+    : sectorRecordById(state, sectorId)?.stations?.find((station) => station.id === stationId)?.services;
+  return Array.isArray(services) ? PLACE_SERVICES.filter((id) => services.includes(id)) : [];
+}
+
+function stationChartServices(state, stationId, sectorId) {
+  return stationServiceIds(state, stationId, sectorId).slice(0, 3).map((id) => SERVICE_WORDS[id]).join(' · ');
+}
+
+function atlasFeatures(state, sectorId, layers, sx, sy, scale, ox = 0, oz = 0) {
+  const projected = [];
+  for (const zone of zonesForSector(sectorId)) {
+    const hazard = zoneTypeMeta(zone.type).hazard;
+    if (hazard && !layers.hazard) continue;
+    const kind = zone.type === 'planetary_mass' ? 4 : hazard ? 2 : 1;
+    const { x = 0, z = 0 } = zone.center || {};
+    projected.push([sx(ox + x), sy(oz + z), Math.max(1, (zone.radius || 300) * scale), kind]);
+  }
+  if (layers.discovery || layers.market) {
+    for (const field of sectorRecordById(state, sectorId)?.fields || []) {
+      const { x = 0, z = 0 } = field.center || {};
+      const radius = field.clusterRadius || field.radius || 300;
+      projected.push([sx(ox + x), sy(oz + z), Math.max(1, radius * scale), 3]);
+    }
+  }
+  return projected;
 }
 
 /** Live/static world position for a station id (live entity first, then the static record). */
@@ -3844,12 +3984,32 @@ function noteKeyForTarget(t) {
 /** Safe HTML for one dynamic map-search row, including imported-save claim names. */
 export function mapSearchItemHtml(target, index = 0) {
   const t = target || {};
+  const symbol = t.objective ? 'guns_lock' : t.kind === 'station' ? 'station'
+    : t.kind === 'sector' ? 'iff_target' : t.kind === 'gate' ? 'component' : 'info';
+  const services = t.services || [];
   return `
-    <div class="gm-search-item k-row ${index === 0 ? 'selected' : ''}" data-idx="${index}"${index === 0 ? ' aria-selected="true"' : ''}>
-      <span class="gm-search-item-name k-row__name">${escapeMapHtml(t.name)}</span>
-      <div class="gm-search-item-detail k-row__sub">${escapeMapHtml(t.detail)}</div>
-    </div>
+    <button class="gm-search-item k-row ${index === 0 ? 'selected' : ''}" type="button" data-idx="${index}">
+      <span class="gm-search-symbol" aria-hidden="true">${glyphSvg(symbol, 21)}</span>
+      <span class="gm-search-place">
+        <strong class="gm-search-item-name k-row__name">${escapeMapHtml(t.name)}</strong>
+        <span class="gm-search-item-detail k-row__sub">${escapeMapHtml(t.detail)}</span>
+        ${services.length ? `<span class="gm-search-services">${services.map((id) => escapeMapHtml(SERVICE_WORDS[id])).join(' · ')}</span>` : ''}
+      </span>
+    </button>
   `;
+}
+
+export function mapSearchMatches(target, query) {
+  const words = String(query || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const terms = [target.name, target.searchText, target.detail,
+    ...(target.services || []).map((id) => PLACE_SERVICE_TERMS[id])].filter(Boolean).join(' ').toLowerCase();
+  return words.every((word) => terms.includes(word));
+}
+
+function galaxySelectionSector(target, here) {
+  if (!target) return null;
+  if (target.kind === 'sector') return target.sectorId || target.id;
+  return target.sectorId && target.sectorId !== here ? target.sectorId : null;
 }
 
 /** Safe claim-inspector markup. Claim names are persisted and may originate in imported saves. */
@@ -4022,6 +4182,7 @@ export function getSearchTargets(state, level, curSecId, claimsSystem = null, is
   const knownStationIds = new Set();
   for (const p of systemModel.points) {
     if (Number.isFinite(p.x) && Number.isFinite(p.z)) {
+      const stationId = p.kind === 'station' ? p.stationId || p.id : null;
       targets.push({
         id: p.id,
         name: p.name,
@@ -4033,6 +4194,7 @@ export function getSearchTargets(state, level, curSecId, claimsSystem = null, is
         // sector-local, while x/z must stay global for the course action on the same target.
         drawPos: p.drawPos,
         stationId: p.stationId,
+        ...(stationId ? { services: stationServiceIds(state, stationId, curSecId) } : {}),
         entityId: p.entityId || null,
         stable: p.stable || null,
         targetSectorId: p.targetSectorId || null,
@@ -4050,7 +4212,8 @@ export function getSearchTargets(state, level, curSecId, claimsSystem = null, is
         closed: p.closed === true,
         ledger: p.ledger,
         history: p.history,
-        detail: `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}${p.statusLine ? ` · ${p.statusLine}` : ''}`,
+        detail: stationId ? sectorNameOf(state, curSecId)
+          : `${p.kind.toUpperCase()} · ${factionNameOf(p.factionId)}${p.statusLine ? ` · ${p.statusLine}` : ''}`,
       });
       if (p.kind === 'station' && (p.stationId || p.id)) {
         knownStationIds.add(String(p.stationId || p.id));
@@ -4075,8 +4238,9 @@ export function getSearchTargets(state, level, curSecId, claimsSystem = null, is
   // only behind the charted-sector boundary; current-system points above retain their live
   // position and order, and their station ids suppress the matching catalog fallback.
   for (const sector of sectorRecords(state)) {
-    if (!sector?.id || !isSectorCharted(state, sector) || !Array.isArray(sector.stations)) continue;
-    for (const station of sector.stations) {
+    if (!sector?.id || !isSectorCharted(state, sector)) continue;
+    const stations = Array.isArray(sector.stations) ? sector.stations : SECTOR_BY_ID.get(sector.id)?.stations || [];
+    for (const station of stations) {
       const stationId = String(station?.id || '');
       if (!stationId || knownStationIds.has(stationId)) continue;
       const anchor = station.pos || station.anchor || station.position || null;
@@ -4095,10 +4259,12 @@ export function getSearchTargets(state, level, curSecId, claimsSystem = null, is
         z: frames.z,
         drawPos: frames.drawPos,
         stationId,
+        services: Array.isArray(station.services) ? PLACE_SERVICES.filter((id) => station.services.includes(id))
+          : stationServiceIds(state, stationId, sector.id),
         stationTypeId: station.stationTypeId || station.type || null,
         factionId: station.factionId || null,
         searchText: `${name} ${sectorName}`,
-        detail: `STATION · ${sectorName}`,
+        detail: sectorName,
       });
       knownStationIds.add(stationId);
     }
@@ -4603,7 +4769,8 @@ export const galaxyMapScreen = {
     hazard: true,
     services: true,
     holdings: true,
-    discovery: true
+    discovery: true,
+    traffic: false,
   },
   _cams: {
     galaxy: { cx: 0, cy: 0, zoom: 1.0 },
@@ -4629,7 +4796,8 @@ export const galaxyMapScreen = {
   mount(rootEl, ctx) {
     this._labelSolveReuse = null;
     this._clearFieldCache = null;
-    this._releaseSensorLattice();
+    this._atlas?.dispose();
+    this._atlas = undefined;
     injectStyle();
     this._ctx = ctx;
     installAftermathChartListener(ctx && ctx.bus, ctx && ctx.state);
@@ -4668,7 +4836,7 @@ export const galaxyMapScreen = {
     const legendHtml = LEGEND_SERVICES.map((svc) => `
             <div class="gm-legend-row k-row k-row--static fh-row">
               <span class="gm-legend-ico" aria-hidden="true">${dpIcon(SERVICE_KIT_ICON[svc] || 'station', 18)}</span>
-              <span>${svc === 'ore_buy' ? 'Ore buy' : svc[0].toUpperCase() + svc.slice(1)}</span>
+              <span>${SERVICE_WORDS[svc] || svc}</span>
             </div>`).join('');
     const markLegendHtml = LEGEND_MARKS.map((mark) => `
             <div class="gm-legend-row k-row k-row--static fh-row">
@@ -4677,14 +4845,25 @@ export const galaxyMapScreen = {
             </div>`).join('');
     const hintRowsHtml = HINT_ROWS.map(([label, keys]) => `
           <div class="gm-hint-row k-row k-row--static"><span>${label}</span><kbd>${keys}</kbd></div>`).join('');
-    rootEl.innerHTML = bindMapMarkup(navigationFrameHtml({ hintRowsHtml, layerButtonsHtml, legendHtml, markLegendHtml }));
+    const quickKeyHtml = MAP_QUICK_KEY.map(({ tone, name, svg }) =>
+      `<span data-map-symbol="${tone}">${svg}${name}</span>`).join('');
+    rootEl.innerHTML = bindMapMarkup(navigationFrameHtml({ hintRowsHtml, layerButtonsHtml, legendHtml, markLegendHtml, quickKeyHtml }));
 
     this._body = rootEl.querySelector('.gm-viewport');
     this._canvas = rootEl.querySelector('canvas');
+    this._atlasCanvas = rootEl.querySelector('.gm-relief');
     this._g = this._canvas.getContext('2d');
     this._levelEl = rootEl.querySelector('[data-level]');
     this._inspectorDetails = rootEl.querySelector('.gm-inspector-details');
     this._setCourseButton = rootEl.querySelector('#gm-set-course-btn');
+    this._locateGoalButton = rootEl.querySelector('.gm-locate-goal');
+    this._locateGoalButton?.addEventListener('click', () => {
+      const state = this._ctx?.state;
+      if (!state) return;
+      const goal = getSearchTargets(state, 'system', currentSectorId(state), this._claimsSystem())
+        .find((target) => target.id === 'active-map-goal');
+      if (goal) this._selectSearchTarget(goal);
+    });
     this._engageButton = rootEl.querySelector('#gm-engage-route-btn');
     // ENGAGE ROUTE is the chart's one Lamp Key (ORRERY §3.6); with no route it stands as its silhouette.
     if (this._engageButton && this._engageButton.ownerDocument) {
@@ -5046,7 +5225,17 @@ export const galaxyMapScreen = {
 
     // Wire search bar listeners
     const searchInput = rootEl.querySelector('.gm-search-input');
+    const searchContainer = rootEl.querySelector('.gm-search-container');
+    const placesButton = rootEl.querySelector('.gm-places-btn');
     const resultsContainer = rootEl.querySelector('.gm-search-results');
+    const placeFilters = rootEl.querySelector('.gm-place-filters');
+    const resultTitle = rootEl.querySelector('.gm-place-list-title');
+    const resultRows = rootEl.querySelector('#gm-place-results') || resultsContainer;
+    let service = '';
+    if (placeFilters) {
+      placeFilters.innerHTML = ['', ...PLACE_SERVICES].map((id) =>
+        `<button type="button" class="gm-place-filter" data-place-service="${id}" aria-pressed="${!id}">${id ? serviceIconSvg(id) : ''}${id ? SERVICE_WORDS[id] : 'All stations'}</button>`).join('');
+    }
 
     const clearSearchResults = () => {
       this._searchResultsList = [];
@@ -5063,47 +5252,73 @@ export const galaxyMapScreen = {
       && this._searchResultsQuery === searchInput.value.trim().toLowerCase()
     );
 
-    searchInput.addEventListener('input', () => {
-      const q = searchInput.value.trim().toLowerCase();
-      if (!q) {
-        resultsContainer.hidden = true;
-        resultsContainer.innerHTML = '';
-        clearSearchResults();
-        return;
-      }
+    this._dismissPlaceFinder = (restoreFocus = false) => {
+      if (resultsContainer.hidden) return false;
+      resultsContainer.hidden = true;
+      placesButton?.setAttribute('aria-expanded', 'false');
+      resultRows.innerHTML = '';
+      clearSearchResults();
+      if (restoreFocus) (placesButton || searchInput).focus();
+      return true;
+    };
 
+    const renderPlaces = () => {
+      const q = searchInput.value.trim().toLowerCase();
       const state = this._ctx && this._ctx.state;
       if (!state) { clearSearchResults(); return; }
+      const sectorId = currentSectorId(state);
 
       const targets = getSearchTargets(
         state,
-        levelForZoom(this._zoom),
-        currentSectorId(this._ctx.state),
+        q ? this._activeLevel() : 'system',
+        sectorId,
         this._claimsSystem(),
         this._isHostile,
       );
-      const searchGoal = activeMapGoal(state);
-      const searchPlayer = playerEntity(state);
-      const searchAnchor = (searchGoal && searchGoal.pos) || (searchPlayer && searchPlayer.pos) || null;
+      const anchor = (q && activeMapGoal(state)?.pos) || playerEntity(state)?.pos;
       const filtered = targets
-        .filter((t) => String(t.searchText || t.name || '').toLowerCase().includes(q))
-        .sort((a, b) => mapSearchTargetPriority(state, b) - mapSearchTargetPriority(state, a)
-          || compareMapSearchTargetDistance(a, b, searchAnchor));
+        .filter((t) => q ? mapSearchMatches(t, q) : (t.kind === 'station' && (!service || t.services?.includes(service))))
+        .sort((a, b) => (q ? mapSearchTargetPriority(state, b) - mapSearchTargetPriority(state, a)
+          : Number(b.sectorId === sectorId) - Number(a.sectorId === sectorId))
+          || compareMapSearchTargetDistance(a, b, anchor)
+          || a.name.localeCompare(b.name));
 
-      if (filtered.length === 0) {
-        resultsContainer.innerHTML = '<div class="gm-search-item gm-search-empty k-t-fine k-38">No results found</div>';
-        resultsContainer.hidden = false;
-        clearSearchResults();
-        return;
+      for (const filter of placeFilters?.querySelectorAll('[data-place-service]') || []) {
+        filter.setAttribute('aria-pressed', String(!q && filter.dataset.placeService === service));
       }
-
-      resultsContainer.innerHTML = filtered.map((t, idx) => mapSearchItemHtml(t, idx)).join('');
+      if (resultTitle) {
+        resultTitle.textContent = q ? counted(filtered.length, 'match', 'matches')
+          : service ? `${SERVICE_WORDS[service]} · ${counted(filtered.length, 'station', 'stations')}`
+            : 'Charted stations · nearest first';
+      }
+      resultRows.innerHTML = filtered.length ? filtered.map((t, idx) => mapSearchItemHtml(t, idx)).join('')
+        : `<p class="gm-search-empty">${q ? 'Try a station name or a service like fuel.' : 'No charted stations offer this service.'}</p>`;
       resultsContainer.hidden = false;
+      placesButton?.setAttribute('aria-expanded', 'true');
 
       this._searchResultsList = filtered;
       this._searchSelectedIdx = 0;
       this._searchResultsQuery = q;
+    };
+
+    searchInput.addEventListener('input', renderPlaces);
+    placesButton?.addEventListener('click', () => {
+      if (this._dismissPlaceFinder()) return;
+      searchInput.value = '';
+      service = '';
+      renderPlaces();
     });
+    searchContainer?.addEventListener('focusout', (ev) => {
+      if (ev.relatedTarget && !searchContainer.contains(ev.relatedTarget)) this._dismissPlaceFinder();
+    });
+    this._canvas.addEventListener('pointerdown', () => this._dismissPlaceFinder());
+
+    const selectPlace = (target) => {
+      if (!target) return;
+      searchInput.value = '';
+      this._dismissPlaceFinder();
+      this._selectSearchTarget(target);
+    };
 
     searchInput.addEventListener('keydown', (ev) => {
       // Arrows and Enter own the field only while a real result list is answering it; a stale,
@@ -5120,26 +5335,21 @@ export const galaxyMapScreen = {
         this._highlightSearchItem();
       } else if (ev.key === 'Enter') {
         ev.preventDefault();
-        const selected = list[this._searchSelectedIdx];
-        if (selected) {
-          this._selectSearchTarget(selected);
-          searchInput.value = '';
-          resultsContainer.hidden = true;
-          clearSearchResults();
-        }
+        selectPlace(list[this._searchSelectedIdx]);
       }
     });
 
     resultsContainer.addEventListener('click', (ev) => {
+      const filter = ev.target.closest('[data-place-service]');
+      if (filter) {
+        service = filter.dataset.placeService;
+        searchInput.value = '';
+        renderPlaces();
+        return;
+      }
       if (!searchResultsCurrent()) return;
       const itemEl = ev.target.closest('.gm-search-item');
-      const idx = itemEl && parseInt(itemEl.getAttribute('data-idx'));
-      if (idx != null && this._searchResultsList[idx]) {
-        this._selectSearchTarget(this._searchResultsList[idx]);
-        searchInput.value = '';
-        resultsContainer.hidden = true;
-        clearSearchResults();
-      }
+      if (itemEl) selectPlace(this._searchResultsList[Number(itemEl.dataset.idx)]);
     });
 
     // Close button
@@ -5151,7 +5361,7 @@ export const galaxyMapScreen = {
     this._canvas.addEventListener('pointerdown', (ev) => this._onPointerDown(ev));
     this._canvas.addEventListener('pointermove', (ev) => this._onMouseMove(ev));
     this._canvas.addEventListener('pointerup', (ev) => this._onPointerUp(ev));
-    this._canvas.addEventListener('pointercancel', () => this._onPointerCancel());
+    this._canvas.addEventListener('pointercancel', (ev) => this._onPointerCancel(ev));
     this._canvas.addEventListener('pointerleave', () => this._onMouseLeave());
     this._canvas.addEventListener('wheel', (ev) => this._onWheel(ev), { passive: false });
     this._canvas.addEventListener('click', (ev) => this._onCanvasClick(ev));
@@ -5284,10 +5494,14 @@ export const galaxyMapScreen = {
 
   onHide() {
     this._labelSolveReuse = null;
+    this._dismissPlaceFinder?.();
+    const searchInput = this._root?.querySelector('.gm-search-input');
+    if (searchInput) searchInput.value = '';
     setMapOpen(this._ctx && this._ctx.state, false);
     this._visible = false;
     this._iris = null;
-    this._releaseSensorLattice();
+    this._panEnded = false;
+    this._onPointerCancel();
     if (this._lockTimer) { clearTimeout(this._lockTimer); this._lockTimer = null; }
     this._lock = null;
     if (this._engageButton && this._engageButton.classList) this._engageButton.classList.remove('is-locking');
@@ -5741,6 +5955,11 @@ _stepAnimation(now) {
     const textEntry = !!(target
       && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable));
 
+    if (key === 'escape' && this._dismissPlaceFinder?.(true)) {
+      event.preventDefault();
+      return true;
+    }
+
     // The search input owns ordinary typing. Without this guard the final `n` in a query such as
     // "Helios Station" also reaches the map's global N shortcut, closes the screen, and leaves a
     // correctly-built result list hidden under the inactive map. Escape intentionally remains the
@@ -5757,6 +5976,7 @@ _stepAnimation(now) {
     // keep native Enter/Space behavior; the global UI input router normally filters them before
     // this handler, and this local guard keeps direct/synthetic dispatch safe too.
     if ((key === 'enter' || key === ' ' || key === 'spacebar')
+      && !target?.closest?.('button, select, a[href], [role="button"]')
       && this._selectedTarget && this._selectedTarget.kind === 'claim') {
       if (event && typeof event.preventDefault === 'function') event.preventDefault();
       this._activateSelectedCourse();
@@ -5822,6 +6042,10 @@ _stepAnimation(now) {
    * chart. Every other moment declines so the router's ordinary close stays untouched.
    */
   onEscape(event) {
+    if (this._dismissPlaceFinder?.(true)) {
+      event?.preventDefault();
+      return true;
+    }
     // the topmost thing the hub has open lets go first (menu, wire, palette, card); the chart stays
     if (this._hub && this._hub.escape()) {
       if (event && typeof event.preventDefault === 'function') event.preventDefault();
@@ -5902,17 +6126,19 @@ _stepAnimation(now) {
     // to walk every entity and rewrite byte-identical tracks ~60x/second. Decay is a pure function
     // of (timeS - lastSeenS), so re-observing at the same simTime cannot change any output — while
     // the chart is up over a paused sim that work was entirely wasted. Skip it.
-    if (nowS === this._localIntelSyncedAtS) return intel;
-    this._localIntelSyncedAtS = nowS;
+    const player = playerEntity(state);
+    const sensors = chartContactRead(state, player);
+    const readKey = `${nowS}:${sensors.key}`;
+    if (readKey === this._localIntelSyncedAtS) return intel;
+    this._localIntelSyncedAtS = readKey;
 
     intel.advance(nowS);
-    const player = playerEntity(state);
     const playerTeam = player && player.team;
     const hostileFn = typeof this._isHostile === 'function' ? this._isHostile : null;
     for (const e of indexedShipLikeScan(state)) {
       if (!e || e.alive === false || !e.pos) continue;
       if (player && e.id === player.id) continue;
-      if (e.type !== 'ship' && e.type !== 'drone') continue;
+      if ((e.type !== 'ship' && e.type !== 'drone') || !sensors.sees(e)) continue;
       let hostile = !!(e.data && e.data.hostile);
       if (hostileFn) {
         try { hostile = !!hostileFn(e, playerTeam, state); } catch (_) { /* keep the flag fallback */ }
@@ -6286,6 +6512,7 @@ _stepAnimation(now) {
         <div class="gm-ins-section">
           <div class="gm-ins-kind">Zone record</div>
           <div class="gm-ins-target-name">${escapeMapHtml(t.name)}</div>
+          ${t.chartNote ? `<div class="gm-ins-note">${escapeMapHtml(t.chartNote)}</div>` : ''}
         </div>
 
         <div class="gm-ins-section">
@@ -6393,6 +6620,15 @@ _stepAnimation(now) {
     }
     if (btn.textContent !== buttonLabel) btn.textContent = buttonLabel;
     paintJumpToll(btn, primary);
+    const customs = this._root?.querySelector('#gm-jump-customs');
+    if (customs) {
+      const route = state?.nav?.route;
+      const mayJump = primary?.kind === 'jump' || (routeLegCount(route) > 0
+        && route.legs.some(leg => leg?.from && leg.to && leg.from !== leg.to));
+      const warning = mayJump ? resolveChartCustomsWarning(state) : '';
+      if (customs.textContent !== warning) customs.textContent = warning;
+      if (customs.hidden !== !warning) customs.hidden = !warning;
+    }
     if (primary && primary.coursePayload) {
       if (btn.hidden) btn.hidden = false;
       if (btn.disabled) btn.disabled = false;
@@ -7499,17 +7735,16 @@ _stepAnimation(now) {
     if (!HAS_DOC || !this._weatherEl) return;
     const snap = this._weatherSnapshot(state);
     if (!snap) return;
-    // Render through the enumerated bank, strongest first, so the list itself carries the
-    // ranking. The magnitude stays where it is already legible — the `pool / 140` figure and
-    // the two-segment bar above — so no third, differently scaled number rides this line.
+    // Surface the likely cause only when it describes a meaningful risk.
     const phrases = [];
     const ordered = snap.terms.slice().sort((a, b) => b.value - a.value);
     for (const term of ordered) {
+      if (term.id === 'insecure' && term.value < 0.26) continue;
       const phrase = WEATHER_TERM_PHRASES[term.id];
       if (!phrase) continue; // enumerated ids only — an unknown id renders nothing
       phrases.push(phrase);
     }
-    const termText = phrases.length ? phrases.join(' · ') : 'baseline only';
+    const termText = phrases.join(' · ');
     const key = [
       Math.round(snap.pressureCombat),
       Math.round(snap.pressureCivil),
@@ -7520,17 +7755,18 @@ _stepAnimation(now) {
     this._lastWeatherKey = key;
     const combatPct = Math.round((snap.pressureCombat / 140) * 100);
     const civilPct = Math.round((snap.pressureCivil / 140) * 100);
-    this._weatherEl.setAttribute('data-weather-level', String(snap.level || '').toLowerCase());
+    const level = String(snap.level || '').toLowerCase();
+    const caption = level === 'hot' ? 'High encounter risk' : level === 'working' ? 'Rising encounter risk' : 'Quiet traffic';
+    this._weatherEl.setAttribute('data-weather-level', level);
     this._weatherEl.innerHTML = `
       <div class="gm-weather-head">
-        <span class="gm-weather-word">${snap.level}</span>
-        <span class="gm-weather-data">pressure ${snap.pool}/140</span>
+        <span class="gm-weather-word">${caption}</span>
       </div>
       <div class="gm-weather-bar" role="img" aria-label="Encounter pressure ${snap.pool} of 140">
         <i class="gm-weather-seg gm-weather-seg--combat" style="width:${combatPct}%"></i>
         <i class="gm-weather-seg gm-weather-seg--civil" style="width:${civilPct}%"></i>
       </div>
-      <div class="gm-weather-terms">${escapeMapHtml(termText)}</div>
+      ${termText ? `<div class="gm-weather-terms">${escapeMapHtml(termText)}</div>` : ''}
     `;
   },
 
@@ -7817,6 +8053,23 @@ _stepAnimation(now) {
    *  collapsed section costs nothing, which is what makes disclosure cheap enough to default to. */
   _updateRailSections(state) {
     if (!HAS_DOC || !this._root || !state) return;
+    const goal = activeMapGoal(state);
+    if (this._locateGoalButton) {
+      const button = this._locateGoalButton;
+      const current = currentSectorId(state);
+      const canLocate = goal?.sectorId && goal.sectorId !== current
+        ? isSectorCharted(state, sectorRecordById(state, goal.sectorId)) : !!goal?.pos;
+      if (button.hidden === canLocate) button.hidden = !canLocate;
+      if (canLocate) {
+        const type = goal.markerKind === 'mission-objective' ? 'Current objective' : 'Your course';
+        const sector = sectorNameOf(state, goal.sectorId || current);
+        const fields = [['.gm-locate-type', type], ['.gm-locate-name', goal.label], ['.gm-locate-sector', sector]];
+        for (const [selector, value] of fields) {
+          const field = button.querySelector(selector);
+          if (field && field.textContent !== value) field.textContent = value;
+        }
+      }
+    }
     const openOf = (name) => {
       const sec = this._root.querySelector(`[data-rail-sec="${name}"]`);
       return sec && sec.open ? sec : null;
@@ -7828,11 +8081,6 @@ _stepAnimation(now) {
     if (countEl) countEl.textContent = missions.length ? String(missions.length) : '';
     const bmCountEl = this._root.querySelector('[data-bookmark-count]');
     if (bmCountEl) bmCountEl.textContent = this._bookmarks.length ? String(this._bookmarks.length) : '';
-    const lensCountEl = this._root.querySelector('[data-lens-count]');
-    if (lensCountEl) {
-      const on = LAYER_DEFS.filter((l) => this._layers[l.id]).length;
-      lensCountEl.textContent = `${on}/${LAYER_DEFS.length}`;
-    }
 
     const missionsHost = openOf('missions') && this._root.querySelector('#gm-rail-missions');
     if (missionsHost) {
@@ -8484,20 +8732,22 @@ _stepAnimation(now) {
     // Selecting a search result frames the result. The camera is driven in the GLOBAL frame in every
     // branch — which is what makes "search, then zoom out, then zoom back in" land on the same
     // object instead of on whatever each level's private camera last remembered.
-    if (target.kind === 'sector') {
+    const here = currentSectorId(state);
+    const galaxySector = galaxySelectionSector(target, here);
+    if (galaxySector) {
       // A galaxy node carries GRAPH coordinates (`target.x`/`target.y`), not world units. The
       // sector's authored origin is its global position; deriving it from the id rather than
       // multiplying the graph coordinate keeps one authority for sector origins.
-      const origin = sectorGlobalOrigin(target.sectorId || target.id);
+      const origin = sectorGlobalOrigin(galaxySector);
       // Frame your sector and the pick together, so the course the preview beam shows stays on the
       // glass (a pick framed alone ran the beam off the chart).
-      const both = this._galaxyFrame([currentSectorId(state), target.sectorId || target.id]);
+      const both = this._galaxyFrame([here, galaxySector]);
       this._camera = setSpan(
         setFocus(this._cameraOrInit(), both ? both.focusGlobal : { x: origin.x, z: origin.z }),
         both ? both.spanWU : spanForZoom(LEVEL_SYSTEM_AT - 0.5), // galaxy scale
       );
       this._syncLegacyFromCamera();
-      if (!both) {
+      if (!both && target.kind === 'sector') {
         // The legacy galaxy camera is in graph units; centre it on the picked NODE.
         this._cams.galaxy.cx = target.x;
         this._cams.galaxy.cy = target.y;
@@ -8519,17 +8769,11 @@ _stepAnimation(now) {
       );
       this._syncLegacyFromCamera();
     } else {
-      this._zoom = LEVEL_LOCAL_AT + 0.5; // local scale
-      this._targetZoom = this._zoom;
-      const cam = this._cams.local;
-      cam.cx = target.x;
-      cam.cy = target.z;
-      // LOCAL is unmigrated, but the camera must not be left stale behind it, or the next zoom-out
-      // would leave the object the player just searched for.
       this._camera = setSpan(
         setFocus(this._cameraOrInit(), { x: target.x, z: target.z }),
-        spanForZoom(this._zoom),
+        MAP_PRESET_SPAN_WU.local,
       );
+      this._syncLegacyFromCamera();
     }
 
     this.refresh();
@@ -8549,17 +8793,13 @@ _stepAnimation(now) {
 
 _onMouseDown(ev) {
     if (ev.button !== 0) return;
-    const level = this._activeLevel();
-    const cam = this._cams[level];
     this._dragging = true;
     this._dragStart = {
       mx: ev.clientX,
       my: ev.clientY,
-      cx: cam.cx,
-      cy: cam.cy,
       // Frozen cameras make this safe: the drag anchor is a value, not a reference that later
       // camera moves could mutate underneath the drag.
-      camera: level !== 'local' ? this._cameraOrInit() : null,
+      camera: this._cameraOrInit(),
     };
   },
 
@@ -8572,11 +8812,12 @@ _onMouseDown(ev) {
    * dragging the table still pans it.
    */
   _onPointerDown(ev) {
-    if (!ev || ev.button !== 0) return;
+    if (!ev || ev.button !== 0 || ev.isPrimary === false) return;
     if (this._hub) this._hub.closeAll();
     const rect = this._canvas.getBoundingClientRect();
     const x = ev.clientX - rect.left;
     const y = ev.clientY - rect.top;
+    this._panEnded = false;
     this._lineGesture = false;
     if (this._isYouAt(x, y)) {
       this._beginLine(x, y, ev);
@@ -8651,6 +8892,7 @@ _onMouseDown(ev) {
   },
 
   _onPointerUp(ev) {
+    if (ev?.isPrimary === false) return;
     this._hold = null;
     if (this._line) {
       const rect = this._canvas.getBoundingClientRect();
@@ -8664,22 +8906,23 @@ _onMouseDown(ev) {
       this._endLine({ commit: !!this._line.snap });
       return;
     }
+    this._panEnded = this._dragStart?.moved === true;
     this._onMouseUp();
+    if (this._canvas?.style) this._canvas.style.cursor = 'grab';
   },
 
-  _onPointerCancel() {
+  _onPointerCancel(ev) {
+    if (ev?.isPrimary === false) return;
     this._hold = null;
     if (this._line) this._endLine({ commit: false });
     this._onMouseUp();
   },
 
 _onMouseMove(ev) {
-    const level = this._activeLevel();
-    const cam = this._cams[level];
+    if (ev.isPrimary === false) return;
     const rect = this._canvas.getBoundingClientRect();
     const mx = ev.clientX - rect.left;
     const my = ev.clientY - rect.top;
-    this._pointer = { x: mx, y: my };
 
     // Laying a line: the beam follows the pointer and snaps to the mark it passes.
     if (this._line) {
@@ -8692,38 +8935,31 @@ _onMouseMove(ev) {
       this._wake();
       return;
     }
-    // A still press becomes a line; a press that moves is a pan.
-    if (this._hold && Math.hypot(mx - this._hold.x, my - this._hold.y) > 5) this._hold = null;
-    if (this._dragging && this._hub) this._hub.cancelHover();
-
     if (this._dragging && this._dragStart) {
       const dx = ev.clientX - this._dragStart.mx;
       const dy = ev.clientY - this._dragStart.my;
-
-      if (level !== 'local' && this._dragStart.camera) {
-        // SLICE B — pan the unified camera in the GLOBAL frame. Dragging right must move the chart
-        // right, i.e. the camera moves LEFT, hence the negated delta. Panning from the drag START
-        // camera rather than accumulating per-move keeps the grab point exactly under the cursor.
-        const pxPerWU = pixelsPerWU(this._dragStart.camera, { width: rect.width, height: rect.height });
-        if (pxPerWU > 0) {
-          this._camera = panBy(this._dragStart.camera, { x: -dx / pxPerWU, z: -dy / pxPerWU });
-          this._syncLegacyFromCamera();
-          this._draw();
-          this._wake();
-          return;
+      if (!this._dragStart.moved) {
+        if (Math.hypot(dx, dy) <= 5) return;
+        this._dragStart.moved = true;
+        this._hold = null;
+        this._hub?.cancelHover();
+        if (ev.pointerId != null && this._canvas.setPointerCapture) {
+          try { this._canvas.setPointerCapture(ev.pointerId); } catch (_) { /* a synthetic event cannot capture */ }
         }
+        this._canvas.style.cursor = 'grabbing';
       }
 
-      // LOCAL keeps the legacy pan (flipped-sign scope frame, unmigrated).
-      const baseScale = this._view ? this._view.baseScale : 1;
-      cam.cx = this._dragStart.cx + dx / (baseScale * this._zoom);
-      cam.cy = this._dragStart.cy + dy / (baseScale * this._zoom);
+      const pxPerWU = pixelsPerWU(this._dragStart.camera, { width: rect.width, height: rect.height });
+      if (pxPerWU > 0) {
+        this._camera = panBy(this._dragStart.camera, { x: -dx / pxPerWU, z: -dy / pxPerWU });
+        this._syncLegacyFromCamera();
+      }
       this._draw();
       this._wake();
       return;
     }
 
-    // Hover hit test; the lattice lens follows the pointer on the next frame.
+    // Hover and course previews share the same mark hit test.
     const best = pickMapTargetAt(this._clickTargets, mx, my);
     if (best !== this._hoverTarget) {
       if ((best && best.id) !== (this._hoverTarget && this._hoverTarget.id)) this._hoverSince = this._nowMs();
@@ -8731,7 +8967,7 @@ _onMouseMove(ev) {
     }
     this._drawPending = true;
     this._wake();
-    this._canvas.style.cursor = best ? 'pointer' : (this._isYouAt(mx, my) ? 'grab' : 'crosshair');
+    this._canvas.style.cursor = this._isYouAt(mx, my) ? 'crosshair' : best ? 'pointer' : 'grab';
     // a dwell on a mark opens its card (a still, a hold or a drag never does)
     if (this._hub) this._hub.hover(this._hold ? null : best, { x: mx, y: my });
   },
@@ -8748,7 +8984,6 @@ _onMouseLeave() {
     this._dragStart = null;
     this._hold = null;
     this._hoverTarget = null;
-    this._pointer = null;
     this._draw();
     this._wake();
   },
@@ -8762,76 +8997,13 @@ _onMouseLeave() {
     const w = rect.width, h = rect.height;
     const factor = ev.deltaY < 0 ? 1.15 : 1 / 1.15;
 
-    // SLICE B — cursor-anchored zoom through the unified camera, on the migrated levels.
-    //
-    // This also repairs a defect the migration exposed rather than introduced: `cam.zoom` was
-    // initialised to 1.0/1.5/1.5 and then NEVER ASSIGNED anywhere in this file, while the draw sites
-    // scaled by `baseScale * cam.zoom`. So wheeling INSIDE a level changed `this._zoom` (and hence
-    // which level would be chosen) but could not change the drawn scale at all — and the pan
-    // compensation below still ran, so a wheel that produced no zoom silently PANNED the chart
-    // sideways. Zoom now moves the camera's span, which the draw sites actually read.
-    const level = this._activeLevel();
-    if (level !== 'local') {
-      const camera = this._cameraOrInit();
-      const viewport = this._cameraViewport(w, h);
-      const oldLevel = cameraLevel(camera);
-      // The world point under the cursor, in the actionable frame. The module guarantees it stays
-      // under the cursor across the zoom, including when the span clamps at a stop.
-      const cursorGlobal = screenToGlobal(camera, { x: mx, y: my }, viewport);
-      this._camera = zoomAt(camera, cursorGlobal, factor);
-      const newLevel = cameraLevel(this._camera);
-      this._syncLegacyFromCamera();
-      // Crossing a threshold preserves focusGlobal by construction, so the iris is now marking a
-      // change of DETAIL, not a change of place — which is the whole point of ADR D3.
-      if (oldLevel !== newLevel) this._triggerIris(newLevel);
-      this._draw();
-      this._wake();
-      return;
-    }
-
-    // LOCAL is deliberately still on the legacy path (ADR D3 orders local last; it carries the
-    // remembered/dead-reckoned contact memory and a flipped-sign scope frame). Unchanged behaviour.
-    const oldZoom = this._zoom;
-    const nextZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this._zoom * factor));
-    const oldLevel = levelForZoom(oldZoom);
-    const newLevel = levelForZoom(nextZoom);
-
-    this._zoom = nextZoom;
-    this._targetZoom = nextZoom;
-    this._syncScaleButtons();
-
-    if (oldLevel === newLevel) {
-      const cam = this._cams[newLevel];
-      const baseScale = this._view ? this._view.baseScale : 1;
-      const sign = -1;
-      // The scope centres on the clear field (see _drawLocal), so the zoom anchors there too.
-      const field = this._clearField(w, h);
-      const ox = field.x + field.width / 2;
-      const oy = field.y + field.height / 2;
-      // _drawLocal scales by `baseScale * cam.zoom`, so the notch must move cam.zoom — anchoring on
-      // `this._zoom` while cam.zoom stayed frozen slid the scope instead of magnifying it.
-      const oldCamZoom = Number(cam.zoom) > 0 ? cam.zoom : 1.5;
-      const newCamZoom = oldCamZoom * (nextZoom / oldZoom);
-      const wx = cam.cx + sign * (mx - ox) / (baseScale * oldCamZoom);
-      const wy = cam.cy + sign * (my - oy) / (baseScale * oldCamZoom);
-
-      cam.zoom = newCamZoom;
-      cam.cx = wx - sign * (mx - ox) / (baseScale * newCamZoom);
-      cam.cy = wy - sign * (my - oy) / (baseScale * newCamZoom);
-    } else {
-      // The next entry into LOCAL starts from the fitted scope again.
-      if (this._cams.local) this._cams.local.zoom = 1.5;
-      // Threshold crossing reads as passing through a membrane, not a hard clip.
-      this._triggerIris(newLevel);
-      // Leaving LOCAL hands control to the camera, so the camera must adopt where LOCAL actually
-      // was. Without this the first zoom out of LOCAL would jump to wherever the camera was last
-      // left — the "abruptly switching maps" behaviour this wave exists to remove.
-      this._camera = setSpan(
-        setFocus(this._cameraOrInit(), { x: this._cams.local.cx, z: this._cams.local.cy }),
-        spanForZoom(nextZoom),
-      );
-      this._syncLegacyFromCamera();
-    }
+    const camera = this._cameraOrInit();
+    const viewport = this._cameraViewport(w, h);
+    const cursorGlobal = screenToGlobal(camera, { x: mx, y: my }, viewport);
+    this._camera = zoomAt(camera, cursorGlobal, factor);
+    const level = cameraLevel(this._camera);
+    this._syncLegacyFromCamera();
+    if (cameraLevel(camera) !== level) this._triggerIris(level);
 
     this._draw();
     this._wake();
@@ -8839,7 +9011,7 @@ _onMouseLeave() {
 
 _onCanvasClick(ev) {
     // The click that ends a laid line is part of that gesture, not a second selection.
-    if (this._suppressClickUntil && this._nowMs() < this._suppressClickUntil) return;
+    if (this._panEnded || (this._suppressClickUntil && this._nowMs() < this._suppressClickUntil)) return;
     const rect = this._canvas.getBoundingClientRect();
     const mx = ev.clientX - rect.left;
     const my = ev.clientY - rect.top;
@@ -8856,6 +9028,7 @@ _onCanvasClick(ev) {
   },
 
 _onCanvasDblClick(ev) {
+    if (this._panEnded) return;
     const rect = this._canvas.getBoundingClientRect();
     const mx = ev.clientX - rect.left;
     const my = ev.clientY - rect.top;
@@ -8964,41 +9137,15 @@ _onCanvasDblClick(ev) {
     if (this._g) this._g.setTransform(dpr, 0, 0, dpr, 0, 0);
   },
 
-  _releaseSensorLattice() {
-    const canvas = this._sensorLatticeCache?.canvas;
-    if (canvas) { canvas.width = 0; canvas.height = 0; }
-    this._sensorLatticeCache = null;
-  },
-
-  _drawSensorLattice(g, w, h, a) {
-    const pointer = this._pointer;
-    const fallback = () => drawSensorLattice(g, w, h, { pointer, a });
-    const doc = this._canvas?.ownerDocument;
-    if (!doc?.createElement || typeof g.drawImage !== 'function') { fallback(); return; }
-    let cache = this._sensorLatticeCache;
-    if (!cache) {
-      let canvas, context;
-      try { canvas = doc.createElement('canvas'); context = canvas.getContext('2d'); } catch (_) { /* direct fallback */ }
-      if (!context && canvas) { canvas.width = 0; canvas.height = 0; }
-      cache = this._sensorLatticeCache = { canvas: context ? canvas : null, context };
+  _paintAtlas(w, h, originX, originY, tile, features = []) {
+    if (!this._atlasCanvas || !(w > 2 && h > 2)) return false;
+    if (this._atlas === undefined) {
+      this._atlas = createAtlasRelief(this._atlasCanvas, () => {
+        this._drawPending = true;
+        this._wake();
+      });
     }
-    if (!cache.context) { fallback(); return; }
-    const dpr = this._dpr || 1;
-    const cw = this._canvas.width, ch = this._canvas.height;
-    const px = Number.isFinite(pointer?.x) ? pointer.x : null;
-    const py = Number.isFinite(pointer?.y) ? pointer.y : null;
-    if (cache.cw !== cw || cache.ch !== ch || cache.dpr !== dpr
-        || cache.w !== w || cache.h !== h || cache.px !== px || cache.py !== py || cache.a !== a) {
-      // One transparent layer at the chart's exact backing resolution. Its points and pointer
-      // lens do not change with the animated scan; avoid resubmitting thousands of identical dots.
-      if (cache.canvas.width !== cw) cache.canvas.width = cw;
-      if (cache.canvas.height !== ch) cache.canvas.height = ch;
-      cache.context.setTransform(dpr, 0, 0, dpr, 0, 0);
-      cache.context.clearRect(0, 0, w, h);
-      drawSensorLattice(cache.context, w, h, { pointer, a });
-      Object.assign(cache, { cw, ch, dpr, w, h, px, py, a });
-    }
-    g.drawImage(cache.canvas, 0, 0, w, h);
+    return this._atlas?.paint(w, h, originX, originY, Math.max(w * 0.9, h, tile), features) || false;
   },
 
 _draw() {
@@ -9025,13 +9172,6 @@ _draw() {
     if (this._lastDrawLevel !== level) {
       this._lastDrawLevel = level;
       this._domRefreshPending = true;
-    }
-
-    // Update search placeholder to match the active scale.
-    const searchInput = this._root && this._root.querySelector('.gm-search-input');
-    if (searchInput) {
-      const placeholder = level === 'local' ? 'Search local space… (Press /)' : level === 'system' ? 'Search system… (Press /)' : 'Search galaxy… (Press /)';
-      if (searchInput.placeholder !== placeholder) searchInput.placeholder = placeholder;
     }
 
     const levelLabel = level.toUpperCase();
@@ -9539,8 +9679,8 @@ _draw() {
     const target = this._previewTarget();
     const laying = !!this._line;
     const you = this._youScreen;
-    if (target && target.kind === 'sector') {
-      const sid = target.sectorId || target.id;
+    const sid = galaxySelectionSector(target, currentSectorId(state));
+    if (sid) {
       const plan = this._previewPathTo(sid);
       if (!plan) return;
       const pts = plan.ids.map((id) => screenOf.get(id)).filter(Boolean);
@@ -9780,8 +9920,7 @@ _draw() {
     const animT = this._animT || 0;
     const dpr = this._dpr || 1;
 
-    // ORRERY: the sensor lattice behind the chart, brightening in a lens under the pointer.
-    this._drawSensorLattice(g, w, h, 0.11);
+    this._paintAtlas(w, h, sx(0), sy(0), graphScale * 9);
 
     const field = this._clearField(w, h);
     const fieldPad = 14;
@@ -9902,7 +10041,7 @@ _draw() {
       const count = strength > 0.6 ? 2 : 1;
       for (let k = 0; k < count; k += 1) {
         const u = reduced ? (0.5 + k * 0.2) : (animT * (0.05 + strength * 0.07) + phase + k / count) % 1;
-        drawLaneComet(g, a.x, a.y, b.x, b.y, u, { len: reduced ? 10 : 34 + strength * 22, a: 0.55 + strength * 0.4, trim: tokenR + 2 });
+        drawLaneComet(g, a.x, a.y, b.x, b.y, u, { len: reduced ? 6 : 14, a: 0.17 + strength * 0.12, trim: tokenR + 2 });
       }
     }
 
@@ -9941,6 +10080,7 @@ _draw() {
     // Draw Nodes
     const labelCandidates = [];
     const hoverId = this._hoverTarget ? this._hoverTarget.id : null;
+    const selectedSector = galaxySelectionSector(this._selectedTarget, model.currentSectorId || currentSectorId(state));
     const snapId = this._line && this._line.snap ? this._line.snap.id : null;
     const shipAt = model.player && model.player.drawPos
       ? { x: sx(model.player.drawPos.x), y: sy(model.player.drawPos.z) } : null;
@@ -9998,7 +10138,7 @@ _draw() {
 
       // The token: the sector's produced art (or its bone fallback), lifted under the pointer.
       const lift = (n.id === hoverId || n.id === snapId) ? this._liftAmount(now) : 0;
-      if (ground && this._layers.faction && n.ownerId) drawTokenAura(g, x, y, r, ground.colours, n.ownerId, { a: stale ? 0.5 : 1 });
+      if (ground && this._layers.faction && n.ownerId) drawTokenAura(g, x, y, r, ground.colours, n.ownerId, { a: n.current ? 0.55 : 0.28 });
       const drawnR = drawSectorToken(g, n.id, x, y, tokenSize, {
         dpr, lift, stale, berths: sectorBerthCount(state, n.id), onReady: this._tokenReadyHandler(),
       });
@@ -10074,7 +10214,7 @@ _draw() {
       }
 
       // Selection: a lit band round the token — the only lit ring on the table.
-      if (this._selectedTarget && this._selectedTarget.id === n.id) {
+      if (selectedSector === n.id) {
         drawBandRing(g, x, y, drawnR + 5, { band: 7, bandA: 0.3, edge: 2, edgeA: 1 });
       }
 
@@ -10082,6 +10222,7 @@ _draw() {
       // belong to it travel together, so the rows can never orphan from their name).
       const nodeInField = inGalaxyField(x, y);
       const nodeLines = [n.name];
+      if (selectedSector === n.id && this._selectedTarget.kind !== 'sector') nodeLines.push(this._selectedTarget.name);
       if (n.current && opTag && shipAt && Math.hypot(shipAt.x - x, shipAt.y - y) <= r) {
         nodeLines.push(opTag);
         tagOnToken = true;
@@ -10098,7 +10239,7 @@ _draw() {
           id: `sector:${n.id}`,
           kind: n.current ? 'gate' : 'station',
           maxLeader: 104,
-          selected: !!(this._selectedTarget && this._selectedTarget.id === n.id),
+          selected: selectedSector === n.id,
           text: n.name,
           lines: nodeLines,
           x,
@@ -10430,7 +10571,8 @@ _drawSystem(g, state, w, h) {
       edgeTicks.push(edgeTickOnField(field, fieldCx, fieldCy, x, y, color, shape, target));
     };
 
-    this._drawSensorLattice(g, w, h, 0.06);
+    const relief = this._paintAtlas(w, h, sx(0), sz(0), pxPerWU * 5400,
+      atlasFeatures(state, model.sectorId, this._layers, sx, sz, pxPerWU));
 
     g.save();
     g.beginPath();
@@ -10481,7 +10623,7 @@ _drawSystem(g, state, w, h) {
     // Zones: regions of the sector as pools of light. Overlapping zones MERGE: each pool's light is laid
     // with 'lighten' (the brighter light wins, no darker Venn lens), and each rim is a band of light
     // clipped out of every other pool, so a cluster of zones wears one lit outline.
-    const pools = model.zones.filter((z) => !(z.hazard && this._layers.hazard))
+    const pools = model.zones.filter((z) => !z.hazard)
       .map((z) => ({ z, ...warpDisc(sx(z.x), sz(z.z), z.radius * pxPerWU) }));
     // The pools live inside the sector: clipped to the gate ring's inner edge.
     g.save();
@@ -10490,11 +10632,11 @@ _drawSystem(g, state, w, h) {
     g.globalCompositeOperation = 'lighten';
     const poolOwner = (state.world && state.world.sectors && state.world.sectors[model.sectorId] && state.world.sectors[model.sectorId].owner) || (SECTOR_BY_ID.get(model.sectorId) || {}).factionId || null;
     const poolTint = this._layers.faction ? dominionRgb(poolOwner, factionColorOf(poolOwner)).join(',') : '236,230,216';
-    for (const pool of pools) {
+    for (const pool of relief ? [] : pools) {
       const grad = g.createRadialGradient ? g.createRadialGradient(pool.x, pool.y, 0, pool.x, pool.y, pool.r) : null;
       if (grad) {
-        grad.addColorStop(0, `rgba(${poolTint},0.3)`);
-        grad.addColorStop(0.7, `rgba(${poolTint},0.12)`);
+        grad.addColorStop(0, `rgba(${poolTint},0.12)`);
+        grad.addColorStop(0.7, `rgba(${poolTint},0.08)`);
         grad.addColorStop(1, `rgba(${poolTint},0.04)`);
       }
       g.fillStyle = grad || CHART_INK.bone(0.06);
@@ -10510,11 +10652,12 @@ _drawSystem(g, state, w, h) {
         g.arc(other.x, other.y, Math.max(1, other.r - 1), 0, Math.PI * 2, true);
         g.clip('evenodd');
       }
-      drawBandRing(g, pool.x, pool.y, pool.r, { rgb: poolTint, band: 7, bandA: 0.34, edge: 1.6, edgeA: 0.8 });
+      drawBandRing(g, pool.x, pool.y, pool.r, { rgb: poolTint, band: 0, edge: 1, edgeA: 0.46 });
       g.restore();
     }
     g.restore();
     for (const z of model.zones) {
+      if (z.hazard && !this._layers.hazard) continue;
       const zd = warpDisc(sx(z.x), sz(z.z), z.radius * pxPerWU);
       const x = zd.x, y = zd.y, rr = zd.r;
 
@@ -10541,7 +10684,7 @@ _drawSystem(g, state, w, h) {
         g.fillStyle = CHART_INK.danger(0.06);
         g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2); g.fill();
         g.restore();
-        drawBandRing(g, x, y, rr, { rgb: '255,80,56', band: 7, bandA: 0.2, edge: 1.8, edgeA: 0.85 });
+        drawBandRing(g, x, y, rr, { rgb: '214,145,115', band: 0, edge: 1.3, edgeA: 0.76, dash: [5, 4] });
         const hazardGlyph = HAZARD_CANVAS_GLYPHS[z.type] || 'warn';
         drawGlyph(g, hazardGlyph, x, y, 14, { color: INK.red });
         labelCandidates.push(makeMapLabelCandidate(g, {
@@ -10598,7 +10741,7 @@ _drawSystem(g, state, w, h) {
         g.save();
         g.fillStyle = `rgba(${CLASS_RGB.ore},0.1)`;
         g.beginPath(); g.arc(fx, fy, fr, 0, Math.PI * 2); g.fill();
-        const grains = Math.max(10, Math.min(40, Math.round(fr * 0.9)));
+        const grains = relief ? 0 : Math.max(10, Math.min(40, Math.round(fr * 0.9)));
         for (let i = 0; i < grains; i += 1) {
           const a = i * 2.39996 + cosmeticHash01(String(f.id) + i) * 0.6;
           const rr = Math.sqrt((i + 0.5) / grains) * fr * 0.92;
@@ -10607,7 +10750,7 @@ _drawSystem(g, state, w, h) {
           g.beginPath(); g.arc(fx + Math.cos(a) * rr, fy + Math.sin(a) * rr * 0.86, s, 0, Math.PI * 2); g.fill();
         }
         g.restore();
-        drawBandRing(g, fx, fy, fr, { rgb: CLASS_RGB.ore, band: 6, bandA: 0.2, edge: 1.4, edgeA: 0.6 });
+        drawBandRing(g, fx, fy, fr, { rgb: CLASS_RGB.ore, band: 0, edge: 1, edgeA: 0.36, dash: [2, 3] });
         // What it is and the ore it carries, named at the field's crown through the label solver.
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `field:${f.id || glyph}`,
@@ -10787,10 +10930,9 @@ _drawSystem(g, state, w, h) {
       const pointLines = [displayName];
       if (p.statusLine) pointLines.push(p.statusLine);
       let marketTint = null;
-      let services = [];
-      if (this._layers.services && (isStation || isGate)) {
-        const record = findStationRecord(state, p.stationId || p.id);
-        services = record && record.services ? record.services : [];
+      if (this._layers.services && isStation && !p.closed) {
+        const services = stationChartServices(state, p.stationId || p.id, model.sectorId);
+        if (services) pointLines.push(services);
       }
 
       if (this._layers.market && isStation) {
@@ -10834,10 +10976,6 @@ _drawSystem(g, state, w, h) {
         }
         if (alts.length) pointLabel.alts = alts;
         labelCandidates.push(pointLabel);
-      }
-
-      if (isStation && services.length > 0) {
-        drawServicePictograms(g, x, y + 22, services);
       }
 
       // Mission relevance: a lit ring round a station a contract names.
@@ -11021,7 +11159,7 @@ _drawSystem(g, state, w, h) {
 
     // THE GROUND: the holder's hue washes the field behind everything drawn
     // (src/ui/orrery/chartWorld.js), centred on the sector's seat — no dial rim to light.
-    if (this._layers.faction) {
+    if (this._layers.faction && !relief) {
       const owner = (state.world && state.world.sectors && state.world.sectors[model.sectorId] && state.world.sectors[model.sectorId].owner) || (SECTOR_BY_ID.get(model.sectorId) || {}).factionId || null;
       g.save();
       g.globalCompositeOperation = 'destination-over';
@@ -11060,7 +11198,6 @@ _drawLocal(g, state, w, h) {
       if (contact && !contact.remembered) liveContactCount += 1;
     }
     this._localLiveContacts = liveContactCount;
-    const cam = this._cams.local;
     const wp = state.nav && state.nav.waypoint;
     const wpPos = localMapWaypointPosition(state, wp);
     // An inspected mission fix is separate from the player's armed course. Revalidate it on
@@ -11086,83 +11223,53 @@ _drawLocal(g, state, w, h) {
     const px = player ? player.pos.x : 0;
     const pz = player ? player.pos.z : 0;
 
-    // The local scope favors the immediate field: fit on a high percentile of what is worth
-    // seeing (foreign furniture, remembered contacts and rocks never vote; the goal always does),
-    // so a lone straggler falls off-frame into an edge tick instead of setting the scale.
-    let span = 1500;
-    const fitSpans = [];
-    for (const c of model.contacts) {
-      if (c.remembered || c.foreign || c.kind === 'asteroid') continue;
-      fitSpans.push(Math.hypot(c.x - px, c.z - pz));
-    }
-    if (this._layers.holdings) {
-      for (const marker of model.ownership) fitSpans.push(Math.hypot(marker.x - px, marker.z - pz));
-    }
-    for (const bearing of model.bearings) {
-      const point = bearing.fixedPos || bearing.center;
-      if (!point) continue;
-      const uncertainty = bearing.fixedPos ? 0 : bearing.radius;
-      fitSpans.push(Math.hypot(point.x - px, point.z - pz) + uncertainty);
-    }
-    if (wpPos) {
-      fitSpans.push(Math.hypot(wpPos.x - px, wpPos.z - pz));
-    }
-    if (missionFix) fitSpans.push(Math.hypot(missionFix.x - px, missionFix.z - pz));
-    let m = 0;
-    if (fitSpans.length) {
-      fitSpans.sort((a, b) => a - b);
-      m = fitSpans[Math.min(fitSpans.length - 1, Math.ceil(fitSpans.length * 0.85) - 1)] || 0;
-    }
-    if (m > 0) span = Math.max(700, m * 1.55);
-
-    // The clear field: between the rails, the heading and the foot. The scope centres on the ship
-    // inside it; anything outside it stands as an edge tick on its border, pointing the way.
+    // Local, System and Galaxy share zoom, orientation, and the physical point under the cursor.
+    const camera = this._cameraOrInit();
+    const viewport = this._cameraViewport(w, h);
+    const localScale = pixelsPerWU(camera, viewport);
+    const focus = camera.focusGlobal;
     const field = this._clearField(w, h);
     const fieldCx = field.x + field.width / 2;
     const fieldCy = field.y + field.height / 2;
-    const baseScale = (Math.min(field.width, field.height) * 0.9) / span;
-    this._view = { level: 'local', baseScale };
-    const sx = (x) => fieldCx - (x - cam.cx) * baseScale * cam.zoom;
-    const sz = (z) => fieldCy - (z - cam.cy) * baseScale * cam.zoom;
+    this._view = { level: 'local', baseScale: localScale, pxPerWU: localScale, camera };
+    const sx = (x) => fieldCx + (x - focus.x) * localScale;
+    const sz = (z) => fieldCy + (z - focus.z) * localScale;
     const labelCandidates = [];
     const edgeTicks = [];
     setMapCanvasAriaLabel(this._canvas, 'local', this._layers.holdings ? model.ownership : []);
 
     const offView = (x, y) => x < field.x + 12 || y < field.y + 12 || x > field.x + field.width - 12 || y > field.y + field.height - 12;
-    // Off-field marks ride the scope's outer ring at their true bearing: one radius, read like a
-    // compass rose, never floating at the field's edge.
-    const pinRadius = Math.min(field.width, field.height) * 0.46 + 16;
     const pushEdgeTick = (x, y, color, shape, target) => {
       if (edgeTicks.length >= 24) return null;
-      const tick = ringPinTick(sx(px), sz(pz), pinRadius, x, y, color, shape, target);
+      const tick = edgeTickOnField(field, fieldCx, fieldCy, x, y, color, shape, target);
       edgeTicks.push(tick);
       return tick;
     };
 
-    this._drawSensorLattice(g, w, h, 0.055);
+    const origin = sectorGlobalOrigin(model.sectorId) || { x: 0, z: 0 };
+    const relief = this._paintAtlas(w, h, sx(origin.x), sz(origin.z), localScale * 3200,
+      atlasFeatures(state, model.sectorId, this._layers, sx, sz, localScale, origin.x, origin.z));
 
-    // Range rings: bands of light round the ship, each reading its radius on its crown.
+    if (this._layers.discovery || this._layers.market) {
+      for (const deposit of sectorRecordById(state, model.sectorId)?.fields || []) {
+        const point = deposit.center || {};
+        const x = sx(origin.x + (Number(point.x) || 0));
+        const y = sz(origin.z + (Number(point.z) || 0));
+        const radius = (Number(deposit.clusterRadius || deposit.radius) || 300) * localScale;
+        if (radius < 26 || offView(x, y)) continue;
+        const name = `${FIELD_NAME_BY_TYPE[deposit.type] || 'Ore'} field`;
+        labelCandidates.push(makeMapLabelCandidate(g, { id: `field:${deposit.id}`, kind: 'zone', text: name,
+          lines: [name], x, y, anchorRadius: radius + 2, area: true, priority: 490, color: CHART_INK.bone(0.92) }));
+      }
+    }
+
     const shipX = sx(px), shipY = sz(pz);
     const ringBase = Math.min(field.width, field.height) * 0.46;
     const localOwner = (state.world && state.world.sectors && state.world.sectors[model.sectorId] && state.world.sectors[model.sectorId].owner) || (SECTOR_BY_ID.get(model.sectorId) || {}).factionId || null;
-    const localTint = this._layers.faction ? dominionRgb(localOwner, factionColorOf(localOwner)) : [236, 230, 216];
-    const localTintStr = `${Math.round(localTint[0] * 0.55 + 236 * 0.45)},${Math.round(localTint[1] * 0.55 + 230 * 0.45)},${Math.round(localTint[2] * 0.55 + 216 * 0.45)}`;
-    for (const rr of [0.33, 0.66, 1.0]) {
-      drawBandRing(g, shipX, shipY, ringBase * rr, { rgb: localTintStr, band: 8, bandA: rr === 1 ? 0.4 : 0.32, edge: 1.7, edgeA: rr === 1 ? 0.78 : 0.62 });
-    }
-    // Minor graduations on the outer ring: an instrument, not a circle.
     g.save();
-    g.strokeStyle = CHART_INK.bone(0.34);
-    g.lineWidth = 1.5;
-    for (let i = 0; i < 72; i += 1) {
-      const a = (i / 72) * Math.PI * 2;
-      const len = i % 6 === 0 ? 9 : 4;
-      g.beginPath();
-      g.moveTo(shipX + Math.cos(a) * ringBase, shipY + Math.sin(a) * ringBase);
-      g.lineTo(shipX + Math.cos(a) * (ringBase - len), shipY + Math.sin(a) * (ringBase - len));
-      g.stroke();
-    }
-    g.restore();
+    g.beginPath();
+    g.rect(field.x - 8, field.y - 8, field.width + 16, field.height + 16);
+    g.clip();
 
     if (this._layers.discovery) {
       for (const site of model.circuitSites || []) {
@@ -11179,7 +11286,7 @@ _drawLocal(g, state, w, h) {
         const point = bearing.fixedPos || bearing.center;
         if (!point) continue;
         const x = sx(point.x), y = sz(point.z);
-        const radiusPx = fixed ? 0 : bearing.radius * baseScale * cam.zoom;
+        const radiusPx = fixed ? 0 : bearing.radius * localScale;
         const rumorTarget = frontierRumorMapTarget(bearing);
         const manualTarget = rumorTarget || vestaOreCacheMapTarget(bearing) || pallasHiddenCacheMapTarget(bearing);
         if (offView(x, y)) {
@@ -11293,26 +11400,13 @@ _drawLocal(g, state, w, h) {
     if (wpPos && this._layers.route) {
       let ex = sx(wpPos.x), ey = sz(wpPos.z);
       if (offView(ex, ey)) {
-        wpTick = ringPinTick(shipX, shipY, pinRadius, ex, ey, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, ex, ey, state) || undefined);
+        wpTick = edgeTickOnField(field, fieldCx, fieldCy, ex, ey, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, ex, ey, state) || undefined);
         ex = wpTick.x; ey = wpTick.y;
       }
       const progress = reduced ? 1 : Math.min(1, Math.max(0, (this._nowMs() - (this._routeDrawStart == null ? -1e9 : this._routeDrawStart)) / 520));
       drawHandBeam(g, [{ x: shipX, y: shipY }, { x: ex, y: ey }], {
         progress: 1 - Math.pow(1 - progress, 3), pulseT: reduced || this._line ? null : animT, head: false, alpha: this._line ? 0.4 : 1, tone: this._line ? 'bone' : 'hand',
       });
-    }
-
-    // Rock thinning: dense belts collapse into a faint texture of the nearest rocks.
-    let asteroidDrawSet = null;
-    {
-      const rocks = [];
-      for (const c of model.contacts) {
-        if (c.kind === 'asteroid') rocks.push({ id: c.id, d: Math.hypot(c.x - px, c.z - pz) });
-      }
-      if (rocks.length > 80) {
-        rocks.sort((a, b) => a.d - b.d);
-        asteroidDrawSet = new Set(rocks.slice(0, 80).map((rock) => rock.id));
-      }
     }
 
     // Only gates that can actually claim a label may force a disambiguating octant.
@@ -11327,13 +11421,32 @@ _drawLocal(g, state, w, h) {
     // infrastructure, hostiles and waypoints collapse into edge ticks instead.
     const hoverId = this._hoverTarget ? this._hoverTarget.id : null;
     const snapId = this._line && this._line.snap ? this._line.snap.id : null;
+    const groupedMarks = new Map();
+    const targetId = state.player?.targetId;
+    let rockMarks = 0;
     for (const c of model.contacts) {
-      if (c.kind === 'asteroid' && asteroidDrawSet && !asteroidDrawSet.has(c.id)) continue;
+      const reached = c.id === hoverId || c.id === snapId || c.id === this._selectedTarget?.id
+        || (targetId != null && c.entityId === targetId);
+      const isRock = c.kind === 'asteroid';
+      const isTraffic = c.kind === 'ship' && !c.hostile;
+      const scanned = isRock && c.scanHighlightUntil > nowS;
+      if (isTraffic && !reached && !this._layers.traffic) continue;
+      if (isRock && !reached && !scanned && (!this._layers.discovery || localScale < 0.95 || rockMarks >= 18)) continue;
       const x = sx(c.x), y = sz(c.z);
       const off = offView(x, y);
+      if (!off && !reached && !scanned && (isTraffic || isRock || c.hostile)) {
+        const block = isRock ? 22 : 32;
+        const bucket = `${isRock ? 'rock' : c.hostile ? 'hostile' : 'traffic'}:${Math.floor(x / block)}:${Math.floor(y / block)}`;
+        const group = groupedMarks.get(bucket);
+        if (group) { group.count += 1; continue; }
+        groupedMarks.set(bucket, { x, y, hostile: c.hostile, count: 1 });
+      }
+      if (isRock && !off) rockMarks += 1;
       const displayName = c.kind === 'gate'
         ? disambiguateGateLabel(c.name, c.x, c.z, px, pz, localGateNameCounts)
         : c.name;
+      const services = c.kind === 'station' && this._layers.services && !c.closed && !c.foreign
+        ? stationChartServices(state, c.stationId || c.id, model.sectorId) : '';
 
       // Remembered contacts are memory, not sensor return: faded at the dead-reckoned position
       // inside an uncertainty ring; no edge tick and no click target (a course to a ghost is nothing).
@@ -11364,11 +11477,12 @@ _drawLocal(g, state, w, h) {
             });
           if (tick && (c.kind === 'station' || c.kind === 'gate' || c.hostile) && edgeTicks.length <= 4) {
             const dist = Math.hypot((Number(c.x) || 0) - px, (Number(c.z) || 0) - pz);
+            const edgeName = `${displayName} · ${formatDistanceWU(dist)}`;
             labelCandidates.push(makeMapLabelCandidate(g, {
               id: `edge:${c.id}`,
               kind: c.kind,
-              text: `${displayName} · ${formatDistanceWU(dist)}`,
-              lines: [`${displayName} · ${formatDistanceWU(dist)}`],
+              text: edgeName,
+              lines: services ? [edgeName, services] : [edgeName],
               x: tick.x,
               y: tick.y,
               anchorRadius: 14,
@@ -11381,7 +11495,7 @@ _drawLocal(g, state, w, h) {
         continue;
       }
 
-      const contactMark = chartMarkSizes(c, baseScale * cam.zoom);
+      const contactMark = chartMarkSizes(c, localScale);
       this._clickTargets.push({
         sx: x, sy: y, radiusPx: Math.max(contactMark.pipPx, c.kind === 'asteroid' ? 6 : 11), kind: c.kind, id: c.id, x: c.x, z: c.z,
         entityId: c.entityId, stationId: c.stationId, stable: c.stable || null, name: displayName, factionId: c.factionId,
@@ -11418,8 +11532,8 @@ _drawLocal(g, state, w, h) {
       } else if (c.hostile) {
         // Hostile: a red diamond and its velocity, in red.
         if (c.vx != null) {
-          const pvx = -(c.vx / 3) * baseScale * cam.zoom;
-          const pvz = -(c.vz / 3) * baseScale * cam.zoom;
+          const pvx = (c.vx / 3) * localScale;
+          const pvz = (c.vz / 3) * localScale;
           const len = Math.hypot(pvx, pvz);
           if (len > 0.1) {
             const mult = len > 26 ? 26 / len : 1;
@@ -11435,11 +11549,12 @@ _drawLocal(g, state, w, h) {
       const selected = !!(this._selectedTarget && this._selectedTarget.id === c.id);
       if ((c.kind === 'station' || c.kind === 'gate' || selected || c.hostile || c.named)
         && (!foreignFade || selected)) {
+        const context = c.statusLine || services;
         labelCandidates.push(makeMapLabelCandidate(g, {
           id: `contact:${c.id}`,
           kind: c.kind,
           text: displayName,
-          lines: c.statusLine ? [displayName, c.statusLine] : [displayName],
+          lines: context ? [displayName, context] : [displayName],
           x,
           y,
           anchorRadius: Math.max(contactMark.nameplatePx, c.kind === 'station' || c.kind === 'gate' ? 16 : 11),
@@ -11450,6 +11565,17 @@ _drawLocal(g, state, w, h) {
         }));
       }
     }
+    g.save();
+    g.font = chartFont(650, 12, { stretch: 'normal' });
+    g.textAlign = 'right'; g.textBaseline = 'bottom';
+    for (const group of groupedMarks.values()) {
+      if (!group.hostile || group.count <= 1) continue;
+      g.fillStyle = CHART_INK.glass(0.92);
+      g.fillRect(group.x - 38, group.y - 19, 26, 16);
+      g.fillStyle = '#f39885';
+      g.fillText(`×${group.count}`, group.x - 14, group.y - 5);
+    }
+    g.restore();
 
     // Player: the SAME fix mark used at SYSTEM and GALAXY scale, at the scope's centre.
     this._youScreen = { x: shipX, y: shipY };
@@ -11485,26 +11611,6 @@ _drawLocal(g, state, w, h) {
         drawBead(g, ex, ey, 2.4, { bloom: 2.4, bloomA: 0.28 });
       }
     }
-
-    // Range readings on the rings' crowns (phosphor: numbers the world tells you).
-    g.save();
-    g.font = chartFont(640, 12, { stretch: 'normal' });
-    g.textAlign = 'left'; g.textBaseline = 'middle';
-    g.lineJoin = 'round';
-    // Read the radius off the scale the rings are actually drawn at (the wheel moves cam.zoom).
-    const ringUnits = Math.round(ringBase / (baseScale * (Number(cam.zoom) > 0 ? cam.zoom : 1.5)));
-    for (let i = 0; i < 3; i++) {
-      const frac = [0.33, 0.66, 1.0][i];
-      const rrPx = ringBase * frac;
-      const label = formatDistanceWU(Math.round(ringUnits * frac));
-      const lx = shipX + rrPx * 0.707 + 6;
-      const ly = shipY - rrPx * 0.707 - 6;
-      g.strokeStyle = 'rgba(5, 7, 10, 0.86)'; g.lineWidth = 4;
-      g.strokeText(label, lx, ly);
-      g.fillStyle = CHART_INK.phos(0.9);
-      g.fillText(label, lx, ly);
-    }
-    g.restore();
 
     // Empty-space reassurance (remembered marks do not count as company).
     const liveContacts = this._localLiveContacts;
@@ -11582,7 +11688,7 @@ _drawLocal(g, state, w, h) {
     if (missionFix) {
       let x = sx(missionFix.x), y = sz(missionFix.z);
       if (offView(x, y)) {
-        const tick = ringPinTick(shipX, shipY, pinRadius, x, y, INK.ink0, 'waypoint', missionFix);
+        const tick = edgeTickOnField(field, fieldCx, fieldCy, x, y, INK.ink0, 'waypoint', missionFix);
         edgeTicks.push(tick); x = tick.x; y = tick.y;
       } else {
         missionFixScreen = { x, y };
@@ -11602,7 +11708,7 @@ _drawLocal(g, state, w, h) {
       let wx = sx(wpPos.x);
       let wy = sz(wpPos.z);
       if (offView(wx, wy)) {
-        const tick = wpTick || ringPinTick(shipX, shipY, pinRadius, wx, wy, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, wx, wy, state) || undefined);
+        const tick = wpTick || edgeTickOnField(field, fieldCx, fieldCy, wx, wy, this._line ? INK.ink0 : INK.amberHot, 'waypoint', waypointClickTarget(wp, wpPos, wx, wy, state) || undefined);
         edgeTicks.push(tick);
         wx = tick.x; wy = tick.y;
       } else {
@@ -11634,11 +11740,7 @@ _drawLocal(g, state, w, h) {
       const stub = waypointTetherReserveRect(shipX, shipY, wpScreen.x, wpScreen.y);
       if (stub) localReserved.push(stub);
     }
-    for (const frac of [0.33, 0.66, 1.0]) {
-      const rrPx = ringBase * frac;
-      localReserved.push({ x: shipX + rrPx * 0.707 + 4, y: shipY - rrPx * 0.707 - 16, width: 64, height: 20 });
-    }
-    this._edgeScalePxPerWU = baseScale * cam.zoom;
+    this._edgeScalePxPerWU = localScale;
     const labelLayout = this._placeLabels(labelCandidates, w, h, { reserved: localReserved,
       recoveryLabelId: missionFix ? `objective:${missionFix.id}` : null });
     this._lastLabelLayout = labelLayout;
@@ -11684,12 +11786,12 @@ _drawLocal(g, state, w, h) {
         });
       }
     }
-    this._drawEdgeScale(g, field, baseScale * cam.zoom);
-    // THE GROUND: the holder's hue washes the scope and lights its outer ring, behind everything.
-    if (this._layers.faction) {
+    g.restore();
+    this._drawEdgeScale(g, field, localScale);
+    if (this._layers.faction && !relief) {
       g.save();
       g.globalCompositeOperation = 'destination-over';
-      try { drawSystemGround(g, w, h, { x: shipX, y: shipY, r: ringBase, ownerId: localOwner, fallbackHex: factionColorOf(localOwner), dashed: false }); } catch (_) { /* the chart reads without its ground */ }
+      try { drawSystemGround(g, w, h, { x: fieldCx, y: fieldCy, r: ringBase, ownerId: localOwner, fallbackHex: factionColorOf(localOwner), rim: false }); } catch (_) { /* the chart reads without its ground */ }
       g.restore();
     }
   },
@@ -11708,10 +11810,10 @@ function drawUniqueWreckBearingMarker(g, x, y, radiusPx, options = {}) {
     g.fillStyle = CHART_INK.bone(0.035 * a);
     g.beginPath(); g.arc(x, y, rr, 0, Math.PI * 2); g.fill();
     g.restore();
-    drawBandRing(g, x, y, rr, { band: selected ? 8 : 6, bandA: 0.16 * a, edge: selected ? 2 : 1.5, edgeA: 0.62 * a });
+    drawBandRing(g, x, y, rr, { band: 0, edge: selected ? 1.6 : 1, edgeA: (selected ? 0.74 : 0.36) * a, dash: [5, 5] });
     g.save();
-    g.strokeStyle = CHART_INK.bone(0.85 * a);
-    g.lineWidth = 2;
+    g.strokeStyle = CHART_INK.bone(0.5 * a);
+    g.lineWidth = 1.2;
     for (const angle of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
       const ax = Math.cos(angle), ay = Math.sin(angle);
       g.beginPath();
@@ -11793,79 +11895,49 @@ function drawRumorCorroborationArrows(g, arrows, cx, cy, alpha = 1) {
 // amber cross = point of interest, chevron = ship, open red diamond = hostile, rock = asteroid.
 // ---------------------------------------------------------------------------------------------
 
-/** Station: chamfered brass plate with a center pip — a building, never a dot. */
-/**
- * Station: a berth ring with mooring arms.
- *
- * Was a chamfered square with a centre pip — legible, but it said "generic facility", and at 11px
- * it was the same visual weight as everything else on the table. A station is a place you dock, so
- * it is drawn as a hub with arms you could tie up to: a brass ring, a dark core, and four short
- * mooring stubs on the diagonals. The diagonals matter — they keep the arms clear of the label
- * plate, which always sits on an axis.
- */
+// Opaque landmark marks stay legible over the terrain.
 function drawStationMark(g, x, y) {
-  // A station is a place you dock: a lit hub inside a berth ring of light, four mooring arms on the
-  // diagonals (clear of the label, which always sits on an axis).
-  const r = 8.5;
-  drawGlow(g, x, y, 26, CLASS_RGB.station, 0.6);
-  drawBandRing(g, x, y, r, { rgb: CLASS_RGB.station, band: 7, bandA: 0.3, edge: 1.9, edgeA: 0.98 });
   g.save();
-  g.strokeStyle = `rgba(${CLASS_RGB.station},0.95)`;
-  g.lineWidth = 2;
-  g.lineCap = 'butt';
-  for (let i = 0; i < 4; i += 1) {
-    const a = Math.PI / 4 + i * (Math.PI / 2);
-    const ca = Math.cos(a), sa = Math.sin(a);
-    g.beginPath();
-    g.moveTo(x + ca * (r + 1.5), y + sa * (r + 1.5));
-    g.lineTo(x + ca * (r + 5.5), y + sa * (r + 5.5));
-    g.stroke();
-  }
-  g.restore();
-  drawBead(g, x, y, 3.6, { bloom: 2.4, bloomA: 0.3 });
-}
-
-/**
- * Gate: an aperture with jaws, opening along its link.
- *
- * Was a plain teal circle with one tick, which read as "small planet" as often as "door". A gate is
- * a threshold you pass THROUGH, so the ring is now broken on the axis of travel and two jaws frame
- * the opening — the mark itself shows you the way through, and the direction is legible without the
- * tick having to carry it alone.
- */
-function drawGateMark(g, g_x, g_y, angle = 0) {
-  // A gate is a threshold: two jaws of light with the mouth open on the axis of travel, and a lit
-  // tongue leaving the mouth the way the lane goes.
-  const x = g_x, y = g_y, r = 7.5;
-  const gap = 0.62;
-  drawGlow(g, x, y, 24, CLASS_RGB.gate, 0.55);
-  const style = { rgb: CLASS_RGB.gate, band: 7, bandA: 0.3, edge: 2.1, edgeA: 0.98 };
-  drawBand(g, (c) => c.arc(x, y, r, angle + gap, angle + Math.PI - gap), style);
-  drawBand(g, (c) => c.arc(x, y, r, angle + Math.PI + gap, angle + Math.PI * 2 - gap), style);
-  const ca = Math.cos(angle), sa = Math.sin(angle);
-  drawBand(g, (c) => { c.moveTo(x + ca * 2, y + sa * 2); c.lineTo(x + ca * (r + 6), y + sa * (r + 6)); },
-    { rgb: CLASS_RGB.gate, band: 5, bandA: 0.26, edge: 2, edgeA: 0.98 });
-  drawBead(g, x + ca * (r + 6), y + sa * (r + 6), 2.2, { bloom: 2.4, bloomA: 0.3 });
-}
-
-/**
- * Point of interest: a survey cross with an open centre.
- *
- * A bare plus sign is the single most generic mark available. Breaking the centre and adding fine
- * end serifs turns it into a surveyor's register mark — the same drafting vocabulary as the corner
- * registration on the table, so the family reads as one instrument.
- */
-function drawPoiMark(g, x, y) {
-  // A point of interest: a small lit diamond in its own soft light.
-  drawGlow(g, x, y, 20, '236,230,216', 0.34);
-  g.save();
-  g.fillStyle = CHART_INK.bone(0.14);
-  g.beginPath(); g.arc(x, y, 8, 0, Math.PI * 2); g.fill();
-  g.fillStyle = CHART_INK.lit(0.95);
-  const s = 4.2;
+  g.translate(x, y);
+  g.fillStyle = CHART_INK.glass(0.94);
+  g.strokeStyle = '#b9d9cc';
+  g.lineWidth = 1.6;
+  g.beginPath(); g.arc(0, 0, 9.5, 0, Math.PI * 2); g.fill(); g.stroke();
   g.beginPath();
-  g.moveTo(x, y - s); g.lineTo(x + s, y); g.lineTo(x, y + s); g.lineTo(x - s, y);
-  g.closePath(); g.fill();
+  g.moveTo(-14, -3); g.lineTo(-9, -3); g.moveTo(9, -3); g.lineTo(14, -3);
+  g.moveTo(-14, 3); g.lineTo(-9, 3); g.moveTo(9, 3); g.lineTo(14, 3);
+  g.stroke();
+  g.beginPath(); g.arc(0, 0, 3.6, 0, Math.PI * 2); g.stroke();
+  g.restore();
+}
+
+function drawGateMark(g, x, y, angle = 0) {
+  g.save();
+  g.translate(x, y);
+  g.rotate(angle);
+  g.fillStyle = CHART_INK.glass(0.92);
+  g.beginPath(); g.arc(0, 0, 12, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = '#bcb7d9';
+  g.lineWidth = 2.1;
+  g.beginPath(); g.arc(0, 0, 9, 0.55, Math.PI - 0.55); g.stroke();
+  g.beginPath(); g.arc(0, 0, 9, Math.PI + 0.55, Math.PI * 2 - 0.55); g.stroke();
+  g.beginPath(); g.moveTo(-4, 0); g.lineTo(4, 0); g.stroke();
+  g.restore();
+}
+
+function drawPoiMark(g, x, y) {
+  g.save();
+  g.translate(x, y);
+  g.strokeStyle = CHART_INK.bone(0.64);
+  g.lineWidth = 1.1;
+  g.beginPath();
+  g.moveTo(-6, -2); g.lineTo(-6, -6); g.lineTo(-2, -6);
+  g.moveTo(2, -6); g.lineTo(6, -6); g.lineTo(6, -2);
+  g.moveTo(6, 2); g.lineTo(6, 6); g.lineTo(2, 6);
+  g.moveTo(-2, 6); g.lineTo(-6, 6); g.lineTo(-6, 2);
+  g.stroke();
+  g.fillStyle = CHART_INK.bone(0.68);
+  g.fillRect(-1, -1, 2, 2);
   g.restore();
 }
 
@@ -11928,21 +12000,18 @@ function drawManufacturedTravelRoute(g, route, sx, sz, useDrawFrame, warp = null
   g.restore();
 }
 
-/** Neutral ship: a heading chevron in quiet ink. */
+/** Traffic: a cargo hull on its actual heading. */
 function drawShipChevron(g, x, y, rot, color) {
-  // a contact wears its class hue (traffic: the radar's blue-grey) with a soft halo, so the local scope
-  // reads at a glance the way the radar does
-  if (!color) drawGlow(g, x, y, 17, CLASS_RGB.neutral, 0.42);
   g.save();
-  g.fillStyle = color ? CHART_INK.bone(0.12) : `rgba(${CLASS_RGB.neutral},0.16)`;
-  g.beginPath(); g.arc(x, y, 8.5, 0, Math.PI * 2); g.fill();
   g.translate(x, y);
-  g.rotate(Math.PI + (rot || 0));
-  if (!color) g.scale(1.3, 1.3);
-  g.fillStyle = color || `rgba(${CLASS_RGB.neutral},0.98)`;
+  g.rotate(rot || 0);
+  g.fillStyle = CHART_INK.glass(0.92);
+  g.strokeStyle = color || 'rgba(169,191,198,.76)';
+  g.lineWidth = 1.25;
   g.beginPath();
-  g.moveTo(6.5, 0); g.lineTo(-5, -4.2); g.lineTo(-2.8, 0); g.lineTo(-5, 4.2);
-  g.closePath(); g.fill();
+  g.moveTo(7, 0); g.lineTo(3, -4); g.lineTo(-6, -4); g.lineTo(-6, 4); g.lineTo(3, 4);
+  g.closePath(); g.fill(); g.stroke();
+  g.beginPath(); g.moveTo(0, -4); g.lineTo(0, 4); g.stroke();
   g.restore();
 }
 
@@ -11998,8 +12067,8 @@ function drawPlayerFixMark(g, x, y, rot, options = {}) {
     g.stroke();
   }
 
-  // Heading triangle. Same `Math.PI + rot` convention as every other oriented mark on this canvas.
-  g.rotate(Math.PI + (rot || 0));
+  // Heading in the chart camera's global axes.
+  g.rotate(rot || 0);
   g.fillStyle = CHART_INK.lit(1);
   g.beginPath();
   g.moveTo(6 * scale, 0);
@@ -12013,23 +12082,18 @@ function drawPlayerFixMark(g, x, y, rot, options = {}) {
   drawBead(g, x, y, 1.6 * scale, { bloom: 4, bloomA: 0.3 });
 }
 
-/** Hostile: a red open diamond, rotated to heading — threat reads before color-blind shape. */
+/** A red fighter silhouette with swept wings and an oriented nose. */
 function drawHostileMark(g, x, y, rot) {
-  drawGlow(g, x, y, 24, CLASS_RGB.hostile, 0.7);
   g.save();
-  g.fillStyle = CHART_INK.danger(0.2);
-  g.beginPath(); g.arc(x, y, 10, 0, Math.PI * 2); g.fill();
   g.translate(x, y);
-  g.rotate(Math.PI + (rot || 0));
-  g.scale(1.3, 1.3);
-  g.fillStyle = CHART_INK.danger(0.92);
+  g.rotate(rot || 0);
+  g.fillStyle = '#da735e';
+  g.strokeStyle = CHART_INK.glass(0.95);
+  g.lineWidth = 1.5;
   g.beginPath();
-  g.moveTo(6.5, 0); g.lineTo(0, -4.6); g.lineTo(-6.5, 0); g.lineTo(0, 4.6);
-  g.closePath();
-  g.fill();
-  g.strokeStyle = 'rgba(255, 200, 190, 0.9)';
-  g.lineWidth = 1;
-  g.stroke();
+  g.moveTo(8, 0); g.lineTo(-3, -7); g.lineTo(-6, -6); g.lineTo(-3, -2);
+  g.lineTo(-7, 0); g.lineTo(-3, 2); g.lineTo(-6, 6); g.lineTo(-3, 7);
+  g.closePath(); g.stroke(); g.fill();
   g.restore();
 }
 
@@ -12154,100 +12218,6 @@ function drawEdgeTick(g, x, y, color, shape, angle = null) {
 }
 
 /** Service pictograms under stations: tiny stroke icons sharing the DOM chip language. */
-function drawServicePictograms(g, cx, cy, services) {
-  if (!g || !services || !services.length) return;
-  // The services a berth offers, as a row of its pictograms in quiet light — no box around each.
-  const size = 12;
-  const totalW = services.length * size;
-  let x = cx - totalW / 2 + size / 2;
-  g.save();
-  for (const svc of services) {
-    drawServicePictogram(g, svc, x, cy, 3.8, CHART_INK.bone(0.78));
-    x += size;
-  }
-  g.restore();
-}
-
-/** One service pictogram, canvas twin of the DOM chip SVGs. */
-function drawServicePictogram(g, svc, x, y, r, color) {
-  const key = String(svc || '').toLowerCase();
-  g.save();
-  g.strokeStyle = color;
-  g.fillStyle = color;
-  g.lineWidth = 1;
-  switch (key) {
-    case 'trade':
-      g.beginPath(); g.arc(x, y, r * 0.8, 0, Math.PI * 2); g.stroke();
-      g.beginPath(); g.moveTo(x, y - r * 0.45); g.lineTo(x, y + r * 0.45); g.stroke();
-      break;
-    case 'shipyard':
-      g.beginPath();
-      g.moveTo(x - r, y + r * 0.6); g.lineTo(x - r, y - r * 0.4); g.lineTo(x, y - r);
-      g.lineTo(x + r, y - r * 0.4); g.lineTo(x + r, y + r * 0.6);
-      g.stroke();
-      break;
-    case 'repair':
-      g.beginPath(); g.moveTo(x - r * 0.7, y + r * 0.7); g.lineTo(x + r * 0.7, y - r * 0.7); g.stroke();
-      g.beginPath(); g.arc(x + r * 0.55, y - r * 0.55, r * 0.4, 0, Math.PI * 2); g.stroke();
-      break;
-    case 'refuel':
-      g.beginPath();
-      g.moveTo(x, y - r);
-      g.lineTo(x + r * 0.7, y + r * 0.3);
-      g.arc(x, y + r * 0.3, r * 0.7, 0, Math.PI, false);
-      g.closePath(); g.stroke();
-      break;
-    case 'refine':
-      g.beginPath();
-      g.moveTo(x - r, y - r * 0.5); g.lineTo(x + r, y - r * 0.5); g.lineTo(x + r * 0.4, y + r); g.lineTo(x - r * 0.4, y + r);
-      g.closePath(); g.stroke();
-      break;
-    case 'missions':
-      g.beginPath();
-      g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y);
-      g.closePath(); g.stroke();
-      break;
-    case 'ore_buy':
-      g.beginPath();
-      for (let i = 0; i < 6; i += 1) {
-        const a = (i / 6) * Math.PI * 2 - Math.PI / 6;
-        const vx = x + Math.cos(a) * r * 0.9;
-        const vy = y + Math.sin(a) * r * 0.9;
-        if (i === 0) g.moveTo(vx, vy);
-        else g.lineTo(vx, vy);
-      }
-      g.closePath(); g.stroke();
-      break;
-    case 'black_market':
-      g.beginPath();
-      g.moveTo(x - r, y - r * 0.6); g.lineTo(x + r, y - r * 0.6); g.lineTo(x, y + r);
-      g.closePath(); g.stroke();
-      break;
-    case 'module_craft':
-      g.beginPath(); g.rect(x - r * 0.8, y - r * 0.8, r * 1.6, r * 1.6); g.stroke();
-      g.beginPath();
-      g.moveTo(x, y - r * 0.45); g.lineTo(x, y + r * 0.45);
-      g.moveTo(x - r * 0.45, y); g.lineTo(x + r * 0.45, y);
-      g.stroke();
-      break;
-    case 'scan':
-      g.beginPath(); g.arc(x, y, r * 0.7, 0, Math.PI * 2); g.stroke();
-      g.beginPath();
-      g.moveTo(x, y - r); g.lineTo(x, y - r * 0.4);
-      g.moveTo(x, y + r * 0.4); g.lineTo(x, y + r);
-      g.moveTo(x - r, y); g.lineTo(x - r * 0.4, y);
-      g.moveTo(x + r * 0.4, y); g.lineTo(x + r, y);
-      g.stroke();
-      break;
-    default:
-      g.font = FONT_MONO(700, 7);
-      g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText(String(key || '?')[0].toUpperCase(), x, y + 0.5);
-  }
-  g.restore();
-}
-
-// glyph helpers
 function hazardTypeGlyph(type) {
   switch (type) {
     // \uFE0E keeps ☢ a monochrome text glyph (it defaults to color emoji on emoji-font platforms).
@@ -12334,8 +12304,7 @@ function splitReading(text) {
 const CHART_LOCK_MS = 520;
 
 /**
- * An edge tick for a mark outside the clear field: pinned where the ray from the field's centre
- * (the ship, at LOCAL) toward the mark leaves the field, inset so the tick and its pointer stay in.
+ * Pin an off-screen mark inside the current viewport even after panning away from the ship.
  */
 function edgeTickOnField(field, cx, cy, x, y, color, shape, target) {
   const inset = 16;
@@ -12354,11 +12323,6 @@ function edgeTickOnField(field, cx, cy, x, y, color, shape, target) {
   return { x: tx, y: ty, color, shape, target, angle: Math.atan2(dy, dx) };
 }
 
-/** An off-field mark pinned to an instrument's ring at its true bearing from the ring's centre. */
-function ringPinTick(cx, cy, radius, x, y, color, shape, target) {
-  const angle = Math.atan2(y - cy, x - cx);
-  return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius, color, shape, target, angle };
-}
 
 const CHART_CONTEXT_METHODS = Object.freeze([
   'save', 'restore', 'beginPath', 'closePath', 'moveTo', 'lineTo', 'arc', 'ellipse', 'rect', 'stroke', 'fill',
@@ -12481,8 +12445,8 @@ function drawMapLabelBlock(g, placement) {
     const tx = placement.x + 5;
     const ty = placement.y + 3 + index * 15;
     if (typeof g.strokeText === 'function') {
-      g.strokeStyle = 'rgba(5, 7, 10, 0.86)';
-      g.lineWidth = 4;
+      g.strokeStyle = 'rgba(9, 22, 31, 0.88)';
+      g.lineWidth = 2.4;
       g.strokeText(lines[index], tx, ty);
     }
     g.fillStyle = fill;
@@ -12493,7 +12457,8 @@ function drawMapLabelBlock(g, placement) {
 }
 
 function waypointMapLabel(wp) {
-  const raw = wp && (wp.mapLabel || wp.label || wp.reason || wp.sectorName || 'Waypoint');
+  const mapLabel = wp?.onboarding ? wp.label || wp.mapLabel : wp?.mapLabel;
+  const raw = mapLabel || wp?.label || wp?.reason || wp?.sectorName || 'Waypoint';
   const label = String(raw || 'Waypoint').replace(/\s+/g, ' ').trim();
   return (label || 'Waypoint').slice(0, 28);
 }
