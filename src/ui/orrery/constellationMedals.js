@@ -455,6 +455,14 @@ export function createMedalOrrery(host, { onPick = null, onEdge = null, glyph = 
     if (labelCuts && shown.length) {
       const hb = host.getBoundingClientRect();
       const g = wordCut(doc, shown, (r) => ({ x: r.left - hb.left, y: r.top - hb.top, w: r.width, h: r.height }));
+      // the glyph-shaped cut alone left the orbit and its ticks running between the letters ("0 / 10"
+      // read as struck through at 1280x720): each name and count also clears a padded plate, so the orbit
+      // stops cleanly short of the words (ui-polish-537)
+      for (const el of shown) {
+        const r = el.getBoundingClientRect();
+        if (!r || r.width < 1 || r.height < 1) continue;
+        g.appendChild(svg('rect', { x: f(r.left - hb.left - 6), y: f(r.top - hb.top - 3), width: f(r.width + 12), height: f(r.height + 6), rx: 4, fill: '#000', stroke: 'none' }));
+      }
       g.classList.add('con-morr__cutg');
       g.style.setProperty('--mo-ld', instant ? '0ms' : '460ms');
       labelCuts.appendChild(g);
