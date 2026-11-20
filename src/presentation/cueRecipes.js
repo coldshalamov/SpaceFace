@@ -138,6 +138,25 @@ export const PRESENTATION_RECIPES = Object.freeze({
     budgets: { voices: 1 },
     tags: ['combat', 'doctrine', 'withdraw'],
   }),
+  // CW-TELLS (INV-21 item 5): the Enemy Mind's decisions speak as their own cue family. The
+  // caption/accessibility lane carries the sentence (the HUD chip is enemy-linked and does not
+  // re-announce); the vfx lane draws the same small readable beat at the deciding hull that a
+  // doctrine cue draws. No audio row is authored yet — the chip, the caption and the beat carry
+  // the tell; a dedicated voice belongs to a tuning pass with the audio owner.
+  'combat.mind.tell': recipe({
+    importance: 0.6,
+    // The mind re-decides every ~0.2 s; one verb per hull must not chatter. The orchestrator
+    // keys the dedupe sequence on entity+verb, so a NEW decision speaks at once while a held
+    // plan stays quiet for the dedupe span.
+    dedupeWindowTicks: 30,
+    material: 'doctrine',
+    lanes: {
+      ...laneSet('vfx.direct_ai_telegraph', 'ui.none', 'accessibility.caption_priority'),
+      audio: 'audio.none',
+    },
+    budgets: { voices: 0 },
+    tags: ['combat', 'mind', 'tell'],
+  }),
   // FB-072 — the combat ladder hit → kill also escalates by declared shape (cone → ring);
   // budgets are already flat across the family and stay that way.
   'combat.damage.applied': recipe({

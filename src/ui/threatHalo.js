@@ -85,9 +85,15 @@ export const LEFTOVER_TELEGRAPH_KINDS = Object.freeze([
   'mothlight_iris',
 ]);
 
-export const TELEGRAPH_CUE_TICKS = 30;
+// CW-TELLS: the halo's cue clock reads the same 0.6 s tell floor as the doctrine beat
+// (DOCTRINE_TELEGRAPH_TICKS in src/ai/combatDoctrine.js — pq-161-01 pins the two equal, so
+// the painted ring never expires before the telegraph it answers).
+export const TELEGRAPH_CUE_TICKS = 36;
+// CW-TELLS: the pairing window's MAX tracks the tell floor (a volley now lands up to the
+// 0.6 s cue + its fire window after the announcement); the MIN stays the anti-coincidence
+// floor — a death mid-cue (a mine that arms in 0.5 s) is still genuinely preceded.
 export const TELEGRAPH_PAIR_MIN_TICKS = 30;
-export const TELEGRAPH_PAIR_MAX_TICKS = 60;
+export const TELEGRAPH_PAIR_MAX_TICKS = 66;
 
 // Continuous hazards (mines, snares, a lit fuse) stay lit from announcement to resolution
 // instead of pulsing once. Their event rows may declare durationTicks so death correlation

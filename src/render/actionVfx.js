@@ -92,6 +92,14 @@ function attackTellReleased(state,slot){
 }
 function valid(p){return p&&Number.isFinite(p.x)&&Number.isFinite(p.z);}
 function field(state,id){const list=state.fields?.active;if(list)for(const f of list)if(f.id===id)return f;return null;}
+// CW-TELLS (INV-21 item 3): the phases a committed lane may live through when its doctrine
+// publishes no frozen fire solution (the corridor-less attackLine lanes).
+const RUN_LANE_PHASES=new Set(['engine_flare','strike','commit']);
+// CW-TELLS (INV-21 item 3): a pack must never paint a wall of wedges (design/overhaul/
+// 03_COMBAT.md §1 density contract — what happens at ×50). Corridor-less approach lanes are
+// capped to the nearest N to the player; a frozen fire corridor (aimCommit) always stays —
+// it is the volley's promise, and there are at most a handful of those on screen.
+const MAX_COMMITTED_LANE_WEDGES=4;
 // These two receipts are published exclusively by the player-owned mining/repair tool.
 // No other action may silently borrow the player's identity or position.
 const PLAYER_TOOL_EVENTS=new Set(['beam:repaired','beam:transferred']);
@@ -128,6 +136,9 @@ export class ActionVfx {
     this.anchor={x:0,z:0};this.origin={x:0,z:0};this.socketWorld=new THREE.Vector3();
     this.bodyBounds=new THREE.Box3();this.bodyCenter=new THREE.Vector3();
     this.time=0;this.serial=0;this.live=0;this.disposed=false;
+    // CW-TELLS: reused lane-admission scratch — filled only when the wedge count is over the cap.
+    this._laneScratch=[];
+    this._laneAdmitted=new Set();
     this.slots=Array.from({length:32},()=>({alive:false,event:null,kind:null,id:null,sourceId:null,attached:false,born:0,last:0,
       x:0,y:0,z:0,sx:0,sz:0,radius:1,angle:0,angleOffset:0,seed:0,recipe:null,particlePulse:-1,
       tx:0,tz:0,ox:0,oz:0,target:null,source:null,socket:null,sourceSocket:null,hasSource:false,
@@ -264,11 +275,21 @@ export class ActionVfx {
     return true;
   }
   _committedLanePhase(p,state){
-    if(!Number.isSafeInteger(p?.sourceGeneration)||!Number.isInteger(p.tick))return false;
+    if(!Number.isInteger(p.tick))return false;
     let handled=false;
     for(const s of this.slots){
       const lane=s.alive&&s.committedLane;
-      if(!lane||s.sourceId!==p.entityId||lane.sourceGeneration!==p.sourceGeneration||p.tick<lane.startTick)continue;
+      if(!lane||s.sourceId!==p.entityId||p.tick<lane.startTick)continue;
+      if(lane.aimCommit===null){
+        // CW-TELLS: a corridor-less lane (a non-corridor doctrine's live approach line, from
+        // committedAttackLaneReceipt's attackLine path) has no frozen fire solution to compare,
+        // so the phase receipt can only keep or kill it: the run's own attack beats keep the
+        // lane for its cue window, any other phase (abort, egress, cancelled) cancels it.
+        if(!RUN_LANE_PHASES.has(p.phase))s.committedLane=null;
+        handled=true;
+        continue;
+      }
+      if(!Number.isSafeInteger(p?.sourceGeneration)||lane.sourceGeneration!==p.sourceGeneration)continue;
       handled=true;
       const aim=p.aimCommit;
       const same=(p.phase==='engine_flare'||p.phase==='strike'||p.phase==='commit')
@@ -341,6 +362,34 @@ export class ActionVfx {
     }
     s.y=baseY;
   }
+  /**
+   * CW-TELLS: pick which committed lanes draw this frame. Returns null when every lane fits
+   * (the common case — no allocation, no sort), otherwise the set of corridor-less lanes that
+   * may draw: the player-nearest `budget` wedges, where frozen fire corridors (aimCommit) are
+   * always admitted first and never displaced by pack traffic.
+   */
+  _admitCommittedLanes(state){
+    const scratch=this._laneScratch;scratch.length=0;
+    let corridors=0;
+    for(const s of this.slots){
+      if(!s.alive||!s.committedLane)continue;
+      if(s.committedLane.aimCommit!==null){corridors++;continue;}
+      scratch.push(s);
+    }
+    const budget=Math.max(0,MAX_COMMITTED_LANE_WEDGES-Math.min(corridors,MAX_COMMITTED_LANE_WEDGES));
+    if(scratch.length<=budget){scratch.length=0;return null;}
+    const me=entity(state,state&&state.playerId);
+    const px=me&&me.pos?finite(me.pos.x):0,pz=me&&me.pos?finite(me.pos.z):0;
+    scratch.sort((a,b)=>{
+      const da=(a.sx-px)*(a.sx-px)+(a.sz-pz)*(a.sz-pz);
+      const db=(b.sx-px)*(b.sx-px)+(b.sz-pz)*(b.sz-pz);
+      return da-db;
+    });
+    const admitted=this._laneAdmitted;admitted.clear();
+    for(let i=0;i<budget&&i<scratch.length;i++)admitted.add(scratch[i]);
+    scratch.length=0;
+    return admitted;
+  }
   update(state={}){
     if(this.disposed)return 0;
     const now=finite(state.simTime,this.time),elapsed=Math.max(0,now-this.time);
@@ -352,6 +401,7 @@ export class ActionVfx {
     this.particleOptions.reducedMotion=reduced;this.particleOptions.reducedFlash=flash;
     if(reduced)this.particles.clear();else this.particles.update(elapsed,this.particleOptions);
     readFrameOrigin(state,this.origin);this.batch.begin(now,reduced,flash);this.live=0;
+    const laneAdmitted=this._admitCommittedLanes(state);
     for(const s of this.slots){
       if(!s.alive)continue;
       if(s.event==='salvageWatch:repairWork'&&(!validWatchRepair(s.watchReceipt,state)
@@ -375,7 +425,7 @@ export class ActionVfx {
         if(attackTellReleased(state,s)||(!s.committedLane&&since>=s.recipe.life)){s.alive=false;continue;}
         this.live++;this._follow(s,state);
         if(since<s.recipe.life)this.composer.render(s,now,reduced,flash);
-        if(s.committedLane){
+        if(s.committedLane&&(laneAdmitted===null||s.committedLane.aimCommit!==null||laneAdmitted.has(s))){
           presentedAnchorXZ(s.source,finite(state.render?.interpolationAlpha,1),this.anchor);
           this.composer.renderCommittedLane(s,this.anchor,flash);
         }

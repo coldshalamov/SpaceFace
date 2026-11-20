@@ -51,7 +51,9 @@ assert.deepEqual(Object.values(CombatDoctrineId).sort(), [
   'swarm_pack',
   'tether_control_raider',
 ]);
-assert.equal(DOCTRINE_TELEGRAPH_TICKS, 30, 'every attack telegraph lasts at least 30 fixed ticks');
+// CW-TELLS (INV-21 item 3): the owner's sentence is the design floor — "Every attack telegraphs
+// ≥ 0.6 s" (design/overhaul/03_COMBAT.md §9, doc 19). 36 fixed ticks at 60 Hz is that floor.
+assert.equal(DOCTRINE_TELEGRAPH_TICKS, 36, 'every attack telegraphs at least 0.6 s (36 fixed ticks) — 03_COMBAT §9');
 assert.equal(normalizeCombatDoctrineId('unknown'), null, 'unknown doctrine ids fail closed');
 
 {
@@ -69,7 +71,9 @@ assert.equal(normalizeCombatDoctrineId('unknown'), null, 'unknown doctrine ids f
   const firstSide = result.side;
 
   result = runtime.update({
-    tick: 30, entityId: 'iron_maw', doctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
+    // CW-TELLS: the salvo clock starts at the 0.6 s tell floor (broadside_charge holds
+    // DOCTRINE_TELEGRAPH_TICKS), then the stage's authored fire/shift beats follow.
+    tick: DOCTRINE_TELEGRAPH_TICKS, entityId: 'iron_maw', doctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
     perception: frame(), directive: baseDirective(),
   });
   assert.equal(result.phase, 'broadside_fire');
@@ -79,7 +83,7 @@ assert.equal(normalizeCombatDoctrineId('unknown'), null, 'unknown doctrine ids f
   assert.equal(result.faceTarget, true);
 
   result = runtime.update({
-    tick: 90, entityId: 'iron_maw', doctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
+    tick: DOCTRINE_TELEGRAPH_TICKS + 60, entityId: 'iron_maw', doctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
     perception: frame(), directive: baseDirective(),
   });
   assert.equal(result.phase, 'broadside_shift');
@@ -87,7 +91,7 @@ assert.equal(normalizeCombatDoctrineId('unknown'), null, 'unknown doctrine ids f
   assert.equal(result.side, -firstSide, 'the capital crosses to its opposite firing side between salvos');
 
   result = runtime.update({
-    tick: 180, entityId: 'iron_maw', doctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
+    tick: DOCTRINE_TELEGRAPH_TICKS + 60 + 90, entityId: 'iron_maw', doctrineId: CombatDoctrineId.CAPITAL_BROADSIDE,
     perception: frame(), directive: baseDirective(),
   });
   assert.equal(result.phase, 'broadside_charge');
@@ -280,7 +284,7 @@ for (const [label, selfOverrides, contactOverrides] of [
   });
   assert.equal(result.phase, 'engine_flare');
   assert.equal(result.telegraphStarted, true);
-  assert.deepEqual(result.telegraph, { kind: 'engine_flare', durationTicks: 30, startedTick: 5 });
+  assert.deepEqual(result.telegraph, { kind: 'engine_flare', durationTicks: DOCTRINE_TELEGRAPH_TICKS, startedTick: 5 });
   assert.equal(result.fireWindow, false);
 
   result = runtime.update({
@@ -289,13 +293,13 @@ for (const [label, selfOverrides, contactOverrides] of [
   });
   assert.equal(result.fireWindow, false, 'fire remains impossible for the whole telegraph');
   result = runtime.update({
-    tick: 35, entityId: 2, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    tick: 5 + DOCTRINE_TELEGRAPH_TICKS, entityId: 2, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
     perception: perception([shipContact(1, { x: 160, mobilityBand: 'high', threat: 0.9 })]), directive,
   });
   assert.equal(result.phase, 'strike');
   assert.equal(result.fireWindow, true);
   result = runtime.update({
-    tick: 59, entityId: 2, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    tick: 5 + DOCTRINE_TELEGRAPH_TICKS + 24, entityId: 2, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
     perception: perception([shipContact(1, { x: 120, vx: -60, mobilityBand: 'high', threat: 0.9 })], { x: 160, vx: 70 }), directive,
   });
   assert.equal(result.phase, 'extend');
@@ -325,12 +329,12 @@ for (const [label, selfOverrides, contactOverrides] of [
     });
     assert.equal(result.phase, 'engine_flare', label);
     result = runtime.update({
-      tick: 30, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+      tick: DOCTRINE_TELEGRAPH_TICKS, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
       perception: perception([shipContact(1, { x: 160, threat: 0.9 })]), directive: passDirective,
     });
     assert.equal(result.phase, 'strike', label);
     result = runtime.update({
-      tick: 60, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+      tick: DOCTRINE_TELEGRAPH_TICKS + 24, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
       perception: perception([shipContact(1, { x: 40, threat: 0.9 })], { x: 160, vx: 70 }), directive: passDirective,
     });
     assert.equal(result.phase, expected, `${label} past a stationary target`);
@@ -349,10 +353,10 @@ for (const [label, selfOverrides, contactOverrides] of [
     perception: perception([shipContact(1, { x: 120, operationalMassBand: 'heavy', cargoBand: 'rich', tetherabilityBand: 'excellent' })]), directive,
   });
   assert.equal(result.phase, 'spool_cue');
-  assert.equal(result.telegraph.durationTicks, 30);
+  assert.equal(result.telegraph.durationTicks, DOCTRINE_TELEGRAPH_TICKS);
   assert.equal(result.fireWindow, false);
   result = runtime.update({
-    tick: 40, entityId: 'raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    tick: 10 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
     perception: perception([shipContact(1, { x: 110, operationalMassBand: 'heavy', cargoBand: 'rich', tetherabilityBand: 'excellent' })]), directive,
   });
   assert.equal(result.phase, 'attach_window');
@@ -363,14 +367,14 @@ for (const [label, selfOverrides, contactOverrides] of [
 
   const tether = tetherContact('att_1', { ownerId: 'raider', targetId: 1 });
   result = runtime.update({
-    tick: 41, entityId: 'raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    tick: 11 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
     perception: perception([shipContact(1, { x: 112, tethered: true }), tether]), directive,
   });
   assert.equal(result.phase, 'control');
   assert.equal(result.allowedActionId, 'action_reel');
   assert.equal(result.actionTargetId, 'att_1');
   result = runtime.update({
-    tick: 44, entityId: 'raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    tick: 14 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
     perception: perception([shipContact(1, { x: 130, tethered: false })]), directive,
   });
   assert.equal(result.phase, 'escape');
@@ -385,17 +389,17 @@ for (const [label, selfOverrides, contactOverrides] of [
     perception: perception([target]), directive,
   });
   runtime.update({
-    tick: 30, entityId: 'slack_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    tick: DOCTRINE_TELEGRAPH_TICKS, entityId: 'slack_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
     perception: perception([target]), directive,
   });
   runtime.update({
-    tick: 31, entityId: 'slack_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    tick: 1 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'slack_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
     perception: perception([shipContact(1, { x: 112, tethered: true }), tetherContact('att_slack', {
       ownerId: 'slack_raider', targetId: 1,
     })]), directive,
   });
   const result = runtime.update({
-    tick: 32, entityId: 'slack_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    tick: 2 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'slack_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
     perception: perception([shipContact(1, { x: 105, tethered: true }), tetherContact('att_slack', {
       ownerId: 'slack_raider', targetId: 1, tags: ['massline', 'owned_by_self', 'slack'],
     })]), directive,
@@ -414,29 +418,31 @@ for (const [label, selfOverrides, contactOverrides] of [
     perception: perception([openTarget]), directive,
   });
   runtime.update({
-    tick: 30, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    tick: DOCTRINE_TELEGRAPH_TICKS, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
     perception: perception([openTarget]), directive,
   });
   const foreignTether = tetherContact('att_foreign', { ownerId: 'rival_raider', targetId: 1 });
   let result = runtime.update({
-    tick: 31, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    tick: 1 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
     perception: perception([shipContact(1, { x: 112, tethered: true }), foreignTether]), directive,
   });
   assert.equal(result.phase, 'escape', 'a foreign tether makes the target contested instead of entering control');
   assert.equal(result.outcome, 'target_contested');
   assert.equal(result.allowedActionId, null, 'a raider never sends action_reel for another owner tether');
+  // The escape leg is authored in absolute ticks (90 to reform, 45 to flank); the cue beat
+  // ahead of it now runs the 0.6 s floor, so the sample ticks shift with DOCTRINE_TELEGRAPH_TICKS.
   result = runtime.update({
-    tick: 121, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    tick: 91 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
     perception: perception([shipContact(1, { x: 112, tethered: true }), foreignTether], { x: -650, vx: -80 }), directive,
   });
   assert.equal(result.phase, 'reform', 'contested target reforms only after a committed escape');
   result = runtime.update({
-    tick: 166, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    tick: 136 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
     perception: perception([shipContact(1, { x: 112, tethered: true }), foreignTether]), directive,
   });
   assert.equal(result.phase, 'flank', 'reform dwell completes before the next attach cycle');
   result = runtime.update({
-    tick: 167, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
+    tick: 137 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'contested_raider', doctrineId: CombatDoctrineId.TETHER_CONTROL_RAIDER,
     perception: perception([shipContact(1, { x: 112, tethered: true }), foreignTether]), directive,
   });
   assert.equal(result.phase, 'spool_cue');
@@ -456,7 +462,7 @@ for (const [label, selfOverrides, contactOverrides] of [
     perception: perception([shipContact(1, { x: 620, mobilityBand: 'low', threat: 0.95 })]), directive,
   });
   assert.equal(result.phase, 'charge_cue');
-  assert.equal(result.telegraph.durationTicks, 30);
+  assert.equal(result.telegraph.durationTicks, DOCTRINE_TELEGRAPH_TICKS);
   assert.equal(result.faceTarget, false, 'a committed corridor owns the nose once the cue starts');
   assert(Number.isFinite(result.faceAngle) && result.faceAngle === result.aimCommit.bearing,
     'the cue must publish the committed corridor bearing the guns are committed to');
@@ -466,7 +472,7 @@ for (const [label, selfOverrides, contactOverrides] of [
   });
   assert.equal(result.fireWindow, false);
   result = runtime.update({
-    tick: 75, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    tick: 45 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
     perception: perception([shipContact(1, { x: 610, mobilityBand: 'low', threat: 0.95 })]), directive,
   });
   assert.equal(result.phase, 'fire_window');
@@ -523,7 +529,7 @@ for (const [label, selfOverrides, contactOverrides] of [
     'ordinary HOLD without the opt-in must still face its formation/desired vector');
 
   result = runtime.update({
-    tick: 76, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    tick: 46 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
     perception: perception([shipContact(1, { x: 180, vx: -90, mobilityBand: 'low', threat: 0.95 })]), directive,
   });
   assert.equal(result.phase, 'retreat');
@@ -543,38 +549,38 @@ for (const [label, selfOverrides, contactOverrides] of [
     perception: frame(), directive,
   });
   runtime.update({
-    tick: 75, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    tick: 45 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
     perception: frame(), directive,
   });
   let result = runtime.update({
-    tick: 93, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    tick: 45 + DOCTRINE_TELEGRAPH_TICKS + 18, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
     perception: frame(), directive,
   });
   assert.equal(result.phase, 'reset', 'ranged doctrine enters an explicit post-shot dwell');
   assert.equal(result.fireWindow, false);
   result = runtime.update({
-    tick: 110, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    tick: 45 + DOCTRINE_TELEGRAPH_TICKS + 35, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
     perception: frame(), directive,
   });
   assert.equal(result.phase, 'reset', 'post-shot dwell lasts the full authored 18 ticks');
   result = runtime.update({
-    tick: 111, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    tick: 45 + DOCTRINE_TELEGRAPH_TICKS + 36, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
     perception: frame(), directive,
   });
   assert.equal(result.phase, 'outer_standoff');
   result = runtime.update({
-    tick: 156, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    tick: 45 + DOCTRINE_TELEGRAPH_TICKS + 81, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
     perception: frame(), directive,
   });
   assert.equal(result.phase, 'charge_cue');
-  assert.equal(result.telegraphStarted, true, 'every repeated ranged shot receives a fresh 30-tick warning after repositioning');
+  assert.equal(result.telegraphStarted, true, 'every repeated ranged shot receives a fresh 0.6 s warning after repositioning');
   result = runtime.update({
-    tick: 185, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    tick: 45 + DOCTRINE_TELEGRAPH_TICKS + 116, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
     perception: frame(), directive,
   });
   assert.equal(result.fireWindow, false);
   result = runtime.update({
-    tick: 186, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    tick: 45 + DOCTRINE_TELEGRAPH_TICKS + 117, entityId: 'patient_sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
     perception: frame(), directive,
   });
   assert.equal(result.phase, 'fire_window');
@@ -606,14 +612,14 @@ for (const [label, selfOverrides, contactOverrides] of [
   // A hard lateral reversal mid-cue: the corridor must not re-track.
   const dodged = () => perception([shipContact(1, { x: 600, z: 210, vz: -110, mobilityBand: 'low', threat: 0.95 })]);
   result = runtime.update({
-    tick: 74, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    tick: 44 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
     perception: dodged(), directive,
   });
   assert.equal(result.phase, 'charge_cue');
   assert.equal(result.aimCommit.bearing, corridor, 'a dodge during the wind-up leaves the corridor stale');
   assert.equal(result.faceAngle, corridor, 'the nose rides the corridor through the dodge');
   result = runtime.update({
-    tick: 75, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    tick: 45 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
     perception: dodged(), directive,
   });
   assert.equal(result.phase, 'fire_window');
@@ -622,7 +628,7 @@ for (const [label, selfOverrides, contactOverrides] of [
   // Release/cancellation: the post-shot dwell drops the corridor — a stale bearing must never
   // leak into the next cycle.
   result = runtime.update({
-    tick: 94, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
+    tick: 45 + DOCTRINE_TELEGRAPH_TICKS + 18, entityId: 'sniper', doctrineId: CombatDoctrineId.RANGED_DISENGAGER,
     perception: dodged(), directive,
   });
   assert.equal(result.phase, 'reset');
@@ -669,7 +675,7 @@ for (const [label, selfOverrides, contactOverrides] of [
   });
   assert.equal(result.phase, 'engine_flare', 'inside the run-in band the heavy telegraphs immediately');
   result = runtime.update({
-    tick: 30, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    tick: DOCTRINE_TELEGRAPH_TICKS, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
     perception: inbound(), directive,
   });
   assert.equal(result.phase, 'commit');
@@ -700,7 +706,7 @@ for (const [label, selfOverrides, contactOverrides] of [
   });
   assert.equal(result.phase, 'commit', 'still committed while driving through the pass');
   result = runtime.update({
-    tick: 122, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    tick: DOCTRINE_TELEGRAPH_TICKS + 90, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
     perception: perception([shipContact(1, { x: 300, z: 60 })], { x: 520, vx: 150 }), directive,
   });
   assert.equal(result.phase, 'breakaway', 'a blown pass ends in the authored recovery, not a re-track');
@@ -863,15 +869,15 @@ for (const ship of ambush.ships) {
   assert.equal(doctrineDecision.combatDoctrine.fireWindow, false);
   assert.equal(state.entities.get(2).data.intent.fire, false);
   assert(maneuvers.length >= actorIds.length * 2, 'N>=4 fixture exercises active and non-active maneuver decisions');
-  for (let tick = 4; tick <= 36; tick++) {
+  for (let tick = 4; tick <= 42; tick++) {
     state.tick = tick;
     tactical.update(1 / 60, state);
   }
   const doctrineStarts = starts.filter((entry) => entry.entityId === 2 && entry.actionId === 'action_burst');
-  assert.equal(doctrineStarts[0]?.startedTick, 35,
-    'staggered decision cadence preserves the restarted 30-tick telegraph before action start');
+  assert.equal(doctrineStarts[0]?.startedTick, DOCTRINE_TELEGRAPH_TICKS + 5,
+    'staggered decision cadence preserves the restarted 0.6 s telegraph before action start');
   hideDoctrineTarget = true;
-  for (const tick of [37, 38, 39]) {
+  for (const tick of [DOCTRINE_TELEGRAPH_TICKS + 6, DOCTRINE_TELEGRAPH_TICKS + 7, DOCTRINE_TELEGRAPH_TICKS + 8]) {
     state.tick = tick;
     tactical.update(1 / 60, state);
   }

@@ -391,9 +391,14 @@ test('PQ-161.01: leftover telegraph kinds resolve without invented cues', () => 
   assert.equal(leftoverTelegraphKind({ doctrineId: 'capital_broadside' }), 'broadside_charge');
   assert.equal(leftoverTelegraphKind({ kind: 'collision' }), null);
   assert.equal(DOCTRINE_TELEGRAPH_TICKS, TELEGRAPH_CUE_TICKS);
-  assert.equal(Math.round(TELEGRAPH_CUE_TICKS * TICK_MS), 500, 'a telegraph lead is 500 ms / 30 frames');
+  // CW-TELLS: the tell lead is the design's 0.6 s floor (03_COMBAT §9), and the doctrine clock
+  // and the halo cue read the same beat.
+  assert.equal(Math.round(TELEGRAPH_CUE_TICKS * TICK_MS), 600, 'a telegraph lead is 600 ms / 36 frames (0.6 s floor)');
+  // The consequence window: the MIN stays the anti-coincidence floor (0.5 s); the MAX tracks
+  // the tell floor — a volley may land up to the 0.6 s cue + its fire window after the
+  // announcement (was capped at 1 s on the old 0.5 s beat).
   assert.equal(Math.round(TELEGRAPH_PAIR_MIN_TICKS * TICK_MS), 500);
-  assert.equal(Math.round(TELEGRAPH_PAIR_MAX_TICKS * TICK_MS), 1000);
+  assert.equal(Math.round(TELEGRAPH_PAIR_MAX_TICKS * TICK_MS), 1100);
   assert.deepEqual(TELEGRAPH_FORCE_CHANNELS, {
     engine_flare: 'impulses',
     weapon_charge: 'impulses',
@@ -415,6 +420,9 @@ test('PQ-161.01: leftover telegraph kinds resolve without invented cues', () => 
     attackRun: 'impulses',
     alphaStrike: 'impulses',
     furnace_preheat: 'repulsors',
+    // Committed palette entry (src/data/palettes.js lawful_interdict) that this pin predated
+    // and missed — the drive-by repair that lets the required doctrine-tell run go green.
+    lawful_interdict: 'impulses',
     mothlight_iris: 'impulses',
   });
   assert.equal(forceChannelForTelegraphKind('engine_flare'), 'impulses');
@@ -443,11 +451,12 @@ test('PQ-161.01: leftover lethal pairing on seed 16101', async () => {
   const liveRangedLeadMs = Math.round((liveRanged.deaths[0].tick - liveRanged.telegraphTick) * TICK_MS);
   console.log(`PQ-161.01 live interceptor lead=${liveInterceptorLeadMs} ms firstFire=${liveInterceptor.firstFireTick} telegraphTick=${liveInterceptor.telegraphTick} deathTick=${liveInterceptor.deaths[0].tick}`);
   console.log(`PQ-161.01 live ranged lead=${liveRangedLeadMs} ms firstFire=${liveRanged.firstFireTick} telegraphTick=${liveRanged.telegraphTick} deathTick=${liveRanged.deaths[0].tick}`);
-  // The done-when window in player units: the killing blow lands 0.5-1 s after its announcement.
-  assert.ok(liveInterceptorLeadMs >= 500 && liveInterceptorLeadMs <= 1000,
-    `live interceptor lead ${liveInterceptorLeadMs} ms is outside the 0.5-1 s window`);
-  assert.ok(liveRangedLeadMs >= 500 && liveRangedLeadMs <= 1000,
-    `live ranged lead ${liveRangedLeadMs} ms is outside the 0.5-1 s window`);
+  // The done-when window in player units: with the design's 0.6 s tell floor (03_COMBAT §9)
+  // the killing blow lands 0.6-1.1 s after its announcement (was 0.5-1 s on the old beat).
+  assert.ok(liveInterceptorLeadMs >= 600 && liveInterceptorLeadMs <= 1100,
+    `live interceptor lead ${liveInterceptorLeadMs} ms is outside the 0.6-1.1 s window`);
+  assert.ok(liveRangedLeadMs >= 600 && liveRangedLeadMs <= 1100,
+    `live ranged lead ${liveRangedLeadMs} ms is outside the 0.6-1.1 s window`);
 
   const deaths = [];
   const telegraphs = [];

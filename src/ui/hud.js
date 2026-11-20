@@ -51,6 +51,7 @@ import { VENUE_SECTOR_ID as COUNTERWEIGHT_SECTOR_ID } from '../features/counterw
 import { isRunSealed } from '../core/runSeal.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
 import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
+import { enemyMindTell } from '../presentation/enemyMindTells.js';
 import { crackerRunEntryGuidance } from './crackerRunGuidance.js';
 import { objectiveIsOffSector } from './objectiveSector.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
@@ -1367,6 +1368,18 @@ const DOCTRINE_TELL_BY_KIND = Object.freeze({
   field_spool: 'ANCHOR',
   sensor_ghost: 'GHOST',
   detonator_fuse: 'FUSE',
+  // CW-TELLS (INV-21 item 3): every live attack cue kind the action VFX paints now lands a chip
+  // too — a tell that only draws in-world (or only speaks on the halo) is not a complete tell.
+  broadside_charge: 'BROADSIDE',
+  swarmer_vent: 'VENT',
+  broadside_desperation: 'FINAL',
+  pd_curtain: 'CURTAIN',
+  furnace_preheat: 'FURNACE',
+  mothlight_iris: 'IRIS',
+  pirate_stalk: 'STALK',
+  scan_sweep: 'SCAN',
+  return_fire_warning: 'RETURN',
+  lawful_interdict: 'SEAL',
 });
 const DOCTRINE_TELL_BY_ID = Object.freeze({
   interceptor_flyby: 'FLYBY',
@@ -1385,6 +1398,23 @@ const DOCTRINE_TELL_HINT = Object.freeze({
   ANCHOR: 'Displace it or stay outside',
   GHOST: 'It relocates after the shot',
   FUSE: 'It goes off where it dies',
+  // CW-TELLS: the words name the player's decision, matching each cue's authored fiction.
+  BROADSIDE: 'The side is the gun — circle bow or stern',
+  VENT: 'It is venting its brood — clear the lane',
+  FINAL: 'It spends everything it has left',
+  CURTAIN: 'Point-defense up — hold missiles',
+  FURNACE: 'Cross its nose — the furnace is charging',
+  IRIS: 'The iris is the gun — the lights only drift',
+  STALK: 'It presses, then calls the pack',
+  SCAN: 'A sweep is on you — answer clean or break',
+  RETURN: 'It will return your fire — keep moving',
+  SEAL: 'Lane closed for audit — tear the emitters',
+  // CW-TELLS (INV-21 item 5): the Enemy Mind's decisions, same chip family.
+  FLANK: 'A crossfire is opening — turn with it',
+  BAIT: 'It offers the chase — do not follow',
+  PUNISH: 'It read your pursuit — break off',
+  COVER: 'It shields its wounded — press the opening',
+  PEEL: 'Punish the window before it rallies',
 });
 const DOCTRINE_TELL_ICON = Object.freeze({
   // Fallback literals carry \uFE0E (monochrome text presentation) themselves because ⚠/⛔ default
@@ -1399,6 +1429,21 @@ const DOCTRINE_TELL_ICON = Object.freeze({
   ANCHOR: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
   GHOST: SEMANTIC_PALETTE.info?.icon || '⚠\uFE0E',
   FUSE: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  BROADSIDE: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  VENT: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  FINAL: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  CURTAIN: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  FURNACE: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  IRIS: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  STALK: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  SCAN: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  RETURN: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  SEAL: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  FLANK: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  BAIT: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  PUNISH: SEMANTIC_PALETTE.danger?.icon || '⛔\uFE0E',
+  COVER: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
+  PEEL: SEMANTIC_PALETTE.warning?.icon || '⚠\uFE0E',
 });
 // The same tells, drawn: accessibility.js names each palette state's drawn equivalent in its
 // `glyph` column (a station/icons.js name), so the chip renders the mark as an ELEMENT through
@@ -1411,17 +1456,33 @@ const DOCTRINE_TELL_GLYPH_ALIAS = Object.freeze({
   info: 'info',
   chevron: 'iff_ally',
 });
+// Warning-family tells render the amber drawn mark; every other tell is the red danger mark.
+const TELL_WARNING_KINDS = new Set([
+  'TETHER', 'LAUNCH', 'CURTAIN', 'STALK', 'SCAN', 'SEAL', 'BAIT', 'COVER', 'PEEL',
+]);
 function tellGlyphName(tellId) {
-  const paletteState = (tellId === 'TETHER' || tellId === 'LAUNCH') ? 'warning' : 'danger';
+  const paletteState = TELL_WARNING_KINDS.has(tellId) ? 'warning' : 'danger';
   const named = SEMANTIC_PALETTE[paletteState] && SEMANTIC_PALETTE[paletteState].glyph;
   const name = named && DOCTRINE_TELL_GLYPH_ALIAS[named];
   return name && hasGlyph(name) ? name : null;
 }
 const TELL_POOL_SIZE = 3;
-const DEFAULT_TELEGRAPH_TICKS = 30;
+// CW-TELLS: the HUD chip never under-telegraphs the sim's hold-fire window — the doctrine beat
+// is the design's 0.6 s floor (36 fixed ticks, 03_COMBAT §9), so the chip's fallback floor and
+// default window are the same 36.
+const DEFAULT_TELEGRAPH_TICKS = 36;
 const TELL_VISUAL_WIDTH = 240;
 const TELL_VISUAL_HEIGHT = 30;
 const TELL_LAYOUT_GAP = 8;
+// Every tell id that can dress a chip slot. Swap/retire paths clear the whole set so a reused
+// slot never carries two kind classes at once.
+const TELL_KIND_CLASSES = Object.freeze([
+  'sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE', 'sf-tell--LAUNCH', 'sf-tell--INCOMING',
+  'sf-tell--CALL', 'sf-tell--MINES', 'sf-tell--ANCHOR', 'sf-tell--GHOST', 'sf-tell--FUSE',
+  'sf-tell--BROADSIDE', 'sf-tell--VENT', 'sf-tell--FINAL', 'sf-tell--CURTAIN', 'sf-tell--FURNACE',
+  'sf-tell--IRIS', 'sf-tell--STALK', 'sf-tell--SCAN', 'sf-tell--RETURN', 'sf-tell--SEAL',
+  'sf-tell--FLANK', 'sf-tell--BAIT', 'sf-tell--PUNISH', 'sf-tell--COVER', 'sf-tell--PEEL',
+]);
 const TELL_OBSTACLE_OWNERS = new Set([
   'vitals', 'hud-rail', 'orrery', 'radar', 'caption', 'flight-caption',
   'receipt', 'alert', 'swarm-callout', 'touch-control', 'responsive-overlay',
@@ -1438,6 +1499,12 @@ export function doctrineTellKind(payload) {
   // releases are different player decisions, so they carry different tells.
   if (payload.phase === 'body_launch') return 'LAUNCH';
   if (payload.phase === 'incoming_mass') return 'INCOMING';
+  // CW-TELLS (INV-21 item 5): an Enemy Mind fact rides the same chip family through the pure
+  // presentation mapper — the mind's decisions are player-facing tells, not debug output.
+  if (payload.kind === 'mind_decision' || payload.kind === 'mind_mistake') {
+    const fact = { ...payload, kind: payload.kind === 'mind_mistake' ? 'mistake' : 'decision' };
+    return enemyMindTell(fact)?.tellId || null;
+  }
   const byKind = DOCTRINE_TELL_BY_KIND[String(payload.kind || '')];
   if (byKind) return byKind;
   return DOCTRINE_TELL_BY_ID[String(payload.doctrineId || '')] || null;
@@ -3238,8 +3305,11 @@ export function createHud(ctx, alerts) {
     .sf-tell__icon { font-size:var(--k-fs-data); flex:0 0 auto; display:inline-flex; align-items:center; }
     .sf-tell__glyph { display:block; }
     .sf-tell__kind { font-weight:700; font-size:var(--k-fs-data); color:var(--k-red); }
-    .sf-tell--TETHER .sf-tell__kind { color:var(--k-signal); }
-    .sf-tell--LAUNCH .sf-tell__kind { color:var(--k-signal); }
+    .sf-tell--TETHER .sf-tell__kind, .sf-tell--LAUNCH .sf-tell__kind,
+    .sf-tell--CURTAIN .sf-tell__kind, .sf-tell--STALK .sf-tell__kind,
+    .sf-tell--SCAN .sf-tell__kind, .sf-tell--SEAL .sf-tell__kind,
+    .sf-tell--BAIT .sf-tell__kind, .sf-tell--COVER .sf-tell__kind,
+    .sf-tell--PEEL .sf-tell__kind { color:var(--k-signal); }
     .sf-tell__hint { color:var(--k-bone-62); font-size:var(--k-fs-data);
       overflow:hidden; text-overflow:ellipsis; }
     .sf-tell__dir { color:var(--k-bone-62); font-size:var(--k-fs-data); margin-left:2px; flex:0 0 auto; }
@@ -3352,8 +3422,7 @@ export function createHud(ctx, alerts) {
     slot.expiresAtTick = -1;
     slot.age = Infinity;
     slot.announced = '';
-    slot.el.classList.remove('is-on', 'is-offscreen', 'is-pulse', 'is-compact',
-      'sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE', 'sf-tell--LAUNCH', 'sf-tell--INCOMING');
+    slot.el.classList.remove('is-on', 'is-offscreen', 'is-pulse', 'is-compact', ...TELL_KIND_CLASSES);
     slot.el.hidden = true;
     slot.linkEl.hidden = true;
     slot.layoutOffset = null;
@@ -3386,8 +3455,9 @@ export function createHud(ctx, alerts) {
     if (payload.targetId != null && payload.targetId !== state.playerId) return;
     const tick = Number.isInteger(payload.tick) ? payload.tick
       : (Number.isInteger(state.tick) ? state.tick : 0);
-    // Floor to ≥30 sim ticks so HUD never under-telegraphs the sim hold-fire window.
-    const durationTicks = Math.max(30, Math.floor(Number(payload.durationTicks) || DEFAULT_TELEGRAPH_TICKS));
+    // CW-TELLS: floor to the design's 0.6 s tell beat so the HUD never under-telegraphs the sim
+    // hold-fire window (03_COMBAT §9: every attack telegraphs ≥ 0.6 s).
+    const durationTicks = Math.max(DEFAULT_TELEGRAPH_TICKS, Math.floor(Number(payload.durationTicks) || DEFAULT_TELEGRAPH_TICKS));
     const slot = acquireTellSlot(entityId);
     const wasSame = slot.entityId === entityId && slot.tellId === tellId && slot.age < Infinity;
     if (!wasSame) slot.layoutOffset = null;
@@ -3403,8 +3473,7 @@ export function createHud(ctx, alerts) {
       && other.tellId === tellId && other.entityId !== entityId && other.hintEl && other.hintEl.textContent);
     const hint = sameKindLive ? '' : (DOCTRINE_TELL_HINT[tellId] || '');
     const icon = DOCTRINE_TELL_ICON[tellId] || '⚠';
-    slot.el.classList.remove('sf-tell--FLYBY', 'sf-tell--TETHER', 'sf-tell--CHARGE',
-      'sf-tell--LAUNCH', 'sf-tell--INCOMING');
+    slot.el.classList.remove(...TELL_KIND_CLASSES);
     slot.el.classList.add(`sf-tell--${tellId}`);
     // The drawn mark renders as an element (innerHTML with internally-authored markup from
     // glyphs.js); the text icon stays a textContent write. Labels below remain text either way.
@@ -3455,6 +3524,11 @@ export function createHud(ctx, alerts) {
   }
 
   on('ai:telegraph', (p) => pushDoctrineTell(p || {}));
+  // CW-TELLS (INV-21 item 5): the Enemy Mind's facts ride the same chip machinery. Only
+  // decisions aimed at the player pass pushDoctrineTell's existing target filter, and the
+  // pure mapper decides which verbs earn a chip at all (press/regroup stay silent).
+  on('ai:mind:decision', (p) => pushDoctrineTell({ ...(p || {}), kind: 'mind_decision' }));
+  on('ai:mind:mistake', (p) => pushDoctrineTell({ ...(p || {}), kind: 'mind_mistake' }));
 
   function updateDoctrineTells(frameDt) {
     if (!tellSlots.some(slot => slot.age < Infinity)) return;

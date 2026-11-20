@@ -177,7 +177,7 @@ test('brawler_commit stamps a frozen firing corridor at wind-up and draws it as 
 
   // The bearing survives the wind-up -> fire boundary frozen.
   result = runtime.update({
-    tick: 30, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    tick: DOCTRINE_TELEGRAPH_TICKS, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
     perception: frame(), directive,
   });
   assert.equal(result.phase, 'commit');
@@ -211,7 +211,7 @@ test('brawler_commit clamps the shipped fire path inside the corridor and a hard
   assert(Number.isFinite(anchor), 'the corridor anchored a real firing lead at cue time');
 
   const commit = runtime.update({
-    tick: 150, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    tick: 120 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
     perception: frame(), directive,
   });
   assert.equal(commit.phase, 'commit');
@@ -219,7 +219,7 @@ test('brawler_commit clamps the shipped fire path inside the corridor and a hard
 
   // In-wedge refinement: a steady target still takes the real lead through the same fire path.
   target.pos = { x: 350, z: 30 };
-  fire(commit, 150);
+  fire(commit, 120 + DOCTRINE_TELEGRAPH_TICKS);
   assert.equal(shooter.data.intent.fire, true, 'the committed window releases through the ordinary gate');
   assert(Math.abs(wrap(shooter.data.intent.aimAngle - anchor)) <= cap + 1e-9,
     'aim refines only inside the corridor wedge');
@@ -227,7 +227,7 @@ test('brawler_commit clamps the shipped fire path inside the corridor and a hard
   // A hard dodge carries the live solution outside the wedge: the released aim pins at the
   // corridor edge — it can never re-track the dodged target.
   target.pos = { x: 350, z: 260 };
-  fire(commit, 150);
+  fire(commit, 120 + DOCTRINE_TELEGRAPH_TICKS);
   const stale = Math.abs(wrap(shooter.data.intent.aimAngle - anchor));
   assert(stale > 0 && stale <= cap + 1e-9,
     `the dodged shot rides the corridor edge inside the bounded band, got ${stale}`);
@@ -274,7 +274,7 @@ test('a mid-commit dodge cannot re-aim the volley and does not break the mass-co
     perception: frame({ x: 400, z: 0 }), directive,
   });
   const stamped = runtime.update({
-    tick: 30, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    tick: DOCTRINE_TELEGRAPH_TICKS, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
     perception: frame({ x: 380, z: 0 }), directive,
   });
   assert.equal(stamped.phase, 'commit');
@@ -302,7 +302,7 @@ test('brawler_commit cancels the run when the target is lost mid-commit — no g
     perception: frame({ x: 400, z: 0 }), directive,
   });
   const commit = runtime.update({
-    tick: 150, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
+    tick: 120 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'brawler', doctrineId: CombatDoctrineId.BRAWLER_COMMIT,
     perception: frame({ x: 380, z: 0 }), directive,
   });
   assert.equal(commit.phase, 'commit');
@@ -351,7 +351,7 @@ test('interceptor_flyby stamps a narrower frozen corridor and draws it as the cu
   }
 
   result = runtime.update({
-    tick: 30, entityId: 'wasp', doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    tick: DOCTRINE_TELEGRAPH_TICKS, entityId: 'wasp', doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
     perception: frame(), directive,
   });
   assert.equal(result.phase, 'strike');
@@ -382,20 +382,20 @@ test('interceptor_flyby clamps the shipped fire path inside its tighter corridor
   assert(Number.isFinite(anchor));
 
   const strike = runtime.update({
-    tick: 150, entityId: 'wasp', doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    tick: 120 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'wasp', doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
     perception: frame(), directive,
   });
   assert.equal(strike.phase, 'strike');
   const cap = strike.aimCommit.capRad;
 
   target.pos = { x: 350, z: 30 };
-  fire(strike, 150);
+  fire(strike, 120 + DOCTRINE_TELEGRAPH_TICKS);
   assert.equal(shooter.data.intent.fire, true);
   assert(Math.abs(wrap(shooter.data.intent.aimAngle - anchor)) <= cap + 1e-9);
 
   // A dodge outside the tighter wedge: the flyby's solution pins at the edge and misses.
   target.pos = { x: 350, z: 140 };
-  fire(strike, 150);
+  fire(strike, 120 + DOCTRINE_TELEGRAPH_TICKS);
   const stale = Math.abs(wrap(shooter.data.intent.aimAngle - anchor));
   assert(stale > 0 && stale <= cap + 1e-9,
     `the flyby's dodged shot rides the tight corridor edge, got ${stale}`);
@@ -439,7 +439,7 @@ test('a heavy-mass interceptor flies the brawler profile corridor (wider band, c
     'a heavy interceptor gets the brawler-wide corridor, not the flyby band');
   const stamped = result.aimCommit.bearing;
   result = runtime.update({
-    tick: 30, entityId: 'heavy', doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    tick: DOCTRINE_TELEGRAPH_TICKS, entityId: 'heavy', doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
     perception: frame(), directive,
   });
   assert.equal(result.phase, 'commit', 'the brawler profile fires from the commit phase');
@@ -463,7 +463,7 @@ test('doctrines without a corridor commit keep resolving aim freely each tick', 
   assert.equal(result.aimCommit, null, 'swarm cues never publish a firing corridor');
   assert.equal(result.attackLine.heading, 0.3, 'the swarm lane still follows the live hull heading');
   result = runtime.update({
-    tick: 150, entityId: 'swarmer', doctrineId: CombatDoctrineId.SWARM_PACK,
+    tick: 120 + DOCTRINE_TELEGRAPH_TICKS, entityId: 'swarmer', doctrineId: CombatDoctrineId.SWARM_PACK,
     perception: frame({ x: 220, z: 0 }), directive,
   });
   assert.equal(result.phase, 'strike');

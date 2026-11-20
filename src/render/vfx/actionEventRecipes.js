@@ -181,21 +181,39 @@ const copyPoint = p => ({x:p.x,z:p.z});
 
 /** Validated committed-run geometry carried by the actual telegraph, not an inferred target. */
 export function committedAttackLaneReceipt(name, p, state) {
-  if (name !== 'ai:telegraph' || p?.kind !== 'engine_flare' || p.phase !== 'engine_flare'
-    || (p.doctrineId !== 'interceptor_flyby' && p.doctrineId !== 'brawler_commit')) return null;
+  if (name !== 'ai:telegraph' || p?.kind !== 'engine_flare' || p.phase !== 'engine_flare') return null;
   const source = body(state, p.entityId), target = body(state, p.targetId), line = p.attackLine, aim = p.aimCommit;
+  if (p.doctrineId === 'interceptor_flyby' || p.doctrineId === 'brawler_commit') {
+    if (!source || source.alive === false || !point(source.pos)
+      || !target || target.alive === false
+      || !Number.isSafeInteger(p.sourceGeneration) || source.occupantGeneration !== p.sourceGeneration
+      || !Number.isSafeInteger(p.targetGeneration) || target.occupantGeneration !== p.targetGeneration
+      || !Number.isInteger(p.tick) || !Number.isInteger(aim?.untilTick) || aim.untilTick <= p.tick
+      || (Number.isInteger(state.tick) && state.tick > aim.untilTick)
+      || !Number.isFinite(line?.heading) || !Number.isFinite(line?.range) || line.range <= 0 || line.range > 2000
+      || !Number.isFinite(aim?.bearing) || !Number.isFinite(aim?.capRad) || aim.capRad <= 0 || aim.capRad >= Math.PI / 2
+      || Math.abs(Math.atan2(Math.sin(line.heading-aim.bearing), Math.cos(line.heading-aim.bearing))) > 1e-6) return null;
+    return { sourceGeneration:p.sourceGeneration, targetId:p.targetId, target,
+      targetGeneration:p.targetGeneration, startTick:p.tick, untilTick:aim.untilTick,
+      bearing:aim.bearing, capRad:aim.capRad, range:line.range, aimCommit:aim };
+  }
+  // CW-TELLS (INV-21 item 3): every OTHER doctrine that publishes an engine_flare cue with a
+  // real attackLine paints its own committed lane — the HUD already promises a FLYBY for these
+  // cues, so the picture must promise the same line. No frozen fire solution exists for these
+  // hulls (their line is the live approach corridor), so the lane carries what the telegraph
+  // itself carries: the line's own heading/range/halfWidth and the cue's own duration window.
+  // It dies with the cue; the pass itself is the read once the hull is flying it.
+  const durationTicks = Number.isFinite(p.durationTicks) ? Math.max(1, Math.floor(p.durationTicks)) : null;
   if (!source || source.alive === false || !point(source.pos)
     || !target || target.alive === false
-    || !Number.isSafeInteger(p.sourceGeneration) || source.occupantGeneration !== p.sourceGeneration
-    || !Number.isSafeInteger(p.targetGeneration) || target.occupantGeneration !== p.targetGeneration
-    || !Number.isInteger(p.tick) || !Number.isInteger(aim?.untilTick) || aim.untilTick <= p.tick
-    || (Number.isInteger(state.tick) && state.tick > aim.untilTick)
+    || !Number.isInteger(p.tick) || durationTicks == null
     || !Number.isFinite(line?.heading) || !Number.isFinite(line?.range) || line.range <= 0 || line.range > 2000
-    || !Number.isFinite(aim?.bearing) || !Number.isFinite(aim?.capRad) || aim.capRad <= 0 || aim.capRad >= Math.PI / 2
-    || Math.abs(Math.atan2(Math.sin(line.heading-aim.bearing), Math.cos(line.heading-aim.bearing))) > 1e-6) return null;
-  return { sourceGeneration:p.sourceGeneration, targetId:p.targetId, target,
-    targetGeneration:p.targetGeneration, startTick:p.tick, untilTick:aim.untilTick,
-    bearing:aim.bearing, capRad:aim.capRad, range:line.range };
+    || !Number.isFinite(line?.halfWidth) || line.halfWidth <= 0) return null;
+  const capRad = Math.atan2(line.halfWidth, line.range);
+  if (!(capRad > 0) || capRad >= Math.PI / 2) return null;
+  return { sourceGeneration: source.occupantGeneration ?? null, targetId: p.targetId, target,
+    targetGeneration: target.occupantGeneration ?? null, startTick: p.tick, untilTick: p.tick + durationTicks,
+    bearing: line.heading, capRad, range: line.range, aimCommit: null };
 }
 
 export function resolveAdditionalActionVfxReceipt(name,p,state) {
