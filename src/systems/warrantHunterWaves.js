@@ -725,7 +725,12 @@ export function createWarrantHunterWaves(host) {
 
   function onGone(payload) {
     const id = payload && payload.id;
-    if (id != null) ctl.live.delete(id);
+    if (id == null) return;
+    // entity:destroyed is a queued receipt — a recycled id can have re-bound before it
+    // flushes. Only the occupant the row was bound to may clear it.
+    const entry = ctl.live.get(id);
+    if (entry && payload.entity && entry.entity !== payload.entity) return;
+    ctl.live.delete(id);
   }
 
   function onSectorExit(payload) {
