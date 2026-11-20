@@ -1,9 +1,14 @@
 import { mawWorksiteFocus } from '../missions/mawWorksite.js';
+import { slateCoreWorksiteFocus } from '../missions/slateCoreWorksite.js';
 import { ASTEROIDS } from '../data/mining.js';
 import { starterMiningRouteFocus, starterBuoyRouteFocus } from '../missions/starterWorkday.js';
 import { firstWaspRouteFocus } from '../missions/starterWaspRoute.js';
 import { firstBuoyReceiptFields } from '../missions/starterBuoyAftermath.js';
 import { compostRouteFocus } from '../missions/compostRoute.js';
+import {
+  DIONE_TARGET_PRACTICE, clearDionePractice, dionePracticeResult, dionePracticeWaypoint,
+  driveDionePractice, onDionePracticeImpact, onDionePracticeShot, onDionePracticeThrow,
+} from '../missions/dioneTargetPractice.js';
 import { authoredCinderRoute, initializeCinderRoute, retainCinderRetry, observeCinderMarker, observeCinderRetirement, cinderRouteFocus, driveCinderRoute } from '../missions/cinderRoute.js';
 // W-TENDER — the authored Tender run. The offer/tuning are data (missionsData.js); this module
 // owns the authorship guard, the rival-queue ledger, the drive adjudicator, the weigh stamps, and
@@ -22,7 +27,7 @@ import {
   flashReducedCue,
 } from '../missions/tenderHaul.js';
 import { kesslerScalePending, kesslerScaleWaypoint } from './kesslerScaleWorksite.js';
-import { furnaceWorksiteFocus } from '../missions/furnaceWorksite.js';
+import { furnaceWorksiteFocus, localFurnaceWorksite } from '../missions/furnaceWorksite.js';
 import { UNDERSTORY_RECEIVER, firstPlayerGardenGrowth } from '../data/understoryReceiver.js';
 import { nestOutcomeReceipt, nestWaypoint } from '../data/nestVisit.js';
 import { ensureSpineBreakWorksite, isSpineBreakOperation, spineBreakOutcome, SPINE_BREAK_CONFIG,
@@ -362,7 +367,10 @@ function isB1CargoDelivery(mission) {
 import { starvedIndustryNeedFor, marketStockStatus } from './economy.js';
 // NXI-171 — the shared starvation-row prose builder, so a board refresh re-quotes a live
 // deficit in the exact voice the emit-only producer posted it (no second wording authority).
-import { starvedOfferProse, isShortageGateRepair, WARM_CARGO_CONTRACT } from '../data/economyContractTemplates.js';
+import {
+  FIRST_TRADE_CONTRACT_SOURCE, starvedOfferProse, isShortageGateRepair, WARM_CARGO_CONTRACT,
+} from '../data/economyContractTemplates.js';
+import { resolveCollisionProxyManifest, resolveDockAnchor } from '../data/collisionProxyManifests.js';
 import {
   CONTRACT_47A_B0_BODY,
   THREAD_B_FRAGMENT_ID,
@@ -561,6 +569,9 @@ export const missions = {
   },
 
   init(ctx) {
+    // drop stale handlers from a previous init on a live bus
+    for (const unsub of this._unsubs || []) { try { unsub(); } catch (_) {} }
+    this._unsubs = [];
     for (const ops of [missionStoryOps, missionSpawningOps, missionObjectiveOps, missionBoardOps]) {
       for (const key of Object.keys(ops)) if (!Object.hasOwn(this, key)) this[key] = ops[key];
     }
@@ -598,9 +609,9 @@ export const missions = {
     this._spineBreakSaveRestorePending = false;
 
     // New game → seed config + reset boards/active (idempotent: a load may already have populated).
-    bus.on('game:started', () => this.newGame());
-    bus.on('tutorial:finished', () => this._releaseStoryNavigationAfterTutorial());
-    bus.on('lanternWard:serviceCommitted', (p) => this.settleLanternWard(p?.receiptId));
+    this._unsubs.push(bus.on('game:started', () => this.newGame()));
+    this._unsubs.push(bus.on('tutorial:finished', () => this._releaseStoryNavigationAfterTutorial()));
+    this._unsubs.push(bus.on('lanternWard:serviceCommitted', (p) => this.settleLanternWard(p?.receiptId)));
     // The standing move is the world's answer to a finished job. factions stays the sole rep
     // writer; this capture reads its `complete_faction_mission` receipt — applied after clamps,
     // diminishing, and the run seal — so the completion line can NAME the move only when the
@@ -613,8 +624,8 @@ export const missions = {
         };
       }
     };
-    bus.on('faction:repChanged', this._onCompletionRepApplied);
-    bus.on('save:loaded', () => {
+    this._unsubs.push(bus.on('faction:repChanged', this._onCompletionRepApplied));
+    this._unsubs.push(bus.on('save:loaded', () => {
       // Persistent trains must rebind while the restore's identity window is open,
       // even if 3/3 couplers are already complete or the player saved in another sector.
       for (const m of this.state.missions?.active || []) {
@@ -631,45 +642,45 @@ export const missions = {
       this._reconcileJourneyAct();
       this._restoreNavigationAfterLoad();
       this._reconcileLandmarkQuestOffers();
-    });
-    bus.on('frontier:sitePlanted', (p) => this._onFrontierBarnSitePlanted(p || {}));
-    bus.on('frontier:moduleSnapped', (p) => this._onFrontierBarnModuleSnapped(p || {}));
-    bus.on('frontier:barnRetry', (p) => this._onFrontierBarnRetry(p || {}));
-    bus.on('frontier:homesteadRaised', (p) => this._onFrontierBarnRaised(p || {}));
-    bus.on('frontier:missionAttemptLost', (p) => this._onFrontierBarnAttemptLost(p || {}));
-    bus.on('frontier:missionAttemptUnavailable', (p) => this._onFrontierBarnAttemptLost(p || {}));
-    bus.on('save:restoring', () => {
+    }));
+    this._unsubs.push(bus.on('frontier:sitePlanted', (p) => this._onFrontierBarnSitePlanted(p || {})));
+    this._unsubs.push(bus.on('frontier:moduleSnapped', (p) => this._onFrontierBarnModuleSnapped(p || {})));
+    this._unsubs.push(bus.on('frontier:barnRetry', (p) => this._onFrontierBarnRetry(p || {})));
+    this._unsubs.push(bus.on('frontier:homesteadRaised', (p) => this._onFrontierBarnRaised(p || {})));
+    this._unsubs.push(bus.on('frontier:missionAttemptLost', (p) => this._onFrontierBarnAttemptLost(p || {})));
+    this._unsubs.push(bus.on('frontier:missionAttemptUnavailable', (p) => this._onFrontierBarnAttemptLost(p || {})));
+    this._unsubs.push(bus.on('save:restoring', () => {
       this._spineBreakSaveRestorePending = true;
       this._missionBudgetDeferrals.clear();
-    });
+    }));
     // A Crucible launch (Swarm / Gauntlet / scored) boots the shared NEW_GAME world, whose
     // newGame() installs and tracks the 47-A cold-start contract. The Crucible is not the
     // campaign: withdraw that contract before the run so its objective, nav marker and HUD
     // tracker never paint over the arena (worker-lane regression: "Recover the 47-A sample").
-    bus.on('game:scenePrepared', (p) => {
+    this._unsubs.push(bus.on('game:scenePrepared', (p) => {
       if (p && p.crucibleLaunch === true) this._withdrawContract47aColdStartForCrucible();
-    });
+    }));
 
     // ── Player intents (UI) ────────────────────────────────────────────────────────────────
-    bus.on('ui:acceptMission', (p) => this.acceptMission(p && p.missionId));
-    bus.on('ui:abandonMission', (p) => this.abandonMission(p && p.missionId));
+    this._unsubs.push(bus.on('ui:acceptMission', (p) => this.acceptMission(p && p.missionId)));
+    this._unsubs.push(bus.on('ui:abandonMission', (p) => this.abandonMission(p && p.missionId)));
     // Domain-level abandon intent: systems (e.g. moral-trap 'end' choices) settle a contract
     // through the same single-writer path as the Mission Log button.
-    bus.on('mission:abandon', (p) => { if (p && p.missionId) this.abandonMission(p.missionId); });
-    bus.on('ui:trackMission', (p) => { if (p && p.missionId) this.trackMission(p.missionId); });
+    this._unsubs.push(bus.on('mission:abandon', (p) => { if (p && p.missionId) this.abandonMission(p.missionId); }));
+    this._unsubs.push(bus.on('ui:trackMission', (p) => { if (p && p.missionId) this.trackMission(p.missionId); }));
     // Economy-born contracts are emit-only producers. Missions remains the sole board/active
     // authority and boards only a complete, normal offer shape; discovery-only salvage hooks keep
     // their existing consumers and cannot accidentally become malformed board entries.
-    bus.on('mission:offered', (p) => this._onExternalBoardOffer(p));
+    this._unsubs.push(bus.on('mission:offered', (p) => this._onExternalBoardOffer(p)));
     installBlackFlagMissions(this);
-    bus.on('jump:chargeStart', (p) => {
+    this._unsubs.push(bus.on('jump:chargeStart', (p) => {
       this._dnfAuthoredRaces('race_left_course');
       this._projectMissionTargetDecodes(p && p.targetSectorId);
-    });
-    bus.on('poi:identified', (p) => this._reconcileLandmarkQuestOffers(p || {}));
+    }));
+    this._unsubs.push(bus.on('poi:identified', (p) => this._reconcileLandmarkQuestOffers(p || {})));
 
     // ── Docking: refresh expired boards, run delivery/passenger/escort/salvage objectives ────
-    bus.on('dock:docked', (p) => {
+    this._unsubs.push(bus.on('dock:docked', (p) => {
       const stationId = p && p.stationId;
       if (!stationId) return;
       this._lastDockedStation = stationId;
@@ -700,8 +711,8 @@ export const missions = {
       // column keeps its entry once the weld lands.
       this._resolveVarianceSeamWeld(stationId);
       this._storyTrigger('dock', { stationId });
-    });
-    bus.on('dock:undocked', (p) => {
+    }));
+    this._unsubs.push(bus.on('dock:undocked', (p) => {
       const departedStationId = p?.stationId || this._lastDockedStation;
       this._lastDockedStation = null;
       this._activateContract47aB1OnDeparture();
@@ -709,47 +720,47 @@ export const missions = {
       this._activateContract47aB3OnDeparture();
       this._activateContract47aB4OnDeparture();
       this._onPassengerUndock();
-    });
+    }));
 
     // ── W-BOOKS-0-2 (§34.7): the Books 0–2 book-list world signals. The systems named on
     // each canonical step emit them; missions records them into the sidecar's ordered step
     // log and advances the live cursor when the current beat's list is satisfied.
-    bus.on('story:skimResolved', (p) => this._recordCampaignBookSignal('story:skimResolved', p));
-    bus.on('kesslerPod:weighed', (p) => this._recordCampaignBookSignal('kesslerPod:weighed', p));
+    this._unsubs.push(bus.on('story:skimResolved', (p) => this._recordCampaignBookSignal('story:skimResolved', p)));
+    this._unsubs.push(bus.on('kesslerPod:weighed', (p) => this._recordCampaignBookSignal('kesslerPod:weighed', p)));
     // Book2 consumes the garden owner's persisted growth receipt, never a payload claim,
     // ambient stage event, ordinary feed or payment event. The owner stores before emitting.
-    bus.on('understory:playerGrowth', (p) => this._reconcileCompostGrowth(p));
-    bus.on('encounter:resolved', (p) => {
+    this._unsubs.push(bus.on('understory:playerGrowth', (p) => this._reconcileCompostGrowth(p)));
+    this._unsubs.push(bus.on('encounter:resolved', (p) => {
       // W-CANON (§34.7 row 537): a quiet interlude scene closing marks its story flag.
       this._observeCampaign47aInterludeResolved(p);
       this._recordCampaignBookSignal('encounter:resolved', p);
-    });
-    bus.on('aftermathWreck:recorded', (p) => observeCinderMarker(this, p));
-    bus.on('aftermathWreck:completed', (p) => observeCinderRetirement(this, p, 'aftermathWreck:completed'));
-    bus.on('aftermathWreck:retired', (p) => observeCinderRetirement(this, p, 'aftermathWreck:retired'));
-    bus.on('rookWreck:delivered', (p) => {
+    }));
+    this._unsubs.push(bus.on('aftermathWreck:recorded', (p) => observeCinderMarker(this, p)));
+    this._unsubs.push(bus.on('aftermathWreck:completed', (p) => observeCinderRetirement(this, p, 'aftermathWreck:completed')));
+    this._unsubs.push(bus.on('aftermathWreck:retired', (p) => observeCinderRetirement(this, p, 'aftermathWreck:retired')));
+    this._unsubs.push(bus.on('rookWreck:delivered', (p) => {
       this._onRookWreckDelivered(p);
       this._recordCampaignBookSignal('rookWreck:delivered', p);
-    });
-    bus.on('furnace:fed', (p) => {
+    }));
+    this._unsubs.push(bus.on('furnace:fed', (p) => {
       this._onFurnaceFed(p);
       this._recordCampaignBookSignal('furnace:fed', p);
-    });
+    }));
 
     // ── W-BOOKS-3-4 (§34.7 Books 3–4): the Gate Audit welds are world-pressure events
     // recorded as optional book evidence; VARIANCE ADJUSTMENT's seam counts the live
     // strain envelope and lets go at the fourth spike while the delivered hull is flown.
-    bus.on('worldPressure:auditAnnounced', (p) => this._recordCampaignBookSignal('worldPressure:auditAnnounced', p));
-    bus.on('worldPressure:gateClosed', (p) => this._recordCampaignBookSignal('worldPressure:gateClosed', p));
-    bus.on('tether:strain', (p) => this._onBookVarianceStrain(p));
-    bus.on('pickup:collected', (payload) => {
+    this._unsubs.push(bus.on('worldPressure:auditAnnounced', (p) => this._recordCampaignBookSignal('worldPressure:auditAnnounced', p)));
+    this._unsubs.push(bus.on('worldPressure:gateClosed', (p) => this._recordCampaignBookSignal('worldPressure:gateClosed', p)));
+    this._unsubs.push(bus.on('tether:strain', (p) => this._onBookVarianceStrain(p)));
+    this._unsubs.push(bus.on('pickup:collected', (payload) => {
       onWakePickupCollected(this, payload);
       this._onSpineBreakCargoCollected(payload);
-    });
+    }));
 
     // ── Objective tracking listeners ─────────────────────────────────────────────────────────
     // bulk_trade quota: sell qty of the target commodity (trade.sold alias → economy:tradeCompleted).
-    bus.on('economy:tradeCompleted', (p) => this._onTrade(p));
+    this._unsubs.push(bus.on('economy:tradeCompleted', (p) => this._onTrade(p)));
     // NXB-043/NXI-171 — a real stock write (mission freight, a market sale, or a relieved
     // starvation threshold) changes the hopper the board's shortage rows quote. Re-derive
     // those rows from the same read that planned them so no board replays a resolved
@@ -763,16 +774,16 @@ export const missions = {
         }
       }
     };
-    bus.on('economy:freightAccepted', refreshShortageBoards);
-    bus.on('economy:shortageRelieved', refreshShortageBoards);
-    bus.on('economy:tradeCompleted', refreshShortageBoards);
+    this._unsubs.push(bus.on('economy:freightAccepted', refreshShortageBoards));
+    this._unsubs.push(bus.on('economy:shortageRelieved', refreshShortageBoards));
+    this._unsubs.push(bus.on('economy:tradeCompleted', refreshShortageBoards));
     // A sold cargo-ship salvage becomes one board opportunity. Not a fine, a lock, or a failed job.
-    bus.on('economy:cargoKillOpportunity', (p) => this._onCargoKillOpportunity(p));
+    this._unsubs.push(bus.on('economy:cargoKillOpportunity', (p) => this._onCargoKillOpportunity(p)));
     // mining_quota: aggregate mined units of the target commodity.
-    bus.on('mining:yield', (p) => this._onMiningYield(p));
+    this._unsubs.push(bus.on('mining:yield', (p) => this._onMiningYield(p)));
     // Deep-core ore is already accepted into the player's hold. Its event uses tile coordinates;
     // use the live rock's world position so sample/recon contracts retain their source checks.
-    bus.on('drill:yield', (p) => {
+    this._unsubs.push(bus.on('drill:yield', (p) => {
       const rock = state.drill && state.entities && state.entities.get(state.drill.asteroidId);
       if (!p || !rock || !rock.pos) return;
       this._onMiningYield({
@@ -780,25 +791,25 @@ export const missions = {
         minerId: state.playerId,
         pos: { x: rock.pos.x, z: rock.pos.z },
       });
-    });
+    }));
     // The Investigation Chain's black-box stage consumes the native mining-owned wreck salvage
     // receipt. It has no synthetic cargo or destination dock: the physical wreck recovery is the
     // objective, and missions remains the settlement authority.
-    bus.on('salvage:completed', (p) => this._onSalvageCompleted(p));
+    this._unsubs.push(bus.on('salvage:completed', (p) => this._onSalvageCompleted(p)));
     // bulk_haul: tethered bulk chunks delivered at refinery docks.
-    bus.on('mining:bulkHaulDelivered', (p) => this._onBulkHaulDelivered(p));
+    this._unsubs.push(bus.on('mining:bulkHaulDelivered', (p) => this._onBulkHaulDelivered(p)));
     // bounty_hunt / patrol_clear: a tagged hostile died to the player.
-    bus.on('entity:killed', (p) => {
+    this._unsubs.push(bus.on('entity:killed', (p) => {
       this._onKill(p);
       this._onPhysicalKill(p);
-    });
+    }));
     // contractClauses judged this kill clean of every observed clause; the objective still owes.
-    bus.on('contract:clauseSettledKill', (p) => this._onClauseSettledKill(p));
+    this._unsubs.push(bus.on('contract:clauseSettledKill', (p) => this._onClauseSettledKill(p)));
     // escort fail: escortee destroyed.
-    bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));
+    this._unsubs.push(bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p)));
     // recon_scan: a scan target (or sector scan) completed.
-    bus.on('scan:completed', (p) => this._onScan(p));
-    bus.on('mission:venueProof', payload => {
+    this._unsubs.push(bus.on('scan:completed', (p) => this._onScan(p)));
+    this._unsubs.push(bus.on('mission:venueProof', payload => {
       if (!payload || !['mercyService', 'wreckCourt'].includes(payload.source)) return;
       const index = this.state.missions.active.findIndex(m => m.id === payload.missionId && m.status === 'active');
       if (index < 0) return;
@@ -809,31 +820,31 @@ export const missions = {
       if (verified?.ok !== true) return;
       mission.objectiveProgress = mission.objectiveTarget;
       this._completeMission(mission, index);
-    });
-    bus.on('mission:venueFailure', payload => {
+    }));
+    this._unsubs.push(bus.on('mission:venueFailure', payload => {
       if (!payload || !['mercyService', 'wreckCourt'].includes(payload.source)) return;
       const index = this.state.missions.active.findIndex(m => m.id === payload.missionId && m.status === 'active');
       if (index < 0) return;
       const mission = this.state.missions.active[index];
       if (mission.source !== payload.source || this.registry?.get(payload.source)?.verifyMissionFailure?.(payload)?.ok !== true) return;
       this._failMission(mission, index, payload.kind === 'rescue-left' || payload.kind === 'court-left' ? 'abandoned' : 'failed');
-    });
-    bus.on('signal:scanResults', (p) => {
+    }));
+    this._unsubs.push(bus.on('signal:scanResults', (p) => {
       this._onLandmarkProbeScan(p || {});
       // A multi-scan landmark may become board-ready on this exact pulse. Reconcile after scanner
       // has committed its durable count so the fourth Shard Sphere fragment posts the real offer.
       this._reconcileLandmarkQuestOffers({ sectorId: p && p.sectorId });
       // NXI-180: a revised clue reading qualifies the affected mission course (see handler).
       this._onClueRouteRevision(p || {});
-    });
+    }));
     // Census-style landmarks become ready when flavor files a reading, which lands after this
     // system's scanResults listener runs. Reconcile on presentation too so the seventeenth
     // Quiessence hull posts its return survey on the same pulse. Unfiltered: the payload
     // carries no sector, and re-reconciling four quest definitions is trivially cheap.
-    bus.on('v2:flavorPresented', () => this._reconcileLandmarkQuestOffers());
+    this._unsubs.push(bus.on('v2:flavorPresented', () => this._reconcileLandmarkQuestOffers()));
     // Causal POI follow-ups settle only when scanner physically investigates their exact live
     // entity. Generic scan pulses remain valid for ordinary recon_scan contracts.
-    bus.on('signal:investigated', (p) => this._onSignalInvestigated(p));
+    this._unsubs.push(bus.on('signal:investigated', (p) => this._onSignalInvestigated(p)));
     // First-contact fieldwork RP (PQ-155 follow-on): each entry in RESEARCH_GRANTS pays once per
     // durable discovery record via the bounded researchFirsts dedup. Missions stays the sole
     // positive researchPoints writer; this loop only widens which events feed it.
@@ -841,20 +852,28 @@ export const missions = {
       // Repeatable rows are settlement faucets, not discovery firsts. Subscribing
       // them here would let a bus emit enter the dedupe ledger.
       if (RESEARCH_GRANTS[grantEvent] && RESEARCH_GRANTS[grantEvent].repeatable === true) continue;
-      bus.on(grantEvent, (p) => this._grantResearchFirst(grantEvent, p || {}));
+      this._unsubs.push(bus.on(grantEvent, (p) => this._grantResearchFirst(grantEvent, p || {})));
     }
-    bus.on('tether:reel', (p) => {
+    this._unsubs.push(bus.on('tether:reel', (p) => {
       this._onContract47aB2TetherReel(p);
       this._onPhysicalTetherReel(p);
-    });
-    bus.on('tether:latched', (p) => this._onPhysicalTetherLatched(p));
-    bus.on('tether:detached', (p) => this._onPhysicalTetherDetached(p));
-    bus.on('tether:broken', (p) => this._onPhysicalTetherDetached(p));
-    bus.on('tether:releaseRated', (p) => this._onPhysicalReleaseRated(p));
-    bus.on('tether:whipImpact', (p) => this._onPhysicalWhipImpact(p));
-    bus.on('massline:throw', (p) => this._onPhysicalThrow(p));
-    bus.on('projectile:hit', (p) => this._onCapitalBossGunHit(p));
-    bus.on('combat:tumbled', (p) => this._onCapitalBossTumbled(p));
+    }));
+    this._unsubs.push(bus.on('tether:latched', (p) => this._onPhysicalTetherLatched(p)));
+    this._unsubs.push(bus.on('tether:detached', (p) => this._onPhysicalTetherDetached(p)));
+    this._unsubs.push(bus.on('tether:broken', (p) => this._onPhysicalTetherDetached(p)));
+    this._unsubs.push(bus.on('tether:releaseRated', (p) => this._onPhysicalReleaseRated(p)));
+    this._unsubs.push(bus.on('tether:whipImpact', (p) => this._onPhysicalWhipImpact(p)));
+    this._unsubs.push(bus.on('massline:throw', (p) => {
+      this._onPhysicalThrow(p);
+      onDionePracticeThrow(this, p);
+    }));
+    this._unsubs.push(bus.on('physics:impact', (p) => onDionePracticeImpact(this, p)));
+    this._unsubs.push(bus.on('combat:damage', (p) => onDionePracticeShot(this, p)));
+    for (const event of ['mission:completed', 'mission:failed', 'mission:expired']) {
+      this._unsubs.push(bus.on(event, (p) => clearDionePractice(this, p?.missionId)));
+    }
+    this._unsubs.push(bus.on('projectile:hit', (p) => this._onCapitalBossGunHit(p)));
+    this._unsubs.push(bus.on('combat:tumbled', (p) => this._onCapitalBossTumbled(p)));
 
     // ── PQ-019C: physical capsule heist ──────────────────────────────────────────────────────
     // Possession is read from the EXISTING Massline/tether latch rather than owned here — the
@@ -864,82 +883,82 @@ export const missions = {
     // never seen one. All of these fire BEFORE missions.update for the same tick (registry order:
     // physics 177 < tetherGameplay 197 < heistFacilities 222 < missions 246), which is the
     // arbiter's submit-before-step precondition satisfied structurally.
-    bus.on('heist:capsuleLaunched', (p) => this._heistEach((h, m) => {
+    this._unsubs.push(bus.on('heist:capsuleLaunched', (p) => this._heistEach((h, m) => {
       if (heistMissionRuntime.onCapsuleLaunched(this._heistCtx(), h, p || {})) {
         this._refreshTrackedMissionNav(m);
       }
-    }));
-    bus.on('heist:facilityCandidate', (p) => this._heistEach(
-      (h) => heistMissionRuntime.onFacilityCandidate(this._heistCtx(), h, p || {})));
+    })));
+    this._unsubs.push(bus.on('heist:facilityCandidate', (p) => this._heistEach(
+      (h) => heistMissionRuntime.onFacilityCandidate(this._heistCtx(), h, p || {}))));
     // BREAKAWAY: the capture fork's mechanical truth (engaged / slipped out / refused and why) is
     // spoken to the player; it is never a candidate and never settles anything.
-    bus.on('heist:captureFork', (p) => this._heistEach(
-      (h) => heistMissionRuntime.onCaptureFork(this._heistCtx(), h, p || {})));
+    this._unsubs.push(bus.on('heist:captureFork', (p) => this._heistEach(
+      (h) => heistMissionRuntime.onCaptureFork(this._heistCtx(), h, p || {}))));
     // SF-147: the monitored lane — a Concord post pulsed a stolen body; the run's second act
     // decides whether the chase wakes again.
-    bus.on('heist:monitorScan', (p) => this._heistEach(
-      (h) => heistMissionRuntime.onMonitorScan(this._heistCtx(), h, p || {})));
+    this._unsubs.push(bus.on('heist:monitorScan', (p) => this._heistEach(
+      (h) => heistMissionRuntime.onMonitorScan(this._heistCtx(), h, p || {}))));
     // SF-147: the shell physically shed a sealed unit — one spoken line per run.
-    bus.on('heist:shipmentUnit', (p) => this._heistEach(
-      (h) => heistMissionRuntime.onShipmentUnit(this._heistCtx(), h, p || {})));
+    this._unsubs.push(bus.on('heist:shipmentUnit', (p) => this._heistEach(
+      (h) => heistMissionRuntime.onShipmentUnit(this._heistCtx(), h, p || {}))));
     // SF-143: the yard's mechanical events (gate committed/broken, crates delivered/lost,
     // crew down, pressure inbound) — each is a real physical fact with a spoken line.
-    bus.on('heist:counterweight', (p) => this._counterweightEach(
-      (record) => counterweightRuntime.onCounterweightEvent(this._heistCtx(), record, p || {})));
-    bus.on('tether:latched', (p) => this._heistEach((h, m) => {
+    this._unsubs.push(bus.on('heist:counterweight', (p) => this._counterweightEach(
+      (record) => counterweightRuntime.onCounterweightEvent(this._heistCtx(), record, p || {}))));
+    this._unsubs.push(bus.on('tether:latched', (p) => this._heistEach((h, m) => {
       if (heistMissionRuntime.onTetherLatched(this._heistCtx(), h, p || {})) {
         this._refreshTrackedMissionNav(m);
       }
-    }));
+    })));
     for (const releaseEvent of ['tether:released', 'tether:cut', 'tether:broke']) {
-      bus.on(releaseEvent, (p) => this._heistEach((h, m) => {
+      this._unsubs.push(bus.on(releaseEvent, (p) => this._heistEach((h, m) => {
         if (heistMissionRuntime.onTetherReleased(this._heistCtx(), h, p || {})) {
           this._refreshTrackedMissionNav(m);
         }
-      }));
+      })));
     }
     // smuggling bust: a patrol scan caught contraband.
-    bus.on('player:scannedByPatrol', (p) => this._onScannedByPatrol(p));
+    this._unsubs.push(bus.on('player:scannedByPatrol', (p) => this._onScannedByPatrol(p)));
     // Wreck-communicator authored choices (the wreckChoicePrompt deck adapter): missions owns the
     // boarded offer, so a pick stamps wreckChoiceId onto it and runs the canonical accept seam.
-    bus.on('wreckMission:choose', (p) => this._onWreckMissionChoice(p));
+    this._unsubs.push(bus.on('wreckMission:choose', (p) => this._onWreckMissionChoice(p)));
     // Pod rescue is a commitment: a latched tow means the passenger contract leaves the board.
-    bus.on('survivorPod:rescueSelected', (p) => this._onSurvivorRescueSelected(p));
+    this._unsubs.push(bus.on('survivorPod:rescueSelected', (p) => this._onSurvivorRescueSelected(p)));
     // A stripped pod is terminal — withdraw its boarded offer, and fail a live rescue into residue.
-    bus.on('survivorPod:stripped', (p) => this._onSurvivorPodStripped(p));
+    this._unsubs.push(bus.on('survivorPod:stripped', (p) => this._onSurvivorPodStripped(p)));
     // BP-01.1: dying while carrying contract cargo fails the leg at the player's own wreck — the
     // durable marker aftermathWrecks already minted is the recovery site (not a rumored position).
-    bus.on('player:death', (p) => this._onPlayerDeathMissions(p || {}));
+    this._unsubs.push(bus.on('player:death', (p) => this._onPlayerDeathMissions(p || {})));
     // Contract clauses are observers only. Their single breach intent returns here so the canonical
     // mission failure path owns collateral, reputation, cleanup, receipts, and SP1 recovery offers.
-    bus.on('contract:clauseBroken', (p) => this._onContractClauseBroken(p));
+    this._unsubs.push(bus.on('contract:clauseBroken', (p) => this._onContractClauseBroken(p)));
     // A blocking physics term latched: any contract whose objective was already met but was held
     // back on that term settles now, without needing a second dock or a second kill.
-    bus.on('mission:conditionSatisfied', (p) => this._onConditionSatisfied(p));
+    this._unsubs.push(bus.on('mission:conditionSatisfied', (p) => this._onConditionSatisfied(p)));
     // W-TENDER: a forfeited tender term still stamps its fact — the intake flag weighs the duty
     // and moves Concord's secondary channel at the moment the term trips, never at settle.
-    bus.on('mission:conditionBroken', (p) => this._onTenderConditionBroken(p));
+    this._unsubs.push(bus.on('mission:conditionBroken', (p) => this._onTenderConditionBroken(p)));
     // The Long Read is a chained-offer adapter over the live unique-wreck D-loop. These events are
     // evidence of actual rumor, scan, complication, salvage, and decision state—not proxy counters.
-    bus.on('uniqueWreck:rumorRecorded', (p) => this._onLongReadRumorRecorded(p));
-    bus.on('uniqueWreck:bearingFixed', (p) => this._onLongReadBearingFixed(p));
-    bus.on('uniqueWreck:complicationTriggered', (p) => this._onLongReadComplication(p));
-    bus.on('uniqueWreck:encounterActivated', (p) => this._onLongReadComplication(p));
-    bus.on('uniqueWreck:decisionReady', (p) => this._onLongReadDecisionReady(p));
-    bus.on('uniqueWreck:resolved', (p) => this._onLongReadResolved(p));
+    this._unsubs.push(bus.on('uniqueWreck:rumorRecorded', (p) => this._onLongReadRumorRecorded(p)));
+    this._unsubs.push(bus.on('uniqueWreck:bearingFixed', (p) => this._onLongReadBearingFixed(p)));
+    this._unsubs.push(bus.on('uniqueWreck:complicationTriggered', (p) => this._onLongReadComplication(p)));
+    this._unsubs.push(bus.on('uniqueWreck:encounterActivated', (p) => this._onLongReadComplication(p)));
+    this._unsubs.push(bus.on('uniqueWreck:decisionReady', (p) => this._onLongReadDecisionReady(p)));
+    this._unsubs.push(bus.on('uniqueWreck:resolved', (p) => this._onLongReadResolved(p)));
 
     // ── Lazy mission-target spawning when the player enters a target sector ───────────────────
-    bus.on('sector:enter', (p) => this._onSectorEnter(p));
-    bus.on('sector:exit', (p) => this._onSectorExit(p));
-    bus.on('race:reset', () => this._resetAuthoredRace());
-    bus.on('race:restart', () => this._restartAuthoredRace());
-    bus.on('race:abort', () => this._dnfAuthoredRaces('race_aborted'));
-    bus.on('game:exitToMenu', () => { this._dnfAuthoredRaces('race_aborted'); this._racingOpponents?.stop('menu'); this._racingSetPieces?.stop('menu'); resetRacingGhostSession(this.state); });
-    bus.on('save:restoring', () => { this._racingOpponents?.stop('restore'); this._racingSetPieces?.stop('restore'); resetRacingGhostSession(this.state); });
-    bus.on('settings:changed', p => {
+    this._unsubs.push(bus.on('sector:enter', (p) => this._onSectorEnter(p)));
+    this._unsubs.push(bus.on('sector:exit', (p) => this._onSectorExit(p)));
+    this._unsubs.push(bus.on('race:reset', () => this._resetAuthoredRace()));
+    this._unsubs.push(bus.on('race:restart', () => this._restartAuthoredRace()));
+    this._unsubs.push(bus.on('race:abort', () => this._dnfAuthoredRaces('race_aborted')));
+    this._unsubs.push(bus.on('game:exitToMenu', () => { this._dnfAuthoredRaces('race_aborted'); this._racingOpponents?.stop('menu'); this._racingSetPieces?.stop('menu'); resetRacingGhostSession(this.state); }));
+    this._unsubs.push(bus.on('save:restoring', () => { this._racingOpponents?.stop('restore'); this._racingSetPieces?.stop('restore'); resetRacingGhostSession(this.state); }));
+    this._unsubs.push(bus.on('settings:changed', p => {
       if (p?.section !== 'gameplay' || p.key !== 'racingGhost') return;
       for (const m of this.state.missions.active || []) if (m.params?.racingContractId) m.params.raceGhostEnabled = p.value !== false;
-    });
+    }));
     // Census arm: mission-target spawns land inside the sector cook deterministically. The
     // cook drives the chunked twin across its slice clock; the emit listener drains the same
     // steps synchronously, so both paths mint the identical cohort.
@@ -953,27 +972,32 @@ export const missions = {
     // ── WF-08 claim-stake salvage: the contested wreck's own listeners. Every row below is a
     // strict no-op unless an active contract owns the touched entity, so ordinary wrecks,
     // ambient salvor claims, and authored sites never see these paths. ────────────────────────
-    bus.on('mining:start', (p) => this._onContractClaimBeamStart(p));
-    bus.on('salvage:claimJumped', (p) => this._onContractClaimJumped(p));
-    bus.on('salvage:completed', (p) => this._onContractClaimSalvageCompleted(p));
-    bus.on('tether:latched', (p) => this._onContractClaimLatch(p));
-    bus.on('combat:damage', (p) => this._onContractClaimDamage(p));
-    bus.on('entity:killed', (p) => this._onContractClaimKill(p));
-    bus.on('entity:destroyed', (p) => this._onContractClaimDestroyed(p));
+    this._unsubs.push(bus.on('mining:start', (p) => this._onContractClaimBeamStart(p)));
+    this._unsubs.push(bus.on('salvage:claimJumped', (p) => this._onContractClaimJumped(p)));
+    this._unsubs.push(bus.on('salvage:completed', (p) => this._onContractClaimSalvageCompleted(p)));
+    this._unsubs.push(bus.on('tether:latched', (p) => this._onContractClaimLatch(p)));
+    this._unsubs.push(bus.on('combat:damage', (p) => this._onContractClaimDamage(p)));
+    this._unsubs.push(bus.on('entity:killed', (p) => this._onContractClaimKill(p)));
+    this._unsubs.push(bus.on('entity:destroyed', (p) => this._onContractClaimDestroyed(p)));
     // PB-MIS-E: yard bodies die through the same two receipts every hull does; a hired tug
     // reports its own loss on the npcJobs seam.
-    bus.on('entity:killed', (p) => this._onYardWorkEntityLost(p));
-    bus.on('entity:destroyed', (p) => this._onYardWorkEntityLost(p));
-    bus.on('npcJobs:towAssistLost', (p) => this._onYardTowAssistLost(p));
+    this._unsubs.push(bus.on('entity:killed', (p) => this._onYardWorkEntityLost(p)));
+    this._unsubs.push(bus.on('entity:destroyed', (p) => this._onYardWorkEntityLost(p)));
+    this._unsubs.push(bus.on('npcJobs:towAssistLost', (p) => this._onYardTowAssistLost(p)));
     // The hauler's manifest pod spawns inside lootShards' own kill listener — possibly after
     // this system's kill handler ran. Its spill event is the honest moment to move the marker.
-    bus.on('loot:manifestPayload', (p) => this._onContractClaimPodSpilled(p));
+    this._unsubs.push(bus.on('loot:manifestPayload', (p) => this._onContractClaimPodSpilled(p)));
 
     // ── Story-beat triggers from other systems ───────────────────────────────────────────────
-    bus.on('ship:purchased', (p) => this._onContract47aB3ShipPurchased(p || {}));
-    bus.on('asset:deployed', (p) => this._onContract47aB6AssetDeployed(p || {}));
-    bus.on('automation:programAssigned', (p) => this._onContract47aB6ProgramAssigned(p || {}));
-    bus.on('automation:assetLost', (p) => this._onContract47aB6AssetLost(p || {}));
+    this._unsubs.push(bus.on('ship:purchased', (p) => this._onContract47aB3ShipPurchased(p || {})));
+    this._unsubs.push(bus.on('asset:deployed', (p) => this._onContract47aB6AssetDeployed(p || {})));
+    this._unsubs.push(bus.on('automation:programAssigned', (p) => this._onContract47aB6ProgramAssigned(p || {})));
+    this._unsubs.push(bus.on('automation:assetLost', (p) => this._onContract47aB6AssetLost(p || {})));
+  },
+
+  destroy() {
+    for (const off of this._unsubs || []) if (typeof off === 'function') off();
+    this._unsubs = [];
   },
 
   // =========================================================================================
@@ -1012,6 +1036,7 @@ export const missions = {
     for (let i = active.length - 1; i >= 0; i--) {
       const m = active[i];
       if (m.status !== 'active') continue;
+      if (m.type === DIONE_TARGET_PRACTICE) { driveDionePractice(this, m, i, dt); continue; }
       if (authoredCinderRoute(m) && driveCinderRoute(this, m) && m.status !== 'active') continue;
       if (m.params?.workingBattlefield) { driveWorkingBattlefield(this, m, i); continue; }
       // Expiry by deadline.
@@ -1588,7 +1613,7 @@ export const missions = {
     // Accepting auto-tracks AND speaks the objective through the voiceArbiter objective channel
     // (tier 60) — same one-voice path as a manual Mission Log track. The ambient "Mission accepted"
     // toast below is a separate lane (transaction confirmation), so the two do not contend.
-    this.trackMission(inst.id);
+    if (options?.preserveTrackedMission !== true) this.trackMission(inst.id);
 
     this.bus.emit('mission:accepted', {
       missionId: inst.id,
@@ -1897,10 +1922,10 @@ export const missions = {
     if (!offer.id || !offer.type || !offer.stationId || !offer.params) {
       return { ok: false, reason: 'bad_offer_shape' };
     }
-    const duplicate = (this.state.missions.active || []).find((mission) => (
-      mission && mission.status === 'active' && offer.storyTag
-      && mission.storyTag === offer.storyTag
-    ));
+    const matchesOffer = (mission) => mission?.status === 'active'
+      && (mission.sourceOfferId === offer.id || mission.id === offer.id
+        || (offer.storyTag && mission.storyTag === offer.storyTag));
+    const duplicate = (this.state.missions.active || []).find(matchesOffer);
     if (duplicate) return { ok: true, missionId: duplicate.id, offerId: offer.id, reused: true };
 
     if (!this.state.missions.boards || typeof this.state.missions.boards !== 'object') {
@@ -1919,10 +1944,7 @@ export const missions = {
       board.slots = board.slots.filter((candidate) => candidate && candidate.id !== offer.id);
       return { ok: false, reason: 'accept_failed', offerId: offer.id };
     }
-    const mission = (this.state.missions.active || []).find((candidate) => (
-      candidate && candidate.status === 'active'
-      && ((offer.storyTag && candidate.storyTag === offer.storyTag) || candidate.id === offer.id)
-    ));
+    const mission = (this.state.missions.active || []).find(matchesOffer);
     return mission
       ? { ok: true, missionId: mission.id, offerId: offer.id, reused: false }
       : { ok: false, reason: 'accepted_instance_missing', offerId: offer.id };
@@ -2025,7 +2047,8 @@ export const missions = {
     if (!options.silent) {
       const wp = state.nav && state.nav.waypoint;
       const ownsWaypoint = wp && wp.kind === 'mission' && wp.missionId === mission.id;
-      const line = `Tracking: ${mission.title || 'Mission'}${ownsWaypoint && wp.reason ? ` - ${wp.reason}` : ''}`;
+      const briefing = ownsWaypoint && wp.reason && !localFurnaceWorksite(mission, state) ? ` - ${wp.reason}` : '';
+      const line = `Tracking: ${mission.title || 'Mission'}${briefing}`;
       // Mission-objective nudge → the one-voice arbiter's 'objective' tier (preempts chatter, yields
       // to tutorial/danger/story). Stable id so re-tracking replaces in place. Toast fallback only
       // when the arbiter helper is unavailable (headless/unit contexts).
@@ -2181,6 +2204,7 @@ export const missions = {
 
   _objectiveTarget(typeId, params) {
     switch (typeId) {
+      case DIONE_TARGET_PRACTICE: return 3;
       case 'bulk_trade': return params.qty;
       // W-TENDER: the desk's count is the lot — 440 u of iron ore sold into the intake.
       case TENDER_HAUL_TYPE: return Math.max(1, Math.round(Number(params && params.qty) || 1));
@@ -2383,6 +2407,18 @@ export const missions = {
       }
       this._retireRestoredLocalCourse('invalid');
     }
+    // Restore clears the transient UI selection. The saved mission waypoint can name a
+    // still-active contract, so keep that route before falling back to the oldest job.
+    if (existing?.kind === 'mission' && existing.missionId) {
+      const active = this.state.missions?.active || [];
+      const selectedId = this.state.ui?.trackedMissionId;
+      const hasSelection = active.some((m) => m?.id === selectedId && m.status === 'active');
+      const savedSelection = !hasSelection && active.find((m) => m?.id === existing.missionId && m.status === 'active');
+      if (savedSelection) {
+        this.state.ui = this.state.ui || {};
+        this.state.ui.trackedMissionId = savedSelection.id;
+      }
+    }
     const tracked = this._trackedOrFirstActiveMission();
     if (tracked) {
       const restoredRecovery = tracked.storyTag === CONTRACT_47A_B0_TAG && existing?.kind === 'mission'
@@ -2512,6 +2548,18 @@ export const missions = {
       sectorId: m.destSectorId || null,
       sectorName: sector && sector.name || null,
     };
+    if (m.source === FIRST_TRADE_CONTRACT_SOURCE) {
+      if (this.state.world?.currentSectorId !== m.destSectorId) return base;
+      const receiver = this._liveStation(m.destStationId);
+      if (!receiver?.pos) return base;
+      const player = this.state.entities.get(this.state.playerId);
+      const anchor = resolveDockAnchor(receiver, resolveCollisionProxyManifest(receiver), player);
+      if (!anchor) return { ...base, pos: { x: receiver.pos.x, z: receiver.pos.z } };
+      const instruction = anchor.kind === 'mooring' ? 'Moor at the approach marker.' : 'Dock at the berth.';
+      return { ...base, pos: { x: anchor.x, z: anchor.z }, reason: `${base.reason}. ${instruction}` };
+    }
+    const dionePractice = dionePracticeWaypoint(this.state, m);
+    if (dionePractice) return { ...base, ...dionePractice };
     const waspFocus = firstWaspRouteFocus(m, this.state);
     if (waspFocus) return { ...base, ...waspFocus };
     const buoyFocus = starterBuoyRouteFocus(m, this.state);
@@ -2533,6 +2581,8 @@ export const missions = {
     }
     const cinderFocus = cinderRouteFocus(m, this.state);
     if (cinderFocus) return { ...base, ...cinderFocus, stationId: null };
+    const slateFocus = slateCoreWorksiteFocus(this, m);
+    if (slateFocus) return { ...base, ...slateFocus };
     const mawFocus = mawWorksiteFocus(m, this.state, sectorLocalToGlobalForSector);
     if (mawFocus) return { ...base, ...mawFocus };
     const furnaceFocus = furnaceWorksiteFocus(m, this.state);
@@ -2656,7 +2706,7 @@ export const missions = {
           ...heistBase,
           label: `${PQ019_FACILITIES.lawful_catcher.name} fork`,
           pos: sectorLocalToGlobalForSector({ x: mouth.x, z: mouth.z }, PQ019C_HEIST_SECTOR_ID),
-          reason: 'Bring the assembly through the open end of the fork under 100 WU/s',
+          reason: 'Bring the assembly through the open end of the fork under 100 u/s',
         };
       }
       if (liveLoad) {
@@ -2710,7 +2760,7 @@ export const missions = {
           label: fence.name,
           // The authored DOCK-APPROACH SOCKET, not the facility's centre: that is where the physical
           // custody head actually sits (heistFacilities._spawnFacilityHead projects the same socket),
-          // so the marker points at the thing the capsule has to touch rather than a few WU off it.
+          // so the marker points at the thing the capsule has to touch rather than a few u off it.
           pos: sectorLocalToGlobalForSector(
             projectPq019FacilitySocket(fence), PQ019C_HEIST_SECTOR_ID,
           ),
@@ -2772,7 +2822,7 @@ export const missions = {
             sectorId: params.courseSectorId || m.destSectorId,
             pos: line ? { x: line.x, z: line.z } : null,
             reason: params.phase === 'approach'
-              ? 'Stop within 70 WU of the start line, slow to 8 WU/s or less, align with the first leg and release any tether'
+              ? 'Stop within 70 u of the start line, slow to 8 u/s or less, align with the first leg and release any tether'
               : 'Hold on the start line until the green light',
           };
         }
@@ -3090,6 +3140,24 @@ export const missions = {
     const player = this.state.entities.get(this.state.playerId);
     const playerPos = player && player.pos ? player.pos : { x: 0, z: 0 };
     const binding = p.sampleSource;
+    // Loading can install Cold Start before the rim boulder joins the live mining index.
+    // Its field slot is already authoritative and must precede any scatter fallback.
+    if (!saved && !binding && sectorId === 'sector_helios_prime') {
+      const field = this.state.world?.asteroidField;
+      const authoredSource = field?.byId && Array.from(field.byId.values()).find((row) =>
+        row?.alive !== false && row?.data?.fieldId === 'f_helios_starter'
+        && row.data.asteroidSlotId === 'boulder:helios_boulder_rim'
+        && Number.isFinite(row.pos?.x) && Number.isFinite(row.pos?.z));
+      if (authoredSource) {
+        const source = promoteAsteroidFieldRock(this.state, authoredSource.id, this.helpers, '47a-recovery');
+        const pos = source?.pos || authoredSource.pos;
+        const { fieldId, asteroidSlotId, activityObjectSlotId } = authoredSource.data;
+        p.samplePos = { x: pos.x, z: pos.z };
+        p.sampleSource = { sectorId, fieldId, slotId: asteroidSlotId, resourceSlotId: activityObjectSlotId || asteroidSlotId };
+        this.bus.emit('mission:updated', { missionId: m.id, sourceFix: true });
+        return source || { id: null, type: 'sample_site', pos: p.samplePos };
+      }
+    }
     // Older saves could mark a Ceres asteroid before returning to this Helios contract. Correct
     // only an unbound legacy point that lies in Ceres' authored disc, outside Helios' disc and in
     // canonical Ceres membership. A missing local body alone is never proof of a wrong sector.
@@ -3180,20 +3248,21 @@ export const missions = {
       }
       return nearest;
     }
-    // Only the resource owner can prove this exact marked slot was exhausted. A cold or missing
-    // source alone is not evidence: never slide the marker to whatever happens to be loaded.
+    // Only a terminal record from the resource owner can retire this exact marked slot.
     if (binding && replacement && binding.sectorId === sectorId) {
       const resourceSlot = binding.resourceSlotId ?? binding.slotId;
       const records = Object.values(this.state.world?.resourceBodies?.byId || {}).filter((record) =>
         record?.sectorId === binding.sectorId && record.fieldId === binding.fieldId
         && record.slotId === resourceSlot);
-      if (records.length === 1 && records[0].outcome === 'depleted') {
+      const outcome = records.length === 1 ? records[0].outcome : null;
+      if (outcome === 'depleted' || outcome === 'destroyed') {
         const data = replacement.data;
         p.sampleSource = { sectorId, fieldId: data.fieldId, slotId: data.asteroidSlotId,
           resourceSlotId: data.activityObjectSlotId || data.asteroidSlotId || data.slotId };
         p.samplePos = { x: replacement.pos.x, z: replacement.pos.z };
         this.bus.emit('mission:updated', { missionId: m.id, sourceFix: true });
-        this.bus.emit('toast', { text: 'The marked rock is exhausted. Another exposure in the same field is marked.', kind: 'info', ttl: 5 });
+        const loss = outcome === 'destroyed' ? 'destroyed' : 'exhausted';
+        this.bus.emit('toast', { text: `The marked rock is ${loss}. Another exposure in the same field is marked.`, kind: 'info', ttl: 5 });
         return replacement;
       }
     }
@@ -3241,18 +3310,17 @@ export const missions = {
     return { pos: { x: pos.x, z: pos.z }, live: false };
   },
 
-  // OPENING-1: the seam lesson works the bound body. When the far-actor regime has shelved it,
-  // materialize the durable field record back by field/slot identity so the lesson never has to
-  // substitute a staged rock. Write path — promotes via the field's own owner seam.
+  // The seam lesson can maintain the source while it owns the objective marker. A temporarily
+  // shelved source still materializes by its original field and slot through the field owner.
   promoteContract47aSample() {
-    const live = this.contract47aSampleEntity();
-    if (live) return live;
     const m = (this.state.missions && this.state.missions.active || [])
       .find((x) => x && x.status === 'active' && x.storyTag === CONTRACT_47A_B0_TAG
         && !(x.params && x.params.sampleRecovered));
     const binding = m && m.params && m.params.sampleSource;
     const sectorId = this.state.world && this.state.world.currentSectorId;
     if (!binding || binding.sectorId !== sectorId) return null;
+    const source = this._resolveContract47aSampleSource(m);
+    if (source?.type === 'asteroid') return source;
     const field = this.state.world && this.state.world.asteroidField;
     let rec = null;
     if (field && field.byId) {
@@ -3343,13 +3411,15 @@ export const missions = {
     if (beat.beat === 1) {
       const scale = kesslerScaleWaypoint(state);
       if (scale) return { ...base, ...scale };
-      const offer = this.pendingAlloyRunOffer();
+      const furnace = state.missions?.boards?.station_tethys?.slots?.find(
+        (offer) => offer?.storyTag === 'campaign47a:b1:infested' && offer.stationId === 'station_tethys');
+      const offer = this.pendingAlloyRunOffer() || furnace;
       const info = offer && STATION_INFO.get(offer.stationId);
       if (info) {
         const station = currentSectorId === info.sectorId ? this._liveStation(info.id) : null;
         return {
           ...base,
-          label: `${info.name} Contract Board`,
+          label: offer === furnace ? offer.title : `${info.name} Contract Board`,
           reason: `Dock at ${info.name} and accept “${offer.title}” from the Contract Board.`,
           stationId: info.id,
           sectorId: info.sectorId,
@@ -4660,6 +4730,11 @@ export const missions = {
 
   _missionLossDebriefText(m, reason) {
     const dest = this._destName(m);
+    if (m.type === DIONE_TARGET_PRACTICE) {
+      if (reason === 'range_foul') return 'Sorrel: Foul. The score does not stand.';
+      if (reason === 'range_no_score') return 'Sorrel: No score. Try the rail again.';
+      return 'Sorrel: The range closed without a score.';
+    }
     if (m && m.params && m.params.wakeHandoff && reason === 'wake_missed') {
       return 'The hauler left the lane. The wake closed before the crate changed hands.';
     }
@@ -5441,7 +5516,7 @@ export const missions = {
           brokenClause: clauseId,
           mutationReroute: true,
           // ship_lost only: the manifest is claimed to be inside the player's own wreck, so the
-          // pocket co-locates on the wreck marker exactly — never a 60-WU ring offset.
+          // pocket co-locates on the wreck marker exactly — never a 60-u ring offset.
           ...(keepManifest ? { playerWreckSite: true } : {}),
         },
       };
@@ -5827,6 +5902,8 @@ export const missions = {
 
 
 function receiptTitle(m) {
+  const range = dionePracticeResult(m);
+  if (range) return `Target Practice · ${range.score} pts${range.callsign ? ` · ${range.callsign}` : ''}`;
   return (m && (m.title || m.name)) || String(m && m.type || 'contract')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
@@ -5872,6 +5949,7 @@ export function missionPaydayLine(m, rewardCr) {
 }
 
 export function missionReceiptFor(m, outcome, reason, settlement = {}) {
+  const dionePractice = dionePracticeResult(m);
   const completed = outcome === 'completed';
   const missionId = String(m && m.id || 'mission');
   const rewardCr = Math.max(0, Math.round(Number(settlement.rewardCr != null ? settlement.rewardCr : (completed ? (m && m.reward_cr) : 0)) || 0));
@@ -5927,6 +6005,7 @@ export function missionReceiptFor(m, outcome, reason, settlement = {}) {
     source: m && m.source || null,
     sourceOfferId: m && m.sourceOfferId || null,
     ...firstBuoyReceiptFields(m, outcome),
+    ...(dionePractice ? { dionePractice } : {}),
     causeFingerprint: m && m.cause && m.cause.fingerprint || null,
     ...setPieceFields,
     targetRecordId: m && m.params && m.params.poiSignalFollowup
