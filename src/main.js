@@ -200,11 +200,17 @@ async function boot() {
       // failure restore the in-process bindings and continue on the main lane.
       // The registry is rebuilt so the sim-owned systems it skipped under the
       // worker lane init normally here.
+      //
+      // A worker that DIES rejects readyPromise at once (onerror -> failLane), so this window
+      // only ever fires on a live worker that is still loading. 45 s was too short on a busy
+      // laptop: boot fell back to the in-process sim, which runs the whole world on the render
+      // thread (measured 9 fps, world at half speed) with nothing on screen saying why. Waiting
+      // longer for the worker is always the better trade; the window only bounds a silent spawn.
       try {
         await Promise.race([
           simLaneRuntime.readyPromise,
           new Promise((_, reject) => setTimeout(
-            () => reject(new Error('sim worker init timed out')), 45_000)),
+            () => reject(new Error('sim worker init timed out')), SIM_WORKER_INIT_WINDOW_MS)),
         ]);
       } catch (error) {
         try { simLaneRuntime.close?.(); } catch (_) { /* dead lane */ }
@@ -742,6 +748,9 @@ async function boot() {
     throw err;
   }
 }
+
+// How long boot waits for a live-but-slow sim worker before the in-process fallback (see boot()).
+const SIM_WORKER_INIT_WINDOW_MS = 180_000;
 
 // Start a fresh game from the main menu: clear any prior world, build the new one, enter flight.
 async function startNewGame(state, helpers, bus, registry, runTransitionGuard, transitionToken, opts) {
