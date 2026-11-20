@@ -187,7 +187,7 @@ reviews every commit; lane agents do not take them.
 | C01-05-the-room-does-the-twist | Nine round mechanics (Delivery, Lights Out, Highway Robbery theft, The Law, Yardmaster, Chain Gang, Everything Must Go, Black Friday, Quiet) | BUILT e43158f9..6388156e + 0157280f + lead 656e7b79 (manifest scope) — looks r13/r29 in receipt; lead looked r12 |
 | G11-02-one-clock-the-rest | World decoration (idle spins, lamps, shader time) follows `presentedAdvanceRatio()` | BUILT 7b137486 + lead fix 2c54dea0 (sim-timed lamps stay on the sim clock) |
 | PERF-04 | Prewarm the flight shader keys and verify zero late programs with at most 1 s added to click-to-first-playable flight in Adventure and Swarm | PARKED — unmeasured working-tree change saved to .devshots/fleet/parked/PERF-04-working-tree-2026-11-13.patch (render files freed for the look pass) |
-| PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | HOLD (flash plants needed lead fixes 3 of 4; PL-09 reverted — rules added to the packet) |
+| PLANT-NEXT | Build the next OPEN physical world reaction in `INFERENCE_PLANTS.md` exactly as written | CLOSED (owner 2026-11-19: the start sector is overcrowded — no new world content until it is thinned) |
 | PL-04-REDO | Rebuild the cargo-scramble plant by the rules (own events, canonical spawn, no stale ids) | BUILT 1332907a (own events, canonical spawn, generation checks — lead reviewed) |
 | PL-03 scavenger half | Real salvor hull dispatched from the nearest yard through the existing salvor/job seam; turns back if the wreck is emptied | BUILT 7c744edb (lead-review) |
 | PL-08-applause | Station lamps flash at a slingshot kill | BUILT 1ff73ce9 |
@@ -202,7 +202,7 @@ reviews every commit; lane agents do not take them.
 | ID | Job | State |
 |---|---|---|
 | DOC-01 label the old plans | 88 files bannered, readers pass (10483e2e) | DONE |
-| PLANT-RADIO | Build the next OPEN **section E** (radio line) row of `INFERENCE_PLANTS.md`: the exact line, one data row, one event key — copy the pattern of PL-52 (`src/data/flavor/040-band.js`, `src/systems/bandRadio.js`). Max one per two physical plants shipped | HOLD (radio ahead of physical 3:2; last PL-60 a96f601d reviewed) |
+| PLANT-RADIO | Build the next OPEN **section E** (radio line) row of `INFERENCE_PLANTS.md`: the exact line, one data row, one event key — copy the pattern of PL-52 (`src/data/flavor/040-band.js`, `src/systems/bandRadio.js`). Max one per two physical plants shipped | CLOSED (owner 2026-11-19: the start sector is overcrowded — no new world content until it is thinned) |
 | PERF-01-ADVENTURE-RUN | Execute the existing locked Adventure diagnostic matrix against the pinned source manifest and report the measurements | BUILT (8 of 12 arms, sector crossing stopped the run before skip-render and trace) |
 | PERF-01-SWARM-RUN | Run the locked Swarm 20 diagnostic matrix against the pinned source and report the measurements | DONE. Eight matched arms; cinematic work contaminated flight results. Follow-up in PERF-06 |
 | PERF-01-ADVENTURE-RENDER-RUN | Measure render-off and no-post on the same quiet Adventure scene, with a traced baseline | DONE. Six matched arms; render-off +11.0 fps, no-post −5.9 fps on this route |
