@@ -79,8 +79,8 @@ test('damage and ROF remain unchanged while force table is set', () => {
   assert.equal(pulse.dmg, 10, 'R5 Pew band: the starter kills a Wasp in ~2.0 s (gun-curve bench 2026-11-20)');
   assert.equal(pulse.rof, 5.5);
 
-  assert.equal(railgun.dmg, 60);
-  assert.equal(railgun.rof, 0.8);
+  assert.equal(railgun.dmg, 140, '03 §3.1 Needle: one shot kills the reference Wasp (gun-curve bench 2026-11-20)');
+  assert.equal(railgun.rof, 0.6);
 
   assert.equal(concussion.dmg, 12);
   assert.equal(concussion.rof, 1.0);

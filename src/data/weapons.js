@@ -175,9 +175,12 @@ const SHIPPED_WEAPONS = [
     id: 'wpn_railgun_m', name: 'Railgun M', slotType: 'weapon', size: 'M', tier: 2, mass: 9, price: 21000, requiresTech: 'tech_kinetic_drivers',
     sentence: 'A long, honest spear: punches plates at range and staggers whatever survives.',
     mount: 'spinal',
-    dmg: 60, rof: 0.8, dps: 48, damageType: 'kinetic', energyCost: 14,
+    // Gun-curve bench 2026-11-20 (03 §3.1 Needle: "one shot kills it"): dmg 60 needed two shots
+    // on the reference Wasp; 140 is one. NPC copies carry their own dmgOverride (40 / 36). It also
+    // bats loose rocks now (owner: "free to blast at asteroids to knock them into enemies").
+    dmg: 140, rof: 0.6, dps: 84, damageType: 'kinetic', energyCost: 14,
     projSpeed: 700, range: 1100, tracking: 'fixed', armorPierce: 0.5,
-    impulsePerHit: 168, tumbleTorque: 16, impulseProvenance: 'railgun_penetrator',
+    impulsePerHit: 168, environmentImpulsePerHit: 900, tumbleTorque: 16, impulseProvenance: 'railgun_penetrator',
     // CW-WPN (INV-22 item 7): the needle answers on the hull (03_COMBAT.md:131-132) - a small
     // backward nudge per shot through the existing physical-impulse path.
     recoilImpulse: 140,
