@@ -1173,6 +1173,9 @@ export const aftermathWrecks = {
     // only handle, and retiring a marker retires its shard with it (cap, eviction, completion).
     this._shards = new Map();
     this._ecologySpawned = new Map();
+    // Bound occupant refs keyed by ecology slot key: entity ids recycle, so a queued
+    // destroyed receipt for a dead occupant must not unbind the slot's live inhabitant.
+    this._ecologySpawnedEntity = new Map();
     // liveId -> slotKey inversion of _ecologySpawned, kept at every bind/unbind site so
     // the inhabitant-gone join is O(1) instead of an O(map) walk per corpse. Only
     // singly-bound ids carry a reverse edge — a duplicated liveId falls back to the walk.
@@ -1188,12 +1191,12 @@ export const aftermathWrecks = {
     this._clearPatrolPulse = () => { this._patrolScanWitnesses.clear(); };
     this._resetPatrolPulse = () => { this._clearPatrolPulse(); this._patrolPulse = null; };
     this._onKilled = (payload) => {
-      this._noteInhabitantGone(payload && payload.id);
+      this._noteInhabitantGone(payload);
       if (this._retireKilledWreck(payload)) return;
       this._recordKill(payload || {});
     };
     this._onPlayerDeath = (payload) => this._recordPlayerDeath(payload || {});
-    this._onDestroyed = (payload) => this._noteInhabitantGone(payload && payload.id);
+    this._onDestroyed = (payload) => this._noteInhabitantGone(payload);
     this._onFieldSource = (payload) => this.registerWreckFieldSource(payload || {});
     this._onSectorEnter = (payload) => {
       // Sync lane (emit listener, tests, save:loaded): drain the chunked steps inline.
@@ -1310,6 +1313,7 @@ export const aftermathWrecks = {
     if (this._spawned) this._spawned.clear();
     if (this._shards) this._shards.clear();
     if (this._ecologySpawned) this._ecologySpawned.clear();
+    if (this._ecologySpawnedEntity) this._ecologySpawnedEntity.clear();
     if (this._ecologyLiveToKey) this._ecologyLiveToKey.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
   },
@@ -2843,6 +2847,7 @@ export const aftermathWrecks = {
       }
       if (this._shards) this._shards.clear();
       if (this._ecologySpawned) this._ecologySpawned.clear();
+    if (this._ecologySpawnedEntity) this._ecologySpawnedEntity.clear();
       if (this._ecologyLiveToKey) this._ecologyLiveToKey.clear();
       return;
     }
@@ -3070,6 +3075,7 @@ export const aftermathWrecks = {
     this._siteWreckLife = null;
     if (this._shards) this._shards.clear();
     if (this._ecologySpawned) this._ecologySpawned.clear();
+    if (this._ecologySpawnedEntity) this._ecologySpawnedEntity.clear();
     if (this._ecologyLiveToKey) this._ecologyLiveToKey.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
   },
@@ -3435,6 +3441,7 @@ export const aftermathWrecks = {
     if (!this._ecologySpawned) return;
     const liveId = this._ecologySpawned.get(key);
     this._ecologySpawned.delete(key);
+    if (this._ecologySpawnedEntity) this._ecologySpawnedEntity.delete(key);
     if (liveId != null && this._ecologyLiveToKey && this._ecologyLiveToKey.get(liveId) === key) {
       this._ecologyLiveToKey.delete(liveId);
     }
@@ -3449,6 +3456,7 @@ export const aftermathWrecks = {
     const priorKey = this._ecologyLiveToKey ? this._ecologyLiveToKey.get(entity.id) : null;
     if (priorKey != null && priorKey !== key) this._ecologyLiveToKey.delete(entity.id);
     this._ecologySpawned.set(key, entity.id);
+    if (this._ecologySpawnedEntity) this._ecologySpawnedEntity.set(key, entity);
     if (this._ecologyLiveToKey && priorKey == null) this._ecologyLiveToKey.set(entity.id, key);
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('wreckEcology:spawned', {
@@ -3480,7 +3488,8 @@ export const aftermathWrecks = {
     return null;
   },
 
-  _noteInhabitantGone(entityId) {
+  _noteInhabitantGone(payload) {
+    const entityId = payload && payload.id;
     if (entityId == null || !this._ecologySpawned) return false;
     const own = ensureAftermathState(this.state);
     // O(1) via the reverse map; a miss or a verify failure (the unsplittable
@@ -3493,6 +3502,10 @@ export const aftermathWrecks = {
       }
       if (key == null) return false;
     }
+    // A recycled id re-binds the slot under the same liveId value: only the bound
+    // occupant's own receipt may unbind it. Fails open when either ref is absent.
+    const bound = this._ecologySpawnedEntity && this._ecologySpawnedEntity.get(key);
+    if (bound && payload.entity && bound !== payload.entity) return false;
     this._unbindEcologyKey(key);
     const sep = key.indexOf('::');
     const fieldId = key.slice(0, sep);
@@ -3603,6 +3616,7 @@ export const aftermathWrecks = {
     if (this._spawned) this._spawned.clear();
     if (this._shards) this._shards.clear();
     if (this._ecologySpawned) this._ecologySpawned.clear();
+    if (this._ecologySpawnedEntity) this._ecologySpawnedEntity.clear();
     if (this._ecologyLiveToKey) this._ecologyLiveToKey.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
   },
