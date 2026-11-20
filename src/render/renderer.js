@@ -425,7 +425,7 @@ import { createCrucibleGhostPresentation } from './crucibleGhost.js';
 import { createPhaseBlinkPresentation, createPhaseBlinkWarmSubject } from './phaseBlinkPresentation.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
-import { hasShieldContact, readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
+import { clearShieldContacts, hasShieldContact, readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
 import {
   shouldPresentShieldBubble,
   swarmCombatShieldRadius,
@@ -26583,6 +26583,9 @@ export const render = {
     prunePresentationLampFlashes(
       this.state, id, receipt.occupantGeneration ?? receipt.entity?.occupantGeneration ?? null,
     );
+    // Shield-contact records key on the raw entity id: a dead occupant's pending
+    // contacts must die with it or a recycled id would paint them on the replacement.
+    if (id != null) clearShieldContacts(id);
     const still = resolveWorldPresentationEntity(this.state, id);
     const previousMesh = this._meshes.get(id);
     if (!destructionReceiptMatchesPresentationOwner(receipt, still, previousMesh)) {

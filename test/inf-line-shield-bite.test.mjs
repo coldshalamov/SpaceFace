@@ -20,7 +20,7 @@ import {
   shieldBiteDir,
   targetShieldUp,
 } from '../src/render/vfx/lineShieldBite.js';
-import { addShieldContact, readShieldContacts, clearShieldContacts } from '../src/render/weapons/shieldContacts.js';
+import { addShieldContact, readShieldContacts, clearShieldContacts, hasShieldContact } from '../src/render/weapons/shieldContacts.js';
 
 const TARGET = { id: 'tgt', alive: true, shield: 40, pos: { x: 900, z: 0 } };
 const SOURCE = { x: 800, z: 0 }; // due "west" of the target: the bite aims at the biting hull
@@ -88,4 +88,31 @@ test('the live owners are wired: latch bite, break bite and sustained strain all
     'a break under load lands its own bite');
   assert.match(vfx, /resolveLineShieldSustain\(\s*this\._causeNow\(\), this\._lineShieldBiteAt/,
     'the latch-rim frame read sustains the strain bite');
+});
+
+test('a destroyed occupant\'s contact cannot paint onto the recycled id', () => {
+  // The contact map keys on the raw entity id, so the renderer's per-entity
+  // entity:destroyed cleanup is what retires a dead occupant's pending contacts.
+  clearShieldContacts('tgt');
+  addShieldContact(TARGET.id, 1, 0, 0, 1);
+  assert.ok(hasShieldContact(TARGET.id), 'contact active before destruction');
+  // This is exactly what _onPresentationEntityDestroyed calls for the dead occupant.
+  clearShieldContacts(TARGET.id);
+  assert.equal(hasShieldContact(TARGET.id), false, 'destroyed occupant\'s record retired');
+  // A replacement occupant under the same id presents only its own contacts.
+  addShieldContact(TARGET.id, 0, 0, -1, 1);
+  const wire = readShieldContacts(TARGET.id, new Float32Array(16));
+  assert.equal(wire[0], 0, 'replacement contact aims -z (x)');
+  assert.equal(wire[1], 0, 'replacement contact aims -z (y)');
+  assert.equal(wire[2], -1, 'replacement contact aims -z (z)');
+  assert.ok(wire[3] > 0.01, 'replacement contact is lit');
+  clearShieldContacts('tgt');
+});
+
+test('the destroy path retires contacts: renderer calls clearShieldContacts per entity', () => {
+  const renderer = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const destroyBody = renderer.match(/_onPresentationEntityDestroyed\(receipt = \{\}\) \{[\s\S]*?\n  \},\n/);
+  assert.ok(destroyBody, 'the presentation destroy handler exists');
+  assert.match(destroyBody[0], /clearShieldContacts\(id\)/,
+    'a dead occupant\'s shield contacts die with it, not with its recycled id\'s replacement');
 });
