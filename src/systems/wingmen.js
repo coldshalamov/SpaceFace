@@ -231,8 +231,14 @@ export const wingmen = {
       const fs = orderedFleet[index];
       if (!fs._liveId) continue;
       const e = state.entities.get(fs._liveId);
-      if (!e || !e.alive) {
-        this._clearBrace(fs, e);
+      // Ids recycle through freeIds: a live occupant at _liveId is only ours while it still
+      // carries this ledger row's stamps. Anything else (missing, dead, or a different hull
+      // that inherited the id) means the wingman is gone — run the loss path on the record,
+      // never write orders onto a foreign hull.
+      const ours = !!e && e.alive !== false && !!e.data
+        && e.data.isWingman === true && e.data.wingmanOf === fs.id;
+      if (!ours) {
+        this._clearBrace(fs, null);
         // Wingman died in combat. Route through the existing onHitAsset path so the ledger stays
         // consistent + the LOST/asset-lost flow fires (same as the pre-P1-8 passive path).
         fs.hp = 0; fs.hullPct = 0;
@@ -292,7 +298,10 @@ export const wingmen = {
       const row = orderedFleet[(deadIndex + step) % orderedFleet.length];
       if (row === fs || !row || !row._liveId) continue;
       const entity = state.entities.get(row._liveId);
-      if (entity && entity.alive !== false) survivorRow = row;
+      // The grief press writes onto the survivor's AI — only a hull still wearing this
+      // row's stamps counts; a recycled occupant is not her.
+      if (entity && entity.alive !== false && entity.data
+        && entity.data.isWingman === true && entity.data.wingmanOf === row.id) survivorRow = row;
     }
     if (!survivorRow) {
       this._wingDeaths.delete(fs.id);
@@ -393,21 +402,23 @@ export const wingmen = {
       if (fs._liveId && state.entities) {
         this._clearBrace(fs, state.entities.get(fs._liveId));
         const e = state.entities.get(fs._liveId);
-        if (e?.data?.vesselId) this.registry?.get('shipjack')?.parkFleetVessel?.(fs, e);
+        // A recycled id resolves to a foreign hull — never park or kill it on our way out.
+        const ours = !!e && !!e.data && e.data.isWingman === true && e.data.wingmanOf === fs.id;
+        if (ours && e?.data?.vesselId) this.registry?.get('shipjack')?.parkFleetVessel?.(fs, e);
         const ships = this.registry?.get('ships');
         if (ships?.fleetOwnedHull?.(fs.id) && e?.data?.wingmanOf === fs.id) {
           fs.parkedBody = ships.fleetHullCondition(e) || fs.parkedBody;
         }
         // Capture the last hit even when a hard transition lands before our next update.
         // This is the same persisted fraction used by the normal live synchronization.
-        if (e && e.hullMax > 0) {
+        if (ours && e.hullMax > 0) {
           fs.hullPct = Math.max(0, Math.min(1, e.hull / e.hullMax));
           fs.hp = fs.hullPct;
         }
         // Core lifetimeSweep owns entity removal, index/allocator bookkeeping, presentation, and
         // the queued entity:destroyed receipt. Wingmen only mark the body dead and clear ledger
         // membership here so the canonical sweep publishes exactly one lifecycle notification.
-        if (e) e.alive = false;
+        if (ours) e.alive = false;
       }
       fs._liveId = null;
     }
@@ -462,7 +473,7 @@ export const wingmen = {
     const fs = fleet.find((x) => x.id === p.shipId);
     if (!fs || !fs._liveId) return;
     const e = state.entities.get(fs._liveId);
-    if (!e || !e.data) return;
+    if (!e || !e.data || e.data.isWingman !== true || e.data.wingmanOf !== fs.id) return;
     const order = fs.order || 'escort';
     const archetype = WINGMAN_ARCHETYPE_BY_ORDER[order] || 'brawler';
     e.data.ai = e.data.ai || {};
@@ -496,7 +507,10 @@ export const wingmen = {
       const fs = ordered[index];
       if (!accepted.has(fs.id) || fs._liveId == null) continue;
       const entity = state.entities.get(fs._liveId);
-      if (entity && entity.alive !== false) this._applyWingOrder(fs, entity, player, index, ordered.length);
+      if (entity && entity.alive !== false && entity.data
+        && entity.data.isWingman === true && entity.data.wingmanOf === fs.id) {
+        this._applyWingOrder(fs, entity, player, index, ordered.length);
+      }
     }
   },
 
