@@ -60,11 +60,16 @@ test('six single-deed save differences change reachable bar openers and sealed L
     const before = createWrittenFinale('D', readLifeLedger(a.state), `before:${trackerId}`);
     const after = createWrittenFinale('D', readLifeLedger(b.state), `after:${trackerId}`);
     const sender = `LAST CALL — ${contactDeedMemory(card.id).name}`;
-    assert.notEqual(before.beats.find(c => c.sender === sender).text, after.beats.find(c => c.sender === sender).text);
+    // W1 rule: a last call exists because a counter moved — a contact at 0 has no line to
+    // take (finaleContent filters it), so the deed's difference is the beat's absence at 0
+    // and its presence once the counter moves.
+    assert.equal(before.beats.some(c => c.sender === sender), false, `${trackerId} has no last call at 0`);
+    const afterBeat = after.beats.find(c => c.sender === sender);
+    assert.ok(afterBeat, `${trackerId} takes a last call once the counter moves`);
     const restored = normalizeWrittenFinale(JSON.parse(JSON.stringify(after)));
     assert.ok(restored, 'expanded finale stays within the saved manuscript bound');
     assert.equal(restored.basis.contactCounters[trackerId], 1);
-    assert.equal(restored.beats.find(c => c.sender === sender).text, after.beats.find(c => c.sender === sender).text);
+    assert.equal(restored.beats.find(c => c.sender === sender).text, afterBeat.text);
     a.owner.destroy(); b.owner.destroy();
   }
 });
