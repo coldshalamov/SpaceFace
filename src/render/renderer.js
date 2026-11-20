@@ -22065,7 +22065,7 @@ export const render = {
         sectorId: sector && sector.id || null,
       };
     };
-    const onSectorEntered = ({ sectorId, sector, continuous, enterEpoch } = {}, event = 'sector:enter') => {
+    const onSectorEntered = ({ sectorId, sector, continuous, enterEpoch, arenaId } = {}, event = 'sector:enter') => {
       const exactSectorId = String(sectorId || sector && sector.id || '');
       // A queued emit's evicted tail can deliver this listener inside a newer enter's live
       // window (the pendingSlicedEmits cap force-drains stale emits whole), and an epochless
@@ -22122,7 +22122,10 @@ export const render = {
         }
       };
       try {
-      const foundryChanged = this._syncFoundrySet(event, state.run);
+      // The arena id rides the enter event: on the one-press Swarm route the run mirror has not
+      // carried run.arenaId to this thread yet when the room is entered, and the Foundry deck was
+      // never built (round 1 flew over black space). The event's own id is the producer's truth.
+      const foundryChanged = this._syncFoundrySet(event, arenaId ? { arenaId } : state.run);
       // A sector is a new admission context: renderer-latched build failures retry here even
       // when the GPU set is kept, so a transient outage cannot strand a live entity invisible.
       clearRendererMeshLatches(state);
