@@ -83,7 +83,7 @@ export function isBossContact(entity) {
 
 /** Budget cost of a contact's job — the minimap keeps the costliest contact when two overlap. */
 export function contactJobCost(entity, role = classifyContactRole(entity)) {
-  const enemyId = entity && entity.data && (entity.data.enemyTypeId || entity.data.archetypeId);
+  const enemyId = entity && entity.data && (entity.data.enemyTypeId || entity.data.lootTableId || entity.data.archetypeId);
   const row = enemyId ? enemyJobFor(enemyId) : null;
   if (row && Number.isFinite(row.cost)) return row.cost;
   return CONTACT_ROLE_GLYPHS[role]?.cost || 1;

@@ -1858,6 +1858,11 @@ export function createRadar(ctx) {
       wrap.classList.toggle('sf-radar-wrap--chart', shows);
       minimap.canvas.hidden = !shows;
       chartFooter.hidden = !shows;
+      if (shows) {
+        dial.setAttribute('aria-label', expanded
+          ? 'Flight minimap, wide survey range. Activate to switch to tactical range.'
+          : 'Flight minimap, tactical range. Activate to switch to wide survey range.');
+      }
       if (shows && expandedHome && wrap.parentElement !== expandedHome) {
         expandedHome.appendChild(wrap);
         expandedHome = null;
@@ -2089,6 +2094,8 @@ export function createRadar(ctx) {
   let lastPlayerHullHitAt = -Infinity;
   let displayRange = null;
   let lastRangeStepSimS = null;
+  let lastChartHostiles = 0;
+  let quietTick = 0;
   const offRangeHostileScratch = [];
   const mineScratch = [];
   const roomWallScratch = [];
@@ -2301,6 +2308,13 @@ export function createRadar(ctx) {
       || !!(state.settings && state.settings.video && state.settings.video.motionReduce)
       || !!document.documentElement?.classList?.contains('sf-reduce-motion');
     const showChart = syncChart();
+    // The minimap paints at the HUD's 20 Hz only while something hostile is on it or a hit is
+    // flashing; a calm scope paints at 10 Hz (every other tick).
+    if (showChart) {
+      const hitFresh = Number.isFinite(state.simTime) && state.simTime - lastPlayerHullHitAt < 0.7;
+      quietTick = (lastChartHostiles > 0 || hitFresh) ? 0 : quietTick + 1;
+      if (quietTick % 2 === 1) return;
+    }
 
     if (!showChart) {
       g.clearRect(0, 0, size, size);
@@ -2491,6 +2505,7 @@ export function createRadar(ctx) {
         jobColors: colorblindMode === 'none',
       });
 
+      lastChartHostiles = visibleHostiles.length + offRangeHostileScratch.length;
       const cue = target ? {
         resolved: true, distance: Math.hypot(target.x - playerX, target.z - playerZ),
       } : null;
