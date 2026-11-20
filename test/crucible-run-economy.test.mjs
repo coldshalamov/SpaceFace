@@ -138,12 +138,14 @@ test('an award lands in the run wallet, recomputes the level, and emits a receip
   assert.equal(run.credits, 40);
   assert.equal(run.xp, 120);
   assert.equal(run.score, 300);
-  assert.equal(run.level, 2);
+  // The level follows the live curve (OVH-01a / PT-FIX-A retune), not a pinned number.
+  assert.equal(run.level, runLevelForXp(120));
+  assert.ok(run.level >= 2, '120 xp is past the first level');
 
   const awarded = named(harness.emitted, 'run:awarded');
   assert.equal(awarded.length, 1);
   assert.equal(awarded[0].payload.totalCredits, 40);
-  assert.equal(awarded[0].payload.level, 2);
+  assert.equal(awarded[0].payload.level, runLevelForXp(120));
   assert.equal(awarded[0].payload.previousLevel, 1);
   assert.equal(named(harness.emitted, 'run:levelUp').length, 1);
 });
