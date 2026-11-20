@@ -12,6 +12,14 @@ this: `.devshots/director/fable/harmony/AUDIT.md`. Read all of it first; section
 work list. The director's decisions on each item are below: where the audit offers a choice, this
 page decides it.
 
+## Pick up where the last run stopped
+
+This brief may be run several times in a row by a seat with a short turn limit. First run
+`git log --oneline -30 | grep -i HARMONY` and read what is already committed; start at the first
+numbered fix that has no commit. Commit each fix as soon as its test passes, with the message
+`HARMONY-FIX <number>: <what the player gets>`, before starting the next. If you are near your time
+limit, stop after a commit rather than in the middle of a fix.
+
 ## Fixes, in this order
 
 1. **Plant scripts never write the player's velocity.** `src/systems/plants/borrowedLadder.js`
