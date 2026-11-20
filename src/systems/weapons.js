@@ -187,6 +187,13 @@ function weaponHeatDissipScale(state, entity) {
 }
 const WEAPON_VENT_S = 2 / WEAPON_RECHARGE_MULT;
 const WEAPON_VENT_DUMP = 1.6 * WEAPON_RECHARGE_MULT;
+// R5 / 03 §3.2 — heat is rhythm, not a timer the game imposes. For the PLAYER: only the gun you
+// overheated locks, for PLAYER_GUN_LOCK_S (the others keep firing); let go of the trigger while a
+// gun sits in its amber band (>= FEATHER_BAND of heatMax) and that gun cools at once — it dumps
+// its heat in about FEATHER_DUMP_S. NPC mounts keep the ship-wide vent.
+export const PLAYER_GUN_LOCK_S = 1.2;
+export const FEATHER_BAND = 0.6;
+const FEATHER_DUMP_S = 0.35;
 
 // RW-04 slag quench (build_map §30.1): while a Frame Coupler line holds onto cryo ice, the
 // rock is a heat sink. Every mount sheds at the authored rate, the rock's cold reserve pays
@@ -1053,6 +1060,7 @@ export const weapons = {
     if (!ws || !ws.length) return;
     const data = e.data;
     const now = state.simTime || 0;
+    if (e.id === this.state.playerId) { this._tickPlayerGunHeat(e, ws, data, dt, now); return; }
     const wasVenting = now < (data.weaponVentUntil || 0);
     if (!wasVenting) {
       let pegged = null;
@@ -1084,9 +1092,53 @@ export const weapons = {
     data._weaponVenting = venting;
   },
 
+  // R5 heat rhythm for the player's bank: per-gun lock, per-gun dump, amber-band feathering.
+  _tickPlayerGunHeat(e, ws, data, dt, now) {
+    let anyLocked = false;
+    for (const w of ws) {
+      const def = this._byId.get(w.defId) || {};
+      const heatMax = w.heatMax != null ? w.heatMax : def.heatMax;
+      if (!(Number.isFinite(heatMax) && heatMax > 0)) continue;
+      const locked = now < (w._lockUntil || 0);
+      if (!locked && (w._heat || 0) >= heatMax) { this._beginVent(e, this.state, w); anyLocked = true; continue; }
+      if (locked) {
+        anyLocked = true;
+        w._heat = Math.max(0, (w._heat || 0) - (heatMax / PLAYER_GUN_LOCK_S) * dt);
+      } else if (w._lockUntil) {
+        w._lockUntil = 0;
+        this.bus.emit('weapons:vent', { ownerId: e.id, weaponId: w.defId, phase: 'end', endedAt: now });
+      } else {
+        // Feathering: let go in the amber band and the gun cools at once — the dump runs to empty
+        // unless the trigger comes back first.
+        const held = !!(this.state.input && this.state.input.fire);
+        if (held) w._feathering = false;
+        else if ((w._heat || 0) >= heatMax * FEATHER_BAND) w._feathering = true;
+        if (w._feathering) {
+          w._heat = Math.max(0, (w._heat || 0) - (heatMax / FEATHER_DUMP_S) * dt);
+          if (w._heat <= 0) w._feathering = false;
+        }
+      }
+    }
+    data._weaponVenting = anyLocked;
+  },
+
   _beginVent(e, state, weapon = null) {
     if (!isWeaponVentEnabled(state || this.state) || !e) return false;
     const now = state.simTime || 0;
+    if (weapon && e.id === this.state.playerId) {
+      // R5: lock only the gun that overheated, for PLAYER_GUN_LOCK_S.
+      if (now < (weapon._lockUntil || 0)) return false;
+      const wdef = this._byId.get(weapon.defId) || {};
+      const wMax = weapon.heatMax != null ? weapon.heatMax : wdef.heatMax;
+      weapon._lockUntil = now + PLAYER_GUN_LOCK_S;
+      e.data._weaponVenting = true;
+      this.bus.emit('weapons:vent', {
+        ownerId: e.id, weaponId: weapon.defId, phase: 'start', startedAt: now,
+        until: weapon._lockUntil, perGun: true,
+        heat: Number(weapon._heat) || 0, heatMax: Number.isFinite(wMax) ? wMax : null,
+      });
+      return true;
+    }
     if (now < (e.data.weaponVentUntil || 0)) return false;
     const def = weapon && this._byId.get(weapon.defId) || {};
     const heatMax = weapon
@@ -1418,6 +1470,7 @@ export const weapons = {
     // Forced heat vent (player): while venting, all weapons are locked out — projectiles gate on
     // `firing`, and beams see canFire=false and cool. weaponVentUntil is only ever set for the player.
     if (firing && (state.simTime || 0) < (e.data.weaponVentUntil || 0)) firing = false;
+    if (isPlayer) e.data._triggerHeld = !!firing;
     const cap = typeof e.cap === 'number' ? e.cap : (e.data.derived && e.data.derived.cap) || 0;
     let capLeft = cap;
     if (aimAngle == null) aimAngle = e.rot;
@@ -1444,6 +1497,8 @@ export const weapons = {
         capLeft = this._serviceEmergent(e, w, def, firing, capLeft, state, aimAngle);
         continue;
       }
+      // R5: the overheated gun alone is locked (player); the rest of the bank keeps firing.
+      if (isPlayer && (state.simTime || 0) < (w._lockUntil || 0)) continue;
       const continuous = w.continuous != null ? w.continuous : def.continuous;
       // DEPLOY verb (SF-10 vector mine): a third fire path alongside projectile + beam. It lobs a
       // deployable that later detonates into a radial impulse; the weapon spends cap/heat here.
