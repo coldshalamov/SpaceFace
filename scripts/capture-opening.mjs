@@ -86,6 +86,7 @@ let pressesAtPlay = null;
 let pressesNow = 0;
 let menuReadyMs = null;
 let flightReadyMs = null;
+let bootTimeline = null;
 let navT0 = null;
 let runSeed = null;
 let page = null;
@@ -939,7 +940,7 @@ async function buildSheet() {
 function writeReport() {
   writeFileSync(path.join(OUT, 'trace.json'), JSON.stringify({
     mode: MODE, seed: SEED, runSeed, generatedAt: new Date().toISOString(),
-    samplesPerSecond: true, rows: trace,
+    samplesPerSecond: true, bootTimeline, rows: trace,
   }, null, 1));
   writeFileSync(path.join(OUT, 'words.json'), JSON.stringify([...words.values()], null, 1));
   writeFileSync(path.join(OUT, 'findings.json'), JSON.stringify(findings, null, 1));
@@ -960,6 +961,9 @@ function writeSummary(sheetFile) {
     ``,
     `- Time to first control: ${menuReadyMs != null ? (menuReadyMs / 1000).toFixed(1) + 's' : '?'} (title menu)${flightReadyMs != null ? ` · flight ready ${(flightReadyMs / 1000).toFixed(1)}s` : ''}`,
     `- Presses from title to play: ${pressesAtPlay ?? '?'}`,
+    ...(bootTimeline
+      ? [`- Boot timeline: ${bootTimeline.map((m) => `${m.name}=${m.ms}ms`).join(' · ')}`]
+      : []),
     `- Session sampled: ${trace.length}s · avg fps ${avgFps.toFixed(0)} · min ${minFps ?? '?'} · seconds under 30 fps: ${under30.length}`,
     `- Freezes (no positions moving >0.35s while frames ran): ${freezes.length}${freezes.length ? ` — worst ${Math.max(...freezes.map((f) => f.ms || 0))}ms` : ''}`,
     `- Words seen: ${words.size} distinct · Findings: ${findings.length}${Object.keys(byKind).length ? ` (${Object.entries(byKind).map(([k, n]) => `${k} ${n}`).join(', ')})` : ''}`,
@@ -1240,7 +1244,13 @@ async function main() {
   }
   sessionOver = true;
   await collectOnce();
+  bootTimeline = await page.evaluate(() => window.__SF_BOOT_TIMELINE__?.table?.() || null).catch(() => null);
+  if (bootTimeline) console.log(`[capture] boot timeline: ${window_line(bootTimeline)}`);
   await shoot('end');
+}
+
+function window_line(rows) {
+  return rows.map((m) => `${m.name}=${m.ms}ms`).join(' ');
 }
 
 main().then(async () => {

@@ -11,6 +11,46 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="SpaceFace" />
   <title>SpaceFace</title>
+  <!-- The boot timeline: minted before any module so parse-time events land in order.
+       src/core/bootTimeline.js attaches to the same object; probes and the capture
+       tool read it as window.__SF_BOOT_TIMELINE__. Electron's preload stamps the
+       shell process start into localStorage before page scripts run. -->
+  <script>
+    (function () {
+      var timeline = {
+        version: 1,
+        timeOrigin: performance.timeOrigin,
+        epochWall: Date.now() - performance.now(),
+        marks: [{ name: 'navigation-start', t: 0, detail: null }],
+        mark: function (name, detail, at) {
+          var t = typeof at === 'number' && isFinite(at) ? at : performance.now();
+          this.marks.push({ name: String(name), t: t,
+            detail: detail == null ? null : String(detail).slice(0, 240) });
+          try { performance.mark('sf:' + name, { startTime: Math.max(0, t) }); } catch (e) {}
+          return t;
+        },
+        table: function () {
+          var prev = 0;
+          return this.marks.map(function (row) {
+            var out = { name: row.name, ms: Math.round(row.t), deltaMs: Math.round(row.t - prev), detail: row.detail };
+            prev = row.t;
+            return out;
+          });
+        },
+        line: function () {
+          return this.marks.map(function (row) { return row.name + '=' + Math.round(row.t); }).join(' ');
+        },
+      };
+      try {
+        var shellBootAt = Number(localStorage.getItem('sf.shellBootAt'));
+        if (Number.isFinite(shellBootAt) && shellBootAt > 0) {
+          timeline.marks.push({ name: 'electron-process-start', t: shellBootAt - timeline.epochWall, detail: null });
+        }
+      } catch (e) { /* storage gated — browser hosts have no shell stamp */ }
+      window.__SF_BOOT_TIMELINE__ = timeline;
+      timeline.mark('first-script-evaluated');
+    })();
+  </script>
   <link rel="icon" type="image/svg+xml" href="assets/ui/app-icon/favicon.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="assets/ui/app-icon/favicon-32.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="assets/ui/app-icon/apple-touch-icon.png" />
@@ -1621,6 +1661,10 @@
       </div>
     </div>
   </div>
+  <script>
+    // Whole document parsed; the module graph still waits on bootEntry's media proof.
+    try { window.__SF_BOOT_TIMELINE__.mark('html-parsed'); } catch (e) {}
+  </script>
   <script type="module" src="./src/ui/bootEntry.js"></script>
 </body>
 </html>

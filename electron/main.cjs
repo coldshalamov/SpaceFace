@@ -10,6 +10,9 @@
 const electron = require('electron');
 const { app, BrowserWindow, ipcMain, powerMonitor, dialog, screen } = electron;
 const path = require('path');
+// Earliest wall clock the shell can stamp: handed to the renderer via argv so the
+// page's boot timeline can place 'electron-process-start' ahead of navigation-start.
+const SHELL_PROCESS_STARTED_AT = Date.now();
 // Bytecode-cache the shell's own module graph under userData so launches after the first skip
 // recompiling the main-process modules below. Isolated evidence keeps its cache inside the
 // throwaway profile (its setPath override has not run yet). No-op where the host lacks support.
@@ -1301,6 +1304,7 @@ async function createWindow() {
       // off skips the hunspell/dictionary service entirely instead of per-element opt-outs.
       spellcheck: false,
       preload: path.join(__dirname, 'preload.cjs'),
+      additionalArguments: [`--sf-shell-boot-at=${SHELL_PROCESS_STARTED_AT}`],
       backgroundThrottling,
       offscreen: hideEvidenceWindow,
       // Each module is fetched once per launch, so the 'code' heat check never arms on
