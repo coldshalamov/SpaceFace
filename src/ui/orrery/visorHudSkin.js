@@ -31,43 +31,59 @@ ${S} {
   }
 }
 
-/* The chart uses the old radar control's expand and sensor contracts. Only its compact view is flat. */
+/* Unified tactical minimap frame for both Adventure and Swarm, matched to the visor gauges beside it. */
 ${S} #hud .sf-rightdock:has(.sf-radar-wrap--chart) {
-  --visor-chart-width:min(clamp(216px, 27.63vw, 462px), calc((100vw - 2 * var(--sf-safe-inset-x, 0px)) * .30));
+  --visor-chart-width:min(clamp(276px, 24.8vw, 412px), calc((100vw - 2 * var(--sf-safe-inset-x, 0px)) * .32));
   width:var(--visor-chart-width); align-items:flex-end; transform:none; z-index:14;
   right:calc(clamp(12px,1.2vw,20px) + var(--sf-safe-inset-x, 0px));
-  bottom:clamp(16px,3.62vh,34px);
+  bottom:clamp(14px,3.2vh,30px);
 }
 ${S} #hud .sf-radar-wrap--chart { --sf-kit-radar-rim:0px; width:var(--visor-chart-width); min-height:0; gap:0; padding:0; }
 ${S} #hud .sf-radar-wrap--chart .sf-radar {
-  display:block; width:100%; height:clamp(112px, 12.38vw, 207px); max-width:none; max-height:none;
-  border:0; border-radius:0; background:none; box-shadow:none; cursor:zoom-in;
+  display:block; width:100% !important; height:clamp(164px, 14.6vw, 232px) !important; max-width:none; max-height:none;
+  border:0; border-radius:0; background:none; box-shadow:none; cursor:pointer;
   overflow:visible; transition:filter 150ms ease;
 }
 ${S} #hud .sf-radar-wrap--chart .sf-radar::before,
 ${S} #hud .sf-radar-wrap--chart .sf-radar > :not(.sf-flight-chart) { display:none !important; }
 ${S} #hud .sf-radar-wrap--chart .sf-radar .sf-flight-chart {
-  display:block; position:relative; inset:auto; width:100% !important; height:100% !important; border:0; border-radius:0; clip-path:none; transform:none;
+  display:block; position:relative; inset:auto; width:100% !important; height:100% !important; border:0; border-radius:0; clip-path:none !important; transform:none;
   animation:sf-visor-chart-in 170ms ease-out both;
 }
-@keyframes sf-visor-chart-in { from { opacity:.56; } to { opacity:1; } }
-${S} #hud .sf-radar-wrap--chart .sf-radar:hover { filter:brightness(1.12); }
+@keyframes sf-visor-chart-in { from { opacity:.62; } to { opacity:1; } }
+${S} #hud .sf-radar-wrap--chart .sf-radar:hover { filter:brightness(1.08); }
 ${S} #hud .sf-radar-wrap--chart .sf-radar:focus-visible { outline:2px solid var(--visor-ice); outline-offset:3px; }
 ${S} #hud .sf-radar-wrap--chart .sf-radar-objective-key {
-  clip-path:inset(50%); height:1px; width:1px; position:absolute; overflow:hidden;
+  clip-path:inset(50%); height:1px; width:1px; position:absolute; overflow:hidden; margin:0;
 }
 ${S} #hud .sf-radar-wrap--chart .sf-radar-objective-key[data-mode="legend"] { display:none; }
-.sf-flight-chart__footer { display:flex; width:100%; justify-content:center; align-items:center; gap:14px; margin-top:4px; }
+.sf-flight-chart__footer { display:flex; width:100%; justify-content:center; align-items:center; gap:8px; margin-top:6px; }
 .sf-flight-chart__footer[hidden], .sf-flight-chart[hidden] { display:none !important; }
-.sf-flight-chart__footer::before, .sf-flight-chart__footer::after { content:""; height:1px; width:21%; background:var(--visor-rule); }
-.sf-flight-chart__open { display:flex; align-items:center; gap:12px; padding:2px 4px; border:0;
-  background:transparent; color:var(--visor-copy); cursor:pointer; pointer-events:auto;
-  font:500 clamp(14px,1.2vw,20px)/1.15 var(--visor-font); white-space:nowrap; text-transform:none; letter-spacing:0;
+.sf-flight-chart__footer::before, .sf-flight-chart__footer::after { content:""; height:1px; flex:1 1 12px; background:var(--visor-rule); opacity:.68; }
+.sf-flight-chart__open, .sf-flight-chart__range {
+  display:inline-flex; align-items:center; gap:6px; min-height:26px; padding:3px 9px;
+  border:1px solid rgb(188 222 234 / .38); border-radius:3px;
+  background:rgb(7 17 26 / .84); color:var(--visor-copy); cursor:pointer; pointer-events:auto;
+  font:560 12px/1.15 var(--visor-font); white-space:nowrap; text-transform:none; letter-spacing:.01em;
+  text-shadow:0 1px 2px rgb(3 8 12 / .85);
 }
-.sf-flight-chart__open:hover { color:var(--visor-ice); }
-.sf-flight-chart__open:focus-visible { outline:1px solid var(--visor-ice); outline-offset:1px; }
-.sf-flight-chart__open kbd { min-width:clamp(18px,2.05vw,35px); text-align:center;
-  padding:0 3px; border:1px solid var(--visor-rule); border-radius:5px; font:720 clamp(12px,1.17vw,19px)/1.19 var(--visor-font); }
+.sf-flight-chart__open:hover, .sf-flight-chart__range:hover {
+  border-color:var(--visor-ice); color:var(--visor-ice); background:rgb(12 28 40 / .92);
+}
+.sf-flight-chart__open:focus-visible, .sf-flight-chart__range:focus-visible { outline:2px solid var(--visor-ice); outline-offset:2px; border-radius:3px; }
+.sf-flight-chart__open kbd {
+  min-width:20px; text-align:center;
+  padding:1px 5px; border:1px solid rgb(211 232 235 / .56); border-radius:3px;
+  background:rgb(16 34 46 / .86); color:#f2f8fa;
+  font:700 12px/1.1 var(--visor-font);
+}
+.sf-flight-chart__sep { display:none; }
+.sf-flight-chart__range {
+  color:#d8eef4;
+}
+.sf-flight-chart__range[aria-pressed="true"] {
+  border-color:var(--visor-ice); color:var(--visor-ice); background:rgb(18 48 64 / .90);
+}
 
 ${S} #hud .sf-ft.sf-ft--world-receipt, ${S} .sf-woi[data-visor-anchor="1"] {
   --visor-edge:rgb(191 228 236 / .76);

@@ -5400,7 +5400,7 @@ export function createHud(ctx, alerts) {
   const numericClock = createHudClock(10);
   const targetClock = createHudClock(20);
   const overlayClock = createHudClock(30);
-  const radarClock = createHudClock(10);
+  const radarClock = createHudClock(20);
 
   function syncSafetyAlerts(p, hullFrac, shieldFrac, fuelFrac) {
     if (!alerts || !p) return;
