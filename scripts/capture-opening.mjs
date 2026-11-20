@@ -293,6 +293,26 @@ const readFlight = () => page.evaluate(() => {
   };
 }).catch(() => null);
 
+// A stranger steers the way the active scheme says: in Standard (the default since R17) the nose
+// follows the mouse, so the bot puts the cursor out ahead toward the target; in Pilot/Classic
+// A/D turn the hull.
+async function turnToward(rel) {
+  const aimPoint = await page.evaluate((r) => {
+    const st = window.SF?.ctx?.state;
+    if ((st?.settings?.gameplay?.controlScheme || 'helm-assist') !== 'helm-assist') return null;
+    const me = st?.entities?.get?.(st.playerId);
+    if (!me?.pos) return null;
+    const a = (me.rot || 0) + r;
+    const p = window.SF.ctx?.helpers?.worldToScreen?.({ x: me.pos.x + Math.cos(a) * 260, y: 0, z: me.pos.z + Math.sin(a) * 260 });
+    return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? { x: p.x, y: p.y } : null;
+  }, rel).catch(() => null);
+  if (aimPoint) { await page.mouse.move(Math.round(aimPoint.x), Math.round(aimPoint.y), { steps: 2 }); return; }
+  if (!(Math.abs(rel) > 0.12)) return;
+  const code = rel > 0 ? 'KeyD' : 'KeyA';
+  noteKey(page, code);
+  await page.keyboard.press(code, { delay: Math.min(90, Math.abs(rel) / 4.5 * 1000) });
+}
+
 async function steerTo(readFn, { within = 200, budgetMs = 90000, deadline, done = null } = {}) {
   const t0 = Date.now();
   await page.keyboard.down('KeyW');
@@ -302,11 +322,7 @@ async function steerTo(readFn, { within = 200, budgetMs = 90000, deadline, done 
       if (!s) return { ok: false, why: 'target lost' };
       if (done && done(s)) return { ok: true, s };
       if (!done && s.d != null && s.d <= within) return { ok: true, s };
-      if (Number.isFinite(s.rel) && Math.abs(s.rel) > 0.12) {
-        const code = s.rel > 0 ? 'KeyD' : 'KeyA';
-        noteKey(page, code);
-        await page.keyboard.press(code, { delay: Math.min(90, Math.abs(s.rel) / 4.5 * 1000) });
-      }
+      if (Number.isFinite(s.rel)) await turnToward(s.rel);
       await page.waitForTimeout(220);
     }
     return { ok: false, why: deadlineHit(deadline) ? 'session time limit' : 'steer timeout' };
@@ -630,9 +646,7 @@ async function stepDock(deadline) {
         // ride the lane: nose to the berth, speed under the capture gate — the PD assist
         // does the rest; extra thrust past the gate only fights it
         if (Number.isFinite(s.berthRel) && Math.abs(s.berthRel) > 0.15) {
-          const code = s.berthRel > 0 ? 'KeyD' : 'KeyA';
-          noteKey(page, code);
-          await page.keyboard.press(code, { delay: Math.min(90, Math.abs(s.berthRel) / 4.5 * 1000) });
+          await turnToward(s.berthRel);
         }
         const cap = s.captureGate ?? 20;
         await hold('KeyS', s.speed > cap * 0.9);
@@ -641,9 +655,7 @@ async function stepDock(deadline) {
         // outside the mouth: point at the on-axis entry and keep speed under the corridor gate
         const rel = s.mouthRel ?? s.centerRel;
         if (Number.isFinite(rel) && Math.abs(rel) > 0.12) {
-          const code = rel > 0 ? 'KeyD' : 'KeyA';
-          noteKey(page, code);
-          await page.keyboard.press(code, { delay: Math.min(90, Math.abs(rel) / 4.5 * 1000) });
+          await turnToward(rel);
         }
         // far-field cruise is fast — a player holds W; shed speed only near the mouth
         await hold('KeyS', s.speed > nearGate);
@@ -780,9 +792,7 @@ async function stepFlyToJob(deadline) {
     if (hostile) return `met a hostile on the way at ${((Date.now() - t0) / 1000).toFixed(0)}s`;
     if (nav && nav.d != null && nav.d < 250) return `reached the job marker "${nav.label || 'job'}"`;
     if (nav && Number.isFinite(nav.rel) && Math.abs(nav.rel) > 0.12) {
-      const code = nav.rel > 0 ? 'KeyD' : 'KeyA';
-      noteKey(page, code);
-      await page.keyboard.press(code, { delay: Math.min(90, Math.abs(nav.rel) / 4.5 * 1000) });
+      await turnToward(nav.rel);
     }
     await page.keyboard.down('KeyW');
     await page.waitForTimeout(700);
