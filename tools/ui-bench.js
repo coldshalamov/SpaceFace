@@ -1758,21 +1758,29 @@ async function mountFlightHud(opts = {}) {
     const mount = shooter && shooter.data && shooter.data.weapons && shooter.data.weapons[0];
     if (mount && mount.projSpeed === 320) delete mount.projSpeed;
   }
-  // HUD-POWER-BAR bench state selector (`?hudState=idle|cooldown|armed|plow|caption|calm|fight|teach`).
+  // HUD-POWER-BAR & MAPS-1 bench state selector:
+  //   `?hudState=idle|cooldown|armed|plow|caption|calm|fight|teach|minimap-calm|minimap-fight|minimap-objective`
+  //   `?minimap=calm|fight|objective` (alias so both `flight` and `crucibleHud` can shoot each minimap state)
   const hudState = params.get('hudState') || '';
+  const minimapPreset = params.get('minimap')
+    || (hudState.startsWith('minimap-') ? hudState.slice('minimap-'.length) : '');
   const playerEnt = state.entities.get(state.playerId);
   if (playerEnt) {
     playerEnt.pos = playerEnt.pos || { x: 0, y: 0, z: 0 };
     playerEnt.data = playerEnt.data || {};
-    playerEnt.data.weapons = playerEnt.data.weapons || [{ range: 900 }];
+    playerEnt.data.weapons = playerEnt.data.weapons || [{ range: 640 }];
+    if (playerEnt.data.weapons[0] && !Number.isFinite(playerEnt.data.weapons[0].range)) {
+      playerEnt.data.weapons[0].range = 640;
+    }
   }
   state.player.cargo = state.player.cargo || { items: {} };
   state.player.cargo.items = state.player.cargo.items || {};
   if (!Number.isFinite(state.player.cargo.items.cmdty_impulse_charge)) {
     state.player.cargo.items.cmdty_impulse_charge = 4;
   }
-  state.fields = state.fields || { active: [], cooldowns: {} };
+  state.fields = state.fields || { active: [], cooldowns: {}, snapshot: [] };
   state.fields.active = Array.isArray(state.fields.active) ? state.fields.active : [];
+  state.fields.snapshot = Array.isArray(state.fields.snapshot) ? state.fields.snapshot : [];
   state.fields.cooldowns = state.fields.cooldowns || {};
   state.fields.coneActive = false;
   delete state.fields.plowRockCount;
@@ -1780,11 +1788,214 @@ async function mountFlightHud(opts = {}) {
   state.player.massSeed = { cooldownUntil: 0 };
   delete state.player.armedChargeCount;
   delete state._uiBenchPowerCaption;
+  delete state.ui.minimapBenchHit;
+
+  const seedMinimapScenario = (preset) => {
+    if (!preset) return;
+    const addEntity = (ent) => {
+      if (state.entities.has(ent.id)) {
+        const idx = state.entityList.findIndex((e) => e && e.id === ent.id);
+        if (idx >= 0) state.entityList.splice(idx, 1);
+      }
+      state.entities.set(ent.id, ent);
+      state.entityList.push(ent);
+    };
+    // Clear noisy default bench contacts so the scenario reads cleanly
+    for (const oldId of [11, 12, 13, 21, 22, 23, 24, 25, 26]) {
+      state.entities.delete(oldId);
+      const idx = state.entityList.findIndex((e) => e && e.id === oldId);
+      if (idx >= 0) state.entityList.splice(idx, 1);
+    }
+    state.player.targetId = null;
+    state.fields.snapshot = [];
+    state.world.activeSector = state.world.activeSector || { stations: [], fields: [], hazards: [], pois: [], gates: [] };
+    state.world.activeSector.hazards = [];
+    if (playerEnt) {
+      playerEnt.rot = Math.PI * 0.42;
+      playerEnt.vel = { x: -32, y: 0, z: 48 };
+      playerEnt.data.weapons = [{ id: 'bench-cannon', range: preset === 'fight' ? 420 : 720, _heat: 22, heatMax: 100 }];
+    }
+
+    // Rock field (cover monoliths + throwable boulders) — present in every minimap scenario
+    const rocks = [
+      { id: 301, x: 240, z: 160, r: 34, isMonolith: true },
+      { id: 302, x: 310, z: 120, r: 28, isMonolith: true },
+      { id: 303, x: 270, z: 220, r: 16 },
+      { id: 304, x: 205, z: 195, r: 14 },
+      { id: 305, x: 340, z: 185, r: 15 },
+      { id: 306, x: -260, z: -150, r: 32, isMonolith: true },
+      { id: 307, x: -320, z: -115, r: 18 },
+      { id: 308, x: -225, z: -210, r: 14 },
+      { id: 309, x: -190, z: 190, r: 26, isMonolith: true },
+      { id: 310, x: -140, z: 245, r: 13 },
+      { id: 311, x: 160, z: -230, r: 17 },
+      { id: 312, x: 220, z: -260, r: 29, isMonolith: true },
+      { id: 313, x: 95, z: 280, r: 15 },
+      { id: 314, x: -85, z: -290, r: 16 },
+    ];
+    const rockScale = preset === 'fight' ? 0.72 : 2.1;
+    for (const rk of rocks) {
+      addEntity({
+        id: rk.id, type: 'asteroid', alive: true, team: 0, radius: rk.r,
+        pos: { x: rk.x * rockScale, y: 0, z: rk.z * rockScale }, vel: { x: 0, y: 0, z: 0 },
+        data: { isMonolith: !!rk.isMonolith },
+      });
+    }
+
+    if (preset === 'calm') {
+      state.simTime = 240;
+      state.nav.waypoint = {
+        label: 'Helios Trade Hub', pos: { x: 980, z: 540 }, sectorId: 'sector_helios_prime', stationId: 'station_helios',
+      };
+      addEntity({
+        id: 320, type: 'station', alive: true, team: 0, factionId: 'faction_scn', radius: 92,
+        pos: { x: 980, y: 0, z: 540 }, vel: { x: 0, y: 0, z: 0 }, rot: 0.3,
+        data: { stationId: 'station_helios', name: 'Helios Station', services: ['trade', 'repair'] },
+      });
+      addEntity({
+        id: 321, type: 'station', alive: true, team: 0, factionId: 'faction_scn', radius: 70,
+        pos: { x: -1450, y: 0, z: -680 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+        data: { isGate: true, name: 'Ceres Jump Gate' },
+      });
+      addEntity({
+        id: 322, type: 'station', alive: true, team: 0, factionId: 'faction_mts', radius: 66,
+        pos: { x: 460, y: 0, z: -1020 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+        data: { name: 'Depot Three', services: ['trade'] },
+      });
+      addEntity({
+        id: 323, type: 'ship', alive: true, team: 1, factionId: 'faction_scn', radius: 16,
+        pos: { x: 420, y: 0, z: 210 }, vel: { x: 52, y: 0, z: 26 }, rot: 0.45,
+        data: { defId: 'ship_hornet', trafficRole: 'patrol', callsign: 'Concord Escort', namedLaneContactId: 'lane-escort' },
+      });
+      addEntity({
+        id: 324, type: 'ship', alive: true, team: 0, factionId: 'faction_free', radius: 22,
+        pos: { x: -480, y: 0, z: 360 }, vel: { x: -38, y: 0, z: 18 }, rot: 2.7,
+        data: { defId: 'ship_mule', trafficRole: 'hauler', callsign: 'Ore Hauler', namedLaneContactId: 'lane-hauler' },
+      });
+      addEntity({
+        id: 325, type: 'wreck', alive: true, team: 0, radius: 18,
+        pos: { x: -640, y: 0, z: -260 }, vel: { x: 0, y: 0, z: 0 },
+        data: { name: 'Split Hull' },
+      });
+      addEntity({
+        id: 326, type: 'pickup', alive: true, team: 0, radius: 8,
+        pos: { x: -420, y: 0, z: -180 }, vel: { x: 0, y: 0, z: 0 },
+        data: { name: 'Salvage Crate' },
+      });
+      state.world.activeSector.hazards = [
+        { type: 'nebula', center: { x: -1100, z: 860 }, radius: 520, intensity: 0.4 },
+      ];
+      state.player.targetId = 320;
+    } else if (preset === 'fight') {
+      state.simTime = 242.4;
+      // 6 distinct enemy kinds so every role glyph reads at a glance:
+      // light_fighter, heavy, support, sniper, rammer, minelayer (+ boss!)
+      const enemies = [
+        { id: 330, x: 165, z: 120, vx: -58, vz: -32, rot: -2.6, enemyTypeId: 'wasp_swarmer', name: 'Wasp Swarmer' },
+        { id: 331, x: 205, z: 75, vx: -52, vz: -18, rot: -2.8, enemyTypeId: 'wasp_swarmer', name: 'Wasp Swarmer' },
+        { id: 332, x: -210, z: 140, vx: 38, vz: -35, rot: -0.7, enemyTypeId: 'bruiser_brawler', name: 'Bruiser Brawler' },
+        { id: 333, x: -135, z: 205, vx: 22, vz: -28, rot: -0.9, enemyTypeId: 'warden_escort', name: 'Warden Escort' },
+        { id: 334, x: 340, z: -195, vx: -18, vz: 30, rot: 2.1, enemyTypeId: 'lancer_sniper', name: 'Lancer Sniper' },
+        { id: 335, x: -95, z: -165, vx: 72, vz: 95, rot: 0.9, enemyTypeId: 'detonator_dart', name: 'Detonator Dart' },
+        { id: 336, x: 115, z: -225, vx: -42, vz: 14, rot: 2.8, enemyTypeId: 'mine_layer_jackal', name: 'Mine-Layer Jackal' },
+        { id: 337, x: -330, z: -90, vx: 20, vz: 14, rot: 0.6, enemyTypeId: 'mirrorjaw_foreman', name: 'Mirrorjaw Foreman', isBoss: true },
+        // Off-edge reinforcements (proximity-sized rim pins)
+        { id: 338, x: 860, z: 240, vx: -40, vz: -10, rot: 3.0, enemyTypeId: 'wasp_swarmer', name: 'Flanker' },
+        { id: 339, x: -1450, z: 980, vx: 30, vz: -20, rot: -0.5, enemyTypeId: 'corsair_raider', name: 'Far Raider' },
+      ];
+      for (const en of enemies) {
+        addEntity({
+          id: en.id, type: 'ship', alive: true, team: 5, radius: en.isBoss ? 32 : 16,
+          pos: { x: en.x, y: 0, z: en.z }, vel: { x: en.vx, y: 0, z: en.vz }, rot: en.rot,
+          data: {
+            enemyTypeId: en.enemyTypeId,
+            callsign: en.name,
+            isBoss: !!en.isBoss,
+            ai: { huntPlayer: true, targetId: state.playerId, state: 'attack' },
+          },
+        });
+      }
+      // Friendly wingman & salvage in the arena
+      addEntity({
+        id: 340, type: 'ship', alive: true, team: 1, factionId: 'faction_scn', radius: 14,
+        pos: { x: 85, y: 0, z: -65 }, vel: { x: -32, y: 0, z: 42 }, rot: 2.2,
+        data: { defId: 'ship_hornet', trafficRole: 'escort', callsign: 'Wingman Alpha', ownerId: state.playerId },
+      });
+      addEntity({
+        id: 341, type: 'pickup', alive: true, team: 0, radius: 8,
+        pos: { x: -55, y: 0, z: 85 }, vel: { x: 0, y: 0, z: 0 }, data: { name: 'Scrap Core' },
+      });
+      // Solid arena bank plates + furnace + mines + active snare field (Room + Hazards!)
+      addEntity({
+        id: 342, type: 'station', alive: true, team: 0, radius: 48,
+        pos: { x: 295, y: 0, z: 45 }, vel: { x: 0, y: 0, z: 0 }, rot: 1.48,
+        data: { roomOwner: 'survival-arena', roomKind: 'plate', foundryPlate: { halfWidth: 68, halfDepth: 10 } },
+      });
+      addEntity({
+        id: 343, type: 'station', alive: true, team: 0, radius: 48,
+        pos: { x: -290, y: 0, z: 220 }, vel: { x: 0, y: 0, z: 0 }, rot: -0.65,
+        data: { roomOwner: 'survival-arena', roomKind: 'plate', foundryPlate: { halfWidth: 64, halfDepth: 10 } },
+      });
+      addEntity({
+        id: 344, type: 'station', alive: true, team: 0, radius: 42,
+        pos: { x: 35, y: 0, z: -265 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+        data: { roomOwner: 'survival-arena', roomKind: 'furnace' },
+      });
+      addEntity({
+        id: 345, type: 'mine', alive: true, team: 5, radius: 10,
+        pos: { x: 145, y: 0, z: -155 }, vel: { x: 0, y: 0, z: 0 }, data: { triggerRadius: 52 },
+      });
+      addEntity({
+        id: 346, type: 'mine', alive: true, team: 5, radius: 10,
+        pos: { x: 205, y: 0, z: -195 }, vel: { x: 0, y: 0, z: 0 }, data: { triggerRadius: 52 },
+      });
+      state.fields.snapshot = [
+        { id: 'bench-snare', kind: 'snare', tag: 'hostile', center: { x: -160, z: 165 }, radius: 95 },
+      ];
+      state.player.targetId = 332;
+      // Directional hull-hit rim flash coming from the rammer's flank
+      state.ui.minimapBenchHit = { fromPos: { x: -180, z: -165 }, ageMs: 120, layer: 'hull' };
+      state.nav.waypoint = null;
+    } else if (preset === 'objective') {
+      state.simTime = 240;
+      // Off-screen / off-range objective at 4.6 km NE -> bright rim bearing notch + distance
+      state.nav.waypoint = {
+        label: 'Helios Relay', pos: { x: -3400, z: 3100 }, sectorId: 'sector_helios_prime',
+      };
+      addEntity({
+        id: 350, type: 'station', alive: true, team: 0, factionId: 'faction_scn', radius: 80,
+        pos: { x: 4200, y: 0, z: -1400 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+        data: { name: 'Vesta Yard', services: ['trade'] },
+      });
+      addEntity({
+        id: 351, type: 'station', alive: true, team: 0, factionId: 'faction_scn', radius: 70,
+        pos: { x: -1200, y: 0, z: -3800 }, vel: { x: 0, y: 0, z: 0 }, rot: 0,
+        data: { isGate: true, name: 'Io Gate' },
+      });
+      addEntity({
+        id: 352, type: 'ship', alive: true, team: 5, radius: 16,
+        pos: { x: 3100, y: 0, z: 1400 }, vel: { x: -24, y: 0, z: -12 }, rot: 2.9,
+        data: { enemyTypeId: 'corsair_raider', callsign: 'Raider Patrol', ai: { state: 'patrol' } },
+      });
+      addEntity({
+        id: 353, type: 'ship', alive: true, team: 5, radius: 16,
+        pos: { x: 480, y: 0, z: 260 }, vel: { x: -22, y: 0, z: -16 }, rot: 2.6,
+        data: { enemyTypeId: 'lancer_sniper', callsign: 'Outpost Scout', ai: { state: 'patrol' } },
+      });
+      addEntity({
+        id: 354, type: 'wreck', alive: true, team: 0, radius: 16,
+        pos: { x: -540, y: 0, z: 420 }, vel: { x: 0, y: 0, z: 0 }, data: { name: 'Relay Wreck' },
+      });
+      state.player.targetId = 353;
+    }
+  };
+  if (minimapPreset) seedMinimapScenario(minimapPreset);
 
   // By default in calm/idle/teach/cooldown/armed/plow/caption, move the bench hostile outside
   // weapons range so Adventure isn't forced into `fight`; in `fight`, add live off-screen attackers.
   const calmBenchMode = hudState === 'calm' || hudState === 'idle' || hudState === 'teach'
-    || hudState === 'cooldown' || hudState === 'armed' || hudState === 'plow' || hudState === 'caption';
+    || hudState === 'cooldown' || hudState === 'armed' || hudState === 'plow' || hudState === 'caption'
+    || minimapPreset === 'calm' || minimapPreset === 'objective';
   if (calmBenchMode) {
     state.simTime = hudState === 'teach' ? 30 : 240;
     const raider = state.entities.get(13);
@@ -1969,6 +2180,50 @@ async function mountCrucibleHud() {
     run.level = 4;
     run.pilot = { nodes: [], points: {}, banked: Number(params.get('levelup')) || 1, offer: null };
     bus.emit('run:levelUp', { level: 4, previousLevel: 3, xp: run.xp, banked: run.pilot.banked });
+  }
+  // MAPS-1: when shooting Swarm with `?hudState=minimap-*` or `?minimap=*`, align Swarm-native
+  // objects cleanly (arena Bench/Station in calm, off-screen Extraction Gate in objective).
+  const hudStateParam = params.get('hudState') || '';
+  const minimapPreset = params.get('minimap')
+    || (hudStateParam.startsWith('minimap-') ? hudStateParam.slice('minimap-'.length) : '');
+  if (minimapPreset === 'calm') {
+    const hub = state.entities.get(320);
+    if (hub && hub.data) { hub.data.circuitMark = true; hub.data.name = 'Pit Bench'; hub.pos = { x: 260, y: 0, z: 160 }; }
+    const depot = state.entities.get(322);
+    if (depot && depot.data) { depot.data.circuitMark = true; depot.data.name = 'Supply Pad'; depot.pos = { x: -240, y: 0, z: -180 }; }
+    const gate = state.entities.get(321);
+    if (gate && gate.data) { gate.data.circuitMark = true; gate.data.name = 'Wave Gate'; gate.pos = { x: -340, y: 0, z: 220 }; }
+    for (let id = 301; id <= 314; id += 1) {
+      const rk = state.entities.get(id);
+      if (rk && rk.pos) { rk.pos.x *= 0.36; rk.pos.z *= 0.36; }
+    }
+    const escort = state.entities.get(323);
+    if (escort && escort.pos) { escort.pos.x = 140; escort.pos.z = -95; }
+    const hauler = state.entities.get(324);
+    if (hauler && hauler.pos) { hauler.pos.x = -140; hauler.pos.z = 110; }
+    const wreck = state.entities.get(325);
+    if (wreck && wreck.pos) { wreck.pos.x = 180; wreck.pos.z = -170; }
+    const loot = state.entities.get(326);
+    if (loot && loot.pos) { loot.pos.x = 95; loot.pos.z = -120; }
+    state.nav.waypoint = null;
+    state.player.targetId = 320;
+  } else if (minimapPreset === 'objective') {
+    state.nav.waypoint = {
+      label: 'Extraction Gate', pos: { x: -1350, z: 1080 }, sectorId: 'sector_helios_prime', swarmObjective: true,
+    };
+    const yard = state.entities.get(350);
+    if (yard && yard.data) { yard.data.circuitMark = true; yard.pos = { x: 960, y: 0, z: -320 }; }
+    const gate = state.entities.get(351);
+    if (gate && gate.data) { gate.data.circuitMark = true; gate.pos = { x: -340, y: 0, z: -980 }; }
+    const scout = state.entities.get(353);
+    if (scout && scout.pos) { scout.pos.x = 220; scout.pos.z = 140; }
+    const raider = state.entities.get(352);
+    if (raider && raider.pos) { raider.pos.x = 920; raider.pos.z = 420; }
+    for (let id = 301; id <= 314; id += 1) {
+      const rk = state.entities.get(id);
+      if (rk && rk.pos) { rk.pos.x *= 0.36; rk.pos.z *= 0.36; }
+    }
+    state.player.targetId = 353;
   }
   survivalHud.update(1 / 60, state);
   const hudRoot = document.getElementById('hud');
