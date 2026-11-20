@@ -2012,6 +2012,7 @@ export const story = {
   // NEW GAME / LOAD / SERIALIZE
   // =========================================================================================
   _onNewGame(payload = {}) {
+    if (this.state.world?.swarmArenaOnly) return;
     this._ensureState(true);
     // A same-session new game rewinds state.simTime (src/main.js) into these SAME system
     // instances — drop the session clocks so the lazy init re-arms at simTime+5 (the traps'

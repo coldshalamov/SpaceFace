@@ -2459,6 +2459,7 @@ export const trafficRoleOps = {
         spawnContext: 'convoy_civilian',
       },
     });
+    this._resolveSpawnClearance(spec);
     const ent = this.helpers.spawnEntity(spec);
     if (!ent) return null;
     this._stampTrafficDurableIdentity(ent, sectorId, 'salvor', def, 800 + (seq | 0));

@@ -33,6 +33,7 @@ import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.
 import { queryCombatTableEntities, combatTableRowDistance, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { collectDirtyIds, markDirty, DIRTY } from '../core/dirtyJournal.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { markFieldRockAtRest } from './spawnClearance.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { isRacingCorridorSession } from '../world/racingCorridor.js';
@@ -2631,6 +2632,7 @@ export const mining = {
         },
         ...(playerExtractedCore ? { flags: { persistent: true } } : {}),
       });
+      markFieldRockAtRest(chunk, { simTime: this.state.simTime });
       chunk.data.seams = inheritChunkSeams(parentSeams, seamCount, radius, i);
       if (ast.data.scanHighlightUntil != null && ast.data.scanHighlightUntil > this.state.simTime) {
         chunk.data.scanHighlightUntil = ast.data.scanHighlightUntil;

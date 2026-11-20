@@ -10,6 +10,7 @@ import { OPTIC_LATTICE_SPACING } from '../combat/opticField.js';
 import { initializePresentationAdmission } from '../core/presentationAdmission.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { authoredPrefetchRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
+import { markFieldRockAtRest } from '../systems/spawnClearance.js';
 import { NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
 import { indexedTypeScan, entityIndexLaneVersion } from './livingWorldViews.js';
 import { advanceResourceBody } from './worldCatchup.js';
@@ -770,6 +771,10 @@ export function promoteAsteroidFieldRock(state, id, helpers, reason = 'promote')
     data,
   });
   if (!ent) return null;
+  // R11: promotion is the field rock's live birth — it carries no self-motion even if a
+  // dormant record drifted. A promote on approach is near-tier and honest awake physics;
+  // the ram path's own contact is the touch that wakes it.
+  markFieldRockAtRest(ent, { simTime });
   promotedFieldRocks.add(ent);
   if (rec.homeSectorId) {
     ent.homeSectorId = rec.homeSectorId;

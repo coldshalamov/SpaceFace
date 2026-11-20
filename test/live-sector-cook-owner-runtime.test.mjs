@@ -30,6 +30,7 @@ const require = createRequire(import.meta.url);
 const { parse } = require(require.resolve('@babel/parser', { paths: [process.env.SPACEFACE_DEPS_ROOT || process.cwd()] }));
 const source = readFileSync(process.env.ENTRY_SOURCE_RENDERER || new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 const ast = parse(source, { sourceType: 'module' });
+let onSectorEnteredNode;
 let cookNode, pipelineNode, enterNode, guardNode, preflightNode, gpuNode, compileNode, openingCaptureNode, loadingNode, pictureNode, ownerInactiveTouchNode, ownerInactiveTouchCheckNode, ownerActiveAdmissionNode, touchSubmitNode, touchFacadeNode, groupTouchNode, settleTouchManyNode, admitSubjectNode, unreadyPipelineNode;
 const rendererMethodNodes = new Map();
 const cookStretchNodes = new Map();
@@ -78,6 +79,7 @@ function walk(node) {
       && source.slice(node.value.start, node.value.end).includes('settleDrawableSession')) settleTouchManyNode = node.value;
   if (node.type === 'AssignmentExpression' && node.left?.property?.name === 'touchSubjectExactTarget') touchFacadeNode = node.right;
   if (node.type === 'CallExpression' && node.callee?.name === 'onBus' && node.arguments?.[0]?.value === 'sector:enter') enterNode = node.arguments[1];
+  if (node.type === 'VariableDeclarator' && node.id?.name === 'onSectorEntered') onSectorEnteredNode = node.init;
   for (const value of Object.values(node)) {
     if (Array.isArray(value)) value.forEach(walk);
     else if (value && typeof value === 'object' && value.type) walk(value);
@@ -90,6 +92,9 @@ assert.equal(ownerActiveAdmissionMatches.length, 1,
 assert.ok(cookNode && pipelineNode);
 const cookCode = source.slice(cookNode.start, cookNode.end);
 const pipelineCode = source.slice(pipelineNode.start, pipelineNode.end);
+// OVH-04: the renderer names its sector-enter listener (a Swarm arena entry reuses it), so an
+// identifier argument resolves to that listener's own definition.
+if (enterNode?.type === 'Identifier' && enterNode.name === 'onSectorEntered' && onSectorEnteredNode) enterNode = onSectorEnteredNode;
 const enterCode = source.slice(enterNode.start, enterNode.end);
 const preflightCode = source.slice(preflightNode.start, preflightNode.end);
 const gpuCode = source.slice(gpuNode.start, gpuNode.end);

@@ -431,7 +431,7 @@ import {
   swarmCombatShieldRadius,
   updateEntityShieldBubblePresentation,
 } from './weapons/shieldBubblePresentation.js';
-import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
+import { SECTOR_PALETTE_CLASSES, SECTORS } from '../data/sectors.js';
 import { syncMarrowCone, disposeMarrowCone } from './marrowCone.js';
 import { HeadlightPool } from './headlights.js';
 import { HeroRig } from './heroRig.js';
@@ -1218,6 +1218,15 @@ function describeOpeningInstancedPbrLeaves(scene, plan) {
 }
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
+const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
+
+/** The sector record an arena-enter event paints from: the worker mirror when present,
+ * otherwise the authored catalog. `world.sectors` is a throttled leaf, so an arena switch
+ * can arrive before the mirror ships the arena's sector. */
+export function arenaSectorForEntry(state, sectorId) {
+  if (!sectorId) return null;
+  return state?.world?.sectors?.[sectorId] || SECTOR_BY_ID.get(sectorId) || null;
+}
 const SECTOR_PALETTE_LERP_SECONDS = 1.5;
 const SECTOR_LIGHT_INTENSITIES = { ambient: 0.85, key: 1.7, rim: 0.7, fill: 0.35 };
 // World simulation keeps the corridor sector plus reduced neighbours alive.
@@ -21175,7 +21184,7 @@ export const render = {
         sectorId: sector && sector.id || null,
       };
     };
-    onBus('sector:enter', ({ sectorId, sector, continuous, enterEpoch } = {}) => {
+    const onSectorEntered = ({ sectorId, sector, continuous, enterEpoch } = {}) => {
       const exactSectorId = String(sectorId || sector && sector.id || '');
       // A queued emit's evicted tail can deliver this listener inside a newer enter's live
       // window (the pendingSlicedEmits cap force-drains stale emits whole), and an epochless
@@ -21614,7 +21623,14 @@ export const render = {
       // rejects for whoever awaits the gate, but in flight nothing awaits it, and the rejection
       // escaped as an uncaught page error while ordinary residency went on drawing the sector.
       preparation.catch(() => {});
-    });
+    };
+    onBus('sector:enter', onSectorEntered);
+    onBus('swarm:arenaEntered', payload => onSectorEntered({
+      ...payload,
+      // world.sectors is a throttled mirror leaf; the authored catalog still carries the
+      // arena's sky, palette and post when the arena switch outruns that leaf.
+      sector: arenaSectorForEntry(state, payload.sectorId),
+    }));
     onBus('mode:changed', ({ mode } = {}) => {
       // Backstop for the armed foundry promotion: the sector-load yields and the un-awaited
       // preparePostOpeningPipelines normally drain it under the veil, but a route that reaches

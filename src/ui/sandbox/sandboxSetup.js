@@ -1067,6 +1067,12 @@ export function applyPreparedCrucibleSetup(ctx, config) {
   }
   const cfg = buildSandboxLaunchConfig({}, config || {});
   if (!cfg.survivalSetup) return { ok: false, reason: 'invalid-crucible-setup' };
+  // The prepared path is the real arena launch (not a door test driving run systems alone):
+  // it must have a world system to enter the arena, so a missing world fails closed here.
+  const world = ctx.registry && typeof ctx.registry.get === 'function' ? ctx.registry.get('world') : null;
+  if (!world || typeof world.enterSector !== 'function') {
+    return { ok: false, reason: 'swarm-arena-entry-unavailable' };
+  }
   const result = applySandboxSetup(ctx, cfg);
   if (result?.ok !== true) return result || { ok: false, reason: 'crucible-setup-incomplete' };
   const owned = ctx.state.player.ownedShips[ctx.state.player.activeShipIndex];
@@ -1188,6 +1194,7 @@ export function applyBudgetedLabPackage(ctx, packageSpec) {
 export function applySandboxSetup(ctx, config) {
   if (!ctx || !ctx.state || !ctx.state.player) return;
   const cfg = config || {};
+  const swarmArenaOnly = cfg.survivalSetup != null && cfg.survivalRuleset === SWARM_RULESET;
 
   // 1. Credits first (tech unlock + ship/module paths can charge credits).
   if (typeof cfg.credits === 'number') setCredits(ctx, cfg.credits);
@@ -1213,7 +1220,7 @@ export function applySandboxSetup(ctx, config) {
 
   // 7. Sector (materializes a fresh sector; do this before spawning enemies/drill so they land in
   //    the right place and aren't evicted by the sector swap).
-  enterSectorIfSet(ctx, cfg.sectorId);
+  if (!swarmArenaOnly) enterSectorIfSet(ctx, cfg.sectorId);
 
   // 7b. Scenario staging uses world's public same-sector relocation seam. No raw physics pose
   //     mutation and no alternate travel/gameplay path.
@@ -1373,9 +1380,16 @@ export function applySandboxSetup(ctx, config) {
       if (!fitted.hullApplied || fitted.notFitted.length) {
         return { ok: false, reason: 'crucible-loadout-incomplete', ...fitted };
       }
-      // 4. Player into the arena.
+      // 4. Player into the arena, using the picked sector only for its backdrop and coordinates.
       const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === setup.arenaId);
       const sectorId = cfg.sectorId || (arena && arena.sectorId);
+      // Fail closed only when a world system is installed and refuses the arena entry.
+      // Door tests that drive the run systems without a world system still launch.
+      const worldSys = sys(ctx, 'world');
+      if (swarmArenaOnly && worldSys
+        && !worldSys.enterSector?.(sectorId, { arenaOnly: true, noTeleport: true })) {
+        return { ok: false, reason: 'swarm-arena-entry-unavailable' };
+      }
       const spawnPos = (cfg.spawnPos && Number.isFinite(cfg.spawnPos.x) && Number.isFinite(cfg.spawnPos.z))
         ? cfg.spawnPos
         : (arena && arena.spawnPos);

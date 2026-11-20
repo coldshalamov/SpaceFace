@@ -2004,6 +2004,9 @@ export function createRadar(ctx) {
       ['game:started', markContactsDirty],
       ['save:loaded', markContactsDirty],
       ['sector:enter', onSectorEnter],
+      // Swarm arenas announce their own enter; the radar's trails and expanded state
+      // belong to the departed sector and reset exactly like an ordinary sector enter.
+      ['swarm:arenaEntered', onSectorEnter],
       ['mode:changed', ({ mode } = {}) => { if (mode !== 'flight') clearHostileCourse(); }],
     ]) {
       const off = bus.on(event, handler);

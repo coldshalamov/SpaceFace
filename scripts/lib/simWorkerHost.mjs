@@ -996,7 +996,7 @@ const BRIDGE_EVENTS = [
   'scenario:factChanged', 'scenario:branchResolved', 'game:started',
   'presentation:vfxCue', 'presentation:audioCue', 'presentation:uiCue',
   'presentation:cameraCue', 'presentation:caption', 'audio:cue', 'alert',
-  'camera:shake', 'presentation:cueApplied', 'sector:enter', 'cargo:changed',
+  'camera:shake', 'presentation:cueApplied', 'sector:enter', 'swarm:arenaEntered', 'cargo:changed',
   'survivalArena:stormWarning', 'survivalArena:stormResolve', 'survivalArena:stormCancel',
   'automation:fleetChanged', 'combat:chainKill', 'comms:log', 'run:resultsReady',
   'breakwaterSpur:offer', 'breakwaterSpur:close', 'breakwaterSpur:receipt', 'breakwaterSpur:cue',
@@ -1519,6 +1519,14 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       // Waiting for meta's cold mirror pass leaves the main Pause footer on the title seed.
       host.domainDiffer.invalidateLeaf('meta.seed');
     });
+    // Sector membership and discovery are throttled leaves (60 ticks once large). A sector
+    // enter, and especially a Swarm arena switch, must publish them in that same reply so
+    // main's visual profile is never read from the previous sector's mirror.
+    const offSectorIdentity = ['sector:enter', 'swarm:arenaEntered'].map(event => bus.on(event, () => {
+      host.domainDiffer.invalidateLeaf('world.sectors');
+      host.domainDiffer.invalidateLeaf('world.discovery');
+      host.domainDiffer.invalidateLeaf('world.activeSector');
+    }));
     // Successful outpost changes must reach the open panel in this reply, even
     // when the clock is paused or the list is on its ordinary cold cadence.
     const offOutpostsChanged = bus.on('automation:outpostsChanged', () => {
@@ -1560,6 +1568,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       offCraftFitting(); offFitFitting();
       offUnfitFitting();
       offLedgerLoad();
+      for (const off of offSectorIdentity) off();
       offOutpostsChanged();
       offFleetChanged();
       offLotDeskAnswered();
@@ -1751,6 +1760,12 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           // A completed boot must publish its seed before the loading acknowledgement,
           // even when meta's ordinary cold cadence has not reached its next slot.
           host.domainDiffer.invalidateLeaf('meta.seed');
+          // The new game may live in a different sector (or a Swarm arena whose sector is
+          // absent from the main mirror). Publish membership and discovery with the ack so
+          // the arena's sky/palette is resolved from this boot, not the previous sector.
+          host.domainDiffer.invalidateLeaf('world.sectors');
+          host.domainDiffer.invalidateLeaf('world.discovery');
+          host.domainDiffer.invalidateLeaf('world.activeSector');
           if (args?.opts?.crucibleLaunch === true) {
             const prepared = applyPreparedCrucibleSetup(
               { state, helpers: sim.helpers, registry, bus: host.bus },

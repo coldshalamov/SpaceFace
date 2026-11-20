@@ -14,6 +14,7 @@ import { shouldSkipFullTickSystems } from '../core/presentationFreeze.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { findClearSpawnPoint, resolveClearSpawnPos, spawnClearanceRadius } from './spawnClearance.js';
 import { primitiveBlocksSegment, segmentHitsProxy } from '../combat/lineOfSight.js';
 import { attachmentBindsOccupant } from '../combat/attachments.js';
 import { proxyWorldPrimitives, proxyScaleFor, resolveCollisionProxyManifest } from '../data/collisionProxyManifests.js';
@@ -271,6 +272,16 @@ export const lawSecurity = {
   name: 'lawSecurity',
   // serialize() already cloneLawPlain's every returned field — skip the second defensive clone.
   saveSnapshotOwned: true,
+
+  /**
+   * R11 admission for a computed law hull seat: the shared contract relocates a blocked or
+   * collision-course point along its bounded deterministic walk. On exhaustion the authored
+   * point stands — law retries and budget releases already own the defer path, and an
+   * unanswered response is worse than a stacked one.
+   */
+  _admitSpawnPos(spec) {
+    resolveClearSpawnPos(this.state, spec);
+  },
 
   init(ctx) {
     this.state = ctx.state;
@@ -1981,6 +1992,9 @@ export const lawSecurity = {
       // A frame that stays crowded through every retry (a parked fleet that never moves) launches at the
       // authored slot: a late, stacked response beats none, and crime must never go unanswered.
       spec.pos = clearPos || pos;
+      // A clear reserve launch slot is already the authority here: it keeps the answer on the
+      // witness frame. R11 admission only reseats the crowded fallback (the authored slot).
+      if (!clearPos) this._admitSpawnPos(spec);
       // D207: sector ownership rides the body — an unstamped reserve roams untagged past residency
       // teardown, and the durable kill/capture chain (worldRecords ambient-ship lane) needs it too.
       const homeSectorId = station?.data?.sectorId || station?.sectorId || currentSectorId(state);
@@ -4492,6 +4506,7 @@ export const lawSecurity = {
       if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
       return;
     }
+    this._admitSpawnPos(hull);
     let spawned;
     try {
       spawned = this.helpers.spawnEntity(hull);
@@ -4965,6 +4980,7 @@ export const lawSecurity = {
       if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
       return;
     }
+    this._admitSpawnPos(hull);
     let spawned;
     try {
       spawned = this.helpers.spawnEntity(hull);
@@ -5335,6 +5351,7 @@ export const lawSecurity = {
       if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
       return;
     }
+    this._admitSpawnPos(hull);
     let spawned;
     try {
       spawned = this.helpers.spawnEntity(hull);
@@ -5595,13 +5612,15 @@ export const lawSecurity = {
       return;
     }
 
-    const coneHeading = Math.atan2(player.pos.z - lane.z, player.pos.x - lane.x);
+    const netSeat = findClearSpawnPoint(state, { x: lane.x, z: lane.z, radius: WANTED_NET_RADIUS });
+    if (!netSeat) { own.wantedCheckpointRetryTick = (state.tick | 0) + 15; return; }
+    const coneHeading = Math.atan2(player.pos.z - netSeat.z, player.pos.x - netSeat.x);
     let net;
     try {
       net = this.helpers.spawnEntity({
         type: 'ship',
         team: 2,
-        pos: { x: lane.x, z: lane.z },
+        pos: { x: netSeat.x, z: netSeat.z },
         vel: { x: 0, z: 0 },
         rot: coneHeading,
         radius: WANTED_NET_RADIUS,
@@ -5705,6 +5724,7 @@ export const lawSecurity = {
     intent.fire = false;
     intent.mode = 'wanted_checkpoint';
 
+    this._admitSpawnPos(hull);
     let spawned = null;
     try {
       spawned = this.helpers.spawnEntity(hull);
@@ -5885,12 +5905,10 @@ export const lawSecurity = {
     const sideX = -Math.sin(heading);
     const sideZ = Math.cos(heading);
     const savedLock = sameSector && existing && existing.status === 'open' && existing.lock;
-    const lockPos = savedLock && (savedLock.x || savedLock.z)
-      ? { x: savedLock.x, z: savedLock.z }
-      : {
-        x: yardPos.x + sideX * (WANTED_IMPOUND_YARD_RADIUS + WANTED_IMPOUND_PAD_RADIUS),
-        z: yardPos.z + sideZ * (WANTED_IMPOUND_YARD_RADIUS + WANTED_IMPOUND_PAD_RADIUS),
-      };
+    // The lock pad's standoff must clear the yard's own admission disc; at the old
+    // yard-edge offset every yard seat refused it against the yard it was just spawned for.
+    // +1 WU keeps attempt 0 clear of float cancellation far from the sector origin.
+    const lockStandoff = WANTED_IMPOUND_YARD_RADIUS + spawnClearanceRadius(WANTED_IMPOUND_PAD_RADIUS) + 1;
     const workPos = sameSector && existing && existing.status === 'open' && existing.work
       ? { x: existing.work.x, z: existing.work.z }
       : { x: yardPos.x, z: yardPos.z };
@@ -5910,12 +5928,25 @@ export const lawSecurity = {
       return;
     }
 
+    const yardSeat = findClearSpawnPoint(state, { x: yardPos.x, z: yardPos.z, radius: WANTED_IMPOUND_YARD_RADIUS });
+    if (!yardSeat) { own.wantedImpoundRetryTick = (state.tick | 0) + 15; return; }
+    // Seat the lock pad before either body spawns, against the yard's reserved disc. Seating it
+    // with the spawned yard ignored let a retry ring put the solid pad inside the solid yard.
+    const lockOffsetX = savedLock && (savedLock.x || savedLock.z) ? savedLock.x - yardPos.x : sideX * lockStandoff;
+    const lockOffsetZ = savedLock && (savedLock.x || savedLock.z) ? savedLock.z - yardPos.z : sideZ * lockStandoff;
+    const lockSeat = findClearSpawnPoint(state, {
+      x: yardSeat.x + lockOffsetX,
+      z: yardSeat.z + lockOffsetZ,
+      radius: WANTED_IMPOUND_PAD_RADIUS,
+      reserved: [{ pos: { x: yardSeat.x, z: yardSeat.z }, vel: { x: 0, z: 0 }, radius: WANTED_IMPOUND_YARD_RADIUS }],
+    });
+    if (!lockSeat) { own.wantedImpoundRetryTick = (state.tick | 0) + 15; return; }
     let yard;
     try {
       yard = this.helpers.spawnEntity({
         type: 'ship',
         team: 2,
-        pos: { x: yardPos.x, z: yardPos.z },
+        pos: { x: yardSeat.x, z: yardSeat.z },
         vel: { x: 0, z: 0 },
         rot: heading,
         radius: WANTED_IMPOUND_YARD_RADIUS,
@@ -5946,7 +5977,7 @@ export const lawSecurity = {
       lock = this.helpers.spawnEntity({
         type: 'ship',
         team: 2,
-        pos: { x: lockPos.x, z: lockPos.z },
+        pos: { x: lockSeat.x, z: lockSeat.z },
         vel: { x: 0, z: 0 },
         rot: heading,
         radius: WANTED_IMPOUND_PAD_RADIUS,
@@ -5964,10 +5995,12 @@ export const lawSecurity = {
         },
       });
     } catch (error) {
+      this.helpers.removeEntity?.(yard.id);
       own.wantedImpoundRetryTick = (state.tick | 0) + 15;
       throw error;
     }
     if (!lock) {
+      this.helpers.removeEntity?.(yard.id);
       own.wantedImpoundRetryTick = (state.tick | 0) + 15;
       return;
     }
@@ -5977,13 +6010,16 @@ export const lawSecurity = {
     const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
     let clerk = null;
     if (grant >= 1) {
-      clerk = this._spawnImpoundClerk(state, arrival, yardPos, poundId, requester, budget);
+      clerk = this._spawnImpoundClerk(state, arrival, yardSeat, poundId, requester, budget);
     }
     // A denied grant or a failed spawn keeps the retry tick armed — _syncWantedImpound
     // re-staffs the desk while the pound stands. Posting without this would leave the
     // pay verb unreachable for the life of the impound.
     if (clerk) delete own.wantedImpoundRetryTick;
     else own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+    // Store the seats that actually got admitted, not the requested points: the clerk,
+    // the pay prompt and the work yard all address the bodies as they stand.
+    const workSeat = { x: yardSeat.x + (workPos.x - yardPos.x), z: yardSeat.z + (workPos.z - yardPos.z) };
     own.wantedImpound = {
       poundId,
       billId,
@@ -5993,9 +6029,9 @@ export const lawSecurity = {
       targetId: state.playerId,
       tier: WANTED_TIER.IMPOUND,
       postedAt: state.simTime || 0,
-      yard: { x: yardPos.x, z: yardPos.z },
-      lock: { x: lockPos.x, z: lockPos.z },
-      work: { x: workPos.x, z: workPos.z },
+      yard: { x: yardSeat.x, z: yardSeat.z },
+      lock: { x: lockSeat.x, z: lockSeat.z },
+      work: { x: workSeat.x, z: workSeat.z },
       arrival: { x: arrival.x, z: arrival.z },
       held: false,
       open: true,
@@ -6051,6 +6087,7 @@ export const lawSecurity = {
     intent.fire = false;
     intent.mode = 'wanted_impound';
 
+    this._admitSpawnPos(hull);
     let spawned = null;
     try {
       spawned = this.helpers.spawnEntity(hull);

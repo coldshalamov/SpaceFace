@@ -14,11 +14,13 @@ import { createTimeEffects } from './timeEffects.js';
 import { resetFreshRunSystems } from './runReset.js';
 import { makeShipEntitySpec } from '../systems/ships.js';
 import { NEW_GAME, resolveNewGameStarter } from '../data/newGameDefaults.js';
+import { SWARM_RULESET } from '../data/swarmMode.js';
 import { applyRacingLoadout } from '../data/racingLoadouts.js';
 import { configureRacingCorridorSession, isRacingCorridorSession } from '../world/racingCorridor.js';
 import { defaultShipAppearance } from './shipAppearance.js';
 import { mark47aPlayerActor, spawn47aOpeningScene } from '../data/scenarios/47aLiveScene.js';
 import { promoteAsteroidFieldRock } from '../world/asteroidField.js';
+import { markFieldRockAtRest } from '../systems/spawnClearance.js';
 import { NOCTURNE_LAYOUTS, NOCTURNE_LIGHT_PROFILES } from '../data/nocturneLighting.js';
 import { GameStartReadinessError } from './newGameStartTransition.js';
 import { shouldGrantKeepsake } from './newGamePlus.js';
@@ -39,24 +41,26 @@ export async function runBootstrapScene(state, helpers, bus, registry, options =
   });
   const player = helpers.spawnEntity(playerSpec);
   state.playerId = player.id;
-  if (!racingSession) mark47aPlayerActor(player);
+  if (!racingSession && !options.swarmBoot) mark47aPlayerActor(player);
   state.player.credits = NEW_GAME.credits || 5000;
   const ships = registry.get('ships');
   if (ships && typeof ships.recomputeActiveShip === 'function') ships.recomputeActiveShip();
 
   // World owns sector contents: it spawns stations, asteroid fields, enemies, and POIs from data.
-  const world = registry.get('world');
+  // Swarm enters its backdrop in the prepared arena setup, after runSession owns the run.
+  // Campaign bootstrap would materialize Helios and its neighbors before that handoff.
+  const world = options.swarmBoot ? null : registry.get('world');
   if (world && typeof world.enterSector === 'function') {
     world.enterSector(NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime');
-  } else {
+  } else if (!options.swarmBoot) {
     // fallback: a single station + asteroid ring so the build is still playable
     helpers.spawnEntity({ type: 'station', factionId: 'faction_scn', pos: { x: 280, z: -140 }, radius: 42, mass: 1e6, hull: 1e6, hullMax: 1e6, data: { stationId: 'station_helios', dockRadius: 72, services: ['market', 'shipyard', 'missions'] } });
-    for (let i = 0; i < 12; i++) { const a = (Math.PI * 2 * i) / 12; const r = 360 + state.rng() * 200; helpers.spawnEntity({ type: 'asteroid', pos: { x: Math.cos(a) * r, z: Math.sin(a) * r }, radius: 12, mass: 500, hull: 240, hullMax: 240, data: { typeId: 'ast_rock', oreHP: 240, oreHPMax: 240 } }); }
+    for (let i = 0; i < 12; i++) { const a = (Math.PI * 2 * i) / 12; const r = 360 + state.rng() * 200; markFieldRockAtRest(helpers.spawnEntity({ type: 'asteroid', pos: { x: Math.cos(a) * r, z: Math.sin(a) * r }, radius: 12, mass: 500, hull: 240, hullMax: 240, data: { typeId: 'ast_rock', oreHP: 240, oreHPMax: 240 } }), { simTime: state.simTime }); }
   }
   // Split the two heaviest scene-build halves so the 'preparing' stage gets a paint between
   // world regen and opening composition instead of one frozen monolith.
   if (typeof options.yield === 'function') await options.yield();
-  if (!state.physicsVenueSession && !racingSession) {
+  if (!state.physicsVenueSession && !racingSession && !options.swarmBoot) {
     const scene = spawn47aOpeningScene({ state, helpers, liveColdStartSafe: true });
     light47aOpeningLandmarks(scene);
     drift47aOpeningTowardMark(state, player, helpers);
@@ -230,7 +234,9 @@ export async function runNewGameSimBoot({
   await nextPaint();
   if (!isCurrent()) return { aborted: true };
 
+  const swarmBoot = opts?.crucibleLaunch === true && opts.crucibleSetup?.survivalRuleset === SWARM_RULESET;
   const resetCompleted = resetFreshRunSystems(registry, {
+    swarmBoot,
     afterEach: name => {
       if (!isCurrent()) return false;
       // Register the fresh sector objects before Adventure missions seed their opening.
@@ -304,7 +310,7 @@ export async function runNewGameSimBoot({
 
   // Create the canonical player and starting sector before readiness waits. This gives the
   // renderer real entity boundaries to upgrade while the route remains frozen in loading.
-  await runBootstrapScene(state, helpers, bus, registry, { yield: () => nextFrameTick() });
+  await runBootstrapScene(state, helpers, bus, registry, { yield: () => nextFrameTick(), swarmBoot });
   if (!isCurrent()) return { aborted: true };
   // Run-specific loadouts and arena placement must exist before visual/GPU admission.
   // Installing them on game:started prepares the wrong hull, then replaces it in flight.

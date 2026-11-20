@@ -4,6 +4,7 @@ import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { ceresWorkfleetRoleForEntity } from '../data/ceresWorkfleetIdentity.js';
 import { queryPhysicalBodies, deliverPhysicalImpulse } from '../combat/physicalEffects.js';
 import { queryAsteroidField } from '../world/asteroidField.js';
+import { findClearSpawnPoint, markFieldRockAtRest } from './spawnClearance.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { isAnchoredPhysicalBody } from '../core/physicalResponse.js';
 import { resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
@@ -490,10 +491,18 @@ export const environmentMaterials = {
         data.placeId = restockPlaceId;
         data.placeTargetRadius = radius;
       }
-      this.helpers.spawnEntity({
+      // R11: restock ammunition rests — born at zero linear velocity, asleep, and never
+      // seated under a live body. A null seat skips this unit; the floor re-offers next tick.
+      const seat = findClearSpawnPoint(state, {
+        x: player.pos.x + Math.cos(bearing) * dist,
+        z: player.pos.z + Math.sin(bearing) * dist,
+        radius,
+      });
+      if (!seat) continue;
+      markFieldRockAtRest(this.helpers.spawnEntity({
         type: 'asteroid',
         homeSectorId: player.homeSectorId || (player.data && player.data.homeSectorId) || null,
-        pos: { x: player.pos.x + Math.cos(bearing) * dist, z: player.pos.z + Math.sin(bearing) * dist },
+        pos: { x: seat.x, z: seat.z },
         vel: { x: 0, z: 0 },
         radius,
         mass: Math.round(radius * radius * 40 * density),
@@ -502,7 +511,7 @@ export const environmentMaterials = {
         collides: true,
         physicsBody: { radius: asteroidColliderRadius('ast_common_rock', radius) },
         data,
-      });
+      }), { simTime: now });
     }
   },
   serialize() {

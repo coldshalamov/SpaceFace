@@ -9,6 +9,7 @@ import { orchardTowIntercept } from './orchardTowIntercept.js';
 import { effectiveTetherPolicy } from '../combat/attachments.js';
 import { applyCutIntakeCourtesy } from '../world/cutIntakeCourtesy.js';
 import { tallyPassageTarget, tallyAdvanceDt, isTallyPassageJob } from './tethysTallyPassage.js';
+import { findClearSpawnPoint } from './spawnClearance.js';
 import { validateOrchardTowQuote, bindOrchardTowLease, orchardTowLease, clearOrchardTowLease, withOrchardTowAttachment, ORCHARD_TOW_HOLDER } from '../world/anvilOrchardTowAssist.js';
 import { stepCeresWorkfleet, restoreCeresWorkfleetJob, clearCeresWorkfleetControls } from './ceresWorkfleet.js';
 import { serializeCeresPlayerWinching } from './ceresPlayerWinching.js';
@@ -6397,6 +6398,14 @@ export const npcJobsRuntime = {
     spec.data.jobId = jobId;
     spec.data.jobKind = 'tender';
     spec.data.homeStationId = station.stationId;
+    // R11: the depart point sits off the station hull on a lane traffic uses — a parked
+    // tender is still a live body, so the shared contract seats it clear when it can.
+    const tenderSeat = findClearSpawnPoint(state, {
+      x: spec.pos.x, z: spec.pos.z,
+      radius: Number.isFinite(spec.radius) ? spec.radius : 10,
+      vel: spec.vel || null,
+    });
+    if (tenderSeat) { spec.pos.x = tenderSeat.x; spec.pos.z = tenderSeat.z; }
     const hull = this.helpers.spawnEntity(spec);
     if (!hull) return null;
     if (hull.data) hull.data.jobId = jobId;

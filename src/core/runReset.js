@@ -95,7 +95,10 @@ export function resetFreshRunSystems(registry, options = {}) {
   const afterEach = typeof options.afterEach === 'function' ? options.afterEach : null;
   for (const name of FRESH_RUN_SYSTEMS) {
     const system = registry.get(name);
-    if (system && typeof system.newGame === 'function') system.newGame();
+    if (system && typeof system.newGame === 'function') {
+      if (options.swarmBoot && (name === 'world' || name === 'missions')) system.newGame({ campaign: false });
+      else system.newGame();
+    }
     if (afterEach && afterEach(name, system) === false) return false;
   }
   return true;

@@ -3217,13 +3217,17 @@ export const audio = {
       this.play(voice.id, { gain: voice.gain, rate: voice.rate, captionOwned: true });
       this._emitNamedCaption(saleCaption(p));
     });
-    bus.on('sector:enter', (p) => {
+    const onSectorEnter = (p) => {
       rt._activeCombatEncounters.clear();
       rt._doctrineThreatUntil = -1e9;
       this._sessionBoundaryReset();
       this._applyThemeMatrix(p && p.sectorId);
       this._markMusicDirty();
-    });
+    };
+    bus.on('sector:enter', onSectorEnter);
+    // A Swarm arena is its own sector identity. It emits swarm:arenaEntered instead of
+    // sector:enter, so the theme matrix and encounter memory must reset on it too.
+    bus.on('swarm:arenaEntered', onSectorEnter);
     bus.on('ship:boostStart', (p) => {
       // Boost activation: a dedicated breathy whoosh, distinct from explosions.
       // Player-only (NPCs spam this).

@@ -129,6 +129,8 @@ export function createPl264LaneLight() {
     update(dt) {
       const s = this.state;
       if (!s || s.mode !== 'flight') return;
+      // A Swarm arena admits run bodies and arena props only — no campaign plants.
+      if (s.world?.swarmArenaOnly) { this._reset(); return; }
       const now = this._now();
       const sectorId = s.world && s.world.currentSectorId;
       if (!sectorId) return;
