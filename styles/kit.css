@@ -1113,3 +1113,21 @@ html.sf-reduce-motion .sf-find__row, html.sf-reduce-motion .sf-find__row::before
 .sf-postcard__rumor { margin-top: 6px; font-style: italic; color: var(--dp-ink-mute, #b0aea6); }
 @media (prefers-reduced-motion: reduce) { #sf-sector-postcard, #sf-sector-postcard::before, #sf-sector-postcard::after { animation: none; } }
 html.sf-reduce-motion #sf-sector-postcard, html.sf-reduce-motion #sf-sector-postcard::before, html.sf-reduce-motion #sf-sector-postcard::after { animation: none; }
+
+/* ── Sector arrival plate (sectorArrivalPlate.js) — the one-shot name-and-voice card ─────────── */
+/* PLACES-1 (INV-25 item 7): its own small DOM layer under #ui-root (NOT the Stage banner, which the
+   postcard owns): upper-centre, below the prompt deck and clear of the flight HUD cluster (director: lower-centre crowded the gauges); pointer-events none so
+   it can never block flight input. A flight popup — no backdrop blur. Motion is the kit seam's
+   (.k-in settle, cut when reduced), so this block carries no animation of its own. */
+#sf-sector-arrival { position: absolute; left: 50%; top: 18%; transform: translateX(-50%);
+  z-index: 15; max-width: 64ch; box-sizing: border-box; display: flex; flex-direction: column;
+  align-items: center; gap: 6px; padding: 13px 34px 15px; text-align: center; pointer-events: none;
+  background: radial-gradient(closest-side, rgb(6 8 12 / .78), rgb(6 8 12 / .56) 64%, transparent);
+  font-family: var(--dp-face-read, "Instrument Sans", system-ui, sans-serif); font-size: 14px;
+  line-height: 1.5; color: var(--dp-ink-dim, #b7b4a6); }
+.sf-arrival__name { font-family: var(--dp-face-display, "Archivo", "Instrument Sans", system-ui, sans-serif);
+  font-variation-settings: "wght" 780, "wdth" 116; font-size: 24px; letter-spacing: -.01em;
+  line-height: 1.05; color: var(--dp-ink, #e8e2d4); }
+.sf-arrival__voice { max-width: 56ch; font-style: italic; color: var(--dp-ink-mute, #b0aea6); }
+/* Photo mode keeps the picture clean of transient chrome. */
+body.k-photo #sf-sector-arrival { display: none; }

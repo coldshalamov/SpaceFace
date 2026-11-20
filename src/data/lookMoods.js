@@ -290,6 +290,64 @@ export const LOOK_MOODS = deepFreeze({
     rig: { keyHex: 0xc8b6ff, rimHex: 0x54ffb0, fillHex: 0x4ddc92, ambientHex: 0x2c2a52,
       ambientGain: 0.85, fillGain: 0.75 },
   },
+
+  // PLACES-1 (INV-25 item 2) — the icy fringe (Haumea Rift, Eris Margin, Nereid Shoal): pale
+  // blue-white ice light, a mint-teal edge, steel-violet shadows. Sits between cold_drift's
+  // violet-edged showroom ice and the fringe's magenta neon: the same dark sky, but colder,
+  // quieter and paler — ice under a thin sky, not lacquer under lamps.
+  pale_ice: {
+    surface: {
+      albedoSaturation: 1.14,
+      shadowTint: [0.60, 0.70, 1.16],
+      lightTint: [0.94, 1.00, 1.12],
+      coatRoughness: 0.26,
+      coatEnv: 0.70,
+      rim: [0.56, 0.92, 0.86],
+      rimStrength: 0.62,
+      rimPower: 2.8,
+    },
+    post: {
+      shadowTint: [0.84, 0.96, 1.20],
+      grade: 0.62, vignette: 0.12,
+      highlightTint: [0.96, 1.02, 1.10],
+      contrast: 1.04,
+      saturation: 1.12,
+      bloomTint: [0.97, 1.03, 1.08],
+      vignetteTint: [0.01, 0.02, 0.05],
+    },
+    rig: { keyHex: 0xe8f2ff, rimHex: 0x8fe0cf, fillHex: 0x8fb0d8, ambientHex: 0x24304c,
+      ambientGain: 0.80, fillGain: 0.70 },
+  },
+
+  // PLACES-1 (INV-25 items 1+2) — Ashfall Reach: a dull ember key against a cold ash-teal edge.
+  // The two hues are the sector's fiction: the Roaming Burn's glow against the gray that buries
+  // everything else. Darker and grimier than forge_heat's furnace (no warm floor bounce — the
+  // ground here is ash, not smelter glare), with the burnt contour and ink the scoured hulls keep.
+  ember_ash: {
+    surface: {
+      rockFill: 0.55, // dark moods keep a lower rock floor than the base (neon_noir sits here too)
+      bandMix: 0.24,
+      shadowTint: [0.66, 0.72, 1.06],
+      lightTint: [1.14, 0.98, 0.86],
+      contour: 0.28,
+      rim: [0.30, 0.84, 0.88],
+      rimStrength: 0.66,
+      rimPower: 3.0,
+    },
+    post: {
+      shadowTint: [0.82, 0.92, 1.10],
+      grade: 0.72, vignette: 0.14,
+      highlightTint: [1.14, 0.99, 0.86],
+      contrast: 1.07,
+      saturation: 1.22,
+      vibrance: 0.26,
+      ink: 0.08,
+      bloomTint: [1.10, 0.97, 0.90],
+      vignetteTint: [0.04, 0.01, 0.02],
+    },
+    rig: { keyHex: 0xff9d62, rimHex: 0x54c8cf, fillHex: 0x6f5148, ambientHex: 0x2c2026,
+      ambientGain: 0.85, fillGain: 0.75 },
+  },
 });
 
 // Emissive gain, applied once when a Forge material is admitted. Light is part of the ship:
@@ -328,6 +386,14 @@ export const LOOK_MOOD_BY_PROFILE = deepFreeze({
   // deep blue shadow — graded by its own rig tints, not a new mood.
   dione_lane: 'sodium_yard',
   anomaly: 'void_signal',
+  // PLACES-1 (INV-25 items 1+2) — the story sectors' own rigs keep their family's frame but
+  // wear a light the family does not: the Reach works gold-dust daylight (a parcel frontier, not
+  // neon noir), the Expanse reads as the cold belt its barks describe, and Ashfall runs the
+  // burn. The icy-fringe family profile carries pale_ice.
+  io_reach: 'dust_gold',
+  charon_expanse: 'cold_drift',
+  ashfall_reach: 'ember_ash',
+  pale_ice: 'pale_ice',
 });
 
 export function resolveLookMoodId(profile) {

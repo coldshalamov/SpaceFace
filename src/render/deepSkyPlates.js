@@ -107,6 +107,24 @@ export const DEEP_SKY_PLATES = Object.freeze({
     height: 1024,
     residentBytes: 11184812,
   }),
+  // PLACES-1 (INV-25 items 1+2) — two more base backdrops, baked by the same offline pipeline
+  // (bake_deep_sky_plates.mjs) at the sector-skies luminance band (measured mean 0.016 / 0.017,
+  // manifest.json carries the stats). Files live with the accent plates because they are locally
+  // baked, not drop imports; they are bound through profile background.sky like the six above.
+  'sky-fringe-pale-ice-shelf': Object.freeze({
+    id: 'sky-fringe-pale-ice-shelf',
+    url: '/assets/background/deep-sky/sky-fringe-pale-ice-shelf.png',
+    width: 2048,
+    height: 1024,
+    residentBytes: 11184812,
+  }),
+  'sky-ashfall-burn-front': Object.freeze({
+    id: 'sky-ashfall-burn-front',
+    url: '/assets/background/deep-sky/sky-ashfall-burn-front.png',
+    width: 2048,
+    height: 1024,
+    residentBytes: 11184812,
+  }),
 });
 
 /** One active plate plus one incoming during a region transition. Nothing else may be held. */

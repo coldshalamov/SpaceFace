@@ -223,6 +223,7 @@ import { gravedigger } from '../systems/gravedigger.js';
 import { salvage } from '../systems/salvage.js';
 import { voiceArbiter } from '../ui/voiceArbiter.js';
 import { sectorPostcard } from '../ui/sectorPostcard.js';
+import { sectorArrivalPlate } from '../ui/sectorArrivalPlate.js';
 import { dockDenyBanner } from '../ui/dockDenyBanner.js';
 import { stationBroadcast } from '../systems/stationBroadcast.js';
 import { hazardHints } from '../data/hazardLanguage.js';
@@ -542,6 +543,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['survivalHud', survivalHud],
     ['crucibleFocus', crucibleFocus],
     ['sectorPostcard', sectorPostcard],
+    ['sectorArrivalPlate', sectorArrivalPlate],
     ['dockDenyBanner', dockDenyBanner],
     ['stationBroadcast', stationBroadcast],
     ['hazardHints', hazardHints],

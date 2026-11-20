@@ -144,6 +144,70 @@
         "corridorCoverage05": 0.02,
         "edgeMean": 0.05
       }
+    },
+    {
+      "id": "sky-ashfall-burn-front",
+      "title": "Ashfall - the scoured burn front",
+      "file": "assets/background/deep-sky/sky-ashfall-burn-front.png",
+      "source": "assets/background/deep-sky/sources/sky-ashfall-burn-front.json",
+      "width": 2048,
+      "height": 1024,
+      "sha256": "98ef1fda09610e564ad489fd2b2288c86c3c4a01da986765350f916f83957fa9",
+      "fileBytes": 131881,
+      "residentBytes": 11184812,
+      "stats": {
+        "mean": 0.017,
+        "median": 0.0131,
+        "coverage10": 0.0129,
+        "coverage25": 0.0034,
+        "corridorCoverage05": 0,
+        "edgeMean": 0.012,
+        "quadrantMean": {
+          "upperLeft": 0.0155,
+          "upperRight": 0.0287,
+          "lowerLeft": 0.012,
+          "lowerRight": 0.012
+        }
+      },
+      "budgets": {
+        "median": 0.032,
+        "coverage10": 0.15,
+        "coverage25": 0.055,
+        "corridorCoverage05": 0.008,
+        "edgeMean": 0.03
+      }
+    },
+    {
+      "id": "sky-fringe-pale-ice-shelf",
+      "title": "Fringe - the pale ice shelf",
+      "file": "assets/background/deep-sky/sky-fringe-pale-ice-shelf.png",
+      "source": "assets/background/deep-sky/sources/sky-fringe-pale-ice-shelf.json",
+      "width": 2048,
+      "height": 1024,
+      "sha256": "df8ad09888540ed9265e9be878458b7b63b0fc86cdf8ce0bf91df5761b8f770c",
+      "fileBytes": 152965,
+      "residentBytes": 11184812,
+      "stats": {
+        "mean": 0.016,
+        "median": 0.0115,
+        "coverage10": 0.0085,
+        "coverage25": 0.0011,
+        "corridorCoverage05": 0,
+        "edgeMean": 0.0107,
+        "quadrantMean": {
+          "upperLeft": 0.0128,
+          "upperRight": 0.0293,
+          "lowerLeft": 0.0107,
+          "lowerRight": 0.0111
+        }
+      },
+      "budgets": {
+        "median": 0.03,
+        "coverage10": 0.14,
+        "coverage25": 0.05,
+        "corridorCoverage05": 0.008,
+        "edgeMean": 0.03
+      }
     }
   ]
 }
