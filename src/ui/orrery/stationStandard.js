@@ -948,6 +948,10 @@ ${P} .sx-bar .sx-choice::before { content:counter(sfch) !important; display:grid
   margin:-11px 0 0 !important; padding:0 !important; transform:none !important; translate:none !important; scale:none !important; background:rgb(0 0 0 / .35) !important; border:${LINE} !important; border-radius:2px !important;
   font-family:${NUM} !important; font-size:12px !important; line-height:20px !important; font-weight:500 !important; color:rgb(${BONE} / .85) !important; box-shadow:none !important; }
 ${P} .sx-bar .sx-choice::after { content:none !important; display:none !important; }
+/* ui-polish-538: the reply keycap's place-items:center lost to a later display/align cascade (computed
+   place-items:normal, text-align:left), so the numeral sat against the cap's left wall (ui-bench station-bar,
+   every size). The numeral centres in its cap. */
+${P} .sx-bar .sx-choice::before { place-items:center !important; text-align:center !important; }
 /* ui-polish-443: a reply carries its price and standing in one line ("File the Lost Ledger with Concord
    (3,500 cr · Concord +14 · Meridian −…)"), and the button kit's nowrap cut it at the 480px measure
    with no ellipsis (ui-bench station-bar-story-buyer, 960×540 and 1280×720). Replies wrap instead. */
