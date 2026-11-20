@@ -9204,10 +9204,10 @@ function normalizeWarmHullFile(file) {
 /**
  * The whole-ship files a scoped ship-exemplar cohort can actually resolve — each spec's live
  * selection (hostile id -> silhouette -> assetRef -> trafficRole -> defId, faction kits included)
- * plus the policy-allowed LOD fallback. Runtime demotion is currently disabled, so the selected
- * primary plus the low-detail LOD2 stand-in are the only whole-ship files the launch warm needs;
- * LOD1 remains opt-in with the demotion policy. Keys are normalized 'wholeships/x.glb' paths
- * matching the explicit decode list's file strings and finish()'s normalizeFile(url) output.
+ * plus the policy-allowed LOD fallback. With runtime demotion on, the controller may request
+ * either sibling, so the launch warm retains both; while disabled only the LOD2 stand-in is
+ * reachable. Keys are normalized 'wholeships/x.glb' paths matching the explicit decode list's
+ * file strings and finish()'s normalizeFile(url) output.
  */
 export function warmHullFilesForSpecs(specs) {
   const files = new Set();

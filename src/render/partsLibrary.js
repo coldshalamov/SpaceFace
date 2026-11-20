@@ -2589,6 +2589,28 @@ export function initialWholeShipLodPublicationSafe(entity, boundary, level, file
     && initialShipLodStillSafe(level, sample.px);
 }
 
+/**
+ * Publish-time recheck for a live family swap. A runtime demotion commits frames after its
+ * request, so the admission pick's same-camera-matrix identity cannot apply — the camera has
+ * legitimately moved while the sibling decoded and compiled. Freshness for a live swap is the
+ * selector itself: it re-resolves every frame and republishes wholeShipLodDesiredLevel, which the
+ * caller already compares against the pending request. What remains to vet here is the
+ * entity/family contract and, when the newest projection sample still belongs to this entity and
+ * is fresh, that the ship has not grown back past the promote boundary during the load.
+ */
+export function liveWholeShipLodPublicationSafe(entity, boundary, level, file, now = monotonicNow()) {
+  if (level === 'lod0') return true;
+  const state = authoredRuntimeState();
+  if (!isOrdinaryLodShip(entity) || entityIsMissionCritical(entity, state)) return false;
+  const visual = wholeShipVisualForEntity(entity, { requiredWholeShip: true });
+  if (!visual?.lodFamily || visual.lodFamily.lod0 !== visual.file
+      || packagedLiveWholeShipFile(visual.lodFamily[level]) !== file) return false;
+  const sample = boundary?.userData?.initialShipLodSample;
+  if (!sample || sample.entity !== entity || sample.protectedBody
+      || !Number.isFinite(sample.at) || now < sample.at || now - sample.at > 250) return true;
+  return initialShipLodStillSafe(level, sample.px);
+}
+
 export function authoredPreloadPlanForEntityAtLod(entity, level, options = {}) {
   if (!entity || entity.type !== 'ship') return {};
   const file = wholeShipLodFileForEntity(entity, level, options);
@@ -2634,8 +2656,8 @@ export function spawnableShipArchetypePrewarmUrls() {
     WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp,
     // Separate-file LOD siblings load lazily on distance demotion — a far spawn's lod1/lod2
     // body is a different GLB with materials the lod0 exemplar never linked (PQ-210.00 wasp
-    // link). Runtime demotion is off, so the lod1 file has no live consumer (admission builds
-    // lod0, stand-ins borrow lod2): warm lod2 only and skip decode bytes nobody can draw.
+    // link). With runtime demotion on the lod1 file has a live consumer, so both siblings warm;
+    // while disabled only the lod2 stand-in is reachable and lod1 decode bytes are skipped.
     ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID)
       .flatMap((family) => (WHOLE_SHIP_LOD_RUNTIME_DEMOTION === true
         ? [family.lod1, family.lod2]
@@ -10669,17 +10691,22 @@ export function installWholeShipLodFamilyController(boundary, entity, setActive,
     const generation = ++requestGeneration;
     const admissionEpoch = boundary.userData.admissionEpoch;
     const paletteSignature = JSON.stringify(paletteFor(liveEntity));
-    const stillWanted = () => generation === requestGeneration
-      && admissionEpoch === boundary.userData.admissionEpoch
-      && isAuthoredAdmissionBoundaryCurrent(options)
-      && (typeof options.isResidencyOwnerActive !== 'function' || options.isResidencyOwnerActive())
-      && boundary.userData.wholeShipLodDesiredLevel === requestedLevel
-      && (requestedLevel === 'lod0' || isOrdinaryLodShip(boundaryLiveEntity(boundary, entity)))
-      && (requestedLevel === 'lod0' || initialWholeShipLodPublicationSafe(
-        boundaryLiveEntity(boundary, entity), boundary, requestedLevel, file))
-      && shouldCommitWholeShipLodLoad(pendingLevel, requestedLevel, boundaryBelongsToScene(boundary, scene))
-      && JSON.stringify(paletteFor(boundaryLiveEntity(boundary, entity))) === paletteSignature
-      && wholeShipVisualForEntity(boundaryLiveEntity(boundary, entity), { ...options, requiredWholeShip: true })?.file === selection.file;
+    const stillWanted = () => {
+      const live = boundaryLiveEntity(boundary, entity);
+      const aborts = [];
+      if (generation !== requestGeneration) aborts.push('generation');
+      if (admissionEpoch !== boundary.userData.admissionEpoch) aborts.push('admission-epoch');
+      if (!isAuthoredAdmissionBoundaryCurrent(options)) aborts.push('boundary-current');
+      if (typeof options.isResidencyOwnerActive === 'function' && !options.isResidencyOwnerActive()) aborts.push('owner-inactive');
+      if (boundary.userData.wholeShipLodDesiredLevel !== requestedLevel) aborts.push('desired-changed');
+      if (requestedLevel !== 'lod0' && !isOrdinaryLodShip(live)) aborts.push('not-ordinary');
+      if (requestedLevel !== 'lod0' && !liveWholeShipLodPublicationSafe(live, boundary, requestedLevel, file)) aborts.push('publication');
+      if (!shouldCommitWholeShipLodLoad(pendingLevel, requestedLevel, boundaryBelongsToScene(boundary, scene))) aborts.push('pending-or-detached');
+      if (JSON.stringify(paletteFor(live)) !== paletteSignature) aborts.push('palette');
+      if (wholeShipVisualForEntity(live, { ...options, requiredWholeShip: true })?.file !== selection.file) aborts.push('file-drift');
+      if (aborts.length) boundary.userData.wholeShipLodLastAbort = { requestedLevel, aborts, at: monotonicNow() };
+      return aborts.length === 0;
+    };
     const lodLoad = (async () => {
       // Hoisted so the catch can still dispose a root abandoned by a mid-prepare throw.
       let composed = null;

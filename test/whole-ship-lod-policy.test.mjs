@@ -11,6 +11,8 @@ import {
 import {
   canInstallWholeShipLodFamily,
   hasWholeShipLodFamily,
+  initialShipLodFromProjection,
+  initialShipLodStillSafe,
   lodFileFromFamily,
   resolveLiveWholeShipLodTransition,
   resolveWholeShipLodTransition,
@@ -89,7 +91,7 @@ test('distant spawn projected size selects cheaper resident files without touchi
     { requiredWholeShip: true },
   ).lodFamily;
   assert.equal(lodFileFromFamily(family, selectSpawnLodLevel(20)), family.lod2);
-  assert.equal(lodFileFromFamily(family, selectSpawnLodLevel(200)), family.lod0);
+  assert.equal(lodFileFromFamily(family, selectSpawnLodLevel(400)), family.lod0);
 });
 
 test('in-flight lod2 demotion is cancelled when the ship is already back on resident lod0', () => {
@@ -179,7 +181,7 @@ test('a resident whole-ship lod swap keeps the resolver level inside the hystere
 });
 
 test('only the owning controller can request a sibling and existing roots remain swappable', () => {
-  assert.equal(WHOLE_SHIP_LOD_RUNTIME_DEMOTION, false);
+  assert.equal(WHOLE_SHIP_LOD_RUNTIME_DEMOTION, true);
   const far = resolveLiveWholeShipLodTransition('lod0', 'lod2', { pendingLevel: null, residentReady: false });
   assert.equal(far.action, 'keep');
   assert.equal(far.level, 'lod0');
@@ -190,9 +192,26 @@ test('only the owning controller can request a sibling and existing roots remain
   assert.equal(resident.action, 'swap', 'an already-resident level still swaps in (instant, loads nothing)');
   const detached = resolveLiveWholeShipLodTransition('lod0', 'lod2', { attached: false });
   assert.equal(detached.action, 'drop');
-  // Prewarm decodes the body admission builds (LOD0), whatever the projected size.
-  assert.equal(selectPrewarmLodLevel(200), 'lod0');
-  assert.equal(selectPrewarmLodLevel(80), 'lod0');
-  assert.equal(selectPrewarmLodLevel(20), 'lod0');
-  assert.equal(selectPrewarmLodLevel(0), 'lod0');
+  // Prewarm decodes the tier admission will actually present for this projected size.
+  assert.equal(selectPrewarmLodLevel(300), 'lod0');
+  assert.equal(selectPrewarmLodLevel(150), 'lod1');
+  assert.equal(selectPrewarmLodLevel(70), 'lod2');
+  assert.equal(selectPrewarmLodLevel(0), 'lod0', 'an unknown projection prewarms the fail-safe tier');
+});
+
+test('the spawn-time pick matches the live bands and stays fail-safe on bad input', () => {
+  // Demote boundaries drive the initial pick; promote boundaries gate the publish recheck.
+  assert.equal(initialShipLodFromProjection(400), 'lod0');
+  assert.equal(initialShipLodFromProjection(280), 'lod0', 'inside the 240-400 dead band');
+  assert.equal(initialShipLodFromProjection(200), 'lod1');
+  assert.equal(initialShipLodFromProjection(90), 'lod2');
+  assert.equal(initialShipLodFromProjection(0), 'lod0');
+  assert.equal(initialShipLodFromProjection(Infinity), 'lod0');
+  assert.equal(initialShipLodFromProjection(90, true), 'lod0', 'protected bodies always admit lod0');
+  assert.equal(initialShipLodStillSafe('lod1', 390), true);
+  assert.equal(initialShipLodStillSafe('lod1', 410), false, 'past the promote band the pick is stale');
+  assert.equal(initialShipLodStillSafe('lod2', 185), true);
+  assert.equal(initialShipLodStillSafe('lod2', 200), false);
+  assert.equal(initialShipLodStillSafe('lod2', Infinity), false);
+  assert.equal(initialShipLodStillSafe('lod0', Infinity), true);
 });
