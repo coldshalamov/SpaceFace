@@ -16448,7 +16448,10 @@ function _makeProjectileTrailSelfCheckHarness(projectiles, video = {}) {
     content: {},
   };
   const system = Object.create(vfx);
-  system.init({ state, bus: { on() {} }, helpers: {} });
+  // The minimal bus the presentation lane really touches: subscriptions for init and
+  // emit for prompt-deck adapters (SWITCHBACK interactions fail fast without an
+  // emitting bus), so a full update pass runs headless without owning the UI deck.
+  system.init({ state, bus: { on() {}, emit() {} }, helpers: {} });
   return system;
 }
 
