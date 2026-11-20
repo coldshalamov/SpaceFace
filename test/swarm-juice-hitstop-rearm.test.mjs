@@ -70,46 +70,28 @@ function tick(h) {
   swarmJuice.update(DT, h.state);
 }
 
-test('a sustained kill storm produces discrete dips, not a held time floor', () => {
+// OVH-06a / R10: Swarm no longer dips the simulation at all. Hitstop is a presentation-only camera
+// hold on hero beats (feel.js, 40-60 ms, at most once per 0.8 s); these two tests used to pin the old
+// sim slow-mo ('swarm:juice-hitstop' at ~0.35) and its re-arm gap, and now pin its absence.
+test('a sustained kill storm never dips the simulation or leases time', () => {
   const h = boot();
   const totalSteps = Math.round(12 / DT);         // 12 sim-seconds of continuous killing
-  let dips = 0;                                    // transitions into the dip
-  let heldSteps = 0;                               // steps where the request pins the scale
-  let measuredSteps = 0;
-  let freeSteps = 0;
-  const stormStartS = 2;                           // let the multi-kill window establish first
   for (let i = 0; i < totalSteps; i += 1) {
-    const before = h.state.timeScale;
-    if (i % 3 === 0) kill(h);                      // ~20 kills per sim-second — a dense wipe storm
+    if (i % 3 === 0) kill(h);                      // ~20 kills per sim-second - a dense wipe storm
     tick(h);
-    if (before === 1 && h.state.timeScale < 1) dips += 1;
-    if (h.state.timeScale < 1) heldSteps += 1;
-    if (h.state.simTime >= stormStartS) {
-      measuredSteps += 1;
-      if (h.state.timeScale === 1) freeSteps += 1;
-    }
+    assert.equal(h.state.timeScale, 1, 'the simulation clock is never slowed by a kill storm');
   }
-  assert.ok(dips >= 3, `distinct kill beats must still dip (got ${dips})`);
-  const freeFraction = freeSteps / measuredSteps;
-  assert.ok(freeFraction >= 0.5,
-    `the dip must release between beats — held ${heldSteps} steps, only ${(freeFraction * 100).toFixed(0)}% free`);
-
-  // The floor always recovers once the storm stops: drain the last live dip, then verify
-  // no request remains.
-  for (let i = 0; i < Math.round(1.5 / DT); i += 1) tick(h);
-  assert.equal(h.state.timeScale, 1, 'the floor must release after the last beat');
   assert.equal(h.effects.describeRequests()[SWARM_HITSTOP_SOURCE], undefined,
-    'no swarm hit-stop request may survive the storm');
+    'no swarm hit-stop request exists');
   swarmJuice.destroy();
 });
 
-test('an explicitly forced beat (boss down) still lands inside the re-arm window', () => {
+test('boss down no longer leases simulation time (its hold is the camera\'s, through the gate)', () => {
   const h = boot();
-  for (let i = 0; i < 3; i += 1) kill(h);          // TRIPLE arms the dip inside the same tick
-  assert.ok(h.state.timeScale <= 0.35, 'fixture must begin inside a live dip');
-  swarmJuice._requestHitStop(null, 1);             // the boss-down marquee dip is forced
-  assert.equal(swarmJuice._hitStopLeft, 1, 'the forced beat must arm its full duration');
-  assert.equal(h.effects.describeRequests()[SWARM_HITSTOP_SOURCE].scale, 0.35);
+  for (let i = 0; i < 3; i += 1) kill(h);          // TRIPLE
+  assert.equal(h.state.timeScale, 1, 'a triple is felt on the bodies, not on the clock');
+  assert.equal(swarmJuice._requestHitStop, undefined, 'the sim-slowing request path is gone');
+  assert.equal(h.effects.describeRequests()[SWARM_HITSTOP_SOURCE], undefined);
   swarmJuice.destroy();
 });
 

@@ -83,6 +83,7 @@ const SCREENS = Object.freeze({
   crucibleDraft: () => import('../src/ui/screens/crucibleDraft.js').then((m) => m.crucibleDraftScreen),
   crucibleRefit: () => import('../src/ui/screens/crucibleDraft.js').then((m) => m.crucibleRefitScreen),
   crucibleFortify: () => import('../src/ui/swarmFortifyPanel.js').then((m) => m.crucibleFortifyScreen),
+  pilotCards: () => import('../src/ui/pilotCards.js').then((m) => m.pilotCardsScreen),
   crucibleResults: () => import('../src/ui/screens/crucible.js').then((m) => m.crucibleResultsScreen),
   demoEnd: () => import('../src/ui/screens/demoEnd.js').then((m) => m.demoEndScreen),
   replay: () => import('../src/ui/screens/replay.js').then((m) => m.replayScreen),
@@ -367,7 +368,67 @@ function seedCrucibleRun(gameState, { ruleset, phase, wave, credits, score, fitt
   );
 }
 
+/**
+ * OVH-01b — the Pilot Tree cards over a Swarm run at the between-round draft. The run carries a
+ * dealt hand in run.pilot.offer exactly as the run owner leaves it; the bench stands in for the
+ * owner's two intents (take a card / re-roll) with plain state edits, so --walk answers honestly
+ * without the live node list (src/data/pilotLive.js is empty until effects ship). A second banked
+ * pick deals a second hand after the first choice, as the owner does.
+ *   pilot: 'full' (capstone + evolution + a tier card) | 'short' (purse under the re-roll price) |
+ *          'two' (a hand of two) | 'capstone' (the longest sentence in the tree)
+ */
+function seedPilotCardsShot(shot) {
+  const variant = shot.pilot || 'full';
+  seedCrucibleRun(state, { ruleset: 'swarm', phase: 'draft', wave: 3, credits: variant === 'short' ? 40 : 640, score: 1180 });
+  const run = state.run;
+  const hands = {
+    full: [['conjurer_quick_cast', 'bruiser_newtons_cradle', 'evolution_orbital_saw'],
+      ['gunner_hollow_point', 'rigger_sweet_spot', 'juggernaut_ballast']],
+    short: [['gunner_hollow_point', 'rigger_hummingbird', 'bruiser_billiards'], ['gunner_drum', 'ghost_decoy']],
+    two: [['gunner_gold_thread', 'rigger_second_line'], ['ghost_cold_drift']],
+    capstone: [['rigger_untouchable_wrecking_train', 'conjurer_pull_vortex', 'ghost_undertaker'], ['gunner_drum']],
+  };
+  const sequence = (hands[variant] || hands.full).map((cards) => cards.slice());
+  run.level = 4;
+  run.pilot = {
+    nodes: ['gunner_steady_hands', 'bruiser_heavy_slugs'],
+    points: variant === 'two'
+      ? { gunner: 5, rigger: 3, bruiser: 1 }
+      : { gunner: 5, bruiser: 5, rigger: 5, conjurer: 1 },
+    banked: 2,
+    offer: { cards: sequence.shift(), rerolls: 0 },
+  };
+  state.run = run;
+  state.ui.pilotBreathHold = true;
+  const commit = (event, payload) => bus.emit(event, payload);
+  benchOwnerUnsubs.push(
+    () => { state.ui.pilotBreathHold = false; },
+    bus.on('run:pilotCardRequested', ({ index }) => {
+      const pilot = state.run.pilot;
+      const id = pilot.offer && pilot.offer.cards[index];
+      if (!id) return;
+      const branch = id.split('_')[0];
+      pilot.nodes.push(id);
+      if (id.startsWith('evolution')) { /* evolutions grant no branch point */ } else pilot.points[branch] = (pilot.points[branch] || 0) + 1;
+      pilot.banked = Math.max(0, pilot.banked - 1);
+      pilot.offer = pilot.banked > 0 && sequence.length ? { cards: sequence.shift(), rerolls: 0 } : null;
+      commit('run:pilotCardChosen', { nodeId: id, banked: pilot.banked });
+    }),
+    bus.on('run:pilotRerollRequested', () => {
+      const pilot = state.run.pilot;
+      if (!pilot.offer || state.run.credits < 150) return;
+      state.run.credits -= 150;
+      pilot.offer = { cards: ['bruiser_stagger', 'gunner_quick_vent', 'rigger_long_reel'], rerolls: pilot.offer.rerolls + 1 };
+      commit('run:pilotOfferRerolled', { cards: pilot.offer.cards });
+    }),
+  );
+}
+
 function seedCrucibleShot(screenId, shot) {
+  if (screenId === 'pilotCards') {
+    seedPilotCardsShot(shot);
+    return;
+  }
   if (screenId === 'crucibleFortify') {
     benchOwnerUnsubs.push(seedFortifyBench(state, bus));
     return;
@@ -1776,6 +1837,12 @@ async function mountCrucibleHud() {
   survivalHud._chain = 18;
   survivalHud._chainBest = 24;
   survivalHud._objective = 'ELITE';
+  // OVH-01b: `?levelup=1` — a pick banked and the level-up beat on the glass (the bar's flash and "LEVEL n").
+  if (params.get('levelup')) {
+    run.level = 4;
+    run.pilot = { nodes: [], points: {}, banked: Number(params.get('levelup')) || 1, offer: null };
+    bus.emit('run:levelUp', { level: 4, previousLevel: 3, xp: run.xp, banked: run.pilot.banked });
+  }
   survivalHud.update(1 / 60, state);
   const hudRoot = document.getElementById('hud');
   if (hudRoot) hudRoot.dataset.threat = 'near';

@@ -42,6 +42,7 @@ import {
 import { syncDerivedPhysicsMass } from '../core/physicsAuthority.js';
 import { registerPropulsionScaler, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { pilotHas } from '../data/pilotTree.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((def) => [def.id, def]));
@@ -380,12 +381,17 @@ export function maintainSwarmPlayerMods(state, helpers, dt) {
     mods.hullMaxMult);
 
   // ballast/stripped — mass rides the canonical writer so physicsBody.mass,
-  // inertia and the flat field move together.
+  // inertia and the flat field move together. OVH-01c1 juggernaut_ballast folds the
+  // pick's +30 % into the same multiplier: a plain run reads mods.massMult * 1
+  // bit-identically, and with the node both the hull mass and the physics body
+  // (what collisions and the rope read) grow together.
+  const pilotMassMult = pilotHas(state, 'juggernaut_ballast') ? 1.3 : 1;
+  const massMult = mods.massMult * pilotMassMult;
   const massRec = marks.mass || (marks.mass = { base: player.mass, mult: 1 });
   maintainScalar(massRec,
     () => player.mass,
     (v) => { player.mass = v; },
-    mods.massMult);
+    massMult);
   const body = player.physicsBody;
   if (body && typeof body === 'object' && Number.isFinite(body.mass)) {
     // Inertia is mass×shape: the same multiplier bends both through the one writer.
@@ -397,8 +403,8 @@ export function maintainSwarmPlayerMods(state, helpers, dt) {
       rec.iBase = body.inertiaY;
       rec.mult = 1;
     }
-    if (rec.mult !== mods.massMult) {
-      rec.mult = mods.massMult;
+    if (rec.mult !== massMult) {
+      rec.mult = massMult;
       syncDerivedPhysicsMass(player, rec.base * rec.mult,
         Number.isFinite(rec.iBase) ? rec.iBase * rec.mult : undefined, body.radius);
     }
@@ -442,6 +448,34 @@ export function maintainSwarmPlayerMods(state, helpers, dt) {
     if (w.name !== rec.form) w.name = rec.form;
     if (w.forgeForm !== rec.form) w.forgeForm = rec.form;
   }
+
+  // OVH-01c1 juggernaut_thick_skin — after 4 s without taking damage the armour layer
+  // regrows at 4 % of max per second (the hull when the ship has no armour layer).
+  // lastDamageT is the damage router's own stamp, so any accepted hit restarts the wait.
+  // Armour has no repair route in the combat kernel — the swarm-mods upkeep is the stateful
+  // player-scalar owner, same pattern as the shield/hullMax stamps above. Hull regen routes
+  // through repairCombatHulls in whole-point chunks so combat stays the hull writer.
+  if (pilotHas(state, 'juggernaut_thick_skin')) {
+    const lastHit = Number.isFinite(player.lastDamageT) ? player.lastDamageT : -Infinity;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const armorMax = Math.max(0, Number(player.armorMax) || 0);
+    if (now - lastHit >= 4 && dt > 0) {
+      if (armorMax > 0) {
+        const armor = Number.isFinite(player.armorHp) ? player.armorHp : armorMax;
+        if (armor < armorMax) {
+          player.armorHp = Math.min(armorMax, armor + 0.04 * armorMax * dt);
+        }
+      } else {
+        marks.thickSkinCarry = (Number.isFinite(marks.thickSkinCarry) ? marks.thickSkinCarry : 0)
+          + 0.04 * Math.max(0, Number(player.hullMax) || 0) * dt;
+        const chunk = Math.floor(marks.thickSkinCarry);
+        const repair = chunk >= 1 && helpers && typeof helpers.repairCombatHulls === 'function'
+          ? helpers.repairCombatHulls([{ entityId: player.id, amount: chunk }], 'juggernaut_thick_skin')
+          : null;
+        if (repair && repair.ok === true) marks.thickSkinCarry -= chunk;
+      }
+    } else marks.thickSkinCarry = 0;
+  } else if (marks.thickSkinCarry) marks.thickSkinCarry = 0;
 
   // hot_core take: boosting at the boosted ceiling burns hull through the
   // ordinary damage route — accumulated so the router hears whole points.

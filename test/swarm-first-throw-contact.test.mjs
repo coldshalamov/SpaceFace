@@ -97,6 +97,9 @@ function harness({ runPatch = {}, planPatch = {}, rockPatch = {}, victimPatch = 
     isIntactMawWorksiteBody: () => false,
     queryNearbyEntities: (_state, _center, _radius, _scratch, candidates) => candidates,
     isHostileToPlayer: productionHostility,
+    // OVH-01c2 — masslineImpacts now reads the pilot record (rigger_crane); this fixture is a
+    // pilot-less run, so the port answers the tree's "off means identical" leg.
+    pilotHas: () => false,
   });
   impacts.init({ state, bus });
   return { state, bus, announce, impacts, player, rock, victim, plan,

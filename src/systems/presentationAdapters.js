@@ -603,6 +603,7 @@ export const presentationAdapters = {
       id: cue.id,
       amount,
       reason: 'presentation',
+      cause: 'presentation',
       reducedMotion: motionReduced,
       sourceId: cue.sourceId ?? null,
       targetId: cue.targetId ?? null,

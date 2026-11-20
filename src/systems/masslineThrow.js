@@ -16,6 +16,8 @@
 // state.massline2.throw subtree (outside the sim-snapshot whitelist and the save schema) and cuts
 // the attachment through the same service tetherGameplay uses. The cut itself adds no free speed.
 import { massline2Flag } from '../data/featureFlags.js';
+import { pilotHas } from '../data/pilotTree.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { captureEntitySelection, resolveEntitySelection } from '../ui/sim/stableSelection.js';
 import { sampleThrowSolution, tetherPairKinematics } from '../combat/tetherFireControl.js';
 import { fieldsRelevantAlongCorridor, sampleFieldAcceleration } from '../core/fields/fieldKernel.js';
@@ -328,7 +330,7 @@ export const masslineThrow = {
     const simNow = finite(state.simTime, state.tick / 60);
     if (onNow && this._windowOpenedAtS == null) this._windowOpenedAtS = simNow;
     const windowOpen = this._windowOpenedAtS != null
-      && (simNow - this._windowOpenedAtS < RELEASE_WINDOW_MIN_S || inBand);
+      && (simNow - this._windowOpenedAtS < releaseWindowHoldMinS(state) || inBand);
     if (!windowOpen) this._windowOpenedAtS = null;
     solution.windowOpen = windowOpen;
     runtime.solution = mirrorSolution(runtime.solution, solution);
@@ -630,6 +632,13 @@ export const masslineThrow = {
     const releaseId = `massline:throw:${state.tick}:${payload.id}`;
     const prediction = predictionReceipt(solution);
     const impulses = [];
+    // OVH-01c2 rigger_sweet_spot — a release inside the lit window adds 25 % of the payload's
+    // current speed along the swing the physics already earned. The impulse rides the same
+    // authority every deliberate push uses; the swing's own exit is untouched without the node.
+    const sweetSpotDv = mode === 'snap' && pilotHas(state, 'rigger_sweet_spot')
+      ? queueSpeedFractionImpulse(payload, 0.25)
+      : 0;
+    if (sweetSpotDv > 0) impulses.push({ source: 'pilot_sweet_spot', impulse: null, dvWu: sweetSpotDv });
     runtime.lastThrow = {
       releaseId,
       source: 'massline',
@@ -649,6 +658,7 @@ export const masslineThrow = {
       prediction,
       correction: null,
       impulses,
+      sweetSpotDv,
       cut: {
         accepted: true,
         attachmentId,
@@ -738,6 +748,7 @@ export const masslineThrow = {
     const state = this.state;
     if (!massline2Flag('throw') || !state || state.mode !== 'flight') return;
     if (!this._swing) return;
+    this._whipSnap(state, payload);
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
     if (!player || !player.alive || !player.vel) return;
     const speed = Math.hypot(finite(player.vel.x), finite(player.vel.z));
@@ -760,6 +771,32 @@ export const masslineThrow = {
     this.bus.emit('audio:cue', { id: 'massline.sling', position: { x: player.pos.x, z: player.pos.z } });
   },
 
+  // OVH-01c2 rigger_whip_snap — tapping the reel key mid-swing snaps the line and flings the
+  // latched body at 1.5× its current speed without finishing the swing. tetherGameplay already
+  // performed the ordinary tap-cut (this handler rides its 'tether:cut'); this is the fling
+  // half. A deliberate tap only — the live grammar command — never a round-boundary auto-cut,
+  // and only a genuinely moving payload on a taut line ("mid-swing").
+  _whipSnap(state, payload = {}) {
+    if (!pilotHas(state, 'rigger_whip_snap')) return;
+    if (!this._swing || !this._swing.taut) return;
+    const command = state.input && state.input.actions && state.input.actions.massline;
+    if (!(command && command.cut)) return;
+    const body = payload.targetId != null && state.entities && state.entities.get
+      ? state.entities.get(payload.targetId) : null;
+    if (!body || body.alive === false || !body.vel || body.id === state.playerId) return;
+    const speed = Math.hypot(finite(body.vel.x), finite(body.vel.z));
+    if (speed < THROW_MIN_PAYLOAD_SPEED) return;
+    const dv = queueSpeedFractionImpulse(body, 0.5);
+    if (!(dv > 0)) return;
+    this.bus.emit('massline:whipSnap', {
+      sourceId: state.playerId,
+      payloadId: body.id,
+      dvWu: dv,
+      tick: state.tick,
+    });
+    this.bus.emit('audio:cue', { id: 'massline.throw', position: { x: body.pos.x, z: body.pos.z } });
+  },
+
 };
 
 function combatAttachments(host) {
@@ -775,6 +812,15 @@ export function releaseAssistMode(state) {
   // CADENCE retains M5: 'snap' is the default — the throw releases on the player's press with a 90 ms forgiveness
   // window, never silently on the first solution frame. 'arm' and 'off' remain authored choices.
   return raw === 'arm' || raw === 'off' ? raw : 'snap';
+}
+
+/**
+ * OVH-01c2 rigger_sweet_spot — the lit release window's minimum hold (THROW-02's readability
+ * floor). The pilot who holds the node keeps the window open twice as long, so the perfect
+ * release is twice as easy to catch; the speed burst itself lands in _executeThrow.
+ */
+export function releaseWindowHoldMinS(state) {
+  return RELEASE_WINDOW_MIN_S * (pilotHas(state, 'rigger_sweet_spot') ? 2 : 1);
 }
 
 function ensureThrowSubtree(state) {
@@ -894,6 +940,21 @@ function writeIdle(runtime) {
 function finite(v, fb = 0) { return Number.isFinite(v) ? v : fb; }
 function positive(v, fb) { return Number.isFinite(v) && v > 0 ? v : fb; }
 function clamp01(v) { return Math.max(0, Math.min(1, finite(v))); }
+
+// OVH-01c2 — the Rigger's release pays: rigger_sweet_spot's perfect-release burst (+25 % of
+// current speed) and rigger_whip_snap's mid-swing fling (to ×1.5, i.e. +50 %). One shared push:
+// along the body's own velocity, through the physics authority like every deliberate impulse,
+// on the mass the solver will use. Returns the queued Δv (0 when nothing moved).
+function queueSpeedFractionImpulse(body, fraction) {
+  if (!body || body.alive === false || !body.vel) return 0;
+  const vx = finite(body.vel.x), vz = finite(body.vel.z);
+  const speed = Math.hypot(vx, vz);
+  if (!(speed > 1e-6)) return 0;
+  const mass = Math.max(0.1, finite(body.physicsBody && body.physicsBody.mass, finite(body.mass, 1)));
+  const dv = speed * fraction;
+  queuePhysicsImpulse(body, { x: (vx / speed) * mass * dv, y: 0, z: (vz / speed) * mass * dv });
+  return dv;
+}
 
 const ZERO_VELOCITY = Object.freeze({ x: 0, z: 0 });
 

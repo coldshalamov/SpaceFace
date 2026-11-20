@@ -6,6 +6,7 @@ import { isDynamicPhysicsBodyEntity } from '../physicsAuthority.js';
 import { indexedTypeScan } from '../../world/livingWorldViews.js';
 import { isHostileToPlayer } from '../../systems/scannerReadModel.js';
 import { maxFittedModuleMod } from '../fittedModules.js';
+import { pilotPowerReachScale } from '../../systems/powerVerbs.js';
 
 export const FIELD_EMITTER_TYPE = 'fieldEmitter';
 // The well's velocity-dependent convergence applies to craft; loose bodies and
@@ -54,15 +55,26 @@ export function radialFieldDeployCenter(kind, player, state) {
   if (kind === 'well') {
     const dir = aimDirection(player, state);
     const aw = state.input && state.input.aimWorld;
-    let dist = def.deployRange;
+    // OVH-01c2 conjurer_wide_bore: the well's throw range reaches as far as the pilot's powers do.
+    const deployRange = pilotReachScaled(def.deployRange, player, state);
+    let dist = deployRange;
     if (aw && Number.isFinite(aw.x) && Number.isFinite(aw.z)) {
-      dist = Math.min(def.deployRange, Math.hypot(aw.x - player.pos.x, aw.z - player.pos.z));
+      dist = Math.min(deployRange, Math.hypot(aw.x - player.pos.x, aw.z - player.pos.z));
     }
     dist = Math.max(finite(player.radius, 6) + def.emitterRadius + def.spawnGap, dist);
     cx = player.pos.x + dir.x * dist;
     cz = player.pos.z + dir.z * dist;
   }
   return { x: cx, z: cz };
+}
+
+// OVH-01c2 conjurer_wide_bore — the player's own powers reach ×1.4 (pilot record only; an NPC
+// caller or a run without the node keeps the authored number). Applied inside playerFieldSpec and
+// the well's deploy center so the deploy and the row-493 preview read one scaled volume, which is
+// this file's own contract.
+function pilotReachScaled(value, player, state) {
+  if (!state || !player || player.id !== state.playerId) return value;
+  return value * pilotPowerReachScale(state);
 }
 
 /**
@@ -81,7 +93,7 @@ export function playerFieldSpec(kind, player, state) {
       volume: fieldVolumeOf(def),
       center: { x: player.pos.x + dir.x * def.originGap, z: player.pos.z + dir.z * def.originGap },
       dir,
-      radius: def.radius,
+      radius: pilotReachScaled(def.radius, player, state),
       halfWidth: def.halfWidth,
       strength: def.strength,
       falloff: def.falloff,
@@ -96,7 +108,7 @@ export function playerFieldSpec(kind, player, state) {
     const dir = { x: Math.cos(rot), z: Math.sin(rot) };
     const center = { x: player.pos.x + dir.x * def.originGap, z: player.pos.z + dir.z * def.originGap };
     return {
-      kind: def.kind, center, dir, radius: def.radius, strength: def.strength,
+      kind: def.kind, center, dir, radius: pilotReachScaled(def.radius, player, state), strength: def.strength,
       falloff: def.falloff, halfAngleRad: def.halfAngleRad, edgeSoftRad: def.edgeSoftRad,
       volume: fieldVolumeOf(def),
       durationS: Infinity, ownerId: player.id, team: player.team,
@@ -109,7 +121,7 @@ export function playerFieldSpec(kind, player, state) {
   return {
     kind: def.kind,
     center: radialFieldDeployCenter(kind, player, state),
-    radius: def.radius,
+    radius: pilotReachScaled(def.radius, player, state),
     strength: def.strength,
     // PQ-137.09 — the deploy path never forwarded the authored damping, so the ONE field record
     // the kernel built for a player-deployed Well or Repulsor always read damping 0 no matter

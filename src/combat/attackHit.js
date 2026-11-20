@@ -71,7 +71,7 @@ function statusIdsOf(state, entity) {
   return Object.keys(bag);
 }
 
-function isSurfaceTarget(target) {
+export function isSurfaceTarget(target) {
   if (!target) return false;
   const material = target.surfaceMaterial
     || target.surfaceKind

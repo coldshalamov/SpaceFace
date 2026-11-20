@@ -48,6 +48,7 @@ export { stepAnchorRelativeOrbitAssist } from '../core/flight/orbitAssist.js';
 // gates it behind the opt-in gameplay.pursuitSlotAssist setting (default off).
 import { createPursuitSlot, stepPursuitSlotAssist } from '../core/flight/pursuitSlotAssist.js';
 import { massline2Flag, travelFlag } from '../data/featureFlags.js';
+import { pilotHas } from '../data/pilotTree.js';
 import { raceGridHolding } from './racingSteer.js';
 import { consumePrecisionBoostIntent } from './racingPrecision.js';
 import { entityNeedsFlightStep } from '../world/activityRuntime.js';
@@ -509,6 +510,17 @@ export const flightV3 = {
       const burnerTopSpeedPct = finite(entity.boost && entity.boost.topSpeedPct, 0);
       if (boosting && burnerTopSpeedPct > 0) {
         profile = { ...profile, boostSpeedMult: positive(profile.boostSpeedMult, 1) * (1 + burnerTopSpeedPct) };
+      }
+      // OVH-01c1 juggernaut_run_up — each unbroken second of boost raises the cap by 20 %
+      // of base top speed, ×2 at 5 s; a broken boost drops the bonus. The counter rides a
+      // runtime field like the dash/veil state above — never serialized — so a run without
+      // the node never writes it at all.
+      if (pilotHas(state, 'juggernaut_run_up')) {
+        entity._pilotRunUpS = boosting ? finite(entity._pilotRunUpS, 0) + dt : 0;
+        if (boosting && entity._pilotRunUpS > 0) {
+          profile = { ...profile, boostSpeedMult: positive(profile.boostSpeedMult, 1)
+            * Math.min(2, 1 + 0.2 * Math.min(5, entity._pilotRunUpS)) };
+        }
       }
       applyMasslineFlightModifiers(input, state, this._masslineSlingUntil, this._dashEarnedUntil, this._launchEarnedUntil);
       // Velocity-vectoring assist (design/FEEL_CONTRACT.md §C; docs/TUNING_JOBS.md job 1). A

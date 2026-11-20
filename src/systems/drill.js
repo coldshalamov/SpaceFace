@@ -1536,7 +1536,7 @@ export const drill = {
         pos: { col: d.avatar.col, row: d.avatar.row },
       });
     }
-    this.bus.emit('camera:shake', { amount: payload === 'seismic' ? 0.55 : 0.85 });
+    this.bus.emit('camera:shake', { amount: payload === 'seismic' ? 0.55 : 0.85, cause: 'drill' });
     this.bus.emit('drill:chargeBlast', {
       col: anchor.col,
       row: anchor.row,
@@ -1651,7 +1651,7 @@ export const drill = {
     }
     if (fell.length) {
       this.bus.emit('drill:caveIn', { fell, dropped, span: runLen });
-      this.bus.emit('camera:shake', { amount: 0.7 });
+      this.bus.emit('camera:shake', { amount: 0.7, cause: 'drill' });
     }
   },
 
@@ -1978,7 +1978,7 @@ export const drill = {
               origin: { kind: 'deep_core_gas', asteroidId: d.asteroidId, col: nc, row: nr },
             });
             this.bus.emit('drill:gasHit', { dmg, pos: { col: nc, row: nr } });
-            this.bus.emit('camera:shake', { amount: 0.5 });
+            this.bus.emit('camera:shake', { amount: 0.5, cause: 'drill' });
           }
         }
       }

@@ -3,7 +3,12 @@ export { solveLeadAngle } from '../combat/leadAngle.js';
 import { addEnvironmentHeat } from './environmentMaterials.js';
 import { CRYO_QUENCH, environmentMaterialOf, stampEnvironmentMaterial } from '../data/environmentMaterials.js';
 import { steerAfterBounce } from '../combat/surfaceReflection.js';
-import { applyReflectedVelocity, reflectVelocity } from '../core/surfaceContact.js';
+import {
+  applyReflectedVelocity,
+  isSurfaceContactReceipt,
+  quantizeSurface,
+  reflectVelocity,
+} from '../core/surfaceContact.js';
 // Weapons system (ARCHITECTURE §2.3 step 4 — runs after ai/flight, before physics.integrate).
 // Per tick: cool down + dissipate heat on every weapon instance, steer in-flight homing
 // projectiles, build/decay missile locks, then fire — for the player (state.input.fire / group 1)
@@ -39,6 +44,7 @@ import {
 import { isHostileToPlayer } from './scanner.js';
 import { cloakHidesEntityFrom } from './cloak.js';
 import { towedLureSignature } from '../ai/towedLure.js';
+import { temperamentFor } from '../ai/temperament.js';
 import { lockLineageSuppressed } from './countermeasures.js';
 import { targetIdentityGeneration } from '../ai/perception.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
@@ -58,6 +64,9 @@ import {
 } from '../combat/attackSpec.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, queueProjectileContinuation } from '../core/physicsAuthority.js';
 import { queryPhysicalBodies, deliverPhysicalImpulseDetailed, deliverPhysicalImpulse, deliverPhysicalAcceleration, schedulePhysicalBlast } from '../combat/physicalEffects.js';
+import { pilotHas } from '../data/pilotTree.js';
+import { gunFamilyOf } from '../data/gunFamilies.js';
+import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import { isEnvironmentalBody } from '../core/physicalResponse.js';
 import { clearEmergentRay, launchEmergent, setEmergentRay } from './emergentPrimitives.js';
 import {
@@ -81,6 +90,7 @@ import { getCombatKernel } from '../combat/kernel.js';
 import {
   armAttackContinue,
   collectAttackCandidates,
+  isSurfaceTarget,
   requestAttackContinue,
   resolveLiveAttackHit,
 } from '../combat/attackHit.js';
@@ -108,6 +118,13 @@ import {
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
+
+// CW-WPN (INV-21 item 4) — a real turret slew. A turret cradle carries its own world bearing,
+// converges on the firing solution at no more than this rate, and releases a round only when the
+// barrel is on that solution. A close, fast orbit out-turns a capital battery; a stationary hull
+// is still punished. The design's ceiling is 1.5 rad/s (03_COMBAT.md:280).
+export const TURRET_SLEW_RAD_S = 1.5;
+export const TURRET_ON_SOLUTION_RAD = 1.0 * RAD;
 
 // SEED-SW-22 — bodies the Debris Orbit will claim. Loose room matter only; the list stays
 // narrow so the ring can never reach out and pin a hull.
@@ -414,6 +431,94 @@ function armedCooldown(playerGun, rof, fallback, state = null) {
   return effective > 0 ? 1 / effective : fallback;
 }
 
+// OVH-01c3 — the Gunner wave's weapon reads. Every gate reads the run's pilot
+// record through pilotHas and the ship identity through state.playerId, so a
+// run with no pilot record (or an NPC mount) keeps byte-identical behavior.
+
+// gunner_steady_hands — "Your fire does not spread while you move": above 20 %
+// of the governed cruise speed the player's authored spreadDeg collapses to 0.
+// Below the threshold the authored value flows on; NPC mounts add their quiver (below).
+//
+// CW-WPN (INV-21 item 2) — a pilot quiver, not a perfect firing solution. Every NPC mount widens
+// its authored spread by the pilot's temperament aim and by how fast the target crosses the line
+// of fire: a low-aim pilot firing at a strafing target sprays, while the same pilot firing at a
+// stationary target still hits. Pure arithmetic over data the sim already carries — no rng draws,
+// no wall time — so it cannot disturb the weapon stream's draw order.
+export const NPC_QUIVER_AIM_SCALE = 1.5;            // authored spread multiplier at aim = 0
+export const NPC_QUIVER_FLOOR_DEG = 1.8;            // degrees a zero-aim pilot adds to any mount
+export const NPC_QUIVER_LATERAL_DEG_PER_WU_S = 0.02; // crossing WU/s -> extra degrees
+export const NPC_QUIVER_LATERAL_MAX_DEG = 3;        // bound on the crossing term
+
+export function npcQuiverSpreadDeg(authoredDeg, aim, crossWuPerS) {
+  const authored = Number.isFinite(authoredDeg) && authoredDeg > 0 ? authoredDeg : 0;
+  const a = Number.isFinite(aim) ? Math.max(0, Math.min(1, aim)) : 0.55;
+  const cross = Number.isFinite(crossWuPerS) && crossWuPerS > 0 ? crossWuPerS : 0;
+  return authored * (1 + (1 - a) * NPC_QUIVER_AIM_SCALE)
+    + NPC_QUIVER_FLOOR_DEG * (1 - a)
+    + Math.min(NPC_QUIVER_LATERAL_MAX_DEG, cross * NPC_QUIVER_LATERAL_DEG_PER_WU_S);
+}
+
+// The same mass bands the sensor self carries (src/systems/aiPorts.js operationalMassBand), so a
+// gun's quiver reads the pilot the planner gave the hull rather than a second weight table.
+function quiverMassBand(e) {
+  const mass = Number(e && e.mass);
+  if (!Number.isFinite(mass) || mass <= 0) return null;
+  return mass < 40 ? 'light' : mass < 140 ? 'medium' : mass < 700 ? 'heavy' : 'capital';
+}
+
+// Perpendicular closing speed of the target across this mount's line of fire. A target running
+// straight at or away from the shooter is an easy prediction; a target crossing the line is the
+// one a pilot can guess wrong. Relative velocity, so a fast shooter's own sweep counts.
+function targetCrossSpeed(e, target) {
+  if (!e || !target || !e.pos || !target.pos) return 0;
+  const dx = (Number(target.pos.x) || 0) - (Number(e.pos.x) || 0);
+  const dz = (Number(target.pos.z) || 0) - (Number(e.pos.z) || 0);
+  const dist = Math.hypot(dx, dz);
+  if (!(dist > 1e-6)) return 0;
+  const ux = dx / dist;
+  const uz = dz / dist;
+  const rvx = (Number(target.vel && target.vel.x) || 0) - (Number(e.vel && e.vel.x) || 0);
+  const rvz = (Number(target.vel && target.vel.z) || 0) - (Number(e.vel && e.vel.z) || 0);
+  return Math.abs(rvx * -uz + rvz * ux);
+}
+
+function gunnerSpreadDeg(e, def, isPlayer, state, target = null) {
+  const authored = def && Number.isFinite(def.spreadDeg) ? def.spreadDeg : 0;
+  if (!isPlayer) {
+    const doctrineId = e && e.data && e.data.ai ? e.data.ai.combatDoctrineId || null : null;
+    const seed = (state && state.meta && state.meta.seed) || 1;
+    const t = temperamentFor(e && e.id, { seed, doctrineId, massBand: quiverMassBand(e) });
+    return npcQuiverSpreadDeg(authored, t.aim, targetCrossSpeed(e, target));
+  }
+  if (!(authored > 0) || !pilotHas(state, 'gunner_steady_hands')) return authored;
+  const cruise = resolveGovernedCombatSpeed(e, state, 0);
+  if (!(cruise > 0)) return authored;
+  const speed = Math.hypot(Number(e && e.vel && e.vel.x) || 0, Number(e && e.vel && e.vel.z) || 0);
+  return speed > cruise * 0.2 ? 0 : authored;
+}
+
+// gunner_drum — "Your heat bar is twice as long." The doubled capacity is
+// stamped once onto the mount instance so every heatMax read — the vent peg
+// and dump, the fire gate, readiness, the HUD bar — agrees on one number. The
+// pre-stamp presence is remembered so a respec can restore the authored bar
+// instead of leaving a halved (or invented) one behind.
+function applyPilotHeatDrum(state, e, w, def) {
+  if (!e || e.id !== (state && state.playerId) || !w) return;
+  if (pilotHas(state, 'gunner_drum')) {
+    if (w._drumApplied === true) return;
+    const base = w.heatMax != null ? w.heatMax : def.heatMax;
+    if (!(Number.isFinite(base) && base > 0)) return;
+    w._drumApplied = true;
+    w._drumHadHeatMax = w.heatMax != null;
+    w.heatMax = base * 2;
+  } else if (w._drumApplied === true) {
+    if (w._drumHadHeatMax) w.heatMax /= 2;
+    else delete w.heatMax;
+    delete w._drumApplied;
+    delete w._drumHadHeatMax;
+  }
+}
+
 
 export const weapons = {
   name: 'weapons',
@@ -485,6 +590,9 @@ export const weapons = {
         });
       }
       this._onAttackHit(payload);
+      // OVH-01c3 gunner_ricochet — a player round the spec layer did not keep
+      // flying gets one skip off rock and walls at 80 % speed.
+      tryGunnerRicochet(this, payload);
     });
     // Linked shield pylons (packet 06): physics stopped a hostile round at a wall. An explosive round
     // detonates at the accepted intercept point, on the attacker's side; the blast is then occluded
@@ -709,7 +817,12 @@ export const weapons = {
     for (const e of ships) {
       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
       const intent = e.data && e.data.intent;
+      // OVH-01c1 bruiser_stagger — a kicked hull is gun-deaf until its stamp's sim-time
+      // window closes. The field only ever exists after a player kick stamped it.
+      const staggered = !!(e.data && Number.isFinite(e.data.kickStaggerUntil)
+        && e.data.kickStaggerUntil > (Number.isFinite(state.simTime) ? state.simTime : 0));
       const firing = !!(intent && intent.fire)
+        && !staggered
         && presentationAllowsPlayerFacingAction(e, state)
         && mothlightAllowsFire(state, e);
       if (e.physicsSleeping === true && !firing) continue;
@@ -823,6 +936,7 @@ export const weapons = {
           const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
           const dissip = baseDissip * WEAPON_RECHARGE_MULT * weaponHeatDissipScale(state, player);
           if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
+          applyPilotHeatDrum(state, player, w, def);   // OVH-01c3 gunner_drum
         }
         applyCryoQuench(state, player, dt, this._quenchHooks());
         this._tickVent(player, dt, state);
@@ -848,12 +962,24 @@ export const weapons = {
       if (e.physicsSleeping === true && !npcWeaponsNeedTick(e, state)) continue;
       const ws = e.data && e.data.weapons;
       if (ws) {
+        const intent = e.data && e.data.intent;
+        // CW-WPN item 4: a turret cradle between shots still traverses at the same slew limit.
+        // Firing ticks step in _serviceProjectileWeapon; stepping here too would double the rate,
+        // so this pass only owns the idle traverse (and the return-to-nose of a turret with no aim).
+        const firingIntent = !!(intent && intent.fire);
+        const idleTurret = !firingIntent && e.id !== state.playerId;
+        const idleAim = intent && Number.isFinite(intent.aimAngle) ? intent.aimAngle : e.rot;
         for (const w of ws) {
           const def = this._byId.get(w.defId) || {};
           if (w._cooldown > 0) w._cooldown = Math.max(0, w._cooldown - dt);
           const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
           const dissip = baseDissip * WEAPON_RECHARGE_MULT * weaponHeatDissipScale(state, e);
           if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
+          applyPilotHeatDrum(state, e, w, def);   // OVH-01c3 gunner_drum
+          if (idleTurret && this._isTurretMount(w, def)
+            && (w.tracking || def.tracking) !== 'homing') {
+            this._stepTurretBearing(e, w, def, idleAim, dt);
+          }
         }
         applyCryoQuench(state, e, dt, quenchHooks);
         // Forced-vent lockout (player only) — see WEAPON_VENT_S. Runs after the normal cooldown so a
@@ -1267,6 +1393,15 @@ export const weapons = {
     const ws = e.data && e.data.weapons;
     if (!ws || !ws.length) return;
     if (firing && !isPlayer && !npcFireTargetVisibleOnPlayerRadar(e, state)) firing = false;
+    // OVH-01c3 gunner_spin_up — the held-trigger clock every Hose mount reads.
+    // Ship-level because the trigger is ship-level; plain sim data on the ship's
+    // own data bag (kickStamp precedent) so save/load and the quiet path agree.
+    // Counted before the forced-vent gate below: a vent locks the guns, not the
+    // hand — the stream comes back at the ramp the trigger already earned.
+    if (isPlayer && pilotHas(state, 'gunner_spin_up')) {
+      const bag = e.data;
+      bag.gunnerSpinHeldS = firing ? (bag.gunnerSpinHeldS || 0) + dt : 0;
+    }
     // Forced heat vent (player): while venting, all weapons are locked out — projectiles gate on
     // `firing`, and beams see canFire=false and cool. weaponVentUntil is only ever set for the player.
     if (firing && (state.simTime || 0) < (e.data.weaponVentUntil || 0)) firing = false;
@@ -1502,6 +1637,18 @@ export const weapons = {
   // Projectile weapon: gate on cooldown/cap/heat (+lock/+arc), spawn a projectile, emit combat:fire.
   _serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget, fireGate = null) {
     const pilotAim = isPlayer && state.settings?.gameplay?.controlScheme === 'pilot';
+    const tracking = w.tracking || def.tracking || 'fixed';
+    const isMissile = tracking === 'homing';
+    const isTurret = (w.facing === 'turret') || (tracking === 'auto_turret');
+    // CW-WPN item 4: step the cradle before the cooldown gate. A battery must traverse on every
+    // firing tick, not one step per released round, or its real slew would read as a slow crab.
+    let turretSolution = null;
+    if (isTurret && !isMissile && !isPlayer) {
+      const bTgt = forceTarget || this._resolveTarget(e);
+      const bSpeed = w.projSpeed != null ? w.projSpeed : def.projSpeed || 1;
+      turretSolution = bTgt && bTgt.pos ? this._arcadeMountAngle(e, w, bTgt, bSpeed) : e.rot;
+      this._stepTurretBearing(e, w, def, turretSolution, dt);
+    }
     if ((w._cooldown || 0) > 0) return capLeft;
     if (this._releaseMomentumSinkIfReady(e, w, def, state)) return capLeft;
 
@@ -1527,9 +1674,6 @@ export const weapons = {
       return capLeft;
     }
 
-    const tracking = w.tracking || def.tracking || 'fixed';
-    const isMissile = tracking === 'homing';
-    const isTurret = (w.facing === 'turret') || (tracking === 'auto_turret');
     const mountProjSpeed = w.projSpeed != null ? w.projSpeed : def.projSpeed || 1;
     // A mixed battery may carry shells, bolts, and plasma at different speeds. Re-solve for this
     // mount instead of reusing the representative primary-gun angle; otherwise every non-primary
@@ -1590,11 +1734,22 @@ export const weapons = {
         ? mountGate.muzzleAngle
         : (isPlayer
           ? this._leadAngle(e, tgt, mountProjSpeed)
-          : this._arcadeMountAngle(e, w, tgt, mountProjSpeed));
+          : (turretSolution != null ? turretSolution : this._arcadeMountAngle(e, w, tgt, mountProjSpeed)));
       const arc = w.gimbalArc != null ? w.gimbalArc : (def.turretArcDeg ? def.turretArcDeg * RAD : Math.PI);
       // turret arc is measured about the hull centre; outside it the mount can't bear.
       if (!arcadeAim && Math.abs(wrapAngle(aim - e.rot)) > arc / 2) return capLeft;
-      dir = arcadeAim && !mountGate ? this._arcadeMountAngle(e, w, arcadeTarget, mountProjSpeed) : aim;
+      // CW-WPN item 4: an NPC battery fires only once its cradle is on the solution. A knife-range
+      // orbit the traverse cannot follow keeps the barrel off the aim and the gun silent — the
+      // "mosquito" answer. Spread is read once and widened into the tolerance so the gate and the
+      // round agree; the released round leaves along the barrel, not along a snapped ideal line.
+      const spreadDeg = gunnerSpreadDeg(e, def, isPlayer, state, tgt);
+      if (!isPlayer && turretSolution != null) {
+        const tol = Math.max(TURRET_ON_SOLUTION_RAD, spreadDeg * RAD);
+        if (Math.abs(wrapAngle(w._turretAngle - turretSolution)) > tol) return capLeft;
+        dir = w._turretAngle + (spreadDeg ? this._spread(spreadDeg) : 0);
+      } else {
+        dir = arcadeAim && !mountGate ? this._arcadeMountAngle(e, w, arcadeTarget, mountProjSpeed) : aim;
+      }
     } else {
       // Tether-lock solution gate (massline2.fireControl, player only): withhold the round unless
       // the barrel — after gimbal clamp, before spread — can actually lie on the solution this
@@ -1602,8 +1757,13 @@ export const weapons = {
       // released round is a hit candidate. Tolerance is the target-size-honest solution window
       // widened to at least the mount's own spread (a gate tighter than the spread would starve
       // fire without improving hits).
+      // OVH-01c3 gunner_steady_hands — the player's barrel spread collapses while the
+      // ship is actually moving (> 20 % of governed cruise). One read feeds the withhold
+      // gate, the gimbal cone and the pilot scheme so gate and round can never disagree.
+      const spreadDeg = gunnerSpreadDeg(e, def, isPlayer, state,
+        isPlayer ? null : (arcadeTarget || this._resolveTarget(e)));
       if (mountGate && !arcadeAim && !pilotAim) {
-        const spreadRad = (def.spreadDeg != null ? def.spreadDeg : 0) * RAD;
+        const spreadRad = spreadDeg * RAD;
         const gateTol = Math.max(mountGate.tolRad, spreadRad + 0.5 * RAD);
         const bareDir = this._hardpointDir(e, w, mountGate.muzzleAngle, 0);
         if (Math.abs(wrapAngle(bareDir - mountGate.muzzleAngle)) > gateTol) return capLeft;
@@ -1624,8 +1784,8 @@ export const weapons = {
         ? (mountGate ? fixedAim : this._arcadeMountAngle(e, w, arcadeTarget, mountProjSpeed))
         // Pilot means keyboard flight plus independent mouse fire. Keep the physical muzzle,
         // projectile travel and spread; only the obsolete nose-cone restriction is removed.
-        : pilotAim ? fixedAim + (def.spreadDeg ? this._spread(def.spreadDeg) : 0)
-          : this._hardpointDir(e, w, fixedAim, def.spreadDeg != null ? def.spreadDeg : 0);
+        : pilotAim ? fixedAim + (spreadDeg ? this._spread(spreadDeg) : 0)
+          : this._hardpointDir(e, w, fixedAim, spreadDeg);
     }
 
     const spec = this._attackSpecFor(w, def, state, e);
@@ -1642,7 +1802,14 @@ export const weapons = {
       if (w._heat >= heatMax) this._beginVent(e, state, w);
     }
     const rof = w.rof != null ? w.rof : def.rof || 0;
-    w._cooldown = armedCooldown(isPlayer, rof, 0.1, state);
+    // OVH-01c3 gunner_spin_up — the Hose stream spools while the player holds
+    // the trigger: cadence ×(1 + 0.4·held s), capped ×1.8 at two seconds. The
+    // held clock lives on the ship (stamped in _serviceShip); release resets it.
+    const spinScale = isPlayer && pilotHas(state, 'gunner_spin_up')
+      && gunFamilyOf(w.defId) === 'hose'
+      ? Math.min(1.8, 1 + 0.4 * Math.max(0, Number(e.data && e.data.gunnerSpinHeldS) || 0))
+      : 1;
+    w._cooldown = armedCooldown(isPlayer, rof, 0.1, state) / spinScale;
 
     // consume missile lock so each missile needs a fresh lock
     if (isMissile && e.data.combat) { e.data.combat.lockProgress = 0; }
@@ -1995,6 +2162,9 @@ export const weapons = {
       }
     }
     if (result.consume) this._attackLive.delete(projectile.id);
+    // OVH-01c3: a spec-kept continuation marks the emit so the pilot's ricochet
+    // does not stack a second bounce onto the authored one.
+    payload.attackContinued = result.consume === false;
     stampHitCausal(payload, live, result);
   },
 
@@ -2602,8 +2772,43 @@ export const weapons = {
   // Approx gaussian spread (sum of two uniforms) in radians, from our own deterministic stream.
   _spread(spreadDeg) {
     if (!spreadDeg) return 0;
+    // A mount serviced without init() (a direct focused fixture) has no weapons stream to draw
+    // from; the production system always binds one in init(). Never crash the shot for it.
+    if (typeof this._rng !== 'function') return 0;
     const g = (this._rng() + this._rng() - 1); // ~[-1,1], triangular
     return g * spreadDeg * RAD;
+  },
+
+  // CW-WPN item 4: a turret is a traversing cradle, not a hull-locked gun. `w._turretAngle` is
+  // the barrel's current world bearing; it steps toward the requested aim at the slew limit and is
+  // dragged inside its stops when the hull turns under it. Player turrets keep their authored
+  // instant aim (the ring is the player's own hand); enemy capital/heavy mounts get the real cradle.
+  _isTurretMount(w, def) {
+    const tracking = (w && w.tracking) || (def && def.tracking) || 'fixed';
+    return !!(w && (w.facing === 'turret' || tracking === 'auto_turret'));
+  },
+
+  _stepTurretBearing(e, w, def, aimAngle, dt) {
+    const arc = w.gimbalArc != null ? w.gimbalArc
+      : (def && def.turretArcDeg ? def.turretArcDeg * RAD : Math.PI);
+    const half = Math.max(0, arc) / 2;
+    const hull = Number.isFinite(e && e.rot) ? e.rot : 0;
+    const solve = Number.isFinite(aimAngle) ? aimAngle : hull;
+    let bearing = Number.isFinite(w._turretAngle) ? w._turretAngle : hull;
+    // The hull turned; a cradle already at its stop is pushed along rather than left outside it.
+    const rel = wrapAngle(bearing - hull);
+    if (rel > half) bearing = hull + half;
+    else if (rel < -half) bearing = hull - half;
+    const maxStep = TURRET_SLEW_RAD_S * (Number.isFinite(dt) && dt > 0 ? dt : 1 / 60);
+    const delta = wrapAngle(solve - bearing);
+    if (delta > maxStep) bearing += maxStep;
+    else if (delta < -maxStep) bearing -= maxStep;
+    else bearing = solve;
+    const relAfter = wrapAngle(bearing - hull);
+    if (relAfter > half) bearing = hull + half;
+    else if (relAfter < -half) bearing = hull - half;
+    w._turretAngle = bearing;
+    return bearing;
   },
 
   // ---- Phase 2: hardpoint facing + gimbal + muzzle offsets --------------------------------
@@ -2901,13 +3106,42 @@ export function applyProjectilePhysicalContact(host, payload) {
   const source = packet?.source || {};
   if (Math.hypot(ix || 0, iz || 0) > 0 && (!source.impulseProvenance || combatFlag('weaponImpulseConsequences'))) {
     const provenance = { actorId: payload.ownerId ?? projectile.ownerId, weaponId: data.weaponId, tag: source.impulseProvenance || 'weapon_hit', appliedTick: state.tick };
+    // OVH-01c1 bruiser_heavy_slugs — a Thump-family shot from the player carries 30 % more kick
+    // (impulse, never damage): scale the delivered momentum before the physics read.
+    if (provenance.actorId === state.playerId
+      && pilotHas(state, 'bruiser_heavy_slugs')
+      && gunFamilyOf(data.weaponId) === 'thump') {
+      ix *= 1.3;
+      iz *= 1.3;
+    }
     const delivery = deliverPhysicalImpulseDetailed(state, target, { x: ix || 0, z: iz || 0 },
       { ...provenance, provenance, point: payload.pos, maxTorque: packet?.tumbleTorque },
       // Scenery contacts obey the same authored momentum as the damage route.
       { port: host.helpers?.combatPhysics, scaleEnvironment: false,
         referenceImpulse: isEnvironmentalBody(target) ? source.environmentImpulse : undefined });
     if (delivery.accepted) {
-      recordImpulseProvenance(target, { ...provenance, magnitude: Math.hypot(delivery.impulse.x, delivery.impulse.z) });
+      // OVH-01c1 kick stamp — "a body you kicked" is the player-authored slice of this same
+      // provenance record: { by, at, impulse } written once, here, the player-projectile impulse
+      // site. Fresh for KICK_STAMP_WINDOW_S of sim time (readKickStamp).
+      const playerKick = provenance.actorId === state.playerId && target.id !== state.playerId;
+      recordImpulseProvenance(target, {
+        ...provenance,
+        magnitude: Math.hypot(delivery.impulse.x, delivery.impulse.z),
+        ...(playerKick ? {
+          by: provenance.actorId,
+          at: Number.isFinite(state.simTime) ? state.simTime : 0,
+          impulse: { x: delivery.impulse.x, z: delivery.impulse.z },
+          kickHops: 0,
+        } : {}),
+      });
+      // OVH-01c1 bruiser_stagger — a body the player kicked cannot fire for 1 s of sim time.
+      // weapons owns the NPC fire gate (the `firing` read below); the stamp is plain data on
+      // the victim's own data bag so save/load and entity lifecycle behave like arenaSlamAt.
+      if (playerKick && pilotHas(state, 'bruiser_stagger')
+        && (target.type === 'ship' || target.type === 'drone')) {
+        const bag = target.data || (target.data = {});
+        bag.kickStaggerUntil = (Number.isFinite(state.simTime) ? state.simTime : 0) + 1;
+      }
       if (combatFlag('weaponImpulseConsequences') && target.id !== state.playerId) {
         const owner = state.entities.get(provenance.actorId);
         publishHitstunImpulse(host.bus, { source: 'gun', victimId: target.id, attackerId: provenance.actorId,
@@ -3136,6 +3370,67 @@ function serviceOpticRekindle(host, state) {
   const emit = host.bus ? (name, payload) => host.bus.emit(name, payload) : null;
   const rekindled = tickOpticRekindle(due, now, state.world && state.world.opticSpent, emit);
   for (const record of rekindled) if (record.targetId != null) watch.delete(record.targetId);
+}
+
+/**
+ * OVH-01c3 gunner_ricochet — "Your bullets bounce once off rock and walls."
+ * A player round meeting a surface the spec layer did not continue reflects
+ * about the contact normal at 80 % of its incoming speed — once — and keeps its
+ * packet for whatever it reaches next. Layered under the authored spec: a
+ * traited bounce (bank_stream, the disc) keeps its own continuation
+ * (`payload.attackContinued`), so the pilot's skip only saves a round that
+ * would otherwise die on the wall. The same body flies on: arm+request swallow
+ * the kill write physics issues after this emit, and the queued continuation —
+ * the same membrane a spec ricochet uses — turns the real Rapier body next step.
+ */
+function tryGunnerRicochet(host, payload) {
+  const state = host && host.state;
+  if (!state || !pilotHas(state, 'gunner_ricochet')) return false;
+  if (!payload || payload.attackContinued === true) return false;
+  if (payload.ownerId !== state.playerId) return false;
+  const entities = state.entities;
+  const projectile = entities && entities.get(payload.projectileId);
+  if (!projectile || projectile.type !== 'projectile' || projectile.alive === false) return false;
+  const data = projectile.data || (projectile.data = {});
+  if (data.kind !== 'bullet' || data.gunnerRicochetSpent === true) return false;
+  const target = entities.get(payload.targetId);
+  if (!isSurfaceTarget(target)) return false;
+  const receipt = payload.receipt;
+  if (!isSurfaceContactReceipt(receipt)) return false;
+  const tick = Number.isInteger(state.tick) ? state.tick : 0;
+  // A receipt from another tick, or for another round or surface, cannot authorize this contact.
+  if (receipt.tick !== tick) return false;
+  if (receipt.projectileId != null && receipt.projectileId !== projectile.id) return false;
+  if (receipt.surfaceId != null && receipt.surfaceId !== target.id) return false;
+  const surfaceVelocity = receipt.surfaceVelocity && Number.isFinite(receipt.surfaceVelocity.x)
+    ? receipt.surfaceVelocity
+    : { x: 0, z: 0 };
+  const relative = receipt.relativeVelocity && Number.isFinite(receipt.relativeVelocity.x)
+    && Number.isFinite(receipt.relativeVelocity.z)
+    ? receipt.relativeVelocity
+    : {
+      x: (receipt.velocity ? receipt.velocity.x : 0) - surfaceVelocity.x,
+      z: (receipt.velocity ? receipt.velocity.z : 0) - surfaceVelocity.z,
+    };
+  if (!(Math.hypot(relative.x, relative.z) > 0)) return false;
+  const reflected = reflectVelocity(relative, receipt.normal);
+  // 80 % of the incoming speed in the surface's frame, then ride the surface —
+  // a fixed wall's surface velocity is zero, so the round leaves at 0.8|v|.
+  const outgoing = {
+    x: quantizeSurface(reflected.x * 0.8 + surfaceVelocity.x),
+    z: quantizeSurface(reflected.z * 0.8 + surfaceVelocity.z),
+  };
+  data.gunnerRicochetSpent = true;
+  armAttackContinue(projectile);
+  requestAttackContinue(projectile);
+  queueProjectileContinuation(projectile, {
+    velocity: outgoing,
+    yaw: Math.atan2(outgoing.z, outgoing.x),
+    tick,
+  });
+  const owner = projectile.ownerId != null ? entities.get(projectile.ownerId) : null;
+  refreshFlightAfterBounce(projectile, owner && owner.pos);
+  return true;
 }
 
 function suppressHitPayload(payload) {

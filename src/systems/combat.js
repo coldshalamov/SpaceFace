@@ -684,7 +684,7 @@ export const combat = {
       }
     }
     if (result.ok && targetId === this.state.playerId) {
-      this.bus.emit('camera:shake', { amount: result.shieldBroke ? 0.4 : 0.2 });
+      this.bus.emit('camera:shake', { amount: result.shieldBroke ? 0.4 : 0.2, cause: 'hullHitEvent' });
     }
     return result;
   },
@@ -855,7 +855,7 @@ export const combat = {
     // the player's camera at full 0.5 trauma for a kill anywhere in the sector — three times the
     // amplitude of the destruction-VFX shake. The neighbouring emitters in this file are all
     // player-scoped by construction (player hit, player death, respawn) and correctly send none.
-    bus.emit('camera:shake', { amount: 0.5, position: { x: t.pos.x, z: t.pos.z } });
+    bus.emit('camera:shake', { amount: 0.5, position: { x: t.pos.x, z: t.pos.z }, cause: 'kill' });
     const bounty = Math.max(0, Math.round(d.bountyCr || 0));
     if (bounty > 0 && authoredRewardEligible && !shardsOwnKillBurst) {
       bus.emit('economy:grantCredits', { amount: bounty, reason: 'bounty' });
@@ -1073,7 +1073,7 @@ export const combat = {
         source: payload.source || 'after_action',
       };
       this.bus.emit('player:respawn', recoveryReceipt);
-      this.bus.emit('camera:shake', { amount: 0.45 });
+      this.bus.emit('camera:shake', { amount: 0.45, cause: 'respawn' });
       return { ok: true, ...recoveryReceipt };
     } catch (err) {
       console.error('[combat] player recovery failed', err);

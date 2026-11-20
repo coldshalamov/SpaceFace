@@ -409,7 +409,7 @@ export function createCollectorKnots(host) {
         const frac = Math.min(1, mass / K.maxClumpMass);
         host.bus.emit('audio:cue', { id: 'gyre_snare_launch', gain: 0.7 + 0.5 * frac, rate: 1.05 - 0.45 * frac,
           position: { x: core.pos.x, z: core.pos.z } });
-        host.bus.emit('camera:shake', { amount: 0.2 + 0.2 * frac });
+        host.bus.emit('camera:shake', { amount: 0.2 + 0.2 * frac, cause: 'knot' });
       }
       return { ok: true, plan };
     },

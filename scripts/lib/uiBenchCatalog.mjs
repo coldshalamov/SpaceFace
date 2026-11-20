@@ -132,6 +132,11 @@ export const UI_BENCH_SHOTS = Object.freeze([
   { id: 'crucibleDraft', screen: 'crucibleDraft', backdrop: 'world' },
   { id: 'crucible-rearm', screen: 'crucibleDraft', backdrop: 'world', ruleset: 'scored' },
   { id: 'crucible-fortify', screen: 'crucibleFortify', backdrop: 'world' },
+  // OVH-01b: the Pilot Tree cards over the between-round draft (a seeded hand; `pilot` picks which).
+  { id: 'pilot-cards', screen: 'pilotCards', backdrop: 'world' },
+  { id: 'pilot-cards-short', screen: 'pilotCards', backdrop: 'world', pilot: 'short' },
+  { id: 'pilot-cards-two', screen: 'pilotCards', backdrop: 'world', pilot: 'two' },
+  { id: 'pilot-cards-capstone', screen: 'pilotCards', backdrop: 'world', pilot: 'capstone' },
   { id: 'crucible-refit', screen: 'crucibleRefit', backdrop: 'world' },
   { id: 'crucibleRefit', screen: 'crucibleRefit', backdrop: 'world' },
   { id: 'crucible-refit-swarm', screen: 'crucibleRefit', backdrop: 'world', ruleset: 'swarm' },

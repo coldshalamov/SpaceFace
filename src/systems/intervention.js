@@ -264,7 +264,7 @@ export const intervention = {
       kind: 'warn',
       ttl: 6,
     });
-    this.bus.emit('camera:shake', { amount: 0.3 });
+    this.bus.emit('camera:shake', { amount: 0.3, cause: 'announce' });
     this.bus.emit('intervention:available', { ...rec });
     return rec;
   },

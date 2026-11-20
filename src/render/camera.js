@@ -551,6 +551,12 @@ function dampSlewed(current, target, lerp, maxSpeed, dt) {
   return desired;
 }
 
+/** The OVH-06a camera gate (src/render/shakeAdmission.js), when the host attached one. */
+function cameraGateOf(state) {
+  const gate = state && state.render && state.render.cameraGate;
+  return gate && typeof gate.motion === 'function' ? gate : null;
+}
+
 function isMotionReduced(state) {
   return !!(state && state.settings && (
     state.settings.video && state.settings.video.motionReduce
@@ -631,7 +637,7 @@ export function applyMasslineReleaseCameraCue(cameraController, state, payload =
     cameraController.pushZoom(cue.zoomFactor, cue.durationS);
   }
   if (cue.pullWu > 0 && cameraController && typeof cameraController.impactKick === 'function') {
-    cameraController.impactKick(cue.pullDirX, cue.pullDirZ, cue.pullWu);
+    cameraController.impactKick(cue.pullDirX, cue.pullDirZ, cue.pullWu, 'tether');
   }
   if (state) {
     if (!state.render) state.render = {};
@@ -880,9 +886,13 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
 
   return {
     obj: cam,
-    addTrauma(amount) {
-      const a = Number.isFinite(amount) ? Math.max(0, amount) : 0;
+    addTrauma(amount, cause) {
+      let a = Number.isFinite(amount) ? Math.max(0, amount) : 0;
       if (a <= 0) return;
+      // OVH-06a / R10: with the camera gate attached, every trauma names its cause and the
+      // room's causes (and any untagged caller) are refused here, at the one chokepoint.
+      const gate = cameraGateOf(state);
+      if (gate) { a = gate.motion('trauma', cause, a, state.simTime); if (a <= 0) return; }
       const scale = isMotionReduced(state) ? MOTION_REDUCE_SHAKE_SCALE : 1;
       c.trauma = Math.min(1, Math.max(0, c.trauma || 0) + a * scale);
     },
@@ -891,9 +901,11 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     // add into the shared envelope (opposing kicks cancel, as exchanged momentum does) and clamp
     // to the ceiling. Unlike trauma shake — which scales to 25% under reduced motion — the kick is
     // fully vestibular, so reduce-motion shows none.
-    impactKick(dirX, dirZ, magnitudeWu) {
+    impactKick(dirX, dirZ, magnitudeWu, cause) {
       if (isMotionReduced(state)) return;
-      const mag = Math.min(IMPACT_KICK_WU_MAX, Math.max(0, finiteOr(magnitudeWu, 0)));
+      let mag = Math.min(IMPACT_KICK_WU_MAX, Math.max(0, finiteOr(magnitudeWu, 0)));
+      const gate = cameraGateOf(state);
+      if (gate) { mag = gate.motion('kick', cause, mag, state.simTime); if (mag <= 0) return; }
       const dx = finiteOr(dirX, 0);
       const dz = finiteOr(dirZ, 0);
       const len = Math.hypot(dx, dz);
@@ -998,6 +1010,14 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         capital: opts.capital === true,
         reducedMotion: isMotionReduced(state),
       });
+      // OVH-06a / R10: a kill moves the camera only as a hero beat (a throw kill on a heavy).
+      // Every other kill is felt on the body that died, not at the camera.
+      const killGate = cameraGateOf(state);
+      const killCause = opts.cause === 'throwKillHeavy' ? 'throwKillHeavy' : 'kill';
+      if (killGate && killCause !== 'throwKillHeavy') {
+        killGate.refuse('kill', state.simTime, 'killcam');
+        return null;
+      }
       if (beat.tier === 'light') {
         // G18-03 — the light tier's beat is the directed nudge, not the zoom kiss. It needs the
         // kill direction the presentation receipt carries (opts.direction); a direction-less or
@@ -1007,11 +1027,13 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         const dx = dir && Number.isFinite(dir.x) ? dir.x : 0;
         const dz = dir && Number.isFinite(dir.z) ? dir.z : 0;
         if (dx * dx + dz * dz <= 1e-12) return null;
-        this.impactKick(dx, dz, beat.kickWu);
+        this.impactKick(dx, dz, beat.kickWu, killCause);
       } else {
         if (!beat.zoom && beat.holdS <= 0) return null;
         // A hold is a frozen frame, not vestibular motion — deliberately NOT hold()'s reduce gate.
-        if (beat.holdS > 0 && beat.holdS > _holdT) _holdT = beat.holdS;
+        // OVH-06a: a kill's frozen frame is hitstop, and hitstop belongs to hero beats only.
+        const heldS = beat.holdS > 0 && killGate ? killGate.hitstop(killCause, beat.holdS, state.simTime) : beat.holdS;
+        if (heldS > 0 && heldS > _holdT) _holdT = heldS;
         if (beat.zoom) this.pushZoom(beat.factor, beat.durationS);
       }
       _killBeatLog.push({
@@ -1035,7 +1057,10 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       const cue = resolveStuntHushCameraCue(beat, isMotionReduced(state));
       if (cue.tick == null || cue.tick === _stuntHushTick) return null;
       _stuntHushTick = cue.tick;
-      if (cue.holdS > _holdT) _holdT = cue.holdS;
+      // OVH-06a: the razor-release / slingshot-apex hush is the "perfect release" hero beat.
+      const hushGate = cameraGateOf(state);
+      const hushHoldS = hushGate ? hushGate.hitstop('perfectRelease', cue.holdS, state.simTime) : cue.holdS;
+      if (hushHoldS > _holdT) _holdT = hushHoldS;
       if (cue.zoom) this.pushZoom(cue.zoomFactor, cue.durationS);
       _stuntHushLog.push({ tick: cue.tick, zoom: cue.zoom, holdS: cue.holdS });
       if (_stuntHushLog.length > KILL_BEAT_LOG_CAP) _stuntHushLog.shift();
@@ -1044,9 +1069,13 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     stuntHushLog() { return _stuntHushLog.slice(); },
     // PQ-159.02: freeze chase composition for `durationS` so a rated moment reads. Reduce-motion
     // skips the hold (same vestibular gate as the kick).
-    hold(durationS) {
+    hold(durationS, cause) {
       if (isMotionReduced(state)) return;
-      const d = Math.max(0, finiteOr(durationS, CAMERA_HOLD_S));
+      let d = Math.max(0, finiteOr(durationS, CAMERA_HOLD_S));
+      // OVH-06a / R10: hitstop belongs to hero beats only (40-60 ms, once per 0.8 s). A camera
+      // hold is presentation-only - the simulation never pauses.
+      const gate = cameraGateOf(state);
+      if (gate) { d = gate.hitstop(cause, d, state.simTime); if (d <= 0) return false; }
       if (d > _holdT) _holdT = d;
     },
     holdRemaining() { return _holdT; },
@@ -1055,7 +1084,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       // The picture goes overhead even when reduced motion skips the hold and the zoom.
       _deathCam = true;
       if (isMotionReduced(state)) return;
-      this.hold(DEATH_CAM_HOLD_S);
+      _holdT = Math.max(_holdT, DEATH_CAM_HOLD_S); // the player's death picture is not collision hitstop
       this.pushZoom(DEATH_CAM_PUSH_ZOOM, DEATH_CAM_HOLD_S);
     },
     isDeathCam() { return _deathCam; },

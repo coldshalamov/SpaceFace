@@ -59,13 +59,15 @@ export const PROFILE_GAMEPLAY_PICKERS = Object.freeze({
   // would only duplicate the rule and risk disagreeing with it.
   orbitAssistStrength: (g) => g.orbitAssistStrength,
   targetAssistStrength: (g) => g.targetAssistStrength,
-  damageNumbers: (g) => g.damageNumbers,
+  damageNumbers: (g) => g.damageNumbers === true,
   stuntMoments: (g) => (g.stuntMoments === 'flow' ? 'flow' : 'cinematic'),
   gameSpeed: (g) => normalizeGameSpeed(g.gameSpeed),
   velocityVectoring: (g) => g.velocityVectoring !== false,
   pauseOnFocusLoss: (g) => g.pauseOnFocusLoss !== false,
   // Row 493: Settings → Gameplay → Powers. Only 'press' changes behaviour (powersFireOnPress).
   powerFire: (g) => (g.powerFire === 'press' ? 'press' : 'hold'),
+  // OVH-01b: level-up cards at once (fight at 15 %) instead of at the round's end. Opt-in.
+  pilotPickAtOnce: (g) => g.pilotPickAtOnce === true,
   // FB-001 opt-in chase assist; flightV3 gates on strict `=== true`.
   pursuitSlotAssist: (g) => g.pursuitSlotAssist === true,
   // FB-019 hit pips: on unless explicitly turned off.

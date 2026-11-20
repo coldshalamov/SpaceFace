@@ -50,7 +50,7 @@ import { isAnchoredPhysicalBody } from '../core/physicalResponse.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse, resolvePhysicsBodySpec } from '../core/physicsAuthority.js';
 import { entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
-import { Masks } from '../core/entity.js';
+import { Masks, occupantGenerationOf } from '../core/entity.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { publishHitstunImpulse, recordImpulseProvenance, signedHitSide } from '../combat/impulseKernel.js';
@@ -71,6 +71,13 @@ import { createCollectorKnots } from '../matter/collectorKnot.js';
 import { COLLECTOR_KNOT } from '../data/collectorKnot.js';
 import { isSwarmSpecialistRun, swarmSpecialistKind, SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
 import { swarmFieldRadiusScale, swarmFieldCooldownScale } from './playerModifiers.js';
+import {
+  PILOT_ECHO_DELAY_S,
+  PILOT_ECHO_STRENGTH,
+  pilotHas,
+  pilotPowerCooldownScale,
+  pilotPowerDepthScale,
+} from './powerVerbs.js';
 import { syncRookReceivingBrake, noteRookPadSpawned, resetRookPadIndex, resolveRookPadEntity } from './rookReceivingBrake.js';
 import { syncKesslerDeckDamping } from './kesslerDeckDamping.js';
 
@@ -78,6 +85,13 @@ const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can 
 // PQ-147.01 — NPC tools share the kernel but not the player's four-slot cap.
 const FIELD_NPC_MAX_ACTIVE = 4;
 const NPC_CONE_HOLD_TICKS = 180;
+// OVH-01c2 — Conjurer tuning (Echo's delay/strength live in powerVerbs' shared seam). Combo
+// needs two different powers on one body within this window, and pays out at most once per body
+// per window. PT-FIX-C item 4: at most this many bodies detonate per tick (queued during the
+// force pass, fired from the drain after it — never synchronously, never recursively).
+export const PILOT_COMBO_WINDOW_S = 2;
+export const PILOT_COMBO_MAX_BLASTS_PER_TICK = 8;
+const PILOT_COMBO_LEDGER_CAP = 64;
 // Discover new NPC field deploys on this cadence; live cone geometry stays every tick.
 const NPC_FIELD_PLAN_PERIOD_TICKS = 4;
 // SF-041 (PB-ORD-C): 'mine' rides the loose-body family — a Well/Repulsor cone moves a placed
@@ -462,6 +476,13 @@ export const fields = {
     // Pull collector knots (packet 05): a library between this emitter owner, the shared capture
     // seam and Gyre's thrown-aggregate lifecycle. Runtime only, never serialized.
     this._knots = createCollectorKnots(this);
+    // OVH-01c2 — Conjurer runtime-only state: the pending Echo queue (second fires at half
+    // strength 0.5 s later) and the Combo touch ledger + queue (two different powers on one body
+    // within 2 s detonate — queued during the force pass, fired after it). Cleared with every
+    // other fields boundary in _clearAll.
+    this._pilotEcho = [];
+    this._comboTouches = new Map();
+    this._comboQueue = [];
     ensureRuntime(ctx.state);
     if (this.bus && typeof this.bus.on === 'function') {
       this._lifecycleUnsubs = [
@@ -496,6 +517,10 @@ export const fields = {
         // job this tick, so a cooling repulsor does not read the press as a failure.
         this.bus.on('bombs:commanded', (p) => this._noteShoveDetonation(p)),
         this.bus.on('charge:detonated', (p) => { if (p && p.trigger === 'manual') this._noteShoveDetonation(p); }),
+        // OVH-01c2 conjurer_combo — the Bomb's blast touches every body it reaches; the combo
+        // ledger (this file) already sees the four field powers per tick in _applyForces.
+        this.bus.on('bombs:detonated', (p) => this._noteBombComboTouch(p || {})),
+        this.bus.on('charge:detonated', (p) => this._noteBombComboTouch(p || {})),
       ];
     }
   },
@@ -899,6 +924,9 @@ export const fields = {
     this._fieldForcePass++;
     const rt = ensureRuntime(state);
     this._familyDt = dt;
+    // OVH-01c2 conjurer_echo — a pending second fire lands before any idle/quiet latch can
+    // starve it (the first fire keeps the kernel non-idle for its whole duration anyway).
+    this._drainPilotEcho(state, rt);
     // The set of entity ids a live field claims this tick, published for the activity
     // classifier's FIELD_DRIVEN pin — a shelved hull freezes mid-pull and strands its queued
     // impulses forever. Cleared up front so every no-force path (gate/non-flight/quiet/idle)
@@ -1020,6 +1048,9 @@ export const fields = {
     // _syncEmitters returns nothing; force application happens in _applyForces so the accel sum can
     // be published. Order: geometry settled → forces → publish.
     const applied = this._applyForces(dt, state, rt);
+    // PT-FIX-C item 4 — queued combos fire HERE, after the force pass: iterative, capped, and
+    // never inside the membership loop that queued them.
+    this._drainComboQueue(state);
     this._publish(state, rt, applied.queries, applied.affected, applied.accelSum);
     state.fieldsRuntime = state.fieldsRuntime || {};
     state.fieldsRuntime.quietLatched = false;
@@ -1228,6 +1259,144 @@ export const fields = {
     if (actions.toggleClearingCone) { actions.toggleClearingCone = false; this._toggleCone(state, rt); }
   },
 
+  // ── OVH-01c2 Conjurer: Echo's second fire and the Combo ledger ─────────────────────────────
+
+  /**
+   * conjurer_echo — fire the remembered second shot: the SAME deploy path (a real emitter, a real
+   * kernel field, real force) at the first fire's aim point and radius, at half its strength,
+   * free of the cooldown the first shot started. Sim time only; the queue is bounded and cleared
+   * on every fields boundary.
+   */
+  _drainPilotEcho(state, rt) {
+    const queue = this._pilotEcho;
+    if (!queue || queue.length === 0) return;
+    const now = nowOf(state);
+    for (let i = queue.length - 1; i >= 0; i--) {
+      const rec = queue[i];
+      if (rec.at > now) continue;
+      queue.splice(i, 1);
+      this._deployRadial(state, rt, rec.kind, {
+        free: true,
+        echo: true,
+        center: rec.center,
+        radius: rec.radius,
+        strength: rec.strength,
+        strengthScale: PILOT_ECHO_STRENGTH,
+      });
+    }
+  },
+
+  /** The Bomb's blast touches every body it reaches (bombs.js and impulseCharges receipts).
+   * PT-FIX-C item 4 — a combo's OWN detonation receipt (trigger 'pilot_combo') never touches:
+   * combos must not breed combos, whatever else the blast sets off. */
+  _noteBombComboTouch(payload) {
+    const state = this.state;
+    if (!state || payload.ownerId == null || String(payload.ownerId) !== String(state.playerId)) return;
+    if (payload.trigger === 'pilot_combo') return;
+    if (!Array.isArray(payload.hits)) return;
+    for (const id of payload.hits) {
+      const body = state.entities && state.entities.get ? state.entities.get(id) : null;
+      if (body) this._notePowerComboTouch(state, body, 'bomb');
+    }
+  },
+
+  /** One body's membership in the live player power fields this force pass (Pull/Shove/Rig/Pin). */
+  _noteFieldComboTouches(state, rt, body, fields) {
+    if (!pilotHas(state, 'conjurer_combo')) return;
+    for (let i = 0; i < fields.length; i++) {
+      const verb = this._playerPowerVerbOfField(state, rt, fields[i]);
+      if (verb) this._notePowerComboTouch(state, body, verb);
+    }
+  },
+
+  _playerPowerVerbOfField(state, rt, field) {
+    if (!field || field.ownerId == null || String(field.ownerId) !== String(state.playerId)) return null;
+    const deployed = rt.deployed[field.id];
+    if (deployed && deployed.powerVerb) return deployed.powerVerb;
+    if (rt.coneFieldId === field.id) return 'rig';
+    if (rt.skimFieldId === field.id) return 'rig';
+    if (this._seedLockFieldId === field.id) return 'pin';
+    return null;
+  },
+
+  /**
+   * conjurer_combo — a body touched by two different powers inside PILOT_COMBO_WINDOW_S detonates:
+   * the Bomb's blast at 60 % strength at that body (impulseCharges owns the blast; the detonation
+   * is credited to the player), at most once per body per window. PT-FIX-C item 4: the touch only
+   * QUEUES — the blast fires from _drainComboQueue after the force pass, at most
+   * PILOT_COMBO_MAX_BLASTS_PER_TICK per tick, so a pack of bodies can never recurse or spike a
+   * single tick. The ledger row carries the body's occupant generation, so a recycled id
+   * inherits nothing. Sim time only; cleared with the fields runtime.
+   */
+  _notePowerComboTouch(state, body, power) {
+    if (!pilotHas(state, 'conjurer_combo')) return;
+    if (!body || body.alive === false || body.id === state.playerId || !body.pos) return;
+    const now = nowOf(state);
+    const generation = occupantGenerationOf(body);
+    let rec = this._comboTouches.get(body.id);
+    if (!rec || rec.generation !== generation || now - rec.lastAt > PILOT_COMBO_WINDOW_S) {
+      if (this._comboTouches.size >= PILOT_COMBO_LEDGER_CAP) {
+        // Insertion-order FIFO: the oldest row dies, never the just-touched body.
+        this._comboTouches.delete(this._comboTouches.keys().next().value);
+      }
+      rec = { generation, touches: new Map(), lastAt: now, detonatedAt: -Infinity };
+      this._comboTouches.set(body.id, rec);
+    }
+    let partner = null;
+    for (const [verb, at] of rec.touches) {
+      if (verb !== power && now - at <= PILOT_COMBO_WINDOW_S) { partner = verb; break; }
+    }
+    rec.touches.set(power, now);
+    rec.lastAt = now;
+    if (partner == null || now - rec.detonatedAt < PILOT_COMBO_WINDOW_S) return;
+    // Close the row and queue: "once per body per window" is paid HERE, whether or not this
+    // tick's blast cap has room left for it. The blast itself never runs inside the force pass
+    // or inside a detonation receipt.
+    rec.touches.clear();
+    rec.detonatedAt = now;
+    const queue = this._comboQueue || (this._comboQueue = []);
+    if (queue.length >= PILOT_COMBO_MAX_BLASTS_PER_TICK) return;
+    queue.push({ body, partner, power, at: now });
+  },
+
+  /**
+   * Fire the queued combos — iteratively, after the force pass, at most
+   * PILOT_COMBO_MAX_BLASTS_PER_TICK per tick. Entries the cap cannot serve this tick are spent
+   * (their rows already closed); a blast's own receipt is ignored by _noteBombComboTouch, so
+   * nothing here can re-enter the queue synchronously.
+   */
+  _drainComboQueue(state) {
+    const queue = this._comboQueue;
+    if (!queue || queue.length === 0) return;
+    const charges = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('impulseCharges') : null;
+    if (!charges || typeof charges.comboBlast !== 'function') {
+      queue.length = 0;
+      return;
+    }
+    const now = nowOf(state);
+    let fired = 0;
+    while (queue.length > 0 && fired < PILOT_COMBO_MAX_BLASTS_PER_TICK) {
+      const entry = queue.shift();
+      const body = entry.body;
+      if (!body || body.alive === false || !body.pos) continue;
+      if (now - entry.at > PILOT_COMBO_WINDOW_S) continue; // the window closed while queued
+      const result = charges.comboBlast(state, { x: body.pos.x, z: body.pos.z }, state.playerId, {
+        trigger: 'pilot_combo',
+      });
+      if (!result) continue;
+      fired += 1;
+      this.bus.emit('pilot:comboDetonated', {
+        sourceId: state.playerId,
+        targetId: body.id,
+        powers: [entry.partner, entry.power],
+        pos: { x: body.pos.x, z: body.pos.z },
+        tick: state.tick,
+      });
+    }
+    queue.length = 0;
+  },
+
   _player(state) {
     return state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
   },
@@ -1270,7 +1439,8 @@ export const fields = {
     // held-key preview print the current role and next action.
     let collector = false;
     let replacing = null;
-    if (kind === 'well' && collectorFitted(state)) {
+    const echoDeploy = !!(opts && opts.echo);
+    if (kind === 'well' && !echoDeploy && collectorFitted(state)) {
       const intent = this._knots.intent(state, rt);
       if (intent === 'busy') return;
       if (intent === 'release') {
@@ -1291,8 +1461,10 @@ export const fields = {
     const swarmPhases = collector ? null : oneFeelPhaseTable(kind);
     const deployDurationS = swarmPhases ? swarmPhases.punchS + swarmPhases.fadeS : def.durationS;
     // A01-05 Wide Bore take: power cooldowns read the run ledger's own multiplier.
+    // OVH-01c2 conjurer_quick_cast: …and the pilot record's own (×0.75 with the node).
     const deployCooldownS = (swarmPhases ? oneFeelCooldownS(kind) : def.cooldownS)
-      * swarmFieldCooldownScale(state);
+      * swarmFieldCooldownScale(state)
+      * pilotPowerCooldownScale(state);
     const cd = rt.cooldowns[kind] || 0;
     if (!free && now < cd) {
       rt.lastDenial = { kind, reason: 'cooldown', at: now, readyAt: cd };
@@ -1313,6 +1485,13 @@ export const fields = {
     // radii (swarm drops) pass through untouched below.
     if (Number.isFinite(spec.radius)) spec.radius *= swarmFieldRadiusScale(state);
     if (opts && opts.radius > 0) spec.radius = opts.radius;
+    // OVH-01c2 conjurer_echo — the second fire lands at the aim the first one used, and
+    // conjurer_deep_cast — a held Pull key deepens the well it releases (aimed powers only; the
+    // collector knot and the press-fired Shove keep their authored strength).
+    if (opts && opts.center) spec.center = opts.center;
+    if (kind === 'well' && !collector) spec.strength *= pilotPowerDepthScale(state, 'pull');
+    if (opts && Number.isFinite(opts.strength)) spec.strength = opts.strength;
+    if (opts && opts.strengthScale > 0) spec.strength *= opts.strengthScale;
     const cx = spec.center.x, cz = spec.center.z;
 
     // Replacing an empty collector: recall the old emitter first (its cooldown gate passed above).
@@ -1372,7 +1551,10 @@ export const fields = {
           // S1: the kernel record stays normalized, so the phase table rides the deployed
           // receipt; _applySwarmDeployedPhases rewrites strength/damping each force pass.
           swarmFeelPhases: swarmPhases || undefined,
-          baseStrength: spec.strength, baseDamping: spec.damping || 0 };
+          baseStrength: spec.strength, baseDamping: spec.damping || 0,
+          // OVH-01c2 conjurer_combo — names the power whose field this is (key fires and their
+          // echoes; a swarm drop's one-off free deploy stays unnamed).
+          powerVerb: (!free || echoDeploy) ? (kind === 'well' ? 'pull' : 'shove') : undefined };
     if (!free) rt.cooldowns[kind] = now + deployCooldownS;
     rt.lastDenial = null;
 
@@ -1382,6 +1564,19 @@ export const fields = {
     this._emitDeployCue(kind, cx, cz, spec.radius);
     if (kind === 'well') this._pullMarkLockedTarget(state, player, cx, cz, def.radius, fieldId);
     if (collector) this._knots.publish(state, true);
+    // OVH-01c2 conjurer_echo — the key's own fire schedules its second: half strength, 0.5 s of
+    // sim time later, at this same aim point. The queue is bounded and dies on every boundary.
+    if (!free && !collector && pilotHas(state, 'conjurer_echo')) {
+      const queue = this._pilotEcho || (this._pilotEcho = []);
+      if (queue.length >= 8) queue.shift();
+      queue.push({
+        kind,
+        center: { x: cx, z: cz },
+        radius: spec.radius,
+        strength: spec.strength,
+        at: now + PILOT_ECHO_DELAY_S,
+      });
+    }
     // CV-EAR: no generic UI confirm here — each power's own deploy voice arrives via the
     // fields:deployed → accessibility-cue path in audioSystem.
   },
@@ -1756,6 +1951,11 @@ export const fields = {
     if (this._orbitWorld) resetOrbitWorld(this._orbitWorld);
     this._orbitScanned = false;
     if (this._kernel) this._kernel.clear();
+    // OVH-01c2 — a pending Echo never crosses a boundary, and a stale Combo ledger or queue must
+    // not carry touches into a fresh sector or run.
+    if (this._pilotEcho) this._pilotEcho.length = 0;
+    if (this._comboTouches) this._comboTouches.clear();
+    if (this._comboQueue) this._comboQueue.length = 0;
     this._acceptedFieldAccel = new WeakMap();
     this._fieldForcePass++;
     this._seedLockFieldId = null;
@@ -2098,7 +2298,11 @@ export const fields = {
     // ~0 this tick. The field owns their motion until they leave the radius; the classifier pin
     // keeps their physics body alive for exactly that window.
     const affectedIds = this._affectedIds || (this._affectedIds = new Set());
-    for (const e of affected.keys()) affectedIds.add(e.id);
+    for (const e of affected.keys()) {
+      affectedIds.add(e.id);
+      // OVH-01c2 conjurer_combo — field membership is the power's touch, equilibrium or not.
+      this._noteFieldComboTouches(state, rt, e, affected.get(e));
+    }
     const accel = this._accel;
     let affectedCount = 0, accelSum = 0;
     for (const e of affected.keys()) {

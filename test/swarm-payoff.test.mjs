@@ -82,22 +82,20 @@ test('an empty kills receipt announces nothing', () => {
   swarmJuice.destroy();
 });
 
-test('two pile-ups inside the re-arm gap are one presentation', () => {
+test('two pile-ups in a row never lease simulation time, and the count still climbs', () => {
   const h = boot();
-  // First pile: three physics deaths arm the dip.
+  // First pile: three physics deaths (OVH-06a / R10: no sim dip any more - presentation only).
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   kill(h, { cause: 'ship_collision', surface: 'craft' });
   advance(h, DT);
-  const dipsAfterFirst = h.effects.describeRequests()[SWARM_HITSTOP_SOURCE];
-  assert.ok(dipsAfterFirst, 'the first pile armed the dip');
-  const firstLeft = swarmJuice._hitStopLeft;
-  // Second pile lands while the re-arm gate is shut: the count grows, the dip does not re-top.
+  assert.equal(h.effects.describeRequests()[SWARM_HITSTOP_SOURCE], undefined, 'the first pile leases no time');
+  // Second pile: the count grows, the clock stays free.
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   advance(h, DT);
-  assert.ok(swarmJuice._hitStopLeft <= firstLeft, 'a second pile inside the gap never re-arms');
+  assert.equal(h.effects.describeRequests()[SWARM_HITSTOP_SOURCE], undefined, 'a second pile leases no time either');
   const texts = named(h, 'swarm:announce').map((e) => e.payload.text).filter((t) => t.startsWith('PILE-UP'));
   assert.ok(texts.length >= 2, 'the count still climbs — presentation, not silence');
   swarmJuice.destroy();

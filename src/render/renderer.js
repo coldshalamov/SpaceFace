@@ -429,6 +429,8 @@ import { globalInfrastructureMotion } from './infrastructureMotion.js';
 import { globalProjectileMotion } from './projectileMotionPresentation.js';
 import { globalOrdnanceMotion } from './ordnanceMotionPresentation.js';
 import { createLivingHullPresentation } from './livingHullPresentation.js';
+import { syncHullHitFlash } from './hullHitFlash.js';
+import { resolveVfxAccessibilityProfile as resolveHitFlashAccessibility } from './vfxAccessibility.js';
 import { createCrucibleGhostPresentation } from './crucibleGhost.js';
 import { createPhaseBlinkPresentation, createPhaseBlinkWarmSubject } from './phaseBlinkPresentation.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
@@ -30852,6 +30854,12 @@ export const render = {
         if (entity && runClosures && !farSpeck && userData.livingMachineAwake !== false
             && userData.updateWorldSitePresentation) {
           userData.updateWorldSitePresentation(entity, this.state.simTime, _worldSiteA11y);
+        }
+        // OVH-06b: the two-frame emissive flash on the struck hull (a private material clone swapped
+        // in only while the flash is live; one slot scan per body per frame when idle).
+        if (entity && !farSpeck) {
+          syncHullHitFlash(entity.id, mesh, this.state.simTime,
+            resolveHitFlashAccessibility(this.state.settings).flashOpacityScale < 1);
         }
         if (entity && runClosures && userData.updateDamageState) {
           if (entity.hull !== userData._dmgHull || entity.shield !== userData._dmgShield

@@ -20,6 +20,9 @@
 
 import { PLANET_REGION_RANK } from '../data/planets.js';
 import { swarmCallinCount } from '../data/swarmDraft.js';
+import { pilotHas } from '../data/pilotTree.js';
+// OVH-01c2: re-exported so the power owners (fields, impulseCharges) read the pilot record through this seam.
+export { pilotHas };
 
 /** The five power verbs, in rail and number-row order. */
 export const POWER_VERBS = Object.freeze(['pull', 'shove', 'pin', 'bomb', 'rig']);
@@ -86,7 +89,9 @@ export function powersFireOnPress(state) {
 
 // The held-key preview's read seam (row 493): which power the pilot is gripping right now, keyed
 // by the simulation state it belongs to. input.js writes it; the preview reads it. Presentation
-// only — never on `state`, so it cannot enter a save, a replay or a determinism hash.
+// only — never on `state`, so it cannot enter a save, a replay or a determinism hash. The Deep
+// Cast depth does NOT read this grip: the sim reads the hold measured in the recorded input
+// command (see pilotPowerDepthScale below), so the worker lane and replays agree with live play.
 const heldPowers = new WeakMap();
 export function setHeldPower(state, power) {
   if (!state || typeof state !== 'object') return;
@@ -147,4 +152,59 @@ export function resolveRigTarget(state) {
   const rank = rec ? Number(rec.regionRank) : 0;
   if (rec && Number.isFinite(rank) && rank >= PLANET_REGION_RANK.skim) return 'skim';
   return 'cone';
+}
+
+// ── OVH-01c2 — the Conjurer's Pilot Tree reads (06 §2.2) ────────────────────────────────────
+// One pure seam for every number the tree bends in the five power owners. Each helper reads only
+// the run's pilot record through pilotHas (never state.run.pilot directly) and returns the
+// identity value without it, so a run with no pilot record is byte-identical. The pilot record is
+// the player's own — NPCs never carry one, so no site needs a second owner check beyond the ones
+// that already separate player deploys from NPC ones.
+
+/** conjurer_quick_cast — each power's recovery time × 0.75. */
+export function pilotPowerCooldownScale(state) {
+  return pilotHas(state, 'conjurer_quick_cast') ? 0.75 : 1;
+}
+
+/** conjurer_wide_bore — each power's radius or range × 1.4. */
+export function pilotPowerReachScale(state) {
+  return pilotHas(state, 'conjurer_wide_bore') ? 1.4 : 1;
+}
+
+/** conjurer_echo — the second fire lands this much sim time later (06 §2.2 "half a second"). */
+export const PILOT_ECHO_DELAY_S = 0.5;
+/** conjurer_echo — the second fire's strength fraction. */
+export const PILOT_ECHO_STRENGTH = 0.5;
+
+// conjurer_deep_cast — hold a power key before release to deepen it: strength ×1 at 0.4 s of
+// hold rising to ×1.5 at 1.2 s. A tap (or a press-mode fire, which never opens a grip) is ×1.
+// The hold is measured by the input layer and carried IN THE RECORDED COMMAND (integer sim
+// ticks beside the one-shot action it deepens), so the worker lane, replays and the live sim
+// all read the same depth. The fields exist on the deploy tick only; any other tick is ×1.
+export const POWER_DEPTH_HOLD_MIN_S = 0.4;
+export const POWER_DEPTH_HOLD_MAX_S = 1.2;
+export const POWER_DEPTH_MAX_MULT = 1.5;
+const SIM_TICKS_PER_S = 60;
+const POWER_DEPTH_HOLD_TICKS = Object.freeze({
+  pull: Object.freeze(['deployWellHoldTicks']),
+  shove: Object.freeze(['deployRepulsorHoldTicks']),
+  pin: Object.freeze(['deployMassSeedHoldTicks']),
+  bomb: Object.freeze(['chargeThrowHoldTicks', 'dropBombHoldTicks', 'swarmBombThrowHoldTicks']),
+});
+export function pilotPowerDepthScale(state, power) {
+  if (!power || !pilotHas(state, 'conjurer_deep_cast')) return 1;
+  const fields = POWER_DEPTH_HOLD_TICKS[powerVerbFor(power)];
+  if (!fields) return 1;
+  const actions = state && state.input && state.input.actions;
+  if (!actions) return 1;
+  let holdTicks = 0;
+  for (let i = 0; i < fields.length; i++) {
+    const value = Number(actions[fields[i]]);
+    if (Number.isFinite(value) && value > holdTicks) holdTicks = value;
+  }
+  const minTicks = POWER_DEPTH_HOLD_MIN_S * SIM_TICKS_PER_S;
+  const spanTicks = (POWER_DEPTH_HOLD_MAX_S - POWER_DEPTH_HOLD_MIN_S) * SIM_TICKS_PER_S;
+  if (holdTicks <= minTicks) return 1;
+  const t = Math.min(1, (holdTicks - minTicks) / spanTicks);
+  return 1 + (POWER_DEPTH_MAX_MULT - 1) * t;
 }

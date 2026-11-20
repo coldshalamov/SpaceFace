@@ -354,14 +354,14 @@ test('the chain tier crossing lands its name; a broken chain shatters', () => {
   swarmJuice.destroy();
 });
 
-test('hit-stop dips the world on a big kill through the time-effects channel, then releases', () => {
+test('a big kill never dips the simulation (OVH-06a / R10: hitstop is a presentation hold on hero beats)', () => {
   const h = boot();
   kill(h, { cause: 'direct' });
   kill(h, { cause: 'direct' });
-  kill(h, { cause: 'direct' }); // TRIPLE is a beat worth the dip
-  assert.ok(h.state.timeScale < 1, `the dip is live (timeScale ${h.state.timeScale})`);
+  kill(h, { cause: 'direct' }); // TRIPLE: said, shaken at most as a room event - never a sim slow-down
+  assert.equal(h.state.timeScale, 1, `the clock is untouched (timeScale ${h.state.timeScale})`);
   for (let i = 0; i < 30; i++) advance(h, DT);
-  assert.equal(h.state.timeScale, 1, 'the lease released itself');
+  assert.equal(h.state.timeScale, 1);
   swarmJuice.destroy();
 });
 
@@ -391,14 +391,14 @@ test('the layer is swarm-only: the scored arc and ambient traffic get silence', 
   swarmJuice.destroy();
 });
 
-test('the hit-stop lease cannot outlive the system', () => {
+test('the juice layer holds no time lease at all, so destroy has nothing to release', () => {
   const h = boot();
   kill(h, { cause: 'direct' });
   kill(h, { cause: 'direct' });
   kill(h, { cause: 'direct' });
-  assert.ok(h.state.timeScale < 1);
+  assert.equal(h.state.timeScale, 1);
   swarmJuice.destroy();
-  assert.equal(h.state.timeScale, 1, 'destroy releases the lease');
+  assert.equal(h.state.timeScale, 1);
 });
 
 // --- the sound of the big moments -----------------------------------------------------------

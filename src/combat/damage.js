@@ -30,6 +30,8 @@ import { swarmFortifyDevice, SWARM_FORTIFY_SCHEMA_VERSION } from '../data/swarmF
 import { swarmPilotHasActed } from '../systems/swarmSafety.js';
 import { crossfireDisciplineFor } from '../ai/temperament.js';
 import { ironKrakenCoreDamageMultiplier } from './ironKraken.js';
+import { pilotHas } from '../data/pilotTree.js';
+import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 
 /**
  * Linked shield pylons (packet 06): a pylon endpoint is a destructible body, so hostile fire reaches
@@ -293,6 +295,45 @@ export function createDamageRouter(context, statusService, options = {}) {
     const before = snapshotVitals(target, runtime);
     const model = catalog.damageModel;
     const isPlayerTarget = playerIsDamageTarget(state, target);
+    // OVH-01c1 — Juggernaut take-side gates. Decided BEFORE any shield, armour, subsystem or
+    // hull routing: Ram Plate and Juggernaut mean the contact pays nothing on ANY layer (the
+    // review found a shielded/armoured player still stripped at full damage). One multiplier
+    // folded in beside ramTaken below; it is 1 for every non-player, non-contact packet, so a
+    // run without the nodes is bit-identical and NPC hulls never read it.
+    const srcKind = packet && packet.source && packet.source.kind;
+    const pilotTaken = target.id === state.playerId
+      ? pilotCollisionTakenScale(state, target, packet, origin, srcKind)
+      : 1;
+    if (pilotTaken === 0) {
+      // Nothing reaches a layer, no heat or status either, and lastDamageT is not stamped —
+      // shield regen and Thick Skin's quiet timer keep running. The physical impulse above
+      // still lands: a ram is a push first and damage second.
+      return {
+        ok: true,
+        suppressed: 'pilot_contact_immune',
+        attackerId: input && input.attackerId == null ? null : input.attackerId,
+        targetId: target.id,
+        rawTotal,
+        totalApplied: 0,
+        shieldDamage: 0,
+        armorDamage: 0,
+        hullDamage: 0,
+        hullByChannel: emptyChannels(model.channelOrder),
+        subsystemId: null,
+        subsystemDamage: 0,
+        subsystemResult: null,
+        directionalArc: directional.arc,
+        directionalFactor: directional.factor,
+        ...(coreFactor === 1 ? null : { ironKrakenCoreFactor: coreFactor }),
+        heatApplied: 0,
+        shieldBroke: false,
+        dominantLayer: null,
+        before,
+        after: snapshotVitals(target, runtime),
+        impulseApplied: impulseResult.applied,
+        packet,
+      };
+    }
     // QoL overhaul: As long as the player's shield is up, hull HP is 100% protected (no cheap bypass or penetration bleed-through)
     const penetration = (shieldOnly || (isPlayerTarget && (target.shield || 0) > 0)) ? 0 : clamp01(packet.penetration);
     // Shield bypass (EMP/disable verb, spec §9): a fraction of the damage couples through the
@@ -372,20 +413,41 @@ export function createDamageRouter(context, statusService, options = {}) {
     // ram-taken stamp pay at the ledger's rate. The stamp lives on the player's mutable
     // swarmMods bag (the derived descriptor is frozen); read where the general
     // reduction reads — one clamp, no second packet path.
-    const srcKind = packet && packet.source && packet.source.kind;
     const collisionFamily = (origin && origin.kind === 'collision')
       || (typeof srcKind === 'string' && (srcKind.startsWith('collision') || srcKind === 'ram_plate'));
     const ramTaken = collisionFamily && !structural
       ? clamp(Number(target.data && target.data.swarmMods && target.data.swarmMods.ramDamageTakenMult) || 1, 0, 1)
       : 1;
+    // OVH-01c3 — the Gunner dealt-side gate, folded in beside ramTaken: 1 for
+    // every non-player attack and every shielded or non-weapon hit, so a run
+    // without the node is bit-identical and NPC fire never reads it.
+    const pilotDealt = input && input.attackerId === state.playerId
+      ? pilotGunHullScale(state, target, origin)
+      : 1;
     let hullDamage = 0;
     const hullByChannel = emptyChannels(model.channelOrder);
     for (const channel of model.channelOrder) {
-      const applied = (hullInput[channel] || 0) * positiveMultiplier(model.hullMultipliers[channel]) * damageReduction * ramTaken;
+      const applied = (hullInput[channel] || 0) * positiveMultiplier(model.hullMultipliers[channel]) * damageReduction * ramTaken * pilotTaken * pilotDealt;
       hullByChannel[channel] = applied;
       hullDamage += applied;
     }
     hullDamage = Math.min(Math.max(0, target.hull || 0), hullDamage);
+    // OVH-01c3 gunner_execution — a hull already under 20 % dies to the player's
+    // next hull-reaching WEAPON hit on a combat hull. Routing the full remainder through the
+    // ordinary hullDamage write keeps the kill on the same lethal path (burst, credit);
+    // a packet that never reaches the hull cannot spend the node. Never the player's own hull
+    // (Hot Core tap, self-splash) and never a non-ship target: those are not the node's shot.
+    if (hullDamage > 0
+      && input && input.attackerId === state.playerId
+      && target.id !== state.playerId
+      && origin && origin.kind === 'weapon'
+      && (target.type === 'ship' || target.type === 'drone')
+      && pilotHas(state, 'gunner_execution')) {
+      const hullMax = Number(target.hullMax) || 0;
+      if (hullMax > 0 && (target.hull || 0) / hullMax < 0.2) {
+        hullDamage = Math.max(0, target.hull || 0);
+      }
+    }
     target.hull = Math.max(0, (target.hull || 0) - hullDamage);
     target.lastDamageT = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
     // PIC-31: a hull carried into the damaged band by this hit starts venting where it was
@@ -1111,6 +1173,69 @@ function playerDockProtected(state, target) {
   if (!state || !target || target.id !== state.playerId) return false;
   if (target.flags && target.flags.docked) return true;
   return !!(state.ui && state.ui.docked);
+}
+
+// OVH-01c1 — the physical-contact family for the Juggernaut take-side nodes. Ordinary
+// 'collision' packets plus the run's own contact routes: room-solid slams, crusher jaws,
+// and the brood's body-slam ids. Acid pools, beams and strain blasts share the
+// 'swarm_brood' origin but are not contact damage and stay outside.
+const PILOT_BROOD_SLAM_IDS = new Set(['brood_charger', 'machine_formation', 'brood_tendril']);
+
+/**
+ * The player's collision-damage multiplier under Juggernaut picks. 1 always for non-contact
+ * packets and when the run holds neither node, so an unpicked run is bit-identical.
+ *   juggernaut_ram_plate — bow contacts (within ±60° of the nose) pay nothing below 60 %
+ *     of the governed cruise speed.
+ *   juggernaut_juggernaut — above cruise speed, collision damage taken is zero.
+ */
+function pilotCollisionTakenScale(state, player, packet, origin, srcKind) {
+  const kind = origin && origin.kind;
+  const contact = kind === 'collision' || kind === 'arena_slam' || kind === 'crusher_jaws'
+    || (typeof srcKind === 'string' && (srcKind.startsWith('collision') || srcKind === 'ram_plate'))
+    || (kind === 'swarm_brood' && PILOT_BROOD_SLAM_IDS.has(origin.id));
+  if (!contact) return 1;
+  const cruise = resolveGovernedCombatSpeed(player, state, 0);
+  if (!(cruise > 0)) return 1;
+  const speed = Math.hypot(Number(player.vel && player.vel.x) || 0, Number(player.vel && player.vel.z) || 0);
+  if (pilotHas(state, 'juggernaut_juggernaut') && speed > cruise) return 0;
+  if (pilotHas(state, 'juggernaut_ram_plate') && speed < 0.6 * cruise) {
+    // The contact's direction on the hull: the packet's approach axis first (the direction
+    // the blow travelled), then hit pos relative to the hull centre.
+    const hit = packet && packet.hit;
+    let dx = null;
+    let dz = null;
+    if (hit && hit.approach && (Number.isFinite(hit.approach.x) || Number.isFinite(hit.approach.z))) {
+      dx = Number(hit.approach.x) || 0;
+      dz = Number(hit.approach.z) || 0;
+    } else if (hit && hit.pos && player.pos) {
+      dx = (Number(hit.pos.x) || 0) - (Number(player.pos.x) || 0);
+      dz = (Number(hit.pos.z) || 0) - (Number(player.pos.z) || 0);
+    }
+    if (dx != null) {
+      const rot = Number(player.rot) || 0;
+      const fx = Math.cos(rot);
+      const fz = Math.sin(rot);
+      const along = dx * fx + dz * fz;
+      const lateral = dx * -fz + dz * fx;
+      // |lateral| <= along * tan(60°) with along > 0 ⇔ the contact lands within ±60° of the nose.
+      if (along > 0 && Math.abs(lateral) <= along * Math.tan(Math.PI / 3) + 1e-9) return 0;
+    }
+  }
+  return 1;
+}
+
+// OVH-01c3 — the Gunner dealt-side gate.
+//
+// gunner_hollow_point — "Shots tear unshielded hulls 50 % faster." Read after
+// this packet's own shield absorption, so the shot that strips the last point
+// of shield already counts the hull it exposes; a hull still holding shield
+// (penetrating channels notwithstanding) and every non-weapon origin keep the
+// authored damage. Player fire only — the caller gates on attackerId.
+function pilotGunHullScale(state, target, origin) {
+  if (!pilotHas(state, 'gunner_hollow_point')) return 1;
+  if (!origin || origin.kind !== 'weapon') return 1;
+  if ((Number(target && target.shield) || 0) > 0) return 1;
+  return 1.5;
 }
 
 function clamp01(value) {

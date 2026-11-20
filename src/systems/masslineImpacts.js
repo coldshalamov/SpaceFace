@@ -27,6 +27,7 @@
 
 import { isIntactMawWorksiteBody } from '../missions/mawWorksite.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { pilotHas } from '../data/pilotTree.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isHostileToPlayer } from './scanner.js';
 
@@ -268,6 +269,13 @@ export const masslineImpacts = {
   _emitImpact(runtime, state, now, mass, victim, relSpeed, massSpeed, slung) {
     const tick = Number.isFinite(state.tick) ? state.tick : null;
     const massKg = Math.max(0, finite(mass.mass, 0));
+    // OVH-01c2 rigger_crane — a body still ON your line hits as if it were twice as heavy. This
+    // record's momentum is the damage-relevant read every consumer routes (combat.js's whip
+    // damage on the struck body, masslineImpactDamage's recoil on the club), so the towed mass
+    // reads double there and nowhere else: `mass` above stays the honest tonnage, a released
+    // sling (slung) is the plain throw it always was, and the tracker only ever follows the
+    // player's own line.
+    const towedMassMult = !slung && pilotHas(state, 'rigger_crane') ? 2 : 1;
     const rating = relSpeed >= WHIP_IMPACT_CRUSHING ? 'crushing'
       : relSpeed >= WHIP_IMPACT_SOLID ? 'solid'
       : 'glance';
@@ -289,7 +297,8 @@ export const masslineImpacts = {
       relSpeed,
       massSpeed,
       mass: massKg,
-      momentum: massKg * relSpeed,     // the damage-relevant read for the rung-14 consumer
+      momentum: massKg * relSpeed * towedMassMult, // the damage-relevant read for the rung-14 consumer
+      towedMassMult,
       slung,
       severity: clamp01(relSpeed / WHIP_IMPACT_CRUSHING),
       rating,

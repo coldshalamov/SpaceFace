@@ -79,7 +79,7 @@ test('player shield damage keeps its full feedback; a player-fired shield break 
     bus.emit('combat:damage', { ...participants, brokeShield: true, amount: 60 });
     assert.equal(state.timeScale, 1, 'the shield-break beat is presentation only');
     assert.ok(host._fovPunch > 0, 'a hit on the player keeps its FOV punch');
-    assert.deepEqual(traumas, [0.3]);
+    assert.deepEqual(traumas, [], 'OVH-06a / R10: a shield break under the hard-hit floor adds no camera trauma (the hull answers it)');
     assert.deepEqual(kicks, [], 'the directional kick belongs to the own-shot path, not to getting hit');
     assert.deepEqual(effects.describeRequests(), {});
     host.frame(0.05, state);

@@ -459,6 +459,14 @@ import { CauseMarkLayer } from './vfx/causeMarks.js';
 import { StationNightLightLayer } from './vfx/stationNightLights.js';
 import { collectHullWounds, resolveWoundBeat, resolveWoundMetalHeat, woundWorldPoint } from './vfx/woundSmoke.js';
 import { WOUND_METAL_HEAT_S } from './vfx/woundSmoke.js';
+import { bodyHitEnabled, bodyDamageTier as bodyDamageTierRaw, tierEmitRates, seed01, seedSigned, reflectAxis, corkscrewOffset, BODY_TIER_SPARKS, BODY_TIER_FIRE } from './vfx/bodyHitRead.js';
+import { hullHitFlashBook } from './hullHitFlash.js';
+const _bodyReflectOut = { x: 0, z: 0 };
+// With the A/B switch off the ladder is the old one: smoke from 40 % hull, nothing above it.
+function bodyDamageTier(hull, hullMax) {
+  if (bodyHitEnabled()) return bodyDamageTierRaw(hull, hullMax);
+  return hullMax > 0 && hull > 0 && hull / hullMax < 0.4 ? 1 : 0;
+}
 import { resolveLineShieldSustain, shieldBiteDir } from './vfx/lineShieldBite.js';
 import { BeaconLampLayer } from './beaconLampLife.js';
 import {
@@ -4138,6 +4146,13 @@ export const vfx = {
     const pos = this._posFrom(p, p.targetId);
     if (!pos) return;
     const tgt = this._ent(p.targetId);
+    // OVH-06b: the struck hull flashes for two frames (a hit on bare hull or armor; a held shield
+    // answers with its own ripple instead). One slot write, no allocation.
+    if (tgt && (p.hullHit || p.armorHit) && bodyHitEnabled()) {
+      const maxHull = Number(tgt.hullMax) || 0;
+      const power = maxHull > 0 ? Math.min(1, 0.45 + ((Number(p.amount) || 0) / maxHull) * 4) : 0.7;
+      hullHitFlashBook.noteHit(tgt.id, Number(this.state && this.state.simTime) || 0, power);
+    }
     const fid = (tgt && tgt.factionId) || p.factionId || null;
     const impactProfile = resolveImpactPresentationProfile(p && p.weaponId, p);
     let nx = p && p.normal && Number(p.normal.x);
@@ -4165,6 +4180,25 @@ export const vfx = {
     const normalAngle = Math.atan2(nz, nx);
     const hitRead = impactRead(p);
     const impulseAngle = impactAxisAngle(hitRead);
+    // OVH-06b: a spark spray leaves the hit point along the shot's REFLECTION off the plate, three
+    // seeded streaks fanned a little either side. Bare hull and armor only; a held shield has its own read.
+    if ((p.hullHit || p.armorHit) && bodyHitEnabled() && normalSigned && p.approach
+      && (Number(p.approach.x) || Number(p.approach.z))) {
+      reflectAxis(Number(p.approach.x) || 0, Number(p.approach.z) || 0, nx, nz, _bodyReflectOut);
+      const sprayKey = (this.state && this.state.tick | 0) + (tgt && Number(tgt.id) | 0) * 31;
+      const sprayReduced = this._isReduced();
+      for (let k = 0; k < 3; k++) {
+        const fan = seedSigned(p.attackerId, sprayKey, 101 + k) * 0.5;
+        const c = Math.cos(fan); const sn = Math.sin(fan);
+        const rx = _bodyReflectOut.x * c - _bodyReflectOut.z * sn;
+        const rz = _bodyReflectOut.x * sn + _bodyReflectOut.z * c;
+        const speed = 26 + seed01(p.attackerId, sprayKey, 111 + k) * 30;
+        this._spawnProjectileTrailStreak(pos.x + nx * 0.4, 0.3, pos.z + nz * 0.4,
+          0.2 + seed01(p.attackerId, sprayKey, 121 + k) * 0.1, 0.1, 2.2 + k * 0.6,
+          sprayReduced ? 0.45 : 0.9, p.armorHit ? '#ffe9c4' : '#ffb870',
+          rx * speed, rz * speed, rx, rz);
+      }
+    }
     if (impactProfile.family === 'beam') {
       if (this._combatBeams) this._combatBeams.retarget(p, this._t);
       const cueKey = `${String(p.attackerId)}:${String(p.targetId)}:${String(p.weaponId)}`;
@@ -14425,6 +14459,25 @@ export const vfx = {
           -sz * (4 + smear * 10),
         );
       }
+      // OVH-06b (§7): a body that lost its helm trails a smoke-and-spark corkscrew, the trail
+      // swinging across its travel axis as it rolls. Seeded from the body id and sim clock.
+      if (emitAngular && !recovering && bodyHitEnabled() && e.vel) {
+        const tvx = e.vel.x || 0; const tvz = e.vel.z || 0;
+        const tsp = Math.hypot(tvx, tvz);
+        if (tsp > 6) {
+          const simT = Number(this.state && this.state.simTime) || 0;
+          const off = corkscrewOffset(e.id, simT, tumble && tumble.spin, r);
+          const px = -tvz / tsp; const pz = tvx / tsp;
+          const cx = e.pos.x + px * off; const cz = e.pos.z + pz * off;
+          this._c0.set('#b9b2aa'); this._c1.set('#2a2622');
+          this._spawnParticle(cx, cz, -tvx * 0.12, -tvz * 0.12, 0.7, 1.6, 4.2, this._c0, this._c1, 0.7, 0.8, 2.0);
+          if (seed01(e.id, (simT * 60) | 0, 131) < 0.5) {
+            const sa = seedSigned(e.id, (simT * 60) | 0, 141) * Math.PI;
+            this._spawnProjectileTrailStreak(cx, 0.3, cz, 0.2, 0.1, 2.4, reduced ? 0.45 : 0.9, '#ffc873',
+              Math.cos(sa) * 18 - tvx * 0.1, Math.sin(sa) * 18 - tvz * 0.1, Math.cos(sa), Math.sin(sa));
+          }
+        }
+      }
       // Recover settle flash once when recovering starts (very light).
       if (recovering && thrash < 0.05 && ribbon < 0.25 && angularAge < angularPeriod * 1.5) {
         this._spawnSprite(SPR_FLASH, e.pos.x, 0, e.pos.z, 0.12, r * 0.3, r * 1.1, 0.35, 0, '#dfefff', 0, 0);
@@ -15449,7 +15502,15 @@ export const vfx = {
 
       const driveInfo = this._engineDriveFor(e);
       const braking = !!(driveInfo.retroOnly || (driveInfo.reverse > 0.05));
-      if (driveInfo.drive < 0.055 && !braking) continue; // idle ships emit nothing
+      if (driveInfo.drive < 0.055 && !braking) {
+        // OVH-06b: a wounded body smokes even at rest (the ladder is hull truth, not throttle).
+        if (bodyHitEnabled() && e.hullMax && e.hull < e.hullMax && bodyDamageTier(e.hull, e.hullMax) > 0
+          && this._resolveTrailTier(e, ctx, screenChecks) !== TRAIL_TIER.SKIP) {
+          this._emitDamageSmoke(e, e.hull / e.hullMax, step);
+          anyBusy = true;
+        }
+        continue; // idle ships emit no engine trail
+      }
       const tier = this._resolveTrailTier(e, ctx, screenChecks);
       if (tier === TRAIL_TIER.SKIP) {
         this._trailBudgetDiag.trailEmittersSkipped++;
@@ -15487,7 +15548,7 @@ export const vfx = {
       // smokes, so you can spot a limping enemy without HUD readouts.
       if (tier !== TRAIL_TIER.SKIP && e.hullMax && e.hull < e.hullMax) {
         const frac = e.hull / e.hullMax;
-        if (frac < 0.40) {
+        if (bodyDamageTier(e.hull, e.hullMax) > 0) {
           this._emitDamageSmoke(e, frac, step);
           anyBusy = true;
         }
@@ -15765,8 +15826,10 @@ export const vfx = {
 
   _emitDamageSmoke(e, frac, dt) {
     if (!this._scene) return;
-    // severity 0..1: 0 at the wound threshold (40%), 1 at death's door (0%)
-    const severe = Math.max(0, Math.min(1, (0.40 - frac) / 0.40));
+    // severity 0..1: 0 at the first damage state (60%, OVH-06b), 1 at death's door (0%)
+    const severe = bodyHitEnabled() ? Math.max(0, Math.min(1, (0.60 - frac) / 0.60))
+      : Math.max(0, Math.min(1, (0.40 - frac) / 0.40));
+    const bodyTier = bodyDamageTier(e.hull, e.hullMax);
     // Wound-local smoke (inf-wound-smoke): the scar book already knows where this hull was
     // opened — hull-local wound seats with a severity, an age, and the striking weapon's own
     // color. Smoke rises from those wounds, so the flank that took the fire smokes hardest and
@@ -15784,10 +15847,13 @@ export const vfx = {
     }
     // emit rate scales with severity; cap so a swarm of wounded ships can't drown the pool.
     // throttle the smoke to ~every other trail tick to stay cheap, harder when critical.
-    this._smokeAcc = (this._smokeAcc || 0) + dt * (0.6 + severe * 1.4);
-    if (this._smokeAcc < 0.032) return;
-    const n = this._smokeAcc >= 0.064 ? 2 : 1;
-    this._smokeAcc = 0;
+    // Per-body cadence: one global accumulator let a single wounded ship starve every other.
+    const smokeAcc = this._smokeAccById || (this._smokeAccById = new Map());
+    if (smokeAcc.size > 256) smokeAcc.clear();
+    const acc = (smokeAcc.get(e.id) || 0) + dt * (0.6 + severe * 1.4);
+    if (acc < 0.032) { smokeAcc.set(e.id, acc); return; }
+    const n = acc >= 0.064 ? 2 : 1;
+    smokeAcc.set(e.id, 0);
 
     const r = e.radius || 4;
     // emit from a few offsets around the hull center (a burning ship doesn't smoke from one point)
@@ -15867,6 +15933,32 @@ export const vfx = {
           this._c0, this._c1,
           2.5, 1.0 + Math.random() * 1.5, 6.0 + Math.random() * 4.0,
         );
+      }
+
+      // OVH-06b damage ladder. <=60%: the smoke above. <=30%: sparks off the wound seat.
+      // <=10%: flame at the seat. Seeded from the body id and the trail frame, so the same
+      // moment draws the same picture and nothing here touches state.rng or Math.random.
+      if (bodyTier >= BODY_TIER_SPARKS) {
+        const rates = tierEmitRates(bodyTier);
+        const frameKey = this._trailFrameIndex | 0;
+        const flashReduced = this._isReduced();
+        if (seed01(e.id, frameKey, 41 + k) < rates.spark / 24 * (flashReduced ? 0.5 : 1)) {
+          const a = seedSigned(e.id, frameKey, 51 + k) * Math.PI;
+          const sp = 14 + seed01(e.id, frameKey, 61 + k) * 22;
+          this._spawnProjectileTrailStreak(sx, 0.3, sz, 0.22, 0.11, 2.6 + severe * 1.6,
+            flashReduced ? 0.5 : 0.9, '#ffc873',
+            Math.cos(a) * sp + vx, Math.sin(a) * sp + vz, Math.cos(a), Math.sin(a));
+        }
+        if (bodyTier >= BODY_TIER_FIRE && seed01(e.id, frameKey, 71 + k) < rates.fire / 24) {
+          this._c0.set('#ff9a3a'); this._c1.set('#4a1a0a');
+          const fa = seedSigned(e.id, frameKey, 81 + k) * 0.6;
+          this._spawnParticle(
+            sx, sz,
+            vx + Math.cos(fa) * 3, vz + Math.sin(fa) * 3,
+            0.34, 2.4, 0.6, this._c0, this._c1,
+            1.6, 0.8, 7.0 + seed01(e.id, frameKey, 91 + k) * 3.0,
+          );
+        }
       }
     }
   },

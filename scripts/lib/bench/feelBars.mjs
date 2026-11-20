@@ -100,7 +100,7 @@ export const FEEL_BARS = [
     key: "feel.impact_feedback",
     title: "Impacts answer",
     statement:
-      "Every collision with ΔV ≥ 8 WU/s produces hitstop and camera trauma scaled by exchanged momentum. Collision audio differs by ≥ one octave of pitch and ≥ 12 dB between a scout kissing a rock and a freighter broadsiding a station. A Massline release has a time-domain snap.",
+      "Only the player's own hull and the hero beats reach the camera: a blow of at least 8 % of max hull to the player kicks the view toward the hit side and pulses the screen edge red on that side, and the hero beats (a throw kill on a heavy, a perfect release, a plough launch that kills at least 5, a boss phase break) are admitted one at a time, while every other collision is answered on the body that was hit and adds no camera trauma. Hitstop belongs to hero beats only, is presentation-only (the simulation never pauses), lasts 40–60 ms and fires at most once per 0.8 s. Collision audio differs by ≥ one octave of pitch and ≥ 12 dB between a scout kissing a rock and a freighter broadsiding a station. A Massline release has a time-domain snap.",
     target: "hitstop + trauma at ΔV ≥ 8 WU/s; audio ≥ 1 octave and ≥ 12 dB apart; release snaps",
     benchReachable: false,
     scenarioIds: [],

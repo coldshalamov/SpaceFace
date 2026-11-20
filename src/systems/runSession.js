@@ -6,10 +6,21 @@
 import {
   RUN_OUTCOMES,
   canTransition,
+  createPilotProgress,
   createRunState,
   runLevelForXp,
   validateRunState,
 } from '../core/runState.js';
+import {
+  PILOT_REROLL_SCRAP,
+  deepestPilotBranch,
+  eligiblePilotCards,
+  getPilotCard,
+  isPilotCardEligible,
+  pilotCardWeight,
+  pilotDoorForRun,
+  untouchedPilotBranches,
+} from '../data/pilotTree.js';
 import { migrateHangar, purseBonusFor } from '../data/swarmHangar.js';
 import { normalizeSwarmStake, swarmStakeFor } from '../data/swarmStakes.js';
 import { normalizePerkLoadout } from '../data/swarmPerks.js';
@@ -20,6 +31,9 @@ import { swarmPilotHasActed } from './swarmSafety.js';
 
 const OUTCOME_SET = new Set(RUN_OUTCOMES);
 const PURCHASE_RECEIPT_LIMIT = 64;
+// OVH-01a (04 §3): re-rolling the pilot offer costs Scrap from the run purse. The price is
+// owned by the tree's data (src/data/pilotTree.js) so the card UI shares it without importing
+// this sim-side module.
 // Ephemeral identity survives the owner's immutable wallet/ledger commits. A new run or an
 // unrelated replacement cannot inherit a pending armory action merely by reusing its seed.
 const RUN_LIFETIMES = new WeakMap();
@@ -112,6 +126,10 @@ export const runSession = {
     this._unsubs.push(this.bus.on('run:awardRequested', (payload) => this.award(payload)));
     this._unsubs.push(this.bus.on('run:spendRequested', (payload) => this.spend(payload)));
     this._unsubs.push(this.bus.on('run:modifierRecordRequested', (payload) => this.recordModifier(payload)));
+    // OVH-01a2: the screen asks through intents; the owner answers (and refuses in words —
+    // run:pilotCardRejected / run:pilotRerollRejected receipts ride every player-facing no).
+    this._unsubs.push(this.bus.on('run:pilotCardRequested', (payload) => this.choosePilotCard(this.state, payload && payload.index)));
+    this._unsubs.push(this.bus.on('run:pilotRerollRequested', () => this.rerollPilotOffer(this.state)));
     this._unsubs.push(this.bus.on('run:threatRequested', (payload) => this.setThreat(payload)));
     this._unsubs.push(this.bus.on('game:exitToMenu', (payload) => this._onExitToMenu(payload)));
     // save:restoring fires first (before save:loaded). Reset here so a loaded Adventure
@@ -164,6 +182,10 @@ export const runSession = {
       if (!next.telemetry || typeof next.telemetry !== 'object') next.telemetry = {};
       next.telemetry.openArmoryBeforeRound1 = false;
     }
+    // OVH-01a: every run that can level — anything but Adventure — carries its own Pilot Tree
+    // record (06 §2). Adventure and inactive envelopes stay pilot-free by contract; nothing
+    // earned in a run outlives the run.
+    if (next.kind !== 'adventure') next.pilot = createPilotProgress();
     if (next.kind === 'survival') {
       this._retireSerial = (this._retireSerial || 0) + 1;
       next.retireToken = this._retireSerial;
@@ -280,6 +302,15 @@ export const runSession = {
     next.score += score;
     const previousLevel = next.level;
     next.level = runLevelForXp(next.xp);
+    // OVH-01a (04 §3): every level past the first banks one Pilot Tree pick. The banking rides
+    // the same committed clone as the XP, so a refused commit can never orphan a pick; adventure
+    // never reaches here (refused above), and a hand-built run without a pilot record gets one
+    // rather than silently dropping the banked pick.
+    const levelsGained = next.level > previousLevel ? next.level - previousLevel : 0;
+    if (levelsGained > 0) {
+      next.pilot ??= createPilotProgress();
+      next.pilot.banked += levelsGained;
+    }
     const committed = this._commitRun(next, 'run:awarded', {
       credits, xp, score,
       totalCredits: next.credits,
@@ -292,8 +323,12 @@ export const runSession = {
       bankActs: toBankActs(request && request.bankActs),
       causePhrase: toCausePhrase(request && request.causePhrase),
     });
-    if (committed && next.level > previousLevel) {
-      this._emit('run:levelUp', { level: next.level, previousLevel, xp: next.xp });
+    if (committed && levelsGained > 0) {
+      this._emit('run:levelUp', { level: next.level, previousLevel, xp: next.xp, banked: next.pilot.banked });
+      // OVH-01a2: the owner deals at a fixed moment — right after a level-up commit that banked
+      // a pick, when no offer is open. The moment (and the state.rng it consumes) is the same
+      // whatever the player's display settings are; the screen never draws.
+      this._dealPilotHand();
     }
     return committed;
   },
@@ -482,6 +517,190 @@ export const runSession = {
     });
   },
 
+  // OVH-01a/01a2 — the Pilot Tree engine (design/overhaul/06 §2, 04 §3). Level-ups bank picks in
+  // award(); the owner deals the hands at fixed moments (_dealPilotHand) and the screen asks
+  // through intents (run:pilotCardRequested / run:pilotRerollRequested above). All randomness is
+  // state.rng at owner-owned moments, so one seed always deals the same hands whatever the
+  // player's display settings are, and every mutation walks the same clone-validate-commit
+  // discipline as the rest of the run. Free-function wrappers with the packet's signatures live
+  // at the module foot.
+
+  /**
+   * The owner's deal primitive: draw cards and publish run.pilot.offer. An empty draw opens NO
+   * offer (OVH-01a2 step 2) — nothing eligible leaves the offer untouched (null after a fresh
+   * deal moment) and the pick stays banked for the next moment to try again. Returns the card
+   * ids, [] when nothing is eligible, or null when refused outright.
+   */
+  drawPilotOffer(state = this.state) {
+    if (state !== this.state) return null;
+    const run = this._pilotRun(state);
+    if (!run) return null;
+    const cards = this._drawPilotCards(state, run);
+    if (!cards || cards.length === 0) return cards || null;
+    const next = cloneRun(run);
+    if (!next) return null;
+    next.pilot.offer = { cards, rerolls: 0 };
+    const committed = this._commitRun(next, 'run:pilotOffered', {
+      cards,
+      banked: next.pilot.banked,
+    });
+    return committed ? cards : null;
+  },
+
+  /** Apply offer card `index`: the node joins the run, its branch gains the point, banked − 1. */
+  choosePilotCard(state = this.state, index) {
+    if (state !== this.state) return false;
+    const run = this._pilotRun(state);
+    if (!run) return false;
+    if (!run.pilot.offer) {
+      this._emit('run:pilotCardRejected', { index, reason: 'no_offer' });
+      return false;
+    }
+    const cards = run.pilot.offer.cards;
+    if (!Array.isArray(cards) || !Number.isInteger(index) || index < 0 || index >= cards.length) {
+      this._emit('run:pilotCardRejected', { index, reason: 'invalid_index' });
+      return false;
+    }
+    const card = getPilotCard(cards[index]);
+    // The offer may be stale — a bend taken mid-offer locks its siblings, and the live set may
+    // have changed under a frozen hand — so the choose re-runs the same pure eligibility gate
+    // the draw used rather than trusting the drawn list.
+    if (!card || !isPilotCardEligible(card, run.pilot, pilotDoorForRun(run))) {
+      this._emit('run:pilotCardRejected', { index, nodeId: cards[index], reason: 'not_eligible' });
+      return false;
+    }
+    const next = cloneRun(run);
+    if (!next) return false;
+    next.pilot.nodes.push(card.id);
+    if (card.kind !== 'evolution') {
+      next.pilot.points[card.branch] = (next.pilot.points[card.branch] || 0) + 1;
+    }
+    next.pilot.banked = Math.max(0, next.pilot.banked - 1);
+    next.pilot.offer = null;
+    const committed = this._commitRun(next, 'run:pilotCardChosen', {
+      nodeId: card.id,
+      branch: card.kind === 'evolution' ? null : card.branch,
+      banked: next.pilot.banked,
+    });
+    // OVH-01a2: a second banked pick gets a fresh hand the moment this choice commits.
+    if (committed && next.pilot.banked > 0) this._dealPilotHand();
+    return committed;
+  },
+
+  /** Pay Scrap from the run purse and redraw the current offer (04 §3: re-roll costs Scrap). */
+  rerollPilotOffer(state = this.state) {
+    if (state !== this.state) return false;
+    const run = this._pilotRun(state);
+    if (!run) return false;
+    if (!run.pilot.offer) {
+      this._emit('run:pilotRerollRejected', { reason: 'no_offer' });
+      return false;
+    }
+    // Nothing eligible anywhere means the redraw cannot produce a card; refuse without charging.
+    if (eligiblePilotCards(run.pilot, pilotDoorForRun(run)).length === 0) {
+      this._emit('run:pilotRerollRejected', { reason: 'nothing_eligible' });
+      return false;
+    }
+    if (!this.spend({ credits: PILOT_REROLL_SCRAP, reason: 'pilot_reroll' })) {
+      // spend() already said why (run:spendRejected); this receipt names the pilot intent.
+      const live = this._liveRun();
+      this._emit('run:pilotRerollRejected', {
+        reason: 'insufficient_credits',
+        price: PILOT_REROLL_SCRAP,
+        credits: live ? live.credits : 0,
+      });
+      return false;
+    }
+    // spend() published a fresh run object; redraw against the live one.
+    const live = this._pilotRun(this.state);
+    if (!live) return false;
+    const cards = this._drawPilotCards(this.state, live);
+    if (cards === null) return false;
+    const next = cloneRun(live);
+    if (!next) return false;
+    const rerolls = (live.pilot.offer && live.pilot.offer.rerolls || 0) + 1;
+    next.pilot.offer = { cards, rerolls };
+    const committed = this._commitRun(next, 'run:pilotOfferRerolled', {
+      cards,
+      rerolls,
+      credits: PILOT_REROLL_SCRAP,
+      totalCredits: next.credits,
+    });
+    return committed;
+  },
+
+  /** A live, pilot-bearing run object, or null. Adventure and terminal runs never qualify. */
+  _pilotRun(state) {
+    if (!state) return null;
+    const run = state.run;
+    if (!run || typeof run !== 'object' || run.kind === 'adventure') return null;
+    if (run.phase === 'inactive' || run.phase === 'ended' || run.phase === 'victory') return null;
+    if (!run.pilot || typeof run.pilot !== 'object' || Array.isArray(run.pilot)) return null;
+    if (!validateRunState(run).ok) return null;
+    return run;
+  },
+
+  /**
+   * The 04 §3 draw: one card from the deepest branch (commitment always pays), one from an
+   * untouched branch (a pivot is always possible), then weighted fills toward what combines.
+   * Fewer than three come back when eligibility runs short; [] when nothing is eligible; null
+   * only when the state carries no seeded rng stream (deterministic runs draw deterministically
+   * or not at all).
+   */
+  _drawPilotCards(state, run) {
+    const rng = state && typeof state.rng === 'function' ? state.rng : null;
+    if (!rng) return null;
+    const pilot = run.pilot;
+    const door = pilotDoorForRun(run);
+    const eligible = eligiblePilotCards(pilot, door);
+    if (eligible.length === 0) return [];
+    const pickedIds = [];
+    const drawFrom = (pool) => {
+      if (pool.length === 0) return;
+      pickedIds.push(pool[Math.floor(rng() * pool.length)].id);
+    };
+    const deepest = deepestPilotBranch(pilot, door);
+    if (deepest) drawFrom(eligible.filter((card) => card.branch === deepest));
+    const untouched = new Set(untouchedPilotBranches(pilot, door));
+    drawFrom(eligible.filter((card) => card.branch && untouched.has(card.branch)
+      && !pickedIds.includes(card.id)));
+    while (pickedIds.length < 3) {
+      const rest = eligible.filter((card) => !pickedIds.includes(card.id));
+      if (rest.length === 0) break;
+      const total = rest.reduce((sum, card) => sum + pilotCardWeight(card, pilot), 0);
+      let roll = rng() * total;
+      let choice = rest[rest.length - 1];
+      for (const card of rest) {
+        roll -= pilotCardWeight(card, pilot);
+        if (roll < 0) { choice = card; break; }
+      }
+      pickedIds.push(choice.id);
+    }
+    return pickedIds;
+  },
+
+  /**
+   * OVH-01a2 — the fixed deal moments. Called right after a level-up commit that banked a pick
+   * and right after a choose commits while picks still wait: deals a fresh hand only when no
+   * offer is open and a pick is banked. An empty draw (nothing eligible, or nothing live) opens
+   * no offer and keeps the pick banked — the next deal moment tries again. Nothing outside the
+   * owner deals; a display preference can never change when (or from which state.rng draws) a
+   * hand is dealt.
+   */
+  _dealPilotHand() {
+    const run = this._pilotRun(this.state);
+    if (!run || run.pilot.offer || run.pilot.banked <= 0) return false;
+    const cards = this._drawPilotCards(this.state, run);
+    if (!cards || cards.length === 0) return false;
+    const next = cloneRun(run);
+    if (!next) return false;
+    next.pilot.offer = { cards, rerolls: 0 };
+    return this._commitRun(next, 'run:pilotOffered', {
+      cards,
+      banked: next.pilot.banked,
+    });
+  },
+
   _onExitToMenu(payload) {
     const run = this._liveRun();
     if (!run) return;
@@ -529,3 +748,20 @@ export const runSession = {
     return run;
   },
 };
+
+// OVH-01a free-function API with the packet's signatures. The run owner must be initialized on
+// the same state (single writer): a foreign or uninitialized state is refused — null/false —
+// rather than mutated blind. OVH-01a2: these are owner seams — the run itself deals at its fixed
+// moments and the screen asks through the run:pilot*Requested intents; nothing outside the owner
+// (and its tests) calls drawPilotOffer.
+export function drawPilotOffer(state) {
+  return runSession.drawPilotOffer(state);
+}
+
+export function choosePilotCard(state, index) {
+  return runSession.choosePilotCard(state, index);
+}
+
+export function rerollPilotOffer(state) {
+  return runSession.rerollPilotOffer(state);
+}
