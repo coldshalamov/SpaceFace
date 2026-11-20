@@ -121,7 +121,11 @@ test('meaningful consequence arms only the frame flush, using receipt truth afte
   assert.equal(beatWindow(host), resolveCollisionFeel(contact, {
     mode: 'flight', deltaV: contact.deltaV,
   }).hsDur);
-  assert.equal(traumas.length, 1);
+  // R10: a collision is a room event. The camera never shakes for it, whoever caused it — the
+  // beat paces and arms, and books exactly one refused 'collision' trauma at the gate.
+  assert.equal(traumas.length, 0, 'R10: no camera trauma for any collision');
+  assert.equal(state.render.cameraGate.counts().refused.collision, 1,
+    'the flushed beat is booked as refused room trauma');
   frame(HS_IMPACT_MAX + 0.001);
   assert.equal(state.timeScale, 0.5, 'the beat window expiring cannot touch another owner');
 });
@@ -142,25 +146,30 @@ test('receipt deltaV stays authoritative when live mass differs; zero momentum i
 
 test('receipt provenance recognizes a player-caused collision and silences unrelated NPC contacts', () => {
   for (const actorId of [1, 9]) {
-    const { bus, traumas, frame } = fixture();
+    const { state, bus, traumas, frame } = fixture();
     const contact = receipt(60, {
       provenance: { actorId, tag: 'railgun_penetrator', appliedTick: 118 },
     });
     bus.emit('combat:collisionConsequence', contact);
     frame();
+    const refused = state.render.cameraGate.counts().refused;
+    assert.deepEqual(traumas, [], 'R10: a collision never shakes the camera, whoever caused it');
     if (actorId !== 1) {
-      assert.deepEqual(traumas, [], 'unrelated NPC collisions cannot slow or shake the player world');
+      // An NPC-only contact is silenced at the queue: it never paces, arms or flushes a beat.
+      assert.equal(refused.collisionFov, 1, 'unrelated NPC contacts are refused at the queue');
+      assert.equal(refused.collision, undefined, 'an NPC contact never reaches the flush');
       continue;
     }
-    assert.equal(traumas[0], resolveCollisionFeel(contact, {
-      mode: 'flight', deltaV: 60, playerDistance: actorId === 1 ? 0 : 1200,
-    }).trauma);
+    // The player's own throw still lands its beat: it flushes, and R10 books its trauma as
+    // refused room motion — the body that was hit answers, not the camera.
+    assert.equal(refused.collision, 1, 'the player-caused beat flushes and is refused as room trauma');
   }
 });
 
 test('physics and consequence coalesce into one strongest beat in either delivery order', () => {
   for (const receiptFirst of [false, true]) {
-    const { bus, host, traumas, frame } = fixture();
+    const { state, bus, host, traumas, frame } = fixture();
+    const flushes = () => state.render.cameraGate.counts().refused.collision || 0;
     const events = [
       ['physics:impact', physicsImpact(20)],
       ['combat:collisionConsequence', receipt(100)],
@@ -169,15 +178,19 @@ test('physics and consequence coalesce into one strongest beat in either deliver
     for (const [name, payload] of events) bus.emit(name, payload);
     assert.equal(traumas.length, 0);
     frame();
+    assert.equal(host._pendingCollisionFeel, null, 'one strongest beat, not two');
     assert.equal(host._armedCollisionDeltaV, 100);
-    assert.equal(traumas.length, 1);
+    // R10: the one coalesced beat flushes as a refused room trauma, never a camera shake.
+    assert.equal(flushes(), 1, 'exactly one beat flushed');
+    assert.equal(traumas.length, 0, 'R10: no camera trauma for any collision');
     frame();
-    assert.equal(traumas.length, 1);
+    assert.equal(flushes(), 1, 'the spent beat cannot fire twice');
   }
 });
 
 test('a deferred duplicate cannot re-arm an already handled contact, even after cooldown', () => {
-  const { bus, host, traumas, frame } = fixture();
+  const { state, bus, host, traumas, frame } = fixture();
+  const flushes = () => state.render.cameraGate.counts().refused.collision || 0;
   bus.emit('physics:impact', physicsImpact(20));
   frame();
   // A deferred receipt has unscaled momentum and reversed pair order; neither makes a new contact.
@@ -189,18 +202,20 @@ test('a deferred duplicate cannot re-arm an already handled contact, even after 
   bus.flush();
   frame();
   assert.equal(host._armedCollisionDeltaV, 20);
-  assert.equal(traumas.length, 1);
+  assert.equal(flushes(), 1);
   frame(COLLISION_HITSTOP_COOLDOWN + 0.001);
   bus.emit('combat:collisionConsequence', duplicate);
   frame();
-  assert.equal(traumas.length, 1);
+  assert.equal(flushes(), 1);
   bus.emit('combat:collisionConsequence', { ...duplicate, tick: 121 });
   frame();
-  assert.equal(traumas.length, 2, 'the same pair on a new tick remains a real collision');
+  assert.equal(flushes(), 2, 'the same pair on a new tick remains a real collision');
+  assert.equal(host._armedCollisionDeltaV, 100);
 });
 
 test('receipt grind cooldown survives the beat window; a distinct hard collision can interrupt', () => {
-  const { bus, host, traumas, frame } = fixture();
+  const { state, bus, host, frame } = fixture();
+  const flushes = () => state.render.cameraGate.counts().refused.collision || 0;
   bus.emit('combat:collisionConsequence', receipt(10));
   frame();
   frame(beatWindow(host) + 0.001);
@@ -208,10 +223,12 @@ test('receipt grind cooldown survives the beat window; a distinct hard collision
     bus.emit('combat:collisionConsequence', receipt(deltaV, { tick: 120 + deltaV }));
     frame();
   }
-  assert.equal(traumas.length, 1);
+  assert.equal(flushes(), 1, 'a grind inside the cooldown never re-arms the beat');
+  assert.equal(host._armedCollisionDeltaV, 10);
   bus.emit('combat:collisionConsequence', receipt(100, { tick: 150 }));
   frame();
-  assert.equal(traumas.length, 2);
+  assert.equal(flushes(), 2, 'a meaningfully harder hit interrupts the cooldown');
+  assert.equal(host._armedCollisionDeltaV, 100);
 });
 
 test('motion-reduce and modal gates suppress receipts both before queueing and before flush', () => {
@@ -236,7 +253,8 @@ test('motion-reduce and modal gates suppress receipts both before queueing and b
 
 test('pause/save/new game clears pending contact and duplicate history without clearing another pause', () => {
   for (const event of ['sim:pause', 'save:restoring', 'save:loaded', 'game:new']) {
-    const { state, bus, effects, host, traumas, frame } = fixture();
+    const { state, bus, effects, host, frame } = fixture();
+    const flushes = () => state.render.cameraGate.counts().refused.collision || 0;
     bus.emit('combat:collisionConsequence', receipt(60));
     frame();
     bus.emit('combat:collisionConsequence', receipt(150, { tick: 121 }));
@@ -248,7 +266,8 @@ test('pause/save/new game clears pending contact and duplicate history without c
     effects.clear('ui:pausing-screen');
     bus.emit('combat:collisionConsequence', receipt(60));
     frame();
-    assert.equal(traumas.length, 2, `${event} must allow the next run to reuse contact IDs/ticks`);
+    assert.equal(flushes(), 2, `${event} must allow the next run to reuse contact IDs/ticks`);
+    assert.equal(host._armedCollisionDeltaV, 60);
   }
 });
 
