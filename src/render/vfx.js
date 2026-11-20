@@ -80,11 +80,13 @@ import { createToolConduitGeometry, installToolConduitShader } from './toolCondu
 import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
 import { GyreSnarePresentation } from './forceLanguage/gyreSnarePresentation.js';
 import { createSwitchbackView } from '../features/convoyRaid/view.js';
+import { createStormChasePresentation, readStormChaseView } from '../features/stormChase/index.js';
+import { createCatalystPresentationAdapter } from '../features/kineticCatalysts/presentation.js'; // PORT-PRO-FIVE KINETIC CATALYSTS
 import { getPromptDeck } from '../ui/promptDeck.js';
 import { createEmergentPrimitivePools } from './forceLanguage/emergentPrimitivePools.js';
 import { EmergentPayloadPresentation } from './forceLanguage/emergentPayloadPresentation.js';
 import { fieldSignature } from './forceLanguage/catalog.js';
-import { createForceSurfacePrecompileMesh } from './forceLanguage/sweptSurfaceBatch.js';
+import { createForceSurfacePrecompileMesh, SweptSurfaceBatch } from './forceLanguage/sweptSurfaceBatch.js';
 import { createEnergyVolume, createMasslineRibbonMaterial, createPlumeMaterial, createPlumeVolume, updateEnergyMaterial } from './energy/energyMaterials.js';
 import {
   commitTrailStreakInstances,
@@ -2061,6 +2063,10 @@ export const vfx = {
     this._gyreSnareFx = null;
     invokeVfxDisposer(this._switchback, 'Switchback convoy');
     this._switchback = null;
+    invokeVfxDisposer(this._stormChaseFx, 'GLASSWAKE');
+    this._stormChaseFx = null;
+    invokeVfxDisposer(this._kineticCatalystsFx, 'KINETIC CATALYSTS');
+    this._kineticCatalystsFx = null;
 
     invokeVfxDisposer(this._overflowJets, 'overflow jets');
     this._overflowJets = null;
@@ -2920,6 +2926,12 @@ export const vfx = {
         invokeVfxDisposer(this._switchback, 'Switchback boundary');
         this._switchback = null;
       });
+      // GLASSWAKE's pooled geometry survives sector/run boundaries as stale
+      // coordinates otherwise; clear() keeps the adapter for the next view.
+      add(name, () => { this._stormChaseFx?.clear(); });
+      // KINETIC CATALYSTS: captured orbits/links die with the sector or run;
+      // clear() empties the batch without throwing the adapter away.
+      add(name, () => { this._kineticCatalystsFx?.clear(); });
       add(name, () => { this._actionVfx?.clear(); this._stationOperationVfx?.clear(); this._bombDetonationVfx?.clear(); this._statusMatterVfx?.clear(); this._combatContactVfx?.clear(); this._emergentPayloads?.clear(); this._retireEventLightSlot(this._findSustainedEventLight('gyre-payload')); this._releaseTransientEventLights(); });
       add(name, () => this._clearWorldTransientMatter());
       add(name, () => { this._freightLaneState = null; });
@@ -11232,7 +11244,7 @@ export const vfx = {
   },
   _updatePowerFx(dt) {
     if (!this._powerFx) {
-      // Created (and its two programs warmed) the moment a fight is live, not at the first cast.
+      // Normally created and warmed at init; this covers a scene that arrived later.
       if (!this.state || this.state.mode !== 'flight') return;
       if (!this._ensurePowerFx()) return;
       this._powerFx.warm();
@@ -11279,6 +11291,35 @@ export const vfx = {
         getDeck: getPromptDeck, toLocalXZ: localize });
     }
     this._switchback?.update();
+    // GLASSWAKE: two folded front surfaces + two pooled line batches draw the
+    // storm's instruments. Lazily built when the bounded view appears; keeps
+    // updating on null so stale geometry clears through sector/game changes.
+    const stormView = readStormChaseView(state);
+    if (!this._stormChaseFx && stormView) {
+      this._stormChaseFx = createStormChasePresentation({
+        THREE, scene: this._scene,
+        toLocal: (x, z, out) => localize(x, z, out),
+        document: globalThis.document, container: globalThis.document?.getElementById?.('ui-root'),
+      });
+    }
+    if (this._stormChaseFx) this._stormChaseFx.update(stormView, state.settings);
+    // KINETIC CATALYSTS: capture orbits, echo charges and load-bridge links render
+    // as swept force surfaces on a dedicated bounded batch. Lazily built when the
+    // bounded view appears; keeps updating on null so stale geometry clears.
+    const catalystView = state.kineticCatalystsPublic || null;
+    if (!this._kineticCatalystsFx && catalystView) {
+      this._kineticCatalystsFx = createCatalystPresentationAdapter({
+        surfaceBatch: new SweptSurfaceBatch(this._scene, { capacity: 80, name: 'SF_KineticCatalysts', fieldVolume: true }),
+        toLocal: (x, z, out) => localize(x, z, out),
+      });
+    }
+    if (this._kineticCatalystsFx) {
+      this._kineticCatalystsFx.update(catalystView, {
+        simTime: state.simTime,
+        reducedMotion: state.settings?.reducedMotion === true,
+        reducedFlash: state.settings?.reducedFlash === true,
+      });
+    }
   },
   _updateGyreSnare(dt) {
     if (!this._gyreSnareFx && this._gyreRelevant()) this._initGyreSnare();
