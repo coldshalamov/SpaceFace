@@ -2235,15 +2235,17 @@ export function createSimLaneRuntime({
       }
     };
     b.emit = (type, payload) => {
-      const result = origEmit(type, payload);
+      // Forward BEFORE dispatch: a listener that emits a nested forwarded type inside this
+      // emit would otherwise ship the child to the worker ahead of its parent — inverted
+      // causality on the bus's own ordering. Snapshotting at the emit boundary also keeps
+      // the wire payload free of any mutation a listener makes to the shared object.
       maybeForward(type, payload);
-      return result;
+      return origEmit(type, payload);
     };
     if (origQueue) {
       b.queue = (type, payload) => {
-        const result = origQueue(type, payload);
         maybeForward(type, payload);
-        return result;
+        return origQueue(type, payload);
       };
     }
     return {
