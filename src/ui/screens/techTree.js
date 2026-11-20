@@ -419,11 +419,13 @@ export const techTreeScreen = {
     });
 
     // Web fonts land after first paint: measure the names again in the real face.
+    // The FontFaceSet outlives this screen — keep a ref so dispose() can drop it.
     if (typeof document !== 'undefined' && document.fonts && document.fonts.addEventListener) {
-      document.fonts.addEventListener('loadingdone', () => {
+      this._fontLoadHandler = this._fontLoadHandler || (() => {
         if (!this._root || !this._root.isConnected || !this._sky) return;
         this._sky.relayout({ fonts: true });
       });
+      document.fonts.addEventListener('loadingdone', this._fontLoadHandler);
     }
   },
 
@@ -460,7 +462,13 @@ export const techTreeScreen = {
 
   onHide() { cue('close'); this._curveReset && this._curveReset(); /* cached DOM retained */ },
 
-  dispose() { if (this._rungsObserver) { this._rungsObserver.disconnect(); this._rungsObserver = null; } },
+  dispose() {
+    if (this._rungsObserver) { this._rungsObserver.disconnect(); this._rungsObserver = null; }
+    if (this._fontLoadHandler && typeof document !== 'undefined' && document.fonts) {
+      document.fonts.removeEventListener('loadingdone', this._fontLoadHandler);
+      this._fontLoadHandler = null;
+    }
+  },
 
   /**
    * Sky names the open pacing ladder stands over yield (the screen's .is-curve-covered state,

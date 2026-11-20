@@ -1839,21 +1839,26 @@ export function createRadar(ctx) {
     }
     setExpanded(!expanded);
   };
-  dial.addEventListener('click', onDialClick);
-  dial.addEventListener('keydown', (ev) => {
+  const onDialKeydown = (ev) => {
     if (ev.key !== 'Enter' && ev.key !== ' ' && ev.key !== 'Spacebar') return;
     ev.preventDefault();
     setExpanded(!expanded);
-  });
+  };
   // Authored hover/focus states: the frame lights its reach-ring. focus-visible is matched so
   // mouse activation never flashes the ring — keyboard arrival does.
   const dialEmphasis = (on) => { if (frame) frame.setEmphasis(on); };
-  dial.addEventListener('mouseenter', () => dialEmphasis(true));
-  dial.addEventListener('mouseleave', () => dialEmphasis(false));
-  dial.addEventListener('focus', () => {
+  const onDialEnter = () => dialEmphasis(true);
+  const onDialLeave = () => dialEmphasis(false);
+  const onDialFocus = () => {
     try { dialEmphasis(dial.matches(':focus-visible')); } catch (_) { dialEmphasis(true); }
-  });
-  dial.addEventListener('blur', () => dialEmphasis(false));
+  };
+  const onDialBlur = () => dialEmphasis(false);
+  dial.addEventListener('click', onDialClick);
+  dial.addEventListener('keydown', onDialKeydown);
+  dial.addEventListener('mouseenter', onDialEnter);
+  dial.addEventListener('mouseleave', onDialLeave);
+  dial.addEventListener('focus', onDialFocus);
+  dial.addEventListener('blur', onDialBlur);
 
   let contactList = [];
   let asteroidList = [];
@@ -2695,6 +2700,11 @@ export function createRadar(ctx) {
   function destroy() {
     clearHostileCourse();
     dial.removeEventListener('click', onDialClick);
+    dial.removeEventListener('keydown', onDialKeydown);
+    dial.removeEventListener('mouseenter', onDialEnter);
+    dial.removeEventListener('mouseleave', onDialLeave);
+    dial.removeEventListener('focus', onDialFocus);
+    dial.removeEventListener('blur', onDialBlur);
     for (const unsubscribe of unsubscribers.splice(0)) {
       try { unsubscribe(); } catch (_) {}
     }
