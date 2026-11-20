@@ -221,6 +221,7 @@ export function enhanceInspectorSections(details, { tab = 'overview' } = {}) {
       return first && first.matches && first.matches('.gm-ins-title, .gm-ins-kind') && !sec.classList.contains('gmh-acc');
     });
     if (sections.length < 4) return;
+    const leadSection = sections[0];
     // the planning answer comes first: the cost of getting there sits right under the identity block
     const cost = sections.find((sec) => /navigation cost/i.test(sec.firstElementChild.textContent || ''));
     if (cost && cost !== sections[0] && typeof details.insertBefore === 'function') {
@@ -232,7 +233,7 @@ export function enhanceInspectorSections(details, { tab = 'overview' } = {}) {
       const key = `${tab}:${title}`;
       // MAPS-2: the first section is what the player selected (Place folds in Threat and Services):
       // its own brief always starts open.
-      const defaultOpen = index === 0 || /navigation cost|threat assessment|trade lanes|best known|survey record/i.test(title);
+      const defaultOpen = sec === leadSection || /navigation cost|threat assessment|trade lanes|best known|survey record/i.test(title);
       const open = accOpen.has(key) ? accOpen.get(key) : defaultOpen;
       const summary = accSummary(sec, head);
       head.classList.add('gmh-acc-head');

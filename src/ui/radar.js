@@ -1808,7 +1808,7 @@ export function createRadar(ctx) {
   objectiveKey.append(objectiveReadout, legendRow);
   wrap.append(dial, objectiveKey);
 
-  const minimap = createFlightMinimap(document, dpr, () => draw());
+  const minimap = createFlightMinimap(document, dpr, () => draw(true));
   const chartFooter = document.createElement('div');
   chartFooter.className = 'sf-flight-chart__footer';
   chartFooter.hidden = true;
@@ -1890,7 +1890,7 @@ export function createRadar(ctx) {
       dial.setAttribute('aria-label', expanded
         ? 'Flight minimap, wide survey range. Activate to switch to tactical range.'
         : 'Flight minimap, tactical range. Activate to switch to wide survey range.');
-      draw();
+      draw(true);
       return;
     }
     dial.classList.toggle('sf-radar--expanded', expanded);
@@ -1914,7 +1914,7 @@ export function createRadar(ctx) {
       ? 'position:fixed;bottom:18px;right:18px;z-index:200;display:flex;flex-direction:column;align-items:center;gap:6px;'
       : '';
     bus?.emit?.('hud:layoutChanged', { key: 'radar' });
-    draw();
+    draw(true);
   }
 
   const onDialClick = (ev) => {
@@ -2293,7 +2293,7 @@ export function createRadar(ctx) {
     setObjectiveKeyMode('legend');
   }
 
-  function draw() {
+  function draw(force = false) {
     stanceMemo.clear();
     if (state.mode !== 'flight') clearHostileCourse();
     if (expanded) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
@@ -2313,7 +2313,8 @@ export function createRadar(ctx) {
     if (showChart) {
       const hitFresh = Number.isFinite(state.simTime) && state.simTime - lastPlayerHullHitAt < 0.7;
       quietTick = (lastChartHostiles > 0 || hitFresh) ? 0 : quietTick + 1;
-      if (quietTick % 2 === 1) return;
+      // An explicit redraw (resize, range toggle) always paints; only the steady tick is halved.
+      if (!force && quietTick % 2 === 1) return;
     }
 
     if (!showChart) {

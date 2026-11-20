@@ -6728,15 +6728,17 @@ _stepAnimation(now) {
     switch (this._activeTab) {
       case 'place': return join(
         this._overviewTabHtml(state, selectionHtml),
-        avail2.services.available ? this._servicesTabHtml(state) : '',
-        avail2.threat.available ? this._threatTabHtml(state) : '');
+        // With nothing selected Place stays compact; a selection brings its services and danger.
+        selectionHtml && avail2.services.available ? this._servicesTabHtml(state) : '',
+        selectionHtml && avail2.threat.available ? this._threatTabHtml(state) : '');
       case 'jobs': return join(
         avail2.missions.available ? this._missionsTabHtml(state) : '',
         avail2.careers.available ? this._careersTabHtml(state) : '');
       case 'trade': return this._economyTabHtml(state);
       case 'log': return join(
         this._discoveryTabHtml(state),
-        avail2.history.available ? this._historyTabHtml() : '');
+        avail2.history.available ? this._historyTabHtml()
+          : `<div class="gm-ins-section"><div class="gm-ins-title">History</div><div class="gm-ins-note">${escapeMapHtml(avail2.history.reason)}</div></div>`);
       case 'travel': return this._travelTabHtml(state);
       case 'missions': return this._missionsTabHtml(state);
       case 'economy': return this._economyTabHtml(state);
@@ -11413,8 +11415,10 @@ _drawSystem(g, state, w, h) {
   /** Every rock of the current sector (dormant field records + woken live rocks), cached per field version. */
   _surveyRocks(state, sectorId) {
     const field = state.world && state.world.asteroidField;
-    const version = field && Number.isFinite(field.version) ? field.version : 0;
-    const key = `${sectorId}|${version}|${state.entityList ? state.entityList.length : 0}`;
+    // Keyed on membership (counts), not field.version: the version bumps on every rock pose
+    // update, while the list holds references whose positions are read live.
+    const count = field && Array.isArray(field.rocks) ? field.rocks.length : 0;
+    const key = `${sectorId}|${count}|${state.entityList ? state.entityList.length : 0}`;
     if (this._surveyRockKey === key && this._surveyRockList) return this._surveyRockList;
     const list = [];
     for (const rec of (field && Array.isArray(field.rocks)) ? field.rocks : []) {
@@ -12371,7 +12375,10 @@ export function drawSurveyStation(g, x, y, typeId, services = [], { hostile = fa
   g.lineWidth = 1.4;
   g.beginPath();
   const type = String(typeId || '');
-  if (/trade|hub|market/.test(type)) {
+  if (/black|pirate|cache|camp/.test(type)) {
+    g.moveTo(0, -k * 1.15); g.lineTo(k * 1.05, 0); g.lineTo(0, k * 1.15); g.lineTo(-k * 1.05, 0); g.closePath(); g.stroke();
+    g.beginPath(); g.arc(0, 0, k * 0.3, 0, Math.PI * 2); g.fill();
+  } else if (/trade|hub|market/.test(type)) {
     g.rect(-k, -k, k * 2, k * 2); g.stroke();
     g.beginPath(); g.moveTo(-k, 0); g.lineTo(k, 0); g.stroke();
   } else if (/refin/.test(type)) {
@@ -12388,9 +12395,6 @@ export function drawSurveyStation(g, x, y, typeId, services = [], { hostile = fa
     g.stroke();
   } else if (/milit|customs|navy/.test(type)) {
     g.moveTo(-k, -k * 0.4); g.lineTo(0, k * 0.7); g.lineTo(k, -k * 0.4); g.moveTo(-k, -k * 1.1); g.lineTo(0, 0); g.lineTo(k, -k * 1.1); g.stroke();
-  } else if (/black|pirate|cache|camp/.test(type)) {
-    g.moveTo(0, -k * 1.15); g.lineTo(k * 1.05, 0); g.lineTo(0, k * 1.15); g.lineTo(-k * 1.05, 0); g.closePath(); g.stroke();
-    g.beginPath(); g.arc(0, 0, k * 0.3, 0, Math.PI * 2); g.fill();
   } else if (/research|lab|science/.test(type)) {
     g.moveTo(0, -k * 1.2); g.lineTo(k * 0.3, -k * 0.3); g.lineTo(k * 1.2, 0); g.lineTo(k * 0.3, k * 0.3);
     g.lineTo(0, k * 1.2); g.lineTo(-k * 0.3, k * 0.3); g.lineTo(-k * 1.2, 0); g.lineTo(-k * 0.3, -k * 0.3); g.closePath(); g.fill();

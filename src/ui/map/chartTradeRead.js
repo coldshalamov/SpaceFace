@@ -25,7 +25,9 @@ function stationSectorIndex(sectors) {
 }
 
 function trendOf(quote, raw) {
-  const prev = Number(raw && (raw.prevSell ?? raw.lastSell));
+  // Market memory keeps no previous price today, so in the game this is null until the new price
+  // model (or memory) supplies one; prevSell is the field it will read.
+  const prev = Number(raw && raw.prevSell);
   const now = Number(quote && quote.sell);
   if (!Number.isFinite(prev) || !Number.isFinite(now) || prev <= 0) return null;
   const delta = (now - prev) / prev;

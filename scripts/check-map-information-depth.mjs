@@ -631,10 +631,15 @@ function mountWith(state, { busEvents = [] } = {}) {
   const sections = root.querySelectorAll('[data-rail-sec]');
   assert.ok(sections.length >= 5, 'the rail must carry the brief\'s sections');
   const open = sections.filter((s) => s.hasAttribute('open'));
-  assert.equal(open.length, 1,
-    `exactly one rail section may be open by default (found ${open.length}) — more is the density paradox`);
-  assert.equal(open[0].getAttribute('data-rail-sec'), 'lenses',
-    'the open one must be the primary tool, not a reference legend');
+  // MAPS-2: the four lens chips are the rail's always-visible layer tool; the disclosure sections
+  // start closed or at most one is open (more is the density paradox).
+  assert.ok(open.length <= 1,
+    `at most one rail section may be open by default (found ${open.length}) — more is the density paradox`);
+  assert.equal(root.querySelectorAll('.gm-lens-chip').length, 4, 'the four lens chips sit in the rail');
+  if (open[0]) {
+    assert.equal(open[0].getAttribute('data-rail-sec'), 'lenses',
+      'an open one must be the primary tool, not a reference legend');
+  }
   for (const s of sections) {
     assert.equal(s.tagName, 'DETAILS',
       'sections must be native disclosure elements — keyboard and screen-reader support for free');
@@ -791,14 +796,13 @@ function mountWith(state, { busEvents = [] } = {}) {
   assert.match(panel.textContent, /select a world site/i,
     'an empty tab must SAY why it is empty — a blank panel reads as broken and a filled one lies');
 
-  // The tab must remain reachable so a screen-reader user can hear the reason.
-  const historyTab = root.querySelector('#gm-tab-history');
-  assert.equal(historyTab.getAttribute('aria-disabled'), 'true',
-    'unavailable must be announced, via aria-disabled rather than by removal');
+  // MAPS-2: History sits behind the Log link. Asking for History opens the Log, which stays
+  // reachable and states why the site history is empty.
+  const historyTab = root.querySelector('#gm-tab-log');
+  assert.equal(historyTab.getAttribute('aria-selected'), 'true', 'History lands on the Log');
   assert.ok(historyTab.getAttribute('title'), 'the reason must travel on the control for pointer users');
-  assert.notEqual(historyTab.disabled, true,
-    'an aria-disabled tab must stay focusable, or the explanation is unreachable by keyboard');
-  ok('without a World Site selection History is announced, focusable, and states its reason');
+  assert.notEqual(historyTab.disabled, true, 'the Log must stay focusable');
+  ok('without a World Site selection the Log says why its History is empty, and stays reachable');
 }
 
 {
@@ -817,7 +821,7 @@ function mountWith(state, { busEvents = [] } = {}) {
   const selectedAvailability = resolveInspectorTabAvailability(state, galaxyMapScreen._selectedTarget);
   assert.equal(selectedAvailability.history.available, true);
   galaxyMapScreen._setTab('history');
-  const historyTab = root.querySelector('#gm-tab-history');
+  const historyTab = root.querySelector('#gm-tab-log');
   assert.equal(historyTab.getAttribute('aria-selected'), 'true');
   assert.equal(historyTab.getAttribute('aria-disabled'), 'false');
   const panel = root.querySelector('#gm-tabpanel');
