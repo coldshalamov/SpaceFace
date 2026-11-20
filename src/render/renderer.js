@@ -30298,6 +30298,23 @@ export const render = {
     // hull only ever continues its own motion. Player row only; every other entity keeps
     // the raw fence pose.
     const entityId = world.entityIds[slot];
+    // ENGINE slice 1: when new history lands, every body (player included) keeps drawing a
+    // continuous pose — the fence turns the discontinuity into an offset that heals over ~150 ms
+    // instead of snapping from a coast guess to the true pose. Interpolation-only frames pass raw.
+    if (!currentOnly && entityId && fence && typeof fence.blendDrawnPose === 'function') {
+      const bx = Number.isFinite(origin.x) ? origin.x : 0;
+      const bz = Number.isFinite(origin.z) ? origin.z : 0;
+      const blend = this._drawnBlendScratch || (this._drawnBlendScratch = { x: 0, z: 0, yaw: 0 });
+      fence.blendDrawnPose(entityId, world.slotGenerations?.[slot],
+        mesh.position.x + bx, mesh.position.z + bz, mesh.rotation.y, blend, slot);
+      if (blend.x - bx !== mesh.position.x || blend.z - bz !== mesh.position.z
+        || blend.yaw !== mesh.rotation.y) {
+        mesh.position.x = blend.x - bx;
+        mesh.position.z = blend.z - bz;
+        mesh.rotation.y = blend.yaw;
+        if (mesh.matrixAutoUpdate === false) mesh.updateMatrix();
+      }
+    }
     if (entityId && this.state && entityId === this.state.playerId) {
       const cont = this._poseContinuity || (this._poseContinuity = createPoseContinuity());
       if (this._poseContinuityEpoch !== snapshot.poseEpoch) {
@@ -33214,6 +33231,9 @@ export const render = {
           this._lastRawFrameDt,
         );
         this._snapshotPresentationSequence = this._snapshotFence.sequence;
+        if (typeof this._snapshotFence.beginBlendFrame === 'function') {
+          this._snapshotFence.beginBlendFrame(this._presentationFrameDt);
+        }
       }
       this.syncEntityViews(alpha);
       if (this.state && this.state.render) this.state.render.interpolationAlpha = Number.isFinite(this._snapshotPresentationAlpha)
