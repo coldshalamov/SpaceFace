@@ -1,7 +1,7 @@
 // Flyby Focus — exact high-speed threat lease for the First Flyby milestone.
 //
-// Focus owns one transient target for a deterministic three-sim-second window and requests 50%
-// slow-time through the shared time-effects authority. Persistent gun/UI selection remains owned by
+// Focus owns one transient target for a deterministic three-sim-second window and never touches
+// time (HARMONY-FIX 4 removed the involuntary slow-time lease). Persistent gun/UI selection remains owned by
 // its explicit player-targeting path; Massline reads flybyFocus.targetId directly as acquisition
 // bias. The 280 wu envelope gives a fast threat enough lead time to be read and latched. Once
 // acquired, the lease is temporal and survives the target flying beyond that start range.
@@ -17,7 +17,6 @@ import { isHostileToPlayer } from './scanner.js';
 import { entityIndexVersion, entityIndexLaneVersion, indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const FOCUS_DURATION_S = 3.0;
-const FOCUS_SCALE = 0.5;
 // Two cooldowns, because they answer two different questions.
 //   COOLDOWN_S is the global anti-spam floor: however many hostiles are on the field, the game may
 //     not open a new bullet-time window more often than this.
@@ -43,8 +42,6 @@ const MAX_HOLD_RANGE = 720;
 const MAX_TIME_TO_CLOSEST_S = 2.5;
 const MAX_SURFACE_MISS = 96;
 const LATCH_SCALE = 2.6;
-const TIME_EFFECT_SOURCE = 'flyby-focus';
-const FOCUS_REQUEST = Object.freeze({ scale: FOCUS_SCALE });
 
 /** Bench A/B: production default ON. Quiet latch skips flybyFocus shipLike
  * census (pickFlybyTarget) when no closing hostile/training pass remains.
@@ -394,7 +391,6 @@ export const flybyFocus = {
       if (reason === 'new-game') focus.flybyLatched = false;
     }
     if (resetZoom) focus.zoom = 0;
-    if (this.timeEffects) this.timeEffects.clear(TIME_EFFECT_SOURCE);
     if (wasActive && this.bus) {
       const payload = {
         targetId,
@@ -457,10 +453,6 @@ export const flybyFocus = {
       if (invalidReason) {
         this._finish(invalidReason);
       } else {
-        if (this.timeEffects) {
-          if (arcade) this.timeEffects.clear(TIME_EFFECT_SOURCE);
-          else this.timeEffects.set(TIME_EFFECT_SOURCE, FOCUS_REQUEST);
-        }
       }
     }
 
@@ -540,10 +532,6 @@ export const flybyFocus = {
     }
     focus.targetId = pick.id;
     focus.zoom = 0.35;
-    if (this.timeEffects) {
-      if (arcade) this.timeEffects.clear(TIME_EFFECT_SOURCE);
-      else this.timeEffects.set(TIME_EFFECT_SOURCE, FOCUS_REQUEST);
-    }
     // NOTICE-01: bounded tutorial prompt — at most FLYBY_PROMPT_MAX_SHOWINGS per flyby event
     // (this target's occupant generation), and never once the player has latched.
     const promptKey = `${pick.id}:${leaseEntity?.occupantGeneration ?? 0}`;
@@ -556,14 +544,14 @@ export const flybyFocus = {
         startedAt: now,
         until: focus.until,
         durationS: FOCUS_DURATION_S,
-        scale: arcade ? 1 : FOCUS_SCALE,
+        scale: 1, // HARMONY-FIX 4: never slows time
         relativeSpeed: pick.relativeSpeed,
         closingSpeed: pick.closingSpeed,
         timeToClosestS: pick.timeToClosestS,
         closestSurfaceMiss: pick.closestSurfaceMiss,
       });
       if (showPrompt) this.bus.emit('toast', {
-        text: 'Time slows — latch the flyby before it clears',
+        text: 'Fast flyby — latch the flyby before it clears',
         kind: 'good',
         ttl: 1.6,
       });

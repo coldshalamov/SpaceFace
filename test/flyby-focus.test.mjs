@@ -161,7 +161,7 @@ function runtimeFor(contacts, options = {}) {
   assert.equal(f.state.player.targetId, distractor.id,
     'Focus start must preserve the player\'s persistent gun/UI selection');
   assert.equal(f.state.player.flybyFocus.until, 3, 'window provides a full three-second latch opportunity');
-  assert.equal(f.state.timeScale, 0.5, 'Focus requests 50% slow-time through the shared authority');
+  assert.equal(f.state.timeScale, 1, 'HARMONY-FIX 4: a flyby lease never slows time');
   assert.equal(starts.length, 1);
   assert.deepEqual(
     Object.keys(starts[0]).sort(),
@@ -186,7 +186,7 @@ function runtimeFor(contacts, options = {}) {
   f.timeEffects.set('test:pause', { scale: 0 });
   assert.equal(f.state.timeScale, 0, 'pause remains the minimum request');
   f.timeEffects.clear('test:pause');
-  assert.equal(f.state.timeScale, 0.5, 'clearing pause reveals the still-active Focus request');
+  assert.equal(f.state.timeScale, 1, 'clearing pause leaves normal time: Focus holds no time request');
 
   f.state.simTime = 2.999;
   f.system.update(DT, f.state);
@@ -298,7 +298,7 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
   const target = hostile(2);
   const f = runtimeFor([target], { targetId: 'persistent-selection' });
   f.system.update(DT, f.state);
-  assert.equal(f.state.timeScale, 0.5, `${event}: fixture activates`);
+  assert.equal(f.state.timeScale, 1, `${event}: fixture activates without touching time`);
   f.bus.emit(event, {});
   assert.equal(f.state.player.flybyFocus.active, false, `${event}: focus resets`);
   assert.equal(f.state.player.targetId, 'persistent-selection', `${event}: persistent selection survives`);
@@ -389,7 +389,7 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
     f.system.update(DT, f.state);
     assert.equal(f.state.player.flybyFocus.active, true,
       `moving target keeps the lease through tick ${tick}`);
-    assert.equal(f.state.timeScale, 0.5, `moving target keeps 50% time through tick ${tick}`);
+    assert.equal(f.state.timeScale, 1, `HARMONY-FIX 4: time stays normal through tick ${tick}`);
   }
   assert.equal(ends.length, 0, 'range exit cannot emit an early Focus end');
 
@@ -517,7 +517,7 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
   old.bus.on('flybyFocus:end', (payload) => oldEnds.push(payload));
   old.system.update(DT, old.state);
   assert.equal(oldState.player.flybyFocus.active, true);
-  assert.equal(oldState.timeScale, 0.5);
+  assert.equal(oldState.timeScale, 1);
 
   const nextFixture = stateWith([]);
   const nextBus = createBus();
