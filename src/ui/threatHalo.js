@@ -300,8 +300,8 @@ const EDGE_BAND_PX = 24;
 const EDGE_CENTER_PX = EDGE_BAND_PX * 0.5 + 6;   // inset: the indicator never touches the screen edge
 const EDGE_GAP_PX = 4;
 
-const ARC_SPAN_PX = 54;
-const ARC_DEPTH_PX = 18;
+const ARC_SPAN_PX = 26;
+const ARC_DEPTH_PX = 26;
 const MISSILE_SIZE_PX = 22;
 
 // The countermeasure read (INF: the defense answer to the inbound-missile telegraph must be
@@ -444,6 +444,16 @@ function buildMissileGlyph() {
     + '</svg>';
 }
 
+function buildAttackerChevronGlyph() {
+  // Crisp red edge chevron pointing outward toward an off-screen attacker (0deg = UP for top edge;
+  // rotated along bearing angle via --sf-threat-angle). No ruler boxes, no live filters.
+  return '<svg class="sf-threat-halo__attacker-chev" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'
+    + '<path class="sf-threat-halo__chev-plate" d="M12 3 L21 15 L17 15 L12 8.5 L7 15 L3 15 Z"/>'
+    + '<path class="sf-threat-halo__chev-stroke" d="M4 14.5 L12 4.5 L20 14.5"/>'
+    + '<path class="sf-threat-halo__chev-inner" d="M7.5 18.2 L12 12.6 L16.5 18.2"/>'
+    + '</svg>';
+}
+
 // The CM ring rides the chevron: a faint full circle is the socket ("the answer exists"), the
 // stroke refills from empty as the recharge runs (dashoffset driven per tick by the slot state).
 // Same stroke/token language as the chevron itself — currentColor on the --k-signal amber.
@@ -576,14 +586,17 @@ export function createThreatHalo(root, busOrOpts) {
   root.appendChild(layer);
 
   const missileGlyph = buildMissileGlyph();
+  const attackerChevronGlyph = buildAttackerChevronGlyph();
 
   const hostileSlots = new Array(HOSTILE_LIMIT);
   for (let i = 0; i < HOSTILE_LIMIT; i++) {
-    const slot = createSlot('sf-threat-halo__slot sf-threat-halo__slot--arc', missileGlyph);
+    const slot = createSlot('sf-threat-halo__slot sf-threat-halo__slot--arc', '');
     const arc = document.createElement('div');
     arc.className = 'sf-threat-halo__arc';
+    arc.innerHTML = attackerChevronGlyph;
     slot.appendChild(arc);
     slot._sfArc = arc;
+    slot._sfAttackerChev = arc.firstChild || null;
     const mineCount = document.createElement('span');
     mineCount.className = 'orr-value sf-threat-halo__minecount';
     mineCount.setAttribute('aria-hidden', 'true');
@@ -952,26 +965,28 @@ export function createThreatHalo(root, busOrOpts) {
       : (width <= 1279 || height <= 719) ? 0.85 : 1;                    // --sf-hud-edge-fit
     const safeInsetX = Math.max(0, (width - height * 16 / 9) / 2);      // ultrawide safe frame
 
-    // [0] The ORRERY Cluster — the live power rail: hull rings, the Speed Dial and the ordnance
-    // crescent all live in its 760x540 canvas, anchored left:18 (8 under 1400px), bottom:24 and
-    // scaled canvas*host from the bottom-left corner. Reserved whole, bottom edge to the frame.
-    const clusterScale = (width > 1700 ? 0.85 : (width > 1300 ? 0.7 : 0.6)) * edgeFit;
-    const clusterLeft = width <= 1400 ? 8 : 18;
+    // [0] The bottom-left visor power bar & vitals cluster: keep off-screen attacker chevrons
+    // cleanly clear of both the six-tile + Q·More bar width and its full height above bottom edge.
+    const safeFrameW = Math.max(320, width - 2 * safeInsetX);
+    const visorWidth = width <= 760
+      ? Math.max(280, width - 36)
+      : (width <= 1200 ? Math.min(width * 0.54, safeFrameW * 0.56) : Math.min(width * 0.49, safeFrameW * 0.54, 792));
+    const visorLeft = clamp(width * 0.01435, 12, 24) + safeInsetX;
+    const visorBottom = clamp(height * 0.0436, 24, 43);
+    const visorHeight = width <= 1200 ? 182 : 244;
     const cluster = reservedRects[0];
     cluster.x = 0;
-    cluster.width = clusterLeft + CLUSTER_CANVAS_W * clusterScale + CLUSTER_PAD_PX;
-    cluster.y = Math.max(0, height - CLUSTER_BOTTOM_PX - CLUSTER_CANVAS_H * clusterScale - CLUSTER_PAD_PX);
+    cluster.width = visorLeft + visorWidth + CLUSTER_PAD_PX;
+    cluster.y = Math.max(0, height - visorBottom - visorHeight - CLUSTER_PAD_PX);
     cluster.height = height - cluster.y;
 
-    // [1] .sf-rightdock — sector law, target, overview and the radar dial, right/bottom at the
-    // HUD edge on the --sf-dock-w column. The reservation covers the radar bezel (the dial —
-    // the box that must never carry a marker) and a card margin above it, capped so the right
-    // edge still holds the hostile cap; text cards higher in the column are transient reads a
-    // passing mark may cross, the same trade the pre-ORRERY layout made.
-    const dockW = (width <= 760 || height <= 620) ? 204 : ((width <= 900 || height <= 650) ? 220 : 256);
+    // [1] .sf-rightdock — bottom-right visor radar chart & footer. Keep chevrons clear of it.
+    const chartW = Math.min(clamp(width * 0.2763, 216, 462), safeFrameW * 0.30);
+    const chartH = clamp(width * 0.1238, 112, 207) + 64;
+    const dockW = Math.max(chartW, (width <= 760 || height <= 620) ? 204 : ((width <= 900 || height <= 650) ? 220 : 256));
     const right = reservedRects[1];
-    right.width = edge + dockW * edgeFit + DOCK_PAD_PX;
-    right.height = Math.min((dockW + DOCK_PAD_TOP_PX) * edgeFit + edge, height * 0.5);
+    right.width = Math.max(edge + dockW * edgeFit, clamp(width * 0.012, 12, 20) + chartW) + DOCK_PAD_PX;
+    right.height = Math.min(Math.max((dockW + DOCK_PAD_TOP_PX) * edgeFit + edge, chartH + clamp(height * 0.0362, 16, 34) + 16), height * 0.5);
     right.x = width - safeInsetX - right.width;
     right.y = height - right.height;
 
@@ -1570,6 +1585,15 @@ export function createThreatHalo(root, busOrOpts) {
       setDisplay(slot, true, 'block');
       setEdge(slot, placement.edge);
       setHudTransform(slot, placement.x, placement.y);
+      if (slot._sfAttackerChev && slot._sfAttackerChev.style) {
+        const dx = hostileX[i] - viewportW * 0.5;
+        const dy = hostileY[i] - viewportH * 0.5;
+        const deg = Math.round(Math.atan2(dy, dx) * 180 / Math.PI + 90);
+        if (slot._sfThreatDeg !== deg) {
+          slot._sfThreatDeg = deg;
+          slot._sfAttackerChev.style.setProperty('--sf-threat-angle', `${deg}deg`);
+        }
+      }
       setAttr(slot, 'data-role', hostileRole[i] || 'unknown');
       setAttr(slot, 'data-silhouette-token', hostileToken[i] || 'token_silhouette_standard');
       setAttr(slot, 'data-entity-id', hostileId[i] != null ? hostileId[i] : null);

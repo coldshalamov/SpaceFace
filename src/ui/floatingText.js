@@ -297,9 +297,10 @@ export function createFloatingText(ctx) {
       if (denied || selected || armed) near = true;
       node.near = near;
       const far = !near && priced;
-      if (node.far !== far || node.denied !== denied) {
-        node.far = far; node.denied = denied; node.w = 0; node.h = 0;
-        node.el.className = 'sf-fp' + (denied ? ' sf-fp--deny' : '') + (far ? ' sf-fp--far' : '');
+      const ambient = !priced;
+      if (node.far !== far || node.denied !== denied || node.ambient !== ambient) {
+        node.far = far; node.denied = denied; node.ambient = ambient; node.w = 0; node.h = 0;
+        node.el.className = 'sf-fp' + (ambient ? ' sf-fp--ambient' : '') + (denied ? ' sf-fp--deny' : '') + (far ? ' sf-fp--far' : '');
       }
       const quiet = !near && !priced;
       const show = !quiet && Number.isFinite(s.x) && Number.isFinite(s.y)

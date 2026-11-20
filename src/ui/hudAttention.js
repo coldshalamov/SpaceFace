@@ -9,11 +9,97 @@ import { getPromptDevice } from './bindings.js';
 import { controlPrompt } from './controlPrompts.js';
 import { isSwarmGlass, swarmGlassAdmits, swarmCalloutText } from './swarmGlass.js';
 import { attentionAdmits, isAdventureFlight, plainCallout, receiptSource } from './attentionGlass.js';
+import { isHostileToPlayer } from '../systems/scannerReadModel.js';
 import { counted } from './numberFormat.js';
 import { getStage } from './stage.js';
 
 
 export const RECEIPT_MAX = 2;
+export const HUD_ATTENTION_HULL_HIT_WINDOW_S = 8;
+export const HUD_ATTENTION_DEFAULT_WEAPONS_RANGE = 950;
+const COMBAT_AI_STATES = new Set(['attack', 'attacking', 'chase', 'chasing', 'pursue', 'pursuing', 'engage', 'engaged', 'combat', 'strafe', 'strafing', 'flank', 'intercept']);
+
+function playerWeaponsRangeWu(player) {
+  const weapons = player && (player.data?.weapons || player.weapons);
+  let maxRange = 0;
+  if (Array.isArray(weapons)) {
+    for (let i = 0; i < weapons.length; i++) {
+      const w = weapons[i];
+      if (!w) continue;
+      const r = Number(w.range ?? w.maxRange ?? w.fireRange);
+      if (Number.isFinite(r) && r > maxRange) maxRange = r;
+    }
+  }
+  if (maxRange > 0) return Math.max(800, Math.min(1400, maxRange));
+  return HUD_ATTENTION_DEFAULT_WEAPONS_RANGE;
+}
+
+function hostileEntityEngagedOrInRange(state, player, rangeWu) {
+  if (!state || !player || player.alive === false) return false;
+  const targetId = state.player && state.player.targetId;
+  const entities = state.entities;
+  if (targetId != null && entities && typeof entities.get === 'function') {
+    const locked = entities.get(targetId);
+    if (locked && locked.alive !== false && locked !== player && isHostileToPlayer(locked, player.team, state)) {
+      return true;
+    }
+  }
+  const index = state.entityIndex;
+  const ships = (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.ships))
+    ? index.ships
+    : (Array.isArray(state.entityList) ? state.entityList
+      : (entities && typeof entities.values === 'function' ? entities.values() : []));
+  const rangeSq = rangeWu * rangeWu;
+  const px = Number(player.pos?.x);
+  const pz = Number(player.pos?.z);
+  const hasPos = Number.isFinite(px) && Number.isFinite(pz);
+  for (const e of ships) {
+    if (!e || e === player || e.alive === false || e.type !== 'ship') continue;
+    if (!isHostileToPlayer(e, player.team, state)) continue;
+    const ai = e.data && e.data.ai;
+    if (ai) {
+      if (ai.targetId === player.id) return true;
+      const st = typeof ai.state === 'string' ? ai.state.toLowerCase() : '';
+      if (st && COMBAT_AI_STATES.has(st)) return true;
+    }
+    if (e.data?.engaged === true) return true;
+    if (hasPos && e.pos && Number.isFinite(e.pos.x) && Number.isFinite(e.pos.z)) {
+      const dx = e.pos.x - px;
+      const dz = e.pos.z - pz;
+      if (dx * dx + dz * dz <= rangeSq) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Resolve the single flight HUD attention state (`teach` | `fight` | `calm`).
+ *
+ * - `fight`: a Swarm round is live, a hostile is engaged or within weapons range, or the
+ *   player's hull took damage within the last 8 s.
+ * - `teach`: the first two minutes (120 s) of a new Adventure save (when not fighting).
+ * - `calm`: everything else.
+ */
+export function resolveHudAttention(state, { lastPlayerHullHitAt = -Infinity, weaponsRangeWu = null } = {}) {
+  if (!state || typeof state !== 'object') return 'calm';
+  if (isSwarmGlass(state) || (state.run && state.run.kind === 'survival' && state.run.phase && state.run.phase !== 'inactive' && state.run.phase !== 'ended')) {
+    return 'fight';
+  }
+  const now = Number(state.simTime);
+  if (Number.isFinite(now) && Number.isFinite(lastPlayerHullHitAt)
+    && now >= lastPlayerHullHitAt && (now - lastPlayerHullHitAt) <= HUD_ATTENTION_HULL_HIT_WINDOW_S) {
+    return 'fight';
+  }
+  const player = state.entities && state.playerId != null && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const range = Number.isFinite(weaponsRangeWu) && weaponsRangeWu > 0
+    ? weaponsRangeWu
+    : playerWeaponsRangeWu(player);
+  if (hostileEntityEngagedOrInRange(state, player, range)) return 'fight';
+  if (openingWindowActive(state)) return 'teach';
+  return 'calm';
+}
 export const VITAL_NUMERIC_LOW = 0.5;
 export const SHIP_GLYPH_BOX = Object.freeze({ width: 62, height: 74 });
 

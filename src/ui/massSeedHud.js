@@ -129,7 +129,7 @@ export function resolveMassSeedLockCue(projection, options = {}) {
       y: rawY,
       offscreen: false,
       direction: 'onscreen',
-      ariaLabel: 'Mass Seed lock point onscreen',
+      ariaLabel: 'Pin lock point onscreen',
     };
   }
 
@@ -149,7 +149,7 @@ export function resolveMassSeedLockCue(projection, options = {}) {
     y: worldEdge ? worldEdge.y : clampRange(rawY, margin, viewportHeight - margin),
     offscreen: true,
     direction,
-    ariaLabel: `Mass Seed lock point offscreen ${direction}`,
+    ariaLabel: `Pin lock point offscreen ${direction}`,
   };
 }
 
@@ -202,49 +202,9 @@ export const massSeedHud = {
     this._updateLockMarker(dom, state, ms);
   },
 
-  _updatePill(dom, state, ms, now) {
-    let text = '';
-    let cls = '';
-    if (ms && ms.phase && ms.phase !== 'idle' && ms.phase !== 'collapsing') {
-      if (ms.phase === 'travel') {
-        text = `SEED → LOCK ${Math.max(0, ms.lockAt - now).toFixed(1)}s`;
-      } else if (ms.phase === 'locking') {
-        text = 'SEED FRAME LOCK…';
-      } else if (ms.phase === 'active') {
-        text = `ANCHOR ${Math.max(0, Math.ceil(ms.expireAt - now))}s`;
-      } else if (ms.phase === 'warning') {
-        text = `ANCHOR COLLAPSE IN ${Math.max(0, Math.ceil(ms.expireAt - now))}s`;
-        cls = 'mseed-warning';
-      }
-    } else {
-      const ps = state.player && state.player.massSeed;
-      const cooldown = ps && Number.isFinite(ps.cooldownUntil) ? ps.cooldownUntil - now : 0;
-      if (cooldown > 0.05) {
-        text = `SEED READY IN ${Math.ceil(cooldown)}s`;
-        cls = 'mseed-cooldown';
-      }
-    }
-    if (!text) { this._hidePill(dom); return; }
-    // Lane contract: a live seed keeps its voice; a cooldown countdown yields to any
-    // load-bearing pill occupying the shared bottom-center lane (src/ui/hudLayout.js).
-    const priority = cls === 'mseed-cooldown' ? LANE_PRIORITY.cooldown : LANE_PRIORITY.active;
-    const seat = claimBottomLaneSeat('mseed', priority, MSEED_LANE_BASE, now);
-    if (!seat.visible) { this._hidePill(dom); return; }
-    if (text !== this._lastPillText) {
-      this._lastPillText = text;
-      dom.pillText.textContent = text;
-      dom.pill.setAttribute('aria-label', text);
-    }
-    if (cls !== this._lastPillClass) {
-      this._lastPillClass = cls;
-      dom.pill.classList.toggle('mseed-warning', cls === 'mseed-warning');
-      dom.pill.classList.toggle('mseed-cooldown', cls === 'mseed-cooldown');
-    }
-    if (!this._pillVisible) {
-      dom.pill.style.display = 'flex';
-      this._pillVisible = true;
-    }
-    this._applyLaneSeat(dom.pill, seat.bottom);
+  // Pin state and cooldown live on the Pin tile of the power bar — never as a floating status pill.
+  _updatePill(dom) {
+    this._hidePill(dom);
   },
 
   // Write-on-change seat: solo (or lane-leading) pills keep the sheet's authored offset — the
@@ -258,7 +218,7 @@ export const massSeedHud = {
 
   _hidePill(dom) {
     releaseBottomLaneClaim('mseed');
-    if (this._pillVisible) {
+    if (this._pillVisible || dom.pill.style.display !== 'none') {
       dom.pill.style.display = 'none';
       if (this._laneSeat) { dom.pill.style.bottom = ''; this._laneSeat = ''; }
     }

@@ -199,25 +199,62 @@ export function arsenalGlyphKey(id) {
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
 const flightGlyphs = Object.freeze({
-  field_well_standard: [{ ...P('M12 1.3v7.2m-3.3-3.1L12 8.7l3.3-3.3M22.7 12h-7.2m3.1-3.3L15.3 12l3.3 3.3M12 22.7v-7.2m-3.3 3.1 3.3-3.3 3.3 3.3M1.3 12h7.2m-3.1-3.3L8.7 12l-3.3 3.3'), 'stroke-linecap': 'square' }],
-  field_repulsor_standard: [{ ...P('M2.4 8V2.4H8 M2.8 2.8 8.4 8.4 M16 2.4h5.6V8 M21.2 2.8l-5.6 5.6 M2.4 16v5.6H8 M2.8 21.2l5.6-5.6 M16 21.6h5.6V16 M21.2 21.2l-5.6-5.6'), 'stroke-linecap': 'square' }],
+  // Pull: converging arrows on a point.
+  field_well_standard: [
+    { ...P('M12 1.5v6.8m-3.1-3L12 8.5l3.1-3.2M22.5 12h-6.8m3-3.1L15.5 12l3.2 3.1M12 22.5v-6.8m-3.1 3L12 15.5l3.1 3.2M1.5 12h6.8m-3-3.1L8.5 12l-3.2 3.1'), 'stroke-linecap': 'square' },
+    { ...C(12, 12, 1.8), fill: 'currentColor', stroke: 'none' },
+  ],
+  // Shove: a pressure front bursting forward from a ship bow.
+  field_repulsor_standard: [
+    { ...P('M2 8.2L8.2 12 2 15.8 4.4 12Z'), fill: 'currentColor', stroke: 'none' },
+    { ...P('M10.4 5.2Q14.6 12 10.4 18.8'), 'stroke-width': '1.9' },
+    { ...P('M13.8 12h7.6M18.6 9.2L21.4 12l-2.8 2.8M13.2 7.2L19.4 4.2M13.2 16.8L19.4 19.8'), 'stroke-width': '1.65' },
+  ],
+  // Pin: a stake driven through a point with a small orbit arc.
   field_seed_standard: [
-    { ...P('M12 1.1 15 5.4l-2-.7v15.5l6.2-3.9-1.2-3.1 4 3.4-10 6.3-10-6.3 4-3.4-1.2 3.1 6.2 3.9V4.7l-2 .7Z'), fill: 'currentColor', stroke: 'none' },
-    { ...P('M9.7 8.3h4.6'), 'stroke-width': '1.25' },
+    { ...P('M8.2 3h7.6'), 'stroke-width': '1.9' },
+    { ...P('M10.5 3h3l-1 13.8L12 21l-.5-4.2Z'), fill: 'currentColor', stroke: 'none' },
+    { ...C(12, 13.6, 2.2), 'stroke-width': '1.5' },
+    { ...P('M4 12A8.4 3.8 -12 1 0 19.9 15.1'), 'stroke-width': '1.4' },
+    { ...C(19.6, 14.3, 1.3), fill: 'currentColor', stroke: 'none' },
   ],
-  power_charge: [P('M8.5 2H15.5 M6 6Q12 9 18 6V19Q12 23 6 19ZM6 6Q12 3 18 6 M7 17H17 M7 10V15')],
+  // Bomb: a charge with a blinking fuse lamp.
+  power_charge: [
+    { ...P('M6.8 9.6L9.2 7.2h5.6l2.4 2.4v8.2l-2.4 2.4H9.2l-2.4-2.4Z'), 'stroke-width': '1.65' },
+    { ...P('M6.8 14h10.4M10.2 11h3.6M10.5 7.2V5.4h3v1.8'), 'stroke-width': '1.45' },
+    { tag: 'circle', class: 'arsenal-fuse-lamp', cx: '12', cy: '3.2', r: '1.9', fill: 'currentColor', stroke: 'none' },
+    { tag: 'path', class: 'arsenal-fuse-rays', d: 'M7.2 3.2h1.6M15.2 3.2h1.6M9.1 1.1l1.1 1.1M14.9 1.1l-1.1 1.1', 'stroke-width': '1.25' },
+  ],
   bomb_frag: [
-    { ...P('M8.3 1.2h7.4v2.2H8.3zM5.7 6.1c0-1.4 3-2.2 6.3-2.2s6.3.8 6.3 2.2v13.6c0 1.6-2.9 2.8-6.3 2.8s-6.3-1.2-6.3-2.8Zm1.2 0c0 .65 2.3 1.2 5.1 1.2s5.1-.55 5.1-1.2S14.8 5 12 5 6.9 5.45 6.9 6.1ZM5.7 14.2v5.1h2.2l5.1-5.1H9.4l-3.7 3.7v-1.6l2.1-2.1Zm8.9 0-5.1 5.1h5.9l2.9-2.9v-2.2Z'), fill: 'currentColor', 'fill-rule': 'evenodd', stroke: 'none' },
+    { ...P('M6.8 9.6L9.2 7.2h5.6l2.4 2.4v8.2l-2.4 2.4H9.2l-2.4-2.4Z'), 'stroke-width': '1.65' },
+    { ...P('M6.8 14h10.4M10.2 11h3.6M10.5 7.2V5.4h3v1.8'), 'stroke-width': '1.45' },
+    { tag: 'circle', class: 'arsenal-fuse-lamp', cx: '12', cy: '3.2', r: '1.9', fill: 'currentColor', stroke: 'none' },
+    { tag: 'path', class: 'arsenal-fuse-rays', d: 'M7.2 3.2h1.6M15.2 3.2h1.6M9.1 1.1l1.1 1.1M14.9 1.1l-1.1 1.1', 'stroke-width': '1.25' },
   ],
+  // Plow: a wedge at a bow pushing three rocks.
   field_cone_standard: [
-    { ...P('M7.7 5.1Q12 2.1 16.3 5.1 M5.4 8.9Q12 4.3 18.6 8.9'), 'stroke-width': '1' },
-    { ...P('M3.2 13.2Q12 7.2 20.8 13.2 M1.3 18.6Q12 11.2 22.7 18.6'), 'stroke-width': '1.42' },
+    { ...P('M9.2 21.5L12 17.8l2.8 3.7'), 'stroke-width': '1.75' },
+    { ...P('M2.8 16.2L12 11.4l9.2 4.8M6.2 17.6L12 14.6l5.8 3'), 'stroke-width': '1.75' },
+    { ...P('M10 6.4L12 4.1l2.2 1.8-.8 2.8h-2.8Z M3.8 10.4L6 8l2.5 1.4-.8 2.7H4.8Z M15.5 9.4L18 8l2.2 2.4-.9 1.7h-2.9Z'), fill: 'currentColor', 'stroke-width': '1.1' },
   ],
-  power_massline: [C(3.8,17.1,3.1), C(20.2,8.4,3.1), { ...P('M6.56 15.64 17.44 9.86'), 'stroke-width': '1.72' }],
+  field_skim_standard: [
+    { ...P('M9.2 21.5L12 17.8l2.8 3.7'), 'stroke-width': '1.75' },
+    { ...P('M2.8 16.2L12 11.4l9.2 4.8M6.2 17.6L12 14.6l5.8 3'), 'stroke-width': '1.75' },
+    { ...P('M10 6.4L12 4.1l2.2 1.8-.8 2.8h-2.8Z M3.8 10.4L6 8l2.5 1.4-.8 2.7H4.8Z M15.5 9.4L18 8l2.2 2.4-.9 1.7h-2.9Z'), fill: 'currentColor', 'stroke-width': '1.1' },
+  ],
+  // Line: a hook on a cable (clear open J-hook + barb on a taut diagonal cable).
+  power_massline: [
+    { ...C(3.8, 19.6, 1.8), 'stroke-width': '1.65' },
+    { ...P('M5.3 18.2C8.4 15.2 10.6 13.8 13.6 10.8'), 'stroke-width': '1.75' },
+    { ...P('M12.4 9.6l2.4 2.4'), 'stroke-width': '1.6' },
+    { ...P('M13.6 10.8l3.5-3.5c1.8-1.8 4.4-.9 4.5 1.5.1 2.2-1.8 4.2-4.2 3.9l1.3-1.8'), 'stroke-width': '1.9' },
+  ],
 });
 
 export function arsenalIcon(id, size = 24, label = '', flight = false) {
-  const paths = (flight && Object.hasOwn(flightGlyphs, id) && flightGlyphs[id]) || arsenalGlyph(id);
+  const flightKey = flight && typeof id === 'string' && !Object.hasOwn(flightGlyphs, id) && id.startsWith('bomb_')
+    ? 'power_charge' : id;
+  const paths = (flight && Object.hasOwn(flightGlyphs, flightKey) && flightGlyphs[flightKey]) || arsenalGlyph(id);
   if (!paths) return '';
   const dimension = Number.isFinite(Number(size)) ? Math.max(8, Math.min(128, Number(size))) : 24;
   return `<svg xmlns="http://www.w3.org/2000/svg" class="dp-icon arsenal-icon" viewBox="0 0 24 24" width="${dimension}" height="${dimension}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" ${label ? `role="img" aria-label="${escape(label)}"` : 'aria-hidden="true" focusable="false"'} data-arsenal="${escape(id)}">${paths.map(({ tag, ...attrs }) => `<${tag} ${Object.entries(attrs).map(([key, value]) => `${key}="${escape(value)}"`).join(' ')}/>`).join('')}</svg>`;

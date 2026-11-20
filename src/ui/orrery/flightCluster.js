@@ -111,7 +111,8 @@ const CSS = `
 .orr-cluster__key[data-power="shove"] .orr-cluster__icon { color:var(--orr-power-shove, #ff6b5a); }
 .orr-cluster__key[data-power="pin"] .orr-cluster__icon { color:var(--orr-power-pin, #78a6ff); }
 .orr-cluster__key[data-power="bomb"] .orr-cluster__icon { color:var(--orr-power-bomb, #ff8a3d); }
-.orr-cluster__key[data-power="rig"] .orr-cluster__icon { color:var(--orr-power-rig, #eef2f4); }
+.orr-cluster__key[data-power="rig"] .orr-cluster__icon,
+.orr-cluster__key[data-power="plow"] .orr-cluster__icon { color:var(--orr-power-rig, #eef2f4); }
 .orr-cluster__key[data-power="line"] .orr-cluster__icon { color:var(--orr-power-line, #5fd6e8); }
 .orr-cluster__icon.has-arsenal { background:none; -webkit-mask:none; mask:none; }
 .orr-cluster__icon.has-arsenal svg { display:block; width:100%; height:100%; stroke-width:1.7; }
@@ -308,7 +309,7 @@ const f1 = (n) => n.toFixed(1);
  * @param {object} o
  * @param {{name:string, icon:string, slots:{key:string,name:string,icon:string}[]}[]} o.groups
  */
-export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null, name = 'Hitch', classLine = 'Kestrel class · starter', groups = [], restSlot = null, onActivateSocket = null, layout = 'orrery' } = {}) {
+export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null, name = 'Hitch', classLine = 'Kestrel class · starter', groups = [], restSlot = null, onActivateSocket = null, onOpenMore = null, layout = 'orrery' } = {}) {
   injectStyle();
   const visor = layout === 'visor';
   const root = el('section', visor ? 'orr-cluster orr-cluster--visor' : 'orr-cluster');
@@ -478,6 +479,56 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
   keyLayer.setAttribute('role', 'group');
   keyLayer.setAttribute('aria-label', 'Ship powers');
   root.appendChild(keyLayer);
+
+  let moreBtn = null;
+  let moreKeyEl = null;
+  if (visor) {
+    moreBtn = el('button', 'orr-visor__more');
+    moreBtn.type = 'button';
+    moreBtn.setAttribute('aria-label', 'More actions, key Q');
+    moreBtn.setAttribute('data-why', 'More actions — open the context wheel (Q)');
+    moreBtn.setAttribute('data-why-brief', 'More · Q\nOpen the context wheel for brake, scan, mine, and drive controls');
+    moreKeyEl = el('b', null, 'Q');
+    const moreLabel = el('span', null, 'More');
+    moreBtn.append(moreKeyEl, moreLabel);
+    moreBtn.addEventListener('click', (ev) => {
+      if (typeof onOpenMore === 'function') onOpenMore();
+      if (ev && ev.detail > 0) { try { moreBtn.blur(); } catch (_) {} }
+    });
+  }
+
+  let captionEl = null;
+  let captionNameEl = null;
+  let captionTextEl = null;
+  let lastCaptionSig = '';
+  if (visor) {
+    captionEl = el('div', 'orr-visor__caption');
+    captionEl.setAttribute('role', 'status');
+    captionEl.setAttribute('aria-live', 'polite');
+    captionEl.hidden = true;
+    captionNameEl = el('b', 'orr-visor__caption-name');
+    captionTextEl = el('span', 'orr-visor__caption-text');
+    captionEl.append(captionNameEl, captionTextEl);
+  }
+  function setPowerCaption(cap) {
+    if (!captionEl) return;
+    const nameStr = cap && typeof cap === 'object' ? String(cap.name || '') : '';
+    const textStr = typeof cap === 'string' ? cap : (cap && typeof cap === 'object' ? String(cap.text || '') : '');
+    const sig = `${nameStr}|${textStr}`;
+    if (sig === lastCaptionSig) return;
+    lastCaptionSig = sig;
+    if (!textStr) {
+      captionEl.hidden = true;
+      captionNameEl.textContent = '';
+      captionTextEl.textContent = '';
+      return;
+    }
+    captionNameEl.textContent = nameStr;
+    captionNameEl.hidden = !nameStr;
+    captionTextEl.textContent = textStr;
+    captionEl.hidden = false;
+  }
+
   const sockets = [];
   // A socket is a hoverable, focusable readout of one verb (not a button: the press is the key, a
   // click fires nothing). `tip` is the tier-2 [data-why] phrase composed by the rail model — the
@@ -527,12 +578,18 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
     const armed = svg('circle', { r: r0, class: 'orr-core orr-hand', 'stroke-width': 1.5, fill: 'none', opacity: 0 });
     ks.append(bloomTwin, pulseRing, coreCircle, cd, armedB, armed);
     k.appendChild(ks);
+    const activeRing = visor ? el('span', 'orr-cluster__ring') : null;
+    if (activeRing) { activeRing.setAttribute('aria-hidden', 'true'); k.appendChild(activeRing); }
     const ic = el('span', 'orr-cluster__icon');
     ic.style.setProperty('--orr-icon', `url("${ICON_ROOT}icon-${icon}.svg")`);
     k.appendChild(ic);
+    const cdWipe = visor ? el('span', 'orr-cluster__cdwipe') : null;
+    const cdNum = visor ? el('span', 'orr-cluster__cdnum') : null;
+    if (cdWipe) { cdWipe.setAttribute('aria-hidden', 'true'); k.appendChild(cdWipe); }
+    if (cdNum) { cdNum.setAttribute('aria-hidden', 'true'); k.appendChild(cdNum); }
     const tag = el('span', 'orr-label orr-cluster__keytag');
-    // The words live in their own span so a verb whose meaning changes ("Rig · Cone" → "Rig · Scoop")
-    // rewrites only them, never the key beside them.
+    // The words live in their own span so a verb whose meaning changes ("Bomb" → "Detonate",
+    // "Plow" → "Launch") rewrites only them, never the key beside them.
     const labelNode = el('span', 'orr-cluster__keyword', label);
     tag.appendChild(labelNode);
     const shortLabelNode = el('span', 'orr-cluster__keyshort', label);
@@ -547,7 +604,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
     k.appendChild(count);
     keyLayer.appendChild(k);
     const spring = createSpring({ value: 0, preset: 'settle', onUpdate: (v) => cd.setAttribute('stroke-dasharray', `${Math.max(0, Math.min(1, v))} 1`) });
-    return { el: k, armed, armedB, spring, count, label, tip, iconEl: ic, arsenalId: '', labelNode, shortLabelNode, keyNode, slot: slotRef, group: groupRef };
+    return { el: k, armed, armedB, spring, count, label, tip, iconEl: ic, cdWipe, cdNum, arsenalId: '', labelNode, shortLabelNode, keyNode, slot: slotRef, group: groupRef };
   };
 
   let openGroup = null;
@@ -584,6 +641,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
         a += STEP_NODE;
       }
     });
+    if (moreBtn) keyLayer.appendChild(moreBtn);
     crescentTrack.setAttribute('d', arcD(P.x, P.y, R.crescent, (first ?? CRESCENT_START) - 10, lastA + 10));
     sockets.forEach((sk, i) => {
       sk.el.style.setProperty('--orr-key-x', sk.el.style.left);
@@ -606,7 +664,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
     ['hull', hullRow.lab, hullRow.val], ['shield', shieldRow.lab, shieldRow.val],
     ['armor', armorRow.lab, armorRow.val], ['energy', energyLabel, energyVal], ['heat', heatLabel, heatVal],
   ]) : null;
-  if (readouts) root.append(readouts.el, keyLayer, nextEl, payload, perksWrap);
+  if (readouts) root.append(readouts.el, keyLayer, captionEl, nextEl, payload, perksWrap);
   else root.append(dial.el, energyRead, heatRead, legend, nextEl, payload, perksWrap);
 
   // ---- update --------------------------------------------------------------------------------------
@@ -703,14 +761,16 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
       }
     }
     // A support verb the ship does not carry takes no seat on the crescent.
+    // On the six-tile visor bar, slots 0 (travel), 7 (gyre), and 8 (cloak) never take a seat;
+    // any absent/unowned power in 1..6 is also hidden so no empty socket ever appears.
     let nextHiddenSig = '';
     const nextHidden = new Set();
     groups.forEach((g, gi) => {
       if (g.slots.length && g.slots.every((sl) => {
         const id = Number(sid(sl));
         const slot = slotStates[sid(sl)] || {};
-        const unboundSupport = visor && (id === 0 || id >= 7) && !slot.key && slot.active !== true && slot.firing !== true;
-        return slot.hidden === true || unboundSupport;
+        const visorExcluded = visor && (id === 0 || id >= 7);
+        return slot.hidden === true || visorExcluded;
       })) { nextHidden.add(gi); nextHiddenSig += `${gi},`; }
     });
     if (nextHiddenSig !== hiddenSig) { hiddenSig = nextHiddenSig; hiddenGroups = nextHidden; keysChanged = true; }
@@ -741,6 +801,8 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
       const state = st.state || 'ready';
       const live = st.live === true;
       const active = st.active === true;
+      const running = st.running === true;
+      const detonate = st.detonate === true;
       const firing = st.firing === true;
       const held = st.held === true;
       const arsenalId = st.arsenalId || '';
@@ -753,28 +815,52 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
         // With no authored drawing the socket keeps the generic kit mark and SAYS so (dim, family).
         sk.iconEl.setAttribute('data-glyph-source', authored ? 'authored' : 'family');
       }
-      if (sk.state !== state || sk.live !== live || sk.active !== active || sk.firing !== firing || sk.held !== held) {
+      if (sk.state !== state || sk.live !== live || sk.active !== active || sk.running !== running
+        || sk.detonate !== detonate || sk.firing !== firing || sk.held !== held) {
         sk.state = state;
         sk.live = live;
         sk.active = active;
+        sk.running = running;
+        sk.detonate = detonate;
         sk.firing = firing;
         sk.held = held;
-        sk.el.className = `orr-cluster__key${node ? ' is-node' : ''} is-${state}${live ? ' is-live' : ''}${active ? ' is-active' : ''}${held ? ' is-held' : ''}${firing ? ' is-firing' : ''}`;
-        sk.armed.setAttribute('opacity', (state === 'armed' || active || firing) ? '1' : '0');
-        sk.armedB.setAttribute('opacity', (state === 'armed' || active || firing) ? '.34' : '0');
-        sk.el.setAttribute('aria-pressed', (state === 'armed' || active || firing) ? 'true' : 'false');
+        sk.el.className = `orr-cluster__key${node ? ' is-node' : ''} is-${state}${live ? ' is-live' : ''}${active ? ' is-active' : ''}${running ? ' is-running' : ''}${detonate ? ' is-detonate' : ''}${held ? ' is-held' : ''}${firing ? ' is-firing' : ''}`;
+        const lit = state === 'armed' || active || running || detonate || firing;
+        sk.armed.setAttribute('opacity', lit ? '1' : '0');
+        sk.armedB.setAttribute('opacity', lit ? '.34' : '0');
+        sk.el.setAttribute('aria-pressed', lit ? 'true' : 'false');
       }
-      sk.spring.set(state === 'cooldown' ? Number(st.cooldown) || 0 : 0);
-      const countText = Number.isFinite(st.count) ? `×${st.count}` : '';
-      if (sk.countText !== countText) { sk.countText = countText; sk.count.textContent = countText; }
-      // The verb's EFFECTIVE name ("Rig · Scoop", "Bomb · Frag ×4 · drop") — never the band's fixed word.
+      const cdFrac = state === 'cooldown' ? Math.max(0, Math.min(1, Number(st.cooldown) || 0)) : 0;
+      sk.spring.set(cdFrac);
+      if (sk.cdWipe) {
+        const rem = state === 'cooldown' ? Math.max(0, Math.min(1, 1 - cdFrac)) : 0;
+        const remStr = rem.toFixed(3);
+        if (sk.cdRem !== remStr) {
+          sk.cdRem = remStr;
+          sk.cdWipe.style.setProperty('--cd-rem', remStr);
+        }
+      }
+      if (sk.cdNum) {
+        const secText = state === 'cooldown' && Number(st.cooldownSec) > 0 ? `${Math.ceil(Number(st.cooldownSec))}s` : '';
+        if (sk.cdSecText !== secText) {
+          sk.cdSecText = secText;
+          sk.cdNum.textContent = secText;
+        }
+      }
+      const plowLoaded = Number.isFinite(st.plowCount) && st.plowCount > 0;
+      const countText = plowLoaded ? String(st.plowCount) : (Number.isFinite(st.count) ? `×${st.count}` : '');
+      if (sk.countText !== countText || sk.plowLoaded !== plowLoaded) {
+        sk.countText = countText;
+        sk.plowLoaded = plowLoaded;
+        sk.count.textContent = countText;
+        sk.count.classList.toggle('is-plow-count', plowLoaded);
+      }
+      // The verb's EFFECTIVE name ("Bomb" → "Detonate", "Plow" → "Launch").
       const label = typeof st.label === 'string' && st.label ? st.label : (node ? sk.group.name : slot.name);
       if (sk.labelText !== label && sk.labelNode) {
         sk.labelText = label;
-        // S5: icon-only sockets (the Swarm bar) draw no word — the name stays on aria + tip.
         const shown = visor ? label.split(' · ')[0].replace(/\s+×\d+.*$|\s+(?:ON|OFF)$/i, '') : (st.iconOnly ? '' : label);
         sk.labelNode.textContent = shown;
-        // Keep the action on narrow screens; counts and secondary effects remain in the full tip.
         sk.shortLabelNode.textContent = st.iconOnly ? '' : (st.shortLabel || shown.replace(/\s+\+\s+.*$/, '').replace(/\s+×\d+.*$/, '')
           .replace(/^Shove · Pushes away\b/i, 'Shove · Push away'));
       }
@@ -791,11 +877,20 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
         else sk.el.removeAttribute('data-why');
         if (brief) sk.el.setAttribute('data-why-brief', brief);
         else if (visor) sk.el.removeAttribute('data-why-brief');
-        const statusPhrase = firing ? 'Activating. ' : (active ? 'Active. ' : '');
+        const statusPhrase = firing ? 'Activating. ' : (detonate ? 'Armed to detonate. ' : (active || running ? 'Active. ' : ''));
         sk.el.setAttribute('aria-label', `${statusPhrase}${tip ? tip.replace(/\n/g, '. ') : `${sk.label}`}`);
       }
       return state;
     };
+    if (moreKeyEl && typeof d.moreKey === 'string' && d.moreKey && changed('moreKey', d.moreKey)) {
+      moreKeyEl.textContent = d.moreKey;
+      moreBtn.setAttribute('aria-label', `More actions, key ${d.moreKey}`);
+      moreBtn.setAttribute('data-why', `More actions — open the context wheel (${d.moreKey})`);
+      moreBtn.setAttribute('data-why-brief', `More · ${d.moreKey}\nOpen the context wheel for brake, scan, mine, and drive controls`);
+    }
+    if (Object.prototype.hasOwnProperty.call(d, 'powerCaption')) {
+      setPowerCaption(d.powerCaption);
+    }
     for (const sk of sockets) {
       if (sk.slot) {
         const state = paintSocket(sk, sk.slot, false);
@@ -904,6 +999,7 @@ export function createFlightCluster({ shipId = 'ship_kestrel', variantId = null,
     arrive,
     setRingLegend,
     setHull,
+    setPowerCaption,
     dispose() {
       for (const g of [shield, armor, hull, energy, heat, strain, dial]) g.dispose();
       handSpring.stop();

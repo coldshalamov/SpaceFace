@@ -270,8 +270,10 @@ export function createBandHud(ctx, options = {}) {
     // A live Swarm round has no band: the arena's own radio is off and the chip's "RADIO OFF"
     // (or a tuned channel from the campaign) is an open-world control the room cannot use
     // (SWARM-LEAK-01). Gate at the source so the chip is never painted, not hidden by a class.
+    const hudAttention = documentRef?.body?.dataset?.hudAttention || '';
     const hidden = !(state.mode === 'flight' && !(state.ui && state.ui.docked))
-      || isSwarmGlass(state);
+      || isSwarmGlass(state)
+      || hudAttention === 'fight' || hudAttention === 'teach';
 
     // Strength is published at 5 Hz but renders in four threshold buckets — compare the
     // scalar projection inputs before any of the string formatting runs at all.

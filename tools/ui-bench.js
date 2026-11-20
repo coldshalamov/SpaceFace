@@ -1758,7 +1758,126 @@ async function mountFlightHud(opts = {}) {
     const mount = shooter && shooter.data && shooter.data.weapons && shooter.data.weapons[0];
     if (mount && mount.projSpeed === 320) delete mount.projSpeed;
   }
+  // HUD-POWER-BAR bench state selector (`?hudState=idle|cooldown|armed|plow|caption|calm|fight|teach`).
+  const hudState = params.get('hudState') || '';
+  const playerEnt = state.entities.get(state.playerId);
+  if (playerEnt) {
+    playerEnt.pos = playerEnt.pos || { x: 0, y: 0, z: 0 };
+    playerEnt.data = playerEnt.data || {};
+    playerEnt.data.weapons = playerEnt.data.weapons || [{ range: 900 }];
+  }
+  state.player.cargo = state.player.cargo || { items: {} };
+  state.player.cargo.items = state.player.cargo.items || {};
+  if (!Number.isFinite(state.player.cargo.items.cmdty_impulse_charge)) {
+    state.player.cargo.items.cmdty_impulse_charge = 4;
+  }
+  state.fields = state.fields || { active: [], cooldowns: {} };
+  state.fields.active = Array.isArray(state.fields.active) ? state.fields.active : [];
+  state.fields.cooldowns = state.fields.cooldowns || {};
+  state.fields.coneActive = false;
+  delete state.fields.plowRockCount;
+  state.massSeed = { phase: 'idle' };
+  state.player.massSeed = { cooldownUntil: 0 };
+  delete state.player.armedChargeCount;
+  delete state._uiBenchPowerCaption;
+
+  // By default in calm/idle/teach/cooldown/armed/plow/caption, move the bench hostile outside
+  // weapons range so Adventure isn't forced into `fight`; in `fight`, add live off-screen attackers.
+  const calmBenchMode = hudState === 'calm' || hudState === 'idle' || hudState === 'teach'
+    || hudState === 'cooldown' || hudState === 'armed' || hudState === 'plow' || hudState === 'caption';
+  if (calmBenchMode) {
+    state.simTime = hudState === 'teach' ? 30 : 240;
+    const raider = state.entities.get(13);
+    if (raider) {
+      raider.pos = { x: 4200, y: 0, z: 4200 };
+      if (raider.data?.ai) { delete raider.data.ai.targetId; raider.data.ai.state = 'patrol'; }
+    }
+    const cradle = state.entities.get(12);
+    if (cradle) cradle.team = 0;
+    if (hudState === 'calm') {
+      // Nearby claimable asteroid + cargo + hailable contact so calm controls prove zero overlap.
+      if (!state.entities.has(77)) {
+        const rock = { id: 77, type: 'asteroid', alive: true, team: 0, radius: 38, pos: { x: 260, y: 0, z: -180 }, vel: { x: 0, y: 0, z: 0 }, data: { claimable: true } };
+        state.entities.set(77, rock);
+        state.entityList.push(rock);
+      }
+      state.player.cargo.items.cmdty_iron_ore = 8;
+    }
+  } else if (hudState === 'fight') {
+    state.simTime = 240;
+    const offscreenHostiles = [
+      { id: 81, x: 2400, z: -1600, callsign: 'FLANKER NORTH-EAST' },
+      { id: 82, x: -2200, z: 1700, callsign: 'FLANKER SOUTH-WEST' },
+    ];
+    for (const oh of offscreenHostiles) {
+      if (state.entities.has(oh.id)) continue;
+      const e = {
+        id: oh.id, type: 'ship', alive: true, team: 5, radius: 14,
+        pos: { x: oh.x, y: 0, z: oh.z }, vel: { x: -40, y: 0, z: 40 },
+        data: { defId: 'ship_kestrel', callsign: oh.callsign, ai: { huntPlayer: true, targetId: state.playerId }, weapons: ['wpn_pulse_s'], trafficRole: 'raider' },
+      };
+      state.entities.set(oh.id, e);
+      state.entityList.push(e);
+    }
+  }
+  if (hudState === 'cooldown') {
+    state.fields.cooldowns = { well: state.simTime + 4.2, repulsor: state.simTime + 2.4 };
+    state.player.massSeed = { cooldownUntil: state.simTime + 7.1 };
+  } else if (hudState === 'armed') {
+    state.player.armedChargeCount = 1;
+    state.player.cargo.items.cmdty_impulse_charge = 4;
+  } else if (hudState === 'plow') {
+    state.fields.coneActive = true;
+    state.fields.plowRockCount = 3;
+    state.fields.active = [{ kind: 'well', tag: 'player', expireAt: state.simTime + 6 }];
+  } else if (hudState === 'caption') {
+    state._uiBenchPowerCaption = { name: 'Pull', text: 'Drags everything near the cursor together' };
+  }
+
+  // Override worldToScreen in fight mode so far off-screen attackers project off-screen for threatHalo.
+  if (hudState === 'fight') {
+    ctx.helpers.worldToScreen = (world, out = {}) => {
+      const x = window.innerWidth / 2 + ((world && world.x) || 0) * 0.4;
+      const y = window.innerHeight * 0.62 + ((world && world.z) || 0) * 0.4;
+      const onScreen = x >= 0 && x <= window.innerWidth && y >= 0 && y <= window.innerHeight;
+      out.x = x; out.y = y; out.onScreen = onScreen; out.behind = false;
+      return out;
+    };
+  }
+
+  // Mount calm-state secondary controls in the exact uiRoot.js order: comms (+ its own hail prompt)
+  // before createHud so hud.js adopts them into .sf-commtape__slots, then bandHud, fieldBuild, and
+  // racingHud AFTER createHud (since createHud resets #hud.innerHTML).
+  let benchBand = null, benchFb = null, benchRace = null, benchComms = null;
+  const mountAuxCalm = hudState === 'calm' || hudState === 'teach' || hudState === 'fight';
+  let auxMods = null;
+  if (mountAuxCalm) {
+    auxMods = await Promise.all([
+      import('../src/ui/comms.js'),
+      import('../src/ui/bandHud.js'),
+      import('../src/ui/fieldBuild/fieldBuildMode.js'),
+      import('../src/ui/racingHud.js'),
+    ]);
+    document.getElementById('sf-comms')?.remove();
+    document.getElementById('sf-comm-backlog-btn')?.remove();
+    document.getElementById('sf-comm-backlog')?.remove();
+    document.getElementById('sf-band-hud')?.remove();
+    document.getElementById('sf-contact-hail')?.remove();
+    document.querySelector('.fb-pill-btn')?.remove();
+    document.getElementById('field-build-root')?.remove();
+    document.getElementById('race-tape')?.remove();
+    benchComms = auxMods[0].createComms(ctx);
+  }
   const hud = createHud(ctx, null);
+  if (mountAuxCalm && auxMods) {
+    benchBand = auxMods[1].createBandHud(ctx);
+    benchFb = auxMods[2].createFieldBuildMode({ state, bus, registry });
+    benchRace = auxMods[3].mountRacingHud({ root: hudRoot, bus, state, screens: manager });
+    if (hudState === 'calm') {
+      bus.emit('contactHail:availability', { enabled: true, targetId: 11, kind: 'trader', label: 'Hail Relief-Freighter' });
+    }
+    window.__benchAuxHud = { comms: benchComms, band: benchBand, fb: benchFb, race: benchRace };
+  }
   // index.html mounts #alerts as a #ui-root child beside #hud, where `#ui-root > div` makes it
   // absolute and the HUD sheet's `top` places the lane. Nested inside #hud it stayed static, every
   // `top` was inert, and the lane printed over the top-left waypoint card (D261). A fresh host per
@@ -1774,9 +1893,10 @@ async function mountFlightHud(opts = {}) {
   // lit in the frame rather than judged empty. In-run swarm is never in a berth — skip the dock cue.
   if (opts.dockCue !== false) bus.emit('dock:range', { inRange: true });
   // Mirror alerts.js' real announce path for combat:damage: TAKING FIRE surfaces as a DANGER
-  // voice (kind 'danger', priority 110 — the amber warn dot the fixture used to emit made the
-  // threat line read as an advisory, craft critic 2026-10-26 finding R1).
-  bus.emit('voice:surface', { id: 'alert:incoming', channel: 'alert', priority: 110, kind: 'danger', text: 'TAKING FIRE', ttl: 30 });
+  // voice (kind 'danger', priority 110). Omit in calm/teach/idle bench modes so calm flight is genuinely calm.
+  if (!calmBenchMode) {
+    bus.emit('voice:surface', { id: 'alert:incoming', channel: 'alert', priority: 110, kind: 'danger', text: 'TAKING FIRE', ttl: 30 });
+  }
   // One marketNews instance per page (a --walk remount would otherwise stack subscriptions and
   // double-commit each headline). In a live Survival run its gate keeps the ticker silent —
   // the crucibleHud shot proves that suppression too.
@@ -1786,13 +1906,20 @@ async function mountFlightHud(opts = {}) {
     kind: 'news', sourceRef: 'bench:helios-relief', stationId: 'station_helios',
   });
   // A live FLYBY telegraph aimed at the player, from the hostile projected over the command deck.
-  bus.emit('ai:telegraph', {
-    kind: 'engine_flare', entityId: 12, targetId: state.playerId, durationTicks: 600,
-  });
+  if (!calmBenchMode) {
+    bus.emit('ai:telegraph', {
+      kind: 'engine_flare', entityId: 12, targetId: state.playerId, durationTicks: 600,
+    });
+  }
   try {
     if (typeof hud.forceRefresh === 'function') hud.forceRefresh();
     if (typeof hud.frame === 'function') {
       for (let i = 0; i < 8; i++) hud.frame(1 / 60);
+    }
+    if (window.__benchAuxHud) {
+      window.__benchAuxHud.band?.update?.();
+      window.__benchAuxHud.fb?.frame?.(1 / 60, { hudVisible: true });
+      window.__benchAuxHud.race?.frame?.(state);
     }
     if (alerts && typeof alerts.tick === 'function') alerts.tick();
   } catch (error) {
@@ -1846,7 +1973,14 @@ async function mountCrucibleHud() {
   survivalHud.update(1 / 60, state);
   const hudRoot = document.getElementById('hud');
   if (hudRoot) hudRoot.dataset.threat = 'near';
-  try { window.__benchHud?.frame?.(1 / 60); } catch { /* composition still; live route owns reactions */ }
+  try {
+    for (let i = 0; i < 8; i++) window.__benchHud?.frame?.(1 / 60);
+    if (window.__benchAuxHud) {
+      window.__benchAuxHud.band?.update?.();
+      window.__benchAuxHud.fb?.frame?.(1 / 60, { hudVisible: true });
+      window.__benchAuxHud.race?.frame?.(state);
+    }
+  } catch { /* composition still; live route owns reactions */ }
   const crun = document.querySelector('.sf-crun');
   note('— crucible HUD mounted (flight cluster + survival readout, swarm)'
     + ` · crun ${crun ? (crun.hidden ? 'hidden' : 'live') : 'missing'}`

@@ -154,6 +154,45 @@ export function buildFieldArchitectViewModel({
   };
 }
 
+const FIELD_BUILD_NEAR_WU = 1000;
+export function hasNearbyClaimableOrOwnedBody(st) {
+  if (!st) return false;
+  const player = st.entities && typeof st.entities.get === 'function' ? st.entities.get(st.playerId) : null;
+  const px = Number(player?.pos?.x);
+  const pz = Number(player?.pos?.z);
+  if (!Number.isFinite(px) || !Number.isFinite(pz)) return false;
+  const maxSq = FIELD_BUILD_NEAR_WU * FIELD_BUILD_NEAR_WU;
+  const sectorId = st.world?.currentSectorId;
+  const sitesById = st.sites?.byId;
+  const siteOrder = st.sites?.order;
+  if (sitesById && Array.isArray(siteOrder)) {
+    for (let i = 0; i < siteOrder.length; i++) {
+      const s = sitesById[siteOrder[i]];
+      if (!s || (sectorId && s.sectorId && s.sectorId !== sectorId)) continue;
+      const ast = s.asteroidId != null ? st.entities?.get?.(s.asteroidId) : null;
+      const pos = ast?.pos || s.pos;
+      if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) {
+        const dx = pos.x - px;
+        const dz = pos.z - pz;
+        if (dx * dx + dz * dz <= maxSq) return true;
+      }
+    }
+  }
+  const index = st.entityIndex;
+  const candidates = (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.asteroids))
+    ? index.asteroids
+    : (Array.isArray(st.entityList) ? st.entityList : (st.entities?.values ? st.entities.values() : []));
+  for (const e of candidates) {
+    if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
+    if (e.data && e.data.claimable === false) continue;
+    if (Number.isFinite(e.radius) && e.radius < 14) continue;
+    const dx = e.pos.x - px;
+    const dz = e.pos.z - pz;
+    if (dx * dx + dz * dz <= maxSq) return true;
+  }
+  return false;
+}
+
 export function createFieldBuildMode(ctx) {
   const { state, bus, registry } = ctx;
   const siteSys = ctx.asteroidSites || registry?.get?.('asteroidSites') || null;
@@ -387,7 +426,7 @@ export function createFieldBuildMode(ctx) {
             : (res?.reason === 'missing-prereq'
               ? 'Research prerequisite tier first.'
               : (res?.reason === 'out-of-range'
-                ? `Out of belt link range (${res.dist} / ${res.maxRange} WU)`
+                ? `Out of belt link range (${res.dist} / ${res.maxRange} m)`
                 : (res?.reason === 'already-commissioned'
                   ? 'Asteroid already hosts an active rig.'
                   : `Action unavailable (${res?.reason || 'blocked'}).`))));
@@ -934,15 +973,16 @@ export function createFieldBuildMode(ctx) {
     const inFlight = state?.mode === 'flight' && !state?.ui?.docked;
     if (active && !inFlight) setActive(false);
 
-    // The badge rides the pill in ordinary flight, so it still has to track the sector count —
-    // but touching textContent/hidden every frame was a steady invalidation source even when
-    // nothing changed. Write only when the pill is shown and only when the value differs.
-    // The pill is an ordinary-flight convenience: it steps out of the way of a fight (the target
-    // card, the WANTED banner and the radio all live in its corner) and of a Swarm round.
-    const hudJob = typeof document !== 'undefined' && document.body && document.body.dataset
-      ? document.body.dataset.sfHudJob : '';
-    const busyCorner = !active && (hudJob === 'fight' || hudJob === 'hurt' || isSwarmGlass(state));
-    const pillHidden = !(inFlight && (hudVisible || active)) || busyCorner;
+    // The pill belongs to calm flight only, and only when near a claimable or owned asteroid
+    // (or while Field Build mode is actively open).
+    const ds = typeof document !== 'undefined' && document.body && document.body.dataset
+      ? document.body.dataset : null;
+    const hudAttention = ds ? ds.hudAttention : '';
+    const hudJob = ds ? ds.sfHudJob : '';
+    const calmAllowed = active || (hudAttention ? hudAttention === 'calm'
+      : !(hudJob === 'fight' || hudJob === 'hurt' || isSwarmGlass(state)));
+    const nearSiteOrClaimable = active || hasNearbyClaimableOrOwnedBody(state);
+    const pillHidden = !(inFlight && (hudVisible || active)) || !calmAllowed || !nearSiteOrClaimable;
     if (pillBtn.hidden !== pillHidden) pillBtn.hidden = pillHidden;
     if (!pillHidden) {
       const sys = currentSiteSys();

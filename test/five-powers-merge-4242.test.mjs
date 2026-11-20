@@ -232,7 +232,7 @@ test('the rail shows one socket per power, read from the real owners', () => {
   assert.deepEqual([1, 2, 3, 4, 5, 6].map((i) => labels[i]), ['1', '2', '3', '4', '5', 'Space']);
   const groups = buildOrdnanceGroups({ pull: ['Digit1'], shove: ['Digit2'], pin: ['Digit3'], bomb: ['Digit4'], rig: ['Digit5'], tether: ['Space'] });
   assert.deepEqual(groups.filter((g) => g.power).map((g) => `${g.name} ${g.slots.map((s) => s.key).join(' ')}`),
-    ['Pull 1', 'Shove 2', 'Pin 3', 'Bomb 4', 'Rig 5', 'Line Space', 'Gyre —', 'Cloak —'],
+    ['Pull 1', 'Shove 2', 'Pin 3', 'Bomb 4', 'Plow 5', 'Line Space', 'Gyre —', 'Cloak —'],
     'each power prints by name with its key; the Gyre and the cloak ride after the Line, unbound here so no phantom key');
   const state = {
     simTime: 10, playerId: 1, mode: 'flight', entities: new Map([[1, { id: 1, alive: true, data: {} }]]), entityList: [],
@@ -246,8 +246,8 @@ test('the rail shows one socket per power, read from the real owners', () => {
   assert.equal(rail[POWER_SLOT.bomb].charge, true, 'BOMB shows the sticky charge it will throw');
   const chose = readRailModel({ ...state, bombs: { ...state.bombs, bombChosen: true } }, 10)[POWER_SLOT.bomb];
   assert.equal(chose.charge, undefined, 'after the cycle chose a drift bomb, BOMB shows the bay');
-  assert.match(rail[POWER_SLOT.bomb].name, /Charge ×2/);
-  assert.match(rail[POWER_SLOT.rig].why, /clearing cone/i);
+  assert.match(rail[POWER_SLOT.bomb].name, /Bomb ×2/);
+  assert.equal(rail[POWER_SLOT.rig].name, 'Plow');
   assert.equal(rail[POWER_SLOT.line].state, 'ready');
 });
 

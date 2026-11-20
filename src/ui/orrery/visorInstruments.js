@@ -10,7 +10,7 @@ const CSS = `
   --visor-type:clamp(12px, .97vw, 16px);
   --visor-value-type:clamp(14px, 1.2vw, 20px);
   --visor-readout-height:141px;
-  width:min(44.68vw, 747px); height:auto; transform:none; isolation:isolate;
+  width:min(49vw, calc((100vw - 2 * var(--sf-safe-inset-x, 0px)) * .54), 792px); height:auto; transform:none; isolation:isolate;
   color:#f2f3ee; font-family:var(--visor-font);
   text-shadow:0 1px 2px rgb(3 8 12 / .72);
 }
@@ -21,7 +21,7 @@ const CSS = `
 }
 .orr-cluster--visor > svg { display:none; }
 .orr-visor__readouts {
-  position:relative; display:grid; grid-template-columns:26.85% 23.15% 21.6% 28.4%;
+  position:relative; display:grid; grid-template-columns:max(26.85%, calc(var(--visor-dial-size) + 6px)) 23.15% 21.6% minmax(0, 1fr);
   align-items:start; min-height:var(--visor-readout-height);
 }
 .orr-visor__readouts .orr-speeddial {
@@ -76,52 +76,144 @@ const CSS = `
 }
 .orr-visor__portrait figcaption { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   font-size:clamp(12px,1.08vw,18px); line-height:1.2; font-weight:520; }
-.orr-cluster--visor .orr-cluster__keys { display:flex; flex-wrap:wrap; margin:0 0 0 14px; padding:0 0 14px;
+.orr-cluster--visor .orr-cluster__keys { display:flex; flex-wrap:nowrap; align-items:stretch; margin:0 0 0 10px; padding:0 0 12px;
   border-bottom:1px solid rgb(216 236 240 / .7); }
 .orr-cluster.orr-cluster--visor .orr-cluster__key {
-  position:relative; width:auto; height:74px; flex:1 1 0; min-width:45px; margin:0;
+  position:relative; width:auto; height:76px; flex:1 1 0; min-width:56px; margin:0;
   box-sizing:border-box; border-radius:0; cursor:pointer; will-change:auto; isolation:isolate;
   transition:background 120ms ease, opacity 120ms ease;
 }
+.orr-cluster.orr-cluster--visor .orr-cluster__key[data-power="pull"] { flex:.86 1 0; min-width:58px; }
+.orr-cluster.orr-cluster--visor .orr-cluster__key[data-power="shove"] { flex:.96 1 0; min-width:66px; }
+.orr-cluster.orr-cluster--visor .orr-cluster__key[data-power="pin"] { flex:.80 1 0; min-width:54px; }
+.orr-cluster.orr-cluster--visor .orr-cluster__key[data-power="bomb"] { flex:1.34 1 0; min-width:94px; }
+.orr-cluster.orr-cluster--visor .orr-cluster__key[data-power="rig"],
+.orr-cluster.orr-cluster--visor .orr-cluster__key[data-power="plow"] { flex:1.02 1 0; min-width:74px; }
+.orr-cluster.orr-cluster--visor .orr-cluster__key[data-power="line"] { flex:1.38 1 0; min-width:96px; }
 .orr-cluster--visor .orr-cluster__key + .orr-cluster__key::before {
   content:""; position:absolute; inset:3px auto 10px 0; width:1px; background:linear-gradient(transparent, rgb(216 236 240 / .5) 27%,rgb(216 236 240 / .5) 88%,transparent);
 }
 .orr-cluster--visor .orr-cluster__key::after {
-  content:""; position:absolute; left:22%; right:22%; bottom:-7px; height:2px;
+  content:""; position:absolute; left:18%; right:18%; bottom:-7px; height:2px;
   background:currentColor; opacity:0; transform:scaleX(.45); transition:opacity 140ms ease, transform 180ms ease;
 }
-.orr-cluster--visor .orr-cluster__key > svg { top:0; left:calc(50% - 20px); width:40px; height:40px; }
+.orr-cluster--visor .orr-cluster__key > svg { top:2px; left:calc(50% - 22px); width:44px; height:44px; }
 .orr-cluster--visor .orr-cluster__key > svg > circle { visibility:hidden; }
 .orr-cluster--visor .orr-cluster__key.is-firing > svg .orr-pulse-ring { visibility:visible; }
 .orr-cluster--visor .orr-cluster__key .orr-cluster__icon {
-  top:0; left:50%; width:52px; height:44px; margin:0 0 0 -26px; opacity:1;
+  top:2px; left:50%; width:44px; height:44px; margin:0 0 0 -22px; opacity:1;
 }
 .orr-cluster--visor .orr-cluster__icon.has-arsenal svg { stroke-width:1.62; }
+/* Active ring around the icon while a power is running or a charge is armed. */
+.orr-cluster--visor .orr-cluster__ring {
+  position:absolute; top:1px; left:50%; width:46px; height:46px; margin-left:-23px;
+  border-radius:50%; border:2px solid transparent; box-sizing:border-box; pointer-events:none;
+  opacity:0; transition:opacity 140ms ease, border-color 140ms ease;
+}
+.orr-cluster--visor .orr-cluster__key:is(.is-running,.is-active,.is-armed) .orr-cluster__ring {
+  opacity:1; border-color:var(--orr-power-col, var(--dp-hand-hot, #ffd98c));
+  box-shadow:inset 0 0 10px color-mix(in srgb, var(--orr-power-col, #ffd98c) 26%, transparent);
+}
+/* Armed charge: tile 4 reads Detonate and pulses visibly. */
+.orr-cluster--visor .orr-cluster__key.is-detonate {
+  color:#ffb357;
+  background:linear-gradient(0deg, rgb(255 154 61 / .22), transparent 82%);
+}
+.orr-cluster--visor .orr-cluster__key.is-detonate .orr-cluster__ring {
+  opacity:1; border-color:#ff9e42;
+  box-shadow:inset 0 0 14px rgb(255 140 50 / .36);
+  animation:orr-visor-detonate 0.95s ease-in-out infinite;
+}
+.orr-cluster--visor .orr-cluster__key.is-detonate .orr-cluster__keyword { color:#ffd99c; font-weight:700; }
+@keyframes orr-visor-detonate {
+  0%, 100% { transform:scale(1); opacity:1; }
+  50% { transform:scale(1.1); opacity:.62; }
+}
+/* Bomb icon blinking fuse lamp. */
+.orr-cluster--visor .arsenal-fuse-lamp { fill:#ffd37a; animation:orr-fuse-blink 1.2s steps(2, end) infinite; }
+.orr-cluster--visor .arsenal-fuse-rays { stroke:#ffd37a; animation:orr-fuse-blink 1.2s steps(2, end) infinite; }
+.orr-cluster--visor .orr-cluster__key.is-detonate .arsenal-fuse-lamp,
+.orr-cluster--visor .orr-cluster__key.is-detonate .arsenal-fuse-rays { fill:#ff8f3d; stroke:#ff8f3d; animation-duration:0.45s; }
+@keyframes orr-fuse-blink { 0%, 58% { opacity:1; } 59%, 100% { opacity:.22; } }
+/* Cooldown wipe + whole-second numeral right inside the tile. */
+.orr-cluster--visor .orr-cluster__cdwipe {
+  display:none; position:absolute; top:2px; left:calc(50% - 22px); width:44px; height:44px;
+  border-radius:4px; overflow:hidden; pointer-events:none;
+  background:rgb(4 10 16 / .72); border-top:2px solid rgb(169 237 244 / .85);
+  transform-origin:bottom center; transform:scaleY(var(--cd-rem, 0));
+}
+.orr-cluster--visor .orr-cluster__key.is-cooldown .orr-cluster__cdwipe { display:block; }
+.orr-cluster--visor .orr-cluster__cdnum {
+  display:none; position:absolute; top:2px; left:50%; width:44px; height:44px; margin-left:-22px;
+  place-items:center; pointer-events:none;
+  font:750 16px/1 var(--dp-face-numeral, var(--visor-font)); font-variant-numeric:tabular-nums;
+  color:#f4f8fa; text-shadow:0 0 3px #04090e, 0 1px 4px #04090e;
+}
+.orr-cluster--visor .orr-cluster__key.is-cooldown .orr-cluster__cdnum:not(:empty) { display:grid; }
 .orr-cluster--visor .orr-cluster__key .orr-cluster__keytag {
-  display:flex; justify-content:center; align-items:center; gap:10px; position:absolute;
-  inset:auto 2px 0; max-width:none; transform:none; font:500 clamp(12px,1.02vw,17px)/1.2 var(--visor-font);
+  display:flex; justify-content:center; align-items:center; gap:6px; position:absolute;
+  inset:auto 3px 0; max-width:none; transform:none; font:540 clamp(12px,.95vw,15px)/1.2 var(--visor-font);
   text-transform:none; letter-spacing:0; text-shadow:0 1px 2px #060c13;
 }
 .orr-cluster--visor .orr-cluster__keytag::before { content:none; }
 .orr-cluster.orr-cluster--visor .orr-cluster__key .orr-cluster__keyword { display:block; min-width:0; overflow:hidden; text-overflow:ellipsis; }
 .orr-cluster.orr-cluster--visor .orr-cluster__key .orr-cluster__keyshort { display:none; }
 .orr-cluster.orr-cluster--visor .orr-cluster__key .orr-cluster__keytag b {
-  order:-1; margin:0; min-width:26px; padding:0 4px; border:1px solid rgb(230 239 240 / .86); border-radius:4px;
-  background:rgb(8 18 26 / .42);
+  order:-1; margin:0; min-width:22px; padding:0 4px; border:1px solid rgb(230 239 240 / .86); border-radius:4px;
+  background:rgb(8 18 26 / .52); white-space:nowrap;
   font:670 max(12px, calc(var(--visor-type) - 1px))/1.26 var(--visor-font); letter-spacing:0; flex:none; text-align:center;
 }
 .orr-cluster--visor .orr-cluster__keytag b:empty { display:none; }
-.orr-cluster--visor .orr-cluster__count { top:1px; left:calc(50% + 18px); transform:none; line-height:1; }
-.orr-cluster--visor .orr-cluster__key:is(.is-locked,.is-empty,.is-cooldown) .orr-cluster__icon { opacity:.48; }
+.orr-cluster--visor .orr-cluster__count {
+  top:1px; left:calc(50% + 14px); transform:none; line-height:1;
+  font-size:12px; font-weight:700; color:#eef5f8;
+  text-shadow:0 1px 2px #040a10, 0 0 4px #040a10;
+}
+.orr-cluster--visor .orr-cluster__count.is-plow-count {
+  padding:1px 5px; border-radius:9px; background:rgb(255 186 82 / .24);
+  border:1px solid rgb(255 206 120 / .85); color:#ffe5ad;
+}
+/* Small Q · More pill sitting after Line for the context wheel. */
+.orr-visor__more {
+  flex:0 0 auto; align-self:flex-end; display:inline-flex; align-items:center; gap:6px;
+  margin:0 0 1px 10px; padding:4px 10px; min-height:28px; box-sizing:border-box;
+  border:1px solid rgb(206 230 236 / .42); border-radius:4px;
+  background:rgb(8 20 30 / .58); color:#e4eff2; cursor:pointer; pointer-events:auto;
+  font:540 clamp(12px,.95vw,14px)/1.15 var(--visor-font); text-transform:none; letter-spacing:0;
+  white-space:nowrap; text-shadow:0 1px 2px #060c13;
+  transition:background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+.orr-visor__more b {
+  min-width:19px; padding:0 4px; border:1px solid rgb(230 239 240 / .82); border-radius:3px;
+  background:rgb(8 18 26 / .55); font:700 12px/1.25 var(--visor-font); text-align:center;
+}
+.orr-visor__more:is(:hover,:focus-visible) {
+  background:rgb(118 191 214 / .2); border-color:var(--visor-ice, #a9edf4); color:#ffffff;
+}
+.orr-visor__more:focus-visible { outline:2px solid var(--visor-ice, #a9edf4); outline-offset:2px; }
+/* First-use one-line caption directly over the power bar (2.5 s). */
+.orr-visor__caption {
+  position:absolute; left:10px; bottom:calc(100% + 10px); max-width:min(520px, calc(100% - 20px));
+  display:flex; align-items:baseline; gap:8px; padding:7px 14px; box-sizing:border-box;
+  background:linear-gradient(95deg, rgb(10 25 36 / .94), rgb(8 18 26 / .86));
+  border:1px solid rgb(169 237 244 / .42); border-left:3px solid var(--visor-ice, #a9edf4);
+  color:#eef5f7; font:500 13px/1.3 var(--visor-font); pointer-events:none;
+  text-shadow:0 1px 2px #04090e;
+}
+.orr-visor__caption[hidden] { display:none !important; }
+.orr-visor__caption-name { color:var(--visor-ice, #a9edf4); font-weight:700; flex:0 0 auto; }
+.orr-visor__caption-text { color:#eef5f7; min-width:0; }
+.orr-cluster--visor:has(.orr-cluster__perk) .orr-visor__caption { left:74px; max-width:calc(100% - 84px); }
+.orr-cluster--visor .orr-cluster__key:is(.is-locked,.is-empty,.is-cooldown) .orr-cluster__icon { opacity:.42; }
 .orr-cluster.orr-cluster--visor .orr-cluster__key:is(:hover,:focus-visible) { background:linear-gradient(0deg, rgb(118 191 214 / .18), transparent); }
 .orr-cluster.orr-cluster--visor .orr-cluster__key:focus-visible { outline:1px solid #a6dce8; outline-offset:1px; }
-.orr-cluster--visor .orr-cluster__key:is(.is-active,.is-held,.is-armed,.is-firing) { color:var(--dp-hand-hot, #ffd98c); animation:none; }
-.orr-cluster.orr-cluster--visor .orr-cluster__key:is(.is-active,.is-held,.is-armed,.is-firing) .orr-cluster__icon { color:currentColor; opacity:1; }
-.orr-cluster--visor .orr-cluster__key:is(:hover,:focus-visible,.is-held,.is-firing)::after { opacity:1; transform:scaleX(1); }
-.orr-cluster--visor .orr-cluster__key:is(.is-active,.is-armed) :is(.orr-cluster__icon,.orr-cluster__keytag b) {
+.orr-cluster--visor .orr-cluster__key:is(.is-active,.is-running,.is-held,.is-armed,.is-firing) { color:var(--dp-hand-hot, #ffd98c); animation:none; }
+.orr-cluster.orr-cluster--visor .orr-cluster__key:is(.is-active,.is-running,.is-held,.is-armed,.is-firing) .orr-cluster__icon { color:currentColor; opacity:1; }
+.orr-cluster--visor .orr-cluster__key:is(:hover,:focus-visible,.is-running,.is-held,.is-firing,.is-detonate)::after { opacity:1; transform:scaleX(1); }
+.orr-cluster--visor .orr-cluster__key:is(.is-active,.is-running,.is-armed) :is(.orr-cluster__icon,.orr-cluster__keytag b) {
   filter:drop-shadow(0 0 5px rgb(255 197 93 / .30));
 }
-.orr-cluster.orr-cluster--visor .orr-cluster__key:is(.is-active,.is-armed) .orr-cluster__keytag b {
+.orr-cluster.orr-cluster--visor .orr-cluster__key:is(.is-active,.is-running,.is-armed) .orr-cluster__keytag b {
   border-color:currentColor; color:inherit; background:rgb(218 145 47 / .12);
 }
 .orr-cluster--visor .orr-cluster__key.is-firing .orr-cluster__icon { animation:orr-visor-cast 230ms ease-out both; }
@@ -133,16 +225,25 @@ const CSS = `
 .orr-cluster--visor.is-ship-under .orr-cluster__keytag { opacity:.8; }
 .orr-cluster--visor.is-arriving .orr-visor__readouts { animation:orr-visor-enter 230ms cubic-bezier(.2,.7,.2,1) both; }
 @keyframes orr-visor-enter { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+@media (max-width:1520px) {
+  .orr-cluster.orr-cluster--visor { --visor-dial-scale:.66; --visor-readout-height:132px; }
+  .orr-cluster--visor .orr-cluster__key .orr-cluster__keytag { gap:4px; }
+}
 @media (max-width:1200px) {
-  .orr-cluster.orr-cluster--visor { --visor-dial-scale:.49; --visor-readout-height:102px; width:49.5vw; }
+  .orr-cluster.orr-cluster--visor { --visor-dial-scale:.49; --visor-readout-height:102px; width:54vw; }
   .orr-visor__vitals { min-height:82px; margin-top:6px; gap:5px; }
   .orr-visor__vitals--systems { gap:12px; }
   .orr-visor__portrait { height:82px; margin-top:6px; grid-template-rows:56px auto; }
   .orr-cluster--visor .orr-cluster__keys { margin-left:3px; padding-bottom:8px; }
-  .orr-cluster.orr-cluster--visor .orr-cluster__key { height:54px; }
-  .orr-cluster--visor .orr-cluster__key .orr-cluster__icon { width:32px; height:32px; margin-left:-16px; }
+  .orr-cluster.orr-cluster--visor .orr-cluster__key { height:58px; min-width:44px; }
+  .orr-cluster.orr-cluster--visor .orr-cluster__key[data-power="line"] { min-width:74px; }
+  .orr-cluster--visor .orr-cluster__key .orr-cluster__icon,
+  .orr-cluster--visor .orr-cluster__cdwipe,
+  .orr-cluster--visor .orr-cluster__cdnum { width:32px; height:32px; margin-left:-16px; left:50%; }
+  .orr-cluster--visor .orr-cluster__ring { width:34px; height:34px; margin-left:-17px; }
   .orr-cluster--visor .orr-cluster__key .orr-cluster__keytag { gap:4px; }
-  .orr-cluster.orr-cluster--visor .orr-cluster__key .orr-cluster__keytag b { min-width:15px; padding-inline:2px; }
+  .orr-cluster.orr-cluster--visor .orr-cluster__key .orr-cluster__keytag b { min-width:15px; padding-inline:3px; }
+  .orr-visor__more { padding:4px 7px; min-height:30px; margin-left:4px; }
 }
 @media (max-width:760px) {
   .orr-cluster.orr-cluster--visor { --visor-dial-scale:.43; width:calc(100vw - 36px); }
@@ -154,6 +255,13 @@ const CSS = `
 }
 html.sf-reduce-motion .orr-cluster--visor *, html.sf-reduce-motion .orr-cluster--visor *::before,
 html.sf-reduce-motion .orr-cluster--visor *::after { transition:none !important; animation:none !important; }
+html.sf-reduce-flash .orr-cluster--visor .orr-cluster__key.is-detonate .orr-cluster__ring,
+html.sf-reduce-flash .orr-cluster--visor .arsenal-fuse-lamp,
+html.sf-reduce-flash .orr-cluster--visor .arsenal-fuse-rays { animation:none !important; opacity:1; }
+@media (forced-colors:active) {
+  .orr-visor__more, .orr-visor__caption { background:Canvas; color:CanvasText; border:1px solid CanvasText; }
+  .orr-cluster--visor .orr-cluster__ring { border-color:Highlight; }
+}
 `;
 
 function el(tag, className) {
@@ -213,8 +321,10 @@ export function createVisorReadouts(dial, shipId, variantId, name, rows) {
     el: root,
     setMeter(key, fraction) {
       const meter = meters.get(key);
+      if (!meter) return;
       meter.style.setProperty('--visor-meter', `${Math.round(fraction * 1000) / 10}%`);
-      if (key === 'heat') meter.parentElement.classList.toggle('is-hot', fraction > .75);
+      const parent = meter.parentElement || meter.parentNode;
+      if (key === 'heat' && parent && parent.classList) parent.classList.toggle('is-hot', fraction > .75);
     },
     setName(name, detail) {
       caption.textContent = name;

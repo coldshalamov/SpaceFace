@@ -224,10 +224,10 @@ test('every verb carries its explanation bank, and a tip names the verb, the key
     assert.ok(slotDescription(slot.index) === slot.description);
   }
   assert.equal(
-    railSlotTip({ name: 'Line', keys: 'Space · F', description: slotDescription(POWER_SLOT.line), why: 'Ready' }),
-    'Line — throw the tether line onto a body and haul it — tap to latch or cut (Space · F)\nReady',
+    railSlotTip({ name: 'Line', keys: 'RMB / F', description: slotDescription(POWER_SLOT.line), why: 'Ready' }),
+    'Line — Hook anything: swing on heavy things, throw light ones (RMB / F)\nReady',
   );
-  assert.equal(railSlotTip({ name: 'Seed', description: 'goes somewhere' }), 'Seed — goes somewhere',
+  assert.equal(railSlotTip({ name: 'Pin', description: 'goes somewhere' }), 'Pin — goes somewhere',
     'no keys and no state invent nothing');
 });
 
@@ -240,9 +240,9 @@ test('readRailModel answers WHY a verb is not ready, not only that it is not', (
   };
   const model = readRailModel(state, 1);
   assert.equal(model[POWER_SLOT.pull].why, 'Recharging — 3s');
-  assert.equal(model[POWER_SLOT.shove].why, 'Ready', 'nothing armed: SHOVE is the repulsor, ready');
+  assert.equal(model[POWER_SLOT.shove].why, 'Ready', 'nothing armed: Shove is ready');
   assert.equal(model[POWER_SLOT.pin].why, 'Ready');
-  assert.equal(model[POWER_SLOT.rig].why, 'Cone ON — tap Rig to turn it off');
+  assert.equal(model[POWER_SLOT.rig].why, 'Plow active — press again to release');
   assert.equal(model[POWER_SLOT.line].why, 'Ready');
   // With charges aboard the charge leads, and BOMB answers with the charge's capacity.
   const charged = { ...state, player: { ...state.player, cargo: { items: { cmdty_impulse_charge: 2 } } } };

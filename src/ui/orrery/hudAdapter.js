@@ -16,10 +16,12 @@
 //   tether              masslineInstrumentReadout(tether) + the attached body's mass — for a
 //                       declared manifest, only the measurement the loaded rope earned
 import { weaponHeatSummary } from '../weaponHeat.js';
-import { BOMB_SLOT_INDEX, readRailModel, RAIL_SLOTS, SUPPORT_SLOTS, railSlotTip, resolveSlotKeys, resolveSlotLabels, slotDescription } from '../powerRail.js';
+import { BOMB_SLOT_INDEX, FLIGHT_POWER_COPY, readRailModel, RAIL_SLOTS, SUPPORT_SLOTS, railSlotTip, resolveSlotKeys, resolveSlotLabels, slotDescription } from '../powerRail.js';
 import { createArsenalPresentation, readArsenalBindings } from '../../data/arsenalPresentation.js';
 import { masslineInstrumentReadout } from '../hudAttention.js';
 import { isAdventureFlight } from '../attentionGlass.js';
+import { isSwarmGlass } from '../swarmGlass.js';
+import { loadCrucibleMeta } from '../../systems/survivalRecords.js';
 import { massDeclarationForTarget, physicalMassT } from '../../systems/cargoCustody.js';
 import { SHIPS } from '../../data/ships.js';
 import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
@@ -46,16 +48,15 @@ const SWARM_PERK_ICON = Object.freeze({
   bounty_hunter: 'target',
   chain_reactor: 'fire',
 });
-// The five powers (owner 2026-10-22): each power is its own band, so each prints by name.
-const GROUP_NAME = Object.freeze({ PULL: 'Pull', SHOVE: 'Shove', PIN: 'Pin', BAY: 'Bomb', RIG: 'Rig', LINE: 'Line', GYRE: 'Gyre', CLOAK: 'Cloak' });
-const GROUP_ICON = Object.freeze({ Pull: 'well', Shove: 'repel', Pin: 'seed', Bomb: 'munitions', Rig: 'cone', Line: 'line', Gyre: 'well', Cloak: 'seed' });
-// One tint per power (design/expansion/05_ASSET_ROSTER.md §7.2): the Cluster colours each key's
-// mark so a glance tells the five apart. Armed/live states still override the tint.
-const GROUP_POWER = Object.freeze({ PULL: 'pull', SHOVE: 'shove', PIN: 'pin', BAY: 'bomb', RIG: 'rig', LINE: 'line', GYRE: 'gyre', CLOAK: 'cloak' });
+// The six flight powers: one name per power everywhere on the flight HUD.
+const GROUP_NAME = Object.freeze({ PULL: 'Pull', SHOVE: 'Shove', PIN: 'Pin', BAY: 'Bomb', RIG: 'Plow', LINE: 'Line', GYRE: 'Gyre', CLOAK: 'Cloak' });
+const GROUP_ICON = Object.freeze({ Pull: 'well', Shove: 'repel', Pin: 'seed', Bomb: 'munitions', Plow: 'cone', Line: 'line', Gyre: 'well', Cloak: 'seed' });
+// One tint per power: the Cluster colours each key's mark so a glance tells them apart.
+const GROUP_POWER = Object.freeze({ PULL: 'pull', SHOVE: 'shove', PIN: 'pin', BAY: 'bomb', RIG: 'plow', LINE: 'line', GYRE: 'gyre', CLOAK: 'cloak' });
 // The rail's 24-px glyph names → the 48-px kit icon file names the Cluster masks.
 const SLOT_ICON = Object.freeze({ munitions: 'munitions', blast: 'fire', tether: 'line', seed: 'seed', well: 'well', repel: 'repel', cone: 'cone', skim: 'skim', weapon: 'munitions' });
 const SLOT_ARSENAL = Object.freeze({ 0: 'power_travel_burn', 1: 'field_well_standard', 2: 'field_repulsor_standard',
-  3: 'field_seed_standard', 5: 'field_cone_standard', 6: 'power_massline', 7: 'power_gyre' });
+  3: 'field_seed_standard', 4: 'power_charge', 5: 'field_cone_standard', 6: 'power_massline', 7: 'power_gyre' });
 const PRESENTED_ID = Object.freeze({ 0: 'travel', 1: 'pull', 2: 'shove', 3: 'pin', 4: 'bomb', 5: 'rig', 6: 'line', 7: 'gyre', 8: 'cloak' });
 const VERB_TO_SLOT = Object.freeze({
   travel: 0, travelBurn: 0,
@@ -63,11 +64,48 @@ const VERB_TO_SLOT = Object.freeze({
   shove: 2, deployRepulsor: 2, chargeDetonate: 2,
   pin: 3, deployMassSeed: 3,
   bomb: 4, chargeThrow: 4, dropBomb: 4, swarmBombThrow: 4,
-  rig: 5, toggleClearingCone: 5, toggleSkimCollector: 5,
+  rig: 5, plow: 5, toggleClearingCone: 5, toggleSkimCollector: 5,
   line: 6, tether: 6,
   gyre: 7, gyreSnare: 7,
   cloak: 8,
 });
+
+export const POWER_CAPTION_LIMIT = 3;
+export const POWER_CAPTION_DURATION_MS = 2500;
+
+/**
+ * True during a player's first Swarm run on this profile (zero completed Swarm runs in history).
+ * Every power key press in that first Swarm run shows the one-line caption over the power bar.
+ */
+export function isFirstSwarmRunOnProfile(state, profile = null) {
+  const inSwarm = isSwarmGlass(state)
+    || !!(state?.run && state.run.kind === 'survival' && state.run.phase && state.run.phase !== 'inactive' && state.run.phase !== 'ended');
+  if (!inSwarm) return false;
+  if (!profile) return true;
+  const history = Array.isArray(profile.history) ? profile.history : [];
+  return history.length === 0;
+}
+
+/**
+ * Consume one press of a flight power key (`1`..`6`) for the first-use caption strip.
+ * Shows the power's one-line caption on the first 3 presses per key in a save, and on every
+ * press during the first Swarm run on a profile. Returns `{ power, name, text }` or `null`.
+ */
+export function consumePowerCaption(state, slotIndex, { profile = null } = {}) {
+  const copy = FLIGHT_POWER_COPY[slotIndex];
+  if (!copy || !state) return null;
+  if (isFirstSwarmRunOnProfile(state, profile)) {
+    return { power: copy.power, name: copy.name, text: copy.caption };
+  }
+  const player = state.player;
+  if (!player || typeof player !== 'object') return null;
+  if (!player.hints || typeof player.hints !== 'object') player.hints = {};
+  const key = `powerCaption_${copy.power}`;
+  const used = Number(player.hints[key]) || 0;
+  if (used >= POWER_CAPTION_LIMIT) return null;
+  player.hints[key] = used + 1;
+  return { power: copy.power, name: copy.name, text: copy.caption };
+}
 
 
 /** The rail's slots grouped by band, each with a stable id (its rail index) and its live key label. */
@@ -193,25 +231,32 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
     if (!swarmRailSlotAllowed(state, slot.index)) continue;
     const r = rail[slot.index] || {};
     const pe = presented.entries[PRESENTED_ID[slot.index]];
+    const copy = FLIGHT_POWER_COPY[slot.index] || null;
     const st = RAIL_STATE[r.state] || 'ready';
     const isBomb = slot.index === BOMB_SLOT_INDEX;
-    // Which mark the socket draws: the effective function's own authored glyph (the bomb it will throw,
-    // the rig it will toggle, the cloak module fitted), never a fixed per-socket symbol.
-    const arsenalId = pe && (isBomb || slot.index === 5 || slot.index === 8) ? pe.glyph : (SLOT_ARSENAL[slot.index] || '');
+    const arsenalId = copy
+      ? (SLOT_ARSENAL[slot.index] || '')
+      : (pe && slot.index === 8 ? pe.glyph : (SLOT_ARSENAL[slot.index] || ''));
+    const kbLabel = labels[slot.index] || '';
+    const slotKeyLabel = slot.index === 6
+      ? (kbLabel && kbLabel !== 'RMB' ? `RMB / ${kbLabel}` : (kbLabel || 'RMB'))
+      : (kbLabel || MOUSE_ACTION_LABELS[slot.action] || '');
     const entry = {
       state: st,
-      key: labels[slot.index] || MOUSE_ACTION_LABELS[slot.action] || '',
+      key: slotKeyLabel,
       arsenalId,
     };
-    // Rig's persistent state stays visible beside its binding.
-    entry.iconOnly = slot.index !== 5;
+    entry.iconOnly = false;
     if (isBomb) entry.consumable = true;
-    // SWARM-03: the rail's tactical-live flag rides beside the state so the Cluster can
-    // breathe a key whose verb is real right now (latch in reach, ordnance armed, pack
-    // inside the well) — a cue, not a new surface.
     if (r.live === true) entry.live = true;
-    if (st === 'cooldown') entry.cooldown = tracker ? tracker(slot.index, r) ?? 0 : 0;
-    if (r.absent === true) entry.hidden = true;
+    if (st === 'cooldown') {
+      entry.cooldown = tracker ? tracker(slot.index, r) ?? 0 : 0;
+      const ms = Math.max(0, Number(r.cooldownMs) || 0);
+      entry.cooldownSec = ms > 0 ? Math.max(1, Math.ceil(ms / 1000)) : 0;
+    }
+    const unlockedMap = state?.player?.unlockedPowers;
+    const powerLockedOut = !!(copy && unlockedMap && unlockedMap[copy.power] === false);
+    if (r.absent === true || r.unowned === true || powerLockedOut) entry.hidden = true;
     if (slot.index === 8) entry.passive = true;
 
     const canHold = slot.index < 1 || slot.index > 5 || powerUsesReleasePreview(state, slot.action);
@@ -233,52 +278,76 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
 
     if (isHeld) entry.held = true;
     if (isFiring) entry.firing = true;
-    if (isHeld || isFiring) entry.active = true;
-    // The socket's own words: the EFFECTIVE verb ("Rig · Scoop", "Line · Haul"), not the band
-    // name — a bare "LINE" reads as jargon next to its key (owner 2026-10-28).
-    if (pe && slot.index >= 1) entry.label = pe.label;
-    if (slot.index === 5 && pe) {
-      entry.active = pe.on === true;
-      entry.label = pe.label.replace(/^Rig · /, '');
-      entry.shortLabel = pe.on ? 'ON' : 'OFF';
-      entry.key = labels[slot.index] ? `Tap ${labels[slot.index]}` : '';
+    if (r.running === true) entry.running = true;
+    if (isHeld || isFiring || r.running === true) entry.active = true;
+
+    if (copy) {
+      if (isBomb) {
+        const detonate = r.detonate === true || st === 'armed';
+        entry.detonate = detonate;
+        entry.label = detonate ? 'Detonate' : copy.name;
+      } else if (slot.index === 5) {
+        const plowRocks = Number(r.plowRocks) > 0 ? Math.floor(Number(r.plowRocks)) : 0;
+        entry.active = r.running === true || st === 'armed';
+        entry.running = entry.active;
+        if (plowRocks > 0) entry.plowCount = plowRocks;
+        entry.label = plowRocks > 0 ? 'Launch' : copy.name;
+        entry.shortLabel = entry.label;
+      } else {
+        entry.label = copy.name;
+      }
+    } else if (pe && slot.index >= 1) {
+      entry.label = pe.label;
     }
-    if (pe && pe.charges && Number.isFinite(pe.charges.count)) entry.count = pe.charges.count;
+
+    if (Number.isFinite(r.stock)) entry.count = r.stock;
+    else if (pe && pe.charges && Number.isFinite(pe.charges.count)) entry.count = pe.charges.count;
     else {
       const count = /×(\d+)/.exec(String(r.name || ''));
       if (count) entry.count = Number(count[1]);
     }
-    // The tier-2 reveal phrase for this verb: what the next press does, its limit, the live keys, the
-    // live state. Composed here (not in the Cluster) so every surface explains a verb in the same words.
-    entry.tip = pe && slot.index !== 0
-      ? railSlotTip({
-        name: pe.label, keys: keys[slot.index] || labels[slot.index] || '',
-        description: presentedDescription(pe),
-        why: [r.why, pe.denial && pe.denial.text].filter(Boolean).join(' — '),
-      })
-      : railSlotTip({
-        name: r.name || slot.name,
-        keys: keys[slot.index] || labels[slot.index] || '',
-        description: r.description || slotDescription(slot.index),
-        why: r.why || '',
+
+    const cleanWhy = (st !== 'ready' && st !== 'armed') ? (r.why || '') : (pe?.denial?.text || '');
+    if (copy) {
+      const tipKeyLine = slot.index === 6
+        ? entry.key
+        : (keys[slot.index] || entry.key || '');
+      entry.tip = railSlotTip({
+        name: entry.label,
+        keys: tipKeyLine,
+        description: copy.caption,
+        why: cleanWhy,
       });
-    if (slot.action === 'tether') {
-      const hint = activeLineControlHint(state, claimedDigits);
-      if (hint) entry.tip += `\n${hint}`;
-    }
-    const title = slot.index === 5 ? entry.label : (pe?.label || r.name || slot.name);
-    const binding = labels[slot.index] || entry.key;
-    const description = pe?.sentence || r.description || slotDescription(slot.index);
-    const summary = slot.index === 5 && r.why?.includes(' — ')
-      ? r.why.split(' — ')[1].replace(/^tap Rig/, 'Tap')
-      : pe?.denial?.text || (st !== 'ready' && st !== 'armed' ? r.why : '')
+      if (slot.action === 'tether') {
+        const hint = activeLineControlHint(state, claimedDigits);
+        if (hint) entry.tip += `\n${hint}`;
+      }
+      entry.briefTip = [entry.key ? `${entry.label} · ${entry.key}` : entry.label, copy.caption].filter(Boolean).join('\n');
+    } else {
+      entry.tip = pe && slot.index !== 0
+        ? railSlotTip({
+          name: pe.label, keys: keys[slot.index] || labels[slot.index] || '',
+          description: presentedDescription(pe),
+          why: [r.why, pe.denial && pe.denial.text].filter(Boolean).join(' — '),
+        })
+        : railSlotTip({
+          name: r.name || slot.name,
+          keys: keys[slot.index] || labels[slot.index] || '',
+          description: r.description || slotDescription(slot.index),
+          why: r.why || '',
+        });
+      const title = pe?.label || r.name || slot.name;
+      const binding = labels[slot.index] || entry.key;
+      const description = pe?.sentence || r.description || slotDescription(slot.index);
+      const summary = pe?.denial?.text || (st !== 'ready' && st !== 'armed' ? r.why : '')
         || description.match(/^.*?[.!?](?=\s+[A-Z]|$)/)?.[0] || description;
-    entry.briefTip = [binding ? `${title} · ${binding}` : title, summary].filter(Boolean).join('\n');
-    if (claimedDigits?.length && !entry.key && bindings[slot.action]?.length) {
+      entry.briefTip = [binding ? `${title} · ${binding}` : title, summary].filter(Boolean).join('\n');
+    }
+    if (claimedDigits?.length && !kbLabel && bindings[slot.action]?.length && slot.index !== 6) {
       const notice = 'Use this button while the number key answers the call.';
       entry.key = '—';
       entry.tip += `\n${notice}`;
-      entry.briefTip = [title, notice].filter(Boolean).join('\n');
+      entry.briefTip = [entry.label || slot.name, notice].filter(Boolean).join('\n');
     }
     out[String(slot.index)] = entry;
   }
@@ -395,8 +464,10 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
 }
 
 const HOST_CSS = `
-/* Scale the instrument once. Bottom-anchored siblings use the same visual height. */
-#hud[data-hud="orrery"] .orr-hud-cluster { position:absolute; left:calc(12px + var(--sf-safe-inset-x, 0px)); bottom:24px; z-index:5; pointer-events:none; transform:none; }
+/* Scale the instrument once. Bottom-anchored siblings use the same visual height.
+   z-index:14 keeps HUD instrument panels above world markers (#sf-ml2 z-index:6, .sf-lockdiamond z-index:13)
+   so the aim/tether white diamond never paints over the power bar or vitals. */
+#hud[data-hud="orrery"] .orr-hud-cluster { position:absolute; left:calc(12px + var(--sf-safe-inset-x, 0px)); bottom:24px; z-index:14; pointer-events:none; transform:none; }
 #hud[data-hud="orrery"] .orr-hud-cluster:has(.orr-cluster--visor) { left:calc(clamp(12px, 1.435vw, 24px) + var(--sf-safe-inset-x, 0px)); bottom:clamp(24px, 4.36vh, 43px); }
 #hud { --orr-cluster-scale:.85; --orr-cluster-h:calc(${FLIGHT_CLUSTER_SIZE.height}px * var(--orr-cluster-scale)); }
 @media (max-width:1700px), (max-height:850px) { #hud { --orr-cluster-scale:.71; } }
@@ -440,9 +511,42 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
   const firingUntil = new Map();
   const FLASH_DURATION_MS = 400;
   let lastActiveSig = '';
+  // First-use power caption strip: 2.5 s one-shot timer (no rAF loop).
+  let activeCaption = null;
+  let captionUntilWall = 0;
+  let captionTimer = null;
+  let cachedProfile = null;
+  let cachedProfileRunId = null;
+  const prevPressedSlots = new Set();
+
+  const readProfileForRun = (liveState) => {
+    const runKey = liveState?.run ? `${liveState.run.kind || ''}:${liveState.run.phase || ''}:${liveState.run.seed || ''}` : 'adventure';
+    if (runKey !== cachedProfileRunId) {
+      cachedProfileRunId = runKey;
+      try { cachedProfile = loadCrucibleMeta(); } catch { cachedProfile = null; }
+    }
+    return cachedProfile;
+  };
+
+  const triggerPowerCaption = (liveState, slotIdx) => {
+    const shown = consumePowerCaption(liveState, slotIdx, { profile: readProfileForRun(liveState) });
+    if (!shown) return;
+    const nowWall = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+    activeCaption = shown;
+    captionUntilWall = nowWall + POWER_CAPTION_DURATION_MS;
+    if (captionTimer) clearTimeout(captionTimer);
+    captionTimer = setTimeout(() => {
+      captionTimer = null;
+      activeCaption = null;
+      captionUntilWall = 0;
+      cluster.setPowerCaption?.(null);
+    }, POWER_CAPTION_DURATION_MS);
+    cluster.setPowerCaption?.(activeCaption);
+  };
 
   const onActivateSocket = ({ id, power, slot }) => {
     const slotIdx = Number(id) || (slot && Number(slot.id)) || 0;
+    if (slotIdx >= 1 && slotIdx <= 6) triggerPowerCaption(state, slotIdx);
     const action = slot?.action || power || (slotIdx === 1 ? 'pull' : slotIdx === 2 ? 'shove' : slotIdx === 3 ? 'pin' : slotIdx === 4 ? 'bomb' : slotIdx === 5 ? 'rig' : slotIdx === 6 ? 'tether' : '');
     if (action && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
       const codes = resolveActionCodes(state, action);
@@ -466,6 +570,12 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
     }
   };
 
+  const onOpenMore = () => {
+    if (bus && typeof bus.emit === 'function') {
+      bus.emit('ui:contextWheelToggle', { source: 'power-bar' });
+    }
+  };
+
   const cluster = createFlightCluster({
     shipId: defId,
     variantId,
@@ -475,6 +585,7 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
     // before anything is engaged the Hand rests on the Line: the game's signature verb
     restSlot: String(REST_SLOT_INDEX),
     onActivateSocket,
+    onOpenMore,
     layout: 'visor',
   });
   cluster.el.setAttribute('data-why-above', '');
@@ -575,15 +686,26 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
       const nowWall = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
 
       let firingEdge = false;
+      const nowPressed = new Set();
       if (acts) {
-        if (acts.pull?.pressed || acts.deployWell) { firingUntil.set(1, nowWall + FLASH_DURATION_MS); firingEdge = true; }
-        if (acts.shove?.pressed || acts.deployRepulsor || acts.chargeDetonate) { firingUntil.set(2, nowWall + FLASH_DURATION_MS); firingEdge = true; }
-        if (acts.pin?.pressed || acts.deployMassSeed) { firingUntil.set(3, nowWall + FLASH_DURATION_MS); firingEdge = true; }
-        if (acts.bomb?.pressed || acts.chargeThrow || acts.dropBomb || acts.swarmBombThrow) { firingUntil.set(4, nowWall + FLASH_DURATION_MS); firingEdge = true; }
-        if (acts.rig?.pressed || acts.toggleClearingCone || acts.toggleSkimCollector) { firingUntil.set(5, nowWall + FLASH_DURATION_MS); firingEdge = true; }
-        if (acts.tetherFire || acts.massline?.latch) { firingUntil.set(6, nowWall + FLASH_DURATION_MS); firingEdge = true; }
+        if (acts.pull?.pressed || acts.deployWell) { firingUntil.set(1, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(1); }
+        if (acts.shove?.pressed || acts.deployRepulsor || acts.chargeDetonate) { firingUntil.set(2, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(2); }
+        if (acts.pin?.pressed || acts.deployMassSeed) { firingUntil.set(3, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(3); }
+        if (acts.bomb?.pressed || acts.chargeThrow || acts.dropBomb || acts.swarmBombThrow) { firingUntil.set(4, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(4); }
+        if (acts.rig?.pressed || acts.toggleClearingCone || acts.toggleSkimCollector) { firingUntil.set(5, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(5); }
+        if (acts.tetherFire || acts.massline?.latch) { firingUntil.set(6, nowWall + FLASH_DURATION_MS); firingEdge = true; nowPressed.add(6); }
         if (acts.gyreSnare) { firingUntil.set(7, nowWall + FLASH_DURATION_MS); firingEdge = true; }
         if (acts.cloakToggle) { firingUntil.set(8, nowWall + FLASH_DURATION_MS); firingEdge = true; }
+      }
+      for (const slotIdx of nowPressed) {
+        if (!prevPressedSlots.has(slotIdx)) triggerPowerCaption(liveState, slotIdx);
+      }
+      prevPressedSlots.clear();
+      for (const slotIdx of nowPressed) prevPressedSlots.add(slotIdx);
+
+      if (activeCaption && nowWall >= captionUntilWall) {
+        activeCaption = null;
+        captionUntilWall = 0;
       }
 
       let firingExpired = false;
@@ -613,10 +735,13 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
           icon: SWARM_PERK_ICON[id] || 'spark',
         }));
         model.perkPulses = perkPulseCounts;
+        model.moreKey = resolveActionLabel(liveState, 'contextWheel') || 'Q';
+        model.powerCaption = liveState?._uiBenchPowerCaption || activeCaption;
         cluster.update(model);
       }
     },
     dispose() {
+      if (captionTimer) { clearTimeout(captionTimer); captionTimer = null; }
       if (typeof offName === 'function') { try { offName(); } catch (_) {} }
       if (typeof offPerkTrigger === 'function') { try { offPerkTrigger(); } catch (_) {} }
       try { offDenials(); } catch (_) {}

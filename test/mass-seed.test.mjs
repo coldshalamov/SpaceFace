@@ -916,7 +916,7 @@ function makeFakeDom() {
   };
 }
 
-test('presentation: HUD seconds are the primary timing channel; state never color-only', () => {
+test('presentation: floating Pin status pill stays retired while world lock marker carries textual countdown', () => {
   const t = boot(9117);
   const { doc } = makeFakeDom();
   const hud = Object.create(massSeedHud);
@@ -934,9 +934,9 @@ test('presentation: HUD seconds are the primary timing channel; state never colo
     const dom = hud._dom;
     assert(dom, 'DOM built under the fake document');
 
-    // Travel: pill carries the lock countdown as TEXT; the world marker shows the future lock.
-    assert(/^SEED → LOCK \d+\.\ds$/.test(dom.pillText.textContent), `travel pill has seconds: "${dom.pillText.textContent}"`);
-    assert.equal(dom.pill.attrs['aria-label'], dom.pillText.textContent, 'aria channel mirrors the text');
+    // Travel: floating power status pill is retired (tile 3 Pin owns status); world lock marker carries countdown.
+    assert.equal(dom.pill.style.display, 'none', 'floating SEED -> LOCK pill stays hidden');
+    assert.equal(dom.pillText.textContent, '', 'floating pill prints no jargon text');
     assert.equal(dom.mark.style.display, 'block', 'lock marker visible during travel');
     assert(/^LOCK \d+\.\ds$/.test(dom.markLabel.textContent), `marker label has seconds: "${dom.markLabel.textContent}"`);
 
@@ -950,31 +950,26 @@ test('presentation: HUD seconds are the primary timing channel; state never colo
     assert.match(dom.mark.attrs['aria-label'], /offscreen left/);
     assert.match(dom.mark.style.transform, /^translate3d\(24px,/);
 
-    // Locking: state readout stays textual.
+    // Locking: floating pill stays retired.
     assert(runUntil(t, () => t.state.massSeed.phase === 'locking', TICKS.travel + 4));
     hud.update(DT, t.state);
-    assert(/FRAME LOCK/.test(dom.pillText.textContent));
+    assert.equal(dom.pill.style.display, 'none');
 
-    // Active: countdown text, NOT the warning class.
+    // Active: floating pill stays retired and lock marker retires once the anchor exists.
     assert(runUntil(t, () => t.state.massSeed.phase === 'active', TICKS.locking + 4));
     hud.update(DT, t.state);
-    assert(/^ANCHOR \d+s$/.test(dom.pillText.textContent), `active pill has seconds: "${dom.pillText.textContent}"`);
-    assert.equal(dom.pill.classList.contains('mseed-warning'), false, 'no warning styling while healthy');
+    assert.equal(dom.pill.style.display, 'none');
     assert.equal(dom.mark.style.display, 'none', 'lock marker retires once the anchor exists');
 
-    // Warning: text says COLLAPSE IN n s — readable without color; class only reinforces.
+    // Warning & collapse -> cooldown: floating pill remains retired (tile 3 carries cooldown seconds).
     assert(runUntil(t, () => t.state.massSeed.phase === 'warning', TICKS.anchor - TICKS.warning + 30));
     hud.update(DT, t.state);
-    assert(/^ANCHOR COLLAPSE IN \d+s$/.test(dom.pillText.textContent), `warning pill has seconds: "${dom.pillText.textContent}"`);
-    assert.equal(dom.pill.classList.contains('mseed-warning'), true, 'warning class reinforces (not primary)');
-
-    // Collapse → cooldown: the recharge is textual too.
+    assert.equal(dom.pill.style.display, 'none');
     assert(runUntil(t, () => t.state.massSeed.phase === 'idle', TICKS.warning + TICKS.collapse + 30));
     hud.update(DT, t.state);
-    assert(/^SEED READY IN \d+s$/.test(dom.pillText.textContent), `cooldown pill has seconds: "${dom.pillText.textContent}"`);
-    assert.equal(dom.pill.classList.contains('mseed-cooldown'), true);
+    assert.equal(dom.pill.style.display, 'none');
 
-    // Reduced motion: the root picks up the reduced class; timing stays textual (never motion-only).
+    // Reduced motion: the root picks up the reduced class.
     t.state.settings.video = { ...(t.state.settings.video || {}), motionReduce: true };
     hud.update(DT, t.state);
     assert.equal(dom.root.classList.contains('mseed-reduced-motion'), true, 'reduced-motion class applied');

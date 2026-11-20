@@ -98,26 +98,39 @@ export const SLOT_STATES = ['ready', 'armed', 'cooling', 'unaffordable', 'locked
 // `description` is the player-facing "what pressing this does" bank. It is enumerated here, at the
 // one write site, and read verbatim by every surface that explains a verb (tier-2 `[data-why]` tips,
 // the ORRERY Cluster's ordnance keys, the rail's own aria/title) — no surface composes its own prose.
+/**
+ * Canonical flight HUD names and one-line captions for the six powers (Adventure and Swarm share
+ * one grammar). Old internal words (Well, Repulsor, Seed, Field, Cone, Rig, Gyre, Massline,
+ * Mass Seed) never appear on the flight bar.
+ */
+export const FLIGHT_POWER_COPY = Object.freeze({
+  1: Object.freeze({ power: 'pull',  name: 'Pull',  caption: 'Drags everything near the cursor together' }),
+  2: Object.freeze({ power: 'shove', name: 'Shove', caption: 'Blasts everything ahead of you away' }),
+  3: Object.freeze({ power: 'pin',   name: 'Pin',   caption: 'Nails a ship, or a point in space, in place' }),
+  4: Object.freeze({ power: 'bomb',  name: 'Bomb',  caption: 'Sticks a charge. Press again to detonate' }),
+  5: Object.freeze({ power: 'plow',  name: 'Plow',  caption: 'Gathers rocks at your bow. Press again to launch' }),
+  6: Object.freeze({ power: 'line',  name: 'Line',  caption: 'Hook anything: swing on heavy things, throw light ones' }),
+});
+
 export const RAIL_SLOTS = Object.freeze([
   // FB-002 slot 0 — the travel-drive latch. It owns no digit (Num Lock/F8 is the verb, never a
-  // hotbar seat) and no prompt may borrow it; it is the rail's one state socket: the latch's
-  // off/spooling/engaged/cooldown reads where the pilot's eyes already live.
+  // hotbar seat) and no prompt may borrow it; hidden on the six-tile visor flight bar.
   { index: 0, band: BAND_DRIVE, action: 'travelBurn', name: 'Burn', glyph: 'rig',
     description: staticVerbSentence('travel') },
   // Slots 1–5 are the five powers; each index is its own number-row digit.
-  { index: 1, band: BAND_PULL, action: 'pull', name: 'Pull', glyph: 'well',
-    description: staticVerbSentence('pull') },
-  { index: 2, band: BAND_SHOVE, action: 'shove', name: 'Shove', glyph: 'repel',
-    description: staticVerbSentence('shove') },
-  { index: 3, band: BAND_PIN, action: 'pin', name: 'Pin', glyph: 'seed',
-    description: staticVerbSentence('pin') },
-  { index: 4, band: BAND_BAY, action: 'bomb', name: 'Bomb', glyph: 'weapon',
-    description: staticVerbSentence('bomb') },
-  { index: 5, band: BAND_RIG, action: 'rig', name: 'Rig', glyph: 'cone',
-    description: staticVerbSentence('rig') },
-  // The Line has no digit (Space / F); index 6 keeps it off the power row's own numbers.
-  { index: 6, band: BAND_LINE, action: 'tether', name: 'Line', glyph: 'tether',
-    description: LINE_BANK },
+  { index: 1, band: BAND_PULL, action: 'pull', name: FLIGHT_POWER_COPY[1].name, glyph: 'well',
+    description: FLIGHT_POWER_COPY[1].caption },
+  { index: 2, band: BAND_SHOVE, action: 'shove', name: FLIGHT_POWER_COPY[2].name, glyph: 'repel',
+    description: FLIGHT_POWER_COPY[2].caption },
+  { index: 3, band: BAND_PIN, action: 'pin', name: FLIGHT_POWER_COPY[3].name, glyph: 'seed',
+    description: FLIGHT_POWER_COPY[3].caption },
+  { index: 4, band: BAND_BAY, action: 'bomb', name: FLIGHT_POWER_COPY[4].name, glyph: 'weapon',
+    description: FLIGHT_POWER_COPY[4].caption },
+  { index: 5, band: BAND_RIG, action: 'rig', name: FLIGHT_POWER_COPY[5].name, glyph: 'cone',
+    description: FLIGHT_POWER_COPY[5].caption },
+  // The Line sits after Plow (RMB / F); index 6 keeps it off the power row's own numbers.
+  { index: 6, band: BAND_LINE, action: 'tether', name: FLIGHT_POWER_COPY[6].name, glyph: 'tether',
+    description: FLIGHT_POWER_COPY[6].caption },
 ]);
 
 // Support verbs beside the rank. They are not number-row powers and no prompt may claim them, so they
@@ -403,10 +416,10 @@ function swarmWellLive(s, hostiles, player) {
         const dz = h.pos.z - emitter.pos.z;
         if (dx * dx + dz * dz <= wellR * wellR) inside += 1;
       }
-      if (inside >= SWARM_WELL_PACK_MIN) return 'Your well is holding a pack';
+      if (inside >= SWARM_WELL_PACK_MIN) return 'Pulling a pack';
     }
   }
-  // No deployed well: is there a clump the deploy range can reach? Any hostile with at
+  // No deployed pull: is there a clump the deploy range can reach? Any hostile with at
   // least SWARM_WELL_OPPORTUNITY_MIN-1 neighbours inside one footprint is a pack.
   const reach = Number(def && def.deployRange) || 520;
   if (player && player.pos) {
@@ -420,11 +433,30 @@ function swarmWellLive(s, hostiles, player) {
         const dx = other.pos.x - h.pos.x;
         const dz = other.pos.z - h.pos.z;
         if (dx * dx + dz * dz <= wellR * wellR) neighbours += 1;
-        if (neighbours >= SWARM_WELL_OPPORTUNITY_MIN - 1) return 'A pack is in well range';
+        if (neighbours >= SWARM_WELL_OPPORTUNITY_MIN - 1) return 'A pack is in pull range';
       }
     }
   }
   return null;
+}
+
+function activePlayerFieldKind(fields, kind) {
+  const active = Array.isArray(fields && fields.active) ? fields.active : null;
+  if (!active) return false;
+  for (let i = 0; i < active.length; i++) {
+    const rec = active[i];
+    if (!rec || rec.kind !== kind) continue;
+    if (rec.tag === 'environmental' || rec.tag === 'npc') continue;
+    return true;
+  }
+  return false;
+}
+
+function readPlowRockCount(fields) {
+  if (!fields || typeof fields !== 'object') return 0;
+  const raw = fields.plowRockCount ?? fields.plowHeldCount ?? fields.coneHeldCount ?? fields.coneRocks;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
 
 export function readRailModel(state, nowS) {
@@ -443,15 +475,18 @@ export function readRailModel(state, nowS) {
   const seedCd = cooling(player.massSeed && player.massSeed.cooldownUntil);
   const wellCd = cooling(cooldowns.well);
   const repCd = cooling(cooldowns.repulsor);
+  const pullRunning = activePlayerFieldKind(fields, 'well');
+  const shoveRunning = activePlayerFieldKind(fields, 'repulsor');
+  const pinPhase = s.massSeed && s.massSeed.phase;
+  const pinRunning = pinPhase === 'travel' || pinPhase === 'locking' || pinPhase === 'active' || pinPhase === 'warning';
+  const lineRunning = !!(player.tether?.active || player.remoteMassline?.active);
   const hull = s.entities?.get?.(s.playerId);
   const charges = playerImpulseCharges(s);
   const throwCd = Math.max(0, hull?.data?.impulseCharges?.throwCdT || 0);
   const capacity = resolveImpulseChargeCapacity(s);
-  const chargeWhy = charges <= 0 ? 'No impulse charges in cargo'
-    : throwCd > 0 ? `Arming — ${Math.ceil(throwCd)}s` : 'Ready';
-  // What a Shove press will set off: armed charges, armed drift bombs and planted sticky charges, by the
-  // owners' own predicates (arsenalPresentation.armedOrdnanceCounts reads the typed `charges` bucket,
-  // not the fat entityList).
+  const chargeWhy = charges <= 0 ? 'No charges in cargo'
+    : throwCd > 0 ? `Recharging — ${Math.ceil(throwCd)}s` : 'Ready';
+  // Armed charges, planted charges, or armed drift bombs make Bomb (slot 4) read "Detonate".
   const armedCounts = armedOrdnanceCounts(s, now);
   const armed = armedCounts.charges + armedCounts.plants > 0;
 
@@ -463,28 +498,42 @@ export function readRailModel(state, nowS) {
   let wellLiveWhy = null;
   if (swarm) {
     const hostiles = swarmHostiles(s);
-    if (swarmLineLive(s)) lineLiveWhy = 'Latch is in reach — a body you can throw';
+    if (swarmLineLive(s)) lineLiveWhy = 'Target in hook reach';
     wellLiveWhy = swarmWellLive(s, hostiles, hull);
   }
-  const armedOrdnance = armed || bay.armedCount > 0 || armedCounts.total > 0;
+  const armedOrdnance = armed || bay.armedCount > 0 || armedCounts.total > 0
+    || (Number(player.armedChargeCount) > 0);
   const blastLive = swarm && armedOrdnance;
   // BOMB throws the sticky charge while one is aboard, unless the ordnance cycle chose a drift bomb —
   // the same predicate the input layer uses, so the socket and the press agree.
   const bombAct = resolveBombAction(s);
-  const bombSlot = bombAct.action === 'callin' ? {
+  const baseBombSlot = bombAct.action === 'callin' ? {
     // A stocked swarm call-in outranks the drift bomb on the press (input.js), so the socket names it.
     name: `${bombAct.name} ×${bombAct.stock}`, glyph: bombAct.id,
+    stock: bombAct.stock,
     state: 'ready', cooldownMs: 0, badge: 'CALL-IN', callin: true,
     why: `Ready · ${bombAct.stock} ${pluralWord(bombAct.stock, 'charge', 'charges')} left this run`,
-    description: `${bombAct.name}: one Bomb press calls it in and spends one. With none left, Bomb falls back to your drift bomb.`,
+    description: FLIGHT_POWER_COPY[4].caption,
   } : bombUsesCharge(s) ? {
-    name: `Charge${charges > 0 ? ` ×${charges}` : ''}${repulsionTrapFitted(s) ? ' · +Trap' : ''}`,
+    name: `Bomb${charges > 0 ? ` ×${charges}` : ''}`,
     glyph: 'munitions',
+    stock: charges,
     state: throwCd > 0 ? 'cooling' : 'ready', cooldownMs: throwCd * 1000,
     capacity, badge: 'CHARGE', charge: true,
     why: `${chargeWhy} · up to ${capacity}`,
-    description: 'Sticky impulse charge. It sticks where it lands; Shove sets it off. Cycle to reach your drift bombs.',
+    description: FLIGHT_POWER_COPY[4].caption,
   } : bay;
+  const bombSlot = armedOrdnance
+    ? {
+      ...baseBombSlot,
+      state: 'armed',
+      detonate: true,
+      running: true,
+      live: blastLive || true,
+      name: 'Detonate',
+      why: 'Charge armed — press again to detonate',
+    }
+    : baseBombSlot;
   // VERB-16: the 3 s cruise spool is a verb-shelf meter. The rail owns no cruise clock — it
   // reads the cruise system's writer (state.player.cruise) through its query helpers, so the
   // shelf shows the spool rising 0→1 while charging and the engaged state after. ORRERY owns
@@ -511,33 +560,33 @@ export function readRailModel(state, nowS) {
           : driveState === 'cooldown' ? 'Drive cooling'
             : 'Drive latched off',
     },
-    // 1 PULL — the well.
-    1: { ...(wellCd || { state: 'ready' }),
+    // 1 PULL.
+    1: { ...(wellCd || { state: pullRunning ? 'armed' : 'ready' }),
+      running: pullRunning,
       live: wellCd ? undefined : (wellLiveWhy != null || undefined),
-      why: wellCd ? `Recharging — ${Math.ceil(wellCd.cooldownMs / 1000)}s` : (wellLiveWhy || 'Ready'),
+      why: wellCd ? `Recharging — ${Math.ceil(wellCd.cooldownMs / 1000)}s` : (pullRunning ? 'Pull active' : (wellLiveWhy || 'Ready')),
       // The Collector Maw (packet 05): the socket names the current role and the next press.
       ...(collectorRailSlot(s, collectorFitted(s)) || {}) },
-    // 2 SHOVE — the repulsor, plus the detonation of armed ordnance. Armed ordnance makes the key
-    // ARMED even while the repulsor recharges: the press still sets the ordnance off.
-    2: armedOrdnance ? {
-      state: 'armed',
-      live: blastLive || undefined,
-      why: blastLive ? 'Armed — the pack is on the field'
-        : `Armed — Shove sets off ${armedCounts.total > 0 ? armedCounts.total : 'them'}`,
-    } : repCd ? { ...repCd, why: `Recharging — ${Math.ceil(repCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
-    // 3 PIN — the anchor Mass Seed.
-    3: seedCd ? { ...seedCd, why: `Recharging — ${Math.ceil(seedCd.cooldownMs / 1000)}s` } : { state: 'ready', why: 'Ready' },
-    // 4 BOMB — the drift bomb bay, or the sticky charge when it is the chosen ordnance.
+    // 2 SHOVE.
+    2: repCd
+      ? { ...repCd, running: shoveRunning, why: `Recharging — ${Math.ceil(repCd.cooldownMs / 1000)}s` }
+      : { state: shoveRunning ? 'armed' : 'ready', running: shoveRunning, why: shoveRunning ? 'Shove active' : 'Ready' },
+    // 3 PIN.
+    3: seedCd
+      ? { ...seedCd, running: pinRunning, why: `Recharging — ${Math.ceil(seedCd.cooldownMs / 1000)}s` }
+      : { state: pinRunning ? 'armed' : 'ready', running: pinRunning, why: pinRunning ? 'Pin active' : 'Ready' },
+    // 4 BOMB (reads "Detonate" while a charge is armed).
     4: bombSlot,
-    // 5 RIG — the clearing cone, or the skim scoop in a planet band.
+    // 5 PLOW (reads "Launch" with rock count while holding rocks).
     5: rigSlotState(s),
-    // 6 LINE — the tether.
-    6: { state: player.tether?.active ? 'armed' : 'ready',
+    // 6 LINE.
+    6: { state: lineRunning ? 'armed' : 'ready',
+      running: lineRunning,
       live: lineLiveWhy != null || undefined,
-      why: player.tether?.active ? 'Line is live' : (lineLiveWhy || 'Ready') },
-    // 7 GYRE — hold to gather, release to throw (the Gyre system's own published phase).
+      why: lineRunning ? 'Line is live' : (lineLiveWhy || 'Ready') },
+    // 7 GYRE — context-wheel / legacy support slot; hidden on the six-tile visor bar.
     7: gyreSlotState(s, hull),
-    // 8 CLOAK — the fitted module's own runtime; absent when none is fitted (or the mode has no cloak).
+    // 8 CLOAK — context-wheel / legacy support slot; hidden on the six-tile visor bar.
     8: cloakSlotState(s),
   };
 }
@@ -588,26 +637,27 @@ export function readBombBayModel(state, nowS) {
       };
     }
     return {
-      name: 'Bay', glyph: 'weapon',
+      name: 'Bomb', glyph: 'weapon',
       state: locked ? 'locked' : 'empty',
+      unowned: true,
       cooldownMs: 0, deployed, armedCount, fields,
       badge: 'RACK EMPTY',
-      why: locked ? 'Undock to use the bay' : 'Rack empty — restock at a station shipworks',
-      description: `Bomb rack empty — rearm at a station shipworks. ${armedCount} armed; ${fields} active fields.`,
+      why: locked ? 'Undock to use charges' : 'No charges fitted',
+      description: FLIGHT_POWER_COPY[4].caption,
     };
   }
   return {
     name: def.shortName, glyph: def.id,
+    stock: cell ? cell.count : undefined,
     state: locked || full ? 'locked' : until > nowS ? 'cooling' : 'ready',
     cooldownMs: Math.max(0, until - nowS) * 1000, deployed, armedCount, fields,
     // Bombs OUT of the ship, not bombs in the rack: "BAY 0/6" over a loaded key read as an empty
     // magazine. The legend counts drifting bombs only while there are some.
     badge: deployed > 0 ? `BAY ${deployed}/${BOMB_DRIFT.maxActive}` : 'BAY',
-    why: locked ? (full ? fullWhy : 'Undock to use the bay')
+    why: locked ? (full ? fullWhy : 'Undock to use charges')
       : full ? fullWhy
         : until > nowS ? `Recharging — ${Math.ceil(until - nowS)}s` : 'Ready',
-    // Rack honesty: the loaded magazine count rides the description, never the name.
-    description: `${def.name}${cell ? ` ×${cell.count} loaded` : ''}. ${def.sentence} ${armedCount} armed; ${fields} active fields. Friendly fire applies.`,
+    description: FLIGHT_POWER_COPY[4].caption,
   };
 }
 
@@ -620,16 +670,27 @@ function dryFittedBomb(cells) {
   return null;
 }
 
-// RIG reads the same predicate the input layer uses (resolveRigTarget), so the socket's "why" names
-// the rig the next press will actually toggle.
+// PLOW reads the sustained bow wedge state (and held rock count when published by the sim).
 function rigSlotState(state) {
-  if (state.fields && state.fields.coneActive) return { state: 'armed', name: 'Cone', glyph: 'cone', why: 'Cone ON — tap Rig to turn it off' };
-  const planet = state.planet;
+  const fields = state && state.fields;
+  const plowRunning = !!(fields && (fields.coneActive || activePlayerFieldKind(fields, 'cone')));
+  const plowRocks = plowRunning ? readPlowRockCount(fields) : 0;
+  if (plowRunning) {
+    return {
+      state: 'armed',
+      running: true,
+      plowRocks,
+      name: plowRocks > 0 ? 'Launch' : 'Plow',
+      glyph: 'cone',
+      why: plowRocks > 0 ? `Holding ${plowRocks} — press again to launch` : 'Plow active — press again to release',
+    };
+  }
+  const planet = state && state.planet;
   const rec = planet && planet.active && planet.player ? planet.player : null;
-  if (rec && rec.collectorOn === true) return { state: 'armed', name: 'Scoop', glyph: 'skim', why: 'Scoop ON — tap Rig to turn it off' };
-  return resolveRigTarget(state) === 'skim'
-    ? { state: 'ready', name: 'Scoop', glyph: 'skim', why: 'Scoop OFF — tap Rig to collect ore' }
-    : { state: 'ready', name: 'Cone', glyph: 'cone', why: 'Cone OFF — tap Rig to clear debris' };
+  if (rec && rec.collectorOn === true) {
+    return { state: 'armed', running: true, plowRocks: 0, name: 'Plow', glyph: 'cone', why: 'Plow active — press again to release' };
+  }
+  return { state: 'ready', running: false, plowRocks: 0, name: 'Plow', glyph: 'cone', why: 'Ready' };
 }
 
 // GYRE reads the Gyre system's published phase (state.gyreSnare is its runtime mirror, never saved).

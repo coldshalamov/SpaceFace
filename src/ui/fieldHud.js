@@ -123,22 +123,11 @@ export const fieldHud = {
     this._applyLaneSeat(dom.pill, seat.bottom);
   },
 
-  // One-voice resolution: a fresh denial wins for a beat, then an occupied environmental timing
-  // corridor, then the primary active player field, then a pending cooldown. Returns { text, cls }.
+  // One-voice resolution: environmental timing corridors (Anvil Orchard / Cinder Sluice) and
+  // fitted hull-burst boost cues only. Player power state, cooldowns, and active rings live
+  // directly on the power bar tiles — never as floating pills.
   _resolve(f, now, environmental = null, burst = null) {
-    if (!f && !environmental && !burst) return { text: '', cls: '' };
-    // Denial (transient, ~1.8s): the reason is the HUD's whole job here.
-    const denial = f && f.lastDenial;
-    if (denial && Number.isFinite(denial.at) && now - denial.at < 1.8) {
-      const label = KIND_LABEL[denial.kind] || 'FIELD';
-      if (denial.reason === 'cooldown' && Number.isFinite(denial.readyAt)) {
-        return { text: `${label} DENIED — COOLDOWN ${Math.max(0, Math.ceil(denial.readyAt - now))}s`, cls: 'field-denied' };
-      }
-      return { text: `${label} DENIED`, cls: 'field-denied' };
-    }
-    // The hull burst while it is LIVE: a few seconds the player lit on purpose, and the one number they
-    // are racing. It outranks a held cone or a deployed field and the calm state of a hazard clock, never a
-    // fresh denial and never a hazard's WARNING or SURGE (that timer is about staying alive).
+    if (!environmental && !burst) return { text: '', cls: '' };
     const hazardHot = !!environmental && (environmental.phase === 'warning'
       || environmental.phase === 'surge' || environmental.phase === 'forecast' || environmental.phase === 'gust');
     if (burst && burst.live && !hazardHot) return { text: burst.text, cls: burst.cls };
@@ -169,43 +158,6 @@ export const fieldHud = {
         : environmental.phase === 'surge' ? 'field-current-surge' : 'field-current-calm';
       return { text: `CINDER SLUICE — ${label} ${seconds}s`, cls };
     }
-    // Primary active field: prefer the cone (held tool), else the deployed field expiring soonest.
-    const active = Array.isArray(f && f.active) ? f.active : [];
-    let cone = null, soonest = null;
-    for (const rec of active) {
-      // Authored environmental fields use the same pooled world-space presentation but are not a
-      // player deploy. Their hazard language/site clock owns the readout; never let one masquerade
-      // as the player's held Clearing Cone.
-      if (rec.tag === 'environmental' || rec.tag === 'npc') continue;
-      if (rec.kind === 'cone') cone = rec;
-      else if (!soonest || rec.expireAt < soonest.expireAt) soonest = rec;
-    }
-    if (cone) {
-      return { text: `CONE — ${cone.engaged ? 'CLEARING' : 'PROJECTING'}`, cls: cone.engaged ? '' : 'field-cone-projecting' };
-    }
-    if (soonest) {
-      const label = KIND_LABEL[soonest.kind] || 'FIELD';
-      const remain = Number.isFinite(soonest.expireAt) ? Math.max(0, Math.ceil(soonest.expireAt - now)) : null;
-      // INF-042: the pill words the enforced lifecycle — a building or fading field never
-      // masquerades as a fully armed one. Records without a phase read as before.
-      const stateWord = soonest.phase === 'winding' ? 'FORMING'
-        : soonest.phase === 'dissipating' ? 'FADING'
-          : soonest.engaged ? 'ENGAGED' : 'ARMED';
-      const cls = soonest.kind === 'repulsor' ? 'field-repulsor' : '';
-      return { text: remain != null ? `${label} — ${stateWord} ${remain}s` : `${label} — ${stateWord}`, cls };
-    }
-    // Cooldown readiness (soonest pending). The older field tools keep their voice: the burst's recharge must not
-    // hide "WELL READY 4s" for a player carrying both.
-    const cds = f && f.cooldowns || {};
-    let bestKind = null, bestReady = Infinity;
-    for (const kind of Object.keys(cds)) {
-      const until = cds[kind];
-      if (Number.isFinite(until) && until - now > 0.05 && until < bestReady) { bestReady = until; bestKind = kind; }
-    }
-    if (bestKind) {
-      return { text: `${KIND_LABEL[bestKind] || 'FIELD'} READY ${Math.max(0, Math.ceil(bestReady - now))}s`, cls: 'field-cooldown' };
-    }
-    // The burst's recharge (and its brief ready hint) sit at cooldown value, below every other voice.
     if (burst && burst.text) return { text: burst.text, cls: burst.cls };
     return { text: '', cls: '' };
   },

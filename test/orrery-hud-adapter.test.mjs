@@ -102,28 +102,26 @@ test('the speed Scale phases against the displayed reading: asleep, flight, abov
   assert.equal(speedPhase(NaN, 180), 'rest', 'no reading, no light');
 });
 
-test('every ordnance key explains itself: bank sentence, live keys and live state in one tip', () => {
+test('every ordnance key explains itself: one plain name, one-line caption, live keys and state', () => {
   const bindings = {
     pull: ['Digit1'], shove: ['KeyR', 'Digit2'], bomb: ['KeyY', 'Digit4'], tether: ['Space', 'KeyF'],
   };
   const { state } = fakeState();
   state.player.cargo.items.cmdty_impulse_charge = 2;
   const ord = readOrdnanceModel(state, createCooldownTracker(), bindings);
-  const capacity = resolveImpulseChargeCapacity(state);
-  // The tip names the EFFECTIVE verb (what the next press does), the live keys, and why it is or is not ready.
-  assert.match(ord['4'].tip, /^Bomb · throw Charge ×2 — Next use: throw Impulse charge ×2\. /);
-  assert.match(ord['4'].tip, /\(4 · Y\)\nReady · up to \d+$/);
-  assert.ok(ord['4'].tip.endsWith(`Ready · up to ${capacity}`));
-  assert.equal(ord['4'].label, 'Bomb · throw Charge ×2');
-  assert.match(ord['6'].tip, /\(Space · F\)\nReady$/);
-  assert.match(ord['2'].tip, /\(2 · R\)\nReady$/, 'nothing armed: SHOVE is the repulsor, ready');
-  // A collapsed node answers "what is this" without unfolding it: a one-power band explains the
-  // power. The DRIVE lamp group rides ahead of the hotbar (FB-002 slot 0).
+  // One canonical name and one-line caption per flight power — no jargon leaks.
+  assert.equal(ord['4'].label, 'Bomb');
+  assert.equal(ord['4'].count, 2);
+  assert.equal(ord['4'].tip, 'Bomb — Sticks a charge. Press again to detonate (4 · Y)');
+  assert.equal(ord['4'].briefTip, 'Bomb · 4\nSticks a charge. Press again to detonate');
+  assert.equal(ord['6'].key, 'RMB / Space');
+  assert.equal(ord['6'].tip, 'Line — Hook anything: swing on heavy things, throw light ones (RMB / Space)');
+  assert.equal(ord['2'].tip, 'Shove — Blasts everything ahead of you away (2 · R)');
   const groups = buildOrdnanceGroups(bindings);
   const shove = groups.find((g) => g.name === 'Shove');
-  assert.equal(shove.tip, `Shove — ${staticVerbSentence('shove')} (2)`, 'a folded node explains its power in the arsenal\'s own sentence');
+  assert.equal(shove.tip, 'Shove — Blasts everything ahead of you away (2)');
   assert.equal(groups.find((g) => g.name === 'Pull').slots[0].key, '1', 'the shelf reads as the number-row hotbar the player reaches for');
-  assert.deepEqual(groups.map((g) => g.name), ['DRIVE', 'Pull', 'Shove', 'Pin', 'Bomb', 'Rig', 'Line', 'Gyre', 'Cloak']);
+  assert.deepEqual(groups.map((g) => g.name), ['DRIVE', 'Pull', 'Shove', 'Pin', 'Bomb', 'Plow', 'Line', 'Gyre', 'Cloak']);
   const drive = groups.find((g) => g.name === 'DRIVE');
   assert.ok(drive && drive.slots.length === 1, 'the travel-drive lamp is its own group');
 });
@@ -158,14 +156,14 @@ test('the mounted Cluster follows live rebinds, prompt key ownership, and an int
     // hud.js still passes the legacy default table; the live state is authoritative.
     mounted = mountOrreryCluster(root, state, { bindings: DEFAULTS.BINDINGS });
     mounted.update(state, player, true);
-    assert.equal(key(), 'P');
+    assert.equal(key(), 'RMB / P');
     assert.match(socket().getAttribute('data-why'), /I REEL.*K PAY OUT.*J\/L ORBIT.*B PUMP/);
     assert.match(socket().getAttribute('aria-label'), /I REEL/);
     assert.equal(socket().getAttribute('tabindex'), '0', 'the contextual controls remain focusable');
     state.settings.controls.bindings.tether = ['KeyU'];
     state.settings.controls.bindings.forward = ['KeyO'];
     mounted.update(state, player, true);
-    assert.equal(key(), 'U', 'a rebind after mount updates the visible key as well as its tip');
+    assert.equal(key(), 'RMB / U', 'a rebind after mount updates the visible key as well as its tip');
     assert.match(socket().getAttribute('data-why'), /O REEL/);
     assert.doesNotMatch(socket().getAttribute('data-why'), /I REEL|\(Space · F\)/);
     const settled = socket();
@@ -179,7 +177,7 @@ test('the mounted Cluster follows live rebinds, prompt key ownership, and an int
     assert.match(socket('1').getAttribute('aria-label'), /number key answers the call/i);
     assert.equal(key('2'), 'R', 'a second binding stays available and visible');
     assert.doesNotMatch(socket('2').getAttribute('data-why'), /\(2/);
-    assert.equal(key(), 'U', 'Line does not change when a number is borrowed');
+    assert.equal(key(), 'RMB / U', 'Line does not change when a number is borrowed');
     setPromptDeck(null);
     mounted.update(state, player, false);
     assert.equal(key('1'), '3');

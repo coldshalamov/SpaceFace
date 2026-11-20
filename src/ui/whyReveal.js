@@ -169,8 +169,9 @@ export function mountWhyReveal(quiet = null) {
 
   const onPointerOver = (ev) => {
     const carrier = carrierFrom(ev);
-    if (!carrier || hushed()) { hideWhyTip('data-why'); return; }
-    if (carrier.closest('[data-why-above]')) showWhyTipForElement(whyTextFor(carrier), carrier, 'data-why');
+    const powerTile = !!(carrier && carrier.closest('[data-why-above]'));
+    if (!carrier || (hushed() && !powerTile)) { hideWhyTip('data-why'); return; }
+    if (powerTile) showWhyTipForElement(whyTextFor(carrier), carrier, 'data-why');
     else showWhyTip(whyTextFor(carrier), ev.clientX, ev.clientY, 'data-why');
     describe(carrier);
   };
@@ -185,7 +186,8 @@ export function mountWhyReveal(quiet = null) {
   };
   const onFocusIn = (ev) => {
     const carrier = carrierFrom(ev);
-    if (!carrier || hushed()) { hideWhyTip('data-why'); return; }
+    const powerTile = !!(carrier && carrier.closest('[data-why-above]'));
+    if (!carrier || (hushed() && !powerTile)) { hideWhyTip('data-why'); return; }
     showWhyTipForElement(whyTextFor(carrier), carrier, 'data-why');
     describe(carrier);
   };

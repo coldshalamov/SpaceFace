@@ -34,7 +34,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
   const mapHost = make('div','race-tape-map');
   const row = make('div','race-tape-actions');
   row.id = 'race-tape-options';
-  const options = make('button', 'race-tape-options-trigger k-word', 'View & circuits');
+  const options = make('button', 'race-tape-options-trigger k-word', 'Camera view');
   options.type = 'button'; options.style.display = 'none';
   options.setAttribute('aria-controls', row.id);
   options.setAttribute('aria-expanded', 'false');
@@ -71,8 +71,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
   // AL-HF-04: instant restart is a time-trial-only verb; the missions owner still decides
   // eligibility (tether, mode refusal toasts) — the button just exposes the key's reach.
   const restart = button('Restart',()=>bus?.emit?.('race:restart',{source:'hud'}));
-  const board = button('Circuits',()=>{ if (optionsOpen) setOptionsOpen(false); screens?.pushScreen?.('raceBoard'); });
-  board.title = 'Routes, local best times and last result';
+  // Circuits lives in Pause and Title, not on the flight HUD.
   const leave = button('Leave run',()=>bus?.emit?.('race:abort',{}));
   let selection = null;
   const select = button('Select pod',()=>{
@@ -252,7 +251,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
       if(cue)courseCue.textContent=cue.kind==='sectorHazard'
         ?`${cueName.toUpperCase()} · ${cue.label||'SECTOR HAZARD'}${cue.phase==='warning'&&Number.isFinite(cue.countdownS)?` · ${Math.ceil(cue.countdownS)}S`:cue.phase==='unavailable'?' · OFFLINE':''} · ${cue.hint||''}`
         :cue.kind==='anchor'?`${cueName} · optional Massline swing`
-        :cue.kind==='shutter'?`${cueName.toUpperCase()} · ${cue.phase.toUpperCase()} · SERVICE LEFT ${Math.round(cue.serviceWidthWU)} u`
+        :cue.kind==='shutter'?`${cueName.toUpperCase()} · ${cue.phase.toUpperCase()} · SERVICE LEFT ${Math.round(cue.serviceWidthWU)} m`
         :`${cueName.toUpperCase()} · ${cue.phase==='warning'?`${Math.ceil(cue.countdownS)}s`: 'CROSSING NOW'} · refuge ring before crossing`;
       const anchor=cue?.kind==='anchor'?st.entities?.get(cue.entityIds[0]):null;
       selection=pod?.alive!==false&&pod?pod:anchor?.alive!==false&&anchor?anchor:null;
@@ -277,8 +276,8 @@ export function mountRacingHud({ root, bus, state, screens }) {
       if(phase==='approach'){
         line.textContent=`${name} · APPROACH`;
         const distance=grid&&player?.pos?Math.hypot(grid.x-player.pos.x,grid.z-player.pos.z):0;
-        sub.textContent=`GRID ${Math.round(distance)} u · ${Math.round(tape.speed)} u/s`;
-        hints.textContent='Stop within 70 u of the marker, below 8 u/s. Face gate 1; release the Massline.';
+        sub.textContent=`GRID ${Math.round(distance)} m · ${Math.round(tape.speed)} m/s`;
+        hints.textContent='Stop within 70 m of the marker, below 8 m/s. Face gate 1; release the Line.';
         return;
       }
       if(phase==='handoff'){
@@ -298,7 +297,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
         lastHolding=true;return;
       }
       if(lastHolding){pulse='GO';pulseUntil=now+1;live.textContent='Go';lastHolding=false;}
-      sub.textContent=(race.params.raceEntrants>1?`P${race.params.racePosition}/${race.params.raceEntrants} · `:'')+`${formatRaceTime(tape.elapsed)} · ${Math.round(tape.speed)} u/s · GATE ${tape.nextGate}/${tape.gateCount}`;
+      sub.textContent=(race.params.raceEntrants>1?`P${race.params.racePosition}/${race.params.raceEntrants} · `:'')+`${formatRaceTime(tape.elapsed)} · ${Math.round(tape.speed)} m/s · GATE ${tape.nextGate}/${tape.gateCount}`;
       pack.textContent=(race.params.raceStandings||[]).map(row=>`${row.position} ${row.name}${row.status==='finished'?' ✓':row.status==='dnf'?' DNF':''}`).join(' · ');
       const coach=readRacingCoach(race.params,player,raceGateGlobals(race.params),st);
       const draft=race.params.raceDraft;
@@ -312,7 +311,7 @@ export function mountRacingHud({ root, bus, state, screens }) {
       const precision=race.params.precisionChain>1?` · PRECISION ×${race.params.precisionChain}`:'';
       const personal=Number.isFinite(race.params.lastGhostDeltaS)?` · ${race.params.lastGhostDeltaS>=0?'+':''}${race.params.lastGhostDeltaS.toFixed(2)}s personal best`:'';
       hints.textContent=(warnings.length?warnings.join(' · '):now<pulseUntil?pulse:
-        `${tape.steerHint.toUpperCase()} ${Math.round(tape.distanceToGate)} u`+
+        `${tape.steerHint.toUpperCase()} ${Math.round(tape.distanceToGate)} m`+
         (tape.delta===null||personal?'':` · ${tape.delta>=0?'+':''}${tape.delta.toFixed(1)}s reference pace`))+personal+precision;
     },
     dispose(){ pendingResult=null;for(const off of offs)off();combatLock.dispose();panel.remove(); },

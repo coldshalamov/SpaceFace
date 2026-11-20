@@ -117,6 +117,7 @@ export function createContextWheel(ctx) {
   root.appendChild(overlay);
 
   let open = false;
+  let clickOpened = false;
   let destroyed = false;
   let wedgeEls = [];
   let wedgeSlices = [];
@@ -306,6 +307,7 @@ export function createContextWheel(ctx) {
       ? wedgeSlices[aimIndex] : null;
     if (aimed) { choose(aimed); return; }
     open = false;
+    clickOpened = false;
     wedgeSlices = [];
     wedgeEls = [];
     aimIndex = -1;
@@ -321,8 +323,8 @@ export function createContextWheel(ctx) {
     if (destroyed) return;
     const held = !!(state.input && state.input.actions && state.input.actions.contextWheel === true);
     if (!held) awaitRelease = false;
-    if (held && !open && !awaitRelease) openWheel();
-    else if (!held && open) close(true);
+    if (held && !open && !awaitRelease) { clickOpened = false; openWheel(); }
+    else if (!held && open && !clickOpened) close(true);
     if (!open) return;
     // The context may re-filter mid-hold (a fight ends, a site deselects): the seat layout is
     // stable for the hold, but a slice that went illegal in context simply can't fire.
@@ -332,10 +334,23 @@ export function createContextWheel(ctx) {
     refreshLamps();
   }
 
+  const onEscape = (ev) => {
+    if (!open || !clickOpened || ev.key !== 'Escape') return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    close(false);
+  };
+  if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('keydown', onEscape, true);
+  }
+
   function destroy() {
     destroyed = true;
     if (open) close();
     if (state.ui) state.ui.contextWheelOpen = false;
+    if (typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
+      document.removeEventListener('keydown', onEscape, true);
+    }
     for (const off of busOffs) {
       try { if (typeof off === 'function') off(); } catch (_) {}
     }
@@ -346,6 +361,11 @@ export function createContextWheel(ctx) {
   // Flight is left (dock / death / screen) → the verb drops with it, same contract as the
   // neutralized flight input the wheel feeds.
   if (bus && typeof bus.on === 'function') {
+    busOffs.push(bus.on('ui:contextWheelToggle', () => {
+      if (destroyed) return;
+      if (open) close(false);
+      else if (openWheel()) clickOpened = true;
+    }));
     busOffs.push(bus.on('mode:changed', () => { if (open && state.mode !== 'flight') close(); }));
     busOffs.push(bus.on('dock:docked', () => close()));
     // The Call-in slice is gated on a charge actually waiting for deploy — a new run starts

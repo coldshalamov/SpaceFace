@@ -36,6 +36,7 @@ export function createContactHailPrompt(ctx) {
 
   const root = document.createElement('div');
   root.id = 'sf-contact-hail';
+  root.hidden = true;
   root.innerHTML = `
     <button type="button" class="sf-contact-hail__button" data-k="hail" disabled
       aria-label="Hail selected contact">HAIL</button>
@@ -62,8 +63,8 @@ export function createContactHailPrompt(ctx) {
   // way). hud.js's adoptCommsChrome re-parents it into the comms tape on the real route; the
   // self-adoption covers mounts that land after that pass — the fixed corner seat painted over
   // the tracker heading whenever both were up (bench flight-speaker 2026-11-14).
-  const backlogChip = document.getElementById('sf-comm-backlog-btn');
-  const trackerColumn = document.querySelector('.sf-leftcontext');
+  const backlogChip = typeof document.getElementById === 'function' ? document.getElementById('sf-comm-backlog-btn') : null;
+  const trackerColumn = typeof document.querySelector === 'function' ? document.querySelector('.sf-leftcontext') : null;
   if (backlogChip && trackerColumn && trackerColumn.contains(backlogChip)) backlogChip.after(root);
   else if (trackerColumn) trackerColumn.appendChild(root);
   else uiRoot.appendChild(root);
@@ -160,6 +161,7 @@ export function createContactHailPrompt(ctx) {
     panel.removeAttribute('tabindex');
     linesEl.replaceChildren();
     actionsEl.replaceChildren();
+    root.hidden = !availability.enabled;
     updateDeckVisual(true);
   }
 
@@ -281,6 +283,7 @@ export function createContactHailPrompt(ctx) {
       : 'Hail unavailable for selected contact');
     root.classList.toggle('sf-contact-hail--ready', !!availability.enabled);
     if (active && (!availability.enabled || availability.targetId !== active.targetId)) hidePanel();
+    root.hidden = !availability.enabled && !active;
     updateDeckVisual(true);
   }
 

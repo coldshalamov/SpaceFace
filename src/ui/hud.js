@@ -118,6 +118,7 @@ import {
   firstUseAttachKind,
   formatRosterCount,
   hudJobFromState,
+  resolveHudAttention,
   markFirstUseHint,
   noteFirstWantedMark,
   shouldShowFirstUseHint,
@@ -304,7 +305,7 @@ export function respawnToastText(payload = {}) {
   const refund = Math.max(0, Math.round(Number(payload.refundCr) || 0));
   if (refund > 0) parts.push('insurance +' + formatCount(refund, payload, { locale }) + ' cr');
   const cargoLostQty = Math.max(0, Math.round(Number(payload.cargoLostQty) || 0));
-  if (cargoLostQty > 0) parts.push('cargo lost ' + cargoLostQty + 'u');
+  if (cargoLostQty > 0) parts.push('cargo lost ' + cargoLostQty + ' units');
   else if (payload.cargoLost) parts.push('cargo lost');
   const invulnS = Math.max(0, Math.round(Number(payload.invulnS) || 0));
   if (invulnS > 0) parts.push(invulnS + 's shields online');
@@ -426,7 +427,7 @@ export function objectiveTravelReadout(state, wp, out = null) {
     ? ((Number(vel.x) || 0) * (pos.x - player.pos.x) + (Number(vel.z) || 0) * (pos.z - player.pos.z)) / dist
     : 0;
   const etaS = closingSpeed > 5 ? dist / closingSpeed : null;
-  const distanceText = dist >= 1000 ? `${(dist / 1000).toFixed(1)}k u` : `${Math.round(dist)} u`;
+  const distanceText = dist >= 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist)} m`;
   const etaText = etaS == null
     ? 'ETA —'
     : `ETA ${etaS < 60 ? `${Math.max(1, Math.round(etaS))}s` : `${Math.round(etaS / 60)}m`}`;
@@ -1167,23 +1168,25 @@ export function buildVelocityReadout(playerOrSpeed, profileOrCap, out = null) {
   result.speed = speed;
   result.thrusterCap = thrusterCap;
   result.earnedSpeed = earnedSpeed;
-  result.text = `${Math.max(0, Math.round(speed))} u/s${earnedSpeed ? ' · EARNED' : ''}`;
+  result.text = `${Math.max(0, Math.round(speed))} m/s${earnedSpeed ? ' · EARNED' : ''}`;
   result.spoken = speedUnitSpeech(speed, earnedSpeed);
   return result;
 }
 
-/** Spelled-out speed. The visible unit stays u/s. */
+/** Spelled-out speed. The visible unit stays m/s. */
 export function speedUnitSpeech(speed, earned = false) {
   const n = Math.max(0, Math.round(Number(speed) || 0));
-  return earned ? `${n} world units per second, earned` : `${n} world units per second`;
+  return earned ? `${n} meters per second, earned` : `${n} meters per second`;
 }
 
-/** Spelled-out distance. The visible unit stays WU or u. Empty when the text is not a distance. */
+/** Spelled-out distance. The visible unit stays m. Empty when the text is not a distance. */
 export function distanceUnitSpeech(distanceText) {
   const raw = String(distanceText || '').trim();
   if (!raw || raw === 'ROUTE PENDING') return '';
-  if (/\bWU\b/.test(raw)) return raw.replace(/\bWU\b/g, 'world units');
-  if (/\d(?:\.\d+)?\s*u\b/i.test(raw)) return raw.replace(/(\d(?:\.\d+)?)\s*u\b/i, '$1 world units');
+  if (/\bWU\b/.test(raw)) return raw.replace(/\bWU\b/g, 'meters');
+  if (/\d(?:\.\d+)?\s*km\b/i.test(raw)) return raw.replace(/(\d(?:\.\d+)?)\s*km\b/gi, '$1 kilometers');
+  if (/\d(?:\.\d+)?\s*m\b/i.test(raw)) return raw.replace(/(\d(?:\.\d+)?)\s*m\b/gi, '$1 meters');
+  if (/\d(?:\.\d+)?\s*u\b/i.test(raw)) return raw.replace(/(\d(?:\.\d+)?)\s*u\b/gi, '$1 meters');
   return '';
 }
 
@@ -2625,12 +2628,12 @@ export function createHud(ctx, alerts) {
   elNavReadout.style.display = 'none';
   elNavReadout.innerHTML =
     '<div class="sf-nav-label mono">—</div>' +
-    '<div class="sf-nav-meta"><span class="sf-nav-dist">0 u</span> · ETA <span class="sf-nav-eta">—</span></div>';
+    '<div class="sf-nav-meta"><span class="sf-nav-dist">0 m</span> · ETA <span class="sf-nav-eta">—</span></div>';
   leftContext.appendChild(elNavReadout);
   const elNavLabel = elNavReadout.querySelector('.sf-nav-label');
   const elNavDist = elNavReadout.querySelector('.sf-nav-dist');
   const elNavEta = elNavReadout.querySelector('.sf-nav-eta');
-  applyDistanceSpeech(elNavDist, '0 u');
+  applyDistanceSpeech(elNavDist, '0 m');
   const elDecision = document.createElement('div');
   elDecision.className = 'sf-nav-label';
   elDecision.style.display = 'none';
@@ -2849,10 +2852,22 @@ export function createHud(ctx, alerts) {
     }, 180);
   }
 
-  // EMP / Shield collapse listeners on event bus
+  let lastPlayerHullHitAt = -Infinity;
+  let lastObservedPlayerHull = null;
+
+  // EMP / Shield collapse + hull-hit attention window listeners on event bus
   if (ctx.bus && typeof ctx.bus.on === 'function') {
     on('combat:damage', (p) => {
       if (!p) return;
+      if (p.targetId === state.playerId) {
+        const hullHit = (Number(p.hullDamage) > 0)
+          || (Number(p.hullDelta) < 0)
+          || (p.kind === 'hull')
+          || (!p.shieldHit && Number(p.damage) > 0);
+        if (hullHit && Number.isFinite(state.simTime)) {
+          lastPlayerHullHitAt = state.simTime;
+        }
+      }
       if (p.targetId === state.playerId && (p.brokeShield || p.shieldBroke || p.damageType === 'emp' || p.emp)) {
         triggerElectronicDisruption(p.damageType === 'emp' ? 'emp' : 'shield_collapse');
       }
@@ -4260,7 +4275,7 @@ export function createHud(ctx, alerts) {
       </div>
       <div class="sf-cargo-gauges">
         <div class="sf-cargo-gauge-item" id="sf-gauge-used">
-          <span class="sf-gauge-label">CAPACITY: <span class="sf-cargo-summary-used">0 / 40 u</span></span>
+          <span class="sf-gauge-label">CAPACITY: <span class="sf-cargo-summary-used">0 / 40</span></span>
         </div>
         <div class="sf-cargo-gauge-item" id="sf-gauge-lean">
           <span class="sf-gauge-label">In the hold: <span class="sf-cargo-summary-lean"></span></span>
@@ -4290,7 +4305,7 @@ export function createHud(ctx, alerts) {
             <h3 class="sf-ins-name">Commodity</h3>
           </div>
           <div class="sf-ins-meta">
-            <div class="sf-ins-meta-row"><span>Units/Vol:</span><span class="sf-ins-qty">0 u / 0 u</span></div>
+            <div class="sf-ins-meta-row"><span>Units/Vol:</span><span class="sf-ins-qty">0 / 0</span></div>
             <div class="sf-ins-meta-row"><span>Legality:</span><span class="sf-ins-legal">LEGAL</span></div>
             <div class="sf-ins-meta-row"><span>You paid:</span><span class="sf-ins-basis">N/A</span></div>
           </div>
@@ -4484,7 +4499,7 @@ export function createHud(ctx, alerts) {
       );
     }
     contentEl.querySelector('.sf-ins-name').textContent = name;
-    contentEl.querySelector('.sf-ins-qty').textContent = `${qty} u / ${vol.toFixed(1)} u`;
+    contentEl.querySelector('.sf-ins-qty').textContent = `${qty} units / ${vol.toFixed(1)} units`;
 
     const legalEl = contentEl.querySelector('.sf-ins-legal');
     const legality = def ? def.legality : 'legal';
@@ -4631,8 +4646,8 @@ export function createHud(ctx, alerts) {
     const used = Math.round(c.usedVolume || 0);
     const cap = Math.round(c.capVolume || 40);
 
-    applySettledCircularGauge(cargoGaugeSettle.used, gaugeUsedFx, cap > 0 ? used / cap : 0, settleMeta, { label: `${used}/${cap} u` });
-    cargoPanel.querySelector('.sf-cargo-summary-used').textContent = `${used} / ${cap} u`;
+    applySettledCircularGauge(cargoGaugeSettle.used, gaugeUsedFx, cap > 0 ? used / cap : 0, settleMeta, { label: `${used}/${cap}` });
+    cargoPanel.querySelector('.sf-cargo-summary-used').textContent = `${used} / ${cap}`;
 
     // In the hold — the Cargo Conscience's moral leans, surfaced as chips. A lean is a read,
     // never a rep delta; a neutral hold renders '—' rather than a fake label.
@@ -4799,7 +4814,7 @@ export function createHud(ctx, alerts) {
           ${isLocked ? `<span class="sf-cargo-lock-icon" title="Locked — needed for an active contract or the story">${icon('lock', 12)}</span>` : ''}
         </span>
         <span class="sf-cargo-block-bottom">
-          <span class="sf-cargo-block-qty">${qty} u · ≈ ${formatCount(rowWorth, state)} cr</span>
+          <span class="sf-cargo-block-qty">${qty} units · ≈ ${formatCount(rowWorth, state)} cr</span>
           <span class="sf-cargo-block-vol">${vol.toFixed(1)} space</span>
           ${badgeHtml}
         </span>
@@ -4829,7 +4844,7 @@ export function createHud(ctx, alerts) {
           <span class="sf-cargo-block-name" style="color:var(--ink-mute);">FREE CAPACITY</span>
         </div>
         <div class="sf-cargo-block-bottom">
-          <span class="sf-cargo-block-qty" style="color:var(--ink-mute);">${freeVol} u free</span>
+          <span class="sf-cargo-block-qty" style="color:var(--ink-mute);">${freeVol} units free</span>
         </div>
       `;
       frag.appendChild(freeBlock);
@@ -5255,7 +5270,7 @@ export function createHud(ctx, alerts) {
           // Same presenter as the roster/panel: an unscanned wreck-like keeps its broadcast
           // callsign but never leaks its private name or scan label onto the edge ribbon.
           const name = String(targetDisplayName(tgt)).replace(/\s+/g, ' ').trim().slice(0, 26);
-          const text = `TARGET${marker.aft ? ' AFT' : ''} · ${name} · ${Math.round(marker.distance)} u`;
+          const text = `TARGET${marker.aft ? ' AFT' : ''} · ${name} · ${Math.round(marker.distance)} m`;
           setText(targetEdgeLabel, text);
           setAttr(targetEdge, 'aria-label', text);
           setDataEdge(targetEdge, marker.edge);
@@ -5753,7 +5768,7 @@ export function createHud(ctx, alerts) {
     if (rec.tier !== c.threatTier) { paintTierSegments(rec.tierEl, c.threatTier); rec.tier = c.threatTier; }
     if (rec.dist !== dist) {
       rec.distEl.textContent = String(dist);
-      applyDistanceSpeech(rec.distEl, `${dist} u`);
+      applyDistanceSpeech(rec.distEl, `${dist} m`);
       rec.dist = dist;
     }
     if (rec.speed !== speedText) { rec.speedEl.textContent = speedText; rec.speed = speedText; }
@@ -6141,7 +6156,23 @@ export function createHud(ctx, alerts) {
   // not, and that asymmetry is deliberate.
   const VTAPE_HEADROOM = 1.14;   // scale runs to 114% of V-MAX so the ceiling is a line, not the edge
   let travelTapePhone = null; // MOB-02: the phone reads a shorter stop line; rewrite it the frame the layout flips
-  function updateTravelTape(p, dtS, slow) {
+  function updateTravelTape() {
+    // The drive cooldown / limit debug box is retired from the flight HUD; speed and drive
+    // lighting live directly on the Speed Dial in the visor cluster.
+    if (!vt.root) return;
+    if (_vtapeAlpha !== 0) {
+      _vtapeAlpha = 0;
+      setClass(vt.root, 'sf-vtape--on', false);
+      setClass(vt.root, 'sf-vtape--brake', false);
+      setClass(vt.root, 'sf-vtape--approach', false);
+      setClass(vt.root, 'sf-vtape--stopping', false);
+      setClass(vt.root, 'sf-vtape--overshoot', false);
+      _vtapeBrakeOn = false;
+    }
+    if (!vt.root.hidden) vt.root.hidden = true;
+    return;
+  }
+  function _retiredTravelTape(p, dtS, slow) {
     if (!vt.root) return;
     if (!travelFlag('travelBurn') || !p) {
       if (_vtapeAlpha !== 0) { _vtapeAlpha = 0; setClass(vt.root, 'sf-vtape--on', false); }
@@ -6206,7 +6237,7 @@ export function createHud(ctx, alerts) {
         : 'DRIVE ' + driveState.toUpperCase());
       let note = '';
       if (driveState === 'spooling') note = 'DRIVE SPINNING UP…';
-      else if (driveState === 'engaged') note = Math.round(speed) + ' / ' + Math.round(ceiling) + ' u/s';
+      else if (driveState === 'engaged') note = Math.round(speed) + ' / ' + Math.round(ceiling) + ' m/s';
       // The state label already prints DRIVE COOLDOWN — the note carries only WHY it broke.
       // Known reasons get a word a pilot would use; unknown ones still humanize, never a raw slug.
       else if (driveState === 'cooldown') {
@@ -6221,7 +6252,7 @@ export function createHud(ctx, alerts) {
       if (velocity.earnedSpeed) note = note ? `${note} · EARNED` : 'EARNED';
       const laneStatus = travelTapeLaneStatus(state.travelLanes);
       setText(vt.spool, [note, laneStatus].filter(Boolean).join(' · '));
-      if (note.includes('u/s') || velocity.earnedSpeed) applySpeedSpeech(vt.spool, velocity.spoken);
+      if (note.includes('m/s') || velocity.earnedSpeed) applySpeedSpeech(vt.spool, velocity.spoken);
     }
 
     // --- approach row: the stopping arc, manual burns and the held brake ---
@@ -6251,12 +6282,12 @@ export function createHud(ctx, alerts) {
       if (slow || phoneTape !== travelTapePhone) {
         travelTapePhone = phoneTape;
         const arcText = phoneTape
-          ? (cue.overshoot ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' u'
-            : 'STOP ' + Math.round(cue.stopDistance) + ' u · ' + brakeModeWords(cue.bestMode).toUpperCase())
+          ? (cue.overshoot ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' m'
+            : 'STOP ' + Math.round(cue.stopDistance) + ' m · ' + brakeModeWords(cue.bestMode).toUpperCase())
           : cue.overshoot
-          ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' u / ARRIVAL ' + Math.round(cue.distance) + ' u'
-          : 'STOP ' + Math.round(cue.stopDistance) + ' u · ARRIVAL ' + Math.round(cue.distance)
-            + ' u · ' + brakeModeWords(cue.bestMode).toUpperCase();
+          ? 'OVERSHOOT · STOP ' + Math.round(cue.stopDistance) + ' m / ARRIVAL ' + Math.round(cue.distance) + ' m'
+          : 'STOP ' + Math.round(cue.stopDistance) + ' m · ARRIVAL ' + Math.round(cue.distance)
+            + ' m · ' + brakeModeWords(cue.bestMode).toUpperCase();
         setText(vt.arcLabel, arcText);
         applyDistanceSpeech(vt.arcLabel, arcText);
       }
@@ -6267,7 +6298,7 @@ export function createHud(ctx, alerts) {
       setStyle(vt.arcRing, 'left', endPct);
       setClass(vt.root, 'sf-vtape--overshoot', false);
       if (slow) {
-        const brakeText = 'BRAKING · SETTLES ~' + Math.round(brakeStop.stopDistance) + ' u';
+        const brakeText = 'BRAKING · SETTLES ~' + Math.round(brakeStop.stopDistance) + ' m';
         setText(vt.arcLabel, brakeText);
         applyDistanceSpeech(vt.arcLabel, brakeText);
       }
@@ -6436,7 +6467,16 @@ export function createHud(ctx, alerts) {
       const tether = localTether && localTether.active ? localTether : remoteTether;
       const ml = masslineInstrumentReadout(tether);
       const latching = masslineInstrumentVisible(tether);
+      if (Number.isFinite(p.hull)) {
+        if (lastObservedPlayerHull !== null && p.hull < lastObservedPlayerHull && Number.isFinite(state.simTime)) {
+          lastPlayerHullHitAt = state.simTime;
+        }
+        lastObservedPlayerHull = p.hull;
+      }
+      const hudAttention = resolveHudAttention(state, { lastPlayerHullHitAt });
+      setAttr(root, 'data-hud-attention', hudAttention);
       if (document.body && document.body.dataset) {
+        setAttr(document.body, 'data-hud-attention', hudAttention);
         const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1280;
         const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 720;
         const hudLayout = resolveObjectiveHudLayout(viewportWidth, viewportHeight);
@@ -6777,7 +6817,7 @@ export function createHud(ctx, alerts) {
       }
     }
     if (slow || !lastNavDist) {
-      const distText = Math.round(dist) + ' u';
+      const distText = Math.round(dist) + ' m';
       const etaText = isFinite(etaS) ? (etaS < 60 ? Math.round(etaS) + 's' : Math.round(etaS / 60) + 'm') : '—';
       if (distText !== lastNavDist) {
         setText(elNavDist, distText);

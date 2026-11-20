@@ -33,8 +33,8 @@ ${S} {
 
 /* The chart uses the old radar control's expand and sensor contracts. Only its compact view is flat. */
 ${S} #hud .sf-rightdock:has(.sf-radar-wrap--chart) {
-  --visor-chart-width:clamp(216px, 27.63vw, 462px);
-  width:var(--visor-chart-width); align-items:flex-end; transform:none;
+  --visor-chart-width:min(clamp(216px, 27.63vw, 462px), calc((100vw - 2 * var(--sf-safe-inset-x, 0px)) * .30));
+  width:var(--visor-chart-width); align-items:flex-end; transform:none; z-index:14;
   right:calc(clamp(12px,1.2vw,20px) + var(--sf-safe-inset-x, 0px));
   bottom:clamp(16px,3.62vh,34px);
 }
@@ -131,7 +131,7 @@ ${S} #hud .sf-rightdock:has(.sf-radar-wrap--chart) .race-tape-actions button:ena
 /* A mission is a small ruled readout on the glass. Comms and cargo keep their own rows. */
 ${S} #hud > .sf-leftcontext {
   border:0 !important; border-radius:0 !important; padding:0 !important; box-shadow:none !important;
-  background:none !important;
+  background:none !important; z-index:14; overflow:visible;
 }
 ${S} #hud > .sf-leftcontext > .sf-mission-tracker {
   background:linear-gradient(90deg, var(--visor-ice) 31px, rgb(146 209 225 / .36) 31px, transparent) top left / 100% 1px no-repeat,
@@ -191,13 +191,17 @@ ${S} #hud > .sf-leftcontext:has(.sf-mt--delivery) { width:min(306px, 32vw); max-
     display:block !important; color:#c3dce3; font:400 14px/1.35 var(--visor-font);
   }
 }
-@media (min-width:1100px) and (min-height:680px) {
+@media (min-width:1100px) and (min-height:580px) {
   :root:not([data-sf-mobile-flight="1"]) ${S} #hud > .sf-leftcontext > .sf-commtape:not([hidden]) {
     display:contents; background:none !important;
   }
+  :root:not([data-sf-mobile-flight="1"]) ${S} #hud .sf-band-hud {
+    top:calc(24px + var(--sf-safe-inset-top,0px));
+    right:calc(18px + var(--sf-safe-inset-x,0px));
+  }
   :root:not([data-sf-mobile-flight="1"]) ${S} #hud .sf-commtape__slots {
-    position:fixed; z-index:3; top:calc(24px + var(--sf-safe-inset-top,0px));
-    right:calc(137px + var(--sf-safe-inset-x,0px)); gap:6px; padding:0;
+    position:fixed; z-index:15; top:calc(24px + var(--sf-safe-inset-top,0px));
+    right:calc(134px + var(--sf-safe-inset-x,0px)); gap:6px; padding:0;
   }
   :root:not([data-sf-mobile-flight="1"]) ${S} #hud .sf-commtape__news:not([hidden]) {
     display:block; padding:4px 7px; margin-top:4px;
@@ -207,8 +211,10 @@ ${S} #hud > .sf-leftcontext:has(.sf-mt--delivery) { width:min(306px, 32vw); max-
 ${S} #hud .sf-commtape .sf-commtape__band { display:none; }
 ${S} #hud .sf-commtape .sf-comm-backlog-btn,
 ${S} #hud .sf-commtape .sf-contact-hail__button {
-  box-shadow:none !important; border-radius:0 !important; background:transparent !important;
-  color:#c9dce3; border-color:rgb(165 209 224 / .33) !important;
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:30px; padding:4px 10px; box-sizing:border-box; line-height:1.2;
+  box-shadow:none !important; border-radius:0 !important; background:var(--visor-glass) !important;
+  color:#d9ebf0; border:1px solid rgb(165 209 224 / .38) !important;
 }
 ${S} #hud .sf-commtape .sf-contact-hail__button[disabled] { opacity:.38; border-color:transparent !important; }
 ${S} #hud > .sf-leftcontext > .sf-mission-tracker.sf-mt--delivery {
@@ -243,7 +249,7 @@ ${S} #hud > .sf-leftcontext > .sf-mission-tracker :is(.sf-mt-obj,.sf-mt-compact-
 ${S} #hud > .sf-leftcontext > .sf-mission-tracker .sf-mt-dial__ring { fill:rgb(9 22 31 / .45); stroke:var(--visor-rule); }
 
 /* The deck owns choice routing, focus and expiry. The visor finish does not intercept any of them. */
-@media (min-width:1100px) and (min-height:700px) {
+@media (min-width:1100px) and (min-height:580px) {
   ${S} #sf-prompt-deck { right:calc(20px + var(--sf-safe-inset-x, 0px));
     top:calc(61px + var(--sf-safe-inset-top, 0px)); width:clamp(334px, 24.4vw, 405px); max-height:min(51vh, 480px); }
 }
@@ -255,8 +261,20 @@ ${S} #hud > .sf-leftcontext > .sf-mission-tracker .sf-mt-dial__ring { fill:rgb(9
   }
   ${S}:has(#sf-prompt-deck:not([hidden]) .sf-prompt) .fb-pill-btn { right:calc(clamp(334px,24.4vw,405px) + 300px + var(--sf-safe-inset-x, 0px)); }
 }
-@media (min-width:1100px) and (min-height:680px) {
-  ${S} .fb-pill-btn { right:calc(295px + var(--sf-safe-inset-x,0px)); }
+@media (min-width:1100px) and (min-height:580px) {
+  ${S} .fb-pill-btn {
+    position:fixed; left:auto; right:calc(294px + var(--sf-safe-inset-x,0px));
+    top:calc(24px + var(--sf-safe-inset-top,0px)); z-index:15;
+    display:inline-flex; align-items:center; gap:7px; min-height:30px; padding:4px 10px; box-sizing:border-box;
+    border:1px solid var(--visor-rule); border-radius:0; background:var(--visor-glass); color:var(--visor-copy);
+    font:540 12px/1.2 var(--visor-font); letter-spacing:.02em; text-transform:none;
+    box-shadow:none; cursor:pointer; pointer-events:auto; white-space:nowrap;
+  }
+  ${S} .fb-pill-btn .fb-pill-key {
+    padding:1px 5px; border:1px solid rgb(230 239 240 / .55); border-radius:3px;
+    background:rgb(8 18 26 / .58); color:var(--visor-ice); font:650 12px/1.15 var(--visor-font);
+  }
+  ${S} .fb-pill-btn:is(:hover,:focus-visible) { border-color:var(--visor-ice); color:#ffffff; }
 }
 ${S} #sf-prompt-deck .sf-prompt {
   --visor-prompt-edge:var(--visor-rule);
@@ -424,6 +442,11 @@ ${S} #hud #sf-ml2 .ml2-preview:not(.ml2-preview-verdict), ${S} #hud .sf-first-us
 ${S} #hud .sf-band-hud__button, ${S} .sf-comm-backlog, ${S} .sf-speaker {
   border-radius:0 !important; border-color:var(--visor-rule) !important; background:var(--visor-glass) !important; box-shadow:none !important;
 }
+${S} #hud .sf-band-hud__button {
+  min-height:30px; padding:4px 10px 4px 12px; box-sizing:border-box;
+  border:1px solid var(--visor-rule) !important; color:var(--visor-copy);
+  font:540 12px/1.2 var(--visor-font); white-space:nowrap;
+}
 ${S} .sf-comm-backlog {
   isolation:isolate; overflow:hidden; background:none !important; border:0 !important;
 }
@@ -434,7 +457,7 @@ ${S} .sf-comm-backlog::before { z-index:-1; clip-path:var(--visor-panel-rim); ba
 ${S} .sf-comm-backlog::after {
   z-index:-2; clip-path:var(--visor-panel-cut); background:var(--visor-glass);
 }
-@media (min-width:1100px) and (min-height:680px) {
+@media (min-width:1100px) and (min-height:580px) {
   ${S} .sf-comm-backlog {
     left:auto; right:calc(20px + var(--sf-safe-inset-x,0px)); top:70px;
     transform:none; width:clamp(340px,26vw,430px); max-height:49dvh;
@@ -469,14 +492,7 @@ ${S} #sf-why-tip[data-visor-tip] {
 }
 ${S} #sf-why-tip[data-visor-tip]::first-line { font-weight:700; color:#f1f5f3; }
 
-${S} #hud[data-hud="orrery"] > .sf-vtape {
-  left:calc(clamp(12px, 1.38vw, 24px) + var(--sf-safe-inset-x, 0px)); right:auto; bottom:calc(var(--sf-cluster-h, 218px) + 7px);
-  width:min(292px, 42vw); transform:none; padding:6px 8px;
-  border:0; border-top:1px solid var(--visor-rule); border-radius:0; box-shadow:none;
-  background:linear-gradient(90deg, rgb(8 21 31 / .87), rgb(8 21 31 / .4));
-}
-${S} #hud[data-hud="orrery"] > .sf-vtape :is(.sf-vtape__head,.sf-vtape__spool,.sf-vtape__caplabel,.sf-vtape__vmaxlabel,.sf-vtape__arclabel,.sf-vtape__brake) { font-size:12px; }
-${S} #hud[data-hud="orrery"] > .sf-vtape .sf-vtape__track { margin-top:13px; }
+${S} #hud[data-hud="orrery"] > .sf-vtape { display:none !important; }
 ${S}:has(.orr-cluster--visor [data-power="rig"].is-active) .sf-field-pill.field-cone-projecting {
   display:none !important;
 }
