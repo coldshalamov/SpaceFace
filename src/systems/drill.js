@@ -469,7 +469,8 @@ export function drillEnergyLimitCopy() {
 }
 
 export function cargoFreeUnits(cargo) {
-  if (!cargo || !(Number(cargo.capVolume) > 0)) return Number.POSITIVE_INFINITY;
+  // No hold record means no capacity to promise — holdFit already settles on that semantic.
+  if (!cargo || !(Number(cargo.capVolume) > 0)) return 0;
   return Math.max(0, Math.floor(Number(cargo.capVolume) - (Number(cargo.usedVolume) || 0)));
 }
 

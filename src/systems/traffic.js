@@ -3775,6 +3775,8 @@ export const traffic = {
     // dead dedupe key) — sector-scoped transient state, cleared with the roster.
     if (this._wellDragRegroup) this._wellDragRegroup.clear();
     if (this._wellDragSeen) this._wellDragSeen.clear();
+    // Industry dispatch orders point at entity ids that are gone for good here.
+    if (this._industryHaulDispatched instanceof Map) this._industryHaulDispatched.clear();
   },
 
   _releaseTrafficWatches(state) {
