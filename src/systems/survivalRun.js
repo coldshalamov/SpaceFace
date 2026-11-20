@@ -71,6 +71,8 @@ export const SURVIVAL_REFIT_EVERY = 10;
 export const SURVIVAL_ARENA_INTRO_TICKS = 120;
 export const SURVIVAL_WAVE_INTRO_TICKS = 90;
 export const SURVIVAL_CLEANUP_TICKS = 180;
+/** How long a Swarm round waits for the level-up cards to land before going on without them. */
+export const SWARM_BREATH_GRACE_TICKS = 120;
 
 // PQ-133.04 R4 — the bounded public block (CRU-030/027). One authored ten-wave block — the
 // template the thirty-wave arc reuses — ending in wave-ten victory. Same planner owner, same
@@ -145,6 +147,7 @@ export const survivalRun = {
     this._unsubs.push(this.bus.on('run:draftResolved', () => this._onDraftResolved()));
     this._unsubs.push(this.bus.on('run:modifierChosen', () => this._onDraftResolved()));
     this._unsubs.push(this.bus.on('run:refitClosed', () => this._onRefitClosed()));
+    this._unsubs.push(this.bus.on('run:breathEndRequested', () => this._onBreathEnd()));
     this._unsubs.push(this.bus.on('run:extractionRequested', () => this._onExtractionRequested()));
     this._unsubs.push(this.bus.on('run:partialBankRequested', () => this._onPartialBankRequested()));
     this._unsubs.push(this.bus.on('run:swarmDeepRequested', () => this._onSwarmDeepRequested()));
@@ -219,6 +222,7 @@ export const survivalRun = {
     if (phase === 'draft') {
       if (circuitStateError(run)) return;
       if (!this._draftResolved) return;
+      if (this._breathHolds(run)) return;
       this._requestTransition('draft', this._draftNext(run), this._draftReason(run));
       return;
     }
@@ -238,6 +242,7 @@ export const survivalRun = {
     this._waveCleared = false;
     this._draftResolved = false;
     this._refitClosed = false;
+    this._breathEnded = false;
     this._planFailed = false;
     this._waveIntroHandled = false;
     // PQ-133.07: the arc authors TWO system events (wave 20 and the wave-30 finale). The latch is
@@ -257,6 +262,7 @@ export const survivalRun = {
     this._waveCleared = false;
     this._draftResolved = false;
     this._refitClosed = false;
+    this._breathEnded = false;
   },
 
   _onStarted(payload) {
@@ -833,6 +839,27 @@ export const survivalRun = {
     const run = liveSurvivalRun(this.state);
     if (!run || run.phase !== 'draft') return;
     this._draftResolved = true;
+  },
+
+  /**
+   * THE BREATH (04_SWARM.md §2, R3). A Swarm round with no armory passes straight through
+   * `draft` — unless a level-up hand waits. Then the next round holds for the cards: the screen
+   * pauses the world once it is up, and `run:breathEndRequested` (a card taken to the last pick,
+   * or Later) lets the round begin. The grace is only for the moment before the screen lands;
+   * a run with no screen at all (a headless soak) waits that long and goes on.
+   */
+  _breathHolds(run) {
+    if (!isSwarmRuleset(run && run.ruleset) || this._breathEnded) return false;
+    if (isSwarmDraftWave(run.wave) || this._isRefitWave(run)) return false;
+    const pilot = run.pilot;
+    if (!pilot || !(pilot.banked > 0) || !pilot.offer) return false;
+    return this._phaseTicks < SWARM_BREATH_GRACE_TICKS;
+  },
+
+  _onBreathEnd() {
+    const run = liveSurvivalRun(this.state);
+    if (!run || run.phase !== 'draft') return;
+    this._breathEnded = true;
   },
 
   _onRefitClosed() {
