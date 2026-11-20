@@ -58,7 +58,9 @@ import { runtimeWorkerUrl } from '../render/runtimeWorkers.js';
 import { createLaneTouchSurface } from '../systems/mobile/laneTouchSurface.js';
 import { normalizePadSensitivity, sampleGamepadFrame } from '../systems/gamepad.js';
 import { getPromptDevice, getGamepadCaptureHandler } from '../ui/bindings.js';
-import { applySharedPlayerStoreCapability, isSharedPlayerStoreKey } from '../save/sharedPlayerStore.js';
+import { applySharedPlayerStoreCapability, collectLocalSharedStoreKeys, isSharedPlayerStoreKey } from '../save/sharedPlayerStore.js';
+import { RACING_RECORD_STORAGE_KEY } from '../systems/racingSteer.js';
+import { RACING_GHOST_STORAGE_KEY } from '../systems/racingGhosts.js';
 import { PRESENTATION_JOURNAL_KINDS } from './presentationJournal.js';
 import { registerActivityPresentationMirror } from './worldActivityManager.js';
 import { applyAsteroidFieldPresentationDelta } from '../world/asteroidField.js';
@@ -77,7 +79,8 @@ import {
   modalInputActive,
   shouldNeutralizeFlightInput,
   eventCode,
-  isTextEntryTarget,
+  flightKeyDownDescriptor,
+  flightMouseDownDescriptor,
   isUiCommandTarget,
 } from '../systems/input.js';
 import {
@@ -94,6 +97,11 @@ const SIM_LANE = Object.freeze({ MAIN: 'main', WORKER: 'worker' });
 // a chance to dispatch a queued reply after a cold-start GL/DOM task.
 const LANE_STALL_MS = 5000;
 const LANE_WATCHDOG_SAMPLE_MS = 100;
+// close() waits this long for the worker's 'bye' reply — the last carrier of
+// drainStorageOps() durable writes — before terminating the channel anyway.
+// terminate() on a real Worker discards its queued outbound messages, so the
+// reply must land first; the bound keeps teardown from hanging on a dead one.
+const SHUTDOWN_BYE_GRACE_MS = 400;
 // The directive-driven lane has one outstanding reply, while worker-local clock
 // replies can outpace rAF presentation. The physical ring stays bounded and a
 // single coalesced metadata tail absorbs that presentation-only backlog.
@@ -105,10 +113,23 @@ const LANE_COMPLETED_TICK_CAPACITY = 8;
 // worker's own emits are never bridged back — that is the echo-prevention
 // invariant (worker→main replay runs under suppression).
 
-// The save system's keyspace — shipped to the worker on save/load forwards so
-// its own slot-resolution and recovery logic sees real bytes.
-function collectLaneSaveStorage(relayFallback = null, authoritativeFallback = null) {
+// Racing files and reads these browser-local records from the simulation owner.
+function collectLaneRacingStorage() {
   const out = {};
+  try {
+    const storage = globalThis.localStorage;
+    for (const key of [RACING_RECORD_STORAGE_KEY, RACING_GHOST_STORAGE_KEY]) {
+      const value = storage?.getItem(key);
+      if (typeof value === 'string') out[key] = value;
+    }
+  } catch (_) { /* browser storage can be unavailable */ }
+  return out;
+}
+
+// Save/load replaces the worker storage snapshot. Stage the racing keys along
+// with the save keyspace so a later circuit can still see its previous best.
+function collectLaneSaveStorage(relayFallback = null, authoritativeFallback = null) {
+  const out = collectLaneRacingStorage();
   try {
     if (typeof localStorage !== 'undefined') {
       for (let i = 0; i < localStorage.length; i++) {
@@ -326,7 +347,6 @@ export function resolveSimLaneFlags(search) {
   const sabEnvelope = sab && params?.get('simEnvelope') === '1';
   if (sabExplicit && !sabCapable) {
     warnings.push('simSab=1 requested but crossOriginIsolated/SharedArrayBuffer unavailable — transfer channel');
-    sab = false;
   }
   let requestedDomainProfile = params && params.get('domainProfile');  if (requestedDomainProfile == null && typeof localStorage !== 'undefined') {
     try { requestedDomainProfile = localStorage.getItem('sf.domainProfile'); } catch (_) { /* storage gated */ }
@@ -676,6 +696,8 @@ export function createSimLaneRuntime({
   const pendingRpcs = new Map();        // rpc id -> { resolve, reject }
   let inFlight = null;                  // { seq, sentMs, steps, mainThreadDelayedMs }
   let stallWatchdogTimer = null;
+  let shutdownByeTimer = null;          // bounded wait for the 'bye' reply before terminate()
+  let channelTerminated = false;
   // Worker-local clock commands are not stored in `inFlight`: their replies
   // are unsolicited clockTick messages rather than seq-keyed tickDone
   // replies. Keep a separate identity so a delayed confirmation for an old
@@ -775,7 +797,19 @@ export function createSimLaneRuntime({
       return;
     }
     const tracked = pending.get(msg.seq);
-    if (!tracked) return;
+    if (!tracked) {
+      // A reply that outlived its pending entry — in flight when close()
+      // cleared the table, or a straggler landing inside the shutdown grace
+      // window — still carries the only copy of the worker's durable storage
+      // writes. Land those before dropping the rest of it.
+      if (laneClosed && Array.isArray(msg.storageOps) && msg.storageOps.length) {
+        try {
+          applyLaneSaveStorageOps(msg.storageOps, laneSaveRelayFallback,
+            laneSaveStorageFailures, acknowledgeLaneSaveStorage);
+        } catch (_) { /* durable relay is best-effort during teardown */ }
+      }
+      return;
+    }
     pending.delete(msg.seq);
     try {
       if (msg.kind === 'ready') {
@@ -790,8 +824,15 @@ export function createSimLaneRuntime({
         tracked.resolve?.(msg);
       } else if (msg.kind === 'done' || msg.kind === 'bye') {
         if (inFlight && inFlight.seq === msg.seq) releaseFlight(msg, inFlight);
+        // done/bye ride the same storageOps side-channel as every reply kind —
+        // the shutdown reply is the LAST carrier of the worker's durable
+        // writes, which close() now waits a bounded window to land.
+        try {
+          applyLaneSaveStorageOps(msg.storageOps, laneSaveRelayFallback,
+            laneSaveStorageFailures, acknowledgeLaneSaveStorage);
+        } catch (_) { /* a durable-relay fault must not hold teardown */ }
         tracked.resolve?.(msg);
-        if (msg.kind === 'bye') laneClosedComplete = true;
+        if (msg.kind === 'bye') terminateChannel();
       } else {
         tracked.resolve?.(msg);
       }
@@ -1596,7 +1637,7 @@ export function createSimLaneRuntime({
   function appendGamepadFrame(commands) {
     // The reducer retains this physical sample and advances held controls on sim
     // ticks; unchanged rAF samples are not a heartbeat or a new command.
-    const frame = sampleGamepadFrame(!!getGamepadCaptureHandler());
+    const frame = sampleGamepadFrame(!!getGamepadCaptureHandler() || state.ui?.cargoPanelOpen === true);
     const promptDevice = getPromptDevice();
     if (lastGamepadGeneration === lifecycleGeneration && lastGamepadPrompt === promptDevice
         && sameGamepadFrame(lastGamepadFrame, frame)) return;
@@ -2074,15 +2115,7 @@ export function createSimLaneRuntime({
         if (now - lastKeyRepeatShipAtMs < DOM_REPEAT_HEARTBEAT_MS) return;
         lastKeyRepeatShipAtMs = now;
       }
-      laneDomEvent({
-        type: 'keydown',
-        code: eventCode(e),
-        pressed: true,
-        repeat,
-        blocked: modalInputActive()
-          || isTextEntryTarget(e.target)
-          || isUiCommandTarget(e.target),
-      });
+      laneDomEvent(flightKeyDownDescriptor(st, e));
     });
     listen(window, 'keyup', (e) => {
       laneDomEvent({ type: 'keyup', code: eventCode(e), pressed: false });
@@ -2103,11 +2136,7 @@ export function createSimLaneRuntime({
     listen(window, 'pointermove', handlePointerMove, { capture: true });
     const surface = canvas || window;
     listen(surface, 'mousedown', (e) => {
-      const d = pointerDescriptor(e);
-      d.type = 'mousedown';
-      d.offCanvas = !!(canvas && e.target !== canvas);
-      d.button = e.button;
-      laneDomEvent(d);
+      laneDomEvent(flightMouseDownDescriptor(e, canvas, pointerDescriptor(e)));
       if (e.button === 1 && typeof e.preventDefault === 'function') e.preventDefault();
     });
     listen(window, 'mouseup', (e) => laneDomEvent({ type: 'mouseup', button: e.button }), { capture: true });
@@ -2181,9 +2210,7 @@ export function createSimLaneRuntime({
         try {
           let wirePayload = payload;
           if (type === 'game:load' || type === 'game:save') {
-            // The worker realm has no localStorage of its own — stage this
-            // realm's sf.* keyspace so its save system resolves slots and
-            // recovery against real bytes.
+            // Stage the browser's save and local racing data in the worker.
             const authoritativeFallback = payload && payload.__laneStorageFallback;
             wirePayload = Object.assign({}, payload);
             delete wirePayload.__laneStorageFallback;
@@ -2531,6 +2558,9 @@ export function createSimLaneRuntime({
   };
 
   // ---- init directive --------------------------------------------------------------
+  let initialSharedStoreKeys = null;
+  try { initialSharedStoreKeys = collectLocalSharedStoreKeys(); }
+  catch (_) { /* This shell may deny access to localStorage. */ }
   const initSeq = nextToken();
   const initPayload = {
     kind: 'init',
@@ -2542,6 +2572,9 @@ export function createSimLaneRuntime({
     timeEffectsSnapshot: readLocalTimeEffectsSnapshot(state),
     seed: (state.meta && Number.isSafeInteger(state.meta.seed) ? state.meta.seed : 1) >>> 0,
     settings: canonicalClone(state.settings || {}),
+    // Seed the worker's boot reconciliation from the browser's durable storage.
+    initialSharedStoreKeys,
+    initialRacingStorage: collectLaneRacingStorage(),
     domainMirroring,
     bridgeAll: true,
     shipInputSnapshots: snapshotObserver !== null,
@@ -2582,6 +2615,21 @@ export function createSimLaneRuntime({
     // layout after its own init and starts parking on the cmd ring.
     sabEnv = bindSabEnvelopeChannel(initPayload.sabArena);
     if (sabEnv) pumpSabReplies();
+  }
+
+  // Idempotent transport teardown. Replies parked on the SAB ring when the
+  // pump stopped still carry durable storage writes — take the final drain
+  // before the transport goes away.
+  function terminateChannel() {
+    if (channelTerminated) return;
+    channelTerminated = true;
+    if (shutdownByeTimer !== null) {
+      clearTimeout(shutdownByeTimer);
+      shutdownByeTimer = null;
+    }
+    try { drainSabRepliesNow(); } catch (_) { /* ring may be half-armed */ }
+    try { if (typeof channel.terminate === 'function') channel.terminate(); } catch (_) {}
+    laneClosedComplete = true;
   }
 
   function close() {
@@ -2639,9 +2687,21 @@ export function createSimLaneRuntime({
       try { tracked.reject(new Error(laneError || 'sim lane closed')); } catch (_) {}
     }
     pendingRpcs.clear();
-    try { postLaneDirective({ kind: 'shutdown', seq: nextToken() }); } catch (_) { /* dead channel */ }
-    try { if (typeof channel.terminate === 'function') channel.terminate(); } catch (_) {}
-    laneClosedComplete = true;
+    // The worker's shutdown branch replies 'bye' carrying drainStorageOps() —
+    // the durable writes settled since the last reply. Track the seq so the
+    // reply lands through the normal onChannelMessage path (which applies the
+    // storageOps), then wait a bounded window before terminating anyway:
+    // terminate() on a real Worker channel would discard that queued reply.
+    const shutdownSeq = nextToken();
+    pending.set(shutdownSeq, { kind: 'shutdown' });
+    try { postLaneDirective({ kind: 'shutdown', seq: shutdownSeq }); }
+    catch (_) { /* dead channel — no bye is coming */ terminateChannel(); return true; }
+    shutdownByeTimer = setTimeout(terminateChannel, SHUTDOWN_BYE_GRACE_MS);
+    // Node-hosted verification lanes must not hold the process open for the
+    // grace window; the browser's numeric timer handle has no unref.
+    if (typeof shutdownByeTimer === 'object' && typeof shutdownByeTimer.unref === 'function') {
+      shutdownByeTimer.unref();
+    }
     return true;
   }
 
