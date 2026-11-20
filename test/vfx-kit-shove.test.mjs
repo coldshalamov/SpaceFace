@@ -236,3 +236,17 @@ test('enemy tells by job: a Burst dart draws a dive lane that grows; a Reach sni
   assert.equal(fx.tells.size, 0, 'tells end with their wind-up');
   fx.dispose();
 });
+
+test('split guns hit with their own grammar, not the autocannon look', () => {
+  const fx = new PowerFx(new THREE.Scene(), host());
+  const s = state(); fx.update(0, s);
+  for (const id of ['wpn_bank_stream_m', 'wpn_disc_launcher_m', 'wpn_glaive_s', 'wpn_singularity_mortar_m', 'wpn_debris_orbit_s', 'wpn_tumbler_m']) {
+    assert.equal(fx._signatureImpact(id, 0, 0, 1, 0, false, null), true, id + ' has a signature hit');
+  }
+  assert.equal(fx._signatureImpact('wpn_autocannon_s', 0, 0, 1, 0, false, null), false);
+  // The mortar pops a short beat after its pull.
+  const before = fx.stats.particles;
+  for (let i = 0; i < 6; i++) { s.simTime += 0.1; fx.update(0.1, s); }
+  assert.ok(fx.stats.particles > before, 'the mortar pull ends in a pop');
+  fx.dispose();
+});

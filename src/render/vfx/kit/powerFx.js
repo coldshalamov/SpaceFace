@@ -722,7 +722,8 @@ export class PowerFx {
     }
   }
 
-  gunImpact(family, x0, z0, nx, nz, hitShield, heavy, targetId = null) {
+  gunImpact(family, x0, z0, nx, nz, hitShield, heavy, targetId = null, weaponId = null) {
+    if (weaponId && this._signatureImpact(weaponId, x0, z0, nx, nz, hitShield, targetId)) return;
     const { x, z } = this._toLocal(x0, z0);
     const t = this.time;
     const seed = (this.stats.particles * 2246822519 + 7) >>> 0;
@@ -1048,6 +1049,71 @@ export class PowerFx {
     }
   }
 
+  /**
+   * Signature hits for guns that must not share the autocannon's look (combat lead's list):
+   * bank stream = gold thread that ricochets; disc / glaive = a spinning edge biting in;
+   * singularity mortar = a pull, then a pop; debris orbit = hard chunks; tumbler = a spin read.
+   * Returns true when the weapon has its own grammar.
+   */
+  _signatureImpact(weaponId, x0, z0, nx, nz, hitShield, targetId) {
+    const id = String(weaponId);
+    const kind = id.includes('bank_stream') ? 'stream' : (id.includes('disc_launcher') || id.includes('glaive')) ? 'blade'
+      : id.includes('singularity_mortar') ? 'mortar' : id.includes('debris_orbit') ? 'debris' : id.includes('tumbler') ? 'tumbler' : null;
+    if (!kind) return false;
+    const { x, z } = this._toLocal(x0, z0);
+    const t = this.time;
+    const seed = (this.stats.particles * 2654435761 + 13) >>> 0;
+    const base = Math.atan2(nz, nx);
+    if (kind === 'stream') {
+      // Gold thread: a bright gold pip, and the ricochet - a streak leaving along the reflection.
+      this._spark(x, 2.4, z, 0, 0, 0, t, 0.07, 6, 8, 0, 0, 7, 5, 1.6, 3, 1.6, 0.3, SPARK_SHAPE.GLOW, SPARK_ADD);
+      const out = base + (unit(seed, 1) - 0.5) * 0.9;
+      this._spark(x, 2.2, z, Math.cos(out) * 420, 0, Math.sin(out) * 420, t, 0.16, 1.6, 0.6, 2, 0.05, 8, 6, 2, 3, 1.6, 0.3, SPARK_SHAPE.STREAK, SPARK_ADD);
+      for (let i = 0; i < 2; i++) { const a = base + (unit(seed, 2 + i) - 0.5) * 2; this._spark(x, 2.2, z, Math.cos(a) * 200, 0, Math.sin(a) * 200, t, 0.12, 1, 0.3, 6, 0.03, 7, 5, 1.5, 2, 1, 0.2, SPARK_SHAPE.STREAK, SPARK_ADD); }
+      return true;
+    }
+    if (kind === 'blade') {
+      // A spinning edge biting in: a short bright arc of the blade's rim and a tangential spark fan.
+      Object.assign(this.s, { x, y: 1.6, z, birth: t, from: 9, to: 16, life: 0.18, halfWidth: 1.6, r: 3.6, g: 5.5, b: 6.5, alpha: 1, mode: SHELL_MODE.EXPAND, arcStart: base - 1.1, arcSpan: 2.2, seed: unit(seed, 3) });
+      this.shells.emit(this.s);
+      for (let i = 0; i < 14; i++) {
+        const side = i % 2 ? 1 : -1;
+        const a = base + side * (1.2 + 0.5 * unit(seed, 10 + i));
+        const v = 220 + 260 * unit(seed, 30 + i);
+        this._spark(x, 2.2, z, Math.cos(a) * v, 0, Math.sin(a) * v, t, 0.22, 1.4, 0.4, 5, 0.04, 6, 8, 9, 1.5, 2.5, 3, SPARK_SHAPE.STREAK, SPARK_ADD);
+      }
+      return true;
+    }
+    if (kind === 'mortar') {
+      // The singularity shell: space drains toward the point, then it pops.
+      for (let k = 0; k < 2; k++) {
+        Object.assign(this.s, { x, y: 1.4, z, birth: t + 0.08 * k, from: 70 - 15 * k, to: 4, life: 0.32, halfWidth: 3, r: 2, g: 1.6, b: 4.4, alpha: 1, mode: SHELL_MODE.CONTRACT, arcStart: unit(seed, 5 + k) * TAU, arcSpan: 0, seed: unit(seed, 7 + k) });
+        this.shells.emit(this.s);
+      }
+      this._pullMotes(x, z, 70, seed, 0, 30, t);
+      this.sched.push({ at: t + 0.3, x, y: 1, z, radius: 40, strength: 1, life: 0.12 });
+      this._mortarPops = this._mortarPops || [];
+      this._mortarPops.push({ at: t + 0.32, gx: x0, gz: z0 });
+      return true;
+    }
+    if (kind === 'debris') {
+      this._spark(x, 2.4, z, 0, 0, 0, t, 0.08, 10, 14, 0, 0, 7, 5.5, 3.5, 2, 1, 0.3, SPARK_SHAPE.GLOW, SPARK_ADD);
+      for (let i = 0; i < 6; i++) { const a = base + (unit(seed, i) - 0.5) * 2.2; const v = 120 + 180 * unit(seed, 10 + i); this._spark(x, 2.3, z, Math.cos(a) * v, 0, Math.sin(a) * v, t, 0.8, 2.6, 2, 1.6, 0.005, 3.5, 1.8, 0.7, 0.4, 0.34, 0.3, SPARK_SHAPE.CHIP, 0.6); }
+      return true;
+    }
+    // tumbler: zero damage, the body spins end over end - a violet swirl around the hit and a
+    // spinning trail on the target.
+    for (let i = 0; i < 18; i++) {
+      const a = unit(seed, i) * TAU; const r0 = 14 + 10 * unit(seed, 30 + i);
+      const p = this.p;
+      Object.assign(p, { x: x + Math.cos(a) * r0, y: 2, z: z + Math.sin(a) * r0, vx: 0, vy: 0, vz: 0, birth: t, life: 0.5, size0: 1.6, size1: 0.6, drag: 0, stretch: 0.06,
+        r0: 3, g0: 1.6, b0: 6, r1: 1, g1: 0.6, b1: 2.5, shape: SPARK_SHAPE.STREAK, blend: SPARK_ADD, cx: x, cz: z, accel: 0, swirl: 9 });
+      this.sparks.emit(p); this.stats.particles++;
+    }
+    if (targetId != null) this.trails.set(targetId, { from: t, until: t + 1.2, r: 3, g: 1.6, b: 6 });
+    return true;
+  }
+
   _bodyHits(state, gx, gz, cx, cz, R, t0, seed, scale) {
     const list = state && state.entityList;
     if (!list || !list.length) return;
@@ -1162,6 +1228,11 @@ export class PowerFx {
     this._sustainWells(state);
     this._sustainPin(state);
     this._runSchedule();
+    if (this._mortarPops && this._mortarPops.length) {
+      let w = 0;
+      for (let i = 0; i < this._mortarPops.length; i++) { const m = this._mortarPops[i]; if (m.at <= this.time) this.bomb(m.gx, m.gz, 10, 'mortar', { cast: false, light: false }); else this._mortarPops[w++] = m; }
+      this._mortarPops.length = w;
+    }
     this._sustainTells(state);
     this._bodyTrails(state);
     this._sustainStakes(state);
