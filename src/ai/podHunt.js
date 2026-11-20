@@ -331,6 +331,14 @@ function tickErrand(ctx, rec, tick, now) {
     return;
   }
   const ai = hunter.data.ai;
+  if (!ai.podHunt) {
+    // The stamp went away without the book: entity ids recycle through freeIds, so a live
+    // hull at this id that never carried the stamp is a different ship on a recycled id —
+    // the errand is over, not adopted.
+    delete h.errands[rec.hunterId];
+    if (h.byPod[rec.podId] === rec.hunterId) delete h.byPod[rec.podId];
+    return;
+  }
 
   if (rec.phase === 'leave') {
     if (now >= rec.leaveUntil) endErrand(ctx, rec, { cooldownS: 0, reason: 'resumed' });
