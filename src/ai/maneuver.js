@@ -1377,6 +1377,12 @@ function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, enti
         untilTick: tick + 240,
       };
       passes.set(contact.id, pass);
+      // Contacts that leave the sensor frame never reach the delete checks, so dead ids
+      // accumulate for the planner's whole life. Insertion order makes the oldest entry
+      // also the stalest — bound the register the way trackAllies does in reflexes.js.
+      if (passes.size > 24) {
+        for (const key of passes.keys()) { passes.delete(key); if (passes.size <= 24) break; }
+      }
     }
     if (!pass) continue;
     // A moving blocker leaves its minted pass point behind: once the hull is astern of the
