@@ -1,5 +1,6 @@
 import { validateNativeAttestationTables } from './nativeAttestationTables.js';
 import { fnv1a } from './checksum.js';
+import { isSafeSlotThumbnail } from './slotStill.js';
 
 const encodeSessions = new Map();
 const validationSessions = new Map();
@@ -544,7 +545,9 @@ export function cardEnvFromEnvelope(env) {
     savedAt: env.savedAt,
     playtimeS: env.playtimeS,
     label: env.label,
-    thumbnail: env.thumbnail,
+    // Read-side bound: thumbnail sits beside checksum — a crafted envelope must not make the
+    // slot card fetch a remote URL or decode an unbounded still.
+    thumbnail: isSafeSlotThumbnail(env.thumbnail) ? env.thumbnail : undefined,
     data: {
       player: {
         credits: player.credits,
@@ -972,7 +975,13 @@ function cardEnvFromEnvelope(env) {
     savedAt: env.savedAt,
     playtimeS: env.playtimeS,
     label: env.label,
-    thumbnail: env.thumbnail,
+    // Import-free twin of the read-side bound in slotStill.isSafeSlotThumbnail.
+    thumbnail: (function (v) {
+      if (typeof v !== 'string' || v.indexOf('data:image/') !== 0) return undefined;
+      var comma = v.indexOf(',');
+      if (comma < 0) return undefined;
+      return Math.ceil((v.length - comma - 1) * 3 / 4) <= 24576 ? v : undefined;
+    })(env.thumbnail),
     data: {
       player: {
         credits: player.credits,

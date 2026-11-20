@@ -425,6 +425,9 @@ export function resetRunState(state, opts = {}) {
   state.world.enterSerial = state.enterSerialSeq;
   resetRunUiState(state, fresh.ui);
   state.save = fresh.save;
+  // The ironman latch is run-scoped but lives in session settings: a new game may still
+  // choose it. It re-stamps itself once the new run accrues playtime.
+  if (state.settings && state.settings.gameplay) delete state.settings.gameplay.ironmanChoiceLocked;
 }
 
 // The ui reset step of resetRunState — exported separately because the main

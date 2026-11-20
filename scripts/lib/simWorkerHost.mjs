@@ -3050,6 +3050,15 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     host.draftReadUnsubscribe = null;
     host.playerTruthImpulseObserver?.dispose?.();
     host.playerTruthImpulseObserver = null;
+    // PRO-06 second route: on the worker lane `window`/`pagehide` is unreachable, so this
+    // shutdown IS the unload edge. The synchronous exit save stages its write into
+    // pendingStorageOps, which the 'bye' reply's drainStorageOps() carries to durable storage.
+    try {
+      const s = registry.get('save');
+      if (s && typeof s.requestExitAutosave === 'function' && s._suppressUnloadExitSave !== true) {
+        s.requestExitAutosave();
+      }
+    } catch (_) { /* a failed final save must not block the exit */ }
     try {
       if (host.runtime && typeof host.runtime.dispose === 'function') host.runtime.dispose();
       else if (host.sim && typeof host.sim.dispose === 'function') host.sim.dispose();

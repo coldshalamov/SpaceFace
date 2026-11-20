@@ -229,6 +229,27 @@ export function stampAttackSource(state, entity) {
   };
 }
 
+/**
+ * Numeric entity fields a restored spec may not carry wrong-typed. makeEntity copies spec
+ * fields verbatim, so a crafted or corrupted save record with hull:"junk" spawns an immortal
+ * body (hull <= 0 never true) and rot:"junk" feeds NaN into interpolation/trig.
+ */
+export const RESTORED_NUMERIC_SPEC_FIELDS = [
+  'rot', 'angVel', 'bank', 'pitch', 'radius', 'mass',
+  'hull', 'hullMax', 'armorHp', 'armorMax', 'armorFlat',
+  'shield', 'shieldMax', 'shieldRegenRate', 'shieldRegenDelay',
+  'cap', 'capMax', 'capRegen', 'thrust', 'turnRate', 'maxSpeed', 'drag',
+  'ttl', 'collisionMask', 'lastDamageT', 'team',
+];
+
+/** Drop any restored-spec numeric field that isn't a finite number so makeEntity defaults it. */
+export function scrubRestoredNumericFields(spec) {
+  for (const k of RESTORED_NUMERIC_SPEC_FIELDS) {
+    if (spec[k] != null && !Number.isFinite(spec[k])) delete spec[k];
+  }
+  return spec;
+}
+
 /** Build a fully-formed simulation entity from a partial spec. Does not assign or insert an id. */
 export function makeEntity(spec = {}) {
   const e = Object.assign(Object.create(ENTITY_PROTO), {

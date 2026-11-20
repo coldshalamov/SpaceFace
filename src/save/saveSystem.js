@@ -77,7 +77,7 @@ import {
   profileGameplaySnapshot,
 } from './profileSettings.js';
 import { stampSlotCard, boundSlotThumbnail } from './slotStill.js';
-import { clearEntityRuntime, worldLedgerHoldsId } from '../core/entity.js';
+import { clearEntityRuntime, worldLedgerHoldsId, scrubRestoredNumericFields } from '../core/entity.js';
 import { indexedWorldRecordEntity } from '../world/livingWorldViews.js';
 import {
   createCatalogStationRestore, restoredCatalogStation,
@@ -7923,7 +7923,9 @@ export const save = {
     if (!m) return;
     const meta = this.state.meta;
     if (typeof m.seed === 'number') meta.seed = m.seed >>> 0;
-    if (typeof m.playtimeS === 'number') meta.playtimeS = m.playtimeS;
+    // Finite, non-negative, and bounded — a corrupt 1e308/negative playtime corrupts the
+    // HUD readout and any cadence derived from it.
+    if (Number.isFinite(m.playtimeS) && m.playtimeS >= 0 && m.playtimeS < 1e9) meta.playtimeS = m.playtimeS;
     if (m.createdAt) meta.createdAt = m.createdAt;
     if (m.lastSavedAt) meta.lastSavedAt = m.lastSavedAt;
     meta.version = CURRENT_VERSION;
@@ -7955,7 +7957,9 @@ export const save = {
     const free = [];
     const seen = new Set();
     for (const id of savedFree) {
-      if (!Number.isSafeInteger(id) || id < 1 || seen.has(id)) continue;
+      // < MAX_SAFE_INTEGER: allocation sets nextEntityId = id + 1, which must stay safe or
+      // the next allocateEntityId throws.
+      if (!Number.isSafeInteger(id) || id < 1 || id >= Number.MAX_SAFE_INTEGER || seen.has(id)) continue;
       if (live && live.has(id)) continue;
       if (worldLedgerHoldsId(state.world, id)) continue;
       seen.add(id);
@@ -7963,10 +7967,12 @@ export const save = {
     }
     state.freeIds.length = 0;
     state.freeIds.push(...free);
-    if (Number.isSafeInteger(entities.nextEntityId) && entities.nextEntityId > 0) {
+    if (Number.isSafeInteger(entities.nextEntityId) && entities.nextEntityId > 0
+        && entities.nextEntityId < Number.MAX_SAFE_INTEGER) {
       state.nextEntityId = entities.nextEntityId;
     }
-    if (Number.isSafeInteger(entities.nextOccupantGeneration) && entities.nextOccupantGeneration > 0) {
+    if (Number.isSafeInteger(entities.nextOccupantGeneration) && entities.nextOccupantGeneration > 0
+        && entities.nextOccupantGeneration < Number.MAX_SAFE_INTEGER) {
       // Continue may reuse numeric entity IDs, but every newly constructed occupant
       // needs a fresh lifetime. Replaying an older save must not rewind the fence.
       const liveGeneration = Number.isSafeInteger(state.nextOccupantGeneration)
@@ -8615,6 +8621,8 @@ export const save = {
       }
       const spec = clonePlain(saved);
       delete spec._isPlayer;
+      // Wrong-typed numerics survive clonePlain — makeEntity copies spec fields verbatim.
+      scrubRestoredNumericFields(spec);
       const starterRecordId = spec.data?.worldRecordId;
       const starterRecord = starterRecordId == null ? null : state.world?.records?.byId?.[starterRecordId];
       const starterMass = starterBuoySavedMass(spec, starterRecord);
@@ -8639,7 +8647,7 @@ export const save = {
       // order (dead bodies leave swap-removed holes), so sequential re-allocation silently
       // permutes survivor ids and breaks save→load→continue state parity. The spawn helper
       // treats a positive spec.id as a reservation and falls back when it is taken.
-      if (!(Number.isSafeInteger(spec.id) && spec.id > 0
+      if (!(Number.isSafeInteger(spec.id) && spec.id > 0 && spec.id < Number.MAX_SAFE_INTEGER
           && !(state.entities && state.entities.has(spec.id))
           && !worldLedgerHoldsId(state.world, spec.id))) {
         delete spec.id;
@@ -10386,7 +10394,8 @@ function sanitizeRestoredSettings(settings) {
   // Same hole, quieter failure: a non-numeric autosave interval makes the `intervalS > 0` guard
   // false, so interval autosave stops firing for the rest of the session with no error at all,
   // and the Settings row renders it as '[object Object]'.
-  if (typeof s.gameplay.autosaveIntervalS !== 'number' || !(s.gameplay.autosaveIntervalS >= 0)) {
+  if (!Number.isFinite(s.gameplay.autosaveIntervalS) || s.gameplay.autosaveIntervalS < 0
+      || s.gameplay.autosaveIntervalS > 3600) {
     s.gameplay.autosaveIntervalS = DEFAULT_AUTOSAVE_INTERVAL_S;
   }
 

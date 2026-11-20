@@ -3,7 +3,7 @@
 // restore-scoped; a retained persistent carrier remains authoritative on later promotion.
 import { SECTORS } from '../data/sectors.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
-import { occupantGenerationOf, worldLedgerHoldsId } from '../core/entity.js';
+import { occupantGenerationOf, worldLedgerHoldsId, scrubRestoredNumericFields } from '../core/entity.js';
 
 const sectorByStation = new Map();
 const catalogAnchorByStation = new Map();
@@ -139,7 +139,11 @@ export function spawnRestoredCatalogStation(state, helpers, stationId, sectorId,
   if (existing) return existing;
   const spec = structuredClone(entry.saved);
   delete spec._isPlayer;
-  if (!(Number.isSafeInteger(spec.id) && spec.id > 0 && !state.entities?.has(spec.id)
+  scrubRestoredNumericFields(spec);
+  // < MAX_SAFE_INTEGER: state.nextEntityId = max(.., e.id + 1) must stay a safe integer or
+  // the next allocateEntityId throws.
+  if (!(Number.isSafeInteger(spec.id) && spec.id > 0 && spec.id < Number.MAX_SAFE_INTEGER
+    && !state.entities?.has(spec.id)
     && !worldLedgerHoldsId(state.world, spec.id))) delete spec.id;
   if (!Number.isFinite(spec.ttl) || spec.ttl <= 0) spec.ttl = Infinity;
   spec.flags = { ...spec.flags, persistent: true, noInterp: true };
