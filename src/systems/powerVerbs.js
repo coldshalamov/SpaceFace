@@ -27,6 +27,19 @@ export { pilotHas };
 /** The five power verbs, in rail and number-row order. */
 export const POWER_VERBS = Object.freeze(['pull', 'shove', 'pin', 'bomb', 'rig']);
 
+/**
+ * Aim placement can be previewed before release. A reaction pulse must answer the press, and a
+ * persistent tool must toggle without a sustained grip; neither belongs to the aiming setting.
+ * Input and held-key presentation share this policy so a working tool cannot look like a preview.
+ */
+export const POWER_INTERACTIONS = Object.freeze({
+  pull: 'aimed',
+  shove: 'pulse',
+  pin: 'aimed',
+  bomb: 'aimed',
+  rig: 'toggle',
+});
+
 /** Old (internal) action name → the power that now owns its key. */
 export const POWER_VERB_ALIASES = Object.freeze({
   deployWell: 'pull',
@@ -79,12 +92,16 @@ export function savedCodesForPower(saved, power) {
 }
 
 /**
- * Do the five powers fire on PRESS (the old instant behaviour) instead of on release? Settings →
- * Gameplay "Powers: use on press" writes `settings.gameplay.powerFire = 'press'`; anything else —
- * including no value, the shipped default — is hold to preview, release to use (row 493).
+ * Does the player prefer aimed powers to fire on press instead of previewing until release?
+ * The existing saved setting is unchanged. Shove and Rig always answer the press independently.
  */
 export function powersFireOnPress(state) {
   return !!(state && state.settings && state.settings.gameplay && state.settings.gameplay.powerFire === 'press');
+}
+
+/** Only aimed powers create a release-to-use grip, including their saved legacy action names. */
+export function powerUsesReleasePreview(state, power) {
+  return POWER_INTERACTIONS[powerVerbFor(power)] === 'aimed' && !powersFireOnPress(state);
 }
 
 // The held-key preview's read seam (row 493): which power the pilot is gripping right now, keyed

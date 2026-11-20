@@ -45,6 +45,8 @@ export const BEACON_LAMP_COLORS = Object.freeze({
   running: 0x9adfff,
   working: 0x66ffc8,
   warn: 0xff8a4a,
+  rangeGreen: 0x4cff75,
+  rangeRed: 0xff2638,
 });
 
 // Bounded slots: claim beacons cap at 2 active by design; scenery buoys in one sector are few.
@@ -100,6 +102,18 @@ export function resolveBeaconLampPlan(entity, now, reduced = false, out = {}) {
   const phase = beaconLampPhase(entity.id);
   const mul = reduced ? BEACON_REDUCED_PERIOD_MUL : 1;
   const data = entity.data || {};
+  if (data.storyPropKind === 'dione_range_flag' && Number.isFinite(data.rangeGreenUntil)) {
+    out.live = true;
+    if (t < data.rangeGreenUntil) {
+      out.mode = 'range-green'; out.colorHex = BEACON_LAMP_COLORS.rangeGreen; out.glow01 = 1;
+    } else {
+      out.mode = 'range-red'; out.colorHex = BEACON_LAMP_COLORS.rangeRed;
+      // A slow pulse distinguishes hold-fire from the steady green, including reduced motion.
+      const period = reduced ? 4.8 : 2.4;
+      out.glow01 = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(t / period * Math.PI * 2));
+    }
+    return out;
+  }
   const expireAt = Number(data.expireAt);
   const claim = data.storyPropKind === 'claim_beacon';
   out.live = true;

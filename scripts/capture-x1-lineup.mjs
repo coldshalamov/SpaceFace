@@ -78,7 +78,7 @@ try {
     // Fall back to the old Crucible door.
     if (!(await clickText('Crucible', 10000))) throw new Error('no Swarm or Crucible entry');
     await clickText('Quick play', 20000);
-    await clickText('Choose ship & kit', 20000);
+    await clickText('Choose ship', 20000);
     await clickText('Launch', 60000);
   }
   // Pick the Foundry by its authored arena id, not by a label guess. The tiles carry

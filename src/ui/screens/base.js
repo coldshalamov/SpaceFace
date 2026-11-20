@@ -11,18 +11,23 @@ import {
   CLAIMABLE_BODY_SITES,
 } from '../../data/claimableBodies.js';
 import { TECH_NODES } from '../../data/tech.js';
+import { relayDispatchReadiness } from '../../systems/claimsReadModel.js';
+import { sellableCargoQuantity } from '../../systems/cargoReservations.js';
 import { commodityDisplayName } from '../commodityNames.js';
 import { formatDistance } from '../units.js';
 import { escapeHtml } from '../comms.js';
 import { icon } from '../station/icons.js';
+import { itemThumbHtml, injectItemThumbnailStyles } from '../icons/itemThumbnails.js';
 import { openGalaxyMap } from '../mapAuthority.js';
 import { BINDINGS } from '../bindings.js';
 import { confirm, isConfirmOpen } from '../confirm.js';
 import { dressLampKey } from '../orrery/lampKey.js';
+import { injectOrrery } from '../orrery/tokens.js';
+import { stagger, reducedMotion } from '../orrery/motion.js';
+import { syncScrollExtent } from '../orrery/scrollExtent.js';
 
 import { injectBaseLayout } from '../orrery/baseLayouts.js';
 
-const SPEC_ICON = { spec_refinery: 'industry', spec_relay: 'route', spec_bastion: 'shield' };
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
 const BASE_BUILD_PRIORITY = ['mod_depot', 'mod_refinery', 'mod_sensor_post', 'mod_throughline_sling', 'mod_defense', 'mod_teleporter'];
 
@@ -339,21 +344,21 @@ function candidateRange(state, site) {
 }
 
 /** The foot lamp's state: dispatch is real only for a laden relay with no leg flying. */
-function describeDispatchAction(body = {}) {
-  const spec = body.spec || null;
-  if (!spec) return { enabled: false, reason: 'commission an operating identity first' };
-  if (spec.convoy) {
+function describeDispatchAction(body, simTime) {
+  const load = relayDispatchReadiness(body);
+  const spec = body.spec;
+  if (load.state === 'uncommissioned') return { enabled: false, reason: 'commission an operating identity first' };
+  if (load.state === 'away') {
     const qty = Math.max(0, Number(spec.convoy.qty) || 0);
     const dest = pretty(String(spec.convoy.destStationId || '').replace(/^station_/, ''));
     return { enabled: false, reason: 'convoy away — ' + qty + 'u to ' + (dest || 'its station') };
   }
-  if (spec.id !== 'spec_relay') return { enabled: false, reason: 'needs the Trade Relay identity' };
-  const def = BODY_SPECIALIZATION_BY_ID.get('spec_relay') || {};
-  const need = Math.max(0, Number(def.minLoadU) || 0);
-  const have = spec.store && spec.store.input
-    ? Object.values(spec.store.input).reduce((total, qty) => total + (Number(qty) || 0), 0)
-    : 0;
-  if (have < need) return { enabled: false, reason: 'needs ' + Math.ceil(need - have) + 'u more freight at the site' };
+  if (load.state === 'not-relay') return { enabled: false, reason: 'needs the Trade Relay identity' };
+  if (load.state === 'inactive') return { enabled: false, reason: 'relay must be active' };
+  if (load.state === 'short') return { enabled: false, reason: 'needs ' + load.minLoadU + 'u of one commodity at the site' };
+  if (Number.isFinite(spec.nextDispatchAt) && spec.nextDispatchAt <= simTime) {
+    return { enabled: false, reason: 'queued. Leave Base to dispatch in flight.' };
+  }
   return { enabled: true, reason: '' };
 }
 
@@ -458,7 +463,7 @@ export const baseScreen = {
   _fieldCanvas: null,
   _buildTop: null,
   _lastEmpty: null,
-  _dispatchArmed: null,
+  _dispatchPending: null,
 
   // Build the shell ONCE and cache refs. Screens are mounted once by screenManager (build()), so the
   // per-open render — which depends on the just-set state.ui.pendingClaimBodyId — must live in
@@ -466,6 +471,8 @@ export const baseScreen = {
   // opened and show its stale data on every subsequent open (the bug this file is fixing).
   mount(rootEl, ctx) {
     injectBaseLayout();
+    injectOrrery();
+    if (typeof document !== 'undefined') injectItemThumbnailStyles(document);
     // Fascia classes live on the screen root, not on the #sf-base child _render() rebuilds:
     // rootEl.innerHTML = '' clears children, never classes, so this survives every re-render.
     // styles/menu.css scopes its tokens to .screen.sf-menu and custom properties inherit, so
@@ -686,6 +693,7 @@ export const baseScreen = {
       // The foot is a plate child outside the #sf-base scroller: Esc/Return stay visible at
       // every scroll position and the band never overlays the column's text.
       rootEl.appendChild(foot);
+      this._arriveIn(rootEl);
       this._lastEmpty = true;
       ensureBaseField(this);
       return;
@@ -757,7 +765,9 @@ export const baseScreen = {
       if (modId) {
         const mod = BODY_MODULE_BY_ID.get(modId);
         slot.className = 'base-slot';
-        slot.innerHTML = '<div class="nm">' + escapeHtml(mod ? mod.name : pretty(modId)) + '</div>' +
+        slot.innerHTML =
+          itemThumbHtml({ id: modId }, { size: 'md', showCrest: false, className: 'base-slot__thumb' }) +
+          '<div class="nm">' + escapeHtml(mod ? mod.name : pretty(modId)) + '</div>' +
           '<div class="eff">Installed</div>';
       } else {
         slot.className = 'base-slot empty';
@@ -799,7 +809,7 @@ export const baseScreen = {
       name.textContent = spec.name;
       const specHead = document.createElement('div');
       specHead.className = 'base-spec-head';
-      specHead.innerHTML = icon(SPEC_ICON[spec.id] || 'info', 24);
+      specHead.innerHTML = itemThumbHtml({ id: spec.id }, { size: 'sm', showCrest: false, className: 'base-spec__thumb' });
       specHead.appendChild(name);
       const verb = document.createElement('div');
       verb.className = 'verb';
@@ -917,13 +927,22 @@ export const baseScreen = {
       const cargoItems = (player.cargo && player.cargo.items) || {};
       if (ledger.specId !== 'spec_bastion') {
         for (const [goodId, qty] of Object.entries(cargoItems)) {
-          const available = Math.max(0, Math.floor(Number(qty) || 0));
+          const available = sellableCargoQuantity(state, goodId);
+          const reserved = Math.max(0, Math.floor(Number(qty) || 0) - available);
+          if (reserved > 0) {
+            const seal = document.createElement('span');
+            seal.className = 'k-word k-word--fine';
+            seal.textContent = reserved + 'u reserved for delivery · ' + commodityDisplayName(goodId);
+            freight.appendChild(seal);
+          }
           if (!available) continue;
           const deliver = document.createElement('button');
           const amount = Math.min(10, available);
           deliver.dataset.baseAction = 'deliver-' + goodId;
           deliver.className = 'k-word k-word--emph';
-          deliver.textContent = 'Deliver ' + amount + 'u · ' + commodityDisplayName(goodId);
+          deliver.innerHTML =
+            itemThumbHtml({ id: goodId, kind: 'commodity' }, { size: 'xs', showCrest: false, className: 'base-freight__thumb' }) +
+            escapeHtml('Deliver ' + amount + 'u · ' + commodityDisplayName(goodId));
           deliver.setAttribute('aria-label', 'Deliver ' + amount + ' units of ' + commodityDisplayName(goodId) + ' to ' + body.name);
           deliver.addEventListener('click', () => {
             claims.deliverToClaim(body.id, goodId, amount);
@@ -1001,6 +1020,7 @@ export const baseScreen = {
         .map(([id, qty]) => qty + ' ' + commodityDisplayName(id))
         .join(' · ');
       card.innerHTML =
+        itemThumbHtml({ id: mod.id }, { size: 'md', showCrest: false, className: 'base-mod__thumb' }) +
         '<div class="nm">' + escapeHtml(mod.name) + (built ? ' <span class="orr-base__built">✓ Built</span>' : '') + '</div>' +
         '<div class="desc">' + escapeHtml(mod.desc || '') + '</div>' +
         '<div class="meta"><span>' + mod.cost.toLocaleString() + ' cr' + escapeHtml(techLabel)
@@ -1071,11 +1091,10 @@ export const baseScreen = {
     close.setAttribute('aria-label', 'Return (Escape)');
     close.addEventListener('click', () => { if (ctx.screenManager) ctx.screenManager.popScreen(); });
     foot.appendChild(close);
-    const dispatch = describeDispatchAction(body);
-    const armKey = body.id + ':' + ((body.spec && body.spec.convoySeq) || 0);
-    if (dispatch.enabled && this._dispatchArmed === armKey) {
+    const dispatch = describeDispatchAction(body, state.simTime);
+    if (dispatch.enabled && this._dispatchPending?.bodyId === body.id) {
       dispatch.enabled = false;
-      dispatch.reason = 'dispatch armed — the relay flies on the next tick';
+      dispatch.reason = 'requesting dispatch';
     }
     if (dispatch.enabled) {
       const fire = document.createElement('button');
@@ -1083,16 +1102,22 @@ export const baseScreen = {
       fire.className = 'orr-base__lamp';
       fire.textContent = 'Dispatch convoy';
       fire.setAttribute('aria-label', 'Dispatch a convoy now from ' + (body.name || 'this claim'));
-      fire.addEventListener('click', () => {
-        // Arm the owner's own schedule: the next claims tick dispatches (its destination,
-        // market and minimum-load checks all still apply). The UI arms; the owner decides.
+      fire.addEventListener('click', async () => {
+        if (this._dispatchPending) return;
+        const pending = { bodyId: body.id };
+        const expectedConvoySeq = body.spec.convoySeq || 0;
+        this._dispatchPending = pending;
+        fire.disabled = true;
+        let accepted = false;
         try {
-          body.spec.nextDispatchAt = (state && Number.isFinite(state.simTime)) ? state.simTime : 0;
-        } catch (_) {
-          /* the relay keeps its clock */
-        }
-        this._dispatchArmed = armKey;
-        if (ctx.bus) ctx.bus.emit('toast', { text: 'Convoy dispatch armed — the relay flies on the next tick', kind: 'info', ttl: 3 });
+          accepted = (await claims.requestRelayDispatch(body.id, expectedConvoySeq)) === true;
+        } catch (_) { /* The worker can retire while the request is in flight. */ }
+        if (this._dispatchPending !== pending) return;
+        this._dispatchPending = null;
+        if (this._bodyId !== body.id) return;
+        if (ctx.bus) ctx.bus.emit('toast', accepted
+          ? { text: 'Convoy queued. Leave Base to dispatch in flight.', kind: 'info', ttl: 3 }
+          : { text: 'Convoy dispatch unavailable. Check the relay and its freight.', kind: 'warn', ttl: 3 });
         this._refreshAfterAction(close);
       });
       safeDressLamp(fire);
@@ -1109,6 +1134,24 @@ export const baseScreen = {
     // The foot is a plate child outside the #sf-base scroller (see the empty path): the band
     // never overlays the ledger, so nothing reads buried under Esc / Close / Dispatch.
     rootEl.appendChild(foot);
+    // the scroller folds at its rim (the house dissolve): the relay's row heads were cut
+    // mid-glyph above the foot band with no "more below" (bench 1440x900, base-claimed)
+    syncScrollExtent(rootEl.querySelector('#sf-base'));
+    this._arriveIn(rootEl);
+  },
+
+  /** Arrival (ORRERY §3.5): hero, candidate rail, sections and foot rise in turn on open; a
+   *  build re-render (no arriving pass) keeps its still. */
+  _arriveIn(rootEl) {
+    if (!this._arriving || !rootEl || reducedMotion()) return;
+    const units = [
+      rootEl.querySelector('.base-hero'),
+      rootEl.querySelector('.orr-base__cands'),
+      ...rootEl.querySelectorAll('#sf-base > [data-base-section]'),
+      rootEl.querySelector('.base-foot'),
+    ].filter(Boolean);
+    stagger(units, { base: 40, step: 55 });
+    for (const unit of units) unit.classList.add('orr-rise');
   },
 
   // Transactions can remove their own button (last delivery or newly installed module).
@@ -1143,10 +1186,14 @@ export const baseScreen = {
       this._bodyId = pending;
       state.ui.pendingClaimBodyId = null;
     }
+    // Arrival pass (ORRERY §3.5): only an open may choreograph; the build re-render stays silent.
+    this._arriving = true;
     this._render();
+    this._arriving = false;
   },
 
   onHide() {
+    this._dispatchPending = null;
     removeBaseField(this);
   },
 

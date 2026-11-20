@@ -39,6 +39,7 @@ export const counterweightCircuitPrompt = {
     this._last = offer;
     const deck = getPromptDeck();
     if (!deck) return false;
+    let submitted = false;
     const spec = {
       id: CIRCUIT_PROMPT_ID, kind: offer.kind === 'result' ? 'info' : (offer.kind || 'contact'),
       sender: offer.sender || 'COUNTERWEIGHT · CIRCUIT REGISTRAR',
@@ -49,12 +50,14 @@ export const counterweightCircuitPrompt = {
         disabled: c.disabled === true, cancel: ['close', 'leave', 'back', 'menu', 'practiceBack'].includes(c.id),
       })),
       onChoose: (id) => {
-        if (this._last !== offer) return false;
+        if (submitted || this._last !== offer) return false;
         const selected = offer.choices.find((c) => c.id === id);
         if (!selected || selected.disabled) return false;
         const intent = intentFor(id);
         if (!intent) return false;
-        deck.resolveDecision(CIRCUIT_PROMPT_ID);
+        // The owner replaces this page or closes the card. Keeping it mounted
+        // meanwhile preserves its position in the deck while the worker replies.
+        submitted = true;
         this.bus.emit('counterweightCircuit:action', { ...intent, offerId: offer.id, generation: offer.generation });
         // The sim revalidates range, unlocks and occupancy at the moment of use
         // and publishes the next offer (or an honest refusal) in reply.

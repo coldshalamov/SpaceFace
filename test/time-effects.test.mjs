@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
+import { applyLaneSetting } from '../src/core/simLaneCommands.js';
 import { createScreenManager } from '../src/ui/screenManager.js';
 import { save as saveDefinition } from '../src/save/saveSystem.js';
 import { feel as feelDefinition } from '../src/render/feel.js';
@@ -94,6 +95,21 @@ const staleScalarEffects = createTimeEffects(staleScalarState);
 assert.equal(staleScalarEffects.getEffectiveScale(), 1);
 assert.equal(staleScalarState.timeScale, 1,
   'first acquisition must normalize an unowned stale scalar to the empty-request effective value');
+
+{
+  const playerState = createGameState(47);
+  const pause = createTimeEffects(playerState);
+  pause.set('ui:pausing-screen', { scale: 0 });
+  assert.equal(applyLaneSetting(playerState, 'timeScale', 0.5), true);
+  assert.equal(playerState.timeScale, 0, 'a lane slow-time request preserves the active modal pause');
+  pause.clear('ui:pausing-screen');
+  assert.equal(playerState.timeScale, 0.5, 'clearing the modal reveals the outstanding lane request');
+  pause.set('feel:hit-stop', { scale: 0.12 });
+  assert.equal(applyLaneSetting(playerState, 'timeScale', 1), true);
+  assert.equal(playerState.timeScale, 0.12, 'a lane resume only clears its own request');
+  pause.clear('feel:hit-stop');
+  assert.equal(playerState.timeScale, 1);
+}
 
 for (const source of ['', '   ', null, 4]) {
   assert.throws(() => effects.set(source, { scale: 0.5 }), /source/i, `invalid source ${String(source)} must be rejected`);
@@ -1077,8 +1093,7 @@ function testWriterAndRuntimeContracts(auditWriters, formatFindings) {
     'loaded-game visual startup failure must be surfaced and rethrown to save');
 
   const saveSource = fs.readFileSync(path.join(root, 'src/save/saveSystem.js'), 'utf8');
-  assert.match(saveSource, /deferRunTransition\(callback\)[\s\S]*typeof callback !== 'function'[\s\S]*if \(!this\._restoring\) return false;[\s\S]*this\._pendingRunTransition = callback;/,
-    'save must expose one validated latest-wins transition queue');
+  // testSerializedRestoreTransitions exercises validation, latest-wins queueing, and drain order.
   const restoreEntry = saveSource.search(/\b_restore\(data,\s*slot(?:,\s*options\s*=\s*\{\})?\)\s*\{/);
   const nestedGuard = saveSource.indexOf('if (this._restoring)', restoreEntry);
   const tokenReservation = saveSource.indexOf('beginLoadedGameTransition', restoreEntry);
@@ -1091,8 +1106,6 @@ function testWriterAndRuntimeContracts(auditWriters, formatFindings) {
     /const finalizerPayload\s*=\s*transitionToken\s*\?\s*\{\s*slot,\s*transitionToken\s*\}\s*:\s*\{\s*slot\s*\};[\s\S]*finalizeLoadedGame\(finalizerPayload\)/,
     'save must pass the restore-start token into the authored-visual finalizer when the runtime transition hook is installed',
   );
-  assert.match(saveSource, /const pendingRunTransition\s*=\s*this\._pendingRunTransition;[\s\S]*this\._pendingRunTransition\s*=\s*null;[\s\S]*this\._restoring\s*=\s*false;[\s\S]*pendingRunTransition\(\)/,
-    'restore cleanup must release synchronous ownership before draining the one latest route');
   assert.match(saveSource, /if \(!this\._pendingRunTransition\)\s*(?:\{\s*)?this\.bus\.emit\('settings:changed'/,
     'a superseded restore must not publish stale settings effects before its queued route drains');
 

@@ -278,6 +278,18 @@ export function prepareEntityPhysicsIndexPublication(state,entity,nextBody){
   }catch(error){if(error===STAGED_STORAGE_UNSUPPORTED)return null;throw error;}
 }
 
+const deferredRemovalReasons = new WeakMap();
+
+function noteRemovalReason(destroyed, entity, opts) {
+  const deferredReason = deferredRemovalReasons.get(entity);
+  if (deferredReason) {
+    deferredRemovalReasons.delete(entity);
+    destroyed.occupantGeneration = entity.occupantGeneration;
+  }
+  const reason = opts?.reason || deferredReason;
+  if (reason) destroyed.reason = reason;
+}
+
 export const core = {
   name: 'core',
   init(ctx) {
@@ -416,6 +428,9 @@ export const core = {
     const removeEntity = (id, opts) => {
       const e = state.entities.get(id);
       if (!e) return false;
+      if (e.alive !== false && opts?.immediate !== true && typeof opts?.reason === 'string' && opts.reason) {
+        deferredRemovalReasons.set(e, opts.reason);
+      }
       e.alive = false;
       if (opts && opts.immediate === true) {
         const hintedIndex = Number.isInteger(opts.index) ? opts.index : -1;
@@ -652,7 +667,7 @@ export const core = {
       // compare this ref, not the id alone.
       entity: e,
     };
-    if (opts && opts.reason) destroyed.reason = opts.reason;
+    noteRemovalReason(destroyed, e, opts);
     this.bus.queue('entity:destroyed', destroyed);
     state.entities.delete(e.id);
     // Far shelving writes its row before removing the body, and dressing/field rows can hold an
@@ -697,7 +712,7 @@ export const core = {
         // after a new occupant took the id must not release that occupant's binding.
         entity: e,
       };
-      if (opts && opts.reason) destroyed.reason = opts.reason;
+      noteRemovalReason(destroyed, e, opts);
       this.bus.queue('entity:destroyed', destroyed);
       state.entities.delete(e.id);
       // Same recycle guard as the single path: ledger-held ids come back when the row dies.
@@ -757,6 +772,10 @@ export const core = {
           }
         }
         if (e.alive && e.data && e.data.despawnAt != null && state.simTime >= e.data.despawnAt) {
+          const release = e.data.despawnAtReason;
+          if (release?.at === e.data.despawnAt && typeof release.reason === 'string') {
+            deferredRemovalReasons.set(e, release.reason);
+          }
           e.alive = false;
           markDirty(state, e.id, DIRTY.MEMBERSHIP);
         }

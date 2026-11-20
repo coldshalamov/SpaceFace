@@ -375,7 +375,10 @@ function finalDispositionDossierHtml(mission, filing, options = {}) {
  * stand outside the arc's ends. composeDossier mounts the two arcGauge halves into the
  * `.orr-ct-standgauge` placeholder; the ticks, key and labels below are static string.
  */
-const CT_STAND = { cx: 264, cy: 96, r: 46, half: 40, keyY: 61, labelY: 61, labelL: 226, labelR: 302, flatY: 42 };
+// cy 90 (was 96): the arc's ends clear the ON FAILURE / ON SUCCESS label line instead of touching
+// its baseline; labels 226/302 → 214/314 give the arc's ends and the gauge head's bloom their own
+// air instead of starting at the labels' last glyph; flatY 34 keeps NO CHANGE above the raised crown
+const CT_STAND = { cx: 264, cy: 90, r: 46, half: 40, keyY: 61, labelY: 61, labelL: 214, labelR: 314, flatY: 34 };
 const CT_STAND_COMPACT = { cx: 192, cy: 76, r: 40, half: 40, keyY: 48, labelY: 51, labelL: 158, labelR: 226, flatY: 28 };
 
 /**
@@ -966,6 +969,23 @@ export function createContractsScreen(ctx) {
       // the reading hangs from the line (never up into the terms at a short height)
       // at 720 the reading stands above the line (the column's foot fades below it); at full size it hangs under the line
       cap.style.top = `${Math.round(ky / z + (window.innerHeight <= 800 ? -30 : 18))}px`;
+      // a reading that runs past the tab panel's visible glass folds back ABOVE the line: the
+      // dossier's own rect can be taller than the window the shell clips it to, so the clamp
+      // measures the nearest clipping ancestor, not `dr` (bench 1440x900: Tethys Junction)
+      const clip = (() => {
+        for (let n = cap.parentElement; n && n !== document.body; n = n.parentElement) {
+          const o = getComputedStyle(n).overflowY;
+          if (o === 'hidden' || o === 'auto' || o === 'scroll' || o === 'clip') return n;
+        }
+        return null;
+      })();
+      if (clip) {
+        const over = cap.getBoundingClientRect().bottom - clip.getBoundingClientRect().bottom + 6;
+        if (over > 0) {
+          const capH = cap.offsetHeight || 0;
+          cap.style.top = `${Math.max(8, Math.round(ky / z - capH - 10))}px`;
+        }
+      }
       tether.style.display = '';
       cap.style.display = '';
       // the ladder's foot closes on the tether's line: the YOURS block bottom-anchors six px above it, so the

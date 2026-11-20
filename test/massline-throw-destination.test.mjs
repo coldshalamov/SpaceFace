@@ -126,6 +126,58 @@ test('the explicit (non-quiet) call still prefers the hostile on the line', () =
     'an explicit re-target is the player asking; it may take the ship on the line');
 });
 
+test('a restored Raider line picks up its late marked rock once and keeps deliberate aim', () => {
+  const h = createHarness();
+  const held = makeHostile(676, { x: 0, z: 90 }, { x: 65, z: 0 });
+  held.data.onboardingRaid = true;
+  const rock = makeAsteroid(800, { x: 180, z: 90 });
+  rock.occupantGeneration = 17;
+  rock.data.raidRole = 'throwRock';
+  const freighter = makeTrader(300, { x: 1200, z: 0 }, { x: 0, z: 0 });
+  h.add(held, rock, freighter);
+  const { state } = h;
+  state.onboarding = { raid: { active: true, ids: { raider: held.id, throwRock: null } } };
+  state.input.aimIntentActive = false;
+  h.latch(held.id, { attachmentId: 'retained-raider-line', phase: 'loaded', restLength: 90 });
+  const system = startThrowSystem(state);
+  const step = () => {
+    state.tick++;
+    state.simTime = state.tick / 60;
+    return stepThrowSystem(system, state, false);
+  };
+  try {
+    assert.equal(step().releaseTarget, null);
+    state.onboarding.raid.ids.throwRock = rock.id;
+    state.nav.waypoint = { onboarding: true, markerId: 'onboarding:raid', pos: { ...rock.pos },
+      presentationEntityId: rock.id, presentationEntityGeneration: 16 };
+    assert.equal(step().aimTargetId, null, 'a stale presentation marker must not bind the matching id');
+    state.nav.waypoint.presentationEntityGeneration = rock.occupantGeneration;
+    const resolved = step();
+    assert.equal(resolved.aimTargetId, rock.id);
+    assert.equal(resolved.releaseTarget.stable.stamp.occupantGeneration, rock.occupantGeneration);
+    assert.equal(resolved.solution.windowOpen, true, 'the real fast path lights without arming a throw');
+    assert.equal(state.player.tether.attachmentId, 'retained-raider-line');
+
+    state.input.aimWorld = { ...freighter.pos };
+    state.input.aimIntentActive = true;
+    assert.equal(step().aimTargetId, freighter.id);
+    state.input.aimIntentActive = false;
+    assert.equal(step().aimTargetId, freighter.id, 'deliberate aim stays after the pointer goes neutral');
+
+    state.player.targetId = freighter.id;
+    h.latch(held.id, { attachmentId: 'explicit-selection-line' });
+    assert.equal(step().aimTargetId, freighter.id, 'a selected body still governs the new latch');
+
+    state.player.targetId = null;
+    h.latch(held.id, { attachmentId: 'marked-raider-line' });
+    assert.equal(step().aimTargetId, rock.id, 'an already available mark seeds the fresh latch');
+    rock.occupantGeneration++;
+    assert.equal(step().aimTargetId, null, 'reusing the rock id does not redirect the existing bind');
+  } finally {
+    system.destroy();
+  }
+});
+
 test('release target is captured once per latch and only precise live aim intent may replace it', () => {
   const h = createHarness();
   const held = makeHostile(200, { x: 0, z: 140 }, { x: 90, z: 0 });

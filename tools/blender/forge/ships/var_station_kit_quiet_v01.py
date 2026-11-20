@@ -22,7 +22,24 @@ COLORS = {
 SHROUDS = (15.0, 75.0, 140.0, 200.0, 255.0, 315.0)
 
 
+def signature(s):
+    """Dim quiet-hab blocks inside the ring: blacked-out modules, three near-dead glims."""
+    habs, spines = [], []
+    for a in (35.0, 105.0, 175.0, 245.0, 315.0):
+        rz = math.radians(a)
+        x, y, _ = K.polar(25.0, a)
+        habs.append(((x, y, 12.0), (8.0, 10.0, 12.0), rz))
+        spines.append(((x, y, 18.6), (5.0, 6.0, 2.0), rz))
+    F.boxes(s, 'QuietHab', habs, 'paint2', bevel=0.04)
+    F.boxes(s, 'QuietHabSpine', spines, 'paint', bevel=0.03)
+    s.detail = 1
+    for i, a in enumerate((70.0, 190.0, 310.0)):
+        F.light(s, f'QuietHabGlim{i}', K.polar(29.5, a, 9.0), 'glow_cyan.quiet', size=0.25)
+    s.detail = 0
+
+
 def dress(s):
+    K.interior(s, 'stripe', 'glow_cyan.quiet')
     # dead shroud band: matte plates swallowing the shell's running lights — the claim is
     # what is NOT lit
     K.ring_wall(s, 'Shroud', K.SHELL_R + 0.9, 8.0, 26.0, 2.8, 'paint', segs=56, bevel=0.02)
@@ -48,6 +65,7 @@ def dress(s):
     for i, a in enumerate((60.0, 180.0, 300.0)):
         F.light(s, f'Glim{i}', K.polar(K.SHELL_R + 1.4, a, 7.0), 'glow_cyan.quiet', size=0.3)
     s.detail = 0
+    signature(s)
 
 
 def build():

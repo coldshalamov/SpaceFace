@@ -4,11 +4,16 @@
 // machines. Arming that hash must play the same poses back. The sim never
 // reads wall clock; recordedAt is bag metadata, not playback.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import * as THREE from 'three';
+import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
+import { createSimCommandRing, pushLaneCommand } from '../scripts/lib/simCommandChannel.mjs';
+import { applyDomainPathUpdate } from '../scripts/lib/simReadModel.mjs';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
-import { CRUCIBLE_GHOST_OPACITY } from '../src/render/crucibleGhost.js';
+import { createCrucibleGhostPresentation, CRUCIBLE_GHOST_OPACITY } from '../src/render/crucibleGhost.js';
 import {
   CRUCIBLE_META_STORAGE_KEY,
   armGhostPlayback,
@@ -30,7 +35,11 @@ import {
   lastQueuedGhostHash,
   queueGhostPlayback,
 } from '../src/systems/survivalMutators.js';
-import { survivalRun } from '../src/systems/survivalRun.js';
+import { SURVIVAL_WAVE_INTRO_TICKS, survivalRun } from '../src/systems/survivalRun.js';
+import { clearCrucibleSetup } from '../src/ui/crucibleLaunch.js';
+import { crucibleResultsScreen, crucibleScreen } from '../src/ui/screens/crucible.js';
+import { ghostShareTextForTape, importGhostShareText } from '../src/ui/screens/shareCode.js';
+import { mountScreen, textLines } from './helpers/fake-dom.mjs';
 
 const SEED = 16910;
 const SHARED_HASH = 476914635;
@@ -62,6 +71,119 @@ function sharedTape() {
     ],
   });
 }
+
+test('an offered Best Line ghost follows saved poses after worker launch and same-seed Retry', async () => {
+  resetMeta();
+  clearCrucibleSetup();
+  const storage = memoryStorage();
+  useCrucibleMetaStorage(storage);
+  settleCrucibleRun({ storage, result: { outcome: 'defeat', seed: SEED, ruleset: 'swarm', arenaId: 'helios_core',
+    score: 100, bestLine: { points: 50, acts: [{ episodeId: 'practice-line', trickId: 'bolas', name: 'Bolas',
+      tick: 180, evidence: [{ kind: 'collision', victimLifeId: 'life:1' }] }] } } });
+  const tape = canonicalGhostTape({ seed: SEED, hullId: 'ship_hornet', frames: [
+    { t: 0, x: 10, z: 20, r: 0 }, { t: 600, x: 610, z: 20, r: 0 },
+  ] });
+  const imported = importGhostShareText(ghostShareTextForTape(tape), storage);
+  assert.ok(imported.ok);
+  const lane = createSimHost();
+  const door = Object.create(crucibleScreen);
+  const debrief = Object.create(crucibleResultsScreen);
+  const scene = new THREE.Scene();
+  const source = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+  const ghost = createCrucibleGhostPresentation();
+  const oldDocument = globalThis.document;
+  const click = (mounted, label) => {
+    const button = mounted.buttons.find(b => b.textContent === label);
+    assert.ok(button, `missing action ${label}`);
+    globalThis.document = mounted.doc;
+    try { button.listeners.click[0](); } finally { globalThis.document = oldDocument; }
+  };
+  const launchRequest = (mounted) => {
+    const event = mounted.emitted.find(e => e.event === 'game:new');
+    assert.ok(event, 'launch uses the ordinary New Game request');
+    return structuredClone(event.payload);
+  };
+  try {
+    const match = mountScreen(door, { ctx: { state: createGameState(SEED) } });
+    click(match, 'Practice this line');
+    assert.match(textLines(match.root).join(' '), /Your ghost for this seed is loaded/);
+    click(match, 'Launch Swarm');
+    const original = launchRequest(match);
+    const scenarioContract = JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url)));
+    const init = await lane.init({ profile: 'production', seed: SEED, scenarioContract });
+    const { state, registry } = lane.host;
+    const domains = new Map();
+    const mutableNodes = new WeakSet();
+    const mirror = reply => {
+      for (const update of reply.domainUpdates || []) applyDomainPathUpdate(domains, structuredClone(update), mutableNodes);
+    };
+    mirror(init);
+    let tick = 0;
+    let ackEnd = init.initRebuild?.end ?? 0;
+    async function send(commands, steps = 0) {
+      const ring = createSimCommandRing();
+      for (const command of commands) pushLaneCommand(ring, command);
+      const reply = await lane.tick({ tick: ++tick, steps, ackEnd, commands: ring.drain() });
+      ackEnd = reply.rebuild?.end ?? ackEnd;
+      mirror(reply);
+      return reply;
+    }
+    async function fly(opts) {
+      clearQueuedChallenge(); // The worker does not receive page module globals.
+      const reply = await send([{ kind: 'mode', mode: 'loading' },
+        { kind: 'rpc', id: 'ghost-boot', op: 'newGameBoot', args: { opts } }]);
+      assert.equal(reply.rpcAcks.find(r => r.id === 'ghost-boot')?.ok, true);
+      await send([{ kind: 'mode', mode: 'flight' },
+        { kind: 'busEmit', emit: 'run:draftPickRequested', payload: { offerId: null } }], SURVIVAL_WAVE_INTRO_TICKS + 2);
+      assert.equal(state.run.phase, 'active');
+      assert.equal(state.run.seed, SEED);
+    }
+    ghost.attach(scene);
+    const sync = () => {
+      armGhostPlayback(null); // Real presentation has no access to worker-local runtime tape.
+      ghost.sync({ tick: state.tick, run: domains.get('run') }, source);
+      return scene.children.find(node => node.userData?.crucibleGhost && node.visible);
+    };
+    function assertGhost() {
+      assert.equal(state.run.practice, true);
+      assert.equal(domains.get('run').telemetry.ghostHash, imported.hash);
+      const hull = sync();
+      assert.ok(hull?.isMesh, 'a visible ghost hull was added to the scene');
+      assert.equal(hull.position.x, 10 + state.tick);
+      assert.equal(hull.position.z, 20);
+    }
+    await fly(original);
+    assertGhost();
+    await send([], 2);
+    assertGhost();
+    registry.get('combat').kill(state.entities.get(state.playerId), null, { context: 'collision_terrain' });
+    const owner = registry.get('survivalResults');
+    assert.equal(owner.lastResult().recordRules.mode, 'practice');
+    const result = mountScreen(debrief, { ctx: { state }, registryGet: name => name === 'survivalResults' ? owner : null });
+    click(result, 'Run it again — same seed');
+    await fly(launchRequest(result));
+    assertGhost();
+
+    const ordinaryDoor = Object.create(crucibleScreen);
+    try {
+      const ordinary = mountScreen(ordinaryDoor, { ctx: { state: createGameState(SEED) } });
+      click(ordinary, 'Launch Swarm');
+      await fly(launchRequest(ordinary));
+      assert.equal(state.run.practice, false);
+      assert.equal(domains.get('run').telemetry.ghostHash, undefined);
+      assert.equal(sync(), undefined, 'a later flight of the same seed has no unselected ghost');
+    } finally { ordinaryDoor.dispose(); }
+  } finally {
+    lane.shutdown();
+    ghost.dispose();
+    source.geometry.dispose();
+    source.material.dispose();
+    door.dispose();
+    debrief.dispose();
+    clearCrucibleSetup();
+    resetMeta();
+  }
+});
 
 function recordSharedTape() {
   sampleGhostPose({ tick: 0, x: 0, z: 0, r: 0, seed: SEED, hullId: 'ship_kestrel' });

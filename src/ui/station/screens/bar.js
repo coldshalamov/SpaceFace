@@ -40,8 +40,9 @@ import { mountContactPortrait } from '../../portraitArt.js';
 import { createWaveform, createVoiceArc, voiceEnvelope } from '../../orrery/waveform.js';
 import { createReplyDial } from '../../orrery/barReplyDial.js';
 import { injectOrreryStationBar } from '../../orrery/station-barLayouts.js';
+import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { typewriter, decrypt } from '../../orrery/text.js';
-import { reducedMotion } from '../../orrery/motion.js';
+import { reducedMotion, stagger } from '../../orrery/motion.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { BINDINGS } from '../../bindings.js';
@@ -163,6 +164,7 @@ export function createBarScreen(ctx) {
 
   let selectedId = null;
   let visible = false;
+  let arriving = false; // the room staggers in on show only (ORRERY §3.5); a re-render is silent
   let erisLocalVisitId = null;
   let erisLeftVisitId = null;
   let erisOpenAnnounced = false;
@@ -723,6 +725,22 @@ export function createBarScreen(ctx) {
     if (ceresPending && (sid() !== CERES_RETURN_STATION || !state.ui?.docked)) clearCeresPending();
     renderRail(state); renderStage(state); renderLeads(state); seatSpine();
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(seatSpine);
+    // the hang is the tab body's scroll window: its fold and extent cursor follow every re-render's
+    // height, so the foot's board verbs dissolve under the rim ("more below") instead of standing
+    // there guillotined mid-glyph (bench 1440x900)
+    syncScrollExtent(railEl.closest('.sx-bar__hang') || railEl);
+    // Arrival (ORRERY §3.5): on show, the regulars file in and the conversation rises; a later
+    // refresh (a contact picked, a mission accepted) is silent. The rail's measured caps head and
+    // the leads' board key stay still so the spine seats on resting ink.
+    if (arriving && !reducedMotion()) {
+      arriving = false;
+      const units = [
+        ...railEl.querySelectorAll('.sx-bar__rows > li'),
+        ...stageEl.children,
+      ].filter(Boolean);
+      stagger(units, { base: 60, step: 40 });
+      for (const unit of units) unit.classList.add('orr-rise');
+    }
   }
 
   // ---------- interactions ----------
@@ -1181,7 +1199,9 @@ export function createBarScreen(ctx) {
     onShow(c) {
       if (!visible) enterErisVisit();
       visible = true;
+      arriving = true;
       renderAll((c || ctx).state || {});
+      arriving = false;
     },
     onHide() {
       visible = false;

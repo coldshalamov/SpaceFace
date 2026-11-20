@@ -56,33 +56,32 @@ export function buildConcordPatrol(entity) {
   hullMat.name = 'Concord_Hull';
   const hullDarkMat = kit.pbrHullMaterial({ hull: COLOR.hullDark, accent: COLOR.insignia, seed: seed + 2, panelCount: 10, metalness: 0.35, roughness: 0.45 });
   hullDarkMat.name = 'Concord_HullDark';
-  const chromeMat = kit.standardMaterial(COLOR.chrome, 0.14, 0.92); chromeMat.name = 'Concord_Chrome';
+  const chromeMat = kit.standardMaterial(COLOR.chrome, 0.36, 0.5); chromeMat.name = 'Concord_Chrome';
   const graphiteMat = kit.machineryMaterial(COLOR.graphite, 0.55, 0.70); graphiteMat.name = 'Concord_Graphite';
-  const lightMat = kit.emissiveMaterial(COLOR.light, 2.6); lightMat.name = 'Concord_Light';
-  const insigniaMat = kit.emissiveMaterial(COLOR.insignia, 1.8); insigniaMat.name = 'Concord_Insignia';
+  const lightMat = kit.shadedSignal(COLOR.light, 0.7); lightMat.name = 'Concord_Light';
+  const insigniaMat = kit.shadedSignal(COLOR.insignia, 0.62); insigniaMat.name = 'Concord_Insignia';
 
   // ---- main hull: a clean LOFTED bilateral lozenge (strong axial organization, §8.2) ----
   // Nose cone → mid hull → tapered tail, all mirror-symmetric across the centerline. A lofted shell
   // reads as a real pressure hull with curvature catching the key/rim lights, not a crate of boxes.
-  const pressureHull = kit.addMesh(hull, kit.loftXGeometry([
+  const CONCORD_SECTIONS = [
     { x: -15.0, halfY: 1.10, halfZ: 1.30 },
     { x: -9.0,  halfY: 1.80, halfZ: 2.60 },
     { x: -2.0,  halfY: 1.95, halfZ: 2.75 },
     { x: 5.0,   halfY: 1.75, halfZ: 2.40 },
     { x: 10.0,  halfY: 1.20, halfZ: 1.70 },
     { x: 14.5,  halfY: 0.35, halfZ: 0.45 },
-  ], 12), hullMat, 'Concord_Pressure_Hull');
+  ];
+  const pressureHull = kit.addMesh(hull, kit.loftXGeometry(CONCORD_SECTIONS, 12), hullMat, 'Concord_Pressure_Hull');
   pressureHull.castShadow = true;
 
-  // clean armored brow over the cockpit zone (maintained institution, no exposed repair)
-  kit.addBox(hull, hullDarkMat, 'Concord_Dorsal_Deck', [16.0, 0.5, 4.6], [1.0, 1.55, 0]);
-  // tapered tail block
-  kit.addBox(hull, hullDarkMat, 'Concord_Tail', [5.0, 1.6, 3.4], [-9.5, 0, 0]);
+  // Armored brow kept inside the mid-body taper. A 16 m rectangle overhangs the bow.
+  kit.addBox(hull, hullDarkMat, 'Concord_Dorsal_Deck', [11.0, 0.16, 3.6], [-1.0, 1.86, 0]);
+  kit.addBox(hull, hullDarkMat, 'Concord_Tail', [4.2, 1.3, 2.4], [-9.2, 0, 0]);
 
-  // ---- chromed axial spine (controlled chrome on a designed surface, §8.2) ----
-  // A single chromed ridge running the full top centerline — reads as institutional. It sits proud of
-  // the hull so the env-map reflection (the nebula bake) is visible from the chase camera.
-  kit.addBox(hull, chromeMat, 'Concord_Axial_Spine', [20.0, 0.5, 0.8], [2.0, 1.85, 0]);
+  // Pale spine on the dorsal centerline, stopped before the nose taper.
+  // High metalness with no environment map reads as a black bar over the bow.
+  kit.addBox(hull, chromeMat, 'Concord_Axial_Spine', [11.0, 0.1, 0.18], [-1.0, 2.0, 0]);
 
   // ---- repeated panel rhythm (serialized modules, §8.2): beveled dorsal planks ----
   // Identical serialized planks in a row — the clearest "this is manufactured, not adapted" read.
@@ -125,8 +124,9 @@ export function buildConcordPatrol(entity) {
   // a failed group reads as damage without the HUD bar (§9.11).
   const navLights = [];
   for (const side of [-1, 1]) {
-    for (const x of [11.0, 5.0, -2.0, -7.0]) {
-      const l = kit.addBox(hull, lightMat, `Concord_FormLight_${x}_${side}`, [0.4, 0.14, 0.14], [x, 1.55, side * 2.5]);
+    for (const x of [10.0, 5.0, -2.0, -7.0]) {
+      const sec = kit.sectionAt(CONCORD_SECTIONS, x);
+      const l = kit.addBox(hull, lightMat, `Concord_FormLight_${x}_${side}`, [0.32, 0.08, 0.1], [x, sec.halfY * 0.62, side * (sec.halfZ - 0.1)]);
       l.userData.damageRole = 'navLight';
       l.userData.keepSeparate = true;
       navLights.push(l);
@@ -141,12 +141,14 @@ export function buildConcordPatrol(entity) {
   const insigniaDecals = [];
   for (const side of [-1, 1]) {
     const label = side < 0 ? 'Port' : 'Starboard';
-    const d = kit.addDecal(hull, insigniaDecalMat, `Concord_Insignia_${label}`, [3.6, 2.2], [6.0, 0.55, side * 2.78], [0, side < 0 ? -Math.PI / 2 : Math.PI / 2, 0]);
+    const sec = kit.sectionAt(CONCORD_SECTIONS, 4.2);
+    const d = kit.addDecal(hull, insigniaDecalMat, `Concord_Insignia_${label}`, [1.8, Math.min(1.15, sec.halfY * 0.9)], [4.2, 0.15, side * (sec.halfZ - 0.03)], [0, side > 0 ? 0 : Math.PI, 0]);
     insigniaDecals.push(d);
   }
 
   // ---- regulated sensor array: a clean scanning bar on the nose (surveillant, §8.2) ----
-  const sensor = kit.addBox(hull, lightMat, 'Concord_Sensor_Bar', [1.2, 0.12, 3.4], [11.0, 0.55, 0]);
+  const noseSec = kit.sectionAt(CONCORD_SECTIONS, 10.4);
+  const sensor = kit.addBox(hull, lightMat, 'Concord_Sensor_Bar', [0.7, 0.06, Math.min(2.0, noseSec.halfZ * 1.4)], [10.4, noseSec.halfY * 0.35, 0]);
   sensor.userData.damageRole = 'navLight'; sensor.userData.keepSeparate = true;
   navLights.push(sensor);
   navLightBase.push(sensor.material.emissiveIntensity);

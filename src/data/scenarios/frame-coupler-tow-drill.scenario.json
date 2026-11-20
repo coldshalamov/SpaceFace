@@ -52,7 +52,7 @@
     },
     {
       "id": "coupler_turn_hold",
-      "target": "180° at 60% Hitch cruise keeps hitch length swing under 20 WU",
+      "target": "180° at 60% Hitch cruise keeps hitch length swing under 20 u",
       "evidence": "test/massline-frame-coupler-tow.test.mjs prints DIST_SWING",
       "required": true,
       "beatIds": ["coupler_turn"]

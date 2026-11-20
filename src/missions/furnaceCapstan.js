@@ -60,9 +60,12 @@ function mintCapstanRecord(state, m) {
 }
 
 export function furnaceCapstanSpec(m, hull = 600) {
+  const mouth = furnaceMouthGlobal();
   return {
     type: 'fx', ttl: Infinity, team: 2,
-    pos: furnaceMouthGlobal(), vel: { x: 0, z: 0 }, rot: 0,
+    // West of the intake buoy and clear of the eastern release lane. The minimum
+    // cable still puts a pod center inside the actual mouth from every direction.
+    pos: { x: mouth.x - 30, z: mouth.z }, vel: { x: 0, z: 0 }, rot: 0,
     radius: 24, mass: 10000, hull: clamp(hull, 1, 600), hullMax: 600,
     collides: true,
     physicsBody: { radius: 24, mass: 10000, dynamic: false },
@@ -70,7 +73,7 @@ export function furnaceCapstanSpec(m, hull = 600) {
     flags: { missionPinned: true },
     data: {
       furnaceCapstanId: FURNACE_CAPSTAN.id, furnaceMissionId: m.id,
-      placeId: 'place_maintenance_gantry', placeTargetRadius: 32,
+      placeId: 'place_maintenance_gantry', placeTargetRadius: 32, everydaySpaceKit: true,
       combatProfileId: 'combat_profile_tether_anchor',
       scanLabel: 'CR-FEED — quarantine gantry · hail to winch a marked pod',
       scannerSignalKind: 'salvage',
@@ -107,6 +110,20 @@ function manualPlayerLine(state, pod) {
       || (a.controllerId === state.playerId && a.controllerGeneration === occupantGenerationOf(player))));
 }
 
+function nextWinchPod(state, anchor, pending) {
+  let fallback = null;
+  for (const lot of pending) {
+    const pod = state.entities?.get(lot.entityId);
+    if (!pod?.alive || !isFurnaceOwnedLot(pod, state)) continue;
+    const inReach = distance(anchor.pos, pod.pos) <= FURNACE_CAPSTAN.reach;
+    const playerHeld = inReach && manualPlayerLine(state, pod);
+    const candidate = { slot: lot.slot, pod, inReach, playerHeld };
+    if (inReach && !playerHeld) return candidate;
+    if (!fallback || (inReach && !fallback.inReach)) fallback = candidate;
+  }
+  return fallback;
+}
+
 /** Hail-side read of the real winch: what it would show, with nothing minted. */
 export function furnaceCapstanRead(state, entity) {
   const job = furnaceReceivingJob(state);
@@ -122,20 +139,16 @@ export function furnaceCapstanRead(state, entity) {
   const cabledPod = cabledLot ? state.entities?.get(cabledLot.entityId) : null;
   const held = !!(cable && cabledPod?.alive && isFurnaceOwnedLot(cabledPod, state)
     && liveCable(state, cable, entity, cabledPod));
-  const next = held ? null : pending.find(l => {
-    const e = state.entities?.get(l.entityId);
-    return e?.alive && isFurnaceOwnedLot(e, state);
-  });
-  const pod = held ? cabledPod : (next ? state.entities.get(next.entityId) : null);
-  const gap = pod ? distance(entity.pos, pod.pos) : Infinity;
+  const next = held ? null : nextWinchPod(state, entity, pending);
+  const pod = held ? cabledPod : next?.pod;
   return {
     missionId: job.id, anchorId: entity.id, generation: occupantGenerationOf(entity),
     slot: held ? cable.slot : next?.slot ?? null,
     pending: pending.length, cleared: furnaceMiteClearance(state).length,
     mode: held ? cable.mode : null, winding: held && cable.mode === 'winding', held,
     podId: pod?.id ?? null, podGeneration: pod ? occupantGenerationOf(pod) : null,
-    inReach: !!pod && gap <= FURNACE_CAPSTAN.reach,
-    playerHeld: !!pod && manualPlayerLine(state, pod),
+    inReach: held ? distance(entity.pos, pod.pos) <= FURNACE_CAPSTAN.reach : next?.inReach === true,
+    playerHeld: held ? manualPlayerLine(state, pod) : next?.playerHeld === true,
     lineId: held ? cable.linkId : null,
   };
 }
@@ -171,7 +184,8 @@ export function furnaceCapstanOffer(state, availability, requestId, expiresAt) {
   const status = !read.pending ? 'All original pods accounted for.'
     : read.winding ? `Winding original pod ${read.slot + 1}. HOLD stops the drum.`
     : read.held ? `Pod ${read.slot + 1} on the yard cable, drum held.`
-    : !read.inReach ? 'Original pod is outside the 900 WU cable reach.'
+    : read.slot == null ? 'Waiting for the marked pods to arrive.'
+    : !read.inReach ? `Pod ${read.slot + 1} is beyond the cable's 900 u reach. Tow it closer.`
     : read.playerHeld ? 'Cut your own line before the gantry takes the load.'
     : `Original pod ${read.slot + 1} ready. WINCH draws it to the mouth.`;
   return {
@@ -195,6 +209,7 @@ export function furnaceCapstanResponse(state, offer, choice) {
     || offer.furnaceCapstan.podGeneration !== read.podGeneration
     || offer.furnaceCapstan.lineId !== read.lineId
     || offer.furnaceCapstan.mode !== read.mode
+    || (id === 'furnace_haul' && !read.held && (!read.inReach || read.playerHeld))
     || !offer.actions?.some(row => row.id === id)) return null;
   return {
     requestId: offer.requestId, targetId: anchor.id, kind: 'furnace_capstan', choice: id,

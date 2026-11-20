@@ -55,7 +55,7 @@ export const ENTRIES_INTERACT_B = [
     channel: 'memory',
     followup: 'Ambient numbered encounter with a speed/position check (matched velocity 30 WU astern for 20 s, src/systems/encounterScripts.js): accept the toll trade — d.grant/d.charge credit transfer, the drafter added to the band as a named acquaintance — or refuse and she peels off with dignity intact (bark, no grudge).',
     payload: {
-      text: 'A mule hauler settles in thirty WU behind your wake and rides it, visibly saving burn, matched to your every correction. When you finally hail her, she is unashamed: "Your wake, my range. I\'ll cover the next gate\'s toll for it." Everyone does this. Nobody admits it first.',
+      text: 'A mule hauler settles in thirty u behind your wake and rides it, visibly saving burn, matched to your every correction. When you finally hail her, she is unashamed: "Your wake, my range. I\'ll cover the next gate\'s toll for it." Everyone does this. Nobody admits it first.',
     },
   },
 

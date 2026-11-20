@@ -13,20 +13,22 @@ import { input } from '../src/systems/input.js';
 import { mining, isBeamTargetEligible } from '../src/systems/mining.js';
 import { masslineThrow } from '../src/systems/masslineThrow.js';
 import { createWorldObjectInteraction } from '../src/ui/worldObjectInteraction.js';
+import { throwActionCue } from '../src/ui/throwCue.js';
 
 const VP = { width: 1000, height: 800 };
 
 class FakeEventTarget {
   constructor() { this.listeners = new Map(); }
-  addEventListener(type, listener) {
-    if (!this.listeners.has(type)) this.listeners.set(type, new Set());
-    this.listeners.get(type).add(listener);
+  addEventListener(type, listener, options) {
+    if (!this.listeners.has(type)) this.listeners.set(type, new Map());
+    this.listeners.get(type).set(listener, options === true || options?.capture === true);
   }
   removeEventListener(type, listener) { this.listeners.get(type)?.delete(listener); }
   dispatch(type, event = {}) {
     event.type = type;
     if (typeof event.preventDefault !== 'function') event.preventDefault = () => { event.defaultPrevented = true; };
-    for (const listener of [...(this.listeners.get(type) || [])]) listener(event);
+    const listeners = [...(this.listeners.get(type) || [])].sort((a, b) => Number(b[1]) - Number(a[1]));
+    for (const [listener] of listeners) listener(event);
   }
   listenerCount(type) { return this.listeners.get(type)?.size || 0; }
 }
@@ -287,6 +289,35 @@ test('right-button down selects immediately — before any sim tick runs', () =>
     clickUp();
     assert.equal(Object.hasOwn(state.input, 'worldObjectTargetId'), false, 'field dies with the gesture');
     assert.equal(state.player.targetId, rock.id, 'release retains the selection');
+  });
+});
+
+test('an idle RMB selects the presented CR-FEED service without starting the Line', () => {
+  withWorldObjectHarness(({ state, clickDownAt, clickUp, pointOn, station, rock, hostile, tick }) => {
+    state.run.kind = 'adventure';
+    station.type = 'fx';
+    station.occupantGeneration = 41;
+    station.data = { placeId: 'place_maintenance_gantry', furnaceCapstanId: 'furnace_gantry_0', masslineTetherable: false };
+    const servicePoint = pointOn(station);
+    clickDownAt(servicePoint.x, servicePoint.y);
+    clickUp();
+    tick();
+    assert.equal(state.player.targetId, station.id);
+    assert.equal(state.input.actions.tetherFire, false, 'a selected non-tetherable service does not send a fallback latch');
+
+    const rockPoint = pointOn(rock);
+    clickDownAt(rockPoint.x, rockPoint.y);
+    tick();
+    assert.equal(state.player.targetId, rock.id);
+    assert.equal(state.input.actions.tetherFire, true, 'the next physical press on a body still latches');
+    clickUp();
+    tick();
+
+    state.player.tether = { active: true, targetId: hostile.id, attachmentId: 'held-line' };
+    clickDownAt(servicePoint.x, servicePoint.y);
+    tick();
+    assert.equal(state.input.actions.throwArm, true, 'the already-active throw still owns RMB over the service');
+    clickUp();
   });
 });
 
@@ -551,7 +582,7 @@ test('a visible pending NPC hull hovers and selects; its capability hint stays h
   });
 });
 
-test('the sling arm dies with its rope — a different catch in the same hold re-arms', () => {
+test('the sling arm dies with its rope and a replacement requires a new press', () => {
   withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, station, hostile, thrower }) => {
     const pod = {
       id: 90, type: 'payload', alive: true,
@@ -570,12 +601,9 @@ test('the sling arm dies with its rope — a different catch in the same hold re
     tick(3);
     assert.equal(state.input.actions.throwArm, false, 'the arm dies with the rope');
 
-    // G18-02: the held Line owns whatever it has caught — a fresh rope to a throwable
-    // payload arms inside the same hold; the release slings it.
     state.player.tether = { active: true, targetId: pod.id, phase: 'taut' };
     tick(5);
-    assert.equal(state.input.actions.throwArm, true,
-      'the held Line arms on its new catch — the throw follows the rope');
+    assert.equal(state.input.actions.throwArm, false, 'a replacement rope cannot inherit the press');
     clickUp();
     tick(1);
     assert.equal(state.input.actions.throwArm, false, 'release disarms');
@@ -631,9 +659,32 @@ test('leaving the canvas keeps the captured subject and its beam, paints nothing
   });
 });
 
-test('a depleted beam noun never advertises sling in the preview hint', () => {
+test('a visible held throw cue takes priority over the same rock hover verb', () => {
+  withWorldObjectHarness(({ state, win, doc, canvas, tick, pointOn, rock, hostile, hudEl }) => {
+    const cue = { style: { display: 'block' }, textContent: throwActionCue(state) };
+    doc.querySelector = () => cue;
+    rock.data.throwable = true;
+    state.player.tether = { active: true, targetId: rock.id, phase: 'taut' };
+    const pt = pointOn(rock);
+    win.dispatch('mousemove', { clientX: pt.x, clientY: pt.y });
+    canvas.dispatch('mousemove', { clientX: pt.x, clientY: pt.y });
+    tick(1);
+    const tag = hudEl.children[0];
+    const hint = tag.children.find((c) => c.className === 'sf-woi__hint');
+    assert.equal(hint.textContent, '');
+    assert.ok(tag.children[0].textContent, 'the object name remains');
+    cue.style.display = 'none';
+    tick(1);
+    assert.match(hint.textContent, /RMB.*throw/i, 'the hover hint fills in when the held cue is hidden');
+    cue.style.display = 'block';
+    state.player.tether.targetId = hostile.id;
+    tick(1);
+    assert.match(hint.textContent, /RMB.*throw/i, 'aiming at the rock keeps the real throw action visible');
+  });
+});
+
+test('a depleted rock shows mining status until the line takes over RMB for an aimed throw', () => {
   withWorldObjectHarness(({ state, win, canvas, tick, pointOn, rock, hostile, hudEl }) => {
-    state.player.tether = { active: true, targetId: hostile.id, phase: 'taut' };
     rock.data.respawnAt = state.simTime + 999;
     const pt = pointOn(rock);
     win.dispatch('mousemove', { clientX: pt.x, clientY: pt.y });
@@ -643,24 +694,80 @@ test('a depleted beam noun never advertises sling in the preview hint', () => {
     assert.ok(tagEl, 'hover tag is mounted');
     const hintEl = tagEl.children.find((c) => c.className === 'sf-woi__hint');
     assert.ok(hintEl, 'hint row exists');
-    assert.ok(!/sling/i.test(hintEl.textContent),
-      `a depleted mine noun must not promise the sling (got "${hintEl.textContent}")`);
-    assert.ok(/depleted/i.test(hintEl.textContent),
-      `the hint reports the real beam status (got "${hintEl.textContent}")`);
+    assert.match(hintEl.textContent, /depleted/i);
+    state.player.tether = { active: true, targetId: hostile.id, phase: 'taut' };
+    tick(1);
+    assert.match(hintEl.textContent, /RMB.*throw/i);
   });
 });
 
-test('a rope acquired mid-hold arms — the held Line owns the catch it lands', () => {
+test('the marked recovery rock names the next tool and current wheel key', () => {
+  withWorldObjectHarness(({ state, win, canvas, tick, pointOn, rock, hudEl }) => {
+    rock.occupantGeneration = 11;
+    state.nav.waypoint = { kind: 'local', label: '47-A Recovery Site', pos: { ...rock.pos } };
+    state.onboarding = {
+      active: true, finished: false, beatDoneAt: {}, firedFollowups: {},
+      plottedSeam: { markerId: 'onboarding:seam', label: '47-A Recovery Site',
+        coursePos: { ...state.nav.waypoint.pos },
+        presentationEntityId: rock.id, presentationEntityGeneration: rock.occupantGeneration },
+    };
+    const pt = pointOn(rock);
+    win.dispatch('mousemove', { clientX: pt.x, clientY: pt.y });
+    canvas.dispatch('mousemove', { clientX: pt.x, clientY: pt.y });
+    tick();
+    const tag = hudEl.children[0];
+    const hint = tag.children.find((child) => child.className === 'sf-woi__hint');
+    assert.equal(tag.children[0].textContent, '47-A Recovery Site');
+    assert.equal(hint.textContent, 'Hold Q → Scan');
+
+    state.onboarding.firedFollowups['seam:scan:hit'] = true;
+    state.settings.controls.bindings = { contextWheel: ['KeyG'] };
+    tick();
+    assert.equal(hint.textContent, 'Hold G → Mine Beam');
+
+    rock.occupantGeneration += 1;
+    tick();
+    assert.notEqual(tag.children[0].textContent, '47-A Recovery Site');
+  });
+});
+
+test('a Swarm rock advertises its Line relation while the Mine Beam is unavailable', () => {
+  withWorldObjectHarness(({ state, win, canvas, tick, pointOn, rock, hudEl }) => {
+    state.run = { kind: 'survival', ruleset: 'swarm', phase: 'active' };
+    rock.occupantGeneration = 41;
+    state.masslineAcquisition = {
+      validUntil: state.simTime + 1,
+      selected: { targetId: rock.id, occupantGeneration: rock.occupantGeneration, status: 'ready' },
+    };
+    // R12: the hover verb follows the latch's own ready receipt for this body.
+    state.masslineAcquisition = { selected: { status: 'ready', targetId: rock.id } };
+    const pt = pointOn(rock);
+    win.dispatch('mousemove', { clientX: pt.x, clientY: pt.y });
+    canvas.dispatch('mousemove', { clientX: pt.x, clientY: pt.y });
+    tick();
+    const tag = hudEl.children[0];
+    const hint = tag.children.find((child) => child.className === 'sf-woi__hint');
+    assert.equal(hint.textContent, 'F · ANCHOR');
+    assert.equal(tag.dataset.beam, '0');
+  });
+});
+
+test('a rope acquired mid-hold only arms on the next press', () => {
   withWorldObjectHarness(({ state, tick, clickDownAt, clickUp, pointOn, station, hostile, thrower }) => {
     const pt = pointOn(station);
     clickDownAt(pt.x, pt.y);
     tick(3);
     assert.equal(state.input.actions.throwArm, false, 'precondition: select only, no rope');
-    // G18-02: RMB is the Line — while it is held, whatever it catches is yours to sling.
     state.player.tether = { active: true, targetId: hostile.id, phase: 'taut' };
     tick(5);
-    assert.equal(state.input.actions.throwArm, true,
-      'the rope landing inside the hold arms the throw — press → latch → aim → release');
+    assert.equal(state.input.actions.throwArm, false, 'the latch press cannot also arm the throw');
+    clickUp();
+    tick(1);
+    assert.equal(state.input.actions.throwArm, false, 'releasing the latch press leaves the throw disarmed');
+
+    clickDownAt(pt.x, pt.y);
+    tick(3);
+    assert.equal(state.input.actions.throwArm, true, 'a fresh press arms against the current rope');
     clickUp();
     tick(1);
     assert.equal(state.input.actions.throwArm, false, 'release disarms the arm');

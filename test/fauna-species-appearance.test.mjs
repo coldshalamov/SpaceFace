@@ -73,7 +73,11 @@ test('a held Bolus valve becomes a prepared suture without repeatedly rebuilding
     for (let i = 0; i < 13; i++) tickBolus(world, 0.1);
     assert.equal(t.entity.data.ecology.speciesId, 'bolus_suture');
     assert.deepEqual(t.initial.children.map(child => child.name), ['valve_lip']);
-    assert.equal(t.initial.children[0].geometry.attributes.uv.count, 6);
+    assert.equal(
+      t.initial.children[0].geometry.attributes.uv.count,
+      t.initial.children[0].geometry.attributes.position.count,
+    );
+    assert.ok(t.initial.children[0].geometry.attributes.uv.count > 6);
     assert.equal(t.initial.children[0].material.map, skins.tissue.baseColor);
     assert.equal(t.initial.children[0].material.normalMap, skins.tissue.normal);
     t.poll(); await flush();

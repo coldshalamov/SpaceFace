@@ -313,7 +313,7 @@ export const ENTRIES_WORLD_B = [
     channel: 'spectacle',
     payload: {
       from: 'Gulf Survey',
-      text: 'A house-sized boulder beside the Stepwell, survey pins hammered every ten WU along one seam, brass plate reading: "STILL SHRINKING. — Gulf Survey, year 12." Fresh filings glitter at the newest pin. Somebody has measured it every day for years, and it is measurably, honestly smaller each visit. The joke keeps a straight face.',
+      text: 'A house-sized boulder beside the Stepwell, survey pins hammered every ten u along one seam, brass plate reading: "STILL SHRINKING. — Gulf Survey, year 12." Fresh filings glitter at the newest pin. Somebody has measured it every day for years, and it is measurably, honestly smaller each visit. The joke keeps a straight face.',
     },
   },
 
@@ -515,7 +515,7 @@ export const ENTRIES_WORLD_B = [
     channel: 'spectacle',
     payload: {
       from: 'Phoebe Echo',
-      text: 'Off the shrine approach: an old survey buoy with a folding chair welded beside it and a mug rail holding three mugs — one per shift, the plate says. The lamp burns warm instead of standard white. Somebody\'s whole career fits in a twelve-WU circle, and somebody kept it comfortable.',
+      text: 'Off the shrine approach: an old survey buoy with a folding chair welded beside it and a mug rail holding three mugs — one per shift, the plate says. The lamp burns warm instead of standard white. Somebody\'s whole career fits in a twelve-u circle, and somebody kept it comfortable.',
     },
   },
 

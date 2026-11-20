@@ -109,7 +109,7 @@ export const scanReveal = {
     if (!point || !state.entities || typeof state.entities.values !== 'function') return;
     // The door set uses the SAME reach the wreck reveal does — the authored class radius
     // scaled by the fitted scanner profile, not the bare catalog value. A deepsurvey fit
-    // that legitimately sees a wreck at 2,600 WU must also see its door.
+    // that legitimately sees a wreck at 2,600 u must also see its door.
     const revealRadius = SCAN_REVEAL_CLASS_RADIUS * sensorRadiusMultForScan(state);
     const doors = [];
     for (const entity of state.entities.values()) {
@@ -816,8 +816,8 @@ function capabilityLesson(state, entity) {
     }
     if (door.kind === 'slam') {
       sentence = door.ready
-        ? `The way in wants a ${door.required} WU/s slam. ${door.unbreakable ? 'No rock can break this hull' : 'This hull walks away from it'} — ready.`
-        : `The way in wants a ${door.required} WU/s slam. This hull would not walk away — not yet.`;
+        ? `The way in wants a ${door.required} u/s slam. ${door.unbreakable ? 'No rock can break this hull' : 'This hull walks away from it'} — ready.`
+        : `The way in wants a ${door.required} u/s slam. This hull would not walk away — not yet.`;
       return {
         sf: 'SF-174',
         sentence,
@@ -844,14 +844,14 @@ function capabilityLesson(state, entity) {
           ? 'an Elastic Whip'
           : `a ${door.requiredHeadId} head`;
         sentence = door.ready
-          ? `The swing wants ${headWord} rated for a ${door.required} WU/s load. Your whip holds — ready.`
+          ? `The swing wants ${headWord} rated for a ${door.required} u/s load. Your whip holds — ready.`
           : door.headReady === false
-            ? `The swing wants ${headWord} rated for a ${door.required} WU/s load. This fit lacks the named head — not yet.`
-            : `The swing wants ${headWord} rated for a ${door.required} WU/s load. This line would part — not yet.`;
+            ? `The swing wants ${headWord} rated for a ${door.required} u/s load. This fit lacks the named head — not yet.`
+            : `The swing wants ${headWord} rated for a ${door.required} u/s load. This line would part — not yet.`;
       } else {
         sentence = door.ready
-          ? `The swing wants a line rated for a ${door.required} WU/s load. ${door.reachable === false ? 'Your line holds anything you can build' : 'Your line holds'} — ready.`
-          : `The swing wants a line rated for a ${door.required} WU/s load. This line would part — not yet.`;
+          ? `The swing wants a line rated for a ${door.required} u/s load. ${door.reachable === false ? 'Your line holds anything you can build' : 'Your line holds'} — ready.`
+          : `The swing wants a line rated for a ${door.required} u/s load. This line would part — not yet.`;
       }
       return {
         sf: 'SF-174',
@@ -1479,7 +1479,7 @@ function placeRow(id, range, part, extra) {
 
 // The same verdict the body's own scan row computes, hoisted onto the lesson rows. The
 // honest gate is the supported reveal range itself — SCAN_REVEAL_CLASS_RADIUS, the same
-// radius the wreck reveal uses — not the tighter "nearby" set (a 1,300 WU wreck still
+// radius the wreck reveal uses — not the tighter "nearby" set (a 1,300 u wreck still
 // reveals, and its door must still paint). Null unless a gated wreck was actually inside
 // the pulse's reveal reach, so a scan that saw no door paints nothing new.
 function nearbyCapabilityPart(state, origin) {
@@ -1583,7 +1583,7 @@ export function anomalyRuleLesson(player, bodies, focus, skipId = null) {
     return {
       sf: 'SF-171',
       control: 'moving-metal',
-      sentence: 'Moving metal answers. A still hull does not, and rock does not. The cleared lane is 180 WU along that motion.',
+      sentence: 'Moving metal answers. A still hull does not, and rock does not. The cleared lane is 180 u along that motion.',
       pos: lane,
       trackable: false,
       paid: 0,

@@ -14,6 +14,7 @@ import { wantedTierInfo } from '../../systems/heat.js';
 import { el, words, cue } from '../kit/index.js';
 import { injectStatisticsLayouts } from '../orrery/statisticsLayouts.js';
 import { injectMetaLedgerLayouts } from '../orrery/achievementsLayouts.js';
+import { stagger, reducedMotion } from '../orrery/motion.js';
 import { recordsWall } from '../../chronicler/recordsWall.js';
 
 export const STATISTICS_LABEL = 'Records Wall';
@@ -241,6 +242,20 @@ export const statisticsScreen = {
     const foot = el('footer', 'k-foot');
     foot.appendChild(back);
     rootEl.appendChild(foot);
+    // Arrival (ORRERY §3.5): title, then the wall's rungs and bands, then the career instrument,
+    // then the foot — each rising in turn. refresh() runs only on mount and show for this modal
+    // (periodic is a no-op), so no in-place update ever replays the entrance; reduced motion and
+    // the fake-DOM gamepad host keep the still.
+    if (!reducedMotion()) {
+      const arrivals = [
+        rootEl.querySelector('.k-title'),
+        ...rootEl.querySelectorAll(
+          '.orr-statistics__rung, .sf-statistics__group, .orr-statistics__empty, .orr-statistics__promise-scale, .orr-statistics__career'),
+        foot,
+      ].filter(Boolean);
+      stagger(arrivals, { base: 40, step: 36 });
+      for (const node of arrivals) node.classList.add('orr-rise');
+    }
   },
   dispose() { this._root = null; },
 };

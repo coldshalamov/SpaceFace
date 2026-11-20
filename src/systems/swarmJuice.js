@@ -16,7 +16,7 @@
 //   swarm:roundClear   { wave, tally } — the count-up rows (FLAWLESS / SPEED / KILLS / CHAIN)
 //   swarm:bossIntro    { name, line, wave } — the versus card
 //   swarm:bossHp       { frac, alive, total, name } — the boss bar
-//   swarm:bossDown     { name, wave } — champion defeat confirmation (the camera owns its hold)
+//   swarm:bossDown     { name, wave } — champion defeat confirmation
 //   swarm:chainTier    { name, at, chain } — IGNITION/FLARE/NOVA/SUPERNOVA/SINGULARITY
 //   swarm:chainShatter { chain, best } — a broken chain is loud, never silent
 //   swarm:announce     { kind: 'overdrive', text, count } — the chain's score cap opens its one
@@ -27,9 +27,7 @@
 // (boss round heavier), one tick per tally row on the HUD's stagger then a resolve chord, the
 // chain tier chime climbing per mark, and the chain shatter.
 //
-// The camera owns the physical punch (OVH-06a / R10): hitstop is a presentation-only camera hold
-// on hero beats (feel.js), never a simulation slow-down, and the camera:shake emits below carry a
-// `cause` for the camera gate. Automatic reward feedback never leases sim time.
+// The camera and HUD own the physical punch. Automatic reward feedback never leases sim time.
 //
 // Single-writer law: it never writes state.run. It reads kills, it emits presentation.
 // Payment stays with runSession/survivalRewards exactly as before.
@@ -79,7 +77,6 @@ function simTimeOf(state) {
 
 /** A single brood receipt joins at most this many bodies into the multi-kill window. */
 const SWARM_BROOD_WINDOW_CAP = 64;
-
 // --- the sound of the big moments -----------------------------------------------------------
 // Every moment below used to play in silence, and the chain tier borrowed the plain alert beep
 // the last-second warning also uses. Each beat now has its own cue id (resolved to a recipe by
@@ -182,7 +179,7 @@ export const swarmJuice = {
     this._reset();
   },
 
-  update(dt, state) {
+  update(_dt, state) {
     const st = state || this.state;
     const run = liveSwarmRun(st);
     if (!run) {
@@ -214,7 +211,7 @@ export const swarmJuice = {
     this._hullLost = false;         // FLAWLESS latch
     this._waveStartAt = 0;
     this._bestChain = 0;            // the run's chain high-water, for the tally
-    this._lastChain = 0;            // the live chain — hit-stop scales on its tier
+    this._lastChain = 0;            // the live chain, used by the overdrive caption
     this._maxTierAt = 0;            // last announced tier mark — menus never re-announce
     this._chainStarZones = new Set(); // inf-chain-star: ladder zones whose chain star was called
     this._overdriveLive = false;    // an opened overdrive window this juice layer has named
@@ -274,7 +271,7 @@ export const swarmJuice = {
         credits: Math.max(0, Math.round(threat && threat.credits || 0)),
         wave: run.wave,
       });
-      this._onPlayerKill(victim, payload, cause, now, run);
+      this._onPlayerKill(victim, payload, cause, now);
     } else if (friendlyFire) {
       // The room did our work — worth a word, never the chain.
       this._emit('swarm:killPopup', {
@@ -295,7 +292,7 @@ export const swarmJuice = {
     if (this._boss.has(victim)) this._markBossDead(st, run.wave);
   },
 
-  _onPlayerKill(victim, payload, cause, now, run) {
+  _onPlayerKill(victim, payload, cause, now) {
     // The multi-kill window: prune then count. 2 DOUBLE · 3 TRIPLE · 4 QUAD · 5+ SWARM WIPE;
     // a window of nothing but physics kills is a PILE-UP ×N instead.
     this._recent.push({ t: now, cause });
@@ -327,6 +324,7 @@ export const swarmJuice = {
       this._emit('camera:shake', {
         amount: Math.min(1, 0.25 + 0.08 * count),
         cause: count >= 5 ? 'ploughKill' : 'multiKill',
+        audience: 'hero',
         position: payload.pos || (victim && victim.pos) || null,
       });
     }
@@ -388,6 +386,7 @@ export const swarmJuice = {
       this._emit('camera:shake', {
         amount: Math.min(1, 0.25 + 0.02 * windowCount),
         cause: windowCount >= 5 ? 'ploughKill' : 'multiKill',
+        audience: 'hero',
         position: payload.pos || null,
       });
     }
@@ -457,7 +456,7 @@ export const swarmJuice = {
     if (!run) return;
     const now = simTimeOf(this.state);
     const wave = Number.isInteger(payload && payload.wave) ? payload.wave : run.wave;
-    // LAST ONE — the round's final kill gets its own word (no sim slow-down, R10).
+    // LAST ONE gives the round's final kill its own call.
     if (now - this._lastKillAt <= SWARM_LAST_ONE_WINDOW_S && this._waveKills > 0) {
       this._emit('swarm:announce', { kind: 'lastone', text: 'LAST ONE', count: 1 });
     }
@@ -582,7 +581,6 @@ export const swarmJuice = {
     const crossed = swarmChainTierCrossed(chain, this._maxTierAt);
     if (crossed) {
       this._maxTierAt = crossed.at;
-      const run = liveSwarmRun(this.state);
       this._emit('swarm:chainTier', { name: crossed.name, at: crossed.at, chain });
       // The cue climbs with the mark: the tier index sets both the pitch step and the weight.
       const tierIndex = Math.max(0, SWARM_CHAIN_TIERS.findIndex((t) => t.at === crossed.at));

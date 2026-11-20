@@ -40,6 +40,7 @@ import { POWERED_CONVEYOR_RULESET } from '../../data/survivalMutators.js';
 import { normalizeSwarmStake, swarmStakeFor } from '../../data/swarmStakes.js';
 import { swarmThreatPurseMult } from '../../data/swarmThreats.js';
 import { swarmCheckpointPurseFor, swarmZoneIndexFor } from '../../data/swarmLadder.js';
+import { offerDraft } from '../../data/survivalDraft.js';
 import {
   COMBAT_LAB_ARENAS,
   COMBAT_LAB_ENEMY_PACKAGES,
@@ -99,6 +100,17 @@ const ceresAcceptancePocket = CERES_ACTIVITY_POCKETS_BY_ID[
 ];
 if (!ceresAcceptancePocket?.activityAnchor?.zoneId) {
   throw new Error('Ceres acceptance entry requires a canonical activity-anchor zone');
+}
+
+function retryOpeningEquipmentFor(setup, options) {
+  const choice = options.retryOpeningEquipment;
+  if (options.survivalRuleset !== SWARM_RULESET || options.zeroScrapOpening !== true
+    || setup.wave !== 1 || setup.loadout.length || choice?.hullId !== setup.hullId) return null;
+  if (choice.gun === null) return { hullId: setup.hullId, gun: null };
+  const { offerId, defId, slotIndex } = choice.gun || {};
+  if (typeof offerId !== 'string' || !offerId || typeof defId !== 'string'
+    || !Number.isInteger(slotIndex) || slotIndex < 0) return null;
+  return { hullId: setup.hullId, gun: { offerId, defId, slotIndex } };
 }
 
 /** Merge optional human-test controls into a preset without mutating the frozen preset record. */
@@ -187,10 +199,17 @@ export function buildSandboxLaunchConfig(baseConfig = {}, overrides = {}) {
         out.swarmPerks = overrides.swarmPerks.filter((id) => typeof id === 'string' && id);
       }
       if (overrides.openingLesson === true) out.openingLesson = true;
+      if (overrides.practice === true) out.practice = true;
+      if (typeof overrides.dailyDateKey === 'string') out.dailyDateKey = overrides.dailyDateKey;
+      if (typeof overrides.weeklyMutatorId === 'string') out.weeklyMutatorId = overrides.weeklyMutatorId;
+      if (Number.isInteger(overrides.ghostHash)) out.ghostHash = overrides.ghostHash;
       // S4 quick-start: when a launch explicitly opts out of the opening armory, the flag
       // rides beside the setup and reaches run telemetry through the begin request — the
       // phase machine (not this bridge) decides what the opening does with it.
       if (overrides.openArmoryBeforeRound1 === false) out.openArmoryBeforeRound1 = false;
+      if (overrides.zeroScrapOpening === true) out.zeroScrapOpening = true;
+      const retryEquipment = retryOpeningEquipmentFor(survival.value, overrides);
+      if (retryEquipment) out.retryOpeningEquipment = retryEquipment;
     }
   }
   return out;
@@ -393,9 +412,15 @@ function gameNewOptionsForSandboxConfig(config) {
       swarmThreats: config.swarmThreats,
       swarmPerks: config.swarmPerks,
       openingLesson: config.openingLesson,
+      practice: config.practice,
+      dailyDateKey: config.dailyDateKey,
+      weeklyMutatorId: config.weeklyMutatorId,
+      ghostHash: config.ghostHash,
       // S4 quick-start: the worker lane never reads pendingConfig — the opt-out must ride
       // the serialized setup too or a one-press launch silently re-opens the armory.
       openArmoryBeforeRound1: config.openArmoryBeforeRound1,
+      zeroScrapOpening: config.zeroScrapOpening,
+      retryOpeningEquipment: config.retryOpeningEquipment,
     });
   }
   // Sandbox writes belong to the simulation lane. In worker mode, carry the complete validated
@@ -423,6 +448,7 @@ export function emitSandboxEmbarkSpeculation(bus, config) {
       : (NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime'),
     seed: Number.isSafeInteger(opts.seed) ? opts.seed : null,
     shipDefId: typeof cfg.shipId === 'string' ? cfg.shipId : null,
+    ...(cfg.survivalRuleset === SWARM_RULESET ? { swarmArenaOnly: true } : {}),
   });
 }
 
@@ -683,6 +709,20 @@ function startDrill(ctx) {
   const helpers = ctx.helpers;
   const bus = ctx.bus;
   if (!drillSys || typeof drillSys.begin !== 'function' || !helpers || !bus) return;
+  if (ctx.state.mode === 'loading') {
+    const player = ctx.state.entities.get(ctx.state.playerId);
+    const clear = () => { offStarted(); offFailed(); offExit(); };
+    const offStarted = bus.on('game:started', () => {
+      clear();
+      // Launch reconciliation closes its menu stack during game:started. Open Works after it.
+      queueMicrotask(() => {
+        if (ctx.state.mode === 'flight' && ctx.state.entities.get(ctx.state.playerId) === player) startDrill(ctx);
+      });
+    });
+    const offFailed = bus.on('game:startFailed', clear);
+    const offExit = bus.on('game:exitToMenu', clear);
+    return;
+  }
   // Spawn a drillable asteroid just ahead of the player, then begin + open the screen.
   const player = ctx.state.entities.get(ctx.state.playerId);
   const px = (player && player.pos && player.pos.x) || 0;
@@ -1059,6 +1099,31 @@ export function applyCombatLabSetup(ctx, validatedSetup) {
   return receipt;
 }
 
+function restoreRetryOpeningEquipment(ctx, choice, fitted) {
+  const { state } = ctx;
+  const run = state.run;
+  if (!choice || run?.phase !== 'loadout' || run.telemetry?.zeroScrapOpening !== true) return false;
+  const ship = state.player.ownedShips[state.player.activeShipIndex];
+  if (ship?.defId !== choice.hullId || ship.fittings.some(Boolean)) return false;
+  if (choice.gun === null) return true;
+  const { offerId, defId, slotIndex } = choice.gun;
+  const weapon = WEAPONS.find(def => def.id === defId && def.slotType === 'weapon' && def.tier <= 1);
+  if (!weapon || !defId.startsWith('wpn_')) return false;
+  const draft = offerDraft({ seed: run.seed, wave: 0, hullId: ship.defId, fittings: ship.fittings,
+    ruleset: SWARM_RULESET, count: 100 });
+  if (!draft.offers.some(offer => offer.id === offerId && offer.defId === defId)) return false;
+  if (sys(ctx, 'ships')?.fitModule?.({ slotIndex, defId }) !== true) return false;
+  const instanceId = ship.fittedInstances?.[slotIndex]?.instanceId;
+  if (instanceId == null || ship.fittings[slotIndex] !== defId) return false;
+  ctx.bus.emit('run:modifierRecordRequested', {
+    record: { kind: 'catalog', offerId, defId, slotIndex, replaced: null, wave: 1, startingEquipment: true, instanceId },
+    draft: { wave: 0, offered: [offerId], picked: offerId },
+    wave: 0,
+  });
+  fitted.fitted.push({ slotIndex, defId });
+  return true;
+}
+
 /** Apply a scored arena preparation only within its native loading transaction. */
 export function applyPreparedCrucibleSetup(ctx, config) {
   if (!ctx?.state || ctx.state.mode !== 'loading'
@@ -1318,6 +1383,11 @@ export function applySandboxSetup(ctx, config) {
           seed: setup.seed,
           arenaId: setup.arenaId,
           openingLesson: cfg.openingLesson === true,
+          practice: cfg.practice === true,
+          dailyDateKey: cfg.dailyDateKey,
+          weeklyMutatorId: cfg.weeklyMutatorId,
+          ghostHash: cfg.ghostHash,
+          zeroScrapOpening: cfg.zeroScrapOpening === true && setup.wave === 1 && setup.loadout.length === 0,
           openArmoryBeforeRound1: launchRuleset === SWARM_RULESET && cfg.openArmoryBeforeRound1 === false
             ? false
             : undefined,
@@ -1351,7 +1421,7 @@ export function applySandboxSetup(ctx, config) {
           // sees it — the wager's own blurb ("the stake purse halves") is the contract.
           const purse = Math.round(
             swarmStakeFor(cfg.swarmStake).purse * swarmThreatPurseMult(cfg.swarmThreats));
-          if (purse > 0 && run && run.kind === 'survival' && run.phase === 'loadout'
+          if (purse > 0 && run && !run.telemetry?.zeroScrapOpening && run.kind === 'survival' && run.phase === 'loadout'
             && run.seed === (setup.seed >>> 0)) {
             ctx.bus.emit('run:awardRequested', {
               credits: purse,
@@ -1380,6 +1450,7 @@ export function applySandboxSetup(ctx, config) {
       if (!fitted.hullApplied || fitted.notFitted.length) {
         return { ok: false, reason: 'crucible-loadout-incomplete', ...fitted };
       }
+      const retryEquipmentReady = restoreRetryOpeningEquipment(ctx, cfg.retryOpeningEquipment, fitted);
       // 4. Player into the arena, using the picked sector only for its backdrop and coordinates.
       const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === setup.arenaId);
       const sectorId = cfg.sectorId || (arena && arena.sectorId);
@@ -1400,7 +1471,9 @@ export function applySandboxSetup(ctx, config) {
       //    no wave ever plans.
       if (ctx.bus && typeof ctx.bus.emit === 'function') {
         ctx.bus.emit('run:loadoutReady', { source: 'crucible:launch', arenaId: setup.arenaId });
-        ctx.bus.emit('run:openingPrepareRequested', { source: 'crucible:launch' });
+        ctx.bus.emit('run:openingPrepareRequested', {
+          source: 'crucible:launch', ...(retryEquipmentReady ? { retryEquipmentReady } : {}),
+        });
       }
       return { ok: true, fitted: fitted.fitted };
     }

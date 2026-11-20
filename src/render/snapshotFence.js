@@ -1352,13 +1352,18 @@ function rowPoseHash(columns, row) {
  * row is absent. Generation-recycled rows fail closed to the latest pose exactly (never blend
  * a dead body's pose into the replacement).
  */
-function resolvePoseInto(snapshot, previous, entityId, alpha, slotHint, out, rowHint = -1, prevRowHint = -1) {
+function resolvePoseInto(snapshot, previous, entityId, alpha, slotHint, out, rowHint = -1, prevRowHint = -1,
+  expectedGeneration) {
   const index = rowHint >= 0
     ? rowHint
     : (slotHint >= 0
       ? snapshotRowForSlot(snapshot, slotHint, entityId)
       : snapshotIndexOf(snapshot, entityId));
   if (index < 0 || index >= (snapshot.count | 0)) return null;
+  if (Number.isInteger(expectedGeneration)) {
+    const generations = snapshot.columns.generation;
+    if (generations && generations[index] !== (expectedGeneration >>> 0)) return null;
+  }
   const p = index * 3;
   const q = index * 4;
   let x = snapshot.columns.position[p];
@@ -1406,10 +1411,11 @@ function resolvePoseInto(snapshot, previous, entityId, alpha, slotHint, out, row
   return out;
 }
 
-export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previous = null, alpha = 1, slotHint = -1) {
+export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previous = null, alpha = 1, slotHint = -1,
+  expectedGeneration) {
   if (!mesh || !mesh.position || !snapshot) return false;
   const pose = resolvePoseInto(
-    snapshot, previous, entityId, alpha, slotHint, _poseWriteScratch,
+    snapshot, previous, entityId, alpha, slotHint, _poseWriteScratch, -1, -1, expectedGeneration,
   );
   if (!pose) return false;
   const ox = origin && Number.isFinite(origin.x) ? origin.x : 0;

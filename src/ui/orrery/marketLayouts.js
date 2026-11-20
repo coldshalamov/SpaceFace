@@ -184,17 +184,23 @@ ${M} .sx-mkt-table tbody:is(:focus-within, :hover) .sx-mkt-row.is-active .sx-mkt
 ${M} .sx-mkt-row.is-active td { color:rgb(${BONE} / .9) !important; }
 ${M} .sx-mkt-row.is-active .sx-mkt-row__name { color:rgb(250 247 238) !important; }
 ${M} .sx-mkt-row:hover td { color:rgb(${BONE} / .88) !important; }
-/* the pictograms stand on the ticks at 16px, bone .8, the chosen one lit (the arm is the amber) */
-${M} .sx-mkt-row .sx-mkt-row__commodity { display:inline-block !important; width:16px !important; height:16px !important; margin-right:8px !important;
-  vertical-align:-3px !important; color:rgb(${BONE} / .8) !important; }
+/* crisp 28px commodity specimen thumbnails stand beside each name on the market rail */
+${M} .sx-mkt-row .sx-mkt-row__commodity { display:inline-flex !important; align-items:center; width:auto !important; height:auto !important; margin-right:8px !important;
+  vertical-align:middle !important; color:rgb(${BONE} / .8) !important; }
+${M} .sx-mkt-row .sx-mkt-row__thumb { width:28px !important; height:28px !important; --sf-thumb-size:28px; margin-right:10px !important; vertical-align:middle !important; }
+${M} .sx-mkt-row .sx-mkt-row__commodity > .sx-mkt-row__thumb { margin-right:0 !important; border-color:currentColor !important; }
 ${M} .sx-mkt-row .of-commodity-icon { display:inline-block !important; width:16px !important; height:16px !important; vertical-align:-3px !important; }
 ${M} .sx-mkt-row .sx-mkt-row__name > .of-commodity-icon { margin-right:8px !important; color:rgb(${BONE} / .8) !important; }
-${M} .sx-mkt-row.is-active .sx-mkt-row__commodity, ${M} .sx-mkt-row.is-active .sx-mkt-row__name > .of-commodity-icon { color:rgb(250 247 238) !important;
-  filter:drop-shadow(0 0 4px rgb(248 244 234 / .55)) !important; }
+${M} .sx-mkt-row.is-active .sx-mkt-row__thumb { border-color:var(--dp-hand, #f2b950) !important; box-shadow:0 0 8px rgb(242 185 80 / .24); }
+${M} .sx-mkt-row.is-active .sx-mkt-row__commodity, ${M} .sx-mkt-row.is-active .sx-mkt-row__name > .of-commodity-icon { color:rgb(250 247 238) !important; }
 ${M} .sx-mkt-row .sx-mkt-row__price { color:rgb(248 244 234) !important; font-weight:620; white-space:nowrap; }
-${M} .sx-mkt-row .sx-mkt-row__tr { font-size:12px !important; margin-left:6px; color:rgb(${BONE} / .7) !important; font-variant-numeric:tabular-nums; }
-${M} .sx-mkt-row .sx-mkt-row__tr.is-up { color:rgb(248 244 234) !important; }
-${M} .sx-mkt-row .sx-mkt-row__tr.is-down { color:rgb(${BONE} / .55) !important; }
+${M} .sx-mkt-row .sx-mkt-row__tr { font-size:12px !important; margin-left:6px; color:rgb(${BONE} / .7) !important; font-variant-numeric:tabular-nums; font-weight:650; }
+/* the register speaks state (fresh-eyes 2026-11-15: ▲11% and ▼20% were the same pale grey): an
+   up-move is a live reading in phosphor, a down-move is a loss in the house red — ORRERY §3.3's
+   own pairing, no green imported (stationStandard law: identity palette keeps the red channel
+   free for threat, and a falling price is exactly that) */
+${M} .sx-mkt-row .sx-mkt-row__tr.is-up { color:var(--dp-phos, #dfeeff) !important; }
+${M} .sx-mkt-row .sx-mkt-row__tr.is-down { color:var(--dp-danger, #ff5038) !important; }
 /* an unmoved price says nothing: the flat 0% keeps its words for readers, off the glass */
 ${M} .sx-mkt-row .sx-mkt-row__tr:is(.is-flat, [aria-label='History unavailable']) { visibility:hidden; }
 ${M} .sx-mkt-row .sx-mkt-row__stock { color:rgb(${BONE} / .48) !important; }
@@ -244,6 +250,13 @@ ${M} .sx-mkt-chart .sx-mkt-line { stroke:rgb(248 244 234) !important; stroke-wid
 ${M} .sx-mkt-chart .sx-mkt-ghost { fill:none !important; stroke:rgb(${BONE} / .8) !important; stroke-width:3 !important;
   stroke-dasharray:5 3 !important; stroke-linecap:round !important; }
 ${M} .sx-mkt-chart .sx-mkt-ghostbead { fill:rgb(${BONE} / .85) !important; stroke:none !important; }
+/* the chart's remaining voices sit on the orr-svg grammar (tokens.js): the average is an edge,
+   the now-rule the edge that separates observed from forecast, the cone the band's fill, the
+   forecast line lit at rest weight — one bone/warm instrument, no legacy phos remnants. */
+${M} .sx-mkt-chart .sx-mkt-avg { stroke:rgb(${BONE} / .46) !important; stroke-width:1 !important; }
+${M} .sx-mkt-chart .sx-mkt-now { stroke:rgb(${BONE} / .46) !important; stroke-width:1 !important; }
+${M} .sx-mkt-chart .sx-mkt-cone { fill:rgb(${BONE} / .12) !important; }
+${M} .sx-mkt-chart .sx-mkt-forecast { stroke:rgb(248 244 234 / .72) !important; stroke-width:1.5 !important; }
 /* BUY/SELL are beads on the scale, not text flags: bright for what you pay, dimmer for what it pays */
 ${M} :is(.sx-mkt-instrument__tick--buy, .sx-mkt-instrument__tick--sell) { display:block !important; right:1px !important;
   font-size:0 !important; letter-spacing:0 !important; transform:translateY(-50%) !important; }

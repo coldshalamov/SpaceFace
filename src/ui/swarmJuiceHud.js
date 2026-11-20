@@ -15,6 +15,7 @@
 // intents; the only outbound traffic is its own DOM.
 
 import { claimCalloutVoice, resetCalloutVoice } from './calloutVoice.js';
+import { readIronMawMouth } from '../combat/capitalBossGeometry.js';
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { SWARM_CHAIN_WINDOW_S } from '../systems/swarmChain.js';
 import { chainWindowRemaining } from './survivalHud.js';
@@ -134,7 +135,12 @@ export const swarmJuiceHud = {
     this._unsubs.push(this.bus.on('swarm:bossIntro', (p) => this._onBossIntro(p)));
     this._unsubs.push(this.bus.on('swarm:bossHp', (p) => this._onBossHp(p)));
     this._unsubs.push(this.bus.on('swarm:bossDown', (p) => this._onBossDown(p)));
-    this._unsubs.push(this.bus.on('swarm:bossMove', (p) => { this._bossMove = p && typeof p.word === 'string' ? p.word : ''; this._bossMoveUntil = p && Number.isFinite(p.ttl) && this.state && Number.isFinite(this.state.simTime) ? this.state.simTime + p.ttl : 0; }));
+    this._unsubs.push(this.bus.on('swarm:bossMove', (p) => {
+      this._bossMove = typeof p?.word === 'string' ? p.word : '';
+      this._bossInstruction = typeof p?.instruction === 'string' ? p.instruction : '';
+      this._bossMoveUntil = Number.isFinite(p?.ttl) && Number.isFinite(this.state?.simTime)
+        ? this.state.simTime + p.ttl : 0;
+    }));
     this._unsubs.push(this.bus.on('swarm:chain', (p) => this._onChain(p)));
     this._unsubs.push(this.bus.on('swarm:chainBroken', (p) => this._onChainBroken(p)));
     this._unsubs.push(this.bus.on('swarm:chainTier', (p) => this._onChainTier(p)));
@@ -180,8 +186,10 @@ export const swarmJuiceHud = {
     this._card = null;
     this._bossHp = null;
     this._bossMove = '';
+    this._bossInstruction = '';
     this._bossMoveUntil = 0;
     this._bossDownUntil = 0;
+    this._mawAperture = {};
     this._shatter = null;
     this._boardOn = false;
     this._level = 'full';
@@ -236,7 +244,11 @@ export const swarmJuiceHud = {
     }
 
     // --- the announcer ------------------------------------------------------------
-    while (this._calls.length && simNow > this._calls[0].until) {
+    const activeCall = this._calls[0];
+    // Iron Maw's brief opening needs the aiming ring and its instruction to read immediately.
+    const giveOpeningRoom = activeCall && activeCall.kind !== 'bossdown'
+      && readIronMawMouth(st, this._mawAperture);
+    while (this._calls.length && (giveOpeningRoom || simNow > this._calls[0].until)) {
       const dead = this._calls.shift();
       if (dead.node) dead.node.remove();
     }
@@ -327,6 +339,9 @@ export const swarmJuiceHud = {
       dom.col.classList?.add?.('is-boss');
       const move = this._bossMove && (!this._bossMoveUntil || simNow < this._bossMoveUntil) ? this._bossMove : '';
       this._text(dom.bossName, move ? `${this._bossHp.name} · ${move}` : this._bossHp.name);
+      const instruction = move ? this._bossInstruction : '';
+      this._text(dom.bossInstruction, instruction);
+      dom.bossInstruction.hidden = !instruction;
       setScaleX(dom.bossFill, this._bossHp.frac);
       this._text(dom.bossCount, this._bossHp.total > 1
         ? `${this._bossHp.alive}/${this._bossHp.total}` : '');
@@ -489,6 +504,7 @@ export const swarmJuiceHud = {
     if (!p || typeof p.text !== 'string' || !p.text || !this._dom) return;
     const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
     const kind = p.kind || '';
+    if (kind !== 'bossdown' && readIronMawMouth(this.state, this._mawAperture)) return;
     const pri = CALL_PRIORITY[kind] ?? CALL_PRIORITY_DEFAULT;
     const cur = this._calls[0];
     // The stunt lane shares this voice: a first-beat word (LATCHED) holds the centre against a
@@ -664,6 +680,8 @@ export const swarmJuiceHud = {
     const bossTrack = makeNode(doc, 'div', 'sf-sj__bosstrack', boss);
     const bossFill = makeNode(doc, 'div', 'sf-sj__bossfill', bossTrack);
     const bossCount = makeNode(doc, 'div', 'sf-sj__bosscount', boss);
+    const bossInstruction = makeNode(doc, 'div', 'sf-sj__bossinstruction', boss);
+    bossInstruction.hidden = true;
     boss.hidden = true;
     const bossDown = makeNode(doc, 'div', 'sf-sj__bossdown', col);
     bossDown.hidden = true;
@@ -682,7 +700,7 @@ export const swarmJuiceHud = {
       root, hero, heroTier, heroFig, heroMix, heroBest, heroDeplete,
       calls, shatter, slam, slamTitle, slamSub,
       tally, tallyTitle, tallyRows,
-      col, card, cardTitle, cardLine, boss, bossName, bossFill, bossCount, bossDown,
+      col, card, cardTitle, cardLine, boss, bossName, bossFill, bossCount, bossInstruction, bossDown,
     };
     return this._dom;
   },
@@ -821,6 +839,10 @@ const CSS = `
   transition:transform .18s linear; }
 .sf-sj__bosscount { font-weight:650; font-size:12px; letter-spacing:.2em;
   font-variant-numeric:tabular-nums; color:var(--dp-ink-mute, var(--sf-calm)); }
+.sf-sj__bossinstruction { width:max-content; max-width:min(60vw,248px); font-weight:650;
+  font-size:12px; line-height:1.35; text-align:center; color:var(--dp-ink, var(--sf-paper));
+  text-shadow:0 1px 3px #080a0e, 0 1px 8px #080a0e; }
+.sf-sj__bossinstruction[hidden] { display:none; }
 /* The column centres its children; the keyframes carry no translate, so nothing rides off-centre. */
 .sf-sj__bossdown { order:2; max-width:94vw; text-align:center;
   font-weight:800; font-size:44px; letter-spacing:.3em; text-transform:uppercase;

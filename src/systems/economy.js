@@ -77,12 +77,14 @@ import {
   serializeCycles, deserializeCycles, applyCycleToMid, stockDriftTarget,
 } from './economyCycles.js';
 import {
-  hiddenHoldCapacity,
-  remainingIllicit,
+  onboardIllicitCargo,
+  readSmugglingCapabilities,
   scanChance,
   clamp01,
   hotUntilActive,
   HOT_DURATION_S,
+  FINE_MULT,
+  BRIBE_FRAC,
 } from '../economy/customsRisk.js';
 import {
   CONVOY_SHARE_LAW,
@@ -172,8 +174,6 @@ const HISTORY_REGIME_AGE_MIN_S = HISTORY_SPAN_S + HISTORY_SAMPLE_S * 4;
 const HISTORY_REGIME_AGE_MAX_S = HISTORY_SPAN_S + HISTORY_SAMPLE_S * 18;
 const BASE_SCAN = 0.25;            // p_scan = clamp(BASE_SCAN*(1+security) - cloak, 0.02, 0.95)
 const SCAN_LO = 0.02, SCAN_HI = 0.95;
-const FINE_MULT = { legal: 0, restricted: 0.8, illegal: 1.2, contraband: 1.5 };
-const BRIBE_FRAC = 0.30;
 const DEBT_STALE_DAYS = 2;          // unpaid debt older than this starts converting to bounty
 const DEBT_TO_BOUNTY_DAILY_FRAC = 0.25; // posted bounty grows by this fraction of debt per stale day
 // FB-049 — a note is bounded by what you already hold plus the standing the berth's faction
@@ -1384,6 +1384,14 @@ function sealedSellFree(state, commodityId, qty) {
   return free;
 }
 
+function biohazardSaleRefusal(state, info, def) {
+  if (def.biohazard !== true || !info?.factionId) return null;
+  const policy = contaminationSaleMult(state, info.sectorId, info.factionId);
+  if (!policy?.refuses) return null;
+  // Containment Seal paperwork lets a quarantine counter accept a sealed specimen.
+  return fittedModuleDefs(state).some(d => d?.mods?.containmentSeal === true) ? null : policy;
+}
+
 function finiteTradePrice(value) {
   const price = Number(value);
   return Number.isFinite(price) && price > 0 ? price : null;
@@ -1852,6 +1860,17 @@ export const economy = {
     this._unsubs.push(bus.on('economy:marketOpened', (p) => {
       if (!p || !p.stationId) return;
       this.refreshStationDemand(p.stationId);
+      const info = this._stationServiceStationId() === p.stationId ? stationInfo(this.state, p.stationId) : null;
+      if (info) {
+        const market = this.state.economy.markets[p.stationId];
+        // The Sell list reads the station's real book. Open an empty liquidation row for
+        // accepted player-brought goods so pilots can request their first sale there.
+        for (const id of Object.keys(this.state.player.cargo?.items || {}).sort()) {
+          const def = commodityDef(this.state, id);
+          if (market?.[id] || def?.noMarketSeed !== true || sellableCargoQuantity(this.state, id) <= 0) continue;
+          this.quote(p.stationId, id, 'sell', 1);
+        }
+      }
       this.snapshotIntel(p.stationId);
     }));
     this._unsubs.push(bus.on('map:sectorCharted', (p) => {
@@ -3079,6 +3098,9 @@ export const economy = {
     const info = stationInfo(state, stationId);
     const stationTier = info ? Math.max(0, Number(info.tier) || 0) : 0;
     const marketTier = Math.max(0, Number(def.marketTier) || 0);
+    const free = side === 'sell' && opts?.operationCustody !== true ? sealedSellFree(state, commodityId, qty) : null;
+    // Alien Ecology AE-077 — a quarantine refusal bars custody, including the first quote.
+    const refusal = side === 'sell' ? biohazardSaleRefusal(state, info, def) : null;
     if (!entry) {
       if (def.noMarketSeed !== true && marketTier <= stationTier && !producedAtStation(info, stationId, def)) {
         return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
@@ -3088,38 +3110,27 @@ export const economy = {
       if ((def.legality === 'contraband' || def.legality === 'illegal') && !toleratesContraband(info)) {
         return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
       }
-      entry = this.eagerMarketMint
-        ? this._deferListingMint(stationId, def)
-        : this.mintUnseededListing(stationId, def);
-      if (!entry) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
-    }
-    if (side === 'sell' && opts?.operationCustody !== true) {
-      const free = sealedSellFree(state, commodityId, qty);
-      if (free != null) {
-        return {
-          ok: false, reason: 'mission_cargo_locked',
-          ...(free > 0 ? { free } : {}),
-          unitAvg: entry.lastSell || 0, total: 0,
-          priceImpactPct: 0, stockAfter: entry.stock,
-        };
+      if (free == null && !refusal) {
+        entry = this.eagerMarketMint
+          ? this._deferListingMint(stationId, def)
+          : this.mintUnseededListing(stationId, def);
+        if (!entry) return { ok: false, reason: 'untraded', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
       }
     }
-    // Alien Ecology AE-077 — a faction with `refuses` will not intake biohazard lots at all:
-    // custody refusal, not a price. Recomputed listings still carry the policy driver as the
-    // explanation; execution and automation intake both flow through this quote gate.
-    if (side === 'sell' && def.biohazard === true && info && info.factionId) {
-      const policy = contaminationSaleMult(state, info.sectorId, info.factionId);
-      // AE-128 (K03): a fitted Containment Seal carries registry quarantine paperwork —
-      // refusing stations accept the lot under sealed custody instead of turning you away.
-      const sealed = policy && policy.refuses === true
-        && fittedModuleDefs(state).some((d) => d && d.mods && d.mods.containmentSeal === true);
-      if (policy && policy.refuses === true && !sealed) {
-        return {
-          ok: false, reason: 'contamination_refusal', policyNote: policy.note || null,
-          unitAvg: entry.lastSell || 0, total: 0, priceImpactPct: 0, stockAfter: entry.stock,
-          legalityWarning: def.legality !== 'legal' ? def.legality : null,
-        };
-      }
+    if (free != null) {
+      return {
+        ok: false, reason: 'mission_cargo_locked',
+        ...(free > 0 ? { free } : {}),
+        unitAvg: entry?.lastSell || 0, total: 0,
+        priceImpactPct: 0, stockAfter: entry?.stock ?? 0,
+      };
+    }
+    if (refusal) {
+      return {
+        ok: false, reason: 'contamination_refusal', policyNote: refusal.note || null,
+        unitAvg: entry?.lastSell || 0, total: 0, priceImpactPct: 0, stockAfter: entry?.stock ?? 0,
+        legalityWarning: def.legality !== 'legal' ? def.legality : null,
+      };
     }
     const standingBase = priceModForState(state, info && info.factionId);
     // THE WORLD REMEMBERS — a strike worsens what this berth pays the player; a blockade makes
@@ -5908,13 +5919,7 @@ export const economy = {
   /** Active fitted smuggling capabilities. Derived ship stats are the live authority; the
    * efficiency bag remains a migration fallback for older saves/tools. */
   smugglingCapabilities(state) {
-    const entity = state.entities && state.entities.get && state.entities.get(state.playerId);
-    const derived = (entity && entity.data && entity.data.derived) || (state.player && state.player.derived) || {};
-    const legacy = state.player && state.player.efficiencyMods || {};
-    return {
-      hiddenCargoPct: clamp(Number(derived.hiddenCargoPct != null ? derived.hiddenCargoPct : legacy.hiddenCargoPct) || 0, 0, 1),
-      scannerCloak: clamp(Number(derived.scannerCloak != null ? derived.scannerCloak : legacy.scannerCloak) || 0, 0, 1),
-    };
+    return readSmugglingCapabilities(state);
   },
 
   // Where this scan can physically see a rock cache. The sector is the scan's
@@ -5948,29 +5953,7 @@ export const economy = {
 
   /** List scan-exposed illicit stacks currently in the hold: [{ commodityId, qty, def }]. */
   illicitCargo(state, coverage) {
-    let all = [];
-    const items = state.player.cargo.items;
-    for (const id in items) {
-      const def = commodityDef(state, id);
-      if (def && def.legality && def.legality !== 'legal') all.push({ commodityId: id, qty: items[id], def });
-    }
-    const caps = this.smugglingCapabilities(state);
-    const hiddenCapacity = hiddenHoldCapacity({
-      capVolume: state.player.cargo.capVolume,
-      hiddenCargoPct: caps.hiddenCargoPct,
-    });
-    if (hiddenCapacity > 0) all = remainingIllicit({ stacks: all, hiddenCapacity }).exposedStacks.map((stack) => ({
-      commodityId: stack.commodityId, qty: stack.qty, def: commodityDef(state, stack.commodityId),
-    }));
-    const combined = new Map(all.map(stack => [stack.commodityId,
-      { ...stack, holdQty: stack.qty, bayQty: 0 }]));
-    // The external bay is not the fitted hidden hold; customs owns its verdict.
-    for (const [id, raw] of Object.entries(state.player.salvageBay?.items || {})) {
-      const def = commodityDef(state, id), qty = Math.max(0, Math.floor(Number(raw) || 0));
-      if (!def || !def.legality || def.legality === 'legal' || !qty) continue;
-      const row = combined.get(id) || { commodityId: id, qty: 0, holdQty: 0, bayQty: 0, def };
-      row.bayQty += qty; row.qty += qty; combined.set(id, row);
-    }
+    const combined = onboardIllicitCargo(state);
     // Rock goods are not the fitted hold and not the salvage bay. A hidden hold
     // must not cover them, and a sealed bore must not cover what is still aboard.
     const scan = coverage === undefined ? this._deadDropScanCoverage(null) : coverage;

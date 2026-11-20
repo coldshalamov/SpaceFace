@@ -64,11 +64,15 @@ test('packaged-startup observation follows the source pin rather than a hard-cod
   }
 });
 
-test('public recovery CLI defaults off and accepts only the explicit packaged-route opt-in', () => {
+test('packaged startup selects the public mode and keeps campaign recovery in Adventure', () => {
   const parse = actualScriptFunction('parsePackagedStartupArgs');
-  assert.deepEqual(parse([]), { publicRecovery: false, help: false });
-  assert.deepEqual(parse(['--public-recovery']), { publicRecovery: true, help: false });
-  assert.deepEqual(parse(['--help']), { publicRecovery: false, help: true });
+  assert.deepEqual(parse([]), { route: 'adventure', publicRecovery: false, help: false });
+  assert.deepEqual(parse(['--public-recovery']), { route: 'adventure', publicRecovery: true, help: false });
+  assert.deepEqual(parse(['--route=swarm']), { route: 'swarm', publicRecovery: false, help: false });
+  assert.deepEqual(parse(['--help']), { route: 'adventure', publicRecovery: false, help: true });
+  assert.throws(() => parse(['--route=swarm', '--public-recovery']), /requires the Adventure route/);
+  assert.throws(() => parse(['--route=swarm', '--route=adventure']), /duplicate argument/);
+  assert.throws(() => parse(['--route=gauntlet']), /unknown packaged route/);
   assert.throws(() => parse(['--public-recovery', '--public-recovery']), /duplicate argument/);
   assert.throws(() => parse(['--context-recovery']), /unknown argument/);
 });

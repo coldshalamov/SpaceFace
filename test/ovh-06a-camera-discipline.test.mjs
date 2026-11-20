@@ -137,18 +137,6 @@ test('two hero beats 0.3 s apart get one hitstop, and the simulation clock never
   assert.equal(rig2.ctrl.holdRemaining(), 0);
 });
 
-test('BOSS DOWN is a presentation-only camera hold through the gate, once per 0.8 s', () => {
-  const { state, bus, ctrl, gate } = rig();
-  const before = state.timeScale;
-  bus.emit('swarm:bossDown', { name: 'X', wave: 8 });
-  const held = ctrl.holdRemaining();
-  assert.ok(held >= 0.04 && held <= 0.06, `40-60 ms (got ${held})`);
-  state.simTime += 0.3;
-  bus.emit('swarm:bossDown', { name: 'Y', wave: 8 });
-  assert.equal(gate.events().filter((e) => e.kind === 'hitstop' && e.cause === 'bossBreak' && e.ok).length, 1);
-  assert.equal(state.timeScale, before, 'the simulation clock is never touched');
-});
-
 test('a hero beat is admitted one at a time', () => {
   const gate = createCameraGate();
   assert.ok(gate.motion('trauma', 'ploughKill', 0.5, 5) > 0);

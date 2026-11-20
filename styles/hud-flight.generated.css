@@ -884,7 +884,7 @@
     /* ORRERY phone band: the dock rides the same reserved lane above the cluster as
        the drive tape (hud.js ≤640px rule), so the cluster's key crescent and keytags
        keep the whole bottom-right strip instead of printing through the radar. */
-    #hud[data-hud="orrery"] .sf-rightdock { bottom:calc(24px + var(--orr-cluster-h, 240px) + 8px); }
+    :root[data-sf-mobile-flight="1"] #hud[data-hud="orrery"] .sf-rightdock { bottom:calc(24px + var(--orr-cluster-h, 240px) + 8px); }
     /* D261: power-rail sockets print "Pull · Draws in, key 1" — at phone width the
        verb word truncates to an unreadable stub ("PU… 1"). Keep icon + key cap; the
        full sentence stays on the socket's accessible name and tip. */
@@ -1291,6 +1291,21 @@
   .sf-commtape .sf-comm-backlog-btn {
     position:static !important; left:auto !important; top:auto !important; z-index:auto !important;
     width:auto !important; height:auto !important; margin:0 !important;
+  }
+  /* The tracker column's own COMMS chip flows above its comms feed (comms.js adopts it into
+     .sf-leftcontext). The fixed corner seat it kept in ui.css painted over the tracker heading
+     whenever both were up (bench flight-speaker 2026-11-14). */
+  .sf-leftcontext .sf-comm-backlog-btn {
+    position:static !important; left:auto !important; top:auto !important; z-index:auto !important;
+    width:auto !important; height:auto !important; margin:0 0 5px !important;
+    display:inline-flex; align-self:flex-start; padding:3px 10px;
+  }
+  /* The HAIL host rides the same column, beside the COMMS chip. position:relative (not static):
+     it stays the containing block for its absolute popover panel, as the commtape variant below. */
+  .sf-leftcontext #sf-contact-hail {
+    position:relative !important; left:auto !important; top:auto !important; z-index:auto !important;
+    width:auto !important; height:auto !important; margin:0 0 5px !important;
+    display:inline-flex; align-self:flex-start;
   }
   /* #sf-contact-hail stays position:relative, not static: it is the containing block for its
      absolute popover panel (anchored at the button), and it needs a real z-index in #hud's
@@ -2637,8 +2652,11 @@
   #hud .sf-overview-row { border-bottom:1px solid var(--dp-metal-3); transition:background var(--dp-d-cut) var(--dp-ease-lamp); }
   #hud .sf-overview-row:hover { background:rgb(242 185 80 / .09); }
   #hud .sf-overview-row__name { color:var(--hud-paper); }
+  /* Secondary roster words ride paper too, not muted: the roster has no plate, and the captured
+     lesson at the top of this sheet (2026-10 - the range readout unreadable over a lit planet
+     limb) applies to the class/state words the same as the name. Hierarchy holds by position. */
   #hud .sf-overview-row__right, #hud .sf-overview-row__detail,
-  #hud .sf-overview-row__state, #hud .sf-overview-row__tier, #hud .sf-overview-footer { color:var(--hud-muted); }
+  #hud .sf-overview-row__state, #hud .sf-overview-row__tier, #hud .sf-overview-footer { color:var(--hud-paper); }
   /* Collapsed roster: the count line (no instrument title — j07 contract). An etched contact
      diamond, the radar's own mark, sits before the reading so "24" reads as a scope count. */
   #hud .sf-overview--count .sf-overview-footer {
@@ -3443,10 +3461,8 @@
     pointer-events:none!important;
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud .sf-mission-tracker .sf-mt-dial { display:none!important; }
-  /* MOB-07: a live Swarm round on a phone. The round panel is ONE line under the vitals strip,
-     "R01 · 15/15 · 0" (round, hostiles left, score); tapping it opens the full panel (arena, phase,
-     credits, level, XP). A boss bar and the cause-of-death line stay up beside it; the chain figure
-     already lives in the centre column below. */
+  /* The compact round line opens the full panel when tapped. Boss, death and active
+     Foundry guidance stay visible without expansion. */
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] #hud > .sf-leftcontext > .sf-crun { gap:4px; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-crun__brief {
     display:block; box-sizing:border-box; width:100%; margin:0; padding:5px 8px; text-align:left;
@@ -3458,7 +3474,7 @@
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-crun:not(.is-open) > :is(.sf-crun__label,.sf-crun__row,.sf-crun__hero,.sf-crun__intro,.sf-crun__chain,.sf-crun__threat:not(.sf-crun__boss),.sf-crun__track--xp,.sf-crun__earn,.sf-crun__mods) { display:none!important; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-crun.is-open > :not(.sf-crun__brief) { padding-inline:8px; background:var(--dp-glass-flight,rgb(5 7 10 / .88)); }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-crun.is-open > .sf-crun__row--figs { padding-block:4px; }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-crun__boss, :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-crun__death { padding:2px 8px; background:var(--dp-glass-flight,rgb(5 7 10 / .88)); border-radius:4px; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] :is(.sf-crun__boss,.sf-crun__death,.sf-crun__guidance) { padding:2px 8px; background:var(--dp-glass-flight,rgb(5 7 10 / .88)); border-radius:4px; }
   /* The centre column keeps to ONE lane, clear of the vitals, the round line and the radar:
      callouts, the boss bar (with the move's word folded in) and the round slam. The chain is
      just its number inside the round line (survivalHud brief), so the hero panel is hidden. */
@@ -3468,7 +3484,7 @@
   }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__hero { display:none; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__herofig { font-size:34px; }
-  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__herotier { font-size:11px; letter-spacing:.14em; max-width:100%; }
+  :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__herotier { font-size:12px; letter-spacing:.06em; max-width:100%; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__call { font-size:clamp(15px,4.6vw,22px); letter-spacing:.1em; text-align:center; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__slamtitle { font-size:clamp(24px,8vw,40px); letter-spacing:.1em; text-align:left; }
   :root[data-sf-mobile="1"][data-sf-mobile-flight="1"] .sf-sj__slamsub { text-align:left; }

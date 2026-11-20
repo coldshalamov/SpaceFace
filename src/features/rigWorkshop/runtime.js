@@ -8,7 +8,7 @@ import { createWorkshopJobs, RIG_JOB_DEFS, rigJobAvailability } from './jobs.js'
 import { captureRigWorkshop, restoreRigWorkshop } from './persistence.js';
 import { explainWorkshopReason, PART_BUTTONS } from './text.js';
 import { isRacingCorridorSession } from '../../world/racingCorridor.js';
-import { isGuidedOnboardingActive } from '../../onboarding/opportunityAdmission.js';
+import { isFirstFreightActive, isGuidedOnboardingActive } from '../../onboarding/opportunityAdmission.js';
 import { readTensionSensors } from '../../systems/tensionDirector.js';
 import { counted } from '../../core/numberFormat.js';
 
@@ -21,6 +21,19 @@ const at = e => e && e.alive !== false && e.pos;
 const speed = e => Math.hypot(e?.vel?.x || 0, e?.vel?.z || 0);
 const BENCH_RADIUS = 150;
 const cleanName = name => String(name || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 32);
+
+function missionStillOwnsForeground(state) {
+  if (isFirstFreightActive(state)) return true;
+  const active = state.missions?.active;
+  if (!Array.isArray(active)) return false;
+  const now = state.simTime || 0;
+  const trackedId = state.ui?.trackedMissionId;
+  const course = state.nav?.waypoint;
+  const routeId = course?.kind === 'mission' ? course.missionId : null;
+  if (trackedId == null && routeId == null) return false;
+  return active.some(mission => mission?.status === 'active' && finite(mission.deadline_s)
+    && mission.deadline_s > now && mission.id != null && (mission.id === trackedId || mission.id === routeId));
+}
 
 function encounterStillOwnsForeground(state) {
   const live = state?.encounterDirector?.live;
@@ -106,6 +119,10 @@ export function createRigWorkshopSystem() {
     get activeRig() { return this.workshop.rigs.find(r => r.id === this.workshop.activeRigId) || this.workshop.rigs[0] || null; },
     get player() { return this.state.entities?.get(this.state.playerId); },
     _home() { return this.workshop.bench?.sectorId === this.state.world?.currentSectorId; },
+    _returningToBench() {
+      const sectorId = this.workshop.bench?.sectorId;
+      return !!sectorId && !this._home() && this.state.nav?.route?.legs?.at(-1)?.to === sectorId;
+    },
     _atBench() { return this._home() && at(this.player) && dist(this.player.pos, this.workshop.bench.pos) <= BENCH_RADIUS; },
     _rigAtBench() {
       const rig = this.activeRig;
@@ -126,9 +143,8 @@ export function createRigWorkshopSystem() {
       if (!isWorkshopAdventure(this.state) || isGuidedOnboardingActive(this.state)) return false;
       this.place();
       if (!this.workshop.bench) return false;
-      if (encounterStillOwnsForeground(this.state)) {
-        this.workshop.introPending = true;
-        this.workshop.introduced = false;
+      if (missionStillOwnsForeground(this.state) || encounterStillOwnsForeground(this.state) || this._returningToBench()) {
+        this._deferIntro();
       } else if (this._atBench()) {
         this.workshop.introPending = false;
         this.workshop.introduced = true;
@@ -187,29 +203,23 @@ export function createRigWorkshopSystem() {
       const near = this._atBench();
       if (!offersDeferred) {
         if (near) this._farPromptOffered = false;
-        const encounterOwnsForeground = encounterStillOwnsForeground(state);
-        if (encounterOwnsForeground && this._page === 'intro') {
-          // An optional first-look card yields to a live timed encounter. Since an
-          // unoffered intro remains `introduced:false`, the ordinary save slot keeps
-          // it pending across reload without another prompt ledger.
-          this.workshop.introduced = false;
-          this._close();
-        }
-        if (near && !this._near && now >= (this.workshop.declinedUntil || 0) && !encounterOwnsForeground) {
+        const foregroundBusy = missionStillOwnsForeground(state) || encounterStillOwnsForeground(state);
+        if (foregroundBusy) this._deferIntro();
+        const canOffer = !foregroundBusy && !this._returningToBench() && now >= (this.workshop.declinedUntil || 0);
+        if (near && !this._near && canOffer) {
           this.workshop.introPending = false;
           this.workshop.introduced = true;
           this._showBench();
         } else if ((!this.workshop.introduced || this.workshop.introPending) && !this.workshop.prompt
-          && this.workshop.bench && now >= (this.workshop.declinedUntil || 0)
-          && !encounterOwnsForeground) {
+          && this.workshop.bench && canOffer) {
           this._showIntro();
         } else if (!near && this._near && this._page !== 'intro') {
           this.physics.cancelPreview(this.workshop);
           this._close();
         }
-        this._near = encounterOwnsForeground ? false : near;
+        this._near = !foregroundBusy && near;
         // Field verbs stay reachable through the same deck once the bench falls behind.
-        if (!near && this.activeRig && !this.workshop.prompt && now >= (this.workshop.declinedUntil || 0)) {
+        if (!near && this.activeRig && !this.workshop.prompt && canOffer) {
           const body = this.activeRig.partIds.map(id => state.entities.get(id)).find(e => at(e));
           if (body && dist(body.pos, this.player?.pos) < 150) { this._farPromptOffered = false; this._showField(); }
           else if (!this._farPromptOffered) { this._farPromptOffered = true; this._showAway(); }
@@ -230,6 +240,10 @@ export function createRigWorkshopSystem() {
     choose(payload) {
       const prompt = this.workshop.prompt;
       if (!prompt || payload?.promptId !== prompt.id || payload.revision !== prompt.revision) return false;
+      if (this._page === 'intro' && missionStillOwnsForeground(this.state)) {
+        this._deferIntro();
+        return false;
+      }
       const action = this._actions.get(payload.choiceId);
       if (!action) return false;
       this._actions.clear(); // consume before action; repeated taps cannot commit twice
@@ -256,7 +270,7 @@ export function createRigWorkshopSystem() {
       }
       let result = { ok: true };
       if (action === 'open') { this.place(); this._atBench() ? this._showBench() : this._showIntro(); }
-      else if (action === 'visit') { w.introPending = false; this.jobs.guide(w, 'bench'); this._close(); }
+      else if (action === 'visit') { w.introPending = !this._home(); this.jobs.guide(w, 'bench'); this._close(); }
       else if (action === 'later' || action === 'close') {
         if (this._page === 'intro') w.introPending = false;
         this.physics.cancelPreview(w); w.declinedUntil = (this.state.simTime || 0) + 20; this._close();
@@ -356,10 +370,15 @@ export function createRigWorkshopSystem() {
       if (this.workshop) this.workshop.prompt = null;
       this._actions?.clear(); this._page = null; this._promptSignature = null;
     },
+    _deferIntro() {
+      if (this._page !== 'intro') return;
+      this.workshop.introduced = false;
+      this._close();
+    },
     _showIntro() {
       const offered = this._show('intro', 'RATCHET · A workshop, two loan machines',
         'Build a machine from six real parts; eight reclaimed parts on the bench, no fitting fee.', [
-          this._option('visit', 'Mark the nearby bench', 'visit'),
+          this._option('visit', this._home() ? 'Mark the nearby bench' : 'Plot route to the workshop', 'visit'),
           this._option('later', 'Not now', 'later', {}, { cancel: true }),
         ]);
       if (offered) {

@@ -11,6 +11,9 @@ import {
   tileIndex,
 } from '../src/systems/drill.js';
 import { directLawReceiptText } from '../src/ui/sectorLawPresenter.js';
+import { tileLensModel } from '../src/ui/asteroid/inspector.js';
+import { world } from '../src/systems/world.js';
+import { applyResourceBodyToEntity, deserializeResourceBodyBag } from '../src/world/resourceBodyRecords.js';
 
 function harness(asteroidData, cargoOverrides = {}) {
   const events = [];
@@ -223,12 +226,69 @@ test('budget remaining after a session is lower on the next begin (depletion per
   assert.ok(asteroid.data.drillDepletion > 0, 'depletion fraction written to entity');
 
   assert.equal(drill.begin(42), true);
-  // Re-entry applies richness once to the unscaled remainder. It must stay under the fresh pool.
-  // Comparing it to the already-scaled mid-session budget would require scaling richness twice.
-  assert.ok(
-    state.drill.rockBudget < budgetStart,
-    `re-entry must not restore full budget (start ${budgetStart}, mid ${budgetMid}, reentry ${state.drill.rockBudget})`,
-  );
+  assert.equal(state.drill.rockBudget, budgetMid, 're-entry at the same time and richness restores the remaining stock');
   assert.ok(state.drill.rockBudget > 0, 'a rock that still had budget must not read empty');
+  drill.end();
+});
+
+test('the face quotes the hold and the drill refuses a bulky vein before cutting it', () => {
+  const { state, cargo, events } = harness({ yieldU: 20 }, { usedVolume: 99.5 });
+  drill.begin(42);
+  const d = state.drill;
+  const { col } = d.avatar;
+  const ore = 'cmdty_silicate';
+  const tile = { type: 'vein', ore, yieldU: 6, hp: 4, maxHp: 4, tierReq: 1, hardness: 1 };
+  d.field[col][1] = tile;
+  const aim = { down: true };
+  const quote = () => drill.getTargetTelemetry(col, 1);
+  const labels = () => tileLensModel({ tile, telemetry: quote() }).chips.map(chip => chip.text);
+
+  assert.deepEqual(quote().cut, { bank: 0, kept: 6, spent: 0 });
+  assert.ok(labels().includes('No hold space'));
+  drill.tickInput(aim, 1 / 60, { impulse: true });
+  assert.equal(tile.hp, 4);
+  assert.equal(d.drillTemp, 0);
+  assert.equal(events.filter(e => e.type === 'drill:cargoFull').length, 1);
+
+  cargo.usedVolume = 98;
+  assert.ok(labels().includes('Bore 2u'));
+  assert.ok(labels().includes('Stays in vein 4u'));
+  drill.tickInput(aim, 0.25);
+  assert.equal(cargo.items[ore], 2);
+  assert.equal(tile.yieldU, 4);
+  assert.equal(tile.hp, 0);
+  cargo.usedVolume = 96;
+  assert.ok(labels().includes('Collect 4u'));
+  drill.tickInput(aim, 1 / 60, { impulse: true });
+  assert.equal(cargo.items[ore], 6);
+  assert.equal(d.field[col][1].type, 'empty');
+  drill.end();
+});
+
+test('an unclaimed bore follows the rock through save data and rematerialization', () => {
+  const { state, asteroid } = harness({ yieldU: 16, activityObjectSlotId: 'starter-rock' });
+  asteroid.pos = { x: 20, z: 0 };
+  const worldSys = Object.create(world);
+  worldSys.state = state;
+  drill.registry = new Map([['world', worldSys]]);
+  drill.begin(42);
+  const spot = breakVeinBelow(state, 'cmdty_silicate', 3);
+  const budget = state.drill.rockBudget;
+  drill.end();
+
+  const serialized = JSON.parse(JSON.stringify(state.world.resourceBodies));
+  const bag = deserializeResourceBodyBag(serialized);
+  const record = bag.byId[asteroid.data.resourceBodyId];
+  assert.equal(record.retentionClass, 'protected');
+  const returned = {
+    id: 43, type: 'asteroid', alive: true, data: { fieldId: 'field_a', activityObjectSlotId: 'starter-rock' },
+  };
+  state.entities.delete(42);
+  state.entities.set(43, returned);
+  applyResourceBodyToEntity(returned, record);
+  drill.begin(43);
+  assert.equal(returned.data.boreSeed, 42);
+  assert.equal(state.drill.field[spot.col][spot.row].type, 'empty');
+  assert.equal(state.drill.rockBudget, budget);
   drill.end();
 });

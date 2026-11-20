@@ -7,12 +7,13 @@ import { missions } from '../src/systems/missions.js';
 import { economy } from '../src/systems/economy.js';
 import { cargo } from '../src/systems/cargo.js';
 import { stationContacts } from '../src/systems/stationContacts.js';
+import { furnaceWorksiteFocus } from '../src/missions/furnaceWorksite.js';
 import { fakeDom } from './helpers/fake-dom.mjs';
 
 // Mount the production controller. This small DOM models its text, focus and scroll calls,
 // not a browser's CSS geometry. Actual compact geometry has a separate browser regression.
 function mount(setup) {
-  const saved = Object.fromEntries(['document', 'window', 'requestAnimationFrame', 'cancelAnimationFrame'].map(k => [k, globalThis[k]]));
+  const saved = Object.fromEntries(['document', 'window', 'getComputedStyle', 'requestAnimationFrame', 'cancelAnimationFrame'].map(k => [k, globalThis[k]]));
   const doc = fakeDom(), make = doc.createElement, frames = new Map(); let frameId = 0;
   const unescape = text => text.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
   doc.createElement = tag => {
@@ -74,6 +75,7 @@ function mount(setup) {
   doc.querySelector = () => null; doc.querySelectorAll = () => [];
   doc.addEventListener = () => {}; doc.removeEventListener = () => {};
   globalThis.document = doc; globalThis.window = { addEventListener() {}, removeEventListener() {}, devicePixelRatio: 1 };
+  globalThis.getComputedStyle = node => ({ position: node.style.position || 'static' });
   globalThis.requestAnimationFrame = fn => { frames.set(++frameId, fn); return frameId; };
   globalThis.cancelAnimationFrame = id => frames.delete(id);
   const sim = createSimulation({ seed: 4242, systems: [missions, economy, cargo, stationContacts], updateOrder: [] });
@@ -106,6 +108,47 @@ function open(h, id = 'contact_station_ceres_0') {
   button.setAttribute('data-contact', id); rail.appendChild(button); button.click();
 }
 const said = h => h.stage.querySelector('.sx-talk__reply')?.textContent || '';
+
+test('tracking the local Furnace job confirms its name and leaves its instructions on the waypoint', () => {
+  const h = mount(setup);
+  try {
+    h.sim.state.ui.docked = false;
+    h.sim.state.missions.active[0].title = 'Furnace Detail';
+    const notices = [];
+    h.sim.bus.on('toast', event => notices.push(event.text));
+    h.sim.bus.emit('ui:trackMission', { missionId: 'furnace-ui' });
+    assert.equal(h.sim.state.ui.trackedMissionId, 'furnace-ui');
+    assert.match(h.sim.state.nav.waypoint.reason, /marked repair-mite sites/);
+    assert.deepEqual(notices.filter(line => line.startsWith('Tracking:')), ['Tracking: Furnace Detail']);
+  } finally { h.close(); }
+});
+
+test('Furnace flight cues show progress, the usable controls and the next action', () => {
+  const h = mount(setup);
+  try {
+    const state = h.sim.state;
+    const job = state.missions.active[0];
+    const hint = () => furnaceWorksiteFocus(job, state).reason;
+    job.objectiveProgress = 2;
+    state.bombs = { rack: { cells: [{ id: 'bomb_frag', count: 1 }] } };
+    state.settings.gameplay.powerFire = 'hold';
+    assert.equal(hint(), '2/4 marked repair-mite sites clear. Use Frag from the east. Hold Bomb. Dashes warn of a mite moving clear. Double rings warn of Casket damage.');
+    state.settings.gameplay.powerFire = 'press';
+    state.bombs.rack.cells[0].count = 0;
+    assert.equal(hint(), '2/4 marked repair-mite sites clear. Use Frag from the east. Keep Caskets clear. Reload Frag at Tethys or Helios.');
+
+    job.objectiveProgress = 4;
+    job.params.furnaceFeeds = 1;
+    job.params.furnaceLosses = 1;
+    const [received, lost, pending] = job.params.furnaceLots;
+    received.received = true;
+    lost.lost = true;
+    assert.equal(hint(), '1/3 pods received · 1 lost. Tow from the current marked load position or hail CR-FEED.');
+    const held = h.sim.spawn({ type: 'payload', pos: { ...pending.pos }, flags: { tethered: true } });
+    pending.entityId = held.id;
+    assert.equal(hint(), '1/3 pods received · 1 lost. Release the pod into the amber ring.');
+  } finally { h.close(); }
+});
 
 test('the Ceres host reads the live slip in one line and opens the Mission Log once', () => {
   const h = mount(setup);

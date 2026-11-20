@@ -430,6 +430,36 @@ test('a one-tick near respawn never half-blends; a normal hop still interpolates
     `a sub-bar hop still blends: ${mesh.position.x}`);
 });
 
+test('the pose writer refuses an older occupant before mutating its recycled mesh', () => {
+  const fence = createSnapshotFence({ capacity: 4 });
+  const mesh = meshStub();
+  mesh.position.x = -25;
+  const before = structuredClone(mesh);
+  const origin = { x: 0, z: 0 };
+
+  const old = fence.beginPack(1, 0, 3, 1);
+  const oldRow = old.write(PLAYER_ID, 0, 10, 0, 20, 0, 0, 0, 1, 1, 1, 1, 0);
+  old.setGeneration(oldRow, 1);
+  old.slotRows[0] = oldRow;
+  fence.commit();
+
+  assert.equal(applySnapshotPoseToMesh(mesh, fence.latestSnapshot(), PLAYER_ID, origin, null, 1, 0, 2), false);
+  assert.deepEqual(mesh, before, 'a completed pack for the prior occupant cannot write any pose');
+
+  const current = fence.beginPack(1, DT, 3, 1);
+  const currentRow = current.write(PLAYER_ID, 0, 16, 0, 24, 0, 0, 0, 1, 1, 1, 1, 0);
+  current.setGeneration(currentRow, 2);
+  current.slotRows[0] = currentRow;
+  fence.commit();
+
+  const latest = fence.latestSnapshot();
+  const previous = fence.previousSnapshot();
+  assert.equal(applySnapshotPoseToMesh(mesh, latest, PLAYER_ID + 1, origin, previous, 0.5, 0, 2), false);
+  assert.deepEqual(mesh, before, 'a slot hint for a missing identity cannot write a pose');
+  assert.equal(applySnapshotPoseToMesh(mesh, latest, PLAYER_ID, origin, previous, 0.5, 0, 2), true);
+  assert.deepEqual(mesh.position, { x: 16, y: 0, z: 24 }, 'the arriving occupant never blends the retired pose');
+});
+
 test('a new-epoch transition serves no newer previous pack than its presented latest', () => {
   // 5 old-sector packs then 3 new-sector packs: the presented bracket is the oldest new pack
   // at alpha 0. The old previousSnapshot() fell through to the newest previous/latest pair —

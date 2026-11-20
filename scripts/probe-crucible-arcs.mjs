@@ -72,8 +72,8 @@ try {
 
   await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 150_000 });
-  await page.waitForSelector('[data-action="crucible"]', { state: 'attached', timeout: 60_000 });
-  await pressTitleAction(page, 'crucible');
+  await page.waitForSelector('[data-action="swarm"]', { state: 'attached', timeout: 60_000 });
+  await pressTitleAction(page, 'swarm');
   await page.waitForFunction(
     () => !!document.querySelector('.sf-crucible, [data-screen="crucible"], [data-action]'),
     null, { timeout: 60_000 },

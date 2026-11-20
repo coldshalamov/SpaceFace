@@ -339,19 +339,19 @@ test('swarm events validate, draw deterministically, and leave boss rounds to th
 
 // ── S6.7 — demo flies one round; buying keeps it ─────────────────────────────
 
-test('a demo strips at the next armory; the bought copy stays fitted', () => {
+test('Expert can borrow a gun without credits and the loan ends at the next armory', () => {
   const h = boot();
-  beginSwarm(h, { stake: 'exhibition' });
-  landPurse(h, 'exhibition');
+  beginSwarm(h, { stake: 'ironbound' });
+  landPurse(h, 'ironbound');
   transition(h, 'loadout', 'draft');
   const offers = survivalDraft.currentOffers();
-  const demoable = offers.find((o) =>
-    Number.isInteger(o.slotIndex) && typeof o.defId === 'string' && o.kind === 'number');
-  assert.ok(demoable, 'the shelf has a fittable card to demo');
+  const demoable = offers.find((o) => o.borrowAvailable);
+  assert.ok(demoable && !demoable.available, 'a compatible gun can be borrowed when it cannot be bought');
   const { slotIndex, defId } = demoable;
   // Demo it — free fit for the round.
   h.bus.emit('run:draftPickRequested', { offerId: demoable.id, demo: true });
   assert.equal(activeFittings(h)[slotIndex], defId, 'the demo is fitted');
+  assert.equal(h.state.run.credits, 0);
   // Launch: resolve, walk the round, come back through cleanup to the next armory.
   h.bus.emit('run:draftPickRequested', { offerId: null });
   h.state.run.wave = 1;
@@ -361,6 +361,26 @@ test('a demo strips at the next armory; the bought copy stays fitted', () => {
   transition(h, 'cleanup', 'draft');
   assert.equal(activeFittings(h)[slotIndex] === defId, false,
     'the demo copy is stripped when the next armory opens');
+  assert.equal(survivalDraft.currentOffers().some(offer => offer.borrowAvailable), false);
+});
+
+test('a stale installation quote spends nothing and the current quote installs exactly once', () => {
+  const h = boot();
+  beginSwarm(h, { stake: 'exhibition' });
+  landPurse(h, 'exhibition');
+  transition(h, 'loadout', 'draft');
+  const offer = survivalDraft.currentOffers().find(item => item.available && Number.isInteger(item.slotIndex));
+  assert.ok(offer);
+  const before = h.state.run.credits;
+  const quote = { price: offer.price, slotIndex: offer.slotIndex, replaces: offer.replaces, replacesTrial: offer.replacesTrial };
+  const pick = { offerId: offer.id, quote: { ...quote, slotIndex: quote.slotIndex + 1 } };
+  h.bus.emit('run:draftPickRequested', pick);
+  assert.equal(h.state.run.credits, before);
+  assert.match(survivalDraft.lastNotice(), /target slot changed/);
+  assert.notEqual(activeFittings(h)[offer.slotIndex], offer.defId);
+  h.bus.emit('run:draftPickRequested', { offerId: offer.id, quote });
+  assert.equal(h.state.run.credits, before - offer.price);
+  assert.equal(activeFittings(h)[offer.slotIndex], offer.defId);
 });
 
 test('buying the demoed slot retires the trial — the run keeps it', () => {

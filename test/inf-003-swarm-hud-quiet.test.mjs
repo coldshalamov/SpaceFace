@@ -130,6 +130,21 @@ test('a steady swarm tick performs zero repeated DOM mutations', () => {
   }
 });
 
+test('the flight HUD names the selected mode and arena as shown at launch', () => {
+  const fx = mount();
+  try {
+    assert.equal(fx.dom().label.textContent, 'SWARM · RICOCHET FOUNDRY');
+    Object.assign(fx.state.run, { ruleset: 'scored', arenaId: 'tethys_hub' });
+    fx.step();
+    assert.equal(fx.dom().label.textContent, 'GAUNTLET · TETHYS EXCHANGE');
+    fx.state.run.practice = true;
+    fx.step();
+    assert.equal(fx.dom().label.textContent, 'PRACTICE · TETHYS EXCHANGE');
+  } finally {
+    fx.done();
+  }
+});
+
 test('threat census transitions still paint figure and meter at once', () => {
   const fx = mount();
   try {

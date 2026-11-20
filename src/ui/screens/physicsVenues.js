@@ -10,6 +10,7 @@ import { injectPhysicsRaceLayouts } from '../orrery/physics-raceLayouts.js';
 import { createLadderHand } from '../orrery/archiveInstruments.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { stagger, reducedMotion } from '../orrery/motion.js';
+import { syncScrollExtent } from '../orrery/scrollExtent.js';
 import { confirm } from '../confirm.js';
 import { listScenarios } from '../../gallery/orbital/catalog.js';
 import { EVENTS } from '../../sports/kineticLeague/circuit.js';
@@ -115,6 +116,10 @@ export const physicsVenuesScreen = {
       lane('league', 'Kinetic league', 'events', league, 'Kinetic League events'));
     root.append(hang, foot);
     this._lists = lists;
+    // the lanes' fold rule (physics-raceLayouts [data-overflow="1"]) only engages when the
+    // attribute is set: sync each lane so its cut row dissolves at the rim ("more below") and the
+    // extent cursor replaces the scrollbar the lane sheet hides (bench 1440x900)
+    for (const { scroll } of lists.values()) syncScrollExtent(scroll);
 
     // The Hand: one bone chevron per ladder (createLadderHand is single-host by design), the
     // idle lane's hand stood down, so a pick in either lane points and springs inside it.

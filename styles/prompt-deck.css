@@ -52,8 +52,8 @@
   contain: layout paint style;
   box-sizing: border-box;
   pointer-events: auto;
-  padding: 12px;
-  border-radius: 4px;
+  padding: 13px 14px;
+  border-radius: 7px;
   border: 1px solid rgb(236 230 216 / 0.14);
 }
 /* Demo-prep microinteraction: a NEW decision settles in once — promptDeck.js sets data-enter on
@@ -290,6 +290,57 @@ html.sf-reduce-motion .sf-prompt[data-enter]:not(.sf-prompt--leaving) { animatio
   }
 }
 
+/* The Cargo hold and a live decision have independent controls. Give each its own region
+   while both are open so a raised card cannot cover the hold's title, tabs or actions. */
+body.sf-cargo-open.sf-flight-decision-open {
+  --sf-cargo-deck-gap: 16px;
+  --sf-cargo-deck-width: min(364px, 32vw);
+}
+body.sf-cargo-open.sf-flight-decision-open #sf-prompt-deck {
+  top: 24px;
+  right: var(--sf-cargo-deck-gap);
+  bottom: auto;
+  left: auto;
+  width: var(--sf-cargo-deck-width);
+  max-height: calc(100dvh - 48px);
+  max-block-size: calc(100dvh - 48px);
+}
+body.sf-cargo-open.sf-flight-decision-open #hud .sf-cargo-panel.open {
+  left: calc((100vw - var(--sf-cargo-deck-width) - var(--sf-cargo-deck-gap)) / 2);
+  bottom: auto;
+  width: min(980px, calc(100vw - var(--sf-cargo-deck-width) - 3 * var(--sf-cargo-deck-gap)));
+}
+@media (max-width: 960px), (max-height: 620px) {
+  body.sf-cargo-open.sf-flight-decision-open {
+    --sf-cargo-deck-width: calc(100vw - 2 * var(--sf-cargo-deck-gap));
+    --sf-cargo-deck-height: min(40dvh, 280px);
+  }
+  body.sf-cargo-open.sf-flight-decision-open #sf-prompt-deck {
+    top: var(--sf-cargo-deck-gap);
+    height: calc(var(--sf-cargo-deck-height) - var(--sf-cargo-deck-gap));
+  }
+  body.sf-cargo-open.sf-flight-decision-open #hud .sf-cargo-panel.open {
+    left: var(--sf-cargo-deck-gap);
+    top: calc(var(--sf-cargo-deck-height) + var(--sf-cargo-deck-gap));
+    width: var(--sf-cargo-deck-width);
+    height: calc(100dvh - var(--sf-cargo-deck-height) - 2 * var(--sf-cargo-deck-gap));
+    transform: none;
+  }
+  body.sf-cargo-open.sf-flight-decision-open #hud .sf-cargo-body {
+    display: block;
+    overflow-y: auto;
+  }
+  body.sf-cargo-open.sf-flight-decision-open #hud .sf-cargo-panel__head { flex-wrap: wrap; gap: 8px; }
+  body.sf-cargo-open.sf-flight-decision-open #hud .sf-cargo-panel__close { margin-left: auto; }
+  body.sf-cargo-open.sf-flight-decision-open #hud .sf-cargo-left-rail {
+    width: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  body.sf-cargo-open.sf-flight-decision-open #hud .sf-cargo-rail-btn { width: auto; }
+  body.sf-cargo-open.sf-flight-decision-open #hud .sf-cargo-inspector { width: auto; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sf-prompt, .sf-prompt__choice, .sf-prompt-chip { transition: none !important; }
 }
@@ -302,10 +353,8 @@ html.sf-reduce-motion .sf-prompt[data-enter]:not(.sf-prompt--leaving) { animatio
    consumer card radius. ════════════════════════════════════════════════════════════════════════ */
 #sf-prompt-deck .sf-prompt {
   border: 1px solid var(--sf-pop-seam);
-  border-top: 2px solid var(--dp-phos);
-  border-radius: 2px;
   background: var(--sf-pop-glass), var(--dp-glass-solid);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 14px 32px -10px rgb(0 0 0 / 0.78);
+  box-shadow: var(--sf-pop-shadow);
   color: var(--dp-ink);
 }
 /* Attention states light the bezel itself rather than a consumer accent edge. */
@@ -318,12 +367,11 @@ html.sf-reduce-motion .sf-prompt[data-enter]:not(.sf-prompt--leaving) { animatio
   border-top-color: var(--dp-danger-hot);
 }
 #sf-prompt-deck .sf-prompt__head {
-  gap: 7px; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid var(--dp-rule-hi);
+  gap: 8px; padding-bottom: 7px; margin-bottom: 7px; border-bottom: 1px solid var(--dp-rule);
   font-family: var(--dp-face-read, "Instrument Sans", sans-serif);
   font-weight: 600;
   font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0.02em;
   color: var(--dp-ink-mute);
 }
 #sf-prompt-deck .sf-prompt__head::before {
@@ -345,11 +393,15 @@ html.sf-reduce-motion .sf-prompt[data-enter]:not(.sf-prompt--leaving) { animatio
 #sf-prompt-deck .sf-prompt__detail,
 #sf-prompt-deck .sf-prompt__content {
   font-family: var(--dp-face-read, "Instrument Sans", sans-serif);
-  letter-spacing: 0.015em;
-  word-spacing: 0.08em;
+  font-size: 13px;
+  letter-spacing: 0;
   color: var(--dp-ink-dim);
 }
 #sf-prompt-deck .sf-prompt__detail--urgent { color: var(--dp-danger-hot); }
+#sf-prompt-deck [data-deck-id="counterweightCircuit:decision"] .sf-prompt__detail {
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
 /* the meter is a recessed phosphor channel, not a painted progress bar */
 #sf-prompt-deck .sf-prompt-meter {
   background: var(--dp-metal-0);

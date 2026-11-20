@@ -496,11 +496,8 @@ export function resolveKillBeat(victimMass, opts = {}) {
  * Distance falloff for a camera shake raised by a WORLD event (a ship dying somewhere) rather than
  * by something happening to the player.
  *
- * `camera:shake` has 13 emitters and the consumer used to read only `{ amount }`, so a shake was a
- * scalar with no notion of where it came from — an NPC exploding at the far edge of the sector hit
- * the player's camera exactly as hard as one exploding on their nose. Emitters that are already
- * player-scoped by construction (player hit, player death, respawn, drill, tether) send no position
- * and are passed through untouched; emitters describing a world event send one and get attenuated.
+ * Apply distance falloff to an admitted, positioned hero beat. Proximity does not give generic
+ * world destruction a claim on the player's camera.
  *
  * Shape: full strength inside FULL_RADIUS, a 1/d rolloff beyond it, and a linear taper so the
  * contribution reaches exactly zero at CUTOFF_RADIUS instead of trailing off asymptotically. Trauma
@@ -516,6 +513,16 @@ export function shakeDistanceAttenuation(distanceWu) {
   const rolloff = SHAKE_FULL_RADIUS_WU / d;
   const taper = 1 - (d - SHAKE_FULL_RADIUS_WU) / (SHAKE_CUTOFF_RADIUS_WU - SHAKE_FULL_RADIUS_WU);
   return Math.max(0, Math.min(1, rolloff * taper));
+}
+
+/** Route the player's own cues and explicit hero events into the camera's shake budget. */
+export function cameraShakeAmountForPlayer(payload, playerPos) {
+  const amount = payload?.amount || 0.3;
+  const at = payload?.position;
+  if (at == null) return amount;
+  if (payload.audience !== 'hero') return 0;
+  if (!Number.isFinite(at.x) || !Number.isFinite(at.z) || !playerPos) return amount;
+  return amount * shakeDistanceAttenuation(Math.hypot(at.x - playerPos.x, at.z - playerPos.z));
 }
 
 export function traumaFromMomentumExchange(dp, context = {}) {
@@ -764,6 +771,11 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
   const _overheadPose = {};
   const _racingPose = {};
   let _exceptionalHold = 0;
+  let _fieldBuildActive = false;
+  let _fieldBuildBlend = 0;
+  let _fieldBuildPanX = 0;
+  let _fieldBuildPanZ = 0;
+  let _fieldBuildZoomMult = 2.35;
   let _anchorHoldX = 0;
   let _anchorHoldZ = 0;
   let _anchorHoldSimX = 0;
@@ -921,6 +933,35 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
     snapToPlayer() {
       return snapToEntity(readPlayerEntity(state));
     },
+    setFieldBuildMode(active) {
+      _fieldBuildActive = !!active;
+      if (!_fieldBuildActive && _fieldBuildBlend <= 0.001) {
+        _fieldBuildPanX = 0;
+        _fieldBuildPanZ = 0;
+      }
+    },
+    panFieldBuild(dx, dz, reset = false) {
+      if (reset) {
+        _fieldBuildPanX = 0;
+        _fieldBuildPanZ = 0;
+        return;
+      }
+      const maxPan = 2200;
+      _fieldBuildPanX = Math.max(-maxPan, Math.min(maxPan, _fieldBuildPanX + (Number.isFinite(dx) ? dx : 0)));
+      _fieldBuildPanZ = Math.max(-maxPan, Math.min(maxPan, _fieldBuildPanZ + (Number.isFinite(dz) ? dz : 0)));
+    },
+    setFieldBuildZoomMult(mult) {
+      if (Number.isFinite(mult)) _fieldBuildZoomMult = Math.max(1.25, Math.min(4.2, mult));
+    },
+    getFieldBuildState() {
+      return {
+        active: _fieldBuildActive,
+        blend: _fieldBuildBlend,
+        panX: _fieldBuildPanX,
+        panZ: _fieldBuildPanZ,
+        zoomMult: _fieldBuildZoomMult,
+      };
+    },
     // M2: on frameOriginSeq change, reproject local focus/camera so the frame does not one-frame jump.
     // Composition biases are relative and stay valid; director absolute focus is shifted by the same delta.
     reprojectFrame(dx, dz) {
@@ -1018,6 +1059,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         killGate.refuse('kill', state.simTime, 'killcam');
         return null;
       }
+      const holdS = opts.hold === false ? 0 : beat.holdS;
       if (beat.tier === 'light') {
         // G18-03 — the light tier's beat is the directed nudge, not the zoom kiss. It needs the
         // kill direction the presentation receipt carries (opts.direction); a direction-less or
@@ -1029,22 +1071,22 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         if (dx * dx + dz * dz <= 1e-12) return null;
         this.impactKick(dx, dz, beat.kickWu, killCause);
       } else {
-        if (!beat.zoom && beat.holdS <= 0) return null;
+        if (!beat.zoom && holdS <= 0) return null;
         // A hold is a frozen frame, not vestibular motion — deliberately NOT hold()'s reduce gate.
         // OVH-06a: a kill's frozen frame is hitstop, and hitstop belongs to hero beats only.
-        const heldS = beat.holdS > 0 && killGate ? killGate.hitstop(killCause, beat.holdS, state.simTime) : beat.holdS;
+        const heldS = holdS > 0 && killGate ? killGate.hitstop(killCause, holdS, state.simTime) : holdS;
         if (heldS > 0 && heldS > _holdT) _holdT = heldS;
         if (beat.zoom) this.pushZoom(beat.factor, beat.durationS);
       }
       _killBeatLog.push({
         tier: beat.tier,
         zoom: beat.zoom === true,
-        holdS: beat.holdS,
+        holdS,
         kick: beat.kick === true,
         tick: Number.isFinite(state && state.tick) ? state.tick | 0 : 0,
       });
       if (_killBeatLog.length > KILL_BEAT_LOG_CAP) _killBeatLog.shift();
-      return beat;
+      return holdS === beat.holdS ? beat : { ...beat, holdS };
     },
     // The bounded kill-beat trail the probe and tests read ("the camera log shows three distinct
     // kill beats"). Oldest first, at most KILL_BEAT_LOG_CAP entries.
@@ -1544,6 +1586,15 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
         targetZoom = Math.max(targetZoom, Math.min(_contextMinZoom, _contextZoomCap));
         targetZoom = Math.min(targetZoom, _contextZoomCap);
       }
+      _fieldBuildBlend = damp(_fieldBuildBlend, _fieldBuildActive ? 1 : 0, 7.5, frameDt);
+      if (!_fieldBuildActive && _fieldBuildBlend < 0.005) {
+        _fieldBuildBlend = 0;
+        _fieldBuildPanX = 0;
+        _fieldBuildPanZ = 0;
+      }
+      if (_fieldBuildBlend > 0) {
+        targetZoom *= 1 + (_fieldBuildZoomMult - 1) * _fieldBuildBlend;
+      }
       if (holding && !_deathCam) {
         // PQ-159.02 camera hold: freeze distance as well as look-at.
       } else if (directorOwnsComposition) {
@@ -1686,11 +1737,13 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       c.kickOffset.set(_kick.x, 0, _kick.z);
       const reduced = isMotionReduced(state);
       const stern = !!p && !_deathCam && resolveSteeringView(state, { death: _deathCam }) === 'racing';
-      _overheadPose.eyeX = c.focus.x + offset.x;
-      _overheadPose.eyeZ = c.focus.z + offset.z;
+      const panX = _fieldBuildPanX * _fieldBuildBlend;
+      const panZ = _fieldBuildPanZ * _fieldBuildBlend;
+      _overheadPose.eyeX = c.focus.x + panX + offset.x;
+      _overheadPose.eyeZ = c.focus.z + panZ + offset.z;
       _overheadPose.eyeY = offset.y;
-      _overheadPose.lookX = c.focus.x;
-      _overheadPose.lookZ = c.focus.z;
+      _overheadPose.lookX = c.focus.x + panX;
+      _overheadPose.lookZ = c.focus.z + panZ;
       racingRigOf(state && state.settings, _racingRig);
       const hullRadius = p && Number.isFinite(p.radius) ? Math.max(0, p.radius) : 0;
       _racingRig.distance = Math.max(_racingRig.distance, hullRadius * 2.2);
@@ -1698,7 +1751,7 @@ export function createChaseCamera(state, viewport = globalThis.window, projectio
       const pose = stepRacingCameraBlend(_racingBlend, frameDt, stern,
         p ? _playerLocalScratch : c.focus, p && p.rot, playerSpeed,
         _racingRig, _overheadPose, reduced, _racingPose,
-        _deathCam || !!(photo && photo.active));
+        _deathCam || !!(photo && photo.active) || _fieldBuildBlend > 0.05);
       // BOTH views use the same predictive solid-clearance solver. The stern rig is anchored
       // to the presented hull, not the overhead camera's velocity/threat-biased focus.
       let camX = pose.eyeX, camY = pose.eyeY, camZ = pose.eyeZ;

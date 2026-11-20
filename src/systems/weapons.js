@@ -537,6 +537,14 @@ export const weapons = {
     this._weaponsUnsubs.push(registerStuntImpulseObserver(ctx.state,event=>observeProjectileRedirect(this.state,event)));
     on('combat:damage',payload=>observeProjectileDamage(this.state,payload,this.bus));
     on('entity:killed',payload=>observeProjectileDeath(this.state,payload,this.bus));
+    on('entity:destroyed', ({ entity } = {}) => {
+      if (liveAttackForProjectile(this, entity)) this._attackLive.delete(entity.id);
+      const book = this._opticProjectileOwners?.get(entity);
+      if (!book) return;
+      this._opticProjectileOwners.delete(entity);
+      book.liveProjectiles--;
+      releaseIdleOpticBook(this, book);
+    });
 
     // Catalog lookup by weapon def id (instance fields win, def fills the gaps).
     this._byId = new Map(WEAPONS.map((w) => [w.id, w]));
@@ -651,6 +659,7 @@ export const weapons = {
     clearAllMomentumSinkPlants(this.state);
     if (this._shuntCooldown) this._shuntCooldown.clear();
     if (this._opticFamilies) this._opticFamilies.clear();
+    this._opticProjectileOwners = null;
     // sector:enter fires after materialization, so cells the durable ledger restored dark
     // are live entities here — pick their ids up for the rekindle watch.
     this._opticSpent = collectOpticSpentIds(this.state);
@@ -669,6 +678,7 @@ export const weapons = {
     if (!this._isCurrentSectorEnter(payload)) return;
     if (this._shuntCooldown) this._shuntCooldown.clear();
     if (this._opticFamilies) this._opticFamilies.clear();
+    this._opticProjectileOwners = null;
     this._opticSpent = collectOpticSpentIds(this.state);
     this._weaponsQuiet = null;
   },
@@ -1594,6 +1604,11 @@ export const weapons = {
         }
         this.bus.emit('combat:beamStop', { ...meta, continuous: true, phase: 'end', ownerStillFiring });
         this._beamActiveMeta.delete(beamKey);
+        const book = this._opticFamilies?.get(meta.opticFamilyId);
+        if (book) {
+          book.beamHeld = false;
+          releaseIdleOpticBook(this, book);
+        }
       }
     }
   },
@@ -2058,37 +2073,23 @@ export const weapons = {
       data,
     });
     if(spawned)observeProjectileEmission(state,spawned,e);
-    if (spawned && opts && opts.spec) {
-      if (!this._attackLive) this._attackLive = new Map();
-      const meta = causalMetaForSpec(opts.spec);
-      if (opts.liveRuntime) {
-        this._attackLive.set(spawned.id, {
-          spec: opts.spec,
-          runtime: opts.liveRuntime,
-          causalMeta: meta,
-        });
-        if ((opts.spec.trajectory && opts.spec.trajectory.bounces > 0)
-          || (opts.spec.propagation && opts.spec.propagation.pierce > 0)) {
-          armAttackContinue(spawned);
-        }
-      } else if (attackSpecHasLiveHit(opts.spec)) {
-        this._attackLive.set(spawned.id, {
-          spec: opts.spec,
-          runtime: null,
-          causalMeta: meta,
-        });
+    if (spawned && opts?.spec && (opts.liveRuntime || attackSpecHasLiveHit(opts.spec))) {
+      const { spec, liveRuntime } = opts;
+      trackLiveAttack(this, spawned, spec, liveRuntime || null);
+      if (liveRuntime && (spec.trajectory?.bounces > 0 || spec.propagation?.pierce > 0)) {
+        armAttackContinue(spawned);
       }
     }
   },
 
   _onAttackHit(payload) {
-    if (!this._attackLive || this._attackLive.size === 0) return;
+    // Some scripted damage shares this event without firing a projectile. A proc belongs
+    // only to the exact body that hit, even among several rounds from the same shooter.
+    if (!this._attackLive?.size || payload?.projectileId == null) return;
     const state = this.state;
-    if (!state || !payload) return;
-    const projectile = findLiveAttackProjectile(state, this._attackLive, payload);
-    if (!projectile) return;
-    const live = this._attackLive.get(projectile.id);
-    if (!live) return;
+    const projectile = state?.entities?.get(payload.projectileId);
+    const live = liveAttackForProjectile(this, projectile);
+    if (!live || (payload.ownerId != null && projectile.ownerId !== payload.ownerId)) return;
     if (!live.runtime) {
       stampHitCausal(payload, live, null);
       this._attackLive.delete(projectile.id);
@@ -2164,7 +2165,7 @@ export const weapons = {
         result.bounce = { ok: true, velocity: { x: projectile.vel.x, z: projectile.vel.z }, hull: true };
       }
     }
-    if (result.consume) this._attackLive.delete(projectile.id);
+    if (result.consume && this._attackLive.get(projectile.id) === live) this._attackLive.delete(projectile.id);
     // OVH-01c3: a spec-kept continuation marks the emit so the pilot's ricochet
     // does not stack a second bounce onto the authored one.
     payload.attackContinued = result.consume === false;
@@ -2174,6 +2175,8 @@ export const weapons = {
   destroy() {
     for(const off of this._weaponsUnsubs||[])off();
     this._weaponsUnsubs=[];
+    if (this._opticFamilies) this._opticFamilies.clear();
+    this._opticProjectileOwners = null;
     this._playerIncomingLock = false;
     this._weaponsQuiet = null;
     if (this.state) publishWeaponsQuiet(this.state, false);
@@ -3061,28 +3064,22 @@ function npcFireTargetVisibleOnPlayerRadar(e, state) {
   return dx * dx + dz * dz <= (range + pad) * (range + pad);
 }
 
-function findLiveAttackProjectile(state, live, payload) {
-  let best = null;
-  let bestD = Infinity;
-  const px = payload && payload.pos ? payload.pos.x : 0;
-  const pz = payload && payload.pos ? payload.pos.z : 0;
-  for (const [id, rec] of live) {
-    void rec;
-    const entity = state.entities && state.entities.get && state.entities.get(id);
-    if (!entity) {
-      live.delete(id);
-      continue;
-    }
-    if (payload.ownerId != null && entity.ownerId !== payload.ownerId) continue;
-    const dx = (entity.pos && entity.pos.x || 0) - px;
-    const dz = (entity.pos && entity.pos.z || 0) - pz;
-    const d2 = dx * dx + dz * dz;
-    if (d2 < bestD) {
-      bestD = d2;
-      best = entity;
-    }
-  }
-  return best;
+function liveAttackForProjectile(host, projectile) {
+  if (projectile?.type !== 'projectile') return null;
+  const live = host._attackLive?.get(projectile.id);
+  return live?.projectile === projectile && live.projectileGeneration === occupantGenerationOf(projectile)
+    ? live : null;
+}
+
+function trackLiveAttack(host, projectile, spec, runtime) {
+  const live = host._attackLive || (host._attackLive = new Map());
+  live.set(projectile.id, {
+    projectile,
+    projectileGeneration: occupantGenerationOf(projectile),
+    spec,
+    runtime,
+    causalMeta: causalMetaForSpec(spec),
+  });
 }
 
 const PHYSICAL_CONTACTS = new WeakMap();
@@ -3233,6 +3230,30 @@ function detonateInterceptedSplash(host, payload) {
   });
 }
 
+function releaseIdleOpticBook(host, book) {
+  if (book.liveProjectiles === 0 && !book.beamHeld && host._opticFamilies?.get(book.familyId) === book) {
+    host._opticFamilies.delete(book.familyId);
+  }
+}
+
+function trackOpticProjectile(host, book, projectile) {
+  if (!projectile || typeof projectile !== 'object' || projectile.alive === false
+      || host._opticFamilies?.get(book.familyId) !== book) return;
+  const owners = host._opticProjectileOwners || (host._opticProjectileOwners = new WeakMap());
+  if (owners.has(projectile)) return;
+  owners.set(projectile, book);
+  book.liveProjectiles++;
+}
+
+function spawnOpticChildren(host, book, parent, rays) {
+  if (!rays || typeof host.helpers?.spawnEntity !== 'function') return;
+  for (const ray of rays) {
+    reserveProjectileCapacity(host.state, 1);
+    const child = host.helpers.spawnEntity(opticChildSpec(parent, ray));
+    trackOpticProjectile(host, book, child);
+  }
+}
+
 function handleOpticProjectileHit(host, payload) {
   const state = host && host.state;
   if (!state || !payload || payload.projectileId == null || payload.targetId == null) return false;
@@ -3240,9 +3261,10 @@ function handleOpticProjectileHit(host, payload) {
   if (!entities || typeof entities.get !== 'function') return false;
   const projectile = entities.get(payload.projectileId);
   const target = entities.get(payload.targetId);
-  if (!projectile || projectile.type !== 'projectile' || !target) return false;
+  if (!projectile || projectile.alive === false || projectile.type !== 'projectile' || !opticMaterialOf(target)) return false;
   if (!host._opticFamilies) host._opticFamilies = new Map();
   const book = opticBookFor(host._opticFamilies, opticFamilyIdOf(projectile));
+  trackOpticProjectile(host, book, projectile);
   const bus = host.bus;
   const plan = settleOpticContact(projectile, target, payload, book, {
     simTime: Number.isFinite(state.simTime) ? state.simTime : 0,
@@ -3250,14 +3272,14 @@ function handleOpticProjectileHit(host, payload) {
     emit: bus ? (name, event) => bus.emit(name, event) : null,
   });
   if (!plan) return false;
-  if (plan.reason === 'material_budget' && host._attackLive?.get(projectile.id)?.runtime?.remaining?.bounces > 0) return false;
+  const live = liveAttackForProjectile(host, projectile);
+  if (plan.reason === 'material_budget' && live?.runtime?.remaining?.bounces > 0) return false;
   // A discharged prism joins the rekindle watch — the quiet clock is what it needs, not ticks.
   if (plan.spentAt != null) {
     if (!host._opticSpent) host._opticSpent = new Set();
     host._opticSpent.add(target.id);
   }
   if (plan.kind === 'reflect') {
-    const live = host._attackLive?.get(projectile.id);
     if (live?.spec?.trajectory?.afterBounceSteer) {
       const nearby = collectAttackCandidates(state, projectile.pos, projectile.data?.maxDistance || 600, host._attackQueryScratch || [], projectile.ownerId, projectile.data?.attackSource?.team ?? projectile.team, projectile.data?.attackSource?.life ?? null);
       applyReflectedVelocity(projectile, steerAfterBounce(plan.velocity, payload.pos || projectile.pos, live.spec, nearby, live.runtime?.visited));
@@ -3268,14 +3290,8 @@ function handleOpticProjectileHit(host, payload) {
   suppressHitPayload(payload);
   // Prism/absorb consume the bolt: drop traited live state so splinters never inherit a parent
   // AttackSpec resolve. Reflect keeps the same body — leave _attackLive for a later non-optic hit.
-  if (plan.kind !== 'reflect' && host._attackLive) host._attackLive.delete(projectile.id);
-  if (plan.kind === 'prism' && host.helpers && typeof host.helpers.spawnEntity === 'function') {
-    const rays = plan.rays || [];
-    for (let i = 0; i < rays.length; i++) {
-      reserveProjectileCapacity(host.state, 1);
-      host.helpers.spawnEntity(opticChildSpec(projectile, rays[i]));
-    }
-  }
+  if (plan.kind !== 'reflect' && live && host._attackLive.get(projectile.id) === live) host._attackLive.delete(projectile.id);
+  if (plan.kind === 'prism') spawnOpticChildren(host, book, projectile, plan.rays);
   if (host.bus) {
     const pos = payload.pos && Number.isFinite(payload.pos.x)
       ? { x: payload.pos.x, z: payload.pos.z }
@@ -3312,7 +3328,7 @@ function handleOpticBeamContact(host, req) {
   const entities = state.entities;
   if (!entities || typeof entities.get !== 'function') return;
   const target = entities.get(req.targetId);
-  if (!target || target.alive === false) return;
+  if (!target || target.alive === false || !opticMaterialOf(target)) return;
   const owner = beam.ownerId != null ? entities.get(beam.ownerId) : null;
   const pseudo = opticBeamBolt(beam, { pos: req.pos }, owner);
   pseudo.data.attackSource = { id: beam.ownerId,
@@ -3320,6 +3336,7 @@ function handleOpticBeamContact(host, req) {
     team: beam.sourceTeam ?? owner?.team ?? null };
   if (!host._opticFamilies) host._opticFamilies = new Map();
   const book = opticBookFor(host._opticFamilies, opticFamilyIdOf(pseudo));
+  if (host._beamActiveMeta.get(beam.beamKey)?.opticFamilyId === book.familyId) book.beamHeld = true;
   const bus = host.bus;
   const impulse = req.beam?.damagePacket?.impulse;
   if (impulse && host.helpers?.routeCombatDamage) host.helpers.routeCombatDamage({ attackerId: req.beam.ownerId, targetId: target.id, packet: { ...req.beam.damagePacket, channels: {}, hit: { pos: req.pos, approach: { x: req.beam.to.x - req.beam.from.x, z: req.beam.to.z - req.beam.from.z } } }, origin: { kind: 'weapon', id: req.beam.weaponId } });
@@ -3331,7 +3348,10 @@ function handleOpticBeamContact(host, req) {
     ledger: opticSpendLedger(state),
     emit: bus ? (name, event) => bus.emit(name, event) : null,
   });
-  if (!plan) return;
+  if (!plan) {
+    releaseIdleOpticBook(host, book);
+    return;
+  }
   addEnvironmentHeat(state, target, Number(beam.damagePacket?.channels?.thermal) || 0, { actorId: beam.ownerId });
   req.handled = true;
   // A discharged prism joins the rekindle watch — same as the bolt path.
@@ -3339,13 +3359,8 @@ function handleOpticBeamContact(host, req) {
     if (!host._opticSpent) host._opticSpent = new Set();
     host._opticSpent.add(target.id);
   }
-  if (plan.kind === 'prism' && host.helpers && typeof host.helpers.spawnEntity === 'function') {
-    const rays = plan.rays || [];
-    for (let i = 0; i < rays.length; i++) {
-      reserveProjectileCapacity(host.state, 1);
-      host.helpers.spawnEntity(opticChildSpec(pseudo, rays[i]));
-    }
-  }
+  if (plan.kind === 'prism') spawnOpticChildren(host, book, pseudo, plan.rays);
+  releaseIdleOpticBook(host, book);
   if (host.bus) {
     host.bus.emit('optic:contact', {
       kind: plan.kind,
@@ -3510,7 +3525,6 @@ function spawnSplitChildren(host, parent, spec, children, payload) {
   const heading = Math.atan2(vz, vx);
   const count = children.length;
   const pos = (payload && payload.pos) || parent.pos || { x: 0, z: 0 };
-  if (!host._attackLive) host._attackLive = new Map();
   for (let i = 0; i < count; i++) {
     const child = children[i];
     const scale = Number.isFinite(child.payloadScale) ? child.payloadScale : 0.55;
@@ -3537,11 +3551,7 @@ function spawnSplitChildren(host, parent, spec, children, payload) {
     });
     if (!spawned) continue;
     nudgeSpawnedAlongVelocity(spawned);
-    host._attackLive.set(spawned.id, {
-      spec,
-      runtime: child.runtime,
-      causalMeta: causalMetaForSpec(spec),
-    });
+    trackLiveAttack(host, spawned, spec, child.runtime);
     const remaining = child.runtime && child.runtime.remaining;
     if (remaining && (remaining.bounces > 0 || remaining.pierces > 0)) {
       armAttackContinue(spawned);
@@ -3611,7 +3621,7 @@ function pruneAttackLive(host, state) {
   const entities = state && state.entities;
   for (const id of live.keys()) {
     const projectile = entities && typeof entities.get === 'function' ? entities.get(id) : null;
-    if (!projectile || projectile.alive === false || projectile.type !== 'projectile') live.delete(id);
+    if (projectile?.alive === false || !liveAttackForProjectile(host, projectile)) live.delete(id);
   }
 }
 

@@ -5,6 +5,8 @@ import test from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { createAftermathChoicePrompt } from '../src/ui/aftermathChoicePrompt.js';
 import { createRecoveryEncounterPrompt } from '../src/ui/recoveryEncounterPrompt.js';
+import { createCounterweightCircuitPromptSystem, CIRCUIT_PROMPT_ID } from '../src/features/counterweightCircuit/prompts.js';
+import { createRigWorkshopPresentation } from '../src/features/rigWorkshop/presentation.js';
 import assert from 'node:assert/strict';
 
 import {
@@ -15,6 +17,7 @@ import {
   digitIndex,
   planSlotClaim,
   fullSlotsForViewport,
+  setPromptDeck,
 } from '../src/ui/promptDeck.js';
 
 const entry = (id, deadlineAt, seq = 0, choices = [], headline = '') => ({ id, deadlineAt, seq, choices, headline });
@@ -87,15 +90,99 @@ test('mounted 900 px deck gives Scan Return the full card, routes Digit1, and ke
     assert.equal(deck.el.children[1].dataset.deckId, 'fit-check');
     assert.match(deck.el.children[1].getAttribute('aria-label'), /CAPABILITY DOOR/);
 
-    doc.dispatch('keydown', { key: '1' });
+    assert.deepEqual(deck.claimedDigits, [1, 2], 'the active choices and chip own the digits they print');
+    doc.dispatch('keydown', { key: '&', code: 'Digit1', repeat: true });
+    assert.deepEqual(chosen, [], 'a flight key held through an incoming offer cannot answer it');
+    doc.dispatch('keydown', { key: '&', code: 'Digit1' });
     assert.deepEqual(chosen, [{ choiceId: 'investigate', source: 'keyboard' }],
       'the visible action owns Digit1');
 
     deck.el.children[1].click();
     assert.equal(deck.raisedId, 'fit-check', 'the collapsed passive card remains raisable');
     assert.equal(deck.el.children[0].dataset.deckId, 'fit-check', 'explicit raise is preserved');
+    deck.clearAll();
+    assert.equal(deck.claimedDigits, null, 'closing the deck immediately gives numbers back to flight');
   } finally {
     deck.destroy();
+    globalThis.document = previousDocument;
+  }
+});
+
+test('an open Cargo hold keeps a timed decision and its digits without donating Escape', () => {
+  const doc = promptDeckDocument(1500, 900);
+  const state = { mode: 'flight', simTime: 20, ui: { cargoPanelOpen: true } };
+  const chosen = [];
+  const deck = createPromptDeck({ document: doc, state });
+  const offer = () => deck.offerDecision({ id: 'custody', kind: 'warn', sender: 'CIVILIAN RECOVERY',
+    headline: 'Rell of the Moisture Column', deadlineAt: 75,
+    choices: [{ id: 'help', label: 'Help now' }, { id: 'decline', label: 'Decline', cancel: true }],
+    onChoose: (id, source) => chosen.push({ id, source }) });
+  try {
+    offer();
+    assert.equal(deck.el.hidden, false);
+    assert.equal(doc.body.classList.contains('sf-flight-decision-open'), true);
+    doc.dispatch('keydown', { key: 'Escape', code: 'Escape' });
+    assert.deepEqual(chosen, [], 'Cargo can close before the decision receives a cancel');
+    assert.equal(deck.hasDecision('custody'), true);
+    assert.deepEqual(deck.claimedDigits, [1, 2]);
+    doc.dispatch('keydown', { key: '1', code: 'Digit1' });
+    assert.deepEqual(chosen, [{ id: 'help', source: 'keyboard' }]);
+    offer();
+    state.ui.cargoPanelOpen = false;
+    doc.dispatch('keydown', { key: 'Escape', code: 'Escape' });
+    assert.deepEqual(chosen, [{ id: 'help', source: 'keyboard' }, { id: 'decline', source: 'keyboard' }]);
+    deck.clearAll();
+    assert.equal(doc.body.classList.contains('sf-flight-decision-open'), false);
+  } finally { deck.destroy(); }
+});
+
+test('Counterweight page changes keep the registrar ahead of an unsolicited Workshop offer', () => {
+  const previousDocument = globalThis.document;
+  const doc = promptDeckDocument(1500, 900);
+  globalThis.document = doc;
+  const state = { mode: 'flight', simTime: 10, ui: {} };
+  const bus = createBus();
+  const deck = createPromptDeck({ document: doc, state, bus });
+  const workshop = createRigWorkshopPresentation({ state, bus, getDeck: () => deck });
+  const circuit = createCounterweightCircuitPromptSystem();
+  const choices = [];
+  bus.on('counterweightCircuit:action', intent => choices.push(intent));
+  setPromptDeck(deck);
+  try {
+    circuit.init({ bus });
+    bus.emit('counterweightCircuit:offer', { id: 'counterweight:registrar', generation: 3, headline: 'COUNTERWEIGHT CIRCUIT',
+      choices: [{ id: 'events', label: 'Course list & previews' }] });
+    const registrar = deck.el.children[0];
+    bus.emit('rigWorkshop:prompt', { id: 'rig-workshop', revision: 1, title: 'RATCHET · A workshop, two loan machines',
+      options: [{ id: 'visit', label: 'Plot route to the workshop' }, { id: 'later', label: 'Not now' }] });
+    assert.equal(deck.raisedId, CIRCUIT_PROMPT_ID);
+    doc.dispatch('keydown', { key: '1' });
+    assert.ok(deck.el.children[0] === registrar, 'the same registrar card holds its place while the simulation replies');
+    doc.dispatch('keydown', { key: '1' });
+    assert.deepEqual(choices.map(({ action }) => action), ['events'], 'repeat input cannot send a second in-flight choice');
+
+    bus.emit('counterweightCircuit:offer', { id: 'counterweight:events', generation: 4, headline: 'COURSES',
+      choices: [{ id: 'preview:long_arm', label: '2. THE LONG ARM' }] });
+    assert.ok(deck.el.children[0] === registrar);
+    doc.dispatch('keydown', { key: '1' });
+    assert.equal(choices.at(-1).eventId, 'long_arm');
+    bus.emit('counterweightCircuit:offer', { id: 'counterweight:preview:long_arm', generation: 5, headline: '2. THE LONG ARM',
+      choices: [{ id: 'attempt:long_arm', label: 'Ranked attempt' }] });
+    assert.ok(deck.el.children[0] === registrar, 'the Long Arm preview is still the expanded card');
+    assert.equal(deck.el.children[1].dataset.deckId, 'rig-workshop:rig-workshop');
+    assert.ok(deck.el.children[1].classList.contains('sf-prompt-chip'), 'Workshop remains reachable');
+
+    deck.offerDecision({ id: 'safety', headline: 'Urgent call', deadlineAt: 15, choices: [{ id: 'answer', label: 'Answer' }] });
+    assert.equal(deck.raisedId, 'safety', 'a genuine deadline may interrupt the registrar');
+    deck.resolveDecision('safety');
+    bus.emit('counterweightCircuit:close');
+    assert.equal(deck.hasDecision(CIRCUIT_PROMPT_ID), false);
+    assert.equal(deck.raisedId, 'rig-workshop:rig-workshop', 'the optional offer expands after leaving the registrar');
+  } finally {
+    circuit.destroy();
+    workshop.destroy();
+    deck.destroy();
+    setPromptDeck(null);
     globalThis.document = previousDocument;
   }
 });

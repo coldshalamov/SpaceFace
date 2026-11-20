@@ -7,6 +7,7 @@
 // and each cell that threw its ring goes dark ('spent') until OPTIC_SPEND_QUIET sim-seconds
 // pass with no optic contact on it, when it rekindles to live crystal.
 
+import { occupantGenerationOf } from '../core/entity.js';
 import { applyReflectedVelocity, reflectVelocity } from '../core/surfaceContact.js';
 import { armAttackContinue, requestAttackContinue } from './attackHit.js';
 
@@ -106,7 +107,8 @@ export function opticFamilyIdOf(projectile) {
   const stamped = projectile && projectile.data && projectile.data.opticFamilyId;
   if (typeof stamped === 'string' && stamped) return stamped;
   const id = projectile && projectile.id != null ? projectile.id : 'bolt';
-  return `optic:${id}`;
+  const life = occupantGenerationOf(projectile);
+  return life == null ? `optic:${id}` : `optic:${id}:${life}`;
 }
 
 export function opticBookFor(store, familyId) {
@@ -115,7 +117,7 @@ export function opticBookFor(store, familyId) {
   }
   let row = store.get(familyId);
   if (!row) {
-    row = { spawned: 0, visited: new Set() };
+    row = { familyId, spawned: 0, visited: new Set(), liveProjectiles: 0, beamHeld: false };
     store.set(familyId, row);
   }
   return row;

@@ -172,15 +172,16 @@ export const MOBILE_SCREEN_CSS = `
      three or four lines at 360-390 wide): it reads whole at 12px instead of clipping at the two-line clamp.
      The station event and ledger cards beside it keep their two-line swipe strip. */
   ${B} .sxb-tape > .sxb-berth__mechanic:not([hidden]) { -webkit-line-clamp:none; max-height:none; }
-  /* Bay screen and station wire: one swipeable two-line strip under the next step, like the tape, instead of two
-     full-width cards (~170px at 390x844). The second sign peeks in from the right. */
+  /* Bay screen and station wire: one swipeable strip under the next step, like the tape, instead of two
+     full-width cards (~170px at 390x844). The second sign peeks in from the right. A sign wraps whole: the
+     two-line clamp cut "The lamplighters finished their w…" (bench 2026-11-14). */
   ${B} .sxb-signs { grid-area:signs; display:flex !important; flex-wrap:nowrap !important; gap:12px !important; min-width:0 !important;
     max-width:100% !important; margin:0 !important; padding:6px 0 0 !important; border-top:1px solid rgb(236 230 216 / .14) !important;
     overflow-x:auto !important; overflow-y:hidden !important; scroll-snap-type:x mandatory; overscroll-behavior-x:contain; scrollbar-width:none; }
   ${B} .sxb-signs::-webkit-scrollbar { display:none; }
   ${B} .sxb-signs:not(:has(> .sx-adboard:not([hidden]))) { display:none !important; }
-  ${B} .sxb-signs > .sx-adboard:not([hidden]) { display:-webkit-box !important; -webkit-box-orient:vertical; -webkit-line-clamp:2;
-    flex:0 0 100% !important; min-width:0 !important; max-width:100% !important; max-height:30px; overflow:hidden !important;
+  ${B} .sxb-signs > .sx-adboard:not([hidden]) { display:block !important;
+    flex:0 0 100% !important; min-width:0 !important; max-width:100% !important; max-height:none; overflow:visible !important; overflow-wrap:anywhere;
     scroll-snap-align:start; margin:0 !important; padding:0 !important; background:none !important; border:0 !important;
     box-shadow:none !important; font-size:12px !important; line-height:15px !important; color:rgb(236 230 216 / .86) !important; }
   ${B} .sxb-signs:has(> .sx-adboard:not([hidden]) ~ .sx-adboard:not([hidden])) > .sx-adboard:not([hidden]) { flex-basis:86% !important; }

@@ -1045,7 +1045,7 @@ export function missionNavReason(m, station, sector) {
   if (m.storyTag === CONTRACT_47A_B1_TAG && m.type === 'cargo_delivery') {
     return p.cargoRecoveryNeeded
       ? 'Return to Helios for replacement cargo'
-      : 'Deliver sealed alloys to Tycho; compare the manifest';
+      : `Deliver sealed alloys to ${stationName} and compare the manifest`;
   }
   if (m.storyTag === CONTRACT_47A_B2_TAG && m.type === 'bounty_hunt') {
     return p.investigationStage === 'identified'

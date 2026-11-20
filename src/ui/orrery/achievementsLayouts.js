@@ -60,21 +60,26 @@ ${S} .orr-statistics__sheet { margin:0; padding:0; }
 ${S} .orr-statistics__empty { margin:clamp(4px, 1vh, 10px) 0 0; max-width:52ch; }
 ${S} .orr-statistics__promise-scale { list-style:none; margin:clamp(18px, 3vh, 34px) 0 0; padding:0;
   max-width:min(680px, 100%); display:flex; flex-direction:column;
-  /* framed as one card (hairline, soft radius, faint fill) so the scale stops reading as loose rules */
-  border:1px solid rgb(${BONE} / .18); border-radius:10px; background:rgb(${BONE} / .025); overflow:hidden; }
+  /* framed as one card so the scale stops reading as loose rules. The frame's first alphas
+     (.18/.025) vanished against the lit backdrop (bench 2026-11-14: the player read bare
+     hairlines over a void) — the card wears the house E0 face, which registers. */
+  border:1px solid rgb(${BONE} / .3); border-radius:10px;
+  background:var(--sf-face, rgb(8 11 16 / .8));
+  box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5));
+  overflow:hidden; }
 /* each reading the ledger will keep, ruled like the rows it becomes: the name, what it counts */
 ${S} .orr-statistics__promise-word { display:grid; grid-template-columns:clamp(96px, 8vw, 120px) minmax(0, 1fr); align-items:baseline;
   column-gap:clamp(14px, 2vw, 32px); padding:clamp(10px, 1.5vh, 16px) clamp(14px, 1.6vw, 22px); }
-${S} .orr-statistics__promise-word + .orr-statistics__promise-word { border-top:1px solid rgb(${BONE} / .12); }
+${S} .orr-statistics__promise-word + .orr-statistics__promise-word { border-top:1px solid rgb(${BONE} / .16); }
 ${S} .orr-statistics__promise-name { ${LABEL} font-size:12.5px; letter-spacing:.22em; color:rgb(${BONE} / .9);
   display:inline-flex; align-items:center; }
-${S} .orr-statistics__promise-counts { ${READ} font-size:clamp(13.5px, min(.9vw, 1.7vh), 16px); line-height:1.4; font-weight:500; color:rgb(${BONE} / .7); }
+${S} .orr-statistics__promise-counts { ${READ} font-size:clamp(13.5px, min(.9vw, 1.7vh), 16px); line-height:1.4; font-weight:500; color:rgb(${BONE} / .78); }
 /* Wide ledgers read the empty scale as one card: the note spans its rows and each row carries a quiet state tag. */
 @media (min-width:641px) {
   ${S} .orr-statistics__empty, ${S} .orr-statistics__promise-scale { max-width:min(760px, 100%); }
   ${S} .orr-statistics__promise-word { grid-template-columns:clamp(96px, 8vw, 120px) minmax(0, 1fr) auto; }
   ${S} .orr-statistics__promise-word::after { content:"Not yet"; align-self:center; ${LABEL} font-size:12px; letter-spacing:.12em;
-    color:rgb(${BONE} / .6); padding:2px 8px; border:1px solid rgb(${BONE} / .16); border-radius:999px; background:rgb(${BONE} / .03); white-space:nowrap; }
+    color:rgb(${BONE} / .7); padding:2px 8px; border:1px solid rgb(${BONE} / .3); border-radius:999px; background:rgb(${BONE} / .08); white-space:nowrap; }
 }
 /* Phones keep the same state tag: the name and "Not yet" share the top line, and what the reading
    counts runs the full card width under them instead of squeezing into a second column. */
@@ -82,7 +87,7 @@ ${S} .orr-statistics__promise-counts { ${READ} font-size:clamp(13.5px, min(.9vw,
   ${S} .orr-statistics__promise-word { grid-template-columns:minmax(0, 1fr) auto; row-gap:6px; align-items:center; }
   ${S} .orr-statistics__promise-counts { grid-column:1 / -1; grid-row:2; }
   ${S} .orr-statistics__promise-word::after { content:"Not yet"; grid-column:2; grid-row:1; ${LABEL} font-size:12px; letter-spacing:.12em;
-    color:rgb(${BONE} / .6); padding:2px 8px; border:1px solid rgb(${BONE} / .16); border-radius:999px; background:rgb(${BONE} / .03); white-space:nowrap; }
+    color:rgb(${BONE} / .7); padding:2px 8px; border:1px solid rgb(${BONE} / .3); border-radius:999px; background:rgb(${BONE} / .08); white-space:nowrap; }
 }
 @media (max-height:460px) {
   ${S} .orr-statistics__promise-scale { margin-top:8px; }
@@ -130,11 +135,15 @@ const ACHIEVEMENTS = `
 /* achievements polish over constellationLayouts.js (kept here so that shared sheet stays owned by
    the research lane): the reading column's earned rim already carries the date, so nothing else
    in the column needs to. */
-/* ui-polish-396: the reading column wears the promise-scale hairline card (1px bone ~18% / radius 10 /
-   faint fill / padded) the other readings wear (#898-#907), in place of the unbound shade pool that
-   read as a bare Newgrounds plate; densify takes the radius 8 -> 6 on short and narrow frames. */
+/* ui-polish-396: the reading column wears the promise-scale hairline card (1px bone / radius 10 /
+   padded) the other readings wear (#898-#907), in place of the unbound shade pool that
+   read as a bare Newgrounds plate; densify takes the radius 8 -> 6 on short and narrow frames.
+   The first alphas (.18/.025) vanished against the lit backdrop — the Records Wall finding —
+   so the card wears the house E0 face like the statistics sheet (bench 2026-11-15). */
 ${A} > .con-medal-read { box-sizing:border-box; padding:16px 18px;
-  border:1px solid rgb(${BONE} / .18); border-radius:10px; background:rgb(${BONE} / .025); }
+  border:1px solid rgb(${BONE} / .3); border-radius:10px;
+  background:var(--sf-face, rgb(8 11 16 / .8));
+  box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)); }
 ${A} > .con-medal-read::before { content:none; display:none; }
 @media (max-height:820px) { ${A} > .con-medal-read { border-radius:8px; } }
 @media (max-height:460px) { ${A} > .con-medal-read { border-radius:8px; } }

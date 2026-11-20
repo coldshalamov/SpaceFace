@@ -17,18 +17,30 @@ function stateWithBindings(bindings, device = 'keyboard') {
   };
 }
 
-test('the five taught-verb lines name their live bound key', () => {
+test('opening flight prompts name the current default bindings', () => {
   const st = stateWithBindings({});
   assert.equal(taughtVerbLine(st, 'thrust', 'Thrust until speed passes forty.'),
     'Thrust until speed passes forty. (W/↑)');
+  assert.equal(taughtVerbLine(st, 'tether', 'Latch the loose rock.'), 'Latch the loose rock. (F)');
   assert.equal(taughtVerbLine(st, 'tether:target:acquired', 'Latch it. Massline.'),
-    'Latch it. Massline. (Space/F)');
+    'Latch it. Massline. (F)');
   assert.equal(taughtVerbLine(st, 'burst', 'Fire a short burst into the raider.'),
     'Fire a short burst into the raider. (LMB)');
-  assert.equal(taughtVerbLine(st, 'seam', 'Pulse the scanner.'),
-    'Pulse the scanner. (C)');
-  assert.equal(taughtVerbLine(st, 'seam:scan:hit', 'Beam the bright seams.'),
-    'Beam the bright seams. (RMB)');
+});
+
+test('scanner and mining prompts name the available tool and follow a remap', () => {
+  const scan = (st) => taughtVerbLine(st, 'seam', 'Pulse the scanner.');
+  const mine = (st) => taughtVerbLine(st, 'seam:scan:hit', 'Beam the bright seams.');
+  const keyboard = stateWithBindings({});
+  assert.equal(scan(keyboard), 'Pulse the scanner. Hold Q and choose Scan.');
+  assert.equal(mine(keyboard), 'Beam the bright seams. Hold Q and choose Mine Beam.');
+  const rebound = stateWithBindings({ scanPulse: ['KeyC'], contextWheel: ['KeyT'] });
+  assert.equal(scan(rebound), 'Pulse the scanner. (C)');
+  assert.equal(mine(rebound), 'Beam the bright seams. Hold T and choose Mine Beam.');
+  assert.equal(scan(stateWithBindings({ scanPulse: ['KeyC'] }, 'gamepad')),
+    'Pulse the scanner. Hold Y and choose Scan.');
+  assert.equal(scan(stateWithBindings({}, 'touch')), 'Pulse the scanner. Tap Powers → Flight → Scan.');
+  assert.equal(mine(stateWithBindings({}, 'touch')), 'Beam the bright seams. Hold Mine.');
 });
 
 test('the label is live: a rebound tether key is the one that prints', () => {
@@ -49,7 +61,7 @@ test('no label resolves to no suffix — the authored line stands', () => {
 test('SEED-ST-05: the winch line names the whole reel chord with live labels', () => {
   const st = stateWithBindings({});
   assert.equal(taughtVerbLine(st, 'tether:tether:latched', 'Winch in. Hold tether to reel.'),
-    'Winch in. Hold Space/F — W/↑ reels in, 0 pays out.');
+    'Winch in. Hold F — W/↑ reels in.');
   const rebound = stateWithBindings({ tether: ['KeyQ'], forward: ['KeyT'], brake: ['KeyZ'] });
   assert.equal(taughtVerbLine(rebound, 'tether:tether:latched', 'Winch in. Hold tether to reel.'),
     'Winch in. Hold Q — T reels in, Z pays out.');

@@ -14,7 +14,7 @@ import {
 } from './simulationRunner.js';
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
 import { collectJournalPresentationEntities, collectJournalPresentationEntitiesChunked } from '../world/presentationSources.js';
-import { autoPresentationCapFor, resolveFrameCap } from '../render/adaptiveQuality.js';
+import { autoPresentationCapFor, normalizeFrameCap, resolveFrameCap } from '../render/adaptiveQuality.js';
 import { shouldSkipFlightDraw, shouldSkipFullTickSystems } from './presentationFreeze.js';
 import { PRESENTATION_LISTENER_DRAIN_BUDGET, SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
 import { syncFocusLossHold } from './focusLossHold.js';
@@ -1513,8 +1513,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       // An integrated GPU on the Auto policy gets a stable 30 Hz presentation cadence. The authored
       // picture is unchanged (bloom, Nocturne and particles all stay); the cap only stops the loop
       // from presenting frames it cannot finish. A Manual preset or any explicit frame cap wins.
-      const autoIntegratedCap = autoPresentationCapFor(state.render && state.render.gpu, video);
-      _frameCapArgs.cap = autoIntegratedCap || video.frameCap;
+      _frameCapArgs.cap = normalizeFrameCap(video.frameCap)
+        || autoPresentationCapFor(state.render && state.render.gpu, video);
       _frameCapArgs.vsync = video.vsync !== false;
       _frameCapArgs.displayHz = displayHz;
       const effectiveCap = restoring

@@ -987,6 +987,10 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   let linkActive = false;
   let settlingLinks = 0;
   const maxSettlingLinks = Math.max(1, Math.min(4, Math.floor(Number(options.maxSettlingLinks) || 1)));
+  const issuePacing = maxSettlingLinks > 1 ? options.issuePacing : null;
+  let issueFrame = null;
+  let issueSpentMs = 0;
+  let issueHandoffPending = false;
   let tailSettle = Promise.resolve();
   // Bound each caller's wait without treating its timeout as cancellation of the
   // underlying owner. Only actual settlement or an explicit issue acknowledgement
@@ -1111,16 +1115,39 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     return run;
   }
 
-  function pumpLinks() {
-    if (linkActive || settlingLinks >= maxSettlingLinks) return;
+  function pumpLinks(afterHandoff = false) {
+    if (linkActive || issueHandoffPending || settlingLinks >= maxSettlingLinks || linkSpecs.length === 0) return;
+    const frame = issuePacing?.getFrame() ?? null;
+    if (frame !== issueFrame || afterHandoff) {
+      issueFrame = frame;
+      issueSpentMs = 0;
+    }
+    // Ready KHR programs can settle in microtasks and immediately unblock many owners.
+    // Yield between root issues after a spent frame, retaining already-issued GPU links.
+    // Keep the queue unreserved during the handoff so a new deadline still beats ambient work.
+    if (!afterHandoff && frame !== null && issueSpentMs >= issuePacing.budgetMs) {
+      issueHandoffPending = true;
+      const resume = () => {
+        issueHandoffPending = false;
+        // The bounded wait can unstick when a tab cannot deliver rAF. Allow one issue then too.
+        pumpLinks(true);
+      };
+      Promise.resolve().then(issuePacing.waitForPresent).then(resume, resume);
+      return;
+    }
     const spec = linkSpecs.shift();
-    if (!spec) return;
     linkActive = true;
     settlingLinks += 1;
+    const issueStarted = frame === null ? null : now();
     let issued = false;
     const releaseIssue = () => {
       if (issued) return;
       issued = true;
+      // The issue acknowledgment precedes readiness polling. A sliced root may already have
+      // crossed a presentation boundary; its earlier slices do not spend this frame's budget.
+      if (issueStarted !== null && frame === issuePacing.getFrame()) {
+        issueSpentMs += Math.max(0, now() - issueStarted);
+      }
       linkActive = false;
       pumpLinks();
     };

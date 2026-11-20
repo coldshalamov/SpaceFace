@@ -58,6 +58,7 @@ class HudElement {
     this.offsetWidth = 1;
   }
   get className() { return this._className; }
+  get parentElement() { return this.parentNode?.nodeType === 1 ? this.parentNode : null; }
   set className(value) { this._className = String(value || ''); this.classList.reset(this._className); }
   get innerHTML() { return this._innerHTML; }
   set innerHTML(value) {
@@ -261,7 +262,7 @@ function canvasContext() {
 // Mounts the real flight HUD at 1920x1080 with the player at the world origin. `worldToScreen`
 // stands in for the chase camera; the edge-math path (resolveObjectiveEdgePlacement) never reads
 // it, so an off-screen stub only has to report onScreen:false honestly.
-function mountArrowFixture({ worldToScreen } = {}) {
+function mountArrowFixture({ worldToScreen, viewport = [1920, 1080] } = {}) {
   const prevDoc = globalThis.document;
   const prevWin = globalThis.window;
   const prevPerf = globalThis.performance;
@@ -277,8 +278,8 @@ function mountArrowFixture({ worldToScreen } = {}) {
 
   globalThis.document = doc;
   globalThis.window = {
-    innerWidth: 1920,
-    innerHeight: 1080,
+    innerWidth: viewport[0],
+    innerHeight: viewport[1],
     devicePixelRatio: 1,
     addEventListener() {},
     removeEventListener() {},
@@ -383,9 +384,78 @@ function mountArrowFixture({ worldToScreen } = {}) {
   };
 }
 
+for (const [viewport, originX, originY, phone] of [
+  [[960, 540], 499, 248, false],
+  [[390, 844], 149, 424, true],
+]) test(`a Swarm incoming warning clears the visible crate label at ${viewport.join('×')}`, () => {
+  const fx = mountArrowFixture({
+    viewport,
+    worldToScreen: (point, out = {}) => Object.assign(out, {
+      x: originX + point.x, y: originY + 12 * point.z, onScreen: true,
+    }),
+  });
+  try {
+    fx.doc.defaultView = globalThis.window;
+    if (phone) fx.doc.documentElement.setAttribute('data-sf-mobile-flight', '1');
+    const createElement = fx.doc.createElement.bind(fx.doc);
+    fx.doc.createElement = (tag) => {
+      const el = createElement(tag);
+      Object.defineProperties(el, {
+        offsetWidth: { get: () => el.classList.contains('sf-fp') ? 248 : 1 },
+        offsetHeight: { get: () => el.classList.contains('sf-fp') ? 54 : 0 },
+      });
+      return el;
+    };
+    const crate = { id: 'crate', type: 'asteroid', alive: true, pos: { x: 30, z: 0 },
+      data: { swarmFloorPad: { kind: 'crate', label: 'THE CRATE · 950', fitPreview: 'Fits a random compatible gun' } } };
+    const incoming = { id: 'incoming', type: 'projectile', alive: true, pos: { x: 40, z: 1 } };
+    fx.state.run = { kind: 'survival', ruleset: 'swarm', phase: 'active' };
+    fx.state.entities.set(incoming.id, incoming);
+    fx.bus.emit('ai:telegraph', { phase: 'incoming_mass', entityId: incoming.id, targetId: fx.player.id });
+    fx.step(1 / 30);
+    const tell = fx.doc.querySelector('.sf-tell--INCOMING');
+    const center = () => {
+      const parts = tell.style.transform.match(/translate(?:3d)?\((-?[.\d]+)px,\s*(-?[.\d]+)px/);
+      assert.ok(parts, 'the live chip receives a screen placement');
+      return parts.slice(1).map(Number);
+    };
+    assert.equal(tell.hidden, false);
+    assert.match(tell.textContent, /INCOMING.*Sidestep or send it back/);
+    assert.deepEqual(center(), [originX + 40, originY - 26],
+      'the chip keeps its normal seat while there is no crate');
+
+    fx.state.entities.set(crate.id, crate);
+    fx.step(1 / 30);
+    const [pad] = fx.hud.getFloorPadLabelRects();
+    assert.ok(pad, 'the visible priced crate publishes its actual label bounds');
+    const clearOfPad = () => {
+      const [x, y] = center();
+      const compact = tell.classList.contains('is-compact');
+      const halfWidth = compact ? 42 : 120;
+      const halfHeight = compact ? 12 : 15;
+      return x + halfWidth <= pad.x || x - halfWidth >= pad.x + pad.w
+        || y + halfHeight <= pad.y || y - halfHeight >= pad.y + pad.h;
+    };
+    assert.ok(clearOfPad(), 'the active warning clears the crate on the same update that shows it');
+    const seated = center();
+    const crateSeat = { ...pad };
+    fx.step(1 / 30);
+    assert.deepEqual(center(), seated, 'the warning holds its settled position');
+    assert.deepEqual(fx.hud.getFloorPadLabelRects(), [crateSeat], 'the crate does not move in response to the warning');
+
+    crate.pos.z = (seated[1] + 26 - originY) / 12;
+    fx.step(1 / 30);
+    assert.notDeepEqual(pad, crateSeat, 'the visible crate follows its moved body');
+    assert.ok(clearOfPad(), 'the moving crate is reserved on the frame that updates its seat');
+  } finally {
+    fx.restore();
+  }
+});
+
 function readAngleRad(arrow) {
-  const raw = arrow.style['--sf-arrow-angle'];
-  return raw == null ? null : parseFloat(String(raw));
+  const transform = arrow.querySelector('.sf-objarrow__glyph')?.style.transform || '';
+  const rotation = /rotate\(([^)]+)rad\)/.exec(transform);
+  return rotation ? Number(rotation[1]) : null;
 }
 
 function edgePresentation(arrow) {
@@ -522,7 +592,7 @@ test('an in-camera objective never arms the edge chevron (the diamond owns the m
     assert.equal(view.display, 'block', 'the mark itself stays mounted in world space');
     assert.equal(view.onScreenClass, true, 'an in-camera objective takes the on-screen diamond state');
     assert.equal(view.edgeClass, false, 'the edge chevron state is off');
-    assert.equal(view.angleRad, null, 'no --sf-arrow-angle is ever written for an in-camera goal');
+    assert.equal(view.angleRad, null, 'the in-camera diamond stays unrotated');
     assert.equal(view.transform, 'translate3d(900px,420px,0)',
       'the mark rides the projected world point, not an edge seat');
     assert.equal(view.edge, 'left', 'the label side is still decided for the on-screen diamond');
@@ -551,7 +621,7 @@ test('an off-screen objective seats the chevron on the true edge with the direct
     assert.equal(view.edge, 'top', 'a northern goal seats on the top edge');
     assert.equal(view.transform, 'translate3d(960px,34px,0)',
       'the chevron seats centered on the top margin (1920x1080, 34px inset)');
-    assert.ok(view.angleRad != null, 'the edge chevron carries a --sf-arrow-angle');
+    assert.ok(view.angleRad != null, 'the edge chevron glyph has a rotation');
     assert.ok(Math.abs(view.angleRad - (-Math.PI / 2)) < 1e-9,
       `the angle must name up-screen toward +Z, got ${view.angleRad}`);
     assert.equal(view.label, `GOAL · ORE SILO · ${travel.distanceText} · ${travel.etaText}`,

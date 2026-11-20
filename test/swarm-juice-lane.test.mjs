@@ -29,6 +29,7 @@ function install() {
 }
 
 const { swarmJuiceHud } = await import('../src/ui/swarmJuiceHud.js');
+const { IRON_MAW } = await import('../src/data/encounters/capital-boss/iron-maw.js');
 
 function boot() {
   install();
@@ -55,6 +56,37 @@ test('every centre piece is a child of the one column; none is its own layer', (
     assert.equal(h.dom[k].parentNode, col, `${k} rides the column`);
   }
   swarmJuiceHud.destroy();
+});
+
+test('Iron Maw’s live opening clears incidental callouts and does not replay them', (t) => {
+  const h = boot();
+  t.after(() => swarmJuiceHud.destroy());
+  const bossId = 10;
+  h.state.run.wave = 5;
+  h.state.entities = new Map([[bossId, { id: bossId, alive: true, pos: { x: 50, z: 0 },
+    radius: 40, data: { lootTableId: 'dreadnought_boss' } }]]);
+  const fight = { encounterId: IRON_MAW.id, bossId, phase: 'windup', clock: 100 };
+  h.state.capitalBossEncounters = { fights: { 'swarm:w5': fight } };
+  h.emit('swarm:bossHp', { name: 'Iron Maw', hp: 90, maxHp: 100 });
+  h.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL' });
+  h.tick();
+  assert.equal(h.dom.calls.hidden, false);
+
+  fight.phase = 'recovery';
+  fight.recovery = { beatId: 'port_battery', startedAt: fight.clock };
+  h.tick();
+  assert.equal(h.dom.boss.hidden, false, 'boss health remains available');
+  assert.equal(h.dom.calls.hidden, true, 'a lingering callout yields to the opening');
+  h.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL ×2' });
+  h.tick();
+  assert.equal(h.dom.calls.children.length, 0, 'new incidental callouts never queue during the opening');
+
+  fight.recovery.mawFed = true;
+  h.tick();
+  assert.equal(h.dom.calls.hidden, true, 'stale callouts do not return after the opening');
+  h.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL ×3' });
+  h.tick();
+  assert.deepEqual(h.dom.calls.children.map((c) => c.textContent), ['COLLATERAL ×3']);
 });
 
 test('the CSS gives no centre piece a private vh offset', () => {

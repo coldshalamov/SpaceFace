@@ -153,7 +153,7 @@ export const spec = {
       "id": "escort_instruction",
       "verb": "say",
       "channel": "info",
-      "line": "CANTOR: Stay 60–180 WU behind PILGRIM 3 and match its drift. Hold the wake for eight seconds once we're underway; wait for my acknowledgment.",
+      "line": "CANTOR: Stay 60–180 u behind PILGRIM 3 and match its drift. Hold the wake for eight seconds once we're underway; wait for my acknowledgment.",
       "next": "escort_launch"
     },
     {

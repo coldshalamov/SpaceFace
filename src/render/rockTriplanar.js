@@ -154,6 +154,7 @@ uniform float sfTpFrost;
 uniform float sfTpFloor;
 uniform vec3 sfTpRim;
 uniform vec3 sfTpTint;
+uniform vec3 sfTpFlatColor;
 uniform mat3 normalMatrix;
 `;
 // Sharp normal blend; the dominant axis wins and the two seams are narrow. Samples whose weight is
@@ -218,6 +219,8 @@ if (sfTpOn > 0.5) {
   sfTpNy = vec3(sfTpNy.xy + sfTpObjN.xz, abs(sfTpNy.z) * sfTpObjN.y);
   sfTpNz = vec3(sfTpNz.xy + sfTpObjN.xy, abs(sfTpNz.z) * sfTpObjN.z);
   sfTpNormalOut = normalize(sfTpNx.zyx * sfTpWeights.x + sfTpNy.xzy * sfTpWeights.y + sfTpNz.xyz * sfTpWeights.z);
+} else {
+  diffuseColor.rgb *= sfTpFlatColor;
 }
 `;
 const FRAGMENT_ROUGH = `
@@ -271,12 +274,14 @@ export function installTriplanarRock(material, family) {
   const tint = new THREE.Vector3(spec.tint[0] * rel, spec.tint[1] * rel, spec.tint[2] * rel);
   const uniforms = {
     sfTpAlbedo: slot.albedo, sfTpNormal: slot.normal, sfTpOn: TP_ON,
+    sfTpFlatColor: { value: material.color.clone() },
     sfTpTile: { value: 1 / spec.tile }, sfTpNormalScale: { value: spec.normal },
     sfTpMetal: { value: spec.metal }, sfTpTint: { value: tint },
     sfTpSat: { value: spec.sat }, sfTpContrast: { value: spec.contrast }, sfTpRough: { value: spec.rough },
     sfTpAo: { value: spec.ao }, sfTpEmber: { value: spec.ember }, sfTpFrost: { value: spec.frost },
     sfTpFloor: { value: spec.floor || 0 }, sfTpRim: { value: new THREE.Vector3(...(spec.rim || [0, 0, 0])) },
   };
+  // The decoded set owns the color multiplier. Keep the original pigment for the maps-off branch.
   material.color.setRGB(1, 1, 1);
   function triplanarRockShader(shader, renderer) {
     previousHook?.call(this, shader, renderer);

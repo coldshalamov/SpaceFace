@@ -6,8 +6,11 @@ import { compileAttackSpec } from '../src/combat/attackSpec.js';
 import { createLineage, lineageMetrics, resetLineageIds } from '../src/combat/attackLineage.js';
 import { resolvePayload } from '../src/combat/attackPayload.js';
 import { createSurfaceContactReceipt } from '../src/core/surfaceContact.js';
+import { createSimulation } from '../src/core/sim.js';
+import { physics } from '../src/core/physics.js';
 import { armAttackContinue, resolveLiveAttackHit } from '../src/combat/attackHit.js';
-import { buildWeaponDamagePacket } from '../src/systems/weapons.js';
+import { combat } from '../src/systems/combat.js';
+import { buildWeaponDamagePacket, weapons } from '../src/systems/weapons.js';
 import { WEAPONS } from '../src/data/weapons.js';
 
 function compile(weaponId, modifiers = []) {
@@ -19,6 +22,100 @@ function compile(weaponId, modifiers = []) {
 function pulseDef() {
   return WEAPONS.find((row) => row.id === 'wpn_pulse_laser_s');
 }
+
+function forkedPulseFixture(t) {
+  const sim = createSimulation({ seed: 4242, systems: [weapons, physics, combat] });
+  t.after(() => sim.dispose());
+  const { state, bus, helpers, registry } = sim;
+  state.mode = 'flight';
+  const player = sim.spawn({ type: 'ship', team: 0, pos: { x: -45, z: 0 } });
+  state.playerId = player.id;
+  const target = sim.spawn({ type: 'ship', team: 1, pos: { x: 0, z: 0 },
+    radius: 3, hull: 800, hullMax: 800, collides: true });
+  const owner = registry.get('weapons');
+  const contacts = [];
+  bus.on('projectile:hit', payload => contacts.push(payload));
+  const spec = compile(pulseDef().id, [['mod_forked_core', 1]]);
+  const launch = (forked = false) => {
+    const def = pulseDef();
+    const runtime = forked ? createLineage({ spec, createdTick: state.tick, sourceEntityId: player.id }) : null;
+    owner._spawnProjectile(player, { ...def, defId: def.id }, def, 0, target, false, state,
+      runtime ? { spec, liveRuntime: runtime } : {});
+    return { projectile: state.entityIndex.projectiles.at(-1), runtime };
+  };
+  const sweep = () => registry.get('physics').sweepProjectiles(1 / 60, state);
+  return { state, bus, helpers, registry, owner, player, target, contacts, launch, sweep };
+}
+
+function movePulse(projectile, fromX, toX, z) {
+  projectile.prevPos.set(fromX, 0, z);
+  projectile.pos.set(toX, 0, z);
+}
+
+test('only the projectile named by the physics hit can spend its Forked Core lineage', (t) => {
+  const { state, bus, registry, owner, player, target, contacts, launch, sweep } = forkedPulseFixture(t);
+  const { projectile: forked, runtime } = launch(true);
+  const { projectile: ordinary } = launch();
+  movePulse(forked, -5, 5, 8);
+  movePulse(ordinary, -18, 8, 0);
+  sweep();
+
+  assert.deepEqual(contacts.map(hit => hit.projectileId), [ordinary.id]);
+  assert.equal(contacts[0].causalTags, undefined);
+  assert.equal(lineageMetrics(runtime).childCount, 0);
+  assert.ok(owner._attackLive.has(forked.id));
+
+  const hullBefore = target.hull;
+  // Scripted damage can use the legacy damage receipt without a projectile body.
+  bus.emit('projectile:hit', { ownerId: player.id, targetId: target.id, damage: 3,
+    damageType: 'kinetic', pos: { x: 0, z: 0 } });
+  assert.ok(target.hull < hullBefore);
+  assert.equal(contacts[1].causalTags, undefined);
+  assert.equal(lineageMetrics(runtime).childCount, 0);
+
+  state.tick++;
+  movePulse(forked, -18, 8, 0);
+  sweep();
+
+  const children = state.entityIndex.projectiles.filter(body => body !== forked && body !== ordinary);
+  assert.equal(contacts[2].projectileId, forked.id);
+  assert.deepEqual(contacts[2].causalTags, ['SPLIT']);
+  assert.equal(children.length, 2);
+  assert.equal(lineageMetrics(runtime).childCount, 2);
+  assert.equal(owner._attackLive.has(forked.id), false);
+
+  assert.deepEqual(contacts.slice(3).map(hit => hit.projectileId), children.map(child => child.id));
+  assert.ok(children.every(child => !child.alive));
+  assert.equal(lineageMetrics(runtime).childCount, 2, 'children cannot inherit another split');
+  registry.get('core').lifetimeSweep(1 / 60, state);
+  assert.equal(owner._attackLive.size, 0, 'the consumed parent and child hits retire their records');
+});
+
+test('a recycled projectile id cannot inherit an attack while its former death receipt is queued', (t) => {
+  const { state, bus, helpers, registry, owner, contacts, launch, sweep } = forkedPulseFixture(t);
+  const { projectile: old, runtime } = launch(true);
+  assert.ok(helpers.removeEntity(old.id, { immediate: true }));
+  const { projectile: replacement } = launch();
+  assert.equal(replacement.id, old.id);
+  assert.notEqual(replacement.occupantGeneration, old.occupantGeneration);
+  movePulse(replacement, -18, 8, 0);
+  sweep();
+
+  assert.deepEqual(contacts.map(hit => hit.projectileId), [replacement.id]);
+  assert.equal(lineageMetrics(runtime).childCount, 0);
+  bus.flush();
+  assert.equal(owner._attackLive.size, 0);
+
+  const { projectile: retiring } = launch(true);
+  assert.ok(helpers.removeEntity(retiring.id, { immediate: true }));
+  const { projectile: expiring, runtime: newRuntime } = launch(true);
+  assert.equal(expiring.id, retiring.id);
+  bus.flush();
+  assert.equal(owner._attackLive.get(expiring.id)?.runtime, newRuntime);
+  expiring.ttl = 0;
+  registry.get('core').lifetimeSweep(1 / 60, state);
+  assert.equal(owner._attackLive.size, 0, 'natural expiry releases the corresponding attack');
+});
 
 function plateReceipt(overrides = {}) {
   return createSurfaceContactReceipt({

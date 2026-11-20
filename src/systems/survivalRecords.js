@@ -35,6 +35,7 @@ import { isAuthoredCourseVictory } from '../data/survivalCourse.js';
 import { CRUCIBLE_WEEKLY_ROTATION } from '../data/survivalMutators.js';
 import { challengeFromRun, consumeQueuedDailyDateKey, lastQueuedDailyDateKey, normalizeMutators } from './survivalMutators.js';
 import { applyBank, buyHull, buyTrack, emptyHangar, migrateHangar } from '../data/swarmHangar.js';
+import { bankableRunCredits } from './survivalExtraction.js';
 import {
   applySwarmLadderResult,
   emptySwarmLadder,
@@ -1784,6 +1785,7 @@ export function compactRunResult(result, run, newly) {
 
 function resolveDailyDateKey(result, run) {
   const candidates = [
+    run?.telemetry?.dailyDateKey,
     result && result.dailyDateKey,
     run && run.dailyDateKey,
     lastQueuedDailyDateKey(),
@@ -1831,6 +1833,16 @@ function hangarEndedAt(value) {
   return String(value);
 }
 
+/** Same-seed attempts may share their end stamp. Allocate from this profile's settled runs. */
+export function nextSwarmBankOrdinal(hangar) {
+  let latest = 0;
+  for (const key of hangar.settledKeys) {
+    const ordinal = Number(/^run:swarm-purse:(\d+):[01]$/.exec(key)?.[1]);
+    if (Number.isSafeInteger(ordinal)) latest = Math.max(latest, ordinal);
+  }
+  return latest + 1;
+}
+
 function hangarBankInput(result, run) {
   const src = result && typeof result === 'object' ? result : {};
   const runSrc = run && typeof run === 'object' ? run : {};
@@ -1844,8 +1856,11 @@ function hangarBankInput(result, run) {
   const circuitComplete = !!(circuit && circuit.status === 'completed'
     && circuit.clearedStages === CIRCUIT_STAGE_COUNT && circuit.wonAtWave === CIRCUIT_TOTAL_ROUNDS
     && outcome === 'victory');
+  const ordinal = runSrc.telemetry?.swarmBankOrdinal;
+  const swarmRunId = Number.isSafeInteger(ordinal) && ordinal > 0
+    ? `swarm-purse:${ordinal}:${runSrc.telemetry.deepContinued === true ? 1 : 0}` : null;
   return {
-    credits: src.credits,
+    credits: bankableRunCredits(runSrc, src.credits ?? 0),
     // The window's middle seat: salvage the pilot already banked mid-run rides the run's
     // telemetry stamp, spent out of the purse when it was secured — applyBank adds it on top
     // of whatever fraction the ending pays on the remainder, so it is never paid twice.
@@ -1862,7 +1877,7 @@ function hangarBankInput(result, run) {
     cashOut: isCircuit ? circuitComplete : src.cashOut === true,
     wavesCleared: src.wavesCleared != null ? src.wavesCleared : src.wave,
     wave: src.wave != null ? src.wave : runSrc.wave,
-    runId: src.runId != null ? src.runId : runSrc.runId,
+    runId: src.runId ?? runSrc.runId ?? swarmRunId,
     seed: src.seed != null ? src.seed : runSrc.seed,
     endedAt: hangarEndedAt(src.endedAt),
   };
@@ -1874,10 +1889,25 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
   // back". recordRulesFor is the one normalization: an explicit practice flag on either input
   // and a 'practice' mode stamped into provided rules both land on the same truth here.
   const isPractice = recordRulesFor(result || {}, run || {}).mode === 'practice';
+  const bankInput = isPractice ? null : hangarBankInput(result, run);
+  if (result?.stopReason === 'player_retired') {
+    // Retire closes the run without a record or payout from its unbanked purse.
+    // Salvage explicitly secured at a refit still comes home.
+    if (!bankInput || !(bankInput.securedCredits > 0)) return null;
+    const bank = applyBank(loaded.hangar, { ...bankInput, outcome: 'aborted', cashOut: false });
+    if (bank.banked <= 0) return null;
+    const next = { ...loaded, hangar: bank.hangar };
+    if (!saveCrucibleMeta(next, storage)) return null;
+    return {
+      profile: next,
+      result: { bankedBounty: bank.banked, hangarBounty: bank.hangarBounty, cashOut: false },
+      unlocksEarned: [],
+    };
+  }
   // A drill settles the Hangar as an empty run — bounty untouched, no settle key spent — and
   // earns no unlocks. evaluateUnlocks also refuses a practice-shaped result on its own; this
   // gate is the one that can see the run-side flag.
-  const bank = applyBank(loaded.hangar, isPractice ? null : hangarBankInput(result, run));
+  const bank = applyBank(loaded.hangar, bankInput);
   const evaluated = isPractice
     ? { unlocks: { ...(asObject(loaded.unlocks) || {}) }, newly: [] }
     : evaluateUnlocks(loaded, {
@@ -1994,7 +2024,7 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     challenges: challengeEval.challenges,
     records: {
       byKey,
-      lifetime: applyLifetime(records.lifetime, compact),
+      lifetime: isPractice ? records.lifetime : applyLifetime(records.lifetime, compact),
     },
     history: [...(Array.isArray(loaded.history) ? loaded.history : []), compact].slice(-CRUCIBLE_HISTORY_LIMIT),
     cabinet,

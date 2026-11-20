@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
+import { bootRealPath } from '../scripts/lib/bench/realPath.mjs';
+import { createUiInput } from '../src/ui/input.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRunState } from '../src/core/runState.js';
@@ -21,6 +23,8 @@ import {
   SWARM_FLOOR_CRATE_PRICE,
   SWARM_FLOOR_CRATE_PULLS_PER_MOVE,
   SWARM_FLOOR_PAD_RETRY_S,
+  SWARM_FLOOR_ARM_REQUEST,
+  swarmFloorPadQuote,
   swarmFloorPlanFor,
 } from '../src/data/swarmFloor.js';
 
@@ -96,7 +100,7 @@ function boot({ seed = 7, ruleset = SWARM_RULESET, arenaId = FOUNDRY_ARENA_ID, c
   const run = createRunState({ kind: 'survival', ruleset, seed });
   run.arenaId = arenaId;
   run.wave = wave;
-  run.phase = 'wave_intro';
+  run.phase = 'active';
   state.run = run;
   state.simTime = 0;
   state.tick = 0;
@@ -144,7 +148,11 @@ function boot({ seed = 7, ruleset = SWARM_RULESET, arenaId = FOUNDRY_ARENA_ID, c
   }
 
   // The event physics publishes on a body-overlap acceptance ask, mirrored exactly.
-  function collect(pad, collectorId = state.playerId) {
+  function collect(pad, collectorId = state.playerId, arm = true) {
+    if (collectorId === state.playerId) {
+      Object.assign(pilot.pos, pad.pos);
+      if (arm) bus.emit(SWARM_FLOOR_ARM_REQUEST, swarmFloorPadQuote(pad));
+    }
     const payload = {
       pickupId: pad.id, collectorId,
       kind: pad.data.kind, amount: pad.data.amount,
@@ -211,6 +219,8 @@ test('a helios_core install arms six lit pads at the authored Foundry spots', ()
     assert.equal(crate.data.swarmFloorPad.price, SWARM_FLOOR_CRATE_PRICE);
     assert.equal(south.data.swarmFloorPad.label, 'PULSE LASER S · 500');
     assert.equal(ne.data.swarmFloorPad.label, 'CONCUSSION CANNON S · 500');
+    assert.equal(south.data.swarmFloorPad.fitPreview, 'Fits empty slot 2');
+    assert.equal(ne.data.swarmFloorPad.fitPreview, 'Replaces Pulse Laser S');
     assert.equal(crate.data.swarmFloorPad.label, 'THE CRATE · 950');
   } finally { h.destroy(); }
 });
@@ -248,6 +258,84 @@ test('a wall-gun pad sells its gun through the run purse and the ships owner fit
   } finally { h.destroy(); }
 });
 
+test('the floor previews the real replacement before a physics crossing and refreshes after the fit', async () => {
+  const seed = 7;
+  const wave = 3;
+  const owned = starterShip();
+  owned.fittings[1] = 'wpn_autocannon_s';
+  owned.fittings[2] = 'wpn_flak_turret_s';
+  const h = await bootRealPath({
+    seed,
+    systems: [runSessionProto, shipsProto, survivalArena, 'physics'],
+    hulls: [{ hullId: owned.defId, fittings: owned.fittings, isPlayer: true, pos: { x: 0, z: -600 } }],
+  });
+  try {
+    const { state, bus, player } = h;
+    state.player.ownedShips = [owned];
+    state.player.activeShipIndex = 0;
+    state.run = Object.assign(createRunState({ kind: 'survival', ruleset: SWARM_RULESET, seed }),
+      { arenaId: FOUNDRY_ARENA_ID, wave, phase: 'active' });
+    bus.emit('run:awardRequested', { credits: 5000, reason: 'test_stake' });
+    bus.emit('run:wavePlanned', { wave, plan: planWave({ seed, arenaId: FOUNDRY_ARENA_ID, wave }) });
+    const pad = state.entityList.find(entity => entity.data?.swarmFloorPad?.padId === 'foundry-gun-ne');
+    const south = state.entityList.find(entity => entity.data?.swarmFloorPad?.padId === 'foundry-gun-south');
+    assert.ok(pad);
+    assert.equal(pad.data.swarmFloorPad.fitPreview, 'Replaces Pulse Laser S');
+    assert.equal(south?.data.swarmFloorPad.fitPreview, 'Already fitted');
+    const anchor = { x: pad.pos.x, z: pad.pos.z };
+    const purchases = [];
+    bus.on('swarm:floorPadBought', event => purchases.push(event));
+
+    const crate = state.entityList.find(entity => entity.data?.swarmFloorPad?.padId === 'foundry-crate');
+    player.pos.copy(crate.pos);
+    h.step(1);
+    assert.equal(state.run.credits, 5000, 'ordinary Crate transit makes no purchase');
+    assert.equal(owned.fittings[0], 'wpn_pulse_laser_s');
+
+    player.pos.copy(pad.pos);
+    player.pos.x += 65;
+    const previousDocument = globalThis.document;
+    const previousWindow = globalThis.window;
+    const previousStyle = globalThis.getComputedStyle;
+    const keyboard = [];
+    const target = { tagName: 'BODY', isContentEditable: false };
+    const terms = { getClientRects: () => [1] };
+    globalThis.window = { addEventListener() {}, removeEventListener() {} };
+    globalThis.document = {
+      body: target, activeElement: target, documentElement: { classList: {} },
+      addEventListener(type, listener, capture) { if (type === 'keydown' && !capture) keyboard.push(listener); },
+      removeEventListener() {}, getElementById: () => null,
+      querySelector: selector => selector === `#sf-floorpads [data-floor-quote="${pad.id}"]` ? terms : null,
+    };
+    globalThis.getComputedStyle = () => ({ opacity: '1' });
+    const ui = createUiInput({ state, bus }, { isOpen: () => false });
+    try {
+      keyboard[0]({ key: 'e', code: 'KeyE', target, preventDefault() {}, stopPropagation() {} });
+    } finally {
+      ui.dispose();
+      globalThis.document = previousDocument;
+      globalThis.window = previousWindow;
+      globalThis.getComputedStyle = previousStyle;
+    }
+    assert.ok(pad.data.swarmFloorPad.armedUntil > state.simTime);
+    assert.equal(state.run.credits, 5000, 'arm intent costs nothing before contact');
+    player.pos.copy(pad.pos);
+    h.step(1);
+    assert.equal(h.proof().sg02Ready, true);
+    assert.equal(h.runtime.getSystem('physics')._sg02.records.has(pad.id), false);
+    assert.deepEqual({ x: pad.pos.x, z: pad.pos.z }, anchor);
+    assert.equal(pad.alive, true);
+    assert.equal(state.run.credits, 5000 - SWARM_FLOOR_WALL_GUN_PRICE);
+    assert.equal(owned.fittings[0], 'wpn_concussion_cannon_s');
+    assert.ok(state.player.moduleInventory.some(row => row.defId === 'wpn_pulse_laser_s'));
+    assert.equal(pad.data.swarmFloorPad.fitPreview, 'Already fitted');
+    assert.equal(south.data.swarmFloorPad.fitPreview, 'Replaces Concussion Cannon S');
+    assert.deepEqual(purchases.map(event => event.padId), ['foundry-gun-ne']);
+    h.step(100);
+    assert.equal(purchases.length, 1, 'remaining over the pad is harmless after one purchase');
+  } finally { h.dispose(); }
+});
+
 test('short purse refuses visibly: Need N more, deny cue, no debit, no fit', () => {
   const h = boot({ credits: 300 });
   try {
@@ -277,6 +365,45 @@ test('short purse refuses visibly: Need N more, deny cue, no debit, no fit', () 
   } finally { h.destroy(); }
 });
 
+test('an old quote cannot arm a paid crossing, and a refused purchase needs fresh intent', () => {
+  const h = boot({ credits: 300 });
+  try {
+    const pad = h.padById('foundry-gun-ne');
+    const wrongLife = { ...swarmFloorPadQuote(pad), generation: 999 };
+    h.collect(pad, h.state.playerId, false);
+    h.bus.emit(SWARM_FLOOR_ARM_REQUEST, wrongLife);
+    h.collect(pad, h.state.playerId, false);
+    assert.equal(h.events.refused.length, 0);
+    assert.equal(h.events.spent.length, 0);
+
+    h.collect(pad);
+    assert.equal(h.events.refused.length, 1);
+    h.bus.emit('run:awardRequested', { credits: 500, reason: 'test_stake' });
+    h.collect(pad, h.state.playerId, false);
+    assert.equal(h.state.run.credits, 800);
+    h.collect(pad);
+    assert.equal(h.state.run.credits, 300);
+    assert.equal(h.events.bought.length, 1);
+  } finally { h.destroy(); }
+});
+
+test('a floor sale changes the quote and retires consent without reserving Scrap', () => {
+  const h = boot({ credits: 1400 });
+  try {
+    const crate = h.padById('foundry-crate');
+    h.collect(crate, h.state.playerId, false);
+    h.bus.emit(SWARM_FLOOR_ARM_REQUEST, swarmFloorPadQuote(crate));
+    assert.equal(h.state.run.credits, 1400);
+    h.bus.emit('swarm:floorSaleRequested', { factor: 0.5 });
+    h.collect(crate, h.state.playerId, false);
+    assert.equal(h.state.run.credits, 1400);
+    assert.equal(h.events.bought.length, 0);
+    h.collect(crate);
+    assert.equal(h.state.run.credits, 925);
+    assert.equal(h.events.bought[0].price, 475);
+  } finally { h.destroy(); }
+});
+
 test('a non-player contact never asks the pad for a receipt', () => {
   const h = boot({ credits: 5000 });
   try {
@@ -292,10 +419,15 @@ test('a non-player contact never asks the pad for a receipt', () => {
   } finally { h.destroy(); }
 });
 
-test('THE CRATE sells a hull-compatible catalogue weapon and bills the purse', () => {
+test('the Crate preview and receipt follow a real replacement on a full hull', () => {
   const h = boot({ credits: 5000 });
   try {
     const crate = h.padById('foundry-crate');
+    const ships = h.ctx.registry.get('ships');
+    assert.equal(ships.fitModule({ slotIndex: 1, defId: 'wpn_autocannon_s', swarmGrant: true }), true);
+    assert.equal(ships.fitModule({ slotIndex: 2, defId: 'wpn_flak_turret_s', swarmGrant: true }), true);
+    assert.equal(crate.data.swarmFloorPad.fitPreview, 'Fits a random compatible gun\nReplaced gun goes to spares');
+    const prior = h.owned.fittings.slice();
     h.collect(crate);
     assert.equal(h.state.run.credits, 5000 - SWARM_FLOOR_CRATE_PRICE);
     const buy = h.events.bought.find((b) => b.padId === 'foundry-crate');
@@ -308,8 +440,30 @@ test('THE CRATE sells a hull-compatible catalogue weapon and bills the purse', (
     assert.equal(h.owned.fittings[buy.slotIndex], def.id,
       'the bought gun sits on the slot the receipt names');
     assert.equal(def.size === 'L', false, 'an L gun can never be dealt to an M hull');
-    const toast = h.events.toasts.find((t) => (t.text || '').startsWith('THE CRATE'));
-    assert.ok(toast && toast.text.includes(def.name), 'the receipt names the dealt gun');
+    const replaced = WEAPONS.find(weapon => weapon.id === prior[buy.slotIndex]);
+    assert.ok(replaced);
+    assert.ok(h.state.player.moduleInventory.some(item => item.defId === replaced.id));
+    assert.ok(h.events.toasts.some(({ text }) => text === `${def.name} fitted. ${replaced.name} moved to spares.`));
+  } finally { h.destroy(); }
+});
+
+test('when the Crate has no legal roll it previews no charge and leaves the draw untouched', () => {
+  const h = boot({ credits: 5000 });
+  try {
+    const crate = h.padById('foundry-crate');
+    const ships = h.ctx.registry.get('ships');
+    const rng = h.state.rng;
+    let draws = 0;
+    h.state.rng = () => { draws += 1; return rng(); };
+    ships.moduleFitBlocker = () => ({ reason: 'outfit_budget' });
+    h.bus.emit('ship:appearanceChanged', { id: h.state.playerId });
+    assert.equal(crate.data.swarmFloorPad.fitPreview, 'No compatible gun fits\nNo charge');
+    h.collect(crate);
+    assert.equal(h.state.run.credits, 5000);
+    assert.equal(draws, 0);
+    assert.equal(h.events.spent.length, 0);
+    assert.equal(h.events.bought.length, 0);
+    assert.ok(h.events.toasts.some(({ text }) => text === 'No compatible gun fits. No charge.'));
   } finally { h.destroy(); }
 });
 

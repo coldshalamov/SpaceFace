@@ -212,6 +212,7 @@ export function stepSiteStructure(snapshot) {
 
   const occupied = new Set();
   const running = [];
+  const braces = [];
   const raw = Array.isArray(snap.machines) ? snap.machines : [];
   for (const m of raw) {
     if (!m || typeof m !== 'object') continue;
@@ -222,6 +223,9 @@ export function stepSiteStructure(snapshot) {
     occupied.add(`${col},${row}`);
     const def = typeof m.defId === 'string' ? SITE_MACHINE_BY_ID.get(m.defId) : null;
     const ratio = finite(m.powerRatio, 0);
+    if (m.defId === 'sm_seismic_brace' && ratio > 0) {
+      braces.push({ col, row, radius: def?.braceRadius || 2 });
+    }
     if (!isHeavy(def) || !(ratio > 0)) continue;
     running.push({
       id,
@@ -232,10 +236,20 @@ export function stepSiteStructure(snapshot) {
   }
   running.sort((a, b) => (machinePosKey(a) < machinePosKey(b) ? -1 : machinePosKey(a) > machinePosKey(b) ? 1 : 0));
 
+  const spanBraced = (a, b) => {
+    for (const br of braces) {
+      const da = Math.max(Math.abs(br.col - a.col), Math.abs(br.row - a.row));
+      const db = Math.max(Math.abs(br.col - b.col), Math.abs(br.row - b.row));
+      if (da <= br.radius || db <= br.radius) return true;
+    }
+    return false;
+  };
+
   let pair = null;
   for (let i = 0; i < running.length && !pair; i++) {
     for (let j = i + 1; j < running.length; j++) {
       if (!spanUnsupported(snap.field, running[i], running[j])) continue;
+      if (spanBraced(running[i], running[j])) continue;
       pair = [running[i], running[j]];
       break;
     }

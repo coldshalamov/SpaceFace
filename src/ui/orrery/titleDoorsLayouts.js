@@ -48,16 +48,18 @@ ${SECOND_LI} { grid-column:1 / span 12; grid-row:2; margin:0 7px 0 0 !important;
 /* the door is the list item: image, border and the notch on it; the word and its line sit inside in flow */
 ${DOOR_LI} {
   display:flex !important; flex-direction:column; justify-content:flex-end; min-height:clamp(210px, 34vh, 330px);
-  padding:20px 26px 22px !important; box-sizing:border-box; position:relative !important; container-type:inline-size;
+  box-sizing:border-box; position:relative !important; container-type:inline-size;
   background:linear-gradient(0deg, rgb(6 8 12 / .82) 0%, rgb(6 8 12 / .42) 38%, rgb(6 8 12 / 0) 70%), var(--door-img) var(--door-img-pos, center) / var(--door-img-size, cover) no-repeat;
   border:1px solid rgb(${BONE} / .34); border-radius:2px;
   clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+  user-select:none;
   transition:border-color .16s linear, box-shadow .16s linear; }
 ${DOOR_LI}:is(:hover, :focus-within) {
   border-color:var(--dp-hand, #f2b950); box-shadow:0 0 26px rgb(242 185 80 / .25);
   background:linear-gradient(0deg, rgb(20 14 6 / .85) 0%, rgb(14 10 6 / .42) 38%, rgb(6 8 12 / 0) 70%), var(--door-img) var(--door-img-pos, center) / var(--door-img-size, cover) no-repeat; }
 ${DOOR_BTN} {
-  display:block !important; width:100% !important; padding:0 !important; margin:0 !important; text-align:left; cursor:pointer;
+  display:flex !important; flex:1; flex-direction:column; justify-content:flex-end; align-items:stretch; gap:0;
+  width:100% !important; padding:20px 26px 22px !important; margin:0 !important; text-align:left; cursor:pointer;
   color:rgb(248 244 234) !important; background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
   font:${DOOR_FONT} !important; letter-spacing:.02em !important; text-transform:uppercase; text-shadow:0 1px 0 rgb(0 0 0 / .6); }
 /* the button's own text is the core copy (New Game / Continue); the door draws ADVENTURE from its data-door-label */
@@ -66,8 +68,8 @@ ${DOOR_BTN}[data-door-label]::before { content:attr(data-door-label); display:bl
   margin:0 !important; padding:0 !important; background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important; transform:none !important; opacity:1 !important;
   font:${DOOR_FONT}; letter-spacing:.02em; text-transform:uppercase; color:inherit; }
 ${DOOR_BTN}:is(:hover, :focus, :focus-visible, [data-awake]) { background:none !important; outline:none !important; box-shadow:none !important; }
-/* the attention lamp's bracket round the word is not wanted on a door (the door itself lights) */
 ${DOOR_BTN}::after, ${DOOR_LI} .dp-lit__item::after { display:none !important; content:none !important; }
+${DOOR_LI}:has(> button:focus-visible) { box-shadow:inset 0 0 0 2px var(--dp-hand, #f2b950); }
 html body #screens .of-title.orr-title--doors .of-title-actions li.of-title-door > button.dp-lit__item:is(:focus, :focus-visible) { outline:0 solid transparent !important; outline-offset:0 !important; }
 ${DOOR_LI} .dp-lit__note {
   display:block !important; position:static !important; clip:auto !important; clip-path:none !important; width:auto !important; height:auto !important;
@@ -103,7 +105,8 @@ ${T} .of-title-more:is(:hover, :focus-visible) { color:#fff !important; outline:
 ${T} .of-title-aside { display:contents !important; }
 @media (max-height:700px) {
   ${T} .of-title-actions { bottom:clamp(40px, 7vh, 70px) !important; gap:10px 0 !important; }
-  ${DOOR_LI} { min-height:clamp(180px, 33vh, 230px); padding:16px 22px 18px !important; }
+  ${DOOR_LI} { min-height:clamp(180px, 33vh, 230px); }
+  ${DOOR_BTN} { padding:16px 22px 18px !important; }
 }
 /* the phone: the two doors stacked, then the small row; More behind its toggle as on the desktop */
 @media (max-width:700px) {

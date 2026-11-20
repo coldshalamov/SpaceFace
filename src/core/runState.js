@@ -320,7 +320,7 @@ function validateRunStateInner(run) {
     }
   }
 
-  collectNonJsonIssues(run, issues, [], new WeakSet());
+  collectNonJsonIssues(run, issues, [], []);
   return { ok: issues.length === 0, issues };
 }
 
@@ -413,14 +413,14 @@ function isJsonScalar(value) {
   return value === null || typeof value === 'string' || typeof value === 'boolean' || Number.isFinite(value);
 }
 
-function collectNonJsonIssues(value, issues, path, visited) {
+function collectNonJsonIssues(value, issues, path, ancestors) {
   if (value === null) return;
   const type = typeof value;
   if (type !== 'object') {
     issues.push(`${nonJsonPath(path)}: ${value === undefined ? 'undefined' : `non-json ${type}`}`);
     return;
   }
-  if (visited.has(value)) {
+  if (ancestors.includes(value)) {
     issues.push(`${nonJsonPath(path)}: circular`);
     return;
   }
@@ -428,7 +428,9 @@ function collectNonJsonIssues(value, issues, path, visited) {
     issues.push(`${nonJsonPath(path)}: too deep`);
     return;
   }
-  visited.add(value);
+  // The depth cap keeps this scan short. Reusing the ancestry stack avoids
+  // constructing a WeakSet each time an active-wave reader validates the run.
+  ancestors.push(value);
   try {
     if (value instanceof Map || value instanceof Set) {
       issues.push(`${nonJsonPath(path)}: ${value.constructor.name}`);
@@ -439,7 +441,7 @@ function collectNonJsonIssues(value, issues, path, visited) {
         const child = value[i];
         if (isJsonScalar(child)) continue;
         path.push(i);
-        collectNonJsonIssues(child, issues, path, visited);
+        collectNonJsonIssues(child, issues, path, ancestors);
         path.pop();
       }
       return;
@@ -453,13 +455,12 @@ function collectNonJsonIssues(value, issues, path, visited) {
       const child = value[key];
       if (isJsonScalar(child)) continue;
       path.push(key);
-      collectNonJsonIssues(child, issues, path, visited);
+      collectNonJsonIssues(child, issues, path, ancestors);
       path.pop();
     }
   } finally {
-    // `visited` tracks the current ancestry, not every object seen. Reusing a JSON object in two
-    // fields is valid; only an edge back into the active ancestry is a circular reference.
-    visited.delete(value);
+    // Siblings may share an object. Only the current ancestry can form a cycle.
+    ancestors.pop();
   }
 }
 

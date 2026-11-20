@@ -34,6 +34,7 @@ import * as THREE from 'three';
 import { createStationBayTraffic } from './stationBayTraffic.js';
 import { stationLifeClockFor } from '../presentation/stationLifeClock.js';
 import { canvasIsProtectedDuringFreeze } from '../core/presentationFreeze.js';
+import { startupPictureRetired } from '../core/bootShellPacing.js';
 import { activeOwnedShip } from '../data/hullIdentity.js';
 import { loadAuthoredPart as loadAuthoredPartLive } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
@@ -417,9 +418,16 @@ export function presentUiStage({ render, state, frameDt = 0 } = {}) {
   }
   if (!stage) {
     try {
+      const usesWorldEnvironment = sceneId === 'replay-theater'
+        || SCENES[sceneId]?.live === 'killcam' || SCENES[sceneId]?.live === 'titleAttract';
+      let environment = usesWorldEnvironment ? state.render?.envMap || state.render?.scene?.environment : null;
+      if (usesWorldEnvironment && !environment) {
+        if (!startupPictureRetired()) return false;
+        render?._bakeEnv?.();
+        environment = state.render?.envMap || state.render?.scene?.environment;
+      }
       stage = buildStage(sceneId, renderer, request, hullFile, {
-        environment: sceneId === 'replay-theater' || SCENES[sceneId]?.live === 'killcam' || SCENES[sceneId]?.live === 'titleAttract'
-          ? state.render?.envMap || state.render?.scene?.environment || null : null,
+        environment,
         isRequested: () => {
           const current = uiStageRequestFor(state);
           return current?.scene === sceneId && hullFileForRequest(current) === hullFile;

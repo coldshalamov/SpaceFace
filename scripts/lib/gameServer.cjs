@@ -22,6 +22,7 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
+const { gunzipSync } = require('node:zlib');
 const { resolveStaticCacheHeaders, ifNoneMatchSatisfied } = require('./staticCachePolicy.cjs');
 const { attachPlayerStore } = require('./playerSaveStore.cjs');
 const { buildUserContentScript } = require('./userContentStore.cjs');
@@ -54,6 +55,16 @@ const MIME = Object.freeze({
   '.ttf':  'font/ttf',
   '.map':  'application/json; charset=utf-8',
 });
+
+// null keeps the full response for unsupported forms. false marks an empty interval.
+function parseVideoByteRange(header, size) {
+  const match = /^bytes=(\d*)-(\d*)$/i.exec(header?.trim() || '');
+  if (!match || (!match[1] && !match[2])) return null;
+  const [, first, last] = match;
+  const start = first ? Number(first) : Math.max(0, size - Number(last));
+  const end = first && last ? Math.min(Number(last), size - 1) : size - 1;
+  return start <= end ? { start, end } : false;
+}
 
 // Dev-source freshness watch roots (used by /__dev_freshness for manual diagnostics).
 // Watching source/UI roots only — never scan large asset/build dirs.
@@ -172,6 +183,8 @@ const SOURCE_OVERLAY_RUNTIME_PATH_POLICY = 'index.html + vendor/three.module.js 
 const SOURCE_OVERLAY_MAX_FILES = 4096;
 const SOURCE_OVERLAY_MAX_FILE_BYTES = 8 * 1024 * 1024;
 const SOURCE_OVERLAY_MAX_TOTAL_BYTES = 128 * 1024 * 1024;
+// The JSON carries base64 plus paths and hashes for each allowed entry.
+const SOURCE_OVERLAY_MAX_JSON_BYTES = Math.ceil(SOURCE_OVERLAY_MAX_TOTAL_BYTES / 3) * 4 + 16 * 1024 * 1024;
 const SOURCE_OVERLAY_SHA256 = /^[a-f0-9]{64}$/i;
 
 function readAppSourceBuildDigest(root) {
@@ -241,7 +254,10 @@ function loadSourceOverlayManifest(sourceOverlay) {
   let manifest = sourceOverlay;
   if (typeof sourceOverlay === 'string') {
     const file = path.resolve(sourceOverlay);
-    manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const text = path.extname(file).toLowerCase() === '.gz'
+      ? gunzipSync(fs.readFileSync(file), { maxOutputLength: SOURCE_OVERLAY_MAX_JSON_BYTES }).toString('utf8')
+      : fs.readFileSync(file, 'utf8');
+    manifest = JSON.parse(text);
   }
   if (!manifest || typeof manifest !== 'object' || manifest.schema !== SOURCE_OVERLAY_SCHEMA) {
     throw new Error(`invalid source overlay manifest schema (expected ${SOURCE_OVERLAY_SCHEMA})`);
@@ -251,6 +267,11 @@ function loadSourceOverlayManifest(sourceOverlay) {
   }
   if (!Array.isArray(manifest.files) || manifest.files.length < 1 || manifest.files.length > SOURCE_OVERLAY_MAX_FILES) {
     throw new Error(`source overlay manifest files must contain 1..${SOURCE_OVERLAY_MAX_FILES} entries`);
+  }
+  const assetPins = manifest.assetPins === undefined ? [] : manifest.assetPins;
+  if (!Array.isArray(assetPins) || assetPins.length > SOURCE_OVERLAY_MAX_FILES
+      || (assetPins.length > 0 && manifest.workingTree !== true)) {
+    throw new Error('source overlay asset pins require a bounded working-tree candidate');
   }
   const entries = [];
   const byPath = new Map();
@@ -276,6 +297,20 @@ function loadSourceOverlayManifest(sourceOverlay) {
     entries.push(entry);
     byPath.set(relativePath, entry);
   }
+  for (const pin of assetPins) {
+    const relativePath = normalizeSourceOverlayPath(pin?.path);
+    if (!relativePath?.startsWith('assets/') || byPath.has(relativePath)) {
+      throw new Error(`invalid or duplicate source overlay asset pin: ${pin?.path}`);
+    }
+    if (!Number.isSafeInteger(pin.bytes) || pin.bytes < 1 || pin.bytes > SOURCE_OVERLAY_MAX_FILE_BYTES
+        || typeof pin.sha256 !== 'string' || !SOURCE_OVERLAY_SHA256.test(pin.sha256)) {
+      throw new Error(`invalid source overlay asset pin metadata: ${relativePath}`);
+    }
+    const entry = Object.freeze({ path: relativePath, bytes: pin.bytes, sha256: pin.sha256.toLowerCase(), assetPin: true });
+    entries.push(entry);
+    byPath.set(relativePath, entry);
+    totalBytes += entry.bytes;
+  }
   const digest = sourceOverlayDigest(entries);
   if (String(manifest.sourceOverlayDigest || '').toLowerCase() !== digest) {
     throw new Error('source overlay aggregate digest mismatch');
@@ -289,6 +324,7 @@ function loadSourceOverlayManifest(sourceOverlay) {
     fileCount: entries.length,
     totalBytes,
     files: Object.freeze(entries.map(({ path: relativePath, bytes, sha256 }) => ({ path: relativePath, bytes, sha256 }))),
+    ...(assetPins.length ? { assetPinCount: assetPins.length } : {}),
     ...(strictRuntimeIsolation ? { strictRuntimeIsolation: true } : {}),
   });
   return Object.freeze({
@@ -299,6 +335,34 @@ function loadSourceOverlayManifest(sourceOverlay) {
     // existing mixed-source behavior.
     strictRuntime: strictRuntimeIsolation,
   });
+}
+
+// A candidate can use the checkout's asset bytes without copying them into its source archive.
+// Verify the response buffer itself so an edit, replacement or truncation can't change a served pin.
+async function readPinnedAsset(root, file, entry) {
+  let handle;
+  try {
+    const [assetRoot, actualFile] = await Promise.all([fsp.realpath(path.join(root, 'assets')), fsp.realpath(file)]);
+    const relative = path.relative(assetRoot, actualFile);
+    if (!relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return null;
+    handle = await fsp.open(actualFile, 'r');
+    const stat = await handle.stat();
+    if (!stat.isFile() || stat.size !== entry.bytes) return null;
+    const buffer = Buffer.allocUnsafe(entry.bytes + 1);
+    let offset = 0;
+    while (offset < buffer.length) {
+      const { bytesRead } = await handle.read(buffer, offset, buffer.length - offset, offset);
+      if (bytesRead === 0) break;
+      offset += bytesRead;
+    }
+    if (offset !== entry.bytes) return null;
+    const body = buffer.subarray(0, offset);
+    return crypto.createHash('sha256').update(body).digest('hex') === entry.sha256 ? body : null;
+  } catch {
+    return null;
+  } finally {
+    if (handle) await handle.close().catch(() => {});
+  }
 }
 
 function devReleaseReceipt(root, sourceOverlayIdentity = null) {
@@ -486,25 +550,46 @@ function createGameServer(opts) {
       }
 
       // Static file serving. URL paths are POSIX; Windows must not treat `\` or `C:` as roots.
+      const requestHeaders = req.headers || {};
       let file = resolveContainedFile(root, decodedPath);
       if (!file) { res.writeHead(403, { 'Content-Type': 'text/plain' }); res.end('Forbidden'); return; }
 
       const overlayPath = sourceOverlayRequestPath(decodedPath);
       const overlayEntry = overlayPath ? sourceOverlay?.entries.get(overlayPath) : null;
       if (overlayEntry) {
+        const body = overlayEntry.assetPin ? await readPinnedAsset(root, file, overlayEntry) : overlayEntry.body;
+        if (body === null) {
+          res.writeHead(412, { ...staticHeaders, 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+          res.end('Asset no longer matches the validation candidate');
+          return;
+        }
+        const contentType = MIME[path.extname(overlayEntry.path).toLowerCase()] || 'application/octet-stream';
+        const video = contentType.startsWith('video/');
+        const range = video && method === 'GET' && !requestHeaders['if-range']
+          ? parseVideoByteRange(requestHeaders.range, body.length) : null;
         const headers = {
           ...staticHeaders,
           ...(staticHeadersByPath[overlayEntry.path] || {}),
           'Cache-Control': 'no-store',
-          'Content-Length': overlayEntry.bytes,
-          'Content-Type': MIME[path.extname(overlayEntry.path).toLowerCase()] || 'application/octet-stream',
+          'Content-Length': body.length,
+          'Content-Type': contentType,
           'ETag': `"sf-source-${overlayEntry.sha256}"`,
           'X-SpaceFace-Source-Overlay-Digest': sourceOverlay.identity.sourceOverlayDigest,
           'X-SpaceFace-Source-File-Sha256': overlayEntry.sha256,
         };
-        res.writeHead(200, headers);
-        if (method !== 'HEAD') res.end(overlayEntry.body);
-        else res.end();
+        if (video) headers['Accept-Ranges'] = 'bytes';
+        if (range === false) {
+          res.writeHead(416, { ...headers, 'Content-Range': `bytes */${body.length}`, 'Content-Length': 0 });
+          res.end();
+        } else if (range) {
+          headers['Content-Range'] = `bytes ${range.start}-${range.end}/${body.length}`;
+          headers['Content-Length'] = range.end - range.start + 1;
+          res.writeHead(206, headers);
+          res.end(body.subarray(range.start, range.end + 1));
+        } else {
+          res.writeHead(200, headers);
+          res.end(method === 'HEAD' ? undefined : body);
+        }
         return;
       }
 
@@ -603,7 +688,6 @@ function createGameServer(opts) {
       if (!isInsideRoot(file, root)) { res.writeHead(403, { 'Content-Type': 'text/plain' }); res.end('Forbidden'); return; }
 
       const relativePath = path.relative(root, file).split(path.sep).join('/');
-      const requestHeaders = req.headers || {};
 
       // User content ("mods") injection — PQ-172.00. index.html is served with the scanned mod
       // payload inline as a synchronous classic script ahead of the module graph, because data
@@ -664,26 +748,45 @@ function createGameServer(opts) {
       const cache = resolveStaticCacheHeaders(relativePath, stats, requestHeaders, {
         appSourceImmutable: appSourceBuildDigest != null,
       });
+      const contentType = MIME[path.extname(file).toLowerCase()] || 'application/octet-stream';
+      const video = contentType.startsWith('video/');
       const headers = {
         ...staticHeaders,
         ...(staticHeadersByPath[relativePath] || {}),
         ...cache.headers,
-        'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
+        'Content-Type': contentType,
       };
+      if (video) headers['Accept-Ranges'] = 'bytes';
       if (cache.notModified) {
         res.writeHead(304, headers);
         res.end();
         return;
       }
+      // The server's stat-based validators do not guarantee an If-Range match.
+      const range = video && method === 'GET' && !requestHeaders['if-range']
+        ? parseVideoByteRange(requestHeaders.range, stats.size) : null;
+      if (range === false) {
+        res.writeHead(416, { ...headers, 'Content-Range': `bytes */${stats.size}`, 'Content-Length': 0 });
+        res.end();
+        return;
+      }
       const mutableText = cache.cacheControl === 'no-cache'
         && /\.(?:html?|[cm]?js|css|json|map|svg)$/i.test(relativePath);
-      if (!mutableText) headers['Content-Length'] = stats.size;
-      res.writeHead(200, headers);
+      if (range) {
+        headers['Content-Range'] = `bytes ${range.start}-${range.end}/${stats.size}`;
+        headers['Content-Length'] = range.end - range.start + 1;
+      } else if (!mutableText) {
+        headers['Content-Length'] = stats.size;
+      }
+      res.writeHead(range ? 206 : 200, headers);
+      if (video && method === 'HEAD') { res.end(); return; }
       // GLBs routinely carry tens of megabytes of embedded KTX2 data. A whole-file read stages a
       // second copy in the server heap and, in packaged Electron, synchronously blocks the main
       // process while ASAR materializes it. Stream the identical bytes so transport can overlap
       // decode and neither launcher creates an avoidable admission/GC spike.
-      fs.createReadStream(file).on('error', (error) => res.destroy(error)).pipe(res);
+      const stream = fs.createReadStream(file, range || undefined).on('error', (error) => res.destroy(error));
+      if (video) res.once('close', () => stream.destroy());
+      stream.pipe(res);
     } catch (err) {
       const badUrl = err instanceof URIError || (err && err.code === 'ERR_UNESCAPED_CHARACTERS');
       try {
@@ -706,6 +809,7 @@ module.exports = {
   decodeRequestPath,
   resolveContainedFile,
   normalizeSourceOverlayPath,
+  SOURCE_OVERLAY_MAX_FILE_BYTES,
   sourceOverlayDigest,
   loadSourceOverlayManifest,
   maxMtimeMsSync,

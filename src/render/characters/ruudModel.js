@@ -8,17 +8,25 @@ const FOUND = 0x8c5a28, HEAT = 0xff7a32, VERD = 0x3e6b58, SLATE = 0x2a3138, RUBB
 
 function materials() {
   const paint = (color, metal = 0.35, rough = 0.46) => new THREE.MeshStandardMaterial({ color, metalness: metal, roughness: rough });
-  const mats = {
-    foundry: paint(FOUND, 0.72, 0.38),
-    slate: paint(SLATE, 0.48, 0.52),
-    verd: paint(VERD, 0.28, 0.58),
-    rubber: paint(RUBBER, 0.04, 0.86),
-    frost: new THREE.MeshStandardMaterial({ color: FROST, metalness: 0.08, roughness: 0.28, emissive: FROST, emissiveIntensity: 0.18 }),
-    heat: new THREE.MeshStandardMaterial({ color: 0x3a2418, metalness: 0.4, roughness: 0.42, emissive: HEAT, emissiveIntensity: 1.15 }),
-    shear: paint(0x140e0c, 0.62, 0.58),
-    breath: new THREE.MeshBasicMaterial({ color: FROST, transparent: true, opacity: 0.28, depthWrite: false, toneMapped: false }),
+  const factories = {
+    foundry: () => paint(FOUND, 0.72, 0.38),
+    slate: () => paint(SLATE, 0.48, 0.52),
+    verd: () => paint(VERD, 0.28, 0.58),
+    rubber: () => paint(RUBBER, 0.04, 0.86),
+    frost: () => new THREE.MeshStandardMaterial({ color: FROST, metalness: 0.08, roughness: 0.28, emissive: FROST, emissiveIntensity: 0.18 }),
+    heat: () => new THREE.MeshStandardMaterial({ color: 0x3a2418, metalness: 0.4, roughness: 0.42, emissive: HEAT, emissiveIntensity: 1.15 }),
+    shear: () => paint(0x140e0c, 0.62, 0.58),
+    breath: () => new THREE.MeshBasicMaterial({ color: FROST, transparent: true, opacity: 0.28, depthWrite: false, toneMapped: false }),
   };
-  for (const [name, m] of Object.entries(mats)) m.name = `RUUD_${name}`;
+  // A part owns only the materials it actually uses; unused finishes never need disposal.
+  const mats = {};
+  for (const [name, create] of Object.entries(factories)) {
+    let material;
+    Object.defineProperty(mats, name, { get() {
+      if (!material) { material = create(); material.name = `RUUD_${name}`; }
+      return material;
+    } });
+  }
   return mats;
 }
 function add(parent, geo, mat, name) {

@@ -25,7 +25,7 @@ import { wreckClassById, WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses
 import { SECTORS } from '../data/sectors.js';
 import { UNDERSTORY_GARDENS } from '../data/factions/understory.js';
 import { gardenGrowthRadius } from '../data/understoryReceiver.js';
-import { cinderRetentionIds, cinderVictimMission } from '../missions/cinderRoute.js';
+import { CINDER_TAG, CINDER_WASPS, cinderRetentionIds, cinderVictimMission } from '../missions/cinderRoute.js';
 import { capturePatrolPaperwork, normalizePatrolPaperwork, normalizePatrolObservations, patrolPaperworkText, patrolPaperworkComparison } from '../missions/patrolPaperwork.js';
 import {
   causalAftermath,
@@ -2712,6 +2712,10 @@ export const aftermathWrecks = {
     const pitch = boundedPoseAngle(marker.victimPitch);
     const bank = boundedPoseAngle(marker.victimBank);
     const integrity = wreckIntegrity(marker);
+    const cinderVictim = marker.victimMission;
+    const cinderCallsign = cinderVictim?.storyTag === CINDER_TAG && this.state
+      && cinderRetentionIds(this.state, marker).has(marker.markerId)
+      ? `${CINDER_WASPS[cinderVictim.slot]} · marked hull` : null;
     const siteCollision = isSiteWreckMarker(marker) ? warmFreighterCollisionModel() : null;
     const wreckRadius = boundedVictimRadius(marker.victimRadius) || WRECK_RADIUS;
     const wreckMass = mass != null ? mass : 1e6;
@@ -2758,6 +2762,9 @@ export const aftermathWrecks = {
         loot: [],
         salvagePool: poolForMarker(marker),
         salvageTimeLeft: WRECK_SALVAGE_TIME,
+        // The active Cinder contract already identifies its marked hulls. Publish the callsign
+        // before scan resolution without revealing the manifest or changing unmarked wrecks.
+        ...(cinderCallsign ? { callsign: cinderCallsign } : {}),
         // A freight-laced hulk names itself: the scanner is where the player decides whether the
         // beam is worth the stop, so the residue is a visible fact, not a hidden yield delta.
         scanLabel: isPlayerWreckMarker(marker)

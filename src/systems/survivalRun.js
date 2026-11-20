@@ -138,7 +138,7 @@ export const survivalRun = {
     this._unsubs.push(this.bus.on('run:transitioned', (payload) => this._onTransitioned(payload)));
     this._unsubs.push(this.bus.on('run:ended', () => this._resetMachine()));
     this._unsubs.push(this.bus.on('run:loadoutReady', (payload) => this._onLoadoutReady(payload)));
-    this._unsubs.push(this.bus.on('run:openingPrepareRequested', () => this._prepareOpening()));
+    this._unsubs.push(this.bus.on('run:openingPrepareRequested', (payload) => this._prepareOpening(payload)));
     this._unsubs.push(this.bus.on('run:arenaIntroComplete', () => this._onArenaIntroComplete()));
     this._unsubs.push(this.bus.on('run:waveIntroComplete', () => this._onWaveIntroComplete()));
     this._unsubs.push(this.bus.on(WAVE_CLEARED_SEAM, (payload) => this._onWaveCleared(payload)));
@@ -355,7 +355,7 @@ export const survivalRun = {
     this._loadoutReady = true;
   },
 
-  _prepareOpening() {
+  _prepareOpening(payload) {
     const run = liveSurvivalRun(this.state);
     if (this.state?.mode !== 'loading' || !run || run.phase !== 'loadout' || !this._loadoutReady) return;
     // Populate the real first round before GPU preparation. Intro timers are
@@ -378,7 +378,8 @@ export const survivalRun = {
       // the hangar stamp still applies and the purse still lands, but the opening stop is
       // round 1 in flight instead of the draft. Later waves draft normally (every swarm wave
       // does), so the armory is never more than one round away.
-      if (!(run.telemetry && run.telemetry.openArmoryBeforeRound1 === false)) {
+      const approvedRetry = run.telemetry?.zeroScrapOpening === true && payload?.retryEquipmentReady === true;
+      if (!approvedRetry && run.telemetry?.openArmoryBeforeRound1 !== false) {
         this._requestTransition('loadout', 'draft', REASON_DRAFT_OPEN);
         return;
       }

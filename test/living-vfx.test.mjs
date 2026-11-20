@@ -130,6 +130,19 @@ for(const kind of ['well','repulsor','cone','sheet']) {
     assert.equal(JSON.stringify(f),original);
   });
 }
+test('ambient sheet corners beyond radial reach still use the full oriented field', () => {
+  const scene = new THREE.Scene();
+  const field = normalizeField({ kind: 'sheet', center: { x: 0, z: 0 }, dir: { x: 1, z: 0 },
+    radius: 120, halfWidth: 160, strength: 400 });
+  publishMaterialFields(scene, { fields: { snapshot: [field] } });
+  const p = parcel('heat');
+  p.s[0] = 0.5; p.s[2] = 2.25; p.s[3] = p.s[5] = 0;
+  const acceleration = fieldRawAcceleration(field, 30, 135, { ax: 0, az: 0 });
+  assert.ok(acceleration.az < 0, 'the point lies inside the sheet and outside its forward radius');
+  advectMaterialEnvironment(p.m, p.s, 2, 0.1, materialFieldsForScene(scene));
+  assert.equal(p.s[3], 0);
+  assert.equal(p.s[5], acceleration.az * (0.1 * 2 / 60));
+});
 test('ambient snapshots are copied, localized, bounded, scene-isolated and withdrawn on release',()=>{
   const a=new THREE.Scene(),b=new THREE.Scene(),f=normalizeField({kind:'well',center:{x:1000,z:2000},radius:200,strength:1e6});
   const state={fields:{snapshot:Array(20).fill(f)}};

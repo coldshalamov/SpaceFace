@@ -221,6 +221,12 @@ export function crucibleLaunchConfig(setup, ruleset = CRUCIBLE_DEFAULT_RULESET, 
     swarmThreats: Array.isArray(extras.swarmThreats) ? extras.swarmThreats : undefined,
     swarmPerks: Array.isArray(extras.swarmPerks) ? extras.swarmPerks : undefined,
     openingLesson: extras.openingLesson === true,
+    practice: extras.practice === true,
+    dailyDateKey: extras.dailyDateKey,
+    weeklyMutatorId: extras.weeklyMutatorId,
+    ghostHash: extras.ghostHash,
+    zeroScrapOpening: extras.zeroScrapOpening,
+    retryOpeningEquipment: extras.retryOpeningEquipment,
     openArmoryBeforeRound1: extras.openArmoryBeforeRound1 === false ? false : undefined,
   });
 }
@@ -268,6 +274,7 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
       : null);
   const launchSetup = { ...setup };
   delete launchSetup.openingLesson;
+  delete launchSetup.practice;
   delete launchSetup.dailyDateKey;
   delete launchSetup.weeklyMutatorId;
   delete launchSetup.ghostHash;
@@ -275,6 +282,8 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   delete launchSetup.swarmThreats;
   delete launchSetup.swarmPerks;
   delete launchSetup.openArmoryBeforeRound1;
+  delete launchSetup.zeroScrapOpening;
+  delete launchSetup.retryOpeningEquipment;
   // The stake travels beside the setup like the ruleset — never inside the closed schema.
   const swarmStake = typeof setup.swarmStake === 'string' ? normalizeSwarmStake(setup.swarmStake) : null;
   // SWARM-06: same seam for the Threat wager and an explicit perk pick. The door's perks live
@@ -290,13 +299,16 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   if (weeklyMutatorId === 'weapons_cold') {
     launchSetup.loadout = applyWeaponsColdLoadout(launchSetup.loadout);
   }
-  const openingLesson = resolved === SWARM_RULESET && setup.openingLesson === true
+  const practice = setup.practice === true;
+  const zeroScrapOpening = resolved === SWARM_RULESET && setup.zeroScrapOpening === true;
+  const openingLesson = resolved === SWARM_RULESET && setup.openingLesson === true && !practice
     && !dailyDateKey && !weeklyMutatorId && ghostHash == null;
   lastSetup = {
     ...launchSetup,
     ruleset: resolved,
     loadout: (launchSetup.loadout || []).map((entry) => ({ ...entry })),
     ...(openingLesson ? { openingLesson: true } : {}),
+    ...(practice ? { practice: true } : {}),
   };
   if (dailyDateKey) lastSetup.dailyDateKey = dailyDateKey;
   if (weeklyMutatorId) lastSetup.weeklyMutatorId = weeklyMutatorId;
@@ -309,14 +321,21 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   // A retry replays the launch the player took — a quick-started run retries into flight,
   // not into the armory it skipped.
   if (openArmoryBeforeRound1 === false) lastSetup.openArmoryBeforeRound1 = false;
+  if (zeroScrapOpening) lastSetup.zeroScrapOpening = true;
   // Training is an explicit choice on the Crucible door. A new profile must meet the ordinary
   // opening horde immediately; history is not consent to replace that encounter with a lesson.
   requestSandboxGame(bus, crucibleLaunchConfig(launchSetup, resolved, {
     openingLesson,
+    practice,
+    dailyDateKey,
+    weeklyMutatorId,
+    ghostHash,
     swarmStake,
     swarmThreats: swarmThreats.length ? swarmThreats : undefined,
     swarmPerks: swarmPerks && swarmPerks.length ? swarmPerks : undefined,
     openArmoryBeforeRound1,
+    zeroScrapOpening,
+    retryOpeningEquipment: setup.retryOpeningEquipment,
   }));
   return true;
 }
@@ -344,13 +363,6 @@ export function practiceLaunchFor(line) {
     arenaId: typeof rules.arenaId === 'string' && rules.arenaId ? rules.arenaId : null,
   };
 }
-
-// TITLE-01: the title's SWARM door opens the Swarm entrance in its one-button PLAY state. The flag is
-// one-shot: the title sets it, the door consumes it on mount; every other route in (More, Pause, a retry
-// that replaces the screen) gets the full entrance as before.
-let swarmPlayEntry = false;
-export function requestSwarmPlayEntry() { swarmPlayEntry = true; }
-export function consumeSwarmPlayEntry() { const was = swarmPlayEntry; swarmPlayEntry = false; return was; }
 
 const LAST_STAKE_KEY = 'sf.swarm.lastStake.v1';
 /** The stake the player last flew, persisted across sessions; null for a first-timer. */
@@ -384,7 +396,7 @@ export function lastCrucibleRuleset() {
  * New Game route, which reuses resident assets and performs a clean run reset. Null when no run
  * has launched yet (the results screen then returns to setup instead).
  */
-export function buildCrucibleRetryRequest(setup = lastCrucibleSetup(), ruleset = lastCrucibleRuleset()) {
+export function buildCrucibleRetryRequest(setup = lastCrucibleSetup(), ruleset = lastCrucibleRuleset(), result = null) {
   if (!setup) return null;
   const resolvedRuleset = normalizeCrucibleRuleset(ruleset ?? setup.ruleset);
   const retrySetup = {
@@ -392,6 +404,14 @@ export function buildCrucibleRetryRequest(setup = lastCrucibleSetup(), ruleset =
     loadout: Array.isArray(setup.loadout) ? setup.loadout.map((entry) => ({ ...entry })) : [],
     ruleset: resolvedRuleset,
   };
+  delete retrySetup.retryOpeningEquipment;
+  const opening = result?.openingEquipment;
+  if (setup.zeroScrapOpening === true && resolvedRuleset === SWARM_RULESET && result?.ruleset === resolvedRuleset
+    && result.seed === setup.seed && result.arenaId === setup.arenaId && opening?.hullId === setup.hullId
+    && !result.circuit && !result.recordRules?.circuit) {
+    retrySetup.retryOpeningEquipment = { hullId: opening.hullId,
+      gun: opening.gun === null ? null : { ...opening.gun } };
+  }
   return { setup: retrySetup, ruleset: resolvedRuleset };
 }
 

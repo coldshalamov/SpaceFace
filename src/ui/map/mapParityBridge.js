@@ -21,9 +21,9 @@ let registrations = 0;
 const GLYPH_SVG = Object.freeze({
   player: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12 12 5 4 8.4 7.5 12 4 15.6 12 19Z"/><path class="ink" d="m21 12-5-2v4Z"/></svg>',
   objective: '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="open" d="M3 9V3h6M15 3h6v6M21 15v6h-6M9 21H3v-6"/><path d="m12 7 5 5-5 5-5-5Z"/></svg>',
-  hostile: '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="open" d="m12 3 7 15-7-4-7 4Z"/><circle class="open" cx="12" cy="12" r="9"/></svg>',
-  station: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 4 12 0 5 8-5 8H6l-5-8Z"/><rect class="ink" x="9" y="9" width="6" height="6"/></svg>',
-  gate: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle class="open" cx="12" cy="12" r="9"/><circle class="open" cx="12" cy="12" r="4"/><path class="open" d="M8 2v4m8-4v4M8 18v4m8-4v4"/></svg>',
+  hostile: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 15l1 2 4-3 2 4 2-4 4 3 1-2Z"/></svg>',
+  station: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle class="open" cx="12" cy="12" r="7"/><circle class="open" cx="12" cy="12" r="2.8"/><path class="open" d="M1 10h4m-4 4h4m14-4h4m-4 4h4"/></svg>',
+  gate: '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="open" d="M9 4C4 6 4 18 9 20m6-16c5 2 5 14 0 16M10 12h4"/></svg>',
 });
 
 export function mapParityLegendModel() {
@@ -95,7 +95,7 @@ export function enhanceMapParityRoot(root) {
   state.startIfVisible();
 
   const existingLabel = canvas.getAttribute('aria-label');
-  const parityLabel = 'Player hull, objective brackets, hostile chevrons, stations, and gates match the flight radar symbol key.';
+  const parityLabel = 'The symbol key identifies your ship, objectives, hostile ships, stations, and jump gates.';
   if (!existingLabel || !existingLabel.includes(parityLabel)) {
     canvas.setAttribute(
       'aria-label',
@@ -110,7 +110,7 @@ function createLegendKey(documentRef) {
   const section = documentRef.createElement('section');
   section.className = 'gm-parity-key';
   section.dataset.mapParityKey = 'v2';
-  section.setAttribute('aria-label', 'Map symbols — hover a mark on the chart and the chart names it');
+  section.setAttribute('aria-label', 'Map symbols');
   const groups = mapKeyGroups();
   section.innerHTML = [
     '<div class="gm-parity-key__title">MAP SYMBOLS</div>',
@@ -126,7 +126,7 @@ function createLegendKey(documentRef) {
         </div>
       </div>`).join(''),
     '<div class="gm-parity-key__detail" role="status"></div>',
-    '<div class="gm-parity-key__note">Hover or click anything on the chart and it names itself here and on the mark.</div>',
+    '<div class="gm-parity-key__note">Hover a symbol for its meaning.</div>',
   ].join('');
   // Hover/focus a row -> its meaning speaks in the detail line (plain words, not shape talk).
   const meaningById = new Map();
@@ -404,9 +404,10 @@ function injectStyle(documentRef) {
 #sf-galaxymap .gm-parity-key__glyph .open { fill:none; }
 /* The glyph's cut-outs are the chart's ground, as the scope draws them. */
 #sf-galaxymap .gm-parity-key__glyph .ink { fill:#0b0d10; stroke:none; }
-/* Each item's colour is the grammar's own (inline --gm-key from TACTICAL_MAP_PALETTE), so the key
-   cannot drift from what the radar and the chart actually draw. The label stays bone. */
 #sf-galaxymap .gm-parity-key__glyph { color:var(--gm-key, currentColor); }
+#sf-galaxymap .gm-parity-key__item[data-kind="hostile"] .gm-parity-key__glyph { color:#da735e; }
+#sf-galaxymap .gm-parity-key__item[data-kind="station"] .gm-parity-key__glyph { color:#b9d9cc; }
+#sf-galaxymap .gm-parity-key__item[data-kind="gate"] .gm-parity-key__glyph { color:#bcb7d9; }
 #sf-galaxymap .gm-parity-key__label { color:var(--dp-ink,#e8e2d4); }
 #sf-galaxymap .gm-viewport { position:relative; }
 #sf-galaxymap .gm-parity-overlay {

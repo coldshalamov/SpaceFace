@@ -2,6 +2,7 @@
 // the caller supplies a fresh offer and sends the existing purchase intent when the key is used.
 import { equipmentSvg } from './equipmentGlyphs.js';
 import { armoryPlate, equipmentPlate } from './armoryIllustrations.js';
+import { itemThumbElement } from '../icons/itemThumbnails.js';
 import { weaponClipUrl } from '../weaponClips.js';
 import { hullPosterUrl } from '../hullPosters.js';
 import { injectCruciblePreparation } from './cruciblePreparationLayouts.js';
@@ -36,17 +37,21 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
   const crew = createPipSpannerCrew({ host: support, doc });
   reading.appendChild(support);
   const fitline = make('p', 'orr-armory-fitline', '');
-  parts.act.after(fitline);
+  fitline.id = 'sf-armory-install-consequence';
+  const afterPurchase = make('p', 'orr-armory-fitline', '');
+  afterPurchase.id = 'sf-armory-install-balance';
   // The words remain accessible even when the catalog is empty or no illustration is available.
   const buy = make('button', 'orr-armory-purchase', 'Install'); buy.addEventListener('click', onPurchase);
+  buy.setAttribute('aria-describedby', `${fitline.id} ${afterPurchase.id}`);
   const refusal = make('p', 'orr-armory-refusal', '');
-  parts.buy.replaceChildren(buy, refusal);
+  parts.buy.replaceChildren(fitline, afterPurchase, buy, refusal);
   const wallet = make('div', 'orr-armory-wallet');
   const balance = make('strong', '', '');
   const amount = make('span', 'orr-wallet-amount');
-  balance.append(amount, make('small', '', 'cr'));
-  wallet.setAttribute('aria-label', 'Run credits');
-  wallet.append(make('span', 'orr-wallet-caption', 'Run credits'), balance);
+  const unit = make('small', '', 'cr');
+  const caption = make('span', 'orr-wallet-caption', 'Run credits');
+  balance.append(amount, unit);
+  wallet.append(caption, balance);
   const header = root.querySelector('.k-title');
   header.appendChild(wallet);
   const stage = root.querySelector('.sf-cru-stage');
@@ -57,9 +62,12 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
   const preview = createArmoryPreviewMedia({ motionReduced });
   let lastArt = null, lastFit = null, lastOffer = null, disposed = false;
   return {
-    wallet(credits, visible = true) {
+    wallet(credits, visible = true, scrap = false) {
       wallet.hidden = !visible;
       amount.textContent = Math.max(0, Number(credits) || 0).toLocaleString('en-US');
+      caption.textContent = scrap ? 'Run Scrap' : 'Run credits';
+      wallet.setAttribute('aria-label', caption.textContent);
+      unit.hidden = scrap;
       // One narrow scrollport contains header, catalog and detail. The action rail owns
       // its measured height; the same cached screen restores Rearm's original DOM on exit.
       if (visible && !body.parentNode) {
@@ -70,7 +78,7 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
         body.remove();
       }
     },
-    show(offer, lines, { hullId = '', rows = [], armed = true, receipt = null, generation = null } = {}) {
+    show(offer, lines, { hullId = '', rows = [], armed = true, receipt = null, generation = null, credits } = {}) {
       if (disposed) return;
       const offerKey = JSON.stringify([offer.kind, offer.id ?? offer.defId ?? offer.hullId, offer._ownedIndex]);
       if (offerKey !== lastOffer) {
@@ -83,11 +91,16 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
         row.slotType, row.slotSize, row.intrinsicDefId, row.intrinsicName])]);
       if (fitKey !== lastFit) {
         lastFit = fitKey; buildList.replaceChildren();
-        buildSummary.textContent = `Current build · ${rows.filter(row => row.defId).length} fitted`
-          + (rows.some(row => row.intrinsicDefId) ? ' · alien emitters built in' : ` / ${rows.length}`);
+        const filledSlots = rows.filter(row => row.defId).length;
+        buildSummary.textContent = `Installed equipment · ${filledSlots} of ${rows.length} slots filled`
+          + (rows.some(row => row.intrinsicDefId) ? ' · includes built-in emitters' : '');
         for (const row of rows) {
           const li = make('li', '');
-          li.appendChild(equipmentSvg({ defId: row.defId || row.slotType }, doc));
+          const def = row.defId || row.intrinsicDefId;
+          const art = def
+            ? itemThumbElement({ defId: def, slotSize: row.slotSize }, { size: 'sm', showCrest: true }, doc)
+            : equipmentSvg({ defId: row.slotType }, doc);
+          if (art) li.appendChild(art);
           const text = make('span', '');
           text.append(make('small', '', `${row.slotIndex + 1} / ${row.slotType} ${row.slotSize}`),
             make('span', '', row.defId ? row.name || row.defId : row.intrinsicDefId ? `${row.intrinsicName} · built in` : 'Empty'));
@@ -140,14 +153,23 @@ export function createVisualArmory({ root, reading, parts, onPurchase } = {}) {
         } else item.appendChild(equipmentPlate(offer, doc));
         label.textContent = offer.kind === 'hull' ? 'Ship preview' : armoryPlate(offer) ? 'Hardware family' : 'Equipment schematic';
       }
-      fitline.textContent = lines.slot || (offer.kind === 'service' ? 'Applies to this run.' : 'Inspect before you fit.');
+      const status = offer.purchaseStatus;
+      fitline.textContent = status === 'In spares' || (!offer.purchased && (offer.available || offer.borrowAvailable))
+        ? lines.slot : '';
+      fitline.hidden = !fitline.textContent;
       const price = Math.max(0, Number(offer.price) || 0);
+      afterPurchase.textContent = offer.available && !offer.purchased && price > 0 && Number.isFinite(credits) && credits >= price
+        ? `${(credits - price).toLocaleString('en-US')} cr left after purchase.` : '';
+      afterPurchase.hidden = !afterPurchase.textContent;
       buy.disabled = !offer.available || !!offer.purchased || !armed;
       buy.setAttribute('aria-disabled', String(buy.disabled));
-      buy.textContent = offer.purchased ? 'Already fitted' : !offer.available ? 'Unavailable' : !armed ? 'Select an item to prepare'
-        : `${offer.kind === 'hull' ? (Number.isInteger(offer._ownedIndex) ? 'Switch ship' : 'Buy & fly') : offer.kind === 'service' ? 'Purchase' : 'Install'} · ${price.toLocaleString('en-US')} cr`;
+      const purchasedWord = status && status !== 'Fitted' ? status : 'Already fitted';
+      buy.textContent = offer.purchased ? purchasedWord : !offer.available ? 'Unavailable' : !armed ? 'Select an item to prepare'
+        : offer.startingEquipment ? 'Fit free'
+          : `${offer.kind === 'hull' ? (Number.isInteger(offer._ownedIndex) ? 'Switch ship' : 'Buy & fly') : offer.kind === 'service' ? 'Purchase' : 'Install'} · ${price.toLocaleString('en-US')} cr`;
       buy.setAttribute('aria-label', `${buy.textContent}: ${lines.name}`);
-      refusal.textContent = offer.purchased ? 'This item is part of your current build.'
+      refusal.textContent = offer.purchased
+        ? status === 'In spares' ? '' : status === 'Purchased' ? 'Already purchased this visit.' : 'This item is part of your current build.'
         : !offer.available ? offer.unavailableReason || 'This offer cannot be fitted to the current build.'
           : '';
       crew?.scope(generation); crew?.inspect(offer); crew?.receipt(receipt);

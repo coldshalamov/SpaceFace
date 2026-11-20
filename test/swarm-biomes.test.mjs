@@ -13,7 +13,9 @@ import { test } from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
+import { physics } from '../src/core/physics.js';
 import { createRunState } from '../src/core/runState.js';
+import { createSimulation } from '../src/core/sim.js';
 import { COMBAT_LAB_ARENAS } from '../src/data/combatLabSetups.js';
 import { SURVIVAL_WAVES } from '../src/data/survivalWaves.js';
 import { ARENA_LAWS, survivalArenaById } from '../src/data/survivalArenas.js';
@@ -247,6 +249,69 @@ test('the mill shakes ore loose: a fracture spawns chunks that pay the run walle
     assert.equal(ore2.length, 0, 'the Foundry does not pay ore');
   } finally {
     swarmArena.destroy();
+  }
+});
+
+test('Mill ore expiry retires the payout before its ID is reused by ordinary loot', () => {
+  const sim = createSimulation({ seed: SEED, systems: [] });
+  const { state, bus, helpers, registry } = sim;
+  const arena = Object.create(swarmArena);
+  const collect = Object.create(physics);
+  collect._diag = { pickupCollections: 0 };
+  try {
+    state.mode = 'flight';
+    state.run = createRunState({ kind: 'survival', ruleset: 'swarm', seed: SEED });
+    Object.assign(state.run, { arenaId: MILL_ARENA_ID, phase: 'active', wave: 9 });
+    const player = sim.spawn({ type: 'ship' });
+    state.playerId = player.id;
+    arena.init({ state, bus, helpers, registry });
+    const awards = [];
+    bus.on('run:awardRequested', award => awards.push(award));
+    const destroyed = [];
+    bus.on('entity:destroyed', receipt => destroyed.push(receipt));
+
+    const rock = { id: 444, pos: { x: 500, z: 500 } };
+    const orePickups = () => state.entityList.filter(entity => entity.data?.kind === MILL_ORE_KIND);
+    arena._millShake(rock);
+    const ore = orePickups();
+    assert.ok(ore.length > 0);
+    state.simTime = Math.max(...ore.map(pickup => pickup.data.despawnAt)) + DT;
+    registry.get('core').lifetimeSweep(DT, state);
+    assert.ok(ore.every(pickup => !state.entities.has(pickup.id)));
+    const retainedAfterExpiry = arena._millOres.size;
+
+    const ordinary = sim.spawn({ type: 'pickup', data: { kind: 'credit', amount: 1 } });
+    assert.equal(ordinary.id, ore[0].id, 'core recycles the expired pickup ID');
+    assert.notEqual(ordinary.occupantGeneration, ore[0].occupantGeneration);
+    assert.equal(collect._applyPickupCollection(ordinary, player, bus, state), true);
+    assert.equal(ordinary.alive, false, 'ordinary loot still collects');
+    assert.deepEqual(awards, [], 'ordinary loot does not inherit the Mill payout');
+    assert.equal(retainedAfterExpiry, 0, 'expired ore leaves no live payout claims');
+    registry.get('core').lifetimeSweep(DT, state);
+
+    arena._millShake(rock);
+    const current = orePickups().find(pickup => pickup.id === ordinary.id);
+    assert.ok(current, 'a new ore occupant reuses the same ID');
+    const delayed = destroyed.find(receipt => receipt.entity === ore[0]);
+    assert.ok(delayed);
+    bus.emit('entity:destroyed', delayed);
+    assert.equal(collect._applyPickupCollection(current, player, bus, state), true);
+    assert.deepEqual(awards, [{ credits: MILL_ORE_CREDITS, reason: 'swarm:millOre' }],
+      'old destruction cannot revoke the current ore payout');
+    bus.emit('pickup:collected', { pickupId: current.id, collectorId: player.id, kind: MILL_ORE_KIND });
+    assert.equal(awards.length, 1, 'a second collection receipt cannot pay twice');
+
+    arena._millShake(rock);
+    const npcOre = orePickups().find(pickup => pickup.alive);
+    assert.ok(npcOre);
+    const npc = sim.spawn({ type: 'ship', team: 1 });
+    assert.equal(collect._applyPickupCollection(npcOre, npc, bus, state), true);
+    assert.equal(npcOre.alive, false);
+    assert.equal(awards.length, 1, 'an NPC consumes ore without awarding its credits to the player');
+    assert.equal(arena._millOres.size, orePickups().filter(pickup => pickup.alive).length);
+  } finally {
+    arena.destroy();
+    sim.dispose();
   }
 });
 

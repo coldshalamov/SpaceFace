@@ -8,6 +8,21 @@ test('ordinary game startup uses the worker simulation authority', () => {
   assert.equal(resolveSimLaneFlags('').lane, 'worker');
 });
 
+test('an explicit shared-buffer request falls back outside an isolated context', t => {
+  const prior = Object.getOwnPropertyDescriptor(globalThis, 'crossOriginIsolated');
+  Object.defineProperty(globalThis, 'crossOriginIsolated', { configurable: true, value: false });
+  t.after(() => {
+    if (prior) Object.defineProperty(globalThis, 'crossOriginIsolated', prior);
+    else delete globalThis.crossOriginIsolated;
+  });
+
+  const flags = resolveSimLaneFlags('?simSab=1&simEnvelope=1');
+  assert.equal(flags.lane, 'worker');
+  assert.equal(flags.sab, false);
+  assert.equal(flags.sabEnvelope, false);
+  assert.match(flags.warnings.join('\n'), /transfer channel/);
+});
+
 test('ordinary worker shares numeric journal slots and sends messages without the fixed envelope ring', t => {
   const prior = Object.getOwnPropertyDescriptor(globalThis, 'crossOriginIsolated');
   Object.defineProperty(globalThis, 'crossOriginIsolated', { configurable: true, value: true });

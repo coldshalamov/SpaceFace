@@ -47,99 +47,265 @@ ${X} > .k-foot > .k-words { width:100% !important; max-width:100% !important; fl
 `;
 
 export const CRUCIBLE_RESULTS_LAYOUT_CSS = `
-/* ways-out are keys (STATION_STANDARD §5): the one amber primary, the rest secondary hairlines.
-   "RUN IT AGAIN" was an amber tracked word — a poster, not a control. */
-${R} > .k-foot .k-word, ${RP} > .k-foot .k-word {
-  display:inline-flex !important; align-items:center; min-height:38px; padding:0 16px;
-  font:600 14px var(--dp-face-read, "Instrument Sans") !important; letter-spacing:.03em; text-transform:none;
-  color:rgb(${BONE} / .88) !important;
-  background:rgb(${BONE} / .05); border:1px solid rgb(${BONE} / .34); border-radius:8px;
+/* 0 — Tactical hangar backdrop replacing bare black void */
+${R},
+#crucible-results-overlay.sf-crs {
+  background:
+    radial-gradient(95% 75% at 50% 0%, rgb(20 44 62 / .38) 0%, transparent 68%),
+    radial-gradient(80% 60% at 85% 100%, rgb(38 28 14 / .24) 0%, transparent 65%),
+    repeating-linear-gradient(0deg, rgb(158 220 233 / .012) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, #060d14 0%, #04080d 100%) !important;
+}
+${R}::before {
+  background:radial-gradient(circle at 67% 44%, rgb(20 44 62 / .24), rgb(6 13 20 / .68) 58%, rgb(4 8 13 / .84) 100%) !important;
+}
+
+/* ways-out are chamfered metallic command keys (STATION_STANDARD §5) */
+${R} > .k-foot .k-word, ${RP} > .k-foot .k-word,
+${R} .sf-crs-btn {
+  display:inline-flex !important; align-items:center; min-height:40px; padding:0 16px;
+  font:600 13px var(--dp-face-read, "Instrument Sans") !important; letter-spacing:.08em !important; text-transform:uppercase !important;
+  color:#d8eaf2 !important;
+  background:linear-gradient(180deg, rgb(20 35 48 / .92) 0%, rgb(12 22 32 / .96) 100%) !important;
+  border:1px solid rgb(154 198 218 / .34) !important; border-radius:2px !important;
+  box-shadow:inset 0 1px 0 rgb(210 238 250 / .14), 0 6px 16px rgb(0 0 0 / .45) !important;
   transition:background var(--dp-d-cut, 80ms) linear, border-color var(--dp-d-cut, 80ms) linear, color var(--dp-d-cut, 80ms) linear;
 }
-${R} > .k-foot .k-word:is(:hover, :focus-visible), ${RP} > .k-foot .k-word:is(:hover, :focus-visible) {
-  color:#fff !important; background:rgb(${BONE} / .12); border-color:rgb(${BONE} / .75);
+${R} > .k-foot .k-word:is(:hover, :focus-visible), ${RP} > .k-foot .k-word:is(:hover, :focus-visible),
+${R} .sf-crs-btn:is(:hover, :focus-visible) {
+  color:#fff1cf !important;
+  background:linear-gradient(180deg, rgb(28 48 66 / .95) 0%, rgb(16 30 43 / .98) 100%) !important;
+  border-color:#e6ca8f !important;
 }
-${R} > .k-foot .k-word.k-word--primary, ${RP} > .k-foot .k-word.k-word--primary {
-  min-height:42px; padding:0 20px;
-  font:700 15px var(--dp-face-read, "Instrument Sans") !important;
-  color:var(--dp-metal-0, #0b0d10) !important;
-  background:var(--dp-lamp, #f2b950) !important; border:1px solid rgb(242 185 80 / .9);
-  border-radius:8px; clip-path:none; box-shadow:inset 0 1px 0 rgb(255 248 228 / .45), 0 1px 2px rgb(0 0 0 / .35);
+${R} > .k-foot .k-word.k-word--primary, ${RP} > .k-foot .k-word.k-word--primary,
+${R} .sf-crs-btn--primary {
+  min-height:42px; padding:0 22px;
+  font:700 14px var(--dp-face-read, "Instrument Sans") !important; letter-spacing:.12em !important; text-transform:uppercase !important;
+  color:#fff1cf !important;
+  background:linear-gradient(180deg, rgb(224 181 94 / .32) 0%, rgb(224 181 94 / .14) 100%) !important;
+  border:1px solid #e6ca8f !important; border-radius:2px !important;
+  clip-path:polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)) !important;
+  box-shadow:inset 0 1px 0 rgb(255 241 207 / .30), 0 8px 22px rgb(0 0 0 / .55) !important;
 }
-${R} > .k-foot .k-word.k-word--primary:is(:hover, :focus-visible), ${RP} > .k-foot .k-word.k-word--primary:is(:hover, :focus-visible) {
-  color:var(--dp-metal-0, #0b0d10) !important; background:var(--dp-lamp-hot, #ffd98c) !important;
-  box-shadow:0 0 14px rgb(242 185 80 / .24);
+${R} > .k-foot .k-word.k-word--primary::after, ${RP} > .k-foot .k-word.k-word--primary::after {
+  color:#ffe7b3 !important;
+  box-shadow:inset 0 0 0 1px rgb(230 202 143 / .55) !important;
+  background:rgb(9 20 30 / .85) !important;
+  border-radius:2px !important;
 }
-/* keyboard focus: the same bone ring the draft's foot keys carry (the shared foot hover/focus rule strips outline). */
-${R} > .k-foot .k-word:focus-visible, ${RP} > .k-foot .k-word:focus-visible { outline:2px solid var(--k-bone, #e8e2d4) !important; outline-offset:3px !important; }
-/* one column, one scroller: the ledger and story boxes dissolve so their bands share one order */
-${R} .sf-crres__stage { display:flex !important; flex-direction:column !important; gap:20px !important; width:100%; max-width:min(600px, 46vw) !important;
-  min-height:0 !important; overflow:hidden auto !important; overscroll-behavior:contain; padding:2px 16px 28px 0 !important; margin:0 !important;
-  scrollbar-width:thin; scrollbar-color:rgb(${BONE} / .22) transparent; -webkit-mask-image:${FADE}; mask-image:${FADE}; }
+${R} > .k-foot .k-word.k-word--primary:is(:hover, :focus-visible), ${RP} > .k-foot .k-word.k-word--primary:is(:hover, :focus-visible),
+${R} .sf-crs-btn--primary:is(:hover, :focus-visible) {
+  color:#ffffff !important;
+  border-color:#ffd98c !important;
+  background:linear-gradient(180deg, rgb(242 185 80 / .42) 0%, rgb(224 181 94 / .22) 100%) !important;
+  box-shadow:inset 0 1px 0 rgb(255 248 228 / .45), 0 0 16px rgb(242 185 80 / .28) !important;
+}
+${R} > .k-foot .k-word:focus-visible, ${RP} > .k-foot .k-word:focus-visible { outline:1px solid #9edce9 !important; outline-offset:1px !important; }
+
+/* Compact top RUN OVER title block & THE TAKE celebration box so all left-column bands fit on screen */
+${R} > .k-title {
+  margin:0 0 6px !important;
+  padding:8px 14px !important;
+  max-width:min(620px, 46vw) !important;
+  border:1px solid rgb(154 198 218 / .32) !important;
+  border-radius:2px !important;
+  background:
+    linear-gradient(90deg, #f2b950 0 28px, rgb(158 220 233 / .48) 28px 150px, rgb(158 220 233 / .14) 150px 100%) top left / 100% 2px no-repeat,
+    linear-gradient(180deg, rgb(25 36 47 / .95), rgb(14 21 29 / .98)) !important;
+  box-shadow:inset 0 1px 0 rgb(215 238 248 / .18), 0 8px 20px rgb(0 0 0 / .5) !important;
+}
+${R} > .k-title .k-t-title {
+  font-size:clamp(26px, 2.8vw, 36px) !important;
+  line-height:1 !important;
+  margin:0 !important;
+  color:#edf6fa !important;
+}
+${R} .sf-crd-headline {
+  font-size:13.5px !important;
+  line-height:1.3 !important;
+  margin:3px 0 0 !important;
+  color:rgb(214 234 244 / .9) !important;
+}
+${R} > .sf-crres-celebrate {
+  max-width:min(620px, 46vw) !important;
+  margin:0 0 6px !important;
+  padding:7px 12px !important;
+  border:1px solid rgb(154 198 218 / .28) !important;
+  border-radius:2px !important;
+  background:
+    linear-gradient(90deg, #f2b950 0 24px, rgb(158 220 233 / .44) 24px 120px, transparent 120px 100%) top left / 100% 2px no-repeat,
+    linear-gradient(160deg, rgb(12 26 38 / .94), rgb(7 16 24 / .97)) !important;
+  box-shadow:inset 0 1px 0 rgb(208 238 250 / .10), 0 6px 16px rgb(0 0 0 / .45) !important;
+}
+${R} > .sf-crres-celebrate p,
+${R} > .sf-crres-celebrate li {
+  font-size:12.5px !important;
+  line-height:1.28 !important;
+  margin:2px 0 0 !important;
+}
+
+/* one column, one scroller: compact vertical rhythm so SHARE fits 100% cleanly above the bottom fold */
+${R} .sf-crres__stage,
+${R} .sf-crs-rail {
+  display:flex !important; flex-direction:column !important; gap:6px !important; width:100%; max-width:min(620px, 46vw) !important;
+  min-height:0 !important; overflow:hidden auto !important; overscroll-behavior:contain; padding:8px 12px 10px !important; margin:0 !important;
+  scrollbar-width:thin; scrollbar-color:rgb(158 220 233 / .55) transparent; -webkit-mask-image:none !important; mask-image:none !important;
+}
 ${R} .sf-crres__stage::before, ${R} .sf-crres__story::before { content:none !important; display:none !important; }
 ${R} :is(.sf-crres__ledger, .sf-crres__story) { display:contents !important; }
 ${R} .sf-crres__stage > *, ${R} :is(.sf-crres__ledger, .sf-crres__story) > * { flex:none; margin:0 !important; }
-${R} .orr-crres-figures { order:1; grid-template-columns:repeat(4, minmax(0, 1fr)) !important; max-width:560px; column-gap:12px; padding:0 !important; }
-${R} .sf-crres__band[data-band="story"] { order:2; }
-/* desktop: the column sits above the dial's shadow pool, which reaches into its right edge
-   (SALVAGE greyed out at 1280 and 1920); each figure takes its own width so BEST KILL CHAIN
-   holds one line like WAVE, KILLS and SALVAGE once the column is wide enough */
-@media (min-width:701px) {
-  ${RD} .sf-crres__stage { position:relative; z-index:2; }
+
+/* 4-cell machined metal telemetry rack for WAVE, KILLS, BEST KILL CHAIN, RUN PURSE / SALVAGE */
+${R} .orr-crres-figures,
+${R} .sf-crs-stats {
+  order:1;
+  display:grid !important;
+  grid-template-columns:repeat(4, minmax(0, 1fr)) !important;
+  gap:8px !important;
+  width:100% !important;
+  max-width:100% !important;
+  padding:0 !important;
 }
-/* the one-line row needs ~400px of column; narrower windows keep the even four-up grid */
+${R} .orr-crres-figure,
+${R} .sf-crs-stat {
+  padding:6px 10px !important;
+  border:1px solid rgb(154 198 218 / .30) !important;
+  border-radius:2px !important;
+  background:
+    linear-gradient(90deg, #f2b950 0 18px, rgb(158 220 233 / .45) 18px 100%) top left / 100% 2px no-repeat,
+    linear-gradient(160deg, rgb(12 26 38 / .95) 0%, rgb(7 16 24 / .98) 100%) !important;
+  box-shadow:inset 0 1px 0 rgb(208 238 250 / .12), inset 0 -2px 0 rgb(2 6 10 / .85), 0 6px 16px rgb(0 0 0 / .48) !important;
+}
+${R} .orr-crres-figure__n {
+  color:#fff1cf !important;
+  font-size:clamp(20px, 2vw, 26px) !important;
+  line-height:1.05 !important;
+}
+${R} .orr-crres-figure__w {
+  color:#9edce9 !important;
+  font-size:12px !important;
+  letter-spacing:.08em !important;
+  margin-top:2px !important;
+  line-height:1.15 !important;
+  white-space:normal !important;
+}
+${R} .orr-crres-figures__rest {
+  color:#d8eaf2 !important;
+  font-size:12.5px !important;
+  margin-top:2px !important;
+}
+
+${R} .sf-crres__band[data-band="story"] { order:2; }
+/* desktop: ruggedized metal-and-glass terminal housings for left summary workspace & right Death Dial bay */
+@media (min-width:701px) {
+  ${RD} .sf-crres__stage {
+    position:relative; z-index:2;
+    border:1px solid rgb(154 198 218 / .32) !important;
+    border-radius:2px !important;
+    background:linear-gradient(180deg, rgb(22 33 44 / .94) 0%, rgb(11 18 26 / .97) 100%) !important;
+    box-shadow:inset 0 1px 0 rgb(215 238 248 / .18), inset 0 -2px 0 rgb(2 5 8 / .85), 0 12px 30px rgb(0 0 0 / .62) !important;
+  }
+  ${RD} > .sf-crres__dial,
+  ${RD} .sf-crs-dial-col {
+    border:1px solid rgb(154 198 218 / .30) !important;
+    border-radius:2px !important;
+    background:
+      linear-gradient(90deg, #f2b950 0 28px, rgb(158 220 233 / .48) 28px 140px, rgb(158 220 233 / .14) 140px 100%) top left / 100% 2px no-repeat,
+      repeating-linear-gradient(0deg, rgb(158 220 233 / .012) 0 1px, transparent 1px 3px),
+      radial-gradient(120% 90% at 50% 35%, rgb(24 54 74 / .34), transparent 66%),
+      linear-gradient(160deg, rgb(11 24 35 / .93) 0%, rgb(7 16 24 / .96) 100%) !important;
+    box-shadow:inset 0 1px 0 rgb(208 238 250 / .14), inset 0 -2px 0 rgb(2 6 10 / .85), 0 12px 28px rgb(0 0 0 / .58) !important;
+  }
+}
+@media (min-width:701px) and (max-width:1599px) {
+  ${RD} > .k-title,
+  ${RD} > .sf-crres-celebrate,
+  ${RD} .sf-crres__stage { max-width:min(540px, 43vw) !important; }
+  ${RD} > .sf-crres__dial,
+  ${RD} .sf-crs-dial-col { left:calc(min(540px, 43vw) + 78px) !important; right:4vw !important; }
+}
 @media (min-width:940px) {
-  ${RD} .orr-crres-figures { grid-template-columns:repeat(4, max-content) !important; column-gap:clamp(22px, 2.6vw, 56px) !important; }
-  ${RD} .orr-crres-figure__w { white-space:nowrap; }
+  ${RD} .orr-crres-figures { grid-template-columns:repeat(4, minmax(0, 1fr)) !important; gap:8px !important; }
 }
 ${R} .sf-crres__band[data-band="build"] { order:3; }
 ${R} .sf-crres__sheet { order:4; }
 ${R} .sf-crres__ledger > .sf-crres__band:not([data-band]) { order:5; }
 ${R} .sf-crres__share { order:6; }
 ${R} .sf-crres__story > details.sf-crres__band { order:7; }
-${R} :is(.sf-crres__band, .sf-crres__sheet) { padding:0 !important; }
 
-/* band titles: an etched label running into a hairline, so the column reads as sections */
-${R} :is(.sf-crres__stage, .sf-crres-celebrate) .sf-crres__band-title { display:flex !important; align-items:center; gap:14px; margin:0 0 8px !important; max-width:560px;
-  font-size:12px !important; letter-spacing:.24em !important; color:rgb(${BONE} / .7) !important; }
-${R} :is(.sf-crres__stage, .sf-crres-celebrate) .sf-crres__band-title::after { content:""; flex:1 1 auto; height:1px; background:linear-gradient(90deg, rgb(${BONE} / .24), rgb(${BONE} / 0)); }
+/* Frame each debrief band (THIS RUN VS YOUR BEST, Unlock progress, RUN STORY, SHARE) in recessed visor glass */
+${R} :is(.sf-crres__band:not([data-band="ledger"]):not([data-band="kill_chain"]):not([data-band="last_seconds"]), .sf-crres__sheet, .sf-crres__share, .sf-crs-band) {
+  padding:6px 11px !important;
+  border:1px solid rgb(154 198 218 / .26) !important;
+  border-radius:2px !important;
+  background:
+    linear-gradient(90deg, #f2b950 0 22px, rgb(158 220 233 / .42) 22px 110px, rgb(158 220 233 / .10) 110px 100%) top left / 100% 2px no-repeat,
+    linear-gradient(160deg, rgb(11 24 35 / .94) 0%, rgb(7 16 24 / .97) 100%) !important;
+  box-shadow:inset 0 1px 0 rgb(208 238 250 / .10), 0 6px 16px rgb(0 0 0 / .45) !important;
+}
+
+/* band titles: ice-cyan tactical header running into a rule */
+${R} :is(.sf-crres__stage, .sf-crres-celebrate) .sf-crres__band-title { display:flex !important; align-items:center; gap:10px; margin:0 0 4px !important; max-width:100%;
+  font-size:12px !important; font-weight:700 !important; letter-spacing:.16em !important; color:#9edce9 !important; }
+${R} :is(.sf-crres__stage, .sf-crres-celebrate) .sf-crres__band-title::after { content:""; flex:1 1 auto; height:1px; background:linear-gradient(90deg, rgb(158 220 233 / .36), rgb(158 220 233 / 0)); }
 ${R} :is(.sf-crres__stage, .sf-crres-celebrate) .sf-crres__band-title::before { content:none !important; }
-${R} .sf-crres__story-line, ${R} .sf-crres__lead { color:rgb(${BONE} / .86) !important; line-height:1.45 !important; }
-${R} .sf-crres__run-name { font-size:17px !important; color:rgb(246 241 230) !important; }
-${R} .sf-crres__ledger > .sf-crres__band:not([data-band]) .sf-crd-grid { max-width:560px; }
-${R} .sf-crres__ledger > .sf-crres__band:not([data-band]) .k-row { min-height:30px !important; padding:4px 0 4px 12px !important; }
+${R} .sf-crres__story-line, ${R} .sf-crres__lead, ${R} .sf-crres__build-name { color:#d8eaf2 !important; line-height:1.3 !important; font-size:13px !important; margin:2px 0 0 !important; }
+${R} .sf-crres__build { margin-top:4px !important; padding-top:10px !important; }
+${R} .sf-crres__step::before { top:-11px !important; width:7px !important; height:7px !important; }
+${R} .sf-crres__step .sf-crres__step-verb { font-size:14px !important; }
+${R} .sf-crres__run-name { font-size:14px !important; color:#fff1cf !important; margin:0 !important; }
+${R} .sf-crres__sheet .sf-crres__sheet-sub { margin:4px 0 2px !important; }
+${R} .sf-crres__sheet .sf-crres__overconfidence,
+${R} .sf-crres__sheet .sf-crres__sheet-empty { margin:2px 0 0 !important; font-size:12.5px !important; line-height:1.3 !important; }
+${R} .sf-crres__ledger > .sf-crres__band:not([data-band]) .sf-crd-grid { max-width:100%; }
+${R} .sf-crres__ledger > .sf-crres__band:not([data-band]) .k-row { min-height:22px !important; padding:2px 0 2px 8px !important; font-size:12.5px !important; }
 
-/* share: each code is a quiet field with its save word at the end */
-${R} .sf-crres__share-item { margin:0 0 8px !important; max-width:560px; }
-${R} .sf-crres__share-row { display:grid !important; grid-template-columns:96px minmax(0, 1fr) auto; align-items:center; column-gap:14px; }
-${R} .sf-crres__share-cap { font-size:12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .62) !important; white-space:nowrap; }
-${R} .sf-crres__share-code { width:100% !important; min-width:0; height:30px; box-sizing:border-box; padding:0 10px !important; border:0 !important; border-radius:2px !important;
-  background:rgb(${VOID} / .55) !important; box-shadow:inset 0 0 0 1px rgb(${BONE} / .16) !important; color:rgb(${BONE} / .9) !important;
-  font-size:12.5px !important; text-overflow:ellipsis; outline:none; }
-${R} .sf-crres__share-code:focus-visible { box-shadow:inset 0 0 0 1px var(--dp-hand, #f2b950), 0 0 0 3px rgb(242 185 80 / .18) !important; }
-${R} .sf-crres__share-link { white-space:nowrap; font-size:12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .8) !important;
-  background:linear-gradient(0deg, rgb(${BONE} / .26) 0 1px, transparent 1px) 0 100% / 100% 100% no-repeat !important; padding:4px 0 !important; }
-${R} .sf-crres__share-link:is(:hover, :focus-visible) { color:var(--dp-hand-hot, #ffd98c) !important; outline:none !important;
-  background:linear-gradient(0deg, var(--dp-hand, #f2b950) 0 1.5px, transparent 1.5px) 0 100% / 100% 100% no-repeat !important; }
-/* Copy result / Copy ghost ride the same fine words; the status line is its own element
-   (the band's note is hidden on the death-dial plate, so it cannot carry "Copied"). */
-${R} .sf-crres__share-actions { display:flex; flex-wrap:wrap; gap:6px 22px; margin:10px 0 0; max-width:560px; }
-${R} .sf-crres__share-status { margin:6px 0 0 !important; max-width:560px; color:rgb(${BONE} / .72) !important; }
+/* share: compact 'Save run card' button + visor-glass code fields so SHARE fits on screen unclipped */
+${R} .sf-crres__share > a.k-word {
+  display:inline-flex !important; align-items:center !important;
+  min-height:26px !important; height:auto !important;
+  padding:2px 10px !important; margin:0 0 4px !important;
+  font:600 12.5px/1.2 var(--dp-face-label, "Archivo") !important;
+  letter-spacing:.10em !important; text-transform:uppercase !important;
+  color:#fff1cf !important;
+  border:1px solid rgb(230 202 143 / .62) !important; border-radius:2px !important;
+  background:linear-gradient(180deg, rgb(224 181 94 / .24), rgb(224 181 94 / .10)) !important;
+  box-shadow:inset 0 1px 0 rgb(255 241 207 / .22) !important;
+  text-decoration:none !important;
+}
+${R} .sf-crres__share > a.k-word:is(:hover, :focus-visible) {
+  color:#ffffff !important; border-color:#ffd98c !important; background:rgb(224 181 94 / .32) !important;
+}
+${R} .sf-crres__share-note { position:absolute !important; width:1px !important; height:1px !important; overflow:hidden !important; clip:rect(0 0 0 0) !important; white-space:nowrap !important; margin:0 !important; }
+${R} .sf-crres__share-item { margin:0 0 4px !important; max-width:100%; }
+${R} .sf-crres__share-row { display:grid !important; grid-template-columns:86px minmax(0, 1fr) auto; align-items:center; column-gap:10px; }
+${R} .sf-crres__share-cap { font-size:12px !important; letter-spacing:.06em !important; color:#9edce9 !important; white-space:nowrap; }
+${R} .sf-crres__share-code { width:100% !important; min-width:0; height:24px; box-sizing:border-box; padding:0 8px !important; border:1px solid rgb(154 198 218 / .30) !important; border-radius:2px !important;
+  background:rgb(6 14 22 / .92) !important; box-shadow:inset 0 1px 0 rgb(208 238 250 / .08) !important; color:#edf6fa !important;
+  font-size:12px !important; text-overflow:ellipsis; outline:none; }
+${R} .sf-crres__share-code:focus-visible { border-color:#e6ca8f !important; box-shadow:0 0 0 2px rgb(242 185 80 / .22) !important; }
+${R} .sf-crres__share-link { white-space:nowrap; font-size:12px !important; letter-spacing:.10em !important; color:#fff1cf !important;
+  border:1px solid rgb(230 202 143 / .55) !important; border-radius:2px !important; background:rgb(224 181 94 / .16) !important; padding:2px 8px !important; min-height:24px !important; display:inline-flex !important; align-items:center !important; }
+${R} .sf-crres__share-link:is(:hover, :focus-visible) { color:#ffffff !important; border-color:#ffd98c !important; outline:none !important;
+  background:rgb(224 181 94 / .28) !important; }
+${R} .sf-crres__share-actions { display:flex; flex-wrap:wrap; gap:4px 10px; margin:4px 0 0; max-width:100%; }
+${R} .sf-crres__share-status { margin:2px 0 0 !important; max-width:100%; color:#9edce9 !important; font-size:12px !important; }
 ${R} .sf-crres__share-status:empty { display:none; }
 
-/* 1080p band: the left column at the dial's weight */
+/* 1080p band: compact vertical spacing so SHARE fits cleanly inside the left panel without being sliced */
 @media (min-width:1800px) and (min-height:1000px) {
-  ${R} .sf-crres__stage { max-width:min(720px, 44vw) !important; gap:22px !important; }
-  ${R} .orr-crres-figures { max-width:660px; }
-  ${R} .orr-crres-figure__n { font-size:60px !important; }
-  ${R} .orr-crres-figure__w { font-size:13px !important; }
-  ${R} .orr-crres-figures__rest { font-size:17px !important; }
-  ${R} .sf-crres__stage .sf-crres__band-title { font-size:13px !important; max-width:660px; }
-  ${R} :is(.sf-crres__story-line, .sf-crres__lead, .sf-crres__build-name) { font-size:16px !important; }
-  ${R} .sf-crres__step .sf-crres__step-verb { font-size:19px !important; }
-  ${R} .sf-crres__run-name { font-size:20px !important; }
-  ${R} .sf-crd-headline { font-size:20px !important; }
-  ${R} :is(.sf-crres__share-item, .sf-crres__ledger > .sf-crres__band:not([data-band]) .sf-crd-grid) { max-width:660px; }
+  ${R} > .k-title, ${R} > .sf-crres-celebrate, ${R} .sf-crres__stage { max-width:min(700px, 44vw) !important; }
+  ${R} .sf-crres__stage { gap:6px !important; padding:8px 14px 10px !important; }
+  ${R} .orr-crres-figures { max-width:100% !important; }
+  ${R} .orr-crres-figure__n { font-size:26px !important; }
+  ${R} .orr-crres-figure__w { font-size:12px !important; }
+  ${R} .orr-crres-figures__rest { font-size:13px !important; }
+  ${R} .sf-crres__stage .sf-crres__band-title { font-size:12px !important; max-width:100%; margin:0 0 3px !important; }
+  ${R} :is(.sf-crres__story-line, .sf-crres__lead, .sf-crres__build-name) { font-size:13px !important; line-height:1.3 !important; }
+  ${R} .sf-crres__step .sf-crres__step-verb { font-size:14px !important; }
+  ${R} .sf-crres__run-name { font-size:14.5px !important; }
+  ${R} .sf-crd-headline { font-size:14px !important; }
+  ${R} :is(.sf-crres__share-item, .sf-crres__ledger > .sf-crres__band:not([data-band]) .sf-crd-grid) { max-width:100%; }
 }
 
 ${RESULTS_PLATE(RP)}

@@ -20,6 +20,7 @@ export const RUN_WALLET = 'run';
 export const killXpFor = level => KILL_XP_BASE + (Number.isInteger(level) && level >= 1 ? level : 1);
 export const killScoreFor = (_level, threatClass = 'fodder') => threatReward(threatClass).baseScore;
 export const chipValueForPlan = () => 10; // cohort lives use the threat table, never an infinite per-spawn purse
+const SWARM_CLEAR_SCRAP_PER_ROUND = 50;
 export function estimateBoardScore({ gunKills = 0, physicsKills = 0, stuntPoints = 0, playerPhysics = true, threatClass = 'fodder' } = {}) {
   return (Math.max(0, Math.trunc(gunKills)) + (playerPhysics ? Math.max(0, Math.trunc(physicsKills)) : 0)) * threatReward(threatClass).baseScore + Math.max(0, Math.floor(stuntPoints));
 }
@@ -234,6 +235,7 @@ export const survivalRewards = {
       && r.entitlements[id].credits === entity.data.credits && !Object.values(r.chips).includes(id));
     if (entitlementId == null) return;
     entity.data.entitlementId = entitlementId;
+    if (isSwarmRuleset(this.state?.run?.ruleset)) entity.data.playerCollectOnly = true;
     if (r.entitlements[entitlementId]?.settled) { entity.data.creditGranted = true; return; }
     r.chips[String(entity.id)] = entitlementId;
   },
@@ -255,7 +257,11 @@ export const survivalRewards = {
     if (entity?.data) entity.data.creditGranted = true;
     return this._settleEntitlement(entitlementId, reason);
   },
-  _onPickupCollected(payload) { if (payload?.pickupId != null) this._settleChip(payload.pickupId, 'chip_scooped'); },
+  _onPickupCollected(payload) {
+    if (payload?.pickupId == null) return;
+    if (isSwarmRuleset(this.state?.run?.ruleset) && payload.collectorId !== this.state.playerId) return;
+    this._settleChip(payload.pickupId, 'chip_scooped');
+  },
   /**
    * SWARM-06 — a perk mints a chip outside a kill. Same pipeline a cohort chip uses: mint the
    * entitlement first (the spawned pickup binds it in _onEntitySpawned), then drop the body.
@@ -347,14 +353,21 @@ export const survivalRewards = {
   _onWaveCleared(payload) {
     const run = liveRun(this.state); if (!run) return;
     const r = this._ensure(); const wave = payload?.wave ?? run.wave;
+    const planned = wave === this._planWave;
+    const zeroStartSwarm = isSwarmRuleset(run.ruleset) && run.telemetry?.zeroScrapOpening === true
+      && !run.practice && run.telemetry?.circuit == null;
+    if (zeroStartSwarm && (!planned || run.phase !== 'active' || wave !== run.wave || payload?.runWave !== wave)) return;
     if (r.clearedWaves[wave]) return;
     r.clearedWaves[wave] = true;
     if (this.state.stunts?.combo) resetRound(this.state.stunts.combo, this.state.tick);
     this._syncBanks(); this.sweepChips('round_clear');
     // The XP purse belongs to exactly the planned wave — a cleared receipt for a wave we
     // hold no live plan for still scores but invents no XP (CRU-014).
-    const xp = wave === this._planWave ? (this._plan?.rewards?.xp || 0) : 0;
-    this._emit('run:awardRequested', { xp, reason: 'wave_cleared', wave });
+    const xp = planned ? (this._plan?.rewards?.xp || 0) : 0;
+    // The zero-Scrap opening earns its floor-gun budget by clearing rounds (design/game/17 §3).
+    const credits = zeroStartSwarm && payload.completionKind === 'cohort' && payload.starved === false && payload.admitted > 0
+      ? Math.round(SWARM_CLEAR_SCRAP_PER_ROUND * wave * this._creditScale(run)) : 0;
+    this._emit('run:awardRequested', { xp, reason: 'wave_cleared', wave, ...(credits > 0 ? { credits } : {}) });
   },
   _onDeath() {
     if (this.state.stunts?.combo) settleCrash(this.state.stunts.combo, { tick: this.state.tick, playerDeath: true });

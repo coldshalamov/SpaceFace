@@ -548,8 +548,25 @@ export const impulseCharges = {
     // Kill receipts first, same travelling beat as primed deaths: a dart killed inside another
     // dart's blast queues for next tick, so a chain of darts reads as links, not a white frame.
     for (const rec of pending) {
+      if (rec.trigger === 'iron_maw_mouth' && state.entities.get(rec.id) !== rec.ent) continue;
       this._detonatorBlast(state, rec, rec.trigger, rec.killerId, null);
     }
+  },
+
+  isDetonatorSpent(dart) {
+    return this._detonatedEnts?.has(dart) === true;
+  },
+
+  queueMawDetonator(dart, blastPoint, playerId) {
+    const pending = this._pendingDetonations;
+    if (!dart?.alive || !dart.data?.detonator || this.state.entities.get(dart.id) !== dart
+        || this.isDetonatorSpent(dart) || !pending || pending.length >= 8
+        || pending.some((record) => record.ent === dart)) return false;
+    pending.push({
+      id: dart.id, ent: dart, spec: dart.data.detonator,
+      pos: { x: blastPoint.x, z: blastPoint.z }, killerId: playerId, trigger: 'iron_maw_mouth',
+    });
+    return true;
   },
 
   /**
@@ -661,6 +678,7 @@ export const impulseCharges = {
       hits: result.hits,
       shoves: result.shoves,
       tick: state.tick | 0,
+      ...(trigger === 'iron_maw_mouth' ? { occupantGeneration: ent?.occupantGeneration } : null),
     });
     // The shared blast receipt: explosion VFX, audio and kill-credit chains already listen here.
     this.bus.emit('charge:detonated', {

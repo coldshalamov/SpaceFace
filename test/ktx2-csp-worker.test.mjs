@@ -3,9 +3,12 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { createKtx2TranscoderWorkerSource } from '../scripts/build-ktx2-transcoder-worker.mjs';
+import { RGBAFormat, UnsignedByteType } from 'three';
+import { createDefaultContainer, write } from '../vendor/addons/libs/ktx-parse.module.js';
 import {
   ASSET_RUNTIME_DECODER_CONTRACT,
   configureCspSafeKtx2Loader,
+  createSharedKtx2LoaderOwner,
 } from '../src/render/assetLoader.js';
 
 const WORKER_FILE = new URL('../vendor/addons/libs/basis/basis_transcoder.worker.js', import.meta.url);
@@ -17,6 +20,62 @@ test('committed Basis worker is the deterministic Three.js worker body', async (
   ]);
   assert.equal(actual, expected);
   assert.match(actual, /addEventListener\( 'message'/);
+});
+
+test('acquiring the default decoder leaves shared Basis initialization to texture demand', async (t) => {
+  const wasmResponse = Promise.withResolvers();
+  const fetch = t.mock.method(globalThis, 'fetch', () => wasmResponse.promise);
+  const owner = createSharedKtx2LoaderOwner();
+  const renderer = { extensions: { has: (name) => name === 'WEBGL_compressed_texture_s3tc' } };
+  const loader = await owner.acquire(renderer);
+  try {
+    assert.equal(loader.workerConfig.dxtSupported, true);
+    assert.equal(fetch.mock.callCount(), 0);
+    assert.equal(loader.transcoderPending, null);
+
+    const pixels = new Uint8Array([42, 65, 99, 255]);
+    const container = createDefaultContainer();
+    container.pixelWidth = container.pixelHeight = container.levelCount = 1;
+    container.levels = [{ levelData: pixels, uncompressedByteLength: pixels.byteLength }];
+    const readTexture = () => new Promise((resolve, reject) => loader.parse(write(container).buffer, resolve, reject));
+    const postMessage = t.mock.method(loader.workerPool, 'postMessage', async () => ({
+      data: {
+        type: 'transcode',
+        data: {
+          faces: [{ mipmaps: [{ data: pixels, width: 1, height: 1 }] }],
+          width: 1, height: 1, format: RGBAFormat, type: UnsignedByteType, dfdFlags: 0,
+        },
+      },
+    }));
+
+    const firstTexture = readTexture();
+    const pending = loader.transcoderPending;
+    const secondTexture = readTexture();
+    assert.ok(pending);
+    assert.strictEqual(loader.transcoderPending, pending);
+    await Promise.resolve();
+    assert.equal(fetch.mock.callCount(), 1);
+    assert.equal(fetch.mock.calls[0].arguments[0], `${ASSET_RUNTIME_DECODER_CONTRACT.ktx2TranscoderPath}basis_transcoder.wasm`);
+    assert.equal(postMessage.mock.callCount(), 0);
+
+    wasmResponse.resolve({ ok: true, arrayBuffer: async () => new ArrayBuffer(8) });
+    for (const texture of await Promise.all([firstTexture, secondTexture])) {
+      assert.deepEqual(texture.mipmaps[0].data, pixels);
+    }
+    assert.equal(postMessage.mock.callCount(), 2);
+  } finally {
+    owner.release(loader);
+  }
+
+  const restored = await owner.acquire({ extensions: { has: () => false } });
+  try {
+    assert.notStrictEqual(restored, loader);
+    assert.equal(restored.workerConfig.dxtSupported, false);
+    assert.equal(restored.transcoderPending, null);
+    assert.equal(fetch.mock.callCount(), 1);
+  } finally {
+    owner.release(restored);
+  }
 });
 
 test('CSP-safe KTX2 loader uses an external worker and drains worker failures', async () => {

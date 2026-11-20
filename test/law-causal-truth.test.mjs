@@ -45,8 +45,8 @@ import { save as saveDefinition } from '../src/save/saveSystem.js';
 const SEED = 43117;
 const SECTOR = 'sector_tethys_junction';
 
-test('a lethal native side contact charges only the pilot closing along the contact normal', async () => {
-  for (const playerRams of [false, true]) {
+test('a lethal native side contact uses closing speed and respects the opening claim boundary', async () => {
+  for (const [playerRams, opening] of [[false, null], [true, null], [true, 'before-claim'], [true, 'after-claim']]) {
     const sectorId = 'sector_helios_prime';
     const run = await bootRealPath({
       seed: 47,
@@ -56,6 +56,12 @@ test('a lethal native side contact charges only the pilot closing along the cont
         state.world.currentSectorId = sectorId;
         state.world.sectors ??= {};
         state.world.sectors[sectorId] = { id: sectorId, factionId: 'faction_scn', security: 0.9, tier: 0 };
+        if (opening) {
+          state.onboarding = {
+            ...state.onboarding, active: true, finished: false,
+            beatDoneAt: opening === 'before-claim' ? { tether: 0 } : { tether: 0, raid: 0 },
+          };
+        }
       },
       hulls: [{ hullId: 'ship_wasp', isPlayer: true, pos: { x: -250, z: 0 } }],
     });
@@ -100,9 +106,11 @@ test('a lethal native side contact charges only the pilot closing along the cont
       assert.equal(kill?.presentation.cause, 'ship_collision');
       assert.equal(impact.causalActorId, playerRams ? player.id : patrol.id);
       assert.equal(kill.killerId === player.id, playerRams);
-      assert.equal(responses.some(event => event.action === 'warrant_posted'), playerRams);
-      assert.deepEqual(reports.map(report => report.kind), playerRams ? ['lawful_kill'] : []);
-      assert.equal(run.state.player.heat >= WANTED_THRESHOLD, playerRams);
+      const charge = playerRams && opening !== 'before-claim';
+      assert.equal(responses.some(event => event.action === 'warrant_posted'), charge,
+        `warrant for native contact (${opening ?? 'normal flight'})`);
+      assert.deepEqual(reports.map(report => report.kind), charge ? ['lawful_kill'] : []);
+      assert.equal(run.state.player.heat >= WANTED_THRESHOLD, charge);
     } finally {
       run.dispose();
     }

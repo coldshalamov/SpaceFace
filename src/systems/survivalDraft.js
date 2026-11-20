@@ -232,6 +232,11 @@ export const survivalDraft = {
     this._reset();
   },
 
+  _isOpeningEquipmentDraft(run) {
+    return run?.wave === 0 && this._openingEquipmentLifetime != null
+      && this._openingEquipmentLifetime === runLifetime(run);
+  },
+
   /** Live offers for the draft surface. Empty when no draft is open. */
   currentOffers() {
     const run = liveSurvivalRun(this.state);
@@ -247,6 +252,8 @@ export const survivalDraft = {
     // Preserve the stock, but re-evaluate fitting targets after each purchase. Two offers may
     // initially want the same empty slot; the second purchase must see the new loadout.
     const loadout = this._activeLoadout();
+    const player = this.state.player;
+    const activeShip = player?.ownedShips?.[loadout.shipIndex];
     const legal = offerDraft({ ...this._draftInput, ...loadout, count: 100 }).offers || [];
     const legalById = new Map(legal.map((entry) => [entry.id, entry]));
     // Evolutions are not seeded cards — they exist exactly when the build holds their parts, so
@@ -257,6 +264,9 @@ export const survivalDraft = {
     // Hull and service rows have no fitting legality — the extras loop prices and judges them
     // itself. Left through this map they would all read "No compatible slot" at a null price.
     const ships = this._ships();
+    const openingEquipment = this._isOpeningEquipmentDraft(run);
+    const openingChoice = openingEquipment && !run.modifiers.some(row => row?.startingEquipment === true);
+    const openingLoan = run.wave === 0 && !openingEquipment && run.telemetry?.swarmStake === 'ironbound';
     const rows = offers
       .filter((offer) => offer.kind !== SWARM_HULL_OFFER_KIND && offer.kind !== SWARM_SERVICE_OFFER_KIND)
       .map(offer => {
@@ -274,14 +284,35 @@ export const survivalDraft = {
       const fitRefusal = saucerFittingRefusal(loadout.hullId, def)
         || (fitBlocker && (fitBlocker.text || 'Fitting unavailable'));
       const legal = (!!current || demoed) && !fitRefusal;
-      const price = offer.kind === EVOLUTION_OFFER_KIND ? offer.price : swarmPurchasePrice(offer.defId);
       const replaces = (current || offer).replaces ?? null;
+      const slotIndex = (current || offer).slotIndex;
+      const trial = this._trials?.get(slotIndex);
+      const replacesTrial = !!replaces && trial?.shipIndex === loadout.shipIndex && trial?.defId === replaces;
+      const startingEquipment = openingChoice && legal && !purchased && !demoed && Number.isInteger(slotIndex)
+        && def?.slotType === 'weapon' && def.tier <= 1 && def.id.startsWith('wpn_')
+        && offer.kind !== EVOLUTION_OFFER_KIND;
+      const price = startingEquipment ? 0
+        : offer.kind === EVOLUTION_OFFER_KIND ? offer.price : swarmPurchasePrice(offer.defId);
+      let purchaseStatus = null;
+      if (purchased && def?.slotType === 'weapon' && offer.kind !== EVOLUTION_OFFER_KIND) {
+        const instanceId = this._purchasedWeaponInstances?.get(offer.id);
+        const fitted = instanceId != null && loadout.fittings.some((id, index) =>
+          id === offer.defId && activeShip?.fittedInstances?.[index]?.instanceId === instanceId);
+        const spare = instanceId != null && Array.isArray(player?.moduleInventory)
+          && player.moduleInventory.some(item => item?.instanceId === instanceId && item.defId === offer.defId);
+        purchaseStatus = fitted ? 'Fitted' : spare ? 'In spares' : 'Purchased';
+      }
       return { ...offer, ...(current || {}), price, purchased, demoed, replaces,
         replacesName: replaces ? fittingName(replaces) : null,
+        replacesTrial,
+        ...(openingEquipment ? { startingEquipment, demoAvailable: false } : {}),
+        ...(purchaseStatus ? { purchaseStatus } : {}),
+        borrowAvailable: openingLoan && legal && !purchased && !demoed
+          && def?.slotType === 'weapon' && Number.isInteger(slotIndex),
         held: !!(this._locked && this._locked.id === offer.id),
         lockedIn: !!(this._lockedInto && this._lockedInto.has(offer.id)),
         available: !purchased && legal && price != null && run.credits >= price,
-        unavailableReason: purchased ? 'Fitted' : fitRefusal || (!legal ? 'No compatible slot' :
+        unavailableReason: purchased ? (purchaseStatus || 'Fitted') : fitRefusal || (!legal ? 'No compatible slot' :
           run.credits < price ? `Save ${price - run.credits} more cr` : null) };
     });
     const shown = new Set(rows.map((row) => row.id));
@@ -457,6 +488,7 @@ export const survivalDraft = {
     this._preparationSequence = this._preparationSequence || 0;
     this._preparationPending = null;
     this._preparationReceipt = null;
+    this._openingEquipmentLifetime = null;
     this._offers = null;
     this._wave = 0;
     this._resolved = true;
@@ -466,6 +498,7 @@ export const survivalDraft = {
     this._notice = null;
     this._pendingPurchase = null;
     this._purchased = new Set();
+    this._purchasedWeaponInstances = new Map();
     this._trials = new Map();
     this._locked = null;
     this._lockedInto = new Map();
@@ -524,6 +557,11 @@ export const survivalDraft = {
       return;
     }
     const loadout = this._activeLoadout();
+    if (isSwarmRuleset(run.ruleset) && run.wave === 0 && this.state.player?.combatProfile === 'crucible' && !run.practice
+      && !run.telemetry?.dailyDateKey && run.telemetry?.ghostHash == null && !run.arenaMutators?.length
+      && !loadout.fittings.some(Boolean)) {
+      this._openingEquipmentLifetime = runLifetime(run);
+    }
     // Snapshot every input this draft was drawn from, INCLUDING count. A paid re-roll replays the
     // same inputs with a higher round number; re-deriving them live would let a peek disagree with
     // what the player gets after paying, and that equality is the whole determinism contract.
@@ -545,6 +583,7 @@ export const survivalDraft = {
     this._notice = null;
     this._pendingPurchase = null;
     this._purchased = new Set();
+    this._purchasedWeaponInstances = new Map();
     // A trial fit lives exactly one round: what was demoed at the last armory comes off here,
     // before the offers draw, so the cards price the build as it stands.
     this._clearTrials();
@@ -824,45 +863,7 @@ export const survivalDraft = {
         this._resolveServicePurchase(pending);
         return;
       }
-      // Fitting by definition is the existing ships-owner purchase route. There is no temporary
-      // inventory grant to leak if fitting is refused after the wallet authorizes the purchase.
-      // A slot still on trial retires BEFORE the paid copy lands, so the demo is destroyed in
-      // place instead of being bumped into the hold disguised as a spare.
-      if (Number.isInteger(pending.slotIndex)) this._retireTrial(pending.slotIndex);
-      const fitted = !!this._ships()?.fitModule({ slotIndex: pending.slotIndex, defId: pending.defId });
-      if (!fitted) {
-        this._emit('run:awardRequested', { credits: pending.price, reason: 'crucible:purchaseRefund' });
-        this._notice = `${pending.name} could not be fitted. ${pending.price} cr refunded.`;
-        return;
-      }
-      this._purchased.add(pending.id);
-      this._notice = `${pending.name} fitted. Buy again or launch the next round.`;
-      // Shelf rows carry a stock word ('Gun', 'Launcher', …), not an authored verb — the note
-      // would die in the validator and the buy would vanish from the run's memory. Record it
-      // verbatim the same way hull rows do, so results/buildCode/SF-072's buildSummary see it.
-      if (pending.catalog === true) {
-        this._emit('run:modifierRecordRequested', {
-          record: {
-            kind: 'catalog', offerId: pending.id, defId: pending.defId,
-            // Same 1-based law the validator holds _noteModifier to — the opening armory's
-            // internal wave is 0, but the ledger never names a wave the player cannot see.
-            slotIndex: pending.slotIndex, replaced: pending.replaces ?? null,
-            wave: Math.max(1, this._wave),
-          },
-          draft: {
-            wave: this._wave, offered: (this._offers || []).map((o) => o.id), picked: pending.id,
-          },
-          wave: this._wave,
-        });
-      } else {
-        this._noteModifier({
-          kind: 'weapon', offerId: pending.id, verb: pending.verb, defId: pending.defId,
-          slotIndex: pending.slotIndex, replaced: pending.replaces ?? null, wave: this._wave,
-        }, {
-          wave: this._wave, offered: this._offers.map(o => o.id), picked: pending.id,
-        });
-      }
-      this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
+      this._fitStockOffer(pending, preparation);
       return;
     }
     const pending = this._pendingReroll;
@@ -990,9 +991,10 @@ export const survivalDraft = {
       }
     }
     if (isSwarmRuleset(run.ruleset) && offerId != null && request && request.demo === true) {
+      if (this._isOpeningEquipmentDraft(run)) return false;
       return this._demoFit(offerId);
     }
-    if (isSwarmRuleset(run.ruleset) && offerId != null) return this._purchase(offerId);
+    if (isSwarmRuleset(run.ruleset) && offerId != null) return this._purchase(offerId, request?.quote);
     const offer = offers.find((entry) => entry.id === offerId) || null;
     this._offers = null;
     this._pendingReroll = null;
@@ -1146,7 +1148,7 @@ export const survivalDraft = {
     });
   },
 
-  _purchase(offerId) {
+  _purchase(offerId, quote) {
     if (this._preparationPending || this._pendingPurchase || this._pendingReroll) return false;
     const entity = this._playerEntity();
     const pending = {
@@ -1160,7 +1162,7 @@ export const survivalDraft = {
     this._notice = null;
     this._recordPreparation(pending, 'pending');
     try {
-      const accepted = this._purchaseOffer(offerId);
+      const accepted = this._purchaseOffer(offerId, quote);
       if (this._preparationReceipt?.value.sequence === pending.sequence
         && this._preparationReceipt.value.outcome === 'pending') this._recordPreparation(pending, 'denied');
       return accepted && this._preparationCurrent(pending, { allowHullChange: true });
@@ -1171,10 +1173,16 @@ export const survivalDraft = {
     }
   },
 
-  _purchaseOffer(offerId) {
+  _purchaseOffer(offerId, quote) {
     const offer = this.currentOffers().find(entry => entry.id === offerId);
     if (!offer || !offer.available) {
       this._notice = offer?.unavailableReason || 'That offer is no longer available.';
+      return false;
+    }
+    if (quote && (quote.price !== offer.price || quote.slotIndex !== (offer.slotIndex ?? null)
+      || quote.replaces !== (offer.replaces ?? null) || quote.replacesTrial !== !!offer.replacesTrial)) {
+      this._notice = 'The price or target slot changed. Review the updated offer before installing.';
+      this._refreshOffers(liveSurvivalRun(this.state));
       return false;
     }
     // A pact is a signature, not a sale: the wallet is never asked — the purse flows the
@@ -1218,6 +1226,7 @@ export const survivalDraft = {
       }
     }
     if (!this._preparationCurrent(this._preparationPending)) return false;
+    if (offer.startingEquipment) return this._fitStockOffer(offer, this._preparationPending);
     this._pendingPurchase = offer;
     this._emit('run:spendRequested', { credits: offer.price, reason: CRUCIBLE_PURCHASE_SPEND_REASON });
     if (this._pendingPurchase) {
@@ -1226,6 +1235,43 @@ export const survivalDraft = {
       return false;
     }
     return this._purchased.has(offer.id);
+  },
+
+  _fitStockOffer(offer, preparation) {
+    // Both opening and paid equipment use the real fitting writer. An expiring test copy
+    // must retire before replacement so it cannot be mistaken for an owned spare.
+    if (Number.isInteger(offer.slotIndex)) this._retireTrial(offer.slotIndex);
+    const ship = preparation?.ship ?? this.state.player?.ownedShips?.[this.state.player.activeShipIndex];
+    if (!this._ships()?.fitModule({ slotIndex: offer.slotIndex, defId: offer.defId })) {
+      if (!offer.startingEquipment) {
+        this._emit('run:awardRequested', { credits: offer.price, reason: 'crucible:purchaseRefund' });
+      }
+      this._notice = offer.startingEquipment ? `${offer.name} could not be fitted. Choose another gun.`
+        : `${offer.name} could not be fitted. ${offer.price} cr refunded.`;
+      return false;
+    }
+    this._purchased.add(offer.id);
+    const item = ship?.fittedInstances?.[offer.slotIndex];
+    if (item?.instanceId != null && item.defId === offer.defId && MODULE_DEF_BY_ID.get(offer.defId)?.slotType === 'weapon') {
+      this._purchasedWeaponInstances?.set(offer.id, item.instanceId);
+    }
+    this._notice = offer.startingEquipment ? `${offer.name} fitted free for this run.`
+      : `${offer.name} fitted. Buy again or launch the next round.`;
+    const draft = { wave: this._wave, offered: (this._offers || []).map(o => o.id), picked: offer.id };
+    const record = { offerId: offer.id, defId: offer.defId, slotIndex: offer.slotIndex, replaced: offer.replaces ?? null };
+    // Keep the accepted free grant on the existing lifetime ledger, with the exact instance
+    // in case it gets moved to a spare slot or replaced before the next round.
+    if (offer.catalog === true || offer.startingEquipment) {
+      this._emit('run:modifierRecordRequested', {
+        record: { kind: 'catalog', ...record, wave: Math.max(1, this._wave),
+          ...(offer.startingEquipment ? { startingEquipment: true, instanceId: item?.instanceId ?? null } : {}) },
+        draft, wave: this._wave,
+      });
+    } else {
+      this._noteModifier({ kind: 'weapon', ...record, verb: offer.verb, wave: this._wave }, draft);
+    }
+    this._emit('run:shopPurchased', { wave: this._wave, offerId: offer.id, price: offer.price });
+    return true;
   },
 
   /**
@@ -2168,9 +2214,11 @@ export const survivalDraft = {
     const instanceId = request && request.instanceId;
     const loadout = this._activeLoadout();
     let defId = null;
+    let saleInstanceId = null;
     let take = null;
     if (Number.isInteger(slotIndex) && typeof ships.takeFittedModuleInstance === 'function') {
       defId = loadout.fittings[slotIndex] || null;
+      saleInstanceId = this.state.player?.ownedShips?.[loadout.shipIndex]?.fittedInstances?.[slotIndex]?.instanceId;
       take = () => ships.takeFittedModuleInstance(loadout.shipIndex, slotIndex);
     } else if (instanceId != null && typeof ships.takeInventoryModuleInstance === 'function') {
       const inventory = this.state && this.state.player && this.state.player.moduleInventory;
@@ -2178,7 +2226,11 @@ export const survivalDraft = {
         ? inventory.find((entry) => entry && entry.instanceId === instanceId)
         : null;
       defId = item ? item.defId : null;
+      saleInstanceId = item?.instanceId;
       take = () => ships.takeInventoryModuleInstance(instanceId);
+    }
+    if (saleInstanceId != null && saleInstanceId === this._startingEquipmentInstanceId(run)) {
+      return this._refuseRefitRequest(request, 'sell', 'Free starting equipment has no resale value.');
     }
     const refund = defId ? swarmSellPrice(defId) : null;
     if (!defId || !take || refund == null) {
@@ -2258,6 +2310,8 @@ export const survivalDraft = {
     const slots = buildSlotList(shipDef);
     const player = this.state && this.state.player;
     const inventory = Array.isArray(player && player.moduleInventory) ? player.moduleInventory : [];
+    const freeInstanceId = this._startingEquipmentInstanceId(liveSurvivalRun(this.state));
+    const fitted = player?.ownedShips?.[loadout.shipIndex]?.fittedInstances;
     return slots.map((slot, slotIndex) => {
       const defId = loadout.fittings[slotIndex] || null;
       const spares = [];
@@ -2270,6 +2324,7 @@ export const survivalDraft = {
             instanceId: item.instanceId,
             defId: item.defId,
             name: def.name || prettyDefId(item.defId),
+            ...(item.instanceId === freeInstanceId ? { startingEquipment: true } : {}),
           });
         }
       }
@@ -2282,10 +2337,15 @@ export const survivalDraft = {
         slotSize: slot.size,
         defId,
         name: defId ? ((heldDef && heldDef.name) || prettyDefId(defId)) : null,
+        ...(freeInstanceId != null && fitted?.[slotIndex]?.instanceId === freeInstanceId ? { startingEquipment: true } : {}),
         ...(intrinsicDefId ? { intrinsicDefId, intrinsicName: MODULE_DEF_BY_ID.get(intrinsicDefId)?.name } : {}),
         spares,
       };
     });
+  },
+
+  _startingEquipmentInstanceId(run) {
+    return run?.modifiers?.find(row => row?.startingEquipment === true)?.instanceId ?? null;
   },
 
   _spareDef(instanceId) {

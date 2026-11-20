@@ -5,6 +5,7 @@
 // This sheet gives the board its own document flow: a fit rail of labelled fields, three course
 // cards, then the paint / recognition panels side by side. Scoped to `#screens .k-screen.race-board`;
 // selectors/IDs unchanged, no data or launch logic touched.
+import { SCROLL_EXTENT_CSS } from './scrollExtent.js';
 // ui-polish-379: short densify (max-height ≤500) seats the sticky Practice/START band fully above
 // the fold at scrollTop=0 on 651×461 / 700×461 — title + fit rail + blurb no longer clip the lamp.
 // ui-polish-482: the board's panels (fit rail, course cards, result/START panels) take radius 8 and its
@@ -19,6 +20,7 @@ const READ = 'font-family:var(--dp-face-read, "Instrument Sans"), system-ui, san
 const CHEVRON = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23f2b950' stroke-width='1.6'/%3E%3C/svg%3E\")";
 
 export const RACE_BOARD_LAYOUT_CSS = `
+${SCROLL_EXTENT_CSS}
 /* ---------- the board is a scrolling document, not the kit's three-row grid ---------- */
 ${R} {
   display:grid !important; grid-template-columns:repeat(2, minmax(0, 1fr)) !important;
@@ -30,6 +32,13 @@ ${R}::before { position:fixed !important;
   background:linear-gradient(90deg, rgb(6 8 11 / .95), rgb(6 8 11 / .88) 55%, rgb(6 8 11 / .8)) !important; }
 ${R} > * { grid-column:1 / -1 !important; grid-area:auto / 1 / auto / -1 !important; min-width:0; max-width:1400px; }
 ${R} .k-word::after { display:none !important; }
+/* the board folds at its rim when it overflows (the house dissolve, scrollExtent.js): the last
+   course card's sentence was hard-cut mid-glyph at the viewport edge and read as broken text, not
+   "more below" (bench 1440x900). The board's own clamp(36px…) bottom pad already out-runs the
+   20px fold, so the fade lands on empty column at scroll end (RC-49). raceBoard.js wires
+   syncScrollExtent on the root after every rebuild. */
+${R}[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 32px), rgb(0 0 0 / .45) calc(100% - 13px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 32px), rgb(0 0 0 / .45) calc(100% - 13px), transparent); }
+${R}[data-overflow="0"] { -webkit-mask-image:none; mask-image:none; }
 
 /* ---------- head ---------- */
 ${R} > .k-title { margin:0 0 clamp(14px, 2.6vh, 26px) !important; }

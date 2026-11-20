@@ -454,7 +454,7 @@ const RAW_SURFACES = Object.freeze([
     entry: {
       kind: 'boot-nested',
       parent: 'title',
-      selector: '[data-screen="mainMenu"] [data-action="crucible"]',
+      selector: '[data-screen="mainMenu"] [data-action="swarm"]',
       text: 'Crucible',
       evidence: 'public-route',
       detail: 'title → Crucible',

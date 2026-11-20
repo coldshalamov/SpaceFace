@@ -64,7 +64,7 @@ export const SWARM_TAP_MODS = Object.freeze([
   }),
   Object.freeze({
     id: 'magnet_hull', name: 'Magnet Hull', icon: '◍',
-    text: 'pickups within 260 WU drift to you; enemy mines within 260 WU do too',
+    text: 'pickups within 260 u drift to you; enemy mines within 260 u do too',
     give: { magnetPickupRange: 260 }, take: { mineMagnetRange: 260 },
   }),
   Object.freeze({

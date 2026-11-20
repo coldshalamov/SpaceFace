@@ -295,6 +295,7 @@ test('settlement snapshots prior records once and review follows the registrar g
     assert.equal(owner._startAttempt(eventId, c.practice === true), true, c.name);
     acceptPresentation();
     const live = owner._attempt();
+    const cohort = new Set(live.cohort.values());
     // Exercise the real FSM -> runtime settlement seam without claiming a flown course.
     live.fsm.phase = 'running'; live.fsm.legIndex = live.def.legs.length;
     live.fsm.armedAt = s.simTime + DT - c.time;
@@ -316,6 +317,18 @@ test('settlement snapshots prior records once and review follows the registrar g
     assert.equal(row().lastResult.previousBestTimeS, c.expected, 'receipt survives restore');
     assert.equal(row().records[eventId].lastResult.previousBestTimeS, c.expected);
     if (c.name === 'first') {
+      const retired = [];
+      sim.bus.on('entity:destroyed', receipt => {
+        if (cohort.has(receipt.entity)) retired.push(receipt);
+      });
+      sim.registry.get('core').lifetimeSweep(DT, s);
+      assert.equal(retired.length, 2);
+      for (const receipt of retired) {
+        assert.equal(receipt.reason, 'counterweight_retire');
+        assert.equal(receipt.id, receipt.entity.id);
+        assert.equal(receipt.occupantGeneration, receipt.entity.occupantGeneration);
+        assert.equal(s.entities.has(receipt.id), false);
+      }
       const offer = s.counterweightCircuitOffer;
       assert.ok(offer.choices.some(choice => choice.id === 'preview:soft_berth'));
       sim.bus.emit('counterweightCircuit:action', { action: 'preview', eventId: 'soft_berth', offerId: offer.id, generation: offer.generation });
@@ -340,18 +353,25 @@ test('settlement snapshots prior records once and review follows the registrar g
 });
 
 test('a real failed FSM result does not manufacture a prior-best comparison', async () => {
-  const { s, owner, tick, row, acceptPresentation } = await fixture();
+  const { sim, s, owner, tick, row, acceptPresentation } = await fixture();
   row().records.soft_berth = { ...freshEventRecord(), completions: 1, bestTimeS: 42 };
   assert.equal(owner._startAttempt('soft_berth', false), true);
   acceptPresentation();
   const live = owner._attempt();
   live.fsm.phase = 'running'; live.fsm.armedAt = s.simTime;
-  live.cohort.get('load').hull = 0;
+  const load = live.cohort.get('load'), cradle = live.cohort.get('cradle');
+  load.hull = 0;
   tick(1);
   assert.equal(row().lastResult.outcome, 'failed');
   assert.equal(row().lastResult.reason, 'load_destroyed');
   assert.equal('previousBestTimeS' in row().lastResult, false);
   assert.equal(row().records.soft_berth.bestTimeS, 42);
+  const removed = new Map();
+  sim.bus.on('entity:destroyed', receipt => removed.set(receipt.entity, receipt));
+  sim.registry.get('core').lifetimeSweep(DT, s);
+  assert.ok(removed.has(load));
+  assert.equal(removed.get(load).reason, undefined, 'a destroyed practice load keeps its ordinary destruction');
+  assert.equal(removed.get(cradle).reason, 'counterweight_retire');
 });
 
 test('economy settles only the owner-authorized award and makes reentrant replay harmless', async () => {

@@ -6,6 +6,7 @@ import { makeEnemySpawnSpec } from './combat.js';
 import { indexedShipLikeScan, entityIndexVersion, entityIndexLaneVersion } from '../world/livingWorldViews.js';
 import { ENCOUNTER_COMMAND_RING_CAPACITY } from './aiPorts.js';
 import { turretLossCount } from '../combat/turretSubsystems.js';
+import { clearanceFootprint } from './swarmSafety.js';
 
 
 /** Bench A/B: production default ON. Quiet latch skips shipLike reinforcement-author
@@ -51,6 +52,7 @@ const REINFORCEMENT_INGRESS = Object.freeze({
   maxPlacementAttempts: 16,
   arrivalDeadlineTicks: 600, // a due squad that still cannot resolve a legal lane cancels
   approachSpeedWu: 130,      // arrivals enter already flying inbound along the lane
+  approachLookaheadS: 2,
 });
 const INGRESS_ANGLE_STEPS = Object.freeze([0, 0.55, -0.55, 1.1, -1.1, 1.65, -1.65, Math.PI]);
 
@@ -127,6 +129,7 @@ export const aiEncounter = {
     this.helpers = ctx.helpers || (ctx.helpers = {});
     this._aiEncounterQuiet = null;
     this._aiEncounterWakeSeq = 0;
+    this._reinforcementFootprints = new WeakMap();
     this._unsubs = [];
     ensureOwnerState(this.state);
     this.helpers.inspectAIEncounter = () => this.inspect();
@@ -274,8 +277,9 @@ export const aiEncounter = {
   },
 
   /** Re-validate the recorded spot, else walk the lane again against the world as it is NOW. */
-  _resolvePendingSpot(ctx, pending, state) {
-    if (pending.pos && ingressSpotLegal(ctx, pending.pos)) return pending.pos;
+  _resolvePendingSpot(ctx, pending, state, spawnRadius) {
+    const approach = { anchor: pending.anchor, radius: spawnRadius };
+    if (pending.pos && ingressSpotLegal(ctx, pending.pos, approach)) return pending.pos;
     const seed = state && state.meta && state.meta.seed || 1;
     const pkg = reinforcementPackage(pending.packageId);
     return resolveIngressPosition(
@@ -288,6 +292,7 @@ export const aiEncounter = {
       Math.max(1, finiteInt(pending.memberCount, 1)),
       seed,
       pending.commandSeq,
+      approach,
     );
   },
 
@@ -501,7 +506,21 @@ export const aiEncounter = {
       keep.push(pending);
       return;
     }
-    const spot = this._resolvePendingSpot(ctx, pending, state);
+    // Faction goes through the factory so the real airframe and doctrine own their stats.
+    const spawnOptions = {
+      factionId: pending.factionId || undefined,
+      startedTick: state.tick,
+    };
+    // A blocked member may retry for ten seconds. Cache only the body size, so no
+    // old doctrine or spawn pose is carried across attempts.
+    let spec;
+    let spawnRadius = this._reinforcementFootprints.get(pending);
+    if (spawnRadius == null) {
+      spec = makeEnemySpawnSpec(pending.typeId, pending.level, pending.pos || pending.anchor, spawnOptions);
+      spawnRadius = clearanceFootprint(spec);
+      this._reinforcementFootprints.set(pending, spawnRadius);
+    }
+    const spot = this._resolvePendingSpot(ctx, pending, state, spawnRadius);
     if (!spot) {
       if (finiteInt(state.tick) >= finiteInt(pending.deadlineTick, finiteInt(pending.dueTick))) {
         cancelReinforcement(this.helpers, owner, pending, 'placement_unreachable', state, this.bus);
@@ -526,20 +545,12 @@ export const aiEncounter = {
       }
       pending.reservedBudget = true;
     }
-    // Faction must enter the factory: its presence doctrine, contact behavior, and bark identity
-    // are derived there and cannot be repaired by patching only spec.factionId afterward.
-    const spec = makeEnemySpawnSpec(pending.typeId, pending.level, pending.pos, {
-      factionId: pending.factionId || undefined,
-      startedTick: state.tick,
-    });
     // SF-053: arrive THROUGH the lane — nose and velocity already carry the squad inbound
     // toward the anchor, so the approach reads as a flight-in instead of a materialization.
-    const inward = unitTowardAnchor(pending.pos, pending.anchor);
-    spec.rot = wrapAngle(Math.atan2(inward.z, inward.x));
-    spec.vel = {
-      x: inward.x * REINFORCEMENT_INGRESS.approachSpeedWu,
-      z: inward.z * REINFORCEMENT_INGRESS.approachSpeedWu,
-    };
+    if (!spec) spec = makeEnemySpawnSpec(pending.typeId, pending.level, spot, spawnOptions);
+    else spec.pos = { ...spec.pos, x: spot.x, z: spot.z };
+    spec.vel = reinforcementVelocity(spot, pending.anchor);
+    spec.rot = wrapAngle(Math.atan2(spec.vel.z, spec.vel.x));
     spec.data = spec.data || {};
     const baseAI = spec.data.ai || {};
     spec.data.ai = {
@@ -676,7 +687,7 @@ function reinforcementCount(pkg, state, command) {
  * fixed angle/radius retry table; the first pass also prefers spots off a running pilot's
  * flee line (a preference — the hard gates are bounds, collision, and the clearance floor).
  */
-function resolveIngressPosition(ctx, anchor, bearing, pkg, index, count, seed, seq) {
+function resolveIngressPosition(ctx, anchor, bearing, pkg, index, count, seed, seq, approach) {
   const cfg = REINFORCEMENT_INGRESS;
   const t = unitHash(seed, seq, index, 'radius');
   const radiusMin = finite(pkg && pkg.radiusMin, 180);
@@ -706,14 +717,14 @@ function resolveIngressPosition(ctx, anchor, bearing, pkg, index, count, seed, s
         z: anchor.z + Math.sin(angle) * radius + perpZ * lateral,
       };
       if (pass === 0 && inEscapeCone(ctx, pos)) continue;
-      if (ingressSpotLegal(ctx, pos)) return pos;
+      if (ingressSpotLegal(ctx, pos, approach)) return pos;
     }
   }
   return null;
 }
 
 /** Hard placement gates: inside the playable bound, out of the pilot's pocket, no collision. */
-function ingressSpotLegal(ctx, pos) {
+function ingressSpotLegal(ctx, pos, approach) {
   if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return false;
   const cfg = REINFORCEMENT_INGRESS;
   const bounds = ctx && ctx.bounds;
@@ -734,6 +745,7 @@ function ingressSpotLegal(ctx, pos) {
   if (query) {
     const scratch = ctx.scratch || [];
     query(pos, cfg.collisionScanWu, scratch);
+    const velocity = approach && reinforcementVelocity(pos, approach.anchor);
     for (const entity of scratch) {
       if (!entity || entity.alive === false || entity.collides === false || !entity.pos) continue;
       // Stations/gates carry a compound collision proxy whose spars outrun `radius`; their
@@ -744,6 +756,17 @@ function ingressSpotLegal(ctx, pos) {
       const dx = entity.pos.x - pos.x;
       const dz = entity.pos.z - pos.z;
       if (dx * dx + dz * dz < need * need) return false;
+      if (velocity) {
+        const vx = finite(entity.vel?.x) - velocity.x;
+        const vz = finite(entity.vel?.z) - velocity.z;
+        const speed2 = vx * vx + vz * vz;
+        const t = speed2 > 0
+          ? Math.max(0, Math.min(cfg.approachLookaheadS, -(dx * vx + dz * vz) / speed2)) : 0;
+        const nearX = dx + vx * t;
+        const nearZ = dz + vz * t;
+        const reach = Math.max(footprint, clearanceFootprint(entity)) + approach.radius;
+        if (nearX * nearX + nearZ * nearZ < reach * reach) return false;
+      }
     }
     scratch.length = 0;
   }
@@ -802,11 +825,12 @@ function cancelReinforcement(helpers, owner, pending, reason, state, bus) {
 }
 
 /** Unit vector from the spawn spot toward the anchor — the direction the arrival flies in. */
-function unitTowardAnchor(pos, anchor) {
+function reinforcementVelocity(pos, anchor) {
   const dx = finite(anchor && anchor.x) - finite(pos && pos.x);
   const dz = finite(anchor && anchor.z) - finite(pos && pos.z);
   const d = Math.hypot(dx, dz);
-  return d > 1e-6 ? { x: dx / d, z: dz / d } : { x: 1, z: 0 };
+  const speed = REINFORCEMENT_INGRESS.approachSpeedWu;
+  return d > 1e-6 ? { x: dx / d * speed, z: dz / d * speed } : { x: speed, z: 0 };
 }
 
 function reject(owner, command, reason) {

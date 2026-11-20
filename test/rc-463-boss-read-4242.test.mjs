@@ -9,9 +9,12 @@ import { createGameState } from '../src/core/gameState.js';
 import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { createProductionCapitalBossEncounters } from '../src/systems/capitalBossRuntime.js';
 import { requireCapitalBossEncounter } from '../src/data/encounters/capital-boss.js';
+import { IRON_MAW } from '../src/data/encounters/capital-boss/iron-maw.js';
 import { capitalBossReadouts } from '../src/presentation/capitalBossPresentation.js';
 import { mountCapitalBossOverlay } from '../src/ui/capitalBossOverlayMount.js';
 import { resolveObjectiveHudLayout } from '../src/ui/hud.js';
+import { swarmJuiceHud } from '../src/ui/swarmJuiceHud.js';
+import { bindCapitalBossReceipts } from '../src/ui/toasts.js';
 import { fakeDom, findAll, textLines } from './helpers/fake-dom.mjs';
 
 const DT = 1 / 60;
@@ -28,6 +31,7 @@ function stubCtx(canvas) {
     canvas, beginPath: rec('beginPath'), moveTo: rec('moveTo'), lineTo: rec('lineTo'),
     closePath: rec('closePath'), fill: rec('fill'),
     stroke: rec('stroke'), clip: rec('clip'), save: rec('save'), restore: rec('restore'),
+    fillText: rec('fillText'),
     clearRect: rec('clearRect'),
     setTransform(...values) { calls.push('setTransform'); canvas._transform = values; },
     setLineDash: rec('setLineDash'), fillRect: rec('fillRect'),
@@ -152,11 +156,15 @@ test('warning projection stays in CSS pixels on high-DPI screens and after menu 
     helpers: { worldToScreen: (p) => ({ x: 320 + p.x, y: 180 + p.z }) } });
   const canvas = findAll(env.root, (n) => n.tagName === 'canvas')[0];
   try {
+    mount.draw(h.state);
+    assert.equal(canvas.hidden, true);
+    assert.equal(canvas.width, 1, 'flight without a warning keeps the backing buffer idle');
     h.bus.emit('capitalBoss:telegraph', {
       fightId: h.fightId, castId: 'dpi-cast', startedAt: 0, fireAt: 60, endAt: 120,
       shapes: [{ kind: 'lane', a: { x: 0, z: 0 }, b: { x: 100, z: 0 }, radius: 10 }],
     });
     mount.draw(h.state);
+    assert.equal(canvas.hidden, false);
     assert.equal(canvas.width, 2560);
     assert.equal(canvas.height, 1440);
     assert.ok(canvas._drawCalls.includes('stroke'), 'a live warning is painted');
@@ -165,9 +173,10 @@ test('warning projection stays in CSS pixels on high-DPI screens and after menu 
 
     h.state.mode = 'menu';
     mount.draw(h.state);
-    assert.deepEqual(canvas._transform, [1, 0, 0, 1, 0, 0], 'menu clears the full backing buffer');
+    assert.equal(canvas.hidden, true, 'the menu retires the warning layer');
     h.state.mode = 'flight';
     mount.draw(h.state);
+    assert.equal(canvas.hidden, false);
     assert.deepEqual(canvas._transform, [2, 0, 0, 2, 0, 0], 'return restores the projection scale');
 
     env.root.clientWidth = 900;
@@ -177,10 +186,139 @@ test('warning projection stays in CSS pixels on high-DPI screens and after menu 
     assert.equal(canvas.width, 1800);
     assert.equal(canvas.height, 1200);
     assert.deepEqual(canvas._transform, [2, 0, 0, 2, 0, 0], 'resize restores the canvas transform');
+    h.bus.emit('capitalBoss:telegraphEnd', { castId: 'dpi-cast' });
+    mount.draw(h.state);
+    assert.equal(canvas.hidden, true, 'completed warnings release their visible canvas layer');
   } finally { mount.destroy(); env.restore(); }
 });
 
 // ── 1 · all seven authored beats read out before they fire ────────────────────────────
+test('the Iron Maw opening seats its live instruction clear of the HUD and hands it off to the phone bar', () => {
+  const env = installDom(960, 540);
+  env.doc.body = env.root;
+  env.root.removeChild = node => node.remove();
+  env.doc.documentElement = env.doc.createElement('html');
+  const rail = env.doc.createElement('div');
+  const railBox = { x: 250, y: 16, width: 460, height: 72 };
+  rail.getBoundingClientRect = () => railBox;
+  env.doc.querySelectorAll = selector => selector.includes('.sf-sj__col') ? [rail] : [];
+  const state = createGameState(SEED);
+  state.mode = 'flight';
+  state.playerId = 1;
+  state.run = { kind: 'survival', ruleset: 'swarm', wave: 5, phase: 'active' };
+  const fightId = 'swarm:w5';
+  const hullInstruction = 'Use the opening to hit the hull.';
+  const latchInstruction = 'Latch the Detonator, then throw it into the ring.';
+  const throwInstruction = 'Throw the Detonator into the ring.';
+  const boss = { id: 2, alive: true, pos: { x: 0, z: 0 }, radius: 60, rot: 0,
+    hull: 6000, hullMax: 6000, data: { lootTableId: 'dreadnought_boss' } };
+  const beat = IRON_MAW.score.beats.find(b => b.id === 'port_battery');
+  const fight = { fightId, encounterId: IRON_MAW.id, bossId: boss.id, targetId: state.playerId,
+    started: true, phase: 'recovery', actIndex: 0, clock: 400,
+    recovery: { beatId: beat.id, startedAt: 400, cancelled: false } };
+  state.entities.set(boss.id, boss);
+  state.capitalBossEncounters = { fights: { [fightId]: fight } };
+  const bus = createBus();
+  const toasts = [];
+  bindCapitalBossReceipts(bus, () => state);
+  bus.on('toast', receipt => toasts.push(receipt));
+  swarmJuiceHud.init({ state, bus });
+  bus.emit('swarm:bossHp', { name: "Dreadnought 'Iron Maw'", frac: 1 });
+  const mount = mountCapitalBossOverlay({ root: env.root, bus, state, helpers: {
+    worldToScreen(p, out) { out.x = 500 + p.x; out.y = 50 + p.z; return out; },
+  } });
+  const canvas = findAll(env.root, n => n.className === 'sf-capital-boss-overlay')[0];
+  const shown = () => groupNodes(env.root).find(group => group.style.display === 'block');
+  const moveEvents = [];
+  bus.on('swarm:bossMove', move => moveEvents.push(move));
+  try {
+    bus.emit('capitalBoss:telegraph', { fightId, castId: 'old', title: 'SOUNDING SHOT', counter: 'Cross the bow.', shapes: [] });
+    bus.emit('capitalBoss:telegraphEnd', { fightId, castId: 'old', reason: 'spent' });
+    bus.emit('capitalBoss:recovery', { fightId, title: beat.title, exposure: beat.expose,
+      mouthLine: `Mouth open. ${hullInstruction}` });
+    mount.draw(state);
+    const readout = shown();
+    assert.deepEqual(groupText(readout).slice(2), ['Mouth open', hullInstruction]);
+    const box = readout._rect;
+    const layout = resolveObjectiveHudLayout(960, 540);
+    for (const r of [railBox, layout.objective, layout.vitals, layout.action, layout.rightDock, layout.commandDeck]) {
+      assert.ok(!r || box.x + box.width <= r.x || r.x + r.width <= box.x
+        || box.y + box.height <= r.y || r.y + r.height <= box.y, 'readout stays outside the active HUD');
+    }
+    assert.equal(canvas.hidden, false);
+    assert.ok(canvas._drawCalls.includes('stroke') && !canvas._drawCalls.includes('fillText'));
+    const live = findAll(env.root, n => n.getAttribute?.('aria-live') === 'polite');
+    assert.ok(live.some(region => region.textContent.includes(hullInstruction)));
+    assert.equal(toasts.some(notice => notice.fightId === fightId), false, 'the live cue bypasses the stale toast queue');
+
+    const dart = { id: 3, occupantGeneration: 7, alive: true, data: { detonator: { triggerRange: 56 } } };
+    state.entities.set(dart.id, dart);
+    state.masslineAcquisition = { validUntil: state.simTime + 1,
+      selected: { targetId: dart.id, occupantGeneration: 6, status: 'ready' } };
+    mount.draw(state);
+    assert.equal(groupText(shown())[3], hullInstruction, 'the READY preview must name the current life');
+    state.masslineAcquisition.selected.occupantGeneration = dart.occupantGeneration;
+    state.masslineAcquisition.validUntil = state.simTime - 1;
+    mount.draw(state);
+    assert.equal(groupText(shown())[3], hullInstruction, 'the old preview is no longer actionable');
+    state.masslineAcquisition.validUntil = state.simTime + 1;
+    state.masslineAcquisition.selected.status = 'blocked';
+    mount.draw(state);
+    assert.equal(groupText(shown())[3], hullInstruction, 'a live blocked Dart does not earn a throw instruction');
+    state.masslineAcquisition.selected.status = 'ready';
+    mount.draw(state);
+    assert.equal(groupText(shown())[3], latchInstruction);
+    assert.ok(live.some(region => region.textContent.includes(latchInstruction)));
+
+    env.doc.documentElement.setAttribute('data-sf-mobile-flight', '1');
+    mount.draw(state);
+    swarmJuiceHud.update(DT, state);
+    const instruction = findAll(env.root, n => n.className === 'sf-sj__bossinstruction')[0];
+    assert.equal(shown(), undefined);
+    assert.equal(instruction.hidden, false);
+    assert.equal(instruction.textContent, latchInstruction);
+
+    state.player.tether = { active: true, targetId: dart.id, attachmentId: 'maw-line' };
+    const line = { state: 'active', ownerId: state.playerId, targetId: dart.id, targetGeneration: 6 };
+    state.combat.attachments = { byId: { 'maw-line': line } };
+    mount.draw(state);
+    swarmJuiceHud.update(DT, state);
+    assert.equal(instruction.textContent, hullInstruction, 'a stale active line cannot promise a latch or throw');
+    line.targetGeneration = dart.occupantGeneration;
+    mount.draw(state);
+    swarmJuiceHud.update(DT, state);
+    assert.equal(instruction.textContent, throwInstruction, 'the live phone instruction follows the newly held Dart');
+    assert.ok(live.some(region => region.textContent.includes(throwInstruction)));
+    const updates = moveEvents.length;
+    mount.draw(state);
+    assert.equal(moveEvents.length, updates, 'unchanged instructions do not republish every frame');
+    dart.alive = false;
+    mount.draw(state);
+    swarmJuiceHud.update(DT, state);
+    assert.equal(instruction.textContent, hullInstruction, 'a spent Dart no longer earns a throw instruction');
+
+    fight.clock += beat.expose.durationTicks;
+    mount.draw(state);
+    swarmJuiceHud.update(DT, state);
+    assert.equal(instruction.hidden, true, 'the phone instruction clears with the world ring');
+    assert.equal(canvas.hidden, true);
+
+    state.settings.video.arcadeEffects = 'off';
+    fight.clock = 421;
+    mount.draw(state);
+    assert.deepEqual(groupText(shown()).slice(2), ['Mouth open', hullInstruction],
+      'disabling arcade effects on phone still shows the actionable readout');
+
+    fight.phase = 'tell';
+    fight.recovery = null;
+    fight.cast = { id: 'next', beatId: 'sounding_shot', startedAt: fight.clock, locked: false };
+    mount.draw(state);
+    assert.equal(groupText(shown())[2], 'SOUNDING SHOT');
+  } finally {
+    mount.destroy(); swarmJuiceHud.destroy(); env.restore();
+  }
+});
+
 test('all seven Tollman beats show authored title+counter at least 60 ticks before firing', () => {
   const env = installDom(1280, 720);
   try {

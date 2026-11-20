@@ -260,6 +260,26 @@ test('vfx_coverage flags a column sitting over the player', () => {
   assert.equal(checkVfx(trace({ vfx: () => ({ cov: 0.05, od: 0.1, pOcc: 0, tOcc: 0, tN: 2, unb: 0, top: [] }) })).status, 'PASS');
 });
 
+test('a VFX threat failure points to its own sample instead of peak screen coverage', () => {
+  const measured = trace({ n: 6, vfx: (i) => ({
+    cov: i === 1 ? 0.15 : 0.02, od: 0.2, pOcc: 0,
+    tOcc: i === 4 ? 0.5 : 0, tN: 2, top: [['latchRim', null, 0.02, [50, 50, 90, 90]]],
+  }) });
+  const overlap = checkVfx(measured);
+  assert.equal(overlap.status, 'FAIL');
+  assert.equal(overlap.moments[0].t, measured.samples[4].t);
+  assert.match(overlap.moments[0].line, /50%.*threat boxes overlap VFX bounds.*frame 4/);
+  assert.equal(overlap.moments[0].box, null, 'the largest layer is not an identified occluder');
+  assert.match(overlap.value, /threat bounds overlap p95 50%/);
+
+  for (const s of measured.samples) s.px = { c: s.vfx.cov, cp: 0, ct: s.vfx.tOcc, nC: 1 };
+  const pixels = checkVfx(measured);
+  assert.equal(pixels.status, 'FAIL');
+  assert.equal(pixels.moments[0].t, measured.samples[4].t);
+  assert.match(pixels.moments[0].line, /50%.*threat boxes gain combat VFX light.*frame 4/);
+  assert.match(pixels.value, /threat boxes lit p95 50%/);
+});
+
 test('loadout audit flags a cargo scanner in Swarm and a silent swap', () => {
   const items = [{ name: 'Cargo Scanner S', category: 'Rigs', desc: 'Reads what a hull carries.' }, { name: 'Pulse Laser S', category: 'Weapons', desc: '' }];
   const a = auditItems('swarm', items);
@@ -587,12 +607,24 @@ test('score credited before the first flight input fails', async () => {
 test('preparation names a Rearm screen in about 30s and keeps waiting on the armory', async () => {
   const rearm = { visible: true, title: 'Rearm', sub: 'Wave 0 cleared. Nothing new fits this hull.', stamp: 'CRUCIBLE / REARM', top: 'crucibleDraft', launch: false };
   const armory = { visible: true, title: 'Armory', sub: 'Wave 0 cleared. Nothing new fits this hull.', stamp: 'CRUCIBLE / REARM', top: 'crucibleDraft', launch: false };
-  const opening = { visible: true, title: 'Armory', sub: 'Fit out before round 1 — the purse is already open.', top: 'crucibleDraft', launch: false };
+  const opening = { visible: true, title: 'Armory', sub: 'Fit out before round 1 — the purse is already open.', top: 'crucibleDraft', mode: 'flight', phase: 'draft', launch: false };
   assert.equal(classifyPreparationScreen(rearm).status, 'unexpected');
   assert.equal(classifyPreparationScreen(rearm).name, 'REARM');
   assert.equal(classifyPreparationScreen(armory).status, 'waiting');
   assert.equal(classifyPreparationScreen(opening).status, 'waiting');
-  assert.equal(classifyPreparationScreen({ ...rearm, launch: true }).status, 'ready');
+  assert.equal(classifyPreparationScreen({ ...opening, title: 'Ship equipment', sub: '' }).status, 'waiting');
+  assert.equal(classifyPreparationScreen({ ...opening, mode: 'loading', launch: true }).status, 'waiting');
+  const openingReview = { ...opening, mode: 'loading', launch: true, openingArmory: true,
+    dialog: 'crucibleDraft', ruleset: 'swarm', loadingOverlay: 'hidden' };
+  assert.equal(classifyPreparationScreen(openingReview).status, 'ready');
+  assert.equal(classifyPreparationScreen({ ...openingReview, openingArmory: false }).status, 'waiting');
+  assert.equal(classifyPreparationScreen({ ...openingReview, ruleset: 'gauntlet' }).status, 'waiting');
+  assert.equal(classifyPreparationScreen({ ...openingReview, dialog: 'crucibleRefit' }).status, 'waiting');
+  assert.equal(classifyPreparationScreen({ ...openingReview, phase: 'active' }).status, 'waiting');
+  assert.equal(classifyPreparationScreen({ ...openingReview, startupFailure: 'GAME_START_FAILED' }).status, 'waiting');
+  assert.equal(classifyPreparationScreen({ ...opening, visible: false, launch: true }).status, 'waiting');
+  assert.equal(classifyPreparationScreen({ ...opening, loadingOverlay: 'visible', launch: true }).status, 'waiting');
+  assert.equal(classifyPreparationScreen({ ...opening, launch: true }).status, 'ready');
   assert.equal(classifyPreparationScreen({ visible: false, title: 'Rearm', sub: 'Wave 0 cleared. Nothing new fits this hull.' }).status, 'waiting');
   assert.equal(classifyPreparationScreen({ visible: true, title: 'Results', sub: 'Run over.' }).name, 'RESULTS');
   const first = notePreparationWait(null, rearm, 0, PREPARATION_UNEXPECTED_MS);
@@ -611,7 +643,7 @@ test('preparation names a Rearm screen in about 30s and keeps waiting on the arm
   let reads = 0;
   const ready = await waitForPreparationLaunch(page, {
     timeoutMs: 600000, unexpectedMs: 30000, pollMs: 1000, now: () => now,
-    read: async () => (reads++ < 2 ? rearm : { ...armory, launch: true, sub: 'Fit out before round 1 — the purse is already open.' }),
+    read: async () => (reads++ < 2 ? rearm : openingReview),
   });
   assert.equal(ready.launch, true);
   assert.ok(now - 5_000_000 < 30000);

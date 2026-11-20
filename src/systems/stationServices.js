@@ -318,6 +318,10 @@ export const stationServices = {
       this._onDocked = (p) => this._onPlayerDocked(p);
       this._onUndocked = () => this._onPlayerUndocked();
       this._onExit = () => this._onSectorExit();
+      // The save owner has captured rollback state before this event. Discard outgoing yard
+      // jobs before restoring the wallet and hull, where ship:statsChanged would refund them
+      // into the incoming balance. Restore or rollback rehydrates its own paid jobs later.
+      this._onRestoring = () => this.deserialize(null);
       this._onHullChanged = () => {
         const player = this.state.stationServices?.player;
         if (player) this._abortForeignHullJobs(player);
@@ -325,6 +329,7 @@ export const stationServices = {
       this.bus.on('dock:docked', this._onDocked);
       this.bus.on('dock:undocked', this._onUndocked);
       this.bus.on('sector:exit', this._onExit);
+      this.bus.on('save:restoring', this._onRestoring);
       this.bus.on('ship:statsChanged', this._onHullChanged);
       this._onDecantRequest = () => {
         const result = this.decantFuelCells();
@@ -963,10 +968,11 @@ export const stationServices = {
       if (this._onDocked) this.bus.off('dock:docked', this._onDocked);
       if (this._onUndocked) this.bus.off('dock:undocked', this._onUndocked);
       if (this._onExit) this.bus.off('sector:exit', this._onExit);
+      if (this._onRestoring) this.bus.off('save:restoring', this._onRestoring);
       if (this._onHullChanged) this.bus.off('ship:statsChanged', this._onHullChanged);
       if (this._onDecantRequest) this.bus.off('service:decantRequest', this._onDecantRequest);
     }
-    this._onDocked = this._onUndocked = this._onExit = this._onHullChanged = this._onDecantRequest = null;
+    this._onDocked = this._onUndocked = this._onExit = this._onRestoring = this._onHullChanged = this._onDecantRequest = null;
   },
 };
 

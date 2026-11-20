@@ -83,12 +83,10 @@ test('the launch warm scopes its roster to wave 1 and seeds the covered ledger',
   const finishDef = RENDERER_SOURCE.indexOf('_finishCrucibleBoundedRosterWarm(warm, options = {})');
   assert.ok(beginDef > 0 && finishDef > beginDef);
   const beginBlock = RENDERER_SOURCE.slice(beginDef, finishDef);
-  // waveBase is the live run's wave — 1 on a fresh launch (the cheap case this feature
-  // exists for) and N on a mid-run re-cook, where every unlocked archetype must be covered.
+  // Use the same wave scope for the launch cohort and the menu-to-loading handoff.
   assert.match(beginBlock, /swarmEligibleEnemyIds\(waveBase\)/,
     'the launch ship cohort is current-wave eligibility, not the whole roster');
-  assert.match(beginBlock, /Number\.isInteger\(state\.run\.wave\) \? state\.run\.wave : 1/,
-    'a fresh run cooks at wave 1');
+  assert.match(beginBlock, /swarmRosterWarmWave\(state\?\.run\)/);
   assert.match(beginBlock, /for \(const enemyId of markedIds\) covered\.set\(enemyId, \(covered\.get\(enemyId\) \|\| 0\) \+ 1\)/,
     'the covered ledger seeds only the archetypes that resolved to ship specs');
   const finishBlock = RENDERER_SOURCE.slice(finishDef, RENDERER_SOURCE.indexOf('_releaseSurvivalRosterPrewarm(reason)', finishDef));

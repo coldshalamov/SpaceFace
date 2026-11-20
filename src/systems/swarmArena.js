@@ -343,7 +343,7 @@ function separateOpticLatticeBodies(bodies) {
   return list.map(body => ({ ...body, x: body.x * scale, z: body.z * scale }));
 }
 
-function opticLatticeOrigin(state, layout, anchor, native) {
+function opticLatticeOrigin(state, layout, anchor, native, initial) {
   const footprints = opticPlacementFootprints(state, native);
   const offsets = [{ x: 0, z: 0 }];
   // Whole-lattice translations retain every emitter, mirror and fuse relationship on the same
@@ -353,6 +353,7 @@ function opticLatticeOrigin(state, layout, anchor, native) {
     offsets.push({ x: d, z: 0 }, { x: -d, z: 0 }, { x: 0, z: d }, { x: 0, z: -d },
       { x: d, z: d }, { x: -d, z: d }, { x: d, z: -d }, { x: -d, z: -d });
   }
+  if (initial && layout.openingFallbackOffsets) offsets.push(...layout.openingFallbackOffsets);
   for (const offset of offsets) {
     const origin = { x: anchor.x + layout.origin.x + offset.x, z: anchor.z + layout.origin.z + offset.z };
     // A displaced origin must not itself immediately trip the existing restamp boundary.
@@ -599,13 +600,14 @@ export const SLALOM_WELL_DISTANCE = 205;
  * time was still flat at that point, but the curve has no top — by wave 40 it is well over a
  * thousand bodies, and this engine's known worst hitch is garbage collection on a bloated heap.
  *
- * Nobody salvages in a swarm run either. There is no beam time in a room holding thirty hostiles,
- * so a wreck is scenery that costs memory. The arena keeps a recent-battlefield's worth and lets
- * the rest go through the engine's ordinary despawn sweep — the FURTHEST ones first, so what is
- * released is always off-camera and the wreckage around the player's actual fight is what stays.
+ * Keep nearby wreckage for cover and Line play. The furthest ordinary surplus goes through
+ * Core's lifetime sweep. It can still be on screen, so its destruction has a presentation
+ * handoff that does not extend the physical deadline.
  */
 export const SWARM_WRECK_KEEP = 40;
 const SWARM_WRECK_RELEASE_S = 6;
+const SWARM_WRECK_RELEASE_REASON = 'swarm-wreck-surplus';
+const SWARM_SETTLE_SPEED = 6;
 // A foundry rock whose center sits inside this of the pilot is welded, not in contact.
 // Player-truth seed 4242 held one asteroid at distance 0 from sim 60 through the round-3
 // thrust probe (Δv 2.6 u/s). The same run on 4b3b never came closer than 11 u.
@@ -628,6 +630,22 @@ function debrisStreamSeed(seed, wave) {
     h = Math.imul(h ^ label.charCodeAt(i), 0x01000193);
   }
   return (h >>> 0) || 1;
+}
+
+function scheduledSurplusRelease(entity) {
+  const data = entity.data;
+  const release = data?.despawnAtReason;
+  return release?.reason === SWARM_WRECK_RELEASE_REASON && release.at === data.despawnAt ? release : null;
+}
+
+function playerLineOwnsWreck(state, entity) {
+  const tether = state.player?.tether;
+  if (tether?.active && tether.targetId === entity.id) {
+    const link = state.combat?.attachments?.byId?.[tether.attachmentId];
+    if (link?.state === 'active' && link.ownerId === state.playerId
+        && link.targetId === entity.id && link.targetGeneration === entity.occupantGeneration) return true;
+  }
+  return state.rockCore?.flail?.links?.some(link => link.id === entity.id) === true;
 }
 
 function liveCohortCount(state) {
@@ -842,7 +860,7 @@ export const swarmArena = {
     this._beatHold = null;
     // B4 — the Mill's ore ledger (pickupId → credits it pays) and the Hive's living
     // geometry ({ ring, nextGrowAt, sacs } while the wave's room is alive).
-    this._millOres = new Map();
+    this._millOres = new Set();
     this._hive = null;
     // The live law-room receipt and the last room signature this voice already named.
     this._law = null;
@@ -884,7 +902,11 @@ export const swarmArena = {
     this._priorCap = null;
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveStarted', (p) => this._onWaveStarted(p)));
-    this._unsubs.push(this.bus.on('entity:destroyed', () => this._onPressureDestroyed()));
+    this._unsubs.push(this.bus.on('tether:latched', (p) => this._preserveLatchedWreck(p)));
+    this._unsubs.push(this.bus.on('entity:destroyed', (receipt) => {
+      if (receipt?.type === 'pickup') this._millOres.delete(receipt.entity);
+      this._onPressureDestroyed();
+    }));
     this._unsubs.push(this.bus.on('physics:impact', (p) => this._onDebrisImpact(p)));
     this._unsubs.push(this.bus.on('run:openingLessonReleased', () => this._onOpeningLessonReleased()));
     // PRI-11a — the Brood's round-one hold ends on the wave owner's single release
@@ -1019,7 +1041,8 @@ export const swarmArena = {
    * the tick its deadline passes; inside the pilot's view that read as terrain blinking out of
    * existence (player-truth m1-active: 16 rocks and 4 structures removed on screen). While a body
    * whose deadline is close still sits within the view radius, its deadline steps forward; once the
-   * fight has moved on it goes through the ordinary sweep. Hive geometry keeps its own lifecycle.
+   * fight has moved on it goes through the ordinary sweep. Hive geometry and the intentionally
+   * selected surplus wrecks have their own retirement paths.
    */
   _holdInViewReleases(state) {
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
@@ -1032,11 +1055,23 @@ export const swarmArena = {
     for (const e of state.entities.values()) {
       if (!e || e.alive === false || !e.pos || !e.data || !SOLID_TYPES.has(e.type)) continue;
       const due = e.data.despawnAt;
-      if (!Number.isFinite(due) || due > horizon || e.data.swarmHiveReleased) continue;
+      if (!Number.isFinite(due) || due > horizon || e.data.swarmHiveReleased || scheduledSurplusRelease(e)) continue;
       const dx = e.pos.x - anchor.x;
       const dz = e.pos.z - anchor.z;
       if (dx * dx + dz * dz < r2) e.data.despawnAt = horizon;
     }
+  },
+
+  _preserveLatchedWreck(receipt) {
+    const state = this.state;
+    if (!liveSwarmRun(state)) return;
+    const entity = state.entities.get(receipt?.targetId);
+    if (!entity?.alive || entity.type !== 'wreck' || !playerLineOwnsWreck(state, entity)) return;
+    const release = scheduledSurplusRelease(entity);
+    if (!release) return;
+    delete entity.data.despawnAtReason;
+    if (release.previousAt == null) delete entity.data.despawnAt;
+    else entity.data.despawnAt = release.previousAt;
   },
 
   /** Live rocks this system owns, for tests and the lab overlay. */
@@ -1080,14 +1115,17 @@ export const swarmArena = {
     if (wave <= 1) resetSwarmPressureState();
     this._pressureAlive = liveCohortCount(this.state);
     this._raiseCapacity();
-    this._cullWrecks(wave);
+    const carried = wave > 1
+      ? this._pickCarriedThrows(this.state.entities, this.state.tick || 0, SWARM_SETTLE_SPEED)
+      : null;
+    this._cullWrecks(wave, carried);
     // Wave 1 stays in motion. Seed 4242 idle: settling the opener, then again
     // every 0.4s until the pilot acted, parked foundry rocks under 6 u/s (max
     // 5.8). The lesson wasp rammed that field at sim 31.167. Master settles
     // only wave > 1, left those rocks up to 44 u/s, and the same wasp lived
     // the 45s hold. Later rounds still settle so leftover 12–16 u/s rocks do
     // not enter the next breath.
-    if (wave > 1) this._settleRoom();
+    if (wave > 1) this._settleRoom(carried);
     this._topUp(run, wave);
     this._installSlalomWells(run);
     const lesson = payload && payload.plan && payload.plan.openingLesson;
@@ -1345,15 +1383,18 @@ export const swarmArena = {
   // Seed 4242 head gate: from sim 60 the same asteroid shared the player's position through
   // the round-3 probe, and 1.2 s of thrust from rest made 2.6 u/s. Centers inside
   // SWARM_EMBEDDED_DEBRIS_WU are that weld. A graze stays (4b3b's closest rock was 11 u).
-  _settleRoom() {
+  _settleRoom(carriedIds = null) {
     const physics = this.helpers && this.helpers.combatPhysics;
     const entities = this.state && this.state.entities;
     if (!physics || (typeof physics.settlePassiveBody !== 'function' && typeof physics.applyImpulse !== 'function')) return;
     if (!entities || typeof entities.values !== 'function') return;
     this._releaseEmbeddedDebris(entities);
-    const SETTLE_SPEED = 6;
     const tick = Number.isInteger(this.state.tick) ? this.state.tick : 0;
-    const carriedIds = this._pickCarriedThrows(entities, tick, SETTLE_SPEED);
+    if (carriedIds) {
+      for (const id of carriedIds) if (!entities.get(id)?.alive) carriedIds.delete(id);
+    } else {
+      carriedIds = this._pickCarriedThrows(entities, tick, SWARM_SETTLE_SPEED);
+    }
     for (const e of entities.values()) {
       if (!e || (e.type !== 'asteroid' && e.type !== 'wreck') || e.alive === false || !e.vel) continue;
       if (carriedIds.has(e.id)) continue;
@@ -1363,13 +1404,13 @@ export const swarmArena = {
         // run:waveStarted happens after physics in the production update order.
         physics.settlePassiveBody({ entityId: e.id, occupantGeneration: e.occupantGeneration,
           entity: e, entities,
-          minSpeed: SETTLE_SPEED, reason: 'swarm_round_settle', tick,
+          minSpeed: SWARM_SETTLE_SPEED, reason: 'swarm_round_settle', tick,
           provenance: { actorId: null, tag: 'swarm_round_settle' } });
         continue;
       }
       const vx = Number.isFinite(e.vel.x) ? e.vel.x : 0;
       const vz = Number.isFinite(e.vel.z) ? e.vel.z : 0;
-      if (vx * vx + vz * vz < SETTLE_SPEED * SETTLE_SPEED) continue;
+      if (vx * vx + vz * vz < SWARM_SETTLE_SPEED * SWARM_SETTLE_SPEED) continue;
       // The stop is sized on the body the solver actually holds, not the entity's display mass.
       const spec = resolvePhysicsBodySpec(e);
       const mass = spec && spec.mass > 0 ? spec.mass : (Number.isFinite(e.mass) && e.mass > 0 ? e.mass : 0);
@@ -1416,7 +1457,7 @@ export const swarmArena = {
   _pickCarriedThrows(entities, tick, settleSpeed) {
     const playerId = this.state && this.state.playerId != null ? this.state.playerId : null;
     const carried = new Set();
-    if (playerId == null) return carried;
+    if (playerId == null || typeof entities?.values !== 'function') return carried;
     const candidates = [];
     for (const e of entities.values()) {
       if (!e || (e.type !== 'asteroid' && e.type !== 'wreck') || e.alive === false || !e.vel) continue;
@@ -1461,7 +1502,7 @@ export const swarmArena = {
     for (const id of doomed) helpers.removeEntity(id, { reason: 'swarm_embedded_debris' });
   },
 
-  _cullWrecks(wave) {
+  _cullWrecks(wave, carried = null) {
     const state = this.state;
     if (!state || !Array.isArray(state.entityList)) return;
     const anchor = playerAnchor(state);
@@ -1485,6 +1526,7 @@ export const swarmArena = {
         }
         continue;
       }
+      if (carried?.has(entity.id) || playerLineOwnsWreck(state, entity)) continue;
       const already = entity.data && Number.isFinite(entity.data.despawnAt)
         && entity.data.despawnAt <= deadline;
       if (already) continue;
@@ -1493,13 +1535,16 @@ export const swarmArena = {
       standing.push({ entity, distSq: dx * dx + dz * dz });
     }
     if (standing.length <= SWARM_WRECK_KEEP) return;
-    // Furthest first: what is released is always the wreckage nobody can see.
+    // Preserve the closest reusable cover first. A surplus hull may still be on screen.
     standing.sort((a, b) => b.distSq - a.distSq);
     const excess = standing.length - SWARM_WRECK_KEEP;
     let released = 0;
     for (let i = 0; i < excess; i++) {
       const entity = standing[i].entity;
       if (!entity.data) entity.data = {};
+      entity.data.despawnAtReason = {
+        at: deadline, reason: SWARM_WRECK_RELEASE_REASON, previousAt: entity.data.despawnAt,
+      };
       entity.data.despawnAt = deadline;
       released++;
     }
@@ -1916,7 +1961,10 @@ export const swarmArena = {
       const id = body && typeof body === 'object' ? body.id : body;
       if (id != null) {
         spawned.push(id);
-        this._millOres.set(id, MILL_ORE_CREDITS);
+        const pickup = state.entities?.get(id);
+        if (pickup && pickup.alive !== false && (typeof body !== 'object' || body === pickup)) {
+          this._millOres.add(pickup);
+        }
       }
     }
     if (spawned.length > 0) {
@@ -1932,15 +1980,15 @@ export const swarmArena = {
   /**
    * The ore ledger: collection is physics-contact truth (`pickup:collected`), the pay
    * rides the run's own award seam. Same collector gate as the supply pod — a drone or
-   * NPC scoop consumes the chunk but never pays the pilot's wallet.
+   * NPC scoop consumes the chunk but never pays the pilot's wallet. Claims follow the
+   * live pickup so neither expiry nor a delayed destruction can affect a recycled ID.
    */
   _onPickupCollected(payload) {
-    const id = payload && payload.pickupId;
-    if (id == null || !this._millOres || !this._millOres.has(id)) return;
-    const credits = this._millOres.get(id);
-    this._millOres.delete(id);
-    if (payload.collectorId != null && this.state && payload.collectorId !== this.state.playerId) return;
-    this._emit('run:awardRequested', { credits, reason: 'swarm:millOre' });
+    if (payload?.pickupId == null || (payload.kind != null && payload.kind !== MILL_ORE_KIND)) return;
+    const pickup = this.state?.entities?.get(payload.pickupId);
+    if (!pickup || !this._millOres?.delete(pickup)) return;
+    if (payload.collectorId != null && payload.collectorId !== this.state.playerId) return;
+    this._emit('run:awardRequested', { credits: MILL_ORE_CREDITS, reason: 'swarm:millOre' });
   },
 
   /**
@@ -2300,7 +2348,7 @@ export const swarmArena = {
     // Keep the compiler's authored recipe immutable. One cloned, safely spaced geometry drives
     // both origin admission and body placement below.
     const layout = bodies === authored.bodies ? authored : { ...authored, bodies };
-    const origin = opticLatticeOrigin(state, layout, anchor, this.registry?.get?.('physics')?._sg02);
+    const origin = opticLatticeOrigin(state, layout, anchor, this.registry?.get?.('physics')?._sg02, ids.length === 0);
     if (!origin) return; // Keep the prior coherent stamp and retry when the fight leaves room.
     const spawned = [];
     for (let i = 0; i < layout.bodies.length; i++) {

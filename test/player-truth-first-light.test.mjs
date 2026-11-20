@@ -76,6 +76,7 @@ test('the actual intro DOM predicate keeps an unrelated root confirmation blocki
   const splash = {
     id: 'cinematic-splash',
     hidden: false,
+    classList: { contains: (name) => name === 'is-closing' },
     getBoundingClientRect: () => ({ width: 1000, height: 700 }),
   };
   const result = runInNewContext(`(${introSnapshotCallbackSource()})()`, {
@@ -86,6 +87,7 @@ test('the actual intro DOM predicate keeps an unrelated root confirmation blocki
     getComputedStyle: () => ({ display: 'block', visibility: 'visible' }),
   });
   assert.equal(result.splashVisible, true);
+  assert.equal(result.splashClosing, true);
   assert.equal(result.firstLightDialogPresent, false);
   assert.equal(result.otherModalActive, true);
   assert.equal(result.otherModalTitle, 'Confirm purchase');
@@ -95,7 +97,7 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
   cancelVisible = true, confirmText = confirm, clickError = null, reenterHandlerDuringPlay = false,
   closePageOnClickError = false, introVisible = false, promptAfterFirstSpace = false,
   supersedeOnPlay = false, delayedPromptOpening = false, replacementDuringOpeningWait = false,
-  cinematicAriaModal = false, conditionReturn = 'handle',
+  cinematicAriaModal = false, introClosing = false, conditionReturn = 'handle',
   dismissSplashOnPromptCleanup = false, dismissBeforePlayBounds = false } = {}) {
   const clicks = [], events = [];
   const locatorClicks = [], mouseClicks = [];
@@ -178,7 +180,8 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
     async evaluate(fn) {
       if (String(fn).includes('cinematic-splash')) {
         const excludesCinematic = String(fn).includes("node.id === 'cinematic-splash'");
-        return { splashVisible, firstLightVisible: active && title.trim() === 'First light',
+        return { splashVisible, splashClosing: splashVisible && introClosing,
+          firstLightVisible: active && title.trim() === 'First light',
           firstLightDialogPresent: dialogPresent && !otherDialogTitle,
           otherModalActive: !!otherDialogTitle || (modalFence && !active && (!dialogPresent || !!otherDialogTitle))
             || (cinematicAriaModal && !excludesCinematic),
@@ -214,10 +217,11 @@ function fixture({ title = 'First light', visible = true, cancel = 'Use first li
       }
       else splashVisible = false;
     } },
-    async waitForFunction(fn, _arg, _options) {
+    async waitForFunction(fn, arg, _options) {
       if (String(fn).includes('cinematic-splash')) {
         if (cinematicAriaModal) assert.ok(String(fn).includes("node.id === 'cinematic-splash'"),
           'the intro dialog is excluded from unrelated-modal checks');
+        if (arg === true && introClosing) splashVisible = false;
         assert.ok(!splashVisible || dialogPresent || (active && title.trim() === 'First light') || otherDialogTitle,
           'intro polling wakes when Space dismisses the splash or First light interrupts it');
         return true;
@@ -356,6 +360,14 @@ test('a mounted First light is observed through its delayed opening frame before
   assert.deepEqual(result, { shown: true, spacePresses: 2, promptAnswers: 1 });
   assert.deepEqual(f.clicks, ['Play']);
   assert.equal(f.otherDialogTitle, '', 'the expected First light prompt remains the dialog owner');
+});
+
+test('a cinematic already fading off the menu finishes without sending Space to the newly focused menu', async () => {
+  const f = fixture({ visible: false, introVisible: true, introClosing: true });
+  const result = await f.dismissIntro();
+  assert.deepEqual(result, { shown: true, spacePresses: 0, promptAnswers: 0 });
+  assert.equal(f.events.at(-1)[0], 'intro-dismissed');
+  assert.match(f.events.at(-1)[2], /cinematic finished/i);
 });
 
 test('a replacement modal during the First light opening wait blocks any further intro Space', async () => {

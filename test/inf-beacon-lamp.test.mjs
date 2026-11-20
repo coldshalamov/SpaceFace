@@ -36,6 +36,19 @@ function buoy(overrides = {}) {
 
 const NOW = 995; // 5 s of lease left on the base buoy
 
+test('Dione flag stays green then pulses red, including with reduced motion', () => {
+  const flag = buoy({ data: { storyPropKind: 'dione_range_flag', rangeGreenUntil: 30 } });
+  const green = resolveBeaconLampPlan(flag, 29, false, {});
+  assert.equal(green.mode, 'range-green'); assert.equal(green.colorHex, BEACON_LAMP_COLORS.rangeGreen);
+  assert.equal(green.glow01, 1);
+  for (const reduced of [false, true]) {
+    const a = resolveBeaconLampPlan(flag, 30, reduced, {});
+    const b = resolveBeaconLampPlan(flag, 30.6, reduced, {});
+    assert.equal(a.mode, 'range-red'); assert.equal(a.colorHex, BEACON_LAMP_COLORS.rangeRed);
+    assert.notEqual(a.glow01, b.glow01); assert.ok(a.glow01 >= .45 && b.glow01 >= .45);
+  }
+});
+
 test('a permanent buoy runs a light that breathes but never goes dark', () => {
   const lane = buoy({ data: {} });
   let minGlow = 2;

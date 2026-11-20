@@ -56,6 +56,11 @@ export function validateDamagePacket(packet, options = {}) {
     for (const channel of Object.keys(packet.channels)) if (!channels.includes(channel)) errors.push(`DamagePacket has unknown channel: ${channel}`);
   }
   if (packet.penetration != null && (!Number.isFinite(packet.penetration) || packet.penetration < 0 || packet.penetration > 1)) errors.push('DamagePacket.penetration must be in [0,1]');
+  if (packet.shieldBypass != null && (!Number.isFinite(packet.shieldBypass) || packet.shieldBypass < 0 || packet.shieldBypass > 1)) errors.push('DamagePacket.shieldBypass must be in [0,1]');
+  if (Number.isFinite(packet.penetration) && Number.isFinite(packet.shieldBypass)
+      && packet.penetration + packet.shieldBypass > 1) {
+    errors.push('DamagePacket penetration + shieldBypass must not exceed 1 (the shield-routed share would go negative)');
+  }
   if (packet.heat != null && (!Number.isFinite(packet.heat) || packet.heat < 0)) errors.push('DamagePacket.heat must be finite and >= 0');
   if (packet.subsystemShare != null && (!Number.isFinite(packet.subsystemShare) || packet.subsystemShare < 0 || packet.subsystemShare > 1)) errors.push('DamagePacket.subsystemShare must be in [0,1]');
   if (packet.statuses != null && !Array.isArray(packet.statuses)) errors.push('DamagePacket.statuses must be an array');

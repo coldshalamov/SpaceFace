@@ -233,19 +233,24 @@ test('the foot words and the extract preview price the seat and name the banked 
   };
   const lines = refitFootLines(run);
   assert.equal(lines.bank, 'Bank 106 cr, keep flying');
-  assert.match(lines.bankNote, /106 cr moves to the hangar chest/);
+  assert.match(lines.bankNote, /106 cr is secured for the hangar/);
   assert.match(lines.bankNote, /106 cr stays in the purse/);
-  assert.match(lines.bankNote, /death still halves it/);
-  // The extract row is untouched — same words, same settlement preview.
+  assert.match(lines.bankNote, /Defeat banks half of the remaining earned credits/);
   assert.equal(lines.extract, 'Extract — end the run here');
   assert.match(lines.extractNote, /212/);
   assert.match(lines.primaryNote, /round 11/);
 
+  run.telemetry.nonBankableCredits = 100;
+  const restricted = refitFootLines(run);
+  assert.equal(restricted.bank, 'Bank 56 cr, keep flying');
+  assert.match(restricted.bankNote, /156 cr stays in the purse/);
+  assert.match(restricted.extractNote, /112 cr of earned salvage/);
+
   // Once salvage is banked, the preview says so — the confirmed settlement matches it.
   run.telemetry.securedBounty = 106;
   const preview = extractionPreviewLines(run);
-  assert.match(preview.amounts, /106 cr already sits in the hangar chest/);
-  assert.match(preview.amounts, /never campaign credits/);
+  assert.match(preview.amounts, /106 cr is already secured for the hangar/);
+  assert.match(preview.amounts, /never become campaign credits/);
 });
 
 /* -------- the settle law, pinned directly on the bank input -------- */

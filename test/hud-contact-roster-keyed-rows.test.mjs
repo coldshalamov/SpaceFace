@@ -11,6 +11,8 @@ import * as hud from '../src/ui/hud.js';
 import { glyphSvg } from '../src/ui/glyphs.js';
 import { createBus } from '../src/core/eventBus.js';
 import { POWER_SLOT } from '../src/ui/powerRail.js';
+import { domKeyEvent, flightKeyDownDescriptor, isUiCommandTarget } from '../src/systems/input.js';
+import { installSimCommandSink } from '../src/core/simLaneCommands.js';
 
 test('destroying the HUD releases its event-bus subscriptions', () => {
   const fx = mountHudFixture();
@@ -105,10 +107,7 @@ test('stable active Massline controls do not rewrite their accessible label at H
     assert.equal(controls.getAttribute('tabindex'), '0', 'the socket stays keyboard reachable');
     const labelBefore = controls.getAttribute('aria-label');
     const tipBefore = controls.getAttribute('data-why');
-    assert.match(labelBefore, /Line.*RMB/,
-      // G18-02 (b931aac851) made RMB the Line in every door: the default tether key binding is now
-      // empty, so the accessible name carries the mouse label instead of Space/F.
-      'the accessible name carries the live Massline keys');
+    assert.match(labelBefore, /Line.*\(F\)/, 'the accessible name carries the live Massline key');
     assert.match(tipBefore, /Line/, 'the socket still explains its verb');
 
     let ariaLabelWrites = 0;
@@ -213,6 +212,127 @@ test('clicking a row reorders retained nodes and moves the selected class', () =
       'the footer is the final child even after rows move');
     assert.equal(fx.overview.rebuildCount, 0, 'a reorder is a set of moves, not a rebuild');
   } finally {
+    fx.restore();
+  }
+});
+
+test('tracked Cinder Contacts keeps the original recoverable hull and both living Wasps above ambient traffic', () => {
+  const fx = mountHudFixture();
+  try {
+    const missionId = 'm_5', sector = 'sector_charon_expanse', markerId = 'aft_1lg7wde';
+    const mark = { slot: 1, markerId };
+    const active = { id: missionId, status: 'active', storyTag: 'campaign47a:b2:cinder',
+      destSectorId: sector, completedTargetSlots: [1], targetEntityIds: [101, 102],
+      params: { cinderRouteVersion: 1, cinderTargetOwnerId: missionId, cinderIssuedSlots: [0, 1, 2],
+        cinderMarkedWrecks: [mark] } };
+    fx.state.world.currentSectorId = sector;
+    fx.state.settings.ui.overviewOpen = true;
+    fx.state.player.targetId = 101;
+    fx.state.ui.trackedMissionId = missionId;
+    fx.state.missions.active = [active];
+    for (const [id, name, slot] of [[101, 'Cinder One', 0], [102, 'Cinder Three', 2]]) {
+      const body = fx.add(ship(id, 3, 3500 + slot * 10, `${name} · marked Wasp`, { forcePlayerTarget: true }));
+      Object.assign(body.data, { missionId, missionTargetSlot: slot });
+      body.occupantGeneration = id + 1000;
+    }
+    fx.add(ship('threat-3', 3, 3205, 'Ambient Raider', { forcePlayerTarget: true }));
+    const label = 'Cinder Two · marked hull';
+    const original = fx.add(wreck(103, 3600, label));
+    Object.assign(original, { hull: 1, occupantGeneration: 420 });
+    Object.assign(original.data, { markerId, persistenceOwner: 'aftermathWrecks', provenance: { markerId } });
+    fx.add(wreck(104, 3570, 'Other marked-looking wreck')).occupantGeneration = 421;
+    // Real main mirror has mission records and live incarnations, without the aftermath sector map.
+    fx.step(24);
+    assert.ok(names(fx).includes('Cinder One · marked Wasp'));
+    assert.ok(names(fx).includes('Cinder Three · marked Wasp'));
+    assert.equal(rows(fx).length, 5);
+    const row = rowsByName(fx).get(label);
+    assert.ok(row, 'a real original hull must remain reachable before 3/3');
+    assert.ok(!names(fx).includes('Other marked-looking wreck'));
+    row.click();
+    assert.equal(fx.state.player.targetId, original.id);
+    assert.equal(fx.state.ui.trackedMissionId, missionId);
+    assert.deepEqual(active.completedTargetSlots, [1]);
+
+    fx.state.player.targetId = 101;
+    fx.state.entities.set(original.id, { ...original, occupantGeneration: 422 });
+    row.click();
+    assert.equal(fx.state.player.targetId, 101, 'a stale row must not select a recycled incarnation');
+    fx.state.entities.set(original.id, original);
+    mark.disposition = 'stripped';
+    fx.step(24);
+    assert.ok(!names(fx).includes(label), 'settled evidence loses its objective priority');
+  } finally {
+    fx.restore();
+  }
+});
+
+test('pointer selection keeps flight keys live without taking the Contacts dock out of keyboard focus', () => {
+  const fx = mountHudFixture();
+  try {
+    fx.step(24);
+    const row = rowsByName(fx).get('Threat Two');
+    const dock = fx.document.querySelector('.sf-rightdock');
+    const key = (code) => flightKeyDownDescriptor(fx.state, { code, target: fx.document.activeElement, isTrusted: true });
+    const host = { state: fx.state, _keys: Object.create(null) };
+    assert.equal(dock.getAttribute('tabindex'), '0');
+    assert.equal(isUiCommandTarget(row), true, 'pointing at Contacts still cannot control the canvas');
+
+    dock.focus();
+    assert.equal(key('KeyA').blocked, true, 'deliberate keyboard focus still belongs to the HUD');
+    row.click({ detail: 0 });
+    assert.ok(fx.document.activeElement === dock, 'a keyboard-style activation must not drop HUD focus');
+    dock.blur();
+
+    const down = row.dispatch('mousedown', { button: 0 });
+    if (!down.defaultPrevented) dock.focus(); // Chromium focuses the nearest tabindex ancestor.
+    assert.ok(fx.document.activeElement === fx.document.body, 'pointer down must not interrupt held flight keys');
+    row.click({ detail: 1 });
+    assert.equal(fx.state.player.targetId, 'threat-2');
+    for (const code of ['KeyW', 'KeyA', 'KeyF']) domKeyEvent(host, key(code));
+    assert.equal(host._keys.KeyW, true);
+    assert.equal(host._keys.KeyA, true);
+    assert.ok(host._keyEdgeQueue.some(edge => edge.action === 'tether' && edge.pressed === true));
+
+    dock.focus(); // A touch/compatibility click can arrive with the dock already focused.
+    row.click({ detail: 1, pointerType: 'touch' });
+    assert.ok(fx.document.activeElement === fx.document.body);
+    const button = dock.querySelector('button');
+    assert.ok(button, 'the dock still has an ordinary selectable button');
+    button.focus();
+    assert.equal(key('KeyW').blocked, true);
+    button.blur();
+    fx.document.body.classList.add('ui-live-screen');
+    assert.equal(key('KeyF').blocked, true, 'open overlays still capture flight controls');
+  } finally {
+    fx.restore();
+  }
+});
+
+test('an explicit Contacts pin opens without a lock before the worker can echo the setting', () => {
+  const fx = mountHudFixture();
+  const commands = [];
+  const uninstall = installSimCommandSink(command => commands.push(command));
+  try {
+    fx.state.player.targetId = null;
+    fx.bus.emit('scan:completed', {});
+    assert.equal(fx.overview, null, 'an automatic reveal cannot mount Contacts without a lock');
+    fx.bus.emit('ui:toggleOverview');
+    assert.equal(fx.state.settings.ui.overviewOpen, true, 'the local HUD sees its deliberate pin immediately');
+    assert.ok(fx.overview && names(fx).includes('Other Wreck'));
+    rowsByName(fx).get('Other Wreck').click({ detail: 1 });
+    assert.ok(commands.some(command => command.kind === 'inputFold' && command.path === 'player.targetId'
+      && command.value === 'wreck'), 'the newly visible row selects a real contact through the worker lane');
+    fx.bus.emit('ui:toggleOverview');
+    assert.equal(fx.overview, null, 'unpin detaches the roster when there is no lock');
+
+    fx.state.entityList = [fx.entity(fx.state.playerId)];
+    fx.bus.emit('ui:toggleOverview');
+    assert.equal(fx.overview, null, 'a pinned empty neighborhood has no Contacts plate');
+    assert.deepEqual(commands.filter(command => command.key === 'settings.ui.overviewOpen').map(command => command.value),
+      [true, false, true]);
+  } finally {
+    uninstall();
     fx.restore();
   }
 });
@@ -428,9 +548,12 @@ function mountHudFixture() {
   };
   WRITE_SPY.off();
   const document = new HudDocument();
+  const ui = document.createElement('div');
+  ui.id = 'ui-root';
   const root = document.createElement('div');
   root.id = 'hud';
-  document.body.appendChild(root);
+  ui.appendChild(root);
+  document.body.appendChild(ui);
   globalThis.document = document;
   globalThis.window = {
     innerWidth: 1920,
@@ -605,6 +728,7 @@ class HudElement {
   }
   get childElementCount() { return this.children.filter(child => child.nodeType === 1).length; }
   get firstElementChild() { return this.children.find(child => child.nodeType === 1) || null; }
+  get parentElement() { return this.parentNode?.nodeType === 1 ? this.parentNode : null; }
   get className() { return this._className; }
   set className(value) { this._className = String(value || ''); this.classList.reset(this._className); }
   cloneNode(deep = false) {
@@ -709,7 +833,13 @@ class HudElement {
     const i = list.indexOf(fn);
     if (i >= 0) list.splice(i, 1);
   }
-  click() { for (const fn of this._listeners.get('click') || []) fn({ type: 'click', currentTarget: this, preventDefault() {} }); }
+  dispatch(type, fields = {}) {
+    const event = { type, target: this, currentTarget: this, detail: 0, defaultPrevented: false,
+      preventDefault() { this.defaultPrevented = true; }, ...fields };
+    for (const fn of this._listeners.get(type) || []) fn(event);
+    return event;
+  }
+  click(fields) { this.dispatch('click', fields); }
   querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
   querySelectorAll(selector) {
     const result = [];
@@ -726,10 +856,12 @@ class HudElement {
   getBoundingClientRect() { return { x: 0, y: 0, top: 0, left: 0, right: 220, bottom: 180, width: 220, height: 180 }; }
   getTotalLength() { return 2 * Math.PI * 44; }
   focus() { this.ownerDocument.activeElement = this; }
+  blur() { if (this.ownerDocument.activeElement === this) this.ownerDocument.activeElement = this.ownerDocument.body; }
   contains(node) { for (let p = node; p; p = p.parentNode) if (p === this) return true; return false; }
   closest(selector) {
+    const selectors = selector.split(',').map(part => part.trim());
     for (let node = this; node && node.nodeType === 1; node = node.parentNode) {
-      if (matchesSelector(node, selector)) return node;
+      if (selectors.some(part => matchesSelector(node, part))) return node;
     }
     return null;
   }

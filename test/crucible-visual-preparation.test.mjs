@@ -85,7 +85,8 @@ function purchaseFixture(offers, phase = 'draft') {
   const ctx = { state:{run:{phase, credits:64}}, registry:{get:()=>owner},
     bus:{emit:(name,payload)=>events.push([name,payload])} };
   const screen = Object.create(crucibleDraftScreen);
-  screen._reading = {offerId:'chosen'};
+  screen._reading = {offerId:'chosen', price:offers[0]?.price, quoteKey:'null'};
+  screen._note = {textContent:''};
   screen.refresh = () => refreshes++;
   return { ctx, screen, events, refreshes:()=>refreshes };
 }

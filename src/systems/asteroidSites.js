@@ -38,7 +38,7 @@ import {
   takeFromShipment,
 } from './cargoCustody.js';
 import {
-  SITE_MACHINES, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID, SITE_BALANCE,
+  SITE_MACHINES, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID, SITE_BALANCE, classifySiteSpecialization,
 } from '../data/sites.js';
 import {
   contactProfile, machineCapability, stepContinuousRecipe, stepFabricator, clamp01, round3,
@@ -51,7 +51,7 @@ import { stepSiteThermal, THERMAL_BANDS } from './siteThermalModel.js';
 import { buildSiteSignature } from './siteSignatureModel.js';
 import {
   buildComponents, laneCapacity, laneThroughput, storeTotal, reconcileStores, podLossChance, podTravelS,
-  previewStoreReconciliation, wouldOwnComponent, storePressure,
+  previewStoreReconciliation, wouldOwnComponent, storePressure, stagedCourierLoad,
 } from './siteLogistics.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { COMMODITIES } from '../data/commodities.js';
@@ -84,6 +84,33 @@ import {
   MOTION_FOSSIL_SITE,
 } from '../world/motionFossil.js';
 import { counted } from '../core/numberFormat.js';
+import {
+  SITE_DIRECTIVE_BY_ID,
+  BELT_ORBITAL_STRUCTURES,
+  BELT_DRONE_TYPES,
+  ASTEROID_BLUEPRINT_BY_ID,
+  BELT_DOCTRINE_BY_ID,
+  BELT_CHARTER_TEMPLATES,
+  SUBTERRANEAN_SYNERGY_RULES,
+} from '../data/beltEmpireData.js';
+import {
+  evaluateSubterraneanAnomalies,
+  evaluateSubterraneanSynergies,
+  scoreBlueprintPlacement,
+  findBestBlueprintSeats,
+} from './asteroidInteriorPuzzle.js';
+import {
+  makeDefaultEmpireState,
+  normalizeEmpireState,
+  ensureEmpireState,
+  normalizeSiteDrones,
+  getEmpireModifiers,
+  getActiveWeather,
+  getSiteDroneCapacity,
+  stepBeltDroneFleet,
+  stepBeltEmpireSector,
+  autoBalanceSectorNetwork,
+} from './beltEmpireSystem.js';
 
 
 const WORLD_SITE_PAYLOAD_CAPTURE_TICKS = 15;
@@ -141,6 +168,7 @@ function makeDefaultSites() {
     worldOrder: [],
     worldById: {},
     meta: { rngSeed: 0 },
+    empire: makeDefaultEmpireState(0),
   };
 }
 
@@ -188,6 +216,13 @@ export function makeSiteRecord({ id, asteroidId, sectorId, fieldId, createdT }) 
     overlays: { power: [], lane: [] },
     laneStores: [],           // [{ cells:[idx], store:{goodId:qty} }] — persisted per lane network
     exportOff: Object.fromEntries(SITE_BALANCE.exportDefaultOff.map((id) => [id, true])),
+    reserves: {},             // { [goodId]: minUnits } kept on-site before exports/links drain it
+    links: [],                // [{ id, targetSiteId, kind:'material'|'power', goodId, transferredU, ratePerMin, active }]
+    defenses: [],             // [{ id, kind, slotIndex, installedT }]
+    directive: 'standard',    // 'standard'|'overclock_burn'|'stealth_dampened'|'conservation_annuity'|'cryo_superconduct'
+    drones: [],               // [{ id, kind:'harvester'|'shuttle'|'patrol', targetAsteroidId, cargoGood, cargoU, phase }]
+    capacitorMwS: 0,          // buffered electrical reserve stored in sm_capacitor_bank units
+    breachedAnomalies: {},    // { [anomalyId]: true } once-only lump loot latch
     podDestinationId: null,   // null = the auto lane (the sector's first station)
     exportBuffer: {},
     fleet: {
@@ -212,7 +247,8 @@ function copyDrillSessionAccounting(site, data) {
       const idx = Math.trunc(Number(rec.idx));
       const yieldU = Math.floor(Number(rec.yieldU) || 0);
       if (!Number.isFinite(idx) || idx < 0 || yieldU <= 0) continue;
-      next.push({ idx, yieldU, ore: rec.ore || null });
+      const hp = Number.isFinite(rec.hp) ? Math.max(0, rec.hp) : 0;
+      next.push({ idx, yieldU, ore: rec.ore || null, hp });
     }
     site.drillVeinRemainders = next;
   }
@@ -243,6 +279,7 @@ function drillAccountingStamp(site) {
       idx: rec.idx,
       yieldU: rec.yieldU,
       ore: rec.ore || null,
+      hp: rec.hp,
     }));
   }
   if (site.drillDepletion != null && Number.isFinite(Number(site.drillDepletion))) {
@@ -392,11 +429,65 @@ function normalizeSiteMachines(site) {
  */
 function normalizeSiteCustody(site) {
   site.exportBuffer = normalizeSiteStoreMap(site.exportBuffer);
+  site.reserves = normalizeSiteStoreMap(site.reserves, { integers: true });
   const exportOff = {};
   for (const [goodId, off] of Object.entries(isPlainObject(site.exportOff) ? site.exportOff : {})) {
     if (off) exportOff[goodId] = true;
   }
   site.exportOff = exportOff;
+
+  const links = [];
+  const seenLinkKeys = new Set();
+  for (const rawLink of Array.isArray(site.links) ? site.links : []) {
+    if (!isPlainObject(rawLink) || typeof rawLink.targetSiteId !== 'string' || !rawLink.targetSiteId) continue;
+    if (rawLink.targetSiteId === site.id) continue;
+    const kind = rawLink.kind === 'power' ? 'power' : 'material';
+    const goodId = kind === 'material' && typeof rawLink.goodId === 'string' && rawLink.goodId ? rawLink.goodId : null;
+    const dedupeKey = `${rawLink.targetSiteId}:${kind}:${goodId || '*'}`;
+    if (seenLinkKeys.has(dedupeKey)) continue;
+    seenLinkKeys.add(dedupeKey);
+    links.push({
+      id: typeof rawLink.id === 'string' && rawLink.id ? rawLink.id : `${site.id}->${rawLink.targetSiteId}:${kind}`,
+      targetSiteId: rawLink.targetSiteId,
+      kind,
+      goodId,
+      transferredU: Math.max(0, finiteNumber(rawLink.transferredU, 0)),
+      ratePerMin: Math.max(0, finiteNumber(rawLink.ratePerMin, 0)),
+      active: rawLink.active !== false,
+    });
+    if (links.length >= SITE_BALANCE.linkMaxPerSite) break;
+  }
+  site.links = links;
+
+  const defenses = [];
+  const maxDefs = SITE_BALANCE.maxDefensesPerSite || 4;
+  for (const rawDef of Array.isArray(site.defenses) ? site.defenses : []) {
+    if (!isPlainObject(rawDef)) continue;
+    const kind = typeof rawDef.kind === 'string' && BELT_ORBITAL_STRUCTURES[rawDef.kind] ? rawDef.kind : null;
+    if (!kind) continue;
+    defenses.push({
+      id: typeof rawDef.id === 'string' && rawDef.id ? rawDef.id : `def_${defenses.length + 1}_${kind}`,
+      kind,
+      slotIndex: Number.isInteger(Number(rawDef.slotIndex)) ? Math.max(0, Number(rawDef.slotIndex)) : defenses.length,
+      installedT: Math.max(0, finiteNumber(rawDef.installedT, 0)),
+    });
+    if (defenses.length >= maxDefs) break;
+  }
+  site.defenses = defenses;
+  site.directive = typeof site.directive === 'string' && SITE_DIRECTIVE_BY_ID.has(site.directive)
+    ? site.directive
+    : 'standard';
+  site.drones = normalizeSiteDrones(site.drones).slice(0, 12);
+  site.capacitorMwS = Math.max(0, Math.min(2000, finiteNumber(site.capacitorMwS, 0)));
+  if (isPlainObject(site.breachedAnomalies)) {
+    const cleanAnom = {};
+    for (const [k, v] of Object.entries(site.breachedAnomalies)) {
+      if (v && typeof k === 'string') cleanAnom[k] = true;
+    }
+    site.breachedAnomalies = cleanAnom;
+  } else {
+    site.breachedAnomalies = {};
+  }
   // A pod destination must name a station that exists in the site's CURRENT sector — a stale id
   // (rerolled chart, moved claim) degrades to the auto lane instead of selling into a ghost.
   const destSector = SECTOR_BY_ID.get(site.sectorId);
@@ -836,6 +927,7 @@ export const asteroidSites = {
       byId,
       worldOrder,
       worldById,
+      ...(src.empire ? { empire: JSON.parse(JSON.stringify(src.empire)) } : {}),
       ...(src.motionFossil ? { motionFossil: copyMotionFossilState(captureMotionFossilState(this.state)) } : {}),
       anvilOrchard: readOrchardSaveSection(src),
       meta: { rngSeed: src.meta && src.meta.rngSeed || 0 },
@@ -859,6 +951,9 @@ export const asteroidSites = {
     if (data && typeof data === 'object') {
       next.nextSiteNum = Math.max(1, Math.trunc(Number(data.nextSiteNum) || 1));
       if (data.meta && Number.isFinite(data.meta.rngSeed)) next.meta.rngSeed = data.meta.rngSeed >>> 0;
+      if (data.empire && typeof data.empire === 'object') {
+        next.empire = normalizeEmpireState(data.empire, this.state?.simTime || 0);
+      }
       const order = Array.isArray(data.order) ? data.order : Object.keys(data.byId || {}).sort();
       for (const id of order) {
         const site = data.byId && data.byId[id];
@@ -891,6 +986,7 @@ export const asteroidSites = {
     if (!sites.byId) sites.byId = {};
     if (!Array.isArray(sites.order)) sites.order = Object.keys(sites.byId).sort();
     if (!sites.meta) sites.meta = { rngSeed: 0 };
+    sites.empire = normalizeEmpireState(sites.empire, this.state?.simTime || 0);
     if (!sites.worldById || typeof sites.worldById !== 'object' || Array.isArray(sites.worldById)) sites.worldById = {};
     if (!Array.isArray(sites.worldOrder)) sites.worldOrder = [];
     let maxSiteNum = 0;
@@ -915,6 +1011,9 @@ export const asteroidSites = {
       site.workbenchRemainderS = Math.max(0, Math.min(SITE_BALANCE.tickS, finiteNumber(site.workbenchRemainderS)));
       if (!Array.isArray(site.laneStores)) site.laneStores = [];
       if (!site.exportOff) site.exportOff = {};
+      if (!site.reserves) site.reserves = {};
+      if (!Array.isArray(site.links)) site.links = [];
+      if (!Array.isArray(site.defenses)) site.defenses = [];
       if (!site.exportBuffer) site.exportBuffer = {};
       if (!site.fleet) site.fleet = makeSiteRecord({}).fleet;
       if (!Array.isArray(site.fleet.inFlight)) site.fleet.inFlight = [];
@@ -1468,10 +1567,10 @@ export const asteroidSites = {
   _anchorSite(site, ent, { reason } = {}) {
     const state = this.state;
     site.anchored = true;
-    // Freeze the interior from the live rock id that has been seeding this bore all along.
-    // Do not inherit a recycled runtime id stamped on ent.data after a later rematerialize.
+    // Adopt the rock's bore seed when an unclaimed tunnel becomes a permanent site.
     if (!Number.isFinite(site.boreSeed)) {
-      site.boreSeed = (site.asteroidId >>> 0) || 1;
+      const seed = Number.isFinite(ent.data.boreSeed) ? ent.data.boreSeed : site.asteroidId;
+      site.boreSeed = (seed >>> 0) || 1;
     }
     ent.data.boreSeed = site.boreSeed;
     ent.data.siteAnchored = true;
@@ -1989,13 +2088,776 @@ export const asteroidSites = {
     return { ok: added > 0, moved: added, reason: added > 0 ? null : 'no-stock-or-hold' };
   },
 
+  /**
+   * Reserve floor policy: keep at least `minUnits` in connected lane stores before
+   * export ports or inter-asteroid transfer links draw down local stock.
+   */
+  setReserveFloor(siteId, goodId, minUnits = 0) {
+    const site = this.getSite(siteId);
+    if (!site || typeof goodId !== 'string' || !goodId) return { ok: false, reason: 'bad-args' };
+    if (!site.reserves || typeof site.reserves !== 'object') site.reserves = {};
+    const clamped = Math.max(0, Math.min(500, Math.trunc(Number(minUnits) || 0)));
+    if (clamped <= 0) delete site.reserves[goodId];
+    else site.reserves[goodId] = clamped;
+    this.bus.emit('site:reserveUpdated', { siteId: site.id, goodId, minUnits: clamped });
+    return { ok: true, goodId, minUnits: clamped };
+  },
+
+  _siteWorldPos(site) {
+    if (!site) return null;
+    const ent = this.state?.entities?.get?.(site.asteroidId);
+    if (ent && ent.pos && Number.isFinite(ent.pos.x) && Number.isFinite(ent.pos.z)) {
+      return { x: ent.pos.x, z: ent.pos.z };
+    }
+    if (site.anchor && Number.isFinite(site.anchor.x) && Number.isFinite(site.anchor.z)) {
+      return { x: site.anchor.x, z: site.anchor.z };
+    }
+    return null;
+  },
+
+  /**
+   * Connect two claimed asteroid sites in the same sector with an automated
+   * inter-asteroid transfer line ('material') or power grid tether ('power').
+   */
+  setSiteLink(fromSiteId, toSiteId, kind = 'material', goodId = null) {
+    const fromSite = this.getSite(fromSiteId);
+    const toSite = this.getSite(toSiteId);
+    if (!fromSite || !toSite || fromSite.id === toSite.id) {
+      return { ok: false, reason: 'bad-site' };
+    }
+    if (fromSite.sectorId && toSite.sectorId && fromSite.sectorId !== toSite.sectorId) {
+      return { ok: false, reason: 'wrong-sector' };
+    }
+    const posA = this._siteWorldPos(fromSite);
+    const posB = this._siteWorldPos(toSite);
+    const hasRelay = (fromSite.defenses || []).some((d) => d?.kind === 'mass_relay')
+      || (toSite.defenses || []).some((d) => d?.kind === 'mass_relay');
+    const effectiveRange = SITE_BALANCE.linkRangeWu * (hasRelay ? (BELT_ORBITAL_STRUCTURES.mass_relay?.linkRangeMult || 1.75) : 1);
+    if (posA && posB) {
+      const dist = Math.hypot(posA.x - posB.x, posA.z - posB.z);
+      if (dist > effectiveRange) {
+        return { ok: false, reason: 'out-of-range', dist: Math.round(dist), maxRange: Math.round(effectiveRange) };
+      }
+    }
+    const normKind = kind === 'power' ? 'power' : 'material';
+    const normGood = normKind === 'material' && typeof goodId === 'string' && goodId ? goodId : null;
+    if (!Array.isArray(fromSite.links)) fromSite.links = [];
+    const existing = fromSite.links.find((l) => l && l.targetSiteId === toSite.id && l.kind === normKind);
+    if (existing) {
+      existing.goodId = normGood;
+      existing.active = true;
+      this.bus.emit('site:linkUpdated', { fromSiteId: fromSite.id, toSiteId: toSite.id, kind: normKind, goodId: normGood });
+      return { ok: true, link: { ...existing } };
+    }
+    if (fromSite.links.length >= SITE_BALANCE.linkMaxPerSite) {
+      return { ok: false, reason: 'max-links' };
+    }
+    const link = {
+      id: `${fromSite.id}->${toSite.id}:${normKind}`,
+      targetSiteId: toSite.id,
+      kind: normKind,
+      goodId: normGood,
+      transferredU: 0,
+      ratePerMin: 0,
+      active: true,
+    };
+    fromSite.links.push(link);
+    fromSite.anchored = true;
+    toSite.anchored = true;
+    this._ledger(fromSite, 'good', `${normKind === 'power' ? 'Power tether' : 'Material line'} linked to ${toSite.id}.`);
+    this.bus.emit('site:linkCreated', { fromSiteId: fromSite.id, toSiteId: toSite.id, kind: normKind, goodId: normGood });
+    return { ok: true, link: { ...link } };
+  },
+
+  removeSiteLink(fromSiteId, toSiteId, kind = null) {
+    const fromSite = this.getSite(fromSiteId);
+    if (!fromSite || !Array.isArray(fromSite.links)) return { ok: false, removed: 0, reason: 'no-site' };
+    const before = fromSite.links.length;
+    fromSite.links = fromSite.links.filter((l) => {
+      if (!l) return false;
+      if (l.targetSiteId !== toSiteId) return true;
+      if (kind && l.kind !== kind) return true;
+      return false;
+    });
+    const removed = before - fromSite.links.length;
+    if (removed > 0) {
+      this._ledger(fromSite, 'info', `${kind || 'Supply'} link to ${toSiteId} disconnected.`);
+      this.bus.emit('site:linkRemoved', { fromSiteId: fromSite.id, toSiteId, kind });
+    }
+    return { ok: removed > 0, removed };
+  },
+
+  _sectorStores(sectorId) {
+    const out = [];
+    const sites = this.state?.sites;
+    if (!sites?.byId) return out;
+    for (const siteId of sites.order || []) {
+      const s = sites.byId[siteId];
+      if (!s || !s.anchored || (sectorId && s.sectorId !== sectorId)) continue;
+      this._runtime(s);
+      for (const ls of s.laneStores || []) {
+        if (ls && ls.store) out.push({ site: s, store: ls.store });
+      }
+      if (s.exportBuffer) out.push({ site: s, store: s.exportBuffer });
+    }
+    return out;
+  },
+
+  _missingFieldCost(cost, sectorId) {
+    const missing = {};
+    const sectorStores = this._sectorStores(sectorId);
+    for (const goodId of Object.keys(cost || {}).sort()) {
+      let need = Math.max(0, Number(cost[goodId]) || 0);
+      need -= sellableCargoQuantity(this.state, goodId);
+      if (need > 0) {
+        for (const entry of sectorStores) {
+          const reserve = Math.max(0, Number(entry.site.reserves?.[goodId]) || 0);
+          const have = Math.floor(Math.max(0, (Number(entry.store[goodId]) || 0) - reserve));
+          need -= have;
+          if (need <= 0) break;
+        }
+      }
+      if (need > 0) missing[goodId] = need;
+    }
+    return missing;
+  },
+
+  _consumeFieldCost(cost, sectorId) {
+    const sectorStores = this._sectorStores(sectorId);
+    for (const goodId of Object.keys(cost || {}).sort()) {
+      let need = Math.max(0, Number(cost[goodId]) || 0);
+      const fromShip = Math.min(need, sellableCargoQuantity(this.state, goodId));
+      if (fromShip > 0) {
+        removeCargo(this.state, goodId, fromShip);
+        need -= fromShip;
+      }
+      if (need > 0) {
+        for (const entry of sectorStores) {
+          if (need <= 0) break;
+          const reserve = Math.max(0, Number(entry.site.reserves?.[goodId]) || 0);
+          const have = Math.floor(Math.max(0, (Number(entry.store[goodId]) || 0) - reserve));
+          const take = Math.min(need, have);
+          if (take > 0) {
+            entry.store[goodId] = Math.max(0, (Number(entry.store[goodId]) || 0) - take);
+            if (entry.store[goodId] <= 1e-9) delete entry.store[goodId];
+            need -= take;
+          }
+        }
+      }
+    }
+  },
+
+  /**
+   * Remotely stake and build an automated starter extractor rig on an asteroid
+   * directly from the seamless exterior Field Build / Command Mode.
+   */
+  commissionFieldAsteroid(asteroidId, template = 'extractor') {
+    const state = this.state;
+    const ent = state?.entities?.get?.(asteroidId);
+    if (!ent || ent.alive === false || ent.type !== 'asteroid') {
+      return { ok: false, reason: 'no-asteroid' };
+    }
+    const existingSite = this.siteForAsteroid(asteroidId);
+    if (existingSite && existingSite.machines.length > 0) {
+      return { ok: false, reason: 'already-commissioned', siteId: existingSite.id };
+    }
+    const sectorId = (state.world && state.world.currentSectorId) || null;
+    const primaryCost = SITE_BALANCE.fieldCommissionCost;
+    const altCost = SITE_BALANCE.fieldCommissionAltCost;
+    const primaryMissing = this._missingFieldCost(primaryCost, sectorId);
+    let chosenCost = null;
+    if (!Object.keys(primaryMissing).length) chosenCost = primaryCost;
+    else {
+      const altMissing = this._missingFieldCost(altCost, sectorId);
+      if (!Object.keys(altMissing).length) chosenCost = altCost;
+      else return { ok: false, reason: 'materials', missing: primaryMissing, altMissing };
+    }
+    this._consumeFieldCost(chosenCost, sectorId);
+
+    const sites = state.sites;
+    let site = existingSite;
+    if (!site) {
+      const id = `site_${sites.nextSiteNum++}`;
+      site = makeSiteRecord({
+        id,
+        asteroidId,
+        sectorId,
+        fieldId: (ent.data && ent.data.fieldId) || null,
+        createdT: state.simTime,
+      });
+      site.boreSeed = (asteroidId >>> 0) || 1;
+      sites.byId[id] = site;
+      sites.order.push(id);
+      ent.data.siteId = id;
+    }
+
+    const mid = Math.floor(COLS / 2);
+    const pocket = [
+      [mid, 0], [mid, 1], [mid, 2], [mid, 3],
+      [mid - 1, 2], [mid + 1, 2],
+    ];
+    for (const [c, r] of pocket) {
+      const idx = tileIndex(c, r);
+      if (!site.cleared.includes(idx)) site.cleared.push(idx);
+    }
+    site.cleared = normalizeClearedTiles(site.cleared);
+    if (!ent.data) ent.data = {};
+    ent.data.drillCleared = site.cleared.slice();
+
+    const coreDef = SITE_MACHINE_BY_ID.get('sm_massline_core');
+    const extDef = SITE_MACHINE_BY_ID.get('sm_extractor');
+    const portDef = SITE_MACHINE_BY_ID.get('sm_cargo_port');
+    site.machines.push(
+      { id: `m${site.nextMachineNum++}`, defId: 'sm_massline_core', col: mid, row: 1, mode: coreDef?.defaultMode || null, installT: state.simTime, job: null, carry: {} },
+      { id: `m${site.nextMachineNum++}`, defId: 'sm_extractor', col: mid - 1, row: 2, mode: extDef?.defaultMode || null, installT: state.simTime, job: null, carry: {} },
+      { id: `m${site.nextMachineNum++}`, defId: 'sm_cargo_port', col: mid, row: 3, mode: portDef?.defaultMode || null, installT: state.simTime, job: null, carry: {} },
+    );
+    if (template === 'refinery') {
+      const refDef = SITE_MACHINE_BY_ID.get('sm_refinery');
+      site.machines.push({
+        id: `m${site.nextMachineNum++}`,
+        defId: 'sm_refinery',
+        col: mid + 1,
+        row: 2,
+        mode: refDef?.defaultMode || 'sr_smelt_iron',
+        installT: state.simTime,
+        job: null,
+        carry: {},
+      });
+    }
+    const spineIdx = tileIndex(mid, 2);
+    if (!site.overlays.power.includes(spineIdx)) site.overlays.power.push(spineIdx);
+    if (!site.overlays.lane.includes(spineIdx)) site.overlays.lane.push(spineIdx);
+    site.overlays.power = normalizeClearedTiles(site.overlays.power);
+    site.overlays.lane = normalizeClearedTiles(site.overlays.lane);
+    if ((site.fleet.podsReady | 0) < 1) site.fleet.podsReady = 1;
+
+    this._markDirty(site.id, { field: true, net: true });
+    this._anchorSite(site, ent, { reason: 'core' });
+    this._runtime(site);
+    ent.data.siteSpecialization = classifySiteSpecialization(site).id;
+    this._ensureBeacon(site);
+    this._ledger(site, 'good', `Remote field rig commissioned (${template}).`);
+    this.bus.emit('site:commissioned', { siteId: site.id, asteroidId, template });
+    return { ok: true, siteId: site.id, asteroidId };
+  },
+
+  /**
+   * Deploy a perimeter orbital structure ('turret' pylon or 'sensor' beacon) around
+   * a claimed asteroid from exterior Field Build Mode.
+   */
+  deploySiteDefense(siteOrAsteroidId, kind = 'turret') {
+    const spec = SITE_BALANCE.fieldDefenseTypes?.[kind];
+    if (!spec) return { ok: false, reason: 'bad-kind' };
+    let site = this.getSite(siteOrAsteroidId) || this.siteForAsteroid(siteOrAsteroidId);
+    if (!site) return { ok: false, reason: 'no-site' };
+    if (!Array.isArray(site.defenses)) site.defenses = [];
+    if (site.defenses.length >= (SITE_BALANCE.maxDefensesPerSite || 4)) {
+      return { ok: false, reason: 'max-defenses' };
+    }
+    const sectorId = site.sectorId || this.state?.world?.currentSectorId || null;
+    const primaryMissing = this._missingFieldCost(spec.cost, sectorId);
+    let chosenCost = null;
+    if (!Object.keys(primaryMissing).length) chosenCost = spec.cost;
+    else if (spec.altCost) {
+      const altMissing = this._missingFieldCost(spec.altCost, sectorId);
+      if (!Object.keys(altMissing).length) chosenCost = spec.altCost;
+      else return { ok: false, reason: 'materials', missing: primaryMissing, altMissing };
+    } else {
+      return { ok: false, reason: 'materials', missing: primaryMissing };
+    }
+    this._consumeFieldCost(chosenCost, sectorId);
+    const slotIndex = site.defenses.length;
+    const defense = {
+      id: `def_${slotIndex + 1}_${spec.id}`,
+      kind: spec.id,
+      slotIndex,
+      installedT: Math.round(Number(this.state?.simTime) || 0),
+    };
+    site.defenses.push(defense);
+    site.anchored = true;
+    this._ensureDefenseProp(site, defense);
+    const ent = this.state?.entities?.get?.(site.asteroidId);
+    if (ent?.data) ent.data.siteDefenses = site.defenses.length;
+    this._ledger(site, 'good', `${spec.name} deployed on flank orbit.`);
+    this.bus.emit('site:defenseDeployed', { siteId: site.id, defense });
+    return { ok: true, defense };
+  },
+
+  /**
+   * Switch a site's industrial shift directive ('standard', 'overclock_burn',
+   * 'stealth_dampened', 'conservation_annuity', 'cryo_superconduct').
+   */
+  setSiteDirective(siteOrAsteroidId, directiveId = 'standard') {
+    const site = this.getSite(siteOrAsteroidId) || this.siteForAsteroid(siteOrAsteroidId);
+    if (!site) return { ok: false, reason: 'no-site' };
+    const dir = SITE_DIRECTIVE_BY_ID.get(directiveId);
+    if (!dir) return { ok: false, reason: 'bad-directive' };
+    site.directive = dir.id;
+    this._ledger(site, 'info', `Shift directive switched to ${dir.name}.`);
+    this.bus.emit('site:directiveUpdated', { siteId: site.id, directive: dir.id });
+    return { ok: true, siteId: site.id, directive: dir.id };
+  },
+
+  /**
+   * Commission an autonomous belt drone ('harvester', 'shuttle', 'patrol') assigned to a site.
+   */
+  commissionSiteDrone(siteOrAsteroidId, droneKind = 'harvester') {
+    const spec = BELT_DRONE_TYPES[droneKind];
+    if (!spec) return { ok: false, reason: 'bad-drone-kind' };
+    const site = this.getSite(siteOrAsteroidId) || this.siteForAsteroid(siteOrAsteroidId);
+    if (!site) return { ok: false, reason: 'no-site' };
+    if (!Array.isArray(site.drones)) site.drones = [];
+    const empire = ensureEmpireState(this.state?.sites, this.state?.simTime);
+    const maxDrones = getSiteDroneCapacity(site, empire);
+    if (site.drones.length >= maxDrones) {
+      return { ok: false, reason: 'max-drones', maxDrones };
+    }
+    const sectorId = site.sectorId || this.state?.world?.currentSectorId || null;
+    const primaryMissing = this._missingFieldCost(spec.cost, sectorId);
+    let chosenCost = null;
+    if (!Object.keys(primaryMissing).length) chosenCost = spec.cost;
+    else if (spec.altCost) {
+      const altMissing = this._missingFieldCost(spec.altCost, sectorId);
+      if (!Object.keys(altMissing).length) chosenCost = spec.altCost;
+      else return { ok: false, reason: 'materials', missing: primaryMissing, altMissing };
+    } else {
+      return { ok: false, reason: 'materials', missing: primaryMissing };
+    }
+    this._consumeFieldCost(chosenCost, sectorId);
+    const drone = {
+      id: `drone_${site.drones.length + 1}_${spec.id}`,
+      kind: spec.id,
+      installedT: Math.round(Number(this.state?.simTime) || 0),
+      targetAsteroidId: null,
+      cargoGood: null,
+      cargoU: 0,
+      phase: 'idle',
+      cycleCount: 0,
+    };
+    site.drones.push(drone);
+    site.anchored = true;
+    this._ledger(site, 'good', `${spec.name} launched from orbital berth.`);
+    this.bus.emit('site:droneCommissioned', { siteId: site.id, drone });
+    return { ok: true, drone, count: site.drones.length, maxDrones };
+  },
+
+  /**
+   * Stamp a rotatable subterranean blueprint schematic directly onto an asteroid from Field Architect
+   * or Asteroid Works, excavating required cells, laying power/lane conduits, and installing housings.
+   */
+  applySiteBlueprint(siteOrAsteroidId, blueprintId, anchorCol = null, anchorRow = null, rotation = 0) {
+    const bp = ASTEROID_BLUEPRINT_BY_ID.get(blueprintId);
+    if (!bp) return { ok: false, reason: 'bad-blueprint' };
+    const state = this.state;
+    let site = this.getSite(siteOrAsteroidId) || this.siteForAsteroid(siteOrAsteroidId);
+    const ent = site
+      ? state?.entities?.get?.(site.asteroidId)
+      : state?.entities?.get?.(siteOrAsteroidId);
+    if (!site && (!ent || ent.alive === false || ent.type !== 'asteroid')) {
+      return { ok: false, reason: 'no-site' };
+    }
+    const sectorId = site?.sectorId || state?.world?.currentSectorId || null;
+    const rtExisting = site ? this._runtime(site) : null;
+    const field = rtExisting
+      ? rtExisting.field
+      : generateDrillField(ent.id, ent.data?.typeId || 'ast_common_rock', sectorId);
+    if (!site && ent.data?.drillCleared) applyClearedTiles(field, ent.data.drillCleared);
+
+    let col = anchorCol;
+    let row = anchorRow;
+    let rot = ((Math.trunc(Number(rotation) || 0) % 4) + 4) % 4;
+    if (col == null || row == null) {
+      const best = findBestBlueprintSeats(field, site, blueprintId, 1);
+      if (best.length > 0) {
+        col = best[0].col;
+        row = best[0].row;
+        rot = best[0].rotation;
+      } else {
+        col = Math.floor(COLS / 2);
+        row = 2;
+      }
+    }
+
+    const evaluation = scoreBlueprintPlacement(field, site, blueprintId, col, row, rot);
+    if (!evaluation.valid) {
+      return { ok: false, reason: evaluation.reason || 'invalid-seat' };
+    }
+
+    const occupiedKeys = new Set((site?.machines || []).map((m) => `${m.col},${m.row}`));
+    const hasCoreAlready = !!(site && this.hasCore(site));
+    const totalCost = {};
+    const toInstall = [];
+    for (const cell of evaluation.cells) {
+      if (!cell.machineId) continue;
+      if (occupiedKeys.has(`${cell.col},${cell.row}`)) continue;
+      if (cell.machineId === 'sm_massline_core' && hasCoreAlready) continue;
+      if (cell.machineId === 'sm_massline_core' && toInstall.some((x) => x.defId === 'sm_massline_core')) continue;
+      const def = SITE_MACHINE_BY_ID.get(cell.machineId);
+      if (!def) continue;
+      toInstall.push({
+        defId: def.id,
+        def,
+        col: cell.col,
+        row: cell.row,
+        mode: cell.mode || def.defaultMode || null,
+      });
+      for (const [goodId, qty] of Object.entries(def.cost || {})) {
+        totalCost[goodId] = (totalCost[goodId] || 0) + (Number(qty) || 0);
+      }
+    }
+
+    const missing = this._missingFieldCost(totalCost, sectorId);
+    if (Object.keys(missing).length > 0) {
+      return { ok: false, reason: 'materials', missing };
+    }
+    this._consumeFieldCost(totalCost, sectorId);
+
+    if (!site) {
+      const sites = state.sites;
+      const id = `site_${sites.nextSiteNum++}`;
+      site = makeSiteRecord({
+        id,
+        asteroidId: ent.id,
+        sectorId,
+        fieldId: (ent.data && ent.data.fieldId) || null,
+        createdT: state.simTime,
+      });
+      site.cleared = normalizeClearedTiles(ent.data && ent.data.drillCleared);
+      copyDrillSessionAccounting(site, ent && ent.data);
+      sites.byId[id] = site;
+      sites.order.push(id);
+      if (!ent.data) ent.data = {};
+      ent.data.siteId = id;
+      this.bus.emit('site:created', { siteId: id, asteroidId: ent.id });
+    }
+
+    for (const cell of evaluation.cells) {
+      if (!site.cleared.includes(cell.idx)) site.cleared.push(cell.idx);
+      if (cell.power && !site.overlays.power.includes(cell.idx)) site.overlays.power.push(cell.idx);
+      if (cell.lane && !site.overlays.lane.includes(cell.idx)) site.overlays.lane.push(cell.idx);
+    }
+    site.cleared = normalizeClearedTiles(site.cleared);
+    site.overlays.power = normalizeClearedTiles(site.overlays.power);
+    site.overlays.lane = normalizeClearedTiles(site.overlays.lane);
+    if (ent?.data) ent.data.drillCleared = site.cleared.slice();
+
+    for (const item of toInstall) {
+      site.machines.push({
+        id: `m${site.nextMachineNum++}`,
+        defId: item.defId,
+        col: item.col,
+        row: item.row,
+        mode: item.mode,
+        installT: state.simTime,
+        job: null,
+        carry: {},
+      });
+      if (item.defId === 'sm_cargo_port' && (site.fleet.podsReady | 0) < 1) {
+        site.fleet.podsReady = 1;
+      }
+    }
+
+    this._markDirty(site.id, { field: true, net: true });
+    if (!site.anchored && ent) this._anchorSite(site, ent, { reason: 'core' });
+    this._stampStructures(site);
+    this._runtime(site);
+    if (ent?.data) ent.data.siteSpecialization = classifySiteSpecialization(site).id;
+    this._ensureBeacon(site);
+    this._ledger(site, 'good', `Blueprint "${bp.name}" stamped (${toInstall.length} modules).`);
+    this.bus.emit('site:blueprintApplied', {
+      siteId: site.id,
+      blueprintId: bp.id,
+      installedCount: toInstall.length,
+      col,
+      row,
+      rotation: rot,
+    });
+    return {
+      ok: true,
+      siteId: site.id,
+      blueprintId: bp.id,
+      installedCount: toInstall.length,
+      anchorCol: col,
+      anchorRow: row,
+      rotation: rot,
+      score: evaluation.score,
+    };
+  },
+
+  /**
+   * Automatically balance power tethers, material links, and feedstock reserves across the sector.
+   */
+  autoLinkSectorCluster(sectorId = null) {
+    const res = autoBalanceSectorNetwork(this, sectorId);
+    this.bus.emit('site:clusterBalanced', {
+      sectorId: res.sectorId,
+      linksCreated: res.linksCreated,
+      linksUpdated: res.linksUpdated,
+      reservesTuned: res.reservesTuned,
+    });
+    return res;
+  },
+
+  /**
+   * Unlock a permanent empire-wide Belt Doctrine tech using exact economy:chargeCredits escrow.
+   */
+  unlockBeltDoctrine(doctrineId) {
+    const doc = BELT_DOCTRINE_BY_ID.get(doctrineId);
+    if (!doc) return { ok: false, reason: 'bad-doctrine' };
+    const empire = ensureEmpireState(this.state?.sites, this.state?.simTime);
+    if (empire.doctrines[doctrineId]) return { ok: false, reason: 'already-unlocked' };
+    if (doc.prereq && !empire.doctrines[doc.prereq]) {
+      return { ok: false, reason: 'missing-prereq', prereq: doc.prereq };
+    }
+    const liveCredits = Math.max(0, Math.round(Number(this.state?.player?.credits) || 0));
+    if (liveCredits < doc.costCredits) {
+      return { ok: false, reason: 'insufficient-credits', cost: doc.costCredits, have: liveCredits };
+    }
+    let committed = false;
+    const charge = {
+      amount: Math.round(doc.costCredits),
+      reason: `belt:doctrine:${doc.id}`,
+      requireFull: true,
+      expectedCredits: liveCredits,
+      commit: () => {
+        empire.doctrines[doc.id] = { unlockedAt: Math.round(Number(this.state?.simTime) || 0) };
+        committed = true;
+        return true;
+      },
+    };
+    this.bus?.emit?.('economy:chargeCredits', charge);
+    if (!committed && charge.result !== true) {
+      return { ok: false, reason: 'insufficient-credits', cost: doc.costCredits };
+    }
+    this.bus?.emit?.('site:doctrineUnlocked', { doctrineId: doc.id, name: doc.name });
+    return { ok: true, doctrineId: doc.id, unlockedAt: empire.doctrines[doc.id].unlockedAt };
+  },
+
+  /**
+   * Accept a Belt Industrial Charter contract (up to 3 concurrent charters).
+   */
+  acceptBeltCharter(charterId) {
+    const tpl = BELT_CHARTER_TEMPLATES.find((c) => c.id === charterId);
+    if (!tpl) return { ok: false, reason: 'bad-charter' };
+    const empire = ensureEmpireState(this.state?.sites, this.state?.simTime);
+    if (empire.completedCharters.includes(tpl.id)) {
+      return { ok: false, reason: 'already-completed' };
+    }
+    if (empire.activeCharters.some((c) => c.id === tpl.id)) {
+      return { ok: false, reason: 'already-active' };
+    }
+    if (empire.activeCharters.length >= 3) {
+      return { ok: false, reason: 'max-active-charters' };
+    }
+    empire.activeCharters.push({
+      id: tpl.id,
+      acceptedAt: Math.round(Number(this.state?.simTime) || 0),
+      progress: 0,
+      target: tpl.requirement.target,
+    });
+    stepBeltEmpireSector(this, this.state, 0);
+    this.bus?.emit?.('site:charterAccepted', { charterId: tpl.id, name: tpl.name });
+    return { ok: true, charterId: tpl.id };
+  },
+
+  /**
+   * Scan subterranean geological anomalies inside a rock, or breach one intentionally
+   * to harvest its lump-sum crystal/mineral pocket.
+   */
+  tapOrScanSiteAnomalies(siteOrAsteroidId, action = 'scan', anomalyId = null) {
+    const site = this.getSite(siteOrAsteroidId) || this.siteForAsteroid(siteOrAsteroidId);
+    if (!site) return { ok: false, reason: 'no-site' };
+    const rt = this._runtime(site);
+    const anomalies = evaluateSubterraneanAnomalies(site.boreSeed || site.asteroidId || 1, rt.field, site.machines);
+    if (action === 'breach' && anomalyId) {
+      const target = anomalies.find((a) => a.id === anomalyId);
+      if (!target) return { ok: false, reason: 'bad-anomaly' };
+      if (!site.cleared.includes(target.idx)) {
+        site.cleared.push(target.idx);
+        site.cleared = normalizeClearedTiles(site.cleared);
+      }
+      const ent = this.state?.entities?.get?.(site.asteroidId);
+      if (ent?.data) ent.data.drillCleared = site.cleared.slice();
+      if (!site.breachedAnomalies) site.breachedAnomalies = {};
+      let lootGranted = null;
+      if (!site.breachedAnomalies[target.id]) {
+        site.breachedAnomalies[target.id] = true;
+        lootGranted = { ...target.lumpLoot };
+        const dest = (rt.laneComps[0] && rt.stores[rt.laneComps[0].key]) || site.exportBuffer;
+        for (const [g, q] of Object.entries(lootGranted)) {
+          dest[g] = (Number(dest[g]) || 0) + (Number(q) || 0);
+        }
+        this._ledger(site, 'good', `${target.name} breached for lump mineral cache.`);
+      }
+      this._markDirty(site.id, { field: true, net: true });
+      const nextAnomalies = evaluateSubterraneanAnomalies(site.boreSeed || site.asteroidId || 1, this._runtime(site).field, site.machines);
+      return { ok: true, breached: target.id, loot: lootGranted, anomalies: nextAnomalies };
+    }
+    return { ok: true, anomalies };
+  },
+
+  _ensureDefenseProp(site, defense) {
+    const state = this.state;
+    if (!state?.world || state.world.currentSectorId !== site.sectorId) return;
+    const rock = state.entities?.get?.(site.asteroidId);
+    if (!rock) return;
+    const ang = ((hash32(site.id, defense.id) % 628) / 100);
+    const dist = (rock.radius || 8) + 9 + (defense.slotIndex || 0) * 1.5;
+    insertDressingRow(state, {
+      type: 'fx',
+      pos: { x: rock.pos.x + Math.cos(ang) * dist, z: rock.pos.z + Math.sin(ang) * dist },
+      rot: ang,
+      radius: 4,
+      homeSectorId: site.sectorId,
+      data: {
+        placeId: 'place_claim_outpost_relay',
+        placeScale: defense.kind === 'turret' ? 0.12 : 0.14,
+        worldDressing: true,
+        siteDefense: defense.id,
+        siteId: site.id,
+        sectorId: site.sectorId,
+        homeSectorId: site.sectorId,
+        name: (BELT_ORBITAL_STRUCTURES[defense.kind]?.name) || 'Orbital Structure',
+        visualRadius: 4,
+        placeRadius: 4,
+        factionId: 'faction_player',
+      },
+    });
+  },
+
+  _incomingSharedPowerMw(site, state) {
+    const sites = state?.sites?.byId;
+    if (!sites || !site) return 0;
+    const empMods = getEmpireModifiers(state?.sites?.empire);
+    const weather = getActiveWeather(state?.sites?.empire, state);
+    const eff = Math.min(0.99, SITE_BALANCE.linkPowerEfficiency + (empMods.powerTransferEffBonus || 0));
+    let totalIn = 0;
+    for (const src of Object.values(sites)) {
+      if (!src || src.id === site.id || src.sectorId !== site.sectorId) continue;
+      const outPowerLinks = (Array.isArray(src.links) ? src.links : [])
+        .filter((l) => l && l.kind === 'power' && l.active !== false);
+      const matching = outPowerLinks.filter((l) => l.targetSiteId === site.id);
+      if (!matching.length) continue;
+      const srcRt = this._runtime(src);
+      let gen = 0;
+      let draw = 0;
+      for (const comp of srcRt.powerComps) {
+        for (const mid of comp.machineIds) {
+          const m = src.machines.find((x) => x.id === mid);
+          const def = m && SITE_MACHINE_BY_ID.get(m.defId);
+          if (!def) continue;
+          const cap = machineCapability(def, srcRt.geo[m.id], m.mode);
+          gen += cap.powerGen;
+          draw += cap.powerDraw * (1 - (empMods.powerDrawDiscount || 0));
+        }
+      }
+      for (const d of src.defenses || []) {
+        const spec = BELT_ORBITAL_STRUCTURES[d?.kind];
+        if (!spec) continue;
+        const delta = (Number(spec.powerDeltaMw) || 0) * (spec.role === 'power' ? (weather.powerMult || 1) : 1);
+        if (delta > 0) gen += delta;
+        else if (delta < 0) draw += Math.abs(delta);
+      }
+      const surplus = Math.max(0, gen - draw);
+      if (surplus <= 0) continue;
+      const perLink = (surplus * eff) / outPowerLinks.length;
+      src.sharedPowerOutMw = round3(surplus * eff);
+      for (const link of matching) {
+        link.ratePerMin = round3(perLink);
+        totalIn += perLink;
+      }
+    }
+    return totalIn;
+  },
+
+  _stepInterSiteMaterialLinks(site, dtS, state, bonusRatePerMin = 0) {
+    const links = Array.isArray(site.links) ? site.links : [];
+    const matLinks = links.filter((l) => l && l.kind === 'material' && l.active !== false);
+    if (!matLinks.length) return;
+    const rt = this._runtime(site);
+    if (!rt.laneComps.length) return;
+    const ratePerMin = SITE_BALANCE.linkMaterialRatePerMin + Math.max(0, Number(bonusRatePerMin) || 0);
+    const budgetPerLink = (ratePerMin / 60) * dtS;
+
+    for (const link of matLinks) {
+      const targetSite = this.getSite(link.targetSiteId);
+      if (!targetSite || (targetSite.sectorId && site.sectorId && targetSite.sectorId !== site.sectorId)) {
+        link.ratePerMin = 0;
+        continue;
+      }
+      const targetRt = this._runtime(targetSite);
+      if (!targetRt.laneComps.length) {
+        link.ratePerMin = 0;
+        continue;
+      }
+      let targetStore = null;
+      let targetRoom = 0;
+      for (const tComp of targetRt.laneComps) {
+        const st = targetRt.stores[tComp.key];
+        const cap = targetRt.capacity[tComp.key] || 0;
+        const free = st ? Math.max(0, cap - storeTotal(st)) : 0;
+        if (free > targetRoom) {
+          targetRoom = free;
+          targetStore = st;
+        }
+      }
+      if (!targetStore || targetRoom <= 1e-6) {
+        link.ratePerMin = 0;
+        continue;
+      }
+
+      // Collect goods consumed by target site's active recipes to prioritize smart Mindustry routing
+      const wantedInputs = new Set();
+      for (const tm of targetSite.machines || []) {
+        const rec = tm.mode ? SITE_RECIPE_BY_ID.get(tm.mode) : null;
+        if (rec && rec.inputs) {
+          for (const g of Object.keys(rec.inputs)) wantedInputs.add(g);
+        }
+      }
+
+      let moved = 0;
+      for (const sComp of rt.laneComps) {
+        if (moved >= budgetPerLink || targetRoom <= 1e-6) break;
+        const srcStore = rt.stores[sComp.key];
+        if (!srcStore) continue;
+        const candidates = link.goodId
+          ? [link.goodId]
+          : Object.keys(srcStore).sort((a, b) => {
+            const aW = wantedInputs.has(a) ? 0 : 1;
+            const bW = wantedInputs.has(b) ? 0 : 1;
+            return aW !== bW ? aW - bW : a.localeCompare(b);
+          });
+        for (const goodId of candidates) {
+          if (moved >= budgetPerLink || targetRoom <= 1e-6) break;
+          const reserve = Math.max(0, Number(site.reserves?.[goodId]) || 0);
+          const avail = Math.max(0, (Number(srcStore[goodId]) || 0) - reserve);
+          if (avail <= 1e-6) continue;
+          const grant = Math.min(avail, budgetPerLink - moved, targetRoom);
+          if (grant <= 1e-6) continue;
+          srcStore[goodId] = Math.max(0, (Number(srcStore[goodId]) || 0) - grant);
+          if (srcStore[goodId] <= 1e-9) delete srcStore[goodId];
+          targetStore[goodId] = (Number(targetStore[goodId]) || 0) + grant;
+          moved += grant;
+          targetRoom -= grant;
+        }
+      }
+      if (moved > 1e-6) {
+        link.transferredU = round3((Number(link.transferredU) || 0) + moved);
+        link.ratePerMin = round3((moved / Math.max(1e-6, dtS)) * 60);
+      } else {
+        link.ratePerMin = 0;
+      }
+    }
+  },
+
   // ------------------------------------------------------------------ sim tick
 
   /** The paused bore has an explicit local workbench clock, like drill.tickInput.
    * Only this active site's machinery runs; travel, sales and world actors keep sim time.
    * Fractional cadence is saved with the site, so closing or Continue never mints a tick.
    */
-  tickWorkbench(dt, siteId) {
+  tickWorkbench(dt, siteId, includeStatus = false) {
     const d = this.state.drill;
     const site = this.getSite(siteId);
     if (!site || this.state.timeScale !== 0 || !d?.active || d.asteroidId !== site.asteroidId
@@ -2006,6 +2868,9 @@ export const asteroidSites = {
     this._workbenchRunning = true;
     try { this._tickSite(site, SITE_BALANCE.tickS, this.state, { workbench: true }); }
     finally { this._workbenchRunning = false; }
+    if (includeStatus === true) {
+      return { productionStep: site.productionStep, byMachine: this._rt.get(siteId)?.status || EMPTY_MACHINE_STATUS };
+    }
     return true;
   },
 
@@ -2031,7 +2896,11 @@ export const asteroidSites = {
     }
 
     const sites = state.sites;
-    if (!sites || !sites.order.length) return;
+    if (!sites) return;
+    if (!sites.order.length) {
+      stepBeltEmpireSector(this, state, step);
+      return;
+    }
     for (const siteId of sites.order.slice()) {
       const site = sites.byId[siteId];
       if (!site) continue;
@@ -2039,6 +2908,7 @@ export const asteroidSites = {
       this._tickSite(site, step, state);
       this._resolvePods(site, state);
     }
+    stepBeltEmpireSector(this, state, step);
   },
 
   /** Unanchored sites die with their rock (id recycling guarded by the siteId stamp). */
@@ -2118,6 +2988,9 @@ export const asteroidSites = {
       // Only a PRODUCING site wears the exterior relay (PQ-024): committed claims stay
       // visually unmarked until real output lands; re-entry re-ensures exactly one.
       if (site && site.anchored && site.sectorId === sectorId && this._isProducing(site)) this._ensureBeacon(site);
+      if (site && site.anchored && site.sectorId === sectorId && Array.isArray(site.defenses)) {
+        for (const def of site.defenses) this._ensureDefenseProp(site, def);
+      }
       yield;
     }
   },
@@ -2178,26 +3051,100 @@ export const asteroidSites = {
     if (!site.machines.length) return;
     const rt = this._runtime(site);
     const dtMin = dtS / 60;
+    const empire = ensureEmpireState(state?.sites, state?.simTime);
+    const weather = getActiveWeather(empire, state);
+    const empMods = getEmpireModifiers(empire);
+    const preSynergies = evaluateSubterraneanSynergies({
+      site,
+      field: rt.field,
+      geoByMachine: rt.geo,
+      compRatio: {},
+      powerCompByMachine: rt.powerCompByMachine,
+      empireDoctrines: empire.doctrines,
+      weather,
+    });
 
     // --- Power: per component, gen vs demand → one legible ratio (brief §2). ---
+    let incomingPowerMw = this._incomingSharedPowerMw(site, state);
+    site.sharedPowerInMw = round3(incomingPowerMw);
+    const orbitalPowerDelta = Number(preSynergies.summary.orbitalPowerNetMw) || 0;
+    if (orbitalPowerDelta > 0) incomingPowerMw += orbitalPowerDelta;
+    let orbitalDrawLeft = orbitalPowerDelta < 0 ? Math.abs(orbitalPowerDelta) : 0;
+    let sharedLeft = incomingPowerMw;
     rt.compRatio = {};
     const compPower = {};
     for (const comp of rt.powerComps) {
       let gen = 0;
-      let draw = 0;
+      let draw = orbitalDrawLeft;
+      orbitalDrawLeft = 0;
       for (const mid of comp.machineIds) {
         const m = site.machines.find((x) => x.id === mid);
         const def = m && SITE_MACHINE_BY_ID.get(m.defId);
         if (!def) continue;
         const cap = machineCapability(def, rt.geo[m.id], m.mode);
+        const drawMult = preSynergies.machineModifiers[m.id]?.powerDrawMult ?? 1;
         gen += cap.powerGen;
-        draw += cap.powerDraw;
+        draw += cap.powerDraw * drawMult;
+      }
+      if (sharedLeft > 0 && draw > gen) {
+        const boost = Math.min(sharedLeft, draw - gen);
+        gen += boost;
+        sharedLeft -= boost;
+      } else if (sharedLeft > 0 && draw > 0) {
+        gen += sharedLeft;
+        sharedLeft = 0;
+      }
+      if (sharedLeft > 0 && (preSynergies.summary.capacitorCapacityMwS || 0) > 0) {
+        gen += sharedLeft;
+        sharedLeft = 0;
+      }
+      // Capacitor Bank charge/discharge stabilization
+      const capMaxMwS = preSynergies.summary.capacitorCapacityMwS || 0;
+      if (capMaxMwS > 0 && dtS > 0) {
+        if (gen > draw) {
+          site.capacitorMwS = Math.min(capMaxMwS, (Number(site.capacitorMwS) || 0) + (gen - draw) * dtS);
+        } else if (draw > gen && (Number(site.capacitorMwS) || 0) > 0) {
+          const needMw = draw - gen;
+          const availMw = Math.min(
+            needMw,
+            SUBTERRANEAN_SYNERGY_RULES.capacitorMaxDischargeMw,
+            (Number(site.capacitorMwS) || 0) / dtS,
+          );
+          if (availMw > 0) {
+            gen += availMw;
+            site.capacitorMwS = Math.max(0, (Number(site.capacitorMwS) || 0) - availMw * dtS);
+          }
+        }
       }
       const ratio = draw > 0 ? clamp01(gen / draw) : 1;
       rt.compRatio[comp.key] = ratio;
       compPower[comp.key] = { gen: round3(gen), draw: round3(draw), ratio: round3(ratio) };
     }
     rt.compPower = compPower;
+
+    const synergies = evaluateSubterraneanSynergies({
+      site,
+      field: rt.field,
+      geoByMachine: rt.geo,
+      compRatio: rt.compRatio,
+      powerCompByMachine: rt.powerCompByMachine,
+      empireDoctrines: empire.doctrines,
+      weather,
+    });
+    rt.synergies = synergies;
+
+    // Grant once-only lump loot if a subterranean anomaly cell was excavated/breached
+    if (!site.breachedAnomalies) site.breachedAnomalies = {};
+    for (const anom of synergies.anomalies || []) {
+      if (anom.status === 'breached' && !site.breachedAnomalies[anom.id]) {
+        site.breachedAnomalies[anom.id] = true;
+        const dest = (rt.laneComps[0] && rt.stores[rt.laneComps[0].key]) || site.exportBuffer;
+        for (const [g, q] of Object.entries(anom.lumpLoot || {})) {
+          dest[g] = (Number(dest[g]) || 0) + (Number(q) || 0);
+        }
+        this._ledger(site, 'good', `${anom.name} pocket breached — mineral cache recovered.`);
+      }
+    }
 
     // --- Thermal pass (siteThermalModel): heat per machine derives from its live contact ring
     // and served power; stored heat persists on the machine record. Bands derate the power a
@@ -2208,7 +3155,8 @@ export const asteroidSites = {
       const baseRatio = powerKey != null ? (rt.compRatio[powerKey] ?? 0) : (def && def.power > 0 ? 1 : 0);
       return {
         id: m.id, defId: m.defId, profile: rt.geo[m.id], powerRatio: baseRatio,
-        mode: m.mode, storedHeat: Number(m.storedHeat) || 0, coolingRate: 0,
+        mode: m.mode, storedHeat: Number(m.storedHeat) || 0,
+        coolingRate: synergies.machineModifiers[m.id]?.coolingRate || 0,
       };
     });
     rt.thermal = stepSiteThermal({ dtS, machines: thermalIn, radiatorFins: site.radiatorFins });
@@ -2222,6 +3170,14 @@ export const asteroidSites = {
       if (m) m.storedHeat = rec.step.storedAfter;
     }
     const THERMAL_DERATE = { nominal: 1, warm: 1, throttle: 0.55, fault: 0 };
+
+    // Apply orbital bulk silo + doctrine lane capacity bonuses smoothly on runtime capacities
+    const bonusLaneCap = (synergies.summary.orbitalStorageBonus || 0) + (empMods.laneCapacityBonus || 0);
+    if (bonusLaneCap > 0) {
+      for (const comp of rt.laneComps) {
+        rt.capacity[comp.key] = (rt.capacity[comp.key] || 0) + bonusLaneCap;
+      }
+    }
 
     // --- Lane throughput budgets: shared per network, spent as machines move goods. ---
     const laneBudget = {};
@@ -2261,8 +3217,10 @@ export const asteroidSites = {
       const roomFor = () => (store ? Math.max(0, capacity - storeTotal(store)) : 0);
       const status = { state: 'idle', limit: null, ratePerMin: {}, powerRatio: round3(powerRatio) };
 
+      const synMod = synergies.machineModifiers[m.id];
       if (def.id === 'sm_extractor' || def.id === 'sm_gas_tap') {
         const cap = machineCapability(def, rt.geo[m.id], m.mode);
+        const yieldMult = synMod?.yieldMult ?? 1;
         if (def.usesGeology && !cap.geologyLive && cap.powerGen <= 0) {
           status.state = 'no-geology';
         } else if (cap.powerDraw > 0 && powerRatio <= 0) {
@@ -2273,7 +3231,7 @@ export const asteroidSites = {
           let blocked = false;
           for (const goodId of Object.keys(cap.outputsPerMin).sort()) {
             if (!store) { blocked = true; continue; }
-            const want = cap.outputsPerMin[goodId] * dtMin * clamp01(powerRatio || (cap.powerDraw > 0 ? 0 : 1));
+            const want = cap.outputsPerMin[goodId] * yieldMult * dtMin * clamp01(powerRatio || (cap.powerDraw > 0 ? 0 : 1));
             const carryKey = `out:${goodId}`;
             const carried = Number(m.carry[carryKey]) || 0;
             const room = Math.max(0, roomFor() - carried);
@@ -2304,7 +3262,7 @@ export const asteroidSites = {
         else {
           const res = stepContinuousRecipe({
             recipeId: m.mode,
-            processMultiplier: machineCapability(def, rt.geo[m.id], m.mode).processMultiplier,
+            processMultiplier: machineCapability(def, rt.geo[m.id], m.mode).processMultiplier * (synMod?.processMult ?? 1),
             dtMin,
             powerRatio,
             store,
@@ -2328,7 +3286,7 @@ export const asteroidSites = {
             status.ratePerMin[outId] = round3(consumed / inputPerBatch * recipe.output[outId] / dtMin);
           }
         }
-      } else if (def.id === 'sm_fabricator') {
+      } else if (def.id === 'sm_fabricator' || def.id === 'sm_deep_synthesizer') {
         if (!store) { status.state = 'no-network'; status.limit = 'lane'; }
         else {
           const recipe = SITE_RECIPE_BY_ID.get(m.mode);
@@ -2339,7 +3297,7 @@ export const asteroidSites = {
             : true;
           const res = stepFabricator({
             machine: m,
-            processMultiplier: machineCapability(def, rt.geo[m.id], m.mode).processMultiplier,
+            processMultiplier: machineCapability(def, rt.geo[m.id], m.mode).processMultiplier * (synMod?.processMult ?? 1),
             recipeId: m.mode,
             dtS,
             powerRatio,
@@ -2381,13 +3339,15 @@ export const asteroidSites = {
           let bufferRoom = Math.max(0, SITE_BALANCE.podCapacity * 3 - bufferTotal);
           for (const goodId of Object.keys(store).sort()) {
             if (site.exportOff[goodId]) continue;
-            const have = Math.max(0, Number(store[goodId]) || 0);
+            const reserveFloor = Math.max(0, Number(site.reserves?.[goodId]) || 0);
+            const have = Math.max(0, (Number(store[goodId]) || 0) - reserveFloor);
             if (have <= 1e-9) continue;
             // Fractional staging on purpose: per-tick throughput slices are well under one unit,
             // and flooring here starves the launch buffer forever. Pod loading floors at launch.
             const grant = Math.max(0, Math.min(have, laneBudget[laneKey], bufferRoom));
             if (grant <= 1e-9) continue;
             store[goodId] = (Number(store[goodId]) || 0) - grant;
+            if (store[goodId] <= 1e-9) delete store[goodId];
             site.exportBuffer[goodId] = (Number(site.exportBuffer[goodId]) || 0) + grant;
             laneBudget[laneKey] = Math.max(0, laneBudget[laneKey] - grant);
             bufferRoom -= grant;
@@ -2459,9 +3419,10 @@ export const asteroidSites = {
           }
           status.ratePerMin.bite = round3(clamp01(powerRatio) * 60 / SITE_BALANCE.autoDrillBiteS);
         }
-      } else if (def.id === 'sm_relay') {
-        // The mast's work is presence: signature loudness in the pass below, courier turnaround
-        // in _tryLaunch. Powered it simply runs.
+      } else if (def.id === 'sm_relay' || def.id === 'sm_cryo_condenser' || def.id === 'sm_seismic_brace'
+        || def.id === 'sm_capacitor_bank' || def.id === 'sm_mass_driver' || def.id === 'sm_harmonic_resonator') {
+        // Presence / aura housings: powered they project their cooling, bracing, capacitance,
+        // extraction resonance, or orbital link-boost fields; unpowered they go offline.
         status.state = powerRatio > 0 || def.power >= 0 ? 'running' : 'no-power';
         if (status.state === 'no-power') status.limit = 'power';
       } else if (def.id === 'sm_massline_core') {
@@ -2554,6 +3515,28 @@ export const asteroidSites = {
     this._stepHarmonicStress(site, state, rt, dtS);
     // Exterior vanes: a faulting hall welds one, a shot vane brings the fault back.
     this._stepExteriorRadiators(site, state, rt, dtS);
+    // Passive orbital Regocrete Barge casting & autonomous belt fleet + Mindustry links
+    if (!workbench && synergies.summary.passiveRegocretePerMin > 0 && rt.laneComps.length > 0) {
+      site.regocreteCarry = (Number(site.regocreteCarry) || 0) + synergies.summary.passiveRegocretePerMin * dtMin;
+      if (site.regocreteCarry >= 1) {
+        const whole = Math.floor(site.regocreteCarry);
+        const targetComp = rt.laneComps[0];
+        const st = targetComp && rt.stores[targetComp.key];
+        const cap = (targetComp && rt.capacity[targetComp.key]) || 0;
+        const room = st ? Math.max(0, Math.floor(cap - storeTotal(st))) : 0;
+        const put = Math.min(whole, room);
+        if (put > 0 && st) {
+          st.cmdty_regocrete = (Number(st.cmdty_regocrete) || 0) + put;
+          site.regocreteCarry = Math.max(0, site.regocreteCarry - put);
+          empire.stats.regocreteCastU = (empire.stats.regocreteCastU || 0) + put;
+        }
+      }
+    }
+    const droneSummary = !workbench ? stepBeltDroneFleet(site, state, dtS, rt, synergies, empire) : null;
+    const totalLinkBoost = (synergies.summary.totalLinkRateBoostPerMin || 0)
+      + ((empMods.massDriverVelocityMult > 1 ? synergies.summary.massDrivers * SUBTERRANEAN_SYNERGY_RULES.massDriverLinkBoostPerMin * (empMods.massDriverVelocityMult - 1) : 0))
+      + (droneSummary?.shuttleLinkBoostPerMin || 0);
+    if (!workbench) this._stepInterSiteMaterialLinks(site, dtS, state, totalLinkBoost);
   },
 
   /**
@@ -2738,8 +3721,8 @@ export const asteroidSites = {
 
   _tryLaunch(site, state, portStatus) {
     const fleet = site.fleet;
-    const bufferTotal = storeTotal(site.exportBuffer);
-    if (bufferTotal + 1e-9 < SITE_BALANCE.podCapacity) return;
+    const { cargo, stagedUnits, units: loaded } = stagedCourierLoad(site.exportBuffer);
+    if (stagedUnits + 1e-9 < SITE_BALANCE.podCapacity) return;
     if (fleet.podsReady <= 0) {
       portStatus.state = 'no-pods';
       portStatus.limit = 'pods';
@@ -2747,20 +3730,11 @@ export const asteroidSites = {
     }
     if (state.simTime - fleet.lastLaunchT < SITE_BALANCE.podLaunchCooldownS) return;
 
-    // Load the pod in sorted-good order (deterministic).
-    const cargo = {};
-    let loaded = 0;
-    for (const goodId of Object.keys(site.exportBuffer).sort()) {
-      if (loaded >= SITE_BALANCE.podCapacity) break;
-      const have = Math.floor(Math.max(0, Number(site.exportBuffer[goodId]) || 0));
-      const take = Math.min(have, SITE_BALANCE.podCapacity - loaded);
-      if (take <= 0) continue;
-      cargo[goodId] = take;
+    if (loaded <= 0) return;
+    for (const [goodId, take] of Object.entries(cargo)) {
       site.exportBuffer[goodId] = (Number(site.exportBuffer[goodId]) || 0) - take;
       if (site.exportBuffer[goodId] <= 1e-9) delete site.exportBuffer[goodId];
-      loaded += take;
     }
-    if (loaded <= 0) return;
 
     fleet.podsReady -= 1;
     fleet.launches += 1;
@@ -2775,7 +3749,26 @@ export const asteroidSites = {
     // Loss decided at launch (seeded), revealed at arrival — long-run converges on the odds,
     // individual runs stay dramatic (brief §6).
     const roll = drawSeeded(state.sites.meta, 'rngSeed', hash32(state.meta && state.meta.seed || 1, site.id, fleet.launches));
-    const lost = roll < podLossChance(danger);
+    const empMods = getEmpireModifiers(state?.sites?.empire);
+    const weather = getActiveWeather(state?.sites?.empire, state);
+    let defenseRiskCut = empMods.podLossReduction || 0;
+    let sensorSpeedMult = 1;
+    let shieldStormImmune = false;
+    for (const defEntry of site.defenses || []) {
+      const spec = SITE_BALANCE.fieldDefenseTypes?.[defEntry?.kind];
+      if (!spec) continue;
+      if (spec.podRiskReduction) defenseRiskCut += spec.podRiskReduction;
+      if (spec.turnaroundBonus) sensorSpeedMult *= Math.max(0.5, 1 - spec.turnaroundBonus);
+      if (spec.stormImmune) shieldStormImmune = true;
+    }
+    for (const drone of site.drones || []) {
+      const dSpec = BELT_DRONE_TYPES[drone?.kind];
+      if (!dSpec) continue;
+      if (dSpec.podRiskReduction) defenseRiskCut += dSpec.podRiskReduction;
+      if (dSpec.podSpeedBonus) sensorSpeedMult *= Math.max(0.5, 1 - dSpec.podSpeedBonus);
+    }
+    const weatherRisk = shieldStormImmune ? 0 : (Number(weather?.podRiskDelta) || 0);
+    const lost = roll < Math.max(0, podLossChance(danger) + weatherRisk - defenseRiskCut);
     // A POWERED relay mast tightens the courier turnaround — faster handshakes both ways.
     // Status rows exist only for machines the rotation already visited this tick, so a
     // relay queued behind this port has no row yet — an absent row must never read as
@@ -2793,7 +3786,7 @@ export const asteroidSites = {
         ? rt.thermal.machines.find((r) => r && r.id === m.id) : null;
       return !(rec && rec.band === 'fault');
     }));
-    const travel = podTravelS(danger) * (relayUp ? SITE_BALANCE.relayPodTravelFactor : 1);
+    const travel = podTravelS(danger) * (relayUp ? SITE_BALANCE.relayPodTravelFactor : 1) * sensorSpeedMult;
     const intentId = `site-sale:${site.id}:${fleet.launches}`;
     ensureShipment(site);
     addToShipment(site, '_pod', loaded, 9999);
@@ -2966,7 +3959,12 @@ export const asteroidSites = {
     for (const goodId of Object.keys(traded).sort()) {
       rawGross += traded[goodId] * this._salePrice(pod.stationId, goodId);
     }
-    const realisedTotal = Math.round(rawGross * SITE_BALANCE.podSalvageMult);
+    let saleMult = 1;
+    for (const defEntry of site.defenses || []) {
+      const spec = BELT_ORBITAL_STRUCTURES[defEntry?.kind];
+      if (spec?.salePriceMult) saleMult = Math.max(saleMult, Number(spec.salePriceMult) || 1);
+    }
+    const realisedTotal = Math.round(rawGross * saleMult * SITE_BALANCE.podSalvageMult);
     const realisedPrice = soldUnits > 0 ? realisedTotal / soldUnits : 0;
     const operatingCost = Math.max(0, Math.round(rawGross) - realisedTotal);
     const have = shipmentQty(site, '_pod');
@@ -3089,4 +4087,6 @@ export const asteroidSites = {
    * While the sim is paused under the site screen this is the honest live feedback.
    */
   projection: asteroidSiteReadMethods.projection,
+
+  sectorNetworkProjection: asteroidSiteReadMethods.sectorNetworkProjection,
 };

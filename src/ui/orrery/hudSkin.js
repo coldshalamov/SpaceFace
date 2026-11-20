@@ -10,6 +10,8 @@
 //
 // Instruments stay light over the world. Interactive sheets and receipts carry their own contrast.
 
+import { VISOR_HUD_CSS } from './visorHudSkin.js';
+
 const STYLE_ID = 'sf-orrery-hud-skin';
 const S = 'body[data-hud-skin="orrery"]';
 
@@ -43,9 +45,9 @@ ${S}.sf-cargo-open:not(.ui-modal-open):not(.ui-live-screen) #alerts { z-index:9 
 /* Receipts share the popup seam and an opaque text bed over the moving flight scene. */
 ${S} #hud .sf-toast {
   --receipt-mark: var(--dp-phos);
-  position:relative; display:flex; align-items:center; gap:8px; box-sizing:border-box;
-  padding:7px 10px; background:var(--sf-pop-glass) !important; box-shadow:none !important;
-  border:1px solid var(--sf-pop-seam) !important; border-inline-start:2px solid var(--receipt-mark) !important;
+  position:relative; display:flex; align-items:center; gap:10px; box-sizing:border-box;
+  padding:8px 13px; background:var(--sf-pop-glass) !important; box-shadow:0 6px 16px rgb(0 0 0 / .25) !important;
+  border:1px solid var(--sf-pop-seam) !important; border-radius:6px !important;
   font:500 14px/1.35 var(--dp-face-read, "Instrument Sans", sans-serif); color:var(--dp-ink, #e8e2d4);
   text-shadow:none;
 }
@@ -71,6 +73,26 @@ ${S}.sf-run-flight .sf-alert.sf-alert--floor { box-sizing:border-box; max-width:
 ${S}.sf-run-flight .sf-alert.sf-alert--floor::before { display:none; }
 ${S}.sf-run-flight .sf-alert.sf-alert--floor .sf-alert__text { display:-webkit-box; -webkit-box-orient:vertical;
   -webkit-line-clamp:3; line-clamp:3; overflow:hidden; overflow-wrap:anywhere; }
+
+/* Leave room for the objective and Field Build at the top edge, including the danger pulse.
+   Intermediate desktop widths move the wrapping line below the top buttons. Phone flight
+   retains its own banner placement. */
+@media (min-width:761px) {
+  :root:not([data-sf-mobile-flight="1"]) ${S} #alerts .sf-alert {
+    box-sizing:border-box; max-width:calc(100vw - 520px - var(--sf-safe-inset-x, 0px) - var(--sf-safe-inset-x, 0px));
+    white-space:normal;
+  }
+  :root:not([data-sf-mobile-flight="1"]) ${S} #alerts .sf-alert__text { min-width:0; overflow-wrap:anywhere; }
+  :root:not([data-sf-mobile-flight="1"]) ${S} #alerts .dp-annunc__lens { flex:none; }
+}
+@media (min-width:761px) and (max-width:1099px) {
+  :root:not([data-sf-mobile-flight="1"]) ${S} #alerts { top:calc(84px + var(--sf-safe-inset-top, 0px)); }
+}
+@media (min-width:1100px) {
+  :root:not([data-sf-mobile-flight="1"]) ${S} #alerts .sf-alert {
+    max-width:calc(100vw - 760px - var(--sf-safe-inset-x, 0px) - var(--sf-safe-inset-x, 0px));
+  }
+}
 
 /* ---- the band key: a compact instrument pill, lit while a channel is tuned ---------------------- */
 ${S} #hud .sf-band-hud__button { position:relative; background:linear-gradient(180deg, rgb(18 22 30 / .90), rgb(11 14 20 / .90)) !important;
@@ -133,9 +155,20 @@ ${S} #hud .sf-commtape .sf-comm-backlog-btn:hover, ${S} #hud .sf-commtape .sf-co
 ${S} #hud .sf-commtape .sf-contact-hail__button[disabled] { opacity:.45; border-color:rgb(236 230 216 / .06) !important; background:transparent !important; }
 ${S} #hud .sf-commtape .sf-fx-comms-trace { min-width:36px; opacity:.55; }
 ${S} #hud .sf-commtape__news { flex:1 0 100%; order:5; padding-top:4px; border-top:1px solid rgb(236 230 216 / .06); }
-${S} #hud .sf-news-ticker { font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-size:12px; line-height:1.35; color:var(--dp-ink-dim, #b7b4a6); }
+${S} #hud .sf-news-ticker { font-family:var(--dp-face-read, "Instrument Sans", sans-serif); font-size:13px; line-height:1.42; color:var(--dp-ink-dim, #b7b4a6); }
 
 /* ---- the radar: its frame is ORRERY light drawn outside the canvas, so the wrap must not clip ---- */
+/* Budget space above the bottom-anchored radar in screen pixels. The compact desktop
+   scale is applied after flex layout, so convert the budget to the dock's layout units. */
+:root:not([data-sf-mobile-flight="1"]) ${S} #hud .sf-rightdock {
+  max-height:calc((100dvh - 76px - var(--sf-safe-inset-top, 0px) - var(--sf-hud-edge, 12px)) / var(--sf-hud-edge-fit, 1));
+}
+:root:not([data-sf-mobile-flight="1"]) ${S} #hud .sf-rightdock > .sf-overview {
+  flex:0 1 auto; min-height:0; overflow-y:auto !important; overflow-x:hidden !important;
+}
+:root:not([data-sf-mobile-flight="1"]) ${S} #hud .sf-rightdock > .sf-target {
+  max-height:calc(35dvh / var(--sf-hud-edge-fit, 1)); overflow-y:auto;
+}
 ${S} #hud .sf-target:not([hidden]):not(:empty),
 ${S} #hud #sf-sector-law:not([hidden]):not(:empty) {
   background:linear-gradient(180deg, rgb(16 20 28 / .90), rgb(11 14 20 / .90)) !important;
@@ -310,7 +343,7 @@ export function applyOrreryHudSkin(doc = globalThis.document) {
   if (!doc.getElementById(STYLE_ID)) {
     const style = doc.createElement('style');
     style.id = STYLE_ID;
-    style.textContent = ORRERY_HUD_SKIN_CSS;
+    style.textContent = ORRERY_HUD_SKIN_CSS + VISOR_HUD_CSS;
     doc.head.appendChild(style);
   }
   doc.body.dataset.hudSkin = 'orrery';

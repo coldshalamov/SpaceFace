@@ -68,6 +68,14 @@ function bearingPhrase(direction) {
  */
 export function deathSentence(receipt, context = {}) {
   if (!receipt) return 'The run ended.';
+  const stage = Number.isInteger(context.wave) && context.wave > 0
+    ? ` on ${context.rounds ? 'round' : 'wave'} ${context.wave}` : '';
+  if (receipt.physicalLabel === 'arena impact') {
+    const surface = receipt.context === 'arena_slam' && receipt.source?.kind === 'environment'
+      ? receipt.source.label : null;
+    const impact = surface ? `A collision with the ${surface}` : 'An arena collision';
+    return `${impact} destroyed your ship${stage}.`;
+  }
   const attacker = receipt.attacker || (receipt.source && receipt.source.label) || 'Something';
   const environmental = receipt.source && receipt.source.kind === 'environment';
   const weapon = !environmental && receipt.weapon ? ` with its ${receipt.weapon}` : '';
@@ -75,8 +83,7 @@ export function deathSentence(receipt, context = {}) {
   const layer = receipt.dominantLayer === 'hull'
     ? 'through the hull'
     : `through your ${receipt.dominantLayer || 'hull'}`;
-  const wave = Number.isInteger(context.wave) && context.wave > 0 ? ` on wave ${context.wave}` : '';
-  return `${attacker} killed you${wave}${direction}${weapon}, ${layer}.`;
+  return `${attacker} killed you${stage}${direction}${weapon}, ${layer}.`;
 }
 
 /** Structured stop reason (PQ-133.02 shared-change #6): `aborted` alone cannot tell a
@@ -179,7 +186,9 @@ export function hullClosingSpeed(player, killer) {
 }
 
 export function closingSpeedPhrase(receipt) {
-  const hulls = Number(receipt && receipt.closingHullsPerS);
+  const recorded = receipt?.closingHullsPerS;
+  if (recorded == null) return '';
+  const hulls = Number(recorded);
   if (!Number.isFinite(hulls)) return '';
   if (hulls <= 0.05) return ' · not closing';
   return ` · closing ${hulls.toFixed(1)} hulls/s`;
@@ -200,8 +209,8 @@ export function deathCauseText(receipt, trail = []) {
     const physicalFallback = physicalWeaponLabelFromDamage(receipt)
       || (typeof receipt.weapon === 'string' && receipt.weapon && !receipt.weapon.includes('_')
         ? receipt.weapon : null);
-    const weapon = receipt.source && receipt.source.kind === 'environment'
-      ? 'Environmental impact' : receipt.weapon || physicalFallback || 'unidentified weapon';
+    const weapon = receipt.source?.kind === 'environment'
+      ? receipt.physicalLabel || 'Environmental impact' : receipt.weapon || physicalFallback || 'unidentified weapon';
     const direction = receipt.direction || 'bearing unknown';
     const layer = receipt.dominantLayer || 'hull';
     return `${attacker} · ${weapon} · ${direction}${closingSpeedPhrase(receipt)} · ${layer} breach`;
@@ -225,7 +234,7 @@ export function deathCauseText(receipt, trail = []) {
  * rule: the warning is the weapon, so move when a tell opens.
  */
 export function counterplayFor(receipt) {
-  if (receipt && receipt.source && receipt.source.kind === 'environment') {
+  if (receipt?.source?.kind === 'environment' || receipt?.physicalLabel === 'arena impact') {
     return 'Leave room to brake and turn clear of solid bodies and environmental hazards.';
   }
   const dir = String((receipt && receipt.direction) || '').toUpperCase();
@@ -274,7 +283,7 @@ export function resolveDeathTelegraph({
   // Unknown killer: the most recent tell still names a warning rather than "you died".
   // An environmental death (a rock, a collision, a hazard) has no ship behind it: borrowing the
   // latest ship's engine flare would print "Environmental hazard's tell was engine flare".
-  const environmental = !!(receipt && receipt.source && receipt.source.kind === 'environment');
+  const environmental = receipt?.source?.kind === 'environment' || receipt?.physicalLabel === 'arena impact';
   const witnessed = environmental ? null : matchTell(true) || (killerId == null ? matchTell(false) : null);
   if (witnessed && Number.isFinite(witnessed.simTime)) {
     return {
@@ -285,7 +294,8 @@ export function resolveDeathTelegraph({
   }
   const hits = Array.isArray(damageTrail) ? damageTrail.filter((e) => e && typeof e === 'object') : [];
   const timed = hits.filter((e) => Number.isFinite(e.simTime) && e.simTime < death
-    && death - e.simTime <= 4 && !environmental && (killerId == null || e.attackerId === killerId));
+    && death - e.simTime <= 4 && !environmental && !e.causeLabel
+    && (killerId == null || e.attackerId === killerId));
   const first = timed.length ? timed.reduce((a, b) => (a.simTime <= b.simTime ? a : b)) : null;
   if (first) {
     const counts = new Map();
@@ -332,7 +342,9 @@ export function storyMomentsFor(summary = {}) {
   }
   const hit = input.heaviestHit;
   if (hit && typeof hit === 'object' && num(hit.amount) > 0) {
-    moments.push(`Hardest hit: ${Math.round(num(hit.amount))} from ${hit.weapon || 'unidentified fire'}`);
+    const source = hit.causeLabel || hit.weapon;
+    const damage = Math.round(num(hit.amount));
+    moments.push(`The hardest hit you took was ${damage} damage${source ? ` from ${source}` : ''}`);
   }
   const stunts = Array.isArray(input.stuntKills) ? input.stuntKills : [];
   if (stunts.length > 0) {
@@ -611,6 +623,7 @@ export const survivalResults = {
     this._waveStats = [];
     this._firstKillSimTime = null;
     this._runStartSimTime = null;
+    this._openingEquipment = null;
     this._heaviestHit = null;
     this._stylePeak = 1;
     this._deathMark = null;
@@ -645,6 +658,18 @@ export const survivalResults = {
     this._waveStartSimTime = this._simNow();
     this._waveStartWave = Number.isInteger(wave) ? wave : 0;
     if (this._runStartSimTime == null) this._runStartSimTime = this._simNow();
+    if (wave === 1 && this._openingEquipment == null && run.telemetry?.zeroScrapOpening === true) {
+      const player = this.state.player;
+      const ship = player?.ownedShips?.[player.activeShipIndex];
+      const grant = run.modifiers.find(row => row?.startingEquipment === true && row.instanceId != null);
+      const slotIndex = grant && ship?.fittings?.findIndex((defId, index) =>
+        defId === grant.defId && ship.fittedInstances?.[index]?.instanceId === grant.instanceId);
+      if (ship && Number.isInteger(slotIndex) && slotIndex >= 0) {
+        this._openingEquipment = { hullId: ship.defId, gun: { offerId: grant.offerId, defId: grant.defId, slotIndex } };
+      } else if (Array.isArray(ship?.fittings) && !ship.fittings.some(Boolean)) {
+        this._openingEquipment = { hullId: ship.defId, gun: null };
+      }
+    }
   },
 
   // The record stamp for game-speed assistance. Any speed that differs from the one the run was
@@ -879,24 +904,29 @@ export const survivalResults = {
     } catch {
       label = null;
     }
+    const weaponId = payload.weaponId || null;
+    const causeLabel = weaponId ? null : physicalWeaponLabelFromDamage(payload);
+    const applied = Number.isFinite(payload.applied) ? payload.applied : Number(payload.amount);
+    const simTime = this._simNow();
     this._damageTrail.push({
       attackerId: payload.attackerId == null ? null : payload.attackerId,
       attackerLabel: typeof label === 'string' && label.length > 0 ? label : null,
-      weaponId: payload.weaponId || null,
-      amount: Number.isFinite(payload.applied) ? payload.applied : (Number(payload.amount) || 0),
+      weaponId,
+      causeLabel,
+      amount: applied || 0,
       type: payload.type || null,
-      simTime: this._simNow(),
+      simTime,
       tick: this._tickNow(),
     });
     if (this._damageTrail.length > DAMAGE_TRAIL_LENGTH) this._damageTrail.shift();
-    const applied = Number.isFinite(payload.applied) ? payload.applied : Number(payload.amount);
     if (Number.isFinite(applied) && applied > 0
       && (!this._heaviestHit || applied > this._heaviestHit.amount)) {
       this._heaviestHit = {
         amount: applied,
-        weaponId: payload.weaponId || null,
-        weapon: weaponLabel(payload.weaponId || null),
-        simTime: this._simNow(),
+        weaponId,
+        weapon: weaponId ? weaponLabel(weaponId) : null,
+        causeLabel,
+        simTime,
       };
     }
   },
@@ -1087,6 +1117,7 @@ export const survivalResults = {
         verb: (entry && entry.verb) || null,
         defId: (entry && entry.defId) || null,
         wave: Number.isInteger(entry && entry.wave) ? entry.wave : null,
+        ...(entry?.startingEquipment === true ? { startingEquipment: true } : {}),
       }))
       : [];
     const rematch = this._rematchFor(run, wave);
@@ -1112,13 +1143,15 @@ export const survivalResults = {
       headline: this._planFailure
         ? `The arena could not build wave ${this._planFailure.wave}. The run was stopped.`
         : (outcome === 'defeat' && receipt
-          ? deathSentence(receipt, { wave })
+          ? deathSentence(receipt, { wave, rounds: run.ruleset === SWARM_RULESET })
           : outcomeSentence(outcome, { wave, retired: run.result?.reason === 'player_retired' })),
       defeat: outcome === 'defeat' && receipt
         ? {
           attacker: receipt.attacker || null,
+          source: receipt.source ? { kind: receipt.source.kind, label: receipt.source.label } : null,
           faction: receipt.faction || null,
           weapon: receipt.weapon || null,
+          physicalLabel: receipt.physicalLabel || physicalWeaponLabelFromDamage({ tag: receipt.context }),
           direction: receipt.direction || null,
           dominantLayer: receipt.dominantLayer || null,
           cause: receipt.cause || null,
@@ -1167,7 +1200,9 @@ export const survivalResults = {
       ? Math.max(0, result.endedAt.simTime - this._runStartSimTime)
       : null;
     const challenge = challengeFromRun(run);
+    if (run.telemetry?.dailyDateKey) result.dailyDateKey = run.telemetry.dailyDateKey;
     result.ruleset = challenge.ruleset;
+    if (this._openingEquipment) result.openingEquipment = this._openingEquipment;
     result.trialId = challenge.trialId;
     result.mutators = challenge.mutators.slice();
     result.stopReason = stopReasonFor(
@@ -1242,7 +1277,7 @@ export const survivalResults = {
         result.unranked = true;
         result.bankLine = 'Retired run — unranked. Unbanked salvage does not carry back to the hangar.';
       }
-      const settled = retired ? null : settleCrucibleRun({ result, run });
+      const settled = settleCrucibleRun({ result, run });
       if (settled) result.unlocksEarned = settled.unlocksEarned.slice();
       const row = settled && settled.result;
       if (row) {
@@ -1272,9 +1307,13 @@ export const survivalResults = {
         const chest = Number.isFinite(row.hangarBounty) ? row.hangarBounty : 0;
         // A drill pays nothing — the receipt repeats the door's promise rather than reading a
         // zeroed bank as a payout.
-        result.bankLine = row.recordRules && row.recordRules.mode === 'practice'
-          ? 'A drill — nothing carries back to the hangar.'
-          : `The hangar banked ${banked} from this run and the chest now holds ${chest}.`;
+        if (retired) {
+          result.bankLine = `Retired run — unranked. The hangar kept ${banked} cr of secured salvage.`;
+        } else {
+          result.bankLine = row.recordRules && row.recordRules.mode === 'practice'
+            ? 'A drill — nothing carries back to the hangar.'
+            : `The hangar banked ${banked} from this run and the chest now holds ${chest}.`;
+        }
       }
     } catch {
       // A local-record failure must not swallow the results the player is owed.
@@ -1317,7 +1356,8 @@ export const survivalResults = {
     const deathSimTime = this._deathMark ? this._deathMark.simTime : this._simNow();
     const killerId = receipt && (receipt.killerId ?? receipt.attackerId
       ?? (receipt.source && receipt.source.entityId));
-    const closing = this._closingOf(killerId);
+    const environmental = receipt?.source?.kind === 'environment' || receipt?.physicalLabel === 'arena impact';
+    const closing = environmental ? null : this._closingOf(killerId);
     const enriched = receipt && typeof receipt === 'object'
       ? {
         ...receipt,

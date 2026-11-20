@@ -1,21 +1,28 @@
-import { requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
+import { CAPITAL_BOSS_ENCOUNTER_ID, requireCapitalBossEncounter } from '../data/encounters/capital-boss.js';
+import { IRON_MAW } from '../data/encounters/capital-boss/iron-maw.js';
 import { LAST_ARGUMENT } from '../data/lastArgument.js';
 import { ironKrakenProfileFor } from '../data/ironKraken.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
 import { capitalPlatePull, capitalPlateUnderLine } from '../combat/capitalPlates.js';
+import { ironMawRecoveryInstruction, liveSwarmIronMaw, pointSegmentDistanceSquared, readIronMawMouth } from '../combat/capitalBossGeometry.js';
 import { spawnSwarmCapitalBallast } from '../missions/capitalBossSpawn.js';
 import { createCapitalBossFight,restoreCapitalBossFight,rebindCapitalBossFight,
   bindCapitalBossWing,stepCapitalBossFight,validFightId } from '../combat/capitalBossScore.js';
 import { capitalOrderKey } from '../ai/capitalBossOrders.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
+import { SWARM_BREATH_TICKS, SWARM_RULESET } from '../data/swarmMode.js';
+import { SWARM_SPAWN_RETRY_TICKS } from './swarmSafety.js';
 
 // Same thrown-mass part tear missions.js applies to a contract capital. The router there is not
 // exported and writes mission params, so a swarm champion — no mission row — emits the same
 // combat:routeDamage packet from here. Mission fight ids are ignored, so that path stays the
 // missions owner's and is not hit twice.
 const THROWN_MASS_SUBSYSTEM_DAMAGE = 40;
+const MAW_SOLID_CONTACT_SPEED = 55;
+const MAW_RELEASE_WINDOW_S = 6;
+const MAW_SUPPLY_WAIT_TICKS = SWARM_BREATH_TICKS + SWARM_SPAWN_RETRY_TICKS + 1;
 const CAPITAL_SUBSYSTEM_BY_ID = new Map(SUBSYSTEM_DEFS.map((def) => [def.id, def]));
 const THROWN_MASS_ROLE_FALLBACK = Object.freeze([
   'subsystem_drive', 'subsystem_weapon', 'subsystem_tether_spool',
@@ -124,6 +131,29 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
     // Same seam missions.js emits. The kernel's combat:routeDamage listener is the writer.
     ctx.bus.emit('combat:routeDamage',request);
   };
+  const mawLineAttempts = new WeakMap();
+  const mawMouth = {};
+  let fedDart = null;
+  const mawLineAttempt = (body, record, attachmentId) => {
+    let attempt = mawLineAttempts.get(body);
+    if (!attempt || attempt.record !== record || attempt.attachmentId !== attachmentId) {
+      attempt = { record, attachmentId, releaseTime: null, spent: false };
+      mawLineAttempts.set(body, attempt);
+    }
+    return attempt;
+  };
+  const rememberMawRelease = (cut) => {
+    const { state } = ctx;
+    if (cut?.reason !== 'tether_cut' || cut.actorId !== state.playerId || cut.ownerId !== state.playerId) return;
+    const record = liveSwarmIronMaw(state);
+    if (!record) return;
+    const body = state.entities.get(cut.targetId);
+    const attachment = state.combat?.attachments?.byId?.[cut.attachmentId];
+    if (!body?.alive || attachment?.state !== 'broken' || attachment.brokenTick !== state.tick
+        || attachment.ownerId !== state.playerId || attachment.targetId !== body.id
+        || attachment.targetGeneration !== body.occupantGeneration) return;
+    mawLineAttempt(body, record, attachment.id).releaseTime = state.simTime;
+  };
   const onSwarmMass=(kind,payload)=>{
     if(!ctx||!payload) return;
     const fights=ctx.state&&ctx.state.capitalBossEncounters&&ctx.state.capitalBossEncounters.fights;
@@ -133,18 +163,105 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       if(typeof id!=='string'||!id.startsWith('swarm:')) continue;
       const record=fights[id];
       if(!record||record.terminal) continue;
+      // Iron Maw's part strikes belong to physical contact. Aiming only identifies a destination.
+      if(record.encounterId===CAPITAL_BOSS_ENCOUNTER_ID) continue;
       if(!swarmChampionMassHit(kind,payload,record.bossId)) continue;
       const capital=entities.get(record.bossId);
       if(!capital||capital.alive===false||!capital.pos) continue;
       routeSwarmThrownMass(record,capital);
     }
   };
+  const onMawContact = (impact) => {
+    if (!impact || !(impact.preSolveClosingSpeed >= MAW_SOLID_CONTACT_SPEED)) return;
+    const { state } = ctx;
+    if (impact.tick !== state.tick) return;
+    const record = liveSwarmIronMaw(state);
+    if (!record) return;
+    const bossIsA = record.bossId === impact.aId;
+    if (!bossIsA && record.bossId !== impact.bId) return;
+    const bodyId = bossIsA ? impact.bId : impact.aId;
+    if (bodyId === state.playerId || impact.causalActorId !== bodyId) return;
+    const boss = state.entities.get(record.bossId);
+    const body = state.entities.get(bodyId);
+    if (!boss?.alive || boss.data?.lootTableId !== 'dreadnought_boss' || !body?.alive) return;
+    if (impact.backend === 'rapier-dynamic') {
+      if (boss.occupantGeneration !== (bossIsA ? impact.aGeneration : impact.bGeneration)
+          || body.occupantGeneration !== (bossIsA ? impact.bGeneration : impact.aGeneration)) return;
+    } else if (impact.backend !== 'custom') return;
+
+    const tether = state.player?.tether;
+    const attachment = tether?.active && tether.targetId === bodyId
+      ? state.combat?.attachments?.byId?.[tether.attachmentId] : null;
+    const held = attachment?.state === 'active' && attachment.ownerId === state.playerId
+      && attachment.targetId === bodyId && attachment.targetGeneration === body.occupantGeneration;
+    const attempt = held ? mawLineAttempt(body, record, attachment.id) : mawLineAttempts.get(body);
+    if (attempt?.record !== record || attempt.spent) return;
+    if (!held && (attempt.releaseTime == null || state.simTime - attempt.releaseTime > MAW_RELEASE_WINDOW_S)) return;
+    attempt.spent = true;
+    routeSwarmThrownMass(record, boss);
+  };
+  const settleMawFeeding = (receipt) => {
+    const { state } = ctx;
+    if (receipt.trigger !== 'iron_maw_mouth' || !fedDart
+        || receipt.entityId !== fedDart.body.id || receipt.occupantGeneration !== fedDart.body.occupantGeneration) return;
+    const { record, recovery, boss } = fedDart;
+    fedDart = null;
+    if (liveSwarmIronMaw(state) !== record || record.recovery !== recovery
+        || state.entities.get(boss.id) !== boss || !boss.alive) return;
+    const exposure = IRON_MAW.score.beats.find((beat) => beat.id === recovery.beatId)?.expose;
+    if (!exposure) return;
+    const extendedUntil = recovery.startedAt + 2 * exposure.durationTicks;
+    record.nextAt = Math.max(record.nextAt, extendedUntil);
+    ctx.helpers.routeCombatDamage({
+      attackerId: state.playerId, targetId: boss.id,
+      packet: { channels: {}, statuses: [{ id: exposure.status, stacks: 1, durationTicks: extendedUntil - record.clock }], flags: {} },
+      origin: { kind: 'capital_exposure', id: record.fightId },
+    });
+    ctx.bus.emit('toast', { text: 'Detonator inside. The Maw stays exposed.', kind: 'info', ttl: 3 });
+  };
+  const onMawSupplyAdmitted = (materialization) => {
+    const supply = materialization?.mawSupply;
+    if (!supply) return;
+    const { state } = ctx;
+    const record = liveSwarmIronMaw(state);
+    if (!record || state.run.wave !== 5 || state.run.ruleset !== SWARM_RULESET
+        || supply.runToken !== (state.run.retireToken ?? null)
+        || supply.bossId !== record.bossId || record.mawSupplyRequestedAt == null
+        || record.mawSupplyAdmission) return;
+    const dart = state.entities.get(supply.entityId);
+    if (dart?.alive && dart.data?.lootTableId === 'detonator_dart'
+        && (dart.occupantGeneration ?? null) === supply.occupantGeneration) {
+      record.mawSupplyAdmission = { entityId: dart.id, occupantGeneration: supply.occupantGeneration };
+    }
+  };
+  const canStartMawCast = (record, beat) => {
+    if (!beat.expose || record.mawSupplyTell) return true;
+    record.mawSupplyRequestedAt ??= record.clock;
+    const admission = record.mawSupplyAdmission;
+    const dart = admission && ctx.state.entities.get(admission.entityId);
+    return (dart?.alive && (dart.occupantGeneration ?? null) === admission.occupantGeneration)
+      || record.clock - record.mawSupplyRequestedAt >= MAW_SUPPLY_WAIT_TICKS;
+  };
   const root=()=>{
     if(!ctx.state.capitalBossEncounters) ctx.state.capitalBossEncounters={version:1,fights:{},orders:{}};
     return ctx.state.capitalBossEncounters;
   };
+  const isSpentDetonator = body => ctx.registry?.get('impulseCharges')?.isDetonatorSpent?.(body) === true;
+  const mawCounter = () => ironMawRecoveryInstruction(ctx.state, isSpentDetonator);
+  const publishMawCounter = record => {
+    if (record?.fightId === 'swarm:w5' && record.encounterId === CAPITAL_BOSS_ENCOUNTER_ID
+        && record.phase === 'recovery' && record.recovery && !record.recovery.mawFed) {
+      record.recovery.mawCounter = mawCounter();
+    }
+  };
   const runCommand=(c,r)=>{
     const store=root();
+    if (r.fightId === 'swarm:w5' && r.encounterId === CAPITAL_BOSS_ENCOUNTER_ID
+        && (c.type === 'telegraph' || c.type === 'recovery')
+        && IRON_MAW.score.beats.some((beat) => beat.id === c.beatId && beat.expose)) {
+      if (c.type === 'telegraph') r.mawSupplyTell = true;
+      else c.mouthLine = `${IRON_MAW.swarmMouth.recoveryTitle}. ${mawCounter()}`;
+    }
     if(c.type==='order') {
       store.orders[capitalOrderKey(c.entityId)]={fightId:r.fightId,scoreOwnsAttacks:true,
         suppressStockFire:c.suppressStockFire,heading:c.heading,forward:c.forward,brake:c.brake,phase:c.phase,
@@ -179,6 +296,37 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
   };
   const system={
     name:'capitalBossEncounters',
+    trySwarmMawIntake(body) {
+      const { state } = ctx;
+      const attempt = mawLineAttempts.get(body);
+      if (!body?.alive || attempt?.releaseTime == null || attempt.spent
+          || state.simTime - attempt.releaseTime > MAW_RELEASE_WINDOW_S) return null;
+      const mouth = readIronMawMouth(state, mawMouth);
+      if (mouth?.fight !== attempt.record || state.entities.get(body.id) !== body) return null;
+      const { boss, fight, forwardX, forwardZ } = mouth;
+      const closing = (boss.vel.x - body.vel.x) * forwardX + (boss.vel.z - body.vel.z) * forwardZ;
+      if (closing < MAW_SOLID_CONTACT_SPEED) return null;
+      const reach = mouth.radius + body.radius;
+      if (pointSegmentDistanceSquared(mouth, body.prevPos || body.pos, body.pos) > reach * reach) return null;
+
+      const charges = ctx.registry?.get('impulseCharges');
+      if (body.data?.detonator && !charges?.isDetonatorSpent?.(body)) {
+        const blastOffset = boss.radius * IRON_MAW.swarmMouth.blastOffset;
+        const blastPoint = { x: boss.pos.x + forwardX * blastOffset, z: boss.pos.z + forwardZ * blastOffset };
+        if (!charges?.queueMawDetonator?.(body, blastPoint, state.playerId)) return null;
+        fedDart = { body, record: fight, boss, recovery: fight.recovery };
+        fight.recovery.mawFed = true;
+      } else {
+        const speed = closing * IRON_MAW.swarmMouth.returnSpeedScale;
+        if (!queuePhysicsImpulse(body, {
+          x: (boss.vel.x + forwardX * speed - body.vel.x) * body.mass,
+          z: (boss.vel.z + forwardZ * speed - body.vel.z) * body.mass,
+        }, { actorId: boss.id, tag: 'iron_maw_spit', appliedTick: state.tick })) return null;
+        ctx.bus.emit('toast', { text: 'Iron Maw spat your throw back.', kind: 'warn', ttl: 2 });
+      }
+      attempt.spent = true;
+      return boss.id;
+    },
     init(context) {
       if(ctx) throw new Error('Capital boss system already initialized');
       if(!context?.state||!context.bus?.on||!context.bus?.emit||!context.helpers?.routeCombatDamage)
@@ -189,9 +337,11 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       listen('game:newGame',()=>{
         ctx.state.capitalBossEncounters={version:1,fights:{},orders:{}};
         thrownMassHits.clear();
+        fedDart = null;
       });
       listen('capitalBoss:start',p=>system.start(p));
       listen('capitalBoss:detach',p=>system.detach(p.fightId));
+      listen('run:waveMaterialized',onMawSupplyAdmitted);
       // KILLED is a combat fact. DESTROYED may be virtualization/save restoration and is not death.
       listen('entity:killed',p=>{
         if(p?.id==null) return;
@@ -205,6 +355,14 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
       // fights are not swarm: ids, so missions.js remains their only router.
       listen('tether:whipImpact',p=>onSwarmMass('whip',p));
       listen('massline:throw',p=>onSwarmMass('throw',p));
+      listen('tether:broken',rememberMawRelease);
+      listen('physics:impact',onMawContact);
+      listen('detonator:detonated', receipt => {
+        if (receipt.trigger === 'iron_maw_mouth') settleMawFeeding(receipt);
+        // Detonation happens after the score step. Refresh this same opening
+        // before its worker projection can advertise an already spent payload.
+        else publishMawCounter(liveSwarmIronMaw(ctx.state));
+      });
       // Row 463 retry act: a player defeat ends the score in 'defeat' and the terminal record is
       // never stepped again — a returning player used to find a permanently silent, braked boss
       // that still completed the mission when shot. Player respawn rewinds every such fight whose
@@ -280,6 +438,8 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
         for(const c of stepCapitalBossFight(r,{...o,
           boss:r.bossKilled?{id:r.bossId,alive:false,hull:0}:o.boss,
           target:r.targetKilled?{id:r.targetId,alive:false,hull:0}:o.target,
+          canStartCast:r.fightId==='swarm:w5'&&r.encounterId===CAPITAL_BOSS_ENCOUNTER_ID
+            &&state.run?.ruleset===SWARM_RULESET?canStartMawCast:undefined,
           tick:state.tick,simTime:state.simTime})) runCommand(c,r);
         const clock=previous||{};
         clock.tick=r.lastTick;clock.simTime=state.simTime;clock.world=state.world;
@@ -288,6 +448,7 @@ export function createCapitalBossEncounters({observe,spawnWing}={}) {
         clock.target=target;clock.targetLife=target?.occupantGeneration;
         if(!previous) scoreClocks.set(r,clock);
         system._stepPlates(r,state);
+        publishMawCounter(r);
       }
     },
     // GOLD-COLOSSI: a plate is fight data until it tears — no per-tick pose, no new joint.

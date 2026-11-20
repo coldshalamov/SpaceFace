@@ -127,12 +127,15 @@ html body #screens > .k-screen.of-codex.orr-archive.orr-archive .cx-filed { colo
 html body #screens > .k-screen.of-codex.orr-archive.orr-archive > .k-stage { background:none !important; border:0 !important; border-image:none !important; box-shadow:none !important; clip-path:none !important; outline:none; border-radius:0 !important; padding:0 0 26px 14px !important; margin-left:-14px !important; overflow:hidden auto; }
 html body #screens > .k-screen.of-codex.orr-archive.orr-archive[data-plate="on"] > .k-stage { padding-right:calc(var(--cx-plate) + clamp(28px, 3vw, 64px)) !important; }
 html body #screens > .k-screen.of-codex.orr-archive.orr-archive > .k-stage { display:flex !important; flex-direction:column; }
-/* ui-polish-394: .sf-codex-entry wears 1px bone ~18% / radius 10 / faint fill; densify 8→6.
+/* ui-polish-394: .sf-codex-entry wears the promise-scale hairline card; densify 8→6.
    Drop PLAIN so the card can keep border/radius/fill. Internal pad seats lore inside the chrome;
-   stage-child keeps the 14px left gutter pull so the scroll-extent thumb rides outside the first letters. */
+   stage-child keeps the 14px left gutter pull so the scroll-extent thumb rides outside the first letters.
+   The first alphas (.18/.025) vanished against the lit title backdrop — the Records Wall finding —
+   so the face sits on the house E0 tokens (bench 2026-11-15). */
 html body #screens > .k-screen.of-codex.orr-archive.orr-archive .sf-codex-entry { position:relative; display:block !important; max-width:none !important; min-height:0 !important;
   box-sizing:border-box; padding:18px 20px !important; margin:0 !important; color:rgb(248 244 234);
-  border:1px solid rgb(236 230 216 / .18); border-radius:10px; background:rgb(236 230 216 / .025); }
+  border:1px solid rgb(236 230 216 / .3); border-radius:10px; background:var(--sf-face, rgb(8 11 16 / .8));
+  box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)); }
 @media (max-height:820px) { html body #screens > .k-screen.of-codex.orr-archive.orr-archive .sf-codex-entry { border-radius:8px; } }
 @media (max-height:460px) { html body #screens > .k-screen.of-codex.orr-archive.orr-archive .sf-codex-entry { border-radius:8px; } }
 @media (max-height:400px) { html body #screens > .k-screen.of-codex.orr-archive.orr-archive .sf-codex-entry { border-radius:6px; } }
@@ -1469,4 +1472,20 @@ html:root body #screens > .k-screen.sf-mlog.orr-mlog.orr-mlog.orr-mlog.orr-mlog 
 .orr-extent::before { content:""; position:absolute; left:7px; width:2px; top:var(--orr-ext-top, 0px); height:var(--orr-ext-h, 0px);
   background:rgb(248 244 234 / .9); box-shadow:0 0 6px rgb(248 244 234 / .45); border-radius:1px; transition:top .12s linear, height .12s linear; }
 [data-overflow="0"] > .orr-extent::before { display:none; }
+/* the rim cue says what the fold only implies: the list continues below. It is viewport-fixed —
+   paint() seats it at the scroller's bottom-right on every scroll/resize — and it stands down at
+   scroll end (paint sets data-ext-end on the scroller; the adjacent sibling reads it). Static —
+   no motion, so reduced motion needs no exception. */
+.orr-extent--foot { position:fixed; z-index:4; pointer-events:none; width:max-content; height:auto; }
+.orr-extent--foot::before {
+  content:"MORE ▾";
+  display:block;
+  position:static; left:auto; top:auto; right:auto; bottom:auto; width:auto; height:auto;
+  font:650 12px var(--dp-face-num, ui-monospace, monospace); letter-spacing:.18em;
+  color:rgb(236 230 216 / .72); background:rgb(7 11 16 / .94);
+  border:1px solid rgb(236 230 216 / .22); border-radius:2px; box-shadow:none;
+  padding:2px 8px;
+}
+[data-overflow="0"] + .orr-extent--foot::before,
+[data-ext-end="1"] + .orr-extent--foot::before { display:none; }
 html.sf-reduce-motion .orr-extent::before { transition:none; }

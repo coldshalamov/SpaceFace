@@ -35,6 +35,46 @@ const DESKTOP = 'html:root:not([data-sf-mobile="1"]) body #screens > .sx-berth.o
 const M = `${DESKTOP} .sx-mkt.orr-market`;
 
 const CSS = `
+/* ---- the selected commodity's specimen portrait sits beside its title & clears the sale line -- */
+@media (min-width:901px) {
+  ${M} .sx-mkt__quote:has(> .sx-mkt__specimen) {
+    grid-template-columns:76px minmax(0, 1fr) auto !important;
+    column-gap:18px !important;
+  }
+  ${M} .sx-mkt__quote:has(> .sx-mkt__specimen) > * {
+    grid-column:1 / -1 !important;
+  }
+  ${M} .sx-mkt__quote > .sx-mkt__specimen {
+    grid-column:1 !important;
+    grid-row:1 / span 2 !important;
+    align-self:center !important;
+  }
+  ${M} .sx-mkt__quote:has(> .sx-mkt__specimen) > .sx-mkt-cat-inline {
+    grid-column:2 !important;
+    grid-row:1 !important;
+    align-self:end !important;
+  }
+  ${M} .sx-mkt__quote:has(> .sx-mkt__specimen) > .sx-mkt-title {
+    grid-column:2 !important;
+    grid-row:2 !important;
+    align-self:start !important;
+  }
+  ${M} .sx-mkt__quote:has(> .sx-mkt__specimen) > .sx-mkt__hero {
+    grid-column:3 !important;
+    grid-row:1 / span 2 !important;
+  }
+  ${M} .sx-mkt__quote:has(> .sx-mkt__specimen) > .sx-mkt-instrument {
+    grid-column:1 / -1 !important;
+  }
+}
+${M} .sx-mkt__quote > .sx-mkt-instrument { margin-top:8px !important; }
+${M} .sx-mkt-instrument__plot { height:clamp(84px, 10.5vh, 142px) !important; }
+${M} .sx-mkt__analysis { padding-bottom:10px !important; }
+${M} .sx-mkt__quote > .sx-mkt-sale { margin-top:6px !important; margin-bottom:2px !important; }
+@media (max-width:900px) {
+  ${M} .sx-mkt__quote:has(> .sx-mkt__specimen) > .sx-mkt__specimen { display:none !important; }
+}
+
 /* ---- the berth receipt clears the UNDOCK key on tall wide screens ----------------------------- */
 @media (min-width:1501px) and (min-height:801px) {
   ${DESKTOP}:has(.sx-mkt.orr-market) .sxb-ops .sx-receipt {
@@ -74,6 +114,104 @@ ${M} .orr-mkt-demand-key .orr-mkt-demand svg { width:56px; height:34px; }
    the same prices. */
 @media (max-height:880px) {
   ${M} .orr-mkt-tape { display:none !important; }
+}
+
+/* ==== RUGGEDIZED METAL-AND-GLASS MARKET EXCHANGE TELEMETRY ================================= */
+/* Active commodity row in register: gold-amber command highlight */
+${M} .sx-mkt-browser__rail[data-overflow="1"] {
+  padding-bottom:28px !important;
+}
+${M} .sx-mkt-row .sx-mkt-row__thumb {
+  width:24px !important;
+  height:24px !important;
+  --sf-thumb-size:24px;
+}
+${M} .sx-mkt-row:is(.is-active, .is-selected, [aria-selected="true"]) {
+  background:linear-gradient(90deg, rgb(224 181 94 / .22) 0%, rgb(224 181 94 / .07) 65%, rgb(14 29 42 / .92) 100%) !important;
+  box-shadow:inset 3px 0 0 #e6ca8f, inset 0 1px 0 rgb(255 241 207 / .20) !important;
+}
+${M} .sx-mkt-row:is(.is-active, .is-selected, [aria-selected="true"]) td.sx-mkt-row__name {
+  color:#fff1cf !important;
+}
+${M} .sx-mkt-row:is(.is-active, .is-selected, [aria-selected="true"]) td.sx-mkt-row__price {
+  color:#f3d178 !important;
+}
+
+/* Primary Buy / Sell commit key: chamfered gold-amber hardware command key (replaces solid pastel pill) */
+${M} .sx-trade__go.orr-lampkey {
+  position:relative !important;
+  isolation:isolate;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  min-height:38px !important;
+  height:38px !important;
+  padding:0 20px !important;
+  clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)) !important;
+  border:1px solid #e6ca8f !important;
+  border-radius:2px !important;
+  background:linear-gradient(180deg, rgb(224 181 94 / .34) 0%, rgb(224 181 94 / .16) 100%) !important;
+  box-shadow:inset 0 1px 0 rgb(255 241 207 / .28), 0 4px 12px rgb(0 0 0 / .48) !important;
+  color:#fff1cf !important;
+  font-weight:700 !important;
+  letter-spacing:.08em !important;
+  text-transform:uppercase !important;
+  text-shadow:none !important;
+}
+${M} .sx-trade__go.orr-lampkey::before,
+${M} .sx-trade__go.orr-lampkey::after {
+  content:none !important;
+  display:none !important;
+}
+${M} .sx-trade__go.orr-lampkey:not(:disabled):is(:hover, :focus-visible, :active) {
+  border-color:#fff1cf !important;
+  background:linear-gradient(180deg, rgb(224 181 94 / .48) 0%, rgb(224 181 94 / .24) 100%) !important;
+  color:#ffffff !important;
+}
+${M} .sx-trade__go.orr-lampkey:disabled {
+  border-color:rgb(154 198 218 / .26) !important;
+  background:linear-gradient(180deg, rgb(22 35 46 / .78), rgb(12 20 29 / .86)) !important;
+  color:rgb(236 230 216 / .62) !important;
+}
+
+/* Specimen housing, price trace oscilloscope bay, and route intelligence diagnostic cards */
+${M} .sx-mkt__specimen {
+  border:1px solid rgb(154 198 218 / .34) !important;
+  border-radius:2px !important;
+  background:linear-gradient(160deg, rgb(15 31 44 / .94), rgb(8 17 26 / .98)) !important;
+  box-shadow:inset 0 1px 0 rgb(208 238 250 / .16), 0 4px 12px rgb(0 0 0 / .48) !important;
+}
+${M} .sx-mkt-title {
+  color:#f4f9fc !important;
+  letter-spacing:.02em !important;
+}
+${M} .sx-mkt-instrument__plot {
+  box-sizing:border-box !important;
+  border:1px solid rgb(154 198 218 / .26) !important;
+  border-radius:2px !important;
+  background:
+    repeating-linear-gradient(0deg, rgb(158 220 233 / .028) 0 1px, transparent 1px 18px),
+    repeating-linear-gradient(90deg, rgb(158 220 233 / .028) 0 1px, transparent 1px 36px),
+    linear-gradient(180deg, rgb(6 14 22 / .92), rgb(10 21 31 / .96)) !important;
+  box-shadow:inset 0 1px 5px rgb(0 0 0 / .68) !important;
+  padding:6px 10px !important;
+}
+${M} .so-route-disclosure {
+  box-sizing:border-box !important;
+  border:1px solid rgb(154 198 218 / .24) !important;
+  border-radius:2px !important;
+  background:linear-gradient(180deg, rgb(14 28 40 / .88), rgb(9 18 27 / .94)) !important;
+  box-shadow:inset 0 1px 0 rgb(208 238 250 / .08) !important;
+  padding:6px 10px !important;
+  margin-top:6px !important;
+}
+${M} .so-route-disclosure > summary {
+  color:#9edce9 !important;
+  font-weight:700 !important;
+}
+${M} .sx-mkt__console {
+  border-top:1px solid rgb(158 220 233 / .26) !important;
+  padding-top:10px !important;
 }
 `;
 

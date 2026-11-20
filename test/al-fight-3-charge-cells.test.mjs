@@ -2,6 +2,7 @@ import test, { beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createSimulation } from '../src/core/sim.js';
+import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import { physics } from '../src/core/physics.js';
 import { combat } from '../src/systems/combat.js';
 import { weapons } from '../src/systems/weapons.js';
@@ -184,6 +185,8 @@ test('physical terrain, structure, craft and whip deaths spawn immediately and e
   const { victim, cell } = massKill(h);
   assert.equal(h.births.length, 1);
   assert.equal(h.births[0].tick, h.state.tick, 'birth is synchronous, below the 15-tick limit');
+  assert.deepEqual({ x: cell.pos.x, z: cell.pos.z }, { x: victim.pos.x, z: victim.pos.z },
+    'the safe distant drop keeps the kill position');
   assert.equal(h.player.cap, cap, 'creation alone does not recharge');
   assert.equal(cell.data.chargeCell.charge, 60);
   assert.equal(cell.data.chargeCell.collectAfter, h.state.simTime + 0.25);
@@ -306,6 +309,52 @@ test('collection respects overlap, grace, flight, life, docking and attachment, 
   assert.equal(h.player.cap, h.player.capMax);
   assert.equal(h.pickups.at(-1).chargeRestored, 1, 'near-full collection clamps');
   assert.equal(h.pickups.length, 2);
+});
+
+test('a newborn charge cell clears the pilot’s swept path and still collides and collects later', async () => {
+  const h = harness(); stopRegen(h);
+  h.player.cap = 1;
+  h.player.vel.x = 180;
+  const { cell } = massKill(h, { pos: { x: 14, z: 0 } });
+  const far = harness();
+  massKill(far);
+  assert.deepEqual(h.state.rng.getState(), far.state.rng.getState());
+  assert.equal(cell.data.chargeCell.collectAfter, h.state.simTime + 0.25);
+  assert.equal(h.births.length, 1);
+  const birth = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
+  const later = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: DT });
+  try {
+    const contactedCell = hit => (hit.aId === h.player.id && hit.bId === cell.id)
+      || (hit.bId === h.player.id && hit.aId === cell.id);
+    birth.syncFromEntities([h.player, cell]);
+    for (let tick = 1; tick <= 15; tick++) {
+      birth.step(DT, tick);
+      assert.equal(birth.drainContactImpacts().some(contactedCell), false, 'the birth must not kick the advancing pilot');
+    }
+    assert.equal(h.player.cap, 1);
+
+    h.state.simTime = cell.data.chargeCell.collectAfter + DT;
+    h.player.pos.x = cell.pos.x - 14;
+    h.player.pos.z = cell.pos.z;
+    h.player.vel.x = 180;
+    later.syncFromEntities([h.player, cell]);
+    let contact = false;
+    for (let tick = 1; tick <= 4; tick++) {
+      later.step(DT, tick);
+      contact ||= later.drainContactImpacts().some(contactedCell);
+    }
+    assert.equal(contact, true, 'the cell is still a physical body on a later approach');
+    overlap(h, cell);
+    h.owner.update(DT, h.state);
+    h.owner.update(DT, h.state);
+    h.bus.emit('entity:killed', h.kills[0]);
+    assert.equal(h.births.length, 1);
+    assert.equal(h.pickups.length, 1);
+    assert.equal(h.player.cap, 61);
+  } finally {
+    birth.dispose();
+    later.dispose();
+  }
 });
 
 async function latch(h, cell) {

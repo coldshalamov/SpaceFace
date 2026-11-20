@@ -32,15 +32,18 @@ import { installCspSafePlaywrightPolling, installFrameKeepalive } from './lib/pl
 import { installGameCadenceProbe, summarizeGameCadence } from './lib/gameCadenceProbe.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import {
+  answerFirstRunPrompt,
   armoryLaunchWord,
   bootToMenu,
   clickText,
   crucibleToArmory,
   readLoadError,
+  readPreparationSnap,
+  waitBootOverlayGone,
   waitForPreparationLaunch,
   waitUntilFlight,
 } from './player-truth/routes.mjs';
-import { fightBeat } from './player-truth/driver.mjs';
+import { approachFightBeat, fightBeat } from './player-truth/driver.mjs';
 import { captureHostPowerState } from './lib/performancePowerState.mjs';
 import {
   computeSourceSetDigest,
@@ -62,10 +65,14 @@ function usage() {
     '',
     '  --mode=swarm|gauntlet       Public Crucible ruleset (default: swarm)',
     '  --arena=NAME                Public arena label (default: door selection)',
+    '  --hull=NAME                 Select an offered hull by name or ID',
+    '  --weapon=NAME               Buy a named available gun in the opening Swarm armory',
     '  --seed=N                   Public Crucible seed (default: 4242)',
     '  --rounds=1..3              Number of public rounds to measure (default: 3)',
     '  --round-ms=N               Cadence window per round (default: 20000)',
     '  --profile-round=1..3       Optional main CDP + worker-cost diagnostic for one round',
+    '  --retire-and-return        Exercise Swarm retirement, debrief, hangar, and Back',
+    '  --loss-and-retry           Let the pilot take a real loss, then refit and fly the retry',
     '  --out=DIR                  Ignored output directory',
     '  --task-id=NAME             Isolated Electron profile label',
     '  --baseline-source=PATH     Existing validated .devshots source overlay manifest',
@@ -75,7 +82,8 @@ function usage() {
 export function parseArgs(argv = process.argv.slice(2)) {
   const args = {
     mode: 'swarm', arena: null, seed: DEFAULT_SEED, rounds: MAX_ROUNDS, roundMs: DEFAULT_ROUND_MS,
-    profileRound: null,
+    hull: null, weapon: null,
+    profileRound: null, retireAndReturn: false, lossAndRetry: false,
     out: null, taskId: 'combat-cadence-electron', baselineSource: null, help: false,
   };
   for (const raw of argv) {
@@ -85,16 +93,26 @@ export function parseArgs(argv = process.argv.slice(2)) {
     const [, key, value] = match;
     if (key === 'mode') args.mode = String(value || '');
     else if (key === 'arena') args.arena = String(value || '') || null;
+    else if (key === 'hull' || key === 'weapon') {
+      args[key] = value?.trim();
+      if (!args[key]) throw new Error(`--${key} requires a name`);
+    }
     else if (key === 'seed') args.seed = Number(value);
     else if (key === 'rounds') args.rounds = Number(value);
     else if (key === 'round-ms') args.roundMs = Number(value);
     else if (key === 'profile-round') args.profileRound = Number(value);
+    else if (key === 'retire-and-return' && value === undefined) args.retireAndReturn = true;
+    else if (key === 'loss-and-retry' && value === undefined) args.lossAndRetry = true;
     else if (key === 'out') args.out = String(value || '') || null;
     else if (key === 'task-id') args.taskId = String(value || '') || args.taskId;
     else if (key === 'baseline-source') args.baselineSource = String(value || '') || null;
     else throw new Error(`unknown argument: --${key}`);
   }
   if (!['swarm', 'gauntlet'].includes(args.mode)) throw new Error('--mode must be swarm or gauntlet');
+  if (args.weapon && args.mode !== 'swarm') throw new Error('--weapon requires the Swarm armory');
+  if (args.retireAndReturn && args.mode !== 'swarm') throw new Error('--retire-and-return requires Swarm');
+  if (args.lossAndRetry && args.mode !== 'swarm') throw new Error('--loss-and-retry requires Swarm');
+  if (args.lossAndRetry && args.retireAndReturn) throw new Error('choose one recovery route');
   if (!Number.isSafeInteger(args.seed) || args.seed <= 0 || args.seed > 0xffffffff) {
     throw new Error('--seed must be a positive safe integer <= 0xffffffff');
   }
@@ -492,6 +510,183 @@ async function finishRound(page, wave, log) {
   throw new Error(`round ${wave} did not resolve within ${ROUND_FINISH_TIMEOUT_MS}ms`);
 }
 
+async function verifyRetireAndReturn(page, log, outputDir) {
+  const state = await readRoundState(page);
+  if (state.phase !== 'active') {
+    const next = await waitForNextRoundControl(page, state.wave + 1, 60_000);
+    if (!next.alreadyActive) await clickText(page, next.word, { timeout: 30_000 });
+    await waitForActiveRound(page, state.wave + 1, 60_000);
+  }
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: /^End run\b/ }).click();
+  await page.getByRole('button', { name: /^Retire run\b/ }).click();
+  await page.waitForFunction(() => window.SF?.ctx?.screenManager?.top() === 'crucibleResults',
+    null, { timeout: 30_000 });
+  log('route retirement: debrief displayed');
+  await page.getByRole('button', { name: /^Back to the hangar\b/ }).click();
+  await page.waitForFunction(() => window.SF?.ctx?.screenManager?.top() === 'crucible',
+    null, { timeout: 30_000 });
+  try {
+    await page.locator('[data-screen="crucible"]').getByRole('button', { name: 'Back', exact: true }).click({ timeout: 15_000 });
+    await page.waitForFunction(() => window.SF?.ctx?.screenManager?.top() === 'mainMenu'
+      && window.SF?.state?.mode === 'menu' && window.SF?.state?.run?.phase === 'inactive',
+      null, { timeout: 30_000 });
+  } catch (error) {
+    const recoveryState = await readRoundState(page).catch(() => null);
+    const hangar = await page.locator('[data-screen="crucible"]').innerText({ timeout: 3_000 }).catch(() => '');
+    log(`route recovery state: ${JSON.stringify({ recoveryState, hangar: hangar.slice(0, 350) })}`);
+    await page.screenshot({ path: path.join(outputDir, 'recovery-miss.png'), timeout: 5_000 }).catch(() => {});
+    throw error;
+  }
+  log('route recovery: hangar Back returned to the active title');
+  return { trigger: 'retirement', result: 'title' };
+}
+
+async function prepareSwarmRoundOne(page, writeLog, resolvedOutputDir, weapon = null) {
+  const preparation = await waitForPreparationLaunch(page, { timeoutMs: 300_000 });
+  writeLog(`route preparation ready: ${JSON.stringify(preparation)}`);
+  const before = await readSwarmFit(page);
+  const starterShelf = page.getByRole('heading', { name: 'Starting guns', exact: true });
+  const guns = page.locator('#screens [data-category="Weapons"]:visible');
+  const browse = page.getByRole('button', { name: /Browse all/ });
+  let freeStarter;
+  try {
+    await waitBootOverlayGone(page, 30_000);
+    freeStarter = await starterShelf.isVisible();
+    if (!freeStarter) {
+      if (await browse.isVisible() && !(await guns.isVisible())) await browse.click();
+      await guns.click({ timeout: 15_000 });
+    }
+  } catch (error) {
+    const screen = await readPreparationSnap(page);
+    const events = await page.evaluate(() => window.__spacefacePreparationProbe).catch(() => null);
+    writeLog(`route preparation events: ${JSON.stringify(events)}`);
+    await page.screenshot({ path: path.join(resolvedOutputDir, 'equipment-miss.png'), timeout: 5_000 })
+      .catch((captureError) => writeLog(`equipment-miss capture: ${captureError.message.split('\n')[0]}`));
+    throw new Error(`Could not open the gun choices. Current screen: ${JSON.stringify(screen)}`, { cause: error });
+  }
+  const cards = page.locator('#screens .sf-cru-card:visible:not(.is-unavail):not(.is-fitted)');
+  const available = freeStarter
+    ? cards.filter({ has: page.locator('.sf-cru-price', { hasText: /^Free$/ }) }) : cards;
+  const firstGun = (weapon ? available.filter({ has: page.getByText(weapon, { exact: true }) })
+    : available).first();
+  if (weapon && !(await firstGun.count())) {
+    throw new Error(`Opening armory did not offer ${weapon}. Available guns: ${(await available.locator('.sf-cru-name').allTextContents()).join(', ')}`);
+  }
+  const gunName = await firstGun.locator('.sf-cru-name').innerText();
+  const offerId = await firstGun.getAttribute('data-offer-id');
+  await firstGun.click();
+  const beforeCredits = await page.evaluate(() => window.SF.state.run.credits);
+  const install = freeStarter ? page.getByRole('button', { name: 'Fit free', exact: true })
+    : page.getByRole('button', { name: /^Install · / });
+  writeLog(`route install requested: ${gunName.trim()} with ${beforeCredits} credits`);
+  await install.click();
+  try {
+    await page.waitForFunction(({ offer, balance, free }) => {
+      const { state, registry } = window.SF;
+      const receipt = registry.get('survivalDraft')?.preparationReceipt?.();
+      if (!receipt || receipt.offerId !== offer || receipt.outcome !== 'accepted') return false;
+      const expectedCharge = free ? receipt.price === 0 && receipt.charged === false : receipt.charged;
+      if (!expectedCharge) return false;
+      const ship = state.player.ownedShips?.[state.player.activeShipIndex];
+      return state.run.credits === balance - receipt.price && ship?.fittings?.[receipt.slotIndex] === receipt.defId;
+    }, { offer: offerId, balance: beforeCredits, free: freeStarter }, { timeout: 20_000 });
+  } catch (error) {
+    const purchase = await page.evaluate(() => {
+      const { state, registry } = window.SF;
+      return { credits: state.run?.credits,
+        receipt: registry.get('survivalDraft')?.preparationReceipt?.(),
+        weapons: state.entities.get(state.playerId)?.data?.weapons?.length ?? null,
+        events: window.__spacefacePreparationProbe };
+    }).catch(() => null);
+    writeLog(`route install result: ${JSON.stringify(purchase)}`);
+    await page.screenshot({ path: path.join(resolvedOutputDir, 'fitting-miss.png'), timeout: 5_000 })
+      .catch((captureError) => writeLog(`fitting-miss capture: ${captureError.message.split('\n')[0]}`));
+    throw error;
+  }
+  writeLog(`route opening equipment: installed ${gunName}`);
+  const fitted = await readSwarmFit(page);
+  const firstWord = await armoryLaunchWord(page);
+  if (!firstWord) throw new Error('public Crucible preparation had no launch control');
+  await clickText(page, firstWord, { timeout: 30_000 });
+  return { before, fitted };
+}
+
+async function readSwarmFit(page) {
+  return page.evaluate(() => {
+    const { state } = window.SF;
+    const ship = state.player.ownedShips?.[state.player.activeShipIndex];
+    const entity = state.entities.get(state.playerId);
+    return {
+      hull: ship?.defId ?? null,
+      fittings: ship?.fittings ?? [],
+      credits: state.run.credits,
+      seed: state.run.seed,
+      arena: state.run.arenaId,
+      alive: !!entity && entity.alive !== false && Number(entity.hull) > 0,
+    };
+  });
+}
+
+async function waitForSwarmLoss(page) {
+  const deadline = Date.now() + 150_000;
+  let state;
+  let beat = 0;
+  while (Date.now() < deadline) {
+    state = await readRoundState(page);
+    if (state.phase === 'ended' || state.phase === 'victory') break;
+    if (state.phase === 'active') {
+      await approachFightBeat(page, beat++);
+      continue;
+    }
+    if (['draft', 'cleanup', 'refit'].includes(state.phase)) {
+      const next = await armoryLaunchWord(page);
+      if (next) await clickText(page, next, { timeout: 10_000 });
+    }
+    await page.waitForTimeout(500);
+  }
+  await page.waitForFunction(() => {
+    const { ctx, registry, state } = window.SF;
+    return state.run.phase === 'ended' && ctx.screenManager.top() === 'crucibleResults'
+      && registry.get('survivalResults')?.lastResult()?.stopReason === 'player_death';
+  }, null, { timeout: 15_000 }).catch((error) => {
+    throw new Error(`No ordinary death debrief after waiting for enemy combat: ${JSON.stringify(state)}`, { cause: error });
+  });
+}
+
+async function verifyLossAndRetry(page, log, outputDir, initial, weapon) {
+  await waitForSwarmLoss(page);
+  log('route loss: combat death debrief displayed');
+  await page.getByRole('button', { name: /^Run it again\b/ }).click({ timeout: 20_000 });
+  const retried = await prepareSwarmRoundOne(page, log, outputDir, weapon);
+  for (const property of ['before', 'fitted']) {
+    if (!retried[property].alive || JSON.stringify(retried[property]) !== JSON.stringify(initial[property])) {
+      throw new Error(`Retry ${property} fit differs from the original: ${JSON.stringify({ initial: initial[property], actual: retried[property] })}`);
+    }
+  }
+  await waitForActiveRound(page, 1, 60_000);
+  await page.waitForFunction(flightReadyInPage, null, { timeout: 60_000 });
+  const before = await page.evaluate(() => {
+    const { state } = window.SF;
+    const pilot = state.entities.get(state.playerId);
+    return { x: pilot.pos.x, z: pilot.pos.z, heading: pilot.rot, draws: state.render.worldSubmittedFrames };
+  });
+  await page.keyboard.down('KeyW');
+  try {
+    await page.waitForFunction(({ x, z, heading, draws }) => {
+      const { state } = window.SF;
+      const pilot = state.entities.get(state.playerId);
+      if (pilot?.alive !== true || state.run.phase !== 'active' || state.render.worldSubmittedFrames <= draws) return false;
+      const forward = (pilot.pos.x - x) * Math.cos(heading) + (pilot.pos.z - z) * Math.sin(heading);
+      return forward > 3;
+    }, before, { timeout: 10_000 });
+  } finally {
+    await page.keyboard.up('KeyW');
+  }
+  log('route retry: same hull and arena, fresh budget, refitted equipment, and public thrust moved the ship');
+  return { trigger: 'combat death', result: 'round one flight', fit: retried };
+}
+
 async function readServedSourceIdentity(page, baseline) {
   const servedOverlay = baseline
     ? await page.evaluate(async () => {
@@ -540,7 +735,8 @@ export async function runCombatCadenceProbe({
     log(`[combat-cadence-electron] ${message}`);
   };
   const rounds = [];
-  const route = { mode: args.mode, ruleset: args.mode === 'gauntlet' ? 'scored' : 'swarm', arena: args.arena, seed: args.seed };
+  const route = { mode: args.mode, ruleset: args.mode === 'gauntlet' ? 'scored' : 'swarm',
+    arena: args.arena, seed: args.seed, hullRequested: args.hull, weaponRequested: args.weapon };
   const source = {
     requested: baseline?.relative || null,
     identity: {
@@ -567,6 +763,9 @@ export async function runCombatCadenceProbe({
   let powerStateStart = null;
   let powerStateEnd = null;
   let primaryError = null;
+  let recovery = null;
+  let openingFit = null;
+  let terminal = null;
   try {
     const sourceAtStart = await digestServedRuntimeSource(baseline);
     source.identity.sourceDigest = sourceAtStart.digest;
@@ -599,6 +798,17 @@ export async function runCombatCadenceProbe({
       bootstrapTimeoutMs: 10_000, pollIntervalMs: 75, allowAnyLoopbackPort: true,
     });
     rootUrl = assertIsolatedElectronRootUrl(await canonicalUrlTracker.waitForCanonicalRoot(10_000));
+    const bootFilm = await page.evaluate(async () => {
+      const video = document.getElementById('boot-intro-video');
+      const overlay = document.getElementById('boot-overlay');
+      if (!video || !overlay || getComputedStyle(overlay).display === 'none') return null;
+      const sample = () => ({ time: video.currentTime, ready: video.readyState,
+        frames: video.getVideoPlaybackQuality?.().totalVideoFrames ?? null, error: video.error?.code ?? null });
+      const start = sample();
+      await new Promise(resolve => setTimeout(resolve, 350));
+      return { source: video.currentSrc.split('/').pop(), start, end: sample() };
+    }).catch(() => null);
+    writeLog(`route boot film: ${JSON.stringify(bootFilm)}`);
     await awaitElectronInitialCanonicalLoad(page, electronApp, rootUrl);
     source.identity = {
       ...source.identity,
@@ -616,17 +826,33 @@ export async function runCombatCadenceProbe({
       writeLog(`opt-in diagnostic armed for public round ${args.profileRound} (500us main CDP samples + worker-cost RPC)`);
     }
 
-    await bootToMenu(page, rootUrl, (name, ok, detail) => writeLog(`route ${name}: ${ok} ${detail || ''}`));
-    await crucibleToArmory(page, {
-      ruleset: route.ruleset, arena: args.arena, seed: args.seed,
-    }, (name, ok, detail) => writeLog(`route ${name}: ${ok} ${detail || ''}`));
-
+    const routeStep = (name, ok, detail) => writeLog(`route ${name}: ${ok} ${detail || ''}`);
+    await bootToMenu(page, rootUrl, routeStep);
+    await answerFirstRunPrompt(page, routeStep);
+    await page.screenshot({ path: path.join(resolvedOutputDir, 'title.png'), timeout: 5_000 })
+      .catch((error) => writeLog(`title capture: ${error.message.split('\n')[0]}`));
     if (args.mode === 'swarm') {
-      await waitForPreparationLaunch(page, { timeoutMs: 300_000 });
-      const firstWord = await armoryLaunchWord(page);
-      if (!firstWord) throw new Error('public Crucible preparation had no launch control');
-      await clickText(page, firstWord, { timeout: 30_000 });
+      await page.evaluate(() => {
+        const { bus, state, ctx } = window.SF;
+        const events = [];
+        window.__spacefacePreparationProbe = events;
+        for (const type of ['ui:screenTop', 'ui:closeAll', 'ui:popScreen', 'ui:closeScreen',
+          'mode:changed', 'run:transitioned', 'game:started', 'game:startFailed',
+          'run:draftPickRequested', 'run:draftPickRejected']) {
+          bus.on(type, (payload) => {
+            if (events.length === 40) events.shift();
+            events.push({ ms: Math.round(performance.now()), type, id: payload?.id,
+              offer: payload?.offerId, reason: payload?.reason, credits: state.run?.credits,
+              top: ctx.screenManager?.top(), mode: state.mode, phase: state.run?.phase });
+          });
+        }
+      });
     }
+    await crucibleToArmory(page, {
+      ruleset: route.ruleset, arena: args.arena, seed: args.seed, hull: args.hull,
+    }, routeStep);
+
+    if (args.mode === 'swarm') openingFit = await prepareSwarmRoundOne(page, writeLog, resolvedOutputDir, args.weapon);
     await waitUntilFlight(page, { timeout: 300_000, active: true });
     // Reuse the public authored-flight readiness contract after the route says flight is active.
     // The extra completed-world gate below keeps the first cadence sample out of cold startup.
@@ -650,9 +876,25 @@ export async function runCombatCadenceProbe({
       if (!next.alreadyActive) await clickText(page, next.word, { timeout: 30_000 });
       await waitForActiveRound(page, wave + 1, 120_000);
     }
+    if (args.retireAndReturn) recovery = await verifyRetireAndReturn(page, writeLog, resolvedOutputDir);
+    if (args.lossAndRetry) recovery = await verifyLossAndRetry(page, writeLog, resolvedOutputDir, openingFit, args.weapon);
   } catch (error) {
     primaryError = error;
     writeLog(`FAIL ${error.message || error}`);
+    if (page && !page.isClosed() && error.message?.startsWith('Crucible ended before round')) {
+      terminal = await page.evaluate(() => {
+        const sf = window.SF;
+        const state = sf?.state;
+        if (!['ended', 'victory'].includes(state?.run?.phase)) return null;
+        const result = sf.registry.get('survivalResults')?.lastResult();
+        return { wave: state.run.wave, phase: state.run.phase, stopReason: result?.stopReason ?? null,
+          debriefText: document.querySelector('[data-screen="crucibleResults"]')?.innerText.trim().slice(0, 1200) ?? null };
+      }).catch(() => null);
+      if (terminal) {
+        terminal.screenshot = await page.screenshot({ path: path.join(resolvedOutputDir, 'terminal-result.png'), timeout: 5_000 })
+          .then(() => 'terminal-result.png', () => null);
+      }
+    }
   } finally {
     if (page) {
       powerStateEnd = await captureHostPowerState(page);
@@ -699,6 +941,9 @@ export async function runCombatCadenceProbe({
         profileLabel: args.profileRound == null ? null : 'opt-in-main-cpu-and-worker-cost',
       },
       rounds,
+      openingFit,
+      terminal,
+      recovery,
       source,
       powerState: { start: powerStateStart, end: powerStateEnd },
       runtime: { rootUrl, pid: childProcess?.pid ?? null, isolated: true },

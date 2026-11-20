@@ -92,7 +92,9 @@ if (process.argv.includes('--diagnose')) {
       const wrapper = path.join(root, '.devshots/tools/perfetto/trace_processor');
       const processor = value('--trace-processor');
       if (processor || existsSync(wrapper)) {
-        const trace = path.join(root, '.devshots/main-thread-profile', label + '-diagnose', 'trace.json');
+        const traceDir = path.join(root, '.devshots/main-thread-profile', label + '-diagnose');
+        const capture = JSON.parse(await readFile(path.join(traceDir, 'trace-capture.json'), 'utf8'));
+        const trace = path.join(traceDir, capture.streamCompression === 'gzip' ? 'trace.json.gz' : 'trace.json');
         // Inclusive slices overlap and must not be summed as a wall-time budget.
         // Import-health warnings remain in the log rather than being discarded.
         const sql = 'SELECT name, COUNT(*) AS slices, ROUND(MAX(dur)/1e6,3) AS max_ms, '

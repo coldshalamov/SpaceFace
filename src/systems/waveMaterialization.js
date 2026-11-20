@@ -19,6 +19,8 @@ import { swarmDoctrineStamp, SWARM_MIN_ARRIVAL_WU } from '../data/swarmMode.js';
 import { swarmCharacterFor } from '../data/swarmCharacter.js';
 import { swarmFeel, SWARM_FEEL_STAMP } from '../data/swarmFeelProfile.js';
 import { swarmFortifyCorridorForGate } from '../data/swarmFortify.js';
+import { contextualAttachmentWorlds } from './tetherGameplay.js';
+import { isMasslineObstructed } from '../world/asteroidField.js';
 import { CINDER_BOSS_ROLE } from './cinderSluiceArena.js';
 import { LAGRANGE_BOSS_ROLE } from './lagrangeCrucible.js';
 import { CRYO_BOSS_ROLE } from './cryoDriftArena.js';
@@ -390,13 +392,22 @@ export function materializeWaveBatch(ctx, request) {
       }
       if (feel) applySwarmFeelSpec(spec, req.enemyId, feel);
       if (req.swarm === true && !pinned) {
+        const player = ctx.state?.entities?.get?.(ctx.state?.playerId);
+        // The one reserve for Iron Maw's first warning must admit an ordinary line.
+        // Reject blocked approaches in the same swept gate search that seats stock arrivals.
+        const lineTarget = req.requireClearMassline && player?.pos ? { ...spec } : null;
+        const require = lineTarget ? (candidate) => {
+          if (Math.hypot(candidate.x - player.pos.x, candidate.z - player.pos.z) < SWARM_MIN_ARRIVAL_WU) return false;
+          lineTarget.pos = candidate;
+          return !isMasslineObstructed({ state: ctx.state, player, target: lineTarget,
+            ...contextualAttachmentWorlds(player, lineTarget, candidate) });
+        } : null;
         const open = findSwarmArrival(ctx.state, pos, Number.isFinite(spec.radius) ? spec.radius : 10,
           { anchor, velocity: spec.vel, reserved, clusterCenter: clumped ? { x: clumpX, z: clumpZ } : null,
-            clusterRadius: SWARM_CLUMP_RADIUS_WU });
+            clusterRadius: SWARM_CLUMP_RADIUS_WU, require });
         // E4: the blocked-arrival search may legally settle closer than the materialisation
         // line (its own floor is hull-clearance, not the screen). A slot that cannot offer a
         // spot outside the line defers — the batch retries next window, it does not pop in.
-        const player = ctx.state?.entities?.get?.(ctx.state?.playerId);
         if (!open || (player && player.pos
           && Math.hypot(open.x - player.pos.x, open.z - player.pos.z) < SWARM_MIN_ARRIVAL_WU)) {
           deferred++;
@@ -481,6 +492,9 @@ export function materializeWaveBatch(ctx, request) {
         spec.data.contractTargetId = playerId ?? null;
       }
       spec.data.runWave = Number.isInteger(req.wave) ? req.wave : 0;
+      if (req.swarm === true && req.enemyId === 'warden_escort' && Number.isInteger(req.wardenPair)) {
+        spec.data.swarmWardPair = req.wardenPair;
+      }
       if (req.swarm === true && typeof req.gateGroup === 'string' && GATE_BEARINGS[req.gateGroup]) {
         spec.data.swarmGateGroup = fortifiedIngress ? ingressGroup : req.gateGroup;
         if (fortifiedIngress) {

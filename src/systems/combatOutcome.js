@@ -167,33 +167,20 @@ function retargetChosenOffRecycledHull(state, own, offer) {
   chosen.entityId = nextId != null && nextId !== entity.id ? nextId : null;
 }
 
-function sectorWreckIds(state, sectorId) {
+function wreckMarkerId(marker) {
+  return marker?.markerId ?? marker?.id ?? null;
+}
+
+function sectorWreckMarkers(state, sectorId) {
   const bag = state && state.aftermathWrecks && state.aftermathWrecks.bySector;
   const list = bag && sectorId ? bag[sectorId] : null;
   if (!Array.isArray(list)) return [];
-  const ids = [];
-  for (const marker of list) {
-    // Same player-hull exclusion as aftermathWrecks.isPlayerWreckMarker. Inlined so this
-    // observer does not load the wreck spawner.
-    if (!marker || marker.playerWreck === true || marker.kind === 'player_wreck') continue;
-    const id = marker.markerId != null ? marker.markerId : marker.id;
-    if (id != null) ids.push(id);
-  }
-  return ids;
-}
-
-function wreckMarkerForVictim(state, sectorId, victimId) {
-  if (victimId == null) return null;
-  const bag = state && state.aftermathWrecks && state.aftermathWrecks.bySector;
-  const list = bag && sectorId ? bag[sectorId] : null;
-  if (!Array.isArray(list)) return null;
-  for (const marker of list) {
-    if (!marker || marker.playerWreck === true || marker.kind === 'player_wreck') continue;
-    if (marker.victimId !== victimId) continue;
-    const id = marker.markerId != null ? marker.markerId : marker.id;
-    if (id != null) return id;
-  }
-  return null;
+  return list.filter(marker => {
+    if (wreckMarkerId(marker) == null || marker.playerWreck === true || marker.kind === 'player_wreck') return false;
+    // Authored sites retain their canonical records after terminal salvage or destruction.
+    if (marker.siteOutcome === 'exhausted' || marker.siteOutcome === 'destroyed') return false;
+    return marker.salvagePool == null || Object.values(marker.salvagePool).some(quantity => Number(quantity) > 0);
+  });
 }
 
 function compactRecord(state, entity, payload, outcome, reason) {
@@ -266,6 +253,9 @@ export const combatOutcome = {
       if (this.bus && typeof this.bus.emit === 'function') this.bus.emit('combat:aftermathChosen', chosen);
     };
     if (this.bus && typeof this.bus.on === 'function') {
+      const onWreckSettled = (payload) => {
+        if (payload?.sectorId && payload.sectorId === this.state?.world?.currentSectorId) this._publishAftermath();
+      };
       this.bus.on('entity:killed', this._onKilled);
       this.bus.on('ai:flee', this._onFlee);
       this.bus.on('combat:subsystemDisabled', this._onDisabled);
@@ -273,6 +263,8 @@ export const combatOutcome = {
       this._unsubs = [
         this.bus.on('entity:spawned', (payload) => this._onEntitySpawned(payload)),
         this.bus.on('entity:destroyed', (payload) => this._onEntityDestroyed(payload)),
+        this.bus.on('aftermathWreck:completed', onWreckSettled),
+        this.bus.on('aftermathWreck:retired', onWreckSettled),
         this.bus.on('save:loaded', () => this._wakeCombatOutcomeQuiet()),
         // Run boundary: byEntity dedup must not leak into the next game — entity ids recycle
         // (nextEntityId resets to 1), so stale dedup rows would silently drop new records.
@@ -507,19 +499,19 @@ export const combatOutcome = {
       return null;
     }
     const sectorId = state.world && state.world.currentSectorId || null;
-    const wreckIds = sectorWreckIds(state, sectorId);
+    const wrecks = sectorWreckMarkers(state, sectorId);
+    const wreckIds = wrecks.map(wreckMarkerId);
     const outcomes = [];
     for (const record of own.outcomes) {
       if (!record || record.sectorId !== sectorId) continue;
       const entity = entityFor(state, record.entityId);
       const same = sameOccupant(record, entity);
-      const livingOther = !!(entity && entity.alive !== false && !same);
       const killReceipt = record.outcome === 'killed' || record.dead === true;
-      // The number is not this body. A living reuse is never the focus. Once a wreck is
-      // here, destroying that body keeps salvage on that ship's own hulk, not the newest one.
-      const notThisBody = killReceipt && !same && (livingOther || wreckIds.length > 0);
-      const ownWreck = notThisBody ? wreckMarkerForVictim(state, sectorId, record.entityId) : null;
-      const entityId = notThisBody ? ownWreck : record.entityId;
+      // After the victim leaves the entity store, its hulk must still exist in the wreck owner.
+      // The historical outcome can stay while the last legal salvage target disappears.
+      const entityId = killReceipt && !same
+        ? wreckMarkerId(wrecks.find(marker => marker.victimId === record.entityId))
+        : record.entityId;
       outcomes.push({
         outcome: record.outcome,
         entityId,
@@ -581,20 +573,21 @@ export const combatOutcome = {
     own.aftermath = offer;
     const sig = `${sectorId}|${offer.choices.map((choice) => `${choice.id}:${choice.label}`).join(',')}`;
     const verbsChanged = sig !== this._choiceSig;
-    // Presentation follows the actual selected target, never the nearby observation anchor.
-    // A missing body or an unverified wreck marker retains a generic noun.
+    // The actual target supplies its label. The nearby observation only admits the card.
     const identities = {};
     const presented = offer.choices.map((choice) => {
       const target = offer.targets[choice.id] ?? null;
-      const entity = target == null ? null : entityFor(state, target);
-      const record = target == null ? null : own.byEntity[target];
+      const marker = choice.id === 'salvage' ? wrecks.find(row => wreckMarkerId(row) === target) : null;
+      const entity = target == null || marker ? null : entityFor(state, target);
+      const record = target == null || marker ? null : own.byEntity[target];
       const matches = record && sameOccupant(record, entity);
       const generation = entity ? occupantGenerationOf(entity) : null;
       const identity = JSON.stringify([sectorId, choice.id, target, generation,
         matches ? record.tick : null, matches ? record.occupantGeneration : null]);
       identities[choice.id] = identity;
-      const name = matches && Number.isSafeInteger(generation) && generation > 0 && record.label
-        ? String(record.label).replace(/\s+/g, ' ').slice(0, 80) : null;
+      const markerName = marker?.victimLabel !== marker?.victimClass ? marker?.victimLabel : null;
+      const entityName = matches && Number.isSafeInteger(generation) && generation > 0 ? record.label : null;
+      const name = String(markerName || entityName || '').replace(/\s+/g, ' ').trim().slice(0, 80);
       const noun = choice.id === 'salvage' ? 'Wreck' : choice.id === 'pursuit' ? 'Fled' : choice.id === 'rescue' ? 'Survivor' : null;
       return { id: choice.id, label: choice.label, targetIdentity: identity,
         context: noun && name ? `${noun}: ${name}` : null };

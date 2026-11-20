@@ -45,7 +45,7 @@ export const FLIGHT_ACTIONS = Object.freeze([
 ]);
 
 // The fight set: movement, the gun, the Line, the five powers, the defensive/utility verbs that
-// matter in contact. Travel drive, autopilot, cruise, map/codex/cargo UI and photo/drill are out —
+// matter in contact. Travel drive, autopilot, cruise and the other off-fight verbs are out —
 // except the low-hull flee below (X5 #10): a pilot about to die may always light the long burn.
 export const COMBAT_ACTIONS = Object.freeze([
   'forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'brake', 'boost',
@@ -145,21 +145,20 @@ export function contextActionAllowed(state, action) {
 }
 
 // ---- the UI letter layer ---------------------------------------------------------------------
-// One name per interface key. `ui/input.js` asks THIS gate before it opens a screen, so a fight
-// cannot pull up the chart, the tech tree or the codex mid-turn. The full set is every interface
-// verb the router owns; the combat set is the ones that keep the pilot in the fight (a pause, a
-// read, a lower volume, a save) without leaving it. Station and map keep the full set: those
-// screens are how the player gets back out.
+// Keyboard, gamepad and touch share this interface gate. An active target or low hull still
+// allows an explicit navigation choice, including the chart action advertised by the mission HUD.
+// The combat set reserves unrelated full screens for ordinary flight.
 export const UI_ACTIONS = Object.freeze([
   'pause', 'help', 'map', 'localmap', 'starmap', 'techTree', 'missionLog', 'codex', 'find',
-  'cargo', 'comms', 'fleetCommand', 'claimBase', 'drill', 'band', 'recallObjective',
+  'cargo', 'comms', 'fleetCommand', 'claimBase', 'drill', 'fieldBuild', 'band', 'recallObjective',
   'dismissVoice', 'zoom', 'save', 'load', 'ship', 'footprint', 'range', 'overview', 'debug',
   // Station / map surfaces
   'select', 'confirm', 'back', 'undock',
 ]);
 
 export const COMBAT_UI_ACTIONS = Object.freeze([
-  'pause', 'help', 'missionLog', 'cargo', 'comms', 'find', 'recallObjective', 'dismissVoice',
+  'pause', 'help', 'map', 'localmap', 'starmap', 'missionLog', 'cargo', 'comms', 'find',
+  'recallObjective', 'dismissVoice',
   'zoom', 'save', 'load',
 ]);
 
@@ -245,7 +244,11 @@ function compactKeys(keys) {
  */
 export function contextHelpRows(state, resolveKey = null) {
   const ctx = inputContextFor(state);
-  if (ctx === 'swarm') return SWARM_HELP_ROWS;
+  if (ctx === 'swarm') return SWARM_HELP_ROWS.map(([stock, verb, action]) => {
+    if (!action || typeof resolveKey !== 'function') return [stock, verb];
+    const key = resolveKey(action);
+    return [action === 'tether' && key && key !== 'RMB' ? `${key} / RMB` : key || 'Unbound', verb];
+  });
   const specs = CARD_SPECS[ctx] || CARD_SPECS.flight;
   const rows = [];
   for (const spec of specs) {

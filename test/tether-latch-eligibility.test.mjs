@@ -1067,7 +1067,7 @@ test('Massline Spool payout policy survives Continue and legacy or corrupt saves
 });
 
 test('Heavy-Duty Winch scales normalized line input by its snapshotted reel rate', () => {
-  const reelFor = ({ mult, axis, dt, ticks = 1 }) => {
+  const reelFor = ({ mult, axis, dt, ticks = 1, legacyStrain }) => {
     const derived = mult == null ? {} : { tetherReelRateMult: mult };
     const h = buildHarness([asteroid(722, { pos: { x: 120, z: 0 } })], {
       player: player({ data: { derived } }),
@@ -1076,6 +1076,7 @@ test('Heavy-Duty Winch scales normalized line input by its snapshotted reel rate
     fireLatch(h);
     const attachment = h.attachments.get(h.system._active.attachmentId);
     const before = attachment.restLength;
+    if (legacyStrain) h.state.lineProgression = legacyStrain;
     h.state.input.actions = {
       tetherFire: false, tetherCut: false, reelDelta: 0,
       massline: {
@@ -1101,6 +1102,10 @@ test('Heavy-Duty Winch scales normalized line input by its snapshotted reel rate
   };
 
   const base = reelFor({ mult: undefined, axis: 0.5, dt: 0.25 });
+  const restored = reelFor({ axis: 0.5, dt: 0.25, legacyStrain: {
+    winchHeat: 1, overClass: true, overClassReelFactor: .62, overClassTurnFactor: .55, overClassSnapTensionFactor: 1.35,
+  } });
+  assert.equal(restored.delta, base.delta, 'old mass-only strain never reduces the first winch command');
   // CADENCE authored change: the old pins were linear, delta = rate × axis × dt. The normalized
   // axis now goes through the precision response curve (deadzone 0.08, 0.3·u + 0.7·u³) and a
   // bounded motor spin-up (0.12 s to full rate). At dt = 0.25 one tick exceeds the spin-up window,

@@ -7461,6 +7461,17 @@ function WebGLProgram( renderer, cacheKey, parameters, bindingStates ) {
 
 	};
 
+	this.canReuseAfterRelease = function () {
+
+		// A failed link has no reflected interface, including when the game's
+		// link reporter replaces Three's debug diagnostics. A program with an
+		// empty interface can be discarded without another synchronous GL query.
+		return cachedUniforms !== undefined && cachedAttributes !== undefined &&
+			this.diagnostics?.runnable !== false &&
+			( cachedUniforms.seq.length > 0 || Object.keys( cachedAttributes ).length > 0 );
+
+	};
+
 	// indicate when the program is ready to be used. if the KHR_parallel_shader_compile extension isn't supported,
 	// flag the program as ready immediately. It may cause a stall when it's first used.
 
@@ -7639,13 +7650,14 @@ function isPackedRGFormat( format ) {
 
 }
 
-function WebGLPrograms( renderer, environments, extensions, capabilities, bindingStates, clipping ) {
+function WebGLPrograms( renderer, environments, extensions, capabilities, bindingStates, clipping, idleProgramLimit ) {
 
 	const _programLayers = new Layers();
 	const _customShaders = new WebGLShaderCache();
 	const _activeChannels = new Set();
 	const programs = [];
 	const programsMap = new Map();
+	const idlePrograms = new Map();
 
 	const logarithmicDepthBuffer = capabilities.logarithmicDepthBuffer;
 
@@ -8246,7 +8258,17 @@ function WebGLPrograms( renderer, environments, extensions, capabilities, bindin
 
 		} else {
 
-			program = new WebGLProgram( renderer, cacheKey, parameters, bindingStates );
+			program = idlePrograms.get( cacheKey );
+			if ( program === undefined ) {
+
+				program = new WebGLProgram( renderer, cacheKey, parameters, bindingStates );
+
+			} else {
+
+				idlePrograms.delete( cacheKey );
+				program.usedTimes = 1;
+
+			}
 			programs.push( program );
 
 			programsMap.set( cacheKey, program );
@@ -8269,8 +8291,25 @@ function WebGLPrograms( renderer, environments, extensions, capabilities, bindin
 			// Remove from map
 			programsMap.delete( program.cacheKey );
 
-			// Free WebGL resources
-			program.destroy();
+			// A later streamed material can use the same linked and reflected shader.
+			// Retire the old geometry bindings and only keep the program itself.
+			if ( idleProgramLimit > 0 && program.canReuseAfterRelease() ) {
+
+				bindingStates.releaseStatesOfProgram( program );
+				idlePrograms.set( program.cacheKey, program );
+				if ( idlePrograms.size > idleProgramLimit ) {
+
+					const oldestKey = idlePrograms.keys().next().value;
+					idlePrograms.get( oldestKey ).destroy();
+					idlePrograms.delete( oldestKey );
+
+				}
+
+			} else {
+
+				program.destroy();
+
+			}
 
 		}
 
@@ -8284,6 +8323,8 @@ function WebGLPrograms( renderer, environments, extensions, capabilities, bindin
 
 	function dispose() {
 
+		for ( const program of idlePrograms.values() ) program.destroy();
+		idlePrograms.clear();
 		_customShaders.dispose();
 
 	}
@@ -16673,7 +16714,8 @@ class WebGLRenderer {
 			objects = new WebGLObjects( _gl, geometries, attributes, bindingStates, info );
 			morphtargets = new WebGLMorphtargets( _gl, capabilities, textures );
 			clipping = new WebGLClipping( properties );
-			programCache = new WebGLPrograms( _this, environments, extensions, capabilities, bindingStates, clipping );
+			const idleProgramLimit = Math.max( 0, Math.min( 64, Math.floor( parameters.idleProgramLimit ) || 0 ) );
+			programCache = new WebGLPrograms( _this, environments, extensions, capabilities, bindingStates, clipping, idleProgramLimit );
 			materials = new WebGLMaterials( _this, properties );
 			renderLists = new WebGLRenderLists();
 			renderStates = new WebGLRenderStates( extensions );
@@ -17561,6 +17603,20 @@ class WebGLRenderer {
 
 		// Compile
 
+		function collectVisibleLights( object, visit ) {
+
+			if ( object.visible === false || ! object.hasLightsOrLod() ) return;
+			if ( object.isLight ) visit( object );
+
+			const children = object.children;
+			for ( let i = 0, l = children.length; i < l; i ++ ) {
+
+				collectVisibleLights( children[ i ], visit );
+
+			}
+
+		}
+
 		function prepareMaterial( material, scene, object ) {
 
 			if ( material.transparent === true && material.side === DoubleSide && material.forceSinglePass === false ) {
@@ -17606,7 +17662,7 @@ class WebGLRenderer {
 
 			// gather lights from both the target scene and the new object that will be added to the scene.
 
-			targetScene.traverseVisible( function ( object ) {
+			const addLight = function ( object ) {
 
 				if ( object.isLight && object.layers.test( camera.layers ) ) {
 
@@ -17620,27 +17676,21 @@ class WebGLRenderer {
 
 				}
 
-			} );
+			};
 
-			if ( scene !== targetScene ) {
+			if ( scene !== targetScene && targetScene.isScene === true && targetScene.matrixWorldAutoUpdate === false &&
+				targetScene.traverseVisible === Object3D.prototype.traverseVisible ) {
 
-				scene.traverseVisible( function ( object ) {
+				// SpaceFace precompiles individual assets against a larger live lighting scene.
+				collectVisibleLights( targetScene, addLight );
 
-					if ( object.isLight && object.layers.test( camera.layers ) ) {
+			} else {
 
-						currentRenderState.pushLight( object );
-
-						if ( object.castShadow ) {
-
-							currentRenderState.pushShadow( object );
-
-						}
-
-					}
-
-				} );
+				targetScene.traverseVisible( addLight );
 
 			}
+
+			if ( scene !== targetScene ) scene.traverseVisible( addLight );
 
 			currentRenderState.setupLights();
 
@@ -17810,7 +17860,7 @@ class WebGLRenderer {
 
 		// Rendering
 
-		let _exactTargetDrawables = null;
+		let _exactTarget = null;
 
 		this.canFilterExactTargetDrawables = function ( scene, camera ) {
 
@@ -17821,19 +17871,19 @@ class WebGLRenderer {
 
 		};
 
-		this.renderExactTargetDrawables = function ( scene, camera, drawables ) {
+		this.renderExactTargetDrawables = function ( scene, camera, drawables, admissionPass = false ) {
 
 			// The next native render consumes this before invoking any callback, so a nested
 			// renderer.render() uses its own ordinary drawable set. Keep this.render as the
 			// entry point so the game's render error and diagnostics wrappers still run.
-			_exactTargetDrawables = drawables;
+			_exactTarget = { drawables, admissionPass };
 			try {
 
 				return this.render( scene, camera );
 
 			} finally {
 
-				_exactTargetDrawables = null;
+				_exactTarget = null;
 
 			}
 
@@ -17855,8 +17905,9 @@ class WebGLRenderer {
 		 */
 		this.render = function ( scene, camera, capturedList ) {
 
-			const exactTargetDrawables = _exactTargetDrawables;
-			_exactTargetDrawables = null;
+			const exactTarget = _exactTarget;
+			const exactTargetDrawables = exactTarget?.drawables ?? null;
+			_exactTarget = null;
 
 			if ( camera !== undefined && camera.isCamera !== true ) {
 
@@ -17967,7 +18018,7 @@ class WebGLRenderer {
 
 			} else {
 
-				projectObject( scene, camera, 0, _this.sortObjects, exactTargetDrawables );
+				projectObject( scene, camera, 0, _this.sortObjects, exactTargetDrawables, exactTarget?.admissionPass );
 
 				currentRenderList.finish();
 
@@ -18074,7 +18125,32 @@ class WebGLRenderer {
 
 					if ( _renderBackground ) background.render( scene );
 
-					renderScene( currentRenderList, scene, camera );
+					if ( exactTarget?.admissionPass ) {
+
+						// Material/attribute setup and actual draw submission still run against the
+						// live target. The offscreen warm-up needs only a small color raster.
+						const area = _currentScissorTest ? _currentScissor : _currentViewport;
+						const width = Math.min( area.z, 16 ), height = Math.min( area.w, 16 );
+						const sample = new Vector4( area.x + Math.floor( ( area.z - width ) / 2 ),
+							area.y + Math.floor( ( area.w - height ) / 2 ), width, height );
+						state.scissor( sample );
+						state.setScissorTest( true );
+						try {
+
+							renderScene( currentRenderList, scene, camera );
+
+						} finally {
+
+							state.scissor( _currentScissor );
+							state.setScissorTest( _currentScissorTest );
+
+						}
+
+					} else {
+
+						renderScene( currentRenderList, scene, camera );
+
+					}
 
 				}
 
@@ -18393,13 +18469,16 @@ class WebGLRenderer {
 
 		}
 
-		function projectObject( object, camera, groupOrder, sortObjects, exactTargetDrawables ) {
+		function projectObject( object, camera, groupOrder, sortObjects, exactTargetDrawables, pruneBranches ) {
 
 			if ( object.visible === false ) return;
-			// An excluded drawable previously had visible=false for the touch, hiding its
-			// entire branch. Keep the ordinary light census and group/LOD traversal intact.
-			if ( exactTargetDrawables !== null && ( object.isMesh || object.isLine || object.isPoints || object.isSprite )
-				&& ! exactTargetDrawables.has( object ) ) return;
+			if ( exactTargetDrawables !== null && ! exactTargetDrawables.has( object ) ) {
+
+				// Excluded drawables hide their whole branch, as in the visibility fallback.
+				if ( object.isMesh || object.isLine || object.isPoints || object.isSprite ) return;
+				if ( pruneBranches && ! object.hasLightsOrLod() ) return;
+
+			}
 
 			const visible = object.layers.test( camera.layers );
 
@@ -18516,7 +18595,7 @@ class WebGLRenderer {
 
 			for ( let i = 0, l = children.length; i < l; i ++ ) {
 
-				projectObject( children[ i ], camera, groupOrder, sortObjects, exactTargetDrawables );
+				projectObject( children[ i ], camera, groupOrder, sortObjects, exactTargetDrawables, pruneBranches );
 
 			}
 

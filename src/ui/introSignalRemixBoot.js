@@ -3,6 +3,7 @@
  * main-thread renderer, or a frozen canvas masks an otherwise playing movie.
  */
 import { attachIntroSignalRemix } from './introSignalRemix.js';
+import { postTaskAtBackgroundPriorityBounded } from '../core/backgroundPost.js';
 const installed = new WeakMap();
 const selector = '#boot-intro-video:not([data-boot-native]), #cinematic-splash .cine-video';
 
@@ -30,10 +31,12 @@ export function installIntroSignalRemix(document = globalThis.document, env = gl
     return true;
   }
   function cancelInit(entry) {
-    if (entry.idle == null) return;
-    if (entry.idleAPI) env.cancelIdleCallback?.(entry.idle);
-    else env.cancelAnimationFrame?.(entry.idle);
-    entry.idle = null;
+    const task = entry.initTask;
+    if (!task) return;
+    entry.initTask = null;
+    if (task.kind === 'video') entry.video.cancelVideoFrameCallback?.(task.id);
+    else if (task.kind === 'idle') env.cancelIdleCallback?.(task.id);
+    else env.cancelAnimationFrame?.(task.id);
   }
   function reconcile(entry) {
     if (disposed || entry.dead) return;
@@ -59,18 +62,39 @@ export function installIntroSignalRemix(document = globalThis.document, env = gl
     if (!show || reduced || entry.video.paused || entry.video.readyState < 2 || entry.failed) {
       cancelInit(entry); return;
     }
-    if (entry.idle != null) return;
+    if (entry.initTask) return;
+    const title = entry.root.id === 'cinematic-splash';
+    const task = { kind: 'frame', id: null };
+    entry.initTask = task;
+    // Give the actual decoded title film the first frame, before opening a second GL context.
+    if (title && !entry.presented && typeof entry.video.requestVideoFrameCallback === 'function') {
+      task.kind = 'video';
+      task.id = entry.video.requestVideoFrameCallback(() => {
+        if (entry.initTask !== task) return;
+        entry.initTask = null;
+        entry.presented = true;
+        reconcile(entry);
+      });
+      return;
+    }
     const init = () => {
-      entry.idle = null;
-      if (entry.dead || disposed || !visible(entry) || motion() || entry.video.paused) return;
+      if (entry.initTask !== task) return;
+      entry.initTask = null;
+      if (entry.dead || disposed || !visible(entry) || motion()
+          || entry.video.paused || entry.video.readyState < 2) return;
       if (entry.video.hasAttribute?.('data-boot-native')) { remove(entry); return; }
       try { entry.ctl = attachIntroSignalRemix(entry.video, { document, env }); } catch {}
       if (!entry.ctl) { entry.failed = true; return; }
       entry.ctl.preferences({ motion: false, flash: flash() });
       entry.ctl.resume();
     };
-    entry.idleAPI = typeof env.requestIdleCallback === 'function';
-    entry.idle = entry.idleAPI ? env.requestIdleCallback(init, { timeout: 1200 }) : env.requestAnimationFrame(init);
+    // Optional optics have no deadline that can steal a busy film frame or the title action.
+    if (typeof env.requestIdleCallback === 'function') {
+      task.kind = 'idle';
+      task.id = env.requestIdleCallback(init);
+    } else {
+      task.id = env.requestAnimationFrame(title ? () => postTaskAtBackgroundPriorityBounded(init) : init);
+    }
   }
   function remove(entry) {
     if (entry.dead) return;
@@ -82,7 +106,7 @@ export function installIntroSignalRemix(document = globalThis.document, env = gl
     if (entries.has(video) || !video.isConnected || video.hasAttribute?.('data-boot-native')) return;
     const root = video.closest('#boot-overlay, #cinematic-splash');
     if (!root) return;
-    const entry = { video, root, ctl: null, idle: null, failed: false, dead: false,
+    const entry = { video, root, ctl: null, initTask: null, presented: false, failed: false, dead: false,
       held: false, expectedPause: false, listeners: [], watcher: null };
     entries.set(video, entry);
     const listen = (node, event, fn) => { node.addEventListener(event, fn); entry.listeners.push([node, event, fn]); };
@@ -91,6 +115,7 @@ export function installIntroSignalRemix(document = globalThis.document, env = gl
     listen(video, 'pause', () => {
       if (entry.expectedPause) entry.expectedPause = false;
       else entry.held = false;
+      cancelInit(entry);
       entry.ctl?.pause();
     });
     const failed = () => { entry.failed = true; cancelInit(entry); entry.ctl?.destroy(); entry.ctl = null; };
@@ -131,7 +156,7 @@ export function installIntroSignalRemix(document = globalThis.document, env = gl
   const ctl = {
     refresh,
     inspect: () => [...entries.values()].map(e => ({ host: e.root.id, initialized: !!e.ctl,
-      failed: e.failed, pending: e.idle != null, ...(e.ctl?.inspect() || {}) })),
+      failed: e.failed, pending: e.initTask != null, ...(e.ctl?.inspect() || {}) })),
     destroy() {
       if (disposed) return;
       disposed = true; structure.disconnect(); preferences.disconnect();

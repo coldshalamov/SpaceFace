@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameState } from '../src/core/gameState.js';
 import { onboarding, BEATS, taughtVerbLine } from '../src/systems/onboarding.js';
+import { flightDestinationSurface, resolveFlightObjectiveCommand } from '../src/ui/hud.js';
+import { resolveWaypointPresentationPosition } from '../src/ui/navigationWaypoint.js';
 
 function host(beatKey, done = false) {
   const state = createGameState(113);
@@ -34,6 +36,56 @@ test('Continue retains an unfinished main mining lesson after the side rails fin
   assert.deepEqual(restored.owner.entered, ['seam']);
   assert.equal(restored.owner.spoken.at(-1),
     taughtVerbLine(restored.state, 'seam', BEATS.find(beat => beat.key === 'seam').line));
+});
+
+test('the distant 47-A marker teaches the chart until the sample is in scanner range', () => {
+  const { state, owner } = host('seam');
+  const pos = { x: 1300, z: 0 };
+  owner.registry = { get: () => ({ contract47aSampleSite: () => ({ pos }) }) };
+  state.playerId = 1;
+  const pilot = { id: 1, pos: { x: 0, z: 0 } };
+  state.entities.set(1, pilot);
+  state.input.promptDevice = 'kbm';
+
+  owner._setObjectiveWaypoint(false);
+  assert.match(state.nav.waypoint.reason, /Open the Chart \(M\) and track 47-A/);
+  assert.deepEqual(state.nav.waypoint.pos, pos);
+
+  pilot.pos.x = 1190;
+  owner._setObjectiveWaypoint(false);
+  assert.match(state.nav.waypoint.reason, /Pulse the scanner/);
+  assert.deepEqual(state.nav.waypoint.pos, pos);
+});
+
+test('the plotted 47-A course keeps Scan and Mine guidance on the same live rock', () => {
+  const { state, owner } = host('seam');
+  const rock = { id: 2, type: 'asteroid', alive: true, occupantGeneration: 3, pos: { x: 105, z: 0 } };
+  owner.registry = { get: () => ({ contract47aSampleSite: () => ({ pos: rock.pos }),
+    contract47aSampleEntity: () => rock }) };
+  owner._miningRockId = rock.id;
+  state.playerId = 1;
+  state.entities.set(1, { id: 1, pos: { x: 0, z: 0 } });
+  state.entities.set(rock.id, rock);
+  const course = { kind: 'nav', label: '47-A Recovery Site', pos: { ...rock.pos } };
+  state.nav.waypoint = course;
+  const displayed = () => flightDestinationSurface(state, resolveFlightObjectiveCommand(state)).line;
+  owner._setObjectiveWaypoint(false);
+  assert.equal(state.nav.waypoint, course);
+  assert.match(displayed(), /Pulse the scanner/);
+  state.onboarding.firedFollowups['seam:scan:hit'] = true;
+  rock.pos.x += 20;
+  owner._setObjectiveWaypoint(false);
+  assert.match(displayed(), /Beam the bright seams/);
+  assert.deepEqual(resolveWaypointPresentationPosition(state, course), rock.pos);
+  assert.equal(course.pos.x, 105, 'work framing follows the body while the selected course stays fixed');
+
+  state.entities.set(rock.id, { ...rock, occupantGeneration: 4 });
+  assert.doesNotMatch(displayed(), /Beam the bright seams/, 'a reused entity slot cannot inherit the lesson');
+  assert.deepEqual(resolveWaypointPresentationPosition(state, course), course.pos);
+  state.nav.waypoint = { kind: 'nav', label: 'Helios', pos: { x: 200, z: 0 } };
+  owner._setObjectiveWaypoint(false);
+  assert.equal(state.onboarding.plottedSeam, null);
+  assert.match(displayed(), /Helios/);
 });
 
 test('Continue restages every overlapping unfinished lesson and rewinds the lost tether', () => {
@@ -75,6 +127,77 @@ test('Continue restages every overlapping unfinished lesson and rewinds the lost
   assert.equal(ob.missingThree.beats.boost.state, 'current');
   assert.equal(owner.entered.includes('raid'), false,
     'the current beat must not rebuild over its already-restaged side-rail record');
+});
+
+test('Continue reuses the remapped Raid bodies and the exact saved Line', () => {
+  const { state, owner } = host('raid');
+  const raidRecord = owner.serialize();
+  raidRecord.raid = { active: true, ids: { raider: null, wing: null, throwRock: null },
+    lastWhipAt: 123, gunKills: 0, throwRockGeneration: 178 };
+  owner.deserialize(raidRecord);
+  state.mode = 'flight';
+  state.world = { currentSectorId: 'sector_helios_prime' };
+  state.playerId = 1;
+  const playerShip = { id: 1, alive: true, occupantGeneration: 201, pos: { x: 0, z: 0 } };
+  const looseRaider = { id: 676, type: 'ship', alive: true, occupantGeneration: 202,
+    pos: { x: 30, z: 0 }, data: { onboarding: true, onboardingRaid: true, ai: { passive: true } } };
+  const heldRaider = { ...looseRaider, id: 801, occupantGeneration: 203, pos: { x: 48, z: 0 } };
+  const wing = { id: 802, type: 'ship', alive: true, occupantGeneration: 204,
+    pos: { x: 94, z: 88 }, data: { onboarding: true, onboardingRaidWing: true } };
+  for (const entity of [playerShip, looseRaider, heldRaider, wing]) {
+    state.entities.set(entity.id, entity);
+    state.entityList.push(entity);
+  }
+  // save:loaded runs after the real attachments are remapped and before the UI mirror is rebound.
+  const line = { active: true, targetId: looseRaider.id, attachmentId: 'att_000106' };
+  const attachment = { id: line.attachmentId, state: 'active', ownerId: playerShip.id,
+    targetId: heldRaider.id, ownerGeneration: playerShip.occupantGeneration,
+    targetGeneration: heldRaider.occupantGeneration };
+  state.player.tether = line;
+  state.combat.attachments = { byId: { [attachment.id]: attachment } };
+  const staged = [];
+  owner._spawnRaidCast = () => staged.push('raid');
+  owner._restoreRaidThrowRock = (_raid, player, raider) => staged.push([player.id, raider.id]);
+  assert.equal(owner._resumeSavedRail(), true);
+  assert.equal(owner._raidActor('raider'), heldRaider);
+  assert.equal(owner._raidActor('wing'), wing);
+  assert.equal(state.player.tether, line);
+  assert.equal(state.combat.attachments.byId[attachment.id], attachment);
+  assert.deepEqual(staged, [], 'restoring the live cast does not spawn or remove a Raider');
+  // First settled tick is after the normal tether mirror repair.
+  line.targetId = heldRaider.id;
+  owner._resolveRaidDone();
+  assert.deepEqual(staged, [[playerShip.id, heldRaider.id]], 'only the missing rock is restored');
+  assert.equal(state.onboarding.beatDoneAt.raid, undefined);
+});
+
+test('Continue never claims a captured or remote Raider and keeps the surviving local wing', () => {
+  const { state, owner } = host('raid');
+  const saved = owner.serialize();
+  saved.raid = { active: true, ids: { raider: 54, wing: 55, throwRock: 56 } };
+  owner.deserialize(saved);
+  assert.deepEqual(state.onboarding.raid.ids, { raider: null, wing: null, throwRock: null });
+  state.world = { currentSectorId: 'sector_helios_prime' };
+  const candidate = { type: 'ship', alive: true, pos: { x: 1, z: 1 } };
+  const raidData = { onboarding: true, onboardingRaid: true, ai: { passive: true } };
+  const remote = { ...candidate, id: 54, homeSectorId: 'sector_other', data: raidData };
+  const captured = { ...candidate, id: 55, data: { ...raidData, playerOwned: true } };
+  const wing = { ...candidate, id: 99, data: { onboarding: true, onboardingRaidWing: true } };
+  for (const entity of [remote, captured, wing]) {
+    state.entities.set(entity.id, entity);
+    state.entityList.push(entity);
+  }
+  let attempts = 0;
+  owner._spawnRaidCast = options => {
+    attempts++;
+    assert.equal(options.wing, 'keep');
+    assert.equal(owner._raidActor('wing'), wing);
+  };
+  assert.equal(owner._resumeSavedRail(), true);
+  assert.equal(attempts, 1);
+  assert.equal(owner._raidActor('raider'), null);
+  assert.equal(state.entities.get(captured.id), captured);
+  assert.equal(state.entities.get(remote.id), remote);
 });
 
 test('Continue rebuilds the tracker panel on every resume branch and re-speaks the live rescue verb', () => {

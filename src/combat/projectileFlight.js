@@ -140,6 +140,9 @@ export function reserveProjectileCapacity(state, incoming = 1) {
   const need = Math.max(0, incoming | 0);
   if (!state || need === 0) return 0;
   const list = liveProjectiles(state);
+  // The lane length is an upper bound, since spent rounds can await removal.
+  // No individual row can affect admission while even that bound fits.
+  if (list.length + need <= PROJECTILE_LIVE_CAP) return 0;
   let live = 0;
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];

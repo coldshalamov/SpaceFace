@@ -380,12 +380,14 @@ test('worker acquisition reaches the main HUD and clears when its owner resets',
 
 test('the acquisition preview marks the candidate itself and never draws a cable-like line', () => {
   const previousEnabled = MASSLINE2_FLAGS.enabled;
+  const previousThrow = MASSLINE2_FLAGS.throw;
   const previousDocument = globalThis.document;
   const previousWindow = globalThis.window;
   const document = fakeDocument();
   globalThis.document = document;
   globalThis.window = { innerWidth: 1440, innerHeight: 900 };
   MASSLINE2_FLAGS.enabled = true;
+  MASSLINE2_FLAGS.throw = true;
   try {
     const p = player();
     const anchor = target(20, 'asteroid', 150, 145, { mass: 5200, radius: 34 });
@@ -455,9 +457,20 @@ test('the acquisition preview marks the candidate itself and never draws a cable
       'an unchanged acquisition receipt must not rewrite stable HUD styles, classes, or attributes');
 
     assert.equal(root.classList.contains('ml2-reduced-motion'), true);
+
+    state.player.tether = { active: true, targetId: anchor.id, restLength: 180 };
+    hud.update(1 / 60, state);
+    assert.equal(preview.attributes['data-throw-cue'], '0', 'a held solid asteroid cannot be thrown');
+
+    const payload = target(21, 'payload', 200, 155, { mass: 20, radius: 7 });
+    state.entities.set(payload.id, payload);
+    state.player.tether.targetId = payload.id;
+    hud.update(1 / 60, state);
+    assert.equal(preview.attributes['data-throw-cue'], '1', 'a held cargo payload still shows its throw control');
     hud.destroy();
   } finally {
     MASSLINE2_FLAGS.enabled = previousEnabled;
+    MASSLINE2_FLAGS.throw = previousThrow;
     if (previousDocument === undefined) delete globalThis.document;
     else globalThis.document = previousDocument;
     if (previousWindow === undefined) delete globalThis.window;
@@ -903,6 +916,69 @@ function findByClass(root, className) {
   }
   return null;
 }
+
+test('a Ready Detonator names the live key and stays on its body beside a separate floor till', () => {
+  const previousEnabled = MASSLINE2_FLAGS.enabled, previousDocument = globalThis.document,
+    previousWindow = globalThis.window;
+  const document = fakeDocument();
+  globalThis.document = document;
+  globalThis.window = { innerWidth: 1320, innerHeight: 720 };
+  MASSLINE2_FLAGS.enabled = true;
+  const p = player();
+  const dart = { ...target(20, 'ship', 160, 80, { mass: 20, team: 1,
+    data: { lootTableId: 'detonator_dart', detonator: { triggerRange: 56 } } }), occupantGeneration: 8 };
+  const crate = { ...target(21, 'asteroid', 200, 68, { data: { swarmFloorPad: { label: 'THE CRATE · 950' } } }),
+    occupantGeneration: 9 };
+  const state = { mode: 'flight', simTime: 12, playerId: p.id, player: { tether: { active: false } },
+    run: { kind: 'survival', ruleset: 'swarm', wave: 5, phase: 'active' },
+    entities: new Map([[p.id, p], [dart.id, dart], [crate.id, crate]]), massline2: {},
+    settings: { controls: { bindings: {} }, video: { motionReduce: true } },
+    masslineAcquisition: { id: 'ready-dart', validUntil: 13,
+      selected: { targetId: dart.id, occupantGeneration: dart.occupantGeneration, status: 'ready' } } };
+  const floorRects = [];
+  const hud = Object.assign({}, masslineHud);
+  try {
+    hud.init({ state, registry: { get: () => ({ hud: { getFloorPadLabelRects: () => floorRects } }) },
+      helpers: { worldToScreen: ({ x, z }) => ({ x: x + 150, y: z + 200, onScreen: true }) } });
+    hud.update(1 / 60, state);
+    const root = document.getElementById('sf-ml2');
+    const mark = findByClass(root, 'ml2-preview-mark');
+    const words = findByClass(root, 'ml2-preview');
+    assert.equal(words.textContent, 'F · Latch Detonator');
+    assert.equal(mark.attributes['aria-label'], 'F · Latch Detonator');
+    assert.equal(words.attributes['data-target-id'], '20');
+    const onBody = mark.style.transform;
+    assert.match(onBody, /310px,\s*280px/);
+    const above = words.style.transform;
+    const [x, y] = [...above.matchAll(/(-?\d+)px/g)].map(match => Number(match[1]));
+    floorRects.push({ x: x + 20, y, w: 160, h: 24 });
+    hud.update(1 / 60, state);
+    assert.equal(mark.style.transform, onBody);
+    assert.equal(words.style.display, 'block');
+    assert.notEqual(words.style.transform, above, 'the words yield to the cached price label');
+    assert.match(words.style.transform, /,\s*296px,/);
+
+    state.settings.controls.bindings.tether = ['KeyY'];
+    hud.update(1 / 60, state);
+    assert.equal(words.textContent, 'Y · Latch Detonator');
+    dart.occupantGeneration++;
+    hud.update(1 / 60, state);
+    assert.doesNotMatch(words.textContent, /Detonator/);
+
+    state.masslineAcquisition.selected = { targetId: crate.id, occupantGeneration: crate.occupantGeneration, status: 'ready' };
+    hud.update(1 / 60, state);
+    assert.equal(words.textContent, 'Y · TUG');
+    assert.equal(words.attributes['data-target-id'], '21');
+    state.masslineAcquisition.selected = { targetId: dart.id, occupantGeneration: dart.occupantGeneration,
+      status: 'blocked', reason: 'blocked' };
+    hud.update(1 / 60, state);
+    assert.doesNotMatch(words.textContent, /Detonator/);
+  } finally {
+    hud.destroy(); MASSLINE2_FLAGS.enabled = previousEnabled;
+    if (previousDocument === undefined) delete globalThis.document; else globalThis.document = previousDocument;
+    if (previousWindow === undefined) delete globalThis.window; else globalThis.window = previousWindow;
+  }
+});
 
 test('cached HUD geometry moves the mass words without moving the world mark or sampling DOM each frame', () => {
   const previousEnabled = MASSLINE2_FLAGS.enabled, previousDocument = globalThis.document,

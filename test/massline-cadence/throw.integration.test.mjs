@@ -28,6 +28,43 @@ test('preview is readable before commitment; no preview-driven cut', () => {
   assert.equal(f.bus.count('massline:releaseWindow'), 1);
   tick(f); f.step(); assert.equal(f.bus.count('massline:releaseWindow'), 1);
 });
+test('pointing at a small wreck keeps the preview and throw on it inside another body’s footprint', () => {
+  const f = setup();
+  f.victim.type = 'wreck';
+  const nearbyRock = body('asteroid', 100, 140, 0, 0, 900, 60);
+  nearbyRock.type = 'asteroid';
+  f.state.entities.set(nearbyRock.id, nearbyRock);
+  f.state.entityList.push(nearbyRock);
+  f.state.input.aimIntentActive = true;
+  f.state.input.aimWorld = { ...f.victim.pos };
+
+  f.step();
+  const runtime = f.state.massline2.throw;
+  assert.equal(runtime.aimTargetId, f.victim.id);
+  assert.equal(runtime.solution.windowOpen, true);
+  tick(f); f.press(); f.step();
+  assert.equal(runtime.lastThrow.aimTargetId, f.victim.id);
+  assert.equal(runtime.lastThrow.mode, 'snap');
+});
+test('moving aim to a different body immediately withdraws the previous body’s lit throw cue', () => {
+  const f = setup();
+  const other = body('other', -100, 140, 0, 0, 100, 10);
+  f.state.entities.set(other.id, other);
+  f.state.entityList.push(other);
+  f.state.input.aimIntentActive = true;
+  f.state.input.aimWorld = { ...f.victim.pos };
+
+  f.step();
+  const runtime = f.state.massline2.throw;
+  assert.equal(runtime.solution.windowOpen, true);
+
+  tick(f);
+  f.state.input.aimWorld = { ...other.pos };
+  f.step();
+  assert.equal(runtime.aimTargetId, other.id);
+  assert.equal(runtime.solution.onSolution, false);
+  assert.equal(runtime.solution.windowOpen, false);
+});
 test('arm requires a fresh explicit edge and current contact', () => {
   const f = setup('arm'); f.victim.pos.x = -100; f.press(); f.step();
   assert.equal(f.attachments.calls.length, 0);

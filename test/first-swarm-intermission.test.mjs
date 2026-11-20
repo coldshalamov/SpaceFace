@@ -73,11 +73,12 @@ function screenHarness(r) {
     setAttribute() {}, querySelector: () => null, appendChild(n) { this.childNodes.push(n); } });
   const screen = Object.assign(Object.create(crucibleDraftScreen), {
     _ctx: ctx, _root: { classList: { toggle() {} }, contains: () => false },
-    _cards: { innerHTML: '', querySelectorAll: () => [], querySelector: () => null },
+    _cards: { innerHTML: '', appendChild() {}, querySelectorAll: () => [], querySelector: () => null },
     _title: {}, _filters: { children: [] }, _refitBtn: {}, _sub: {}, _preview: {}, _briefing: {},
     _armoryHeading: {},
     _skip: button(), _rerollBtn: button(), _wallet: {}, _hint: {}, _note: {},
     _category: 'unmatched-filter', _query: '', _clipRailToWholeRows() {}, _claimFocus() {},
+    _buildCard: button,
   });
   return { screen, ctx, bus, publish(next) { rows = next; } };
 }

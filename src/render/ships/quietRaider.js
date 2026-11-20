@@ -59,38 +59,39 @@ export function buildQuietRaider(entity) {
   hullDarkMat.name = 'Quiet_HullDark';
   const matteMat = kit.standardMaterial(COLOR.matte, 0.98, 0.02); matteMat.name = 'Quiet_Matte'; // radar-absorbent
   const graphiteMat = kit.machineryMaterial(COLOR.graphite, 0.7, 0.5); graphiteMat.name = 'Quiet_Graphite';
-  const sensorMat = kit.emissiveMaterial(COLOR.sensor, 1.8); sensorMat.name = 'Quiet_Sensor';
+  const sensorMat = kit.shadedSignal(COLOR.sensor, 0.8); sensorMat.name = 'Quiet_Sensor';
 
   // ---- low-slung BLADE hull: a thin lofted planform (minimal cross-section, §8.6) ----
   // Flatter and lower than the other hulls — a knife-edge profile. A lofted shell still gives real
   // curvature, but the silhouette is deliberately minimized so it reads as low-signature.
-  const pressureHull = kit.addMesh(hull, kit.loftXGeometry([
+  const QUIET_SECTIONS = [
     { x: -8.0, halfY: 0.5,  halfZ: 1.4 },
     { x: -3.0, halfY: 0.7,  halfZ: 1.7 },
     { x: 3.0,  halfY: 0.65, halfZ: 1.6 },
     { x: 8.0,  halfY: 0.45, halfZ: 1.2 },
     { x: 12.0, halfY: 0.15, halfZ: 0.3 },
-  ], 10), hullMat, 'Quiet_Pressure_Hull');
+  ];
+  const pressureHull = kit.addMesh(hull, kit.loftXGeometry(QUIET_SECTIONS, 10), hullMat, 'Quiet_Pressure_Hull');
   pressureHull.castShadow = true;
 
   // matte radar-absorbent top coat (low-reflectance surface, §8.6)
-  kit.addBox(hull, matteMat, 'Quiet_Matte_Coat', [16.0, 0.12, 3.0], [0, 0.62, 0]);
+  kit.addBox(hull, matteMat, 'Quiet_Matte_Coat', [7.2, 0.05, 2.1], [0, 0.68, 0]);
 
   // ---- hidden compartment: a ventral seam line splitting the belly (§8.6, visible through construction) ----
   // A deliberate split in the belly plating with a dark gap underneath — the smuggler's bay. You can
   // see it's there from the construction, but it's flush, not advertised.
-  const bayPanel = kit.addBox(hull, hullDarkMat, 'Quiet_Hidden_Bay', [7.0, 0.12, 2.4], [-1.0, -0.55, 0]);
+  const bayPanel = kit.addBox(hull, hullDarkMat, 'Quiet_Hidden_Bay', [6.2, 0.06, 1.8], [-1.0, -0.66, 0]);
   bayPanel.userData.damageRole = 'secondary';
   bayPanel.userData.keepSeparate = true;
   // the seam gap (a thin dark strip beside the panel, reads as a hatch line)
-  kit.addBox(hull, graphiteMat, 'Quiet_Bay_Seam', [6.8, 0.1, 0.1], [-1.0, -0.55, 1.2]);
+  kit.addBox(hull, graphiteMat, 'Quiet_Bay_Seam', [6.0, 0.04, 0.05], [-1.0, -0.64, 0.85]);
 
   // ---- asymmetric sensor mast (asymmetry around sensors, §8.6) ----
   // One off-center mast on the dorsal — not symmetric, because the smuggling sensors are on one side.
   const sensorMast = new THREE.Group(); sensorMast.name = 'Quiet_Sensor_Mast';
-  sensorMast.position.set(2.0, 0.7, 0.8); hull.add(sensorMast);
-  kit.addBox(sensorMast, graphiteMat, 'Quiet_Mast_Pole', [0.15, 1.2, 0.15], [0, 0.6, 0]);
-  kit.addBox(sensorMast, matteMat, 'Quiet_Mast_Head', [0.5, 0.25, 0.4], [0, 1.25, 0]);
+  sensorMast.position.set(2.2, 0.62, 0.55); hull.add(sensorMast);
+  kit.addBox(sensorMast, graphiteMat, 'Quiet_Mast_Pole', [0.08, 0.42, 0.08], [0, 0.21, 0]);
+  kit.addBox(sensorMast, matteMat, 'Quiet_Mast_Head', [0.22, 0.1, 0.16], [0, 0.46, 0]);
   sensorMast.userData.keepSeparate = true;
 
   // ---- narrow sensor slit lights (narrow apertures, §8.6) ----
@@ -98,7 +99,8 @@ export function buildQuietRaider(entity) {
   // group: at critical they go intermittent (a flickering sensor read).
   const sensorSlits = [];
   for (const x of [4.0, 0.0, -4.0]) {
-    const s = kit.addBox(hull, sensorMat, `Quiet_Sensor_Slit_${x}`, [0.8, 0.05, 0.05], [x, 0.66, 0]);
+    const slitSec = kit.sectionAt(QUIET_SECTIONS, x);
+    const s = kit.addBox(hull, sensorMat, `Quiet_Sensor_Slit_${x}`, [0.55, 0.03, 0.035], [x, slitSec.halfY - 0.02, 0]);
     s.userData.damageRole = 'navLight'; s.userData.keepSeparate = true;
     sensorSlits.push(s);
   }
@@ -106,10 +108,10 @@ export function buildQuietRaider(entity) {
 
   // ---- baffled masked drive: a recessed nozzle under a baffle shroud (§8.6) ----
   // Tucked up under a shroud so the plume isn't visible side-on. Deliberately DIM drive emission.
-  const driveShroud = kit.addBox(hull, hullDarkMat, 'Quiet_Drive_Shroud', [2.4, 1.2, 2.6], [-7.6, 0.1, 0]);
+  const driveShroud = kit.addCylinderX(hull, hullDarkMat, 'Quiet_Drive_Shroud', 0.42, 1.35, [-7.35, 0.02, 0], 12);
   driveShroud.castShadow = true;
   const drive = kit.buildDrive(hull, {
-    name: 'Quiet_Drive', position: [-8.2, 0.05, 0], radius: 0.7, length: 1.0,
+    name: 'Quiet_Drive', position: [-8.22, 0.02, 0], radius: 0.38, length: 0.7,
     materials: { dark: graphiteMat, accent: sensorMat },
     driveColor: COLOR.drive, coreColor: COLOR.driveCore, driveGlowOpacity: 0.28, // deliberately dim
   });
@@ -120,7 +122,8 @@ export function buildQuietRaider(entity) {
   const regDecalMat = kit.decalMaterial({ hull: COLOR.hull, accent: COLOR.violet, seed: seed + 23, kind: 'decal' });
   const regDecals = [];
   for (const side of [-1, 1]) {
-    const d = kit.addDecal(hull, regDecalMat, `Quiet_Registration_${side < 0 ? 'Port' : 'Starboard'}`, [2.4, 0.6], [4.0, 0.3, side * 1.71], [0, side < 0 ? -Math.PI / 2 : Math.PI / 2, 0]);
+    const regSec = kit.sectionAt(QUIET_SECTIONS, 3.4);
+    const d = kit.addDecal(hull, regDecalMat, `Quiet_Registration_${side < 0 ? 'Port' : 'Starboard'}`, [1.15, 0.28], [3.4, 0.05, side * (regSec.halfZ - 0.03)], [0, side > 0 ? 0 : Math.PI, 0]);
     regDecals.push(d);
   }
 

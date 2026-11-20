@@ -56,13 +56,16 @@ ${T} .con-star-btn:is(:focus, :focus-visible) { outline:none !important; box-sha
 ${T} > .con-side { grid-area:side; position:relative; z-index:1; min-width:0; min-height:0; align-self:stretch; box-sizing:border-box;
   padding:clamp(6px, 3vh, 44px) 0 10px; overflow:visible; }
 ${T} > .con-side::before { ${POOL('-10% -18% -6% -22%')} }
-/* reading dossier: promise-scale hairline card (was unbound Newgrounds plate over the soft pool) */
+/* reading dossier: promise-scale hairline card (was unbound Newgrounds plate over the soft pool).
+   The first alphas (.18/.025) vanished against the lit backdrop — the Records Wall finding —
+   so the face sits on the house E0 tokens (bench 2026-11-15). */
 ${T} .con-dossier {
   display:flex; flex-direction:column; gap:clamp(6px, 1.1vh, 14px);
   box-sizing:border-box;
-  border:1px solid rgb(${BONE} / .18);
+  border:1px solid rgb(${BONE} / .3);
   border-radius:10px;
-  background:rgb(${BONE} / .025);
+  background:var(--sf-face, rgb(8 11 16 / .8));
+  box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5));
   padding:clamp(10px, 1.2vh, 16px) clamp(12px, 1.2vw, 18px);
 }
 ${T} .con-dossier > * { margin:0; }
@@ -111,10 +114,13 @@ ${T} .con-rows { list-style:none; margin:2px 0 0 !important; padding:0 0 0 14px;
 ${T} .con-rows::before { content:""; position:absolute; left:3px; top:4px; bottom:4px; width:1.5px; background:rgb(${BONE} / .42); }
 ${T} .con-row { position:relative; display:grid; grid-template-columns:minmax(0, 1fr) auto; column-gap:14px; align-items:baseline; padding:clamp(3px, .5vh, 6px) 0; min-height:0; border:0; background:none; }
 ${T} .con-row::before { content:""; position:absolute; left:-11px; top:50%; width:8px; height:1.5px; background:rgb(${BONE} / .58); }
-${T} .con-row.has-art { grid-template-columns:clamp(34px, 2.3vw, 44px) minmax(0, 1fr) auto; align-items:center; }
-${T} .con-row__art { display:grid; place-items:center; width:clamp(34px, 2.3vw, 44px); height:clamp(28px, 1.9vw, 36px); color:rgb(${WARM} / .9); }
-${T} .con-row__art svg { width:70%; height:70%; }
-${T} .con-row__art svg .accent { fill:currentColor; }
+${T} .con-row.has-art { grid-template-columns:clamp(36px, 2.4vw, 44px) minmax(0, 1fr) auto; align-items:center; }
+${T} .con-row__art { display:grid; place-items:center; width:clamp(36px, 2.4vw, 44px); height:clamp(30px, 2.1vw, 38px); color:rgb(${WARM} / .9); }
+${T} .con-row__art > svg { width:70%; height:70%; }
+${T} .con-row__art > svg .accent { fill:currentColor; }
+${T} .con-row__art .sf-thumb--sm { --sf-thumb-size:32px; }
+${T} .con-row__art .sf-thumb__star { width:8px; height:8px; }
+${T} .con-row__art .sf-thumb > svg { width:100%; height:100%; }
 ${T} .con-rows:has(.con-row__img) .con-row.has-art { grid-template-columns:68px minmax(0, 1fr) auto; }
 ${T} .con-rows:has(.con-row__img) .con-row__art { width:68px; height:50px; }
 ${T} .con-row__art .con-row__img { width:46px; height:64px; flex:none; object-fit:cover; transform:rotate(90deg); filter:grayscale(1) sepia(.16) brightness(1.2); opacity:.9; }

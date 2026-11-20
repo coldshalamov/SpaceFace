@@ -31,7 +31,7 @@ import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { listSelectableComponents, nextComponentSelection } from '../systems/interactionDescriptors.js';
 import { pointerLockIsLegitimate } from '../systems/autoTargetAssist.js';
 import { isPirateDisengaged } from '../systems/pirateDisengage.js';
-import { createCinematicInputFence } from './cinematicInputFence.js';
+import { armCinematicAutoDismiss, createCinematicInputFence } from './cinematicInputFence.js';
 import { isMapScreenId, openGalaxyMap } from './mapAuthority.js';
 import { IS_DEV } from '../core/devMode.js';
 import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
@@ -155,6 +155,7 @@ import { createWingmanRadial } from './wingmanRadial.js';
 import { firstBootScreenId, shouldAskMotionPreference } from './accessibility.js';
 import { restoredDefeatIntent } from './sim/restoredDefeatIntent.js';
 import { openingQuiet } from '../onboarding/openingQuiet.js';
+import { createFieldBuildMode } from './fieldBuild/fieldBuildMode.js';
 
 // id-of-export → { load, export }. Order matters only for nicer console logs.
 // Use literal dynamic-import call sites, not import(path): esbuild can rewrite these to bundled
@@ -425,7 +426,15 @@ export function reconcileGameStartedScreens(owner) {
   invalidateDockedStationPresentation(owner);
   owner._cancelPendingScreenRetry?.();
   const screenManager = owner.screenManager;
-  screenManager?.closeAll?.();
+  const run = owner.state?.run;
+  if (run?.kind === 'survival' && run.phase === 'draft'
+      && screenManager?.top?.() === 'crucibleDraft') {
+    // The opening armory is the destination of this launch. Keep the mounted
+    // modal through handoff so an already-paused worker need not reopen it.
+    screenManager.closeAll?.({ keepTopId: 'crucibleDraft' });
+  } else {
+    screenManager?.closeAll?.();
+  }
   // Launch leaves the menu route for good, but closeAll only hides: the screens stay cached
   // with every WebGL context their mount built. The New Game / Load stage hulls each hold a
   // THREE.WebGLRenderer, its context and its hangar GLB — release them at this boundary.
@@ -664,6 +673,10 @@ export const ui = {
     this.hud = null;
     if (this.bandHud && typeof this.bandHud.destroy === 'function') this.bandHud.destroy();
     this.bandHud = null;
+    if (this.fieldBuild && typeof this.fieldBuild.destroy === 'function') this.fieldBuild.destroy();
+    this.fieldBuild = null;
+    if (typeof this._fieldBuildBusOff === 'function') { try { this._fieldBuildBusOff(); } catch (_) {} }
+    this._fieldBuildBusOff = null;
     if (this.promptDeck && typeof this.promptDeck.destroy === 'function') this.promptDeck.destroy();
     this.promptDeck = null;
     if (this.aftermathChoicePrompt && typeof this.aftermathChoicePrompt.destroy === 'function') {
@@ -922,6 +935,10 @@ export const ui = {
     // the always-mounted flight HUD
     this.hud = createHud(ctx, this.alerts);
     this.bandHud = createBandHud(ctx);
+    this.fieldBuild = createFieldBuildMode(ctx);
+    const offFieldToggle = this.bus.on('ui:toggleFieldBuild', () => this.fieldBuild?.toggle());
+    const offFieldClose = this.bus.on('ui:closeFieldBuild', () => this.fieldBuild?.setActive(false));
+    this._fieldBuildBusOff = () => { offFieldToggle?.(); offFieldClose?.(); };
     // Remount: same teardown destroy() uses — a failed re-mount below leaves nulls, not zombies.
     this.disposeHudOverlays();
     try {
@@ -1286,15 +1303,13 @@ export const ui = {
       // declaration here left it out of scope there (ReferenceError on every autoplay
       // rejection, which also stranded the clip and its fetch pipeline).
       const dropVideo = () => { try { if (cineVideo) cineVideo.remove(); } catch (_) {} };
+      const motionReduced = () => document.documentElement?.classList.contains('sf-reduce-motion')
+        || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
       if (cineVideo) {
         cineVideo.addEventListener('error', dropVideo);
         const cineSource = cineVideo.querySelector('source');
         if (cineSource) cineSource.addEventListener('error', dropVideo);
-        const motionReduced = (document.documentElement
-            && document.documentElement.classList.contains('sf-reduce-motion'))
-          || (typeof window.matchMedia === 'function'
-            && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-        if (motionReduced) dropVideo();
+        if (motionReduced()) dropVideo();
         // play() stays inside mountCinematic: calling it here spun up a second fetch+decoder
         // pipeline on the same 28.8 MB clip inside the registry-init crunch (the boot intro
         // video already plays the file), competing with init + contract fetch + authored
@@ -1302,7 +1317,7 @@ export const ui = {
       }
 
       let dismissed = false;
-      let autoDismissTimer = null;
+      let cancelAutoDismiss = null;
       let fadeRemovalTimer = null;
       let inputFence = null;
       let bootOverlayWatcher = null;
@@ -1312,7 +1327,8 @@ export const ui = {
         this._cinematicActive = false;
         this._cinematicInputFence = null;
         cinematic.removeEventListener('click', requestPointerDismissal);
-        if (autoDismissTimer) clearTimeout(autoDismissTimer);
+        cancelAutoDismiss?.();
+        cancelAutoDismiss = null;
         cinematic.classList.add('is-closing'); // intro.css: .65s opacity settle
         fadeRemovalTimer = setTimeout(() => {
           if (cinematic.parentNode) cinematic.parentNode.removeChild(cinematic);
@@ -1331,7 +1347,8 @@ export const ui = {
         if (bootOverlayWatcher) { bootOverlayWatcher.disconnect(); bootOverlayWatcher = null; }
         if (inputFence) inputFence.teardown();
         cinematic.removeEventListener('click', requestPointerDismissal);
-        if (autoDismissTimer) clearTimeout(autoDismissTimer);
+        cancelAutoDismiss?.();
+        cancelAutoDismiss = null;
         if (fadeRemovalTimer) clearTimeout(fadeRemovalTimer);
         if (cinematic.parentNode) cinematic.parentNode.removeChild(cinematic);
         document.body?.classList.remove('sf-cinematic-open');
@@ -1353,14 +1370,6 @@ export const ui = {
         if (!host) { this._cinematicActive = false; showMainMenuWhenReady(); return; }
         host.appendChild(cinematic);
         document.body?.classList.add('sf-cinematic-open');
-        // First paint-worthy moment for the clip: start the decoder only now that the layer
-        // can actually be seen (the .cine-bg still + poster covered the wait).
-        if (cineVideo && cineVideo.isConnected) {
-          try {
-            const p = cineVideo.play();
-            if (p && typeof p.catch === 'function') p.catch(dropVideo);
-          } catch (_) { dropVideo(); }
-        }
         inputFence = createCinematicInputFence({
           keyboardTarget: window,
           visibilityTarget: document,
@@ -1378,11 +1387,18 @@ export const ui = {
         });
         this._cinematicInputFence = inputFence;
         cinematic.addEventListener('click', requestPointerDismissal);
-        // Auto-dismiss safety after long time. A held keyboard chord defers this request until the
-        // release fence is complete; blur/visibility loss cancels that incomplete gesture safely.
-        autoDismissTimer = setTimeout(() => {
-          if (cinematic.parentNode && inputFence) inputFence.requestDismiss('timer');
-        }, 4500);
+        cancelAutoDismiss = armCinematicAutoDismiss({
+          video: cineVideo?.isConnected ? cineVideo : null,
+          canPresent: () => cineVideo?.isConnected && !document.hidden && !motionReduced(),
+          onElapsed: () => { if (cinematic.parentNode) inputFence.requestDismiss('timer'); },
+        });
+        // Start the decoder at the visible handoff, with first-frame observation already armed.
+        if (cineVideo?.isConnected) {
+          try {
+            const p = cineVideo.play();
+            if (p && typeof p.catch === 'function') p.catch(dropVideo);
+          } catch (_) { dropVideo(); }
+        }
       };
       this._cinematicTeardown = teardownCinematic;
 
@@ -1453,6 +1469,7 @@ export const ui = {
         });
         return;
       }
+      if (id === 'crucibleDraft' && this.screenManager.top() === id) return;
       this.screenManager.pushScreen(id);
     });
     this.bus.on('ui:popScreen', () => this.screenManager.popScreen());
@@ -1732,26 +1749,19 @@ export const ui = {
     });
 
     // mode → boot screen: show Main Menu only if state.mode==='menu' (it's 'flight' now → just HUD).
-    // The first dock must open as fast as the second: once flight has settled and the browser is
-    // idle, load the station screen's module (and the berth-name lookup the arrival word reads)
-    // in the background. Registration is the existing owner path; nothing mounts or paints here.
+    // Preload station code during idle Adventure flight. The dock veil owns mounting and layout.
     const warmFirstDock = () => {
       this._stationWarmTimer = null;
-      if (!this.state || this.state.mode !== 'flight') return;
-      const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 5000 }) : setTimeout(fn, 1500));
-      const run = () => {
-        // Then, in a second idle slot, build the hub hidden (DOM skeleton, fonts, one style and
-        // layout pass) so the first open pays what the second does. Never while docked or opening.
-        try {
-          this._ensureStationScreenRegistered().then(() => idle(() => {
-            if (!this.state || this.state.mode !== 'flight' || (this.state.ui && this.state.ui.docked)) return;
-            if (this.screenManager && this.screenManager.top() !== 'station') this._warmScreen('station');
-          })).catch(() => {});
-        } catch (_) { /* stays lazy */ }
+      const state = this.state;
+      const cycle = this._screenRegistrationCycle;
+      const mayPreload = () => state && this.state === state && this._screenRegistrationCycle === cycle
+        && state.mode === 'flight' && !state.ui?.docked && !this._survivalRunLive();
+      if (!mayPreload() || typeof requestIdleCallback !== 'function') return;
+      requestIdleCallback(() => {
+        if (!mayPreload()) return;
+        this._ensureStationScreenRegistered().catch(() => {});
         import('./sectorLawPresenter.js').then((m) => { this._stationNameFor = m.stationName; }).catch(() => {});
-      };
-      if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 5000 });
-      else setTimeout(run, 1500);
+      });
     };
     this.bus.on('game:started', () => {
       if (this._stationWarmTimer) clearTimeout(this._stationWarmTimer);
@@ -2207,6 +2217,10 @@ export const ui = {
     return record.promise;
   },
 
+  isTitleCinematicActive() {
+    return this._cinematicActive === true;
+  },
+
   // Per-render-frame cheap HUD path (§5.5). The expensive HUD paint/update path only runs when
   // the flight HUD is visible; hidden modal/docked states keep toasts and safety alerts alive.
   frame(dt, state) {
@@ -2251,6 +2265,7 @@ export const ui = {
         this._hudVisibleLast = hudVisible;
       }
       if (hudVisible && this.bandHud && typeof this.bandHud.update === 'function') this.bandHud.update();
+      if (this.fieldBuild && typeof this.fieldBuild.frame === 'function') this.fieldBuild.frame(dt, { hudVisible });
       if (this.racingHud && typeof this.racingHud.frame === 'function') this.racingHud.frame(st);
       this.physicsVenueHud?.frame(st);
       this.spectrumOverlay?.frame(st);
@@ -2322,6 +2337,10 @@ export const ui = {
     this.hud = null;
     if (this.bandHud && typeof this.bandHud.destroy === 'function') this.bandHud.destroy();
     this.bandHud = null;
+    if (this.fieldBuild && typeof this.fieldBuild.destroy === 'function') this.fieldBuild.destroy();
+    this.fieldBuild = null;
+    if (typeof this._fieldBuildBusOff === 'function') { try { this._fieldBuildBusOff(); } catch (_) {} }
+    this._fieldBuildBusOff = null;
     if (this.promptDeck && typeof this.promptDeck.destroy === 'function') this.promptDeck.destroy();
     this.promptDeck = null;
     if (this.aftermathChoicePrompt && typeof this.aftermathChoicePrompt.destroy === 'function') {

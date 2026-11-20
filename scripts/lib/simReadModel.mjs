@@ -1,6 +1,7 @@
 import { NINTH_MOUTH_LIGHT_VITAL_KEYS, foldNinthMouthLightVitals } from './ceresNinthMouthMirror.mjs';
 import { projectIlexGreenhouse } from '../../src/data/ilexGreenhouse.js';
 import { foldSwarmSpecialistPresentation } from '../../src/data/swarmSpecialistPresentation.js';
+import { IRON_MAW } from '../../src/data/encounters/capital-boss/iron-maw.js';
 import { bindCeresCradlePublicLayout } from '../../src/core/ceresWorkfleetLayoutAdmission.js';
 import { bindCeresWorkfleetPublicActuation } from '../../src/core/ceresWorkfleetActuation.js';
 import { LAST_SHIFT, lastShiftFactIds, lastShiftLocalReport } from '../../src/data/lastShift.js';
@@ -981,6 +982,9 @@ export const DOMAIN_MIRROR_KEYS = Object.freeze([
   'ceresNinthMouthOffer',
   // Fixed eight-original receipt/conversation record for the station and chart. No live poses.
   'npcJobs.ceresNinthMouth',
+  // Held drift-bomb preview and the power rail share the selected loaded rack and its timers.
+  // The worker retains stock, fitting authority, and active ordnance ownership.
+  'bombs.selectedId', 'bombs.bombChosen', 'bombs.rack.cells', 'bombs.cooldownUntil', 'bombs.cooldowns',
 ]);
 
 // Per-key canonical-serialization ship cap (report-only): any single mirrored
@@ -1374,6 +1378,8 @@ function projectDrillPresentation(source) {
   const out = fields(source, ['active','asteroidId','asteroidGeneration','fieldId','rockBudget','rockBudgetMax',
     'drillDir','moveCooldown','drillTemp','overheated','drillEnergy','energyDepleted','gasHits',
     'tilesCleared','maxDepth','sessionElapsed','chargeArmed','chargePayload','chargeStock','chargeCooldown','chargesSet']);
+  const requestId = fields(source, ['_requestId'])._requestId;
+  if (requestId != null) out.requestId = requestId;
   out.avatar = fields(source.avatar, ['col','row','fromCol','fromRow','moveDuration','moveElapsed','faceDir','isDrilling','drillBlocked']);
   if (out.avatar) out.avatar.drillTarget = point(source.avatar.drillTarget);
   out.scan = fields(source.scan, ['cooldown','active','serial','contacts']);
@@ -1542,6 +1548,9 @@ function projectDomainLeaf(rule, v, state) {
         plates: Array.isArray(fight.plates) ? fight.plates.map(p => ({ id: p.id, attached: p.attached, strainTicks: p.strainTicks })) : null,
         cast: cast ? { id: cast.id, beatId: cast.beatId, startedAt: cast.startedAt,
           locked: cast.locked, shapes: cast.shapes } : null };
+      if (fight.fightId === 'swarm:w5' && fight.encounterId === IRON_MAW.id && fight.recovery) {
+        fights[id].recovery = selectPresentationFields(fight.recovery, ['beatId', 'startedAt', 'cancelled', 'mawFed', 'mawCounter']);
+      }
     }
     return { fights };
   }

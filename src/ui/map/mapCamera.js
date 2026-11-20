@@ -17,9 +17,6 @@
 //
 // PROJECTION CONVENTION — read this before integrating.
 //   * North-up. +x global → +x screen (right). +z global → +y screen (down).
-//     `buildLocalModel`'s draw site uses a flipped-sign scope frame (`w/2 - (x - cx)*...`). That
-//     flip is a PRESENTATION choice belonging to the local builder and is NOT baked in here.
-//     Reconciling it is the integration packet's job, at the draw site.
 //   * `spanWU` is the world extent covered across the viewport's MINOR axis, i.e.
 //     `pxPerWU = min(viewport.width, viewport.height) / spanWU`. The major axis therefore shows
 //     MORE than `spanWU`. This matches the shipped system/local builders' `min(w,h)/span` shape.

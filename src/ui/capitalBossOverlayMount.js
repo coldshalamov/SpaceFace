@@ -7,6 +7,8 @@
 // reduced-motion setting, and restore-on-load / destroy-on-teardown. No renderer clock enters
 // gameplay: clockForFight reads each fight's OWN encounter clock, which the sim freeze holds still.
 import { createCapitalBossOverlay, capitalBossReadouts } from '../presentation/capitalBossPresentation.js';
+import { readIronMawMouth } from '../combat/capitalBossGeometry.js';
+import { arcadeEffectsLevel } from '../data/swarmJuice.js';
 import { svg } from './orrery/svg.js';
 import { scale } from './orrery/instruments.js';
 import { resolveObjectiveHudLayout } from './hud.js';
@@ -70,7 +72,7 @@ function makeReadoutGroup(host, index) {
   host.appendChild(el);
   return {
     index, el, name, act, moveTitle, counter, scaleInst, scaleHost, gauge,
-    shown: false, fightId: null, castId: null, actId: null, frac: -1, pct: -1, gaugeName: null,
+    shown: false, fightId: null, moveKey: null, barMoveKey: null, actId: null, frac: -1, pct: -1, gaugeName: null,
     stacked: false, dense: false, _bossPos: null,
     // The group's own seat, rewritten in place by each placement (never a fresh rect per
     // frame), and the last px values written to its box.
@@ -98,6 +100,9 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
   const canvas = document.createElement('canvas');
   canvas.className = 'sf-capital-boss-overlay';
   canvas.setAttribute('aria-hidden', 'true');
+  canvas.width = 1;
+  canvas.height = 1;
+  canvas.hidden = true;
   canvas.style.position = 'absolute';
   canvas.style.inset = '0';
   canvas.style.width = '100%';
@@ -114,6 +119,8 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
   // that just mounted — reading root.clientWidth there cost 47-73 ms on software GL.
   let sizeDirty = true;
   let observedSize = null;
+  let cssWidth = 0;
+  let cssHeight = 0;
   const markSizeDirty = () => { sizeDirty = true; };
   const onObservedResize = (entries) => {
     const entry = entries && entries[entries.length - 1];
@@ -135,14 +142,9 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     sizeDirty = !observingSize;
     const measured = observedSize || { width: root.clientWidth, height: root.clientHeight };
     observedSize = null;
-    const width = measured.width || window.innerWidth || 0;
-    const height = measured.height || window.innerHeight || 0;
-    const pixelWidth = Math.max(1, Math.round(width * dpr));
-    const pixelHeight = Math.max(1, Math.round(height * dpr));
-    if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
-    if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
+    cssWidth = measured.width || window.innerWidth || 0;
+    cssHeight = measured.height || window.innerHeight || 0;
   }
-  syncSize();
 
   // The repo's worldToScreen reports window CSS pixels for authoritative global XZ; the adapter
   // draws in canvas-local CSS pixels. The overlay canvas covers the window at (0,0), so the
@@ -169,6 +171,7 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
   };
 
   let reducedMotion = reducedMotionOf(state);
+  const mouthAperture = {};
   let overlay = createCapitalBossOverlay({
     canvas,
     bus,
@@ -450,12 +453,14 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     }
     return best;
   };
+  const readoutMoveKey = move => move?.mouth ? `${move.castId}|${move.counter}` : move?.castId ?? null;
   const foldMoveIntoBar = (group, readout) => {
-    const castId = readout.move ? readout.move.castId : null;
-    if (group.foldCast === castId) return;
-    group.foldCast = castId;
-    bus.emit('swarm:bossMove', { word: readout.move ? readout.move.title : '' });
-    if (readout.move) announce(`cast|${readout.fightId}|${castId}`, `${readout.move.title}. ${readout.move.counter}`, true);
+    const move = readout.move;
+    const key = readoutMoveKey(move);
+    if (group.barMoveKey === key) return;
+    group.barMoveKey = key;
+    bus.emit('swarm:bossMove', { word: move?.title || '', instruction: move?.mouth ? move.counter : '' });
+    if (move) announce(`cast|${readout.fightId}|${key}`, `${move.title}. ${move.counter}`, true);
   };
   const setGroup = (group, readout, showHealth, entities) => {
     if (group.el.style.display !== 'block') group.el.style.display = 'block';
@@ -463,7 +468,7 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     if (group.fightId !== readout.fightId) {
       group.fightId = readout.fightId;
       group.actId = null;
-      group.castId = null;
+      group.moveKey = null;
       announce(`boss|${readout.fightId}`, `${readout.name} is on you.`);
     }
     // Swarm owns its champion bar, which already names the boss: the arena readout drops the
@@ -478,11 +483,11 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
       group.actId = readout.actId;
       if (readout.actId) announce(`act|${readout.fightId}|${readout.actId}`, `${readout.name}: ${readout.actTitle}`);
     }
-    const castId = readout.move ? readout.move.castId : null;
-    if (group.castId !== castId) {
-      group.castId = castId;
+    const key = readoutMoveKey(readout.move);
+    if (group.moveKey !== key) {
+      group.moveKey = key;
       if (readout.move) {
-        announce(`cast|${readout.fightId}|${castId}`, `${readout.move.title}. ${readout.move.counter}`, true);
+        announce(`cast|${readout.fightId}|${key}`, `${readout.move.title}. ${readout.move.counter}`, true);
       }
     }
     setLine(group.moveTitle, readout.move ? readout.move.title : '');
@@ -537,7 +542,7 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     group.shown = false;
     group.fightId = null;
     group.actId = null;
-    group.castId = null;
+    group.moveKey = null;
     group.gaugeName = null;
   };
   // Seat every group of `source` at footprint `fp`; the ones that found no cell land in
@@ -550,15 +555,15 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     }
   };
   const anyShown = () => {
-    for (let i = 0; i < groups.length; i += 1) if (groups[i].shown) return true;
+    for (let i = 0; i < groups.length; i += 1) if (groups[i].shown || groups[i].barMoveKey != null) return true;
     return false;
   };
   const copyInto = (to, from) => { to.length = 0; for (let i = 0; i < from.length; i += 1) to.push(from[i]); };
   // GOLD-COLOSSI: the overlay's plate anchors ride the same readout pass — the feed is a
   // flat scratch list plus the one live PLATE/HOLD record, never a per-frame allocation.
   const plateFeed = [];
-  const syncReadouts = (st) => {
-    const readouts = capitalBossReadouts(st && st.mode === 'flight' ? st : null, readoutPool);
+  const syncReadouts = (st, mouth) => {
+    const readouts = capitalBossReadouts(st && st.mode === 'flight' ? st : null, readoutPool, mouth);
     plateFeed.length = 0;
     plateFeed.hold = null;
     for (const rd of readouts) {
@@ -577,14 +582,22 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     // Phone Swarm: no separate boss card. The move's word rides the boss bar (swarmJuiceHud
     // listens for swarm:bossMove); the live region still gets the full instruction.
     const foldIntoBar = !showHealth && document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1';
-    const layout = layoutFor(canvas.width / dpr || 1280, canvas.height / dpr || 720);
+    const barAvailable = foldIntoBar && arcadeEffectsLevel(st.settings) !== 'off';
+    if (sizeDirty) syncSize();
+    const layout = layoutFor(cssWidth || 1280, cssHeight || 720);
     reserveLiveText();
     live.length = 0;
     for (const group of groups) {
       const readout = readouts[group.index];
-      if (readout && foldIntoBar) { foldMoveIntoBar(group, readout); hideGroup(group); }
-      else if (readout) { setGroup(group, readout, showHealth, st && st.entities); live.push(group); }
-      else { if (group.foldCast != null) { group.foldCast = null; bus.emit('swarm:bossMove', { word: '' }); } hideGroup(group); }
+      const maw = readout?.fightId === 'swarm:w5';
+      if (readout && foldIntoBar && (!maw || barAvailable)) {
+        foldMoveIntoBar(group, readout);
+        hideGroup(group);
+        continue;
+      }
+      if (group.barMoveKey != null) { group.barMoveKey = null; bus.emit('swarm:bossMove', { word: '' }); }
+      if (readout && (!maw || readout.move)) { setGroup(group, readout, showHealth, st && st.entities); live.push(group); }
+      else hideGroup(group);
     }
     flushAnnouncements();
     // Placement maximizes SEATED readouts — never pixels-per-readout at the price of a
@@ -689,7 +702,7 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
     for (const group of groups) {
       group.fightId = null;
       group.actId = null;
-      group.castId = null;
+      group.moveKey = null;
     }
   };
   const onSaveLoaded = () => {
@@ -704,7 +717,6 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
   const offRestore = bus.on('save:loaded', onSaveLoaded);
   const offNewGame = bus.on('game:new', onNewGame);
 
-  let clearedWhileAway = false;
   return {
     draw(currentState) {
       const st = currentState || state;
@@ -723,20 +735,22 @@ export function mountCapitalBossOverlay({ root, bus, state, helpers }) {
         const fights = (st && st.capitalBossEncounters && st.capitalBossEncounters.fights) || {};
         overlay.restore(fights);
       }
-      if (st && st.mode === 'flight') {
+      const mouth = st?.mode === 'flight' ? readIronMawMouth(st, mouthAperture) : null;
+      overlay.mouthAperture(mouth);
+      const showWarnings = st?.mode === 'flight' && overlay.hasActiveCues();
+      if (showWarnings) {
         if (sizeDirty) syncSize();
-        // Projection uses CSS pixels; canvas resize and the menu clear reset this transform.
+        const pixelWidth = Math.max(1, Math.round(cssWidth * dpr));
+        const pixelHeight = Math.max(1, Math.round(cssHeight * dpr));
+        if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+        if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
+        // The world projection uses CSS pixels. Resizing resets the backing-store transform.
         canvas.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
         overlay.draw();
-        clearedWhileAway = false;
-      } else if (!clearedWhileAway) {
-        // Menus/dock: stop presenting the flight warning; leave the canvas clean.
-        const ctx = canvas.getContext('2d');
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        clearedWhileAway = true;
       }
-      syncReadouts(st);
+      const hideWarnings = !showWarnings;
+      if (canvas.hidden !== hideWarnings) canvas.hidden = hideWarnings;
+      syncReadouts(st, mouth);
     },
     destroy() {
       if (sizeObserver) sizeObserver.disconnect();

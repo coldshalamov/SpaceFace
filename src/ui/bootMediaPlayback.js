@@ -178,14 +178,14 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
     // reload or pause it: a restart re-buffered a clip that was already playing and cost the
     // intro its first visible seconds. `fresh` opts out — the paused transport
     // upgrade re-sources the same movie on purpose.
-    const adoptPlaying = !fresh && ownsElement(source) && video.readyState >= 1 && !video.error;
-    if (!adoptPlaying) pause();
+    const adoptStream = !fresh && ownsElement(source) && !video.error;
+    if (!adoptStream) pause();
     selected = source;
-    resumeTime = adoptPlaying ? 0 : previous;
+    resumeTime = adoptStream ? 0 : previous;
     lastFrame = null; proofFrames = 0;
     video.preload = 'auto'; video.muted = true; video.loop = true;
     video.playsInline = true;
-    if (adoptPlaying) {
+    if (adoptStream) {
       // No probing state here: the drift keyframe would pop an already-playing picture. The
       // first presented frames complete the proof and set the live state directly.
     } else {
@@ -272,7 +272,10 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
         if (disposed) return;
         settlePlayback('playback-hold-deadline');
       }, Math.max(0, holdMs));
-      applyStartOffset();
+      // Preserve the parse-time stream during the first handoff. Seeking before
+      // its opening frames arrive can turn an ordinary preload into a range
+      // request and park the visible movie while the decoder re-buffers.
+      if (selected || !ownsElement(sources.normal)) applyStartOffset();
       refresh(); return ready;
     },
     stop() { wanted = false; pause(); upgradeTransport(); },

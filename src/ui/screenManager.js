@@ -650,7 +650,14 @@ export function createScreenManager(ctx) {
     pushScreen(id);
   }
 
-  function closeAll() {
+  function closeAll({ keepTopId = null } = {}) {
+    if (keepTopId && top() === keepTopId) {
+      // The covered screens have already received onHide. Drop their stack
+      // entries and openers while keeping the live modal and its focus fence.
+      stack.splice(0, stack.length - 1);
+      focusStack.splice(0, focusStack.length, null);
+      return;
+    }
     while (stack.length) {
       const closing = activeDef();
       if (closing && closing.onHide) { try { closing.onHide(ctx); } catch (e) { console.error(e); } }

@@ -3,8 +3,8 @@
 // The first ten minutes PLACE one situation per power — a small physical setup on the player's
 // path that suggests the verb (a tight pack suggests Pull, a drifter on the bow suggests Shove,
 // a tumbling pod suggests Pin, a knot of scrap suggests Bomb, a debris fan suggests Rig). The
-// held-key preview (src/data/powerPreview.js) is the teacher: the pilot holds the key, sees the
-// outlines, and the power is learned by trying it. "I've flown before" skips all of it — the
+// pilot learns by trying each power: aim Pull, Pin and Bomb, tap Shove to pulse, and tap Rig to
+// turn it on while flying. "I've flown before" skips all of it — the
 // system reads ob.pace.flownBefore before it places anything.
 //
 // Pure spec module (src/onboarding contract): no DOM, no bus, no Math.random. Placement jitter
@@ -29,7 +29,7 @@ const perpendicular = (speedWuS) => Object.freeze({ kind: 'perpendicular', speed
 
 /**
  * One line per situation (the single tutorial voice): imperative, names the ONE power by its
- * rail name, and asks for the HOLD so the preview can teach — ≤12 words, same voice law as BEATS.
+ * rail name, and asks for its gesture — ≤12 words, same voice law as BEATS.
  */
 export const POWER_SITUATIONS = Object.freeze([
   Object.freeze({
@@ -43,7 +43,7 @@ export const POWER_SITUATIONS = Object.freeze([
   }),
   Object.freeze({
     power: 'shove',
-    line: 'A drifter crowds the bow. Shove answers — hold Shove.',
+    line: 'A drifter crowds the bow. Tap Shove to push it away.',
     props: Object.freeze([
       prop(3, 110, 14, 120, towardPlayer(16)),
     ]),
@@ -67,7 +67,7 @@ export const POWER_SITUATIONS = Object.freeze([
   }),
   Object.freeze({
     power: 'rig',
-    line: 'Debris across the lane. Rig sweeps a path — hold Rig.',
+    line: 'Debris ahead. Tap Rig once, then fly through.',
     props: Object.freeze([
       prop(-16, 100, 5, 25, still),
       prop(-8, 120, 5, 25, still),

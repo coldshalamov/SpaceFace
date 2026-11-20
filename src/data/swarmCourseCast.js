@@ -89,10 +89,11 @@ export const SWARM_COURSE_CAST = Object.freeze([
     P('wasp_swarmer', 5, { gate: 'diagonal_a', atTick: 0 }),
     P('wasp_swarmer', 5, { gate: 'diagonal_b', atTick: 12 }),
   ]),
-  // 5 — Iron Maw (boss). Chaff carries Detonators: "until you throw a Detonator" only
-  // works if the room keeps feeding them.
+  // 5 — Iron Maw (boss). Four Darts arrive immediately. The staged Dart uses
+  // the normal queue on a separate approach with time for a latch before its fuse.
   castRound(5, [W('detonator_dart', 6), W('wasp_swarmer', 4)], [
-    P('detonator_dart', 5, { gateIndex: 1, atTick: 0 }),
+    P('detonator_dart', 4, { gateIndex: 1, atTick: 0 }),
+    P('detonator_dart', 1, { gate: 'free', atTick: 0, staged: true, distance: 335 }),
     P('wasp_swarmer', 4, { gateIndex: 3, atTick: 12 }),
   ]),
   // 6 — Bruisers. Wasps land first as the bait wall; the first sighting commits alone on

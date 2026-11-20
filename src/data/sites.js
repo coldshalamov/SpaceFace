@@ -1,6 +1,7 @@
 // src/data/sites.js — asteroid site machine catalog + balance anchors.
 // Design: design/ASTEROID_SITES_BRIEF.md. IDs use sm_ (site machine) / sr_ (site recipe)
-// prefixes and are save-stable per src/data/AGENTS.md. Pure data, no imports.
+// prefixes and are save-stable per src/data/AGENTS.md. Pure data only.
+import { BELT_ORBITAL_STRUCTURES } from './beltEmpireData.js';
 //
 // The one law this data serves (brief §1): every machine reads its 8-cell contact ring.
 // Solid neighbors feed it; hollow neighbors are access. Nothing in this table may grant
@@ -136,6 +137,80 @@ export const SITE_MACHINES = [
     cost: { cmdty_regocrete: 1, cmdty_electronics: 2 },
     installS: 5,
   },
+  {
+    id: 'sm_cryo_condenser',
+    name: 'Cryo-Coolant Condenser',
+    short: 'Cryo',
+    verb: 'route',
+    desc: 'Pumps liquid coolant across nearby machinery within 2 cells, preventing thermal throttling even in dense halls. Boosted by water ice or matrix contacts.',
+    power: -4,
+    usesGeology: false,
+    coolingBoost: 4.5,
+    cost: { cmdty_regocrete: 2, cmdty_control_unit: 1, cmdty_purified_silica: 2 },
+    installS: 6,
+  },
+  {
+    id: 'sm_seismic_brace',
+    name: 'Hydraulic Pillar Brace',
+    short: 'Brace',
+    verb: 'anchor',
+    desc: 'Locks ceiling spans across open caverns, preventing harmonic roof fractures between nearby refineries and fabricators.',
+    power: -1,
+    usesGeology: false,
+    braceRadius: 2,
+    cost: { cmdty_regocrete: 3, cmdty_alloys: 1 },
+    installS: 5,
+  },
+  {
+    id: 'sm_capacitor_bank',
+    name: 'Subterranean Capacitor Bank',
+    short: 'Capacitor',
+    verb: 'generate',
+    desc: 'Buffers 240 MW·s of surplus grid power and discharges up to 10 MW during peak brownouts or laser spikes.',
+    power: 0,
+    capacitorMwS: 240,
+    maxDischargeMw: 10,
+    usesGeology: false,
+    cost: { cmdty_regocrete: 2, cmdty_electronics: 2, cmdty_ore_copper: 2 },
+    installS: 5,
+  },
+  {
+    id: 'sm_deep_synthesizer',
+    name: 'Exotic Lattice Synthesizer',
+    short: 'Synth',
+    verb: 'fabricate',
+    desc: 'High-pressure molecular forge assembling Polymers, Microchips, Medical Supplies, and endgame Quantum Cores. Loves crystal and exotic veins.',
+    power: -14,
+    usesGeology: false,
+    modes: ['sr_synth_polymers', 'sr_synth_microchips', 'sr_synth_medical', 'sr_synth_quantum_core'],
+    defaultMode: 'sr_synth_microchips',
+    cost: { cmdty_regocrete: 4, cmdty_control_unit: 2, cmdty_comp_circuitry: 2 },
+    installS: 9,
+  },
+  {
+    id: 'sm_mass_driver',
+    name: 'Sub-Surface Mass Driver',
+    short: 'Driver',
+    verb: 'route',
+    desc: 'Electromagnetic launch rail accelerating inter-asteroid cargo packets by +36 u/min per powered driver.',
+    power: -12,
+    usesGeology: false,
+    linkBoostPerMin: 36,
+    cost: { cmdty_regocrete: 5, cmdty_control_unit: 2, cmdty_alloys: 3 },
+    installS: 9,
+  },
+  {
+    id: 'sm_harmonic_resonator',
+    name: 'Geodesic Vein Exciter',
+    short: 'Resonator',
+    verb: 'extract',
+    desc: 'Broadcasts tuned seismic harmonics within 2 cells, accelerating adjacent Extractors and Gas Taps by +25% and exposing deep anomalies.',
+    power: -5,
+    usesGeology: false,
+    yieldAuraBonus: 0.25,
+    cost: { cmdty_regocrete: 2, cmdty_control_unit: 1, cmdty_electronics: 2 },
+    installS: 6,
+  },
 ];
 
 // Refinery modes run CONTINUOUSLY (units/min with fractional carry). Fabricator recipes are
@@ -215,6 +290,30 @@ export const SITE_RECIPES = [
     inputs: { cmdty_refined_metals: 1, cmdty_fuel_cells: 1 }, output: { charge_puck: 1 },
     buildS: 60, outOfLane: true,
   },
+  {
+    id: 'sr_synth_polymers', machine: 'sm_deep_synthesizer', name: 'Synthesize Polymers',
+    inputs: { cmdty_gas_hydrogen: 1, cmdty_silicate: 2 }, output: { cmdty_polymers: 1 },
+    buildS: 50,
+    contactKinds: ['gas', 'matrix'],
+  },
+  {
+    id: 'sr_synth_microchips', machine: 'sm_deep_synthesizer', name: 'Fab Microchips',
+    inputs: { cmdty_purified_silica: 1, cmdty_ore_copper: 2 }, output: { cmdty_microchips: 1 },
+    buildS: 55,
+    contactOres: ['cmdty_ore_copper', 'cmdty_crystal_silica'],
+  },
+  {
+    id: 'sr_synth_medical', machine: 'sm_deep_synthesizer', name: 'Distill Medical Kits',
+    inputs: { cmdty_ice_water: 2, cmdty_purified_silica: 1 }, output: { cmdty_medical: 1 },
+    buildS: 50,
+    contactOres: ['cmdty_ice_water'],
+  },
+  {
+    id: 'sr_synth_quantum_core', machine: 'sm_deep_synthesizer', name: 'Assemble Quantum Core',
+    inputs: { cmdty_comp_circuitry: 1, cmdty_crystal_lumin: 1 }, output: { cmdty_quantum_cores: 1 },
+    buildS: 110,
+    contactOres: ['cmdty_crystal_lumin', 'cmdty_exotic_xenium'],
+  },
 ];
 
 export const SITE_BALANCE = {
@@ -246,13 +345,69 @@ export const SITE_BALANCE = {
   // not sell the inputs out from under its factory; the player can explicitly export any good.
   exportDefaultOff: [
     'cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_ore_titanium',
-    'cmdty_silicate', 'cmdty_gas_hydrogen',
+    'cmdty_silicate', 'cmdty_gas_hydrogen', 'cmdty_ice_water', 'cmdty_crystal_lumin',
     'cmdty_regocrete', 'cmdty_electronics', 'cmdty_control_unit',
     'cmdty_refined_metals', 'cmdty_purified_silica',
     'cmdty_alloys', 'cmdty_comp_circuitry', 'cmdty_fuel_cells',
   ],
   ledgerMax: 40,             // receipts kept per site
+  // Inter-asteroid Field Architect & Mindustry-style supply links
+  linkRangeWu: 2600,         // max world-unit span for inter-asteroid transfer & power links
+  linkMaterialRatePerMin: 18, // units/min streamed across an active material transfer line
+  linkPowerEfficiency: 0.85,  // fraction of net surplus MW delivered across a power grid tether
+  linkMaxPerSite: 6,          // max outgoing links per asteroid site
+  maxDefensesPerSite: 8,      // max exterior orbital structures per asteroid site
+  maxDronesPerSite: 6,        // baseline autonomous belt drones per site
+  fieldCommissionCost: Object.freeze({ cmdty_regocrete: 4, cmdty_control_unit: 1 }),
+  fieldCommissionAltCost: Object.freeze({ cmdty_ore_iron: 6, cmdty_silicate: 6 }),
+  fieldDefenseTypes: BELT_ORBITAL_STRUCTURES,
 };
+
+export const SITE_SPECIALIZATIONS = Object.freeze({
+  fabrication: Object.freeze({ id: 'fabrication', label: 'Fabrication Works', tag: 'FAB', tone: 'gold' }),
+  smelting: Object.freeze({ id: 'smelting', label: 'Refining Foundry', tag: 'SMELT', tone: 'amber' }),
+  powerhouse: Object.freeze({ id: 'powerhouse', label: 'Power Relay Hub', tag: 'PWR', tone: 'cyan' }),
+  bastion: Object.freeze({ id: 'bastion', label: 'Fortified Bastion', tag: 'DEF', tone: 'mint' }),
+  extraction: Object.freeze({ id: 'extraction', label: 'Extraction Rig', tag: 'EXT', tone: 'rust' }),
+  outpost: Object.freeze({ id: 'outpost', label: 'Anchored Claim', tag: 'OUTPOST', tone: 'muted' }),
+});
+
+/**
+ * Pure classifier deriving an asteroid site's emergent industrial role
+ * from its installed machines, links, power surplus, and perimeter defenses.
+ */
+export function classifySiteSpecialization(site) {
+  if (!site) return SITE_SPECIALIZATIONS.outpost;
+  const machines = site.machines instanceof Map
+    ? [...site.machines.values()]
+    : Array.isArray(site.machines) ? site.machines : [];
+  const counts = {};
+  for (const m of machines) {
+    const id = m?.defId || m?.machineId;
+    if (!id) continue;
+    counts[id] = (counts[id] || 0) + 1;
+  }
+  const links = Array.isArray(site.links) ? site.links : [];
+  const defenses = Array.isArray(site.defenses) ? site.defenses : [];
+  const hasOutPowerLink = links.some((l) => l && l.kind === 'power' && l.active !== false);
+  const netPower = Number(site.powerGenMw || 0) - Number(site.powerDrawMw || 0);
+  if ((counts.sm_deep_synthesizer || 0) > 0 || (counts.sm_fabricator || 0) > 0 || (counts.sm_charge_press || 0) > 0) {
+    return SITE_SPECIALIZATIONS.fabrication;
+  }
+  if ((counts.sm_refinery || 0) > 0) {
+    return SITE_SPECIALIZATIONS.smelting;
+  }
+  if (hasOutPowerLink || ((counts.sm_gas_tap || 0) > 0 && netPower >= 6)) {
+    return SITE_SPECIALIZATIONS.powerhouse;
+  }
+  if (defenses.length >= 2 || ((counts.sm_relay || 0) > 0 && defenses.length >= 1)) {
+    return SITE_SPECIALIZATIONS.bastion;
+  }
+  if ((counts.sm_extractor || 0) > 0 || (counts.sm_auto_drill || 0) > 0 || (counts.sm_gas_tap || 0) > 0) {
+    return SITE_SPECIALIZATIONS.extraction;
+  }
+  return SITE_SPECIALIZATIONS.outpost;
+}
 
 export const SITE_MACHINE_BY_ID = new Map(SITE_MACHINES.map((m) => [m.id, m]));
 export const SITE_RECIPE_BY_ID = new Map(SITE_RECIPES.map((r) => [r.id, r]));

@@ -3,9 +3,19 @@
 // its own NOCTURNE light so it reads as a pool of light on a dark floor.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SWARM_FLOOR_PLANS, swarmPadNocturne, swarmFloorKeepClear } from '../src/data/swarmFloor.js';
+import {
+  SWARM_FLOOR_APRON_WU, SWARM_FLOOR_CRATE_RADIUS, SWARM_FLOOR_PLANS,
+  swarmPadNocturne, swarmFloorKeepClear,
+} from '../src/data/swarmFloor.js';
 import { planSwarmOpeningTerrain, swarmOpeningTerrainStage } from '../src/data/swarmOpeningTerrain.js';
 import { planSwarmDebris, withShopAprons } from '../src/systems/swarmArena.js';
+import { survivalArena } from '../src/systems/survivalArena.js';
+import {
+  OPENING_ANCHOR_DIST, OPENING_ANCHOR_SIZE, OPENING_CORRIDOR_HALF, segmentDistance, terrainAnchors,
+} from '../src/systems/terrainAnchors.js';
+import { createBus } from '../src/core/eventBus.js';
+import { hash32, mulberry32 } from '../src/core/rng.js';
+import { MASSLINE2_FLAGS, restoreFeatureMaps, snapshotFeatureMaps } from '../src/data/featureFlags.js';
 import { swarmArenaTierForRun, swarmArenaDebrisLayout } from '../src/data/swarmArenaLadder.js';
 import { NOCTURNE_LIGHT_PROFILES } from '../src/data/nocturneLighting.js';
 import { validateNocturneLightMetadata, validateNocturneMediumMetadata } from '../src/render/nocturne/content.js';
@@ -31,6 +41,60 @@ test('authored opening banks leave every shop its apron', () => {
         assert.ok(gap >= 8, `wave ${wave} bank at ${spot.x},${spot.z} sits on a pad at ${pad.x},${pad.z} (gap ${gap.toFixed(0)})`);
       }
     }
+  }
+});
+
+test('Foundry opening encounter anchors leave room to reach the active Crate', () => {
+  const savedFlags = snapshotFeatureMaps();
+  const at = { x: -1900, z: -2200 };
+  const crate = plan.crateSpots[0];
+  const admit = (seed, arenaId) => {
+    const bus = createBus();
+    const pilot = { id: 1, type: 'ship', alive: true, radius: 16, pos: at };
+    const state = { run: { ruleset: 'swarm', arenaId, seed }, meta: { seed }, simTime: 0,
+      playerId: pilot.id, entityList: [pilot], entities: new Map([[pilot.id, pilot]]) };
+    const anchors = Object.create(terrainAnchors);
+    anchors.init({ state, bus, helpers: {
+      hash32, mulberry32,
+      spawnEntity(spec) {
+        const entity = { ...spec, id: state.entityList.length + 1, alive: true };
+        state.entities.set(entity.id, entity);
+        state.entityList.push(entity);
+        return entity;
+      },
+    } });
+    try {
+      const room = Object.assign(Object.create(survivalArena), { state, bus });
+      room._installCover(true, 1);
+      return state.entityList.slice(1);
+    } finally {
+      anchors.destroy();
+    }
+  };
+  try {
+    MASSLINE2_FLAGS.enabled = true;
+    MASSLINE2_FLAGS.terrainAnchors = true;
+    for (const seed of [...Array.from({ length: 360 }, (_, index) => index + 1), 4242]) {
+      const rocks = admit(seed, 'helios_core');
+      const ordinary = admit(seed, 'ceres_belt');
+      const physical = rock => [rock.radius, rock.physicsBody.radius, rock.mass, rock.vel, rock.angVel];
+      assert.deepEqual(rocks.map(physical), ordinary.map(physical), `seed ${seed} keeps the same seeded rocks and spins`);
+      const [opening, ...banks] = rocks;
+      assert.equal(opening.radius, OPENING_ANCHOR_SIZE);
+      assert.ok(Math.abs(Math.hypot(opening.pos.x - at.x, opening.pos.z - at.z) - OPENING_ANCHOR_DIST) < 1e-7);
+      for (const rock of rocks) {
+        const gap = Math.hypot(rock.pos.x - at.x - crate.dx, rock.pos.z - at.z - crate.dz)
+          - rock.physicsBody.radius - SWARM_FLOOR_CRATE_RADIUS;
+        assert.ok(gap >= SWARM_FLOOR_APRON_WU, `seed ${seed} puts an anchor in the Crate apron (gap ${gap.toFixed(1)})`);
+      }
+      for (const rock of banks) {
+        assert.ok(segmentDistance(at.x, at.z, opening.pos.x, opening.pos.z, rock.pos.x, rock.pos.z)
+          >= OPENING_CORRIDOR_HALF, `seed ${seed} leaves the throw anchor reachable`);
+      }
+      if (seed === 4242) assert.deepEqual(rocks.map(rock => rock.pos), ordinary.map(rock => rock.pos));
+    }
+  } finally {
+    restoreFeatureMaps(savedFlags);
   }
 });
 

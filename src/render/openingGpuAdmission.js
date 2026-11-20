@@ -866,7 +866,11 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
         // Seat the children where the node itself sat so sibling order is
         // otherwise preserved; the keep pass decides their visibility by node.
         const at = host === node.parent ? host.children.indexOf(node) : -1;
-        for (const child of children) child.parent = host;
+        for (const child of children) {
+          node._noteLightingOrLodChild?.(child, -1);
+          child.parent = host;
+          host._noteLightingOrLodChild?.(child, 1);
+        }
         node.children.length = 0;
         if (at >= 0) host.children.splice(at, 0, ...children);
         else host.children.push(...children);
@@ -968,7 +972,10 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
         };
         try {
           if (nativeDrawableFilter) {
-            renderer.renderExactTargetDrawables(lightingScene, camera, keepForExactTargetSubjects(drawableSubjects));
+            // The keep set has every selected drawable's ancestors. An unrelated branch
+            // only needs to be visited when it can supply a light or an LOD update.
+            renderer.renderExactTargetDrawables(lightingScene, camera,
+              keepForExactTargetSubjects(drawableSubjects), true);
           } else {
             renderer.render(lightingScene, camera);
           }
@@ -1029,11 +1036,17 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
       for (const child of children) {
         if (child.parent !== host) continue;
         const at = host.children.indexOf(child);
-        if (at >= 0) host.children.splice(at, 1);
+        if (at >= 0) {
+          host.children.splice(at, 1);
+          host._noteLightingOrLodChild?.(child, -1);
+        }
         child.parent = node;
       }
       for (const child of children) {
-        if (child.parent === node && !node.children.includes(child)) node.children.push(child);
+        if (child.parent === node && !node.children.includes(child)) {
+          node.children.push(child);
+          node._noteLightingOrLodChild?.(child, 1);
+        }
       }
     }
     for (const [node, wasVisible] of hiddenForTouch) {
@@ -1321,12 +1334,13 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
       skipped: false, subjects: ordered.length, issued: issued.length, issueDedupeSkips,
       touched: 0, materials: Number(units.materialCount) || (units.programSubjects || []).length,
       geometries: Number(units.geometryCount) || (units.geometrySubjects || []).length,
-      timing: { issueMs: Math.round(issueMs), drainMs: Math.round(drainMs), touchMs: 0 },
+      timing: { issueMs: Math.round(issueMs), drainMs: Math.round(drainMs), reattachMs: 0, touchMs: 0 },
       results: [],
     };
   }
   // Touches run next: restore any cpu-detached payloads a forced upload would read empty before
   // the first draw binds them. Issue order above stays exactly as it was.
+  const reattachStarted = now();
   await reattachDetachedAdmissionTextures(ordered, options.renderer, yieldToMain);
   await reattachDetachedAdmissionGeometries(ordered, options.renderer, yieldToMain);
   const results = [];
@@ -1436,6 +1450,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     timing: {
       issueMs: Math.round(issueMs),
       drainMs: Math.round(drainMs),
+      reattachMs: Math.round(touchStarted - reattachStarted),
       touchMs: Math.round(touchMs),
     },
     results,

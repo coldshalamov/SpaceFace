@@ -120,6 +120,7 @@ ${C} .gmh-empty { padding:8px 16px 4px; font-family:var(--dp-face-read, "Instrum
 
 /* ===== the palette: the search, opened ===== */
 ${C} .gm-search-results[data-palette="1"], ${C} .gm-search-results { left:auto !important; right:0 !important; width:max(100%, 440px) !important; padding:8px 4px 12px !important; border-width:0 !important; background:rgb(6 8 12 / .96) !important; ${FEATHER(14)} max-height:min(60vh, 460px); }
+${C} .gm-search-results[data-palette="1"] :is(.gm-place-filters, .gm-place-list-title) { display:none !important; }
 ${C} .gm-search-results .gmh-pal-group { ${LABEL} font-size:12px; letter-spacing:.2em; color:rgb(${BONE} / .52); padding:10px 16px 4px; }
 ${C} .gm-search-results .gm-search-item { position:relative; display:flex !important; align-items:baseline; justify-content:space-between; gap:16px; min-height:32px; padding:6px 16px !important; border:0 !important; box-shadow:none !important; background-image:none !important; }
 ${C} .gm-search-results .gm-search-item.selected { background:linear-gradient(90deg, rgb(248 244 234) 0 2px, transparent 2px) 0 50% / 2px 70% no-repeat !important; color:rgb(255 252 244); }
@@ -495,17 +496,20 @@ export function mountChartHub(root, adapter, { searchInput = null, searchResults
   // ── the palette (the search, opened) ──
   let paletteItems = [];
   let paletteIndex = 0;
+  // The place finder retains this same rows node for typed results. Swapping the popup's
+  // children would leave its input handler writing to a detached list.
+  const searchRows = searchResults?.querySelector('#gm-place-results') || searchResults;
   const paletteOpen = () => !!(searchResults && searchResults.dataset && searchResults.dataset.palette === '1' && !searchResults.hidden);
   const closePalette = () => {
     if (!searchResults) return false;
     const was = paletteOpen();
     if (searchResults.dataset) delete searchResults.dataset.palette;
-    if (was) { searchResults.hidden = true; searchResults.innerHTML = ''; }
+    if (was) { searchResults.hidden = true; searchRows.innerHTML = ''; }
     paletteItems = [];
     return was;
   };
   const markPalette = () => {
-    const rows = searchResults.querySelectorAll('.gm-search-item');
+    const rows = searchRows.querySelectorAll('.gm-search-item');
     rows.forEach((r, i) => { const on1 = i === paletteIndex; r.classList.toggle('selected', on1); if (on1) r.setAttribute('aria-selected', 'true'); else r.removeAttribute('aria-selected'); });
   };
   const openPalette = () => {
@@ -522,7 +526,7 @@ export function mountChartHub(root, adapter, { searchInput = null, searchResults
       if (it.group !== group) { html += `<div class="gmh-pal-group">${esc(it.group)}</div>`; group = it.group; }
       html += `<div class="gm-search-item k-row" data-pal="${i}"><span class="gm-search-item-name">${esc(it.label)}</span><span class="gm-search-item-detail">${esc(it.sub || '')}</span>${it.key ? `<span class="gmh-pal-key">${esc(it.key)}</span>` : ''}</div>`;
     });
-    searchResults.innerHTML = html;
+    searchRows.innerHTML = html;
     searchResults.dataset.palette = '1';
     searchResults.hidden = false;
     markPalette();
@@ -535,13 +539,20 @@ export function mountChartHub(root, adapter, { searchInput = null, searchResults
     try { it.run(); } catch (_) { /* refused */ }
   };
   if (searchInput && searchResults) {
+    const releasePalette = () => {
+      delete searchResults.dataset.palette;
+      paletteItems = [];
+    };
     on(searchInput, 'focus', openPalette);
     on(searchInput, 'click', openPalette);
     // typing hands the list to the chart's own results (its handler has already painted them by now);
     // clearing the field brings the suggestions back
     on(searchInput, 'input', () => {
-      if (searchInput.value.trim()) { if (searchResults.dataset) delete searchResults.dataset.palette; paletteItems = []; } else openPalette();
+      if (searchInput.value.trim()) releasePalette();
+      else openPalette();
     });
+    const browse = root.querySelector('.gm-places-btn');
+    if (browse) on(browse, 'click', releasePalette);
     on(searchInput, 'blur', () => { setTimeout(() => { if (paletteOpen() && !(doc.activeElement === searchInput)) closePalette(); }, 160); });
     on(searchInput, 'keydown', (ev) => {
       if (!paletteOpen()) return;
@@ -555,32 +566,6 @@ export function mountChartHub(root, adapter, { searchInput = null, searchResults
       const row = ev.target && ev.target.closest ? ev.target.closest('.gm-search-item') : null;
       if (row) runPalette(Number(row.getAttribute('data-pal')));
     });
-  }
-
-  // ── the lens dock opens on hover INTENT ──
-  // The dock is icon beads at rest and words when open; the words sit at different heights from the
-  // icons, so opening it the instant the pointer arrives moves the thing the pilot is about to click.
-  // A 200 ms dwell opens it (a quick click lands on the icon where it stands), a press cancels the
-  // opening, and focus opens it at once for the keyboard and the pad.
-  const rail = root.querySelector ? root.querySelector('.gm-left-rail') : null;
-  if (rail && rail.classList) {
-    let openTimer = null;
-    let closeTimer = null;
-    const openRail = () => { clearTimeout(closeTimer); rail.classList.add('is-open'); };
-    // Focus that did not follow a pointer press (a key, the pad, a script) opens the dock and holds it; a
-    // mouse press that merely focused a button does not (it would move the icon under the click).
-    let pointerAt = 0;
-    on(doc, 'pointerdown', () => { pointerAt = Date.now(); }, true);
-    on(doc, 'keydown', () => { pointerAt = 0; }, true);
-    const pointerRecent = () => Date.now() - pointerAt < 700;
-    const keyFocused = () => { const a = doc.activeElement; return !!(a && rail.contains(a) && !pointerRecent()); };
-    const closeRail = () => { if (keyFocused()) return; rail.classList.remove('is-open'); };
-    on(rail, 'pointerenter', () => { clearTimeout(closeTimer); clearTimeout(openTimer); openTimer = setTimeout(openRail, 200); });
-    on(rail, 'pointerleave', () => { clearTimeout(openTimer); closeTimer = setTimeout(closeRail, 140); });
-    on(rail, 'pointerdown', () => { clearTimeout(openTimer); });
-    on(rail, 'focusin', () => { if (!pointerRecent()) openRail(); });
-    on(rail, 'focusout', () => { setTimeout(closeRail, 0); });
-    cleanups.push(() => { clearTimeout(openTimer); clearTimeout(closeTimer); rail.classList.remove('is-open'); });
   }
 
   // ── the hub ──

@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createRunState } from '../src/core/runState.js';
 import { createSimulation } from '../src/core/sim.js';
 import { createProductionCapitalBossEncounters } from '../src/systems/capitalBossRuntime.js';
+import { runSession } from '../src/systems/runSession.js';
+import { survivalResults } from '../src/systems/survivalResults.js';
 import { requireCapitalBossEncounter } from '../src/data/encounters/capital-boss.js';
 import {
   SWARM_BOSS_FIRST,
@@ -12,6 +15,7 @@ import {
 } from '../src/data/swarmMode.js';
 import { mountScreen, textLines } from './helpers/fake-dom.mjs';
 import { crucibleResultsScreen } from '../src/ui/screens/crucible.js';
+import { clearCrucibleSetup, crucibleHullSetupFor, requestCrucibleRun } from '../src/ui/crucibleLaunch.js';
 
 function fixture() {
   const emitted = [];
@@ -141,4 +145,49 @@ test('S14 — the first champion down plays the victory variant of Run Over, foc
       ui: {}, entities: new Map(), simTime: 12 } } });
   assert.ok(!textLines(settled.root).join(' ').includes('FIRST CHAMPION DOWN'),
     'a consumed stamp never shadows the run end');
+});
+
+test('a fatal hit overtakes a queued first-champion celebration and offers real Retry and Back', () => {
+  const h = fixture();
+  const session = Object.create(runSession);
+  const results = Object.create(survivalResults);
+  const seed = 73311;
+  h.state.mode = 'flight';
+  h.state.run = { ...createRunState({ kind: 'survival', ruleset: 'swarm', seed }),
+    phase: 'active', wave: SWARM_BOSS_FIRST, arenaId: 'helios_core', retireToken: 1 };
+  const ctx = { state: h.state, bus: h.sim.bus, helpers: {} };
+  session.init(ctx);
+  results.init(ctx);
+  try {
+    const setup = crucibleHullSetupFor({ hullId: 'ship_hornet', seed, arenaId: 'helios_core' });
+    assert.equal(requestCrucibleRun(h.sim.bus, setup.value, 'swarm'), true);
+    h.sim.bus.emit('entity:killed', { id: h.boss.id, killerId: h.state.playerId });
+    assert.ok(h.emitted.some(e => e.id === 'ui:pushScreen' && e.p.id === 'crucibleResults'));
+    h.sim.bus.emit('player:death', { context: 'arena_slam', physicalLabel: 'arena impact' });
+    assert.equal(h.state.run.phase, 'ended');
+    assert.equal(h.state.run.telemetry.firstBossDown.pending, true, 'the first screen has not mounted to ack');
+    assert.equal(results.lastResult().stopReason, 'player_death');
+
+    const { root, emitted, buttons } = mountScreen(Object.create(crucibleResultsScreen), {
+      ctx: { state: h.state }, registryGet: name => name === 'survivalResults' ? results : null,
+    });
+    assert.equal(root.dataset.outcome, 'defeat');
+    assert.match(textLines(root).join(' '), /An arena collision destroyed your ship on round 5/);
+    assert.ok(!buttons.some(button => button.textContent === 'Keep going'));
+    const retry = buttons.find(button => button.textContent === 'Run it again — same seed');
+    retry.listeners.click[0]();
+    const launch = emitted.find(e => e.event === 'game:new')?.payload.crucibleSetup;
+    assert.equal(launch?.survivalSetup?.seed, seed);
+    assert.equal(launch.survivalSetup.hullId, 'ship_hornet');
+
+    const back = buttons.find(button => button.textContent === 'Back to the hangar');
+    back.listeners.click[0]();
+    assert.ok(emitted.some(e => e.event === 'game:exitToMenu' && e.payload.source === 'crucible_results'));
+    assert.ok(emitted.some(e => e.event === 'ui:pushScreen' && e.payload.id === 'crucible'));
+  } finally {
+    clearCrucibleSetup();
+    results.destroy();
+    session.destroy();
+    h.dispose();
+  }
 });

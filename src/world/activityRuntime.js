@@ -356,9 +356,8 @@ function authoritativeCollisionIds(state) {
     || null;
 }
 
-function imminentCollisionFor(state, player, entity, collisionIds) {
+function imminentCollisionFor(player, entity, ids) {
   if (!player || !entity || entity.id === player.id || !player.pos || !entity.pos) return false;
-  const ids = collisionIds != null ? collisionIds : authoritativeCollisionIds(state);
   if (ids && (typeof ids.has === 'function' ? ids.has(entity.id) : Array.isArray(ids) && ids.includes(entity.id))) {
     return true;
   }
@@ -1533,7 +1532,7 @@ function armClassifyFrameVisit(runtime, visit) {
 }
 
 /** Pre-clear flying frame retain keeps the prior lists if every visitor is still eligible. */
-function tryRetainFlyingClassifyFrame(runtime, visit, state, player, origin, glass, submit, prefetchR, facts, reach, simTime) {
+function tryRetainFlyingClassifyFrame(runtime, visit, collisionIds, player, origin, glass, submit, prefetchR, facts, reach, simTime) {
   const retain = runtime._rockVisitRetain;
   if (!retain || !retain.poseKeys) return false;
   if ((retain.factsRevision | 0) !== (facts._revision | 0)) return false;
@@ -1574,7 +1573,7 @@ function tryRetainFlyingClassifyFrame(runtime, visit, state, player, origin, gla
   for (let i = 0; i < n; i++) {
     const entity = visit[i];
     if ((entity.type === 'asteroid' || entity.type === 'payload') && !flyingRockRetainEligible(
-      runtime, entity, entity.activity, state, player, origin, glass, submit, prefetchR,
+      runtime, entity, entity.activity, collisionIds, player, origin, glass, submit, prefetchR,
       facts, reach, simTime,
     )) return false;
   }
@@ -1587,7 +1586,7 @@ function tryRetainFlyingClassifyFrame(runtime, visit, state, player, origin, gla
 }
 
 // A moving player changes relative visibility, pins and physics reach even for stationary rocks.
-function flyingRockRetainEligible(runtime, entity, stamp, state, player, origin, glass, submit, prefetchR, facts, reach, simTime) {
+function flyingRockRetainEligible(runtime, entity, stamp, collisionIds, player, origin, glass, submit, prefetchR, facts, reach, simTime) {
   if (!stamp || !stamp.simTier || !stamp.presentationTier) return false;
   const retain = runtime._rockVisitRetain;
   if (!retain || !retain.poseKeys) return false;
@@ -1633,7 +1632,7 @@ function flyingRockRetainEligible(runtime, entity, stamp, state, player, origin,
   }
   const stampBits = pinBitsOf(stamp.pins);
   const hadImminent = (stampBits & PIN_REASON_BIT[PIN_REASON.IMMINENT_COLLISION]) !== 0;
-  if (hadImminent || imminentCollisionFor(state, player, entity)) return false;
+  if (hadImminent || imminentCollisionFor(player, entity, collisionIds)) return false;
   if (bits !== stampBits) return false;
 
   let expectedSim;
@@ -1651,7 +1650,7 @@ function flyingRockRetainEligible(runtime, entity, stamp, state, player, origin,
   return stamp.simTier === expectedSim;
 }
 
-function tryFlyingRockRetain(runtime, entity, stamp, state, player, origin, glass, submit, prefetchR, facts, reach, simTime, statics, dynamics, counts) {
+function tryFlyingRockRetain(runtime, entity, stamp, collisionIds, player, origin, glass, submit, prefetchR, facts, reach, simTime, statics, dynamics, counts) {
   if (CLASSIFY_FLYING_ROCK_RETAIN === false) return false;
   const retain = runtime._rockVisitRetain;
   if (!retain) return false;
@@ -1660,7 +1659,7 @@ function tryFlyingRockRetain(runtime, entity, stamp, state, player, origin, glas
   if (retain.runwayHalfX !== submit.halfX || retain.runwayHalfZ !== submit.halfZ) return false;
   if (retain.prefetchR !== prefetchR) return false;
   if (!flyingRockRetainEligible(
-    runtime, entity, stamp, state, player, origin, glass, submit, prefetchR, facts, reach, simTime,
+    runtime, entity, stamp, collisionIds, player, origin, glass, submit, prefetchR, facts, reach, simTime,
   )) return false;
   publishRetainedRockVisit(runtime, entity, stamp, statics, dynamics, counts);
   return true;
@@ -1714,6 +1713,8 @@ function classifyWorld(state, runtime) {
   const dynamics = runtime.physicsDynamics;
   const counts = runtime.counts;
   const visit = selection.entities;
+  // Share the collision lookahead published for this pass, including an empty lane.
+  const collisionIds = authoritativeCollisionIds(state);
   // Hoist parked-frame retain eligibility once; rocks then only pay a pose-key map hit.
   const rockRetainFrame = rockVisitRetainGlobalsMatch(
     runtime, origin, glass, submit, prefetchR, facts, player,
@@ -1746,7 +1747,7 @@ function classifyWorld(state, runtime) {
     const pvz = finite(player && player.vel && player.vel.z);
     if ((pvx * pvx + pvz * pvz) > 0.25) {
       if (tryRetainFlyingClassifyFrame(
-        runtime, visit, state, player, origin, glass, submit, prefetchR, facts, reach, simTime,
+        runtime, visit, collisionIds, player, origin, glass, submit, prefetchR, facts, reach, simTime,
       )) {
         frameRetained = true;
         runtime.classifyMode = 'flying-frame-retain';
@@ -1812,10 +1813,6 @@ function classifyWorld(state, runtime) {
   });
   ctx.pinsNormalized = false;
 
-  // Perf: per-pass invariants hoisted out of the visit loop. The physics lookahead set does not
-  // change during this pass (it is republished by the physics system later in the same tick), and
-  // the world-record bag is the same object for every entity this pass.
-  const passCollisionIds = authoritativeCollisionIds(state);
   const passWorldRecordBag = state.world && state.world.records && state.world.records.byId;
   // Presentation reads keep their local tier/pin stamps for visibility, asset
   // residency and audio, while completed worker messages own pose and records.
@@ -1855,7 +1852,7 @@ function classifyWorld(state, runtime) {
     if (rockBody && !rockRetain && runtime.seenEntityIds.has(entity.id)) {
       const stamp = entity.activity;
       if (tryFlyingRockRetain(
-        runtime, entity, stamp, state, player, origin, glass, submit, prefetchR,
+        runtime, entity, stamp, collisionIds, player, origin, glass, submit, prefetchR,
         facts, reach, simTime, statics, dynamics, counts,
       )) {
         continue;
@@ -1951,7 +1948,7 @@ function classifyWorld(state, runtime) {
       // coordinates place it beyond the current player's ordinary activity bubble. Preserve it in
       // the exact owner view; generic far passive traffic remains wake-gated below.
       || authoredActiveCombat);
-    ctx.imminentCollision = imminentCollisionFor(state, player, entity, passCollisionIds);
+    ctx.imminentCollision = imminentCollisionFor(player, entity, collisionIds);
     // Distant-sleep gate: a generic ship off the submit (draw) runway is aggregate population.
     // Test against `submitRunway` alone — `onRunway` also includes `prefetchKeep`, the mesh
     // residency decode-ahead band (TABLE_RESIDENCY_PREFETCH_SECONDS past the glass). That band

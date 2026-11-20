@@ -27,15 +27,18 @@ import { buildReducedMotionContactCue } from './reducedMotionInformation.js';
 import { createHudMeta, HUD_META_CSS } from './hudMeta.js';
 import { icon } from './station/icons.js';
 import { glyphSvg, hasGlyph } from './glyphs.js';
+import { itemThumbHtml, injectItemThumbnailStyles } from './icons/itemThumbnails.js';
 import { wantedAlertText, wantedReasonText } from './wantedReason.js';
 import { formatCount } from './numberFormat.js';
 import { reservedCargoQty, salvageBayReading, sellableCargoQty } from '../systems/cargo.js';
 import { planFuelCrack, FUEL_CELL_ID, FUEL_CELL_SIP } from '../systems/fuelCrack.js';
 import { COMMODITIES } from '../data/commodities.js';
+import { FIRST_TRADE_CONTRACT_SOURCE } from '../data/economyContractTemplates.js';
 import { laneInputWrite, laneWriteSetting } from '../core/simLaneCommands.js';
 import { SECTORS } from '../data/sectors.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { CONTRACT_47A_B0_TAG } from '../systems/missionShared.js';
+import { CINDER_TAG, isCinderObjectiveContact } from '../missions/cinderRoute.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
 import { SHIPS } from '../data/ships.js';
 import { evaluateArrivalCue, isEarnedSpeed, resolveThrusterCap } from '../core/flight/flightTelemetry.js';
@@ -50,8 +53,9 @@ import { journeyActForBeat, journeyActLabel, journeyActStoryClosed, journeyActTr
 import { VENUE_SECTOR_ID as COUNTERWEIGHT_SECTOR_ID } from '../features/counterweightCircuit/definition.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibility.js';
-import { resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
 import { enemyMindTell } from '../presentation/enemyMindTells.js';
+import { resolvePlottedSeamWorkpoint, resolveWaypointPresentationPosition, resolveObjectiveGatePresentation } from './navigationWaypoint.js';
+import { createVisorDockCue } from './orrery/visorDockCue.js';
 import { crackerRunEntryGuidance } from './crackerRunGuidance.js';
 import { objectiveIsOffSector } from './objectiveSector.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
@@ -899,13 +903,15 @@ export function flightDestinationSurface(state, command, temporaryCircuit = fals
       return { show: true, urgent: false, actLine,
         line: `${localizeText(entry.label)}\n${localizeText('Entry buoy')} ${entryReading} · ${localizeText('Mouth')} ${reading}\n${localizeText(entry.instruction)}` };
     }
-    const travel = objectiveTravelReadout(state, wp);
+    const localLesson = resolvePlottedSeamWorkpoint(state, wp);
+    const displayFix = localLesson || wp;
+    const travel = objectiveTravelReadout(state, displayFix);
     const routeGuide = mtRouteGuidance(state, wp);
-    const action = mtObjectiveAction((wp && (wp.reason || wp.label)) || 'Follow the marked route', wp);
+    const action = mtObjectiveAction(localLesson?.reason || (wp && (wp.reason || wp.label)) || 'Follow the marked route', wp);
     const readings = routeGuide
       ? [routeGuide.next, routeGuide.destination,
         `${BINDINGS.starmap.label} Star Map`].filter(Boolean).join(' · ')
-      : mtReadingsLine(objectiveBearingGlyph(state, wp), travel.distanceText,
+      : mtReadingsLine(objectiveBearingGlyph(state, displayFix), travel.distanceText,
         travel.etaS == null ? '' : travel.etaText);
     const dest = {
       show: true,
@@ -1061,14 +1067,15 @@ export function contactDisplayLimit(width, height) {
   return 5;
 }
 
-/** Selected contact, active threats and allies must never be buried under ambient traffic. */
+/** Selected contact and active objectives lead; threats and allies precede ambient traffic. */
 export function contactDisplayBand(contact, targetId) {
-  if (!contact) return 5;
+  if (!contact) return 6;
   if (contact.e && contact.e.id === targetId) return 0;
-  if (contact.hostile) return 1;
-  if (contact.ally) return 2;
-  if (contact.isWreck) return 3;
-  return 4;
+  if (contact.cinderObjective) return 1;
+  if (contact.hostile) return 2;
+  if (contact.ally) return 3;
+  if (contact.isWreck) return 4;
+  return 5;
 }
 
 /** Compact, truthful receipt for contacts omitted by the responsive row cap. */
@@ -1091,17 +1098,17 @@ export function contactOverflowSummary(contacts, visibleCount) {
 }
 
 /**
- * Wave G7 — the contacts list stays out of the flight HUD until the player locks something.
- * A pin, a nearby hostile, or a scan does not mount it. Half opacity is not hidden.
+ * Wave G7 — automatic reveals wait for a lock. An explicit pin can open a populated
+ * list before the pilot has selected a contact.
  */
-export function contactRosterVisible({ locked = false } = {}) {
-  return locked === true;
+export function contactRosterVisible({ locked = false, pinned = false, eligibleContactCount = 0 } = {}) {
+  return locked === true || (pinned === true && eligibleContactCount > 0);
 }
 
-/** Detach the roster until a lock exists, then seat it in front of the radar. */
-export function mountContactRoster(parent, roster, radar, locked) {
+/** Seat the admitted roster in front of the radar. */
+export function mountContactRoster(parent, roster, radar, visible) {
   if (!parent || !roster) return false;
-  if (!contactRosterVisible({ locked })) {
+  if (!visible) {
     if (roster.parentNode) roster.parentNode.removeChild(roster);
     return false;
   }
@@ -2331,6 +2338,15 @@ export function createHud(ctx, alerts) {
   const mtTitle = missionTracker.querySelector('.sf-mt-title');
   const mtObj = missionTracker.querySelector('.sf-mt-obj');
   const mtTime = missionTracker.querySelector('.sf-mt-time');
+  const mtDelivery = document.createElement('div');
+  mtDelivery.className = 'sf-mt-delivery';
+  mtDelivery.hidden = true;
+  const mtDeliveryTitle = document.createElement('b');
+  const mtDeliveryPlace = document.createElement('span');
+  const mtDeliveryStep = document.createElement('span');
+  mtDeliveryStep.className = 'sf-mt-delivery__step';
+  mtDelivery.append(mtDeliveryTitle, mtDeliveryPlace, mtDeliveryStep);
+  missionTracker.insertBefore(mtDelivery, mtTime);
   const mtCompact = document.createElement('div');
   mtCompact.className = 'sf-mt-compact';
   const mtAction = document.createElement('div'); mtAction.className = 'sf-mt-compact-action';
@@ -2512,6 +2528,7 @@ export function createHud(ctx, alerts) {
   elOverview.className = 'sf-overview';
   
   const radar = createRadar(ctx);
+  const visorDockCue = createVisorDockCue(root);
   mountRadarKit(radar.el);
   rightDock.append(targetPanel.el, elOverview, radar.el);
   root.appendChild(rightDock);
@@ -3530,7 +3547,7 @@ export function createHud(ctx, alerts) {
   on('ai:mind:decision', (p) => pushDoctrineTell({ ...(p || {}), kind: 'mind_decision' }));
   on('ai:mind:mistake', (p) => pushDoctrineTell({ ...(p || {}), kind: 'mind_mistake' }));
 
-  function updateDoctrineTells(frameDt) {
+  function updateDoctrineTells(frameDt, swarm) {
     if (!tellSlots.some(slot => slot.age < Infinity)) return;
     const w2s = helpers && helpers.worldToScreen;
     const tick = Number.isInteger(state.tick) ? state.tick : 0;
@@ -3559,10 +3576,17 @@ export function createHud(ctx, alerts) {
     }
     const measuredLeft = objectiveEdgeObstacles().left;
     if (measuredLeft) reserved.push(measuredLeft);
+    const floorLabelStart = reserved.length;
+    const floorLabels = swarm ? floatingText.getFloorPadLabelRects() : null;
+    if (floorLabels) {
+      for (const label of floorLabels) {
+        reserved.push(tellBlockerAt(reserved.length, label.x, label.y, label.w, label.h));
+      }
+    }
     // Danger tier in a Swarm round: ONE line (20_THE_FIRST_HOUR rule 2). Live tells of one kind
     // merge into the nearest carrier's chip with a count; of several kinds only the most urgent
     // kind speaks (a thrown mass outranks a launch, which outranks the rest).
-    const lead = isSwarmGlass(state) ? pickLeadTell(tellSlots, state) : null;
+    const lead = swarm ? pickLeadTell(tellSlots, state) : null;
     for (let slotIndex = 0; slotIndex < tellSlots.length; slotIndex++) {
       const slot = tellSlots[slotIndex];
       if (slot.age >= Infinity) continue;
@@ -3595,8 +3619,13 @@ export function createHud(ctx, alerts) {
         for (let i = 0; i < reserved.length; i++) tellPhoneBlockers.push(reserved[i]);
         for (let i = 0; i < avoid.length; i++) tellPhoneBlockers.push(avoid[i]);
         const blockers = tellPhoneBlockers;
-        const seat = seatPhoneTell((dims) => resolveDoctrineTellPlacement(w, h, proj, slotIndex, blockers, slot.layoutOffset, dims),
-          blockers, slot.geometry);
+        const place = (dims) => resolveDoctrineTellPlacement(w, h, proj, slotIndex, blockers, slot.layoutOffset, dims);
+        let seat = seatPhoneTell(place, blockers, slot.geometry);
+        if (!seat && floorLabels?.length) {
+          // Preserve the danger cue if a narrow deck has no belt of space clear of the prices.
+          blockers.splice(floorLabelStart, floorLabels.length);
+          seat = seatPhoneTell(place, blockers, slot.geometry);
+        }
         placement = seat && seat.placement;
         setClass(slot.el, 'is-compact', !!(seat && seat.compact));
       } else {
@@ -3649,10 +3678,26 @@ export function createHud(ctx, alerts) {
     transform: translate(-50%, -50%);
     width: min(980px, calc(100vw - 32px));
     height: min(600px, calc(100vh - 32px));
-    background: color-mix(in srgb, var(--panel) 96%, transparent);
-    border: 1px solid var(--visor-cyan);
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 30px color-mix(in srgb, var(--visor-cyan) 15%, transparent);
+    /* the hold wears the station's instrument palette: the panel scope re-points the legacy cool
+       tokens to the warm bone/amber deck (ui.css --panel/--visor are compatibility tokens), so the
+       whole sheet reads one language without rewriting forty rules (fresh-eyes pass 2026-11-15) */
+    --panel: rgb(10 12 16);
+    --panel-2: rgb(15 18 23);
+    --panel-edge: rgb(236 230 216 / .16);
+    --visor-cyan: rgb(236 230 216 / .62);
+    --visor-cyan-dim: rgb(236 230 216 / .3);
+    --warn: var(--dp-hand, #f2b950);
+    --danger: var(--dp-danger, #ff5038);
+    --accent-2: var(--dp-phos, #dfeeff);
+    --good: var(--dp-phos, #dfeeff);
+    --accent: var(--dp-hand, #f2b950);
+    --ink: #e8e2d4;
+    --ink-dim: rgb(232 226 212 / .62);
+    --ink-mute: rgb(232 226 212 / .42);
+    background: rgb(8 11 16 / .92);
+    border: 1px solid rgb(236 230 216 / .3);
+    border-radius: 10px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgb(236 230 216 / .1);
     z-index: 1000;
     pointer-events: auto;
     font-family: var(--mono, monospace);
@@ -3662,10 +3707,24 @@ export function createHud(ctx, alerts) {
   .sf-cargo-panel.open {
     display: flex;
   }
+  /* the hold dims the world behind it (fresh-eyes 2026-11-15: HUD contact text sliced through the
+     panel edges) — a non-interactive veil one step under the panel, shown and hidden with it. The
+     hold stays a live HUD surface: no ui-modal-open, the world keeps running behind the veil. */
+  .sf-cargo-scrim {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    pointer-events: none;
+    background: radial-gradient(120% 90% at 50% 44%, rgb(5 7 10 / .55), rgb(5 7 10 / .82));
+  }
+  .sf-cargo-scrim.open { display: block; }
   /* Same HUD-overlay contract as the comms feed: a modal screen owns the frame while it is up;
      the hold stays open in state and returns when the screen closes. */
   body.ui-modal-open .sf-cargo-panel.open,
   body.ui-live-screen .sf-cargo-panel.open { display: none; }
+  body.ui-modal-open .sf-cargo-scrim.open,
+  body.ui-live-screen .sf-cargo-scrim.open { display: none; }
   .sf-cargo-panel__head {
     display: flex;
     align-items: center;
@@ -3679,10 +3738,12 @@ export function createHud(ctx, alerts) {
     flex-direction: column;
   }
   .sf-cargo-panel__title {
-    font-size: 16px;
-    font-weight: bold;
-    letter-spacing: .06em;
-    color: var(--visor-cyan);
+    font-family: var(--dp-face-label, "Archivo", sans-serif);
+    font-stretch: 112%;
+    font-size: 15px;
+    font-weight: 650;
+    letter-spacing: .14em;
+    color: rgb(248 244 234);
   }
   .sf-cargo-status-tag {
     font-size: 12px;
@@ -3709,8 +3770,19 @@ export function createHud(ctx, alerts) {
     font-weight: bold;
     color: var(--visor-cyan);
   }
-  .sf-cargo-lean--warm { color: var(--visor-cyan); }
-  .sf-cargo-lean--cool { color: var(--warn); }
+  /* the lean verdict is a stamped tag, not a link (fresh-eyes 2026-11-15: "Drift approving" read
+     as an anchor): hairline chip, mono caps, the lean's own temperature */
+  .sf-cargo-lean {
+    font-family: var(--dp-face-num, monospace);
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 1px 8px;
+    border: 1px solid rgb(236 230 216 / .24);
+    border-radius: 2px;
+  }
+  .sf-cargo-lean--warm { color: var(--dp-hand, #f2b950); border-color: rgb(242 185 80 / .4); }
+  .sf-cargo-lean--cool { color: var(--dp-phos, #dfeeff); border-color: rgb(223 238 255 / .35); }
   .sf-cargo-panel__head { --k-signal: var(--dp-lamp); }
   .sf-cargo-panel__close:hover,
   .sf-cargo-panel__close:active { translate: none; box-shadow: none; filter: none; }
@@ -3735,12 +3807,56 @@ export function createHud(ctx, alerts) {
   .sf-cargo-rail-btn { width: 100%; text-align: left; white-space: normal; }
   .sf-cargo-rail-btn:hover,
   .sf-cargo-rail-btn:active { translate: none; box-shadow: none; filter: none; }
+  /* the open tab wears the Hand: an amber notch on the rail's left edge (the station rows'
+     selection grammar), not a link colour */
+  .sf-cargo-rail-btn.active {
+    color: rgb(250 247 238);
+    box-shadow: inset 3px 0 0 var(--dp-hand, #f2b950);
+  }
   .sf-cargo-panel .k-word:hover,
   .sf-cargo-panel .k-word:focus-visible,
   .sf-cargo-panel .k-word:active { color: var(--k-text-live); }
+  /* the inspector's verbs are keys, not hyperlinks (fresh-eyes 2026-11-15 read the resting
+     underline as a 2005 link): Set course keeps the primary amber word grammar; Jettison is the
+     hazard key — bone word with a red rule at rest, and the red arrives only on intent (deckplate
+     .dp-key--hazard). The rail's tab buttons stay bare — they are tabs, not keys. */
   .sf-cargo-panel .k-word--primary:is(:hover, :focus-visible, :active),
   .sf-cargo-panel .k-word[aria-current="true"] { color: var(--k-signal, var(--dp-lamp)); }
-  .sf-cargo-panel .k-word--danger:is(:hover, :focus-visible, :active) { color: var(--k-red); }
+  .sf-cargo-inspector .sf-btn-route {
+    min-height: 40px;
+    border: 1px solid rgb(242 185 80 / .45);
+    border-radius: 6px;
+    background: rgb(242 185 80 / .1);
+    color: var(--dp-ink-hot, #faf6ea);
+    font-size: 15px;
+    font-weight: 600;
+    padding: 8px 12px;
+  }
+  .sf-cargo-inspector .sf-btn-route:enabled:is(:hover, :focus-visible, :active) {
+    border-color: var(--dp-lamp, #f2b950);
+    background: rgb(242 185 80 / .2);
+    color: var(--dp-lamp, #f2b950);
+  }
+  .sf-cargo-inspector .sf-btn-route:disabled {
+    border-color: rgb(236 230 216 / .16);
+    background: rgb(236 230 216 / .03);
+    color: var(--ink-mute);
+  }
+  .sf-cargo-inspector .sf-btn-jettison {
+    color: var(--dp-ink, #e8e2d4);
+    border: 1px solid rgb(255 80 56 / .28);
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 7px 12px;
+    box-shadow: inset 0 -2px 0 rgb(255 80 56 / .55);
+  }
+  .sf-cargo-inspector .sf-btn-jettison:is(:hover, :focus-visible, :active) {
+    color: var(--dp-danger-hot, #ff8a70);
+    border-color: rgb(255 80 56 / .65);
+    background: rgb(255 80 56 / .16);
+    box-shadow: inset 0 -2px 0 var(--dp-danger, #ff5038);
+  }
   .sf-cargo-panel .k-word:focus-visible { outline: 2px solid var(--dp-lamp) !important; outline-offset: 3px; }
   .sf-cargo-centerpiece {
     flex: 1;
@@ -3781,12 +3897,14 @@ export function createHud(ctx, alerts) {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 14px;
+    gap: 8px;
+    padding: 12px 13px;
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    min-width: 140px;
-    height: 120px;
+    min-width: 164px;
+    min-height: 118px;
+    height: auto;
     box-sizing: border-box;
     z-index: 10;
     position: relative;
@@ -3804,8 +3922,8 @@ export function createHud(ctx, alerts) {
     background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--danger) 5%, transparent), color-mix(in srgb, var(--danger) 5%, transparent) 10px, color-mix(in srgb, var(--danger) 15%, transparent) 10px, color-mix(in srgb, var(--danger) 15%, transparent) 20px);
   }
   .sf-cargo-block.free-space {
-    border: 1px dashed var(--ink-mute);
-    background: transparent;
+    border: 1px solid rgb(236 230 216 / .18);
+    background: rgb(236 230 216 / .02);
     cursor: default;
   }
   .sf-cargo-block:hover, .sf-cargo-block.selected {
@@ -3827,23 +3945,37 @@ export function createHud(ctx, alerts) {
     background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--danger) 10%, transparent), color-mix(in srgb, var(--danger) 10%, transparent) 10px, color-mix(in srgb, var(--danger) 25%, transparent) 10px, color-mix(in srgb, var(--danger) 25%, transparent) 20px);
     box-shadow: 0 0 15px color-mix(in srgb, var(--danger) 20%, transparent);
   }
+  /* the Hand marks the picked block: the amber border rides over every legality's hover tint */
+  .sf-cargo-block.selected { border-color: var(--dp-hand, #f2b950); }
   .sf-cargo-block-top {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 5px;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-width: 0;
+  }
+  .sf-cargo-block-thumb {
+    --sf-thumb-size: 40px;
+    flex: 0 0 auto;
   }
   .sf-cargo-block-name {
-    font-size: 12px;
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 1.25;
     font-weight: bold;
     color: var(--ink);
     overflow: hidden;
     text-overflow: ellipsis;
+    overflow-wrap: anywhere;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
   }
   .sf-cargo-lock-icon {
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     color: var(--warn);
@@ -3852,7 +3984,8 @@ export function createHud(ctx, alerts) {
   .sf-cargo-block-bottom {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
+    width: 100%;
   }
   .sf-cargo-block-qty {
     font-size: 12px;
@@ -3925,13 +4058,24 @@ export function createHud(ctx, alerts) {
     gap: 15px;
     height: 100%;
   }
+  .sf-ins-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--panel-edge);
+    padding-bottom: 12px;
+  }
+  .sf-ins-thumb {
+    flex: 0 0 auto;
+    display: inline-flex;
+  }
   .sf-ins-name {
     font-size: 16px;
     font-weight: bold;
     color: var(--visor-cyan);
     margin: 0;
-    border-bottom: 1px solid var(--panel-edge);
-    padding-bottom: 8px;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
   .sf-ins-meta {
     display: flex;
@@ -4086,7 +4230,6 @@ export function createHud(ctx, alerts) {
     border: 1px solid var(--visor-cyan-dim, rgba(79, 143, 221, 0.3));
     border-radius: 2px;
     letter-spacing: 0.04em;
-    white-space: nowrap;
     margin-top: 4px;
     font-family: var(--dp-face-read, var(--k-mono, monospace));
   }
@@ -4098,8 +4241,12 @@ export function createHud(ctx, alerts) {
     ms.textContent = CARGO_HOLD_CSS;
     document.head.appendChild(ms);
   }
+  injectItemThumbnailStyles(document);
 
   // ---- cargo panel overlay ----
+  const cargoScrim = document.createElement('div');
+  cargoScrim.className = 'sf-cargo-scrim';
+  cargoScrim.setAttribute('aria-hidden', 'true');
   const cargoPanel = document.createElement('div');
   cargoPanel.className = 'sf-cargo-panel';
   cargoPanel.setAttribute('role', 'dialog');
@@ -4135,10 +4282,13 @@ export function createHud(ctx, alerts) {
         <div class="sf-cargo-schematic"></div>
         <div class="sf-cargo-supply-tree"></div>
       </div>
-      <div class="sf-cargo-inspector">
-        <div class="sf-inspector-empty">No item selected. Select a block to inspect.</div>
+        <div class="sf-cargo-inspector">
+        <div class="sf-inspector-empty">Nothing on the slate yet — pick a block from the hold.</div>
         <div class="sf-inspector-content" style="display:none;">
-          <h3 class="sf-ins-name">Commodity</h3>
+          <div class="sf-ins-head">
+            <span class="sf-ins-thumb" aria-hidden="true"></span>
+            <h3 class="sf-ins-name">Commodity</h3>
+          </div>
           <div class="sf-ins-meta">
             <div class="sf-ins-meta-row"><span>Units/Vol:</span><span class="sf-ins-qty">0 u / 0 u</span></div>
             <div class="sf-ins-meta-row"><span>Legality:</span><span class="sf-ins-legal">LEGAL</span></div>
@@ -4156,6 +4306,7 @@ export function createHud(ctx, alerts) {
       </div>
     </div>
   `;
+  root.appendChild(cargoScrim);
   root.appendChild(cargoPanel);
 
   // mount route beam overlay
@@ -4325,6 +4476,13 @@ export function createHud(ctx, alerts) {
     const vol = def ? (def.volPerU || 1) * qty : qty;
     const name = cargoDisplayName(commodityId);
 
+    const thumbEl = contentEl.querySelector('.sf-ins-thumb');
+    if (thumbEl) {
+      thumbEl.innerHTML = itemThumbHtml(
+        { id: commodityId, kind: 'commodity', category: def?.category, legality: def?.legality },
+        { size: 'hero', showCrest: false }
+      );
+    }
     contentEl.querySelector('.sf-ins-name').textContent = name;
     contentEl.querySelector('.sf-ins-qty').textContent = `${qty} u / ${vol.toFixed(1)} u`;
 
@@ -4636,11 +4794,12 @@ export function createHud(ctx, alerts) {
 
       block.innerHTML = `
         <span class="sf-cargo-block-top">
+          ${itemThumbHtml({ id, kind: 'commodity', category: def?.category, legality: def?.legality }, { size: 'md', showCrest: false, className: 'sf-cargo-block-thumb' })}
           <span class="sf-cargo-block-name">${name}</span>
           ${isLocked ? `<span class="sf-cargo-lock-icon" title="Locked — needed for an active contract or the story">${icon('lock', 12)}</span>` : ''}
-        </div>
-        <div class="sf-cargo-block-bottom">
-          <span class="sf-cargo-block-qty">${name} · ${qty} · ≈ ${formatCount(rowWorth, state)} cr</span>
+        </span>
+        <span class="sf-cargo-block-bottom">
+          <span class="sf-cargo-block-qty">${qty} u · ≈ ${formatCount(rowWorth, state)} cr</span>
           <span class="sf-cargo-block-vol">${vol.toFixed(1)} space</span>
           ${badgeHtml}
         </span>
@@ -4741,6 +4900,7 @@ export function createHud(ctx, alerts) {
     cargoPanelOpen = !cargoPanelOpen;
     if (state.ui) state.ui.cargoPanelOpen = cargoPanelOpen;
     cargoPanel.classList.toggle('open', cargoPanelOpen);
+    cargoScrim.classList.toggle('open', cargoPanelOpen);
     // The ORRERY skin lowers #alerts while the hold is up. A :has() mirror here re-scanned the
     // whole document on every alert/attribute change — a JS-toggled body class is the same fact.
     document.body?.classList.toggle('sf-cargo-open', cargoPanelOpen);
@@ -4772,6 +4932,7 @@ export function createHud(ctx, alerts) {
     cargoPanelOpen = false;
     if (state.ui) state.ui.cargoPanelOpen = false;
     cargoPanel.classList.remove('open');
+    cargoScrim.classList.remove('open');
     document.body?.classList.remove('sf-cargo-open');
     if (cargoOpener?.isConnected && !cargoOpener.closest('[inert]')) cargoOpener.focus?.({ preventScroll: true });
     cargoOpener = null;
@@ -5376,7 +5537,7 @@ export function createHud(ctx, alerts) {
     const until = performance.now() + ms;
     if (until > _overviewRevealUntil) _overviewRevealUntil = until;
   }
-  // A scan pulse is the player explicitly asking "what's out there" — surface the strip immediately.
+  // A scan holds the expanded roster once one is mounted.
   on('scan:completed', () => { revealOverview(OVERVIEW_SCAN_REVEAL_MS); updateOverview(); });
   on('scan:pulse', () => revealOverview(OVERVIEW_SCAN_REVEAL_MS));
 
@@ -5388,14 +5549,17 @@ export function createHud(ctx, alerts) {
   }
 
   on('ui:toggleOverview', () => {
-    laneWriteSetting(state, 'settings.ui.overviewOpen', !state.settings.ui.overviewOpen);
-    if (state.settings.ui.overviewOpen) revealOverview(OVERVIEW_SCAN_REVEAL_MS);
+    const pinned = !state.settings.ui.overviewOpen;
+    // Settings live on the main HUD. Send the same change to the worker for saves.
+    state.settings.ui.overviewOpen = pinned;
+    laneWriteSetting(state, 'settings.ui.overviewOpen', pinned);
+    if (pinned) revealOverview(OVERVIEW_SCAN_REVEAL_MS);
     updateOverview();
     ctx.bus.emit('toast', {
-      text: state.settings.ui.overviewOpen ? 'Contacts strip pinned' : 'Contacts strip on-demand',
+      text: pinned ? 'Contacts strip pinned' : 'Contacts strip on-demand',
       kind: 'info', ttl: 1.6,
     });
-    ctx.bus.emit('audio:cue', { id: state.settings.ui.overviewOpen ? 'ui_open' : 'ui_back' });
+    ctx.bus.emit('audio:cue', { id: pinned ? 'ui_open' : 'ui_back' });
   });
 
   // One-word state → CSS class for the row's state chip + tier pips.
@@ -5485,15 +5649,22 @@ export function createHud(ctx, alerts) {
       // Last value written to each field. A write happens only when one of these changes.
       name: '', iffColor: '', icon: '', glyph: '', stateWord: '', stateCls: '',
       tier: -1, dist: null, speed: '', detail: '', selected: false, unscanned: false,
+      objectiveGeneration: null,
     };
 
     // Bound ONCE for the life of the row. Re-binding a fresh closure per sample was part of the
     // teardown cost this rewrite removes; the record carries the live name so the toast stays current.
-    el.addEventListener('click', () => {
+    // The tab-focusable dock must not take the keyboard when its pointer-only row is picked.
+    el.addEventListener('mousedown', (event) => {
+      if (event.button === 0) event.preventDefault();
+    });
+    el.addEventListener('click', (event) => {
       const contact = state.entities && typeof state.entities.get === 'function'
         ? state.entities.get(rec.id)
         : null;
+      if (rec.objectiveGeneration != null && contact?.occupantGeneration !== rec.objectiveGeneration) return;
       if (!presentationAllowsTargetLock(contact, state)) return;
+      if (event.detail > 0 && document.activeElement === rightDock) rightDock.blur();
       if (!state.player) state.player = {};
       laneInputWrite(state, 'player.targetId', rec.id);
       laneInputWrite(state, 'input.targetAssistDisabled', false);
@@ -5507,6 +5678,7 @@ export function createHud(ctx, alerts) {
   /** Write only the fields of a retained row whose value actually changed this sample. */
   function syncOverviewRow(rec, c, playerTeam, player, targetId) {
     const e = c.e;
+    rec.objectiveGeneration = c.cinderObjective ? e.occupantGeneration : null;
     const iff = getIffData(e, playerTeam);
     const glyph = getClassGlyph(e);
     const siteDetail = authoredSiteRosterDetail(state, e, player, c.dist);
@@ -5616,6 +5788,9 @@ export function createHud(ctx, alerts) {
     // Retained scratch list: cleared and refilled, never reallocated (this runs at 5 Hz forever).
     const contacts = _overviewContacts;
     contacts.length = 0;
+    const trackedId = state.ui?.trackedMissionId;
+    const cinder = !swarmRound && trackedId != null && state.missions?.active?.find(m =>
+      m.id === trackedId && m.storyTag === CINDER_TAG && m.destSectorId === state.world?.currentSectorId);
     const consider = (e) => {
       if (!e || !e.alive || e === player) return;
       // A live Swarm round lists the fight, not the campaign's set dressing: an Adventure world
@@ -5639,6 +5814,7 @@ export function createHud(ctx, alerts) {
       const ally = !hostile && !isWreck && playerTeam !== 0 && e.team === playerTeam;
       contacts.push({
         e, dist, dx, dz, isWreck, hostile, ally,
+        cinderObjective: cinder ? isCinderObjectiveContact(cinder, e) : false,
         threatTier: contactThreatTier(e, hostile),
       });
     };
@@ -5710,8 +5886,9 @@ export function createHud(ctx, alerts) {
     _overviewIdScratch = _knownContactIds;
     _knownContactIds = curIds;
 
-    const pinned = !!(state.settings && state.settings.ui && state.settings.ui.overviewOpen);
-    if (!mountContactRoster(rightDock, elOverview, radar.el, locked)) return;
+    const pinned = state.settings?.ui?.overviewOpen === true;
+    const visible = contactRosterVisible({ locked, pinned, eligibleContactCount: contacts.length });
+    if (!mountContactRoster(rightDock, elOverview, radar.el, visible)) return;
     // A lock mounts the list (G7), but a lock on something the roster cannot list — a target that
     // died, drifted past 5200 WU, or is not a ship/derelict — leaves nothing to show. The inline
     // display below would beat the stylesheet's `:empty { display:none }`, so an empty list would
@@ -6125,7 +6302,8 @@ export function createHud(ctx, alerts) {
       ? state.entities.get(state.playerId)
       : null;
     resolveReticle();
-    updateDoctrineTells(frameDt);
+    const swarmTells = isSwarmGlass(state);
+    if (!swarmTells) updateDoctrineTells(frameDt, false);
     if (slow) updateFlightCargoBar();
 
     // --- Optical G-force lag & G-LOC simulation (Blueprint Category D) ---
@@ -6349,9 +6527,23 @@ export function createHud(ctx, alerts) {
         const objective = showObjective ? (objectiveRecall.text || dest.line) : '';
         setText(mtObj, objective);
         const [action, ...readings] = objective.split('\n');
+        const station = command?.waypoint?.stationId && resolveHudNavStation(state, command.waypoint.stationId);
+        const destination = station?.data?.name || command?.waypoint?.label || '';
+        const marker = destination && ` to ${destination}. `;
+        const split = marker && /^Deliver\s/i.test(action) ? action.indexOf(marker) : -1;
+        const delivery = split > 0 && document.documentElement.dataset.sfMobileFlight !== '1';
+        setClass(missionTracker, 'sf-mt--delivery', delivery);
+        setClass(missionTracker, 'sf-mt--has-caption', showCaption);
+        setClass(missionTracker, 'sf-mt--caption-only', showCaption && !objective);
+        setHidden(mtDelivery, !delivery);
+        if (delivery) {
+          setText(mtDeliveryTitle, action.slice(0, split).replace(/^(Deliver\s+[\d,.]+)u\b/i, '$1'));
+          setText(mtDeliveryPlace, destination);
+          setText(mtDeliveryStep, action.slice(split + marker.length).replace(/\.$/, ''));
+        }
         setText(mtAction, objective === dest.line ? dest.compactAction || action : action);
         setText(mtReadings, readings.join('\n'));
-        setText(mtDetailsText, [objective, showCaption ? mtTime.textContent : ''].filter(Boolean).join('\n\n'));
+        setText(mtDetailsText, [actFull, objective, showCaption ? mtTime.textContent : ''].filter(Boolean).join('\n\n'));
         setDisplay(missionTracker, true);
       }
     }
@@ -6396,6 +6588,9 @@ export function createHud(ctx, alerts) {
 
     // --- world-space DOM overlays: batch transform/opacity writes ---
     if (overlayTick) floatingText.update(overlayDt || frameDt);
+    // Floor labels publish their painted seats in the overlay pass. The warning yields to
+    // those seats, and the floor pass never uses a warning's position in return.
+    if (swarmTells) updateDoctrineTells(frameDt, true);
 
     // --- radar: canvas redraws are explicit, not tied to every render frame ---
     if (radarTick) radar.draw();
@@ -6406,6 +6601,7 @@ export function createHud(ctx, alerts) {
     // --- off-screen objective arrow ---
     if (overlayTick || slow) updateObjectiveArrow(p, slow);
     if (overlayTick || slow) updateFirstUseHint(p);
+    if (overlayTick && trackedDockCue) placeFlightReadouts(window.innerWidth, window.innerHeight, trackedDockCue);
     if (slow) {
       // Idle HUD (no receipt, caption, alert or external caption on screen): geometry only changes
       // through the explicit invalidations (layout/settings/resize events), so re-placing on every
@@ -6503,11 +6699,8 @@ export function createHud(ctx, alerts) {
         setClass(elNavReadout, 'sf-nav--lock', false);
         return;
       }
-      let livePos = null;
-      if (nw.stationId) {
-        const station = resolveNavStation(nw);
-        if (station) livePos = station.pos;
-      }
+      const freightBerth = nw.kind === 'mission' && nw.missionId === m?.id && m?.source === FIRST_TRADE_CONTRACT_SOURCE;
+      const livePos = nw.stationId && !freightBerth ? resolveNavStation(nw)?.pos : null;
       const pos = livePos || resolveWaypointPresentationPosition(state, nw);
       wpLabel = nw.label || nw.reason || nw.sectorName || 'Waypoint';
       navMeta = nw;
@@ -6540,6 +6733,10 @@ export function createHud(ctx, alerts) {
       lastNavLabel = '';
       lastObjectiveMarkerText = '';
       lastObjectiveSig = null;
+      return;
+    }
+    if (navMeta?.stationId && navMeta.stationId === trackedDockCue?.station?.data?.stationId) {
+      setDisplay(arrow, false);
       return;
     }
     objectiveProjectionWorld.x = wp.x;
@@ -6768,19 +6965,12 @@ export function createHud(ctx, alerts) {
   let lastReceiptObstacle = null;
   let lastCaptionObstacleVisible = null;
 
-  function refreshFlightTextObstacleSnapshot() {
+  function refreshFlightTextObstacleSnapshot(receiptCards = null) {
     if (!flightTextObstaclesStale) return;
     const nowMs = (typeof performance !== 'undefined' && performance && typeof performance.now === 'function')
       ? performance.now() : Date.now();
     const sinceLast = nowMs - flightTextObstacleSnapshotAt;
     if (sinceLast < FLIGHT_TEXT_OBSTACLE_MIN_MS) return;
-    const qsa = (scope, selector) => {
-      if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
-      const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
-      let hit = queries.get(selector);
-      if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
-      return hit;
-    };
     const measured = objectiveEdgeObstacles();
     // Phase 1 — membership. The same cheap filters add() applies before its expensive reads
     // decide the candidate set. If the set (identity, class, inline visibility signature)
@@ -6809,17 +6999,28 @@ export function createHud(ctx, alerts) {
       ['vitals', '.sf-vitals, .sf-status'],
       ['flight-control', '.sf-command-deck, .sf-prail, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card'],
       ['caption', '.sf-caption.show'],
-      ['receipt', '.sf-toast:not(.sf-toast--out)'],
     ];
     for (const [owner, selector] of rootGroups) {
-      for (const el of qsa(root, selector)) consider(owner, el);
+      for (const el of queryReceiptGeometry(root, selector)) consider(owner, el);
     }
     consider('caption', caption);
-    for (const el of toastsLaneEl?.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || []) consider('receipt', el);
-    for (const el of qsa(document, '#alerts .sf-alert:not([hidden])')) consider('alert', el);
-    for (const el of qsa(document, '.sf-stuntcall:not([hidden])')) consider('stunt', el);
+    // Toasts have a single mount. The placement flush already has its current membership;
+    // a doctrine tell outside that flush still reads the mounted lane directly.
+    const cards = receiptCards ?? (toastsLaneEl || document.getElementById('toasts'))
+      ?.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') ?? [];
+    for (const el of cards) consider('receipt', el);
+    for (const el of queryReceiptGeometry(document, '#alerts .sf-alert:not([hidden])')) consider('alert', el);
+    for (const el of queryReceiptGeometry(document, '.sf-stuntcall:not([hidden])')) consider('stunt', el);
     if (state.run?.ruleset === 'swarm') {
-      for (const el of document.querySelectorAll('.sf-crun, .sf-sj__col > :not([hidden])')) consider('swarm-callout', el);
+      // Reuse the band solver's owner query. Children can turn over or move inside the same
+      // column without replacing its element; take their current visibility and geometry.
+      const callouts = receiptCards === null ? document.querySelectorAll('.sf-crun, .sf-sj__col')
+        : queryReceiptGeometry(document, '.sf-crun, .sf-sj__col');
+      for (const el of callouts) {
+        if (el.matches('.sf-sj__col')) {
+          for (const child of el.children) if (!child.hidden) consider('swarm-callout', child);
+        } else consider('swarm-callout', el);
+      }
     }
     for (const el of externalFlightCaptions) consider('flight-caption', el);
     for (const el of responsiveOverlayObstacles()) {
@@ -6896,13 +7097,6 @@ export function createHud(ctx, alerts) {
     // The touch HUD is a body sibling, not a child of #hud. Reserve its actual rendered
     // instruments rather than the desktop vitals rectangle that mobile flight replaces.
     if (receiptGeometryRects?.resp) return receiptGeometryRects.resp;
-    const qsa = (scope, selector) => {
-      if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
-      const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
-      let hit = queries.get(selector);
-      if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
-      return hit;
-    };
     const touch = document.getElementById('sf-touch-overlay');
     if (touch !== touchOverlayOwner) {
       touchOverlayObserver?.disconnect();
@@ -6917,8 +7111,8 @@ export function createHud(ctx, alerts) {
       }
     }
     const elements = [
-      ...qsa(root, '#race-tape'),
-      ...qsa(root, '#race-tape[data-options-open="true"] .race-tape-actions, .sf-mt-details:not([hidden]), .sf-radar-wrap--expanded'),
+      ...queryReceiptGeometry(root, '#race-tape'),
+      ...queryReceiptGeometry(root, '#race-tape[data-options-open="true"] .race-tape-actions, .sf-mt-details:not([hidden]), .sf-radar-wrap--expanded'),
       ...touch?.querySelectorAll?.('.mf-status, .mf-pause, .mf-edge, .mf-buttons, .mf-dock, .mf-ghost:not([hidden]) svg, .mf-ghost:not([hidden]) .mf-ghost-label, .mf-stick:not([hidden]) .mf-readout, .mf-caption:not([hidden])') || [],
     ];
     const elementSet = new Set(elements);
@@ -6941,6 +7135,7 @@ export function createHud(ctx, alerts) {
   // Both roots are static index.html markup: resolve each once, retrying only while absent.
   let toastsLaneEl = null;
   let alertsEl = null;
+  let trackedDockCue = null;
   let alertLaneObserver = null;
   function cleanupAlertLanePlacement() {
     alertLaneObserver?.disconnect();
@@ -7024,6 +7219,13 @@ export function createHud(ctx, alerts) {
   // overlay writes invalidate their own tree, retaining unrelated settled obstacle measurements.
   let receiptPlacementMode = 'shared';
   let receiptGeometryRects = null;
+  function queryReceiptGeometry(scope, selector) {
+    if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
+    const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
+    let hit = queries.get(selector);
+    if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
+    return hit;
+  }
   function setReceiptPlacementMode(mode) {
     if (mode !== 'shared' && mode !== 'original') throw new RangeError('Unknown receipt placement mode: ' + mode);
     receiptPlacementMode = mode;
@@ -7068,13 +7270,6 @@ export function createHud(ctx, alerts) {
     // measured rects. Both memos live on the flush's rect Map; any geometry-changing write drops them.
     const flushCache = receiptPlacementMode === 'shared' && !(excludedElement instanceof Set)
       ? receiptGeometryRects : null;
-    const qsa = (scope, selector) => {
-      if (!receiptGeometryRects) return scope?.querySelectorAll?.(selector) || [];
-      const queries = receiptGeometryRects.q || (receiptGeometryRects.q = new Map());
-      let hit = queries.get(selector);
-      if (!hit) queries.set(selector, hit = Array.from(scope?.querySelectorAll?.(selector) || []));
-      return hit;
-    };
     const memoKey = flushCache ? [slot.x, slot.width, h, includeLiveCaptionsAndToasts, ignoreFlightGhost,
       yieldedFlightVisuals.size, externalFlightCaptions.size] : null;
     if (flushCache && flushCache.bm) {
@@ -7090,18 +7285,18 @@ export function createHud(ctx, alerts) {
     const radarYielded = [...yieldedFlightVisuals.keys()].some(el => el.matches?.('.sf-radar-wrap'));
     const isExcluded = (el) => excludedElement instanceof Set ? excludedElement.has(el) : el === excludedElement;
     const swarmCallouts = (document.body?.classList?.contains('sf-run-flight') || document.body?.classList?.contains('sf-swarm-flight'))
-      ? qsa(document, '.sf-crun, .sf-sj__col') : [];
+      ? queryReceiptGeometry(document, '.sf-crun, .sf-sj__col') : [];
     const candidates = [
-      ...qsa(root, '.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card'),
-      ...qsa(document, '.sf-stuntcall:not([hidden])'),
+      ...queryReceiptGeometry(root, '.orr-hud-cluster .orr-cluster, .sf-prail, .sf-rightdock, .sf-command-deck, .sf-nav-readout, .sf-nav-label, .sf-mt-obj, .sf-vtape--on, .sf-commtape, .sf-dock-prompt, .sf-tell.is-on, #sf-prompt-deck, #sf-tutorial-flight-card'),
+      ...queryReceiptGeometry(document, '.sf-stuntcall:not([hidden])'),
       ...swarmCallouts,
-      ...(hasTouchControls ? qsa(root, '.sf-leftcontext') : []),
-      ...qsa(document, '#alerts .sf-alert:not([hidden])'),
+      ...(hasTouchControls ? queryReceiptGeometry(root, '.sf-leftcontext') : []),
+      ...queryReceiptGeometry(document, '#alerts .sf-alert:not([hidden])'),
       ...responsive.filter(el => !ignoreFlightGhost || !el.closest?.('.mf-ghost')),
-      ...(radarYielded ? qsa(root, '.sf-rightdock > *') : []),
+      ...(radarYielded ? queryReceiptGeometry(root, '.sf-rightdock > *') : []),
     ];
     if (includeLiveCaptionsAndToasts) {
-      candidates.push(...qsa(root, '.sf-caption.show, .sf-toast:not(.sf-toast--out)'));
+      candidates.push(...queryReceiptGeometry(root, '.sf-caption.show, .sf-toast:not(.sf-toast--out)'));
     }
     const blockers = candidates.map((el) => {
       if ((radarYielded && el === measured.rightEl) || isExcluded(el) || yieldedFlightVisuals.has(el)
@@ -7447,6 +7642,8 @@ export function createHud(ctx, alerts) {
     receiptGeometryKeep = false;
     if (!reuse) receiptGeometryRects = new Map();
     receiptGeometryRects.bm = null;
+    // Share Swarm membership only inside this flush. Its owners can remount between flushes.
+    receiptGeometryRects.q?.delete('.sf-crun, .sf-sj__col');
     try { placeReceiptLane(); }
     catch (error) {
       // A failed placement cannot retain a half-invalidated snapshot.
@@ -7509,7 +7706,8 @@ export function createHud(ctx, alerts) {
       return;
     }
     const lane = layout.receipt;
-    const activeReceipt = laneRoot.querySelector?.('.sf-toast:not(.sf-toast--out)');
+    const receiptCards = Array.from(laneRoot.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || []);
+    const activeReceipt = receiptCards[0] || null;
     const captionVisible = caption && !caption.hidden && caption.classList.contains('show');
     if (activeReceipt !== lastReceiptObstacle || captionVisible !== lastCaptionObstacleVisible) {
       externalCaptionsStale = true;
@@ -7519,7 +7717,7 @@ export function createHud(ctx, alerts) {
     }
     if (!activeReceipt && !captionVisible) {
       placeExternalFlightCaptions(layout, w, h);
-      refreshFlightTextObstacleSnapshot();
+      refreshFlightTextObstacleSnapshot(receiptCards);
       return;
     }
     const sharedGeometry = receiptPlacementMode === 'shared';
@@ -7528,7 +7726,7 @@ export function createHud(ctx, alerts) {
       // both receipt/caption slots before calling it when no receipt is present.
       placeOrdinaryCaptionInSafeBands(layout, w, h);
       placeExternalFlightCaptions(layout, w, h);
-      refreshFlightTextObstacleSnapshot();
+      refreshFlightTextObstacleSnapshot(receiptCards);
       return;
     }
     const slot = overlaySafeSlot(layout, w, h);
@@ -7546,11 +7744,10 @@ export function createHud(ctx, alerts) {
     if (!activeReceipt) {
       placeOrdinaryCaptionInSafeBands(layout, w, h);
       placeExternalFlightCaptions(layout, w, h);
-      refreshFlightTextObstacleSnapshot();
+      refreshFlightTextObstacleSnapshot(receiptCards);
       return;
     }
     if (!sharedGeometry) prepareReceiptLaneSize(laneRoot, laneWidth);
-    const receiptCards = [...(laneRoot.querySelectorAll?.('.sf-toast:not(.sf-toast--out)') || [])];
     const receiptGap = (() => {
       if (typeof getComputedStyle !== 'function') return 0;
       if (receiptGeometryRects && receiptGeometryRects.gap != null) return receiptGeometryRects.gap;
@@ -7608,7 +7805,7 @@ export function createHud(ctx, alerts) {
         sharedGeometry ? captionScrollHeight : null);
     }
     placeExternalFlightCaptions(layout, w, h);
-    refreshFlightTextObstacleSnapshot();
+    refreshFlightTextObstacleSnapshot(receiptCards);
   }
   if (typeof window !== 'undefined' && window.addEventListener) {
     const repositionHudOverlays = () => {
@@ -7656,27 +7853,68 @@ export function createHud(ctx, alerts) {
     }
   }
 
-  function placeFlightBox(el, rect) {
+  function placeFlightBox(el, rect, tracked = false) {
     if (!el || !rect || !el.style) return;
-    setStyle(el, 'position', 'fixed');
-    setStyle(el, 'left', `${Math.round(rect.x)}px`);
-    setStyle(el, 'top', `${Math.round(rect.y)}px`);
-    setStyle(el, 'width', `${Math.round(rect.width)}px`);
-    setStyle(el, 'height', `${Math.round(rect.height)}px`);
-    setStyle(el, 'margin', '0');
-    setStyle(el, 'right', 'auto');
-    setStyle(el, 'bottom', 'auto');
-    setStyle(el, 'transform', 'none');
+    const write = receiptPlacementMode === 'shared' ? setReceiptStyle : setStyle;
+    write(el, 'position', 'fixed');
+    write(el, 'left', tracked ? '0' : `${Math.round(rect.x)}px`);
+    write(el, 'top', tracked ? '0' : `${Math.round(rect.y)}px`);
+    write(el, 'width', `${Math.round(rect.width)}px`);
+    write(el, 'height', `${Math.round(rect.height)}px`);
+    write(el, 'margin', '0');
+    write(el, 'right', 'auto');
+    write(el, 'bottom', 'auto');
+    write(el, 'transform', tracked ? `translate3d(${Math.round(rect.x)}px,${Math.round(rect.y)}px,0)` : 'none');
   }
 
   // Only the dock prompt needs a computed box; the Cluster owns its instrument layout.
-  function placeFlightReadouts(w, h) {
-    const boxes = flightInstrumentRects(w, h);
+  function placeFlightReadouts(w, h, followed = null) {
     if (alertsEl === null) alertsEl = document.getElementById('alerts');
-    // The dock alert is created/removed by alerts.js — a query must run each slow tick, but
-    // scoped to the small #alerts subtree instead of a document-wide selector match.
-    const dock = alertsEl ? alertsEl.querySelector('.sf-alert--dock') : null;
-    if (dock) placeFlightBox(dock, boxes.dockPrompt);
+    const dock = followed?.dock || alertsEl?.querySelector('.sf-alert--dock') || document.querySelector('.sf-alert--dock');
+    if (!dock?.isConnected || dock.hidden) { trackedDockCue = null; visorDockCue.hide(); return; }
+    // Reuse the decision bounds between receipt placements so camera tracking requires no
+    // layout measurement. Losing the anchor returns the chip to the ordinary alert seat.
+    const deck = followed ? null : document.getElementById('sf-prompt-deck');
+    const decision = followed ? followed.decision : deck && !deck.hidden ? readReceiptRect(deck) : null;
+    const stationId = dock.getAttribute('data-dock-station');
+    if (stationId && w >= 840 && document.documentElement.dataset.sfMobileFlight !== '1') {
+      const station = followed?.station || resolveHudNavStation(state, stationId);
+      const pilot = state.entities?.get?.(state.playerId);
+      const at = visorDockCue.project(station, pilot, helpers.worldToScreen);
+      if (at && at.y >= 86 && at.y <= h * .74) {
+        const wide = w >= 1400 && h >= 680;
+        const reach = wide ? 86 : 48;
+        const width = Math.min(190, (wide ? 138 : 118) + 7 * Math.max(0, (dock.getAttribute('data-dock-key') || '').length - 1));
+        const x = at.x + reach + width <= w - 18 ? at.x + reach : at.x - reach - width;
+        const anchorBox = { x, y: at.y - (wide ? 77 : 53), width, height: wide ? 38 : 34 };
+        const objective = objectiveEdgeObstacles()?.left;
+        const clear = x >= 18 && (!decision || !rectsOverlap(anchorBox, decision)) && (!objective || !rectsOverlap(anchorBox, objective));
+        if (clear) {
+          if (!followed) trackedDockCue = { dock, station, decision };
+          setAttr(dock, 'data-visor-anchored', 'true');
+          placeFlightBox(dock, anchorBox, true);
+          visorDockCue.draw(at, anchorBox, w, h, pilot, helpers.worldToScreen);
+          return;
+        }
+      }
+    }
+    trackedDockCue = null;
+    clearAttr(dock, 'data-visor-anchored');
+    visorDockCue.hide();
+    const box = flightInstrumentRects(w, h).dockPrompt;
+    if (decision?.height > 0 && rectsOverlap(box, decision)) {
+      const gap = 12;
+      const rightEdge = Math.floor(decision.left) - gap;
+      if (rightEdge >= box.width + gap) {
+        box.x = rightEdge - box.width;
+        const objective = objectiveEdgeObstacles()?.left;
+        if (objective && rectsOverlap(box, objective)) box.y = Math.ceil(objective.bottom) + gap;
+      } else {
+        const above = Math.floor(decision.top) - box.height - gap;
+        box.y = above >= gap ? above : Math.min(h - box.height - gap, Math.ceil(decision.bottom) + gap);
+      }
+    }
+    placeFlightBox(dock, box);
   }
 
   function updateFirstUseHint(player) {
@@ -7798,6 +8036,7 @@ export function createHud(ctx, alerts) {
     frame, flushReceiptLane, setReceiptPlacementMode, tickHidden, forceRefresh, setVisible, refreshObjectives, arrive,
     registerExternalFlightCaption, refreshExternalFlightCaption, releaseExternalFlightCaption,
     getFlightTextObstacles,
+    getFloorPadLabelRects: floatingText.getFloorPadLabelRects,
     getGLagOffset: () => ({ x: opticalGLag.x, y: opticalGLag.y }),
     getGLocVignetteOpacity: () => Number(glocVignette ? glocVignette.style.opacity || 0 : 0),
     triggerElectronicDisruption,

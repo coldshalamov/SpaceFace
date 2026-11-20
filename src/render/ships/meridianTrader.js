@@ -57,23 +57,23 @@ export function buildMeridianTrader(entity) {
   const graphiteMat = kit.machineryMaterial(COLOR.graphite, 0.52, 0.72); graphiteMat.name = 'Meridian_Graphite';
   const containerMat = kit.pbrHullMaterial({ hull: COLOR.container, accent: COLOR.goldTrim, seed: seed + 4, panelCount: 6, metalness: 0.20, roughness: 0.55 });
   containerMat.name = 'Meridian_Container';
-  const goldMat = kit.emissiveMaterial(COLOR.gold, 1.2); goldMat.name = 'Meridian_Gold';
-  const driveMat = kit.emissiveMaterial(COLOR.drive, 2.4); driveMat.name = 'Meridian_DriveGlow';
+  const goldMat = kit.shadedSignal(COLOR.gold, 0.42); goldMat.name = 'Meridian_Gold';
 
   // ---- corporate hull: a clean LOFTED modular freighter fuselage (brand-controlled, §8.3) ----
   // Broader and boxier than the Concord's lozenge — a hauler, not an interdictor — but still a lofted
   // shell so it reads as a real hull catching light, not a crate. The wide flat back is the cargo face.
-  const pressureHull = kit.addMesh(hull, kit.loftXGeometry([
+  const MERIDIAN_SECTIONS = [
     { x: -9.0, halfY: 2.0,  halfZ: 2.6 },
     { x: -3.0, halfY: 2.3,  halfZ: 3.0 },
     { x: 4.0,  halfY: 2.2,  halfZ: 2.9 },
     { x: 9.0,  halfY: 1.4,  halfZ: 2.2 },
     { x: 12.5, halfY: 0.4,  halfZ: 0.6 },
-  ], 12), hullMat, 'Meridian_Pressure_Hull');
+  ];
+  const pressureHull = kit.addMesh(hull, kit.loftXGeometry(MERIDIAN_SECTIONS, 12), hullMat, 'Meridian_Pressure_Hull');
   pressureHull.castShadow = true;
 
   // standardized service-grid vent strip (strict alignment, §8.3) — a gridded dorsal panel
-  kit.addBox(hull, hullDarkMat, 'Meridian_Service_Grid', [12.0, 0.3, 3.8], [-1.5, 2.0, 0]);
+  kit.addBox(hull, hullDarkMat, 'Meridian_Service_Grid', [10.0, 0.12, 3.2], [-1.2, 2.28, 0]);
 
   // ---- standardized container grid: 2 rows × 3 cols of identical modular cargo blocks (§8.3) ----
   // Replaceable corporate merchandise stacked on the aft deck. The center container is a named
@@ -86,7 +86,10 @@ export function buildMeridianTrader(entity) {
       const c = kit.addBox(hull, containerMat, `Meridian_Container_${row < 0 ? 'P' : 'S'}${col}`, [2.6, 2.0, 2.0], [cx, 3.1, cz]);
       c.castShadow = true;
       // emissive-capped module ends (reads as powered corporate cargo)
-      kit.addBox(hull, goldMat, `Meridian_Container_Cap_${row < 0 ? 'P' : 'S'}${col}`, [0.2, 1.6, 1.6], [cx + 1.32, 3.1, cz]);
+      // The critical-damage cargo module and its end cap must leave together.
+      const sheds = row < 0 && col === 1;
+      kit.addBox(sheds ? c : hull, goldMat, `Meridian_Container_Cap_${row < 0 ? 'P' : 'S'}${col}`,
+        [0.08, 0.55, 0.55], sheds ? [1.32, 0, 0] : [cx + 1.32, 3.1, cz]);
       containers.push(c);
     }
   }
@@ -107,7 +110,8 @@ export function buildMeridianTrader(entity) {
   const brandDecalMat = kit.noseArtMaterial({ style: 'insignia', accent: COLOR.gold, seed: seed + 9 });
   const brandDecals = [];
   for (const side of [-1, 1]) {
-    const d = kit.addDecal(hull, brandDecalMat, `Meridian_Brand_${side < 0 ? 'Port' : 'Starboard'}`, [4.5, 2.8], [4.0, 0.4, side * 3.01], [0, side < 0 ? -Math.PI / 2 : Math.PI / 2, 0]);
+    const sec = kit.sectionAt(MERIDIAN_SECTIONS, 3.2);
+    const d = kit.addDecal(hull, brandDecalMat, `Meridian_Brand_${side < 0 ? 'Port' : 'Starboard'}`, [2.2, Math.min(1.5, sec.halfY * 0.7)], [3.2, 0.15, side * (sec.halfZ - 0.04)], [0, side > 0 ? 0 : Math.PI, 0]);
     brandDecals.push(d);
   }
 
@@ -115,14 +119,15 @@ export function buildMeridianTrader(entity) {
   // A subtle grime overlay concentrated at the aft container interface (where it docks), not battle
   // scarring. Low intensity = the ship is clean but used.
   const wearMat = kit.grimeMaterial({ hull: COLOR.hull, seed: seed + 13, intensity: 0.18 });
-  kit.addDecal(hull, wearMat, 'Meridian_Dock_Wear', [10.0, 3.0], [-4.0, 0.4, 3.01], [0, Math.PI / 2, 0]);
+  const wearSec = kit.sectionAt(MERIDIAN_SECTIONS, -4.0);
+  kit.addDecal(hull, wearMat, 'Meridian_Dock_Wear', [3.6, Math.min(1.3, wearSec.halfY * 0.7)], [-4.0, 0.1, wearSec.halfZ - 0.04], [0, 0, 0]);
 
   // ---- twin warm corporate drives (standardized, efficient, §8.3) ----
   // Two identical nozzles flanking the centerline — standardized corporate propulsion.
   const driveFans = [];
   for (const side of [-1, 1]) {
     const d = kit.buildDrive(hull, {
-      name: `Meridian_Drive_${side < 0 ? 'Port' : 'Starboard'}`, position: [-9.2, 0.8, side * 1.6], radius: 0.85, length: 1.2,
+      name: `Meridian_Drive_${side < 0 ? 'Port' : 'Starboard'}`, position: [-9.45, 0.45, side * 1.15], radius: 0.72, length: 1.05,
       materials: { dark: graphiteMat, accent: goldMat },
       driveColor: COLOR.drive, coreColor: COLOR.driveCore, driveGlowOpacity: 0.50,
     });
@@ -132,7 +137,11 @@ export function buildMeridianTrader(entity) {
   // ---- docking-bay nav lights (the maintained light group; fails on damage, §9.11) ----
   const navLights = [];
   for (const side of [-1, 1]) {
-    const l = kit.addBox(hull, goldMat, `Meridian_NavLight_${side < 0 ? 'Port' : 'Starboard'}`, [0.4, 0.14, 0.14], [10.5, 1.4, side * 2.6]);
+    // Damage animates each light's material; do not dim cargo caps and drive accents with it.
+    const navMat = kit.emissiveMaterial(COLOR.gold, 0.95);
+    navMat.name = `Meridian_NavLight_${side < 0 ? 'Port' : 'Starboard'}_Material`;
+    const navSec = kit.sectionAt(MERIDIAN_SECTIONS, 8.6);
+    const l = kit.addBox(hull, navMat, `Meridian_NavLight_${side < 0 ? 'Port' : 'Starboard'}`, [0.22, 0.08, 0.08], [8.6, navSec.halfY * 0.72, side * (navSec.halfZ - 0.12)]);
     l.userData.damageRole = 'navLight'; l.userData.keepSeparate = true;
     navLights.push(l);
   }

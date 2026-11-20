@@ -8,6 +8,7 @@ import { parse } from '@babel/parser';
 // This checks ordering and placement; it does not simulate browser layout cost or pixels.
 const source = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
 const names = new Set(['readReceiptRect', 'setReceiptStyle', 'setReceiptPlacementMode',
+  'queryReceiptGeometry',
   'prepareReceiptLaneSize', 'prepareReceiptCaptionSize',
   'freeOverlayBands', 'placeCaptionInSafeSlot', 'placeOrdinaryCaptionInSafeBands',
   'placeReceiptLane', 'flushReceiptLane']);
@@ -201,6 +202,51 @@ test('a content change reuses settled obstacle geometry', () => {
   assert.equal(fx.reads.get('mission:rect') || 0, 0, 'an unmoved obstacle is not re-read');
   assert.equal(fx.reads.get('touch:rect') || 0, 0, 'the touch control is not re-read');
   assert.ok(fx.reads.size > 0, 'the content flush still measures what it needs');
+});
+
+test('receipt and Swarm owner membership are each queried once during a real placement flush', () => {
+  const fx = fixture({ externalOwner: true });
+  fx.context.state.run = { ruleset: 'swarm' };
+  fx.context.document.body = { classList: { contains: name => name === 'sf-run-flight' } };
+  let panel = fx.element('round-panel', { left: 0, top: 0, width: 200, height: 100 });
+  const column = fx.element('callout-column', { left: 400, top: 20, width: 200, height: 60 });
+  const outgoing = fx.element('outgoing-callout', { left: 400, top: 20, width: 200, height: 30 });
+  const incoming = fx.element('incoming-callout', { left: 410, top: 55, width: 180, height: 30 });
+  incoming.hidden = true;
+  column.matches = selector => selector === '.sf-sj__col';
+  column.children = [outgoing, incoming];
+  let receiptQueries = 0, swarmQueries = 0;
+  const trackReceipts = () => { receiptQueries++; return fx.receiptCards; };
+  fx.laneRoot.querySelector = () => trackReceipts()[0] || null;
+  fx.laneRoot.querySelectorAll = trackReceipts;
+  fx.context.document.querySelectorAll = selector => {
+    if (selector === '.sf-crun, .sf-sj__col') { swarmQueries++; return [panel, column]; }
+    if (selector === '.sf-crun, .sf-sj__col > :not([hidden])') {
+      swarmQueries++;
+      return [panel, ...column.children.filter(node => !node.hidden)];
+    }
+    return [];
+  };
+  fx.contentInvalidate();
+  fx.flushReceiptLane();
+  assert.equal(receiptQueries, 1);
+  assert.equal(swarmQueries, 1);
+  assert.deepEqual(Array.from(fx.published.filter(row => row.owner === 'swarm-callout'), row => row.rect.top), [0, 20]);
+
+  const replacement = fx.element('new-card', { left: 4, top: 120, width: 300, height: 63 });
+  fx.receiptCards.splice(0, 1, replacement);
+  outgoing.hidden = true;
+  incoming.hidden = false;
+  incoming.box.top = 75;
+  panel = fx.element('new-round-panel', { left: 0, top: 8, width: 200, height: 100 });
+  fx.advanceNow(150);
+  fx.contentInvalidate();
+  fx.context.flightTextObstaclesStale = true;
+  fx.flushReceiptLane();
+  assert.equal(receiptQueries, 2);
+  assert.equal(swarmQueries, 2);
+  assert.deepEqual(Array.from(fx.published.filter(row => row.owner === 'swarm-callout'), row => row.rect.top), [8, 75]);
+  assert.ok(fx.published.some(row => row.owner === 'receipt' && row.rect.height === 63));
 });
 
 test('the next flush measures current mission/control geometry with no TTL or stale snapshot', () => {

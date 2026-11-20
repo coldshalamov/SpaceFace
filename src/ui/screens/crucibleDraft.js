@@ -36,7 +36,11 @@ import { SURVIVAL_DRAFT_CHOICES, swarmSellPrice } from '../../data/survivalDraft
 import { SWARM_CATEGORIES, catalogBlurbFor } from '../../data/swarmCatalog.js';
 import { swarmRoundPreview } from '../../data/swarmLadder.js';
 import { WEAPONS } from '../../data/weapons.js';
+import { hasTowRating, towClassMassFor } from '../../systems/shipCapabilities.js';
+import { getDerivedStats } from '../../systems/ships.js';
+import { handlingRawFor, shipStatDef, statScoreFor, statTenthsFor } from '../ship/shipStats.js';
 import {
+  bankableRunCredits,
   canExtract,
   partialBankOffer,
   requestSurvivalExtraction,
@@ -67,6 +71,7 @@ import { createHullSchematic } from '../orrery/hullSchematic.js';
 import { createSlotJig } from '../orrery/slotJig.js';
 import { equipmentSvg } from '../orrery/equipmentGlyphs.js';
 import { equipmentPlate } from '../orrery/armoryIllustrations.js';
+import { itemThumbElement } from '../icons/itemThumbnails.js';
 import { createVisualArmory } from '../orrery/crucibleArmory.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { injectCrucibleDoorLayouts } from '../orrery/crucible-doorLayouts.js';
@@ -110,6 +115,10 @@ function setWordShown(button, show) {
 // the swarm owner stocks (hull offers file under 'Hulls', service work under 'Service').
 const ARMORY_CATEGORIES = Object.freeze(['All', ...SWARM_CATEGORIES, 'Ships', 'Service']);
 const ARMORY_CATEGORY_SET = new Set(ARMORY_CATEGORIES);
+const ARMORY_CATEGORY_LABELS = Object.freeze({
+  Weapons: 'Guns & launchers', Motion: 'Engines & steering', Rigs: 'Utility parts',
+  Bay: 'Cargo', Prospecting: 'Mining', Service: 'Services',
+});
 
 /** A kit word (`button.k-word`). The caller appends it. */
 function word(label, className) {
@@ -237,6 +246,38 @@ function fittingName(defId) {
   return DEF_NAME_BY_ID.get(defId) || prettyDefId(defId);
 }
 
+function launchEquipmentSummary(ctx, rows, offers, starterOnly = false) {
+  const { hullId, fittings } = activeLoadout(ctx);
+  if (!hullId) return '';
+  const hull = entityLabel(`hull:${hullId}`);
+  const player = ctx.state.player;
+  const derived = getDerivedStats(hullId, fittings, player);
+  const handling = derived
+    ? Math.round(statTenthsFor(statScoreFor(shipStatDef('handling'), handlingRawFor(derived))) / 10)
+    : null;
+  const mounts = rows.filter(row => row.slotType === 'weapon');
+  const weapons = mounts.filter(row => row.defId || row.intrinsicDefId);
+  const open = mounts.length - weapons.length;
+  const fitted = weapons.slice(0, 3).map(row => row.name || row.intrinsicName || fittingName(row.defId || row.intrinsicDefId));
+  if (weapons.length > fitted.length) fitted.push(`+${weapons.length - fitted.length} more`);
+  const price = offers.reduce((min, offer) => (
+    offer.available && !offer.purchased && WEAPON_DEF_BY_ID.has(offer.defId)
+      && Number.isFinite(offer.price) ? Math.min(min, offer.price) : min
+  ), Infinity);
+  const borrow = offers.some(offer => offer.borrowAvailable);
+  const canChooseStarter = offers.some(offer => offer.startingEquipment && offer.available);
+  const credits = ctx.state.run.credits;
+  const currency = ctx.state.run.telemetry?.zeroScrapOpening ? 'Scrap' : 'cr';
+  const available = canChooseStarter ? 'One free starting gun available' : borrow ? 'Free gun loan available'
+    : starterOnly ? '' : Number.isFinite(price) ? `Guns from ${price} cr` : 'No gun within budget';
+  const armed = fitted.length ? fitted.join(', ') : mounts.length ? 'No guns fitted' : '';
+  const tether = !weapons.length && derived && hasTowRating(derived) && towClassMassFor(derived) > 0
+    ? 'Tether and throw debris to fight' : '';
+  return [hull, armed, open ? counted(open, 'empty weapon slot', 'empty weapon slots') : '',
+    handling == null ? '' : `Turning & braking ${handling}/10`,
+    Number.isFinite(credits) ? `${credits.toLocaleString()} ${currency} left` : '', available, tether].filter(Boolean).join(' · ');
+}
+
 const SLOT_WORD = Object.freeze({
   weapon: 'Weapon', shield: 'Shield', engine: 'Engine', utility: 'Utility', thruster: 'Thruster',
 });
@@ -251,14 +292,19 @@ export function offerCardLines(offer, state) {
     // the old part as a spare; ships.fitModule is the authority).
     ? offer.slotLabel
     : Array.isArray(offer.consumes) && offer.consumes.length
-      ? `Trades ${offer.consumes.map(fittingName).join(' + ')} for this on hardpoint ${offer.slotIndex + 1}`
+      ? `Uses up ${offer.consumes.map(fittingName).join(' + ')}. Installs in slot ${offer.slotIndex + 1}.`
       : offer.replaces
-        ? `Swaps with ${fittingName(offer.replaces)} on hardpoint ${offer.slotIndex + 1} — it goes to your spares`
-        : Number.isInteger(offer.slotIndex) ? `Bolts onto empty hardpoint ${offer.slotIndex + 1}` : '';
+        ? offer.replacesTrial
+          ? `Replaces borrowed ${offer.replacesName || fittingName(offer.replaces)} in slot ${offer.slotIndex + 1}. The loan ends.`
+          : `Replaces ${offer.replacesName || fittingName(offer.replaces)} in slot ${offer.slotIndex + 1}. The old part goes to your spares.`
+        : Number.isInteger(offer.slotIndex) ? `Installs in empty slot ${offer.slotIndex + 1}.` : '';
   const innate = state?.entities?.get?.(state.playerId)?.data?.weapons
     ?.find(w => w.intrinsic && w.slotIndex === offer.slotIndex);
-  if (innate && offer.kind !== 'hull' && offer.kind !== 'service') {
-    slot = `Hardpoint ${offer.slotIndex + 1} — replaces built-in ${innate.name}. Strip the fitting to restore it.`;
+  if (innate && !offer.replaces && offer.kind !== 'hull' && offer.kind !== 'service') {
+    slot = `Overrides built-in ${innate.name} in slot ${offer.slotIndex + 1}. Remove this part to restore it.`;
+  }
+  if (offer.purchaseStatus) {
+    slot = offer.purchaseStatus === 'In spares' ? 'Open Rearrange loadout to fit it again.' : '';
   }
   return {
     verb: offer.verb || offer.id || '',
@@ -266,6 +312,16 @@ export function offerCardLines(offer, state) {
     blurb: arsenalIdentity(offer.defId)?.sentence || offer.blurb || '',
     activation: crucibleFittingDescription(offer.defId, state),
     slot,
+  };
+}
+
+function fittingQuote(offer) {
+  if (!Number.isInteger(offer.slotIndex) || offer.kind === 'hull' || offer.kind === 'service') return null;
+  return {
+    price: offer.price,
+    slotIndex: offer.slotIndex,
+    replaces: offer.replaces ?? null,
+    replacesTrial: !!offer.replacesTrial,
   };
 }
 
@@ -408,7 +464,7 @@ function spareScales(spares) {
   const root = node('svg', { viewBox: `0 0 ${W} 58`, width: W, height: 58, class: 'orr-svg orr-hp__scales', 'aria-hidden': 'true' });
   const readouts = [];
   const ticks = [];
-  [['dps', 'Fire', 17], ['impulse', 'Shove', 45]].forEach(([key, word, y]) => {
+  [['dps', 'Fire', 17], ['impulse', 'Impact', 45]].forEach(([key, word, y]) => {
     const max = Math.max(...entries.map((e) => e[key])) || 1;
     const label = node('text', { x: 0, y: y + 4, class: 'orr-hp__scale-word' });
     label.textContent = word.toUpperCase();
@@ -461,11 +517,18 @@ function svgNode(tag, attrs = {}) {
   return n;
 }
 
-/**
- * The armory reading's comparison: a weapon offer against the weapon it would replace, on the two
- * axes combat pays (sustained fire, shove). The offer's mark is lit and taller, the fitted one a
- * bone notch, the difference in ice. Null for anything that is not a weapon-for-weapon swap.
- */
+function weaponComparisonBounds(offers) {
+  const best = { dps: 0, impulsePerHit: 0 };
+  for (const offer of offers) {
+    const def = WEAPON_DEF_BY_ID.get(offer.defId);
+    if (!def) continue;
+    best.dps = Math.max(best.dps, finiteNum(def.dps) || 0);
+    best.impulsePerHit = Math.max(best.impulsePerHit, finiteNum(def.impulsePerHit) || 0);
+  }
+  return best;
+}
+
+/** Plot sustained damage and impact, with a second marker for any gun this would replace. */
 function offerCompare(offer, best = {}) {
   const def = offer && WEAPON_DEF_BY_ID.get(offer.defId);
   if (!def) return null;
@@ -473,7 +536,7 @@ function offerCompare(offer, best = {}) {
   const root = svgNode('svg', { viewBox: '0 0 360 64', width: 360, height: 64, class: 'orr-svg orr-armory-compare', 'aria-hidden': 'true' });
   if (!root) return null;
   const x0 = 70; const x1 = 290;
-  [['dps', 'Fire', 20], ['impulsePerHit', 'Shove', 50]].forEach(([key, word, y]) => {
+  [['dps', 'Fire', 20], ['impulsePerHit', 'Impact', 50]].forEach(([key, word, y]) => {
     const mine = finiteNum(def[key]);
     if (mine == null) return;
     const theirs = fitted ? finiteNum(fitted[key]) : null;
@@ -502,38 +565,6 @@ function offerCompare(offer, best = {}) {
   return root;
 }
 
-/**
- * The run wallet as a gauge: what it holds, the price lifted out of it in the lamp (or in red past
- * its end when the wallet is short), and what would be left.
- */
-function budgetGauge(wallet, price) {
-  const root = svgNode('svg', { viewBox: '0 0 360 58', width: 360, height: 58, class: 'orr-svg orr-armory-budget', 'aria-hidden': 'true' });
-  if (!root) return null;
-  const x0 = 0; const x1 = 300; const y = 26;
-  const w = Math.max(0, Number(wallet) || 0);
-  const p = Math.max(0, Number(price) || 0);
-  const scale = Math.max(w, p, 1);
-  const at = (v) => x0 + ((x1 - x0) * v) / scale;
-  root.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${x1} ${y}`, class: 'orr-armory-budget__track' }));
-  const left = w - p;
-  if (left >= 0) {
-    root.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${at(left).toFixed(1)} ${y}`, class: 'orr-armory-budget__keep' }));
-    root.appendChild(svgNode('path', { d: `M ${at(left).toFixed(1)} ${y} L ${at(w).toFixed(1)} ${y}`, class: 'orr-armory-budget__spend' }));
-  } else {
-    root.appendChild(svgNode('path', { d: `M ${x0} ${y} L ${at(w).toFixed(1)} ${y}`, class: 'orr-armory-budget__keep' }));
-    root.appendChild(svgNode('path', { d: `M ${at(w).toFixed(1)} ${y} L ${at(p).toFixed(1)} ${y}`, class: 'orr-armory-budget__short' }));
-  }
-  root.appendChild(svgNode('path', { d: `M ${at(w).toFixed(1)} ${y - 9} L ${at(w).toFixed(1)} ${y + 9}`, class: 'orr-armory-budget__end' }));
-  const top = svgNode('text', { x: at(w).toFixed(1), y: y - 13, 'text-anchor': 'middle', class: 'orr-armory-budget__word' });
-  top.textContent = `WALLET ${w} CR`;
-  root.appendChild(top);
-  const under = svgNode('text', { x: x0, y: y + 26, class: 'orr-armory-budget__read' });
-  under.textContent = left >= 0 ? `COSTS ${p} CR \u00b7 LEAVES ${left} CR` : `SHORT ${-left} CR`;
-  if (left < 0) under.setAttribute('class', 'orr-armory-budget__read is-short');
-  root.appendChild(under);
-  return root;
-}
-
 /** One refit row, in words. `options` is every spare that legally fits this hardpoint. */
 export function refitRowLines(row) {
   if (!row) return null;
@@ -546,6 +577,8 @@ export function refitRowLines(row) {
     return {
       label,
       slotTag,
+      defId: row.defId,
+      slotSize: row.slotSize,
       value: row.name || fittingName(row.defId),
       valueRef: String(row.defId).startsWith('mod_') ? 'module:' + row.defId : null,
       action: 'Strip',
@@ -559,11 +592,14 @@ export function refitRowLines(row) {
   const spares = Array.isArray(row.spares) ? row.spares : [];
   const options = spares.map((spare) => ({
     instanceId: spare.instanceId,
+    defId: spare.defId,
     label: spareOptionLabel(spare),
   }));
   return {
     label,
     slotTag,
+    intrinsicDefId: row.intrinsicDefId,
+    slotSize: row.slotSize,
     value: row.intrinsicDefId ? `${row.intrinsicName || fittingName(row.intrinsicDefId)} — built in; fitting a spare replaces it`
       : options.length ? '' : 'Empty — no spare in the run inventory fits it',
     action: 'Fit',
@@ -576,25 +612,22 @@ export function refitRowLines(row) {
 /**
  * The extraction settlement preview (INF-033). DOM-free so a check can assert the wording
  * without a screen: what leaving secures, what flying on risks, and which amounts are
- * run-only. Every figure is read straight from the live run — the same figures the results
- * plate settles (`resultRows` in crucible.js records run.score / run.credits / run.wave) —
- * so the confirmed outcome matches the preview exactly. Run credits never become campaign
- * credits anywhere in the sim, hence the run-only line; and the shop spends the run wallet,
- * hence the risk line. Null when there is no survival run to settle.
+ * run-only. The hangar and the shop read their respective amounts from the same run wallet.
+ * Null when there is no survival run to settle.
  */
 export function extractionPreviewLines(run) {
   if (!run || typeof run !== 'object' || run.kind !== 'survival') return null;
   const score = Number.isInteger(run.score) && run.score > 0 ? run.score : 0;
-  const salvage = Number.isInteger(run.credits) && run.credits > 0 ? run.credits : 0;
+  const salvage = bankableRunCredits(run);
   const wave = Number.isInteger(run.wave) && run.wave > 0 ? run.wave : 0;
   // Swarm counts rounds everywhere else on screen (the armory, the launch key, the results hero).
   const unit = run.ruleset === 'swarm' ? 'round' : 'wave';
   const banked = securedBountyOf(run);
   return {
-    secured: `Keeps score ${score}, salvage ${salvage} cr and ${unit} ${wave} — recorded as the run's final result.`,
+    secured: `Records score ${score} and ${unit} ${wave}. ${salvage} cr of earned salvage can go to the hangar.`,
     risk: `Fly on to ${unit} ${wave + 1}: the shop spends salvage, and death ends the run where it falls.`,
-    amounts: 'Salvage and score are run-only — never campaign credits.'
-      + (banked > 0 ? ` ${banked} cr already sits in the hangar chest — banked salvage cannot be lost.` : ''),
+    amounts: 'Only earned credits count toward hangar bounty. Run credits never become campaign credits.'
+      + (banked > 0 ? ` ${banked} cr is already secured for the hangar.` : ''),
   };
 }
 
@@ -628,8 +661,7 @@ export function refitFootLines(run) {
   const contOk = canContinueSurvivalEndless({ run: r });
   const preview = extractOk ? extractionPreviewLines(r) : null;
   // The window's middle seat (partialBankOffer shares the extraction gate): secure half the
-  // purse in the hangar chest and fly on with the rest still at risk. No purse, no offer —
-  // a dead button is never drawn.
+  // earned credits in the hangar chest and fly on with the rest still at risk.
   const offer = extractOk ? partialBankOffer(r) : null;
   return {
     primary: finishes ? 'Take the win' : `Launch ${unit} ${wave + 1}`,
@@ -645,8 +677,8 @@ export function refitFootLines(run) {
     extractNote: preview ? `${preview.secured} ${preview.amounts}` : '',
     bank: offer ? `Bank ${offer.amount} cr, keep flying` : '',
     bankNote: offer
-      ? `${offer.amount} cr moves to the hangar chest now — it cannot be lost. `
-        + `${offer.remaining} cr stays in the purse: the shop still spends it, and death still halves it.`
+      ? `${offer.amount} cr is secured for the hangar when this run ends. `
+        + `${offer.remaining} cr stays in the purse for the shop. Defeat banks half of the remaining earned credits.`
       : '',
   };
 }
@@ -661,7 +693,7 @@ export function circuitPanelLines(run) {
   const route = circuitRouteView(run);
   if (!route) return error || choices.length ? {
     heading: 'The Circuit',
-    status: error || 'Sixteen rounds, four stages, four champions. Choose Circuit or launch ordinary Swarm.',
+    status: error || 'A 16-round challenge across four stages. Each stage ends with a champion.',
     next: null, choices, stages: [],
   } : null;
   const circuit = circuitFor(run);
@@ -956,26 +988,25 @@ export const crucibleDraftScreen = {
     // card, the boss. Buying becomes counter-planning when the fight coming is on the same
     // screen as the shelf. The armory alone carries it; the gauntlet's Rearm stays quiet.
     const briefing = el('details', 'orr-armory-briefing');
+    briefing.setAttribute('name', 'sf-armory-details');
     this._briefing = briefing;
     const briefingLabel = el('summary', '', 'Round briefing');
     const preview = el('p', 'k-sentence sf-cru-preview', '');
     preview.hidden = true;
     briefing.append(briefingLabel, preview);
     title.appendChild(briefing);
-    // SWARM-05 §7.3 — the hull being flown is the armory's context, a status line under the
-    // title, never a zero-price card at the top of the shelf. The other manifest hulls still
-    // list — as Switch rows, priced by what a switch costs (nothing).
-    const cradle = el('p', 'k-t-fine sf-cru-cradle', '');
-    cradle.hidden = true;
-    title.appendChild(cradle);
+    const circuitOptions = el('details', 'orr-armory-briefing sf-cru-circuit-options');
+    circuitOptions.setAttribute('name', 'sf-armory-details');
+    circuitOptions.hidden = true;
+    circuitOptions.appendChild(el('summary', '', 'Optional Circuit challenge'));
+    title.appendChild(circuitOptions);
     rootEl.appendChild(title);
     this._sub = sub;
     this._preview = preview;
-    this._cradle = cradle;
 
     // .k-stage — the three offers across on the sky, then the one status line.
     const stage = el('section', 'k-stage sf-cru-stage');
-    this._armoryHeading = el('h2', 'orr-armory-section', 'Dealt fittings');
+    this._armoryHeading = el('h2', 'orr-armory-section', 'Featured equipment');
     stage.appendChild(this._armoryHeading);
     const filters = el('div', 'k-words k-words--row sf-cru-filters');
     filters.setAttribute('role', 'group');
@@ -1000,7 +1031,7 @@ export const crucibleDraftScreen = {
     this._search = search;
     this._filters = filters;
     // S11 — the dealt three are the screen: big authored cards above the shelf, one click to
-    // pick and fit. The catalog waits behind Browse all rather than leading with 107 rows.
+    // inspect and compare. The catalog waits behind Browse all.
     const dealt = el('section', 'sf-cru-dealt');
     dealt.setAttribute('role', 'group');
     dealt.setAttribute('aria-label', 'Dealt offers');
@@ -1026,11 +1057,8 @@ export const crucibleDraftScreen = {
     this._note = note;
     rootEl.appendChild(stage);
 
-    // SWARM-08 B5 — the Circuit panel. It offers entry, then shows the route as four stage
-    // positions, the choice owed right now (enter, destination, finish or Overtime), and the
-    // one-line read on the round coming. Reserve space inside the shelf's flex column rather
-    // than adding a second root grid stage. Long route choices scroll within their own share
-    // of the column so the filters and shopping rail remain reachable.
+    // The opening Circuit invitation lives beside the round briefing. Active Circuit choices
+    // stay above the catalog, with long route lists bounded to their own share of the column.
     const circuitPanel = el('section', 'sf-cru-circuit');
     Object.assign(circuitPanel.style, { flex: '0 0 auto', maxHeight: '40%', overflow: 'auto' });
     circuitPanel.hidden = true;
@@ -1047,6 +1075,8 @@ export const crucibleDraftScreen = {
     stage.insertBefore(circuitPanel, filters);
     this._circuit = {
       el: circuitPanel,
+      stage,
+      options: circuitOptions,
       status: circuitStatus,
       graphic: circuitGraphic,
       route: circuitRoute,
@@ -1068,8 +1098,8 @@ export const crucibleDraftScreen = {
         act: el('p', 'orr-armory-reading__act', ''),
         jig: el('div', 'orr-armory-reading__jig'),
         compare: el('div', 'orr-armory-reading__compare'),
-        budget: el('div', 'orr-armory-reading__budget'),
-        buy: el('p', 'orr-armory-reading__buy', ''),
+        buy: el('div', 'orr-armory-reading__buy', ''),
+        borrow: el('p', 'orr-armory-reading__demo', ''),
         demo: el('p', 'orr-armory-reading__demo', ''),
         hold: el('p', 'orr-armory-reading__hold', ''),
       };
@@ -1079,7 +1109,7 @@ export const crucibleDraftScreen = {
       const more = el('details', 'orr-armory-reading__more');
       more.append(el('summary', 'orr-armory-reading__more-word', 'More'), parts.demo, parts.hold);
       parts.more = more;
-      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.compare, parts.budget, parts.buy, more);
+      words.append(parts.verb, parts.name, parts.blurb, parts.act, parts.compare, parts.buy, parts.borrow, more);
       reading.append(parts.jig, words);
       rootEl.appendChild(reading);
       this._reading = { el: reading, parts, jig: createSlotJig({ host: parts.jig }), offerId: null };
@@ -1120,6 +1150,12 @@ export const crucibleDraftScreen = {
 
     // .k-foot — Keep current loadout, Re-roll (with the wallet beside it), the keys in fine print.
     const foot = el('footer', 'k-foot sf-cru-foot');
+    const launchSummary = el('p', 'orr-armory-launch-summary');
+    launchSummary.id = 'sf-armory-launch-summary';
+    launchSummary.setAttribute('role', 'status');
+    launchSummary.hidden = true;
+    foot.appendChild(launchSummary);
+    this._launchSummary = launchSummary;
     const words = el('ul', 'k-words k-words--row');
     words.setAttribute('aria-label', 'Rearm');
     const skip = addWord(words, word('Keep current loadout', 'k-word--emph'));
@@ -1157,6 +1193,7 @@ export const crucibleDraftScreen = {
     });
     this._skip = skip;
     const refit = addWord(words, word('Rearrange loadout', 'k-word--emph'));
+    refit.setAttribute('aria-description', 'Remove installed equipment or fit a spare.');
     refit.addEventListener('click', () => ctx.bus.emit('ui:pushScreen', { id: 'crucibleRefit' }));
     this._refitBtn = refit;
     this._fortifyBtn = appendFortifyWord(words, ctx);
@@ -1232,7 +1269,7 @@ export const crucibleDraftScreen = {
       // Not reroll.click(): the button is drawn dead when the price is out of reach, and a dead
       // button swallows a click. The owner is the authority on the refusal either way, and the
       // player gets told why instead of nothing happening.
-      if (event.key === 'r' || event.key === 'R') {
+      if (!this._starterOnly && (event.key === 'r' || event.key === 'R')) {
         event.preventDefault();
         this._requestReroll(ctx);
         return;
@@ -1336,7 +1373,7 @@ export const crucibleDraftScreen = {
 
   _requestReroll(ctx) {
     const context = ctx || this._ctx;
-    if (!context || !context.bus) return;
+    if (!context || !context.bus || this._starterOnly) return;
     // Main-lane results land synchronously; worker-lane receipts repaint after their read model.
     this._emitIntentAndRefresh(context, 'run:draftRerollRequested', {});
   },
@@ -1397,13 +1434,17 @@ export const crucibleDraftScreen = {
     const rows = Array.isArray(choices) ? choices : [];
     for (const choice of rows) {
       const button = word(choice.label, choice.kind === 'finish' || choice.kind === 'start' ? 'k-word--emph' : 'k-word--fine');
-      if (choice.line) button.title = choice.line;
       button.dataset.circuitChoice = choice.kind;
       button.addEventListener('click', () => context.bus.emit('run:draftPickRequested', { offerId: choice.id }));
       const item = el('li', 'sf-cru-circuit__choice');
       item.appendChild(button);
       // The destination's physical law is read BEFORE commitment, not discovered after it.
-      if (choice.line) item.appendChild(el('span', 'k-t-fine sf-cru-circuit__line', choice.line));
+      if (choice.line) {
+        const description = el('p', 'k-t-fine sf-cru-circuit__line', choice.line);
+        description.id = `sf-circuit-choice-${list.children.length}`;
+        button.setAttribute('aria-describedby', description.id);
+        item.appendChild(description);
+      }
       list.appendChild(item);
     }
     list.hidden = rows.length === 0;
@@ -1451,13 +1492,22 @@ export const crucibleDraftScreen = {
     const run = ctx && ctx.state && ctx.state.run;
     if (!run || run.ruleset !== 'swarm') return false;
     if (this._circuitGate(ctx)) return true;
+    const owner = draftOwner(ctx);
+    if (run.telemetry?.zeroScrapOpening && owner?.currentWave?.() === 0
+      && !owner.refitRows?.()?.some(row => row.slotType === 'weapon' && (row.defId || row.intrinsicDefId))) {
+      const text = 'Fit a free gun or choose Launch round 1 without a gun.';
+      this._flash = { text, until: Date.now() + 8000, guard: true };
+      if (this._note) this._note.textContent = text;
+      this._skip?.focus?.();
+      return true;
+    }
     if (this._launchWarned === true) {
       this._launchWarned = false;
       return false;
     }
     // Search and category filters only change the view. An empty shelf must not turn Cancel
     // into an unannounced launch, and an old card must not warn about already-spent credits.
-    const count = affordableOfferCount(draftOwner(ctx)?.currentOffers?.());
+    const count = affordableOfferCount(owner?.currentOffers?.());
     if (count < 1) return false;
     this._launchWarned = true;
     const text = launchGuardLine(count);
@@ -1472,12 +1522,14 @@ export const crucibleDraftScreen = {
 
   refresh(ctx) {
     // uiRoot repaints the open screen ~3x/sec as refresh(ctx, { periodic: true }); the draft
-    // rebuilds its cards on every real change itself (pick, re-roll, filter, mount/onShow), so a
-    // periodic pass only churns focus. Deliberate no-op. The signature stays `refresh(ctx)` —
-    // test/crucible-draft pins that shape — so the options bag is read off `arguments`.
+    // rebuilds its cards on its own state changes. Only refresh the live control cue here
+    // so a device change leaves the selected card and focus in place.
     const options = arguments[1];
-    if (options && options.periodic) return;
     const context = ctx || this._ctx;
+    if (options?.periodic) {
+      this._paintReading(context, this._offersById?.get(this._reading?.offerId), true);
+      return;
+    }
     const rootEl = this._root;
     const cards = this._cards;
     if (!context || !rootEl || !cards) return;
@@ -1493,14 +1545,34 @@ export const crucibleDraftScreen = {
     const notice = owner && typeof owner.lastNotice === 'function' ? owner.lastNotice() : null;
     const rerollState = owner && typeof owner.rerollState === 'function' ? owner.rerollState() : null;
     const lines = rerollControlLines(rerollState, notice);
-    const shop = context.state?.run?.ruleset === 'swarm';
+    const runNow = context.state?.run;
+    const shop = runNow?.ruleset === 'swarm';
+    const circuitRun = runNow ? circuitFor(runNow) : null;
+    const circuitError = circuitStateError(runNow);
+    const starterOnly = shop && wave === 0 && runNow.credits === 0 && runNow.telemetry?.zeroScrapOpening === true
+      && !circuitRun && !circuitError;
+    const starterViewChanged = this._starterOnly !== starterOnly;
+    this._starterOnly = starterOnly;
+    const generation = owner?.preparationGeneration?.();
+    const openingLoan = shop && wave === 0 && offers.some(offer => offer.borrowAvailable);
+    const openingChoice = shop && wave === 0 && offers.some(offer => offer.startingEquipment && offer.available);
+    const startingGun = starterOnly ? runNow.modifiers?.find?.(row => row?.startingEquipment === true) : null;
+    const loadoutRows = shop ? owner?.refitRows?.() || [] : [];
+    if (shop && wave === 0 && (starterViewChanged || this._browseWave !== wave || this._browseGeneration !== generation)) {
+      this._browse = true;
+      this._category = openingChoice || openingLoan ? 'Weapons' : 'All';
+      this._query = '';
+      if (this._search) this._search.value = '';
+    }
+    this._browseWave = wave;
+    this._browseGeneration = generation;
     rootEl.classList.toggle('sf-crucible-armory', shop);
-    this._title.textContent = shop ? 'Armory' : 'Rearm';
-    if (this._visualArmory) this._visualArmory.wallet(context.state?.run?.credits, shop);
-    this._filters.hidden = !shop;
-    this._refitBtn.hidden = !shop;
+    this._title.textContent = shop ? 'Ship equipment' : 'Rearm';
+    if (this._visualArmory) this._visualArmory.wallet(runNow?.credits, shop, starterOnly);
+    const canRearrange = loadoutRows.some(row => row.defId || row.spares?.length);
+    setWordShown(this._refitBtn, shop && (!starterOnly || canRearrange));
     setWordShown(this._fortifyBtn, fortifyAvailable(context.state?.run));
-    if (this._search) this._search.hidden = !shop;
+    if (this._search) this._search.hidden = !shop || starterOnly;
     // offer.category is stamped when the card is drawn; the regex stays as the fallback for
     // any row that reaches the rail without it.
     const categoryFor = offer => typeof offer.category === 'string' && ARMORY_CATEGORY_SET.has(offer.category)
@@ -1513,19 +1585,20 @@ export const crucibleDraftScreen = {
       || (offer.verb || '').toLowerCase().includes(query)
       || (offer.blurb || '').toLowerCase().includes(query)
       || (offer.defId || '').toLowerCase().includes(query);
-    for (const button of this._filters.children) {
+    for (const button of starterOnly ? [] : this._filters.children) {
       const category = button.dataset.category;
       if (!category) continue;
       button.setAttribute('aria-pressed', String(category === this._category));
       // How much stock each word holds: the armory scrolls, and the count is what says so.
       const count = category === 'All' ? offers.length : offers.filter((offer) => categoryFor(offer) === category).length;
-      const label = shop ? `${category} ${count}` : category;
+      const name = ARMORY_CATEGORY_LABELS[category] || category;
+      const label = shop ? `${name} ${count}` : name;
       if (button.dataset.label !== label) {
         button.dataset.label = label;
         button.textContent = '';
-        button.appendChild(el('span', 'sf-cru-filter-word', category));
+        button.appendChild(el('span', 'sf-cru-filter-word', name));
         if (shop) button.appendChild(el('span', 'sf-cru-count', String(count)));
-        button.setAttribute('aria-label', shop ? `${category}, ${counted(count, 'offer', 'offers')}` : category);
+        button.setAttribute('aria-label', shop ? `${name}, ${counted(count, 'offer', 'offers')}` : name);
       }
     }
 
@@ -1535,9 +1608,14 @@ export const crucibleDraftScreen = {
     const runStart = context.state?.run?.telemetry
       && Number.isInteger(context.state.run.telemetry.startWave)
       ? context.state.run.telemetry.startWave : 1;
-    this._sub.textContent = firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
+    this._sub.textContent = openingChoice
+      ? 'Choose one compatible gun for free. You keep it for this run. You can also launch with your current equipment.'
+      : starterOnly ? (startingGun ? 'You keep your starting gun for this run. Launch when ready.'
+        : 'No free gun fits this ship. Launch with your current equipment.')
+      : openingLoan ? 'Borrow one gun for round 1 at no cost. The loan ends when you return to buy equipment.'
+      : firstSwarmIntermission(context.state?.run, offers) ?? (offers.length
       ? (wave === 0
-        ? 'Fit out before round 1 — the purse is already open. Each fitting bolts onto one hardpoint of the ship you chose; a full hardpoint swaps, and the old part waits in your spares.'
+        ? 'Before round 1, inspect any item for free. Install spends credits. Launch keeps your current equipment. Flight powers like Shove use their own controls.'
         : shop && runStart > 1 && wave === runStart - 1
           ? `Checkpoint start — the purse is stocked for Round ${runStart}.`
           : shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
@@ -1559,11 +1637,22 @@ export const crucibleDraftScreen = {
       this._briefing.hidden = this._preview.hidden;
     }
 
-    // SWARM-08 B5 — paint the journey before the shelf: the route, the choice owed and the next
-    // round. Ordinary Swarm only shows the opening invitation.
-    const runNow = context.state && context.state.run;
+    // Only the optional opening invitation goes in the disclosure. A running Circuit's route,
+    // required decisions, and any state error stay visible above the catalog.
     const circuitPanel = shop && runNow ? circuitPanelLines(runNow) : null;
     if (this._circuit) {
+      const { el: panel, options: circuitOptions, stage } = this._circuit;
+      const optionalEntry = !!circuitPanel && !circuitRun && !circuitError;
+      circuitOptions.hidden = !optionalEntry;
+      const optionsHome = starterOnly ? this._briefing : this._title.parentNode;
+      if (circuitOptions.parentNode !== optionsHome) optionsHome.appendChild(circuitOptions);
+      if (starterOnly) {
+        // Nested details must not join their parent's mutually exclusive details group.
+        circuitOptions.removeAttribute('name');
+        if (optionalEntry) this._briefing.hidden = false;
+      } else circuitOptions.setAttribute('name', 'sf-armory-details');
+      if (optionalEntry && panel.parentNode !== circuitOptions) circuitOptions.appendChild(panel);
+      else if (!optionalEntry && panel.parentNode !== stage) stage.insertBefore(panel, this._filters);
       this._circuit.el.hidden = !circuitPanel;
       if (circuitPanel) {
         this._circuit.status.textContent = circuitPanel.status;
@@ -1576,36 +1665,27 @@ export const crucibleDraftScreen = {
         this._paintCircuitChoices(context, circuitPanel.choices);
       }
     }
-    const circuitRun = runNow ? circuitFor(runNow) : null;
-    const circuitError = circuitStateError(runNow);
     const circuitOwed = !!circuitError || !!(circuitPanel && circuitRun
       && (circuitRun.status === 'route' || circuitRun.status === 'finale'));
 
-    // SWARM-05 §7.3 — the hull being flown leaves the catalogue and reads on the status
-    // line; the other manifest hulls stay on the shelf as Switch rows.
-    const flying = shop ? offers.find((offer) => offer._flying) : null;
-    if (this._cradle) {
-      const cradleName = flying && (flying.name || entityLabel('hull:' + flying.defId) || flying.defId);
-      // The opening armory fits the door's free hull pick — it does not re-sell it. New hulls
-      // go on sale once the run has begun (see _armoryExtras), so this line says where they are.
-      this._cradle.textContent = cradleName
-        ? (wave === 0 ? `In the cradle — ${cradleName} · new hulls go on sale after round 1` : `In the cradle — ${cradleName}`)
-        : '';
-      this._cradle.hidden = !cradleName;
-    }
+    const summary = shop ? launchEquipmentSummary(context, loadoutRows, offers, starterOnly) : '';
+    const launchesWithoutGun = (openingChoice || (shop && wave === 0 && context.state.run.telemetry?.zeroScrapOpening))
+      && !loadoutRows.some(row => row.slotType === 'weapon' && (row.defId || row.intrinsicDefId));
+    if (this._launchSummary.textContent !== summary) this._launchSummary.textContent = summary;
+    this._launchSummary.hidden = !summary;
+    if (summary) this._skip.setAttribute('aria-describedby', this._launchSummary.id);
+    else this._skip.removeAttribute('aria-describedby');
     // SWARM-05 §7.3 — Recommended for your build: the owner's three picks lead the shelf
     // once and do not repeat in the catalogue below. Category and search shelves stay the
     // plain catalogue.
-    // S11 — the dealt three leave the rail entirely: they are big cards above it, picked with
-    // one click. The shelf holds every other stock row and waits behind Browse all.
-    const dealtOffers = shop
+    // Featured offers have their own cards. Browse all opens the catalog shelf.
+    const dealtOffers = shop && !starterOnly
       ? offers.filter((offer) => offer.dealt === true && !offer._flying)
       : [];
     const showHand = dealtOffers.length > 0 && !this._browse;
-    this._armoryHeading.hidden = !shop;
-    this._armoryHeading.textContent = showHand ? 'Dealt fittings' : 'Equipment catalog';
+    this._armoryHeading.textContent = starterOnly ? 'Starting guns' : showHand ? 'Featured equipment' : 'Equipment catalog';
     const dealtIds = new Set(showHand ? dealtOffers.map((offer) => offer.id) : []);
-    const recommended = shop && this._browse && this._category === 'All' && !this._query
+    const recommended = shop && !starterOnly && this._browse && this._category === 'All' && !this._query
       && owner && typeof owner.recommendedOffers === 'function'
       ? owner.recommendedOffers().filter((offer) => !offer._flying && !dealtIds.has(offer.id))
       : [];
@@ -1615,7 +1695,13 @@ export const crucibleDraftScreen = {
     // being thrown back to the first card (or into detached-focus limbo).
     const savedFocus = focusedControlId(rootEl);
     cards.innerHTML = '';
-    const visibleOffers = shop
+    const starterSlot = starterOnly ? loadoutRows.find(row => row.startingEquipment === true)?.slotIndex : null;
+    const isStartingGun = offer => offer.purchased && offer.id === startingGun?.offerId && offer.defId === startingGun?.defId;
+    const visibleOffers = starterOnly
+      ? offers.filter(offer => !offer._flying && (isStartingGun(offer)
+        || (offer.startingEquipment && offer.available && offer.price === 0)))
+        .map(offer => isStartingGun(offer) ? { ...offer, slotIndex: starterSlot ?? null } : offer)
+      : shop
       ? offers
         .filter(offer => !offer._flying && !recommendedIds.has(offer.id) && !dealtIds.has(offer.id)
           && (this._category === 'All' || categoryFor(offer) === this._category)
@@ -1625,7 +1711,8 @@ export const crucibleDraftScreen = {
     // Browse closed: the shelf and its instruments stay mounted but out of sight — category,
     // query and scroll state survive the toggle.
     const shelfShown = !shop || this._browse || dealtOffers.length === 0;
-    this._filters.hidden = !shelfShown;
+    this._armoryHeading.hidden = !shop || (starterOnly && visibleOffers.length === 0);
+    this._filters.hidden = starterOnly || !shelfShown;
     cards.hidden = !shelfShown;
     if (this._railScale) this._railScale.hidden = !shelfShown;
     // The card list the 1/2/3 keys click, in on-screen key order: visible dealt hand first,
@@ -1663,7 +1750,7 @@ export const crucibleDraftScreen = {
     for (const offer of shelfShown ? visibleOffers : []) {
       // the armory's rail: the price as an engraved divider over each price's group, and the wallet
       // as a line where the rail passes what the run can pay
-      if (shop && this._reading && Number.isFinite(offer.price)) {
+      if (shop && !starterOnly && this._reading && Number.isFinite(offer.price)) {
         if (!walletDrawn && offer.price > credits && !offer.purchased) {
           const line = el('p', 'orr-rail-wallet', `Wallet ${credits} cr`);
           line.setAttribute('aria-hidden', 'true');
@@ -1684,7 +1771,7 @@ export const crucibleDraftScreen = {
     }
     this._digitCards = digitCards;
 
-    if (shop && !visibleOffers.length && !recommended.length
+    if (shop && !starterOnly && !visibleOffers.length && !recommended.length
         && typeof document.createElementNS === 'function') {
       // The Ships shelf is empty at the opening stop by design: the player's launch hull is
       // already selected. Say what to do next without promising hulls will unlock after round 1;
@@ -1701,19 +1788,26 @@ export const crucibleDraftScreen = {
       });
       empty.appendChild(clear); cards.appendChild(empty);
     }
-    this._note.textContent = notice || lines.notice || '';
+    this._note.textContent = notice || (starterOnly ? '' : lines.notice);
     this._offersById = new Map([...dealtOffers, ...visibleOffers, ...recommended].map((offer) => [offer.id, offer]));
+    if (!starterOnly) {
+      this._starterComparison = null;
+    } else if (openingChoice || !this._starterComparison || this._starterComparison.generation !== generation) {
+      // The other starting guns leave the shelf after a successful fit. Keep their
+      // original scale so the selected gun doesn't appear to gain power on purchase.
+      this._starterComparison = { generation, bounds: weaponComparisonBounds(visibleOffers) };
+    }
     rootEl.classList.toggle('orr-armory', shop && !!this._reading);
     if (this._browseBtn) {
       setWordShown(this._browseBtn, shop && dealtOffers.length > 0);
       this._browseBtn.setAttribute('aria-expanded', String(this._browse));
-      setKeyLabel(this._browseBtn, this._browse ? 'Back to the cards' : 'Browse all', 'B', 'B');
+      setKeyLabel(this._browseBtn, this._browse ? 'Featured equipment' : 'Browse all', 'B', 'B');
     }
     if (this._reading) {
       this._reading.el.hidden = !shop || !(showHand || visibleOffers.length || recommended.length);
       const visible = showHand ? dealtOffers : [...recommended, ...visibleOffers];
       const keep = visible.find(offer => offer.id === this._reading.offerId);
-      const first = keep || visible.find(offer => offer.available) || visible[0];
+      const first = keep || visible.find(offer => offer.available || offer.borrowAvailable) || visible[0];
       if (shop && first) this._paintReading(context, first);
     }
 
@@ -1722,12 +1816,13 @@ export const crucibleDraftScreen = {
         : circuitOwed
           ? (circuitError ? 'Circuit data invalid — start a new run'
             : circuitRun.status === 'route' ? 'Choose a destination first' : 'Finish or enter Overtime first')
-          : shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue'),
+          : launchesWithoutGun ? 'Launch round 1 without a gun'
+            : shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue'),
       // Launch carries no Esc badge in the armory: Esc is the way out of the screen, never a launch
       // key a player should learn (the guard below still stops a stray Esc from launching).
       shop && !circuitOwed ? '' : 'Esc', 'Escape');
-    // In the armory the way forward is the one consequential key; buying happens on the cards.
-    this._skip.classList.toggle('k-word--primary', shop && !circuitOwed);
+    const canFitStarter = starterOnly && openingChoice && launchesWithoutGun;
+    this._skip.classList.toggle('k-word--primary', shop && !circuitOwed && !canFitStarter);
     // A warm hold that resolved off-draft left the control disabled+relabelled; re-arm it here
     // (and keep it held while a hold is actually in flight, so a repaint cannot un-gate it).
     this._skip.disabled = this._warmHold === true;
@@ -1737,20 +1832,22 @@ export const crucibleDraftScreen = {
     setKeyLabel(reroll, lines.label || 'Re-roll', 'R', 'R');
     reroll.disabled = !!lines.disabled;
     reroll.setAttribute('aria-disabled', lines.disabled ? 'true' : 'false');
-    reroll.hidden = !lines.visible;
-    reroll.style.display = lines.visible ? '' : 'none';
+    setWordShown(reroll, !starterOnly && lines.visible);
     // The balance, and which draw this is — a player who has paid twice should be able to see it.
     this._wallet.textContent = shop ? (this._reading ? '' : `${context.state.run.credits} cr to spend`) : lines.visible
       ? (lines.draw ? `${lines.wallet} · ${lines.draw}` : lines.wallet)
       : '';
     // The keys a card cannot print on itself. Esc and R ride inside their own keys; the offer
     // numbers are on the cards.
-    const keys = offers.length && shop ? (showHand ? '1–3 buy & fit' : '1–3 inspect') : '';
+    const keyCount = starterOnly ? Math.min(SURVIVAL_DRAFT_CHOICES, digitCards.length)
+      : offers.length ? SURVIVAL_DRAFT_CHOICES : 0;
+    const keyRange = keyCount === 1 ? '1' : `1–${keyCount}`;
+    const keys = keyCount && shop ? `${keyRange} inspect` : '';
     this._hint.textContent = keys && this._wallet.textContent ? ` · ${keys}` : keys;
-    if (shop && this._reading && offers.length) {
+    if (this._reading && keys) {
       this._hint.textContent = '';
       const cap = (t) => el('span', 'orr-armory-keycap', t);
-      this._hint.append(cap('1–3'), el('span', 'orr-armory-hintword', showHand ? 'Buy & fit' : 'Inspect'));
+      this._hint.append(cap(keyRange), el('span', 'orr-armory-hintword', 'Inspect'));
     }
     if (this._flash && this._flash.until > Date.now() && !notice) this._note.textContent = this._flash.text;
     this._clipRailToWholeRows();
@@ -1782,13 +1879,19 @@ export const crucibleDraftScreen = {
     if (!offer?.available || offer.purchased || ctx.state?.run?.phase !== 'draft') {
       this.refresh(ctx); return;
     }
+    const quote = fittingQuote(offer);
+    if (this._reading.price !== offer.price || this._reading.quoteKey !== JSON.stringify(quote)) {
+      this.refresh(ctx);
+      this._note.textContent = 'This offer changed. Review the new terms before installing.';
+      return;
+    }
     // A refreshed shelf can select a different row after a purchase. A second click on the
     // same confirmation key must never silently buy that row; inspection explicitly re-arms it.
     this._purchaseArmed = false;
     this._purchasePending = true;
     this._visualArmory?.pending(offer);
     try {
-      this._emitIntentAndRefresh(ctx, 'run:draftPickRequested', { offerId: offer.id });
+      this._emitIntentAndRefresh(ctx, 'run:draftPickRequested', { offerId: offer.id, ...(quote ? { quote } : {}) });
     } finally {
       this._purchasePending = false;
     }
@@ -1804,9 +1907,23 @@ export const crucibleDraftScreen = {
     }
   },
 
-  _paintReading(context, offer) {
+  _inspectOffer(ctx, offer) {
+    if (this._purchasePending) return;
+    this._purchaseArmed = true;
+    this._paintReading(ctx, this._offersById?.get(offer.id) || offer);
+    if (typeof matchMedia === 'function' && matchMedia('(max-width:760px)').matches) {
+      this._reading?.el.scrollIntoView?.({ block: 'start', behavior: 'instant' });
+    }
+  },
+
+  _paintReading(context, offer, activationOnly = false) {
     const r = this._reading;
-    if (!r || !offer) return;
+    if (!r || !offer || !context) return;
+    const fittedStarter = this._starterOnly && offer.purchaseStatus === 'Fitted' && Number.isInteger(offer.slotIndex);
+    const activation = crucibleFittingDescription(offer.defId, context.state);
+    const cue = [activation, fittedStarter ? `Fitted in slot ${offer.slotIndex + 1}.` : ''].filter(Boolean).join(' · ');
+    if (r.parts.act.textContent !== cue) r.parts.act.textContent = cue;
+    if (activationOnly) return;
     // Shelf refreshes replace the row nodes even when the reading's words stay cached.
     // Rebind the Hand to the new row before deciding whether those words need painting.
     this._lightReadingOffer(offer);
@@ -1821,15 +1938,23 @@ export const crucibleDraftScreen = {
     const receiptKey = receipt ? `${receipt.generation}:${receipt.sequence}:${receipt.outcome}` : `${generation ?? ''}`;
     const armed = this._purchaseArmed !== false;
     const fitKey = (fit.hullId || '') + '|' + fit.fittings.join(',');
+    const quoteKey = JSON.stringify(fittingQuote(offer));
     if (r.offerId === offer.id && r.credits === context.state?.run?.credits
       && r.demoed === offer.demoed && r.purchased === offer.purchased && r.held === offer.held
-      && r.available === offer.available && r.fitKey === fitKey
+      && r.available === offer.available && r.fitKey === fitKey && r.quoteKey === quoteKey
+      && r.price === offer.price && r.borrowAvailable === offer.borrowAvailable
+      && r.purchaseStatus === offer.purchaseStatus && r.starterOnly === this._starterOnly
       && r.receiptKey === receiptKey && r.armed === armed) return;
     r.offerId = offer.id;
     r.fitKey = fitKey;
     r.credits = context.state?.run?.credits;
+    r.price = offer.price;
+    r.quoteKey = quoteKey;
+    r.borrowAvailable = offer.borrowAvailable;
     r.demoed = offer.demoed;
     r.purchased = offer.purchased;
+    r.purchaseStatus = offer.purchaseStatus;
+    r.starterOnly = this._starterOnly;
     r.available = offer.available;
     r.held = offer.held;
     r.receiptKey = receiptKey;
@@ -1851,7 +1976,6 @@ export const crucibleDraftScreen = {
     parts.verb.textContent = lines.verb;
     parts.name.textContent = lines.name;
     parts.blurb.textContent = lines.blurb;
-    parts.act.textContent = lines.activation || '';
     // where it goes: the run's ship with that hardpoint lit
     const rows = owner && typeof owner.refitRows === 'function' ? owner.refitRows() : [];
     const hullId = activeLoadout(context).hullId;
@@ -1865,46 +1989,40 @@ export const crucibleDraftScreen = {
       filled: rows.map((row) => !!row.defId),
       target: slot,
       label: slot >= 0 ? `Hardpoint ${slot + 1}` : '',
-      sub: offer.replaces ? `swaps with ${fittingName(offer.replaces)} — old part to spares` : 'empty — bolts straight on',
+      sub: lines.slot,
     });
     parts.compare.textContent = '';
-    const best = {};
-    for (const o of (this._offersById ? this._offersById.values() : [])) {
-      const d = WEAPON_DEF_BY_ID.get(o.defId);
-      if (!d) continue;
-      best.dps = Math.max(best.dps || 0, finiteNum(d.dps) || 0);
-      best.impulsePerHit = Math.max(best.impulsePerHit || 0, finiteNum(d.impulsePerHit) || 0);
-    }
+    const best = this._starterComparison?.bounds || weaponComparisonBounds(this._offersById?.values() || []);
     const compare = offerCompare(offer, best);
     if (compare) parts.compare.appendChild(compare);
-    parts.budget.textContent = '';
-    if (Number.isFinite(offer.price) && !offer.purchased && offer.price > 0) {
-      const gauge = budgetGauge(context.state?.run?.credits, offer.price);
-      if (gauge) parts.budget.appendChild(gauge);
-    }
     r.el.classList.toggle('is-unavailable', !offer.available);
     if (this._visualArmory) this._visualArmory.show(offer, lines, {
-      hullId, rows, armed, receipt, generation,
+      hullId, rows, armed, receipt, generation, credits: r.credits,
     });
     // The demo word: a fitting the reading is on can fly one round for free — the showcase half
     // of the sandbox. Hulls and the service counter carry no hardpoint, so nothing to demo.
     parts.demo.textContent = '';
-    if (!offer.purchased && Number.isInteger(offer.slotIndex) && typeof offer.defId === 'string'
+    parts.borrow.textContent = '';
+    if (!this._starterOnly && offer.demoAvailable !== false && !offer.purchased && Number.isInteger(offer.slotIndex) && typeof offer.defId === 'string'
         && offer.kind !== 'hull' && offer.kind !== 'service') {
       const demo = el('button', 'orr-armory-reading__demo-word');
       demo.type = 'button';
-      demo.textContent = offer.demoed ? 'On trial' : 'Demo — fly it one round';
+      demo.textContent = offer.demoed ? 'On trial' : offer.borrowAvailable ? 'Borrow for round 1' : 'Demo — fly it one round';
       demo.disabled = offer.demoed === true;
       demo.addEventListener('click', () => {
+        if (offer.borrowAvailable && !draftOwner(context)?.currentOffers?.().some(item => item.id === offer.id && item.borrowAvailable)) {
+          this.refresh(context);
+          return;
+        }
         this._emitIntentAndRefresh(context, 'run:draftPickRequested', { offerId: offer.id, demo: true });
       });
-      parts.demo.appendChild(demo);
+      (offer.borrowAvailable ? parts.borrow : parts.demo).appendChild(demo);
     }
     // SWARM-05 §7.3 — hold the card for the next armory: the shelf re-deals, this one comes
     // back. The service counter and the flown hull cannot ride a hold (the owner refuses
     // them); a held card's word lets it go.
     parts.hold.textContent = '';
-    if (!offer.purchased && offer.kind !== 'service' && !offer._flying) {
+    if (!this._starterOnly && !offer.purchased && offer.kind !== 'service' && !offer._flying) {
       const hold = el('button', 'orr-armory-reading__hold-word');
       hold.type = 'button';
       hold.textContent = offer.held
@@ -2006,12 +2124,12 @@ export const crucibleDraftScreen = {
   // One offer: the key numeral in fine print, the verb as the one permitted caps label, the name
   // at sub-title size, the blurb as a sentence, the slot in fine print. The whole block is the button.
   /**
-   * S11 — one of the dealt three: a tall card the draft is actually about. Big glyph, the
-   * authored verb, one sentence, the price; ONE click picks and fits. The shelf row beside it
-   * stays inspect-then-confirm because a 107-row list is browsed, not chosen at a glance.
+   * Featured offer. Both featured and catalog offers open the same inspector before purchase.
    */
   _buildDealtCard(ctx, offer, keyNumber) {
     const lines = offerCardLines(offer, ctx.state);
+    const status = offer.purchaseStatus;
+    const fitted = offer.purchased && (!status || status === 'Fitted');
     const card = el('button', 'sf-cru-card sf-cru-card--dealt');
     card.classList.toggle('sf-cru-card--evo', offer.kind === 'evolution');
     card.type = 'button';
@@ -2029,7 +2147,7 @@ export const crucibleDraftScreen = {
     head.appendChild(key);
     head.appendChild(el('p', 'k-caps sf-cru-verb', lines.verb));
     if (Number.isFinite(offer.price)) {
-      head.appendChild(el('p', 'k-t-emph sf-cru-price', offer.purchased ? 'Fitted' : `${offer.available ? 'Fit · ' : ''}${offer.price} cr`));
+      head.appendChild(el('p', 'k-t-emph sf-cru-price', offer.purchased ? (status || 'Fitted') : `${offer.price} cr`));
     }
     card.appendChild(head);
     card.appendChild(el('h2', 'k-display k-t-sub sf-cru-name', lines.name));
@@ -2039,43 +2157,41 @@ export const crucibleDraftScreen = {
       card.appendChild(el('p', 'k-t-fine sf-cru-afford', offer.unavailableReason));
     }
     card.appendChild(el('p', 'k-t-fine k-38 sf-cru-slot', lines.slot));
-    card.classList.toggle('is-unavail', !offer.available && !offer.purchased);
-    card.classList.toggle('is-fitted', !!offer.purchased);
-    card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.activation}. ${Number.isFinite(offer.price) ? `${offer.price} credits.` : ''} ${offer.unavailableReason || lines.slot}`);
-    card.title = [lines.verb, lines.name, lines.blurb, offer.replacesName ? `Replaces ${offer.replacesName}` : '']
+    card.classList.toggle('is-unavail', !offer.available && !fitted);
+    card.classList.toggle('is-fitted', !!fitted);
+    const terms = status ? `${status}. ${lines.slot}`
+      : `${Number.isFinite(offer.price) ? `${offer.price} credits.` : ''} ${offer.unavailableReason || lines.slot}`;
+    card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.activation}. ${terms}`);
+    card.title = [lines.verb, lines.name, lines.blurb, !offer.purchased && offer.replacesName ? `Replaces ${offer.replacesName}` : status]
       .filter(Boolean).join('. ');
-    card.addEventListener('click', () => {
-      const live = this._offersById?.get(offer.id) || offer;
-      if (this._purchasePending) return;
-      this._paintReading(ctx, live);
-      // One click picks and fits — the card carries its price and its reason up front, so the
-      // arm-confirm dance the shelf needs would only stand between the player and the pick.
-      if (!live.available || live.purchased) return;
-      this._purchaseArmed = false;
-      this._purchasePending = true;
-      this._visualArmory?.pending?.(live);
-      try {
-        this._emitIntentAndRefresh(ctx, 'run:draftPickRequested', { offerId: live.id });
-      } finally {
-        this._purchasePending = false;
-      }
-    });
+    card.addEventListener('click', () => this._inspectOffer(ctx, offer));
     return card;
   },
 
   _buildCard(ctx, offer, keyNumber) {
     const lines = offerCardLines(offer, ctx.state);
+    const status = offer.purchaseStatus;
+    const fitted = offer.purchased && (!status || status === 'Fitted');
     const card = el('button', 'sf-cru-card');
     // S15: a synthesis is the room's only golden row — it consumed your build to exist.
     card.classList.toggle('sf-cru-card--evo', offer.kind === 'evolution');
     const visualShop = ctx.state?.run?.ruleset === 'swarm' && !!this._visualArmory;
-    const glyph = equipmentSvg(offer);
-    if (glyph) card.appendChild(glyph);
+    const doc = card.ownerDocument || globalThis.document;
+    const thumb = itemThumbElement(offer, {
+      size: visualShop ? 'lg' : 'hero',
+      className: visualShop ? 'orr-armory-card-thumb' : 'orr-rearm-card-thumb',
+      showCrest: true,
+    }, doc);
+    if (thumb) card.appendChild(thumb);
+    else {
+      const glyph = equipmentSvg(offer);
+      if (glyph) card.appendChild(glyph);
+    }
     card.type = 'button';
     card.dataset.offerId = offer.id;
     card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.activation}. ${lines.slot}`);
     // Hover reads the same sentence the card prints: what it does, then what it replaces.
-    card.title = [lines.verb, lines.name, lines.blurb, offer.replacesName ? `Replaces ${offer.replacesName}` : '']
+    card.title = [lines.verb, lines.name, lines.blurb, !offer.purchased && offer.replacesName ? `Replaces ${offer.replacesName}` : status]
       .filter(Boolean).join('. ');
 
     // The key numeral rides on the verb's line, so a card with no key (the armory's fourth
@@ -2100,7 +2216,7 @@ export const crucibleDraftScreen = {
       // a manifest hull is a switch, not a sale — "On manifest", never "0 cr".
       const onManifest = offer.kind === 'hull' && Number.isInteger(offer._ownedIndex);
       head.appendChild(el('p', 'k-t-emph sf-cru-price',
-        offer.purchased ? 'FITTED' : onManifest ? 'On manifest' : `${offer.price} cr`));
+        offer.purchased ? (status || 'FITTED') : onManifest ? 'On manifest' : offer.startingEquipment ? 'Free' : `${offer.price} cr`));
       // A hold badge rides the same head line: the card this armory carried in (lockedIn) or
       // the one a hold now rides on for the next (held).
       if (offer.lockedIn || offer.held) {
@@ -2114,29 +2230,26 @@ export const crucibleDraftScreen = {
       // But it must LOOK unavailable — a wall of identical rows is how a refused purchase reads
       // as a purchase that silently did nothing. The reason line above names the unlock.
       card.disabled = visualShop ? false : !offer.available;
-      card.classList.toggle('is-unavail', !offer.available && !offer.purchased);
-      card.classList.toggle('is-fitted', !!offer.purchased);
+      card.classList.toggle('is-unavail', !offer.available && !fitted);
+      card.classList.toggle('is-fitted', !!fitted);
       // A catalog row can still be inspected. Only the inspector's transaction is disabled.
       if (!visualShop && !offer.available && !offer.purchased) card.setAttribute('aria-disabled', 'true');
       else card.removeAttribute('aria-disabled');
-      card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.activation}. ${offer.price} credits. ${offer.unavailableReason || lines.slot}`);
+      const cost = offer.startingEquipment ? 'Free' : `${offer.price} credits`;
+      const terms = status ? `${status}. ${lines.slot}` : `${cost}. ${offer.unavailableReason || lines.slot}`;
+      card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.activation}. ${terms}`);
     }
     card.appendChild(el('p', 'k-t-fine k-38 sf-cru-slot', lines.slot));
 
     card.addEventListener('click', () => {
       if (visualShop) {
-        if (!this._purchasePending) {
-          this._purchaseArmed = true;
-          this._paintReading(ctx, this._offersById?.get(offer.id) || offer);
-          if (typeof matchMedia === 'function' && matchMedia('(max-width:760px)').matches) {
-            this._reading?.el.scrollIntoView?.({ block:'start', behavior:'instant' });
-          }
-        }
+        this._inspectOffer(ctx, offer);
         return;
       }
       // Availability is only a quote. The owner notice confirms success or rejection
       // after the receipt; a worker-backed click must never announce a purchase early.
-      this._emitIntentAndRefresh(ctx, 'run:draftPickRequested', { offerId: offer.id });
+      const quote = offer.startingEquipment ? fittingQuote(offer) : null;
+      this._emitIntentAndRefresh(ctx, 'run:draftPickRequested', { offerId: offer.id, ...(quote ? { quote } : {}) });
     });
     return card;
   },
@@ -2639,6 +2752,10 @@ export const crucibleRefitScreen = {
           b.dataset.spare = String(option.instanceId);
           b.setAttribute('role', 'radio');
           b.setAttribute('aria-label', option.label);
+          if (option.defId) {
+            const spThumb = itemThumbElement({ defId: option.defId, slotSize: lines.slotSize }, { size: 'xs', showCrest: false, className: 'orr-hp__spare-thumb' }, b.ownerDocument || globalThis.document);
+            if (spThumb) b.appendChild(spThumb);
+          }
           b.appendChild(el('span', 'orr-hp__spare-name', spareName));
           if (stat.length) b.appendChild(el('span', 'orr-hp__spare-stat', stat.join(' — ')));
           b.addEventListener('click', () => {
@@ -2657,6 +2774,11 @@ export const crucibleRefitScreen = {
       } else {
         // an empty hardpoint's head already says Empty: its line says why
         const said = state === 'bare' ? String(lines.value).replace(/^Empty — /, '') : lines.value;
+        const eqDef = lines.defId || lines.intrinsicDefId;
+        if (eqDef) {
+          const itemThumb = itemThumbElement({ defId: eqDef, slotSize: lines.slotSize }, { size: 'sm', showCrest: true, className: 'orr-hp__item-thumb' }, left.ownerDocument || globalThis.document);
+          if (itemThumb) line.appendChild(itemThumb);
+        }
         const valueEl = el('div', 'k-row__sub orr-hp__value', said.charAt(0).toUpperCase() + said.slice(1));
         if (lines.valueRef) decorateEntityNode(valueEl, lines.valueRef);
         line.appendChild(valueEl);
@@ -2705,19 +2827,10 @@ export const crucibleRefitScreen = {
       // through the wallet's own receipt — a refused sale lands on the note line.
       const run = context.state && context.state.run;
       if (run && run.ruleset === 'swarm') {
-        let sellDefId = row.defId || null;
-        let sellTarget = null;
-        if (sellDefId) {
-          sellTarget = { slotIndex: row.slotIndex };
-        } else {
-          const chosen = this._chosenSpare(row);
-          if (chosen && chosen.defId) {
-            sellDefId = chosen.defId;
-            sellTarget = { instanceId: chosen.instanceId };
-          }
-        }
-        const sellPrice = sellDefId ? swarmSellPrice(sellDefId) : null;
-        if (sellTarget && sellPrice != null && sellPrice > 0) {
+        const part = row.defId ? row : this._chosenSpare(row);
+        const sellPrice = part?.defId && !part.startingEquipment ? swarmSellPrice(part.defId) : null;
+        if (sellPrice != null && sellPrice > 0) {
+          const sellTarget = row.defId ? { slotIndex: row.slotIndex } : { instanceId: part.instanceId };
           const sell = word(`Sell · ${sellPrice} cr`, 'k-word--fine');
           sell.classList.add('sf-cru-act', 'sf-cru-sell');
           sell.disabled = pending;

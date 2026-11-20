@@ -62,6 +62,21 @@ test('an explicitly selected local course owns the display without changing trac
   assert.deepEqual(resolveRadarObjective(state).waypointPos, waypoint.pos);
 });
 
+test('a resolved story waypoint names the local place and an unresolved bearing keeps its sector', () => {
+  const waypoint = { kind: 'story', sectorId: 'sector_tethys_junction', sectorName: 'Tethys Junction',
+    label: 'Scale 4 · weigh the delivered crate', pos: { x: 13008, z: 7212 } };
+  const state = stateFor(waypoint);
+
+  state.world.currentSectorId = waypoint.sectorId;
+
+  const resolved = resolveRadarObjective(state);
+  assert.match(resolved.label, /^SCALE 4\b/);
+  assert.deepEqual(resolved.waypointPos, waypoint.pos);
+
+  state.nav.waypoint = { ...waypoint, pos: null };
+  assert.equal(resolveRadarObjective(state).label, 'TETHYS JUNCTION');
+});
+
 // SWARM-LEAK-01 — the Adventure goal line ("GOAL · HELIOS STATION · 3.6k u · ETA —") painted
 // over a live Swarm round: a station 3.6k u away that the arena player cannot fly to. Both owners
 // (the HUD marker and the radar's objective key) ask one predicate; Adventure keeps its line.

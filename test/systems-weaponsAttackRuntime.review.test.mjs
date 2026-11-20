@@ -20,6 +20,7 @@ function weaponHarness() {
   system.state = state;
   system.bus = { emit() {} };
   system.helpers = { getEntity: (id) => state.entities.get(id) || null };
+  system.ctx = { state, bus: system.bus, helpers: system.helpers };
   system._byId = new Map();
   system._beamFiring = new Set();
   system._beamFiringPrev = new Set();
@@ -33,8 +34,9 @@ function weaponHarness() {
 test('weapons drops attack runtime records after their projectiles leave the entity graph', () => {
   const { state, system } = weaponHarness();
   system._attackLive.set('expired-projectile', { spec: {}, runtime: {} });
-  system._attackLive.set('live-projectile', { spec: {}, runtime: {} });
-  state.entities.set('live-projectile', { id: 'live-projectile', type: 'projectile', alive: true });
+  const projectile = { id: 'live-projectile', type: 'projectile', alive: true };
+  system._attackLive.set(projectile.id, { projectile, projectileGeneration: null, spec: {}, runtime: {} });
+  state.entities.set(projectile.id, projectile);
 
   system.update(1 / 60, state);
 

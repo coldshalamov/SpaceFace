@@ -246,7 +246,7 @@ test('live entity view sync hides off-runway roots through the helper', async ()
   assert.match(source, /_submitVisibilityOptions\.hidden\s*=\s*true/);
   assert.match(source, /_submitVisibilityOptions\.hidden\s*=\s*false/);
   assert.match(source, /_submitVisibilityOptions\.snapshotMissing\s*=\s*!posed/);
-  assert.match(source, /let posed = this\._hasCompletedPresentationPose\(slot,\s*entityId\)/,
+  assert.match(source, /else\s*\{\s*(?:\/\/[^\r\n]*\r?\n\s*)*posed = this\._hasCompletedPresentationPose\(slot,\s*entityId\)/,
     'clean roots derive pose validity from the latest completed fence');
   assert.match(source, /snapshotIndexOf\(snapshot,\s*entityId\)/,
     'ordinary roots fail closed when the completed fence has no matching identity');

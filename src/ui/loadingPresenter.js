@@ -9,7 +9,7 @@ import { SWARM_RULESET } from '../data/swarmMode.js';
 const DEFAULT_STAGE = Object.freeze({ id: 'restoring-save', progress: .05,
   label: 'Restoring flight state', detail: 'Rebuilding the current sector and critical visuals' });
 const NO_ART = { updateProgress() {}, start() {}, stop() {}, destroy() {} };
-const NOOP = { show() {}, hide() {}, destroy() {} };
+const NOOP = { show() {}, hide() {}, reviewOpeningArmory: () => Promise.resolve(false), destroy() {} };
 // Row 473 — the loading shell names where the player is going. Boot stages are not a destination;
 // they are the command deck coming up.
 const BOOT_DESTINATION = 'Command deck';
@@ -98,6 +98,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   let workTimer = null, pendingWork = null, accumulator = null, disposed = false;
   let startupFailure = null, failurePane = null;
   let newGamePending = false;
+  let openingArmoryReview = null;
   const lockup = overlay.querySelector?.('.boot-lockup') || null;
   const priorLockupDisplay = lockup?.style?.display || '';
   let session = 0;
@@ -431,6 +432,54 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     const count = state?.render?.renderer?.info?.render?.frame;
     return Number.isFinite(count) ? count : null;
   };
+
+  function openingArmoryPresented() {
+    const run = state?.run;
+    if (destinationRoute !== 'Crucible' || run?.kind !== 'survival'
+        || run.ruleset !== SWARM_RULESET || run.phase !== 'draft') return false;
+    const startWave = Number.isInteger(run.telemetry?.startWave) ? run.telemetry.startWave : 1;
+    if (run.wave !== startWave - 1) return false;
+    const dialog = document.querySelector?.(
+      '#screens > [data-screen="crucibleDraft"][aria-modal="true"][data-k-ready="1"].sf-crucible-armory',
+    );
+    return !!dialog?.getClientRects?.().length;
+  }
+
+  function finishOpeningArmoryReview(value) {
+    const review = openingArmoryReview;
+    if (!review) return;
+    openingArmoryReview = null;
+    clearTimeout(review.mountTimer);
+    review.resolve(value);
+  }
+
+  function reviewOpeningArmory({ wave, isCurrent }) {
+    if (disposed || !isCurrent() || state?.mode !== 'loading') return Promise.resolve(false);
+    finishOpeningArmoryReview(false);
+    return new Promise((resolve) => {
+      const review = { wave, isCurrent, resolve, mounted: false, mountTimer: null };
+      openingArmoryReview = review;
+      const deadline = now() + FIRST_DRAW_REVEAL_CAP_MS;
+      const checkMount = () => {
+        if (openingArmoryReview !== review) return;
+        if (!isCurrent() || state?.mode !== 'loading') { finishOpeningArmoryReview(false); return; }
+        if (openingArmoryPresented()) {
+          review.mounted = true;
+          if (state.render) state.render.veilLiftReason = 'opening-armory';
+          hide({ completed: false });
+        } else if (now() >= deadline) {
+          finishOpeningArmoryReview(false);
+        } else {
+          review.mountTimer = setTimeout(checkMount, 50);
+        }
+      };
+      // The boot reply settles the shelf before this call. Re-mount its existing real screen
+      // after the worker's New Game UI reset, and keep the loading clock held during fitting.
+      bus.emit('ui:pushScreen', { id: 'crucibleDraft', source: 'opening-armory' });
+      checkMount();
+    });
+  }
+
   function hideAfterFirstFlightFrame() {
     if (startupFailure || pendingRelease) return;
     cancelRevealWait(); clearWork(); accumulator = null;
@@ -494,13 +543,15 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     const poll = (source) => {
       if (source === 'timer') revealPollTimer = null; else if (source === 'raf') revealRaf = null;
       if (disposed) return;
-      if (frameNow() > baseline && (capped || (firstDrawSubmitted() && admissionsSettled()))) {
+      const armoryPresented = (state?.mode === 'flight' || state?.mode === 'paused') && openingArmoryPresented();
+      if (armoryPresented || (frameNow() > baseline && (capped || (firstDrawSubmitted() && admissionsSettled())))) {
         // Debug flag: tells a capped lift apart from a first-draw lift.
-        if (render) render.veilLiftReason = firstDrawSubmitted() ? 'first-draw' : 'cap';
+        if (render) render.veilLiftReason = armoryPresented ? 'opening-armory' : firstDrawSubmitted() ? 'first-draw' : 'cap';
         cancelRevealWait(); ring?.finish();
         // A small, bounded finish interval lets the needle settle before removing the shell.
-        if (ring?.mounted) revealDeadlineTimer = setTimeout(() => hide({ releaseAfterReveal: true }), REVEAL_FINISH_MS);
-        else hide({ releaseAfterReveal: true }); // no decorative instrument to finish on minimal shells
+        const reveal = () => hide({ releaseAfterReveal: !armoryPresented });
+        if (ring?.mounted) revealDeadlineTimer = setTimeout(reveal, REVEAL_FINISH_MS);
+        else reveal(); // no decorative instrument to finish on minimal shells
         return;
       }
       if (raf && revealRaf === null) revealRaf = raf(() => poll('raf'));
@@ -553,6 +604,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
   }
   function showStartupFailure(payload = {}) {
     if (disposed || startupFailure || !eventMatchesCurrentGeneration(payload)) return false;
+    finishOpeningArmoryReview(false);
     releaseHoldNow();
     cancelRevealWait(); clearWork(); accumulator = null; pendingWork = null; session++;
     if (hideTimer !== null) clearTimeout(hideTimer);
@@ -566,10 +618,9 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     detachPointer();
     if (lockup?.style) lockup.style.display = 'none';
     const pane = dataState('error', {
-      code: startupFailure.code,
+      code: 'LOADING_INTERRUPTED',
       headline: 'Startup could not finish',
-      fills: `The launch stopped during ${startupFailure.stage}.`,
-      detail: startupFailure.message,
+      fills: 'Retry to load this flight again, or return to the menu.',
       verb: { label: 'Retry', onActivate: () => bus.emit('game:retryStart', { source: 'startup-failure-overlay' }) },
     });
     pane.setAttribute('data-startup-failure', 'true');
@@ -580,6 +631,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     pane.style.overflowY = 'auto';
     pane.style.overflowWrap = 'anywhere';
     pane.setAttribute('data-startup-stage', startupFailure.stage);
+    pane.setAttribute('data-startup-code', startupFailure.code);
+    pane.setAttribute('data-startup-diagnostic', startupFailure.message);
     const body = pane.querySelector?.('.sf-state__body');
     const back = document.createElement('button');
     back.type = 'button';
@@ -601,6 +654,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     return true;
   }
   function resetForNewSession() {
+    finishOpeningArmoryReview(false);
     if (!clearStartupFailure()) return;
     hide({ completed: false });
   }
@@ -609,12 +663,31 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
       // Progress owns the loading shell only until the committed flight handoff. A queued or
       // generation-less receipt landing afterward must not re-show the veil and cancel the
       // bounded first-flight reveal (which also owns the worker sim hold).
-      if (state?.mode === 'flight') return;
-      if (!startupFailure && eventMatchesCurrentGeneration(stage)) show(stage);
+      if (state?.mode === 'flight' || openingArmoryReview?.mounted) return;
+      if (!startupFailure && eventMatchesCurrentGeneration(stage)) {
+        if (stage?.destination === 'Crucible') {
+          newGamePending = true;
+          // The ruleset name latched at game:new owns the slate; this later receipt must not
+          // flatten a Gauntlet launch back to the route default.
+          if (destinationRoute === null) setDestination('Crucible', 'Crucible');
+        }
+        show(stage);
+      }
     }),
+    bus.on('run:draftResolved', ({ wave, reason } = {}) => {
+      const review = openingArmoryReview;
+      if (!review?.mounted || !review.isCurrent() || state?.mode !== 'loading'
+          || wave !== review.wave || (reason !== 'skipped' && reason !== 'circuit_overtime')) return;
+      // Re-cover the room in the same reply that closed the Armory. Main can now
+      // run the full opening picture gate for the equipment actually installed.
+      show({ id: 'authored-library', progress: .25 });
+      finishOpeningArmoryReview(true);
+    }),
+    bus.on('run:ended', () => finishOpeningArmoryReview(false)),
     bus.on('mode:changed', ({ mode } = {}) => {
       if (state?.mode != null && state.mode !== mode) return;
       if (mode === 'loading') {
+        if (openingArmoryReview?.mounted) return;
         clearStartupFailure();
         show(activeStage || DEFAULT_STAGE);
       }
@@ -624,6 +697,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
         if (!startupFailure) { activeStage = null; hideAfterFirstFlightFrame(); }
       }
       else if (mode === 'menu') {
+        finishOpeningArmoryReview(false);
         newGamePending = false;
         if (startupFailure) return;
         if (activeStage?.id?.startsWith('boot-')) return; // initial menu is revealed by main after init
@@ -636,6 +710,7 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     bus.on('game:new', resetForNewSession),
     bus.on('game:load', resetForNewSession),
     bus.on('game:exitToMenu', () => {
+      finishOpeningArmoryReview(false);
       newGamePending = false;
       if (clearStartupFailure()) hide({ completed: false });
       resetDestination();
@@ -689,7 +764,8 @@ export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600
     ring?.start(); const art = artwork(); art.start();
     art.updateProgress({ id: 'boot-state', progress: ring?.snapshot().shown || .14 });
   }
-  return { show, hide, destroy() {
+  return { show, hide, reviewOpeningArmory, destroy() {
+    finishOpeningArmoryReview(false);
     releaseHoldNow();
     if (disposed) return;
     for (const unsub of unsubs) if (typeof unsub === 'function') unsub();

@@ -1750,7 +1750,7 @@ export function getShipRoleIdentity(defId) {
 }
 
 /** Resolve equipped weapon modules into the data.weapons[] runtime list (§ shared shape). */
-export function buildWeaponList(shipDef, fittings, isPlayer, derivedStats = null) {
+export function buildWeaponList(shipDef, fittings, isPlayer, derivedStats = null, legacyWeaponFallback = true) {
   const { slots, equipped } = resolveFittings(shipDef, fittings);
   const weapons = [];
   for (let i = 0; i < equipped.length; i++) {
@@ -1778,7 +1778,7 @@ export function buildWeaponList(shipDef, fittings, isPlayer, derivedStats = null
   }
   // Legacy player saves before the explicit NEW_GAME weapon may still have no weapon fitted. Prefer
   // a front-facing slot so the fallback starter gun never fires backward or as an unturreted mount.
-  if (weapons.length === 0 && isPlayer) {
+  if (weapons.length === 0 && isPlayer && legacyWeaponFallback) {
     const wslot = slots.find((s) => s.type === 'weapon' && (s.facing === 'front' || !s.facing))
                || slots.find((s) => s.type === 'weapon');
     const w = WEAPON_BY_ID.get(STARTER_WEAPON_ID);
@@ -1880,10 +1880,10 @@ function buildMiningBeam(shipDef, fittings, isPlayer) {
  * makeShipEntitySpec(defId, opts) -> a spawnEntity spec (type:'ship') with the derived stat fields
  * copied onto the top level AND a full data block per the shared shape (§3.4.1).
  */
-export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings = [], appearance = null, livingHull = null, isPlayer = false, player = null, pos = null, rot = 0, ai = null } = {}) {
+export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings = [], appearance = null, livingHull = null, isPlayer = false, player = null, pos = null, rot = 0, ai = null, legacyWeaponFallback = true } = {}) {
   const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
   const derived = getDerivedStats(shipDef.id, fittings, player);
-  const weapons = buildWeaponList(shipDef, fittings, isPlayer, derived || null);
+  const weapons = buildWeaponList(shipDef, fittings, isPlayer, derived || null, legacyWeaponFallback);
   const miningBeam = buildMiningBeam(shipDef, fittings, isPlayer);
 
   return {
@@ -2531,7 +2531,9 @@ export const ships = {
     // visible change (hull def or loadout) and ask the render track to rebuild the mesh.
     const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
     const prevAppearance = e.data._appearance || '';
-    const newWeapons = buildWeaponList(shipDef, fit, isPlayer, derived || null);
+    const swarm = this.state.run?.kind === 'survival' && this.state.run.ruleset === SWARM_RULESET;
+    const legacyWeaponFallback = !swarm && ownedForQuirk?.legacyWeaponFallback !== false;
+    const newWeapons = buildWeaponList(shipDef, fit, isPlayer, derived || null, legacyWeaponFallback);
     if (ownedForQuirk?.shipjackNoLegacyWeapon && !fit.some(id => WEAPON_BY_ID.has(id))) {
       // A physically stripped socket is empty. The pre-fitting legacy-save starter gun is
       // compatibility, never an equipment replenishment service for captured hulls.
@@ -2718,7 +2720,7 @@ export const ships = {
 
   /** Purchase a module or weapon by defId. Validates tech, credits, then deducts credits and
    *  pushes a new instance into moduleInventory. Returns true on success. */
-  buyModule({ defId, fitSlotIndex = null, shipIndex = null, expectedPrice = null, hullDefId = null }) {
+  buyModule({ defId, fitSlotIndex = null, shipIndex = null, expectedPrice = null, hullDefId = null, expectedOccupantDefId }) {
     const refuse = (reason) => {
       this.bus.emit('module:fitRefused', {
         shipIndex,
@@ -2768,6 +2770,12 @@ export const ships = {
     }
     const shouldFit = Number.isInteger(fitSlotIndex);
     if (shouldFit) {
+      const fittedDefId = this.ownedShip(shipIndex)?.fittings?.[fitSlotIndex] || null;
+      // An explicit null quotes an open hardpoint. Callers without a quote omit this field.
+      if (expectedOccupantDefId !== undefined && expectedOccupantDefId !== fittedDefId) {
+        this.bus.emit('toast', { text: 'Hardpoint changed since confirmation. Review the replacement and confirm again.', kind: 'error', ttl: 3 });
+        return refuse('hardpoint_changed');
+      }
       const blocker = this.moduleFitBlocker({ shipIndex, slotIndex: fitSlotIndex, def });
       if (blocker) {
         if (blocker.text) this.bus.emit('toast', { text: blocker.text, kind: 'error', ttl: 3 });
@@ -3780,13 +3788,16 @@ export const ships = {
   /** Populate ship/fitting/research state from NEW_GAME defaults (§4.5 player save-key). Called by
    *  the save system's newGame(); also safe to call directly. Does NOT spawn the entity — the
    *  caller spawns it via makeShipEntitySpec + helpers.spawnEntity. */
-  newGame() {
+  newGame({ unfittedHullId } = {}) {
     const p = this.state.player;
+    const bare = SHIP_BY_ID.has(unfittedHullId);
+    const hullId = bare ? unfittedHullId : NEW_GAME.shipId;
     delete p.combatProfile;
     p.ownedShips = [{
-      defId: NEW_GAME.shipId,
-      fittings: this.fittingsFromDefaults(NEW_GAME.shipId, NEW_GAME.fittedModules || []),
-      appearance: defaultShipAppearance(NEW_GAME.shipId),
+      defId: hullId,
+      fittings: this.fittingsFromDefaults(hullId, bare ? [] : NEW_GAME.fittedModules || []),
+      ...(bare ? { legacyWeaponFallback: false } : {}),
+      appearance: defaultShipAppearance(hullId),
       livingHull: defaultLivingHull(this.state.simTime || 0),
     }];
     p.activeShipIndex = 0;

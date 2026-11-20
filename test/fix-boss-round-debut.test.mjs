@@ -115,7 +115,7 @@ test('wave 5: the versus card names the Iron Maw and the slam names the Detonato
   assert.equal(r.hudSlam.title, 'ROUND 05');
   assert.equal(r.hudSlam.sub, 'NEW THREAT · Detonator Dart', 'the debut is named on the round slam');
   // The intro readout and voice: the champion speaks first, then the namecheck.
-  assert.match(r.line, /Dreadnought 'Iron Maw'\. Throw the pack into it\. Detonator Dart is new\./);
+  assert.match(r.line, /Dreadnought 'Iron Maw'\. Cross its bow before the guns fire\. Detonator Dart is new\./);
   assert.match(r.line, /Break the pack\.$/);
 });
 

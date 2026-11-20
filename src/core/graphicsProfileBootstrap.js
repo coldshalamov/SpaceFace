@@ -32,59 +32,28 @@ export function readProfileSettings(storage = globalThis.localStorage) {
   }
 }
 
-/** Keep the shipped Massline command stable across fresh and already-migrated profiles. */
-export function migrateLegacyMasslineBindingProfile(settings) {
-  if (!isPlainObject(settings)) return settings;
-  if (!isPlainObject(settings.controls)) settings.controls = {};
-  const controls = settings.controls;
-  if (controls.masslineBindingProfile === MASSLINE_BINDING_PROFILE_SPACE) {
-    return settings;
-  }
-
-  const bindings = isPlainObject(controls.bindings) ? controls.bindings : {};
-  bindings.tether = ['Space', 'KeyF'];
-  for (const action of Object.keys(bindings)) {
-    if (action === 'tether' || !Array.isArray(bindings[action])) continue;
-    bindings[action] = bindings[action].filter((code) => code !== 'Space');
-  }
-  controls.bindings = bindings;
-  controls.masslineBindingProfile = MASSLINE_BINDING_PROFILE_SPACE;
-  return settings;
-}
-
-// G18-02 "one set of keys": values a MIGRATION (never a player) wrote into controls.bindings
-// under the pre-unified layout. Stripping exactly these restores "this player never rebound
-// anything" — an empty remainder reads the new stock table, everything else is a real remap.
-const MIGRATION_WRITTEN_BINDINGS = Object.freeze({
-  tether: Object.freeze(['Space', 'KeyF']),
-});
-
-function sameCodeSet(a, b) {
-  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
-  const sa = [...a].sort();
-  const sb = [...b].sort();
-  return sa.every((code, i) => code === sb[i]);
-}
-
 /**
- * One-time move onto the G18-02 defaults. A player who never rebound anything carries either no
- * bindings or only the migration-written seats above — both become "no overrides" once, so the
- * unified table (Space boost, RMB the Line, overflow on the Q wheel) applies. Any real remap
- * keeps the whole map: a player's saved bindings are sacred and are never rewritten here.
+ * Move an untouched profile to the current defaults. The old Space-primary migration wrote
+ * Space/F in that order even for pilots who never edited a key. A lone row with that shape
+ * is the old stock override. Keep maps with additional overrides and every other key choice.
  */
 export function migrateOneSetOfKeysProfile(settings) {
   if (!isPlainObject(settings)) return settings;
   if (!isPlainObject(settings.controls)) settings.controls = {};
   const controls = settings.controls;
+  if (controls.masslineBindingProfile == null || controls.masslineBindingProfile === MASSLINE_BINDING_PROFILE_LEGACY) {
+    controls.masslineBindingProfile = MASSLINE_BINDING_PROFILE_SPACE;
+  }
   if (typeof controls.oneSetOfKeysVersion === 'number'
     && controls.oneSetOfKeysVersion >= ONE_SET_OF_KEYS_VERSION) return settings;
-  const bindings = isPlainObject(controls.bindings) ? controls.bindings : null;
-  if (bindings) {
-    for (const action of Object.keys(bindings)) {
-      const written = MIGRATION_WRITTEN_BINDINGS[action];
-      if (written && sameCodeSet(bindings[action], written)) delete bindings[action];
+  const bindings = controls.bindings;
+  if (isPlainObject(bindings)) {
+    const keys = Object.keys(bindings);
+    const tether = bindings.tether;
+    if (!keys.length || (keys.length === 1 && Array.isArray(tether)
+      && tether.length === 2 && tether[0] === 'Space' && tether[1] === 'KeyF')) {
+      controls.bindings = null;
     }
-    controls.bindings = Object.keys(bindings).length ? bindings : null;
   }
   controls.oneSetOfKeysVersion = ONE_SET_OF_KEYS_VERSION;
   return settings;
@@ -165,6 +134,13 @@ export function mergeProfileSettings(baseSettings, profileSettings) {
   const base = isPlainObject(baseSettings) ? baseSettings : {};
   const merged = mergePlain(base, isPlainObject(profileSettings) ? profileSettings : {});
 
+  // A saved keyboard map is atomic. Merging its keys would keep another slot's overrides
+  // or restore an old stock key that the higher-precedence profile already migrated away.
+  const incomingControls = profileSettings?.controls;
+  if (isPlainObject(incomingControls) && Object.hasOwn(incomingControls, 'bindings')) {
+    merged.controls.bindings = clonePlain(incomingControls.bindings);
+  }
+
   // Older profiles predate qualityMode. Do not let the current default ('auto') mask the old
   // video values before qualityModeForVideo can distinguish an untouched Balanced profile from a
   // player's saved custom/preset choice. Explicit Auto/Manual always wins.
@@ -192,9 +168,7 @@ export function bootstrapProfileSettingsBeforeRegistry(state, storage = globalTh
     applyAutoQualityPreset(state.settings, 'low');
   }
   const profile = migrateOneSetOfKeysProfile(
-    migrateDefaultShadowsProfile(migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
-      migrateLegacyMasslineBindingProfile(stored),
-    ))),
+    migrateDefaultShadowsProfile(migrateGameMotionDefault(migrateDefaultMutedAudioProfile(stored))),
   );
   if (!profile) return false;
   state.settings = mergeProfileSettings(state.settings, profile);

@@ -11,6 +11,7 @@ import {
   createAdaptiveResolution,
   qualityModeForVideo,
 } from '../src/render/adaptiveQuality.js';
+import { render } from '../src/render/renderer.js';
 
 function feed(controller, frameDt, frames, sample = {}) {
   for (let i = 0; i < frames; i++) controller.update(frameDt, sample);
@@ -162,6 +163,109 @@ test('raster relief raises the adaptive floor — the demo posture stays native 
   assert.equal(controller.getScale(), 0.8, 'a raised floor lifts the live scale at once');
   controller.setFloor(0.5);
   assert.equal(controller.getScale(), 0.8, 'a lowered floor leaves the recovered scale alone');
+});
+
+test('Manual adaptive resolution keeps its tier floor without changing the saved render scale', () => {
+  const state = createGameState(46);
+  const video = state.settings.video;
+  const gpu = state.render.gpu = { tier: 'integrated' };
+  const renderer = Object.assign(Object.create(render), { state });
+  const controller = createAdaptiveResolution({ floor: 0.5 });
+  const syncPolicy = () => {
+    controller.setEnabled(adaptiveResolutionEnabledForSettings(gpu, video));
+    controller.setFloor(renderer._adaptiveFloorForRelief());
+  };
+  const slowFlight = { eligible: true, targetMs: 1000 / 60 };
+
+  applyQualityPreset(state.settings, 'integrated');
+  const savedScale = video.renderScale;
+  assert.equal(renderer._adaptiveFloorForRelief(), 0.5);
+  syncPolicy();
+  feed(controller, 0.026, 130, slowFlight);
+  assert.equal(controller.getScale(), 0.9, 'the explicit Manual toggle can start a resolution trial');
+  feed(controller, 0.026, 160, slowFlight);
+  assert.equal(controller.getScale(), 1, 'a trial without a frame time gain still rolls back');
+
+  video.dynamicResolution = false;
+  syncPolicy();
+  feed(controller, 0.026, 130, slowFlight);
+  assert.equal(controller.getScale(), 1, 'explicit Manual off keeps the configured scale fixed');
+  assert.equal(video.renderScale, savedScale);
+
+  video.qualityMode = 'auto';
+  syncPolicy();
+  feed(controller, 0.026, 130, slowFlight);
+  assert.equal(renderer._adaptiveFloorForRelief(), 1);
+  assert.equal(controller.getScale(), 1, 'Auto preserves the native-content floor');
+});
+
+test('sustained Auto relief applies the same post style as the player switch', () => {
+  const state = createGameState(44);
+  Object.assign(state.settings.video, { bloomLevels: 2, postFx: true });
+  state.render.gpu = { tier: 'integrated' };
+  const renderer = Object.assign(Object.create(render), {
+    state,
+    _sectorPost: { grade: 0.4, vignette: 0.2, toe: 0.005, grain: 0.03 },
+    _hitchRelief: { level: 0 },
+    bloom: { setOptions: (options) => { bloom = options; } },
+    _renderGraph: { setOptions: (options) => { graph = options; } },
+  });
+  let bloom, graph;
+  const style = ({ grade, vignette, toe, grain }) => [grade, vignette, toe, grain];
+  renderer._syncPostOptions();
+  const base = bloom;
+  assert.deepEqual(style(base), [0.4, 0.2, 0.005, 0.03]);
+  state.settings.video.postFx = false;
+  renderer._syncPostOptions();
+  const manualOffStyle = style(bloom);
+  assert.deepEqual(manualOffStyle, [0, 0, 0, 0]);
+  state.settings.video.postFx = true;
+  renderer._setHitchReliefLevel(state.render, 1, true);
+  assert.deepEqual(style(bloom), style(base));
+  assert.equal(bloom.bloomLevels, 1);
+  renderer._setHitchReliefLevel(state.render, 2, true);
+  assert.deepEqual(style(bloom), manualOffStyle);
+  assert.deepEqual(style(graph), manualOffStyle);
+  assert.equal(bloom.exposure, base.exposure);
+  assert.equal(bloom.acesToneMapping, base.acesToneMapping);
+  assert.equal(bloom.bloomStrength, base.bloomStrength);
+  assert.equal(state.settings.video.postFx, true);
+  assert.equal(state.render.hitchReliefScale, 1);
+  state.settings.video.qualityMode = 'manual';
+  renderer._syncPostOptions();
+  assert.deepEqual(bloom, base, 'switching to Manual restores the authored controls immediately');
+  state.settings.video.qualityMode = 'auto';
+  renderer._setHitchReliefLevel(state.render, 0, null);
+  assert.deepEqual(bloom, base);
+});
+
+test('hitch relief only counts intervals between eligible presentations on the same surface', () => {
+  const state = createGameState(45);
+  state.render.gpu = { tier: 'integrated' };
+  state.render.frameCap = 30;
+  state.render.lastPresentDtMs = 100;
+  const renderer = Object.assign(Object.create(render), { state });
+  const frame = { sequence: 0, lifecycleGeneration: 1 };
+  const present = () => { frame.sequence++; renderer._notePicturePresent(frame); };
+  state.mode = 'loading';
+  for (let i = 0; i < 12; i++) present();
+  state.mode = 'flight';
+  state.render.openingFirstPictureReady = true;
+  state.render.firstPlayableFrameAt = 1;
+  state.timeScale = 1;
+  present();
+  assert.equal(renderer._hitchRelief.level, 0, 'loading history cannot downshift first playable');
+  for (let i = 0; i < 9; i++) present();
+  assert.equal(renderer._hitchRelief.level, 0, 'only nine fully visible flight intervals elapsed');
+  present();
+  assert.equal(renderer._hitchRelief.level, 1, 'ten slow eligible presents retain the existing first rung');
+
+  // A frozen pause bypasses prepareFrame and the quality controller entirely.
+  frame.sequence++;
+  present();
+  assert.equal(renderer._hitchRelief.level, 0, 'resuming after a skipped surface drops prior pressure');
+  for (let i = 0; i < 9; i++) present();
+  assert.equal(renderer._hitchRelief.level, 0);
 });
 
 test('isolated 330 ms stalls are ignored but sustained 330 ms frames adapt and revert without benefit', () => {

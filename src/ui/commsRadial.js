@@ -22,7 +22,6 @@ import { buildSlotList, fits } from '../systems/ships.js';
 import { isUiInteractionFenced, spatialFocusTarget } from './input.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { laneInputWrite } from '../core/simLaneCommands.js';
-import { createMorphLabel } from './effects/morphLabel.js';
 import { factionIcon, icon as stationIcon } from './station/icons.js';
 import { dpIcon } from './deckplate/icons.js';
 import { injectCommsLayouts } from './orrery/commsLayouts.js';
@@ -264,47 +263,10 @@ function wedgeIconSvg(actionId) {
   return `<svg class="sf-commsfan__glyph" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${icon}</svg>`;
 }
 
-// The verbs ride a curved selector track (FRONTEND_PROGRAM, critic 2026-09-19): every key keeps its
-// own row, so labels never collide, but the rows bow along one arc and each key's lamp sits on the
-// track as a detent. Keys have a fixed height, so the arc needs no layout read.
-const FAN_KEY_H = 40; // --dp-key-h-2: the CSS side reads --fan-key-h, written in layoutSelectorArc
-const FAN_KEY_GAP = 5;
-function layoutSelectorArc(host, buttons) {
-  const n = buttons.length;
-  if (!host || !n) return;
-  // One source of truth for the key height: the arc rail's geometry is computed here, so the CSS
-  // height is published as a component var instead of a second number that can drift from it.
-  host.style.setProperty('--fan-key-h', `${FAN_KEY_H}px`);
-  const total = n * FAN_KEY_H + (n - 1) * FAN_KEY_GAP;
-  const bow = n > 1 ? Math.min(26, 10 + 5 * (n - 1)) : 0;
-  const half = total / 2;
-  for (let i = 0; i < n; i++) {
-    const y = i * (FAN_KEY_H + FAN_KEY_GAP) + FAN_KEY_H / 2;
-    const s = half > 0 ? (y - half) / half : 0;
-    buttons[i].style.setProperty('--bow', `${(bow * s * s).toFixed(1)}px`);
-  }
-  // x = bow * s^2 over the whole track is exactly this quadratic curve; +11 = the lamp column.
-  const rail = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  rail.setAttribute('class', 'sf-commsfan__rail');
-  rail.setAttribute('aria-hidden', 'true');
-  rail.setAttribute('focusable', 'false');
-  rail.setAttribute('width', String(bow + 24));
-  rail.setAttribute('height', String(total));
-  rail.setAttribute('viewBox', `0 0 ${bow + 24} ${total}`);
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  const railD = `M${bow + 11} 0Q${11 - bow} ${half} ${bow + 11} ${total}`;
-  // pathLength=1 lets the arrival choreography draw the spine with a plain dashoffset animation
-  path.setAttribute('pathLength', '1');
-  path.setAttribute('d', railD);
-  rail.appendChild(path);
-  // the spine is a band (the path) under a crisp edge (this twin), as every structure in the interface is
-  const edge = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  edge.setAttribute('class', 'sf-commsfan__edge');
-  edge.setAttribute('pathLength', '1');
-  edge.setAttribute('d', railD);
-  rail.appendChild(edge);
-  host.insertBefore(rail, host.firstChild);
-}
+const HAIL_ACTION_LABELS = Object.freeze({
+  route: 'Ask about their route', manifest: 'Ask about their cargo', heave_to: 'Order them to stop',
+  status: 'Ask for status', identify: 'Ask who they are', help: 'Ask for help',
+});
 
 function nearestHailAvailability(state) {
   const playerEntity = entityById(state, state && state.playerId);
@@ -377,21 +339,18 @@ export function createCommsRadial(ctx) {
   fan.className = 'sf-commsfan';
   fan.setAttribute('role', 'dialog');
   fan.setAttribute('aria-modal', 'true');
-  fan.setAttribute('aria-label', 'Quick communications');
+  fan.setAttribute('aria-label', 'Hail contact');
   fan.hidden = true;
   fan.innerHTML = `
-    <div class="sf-commsfan__fan" role="region" aria-label="Quick comms fan">
-      <button type="button" class="sf-commsfan__hub" data-k="hub" aria-label="Open tactical hail deck">
+    <div class="sf-commsfan__fan">
+      <button type="button" class="sf-commsfan__hub" data-k="hub" aria-label="Open contact details">
         <span class="sf-commsfan__crest" data-k="crest"></span>
         <span class="sf-commsfan__pilot" data-k="pilot">NO CONTACT</span>
         <span class="sf-commsfan__class" data-k="classword">HOLD ALT</span>
-        <span class="sf-commsfan__freq" data-k="freq"></span>
-        <svg class="sf-commsfan__ribbon" viewBox="0 0 152 24" aria-hidden="true" focusable="false">
-          <path class="sf-commsfan__bloom" data-k="ribbon-bloom" pathLength="1"></path>
-          <path data-k="ribbon" pathLength="1"></path>
-        </svg>
+        <span class="sf-commsfan__deckhint" aria-hidden="true">Contact details</span>
       </button>
-      <div class="sf-commsfan__wedgehost" data-k="wedgehost"></div>
+      <div class="sf-commsfan__wedgehost" data-k="wedgehost" role="group" aria-label="Hail actions"></div>
+      <button type="button" class="sf-commsfan__close" data-k="fan-close">Close <kbd>Esc</kbd></button>
     </div>
   `;
   root.appendChild(fan);
@@ -418,19 +377,19 @@ export function createCommsRadial(ctx) {
       </svg>
       <div class="sf-drawer__facts sf-haildeck__facts" data-k="deck-facts"></div>
       <div class="sf-deck">
-        <div class="sf-deck__label">Offer Terms</div>
+        <div class="sf-deck__label">Offer terms</div>
         <p class="sf-drawer__prose" data-k="deck-terms">No active offer.</p>
       </div>
       <div class="sf-deck">
-        <div class="sf-deck__label">Parley State</div>
-        <p class="sf-drawer__prose" data-k="deck-parley">No active parley.</p>
+        <div class="sf-deck__label">Negotiation</div>
+        <p class="sf-drawer__prose" data-k="deck-parley">No negotiation in progress.</p>
       </div>
       <div class="sf-deck">
-        <div class="sf-deck__label">Recent Hail Receipts</div>
+        <div class="sf-deck__label">Recent replies</div>
         <div class="sf-haildeck__receipts" data-k="deck-receipts"></div>
       </div>
       <div class="sf-deck">
-        <div class="sf-deck__label">Linked Nouns</div>
+        <div class="sf-deck__label">Related contacts</div>
         <div class="sf-haildeck__links" data-k="deck-links"></div>
       </div>
       <div class="sf-drawer__apron">
@@ -441,21 +400,12 @@ export function createCommsRadial(ctx) {
   root.appendChild(deck);
 
   const hubBtn = fan.querySelector('[data-k="hub"]');
+  const closeFanBtn = fan.querySelector('[data-k="fan-close"]');
+  closeFanBtn.addEventListener('click', () => { escLatchedOnHold = altHeld; closeFan(); });
   const crestEl = fan.querySelector('[data-k="crest"]');
   const pilotEl = fan.querySelector('[data-k="pilot"]');
   const classEl = fan.querySelector('[data-k="classword"]');
   const wedgeHost = fan.querySelector('[data-k="wedgehost"]');
-  const ribbonPath = fan.querySelector('[data-k="ribbon"]');
-  const ribbonBloom = fan.querySelector('[data-k="ribbon-bloom"]');
-  const freqHost = fan.querySelector('[data-k="freq"]');
-  const freqMorph = createMorphLabel(freqHost, { text: 'FREQ IDLE' });
-  // The plate is also a button (it opens the tactical hail deck); a quiet hint in the frequency
-  // row names that, so the affordance is legible before the first hover, never overlapping.
-  const deckHintEl = document.createElement('span');
-  deckHintEl.className = 'sf-commsfan__deckhint';
-  deckHintEl.setAttribute('aria-hidden', 'true'); // the hub's aria-label already names the action
-  deckHintEl.textContent = 'HAIL DECK';
-  freqHost.appendChild(deckHintEl);
 
   const deckCrestEl = deck.querySelector('[data-k="deck-crest"]');
   const deckTitleEl = deck.querySelector('[data-k="deck-title"]');
@@ -507,17 +457,11 @@ export function createCommsRadial(ctx) {
     crestEl.innerHTML = visual.factionId ? factionIcon(visual.factionId, 22) : stationIcon('target', 22);
     pilotEl.textContent = visual.pilot;
     classEl.textContent = visual.classWord;
-    const now = Number(state.simTime) || 0;
-    const ttl = payload && payload.choice ? CONTACT_HAIL_RECEIPT_TTL_S : CONTACT_HAIL_REQUEST_TTL_S;
-    const amplitude = payload ? clamp01((Number(payload.expiresAt) - now) / Math.max(1, ttl)) : 0.22;
-    const d = buildHailRibbonPath(visual.seed, amplitude, visual.density);
-    ribbonPath.setAttribute('d', d);
-    if (ribbonBloom) ribbonBloom.setAttribute('d', d);
-    const freq = hailFrequencyText(amplitude, visual.density);
-    // A plain crossfade: the frequency is a channel reading, not a gain or a loss, so the morph
-    // carries no direction colour — red stays threat-only, mint stays gain-only (ORRERY §3.3).
-    freqMorph.set(freq);
     if (deckOpen) {
+      const now = Number(state.simTime) || 0;
+      const ttl = payload && payload.choice ? CONTACT_HAIL_RECEIPT_TTL_S : CONTACT_HAIL_REQUEST_TTL_S;
+      const amplitude = payload ? clamp01((Number(payload.expiresAt) - now) / Math.max(1, ttl)) : 0.22;
+      const d = buildHailRibbonPath(visual.seed, amplitude, visual.density);
       deckRibbonPath.setAttribute('d', d);
       if (deckRibbonBloom) deckRibbonBloom.setAttribute('d', d);
     }
@@ -528,15 +472,20 @@ export function createCommsRadial(ctx) {
     if (!offer || !Array.isArray(offer.actions)) return;
     const target = entityById(state, offer.targetId);
     const actions = offer.actions
-      .map((row) => ({ id: String(row && row.id || '').toLowerCase(), label: String(row && row.label || '').toUpperCase() }))
+      .map((row) => {
+        const id = String(row?.id || '').toLowerCase();
+        return { id, label: HAIL_ACTION_LABELS[id] || String(row?.label || '') };
+      })
       .filter((row) => KNOWN_ACTION_IDS.has(row.id));
     if (!actions.length) return;
     const reasons = actions.map((row) => actionReason(row.id, currentAvailability, state, target));
     // The fan used to rebuild its buttons on every 0.12 s UI tick, which deleted and recreated
     // the card under the cursor ~8x per second — the reported hover flicker. Rebuild only when
     // the action set, labels, or availability (dim state) actually change.
-    const sig = `${offer.targetId}|${actions.map((row, i) => `${row.id}:${row.label}:${reasons[i] ? 'd' : 'u'}`).join(',')}`;
+    const sig = JSON.stringify([offer.targetId, actions.map((row, i) => [row.id, row.label, reasons[i]])]);
     if (sig === lastWedgeSig) return;
+    const focused = wedgeHost.contains(document.activeElement) ? document.activeElement.dataset.choice : null;
+    const firstPaint = wedgeButtons.length === 0;
     lastWedgeSig = sig;
     wedgeHost.replaceChildren();
     wedgeButtons = [];
@@ -553,11 +502,12 @@ export function createCommsRadial(ctx) {
       button.setAttribute('aria-keyshortcuts', String(keyDigit));
       button.setAttribute('aria-label', `${action.label} (key ${keyDigit})${why ? `. ${why}` : ''}`);
       button.innerHTML = `
-        <span class="sf-commsfan__keychip mono" aria-hidden="true">${keyDigit}</span>
         ${wedgeIconSvg(action.id)}
-        <span class="sf-commsfan__verb">${action.label}</span>
-        ${why ? `<span class="sf-commsfan__why">${why}</span>` : ''}
+        <span class="sf-commsfan__action-copy"><span class="sf-commsfan__verb"></span><span class="sf-commsfan__why"></span></span>
+        <kbd class="sf-commsfan__keychip" aria-hidden="true">${keyDigit}</kbd>
       `;
+      button.querySelector('.sf-commsfan__verb').textContent = action.label;
+      button.querySelector('.sf-commsfan__why').textContent = why;
       if (reason) {
         button.classList.add('is-dim');
         button.setAttribute('aria-disabled', 'true');
@@ -571,8 +521,10 @@ export function createCommsRadial(ctx) {
       wedgeHost.appendChild(button);
       wedgeButtons.push(button);
     }
-    layoutSelectorArc(wedgeHost, wedgeButtons);
-    focusSafely(wedgeButtons.find((el) => !el.classList.contains('is-dim')) || wedgeButtons[0]);
+    if (firstPaint || focused) {
+      focusSafely(wedgeButtons.find((el) => el.dataset.choice === focused && !el.classList.contains('is-dim'))
+        || wedgeButtons.find((el) => !el.classList.contains('is-dim')) || closeFanBtn);
+    }
   }
 
   function choose(choice, source = 'pointer') {
@@ -745,14 +697,14 @@ export function createCommsRadial(ctx) {
       const parley = availability.parley;
       deckParleyEl.textContent = `PARLEY ${String(parley.phase || 'DEMAND').toUpperCase()} · DEADLINE ${Math.max(0, Math.round((Number(parley.deadlineAt) || 0) - (Number(state.simTime) || 0)))}s`;
     } else {
-      deckParleyEl.textContent = 'No active parley.';
+      deckParleyEl.textContent = 'No negotiation in progress.';
     }
     deckReceiptsEl.replaceChildren();
     const receipts = responseLog.get(targetId) || [];
     if (!receipts.length) {
       const empty = document.createElement('p');
       empty.className = 'sf-drawer__prose';
-      empty.textContent = 'No recent receipts.';
+      empty.textContent = 'No recent replies.';
       deckReceiptsEl.appendChild(empty);
     } else {
       for (const receipt of receipts) {
@@ -767,7 +719,7 @@ export function createCommsRadial(ctx) {
     if (!refs.length) {
       const none = document.createElement('p');
       none.className = 'sf-drawer__prose';
-      none.textContent = 'No linked nouns.';
+      none.textContent = 'No related contacts.';
       deckLinksEl.appendChild(none);
     } else {
       for (const ref of refs) {
@@ -835,6 +787,16 @@ export function createCommsRadial(ctx) {
       openFan();
       return;
     }
+    if (open && !deckOpen && ['Tab', 'ArrowDown', 'ArrowUp'].includes(event.key)) {
+      const choices = fanFocusControls();
+      const current = choices.indexOf(document.activeElement);
+      const step = event.shiftKey || event.key === 'ArrowUp' ? -1 : 1;
+      const next = current < 0 ? (step < 0 ? choices.length - 1 : 0) : (current + step + choices.length) % choices.length;
+      event.preventDefault();
+      event.stopPropagation();
+      focusSafely(choices[next]);
+      return;
+    }
     if (open && event.key >= '1' && event.key <= '9') {
       const idx = Number(event.key) - 1;
       if (idx >= 0 && idx < wedgeButtons.length) {
@@ -894,7 +856,7 @@ export function createCommsRadial(ctx) {
       up: Number(axis.leftY) < -0.55,
       down: Number(axis.leftY) > 0.55,
     };
-    const nodes = [hubBtn, ...wedgeButtons].filter((el) => el && el.isConnected && !el.classList.contains('is-dim'));
+    const nodes = fanFocusControls();
     if (!nodes.length) return;
     if (!nodes.includes(document.activeElement)) focusSafely(nodes[0]);
     for (const dir of ['left', 'right', 'up', 'down']) {
@@ -908,12 +870,17 @@ export function createCommsRadial(ctx) {
     if (actions.accept && actions.accept.pressed) {
       const active = document.activeElement;
       if (active === hubBtn) openDeck(currentTargetId);
+      else if (active === closeFanBtn) closeFanBtn.click();
       else if (active && active.dataset && active.dataset.choice) choose(active.dataset.choice, 'gamepad');
     }
     if (actions.cancel && actions.cancel.pressed) {
       if (deckOpen) closeDeck();
       else closeFan();
     }
+  }
+
+  function fanFocusControls() {
+    return [hubBtn, ...wedgeButtons, closeFanBtn].filter((el) => el.isConnected && !el.classList.contains('is-dim'));
   }
 
   function attachBus(event, handler) {
@@ -1016,7 +983,6 @@ export function createCommsRadial(ctx) {
     for (const off of unsubs.splice(0)) {
       try { off(); } catch (_) {}
     }
-    try { freqMorph.dispose(); } catch (_) {}
     fan.remove();
     deck.remove();
     syncRadialOwnsFrame();

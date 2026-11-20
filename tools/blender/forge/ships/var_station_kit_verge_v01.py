@@ -25,7 +25,26 @@ LATTICE = (0.0, 90.0)
 WITNESS = (30.0, 120.0, 210.0, 300.0)
 
 
+def signature(s):
+    """Survey masts inside the ring: instrument columns with dishes and graduated ticks."""
+    for i, a in enumerate((45.0, 135.0, 225.0, 315.0)):
+        base = K.polar(24.0, a, 8.0)
+        tip = K.polar(23.0, a, 32.0)
+        F.cylinder(s, f'VergeMast{i}', base, tip, 0.8, 0.4, material='ceramic',
+                   segments=10, bevel=0.02)
+        F.dish(s, f'VergeDish{i}', (tip[0], tip[1], tip[2] - 1.0), 3.0, 0.8,
+               axis=(0.3 * math.cos(math.radians(a)), 0.3 * math.sin(math.radians(a)), 1.0),
+               material='paint', face='paint2', feed='glow_cyan.verge', segments=16)
+        for k in range(4):
+            F.ring(s, f'VergeTick{i}{k}', (base[0], base[1], 12.0 + k * 4.5), 1.3, 0.25,
+                   axis=(0, 0, 1), material='stripe', segments=10, sides=5)
+        s.detail = 1
+        F.light(s, f'VergeMastLamp{i}', tip, 'glow_cyan.verge', size=0.4)
+        s.detail = 0
+
+
 def dress(s):
+    K.interior(s, 'stripe', 'glow_cyan.verge')
     # measured band: grey plate with the nacre datum line
     K.ring_wall(s, 'MeasureBand', K.SHELL_R + 0.8, 11.0, 23.0, 2.2, 'paint', segs=56)
     K.ring_wall(s, 'DatumLine', K.SHELL_R + 1.05, 16.5, 17.3, 2.5, 'stripe', segs=56)
@@ -62,6 +81,7 @@ def dress(s):
     K.lamp_ring(s, 'Instrument', 'glow_cyan.verge', r=K.SHELL_R + 1.7, z=25.4, count=10,
                 size=0.4)
     s.detail = 0
+    signature(s)
 
 
 def build():

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
+import { PROJECTILE_LIVE_CAP } from '../src/combat/projectileFlight.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { createSimulation } from '../src/core/sim.js';
 import {
@@ -361,6 +362,27 @@ test('Nestbreaker turns one authored launch into exactly two real deterministic 
   };
 
   assert.deepEqual(run(), run(), 'split geometry is deterministic across identical runs');
+});
+
+test('a Nestbreaker split reserves both live slots at the projectile limit', () => {
+  const t = bootAbilities(['unique_nestbreaker_rack']);
+  try {
+    const older = Array.from({ length: PROJECTILE_LIVE_CAP - 1 }, () => t.sim.spawn({
+      type: 'projectile', ttl: 16, data: { kind: 'pulse' },
+    }));
+    // The ordinary weapon reservation let one more round in. Its synchronous
+    // spawn listener must then make room for the additional submunition.
+    const firstHalf = spawnNestbreakerShot(t);
+    const live = t.state.entityList.filter(entity => entity.type === 'projectile' && entity.alive);
+    assert.equal(live.length, PROJECTILE_LIVE_CAP);
+    assert.equal(older[0].alive, false, 'capacity retires the oldest live round');
+    assert.equal(older[1].alive, true);
+    assert.ok(live.includes(firstHalf), 'the newly fired round survives the reservation');
+    assert.deepEqual(live.filter(entity => entity.data.nestbreakerSubmunition != null)
+      .map(entity => entity.data.nestbreakerSubmunition), [1, 2]);
+  } finally {
+    t.dispose();
+  }
 });
 
 test('Nestbreaker inventory ownership leaves a unique-rack projectile unsplit', () => {

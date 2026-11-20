@@ -71,9 +71,30 @@ test('readOrdnanceModel detects active, held, and firing power inputs', () => {
   const ordnance = readOrdnanceModel(state, null, undefined, { held: 'shove' });
   assert.equal(ordnance['1'].active, true, 'Slot 1 (Pull) is marked active when pull is pressed');
   assert.equal(ordnance['1'].firing, true, 'Slot 1 (Pull) is marked firing when pull is pressed');
-  assert.equal(ordnance['2'].active, true, 'Slot 2 (Shove) is marked active when shove is held');
-  assert.equal(ordnance['2'].held, true, 'Slot 2 (Shove) is marked held when shove is held');
+  assert.notEqual(ordnance['2'].active, true, 'holding the Shove key does not sustain its pulse');
+  assert.notEqual(ordnance['2'].held, true, 'Shove never asks the player to hold a preview');
   assert.notEqual(ordnance['3'].active, true, 'Slot 3 (Pin) is not active when unpressed');
+});
+
+test('an explicitly unbound Rig socket cannot dispatch a fallback number key or fake activation', () => {
+  const t = installDom();
+  const state = fixture();
+  state.settings = { controls: { bindings: { rig: [] } } };
+  let mounted;
+  try {
+    const root = t.doc.createElement('div');
+    mounted = mountOrreryCluster(root, state, {});
+    const player = state.entities.get(state.playerId);
+    mounted.update(state, player, true);
+    socketOf(root, 'Rig').click();
+    assert.equal(t.win.winDispatched.length, 0, 'unbound means no synthetic Digit5 fallback');
+    mounted.update(state, player, true);
+    const rig = socketOf(root, 'Rig');
+    assert.doesNotMatch(rig.className, /is-active|is-firing/);
+    assert.equal(rig.getAttribute('aria-pressed'), 'false');
+    assert.match(rig.getAttribute('data-why'), /Bind Rig in Settings/);
+    assert.equal(findAll(rig, n => n.tagName === 'b')[0]?.textContent, '');
+  } finally { mounted?.dispose(); t.restore(); }
 });
 
 test('flightCluster assigns active/held/firing classes, aria-pressed, and dynamic aria-labels', () => {

@@ -2,6 +2,7 @@
 // including for unillustrated equipment. Runtime hull posters and firing clips take precedence.
 import { runtimeAssetUrl } from '../../core/runtimeAssetUrl.js';
 import { equipmentKind, equipmentSvg } from './equipmentGlyphs.js';
+import { resolveItemThumbSpec } from '../icons/itemThumbnails.js';
 
 const ROOT = 'assets/ui/generated/armory/';
 const PLATE_BY_KIND = Object.freeze({
@@ -12,8 +13,8 @@ const PLATE_BY_KIND = Object.freeze({
 });
 
 export function armoryPlate(offer) {
-  const id = offer.defId || offer.id || '';
-  if (offer.kind === 'hull') return null;
+  const id = (offer && (offer.defId || offer.id)) || '';
+  if (offer && offer.kind === 'hull') return null;
   if (/plasma/.test(id)) return 'plasma';
   if (/emp_disruptor/.test(id)) return 'emp';
   if (/repair|weld/.test(id)) return 'repair';
@@ -22,16 +23,19 @@ export function armoryPlate(offer) {
 
 export function equipmentPlate(offer, doc) {
   const glyph = equipmentSvg(offer, doc);
+  const spec = resolveItemThumbSpec(offer);
   const family = armoryPlate(offer);
-  if (!glyph || !family) return glyph;
+  const url = (spec && spec.url) || (family ? runtimeAssetUrl(ROOT + family + '.webp', import.meta.url) : null);
+  if (!glyph || !url) return glyph;
   const frame = doc.createElement('span');
   frame.className = 'orr-equipment-plate';
   frame.setAttribute('aria-hidden', 'true');
+  if (spec && spec.rgb) frame.style.setProperty('--sf-thumb-rgb', spec.rgb);
   const img = doc.createElement('img');
   img.alt = '';
   img.decoding = 'async';
   img.addEventListener('error', () => { img.remove(); frame.classList.add('is-schematic'); }, { once:true });
-  img.src = runtimeAssetUrl(ROOT + family + '.webp', import.meta.url);
+  img.src = url;
   frame.append(img, glyph);
   return frame;
 }

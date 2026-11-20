@@ -15,6 +15,14 @@ export const RESOURCE_BODY_RETENTION_CLASS = Object.freeze({
 });
 
 const RECOVERY_EPSILON = 1e-6;
+const DRILL_TILES = ['drillVeinRemainders', 'drillVented', 'drillScars', 'drillFaults', 'drillRubble'];
+const DRILL_PROGRESS_FIELDS = ['boreSeed', 'drillAvatarCol', 'drillAvatarRow', 'lastDrillT',
+  'drillYieldMax', 'drillDepletion', 'drillCleared', ...DRILL_TILES];
+
+export function asteroidHasDrillProgress(data) {
+  return (data.drillCleared?.length || 0) > 1 || data.drillDepletion > 0
+    || DRILL_TILES.some(key => data[key]?.length > 0);
+}
 
 export function createEmptyResourceBodyBag() {
   return {
@@ -303,6 +311,15 @@ export function captureResourceBodyRecord(entity, opts = {}) {
     || opts.existingRecord
     || (opts.resourceBag && opts.resourceBag.byId && existing ? opts.resourceBag.byId[existing] : null)
     || null;
+  let extra = previous?.extra;
+  const hasBore = !d.siteId && asteroidHasDrillProgress(d);
+  if (hasBore || (!d.siteId && extra?.drill)) {
+    const drill = {};
+    for (const key of DRILL_PROGRESS_FIELDS) {
+      if (d[key] != null) drill[key] = d[key];
+    }
+    extra = { ...extra, drill };
+  }
   const oreHp = entity.oreHp != null ? entity.oreHp
     : (d.oreHp != null ? d.oreHp : (d.oreHP != null ? d.oreHP : previous && previous.oreHp));
   const oreHpMax = entity.oreHpMax != null ? entity.oreHpMax
@@ -357,7 +374,7 @@ export function captureResourceBodyRecord(entity, opts = {}) {
   };
   // Capture is an observation seam, not proof of mining. Only explicit mining/depletion or
   // changed resource fields marks the durable body as player-modified.
-  const playerModified = opts.playerModified === true
+  const playerModified = hasBore || opts.playerModified === true
     || previous && previous.playerModified === true
     || d.playerModified === true
     || inferredMiningModification(modifiedEvidence);
@@ -407,6 +424,7 @@ export function captureResourceBodyRecord(entity, opts = {}) {
     retentionClass,
     outcome,
     revision: opts.revision,
+    extra,
   });
 }
 
@@ -753,6 +771,12 @@ export function findResourceBodyForEntity(bag, entity) {
 export function applyResourceBodyToEntity(entity, record) {
   if (!entity || !record) return entity;
   const d = entity.data || (entity.data = {});
+  const drill = record.extra?.drill;
+  if (drill && !d.siteId) {
+    for (const key of DRILL_PROGRESS_FIELDS) {
+      if (drill[key] != null) d[key] = clonePlain(drill[key]);
+    }
+  }
   if (Number.isFinite(record.oreHp)) {
     d.oreHP = record.oreHp;
     entity.hull = record.oreHp;

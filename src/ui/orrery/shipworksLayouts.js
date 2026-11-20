@@ -58,18 +58,19 @@ export function powerDialSvg({ cap = 0, draws = [], ghost = null, systems = [] }
     const a = from + (span * (i + 0.5)) / n;
     const [tx0, ty0] = polar(cx, cy, r + 11, a);
     const [tx1, ty1] = polar(cx, cy, r + 14, a);
-    const [lx, ly] = polar(cx, cy, r + 16, a);
+    const [lx, ly] = polar(cx, cy, r + 21, a);
     const cos = Math.cos(((a - 90) * Math.PI) / 180);
     const anchor = Math.abs(cos) < 0.34 ? 'middle' : (cos > 0 ? 'start' : 'end');
+    const padX = Math.abs(cos) < 0.34 ? 0 : (cos > 0 ? 3 : -3);
     const state = s.stock ? 'is-stock' : (s.fitted > 0 ? 'is-fitted' : 'is-empty');
     const word = String(s.label || s.type || '').toUpperCase();
     const count = s.available > 1 ? ` ${s.fitted}/${s.available}` : '';
     sys += `<path class="orr-power__sys ${state}${segLit}" d="M ${f2(tx0)} ${f2(ty0)} L ${f2(tx1)} ${f2(ty1)}"/>`
-      + `<text class="orr-power__syslabel ${state}" x="${f2(lx)}" y="${f2(ly + 3)}" text-anchor="${anchor}">${escapeXml(word)}${escapeXml(count)}</text>`;
+      + `<text class="orr-power__syslabel ${state}" x="${f2(lx + padX)}" y="${f2(ly + 3)}" text-anchor="${anchor}">${escapeXml(word)}${escapeXml(count)}</text>`;
   });
   // the words ride outside the arc, so the ink box is wider than the drawing: the viewBox carries
-  // their reach (measured -18..267 on a 0..232 dial) or the rail's clip takes the first letters
-  return `<svg class="orr-power${over ? ' is-over' : ''}" viewBox="-24 0 ${w + 64} ${h}" aria-hidden="true" focusable="false">`
+  // their reach so side labels never clip or crowd radial ticks
+  return `<svg class="orr-power${over ? ' is-over' : ''}" viewBox="-36 -2 ${w + 88} ${h + 6}" aria-hidden="true" focusable="false">`
     + `<path class="orr-power__band" d="${arcD(cx, cy, r, from, to)}"/>`
     + `<path class="orr-power__track" d="${arcD(cx, cy, r, from, to)}"/>`
     + `<path class="orr-power__ticks" d="${ticksD(cx, cy, r + 4, 4, { len: 5, from, to, inward: false })}"/>`
@@ -143,7 +144,8 @@ ${W} .orr-sw-node.is-lit .orr-sw-node__num { color:var(--dp-hand, #f2b950); }
 /* the drawing takes the main column's height: the handling stands under the fleet in the left
    column, the screen's verbs under the ship's name, the six readings along the stage's foot */
 ${W}.orr-sw--jig .sx-sw__stats { position:absolute !important; left:0 !important; top:170px !important; bottom:auto !important; width:230px !important; max-height:calc(100% - 180px) !important;
-  margin:0 !important; overflow:hidden auto !important; }
+  margin:0 !important; z-index:4 !important; overflow:hidden auto !important;
+  background:linear-gradient(rgb(${BONE} / .03), rgb(${BONE} / .03)), rgb(${POOL} / .92) !important; }
 ${W}.orr-sw--jig.is-choosing .sx-sw__stats { visibility:hidden !important; }
 ${W}.orr-sw--jig .sx-sw__stats::before { inset:-30px -30px -20px -30px; }
 ${W}.orr-sw--jig .sx-sw-bands { display:grid !important; grid-template-columns:1fr 1fr; gap:14px 18px !important; }
@@ -234,47 +236,41 @@ ${W} .sx-sw-gauge .k-row__num { font-size:13px !important; color:rgb(248 244 234
    shade-pool ::before stands down here, in this sheet only (stationTabsLayouts.js untouched).
    Densify radius 8 -> 6 and the padding on short / narrow bands. */
 ${W} .sx-sw__stats { ${PLAIN} position:relative; isolation:isolate; box-sizing:border-box;
-  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
-  background:rgb(${BONE} / .025) !important; padding:16px 18px; }
-${W} .sx-sw__stats::before { content:none; display:none; }
-@media (max-height:820px) { ${W} .sx-sw__stats { border-radius:8px; padding:14px 16px; } }
-@media (max-width:820px) { ${W} .sx-sw__stats { border-radius:8px; } }
-@media (max-width:760px) { ${W} .sx-sw__stats { border-radius:8px; } }
-@media (max-height:600px) { ${W} .sx-sw__stats { padding:12px 14px; } }
-@media (max-height:540px) { ${W} .sx-sw__stats { padding:10px 12px; } }
-@media (max-height:460px) { ${W} .sx-sw__stats { border-radius:8px; padding:8px 10px; } }
-@media (max-height:400px) { ${W} .sx-sw__stats { border-radius:6px; } }
-@media (max-width:650px) { ${W} .sx-sw__stats { padding:14px 16px; } }
-/* ---- the nameplate: a hairline card hugging the hull's word ---------------------------------- */
-/* ui-polish-413: dock nameplate wears the same hairline card as dock .sx-sw__stats and the flight
-   nameplate (ui-polish-408, #922): 1px bone ~18% / radius 10 / padded. It sits over the lit hull
-   stage, so the card keeps a settled pool fill under the faint bone wash. The station.css box ran
-   from the stage top to 45px off its foot with a 420px right keep-out, so the card would have
-   framed half the stage: it now hugs the crest (fit-content, no keep-out, no bottom). The ≤700
-   top band keeps its own full-width geometry and fill and gains the hairline. The hardpoint-card
-   solver kept out the nameplate's INK only, so shipworks.js now keeps out the card's box when it
-   is carded (nameplateCard()). A negative left margin (padding + border) holds the crest on the
-   stage's left line; the top steps 6px (4 short) off the panel rule above it, since the stage
-   clips anything over its top. Densify radius 8→6 and the padding on short / narrow, matching
-   the sibling cards. (The dock .sx-sw__gauges rack is an empty hidden shell in shipworks.js, so
-   there is nothing there to card.) */
+  border:1px solid rgb(154 198 218 / .32) !important; border-radius:2px !important;
+  background:
+    linear-gradient(90deg, #f2b950 0 28px, rgb(158 220 233 / .48) 28px 140px, rgb(158 220 233 / .14) 140px 100%) top left / 100% 2px no-repeat,
+    repeating-linear-gradient(0deg, rgb(158 220 233 / .012) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 90% at 18% 0%, rgb(24 54 74 / .34), transparent 62%),
+    linear-gradient(160deg, rgb(11 24 35 / .95) 0%, rgb(7 16 24 / .97) 100%) !important;
+  box-shadow:inset 0 1px 0 rgb(208 238 250 / .14), inset 0 -2px 0 rgb(2 6 10 / .85), 0 12px 28px rgb(0 0 0 / .58) !important;
+  padding:14px 16px; }
+${W} .sx-sw__stats::before, ${W} .sx-sw__stats::after,
+${W} .sx-sw__stats > .orr-extent:not(.orr-extent--foot),
+${W} .sx-sw__stats > .orr-extent::before { content:none !important; display:none !important; }
+@media (max-height:820px) { ${W} .sx-sw__stats { border-radius:2px !important; padding:12px 14px; } }
+@media (max-width:820px) { ${W} .sx-sw__stats { border-radius:2px !important; } }
+@media (max-width:760px) { ${W} .sx-sw__stats { border-radius:2px !important; } }
+@media (max-height:600px) { ${W} .sx-sw__stats { padding:10px 12px; } }
+@media (max-height:540px) { ${W} .sx-sw__stats { padding:9px 11px; } }
+@media (max-height:460px) { ${W} .sx-sw__stats { border-radius:2px !important; padding:8px 10px; } }
+@media (max-height:400px) { ${W} .sx-sw__stats { border-radius:2px !important; } }
+@media (max-width:650px) { ${W} .sx-sw__stats { padding:12px 14px; } }
+/* ---- the nameplate: recessed visor glass crest card hugging the hull's word ------------------ */
 ${W} .sx-sw__stage > .sx-sw__nameplate { isolation:isolate; box-sizing:border-box; width:fit-content; height:auto !important; bottom:auto !important; right:auto !important;
-  border-image:none !important; box-shadow:none !important; clip-path:none !important;
-  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px;
-  background:linear-gradient(rgb(${BONE} / .025), rgb(${BONE} / .025)), rgb(${POOL} / .9) !important;
-  padding:12px 16px 7px !important; margin:6px 0 0 -17px !important; }
+  border-image:none !important; clip-path:none !important;
+  border:1px solid rgb(154 198 218 / .32) !important; border-radius:2px !important;
+  background:
+    linear-gradient(90deg, #f2b950 0 28px, rgb(158 220 233 / .48) 28px 140px, rgb(158 220 233 / .14) 140px 100%) top left / 100% 2px no-repeat,
+    linear-gradient(160deg, rgb(11 24 35 / .95) 0%, rgb(7 16 24 / .97) 100%) !important;
+  box-shadow:inset 0 1px 0 rgb(208 238 250 / .14), 0 8px 22px rgb(0 0 0 / .55) !important;
+  padding:11px 16px 7px !important; margin:6px 0 0 -17px !important; }
 ${W} .sx-sw__stage > .sx-sw__nameplate::before { content:none; display:none; }
-@media (max-height:820px) { ${W} .sx-sw__stage > .sx-sw__nameplate { border-radius:8px; padding:10px 14px 6px !important; margin:6px 0 0 -15px !important; } }
-@media (max-height:400px) { ${W} .sx-sw__stage > .sx-sw__nameplate { border-radius:6px; } }
-@media (max-width:760px) { ${W} .sx-sw__stage > .sx-sw__nameplate { border-radius:8px; } }
+@media (max-height:820px) { ${W} .sx-sw__stage > .sx-sw__nameplate { border-radius:2px !important; padding:10px 14px 6px !important; margin:6px 0 0 -15px !important; } }
+@media (max-height:400px) { ${W} .sx-sw__stage > .sx-sw__nameplate { border-radius:2px !important; } }
+@media (max-width:760px) { ${W} .sx-sw__stage > .sx-sw__nameplate { border-radius:2px !important; } }
 @media (max-height:519px) { ${W} .sx-sw__stage > .sx-sw__nameplate { padding:8px 12px 5px !important; margin:4px 0 0 -13px !important; } }
-/* ui-polish-415: the jig's dense mid-width bands (701-1100 wide, ≤800 tall) wear the card too, cut
-   down so the hull keeps its drawing: the dial sizes itself around the crest, and the full card's
-   padding + 6px drop cost the hull ~40px at 960x540. Here the card sits flush on the stage top
-   (the stage clips above it), with 4px/8px padding and a 1px-matched negative left margin, so the
-   crest moves ~5px down and ~0 sideways; radius 6 matches the densified sibling cards. */
 @media (min-width:701px) and (max-width:1100px) and (max-height:800px) {
-  ${W} .sx-sw__stage > .sx-sw__nameplate { border-radius:6px; padding:4px 8px 3px !important; margin:1px 0 0 -9px !important; }
+  ${W} .sx-sw__stage > .sx-sw__nameplate { border-radius:2px !important; padding:4px 8px 3px !important; margin:1px 0 0 -9px !important; }
 }
 ${W} .sx-sw-bands { gap:0 clamp(28px, 3vw, 56px) !important; }
 ${W} .sx-sw-hero { ${PLAIN} padding:2px 0 8px !important; min-height:0 !important; text-align:left; }
@@ -369,7 +365,12 @@ ${W} .sx-modrow:is(:focus-within, :hover)::before { left:2px !important; top:11p
   ${HAND} background:rgb(248 244 234) !important; }
 ${W} .sx-modrow:is(:focus-within, :hover)::before { background:var(--dp-hand, #f2b950) !important; }
 ${W} .sx-modrow:focus-visible { outline:none !important; }
-${W} .sx-modrow .sx-modrow__body { display:flex !important; flex-direction:column; gap:3px; width:auto !important; min-width:0 !important; }
+${W} .sx-modrow .sx-modrow__body { display:flex !important; flex-direction:column; gap:4px; width:auto !important; min-width:0 !important; }
+${W} .sx-modrow .sx-modrow__head { display:inline-flex !important; align-items:center !important; gap:10px; min-width:0; }
+${W} .sx-modrow .sx-modrow__head > .sf-thumb, ${W} .sx-modrow .sx-modrow__head > .sf-paint-preview, ${W} .sx-modrow .sx-modrow__head > .sx-provmark { flex:none; }
+${W} .sx-chooser__panel:has(.sf-paint-preview, [data-paint-row]) { overflow-y:auto !important; padding-right:4px; scrollbar-width:thin; scrollbar-color:rgb(${BONE} / .42) transparent; }
+${W} .sx-chooser__panel:has(.sf-paint-preview, [data-paint-row]) > .sx-chooser__list { flex:none !important; overflow:visible !important; height:auto !important; }
+${W} .sx-chooser__panel:has(.sf-paint-preview, [data-paint-row]) > .sx-chooser__kicker { margin-top:12px !important; }
 ${W} .sx-modrow :is(.sx-modrow__body, .sx-modrow__name, .sx-modrow__buy) { white-space:normal !important; overflow-wrap:anywhere; }
 ${W} .sx-modrow .sx-modrow__name { font-size:13.5px !important; font-weight:600; color:rgb(248 244 234) !important; }
 ${W} .sx-modrow .sx-modrow__name .sf-entity-link { text-decoration:none !important; background-image:none !important; color:inherit !important; }
@@ -509,6 +510,9 @@ ${W} .sx-sw-rack__cells { display:flex !important; gap:0 22px !important; margin
 ${W} .sx-sw-rack__cell { ${PLAIN} display:flex !important; flex-direction:column; align-items:flex-start; gap:4px; padding:4px 0 !important; min-height:0 !important; cursor:pointer; width:auto !important; }
 ${W} .sx-sw-rack__cell::before { content:"" !important; display:block !important; position:static !important; width:16px !important; height:16px !important; border-radius:50% !important;
   border:1.4px dashed rgb(${BONE} / .6) !important; background:none !important; box-shadow:none !important; transform:none !important; clip-path:none !important; margin:0 !important; }
+${W} .sx-sw-rack__cell.has-bomb::before { display:none !important; }
+${W} .sx-sw-rack__cell.has-bomb { flex-direction:row !important; align-items:center !important; flex-wrap:wrap; gap:6px 8px; }
+${W} .sx-sw-rack__cell.has-bomb .sx-sw-rack__copy { flex:1 1 auto; min-width:0; }
 ${W} .sx-sw-rack__cell:not(.is-empty)::before { border:5px solid rgb(248 244 234) !important; }
 ${W} .sx-sw-rack__cell::after { display:none !important; }
 ${W} .sx-sw-rack__cell .k-row__num { ${LABEL} order:-1; font-size: 12px !important; letter-spacing:.06em !important; color:rgb(${BONE} / .55) !important; text-align:left; }
@@ -1073,11 +1077,12 @@ ${W} .sx-sw__salering .sx-sw__bezel-end { fill:none; stroke:rgb(240 236 226); st
 /* the fit dial's legend stands under the dial's foot: at the 12px floor it no longer fits between the WEAPON and
    THRUSTERS words at the arc's two ends (a short stage shows no words round the arc and keeps it inside) */
 @media (min-height:801px) { ${W} .sx-sw-circuit__core .k-hero__w { top:auto; bottom:0; } }
-/* Hull and role share a flow row; the price or active flag gets its own row. */
-${W} .sx-sw-row { display:grid; grid-template-columns:minmax(0,1fr); row-gap:3px; }
-${W} .sx-sw-row > .sx-sw-row__body { grid-column:1; grid-row:1; display:block; min-width:0; }
+/* Hull thumbnail, name/role copy, and price or active flag on the fleet rail. */
+${W} .sx-sw-row { display:grid; grid-template-columns:30px minmax(0,1fr); column-gap:10px; row-gap:3px; align-items:center; }
+${W} .sx-sw-row > .sx-sw-row__thumb { grid-column:1; grid-row:1 / span 2; align-self:center; }
+${W} .sx-sw-row > .sx-sw-row__body { grid-column:2; grid-row:1; display:block; min-width:0; }
 ${W} .sx-sw-row .sx-sw-row__name, ${W} .sx-sw-row .sx-sw-row__sub { display:block; white-space:normal; overflow-wrap:anywhere; }
-${W} .sx-sw-row > .k-row__num { grid-column:1; grid-row:2; justify-self:start; white-space:normal; overflow-wrap:anywhere; }
+${W} .sx-sw-row > .k-row__num { grid-column:2; grid-row:2; justify-self:start; white-space:normal; overflow-wrap:anywhere; }
 ${W} .sx-sw-row .k-row__sub { letter-spacing:.1em !important; }
 /* Fleet on a tall stage: both side columns stand on the same foot as the verb row under the dial. The hull's
    readings (left) and the rack and readouts (right) sit down on it; the roster and the fit dial keep the top line */
@@ -1502,8 +1507,8 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
 /* Short desktop fleet: give the roster and the independently scrollable readings
    separate seats, and make the pinned Save Fit band cover readings passing behind it. */
 @media (min-width:1101px) and (max-width:1366px) and (max-height:800px) {
-  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row { display:block !important; position:relative !important; }
-  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row > .k-row__num { position:absolute !important; right:0 !important; top:0 !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row { display:grid !important; grid-template-columns:30px minmax(0,1fr) !important; column-gap:8px; position:relative !important; }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row > .k-row__num { position:absolute !important; right:0 !important; top:6px !important; grid-column:auto; grid-row:auto; }
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw-row .sx-sw-row__name { padding-right:60px !important; }
   /* Preserve the independently scrolling readings while reserving a larger gap below the hero. */
   ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats { top:112px !important; bottom:6px !important; min-height:0 !important; max-height:none !important; }
@@ -1596,6 +1601,326 @@ html body #screens > .sx-berth.orr-station .sx-sw.orr-sw--jig .sx-sw__rail .sx-s
     mask-image:linear-gradient(180deg, #000 calc(100% - var(--sx-fold)), transparent), linear-gradient(#000, #000), linear-gradient(#000, #000) !important;
     mask-clip:border-box, padding-box, border-box !important; mask-origin:border-box !important;
     mask-size:100% 100% !important; mask-repeat:no-repeat !important; mask-composite:add, exclude, add !important; }
+}
+
+/* ==== RUGGEDIZED METAL-AND-GLASS SHIPWORKS TERMINAL UPGRADE ================================= */
+/* 1. Eliminate the scrollExtent vertical spine line inside .sx-sw__stats that sliced through text */
+${W} .sx-sw__stats > .orr-extent:not(.orr-extent--foot),
+${W} .sx-sw__stats > .orr-extent::before,
+${W} .sx-sw__stats::before,
+${W} .sx-sw__stats::after {
+  content:none !important;
+  display:none !important;
+  width:0 !important;
+  height:0 !important;
+  background:none !important;
+}
+
+/* 2. Recessed Visor Glass Bays for Hull Telemetry (.sx-sw__stats), Chooser (.sx-sw__chooser), Side Inspector (.sx-sw__side) & Left Rail (.sx-sw__rail) */
+${W} :is(.sx-sw__stats, .sx-sw__chooser, .sx-sw__side, .sx-sw__inspect) {
+  border:1px solid rgb(154 198 218 / .32) !important;
+  border-radius:2px !important;
+  background:
+    linear-gradient(90deg, #f2b950 0 28px, rgb(158 220 233 / .48) 28px 140px, rgb(158 220 233 / .14) 140px 100%) top left / 100% 2px no-repeat,
+    repeating-linear-gradient(0deg, rgb(158 220 233 / .012) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 90% at 18% 0%, rgb(24 54 74 / .34), transparent 62%),
+    linear-gradient(160deg, rgb(11 24 35 / .95) 0%, rgb(7 16 24 / .97) 100%) !important;
+  box-shadow:inset 0 1px 0 rgb(208 238 250 / .14), inset 0 -2px 0 rgb(2 6 10 / .85), 0 12px 28px rgb(0 0 0 / .58) !important;
+}
+@media (min-width:1101px) and (min-height:641px) {
+  /* Restore .sx-sw as the containing block for .sx-sw__stats on desktop (syncScrollExtent sets inline
+     position:relative on statsEl.parentElement (.sx-sw__main), which pulled .sx-sw__stats into Col 2
+     over Weapon/Thrusters/Utility hardpoints and left Col 1 empty). Keep .sx-sw__main static so
+     .sx-sw__stats docks cleanly in Column 1 directly beneath .sx-sw__rail. */
+  ${D}.orr-sw--jig:not(.sx-sw--buying) > .sx-sw__main {
+    position:static !important;
+    overflow:visible !important;
+  }
+  ${D}.orr-sw--jig {
+    grid-template-columns:236px minmax(0, 1fr) 285px !important;
+    column-gap:14px !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats:not(.sx-sw__stats--unseated) {
+    left:0 !important;
+    width:236px !important;
+  }
+  ${W} .sx-sw__rail {
+    box-sizing:border-box !important;
+    border:1px solid rgb(154 198 218 / .32) !important;
+    border-radius:2px !important;
+    background:
+      linear-gradient(90deg, #f2b950 0 28px, rgb(158 220 233 / .48) 28px 140px, rgb(158 220 233 / .14) 140px 100%) top left / 100% 2px no-repeat,
+      linear-gradient(160deg, rgb(11 24 35 / .95) 0%, rgb(7 16 24 / .97) 100%) !important;
+    box-shadow:inset 0 1px 0 rgb(208 238 250 / .14), inset 0 -2px 0 rgb(2 6 10 / .85), 0 10px 24px rgb(0 0 0 / .52) !important;
+    padding:8px 10px !important;
+    height:max-content !important;
+    max-height:134px !important;
+  }
+  ${W} .sx-sw__rail .sx-sw__carousel {
+    margin-top:4px !important;
+  }
+  ${W}.sx-sw--buying .sx-sw__rail {
+    max-height:none !important;
+    height:100% !important;
+  }
+  /* Subtle recessed diagnostic visor-glass bay bezel around the interactive ship schematic stage */
+  ${D}.orr-sw--jig .sx-sw__main > .sx-sw__stage {
+    box-sizing:border-box !important;
+    border:1px solid rgb(154 198 218 / .24) !important;
+    border-radius:2px !important;
+    background:
+      linear-gradient(90deg, #f2b950 0 28px, rgb(158 220 233 / .42) 28px 140px, rgb(158 220 233 / .12) 140px 100%) top left / 100% 2px no-repeat,
+      radial-gradient(circle at 50% 48%, rgb(16 38 54 / .36), rgb(6 14 22 / .78) 76%) !important;
+    box-shadow:inset 0 1px 0 rgb(208 238 250 / .12), inset 0 -2px 0 rgb(2 6 10 / .85), 0 12px 28px rgb(0 0 0 / .54) !important;
+  }
+  ${D}.orr-sw--jig .sx-sw__stage > .sx-sw__nameplate {
+    margin:10px 0 0 12px !important;
+  }
+}
+@media (min-width:1367px) and (min-height:641px) {
+  ${D}.orr-sw--jig {
+    grid-template-columns:252px minmax(0, 1fr) 295px !important;
+    column-gap:16px !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats:not(.sx-sw__stats--unseated) {
+    left:0 !important;
+    width:252px !important;
+  }
+}
+@media (min-width:1101px) and (min-height:801px) {
+  ${W}:not(.sx-sw--buying) .sx-sw__rail {
+    padding:10px 12px !important;
+    max-height:164px !important;
+  }
+  /* Dock .sx-sw__stats cleanly beneath .sx-sw__rail across the full lower height of Column 1 */
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats:not(.sx-sw__stats--unseated) {
+    top:174px !important;
+    bottom:0 !important;
+    max-height:none !important;
+    height:auto !important;
+    padding:12px 14px 14px !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats[data-overflow="1"]:not(.sx-sw__stats--unseated) {
+    padding-bottom:14px !important;
+  }
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__stats + .orr-extent--foot,
+  ${D}.orr-sw--jig:not(.sx-sw--buying) .sx-sw__main > .orr-extent--foot {
+    display:none !important;
+  }
+}
+/* Clean machined ship rows inside .sx-sw__rail (remove legacy ruler spine & free horizontal room for T0) */
+${W} .sx-sw__rail .sx-sw__list {
+  background:none !important;
+  background-image:none !important;
+}
+${W} .sx-sw__rail .sx-sw-row {
+  padding:7px 8px !important;
+  border-bottom:1px solid rgb(154 198 218 / .12) !important;
+  border-radius:2px !important;
+}
+${W} .sx-sw__rail .sx-sw-row::before,
+${W} .sx-sw__rail .sx-sw-row::after {
+  content:none !important;
+  display:none !important;
+}
+${W} .sx-sw__rail .sx-sw-row:is(:hover, :focus-visible) {
+  background:rgb(158 220 233 / .08) !important;
+  box-shadow:inset 2px 0 0 rgb(158 220 233 / .68) !important;
+}
+${W} .sx-sw__rail .sx-sw-row:is(.is-active, .is-selected, .is-viewed, [aria-pressed='true'], [aria-current='true']) {
+  background:linear-gradient(90deg, rgb(224 181 94 / .22) 0%, rgb(224 181 94 / .07) 65%, rgb(14 29 42 / .92) 100%) !important;
+  box-shadow:inset 3px 0 0 #e6ca8f, inset 0 1px 0 rgb(255 241 207 / .20) !important;
+}
+${W} .sx-sw__rail .sx-sw-row:is(.is-active, .is-selected, .is-viewed, [aria-pressed='true'], [aria-current='true']) .k-row__name {
+  color:#fff1cf !important;
+}
+${W} .sx-sw__rail .sx-sw-row:is(.is-active, .is-selected, .is-viewed, [aria-pressed='true'], [aria-current='true']) .sx-sw-row__flag {
+  color:#f3d178 !important;
+}
+
+/* Segmented metallic tabs in .sx-sw__rail (FLEET / FOR SALE) */
+${W} .sx-sw__rail .sx-seg {
+  gap:0 6px !important;
+  margin:0 0 8px !important;
+}
+${W} .sx-sw__rail .sx-seg__btn {
+  padding:4px 10px !important;
+  border:1px solid rgb(154 198 218 / .28) !important;
+  border-radius:2px !important;
+  background:linear-gradient(180deg, rgb(22 36 48 / .92), rgb(12 21 30 / .96)) !important;
+  color:rgb(${BONE} / .82) !important;
+  letter-spacing:.08em !important;
+}
+${W} .sx-sw__rail .sx-seg__btn.is-on {
+  border-color:rgb(230 202 143 / .82) !important;
+  background:linear-gradient(180deg, rgb(224 181 94 / .26) 0%, rgb(224 181 94 / .10) 100%) !important;
+  box-shadow:inset 0 2px 0 #e6ca8f !important;
+  color:#fff1cf !important;
+}
+
+/* 3. Hull Telemetry Card (.sx-sw__stats / .sfs) header separation & skewed segmented cyan/gold visor bars */
+${W} .sx-sw__stats .sfs__head {
+  margin:0 0 6px !important;
+  padding-bottom:6px !important;
+  border-bottom:1px solid rgb(158 220 233 / .22) !important;
+}
+${W} .sx-sw__stats .sfs__role,
+${W} .sx-sw__stats .sfs__class {
+  color:#9edce9 !important;
+  font-weight:700 !important;
+  letter-spacing:.10em !important;
+}
+${W} .sx-sw__stats .sfs__word {
+  color:#f4f9fc !important;
+}
+${W} .sx-sw__stats .sfs__blurb,
+${W} .sx-sw__stats .sfs__line {
+  color:rgb(218 236 244 / .84) !important;
+  margin-top:3px !important;
+  line-height:1.35 !important;
+}
+${W} .sx-sw__stats .sfs__stat {
+  padding:3px 0 4px !important;
+  border-bottom:1px solid rgb(154 198 218 / .12) !important;
+}
+${W} .sx-sw__stats .sfs__stat-k,
+${W} .sx-sw__stats .sfs__name {
+  color:rgb(198 228 240 / .92) !important;
+  font-weight:700 !important;
+  letter-spacing:.07em !important;
+}
+${W} .sx-sw__stats .sfs__num {
+  color:#f4f9fc !important;
+  font-size:15px !important;
+}
+${W} .sx-sw__stats .sfs__pips {
+  gap:3px !important;
+  height:9px !important;
+  margin-top:3px !important;
+}
+${W} .sx-sw__stats .sfs__pip {
+  height:6px !important;
+  border-radius:1px !important;
+  transform:skewX(-16deg) !important;
+  background:rgb(158 220 233 / .14) !important;
+  border:1px solid rgb(158 220 233 / .22) !important;
+}
+${W} .sx-sw__stats .sfs__pip.is-lit {
+  background:linear-gradient(180deg, #b8eefc 0%, #73c7de 100%) !important;
+  border-color:#9edce9 !important;
+  box-shadow:0 0 6px rgb(146 217 235 / .32) !important;
+}
+${W} .sx-sw__stats .sfs__pip.is-gain,
+${W} .sx-sw__stats .sfs__pip.is-ghost-gain {
+  background:linear-gradient(180deg, #ffe5a3 0%, #e5b04a 100%) !important;
+  border-color:#f3d178 !important;
+  box-shadow:0 0 8px rgb(242 185 80 / .45) !important;
+}
+${W} .sx-sw__stats .sfs__pip.is-loss,
+${W} .sx-sw__stats .sfs__pip.is-ghost-loss {
+  background:rgb(255 113 89 / .38) !important;
+  border-color:rgb(255 113 89 / .65) !important;
+}
+${W} .sx-sw__stats .sfs__meaning,
+${W} .sx-sw__stats .sfs__note {
+  margin:5px 0 0 !important;
+  min-height:0 !important;
+  line-height:1.35 !important;
+  color:rgb(218 236 244 / .84) !important;
+}
+${W} .sx-sw__stats .sfs__details {
+  margin-top:6px !important;
+  color:#9edce9 !important;
+  font-weight:700 !important;
+}
+${W} .sx-sw-stat__bar, ${W} .sx-sw-bar__track {
+  border:1px solid rgb(158 220 233 / .30) !important;
+  border-radius:1px !important;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 9px, rgb(6 14 22 / .86) 9px 11px),
+    rgb(7 17 26 / .92) !important;
+}
+${W} .sx-sw-stat__fill, ${W} .sx-sw-bar__track > .k-bar__fill {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 9px, rgb(6 14 22 / .78) 9px 11px),
+    linear-gradient(90deg, #64b8d0, #a8e8f9) !important;
+  box-shadow:0 0 8px rgb(146 217 235 / .32) !important;
+}
+
+/* 4. Hardpoint Callout Chips (.orr-sw-node) around the interactive ship schematic */
+${W} .orr-sw-node {
+  box-sizing:border-box !important;
+  border:1px solid rgb(154 198 218 / .30) !important;
+  border-radius:2px !important;
+  background:linear-gradient(160deg, rgb(12 25 36 / .92), rgb(8 17 26 / .95)) !important;
+  box-shadow:inset 0 1px 0 rgb(208 238 250 / .12), 0 4px 12px rgb(0 0 0 / .48) !important;
+  padding:4px 10px 5px !important;
+  transition:border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+${W} .orr-sw-node__num {
+  color:#9edce9 !important;
+  font-weight:700 !important;
+}
+${W} .orr-sw-node:is(.is-lit, .is-selected, :hover, :focus-visible) {
+  border-color:rgb(230 202 143 / .82) !important;
+  background:linear-gradient(90deg, rgb(224 181 94 / .22) 0%, rgb(224 181 94 / .07) 65%, rgb(14 29 42 / .94) 100%) !important;
+  box-shadow:inset 3px 0 0 #e6ca8f, inset 0 1px 0 rgb(255 241 207 / .22), 0 4px 14px rgb(0 0 0 / .52) !important;
+}
+${W} .orr-sw-node.is-left:is(.is-lit, .is-selected, :hover, :focus-visible) {
+  box-shadow:inset -3px 0 0 #e6ca8f, inset 0 1px 0 rgb(255 241 207 / .22), 0 4px 14px rgb(0 0 0 / .52) !important;
+}
+${W} .orr-sw-node:is(.is-lit, .is-selected, :hover, :focus-visible) .orr-sw-node__name {
+  color:#fff1cf !important;
+}
+${W} .orr-sw-node:is(.is-lit, .is-selected, :hover, :focus-visible) .orr-sw-node__num {
+  color:#f3d178 !important;
+}
+
+/* 5. Center Blueprint Action Bar (.sx-sw-verbs) & Chamfered Hardware Command Buttons */
+@media (min-width:901px) {
+  ${W} .sx-sw-verbs {
+    border:1px solid rgb(154 198 218 / .32) !important;
+    border-radius:2px !important;
+    background:linear-gradient(180deg, rgb(22 34 45 / .95), rgb(12 20 28 / .98)) !important;
+    box-shadow:inset 0 1px 0 rgb(215 238 248 / .18), 0 8px 22px rgb(0 0 0 / .58) !important;
+    padding:5px 12px !important;
+    align-items:center !important;
+  }
+}
+${W} .sx-sw-verb:not(.orr-lampkey) {
+  padding:4px 10px !important;
+  border:1px solid rgb(154 198 218 / .28) !important;
+  border-radius:2px !important;
+  background:linear-gradient(180deg, rgb(24 38 50 / .92), rgb(13 22 31 / .96)) !important;
+  color:rgb(${BONE} / .92) !important;
+  letter-spacing:.1em !important;
+}
+${W} .sx-sw-verb:not(.orr-lampkey)::before {
+  content:none !important;
+  display:none !important;
+}
+${W} .sx-sw-verb:not(.orr-lampkey):is(:hover, :focus-visible) {
+  border-color:#e6ca8f !important;
+  background:linear-gradient(180deg, rgb(224 181 94 / .26), rgb(224 181 94 / .10)) !important;
+  color:#fff1cf !important;
+}
+${W} :is(.sx-sw-verb.orr-lampkey, .sx-modrow .sx-modrow__buy.orr-lampkey, .sx-buybar .orr-lampkey) {
+  color:#fff1cf !important;
+  letter-spacing:.1em !important;
+  font-weight:700 !important;
+}
+${W} :is(.sx-sw-verb.orr-lampkey, .sx-modrow .sx-modrow__buy.orr-lampkey, .sx-buybar .orr-lampkey) small {
+  color:#f3d178 !important;
+}
+${W} :is(.sx-sw-verb.orr-lampkey, .sx-modrow .sx-modrow__buy.orr-lampkey, .sx-buybar .orr-lampkey)::before {
+  clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)) !important;
+  border:1px solid #e6ca8f !important;
+  background:linear-gradient(180deg, rgb(224 181 94 / .32) 0%, rgb(224 181 94 / .14) 100%) !important;
+  box-shadow:inset 0 1px 0 rgb(255 241 207 / .26) !important;
+}
+${W} :is(.sx-sw-verb.orr-lampkey, .sx-modrow .sx-modrow__buy.orr-lampkey, .sx-buybar .orr-lampkey):not(:disabled):is(:hover, :focus-visible)::before {
+  border-color:#fff1cf !important;
+  background:linear-gradient(180deg, rgb(224 181 94 / .46) 0%, rgb(224 181 94 / .22) 100%) !important;
 }
 `;
 

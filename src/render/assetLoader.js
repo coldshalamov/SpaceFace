@@ -361,14 +361,9 @@ async function createDefaultKtx2Loader() {
   const { KTX2Loader } = await import('three/addons/loaders/KTX2Loader.js');
   const ktx2 = new KTX2Loader();
   ktx2.setTranscoderPath(ASSET_RUNTIME_DECODER_CONTRACT.ktx2TranscoderPath);
-  const configured = configureCspSafeKtx2Loader(ktx2);
-  // Warm the transcoder while the runtime is still being assembled: the WASM fetch and
-  // worker creator install otherwise sit inside the first texture decode's critical path.
-  // A failed warm clears the latch so the first real decode retries instead of inheriting
-  // a rejected pending promise.
-  const warm = configured.init();
-  warm.catch(() => { if (configured.transcoderPending === warm) configured.transcoderPending = null; });
-  return configured;
+  // Runtime setup can run behind the loading films. The first Basis texture starts the
+  // shared transcoder request through the loader's parse path.
+  return configureCspSafeKtx2Loader(ktx2);
 }
 
 /**

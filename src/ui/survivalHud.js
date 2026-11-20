@@ -27,6 +27,8 @@ import { SWARM_CHAIN_VARIED_STEP, SWARM_CHAIN_WARN_S, SWARM_CHAIN_WINDOW_S } fro
 import { resolveActionLabel } from '../systems/input.js';
 import { swarmOwnedTapMods } from '../systems/playerModifiers.js';
 import { indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
+import { FOUNDRY_APPROACH_ALERT, FOUNDRY_RETURN_ALERT } from './alerts.js';
+import { runRulesetLabel } from './windowTitle.js';
 import { createPilotBreathController } from './pilotCards.js';
 
 const STYLE_ID = 'sf-crun-css';
@@ -107,9 +109,11 @@ export function circuitMarkGlyph(player, mark) {
   return MARK_GLYPHS[(octant + 8) % 8];
 }
 
-/** Arena label from the id. Data-free so a new arena needs no edit here. */
+/** Keep the setup's room names for arenas whose IDs predate those names. */
 export function arenaLabel(arenaId) {
   if (!arenaId) return 'ARENA';
+  if (arenaId === 'helios_core') return 'RICOCHET FOUNDRY';
+  if (arenaId === 'tethys_hub') return 'TETHYS EXCHANGE';
   return String(arenaId).replace(/_/g, ' ').toUpperCase();
 }
 
@@ -292,6 +296,7 @@ export function earnLine(award) {
  */
 export function deathLineFor(receipt, tell = null, deathSimTime = 0) {
   const cause = deathCauseText(receipt);
+  if (receipt?.source?.kind === 'environment' || receipt?.physicalLabel === 'arena impact') return cause;
   if (tell && typeof tell === 'object' && typeof tell.kind === 'string' && tell.kind
     && tell.attackerId != null && tell.attackerId === (receipt?.killerId ?? receipt?.attackerId)
     && Number.isFinite(tell.simTime) && Number.isFinite(deathSimTime)
@@ -338,6 +343,7 @@ export const survivalHud = {
     this._chainStep = 0;
     this._chainAt = null;
     this._waveProgress = null;
+    this._foundryGuidance = new Map();
     this._death = null;
     this._lastTells = [];
     // The style figure's memo (see update): the three printed numbers it was built from, and the
@@ -368,6 +374,7 @@ export const survivalHud = {
       this._objective = null;
       this._objectiveKind = null;
       this._waveProgress = null;
+      this._foundryGuidance.clear();
       this._death = null;
       this._lastTells = [];
       this._chain = 0;
@@ -378,6 +385,12 @@ export const survivalHud = {
     }));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveProgress', (p) => this._onWaveProgress(p)));
+    this._unsubs.push(this.bus.on('alert', (p) => {
+      const key = p?.key;
+      if (key !== FOUNDRY_APPROACH_ALERT && key !== FOUNDRY_RETURN_ALERT) return;
+      if (p.action === 'clear') this._foundryGuidance.delete(key);
+      else if (typeof p.text === 'string' && p.text) this._foundryGuidance.set(key, p.text);
+    }));
     this._unsubs.push(this.bus.on('swarm:chain', (p) => this._onChain(p)));
     this._unsubs.push(this.bus.on('swarm:chainBroken', () => this._onChainBroken()));
     // PQ-174.06: the death line on the glass. Read-only like everything else here — it names
@@ -402,6 +415,7 @@ export const survivalHud = {
   newGame() {
     this._clearEarn();
     this._waveProgress = null;
+    this._foundryGuidance?.clear();
     this._death = null;
     this._lastTells = [];
   },
@@ -444,8 +458,8 @@ export const survivalHud = {
     // A boss or elite wave says so; everything else reads as the phase, which already says FIGHT.
     const fighting = run.phase === 'active' || run.phase === 'wave_intro';
     const phase = (fighting && objective) ? objective : phaseWord(run.phase);
-    this._setText(dom.label, `CRUCIBLE · ${swarm && run.arenaId === 'helios_core'
-      ? 'RICOCHET FOUNDRY' : arenaLabel(run.arenaId)}`);
+    const mode = run.practice ? 'Practice' : (runRulesetLabel(run.ruleset) || 'Combat');
+    this._setText(dom.label, `${mode.toUpperCase()} · ${arenaLabel(run.arenaId)}`);
     // A swarm run has no denominator: there is no last wave to count toward, and printing one
     // would be a lie about when it ends. SWARM-08 B5 — a Circuit run DOES have a finite shape,
     // so it prints the stage and the round inside it, then OVERTIME once the journey is done.
@@ -473,14 +487,17 @@ export const survivalHud = {
       this._setAttr(dom.hero, 'aria-label', `Hero maneuver, ${heroCue.text}`);
     }
 
-    // FB-025 — the wave intro is a real window: the opening line sits on the glass for the
-    // whole of it, then clears with the phase. Same pure function the announce voice speaks,
-    // so the readout and the voice can never disagree about what is coming.
-    const intro = run.phase === 'wave_intro' && planForWave
-      ? waveOpeningLine(run.wave, planForWave)
-      : null;
-    this._setHidden(dom.intro, !intro);
-    if (intro) this._setText(dom.intro, intro);
+    // During the opening, the instruction follows the announced wave. During active Foundry
+    // flight, an imminent plate takes the same seat and yields back to the return bearing.
+    const foundryFight = swarmFlight && run.phase === 'active' && run.arenaId === 'helios_core';
+    const approach = foundryFight && this._foundryGuidance.get(FOUNDRY_APPROACH_ALERT);
+    const guidance = approach || (foundryFight && run.wave === 1 && this._foundryGuidance.get(FOUNDRY_RETURN_ALERT));
+    const instruction = guidance || (run.phase === 'wave_intro' && planForWave
+      ? waveOpeningLine(run.wave, planForWave) : null);
+    this._setClass(dom.intro, approach ? 'sf-crun__guidance sf-crun__guidance--warn'
+      : guidance ? 'sf-crun__guidance' : 'sf-crun__intro');
+    this._setHidden(dom.intro, !instruction);
+    if (instruction) this._setText(dom.intro, instruction);
 
     // C01-05 — the room twist's own countdown: the owning module posts a deadline on
     // state.render, the chip words the remaining seconds and hides itself when it ends.
@@ -1027,8 +1044,7 @@ export const survivalHud = {
     hero.setAttribute('aria-live', 'off');
     hero.setAttribute('role', 'group');
 
-    // FB-025: the intro window's line — the wave's own words, on the glass only while
-    // wave_intro lasts, then cleared.
+    // One instruction row: the wave intro, then live Foundry navigation when needed.
     const intro = make('div', 'sf-crun__intro', root);
     intro.hidden = true;
 
@@ -1177,8 +1193,9 @@ export const survivalHud = {
   .sf-crun__phase--hot { color:var(--dp-danger-hot, var(--sf-foe)); }
   /* FB-025: the intro window's opening line — a full-width sentence in the paper ink, not a
      figure and not a word-pair, so it cannot be mistaken for a live gauge. */
-  .sf-crun__intro { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
+  .sf-crun__intro, .sf-crun__guidance { font-family:var(--dp-face-read, var(--sf-data-face)); font-weight:600; font-size:12px;
     letter-spacing:.02em; color:var(--dp-ink, var(--sf-paper)); text-shadow:var(--dp-emit, none); }
+  .sf-crun__guidance--warn { color:var(--dp-lamp-hot, var(--sf-goal)); }
   .sf-crun__threat { display:flex; align-items:center; gap:7px; }
   .sf-crun__word { font-family:var(--dp-face-etch, var(--sf-subhead-face)); font-variation-settings:"wght" 700, "wdth" 62;
     font-weight:700; font-size:12px; letter-spacing:.1em; text-transform:uppercase;
@@ -1232,7 +1249,7 @@ export const survivalHud = {
     .sf-crun { border:0; background:Canvas; color:CanvasText; }
     .sf-crun__fill { background:Highlight; forced-color-adjust:none; }
     .sf-crun__wave, .sf-crun__chainfig, .sf-crun__chaincause, .sf-crun__fig--goal, .sf-crun__earn { color:CanvasText; text-shadow:none; }
-    .sf-crun__phase--hot, .sf-crun__death, .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig,
+    .sf-crun__phase--hot, .sf-crun__guidance--warn, .sf-crun__death, .sf-crun__chain[data-tier="peak"] .sf-crun__chainfig,
     .sf-crun__chain[data-urgency="final"] .sf-crun__chainfig { color:Highlight; text-shadow:none; }
   }
   @media (max-width: 900px) {

@@ -426,23 +426,23 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
 
   assert.doesNotMatch(source, /\.isFocused\s*\(/,
     'Playwright Locator has no isFocused API');
-  assert.match(source, /element\s*===\s*document\.activeElement/,
-    'map search focus must use a real DOM active-element comparison');
+  assert.match(source, /getByRole\('button', \{ name: 'Browse', exact: true \}\).click\(\)/,
+    'the chart must open the shipped station picker');
 
   for (const publicSeam of [
-    "page.keyboard.type('Helios Station')",
+    "filter({ hasText: 'Helios Station' })",
     '.sf-alert--dock',
-    "getByRole('tab', { name: 'Market', exact: true })",
+    'button[data-nav="market"]',
     '[data-market-search]',
     '[data-cmdty="${item.commodityId}"]',
     '.sx-qty__in',
     '[data-go]',
-    '[data-screen="station"] .sx-dock button[data-act="undock"]',
+    '[data-screen="station"] button.sxb-launch[data-act="undock"]',
     "page.keyboard.press('KeyM')",
     '#sf-galaxymap',
     '_clickTargets',
     '#gm-set-course-btn',
-    "page.keyboard.down('Space')",
+    'page.keyboard.down(FLIGHT_CORE_KEYS.tether[0])',
     "page.keyboard.press('KeyB')",
     "page.keyboard.press('KeyC')",
     '[data-item-id="${defId}"]',
@@ -538,7 +538,7 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
   const enterSource = source.slice(enterStart, enterEnd);
   assert.match(enterSource, /masslineAcquisition[\s\S]*selected\?\.targetId[\s\S]*selected\?\.status === 'ready'/,
     'Asteroid Ops entry must wait until the exact route-anchor acquisition is visibly ready');
-  assert.match(enterSource, /latchStartTick[\s\S]*keyboard\.down\('Space'\)[\s\S]*Number\(state\?\.tick\) > Number\(startTick\)[\s\S]*tether\?\.active === true[\s\S]*keyboard\.up\('Space'\)/,
+  assert.match(enterSource, /latchStartTick[\s\S]*keyboard\.down\(FLIGHT_CORE_KEYS\.tether\[0\]\)[\s\S]*Number\(state\?\.tick\) > Number\(startTick\)[\s\S]*tether\?\.active === true[\s\S]*keyboard\.up\(FLIGHT_CORE_KEYS\.tether\[0\]\)/,
     'Asteroid Ops entry must hold the ordinary Massline input through terminal owner confirmation on a later fixed tick');
   assert.doesNotMatch(enterSource, /actions\?\.massline\?\.source === 'keyboard'/,
     'the actor must not miss a successful latch while polling a one-tick input edge');
@@ -546,11 +546,11 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     'Asteroid Ops entry must not replace the selected asteroid with the nearest-surface override');
   assert.doesNotMatch(source, /keyboard\.press\('Control\+Space'\)/,
     'a zero-duration chord may vanish between fixed input ticks');
-  assert.match(source, /releaseMassline[\s\S]*keyboard\.down\('Space'\)[\s\S]*actions\?\.massline\?\.source === 'keyboard'[\s\S]*keyboard\.up\('Space'\)[\s\S]*tether\?\.active !== true/,
+  assert.match(source, /releaseMassline[\s\S]*keyboard\.down\(FLIGHT_CORE_KEYS\.tether\[0\]\)[\s\S]*actions\?\.massline\?\.source === 'keyboard'[\s\S]*keyboard\.up\(FLIGHT_CORE_KEYS\.tether\[0\]\)[\s\S]*tether\?\.active !== true/,
     'Massline release must cross a fixed input tick before the public key is released');
   assert.match(source, /Number\(window\.SF\?\.state\?\.tick\) > tick/,
     'Massline cleanup must retain the key for a distinct fixed tick before release');
-  assert.doesNotMatch(source, /releaseMassline[\s\S]{0,220}keyboard\.press\('Space'\)/,
+  assert.doesNotMatch(source, /releaseMassline[\s\S]{0,220}keyboard\.press\(FLIGHT_CORE_KEYS\.tether\[0\]\)/,
     'a zero-duration Massline cut may vanish between fixed input ticks');
 
   assert.match(source, /requireBrokerClaimOrDiagnostic/);

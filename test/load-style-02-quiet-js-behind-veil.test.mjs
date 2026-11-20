@@ -170,7 +170,10 @@ test('salvageOutfits overlay: the canvas stands down behind the loading shell an
           get: () => hidden,
           set: (value) => { hiddenWrites.push(value); hidden = !!value; },
         });
-        el.getContext = () => ({});
+        el.getContext = () => ({
+          clearRect() {}, save() {}, restore() {}, setTransform() {},
+          beginPath() {}, moveTo() {}, lineTo() {}, stroke() {}, fillText() {},
+        });
       }
       return el;
     },
@@ -183,11 +186,12 @@ test('salvageOutfits overlay: the canvas stands down behind the loading shell an
     root.getBoundingClientRect = () => ({ left: 0, top: 0, width: 800, height: 600 });
     root.clientWidth = 800; root.clientHeight = 600;
     let stateCalls = 0;
+    const meetings = {};
     const state = () => {
       stateCalls++;
       return {
         mode: 'flight', ui: {}, world: { currentSectorId: 'sector_ceres_belt' },
-        entities: new Map(), playerId: 'player', salvageOutfits: { meetings: {} },
+        entities: new Map(), playerId: 'player', salvageOutfits: { meetings },
       };
     };
     const mounted = mountSalvageOutfitsPresentation({
@@ -195,6 +199,8 @@ test('salvageOutfits overlay: the canvas stands down behind the loading shell an
       helpers: { worldToScreen: () => ({ x: 1, y: 1, onScreen: true }) },
     });
     stateCalls = 0;
+    assert.deepEqual(hiddenWrites.splice(0), [true], 'the unused layer starts hidden');
+    assert.equal(mounted.canvas.width, 1);
 
     mounted.draw();
     assert.equal(stateCalls, 0, 'the veil stands the whole draw down — even the state read');
@@ -202,10 +208,19 @@ test('salvageOutfits overlay: the canvas stands down behind the loading shell an
 
     veil.lift();
     mounted.draw();
-    assert.ok(stateCalls > 0, 'the first uncovered frame draws again');
-    assert.deepEqual(hiddenWrites, [false], 'the canvas is unhidden once to show itself');
+    assert.ok(stateCalls > 0, 'the first uncovered frame checks for visible annotations');
+    assert.equal(mounted.canvas.width, 1, 'an empty flight never allocates a full-size canvas');
+    assert.deepEqual(hiddenWrites, []);
+    meetings.active = { id: 'active', sectorId: 'sector_ceres_belt', status: 'working',
+      anchor: { x: 0, z: 0 }, receiver: { x: 0, z: 0 } };
+    mounted.draw();
+    assert.ok(mounted.canvas.width >= 800);
+    assert.deepEqual(hiddenWrites, [false], 'a visible annotation shows the canvas in the same draw');
     mounted.draw();
     assert.equal(hiddenWrites.length, 1, 'an unchanged hidden value is not rewritten');
+    delete meetings.active;
+    mounted.draw();
+    assert.deepEqual(hiddenWrites, [false, true], 'the layer returns to idle when its annotation is gone');
     mounted.destroy();
   } finally {
     if (previousDocument === undefined) delete globalThis.document;

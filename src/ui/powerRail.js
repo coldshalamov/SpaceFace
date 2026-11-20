@@ -623,13 +623,13 @@ function dryFittedBomb(cells) {
 // RIG reads the same predicate the input layer uses (resolveRigTarget), so the socket's "why" names
 // the rig the next press will actually toggle.
 function rigSlotState(state) {
-  if (state.fields && state.fields.coneActive) return { state: 'armed', name: 'Cone', glyph: 'cone', why: 'Cone is on — press to fold it' };
+  if (state.fields && state.fields.coneActive) return { state: 'armed', name: 'Cone', glyph: 'cone', why: 'Cone ON — tap Rig to turn it off' };
   const planet = state.planet;
   const rec = planet && planet.active && planet.player ? planet.player : null;
-  if (rec && rec.collectorOn === true) return { state: 'armed', name: 'Scoop', glyph: 'skim', why: 'Scoop is open — press to close it' };
+  if (rec && rec.collectorOn === true) return { state: 'armed', name: 'Scoop', glyph: 'skim', why: 'Scoop ON — tap Rig to turn it off' };
   return resolveRigTarget(state) === 'skim'
-    ? { state: 'ready', name: 'Scoop', glyph: 'skim', why: 'In a planet band — press to open the scoop' }
-    : { state: 'ready', name: 'Cone', glyph: 'cone', why: 'Ready — the clearing cone' };
+    ? { state: 'ready', name: 'Scoop', glyph: 'skim', why: 'Scoop OFF — tap Rig to collect ore' }
+    : { state: 'ready', name: 'Cone', glyph: 'cone', why: 'Cone OFF — tap Rig to clear debris' };
 }
 
 // GYRE reads the Gyre system's published phase (state.gyreSnare is its runtime mirror, never saved).
@@ -703,7 +703,7 @@ function socketVerb(slot, given) {
     case POWER_SLOT.rig: {
       const skim = given.glyph === 'skim';
       const on = given.state === 'armed';
-      return skim ? (on ? 'Harvesting ore' : 'Harvest ore') : (on ? 'Clearing a path' : 'Clear a path');
+      return `${skim ? 'Scoop' : 'Cone'} ${on ? 'ON' : 'OFF'}`;
     }
     case POWER_SLOT.line: return lineWords().verb;
     default: return given.name || slot.name;

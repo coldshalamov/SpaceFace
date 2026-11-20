@@ -273,6 +273,36 @@ function makeBus() {
 // ── Modal pop focus restore ─────────────────────────────────────────────────
 
 {
+  installDom();
+  const bus = makeBus();
+  const state = createGameState(9);
+  state.mode = 'loading';
+  const mgr = createScreenManager({ state, bus });
+  let equipmentButton;
+  let hidden = 0;
+  mgr.register({ id: 'crucible', mount() {} });
+  mgr.register({
+    id: 'crucibleDraft',
+    mount(el) {
+      equipmentButton = document.createElement('button');
+      el.appendChild(equipmentButton);
+    },
+    onHide() { hidden++; },
+  });
+  mgr.pushScreen('crucible');
+  mgr.pushScreen('crucibleDraft');
+  equipmentButton.focus();
+
+  mgr.closeAll({ keepTopId: 'crucibleDraft' });
+  assert.equal(mgr.top(), 'crucibleDraft');
+  assert.equal(document.activeElement, equipmentButton);
+  assert.equal(hidden, 0);
+  mgr.popScreen();
+  assert.equal(mgr.top(), null, 'leaving equipment must not return to the launch menu');
+  assert.equal(hidden, 1);
+}
+
+{
   const dom = installDom();
   const bus = makeBus();
   const state = createGameState(9);

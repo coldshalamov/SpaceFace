@@ -1,8 +1,10 @@
 // scripts/lib/rendererTraceSummary.mjs — the pure half of the --trace option of probe-main-thread-profile.
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { gzipSync } from 'node:zlib';
 
 import {
+  decodeTraceEvents,
   findGameMainThread,
   renderTraceSummaryMarkdown,
   selfTimes,
@@ -27,6 +29,12 @@ const FIXTURE = [
   slice(20, 2, 'Paint', 20_500, 1500),
   slice(20, 3, 'RunTask', 1000, 99_999), // not the main thread: must be ignored
 ];
+
+test('a compressed capture yields the same events as a plain trace', () => {
+  const json = Buffer.from(JSON.stringify({ traceEvents: FIXTURE }));
+  assert.deepEqual(decodeTraceEvents(json), FIXTURE);
+  assert.deepEqual(decodeTraceEvents(gzipSync(json)), FIXTURE);
+});
 
 test('the game renderer is the one whose main thread did the most work', () => {
   const thread = findGameMainThread(FIXTURE);

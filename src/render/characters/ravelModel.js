@@ -9,7 +9,6 @@ function materials(){
  const m={
   shell:new THREE.MeshPhysicalMaterial({color:0xd1c2a4,metalness:0.24,roughness:0.43,clearcoat:0.3}),
   dark:new THREE.MeshStandardMaterial({color:0x16252b,metalness:0.77,roughness:0.34}),
-  cut:new THREE.MeshStandardMaterial({color:0x080f16,metalness:0.42,roughness:0.63}),
   brass:new THREE.MeshStandardMaterial({color:0x927d51,metalness:0.84,roughness:0.34}),
   wine:new THREE.MeshStandardMaterial({color:0x634247,metalness:0.33,roughness:0.55}),
   light:new THREE.MeshStandardMaterial({color:0x99e9da,emissive:0x70ffdb,emissiveIntensity:1.25,roughness:0.26,metalness:0.3}),

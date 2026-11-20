@@ -450,9 +450,13 @@ function safeRun(name, fn) {
     fn();
     return true;
   } catch (err) {
-    if (typeof console !== 'undefined' && console.error) console.error('[plants] ' + name + ' lifecycle failed:', err);
+    reportPlantFailure(name, err);
     return false;
   }
+}
+
+function reportPlantFailure(name, err) {
+  if (typeof console !== 'undefined' && console.error) console.error('[plants] ' + name + ' lifecycle failed:', err);
 }
 
 export const plantsRuntime = {
@@ -466,6 +470,7 @@ export const plantsRuntime = {
     const plantBus = Object.create(ctx.bus);
     plantBus.on = (event, listener, options) => ctx.bus.on(event, RESET_EVENTS.has(event) ? listener : (payload) => {
       if (!isRacingCorridorSession(ctx.state)) return listener(payload);
+      return undefined;
     }, options);
     const plantContext = { ...ctx, bus: plantBus };
     for (const plant of PLANTS) {
@@ -479,9 +484,17 @@ export const plantsRuntime = {
   update(dt, state) {
     if (!ownsContext(this) || state !== this._ctx.state) return;
     if (isRacingCorridorSession(state)) return;
-    for (const plant of this._boundPlants) {
+    const plants = this._boundPlants;
+    for (let i = 0; i < plants.length; i++) {
+      const plant = plants[i];
       if (typeof plant.update !== 'function') continue;
-      safeRun(plant.name, () => plant.update(dt, state));
+      // The ordered tick can reach every child. Isolate failures at the call so a
+      // routine update does not allocate a callback for each plant.
+      try {
+        plant.update(dt, state);
+      } catch (err) {
+        reportPlantFailure(plant.name, err);
+      }
     }
   },
   destroy() {

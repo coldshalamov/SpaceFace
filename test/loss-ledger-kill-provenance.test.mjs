@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { latestLossFor, lossLedger } from '../src/systems/lossLedger.js';
 import { buildShipLedger } from '../src/systems/shipLedger.js';
+import { createRunState } from '../src/core/runState.js';
 
 function makeBus() {
   const handlers = new Map();
@@ -98,6 +99,32 @@ test('entity:killed records and saves deterministic player-kill provenance', () 
 
   system.destroy();
   restored.destroy();
+});
+
+test('arena-owned deaths reach the combat bus without filing Adventure losses across a mode switch', () => {
+  const state = makeState();
+  const { system, bus } = makeSystem(state);
+  const deaths = [];
+  bus.on('entity:killed', receipt => deaths.push(receipt.id));
+  const kill = (id, data) => {
+    state.entities.set(id, victim(id, data));
+    bus.emit('entity:killed', { id, killerId: state.playerId, type: 'ship' });
+  };
+  try {
+    kill(71);
+    const before = system.serialize();
+    state.run = { ...createRunState({ kind: 'survival' }), phase: 'active' };
+    kill(72, { runCohort: 'survival' });
+    assert.deepEqual(system.serialize(), before, 'a run kill leaves settled Adventure records intact');
+    assert.deepEqual(deaths, [71, 72], 'the same kill receipt remains available to the arena owners');
+    assert.deepEqual(bus.emitted.filter(row => row.name === 'lossLedger:recorded').map(row => row.payload.assetId), [71]);
+
+    kill(73);
+    state.run = createRunState();
+    kill(74);
+    assert.deepEqual(system.serialize().entries.map(entry => entry.assetId), [74, 73, 71],
+      'ambient losses still count during the arena, and Adventure resumes with its original history');
+  } finally { system.destroy(); }
 });
 
 test('named victim identity survives save and reaches the read-only ship ledger', () => {

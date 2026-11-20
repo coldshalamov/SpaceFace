@@ -34,6 +34,8 @@ import {
 
 // Exported for stage.js (G16-01): the shared severity ranking orders a slot's queue.
 export const SEV_RANK = { danger: 3, dock: 2.5, warn: 2, info: 1 };
+export const FOUNDRY_APPROACH_ALERT = 'foundry-plate-approach';
+export const FOUNDRY_RETURN_ALERT = 'foundry-return';
 
 // ── Mechanical one-voice ownership (ONEVOICE-ALERT-DEDUPE) ─────────────────────────────────────
 // Short status lines that THIS module always routes through the arbiter (announce → voice:say).
@@ -236,6 +238,7 @@ export function createAlerts(ctx) {
     } else {
       render();
     }
+    return rec;
   }
 
   function clear(key) {
@@ -497,6 +500,12 @@ export function createAlerts(ctx) {
   // pills; every transient one-shot routes through the one-voice arbiter.
   bus.on('alert', (p) => {
     const rec = p || {};
+    // Live Foundry flight guidance occupies the run panel's existing instruction row.
+    if (rec.key === FOUNDRY_APPROACH_ALERT || rec.key === FOUNDRY_RETURN_ALERT) return;
+    if (rec.action === 'clear') {
+      if (typeof rec.key === 'string' && rec.key) clear(rec.key);
+      return;
+    }
     if (rec.ttl === Infinity || rec.ttl == null) raise(rec);
     else announce(rec);
   });
@@ -508,8 +517,27 @@ export function createAlerts(ctx) {
   // dock prompt (persistent while in range) — large and unmissable, a status affordance not a voice.
   // The key label is sourced from the live binding registry (spec §15.4) so it can never drift.
   bus.on('dock:range', ({ inRange, stationId }) => {
-    if (inRange) raise({ key: 'dock', sev: 'dock', text: dockPromptText(ctx.state, stationId, promptLabel('dock')), ttl: Infinity });
-    else clear('dock');
+    if (!inRange) { clear('dock'); return; }
+    const keyLabel = promptLabel('dock');
+    const rec = raise({ key: 'dock', sev: 'dock', text: dockPromptText(ctx.state, stationId, keyLabel), ttl: Infinity });
+    if (rec?.el) {
+      if (stationId != null) rec.el.setAttribute('data-dock-station', String(stationId));
+      else rec.el.removeAttribute('data-dock-station');
+      const key = keyLabel.replace(/^\[\s*|\s*\]$/g, '');
+      rec.el.setAttribute('data-dock-key', key);
+      if (!rec._dockKey) {
+        const chip = document.createElement('span');
+        chip.className = 'sf-alert__dock-chip';
+        chip.setAttribute('aria-hidden', 'true');
+        chip.hidden = true;
+        rec._dockKey = document.createElement('kbd');
+        const verb = document.createElement('span');
+        verb.textContent = 'Dock';
+        chip.append(rec._dockKey, verb);
+        rec.el.appendChild(chip);
+      }
+      rec._dockKey.textContent = key;
+    }
   });
   // A dock attempt can be stale or belong to another ship. Only the UI owner's accepted
   // transition is entitled to remove the player's still-live range affordance.

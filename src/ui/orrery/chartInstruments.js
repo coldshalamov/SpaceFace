@@ -559,7 +559,7 @@ export function drawSectorToken(g, sectorId, x, y, size, {
     g.fillStyle = well || 'rgba(5,7,10,0.9)';
     g.beginPath(); g.arc(x, y, r * 1.02, 0, Math.PI * 2); g.fill();
     g.restore();
-    drawBandRing(g, x, y, r, { band: 6, bandA: (stale ? 0.2 : 0.36) * a, edge: 1.6, edgeA: (stale ? 0.36 : 0.62) * a });
+    drawBandRing(g, x, y, r, { band: 0, edge: 1.1, edgeA: (stale ? 0.24 : 0.43) * a });
     g.save();
     g.globalAlpha = (stale ? 0.6 : 1) * a;
     g.drawImage(art, x - artSize / 2, y - artSize / 2, artSize, artSize);

@@ -30,12 +30,10 @@ import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER } from '../src/runtime/a
 import {
   SWARM_CHAIN_TIERS,
   SWARM_CLOSE_CALL_HULL,
-  SWARM_HITSTOP_SOURCE,
   arcadeEffectsLevel,
   swarmChainNextTier,
   swarmChainTier,
   swarmChainTierCrossed,
-  swarmHitStopSeconds,
   swarmKillCauseWord,
   swarmMultiKillWord,
   swarmPileUp,
@@ -101,7 +99,7 @@ function named(h, event) {
   return h.emitted.filter((e) => e.event === event);
 }
 
-test('swarmJuice is registered beside the chain and ticks for the hit-stop and boss bar', () => {
+test('swarmJuice is registered beside the chain and ticks for the boss bar', () => {
   assert.ok(PRODUCTION_INIT_ORDER.includes('swarmJuice'));
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('swarmJuice'));
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('swarmJuice') > PRODUCTION_UPDATE_ORDER.indexOf('swarmChain'),
@@ -151,12 +149,6 @@ test('the tally lists what was earned, in order, and skips what was not', () => 
   assert.equal(rows[2].value, '×31');
   const flat = swarmRoundTally({ flawless: false, durationS: 80, kills: 3, bestChain: 0 });
   assert.deepEqual(flat.map((r) => r.id), ['kills'], 'a flat round is short, not shamed');
-});
-
-test('hit-stop scales with chain tier inside the 40–80 ms bound', () => {
-  assert.equal(swarmHitStopSeconds(0), 0.04);
-  assert.ok(swarmHitStopSeconds(10) > swarmHitStopSeconds(9));
-  assert.equal(swarmHitStopSeconds(500), 0.08, 'capped at the top');
 });
 
 test('the Arcade effects setting: full/reduced/off, accessibility pulls it down', () => {
@@ -338,6 +330,8 @@ test('the boss bar: a champion wave reports hp, and the last champion down says 
   assert.equal(down.length, 1);
   assert.equal(down[0].payload.name, "Dreadnought 'Iron Maw'");
   assert.ok(named(h, 'swarm:announce').some((e) => e.payload.text === 'BOSS DOWN'));
+  assert.ok(named(h, 'audio:cue').some((e) => e.payload.id === 'moment.stinger'));
+  assert.equal(h.state.timeScale, 1, 'R10: champion defeat never slows simulation');
   swarmJuice.destroy();
 });
 
@@ -354,18 +348,18 @@ test('the chain tier crossing lands its name; a broken chain shatters', () => {
   swarmJuice.destroy();
 });
 
-test('a big kill never dips the simulation (OVH-06a / R10: hitstop is a presentation hold on hero beats)', () => {
+test('a triple still gets its call and camera cue without a simulation lease', () => {
   const h = boot();
   kill(h, { cause: 'direct' });
   kill(h, { cause: 'direct' });
-  kill(h, { cause: 'direct' }); // TRIPLE: said, shaken at most as a room event - never a sim slow-down
-  assert.equal(h.state.timeScale, 1, `the clock is untouched (timeScale ${h.state.timeScale})`);
-  for (let i = 0; i < 30; i++) advance(h, DT);
-  assert.equal(h.state.timeScale, 1);
+  kill(h, { cause: 'direct' });
+  assert.ok(named(h, 'swarm:announce').some((e) => e.payload.text === 'TRIPLE'));
+  assert.ok(named(h, 'camera:shake').some((e) => e.payload.audience === 'hero'));
+  assert.equal(h.state.timeScale, 1, 'ordinary multi-kills never lease simulation time');
   swarmJuice.destroy();
 });
 
-test('Reduced keeps the words and drops the dip; Off still emits — the presenter owns off', () => {
+test('reduced arcade effects keep the call without leasing simulation time', () => {
   const h = boot({ effects: 'reduced' });
   kill(h, { cause: 'direct' });
   kill(h, { cause: 'direct' });
@@ -389,16 +383,6 @@ test('the layer is swarm-only: the scored arc and ambient traffic get silence', 
   h2.bus.emit('entity:killed', { id, killerId: h2.state.playerId, type: 'ship', pos: { x: 0, z: 0 } });
   assert.equal(named(h2, 'swarm:killPopup').length, 0);
   swarmJuice.destroy();
-});
-
-test('the juice layer holds no time lease at all, so destroy has nothing to release', () => {
-  const h = boot();
-  kill(h, { cause: 'direct' });
-  kill(h, { cause: 'direct' });
-  kill(h, { cause: 'direct' });
-  assert.equal(h.state.timeScale, 1);
-  swarmJuice.destroy();
-  assert.equal(h.state.timeScale, 1);
 });
 
 // --- the sound of the big moments -----------------------------------------------------------

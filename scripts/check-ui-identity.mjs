@@ -16,6 +16,7 @@ import {
   createContactRosterClock,
   consumeContactRosterClock,
 } from '../src/ui/hud.js';
+import { SCROLL_EXTENT_CSS } from '../src/ui/orrery/scrollExtent.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -29,8 +30,9 @@ const checks = [
       'createTargetPanel(ctx)',
       'sf-target-arcs',
       // f0480ee6f moved the destination painter from hudAttention's formatDestinationLine to
-      // flightDestinationSurface (one destination line: where, then the readings).
-      'flightDestinationSurface(state, command)',
+      // flightDestinationSurface (one destination line: where, then the readings); the call site
+      // now passes the temporary-circuit flag as a third argument.
+      'flightDestinationSurface(state, command, temporaryCircuit)',
     ],
     forbids: [
       'SHIP CONDITION',
@@ -206,6 +208,40 @@ const checks = [
       'SEMANTIC_PALETTE',
     ],
   },
+
+  // ---- §12: one selection grammar + state color + overflow cue (STATION_STANDARD §4/§6) ----
+  // The Hand (amber bead + beam, rail() in stationTabsLayouts.js) is the only row-selection
+  // language; a parallel bar/wash or bone cursor made the suite read as per-tab idioms
+  // (fresh-eyes 2026-11-15). Market deltas speak state (phosphor up, red down); the hold's
+  // destructive verb is a hazard key, never an underlined link; scrolling lists carry the
+  // MORE rim cue and stand it down at scroll end.
+  {
+    path: 'src/ui/orrery/marketLayouts.js',
+    label: 'Market register deltas speak state color — phosphor up, red down',
+    needs: [
+      '.sx-mkt-row .sx-mkt-row__tr.is-up { color:var(--dp-phos, #dfeeff) !important; }',
+      '.sx-mkt-row .sx-mkt-row__tr.is-down { color:var(--dp-danger, #ff5038) !important; }',
+    ],
+  },
+  {
+    path: 'src/ui/orrery/stationStandard.js',
+    label: 'Row selection is the Hand everywhere — no parallel market bar/wash grammar',
+    forbids: [
+      '.sx-mkt-row:is(.is-selected, .is-active) td:first-child',
+      '.sx-mkt .sx-mkt-row::before, ${P} .sx-mkt .sx-mkt-row::after',
+    ],
+  },
+  {
+    path: 'src/ui/hud.js',
+    label: 'Cargo hold verbs are keys, not hyperlinks — and the hold dims the world behind it',
+    needs: [
+      '.sf-cargo-scrim {',
+      '.sf-cargo-inspector .sf-btn-jettison {',
+    ],
+    forbids: [
+      '.sf-cargo-inspector .k-word { text-decoration',
+    ],
+  },
 ];
 
 // Exercise the roster contract through exported behavior rather than pinning its implementation
@@ -236,6 +272,13 @@ const checks = [
     'contact roster must still refresh at its bounded presentation cadence');
   console.log('ok   contact roster behavior — priority, responsive capacity, truthful overflow and bounded cadence');
 }
+
+// The overflow language must SAY "more": the fold alone read as broken clipping to fresh eyes
+// (2026-11-15), so every wired list carries the MORE rim cue and stands it down at scroll end.
+assert.match(SCROLL_EXTENT_CSS, /orr-extent--foot/, 'scroll extent CSS must carry the MORE foot cue');
+assert.match(SCROLL_EXTENT_CSS, /data-ext-end="1"/, 'the MORE cue must stand down at scroll end');
+assert.match(SCROLL_EXTENT_CSS, /data-overflow="0"\] \+ \.orr-extent--foot/, 'the MORE cue must hide on non-overflowing lists');
+console.log('ok   scroll extent behavior — MORE rim cue present, gated on overflow and scroll end');
 
 let ok = 0, fail = 0;
 for (const check of checks) {

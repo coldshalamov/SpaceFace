@@ -1,4 +1,4 @@
-// O24: the retail-boot gate's argument handling, plan and static-server helpers.
+// Retail smoke CLI, static-server helpers, and gameplay picture assessment.
 // No browser, no build, no network: --dry-run must never launch anything.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   CHECK_NAMES, NEW_GAME_SELECTOR, UsageError, buildPlan, isCancelledAssetRequest, mimeTypeFor, parseArgs, parseRange,
-  resolveStaticFile,
+  resolveStaticFile, summarizeWorldPicture,
 } from '../scripts/check-retail-boot.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/check-retail-boot.mjs', import.meta.url));
@@ -27,33 +27,63 @@ test('--dry-run prints the whole plan and exits 0 without a bundle on disk', () 
   assert.match(result.stdout, /plan serve: build\/web on an ephemeral 127\.0\.0\.1 port/);
   assert.match(result.stdout, /plan browser: headless chromium on software GL/);
   assert.ok(result.stdout.includes(NEW_GAME_SELECTOR), 'names the menu marker it waits for');
+  assert.match(result.stdout, /New Game -> Launch -> first playable picture/);
   assert.match(result.stdout, /window\.SF defined/);
   for (const name of CHECK_NAMES) assert.ok(result.stdout.includes(name), `plan lists check ${name}`);
   assert.match(result.stdout, /dry-run OK/);
   assert.doesNotMatch(result.stdout, /PASS|FAIL/, 'a dry run must not report check verdicts');
 });
 
-test('--dry-run --use-existing skips the build and honours --dir/--menu-timeout-ms', () => {
+test('--dry-run --use-existing skips the build and honours --dir and route timeouts', () => {
   const dir = mkdtempSync(join(tmpdir(), 'retail-boot-test-'));
   try {
     writeFileSync(join(dir, 'index.html'), '<!doctype html>');
-    const result = run('--dry-run', '--use-existing', `--dir=${dir}`, '--menu-timeout-ms=90000');
+    const result = run('--dry-run', '--use-existing', `--dir=${dir}`, '--menu-timeout-ms=90000', '--flight-timeout-ms=180000');
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /plan mode: boot an existing bundle \(no build\)/);
     assert.match(result.stdout, /plan build: skipped/);
     assert.match(result.stdout, /within 90000 ms/);
+    assert.match(result.stdout, /first playable picture within 180000 ms/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 });
 
+test('--mode=swarm plans the ordinary Hornet and Equipment route', () => {
+  const result = run('--dry-run', '--mode=swarm');
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Swarm -> Choose ship \(Hornet\) -> Review equipment -> Launch round 1 -> first playable picture/);
+  assert.match(result.stdout, /check speed and world pixels under W/);
+  assert.match(result.stdout, /dry-run OK/);
+});
+
 test('an unknown flag or a bad number is a usage error (exit 2), not a run', () => {
-  for (const args of [['--bogus'], ['--dry-run', '--menu-timeout-ms=abc'], ['--menu-timeout-ms=5'], ['--dry-run=1']]) {
+  for (const args of [['--bogus'], ['--dry-run', '--menu-timeout-ms=abc'], ['--menu-timeout-ms=5'],
+    ['--flight-timeout-ms=5'], ['--dry-run=1'], ['--mode=gauntlet']]) {
     const result = run(...args);
     assert.equal(result.status, 2, `${args.join(' ')} -> ${result.status}`);
     assert.match(result.stderr, /\[retail-boot\]/);
     assert.doesNotMatch(result.stdout, /PASS|FAIL/);
   }
+});
+
+test('world picture assessment rejects blank, static, and dimension-mismatched canvas captures', () => {
+  const width = 16;
+  const height = 16;
+  const picture = (colorAt) => {
+    const data = Buffer.alloc(width * height * 4);
+    for (let pixel = 0; pixel < width * height; pixel++) {
+      data.fill(colorAt(pixel), pixel * 4, pixel * 4 + 3);
+      data[pixel * 4 + 3] = 255;
+    }
+    return { width, height, data };
+  };
+  const before = picture((pixel) => (pixel % 4) * 64);
+  const after = picture((pixel) => ((pixel + 1) % 4) * 64);
+  assert.equal(summarizeWorldPicture(before, after).ok, true);
+  assert.equal(summarizeWorldPicture(before, before).ok, false);
+  assert.equal(summarizeWorldPicture(before, picture(() => 0)).ok, false);
+  assert.throws(() => summarizeWorldPicture(before, { ...after, width: 32 }), /different sizes/);
 });
 
 test('--use-existing with no bundle on disk is a usage error that says how to get one', () => {
@@ -68,6 +98,7 @@ test('parseArgs and buildPlan are pure and agree with each other', () => {
   const options = parseArgs([]);
   assert.equal(options.build, true);
   assert.equal(options.dryRun, false);
+  assert.equal(options.mode, 'adventure');
   assert.equal(parseArgs(['--use-existing']).build, false);
   assert.equal(parseArgs([`--dir=${resolve('x')}`]).build, false, '--dir serves a prebuilt folder, so it never builds');
   assert.throws(() => parseArgs(['--nope']), UsageError);

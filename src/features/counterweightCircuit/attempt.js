@@ -174,7 +174,10 @@ function evalRelease(state, def, leg, obs) {
 function evalTransit(state, def, leg, obs) {
   const body = roleBody(obs, leg.role);
   const gate = obs.gates?.[leg.gate] || (leg.gate === 'gate' || !leg.gate ? def.gate : null);
-  if (!body || !gate) return 'pending';
+  if (!body || !gate) {
+    delete state.mem.transitApproachSide;
+    return 'pending';
+  }
   const prev = body.prevPos || body.pos;
   // Plane through gate.pos with axis = allowed crossing direction (its normal is
   // the crossing normal rotated 90° — we store axis as the gate's tangent line,
@@ -182,7 +185,16 @@ function evalTransit(state, def, leg, obs) {
   const nx = -gate.axis.z, nz = gate.axis.x;
   const dPrev = (prev.x - gateAbs(gate).x) * nx + (prev.z - gateAbs(gate).z) * nz;
   const dNow = (body.pos.x - gateAbs(gate).x) * nx + (body.pos.z - gateAbs(gate).z) * nz;
-  if (dPrev === 0 || (dPrev < 0) === (dNow < 0)) return 'pending';
+  const approachSide = state.mem.transitApproachSide;
+  if (dNow === 0) {
+    // Landing on the plane is only a touch. Keep the incoming side until
+    // the load leaves the plane so a rebound cannot count as a crossing.
+    if (dPrev !== 0) state.mem.transitApproachSide = Math.sign(dPrev);
+    return 'pending';
+  }
+  delete state.mem.transitApproachSide;
+  const fromSide = dPrev === 0 ? approachSide : Math.sign(dPrev);
+  if (fromSide !== -Math.sign(dNow)) return 'pending';
   // Crossed the plane this frame — check lateral offset within the gate width.
   const fraction = dPrev / (dPrev - dNow);
   const crossX = prev.x + (body.pos.x - prev.x) * fraction - gateAbs(gate).x;
@@ -414,6 +426,7 @@ function resetLegMemory(state, def, fromLeg) {
   for (let i = fromLeg; i < def.legs.length; i++) {
     delete state.mem.legStartedAt[i];
   }
+  delete state.mem.transitApproachSide;
   state.mem.sweepRad = {};
   state.mem.lastBearing = {};
   state.mem.swingLine = {};

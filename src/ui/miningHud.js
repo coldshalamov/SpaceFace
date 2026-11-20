@@ -246,6 +246,7 @@ export const miningHud = {
   _onStart(p) {
     if (!p || !this._isPlayer(p.minerId)) return;
     this._beaming = true;
+    this._seam = null;
     if (p.position && Number.isFinite(p.position.x) && Number.isFinite(p.position.z)) {
       this._anchor = { x: p.position.x, z: p.position.z };
     }
@@ -269,7 +270,12 @@ export const miningHud = {
 
   _onTick(p) {
     if (!p || !this._isPlayer(p.sourceEntityId)) return;
-    this._seam = { seamHit: !!p.seamHit, at: this._now() };
+    this._seam = {
+      seamHit: !!p.seamHit,
+      grade: p.seamGradePct,
+      bonus: p.cutBonusPct,
+      at: this._now(),
+    };
     if (p.contactPos && Number.isFinite(p.contactPos.x) && Number.isFinite(p.contactPos.z)) {
       this._anchor = { x: p.contactPos.x, z: p.contactPos.z };
     }
@@ -339,17 +345,14 @@ export const miningHud = {
       ? resolveHeatArc(this._heat)
       : { visible: false, pct: 0, band: 'cold', ventBand: false };
     const coreCue = resolveRichCoreCue(this._core, now);
-    const seamFresh = this._beaming && this._seam && (now - this._seam.at) < SEAM_STALE_S;
+    const seam = this._beaming && this._seam && (now - this._seam.at) < SEAM_STALE_S ? this._seam : null;
     // X-07: the CLEAN CUT word owns the slot until its 1.2 s is spent, then the seam word
     // returns for whatever the beam is doing now. The vent cashes on the RELEASE edge (the sim
     // emits ventBonus just before mining:stop), so the word keeps the mark up on its own —
     // otherwise the beam-off frame would hide the instrument before the word was ever seen.
     const cleanWord = this._cleanWordUntil > 0 && now < this._cleanWordUntil;
-    if (this._cleanWordUntil > 0 && !cleanWord) {
-      this._cleanWordUntil = 0;
-      dom.word.textContent = seamWordFor(this._seam ? this._seam.seamHit : false);
-    }
-    const anyVisible = heat.visible || !!seamFresh || coreCue.visible || cleanWord;
+    if (!cleanWord) this._cleanWordUntil = 0;
+    const anyVisible = heat.visible || !!seam || coreCue.visible || cleanWord;
     if (!anyVisible) { this._hideAll(dom); return; }
 
     if (!this._placeMark(dom, state)) return;
@@ -357,8 +360,8 @@ export const miningHud = {
     this._renderHeat(dom, heat);
     this._renderCore(dom, coreCue, now);
     // The clean word borrows the lit seam slot (existing class, no new token or layout).
-    this._renderSeam(dom, cleanWord ? true : (seamFresh ? this._seam.seamHit : null), cleanWord);
-    this._renderAria(dom, heat, coreCue, seamFresh ? this._seam.seamHit : null, cleanWord);
+    this._renderSeam(dom, seam, cleanWord);
+    this._renderAria(dom, heat, coreCue, seam, cleanWord);
     this._visible = true;
   },
 
@@ -421,17 +424,22 @@ export const miningHud = {
     this._cleanWordUntil = this._now() + 1.2;
   },
 
-  _renderSeam(dom, seamHit, holdWord = false) {
-    const cls = seamHit === null ? null : (seamHit ? 'mining-seam-on' : 'mining-seam-off');
+  _renderSeam(dom, seam, cleanWord) {
+    const cls = cleanWord || seam?.seamHit ? 'mining-seam-on' : seam ? 'mining-seam-off' : null;
     if (cls !== this._lastSeamCls) {
       this._lastSeamCls = cls;
       dom.mark.classList.toggle('mining-seam-on', cls === 'mining-seam-on');
       dom.mark.classList.toggle('mining-seam-off', cls === 'mining-seam-off');
-      if (cls && !holdWord) dom.word.textContent = seamWordFor(seamHit);
     }
+    if (cleanWord || !seam) return;
+    const base = seamWordFor(seam.seamHit);
+    const label = seam.seamHit
+      ? (seam.bonus > 0 ? `${base} · +${seam.bonus}% SPEED` : base)
+      : (Number.isFinite(seam.grade) ? `SHELL · ${seam.grade}% YIELD` : base);
+    if (dom.word.textContent !== label) dom.word.textContent = label;
   },
 
-  _renderAria(dom, heat, coreCue, seamHit, cleanWord = false) {
+  _renderAria(dom, heat, coreCue, seam, cleanWord = false) {
     const parts = [];
     if (cleanWord) parts.push('clean cut');
     if (heat.visible) {
@@ -445,7 +453,8 @@ export const miningHud = {
             ? `rich core charging, release at mid charge`
             : 'rich core exposed, charge the beam');
     }
-    if (seamHit !== null) parts.push(seamHit ? 'on seam' : 'off seam');
+    if (seam?.seamHit) parts.push(seam.bonus > 0 ? `on seam, ${seam.bonus} percent faster` : 'on seam');
+    else if (seam) parts.push(Number.isFinite(seam.grade) ? `shell, ${seam.grade} percent yield` : 'off seam');
     const aria = parts.join('; ') || 'mining beam';
     if (aria !== this._lastAria) {
       this._lastAria = aria;

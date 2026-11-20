@@ -445,6 +445,7 @@ test('PQ-174.06: debrief reader preserves incoming damage instead of inventing a
       'Taking Pulse Laser S fire — 1433 ms before the fatal hit');
     const text = mountResults(result).lines.join('\n');
     assert.ok(text.includes(expected));
+    assert.match(text, /The hardest hit you took was 7 damage from Pulse Laser S/);
     assert.doesNotMatch(text, /It warned you|ms of warning|Wasp Swarmer's tell|Weapon charge/);
     assert.deepEqual(result, before, 'readers preserve the original death and totals');
   } finally {
@@ -470,7 +471,7 @@ test('PQ-174.06: debrief reader keeps witnessed tells and legacy events distinct
   assert.equal(deathDialSpec({ defeat: { ...legacy, source: { kind: 'environment' } } }).caption.warn, '');
 });
 
-test('PQ-174.06: run purse and defeat banking disclose starting funds without changing totals', () => {
+test('PQ-174.06: results show the run purse separately from earned-credit banking', () => {
   const result = { ruleset: 'swarm', outcome: 'defeat', seed: 73311, wave: 1,
     kills: 9, bestChain: 9, score: 0, level: 1, xp: 24, credits: 799,
     bankedBounty: 399, hangarBounty: 399, defeat: { attacker: 'Wasp Swarmer' } };
@@ -482,7 +483,7 @@ test('PQ-174.06: run purse and defeat banking disclose starting funds without ch
   const text = mountResults(result).lines.join('\n');
   assert.match(text, /Run purse/);
   assert.match(text, /Hangar \+399 cr/);
-  assert.match(text, /Defeat banks 50% of the remaining run purse, including its starting funds/);
+  assert.match(text, /Defeat banks 50% of your remaining earned credits/);
   assert.doesNotMatch(text, /Stunt score|799.*earned/);
   assert.deepEqual(result, before);
   for (const outcome of ['extracted', 'victory', 'aborted']) {

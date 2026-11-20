@@ -385,19 +385,14 @@ export class ForceParticleFlow {
     if (dt >= 3) { this.clear(); return; }
     // Quarks caps a step at .1s; subdivide so retirement still follows elapsed simulation time.
     let remaining = Math.min(dt, 3.1);
+    // This renderer has one world-space system. Advance it directly so the batch only packs
+    // the final picture. A deferred caller publishes after its other emissions are ready.
     while (remaining > 1e-8 && this.live) {
       const step = Math.min(0.1, remaining);
-      if (deferUpload) {
-        // Quarks' batch renderer first updates its systems, then serializes their output.
-        // This renderer owns exactly one world-space system. Step it here and let the field
-        // owner's publish() pack final values once, after all of its emissions.
-        if (this.renderer.systemToBatchIndex.has(this.system)) this.system.update(step);
-      } else this.renderer.update(step);
+      if (this.renderer.systemToBatchIndex.has(this.system)) this.system.update(step);
       remaining -= step;
     }
-    if (deferUpload) return;
-    this._publishShape();
-    this.renderer.visible = this.live > 0;
+    if (!deferUpload) this.publish();
   }
   reproject(dx, dz) {
     if (this.disposed || !Number.isFinite(dx) || !Number.isFinite(dz)) return;

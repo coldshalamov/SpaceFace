@@ -23,7 +23,27 @@ COLORS = {
 CARDINALS = (0.0, 90.0, 180.0, 270.0)
 
 
+def signature(s):
+    """Concord-blue module blocks stacked inside the ring — the picket's barracks."""
+    mods, uppers, rails, lamps = [], [], [], []
+    for a in (45.0, 135.0, 225.0, 315.0):
+        rz = math.radians(a)
+        x, y, _ = K.polar(25.0, a)
+        mods.append(((x, y, 10.0), (10.0, 11.0, 9.0), rz))
+        uppers.append(((x, y, 17.5), (7.0, 8.0, 6.0), rz))
+        rails += K.face_rows(a, 30.2, 13.5, 1, 0.0, 8.4, 0.7, 0.25)
+        lamps.append(K.polar(30.6, a, 15.0))
+    F.boxes(s, 'ConcordModules', mods, 'paint', bevel=0.14)
+    F.boxes(s, 'ConcordUppers', uppers, 'paint2', bevel=0.1)
+    F.boxes(s, 'ConcordRails', rails, 'stripe', bevel=0.0)
+    s.detail = 1
+    for i, p in enumerate(lamps):
+        F.light(s, f'ConcordModuleLamp{i}', p, 'glow_cyan.scn', size=0.45)
+    s.detail = 0
+
+
 def dress(s):
+    K.interior(s, 'stripe', 'glow_cyan.scn')
     # pale enamel band round the shell with a navy cut and the blue top rail
     K.ring_wall(s, 'ClaimBand', K.SHELL_R + 1.0, 8.0, 26.0, 2.6, 'paint', segs=56)
     K.ring_wall(s, 'ClaimBandNavy', K.SHELL_R + 1.2, 14.0, 15.4, 2.8, 'paint2', segs=56)
@@ -59,6 +79,7 @@ def dress(s):
     K.lamp_ring(s, 'BandLamp', 'glow_cyan.scn', r=K.SHELL_R + 2.4, z=27.6, count=12, size=0.45,
                 skip=lambda a: any(K.near(a, c, 12.0) for c in CARDINALS))
     s.detail = 0
+    signature(s)
 
 
 def build():

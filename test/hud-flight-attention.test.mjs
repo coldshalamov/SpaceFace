@@ -48,7 +48,7 @@ const ARBITER_SRC = readFileSync(new URL('../src/ui/voiceArbiter.js', import.met
 
 // Isolated nested-owner checks share the real receipt geometry helpers, just as createHud's
 // closure does. No cross-call cache is active here; the dedicated receipt test drives flushes.
-const receiptHelperNames = new Set(['readReceiptRect', 'setReceiptStyle',
+const receiptHelperNames = new Set(['queryReceiptGeometry', 'readReceiptRect', 'setReceiptStyle',
   'prepareReceiptLaneSize', 'prepareReceiptCaptionSize']);
 const receiptHelperOwners = [];
 function collectReceiptHelpers(node) {

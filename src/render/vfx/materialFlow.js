@@ -6,9 +6,12 @@ import { MATERIAL_FLOW_RECIPES } from './livingVfxCatalog.js';
 // neighbouring parcels share eddies, but their paths depend on their own previous velocity.
 // No allocation, scene access, RNG consumption or simulation mutation in this module.
 export const MATERIAL_STEP = 1 / 120;
+const FULL_CONTACT_DECAY = Math.exp(-MATERIAL_STEP * 7);
 export const MATERIAL_STATE_SIZE = 64;
 export const MATERIAL_HISTORY_COUNT = 10;
 const TAU = Math.PI * 2;
+const RADIAL_VELOCITY = MATERIAL_FLOW_RECIPES.map(({ transport }) =>
+  transport === 'sink' || transport === 'pressure' || transport === 'converge' || transport === 'creep');
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 function hash(x, y, seed) {
   let n = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ seed;
@@ -66,9 +69,13 @@ export function seedMaterialParcel(m, s, life, seed, velocity, scratch) {
 }
 function materialVelocity(m, s, life, out, scratch) {
   const recipe = MATERIAL_FLOW_RECIPES[m[0]], u = s[0], h = s[1], v = s[2];
-  const radius = Math.hypot(u, v), inv = 1 / Math.max(.055, radius);
-  const nx = radius > 1e-7 ? u * inv : Math.cos(m[7]);
-  const nz = radius > 1e-7 ? v * inv : Math.sin(m[7]);
+  let radius = 0, nx = 0, nz = 0;
+  if (RADIAL_VELOCITY[m[0]]) {
+    radius = Math.hypot(u, v);
+    const inv = 1 / Math.max(.055, radius);
+    nx = radius > 1e-7 ? u * inv : Math.cos(m[7]);
+    nz = radius > 1e-7 ? v * inv : Math.sin(m[7]);
+  }
   const age = s[6] / life, variety = m[8];
   sampleMaterialCurl(u, h, v, age, s[7], out, scratch);
   let x = 0, y = 0, z = 0, curl = recipe.curl;
@@ -211,10 +218,14 @@ export function advanceMaterialParcel(m, s, life, dt, contacts, count, velocity,
   let remaining = Math.min(dt, Math.max(0, life - s[6]));
   if(s[14]===0){s[6]+=remaining;return;}
   const recipe = MATERIAL_FLOW_RECIPES[m[0]];
+  // Full substeps share their exact coefficients; the final partial step keeps its own.
+  const fullH = MATERIAL_STEP / life;
+  const fullRelax = remaining >= MATERIAL_STEP ? 1 - Math.exp(-recipe.response * fullH) : 0;
   while (remaining > 1e-10) {
-    const step = Math.min(MATERIAL_STEP, remaining), h = step / life;
+    const fullStep = remaining >= MATERIAL_STEP;
+    const step = fullStep ? MATERIAL_STEP : remaining, h = fullStep ? fullH : step / life;
     materialVelocity(m, s, life, velocity, scratch);
-    const relax = 1 - Math.exp(-recipe.response * h);
+    const relax = fullStep ? fullRelax : 1 - Math.exp(-recipe.response * h);
     const vx = s[3], vy = s[4], vz = s[5], px = s[0], pz = s[2];
     s[9] = vx; s[10] = vy; s[11] = vz;
     s[3] += (velocity[0] - s[3]) * relax;
@@ -222,7 +233,7 @@ export function advanceMaterialParcel(m, s, life, dt, contacts, count, velocity,
     s[5] += (velocity[2] - s[5]) * relax;
     advectMaterialEnvironment(m,s,life,step,environment);
     s[0] += (vx + s[3]) * .5 * h; s[1] += (vy + s[4]) * .5 * h; s[2] += (vz + s[5]) * .5 * h;
-    s[6] += step; s[8] *= Math.exp(-step * 7);
+    s[6] += step; s[8] *= fullStep ? FULL_CONTACT_DECAY : Math.exp(-step * 7);
     collide(m, s, life, step, px, pz, contacts, count);
     resolveFootprint(m, s, contacts, count);
     // Connected goo has an authored substrate height, but planar creep and collision velocity

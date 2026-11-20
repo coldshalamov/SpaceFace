@@ -682,17 +682,11 @@ export const tetherGameplay = {
     // "not that one — the one I am closest to". It bypasses the receipt entirely, so it must not
     // publish or consume one either.
     const nearestOnly = state.input?.tetherMode === 'nearest';
-    // PHYSICAL_PLAY_GRAMMAR §7.1: the candidate is published EVERY tick, pressed or not — "you can
-    // see what the Massline will grab before you press, and it updates as you move". Steering-only
-    // presses consume the previous-frame receipt; explicit cursor-aim presses refresh current aim
-    // on the press tick.
-    //
-    // Passive drift keeps the standing receipt and Schmitt hysteresis so the HUD does not flicker.
-    // An explicit cursor-aim press is different: the player is committing NOW, so the press tick
-    // refreshes acquisition from current aim and bypasses the hold. Steering-only presses keep the
-    // previous-frame receipt contract pinned by massline-acquisition-preview.
+    // Keyboard input can arrive after the worker has stepped or the camera has reprojected the
+    // cursor. Resolve the press against its sampled preview and revalidate that body's current life.
+    const keyboardReceipt = wantsLatch && !nearestOnly ? actions.tetherPreview : null;
     const tickNow = Math.trunc(finite(state.tick));
-    const publishedReceipt = nearestOnly ? null : (state.masslineAcquisition || null);
+    const publishedReceipt = nearestOnly ? null : keyboardReceipt || state.masslineAcquisition;
     const publishedTargetId = publishedReceipt && publishedReceipt.selected
       ? publishedReceipt.selected.targetId
       : null;
@@ -701,7 +695,7 @@ export const tetherGameplay = {
       && publishedReceipt.validUntil >= now;
     if (!def || nearestOnly) {
       this._clearAcquisitionPreview(state);
-    } else {
+    } else if (!keyboardReceipt) {
       const pressOwnsCurrentAim = wantsLatch && acquisitionCursorActive(state);
       if (pressOwnsCurrentAim) {
         this._refreshAcquisitionPreview(player, def, state, now, true, true);
@@ -716,8 +710,9 @@ export const tetherGameplay = {
     // cooldown outranks a missing def (pinned by T04 §3 in test/tether-latch-eligibility.test.mjs).
     this._lastLatchDenial = null;
     const commandLatch = nearestOnly && def ? this._acquireCommandTarget(player, def, state) : null;
+    const selectionReceipt = nearestOnly ? null : keyboardReceipt || state.masslineAcquisition;
     const candidate = nearestOnly ? commandLatch?.entity
-      : state.entities.get(state.masslineAcquisition?.selected?.targetId);
+      : state.entities.get(selectionReceipt?.selected?.targetId);
     if (now < this._noRelatchUntil && (this._noRelatchTargetId == null
         || !candidate || candidate.id === this._noRelatchTargetId)) {
       this.bus.emit('tether:latchDenied', { reason: 'cooldown' });
@@ -730,7 +725,7 @@ export const tetherGameplay = {
     }
     const latch = nearestOnly
       ? commandLatch
-      : this._consumeAcquisitionReceipt(player, def, state, now);
+      : this._consumeAcquisitionReceipt(player, def, state, now, null, selectionReceipt);
     let target = latch && latch.entity;
     if (!target) {
       const denial = this._lastLatchDenial || { reason: 'no-target' };
@@ -795,7 +790,6 @@ export const tetherGameplay = {
     this._latchGraceUntil = now + 0.55;
     // Truthfulness receipt: the latch reports WHICH rendered candidate it consumed, so a mismatch
     // between what the player saw and what they got is observable rather than a bug report.
-    const selectionReceipt = nearestOnly ? null : state.masslineAcquisition;
     const selectedEntry = selectionReceipt && selectionReceipt.selected;
     const pMass = bodyMassOf(player);
     const tMass = bodyMassOf(target);
@@ -808,13 +802,7 @@ export const tetherGameplay = {
       selectionReceiptId: (selectionReceipt && selectionReceipt.id) || null,
       context: (selectedEntry && selectedEntry.context)
         || (state.player?.targetId === target.id ? 'selected' : 'nearby'),
-      // TRUTHFUL BY CONSTRUCTION. publishedTargetId was read at the TOP of this tick, before the
-      // refresh decision above, so it is the candidate the previous frame actually drew — not the
-      // receipt this tick built compared against itself, which is what made the old expression
-      // structurally incapable of ever reporting false. If a press-tick rebuild is ever
-      // reintroduced, this goes false and check-tether-gameplay.mjs / tether-latch-eligibility
-      // catch it. A cold or expired receipt has no published candidate to contradict (nothing was
-      // on screen), and reports the record it built and consumed in the same tick.
+      // Compare to the sampled keyboard mark or the standing receipt before any refresh.
       previewMatched: !!(selectedEntry && selectedEntry.targetId === target.id)
         && (publishedTargetId == null || publishedTargetId === target.id),
     });
@@ -831,11 +819,8 @@ export const tetherGameplay = {
       });
       this._announceHead(state, 'tractor', target.id);
     }
-    // The consumed receipt deliberately SURVIVES this tick. state.player.tether was mirrored
-    // inactive earlier in this same tick, so neither the cable nor a stale preview is drawn yet —
-    // the latch completes visually on the next frame, where the _active branch above clears the
-    // receipt. Keeping it here is what lets a reader (and the live truthfulness probes) compare the
-    // rendered candidate against the attachment that was actually created.
+    // The active-line branch clears the standing preview on the next tick. The latch event
+    // identifies the exact consumed receipt even when the worker's standing preview advanced.
   },
 
   _handleTwinBridle(attachments, kernel, state, player, now, wantsLatch, masslineCommand, headFitted) {
@@ -1361,8 +1346,7 @@ export const tetherGameplay = {
     return state.masslineAcquisition;
   },
 
-  _consumeAcquisitionReceipt(player, def, state, now, admissionSource = null) {
-    const receipt = state.masslineAcquisition;
+  _consumeAcquisitionReceipt(player, def, state, now, admissionSource = null, receipt = state.masslineAcquisition) {
     const selected = receipt && receipt.selected;
     if (!selected) {
       this._lastLatchDenial = { reason: receipt?.reason || 'no-target' };
@@ -1370,7 +1354,7 @@ export const tetherGameplay = {
     }
     if (!(receipt.validUntil >= now)) {
       this._lastLatchDenial = { reason: 'preview-stale', targetId: selected.targetId };
-      invalidateAcquisitionReceipt(state, 'preview-stale');
+      if (state.masslineAcquisition?.id === receipt.id) invalidateAcquisitionReceipt(state, 'preview-stale');
       return null;
     }
     if (selected.status !== 'ready') {
@@ -1386,7 +1370,7 @@ export const tetherGameplay = {
       : validateAcquisitionTarget(this, player, target, def, state, null, admissionSource);
     if (denial) {
       this._lastLatchDenial = { reason: denial, targetId: selected.targetId };
-      invalidateAcquisitionReceipt(state, denial);
+      if (state.masslineAcquisition?.id === receipt.id) invalidateAcquisitionReceipt(state, denial);
       return null;
     }
     return { entity: target, targetWorld: surfacePointToward(target, player.pos) };
@@ -1770,17 +1754,10 @@ export const tetherGameplay = {
     const def = attachmentDef(combatKernel(this), attachment.defId);
     if (!def) return { changed: false, reason: 'unknown_attachment_def', attachment };
     const policy = typeof attachments.reelPolicy === 'function' ? attachments.reelPolicy(attachment.id) : null;
-    // LINE-03/04 (rows 498–499): an over-class hold strains the line — the winch reels
-    // slower, commanded authority weakens, and the strained cable reads its break
-    // threshold early. Factors come from the lineProgression bag (1 when under class).
-    const strain = state && state.lineProgression ? state.lineProgression : null;
     const baseReelRate = policy && Number.isFinite(policy.reelRate) ? policy.reelRate : def.reelRate;
-    // A01-05 Long Reel take: the winch's reel cadence reads the run ledger's own
-    // multiplier — player-owned reel only, folded beside the strain factor.
+    // The deployed winch policy and the player-owned Long Reel upgrade set the motor rate.
     const modReel = player && player.id === (state && state.playerId) ? swarmReelRateScale(state) : 1;
-    const reelRate = baseReelRate
-      * (Number.isFinite(strain && strain.overClassReelFactor) ? strain.overClassReelFactor : 1)
-      * modReel;
+    const reelRate = baseReelRate * modReel;
     const maxStep = positive(reelRate, 0) * Math.max(0, finite(dt));
     if (!(maxStep > 0)) return { changed: false, reason: 'reel_unavailable', attachment };
     const minLength = positive(def.minLength, 0);
@@ -1790,19 +1767,15 @@ export const tetherGameplay = {
     const maxLength = positive(policy && policy.maxLength,
       positive(def.maxLength, Infinity) * tetherReachScale(state, player));
     const before = finite(attachment.restLength);
-    const snapTensionFactor = Number.isFinite(strain && strain.overClassSnapTensionFactor) ? strain.overClassSnapTensionFactor : 1;
-    const maxTension = positive(policy && policy.break && policy.break.maxTension, Infinity) / Math.max(1e-6, snapTensionFactor);
+    const maxTension = positive(policy && policy.break && policy.break.maxTension, Infinity);
     const automaticBreakAllowed = automaticMasslineBreakAllowed(def, player, target);
     const normalized = options && options.normalizedAxis === true;
     const runtime = this._ensureCadenceRuntime(state, attachment.id);
     let proposal = null, requested;
     if (normalized) {
       const command = state.input && state.input.actions && state.input.actions.massline;
-      // Over-class strain also costs commanded authority: the winch answers the stick
-      // weakly while the load is above the Line's class ceiling.
-      const turnFactor = Number.isFinite(strain && strain.overClassTurnFactor) ? strain.overClassTurnFactor : 1;
       proposal = stepCadenceWinch(runtime.winch, {
-        dt, axis: reelDelta * turnFactor, restLength: before, minLength, maxLength, reelRate,
+        dt, axis: reelDelta, restLength: before, minLength, maxLength, reelRate,
         tension: finite(attachment.lastTension), maxTension, automaticBreakAllowed,
         pair: readCadencePair(player, target, before),
         orbit: !!(command && command.lineControl && Math.abs(finite(command.orbitDirection)) > 0.08),

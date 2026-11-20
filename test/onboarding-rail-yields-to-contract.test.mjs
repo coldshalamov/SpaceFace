@@ -156,3 +156,15 @@ test('accepting the rail recommended contract hands off to the real delivery job
   assert.equal(ob.recommendedMissionId, accepted.id,
     'the dock beat tracks the recommended delivery as before');
 });
+
+test('posting a tagless authored freight returns its live mission and loads its hold once', () => {
+  const h = makeHarness(DOCK_BEAT);
+  const offer = buildFirstTradeOffer(4242);
+  const result = h.missions.postAndAcceptAuthoredOffer(offer);
+  assert.equal(result.ok, true);
+  const freight = h.state.missions.active.find(mission => mission.id === result.missionId);
+  assert.equal(freight?.sourceOfferId, offer.id);
+  assert.equal(h.state.player.cargo.items.cmdty_fuel_cells, offer.params.qty);
+  assert.deepEqual(h.missions.postAndAcceptAuthoredOffer(offer), { ...result, reused: true });
+  assert.equal(h.state.player.cargo.items.cmdty_fuel_cells, offer.params.qty);
+});

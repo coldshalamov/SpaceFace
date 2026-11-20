@@ -93,10 +93,9 @@ function drawRng(rng) {
 // Slots: rock (the swung mass), derelict (the scrap target), scout (the shove target),
 // asteroid (the wall), pod (the grab target), beacon (the run destination). Positions are
 // relative to the player's opening position on one seeded bearing so the whole tableau is
-// deterministic per seed and visible without a chase. Nothing here is persistent (save
-// systems only keep flagged entities) and nothing collides with ships except the scout,
-// which keeps the default contact identity so gunfire can move it and the asteroid can
-// stop it.
+// deterministic per seed and visible without a chase. The rescue cast is rebuilt from
+// the lesson state on Continue. The scout keeps its standard contacts so gunfire can
+// move it and the asteroid can stop it.
 export function makeRescueCastSpecs(playerPos, rng) {
   const px = finite(playerPos && playerPos.x);
   const pz = finite(playerPos && playerPos.z);
@@ -137,6 +136,9 @@ export function makeRescueCastSpecs(playerPos, rng) {
       hullMax: 1,
       flags: { invuln: true },
       _invulnUntil: Infinity,
+      // Keep the swing target in the opening pocket when traffic hits it. Its solid
+      // collider still receives the learner rock.
+      physicsBody: { dynamic: false },
       data: {
         parentType: 'ship', loot: [], salvagePool: {}, salvageTimeLeft: 0,
         onboarding: true, rescue: true, rescueRole: 'derelict', kind: 'derelict',

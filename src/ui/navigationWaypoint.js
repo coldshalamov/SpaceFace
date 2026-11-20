@@ -20,6 +20,16 @@ export function resolveWaypointPresentationEntity(state, waypoint) {
   return generation == null || generation === entity.occupantGeneration ? entity : null;
 }
 
+export function resolvePlottedSeamWorkpoint(state, waypoint = state?.nav?.waypoint) {
+  const onboarding = state?.onboarding;
+  const workpoint = onboarding?.plottedSeam;
+  if (!onboarding?.active || onboarding.finished || onboarding.beatDoneAt?.seam != null
+      || !workpoint?.coursePos || workpoint.presentationEntityGeneration == null || !waypoint?.pos
+      || (waypoint.kind !== 'nav' && waypoint.kind !== 'local') || waypoint.label !== workpoint.label
+      || waypoint.pos.x !== workpoint.coursePos.x || waypoint.pos.z !== workpoint.coursePos.z) return null;
+  return resolveWaypointPresentationEntity(state, workpoint) ? workpoint : null;
+}
+
 // The durable 47-A recovery binding: the live contract is active, unrecovered, in this sector,
 // and `params.sampleSource` still carries the exact identity `expectedSource` stamped. This half
 // of the check reads only mission + world data, so it runs identically on the worker mirror —
@@ -200,12 +210,9 @@ export function resolveWaypointPresentationPosition(state, waypoint) {
     const fallback = waypoint.pos;
     return fallback && Number.isFinite(fallback.x) && Number.isFinite(fallback.z) ? fallback : null;
   }
-  const presentationId = waypoint.presentationEntityId;
-  if (presentationId != null) {
-    const entity = state?.entities?.get?.(presentationId);
-    const pos = entity && entity.alive !== false ? entity.pos : null;
-    if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) return pos;
-  }
+  const workpoint = resolvePlottedSeamWorkpoint(state, waypoint) || waypoint;
+  const pos = resolveWaypointPresentationEntity(state, workpoint)?.pos;
+  if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) return pos;
   const fallback = waypoint.pos;
   return fallback && Number.isFinite(fallback.x) && Number.isFinite(fallback.z) ? fallback : null;
 }

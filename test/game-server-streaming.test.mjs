@@ -61,6 +61,53 @@ test('game server streams a large runtime asset without whole-file readFile stag
   assert.deepEqual(received, payload);
 });
 
+test('game server answers single video GET byte ranges and preserves full GET and HEAD', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'spaceface-game-server-range-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const payload = '0123456789';
+  await Promise.all(['movie.mp4', 'movie.webm', 'payload.glb'].map((file) => writeFile(join(root, file), payload)));
+  const server = createGameServer({ root, async: true, devDiagnostics: false });
+  await new Promise((resolveListen, rejectListen) => {
+    server.once('error', rejectListen);
+    server.listen(0, '127.0.0.1', resolveListen);
+  });
+  t.after(() => new Promise((resolveClose) => server.close(resolveClose)));
+  const url = `http://127.0.0.1:${server.address().port}`;
+
+  for (const [file, range, body, contentRange] of [
+    ['movie.mp4', 'bytes=0-', payload, 'bytes 0-9/10'],
+    ['movie.mp4', 'bytes=3-6', '3456', 'bytes 3-6/10'],
+    ['movie.webm', 'bytes=-3', '789', 'bytes 7-9/10'],
+    ['movie.webm', 'bytes=8-99', '89', 'bytes 8-9/10'],
+  ]) {
+    const response = await fetch(`${url}/${file}`, { headers: { range } });
+    assert.equal(response.status, 206);
+    assert.equal(response.headers.get('accept-ranges'), 'bytes');
+    assert.equal(response.headers.get('content-range'), contentRange);
+    assert.equal(response.headers.get('content-length'), String(body.length));
+    assert.equal(await response.text(), body);
+  }
+
+  const missing = await fetch(`${url}/movie.mp4`, { headers: { range: 'bytes=10-' } });
+  assert.equal(missing.status, 416);
+  assert.equal(missing.headers.get('content-range'), 'bytes */10');
+  assert.equal(await missing.text(), '');
+
+  for (const [file, options, body] of [
+    ['movie.mp4', {}, payload],
+    ['movie.mp4', { method: 'HEAD', headers: { range: 'bytes=3-6' } }, ''],
+    ['movie.mp4', { headers: { range: 'bytes=3-6', 'if-range': '"unmatched"' } }, payload],
+    ['movie.mp4', { headers: { range: 'bytes=0-1,4-6' } }, payload],
+    ['payload.glb', { headers: { range: 'bytes=3-6' } }, payload],
+  ]) {
+    const response = await fetch(`${url}/${file}`, options);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-range'), null);
+    assert.equal(response.headers.get('content-length'), String(payload.length));
+    assert.equal(await response.text(), body);
+  }
+});
+
 test('game server can isolate a worker CSP without widening the game document', async (t) => {
   const root = await mkdtemp(join(tmpdir(), 'spaceface-game-server-csp-'));
   await writeFile(join(root, 'index.html'), '<!doctype html><title>SpaceFace</title>');

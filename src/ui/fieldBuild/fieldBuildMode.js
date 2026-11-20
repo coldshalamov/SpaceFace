@@ -11,6 +11,7 @@ import {
 } from '../../data/beltEmpireData.js';
 import { readFrameOrigin } from '../../render/frameCoordinates.js';
 import { resolveActionLabel } from '../../systems/input.js';
+import { counted } from '../../core/numberFormat.js';
 import { laneInputWrite } from '../../core/simLaneCommands.js';
 import { commodityDisplayName } from '../commodityNames.js';
 import { renderFieldTacticalCanvas, radarScreenToWorld, TACTICAL_MAP_MODES } from './fieldTacticalCanvas.js';
@@ -24,7 +25,7 @@ const DRILL_MASSLINE_DEF_IDS = new Set(['tether_standard', 'attachment_massline'
 export const FIELD_TOOLS = Object.freeze([
   Object.freeze({ id: 'select', key: '0', label: 'Inspect', sub: 'Select rock' }),
   Object.freeze({ id: 'commission', key: '1', label: 'Auto-Rig', sub: 'Stake & mine' }),
-  Object.freeze({ id: 'link_material', key: '2', label: 'Link Cargo', sub: 'Mindustry line' }),
+  Object.freeze({ id: 'link_material', key: '2', label: 'Link Cargo', sub: 'Move goods between sites' }),
   Object.freeze({ id: 'link_power', key: '3', label: 'Link Power', sub: 'Share MW' }),
   Object.freeze({ id: 'turret', key: '4', label: 'Turret Pylon', sub: 'Belt defense' }),
   Object.freeze({ id: 'sensor', key: '5', label: 'Sensor Beacon', sub: 'Route relay' }),
@@ -262,7 +263,7 @@ export function createFieldBuildMode(ctx) {
     }
     controlGroups[idx] = list;
     syncGroupButtons();
-    announceToast(`Control Group G${idx + 1} bound (${list.length} rock${list.length > 1 ? 's' : ''}).`, 'good');
+    announceToast(`Control Group G${idx + 1} bound (${counted(list.length, 'rock', 'rocks', state)}).`, 'good');
   }
   function panToWorld(wx, wz) {
     const cam = camCtrl();

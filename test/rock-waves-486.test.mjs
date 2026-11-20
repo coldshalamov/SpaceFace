@@ -1,10 +1,7 @@
-// Row 486 (ROCK-WAVES): pack density that multi-hits, squads that re-form, juice that scales.
+// Row 486 (ROCK-WAVES): pack density that multi-hits and squads that re-form.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { FODDER_RIVER_RECIPE, COHORT_RECIPES } from '../src/data/squadChoreography.js';
-import {
-  swarmHitStopSeconds, SWARM_HITSTOP_MAX_S, SWARM_HITSTOP_MASS_MAX_S, SWARM_HITSTOP_MASS_REF,
-} from '../src/data/swarmJuice.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -27,13 +24,4 @@ test('squads re-form after scatter (rejoin_slots policy + reform machinery)', ()
   assert.match(squadFrameSrc, /rejoinTick|disrupted/);
   const recipeSrc = readFileSync(path.join(REPO, 'src/data/squadChoreography.js'), 'utf8');
   assert.match(recipeSrc, /reformPolicy: 'rejoin_slots'/);
-});
-
-test('hit-stop scales with victim mass (row 487)', () => {
-  const light = swarmHitStopSeconds(0, 0);
-  const heavy = swarmHitStopSeconds(0, SWARM_HITSTOP_MASS_REF);
-  assert.ok(heavy > light, `heavy ${heavy} should exceed light ${light}`);
-  assert.ok(heavy <= SWARM_HITSTOP_MASS_MAX_S);
-  assert.ok(heavy > SWARM_HITSTOP_MAX_S, 'mass term pushes past the chain cap');
-  assert.equal(swarmHitStopSeconds(0, 0) <= SWARM_HITSTOP_MAX_S, true, 'massless keeps old envelope');
 });

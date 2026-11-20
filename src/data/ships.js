@@ -422,3 +422,12 @@ export const SHIPS = [
     },
   },
 ];
+
+// Save metadata keeps hull IDs. Prefer the authored name and retain a readable fallback for older IDs.
+export function shipDisplayName(id) {
+  if (!id) return '';
+  const ship = SHIPS.find((entry) => entry.id === id);
+  if (ship) return ship.name;
+  return String(id).replace(/^ship_/, '').split(/[\s_]+/).filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+}

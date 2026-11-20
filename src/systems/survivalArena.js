@@ -98,7 +98,10 @@ import {
 import { SURVIVAL_ARENA_PHASES as CANONICAL_ARENA_PHASES } from '../data/survivalWaves.js';
 import { gateBearing } from './waveMaterialization.js';
 import { FOUNDRY_ARENA_ID } from './swarmArena.js';
-import { foundryPlateShape, foundryPlateProxy } from '../data/foundryPlate.js';
+import {
+  createFoundryReturnGuide, foundryPlateShape, foundryPlateProxy, foundryReturnCourse, predictFoundryPlateContact,
+} from '../data/foundryPlate.js';
+import { playerBearingIndex } from '../core/playerCompass.js';
 import { createPlateTheft, preparePlateTheftRoom } from './foundryPlateTheft.js';
 import { foundryFurnitureProxy } from '../data/foundryFurniture.js';
 import { CINDER_ARENA_ID, planCinderInstall, stepCinderMachinery } from './cinderSluiceArena.js';
@@ -480,6 +483,11 @@ function planFoundryToys({ phase, at, lane, across, spin, wave, seed }) {
 export const FOUNDRY_RIM_COUNT = 12;
 export const FOUNDRY_RIM_RADIUS_WU = 410;
 export const FOUNDRY_RIM_HALF_WIDTH_WU = 70;
+const FOUNDRY_APPROACH_KEY = 'foundry-plate-approach';
+const FOUNDRY_APPROACH_INTERVAL_TICKS = 4;
+const FOUNDRY_APPROACH_HORIZON_S = 1.5;
+const FOUNDRY_RETURN_KEY = 'foundry-return';
+const FOUNDRY_RETURN_ARROWS = ['←', '↖', '↑', '↗', '→', '↘', '↓', '↙'];
 export function planFoundryRim({ at } = {}) {
   const ax = at && Number.isFinite(at.x) ? at.x : 0;
   const az = at && Number.isFinite(at.z) ? at.z : 0;
@@ -1371,6 +1379,8 @@ export const survivalArena = {
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:modifierRecorded', (p) => this._onCallinRecorded(p)));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
+    this._unsubs.push(this.bus.on('physics:impact', (p) => this._onNativeRoomImpact(p)));
+    this._unsubs.push(this.bus.on('physics:contactsCompleted', (p) => this._settleNativeRoomImpact(p)));
     // ---------------------------------------------------------------------------------------
     // PQ-210.00 roster prewarm: BUILT, TESTED, AND DELIBERATELY NOT SUBSCRIBED (2026-09-21).
     //
@@ -1497,6 +1507,10 @@ export const survivalArena = {
     if (this._callins) this._callins.update(_dt, st);
     if (!liveSurvivalRun(st)) {
       if (this._dischargePending) this._resetStormDischarge();
+      if (this._foundryReturnGuide) {
+        this._clearFoundryReturn();
+        this._foundryReturnGuide = null;
+      }
       return;
     }
     if (this._cycleMachinery) {
@@ -1529,6 +1543,8 @@ export const survivalArena = {
     if (this._plateTheft) this._plateTheft.update(_dt);
     this._tickToys(_dt, st);
     this._tickPlayerSlams(st);
+    this._updateFoundryApproach(st);
+    this._updateFoundryReturn(st);
   },
 
   // ---- install --------------------------------------------------------------
@@ -1653,7 +1669,18 @@ export const survivalArena = {
       this._plateTheft?.arm(this._roomSolids.get(contestedPlateId), install.plateTheftExit);
     }
     // The Foundry's visible edge: bank plates ringing the room (planFoundryRim). Swarm only.
-    if (run.arenaId === FOUNDRY_ARENA_ID && run.ruleset === 'swarm') this._materializeRoom(planFoundryRim({ at: playerAnchor(state) }), wave);
+    if (run.arenaId === FOUNDRY_ARENA_ID && run.ruleset === 'swarm') {
+      const at = playerAnchor(state);
+      const rim = planFoundryRim({ at });
+      this._materializeRoom(rim, wave);
+      if (wave === 1 && !run.telemetry?.circuit) {
+        const plates = rim.map(toy => this._roomSolids.get(toy.id));
+        if (plates.every(Boolean)) {
+          this._foundryReturnGuide = createFoundryReturnGuide(at, plates);
+          this._foundryReturnToken = run.retireToken;
+        }
+      }
+    }
     if (conveyor && wave === 1) this._installConveyorWorkpiece(install.fields[0]);
     // The event director inherits the room it will spend through: the frame the install placed
     // against, and the field specs it may later surge (their authored strengths are the calm it
@@ -1831,6 +1858,8 @@ export const survivalArena = {
   // ---- teardown -------------------------------------------------------------
 
   _teardown(reason) {
+    this._setFoundryApproach(null);
+    this._clearFoundryReturn();
     if (this._plateTheft) this._plateTheft.clear(reason);
     // The director calms first: a surge mid-window restores authored strengths onto fields that
     // still exist, and its own pulse field unregisters before the room's ledger clears.
@@ -2232,12 +2261,142 @@ export const survivalArena = {
    * S9 — the room is friend AND foe. Static room furniture (plates, pylons, shutter rails,
    * machinery housings — anything the install stamped `roomDynamic: false`) is terrain-class
    * for the pilot in a Swarm run: meet it at crumple closing speed and the collision law's own
-   * reading applies, routed through the kernel like the crusher's bite. Adventure keeps the
-   * global exemption untouched (collisionConsequences spares the player everywhere), and the
-   * radial-closing gate means a tangential skim under 30 WU/s never bites. Dynamic props are
-   * exempt on purpose — a coolant tank gives way instead of being an anvil.
+   * reading applies. The native collider owns that contact. A plate's bounding circle extends
+   * beyond its face, so proximity alone cannot qualify. Capture the receipt's scalars before
+   * the pool reuses it and let the native contact batch finish before routing any damage.
    */
+  _onNativeRoomImpact(impact) {
+    const state = this.state;
+    if (impact?.backend !== 'rapier-dynamic' || !impact.playerInvolved || impact.tick !== state?.tick
+      || this._pendingRoomImpact?.tick === impact.tick
+      || !Number.isFinite(impact.preSolveClosingSpeed)
+      || impact.preSolveClosingSpeed <= TERRAIN_CRUMPLE_LAW.threshold) return;
+    const run = state.run;
+    if (state.mode !== 'flight' || run?.phase !== 'active' || !isSwarmRuleset(run.ruleset)) return;
+    const playerIsA = impact.aId === state.playerId;
+    if (!playerIsA && impact.bId !== state.playerId) return;
+    const player = state.entities.get(state.playerId);
+    const solid = state.entities.get(playerIsA ? impact.bId : impact.aId);
+    const toyId = solid?.data?.roomToyId;
+    if (!player?.pos || !solid || toyId == null || solid.data.roomDynamic !== false
+      || this._roomSolids.get(String(toyId)) !== solid) return;
+    const playerLife = playerIsA ? impact.aGeneration : impact.bGeneration;
+    const solidLife = playerIsA ? impact.bGeneration : impact.aGeneration;
+    if (!Number.isSafeInteger(playerLife) || player.occupantGeneration !== playerLife
+      || !Number.isSafeInteger(solidLife) || solid.occupantGeneration !== solidLife) return;
+    const direction = playerIsA ? 1 : -1;
+    this._pendingRoomImpact = {
+      run, player, solid, playerLife, solidLife, toyId, tick: impact.tick,
+      closing: impact.preSolveClosingSpeed,
+      pos: { x: finiteOf(impact.pos?.x, player.pos.x), z: finiteOf(impact.pos?.z, player.pos.z) },
+      approach: { x: direction * finiteOf(impact.normal?.x, 0), z: direction * finiteOf(impact.normal?.z, 0) },
+    };
+  },
+
+  _settleNativeRoomImpact(completed) {
+    const hit = this._pendingRoomImpact;
+    if (!hit || completed?.backend !== 'rapier-dynamic' || completed.tick !== hit.tick) return;
+    this._pendingRoomImpact = null;
+    const state = this.state;
+    if (state.mode !== 'flight' || state.run !== hit.run || state.run.phase !== 'active'
+      || state.tick !== hit.tick || state.playerId !== hit.player.id
+      || state.entities.get(hit.player.id) !== hit.player || hit.player.occupantGeneration !== hit.playerLife
+      || state.entities.get(hit.solid.id) !== hit.solid || hit.solid.occupantGeneration !== hit.solidLife
+      || hit.solid.alive === false || this._roomSolids.get(String(hit.toyId)) !== hit.solid) return;
+    this._applyPlayerSlam(state, hit.run, hit.player, hit.toyId, hit.closing, hit.pos, hit.approach);
+  },
+
+  _updateFoundryApproach(state) {
+    const run = state.run;
+    if (state.mode !== 'flight' || run.phase !== 'active' || run.arenaId !== FOUNDRY_ARENA_ID
+      || run.ruleset !== 'swarm' || state.settings?.gameplay?.physicsBackend !== 'rapier-dynamic') {
+      this._setFoundryApproach(null);
+      return;
+    }
+    if (state.tick % FOUNDRY_APPROACH_INTERVAL_TICKS !== 0) return;
+    const pilot = state.entities.get(state.playerId);
+    const minimum = TERRAIN_CRUMPLE_LAW.threshold;
+    const speedSq = pilot?.vel ? pilot.vel.x * pilot.vel.x + pilot.vel.z * pilot.vel.z : 0;
+    if (!pilot?.alive || !(speedSq > minimum * minimum)) {
+      this._setFoundryApproach(null);
+      return;
+    }
+    let nearest = Infinity;
+    let warning = null;
+    for (const [toyId, plate] of this._roomSolids) {
+      if (!plate.alive || !plate.collides || plate.data?.roomDynamic !== false || !plate.data.foundryPlate) continue;
+      const hit = predictFoundryPlateContact(plate, pilot, FOUNDRY_APPROACH_HORIZON_S);
+      if (!hit || hit.closingSpeed <= minimum || hit.timeToContactS >= nearest) continue;
+      nearest = hit.timeToContactS;
+      warning = toyId.startsWith('foundry_rim_') ? 'Rim ahead · Turn clear' : 'Bank plate ahead · Turn clear';
+    }
+    this._setFoundryApproach(warning);
+  },
+
+  _setFoundryApproach(text) {
+    if ((this._foundryApproachText || null) === text) return;
+    this._foundryApproachText = text;
+    const key = FOUNDRY_APPROACH_KEY;
+    this._emit('alert', text ? { key, sev: 'warn', text, ttl: null } : { key, action: 'clear' });
+  },
+
+  _updateFoundryReturn(state) {
+    if (!this._foundryReturnGuide) return;
+    const run = state.run;
+    if ((run.phase !== 'active' && run.phase !== 'wave_intro') || run.arenaId !== FOUNDRY_ARENA_ID
+      || run.ruleset !== 'swarm' || run.wave !== 1
+      || run.retireToken !== this._foundryReturnToken) {
+      this._clearFoundryReturn();
+      this._foundryReturnGuide = null;
+      return;
+    }
+    if (run.phase !== 'active' || state.mode !== 'flight' || state.tick % FOUNDRY_APPROACH_INTERVAL_TICKS !== 0) return;
+    const pilot = state.entities.get(state.playerId);
+    if (!pilot?.alive || !pilot.pos || !(pilot.radius > 0)) {
+      this._clearFoundryReturn();
+      return;
+    }
+    const course = foundryReturnCourse(this._foundryReturnGuide, pilot, this._foundryReturnGate);
+    if (!course) {
+      this._clearFoundryReturn();
+      return;
+    }
+    if (!this._foundryReturnGate) {
+      this._foundryReturnGate = course.gate;
+      this._foundryReturnMarker = this.ctx?.helpers?.spawnEntity?.({
+        type: 'beacon', pos: { ...course.gate.pos }, vel: { x: 0, z: 0 },
+        radius: 8, mass: 1, collides: false, physicsBody: false, hull: 1, hullMax: 1,
+        data: {
+          parentType: 'story_prop', storyPropKind: 'circuit_mark', scanLabel: 'Foundry gate',
+          circuitMark: true, ringRadius: 22, foundryReturnGate: true, tetherable: false, masslineTetherable: false,
+        },
+      });
+    }
+    const index = playerBearingIndex(course.aim.x - pilot.pos.x, course.aim.z - pilot.pos.z);
+    const arrow = FOUNDRY_RETURN_ARROWS[index];
+    const text = `${course.throughGap ? 'Foundry gate' : 'Circle outside the rim'} ${arrow}`;
+    if (text === this._foundryReturnText) return;
+    this._foundryReturnText = text;
+    this._emit('alert', { key: FOUNDRY_RETURN_KEY, sev: 'info', text, ttl: null });
+  },
+
+  _clearFoundryReturn() {
+    const mark = this._foundryReturnMarker;
+    if (mark && this.state?.entities?.get(mark.id) === mark && mark.data?.foundryReturnGate) {
+      const remove = this.ctx?.helpers?.removeEntity;
+      if (typeof remove === 'function') remove(mark.id, { immediate: true });
+      else mark.alive = false;
+    }
+    this._foundryReturnMarker = null;
+    this._foundryReturnGate = null;
+    if (!this._foundryReturnText) return;
+    this._foundryReturnText = null;
+    this._emit('alert', { key: FOUNDRY_RETURN_KEY, action: 'clear' });
+  },
+
+  // The compatibility solver uses circular ship sweeps without native contact completions.
   _tickPlayerSlams(state) {
+    if (state.settings?.gameplay?.physicsBackend === 'rapier-dynamic') return;
     const run = liveSurvivalRun(state);
     if (!run || !isSwarmRuleset(run.ruleset)) return;
     const solids = this._roomSolids;
@@ -2246,15 +2405,6 @@ export const survivalArena = {
       ? state.entities.get(state.playerId) : null;
     if (!player || player.alive === false || !player.pos || !player.vel) return;
     const vx = finiteOf(player.vel.x, 0), vz = finiteOf(player.vel.z, 0);
-    const tick = state.tick | 0;
-    const data = player.data || (player.data = {});
-    const last = Number(data.arenaSlamAt);
-    if (Number.isFinite(last) && tick - last < CRUSH_RECEIPT_COOLDOWN_TICKS) return;
-    const kernel = this.ctx ? getCombatKernel(this.ctx) : null;
-    const routeDamage = kernel && typeof kernel.routeDamage === 'function' ? kernel.routeDamage
-      : (this.ctx && this.ctx.helpers && typeof this.ctx.helpers.routeCombatDamage === 'function'
-        ? this.ctx.helpers.routeCombatDamage : null);
-    if (!routeDamage) return;
     for (const [toyId, solid] of solids) {
       if (!solid || solid.alive === false || !solid.pos) continue;
       if (!solid.data || solid.data.roomDynamic === true) continue;
@@ -2266,41 +2416,39 @@ export const survivalArena = {
       const reach = Math.max(4, finiteOf(solid.radius, 8)) + Math.max(1, finiteOf(player.radius, 8)) + 2;
       if (dist > reach) continue;
       const closing = dist > 1e-6 ? (vx * dx + vz * dz) / dist : 0;
-      if (closing < TERRAIN_CRUMPLE_LAW.threshold) continue;
-      const bodySpec = resolvePhysicsBodySpec(player);
-      const mass = bodySpec && Number.isFinite(bodySpec.mass) ? bodySpec.mass
-        : (Number.isFinite(player.mass) ? player.mass : 1);
-      const damage = terrainCrumpleDamage(closing, mass);
-      if (!(damage > 0)) continue;
-      data.arenaSlamAt = tick;
-      const provenance = readRecentImpulseProvenance(player, tick);
-      const attackerId = provenance && provenance.actorId != null ? provenance.actorId
-        : (state.run && state.run.arenaId) || 'survival_arena';
-      const approach = { x: dx / dist, z: dz / dist };
-      const packet = scalarHitToDamagePacket({
-        damage,
-        damageType: 'kinetic',
-        pos: { x: finiteOf(player.pos.x, 0), z: finiteOf(player.pos.z, 0) },
-        approach,
-        source: { kind: 'arena_slam', hullId: toyId != null ? String(toyId) : 'solid' },
-      });
-      routeDamage({
-        attackerId,
-        targetId: player.id,
-        packet,
-        origin: { kind: 'arena_slam', id: toyId != null ? String(toyId) : 'solid' },
-      });
-      this._emit('combat:crushed', {
-        entityId: player.id,
-        toyId: toyId != null ? toyId : null,
-        damage,
-        speed: closing,
-        attackerId,
-        t: simTimeOf(state),
-        tick,
-      });
+      if (closing <= TERRAIN_CRUMPLE_LAW.threshold) continue;
+      this._applyPlayerSlam(state, run, player, toyId, closing,
+        { x: finiteOf(player.pos.x, 0), z: finiteOf(player.pos.z, 0) }, { x: dx / dist, z: dz / dist });
       return;
     }
+  },
+
+  _applyPlayerSlam(state, run, player, toyId, closing, pos, approach) {
+    if (player.alive === false) return;
+    const tick = state.tick | 0;
+    const data = player.data || (player.data = {});
+    const last = Number(data.arenaSlamAt);
+    if (Number.isFinite(last) && tick - last < CRUSH_RECEIPT_COOLDOWN_TICKS) return;
+    const bodySpec = resolvePhysicsBodySpec(player);
+    const mass = bodySpec && Number.isFinite(bodySpec.mass) ? bodySpec.mass
+      : (Number.isFinite(player.mass) ? player.mass : 1);
+    const damage = terrainCrumpleDamage(closing, mass);
+    if (!(damage > 0)) return;
+    const kernel = this.ctx ? getCombatKernel(this.ctx) : null;
+    const routeDamage = kernel && typeof kernel.routeDamage === 'function' ? kernel.routeDamage
+      : (this.ctx && this.ctx.helpers && typeof this.ctx.helpers.routeCombatDamage === 'function'
+        ? this.ctx.helpers.routeCombatDamage : null);
+    if (!routeDamage) return;
+    data.arenaSlamAt = tick;
+    const provenance = readRecentImpulseProvenance(player, tick);
+    const attackerId = provenance && provenance.actorId != null ? provenance.actorId : run.arenaId || 'survival_arena';
+    const surfaceId = toyId != null ? String(toyId) : 'solid';
+    const packet = scalarHitToDamagePacket({
+      damage, damageType: 'kinetic', pos, approach, source: { kind: 'arena_slam', hullId: surfaceId },
+    });
+    routeDamage({ attackerId, targetId: player.id, packet, origin: { kind: 'arena_slam', id: surfaceId } });
+    this._emit('combat:crushed', { entityId: player.id, toyId: toyId ?? null,
+      damage, speed: closing, attackerId, t: simTimeOf(state), tick });
   },
 
   /**
@@ -2840,6 +2988,9 @@ export const survivalArena = {
     this._cryoShocked = new Set();
     this._roomIds = [];
     this._roomSolids = new Map();
+    this._pendingRoomImpact = null;
+    this._foundryReturnGuide = null;
+    this._foundryReturnToken = null;
     this._sideRoomKey = null;
     this._toys = [];
     this._installedFields = [];

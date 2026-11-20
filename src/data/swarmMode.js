@@ -446,7 +446,7 @@ export const SWARM_BOSS_ROTATION = Object.freeze([
   {
     id: 'iron_maw',
     label: "Dreadnought 'Iron Maw'",
-    line: 'Throw the pack into it.',
+    line: 'Cross its bow before it fires.',
     room: 'flank_berm',
     // RC-02 — the round-10 champion is the FIRST capital row: the same dreadnought_boss hull it
     // always fielded, now handed to the authored Iron Maw score (`capital_boss_hulk`) instead of

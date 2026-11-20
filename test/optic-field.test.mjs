@@ -4,8 +4,11 @@ import assert from 'node:assert/strict';
 import { makeEntity } from '../src/core/entity.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
+import { createSimulation } from '../src/core/sim.js';
 import { core } from '../src/core/coreSystem.js';
 import { physics } from '../src/core/physics.js';
+import { WEAPONS } from '../src/data/weapons.js';
+import { weapons } from '../src/systems/weapons.js';
 import { world as worldSystem } from '../src/systems/world.js';
 import { reflectVelocity } from '../src/core/surfaceContact.js';
 import {
@@ -14,10 +17,12 @@ import {
   OPTIC_MAX_FAMILY,
   OPTIC_RAY_COUNT,
   OPTIC_RAY_RANGE,
+  OPTIC_SPEND_QUIET,
   bindOpticReflectTravel,
   isOpticEnergyBolt,
   opticBookFor,
   opticChildSpec,
+  opticFamilyIdOf,
   opticHeadings,
   opticSurfaceKey,
   planOpticContact,
@@ -80,6 +85,109 @@ function diamond(id, x, z) {
     data: { opticMaterial: 'diamond', typeId: 'ast_crystalline' },
   });
 }
+
+function bootOpticWeapons(t) {
+  const sim = createSimulation({ seed: 4242, systems: [weapons] });
+  t.after(() => sim.dispose());
+  const { state, bus, registry } = sim;
+  state.mode = 'flight';
+  const player = sim.spawn({ type: 'ship', pos: { x: -100, z: 0 } });
+  state.playerId = player.id;
+  const owner = registry.get('weapons');
+  const contacts = [];
+  bus.on('optic:contact', contact => contacts.push(contact));
+  const prism = () => sim.spawn({
+    type: 'asteroid', pos: { x: state.entityList.length * 50, z: 0 }, radius: 13,
+    data: { opticMaterial: 'diamond' },
+  });
+  const shot = () => sim.spawn({
+    type: 'projectile', ownerId: player.id, pos: { x: 0, z: 0 }, vel: { x: 220, z: 0 }, ttl: 10,
+    data: { kind: 'bullet', damageType: 'energy', damage: 5 },
+  });
+  const hit = (projectile, target) => {
+    bus.emit('projectile:hit', projectileHitPayload(projectile, target, target.pos));
+    return contacts.at(-1);
+  };
+  const family = id => state.entityList.filter(
+    body => body.type === 'projectile' && body.alive && opticFamilyIdOf(body) === id,
+  );
+  const expire = (...projectiles) => {
+    for (const projectile of projectiles) projectile.ttl = 0;
+    registry.get('core').lifetimeSweep(1 / 60, state);
+  };
+  return { sim, state, bus, player, owner, prism, shot, hit, family, expire };
+}
+
+test('ordinary weapon contact never creates an optic family', (t) => {
+  const h = bootOpticWeapons(t);
+  const projectile = h.shot();
+  const hull = h.sim.spawn({ type: 'ship', pos: { x: 50, z: 0 } });
+  assert.equal(h.hit(projectile, hull), undefined);
+  assert.equal(h.owner._opticFamilies?.size ?? 0, 0);
+  h.expire(projectile);
+});
+
+test('a recycled projectile ID gets a fresh optic family after the real sweep', (t) => {
+  const h = bootOpticWeapons(t);
+  const target = h.prism();
+  const first = h.shot();
+  assert.equal(h.hit(first, target).rays, OPTIC_RAY_COUNT);
+  const oldFamily = opticFamilyIdOf(first);
+  const children = h.family(oldFamily).filter(projectile => projectile !== first);
+  assert.equal(children.length, OPTIC_RAY_COUNT);
+  h.expire(first);
+  assert.equal(h.owner._opticFamilies.has(oldFamily), true, 'the children still own the budget');
+
+  h.state.simTime += OPTIC_SPEND_QUIET + 1;
+  const fresh = h.shot();
+  assert.equal(fresh.id, first.id);
+  assert.notEqual(fresh.occupantGeneration, first.occupantGeneration);
+  assert.equal(h.hit(fresh, target).rays, OPTIC_RAY_COUNT, 'the rekindled prism answers the new shot');
+  const freshFamily = opticFamilyIdOf(fresh);
+  assert.notEqual(freshFamily, oldFamily);
+  h.expire(...children);
+  assert.equal(h.owner._opticFamilies.has(oldFamily), false);
+  assert.equal(h.owner._opticFamilies.has(freshFamily), true, 'old expiry cannot retire the new family');
+  h.expire(...h.family(freshFamily));
+  assert.equal(h.owner._opticFamilies.size, 0);
+});
+
+test('an optic beam and its descendants share one budget until the last owner leaves', (t) => {
+  const h = bootOpticWeapons(t);
+  const def = WEAPONS.find(weapon => weapon.id === 'wpn_beam_laser_m');
+  h.state.combat ||= {};
+  h.state.combat.beams = [];
+  h.owner._serviceBeam(h.player, { defId: def.id, slotIndex: 0 }, def, true, 100, 1 / 60, h.state, 0);
+  const [beam] = h.state.combat.beams;
+  assert.ok(beam, 'the weapon publishes the mounted continuous beam');
+  const familyId = beam.opticFamilyId;
+  const hitBeam = target => {
+    const request = { beam, targetId: target.id, pos: target.pos, normal: { x: -1, z: 0 } };
+    h.bus.emit('optic:beamContact', request);
+    assert.equal(request.handled, true);
+  };
+  hitBeam(h.prism());
+  assert.equal(h.family(familyId).length, OPTIC_RAY_COUNT);
+  h.expire(...h.family(familyId));
+  assert.equal(h.owner._opticFamilies.get(familyId).spawned, OPTIC_RAY_COUNT,
+    'an active beam holds its budget after its first children expire');
+
+  hitBeam(h.prism());
+  h.owner.update(1 / 60, h.state);
+  assert.equal(h.owner._beamActiveMeta.has(beam.beamKey), false, 'an idle mount releases its beam');
+  assert.equal(h.owner._opticFamilies.get(familyId).spawned, OPTIC_RAY_COUNT * 2,
+    'the remaining descendants carry the same budget after beam stop');
+  for (let count = OPTIC_RAY_COUNT * 2; count < OPTIC_MAX_FAMILY; count += OPTIC_RAY_COUNT) {
+    const [child] = h.family(familyId).sort((a, b) => a.data.opticGeneration - b.data.opticGeneration);
+    assert.equal(h.hit(child, h.prism()).rays, OPTIC_RAY_COUNT);
+    h.expire(child);
+  }
+  const [last] = h.family(familyId);
+  assert.equal(h.hit(last, h.prism()).rays, 0, 'children cannot reset the beam family cap');
+  assert.equal(h.owner._opticFamilies.get(familyId).spawned, OPTIC_MAX_FAMILY);
+  h.expire(...h.family(familyId));
+  assert.equal(h.owner._opticFamilies.has(familyId), false);
+});
 
 function bolt(id, x, z, vx, damageType = 'energy') {
   const projectile = makeEntity({

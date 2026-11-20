@@ -492,7 +492,7 @@ test('spoken lessons keep four seconds of silence while silently folded drills a
   assert.equal(ROUTE_BEATS[ob.currentBeat].key, 'focus');
 });
 
-function missSwing(h, lesson) {
+function missSwing(h, lesson, afterRelease) {
   const ob = h.state.onboarding;
   const targetId = lesson === 'raid' ? ob.raid.ids.raider : ob.rescue.ids.rock;
   h.bus.emit('tether:latched', { targetId });
@@ -500,6 +500,7 @@ function missSwing(h, lesson) {
   else h.state.entities.get(targetId).vel.x = 200;
   h.bus.emit('tether:cut', { targetId });
   h.bus.emit('tether:released', { targetId }); // duplicate production receipt must count only once
+  afterRelease?.();
   for (let i = 0; i < 25; i++) { advanceTime(h, 0.25); tick(h); }
 }
 
@@ -512,7 +513,7 @@ test('three raid swing misses open one closer clinic, keep the Range, and still 
   const ob = h.state.onboarding;
   assert.equal(h.seen.clinic.length, 1);
   assert.equal(h.seen.clinic[0].lesson, 'raid');
-  assert.equal(tutorialLines(h).filter((s) => s === pace.SWING_CLINIC_LINE).length, 1);
+  assert.equal(tutorialLines(h).filter((s) => /^Swing Clinic\..*lit throw cue/.test(s)).length, 1);
   assert.equal(ob.rangePromptRungId, pace.SWING_CLINIC_RUNG_ID);
   assert.equal(resolveRescueEntryRung(h.state), 2);
   const raider = h.sys._raidActor('raider');
@@ -522,9 +523,27 @@ test('three raid swing misses open one closer clinic, keep the Range, and still 
   assert.ok(Math.abs(Math.hypot(rock.pos.x - raider.pos.x, rock.pos.z - raider.pos.z) - 110) <= 1);
   missSwing(h, 'raid');
   assert.equal(h.seen.clinic.length, 1);
-  assert.equal(tutorialLines(h).filter((s) => s === pace.SWING_CLINIC_LINE).length, 1);
+  assert.equal(tutorialLines(h).filter((s) => /^Swing Clinic\..*lit throw cue/.test(s)).length, 1);
   h.bus.emit('tether:whipImpact', { targetId: ob.raid.ids.raider, victimId: ob.raid.ids.throwRock, rating: 'solid' });
   assert.ok(ob.beatDoneAt.raid != null);
+});
+
+test('raid clinic due after reacquiring the Raider keeps the live cast and line', () => {
+  const h = boot(); launchToRaid(h);
+  missSwing(h, 'raid');
+  missSwing(h, 'raid');
+  const raider = h.sys._raidActor('raider');
+  const rock = h.sys._raidActor('throwRock');
+  missSwing(h, 'raid', () => {
+    h.state.player.tether = { active: true, targetId: raider.id };
+    h.bus.emit('tether:latched', { targetId: raider.id });
+  });
+  assert.equal(h.seen.clinic.length, 1);
+  assert.equal(h.seen.clinic[0].lesson, 'raid');
+  assert.equal(h.sys._raidActor('raider'), raider);
+  assert.equal(h.sys._raidActor('throwRock'), rock);
+  assert.equal(h.state.player.tether.targetId, raider.id);
+  assert.equal(h.state.onboarding.beatDoneAt.raid, undefined);
 });
 
 test('three rescue swing misses restage the rock and open the rescue clinic once', () => {

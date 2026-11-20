@@ -617,9 +617,8 @@ ${T} .sx-ledger .st-ledger-detail { ${PLAIN} padding:0 !important; }
 
 
 /* ================================ ROUND 2: FACTIONS ========================================= */
-/* the figures stand under the rim names now; the ladder is the index and takes a bone cursor (the Hand is the arm) */
-${T} .sx-fac__rows .sx-fac-row:is(.is-active, [aria-selected="true"])::before { background:rgb(248 244 234) !important; filter:none !important; }
-${T} .sx-fac__rows:is(:focus-within, :hover) .sx-fac-row:is(.is-active, [aria-selected="true"])::before { background:rgb(255 250 240) !important; filter:drop-shadow(0 0 5px rgb(248 244 234 / .6)) !important; }
+/* the figures stand under the rim names now; the ladder is the index and its chosen row carries
+   the same amber Hand bead as every other tab (one selection grammar, fresh-eyes 2026-11-15) */
 ${T} .sx-fac-row__name > .k-62 { display:block; margin-bottom:1px; }
 /* the standing figure: its tier as the label above the number; the two readings smaller; captions one line */
 ${T} .sx-fac-heroes { align-items:flex-start !important; gap:16px 44px !important; }
@@ -718,7 +717,7 @@ ${T} .sx-choice { ${PLAIN} font-family:var(--dp-face-body, "Instrument Sans") !i
   font-size:15px !important; letter-spacing:0 !important; text-transform:none !important; color:rgb(${BONE} / .88) !important; padding:6px 0 6px 26px !important; min-height:0 !important; }
 ${T} .sx-choice::before { all:unset !important; content:"" !important; display:block !important; position:absolute !important; left:4px !important; top:50% !important; width:8px !important; height:1px !important;
   background:rgb(${BONE} / .38) !important; }
-${T} .sx-talk__choices > li:first-child .sx-choice::before { left:2px !important; width:11px !important; height:14px !important; margin-top:-7px !important; ${HAND} background:rgb(248 244 234) !important; }
+${T} .sx-talk__choices > li:first-child .sx-choice::before { left:2px !important; width:11px !important; height:14px !important; margin-top:-7px !important; ${HAND} background:var(--dp-hand, #f2b950) !important; }
 ${T} .sx-choice:is(:hover, :focus-visible) { color:var(--dp-hand, #f2b950) !important; outline:none !important; }
 ${T} .sx-choice:is(:hover, :focus-visible)::before { background:var(--dp-hand, #f2b950) !important; }
 ${T} .sx-choice:focus-visible::before { left:2px !important; width:11px !important; height:14px !important; margin-top:-7px !important; ${HAND} }
@@ -773,11 +772,9 @@ ${T} .orr-bar-wave { width:auto !important; max-width:100%; }
 }
 
 /* ================================ ROUND 4: MISSIONS ========================================= */
-/* the Hand is the orrery's arm (the amber beam to the berth); the ladder's chosen row carries a bone light cursor */
-${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { background:rgb(248 244 234) !important; filter:none !important; }
-${T} .sx-ct__rows:is(:focus-within, :hover) .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { background:rgb(255 250 240) !important; filter:none !important; }
-${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { background:radial-gradient(circle, rgb(248 244 234 / .2), rgb(248 244 234 / 0) 66%) !important; }
-${T} .sx-ct__rows:is(:focus-within, :hover) .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::after { background:radial-gradient(circle, rgb(255 250 240 / .28), rgb(255 250 240 / 0) 70%) !important; }
+/* the chosen row carries the Hand like every other tab (amber bead + beam, the rail() base):
+   the old bone light cursor made missions read as a third selection language next to shipworks'
+   amber notch and market's bar (fresh-eyes 2026-11-15: "three idioms in one suite") */
 /* ticks, cursor and bloom sit on a row's first line, where its price is */
 ${T} .sx-ct__rows .sx-ct-row::before { top:17px !important; margin-top:0 !important; }
 ${T} .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"])::before { top:17px !important; margin-top:-7px !important; }
@@ -951,8 +948,10 @@ ${SCROLL_EXTENT_CSS}
 ${T} :is(.sx-ct__board, .sx-ind__list, .sx-fac__rows)[data-overflow="0"] { -webkit-mask-image:none !important; mask-image:none !important; }
 /* the contracts board and the factions rail fold at EVERY height: at tall viewports the window had
    no fold, so the last posted row was hard-cut mid-glyph (bench 1440x900: the contracts board, then
-   the factions rail's "The Archive") and read as broken text, not "more below" */
-${T} :is(.sx-ct__board, .sx-fac__rows)[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 20px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 20px), transparent); }
+   the factions rail's "The Archive") and read as broken text, not "more below". The dissolve holds
+   a deep full-black band before letting go — fresh-eyes 2026-11-15 still read the thin 20px fade
+   as a rendering cut — and the scrollExtent foot cue says "MORE" outright. */
+${T} :is(.sx-ct__board, .sx-fac__rows)[data-overflow="1"] { -webkit-mask-image:linear-gradient(180deg, #000 calc(100% - 32px), rgb(0 0 0 / .45) calc(100% - 13px), transparent); mask-image:linear-gradient(180deg, #000 calc(100% - 32px), rgb(0 0 0 / .45) calc(100% - 13px), transparent); }
 
 /* ================================ ROUND 5: MISSIONS ========================================= */
 /* the ladder's ticks read at 1x: row ticks 8px at 40%, the rail's minor ticks 5px at 30%; a block gap you can see */
@@ -1128,10 +1127,9 @@ ${T} .sx-dossier > .orr-ct-route { z-index:0; isolation:isolate; }
 /* the library disc is 118% wide and translated by half of itself: with the inset box that translate slid it 420px left over the title */
 ${T} .sx-dossier > .orr-ct-route::before { z-index:-1 !important; inset:-4% -4% 6% -4% !important; width:auto !important; height:auto !important; transform:none !important; }
 
-/* the arm follows the bone cursors where the Hand lives elsewhere (Missions beam, Factions arm, Ledger tape) */
-${T} :is(.sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry):is(.is-active, .is-selected, [aria-selected="true"])::after { content:"" !important; display:block !important; left:7px !important; top:50% !important; width:26px !important; height:2px !important; margin:-1px 0 0 !important; border-radius:0 !important; clip-path:none !important; opacity:1 !important; background:rgb(248 244 234) !important; filter:drop-shadow(0 0 4px rgb(248 244 234 / .5)) !important; }
-${T} :is(.sx-ct__rows .sx-ct-row, .sx-fac__rows .sx-fac-row, .st-ledger-list .st-ledger-entry):is(.is-active, .is-selected, [aria-selected="true"])::before { left:31px !important; background:rgb(255 250 240) !important; box-shadow:0 0 6px 1px rgb(248 244 234 / .6) !important; }
-${T} :is(.sx-ct__rows, .sx-fac__rows, .st-ledger-list):is(:focus-within, :hover) :is(.sx-ct-row, .sx-fac-row, .st-ledger-entry):is(.is-active, .is-selected, [aria-selected="true"])::after { background:rgb(255 250 240) !important; }
+/* the chosen row carries the Hand on every tab (the rail() amber bead + beam): the old bone
+   cursors made missions, factions and the ledger read as separate selection languages
+   (fresh-eyes 2026-11-15); STATION_STANDARD §4 now pins one grammar */
 
 /* ================================ ROUND 5: BAR ============================================== */
 /* the face is whole: the solid region reaches past the temple, the world dims under the whole head */
@@ -1425,13 +1423,16 @@ ${T} .sx-choice::after { font-size:12px !important; color:rgb(${BONE} / .7) !imp
 ${T} .sx-talk__keys, ${T} .sx-bar__keys { ${LABEL} font-size: 12px !important; letter-spacing:.16em !important; color:rgb(${BONE} / .5) !important; margin:8px 0 0 !important; }
 ${T} .sx-talk__keys { padding-left:44px; }
 ${T} .sx-bar__keys { padding-left:44px !important; }
-/* one target per lead: the title at full width with its price as a reading; the verb answers the current row */
-${T} .sx-lead { grid-template-columns:minmax(0, 1fr) auto !important; column-gap:12px !important; position:relative !important; }
-${T} .sx-lead__t { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; }
+/* one target per lead: the title, its price, and the Inspect verb sit in strictly disjoint static
+   columns so Inspect never overlaps/buries the credit value in any rest, hover, or focus state */
+${T} .sx-lead { display:grid !important; grid-template-columns:minmax(0, 1fr) auto !important; column-gap:10px !important; align-items:center !important; position:relative !important; }
+${T} .sx-lead__body { display:flex !important; flex-direction:row !important; align-items:baseline !important; justify-content:space-between !important; gap:8px !important; min-width:0 !important; }
+${T} .sx-lead__t { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; min-width:0 !important; }
 ${T} .sx-lead__t .sf-entity-link { white-space:normal !important; }
-${T} .sx-lead__go { position:absolute !important; right:0; top:50%; transform:translateY(-50%); opacity:0; pointer-events:none; }
-${T} .sx-lead:is(:hover, :focus-within) .sx-lead__go { opacity:1; pointer-events:auto; }
-${T} .sx-lead:is(:hover, :focus-within) .sx-lead__s { visibility:hidden; }
+${T} .sx-lead__s { flex:none !important; white-space:nowrap !important; visibility:visible !important; }
+${T} .sx-lead__go { position:static !important; inset:auto !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; transform:none !important; opacity:1 !important; pointer-events:auto !important; visibility:visible !important; flex:none !important; }
+${T} .sx-lead:is(:hover, :focus-within) .sx-lead__go { opacity:1 !important; pointer-events:auto !important; }
+${T} .sx-lead:is(:hover, :focus-within) .sx-lead__s { visibility:visible !important; }
 @media (min-width:651px) and (max-height:800px), (max-height:600px) { ${T} .sx-lead__t { font-size:12px !important; } }
 
 /* ================================ ROUND 6: FACTIONS ========================================= */
@@ -1881,6 +1882,11 @@ ${T} .sx-ind-process__items .sx-ind-row .sx-ind-row__tier, ${T} .sx-ind-process_
 ${T} .sx-ind-process__items .sx-ind-row:is(.is-active, [aria-selected="true"]) .sx-ind-row__tier { color:rgb(${BONE} / .66) !important; }
 /* every rung not ready says why on its own line (the header carries the group's shared reason) */
 ${T} .sx-ind-process__items .sx-ind-row:is(.is-materials, .is-blocked) .sx-ind-row__why { display:inline !important; }
+/* the why-line carries the state light: a locked rung reads "idle hardware" (the lamp driven down,
+   ORRERY §3.3) so LOCKED names itself as a distinct state — fresh-eyes 2026-11-15 read the old
+   uniform grey murk as one undifferentiated disabled mass */
+${T} .sx-ind-process__items .sx-ind-row.is-blocked .sx-ind-row__why { color:var(--dp-lamp-dim, #8a6b3a) !important; }
+${T} .sx-ind-process__items .sx-ind-row.is-materials .sx-ind-row__why { color:rgb(${BONE} / .62) !important; }
 /* the ladder's light cursor rides the one spine: a 3px bar at 60% with an end tick */
 ${T} .sx-ind__list .orr-extent { display:block !important; }
 ${T} .sx-ind__list .orr-extent::before { left:6px !important; width:4px !important; background:rgb(${BONE} / .45) !important; box-shadow:none !important; opacity:1 !important; }
@@ -2458,23 +2464,247 @@ html body #screens > .sx-berth.orr-station .sx-mkt.orr-market .sx-mkt__hero.sx-m
   ${T} .sx-bar__foot { margin-top: 8px !important; padding-top: 7px !important; padding-bottom: 4px !important;
     background: linear-gradient(0deg, rgb(${BONE} / .14), rgb(${BONE} / .14)) 0 0 / 100% 1px no-repeat !important; }
 }
-/* Ledger — an empty book reads as one dashed well (the shared empty-state card: hairline dash,
-   radius 8, faint fill) instead of a half-drawn ruled page whose margin rule and stray rung
-   looked broken. The well sizes to its sentence; the panel keeps its rows. */
-${T} .sx-ledger .st-ledger-empty:not([hidden]) {
-  align-self: start !important; min-height: 0 !important; max-width: min(100%, 440px); box-sizing: border-box;
-  margin-top: 24px !important; padding: 12px 16px !important;
-  border: 1px dashed rgb(${BONE} / .22) !important; border-radius: 8px !important; background: rgb(${BONE} / .025) !important;
+/* ==== RUGGEDIZED METAL-AND-GLASS STATION TABS TERMINAL (Missions, Factions, Ledger) ========= */
+/* 1. Missions / Contracts (.sx-ct): Recessed Visor Glass Bays, Route Radar Housing, Chamfered Accept Key */
+${T} .sx-ct .sx-dossier {
+  border:1px solid rgb(154 198 218 / .32) !important;
+  border-radius:2px !important;
+  background:
+    linear-gradient(90deg, #f2b950 0 28px, rgb(158 220 233 / .48) 28px 140px, rgb(158 220 233 / .14) 140px 100%) top left / 100% 2px no-repeat,
+    repeating-linear-gradient(0deg, rgb(158 220 233 / .012) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 90% at 18% 0%, rgb(24 54 74 / .34), transparent 62%),
+    linear-gradient(160deg, rgb(11 24 35 / .95) 0%, rgb(7 16 24 / .97) 100%) !important;
+  box-shadow:inset 0 1px 0 rgb(208 238 250 / .14), inset 0 -2px 0 rgb(2 6 10 / .85), 0 12px 28px rgb(0 0 0 / .58) !important;
 }
-${T} .sx-ledger .st-ledger-empty:not([hidden])::before { display: none !important; }
-/* F9 — the FIND A SERVICE trigger wore a bordered kbd pill; it stands as a bare caps word with
-   a quiet field rule instead. The market search answers focus with a tick on its underline. */
-${T} .so-command-trigger { border: 0 !important; border-radius: 0 !important; background: none !important; background-image: none !important; box-shadow: inset 0 -1px 0 rgb(${BONE} / .16) !important; clip-path: none !important; padding: 0 0 4px !important; min-height: 0 !important; }
-${T} .so-command-trigger .dp-kbd { border: 0 !important; background: none !important; box-shadow: none !important; padding: 0 !important; }
-${T} .so-command-trigger:is(:hover, :focus-visible) { box-shadow: inset 0 -1px 0 rgb(${BONE} / .45) !important; color: rgb(252 249 240) !important; outline: none !important; }
-${T} .sx-mkt-search { box-shadow: inset 0 -1px 0 rgb(${BONE} / .28) !important; }
-${T} .sx-mkt-search:focus { outline: none !important; box-shadow: inset 0 -1.5px 0 rgb(${BONE} / .72) !important;
-  background: linear-gradient(90deg, rgb(${BONE} / .9) 0 9px, transparent 9px) 0 100% / 100% 2px no-repeat !important; }
+@media (min-width:901px) and (min-height:641px) {
+  ${T} .sx-ct > .sx-ct__hang {
+    box-sizing:border-box !important;
+    border:1px solid rgb(154 198 218 / .32) !important;
+    border-radius:2px !important;
+    background:
+      linear-gradient(90deg, #f2b950 0 28px, rgb(158 220 233 / .48) 28px 140px, rgb(158 220 233 / .14) 140px 100%) top left / 100% 2px no-repeat,
+      repeating-linear-gradient(0deg, rgb(158 220 233 / .012) 0 1px, transparent 1px 3px),
+      radial-gradient(120% 90% at 18% 0%, rgb(24 54 74 / .34), transparent 62%),
+      linear-gradient(160deg, rgb(11 24 35 / .95) 0%, rgb(7 16 24 / .97) 100%) !important;
+    box-shadow:inset 0 1px 0 rgb(208 238 250 / .14), inset 0 -2px 0 rgb(2 6 10 / .85), 0 12px 28px rgb(0 0 0 / .58) !important;
+    padding:12px 14px !important;
+  }
+}
+/* Remove legacy .orr-extent ruler spine inside .sx-ct__hang and frame contract rows cleanly */
+${T} .sx-ct .sx-ct__hang .orr-extent:not(.orr-extent--foot),
+${T} .sx-ct .sx-ct__hang .orr-extent:not(.orr-extent--foot)::before,
+${T} .sx-ct .sx-ct__hang .orr-extent:not(.orr-extent--foot)::after,
+${T} .sx-ct .sx-ct__yours::before,
+${T} .sx-ct .sx-ct__yours::after,
+${T} .sx-ct .sx-ct__jobs .sx-job::before {
+  display:none !important;
+  content:none !important;
+}
+${T} .sx-ct .sx-ct__hang > *,
+${T} .sx-ct .sx-ct__hang:is(:hover, :focus-within) > *,
+${T} .sx-ct .sx-ct__board,
+${T} .sx-ct .sx-ct__rows,
+${T} .sx-ct .sx-ct__rows:is(:hover, :focus-within),
+${T} .sx-ct .sx-ct__active {
+  background:none !important;
+  background-image:none !important;
+}
+${T} .sx-ct .sx-ct__hang > .k-caps,
+${T} .sx-ct .sx-ct__hang > .sx-ct__yours,
+${T} .sx-ct .sx-ct-dispatch__label,
+${T} .sx-ct .sx-ct__active {
+  padding-left:0 !important;
+}
+${T} .sx-ct .sx-ct__hang > .k-caps,
+${T} .sx-ct .sx-ct__hang > .sx-ct__yours {
+  padding-bottom:5px !important;
+  border-bottom:1px solid rgb(158 220 233 / .22) !important;
+}
+${T} .sx-ct .sx-ct__rows .sx-ct-row {
+  padding:9px 10px !important;
+  border-bottom:1px solid rgb(154 198 218 / .12) !important;
+  border-radius:2px !important;
+  background:none !important;
+  transition:background 120ms ease, box-shadow 120ms ease;
+}
+@media (min-width:651px) and (max-height:800px), (max-height:600px) {
+  ${T} .sx-ct .sx-ct__rows .sx-ct-row { padding:5px 8px !important; }
+  ${T} .sx-ct .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) { padding-top:22px !important; }
+}
+${T} .sx-ct .sx-ct__rows .sx-ct-row:has(.sx-ct-row__badge) {
+  padding-top:26px !important;
+}
+${T} .sx-ct .sx-ct__rows .sx-ct-row .sx-ct-row__badge {
+  left:10px !important;
+  right:10px !important;
+  top:5px !important;
+  padding:0 0 3px !important;
+  color:#9edce9 !important;
+  background:none !important;
+  border-bottom:1px solid rgb(158 220 233 / .22) !important;
+}
+${T} .sx-ct .sx-ct__rows .sx-ct-row::before,
+${T} .sx-ct .sx-ct__rows .sx-ct-row::after,
+${T} .sx-ct .sx-ct__rows .sx-ct-row:is(:hover, :focus-visible, :active, .is-active, .is-selected, [aria-selected="true"])::before,
+${T} .sx-ct .sx-ct__rows .sx-ct-row:is(:hover, :focus-visible, :active, .is-active, .is-selected, [aria-selected="true"])::after {
+  content:none !important;
+  display:none !important;
+}
+${T} .sx-ct .sx-ct__rows .sx-ct-row:is(:hover, :focus-visible) {
+  background:rgb(158 220 233 / .08) !important;
+  box-shadow:inset 2px 0 0 rgb(158 220 233 / .68) !important;
+}
+${T} .sx-ct .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]) {
+  background:linear-gradient(90deg, rgb(224 181 94 / .22) 0%, rgb(224 181 94 / .07) 65%, rgb(14 29 42 / .92) 100%) !important;
+  box-shadow:inset 3px 0 0 #e6ca8f, inset 0 1px 0 rgb(255 241 207 / .20) !important;
+}
+${T} .sx-ct .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__title {
+  color:#fff1cf !important;
+}
+${T} .sx-ct .sx-ct__rows .sx-ct-row:is(.is-active, .is-selected, [aria-selected="true"]) .sx-ct-row__rew {
+  color:#f3d178 !important;
+}
+${T} .sx-ct .sx-ct__jobs .sx-job {
+  padding:7px 10px !important;
+  border-bottom:1px solid rgb(154 198 218 / .12) !important;
+  box-shadow:inset 2px 0 0 rgb(158 220 233 / .45) !important;
+}
+${T} .sx-ct :is(.sx-ct__hang .k-caps, .sx-dossier > .k-caps, .sx-dossier__terms > li > .k-62) {
+  color:#9edce9 !important;
+}
+${T} .sx-ct .sx-dossier__reward .k-hero__n {
+  color:#f3d178 !important;
+  text-shadow:0 0 18px rgb(224 181 94 / .24) !important;
+}
+${T} .sx-ct .sx-dossier > .orr-ct-route {
+  box-sizing:border-box !important;
+  border:1px solid rgb(154 198 218 / .26) !important;
+  border-radius:2px !important;
+  background:
+    repeating-linear-gradient(0deg, rgb(158 220 233 / .018) 0 1px, transparent 1px 24px),
+    radial-gradient(circle at 50% 50%, rgb(24 58 80 / .32) 0%, rgb(8 18 27 / .94) 100%) !important;
+  box-shadow:inset 0 1px 4px rgb(0 0 0 / .65) !important;
+  padding:8px !important;
+}
+${T} .sx-ct .sx-ct-commit.orr-lampkey {
+  color:#fff1cf !important;
+  font-weight:700 !important;
+  letter-spacing:.1em !important;
+}
+${T} .sx-ct .sx-ct-commit.orr-lampkey::before {
+  clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)) !important;
+  border:1px solid #e6ca8f !important;
+  background:linear-gradient(180deg, rgb(224 181 94 / .34) 0%, rgb(224 181 94 / .14) 100%) !important;
+  box-shadow:inset 0 1px 0 rgb(255 241 207 / .26), 0 4px 12px rgb(0 0 0 / .45) !important;
+}
+${T} .sx-ct .sx-ct-commit.orr-lampkey:not(:disabled):is(:hover, :focus-visible)::before {
+  border-color:#fff1cf !important;
+  background:linear-gradient(180deg, rgb(224 181 94 / .48) 0%, rgb(224 181 94 / .22) 100%) !important;
+}
+
+/* 2. Factions (.sx-fac): Guard 2-column grid placement against <i class="orr-extent"> child */
+${T} .sx-fac__stage > .orr-extent:not(.orr-extent--foot) {
+  display:none !important;
+  position:absolute !important;
+}
+${T} .sx-fac__stage > .orr-fac-orbit { grid-column:1; grid-row:1; }
+${T} .sx-fac__stage > .sx-fac-reading { grid-column:2; grid-row:1; }
+@media (max-width:650px) {
+  ${T} .sx-fac__stage > .orr-fac-orbit,
+  ${T} .sx-fac__stage > .sx-fac-reading { grid-column:1 !important; grid-row:auto !important; }
+}
+
+/* 3. Ledger (.sx-ledger): Recessed Visor Glass Bays, Balance Oscilloscope Housing, Purse Dial Card, Emergency Assist Card */
+${T} .sx-ledger .sx-ledger__read,
+${T} .sx-ledger .orr-ledger-tape,
+${T} .sx-ledger .orr-ledger-purse,
+${T} .sx-ledger .dust-em {
+  box-sizing:border-box !important;
+  border:1px solid rgb(154 198 218 / .32) !important;
+  border-radius:2px !important;
+  background:
+    linear-gradient(90deg, #f2b950 0 28px, rgb(158 220 233 / .48) 28px 140px, rgb(158 220 233 / .14) 140px 100%) top left / 100% 2px no-repeat,
+    repeating-linear-gradient(0deg, rgb(158 220 233 / .012) 0 1px, transparent 1px 3px),
+    radial-gradient(120% 90% at 18% 0%, rgb(24 54 74 / .34), transparent 62%),
+    linear-gradient(160deg, rgb(11 24 35 / .95) 0%, rgb(7 16 24 / .97) 100%) !important;
+  box-shadow:inset 0 1px 0 rgb(208 238 250 / .14), inset 0 -2px 0 rgb(2 6 10 / .85), 0 12px 28px rgb(0 0 0 / .58) !important;
+}
+${T} .sx-ledger .orr-ledger-purse {
+  padding:8px 10px !important;
+}
+@media (min-width:901px) and (min-height:641px) {
+  ${T} .sx-ledger > .st-ledger {
+    box-sizing:border-box !important;
+    border:1px solid rgb(154 198 218 / .32) !important;
+    border-radius:2px !important;
+    background:
+      linear-gradient(90deg, #f2b950 0 28px, rgb(158 220 233 / .48) 28px 140px, rgb(158 220 233 / .14) 140px 100%) top left / 100% 2px no-repeat,
+      repeating-linear-gradient(0deg, rgb(158 220 233 / .012) 0 1px, transparent 1px 3px),
+      radial-gradient(120% 90% at 18% 0%, rgb(24 54 74 / .34), transparent 62%),
+      linear-gradient(160deg, rgb(11 24 35 / .95) 0%, rgb(7 16 24 / .97) 100%) !important;
+    box-shadow:inset 0 1px 0 rgb(208 238 250 / .14), inset 0 -2px 0 rgb(2 6 10 / .85), 0 12px 28px rgb(0 0 0 / .58) !important;
+    padding:14px 16px !important;
+  }
+}
+${T} .sx-ledger :is(.st-ledger-status, .sx-ledger__read-kicker, .orr-ledger-purse__k) {
+  color:#9edce9 !important;
+}
+/* Remove legacy ruler spine inside Ledger's left visor bay and frame entries cleanly */
+${T} .sx-ledger .st-ledger-list,
+${T} .sx-ledger .st-ledger-list:is(:hover, :focus-within) {
+  background:none !important;
+  background-image:none !important;
+}
+${T} .sx-ledger .st-ledger-list .st-ledger-entry {
+  padding:8px 10px !important;
+  border-bottom:1px solid rgb(154 198 218 / .12) !important;
+  border-radius:2px !important;
+  background:none !important;
+  transition:background 120ms ease, box-shadow 120ms ease;
+}
+${T} .sx-ledger .st-ledger-list .st-ledger-entry::before,
+${T} .sx-ledger .st-ledger-list .st-ledger-entry::after,
+${T} .sx-ledger .st-ledger-list .st-ledger-entry:is(:hover, :focus-visible, [aria-selected="true"])::before,
+${T} .sx-ledger .st-ledger-list .st-ledger-entry:is(:hover, :focus-visible, [aria-selected="true"])::after {
+  content:none !important;
+  display:none !important;
+}
+${T} .sx-ledger .st-ledger-list .st-ledger-entry:is(:hover, :focus-visible) {
+  background:rgb(158 220 233 / .08) !important;
+  box-shadow:inset 2px 0 0 rgb(158 220 233 / .68) !important;
+}
+${T} .sx-ledger .st-ledger-list .st-ledger-entry[aria-selected="true"] {
+  background:linear-gradient(90deg, rgb(224 181 94 / .22) 0%, rgb(224 181 94 / .07) 65%, rgb(14 29 42 / .92) 100%) !important;
+  box-shadow:inset 3px 0 0 #e6ca8f, inset 0 1px 0 rgb(255 241 207 / .20) !important;
+}
+${T} .sx-ledger .st-ledger-nav {
+  padding-left:0 !important;
+}
+${T} .sx-ledger .sx-ledger__read-num {
+  color:#f3d178 !important;
+  text-shadow:0 0 18px rgb(224 181 94 / .22) !important;
+}
+${T} .sx-ledger .st-ledger-empty:not([hidden]) {
+  align-self:start !important; min-height:0 !important; max-width:min(100%, 460px); box-sizing:border-box;
+  margin-top:16px !important; padding:12px 16px !important;
+  border:1px solid rgb(154 198 218 / .28) !important; border-radius:2px !important;
+  background:linear-gradient(160deg, rgb(13 27 39 / .92), rgb(8 17 26 / .96)) !important;
+  box-shadow:inset 3px 0 0 #9edce9, inset 0 1px 0 rgb(208 238 250 / .10) !important;
+  color:rgb(218 236 244 / .88) !important;
+}
+${T} .sx-ledger .st-ledger-empty:not([hidden])::before { display:none !important; }
+${T} .sx-ledger .st-ledger-board-head.fh-key {
+  border:1px solid rgb(154 198 218 / .34) !important;
+  border-radius:2px !important;
+  background:linear-gradient(180deg, rgb(22 36 48 / .94), rgb(12 21 30 / .97)) !important;
+  box-shadow:inset 0 1px 0 rgb(208 238 250 / .12) !important;
+  padding:6px 12px !important;
+  color:#9edce9 !important;
+}
+${T} .sx-ledger .st-ledger-board-head.fh-key:is(:hover, :focus-visible) {
+  border-color:#e6ca8f !important;
+  color:#fff1cf !important;
+}
 `;
 
 export function injectOrreryStationTabs(doc = globalThis.document) {

@@ -22,11 +22,13 @@ import {
   untouchedPilotBranches,
 } from '../data/pilotTree.js';
 import { migrateHangar, purseBonusFor } from '../data/swarmHangar.js';
+import { CRUCIBLE_WEEKLY_ROTATION } from '../data/survivalMutators.js';
 import { normalizeSwarmStake, swarmStakeFor } from '../data/swarmStakes.js';
 import { normalizePerkLoadout } from '../data/swarmPerks.js';
 import { normalizeThreatIds } from '../data/swarmThreats.js';
-import { crucibleEarnedPerkIds, loadCrucibleMeta } from './survivalRecords.js';
+import { crucibleEarnedPerkIds, dailySeedForDateKey, isUtcDateKey, loadCrucibleMeta, nextSwarmBankOrdinal } from './survivalRecords.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { bankableRunCredits, nonBankableRunCredits } from './survivalExtraction.js';
 import { swarmPilotHasActed } from './swarmSafety.js';
 
 const OUTCOME_SET = new Set(RUN_OUTCOMES);
@@ -34,6 +36,15 @@ const PURCHASE_RECEIPT_LIMIT = 64;
 // OVH-01a (04 §3): re-rolling the pilot offer costs Scrap from the run purse. The price is
 // owned by the tree's data (src/data/pilotTree.js) so the card UI shares it without importing
 // this sim-side module.
+const REFUND_FOR_SPEND = new Map([
+  ['crucible:purchase', 'crucible:purchaseRefund'],
+  ['swarm_floor_pad', 'swarm_floor:refund'],
+  ['circuit_derelict_salvage', 'circuit_derelict_refund'],
+  ['circuit_repair', 'circuit_repair_refund'],
+  ['circuit_treasure', 'circuit_treasure_refund'],
+  ['partial_bank', 'partial_bank_refund'],
+]);
+const REFUND_REASONS = new Set(REFUND_FOR_SPEND.values());
 // Ephemeral identity survives the owner's immutable wallet/ledger commits. A new run or an
 // unrelated replacement cannot inherit a pending armory action merely by reusing its seed.
 const RUN_LIFETIMES = new WeakMap();
@@ -76,6 +87,19 @@ function toNonNegativeInt(value) {
   if (!Number.isFinite(value)) return 0;
   const n = Math.trunc(value);
   return n > 0 ? n : 0;
+}
+
+function runOnlyAward(reason) {
+  return reason === 'hangar_war_chest' || reason === 'swarm:sellBack' || reason === 'crucible:pact'
+    || reason?.startsWith('swarm:stake:') || reason?.startsWith('swarm:checkpoint:');
+}
+
+function debitCredits(run, amount, earnedOnly = false) {
+  const restricted = nonBankableRunCredits(run);
+  const restrictedSpent = earnedOnly ? 0 : Math.min(restricted, amount);
+  run.credits -= amount;
+  if (restrictedSpent > 0) run.telemetry.nonBankableCredits = restricted - restrictedSpent;
+  return restrictedSpent;
 }
 
 function rememberPurchaseReceipt(ledger, receipt) {
@@ -164,6 +188,9 @@ export const runSession = {
     // wave sits at 10 until the first plan lands. Swarm only: the arc, the block and the
     // circuit always open at their authored first wave.
     const startWave = Number.isInteger(request && request.startWave) ? request.startWave : 0;
+    const zeroScrapOpening = kind === 'survival' && isSwarmRuleset(ruleset)
+      && request?.zeroScrapOpening === true && startWave <= 1 && request.openArmoryBeforeRound1 !== false
+      && !request.practice && !request.dailyDateKey && !request.weeklyMutatorId && request.ghostHash == null;
     if (isSwarmRuleset(ruleset) && startWave > 1) {
       next.wave = startWave - 1;
       if (!next.telemetry || typeof next.telemetry !== 'object') next.telemetry = {};
@@ -187,9 +214,16 @@ export const runSession = {
     // earned in a run outlives the run.
     if (next.kind !== 'adventure') next.pilot = createPilotProgress();
     if (next.kind === 'survival') {
+      next.practice = request?.practice === true;
       this._retireSerial = (this._retireSerial || 0) + 1;
       next.retireToken = this._retireSerial;
       if (!next.telemetry || typeof next.telemetry !== 'object') next.telemetry = {};
+      const dateKey = request?.dailyDateKey;
+      if (isUtcDateKey(dateKey) && dailySeedForDateKey(dateKey) === next.seed) next.telemetry.dailyDateKey = dateKey;
+      const weeklyMutatorId = request?.weeklyMutatorId;
+      if (CRUCIBLE_WEEKLY_ROTATION.includes(weeklyMutatorId)) next.arenaMutators = [weeklyMutatorId];
+      const ghostHash = request?.ghostHash;
+      if (Number.isInteger(ghostHash) && ghostHash >= 0 && ghostHash <= 0xffffffff) next.telemetry.ghostHash = ghostHash;
       const profile = loadCrucibleMeta();
       next.telemetry.hangar = migrateHangar(profile && profile.hangar);
       // SWARM-06: the Threat wager and the perk loadout ride telemetry the same way the stake
@@ -198,7 +232,10 @@ export const runSession = {
       // Perks come off the profile's stored pick (a request may override it — sandbox drives
       // and tests slot honestly), earned-checked against the same derived earns the door read.
       if (isSwarmRuleset(ruleset)) {
-        const threats = normalizeThreatIds(request && request.threats);
+        if (zeroScrapOpening) next.telemetry.zeroScrapOpening = true;
+        next.telemetry.swarmBankOrdinal = nextSwarmBankOrdinal(next.telemetry.hangar);
+        const threats = normalizeThreatIds(request && request.threats)
+          .filter(id => !zeroScrapOpening || id !== 'thin_purse');
         if (threats.length) next.telemetry.threats = threats;
         const earned = crucibleEarnedPerkIds(profile);
         const pick = request && Array.isArray(request.perks) ? request.perks
@@ -217,7 +254,7 @@ export const runSession = {
     });
     // The war chest pays the run wallet only. A stake or anything else that already funded
     // this run keeps the purse; adventure credits are never touched.
-    if (!committed || next.kind !== 'survival') return;
+    if (!committed || next.kind !== 'survival' || zeroScrapOpening) return;
     const live = this._liveRun();
     if (!live || live.credits !== 0) return;
     const hangar = (live.telemetry && live.telemetry.hangar) || next.telemetry.hangar;
@@ -286,6 +323,7 @@ export const runSession = {
     if (run.phase === 'inactive') return false;
     const credits = toNonNegativeInt(request && request.credits);
     const xp = toNonNegativeInt(request && request.xp);
+    const reason = toReason(request && request.reason);
     // A quiet Crucible wave has not been played. Seed 4242 idle paid +202 at sim
     // 41.1, in the same sample gap as the second pre-input death's resolve,
     // before any flight input. Credits and XP still settle; the score line
@@ -298,6 +336,18 @@ export const runSession = {
     const next = cloneRun(run);
     if (!next) return false;
     next.credits += credits;
+    if (credits > 0 && isSwarmRuleset(run.ruleset)) {
+      const refunds = runLifetime(run)?.creditRefunds;
+      const debit = refunds?.get(reason);
+      const reversingDebit = debit?.amount === credits && debit.tick === this.state.tick;
+      if (reversingDebit) refunds.delete(reason);
+      const restricted = reversingDebit ? debit.restricted
+        : (runOnlyAward(reason) || REFUND_REASONS.has(reason) ? credits : 0);
+      if (restricted > 0) {
+        next.telemetry ??= {};
+        next.telemetry.nonBankableCredits = nonBankableRunCredits(run) + restricted;
+      }
+    }
     next.xp += xp;
     next.score += score;
     const previousLevel = next.level;
@@ -318,7 +368,7 @@ export const runSession = {
       totalScore: next.score,
       level: next.level,
       previousLevel,
-      reason: toReason(request && request.reason),
+      reason,
       wave: Number.isInteger(request && request.wave) ? request.wave : null,
       bankActs: toBankActs(request && request.bankActs),
       causePhrase: toCausePhrase(request && request.causePhrase),
@@ -340,22 +390,34 @@ export const runSession = {
     if (run.kind === 'adventure') return false;
     const amount = toNonNegativeInt(request && request.credits);
     if (amount <= 0) return false;
-    if (run.credits < amount) {
+    const reason = toReason(request && request.reason);
+    const earnedOnly = reason === 'partial_bank';
+    const available = earnedOnly ? bankableRunCredits(run) : run.credits;
+    if (available < amount) {
       this._emit('run:spendRejected', {
         credits: amount,
-        available: run.credits,
-        reason: toReason(request && request.reason),
+        available,
+        reason,
       });
       return false;
     }
     const next = cloneRun(run);
     if (!next) return false;
-    next.credits -= amount;
-    return this._commitRun(next, 'run:spent', {
+    const restricted = debitCredits(next, amount, earnedOnly);
+    const refundReason = REFUND_FOR_SPEND.get(reason);
+    const lifetime = isSwarmRuleset(run.ruleset) ? runLifetime(run) : null;
+    // Known refunds occur inside the spend notification or immediately after it returns.
+    // The matching charge belongs to this live run and can be reversed once.
+    const refunds = refundReason && lifetime ? (lifetime.creditRefunds ??= new Map()) : null;
+    const debit = refunds ? { amount, restricted, tick: this.state.tick } : null;
+    if (refunds) refunds.set(refundReason, debit);
+    const committed = this._commitRun(next, 'run:spent', {
       credits: amount,
       totalCredits: next.credits,
-      reason: toReason(request && request.reason),
+      reason,
     });
+    if (!committed && refunds?.get(refundReason) === debit) refunds.delete(refundReason);
+    return committed;
   },
 
   /**
@@ -423,7 +485,7 @@ export const runSession = {
         safeRollback(worldCommit);
         return cachePurchaseResult(this, ledger, receipt(false, reason));
       }
-      next.credits -= amount;
+      debitCredits(next, amount);
       if (!this._commitRun(next, 'run:spent', {
         credits: amount,
         totalCredits: next.credits,

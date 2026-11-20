@@ -55,7 +55,7 @@ function fixture() {
   };
   state.entities.set(projectile.id, projectile);
   state.entityList.push(projectile);
-  host._attackLive.set(projectile.id, { spec, runtime });
+  host._attackLive.set(projectile.id, { projectile, projectileGeneration: null, spec, runtime });
   return { state, host, projectile, runtime, spec };
 }
 

@@ -53,6 +53,14 @@ export const INDUSTRY_KITS = Object.freeze([
     machines: { sm_massline_core: 1, sm_extractor: 5, sm_gas_tap: 3,
       sm_refinery: 3, sm_fabricator: 3, sm_cargo_port: 2 },
     note: 'Grow in stages: cast Regocrete, print electronics, then make circuitry, fuel cells and controllers. Import titanium or other missing ores. Switch recipes between batches, or dedicate more machines for continuous lines. Preserve the deposits that feed or accelerate each process.' },
+  { id: 'cryo_synthesizer', name: 'Cryo-cooled quantum synthesizer',
+    machines: { sm_massline_core: 1, sm_extractor: 2, sm_gas_tap: 2,
+      sm_refinery: 1, sm_cryo_condenser: 1, sm_deep_synthesizer: 1, sm_cargo_port: 1 },
+    note: 'Seat the Cryo Condenser adjacent to the Deep Synthesizer and refineries to expand thermal headroom while synthesizing high-margin polymers, microchips, and quantum cores.' },
+  { id: 'harmonic_hub', name: 'Harmonic mass-driver hub',
+    machines: { sm_massline_core: 1, sm_extractor: 2, sm_harmonic_resonator: 1,
+      sm_seismic_brace: 1, sm_capacitor_bank: 1, sm_mass_driver: 1 },
+    note: 'Anchor a Harmonic Resonator alongside extractors inside a seismically braced chamber, buffer surplus MW in a Capacitor Bank, and boost belt links via a Mass Driver.' },
 ]);
 
 /** Gross installed kit and incremental packing list; caller must provide already-built truth. */

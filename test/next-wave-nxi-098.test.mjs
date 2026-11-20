@@ -2,8 +2,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isUnsellableCargo } from '../src/systems/cargo.js';
-import { economy } from '../src/systems/economy.js';
+import { createSimulation } from '../src/core/sim.js';
+import { addCargo, cargo, isUnsellableCargo } from '../src/systems/cargo.js';
+import { economy, economyReadView } from '../src/systems/economy.js';
 import {
   createMarketHistoryBackfill,
   createMarketScreen,
@@ -212,6 +213,111 @@ test('NXI-098: a sealed hold stays listed and its sell control does not fire', (
   } finally {
     dom.restore();
   }
+});
+
+test('Sell lists a held reservation even when the station does not price that commodity', () => {
+  const dom = installDom();
+  try {
+    const alloys = 'cmdty_alloys';
+    const absent = 'cmdty_fuel_cells';
+    const unreserved = 'cmdty_ore_iron';
+    const state = holdState(8, 1);
+    state.player.cargo.items[alloys] = 7;
+    state.player.cargo.items[unreserved] = 1;
+    state.missions.active.push(...[[alloys, 6], [absent, 8]].map(([cmdtyId, qty]) => ({
+      id: cmdtyId, status: 'active', preloadedCargo: true, params: { cmdtyId, qty },
+    })));
+    const { screen, emitted } = openSell(state);
+    const heldAlloys = row(screen, alloys);
+    assert.ok(heldAlloys, 'the unquoted reservation must be visible next to the other sealed lot');
+    assert.match(heldAlloys.querySelector('.sx-mkt-row__held').textContent, /7/);
+    assert.ok(row(screen, CHIPS), 'the quoted reservation remains visible');
+    assert.ok(row(screen, FOOD), 'ordinary sales retain the local quote');
+    assert.equal(row(screen, absent), null, 'a claim with no cargo on board is not a hold row');
+    assert.equal(row(screen, unreserved), null, 'unreserved off-exchange cargo gains no listing');
+
+    heldAlloys.click();
+    screen.el.querySelector('[data-q="max"]').click();
+    assert.equal(screen.el.querySelector('.sx-qty__in').value, '0');
+    assert.match(screen.el.querySelector('.sx-trade__note').textContent,
+      /6 u sealed on contract.*does not trade Composite Alloys/i);
+    const typed = screen.el.querySelector('.sx-qty__in');
+    typed.value = '1';
+    dispatch(typed, 'input');
+    assert.equal(typed.value, '0');
+    const go = screen.el.querySelector('[data-go]');
+    assert.equal(go.disabled, true);
+    go.click();
+    assert.equal(emitted.some((entry) => entry.name === 'ui:sell'), false);
+    assert.equal(state.player.cargo.items[alloys], 7);
+
+    screen.el.querySelector('[data-mode="buy"]').click();
+    assert.equal(row(screen, alloys), null, 'the station exchange must not gain a buy listing');
+  } finally {
+    dom.restore();
+  }
+});
+
+test('a docked Ceres Sell counter opens an empty liquidation listing for free carried specimens', (t) => {
+  const dom = installDom();
+  t.after(() => dom.restore());
+  const sim = createSimulation({ seed: 47, systems: [economy, cargo] });
+  t.after(() => sim.dispose());
+  const { state, bus, registry } = sim;
+  const stationId = 'station_ceres';
+  const sample = 'cmdty_host_archive_sample';
+  const filament = 'cmdty_calcified_filament';
+  const sealed = 'cmdty_cyst_resin';
+  const stolen = 'cmdty_stolen_goods';
+  state.world.currentSectorId = 'sector_ceres_belt';
+  state.player.credits = 6866;
+  for (const [id, qty] of [[sample, 9], [filament, 5], [sealed, 2], [stolen, 2]]) addCargo(state, id, qty);
+  state.missions.active = [{ id: 'sealed-specimens', status: 'active', preloadedCargo: true,
+    params: { cmdtyId: sealed, qty: 2 } }];
+
+  const book = registry.get('economy').ensureMarket(stationId);
+  bus.emit('economy:marketOpened', { stationId });
+  for (const id of [sample, filament, sealed, stolen]) assert.equal(book[id], undefined);
+
+  state.mode = 'station';
+  state.ui.docked = true;
+  state.world.currentSectorId = 'sector_helios_prime';
+  state.ui.dockedStationId = 'station_helios';
+  const helios = registry.get('economy').ensureMarket('station_helios');
+  bus.emit('economy:marketOpened', { stationId: 'station_helios' });
+  assert.equal(helios[sample], undefined, 'quarantine refusal does not open an empty listing');
+  assert.equal(helios[filament], undefined);
+
+  state.world.currentSectorId = 'sector_ceres_belt';
+  state.ui.dockedStationId = stationId;
+  const readEconomy = economyReadView(state);
+  const screen = createMarketScreen({ state, bus,
+    registry: { get: name => name === 'economy' ? readEconomy : registry.get(name) } });
+  document.body.appendChild(screen.el);
+  screen.onShow({ tradeMode: 'sell', state });
+  t.after(() => screen.onHide());
+  assert.ok(row(screen, sample), 'a free held Host Archive Sample is selectable');
+  assert.ok(row(screen, filament), 'a free held Calcified Filament is selectable');
+  assert.equal(book[sample].stock, 0);
+  assert.equal(book[filament].stock, 0);
+  assert.equal(book[sealed], undefined, 'sealed-only cargo does not mint a listing');
+  assert.equal(book[stolen], undefined, 'Ceres cannot liquidate stolen goods');
+  assert.equal(row(screen, stolen), null);
+
+  let sale;
+  bus.on('economy:tradeCompleted', payload => { sale = payload; });
+  row(screen, sample).click();
+  const go = screen.el.querySelector('[data-go]');
+  assert.equal(go.disabled, false);
+  go.click();
+  assert.equal(sale?.commodityId, sample);
+  assert.equal(sale.qty, 9);
+  assert.ok(sale.total > 0);
+  assert.equal(state.player.credits, 6866 + sale.total);
+  assert.ok(!state.player.cargo.items[sample]);
+  assert.equal(state.player.cargo.items[filament], 5);
+  assert.equal(state.player.cargo.items[sealed], 2);
+  assert.equal(state.player.cargo.items[stolen], 2);
 });
 
 test('NXI-098: a hold that is only sealed cargo is not described as empty', () => {

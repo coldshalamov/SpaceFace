@@ -61,11 +61,11 @@ html.sf-reduce-motion .orr-svg .orr-ltape__settle { animation:none; }
 .orr-svg .orr-ltape__arc-headbloom--out { fill:rgb(${BONE}); opacity:.14; }
 .orr-svg .orr-ltape__arc-bloom--out { opacity:.1; }
 .orr-ltape text.orr-ltape__figure.orr-ltape__foot-n, .orr-ltape__purse text.orr-ltape__figure.orr-ltape__foot-n { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-size:22px !important; font-weight:250; letter-spacing:-.01em; fill:rgb(248 244 234); }
-.orr-ltape text.orr-ltape__key.orr-ltape__foot-k, .orr-ltape__purse text.orr-ltape__key.orr-ltape__foot-k { font-size: 12px; fill:rgb(${BONE} / .6); }
+.orr-ltape text.orr-ltape__key.orr-ltape__foot-k, .orr-ltape__purse text.orr-ltape__key.orr-ltape__foot-k { font-size: 12px; fill:rgb(${BONE} / .8); }
 .orr-ltape__purse text.orr-ltape__key { fill:rgb(${BONE} / .55); font-size: 12px; }
 .orr-svg .orr-ltape__hand-drop { stroke:var(--dp-hand, #f2b950); }
-.orr-ltape text.orr-ltape__net-key, .orr-ltape__purse text.orr-ltape__net-key { font-size: 12px; fill:rgb(${BONE} / .6); }
-.orr-ltape__purse text.orr-ltape__figure.orr-ltape__foot-n { fill:rgb(${BONE} / .76); }
+.orr-ltape text.orr-ltape__net-key, .orr-ltape__purse text.orr-ltape__net-key { font-size: 12px; fill:rgb(${BONE} / .8); }
+.orr-ltape__purse text.orr-ltape__figure.orr-ltape__foot-n { fill:rgb(${BONE} / .8); font-weight:430; }
 .orr-svg .orr-ltape__break { stroke:rgb(6 8 11); }
 .orr-ltape__pursehost { position:relative; display:block; }
 .orr-ltape__pursehost > svg { position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible; }
@@ -74,7 +74,7 @@ html.sf-reduce-motion .orr-svg .orr-ltape__settle { animation:none; }
 .orr-ltape text.orr-ltape__ref-n { fill:rgb(${BONE} / .5); }
 .orr-svg .orr-ltape__cursor { stroke:rgb(248 244 234); }
 .orr-svg .orr-ltape__cursor-bloom { stroke:rgb(248 244 234); opacity:.22; }
-.orr-ltape text { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.14em; text-transform:uppercase; fill:rgb(${BONE} / .6); paint-order:stroke; stroke:rgb(6 8 11 / .92); stroke-width:3px; stroke-linejoin:round; }
+.orr-ltape text { font-family:var(--dp-face-label, "Archivo"); font-stretch:112%; font-weight:650; font-size: 12px; letter-spacing:.06em; text-transform:uppercase; fill:rgb(${BONE} / .68); paint-order:stroke; stroke:rgb(6 8 11 / .92); stroke-width:3px; stroke-linejoin:round; }
 .orr-ltape text.orr-ltape__figure { font-family:var(--dp-face-numeral, "Archivo"); font-stretch:100%; font-weight:500; font-size:12px; letter-spacing:.02em; text-transform:none; fill:rgb(248 244 234); font-variant-numeric:tabular-nums; }
 .orr-ltape text.orr-ltape__figure--out { fill:rgb(${BONE}); }
 .orr-ltape text.orr-ltape__cycle--now { fill:rgb(248 244 234 / .8); }

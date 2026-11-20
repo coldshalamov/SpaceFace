@@ -153,7 +153,7 @@ test('new recipes use lighter, smaller outputs worth more at catalog baseline th
 
 test('every commodity manufacturing stage adds at least twenty percent gross value', () => {
   for (const recipe of SITE_RECIPES) {
-    if (recipe.output.pod) continue; // fleet equipment has no ordinary market resale price
+    if (recipe.output.pod || recipe.outOfLane) continue; // fleet equipment & in-rock ordnance have no ordinary market resale price
     const input = summarizeIndustryCargo(recipe.inputs, COMMODITIES);
     const output = summarizeIndustryCargo(recipe.output, COMMODITIES);
     assert.ok(input.complete && output.complete, recipe.id);

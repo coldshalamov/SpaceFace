@@ -701,7 +701,11 @@ export class Sg02DynamicBodyOwner {
           || !sameNativeValue(nativeEntityKinematics(entity), saved.state)
           || !sameNativeValue(nativeBodyContract(entity, spec), saved.contract)) throw new Error('body_contract_changed');
         const colliders = Array.from({ length: body.numColliders() }, (_, index) => body.collider(index));
-        if (!sameNativeValue(nativeBodyProperties(body, colliders), saved.native)
+        // Both native readers already return canonical plain data. Normalize the saved
+        // attestation once for the restored geometry and the independent authored check.
+        const restoredNative = JSON.stringify(nativeBodyProperties(body, colliders));
+        const savedNative = JSON.stringify(nativePlain(saved.native));
+        if (restoredNative !== savedNative
           || !nativeMassMatches(body, spec, saved)
           || !snapshotBodyPoseMatches(candidate, body, entity, spec)) {
           throw new Error('native_body_mismatch');
@@ -715,7 +719,7 @@ export class Sg02DynamicBodyOwner {
         validator._applyBodyResponse(expected, { massScale: saved.bodyResponseMassScale, inertiaScale: saved.bodyResponseInertiaScale });
         if (saved.tumbleMaterial) validator._syncTumbleMaterial(expected, true);
         expected.body.recomputeMassPropertiesFromColliders();
-        if (!sameNativeValue(nativeBodyProperties(expected.body, expected.colliders), saved.native)) {
+        if (JSON.stringify(nativeBodyProperties(expected.body, expected.colliders)) !== savedNative) {
           throw new Error('authored_native_geometry_changed');
         }
         const rec = this._adoptRecord.call(candidate, entity, spec, body, colliders);

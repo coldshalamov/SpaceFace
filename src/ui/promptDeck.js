@@ -213,7 +213,11 @@ export function createPromptDeck(ctx = {}) {
   }
   /** Every hidden toggle funnels here so the seat claim tracks the deck's real visibility. */
   function setDeckHidden(v) {
-    if (root.hidden !== v) root.hidden = v;
+    if (root.hidden !== v) {
+      root.hidden = v;
+      doc.body?.classList.toggle('sf-flight-decision-open', !v);
+      bus?.emit?.('hud:receiptGeometryChanged');
+    }
     syncDeckSeat();
   }
 
@@ -228,6 +232,7 @@ export function createPromptDeck(ctx = {}) {
   // Power-rail claim signature ('' = released). While the deck owns Digit1-N for answers/raises,
   // the rail is told so its sockets show the answers instead of powers that will not fire.
   let claimSig = '';
+  let claimedDigits = null;
   // In-flight exits, id → { timer, nodes }: a leaving frame/chip unmounts on its own timer, and a
   // re-offer of the same id kills the pair synchronously — two cards for one id never coexist.
   const leaving = new Map();
@@ -250,7 +255,6 @@ export function createPromptDeck(ctx = {}) {
   // claim releases whenever the deck cannot capture keys (hidden, fenced, modal, docked, dead), so
   // a prompt that vanishes without resolving can never leave the rail showing dead answers.
   function syncClaim() {
-    if (!bus || typeof bus.emit !== 'function') return;
     const active = !destroyed && entries.size && !root.hidden && !fenced() && !modalOpen() && inFlight();
     let payload = null;
     let sig = '';
@@ -284,8 +288,9 @@ export function createPromptDeck(ctx = {}) {
     }
     if (sig === claimSig) return;
     claimSig = sig;
-    if (payload) bus.emit('hud:slotClaim', payload);
-    else bus.emit('hud:slotRelease', { claimId: 'prompt-deck' });
+    claimedDigits = payload?.slots ?? null;
+    if (payload) bus?.emit?.('hud:slotClaim', payload);
+    else bus?.emit?.('hud:slotRelease', { claimId: 'prompt-deck' });
   }
 
   // ── DOM builders ───────────────────────────────────────────────────────────────────────────
@@ -661,21 +666,23 @@ export function createPromptDeck(ctx = {}) {
     // Escape has the same safe meaning as gamepad Back: only an explicitly supplied
     // cancel choice. It never guesses a destructive refusal or pauses behind a live overlay.
     if (ev.key === 'Escape') {
+      if (state.ui?.cargoPanelOpen) return;
       const cancel = entries.get(raisedId)?.spec.choices?.find(choice => choice.cancel && !choice.disabled);
       if (!cancel) return;
       ev.preventDefault?.();
       ev.stopImmediatePropagation?.();
-      choose(raisedId, cancel.id, 'keyboard');
+      if (!ev.repeat) choose(raisedId, cancel.id, 'keyboard');
       return;
     }
     const route = routeDigit(
       visibleEntries().map((e) => ({ id: e.spec.id, deadlineAt: e.spec.deadlineAt, ttlAt: e.spec.ttlAt, seq: e.seq, choices: e.spec.choices })),
-      raisedId, ev.key != null ? ev.key : ev.code, currentFullSlots,
+      raisedId, ev.code || ev.key, currentFullSlots,
     );
     if (!route) return;
     if (typeof ev.preventDefault === 'function') ev.preventDefault();
     if (typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
     else if (typeof ev.stopPropagation === 'function') ev.stopPropagation();
+    if (ev.repeat) return;
     if (route.type === 'choose') choose(route.id, route.choiceId, 'keyboard');
     else raise(route.id);
   }
@@ -943,6 +950,7 @@ export function createPromptDeck(ctx = {}) {
     choose, raise, tick, gamepadCapture, gamepadNav,
     get size() { return entries.size; },
     get raisedId() { return raisedId; },
+    get claimedDigits() { return claimedDigits; },
     destroy,
   };
   setPromptDeck(api);

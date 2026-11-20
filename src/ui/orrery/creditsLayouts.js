@@ -25,9 +25,12 @@ export const CREDITS_LAYOUT_CSS = `
 ${C} .orr-cr-sec:not(:has(> .of-credits-notice)) {
   box-sizing:border-box;
   padding:clamp(12px, 1.5vh, 20px) clamp(14px, 1.5vw, 22px);
-  border:1px solid rgb(${BONE} / .18);
+  /* the first alphas (.18/.025) vanished against the lit drift field — the Records Wall
+     finding — so the card wears the house E0 face (bench 2026-11-15) */
+  border:1px solid rgb(${BONE} / .3);
   border-radius:10px;
-  background:rgb(${BONE} / .025);
+  background:var(--sf-face, rgb(8 11 16 / .8));
+  box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5));
 }
 ${C} .orr-cr-sec + .orr-cr-sec { margin-top:clamp(22px, 3.2vh, 48px); }
 ${C} .orr-cr-head { margin-bottom:14px !important; }
@@ -41,11 +44,11 @@ ${C} .of-credits-notice {
   box-sizing:border-box !important;
   padding:clamp(12px, 1.4vh, 18px) clamp(14px, 1.4vw, 20px) !important;
   margin:0 0 clamp(14px, 2vh, 22px) !important;
-  border:1px solid rgb(${BONE} / .18) !important;
+  border:1px solid rgb(${BONE} / .3) !important;
   border-radius:10px !important;
-  background:rgb(${BONE} / .025) !important;
+  background:var(--sf-face, rgb(8 11 16 / .8)) !important;
   border-image:none !important;
-  box-shadow:none !important;
+  box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)) !important;
   clip-path:none !important;
 }
 /* bead sits inside the card padding instead of the old 30px left gutter */

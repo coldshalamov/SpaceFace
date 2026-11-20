@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 
 import {
   SHARE_CODE_VERSION,
+  compareChallengeCodes,
   decodeRunShareCode,
   encodeRunShareCode,
   encodeShareBlock,
@@ -54,15 +55,37 @@ test('invalid and corrupted codes fail closed before any run starts (NXI-077)', 
 });
 
 test('a foreign codec version is non-comparable, never silently re-versioned', () => {
-  // Forge a v2 envelope with a VALID v2 checksum — the checksum passes; the
+  // Forge a future envelope with a valid checksum — the checksum passes; the
   // ruleset-compat check must still refuse it.
-  const foreign = encodeShareBlock(RUN_SHARE_PREFIX, { v: SHARE_CODE_VERSION + 1, s: 7, r: 'swarm' });
+  const foreign = encodeShareBlock(RUN_SHARE_PREFIX, { v: 99, s: 7, r: 'swarm' });
   assert.ok(foreign, 'foreign code encodes');
   const res = decodeRunShareCode(foreign);
   assert.equal(res.ok, false);
   assert.ok(res.error.includes('not comparable'), `names the incompatibility: ${res.error || ''}`);
   const applied = applyRunShareCode(foreign);
   assert.equal(applied.ok, false, 'paste path also refuses');
+});
+
+test('ordinary v2 share rejects incompatible or malformed openings', () => {
+  const exact = { v: 2, s: 42, r: 'swarm', h: 'ship_hornet', k: 'hull:ship_hornet',
+    a: 'helios_core', t: 'exhibition', q: ['thick_pack'], o: true };
+  const good = encodeShareBlock(RUN_SHARE_PREFIX, exact);
+  assert.equal(decodeRunShareCode(good).ok, true);
+  for (const changed of [{ k: 'hull:ship_kestrel' }, { h: 'ship_invented' }, { a: 'arena_removed' },
+    { r: 'scored' }, { t: 'purse_invented' }, { s: 0 }, { g: 0 }, { w: 'weapons_cold' }, { d: '2026-11-19' },
+    { o: 'true' }, { q: ['thin_purse'] }, { q: ['unknown_threat'] }, { q: ['thick_pack', 'thick_pack'] },
+    { l: [[0, 'wpn_autocannon_s']] }, { m: ['mutator_invented'] }, { m: ['no_reroll'] }]) {
+    const bad = encodeShareBlock(RUN_SHARE_PREFIX, { ...exact, ...changed });
+    assert.equal(applyRunShareCode(bad).ok, false, JSON.stringify(changed));
+  }
+  const v1 = encodeShareBlock(RUN_SHARE_PREFIX, { ...exact, v: SHARE_CODE_VERSION });
+  assert.equal(compareChallengeCodes(good, v1).comparable, false);
+  const otherThreat = encodeShareBlock(RUN_SHARE_PREFIX, { ...exact, q: ['fast_lane'] });
+  assert.equal(compareChallengeCodes(good, otherThreat).comparable, false);
+  const pact = applyRunShareCode(encodeShareBlock(RUN_SHARE_PREFIX, { ...exact, o: false, m: ['no_reroll'] }));
+  assert.equal(pact.zeroScrapOpening, true);
+  assert.equal(pact.openingLesson, false);
+  assert.deepEqual(pact.mutators, ['no_reroll']);
 });
 
 test('a ruleset this build does not ship is non-comparable, never defaulted', () => {

@@ -12,6 +12,7 @@ import { dressLampKey } from '../../orrery/lampKey.js';
 import { hullPosterUrl } from '../../hullPosters.js';
 import { icon as stationIcon, hasIcon as hasStationIcon } from '../icons.js';
 import { equipmentIcon } from '../../orrery/equipmentGlyphs.js';
+import { itemThumbHtml, paintOptionThumbHtml, injectItemThumbnailStyles } from '../../icons/itemThumbnails.js';
 // src/ui/station/screens/shipworks.js — "Shipworks" and THE SHIP: the shared stage (Frontend
 // Task C §1.9). The hull fills the panel behind everything, orbitable; the hulls (fleet / for sale)
 // as a column of rows down the hang; the hull's name at title size with its blurb; six compact
@@ -503,6 +504,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // shared sheet stays exactly what the flight host reads.
   injectOrreryShipworks(document);
   injectOrreryStationShipworks(document);
+  injectItemThumbnailStyles(document);
   // The kit panel: the hulls down the hang column, the stage to its right. The canvas fills the
   // whole panel behind both (positioned like .k-world); the corner rows, the pinned labels, the
   // four bands along the foot and the verbs all sit on top. The chooser is a third child that
@@ -3829,8 +3831,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         const subLabel = `${String(roleLabel).replace(/\s+([^\s]+)\s*$/, '\u00a0$1')}\u00a0\u00b7 T${def.tier != null ? def.tier : '?'}`;
         const on = i === viewIdx ? ' is-active' : '';
         const isActive = i === activeIdx;
+        const hullThumb = itemThumbHtml({ hullId: s.defId, kind: 'hull' }, { size: 'sm', showCrest: false, showPips: false, className: 'sx-sw-row__thumb' });
         return (
           `<button type="button" ${stationControlAttrs('inspect-hull')} class="k-row sx-sw-row${on}" data-fleet="${i}" data-why="${escapeHtml(shipworksHullName(s.defId))}" aria-label="Inspect ${escapeHtml(shipworksHullName(s.defId))}" aria-pressed="${i === viewIdx}" aria-selected="${i === viewIdx}">` +
+            hullThumb +
             `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(shipworksHullName(s.defId))}</span>` +
               `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(subLabel)}</span></span>` +
             `<span class="k-row__num k-t-fine sx-sw-row__flag">${isActive ? 'Active' : ''}</span>` +
@@ -3852,8 +3856,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         const hullLabel = yard.usedHull ? `Used ${s.name}${yard.usedHull.callsign ? ' \u00b7 ' + yard.usedHull.callsign : ''}` : s.name;
         const price = yard.price;
         const priceWord = price > 0 ? fmt(price) + ' credits' : 'owned';
+        const hullThumb = itemThumbHtml({ hullId: s.id, kind: 'hull' }, { size: 'sm', showCrest: false, showPips: false, className: 'sx-sw-row__thumb' });
         return (
           `<button type="button" ${stationControlAttrs('preview-hull')} class="k-row sx-sw-row${on}" data-buy="${escapeHtml(s.id)}" data-why="${escapeHtml(s.name)} · ${escapeHtml(roleLabel)}" aria-label="Preview ${escapeHtml(hullLabel)}, ${escapeHtml(roleLabel)}, ${escapeHtml(priceWord)}" aria-pressed="${s.id === buyId}" aria-selected="${s.id === buyId}">` +
+            hullThumb +
             `<span class="k-row__name sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(hullLabel)}</span>` +
               `<span class="k-row__sub sx-sw-row__sub">${escapeHtml(subLabel)}</span></span>` +
             `<span class="k-row__num sx-sw-row__price">${price > 0 ? fmt(price) : 'Owned'}</span>` +
@@ -4032,9 +4038,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const dry = !!d && !(cell.count > 0);
       const label = d ? d.name : 'Empty socket';
       const sub = d ? (dry ? `fitted · magazine dry — restock from the hangar` : `${cell.count}/${d.magazine} loaded`) : 'choose ordnance';
-      return `<li class="k-row sx-sw-rack__cell${dry || !d ? ' is-empty' : ''}" data-rack-socket="${i}" tabindex="0" role="button" aria-label="Rack socket ${i + 1}: ${escapeHtml(label)}">` +
-        // Name over its state, the way the system rows above it read ("Weapon / 0/1 fitted"):
-        // inline, the two ran together as "Empty socketchoose ordnance".
+      const bombThumb = d
+        ? itemThumbHtml({ id: d.id, defId: d.id }, { size: 'sm', showCrest: false, showPips: false, className: 'sx-sw-rack__thumb' })
+        : '';
+      return `<li class="k-row sx-sw-rack__cell${dry || !d ? ' is-empty' : ''}${d ? ' has-bomb' : ''}" data-rack-socket="${i}" tabindex="0" role="button" aria-label="Rack socket ${i + 1}: ${escapeHtml(label)}">` +
+        bombThumb +
         `<span class="k-row__name sx-sw-flow__copy sx-sw-rack__copy">${escapeHtml(label)} <span class="k-row__sub">${escapeHtml(sub)}</span></span>` +
         `<span class="k-row__num k-38">S${i + 1}</span></li>`;
     }).join('');
@@ -4348,12 +4356,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const btn = blocked
         ? `<span class="k-t-fine k-38 sx-modrow__lock">In hold${countTag}</span>`
         : `<button type="button" ${stationControlAttrs('fit-from-hold')} class="k-word k-word--fine k-word--primary sx-modrow__buy" data-fit-inv="${escapeHtml(instanceId)}" data-fit-inv-slot="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>Fit${countTag}</button>`;
+      const thumbHtml = itemThumbHtml({ ...d, defId: d.id, size: d.size || (slot && slot.size) }, { size: 'md', showCrest: true, className: 'sx-modrow__thumb' });
       const iconHtml = provMark
-        ? `<span class="sx-provmark" data-mark="${escapeHtml(provMark)}" tabindex="0" role="img" aria-label="${escapeHtml(provMark)} rim" data-why="${escapeHtml(provMark)} rim">${equipmentIcon(d, 24)}</span>`
-        : equipmentIcon(d, 24);
+        ? `<span class="sx-provmark" data-mark="${escapeHtml(provMark)}" tabindex="0" role="img" aria-label="${escapeHtml(provMark)} rim" data-why="${escapeHtml(provMark)} rim">${thumbHtml}</span>`
+        : thumbHtml;
       return (
         `<li class="k-row sx-modrow sx-modrow--hold${blocked ? ' is-locked' : ''}"${headConflict ? '' : ` data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${iconHtml} ${entitySpanHtml('module:' + d.id, escapeHtml(facts ? facts.name : d.name))}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__head">${iconHtml}<span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(facts ? facts.name : d.name))}</span></span>` +
             `<span class="k-row__sub sx-modrow__role">${metaFallback} · ${escapeHtml(facts ? facts.sentence : '')}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${sheetDeltaChipsHtml(liveSheet, def, fittings, slotIndex, d)}</span>` +
             (instText ? `<span class="k-row__sub k-38 sx-modrow__instance">This unit: ${escapeHtml(instText)}</span>` : '') +
@@ -4420,12 +4429,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           : purchase.state === 'funding'
             ? `<span class="k-t-fine k-38 sx-modrow__buy is-funding" data-why="${escapeHtml(advice ? `${purchase.title} ${jobImpact}`.trim() : purchase.title)}">${fmt(purchase.price)} cr · ${escapeHtml(purchase.label)}</span>`
             : `<button type="button" ${stationControlAttrs('buy-fit', selectedFit ? { primary: true } : undefined)} class="k-word k-word--fine${selectedFit ? ' k-word--primary' : ''} sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}"${selectedFit ? ` data-fit-slot="${slotIndex}"` : ''} ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${buyWord} <small class="k-38">${fmt(purchase.price)} cr</small></button>`;
+      const thumbHtml = itemThumbHtml({ ...d, defId: d.id, size: d.size || (slot && slot.size) }, { size: 'md', showCrest: true, className: 'sx-modrow__thumb' });
       const equippedIconHtml = equippedMark
-        ? `<span class="sx-provmark" data-mark="${escapeHtml(equippedMark)}" tabindex="0" role="img" aria-label="${escapeHtml(equippedMark)} rim" data-why="${escapeHtml(equippedMark)} rim">${equipmentIcon(d, 24)}</span>`
-        : equipmentIcon(d, 24);
+        ? `<span class="sx-provmark" data-mark="${escapeHtml(equippedMark)}" tabindex="0" role="img" aria-label="${escapeHtml(equippedMark)} rim" data-why="${escapeHtml(equippedMark)} rim">${thumbHtml}</span>`
+        : thumbHtml;
       return (
         `<li class="k-row sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${equippedIconHtml} ${entitySpanHtml('module:' + d.id, escapeHtml(facts ? facts.name : d.name))}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__head">${equippedIconHtml}<span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(facts ? facts.name : d.name))}</span></span>` +
             `<span class="k-row__sub sx-modrow__role">${metaFallback} · ${escapeHtml(facts ? facts.sentence : '')}</span>` +
             `<span class="k-row__sub sx-modrow__metrics">${chips}${fitOfferChipHtml(d, ctx.state.player && ctx.state.player.hints, purchase, equipped, ctx.state.player && ctx.state.player.credits)}</span>` +
             `<span class="k-row__sub sx-modrow__meta">${equippedInstText ? `<span class="sx-modrow__instance">This unit: ${escapeHtml(equippedInstText)}</span> ` : ''}${riskChips ? `<span class="sx-modrow__chips">${riskChips}</span>` : ''}</span>` +
@@ -4441,9 +4451,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       // group heading above the row, not as a repeated middot on every line.
       const facts = partFacts(d.id);
       const metaFallback = partMetaHtml(facts, d.id);
+      const refusedThumb = itemThumbHtml({ ...d, defId: d.id, size: d.size || (slot && slot.size) }, { size: 'md', showCrest: true, className: 'sx-modrow__thumb' });
       return (
         `<li class="k-row sx-modrow is-locked" data-refused-module="${escapeHtml(d.id)}" tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${equipmentIcon(d, 24)} ${entitySpanHtml('module:' + d.id, escapeHtml(facts ? facts.name : d.name))}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__head">${refusedThumb}<span class="sx-modrow__name">${entitySpanHtml('module:' + d.id, escapeHtml(facts ? facts.name : d.name))}</span></span>` +
             `<span class="k-row__sub sx-modrow__role">${metaFallback} · ${escapeHtml(facts ? facts.sentence : '')}</span>` +
             `<span class="k-row__sub k-38 sx-modrow__role" data-refusal>${escapeHtml(sentence)}</span></span>` +
           `<span class="k-row__num sx-modrow__act"><span class="k-t-fine k-38 sx-modrow__lock">Won’t mount</span></span>` +
@@ -4670,9 +4681,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const seat = inSocket ? `Socket ${i + 1} holds ${inSocket}/${d.magazine}`
         : elsewhereIndex >= 0 ? `Fitted in socket ${elsewhereIndex + 1}`
         : stock > 0 ? `${stock} in the hangar` : 'None in the hangar';
+      const bombThumb = itemThumbHtml({ id: d.id, defId: d.id }, { size: 'md', showCrest: false, showPips: false, className: 'sx-modrow__thumb' });
       return (
         `<li class="k-row sx-modrow${inSocket ? ' is-eq' : ''}" data-payload-row="${escapeHtml(d.id)}" tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${equipmentIcon(d, 24)} ${escapeHtml(facts ? facts.name : d.name)}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__head">${bombThumb}<span class="sx-modrow__name">${escapeHtml(facts ? facts.name : d.name)}</span></span>` +
             `<span class="k-row__sub sx-modrow__role">${partMetaHtml(facts, d.id)} · magazine ${d.magazine}</span>` +
             `<span class="k-row__sub sx-modrow__meta">${escapeHtml(facts ? facts.sentence : '')}</span>` +
             `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(seat)}</span></span>` +
@@ -4687,9 +4699,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       `<div class="sx-chooser__panel" role="region" aria-label="Rack socket ${i + 1} ordnance">` +
         `<header class="sx-chooser__head">` +
           `<ul class="k-words k-words--row"><li><button type="button" ${stationControlAttrs('back')} class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">${stationControlLabel('back')}</button></li></ul>` +
-          // the count travels with its phrase ("1 OF 2"): the narrow column wrapped a lone "2"
-          // onto its own line — an orphaned digit under the socket's name
-          `<p class="k-caps sx-chooser__kicker">Bomb rack · socket\u00a0${i + 1}\u00a0of\u00a0${rack.sockets}</p>` +
+          // Keep "SOCKET 1 OF 2" on its own line rather than letting a narrow header split "2" alone.
+          `<p class="k-caps sx-chooser__kicker">Bomb rack<br>Socket\u00a0${i + 1}\u00a0of\u00a0${rack.sockets}</p>` +
           `<h3 class="k-t-sub">Ordnance <span class="k-38">${catalogue.length}</span></h3>` +
         `</header>` +
         (outfit ? '' : `<p class="k-sentence sx-muted">${escapeHtml(availability.outfitLabel)}</p>`) +
@@ -4814,8 +4825,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const on = (current.hullColor || null) === (p.hex || null);
       return (
         `<li class="k-row sx-modrow${mark(on)}" data-paint-row="${escapeHtml(p.id)}" tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body">${paintSwatchChip(p.hex)}` +
-            `<span class="sx-modrow__name">${escapeHtml(p.name)}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__head">${paintOptionThumbHtml('hull', p, current)}` +
+            `<span class="sx-modrow__name">${escapeHtml(p.name)}</span></span>` +
             `<span class="k-row__sub sx-modrow__meta">${escapeHtml(p.sentence)}</span></span>` +
           `<span class="k-row__num sx-modrow__act"><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--fine k-word--primary sx-modrow__buy" data-paint-hull="${escapeHtml(p.id)}"${dis()}>${on ? 'Wearing' : 'Paint'}</button></span>` +
         `</li>`
@@ -4825,8 +4836,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const on = (current.accentColor || null) === (p.hex || null);
       return (
         `<li class="k-row sx-modrow${mark(on)}" data-paint-row="${escapeHtml(p.id)}" tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body">${paintSwatchChip(p.hex)}` +
-            `<span class="sx-modrow__name">${escapeHtml(p.name)}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__head">${paintOptionThumbHtml('accent', p, current)}` +
+            `<span class="sx-modrow__name">${escapeHtml(p.name)}</span></span>` +
             `<span class="k-row__sub sx-modrow__meta">${escapeHtml(p.sentence)}</span></span>` +
           `<span class="k-row__num sx-modrow__act"><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--fine sx-modrow__buy" data-paint-accent="${escapeHtml(p.id)}"${dis()}>${on ? 'Wearing' : 'Trim'}</button></span>` +
         `</li>`
@@ -4836,8 +4847,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const on = current.finish === f.id;
       return (
         `<li class="k-row sx-modrow${mark(on)}" data-paint-row="${escapeHtml(f.id)}" tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body">` +
-            `<span class="sx-modrow__name">${escapeHtml(f.name)}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__head">${paintOptionThumbHtml('finish', f, current)}` +
+            `<span class="sx-modrow__name">${escapeHtml(f.name)}</span></span>` +
             `<span class="k-row__sub sx-modrow__meta">${escapeHtml(f.sentence)}</span></span>` +
           `<span class="k-row__num sx-modrow__act"><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--fine sx-modrow__buy" data-paint-finish="${escapeHtml(f.id)}"${dis()}>${on ? 'Cured' : 'Cure'}</button></span>` +
         `</li>`
@@ -4847,8 +4858,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const on = Math.abs(current.wear - w.wear) < 0.001;
       return (
         `<li class="k-row sx-modrow${mark(on)}" data-paint-row="${escapeHtml(w.id)}" tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body">` +
-            `<span class="sx-modrow__name">${escapeHtml(w.name)}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__head">${paintOptionThumbHtml('wear', w, current)}` +
+            `<span class="sx-modrow__name">${escapeHtml(w.name)}</span></span>` +
             `<span class="k-row__sub sx-modrow__meta">${escapeHtml(w.sentence)}</span></span>` +
           `<span class="k-row__num sx-modrow__act"><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--fine sx-modrow__buy" data-paint-wear="${escapeHtml(w.id)}"${dis()}>${on ? 'At this wear' : 'Work'}</button></span>` +
         `</li>`
@@ -4858,8 +4869,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const on = current.decalId === d.decalId;
       return (
         `<li class="k-row sx-modrow${mark(on)}" data-paint-row="${escapeHtml(d.id)}" tabindex="0">` +
-          `<span class="k-row__name sx-modrow__body">` +
-            `<span class="sx-modrow__name">${escapeHtml(d.name)}</span>` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__head">${paintOptionThumbHtml('decal', d, current)}` +
+            `<span class="sx-modrow__name">${escapeHtml(d.name)}</span></span>` +
             `<span class="k-row__sub sx-modrow__meta">${escapeHtml(d.sentence)}</span></span>` +
           `<span class="k-row__num sx-modrow__act"><button type="button" ${stationControlAttrs('paint')} class="k-word k-word--fine sx-modrow__buy" data-paint-decal="${escapeHtml(d.id)}"${dis()}>${on ? 'On the deck' : 'Mark'}</button></span>` +
         `</li>`
@@ -5660,7 +5671,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const statedHullDefId = viewedAtConfirm && viewedAtConfirm.defId;
       const statedPrice = offer ? offer.price : moduleSimPrice(def);
       const replacedId = Number.isInteger(fitSlotIndex) && viewedAtConfirm && Array.isArray(viewedAtConfirm.fittings)
-        ? viewedAtConfirm.fittings[fitSlotIndex] : null;
+        ? viewedAtConfirm.fittings[fitSlotIndex] || null : null;
       const replacedDef = replacedId ? FITTABLE_BY_ID.get(replacedId) : null;
       const confirmingActiveHull = statedShipIndex === ((ctx.state.player && ctx.state.player.activeShipIndex) || 0);
       const confirmOpts = describeOutfittingSpendConfirm(def, credits, {
@@ -5699,6 +5710,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         return;
       }
       if (confirmOpts) {
+        const liveReplacedId = Number.isInteger(fitSlotIndex) ? liveShip?.fittings?.[fitSlotIndex] || null : null;
+        if (liveReplacedId !== replacedId) {
+          if (ctx.bus) ctx.bus.emit('toast', {
+            text: 'Hardpoint changed since confirmation. Review the replacement and confirm again.',
+            kind: 'error',
+            ttl: 3,
+          });
+          refresh();
+          focusNamedStationControl(bf, chooserEl);
+          return;
+        }
         const liveOffer = stationShopOffer(def, shopStationId);
         const livePrice = liveOffer ? liveOffer.price : moduleSimPrice(def);
         if (!statedModulePurchaseStillMatches(
@@ -5715,7 +5737,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         }
       }
       if (ctx.bus) {
-        const accepted = emitFitIntent('ui:buyModule', { defId, fitSlotIndex, shipIndex: statedShipIndex, expectedPrice: statedPrice, hullDefId: statedHullDefId });
+        const accepted = emitFitIntent('ui:buyModule', {
+          defId, fitSlotIndex, shipIndex: statedShipIndex, expectedPrice: statedPrice, hullDefId: statedHullDefId,
+          expectedOccupantDefId: replacedId,
+        });
         if (!accepted) {
           ctx.bus.emit('audio:cue', { id: 'ui_deny' });
           focusNamedStationControl(bf, chooserEl);

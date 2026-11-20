@@ -2,19 +2,66 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
-import { applyDomainPathUpdate } from '../scripts/lib/simReadModel.mjs';
+import { createSimCommandRing, pushLaneCommand } from '../scripts/lib/simCommandChannel.mjs';
+import { applyDomainPathUpdate, applySpawnInfos, createReadModel, DOMAIN_CADENCE } from '../scripts/lib/simReadModel.mjs';
 import { createGameState } from '../src/core/gameState.js';
 import { BEATS } from '../src/systems/onboarding.js';
 import { missionMapAction, mapActionButtonAttrs, mapOpenIntentFromButton } from '../src/ui/screens/missionLog.js';
-import { resolveMapOpenTarget } from '../src/ui/galaxyMap.js';
+import { commitCoursePayload, resolveMapOpenTarget } from '../src/ui/galaxyMap.js';
+import { resolvePlottedSeamWorkpoint } from '../src/ui/navigationWaypoint.js';
 import { pauseStatusLines } from '../src/ui/screens/pause.js';
+
+test('scene preparation and fresh flight both bind 47-A to the authored rim boulder', async () => {
+  const host = createSimHost();
+  try {
+    const scenarioContract = JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url)));
+    const init = await host.init({ profile: 'production', seed: 4242, scenarioContract });
+    const { state, registry } = host.host;
+    const send = async (tick, ackEnd, ...commands) => {
+      const ring = createSimCommandRing();
+      for (const command of commands) pushLaneCommand(ring, command);
+      return host.tick({ tick, steps: 0, commands: ring.drain(), ackEnd });
+    };
+    const boot = await send(1, init.initRebuild?.end || 0, { kind: 'mode', mode: 'loading' },
+      { kind: 'rpc', id: 'boot', op: 'newGameBoot', args: { opts: { seed: 4242 } } });
+    assert.equal(boot.rpcAcks.find(row => row.id === 'boot')?.result?.ok, true);
+    const prepared = structuredClone(state.nav.waypoint);
+    assert.equal(prepared.recoverySource.slotId, 'boulder:helios_boulder_rim');
+    const flight = await send(2, boot.journalEnd, { kind: 'mode', mode: 'flight' });
+    const mission = state.missions.active.find(row => row.id === prepared.missionId);
+    const source = state.entityList.find(entity => entity.data?.asteroidSlotId === mission.params.sampleSource.slotId);
+    assert.equal(source.data.authoredBoulderId, 'helios_boulder_rim');
+    assert.equal(state.nav.waypoint.targetEntityId, source.id);
+    assert.deepEqual(state.nav.waypoint.recoverySource, mission.params.sampleSource);
+    assert.equal(state.nav.waypoint.stable.stamp.occupantGeneration, source.occupantGeneration);
+    assert.equal(state.entities.get(prepared.targetEntityId).alive, true);
+
+    const domains = new Map([['nav', { waypoint: prepared }]]);
+    for (const update of flight.domainUpdates.filter(update => update.segs[0] === 'nav')) {
+      applyDomainPathUpdate(domains, structuredClone(update), new Set());
+    }
+    assert.equal(domains.get('nav').waypoint.targetEntityId, source.id);
+    assert.deepEqual(domains.get('nav').waypoint.recoverySource, mission.params.sampleSource);
+
+    const owner = registry.get('missions');
+    const manual = { kind: 'local', label: 'Manual course', pos: { x: 180, z: 75 } };
+    const lesson = { ...prepared, onboarding: true, markerId: 'onboarding:tether' };
+    for (const waypoint of [manual, lesson]) {
+      state.nav.waypoint = waypoint;
+      owner.newGame();
+      assert.equal(state.nav.waypoint, waypoint, `the installer must preserve ${waypoint.markerId || waypoint.label}`);
+    }
+  } finally { host.shutdown(); }
+});
 
 test('worker publishes the actual 47-A recovery fix, then the berth after the accepted yield', async () => {
   const host = createSimHost();
   const main = createGameState(4242);
+  const mirror = createReadModel();
   const domains = new Map(Object.entries(main));
   let tick = 0;
   const apply = (reply) => {
+    applySpawnInfos(mirror, reply.spawnInfos);
     for (const update of reply.domainUpdates || []) {
       const segs = update.segs.length === 1 && update.segs[0].includes('.') ? update.segs[0].split('.') : update.segs;
       applyDomainPathUpdate(domains, { ...update, segs }, new Set());
@@ -33,7 +80,7 @@ test('worker publishes the actual 47-A recovery fix, then the berth after the ac
       data: { defId: 'ship_kestrel', fittings: [], intent: {}, ai: {} } });
     state.playerId = player.id;
     state.player.cargo = { items: {}, usedVolume: 0, usedMass: 0, capVolume: 40, capMass: 200 };
-    state.onboarding = { active: true, finished: false, currentBeat: 0 };
+    state.onboarding = { active: true, finished: false, currentBeat: 0, beatDoneAt: {}, firedFollowups: {} };
     const owner = registry.get('missions');
     const tutorial = registry.get('onboarding');
     owner._installContract47aColdStart();
@@ -122,6 +169,29 @@ test('worker publishes the actual 47-A recovery fix, then the berth after the ac
     assert.deepEqual(mission.params.samplePos, { x: 1e8, z: 1e8 }, 'the owner never moves a missing fix to an unrelated rock');
     mission.params.samplePos = { ...marked };
     mission.params.sampleSource = sourceIdentity;
+    state.onboarding.currentBeat = BEATS.findIndex((beat) => beat.key === 'seam');
+    tutorial._enterBeat(BEATS[state.onboarding.currentBeat]);
+    await publish();
+    assert.equal(main.nav.waypoint?.presentationEntityId, source.id);
+    assert.equal(main.nav.waypoint?.presentationEntityGeneration, source.occupantGeneration);
+    assert.equal(main.nav.waypoint?.targetEntityId, undefined, 'framing the lesson cannot arm the flight computer');
+
+    player.pos = { x: source.pos.x + 110, z: source.pos.z };
+    const chartCourse = commitCoursePayload(state, { id: 'active-waypoint', kind: 'waypoint', objective: true,
+      name: '47-A Recovery Site', x: source.pos.x, z: source.pos.z });
+    bus.emit('ui:setCourse', chartCourse);
+    assert.equal(state.nav.waypoint.kind, 'local');
+    tutorial._setObjectiveWaypoint(false);
+    const workpoint = state.onboarding.plottedSeam;
+    assert.equal(workpoint?.presentationEntityId, source.id);
+    assert.match(workpoint?.reason || '', /Pulse the scanner/);
+    // The mutable onboarding read model follows its normal staggered publish slot.
+    for (let pass = 0; !main.onboarding?.plottedSeam && pass < DOMAIN_CADENCE.onboarding; pass++) await publish();
+    main.entities = mirror.entities;
+    assert.equal(main.entities.get(source.id)?.occupantGeneration, source.occupantGeneration,
+      'the worker publishes the same rock life as the workpoint');
+    assert.match(resolvePlottedSeamWorkpoint(main)?.reason || '', /Pulse the scanner/);
+    assert.ok(main.nav.waypoint.targetEntityId == null, 'the display anchor does not steer to the rock center');
 
     bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1, minerId: player.id,
       pos: { x: source.pos.x + 500, z: source.pos.z } });

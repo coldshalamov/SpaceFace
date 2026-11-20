@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
+import { installFirstLightPromptHandler } from './player-truth/routes.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const VIEWPORT = Object.freeze({ width: 1440, height: 900 });
@@ -14,6 +15,10 @@ const EVIDENCE_DIR = fileURLToPath(new URL('../.devshots/', import.meta.url));
 const EVIDENCE_PATH = fileURLToPath(new URL('../.devshots/galaxy-map-search-pointer-evidence.json', import.meta.url));
 const SCREENSHOT_TEMP_PATH = path.join(EVIDENCE_DIR, `.galaxy-map-active-objective-search.${process.pid}.pending.png`);
 const EVIDENCE_TEMP_PATH = `${EVIDENCE_PATH}.${process.pid}.pending`;
+
+function projectedMapPosition(pos) {
+  return pos ? { x: Math.fround(pos.x), z: Math.fround(pos.z) } : null;
+}
 
 let server = null;
 let browser = null;
@@ -29,38 +34,66 @@ try {
   context = await browser.newContext({ viewport: VIEWPORT, screen: VIEWPORT, deviceScaleFactor: 1 });
   const page = await context.newPage();
   page.setDefaultTimeout(30_000);
+  await installFirstLightPromptHandler(page, () => {});
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
   });
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
   assert.equal(new URL(page.url()).search, '', 'pointer regression must use the canonical root');
   await bootNewGame(page);
+  if (process.argv.includes('--palette-handoff')) await runPaletteHandoff(page);
+  else await runPointerRegression(page);
+} finally {
+  if (context) await context.close().catch(() => {});
+  if (browser) await browser.close().catch(() => {});
+  if (server) await server.close().catch(() => {});
+  await rm(SCREENSHOT_TEMP_PATH, { force: true }).catch(() => {});
+  await rm(EVIDENCE_TEMP_PATH, { force: true }).catch(() => {});
+}
+
+async function runPointerRegression(page) {
   const objective = await readActiveObjectiveTarget(page);
   const { sourceId, label: searchLabel } = objective;
+  assert.equal(objective.sampleSlot, 'boulder:helios_boulder_rim',
+    'a fresh opening contract must select the authored sample slot');
+  if (objective.targetEntityId != null) {
+    assert.equal(objective.targetSlot, objective.sampleSlot,
+      'the chart must target the materialized sample slot');
+  }
 
   await page.keyboard.press('KeyM');
   await page.locator('#sf-galaxymap').waitFor({ state: 'visible', timeout: 20_000 });
+  await page.locator('#sf-galaxymap .gm-scale-btn[data-focus="local"]').click();
   await page.waitForFunction(() => {
     const screen = window.SF?.registry?.get?.('ui')?.screenManager?.getActiveScreenDef?.();
     return screen?._activeLevel?.() === 'local';
   }, null, { timeout: 10_000 });
-  const canvasObjective = await page.waitForFunction(() => {
-    const screen = window.SF?.registry?.get?.('ui')?.screenManager?.getActiveScreenDef?.();
-    const target = screen?._clickTargets?.find((entry) => entry?.objective === true);
-    return target ? {
-      id: target.id,
-      name: String(target.name || target.label || '').trim(),
-      targetEntityId: target.targetEntityId == null ? null : String(target.targetEntityId),
-      pos: { x: target.x, z: target.z },
-    } : null;
-  }, null, { timeout: 20_000 }).then((handle) => handle.jsonValue());
-  assert.equal(canvasObjective.name.length > 0, true, 'canvas objective must have a visible label');
-  assert.deepEqual(canvasObjective.pos, objective.pos,
-    `canvas marker and searchable objective must share the persisted position: ${JSON.stringify({ objective, canvasObjective })}`);
-  await page.keyboard.press('/');
-  const search = page.locator('.gm-search-input');
-  await search.waitFor({ state: 'visible', timeout: 5_000 });
-  await search.fill(searchLabel);
+  // The chart's visible objective control remains available even when its pin lies outside the
+  // local canvas field. Leave the control unclicked so the typed result must acquire selection.
+  const marker = page.locator('#sf-galaxymap .gm-locate-goal');
+  await marker.waitFor({ state: 'visible', timeout: 10_000 }).catch(async error => {
+    const binding = await page.evaluate(async missionId => {
+      const state = window.SF.state;
+      const { activeMapGoal } = await import('/src/ui/galaxyMap.js');
+      const wp = state.nav?.waypoint;
+      const mission = state.missions?.active?.find(m => m.id === missionId);
+      const source = mission?.params?.sampleSource;
+      const body = state.entities.get(wp?.targetEntityId);
+      const nearby = state.entityList.filter(e => e.type === 'asteroid' && e.data?.fieldId === source?.fieldId)
+        .filter(e => e.data?.asteroidSlotId === source?.slotId || e.id === body?.id).slice(0, 3);
+      return { sector: state.world?.currentSectorId, mode: state.mode, tracked: state.ui?.trackedMissionId,
+        teaching: { active: state.onboarding?.active, stage: state.onboarding?.stage }, goal: activeMapGoal(state),
+        wp, mission: mission && { tag: mission.storyTag, sector: mission.destSectorId,
+          recovered: mission.params?.sampleRecovered, source },
+        bodies: [...new Set([body, ...nearby])].filter(Boolean).map(e => ({ id: e.id, type: e.type, alive: e.alive,
+          life: e.occupantGeneration, home: e.homeSectorId, field: e.data?.fieldId, slot: e.data?.asteroidSlotId,
+          resource: e.data?.activityObjectSlotId, pos: e.pos })) };
+    }, objective.missionId);
+    throw new Error(`Public 47-A objective is missing in the chart: ${JSON.stringify(binding)}`, { cause: error });
+  });
+  const markerLabel = (await marker.locator('.gm-locate-name').innerText()).trim();
+  assert.equal(markerLabel.toLowerCase(), searchLabel.toLowerCase());
+  const search = await typeAfterPalette(page, searchLabel);
 
   const searchState = await page.evaluate((id) => {
     const screen = window.SF?.registry?.get?.('ui')?.screenManager?.getActiveScreenDef?.();
@@ -110,8 +143,12 @@ try {
       pos: { x: target.x, z: target.z },
     } : null;
   }, resultIndex);
-  assert.equal(expected?.id, sourceId, `expected exact active-objective row, got ${JSON.stringify(expected)}`);
+  assert.equal(expected?.id, objective.targetEntityId ?? sourceId,
+    `the active-objective row must bind the current target: ${JSON.stringify({ objective, expected })}`);
   assert.equal(expected?.sourceId, 'active-map-goal', `expected synthetic active-goal row, got ${JSON.stringify(expected)}`);
+  // The chart can read the live Float32 body pose while the mission retains its Float64 fix.
+  assert.deepEqual(projectedMapPosition(expected?.pos), projectedMapPosition(objective.pos),
+    `the searchable objective must point at the current mission fix: ${JSON.stringify({ objective, expected })}`);
   const routingContext = await page.evaluate((id) => {
     const state = window.SF.state;
     const trackedId = state.ui?.trackedMissionId;
@@ -208,9 +245,8 @@ try {
   assert.equal(actionSelected?.id, expected.id,
     `keyboard must restore the active objective before course activation: ${JSON.stringify(actionSelected)}`);
 
-  // Hold the real action node across several inspector refresh cadences, then activate it from its
-  // physical center. The document-bubble trace observes the synchronous ui:setCourse result before
-  // the next sim tick can legitimately report arrival and clear a very-near waypoint.
+  // Hold the real action node across several inspector refresh cadences, then activate its center.
+  // Record the click and wait for the authoritative course to reach the presentation mirror.
   const actionBefore = await page.evaluate(() => {
     const screen = window.SF?.registry?.get?.('ui')?.screenManager?.getActiveScreenDef?.();
     const button = document.querySelector('#gm-set-course-btn');
@@ -290,10 +326,11 @@ try {
   assert.equal(actionHit.closestId, 'gm-set-course-btn',
     `primary action center must hit the button: ${JSON.stringify({ actionCenter, actionHit })}`);
   await page.mouse.click(actionCenter.x, actionCenter.y);
-  await page.waitForTimeout(100);
   const actionTrace = await page.evaluate(() => window.__MAP_ACTION_TRACE__ || []);
-  const navAfter = await page.evaluate(() => {
-    const autopilot = window.SF?.state?.nav?.autopilot;
+  const navAfter = await page.waitForFunction(label => {
+    const nav = window.SF?.state?.nav;
+    const autopilot = nav?.autopilot;
+    if (!autopilot?.active || autopilot.label !== label) return false;
     return {
       autopilot: autopilot ? {
         active: autopilot.active,
@@ -302,26 +339,25 @@ try {
         label: autopilot.label,
         target: autopilot.target ? { x: autopilot.target.x, z: autopilot.target.z } : null,
       } : null,
+      missionId: nav?.waypoint?.missionId ?? null,
       mapVisible: document.querySelector('#sf-galaxymap')?.classList.contains('sf-screen--visible') || false,
     };
-  });
+  }, objective.label, { timeout: 10_000 }).then(handle => handle.jsonValue());
   assert.equal(actionTrace.length, 1, `physical primary-action click must bubble once: ${JSON.stringify(actionTrace)}`);
   assert.equal(actionTrace[0].selectedId, expected.id,
     `physical primary action must retain selected target through activation: ${JSON.stringify(actionTrace[0])}`);
-  assert.equal(actionTrace[0].autopilot?.active, true,
-    `ui:setCourse must synchronously arm autopilot: ${JSON.stringify(actionTrace[0])}`);
-  assert.equal(actionTrace[0].autopilot?.targetEntityId, objective.targetEntityId,
-    `autopilot target identity must match the persisted objective: ${JSON.stringify(actionTrace[0])}`);
-  assert.deepEqual(actionTrace[0].autopilot?.target, objective.pos,
-    `autopilot must target the selected objective position: ${JSON.stringify(actionTrace[0])}`);
-  assert.equal(actionTrace[0].autopilot?.label, objective.label,
-    `autopilot must retain the selected objective label: ${JSON.stringify(actionTrace[0])}`);
+  assert.equal(navAfter.autopilot?.targetEntityId, objective.targetEntityId,
+    `autopilot target identity must match the current objective: ${JSON.stringify(navAfter)}`);
+  assert.deepEqual(projectedMapPosition(navAfter.autopilot?.target), projectedMapPosition(objective.pos),
+    `autopilot must target the selected objective position: ${JSON.stringify(navAfter)}`);
+  assert.equal(navAfter.autopilot?.label, objective.label);
+  if (objective.explicitlyTracked) assert.equal(navAfter.missionId, objective.missionId);
   assert.equal(actionTrace[0].mapVisible, false,
     `successful primary action must pop the map: ${JSON.stringify(actionTrace[0])}`);
 
   const evidence = {
     schema: 'spaceface.galaxy_map_search_pointer.v1',
-    expected, routingContext, center, hitBefore, pointerTrace, pointerSelected,
+    expected, markerLabel, routingContext, center, hitBefore, pointerTrace, pointerSelected,
     keyboardExpected, keyboardSelected, actionBefore, actionStable, actionCenter,
     actionHit, actionTrace, navAfter,
   };
@@ -346,12 +382,46 @@ try {
   await rm(EVIDENCE_PATH, { force: true });
   await rename(EVIDENCE_TEMP_PATH, EVIDENCE_PATH);
   console.log(`Galaxy-map search pointer OK: ${JSON.stringify(evidence)}`);
-} finally {
-  if (context) await context.close().catch(() => {});
-  if (browser) await browser.close().catch(() => {});
-  if (server) await server.close().catch(() => {});
-  await rm(SCREENSHOT_TEMP_PATH, { force: true }).catch(() => {});
-  await rm(EVIDENCE_TEMP_PATH, { force: true }).catch(() => {});
+}
+
+async function typeAfterPalette(page, label) {
+  const search = page.locator('.gm-search-input');
+  const popup = page.locator('.gm-search-results');
+  const paletteRow = popup.locator('[data-pal]').first();
+  await search.waitFor({ state: 'visible', timeout: 5_000 });
+  const resultRows = await popup.locator('#gm-place-results').elementHandle();
+  const assertResultRowsConnected = async () => {
+    assert.ok(await resultRows.evaluate(rows => rows.isConnected && rows === document.querySelector('#gm-place-results')),
+      'the place finder must keep its mounted results node when commands open or close');
+  };
+  await page.keyboard.press('/');
+  await paletteRow.waitFor({ state: 'visible', timeout: 5_000 });
+  await assertResultRowsConnected();
+  await page.keyboard.press('Escape');
+  await popup.waitFor({ state: 'hidden', timeout: 5_000 });
+  await assertResultRowsConnected();
+  await search.click();
+  await paletteRow.waitFor({ state: 'visible', timeout: 5_000 });
+  await search.fill(label);
+  await paletteRow.waitFor({ state: 'hidden', timeout: 5_000 });
+  await assertResultRowsConnected();
+  return search;
+}
+
+async function runPaletteHandoff(page) {
+  const chart = page.locator('#sf-galaxymap');
+  await page.keyboard.press('KeyN');
+  await chart.waitFor({ state: 'visible', timeout: 15_000 });
+  await chart.locator('.gm-scale-btn[data-focus="system"]').click();
+  const label = 'Helios Station';
+  await typeAfterPalette(page, label);
+  const result = chart.locator('#gm-place-results button[data-idx]')
+    .filter({ has: page.getByText(label, { exact: true }) });
+  await result.click({ timeout: 10_000 });
+  const selected = await selectedTarget(page);
+  assert.equal(selected?.name, label);
+  assert.equal(selected?.kind, 'station');
+  console.log('Galaxy-map palette handoff OK: typing selected the real Helios Station after Escape and reopen.');
 }
 
 async function bootNewGame(page) {
@@ -380,17 +450,21 @@ async function readActiveObjectiveTarget(page) {
     const waypoint = state.nav?.waypoint;
     const label = String(waypoint?.label || waypoint?.sectorName || waypoint?.reason || waypoint?.mapLabel || '').trim();
     if (!waypoint?.pos || !Number.isFinite(waypoint.pos.x) || !Number.isFinite(waypoint.pos.z) || !label) return null;
+    const openingContract = state.missions?.active?.find(mission => mission.id === waypoint.missionId
+      && mission.status === 'active' && mission.params?.contractId === '47-A');
+    if (!openingContract || label !== '47-A Recovery Site') return null;
     return {
       sourceId: 'active-map-goal',
       targetEntityId: waypoint.targetEntityId == null ? null : String(waypoint.targetEntityId),
+      sampleSlot: openingContract.params.sampleSource?.slotId ?? null,
+      targetSlot: state.entities.get(waypoint.targetEntityId)?.data?.asteroidSlotId ?? null,
       label,
       pos: { x: waypoint.pos.x, z: waypoint.pos.z },
       waypointId: waypoint.id || waypoint.markerId || null,
-      onboarding: waypoint.onboarding === true,
+      missionId: openingContract.id,
+      explicitlyTracked: state.ui?.trackedMissionId === openingContract.id,
     };
   }, null, { timeout: 20_000 }).then((handle) => handle.jsonValue());
-  assert.equal(objective.onboarding, true,
-    `canonical New Game must begin with a real onboarding objective: ${JSON.stringify(objective)}`);
   return objective;
 }
 

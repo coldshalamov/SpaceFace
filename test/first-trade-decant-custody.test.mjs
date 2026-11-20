@@ -19,6 +19,59 @@ function boot(){
  const deliver=()=>{state.world.currentSectorId=FIRST_TRADE_CONTRACT_DEST_SECTOR_ID;state.ui.dockedStationId=FIRST_TRADE_CONTRACT_DEST_STATION_ID;bus.emit('dock:docked',{stationId:FIRST_TRADE_CONTRACT_DEST_STATION_ID});};
  return{sim,state,bus,m,yard,notices,decanted,completed,accept,reload,deliver,close(){sim.dispose();delete globalThis.localStorage;}};
 }
+test('market purchases and free-unit sales preserve the first freight delivery', () => {
+  const t = boot();
+  try {
+    const mission = t.accept();
+    const stationId = 'station_helios';
+    const provisions = 'cmdty_food';
+    const market = t.sim.registry.get('economy');
+    const completedTrades = [];
+    const failedTrades = [];
+    t.bus.on('economy:tradeCompleted', trade => completedTrades.push(trade));
+    t.bus.on('economy:tradeFailed', trade => failedTrades.push(trade));
+    t.bus.emit('economy:marketOpened', { stationId });
+
+    function settle(side, commodityId, qty) {
+      const intentId = `first-freight:${side}:${commodityId}`;
+      const quote = market.quote(stationId, commodityId, side, qty);
+      assert.equal(quote.ok, true);
+      t.bus.emit(`ui:${side}`, {
+        commodityId, qty, expectedTotal: quote.total, sourceStationId: stationId,
+        requireFullQuantity: true, intentId,
+      });
+      const settled = completedTrades.find(trade => trade.intentId === intentId);
+      assert.ok(settled, `Missing settlement for ${side} ${commodityId}`);
+      assert.equal(settled.qty, qty);
+      assert.equal(settled.total, quote.total);
+      return settled.total;
+    }
+
+    const initialCredits = t.state.player.credits;
+    const cellCost = settle('buy', CELL, 2);
+    assert.equal(t.state.player.cargo.items[CELL], 10);
+    assert.equal(sellableCargoQty(t.state, CELL), 2);
+    const provisionsCost = settle('buy', provisions, 2);
+    const beforeSale = initialCredits - cellCost - provisionsCost;
+    t.bus.emit('ui:sell', { commodityId: CELL, qty: 3, sourceStationId: stationId });
+    assert.deepEqual(failedTrades.map(trade => trade.reason), ['mission_cargo_locked']);
+    assert.equal(t.state.player.credits, beforeSale);
+    assert.equal(t.state.player.cargo.items[CELL], 10);
+
+    const proceeds = settle('sell', CELL, 2);
+    assert.equal(t.state.player.cargo.items[CELL], 8);
+    assert.equal(mission.params.sealedRemaining, 8);
+    assert.equal(sellableCargoQty(t.state, CELL), 0);
+    assert.equal(t.state.player.credits, beforeSale + proceeds);
+
+    t.deliver();
+    t.deliver();
+    assert.deepEqual(t.completed.map(row => row.missionId), [mission.id]);
+    assert.equal(t.state.player.credits, beforeSale + proceeds + 760);
+    assert.equal(t.state.player.cargo.items[CELL] || 0, 0);
+    assert.equal(t.state.player.cargo.items[provisions], 2);
+  } finally { t.close(); }
+});
 test('first trade keeps all eight sealed cells and full760cr after station Decant request',()=>{
  const t=boot();try{t.accept();const credits=t.state.player.credits;assert.equal(sellableCargoQty(t.state,CELL),0);t.bus.emit('service:decantRequest',{});assert.equal(t.state.player.cargo.items[CELL],8);assert.equal(t.state.fuel.current,0);assert.equal(t.state.player.credits,credits);assert.equal(t.decanted.length,0);assert.ok(t.notices.includes('No unreserved whole fuel cells are available to decant.'));t.deliver();assert.equal(t.completed.length,1);assert.equal(t.state.player.credits,credits+760);assert.ok(!t.notices.some(s=>/Short delivery/.test(s)));}finally{t.close();}
 });

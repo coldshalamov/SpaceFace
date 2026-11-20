@@ -36,6 +36,7 @@ import { SWARM_RULESET } from '../src/data/swarmMode.js';
 import { SURVIVAL_LIVE_CIRCUIT_ARENAS } from '../src/data/survivalWaves.js';
 import { ARENA_LAWS } from '../src/data/survivalArenas.js';
 import { adventureMaterialFor, environmentMaterialOf } from '../src/data/environmentMaterials.js';
+import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
 import { RESCUE_PROOF_SEED } from '../src/onboarding/rescueOpening.js';
 import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { heat } from '../src/systems/heat.js';
@@ -291,6 +292,39 @@ test('FIX-03: Adventure keeps its crystal — the hold-out is Swarm-only', () =>
 
 // ══ Part 2 — beat 4 cannot stick ═════════════════════════════════════════════════════
 
+test('the swing objective follows a live latch and returns to the rock after a break', (t) => {
+  const { enabled, throw: throwEnabled } = MASSLINE2_FLAGS;
+  t.after(() => Object.assign(MASSLINE2_FLAGS, { enabled, throw: throwEnabled }));
+  Object.assign(MASSLINE2_FLAGS, { enabled: true, throw: true });
+  const h = bootRail();
+  h.state.input.promptDevice = 'keyboard';
+  h.state.settings.controls.bindings = { tether: ['KeyQ'] };
+  driveToSwing(h);
+  const rock = rescueActor(h, 'rock');
+  const wreck = rescueActor(h, 'derelict');
+  const attachments = h.state.combat.attachments.byId;
+  assert.equal(h.state.nav.waypoint.reason, 'Latch the loose rock with Q.');
+  assert.deepEqual(h.state.nav.waypoint.pos, { x: rock.pos.x, z: rock.pos.z });
+
+  attachments.lesson = { ownerId: h.state.playerId, targetId: rock.id, state: 'active' };
+  h.bus.emit('tether:latched', { targetId: rock.id });
+  tickRail(h);
+  assert.equal(h.state.nav.waypoint.markerId, 'rescue:swing');
+  assert.equal(h.state.nav.waypoint.reason, 'Aim at the wreck. Tap RMB to throw.');
+  assert.deepEqual(h.state.nav.waypoint.pos, { x: wreck.pos.x, z: wreck.pos.z });
+  assert.equal(h.state.onboarding.rescue.beats.swing.state, 'current');
+
+  h.state.settings.gameplay.masslineReleaseAssist = 'arm';
+  tickRail(h);
+  assert.equal(h.state.nav.waypoint.reason, 'Aim at the wreck. Hold RMB to throw.');
+
+  delete attachments.lesson;
+  h.bus.emit('tether:broke', { targetId: rock.id });
+  tickRail(h);
+  assert.equal(h.state.nav.waypoint.reason, 'Latch the loose rock with Q.');
+  assert.deepEqual(h.state.nav.waypoint.pos, { x: rock.pos.x, z: rock.pos.z });
+});
+
 test('FIX-03: the first throw of ANY body completes the swing beat, scrap still drops', () => {
   const h = bootRail();
   driveToSwing(h);
@@ -311,6 +345,32 @@ test('FIX-03: the first throw of ANY body completes the swing beat, scrap still 
   h.bus.emit('massline:throw', { payloadId: rock.id, releaseId: 'r-dup' });
   assert.equal(h.state.onboarding.rescue.beats.swing.state, 'done');
   assert.equal(scrapPickups(h).length, scrapBefore + 2, 'the reward lands exactly once');
+});
+
+test('losing the swing wreck preserves the rock already on the player line', () => {
+  const h = bootRail();
+  driveToSwing(h);
+  const rock = rescueActor(h, 'rock');
+  const wreck = rescueActor(h, 'derelict');
+  const attachment = { ownerId: h.state.playerId, targetId: rock.id, state: 'active' };
+  h.state.combat.attachments.byId.lesson = attachment;
+  h.state.player.tether = { active: true, targetId: rock.id };
+  h.bus.emit('tether:latched', { targetId: rock.id });
+  h.helpers.removeEntity(wreck.id);
+  tickRail(h);
+
+  assert.equal(rescueActor(h, 'rock'), rock);
+  assert.equal(rock.alive, true);
+  assert.equal(h.state.combat.attachments.byId.lesson, attachment);
+  const replacement = rescueActor(h, 'derelict');
+  assert.notEqual(replacement, wreck);
+  assert.ok(Math.abs(Math.hypot(replacement.pos.x - rock.pos.x, replacement.pos.z - rock.pos.z) - 140) < 0.001);
+  assert.deepEqual(h.state.nav.waypoint.pos, { x: replacement.pos.x, z: replacement.pos.z });
+
+  const before = scrapPickups(h).length;
+  h.bus.emit('massline:throw', { payloadId: rock.id });
+  assert.equal(h.state.onboarding.rescue.beats.swing.state, 'done');
+  assert.equal(scrapPickups(h).length, before + 2);
 });
 
 test('FIX-03: losing the lesson rock retargets the objective at the nearest loose throwable', () => {

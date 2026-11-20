@@ -46,10 +46,10 @@ export const SPEED_RAMP = Object.freeze([
 const clamp01 = (n) => Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 
 /** Position on the sweep (0..1) for a speed. Linear to the reference, then the overdrive band to V-MAX. */
-export function speedDialFraction(speed, ref, max) {
+export function speedDialFraction(speed, ref, max, refMark = T_REF) {
   const s = Math.max(0, Number(speed) || 0);
   const r = Number(ref) > 0 ? Number(ref) : 180;
-  if (s <= r) return T_REF * (s / r);
+  if (s <= r) return refMark * (s / r);
   // with no published ceiling the overdrive band still exists: ref x 1.6 reads as its end
   const m = Number(max) > r * 1.05 ? Number(max) : r * 1.6;
   const over = (s - r) / (m - r);
@@ -57,7 +57,7 @@ export function speedDialFraction(speed, ref, max) {
     ? OVERDRIVE_AT_MAX * over
     // beyond the ceiling (a sling, a tether, an impulse) the needle creeps and never leaves the arc
     : OVERDRIVE_AT_MAX + (1 - OVERDRIVE_AT_MAX) * (1 - 1 / (1 + (over - 1) * 2));
-  return Math.min(1, T_REF + (1 - T_REF) * band);
+  return Math.min(1, refMark + (1 - refMark) * band);
 }
 
 /** The ramp's colour at a position on the sweep, as [r, g, b]. */
@@ -172,7 +172,15 @@ function streakPath(r) {
 /**
  * @returns {{ el: HTMLElement, size: number, update(d: {speed:number, ref:number, max?:number, boost?:number, boosting?:boolean, drive?:boolean}): void, arrive(): void, dispose(): void }}
  */
-export function createSpeedDial() {
+export function createSpeedDial({ visor = false } = {}) {
+  const bandRadius = visor ? 112 : R_BAND;
+  const bandWidth = visor ? 17.5 : BAND_W;
+  const bladeFloor = visor ? .025 : GHOST;
+  const dialFrom = visor ? 244 : FROM;
+  const dialTo = visor ? 462 : TO;
+  const dialSpan = dialTo - dialFrom;
+  const bladeCount = visor ? 27 : BLADES;
+  const refMark = visor ? .76 : T_REF;
   injectStyle();
   const root = el('div', 'orr-speeddial orr-cluster__fade');
   root.setAttribute('role', 'meter');
@@ -184,7 +192,7 @@ export function createSpeedDial() {
   const streakSvg = svg('svg', { class: 'orr-svg', viewBox: `0 0 ${SIZE + 24} ${SIZE + 24}`, 'aria-hidden': 'true' });
   streakSvg.appendChild(svg('path', { d: streakPath(R_TICK + 24), fill: 'none', stroke: 'rgb(223 238 255 / .34)', 'stroke-width': 1.4, 'stroke-linecap': 'round' }));
   streaks.appendChild(streakSvg);
-  root.appendChild(streaks);
+  if (!visor) root.appendChild(streaks);
 
   // ---- the face ------------------------------------------------------------------------------------------
   const s = svg('svg', { class: 'orr-svg orr-speeddial__face', viewBox: `0 0 ${SIZE} ${SIZE}`, 'aria-hidden': 'true' });
@@ -192,7 +200,7 @@ export function createSpeedDial() {
 
   // boost halo: one wide stroke along the lit sweep, lit only while the afterburner burns
   const haloPath = svg('path', { d: arcD(C, C, R_BAND, FROM, TO), class: 'orr-speeddial__halo orr-speeddial__tint', fill: 'none', 'stroke-width': 30, 'stroke-linecap': 'butt', pathLength: 1, 'stroke-dasharray': '0 1', 'stroke-opacity': '.2' });
-  s.appendChild(haloPath);
+  if (!visor) s.appendChild(haloPath);
 
   // the bezel: a ruler on the outside of the band; the over-reference ticks wear ice
   const minor = [];
@@ -207,47 +215,53 @@ export function createSpeedDial() {
     if (!isMajor) minor.push(seg);
     else (i <= REF_BLADE ? majorLow : majorHigh).push(seg);
   }
-  s.append(
+  if (!visor) s.append(
     svg('path', { d: minor.join(' '), fill: 'none', stroke: 'rgb(236 230 216 / .34)', 'stroke-width': 1.3, 'stroke-linecap': 'butt' }),
     svg('path', { d: majorLow.join(' '), fill: 'none', stroke: 'rgb(236 230 216 / .72)', 'stroke-width': 2, 'stroke-linecap': 'butt' }),
     svg('path', { d: majorHigh.join(' '), fill: 'none', stroke: 'rgb(143 203 255 / .8)', 'stroke-width': 2, 'stroke-linecap': 'butt' }),
   );
 
   // the band's edges: two hairlines, so the track reads as an instrument and the blades as light on it
-  for (const [r, a] of [[R_BAND + BAND_W / 2 + 2, 0.4], [R_BAND - BAND_W / 2 - 2, 0.26]]) {
-    s.appendChild(svg('path', { d: arcD(C, C, r, FROM, TO), fill: 'none', stroke: `rgb(236 230 216 / ${a})`, 'stroke-width': 1.2 }));
+  const edges = visor ? [[121.5, .86]]
+    : [[bandRadius + bandWidth / 2 + 2, .4], [bandRadius - bandWidth / 2 - 2, .26]];
+  for (const [r, a] of edges) {
+    s.appendChild(svg('path', { d: arcD(C, C, r, dialFrom, dialTo), fill: 'none', stroke: `rgb(233 248 253 / ${a})`, 'stroke-width': visor ? 1.3 : 1.2 }));
   }
 
   // the blades: a bloom twin under each core. Lit = full colour; unlit = its colour, engraved.
-  const GAP = 1.2;
+  const GAP = visor ? 1.32 : 1.2;
   const bloomG = svg('g');
   const coreG = svg('g');
   const bladeCore = [];
   const bladeBloom = [];
-  const bladeShown = new Array(BLADES).fill(-1);
-  for (let i = 0; i < BLADES; i += 1) {
-    const d = arcD(C, C, R_BAND, FROM + (SPAN * i) / BLADES + GAP / 2, FROM + (SPAN * (i + 1)) / BLADES - GAP / 2);
-    const tint = `rgb(${rgb(speedTint((i + 0.5) / BLADES))})`;
-    const bloom = svg('path', { d, fill: 'none', stroke: tint, 'stroke-width': BAND_W + 9, 'stroke-linecap': 'butt', 'stroke-opacity': '.24', opacity: 0 });
-    const core = svg('path', { d, fill: 'none', stroke: tint, 'stroke-width': BAND_W, 'stroke-linecap': 'butt', opacity: GHOST });
+  const bladeShown = new Array(bladeCount).fill(-1);
+  for (let i = 0; i < bladeCount; i += 1) {
+    const d = arcD(C, C, bandRadius, dialFrom + dialSpan * i / bladeCount + GAP / 2, dialFrom + dialSpan * (i + 1) / bladeCount - GAP / 2);
+    const tint = visor ? (i < 3 ? '#529ab4' : i < 7 ? '#82cadd' : '#a5eaf4')
+      : `rgb(${rgb(speedTint((i + 0.5) / BLADES))})`;
+    const bloom = svg('path', { d, fill: 'none', stroke: tint, 'stroke-width': bandWidth + 9, 'stroke-linecap': 'butt', 'stroke-opacity': '.24', opacity: 0 });
+    const core = svg('path', { d, fill: 'none', stroke: tint, 'stroke-width': bandWidth, 'stroke-linecap': 'butt', opacity: bladeFloor });
     bloomG.appendChild(bloom);
     coreG.appendChild(core);
     bladeBloom.push(bloom);
     bladeCore.push(core);
   }
-  s.append(bloomG, coreG);
+  if (visor) s.appendChild(coreG);
+  else s.append(bloomG, coreG);
 
   // the gate: the reference speed, a bar across the band and a notch on the bezel
-  const aRef = FROM + SPAN * T_REF;
-  const [g0x, g0y] = polar(C, C, R_BAND - BAND_W / 2 - 5, aRef);
-  const [g1x, g1y] = polar(C, C, R_TICK + 30, aRef);
-  s.appendChild(svg('path', { d: `M ${f1(g0x)} ${f1(g0y)} L ${f1(g1x)} ${f1(g1y)}`, fill: 'none', stroke: 'rgb(248 244 234 / .92)', 'stroke-width': 2, 'stroke-linecap': 'butt' }));
+  const aRef = dialFrom + dialSpan * refMark;
+  const [g0x, g0y] = polar(C, C, bandRadius - bandWidth / 2 - 5, aRef);
+  const [g1x, g1y] = polar(C, C, visor ? bandRadius + bandWidth / 2 + 3 : R_TICK + 30, aRef);
+  if (!visor) s.appendChild(svg('path', { d: `M ${f1(g0x)} ${f1(g0y)} L ${f1(g1x)} ${f1(g1y)}`, fill: 'none', stroke: 'rgb(248 244 234 / .92)', 'stroke-width': 2, 'stroke-linecap': 'butt' }));
+  const visorHead = visor ? svg('path', { fill: 'none', stroke: '#f3fbfa', 'stroke-width': 3, 'stroke-linecap': 'square' }) : null;
+  if (visorHead) s.appendChild(visorHead);
 
   // the wake: three stacked white arcs ending at the head; their length is the acceleration
   const wakes = [0.34, 0.67, 1].map((k, i) => ({
     k, path: svg('path', { d: '', fill: 'none', stroke: 'rgb(255 252 246)', 'stroke-width': 5, 'stroke-linecap': 'butt', opacity: [0.9, 0.5, 0.24][i] }),
   }));
-  for (const w of wakes) s.appendChild(w.path);
+  if (!visor) for (const w of wakes) s.appendChild(w.path);
 
   // the needle: a wedge outside the bezel pointing in, a bead on the band; one group, one rotation
   const needle = svg('g', { opacity: 0 });
@@ -258,12 +272,13 @@ export function createSpeedDial() {
     svg('circle', { cx: C, cy: C - R_BAND, r: 10, class: 'orr-speeddial__tint-fill', 'fill-opacity': '.3' }),
     svg('circle', { cx: C, cy: C - R_BAND, r: 4.6, fill: 'rgb(252 249 240)' }),
   );
-  s.appendChild(needle);
+  if (!visor) s.appendChild(needle);
 
   // boost: a segmented charge arc inside the band, engraved by name along the bottom opening
   const boostArc = arcGauge({ cx: C, cy: C, r: R_BOOST, from: FROM, to: TO, width: 2.6, tone: 'hi', segments: 20, segmentGap: 2.2, ghost: true, head: false });
+  if (visor) boostArc.el.setAttribute('opacity', '0');
   s.appendChild(boostArc.el);
-  s.appendChild(circularText(C, C, R_BOOST - 14, 'BOOST', { startDeg: 192, size: 6.5, className: 'orr-micro orr-micro--hi', upright: true }));
+  if (!visor) s.appendChild(circularText(C, C, R_BOOST - 14, 'BOOST', { startDeg: 192, size: 6.5, className: 'orr-micro orr-micro--hi', upright: true }));
 
   // the gate ring: thrown once when the hull first crosses the reference, and once at the ceiling
   const pulse = svg('circle', { cx: C, cy: C, r: R_TICK + 6, class: 'orr-speeddial__tint', fill: 'none', 'stroke-width': 2, opacity: 0 });
@@ -345,16 +360,23 @@ export function createSpeedDial() {
   const paintFraction = (v) => {
     const f = clamp01(v);
     // the lit blades: only the ones between the old reading and the new are touched
-    const lit = f * BLADES;
-    for (let i = 0; i < BLADES; i += 1) {
+    const lit = f * bladeCount;
+    for (let i = 0; i < bladeCount; i += 1) {
       const a = Math.round(clamp01(lit - i) * 20);
       if (bladeShown[i] === a) continue;
       bladeShown[i] = a;
       const k = a / 20;
-      bladeCore[i].setAttribute('opacity', f1(GHOST + (1 - GHOST) * k));
+      bladeCore[i].setAttribute('opacity', visor
+        ? (bladeFloor + (1 - bladeFloor) * k).toFixed(3)
+        : f1(bladeFloor + (1 - bladeFloor) * k));
       bladeBloom[i].setAttribute('opacity', f1(k));
     }
-    headAngle = FROM + SPAN * f;
+    headAngle = dialFrom + dialSpan * f;
+    if (visorHead) {
+      const [x0,y0] = polar(C, C, bandRadius - bandWidth / 2, headAngle);
+      const [x1,y1] = polar(C, C, bandRadius + bandWidth / 2, headAngle);
+      visorHead.setAttribute('d', f > .008 ? `M${f1(x0)} ${f1(y0)}L${f1(x1)} ${f1(y1)}` : '');
+    }
     needle.setAttribute('opacity', f > 0.004 ? '1' : '0');
     needle.setAttribute('transform', `rotate(${f1(headAngle)} ${C} ${C})`);
     if (haloOn) haloPath.setAttribute('stroke-dasharray', `${f.toFixed(4)} 1`);   // only lit while boosting
@@ -366,8 +388,8 @@ export function createSpeedDial() {
     }
     if (sweeping) return;
     // gates: hysteresis keeps the ring from chattering when a hull rides the reference
-    if (!wasOver && f >= T_REF + 0.004) { wasOver = true; throwRing(speedTint(T_REF), true); }
-    else if (wasOver && f < T_REF - 0.02) wasOver = false;
+    if (!wasOver && f >= refMark + 0.004) { wasOver = true; throwRing(speedTint(refMark), true); }
+    else if (wasOver && f < refMark - 0.02) wasOver = false;
     if (!wasTop && f >= 0.985) { wasTop = true; throwRing(speedTint(1), true); }
     else if (wasTop && f < 0.95) wasTop = false;
   };
@@ -396,7 +418,7 @@ export function createSpeedDial() {
     const reading = Math.round(sp);
 
     // the sweep position: the spring owns the motion and ignores a repeat target
-    target = speedDialFraction(sp, r, hasMax ? max : 0);
+    target = speedDialFraction(sp, r, hasMax ? max : 0, refMark);
     if (!sweeping) fraction.set(target);
 
     // acceleration, smoothed, sampled at 20 Hz at most: the wake is how hard the hull is pushing
@@ -446,6 +468,7 @@ export function createSpeedDial() {
       tag.textContent = word;
       tag.classList.toggle('is-lit', phase !== 'rest');
       boostArc.setTone(boosting ? 'ice' : 'hi');
+      if (visor) boostArc.el.setAttribute('opacity', boosting ? '.75' : '0');
     }
     const b = clamp01(Number(boost) || 0);
     if (changed('boost', Math.round(b * 100))) boostArc.set(b);
@@ -467,7 +490,7 @@ export function createSpeedDial() {
     clearTimeout(sweepTimer);
     sweepTimer = setTimeout(() => {
       sweeping = false;
-      wasOver = target >= T_REF + 0.004;
+      wasOver = target >= refMark + 0.004;
       wasTop = target >= 0.985;
       fraction.set(target);
     }, 620);

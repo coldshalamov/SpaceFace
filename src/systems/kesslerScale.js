@@ -10,7 +10,7 @@
 // read pass. The deck never buys or takes a pod — it reports, the freight stays yours.
 // Reads latch per pod per visit via data.kesslerRead so a parked pod is read once,
 // not polled.
-import { kesslerWorksiteSpecs, kesslerReceiptLabel, kesslerPadPosition } from './kesslerScaleWorksite.js';
+import { kesslerWorksiteSpecs, kesslerReceiptLabel, kesslerPadPosition, kesslerDeliveredCratePosition } from './kesslerScaleWorksite.js';
 import { insertDressingRow, dropDressingRow } from '../world/dressingTable.js';
 import { stampSolidDressing } from '../world/solidDressing.js';
 import { KESSLER_SCALE } from '../data/kessler.js';
@@ -44,16 +44,20 @@ function kesslerPodUnits(data) {
   return amount > 0 ? amount : null;
 }
 
-/** The pod's own tag: its receipt rides beside its name so the pilot can come back for it. */
-function kesslerWeighedTag(base, stamp, units) {
-  const tag = `${base} · WEIGHED ${Number.isFinite(stamp) ? stamp.toFixed(1) : '0.0'} t`;
-  return Number.isFinite(units) ? `${tag} · ${units} u` : tag;
+/** The tag keeps the scale's reading and the crate's stamp distinct. */
+function kesslerWeighedTag(base, receipt, units) {
+  const parts = [base];
+  if (Number.isFinite(receipt.plateRead)) parts.push(`WEIGHED ${receipt.plateRead.toFixed(1)} t`);
+  if (Number.isFinite(receipt.trueRead)) parts.push(`STAMP ${receipt.trueRead.toFixed(1)} t`);
+  if (Number.isFinite(units)) parts.push(`${units} u`);
+  return parts.join(' · ');
 }
 
 /** The pod's name segment — the first ' · ' clause of whatever tag it currently wears. */
 function kesslerTagBase(data) {
   const first = String(data && data.scanLabel || '').split(' · ')[0].trim();
-  return first || (data && data.name) || 'Cargo pod';
+  const name = first || data?.name || 'Cargo pod';
+  return data?.kesslerDelivered === true ? `${name} · Scale 4` : name;
 }
 
 export function kesslerScaleSpec() {
@@ -178,9 +182,8 @@ export function createKesslerScale() {
           && e.data?.kesslerDelivered === true)) return;
       const id = typeof commodityId === 'string' && commodityId ? commodityId : 'cmdty_alloys';
       const def = COMMODITIES.find((c) => c.id === id);
-      const pad = kesslerPadPosition();
       const pod = spawnJettisonedCargoPod(s, {
-        pos: { x: pad.x - 16, z: pad.z + 10 }, vel: { x: 0, z: 0 },
+        pos: kesslerDeliveredCratePosition(), vel: { x: 0, z: 0 },
         radius: 3, commodityId: id,
         amount: Math.max(1, Math.floor(Number(qty) || 0) || 6),
         unitMass: Number.isFinite(def?.massPerU) ? def.massPerU : 0.6,
@@ -198,10 +201,10 @@ export function createKesslerScale() {
           || (d.jettisonedCargo !== true && d.payloadType !== 'jettisoned_cargo')) return;
       const units = kesslerPodUnits(d);
       const weighed = this._weighed || (this._weighed = new Map());
-      if (!weighed.has(e.id)) { weighed.set(e.id, units); return; }
-      if (weighed.get(e.id) === units) return;
-      weighed.set(e.id, units);
-      e.data.scanLabel = kesslerWeighedTag(kesslerTagBase(d), d.kesslerReceipt.trueRead, units);
+      const previous = weighed.get(e.id);
+      if (previous?.receipt === d.kesslerReceipt && previous.units === units) return;
+      weighed.set(e.id, { receipt: d.kesslerReceipt, units });
+      e.data.scanLabel = kesslerWeighedTag(kesslerTagBase(d), d.kesslerReceipt, units);
     },
     /** The bounded paired-reading fact — written only here, beside the receipt stamp. */
     _recordComparison(flags, sample) {
@@ -285,6 +288,10 @@ export function createKesslerScale() {
       const settling = this._settlingNext || (this._settlingNext = new Set());
       settling.clear();
       const pad = kesslerPadPosition();
+      const pilot = s.entities?.get?.(s.playerId);
+      const pilotAtScale = s.mode === 'flight' && pilot?.alive === true
+        && !s.ui?.docked && !s.player?.flags?.docked && !s.save?.restoring
+        && kesslerReadCheck(pilot, pad).inZone;
       for (const e of s.entityList || []) {
         if (e?.alive === false) {
           this._weighed.delete(e.id);
@@ -318,17 +325,19 @@ export function createKesslerScale() {
           continue;
         }
         (this._deckPods || (this._deckPods = new Set())).add(e.id);
+        // The desk's delivered crate is the story reading the pilot comes to see.
+        if (e.data.kesslerDelivered === true && !pilotAtScale) continue;
         e.data.kesslerRead = true;
         const plate = kesslerPlateRead(e.mass);
         const honest = kesslerTrueRead(e.mass);
         const variance = kesslerVarianceSeen(plate, honest);
         // Retain the paired reading on this very pod for the existing lock/hover readout.
         // The original cargo stamp/commodity name remains intact; no cargo ledger write.
-        const label = e.data.scanLabel || e.data.name || 'Cargo pod';
+        const label = kesslerTagBase(e.data);
         e.data.kesslerReceipt = { plateRead: plate, trueRead: honest };
         const units = kesslerPodUnits(e.data);
-        e.data.scanLabel = kesslerWeighedTag(label, honest, units);
-        this._weighed.set(e.id, units);
+        e.data.scanLabel = kesslerWeighedTag(label, e.data.kesslerReceipt, units);
+        this._weighed.set(e.id, { receipt: e.data.kesslerReceipt, units });
         const firstVariance = variance && flags[KESSLER_SCALE.varianceFlag] !== true;
         if (variance) flags[KESSLER_SCALE.varianceFlag] = true;
         const count = (Number(flags[KESSLER_SCALE.countFlag]) || 0) + 1;

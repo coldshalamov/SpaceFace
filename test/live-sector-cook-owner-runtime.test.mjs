@@ -572,8 +572,8 @@ test('opening capture retains bounded incomplete or stale identity diagnostics',
   }
 });
 
-function openingCapturePlanForRoot(root, scene, camera) {
-  const producer = createOpeningProducerCensus(root, { includeOffscreen: true });
+function openingCapturePlanForRoot(root, scene, camera,
+  producer = createOpeningProducerCensus(root, { includeOffscreen: true })) {
   const combined = combineOpeningProducerCensuses([producer]);
   return createOpeningSubmissionPlan({
     candidates: [{ root, role: 'opening-entity-root', entityId: 42, includeOffscreen: true }],
@@ -588,7 +588,7 @@ function openingCapturePlanForRoot(root, scene, camera) {
   });
 }
 
-function openingCaptureFixture(root) {
+function openingCaptureFixture(root, { censusBeforeYield = false } = {}) {
   root.userData.flightRenderPackage = {
     schema: 'spaceface.flightRenderPackage.v1',
     assetId: 'test-opening-recaptured-wreck',
@@ -620,8 +620,10 @@ function openingCaptureFixture(root) {
     *buildOpeningSubmissionPlanSteps(onCandidate) {
       selected.push(root);
       onCandidate(root, { role: 'opening-entity-root', entityId: 42, includeOffscreen: true }, camera);
+      const producer = censusBeforeYield
+        ? createOpeningProducerCensus(root, { includeOffscreen: true }) : undefined;
       yield;
-      const plan = openingCapturePlanForRoot(root, scene, camera);
+      const plan = openingCapturePlanForRoot(root, scene, camera, producer);
       plans.push(plan);
       return plan;
     },
@@ -718,6 +720,90 @@ test('opening recapture does not start another producer walk after the selected 
   assert.deepEqual([f.state.render.openingPlanCaptureFailure.expected.enterSerial,
     f.state.render.openingPlanCaptureFailure.actual.enterSerial], [4, 5]);
 });
+
+function openingMaterialCaptureFixture() {
+  const root = new THREE.Group();
+  root.name = 'restored-wreck';
+  const geometry = new THREE.BoxGeometry();
+  const leaf = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial());
+  leaf.name = 'restored-wreck-hull';
+  root.add(leaf, new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()));
+  return { ...openingCaptureFixture(root, { censusBeforeYield: true }), leaf };
+}
+
+test('opening capture recenses a live leaf whose material signature changed', () => {
+  const f = openingMaterialCaptureFixture();
+  const steps = f.capture();
+  assert.equal(steps.next().done, false);
+  f.leaf.material.fog = false;
+
+  assert.equal(steps.next().done, false, 'missing program coverage yields before recapture');
+  const [stalePlan] = f.plans;
+  assert.equal(stalePlan.complete, false);
+  assert.equal(stalePlan.firstPlayablePipelineSet.complete, true);
+  assert.equal(stalePlan.resourceIdentityCensusMatches, true);
+  assert.equal(stalePlan.uncoveredProgramLeaf.leafId, `uuid:${f.leaf.uuid}`);
+  assert.equal(stalePlan.uncoveredProgramLeaf.producerSawLeaf, true);
+  assert.deepEqual(f.stamped, []);
+
+  assert.equal(steps.next().done, false, 'recapture takes a fresh producer census');
+  const { done, value: plan } = steps.next();
+  assert.equal(done, true);
+  assert.equal(plan.complete, true);
+  assert.deepEqual(f.stamped, [plan]);
+  assert.equal(f.state.render.openingPlanCaptureFailure, null);
+});
+
+test('opening capture reports the exact leaf when material drift persists through one retry', () => {
+  const f = openingMaterialCaptureFixture();
+  const steps = f.capture();
+  assert.equal(steps.next().done, false);
+  f.leaf.material.fog = false;
+  assert.equal(steps.next().done, false);
+  assert.equal(steps.next().done, false);
+  f.leaf.material.fog = true;
+
+  const { done, value: plan } = steps.next();
+  assert.equal(done, true);
+  assert.equal(f.plans.length, 2);
+  assert.equal(plan.complete, false);
+  assert.deepEqual(f.stamped, []);
+  assert.deepEqual(f.cohortCaptures, []);
+  const failure = f.state.render.openingPlanCaptureFailure.uncoveredProgramLeaf;
+  assert.equal(failure.leafId, `uuid:${f.leaf.uuid}`);
+  assert.equal(failure.leafName, 'restored-wreck-hull');
+  assert.equal(failure.materialId, `uuid:${f.leaf.material.uuid}`);
+  assert.equal(failure.reason, 'missing-opening-program-key');
+  assert.equal(failure.programSubjectKey, plan.programCompileSubjects[0].programSubjectKey);
+});
+
+test('a superseded material recapture cannot stamp the departed owner', () => {
+  const f = openingMaterialCaptureFixture();
+  const steps = f.capture();
+  assert.equal(steps.next().done, false);
+  f.leaf.material.fog = false;
+  assert.equal(steps.next().done, false);
+  f.state.world.enterSerial = 5;
+  f.setCaptureStale(true);
+
+  assert.deepEqual(steps.next(), { done: true, value: null });
+  assert.equal(f.plans.length, 1);
+  assert.deepEqual(f.stamped, []);
+  assert.equal(f.state.render.openingPlanCaptureFailure.reason, 'stale-capture');
+});
+
+test('a replacement material with an already covered signature seals without recapture', () => {
+  const f = openingMaterialCaptureFixture();
+  const steps = f.capture();
+  assert.equal(steps.next().done, false);
+  f.leaf.material = f.leaf.material.clone();
+  const { done, value: plan } = steps.next();
+  assert.equal(done, true);
+  assert.equal(f.plans.length, 1);
+  assert.equal(plan.complete, true);
+  assert.deepEqual(f.stamped, [plan]);
+});
+
 function fixture(providers = []) {
   const frames = [], marks = [];
   let now = 0;

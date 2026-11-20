@@ -45,10 +45,14 @@ export function advectMaterialEnvironment(m,s,life,step,env){
     const f=env.records[i];
     // A field's own particles already encode its verb; do not apply its force twice.
     if(m[0]<4&&KINDS[m[0]]===f.kind&&Math.abs(m[1]-f.center.x)<.001&&Math.abs(m[3]-f.center.z)<.001)continue;
+    // Wells, repulsors and cones have finite radial reach. A sheet can extend
+    // outside that square; its oriented slab stays entirely with the shared kernel.
+    if (f.kind !== 'sheet' && (Math.abs(wx - f.center.x) >= f.radius || Math.abs(wz - f.center.z) >= f.radius)) continue;
     const a=fieldRawAcceleration(f,wx,wz,env.scratch);
     ax+=a.ax;az+=a.az;
   }
-  const length=Math.hypot(ax,az),cap=length>FIELD_MAX_ACCEL?FIELD_MAX_ACCEL/length:1;
+  const length = ax === 0 && az === 0 ? 0 : Math.hypot(ax, az);
+  const cap=length>FIELD_MAX_ACCEL?FIELD_MAX_ACCEL/length:1;
   const scale=step*life/R*cap;
   s[3]+=(c*ax+sn*az)*scale;s[5]+=(-sn*ax+c*az)*scale;
 }

@@ -134,11 +134,11 @@ export function shelfHostileChargeReady(state, isHostile) {
  *   gamepad → gamepadButtonLabels over the resolved (possibly remapped) pad map, with
  *             GAMEPAD_VERB_ALIASES so keyboard-verb names reach their pad route
  *             (tether→massline, reel→lineControl). A verb with no pad route falls back
- *             to the keyboard label rather than print nothing at a pad player.
+ *             to the keyboard label unless the caller supplies a device-specific gesture.
  *   touch   → '' — the overlay only ships fire/mine/boost buttons; naming a key a
  *             touch player cannot press is the same lie as naming a dead binding.
  */
-export function verbBindingLabel(state, action, device) {
+export function verbBindingLabel(state, action, device, { keyboardFallback = true } = {}) {
   const dev = device || state?.input?.promptDevice || getPromptDevice();
   if (dev === 'touch') return '';
   if (dev === 'gamepad') {
@@ -146,6 +146,7 @@ export function verbBindingLabel(state, action, device) {
     const map = resolveGamepadBindings(state && state.settings);
     const labels = gamepadButtonLabels(padAction, map, { glyphSet: gamepadGlyphSetFor(state) });
     if (labels.length && labels[0]) return labels[0];
+    if (!keyboardFallback) return '';
   }
   return resolveActionLabel(state, action);
 }

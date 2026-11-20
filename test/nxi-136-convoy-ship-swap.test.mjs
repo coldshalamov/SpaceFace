@@ -6,8 +6,12 @@
 // through the real owners: traffic manifests and unloads the carrier, ships flips the active
 // hull through the docked-shipyard path, cargo parks the holds, claims settles the leg.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
+import { createSimHost } from '../scripts/lib/simWorkerHost.mjs';
+import { createSimCommandRing } from '../scripts/lib/simCommandChannel.mjs';
+import { createDomainMirroringProfile } from '../scripts/lib/simReadModel.mjs';
 import { createSimulation } from '../src/core/sim.js';
 import { world } from '../src/systems/world.js';
 import { claims } from '../src/systems/claims.js';
@@ -16,7 +20,7 @@ import { npcJobsRuntime } from '../src/systems/npcJobsRuntime.js';
 import { spawnBudget } from '../src/systems/spawnBudget.js';
 import { economy } from '../src/systems/economy.js';
 import { ships, makeShipEntitySpec } from '../src/systems/ships.js';
-import { cargo as cargoSystem, addCargo } from '../src/systems/cargo.js';
+import { cargo as cargoSystem, addCargo, reservedCargoQuantity } from '../src/systems/cargo.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 
@@ -42,7 +46,7 @@ function bootConvoy(seed = SEED, sectorId = CLAIM_SECTOR) {
   return sim;
 }
 
-function commissionRelay(sim, { sectorId = CLAIM_SECTOR, localPos = { x: 200, z: 0 } } = {}) {
+function commissionRelay(sim, { sectorId = CLAIM_SECTOR, localPos = { x: 200, z: 0 }, dispatchImmediately = true } = {}) {
   const { state } = sim;
   const owner = sim.registry.get('claims');
   const poi = SECTORS.find((s) => s.id === sectorId).pois.find((p) => p.claimable);
@@ -54,7 +58,7 @@ function commissionRelay(sim, { sectorId = CLAIM_SECTOR, localPos = { x: 200, z:
   addCargo(state, RELAY_GOOD, 60);
   const moved = owner.deliverToClaim(body.id, RELAY_GOOD, 60);
   assert.ok(moved >= 20, `relay store holds a dispatchable load (got ${moved})`);
-  body.spec.nextDispatchAt = state.simTime;
+  if (dispatchImmediately) body.spec.nextDispatchAt = state.simTime;
   return body;
 }
 
@@ -109,6 +113,74 @@ function berthUnload(sim, body, convoy) {
     },
   });
 }
+
+test('a worker relay dispatch sells its own cargo once and preserves the active delivery', async (t) => {
+  const host = createSimHost();
+  t.after(() => host.shutdown());
+  const scenarioContract = JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8'));
+  await host.init({ profile: 'production', seed: SEED, bridgeAll: true,
+    domainMirroring: createDomainMirroringProfile('station'), scenarioContract });
+  const { state, bus, registry, runtime } = host.host;
+  const sectorId = 'sector_ceres_belt';
+  state.mode = 'flight';
+  state.player.credits = 500000;
+  state.player.researchedNodes = ['tech_outpost_charter'];
+  state.onboarding = { active: false, finished: true };
+  const pilot = runtime.spawn(makeShipEntitySpec('ship_hornet', { team: 0, isPlayer: true }));
+  state.playerId = pilot.id;
+  registry.get('world').enterSector(sectorId);
+  const prospect = SECTORS.find(sector => sector.id === sectorId).pois.find(poi => poi.id === 'poi_claim_rookery');
+  const body = commissionRelay({ state, registry }, { sectorId, localPos: prospect.pos, dispatchImmediately: false });
+  addCargo(state, RELAY_GOOD, 8);
+  state.missions.active.push({ type: 'cargo_delivery', status: 'active', preloadedCargo: true,
+    params: { cmdtyId: RELAY_GOOD, qty: 8, sealAccounted: true, sealedRemaining: 8 } });
+
+  let tick = 0;
+  const request = async (expectedConvoySeq) => {
+    const command = createSimCommandRing();
+    command.pushRpc(tick + 1, 'claimsCall', { method: 'requestRelayDispatch', bodyId: body.id, expectedConvoySeq });
+    return host.tick({ tick: ++tick, steps: 0, commands: command.drain() });
+  };
+  const previousSchedule = body.spec.nextDispatchAt;
+  assert.ok(previousSchedule > state.simTime);
+  const stale = await request(1);
+  assert.equal(stale.rpcAcks[0].result.ok, false);
+  assert.equal(body.spec.nextDispatchAt, previousSchedule);
+  const accepted = await request(0);
+  assert.equal(accepted.rpcAcks[0].result.ok, true);
+  assert.equal(body.spec.nextDispatchAt, state.simTime);
+  assert.ok(accepted.domainUpdates.some(update => update.segs.join('.') === 'claims'),
+    'the paused reply publishes the changed claim to the Base mirror');
+  assert.equal(body.spec.convoy, null, 'the modal dispatch only schedules the next flight tick');
+
+  runtime.runTicks(240);
+  const convoy = body.spec.convoy;
+  assert.ok(convoy?.manifested);
+  assert.equal(convoy.destStationId, 'station_ceres');
+  assert.equal(convoy.qty, 60);
+  assert.ok(convoy.worldRecordId);
+  assert.equal(liveConvoyHulls({ state }, convoy.convoyId).length, 1);
+  const economyOwner = registry.get('economy');
+  const entry = economyOwner.ensureMarket(convoy.destStationId)[RELAY_GOOD];
+  const stock = entry.stock;
+  const credits = state.player.credits;
+  const quote = economyOwner.quote(convoy.destStationId, RELAY_GOOD, 'sell', 1);
+  assert.equal(quote.reason, 'mission_cargo_locked', 'the same commodity in the personal hold cannot sell');
+  const unit = economyOwner.priceOf(convoy.destStationId, RELAY_GOOD, 'sell', { operationCustody: true });
+  assert.ok(unit > 0);
+  const berth = () => berthUnload({ bus }, body, convoy);
+  berth();
+  berth();
+  const sales = body.spec.receipts.filter(row => row.kind === 'convoy_sold');
+  assert.equal(sales.length, 1);
+  assert.equal(sales[0].data.qty, convoy.qty);
+  assert.equal(state.player.credits - credits, Math.round(convoy.qty * unit * (1 - sales[0].data.saleFee)));
+  assert.equal(entry.stock - stock, convoy.qty);
+  assert.equal(state.player.cargo.items[RELAY_GOOD], 8);
+  assert.equal(reservedCargoQuantity(state, RELAY_GOOD), 8);
+  assert.equal(body.spec.convoy, null);
+  assert.equal((await request(0)).rpcAcks[0].result.ok, false, 'the finished sequence cannot queue a new trip');
+});
 
 test('changing ships mid-leg leaves the convoy on its shipment identity and settles it once', () => {
   const sim = bootConvoy();

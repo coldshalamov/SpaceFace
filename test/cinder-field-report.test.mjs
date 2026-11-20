@@ -6,13 +6,19 @@ import { makeEntity, stampOccupantGeneration } from '../src/core/entity.js';
 import { missions } from '../src/systems/missions.js';
 import { combat } from '../src/systems/combat.js';
 import { aftermathWrecks } from '../src/systems/aftermathWrecks.js';
+import { scanner } from '../src/systems/scanner.js';
 import { createRookBooth, rookMarketPadSpec } from '../src/systems/rookBooth.js';
 import { createCampaign47aState } from '../src/story/campaign47a/campaignSchema.js';
+import { buildMissionBoardContract } from '../src/story/campaign47a/embodiedMissions.js';
 import { createAttachmentService } from '../src/combat/attachments.js';
 import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
 import { rookPadPosition } from '../src/characters/rookRules.js';
 import { cinderPlayerTow, cinderRouteFocus, cinderFieldReport, cinderJournalAction } from '../src/missions/cinderRoute.js';
 import { flightDestinationSurface, resolveFlightObjectiveCommand } from '../src/ui/hud.js';
+import { resolveGalaxyMapPrimaryAction, resolveMapOpenTarget } from '../src/ui/galaxyMap.js';
+import { targetDisplayName } from '../src/ui/targetPanel.js';
+import { serializeCombatState } from '../src/combat/persistence.js';
+import { save } from '../src/save/saveSystem.js';
 const SECTOR = 'sector_charon_expanse', PAD = rookPadPosition();
 
 function fixture() {
@@ -63,6 +69,135 @@ function fixture() {
 import { storyActionForBeat, missionLogScreen, recommendedActions } from '../src/ui/screens/missionLog.js';
 function consume(h, body) { h.bus.emit('salvage:completed',{wreckId:body.id,markerId:body.data.markerId,source:'mining:beam'});h.helpers.removeEntity(body.id); }
 function otherHull(h,n=1){return h.aftermath._resolveBoundWreck(h.m.params.cinderMarkedWrecks[n].markerId);}
+
+test('Continue reconnects the held Cinder Line to the same marker with a new live life', () => {
+  const h = fixture();
+  const markerId = h.hull.data.markerId, oldId = h.hull.id, attachmentId = h.a.id;
+  const savedTether = structuredClone(h.state.player.tether);
+  const savedCombat = serializeCombatState(h.state);
+  const savedWrecks = h.aftermath.serialize();
+  assert.deepEqual(savedCombat.attachments.byId[attachmentId]?.targetRef, {
+    kind: 'cinderAftermath', markerId, missionId: h.m.id, sectorId: SECTOR, saveId: oldId,
+  });
+  const saver = Object.assign(Object.create(save), { state: h.state, registry: h.owner.registry });
+  const remap = new Map([[String(h.player.id), h.player.id]]);
+  h.bus.emit('save:restoring', {});
+  for (const ref of h.m.params.cinderMarkedWrecks) {
+    const body = h.aftermath._resolveBoundWreck(ref.markerId);
+    if (body) h.helpers.removeEntity(body.id);
+  }
+  h.state.player.tether = structuredClone(savedTether);
+  saver._restoreCombat(savedCombat, remap);
+  assert.equal(h.state.combat.attachments.byId[attachmentId], undefined, 'await the canonical wreck spawn');
+  h.aftermath.deserialize(savedWrecks);
+  h.bus.emit('save:loaded', {});
+  const reborn = h.aftermath._resolveBoundWreck(markerId);
+  assert.ok(reborn && reborn.id !== oldId && reborn.occupantGeneration !== h.hull.occupantGeneration);
+  saver._restorePlayerTetherReference(savedCombat, remap);
+  assert.equal(h.state.player.tether.active, true);
+  assert.equal(h.state.player.tether.targetId, reborn.id);
+  assert.equal(h.state.combat.attachments.byId[attachmentId].targetGeneration, reborn.occupantGeneration);
+  assert.equal(cinderPlayerTow(h.m, h.state), reborn);
+  assert.equal(remap.get(String(oldId)), reborn.id);
+
+  const withoutCustody = structuredClone(savedCombat);
+  delete withoutCustody.attachments.byId[attachmentId];
+  const retry = (payload, idRemap = new Map(), active = true) => {
+    h.state.player.tether = { ...savedTether, active };
+    saver._restoreCombat(payload, idRemap);
+    saver._restorePlayerTetherReference(payload, idRemap);
+    assert.equal(h.state.player.tether.active, false);
+    assert.equal(h.state.combat.attachments.byId[attachmentId], undefined);
+  };
+  retry(withoutCustody); // Earlier Quick recorded only the mirror/native constraint.
+  retry(savedCombat, new Map(), false); // An old attachment row cannot undo an explicit detach.
+  retry(savedCombat, new Map([[String(oldId), h.player.id]]));
+  h.state.entities.set(reborn.id, { ...reborn, occupantGeneration: reborn.occupantGeneration + 1000 });
+  retry(savedCombat); // A same-id lookalike is not bound by Aftermath.
+  h.state.entities.set(reborn.id, reborn);
+  h.m.params.cinderMarkedWrecks[0].disposition = 'stripped';
+  retry(savedCombat);
+});
+
+test('the posted Cinder contract opens the exact Tethys berth from the current story waypoint', () => {
+  const state = createGameState(47);
+  state.mode = 'flight';
+  state.run = { kind: 'adventure' };
+  state.onboarding = { active: false, finished: true };
+  state.world.currentSectorId = 'sector_ceres_belt';
+  state.story.beatIndex = 2;
+  state.story.campaign47a = createCampaign47aState();
+  const beat = { beat: 2 };
+  const offer = buildMissionBoardContract(2, { state });
+  const owner = Object.assign(Object.create(missions), { state });
+  const storyWaypoint = owner._storyWaypointForBeat(beat);
+  state.nav.waypoint = storyWaypoint;
+  const route = state.nav.route;
+  assert.equal(storyActionForBeat(beat, state).mapAction, undefined, 'an unposted offer has no destination action');
+  state.missions.boards.station_tethys = { slots: [offer] };
+
+  const screen = { _recommendEl: { innerHTML: '' } };
+  missionLogScreen._renderRecommendations.call(screen, state, [], null);
+  const html = screen._recommendEl.innerHTML;
+  assert.match(html, /Tethys board — Cinder marks/);
+  assert.match(html, /Open Tethys Trade Hub on the Chart/i);
+  assert.equal((html.match(/data-rec-act="openMap"/g) || []).length, 1);
+  assert.match(html, /data-map-station-id="station_tethys"/);
+  assert.doesNotMatch(html, /NO GOAL MARKER YET/i);
+  const action = recommendedActions(state, [], null)[0];
+  const target = resolveMapOpenTarget(state, action.mapAction);
+  assert.equal(target.stationId, 'station_tethys');
+  assert.equal(resolveGalaxyMapPrimaryAction(state, target).label, 'Plot Course');
+  assert.equal(state.nav.waypoint, storyWaypoint);
+  assert.equal(state.nav.route, route);
+
+  const detour = { kind: 'local', label: 'Pilot detour', pos: { x: 15, z: 3 } };
+  state.nav.waypoint = detour;
+  assert.equal(storyActionForBeat(beat, state).mapAction, undefined, 'another course is not described as the Cinder marker');
+  assert.equal(state.nav.waypoint, detour);
+
+  state.world.currentSectorId = 'sector_tethys_junction';
+  state.nav.waypoint = owner._storyWaypointForBeat(beat);
+  const local = storyActionForBeat(beat, state).mapAction;
+  assert.equal(local.focus, 'local');
+  assert.equal(resolveGalaxyMapPrimaryAction(state, resolveMapOpenTarget(state, local)).label, 'Set Waypoint');
+});
+
+test('a qualifying Cinder hull keeps a public name before Scan and when its saved marker respawns', () => {
+  const h = fixture();
+  const markedName = 'Cinder One · marked hull';
+  const markerId = h.hull.data.markerId;
+  const oldLife = h.hull.occupantGeneration;
+  assert.equal(h.hull.data.scanned, undefined);
+  assert.equal(targetDisplayName(h.hull, { concealWreck: true }), markedName);
+  assert.equal(targetDisplayName(h.hull), markedName);
+
+  h.player.pos = { x: h.hull.pos.x + 80, z: h.hull.pos.z };
+  const debris = h.helpers.spawnEntity({ type: 'wreck', pos: { x: h.player.pos.x + 60, z: h.player.pos.z },
+    radius: 8, hull: 20, data: { scanLabel: 'Battle-scarred Hulk' } });
+  assert.equal(targetDisplayName(debris), 'Derelict');
+  const scan = Object.create(scanner);
+  scan.init({ state: h.state, bus: h.bus, helpers: h.helpers });
+  scan._pulse(h.state, h.player, h.state.simTime);
+  assert.equal(h.hull.data.scanned, true);
+  assert.equal(targetDisplayName(h.hull), 'Hulk of Cinder One · marked Wasp');
+  assert.equal(targetDisplayName(debris), 'Battle-scarred Hulk');
+
+  const missionSave = JSON.parse(JSON.stringify(h.owner.serialize()));
+  const aftermathSave = JSON.parse(JSON.stringify(h.aftermath.serialize()));
+  h.bus.emit('save:restoring', {});
+  h.service.cut(h.a.id, 'test-continue');
+  h.state.player.tether.active = false;
+  for (const ref of h.m.params.cinderMarkedWrecks) h.helpers.removeEntity(h.aftermath._resolveBoundWreck(ref.markerId).id);
+  h.owner.deserialize(missionSave);
+  h.aftermath.deserialize(aftermathSave);
+  h.bus.emit('save:loaded', {});
+
+  const restored = h.aftermath._resolveBoundWreck(markerId);
+  assert.ok(restored);
+  assert.notEqual(restored.occupantGeneration, oldLife);
+  assert.equal(targetDisplayName(restored), markedName);
+});
 
 test('actual owner retirements become a finite field report and name the remaining hull',()=>{
  const h=fixture();h.service.cut(h.a.id,'test-release');h.state.player.tether.active=false;

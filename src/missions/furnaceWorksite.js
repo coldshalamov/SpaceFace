@@ -1,6 +1,7 @@
 // CR-FEED owns these three disposal lots; ordinary rock remains valid furnace fuel.
 import { FURNACE_INTAKE } from '../data/furnace.js';
 import { sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
+import { powerUsesReleasePreview } from '../systems/powerVerbs.js';
 
 export const FURNACE_LOT_VERSION = 1;
 export function furnaceMouthGlobal() {
@@ -56,6 +57,10 @@ export function furnaceReceiptMatches(m, receipt, entity) {
 export function authoredFurnaceWorksite(m) {
   return furnaceDetail(m) && m.params.furnaceWorksiteVersion === FURNACE_LOT_VERSION;
 }
+
+export function localFurnaceWorksite(mission, state) {
+  return authoredFurnaceWorksite(mission) && state?.world?.currentSectorId === mission.destSectorId;
+}
 export const FURNACE_HAULER_LOCAL = Object.freeze({ x: 1880, z: 1810 });
 export const FURNACE_MITE_KEYS = Object.freeze(Array.from({ length: 4 }, (_, i) => `closed_refinery:suture_mite:${i}`));
 export function furnaceMiteClearance(state) {
@@ -67,31 +72,40 @@ export function furnaceMites(state) {
     && e.data?.ecology?.speciesId === 'suture_mite'
     && FURNACE_MITE_KEYS.includes(e.data.ecology.faunaKey));
 }
-export function localFurnaceWorksite(mission, state) {
-  return authoredFurnaceWorksite(mission) && state?.world?.currentSectorId === mission.destSectorId;
-}
-
 export function furnaceWorksiteFocus(m, state) {
   if (!authoredFurnaceWorksite(m)) return null;
   if (m.params.furnaceLedgerInvalid) return { pos: furnaceMouthGlobal(), label: 'Refinery cargo record unavailable', reason: 'The saved cargo ledger is invalid; the detail is paused without creating replacement material or payment.' };
   const mites = furnaceMites(state);
-  if (m.objectiveProgress < m.objectiveTarget) return {
-    pos: mites.length ? { x: mites[0].pos.x, z: mites[0].pos.z } : sectorLocalToGlobalForSector(FURNACE_HAULER_LOCAL, m.destSectorId), targetEntityId: mites[0]?.id || null,
-    label: 'Refinery hauler — repair-mite clearance',
-    reason: 'Clear four marked repair-mite sites with carefully placed frag blasts. Blasts also hurt Casket worms: keep them outside the blast. Buy and load more frag at Tethys Trade Hub if needed.',
-  };
+  if (m.objectiveProgress < m.objectiveTarget) {
+    const cells = state.bombs?.rack?.cells;
+    const empty = Array.isArray(cells) && !cells.some(cell => cell?.id === 'bomb_frag' && cell.count > 0);
+    return {
+      pos: mites.length ? { x: mites[0].pos.x, z: mites[0].pos.z } : sectorLocalToGlobalForSector(FURNACE_HAULER_LOCAL, m.destSectorId), targetEntityId: mites[0]?.id || null,
+      label: 'Refinery hauler — repair-mite clearance',
+      reason: `${m.objectiveProgress}/${m.objectiveTarget} marked repair-mite sites clear. Use Frag from the east. `
+        + (powerUsesReleasePreview(state, 'bomb')
+          ? 'Hold Bomb. Dashes warn of a mite moving clear. Double rings warn of Casket damage.'
+          : 'Keep Caskets clear.')
+        + (empty ? ' Reload Frag at Tethys or Helios.' : ''),
+    };
+  }
   const pending = furnaceLots(m).filter(row => !row.received && !row.lost);
   const lot = pending.find(row => { const body = state.entities?.get(row.entityId); return body && (body.flags?.tethered || state.player?.tether?.targetId === body.id); }) || pending[0];
   const e = lot && state.entities?.get(lot.entityId);
   const held = e && (e.flags?.tethered || state.player?.tether?.targetId === e.id);
   const bank = lot && sectorLocalToGlobalForSector({ x: 1760 + lot.slot * 170, z: 1640 }, FURNACE_INTAKE.sectorId);
   const inBank = !held && bank && Math.hypot((e?.pos || lot.pos).x - bank.x, (e?.pos || lot.pos).z - bank.z) < 1;
+  const losses = m.params.furnaceLosses || 0;
+  const progress = `${m.params.furnaceFeeds || 0}/3 pods received${losses ? ` · ${losses} lost` : ''}.`;
+  const action = held ? 'Release the pod into the amber ring.'
+    : lot ? `Tow from the ${inBank ? 'intake-aligned east bank' : 'current marked load position'} or hail CR-FEED.`
+      : 'All pods accounted for.';
   return {
     pos: held || !lot ? furnaceMouthGlobal() : { ...(e?.pos || lot.pos) },
     targetEntityId: held ? null : e?.id || null,
     sectorId: held || !lot ? FURNACE_INTAKE.sectorId : sectorMembershipAtGlobal(e?.pos || lot.pos),
     label: held ? 'CR-FEED — release ore across the lip' : 'Infested hauler — disposal pods',
-    reason: `${m.params.furnaceFeeds || 0}/3 hauler lots received; ${m.params.furnaceLosses || 0} lost. ${inBank ? 'The marked load is on the intake-aligned east bank; take the remaining lot nearest the intake first. ' : 'Follow the current marked load position. '}Tow or fling each marked pod into the open amber ring, or hail the yard gantry at the mouth to wind one in on its cable; ordinary rock does not settle these lots.`,
+    reason: `${progress} ${action}`,
   };
 }
 

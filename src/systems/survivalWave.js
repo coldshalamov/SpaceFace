@@ -33,6 +33,7 @@ import {
   SWARM_LAST_THREE_DOCTRINE,
   SWARM_LAST_THREE_MAX,
   SWARM_LAST_THREE_OFFSCREEN_WU,
+  SWARM_RULESET,
   SWARM_WAVE_DURATION_TICKS,
   expireSwarmPressureHold,
   pickSwarmArchetype,
@@ -1070,6 +1071,16 @@ export const survivalWave = {
         this._pending[write++] = item;
         continue;
       }
+      const mawReserve = run?.ruleset === SWARM_RULESET && this._wave === 5
+        && entry.staged === true && entry.enemyId === 'detonator_dart';
+      const maw = mawReserve ? this.state.capitalBossEncounters?.fights?.['swarm:w5'] : null;
+      // A materialized champion can have no score listener in a compatibility host.
+      // In that case the reserve remains ordinary wave debt and cannot strand the round.
+      if (mawReserve && (maw || !this._capitalFightId) && maw?.mawSupplyRequestedAt == null && !maw?.mawSupplyTell
+          && !maw?.bossKilled && maw?.phase !== 'disabled' && !maw?.terminal) {
+        this._pending[write++] = item;
+        continue;
+      }
       // C01-05 round 12 — a delivery batch does not gate in. It waits on the freight
       // queue; the next string's members are its seats (see _onFreightDeparted).
       if (entry.rideFreight === true) {
@@ -1125,6 +1136,11 @@ export const survivalWave = {
       const capitalScore = gauntletRegent ? CAPITAL_BOSS_REGENT_ENCOUNTER_ID : swarmCapitalScore;
       const characterScore = this._swarm && typeof entry.characterScoreId === 'string'
         && entry.characterScoreId;
+      // The Umbrella, Again owes a paired screen only on its staged course package.
+      // A deferred tail keeps the same package index, unlike the reinforcement stream.
+      const wardenPair = this._swarm && !this._swarm.circuit && this._wave === 26
+        && entry.staged === true && entry.enemyId === 'warden_escort'
+        && Number.isInteger(entry.packageIndex) ? entry.packageIndex : null;
       const receipt = materializeWaveBatch(this.ctx, {
         ownerId,
         enemyId: entry.enemyId,
@@ -1138,6 +1154,8 @@ export const survivalWave = {
         batchIndex: item.index,
         role: entry.role,
         swarm: !!this._swarm,
+        wardenPair,
+        requireClearMassline: !!maw && !maw.mawSupplyTell && !maw.bossKilled && !maw.terminal,
         champion: entry.champion === true,
         distance: Number.isFinite(entry.distance) ? entry.distance : this._spawnDistance,
         wall: entry.wall === true,
@@ -1227,6 +1245,7 @@ export const survivalWave = {
       }
       this._publishThreat();
       if (receipt.arrival && receipt.admitted > 0) this._lightArrivalGate(receipt);
+      const reservedDart = maw && receipt.spawnedIds.length > 0 ? this.state.entities.get(receipt.spawnedIds[0]) : null;
       this._emit('run:waveMaterialized', {
         wave: this._wave,
         role: entry.role,
@@ -1235,6 +1254,8 @@ export const survivalWave = {
         ...(receipt.sourceGateGroup ? { sourceGateGroup: receipt.sourceGateGroup } : {}),
         ...(receipt.ingressPose ? { ingressPose: receipt.ingressPose } : {}),
         ...(receipt.arrival ? { arrival: receipt.arrival } : {}),
+        ...(reservedDart ? { mawSupply: { entityId: reservedDart.id, bossId: maw.bossId,
+          occupantGeneration: reservedDart.occupantGeneration ?? null, runToken: run.retireToken ?? null } } : {}),
         atTick,
         requested: receipt.requested,
         admitted: receipt.admitted,

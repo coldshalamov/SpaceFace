@@ -1,6 +1,7 @@
 import { SWARM_FORTIFY_DEVICES, SWARM_FORTIFY_FACINGS, swarmFortifySocket } from '../data/swarmFortify.js';
 import { injectOrreryScreens } from './orrery/screenLayouts.js';
 import { injectSwarmFortifyLayouts } from './orrery/swarmFortifyLayouts.js';
+import { itemThumbElement } from './icons/itemThumbnails.js';
 import { cue } from './kit/index.js';
 
 let nextRequestId = 1;
@@ -98,7 +99,11 @@ export const crucibleFortifyScreen = {
     for (const device of Object.values(SWARM_FORTIFY_DEVICES)) {
       const button = make('button', 'sf-fortify-device'); button.type = 'button'; button.dataset.deviceId = device.id;
       button.setAttribute('aria-pressed', String(device.id === this._deviceId));
-      button.append(make('strong', '', device.name), make('span', 'k-t-fine', device.cost + ' cr'), make('small', '', device.description));
+      const thumb = itemThumbElement({ id: device.id }, { size: 'lg', className: 'sf-fortify-thumb', showCrest: false }, this._doc);
+      if (thumb) button.appendChild(thumb);
+      const copy = make('span', 'sf-fortify-device__body');
+      copy.append(make('strong', '', device.name), make('span', 'k-t-fine sf-fortify-device__cost', device.cost + ' cr'), make('small', '', device.description));
+      button.appendChild(copy);
       button.addEventListener('click', () => { this._deviceId = device.id; this._paint(); });
       this._deviceButtons.set(device.id, button); shelf.appendChild(button);
     }
@@ -212,7 +217,10 @@ export const crucibleFortifyScreen = {
       else if (structure.operational === false) detail += ' · offline';
       if (Number.isFinite(structure.ammo)) detail += ' · ' + structure.ammo + ' rounds';
       if (structure.heat > 0) detail += ' · ' + Math.ceil(structure.heat) + '% heat';
-      const row = element(this._doc, 'li', '', detail);
+      const row = element(this._doc, 'li', '', '');
+      const rowThumb = itemThumbElement({ id: structure.deviceId }, { size: 'sm', className: 'sf-fortify-row-thumb', showCrest: false }, this._doc);
+      if (rowThumb) row.appendChild(rowThumb);
+      row.appendChild(element(this._doc, 'span', 'sf-fortify-row-copy', detail));
       if ((structure.missingEndpoint || structure.hull < structure.hullMax) && Number.isSafeInteger(structure.repairCost) && structure.repairCost > 0) {
         const repair = element(this._doc, 'button', 'k-word k-word--fine', (structure.missingEndpoint ? 'Replace endpoint · ' : 'Repair · ') + structure.repairCost + ' cr');
         repair.type = 'button'; repair.dataset.repairId = String(structure.id); repair.disabled = !!this._pending || model.credits < structure.repairCost;

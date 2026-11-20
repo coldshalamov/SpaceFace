@@ -1,13 +1,13 @@
 // Round-2 player-truth checks: gate strictness, round transitions, per-pixel combat VFX vs backdrop, compare table.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { runChecks, overall, checkRoundTransitions, checkRoundsReached, checkVfx, checkBackdrop } from '../scripts/player-truth/checks.mjs';
 import { screensOverlayOpen } from '../src/testing/playerTruth/reader.js';
-import { compareVerdicts, renderComparison, baselineAssetPlan, sharedAssetsLinkable, sharedTreeMatches, baselineExtractAllowed, baselineDiskMessage, baselineDiskError, BASELINE_EXTRACT_MIN_FREE_BYTES } from '../scripts/player-truth/compare.mjs';
+import { compareVerdicts, renderComparison, loadCapturedBaseline, assertCapturedBaselineOutput, compareCapturedBaseline } from '../scripts/player-truth/compare.mjs';
 import { systemChromeCandidates } from '../scripts/player-truth/browser.mjs';
 
 const P = (o = {}) => ({ id: 1, alive: true, x: 0, y: 0, z: 0, vx: 0, vz: 0, rot: 0, angVel: 0, pitch: 0, bank: 0, hull: 50, hullMax: 100, mesh: true, vis: true, onScreen: true, box: [600, 330, 680, 390], lod: 'lod0', model: 'hornet', state: 'authored', tris: 4000, marker: false, meshId: 'aaaa', ...o });
@@ -211,16 +211,7 @@ test('gate process exits non-zero when any verdict is FAIL', async () => {
   assert.equal(gateExitCode(['PASS', 'ENVIRONMENT']), 4);
   assert.equal(gateExitCode(['FAIL', 'ENVIRONMENT']), 1);
   assert.equal(gateExitCode(['ENVIRONMENT', 'FAIL']), 1);
-  const { environmentReportLines, absorbBaselineEnvironment } = await import('../scripts/player-truth/run.mjs');
-  const disk = baselineDiskError(1024, '/tmp/wt');
-  const passed = [{ verdict: 'PASS', label: 'swarm' }];
-  assert.equal(absorbBaselineEnvironment(passed, disk), true);
-  assert.equal(gateExitCode(passed.map((o) => o.verdict)), 4);
-  assert.equal(passed[1].label, 'baseline-assets');
-  const failed = [{ verdict: 'FAIL', label: 'swarm' }];
-  assert.equal(absorbBaselineEnvironment(failed, disk), true);
-  assert.equal(gateExitCode(failed.map((o) => o.verdict)), 1);
-  assert.equal(absorbBaselineEnvironment([], new Error('boom')), false);
+  const { environmentReportLines } = await import('../scripts/player-truth/run.mjs');
   assert.deepEqual(environmentReportLines([
     { verdict: 'FAIL', label: 'swarm-active' },
     { verdict: 'ENVIRONMENT', label: 'adventure-idle' },
@@ -285,51 +276,55 @@ test('an environment verdict is not a gameplay regression, and software frame ti
   assert.doesNotMatch(blowup, /REGRESSED/);
 });
 
-test('baseline assets link a matching shared checkout and refuse a stale or partial one', () => {
-  assert.equal(baselineAssetPlan({ manifestPresent: true, sharedMatches: true, canLink: true }), 'present');
-  assert.equal(baselineAssetPlan({ manifestPresent: false, sharedMatches: true, canLink: true }), 'link');
-  assert.equal(baselineAssetPlan({ manifestPresent: false, sharedMatches: false, canLink: true }), 'extract');
-  assert.equal(baselineAssetPlan({ manifestPresent: false, sharedMatches: true, canLink: false }), 'extract');
-  assert.equal(sharedAssetsLinkable({ treeMatches: true, assetsStatus: '' }), true);
-  assert.equal(sharedAssetsLinkable({ treeMatches: true, assetsStatus: ' M assets/AGENTS.md\n' }), false);
-  assert.equal(sharedAssetsLinkable({ treeMatches: false, assetsStatus: '' }), false);
-  const min = BASELINE_EXTRACT_MIN_FREE_BYTES;
-  assert.equal(baselineExtractAllowed(min), true);
-  assert.equal(baselineExtractAllowed(min - 1), false);
-  assert.equal(baselineExtractAllowed(null), false);
-  assert.equal(baselineExtractAllowed(Number.NaN), false);
-  const low = baselineDiskMessage(3.2 * 1024 * 1024 * 1024);
-  assert.match(low, /HARNESS ENVIRONMENT: not enough disk to extract baseline assets/);
-  assert.match(low, /not a gameplay FAIL/);
-  assert.match(low, /3\.20 GB free/);
-  assert.match(low, /8\.00 GB free/);
-  assert.match(low, /was not started/);
-  const err = baselineDiskError(1024, '/tmp/wt');
-  assert.equal(err.environment, true);
-  assert.match(err.message, /\/tmp\/wt has/);
+test('captured baseline comparison preserves grades and rejects a different route or output overlap', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pt-captured-'));
+  try {
+    const baseDir = path.join(root, 'baseline');
+    const headDir = path.join(root, 'candidate');
+    mkdirSync(baseDir);
+    mkdirSync(headDir);
+    const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+    const meta = { commit: commit.slice(0, 10), dirty: false, label: 'swarm', mode: 'swarm', seed: 4242, resolution: '960x540', softwareGl: true };
+    const base = { overall: 'PASS', meta, results: [{ id: 'frame_time', title: 'Frame time', status: 'PASS' }] };
+    const head = { overall: 'FAIL', meta: { ...meta, label: 'swarm-head' }, results: [{ id: 'frame_time', title: 'Frame time', status: 'FAIL' }] };
+    const baseFile = path.join(baseDir, 'verdict.json');
+    const headFile = path.join(headDir, 'verdict.json');
+    writeFileSync(baseFile, JSON.stringify(base));
+    writeFileSync(headFile, JSON.stringify(head));
+
+    const baseline = loadCapturedBaseline({ ref: 'HEAD', verdict: baseDir, root: process.cwd() });
+    const outcomes = [{ label: 'swarm-head', verdict: head.overall, outDir: headDir }];
+    assert.throws(() => assertCapturedBaselineOutput(baseline, baseDir), /overwrite a saved baseline/);
+    assert.doesNotThrow(() => assertCapturedBaselineOutput(baseline, headDir));
+    compareCapturedBaseline({ baseline, outcomes, root });
+    assert.match(readFileSync(path.join(root, 'scratch/player-truth/compare-HEAD.md'), 'utf8'), /PASS → FAIL/);
+    assert.deepEqual(JSON.parse(readFileSync(headFile, 'utf8')), head);
+    assert.equal(outcomes[0].verdict, 'FAIL');
+
+    head.meta.seed++;
+    writeFileSync(headFile, JSON.stringify(head));
+    assert.throws(() => compareCapturedBaseline({ baseline, outcomes, root }), /candidate's seed/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
-test('sharedTreeMatches refuses a dirty assets worktree and ignores design dirt', () => {
-  const dir = mkdtempSync(path.join(tmpdir(), 'pt-share-'));
+test('player-truth accepts only a pinned saved baseline before opening the game', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'pt-baseline-cli-'));
   try {
-    execFileSync('git', ['init', '-q', '-b', 'main', dir]);
-    execFileSync('git', ['-C', dir, 'config', 'user.email', 't@example.com']);
-    execFileSync('git', ['-C', dir, 'config', 'user.name', 't']);
-    mkdirSync(path.join(dir, 'assets'), { recursive: true });
-    writeFileSync(path.join(dir, 'assets', 'a.txt'), 'v1\n');
-    execFileSync('git', ['-C', dir, 'add', 'assets']);
-    execFileSync('git', ['-C', dir, 'commit', '-q', '-m', 'a']);
-    const sha = execFileSync('git', ['-C', dir, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-    assert.equal(sharedTreeMatches(dir, sha, 'assets'), true);
-    writeFileSync(path.join(dir, 'assets', 'a.txt'), 'v2\n');
-    assert.equal(sharedTreeMatches(dir, sha, 'assets'), false);
-    writeFileSync(path.join(dir, 'assets', 'a.txt'), 'v1\n');
-    mkdirSync(path.join(dir, 'design'), { recursive: true });
-    writeFileSync(path.join(dir, 'design', 'x.txt'), 'overlay\n');
-    assert.equal(sharedTreeMatches(dir, sha, 'assets'), true);
-    assert.equal(sharedTreeMatches(dir, sha, 'design'), true);
+    const run = (...args) => spawnSync(process.execPath, ['scripts/player-truth/run.mjs', ...args], { encoding: 'utf8' });
+    const missingPath = run('--baseline=HEAD');
+    assert.equal(missingPath.status, 3);
+    assert.match(missingPath.stderr, /--baseline-verdict=<saved capture>/);
+
+    const capture = path.join(root, 'verdict.json');
+    writeFileSync(capture, JSON.stringify({ meta: { label: 'swarm', commit: '0000000000', dirty: false }, results: [] }));
+    const wrongCommit = run('--baseline=HEAD', `--baseline-verdict=${capture}`);
+    assert.equal(wrongCommit.status, 3);
+    assert.match(wrongCommit.stderr, /must come from an unmodified capture of HEAD/);
+    assert.doesNotMatch(wrongCommit.stdout + wrongCommit.stderr, /HARNESS ENVIRONMENT|baseline assets:|Preparing worktree/);
   } finally {
-    rmSync(dir, { recursive: true, force: true });
+    rmSync(root, { recursive: true, force: true });
   }
 });
 

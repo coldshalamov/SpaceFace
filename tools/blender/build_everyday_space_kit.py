@@ -807,6 +807,9 @@ def build_crusher_module():
     # the feed entirely. Square-in-circle: half-side = circumradius / sqrt(2).
     put(cone('hopper_shell', 1.15, 3.85, 3.3, (0, 0, 3.75), rot=(0, 0, math.pi / 4), verts=4),
         'esk_bare_steel', root)
+    # Bridge the 0.1 m gap between the hopper and body, without moving the feed.
+    put(cone('hopper_throat_collar', 1.15, 1.24, 0.22, (0, 0, 2.06), rot=(0, 0, math.pi / 4), verts=4),
+        'esk_bare_steel', root)
     put(cone('hopper_throat', 0.95, 3.45, 3.3, (0, 0, 3.95), rot=(0, 0, math.pi / 4), verts=4),
         'esk_scorch', root)
     for tag, loc, size in (('n', (0, 2.75, 5.5), (5.9, 0.4, 0.22)),
@@ -830,6 +833,13 @@ def build_crusher_module():
         'placement': 'between drill and conveyor/containers; discharge points at the take-away',
         'lodPlan': 'LOD1: hopper as one box; LOD2: two stacked boxes',
     }
+    # The runtime part loader requires UV0 even for factor-only materials.
+    for obj in root.children:
+        if obj.type == 'MESH' and not obj.data.uv_layers:
+            uv = obj.data.uv_layers.new(name='UVMap')
+            for loop in obj.data.loops:
+                co = obj.data.vertices[loop.vertex_index].co
+                uv.data[loop.index].uv = (co.x, co.z)
     return root, meta
 
 

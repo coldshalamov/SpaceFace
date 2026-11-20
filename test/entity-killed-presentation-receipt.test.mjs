@@ -7,7 +7,10 @@ import { recordImpulseProvenance } from '../src/combat/impulseKernel.js';
 import { createBus } from '../src/core/eventBus.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import { DEFAULT_VFX_ADMISSION_PRIORITY, deriveVfxAdmissionMetadata } from '../src/presentation/vfxAdmissionPriority.js';
+import { cameraShakeAmountForPlayer } from '../src/render/camera.js';
+import { ExplosionRupture } from '../src/render/combat/explosionRupture.js';
 import { PhasedExplosionLifecycle, explosionScheduleFor } from '../src/render/combat/phasedExplosions.js';
+import { createShakeAdmission } from '../src/render/shakeAdmission.js';
 import { vfx } from '../src/render/vfx.js';
 import { buildKillPresentationReceipt, combat } from '../src/systems/combat.js';
 import { collisionConsequences } from '../src/systems/collisionConsequences.js';
@@ -168,6 +171,46 @@ test('receipt and every nested record are immutable and remain event-only', () =
   assert.equal(Object.hasOwn(state, 'presentation'), false);
   assert.doesNotMatch(JSON.stringify(state), /terrain_collision|ship_collision|"presentation"/,
     'transient presentation data must not enter entity, state, or save-shaped graphs');
+});
+
+test('a nearby NPC kill and its physical rupture leave the player camera steady', () => {
+  const target = ship(9, 1, { x: 50, z: -4 });
+  const killer = ship(8, 2);
+  const state = killState(target);
+  state.entities.set(killer.id, killer);
+  state.entityList.push(killer);
+  const player = state.entities.get(state.playerId);
+  const bus = createBus();
+  const admission = createShakeAdmission();
+  const published = [];
+  const receive = (payload) => admission.admit(cameraShakeAmountForPlayer(payload, player.pos), state.simTime);
+  bus.on('camera:shake', (payload) => published.push({ payload, amount: receive(payload) }));
+
+  const visual = Object.create(vfx);
+  const rupture = new ExplosionRupture(state.render.scene);
+  const sprites = [];
+  Object.assign(visual, { state, bus, _scene: state.render.scene, _explosions: new PhasedExplosionLifecycle({ capacity: 2 }),
+    _explosionRupture: rupture, _spawnSprite: (...args) => sprites.push(args), _flashLight() {} });
+  bus.on('entity:killed', payload => visual._queueExplosion(payload, 'ordinary'));
+
+  const system = Object.create(combat);
+  system.init({ state, bus, helpers: {}, registry: { get() { return null; } } });
+  try {
+    system.kill(target, killer.id, weaponLethal('wpn_autocannon_s'));
+    const entry = visual._explosions.entries.find(row => row.active);
+    assert.ok(entry, 'the NPC kill still schedules the local explosion');
+    visual._emitExplosionPhase('rupture', entry);
+    assert.ok(sprites.length > 0 && rupture.activeCount > 0, 'local fire and fracture still render');
+    assert.equal(published.length, 2, 'exercise both actual shake producers at 40 WU');
+    assert.deepEqual(published.map(event => event.amount), [0, 0]);
+    assert.equal(admission.energy(), 0, 'ambient events cannot use the player’s shake budget');
+    assert.equal(receive({ amount: 0.4 }), 0.4, 'the player-hit envelope still arrives in full');
+    const hero = { amount: 0.55, audience: 'hero', position: { x: target.pos.x, z: target.pos.z } };
+    assert.equal(cameraShakeAmountForPlayer(hero, player.pos), 0.55, 'a nearby authored hero can shake');
+    assert.equal(cameraShakeAmountForPlayer(hero, { x: -1300, z: 0 }), 0, 'hero events retain distance falloff');
+  } finally {
+    rupture.dispose();
+  }
 });
 
 test('authored projectile routing preserves the real approach and surface normal through death', () => {

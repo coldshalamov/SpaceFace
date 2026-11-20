@@ -163,6 +163,7 @@ class StructuralPool {
     this.mesh.instanceColor.needsUpdate = true;
     // Dead pools park invisible at construction — the idle gate skips the update() that
     // used to write this on the first frame, so a never-spawned mesh would draw-call forever.
+    this.mesh.count = 0;
     this.mesh.visible = false;
   }
 
@@ -266,7 +267,9 @@ class StructuralPool {
     const step = Math.max(0, Math.min(0.05, finite(dt)));
     const camPos = camera && camera.position;
     const fov = camera && Number.isFinite(camera.fov) ? camera.fov : 50;
-    let changed = false;
+    // Keep admission and eviction in fixed logical slots. Pack their born effects into
+    // the draw buffer in slot order so only the visible prefix submits geometry.
+    let drawIndex = 0;
     for (let i = 0; i < this.capacity; i++) {
       const slot = this.slots[i];
       if (!slot.alive) continue;
@@ -274,19 +277,10 @@ class StructuralPool {
       if (slot.age >= slot.delay + slot.life) {
         slot.alive = false;
         this.live = Math.max(0, this.live - 1);
-        this._matrix.compose(this._position.set(0, -10000, 0), this._quaternion.identity(), ZERO_SCALE);
-        this.mesh.setMatrixAt(i, this._matrix);
-        this.mesh.setColorAt(i, BLACK);
-        changed = true;
         continue;
       }
       if (slot.age < slot.delay) {
-        // Reserved, not yet born: held off-stage at zero scale so the slot it already owns cannot
-        // show the previous occupant, and its motion does not start integrating early.
-        this._matrix.compose(this._position.set(0, -10000, 0), this._quaternion.identity(), ZERO_SCALE);
-        this.mesh.setMatrixAt(i, this._matrix);
-        this.mesh.setColorAt(i, BLACK);
-        changed = true;
+        // Delayed beats reserve their logical slot and start motion at birth.
         continue;
       }
 
@@ -302,7 +296,7 @@ class StructuralPool {
       slot.roll += slot.rollVelocity * step;
 
       const t = clamp01((slot.age - slot.delay) / slot.life);
-      if (this.phase) this.phase.setXY(i, t, (slot.serial * 0.618033988749895) % 1);
+      if (this.phase) this.phase.setXY(drawIndex, t, (slot.serial * 0.618033988749895) % 1);
       const shaped = easeOutCubic(t);
       const length = slot.length0 + (slot.length1 - slot.length0) * shaped;
       const width = slot.width0 + (slot.width1 - slot.width0) * shaped;
@@ -351,18 +345,17 @@ class StructuralPool {
         this._scale.set(visibleLength, thickness, visibleWidth);
       }
       this._matrix.compose(this._position, this._quaternion, this._scale);
-      this.mesh.setMatrixAt(i, this._matrix);
-      this.mesh.setColorAt(i, this._color);
-      changed = true;
+      this.mesh.setMatrixAt(drawIndex, this._matrix);
+      this.mesh.setColorAt(drawIndex, this._color);
+      drawIndex++;
     }
-    if (changed) {
+    if (drawIndex > 0) {
       if (this.phase) this.phase.needsUpdate = true;
       this.mesh.instanceMatrix.needsUpdate = true;
       this.mesh.instanceColor.needsUpdate = true;
     }
-    // An idle pool costs nothing. Parked zero-scale instances still cost a draw call and a full
-    // instance-buffer traversal every frame; four pools that are quiet most of the time do not.
-    this.mesh.visible = this.live > 0;
+    this.mesh.count = drawIndex;
+    this.mesh.visible = drawIndex > 0;
   }
 
   reproject(dx, dz) {

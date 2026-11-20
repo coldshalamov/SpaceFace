@@ -24,15 +24,16 @@ import { massDeclarationForTarget, physicalMassT } from '../../systems/cargoCust
 import { SHIPS } from '../../data/ships.js';
 import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../../core/flight/propulsionCatalog.js';
 import { resolveTravelCeiling } from '../../core/flight/propulsionKernel.js';
-import { isSwarmControls, swarmRailSlotAllowed, SWARM_LINE_KEY_LABEL } from '../../data/swarmControls.js';
+import { swarmRailSlotAllowed } from '../../data/swarmControls.js';
 import { runPerkIds, SWARM_PERK_BY_ID } from '../../data/swarmPerks.js';
 import { travelFlag } from '../../data/featureFlags.js';
-import { formatBindingCode, resolveActionCodes, resolveActionLabel } from '../../systems/input.js';
-import { heldPower } from '../../systems/powerVerbs.js';
+import { formatBindingCode, MOUSE_ACTION_LABELS, resolveActionCodes, resolveActionLabel } from '../../systems/input.js';
+import { heldPower, powerUsesReleasePreview } from '../../systems/powerVerbs.js';
 import { injectOrrery } from './tokens.js';
-import { createFlightCluster } from './flightCluster.js';
+import { createFlightCluster, FLIGHT_CLUSTER_SIZE } from './flightCluster.js';
 import { applyOrreryHudSkin } from './hudSkin.js';
 import { currentDenial, mountArsenalDenials } from '../arsenalDenials.js';
+import { digitIndex, getPromptDeck } from '../promptDeck.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 
@@ -137,16 +138,27 @@ function presentedDescription(pe) {
   return [pe.sentence, pe.limits[0], ...(pe.hints || [])].filter(Boolean).join(' ');
 }
 
-function activeLineControlHint(state) {
+function availableCodes(codes, claimedDigits) {
+  const list = Array.isArray(codes) ? codes : (codes ? [codes] : []);
+  return claimedDigits?.length ? list.filter(code => !claimedDigits.includes(digitIndex(code) + 1)) : list;
+}
+
+function activeLineControlHint(state, claimedDigits) {
   const player = state.player || {};
   const tether = player.tether?.active ? player.tether : player.remoteMassline;
   if (!masslineInstrumentReadout(tether)) return '';
-  const hold = resolveActionLabel(state, 'tether');
+  const label = action => {
+    const codes = resolveActionCodes(state, action);
+    const available = availableCodes(codes, claimedDigits);
+    if (available.length === codes.length) return resolveActionLabel(state, action);
+    return available.map(code => formatBindingCode(code)).join('/') || MOUSE_ACTION_LABELS[action] || '';
+  };
+  const hold = label('tether');
   if (!hold) return '';
-  const first = action => formatBindingCode(resolveActionCodes(state, action)[0]);
+  const first = action => formatBindingCode(availableCodes(resolveActionCodes(state, action), claimedDigits)[0]);
   const forward = first('forward'); const reverse = first('reverse');
   const orbit = [first('yawLeft'), first('yawRight')].filter(Boolean).join('/');
-  const boost = resolveActionLabel(state, 'boost');
+  const boost = label('boost');
   const parts = [];
   if (forward) parts.push(`${forward} REEL`);
   if (reverse) parts.push(`${reverse} PAY OUT`);
@@ -159,15 +171,19 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
   const nowS = Number(state && state.simTime) || 0;
   const rail = readRailModel(state, nowS);
   bindings ??= readClusterBindings(state);
-  const labels = resolveSlotLabels(bindings);
-  const keys = resolveSlotKeys(bindings);
+  const claimedDigits = options.claimedDigits;
+  const displayBindings = claimedDigits?.length
+    ? Object.fromEntries(Object.entries(bindings).map(([action, codes]) => [action, availableCodes(codes, claimedDigits)]))
+    : bindings;
+  const labels = resolveSlotLabels(displayBindings);
+  const keys = resolveSlotKeys(displayBindings);
   const held = options.held !== undefined ? options.held : heldPower(state);
   const firingUntil = options.firingUntil;
   const nowWall = options.nowWall || (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now());
   const acts = state && state.input && state.input.actions;
   // The presentation reads the same remappable binding table; a caller's override wins per action.
   const presented = presentationFor(state).read(state, {
-    rail, nowS, bindings: { ...readArsenalBindings(state), ...bindings },
+    rail, nowS, bindings: { ...readArsenalBindings(state), ...displayBindings },
     // the owner's latest refusal ("Too big to take whole"), quoted while it still explains the dead net
     denial: currentDenial(options.denial, Number(state && state.tick)),
   });
@@ -182,11 +198,13 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
     // Which mark the socket draws: the effective function's own authored glyph (the bomb it will throw,
     // the rig it will toggle, the cloak module fitted), never a fixed per-socket symbol.
     const arsenalId = pe && (isBomb || slot.index === 5 || slot.index === 8) ? pe.glyph : (SLOT_ARSENAL[slot.index] || '');
-    const entry = { state: st, key: labels[slot.index] || '', arsenalId };
-    // S5 + X3: the flight rail draws icons and key caps, no words — the names live on the
-    // socket's tip and aria label. The Line socket wears RMB in Swarm (no keyboard tether).
-    entry.iconOnly = true;
-    if (isSwarmControls(state) && slot.index === 6) entry.key = SWARM_LINE_KEY_LABEL;
+    const entry = {
+      state: st,
+      key: labels[slot.index] || MOUSE_ACTION_LABELS[slot.action] || '',
+      arsenalId,
+    };
+    // Rig's persistent state stays visible beside its binding.
+    entry.iconOnly = slot.index !== 5;
     if (isBomb) entry.consumable = true;
     // SWARM-03: the rail's tactical-live flag rides beside the state so the Cluster can
     // breathe a key whose verb is real right now (latch in reach, ordnance armed, pack
@@ -196,25 +214,22 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
     if (r.absent === true) entry.hidden = true;
     if (slot.index === 8) entry.passive = true;
 
-    // Active & firing states: lighting up upon pressing number keys or hold-to-preview
-    const isHeld = (held && VERB_TO_SLOT[held] === slot.index)
+    const canHold = slot.index < 1 || slot.index > 5 || powerUsesReleasePreview(state, slot.action);
+    const isHeld = canHold && ((held && VERB_TO_SLOT[held] === slot.index)
       || (slot.index === 1 && acts?.pull?.held === true)
-      || (slot.index === 2 && acts?.shove?.held === true)
       || (slot.index === 3 && acts?.pin?.held === true)
       || (slot.index === 4 && acts?.bomb?.held === true)
-      || (slot.index === 5 && acts?.rig?.held === true)
       || (slot.index === 6 && (acts?.massline?.held === true || acts?.massline?.source != null))
-      || (slot.index === 7 && acts?.gyreSnare === true);
+      || (slot.index === 7 && acts?.gyreSnare === true));
 
-    const isFiring = (firingUntil && firingUntil.has(slot.index) && nowWall < firingUntil.get(slot.index))
+    const isFiring = slot.index !== 5 && ((firingUntil && firingUntil.has(slot.index) && nowWall < firingUntil.get(slot.index))
       || (slot.index === 1 && (acts?.pull?.pressed === true || acts?.deployWell === true))
       || (slot.index === 2 && (acts?.shove?.pressed === true || acts?.deployRepulsor === true || acts?.chargeDetonate === true))
       || (slot.index === 3 && (acts?.pin?.pressed === true || acts?.deployMassSeed === true))
       || (slot.index === 4 && (acts?.bomb?.pressed === true || acts?.chargeThrow === true || acts?.dropBomb === true || acts?.swarmBombThrow === true))
-      || (slot.index === 5 && (acts?.rig?.pressed === true || acts?.toggleClearingCone === true || acts?.toggleSkimCollector === true))
       || (slot.index === 6 && (acts?.tetherFire === true || acts?.massline?.latch === true))
       || (slot.index === 7 && acts?.gyreSnare === true)
-      || (slot.index === 8 && acts?.cloakToggle === true);
+      || (slot.index === 8 && acts?.cloakToggle === true));
 
     if (isHeld) entry.held = true;
     if (isFiring) entry.firing = true;
@@ -222,6 +237,12 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
     // The socket's own words: the EFFECTIVE verb ("Rig · Scoop", "Line · Haul"), not the band
     // name — a bare "LINE" reads as jargon next to its key (owner 2026-10-28).
     if (pe && slot.index >= 1) entry.label = pe.label;
+    if (slot.index === 5 && pe) {
+      entry.active = pe.on === true;
+      entry.label = pe.label.replace(/^Rig · /, '');
+      entry.shortLabel = pe.on ? 'ON' : 'OFF';
+      entry.key = labels[slot.index] ? `Tap ${labels[slot.index]}` : '';
+    }
     if (pe && pe.charges && Number.isFinite(pe.charges.count)) entry.count = pe.charges.count;
     else {
       const count = /×(\d+)/.exec(String(r.name || ''));
@@ -242,8 +263,22 @@ export function readOrdnanceModel(state, tracker, bindings, options = {}) {
         why: r.why || '',
       });
     if (slot.action === 'tether') {
-      const hint = activeLineControlHint(state);
+      const hint = activeLineControlHint(state, claimedDigits);
       if (hint) entry.tip += `\n${hint}`;
+    }
+    const title = slot.index === 5 ? entry.label : (pe?.label || r.name || slot.name);
+    const binding = labels[slot.index] || entry.key;
+    const description = pe?.sentence || r.description || slotDescription(slot.index);
+    const summary = slot.index === 5 && r.why?.includes(' — ')
+      ? r.why.split(' — ')[1].replace(/^tap Rig/, 'Tap')
+      : pe?.denial?.text || (st !== 'ready' && st !== 'armed' ? r.why : '')
+        || description.match(/^.*?[.!?](?=\s+[A-Z]|$)/)?.[0] || description;
+    entry.briefTip = [binding ? `${title} · ${binding}` : title, summary].filter(Boolean).join('\n');
+    if (claimedDigits?.length && !entry.key && bindings[slot.action]?.length) {
+      const notice = 'Use this button while the number key answers the call.';
+      entry.key = '—';
+      entry.tip += `\n${notice}`;
+      entry.briefTip = [title, notice].filter(Boolean).join('\n');
     }
     out[String(slot.index)] = entry;
   }
@@ -360,16 +395,13 @@ export function readClusterModel(state, p, { tracker = null, ordnance = null, bi
 }
 
 const HOST_CSS = `
-#hud .orr-hud-cluster { position:absolute; left:18px; bottom:24px; z-index:5; pointer-events:none; }
-#hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.85; }
-/* Mirror of the cluster's scaled visual height (540px artboard × --orr-cluster-scale)
-   as an #hud-level var so bottom-anchored siblings (the drive tape) can clear it. */
-#hud { --orr-cluster-h: calc(540px * .85); }
-@media (max-width:1700px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.7; }
-  #hud { --orr-cluster-h: calc(540px * .7); } }
-@media (max-width:1400px) { #hud .orr-hud-cluster { left:8px; } }
-@media (max-width:1300px) { #hud .orr-hud-cluster .orr-cluster { --orr-cluster-scale:.6; }
-  #hud { --orr-cluster-h: calc(540px * .6); } }
+/* Scale the instrument once. Bottom-anchored siblings use the same visual height. */
+#hud[data-hud="orrery"] .orr-hud-cluster { position:absolute; left:calc(12px + var(--sf-safe-inset-x, 0px)); bottom:24px; z-index:5; pointer-events:none; transform:none; }
+#hud[data-hud="orrery"] .orr-hud-cluster:has(.orr-cluster--visor) { left:calc(clamp(12px, 1.435vw, 24px) + var(--sf-safe-inset-x, 0px)); bottom:clamp(24px, 4.36vh, 43px); }
+#hud { --orr-cluster-scale:.85; --orr-cluster-h:calc(${FLIGHT_CLUSTER_SIZE.height}px * var(--orr-cluster-scale)); }
+@media (max-width:1700px), (max-height:850px) { #hud { --orr-cluster-scale:.71; } }
+@media (max-width:1100px), (max-height:660px) { #hud { --orr-cluster-scale:.64; } }
+@media (max-width:640px) { #hud { --orr-cluster-scale:min(.64, calc((100vw - 24px) / ${FLIGHT_CLUSTER_SIZE.width}px)); } }
 `;
 
 /** Pure: is a projected point over (or within `pad` px of) a measured instrument box? The
@@ -397,6 +429,7 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
   }
   const player = state && state.entities && typeof state.entities.get === 'function' ? state.entities.get(state.playerId) : null;
   const defId = (player && player.data && (player.data.defId || player.data.shipId)) || 'ship_kestrel';
+  const variantId = player?.data?.appearance?.variantId ?? null;
   const def = SHIP_BY_ID.get(defId);
   const defName = (def && def.name) || 'Hull';
   const classLine = `${def && def.role ? def.role : 'hull'} · tier ${def && Number.isFinite(def.tier) ? def.tier : 0}`;
@@ -411,14 +444,14 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
   const onActivateSocket = ({ id, power, slot }) => {
     const slotIdx = Number(id) || (slot && Number(slot.id)) || 0;
     const action = slot?.action || power || (slotIdx === 1 ? 'pull' : slotIdx === 2 ? 'shove' : slotIdx === 3 ? 'pin' : slotIdx === 4 ? 'bomb' : slotIdx === 5 ? 'rig' : slotIdx === 6 ? 'tether' : '');
-    const nowWall = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
-    if (slotIdx > 0) {
-      firingUntil.set(slotIdx, nowWall + FLASH_DURATION_MS);
-    }
     if (action && typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
       const codes = resolveActionCodes(state, action);
-      const code = (codes && codes[0]) || (slotIdx >= 1 && slotIdx <= 5 ? `Digit${slotIdx}` : null);
+      const code = codes && codes[0];
       if (code) {
+        if (slotIdx > 0 && slotIdx !== 5) {
+          const nowWall = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+          firingUntil.set(slotIdx, nowWall + FLASH_DURATION_MS);
+        }
         const Ctor = typeof KeyboardEvent === 'function' ? KeyboardEvent
           : (typeof window.KeyboardEvent === 'function' ? window.KeyboardEvent : null);
         const downEvt = Ctor ? new Ctor('keydown', { code, bubbles: true }) : { type: 'keydown', code, bubbles: true };
@@ -435,13 +468,16 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
 
   const cluster = createFlightCluster({
     shipId: defId,
+    variantId,
     name: customName || defName,
     classLine,
     groups: buildOrdnanceGroups(readClusterBindings(state)),
     // before anything is engaged the Hand rests on the Line: the game's signature verb
     restSlot: String(REST_SLOT_INDEX),
     onActivateSocket,
+    layout: 'visor',
   });
+  cluster.el.setAttribute('data-why-above', '');
   host.appendChild(cluster.el);
   root.appendChild(host);
   root.dataset.hud = 'orrery';
@@ -450,6 +486,7 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
   const tracker = createCooldownTracker();
   const weaponHeatScratch = {};
   let ordnance = null;
+  let lastClaimedDigits = null;
   let ceiling = null;
   // Refusals the matter tools publish reach the pilot as a toast and as the Gyre/Pull tip's last line.
   let lastDenial = null;
@@ -460,13 +497,17 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
   // The cluster bakes the hull poster at create; a hull swap after mount (shipworks "Make active",
   // a save whose active hull differs) must restamp it or the HUD names the wrong ship all session.
   let syncedHullId = defId;
+  let syncedVariantId = variantId;
   const syncHull = (liveState = state, livePlayer = liveState?.entities?.get?.(liveState.playerId)) => {
     const liveDefId = (livePlayer && livePlayer.data && (livePlayer.data.defId || livePlayer.data.shipId)) || 'ship_kestrel';
-    if (liveDefId === syncedHullId) return;
+    const liveVariantId = livePlayer?.data?.appearance?.variantId ?? null;
+    if (liveDefId === syncedHullId && liveVariantId === syncedVariantId) return;
     syncedHullId = liveDefId;
+    syncedVariantId = liveVariantId;
     const liveDef = SHIP_BY_ID.get(liveDefId);
     cluster.setHull({
       shipId: liveDefId,
+      variantId: liveVariantId,
       name: customNameForActiveHull(liveState) || (liveDef && liveDef.name) || 'Hull',
       classLine: `${liveDef && liveDef.role ? liveDef.role : 'hull'} · tier ${liveDef && Number.isFinite(liveDef.tier) ? liveDef.tier : 0}`,
     });
@@ -556,9 +597,12 @@ export function mountOrreryCluster(root, state, { bus = null, helpers = null } =
       const activeSig = `${held || ''}|${Array.from(firingUntil.keys()).sort().join(',')}`;
       const activeChanged = activeSig !== lastActiveSig;
       lastActiveSig = activeSig;
+      const claimedDigits = getPromptDeck()?.claimedDigits ?? null;
 
-      if (slow || !ordnance || activeChanged || firingEdge || firingExpired || firingUntil.size > 0 || held != null) {
-        ordnance = readOrdnanceModel(liveState, tracker, undefined, { denial: lastDenial, firingUntil, held, nowWall });
+      if (slow || !ordnance || activeChanged || firingEdge || firingExpired || firingUntil.size > 0 || held != null
+        || claimedDigits !== lastClaimedDigits) {
+        ordnance = readOrdnanceModel(liveState, tracker, undefined, { denial: lastDenial, firingUntil, held, nowWall, claimedDigits });
+        lastClaimedDigits = claimedDigits;
       }
       if (slow || ceiling == null) ceiling = readSpeedCeiling(liveState, p);
       const model = readClusterModel(liveState, p, { ordnance, speedMax: ceiling, weaponHeatScratch });

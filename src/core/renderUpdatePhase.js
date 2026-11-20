@@ -62,10 +62,12 @@ export function runRenderUpdatePhase({
     releaseProExperiencesPresentation(state);
   }
 
-  if (feel && typeof feel.isDeathBellFrameHeld === 'function' && feel.isDeathBellFrameHeld(state)) {
-    // Preserve the submitted framebuffer, including against a death-sheet stage or prewarm.
-    // Feel drains its own lease on presentation time; UI and the simulation retain their
-    // existing clocks. Nothing prepared/consumed this frame's journal range, so reject it.
+  const titleCinematic = state?.mode === 'menu' && ui?.isTitleCinematicActive?.() === true;
+  const heldDeathFrame = typeof feel?.isDeathBellFrameHeld === 'function' && feel.isDeathBellFrameHeld(state);
+  if (titleCinematic || heldDeathFrame) {
+    // Preserve the framebuffer under the opaque title film or a held death frame.
+    // The UI and feel still get their clocks. The world journal waits for the next prepare.
+    if (presentationFrame) presentationFrame.worldSubmitted = false;
     record('render', 0);
     record('vfx', 0);
     const errors = runFeelAndUi({ feel, ui, frameDt, state, record, clock });

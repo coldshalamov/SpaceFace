@@ -24,7 +24,25 @@ COLORS = {
 TILES = 14
 
 
+def signature(s):
+    """Vael fins: thin pearl blades radiating through the ring, teal clause etch on each."""
+    fins, etches = [], []
+    for i in range(6):
+        a = 48.0 + i * 60.0
+        rz = math.radians(a)
+        fins.append((K.polar(27.0, a, 16.0), (22.0, 0.7, 8.0), rz))
+        etches.append((K.polar(27.0, a, 16.0), (20.0, 0.2, 1.0), rz))
+    F.boxes(s, 'VaelFins', fins, 'paint', bevel=0.05)
+    F.boxes(s, 'VaelEtch', etches, 'stripe', bevel=0.0)
+    s.detail = 1
+    for i in range(6):
+        a = 48.0 + i * 60.0
+        F.light(s, f'VaelFinLamp{i}', K.polar(38.0, a, 20.0), 'glow_cyan.vael', size=0.4)
+    s.detail = 0
+
+
 def dress(s):
+    K.interior(s, 'stripe', 'glow_cyan.vael')
     # contract band: dark script-ground carrying the pearl tiles
     K.ring_wall(s, 'ContractBand', K.SHELL_R + 0.8, 10.0, 24.0, 2.2, 'paint2', segs=56)
     K.ring_wall(s, 'ContractRail', K.SHELL_R + 1.0, 24.0, 25.2, 2.5, 'stripe', segs=56)
@@ -57,6 +75,7 @@ def dress(s):
             F.light(s, f'PairLamp{i}{e:+d}', K.polar(K.SHELL_R + 1.8, a + e * 3.0, 26.4),
                     'glow_cyan.vael', size=0.4)
     s.detail = 0
+    signature(s)
 
 
 def build():

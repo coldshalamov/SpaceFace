@@ -150,6 +150,7 @@ test('pegging forfeits nothing: a release at the peg pays the bonus and radiator
   const { state, bus, mining, player, asteroid, events } = bootBeam();
   try {
     const beam = player.data.miningBeam;
+    asteroid.data.seams = [{ localOffset: { x: -5, z: 0 } }];
     state.input.fireGroup = 2;
     holdUntil({ state, mining }, () => beam.heat >= beam.heatMax, 600);
 
@@ -176,9 +177,10 @@ test('pegging forfeits nothing: a release at the peg pays the bonus and radiator
 });
 
 test('releasing inside the amber band still pays the vent bonus', () => {
-  const { state, bus, mining, player, events } = bootBeam();
+  const { state, bus, mining, player, asteroid, events } = bootBeam();
   try {
     const beam = player.data.miningBeam;
+    asteroid.data.seams = [{ localOffset: { x: -5, z: 0 } }];
     const bandTarget = BEAM_VENT_BAND_LO + (1 - BEAM_VENT_BAND_LO) * 0.87; // deep in the band, not pegged
     state.input.fireGroup = 2;
     holdUntil({ state, mining }, () => beam.heat / beam.heatMax >= bandTarget, 600);

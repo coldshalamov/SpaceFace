@@ -102,20 +102,24 @@ test('the Codex names the live act, then stops calling one current after the boo
     'the reached acts stay readable history');
 });
 
-test('the Journal B4 action names the chosen door until its operation is live', () => {
+test('the Journal B4 action points to an introduction, then the chosen operation', () => {
   const state = (branch, active = []) => ({
-    story: { beatIndex: 4, branch, flags: {} },
+    story: { beatIndex: 4, branch, flags: { embodied_route: true } },
     missions: { active },
     player: { credits: 0 },
   });
   assert.equal(storyActionForBeat(STORY_BEATS[4], state('traders')).title, 'Run Spine Break');
   assert.equal(storyActionForBeat(STORY_BEATS[4], state('patrol')).title, 'Run The Weighing');
   assert.equal(storyActionForBeat(STORY_BEATS[4], state('free')).title, 'Run Barn Raising');
-  assert.equal(storyActionForBeat(STORY_BEATS[4], state(null)).title, 'Choose a sponsor',
-    'before the door is chosen the sponsor prompt remains');
-  assert.equal(storyActionForBeat(STORY_BEATS[4], state('traders', [{
-    id: 'b4-op', status: 'active', storyTag: 'campaign47a:b4:operation',
-  }])).title, 'Choose a sponsor', 'an active operation already owns Current action');
+  const choice = storyActionForBeat(STORY_BEATS[4], state(null));
+  assert.equal(choice.title, 'Choose an introduction');
+  assert.match(choice.body, /Accept one, then complete it to settle your branch/);
+
+  const operation = { id: 'b4-op', status: 'active', title: 'Spine Break',
+    storyTag: 'campaign47a:b4:operation', storyBranch: 'traders' };
+  const active = storyActionForBeat(STORY_BEATS[4], state('traders', [operation]));
+  assert.equal(active.title, 'Complete Spine Break');
+  assert.equal(active.missionId, operation.id);
 });
 
 test('the Journal B2 what-next follows the same ordered steps as the tracker', () => {

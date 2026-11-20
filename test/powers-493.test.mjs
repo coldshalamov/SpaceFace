@@ -22,6 +22,9 @@ import {
   chargeThrowPlan as previewChargeThrowPlan,
 } from '../src/data/impulseChargeReadModel.js';
 import { getAsteroidFieldRock, insertAsteroidFieldRock } from '../src/world/asteroidField.js';
+import * as THREE from '../vendor/three.module.js';
+import { createPowerPreview } from '../src/render/powerPreview.js';
+import { captureEntitySelection } from '../src/ui/sim/stableSelection.js';
 import { POWER_VERBS, setHeldPower } from '../src/systems/powerVerbs.js';
 import {
   POWER_PREVIEW_RANGE, POWER_PREVIEW_TINT, powerHeld, powerPreviewPlan,
@@ -225,6 +228,104 @@ test('the preview is read-only: holding a key changes nothing the simulation rea
   assert.ok(near.alive);
 }));
 
+test('Furnace Frag previews mark a kinematic Casket in the blast and clear the mark at a safe edge', () => {
+  const { sim, state } = boot();
+  const view = createPowerPreview({ THREE, scene: new THREE.Scene() });
+  try {
+    state.world.currentSectorId = 'sector_ceres_belt';
+    state.ui.trackedMissionId = 'furnace';
+    const job = { id: 'furnace', status: 'active', storyTag: 'campaign47a:b1:infested',
+      destSectorId: 'sector_ceres_belt', objectiveProgress: 1, objectiveTarget: 4,
+      params: { furnaceWorksiteVersion: 1, furnaceFeedsNeeded: 3 } };
+    state.missions.active = [job];
+    state.bombs = { selectedId: 'bomb_frag', rack: { cells: [{ id: 'bomb_frag', count: 3 }] } };
+    const base = powerPreviewPlan(state, 'bomb');
+    const worm = sim.spawn({ type: 'fauna', alive: true, physicsBody: false, collides: false,
+      radius: 12, hull: 60, pos: { x: base.center.x + base.radius + 11, z: base.center.z },
+      data: { ecology: { speciesId: 'casket_worm', siteId: 'closed_refinery' } } });
+    const hazards = plan => plan.areas.filter(area => area.role === 'casket-risk');
+    const threatened = powerPreviewPlan(state, 'bomb');
+    assert.equal(hazards(threatened).length, 1);
+    assert.ok(!threatened.moves.some(row => row.id === worm.id), 'damage is separate from motion');
+    view.update(threatened);
+    const red = () => view.group.children.filter(mesh => mesh.visible && mesh.material.color.getHex() === 0xe04836);
+    assert.equal(red().length, 2, 'the warning draws a double outline');
+    assert.equal(worm.hull, 60);
+
+    worm.pos.x = base.center.x + base.radius + worm.radius;
+    const clear = powerPreviewPlan(state, 'bomb');
+    assert.deepEqual(hazards(clear), []);
+    view.update(clear);
+    assert.equal(red().length, 0);
+    assert.ok(clear.areas.some(area => area.role === 'blast'));
+
+    worm.pos.x -= 1;
+    state.ui.trackedMissionId = 'different-job';
+    assert.deepEqual(hazards(powerPreviewPlan(state, 'bomb')), []);
+    state.ui.trackedMissionId = job.id;
+    state.bombs = { selectedId: 'bomb_goo', rack: { cells: [{ id: 'bomb_goo', count: 3 }] } };
+    assert.deepEqual(hazards(powerPreviewPlan(state, 'bomb')), []);
+  } finally {
+    view.dispose();
+    sim.dispose();
+  }
+});
+
+test('Furnace Frag warns when the marked mite can move out before the fuze', () => {
+  const { sim, state, player } = boot();
+  const view = createPowerPreview({ THREE, scene: new THREE.Scene() });
+  try {
+    state.world.currentSectorId = 'sector_ceres_belt';
+    state.ui.trackedMissionId = 'furnace';
+    state.missions.active = [{ id: 'furnace', status: 'active', storyTag: 'campaign47a:b1:infested',
+      destSectorId: 'sector_ceres_belt', objectiveProgress: 1, objectiveTarget: 4,
+      params: { furnaceWorksiteVersion: 1, furnaceFeedsNeeded: 3 } }];
+    state.bombs = { selectedId: 'bomb_frag', rack: { cells: [{ id: 'bomb_frag', count: 3 }] } };
+    const mite = sim.spawn({ type: 'fauna', physicsBody: false, collides: false,
+      radius: 4, hull: 60, pos: { x: 1, z: 0 }, data: { ecology: {
+        speciesId: 'suture_mite', siteId: 'closed_refinery', faunaKey: 'closed_refinery:suture_mite:1',
+      } } });
+    state.nav.waypoint = { kind: 'mission', missionId: 'furnace', targetEntityId: mite.id,
+      stable: captureEntitySelection(mite) };
+    player.radius = 14;
+    const releases = [
+      // Current pose looked close in the headed release. The final marker before the blast
+      // was outside its footprint. Coordinates and velocity are from that release receipt.
+      { pilot: [-10697.61, 9994.01], velocity: [-5.70, -25.39], mite: [-10729.53, 9969.47],
+        nearFuze: [-10730.43, 10013.43], inBlast: false },
+      // The same live goal on the worker release moved farther and crossed the footprint.
+      { pilot: [-10669.02, 10048.38], velocity: [20.33, -8.35], mite: [-10680.12, 10009.95],
+        nearFuze: [-10561.68, 9999.76], inBlast: true },
+    ];
+    for (const { pilot, velocity, mite: pose, nearFuze, inBlast } of releases) {
+      [player.pos.x, player.pos.z] = pilot;
+      [player.vel.x, player.vel.z] = velocity;
+      [mite.pos.x, mite.pos.z] = pose;
+      const plan = powerPreviewPlan(state, 'bomb');
+      const blast = plan.areas.find(area => area.role === 'blast');
+      assert.ok(Math.hypot(blast.x - pose[0], blast.z - pose[1]) < blast.r + mite.radius);
+      assert.equal(Math.hypot(blast.x - nearFuze[0], blast.z - nearFuze[1]) < blast.r + mite.radius, inBlast);
+      const advisory = plan.areas.find(area => area.role === 'mite-motion');
+      assert.ok(advisory, 'current pose overlap alone cannot confirm either six-second release');
+      assert.equal(advisory.reach, 180);
+      assert.ok(Math.hypot(pose[0] - nearFuze[0], pose[1] - nearFuze[1]) < advisory.reach);
+      assert.ok(advisory.r < 20, 'the warning stays close to the marked body');
+      assert.equal(plan.blocked, null, 'an uncertain launch still fires normally');
+      view.update(plan);
+      const mesh = view.group.children.find(mesh => mesh.visible && mesh.material.color.getHex() === 0xf4f1e8);
+      const positions = mesh.geometry.attributes.position.array;
+      assert.equal(positions[0], positions[3], 'the dashed outline leaves gaps');
+      assert.notEqual(positions[24], positions[27], 'the dashed outline also draws a visible stroke');
+    }
+    state.nav.waypoint.stable = { ...state.nav.waypoint.stable,
+      stamp: { ...state.nav.waypoint.stable.stamp, occupantGeneration: mite.occupantGeneration + 1 } };
+    assert.ok(!powerPreviewPlan(state, 'bomb').areas.some(area => area.role === 'mite-motion'), 'a stale life cannot borrow the marker');
+  } finally {
+    view.dispose();
+    sim.dispose();
+  }
+});
+
 test('Shove: the repulsor ring and every armed charge; a recharging repulsor keeps the blasts', () => withFields(() => {
   const t = boot();
   const rock = body(t.sim, 300, 10, { mass: 3 });
@@ -308,7 +409,7 @@ test('Rig outlines what the cone will push; a cone that is on folds and moves no
   const fold = powerPreviewPlan(t.state, 'rig');
   assert.equal(fold.moves.length, 0);
   assert.equal(fold.areas[0].role, 'fold');
-  assert.match(fold.note, /fold/);
+  assert.match(fold.note, /Cone ON.*tap Rig to turn it off/i);
 }));
 
 test('a Pull grips the locked target three times as hard, and a heavy hull reads as shrugging', () => withFields(() => {

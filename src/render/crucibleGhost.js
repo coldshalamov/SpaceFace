@@ -3,8 +3,12 @@
 // No Rapier body, no weapons, no AI, no campaign credits.
 
 import {
+  canonicalGhostTape,
   getGhostPlaybackTape,
+  ghostHash,
   ghostPoseAt,
+  lastGhostRowByHash,
+  loadCrucibleMeta,
 } from '../systems/survivalRecords.js';
 import { Material, MeshStandardMaterial, MeshPhysicalMaterial } from 'three';
 import { cloneMaterialPreservingShaderHooks } from './materialClone.js';
@@ -123,7 +127,27 @@ export function createCrucibleGhostPresentation() {
   let clonedMaterials = [];
   let warmPending = false;
   let mintDefers = 0;
+  let selection = null;
   const origin = { x: 0, z: 0 };
+
+  function playbackTape(state) {
+    const run = state?.run;
+    const hash = run?.kind === 'survival' ? run.telemetry?.ghostHash : null;
+    if (!Number.isInteger(hash)) {
+      selection = null;
+      const armedTape = getGhostPlaybackTape();
+      return !run || (run.kind === 'survival' && armedTape?.seed === run.seed) ? armedTape : null;
+    }
+    if (selection?.hash === hash && selection.seed === run.seed && selection.retireToken === run.retireToken) {
+      return selection.tape;
+    }
+    // The worker commits the chosen identity. Playback reads the local pose tape once per run.
+    const row = lastGhostRowByHash(loadCrucibleMeta(), hash);
+    const candidate = row?.seed === run.seed ? canonicalGhostTape(row) : null;
+    const tape = candidate?.frames.length && ghostHash(candidate) === hash ? candidate : null;
+    selection = { hash, seed: run.seed, retireToken: run.retireToken, tape };
+    return tape;
+  }
 
   function hide() {
     if (root) root.visible = false;
@@ -228,7 +252,7 @@ export function createCrucibleGhostPresentation() {
       if (root && root.parent) root.parent.remove(root);
     },
     sync(state, playerMesh) {
-      const tape = getGhostPlaybackTape();
+      const tape = playbackTape(state);
       if (!tape || !tape.frames || !tape.frames.length || !state) {
         hide();
         return;
@@ -264,6 +288,7 @@ export function createCrucibleGhostPresentation() {
     },
     dispose() {
       disposeRoot();
+      selection = null;
       scene = null;
     },
   };

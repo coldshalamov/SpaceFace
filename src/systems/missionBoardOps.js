@@ -1,4 +1,5 @@
 import { isWeighingOperation } from '../missions/weighingWorksite.js';
+import { syncDioneTargetPracticeOffer } from '../missions/dioneTargetPractice.js';
 import { starterWorkSite, STARTER_WORKDAY_VERSION } from '../missions/starterWorkday.js';
 // Row 413 extraction — methods moved verbatim out of missions.js;
 // spread back onto the missions object, so `this` still binds to the system at call time.
@@ -87,8 +88,9 @@ export const missionBoardOps = {
       const rankContractChanged = this._syncRankContractOffer(info, board, epoch);
       const captainChanged = syncCaptainStandingOrders(this, info, board);
       const reyChanged = syncColdburnBid(this, info, board);
+      const dioneChanged = syncDioneTargetPracticeOffer(this, info, board);
       if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
-        || counterweightChanged || yardChanged || cylinderChanged || warmCargoChanged || quietPassageChanged || tenderChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged || rankContractChanged || captainChanged || reyChanged) {
+        || counterweightChanged || yardChanged || cylinderChanged || warmCargoChanged || quietPassageChanged || tenderChanged || authoredChanged || megaHeistChanged || capitalChanged || speedChanged || shortageChanged || starterChanged || rankContractChanged || captainChanged || reyChanged || dioneChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -264,6 +266,7 @@ export const missionBoardOps = {
     this._syncRankContractOffer(info, board, epoch);
     syncCaptainStandingOrders(this, info, board);
     syncColdburnBid(this, info, board);
+    syncDioneTargetPracticeOffer(this, info, board);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
   },

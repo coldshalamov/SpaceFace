@@ -2985,6 +2985,9 @@ export const lawSecurity = {
     if (!state || !payload || state.playerId == null) return;
     if (state.run && state.run.kind === 'survival' && state.run.phase !== 'inactive') return;
     if (payload.killerId !== state.playerId || payload.id === state.playerId) return;
+    // The opening's claimed-salvage choice is its first law consequence, even if a
+    // training contact becomes lethal and reaches the separate kill owner.
+    if (openingBeforeClaim(state)) return;
     // Canonical kill causality (combat's frozen presentation receipt): HOW the victim died is as
     // much a legal fact as WHO. A hull slammed into a rock is reckless endangerment, not murder —
     // the charge, the heat price, and the rep answer all key off this same cause.

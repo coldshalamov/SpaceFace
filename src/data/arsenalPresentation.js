@@ -32,7 +32,7 @@ import {
   rigWords, shoveWords, travelWords, wu,
 } from './arsenalWords.js';
 import {
-  bombUsesCharge, playerImpulseCharges, resolveRigTarget, swarmBombSelection, powersFireOnPress,
+  bombUsesCharge, playerImpulseCharges, resolveRigTarget, swarmBombSelection, powersFireOnPress, powerUsesReleasePreview,
 } from '../systems/powerVerbs.js';
 import { cloakTimeS, fittedCloakModule } from '../systems/cloak.js';
 import { resolveActionCodes, formatBindingCode } from '../systems/input.js';
@@ -390,6 +390,15 @@ export function createArsenalPresentation() {
       e.ready = readyOf(state, id, ctx);
       entries[id] = e;
     }
+    // Gesture copy follows the same policy as input, including the player's current binding.
+    for (const id of ['pull', 'shove', 'pin', 'bomb']) {
+      const entry = entries[id];
+      entry.hints = [...(entry.hints || []), entry.binding.bound
+        ? (powerUsesReleasePreview(state, id)
+          ? `Hold ${entry.binding.label} to preview, then release to use. A quick tap also works.`
+          : `Tap ${entry.binding.label} to use immediately.`)
+        : `Bind ${entry.name} in Settings → Controls to use it.`];
+    }
     // — Shove: how many armed explosives the press will set off.
     const counts = armedOrdnanceCounts(state, nowS);
     const shove = entries.shove;
@@ -407,13 +416,14 @@ export function createArsenalPresentation() {
     b.next = bomb.action === 'throw' ? 'throw' : bomb.action === 'callin' ? 'call in' : bomb.action === 'drop' ? 'drop' : '';
     b.label = bomb.action === 'empty' ? (bomb.kind === 'dry' ? `Bomb · ${bomb.short} empty` : 'Bomb · none left')
       : `Bomb · ${b.next} ${bomb.short}${stockText}`;
-    if (bomb.action !== 'empty') b.sentence = `Next press: ${b.next} ${bomb.name}${stockText}. ${b.sentence}`;
+    if (bomb.action !== 'empty') b.sentence = `Next use: ${b.next} ${bomb.name}${stockText}. ${b.sentence}`;
     // — Rig: the CURRENT function before use.
     const rig = entries.rig;
     rig.on = rigOn;
-    rig.label = `Rig · ${rigTarget === 'skim'
-      ? (rigOn ? 'Harvesting ore' : 'Harvest ore')
-      : (rigOn ? 'Clearing a path' : 'Clear a path')}`;
+    rig.label = `Rig · ${rigTarget === 'skim' ? 'Scoop' : 'Cone'} ${rigOn ? 'ON' : 'OFF'}`;
+    rig.hints = [...(rig.hints || []), rig.binding.bound
+      ? `Tap ${rig.binding.label} to turn it ${rigOn ? 'off' : 'on'}.`
+      : 'Bind Rig in Settings → Controls to turn it on or off.'];
     // — Gyre: gather / release.
     const g = gyreRead(state);
     const gyre = entries.gyre;

@@ -1,13 +1,16 @@
 import { isSwarmGlass } from './swarmGlass.js';
-import { releaseWindowOpen } from './throwCue.js';
+import { isAdventureFlight } from './attentionGlass.js';
+import { releaseWindowOpen, throwActionCue } from './throwCue.js';
 import { verbChip } from './controlPrompts.js';
+import { getPromptDevice } from './bindings.js';
+import { resolvePlottedSeamWorkpoint, resolveWaypointPresentationEntity } from './navigationWaypoint.js';
 import { calloutVoiceLive } from './calloutVoice.js';
 import { createWorldObjectPicker } from '../render/worldObjectPicking.js';
 import { createWorldObjectHoverPresentation } from '../render/objectHoverFeedback.js';
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { occupantGenerationOf } from '../core/entity.js';
 import { isBeamTargetEligible, beamRangeFor } from '../systems/miningBeamTargetingRead.js';
-import { initialMouseToolLane } from '../systems/input.js';
+import { initialMouseToolLane, recordMouseDownServicePick } from '../systems/input.js';
 import { interactionClassLine, interactionDisplayName, presentationStatusWord } from '../data/entityInteractionProfiles.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { DENIAL, denialText, intentDenial } from '../combat/contactClassifier.js';
@@ -18,7 +21,9 @@ import { laneInputWrite, laneSetComponentSelection, reconcileLaneComponentSelect
 import { formatDistance } from './units.js';
 import { lineRelationWord, lineBodyMassT } from './lineRelation.js';
 import { lineLessonBody } from '../data/lineProgression.js';
+import { isSwarmControls } from '../data/swarmControls.js';
 import { openingQuiet } from '../onboarding/openingQuiet.js';
+import { verbBindingLabel } from '../onboarding/verbSpeech.js';
 
 function hasOwn(o, k) {
   return !!o && Object.prototype.hasOwnProperty.call(o, k);
@@ -32,6 +37,16 @@ function beamVerbWord(entity) {
   if (t === 'payload') return 'split';
   if (t === 'ship' || t === 'drone') return 'weld';
   return 'beam';
+}
+
+function workToolHint(state, label, directAction, touchText) {
+  const device = state.input?.promptDevice || getPromptDevice();
+  if (device === 'touch') return touchText;
+  const options = { keyboardFallback: false };
+  const direct = verbBindingLabel(state, directAction, device, options);
+  if (direct) return `${direct} · ${label}`;
+  const wheel = verbBindingLabel(state, 'contextWheel', device, options);
+  return wheel ? `Hold ${wheel} → ${label}` : label;
 }
 
 // R12: the rope verb follows the acquisition verdict the latch itself uses (state.masslineAcquisition: a READY
@@ -99,6 +114,7 @@ export function createWorldObjectInteraction(ctx, screenManager) {
   const bus = ctx.bus || null;
   const canvas = (typeof document !== 'undefined') ? document.getElementById('gl-canvas') : null;
   const hudRoot = (typeof document !== 'undefined') ? document.getElementById('hud') : null;
+  const hoverProjection = { x: 0, y: 0, onScreen: false };
   const listeners = [];
   const unsubs = [];
   let destroyed = false;
@@ -366,6 +382,11 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     gestureActive = true;
     gestureTargetId = inp.worldObjectTargetId;
     if (hit && hit.entity) {
+      const entity = hit.entity;
+      if (state.run?.kind === 'adventure' && entity.type === 'fx' && entity.presentationAdmission === 'ready'
+          && entity.data?.furnaceCapstanId && entity.data?.masslineTetherable === false) {
+        recordMouseDownServicePick(e, entity.id, occupantGenerationOf(entity));
+      }
       applyWorldObjectSelection(state, hit.entity, 'pointer');
       setHover(hit.entity);
     } else {
@@ -407,7 +428,8 @@ export function createWorldObjectInteraction(ctx, screenManager) {
 
   const usePointer = typeof window !== 'undefined' && 'PointerEvent' in window;
   if (canvas) {
-    listen(canvas, usePointer ? 'pointerdown' : 'mousedown', onRightDown);
+    // Resolve the pick on the same mouse press before either flight adapter samples it.
+    listen(canvas, 'mousedown', onRightDown, { capture: true });
     listen(canvas, usePointer ? 'pointermove' : 'mousemove', onPointerMove);
     listen(canvas, usePointer ? 'pointerover' : 'mouseover', onPointerMove);
     listen(canvas, 'pointerleave', onCanvasLeave);
@@ -487,21 +509,21 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     return hushed ? '' : verbChip(state, 'tether', lineWord);
   }
   // The rope verb (who moves) and the work-tool / wheel guidance are separate segments of one hint.
-  function beamHint(entity, player) {
-    const hint = beamHintBase(entity, player);
+  function beamHint(entity, player, scanLesson) {
+    const hint = beamHintBase(entity, player, scanLesson);
     if (hint.sling) return hint;
     const lineText = ropeVerbText(entity, player);
     const wheelText = hint.text;
     return { ...hint, lineText, wheelText, text: lineText && wheelText ? lineText + ' · ' + wheelText : (lineText || wheelText) };
   }
 
-  function beamHintBase(entity, player) {
+  function beamHintBase(entity, player, scanLesson) {
     const lane = initialMouseToolLane(state, entity && entity.id);
     if (lane === 'sling') {
       // G18-02: RMB is the Line — while a throwable is latched it arms the throw.
-      return { sling: true, text: verbChip(state, 'tether', 'THROW'), beam: false };
+      return { sling: true, text: throwActionCue(state), beam: false };
     }
-    if (lane !== 'beam') {
+    if (lane !== 'beam' || isSwarmControls(state)) {
       // Packet 02: say what the press COMMITS to before it happens — an attack target takes the guns,
       // a prop only selects a tool subject, a friendly or neutral hull only informs. RMB still
       // selects under the cursor; under G18-02 the same press also fires the Line.
@@ -510,17 +532,14 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       // hush) is added by beamHint from the acquisition verdict; this lane carries no guidance of its own.
       return { sling: false, text: '', beam: false };
     }
-    // Packet 02: say WHY at the point of intent, in the shared denial vocabulary, in the order the
-    // player can fix it — you cannot beam what your sensors do not hold. The beam itself now lives
-    // on the context wheel (hold Q → MINE/SITE BEAM).
-    if (intentDenial(state, entity, null) === DENIAL.UNOBSERVED) {
-      return { sling: false, text: denialText(DENIAL.UNOBSERVED), beam: false };
+    if (scanLesson || intentDenial(state, entity, null) === DENIAL.UNOBSERVED) {
+      return { sling: false, text: workToolHint(state, 'Scan', 'scanPulse', 'Powers → Flight → Scan'), beam: true };
     }
     if (!isBeamTargetEligible(entity, state)) {
       const depleted = !!(entity && entity.data && entity.data.respawnAt != null);
       return {
         sling: false,
-        text: `${beamVerbWord(entity)} ${depleted ? 'depleted' : 'unavailable'}`,
+        text: depleted ? 'Ore depleted' : '',
         beam: false,
       };
     }
@@ -528,17 +547,28 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     if (range != null && player && player.pos && entity.pos) {
       const d = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
       if (d > range + (entity.radius || 0)) {
-        return { sling: false, text: `${beamVerbWord(entity)} ${denialText(DENIAL.OUT_OF_RANGE)}`, beam: false };
+        return { sling: false, text: `${beamVerbWord(entity)} · ${denialText(DENIAL.OUT_OF_RANGE)}`, beam: false };
       }
     }
-    return { sling: false, text: 'Q wheel — ' + beamVerbWord(entity), beam: true };
+    const site = entity.data?.worldSiteTargetable === true;
+    const label = site ? 'Site Beam' : 'Mine Beam';
+    return {
+      sling: false,
+      text: workToolHint(state, label, site ? 'siteBeam' : 'mine', site ? label : 'Hold Mine'),
+      beam: true,
+    };
   }
 
   function previewFor(entity) {
     if (!tag || !entity) return;
     const player = state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId) : null;
-    const name = targetDisplayName(entity) || interactionDisplayName(entity);
+    const ob = state.onboarding;
+    const workpoint = ob?.active && !ob.finished && ob.beatDoneAt?.seam == null
+      ? resolvePlottedSeamWorkpoint(state) || state.nav?.waypoint : null;
+    const seam = workpoint?.markerId === 'onboarding:seam' && workpoint.presentationEntityGeneration != null
+      && resolveWaypointPresentationEntity(state, workpoint) === entity;
+    const name = (seam && workpoint.label) || targetDisplayName(entity) || interactionDisplayName(entity);
     const relation = !player || entity.id === player.id
       ? 'You'
       : isHostileToPlayer(entity, player.team, state)
@@ -554,22 +584,39 @@ export function createWorldObjectInteraction(ctx, screenManager) {
     // A Swarm centre callout (LATCHED, a kill word) owns the moment: the world chip steps aside
     // for its few seconds instead of printing over it.
     if (isSwarmGlass(state) && calloutVoiceLive()) { tag.el.hidden = true; return; }
-    const rawHint = beamHint(entity, player);
-    // Player-facing words only: an internal state ("mine unavailable") is not a verb. A beam
-    // the target cannot take just says what the press does; the asset-loading state never prints.
+    const rawHint = beamHint(entity, player, seam && !ob.firedFollowups?.['seam:scan:hit']);
     // Your own hull is never a thing to latch: the card names it, the verb stays off it.
-    const hint = relation === 'You' ? { sling: false, beam: false, text: '' }
-      : { ...rawHint, text: rawHint.text.replace(/ · [A-Za-z ]+ unavailable$/i, '') };
+    // The held-body cue owns the verb only while it is actually painted. Keep identity and
+    // vitals here, and keep the ordinary hint if the cue is hidden by another HUD message.
+    const tether = state.player && state.player.tether;
+    const heldHere = isAdventureFlight(state) && tether?.active && tether.targetId === entity.id;
+    const throwCue = heldHere && typeof document !== 'undefined'
+      ? document.querySelector?.('#sf-ml2 .ml2-preview[data-throw-cue="1"]') : null;
+    const heldThrowShown = throwCue && throwCue.style.display !== 'none'
+      && throwCue.textContent === throwActionCue(state);
+    const disabledRaider = entity.data?.onboardingRaid === true && entity.data?.ai?.passive === true;
+    const desktopVisor = isAdventureFlight(state) && document.body?.dataset?.hudSkin === 'orrery'
+      && document.documentElement?.dataset?.sfMobileFlight !== '1';
+    const latchCue = (disabledRaider || desktopVisor) && !rawHint.sling
+      ? document.querySelector?.('#sf-ml2 .ml2-preview[data-target-id]') : null;
+    const duplicateLatch = latchCue && latchCue.style.display !== 'none' && latchCue.dataset.targetId === String(entity.id)
+      && (latchCue.textContent === rawHint.text || (rawHint.lineText && latchCue.textContent === rawHint.lineText)
+        || latchCue.classList.contains('ml2-visor-latch') && !rawHint.beam);
+    // A bracket that already names the rope verb keeps only the work-tool guidance on the hover tag.
+    const hint = relation === 'You' || heldThrowShown ? { sling: false, beam: false, text: '' }
+      : duplicateLatch ? (rawHint.beam && rawHint.wheelText ? { ...rawHint, text: rawHint.wheelText } : { sling: false, beam: false, text: '' })
+      : rawHint;
     // In a Swarm round the glass keeps only the name and the verb on the object (rule 2); the
     // class / relation / range read-out is an inspector's line, not a fight HUD line.
     const fight = isSwarmGlass(state);
     const status = fight ? null : presentationStatusWord(entity);
     const selected = !!(state.player && state.player.targetId === entity.id);
-    const key = [name, classWord(entity), relation, rangeTxt, hint.text, status || '', fight ? 'fight' : '', selected ? 'sel' : ''].join('|');
+    const relationLabel = disabledRaider ? 'Disabled' : relation;
+    const key = [name, classWord(entity), relation, relationLabel, rangeTxt, hint.text, status || '', fight ? 'fight' : '', selected ? 'sel' : ''].join('|');
     if (key !== previewTextKey) {
       previewTextKey = key;
       tag.nameEl.textContent = fight ? '' : name;
-      tag.metaEl.textContent = fight ? '' : classWord(entity) + ' · ' + relation + rangeTxt
+      tag.metaEl.textContent = fight ? '' : classWord(entity) + ' · ' + relationLabel + rangeTxt
         + (status ? ' · ' + status : '');
       tag.hintEl.textContent = hint.text;
       tag.el.dataset.beam = hint.beam ? '1' : '0';
@@ -577,15 +624,19 @@ export function createWorldObjectInteraction(ctx, screenManager) {
       tag.el.dataset.selected = selected ? '1' : '0';
       tag.el.dataset.relation = relation.toLowerCase();
     }
-    // The throw verb lights while the rope's release window is open (a tap throws); not part of the text key.
-    tag.el.dataset.window = (previewTextKey && tag.el.dataset.sling === '1' && releaseWindowOpen(state)) ? '1' : '0';
+    // The hover cue lights only for the body selected by the release solver.
+    const throwReadyHere = tag.el.dataset.sling === '1' && releaseWindowOpen(state, entity.id);
+    tag.el.dataset.window = throwReadyHere ? '1' : '0';
     tag.el.dataset.bars = paintHoverTagVitals(tag, entity) ? '1' : '0';
-    const pt = lastPoint || pointerPoint(null);
-    if (pt) {
-      placeHoverTag(tag.el, pt.x, pt.y,
-        typeof innerWidth === 'number' ? innerWidth : 1200,
-        typeof innerHeight === 'number' ? innerHeight : 800);
-    }
+    const width = typeof innerWidth === 'number' ? innerWidth : 1200;
+    const height = typeof innerHeight === 'number' ? innerHeight : 800;
+    const projected = desktopVisor && entity.pos ? ctx.helpers?.worldToScreen?.(entity.pos, hoverProjection) : null;
+    const anchored = projected?.onScreen && projected.x >= 155 && projected.x <= width - 155
+      && projected.y >= 128 && projected.y <= height - 20;
+    const anchorMode = anchored ? '1' : '0';
+    if (tag.el.dataset.visorAnchor !== anchorMode) tag.el.dataset.visorAnchor = anchorMode;
+    const pt = anchored ? projected : lastPoint || pointerPoint(null);
+    if (pt) placeHoverTag(tag.el, pt.x, pt.y, width, height);
     tag.el.hidden = false;
   }
 

@@ -31,7 +31,8 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const HEADLESS = process.argv.includes('--headless');
-const RAM_ONLY = process.argv.includes('--ram-only');
+const OPENING_RAM = process.argv.includes('--opening-ram');
+const RAM_ONLY = process.argv.includes('--ram-only') || OPENING_RAM;
 const browserPath = process.env.SF_PROBE_BROWSER
   || [
     'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -138,6 +139,7 @@ async function installAsteroidAppearProbe() {
     if (type && /Depth|Distance/.test(String(type))) return; // shadow/depth pass
     if (object.__sfProbeDrawnFrame !== probe.frame) {
       object.__sfProbeDrawnFrame = probe.frame;
+      object.__sfProbeDrawStamp = { frame: probe.frame, at: performance.now(), tick: SF.state?.tick ?? null };
       probe.stampedObjects++;
     }
     probe.drawStamps++;
@@ -197,10 +199,26 @@ async function installAsteroidAppearProbe() {
     promotions: [],
     ramTimeline: [],
     ramPromotedAt: null,
+    contactDraw: { impacts: [], firstDraws: [], joins: [], droppedImpacts: 0 },
     errors: [],
   };
   probe.ramTargetId = null;
   const track = new Map();
+  const drawnLives = new Map();
+  // physics:impact is the authority's positive-impulse contact, replayed from the worker on
+  // the main bus. Snapshot pooled payload fields immediately; delivery time is not contact time.
+  const offImpact = SF.bus.on('physics:impact', (p) => {
+    if (!p || p.playerInvolved !== true) return;
+    const playerId = SF.state?.playerId;
+    const playerIsA = p.aId === playerId;
+    if (!playerIsA && p.bId !== playerId) return;
+    const row = { id: playerIsA ? p.bId : p.aId,
+      generation: (playerIsA ? p.bGeneration : p.aGeneration) ?? null,
+      tick: Number.isSafeInteger(p.tick) ? p.tick : null,
+      deliveredAt: performance.now() - probe.installedAt, backend: p.backend || null };
+    if (rec.contactDraw.impacts.length < 1000) rec.contactDraw.impacts.push(row);
+    else rec.contactDraw.droppedImpacts++;
+  }, { presentation: true });
   const frustum = new THREE.Frustum();
   const projView = new THREE.Matrix4();
   const sphere = new THREE.Sphere(new THREE.Vector3(), 1);
@@ -284,11 +302,11 @@ async function installAsteroidAppearProbe() {
   const evaluateItem = (id, item, frame, af) => {
     const meshes = render._meshes;
     const root = (meshes && meshes.get(id)) || item.mesh || null;
-    let subtreeStamped = false;
+    let subtreeStamped = null;
     if (root && typeof root.traverse === 'function') {
       root.traverse((o) => {
         if (subtreeStamped) return;
-        if ((o.isMesh || o.isInstancedMesh) && o.__sfProbeDrawnFrame === frame) subtreeStamped = true;
+        if ((o.isMesh || o.isInstancedMesh) && o.__sfProbeDrawnFrame === frame) subtreeStamped = o.__sfProbeDrawStamp;
       });
     }
     const pool = render._asteroidInstancePool || null;
@@ -306,7 +324,8 @@ async function installAsteroidAppearProbe() {
       adopted: mem.adopted === true,
     };
     if (subtreeStamped || (mem.registered && (bucketStamped || bridgeStamped))) {
-      return { drawn: true, via: subtreeStamped ? 'subtree' : 'bucket', mem: memOut, root };
+      const stamp = subtreeStamped || (bucketStamped ? bucket.mesh.__sfProbeDrawStamp : bucket.retiring.mesh.__sfProbeDrawStamp);
+      return { drawn: true, via: subtreeStamped ? 'subtree' : 'bucket', mem: memOut, root, stamp };
     }
     const out = { drawn: false, reason: 'other', flags: null, detail: null, mem: memOut, root };
     if (!root) {
@@ -435,6 +454,16 @@ async function installAsteroidAppearProbe() {
       if (!t.episode) t.episode = openEpisode(id, item, now, dist);
       const ep = t.episode;
       const verdict = evaluateItem(id, item, frame, af);
+      const generation = item.entity?.occupantGeneration ?? item.row?.occupantGeneration;
+      if (verdict.drawn && Number.isSafeInteger(generation) && verdict.stamp) {
+        const key = JSON.stringify([id, generation]);
+        if (!drawnLives.has(key)) {
+          const draw = { id, generation, tick: Number.isSafeInteger(verdict.stamp.tick) ? verdict.stamp.tick : null,
+            at: verdict.stamp.at - probe.installedAt, frame: verdict.stamp.frame, via: verdict.via };
+          drawnLives.set(key, draw);
+          rec.contactDraw.firstDraws.push(draw);
+        }
+      }
       // Blink: previously drawn on this on-screen stint, undrawn this frame.
       if (verdict.drawn) {
         t.seenDrawn = true;
@@ -711,7 +740,20 @@ async function installAsteroidAppearProbe() {
     rec,
     validate,
     snapshot,
-    stop: () => { probe.stop = true; },
+    stop: () => {
+      probe.stop = true;
+      if (typeof offImpact === 'function') offImpact();
+      rec.contactDraw.joins = rec.contactDraw.impacts.map((impact) => {
+        const draw = Number.isSafeInteger(impact.generation)
+          ? drawnLives.get(JSON.stringify([impact.id, impact.generation])) : null;
+        let status = 'unknown';
+        if (draw && Number.isSafeInteger(impact.tick) && Number.isSafeInteger(draw.tick)) {
+          if (draw.tick < impact.tick) status = 'observed-draw-before-contact-tick';
+          else if (draw.tick > impact.tick) status = 'first-observed-draw-after-contact-tick';
+        }
+        return { impact, draw: draw || null, status };
+      });
+    },
   };
   return { installed: true, glWrapped: probe.glWrapped.length, rbdWrapped: probe.rbdWrapped };
 }
@@ -775,6 +817,7 @@ try {
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 300_000 });
   await page.bringToFront();
 
+  // Developer launch (not the title/New Game interaction); the opening-ram leg itself uses WASD.
   await page.evaluate((seed) => window.SF.bus.emit('game:new', { name: 'Asteroid Appear', seed }), SEED);
   await page.waitForFunction(() => {
     const state = window.SF && window.SF.state;
@@ -828,7 +871,16 @@ try {
   // frame-solid ceres route uses, then relocate ~1.6 kWU off the nearest diamond
   // lattice cell so the approach happens under public controls.
   const STAGE_SECTOR = 'sector_ceres_belt';
-  const staging = { sector: STAGE_SECTOR, enterSector: 'skipped', relocate: 'skipped' };
+  const staging = { sector: OPENING_RAM ? 'opening' : STAGE_SECTOR, enterSector: 'skipped', relocate: 'skipped' };
+  const openingTarget = OPENING_RAM ? await page.evaluate(() => {
+    const state = window.SF.state;
+    const rock = state.entityList.find(e => e?.alive !== false && e?.type === 'asteroid'
+      && e.data?.rescue === true && e.data?.rescueRole === 'rock');
+    return rock ? { id: rock.id, generation: rock.occupantGeneration, radius: rock.radius } : null;
+  }) : null;
+  if (OPENING_RAM && !openingTarget) throw new Error('Opening learner rock unavailable');
+  if (OPENING_RAM) await page.evaluate(id => { window.__SF_ASTEROID_PROBE__.probe.ramTargetId = id; }, openingTarget.id);
+  if (!OPENING_RAM) {
   await page.evaluate(async (sectorId) => {
     const { laneCommandSink, laneRpc } = await import('/src/core/simLaneCommands.js');
     if (laneCommandSink()) {
@@ -932,6 +984,7 @@ try {
       + ` heading=${relocatedTo.pose.heading.toFixed(2)} structure=${relocatedTo.structureId}`
       + ` cells=${relocatedTo.cells} extent=${relocatedTo.extent}`;
     await page.waitForTimeout(1200);
+  }
   }
 
   // --- Heading calibration --------------------------------------------------
@@ -1212,7 +1265,7 @@ try {
 
   // --- Ram leg: a dormant ordinary rock (radius >= 8) near the cluster,
   // flown straight into until it promotes. -------------------------------
-  const ramTarget = await page.evaluate((stageApproach) => {
+  const ramTarget = OPENING_RAM ? openingTarget : await page.evaluate((stageApproach) => {
     const s = window.SF.state;
     const p = s.entities.get(s.playerId);
     let best = null;
@@ -1305,16 +1358,21 @@ try {
             .catch(() => { approachShot = null; });
         }
       }
-      if (!contact && snap.promoted && dist <= snap.maxContactReach) {
+      // This is a steering/proximity threshold, not a physics contact receipt.
+      const impact = OPENING_RAM ? await page.evaluate(({ id, generation }) =>
+        window.__SF_ASTEROID_PROBE__.rec.contactDraw.impacts.find(row => row.id === id && row.generation === generation) || null,
+      openingTarget) : null;
+      if (impact) { contact = { authorityImpact: impact }; break; }
+      if (!OPENING_RAM && !contact && snap.promoted && dist <= snap.maxContactReach) {
         contact = { at: Date.now() - start, dist: Math.round(dist) };
         contactPos = { x: snap.tx, z: snap.tz };
         const speed = Math.hypot(snap.vx || 0, snap.vz || 0) || 1;
         contactDir = { x: (snap.vx || 0) / speed, z: (snap.vz || 0) / speed };
-        console.log(`  ram contact at +${(contact.at / 1000).toFixed(1)}s dist=${contact.dist}`);
+        console.log(`  ram proximity at +${(contact.at / 1000).toFixed(1)}s dist=${contact.dist}`);
         try { await page.screenshot({ path: `${OUT_DIR}/${stamp}-ram-contact.png` }); } catch (_) {}
       }
-      if (!contact && snap.promoted) {
-        ramResult = { target: ramTarget, promoted: true, contact: null,
+      if (!OPENING_RAM && !contact && snap.promoted) {
+        ramResult = { target: ramTarget, promoted: true, proximity: null,
           offscreenPromotionDistance: Math.round(dist) };
         console.log(`  ram target promoted away from contact at ${Math.round(dist)} WU`);
         break;
@@ -1336,9 +1394,10 @@ try {
       await page.waitForTimeout(POLL_MS);
     }
     await releaseAll();
-    if (!ramResult) ramResult = { target: ramTarget, promoted: !!contact, contact };
+    if (!ramResult) ramResult = OPENING_RAM ? { target: ramTarget, authorityImpact: contact?.authorityImpact || null }
+      : { target: ramTarget, promoted: !!contact, proximity: contact };
     phases.push({ phase: 'ram', ms: Date.now() - start,
-      done: contact ? 'contact' : ramResult.promoted ? 'promoted-away' : 'timeout', target: ramTarget.id });
+      done: contact ? (OPENING_RAM ? 'authority-impact' : 'proximity') : ramResult.promoted ? 'promoted-away' : 'timeout', target: ramTarget.id });
     // keep the timeline's +3s tail: leave ramTargetId armed while drifting clear
     await page.waitForTimeout(3000);
     await page.evaluate(() => { window.__SF_ASTEROID_PROBE__.probe.ramTargetId = null; });
@@ -1401,9 +1460,14 @@ try {
     at: new Date().toISOString(),
     head,
     headless: HEADLESS,
-    route: 'adventure', seed: SEED, simLane: SIM_LANE, routeIdentity,
+    route: 'adventure', launch: 'developer game:new event', openingRam: OPENING_RAM, seed: SEED, simLane: SIM_LANE, routeIdentity,
     staging,
     groundTruth: { ok: groundTruthOk, validation },
+    contactDraw: probeOut ? {
+      ...probeOut.rec.contactDraw,
+      coverage: 'Observed on-screen asteroid draws after probe installation; impact ticks come from authority receipts. Same-tick order and unobserved earlier draws are unknown.',
+      status: probeOut.rec.contactDraw.joins.length ? 'receipts-observed' : 'unknown-no-player-impact',
+    } : { status: 'unknown-probe-unavailable' },
     calibration: { headingOffsetDeg: Math.round(headingOffset * 180 / Math.PI * 10) / 10, aSign },
     waypoints,
     phases,

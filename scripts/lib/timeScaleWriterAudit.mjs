@@ -8,10 +8,6 @@ const traverse = traverseModule.default || traverseModule;
 const SCRIPT_EXTENSIONS = new Set(['.js', '.mjs', '.cjs']);
 const ALLOWED_WRITERS = new Set([
   'src/core/timeEffects.js',
-  // The worker lane's settings fold — applies the write timeEffects ships via
-  // laneWriteSetting to the worker realm's own state, where timeEffects does
-  // not run. Not a competing main-side writer.
-  'src/core/simLaneCommands.js',
   'scripts/lib/timeScaleWriterAudit.mjs',
 ]);
 // These named presentation sinks copy the scalar into a trace or reusable frame sample.

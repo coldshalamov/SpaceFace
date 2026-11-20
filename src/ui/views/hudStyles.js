@@ -893,7 +893,7 @@ export const HUD_CSS = `
     /* ORRERY phone band: the dock rides the same reserved lane above the cluster as
        the drive tape (hud.js ≤640px rule), so the cluster's key crescent and keytags
        keep the whole bottom-right strip instead of printing through the radar. */
-    #hud[data-hud="orrery"] .sf-rightdock { bottom:calc(24px + var(--orr-cluster-h, 240px) + 8px); }
+    :root[data-sf-mobile-flight="1"] #hud[data-hud="orrery"] .sf-rightdock { bottom:calc(24px + var(--orr-cluster-h, 240px) + 8px); }
     /* D261: power-rail sockets print "Pull · Draws in, key 1" — at phone width the
        verb word truncates to an unreadable stub ("PU… 1"). Keep icon + key cap; the
        full sentence stays on the socket's accessible name and tip. */
@@ -1300,6 +1300,21 @@ export const HUD_CSS = `
   .sf-commtape .sf-comm-backlog-btn {
     position:static !important; left:auto !important; top:auto !important; z-index:auto !important;
     width:auto !important; height:auto !important; margin:0 !important;
+  }
+  /* The tracker column's own COMMS chip flows above its comms feed (comms.js adopts it into
+     .sf-leftcontext). The fixed corner seat it kept in ui.css painted over the tracker heading
+     whenever both were up (bench flight-speaker 2026-11-14). */
+  .sf-leftcontext .sf-comm-backlog-btn {
+    position:static !important; left:auto !important; top:auto !important; z-index:auto !important;
+    width:auto !important; height:auto !important; margin:0 0 5px !important;
+    display:inline-flex; align-self:flex-start; padding:3px 10px;
+  }
+  /* The HAIL host rides the same column, beside the COMMS chip. position:relative (not static):
+     it stays the containing block for its absolute popover panel, as the commtape variant below. */
+  .sf-leftcontext #sf-contact-hail {
+    position:relative !important; left:auto !important; top:auto !important; z-index:auto !important;
+    width:auto !important; height:auto !important; margin:0 0 5px !important;
+    display:inline-flex; align-self:flex-start;
   }
   /* #sf-contact-hail stays position:relative, not static: it is the containing block for its
      absolute popover panel (anchored at the button), and it needs a real z-index in #hud's
@@ -2646,8 +2661,11 @@ export const HUD_CSS = `
   #hud .sf-overview-row { border-bottom:1px solid var(--dp-metal-3); transition:background var(--dp-d-cut) var(--dp-ease-lamp); }
   #hud .sf-overview-row:hover { background:rgb(242 185 80 / .09); }
   #hud .sf-overview-row__name { color:var(--hud-paper); }
+  /* Secondary roster words ride paper too, not muted: the roster has no plate, and the captured
+     lesson at the top of this sheet (2026-10 - the range readout unreadable over a lit planet
+     limb) applies to the class/state words the same as the name. Hierarchy holds by position. */
   #hud .sf-overview-row__right, #hud .sf-overview-row__detail,
-  #hud .sf-overview-row__state, #hud .sf-overview-row__tier, #hud .sf-overview-footer { color:var(--hud-muted); }
+  #hud .sf-overview-row__state, #hud .sf-overview-row__tier, #hud .sf-overview-footer { color:var(--hud-paper); }
   /* Collapsed roster: the count line (no instrument title — j07 contract). An etched contact
      diamond, the radar's own mark, sits before the reading so "24" reads as a scope count. */
   #hud .sf-overview--count .sf-overview-footer {

@@ -29,7 +29,7 @@ import { resolveGamepadBindings, GAMEPAD_DEFAULT_BINDINGS, GAMEPAD_BUTTON_LABELS
 import { gamepadGlyphForAction } from '../bindings.js';
 import { SLICES } from '../contextWheel.js';
 import { BINDINGS } from '../bindings.js';
-import { isSwarmControls, SWARM_HELP_ROWS } from '../../data/swarmControls.js';
+import { isSwarmControls } from '../../data/swarmControls.js';
 import { contextActionAllowed, contextHelpRows, contextUiAllowed, inputContextFor } from '../../data/inputContexts.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { decorateEntityNode } from '../entityResolver.js';
@@ -256,7 +256,8 @@ function unavailableNote(state, label, action) {
 export function controlSections(state) {
   // S5: a live Swarm run's Help is the compact arcade set only — nothing Adventure on the card.
   if (isSwarmControls(state)) {
-    return [['Controls', SWARM_HELP_ROWS.map(([keys, verb]) => [verb, null, keys])]];
+    return [['Controls', contextHelpRows(state, action => resolveActionLabel(state, action))
+      .map(([keys, verb]) => [verb, null, keys])]];
   }
   // The words for the powers, the fitted weapons and the combination come from the arsenal presentation
   // (one source: the same sentences the rail's tips read), never retyped on this sheet.

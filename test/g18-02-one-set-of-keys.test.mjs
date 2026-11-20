@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-// G18-02 "one set of keys" — WASD + mouse in both doors, Space boost, 1–5 powers,
-// RMB the Line, Q the one context wheel (hold-Y on a pad), overflow verbs unbound but
+// G18-02 "one set of keys" — WASD + mouse in both doors, Shift boost, 1–5 powers,
+// F or RMB for the Line, Q the one context wheel (hold-Y on a pad), overflow verbs unbound but
 // rebindable, untouched profiles migrated once, custom maps preserved.
 
 import { createSimulation } from '../src/core/sim.js';
@@ -61,7 +61,7 @@ test('G18-02: the six-input table is the Adventure default', () => {
   assert.deepEqual(resolveActionCodes(st, 'reverse'), ['KeyS', 'ArrowDown']);
   assert.deepEqual(resolveActionCodes(st, 'yawLeft'), ['KeyA', 'ArrowLeft']);
   assert.deepEqual(resolveActionCodes(st, 'yawRight'), ['KeyD', 'ArrowRight']);
-  assert.deepEqual(resolveActionCodes(st, 'boost'), ['Space']);
+  assert.deepEqual(resolveActionCodes(st, 'boost'), ['ShiftLeft', 'ShiftRight']);
   assert.deepEqual(resolveActionCodes(st, 'contextWheel'), ['KeyQ']);
   assert.deepEqual(resolveActionCodes(st, 'pull'), ['Digit1']);
   assert.deepEqual(resolveActionCodes(st, 'shove'), ['Digit2']);
@@ -70,12 +70,12 @@ test('G18-02: the six-input table is the Adventure default', () => {
   assert.deepEqual(resolveActionCodes(st, 'rig'), ['Digit5']);
 });
 
-test('G18-02: LMB fire and RMB the Line are fixed mouse verbs, and labels say so', () => {
+test('G18-02: LMB fires and F also operates the Line', () => {
   const st = flightState();
   assert.deepEqual(resolveActionCodes(st, 'fire'), []);
-  assert.deepEqual(resolveActionCodes(st, 'tether'), []);
+  assert.deepEqual(resolveActionCodes(st, 'tether'), ['KeyF']);
   assert.equal(resolveActionLabel(st, 'fire'), 'LMB');
-  assert.equal(resolveActionLabel(st, 'tether'), 'RMB');
+  assert.equal(resolveActionLabel(st, 'tether'), 'F');
   // Every overflow verb ships unbound — it lives on the wheel, not a key.
   for (const action of WHEEL_ACTIONS) {
     if (action === 'aimedMine') continue; // no keyboard seat; wheel/pad/touch only
@@ -83,10 +83,10 @@ test('G18-02: LMB fire and RMB the Line are fixed mouse verbs, and labels say so
   }
 });
 
-test('G18-02: a rebound key on the Line overrides the RMB label', () => {
+test('G18-02: a rebound key on the Line overrides the stock label', () => {
   const st = flightState();
-  st.settings.controls.bindings = { tether: ['KeyF'] };
-  assert.equal(resolveActionLabel(st, 'tether'), 'F');
+  st.settings.controls.bindings = { tether: ['KeyZ'] };
+  assert.equal(resolveActionLabel(st, 'tether'), 'Z');
 });
 
 // ── context gates and the wheel ───────────────────────────────────────────────
@@ -127,7 +127,7 @@ test('G18-02: the flight help card teaches the wheel', () => {
   assert.ok(wheelRow, 'wheel row present');
   assert.equal(wheelRow[0], 'Q');
   const lineRow = rows.find(([, verb]) => verb.startsWith('Line'));
-  assert.equal(lineRow[0], 'RMB');
+  assert.equal(lineRow[0], 'F');
   const fireRow = rows.find(([, verb]) => verb === 'Fire');
   assert.equal(fireRow[0], 'LMB');
 });
@@ -137,12 +137,12 @@ test('G18-02: the Swarm card matches the unified table', () => {
   assert.equal(verbs['Move'], 'W A S D');
   assert.equal(verbs['Aim'], 'Mouse');
   assert.equal(verbs['Fire'], 'LMB');
-  assert.equal(verbs['Line — fire / release'], 'RMB');
-  assert.equal(verbs['Boost / dash'], 'Space');
+  assert.equal(verbs['Line — fire / release'], 'F / RMB');
+  assert.equal(verbs['Boost / dash'], 'Shift');
   assert.equal(verbs['Interact'], 'E');
   // G18-02b: Q is the wheel in the Swarm door too; the Call-in slice lives inside it.
   assert.equal(verbs['Wheel — hold · aim · release'], 'Q');
-  assert.deepEqual(SWARM_DEFAULT_BINDINGS.boost, ['Space']);
+  assert.deepEqual(SWARM_DEFAULT_BINDINGS.boost, ['ShiftLeft', 'ShiftRight']);
 });
 
 // ── the wheel channel ─────────────────────────────────────────────────────────

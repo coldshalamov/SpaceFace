@@ -153,8 +153,58 @@ export function loftXGeometry(sections, radialSegments = 12) {
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
+  // Painted hulls use UV-mapped panel textures. Duplicate the radial seam so the final
+  // side quad wraps from v=(segments-1)/segments to v=1 instead of stretching to v=0.
+  // Copy the already-computed normals to preserve the original hull shading at that seam.
+  const normals = Array.from(geometry.getAttribute('normal').array);
+  const uvs = [];
+  const span = sections[sections.length - 1].x - sections[0].x || 1;
+  for (const section of sections) {
+    for (let i = 0; i < radialSegments; i++) uvs.push((section.x - sections[0].x) / span, i / radialSegments);
+  }
+  uvs.push(0.5, 0.5, 0.5, 0.5); // cap centres
+  const seamStart = positions.length / 3;
+  for (let s = 0; s < sections.length; s++) {
+    const original = s * radialSegments;
+    positions.push(...positions.slice(original * 3, original * 3 + 3));
+    normals.push(...normals.slice(original * 3, original * 3 + 3));
+    uvs.push((sections[s].x - sections[0].x) / span, 1);
+  }
+  for (let s = 0; s < sections.length - 1; s++) {
+    // Each strip has six indices per segment; the final segment references the seam twice.
+    const offset = (s * radialSegments + radialSegments - 1) * 6;
+    indices[offset + 2] = seamStart + s + 1;
+    indices[offset + 4] = seamStart + s + 1;
+    indices[offset + 5] = seamStart + s;
+  }
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
   geometry.computeBoundingSphere();
   return geometry;
+}
+
+// Linear station on a loft authored as { x, halfY, halfZ } in increasing x.
+// Parts that must sit on the skin (lights, decals, ridges) sample this instead of
+// using one rectangular box for the whole taper.
+export function sectionAt(sections, x) {
+  if (!sections || !sections.length) return { x, halfY: 0, halfZ: 0 };
+  if (x <= sections[0].x) return sections[0];
+  const last = sections[sections.length - 1];
+  if (x >= last.x) return last;
+  for (let i = 1; i < sections.length; i++) {
+    const a = sections[i - 1];
+    const b = sections[i];
+    if (x > b.x) continue;
+    const t = (x - a.x) / ((b.x - a.x) || 1);
+    return {
+      x,
+      halfY: a.halfY + (b.halfY - a.halfY) * t,
+      halfZ: a.halfZ + (b.halfZ - a.halfZ) * t,
+    };
+  }
+  return last;
 }
 
 // Extrude an XZ outline (array of [x,z] points) along Y by `thickness`, centered at yCenter. Used
@@ -221,6 +271,20 @@ export function emissiveMaterial(color, intensity = 1.5, opacity = 1) {
     opacity,
     depthWrite: opacity >= 1,
   }), driveLike ? SHARED_MATERIAL_ROLE.PLUME : SHARED_MATERIAL_ROLE.HULL);
+}
+
+// Large lit surfaces (veins, cargo faces, hazard blocks). A full-bright base color plus
+// a high emissiveIntensity tone-maps to a solid white polygon. Keep a dark base and a
+// capped emissive so the part still reads as a colored light and still shades.
+export function shadedSignal(color, intensity = 0.45) {
+  const base = new THREE.Color(color);
+  return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: base.clone().multiplyScalar(0.26),
+    emissive: base,
+    emissiveIntensity: intensity,
+    roughness: 0.42,
+    metalness: 0.16,
+  }), SHARED_MATERIAL_ROLE.HULL);
 }
 
 export function glowMaterial(color, opacity = 0.55) {
@@ -570,7 +634,7 @@ function smallGeo(key, build) {
 // ---------------------------------------------------------------------------------------------
 // STATIC BATCH MERGE — lifted from kestrelHero.js. Groups a parent's opaque child meshes by
 // material and merges each group into one draw call (cloning + transforming + concatenating
-// positions/normals). Meshes in `keepSeparate` or with userData.keepSeparate survive the merge
+// positions/normals/UVs). Meshes in `keepSeparate` or with userData.keepSeparate survive the merge
 // (animated drive parts, alpha-tested decals, damage-modulated parts).
 // ---------------------------------------------------------------------------------------------
 export function mergeStaticByMaterial(parent, keepSeparate) {
@@ -585,8 +649,13 @@ export function mergeStaticByMaterial(parent, keepSeparate) {
   }
   for (const meshes of groups.values()) {
     if (meshes.length < 2) continue;
+    // Do not discard UVs or invent coordinates for a mesh that has none. Mixed groups stay
+    // separate so their existing material mapping remains unchanged.
+    const hasUvs = meshes.map((mesh) => !!mesh.geometry.getAttribute('uv'));
+    if (hasUvs.some(Boolean) && !hasUvs.every(Boolean)) continue;
     const positions = [];
     const normals = [];
+    const uvs = [];
     for (const mesh of meshes) {
       mesh.updateMatrix();
       let geometry = mesh.geometry.clone();
@@ -594,12 +663,15 @@ export function mergeStaticByMaterial(parent, keepSeparate) {
       if (geometry.index) geometry = geometry.toNonIndexed();
       const p = geometry.getAttribute('position');
       const n = geometry.getAttribute('normal');
+      const uv = geometry.getAttribute('uv');
       for (let i = 0; i < p.array.length; i++) positions.push(p.array[i]);
       if (n) for (let i = 0; i < n.array.length; i++) normals.push(n.array[i]);
+      if (uv) for (let i = 0; i < uv.count; i++) uvs.push(uv.getX(i), uv.getY(i));
       geometry.dispose();
     }
     const mergedGeometry = new THREE.BufferGeometry();
     mergedGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    if (hasUvs[0]) mergedGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
     if (normals.length === positions.length) mergedGeometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
     else mergedGeometry.computeVertexNormals();
     mergedGeometry.computeBoundingSphere();
@@ -625,8 +697,8 @@ export function buildDrive(parent, opts) {
     name = 'Drive', position, radius, length, materials,
     driveColor, coreColor, driveGlowOpacity = 0.55, flicker = false,
   } = opts;
-  const driveMat = emissiveMaterial(driveColor, 3.2);
-  const coreMat = emissiveMaterial(coreColor, 5.0);
+  const driveMat = shadedSignal(driveColor, 0.7);
+  const coreMat = shadedSignal(coreColor, 0.8);
   const plumeMat = glowMaterial(driveColor, driveGlowOpacity);
   driveMat.name = `${name}_Drive`; coreMat.name = `${name}_Core`; plumeMat.name = `${name}_Plume`;
 
@@ -634,7 +706,7 @@ export function buildDrive(parent, opts) {
   addTorusX(parent, materials.accent, `${name}_Nozzle_Ring`, radius * 0.92, radius * 0.10, [position[0], position[1], position[2]]);
   const fan = addCylinderX(parent, driveMat, `${name}_Fan`, radius * 0.72, radius * 0.09, [position[0] + radius * 0.1, position[1], position[2]], 12);
   const driveCore = addCylinderX(parent, coreMat, `${name}_Core_Mesh`, radius * 0.46, radius * 0.12, [position[0] - radius * 0.05, position[1], position[2]], 14);
-  const plume = addMesh(parent, new THREE.CircleGeometry(radius * 1.25, 24), plumeMat, `${name}_Plume_Mesh`, [position[0] - radius * 0.15, position[1], position[2]], [0, -Math.PI / 2, 0]);
+  const plume = addMesh(parent, new THREE.CircleGeometry(radius * 0.78, 18), plumeMat, `${name}_Plume_Mesh`, [position[0] - radius * 0.12, position[1], position[2]], [0, -Math.PI / 2, 0]);
   fan.userData.keepSeparate = true;
   driveCore.userData.keepSeparate = true;
   plume.userData.keepSeparate = true;

@@ -20,11 +20,11 @@
 //
 // HOW A BUY WORKS
 // ---------------
-// The purse is never touched directly. A crossing emits `run:spendRequested` — the same intent
+// The purse is never touched directly. An armed crossing emits `run:spendRequested` — the same intent
 // the armory draft uses — and waits for the synchronous `run:spent` receipt before fitting.
 // Fitting goes through `ships.fitModule`, the same armory seam as every other module: the gun
-// lands in the first empty compatible weapon slot, else replaces the lowest-index (primary)
-// mountable one. A refused fit refunds through `run:awardRequested` exactly as the draft does.
+// replaces the occupied primary mount that takes it, or fills an empty compatible slot when
+// that mount is unavailable or already carries the same gun. A refused fit refunds through `run:awardRequested`.
 //
 // Short of the price, the pad refuses visibly: `swarm:floorPadRefused` (the label layer flashes
 // red over it), the one-line `Need N more` toast, and the ordinary deny cue.
@@ -37,6 +37,7 @@
 
 import { validateRunState } from '../core/runState.js';
 import { makeStream } from '../core/rng.js';
+import { clearPickupAcceptanceRetry } from '../core/pickupAcceptance.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { buildSlotList, fits } from './ships.js';
 import { SHIPS } from '../data/ships.js';
@@ -44,6 +45,10 @@ import { WEAPONS } from '../data/weapons.js';
 import { FOUNDRY_ARENA_ID } from './swarmArena.js';
 import {
   SWARM_FLOOR_PAD_KIND,
+  SWARM_FLOOR_INTERACT_REACH,
+  SWARM_FLOOR_ARM_S,
+  SWARM_FLOOR_ARM_REQUEST,
+  swarmFloorPadQuote,
   SWARM_FLOOR_WALL_GUN_PRICE,
   SWARM_FLOOR_CRATE_PRICE,
   SWARM_FLOOR_CRATE_PULLS_PER_MOVE,
@@ -131,6 +136,7 @@ export function createSwarmFloorDirector(ctx) {
   let armed = null;             // { arenaId, at, wave, seed, spots: {x,z}[] }
   let pads = [];                // { rec, entity, spot:{x,z}, moving:null|{from,to,t0,dur,toSpot} }
   let padsById = new Map();     // entityId -> pad
+  let consent = null;           // one approved quote for this pilot and pad life
   let pending = null;           // the purchase a spend receipt is expected to resolve
   let crate = { spotIndex: 0, pulls: 0 };   // run-scoped Crate memory
   let tapRng = null;            // the round's own seeded pour stream (never shares state.rng)
@@ -197,20 +203,62 @@ export function createSwarmFloorDirector(ctx) {
     return slotIndex;
   }
 
-  /** Every catalogue weapon the flown hull can mount AND the armory would actually bolt on. */
-  function crateCatalogue() {
-    const loadout = activeLoadout();
-    if (!loadout) return [];
-    return WEAPONS.filter((def) => def && def.slotType === 'weapon'
-      && dealableSlotIndex(def) != null);
+  function wallGunFitPreview(def) {
+    const slotIndex = def ? dealableSlotIndex(def) : null;
+    const fittings = activeLoadout()?.owned.fittings;
+    if (slotIndex == null) {
+      return def && Array.isArray(fittings) && fittings.includes(def.id)
+        ? 'Already fitted' : 'Cannot fit on this ship';
+    }
+    const replaced = fittings?.[slotIndex];
+    return replaced ? `Replaces ${weaponName(replaced)}` : `Fits empty slot ${slotIndex + 1}`;
+  }
+
+  function refreshWeaponPadPreviews() {
+    for (const { rec, entity } of pads) {
+      if (entity.alive === false) continue;
+      let preview;
+      if (rec.kind === 'wall_gun') preview = wallGunFitPreview(WEAPON_BY_ID.get(rec.defId));
+      else if (rec.kind === 'crate') preview = crateFitPreview();
+      else continue;
+      if (rec.fitPreview === preview) continue;
+      rec.fitPreview = preview;
+      helpers.markEntityVisualChanged?.(entity);
+    }
+  }
+
+  /** Every legal roll and the mount it would use. Reading the catalogue consumes no randomness. */
+  function* crateFittings() {
+    if (!activeLoadout()) return;
+    for (const def of WEAPONS) {
+      if (!def || def.slotType !== 'weapon') continue;
+      const slotIndex = dealableSlotIndex(def);
+      if (slotIndex != null) yield { defId: def.id, slotIndex };
+    }
+  }
+
+  function crateFitPreview() {
+    const fittings = activeLoadout()?.owned.fittings;
+    let fillsEmpty = false;
+    let replaces = false;
+    for (const { slotIndex } of crateFittings()) {
+      if (fittings?.[slotIndex]) replaces = true;
+      else fillsEmpty = true;
+      if (fillsEmpty && replaces) break;
+    }
+    if (!fillsEmpty && !replaces) return 'No compatible gun fits\nNo charge';
+    const fit = replaces
+      ? fillsEmpty ? 'Any replaced gun goes to spares' : 'Replaced gun goes to spares'
+      : 'Uses an empty weapon slot';
+    return `Fits a random compatible gun\n${fit}`;
   }
 
   function rollCrateDefId() {
-    const catalogue = crateCatalogue();
+    const catalogue = [...crateFittings()];
     if (!catalogue.length) return null;
     const rng = state && typeof state.rng === 'function' ? state.rng : null;
     const pick = Math.floor((rng ? rng() : 0) * catalogue.length) % catalogue.length;
-    return catalogue[pick].id;
+    return catalogue[pick].defId;
   }
 
   /** The room's price line under the active sale factor — integer credits, never zero. */
@@ -227,6 +275,20 @@ export function createSwarmFloorDirector(ctx) {
     return count < SWARM_TAP_MAX_PURCHASES ? priceOf(SWARM_TAP_PRICES[count]) : null;
   }
 
+  function forgePriceNow() {
+    return state.run?.telemetry?.freeForge === true ? 0 : priceOf(SWARM_FORGE_PRICE);
+  }
+
+  function forgeLabel(price) { return price === 0 ? 'THE FORGE · FREE' : `THE FORGE · ${price}`; }
+
+  function syncForgeQuote(pad) {
+    const price = forgePriceNow();
+    if (pad.rec.price === price) return;
+    pad.rec.price = price;
+    pad.rec.label = forgeLabel(price);
+    helpers.markEntityVisualChanged?.(pad.entity);
+  }
+
   /**
    * C01-05 — the sale request. `swarm:floorSaleRequested` is the only door the twist
    * uses; the floor re-writes every live pad's own price and label so the tags the
@@ -239,20 +301,24 @@ export function createSwarmFloorDirector(ctx) {
     for (const pad of pads) {
       const rec = pad && pad.rec;
       if (!rec) continue;
+      const priorPrice = rec.price;
       if (rec.kind === 'wall_gun') {
         rec.price = priceOf(SWARM_FLOOR_WALL_GUN_PRICE);
         rec.label = wallGunLabel(weaponName(rec.defId), rec.price);
       } else if (rec.kind === 'crate') {
-        rec.price = priceOf(SWARM_FLOOR_CRATE_PRICE);
+        const price = priceOf(SWARM_FLOOR_CRATE_PRICE);
+        if (rec.price === price) continue;
+        rec.price = price;
         rec.label = `THE CRATE · ${rec.price}`;
       } else if (rec.kind === 'forge') {
-        rec.price = priceOf(SWARM_FORGE_PRICE);
-        rec.label = `THE FORGE · ${rec.price}`;
+        syncForgeQuote(pad);
+        continue;
       } else if (rec.kind === 'tap') {
         const mod = rec.modId ? swarmTapModById(rec.modId) : null;
         rec.price = rec.modId ? tapPriceNow() : null;
         rec.label = rec.modId ? swarmTapLabel(mod, rec.price) : swarmTapLabel(null);
       }
+      if (priorPrice !== rec.price) helpers.markEntityVisualChanged?.(pad.entity);
     }
     emit('swarm:floorRepriced', {
       factor: priceFactor,
@@ -298,6 +364,7 @@ export function createSwarmFloorDirector(ctx) {
       rec.modId = null;
       rec.price = null;
       rec.label = swarmTapLabel(null);
+      helpers.markEntityVisualChanged?.(pad.entity);
       return;
     }
     const price = tapPriceNow();
@@ -305,6 +372,7 @@ export function createSwarmFloorDirector(ctx) {
     rec.modId = offer ? offer.id : null;
     rec.price = price;
     rec.label = offer ? swarmTapLabel(offer, price) : swarmTapLabel(null);
+    helpers.markEntityVisualChanged?.(pad.entity);
   }
 
   /** After a sale both pads re-read their own till: this one re-rolls, the sibling re-prices. */
@@ -313,7 +381,10 @@ export function createSwarmFloorDirector(ctx) {
   }
 
   function _spawnPad({ rec, spot, radius }) {
+    if (state.run?.arenaMutators?.includes('weapons_cold')
+        && (rec.kind === 'wall_gun' || rec.kind === 'crate' || rec.kind === 'forge')) return null;
     if (typeof helpers.spawnEntity !== 'function') return null;
+    if (rec.kind === 'crate') rec.fitPreview = crateFitPreview();
     const entity = helpers.spawnEntity({
       type: 'pickup',
       team: 0,
@@ -323,6 +394,9 @@ export function createSwarmFloorDirector(ctx) {
       radius,
       mass: 1,
       collides: true,
+      // Pickup overlap handles fly-through purchases. The floor owns this
+      // fixture's position, including crate moves between marked spots.
+      physicsBody: false,
       data: {
         roomOwner: FLOOR_OWNER,
         kind: SWARM_FLOOR_PAD_KIND,
@@ -363,6 +437,7 @@ export function createSwarmFloorDirector(ctx) {
           defId: spec.defId,
           price: priceOf(SWARM_FLOOR_WALL_GUN_PRICE),
           label: wallGunLabel(def && def.name, priceOf(SWARM_FLOOR_WALL_GUN_PRICE)),
+          fitPreview: wallGunFitPreview(def),
         },
         spot: { x: anchor.x + spec.dx, z: anchor.z + spec.dz },
         radius: SWARM_FLOOR_PAD_RADIUS,
@@ -387,13 +462,14 @@ export function createSwarmFloorDirector(ctx) {
     // the round number, so re-arms of the same round re-pour the same offers.
     tapRng = makeStream(seed, `swarm-tap:${wave}`);
     if (plan.forge) {
+      const price = forgePriceNow();
       _spawnPad({
         rec: {
           padId: plan.forge.id,
           kind: 'forge',
           defId: null,
-          price: priceOf(SWARM_FORGE_PRICE),
-          label: `THE FORGE · ${priceOf(SWARM_FORGE_PRICE)}`,
+          price,
+          label: forgeLabel(price),
         },
         spot: { x: anchor.x + plan.forge.dx, z: anchor.z + plan.forge.dz },
         radius: SWARM_FLOOR_FORGE_RADIUS,
@@ -482,7 +558,8 @@ export function createSwarmFloorDirector(ctx) {
     const def = defId ? WEAPON_BY_ID.get(defId) : null;
     const slotIndex = def ? dealableSlotIndex(def) : null;
     if (!def || slotIndex == null) {
-      _refuse(pad, run, 'cannot_mount', 0);
+      if (rec.kind === 'crate') _refuseText(pad, run, 'cannot_mount', 'No compatible gun fits. No charge.');
+      else _refuse(pad, run, 'cannot_mount', 0);
       return;
     }
     pending = { padId: rec.padId, kind: rec.kind, defId, slotIndex, price };
@@ -511,8 +588,9 @@ export function createSwarmFloorDirector(ctx) {
       _refuseText(pad, run, 'already_forged', 'Already forged');
       return;
     }
-    const free = !!(run.telemetry && run.telemetry.freeForge === true);
-    const forgePrice = priceOf(SWARM_FORGE_PRICE);
+    const forgePrice = forgePriceNow();
+    if (forgePrice !== rec.price) { syncForgeQuote(pad); return; }
+    const free = forgePrice === 0;
     if (!free && run.credits < forgePrice) {
       _refuse(pad, run, 'insufficient_funds', forgePrice - run.credits);
       return;
@@ -556,7 +634,7 @@ export function createSwarmFloorDirector(ctx) {
     emit('toast', { text: `THE FORGE · ${form}`, kind: 'good', ttl: 3 });
     emit('swarm:floorPadBought', {
       padId: pad ? pad.rec.padId : 'foundry-forge', kind: 'forge', defId, form,
-      price: free ? 0 : SWARM_FORGE_PRICE, pos: at,
+      price: free ? 0 : pad?.rec.price ?? SWARM_FORGE_PRICE, pos: at,
     });
   }
 
@@ -572,17 +650,22 @@ export function createSwarmFloorDirector(ctx) {
       _refuseText(pad, run, 'sold_out', 'TAP · SOLD OUT');
       return;
     }
-    // A stale offer never vends twice: if the ledger owns this bottle already
-    // (bought on the sibling pad) the tap re-pours before it charges.
+    // If the ledger changed, show the fresh quote and require a new intent.
     const owned = (run.modifiers || []).some(
       (row) => row && row.kind === SWARM_TAP_RECORD_KIND && row.offerId === rec.modId);
-    if (!rec.modId || owned) refreshTapRec(pad);
+    if (!rec.modId || owned) { refreshTapRec(pad); return; }
     const mod = rec.modId ? swarmTapModById(rec.modId) : null;
     if (!mod) {
       _refuseText(pad, run, 'sold_out', 'TAP · SOLD OUT');
       return;
     }
     const price = tapPriceNow();
+    if (price !== rec.price) {
+      rec.price = price;
+      rec.label = swarmTapLabel(mod, price);
+      helpers.markEntityVisualChanged?.(pad.entity);
+      return;
+    }
     if (run.credits < price) {
       _refuse(pad, run, 'insufficient_funds', price - run.credits);
       return;
@@ -626,6 +709,7 @@ export function createSwarmFloorDirector(ctx) {
       return;
     }
     const sys = ships();
+    const displaced = job.kind === 'crate' ? activeLoadout()?.owned.fittings?.[job.slotIndex] : null;
     const fitted = !!(sys && typeof sys.fitModule === 'function'
       && sys.fitModule({ slotIndex: job.slotIndex, defId: job.defId, swarmGrant: true }));
     if (!fitted) {
@@ -640,10 +724,9 @@ export function createSwarmFloorDirector(ctx) {
       id: BUY_CUE, gain: 0.8,
       position: pad ? { x: pad.spot.x, z: pad.spot.z } : undefined,
     });
+    const fittedText = `${weaponName(job.defId)} fitted`;
     emit('toast', {
-      text: job.kind === 'crate'
-        ? `THE CRATE · ${weaponName(job.defId)}`
-        : `${weaponName(job.defId)} fitted`,
+      text: displaced ? `${fittedText}. ${weaponName(displaced)} moved to spares.` : fittedText,
       kind: 'good', ttl: 3,
     });
     emit('swarm:floorPadBought', {
@@ -668,6 +751,55 @@ export function createSwarmFloorDirector(ctx) {
     }
   }
 
+  function clearConsent() {
+    if (!consent) return;
+    const { pad } = consent;
+    consent = null;
+    delete pad.rec.armedUntil;
+    helpers.markEntityVisualChanged?.(pad.entity);
+  }
+
+  function inReach(pad, player, radius) {
+    return !!player?.pos && player.alive !== false && !!pad?.entity?.pos
+      && (pad.entity.pos.x - player.pos.x) ** 2 + (pad.entity.pos.z - player.pos.z) ** 2 <= radius ** 2;
+  }
+
+  function sameQuote(current, quote) {
+    return !!current && !!quote && current.entityId === quote.entityId
+      && current.generation === quote.generation && current.price === quote.price
+      && current.label === quote.label && current.fit === quote.fit;
+  }
+
+  function currentFittings() {
+    return activeLoadout()?.owned.fittings?.join('|') ?? '';
+  }
+
+  function _onArmRequested(quote) {
+    const run = liveSwarmRun(state);
+    if (!armed || run?.phase !== 'active') return;
+    const pad = padsById.get(quote?.entityId);
+    const player = state.entities.get(state.playerId);
+    if (!pad || pad.moving || !inReach(pad, player, SWARM_FLOOR_INTERACT_REACH)
+      || !sameQuote(swarmFloorPadQuote(pad.entity), quote)) return;
+    clearConsent();
+    const until = simTimeOf(state) + SWARM_FLOOR_ARM_S;
+    consent = { pad, player, run, quote, fittings: currentFittings(), until };
+    pad.rec.armedUntil = until;
+    helpers.markEntityVisualChanged?.(pad.entity);
+    // A harmless earlier touch uses the ordinary contact cooldown. A fresh intent can buy
+    // on the next real contact, including when the pilot is already over the pad.
+    clearPickupAcceptanceRetry(pad.entity.data);
+  }
+
+  function consentIsCurrent(player) {
+    const run = state.run;
+    return consent && consent.run === run && consent.player === player && run.phase === 'active'
+      && !consent.pad.moving && consent.until > simTimeOf(state)
+      && inReach(consent.pad, player, SWARM_FLOOR_INTERACT_REACH)
+      && sameQuote(swarmFloorPadQuote(consent.pad.entity), consent.quote)
+      && consent.fittings === currentFittings();
+  }
+
   function _onCollected(payload) {
     if (!armed || !payload) return;
     const pad = padsById.get(payload.pickupId);
@@ -677,7 +809,10 @@ export function createSwarmFloorDirector(ctx) {
     // body survives and physics' ordinary retry ledger paces the next attempt for free.
     payload.acceptedAmount = 0;
     payload.acceptanceRetryAt = simTimeOf(state) + SWARM_FLOOR_PAD_RETRY_S;
-    if (pad.moving) return;
+    const player = state.entities.get(state.playerId);
+    if (consent?.pad !== pad || !consentIsCurrent(player)
+      || !inReach(pad, player, (player?.radius || 0) + (pad.entity.radius || 0))) return;
+    clearConsent();
     _attemptPurchase(pad);
   }
 
@@ -693,6 +828,8 @@ export function createSwarmFloorDirector(ctx) {
     const dur = Math.max(0.01, SWARM_FLOOR_CRATE_MOVE_S, dist / 160);
     const now = simTimeOf(state);
     pad.moving = { from, to, t0: now, dur, toSpot: next };
+    pad.rec.moving = true;
+    helpers.markEntityVisualChanged?.(pad.entity);
     emit('swarm:floorCrateMoved', {
       fromSpot: crate.spotIndex, toSpot: next, pulls: crate.pulls,
       pos: { x: from.x, z: from.z },
@@ -704,10 +841,12 @@ export function createSwarmFloorDirector(ctx) {
   function update(_dt, st) {
     const s = st || state;
     if (!armed) return;
+    if (consent && !consentIsCurrent(s.entities.get(s.playerId))) clearConsent();
     const now = simTimeOf(s);
     for (const pad of pads) {
       const entity = pad.entity;
       if (!entity || entity.alive === false || !entity.pos) continue;
+      if (pad.rec.kind === 'forge') syncForgeQuote(pad);
       if (pad.moving) {
         const move = pad.moving;
         const t = Math.min(1, Math.max(0, (now - move.t0) / move.dur));
@@ -717,10 +856,12 @@ export function createSwarmFloorDirector(ctx) {
         if (t >= 1) {
           pad.spot = { x: move.to.x, z: move.to.z };
           pad.moving = null;
+          delete pad.rec.moving;
+          helpers.markEntityVisualChanged?.(entity);
           emit('audio:cue', { id: SETTLE_CUE, position: { x: entity.pos.x, z: entity.pos.z }, gain: 0.6 });
         }
       } else {
-        // A pad is a bolted fixture: fields and freight can shove its body, the spot cannot move.
+        // The bolted fixture remains at its marked spot between scripted moves.
         entity.pos.x = pad.spot.x;
         entity.pos.z = pad.spot.z;
         if (entity.vel) { entity.vel.x = 0; entity.vel.z = 0; }
@@ -730,6 +871,7 @@ export function createSwarmFloorDirector(ctx) {
 
   function teardown(reason) {
     const st = ctx && ctx.state;
+    clearConsent();
     for (const pad of pads) {
       const entity = pad.entity;
       if (entity && entity.alive !== false) {
@@ -756,9 +898,13 @@ export function createSwarmFloorDirector(ctx) {
   return {
     init() {
       if (!bus || typeof bus.on !== 'function') return;
+      unsubs.push(bus.on(SWARM_FLOOR_ARM_REQUEST, _onArmRequested));
       unsubs.push(bus.on('pickup:collected', (p) => _onCollected(p)));
       unsubs.push(bus.on('run:spent', (p) => _onSpent(p)));
       unsubs.push(bus.on('run:spendRejected', (p) => _onSpendRejected(p)));
+      unsubs.push(bus.on('ship:appearanceChanged', ({ id }) => {
+        if (id === state.playerId) refreshWeaponPadPreviews();
+      }));
       // C01-05 — Everything Must Go's sale ask: the floor re-writes its own tills.
       unsubs.push(bus.on('swarm:floorSaleRequested', (p) => {
         _applyPriceFactor(p && p.factor);

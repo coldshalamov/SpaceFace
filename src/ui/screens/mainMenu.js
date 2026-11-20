@@ -7,6 +7,7 @@ import { createTitleFrame } from '../views/menuFrames.js';
 import { injectDeckplate, attachAttentionLamp } from '../deckplate/index.js';
 import { CREDITS } from '../../data/credits.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
+import { shipDisplayName } from '../../data/ships.js';
 import { requestCodexTab } from '../codexRequests.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { canQuit, requestQuit } from '../quitGame.js';
@@ -14,12 +15,12 @@ import { IS_DEV } from '../../core/devMode.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
 import { isSaveSlotId, selectLatestOccupiedSlot } from '../../save/saveSlotIdentity.js';
 import { isTitleSaveReadFailure, saveErrorText } from '../saveFeedback.js';
+import { createArcRail } from '../orrery/arcRail.js';
 import { injectOrreryScreens } from '../orrery/screenLayouts.js';
 import { isPhoneLayout } from '../../systems/mobile/model.js';
 import { injectTitleAsideLayouts } from '../orrery/titleAsideLayouts.js';
 import { injectTitleDoorsLayouts } from '../orrery/titleDoorsLayouts.js';
 import { shouldOfferFirstLight, applyFirstLightPreset } from '../accessibility.js';
-import { requestSwarmPlayEntry } from '../crucibleLaunch.js';
 import { laneWriteSetting } from '../../core/simLaneCommands.js';
 import { confirm, dismissConfirm, isConfirmOpen } from '../confirm.js';
 import {
@@ -295,15 +296,6 @@ function fmtCredits(value) {
   return Math.round(n).toLocaleString('en-US') + ' CR';
 }
 
-function titleCaseWords(s) {
-  return String(s).split(/[\s_]+/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-}
-
-function shipLabel(id) {
-  if (!id) return '';
-  return titleCaseWords(String(id).replace(/^ship_/, ''));
-}
-
 function saveSummaryText(slot, meta) {
   // Scan order: which save, how fresh, where, who, what next. ' · ' separators (house style)
   // instead of hyphens so save fields never read as one hyphenated run-on.
@@ -315,7 +307,7 @@ function saveSummaryText(slot, meta) {
   }
   if (meta && meta.recoveryAvailable) parts.push('Recovery copy');
   if (meta && meta.sectorName) parts.push(meta.sectorName);
-  if (meta && meta.shipName) parts.push(shipLabel(meta.shipName));
+  if (meta && meta.shipName) parts.push(shipDisplayName(meta.shipName));
   const objective = objectiveSummaryText(meta);
   if (objective) parts.push(objective);
   const playtime = fmtPlaytime(meta && meta.playtimeS);
@@ -345,7 +337,7 @@ export function titlePrimaryAction(hasSave) {
  * already promised ("the scored ten-wave Survival run", "the authored intro cinematics").
  */
 export const MENU_MODE_GLOSSES = Object.freeze({
-  swarm: 'Hold off the horde: pick the room, then PLAY',
+  swarm: 'Choose a ship and fight waves of enemies.',
   crucible: 'A scored ten-wave survival run',
   archive: 'Authored intro reels, in the Codex',
   circuits: 'Race rivals or run time trials',
@@ -357,7 +349,7 @@ export const MENU_MODE_GLOSSES = Object.freeze({
 const ADVENTURE_DOOR_GLOSS = 'The campaign — your ship, the Helios Reach';
 
 export function titleVerbOrder() {
-  return ['continue', 'swarm', 'newGame', 'load', 'crucible', 'settings', 'quit'];
+  return ['continue', 'swarm', 'newGame', 'load', 'settings', 'quit'];
 }
 
 /** The title's Tab order, in reading order: the verb ladder, the reference line, the fine line —
@@ -424,23 +416,17 @@ export const mainMenuScreen = {
     // continue, New Game when there is not. Marking it here would light a dead verb on first paint.
     // titleVerbOrder owns the reading order.
     const labels = {
-      // TITLE-01: the two doors. Visible words are the door names; the accessible names keep the core copy.
       newGame: coreText('newGame'),
       continue: coreText('continue'),
       load: 'Load',
-      // "Swarm" — the mode the title sells (S4): one press straight into round 1 through the
-      // ordinary New Game route. The authored armory opening is skipped for this entry only;
-      // every later wave drafts normally, so the shop is never more than a round away.
       swarm: 'Swarm',
-      // "Crucible" — the scored ten-wave Survival run (PQ-133 §12.2: direct main-menu entry). It
-      // launches through the ordinary New Game path and never touches the Adventure save.
-      crucible: 'Swarm setup',
       settings: coreText('settings'),
       quit: 'Quit',
     };
     const items = titleVerbOrder().map((action) => ({
       action,
       label: labels[action],
+      containedNote: ['continue', 'newGame', 'swarm'].includes(action),
       ...(action === 'continue' ? { sub: 'Checking saves...', current: true } : {}),
       ...(MENU_MODE_GLOSSES[action] ? { sub: MENU_MODE_GLOSSES[action] } : {}),
       ...(action === 'newGame' ? { sub: ADVENTURE_DOOR_GLOSS } : {}),
@@ -515,9 +501,9 @@ export const mainMenuScreen = {
     // Deckplate column under the logotype, in big thumb-sized words, and the world is the backdrop.
     const phone = isPhoneLayout();
     rootEl.classList.add(phone ? 'orr-title--phone' : 'orr-title');
-    // TITLE-01: on a desktop the title is two doors over the live scene, not the dial. The same buttons
-    // (data-action, aria, order) stand as a door pair, a small row, and a closed "More".
-    rootEl.classList.add('orr-title--doors');
+    // Phones use the compact doors and More. Desktop keeps the Orrery wrapped around the same actions.
+    if (phone) rootEl.classList.add('orr-title--doors');
+    else bMore.hidden = true;
     // The emblem sits BEHIND the logotype (ORRERY 6): its upper third runs under the name, its rim is
     // lettered, and the verbs ride its right side from just above east down to the south-east, so the name
     // and the choice are one object and the lower left goes back to the key art.
@@ -525,15 +511,41 @@ export const mainMenuScreen = {
     // line holds every stop where it sits with Quit, instead of spreading four verbs down the whole
     // arc onto the console prop.
     const quitShown = canQuit();
-    // TITLE-01: no dial. The doors are CSS over the same buttons (src/ui/orrery/titleDoorsLayouts.js).
-    arcRail = null;
-    void quitShown;
+    arcRail = phone ? null : createArcRail({ host: stage, list, frame: rootEl, extra: [aside],
+      // T-S1: the title's signature — the Hand follows the pointer round the dial, the rings answer
+      freeTrack: true,
+      // the pivot keeps the rim's ticks clear of the frame (re + 33) at every height
+      place: (W, H) => { const re = Math.round(H * 0.278); const c = Math.max(Math.round(H * 0.305), re + 33); return { pivot: { x: c, y: c }, re, centerDeg: 112 }; },
+      span: 74,
+      extraGap: quitShown ? 0 : 1,
+      // the awake word steps 6% toward the dial; seated this far out it stops short of its tick and
+      // the Hand's leader instead of landing on them (half the verb size, plus air)
+      seat: (W, H) => Math.round(8 + Math.min(31, Math.max(20, H * 0.027)) * 0.5),
+      engraving: (W, H) => (H <= 800 ? 'Orrery of the Helios Reach' : 'SpaceFace · Orrery of the Helios Reach'),
+      engravingDeg: 292,
+      // the kicker's box spans the frame: its words' own extent (a range over its text, the dot included) is what clears
+      clearOf: () => {
+        const eyebrow = rootEl.querySelector('.dp-title__eyebrow');
+        let words = null;
+        if (eyebrow && typeof document !== 'undefined' && typeof document.createRange === 'function') {
+          const range = document.createRange();
+          range.selectNodeContents(eyebrow);
+          words = { getBoundingClientRect: () => { const r = range.getBoundingClientRect(); const e = eyebrow.getBoundingClientRect(); return { left: e.left, top: r.top, width: r.right - e.left, height: r.height }; } };
+        }
+        // ONE knockout round the name and its kicker together, so no ring stub is left between them
+        const boxes = [rootEl.querySelector('.dp-logotype'), words].filter(Boolean).map((b) => b.getBoundingClientRect()).filter((r) => r && r.width > 0);
+        if (!boxes.length) return [];
+        const l = Math.min(...boxes.map((r) => r.left)); const t = Math.min(...boxes.map((r) => r.top));
+        const r = Math.max(...boxes.map((b) => b.left + b.width)); const b = Math.max(...boxes.map((x) => x.top + x.height));
+        return [{ getBoundingClientRect: () => ({ left: l, top: t, width: r - l, height: b - t }) }];
+      },
+    });
 
     const byAction = (action) => stage.querySelector('[data-action="' + action + '"]');
     const bContinue = byAction('continue');
     const bNew = byAction('newGame');
+    const bSwarm = byAction('swarm');
     const bLoad = byAction('load');
-    const bCrucible = byAction('crucible');
     const bArchive = byAction('archive');
     const bHelp = byAction('help');
     const bCircuits = byAction('circuits');
@@ -542,6 +554,8 @@ export const mainMenuScreen = {
     const bSandbox = byAction('sandbox');
     const bQuit = byAction('quit');
     if (bNew) bNew.setAttribute('aria-label', coreText('newGame'));
+    if (bContinue) bContinue.setAttribute('aria-label', coreText('continue'));
+    if (bSwarm) bSwarm.setAttribute('aria-label', 'Swarm');
     if (bLoad) bLoad.setAttribute('aria-label', coreText('loadGame'));
     bArchive.setAttribute('aria-label', coreText('signalArchive'));
     bQuit.setAttribute('aria-label', coreText('quitGame'));
@@ -591,9 +605,9 @@ export const mainMenuScreen = {
 
     refs = {
       root: rootEl, backdrop, title, stage, aside, list, version, versionText, bCredits, bAchievements, saveSummary, status,
-      bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive, bCircuits, bHelp, bPhysics,
+      bNew, bContinue, bSwarm, bLoad, bSettings, bSandbox, bQuit, bArchive, bCircuits, bHelp, bPhysics,
       titleContinueFailure: null,
-      buttons: [bContinue, bNew, bLoad, bCrucible, bHelp, bArchive, bCircuits, bPhysics, bSettings, bSandbox, bQuit].filter(Boolean),
+      buttons: [bContinue, bSwarm, bNew, bLoad, bHelp, bArchive, bCircuits, bPhysics, bSettings, bSandbox, bQuit].filter(Boolean),
     };
 
     // Tab walks the screen the way it reads: down the verb ladder, along the reference line, then the
@@ -743,14 +757,7 @@ export const mainMenuScreen = {
         return;
       }
       case 'load': pushWhenReady(ctx, 'saveLoad', 'Load Game'); return;
-      case 'swarm': {
-        // TITLE-01 — the SWARM door opens the Swarm entrance in its one-button PLAY state: PLAY is the
-        // shipped defaults (Ricochet Foundry, the default ship and kit, Exhibition for a first-timer and
-        // the last-used stake after), one press to round 1; Customise opens the full entrance.
-        requestSwarmPlayEntry();
-        pushWhenReady(ctx, 'crucible', 'Swarm');
-        return;
-      }
+      case 'swarm':
       case 'crucible': pushWhenReady(ctx, 'crucible', 'Swarm'); return;
       case 'help': pushWhenReady(ctx, 'help', 'Help'); return;
       case 'archive': requestCodexTab('Archive'); pushWhenReady(ctx, 'codex', 'Signal Archive'); return;
@@ -815,13 +822,13 @@ export const mainMenuScreen = {
     clearTitleContinueLoadFailure(refs.status);
     this._menuSig = this._menuInputs(ctx);
     setScreenButtonReady(refs.bNew, ctx, 'newGame', 'New Game');
+    setScreenButtonReady(refs.bSwarm, ctx, 'crucible', 'Swarm');
     setScreenButtonReady(refs.bLoad, ctx, 'saveLoad', 'Load Game');
     setScreenButtonReady(refs.bSettings, ctx, 'settings', 'Settings');
     if (refs.bSandbox) setScreenButtonReady(refs.bSandbox, ctx, 'sandbox', 'Sandbox');
     if (refs.bHelp) setScreenButtonReady(refs.bHelp, ctx, 'help', 'Help');
     if (refs.bCircuits) setScreenButtonReady(refs.bCircuits, ctx, 'raceBoard', 'Circuits');
     if (refs.bPhysics) setScreenButtonReady(refs.bPhysics, ctx, 'physicsVenues', 'Physics challenges');
-    if (refs.bCrucible) setScreenButtonReady(refs.bCrucible, ctx, 'crucible', 'Swarm setup');
     const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
     const syncPending = !!(sys && typeof sys.isSharedStoreSyncPending === 'function' && sys.isSharedStoreSyncPending());
     const latest = latestSave(readSaveIndex(ctx));
@@ -862,7 +869,7 @@ export const mainMenuScreen = {
     const primaryAction = titlePrimaryAction(!!latest);
     this._setPrimary(primaryAction === 'continue' ? refs.bContinue : refs.bNew);
     this._syncCurrent();
-    this._layoutTitleRow();
+    if (isPhoneLayout()) this._layoutTitleRow();
     reapplyTitleContinueLoadFailure(refs);
     // With the failure state settled, the eyebrow returns to its rest line — the re-render that
     // clears a stale failure must not leave the error words standing on the calmest screen in

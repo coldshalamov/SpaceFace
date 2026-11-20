@@ -2,6 +2,9 @@
 import { el, cue, words } from '../kit/index.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectRaceBoardLayouts } from '../orrery/raceBoardLayouts.js';
+import { injectOrrery } from '../orrery/tokens.js';
+import { stagger, reducedMotion } from '../orrery/motion.js';
+import { syncScrollExtent } from '../orrery/scrollExtent.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { confirm } from '../confirm.js';
 import { RACING_CIRCUITS, courseForLevel, practiceContractForLevel, raceContractById, raceLevelById, racingOfferFor, racingSeedFor, circuitContracts } from '../../data/raceLevels.js';
@@ -66,10 +69,10 @@ export async function runContract(ctx, contractId, level, fit, confirmLaunch = c
 export const raceBoardScreen={
   id:'raceBoard',
   mount(rootEl,ctx){
-    injectDeckplate();injectRaceBoardLayouts();rootEl.replaceChildren();rootEl.classList.add('k-screen','race-board');
+    injectDeckplate();injectRaceBoardLayouts();injectOrrery();rootEl.replaceChildren();rootEl.classList.add('k-screen','race-board');
     rootEl.setAttribute('aria-label','Racing circuits');this._root=rootEl;
     const title=el('header','k-title');
-    title.append(el('p','k-sentence','CIRCUITS / FLIGHT'),el('h1','k-display k-t-title','Thread the needle.'),
+    title.append(el('h1','k-display k-t-title','Circuits'),
       el('p','k-sentence',`${RACING_CIRCUITS.length} circuits with the same ships and drives you fly in adventure.`));
     rootEl.appendChild(title);
     const tools=el('div','race-board-tools');
@@ -105,7 +108,12 @@ export const raceBoardScreen={
     // block over the cards. The sentence it replaced stays as the chip's account of itself.
     const viewKey=el('kbd','dp-kbd',BINDINGS.steeringView.label);
     view.title=`${BINDINGS.steeringView.label} switches chase / overhead in free flight; mission locks return your preferred view when they end.`;
-    const viewLabel=()=>{view.textContent=`Practice: ${normalizeSteeringView(ctx?.state?.settings?.gameplay?.steeringView)}`;view.appendChild(viewKey);};
+    const cameraNames = { overhead: 'Overhead', racing: 'Chase', auto: 'Automatic' };
+    const viewLabel = () => {
+      const mode = normalizeSteeringView(ctx?.state?.settings?.gameplay?.steeringView);
+      view.textContent = `Camera · ${cameraNames[mode]}`;
+      view.appendChild(viewKey);
+    };
     viewLabel();
     view.addEventListener('click',()=>{
       const cur=normalizeSteeringView(ctx?.state?.settings?.gameplay?.steeringView);
@@ -114,13 +122,16 @@ export const raceBoardScreen={
     const back=el('button','k-word','Back');back.type='button';back.addEventListener('click',()=>{cue('close');pop(ctx);});
     tools.append(view,back);rootEl.appendChild(tools);
     rootEl.appendChild(el('p','k-sentence',RACING_MODES.find(row=>row.id===fit.raceMode).description+' Temporary flights lend your selected fit. Sprint accelerates harder; Endurance favors long straights. Solo runs in your campaign sector use your current ship.'));
+    let cupProgress = null;
+    const nextHeat = continuing ? CUP_HEATS[cup.nextHeat] : null;
     if(fit.raceMode==='cup'){
       const progress=el('section','race-board-result dp-glass');progress.setAttribute('aria-label','Circuit cup');
+      cupProgress = progress;
       progress.append(el('h2','k-t-sub',cup?.status==='complete'?`${cup.medal.toUpperCase()} CUP · ${cup.points}/18 POINTS`:'THE THREE-COURSE CUP'),
         el('p','k-sentence','First / second / third earn 6 / 3 / 1 points. Gold 15 · Silver 9 · Bronze 3. No campaign credits are spent or awarded.'));
-      if(cup)for(const heat of cup.results)progress.appendChild(el('p','k-sentence',`${heat.name} · place ${heat.position} · ${formatRaceTime(heat.elapsedS)} · ${heat.points} points`));
-      if(continuing){
-        progress.appendChild(el('p','k-sentence',`Heat ${cup.nextHeat+1}/3: ${CUP_HEATS[cup.nextHeat].name}. Your hull stays; change drives before the next grid.`));
+      if(cup)for(const heat of cup.results)progress.appendChild(el('p','k-sentence',`${heat.name} · place ${heat.position} · ${formatRaceTime(heat.elapsedS)} · ${heat.points} ${pluralWord(heat.points, 'point', 'points')}`));
+      if(nextHeat){
+        progress.appendChild(el('p','k-sentence',`Heat ${cup.nextHeat+1}/3 · ${nextHeat.name}`));
         const end=el('button','k-word','End cup');end.type='button';end.addEventListener('click',()=>{abandonRacingCup();this.refresh(ctx);});progress.appendChild(end);
       }
       const best=readRacingCareer(storageOf()).cups[fit.raceDifficulty];
@@ -132,13 +143,13 @@ export const raceBoardScreen={
     if(current)rootEl.appendChild(el('p','k-sentence','A race is active. Finish it or use Leave run in the flight instrument before joining another.'));
     // One guarded launch path for START and the in-flight retry: the guard drops before the
     // first await so a double click can never stage two launches.
-    const launch=async(contractId,level,from='.race-board-launch')=>{
+    const launch=async(contractId,level,from='.race-board-launch',launchFit=fit)=>{
       if(this._launching)return;
       this._launching=true;
       rootEl.querySelectorAll('.race-board-launch,.race-board-retry').forEach(b=>{b.disabled=true;});
       cue('confirm');
       let launched=false;
-      try{launched=await runContract(ctx,contractId,level,{...fit});}finally{
+      try{launched=await runContract(ctx,contractId,level,{...launchFit});}finally{
         this._launching=false;
         if(this._root){
           this.refresh(ctx);
@@ -170,11 +181,27 @@ export const raceBoardScreen={
         `${pilot.position}. ${pilot.name} · ${pilot.status==='finished'?formatRaceTime(pilot.elapsedS):pilot.status==='dnf'?'Did not finish':'Still on course when you finished'}`));
       if(result.status==='dnf')receipt.appendChild(el('p','k-sentence','The run ended without a finish. Select the course to retry; your clean best is safe.'));
       const contract=raceContractById(result.racingContractId),level=contract&&raceLevelById(contract.levelId);
-      if(level){
-        const retry=el('button','k-word race-board-retry','Retry in this flight');retry.type='button';
+      const cupResult = result.raceMode === 'cup';
+      const retryableHeat = cupResult && result.status === 'dnf' && cup?.status === 'ready'
+        && cup.id === result.raceCupId && cup.ticket === result.raceCupTicket
+        && nextHeat?.contractId === contract?.id;
+      if (level && (!cupResult || retryableHeat)) {
+        const recordedMode = RACING_MODES.find(mode => mode.id === result.raceMode)?.id;
+        const recordedDifficulty = RACING_DIFFICULTIES.find(row => row.id === result.raceDifficulty)?.id;
+        const retryFit = {
+          ...fit,
+          raceMode: recordedMode || fit.raceMode,
+          raceDifficulty: retryableHeat ? cup.difficulty : (recordedDifficulty || fit.raceDifficulty),
+          starter: retryableHeat ? cup.starter : fit.starter,
+        };
+        const rerunsInFlight=retryFit.raceMode==='time-trial'&&level.temporaryOnly!==true&&!isRacingCorridorSession(ctx.state);
+        const retryLabel = retryableHeat ? 'Retry this heat'
+          : result.raceMode === 'time-trial' ? 'Retry Time Trial' : 'Retry circuit';
+        const retry=el('button','k-word race-board-retry',rerunsInFlight?'Retry in this flight':
+          retryLabel);retry.type='button';
         retry.disabled=!!current||!!this._launching||!inFlight(ctx)||!!ctx.state.ui?.docked||ctx.state.world?.currentSectorId!==level.sectorId;
-        retry.title=`Undock in ${level.name}'s sector to retry with your current ship. No new game or save reset.`;
-        retry.addEventListener('click',()=>launch(contract.id,level,'.race-board-retry'));receipt.appendChild(retry);
+        retry.title=rerunsInFlight?`Retry ${level.name} with your current ship.`:`Start ${level.name} in a new circuit flight.`;
+        retry.addEventListener('click',()=>launch(contract.id,level,'.race-board-retry',retryFit));receipt.appendChild(retry);
       }
       rootEl.appendChild(receipt);
     }
@@ -194,7 +221,8 @@ export const raceBoardScreen={
         const timeTrialOnly=level.temporaryOnly===true;
         const eligible=!!offer&&!(timeTrialOnly&&fit.raceMode!=='time-trial')
           &&(fit.raceMode!=='cup'||level.id===CUP_HEATS[continuing?cup.nextHeat:0]?.levelId);
-        entries.push({contractId:row.id,level,course,contract:row,offer,eligible,timeTrialOnly});
+        const title = row.practice ? course.courseName : row.title;
+        entries.push({contractId:row.id,level,course,contract:row,offer,eligible,timeTrialOnly,title});
       }
     }
     this._entries=entries;
@@ -214,15 +242,21 @@ export const raceBoardScreen={
     const start=el('button','race-board-launch','START');start.type='button';
     start.setAttribute('aria-label','Start the selected event');
     dressLampKey(start);
+    const startWord = start.querySelector('.orr-lampkey__word') || start;
     const selectControls=new Map();
     const applySelection=()=>{
       const entry=entries.find(e=>e.contractId===this._selectedContractId)||null;
       for(const [id,button] of selectControls)button.setAttribute('aria-pressed',String(!!entry&&id===entry.contractId));
       const heatIndex=entry?CUP_HEATS.findIndex(heat=>heat.levelId===entry.level.id):-1;
-      startTitle.textContent=entry?entry.contract.title:'No event selected';
-      startMeta.textContent=entry
-        ?`${entry.course.courseName} · ${modeRow.name}${fit.raceMode==='cup'&&heatIndex>=0?` · Cup heat ${heatIndex+1} of ${CUP_HEATS.length}`:''}`
-        :modeRow.name;
+      startTitle.textContent=entry?entry.title:'No event selected';
+      const courseName = entry && !entry.contract.practice ? entry.course.courseName : '';
+      const heatLabel = fit.raceMode === 'cup' && heatIndex >= 0
+        ? `Heat ${heatIndex + 1} of ${CUP_HEATS.length}` : '';
+      startMeta.textContent = [courseName, modeRow.name, heatLabel].filter(Boolean).join(' · ');
+      const startHeat = fit.raceMode === 'cup' && entry?.eligible && heatIndex >= 0;
+      const action = startHeat ? `Start Heat ${heatIndex + 1}` : 'Start';
+      startWord.textContent = action;
+      start.setAttribute('aria-label', startHeat ? action : 'Start the selected event');
       startStatus.textContent=!entry?'Select an event to start.'
         :current?'A race is active. Finish it before starting another.'
         :entry.eligible?'Ready to start.'
@@ -243,11 +277,12 @@ export const raceBoardScreen={
       const course=courseForLevel(level.id);
       if(!course)continue;
       for(const entry of entries.filter(e=>e.level===level)){
-        const {contractId,contract:row,offer,eligible,timeTrialOnly}=entry;
+        const {contractId,contract:row,offer,eligible,timeTrialOnly,title}=entry;
         const card=el('section','race-board-course dp-plate');
         card.dataset.contractId=contractId;
-        card.append(el('p','k-sentence',`CIRCUIT ${String(index+1).padStart(2,'0')} · ${course.courseName}`),el('h2','k-t-sub',row.title));
-        const map=createRacingMap(course.gates,`${row.title} on ${level.name}, start and finish`);
+        if (!row.practice) card.appendChild(el('p','k-sentence',course.courseName));
+        card.appendChild(el('h2','k-t-sub',title));
+        const map=createRacingMap(course.gates,`${title} start and finish`);
         if(map)card.appendChild(map.element);
         card.append(el('p','k-sentence',level.blurb),
           el('p','k-sentence',`${formatDistance(course.courseLengthWU)} / lap · ${course.gates.length-1} legs · start / finish aligned`));
@@ -259,12 +294,12 @@ export const raceBoardScreen={
           const earned=readRacingCareer(storageOf()).medals?.[level.id];
           if(earned)card.appendChild(el('p','k-sentence',`Your medal: ${earned.medal}`));
         }
-        card.appendChild(el('p','k-sentence',row.summary));
+        if (!row.practice) card.appendChild(el('p','k-sentence',row.summary));
         const recordPrefix=offer&&raceRecordKey(offer.params);
         const fitTimes=recordPrefix?Object.entries(records).filter(([key])=>key.startsWith(`${recordPrefix}:fit5-`)
           &&(fit.raceMode==='time-trial'?!key.includes(':pack-'):key.endsWith(`:pack-${fit.raceDifficulty}`))).map(([,time])=>time):[];
         const best=fitTimes.length?Math.min(...fitTimes):null;
-        card.appendChild(el('p','k-sentence',`${row.laps} ${pluralWord(row.laps, 'lap', 'laps')} · ${row.practice?'view optional':'chase view required'} · ${Number.isFinite(best)?`best across fits ${formatRaceTime(best)}`:'no clean fit record yet'}`));
+        card.appendChild(el('p','k-sentence',`${row.laps} ${pluralWord(row.laps, 'lap', 'laps')} · ${row.practice?'uses your camera setting':'chase camera required'} · ${Number.isFinite(best)?`best across fits ${formatRaceTime(best)}`:'no clean fit record yet'}`));
         if(timeTrialOnly&&fit.raceMode!=='time-trial'){
           card.appendChild(el('p','k-sentence','Select Time trial to fly this circuit.'));
         }else if(fit.raceMode==='cup'&&!eligible){
@@ -273,10 +308,10 @@ export const raceBoardScreen={
             ?`Cup heat ${heatIndex+1} of ${CUP_HEATS.length} — already finished.`
             :`Cup heat ${heatIndex+1>=0?heatIndex+1:CUP_HEATS.length} of ${CUP_HEATS.length} — finish the current heat to unlock.`));
         }
-        const pickList=words([{action:contractId,label:row.title}],{system:'light',
+        const pickList=words([{action:contractId,label:title}],{system:'light',
           ariaLabel:`Select event on ${level.name}`,onPick:()=>select(contractId)});
         const pickButton=pickList.querySelector&&pickList.querySelector('button');
-        if(pickButton){pickButton.setAttribute('aria-label',`Select ${row.title} on ${level.name}`);selectControls.set(contractId,pickButton);}
+        if(pickButton){pickButton.setAttribute('aria-label',row.practice?`Select ${title}`:`Select ${title} on ${level.name}`);selectControls.set(contractId,pickButton);}
         card.appendChild(pickList);
         grid.appendChild(card);
       }
@@ -303,7 +338,8 @@ export const raceBoardScreen={
         grid.appendChild(saved);
       }
     }
-    rootEl.appendChild(startPanel);
+    // A continuing cup puts the next action before its standings and last result.
+    rootEl.insertBefore(startPanel, nextHeat ? cupProgress : null);
     rootEl.appendChild(grid);
     applySelection();
     const career=readRacingCareer(storageOf()),paint=el('section','race-board-result dp-glass');
@@ -334,9 +370,34 @@ export const raceBoardScreen={
     rootEl.appendChild(paint);
     rootEl.appendChild(renderRacingRecognition(storageOf()));
     rootEl.appendChild(el('p','k-sentence','Fly through gates in order. In pack races, hold a matching line behind a rival to build draft; braking breaks it. Recovery keeps the clock running and excludes the attempt from clean best times. Records separate fitted ships, contract, lap count and course revision. Changing your fit during a run excludes it from clean records.'));
+    // the board root is the scroller: its fold and extent cursor follow every rebuild's height, so
+    // the last course card dissolves at the rim ("more below") instead of hard-cutting its
+    // sentence mid-glyph (bench 1440x900)
+    syncScrollExtent(rootEl);
   },
   // Screens are cached after mount; refresh on every reopen so records and results never stale.
-  refresh(ctx){if(this._root)this.mount(this._root,ctx);},
+  onShow(){this._arriving=true;},
+  refresh(ctx){
+    if(!this._root)return;
+    // screenManager calls onShow before refresh on every show, so an open consumes the arrival
+    // pass here; a fit or ghost change inside the board refreshes without onShow and stays still.
+    const arriving=this._arriving;this._arriving=false;
+    this.mount(this._root,ctx);
+    if(arriving)this._arriveIn();
+  },
+  // Arrival (ORRERY §3.5): title, tools, mode note, cup/receipt/start plate, then each course
+  // card, paint, recognition and the flying rules — each rising in turn.
+  _arriveIn(){
+    const rootEl=this._root;
+    if(!rootEl||reducedMotion())return;
+    const units=[];
+    for(const unit of rootEl.children){
+      if(unit.classList&&unit.classList.contains('race-board-grid'))units.push(...unit.children);
+      else units.push(unit);
+    }
+    stagger(units,{base:40,step:45});
+    for(const unit of units)unit.classList.add('orr-rise');
+  },
   unmount(){if(this._root)this._root.replaceChildren();this._root=null;
     this._entries=null;this._selectControls=null;this._selectedContractId=null;this._launching=false;},
   dispose(){this.unmount();},

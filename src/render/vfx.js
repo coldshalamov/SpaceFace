@@ -417,9 +417,11 @@ import {
   writeStormZoneGeometry,
 } from './stormZoneField.js';
 import {
+  APRON_FLOOD_INDICES_PER_QUAD,
   APRON_FLOOD_MAX_RANGE_WU,
   APRON_FLOOD_STATION_CAP,
   buildApronFloodLayout,
+  APRON_FLOOD_VERTICES_PER_QUAD,
   createApronFloodGeometry,
   resolveApronFloodPlan,
   writeApronFloodGeometry,
@@ -5846,8 +5848,8 @@ export const vfx = {
     // saveSystem._clearEntities() emits reason:'save_restore' for every live entity before
     // rehydrate — silent despawn only (no explosion/particles/lights). Prevents F9 restore
     // from filling the particle cap and hitching 100–250ms. Real combat/mining/sector destroys
-    // omit this reason and still explode.
-    if (p && p.reason === 'save_restore') return;
+    // still explode. Intact Counterweight course bodies retire silently after scoring.
+    if (p?.reason === 'save_restore' || p?.reason === 'counterweight_retire') return;
     if (!this._scene) return;
     const t = p.type;
     if (t === 'projectile' || t === 'pickup' || t === 'fx') return;
@@ -6955,6 +6957,7 @@ export const vfx = {
     beam.shaderShared.stop.value = -1;
     beam.release = 0;
     beam.active = true;
+    beam.cutContact = null;
     this._miningBeam.targetId = (p && p.targetId) || null;
     this._miningBeam.verb = (p && p.verb) || 'extract';
     beam.shaderShared.verb.value = beam.verb === 'cut' ? 1 : beam.verb === 'repair' ? 2 : beam.verb === 'transfer' ? 3 : 0;
@@ -7019,7 +7022,15 @@ export const vfx = {
     }
     const dx = sxG - destination.x, dz = szG - destination.z, dist = Math.hypot(dx, dz) || 1;
     const r = target.radius || 6;
-    const txG = destination.x + dx / dist * r, tzG = destination.z + dz / dist * r;
+    let txG = destination.x + dx / dist * r;
+    let tzG = destination.z + dz / dist * r;
+    if (beam.cutContact) {
+      const yaw = presentedAnchorRot(target, alpha);
+      const c = Math.cos(yaw), s = Math.sin(yaw);
+      const { x, z } = beam.cutContact;
+      txG = destination.x + x * c - z * s;
+      tzG = destination.z + x * s + z * c;
+    }
     const start = this._toLocalXZ(sxG, szG, this._spawnLocalXZ);
     const end = this._toLocalXZ(txG, tzG, this._entityLocalXZ);
     beam.shaderShared.start.value.set(start.x, sy, start.z);
@@ -8376,7 +8387,9 @@ export const vfx = {
     dc.mesh.geometry.setDrawRange(0, geometry.indexCount);
     dc.mesh.geometry.attributes.position.needsUpdate = true;
     dc.mesh.geometry.attributes.color.needsUpdate = true;
-    dc.mesh.material.opacity = Math.min(0.85, cradle.visible01 * 0.85);
+    // The pilot's near-field course and docking chip carry the call to action.
+    // Keep the projected hardware legible over the hull without washing out the berth.
+    dc.mesh.material.opacity = cradle.visible01 * 0.36;
     dc.mesh.visible = true;
     return true;
   },
@@ -8679,7 +8692,7 @@ export const vfx = {
         }
         if (!layout.data.live) continue;
         const plan = resolveDockApproachPlan(row, readout, now, reduced, da.plan);
-        writeDockApproachGeometry(scratch, layout.data, plan, { gain, base });
+        writeDockApproachGeometry(scratch, layout.data, plan, { gain: gain * .62, base });
         base = scratch.indexCount / 6;
         live += 1;
       }
@@ -8910,7 +8923,7 @@ export const vfx = {
         if (!layout.data.live) continue;
         const plan = resolveApronFloodPlan(row, readout, now, reduced, af.plan);
         writeApronFloodGeometry(scratch, layout.data, plan, { gain, base });
-        base = scratch.indexCount / 6;
+        base = scratch.indexCount / APRON_FLOOD_INDICES_PER_QUAD;
         live += 1;
       }
     }
@@ -8923,7 +8936,7 @@ export const vfx = {
       return false;
     }
     const positions = scratch.positions;
-    for (let vertex = 0; vertex < (scratch.indexCount / 6) * 4; vertex += 1) {
+    for (let vertex = 0; vertex < base * APRON_FLOOD_VERTICES_PER_QUAD; vertex += 1) {
       const offset = vertex * 3;
       const local = this._toLocalXZ(positions[offset], positions[offset + 2], this._spawnLocalXZ);
       positions[offset] = local.x;
@@ -10238,6 +10251,11 @@ export const vfx = {
 
   _onMiningTick(p) {
     if (!this._scene) return;
+    const beam = this._miningBeam;
+    if (beam?.active && p?.sourceEntityId === this.state.playerId && p.targetId === beam.targetId
+      && Number.isFinite(p.contactLocal?.x) && Number.isFinite(p.contactLocal?.z)) {
+      beam.cutContact = p.contactLocal;
+    }
     const pos = this._posFrom(p, null);
     if (!pos) return;
     const col = oreColor(p.oreType);
@@ -13921,7 +13939,7 @@ export const vfx = {
     if (deliberateBrake && !this._retroBrakeEngaged && !(a11y && a11y.reducedMotion)) {
       const ctrl = this.state.render && this.state.render.cameraCtrl;
       if (ctrl && typeof ctrl.pushZoom === 'function') ctrl.pushZoom(-0.014, 0.32);
-      if (ctrl && typeof ctrl.impactKick === 'function') ctrl.impactKick(-vx, -vz, 0.34);
+      if (ctrl && typeof ctrl.impactKick === 'function') ctrl.impactKick(-vx, -vz, 0.34, 'boost');
     }
     this._retroBrakeEngaged = deliberateBrake;
 

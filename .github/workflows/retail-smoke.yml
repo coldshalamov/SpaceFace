@@ -1,9 +1,9 @@
-# Retail smoke: build the bundle players actually receive, serve it, and boot it.
+# Retail smoke: launch and fly the bundle players actually receive.
 #
 # Every other browser job in check.yml boots the raw-ES-module dev route. The route a player gets is the
 # esbuild bundle (`npm run build:bundle` -> build/web: minified, code-split, SF_DEBUG_ONLY stripped), and a
 # bundle can build green yet throw on its first line, 404 a chunk, or leak window.SF. This job builds the
-# exact Vercel artifact and demands the title menu in headless Chromium on SOFTWARE GL (no GPU).
+# exact Vercel artifact and exercises Adventure and Swarm launch and forward thrust in headless Chromium on software GL.
 # See scripts/check-retail-boot.mjs for the checks and the reasons behind each choice.
 #
 # It is deliberately NOT part of the `check` chain or check.yml's four groups: the build is ~900 MB and takes
@@ -25,7 +25,7 @@ concurrency:
 jobs:
   retail-boot:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 55
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,10 +57,13 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Build the retail bundle, serve it, boot it to the title menu
+      - name: Build the retail bundle and fly through the New Game route
         run: npm run check:retail-boot
 
-      - name: Upload the retail boot report and picture
+      - name: Fly Swarm round one on the same retail bundle
+        run: npm run check:retail-boot -- --use-existing --mode=swarm --out=.devshots/retail-boot/swarm
+
+      - name: Upload the retail playability report and pictures
         if: always()
         uses: actions/upload-artifact@v4
         with:

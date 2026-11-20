@@ -30,6 +30,8 @@ import { WEAPONS } from '../../data/weapons.js';
 import { BODY_MODULES } from '../../data/claimableBodies.js';
 import { escapeMarkup as escapeHtml } from '../views/identity.js';
 import { entitySpanHtml } from '../entityResolver.js';
+import { hullPosterUrl } from '../hullPosters.js';
+import { itemThumbHtml, injectItemThumbnailStyles } from '../icons/itemThumbnails.js';
 import { el, settle, cue } from '../kit/index.js';
 import { wrapCanvasLines } from '../../localization/layout.js';
 import { injectDeckplate, dpIcon } from '../deckplate/index.js';
@@ -91,18 +93,21 @@ function nodeGlyphName(node) {
   if ((u.modules || []).some((m) => /^wpn_/.test(m))) return 'weapon';
   return 'module';
 }
-/** An unlock's picture on its ledger line: the hull's lit silhouette when one was rendered, else its kind's glyph. */
-const HULL_JIG = new Set(['ship_wasp', 'ship_hornet', 'ship_kestrel', 'ship_pelican']);
+/** An unlock's picture on its ledger line: the hull's lit silhouette when rendered, or its studio thumbnail. */
 function unlockArtHtml(ref) {
   const [kind, id] = String(ref).split(':');
-  if (kind === 'hull' && HULL_JIG.has(id)) {
-    let url = `/assets/ui/renders/hulls/${id}.holo.webp`;
-    try { url = new URL(`../../../assets/ui/renders/hulls/${id}.holo.webp`, import.meta.url).href; } catch (_) { /* the root path */ }
-    return `<img class="con-row__img" src="${url}" alt="" draggable="false" decoding="async">`;
+  if (kind === 'hull') {
+    const holo = hullPosterUrl(id, 'holo');
+    if (holo) return `<img class="con-row__img" src="${holo}" alt="" draggable="false" decoding="async">`;
+    return itemThumbHtml({ id, kind: 'hull' }, { size: 'sm', showCrest: false, className: 'con-row__thumb' });
   }
+  const thumb = itemThumbHtml(
+    { id, kind: kind === 'weapon' ? 'weapon' : undefined },
+    { size: 'sm', showCrest: true, className: 'con-row__thumb' }
+  );
+  if (thumb) return thumb;
   let icon = 'module';
-  if (kind === 'hull') icon = 'hull';
-  else if (/^wpn_/.test(id)) icon = 'weapon';
+  if (/^wpn_/.test(id)) icon = 'weapon';
   else if (/shield|aegis|deflect|chaff|decoy/.test(id)) icon = 'shield';
   else if (/mining|pulverizer/.test(id)) icon = 'mining';
   else if (/engine|afterburner|jump|swing_drive|warp/.test(id)) icon = 'engine';
@@ -236,6 +241,7 @@ export const techTreeScreen = {
   mount(rootEl, ctx) {
 
     injectDeckplate();
+    if (typeof document !== 'undefined') injectItemThumbnailStyles(document);
     this._markCssReady = deferScreenCssReady(rootEl, injectConstellationScreens());
     injectTechTreeScreens();
     this._ctx = ctx;
@@ -268,7 +274,7 @@ export const techTreeScreen = {
     curveBtn.type = 'button';
     curveBtn.setAttribute('aria-expanded', 'false');
     curveBtn.setAttribute('aria-controls', 'sf-curve-ladder');
-    curveBtn.appendChild(el('span', 'con-curve__key', 'A verb every hour'));
+    curveBtn.appendChild(el('span', 'con-curve__key', 'One new verb every hour'));
     const curveFull = hourVerbCurveLine();
     // Each rung is its own nowrap span on a one-line wrapping row, so a narrow head drops whole
     // rungs instead of cutting one mid-word with an ellipsis (tech-treeLayouts.js).

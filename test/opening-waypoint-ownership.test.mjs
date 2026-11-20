@@ -22,12 +22,15 @@ import {
   onboarding as onboardingProto,
 } from '../src/systems/onboarding.js';
 import {
+  missionLogScreen,
   recommendedActions,
   stagedOpeningOwnsCommand,
 } from '../src/ui/screens/missionLog.js';
-import { commitCoursePayload } from '../src/ui/galaxyMap.js';
+import { commitCoursePayload, resolveMapOpenTarget } from '../src/ui/galaxyMap.js';
+import { takeMapOpenIntent } from '../src/ui/mapAuthority.js';
 import { flightV3 } from '../src/systems/flightV3.js';
 import { world as worldProto } from '../src/systems/world.js';
+import { ensurePadWalkDocument } from '../scripts/lib/pq16400-gamepad-screens.mjs';
 
 function harness({ tutorialHints = true, seed = 47 } = {}) {
   const state = createGameState(seed);
@@ -145,6 +148,66 @@ test('default New Game: cold-start tracks 47-A without claiming a mission waypoi
   );
   assert.equal(actions[0].label, 'STORY', 'opening CURRENT ACTION is the story first-route');
   assert.match(actions[0].title, /Follow the anomaly/i);
+});
+
+test('the opening Mission Log names its existing recovery marker and opens it on the chart once', () => {
+  const h = harness();
+  h.asteroid.pos = { x: 1500, z: 0 };
+  h.asteroid.occupantGeneration = 1;
+  h.onboarding.registry = { get: key => key === 'missions' ? h.missions : null };
+  h.bus.emit('game:started');
+  h.state.onboarding.currentBeat = BEATS.findIndex(beat => beat.key === 'seam');
+  h.onboarding._setObjectiveWaypoint(true);
+  const mission = h.state.missions.active.find(m => m.storyTag === CONTRACT_47A_B0_TAG);
+  const marker = h.state.nav.waypoint;
+  assert.equal(marker.markerId, 'onboarding:seam');
+  assert.equal(marker.presentationEntityId, h.asteroid.id);
+  assert.match(marker.reason, /Open the Chart.*track 47-A/);
+  // The live surface can receive its objective marker before the tracked-id mirror.
+  h.state.ui.trackedMissionId = null;
+  h.state.ui.screenStack = ['missionLog'];
+
+  ensurePadWalkDocument();
+  const screen = Object.create(missionLogScreen);
+  const root = document.createElement('div');
+  document.body.appendChild(root);
+  const opened = [];
+  const navigationEvents = [];
+  h.bus.on('ui:trackMission', event => navigationEvents.push(event));
+  h.bus.on('ui:setCourse', event => navigationEvents.push(event));
+  try {
+    screen.mount(root, { state: h.state, bus: h.bus,
+      screenManager: { top: () => 'missionLog', pushScreen: id => opened.push(id) },
+    });
+    const current = root.querySelectorAll('[data-current-action="true"]');
+    assert.equal(current.length, 1);
+    assert.match(current[0].textContent, /Follow the anomaly/);
+    assert.match(current[0].textContent, /47-A Recovery Site/);
+    assert.doesNotMatch(current[0].textContent, /No goal marker yet/i);
+    const chart = root.querySelectorAll('[data-map-selection-target="47a-recovery-fix"]');
+    assert.equal(chart.length, 1);
+    assert.equal(root.querySelector('.sf-mlog-btn-track'), null, 'the current marker only needs a Chart action');
+    chart[0].click();
+    assert.deepEqual(opened, ['galaxyMap']);
+    const intent = takeMapOpenIntent(h.state);
+    const target = resolveMapOpenTarget(h.state, intent);
+    assert.equal(target.missionId, mission.id);
+    assert.equal(target.missionFix, true);
+    assert.deepEqual({ x: target.x, z: target.z }, h.asteroid.pos);
+    assert.equal(h.state.nav.waypoint, marker);
+    assert.deepEqual(navigationEvents, []);
+
+    const detour = { kind: 'local', pos: { x: 80, z: 650 }, label: 'Pilot detour' };
+    h.state.nav.waypoint = detour;
+    screen.refresh();
+    assert.equal(root.querySelectorAll('[data-map-selection-target="47a-recovery-fix"]').length, 0);
+    assert.ok(root.querySelector('.sf-mlog-btn-track'), 'the normal Track action remains available');
+    assert.equal(h.state.nav.waypoint, detour);
+    assert.deepEqual(navigationEvents, []);
+  } finally {
+    screen.onHide();
+    root.remove();
+  }
 });
 
 test('automatic tether entry yields to an armed player course, which can explicitly retarget the derelict', () => {

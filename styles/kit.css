@@ -458,13 +458,13 @@ body.k-screen-top #modal-backdrop { background: none; }
 .k-screen .sf-drawer__verb { all: unset; cursor: pointer; font: 500 var(--k-fs-emph) var(--k-text); color: var(--k-signal); }
 .k-screen .sf-drawer__x { all: unset; cursor: pointer; font-size: var(--k-fs-body); color: var(--k-bone-62); }
 
-/* Popup surfaces share an alloy field, a role-specific instrument mark and a readable edge. */
+/* The shared floating surface for decisions, messages and receipts. */
 :root {
   --sf-pop-emblem: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9' stroke-width='1.2'/%3E%3Cpath d='M12 1.4v2.8M12 19.8v2.8M1.4 12h2.8M19.8 12h2.8' stroke-width='1.2'/%3E%3Cpath d='M12 12l6.3-6.3' stroke-width='2.1'/%3E%3C/g%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3C/svg%3E");
   --sf-pop-scrim: radial-gradient(120% 90% at 50% 44%, rgb(5 7 10 / .6) 0%, rgb(5 7 10 / .9) 100%);
-  --sf-pop-glass: linear-gradient(125deg, #202e38, #141d26 54%, #10171e);
-  --sf-pop-seam: color-mix(in srgb, var(--dp-phos, #dfeeff) 32%, #16242d);
-  --sf-pop-shadow: 0 16px 44px rgb(0 0 0 / .48);
+  --sf-pop-glass: linear-gradient(155deg, #20262a, #14191e 58%, #101419);
+  --sf-pop-seam: var(--dp-rule-hi, rgb(232 226 212 / .22));
+  --sf-pop-shadow: 0 14px 34px rgb(0 0 0 / .42);
   --sf-pop-seal: url("../assets/ui/orrery/clearance-marks.svg#seal");
   --sf-pop-interlock: url("../assets/ui/orrery/clearance-marks.svg#interlock");
   --sf-pop-record: url("../assets/ui/orrery/clearance-marks.svg#record");
@@ -488,19 +488,19 @@ body.k-screen-top #modal-backdrop { background: none; }
 #sf-confirm-root.sf-confirm--in { opacity: 1; }
 .sf-confirm {
   position: relative; box-sizing: border-box; display: flex; flex-direction: column;
-  width: min(100%, 540px); min-width: 0; max-height: 100%; overflow-y: auto; overscroll-behavior: contain;
-  gap: 14px; padding: clamp(18px, 3vw, 30px);
+  width: min(100%, 506px); min-width: 0; max-height: 100%; overflow-y: auto; overscroll-behavior: contain;
+  gap: 12px; padding: clamp(18px, 3vw, 28px); border-radius: 8px;
   background: var(--sf-pop-glass); border: 1px solid var(--sf-pop-seam);
-  border-top: 2px solid var(--dp-phos, #dfeeff); box-shadow: var(--sf-pop-shadow);
+  box-shadow: var(--sf-pop-shadow);
   animation: sf-pop-tip 160ms var(--sf-pop-settle) backwards;
 }
 .sf-confirm--danger { border-top-color: var(--dp-danger-hot, #ff8a70); }
 .sf-confirm__head { display: flex; align-items: center; gap: 10px; }
+.sf-confirm:not(.sf-confirm--danger) .sf-confirm__head { display: none; }
 .sf-confirm__head::before {
-  content: ""; flex: none; width: 44px; height: 44px; background: var(--sf-pop-seal) center / contain no-repeat;
+  content: ""; flex: none; width: 24px; height: 24px; background: var(--sf-pop-seal) center / contain no-repeat;
 }
 .sf-confirm--danger .sf-confirm__head::before { background-image: var(--sf-pop-interlock); }
-.sf-confirm__head::after { content: ""; flex: 1; height: 1px; background: var(--dp-rule-hi, rgb(232 226 212 / .22)); }
 .sf-confirm__flag { font: 650 13px/1.3 var(--dp-face-etch, "Archivo", sans-serif);
   letter-spacing: .06em; text-transform: uppercase; color: var(--dp-phos, #dfeeff); }
 .sf-confirm__flag--danger { color: var(--dp-danger-hot, #ff8a70); }
@@ -517,18 +517,17 @@ body.k-screen-top #modal-backdrop { background: none; }
 /* Verbs: pressable fields with the one cut (top-right 45°, painted by the fill gradient —
    deckplate CUT_FILL). Focus latches a bracket round the key; the destructive verb floods red
    on intent and keeps a red rule at rest. */
-.sf-confirm__keys { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; padding-top: 14px; border-top: 1px solid var(--dp-rule-hi); }
+.sf-confirm__keys { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--dp-rule); }
 .sf-confirm__key { all: unset; box-sizing: border-box; cursor: pointer; position: relative;
   display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 42px; min-width: 0; max-width: 100%; padding: 8px 18px; overflow-wrap: anywhere;
-  font-family: var(--dp-face-etch, "Archivo", "Instrument Sans", system-ui, sans-serif);
-  font-variation-settings: "wght" 700, "wdth" 96; font-size: var(--k-fs-data);
-  letter-spacing: .055em; text-transform: uppercase; line-height: 1.25;
+  font: 650 14px/1.25 var(--dp-face-read, "Instrument Sans", system-ui, sans-serif);
+  border-radius: 4px;
   color: var(--dp-ink, #e8e2d4);
-  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-field-ink, rgb(232 226 212 / .08)) 0);
+  background: var(--dp-field-ink, rgb(232 226 212 / .08));
   transition: color 140ms var(--sf-pop-settle), background 140ms var(--sf-pop-settle), box-shadow 200ms var(--sf-pop-settle), transform 90ms var(--sf-pop-settle); }
 .sf-confirm__key:hover, .sf-confirm__key:focus-visible {
   color: var(--dp-lamp-hot, #ffd98c);
-  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-field-ink-hi, rgb(232 226 212 / .14)) 0); }
+  background: var(--dp-field-ink-hi, rgb(232 226 212 / .14)); }
 .sf-confirm__cancel { border: 1px solid var(--sf-pop-seam); }
 .sf-confirm__key:active { transform: translateY(1px); }
 .sf-drawer__verb::after, .sf-drawer__x::after { content: ""; position: absolute; inset: -6px; pointer-events: none; opacity: 0; transform: scale(1.08);
@@ -546,17 +545,15 @@ body.k-screen-top #modal-backdrop { background: none; }
 #sf-confirm-root .sf-confirm__key:focus-visible { outline: 2px solid var(--dp-lamp-hot) !important; outline-offset: 2px; }
 .sf-drawer__verb:focus-visible::after, .sf-drawer__x:focus-visible::after { opacity: 1; transform: none; }
 .sf-confirm__key--lamp { color: var(--dp-metal-0, #10131a);
-  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-lamp, #f2b950) 0);
+  background: var(--dp-lamp, #f2b950);
   font-variation-settings: "wght" 800, "wdth" 100; }
 .sf-confirm__key--lamp:hover, .sf-confirm__key--lamp:focus-visible {
   color: var(--dp-metal-0, #10131a);
-  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-lamp-hot, #ffd98c) 0);
-  box-shadow: 0 0 22px var(--dp-lamp-bloom, rgb(242 185 80 / .35)); }
+  background: var(--dp-lamp-hot, #ffd98c); }
 .sf-confirm__key--hazard { box-shadow: inset 0 -2px 0 var(--dp-danger, #ff5038); }
 .sf-confirm__key--hazard:hover, .sf-confirm__key--hazard:focus-visible {
   color: var(--dp-metal-0, #10131a);
-  background: linear-gradient(225deg, transparent calc(12px * .7071), var(--dp-danger, #ff5038) 0);
-  box-shadow: 0 0 22px var(--dp-danger-bloom, rgb(255 80 56 / .4)); }
+  background: var(--dp-danger, #ff5038); }
 /* The Esc legend: an etched cap, filled not boxed. */
 .sf-confirm__kbd { display: inline-block; padding: 4px 7px 3px; border: 0; border-radius: 0;
   background: var(--dp-field-ink, rgb(232 226 212 / .08));
@@ -587,7 +584,7 @@ html.sf-reduce-motion .sf-confirm__key:active { transform: none; }
 /* ── Tier-2 tooltip (whyReveal.js) ───────────────────────────────────────────────────────────── */
 #sf-why-tip { position: fixed; max-width: min(42ch, calc(100vw - 24px)); box-sizing: border-box;
   white-space: pre-line; pointer-events: none; z-index: 1100;
-  padding: 12px 16px; border: 1px solid var(--sf-pop-seam); border-inline-start: 3px solid var(--dp-phos, #dfeeff);
+  padding: 12px 16px; border: 1px solid var(--sf-pop-seam); border-radius: 6px;
   background: var(--sf-pop-glass); box-shadow: var(--sf-pop-shadow); overflow-wrap: anywhere;
   font: 500 14px/1.5 var(--dp-face-read, "Instrument Sans", system-ui, sans-serif); letter-spacing: .005em; color: var(--dp-ink, #e8e2d4);
   text-wrap: pretty; animation: sf-pop-tip 160ms var(--sf-pop-settle) backwards; }

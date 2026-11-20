@@ -17,7 +17,8 @@
 // the hailed stranger inside pushWindowS, or the player actively tethered to the stranger
 // (real tether seams via towWatch). A stranger that merely drifts near a dock credits nobody.
 
-import { attachTowWatch, towTargetIdOf } from './towWatch.js';
+import { resolveActiveSimMode, SIM_MODE } from '../../core/catchupPolicy.js';
+import { towLatch, towRelease, towTargetIdOf } from './towWatch.js';
 import { plantMapOrder } from '../plantEntityViews.js';
 import { indexedTypeScan } from '../../world/livingWorldViews.js';
 
@@ -45,6 +46,11 @@ export const STRANGER_DELIVERED_LINE = 'Made it. Thanks to you.';
 function finite(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
+}
+
+function civilianRescueActive(state) {
+  // Swarm uses flight mode too and shares the plant scheduler.
+  return !!state && (!state.mode || state.mode === 'flight') && resolveActiveSimMode(state) !== SIM_MODE.SWARM;
 }
 
 /**
@@ -125,11 +131,16 @@ export const otherSidePlant = {
     if (this.bus && typeof this.bus.on === 'function') {
       this._otherSideOff = [
         this.bus.on('physics:impact', (p) => this._onOtherSideImpact(p)),
+        this.bus.on('tether:snapCatch', (p) => {
+          if (civilianRescueActive(this.state)) {
+            towLatch(this._otherSideTowMemory, p, finite(this.state.simTime));
+          }
+        }),
+        this.bus.on('massline:releaseValidated', (p) => towRelease(this._otherSideTowMemory, p?.entityId)),
         this.bus.on('sector:exit', () => this._otherSideReset()),
         this.bus.on('save:loaded', () => this._otherSideReset()),
       ];
     }
-    attachTowWatch(this, 'otherSide', () => this._otherSideTowMemory);
   },
 
   _otherSideReset() {
@@ -144,7 +155,7 @@ export const otherSidePlant = {
 
   /** physics:impact receipt: the player's own hull contact with a hailed stranger. */
   _onOtherSideImpact(payload) {
-    if (!payload || !this.state || (this.state.mode && this.state.mode !== 'flight')) return;
+    if (!payload || !civilianRescueActive(this.state)) return;
     if (payload.causalActorId !== this.state.playerId) return;
     const now = finite(this.state.simTime, 0);
     const hitId = payload.aId === this.state.playerId ? payload.bId : payload.aId;
@@ -165,7 +176,7 @@ export const otherSidePlant = {
   },
 
   update() {
-    if (!this.state || (this.state.mode && this.state.mode !== 'flight')) return;
+    if (!civilianRescueActive(this.state)) return;
     const now = finite(this.state.simTime, 0);
     const player = this._otherSideEntityById(this.state.playerId);
     if (!player || player.alive === false || !player.pos) return;

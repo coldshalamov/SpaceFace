@@ -10,9 +10,31 @@ import { build } from 'esbuild';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const out=process.env.RACING_ARTIFACT_DIR || path.join(os.tmpdir(),'spaceface-racing-ui');
 await fs.mkdir(out,{recursive:true});
-const entry="import {raceBoardScreen} from './src/ui/screens/raceBoard.js';\nimport {mountRacingHud} from './src/ui/racingHud.js';\nimport {createBus} from './src/core/eventBus.js';\nimport {createUiInput} from './src/ui/input.js';\nimport {racingOfferFor,raceGateGlobals} from './src/data/raceLevels.js';\nimport {observeRacingGhost} from './src/systems/racingGhosts.js';\nimport {rememberRaceRecord,raceRecordKey} from './src/systems/racingSteer.js';\n\nconst bus=createBus(),events=[];let open=true;\nfor(const event of ['game:new','race:reset','race:abort','race:toggleView','settings:changed','ui:setShipAppearance'])bus.on(event,p=>events.push([event,p]));\nconst player={id:1,alive:true,pos:{x:0,z:0},rot:0,vel:{x:0,z:0}};\nconst state={mode:'menu',simTime:0,settings:{gameplay:{},video:{}},ui:{},input:{actions:{}},entities:new Map([[1,player]]),playerId:1,world:{currentSectorId:'sector_helios_prime'},missions:{active:[]},render:{}};\nconst screenManager={isOpen:()=>open,activeId:()=>open?'raceBoard':null,activeDef:()=>null,getActiveScreenDef:()=>({id:'raceBoard'}),pushScreen:()=>{open=true;document.querySelector('#screens').hidden=false;raceBoardScreen.refresh(ctx);},popScreen:()=>{open=false;document.querySelector('#screens').hidden=true;}};\nconst ctx={state,bus,screenManager,registry:{get:()=>null}};\nraceBoardScreen.mount(document.querySelector('#board'),ctx);\nconst hud=mountRacingHud({root:document.querySelector('#ui-root'),bus,state,screens:screenManager});\nconst keys=createUiInput(ctx,screenManager);\nwindow.probe={ctx,state,bus,player,events,hud,keys,screenManager,board:raceBoardScreen,\n free(){state.mode='flight';state.missions.active=[];screenManager.popScreen();state.simTime++;hud.frame();},\n race(id='contract_textile_qual'){this.free();const offer=racingOfferFor(id);offer.params.gridUntilSimS=state.simTime+3.2;offer.status='active';state.missions.active=[offer];Object.assign(player.pos,raceGateGlobals(offer.params)[0]);state.world.currentSectorId=offer.params.courseSectorId;state.simTime+=.2;hud.frame();},\n tick(dt){state.simTime+=dt;hud.frame();},\n reopen(){screenManager.pushScreen('raceBoard');state.simTime++;hud.frame();},\n record(){const p=racingOfferFor('contract_textile_qual').params;rememberRaceRecord(localStorage,raceRecordKey(p),42.34);},\n ghost(){const p={racingContractId:'ui_ghost',courseId:'circuit_helios_belt',courseRevision:1,courseSectorId:'sector_helios_prime',gates:[{x:0,z:0},{x:50,z:0},{x:100,z:0}],laps:1,gridUntilSimS:0,raceStartSimS:0};const craft={id:1,alive:true,pos:{x:0,z:0},rot:0,vel:{x:100,z:0},mass:10,data:{shipDefId:'ship_wasp'}};const st={mode:'flight',simTime:0,playerId:1,entities:new Map([[1,craft]]),settings:{gameplay:{}},world:{frameOrigin:{x:0,z:0}}};let result;for(let i=0;i<=60;i++){st.simTime=i/60;craft.pos.x=st.simTime*100;const events=i===1?[{lap:0,gateIndex:0,elapsedS:st.simTime}]:i===30?[{lap:0,gateIndex:1,elapsedS:st.simTime}]:i===60?[{lap:0,gateIndex:2,elapsedS:st.simTime,finished:true}]:[];if(i===60)p.raceClean=true;result=observeRacingGhost(p,craft,st,{events,finish:i===60,storage:localStorage});}return result;},\n result(){bus.emit('mission:completed',{racingContractId:'contract_textile_qual',raceElapsedS:42.34,raceClean:true,raceBand:'razor',raceLapTimesS:[42.34]});},\n dispose(){hud.dispose();keys.dispose();raceBoardScreen.dispose();}\n};window.ready=true;\n";
+const entry="import {raceBoardScreen} from './src/ui/screens/raceBoard.js';\nimport {mountRacingHud} from './src/ui/racingHud.js';\nimport {createBus} from './src/core/eventBus.js';\nimport {createUiInput} from './src/ui/input.js';\nimport {racingOfferFor,raceGateGlobals} from './src/data/raceLevels.js';\nimport {observeRacingGhost} from './src/systems/racingGhosts.js';\nimport {rememberRaceRecord,raceRecordKey} from './src/systems/racingSteer.js';\n\nconst bus=createBus(),events=[];let open=true;\nfor(const event of ['game:new','race:reset','race:abort','race:toggleView','settings:changed','ui:setShipAppearance'])bus.on(event,p=>events.push([event,p]));\nconst player={id:1,alive:true,pos:{x:0,z:0},rot:0,vel:{x:0,z:0}};\nconst state={mode:'menu',simTime:0,settings:{gameplay:{},video:{}},ui:{},input:{actions:{}},entities:new Map([[1,player]]),playerId:1,world:{currentSectorId:'sector_helios_prime'},missions:{active:[]},render:{}};\nconst screenManager={isOpen:()=>open,activeId:()=>open?'raceBoard':null,activeDef:()=>null,getActiveScreenDef:()=>({id:'raceBoard'}),pushScreen:()=>{open=true;document.querySelector('#screens').hidden=false;raceBoardScreen.refresh(ctx);},popScreen:()=>{open=false;document.querySelector('#screens').hidden=true;}};\nconst ctx={state,bus,screenManager,registry:{get:()=>null}};\nraceBoardScreen.mount(document.querySelector('#board'),ctx);\nconst hud=mountRacingHud({root:document.querySelector('#ui-root'),bus,state,screens:screenManager});\nconst keys=createUiInput(ctx,screenManager);\nwindow.probe={ctx,state,bus,player,events,hud,keys,screenManager,board:raceBoardScreen,\n free(){state.mode='flight';state.missions.active=[];screenManager.popScreen();state.simTime++;hud.frame();},\n race(id='contract_textile_qual'){this.free();const offer=racingOfferFor(id);offer.params.gridUntilSimS=state.simTime+3.2;offer.status='active';state.missions.active=[offer];Object.assign(player.pos,raceGateGlobals(offer.params)[0]);state.world.currentSectorId=offer.params.courseSectorId;state.simTime+=.2;hud.frame();},\n tick(dt){state.simTime+=dt;hud.frame();},\n reopen(){screenManager.pushScreen('raceBoard');state.simTime++;hud.frame();},\n record(){const p=racingOfferFor('contract_textile_qual').params;rememberRaceRecord(localStorage,raceRecordKey(p),42.34);},\n ghost(){const p={racingContractId:'ui_ghost',courseId:'circuit_helios_belt',courseRevision:1,courseSectorId:'sector_helios_prime',gates:[{x:0,z:0},{x:50,z:0},{x:100,z:0}],laps:1,gridUntilSimS:0,raceStartSimS:0};const craft={id:1,alive:true,pos:{x:0,z:0},rot:0,vel:{x:100,z:0},mass:10,data:{shipDefId:'ship_wasp'}};const st={mode:'flight',simTime:0,playerId:1,entities:new Map([[1,craft]]),settings:{gameplay:{}},world:{frameOrigin:{x:0,z:0}}};let result;for(let i=0;i<=60;i++){st.simTime=i/60;craft.pos.x=st.simTime*100;const events=i===1?[{lap:0,gateIndex:0,elapsedS:st.simTime}]:i===30?[{lap:0,gateIndex:1,elapsedS:st.simTime}]:i===60?[{lap:0,gateIndex:2,elapsedS:st.simTime,finished:true}]:[];if(i===60)p.raceClean=true;result=observeRacingGhost(p,craft,st,{events,finish:i===60,storage:localStorage});}return result;},\n result(){bus.emit('mission:completed',{racingContractId:'contract_textile_qual',raceMode:'time-trial',raceElapsedS:42.34,raceClean:true,raceBand:'razor',raceLapTimesS:[42.34]});},\n dispose(){hud.dispose();keys.dispose();raceBoardScreen.dispose();}\n};window.ready=true;\n";
 const cosmeticEntry=`
-import { CUP_HEATS, stageRacingCupHeat, finishRacingCupHeat } from './src/systems/racingCareer.js';
+import { CUP_HEATS, abandonRacingCup, stageRacingCupHeat, finishRacingCupHeat } from './src/systems/racingCareer.js';
+import { raceLevelById } from './src/data/raceLevels.js';
+import { rememberRacingResult } from './src/ui/racingControls.js';
+window.probe.finishFirstCupHeat = () => {
+  const heat = CUP_HEATS[0];
+  const ticket = stageRacingCupHeat(heat.contractId, { starter: 'starter_wasp', raceDifficulty: 'club' }, localStorage);
+  const receipt = { ...ticket, racingContractId: heat.contractId, raceMode: 'cup', raceElapsedS: 70,
+    racePosition: 3, raceEntrants: 3, raceClean: true };
+  finishRacingCupHeat(receipt, localStorage);
+  rememberRacingResult(receipt);
+  window.probe.board.refresh(window.probe.ctx);
+};
+window.probe.endSecondCupHeat = () => {
+  const probe = window.probe;
+  const heat = CUP_HEATS[1];
+  const ticket = stageRacingCupHeat(heat.contractId, { starter: 'starter_wasp', raceDifficulty: 'club' }, localStorage);
+  probe.state.mode = 'flight';
+  probe.state.world.currentSectorId = raceLevelById(heat.levelId).sectorId;
+  const quit = { ...ticket, racingContractId: heat.contractId, raceMode: 'cup', raceElapsedS: 30, status: 'dnf' };
+  probe.bus.emit('race:ended', quit);
+  probe.board.refresh(probe.ctx);
+};
+window.probe.resetCup = () => abandonRacingCup(localStorage);
 window.probe.earnPaint=()=>{
   for(const heat of CUP_HEATS){const ticket=stageRacingCupHeat(heat.contractId,{starter:'starter_wasp',raceDifficulty:'club'},localStorage);
     finishRacingCupHeat({...ticket,racingContractId:heat.contractId,raceElapsedS:70,racePosition:1},localStorage);}
@@ -36,10 +58,16 @@ if(!process.argv.includes('--bundle-only')){
     const page=await browser.newPage({viewport:{width:1440,height:1050},reducedMotion:'reduce'});
     const errors=[];page.on('pageerror',error=>errors.push(String(error)));
     await page.goto(pathToFileURL(path.join(out,'racing-ui.html')).href);await page.waitForFunction(()=>window.ready===true);
+    assert.ok(await page.getByRole('heading',{name:'Circuits',exact:true}).isVisible());
     assert.equal(await page.locator('.race-board-course[data-contract-id]').count(),18,'nine circuits expose their practice and authored event cards');
     assert.equal(await page.locator('.race-board-launch').count(),1,'one pinned START launches the selected event');
-    const start=page.getByRole('button',{name:'Start the selected event',exact:true});
+    const start=page.locator('.race-board-launch');
     const selectEvent=async id=>page.locator(`.race-board-course[data-contract-id="${id}"]`).getByRole('button',{name:/^Select /}).click();
+    const selectedEvent=page.getByRole('region',{name:'Selected event',exact:true});
+    await selectEvent('practice_level_textile_outbound');
+    assert.ok(await selectedEvent.getByRole('heading',{name:'Textile Belt',exact:true}).isVisible());
+    assert.match(await selectedEvent.innerText(),/Pack race/);
+    assert.doesNotMatch(await selectedEvent.innerText(),/Practice/);
     await selectEvent('contract_textile_qual');
     assert.equal(await page.locator('.race-board-course[data-contract-id="contract_textile_qual"] button[aria-pressed="true"]').count(),1);
     assert.match(await page.getByRole('region',{name:'Selected event',exact:true}).innerText(),/Ready to start/);
@@ -72,6 +100,30 @@ if(!process.argv.includes('--bundle-only')){
     await selectEvent('practice_level_textile_outbound');
     assert.ok(await start.isEnabled(),'the ordered first cup heat launches');
     assert.ok(await page.getByRole('region',{name:'Circuit cup',exact:true}).isVisible());
+    await page.evaluate(()=>probe.finishFirstCupHeat());
+    await page.setViewportSize({width:960,height:540});
+    await page.evaluate(()=>{
+      window.scrollTo(0,0);
+      document.getElementById('board').scrollTop=0;
+    });
+    const secondHeat=page.getByRole('button',{name:'Start Heat 2',exact:true});
+    assert.ok(await secondHeat.isVisible(),'the next heat is the primary action after scoring');
+    assert.ok(await secondHeat.isEnabled());
+    assert.ok(await secondHeat.evaluate(button=>{
+      const box=button.getBoundingClientRect();
+      return box.top>=0&&box.bottom<=innerHeight;
+    }),
+      'the next heat is available without scrolling past the result');
+    assert.match(await selectedEvent.innerText(),/Tally Circuit/);
+    assert.equal(await page.getByRole('region',{name:'Last circuit result'}).getByRole('button').count(),0,
+      'a scored Cup heat cannot be entered twice');
+    await page.screenshot({path:path.join(out,'next-cup-heat-compact.png')});
+    await page.evaluate(()=>probe.endSecondCupHeat());
+    await format.selectOption('race');
+    assert.ok(await page.getByRole('button',{name:'Retry this heat',exact:true}).isEnabled(),
+      'an unfinished Cup heat still offers its retry after a format change');
+    await page.evaluate(()=>{probe.resetCup();probe.state.mode='menu';});
+    await page.setViewportSize({width:1440,height:1050});
     await format.selectOption('race');
     assert.equal(await page.locator('.race-board-course[data-contract-id]').count(),18);
     assert.equal(await page.locator('.race-board-launch').count(),1);
@@ -103,15 +155,15 @@ if(!process.argv.includes('--bundle-only')){
     await page.getByRole('combobox',{name:'Circuit drive',exact:true}).selectOption('sprint');
     await page.screenshot({path:path.join(out,'board-desktop.png'),fullPage:true});
     await page.setViewportSize({width:390,height:844});
-    const practiceView=page.getByRole('button',{name:/^Practice: /});
-    for(const mode of ['racing','auto','overhead']){
-      await practiceView.click();
-      assert.equal(await practiceView.textContent(),`Practice: ${mode}`);
+    const cameraView=page.getByRole('button',{name:/^Camera · /});
+    for(const label of ['Chase','Automatic','Overhead']){
+      await cameraView.click();
+      assert.ok((await cameraView.textContent()).startsWith(`Camera · ${label}`));
     }
-    assert.ok(await practiceView.evaluate(button=>{
+    assert.ok(await cameraView.evaluate(button=>{
       const bounds=button.getBoundingClientRect(),container=button.closest('.race-board').getBoundingClientRect();
       return bounds.left>=container.left&&bounds.right<=container.right;
-    }),'practice view control fits inside the mobile board');
+    }),'camera view control fits inside the mobile board');
     await page.getByRole('combobox',{name:'Circuit ship',exact:true}).selectOption('starter_wasp');
     await page.getByRole('combobox',{name:'Circuit drive',exact:true}).selectOption('sprint');
     await page.screenshot({path:path.join(out,'board-mobile.png'),fullPage:true});
@@ -128,7 +180,7 @@ if(!process.argv.includes('--bundle-only')){
     assert.ok(await page.locator('#race-tape').isVisible());
     assert.ok(await page.getByRole('button',{name:'Mission view',exact:true}).isDisabled());
     await page.evaluate(()=>probe.tick(4));
-    assert.match(await page.locator('.race-tape-stats').innerText(),/wu\/s · GATE/);
+    assert.match(await page.locator('.race-tape-stats').innerText(),/\b\d+ u\/s · GATE 1\/16\b/);
     await page.evaluate(()=>{
       const params=probe.state.missions.active[0].params,[start,gate]=params.gates;
       const offset={x:probe.player.pos.x-start.x,z:probe.player.pos.z-start.z};

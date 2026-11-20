@@ -888,15 +888,23 @@ function checkVfxPixels(trace, px) {
   for (const s of px) { if (s.px.c > T.vfxCoverP95) { if (runStart == null) runStart = s.sim; persist = Math.max(persist, s.sim - runStart); } else runStart = null; }
   const maxS = px.reduce((a, b) => (b.px.c > a.px.c ? b : a));
   const occ = pS.find((s) => s.px.cp >= 0.5);
-  const fail = p95 > T.vfxCoverP95 || (pOccFrac != null && pOccFrac > T.vfxPlayerOccludedFrac) || (tP95 != null && tP95 > T.vfxThreatOccludedP95) || persist > T.vfxPersistSeconds;
-  const offenders = [];
-  if (occ) offenders.push({ line: `player ship ≥50% under combat VFX pixels in ${fmt(pOccFrac * 100, 0)}% of splits (first sim ${fmt(occ.sim, 1)} s)`, t: occ.t, sim: occ.sim, box: occ.p && occ.p.box });
-  offenders.push({ line: `peak combat-VFX pixels ${fmt(maxS.px.c * 100, 0)}% of screen at sim ${fmt(maxS.sim, 1)} s (${maxS.px.nC} combat layers lit)`, t: maxS.t, sim: maxS.sim, box: null });
-  return result('vfx_coverage', 'Combat VFX coverage / occlusion', fail ? 'FAIL' : 'PASS',
-    `p95 ${fmt(p95 * 100, 0)}% screen · player hidden ${pOccFrac == null ? 'n/a' : fmt(pOccFrac * 100, 0) + '%'} · threats hidden p95 ${tP95 == null ? 'n/a' : fmt(tP95 * 100, 0) + '%'} · ${fmt(persist, 1)} s persist`,
+  const screenFail = p95 > T.vfxCoverP95 || persist > T.vfxPersistSeconds;
+  const playerFail = pOccFrac != null && pOccFrac > T.vfxPlayerOccludedFrac;
+  const threatFail = tP95 != null && tP95 > T.vfxThreatOccludedP95;
+  const player = occ ? { line: `player ship box gains combat VFX light across at least half its area in ${fmt(pOccFrac * 100, 0)}% of splits (first sim ${fmt(occ.sim, 1)} s)`, t: occ.t, sim: occ.sim, box: occ.p && occ.p.box } : null;
+  const screen = { line: `peak combat-VFX pixels ${fmt(maxS.px.c * 100, 0)}% of screen at sim ${fmt(maxS.sim, 1)} s (${maxS.px.nC} combat layers sampled)`, t: maxS.t, sim: maxS.sim, box: null };
+  let threat = null;
+  if (threatFail) {
+    const s = px.reduce((a, b) => ((b.px.ct ?? -1) > (a.px.ct ?? -1) ? b : a));
+    threat = { line: `${fmt(s.px.ct * 100, 0)}% of threat boxes gain combat VFX light across at least half their area (frame ${s.f}, sim ${fmt(s.sim, 1)} s)`, t: s.t, sim: s.sim, box: null };
+  }
+  const offenders = [threat, player, screen].filter(Boolean);
+  const moments = [threat, playerFail && player, screenFail && screen].filter(Boolean).slice(0, 2);
+  return result('vfx_coverage', 'Combat VFX coverage', screenFail || playerFail || threatFail ? 'FAIL' : 'PASS',
+    `p95 ${fmt(p95 * 100, 0)}% screen · player box lit ${pOccFrac == null ? 'n/a' : fmt(pOccFrac * 100, 0) + '%'} · threat boxes lit p95 ${tP95 == null ? 'n/a' : fmt(tP95 * 100, 0) + '%'} · ${fmt(persist, 1)} s persist`,
     `≤${T.vfxCoverP95 * 100}% · ≤${T.vfxPlayerOccludedFrac * 100}% · ≤${T.vfxThreatOccludedP95 * 100}% · ≤${T.vfxPersistSeconds} s`,
-    `${px.length} per-pixel splits (offscreen render with combat VFX hidden vs shown, pre-bloom reader target; backdrop layers graded separately)`,
-    offenders, offenders.filter((o) => o.box).slice(0, 2));
+    `${px.length} per-pixel splits before bloom. The player and threat counts use added combat VFX light across at least half of each projected box. Backdrop layers are graded separately.`,
+    offenders, moments);
 }
 
 /** Backdrop (deep field, nebula, stars, planets) drawn over the play: reported apart from combat VFX. */
@@ -940,17 +948,25 @@ export function checkVfx(trace) {
   const topNames = [...names.entries()].sort((a, b) => b[1].sum - a[1].sum).slice(0, 3);
   const maxScan = scans.reduce((a, b) => (b.vfx.cov > a.vfx.cov ? b : a));
   const occScan = pScans.find((s) => s.vfx.pOcc >= 0.5);
-  const fail = p95 > T.vfxCoverP95 || (pOccFrac != null && pOccFrac > T.vfxPlayerOccludedFrac) || (tP95 != null && tP95 > T.vfxThreatOccludedP95) || persist > T.vfxPersistSeconds;
-  const offenders = [];
-  if (occScan) offenders.push({ line: `player ship ≥50% under additive VFX in ${fmt(pOccFrac * 100, 0)}% of scans (first sim ${fmt(occScan.sim, 1)} s; top: ${(occScan.vfx.top[0] || [])[0] || '?'})`, t: occScan.t, sim: occScan.sim, box: occScan.p && occScan.p.box });
-  offenders.push({ line: `peak coverage ${fmt(maxScan.vfx.cov * 100, 0)}% at sim ${fmt(maxScan.sim, 1)} s (overdraw ${fmt(maxScan.vfx.od, 1)}×)`, t: maxScan.t, sim: maxScan.sim, box: (maxScan.vfx.top[0] || [])[3] || null });
-  for (const [k, v] of topNames) offenders.push({ line: `layer "${k}": mean ${fmt(v.sum / scans.length * 100, 1)}% of screen, max ${fmt(v.max * 100, 0)}%`, t: null, sim: null, box: null });
+  const screenFail = p95 > T.vfxCoverP95 || persist > T.vfxPersistSeconds;
+  const playerFail = pOccFrac != null && pOccFrac > T.vfxPlayerOccludedFrac;
+  const threatFail = tP95 != null && tP95 > T.vfxThreatOccludedP95;
+  const player = occScan ? { line: `player ship box overlaps VFX bounds by at least half in ${fmt(pOccFrac * 100, 0)}% of scans (first sim ${fmt(occScan.sim, 1)} s)`, t: occScan.t, sim: occScan.sim, box: occScan.p && occScan.p.box } : null;
+  const screen = { line: `peak VFX bounds cover ${fmt(maxScan.vfx.cov * 100, 0)}% at sim ${fmt(maxScan.sim, 1)} s (overdraw ${fmt(maxScan.vfx.od, 1)}×)`, t: maxScan.t, sim: maxScan.sim, box: (maxScan.vfx.top[0] || [])[3] || null };
+  let threat = null;
+  if (threatFail) {
+    const s = scans.reduce((a, b) => ((b.vfx.tOcc ?? -1) > (a.vfx.tOcc ?? -1) ? b : a));
+    threat = { line: `${fmt(s.vfx.tOcc * 100, 0)}% of threat boxes overlap VFX bounds by at least half (frame ${s.f}, sim ${fmt(s.sim, 1)} s)`, t: s.t, sim: s.sim, box: null };
+  }
+  const offenders = [threat, player, screen].filter(Boolean);
+  for (const [k, v] of topNames) offenders.push({ line: `screen footprint of "${k}" averages ${fmt(v.sum / scans.length * 100, 1)}%, peaks at ${fmt(v.max * 100, 0)}%`, t: null, sim: null, box: null });
+  const moments = [threat, playerFail && player, screenFail && screen].filter(Boolean).slice(0, 2);
   const unb = Math.max(...scans.map((s) => s.vfx.unb || 0));
-  return result('vfx_coverage', 'VFX coverage / occlusion', fail ? 'FAIL' : 'PASS',
-    `p95 ${fmt(p95 * 100, 0)}% screen · player hidden ${pOccFrac == null ? 'n/a' : fmt(pOccFrac * 100, 0) + '%'} · threats hidden p95 ${tP95 == null ? 'n/a' : fmt(tP95 * 100, 0) + '%'} · ${fmt(persist, 1)} s persist`,
+  return result('vfx_coverage', 'Combat VFX bounds coverage', screenFail || playerFail || threatFail ? 'FAIL' : 'PASS',
+    `p95 ${fmt(p95 * 100, 0)}% screen · player bounds overlap ${pOccFrac == null ? 'n/a' : fmt(pOccFrac * 100, 0) + '%'} · threat bounds overlap p95 ${tP95 == null ? 'n/a' : fmt(tP95 * 100, 0) + '%'} · ${fmt(persist, 1)} s persist`,
     `≤${T.vfxCoverP95 * 100}% · ≤${T.vfxPlayerOccludedFrac * 100}% · ≤${T.vfxThreatOccludedP95 * 100}% · ≤${T.vfxPersistSeconds} s`,
-    `${scans.length} scans of additive/transparent layers (bounding-sphere footprint on a 48×27 grid; ${unb} screen-sized batches excluded) · ${skipNote}`,
-    offenders.slice(0, 5), offenders.filter((o) => o.box).slice(0, 2));
+    `${scans.length} scans of additive or transparent layer bounds on a 48×27 grid, omitting up to ${unb} screen-sized batches per scan. Player and threat counts require at least half of each projected box to intersect those bounds. ${px.length}/5 required pixel splits · ${skipNote}`,
+    offenders.slice(0, 5), moments);
 }
 
 export function checkLoadout(trace) {

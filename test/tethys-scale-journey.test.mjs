@@ -114,10 +114,10 @@ test('partial collection keeps actual remainder and an unmeasured second pod is 
   } finally { f.close(); }
 });
 
-test('the Scale tag/objective carries the set-down instruction and Mira keeps one line', () => {
+test('the pending delivered-crate objective leads to the ring and Mira keeps one line', () => {
   const f = fixture(); try {
     const point = kesslerScaleWaypoint(f.s);
-    assert.match(point.label, /Scale 4/); assert.match(point.reason, /brake below 2 WU\/s/);
+    assert.match(point.label, /Scale 4/); assert.match(point.reason, /Fly inside the Scale 4 ring/);
     assert.match(point.reason, /delivered alloy crate/, 'waypoint agrees the delivered crate is weighed');
     const mira = commsForBeat(1, { variant: 'step_handoff' })
       .find((entry) => entry.id === 'comms.47a.b1.alloy_handoff');

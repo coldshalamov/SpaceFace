@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createRunState } from '../src/core/runState.js';
+import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
 import {
   buyHull,
   buyTrack,
@@ -15,8 +16,11 @@ import {
 } from '../src/data/swarmHangar.js';
 import { MAGNET_RANGE, playerPickupMagnetRange } from '../src/systems/mining.js';
 import { runSession } from '../src/systems/runSession.js';
+import { makeShipEntitySpec } from '../src/systems/ships.js';
+import { bankableRunCredits, requestSurvivalPartialBank, securedBountyOf } from '../src/systems/survivalExtraction.js';
 import {
   emptyCrucibleProfile,
+  loadCrucibleMeta,
   parseCrucibleMeta,
   resetCrucibleMetaForTests,
   saveCrucibleMeta,
@@ -24,6 +28,8 @@ import {
   useCrucibleMetaClock,
   useCrucibleMetaStorage,
 } from '../src/systems/survivalRecords.js';
+import { crucibleHullSetupFor, crucibleLaunchConfig } from '../src/ui/crucibleLaunch.js';
+import { applySandboxSetup } from '../src/ui/sandbox/sandboxSetup.js';
 
 const SEED = 4242;
 
@@ -66,6 +72,132 @@ function settle(storage, fields) {
     storage,
   });
 }
+
+function launchEasySwarm(t, storage) {
+  resetMeta();
+  useCrucibleMetaStorage(storage);
+  const runtime = createAuthoritativeRuntime({ profileId: 'production', nodeSafeOnly: true, seed: SEED });
+  t.after(() => { runtime.dispose(); resetCrucibleMetaForTests(); });
+  const { state, bus } = runtime;
+  state.mode = 'loading';
+  state.ui.screenStack = [];
+  const setup = crucibleHullSetupFor({ hullId: 'ship_hornet', seed: SEED, swarmStake: 'exhibition' }).value;
+  const ships = runtime.getSystem('ships');
+  ships.buyShip({ defId: setup.hullId, setActive: true, grant: true });
+  state.playerId = runtime.spawn(makeShipEntitySpec(setup.hullId, {
+    isPlayer: true, player: state.player, pos: { x: 0, z: 0 },
+  })).id;
+  const launch = applySandboxSetup({
+    state, bus, registry: { get: name => runtime.getSystem(name) }, helpers: runtime.getHelpers(),
+  }, crucibleLaunchConfig(setup, 'swarm', { openingLesson: false, swarmStake: 'exhibition' }));
+  assert.equal(launch.ok, true);
+  state.mode = 'flight';
+  assert.equal(state.run.credits, 2400);
+  return { runtime, state, bus, ships, results: runtime.getSystem('survivalResults') };
+}
+
+test('Easy defeat immediately after a production launch banks none of the starting credits', t => {
+  const { bus, results } = launchEasySwarm(t, memoryStorage());
+  bus.emit('player:death', {});
+  const result = results.lastResult();
+  assert.equal(result.outcome, 'defeat');
+  assert.equal(result.credits, 2400, 'the results can still show the spendable run purse');
+  assert.equal(result.bankedBounty, 0);
+  assert.equal(loadCrucibleMeta().hangar.bounty, 0);
+});
+
+test('a fresh same-seed retry can bank earned credits at the same defeat tick', t => {
+  const storage = memoryStorage();
+  const first = launchEasySwarm(t, storage);
+  first.bus.emit('player:death', {});
+  const previousEnd = first.results.lastResult().endedAt;
+  first.runtime.dispose();
+  const retry = launchEasySwarm(t, storage);
+  retry.bus.emit('run:awardRequested', { credits: 100, reason: 'crucible:wave1:chip' });
+  retry.bus.emit('player:death', {});
+  assert.deepEqual(retry.results.lastResult().endedAt, previousEnd);
+  assert.equal(retry.results.lastResult().bankedBounty, 50);
+  assert.equal(loadCrucibleMeta().hangar.bounty, 50);
+});
+
+test('buying, reselling, and refunding starting equipment leaves no bounty on defeat', t => {
+  const { runtime, state, bus, ships, results } = launchEasySwarm(t, memoryStorage());
+  const draft = runtime.getSystem('survivalDraft');
+  const offer = draft.currentOffers().find(row => row.catalog && row.available && Number.isInteger(row.slotIndex));
+  assert.ok(offer);
+  assert.equal(draft.resolvePick({ offerId: offer.id }), true);
+  assert.equal(state.run.credits, 2400 - offer.price);
+  assert.equal(draft.refitSell({ slotIndex: offer.slotIndex }), true);
+  const purse = state.run.credits;
+  assert.ok(purse > 2400 - offer.price, 'the normal sale returned spendable credits');
+  const rejected = draft.currentOffers().find(row => row.catalog && row.available && Number.isInteger(row.slotIndex));
+  assert.ok(rejected);
+  const fit = ships.fitModule;
+  ships.fitModule = () => false;
+  try { assert.equal(draft.resolvePick({ offerId: rejected.id }), false); }
+  finally { ships.fitModule = fit; }
+  assert.equal(state.run.credits, purse);
+  assert.equal(bankableRunCredits(state.run), 0);
+  bus.emit('player:death', {});
+  assert.equal(results.lastResult().bankedBounty, 0);
+  assert.equal(loadCrucibleMeta().hangar.bounty, 0);
+});
+
+test('earned credits survive a mixed funding refund, partial bank, and one final settlement', t => {
+  const { runtime, state, bus, ships, results } = launchEasySwarm(t, memoryStorage());
+  bus.emit('run:spendRequested', { credits: 2000, reason: 'opening_equipment' });
+  bus.emit('run:awardRequested', { credits: 100, reason: 'crucible:wave1:chip' });
+  assert.equal(state.run.credits, 500);
+  assert.equal(bankableRunCredits(state.run), 100);
+
+  const draft = runtime.getSystem('survivalDraft');
+  const offer = draft.currentOffers().find(row => row.catalog && row.available && row.price > 1
+    && Number.isInteger(row.slotIndex));
+  assert.ok(offer);
+  bus.emit('run:spendRequested', { credits: 401 - offer.price, reason: 'opening_equipment' });
+  assert.equal(bankableRunCredits(state.run), 100);
+  const fit = ships.fitModule;
+  ships.fitModule = () => false;
+  try { assert.equal(draft.resolvePick({ offerId: offer.id }), false); }
+  finally { ships.fitModule = fit; }
+  assert.equal(bankableRunCredits(state.run), 100, 'refund returned the original mix of spent credits');
+
+  state.run.wave = 10;
+  bus.emit('run:transitionRequested', { expectedPhase: 'draft', nextPhase: 'refit' });
+  assert.equal(state.run.phase, 'refit');
+  requestSurvivalPartialBank(bus);
+  assert.equal(securedBountyOf(state.run), 50);
+  assert.equal(bankableRunCredits(state.run), 50);
+  bus.emit('player:death', {});
+  assert.equal(results.lastResult().bankedBounty, 75, 'secured 50 plus half of the remaining earned 50');
+  bus.emit('run:ended', { outcome: 'defeat', reason: 'player_death' });
+  assert.equal(loadCrucibleMeta().hangar.bounty, 75);
+});
+
+test('Retire keeps the earned deposit and discards the unbanked purse across reload', t => {
+  const storage = memoryStorage();
+  const { state, bus, results } = launchEasySwarm(t, storage);
+  bus.emit('run:awardRequested', { credits: 100, reason: 'crucible:wave1:chip' });
+  state.run.wave = 10;
+  bus.emit('run:transitionRequested', { expectedPhase: 'draft', nextPhase: 'refit' });
+  requestSurvivalPartialBank(bus);
+  assert.equal(securedBountyOf(state.run), 50);
+  assert.equal(state.run.credits, 2450);
+
+  const token = state.run.retireToken;
+  bus.emit('run:retireRequested', { token });
+  const receipt = results.lastResult();
+  assert.equal(receipt.unranked, true);
+  assert.equal(receipt.bankedBounty, 50);
+  assert.equal(loadCrucibleMeta().hangar.bounty, 50);
+  bus.emit('run:retireRequested', { token });
+  bus.emit('run:ended', { outcome: 'aborted', reason: 'player_retired' });
+  const snapshot = JSON.parse(JSON.stringify({ result: receipt, run: state.run }));
+  resetCrucibleMetaForTests();
+  assert.equal(settleCrucibleRun({ ...snapshot, storage }), null, 'a reloaded receipt cannot pay again');
+  assert.equal(loadCrucibleMeta(storage).hangar.bounty, 50, 'fresh profile load keeps exactly one deposit');
+  assert.equal(loadCrucibleMeta(storage).history.length, 0, 'retirement is still unranked');
+});
 
 test('death banks half even after a boss wave', () => {
   resetMeta();

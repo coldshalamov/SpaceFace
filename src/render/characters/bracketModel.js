@@ -72,6 +72,7 @@ function pips(root, m, x, y, z, pitch = 3.3, radius = 0.7) {
     const cross = group(g,`miss_cross_${i}`,[0,0.4,0]);
     rod(cross,m.oxide,[-radius,0,-radius],[radius,0,radius],0.15);
     rod(cross,m.oxide,[-radius,0,radius],[radius,0,-radius],0.15);
+    batch(cross); // Keep each score's visibility independent while sharing its two static rods.
     light.userData.animated=true; cross.visible=false; out.push({ light, cross });
   }
   return out;

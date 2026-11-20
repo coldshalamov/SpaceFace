@@ -21,6 +21,8 @@ import { damp } from '../core/math.js';
 import { createTimeEffects } from '../core/timeEffects.js';
 import { resolveGovernedCombatSpeed, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { WEAPONS } from '../data/weapons.js';
+import { arcadeEffectsLevel } from '../data/swarmJuice.js';
+import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { createCameraGate, HULL_BLOW_MIN_FRACTION, playerBlowFraction } from './shakeAdmission.js';
 import {
   VL_WAKE_AT,
@@ -240,6 +242,7 @@ export const HS_IMPACT_MAX = 0.09;            // s — slam ceiling; well under 
 // three frames at 60 Hz. The simulation never pauses; only the camera's presentation clock
 // is frozen. Motion-reduce and photo mode already bail above.
 export const HS_CAMERA_HOLD_MAX = 0.05;
+const SWARM_HERO_HOLD_REARM_S = 0.8;
 export const COLLISION_HITSTOP_COOLDOWN = 0.18; // s of real frame time between armed collision beats
 // F9 — the rope's joke is three bodies agreeing. A player-caused release whose contact chain
 // reaches a THIRD distinct body earns exactly one extra dip, long enough to see the chain land.
@@ -951,6 +954,8 @@ export const feel = {
     // live state
     this._beatTimer = 0; // presentation sequencing only; never controls simulation time
     this._deathBellFrameHoldS = 0; // framebuffer lease, drained only by presentation frameDt
+    this._swarmHeroHoldCooldownS = 0;
+    this._pendingSwarmBossBeat = null;
     this._collisionHitstopCooldown = 0; // remaining real-time seconds before another collision beat
     this._armedCollisionDeltaV = 0;     // deltaV that armed the current cooldown (upgrade gate)
     this._pendingCollisionFeel = null;  // strongest contact this frame, from either receipt source
@@ -1537,6 +1542,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     const clearHitStop = () => {
       this._resetHitStop();
       this._deathBellFrameHoldS = 0;
+      this._swarmHeroHoldCooldownS = 0;
     };
     bus.on('sim:pause', () => {
       this._resetHitStop();
@@ -1550,6 +1556,17 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
     bus.on('save:loaded', clearHitStop);
     bus.on('game:over:dismissed', () => { this._deathBellFrameHoldS = 0; });
     bus.on('mode:changed', () => { this.isDeathBellFrameHeld(state); });
+    bus.on('run:started', () => {
+      this._pendingSwarmBossBeat = null;
+      this._swarmHeroHoldCooldownS = 0;
+    });
+    bus.on('run:ended', () => { this._pendingSwarmBossBeat = null; });
+    bus.on('swarm:bossDown', (payload) => {
+      const run = state.run;
+      if (run?.kind !== 'survival' || !isSwarmRuleset(run.ruleset) || payload?.wave !== run.wave) return;
+      if (this._swarmHeroHoldCooldownS > 0) return;
+      this._pendingSwarmBossBeat = run.wave;
+    });
     bus.on('special500:deathBell', (payload) => {
       if (!payload || typeof payload.stationId !== 'string' || !Number.isFinite(payload.at)) return;
       this._deathBellFrameHoldS = DEATH_BELL_FRAME_HOLD_S;
@@ -1639,6 +1656,8 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       // Bruiser are not capitals, so the beat keys on mass too (agy2 delta review).
       const throwKill = p.cause === 'massline_whip' || p.impactorId != null;
       const heavyThrowKill = throwKill && (isCapital || victimAcousticMass(p, state) >= THROW_KILL_HEAVY_MASS);
+      const run = state.run;
+      const swarm = run?.kind === 'survival' && isSwarmRuleset(run.ruleset);
       if (!playerInvolved) {
         // Remote NPC kills stay silent at the camera; a local off-player kill keeps the small
         // world-event punch so nearby action remains readable without stealing the beat.
@@ -1666,6 +1685,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
             capital: true,
             direction: p.presentation && p.presentation.direction,
             cause: throwKill ? 'throwKillHeavy' : 'kill',
+            hold: !swarm,
           });
         }
         return;
@@ -1681,15 +1701,9 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
           capital: false,
           ...(heavyThrowKill ? { cause: 'throwKillHeavy' } : null),
           direction: p.presentation && p.presentation.direction,
+          hold: !swarm,
         });
       }
-    }, { presentation: true });
-
-    // OVH-06a / R10: BOSS DOWN is a hero beat - the only Swarm hitstop. A presentation-only camera
-    // hold through the gate (40-60 ms, at most once per 0.8 s); the simulation never slows.
-    bus.on('swarm:bossDown', () => {
-      if (this.state.mode !== 'flight' || !this._modalClear()) return;
-      this._holdCameraBeat(HS_CAMERA_HOLD_MAX, 'bossBreak');
     }, { presentation: true });
 
     // Player death is the single biggest beat in the game — long dip, big FOV punch, red wash,
@@ -2334,6 +2348,7 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
 
   _resetHitStop() {
     this._beatTimer = 0;
+    this._pendingSwarmBossBeat = null;
     this.timeEffects.clear('feel:hit-stop');
     this._collisionHitstopCooldown = 0;
     this._armedCollisionDeltaV = 0;
@@ -2362,6 +2377,19 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
   frame(frameDt, state) {
     // We keep using the ctx-cached state reference; the registry passes the live state too.
     void state;
+
+    // R10: let the impact frame draw first, then hold the chase briefly while simulation runs.
+    this._swarmHeroHoldCooldownS = Math.max(0, this._swarmHeroHoldCooldownS - frameDt);
+    if (this._pendingSwarmBossBeat !== null) {
+      const wave = this._pendingSwarmBossBeat;
+      this._pendingSwarmBossBeat = null;
+      const st = this.state;
+      if (st.run?.wave === wave && st.mode === 'flight' && this._modalClear()
+        && !st.render?.sectorShellAdmission && !photoModeFeelPresentation(st).silencePunch
+        && arcadeEffectsLevel(st.settings) === 'full' && this._holdCameraBeat(HS_CAMERA_HOLD_MAX, 'bossBreak')) {
+        this._swarmHeroHoldCooldownS = SWARM_HERO_HOLD_REARM_S;
+      }
+    }
 
     if (this.isDeathBellFrameHeld(this.state)) {
       this._deathBellFrameHoldS = Math.max(0, this._deathBellFrameHoldS

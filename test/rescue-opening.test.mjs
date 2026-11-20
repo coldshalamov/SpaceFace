@@ -27,6 +27,7 @@ import { WEAPONS } from '../src/data/weapons.js';
 import { buildWeaponDamagePacket } from '../src/systems/weapons.js';
 import { makeEntity } from '../src/core/entity.js';
 import { mulberry32 } from '../src/core/rng.js';
+import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import { FLIGHT_DRILL_BEATS } from '../src/onboarding/flightDrill.js';
 import {
@@ -470,6 +471,44 @@ test('staging is deterministic on the fixed seed and stages a towable tableau', 
   assert.deepEqual(started.beats, ['swing', 'shove', 'grab']);
 });
 
+test('craft and learner rock impacts leave the opening derelict in place', async () => {
+  const h = bootRescue();
+  launchDefaultRoute(h);
+  const derelict = rescueActor(h, 'derelict');
+  const rock = rescueActor(h, 'rock');
+  const origin = derelict.pos.clone();
+  const approach = origin.clone().sub(rock.pos).normalize();
+  const traffic = makeEntity({
+    type: 'ship',
+    pos: { x: origin.x - 60 * approach.z, z: origin.z + 60 * approach.x },
+    vel: { x: 100 * approach.z, z: -100 * approach.x },
+    radius: 8,
+    mass: 220,
+  });
+  traffic.id = 1000;
+  rock.vel.copy(approach).multiplyScalar(120);
+
+  const dt = 1 / 60;
+  const physics = await createSg02DynamicBodyOwner({ publishTelemetry: false, fixedDt: dt });
+  try {
+    physics.syncFromEntities([derelict, rock, traffic]);
+    const impactors = new Set();
+    for (let tick = 0; tick < 120; tick += 1) {
+      physics.step(dt);
+      for (const { aId, bId } of physics.drainContactImpacts()) {
+        if (aId === derelict.id) impactors.add(bId);
+        if (bId === derelict.id) impactors.add(aId);
+      }
+    }
+
+    assert.ok(impactors.has(traffic.id), 'traffic can collide with the derelict');
+    assert.ok(derelict.pos.distanceTo(origin) < 0.01, 'the target stays at its authored position');
+    assert.ok(impactors.has(rock.id), 'the rock still strikes a solid throw target');
+  } finally {
+    physics.dispose();
+  }
+});
+
 test('harness boots with a scenario payload never stage the rescue (golden-safe)', () => {
   const h = bootRescue();
   h.bus.emit('game:started', { source: 'sf-sim', scenario: '47a' });
@@ -487,7 +526,9 @@ test('the three beats DONE on the fixed seed: swing, gun-shove, and grab in play
   driveDrillTo(h, 'tether');
   // The swing opens in the tether gap and gates the burst: one verb at a time.
   assert.equal(st.onboarding.rescue.current, 'swing');
-  assert.equal(tutorialLines(h).at(-1), rescueBeatLine('swing'));
+  const latchLine = st.nav.waypoint.reason;
+  assert.match(latchLine, /^Latch the loose rock/);
+  assert.equal(tutorialLines(h).at(-1), latchLine);
   assert.equal(st.nav.waypoint.markerId, 'rescue:swing');
   const gatedBeat = st.onboarding.currentBeat;
   tick(h);
@@ -557,8 +598,8 @@ test('the three beats DONE on the fixed seed: swing, gun-shove, and grab in play
 
   // One voice the whole way: exactly one line per verb, each the beat's verb.
   const lines = tutorialLines(h);
-  const rescueLines = lines.filter((t) => Object.values(RESCUE_BEAT_LINES).includes(t));
-  assert.deepEqual(rescueLines, [rescueBeatLine('swing'), rescueBeatLine('shove'), rescueBeatLine('grab')]);
+  const rescueLines = lines.filter((t) => t === latchLine || Object.values(RESCUE_BEAT_LINES).includes(t));
+  assert.deepEqual(rescueLines, [latchLine, rescueBeatLine('shove'), rescueBeatLine('grab')]);
 });
 
 test('shove contact predicate fires after starter-gun impulse raises leftover scout speed', () => {
@@ -599,7 +640,7 @@ test('failures record the beat, restage the body, and retry without a wall', () 
   assert.equal(h.state.onboarding.rescue.current, 'swing', 'the beat retries: no wall');
   const freshRockId = h.state.onboarding.rescue.ids.rock;
   assert.ok(freshRockId != null && freshRockId !== rockId, 'a fresh rock is staged');
-  assert.equal(tutorialLines(h).at(-1), rescueBeatLine('swing'), 'the verb is re-spoken once');
+  assert.match(tutorialLines(h).at(-1), /^Latch the loose rock/, 'the retry re-speaks the latch');
 
   // Finish the swing after the fail: the funnel carries the fail count.
   const rock = rescueActor(h, 'rock');

@@ -58,7 +58,7 @@ import {
   SECTOR_VISUAL_TRANSITION_SECONDS,
 } from './sectorVisualTransition.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
-import { bootShellPacingActive, bootOverlayRetired } from '../core/bootShellPacing.js';
+import { bootShellPacingActive, startupPictureRetired } from '../core/bootShellPacing.js';
 import { PaintedPlanets } from './paintedPlanets.js';
 
 // The sky uses authored colour images rather than lit hull materials. Shape their value response
@@ -2062,11 +2062,9 @@ export class SpaceBackground {
   _pumpDeferredNebulaBake() {
     const pending = this._nebulaBakePending;
     if (!pending || (!pending.L1 && !pending.L2)) return;
-    // The boot shell's movie is the picture: promotion waits for the overlay to fully retire
-    // (see bakeAll's deferred-stub branch) — not merely to start fading, or the ~0.7 s tile
-    // bake lands on the freshly revealed menu. The pump re-runs every admitted frame, so the
-    // tiles promote on the first quiet frames after the shell is gone.
-    if (!bootOverlayRetired()) return;
+    // The tile bake waits through the title cinematic as well as the boot veil. The existing
+    // frame budget below resumes normal promotion after both startup pictures retire.
+    if (!startupPictureRetired()) return;
     const opacityLive = this.nebulaOpacity > 0;
     const wormholeCapable = this.wormhole != null || this._deferredWormhole != null
       || !!(this.backgroundComposition && this.backgroundComposition.wormholeChance > 0);

@@ -303,3 +303,19 @@ test('creator captures exact frozen git bytes into an ignored manifest', async (
   }
   assert.doesNotThrow(() => loadSourceOverlayManifest(created));
 });
+
+test('a compressed source baseline serves the recorded bytes and identity', async (t) => {
+  const output = path.join(ROOT, '.devshots', 'source-baselines', `source-overlay-${process.pid}-${Date.now()}.json.gz`);
+  t.after(() => rm(output, { force: true }));
+  const receipt = JSON.parse(execFileSync(process.execPath, [
+    'scripts/create-source-baseline.mjs', '--path=index.html', `--out=${output}`,
+  ], { cwd: ROOT, encoding: 'utf8', windowsHide: true }));
+  const expected = execFileSync('git', ['show', `${receipt.sourceCommit}:index.html`], {
+    cwd: ROOT, encoding: 'buffer', windowsHide: true,
+  });
+  const baseUrl = await listen(t, ROOT, output);
+  const response = await fetch(`${baseUrl}/`);
+  assert.equal(response.status, 200);
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), expected);
+  assert.equal(response.headers.get('x-spaceface-source-overlay-digest'), receipt.sourceOverlayDigest);
+});

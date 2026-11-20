@@ -62,9 +62,12 @@ test('saturation drive fills every pool to exactly its fixed capacity and no fur
     assert.equal(info.live[kind], pool.live);
   }
   // Buffer identity and length must survive saturation — capacity is allocated once, never regrown.
-  for (const mesh of fx.getMeshes()) {
-    assert.equal(mesh.instanceMatrix.array.length, mesh.count * 16);
-    assert.equal(mesh.instanceColor.array.length, mesh.count * 3);
+  for (const [kind, mesh] of Object.entries({
+    blades: fx.blades.mesh, arcs: fx.arcs.mesh, shards: fx.shards.mesh, plates: fx.plates.mesh,
+  })) {
+    const capacity = ARCADE_STRUCTURAL_FX_CAPACITY[kind];
+    assert.equal(mesh.instanceMatrix.array.length, capacity * 16);
+    assert.equal(mesh.instanceColor.array.length, capacity * 3);
   }
   fx.dispose();
 });
@@ -175,4 +178,52 @@ test('the same spawn sequence is deterministic across fresh instances', () => {
   assert.ok(movedInstances > 0, `expected live instance transforms, got ${movedInstances}`);
   a.dispose();
   b.dispose();
+});
+
+test('only born structural instances submit, in their original slot order with their own phase and color', () => {
+  const fx = new ArcadeStructuralFx(null, { capacities: { blades: 3 } });
+  try {
+    const mesh = fx.blades.mesh;
+    const phase = mesh.geometry.getAttribute('aStructuralPhase');
+    const matrix = new THREE.Matrix4();
+    const read = () => Array.from({ length: mesh.count }, (_, i) => {
+      mesh.getMatrixAt(i, matrix);
+      return { x: matrix.elements[12], seed: phase.getY(i), color: Array.from(mesh.instanceColor.array.slice(i * 3, i * 3 + 3)) };
+    });
+    const spawn = (x, spec) => fx.spawnBlade({ x, life: 0.8, ...spec });
+    spawn(10, { life: 0.09, color: 0xff0000 });
+    spawn(20, { delay: 0.14, color: 0x00ff00 });
+    spawn(30, { color: 0x0000ff });
+    fx.spawnArc({ delay: 0.14 });
+    fx.spawnShard({ life: 0.8 });
+    fx.spawnPlate({ life: 0.8 });
+
+    fx.update(0.05);
+    assert.deepEqual(fx.getMeshes().map(draw => draw.count), [2, 0, 1, 1]);
+    assert.equal(fx.arcs.mesh.visible, false);
+    assert.equal(fx.inspect().live.arcs, 1, 'the later beat keeps its slot reserved');
+    const first = read();
+    assert.deepEqual(first, [
+      { x: 10, seed: 0, color: [1, 0, 0] },
+      { x: 30, seed: Math.fround((2 * 0.618033988749895) % 1), color: [0, 0, 1] },
+    ]);
+
+    fx.update(0.05);
+    assert.deepEqual(read(), first.slice(1), 'retiring the leading slot preserves the remaining array values');
+    spawn(40, { color: 0xffffff });
+    fx.update(0.05);
+    assert.deepEqual(read().map(instance => instance.x), [40, 20, 30]);
+    assert.deepEqual(read().map(instance => instance.seed), [
+      Math.fround((3 * 0.618033988749895) % 1),
+      Math.fround(0.618033988749895),
+      first[1].seed,
+    ]);
+    assert.equal(fx.arcs.mesh.count, 1);
+    assert.equal(fx.arcs.mesh.visible, true);
+
+    fx.clear();
+    assert.ok(fx.getMeshes().every(draw => draw.count === 0 && draw.visible === false));
+  } finally {
+    fx.dispose();
+  }
 });

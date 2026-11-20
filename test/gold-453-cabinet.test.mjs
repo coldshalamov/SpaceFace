@@ -177,6 +177,45 @@ test('actual results screen saves, refreshes card, retries refused storage, skip
   });
 });
 
+test('ordinary Swarm shows distinct ships and sends the chosen hull to equipment selection empty', () => {
+  fixture();
+  const oldSetup = crucibleSetupFor({ starterId: 'ricochet_runner', seed: 4242, ruleset: 'swarm' });
+  requestCrucibleRun({ emit() {} }, oldSetup.value, 'swarm');
+  withDocument(cabinetDom({ svg: true }), doc => {
+    const screen = Object.create(crucibleScreen), root = doc.createElement('div'), emitted = [];
+    const ctx = { state: createGameState(4242), bus: { emit: (...event) => emitted.push(event), on() {}, off() {}, once() {} },
+      registry: { get: () => null } };
+    screen.mount(root, ctx);
+    try {
+      root.querySelector('#sf-prep-tab-1').click();
+      const visible = () => findAll(root, node => node.classList.contains('sf-crd-hull') && !node.parentNode.hidden);
+      const ships = visible();
+      const ids = ships.map(ship => ship.dataset.starterId);
+      assert.equal(new Set(ids).size, ids.length);
+      assert.ok(ids.length > 1 && ids.every(id => id.startsWith('hull:')));
+      assert.equal(ships.find(ship => ship.getAttribute('aria-pressed') === 'true')?.dataset.starterId, 'hull:ship_hornet');
+      const drifter = ships.find(ship => ship.dataset.starterId === 'hull:ship_drifter');
+      drifter.click();
+      assert.equal(drifter.getAttribute('aria-pressed'), 'true');
+      const setMode = id => findAll(root, node => node.classList.contains('sf-crd-mode') && node.dataset.ruleset === id)[0].click();
+      setMode('scored');
+      assert.ok(visible().some(card => card.dataset.starterId === 'ricochet_runner'));
+      setMode('swarm');
+      assert.equal(drifter.getAttribute('aria-pressed'), 'true');
+      screen._regions.enter.click();
+      assert.ok(emitted.some(([name]) => name === 'game:new'));
+      assert.equal(lastCrucibleSetup().hullId, 'ship_drifter');
+      assert.deepEqual(lastCrucibleSetup().loadout, []);
+
+      root.querySelector('.sf-crd-code').value = doorRunShareCode({ starterId: 'ricochet_runner', seed: 4242, ruleset: 'swarm', arenaId: 'helios_core' }).code;
+      findButton(root, 'Use code').click();
+      assert.ok(visible().some(card => card.dataset.starterId === 'ricochet_runner'));
+      screen._regions.enter.click();
+      assert.deepEqual(lastCrucibleSetup().loadout, oldSetup.value.loadout);
+    } finally { screen.dispose(); }
+  });
+});
+
 test('Daily stays outside disclosures and the original control launches a paired UTC date/seed', () => {
   fixture();
   withDocument(cabinetDom({svg:true}), doc => {
@@ -194,9 +233,9 @@ test('Daily stays outside disclosures and the original control launches a paired
     assert.equal(visibility.at(-1),false);
     const daily = root.querySelector('.sf-crd-daily'), reading = root.querySelector('.orr-prep-daily');
     assert.ok(daily); assert.ok(reading); assert.equal(daily.closest('details'),null);
-    assert.equal(reading.closest('details'),null); assert.match(reading.textContent,/Today · 2026-10-20 UTC/);
-    assert.ok(reading.textContent.endsWith(`seed ${dailySeedForDateKey('2026-10-20')}`));
+    assert.equal(reading.closest('details'),null); assert.equal(reading.hidden,true);
     daily.click();
+    assert.equal(reading.hidden,false); assert.match(reading.textContent,/Daily challenge · 2026-10-20 UTC/);
     const copy = findButton(root,'Copy code'); copy.click();
     const codeField = root.querySelector('.sf-crd-code');
     const code = codeField?.value || findAll(root,n=>typeof n.value==='string' && n.value.startsWith('SFC1-'))[0]?.value;

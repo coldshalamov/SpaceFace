@@ -145,7 +145,7 @@ export const UI_BENCH_SHOTS = Object.freeze([
   // C01-03: the round-30 Swarm win (THE PIT IS YOURS / Take the win / Keep going).
   { id: 'crucible-results-win', screen: 'crucibleResults', backdrop: 'world', ruleset: 'swarm', win: true },
 
-  { id: 'asteroid-works', screen: 'drill', backdrop: 'world' },
+  { id: 'asteroid-works', screen: 'drill', backdrop: 'world', drill: 'claimed' },
   { id: 'drill', screen: 'drill', backdrop: 'world' },
   // A worked claim: staked site with a survey, Core + 2 machines on one lane, heat ~40%,
   // charge ~65%, half-full hold, one ledger event (tools/ui-bench.js seedDrillShot). -build

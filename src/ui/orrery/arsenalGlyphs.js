@@ -56,14 +56,14 @@ const raw = {
   ballast: [P('M7 4H17L20 9V18L16 21H8L4 18V9Z M8 8H16 M8 12H16 M8 16H16 M2 4V9 M22 4V9')],
   charge: [P('M6 7 12 3 18 7V15L12 19 6 15Z M9 9H15 M12 6V12 M3 18H7 M17 18H21 M8 22H16')],
   detonate: [P('M12 2 14 8 21 5 17 11 23 14 16 15 16 22 11 17 5 22 7 15 1 12 8 10 6 3Z')],
-  massline: [C(4,19,2), P('M5 17 17 5 M13 3H21V11 M17 5 21 3 M9 11 13 15')],
+  massline: [C(5,19,2.4), C(19,5,2.4), P('M6.7 17.3 17.3 6.7 M9 11 13 15 M11 9 15 13')],
   seed: [C(12,12,4), P('M12 2V6 M12 18V22 M2 12H6 M18 12H22 M5 5 7 7 M17 17 19 19 M5 19 7 17 M17 7 19 5')],
-  well: [C(12,12,3), P('M3 8Q5 2 11 3 M3 8H8V3 M21 16Q19 22 13 21 M21 16H16V21 M8 21Q2 19 3 13 M16 3Q22 5 21 11')],
-  repulsor: [C(12,12,3), P('M9 9 3 3 M3 8V3H8 M15 15 21 21 M16 21H21V16 M15 9 21 3 M16 3H21V8 M9 15 3 21 M3 16V21H8')],
-  cone: [P('M3 10 20 3V21L3 14Z M9 8V16 M15 6V18 M4 12H20 M17 10 20 12 17 14')],
+  well: [C(12,12,1.1), P('M8 4C3 7 3 17 8 20 M16 4C21 7 21 17 16 20 M6.5 9.5 9 12 6.5 14.5 M17.5 9.5 15 12 17.5 14.5')],
+  repulsor: [C(12,12,2.5), P('M8 8 3.5 3.5V7.5 M3.5 3.5H7.5 M16 16 20.5 20.5V16.5 M20.5 20.5H16.5 M16 8 20.5 3.5V7.5 M20.5 3.5H16.5 M8 16 3.5 20.5V16.5 M3.5 20.5H7.5')],
+  cone: [P('M9 5Q12 3 15 5 M7 9Q12 5.5 17 9 M4.5 13Q12 7.5 19.5 13 M2 18Q12 10.5 22 18')],
   skim: [P('M3 15 7 20H17L21 15Z M5 4V12 M10 3V12 M15 5V12 M20 4V12 M8 9 10 12 12 9')],
   snare: [C(12,12,3), P('M4 5Q22 0 20 12Q18 24 5 18 M4 5 4 11 9 8 M5 18 10 17 M12 5V8 M19 12H16')],
-  gyre: [P('M2 10 11 5 M2 14 11 19 M3 12H8'), C(15,12,5), C(12,8,2), C(19,11,2), C(15,16,2), P('M17 3 21 6 M19 2 21 6 17 6')],
+  gyre: [C(12,12,2.4), P('M4 13A8 8 0 0 1 17 6L19.5 8.5V4.5 M19.5 8.5H15.5 M20 11A8 8 0 0 1 7 18L4.5 15.5V19.5 M4.5 15.5H8.5')],
   scan: [C(6,18,2), P('M6 12A6 6 0 0 1 12 18 M6 6A12 12 0 0 1 18 18 M6 2A16 16 0 0 1 22 18 M7 17 18 6')],
   time: [C(12,12,9), P('M12 5V12L16 15 M2 12H5 M19 12H22 M12 19V22')],
   bumper: [P('M7 21 12 13 17 21 M5 14Q12 4 19 14 M3 9Q12-2 21 9 M12 3V8')],
@@ -198,8 +198,26 @@ export function arsenalGlyphKey(id) {
 
 const escape = value => String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 
-export function arsenalIcon(id, size = 24, label = '') {
-  const paths = arsenalGlyph(id);
+const flightGlyphs = Object.freeze({
+  field_well_standard: [{ ...P('M12 1.3v7.2m-3.3-3.1L12 8.7l3.3-3.3M22.7 12h-7.2m3.1-3.3L15.3 12l3.3 3.3M12 22.7v-7.2m-3.3 3.1 3.3-3.3 3.3 3.3M1.3 12h7.2m-3.1-3.3L8.7 12l-3.3 3.3'), 'stroke-linecap': 'square' }],
+  field_repulsor_standard: [{ ...P('M2.4 8V2.4H8 M2.8 2.8 8.4 8.4 M16 2.4h5.6V8 M21.2 2.8l-5.6 5.6 M2.4 16v5.6H8 M2.8 21.2l5.6-5.6 M16 21.6h5.6V16 M21.2 21.2l-5.6-5.6'), 'stroke-linecap': 'square' }],
+  field_seed_standard: [
+    { ...P('M12 1.1 15 5.4l-2-.7v15.5l6.2-3.9-1.2-3.1 4 3.4-10 6.3-10-6.3 4-3.4-1.2 3.1 6.2 3.9V4.7l-2 .7Z'), fill: 'currentColor', stroke: 'none' },
+    { ...P('M9.7 8.3h4.6'), 'stroke-width': '1.25' },
+  ],
+  power_charge: [P('M8.5 2H15.5 M6 6Q12 9 18 6V19Q12 23 6 19ZM6 6Q12 3 18 6 M7 17H17 M7 10V15')],
+  bomb_frag: [
+    { ...P('M8.3 1.2h7.4v2.2H8.3zM5.7 6.1c0-1.4 3-2.2 6.3-2.2s6.3.8 6.3 2.2v13.6c0 1.6-2.9 2.8-6.3 2.8s-6.3-1.2-6.3-2.8Zm1.2 0c0 .65 2.3 1.2 5.1 1.2s5.1-.55 5.1-1.2S14.8 5 12 5 6.9 5.45 6.9 6.1ZM5.7 14.2v5.1h2.2l5.1-5.1H9.4l-3.7 3.7v-1.6l2.1-2.1Zm8.9 0-5.1 5.1h5.9l2.9-2.9v-2.2Z'), fill: 'currentColor', 'fill-rule': 'evenodd', stroke: 'none' },
+  ],
+  field_cone_standard: [
+    { ...P('M7.7 5.1Q12 2.1 16.3 5.1 M5.4 8.9Q12 4.3 18.6 8.9'), 'stroke-width': '1' },
+    { ...P('M3.2 13.2Q12 7.2 20.8 13.2 M1.3 18.6Q12 11.2 22.7 18.6'), 'stroke-width': '1.42' },
+  ],
+  power_massline: [C(3.8,17.1,3.1), C(20.2,8.4,3.1), { ...P('M6.56 15.64 17.44 9.86'), 'stroke-width': '1.72' }],
+});
+
+export function arsenalIcon(id, size = 24, label = '', flight = false) {
+  const paths = (flight && Object.hasOwn(flightGlyphs, id) && flightGlyphs[id]) || arsenalGlyph(id);
   if (!paths) return '';
   const dimension = Number.isFinite(Number(size)) ? Math.max(8, Math.min(128, Number(size))) : 24;
   return `<svg xmlns="http://www.w3.org/2000/svg" class="dp-icon arsenal-icon" viewBox="0 0 24 24" width="${dimension}" height="${dimension}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" ${label ? `role="img" aria-label="${escape(label)}"` : 'aria-hidden="true" focusable="false"'} data-arsenal="${escape(id)}">${paths.map(({ tag, ...attrs }) => `<${tag} ${Object.entries(attrs).map(([key, value]) => `${key}="${escape(value)}"`).join(' ')}/>`).join('')}</svg>`;

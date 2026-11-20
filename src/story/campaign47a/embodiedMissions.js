@@ -197,7 +197,7 @@ export const EMBODIED_MISSIONS = Object.freeze([
         stepId: 'cinder_board',
         type: 'patrol_clear', storyTag: 'campaign47a:b2:cinder',
         title: 'Hunt the lane — cinder marks',
-        brief: 'Accept at Tethys, then fly to Charon: Cinder One, Two and Three hold the Ashfall approach. Clear all three and tow one of their actual hulls to Rook’s 100-WU ring at Expanse, at rest (8 WU/s or less). Either order. Keep a hull intact; if all three are destroyed or stripped, clearance files for no contract pay. Next: the Compost Run.',
+        brief: 'Accept at Tethys, then fly to Charon: Cinder One, Two and Three hold the Ashfall approach. Clear all three and tow one of their actual hulls to Rook’s 100-u ring at Expanse, at rest (8 u/s or less). Either order. Keep a hull intact; if all three are destroyed or stripped, clearance files for no contract pay. Next: the Compost Run.',
         factionId: 'faction_scn',
         stationId: 'station_tethys', destStationId: 'station_expanse', destSectorId: 'sector_charon_expanse',
         reward_cr: 700, collateral_cr: 0, riskTier: 2, minRep: -149, time_limit_s: 0,

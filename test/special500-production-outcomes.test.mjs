@@ -88,6 +88,7 @@ async function fixture() {
     lane.runner.prepareWithoutAdvance();
   });
   const send = async (name, payload) => { mainBus.emit(name, payload); return flush(); };
+  const visitBooth = () => send('dock:committed', { stationId: 'station_depot3' });
   function fresh() {
     state.story.flags = {}; state.story.moralMemory = undefined; state.story.writtenFinale = null;
     state.story.endgameResolved = false; state.story.endgameChoice = null; state.story.postEnding = null;
@@ -95,10 +96,11 @@ async function fixture() {
     state.simTime = 20; state.tick = 1200; state.player.credits = 100;
     state.run.kind = 'adventure'; state.run.phase = 'inactive';
     state.physicsVenueSession = null; state.ui.docked = false; state.ui.dockedStationId = null;
+    state.world.currentSectorId = 'sector_vesta_forge';
     rememberMoralDebt(state, { id: 'actual-ledger', name: 'The spared raider', cause: 'moral_trap:test' });
   }
   return { worker, lane, state, bus, registry, runtime, mainState, mainBus, offers, receipts,
-    popups, rep, cues, delivered, deck, prompt, posts, replies, flush, send, fresh,
+    popups, rep, cues, delivered, deck, prompt, posts, replies, flush, send, visitBooth, fresh,
     dispose() { prompt.destroy(); setPromptDeck(null); lane.close(); runtime.dispose(); } };
 }
 
@@ -116,7 +118,7 @@ test('incoming systems settle and resume through the real production main/worker
     await t.test('public adapter waits for actual worker settlement and rewards once', async () => {
       f.fresh();
       const choirBefore = f.state.factions.faction_choir?.rep || 0;
-      await f.send('dock:docked', { stationId: 'station_forge' });
+      await f.visitBooth();
       assert.ok(f.deck.card, 'worker offer reaches main-mounted adapter');
       const oldCard = f.deck.card, offer = f.offers.at(-1);
       const offReentry = f.bus.on('credits:changed', p => {
@@ -141,7 +143,7 @@ test('incoming systems settle and resume through the real production main/worker
     });
 
     await t.test('short, stale-balance and absent payment consumers cannot file partial success', async () => {
-      f.fresh(); await f.send('dock:docked', { stationId: 'station_forge' });
+      f.fresh(); await f.visitBooth();
       const offer = f.offers.at(-1), choice = { ...offer, choice: 'file' };
       f.state.player.credits = 39;
       await f.send('ui:confessionalChoose', choice);
@@ -164,10 +166,12 @@ test('incoming systems settle and resume through the real production main/worker
     await t.test('runtime generation invalidates old choices and receipts; declined booths never charge', async () => {
       f.fresh(); await f.send('ui:confessionalChoose', { choice: 'decline' });
       assert.equal(f.state.story.flags.guilt_tithe_declined, undefined);
-      await f.send('dock:docked', { stationId: 'station_forge' });
+      await f.visitBooth();
       const old = f.offers.at(-1);
       f.registry.get('special500Confessional').init({ state: f.state, bus: f.bus });
       await f.flush();
+      assert.equal(f.offers.at(-1), old, 'mount-ready does not reopen a saved offer without a current visit');
+      await f.visitBooth();
       const current = f.offers.at(-1);
       assert.equal(current.offerId, old.offerId); assert.ok(current.generation > old.generation);
       await f.send('ui:confessionalChoose', { ...old, choice: 'file' });
@@ -177,7 +181,9 @@ test('incoming systems settle and resume through the real production main/worker
       assert.ok(f.deck.card);
       await f.send('ui:confessionalChoose', { ...current, choice: 'decline' });
       assert.equal(f.state.player.credits, 100); assert.equal(f.state.story.flags.guilt_tithe_declined, 20);
-      await f.send('dock:docked', { stationId: 'station_forge' }); assert.equal(f.deck.card, null);
+      await f.send('ui:confessionalChoose', { ...current, choice: 'decline' });
+      await f.visitBooth(); assert.equal(f.deck.card, null);
+      assert.equal(f.receipts.filter(receipt => receipt.outcome === 'declined').length, 1);
     });
 
     await t.test('real combat defeat selects actual position; no duplicate bell after owner reinit', async () => {
@@ -219,7 +225,7 @@ test('incoming systems settle and resume through the real production main/worker
     await t.test('canonical finale delivers the exact accepted text in mail and ending, surviving eviction', async () => {
       const glass = epilogueFixture(f.mainBus, f.mainState);
       try {
-      f.fresh(); await f.send('dock:docked', { stationId: 'station_forge' });
+      f.fresh(); await f.visitBooth();
       const offer = f.offers.at(-1);
       await f.send('ui:confessionalChoose', { ...offer, choice: 'file' });
       const filed = f.state.story.flags.guilt_filed.recordText;
@@ -265,9 +271,10 @@ test('incoming systems settle and resume through the real production main/worker
     await t.test('a bounded full ledger keeps its exact words across the default event bridge', async () => {
       f.fresh(); f.state.simTime = 180;
       for (let i = 1; i < 128; i++) rememberMoralDebt(f.state, {
-        id: `bounded-${i}`, name: `Pilot ${i} ` + 'N'.repeat(80), cause: 'moral_trap:' + 'C'.repeat(80),
+        id: `bounded-${i}`, name: `Pilot ${i} ` + 'N'.repeat(80),
+        cause: 'The registered crew accepted the alternate passage before a second convoy became involved',
       });
-      await f.send('dock:docked', { stationId: 'station_forge' });
+      await f.visitBooth();
       const offer = f.offers.at(-1);
       assert.equal(offer.records, 128); assert.ok(offer.recordText.length > 20000);
       await f.send('ui:confessionalChoose', { ...offer, choice: 'file' });

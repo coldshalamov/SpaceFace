@@ -48,7 +48,9 @@ function buildKbmPrompts(state) {
   const yaw = pairKeys(state, 'yawLeft', 'yawRight');
   const strafe = pairKeys(state, 'strafeLeft', 'strafeRight');
   const fire = promptKey(state, 'fire') || MOUSE_ACTION_LABELS.fire;
-  const mine = MOUSE_ACTION_LABELS.mine;
+  // G18-02 renamed the mouse verb `mine` -> `tether` (the Line lives on RMB in every door);
+  // reading the old name printed "undefined select" on the live mining prompt.
+  const mine = MOUSE_ACTION_LABELS.tether;
   const tether = promptKey(state, 'tether');
   const shove = promptKey(state, 'shove');
   const boost = promptKey(state, 'boost');

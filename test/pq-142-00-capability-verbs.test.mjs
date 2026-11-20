@@ -89,7 +89,7 @@ test('the slam verb is the closing speed the live crumple law writes this hull o
   assert.equal(slam.unbreakable, false, 'a starter hull is breakable by rock');
   assert.ok(slam.speedWuPerS > 30 && slam.speedWuPerS < 200,
     `a starter hull should die to rock somewhere in the fighting band, got ${slam.speedWuPerS}`);
-  assert.match(empty.verbs.slam.verb, /Survives rock up to \d+ WU\/s/);
+  assert.match(empty.verbs.slam.verb, /Survives rock up to \d+ u\/s/);
 
   const loaded = verbsFor(HITCH, STARTER_FIT, 200);
   assert.equal(slamSurvivalSpeedFor(loaded.derived).unbreakable, true,
@@ -105,9 +105,9 @@ test('the line verb falls as the ship is loaded and names a reachable swing on a
   assert.ok(empty.verbs.line.speedWuPerS > loaded.verbs.line.speedWuPerS,
     'everything you carry pulls the rated swing down');
   assert.equal(empty.verbs.line.reachable, true, 'a fitted snare line has a swing speed you can actually reach');
-  assert.match(empty.verbs.line.verb, /Line holds a \d+ WU\/s swing/);
+  assert.match(empty.verbs.line.verb, /Line holds a \d+ u\/s swing/);
   assert.equal(CAPABILITY_LAW.lineSwingRadiusWu, 100,
-    'the line verb quotes FEEL_CONTRACT B7\'s own 100 WU reference line');
+    'the line verb quotes FEEL_CONTRACT B7\'s own 100 u reference line');
 });
 
 test('the field verb is a thing you cannot do at all without the module', () => {

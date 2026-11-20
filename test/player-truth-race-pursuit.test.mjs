@@ -12,16 +12,19 @@ function element({ attrs = {}, text = '', query = {}, lists = {} } = {}) {
   };
 }
 
-function raceDom({ target = [120, 85], ship = [80, 85, 90], hint = 'AHEAD 300 wu' } = {}) {
+function raceDom({ target = [120, 85], ship = [80, 85, 90], hint = 'AHEAD 300 wu',
+  stats = '0.00s · 0 u/s · GATE 2/16', course = '' } = {}) {
   const targetNode = element({ attrs: { cx: target[0], cy: target[1] } });
   const shipNode = element({ attrs: { transform: `translate(${ship[0]} ${ship[1]}) rotate(${ship[2]})` } });
-  const map = element({ query: { circle: targetNode, path: shipNode } });
+  const polyline = element({ attrs: { points: course } });
+  const map = element({ query: { circle: targetNode, path: shipNode, polyline } });
   const hintNode = element({ text: hint });
+  const statsNode = element({ text: stats });
   const root = element({
-    query: { '.race-tape-map svg': map },
+    query: { '.race-tape-map svg': map, '.race-tape-stats': statsNode },
     lists: { '.race-tape-hint': [hintNode] },
   });
-  return { root, map, targetNode, shipNode, hintNode };
+  return { root, map, targetNode, shipNode, hintNode, statsNode };
 }
 
 test('race pilot reads the painted map target and text fallback only', () => {
@@ -38,7 +41,9 @@ test('race pilot reads the painted map target and text fallback only', () => {
     dom.root.querySelector = selector => selector === '.race-tape-map svg' ? null : null;
     globalThis.document = { querySelector: selector => selector === '#race-tape' ? dom.root : null };
     const textCue = readVisibleRaceCue();
-    assert.deepEqual(textCue, { direction: 'left', bearingDeg: -30, distanceWU: 240, hintText: 'LEFT 240 wu' });
+    assert.equal(textCue.direction, 'left');
+    assert.equal(textCue.bearingDeg, -30);
+    assert.equal(textCue.distanceWU, 240);
 
     dom = raceDom({ target: [0, 0], ship: [0, 0, 90], hint: 'AHEAD 358 u' });
     dom.root.querySelector = selector => selector === '.race-tape-map svg' ? null : null;
@@ -46,6 +51,12 @@ test('race pilot reads the painted map target and text fallback only', () => {
     const renderedUnitCue = readVisibleRaceCue();
     assert.equal(renderedUnitCue.distanceWU, 358,
       'the public HUD unit is parsed so the pilot can use its near-gate control');
+
+    dom = raceDom({ target: [120, 85], ship: [135, 91, 90], hint: 'OFF COURSE · RECOVERY RUN',
+      course: '40,85 120,85 120,125' });
+    const missed = readVisibleRaceCue();
+    assert.equal(missed.reenter, true);
+    assert.ok(missed.bearingDeg < -165, 'aim is moved behind the painted checkpoint plane after a miss');
   } finally {
     if (oldDocument === undefined) delete globalThis.document; else globalThis.document = oldDocument;
   }
@@ -60,6 +71,8 @@ test('race pilot turns before thrust, then uses a bounded aligned boost pulse an
   const events = [];
   const history = [];
   let failWait = false;
+  let fullStop = false;
+  let missedWheelOpen = false;
   globalThis.document = { querySelector: selector => selector === '#race-tape' ? dom.root : null };
   globalThis.window = { SF: { state } };
   const page = {
@@ -77,10 +90,35 @@ test('race pilot turns before thrust, then uses a bounded aligned boost pulse an
         dom.hintNode.textContent = 'AHEAD 300 wu';
       }
     },
+    waitForFunction: async fn => {
+      state.input = { actions: { contextWheel: held.has('KeyQ') } };
+      assert.equal(fn(), true, 'previous Q release is applied before reopening the wheel');
+    },
     keyboard: {
       down: async code => { held.add(code); events.push(`down:${code}`); },
       up: async code => { held.delete(code); events.push(`up:${code}`); },
     },
+    locator: selector => {
+      if (selector === '#sf-context-wheel') return { waitFor: async () => {} };
+      assert.equal(selector, '#sf-context-wheel [data-action="brake"] .sf-cwheel__face');
+      return {
+        waitFor: async () => {
+          assert.ok(held.has('KeyQ'));
+          if (!missedWheelOpen) return;
+          missedWheelOpen = false;
+          throw Object.assign(new Error('wheel did not open'), { name: 'TimeoutError' });
+        },
+        evaluate: async fn => fn({ closest: () => ({ previousElementSibling: {
+          classList: { contains: name => name === 'is-on' && fullStop },
+        } }) }),
+        boundingBox: async () => ({ x: 80, y: 25, width: 80, height: 30 }),
+      };
+    },
+    mouse: { click: async (x, y) => {
+      assert.deepEqual([x, y], [120, 40]);
+      fullStop = !fullStop;
+      events.push(fullStop ? 'stop:on' : 'stop:off');
+    } },
   };
   try {
     await racingCruiseBeat(page, 0);
@@ -92,8 +130,39 @@ test('race pilot turns before thrust, then uses a bounded aligned boost pulse an
     assert.ok(history.some(keys => keys.includes('KeyW') && keys.includes('ShiftLeft')), 'aligned pulse includes bounded boost');
     assert.equal(held.size, 0);
 
+    let previousEvents = events.length;
+    dom.statsNode.textContent = '3 · HOLD THE GRID';
+    dom.hintNode.textContent = 'Accelerate on green · Touch: up drives, sides steer, down brakes';
+    await racingCruiseBeat(page, 2);
+    assert.deepEqual(events.slice(previousEvents), [], 'the painted countdown keeps the pilot stationary');
+
+    for (const hint of ['BRAKE FOR TURN', 'CORRECT YOUR DRIFT', 'WRONG WAY · OFF COURSE']) {
+      previousEvents = events.length;
+      dom.statsNode.textContent = '9.07s · 383 u/s · GATE 3/16';
+      dom.hintNode.textContent = hint;
+      await racingCruiseBeat(page, 3);
+      assert.deepEqual(events.slice(previousEvents), [
+        'down:KeyQ', 'stop:on', 'up:KeyQ', 'down:KeyQ', 'stop:off', 'up:KeyQ',
+      ], 'a visible warning gets a bounded real Full Stop pulse');
+      assert.equal(fullStop, false);
+    }
+
+    previousEvents = events.length;
+    missedWheelOpen = true;
+    await racingCruiseBeat(page, 3);
+    assert.deepEqual(events.slice(previousEvents), [
+      'down:KeyQ', 'up:KeyQ', 'down:KeyQ', 'stop:on', 'up:KeyQ',
+      'down:KeyQ', 'stop:off', 'up:KeyQ',
+    ], 'a missed wheel opening gets another press and leaves the brake off');
+
+    previousEvents = events.length;
+    dom.statsNode.textContent = '10.02s · 0 u/s · GATE 3/16';
+    dom.hintNode.textContent = 'RECOVERY RUN';
+    await racingCruiseBeat(page, 4);
+    assert.deepEqual(events.slice(previousEvents), ['down:KeyW', 'up:KeyW'], 'missing distance never grants boost');
+
     failWait = true;
-    await assert.rejects(racingCruiseBeat(page, 2), /clock stopped/);
+    await assert.rejects(racingCruiseBeat(page, 5), /clock stopped/);
     assert.equal(held.size, 0, 'clock/error cleanup releases every public key');
   } finally {
     if (oldDocument === undefined) delete globalThis.document; else globalThis.document = oldDocument;

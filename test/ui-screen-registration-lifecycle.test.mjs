@@ -253,6 +253,24 @@ test('a fresh game:start still closes stale screens without restoring station', 
   ]);
 });
 
+test('startup cleanup keeps the already-open equipment screen for a live draft', () => {
+  const calls = [];
+  const owner = {
+    state: { mode: 'flight', run: { kind: 'survival', phase: 'draft' }, ui: {} },
+    screenManager: {
+      top: () => 'crucibleDraft',
+      closeAll(options) { calls.push(options); },
+    },
+  };
+
+  reconcileGameStartedScreens(owner);
+  assert.deepEqual(calls, [{ keepTopId: 'crucibleDraft' }]);
+
+  owner.state.run.phase = 'active';
+  reconcileGameStartedScreens(owner);
+  assert.deepEqual(calls, [{ keepTopId: 'crucibleDraft' }, undefined]);
+});
+
 test('delayed game:start releases the canceled dock fade lease before restoring station', () => {
   const clock = installFakeTimers();
   try {

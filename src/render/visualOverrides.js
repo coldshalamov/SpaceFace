@@ -507,14 +507,19 @@ export function materializeBoundaryResolvingMarker(boundary) {
   if (!data || data.resolvingMarker || data.wantsBoundaryResolvingMarker !== true) return null;
   const entity = data.boundaryResolvingMarkerEntity;
   const standInFile = data.boundaryResolvingStandInFile;
+  // Swarm kill debris can collide immediately. Keep the warmed marker until its exact
+  // packaged body commits. A decoded record can still need buffer uploads and material links.
+  const swarmKillDebris = entity?.type === 'wreck'
+    && entity.data?.runCohort === 'survival' && entity.data.persistenceOwner === 'aftermathWrecks';
+  const resolveStandIn = swarmKillDebris ? null : boundaryStandInResolver;
   // Same-identity stand-in first: when the boundary's own authored record is already resident
   // (library plan or a settled warm decode), draw its real silhouette in the shared flat
   // materials instead of the abstract octahedron — strictly closer to the committed body.
   let marker = null;
   const standInTarget = boundaryStandInTarget(data, entity);
   let record = null;
-  if (standInFile && boundaryStandInResolver) {
-    try { record = boundaryStandInResolver(entity, standInFile) || null; } catch { record = null; }
+  if (standInFile && resolveStandIn) {
+    try { record = resolveStandIn(entity, standInFile) || null; } catch { record = null; }
     if (record) marker = lodStandInFor(entity, record, standInTarget);
   }
   if (!marker) {
@@ -523,7 +528,7 @@ export function materializeBoundaryResolvingMarker(boundary) {
       // A resident record that cannot build a stand-in (no primitives/bounds) never
       // becomes usable — the ship-substrate path stamps the same terminal reason.
       data.resolvingMarkerFallbackReason = 'stand-in-record-unusable';
-    } else if (standInFile && boundaryStandInResolver) {
+    } else if (standInFile && resolveStandIn) {
       // Built before the record went resident: keep the same pending retry the ship substrate
       // uses so a mid-admission warm decode still converges on the real body.
       data.admissionStandInPending = true;

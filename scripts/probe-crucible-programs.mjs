@@ -294,13 +294,13 @@ async function main() {
     if (!(await clickButton(page, 'Crucible'))) throw new Error('Crucible button did not click');
     await page.waitForTimeout(500);
     await page.evaluate(() => { const c = [...document.querySelectorAll('#screens .sf-crd-mode')].find((b) => b.dataset.ruleset === 'swarm'); if (c) c.click(); });
-    if (!(await clickButton(page, 'Choose ship & kit'))) throw new Error('Choose ship & kit did not click');
+    if (!(await clickButton(page, 'Choose ship'))) throw new Error('Choose ship did not click');
     await page.evaluate((seed) => {
       const hull = [...document.querySelectorAll('#screens .sf-crd-hull')].find((b) => b.textContent.includes('Ricochet Runner')) || document.querySelector('#screens .sf-crd-hull');
       hull.click();
       document.querySelector('#screens .sf-crd-seed input').value = String(seed);
     }, SEED);
-    if (!(await clickButton(page, 'Open armory'))) throw new Error('Open armory did not click');
+    if (!(await clickButton(page, 'Review equipment'))) throw new Error('Review equipment did not click');
     await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 180000 });
     await waitForButton(page, 'Launch round 1', 180000);
     await clickButton(page, 'Launch round 1');

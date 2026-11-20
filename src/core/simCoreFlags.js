@@ -24,10 +24,9 @@ const DEFAULTS = Object.freeze({
   telemetryDemand: false,
   /**
    * A due economy pass advances by a fixed quantum per fixed tick instead of one 130 ms step.
-   * HELD OFF (2026-11-06): the per-fixed-tick drain, save cursor and 2100-tick/60 s cadence tests
-   * are green behind this flag, but the shipped 47-A tape is currently contaminated by foreign
-   * working-tree changes, so v26 cannot be recorded honestly. v24 (`1fedbd09…`) stays active;
-   * v25 (`080c5bd9…`) is the obsolete un-drained shape. Flip this on only with a clean v26.
+   * DEFAULT ON: the per-fixed-tick drain (`drainTick`), serialized pass cursor and 2100-tick/60 s
+   * cadence tests are green, and mid-pass save/reload reproduces uninterrupted runs byte-equal.
+   * Override with `SF_SIM_CORE='{"economySlicing":false}'` for matched A/B comparisons.
    */
   economySlicing: true,
   /** The quantized per-body SG-02 snapshot is built lazily at a checkpoint, not every tick. */

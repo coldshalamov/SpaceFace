@@ -17,7 +17,7 @@ import { quoteProvenance } from '../marketIntelligence.js';
 import { laneSetNavWaypoint } from '../../core/simLaneCommands.js';
 import { SECTORS } from '../../data/sectors.js';
 import { effectiveSectorFor } from '../../systems/sectorSim.js';
-import { isUnsellableCargo } from '../../systems/cargo.js';
+import { isUnsellableCargo, sellableCargoQuantity } from '../../systems/cargo.js';
 import { formatCount } from '../numberFormat.js';
 
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -926,11 +926,13 @@ function nearestCargoBuyerStationId(state, ctx, commodityId) {
  * Returns { unitSell, unsellable }.
  */
 export function resolveCargoSellPrice(state, ctx, commodityId, destinationStationId = null) {
-  if (!state || !commodityId) return { unitSell: 0, unsellable: true };
-  if (typeof isUnsellableCargo === 'function' && isUnsellableCargo(state, commodityId)) {
+  if (!state || !commodityId || isUnsellableCargo(state, commodityId)) {
     return { unitSell: 0, unsellable: true };
   }
-  const context = ctx || { state };
+  return quoteCargoMarket(state, ctx || { state }, commodityId, destinationStationId);
+}
+
+function quoteCargoMarket(state, context, commodityId, destinationStationId) {
   if (destinationStationId) {
     const price = unitPrice(context, destinationStationId, commodityId, 'sell');
     if (price != null && price > 0) {
@@ -954,7 +956,7 @@ export function resolveCargoSellPrice(state, ctx, commodityId, destinationStatio
 /**
  * Calculates hold contents worth and formats the flight cargo bar readout.
  * EC-G19 §5: "HOLD 12/40 · ≈ 3,480 cr"
- * Shows loose towed cargo (+ 1 towed) and unsellable cargo flag (· some unsellable here).
+ * Quotes only free units in the hold and indicates when some cargo cannot be sold.
  */
 export function calculateHoldWorth(state, ctx) {
   const context = ctx || { state };
@@ -985,11 +987,15 @@ export function calculateHoldWorth(state, ctx) {
   for (const [cmdtyId, qtyVal] of Object.entries(items)) {
     const qty = Math.max(0, Math.floor(Number(qtyVal) || 0));
     if (qty <= 0) continue;
-    const priceInfo = resolveCargoSellPrice(s, context, cmdtyId, destStationId);
+    const freeQty = sellableCargoQuantity(s, cmdtyId);
+    if (freeQty < qty) hasUnsellable = true;
+    if (freeQty === 0) continue;
+
+    const priceInfo = quoteCargoMarket(s, context, cmdtyId, destStationId);
     if (priceInfo.unsellable || priceInfo.unitSell <= 0) {
       hasUnsellable = true;
     } else {
-      totalWorth += qty * priceInfo.unitSell;
+      totalWorth += freeQty * priceInfo.unitSell;
     }
   }
 
@@ -1025,7 +1031,7 @@ export function calculateHoldWorth(state, ctx) {
 
   const worthFormatted = formatCount(totalWorth, s);
   let text = `HOLD ${used}/${cap} · ≈ ${worthFormatted} cr`;
-  if (hasUnsellable) text += ' · some unsellable here';
+  if (hasUnsellable) text += " · some cargo can't be sold";
   if (towedCount > 0) text += ` + ${towedCount} towed`;
 
   return {

@@ -6,18 +6,20 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { sourceOverlayDigest } = createRequire(import.meta.url)('../scripts/lib/gameServer.cjs');
 
 function runCreator(name, extraArgs = []) {
-  const output = path.join(ROOT, '.devshots', 'source-baselines', `${name}.json`);
-  execFileSync(process.execPath, [
+  const receipt = execFileSync(process.execPath, [
     'scripts/create-source-baseline.mjs',
     `--name=${name}`,
     ...extraArgs,
   ], { cwd: ROOT, encoding: 'utf8', windowsHide: true });
-  return output;
+  const { manifest } = JSON.parse(receipt);
+  assert.match(manifest, /\.json\.gz$/);
+  return manifest;
 }
 
 function gitPaths(commit, prefix, include = () => true) {
@@ -47,7 +49,7 @@ test('all-runtime frozen baselines include Three, the command channel, source JS
   const name = `source-baseline-closure-${process.pid}-${Date.now()}`;
   const output = runCreator(name, ['--commit=HEAD~1', '--all-runtime']);
   t.after(() => rm(output, { force: true }));
-  const manifest = JSON.parse(await readFile(output, 'utf8'));
+  const manifest = JSON.parse(gunzipSync(await readFile(output)).toString('utf8'));
   const byPath = new Set(manifest.files.map((entry) => entry.path));
 
   assert.equal(manifest.sourceMode, 'git-commit-all-runtime');
@@ -91,11 +93,11 @@ test('all-runtime working-tree baselines pin Three and imported, fetched, and ne
   const newScenarioBytes = Buffer.from('{"scenario":"frozen-working-tree-json"}\n');
   await writeFile(newScenarioFile, newScenarioBytes);
   t.after(async () => {
-    await rm(path.join(ROOT, '.devshots', 'source-baselines', `${name}.json`), { force: true });
+    await rm(path.join(ROOT, '.devshots', 'source-baselines', `${name}.json.gz`), { force: true });
     await rm(newScenarioFile, { force: true });
   });
   const output = runCreator(name, ['--working-tree', '--all-runtime']);
-  const manifest = JSON.parse(await readFile(output, 'utf8'));
+  const manifest = JSON.parse(gunzipSync(await readFile(output)).toString('utf8'));
   const currentCommandChannel = await readFile(path.join(ROOT, 'scripts/lib/simCommandChannel.mjs'));
   const currentCss = await readFile(path.join(ROOT, 'styles/ui.css'));
   const importedJson = 'src/data/anvilOrchardGeometry.json';

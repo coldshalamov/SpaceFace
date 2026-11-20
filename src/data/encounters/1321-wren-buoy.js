@@ -1,6 +1,6 @@
 // SP2-035 — SIGNAL BUOY VHL-4471. Two thousand WU from anything with a name, in the Ashfall
 // outer dark, a hand-built marker buoy floats in nothing: transponder VHL-4471-T / TESSERA,
-// transmitter off. Wired to it is a paper tag — the only readable surface for 2000 WU in any
+// transmitter off. Wired to it is a paper tag — the only readable surface for 2000 u in any
 // direction: FOR WHOEVER FLIES HER NEXT. SHE PULLS LEFT. SHE IS WORTH IT. — W.
 //
 // The catalog entry (special500.SP2-035, the director's endgame:chosen receipt) is the
@@ -14,7 +14,7 @@
 //   * the buoy prop — encounter-owned dressing re-materialized per watch; the flag is the
 //     durable truth, and 'found' is terminal (blockAfterOutcome).
 //
-// The distance gate is real: the watch only stands where no station is within 2000 WU —
+// The distance gate is real: the watch only stands where no station is within 2000 u —
 // the tag is the only readable surface for that kind of empty.
 import { deepFreeze, defineEncounter } from './catalog.js';
 import { settleSituation } from '../../systems/crSituationKit.js';

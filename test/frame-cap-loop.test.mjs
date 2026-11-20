@@ -23,7 +23,9 @@ function stubSimulationRunner() {
   };
 }
 
-function startCappedLoop({ frameCap = 30, vsync = true, displayHz = 60, visibilityTarget = null } = {}) {
+function startCappedLoop({
+  frameCap = 30, vsync = true, displayHz = 60, visibilityTarget = null, gpu = null, qualityMode,
+} = {}) {
   const queued = [];
   let now = 0;
   let presents = 0;
@@ -34,8 +36,8 @@ function startCappedLoop({ frameCap = 30, vsync = true, displayHz = 60, visibili
     tick: 0,
     simTime: 0,
     input: { actions: {} },
-    render: { displayHz },
-    settings: { video: { vsync, frameCap } },
+    render: { displayHz, gpu },
+    settings: { video: { vsync, frameCap, qualityMode } },
   };
   const runner = createPresentationRunner(
     state,
@@ -106,6 +108,21 @@ test('a 30 fps cap preserves callbacks already arriving at 30 fps', () => {
     assert.equal(loop.advances(), 12);
     assert.equal(loop.diagnostics().frameCapSkips, 0);
   } finally { loop.close(); }
+});
+
+test('the explicit 60 fps cap takes precedence over the integrated Auto cap', () => {
+  const options = { gpu: { tier: 'integrated' }, qualityMode: 'auto' };
+  const chosen = startCappedLoop({ ...options, frameCap: 60 });
+  const automatic = startCappedLoop({ ...options, frameCap: 0 });
+  try {
+    for (let i = 0; i < 12; i++) {
+      chosen.pump(1000 / 60);
+      automatic.pump(1000 / 60);
+    }
+    assert.equal(chosen.presents(), 12);
+    assert.equal(chosen.advances(), automatic.advances());
+    assert.ok(automatic.presents() >= 6 && automatic.presents() <= 7);
+  } finally { chosen.close(); automatic.close(); }
 });
 
 test('callbacks below the requested cap all present while faster displays remain capped', () => {

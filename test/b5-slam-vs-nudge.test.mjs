@@ -161,24 +161,17 @@ for (const seed of SEEDS) {
         provenance: { actorId: 1, rootId: 900, tick: 120 },
       }));
       frame();
-      // OVH-06a / R10: the beat no longer adds camera trauma. The scaling is read from the
-      // presented pre-solve speed the beat armed on (and the window it paced).
-      assert.deepEqual(traumas, [], 'R10: a contact beat adds no camera trauma');
-      return { presented: host._armedCollisionDeltaV, hsDur: beatWindow(host) };
+      return { trauma: traumas[0], hsDur: beatWindow(host) };
     });
     console.log(`[B5 live receipt] seed=${seed}`);
     answers.forEach((a, i) => console.log(
-      `closing ${String(CLOSING_SPEEDS[i]).padStart(3)} WU/s -> presented ${a.presented}, beat window ${(a.hsDur * 1000).toFixed(1)} ms`,
+      `closing ${String(CLOSING_SPEEDS[i]).padStart(3)} WU/s -> trauma ${a.trauma.toFixed(3)}, beat window ${(a.hsDur * 1000).toFixed(1)} ms`,
     ));
-    for (let i = 0; i < answers.length; i++) {
-      assert.equal(answers[i].presented, CLOSING_SPEEDS[i],
-        'the live receipt scales by the pre-solve closing speed, not the solver-clamped one');
-    }
     for (let i = 1; i < answers.length; i++) {
       assert.ok(answers[i].hsDur > answers[i - 1].hsDur,
         'the beat window must strictly increase through the remote player-caused receipt');
-      assert.ok(answers[i].presented > answers[i - 1].presented,
-        'the presented closing speed must strictly increase through the remote player-caused receipt');
+      assert.ok(answers[i].trauma > answers[i - 1].trauma,
+        'camera trauma must strictly increase through the remote player-caused receipt');
     }
     // A receipt missing the pre-solve field answers like the clamped 40 WU/s it carries —
     // the field, not the row's test setup, is what rescues the ram.
@@ -194,8 +187,7 @@ for (const seed of SEEDS) {
       mode: 'flight', playerDistance: 0, deltaV: SOLVER_CLAMP_DV,
     });
     assert.equal(beatWindow(host), clamped.hsDur, 'no pre-solve speed -> the solver-clamped answer');
-    assert.equal(host._armedCollisionDeltaV, SOLVER_CLAMP_DV, 'the beat armed on the clamped speed');
-    assert.deepEqual(traumas, [], 'R10: a contact beat adds no camera trauma');
+    assert.equal(traumas[0], clamped.trauma);
   });
 
   test(`seed ${seed}: collision audio pitch drops >= 1 octave from the light kiss to the heavy slam`, () => {

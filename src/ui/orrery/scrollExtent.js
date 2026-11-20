@@ -41,12 +41,11 @@ function paint(el) {
     const r = el.getBoundingClientRect();
     const vw = globalThis.innerWidth || 1440;
     const vh = globalThis.innerHeight || 900;
-    // a scroller that reaches the viewport's bottom-right corner would seat its cue on the foot's
-    // primary verb (the factions stage ran onto UNDOCK, bench 1440x900) — those seat bottom-left
+    // Seat flush on the scroller's bottom fade rim rather than 38px up inside the last text row
     const leftSeat = r.right > vw - 240;
-    const seatTop = Math.max(r.top + 8, Math.min(r.bottom - 38, vh - 104));
+    const seatTop = Math.max(r.top + 8, Math.min(r.bottom - 22, vh - 98));
     foot.style.top = `${Math.max(0, Math.round(seatTop))}px`;
-    foot.style.left = `${Math.max(0, Math.round(leftSeat ? r.left + 14 : r.right - 132))}px`;
+    foot.style.left = `${Math.max(0, Math.round(leftSeat ? r.left + 14 : Math.max(r.left + 8, r.right - 92)))}px`;
   }
 }
 
@@ -73,16 +72,24 @@ export function syncScrollExtent(el) {
   }
   const host = el.parentElement;
   if (host && getComputedStyle(host).position === 'static') host.style.position = 'relative';
-  if (!bound.has(el)) {
+  let binding = bound.get(el);
+  if (!binding) {
     const onScroll = () => paint(el);
     el.addEventListener('scroll', onScroll, { passive: true });
     let ro = null;
     if (typeof ResizeObserver === 'function') { ro = new ResizeObserver(() => paint(el)); ro.observe(el); }
-    bound.set(el, { onScroll, ro });
+    binding = { onScroll, ro, paintQueued: false };
+    bound.set(el, binding);
   }
   paint(el);
   const raf = globalThis.requestAnimationFrame;
-  if (typeof raf === 'function') raf(() => paint(el));
+  if (typeof raf === 'function' && !binding.paintQueued) {
+    binding.paintQueued = true;
+    raf(() => {
+      binding.paintQueued = false;
+      paint(el);
+    });
+  }
 }
 
 export const SCROLL_EXTENT_CSS = `
@@ -100,7 +107,7 @@ export const SCROLL_EXTENT_CSS = `
   display:block;
   position:static; left:auto; top:auto; right:auto; bottom:auto; width:auto; height:auto;
   font:650 12px var(--dp-face-num, ui-monospace, monospace); letter-spacing:.18em;
-  color:rgb(236 230 216 / .62); background:rgb(5 7 10 / .78);
+  color:rgb(236 230 216 / .72); background:rgb(7 11 16 / .94);
   border:1px solid rgb(236 230 216 / .22); border-radius:2px; box-shadow:none;
   padding:2px 8px;
 }

@@ -12,16 +12,19 @@ function overlaps(a, b) {
     && a.y + a.height > b.y;
 }
 
-test('the contacts list stays out of the flight HUD until the player locks something', () => {
+test('the contacts list waits for a lock or an explicit populated pin', () => {
   assert.equal(typeof hud.contactRosterVisible, 'function',
     'HUD must expose the contact-roster visibility contract');
   assert.equal(hud.contactRosterVisible({
     locked: false,
     eligibleContactCount: 1,
-    pinned: true,
+    pinned: false,
     nearbyHostile: true,
     revealActive: true,
-  }), false, 'a pin, a hostile, or a scan does not mount the list');
+  }), false, 'a hostile or a scan does not mount the unpinned list');
+  assert.equal(hud.contactRosterVisible({ pinned: true, eligibleContactCount: 1 }), true,
+    'a deliberate pin opens a populated list without a lock');
+  assert.equal(hud.contactRosterVisible({ pinned: true }), false, 'an empty pin does not mount a plate');
   assert.equal(hud.contactRosterVisible({ locked: true }), true, 'a lock mounts the list');
 
   const parent = { children: [], insertBefore(node, before) {

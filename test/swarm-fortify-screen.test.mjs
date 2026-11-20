@@ -11,6 +11,13 @@ function boot() {
   const make = doc.createElement;
   doc.createElement = tag => {
     const node = make(tag);
+    let ownText = '';
+    Object.defineProperty(node, 'textContent', {
+      get() { return [ownText, ...node.children.map(c => c.textContent || '')].filter(Boolean).join(''); },
+      set(v) { ownText = v == null ? '' : String(v); node.children = []; },
+      enumerable: true,
+      configurable: true,
+    });
     node.ownerDocument = doc;
     node.replaceChildren = (...children) => {
       for (const child of node.children) child.parentNode = null;

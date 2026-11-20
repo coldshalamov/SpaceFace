@@ -181,7 +181,7 @@ export const fieldHud = {
       else if (!soonest || rec.expireAt < soonest.expireAt) soonest = rec;
     }
     if (cone) {
-      return { text: `CONE — ${cone.engaged ? 'CLEARING' : 'PROJECTING'}`, cls: '' };
+      return { text: `CONE — ${cone.engaged ? 'CLEARING' : 'PROJECTING'}`, cls: cone.engaged ? '' : 'field-cone-projecting' };
     }
     if (soonest) {
       const label = KIND_LABEL[soonest.kind] || 'FIELD';
@@ -274,6 +274,7 @@ export const fieldHud = {
       dom.pill.classList.toggle('field-current-warning', cls === 'field-current-warning');
       dom.pill.classList.toggle('field-current-surge', cls === 'field-current-surge');
       dom.pill.classList.toggle('field-current-calm', cls === 'field-current-calm');
+      dom.pill.classList.toggle('field-cone-projecting', cls === 'field-cone-projecting');
     }
     if (!this._visible) {
       dom.pill.style.display = 'flex';

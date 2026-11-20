@@ -284,6 +284,17 @@ test('the named formations resolve through the gate seam', () => {
   }
   // Round 2 — Wasps from two gates.
   assert.deepEqual(gatesFor(2, 'wasp_swarmer').sort(), ['front', 'rear'], 'round 2 fields wasps on two gates');
+  // Round 5's counter has its own approach beside the unchanged opening pack.
+  {
+    const plan = planWave({ seed: SEED, arenaId: ARENA, wave: 5, ruleset: 'swarm' });
+    const darts = plan.packages.filter(pkg => pkg.enemyId === 'detonator_dart');
+    const reserve = darts.find(pkg => pkg.staged);
+    assert.equal(reserve?.count, 1);
+    assert.equal(darts.find(pkg => !pkg.staged)?.count, 4);
+    assert.ok(plan.packages.every(pkg => pkg === reserve || pkg.gateGroup !== reserve.gateGroup),
+      'the reserve uses an unoccupied approach');
+    assert.equal(reserve.distance, 335);
+  }
   // Round 7 — Lancers at the edges: the first sighting steps out alone on its own
   // bearing, then the packs hold the literal side doors behind it.
   {

@@ -1871,6 +1871,17 @@ export function resolveAutopilotArrivalRadius(entity, autopilot, target) {
   );
 }
 
+function autopilotObstacleStrength(projection, lateral, maxProjection, contactReach, clearance) {
+  const courseProjection = clamp(projection, 0, maxProjection);
+  const endGap = projection - courseProjection;
+  // A center outside the course contributes only when its physical reach overlaps an end.
+  // The additional steering clearance applies within the course, where there is room to pass.
+  const absLateral = Math.abs(lateral);
+  if (absLateral >= clearance || (endGap !== 0 && endGap * endGap + lateral * lateral >= contactReach * contactReach)) return 0;
+  const depth = 1 - courseProjection / Math.max(1, maxProjection);
+  return (1 - absLateral / Math.max(1, clearance)) * (0.7 + depth * 0.8);
+}
+
 export function computeAutopilotGuidance(state, player, target, distance, arrivalRadius, autopilot) {
   const px = finite(player.pos && player.pos.x);
   const pz = finite(player.pos && player.pos.z);
@@ -1894,19 +1905,17 @@ export function computeAutopilotGuidance(state, player, target, distance, arriva
   let trafficHold = null;
   if (maxProjection > 0) {
     const obstacles = autopilotObstacles(state, player, target, baseX, baseZ, maxProjection);
+    const hullRadius = positive(player.radius, 0);
+    const clearanceSlack = 58 + Math.min(70, speed * 0.22);
     let weightedLateral = 0;
     let totalStrength = 0;
     for (const obstacle of obstacles) {
       const ox = finite(obstacle.pos && obstacle.pos.x) - px;
       const oz = finite(obstacle.pos && obstacle.pos.z) - pz;
       const projection = ox * baseX + oz * baseZ;
-      if (projection <= 0 || projection > maxProjection) continue;
       const lateral = ox * perpX + oz * perpZ;
-      const clearance = positive(player.radius, 0) + positive(obstacle.radius, 0) + 58 + Math.min(70, speed * 0.22);
-      const absLateral = Math.abs(lateral);
-      if (absLateral >= clearance) continue;
-      const depth = 1 - projection / Math.max(1, maxProjection);
-      const strength = (1 - absLateral / Math.max(1, clearance)) * (0.7 + depth * 0.8);
+      const contactReach = hullRadius + positive(obstacle.radius, 0);
+      const strength = autopilotObstacleStrength(projection, lateral, maxProjection, contactReach, contactReach + clearanceSlack);
       weightedLateral += lateral * strength;
       totalStrength += strength;
     }
@@ -1925,13 +1934,9 @@ export function computeAutopilotGuidance(state, player, target, distance, arriva
         const ox = finite(obstacle.pos && obstacle.pos.x) - px;
         const oz = finite(obstacle.pos && obstacle.pos.z) - pz;
         const projection = ox * baseX + oz * baseZ;
-        if (projection <= 0 || projection > maxProjection) continue;
         const lateral = ox * perpX + oz * perpZ;
-        const clearance = positive(player.radius, 0) + positive(obstacle.radius, 0) + 58 + Math.min(70, speed * 0.22);
-        const absLateral = Math.abs(lateral);
-        if (absLateral >= clearance) continue;
-        const depth = 1 - projection / Math.max(1, maxProjection);
-        const strength = (1 - absLateral / Math.max(1, clearance)) * (0.7 + depth * 0.8);
+        const contactReach = hullRadius + positive(obstacle.radius, 0);
+        const strength = autopilotObstacleStrength(projection, lateral, maxProjection, contactReach, contactReach + clearanceSlack);
         steerX += perpX * side * strength * 1.65;
         steerZ += perpZ * side * strength * 1.65;
       }
@@ -2002,12 +2007,8 @@ const AUTOPILOT_OBSTACLE_QUERY_SCRATCH = [];
 const AUTOPILOT_OBSTACLE_QUERY_POS = { x: 0, z: 0 };
 const AUTOPILOT_DRESSING_BOUNDS = [];
 
-// An obstacle only matters when its center sits inside the lookahead capsule: projection within
-// (0, maxProjection] of the player along the steer direction and |lateral| below its clearance
-// (player radius + obstacle radius + ≤128 WU slack). One circle covering that capsule returns
-// every possible contributor — the hash buckets entities by their full radius coverage, so even
-// a huge-radius station whose center lies off-axis is captured. The unchanged per-entity
-// predicate keeps semantics exact on the returned superset.
+// One circle covers the lookahead segment and the widest lateral steering clearance.
+// The obstacle query also accounts for physical reach, including bodies near the segment ends.
 function autopilotObstacles(state, player, target, baseX, baseZ, maxProjection) {
   const out = AUTOPILOT_OBSTACLE_SCRATCH;
   out.length = 0;

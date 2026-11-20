@@ -837,6 +837,22 @@ function emissiveMaterial(color, intensity = 1.6, role = SHARED_MATERIAL_ROLE.HU
   }), role));
 }
 
+// Shaded signal for surfaces big enough to fill a pixel block (warheads, rings, stripes).
+// A near-black base with emissiveIntensity above ~1 tone-maps to a flat white polygon.
+function hotSurface(color, intensity = 0.46) {
+  const key = `hot:${color}:${intensity}`;
+  return getMaterial(key, () => {
+    const base = new THREE.Color(color);
+    return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: base.clone().multiplyScalar(0.34),
+      emissive: base,
+      emissiveIntensity: intensity,
+      roughness: 0.48,
+      metalness: 0.2,
+    }), SHARED_MATERIAL_ROLE.HULL);
+  });
+}
+
 // Cockpit glass: dark tinted, semi-transparent, with a soft interior glow (the lit flight deck) and
 // a glossy low-roughness surface so it reads as a reflective canopy rather than an opaque emissive
 // blob. The emissive is kept modest so it doesn't blow out to white through bloom.
@@ -866,7 +882,7 @@ function additiveGlowMaterial(color, opacity = 0.75) {
 }
 
 // Hot lamp as a fixture: metal cup + emissive lens. Bloom comes from the surface, not a sprite.
-function lampFixture(color, scale, intensity = 3.2) {
+function lampFixture(color, scale, intensity = 1.15) {
   const root = new THREE.Group();
   const cup = new THREE.Mesh(
     getGeometry('lamp:cup', () => new THREE.CylinderGeometry(0.38, 0.52, 0.28, 8)),
@@ -949,7 +965,7 @@ function engineGlow(pal, x, z, scale) {
   // bright nozzle ring at the hull
   const nozzle = new THREE.Mesh(
     getGeometry('eng:nozzle', () => new THREE.CylinderGeometry(0.34, 0.22, 0.32, 12).rotateZ(Math.PI / 2)),
-    emissiveMaterial(pal.thruster, 2.4, SHARED_MATERIAL_ROLE.PLUME),
+    emissiveMaterial(pal.thruster, 0.85, SHARED_MATERIAL_ROLE.PLUME),
   );
   nozzle.scale.setScalar(scale);
   nozzle.userData.spacefaceTags = { vfxRole: 'driveNozzleGlow' };
@@ -1046,15 +1062,23 @@ function canopyGeo() { return getGeometry('ship:canopy', () => new THREE.SphereG
 // canopy reads as a real recessed cockpit with depth, not a flat glass blob.
 function recessedCanopy(ctx, px, py, pz, sx, sy, sz) {
   const { g, pal, cockpit } = ctx;
+  // The dome is a unit hemisphere. sx/sz are its half-extents. Clamp them to the
+  // fuselage half-width the builder measured, so the bubble cannot be wider than the hull.
+  const cap = ctx.fit && ctx.fit.canopyHalf != null ? ctx.fit.canopyHalf * ctx.R : null;
+  if (cap > 0) {
+    sz = Math.min(sz, cap * 0.78);
+    sx = Math.min(sx, cap * 1.05);
+    sy = Math.min(sy, cap * 0.72);
+  }
   const glass = new THREE.Mesh(canopyGeo(), cockpit);
   glass.scale.set(sx, sy, sz); glass.position.set(px, py, pz); g.add(glass);
   // dark interior deck (a squat box just below the glass) — gives the canopy depth
   const deck = new THREE.Mesh(getGeometry('ship:canopydeck', () => new THREE.BoxGeometry(0.6, 0.1, 0.5)),
-    emissiveMaterial(pal.accent, 0.8));
-  deck.scale.set(sx, sy, sz); deck.position.set(px, py - sy * 0.12, pz); g.add(deck);
+    emissiveMaterial(pal.accent, 0.35));
+  deck.scale.set(sx * 0.72, sy, sz * 0.72); deck.position.set(px, py - sy * 0.08, pz); g.add(deck);
   // frame ring around the canopy base (accent emissive, reads as a canopy seal)
   const frame = new THREE.Mesh(getGeometry('ship:canopyframe', () => new THREE.TorusGeometry(0.5, 0.04, 6, 14)),
-    emissiveMaterial(pal.accent, 1.4));
+    emissiveMaterial(pal.accent, 0.5));
   frame.rotation.x = Math.PI / 2; frame.scale.set(sx, sz, sz); frame.position.set(px, py - sy * 0.02, pz); g.add(frame);
 }
 
@@ -1167,7 +1191,7 @@ function weaponProp(wdefId, facing, size, pal, R, tier) {
   barrel.userData.animated = true;
   const port = new THREE.Mesh(
     getGeometry('wpn:port', () => new THREE.CylinderGeometry(0.07, 0.05, 0.09, 10).rotateZ(Math.PI / 2)),
-    emissiveMaterial(pal.accent, 2.8),
+    emissiveMaterial(pal.accent, 0.9),
   );
   port.position.x = 0.6 * s;
   port.scale.setScalar(s);
@@ -1197,7 +1221,7 @@ function engineProp(pal, R, scaleK, engineClass) {
   const g = new THREE.Group();
   const s = R * 0.22 * scaleK * (0.85 + Math.min(0.5, (engineClass || 60) / 240));
   const housingMat = hullMaterial(pal, 8);
-  const nozzleMat = emissiveMaterial(pal.thruster, 2.4, SHARED_MATERIAL_ROLE.PLUME);
+  const nozzleMat = emissiveMaterial(pal.thruster, 0.85, SHARED_MATERIAL_ROLE.PLUME);
   const darkMat = getMaterial('eng:dark', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x0c1016, roughness: 0.72, metalness: 0.68,
   }), SHARED_MATERIAL_ROLE.HULL));
@@ -1237,7 +1261,20 @@ function engineProp(pal, R, scaleK, engineClass) {
   g.userData.plumePose = flame.userData.plume ? kit.captureDrivePose(flame.userData.plume) : null;
   g.userData.plumeBase = flame.userData.plume ? { x: flame.userData.plume.scale.x, y: flame.userData.plume.scale.y, z: flame.userData.plume.scale.z } : null;
   g.userData.trailSocketOffset = new THREE.Vector3(-0.55 * s, 0, 0);
+  g.userData.nacelleScale = s;
   return g;
+}
+
+// Pull a nozzle onto the hull's aft face. Authored mount fractions are measured on the
+// packaged mesh and land behind the procedural stern, which reads as a floating engine.
+function seatEngineOnHull(engine, ctx) {
+  const fit = ctx.fit;
+  const s = engine.userData && engine.userData.nacelleScale;
+  if (!fit || fit.aftX == null || !(s > 0) || !(ctx.R > 0)) return;
+  const aft = fit.aftX * ctx.R;
+  // Nozzle ring is at local x = -0.34*s. Sit that ring just proud of the aft face.
+  const seatedX = aft + 0.32 * s;
+  if (engine.position.x < seatedX) engine.position.x = seatedX;
 }
 
 function addShipSocket(parent, name, position, role, forward = [1, 0, 0]) {
@@ -1275,7 +1312,7 @@ function miningProp(pal, R, tier) {
   g.userData.animated = true;
   bit.userData.animated = true;
   // glowing emitter tip (ore-cutter laser)
-  const tip = new THREE.Mesh(getGeometry('mine:tip2', () => new THREE.OctahedronGeometry(0.14, 0)), emissiveMaterial('#ffb347', 2.2));
+  const tip = new THREE.Mesh(getGeometry('mine:tip2', () => new THREE.OctahedronGeometry(0.14, 0)), emissiveMaterial('#ffb347', 0.7));
   tip.position.x = 1.0 * s; tip.scale.setScalar(s); g.add(tip);
   return g;
 }
@@ -1294,14 +1331,18 @@ function shieldRingProp(pal, R, halfWidth, height, tier) {
 }
 
 // ---- nav blinkers (port green / starboard red aerospace cueing) ------------------------------
-function addNavBlinkers(g, R, halfWidth, length, blinkers) {
+function addNavBlinkers(g, R, halfWidth, length, blinkers, fit) {
   // Aerospace nav-light convention: green on PORT (+Z here), red on STARBOARD (-Z), white stern at
-  // the rear center. Sized up so they read as distinct point lights (they'll bloom brightly in-game).
-  const z = R * halfWidth * 1.05;
-  const xMid = 0;
-  const gr = blinkerFixture('#3dff7a', R * 0.055, 0.0, blinkers); gr.position.set(xMid, R * 0.05, z); g.add(gr);
-  const rd = blinkerFixture('#ff4040', R * 0.055, 0.5, blinkers); rd.position.set(xMid, R * 0.05, -z); g.add(rd);
-  const stern = blinkerFixture('#eaf2ff', R * 0.048, 0.25, blinkers); stern.position.set(-R * length * 0.48, R * 0.06, 0); g.add(stern);
+  // the rear center. Seat them on the fuselage skin. halfWidth is the whole-ship beam and
+  // puts the lamps in empty space beside a narrower body.
+  const halfZ = fit && fit.beam != null ? fit.beam * 0.5 * R * 0.9 : R * halfWidth * 0.72;
+  const y = fit && fit.deckY != null ? fit.deckY * R * 0.55 : R * 0.05;
+  const xMid = fit && fit.centerX != null ? fit.centerX * R : 0;
+  const sternX = fit && fit.aftX != null ? fit.aftX * R + R * 0.03 : -R * length * 0.42;
+  const lamp = Math.min(R * 0.045, Math.max(R * 0.02, halfZ * 0.16));
+  const gr = blinkerFixture('#3dff7a', lamp, 0.0, blinkers); gr.position.set(xMid, y, halfZ); g.add(gr);
+  const rd = blinkerFixture('#ff4040', lamp, 0.5, blinkers); rd.position.set(xMid, y, -halfZ); g.add(rd);
+  const stern = blinkerFixture('#eaf2ff', lamp * 0.85, 0.25, blinkers); stern.position.set(sternX, y, 0); g.add(stern);
 }
 
 // =============================================================================================
@@ -1316,7 +1357,9 @@ function addNavBlinkers(g, R, halfWidth, length, blinkers) {
 
 function surfaceDetail(ctx) {
   const { g, R, pal, hm, vis, hints, seed } = ctx;
-  const L = vis.length, W = vis.halfWidth, H = vis.height;
+  const L = vis.length, H = vis.height;
+  // Scatter on the fuselage, not out at the wing tips.
+  const W = ctx.fit && ctx.fit.beam != null ? ctx.fit.beam * 0.5 : vis.halfWidth;
   const density = hints.greeble != null ? hints.greeble : 0.5;       // 0..1
   const armored = hints.plating === 'armored';
   const rnd = mulberryLite(seed ^ 0x9e37);
@@ -1325,7 +1368,7 @@ function surfaceDetail(ctx) {
   const span = xMax - xMin;
   const cellsX = Math.max(3, Math.round(span * 6));                  // grid resolution along X
   const cellsZ = Math.max(2, Math.round(W * 2 * 6));
-  const deckY = H * 0.5 * R;                                          // top surface height
+  const deckY = (ctx.fit && ctx.fit.deckY != null ? ctx.fit.deckY : H * 0.5) * R;
 
   // shared cached geos
   const ventGeo = getGeometry('greeb:vent', () => new THREE.BoxGeometry(0.12, 0.03, 0.06));
@@ -1410,9 +1453,11 @@ function surfaceDetail(ctx) {
 // ---- decal overlay shell ---------------------------------------------------------------------
 // A slightly-larger transparent shell carrying the greeble-detail + livery decals over the hull's
 // dominant faces. Only added on higher tiers / larger hulls to keep small craft clean.
-function addDecalShell(g, pal, R, lx, ly, lz, kind) {
+function addDecalShell(g, pal, R, lx, ly, lz, kind, centerX = 0) {
   const shell = new THREE.Mesh(hullSlabGeo(lx * 1.02, ly * 1.02, lz * 1.02), decalMaterial(pal, kind));
-  shell.scale.setScalar(R); g.add(shell);
+  shell.scale.setScalar(R);
+  shell.position.x = centerX * R;
+  g.add(shell);
 }
 
 // =============================================================================================
@@ -1432,6 +1477,16 @@ function applyPaintProfile(ctx, e) {
   const profile = (pal && pal.profile) || null;
   if (!profile) return;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
+  const fit = ctx.fit || null;
+  // Shells and flank decals use the fuselage cross-section (fit.beam is the full
+  // width of that slab), not 1.5× the wing span.
+  const ext = {
+    lx: fit ? fit.length : L * 0.7,
+    ly: fit ? fit.height : H,
+    lz: fit ? fit.beam : W * 1.05,
+    x: fit ? (fit.centerX || 0) : 0,
+    deck: fit ? fit.deckY : H * 0.4,
+  };
   const defId = e.data && e.data.defId;
 
   // --- CHROME: authority hulls mirror the scene. We bump the existing hull material's metalness
@@ -1449,8 +1504,8 @@ function applyPaintProfile(ctx, e) {
       });
       return stampSharedMaterialRole(m, SHARED_MATERIAL_ROLE.HULL);
     });
-    const foil = new THREE.Mesh(hullSlabGeo(L, H, W * 1.5), foilMat);
-    foil.scale.setScalar(R); g.add(foil);
+    const foil = new THREE.Mesh(hullSlabGeo(ext.lx, ext.ly, ext.lz), foilMat);
+    foil.scale.setScalar(R); foil.position.x = ext.x * R; g.add(foil);
   }
 
   // --- GRIME: transparent overlay with oil/rust/soot/dust. Skipped entirely for clean authority.
@@ -1463,8 +1518,8 @@ function applyPaintProfile(ctx, e) {
         color: 0xffffff, roughness: 0.9, metalness: 0.0,
       }), SHARED_MATERIAL_ROLE.HULL);
     });
-    const grime = new THREE.Mesh(hullSlabGeo(L * 1.01, H * 1.01, W * 1.51), grimeMat);
-    grime.scale.setScalar(R); g.add(grime);
+    const grime = new THREE.Mesh(hullSlabGeo(ext.lx * 1.02, ext.ly * 1.02, ext.lz * 1.02), grimeMat);
+    grime.scale.setScalar(R); grime.position.x = ext.x * R; g.add(grime);
   }
 
   // --- REPAIR PATCHES: bolted plates over old battle damage (scarred veterans).
@@ -1477,8 +1532,8 @@ function applyPaintProfile(ctx, e) {
         color: 0xffffff, roughness: 0.85, metalness: 0.3,
       }), SHARED_MATERIAL_ROLE.HULL);
     });
-    const patch = new THREE.Mesh(hullSlabGeo(L, H, W * 1.5), patchMat);
-    patch.scale.setScalar(R); g.add(patch);
+    const patch = new THREE.Mesh(hullSlabGeo(ext.lx, ext.ly, ext.lz), patchMat);
+    patch.scale.setScalar(R); patch.position.x = ext.x * R; g.add(patch);
   }
 
   // --- NOSE-ART: a decal panel on each flank. A Kestrel with the personal decal keeps its
@@ -1504,13 +1559,17 @@ function applyPaintProfile(ctx, e) {
         side: THREE.DoubleSide,
       }), SHARED_MATERIAL_ROLE.HULL);
     });
-    // place a flank decal panel on each side, facing outward (±Z), roughly amidships
-    const panelGeo = getGeometry('nose:panel', () => new THREE.PlaneGeometry(0.5, 0.32));
+    // Flank decal, lying on the fuselage skin (plane normal ±Z). A 90° yaw turns the
+    // card edge-on and sticks its width out past the taper.
+    const panelGeo = getGeometry('nose:panel', () => new THREE.PlaneGeometry(1, 1));
+    const along = Math.min(ext.lx * R * 0.34, ext.ly * R * 1.4);
+    const tall = Math.min(ext.ly * R * 0.62, ext.lx * R * 0.4);
+    const halfZ = ext.lz * 0.5 * R;
     for (const sgn of [1, -1]) {
       const panel = new THREE.Mesh(panelGeo, naMat);
-      panel.position.set(0, H * 0.3 * R, sgn * W * 1.52 * R);
-      panel.rotation.y = sgn * Math.PI / 2;   // face outward along ±Z
-      panel.scale.setScalar(R);
+      panel.position.set(ext.x * R, ext.deck * R * 0.35, sgn * halfZ * 0.995);
+      panel.rotation.y = sgn > 0 ? 0 : Math.PI;
+      panel.scale.set(Math.max(0.08 * R, along), Math.max(0.06 * R, tall), 1);
       g.add(panel);
     }
   }
@@ -1527,17 +1586,22 @@ function applyPaintProfile(ctx, e) {
 function buildScout(ctx) {
   const { g, R, pal, hm, cockpit, vis, hints } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
+  // Fore slab is the narrow body the canopy, grime and lamps must fit. The aft slab is wider.
+  ctx.fit = {
+    beam: W * 0.8, height: H * 0.8, length: L * 0.62, centerX: L * 0.02,
+    aftX: -L * 0.45, deckY: H * 0.4, canopyX: L * 0.18, canopyHalf: W * 0.4,
+  };
   // forward fuselage (tapered) + aft hull slab + cheek fins
   const aft = new THREE.Mesh(hullSlabGeo(L * 0.6, H, W * 1.4), hm); aft.scale.setScalar(R); aft.position.x = -L * 0.15 * R; g.add(aft);
   const fore = new THREE.Mesh(hullSlabGeo(L * 0.35, H * 0.8, W * 0.8), hm); fore.scale.setScalar(R); fore.position.x = L * 0.32 * R; g.add(fore);
-  const nose = new THREE.Mesh(noseConeGeo(W * 0.7, L * 0.32, 8), hm); nose.position.x = L * 0.62 * R; nose.scale.setScalar(R); g.add(nose);
-  // cockpit canopy (recessed glass)
-  recessedCanopy(ctx, L * 0.18 * R, H * 0.55 * R, 0, R * 0.32, R * 0.22, R * 0.22);
+  const nose = new THREE.Mesh(noseConeGeo(W * 0.36, L * 0.28, 10), hm); nose.position.x = L * 0.58 * R; nose.scale.setScalar(R); g.add(nose);
+  // cockpit canopy (recessed glass) — width clamped to the fore fuselage
+  recessedCanopy(ctx, L * 0.18 * R, H * 0.42 * R, 0, R * 0.22, R * 0.14, R * 0.14);
   // cheek fins (tier-gated)
   const finCount = hints.finCount || 0;
   for (let i = 0; i < finCount; i++) {
     for (const sgn of [1, -1]) {
-      const fin = new THREE.Mesh(getGeometry(`scout:fin${i}`, () => new THREE.BoxGeometry(0.3, 0.22, 0.12)), hm);
+      const fin = new THREE.Mesh(hullSlabGeo(0.3, 0.18, 0.1), hm);
       fin.position.set(-L * 0.25 * R, H * (0.3 + i * 0.2) * R, sgn * W * (1.1 + i * 0.1) * R); fin.scale.setScalar(R); g.add(fin);
     }
   }
@@ -1552,36 +1616,40 @@ function buildFighter(ctx) {
   const { g, R, pal, hm, cockpit, vis, hints } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
   const sweep = hints.wingSweep || 0.6;
+  ctx.fit = {
+    beam: W * 0.5, height: H, length: L * 0.55, centerX: 0,
+    aftX: -L * 0.275, deckY: H * 0.5, canopyX: L * 0.05, canopyHalf: W * 0.25,
+  };
   // central fuselage (long, narrow) + nose
   const fus = new THREE.Mesh(hullSlabGeo(L * 0.55, H, W * 0.5), hm); fus.scale.setScalar(R); g.add(fus);
-  const nose = new THREE.Mesh(noseConeGeo(W * 0.45, L * 0.45, 8), hm); nose.position.x = L * 0.45 * R; nose.scale.setScalar(R); g.add(nose);
-  // swept delta wings (the signature silhouette)
+  const nose = new THREE.Mesh(noseConeGeo(W * 0.22, L * 0.36, 10), hm); nose.position.x = L * 0.42 * R; nose.scale.setScalar(R); g.add(nose);
+  // swept delta wings (the signature silhouette) — beveled so the planform isn't a plank
   for (const sgn of [1, -1]) {
-    const wing = new THREE.Mesh(getGeometry('fighter:wing', () => new THREE.BoxGeometry(0.8, 0.07, 0.9)), hm);
+    const wing = new THREE.Mesh(hullSlabGeo(0.82, 0.05, 0.78), hm);
     wing.position.set(-L * 0.08 * R, 0, sgn * W * 0.7 * R); wing.rotation.y = sgn * sweep;
     wing.scale.set(R, R, R); g.add(wing);
     // wingtip rail
-    const rail = new THREE.Mesh(getGeometry('fighter:rail', () => new THREE.BoxGeometry(0.18, 0.05, 0.06)), hm);
-    rail.position.set(L * 0.18 * R, 0, sgn * W * 1.1 * R); rail.scale.setScalar(R); g.add(rail);
+    const rail = new THREE.Mesh(hullSlabGeo(0.16, 0.04, 0.05), hm);
+    rail.position.set(L * 0.18 * R, 0, sgn * W * 1.05 * R); rail.scale.setScalar(R); g.add(rail);
   }
   // canard foreplanes (tier-gated) near the nose
   if (hints.canard) {
     for (const sgn of [1, -1]) {
-      const can = new THREE.Mesh(getGeometry('fighter:canard', () => new THREE.BoxGeometry(0.22, 0.05, 0.3)), hm);
+      const can = new THREE.Mesh(hullSlabGeo(0.2, 0.035, 0.22), hm);
       can.position.set(L * 0.22 * R, 0, sgn * W * 0.35 * R); can.rotation.y = sgn * 0.3; can.scale.setScalar(R); g.add(can);
     }
   }
   // cockpit
-  recessedCanopy(ctx, L * 0.05 * R, H * 0.5 * R, 0, R * 0.36, R * 0.22, R * 0.2);
+  recessedCanopy(ctx, L * 0.05 * R, H * 0.5 * R, 0, R * 0.2, R * 0.12, R * 0.12);
   // vertical stabilizer (tier Mk.II+)
   if ((hints.plating === 'paneled') || (hints.plating === 'armored')) {
-    const stab = new THREE.Mesh(getGeometry('fighter:stab', () => new THREE.BoxGeometry(0.3, 0.3, 0.05)), hm);
+    const stab = new THREE.Mesh(hullSlabGeo(0.26, 0.24, 0.04), hm);
     stab.position.set(-L * 0.2 * R, H * 0.7 * R, 0); stab.scale.setScalar(R); g.add(stab);
   }
   // armored cheek plates (Mk.III)
   if (hints.plating === 'armored') {
     for (const sgn of [1, -1]) {
-      const plate = new THREE.Mesh(getGeometry('fighter:plate', () => new THREE.BoxGeometry(0.5, 0.12, 0.18)), hm);
+      const plate = new THREE.Mesh(hullSlabGeo(0.4, 0.08, 0.12), hm);
       plate.position.set(L * 0.1 * R, -H * 0.2 * R, sgn * W * 0.3 * R); plate.scale.setScalar(R); g.add(plate);
     }
   }
@@ -1590,12 +1658,16 @@ function buildFighter(ctx) {
 function buildFreighter(ctx) {
   const { g, R, pal, hm, cockpit, vis, hints } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
+  ctx.fit = {
+    beam: W * 0.9, height: H * 0.7, length: L * 0.8, centerX: -L * 0.05,
+    aftX: -L * 0.45, deckY: H * 0.35, canopyX: L * 0.32, canopyHalf: W * 0.28,
+  };
   // long boxy spine + upswept bow
   const spine = new THREE.Mesh(hullSlabGeo(L * 0.8, H * 0.7, W * 0.9), hm); spine.scale.setScalar(R); spine.position.x = -L * 0.05 * R; g.add(spine);
   const bow = new THREE.Mesh(hullSlabGeo(L * 0.22, H * 0.6, W * 0.8), hm); bow.position.x = L * 0.4 * R; bow.scale.setScalar(R); g.add(bow);
   // bridge superstructure up front (the "cab")
   const bridge = new THREE.Mesh(hullSlabGeo(L * 0.18, H * 0.7, W * 0.5), hm); bridge.position.set(L * 0.32 * R, H * 0.7 * R, 0); bridge.scale.setScalar(R); g.add(bridge);
-  const cab = new THREE.Mesh(getGeometry('frt:cab', () => new THREE.BoxGeometry(0.06, 0.14, 0.42)), cockpitGlassMaterial(pal)); cab.position.set(L * 0.42 * R, H * 0.95 * R, 0); cab.scale.setScalar(R); g.add(cab);
+  const cab = new THREE.Mesh(getGeometry('frt:cab', () => new THREE.BoxGeometry(0.035, 0.07, 0.2)), cockpitGlassMaterial(pal)); cab.position.set(L * 0.4 * R, H * 0.78 * R, 0); cab.scale.setScalar(R); g.add(cab);
   // stacked cargo pods along the spine (count scales with tier hints)
   const cols = hints.podCols || 1, rows = hints.podRows || 2;
   const podMat = hullMaterial(pal, 16);
@@ -1607,154 +1679,172 @@ function buildFreighter(ctx) {
         const py = (r - (rows - 1) / 2) * 0.4 * R;
         pod.position.set(px, py, sgn * W * 0.55 * R); pod.scale.setScalar(R); g.add(pod);
         // pod end cap glow
-        const cap = new THREE.Mesh(getGeometry('frt:cap', () => new THREE.CircleGeometry(0.1, 8)), emissiveMaterial(pal.accent, 1.0));
+        const cap = new THREE.Mesh(getGeometry('frt:cap', () => new THREE.CircleGeometry(0.08, 10)), emissiveMaterial(pal.accent, 0.4));
         cap.position.set(px - 0.17 * R, py, sgn * W * 0.55 * R); cap.rotation.y = -Math.PI / 2; cap.scale.setScalar(R); g.add(cap);
       }
     }
   }
   // spine accent strip
-  const stripMat = emissiveMaterial(pal.accent, 1.4);
-  const strip = new THREE.Mesh(getGeometry('frt:strip', () => new THREE.BoxGeometry(L, 0.05, 0.05)), stripMat);
-  strip.position.set(0, H * 0.4 * R, W * 0.5 * R); strip.scale.setScalar(R); g.add(strip);
+  const stripMat = emissiveMaterial(pal.accent, 0.36);
+  const strip = new THREE.Mesh(getGeometry('frt:strip', () => new THREE.BoxGeometry(L * 0.62, 0.025, 0.03)), stripMat);
+  strip.position.set(-L * 0.05 * R, H * 0.34 * R, 0); strip.scale.setScalar(R); g.add(strip);
 }
 
 function buildMiner(ctx) {
   const { g, R, pal, hm, cockpit, vis, hints } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
+  ctx.fit = {
+    beam: W * 1.1, height: H, length: L * 0.55, centerX: -L * 0.05,
+    aftX: -L * 0.325, deckY: H * 0.5, canopyX: L * 0.05, canopyHalf: W * 0.55,
+  };
+  ctx.hasDrill = true;
   // wide industrial body (chunky, tall)
   const body = new THREE.Mesh(hullSlabGeo(L * 0.55, H, W * 1.1), hm); body.scale.setScalar(R); body.position.x = -L * 0.05 * R; g.add(body);
   const bow = new THREE.Mesh(hullSlabGeo(L * 0.2, H * 0.8, W * 0.8), hm); bow.position.x = L * 0.32 * R; bow.scale.setScalar(R); g.add(bow);
   // reinforced drill prow mount (always present — miners are defined by their head)
-  const drillMount = new THREE.Mesh(getGeometry('miner:mount', () => new THREE.CylinderGeometry(0.34, 0.4, 0.4, 8).rotateZ(Math.PI / 2)), hm);
-  drillMount.position.x = L * 0.42 * R; drillMount.scale.setScalar(R); g.add(drillMount);
+  const drillMount = new THREE.Mesh(getGeometry('miner:mount', () => new THREE.CylinderGeometry(0.28, 0.34, 0.36, 12).rotateZ(Math.PI / 2)), hm);
+  drillMount.position.x = L * 0.4 * R; drillMount.scale.setScalar(R); g.add(drillMount);
+  const bit = new THREE.Mesh(noseConeGeo(0.2, 0.48, 10), hm);
+  bit.position.x = (L * 0.4 + 0.36) * R; bit.scale.setScalar(R); g.add(bit);
   // industrial side arms / scoop frames (count scales with tier)
   const armCount = hints.armCount || 2;
   const armMat = hullMaterial(pal, 8);
   for (let a = 0; a < armCount / 2; a++) {
     for (const sgn of [1, -1]) {
-      const arm = new THREE.Mesh(getGeometry(`miner:arm${a}`, () => new THREE.BoxGeometry(0.5, 0.1, 0.14)), armMat);
+      const arm = new THREE.Mesh(hullSlabGeo(0.42, 0.08, 0.12), armMat);
       arm.position.set((L * 0.05 - a * 0.18) * R, H * (0.2 - a * 0.15) * R, sgn * W * (1.0 + a * 0.12) * R); arm.scale.setScalar(R); g.add(arm);
       // scoop bucket at the arm end
-      const scoop = new THREE.Mesh(getGeometry('miner:scoop', () => new THREE.BoxGeometry(0.18, 0.18, 0.16)), armMat);
+      const scoop = new THREE.Mesh(hullSlabGeo(0.16, 0.14, 0.14), armMat);
       scoop.position.set((L * 0.05 - a * 0.18) * R, H * (0.2 - a * 0.15) * R, sgn * W * (1.15 + a * 0.12) * R); scoop.scale.setScalar(R); g.add(scoop);
     }
   }
   // cockpit (raised, overlooking the drill)
-  recessedCanopy(ctx, L * 0.05 * R, H * 0.7 * R, 0, R * 0.3, R * 0.2, R * 0.24);
+  recessedCanopy(ctx, L * 0.05 * R, H * 0.55 * R, 0, R * 0.2, R * 0.12, R * 0.16);
   // dorsal machinery block
-  const mach = new THREE.Mesh(getGeometry('miner:mach', () => new THREE.BoxGeometry(0.4, 0.3, 0.5)), hm);
+  const mach = new THREE.Mesh(hullSlabGeo(0.36, 0.22, 0.4), hm);
   mach.position.set(-L * 0.15 * R, H * 0.6 * R, 0); mach.scale.setScalar(R); g.add(mach);
 }
 
 function buildFrigate(ctx) {
   const { g, R, pal, hm, cockpit, vis, hints } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
+  ctx.fit = {
+    beam: W * 1.0, height: H, length: L * 0.7, centerX: -L * 0.05,
+    aftX: -L * 0.4, deckY: H * 0.5, canopyHalf: W * 0.42,
+  };
   // wedge hull: wide aft, narrowing forward
   const hull = new THREE.Mesh(hullSlabGeo(L * 0.7, H, W * 1.0), hm); hull.scale.setScalar(R); hull.position.x = -L * 0.05 * R; g.add(hull);
-  const prow = new THREE.Mesh(noseConeGeo(W * 0.55, L * 0.35, 6), hm); prow.position.x = L * 0.45 * R; prow.scale.setScalar(R); g.add(prow);
+  const prow = new THREE.Mesh(noseConeGeo(W * 0.42, L * 0.32, 8), hm); prow.position.x = L * 0.42 * R; prow.scale.setScalar(R); g.add(prow);
   // tiered bridge tower (a warship's command island)
   const towerTiers = hints.towerTiers || 1;
   for (let t = 0; t < towerTiers; t++) {
     const tw = W * (0.45 - t * 0.12);
-    const tower = new THREE.Mesh(getGeometry(`frig:tower${t}`, () => new THREE.BoxGeometry(0.32, 0.22, tw)), hm);
-    tower.position.set(L * 0.12 * R, (H * 0.6 + t * 0.22) * R, 0); tower.scale.setScalar(R); g.add(tower);
-    // tower window strip
-    const win = new THREE.Mesh(getGeometry('frig:win', () => new THREE.BoxGeometry(0.3, 0.03, tw * 0.7)), emissiveMaterial('#ffd98a', 1.2));
-    win.position.set(L * 0.12 * R, (H * 0.6 + t * 0.22 + 0.05) * R, 0); win.scale.setScalar(R); g.add(win);
+    const tower = new THREE.Mesh(hullSlabGeo(0.3, 0.18, Math.max(0.08, tw)), hm);
+    tower.position.set(L * 0.12 * R, (H * 0.55 + t * 0.2) * R, 0); tower.scale.setScalar(R); g.add(tower);
+    // tower window strip — a lit slit, not a white bar
+    const win = new THREE.Mesh(getGeometry('frig:win', () => new THREE.BoxGeometry(0.04, 0.025, 0.2)), emissiveMaterial('#ffd98a', 0.45));
+    win.position.set((L * 0.12 + 0.16) * R, (H * 0.55 + t * 0.2) * R, 0); win.scale.setScalar(R); g.add(win);
   }
   // broadside gun sponsons (the side battery bulges)
   const broadside = hints.broadsideGuns || 1;
   for (const sgn of [1, -1]) {
     for (let b = 0; b < broadside; b++) {
-      const spon = new THREE.Mesh(getGeometry(`frig:spon${b}`, () => new THREE.BoxGeometry(0.22, 0.18, 0.18)), hm);
-      spon.position.set((L * 0.05 - b * 0.22) * R, H * 0.25 * R, sgn * W * (0.95 + b * 0.05) * R); spon.scale.setScalar(R); g.add(spon);
+      const spon = new THREE.Mesh(hullSlabGeo(0.2, 0.14, 0.14), hm);
+      spon.position.set((L * 0.05 - b * 0.22) * R, H * 0.1 * R, sgn * W * (0.46 + b * 0.04) * R); spon.scale.setScalar(R); g.add(spon);
     }
   }
   // armored belt strip along the waterline-equivalent
-  const belt = new THREE.Mesh(getGeometry('frig:belt', () => new THREE.BoxGeometry(L * 0.7, 0.08, 0.06)), emissiveMaterial(pal.accent, 0.9));
-  belt.position.set(-L * 0.05 * R, 0, W * 0.9 * R); belt.scale.setScalar(R); g.add(belt);
-  const belt2 = belt.clone(); belt2.position.z = -W * 0.9 * R; g.add(belt2);
+  const belt = new THREE.Mesh(getGeometry('frig:belt', () => new THREE.BoxGeometry(L * 0.58, 0.04, 0.03)), emissiveMaterial(pal.accent, 0.34));
+  belt.position.set(-L * 0.05 * R, 0, W * 0.46 * R); belt.scale.setScalar(R); g.add(belt);
+  const belt2 = belt.clone(); belt2.position.z = -W * 0.46 * R; g.add(belt2);
 }
 
 function buildCapital(ctx) {
   const { g, R, pal, hm, cockpit, vis, hints } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
+  ctx.fit = {
+    beam: W * 0.85, height: H * 0.85, length: L * 0.6, centerX: -L * 0.12,
+    aftX: -L * 0.455, deckY: H * 0.42, canopyHalf: W * 0.32,
+  };
   // massive multi-block spine (fore / mid / aft) — the leviathan silhouette
   const aft = new THREE.Mesh(hullSlabGeo(L * 0.35, H, W * 1.0), hm); aft.position.x = -L * 0.28 * R; aft.scale.setScalar(R); g.add(aft);
   const mid = new THREE.Mesh(hullSlabGeo(L * 0.3, H * 0.85, W * 0.85), hm); mid.scale.setScalar(R); g.add(mid);
   const fore = new THREE.Mesh(hullSlabGeo(L * 0.2, H * 0.7, W * 0.7), hm); fore.position.x = L * 0.3 * R; fore.scale.setScalar(R); g.add(fore);
-  const prow = new THREE.Mesh(noseConeGeo(W * 0.5, L * 0.22, 6), hm); prow.position.x = L * 0.48 * R; prow.scale.setScalar(R); g.add(prow);
-  // command tower cluster (multiple tiers + sensor mast)
+  const prow = new THREE.Mesh(noseConeGeo(W * 0.3, L * 0.2, 8), hm); prow.position.x = L * 0.46 * R; prow.scale.setScalar(R); g.add(prow);
+  // command tower cluster (beveled tiers, each narrower than the one under it)
   const towerTiers = hints.towerTiers || 2;
   for (let t = 0; t < towerTiers; t++) {
-    const tw = W * (0.5 - t * 0.1);
-    const tower = new THREE.Mesh(getGeometry(`cap:tower${t}`, () => new THREE.BoxGeometry(0.4, 0.3, tw)), hm);
-    tower.position.set(L * 0.08 * R, (H * 0.65 + t * 0.3) * R, 0); tower.scale.setScalar(R); g.add(tower);
-    // lit window decks (3 rows per tier)
-    for (let w = 0; w < 3; w++) {
-      const win = new THREE.Mesh(getGeometry(`cap:win${t}:${w}`, () => new THREE.BoxGeometry(0.36, 0.025, tw * 0.6)), emissiveMaterial('#ffd98a', 1.3));
-      win.position.set(L * 0.08 * R, (H * 0.65 + t * 0.3 - 0.08 + w * 0.06) * R, 0); win.scale.setScalar(R); g.add(win);
-    }
+    const tw = Math.max(0.08, W * (0.42 - t * 0.1));
+    const tower = new THREE.Mesh(hullSlabGeo(0.34, 0.22, tw), hm);
+    tower.position.set(L * 0.08 * R, (H * 0.5 + t * 0.24) * R, 0); tower.scale.setScalar(R); g.add(tower);
+    const win = new THREE.Mesh(getGeometry(`cap:win${t}`, () => new THREE.BoxGeometry(0.03, 0.02, 0.16)), emissiveMaterial('#ffd98a', 0.42));
+    win.position.set((L * 0.08 + 0.18) * R, (H * 0.5 + t * 0.24) * R, 0); win.scale.setScalar(R); g.add(win);
   }
-  // fin arrays (the dorsal radiator/fin clusters that grow with tier)
+  // fin arrays grow from the flank, not from empty air beside it
   const finArrays = hints.finArrays || 1;
   for (let f = 0; f < finArrays; f++) {
     for (const sgn of [1, -1]) {
-      const fin = new THREE.Mesh(getGeometry(`cap:fin${f}`, () => new THREE.BoxGeometry(0.5, 0.4, 0.08)), hm);
-      fin.position.set((-L * 0.1 - f * 0.2) * R, H * (0.5 + f * 0.1) * R, sgn * W * (0.9 + f * 0.05) * R); fin.scale.setScalar(R); g.add(fin);
+      const fin = new THREE.Mesh(hullSlabGeo(0.4, 0.28, 0.05), hm);
+      fin.position.set((-L * 0.1 - f * 0.18) * R, H * (0.35 + f * 0.08) * R, sgn * W * (0.4 + f * 0.04) * R); fin.scale.setScalar(R); g.add(fin);
     }
   }
-  // sensor ring (rotating, animated by the engine driver later)
-  // Geometry is authored in normalized hull space and the mesh is scaled by R below. Multiplying
-  // the tube by R here as well made the Leviathan's eight-sided ring render as an opaque cyan
-  // sphere-like mass that hid the ship. Rotation alone does not remove that geometry; any later
-  // disappearance is an independent authored-preview transition and is traced at the mount boundary.
+  // Collar around the top tier only. A hull-radius ring sliced through the tower.
+  // Tube radius stays in normalized units; the mesh scale applies R once.
+  const top = Math.max(0, towerTiers - 1);
+  const collar = Math.max(0.06, W * (0.42 - top * 0.1) * 0.62);
   const ring = new THREE.Mesh(
-    getGeometry(`cap:ring:${q(W)}`, () => new THREE.TorusGeometry(W * 0.6, Math.max(0.012, W * 0.018), 8, 48)),
-    getMaterial(`cap:ring-mat:${pal.accent}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
-      color: new THREE.Color(pal.accent),
+    getGeometry(`cap:ring:${q(collar)}`, () => new THREE.TorusGeometry(collar, Math.max(0.008, collar * 0.12), 6, 28)),
+    getMaterial(`cap:ring-mat:${pal.accent}:soft`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+      color: new THREE.Color(pal.accent).multiplyScalar(0.35),
       emissive: new THREE.Color(pal.accent),
-      emissiveIntensity: 0.78,
-      metalness: 0.18,
-      roughness: 0.42,
+      emissiveIntensity: 0.4,
+      metalness: 0.2,
+      roughness: 0.4,
       transparent: true,
-      opacity: 0.72,
+      opacity: 0.82,
       depthWrite: false,
     }), SHARED_MATERIAL_ROLE.HULL)),
   );
-  ring.rotation.x = Math.PI / 2; ring.position.set(L * 0.08 * R, H * 0.9 * R, 0); ring.scale.setScalar(R); g.add(ring);
+  ring.rotation.x = Math.PI / 2;
+  ring.position.set(L * 0.08 * R, (H * 0.5 + top * 0.24 + 0.16) * R, 0);
+  ring.scale.setScalar(R); g.add(ring);
   ctx.sensorRing = ring;
-  // ventral hangar bay (a recessed box underneath)
-  const hangar = new THREE.Mesh(getGeometry('cap:hangar', () => new THREE.BoxGeometry(0.5, 0.12, 0.4)), hm);
-  hangar.position.set(-L * 0.05 * R, -H * 0.5 * R, 0); hangar.scale.setScalar(R); g.add(hangar);
+  const hangar = new THREE.Mesh(hullSlabGeo(0.42, 0.08, 0.32), hm);
+  hangar.position.set(-L * 0.05 * R, -H * 0.4 * R, 0); hangar.scale.setScalar(R); g.add(hangar);
 }
 
 function buildMultirole(ctx) {
   const { g, R, pal, hm, cockpit, vis, hints } = ctx;
   const L = vis.length, W = vis.halfWidth, H = vis.height;
+  ctx.fit = {
+    beam: W * 1.0, height: Math.max(H, W), length: L * 0.6, centerX: 0,
+    aftX: -L * 0.3, deckY: W * 0.5, canopyX: L * 0.12, canopyHalf: W * 0.48,
+  };
   // cylindrical fuselage + nose + winglets (the balanced explorer/drifter shape)
-  const fus = new THREE.Mesh(getGeometry('mul:fus', () => new THREE.CylinderGeometry(W * 0.5, W * 0.7, L * 0.6, 8).rotateZ(Math.PI / 2)), hm);
+  const fus = new THREE.Mesh(getGeometry('mul:fus', () => new THREE.CylinderGeometry(W * 0.46, W * 0.62, L * 0.6, 16).rotateZ(Math.PI / 2)), hm);
   fus.scale.setScalar(R); g.add(fus);
-  const nose = new THREE.Mesh(noseConeGeo(W * 0.5, L * 0.4, 8), hm); nose.position.x = L * 0.45 * R; nose.scale.setScalar(R); g.add(nose);
-  // engine nacelles on pylons (count scales with tier)
+  const nose = new THREE.Mesh(noseConeGeo(W * 0.4, L * 0.32, 12), hm); nose.position.x = L * 0.42 * R; nose.scale.setScalar(R); g.add(nose);
+  // engine nacelles on pylons (count scales with tier). Open-ish bells hide the flat end cap.
   const nacelles = hints.nacelles || 2;
   for (let n = 0; n < nacelles / 2; n++) {
     for (const sgn of [1, -1]) {
-      const pylon = new THREE.Mesh(getGeometry(`mul:pylon${n}`, () => new THREE.BoxGeometry(0.3, 0.06, 0.1)), hm);
-      pylon.position.set(-L * 0.15 * R, -H * 0.1 * R, sgn * W * (0.7 + n * 0.15) * R); pylon.scale.setScalar(R); g.add(pylon);
-      const nacelle = new THREE.Mesh(getGeometry(`mul:nacelle${n}`, () => new THREE.CylinderGeometry(0.16, 0.18, 0.6, 8).rotateZ(Math.PI / 2)), hm);
-      nacelle.position.set(-L * 0.2 * R, -H * 0.15 * R, sgn * W * (0.85 + n * 0.15) * R); nacelle.scale.setScalar(R); g.add(nacelle);
+      const pz = sgn * W * (0.72 + n * 0.12) * R;
+      const pylon = new THREE.Mesh(hullSlabGeo(0.26, 0.05, 0.08), hm);
+      pylon.position.set(-L * 0.12 * R, -H * 0.05 * R, pz * 0.72); pylon.scale.setScalar(R); g.add(pylon);
+      const nacelle = new THREE.Mesh(getGeometry(`mul:nacelle${n}`, () => new THREE.CylinderGeometry(0.13, 0.15, 0.48, 16).rotateZ(Math.PI / 2)), hm);
+      nacelle.position.set(-L * 0.16 * R, -H * 0.12 * R, pz); nacelle.scale.setScalar(R); g.add(nacelle);
+      const bell = new THREE.Mesh(getGeometry('mul:bell', () => new THREE.CylinderGeometry(0.17, 0.1, 0.14, 16).rotateZ(Math.PI / 2)), hm);
+      bell.position.set((-L * 0.16 - 0.28) * R, -H * 0.12 * R, pz); bell.scale.setScalar(R); g.add(bell);
     }
   }
   // winglets
   if (hints.winglets) {
     for (const sgn of [1, -1]) {
-      const wl = new THREE.Mesh(getGeometry('mul:winglet', () => new THREE.BoxGeometry(0.4, 0.04, 0.2)), hm);
-      wl.position.set(L * 0.05 * R, -H * 0.05 * R, sgn * W * 0.9 * R); wl.rotation.y = sgn * 0.3; wl.scale.setScalar(R); g.add(wl);
+      const wl = new THREE.Mesh(hullSlabGeo(0.32, 0.03, 0.14), hm);
+      wl.position.set(L * 0.02 * R, -H * 0.02 * R, sgn * W * 0.7 * R); wl.rotation.y = sgn * 0.25; wl.scale.setScalar(R); g.add(wl);
     }
   }
-  // cockpit
-  recessedCanopy(ctx, L * 0.15 * R, H * 0.5 * R, 0, R * 0.34, R * 0.22, R * 0.22);
+  recessedCanopy(ctx, L * 0.12 * R, W * 0.42 * R, 0, R * 0.16, R * 0.1, R * 0.12);
 }
 
 // =============================================================================================
@@ -1772,18 +1862,30 @@ function buildDroneSwarm(ctx) {
   const { g, R, hm, accent, vis } = ctx;
   const s = (vis.length || 1.0) * 0.7;
   const body = new THREE.Mesh(getGeometry('edr:droneBody', () => new THREE.OctahedronGeometry(0.55, 0)), hm);
-  body.scale.set(s * R, s * R * 0.6, s * R); body.rotation.y = Math.PI / 4; g.add(body);
-  const spikeGeo = () => getGeometry('edr:spike', () => new THREE.ConeGeometry(0.12, 0.7, 5));
-  const front = new THREE.Mesh(spikeGeo(), hm); front.rotation.x = Math.PI / 2;
-  front.position.set(0, 0, s * R * 0.8); front.scale.setScalar(R); g.add(front);
-  const lSpike = new THREE.Mesh(spikeGeo(), hm); lSpike.rotation.set(Math.PI / 2, 0, 0.6);
-  lSpike.position.set(-s * R * 0.6, 0, -s * R * 0.1); lSpike.scale.setScalar(R * 0.7); g.add(lSpike);
-  const rSpike = new THREE.Mesh(spikeGeo(), hm); rSpike.rotation.set(Math.PI / 2, 0, -0.6);
-  rSpike.position.set(s * R * 0.6, 0, -s * R * 0.1); rSpike.scale.setScalar(R * 0.7); g.add(rSpike);
-  const noz = new THREE.Mesh(getGeometry('edr:droneNoz', () => new THREE.CylinderGeometry(0.14, 0.2, 0.3, 6)), hm);
-  noz.rotation.x = Math.PI / 2; noz.position.set(0, 0, -s * R * 0.6); noz.scale.setScalar(R); g.add(noz);
-  const glow = new THREE.Mesh(getGeometry('edr:droneGlow', () => new THREE.CircleGeometry(0.13, 12)), accent);
-  glow.position.set(0, 0, -s * R * 0.78); glow.scale.setScalar(R); g.add(glow);
+  body.scale.set(s * R, s * R * 0.62, s * R); body.rotation.y = Math.PI / 4; g.add(body);
+  const reach = 0.55 * s;
+  const spike = getGeometry('edr:spike', () => new THREE.ConeGeometry(0.12, 0.62, 6));
+  const front = new THREE.Mesh(spike, hm);
+  front.rotation.x = Math.PI / 2;
+  // Cone half-length is 0.31*R. Base sits inside the forward vertex; apex clears it.
+  front.position.set(0, 0, reach * 0.42 * R + 0.31 * R);
+  front.scale.setScalar(R); g.add(front);
+  const lSpike = new THREE.Mesh(spike, hm);
+  lSpike.rotation.set(Math.PI / 2, 0, 0.85);
+  lSpike.position.set(-reach * 0.28 * R, 0, -reach * 0.05 * R);
+  lSpike.scale.setScalar(R * 0.62); g.add(lSpike);
+  const rSpike = new THREE.Mesh(spike, hm);
+  rSpike.rotation.set(Math.PI / 2, 0, -0.85);
+  rSpike.position.set(reach * 0.28 * R, 0, -reach * 0.05 * R);
+  rSpike.scale.setScalar(R * 0.62); g.add(rSpike);
+  const nozLen = 0.24;
+  const noz = new THREE.Mesh(getGeometry('edr:droneNoz', () => new THREE.CylinderGeometry(0.1, 0.16, nozLen, 10).rotateX(Math.PI / 2)), hm);
+  const aft = -reach * 0.55 * R;
+  noz.position.set(0, 0, aft - nozLen * 0.22 * R);
+  noz.scale.setScalar(R); g.add(noz);
+  const glow = new THREE.Mesh(getGeometry('edr:droneGlow', () => new THREE.CircleGeometry(0.09, 12)), accent);
+  glow.position.set(0, 0, noz.position.z - 0.1 * R);
+  glow.scale.setScalar(R * 0.7); g.add(glow);
 }
 
 // sniper_lance — Lancer Sniper. Slim needle, very long barrel, exposed cooling fins. Reads: keep distance.
@@ -1794,11 +1896,15 @@ function buildSniperLance(ctx) {
   // (rotation.z would lay it sideways along X — wrong.)
   const fuse = new THREE.Mesh(getGeometry('edr:lanceFuse', () => new THREE.CapsuleGeometry(0.18, 0.9, 4, 8)), hm);
   fuse.rotation.x = Math.PI / 2; fuse.scale.set(R * 0.9, R, R * 0.9); g.add(fuse);
-  const lance = new THREE.Mesh(getGeometry('edr:lance', () => new THREE.CylinderGeometry(0.06, 0.1, 1.1, 6)), hm);
-  lance.rotation.x = Math.PI / 2; lance.position.set(0, 0, L * R * 0.65); lance.scale.setScalar(R); g.add(lance);
-  const lanceTip = new THREE.Mesh(getGeometry('edr:lanceTip', () => new THREE.ConeGeometry(0.07, 0.18, 6)), accent);
-  lanceTip.rotation.x = Math.PI / 2; lanceTip.position.set(0, 0, L * R * 1.15); lanceTip.scale.setScalar(R); g.add(lanceTip);
-  const finGeo = () => getGeometry('edr:radiator', () => new THREE.BoxGeometry(0.04, 0.4, 0.5));
+  const lanceLen = 1.05;
+  const lance = new THREE.Mesh(getGeometry('edr:lance', () => new THREE.CylinderGeometry(0.05, 0.09, lanceLen, 8)), hm);
+  lance.rotation.x = Math.PI / 2; lance.position.set(0, 0, L * R * 0.55); lance.scale.setScalar(R); g.add(lance);
+  const lanceTip = new THREE.Mesh(getGeometry('edr:lanceTip', () => new THREE.ConeGeometry(0.055, 0.16, 8)), accent);
+  lanceTip.rotation.x = Math.PI / 2;
+  // Base of the tip meets the muzzle. Apex is +Z after the X rotation.
+  lanceTip.position.set(0, 0, L * R * 0.55 + lanceLen * 0.5 * R + 0.05 * R);
+  lanceTip.scale.setScalar(R); g.add(lanceTip);
+  const finGeo = () => getGeometry('edr:radiator', () => hullSlabGeo(0.035, 0.32, 0.36).clone());
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2;
     const fin = new THREE.Mesh(finGeo(), hm);
@@ -1806,8 +1912,8 @@ function buildSniperLance(ctx) {
     fin.rotation.z = a; fin.scale.setScalar(R); g.add(fin);
   }
   for (const dx of [-0.12, 0.12]) {
-    const n = new THREE.Mesh(getGeometry('edr:lanceNoz', () => new THREE.CylinderGeometry(0.07, 0.1, 0.22, 6)), hm);
-    n.rotation.x = Math.PI / 2; n.position.set(dx * R, 0, -L * R * 0.55); n.scale.setScalar(R); g.add(n);
+    const n = new THREE.Mesh(getGeometry('edr:lanceNoz', () => new THREE.CylinderGeometry(0.06, 0.09, 0.2, 8).rotateX(Math.PI / 2)), hm);
+    n.position.set(dx * R, 0, -0.66 * R); n.scale.setScalar(R); g.add(n);
   }
 }
 
@@ -1818,22 +1924,22 @@ function buildBruiserArmor(ctx) {
   // CylinderGeometry(radiusTop, radiusBottom, height) is along Y. Rotate around X → height maps
   // to Z (forward). So local Y (height) must carry the ship length L; radii (local X,Z) carry the
   // beam/height profile. Scale order: (radiusX=W, height=L, radiusZ=profile).
-  const body = new THREE.Mesh(getGeometry('edr:bruiserBody', () => new THREE.CylinderGeometry(0.55, 0.65, 1.0, 6)), hm);
+  const body = new THREE.Mesh(getGeometry('edr:bruiserBody', () => new THREE.CylinderGeometry(0.55, 0.65, 1.0, 12)), hm);
   body.rotation.x = Math.PI / 2; body.scale.set(W * 1.3 * R, L * R, R); g.add(body);
   const armorMat = hm.clone(); armorMat.color.multiplyScalar(0.55);
   for (let i = 0; i < 3; i++) {
-    const plate = new THREE.Mesh(getGeometry(`edr:plate${i}`, () => new THREE.BoxGeometry(1.3, 0.12, 0.4)), armorMat);
-    plate.position.set(0, R * (0.18 + i * 0.06), L * R * (0.15 - i * 0.18)); plate.scale.setScalar(R); g.add(plate);
+    const plate = new THREE.Mesh(hullSlabGeo(0.46, 0.06, 0.26), armorMat);
+    plate.position.set(0, R * (0.38 + i * 0.045), L * R * (0.12 - i * 0.16)); plate.scale.setScalar(R); g.add(plate);
   }
   for (const dx of [-0.7, 0.7]) {
     const nace = new THREE.Mesh(getGeometry('edr:turretNace', () => new THREE.CylinderGeometry(0.16, 0.2, 0.3, 8)), hm);
     nace.position.set(dx * W * R, R * 0.15, 0); nace.scale.setScalar(R); g.add(nace);
-    const barbette = new THREE.Mesh(getGeometry('edr:barbette', () => new THREE.CylinderGeometry(0.05, 0.05, 0.4, 6)), accent);
+    const barbette = new THREE.Mesh(getGeometry('edr:barbette', () => new THREE.CylinderGeometry(0.04, 0.05, 0.32, 8)), accent);
     barbette.rotation.x = Math.PI / 2; barbette.position.set(dx * W * R, R * 0.15, R * 0.3); barbette.scale.setScalar(R); g.add(barbette);
   }
   for (let i = -1; i <= 1; i++) {
-    const n = new THREE.Mesh(getGeometry('edr:bruiserNoz', () => new THREE.CylinderGeometry(0.14, 0.18, 0.28, 8)), hm);
-    n.rotation.x = Math.PI / 2; n.position.set(i * 0.25 * R, 0, -L * R * 0.55); n.scale.setScalar(R); g.add(n);
+    const n = new THREE.Mesh(getGeometry('edr:bruiserNoz', () => new THREE.CylinderGeometry(0.12, 0.17, 0.26, 10).rotateX(Math.PI / 2)), hm);
+    n.position.set(i * 0.22 * R, 0, -L * R * 0.5 - 0.06 * R); n.scale.setScalar(R); g.add(n);
   }
 }
 
@@ -1847,13 +1953,15 @@ function buildTraderHaul(ctx) {
   cock.scale.setScalar(R); cock.position.set(0, R * 0.1, L * R * 0.45); g.add(cock);
   const contMat = hm.clone(); contMat.color.multiplyScalar(0.75);
   for (let i = 0; i < 3; i++) {
-    const c = new THREE.Mesh(getGeometry(`edr:cont${i}`, () => new THREE.BoxGeometry(0.5, 0.3, 0.35)), contMat);
-    c.position.set(0, R * (0.32 + i * 0.02), L * R * (0.15 - i * 0.22)); c.scale.setScalar(R); g.add(c);
+    const c = new THREE.Mesh(hullSlabGeo(0.36, 0.18, 0.26), contMat);
+    c.position.set((i - 1) * 0.22 * R, 0.34 * R, L * R * (0.02 - i * 0.1)); c.scale.setScalar(R); g.add(c);
   }
+  const aftPole = -L * R * 0.05 - 0.5 * L * R * 0.85;
   for (let i = 0; i < 4; i++) {
-    const dx = (i % 2 === 0 ? -1 : 1) * (0.18 + Math.floor(i / 2) * 0.05);
-    const n = new THREE.Mesh(getGeometry('edr:traderNoz', () => new THREE.CylinderGeometry(0.1, 0.13, 0.24, 8)), hm);
-    n.rotation.x = Math.PI / 2; n.position.set(dx * R, 0, -L * R * 0.55); n.scale.setScalar(R); g.add(n);
+    const dx = (i % 2 === 0 ? -1 : 1) * (0.12 + Math.floor(i / 2) * 0.08);
+    const dy = Math.floor(i / 2) === 0 ? -0.08 : 0.1;
+    const n = new THREE.Mesh(getGeometry('edr:traderNoz', () => new THREE.CylinderGeometry(0.08, 0.12, 0.22, 10).rotateX(Math.PI / 2)), hm);
+    n.position.set(dx * R, dy * R, aftPole - 0.04 * R); n.scale.setScalar(R); g.add(n);
   }
 }
 
@@ -1874,17 +1982,17 @@ function buildPirateSwoop(ctx) {
   const swoopX = [-0.40, -0.15, 0.10, 0.28, 0.42];
   const swoopZ = [0.20, -0.25, 0.15, -0.10, 0.30];
   for (let i = 0; i < 5; i++) {
-    const box = new THREE.Mesh(getGeometry('edr:swoopBolt', () => new THREE.BoxGeometry(0.14, 0.12, 0.16)), hm);
-    box.position.set(swoopX[i] * W * R, R * 0.2, swoopZ[i] * L * R);
+    const box = new THREE.Mesh(hullSlabGeo(0.12, 0.08, 0.12), hm);
+    box.position.set(swoopX[i] * W * R, R * 0.16, swoopZ[i] * L * R);
     box.scale.setScalar(R); g.add(box);
   }
   const sizes = [0.16, 0.11, 0.13];
   for (let i = 0; i < 3; i++) {
-    const n = new THREE.Mesh(getGeometry(`edr:swoopNoz${i}`, () => new THREE.CylinderGeometry(sizes[i] * 0.8, sizes[i], 0.22, 6)), hm);
-    n.rotation.x = Math.PI / 2; n.position.set((i - 1) * 0.22 * R, 0, -L * R * 0.45); n.scale.setScalar(R); g.add(n);
+    const n = new THREE.Mesh(getGeometry(`edr:swoopNoz${i}`, () => new THREE.CylinderGeometry(sizes[i] * 0.7, sizes[i], 0.2, 8).rotateX(Math.PI / 2)), hm);
+    n.position.set((i - 1) * 0.16 * R, -0.04 * R, -L * R * 0.42); n.scale.setScalar(R); g.add(n);
   }
-  const stripe = new THREE.Mesh(getGeometry('edr:stripe', () => new THREE.BoxGeometry(W * 1.6, 0.04, 0.08)), accent);
-  stripe.position.set(0, R * 0.22, L * R * 0.2); stripe.scale.setScalar(R); g.add(stripe);
+  const stripe = new THREE.Mesh(getGeometry('edr:stripe', () => new THREE.BoxGeometry(W * 0.9, 0.025, 0.05)), accent);
+  stripe.position.set(0, R * 0.16, L * R * 0.08); stripe.scale.setScalar(R); g.add(stripe);
 }
 
 // corsair_blade — Corsair Raider. Sharp angular blade wings, swept, elite pirate. Reads: fast, dangerous, elite.
@@ -1899,18 +2007,19 @@ function buildCorsairBlade(ctx) {
     wingShape.lineTo(dx * W * 0.7, -L * 0.35); wingShape.lineTo(0, -L * 0.1); wingShape.closePath();
     // ExtrudeGeometry lies in the XY plane (shape) extruded along +Z. For a top-down ship the wing
     // must be flat in the XZ plane, so rotate -90° around X: shape-Y → world -Z (forward), extrude-Z → world Y (thin).
-    const wingGeo = getGeometry(`edr:bladeWing${dx}`, () => new THREE.ExtrudeGeometry(wingShape, { depth: 0.08, bevelEnabled: false }));
+    const wingGeo = getGeometry(`edr:bladeWing${dx}`, () => new THREE.ExtrudeGeometry(wingShape, { depth: 0.07, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.02, bevelSegments: 1 }));
     wingGeo.center();
     const wing = new THREE.Mesh(wingGeo, hm);
     wing.rotation.x = -Math.PI / 2; wing.scale.setScalar(R); g.add(wing);
   }
   for (const dx of [-1, 1]) {
-    const tip = lampFixture('#ff4a3a', R * 0.055, 3.6);
-    tip.position.set(dx * W * R * 0.95, 0, -L * R * 0.22); g.add(tip);
+    // Wing geometry is centered, so the outer tip lands near ±W/2, not at the uncentered shape point.
+    const tip = lampFixture('#ff4a3a', R * 0.035, 1.05);
+    tip.position.set(dx * W * 0.5 * R, 0.05 * R, 0.02 * L * R); g.add(tip);
   }
   for (const dx of [-0.18, 0.18]) {
-    const n = new THREE.Mesh(getGeometry('edr:bladeNoz', () => new THREE.CylinderGeometry(0.1, 0.13, 0.28, 8)), hm);
-    n.rotation.x = Math.PI / 2; n.position.set(dx * R, 0, -L * R * 0.5); n.scale.setScalar(R); g.add(n);
+    const n = new THREE.Mesh(getGeometry('edr:bladeNoz', () => new THREE.CylinderGeometry(0.09, 0.13, 0.24, 10).rotateX(Math.PI / 2)), hm);
+    n.position.set(dx * R, 0, -L * 0.35 * R - 0.05 * R); n.scale.setScalar(R); g.add(n);
   }
 }
 
@@ -1922,18 +2031,19 @@ function buildPatrolInterdict(ctx) {
   const fuse = new THREE.Mesh(getGeometry('edr:interdictFuse', () => new THREE.CapsuleGeometry(0.22, 1.0, 4, 10)), hm);
   fuse.rotation.x = Math.PI / 2; fuse.scale.set(R * 0.85, R, R * 0.85); g.add(fuse);
   for (const dx of [-1, 1]) {
-    const web = new THREE.Mesh(getGeometry(`edr:web${dx}`, () => new THREE.RingGeometry(0.2, 0.4, 6, 1)), hm);
-    web.position.set(dx * W * R * 1.0, 0, -L * R * 0.1); web.scale.setScalar(R); g.add(web);
-    const glow = lampFixture('#3aa0ff', R * 0.05, 3.2);
-    glow.position.set(dx * W * R * 1.0, 0, -L * R * 0.1); g.add(glow);
+    // Horizontal vane. A RingGeometry stands in XY and disappears edge-on from the chase camera.
+    const web = new THREE.Mesh(hullSlabGeo(0.55, 0.04, 0.42), hm);
+    web.position.set(dx * 0.42 * R, 0, -0.08 * R); web.scale.setScalar(R); g.add(web);
+    const glow = lampFixture('#3aa0ff', R * 0.036, 1.05);
+    glow.position.set(dx * 0.62 * R, 0.02 * R, -0.08 * R); g.add(glow);
   }
   for (const dx of [-1, 1]) {
-    const light = lampFixture('#3aa0ff', R * 0.038, 2.8);
-    light.position.set(dx * W * R * 0.9, 0, L * R * 0.4); g.add(light);
+    const light = lampFixture('#3aa0ff', R * 0.03, 1.0);
+    light.position.set(dx * 0.16 * R, 0.16 * R, 0.42 * R); g.add(light);
   }
-  for (const dx of [-0.16, 0.16]) {
-    const n = new THREE.Mesh(getGeometry('edr:interdictNoz', () => new THREE.CylinderGeometry(0.1, 0.12, 0.26, 8)), hm);
-    n.rotation.x = Math.PI / 2; n.position.set(dx * R, 0, -L * R * 0.55); n.scale.setScalar(R); g.add(n);
+  for (const dx of [-0.14, 0.14]) {
+    const n = new THREE.Mesh(getGeometry('edr:interdictNoz', () => new THREE.CylinderGeometry(0.08, 0.11, 0.22, 10).rotateX(Math.PI / 2)), hm);
+    n.position.set(dx * R, 0, -0.7 * R); n.scale.setScalar(R); g.add(n);
   }
 }
 
@@ -1945,16 +2055,16 @@ function buildDreadnoughtEnemy(ctx) {
   const towerTiers = hints.towerTiers || 3;
   const fore = new THREE.Mesh(getGeometry('edr:dreadFore', () => new THREE.CylinderGeometry(0.35, 0.5, 0.9, 8)), hm);
   fore.rotation.x = Math.PI / 2; fore.scale.set(R, R, R); fore.position.set(0, 0, L * R * 0.3); g.add(fore);
-  const mid = new THREE.Mesh(getGeometry('edr:dreadMid', () => new THREE.BoxGeometry(1.4, 0.5, 1.2)), hm);
+  const mid = new THREE.Mesh(hullSlabGeo(1.15, 0.42, 1.0), hm);
   mid.scale.setScalar(R); g.add(mid);
   const aft = new THREE.Mesh(getGeometry('edr:dreadAft', () => new THREE.CylinderGeometry(0.55, 0.4, 0.8, 8)), hm);
   aft.rotation.x = Math.PI / 2; aft.scale.set(R, R, R); aft.position.set(0, 0, -L * R * 0.35); g.add(aft);
   for (let i = 0; i < towerTiers; i++) {
     const tw = 0.4 - i * 0.08;
-    const tier = new THREE.Mesh(getGeometry(`edr:tower${i}`, () => new THREE.BoxGeometry(tw, 0.18, tw)), hm);
+    const tier = new THREE.Mesh(hullSlabGeo(Math.max(0.12, tw), 0.14, Math.max(0.12, tw)), hm);
     tier.position.set(0, R * (0.3 + i * 0.2), L * R * 0.05); tier.scale.setScalar(R); g.add(tier);
   }
-  const ring = new THREE.Mesh(getGeometry('edr:dreadRing', () => new THREE.TorusGeometry(0.55, 0.05, 6, 20)), accent);
+  const ring = new THREE.Mesh(getGeometry('edr:dreadRing', () => new THREE.TorusGeometry(0.42, 0.028, 8, 24)), hm);
   ring.rotation.x = Math.PI / 2; ring.position.set(0, R * 0.5, -L * R * 0.1); ring.scale.setScalar(R); g.add(ring);
   const turretN = 4 + (hints.greeble > 0.8 ? 2 : 0);
   for (let i = 0; i < turretN; i++) {
@@ -1967,8 +2077,8 @@ function buildDreadnoughtEnemy(ctx) {
   }
   for (let i = 0; i < 4; i++) {
     const dx = (i % 2 === 0 ? -1 : 1) * (0.2 + Math.floor(i / 2) * 0.08);
-    const n = new THREE.Mesh(getGeometry(`edr:dreadNoz${i}`, () => new THREE.CylinderGeometry(0.13, 0.16, 0.32, 8)), hm);
-    n.rotation.x = Math.PI / 2; n.position.set(dx * R, 0, -L * R * 0.6); n.scale.setScalar(R); g.add(n);
+    const n = new THREE.Mesh(getGeometry(`edr:dreadNoz${i}`, () => new THREE.CylinderGeometry(0.11, 0.15, 0.28, 10).rotateX(Math.PI / 2)), hm);
+    n.position.set(dx * R, 0, -L * R * 0.35 - 0.48 * R); n.scale.setScalar(R); g.add(n);
   }
   // signature split prow — the "iron maw" that names the boss.
   for (const dx of [-1, 1]) {
@@ -1983,27 +2093,29 @@ function buildDetonatorDart(ctx) {
   const { g, R, hm, accent, vis } = ctx;
   const L = vis.length || 1.1;
   // The payload is most of the silhouette — the hull is a bomb first and a ship second.
-  const warhead = new THREE.Mesh(getGeometry('edr:dartWarhead', () => new THREE.SphereGeometry(0.42, 12, 8)), accent);
-  warhead.scale.set(R * 0.95, R * 0.8, R * 0.95); warhead.position.set(0, 0, L * R * 0.35); g.add(warhead);
+  const warhead = new THREE.Mesh(getGeometry('edr:dartWarhead', () => new THREE.SphereGeometry(0.42, 16, 12)), hm);
+  warhead.scale.set(R * 0.95, R * 0.8, R * 0.95); warhead.position.set(0, 0, 0.22 * R); g.add(warhead);
+  const band = new THREE.Mesh(getGeometry('edr:dartBand', () => new THREE.TorusGeometry(0.4, 0.028, 6, 18)), accent);
+  band.scale.set(R * 0.95, R * 0.8, R * 0.95); band.position.set(0, 0, 0.22 * R); g.add(band);
   const cap = new THREE.Mesh(getGeometry('edr:dartCap', () => new THREE.ConeGeometry(0.16, 0.3, 8)), hm);
-  cap.rotation.x = Math.PI / 2; cap.position.set(0, 0, L * R * 0.74); cap.scale.setScalar(R); g.add(cap);
+  cap.rotation.x = Math.PI / 2; cap.position.set(0, 0, 0.68 * R); cap.scale.setScalar(R); g.add(cap);
   const neck = new THREE.Mesh(getGeometry('edr:dartNeck', () => new THREE.CylinderGeometry(0.14, 0.2, 0.55, 8)), hm);
   neck.rotation.x = Math.PI / 2; neck.position.set(0, 0, -L * R * 0.12); neck.scale.setScalar(R); g.add(neck);
   // Cruciform tail fins: the flying-bomb planform — no other hostile silhouette carries them.
-  const finGeo = getGeometry('edr:dartFin', () => new THREE.BoxGeometry(0.34, 0.05, 0.26));
+  const finGeo = getGeometry('edr:dartFin', () => hullSlabGeo(0.3, 0.04, 0.22).clone());
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2;
     const fin = new THREE.Mesh(finGeo, hm);
-    fin.position.set(Math.cos(a) * 0.24 * R, Math.sin(a) * 0.24 * R, -L * R * 0.42);
+    fin.position.set(Math.cos(a) * 0.2 * R, Math.sin(a) * 0.2 * R, -L * R * 0.12 - 0.06 * R);
     fin.rotation.z = a; fin.scale.setScalar(R); g.add(fin);
   }
-  const noz = new THREE.Mesh(getGeometry('edr:dartNoz', () => new THREE.CylinderGeometry(0.12, 0.2, 0.26, 8)), hm);
-  noz.rotation.x = Math.PI / 2; noz.position.set(0, 0, -L * R * 0.62); noz.scale.setScalar(R); g.add(noz);
-  const glow = new THREE.Mesh(getGeometry('edr:dartGlow', () => new THREE.CircleGeometry(0.1, 10)), accent);
-  glow.position.set(0, 0, -L * R * 0.78); glow.scale.setScalar(R); g.add(glow);
+  const noz = new THREE.Mesh(getGeometry('edr:dartNoz', () => new THREE.CylinderGeometry(0.1, 0.16, 0.24, 10).rotateX(Math.PI / 2)), hm);
+  noz.position.set(0, 0, -L * R * 0.12 - 0.34 * R); noz.scale.setScalar(R); g.add(noz);
+  const glow = new THREE.Mesh(getGeometry('edr:dartGlow', () => new THREE.CircleGeometry(0.08, 10)), accent);
+  glow.position.set(0, 0, noz.position.z - 0.1 * R); glow.scale.setScalar(R * 0.75); g.add(glow);
   // The lit fuse lamp above the warhead: the one light on this hull that means "running".
-  const fuse = lampFixture('#ff5030', R * 0.05, 3.4);
-  fuse.position.set(0, R * 0.34, L * R * 0.35); g.add(fuse);
+  const fuse = lampFixture('#ff5030', R * 0.04, 1.1);
+  fuse.position.set(0, 0.4 * R, 0.22 * R); g.add(fuse);
 }
 
 const ENEMY_FAMILY_BUILDERS = {
@@ -2032,6 +2144,16 @@ const FAMILY_BUILDERS = {
 // =============================================================================================
 // ORCHESTRATOR
 // =============================================================================================
+// These silhouettes are authored +Z forward. The orchestrator grafts (canopy, grime slab,
+// engines, dish, blinkers, nose art) are +X parts measured on the packaged ship. Putting
+// them on a +Z body cuts a Kestrel across the beam. Role-variant fallbacks stay +X and
+// still receive the grafts.
+const Z_FORWARD_SILHOUETTES = new Set([
+  'drone_swarm', 'sniper_lance', 'bruiser_armor', 'trader_haul', 'pirate_swoop',
+  'corsair_blade', 'patrol_interdict', 'dreadnought_enemy', 'detonator_dart',
+  'last_argument', 'kilnback', 'mothlight', 'pallet_jack',
+]);
+
 function buildShipMesh(e, pal) {
   const R = e.radius || 12;
   const defId = (e.data && e.data.defId) || 'ship_kestrel';
@@ -2051,7 +2173,7 @@ function buildShipMesh(e, pal) {
   const blinkers = [];
 
   const hm = hullMaterial(pal, recipe.panelCount);
-  const accent = emissiveMaterial(pal.accent, 1.7);
+  const accent = hotSurface(pal.accent, 0.46);
   const cockpit = cockpitGlassMaterial(pal);
 
   // Two-layer structure for banking: `g` is rolled by the renderer; `outer` holds yaw+position.
@@ -2068,12 +2190,18 @@ function buildShipMesh(e, pal) {
   //    ENEMY_FAMILY_BUILDERS (graphics spec Workstream D: enemies render as their own hostile forms).
   const builder = isEnemyFamily ? ENEMY_FAMILY_BUILDERS[family] : (FAMILY_BUILDERS[family] || buildMultirole);
   builder(ctx);
+  // +Z hostile silhouettes already carry their own nozzles, lamps and planform.
+  const zForwardEnemy = isEnemyFamily && Z_FORWARD_SILHOUETTES.has(family);
 
+  if (!zForwardEnemy) {
   // 2) armor panel shell (tier Mk.II paneled / Mk.III armored): a slightly-larger shell with denser
-  //    plating + decals so upgraded ships visibly read as reinforced.
+  //    plating + decals so upgraded ships visibly read as reinforced. Sized to the fuselage.
   if (hints.plating === 'paneled' || hints.plating === 'armored') {
-    const L = ctx.vis.length, W = ctx.vis.halfWidth, H = ctx.vis.height;
-    addDecalShell(g, pal, R, L, H, W * 1.5, hints.plating === 'armored' ? 'greeble' : 'decal');
+    const fit = ctx.fit;
+    const L = fit ? fit.length : ctx.vis.length;
+    const beam = fit ? fit.beam : ctx.vis.halfWidth;
+    const H = fit ? fit.height : ctx.vis.height;
+    addDecalShell(g, pal, R, L, H, beam, hints.plating === 'armored' ? 'greeble' : 'decal', fit ? fit.centerX || 0 : 0);
   }
 
   // 2b) PROCEDURAL SURFACE DETAIL — scatter greeble clusters (vents, hatches, ribs, pipes, RCS jets,
@@ -2082,10 +2210,8 @@ function buildShipMesh(e, pal) {
   //     bespoke detail in their family builders, so skip them here.
   if (!isEnemyFamily) surfaceDetail(ctx);
 
-  // 2c) PAINT PROFILE — the art direction: grime overlay, chrome env-map, nose-art decal, repair
-  //     patches. All driven by the faction personality so the dirty-outlaw vs clean-authority contrast
-  //     applies itself to every ship (player = haunted ex-gangster runner; Concord/Meridian = chrome;
-  //     pirates = filthy tagged). Enemies get their own faction look too.
+  // 2c) PAINT PROFILE — grime, chrome, nose-art and patches, measured against ctx.fit so the
+  //     shell cannot be wider than the fuselage that was just built.
   applyPaintProfile(ctx, e);
 
   // 3) cockpit/bridge glass if the hull authored a position (fighters/scout/multirole use cockpit,
@@ -2115,12 +2241,14 @@ function buildShipMesh(e, pal) {
     }
   }
 
-  // 5) ENGINES — nozzles+plumes at authored engineMounts, sized by fitted engine class.
+  // 5) ENGINES — nozzles+plumes at authored engineMounts, sized by fitted engine class,
+  //    then pulled forward onto the procedural aft face when the mount hangs in space.
   const mounts = modelTruthMountFractions(def && def.id, 'SOCKET_Engine_');
   for (let i = 0; i < mounts.length; i++) {
     const m = mounts[i];
     const en = engineProp(pal, R, m.scaleK || 1, loadout.engineClass || 60);
     en.position.set((m.pos[0] || 0) * R, (m.pos[1] || 0) * R, (m.pos[2] || 0) * R);
+    seatEngineOnHull(en, ctx);
     g.add(en);
     addEngineTrailSocket(g, en, i);
     outer.userData.engines.push(en);
@@ -2128,15 +2256,19 @@ function buildShipMesh(e, pal) {
   // fallback: if no mounts authored, place a pair by recipe (back-compat for defs lacking visuals)
   if (!mounts.length) {
     const n = Math.max(1, Math.min(6, recipe.engineCount || 2));
+    const halfZ = ctx.fit ? ctx.fit.beam * 0.5 * R * 0.55 : R * 0.2;
     for (let i = 0; i < n; i++) {
-      const z = n === 1 ? 0 : (-(n - 1) / 2 + i) * 0.24 * 2;
+      const z = n === 1 ? 0 : ((i / Math.max(1, n - 1)) - 0.5) * 2 * halfZ;
       const en = engineProp(pal, R, 0.9, loadout.engineClass || 60);
-      en.position.set(-0.7 * R, 0, z * R); g.add(en); addEngineTrailSocket(g, en, i); outer.userData.engines.push(en);
+      en.position.set((ctx.fit && ctx.fit.aftX != null ? ctx.fit.aftX * R : -0.7 * R), 0, z);
+      seatEngineOnHull(en, ctx);
+      g.add(en); addEngineTrailSocket(g, en, i); outer.userData.engines.push(en);
     }
   }
 
   // 6) MINING drill/emitter when a mining module or beam is fitted.
-  if (loadout.hasMining && vis.drill) {
+  //    Miners already wear a prow bit; a second prop would stack on it.
+  if (loadout.hasMining && vis.drill && !ctx.hasDrill) {
     const drill = miningProp(pal, R, loadout.miningTier);
     drill.position.set(vis.drill[0] * R, vis.drill[1] * R, vis.drill[2] * R);
     g.add(drill);
@@ -2145,33 +2277,39 @@ function buildShipMesh(e, pal) {
 
   // 7) SHIELD emitter ring when a shield module is fitted.
   if (loadout.hasShield && vis.proportions) {
-    const ring = shieldRingProp(pal, R, ctx.vis.halfWidth, ctx.vis.height, loadout.shieldClass);
+    const ringHalf = ctx.fit ? ctx.fit.beam * 0.5 : ctx.vis.halfWidth;
+    const ring = shieldRingProp(pal, R, ringHalf, ctx.vis.height, loadout.shieldClass);
     g.add(ring);
   }
 
-  // 8) SENSOR/UTILITY masts — antennas + dishes near the authored sensor anchor, count from loadout.
+  // 8) SENSOR — one short mast and a dish that fit the fuselage, aft of the canopy.
   if (vis.sensor) {
-    const n = Math.max(1, Math.min(5, (loadout.utilityCount || 1) + Math.round((hints.greeble || 0) * 2)));
-    for (let i = 0; i < n; i++) {
-      const ant = new THREE.Mesh(getGeometry('ship:antenna', () => new THREE.CylinderGeometry(0.015, 0.025, 0.45, 4)), hm);
-      ant.position.set(
-        vis.sensor[0] * R + (i - (n - 1) / 2) * R * 0.08,
-        vis.sensor[1] * R,
-        0,
-      );
-      ant.scale.setScalar(R); g.add(ant);
-      const tip = lampFixture(pal.accent, R * 0.032, 2.6);
-      tip.position.set(ant.position.x, vis.sensor[1] * R + R * 0.32, ant.position.z); g.add(tip);
-      if (i % 2 === 0) {
-        const dish = new THREE.Mesh(getGeometry('ship:dish', () => new THREE.SphereGeometry(0.12, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2)), hm);
-        dish.position.set(vis.sensor[0] * R, vis.sensor[1] * R + R * 0.18, (i - 1) * R * 0.06);
-        dish.scale.setScalar(R); g.add(dish);
-      }
+    const fit = ctx.fit;
+    const halfZ = fit ? fit.beam * 0.5 * R : ctx.vis.halfWidth * R * 0.45;
+    const deck = fit ? fit.deckY * R : vis.sensor[1] * R;
+    const mastH = Math.min(R * 0.14, Math.max(R * 0.05, (fit ? fit.height : ctx.vis.height) * R * 0.28));
+    const dishR = Math.min(R * 0.06, halfZ * 0.28);
+    let sx = vis.sensor[0] * R;
+    if (fit && fit.canopyX != null && fit.canopyHalf != null) {
+      const canopyRear = (fit.canopyX - fit.canopyHalf * 1.15) * R;
+      if (sx > canopyRear) sx = canopyRear;
     }
+    const mastScale = mastH / 0.45;
+    const ant = new THREE.Mesh(getGeometry('ship:antenna', () => new THREE.CylinderGeometry(0.02, 0.03, 0.45, 6)), hm);
+    ant.position.set(sx, deck + mastH * 0.5, 0);
+    ant.scale.setScalar(mastScale); g.add(ant);
+    const tip = lampFixture(pal.accent, Math.min(R * 0.028, dishR * 0.55), 1.05);
+    tip.position.set(sx, deck + mastH, 0); g.add(tip);
+    const dish = new THREE.Mesh(getGeometry('ship:dish', () => new THREE.SphereGeometry(0.12, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2)), hm);
+    dish.position.set(sx, deck + mastH * 0.72, 0);
+    dish.scale.setScalar(dishR / 0.12); g.add(dish);
   }
 
-  // 9) NAV BLINKERS (port green / starboard red / white stern) for real aerospace cueing.
-  addNavBlinkers(g, R, ctx.vis.halfWidth, ctx.vis.length, blinkers);
+  // 9) NAV BLINKERS (port green / starboard red / white stern) seated on the fuselage.
+  addNavBlinkers(g, R, ctx.vis.halfWidth, ctx.vis.length, blinkers, ctx.fit);
+  } else if (!outer.userData.weapons) {
+    outer.userData.weapons = [];
+  }
 
   // 10) self-animation: engine plume throb + fan spin + nav blinker pulse + capital sensor ring
   //     spin + turret-head idle sweep. The driver must live on a renderable child (Three only fires
@@ -2200,7 +2338,7 @@ function buildShipMesh(e, pal) {
       for (let i = 0; i < blinkers.length; i++) {
         const bl = blinkers[i], bd = bl.userData.blink;
         const on = ((((t * (bd.hz || 0.6)) + bd.phase) % 1) + 1) % 1 > 0.5 ? 1 : 0.25;
-        bl.material.emissiveIntensity = (bd.base || 3.4) * (0.18 + 0.82 * on);
+        bl.material.emissiveIntensity = (bd.base || 1.25) * (0.18 + 0.82 * on);
       }
       if (ctx.sensorRing) ctx.sensorRing.rotation.z = t * 0.3;
       // turret heads sweep ±35° seeking a target — sells the "auto-tracking" read even when idle
@@ -3446,10 +3584,10 @@ function blinkerFixture(color, scale, phase, blinkers) {
   );
   const lens = new THREE.Mesh(
     getGeometry('nav:lens', () => new THREE.SphereGeometry(0.36, 12, 10)),
-    emissiveMaterial(color, 3.4).clone(),
+    emissiveMaterial(color, 1.25).clone(),
   );
   lens.position.y = 0.18;
-  lens.userData.blink = { phase: phase || 0, hz: 0.6 + ((phase || 0) % 0.6), base: 3.4 };
+  lens.userData.blink = { phase: phase || 0, hz: 0.6 + ((phase || 0) % 0.6), base: 1.25 };
   lens.userData.spacefaceTags = { damageRole: 'navLight', vfxRole: 'navBlinker' };
   root.add(cup, lens);
   root.scale.setScalar(scale);
@@ -6905,24 +7043,55 @@ function buildBomb(e) {
   switch (payloadId) {
     case 'bomb_concussion': {
       const drum = new THREE.Mesh(
-        getGeometry('bomb:conc:drum', () => new THREE.CylinderGeometry(0.58, 0.58, 0.42, 14).rotateZ(Math.PI / 2)),
+        getGeometry('bomb:conc:drum', () => new THREE.CylinderGeometry(0.56, 0.56, 0.4, 14).rotateZ(Math.PI / 2)),
         shell,
       );
       drum.name = 'ConcussionDrum';
       g.add(drum);
       const rim = new THREE.Mesh(
-        getGeometry('bomb:conc:rim', () => new THREE.TorusGeometry(0.56, 0.1, 8, 18).rotateY(Math.PI / 2)),
+        getGeometry('bomb:conc:rim', () => new THREE.TorusGeometry(0.55, 0.08, 6, 16).rotateY(Math.PI / 2)),
         alloy,
       );
       rim.name = 'ConcussionRim';
       g.add(rim);
+      const seam = new THREE.Mesh(
+        getGeometry('bomb:conc:seam', () => new THREE.CylinderGeometry(0.65, 0.65, 0.06, 16).rotateZ(Math.PI / 2)),
+        accentMat,
+      );
+      seam.name = 'ConcussionSeam';
+      g.add(seam);
+      const faceRing = new THREE.Mesh(
+        getGeometry('bomb:conc:face', () => new THREE.CylinderGeometry(0.35, 0.35, 0.45, 14).rotateZ(Math.PI / 2)),
+        accentMat,
+      );
+      faceRing.name = 'ConcussionFaceRing';
+      g.add(faceRing);
       const hub = new THREE.Mesh(
         getGeometry('bomb:conc:hub', () => new THREE.CylinderGeometry(0.2, 0.2, 0.5, 10).rotateZ(Math.PI / 2)),
-        accentMat,
+        alloy,
       );
       hub.name = 'ConcussionHub';
       g.add(hub);
-      pip = hub;
+      const lugGeo = getGeometry('bomb:conc:lug', () => new THREE.BoxGeometry(0.46, 0.09, 0.12));
+      for (let i = 0; i < 4; i++) {
+        const a = (i * Math.PI) / 2 + Math.PI / 4;
+        const lug = new THREE.Mesh(lugGeo, shell);
+        lug.name = `ConcussionLug_${i + 1}`;
+        lug.position.set(0, Math.sin(a) * 0.58, Math.cos(a) * 0.58);
+        lug.rotation.x = -a;
+        g.add(lug);
+      }
+      const fuse = new THREE.Mesh(
+        getGeometry('bomb:conc:fuse', () => new THREE.CylinderGeometry(0.11, 0.14, 0.14, 8)),
+        alloy,
+      );
+      fuse.name = 'ConcussionFuse';
+      fuse.position.y = 0.65;
+      g.add(fuse);
+      pip = new THREE.Mesh(getGeometry('bomb:conc:pip', () => new THREE.CylinderGeometry(0.075, 0.075, 0.07, 8)), dim);
+      pip.name = 'ConcussionPip';
+      pip.position.y = 0.74;
+      g.add(pip);
       break;
     }
     case 'bomb_singularity': {

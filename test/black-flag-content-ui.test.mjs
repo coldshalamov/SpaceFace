@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BLACK_FLAG_ENCOUNTERS, BLACK_FLAG_YARDS } from '../src/data/blackFlag.js';
+import { FIRST_TRADE_CONTRACT_SOURCE } from '../src/data/economyContractTemplates.js';
 import { SHIPS } from '../src/data/ships.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { MODULES } from '../src/data/modules.js';
@@ -99,6 +100,26 @@ test('the real scanner pulse reopens a dismissed vessel link without a duplicate
   assert.equal(f.emissions.filter(row=>row.event==='ui:shipjack').length,0);prompt.dispose();
 });
 
+test('an incidental vessel target stays quiet at a tracked Furnace worksite until the pilot scans', () => {
+  const f = fixture();
+  f.state.world = { currentSectorId: 'sector_ceres_belt' };
+  f.state.ui.trackedMissionId = 'furnace';
+  f.state.missions = { active: [{ id: 'furnace', status: 'active', storyTag: 'campaign47a:b1:infested',
+    destSectorId: 'sector_ceres_belt', params: { furnaceFeedsNeeded: 3, furnaceWorksiteVersion: 1 } }] };
+  const prompt = createBlackFlagPrompt(f, { deck: () => f.deck });
+  const frame = () => { for (let i = 0; i < 8; i++) prompt.frame(); };
+  try {
+    frame();
+    assert.equal(f.offers.has('black-flag:acquisition'), false);
+    f.bus.emit('scan:pulse', { sourceId: f.state.playerId });
+    frame();
+    assert.ok(f.offers.has('black-flag:acquisition'), 'explicit Scan keeps the same vessel available');
+    f.target.data.shipjackGeneration = 'gen:2';
+    frame();
+    assert.equal(f.offers.has('black-flag:acquisition'), false, 'reusing the id does not inherit the open prompt');
+  } finally { prompt.dispose(); }
+});
+
 test('world opportunity is acquired through the shared deck, with no stale-mode or occupant shortcut', () => {
   const f=fixture(); f.state.player.targetId=null;
   const prompt=createBlackFlagPrompt(f,{deck:()=>f.deck});
@@ -112,6 +133,48 @@ test('world opportunity is acquired through the shared deck, with no stale-mode 
   f.bus.emit('shipjack:opportunity',{entityId:2,vesselId:'vessel:test:1'});
   for(let i=0;i<8;i++)prompt.frame();
   assert.equal(f.offers.size,0); prompt.dispose();
+});
+
+test('the empty-seat invitation yields to live first freight while deliberate scanner access remains available', () => {
+  for (const alreadyOffered of [false, true]) {
+    const f = fixture();
+    f.state.player.targetId = null;
+    const prompt = createBlackFlagPrompt(f, { deck: () => f.deck });
+    const frame = () => { for (let i = 0; i < 8; i++) prompt.frame(); };
+    const id = 'black-flag:opportunity';
+    const freight = { id: 'm_2', source: FIRST_TRADE_CONTRACT_SOURCE, status: 'active', deadline_s: 1200 };
+    const signal = { entityId: f.target.id, vesselId: f.target.data.vesselId, encounterId: 'black_flag_empty_seat' };
+    try {
+      if (alreadyOffered) { f.bus.emit('shipjack:opportunity', signal); frame(); }
+      const previous = f.offers.get(id);
+      assert.equal(!!previous, alreadyOffered);
+      f.state.missions = { active: [freight] };
+      if (alreadyOffered) previous.onChoose('course', 'keyboard');
+      else f.bus.emit('shipjack:opportunity', signal);
+      frame();
+      assert.equal(f.offers.has(id), false);
+      assert.equal(f.emissions.some(row => row.event === 'ui:shipjack'), false, 'a stale choice cannot replace the freight course');
+
+      f.state.player.targetId = f.target.id;
+      f.bus.emit('scan:pulse', { sourceId: f.state.playerId });
+      const link = f.offers.get('black-flag:acquisition');
+      assert.ok(link, 'the same recovery hull remains available to an intentional scanner input');
+      link.onChoose('scan', 'keyboard');
+      assert.ok(f.emissions.some(row => row.event === 'ui:shipjack' && row.payload.action === 'scan'
+        && row.payload.vesselId === signal.vesselId));
+      f.state.player.targetId = null;
+
+      freight.status = 'completed';
+      frame();
+      const resumed = f.offers.get(id);
+      assert.ok(resumed, 'a same-sector signal can open once the pilot has finished the freight');
+      previous?.onChoose('course', 'keyboard');
+      assert.equal(f.emissions.some(row => row.event === 'ui:shipjack' && row.payload.action === 'navigate'), false);
+      resumed.onChoose('leave', 'keyboard');
+      frame();
+      assert.equal(f.offers.has(id), false, 'dismissing the re-offered signal does not repeat it');
+    } finally { prompt.dispose(); }
+  }
 });
 
 test('Back cancels an actual vulnerable airlock crossing but ordinary dismissal is presentation only', () => {
@@ -177,7 +240,7 @@ test('Adventure-only query and truthful, stable station presentation keep custod
   assert.match(read.location,/Helios/); assert.match(read.inspection.findings.join(' '),/Title/);
   assert.match(vesselLocationText({location:{kind:'berth',stationId:'station_helios'}}),/Helios/);
   const detail=shipjackPromptDetail({titleStatus:'disputed',readiness:{relativeSpeed:12.001,dwell:1.26,reasons:['Match motion.']}});
-  assert.match(detail,/12 wu\/s/); assert.match(detail,/steady 1s/); assert.doesNotMatch(detail,/12\.001/);
+  assert.match(detail,/12 u\/s/); assert.match(detail,/steady 1s/); assert.doesNotMatch(detail,/12\.001/);
 });
 
 test('yard confirmation names consumed material, remaining forensic exposure and disabled output', () => {

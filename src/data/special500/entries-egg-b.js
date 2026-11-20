@@ -157,7 +157,7 @@ export const ENTRIES_EGG_B = [
     trigger: { type: 'proximity', nearStation: 'poi_helios_lane_pin', wu: 200 },
     channel: 'memory',
     payload: {
-      text: 'Forty WU off the Corridor Pin\'s centerline, one junk rock reads eight percent heavier than its size class. Pulled off a clean weld line, its shell opens on a pre-charter tow kit — hooks, line, and a laminated card: IF YOU FOUND THIS, THE LANE WORKED. LEAVE THE HOOKS, TAKE THE CARD. — THE FIRST CREW. The hooks stay, physical, for whoever flies past next.',
+      text: 'Forty u off the Corridor Pin\'s centerline, one junk rock reads eight percent heavier than its size class. Pulled off a clean weld line, its shell opens on a pre-charter tow kit — hooks, line, and a laminated card: IF YOU FOUND THIS, THE LANE WORKED. LEAVE THE HOOKS, TAKE THE CARD. — THE FIRST CREW. The hooks stay, physical, for whoever flies past next.',
     },
     followup: 'worldOneOffs rope-cache pattern (HELIOS_ROPE_CACHE precedent) + codex page "The First Crew\'s Card"; the card grants +2% tow-assist speed permanently; the 8%-heavy junk rock is a flagged field row on the pin\'s offset, opened by a massline pull',
   },

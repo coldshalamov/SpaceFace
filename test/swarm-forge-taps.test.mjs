@@ -23,6 +23,7 @@ import { resolvePropulsionProfile } from '../src/core/flight/propulsionCatalog.j
 import { SHIPS } from '../src/data/ships.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { SWARM_RULESET } from '../src/data/swarmMode.js';
+import { SWARM_FLOOR_ARM_REQUEST, swarmFloorPadQuote } from '../src/data/swarmFloor.js';
 import {
   SWARM_FORGE_PRICE,
   SWARM_FORGE_RECORD_KIND,
@@ -130,7 +131,7 @@ function boot({ seed = 7, ruleset = SWARM_RULESET, arenaId = FOUNDRY_ARENA_ID, c
   const run = createRunState({ kind: 'survival', ruleset, seed });
   run.arenaId = arenaId;
   run.wave = wave;
-  run.phase = 'wave_intro';
+  run.phase = 'active';
   state.run = run;
   state.simTime = 0;
   state.tick = 0;
@@ -162,6 +163,10 @@ function boot({ seed = 7, ruleset = SWARM_RULESET, arenaId = FOUNDRY_ARENA_ID, c
     return pads().find((e) => e.data.swarmFloorPad.padId === padId) || null;
   }
   function collect(pad, collectorId = state.playerId) {
+    if (collectorId === state.playerId) {
+      Object.assign(pilot.pos, pad.pos);
+      bus.emit(SWARM_FLOOR_ARM_REQUEST, swarmFloorPadQuote(pad));
+    }
     const payload = {
       pickupId: pad.id, collectorId,
       kind: pad.data.kind, amount: pad.data.amount,
@@ -253,6 +258,9 @@ test('a held Free Forge forges once and clears the flag without touching the pur
   try {
     h.state.run.telemetry.freeForge = true;
     const forge = h.padById('foundry-forge');
+    survivalArena.update(DT, h.state);
+    assert.equal(swarmFloorPadQuote(forge).price, 0);
+    assert.equal(forge.data.swarmFloorPad.label, 'THE FORGE · FREE');
     h.collect(forge);
     assert.equal(h.state.run.credits, 0, 'the free pour never billed');
     assert.equal(h.state.run.telemetry.freeForge, false, 'the flag was consumed');
@@ -308,7 +316,7 @@ test('the Concussion Cannon forges into Wrecking Ball carrying a two-body pierce
   } finally { h.destroy(); }
 });
 
-test('the shared till sells four bottles at stepping prices, then the fifth refuses', () => {
+test('the shared till sells four bottles at stepping prices, then offers no purchase quote', () => {
   const h = boot({ credits: 100000 });
   try {
     const tapW = () => h.padById('foundry-tap-west');
@@ -332,14 +340,12 @@ test('the shared till sells four bottles at stepping prices, then the fifth refu
     }
     assert.deepEqual(priceSeen, [1500, 2000, 2500, 3000], 'the till steps 1500→3000');
     assert.equal(h.state.run.credits, 100000 - 9000);
-    // The till is dry: both pads read SOLD OUT and the fifth crossing refuses without
-    // touching the purse.
+    // The till is dry: both pads read SOLD OUT and there is no decision to arm.
     assert.equal(tapW().data.swarmFloorPad.label, 'TAP · SOLD OUT');
     assert.equal(tapE().data.swarmFloorPad.label, 'TAP · SOLD OUT');
-    h.collect(tapW());
-    const refuse = h.events.refused.find((r) => r.padId === 'foundry-tap-west' && r.reason === 'sold_out');
-    assert.ok(refuse, 'the fifth buy refused');
-    assert.ok(h.events.toasts.some((t) => t.text === 'TAP · SOLD OUT'));
+    assert.equal(swarmFloorPadQuote(tapW()), null);
+    assert.equal(h.collect(tapW()).acceptedAmount, 0);
+    assert.equal(h.events.bought.length, 4);
     assert.equal(h.state.run.credits, 100000 - 9000, 'the till never took a fifth coin');
     assert.equal(swarmTapCount(h.state.run), 4);
     assert.equal(swarmOwnedTapMods(h.state).length, 4, 'the HUD row would show four bottles');

@@ -21,6 +21,7 @@ import {
 } from '../src/data/portraits.js';
 import { WRECK_CATHEDRAL_EVIDENCE_CATALOG } from '../src/data/wreckCathedralEvidenceCatalog.js';
 import { renderPackagePilotForSourceUrl } from '../src/render/renderPackageManifest.js';
+import { FLIPBOOK_SHEETS, flipbookSheetPath } from '../src/render/combat/flipbookSprites.js';
 import { RELEASE_COPY_MAPPINGS, releaseCopyExcludePrefixes, safeRelativePath } from './lib/releasePackaging.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -113,6 +114,7 @@ const dynamicRegistries = Object.freeze({
   thrusterTextures: Object.freeze(
     (thrusterManifest.textures || []).map((entry) => entry.path),
   ),
+  flipbookSprites: Object.freeze(Object.keys(FLIPBOOK_SHEETS).map(flipbookSheetPath)),
 });
 
 for (const asset of dynamicRegistries.modelTruthRuntime) {
@@ -127,6 +129,9 @@ for (const asset of dynamicRegistries.wreckCathedralEvidence) {
 }
 for (const asset of dynamicRegistries.thrusterTextures) {
   addReference(asset, thrusterManifestPath);
+}
+for (const asset of dynamicRegistries.flipbookSprites) {
+  addReference(asset, 'src/render/combat/flipbookSprites.js#FLIPBOOK_SHEETS');
 }
 
 // Resolve kit-scoped literals: a literal that is missing at the repo root but present under

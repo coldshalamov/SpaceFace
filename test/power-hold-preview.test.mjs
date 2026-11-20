@@ -1,4 +1,4 @@
-// Row 493 — hold to preview, release to use. A power key grips on the press (the held-key preview
+// Row 493 — aimed powers hold to preview, release to use. An aimed key grips on the press (the held-key preview
 // draws what it will move) and fires on the release; a whole tap between two updates fires at once.
 // A screen, focus loss, a sector change or a fenced pad cancels the grip without firing. Settings →
 // Gameplay → Powers "Use on press" keeps fire-on-press. Drives the shipped input owner.
@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createSimulation } from '../src/core/sim.js';
+import { advanceFixedTimestep } from '../src/core/simulationRunner.js';
 import { input, applyFlightKeyEvent } from '../src/systems/input.js';
 import { heldPower, powersFireOnPress } from '../src/systems/powerVerbs.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
@@ -49,26 +50,26 @@ test('a held key grips and previews; the key-up fires it once; a whole tap fires
 
 test('a screen, focus loss or a sector change cancels the grip: the later key-up fires nothing', () => {
   const t = boot();
-  t.key('Digit2', true);
+  t.key('Digit1', true);
   t.step();
-  assert.equal(heldPower(t.state), 'shove');
+  assert.equal(heldPower(t.state), 'pull');
   t.state.ui = { screenStack: ['pause'] };
   assert.deepEqual(t.step(), []);
   assert.equal(heldPower(t.state), null, 'a screen over the grip ends the preview');
   t.state.ui = { screenStack: [] };
   assert.deepEqual(t.step(), [], 'still held after the screen: not a new press');
-  t.key('Digit2', false);
+  t.key('Digit1', false);
   assert.deepEqual(t.step(), [], 'the key-up after a cancelled grip fires nothing');
-  t.key('Digit2', true);
-  t.key('Digit2', false);
-  assert.deepEqual(t.step(), ['deployRepulsor', 'chargeDetonate'], 'the next press works');
+  t.key('Digit1', true);
+  t.key('Digit1', false);
+  assert.deepEqual(t.step(), ['deployWell'], 'the next press works');
 
-  t.key('Digit5', true);
+  t.key('Digit3', true);
   t.step();
-  assert.equal(heldPower(t.state), 'rig');
+  assert.equal(heldPower(t.state), 'pin');
   t.host.releaseHeldControls('blur');
   assert.equal(heldPower(t.state), null, 'focus loss ends the preview');
-  t.key('Digit5', false);
+  t.key('Digit3', false);
   assert.deepEqual(t.step(), [], 'and the key-up fires nothing');
 
   t.key('Digit1', true);
@@ -120,36 +121,45 @@ test('pad powers grip and fire the same way; two held powers preview the newest 
   };
   // A pad first has to be seen at rest: the lifecycle fence ignores buttons held when it arrives.
   assert.deepEqual(t.step(), []);
-  pad('shove', true, true);
+  pad('pull', true, true);
   assert.deepEqual(t.step(), []);
-  assert.equal(heldPower(t.state), 'shove');
-  pad('shove', true);
+  assert.equal(heldPower(t.state), 'pull');
+  pad('pull', true);
   pad('pin', true, true);
   assert.deepEqual(t.step(), []);
   assert.equal(heldPower(t.state), 'pin', 'the newest grip is the one previewed');
   pad('pin', false, false, true);
-  pad('shove', true);
+  pad('pull', true);
   assert.deepEqual(t.step(), ['deployMassSeed'], 'releasing Pin fires Pin');
-  assert.equal(heldPower(t.state), 'shove', 'the older grip is previewed again');
+  assert.equal(heldPower(t.state), 'pull', 'the older grip is previewed again');
   pad('pin', false);
-  pad('shove', false, false, true);
-  assert.deepEqual(t.step(), ['deployRepulsor', 'chargeDetonate'], 'then Shove fires its own');
+  pad('pull', false, false, true);
+  assert.deepEqual(t.step(), ['deployWell'], 'then Pull fires its own');
   assert.equal(heldPower(t.state), null);
 });
 
 test('one press schedule counts the same uses at 30, 60 and 120 Hz catch-up in hold mode', () => {
-  const events = [['KeyR', true], ['KeyU', true], ['KeyU', false], ['KeyR', false], ['KeyU', true], ['KeyR', true]];
+  // Times in 1/6000 seconds make every tested render-frame boundary an integer. The first
+  // and third uses are quick taps; the second spans many steps; the final press stays gripped.
+  const events = [[30, true], [60, false], [1200, true], [2400, false], [3030, true], [3060, false], [3630, true]];
   const totals = [];
   for (const hz of [30, 60, 120]) {
-    const collapsed = boot();
-    for (const [code, pressed] of events) collapsed.key(code, pressed);
-    let a = 0;
-    for (let i = 0; i < events.length; i++) a += collapsed.step().includes('deployRepulsor') ? 1 : 0;
-    const split = boot();
-    let b = 0;
-    for (const [code, pressed] of events) { split.key(code, pressed); b += split.step().includes('deployRepulsor') ? 1 : 0; }
-    assert.equal(a, b, `${hz} Hz: sampled together or apart, one release is one use`);
-    totals.push(a);
+    const t = boot();
+    let nextEvent = 0;
+    let accumulator = 0;
+    let uses = 0;
+    for (let frameEnd = 6000 / hz; frameEnd <= 6000; frameEnd += 6000 / hz) {
+      while (nextEvent < events.length && events[nextEvent][0] <= frameEnd) {
+        t.key('Digit1', events[nextEvent++][1]);
+      }
+      const frame = advanceFixedTimestep(accumulator, 1 / hz, 1, () => {
+        if (t.step().includes('deployWell')) uses++;
+      });
+      accumulator = frame.accumulator;
+      assert.equal(frame.shedBacklog, false, `${hz} Hz does not exceed the catch-up budget`);
+    }
+    assert.equal(heldPower(t.state), 'pull', `${hz} Hz leaves the unfinished press previewed`);
+    totals.push(uses);
   }
-  assert.deepEqual(totals, [1, 1, 1], 'the first press is used; the second is still held');
+  assert.deepEqual(totals, [3, 3, 3], 'each released press fires once at every actual render cadence');
 });

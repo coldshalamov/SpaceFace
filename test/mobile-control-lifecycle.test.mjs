@@ -186,6 +186,26 @@ function pinWheel(w, bank = 0) {
 }
 const wheelOpen = w => w.q('.mf-wheel').hidden === false;
 
+test('a touch pilot can tap Powers, Flight, then Scan to request a scanner pulse', () => {
+  const w = mount();
+  try {
+    const powers = w.q('.mf-edge');
+    assert.match(powers.getAttribute('aria-label'), /^Powers:/);
+    w.finger.down(1, 366, 470, powers);
+    w.finger.up(1, 366, 470, powers);
+    assert.equal(wheelOpen(w), true);
+
+    const flight = w.q('.mf-tabs').children.find(button => button.textContent === 'Flight');
+    assert.ok(flight);
+    flight.click();
+    const scan = w.q('.mf-wheel').querySelector('[aria-label="SCAN. Pulse the scanner."]');
+    assert.ok(scan);
+    scan.click();
+    assert.deepEqual(w.calls.activate, ['scanPulse']);
+    assert.equal(wheelOpen(w), false);
+  } finally { w.dispose(); }
+});
+
 test('a deliberate throw flick spends the gesture once and does not boost', () => {
   const flicks = [];
   const w = mount({ onFlick: (flick) => { flicks.push(flick); return true; } });

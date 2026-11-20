@@ -117,7 +117,7 @@ export const ENTRIES_ANOMALY_A = [
     channel: 'spectacle',
     payload: {
       from: 'Proteus Well survey',
-      text: 'Stars near one empty point smear into short arcs pointing around it — a lens with no visible mass, fixed in place, three hundred WU across. Hulls crossing the arc\'s line catch a faint blue rim on the side facing the point; fly the exact line and your predictor bows for one second. The survey buoys\' lamps ripple when they idle near it — lamps only, the structure has never moved. The Archive files it under a name nobody uses.',
+      text: 'Stars near one empty point smear into short arcs pointing around it — a lens with no visible mass, fixed in place, three hundred u across. Hulls crossing the arc\'s line catch a faint blue rim on the side facing the point; fly the exact line and your predictor bows for one second. The survey buoys\' lamps ripple when they idle near it — lamps only, the structure has never moved. The Archive files it under a name nobody uses.',
     },
   },
 
@@ -327,7 +327,7 @@ export const ENTRIES_ANOMALY_A = [
     trigger: { type: 'sectorEntry' },
     channel: 'memory',
     payload: {
-      text: 'The marked fog region has a real current: everything drifts two WU a second the same direction, all the time. The locals adapted — sails of foil, tide tables posted at the lane mouth, a whole etiquette about who drifts with it and who fights it. Riding the undertow outward is the cheapest freight speed-up in the sector, and everyone pretends it isn\'t.',
+      text: 'The marked fog region has a real current: everything drifts two u a second the same direction, all the time. The locals adapted — sails of foil, tide tables posted at the lane mouth, a whole etiquette about who drifts with it and who fights it. Riding the undertow outward is the cheapest freight speed-up in the sector, and everyone pretends it isn\'t.',
     },
     followup: 'curlField.js region force (steady 2 WU/s drift) on the marked fog region; readable tide table at the lane mouth + tide-table NPC as a numbered ambient encounter; drift etiquette barks; riding the undertow outward as the freight speed-up',
   },
@@ -425,7 +425,7 @@ export const ENTRIES_ANOMALY_A = [
     trigger: { type: 'receipt', event: 'poi:discovered' },
     channel: 'memory',
     payload: {
-      text: 'Corridor Pin 44-C has drifted a few WU off its charted spot, and someone has chalked a correction arrow on it pointing back at the chart, with a note: PIN FINE PAID. TWICE. The beacon chirps in the customs REF 44-C cadence now.',
+      text: 'Corridor Pin 44-C has drifted a few u off its charted spot, and someone has chalked a correction arrow on it pointing back at the chart, with a note: PIN FINE PAID. TWICE. The beacon chirps in the customs REF 44-C cadence now.',
     },
     followup: 'pin placement offset as f(visit count) on poi_helios_lane_pin, third visit at least one in-game day apart; chalk-note scan copy in discoveryPresentation; Concord +1 on the first chalk scan ("self-reported infraction, credited")',
   },
@@ -507,7 +507,7 @@ export const ENTRIES_ANOMALY_A = [
     trigger: { type: 'receipt', event: 'distress:call' },
     channel: 'memory',
     payload: {
-      text: 'A distress call on the irradiated floor with a bearing that drifts one WU every ten seconds — a pirate lure, and a bad one: the recording\'s hull number belongs to a ship you have personally docked beside, alive, at Kepler Scar. The pirates copied the wrong hull. Arrive armed, scan first, and their own beacon becomes their trial record.',
+      text: 'A distress call on the irradiated floor with a bearing that drifts one u every ten seconds — a pirate lure, and a bad one: the recording\'s hull number belongs to a ship you have personally docked beside, alive, at Kepler Scar. The pirates copied the wrong hull. Arrive armed, scan first, and their own beacon becomes their trial record.',
     },
     followup: 'pirate-lure distress whose bearing drifts 1 WU per 10 s via the scanClues stale/contradicted pattern; the copied hull number belongs to a hull the player has docked beside at station_kepler_scar; spring it backward (arrive armed, scan first) → the beacon becomes the pirates\' trial record; hunters\'-exchange writ premium + the real owner\'s one-line thanks mail with a standing 5% market discount',
   },

@@ -164,15 +164,18 @@ const DESTINATIONS = [
   { id: 'ledger', label: stationControlLabel('ledger'), icon: 'ledger', create: createLedgerScreen },
 ];
 
-/** The one-line gloss each destination already had in the help pop. The rail speaks the same line. */
+/** The one-line gloss each destination already had in the help pop. The rail speaks the same line.
+ *  Sized to complete within the rail's ~36-character caption seat at 1920x1080 (bench 2026-11-14:
+ *  longer glosses ellipsised at rest on every tab); the rail plate and aria-label carry the same
+ *  line, so nothing is lost to the seat. */
 export const STATION_HELP = {
-  market: ['Market', 'Pick a commodity to see its price, demand and stock. Buy or sell against your credits and hold space.'],
-  shipworks: ['Shipworks', 'Pick a ship or a slot, preview compatible gear, then install it.'],
-  industry: ['Industry', 'Trace raw stock into refined goods and modules. A broken line names the exact input it is missing.'],
-  contracts: ['Missions', 'Accept jobs, track routes and settle objectives that finish at this berth. Highlighted rows need attention first.'],
-  factions: ['Factions', 'Pick a faction to see its standing, relationships, recent changes and what it unlocks.'],
-  bar: ['Contacts', 'Contacts turn rumors and local knowledge into leads, survey data and missions.'],
-  ledger: ["Ship's Ledger", 'The Tessera keeps what the manifests leave out. Recovered evidence opens to full detail.'],
+  market: ['Market', 'Prices, demand and stock.'],
+  shipworks: ['Shipworks', 'Pick a ship or slot, then fit it.'],
+  industry: ['Industry', 'Trace raw stock into refined goods.'],
+  contracts: ['Missions', 'Accept jobs; track, settle, get paid.'],
+  factions: ['Factions', 'Standing and unlocks per faction.'],
+  bar: ['Contacts', 'Contacts turn rumors into leads.'],
+  ledger: ["Ship's Ledger", 'Keeps what the manifests leave out.'],
 };
 
 // Drops a tile's data-sx-quiet-focus once the player acts on it (see the arrival focus below).
@@ -1479,7 +1482,12 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const muniAboard = Math.max(0, Math.floor(Number(cargo.items && cargo.items.cmdty_munitions) || 0));
     if (costs.resupply && !costs.resupply.disabled) {
       vitals.push({
-        k: 'muni', label: 'Munitions', frac: Math.min(1, muniAboard / MUNITIONS_LOAD), tone: 'warn', track: false,
+        k: 'muni', label: 'Munitions',
+        frac: Math.min(1, muniAboard / MUNITIONS_LOAD),
+        // the tile speaks its own urgency: an empty magazine is a bad reading (red dial), a thin
+        // one warns, a topped-up one is merely a fact (stationLayouts data-tone hues)
+        tone: muniAboard <= 0 ? 'bad' : muniAboard < MUNITIONS_LOAD * 0.3 ? 'warn' : 'ok',
+        track: false,
         value: `${fmtCr(muniAboard)} / ${MUNITIONS_LOAD}`, aria: `Munitions low: ${fmtCr(muniAboard)} aboard of a ${MUNITIONS_LOAD}-round load`,
         acts: [vitalActHtml('resupply', costs.resupply, 'Rearm')],
       });

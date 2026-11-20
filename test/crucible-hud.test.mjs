@@ -18,6 +18,7 @@ import { waveOpeningLine } from '../src/systems/survivalAnnounce.js';
 import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { projectBridgeEvent } from '../scripts/lib/simEventBridge.mjs';
 import { collectWaveHullDecodeKeys } from '../src/world/presentationSources.js';
+import { crucibleArenaIdForName } from '../src/ui/crucibleLaunch.js';
 import {
   PHASE_WORDS,
   arenaLabel,
@@ -150,8 +151,16 @@ test('a boss or elite wave says which it is instead of reading as an ordinary fi
   assert.equal(objectiveWord(undefined), null);
 });
 
-test('the arena label is derived, so a new arena needs no edit here', () => {
-  assert.equal(arenaLabel('helios_core'), 'HELIOS CORE');
+test('the flight HUD keeps the arena name selected in setup', () => {
+  withHudDocument(() => {
+    const harness = boot();
+    harness.state.mode = 'flight';
+    const setupName = 'Ricochet Foundry';
+    const run = reachActive(harness);
+    assert.equal(run.phase, 'active');
+    assert.equal(run.arenaId, crucibleArenaIdForName(setupName));
+    assert.ok(survivalHud._dom.label.textContent.endsWith(` · ${setupName.toUpperCase()}`));
+  });
   assert.equal(arenaLabel('ceres_belt'), 'CERES BELT');
   assert.equal(arenaLabel(null), 'ARENA');
 });

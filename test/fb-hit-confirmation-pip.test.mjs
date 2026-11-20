@@ -65,6 +65,47 @@ function makeWorld({ hitPips = true, damageNumbers = true, flashReduce = false, 
   return { bus, state, ft, layer, target };
 }
 
+test('the visor pickup receipt stays at the accepted cargo transfer when the camera moves', () => {
+  let cameraShift = 0;
+  const { bus, ft, layer, state } = makeWorld({ damageNumbers: false, helpers: {
+    worldToScreen: pos => ({ x: pos.x + 400 + cameraShift, y: pos.z + 260, onScreen: true }),
+  } });
+  const previousDataset = bodyEl.dataset;
+  bodyEl.dataset = { hudSkin: 'orrery' };
+  state.mode = 'flight';
+  try {
+    const pickup = { collectorId: state.playerId, kind: 'cargo', commodityId: 'cmdty_fuel_cells',
+      amount: 8, pos: { x: 40, z: 20 } };
+    bus.emit('pickup:collected', { ...pickup, acceptedAmount: 0 });
+    assert.equal(ft._activeCount(), 0);
+    bus.emit('pickup:collected', { ...pickup, acceptedAmount: 4 });
+    const card = layer.children.find(el => el.className.includes('sf-ft--world-receipt'));
+    assert.equal(card?.textContent, '+4 Fuel Cells');
+    card.offsetWidth = 110;
+    card.offsetHeight = 32;
+    const stem = card.children[0];
+    stem.style.setProperty = (name, value) => { stem.style[name] = value; };
+    ft.update(0.2);
+    assert.equal(stem.style['--stem-visibility'], 'visible');
+    const assertOnPoint = () => {
+      const [x, y] = card.style.transform.match(/translate3d\(([-.\d]+)px,([-.\d]+)px/).slice(1).map(Number);
+      const length = parseFloat(stem.style['--stem-length']);
+      const angle = parseFloat(stem.style['--stem-angle']);
+      const endX = x - 55 + parseFloat(stem.style['--stem-x']) + Math.cos(angle) * length;
+      const endY = y - 16 + parseFloat(stem.style['--stem-y']) + Math.sin(angle) * length;
+      assert.ok(Math.hypot(endX - (440 + cameraShift), endY - 280) < 1);
+    };
+    assertOnPoint();
+    cameraShift = 56;
+    ft.update(0.15);
+    assertOnPoint();
+    ft.update(3);
+    assert.equal(card.style.display, 'none');
+  } finally {
+    bodyEl.dataset = previousDataset;
+  }
+});
+
 test('world labels read layout only when a tag needs to be drawn', () => {
   const world = makeWorld({ helpers: { worldToScreen: (pos) => pos.x < 0
     ? { x: 0, y: 0, onScreen: false }
@@ -139,6 +180,33 @@ test('two floor tags projected onto one point take separate seats', () => {
   assert.equal(centers.length, 2);
   assert.ok(Math.abs(centers[0][0] - centers[1][0]) >= 100
     || Math.abs(centers[0][1] - centers[1][1]) >= 20, 'both names remain readable');
+});
+
+test('a paid floor tag shows its terms early and reports the selected and armed offer', () => {
+  const { state, target, ft, layer } = makeWorld({
+    helpers: { worldToScreen: () => ({ x: 230, y: 170, onScreen: true }) },
+  });
+  state.run = { kind: 'survival', phase: 'active', ruleset: 'swarm', arenaId: 'helios_core' };
+  const pilot = { id: state.playerId, pos: { x: -75, z: -40 }, alive: true };
+  state.entities.set(pilot.id, pilot);
+  target.data = { kind: 'swarm_floor_pad', swarmFloorPad: {
+    padId: 'foundry-gun-south', kind: 'wall_gun', price: 500, label: 'PULSE LASER S · 500',
+    fitPreview: 'Replaces Autocannon S',
+  } };
+  ft.update(0.016);
+  const tag = layer.children.find(el => el.id === 'sf-floorpads').children[0];
+  assert.equal(tag.textContent, 'PULSE LASER S · 500\nReplaces Autocannon S');
+  assert.doesNotMatch(tag.className, /sf-fp--far/);
+  assert.equal(tag.getAttribute('data-floor-quote'), null);
+
+  pilot.pos.x += 90;
+  ft.update(0.016);
+  assert.match(tag.textContent, /\[ E \] Select/);
+  assert.equal(tag.getAttribute('data-floor-quote'), target.id);
+  target.data.swarmFloorPad.armedUntil = 4;
+  ft.update(0.016);
+  assert.match(tag.textContent, /Cross pad to buy/);
+  assert.match(tag.textContent, /Replaces Autocannon S/);
 });
 
 function liveNodes(world) {

@@ -12,7 +12,7 @@ const TINT_HEX = Object.freeze({
 });
 const SHRUG_HEX = 0x8a919c;
 const BODY_POOL = 24;      // matches the plan's cap (nearest bodies first)
-const RING_POOL = 8;       // field, blast, lock and trap rings
+const RING_POOL = 8;       // field, blast, lock, trap and protected-body rings
 const OUTLINE_POOL = 6;    // wedge, sheet and route outlines
 const OUTLINE_POINTS = 96;
 const PATH_POINTS = 20;    // a field path is 16 points; a blast arrow 2–4
@@ -96,15 +96,18 @@ export function createPowerPreview({ THREE, scene }) {
   }
 
   // A circle as a closed ribbon of constant stroke `half` either side of radius r.
-  function placeRing(mesh, x, z, r, half, hex, opacity) {
+  function placeRing(mesh, x, z, r, half, hex, opacity, broken = false) {
     const arr = mesh.geometry.attributes.position.array;
     const segments = arr.length / 6 - 1;
     const inner = Math.max(0, r - half), outer = r + half;
     for (let i = 0; i <= segments; i++) {
       const a = (i / segments) * Math.PI * 2;
       const c = Math.cos(a), s = Math.sin(a);
-      vertex(arr, i * 2, x + c * inner, z + s * inner);
-      vertex(arr, i * 2 + 1, x + c * outer, z + s * outer);
+      // Collapse the paired vertices at each gap so the same ring pool can draw dashes.
+      const dash = !broken || (i % 16 > 1 && i % 16 < 10);
+      const near = dash ? inner : r, far = dash ? outer : r;
+      vertex(arr, i * 2, x + c * near, z + s * near);
+      vertex(arr, i * 2 + 1, x + c * far, z + s * far);
     }
     mesh.geometry.setDrawRange(0, segments * 6);
     mesh.geometry.attributes.position.needsUpdate = true;
@@ -207,7 +210,14 @@ export function createPowerPreview({ THREE, scene }) {
       for (const a of plan.areas || []) {
         const opacity = (ROLE_OPACITY[a.role] ?? 0.5) * dim;
         if (a.kind === 'ring') {
-          if (ri < areaRings.length) placeRing(areaRings[ri++], a.x, a.z, Math.max(1, a.r), AREA_RING_HALF_WU, hex, opacity);
+          if (a.role === 'casket-risk') {
+            if (ri + 1 < areaRings.length) {
+              placeRing(areaRings[ri++], a.x, a.z, a.r, MARKED_RING_HALF_WU, TINT_HEX.red, 0.92 * dim);
+              placeRing(areaRings[ri++], a.x, a.z, a.r + 3, AREA_RING_HALF_WU, TINT_HEX.red, 0.8 * dim);
+            }
+          } else if (a.role === 'mite-motion' && ri < areaRings.length) {
+            placeRing(areaRings[ri++], a.x, a.z, a.r, AREA_RING_HALF_WU, TINT_HEX.white, 0.7 * dim, true);
+          } else if (ri < areaRings.length) placeRing(areaRings[ri++], a.x, a.z, Math.max(1, a.r), AREA_RING_HALF_WU, hex, opacity);
         } else if (oi < outlines.length) {
           areaOutline(outlines[oi++], a, hex, opacity);
         }

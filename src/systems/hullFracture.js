@@ -6,6 +6,8 @@
 
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
+import { forEachDressingRow } from '../world/dressingTable.js';
+import { findSwarmLocalSeat, sweptDiscsOverlap } from './swarmSafety.js';
 import {
   fractureThresholdWU,
   hullClassForMass,
@@ -33,6 +35,7 @@ const LETHAL_BLOW_KEY_CAP = 512;
 export const PENDING_SLAM_KEY_CAP = 512;
 const FRACTURE_SPLIT_SPEED = 12;
 const BREAKUP_CLEARANCE = 0.25;
+const FRACTURE_BIRTH_SWEEP_S = 4 / 60;
 export const PHYSICAL_BREAKUP_LAW = Object.freeze({ livePieceCap: 32, tearOffLifetimeS: 60 });
 const livePieceBudgets = new WeakMap();
 
@@ -465,6 +468,30 @@ function pieceSpec({ note, mass, radius, offset, seam, role, salvagePool, label,
   };
 }
 
+function fractureSeat(state, note, pieces, direction, capsuleReach) {
+  const pilot = state.entities?.get(state.playerId);
+  if (!pilot?.pos) return note.pos;
+  const sweep = { horizon: FRACTURE_BIRTH_SWEEP_S, clearance: BREAKUP_CLEARANCE };
+  const blocksPilot = pieces.some((piece, index) => {
+    const splitSpeed = index === 0 ? FRACTURE_SPLIT_SPEED : -FRACTURE_SPLIT_SPEED;
+    const velocity = { x: piece.vel.x + direction.x * splitSpeed, z: piece.vel.z + direction.z * splitSpeed };
+    return sweptDiscsOverlap(piece.pos, capsuleReach * piece.radius, pilot, { ...sweep, velocity });
+  });
+  if (!blocksPilot) return note.pos;
+
+  // Move the split together so the two capsules keep their gap, and cover the separation
+  // gained from their original impulses throughout the short birth sweep.
+  const radius = Math.max(...pieces.map(piece => Math.hypot(piece.pos.x - note.pos.x, piece.pos.z - note.pos.z)
+    + capsuleReach * piece.radius)) + FRACTURE_SPLIT_SPEED * FRACTURE_BIRTH_SWEEP_S;
+  const sector = state.world?.currentSectorId;
+  const reserved = [];
+  forEachDressingRow(state, row => {
+    if (row.collides && (!row.homeSectorId || !sector || row.homeSectorId === sector)) reserved.push(row);
+  });
+  return findSwarmLocalSeat(state, note.pos, radius, { ...sweep, velocity: note.vel,
+    reach: note.radius + radius, reserved });
+}
+
 export function spawnFracturePieces(ctx, note, options = {}) {
   const state = ctx && ctx.state;
   const helpers = ctx && ctx.helpers;
@@ -501,7 +528,7 @@ export function spawnFracturePieces(ctx, note, options = {}) {
   // FIGHT-13: only a capital victim's fragments run hot. Piece count is untouched.
   const capitalHot = Number(note.mass) >= CAPITAL_HOT_DEBRIS_LAW.victimMass;
 
-  const seamEntity = helpers.spawnEntity(pieceSpec({
+  const seamSpec = pieceSpec({
     note,
     mass: seamMass,
     radius: seamRadius,
@@ -515,8 +542,8 @@ export function spawnFracturePieces(ctx, note, options = {}) {
     victimRadius: options.victimRadius,
     killedAt: Number(state.simTime) || 0,
     capitalHot,
-  }));
-  const remEntity = helpers.spawnEntity(pieceSpec({
+  });
+  const remSpec = pieceSpec({
     note,
     mass: remMass,
     radius: remRadius,
@@ -530,7 +557,20 @@ export function spawnFracturePieces(ctx, note, options = {}) {
     victimRadius: options.victimRadius,
     killedAt: Number(state.simTime) || 0,
     capitalHot,
-  }));
+  });
+  const specs = [seamSpec, remSpec];
+  const seat = fractureSeat(state, note, specs, dir, capsuleReach);
+  if (!seat) return null;
+  if (seat !== note.pos) {
+    const x = seat.x - note.pos.x;
+    const z = seat.z - note.pos.z;
+    for (const spec of specs) {
+      spec.pos.x += x;
+      spec.pos.z += z;
+    }
+  }
+  const seamEntity = helpers.spawnEntity(seamSpec);
+  const remEntity = helpers.spawnEntity(remSpec);
 
   const pieces = [seamEntity, remEntity].filter(Boolean);
   recordLivePieces(state, budget, pieces.length);

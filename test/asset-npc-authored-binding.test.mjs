@@ -71,6 +71,60 @@ test('queue seam preserves existing mesh, no-mesh, and idempotency rules', () =>
   assert.equal(queue.includes(dead.id), false, 'a dead entity must never be newly admitted');
 });
 
+test('hold-exempt mesh build grades only unowned buildable rows in canonical ship-first order', () => {
+  const rows = Array.from({ length: 284 }, (_, index) => ({
+    id: index + 1,
+    type: index % 9 === 0 ? 'ship' : 'asteroid',
+    alive: true,
+    pos: { x: index % 10 - 5, z: 10 },
+    radius: 10,
+    data: {},
+    _noMesh: index >= 230 && index < 249,
+  }));
+  const player = rows[0];
+  player.isPlayer = true;
+  const state = {
+    mode: 'flight',
+    playerId: player.id,
+    entityList: rows,
+    entities: new Map(rows.map(row => [row.id, row])),
+    camera: { zoom: 160 },
+    world: {},
+  };
+  const meshes = new Map(rows.slice(0, 215).map(row => [row.id, {}]));
+  const initialQueue = rows.slice(215, 230).map(row => row.id);
+  const queue = initialQueue.slice();
+  const queuedIds = new Set(queue);
+  const grade = rendererModule.makeHoldExemptMeshBuildEvaluator(state);
+  const graded = [];
+  enqueueMissingMeshBuilds(rows, meshes, queuedIds, queue, row => {
+    graded.push(row.id);
+    return grade(row);
+  });
+
+  const candidates = rows.slice(249);
+  const expected = [...candidates.filter(row => row.type === 'ship'),
+    ...candidates.filter(row => row.type !== 'ship')].map(row => row.id);
+  assert.deepEqual(queue, [...initialQueue, ...expected]);
+  assert.deepEqual(graded, expected, 'only the 35 new candidates need the hold-exempt camera verdict');
+});
+
+test('the unsorted queue can admit a live boundary released while its pass was parked', () => {
+  const ship = { id: 81, type: 'ship', alive: true };
+  const asteroid = { id: 82, type: 'asteroid', alive: true };
+  const meshes = new Map([[ship.id, {}]]);
+  const queue = [];
+  const steps = rendererModule.enqueueMissingMeshBuildsSteps(
+    [asteroid, ship], meshes, new Set(), queue, () => true,
+  );
+  // Four classify yields precede the ship's enqueue turn (ships, then other rows).
+  for (let visit = 0; visit < 5; visit++) assert.equal(steps.next().done, false);
+  assert.deepEqual(queue, []);
+  meshes.delete(ship.id);
+  while (!steps.next().done) { /* resume the parked enqueue */ }
+  assert.deepEqual(queue, [ship.id, asteroid.id]);
+});
+
 test('render residency keeps the active sector and a seam runway without building distant sectors', () => {
   assert.equal(typeof isEntityRenderRelevant, 'function');
   const state = {

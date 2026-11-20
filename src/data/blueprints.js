@@ -182,7 +182,7 @@ export const BLUEPRINTS = BLUEPRINT_DEFINITIONS.map(blueprint => {
   if (!recipe) return blueprint;
   return { ...blueprint, inputs: { ...recipe.inputs },
     outputs: { ...blueprint.outputs, qty: recipe.output[blueprint.outputs.id] },
-    desc: `${recipe.name}. The same material bill applies at a site and at this bench.` };
+    desc: `${recipe.name}. A mining site and this station bench draw the same materials.` };
 });
 
 // Quick lookup maps (populated by the crafting system on init).

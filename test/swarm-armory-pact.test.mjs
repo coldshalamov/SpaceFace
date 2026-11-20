@@ -20,6 +20,7 @@ import {
   survivalDraft,
 } from '../src/systems/survivalDraft.js';
 import { survivalRun } from '../src/systems/survivalRun.js';
+import { bankableRunCredits } from '../src/systems/survivalExtraction.js';
 import { compactRunResult, resetCrucibleMetaForTests } from '../src/systems/survivalRecords.js';
 import { isSwarmLadderRun, swarmArcadeSeedFor } from '../src/data/swarmLadder.js';
 import {
@@ -129,6 +130,7 @@ test('signing pays the purse now and binds the mutator — the cradle dies on th
   const h = boot();
   waveArmory(h, null, 1);
   const credits = h.state.run.credits;
+  const earned = bankableRunCredits(h.state.run);
 
   assert.equal(survivalDraft.resolvePick({ offerId: PACT.offerId }), true, 'the signature lands');
   assert.deepEqual(h.state.run.arenaMutators, ['one_hull'], 'the mutator folded into the run');
@@ -138,6 +140,7 @@ test('signing pays the purse now and binds the mutator — the cradle dies on th
     'the compiled contract carries the bound rule',
   );
   assert.equal(h.state.run.credits, credits + PACT.purse, 'the purse paid through the wallet');
+  assert.equal(bankableRunCredits(h.state.run), earned, 'the signing purse is spendable only inside the run');
   const awards = named(h, 'run:awardRequested').filter((e) => e.payload.reason === 'crucible:pact');
   assert.equal(awards.length, 1, 'one purse asked');
   assert.equal(awards[0].payload.credits, PACT.purse);

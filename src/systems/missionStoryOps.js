@@ -2626,11 +2626,20 @@ export const missionStoryOps = {
     this.state.ui.trackedMissionId = mission.id;
     // OPENING-1: bind the recovery source on the first frame — the mark (and the tutorial seam
     // lesson) point at the bound rock from spawn instead of waiting for tutorial:finished.
-    this._resolveContract47aSampleSource(mission);
+    const source = this._resolveContract47aSampleSource(mission);
+    const waypoint = this.state.nav?.waypoint;
+    const binding = mission.params.sampleSource;
+    const replaceOwnFix = source?.type === 'asteroid' && binding && waypoint?.kind === 'mission'
+      && waypoint.missionId === mission.id && !waypoint.onboarding && waypoint.recoverySource
+      && (waypoint.targetEntityId !== source.id || ['sectorId', 'fieldId', 'slotId', 'resourceSlotId']
+        .some(key => waypoint.recoverySource[key] !== binding[key]));
     // Track the cold-start contract, but leave nav free while the staged tutorial owns the opening
     // waypoint (onboarding builds markerId/onboarding:true). After tutorial:finished, release
-    // restores mission/story navigation ownership.
-    if (!this._tutorialOwnsOpening()) this._refreshTrackedMissionNav(mission);
+    // restores mission/story navigation ownership. The scene can admit a better source between
+    // preparation and flight, so replace a stale 47-A marker already published by this owner.
+    if (replaceOwnFix || !this._tutorialOwnsOpening()) {
+      this._refreshTrackedMissionNav(mission, { allowOnboardingOverride: replaceOwnFix === true });
+    }
     this.bus.emit('mission:updated', { missionId: mission.id, tracked: true, source: CONTRACT_47A_B0_TAG });
   },
 
@@ -2796,10 +2805,16 @@ export const missionStoryOps = {
     const story = this.state && this.state.story;
     if (!story || story.beatIndex !== beatIndex) return false;
     const prefix = `campaign47a:b${beatIndex}:`;
-    const active = (this.state.missions.active || []).find((m) => m && m.status === 'active'
+    const missions = this.state.missions.active || [];
+    const active = missions.find((m) => m && m.status === 'active'
       && typeof m.storyTag === 'string' && m.storyTag.startsWith(prefix));
+    // Book 1 can dispatch sealed cargo while leaving Helios. Keep the course for work
+    // the pilot just chose from Jobs, even when the story contract sails alongside it.
+    const trackedId = this.state.ui?.trackedMissionId;
+    const preserveTrackedMission = beatIndex === 1 && trackedId !== active?.id
+      && missions.some((m) => m?.status === 'active' && m.id === trackedId);
     if (active) {
-      this.trackMission(active.id, { silent: true });
+      if (!preserveTrackedMission) this.trackMission(active.id, { silent: true });
       return true;
     }
     const offer = buildMissionBoardContract(beatIndex, {
@@ -2838,7 +2853,7 @@ export const missionStoryOps = {
       board.slots = board.slots.map(candidate => candidate === row ? fresh : candidate);
       row = fresh;
     }
-    return this.acceptMission(row.id);
+    return this.acceptMission(row.id, { preserveTrackedMission });
   },
 
   _activateContract47aB1OnDeparture() {

@@ -12,8 +12,11 @@ import {
   snapshotCampaignBoundary,
 } from '../src/core/runState.js';
 import { PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
+import { SWARM_FLOOR_PLANS, SWARM_FLOOR_WALL_GUN_PRICE } from '../src/data/swarmFloor.js';
 import { runSession } from '../src/systems/runSession.js';
 import { noteSwarmPilotAction } from '../src/systems/swarmSafety.js';
+import { bankableRunCredits } from '../src/systems/survivalExtraction.js';
+import { createCircuitState } from '../src/systems/survivalCircuit.js';
 import {
   killScoreFor,
   killXpFor,
@@ -57,8 +60,8 @@ function named(emitted, event) {
   return emitted.filter((entry) => entry.event === event);
 }
 
-function beginSurvival(harness, phase = 'active') {
-  harness.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'scored', seed: SEED, arenaId: ARENA });
+function beginSurvival(harness, phase = 'active', setup = {}) {
+  harness.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'scored', seed: SEED, arenaId: ARENA, ...setup });
   const walk = ['arena_intro', 'wave_intro', 'active'];
   let from = 'loadout';
   for (const next of walk) {
@@ -133,19 +136,18 @@ test('an award lands in the run wallet, recomputes the level, and emits a receip
   assert.equal(harness.state.run.score, 0);
   assert.equal(named(harness.emitted, 'run:awarded').length, 0);
   noteSwarmPilotAction(harness.state);
-  harness.bus.emit('run:awardRequested', { credits: 40, xp: 120, score: 300, reason: 'test' });
+  const levelTwoXp = runXpForLevel(2);
+  harness.bus.emit('run:awardRequested', { credits: 40, xp: levelTwoXp, score: 300, reason: 'test' });
   const run = harness.state.run;
   assert.equal(run.credits, 40);
-  assert.equal(run.xp, 120);
+  assert.equal(run.xp, levelTwoXp);
   assert.equal(run.score, 300);
-  // The level follows the live curve (OVH-01a / PT-FIX-A retune), not a pinned number.
-  assert.equal(run.level, runLevelForXp(120));
-  assert.ok(run.level >= 2, '120 xp is past the first level');
+  assert.equal(run.level, 2);
 
   const awarded = named(harness.emitted, 'run:awarded');
   assert.equal(awarded.length, 1);
   assert.equal(awarded[0].payload.totalCredits, 40);
-  assert.equal(awarded[0].payload.level, runLevelForXp(120));
+  assert.equal(awarded[0].payload.level, 2);
   assert.equal(awarded[0].payload.previousLevel, 1);
   assert.equal(named(harness.emitted, 'run:levelUp').length, 1);
 });
@@ -225,6 +227,73 @@ test('clearing a wave pays the authored XP purse for exactly that wave', () => {
   harness.bus.emit('run:waveCleared', { wave: 2, requested: 8, admitted: 8, starved: false });
   assert.equal(harness.state.run.xp, plan.rewards.xp);
   assert.equal(harness.state.run.score, WAVE_CLEAR_SCORE * 1 + WAVE_CLEAR_SCORE * 2);
+});
+
+test('a new Easy Swarm can afford the named wall gun after three clean rounds on earned Scrap', () => {
+  const harness = boot(4242);
+  const { state, bus } = harness;
+  const setup = { ruleset: 'swarm', seed: 4242, swarmStake: 'exhibition', zeroScrapOpening: true };
+  beginSurvival(harness, 'active', setup);
+  assert.equal(state.run.credits, 0);
+  assert.equal(state.run.telemetry.zeroScrapOpening, true);
+  const [wallGun] = SWARM_FLOOR_PLANS[ARENA].wallGuns;
+  assert.equal(wallGun.defId, 'wpn_pulse_laser_s');
+  assert.equal(wallGun.wave, 2);
+  for (const [wave, cash, clearScrap] of [[1, 118, 38], [2, 289, 75], [3, 514, 113]]) {
+    state.run.wave = wave;
+    const plan = planWave({ ...setup, arenaId: ARENA, wave });
+    bus.emit('run:wavePlanned', { wave, plan });
+    const count = plan.swarm.killTarget;
+    for (let i = 0; i < count; i++) killIt(harness, spawnCohortEnemy(harness, { wave }));
+    assert.ok(state.run.credits < SWARM_FLOOR_WALL_GUN_PRICE);
+    const clear = { wave, runWave: wave, completionKind: 'cohort', requested: count, admitted: count, killed: count, starved: false };
+    bus.emit('run:waveCleared', clear);
+    assert.equal(state.run.credits, cash, `Round ${wave} pays the sweep plus its completion reward`);
+    assert.equal(bankableRunCredits(state.run), cash);
+    const award = named(harness.emitted, 'run:awarded').at(-1).payload;
+    assert.deepEqual([award.reason, award.credits, award.xp], ['wave_cleared', clearScrap, plan.rewards.xp]);
+    bus.emit('run:waveCleared', clear);
+    survivalRewards.deserialize(survivalRewards.serialize());
+    bus.emit('run:waveCleared', clear);
+    assert.equal(state.run.credits, cash, 'duplicate and deserialized clear receipts do not pay again');
+    bus.emit('run:waveCleared', { ...clear, wave: wave + 1, runWave: wave + 1 });
+    assert.equal(state.run.credits, cash, 'an unplanned next-round receipt cannot pay or consume its award');
+  }
+  assert.ok(state.run.credits >= SWARM_FLOOR_WALL_GUN_PRICE);
+  bus.emit('run:spendRequested', { credits: SWARM_FLOOR_WALL_GUN_PRICE, reason: 'swarm_floor_pad' });
+  assert.equal(state.run.credits, 14, 'the wallet can commit the full wall-gun quote');
+  bus.emit('game:exitToMenu', { source: 'retry' });
+  beginSurvival(harness, 'active', setup);
+  assert.equal(state.run.credits, 0, 'a fresh attempt does not inherit earned Scrap');
+  assert.equal(state.run.seed, 4242);
+});
+
+test('the new round payout requires an ordinary active Swarm cohort that genuinely cleared', () => {
+  for (const [name, overrides] of [
+    ['legacy start', { zeroScrapOpening: false }],
+    ['checkpoint', { startWave: 6 }],
+    ['practice', { practice: true }],
+    ['circuit', {}],
+    ['starved', {}],
+    ['ended', {}],
+  ]) {
+    const harness = boot(4242);
+    const { state, bus } = harness;
+    const setup = { ruleset: 'swarm', seed: 4242, swarmStake: 'exhibition', zeroScrapOpening: true, ...overrides };
+    beginSurvival(harness, 'active', setup);
+    const wave = overrides.startWave || 1;
+    state.run.wave = wave;
+    if (name === 'circuit') state.run.telemetry.circuit = createCircuitState();
+    const plan = planWave({ ...setup, arenaId: ARENA, wave });
+    bus.emit('run:wavePlanned', { wave, plan });
+    if (name === 'ended') bus.emit('run:endRequested', { outcome: 'defeat', reason: 'player_death' });
+    const before = state.run.credits;
+    const count = plan.swarm.killTarget;
+    const starved = name === 'starved';
+    bus.emit('run:waveCleared', { wave, runWave: wave, completionKind: 'cohort', requested: count,
+      admitted: starved ? 0 : count, killed: starved ? 0 : count, starved });
+    assert.equal(state.run.credits, before, name);
+  }
 });
 
 test('a whole run of awards never touches campaign credits or the campaign boundary', () => {

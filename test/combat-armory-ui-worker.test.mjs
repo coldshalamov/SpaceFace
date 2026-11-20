@@ -7,7 +7,7 @@ import { createGameState } from '../src/core/gameState.js';
 import { createRegistry } from '../src/core/registry.js';
 import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 import { installSimCommandSink, laneCommandSink, laneRpc, laneSetMode, uninstallSimCommandSink } from '../src/core/simLaneCommands.js';
-import { crucibleLaunchConfig, crucibleSetupFor } from '../src/ui/crucibleLaunch.js';
+import { crucibleHullSetupFor, crucibleLaunchConfig } from '../src/ui/crucibleLaunch.js';
 import { requestSandboxGame } from '../src/ui/sandbox/sandboxSetup.js';
 import { crucibleDraftScreen, crucibleRefitScreen } from '../src/ui/screens/crucibleDraft.js';
 import { fakeDom, findAll, findButtons } from './helpers/fake-dom.mjs';
@@ -90,12 +90,14 @@ test('mounted Armory purchase and refit settle through the paused production hos
     const launchBus = createBus();
     launchBus.on('game:new', payload => { opts = structuredClone(payload); });
     requestSandboxGame(launchBus, crucibleLaunchConfig(
-      crucibleSetupFor({ starterId: 'ricochet_runner', ruleset: 'swarm', seed: 4242 }).value, 'swarm'));
+      crucibleHullSetupFor({ hullId: 'ship_hornet', ruleset: 'swarm', seed: 4242 }).value, 'swarm'));
     laneSetMode(main, bus, 'loading');
     await laneRpc('newGameBoot', { opts });
     laneSetMode(main, bus, 'paused');
     await drain();
     assert.equal(host.host.state.run.phase, 'draft');
+    const nativePlayer = host.host.state.entities.get(host.host.state.playerId);
+    assert.equal(nativePlayer.data.weapons.length, 0);
     globalThis.document = doc;
     const registry = createRegistry({ state: main, bus, helpers: {}, simLane: 'worker' });
     let top = 'crucibleDraft';
@@ -112,22 +114,50 @@ test('mounted Armory purchase and refit settle through the paused production hos
     const armory = mount(crucibleDraftScreen);
     const facade = registry.get('survivalDraft');
     const native = host.host.registry.get('survivalDraft');
-    const buy = facade.currentOffers().find(row => row.available && Number.isInteger(row.slotIndex) && row.price > 0);
-    assert.ok(buy, 'the unmodified opening shelf has a legal fitting to buy');
-    const card = findAll(armory.root, node => node.dataset.offerId === buy.id)[0];
-    assert.ok(card, 'actual shelf renders its authoritative offer');
-    card.click();
+    const mainPlayer = main.entities.get(main.playerId);
+    assert.equal(mainPlayer.data.weapons.length, 0);
+    async function install(offer) {
+      const card = findAll(armory.root, node => node.dataset.offerId === offer.id)[0];
+      assert.ok(card, 'actual shelf renders its authoritative offer');
+      card.click();
+      const confirmation = findButtons(armory.root).find(node => node.classList.contains('orr-armory-purchase'));
+      assert.ok(confirmation, 'the mounted inspection exposes its purchase control');
+      confirmation.click();
+      const reply = await drain();
+      assert.ok(reply.events.some(event => event.t === 'run:shopPurchased' && event.p?.offerId === offer.id));
+    }
+    const buy = facade.currentOffers().filter(row => row.category === 'Weapons' && row.available
+      && Number.isInteger(row.slotIndex) && row.price > 0).sort((a, b) => a.price - b.price || a.name.localeCompare(b.name))[0];
+    assert.ok(buy, 'the bare opening hull has a legal gun to buy');
     const credits = host.host.state.run.credits;
-    const confirmation = findButtons(armory.root).find(node => node.classList.contains('orr-armory-purchase'));
-    assert.ok(confirmation, 'the mounted inspection exposes its purchase control');
-    confirmation.click();
-    const purchase = await drain();
-    assert.ok(purchase.events.some(event => event.t === 'run:shopPurchased'));
+    const tickBeforeFit = host.host.state.tick;
+    await install(buy);
+    assert.equal(host.host.state.tick, tickBeforeFit, 'opening Install settles with combat paused');
     assert.equal(host.host.state.run.credits, credits - buy.price);
     assert.equal(main.run.credits, credits - buy.price);
     assert.equal(host.host.state.player.ownedShips[host.host.state.player.activeShipIndex].fittings[buy.slotIndex], buy.defId);
+    assert.equal(main.player.ownedShips[main.player.activeShipIndex].fittings[buy.slotIndex], buy.defId);
+    const nativeWeapon = nativePlayer.data.weapons.find(weapon => weapon.slotIndex === buy.slotIndex);
+    assert.equal(nativeWeapon?.defId, buy.defId);
+    assert.strictEqual(main.entities.get(main.playerId), mainPlayer, 'the same render occupant survives a refit');
+    assert.deepEqual(mainPlayer.data.weapons.find(weapon => weapon.slotIndex === buy.slotIndex), nativeWeapon);
+    assert.equal(mainPlayer.data.fittings[buy.slotIndex], buy.defId);
+    const preparation = facade.preparationReceipt();
+    assert.equal(preparation?.outcome, 'accepted');
+    assert.equal(preparation?.offerId, buy.id);
+    assert.equal(preparation?.defId, buy.defId);
+    assert.equal(preparation?.slotIndex, buy.slotIndex);
     assert.deepEqual(facade.refitRows(), native.refitRows());
 
+    // Leave real installed gear for the later sale and stale-strip paths now that the hull
+    // enters empty. The same visible purchase control fits each in a separate unused slot.
+    for (let i = 0; i < 2; i++) {
+      const extra = facade.currentOffers().find(row => row.available && Number.isInteger(row.slotIndex)
+        && !row.replaces && row.slotIndex !== buy.slotIndex && row.price > 0);
+      assert.ok(extra, 'the starting wallet covers additional unused slots');
+      await install(extra);
+    }
+    const creditsAfterInstall = host.host.state.run.credits;
     armory.screen.onHide();
     top = 'crucibleRefit';
     const refit = mount(crucibleRefitScreen);
@@ -150,6 +180,7 @@ test('mounted Armory purchase and refit settle through the paused production hos
       'a second press while the worker is pending cannot turn a successful strip into a refusal');
     assert.equal(native.refitRows().find(row => row.slotIndex === buy.slotIndex).defId, null);
     assert.deepEqual(facade.refitRows(), native.refitRows());
+    assert.ok(!mainPlayer.data.weapons.some(weapon => weapon.slotIndex === buy.slotIndex));
     assert.equal(refit.screen._rows.getAttribute('aria-busy'), 'false');
     assert.match(refit.screen._note.textContent, /Moved .+ to spares\./);
     assert.equal(refit.screen._note.textContent, native.lastNotice());
@@ -171,7 +202,7 @@ test('mounted Armory purchase and refit settle through the paused production hos
     assert.deepEqual(facade.refitRows(), native.refitRows());
     assert.match(refit.screen._note.textContent, /Fitted .+ to hardpoint/);
     assert.equal(refit.screen._pendingRefit, null);
-    assert.equal(host.host.state.run.credits, credits - buy.price, 'moving an earned fitting never buys it again');
+    assert.equal(host.host.state.run.credits, creditsAfterInstall, 'moving an earned fitting never buys it again');
 
     // Configured stale-view fixture: another owner action consumes the selected spare after
     // it was displayed. The real Fit button must report the refusal and become usable again.

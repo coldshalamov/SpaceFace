@@ -258,16 +258,6 @@ export function createToasts(ctx) {
     // callout already speaks the moment, and the phone HUD budget has no room for both.
     if (kind === 'stunt' && isSwarmGlass(ctx.state) && typeof document !== 'undefined'
       && document.documentElement?.getAttribute?.('data-sf-mobile-flight') === '1') return false;
-    // One notice at a time in a Swarm round: a notice that arrives while another is up waits its
-    // turn (short queue, the oldest drops) and shows when the lane is clear. Errors and an
-    // identical repeat of the live card (it merges, below) are never queued.
-    if (isSwarmGlass(ctx.state) && kind !== 'error' && live.length > 0
-      && !live.some((r) => r.text === text && r.kind === kind)) {
-      swarmWait.push({ text, kind, ttl, channel, action, charonApproach });
-      while (swarmWait.length > SWARM_WAIT_MAX) swarmWait.shift();
-      return true;   // accepted: it will be shown in its turn (false would read as "refused, never seen")
-    }
-    ensureConnected();
     // One-voice (spec2/06): the voiceArbiter re-emits its surfaced floor as a _fromVoice toast for
     // telemetry/golden parity, but that floor is presented top-center by alerts.js (voice:surface).
     // Rendering it here too would double the voice, so drop it. Mechanical action toasts (no
@@ -282,6 +272,15 @@ export function createToasts(ctx) {
       : '';
     const decision = admitReceipt({ text, kind, channel, _fromVoice, charonApproach, state: ctx.state, combat: job === 'fight' || job === 'hurt' });
     if (!decision.admit) return false;
+    // Only admitted notices can take a seat in Swarm's short queue. Voice mirrors and chatter
+    // must not displace a useful receipt. Errors and repeats still go straight to the live card.
+    if (isSwarmGlass(ctx.state) && kind !== 'error' && live.length > 0
+      && !live.some((r) => r.text === text && r.kind === kind)) {
+      swarmWait.push({ text, kind, ttl, channel, action, charonApproach });
+      while (swarmWait.length > SWARM_WAIT_MAX) swarmWait.shift();
+      return true;
+    }
+    ensureConnected();
     // Grouping: if an identical toast (same text + kind) is already live and recent (within 2.5s of
     // its birth), collapse into it — bump a count badge and refresh its TTL instead of stacking N
     // copies ("Platinum x1" five times becomes "Platinum x1 ×5"). Keeps the feed readable under
@@ -781,6 +780,7 @@ export function capitalBossCounteredReceipt(payload) {
 
 export function capitalBossExposureReceipt(payload) {
   if (!payload || payload.exposure == null) return null;
+  if (payload.fightId === 'swarm:w5' && payload.mouthLine) return null;
   const title = String(payload.title || '').trim();
   if (!title) return null;
   return {
@@ -850,6 +850,9 @@ export function bindCapitalBossReceipts(bus, getState) {
     if (!receipt) return;
     seen.add(payload.castId);
     if (seen.size > 64) seen.delete(seen.values().next().value);
+    // Iron Maw's timed instructions use its live boss readout. A delayed attack
+    // toast can outlast the move and compete with the next recovery opening.
+    if (payload.fightId === 'swarm:w5') return;
     bus.emit('toast', receipt);
   });
   bus.on('capitalBoss:started', (payload) => {

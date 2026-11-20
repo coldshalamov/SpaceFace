@@ -1,16 +1,20 @@
 // Native chart chrome. All controls, IDs, hidden states, and route/engage boundaries are retained.
 // HTML parameters are trusted, already-escaped fragments constructed by galaxyMap's own models.
-export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', legendHtml = '', markLegendHtml = '' } = {}) {
+export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', legendHtml = '', markLegendHtml = '', quickKeyHtml = '' } = {}) {
   return `
       <div class="gm-head k-title">
         <div class="gm-title-lockup">
           <h1 class="gm-title k-display k-t-title">Star Chart</h1>
-          <p class="gm-stamp k-t-emph k-62">Nav chart / Survey table</p>
+          <p class="gm-stamp k-t-emph k-62"></p>
         </div>
-        <div class="gm-search-container">
-          <input type="text" class="gm-search-input k-input" placeholder="Search galaxy… (Press /)" aria-label="Search map" tabindex="-1" spellcheck="false" autocomplete="off" />
-          <span class="gm-search-kbd" aria-hidden="true">/</span>
-          <div class="gm-search-results k-rows" hidden></div>
+        <div class="gm-search-container" role="search" aria-label="Chart places and services">
+          <input type="text" class="gm-search-input k-input" placeholder="Find a place or service" aria-label="Find a place or service" aria-controls="gm-place-results" spellcheck="false" autocomplete="off" />
+          <button class="gm-places-btn" type="button" aria-controls="gm-place-finder" aria-expanded="false">Browse</button>
+          <div class="gm-search-results k-rows" id="gm-place-finder" aria-label="Places and services" hidden>
+            <div class="gm-place-filters" role="group" aria-label="Station services"></div>
+            <div class="gm-place-list-title" role="status"></div>
+            <div id="gm-place-results"></div>
+          </div>
         </div>
         <div class="gm-rail">
           <span class="gm-rail-track" aria-hidden="true"><span class="gm-rail-marker"></span></span>
@@ -25,7 +29,8 @@ export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', 
         <button class="gm-hint-btn k-word k-word--fine" type="button" aria-label="Map controls" aria-expanded="false">Controls</button>
         <button class="gm-close k-word k-word--fine" type="button" aria-label="Close Map">Close</button>
         <div class="gm-hints" hidden>
-          <div class="gm-hints-title k-caps">Chart controls</div>${hintRowsHtml}
+          <div class="gm-hints-title k-caps">Chart controls</div>
+          <p class="gm-hints-note">Drag to move, scroll to zoom, click a place to inspect or plot a course.</p>${hintRowsHtml}
           <div class="gm-hints-note k-t-fine k-38">Edge ticks mark stations, gates, claims and hostiles that fall outside the current view. Click a tick to inspect it.</div>
         </div>
       </div>
@@ -43,13 +48,19 @@ export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', 
              survive forced-colors without any JavaScript of ours. The information did not shrink;
              the default view did. -->
         <div class="gm-left-rail k-hang">
-          <details class="gm-rail-sec" data-rail-sec="lenses" open>
-            <summary class="gm-rail-sum k-caps"><span class="gm-rail-sum-t">Lenses</span><span class="gm-rail-sum-n" data-lens-count></span></summary>
+          <button class="gm-locate-goal" type="button" hidden>
+            <span class="gm-locate-type"></span>
+            <strong class="gm-locate-name"></strong>
+            <span class="gm-locate-sector"></span>
+            <span class="gm-locate-action">Find on chart</span>
+          </button>
+          <details class="gm-rail-sec" data-rail-sec="lenses">
+            <summary class="gm-rail-sum k-caps"><span class="gm-rail-sum-t">Map layers</span></summary>
             <div class="gm-rail-body">
               <div class="gm-layer-buttons">${layerButtonsHtml}
               </div>
               <div class="gm-rail-commodity">
-                <label for="gm-commodity-select" class="k-caps">Market lens · commodity</label>
+                <label for="gm-commodity-select" class="k-caps">Compare prices</label>
                 <select id="gm-commodity-select" aria-label="Select Commodity"></select>
               </div>
             </div>
@@ -71,7 +82,7 @@ export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', 
           </details>
 
           <details class="gm-rail-sec" data-rail-sec="key">
-            <summary class="gm-rail-sum k-caps"><span class="gm-rail-sum-t">Chart key</span></summary>
+            <summary class="gm-rail-sum k-caps"><span class="gm-rail-sum-t">Map key</span></summary>
             <div class="gm-rail-body">
               <div class="gm-rail-legend k-rows">
                 <div class="gm-rail-title k-caps">Service marks</div>${legendHtml}
@@ -79,14 +90,15 @@ export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', 
               <div class="gm-rail-legend k-rows">
                 <div class="gm-rail-title k-caps">Chart marks</div>${markLegendHtml}
               </div>
-              <div class="gm-hint-text k-t-fine k-38">A working instrument, not a picture: <b>drag from your ship to lay a course</b> (or double-click any mark). <b>Controls</b> in the corner shows the full control key.</div>
             </div>
           </details>
+          <div class="gm-quick-key" aria-label="Map symbols">${quickKeyHtml}</div>
         </div>
 
         <!-- Viewport -->
         <div class="gm-viewport">
           <canvas aria-label="Galaxy navigation map"></canvas>
+          <canvas class="gm-relief" aria-hidden="true" hidden></canvas>
         </div>
 
         <!-- ═══ RIGHT INSPECTOR ═════════════════════════════════════════════════════════════════
@@ -112,14 +124,15 @@ export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', 
               <div class="gm-frame-reason k-t-fine k-38" id="gm-frame-reason" aria-live="polite"></div>
             </div>
             <div class="gm-inspector-details" id="gm-tabpanel" role="tabpanel" tabindex="0">
-              <div class="gm-inspector-empty">No target selected. <b>Drag from your ship</b> to lay a course, or <b>click</b> a sector, station or contact to inspect it.</div>
+              <div class="gm-inspector-empty">Select a place to see what’s there and set a course.</div>
             </div>
           </div>
           <!-- The action cluster is a pinned band under the scrollable detail, never part of its
                overflow: the whole point of the inspector is that "Set Waypoint" / "Engage Route"
                stays on the glass no matter how tall the tab strip or the selection body runs. -->
           <div class="gm-inspector-actions">
-            <button class="gm-ins-btn k-word k-word--emph" id="gm-set-course-btn" type="button" hidden disabled>Set Waypoint</button>
+            <div class="gm-ins-note" id="gm-jump-customs" aria-live="polite" hidden></div>
+            <button class="gm-ins-btn k-word k-word--emph" id="gm-set-course-btn" type="button" aria-describedby="gm-jump-customs" hidden disabled>Set Waypoint</button>
             <!-- SECONDARY PLOT (ADR D6). Contextual, never permanent: it reveals ONLY when the
                  primary action is a commitment — "Set Course & Jump" for an adjacent sector — and
                  stays hidden whenever the primary already IS "Plot Course", so the chart never
@@ -128,7 +141,7 @@ export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', 
             <button class="gm-ins-btn gm-plot-btn k-word k-word--emph k-word--primary" id="gm-plot-course-btn" type="button" hidden disabled>Plot Course</button>
             <div class="gm-plot-reason k-t-fine k-38" id="gm-plot-reason" aria-live="polite"></div>
             <!-- W1-8: engage is a SEPARATE control from plot, never the same button. -->
-            <button class="gm-ins-btn k-word k-word--emph" id="gm-engage-route-btn" type="button" hidden disabled>Engage Route</button>
+            <button class="gm-ins-btn k-word k-word--emph" id="gm-engage-route-btn" type="button" aria-describedby="gm-jump-customs" hidden disabled>Engage Route</button>
             <div class="gm-engage-reason k-t-fine k-38" id="gm-engage-reason" aria-live="polite"></div>
             <!-- Place context actions for the current selection. Each one is resolved from real
                  state and ships disabled-with-a-reason when it has no consumer. -->

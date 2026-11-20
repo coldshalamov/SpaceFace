@@ -43,7 +43,7 @@ import { contactKind, contactProfile } from '../../systems/siteProduction.js';
 import { asteroidSites } from '../../systems/asteroidSites.js';
 import { spawnParticleBurst, stepParticles } from '../screens/drill.js';
 import { ORE_TINTS, STATUS_COLORS } from './asteroidRenderer2d.js';
-import { createBloom } from '../../render/bloom.js';
+import { beginScenePipelineReadinessBatch, createBloom } from '../../render/bloom.js';
 import {
   preloadRockSurfaceLibrary, getReadyRockSurfaceTextures, ROCK_SURFACE_TEXTURE_REPEAT,
 } from '../../render/rockSurfaceLibrary.js';
@@ -1148,6 +1148,15 @@ const MACHINE_KIND = {
   sm_refinery: 'refinery',
   sm_fabricator: 'fabricator',
   sm_cargo_port: 'cargo_port',
+  sm_charge_press: 'charge_press',
+  sm_auto_drill: 'auto_drill',
+  sm_relay: 'relay',
+  sm_cryo_condenser: 'cryo_condenser',
+  sm_seismic_brace: 'seismic_brace',
+  sm_capacitor_bank: 'capacitor_bank',
+  sm_deep_synthesizer: 'deep_synthesizer',
+  sm_mass_driver: 'mass_driver',
+  sm_harmonic_resonator: 'harmonic_resonator',
 };
 
 const FAULT_STATES = new Set(['no-power', 'starved', 'backlogged', 'no-network', 'no-geology', 'no-pods']);
@@ -1600,13 +1609,26 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         for (const mat of materials) seen.set(mat, (seen.get(mat) || 0) | (1 << variant));
         leaves.push(leaf);
       });
-      for (const leaf of leaves) {
-        if (disposed || worksTearingDown) return false;
-        const result = await bloom.compileScenePipelines(leaf, camera, scene, { skipSharedBatch: true });
-        if (result?.skipped) throw new Error(result.reason || 'Mining pipeline unavailable');
-        // Bound software-driver linking to one material family per task, preserving UI input.
-        await new Promise((resolve) => setTimeout(resolve, 0));
+      // This board has its own context. Issue the material links in slices, then wait for them
+      // together so every rover material doesn't pay a separate driver readiness wait.
+      const batch = beginScenePipelineReadinessBatch(renderer, { independent: true });
+      const links = [];
+      try {
+        for (const leaf of leaves) {
+          if (disposed || worksTearingDown) return false;
+          links.push(bloom.compileScenePipelines(leaf, camera, scene, {
+            readinessBatch: batch, restoreTargetAfterIssue: true,
+          }).catch(error => ({ skipped: true, reason: error?.message })));
+          if (batch.paceQueue) await batch.paceQueue();
+          else await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        await batch.drain();
+        const skipped = (await Promise.all(links)).find(result => result?.skipped);
+        if (skipped) throw new Error(skipped.reason || 'Mining pipeline unavailable');
+      } finally {
+        batch.close();
       }
+      if (disposed || worksTearingDown) return false;
       // compile() creates NO attribute records — ledgering here would mark this renderer
       // resident before a single buffer exists and blind the per-admission gate to a re-detach
       // in the pre-draw window (W140-D1). Arm each drawable's onAfterRender: the ledger lands
@@ -3288,6 +3310,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     vent: new THREE.Color(0x7cd9a2),      // mint — the pocket the venting charge will open
     soften: new THREE.Color(0xc8a25a),    // dim gold — seismic fracture, rock stays standing
     spare: new THREE.Color(0x4a4438),     // barely lit — the payload passes this cell over
+    cableRoute: new THREE.Color(0xffb648),
+    laneRoute: new THREE.Color(0xf2e8d5),
   };
   let seatsUsed = 0;
   function seatGeometryForZoom() {
@@ -5409,7 +5433,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   function syncMachineArms(rec) {
-    const isContact = rec.defId === 'sm_extractor' || rec.defId === 'sm_gas_tap';
+    const isContact = rec.defId === 'sm_extractor' || rec.defId === 'sm_gas_tap' || rec.defId === 'sm_harmonic_resonator';
     const sig = isContact && field ? liveContactSig(rec.col, rec.row) : '';
     if (sig === rec.geoSig) return;
     rec.geoSig = sig;
@@ -6579,7 +6603,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         shell.opacity = 0.45;
         shell.depthWrite = false;
         shell._own = true;
-        material.dispose(); // loader's initial per-instance shell is never rendered as the ghost
+        if (material.userData?.worksInstanceOwned) material.dispose();
         materials.push(shell);
         return shell;
       });
@@ -8012,7 +8036,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // own bevel rings, and the ghost machine itself is the object you are placing.
   function syncCursor(ui) {
     const cursor = ui && ui.cursor;
-    const showGhost = !!(cursor && ui.mode === 'build' && ui.buildKind === 'machine' && ui.buildDefId);
+    const showGhost = !!(cursor && ui.mode === 'build' && ui.buildKind === 'machine' && ui.buildDefId
+      && ui.showMachineGhost !== false);
     cursorGroup.visible = !!cursor;
     // 1.5px, solved against the live camera EVERY frame — before the no-cursor early return, so a
     // reading taken with the pointer off the board still reports the hairline the board will draw
@@ -8825,7 +8850,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     buildRock();
     buildSurface();
     buildSkirt();
-    admitTerrain();
+    if (rockSurfaceReady) admitTerrain();
     // seed ore / gas / half-bored damage for the already-known parts of the field. Damage is
     // seeded from hp on entry so a reloaded site shows every abandoned bore exactly as it was.
     damagedCells.clear();
@@ -9098,6 +9123,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     seatsUsed = 0;
     seatGeometryForZoom();
     syncCursor(ui);
+    if (ui?.guidedRun) {
+      const tint = ui.guidedRun.kind === 'power' ? 'cableRoute' : 'laneRoute';
+      for (const cell of ui.guidedRun.cells) markSeat(cell.col, cell.row, tint);
+    }
     syncFaces(d, ui, timeS);
     syncCharge(d, timeS);
     flushSeats();
@@ -9111,7 +9140,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     stepDom(d, dt);
     // Hold the draw while a context-restore rehydrate is in flight — a bind on emptied
     // payloads is exactly what the consult exists to prevent (W140-G4).
-    if (!contextRestoreConsult) {
+    // Start the first-frame warm on the authored terrain and rig. Queuing it while either
+    // source is still arriving compiles a provisional scene ahead of the parts the pilot needs.
+    if (!contextRestoreConsult && (worksOpeningGate.ready() || (rockSurfaceReady && authoredRoverState.group))) {
       const outcome = runWorksPresentedFrame(worksOpeningGate, () => {
         const before = rendererProgramCacheKeys(renderer);
         bloom.render(scene, camera);

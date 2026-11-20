@@ -24,6 +24,8 @@ import { fieldsRelevantAlongCorridor, sampleFieldAcceleration } from '../core/fi
 import { fieldBodyProfile, fieldEntityIsPrimed, fieldVelocityTermApplies } from './fields.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { forecastCadenceWindow } from '../combat/masslineReleaseGeometry.js';
+import { readIronMawMouth } from '../combat/capitalBossGeometry.js';
+import { WHIP_IMPACT_SOLID, whipContactRadius } from './masslineImpacts.js';
 import { resolveThrowWhoosh } from '../audio/masslineInstrument.js';
 import { clearSwingTraceReleasePaint, paintSwingTraceRelease } from '../render/masslineSwingTrace.js';
 import { isHostileToPlayer } from './scannerReadModel.js';
@@ -140,6 +142,7 @@ export const masslineThrow = {
     this.helpers = ctx.helpers;
     this.registry = ctx.registry;
     this._aimScratch = [];
+    this._mawAimScratch = {};
     // Pointer authority may persist for many fixed ticks. Keep both possible target shapes resident
     // so a held mouse/right-stick/touch aim mutates transient truth instead of allocating per tick.
     this._pointerEntityReleaseTarget = entityReleaseTarget(null, 'pointer');
@@ -280,7 +283,10 @@ export const masslineThrow = {
       }, mode === 'off' ? 'off' : 'snap-manual');
       return;
     }
-    runtime.aimTargetId = aim.entity ? aim.entity.id : null;
+    const aimTargetId = aim.entity ? aim.entity.id : null;
+    // The readable tail belongs to the body that opened the window.
+    if (runtime.aimTargetId !== aimTargetId) this._windowOpenedAtS = null;
+    runtime.aimTargetId = aimTargetId;
     runtime.aimSynthetic = !aim.entity;
     // INF-016: a turning aim target invalidates the cached pre-turn sample and degrades the
     // read. The geometry below still solves straight-line from current endpoints.
@@ -296,7 +302,13 @@ export const masslineThrow = {
     solution.degraded = turn.degraded;
     solution.turnRate = turn.turnRate;
     solution.reachable = solution.valid === true;
-    if (turn.degraded) solution.onSolution = false;
+    const raid = state.onboarding?.raid;
+    // The lesson asks for a solid hit on its marked rock. A slow glide on the right
+    // bearing should leave the pilot building speed instead of lighting the release cue.
+    const slowRaidImpact = raid?.active === true && payload.data?.onboardingRaid === true
+      && payload.id === raid.ids?.raider && aim.entity?.data?.raidRole === 'throwRock'
+      && aimTargetId === raid.ids?.throwRock && solution.relativeSpeed < WHIP_IMPACT_SOLID;
+    if (turn.degraded || slowRaidImpact) solution.onSolution = false;
     // The player gets a release read BEFORE committing, not only while the release is armed.
     // Forecast cost is bounded and runs at 15 Hz. The contact gate above is current-tick truth.
     const movingWinch = Math.abs(finite(tether.cadence && tether.cadence.reelVelocity)) > 2;
@@ -311,7 +323,7 @@ export const masslineThrow = {
     const forecast = this._windowForecast;
     const ageS = Math.max(0, state.tick - forecast.tick) / 60;
     const window = { ...forecast,
-      reliable: forecast.reliable && !movingWinch,
+      reliable: forecast.reliable && !movingWinch && !slowRaidImpact,
       reason: movingWinch ? 'coast_required' : forecast.reason,
       enterS: forecast.enterS == null ? null : Math.max(0, forecast.enterS - ageS),
       exitS: forecast.exitS == null ? null : Math.max(0, forecast.exitS - ageS) };
@@ -329,7 +341,7 @@ export const masslineThrow = {
         || finite(solution.missDistance, Infinity) <= RELEASE_WINDOW_EXIT_MARGIN_WU);
     const simNow = finite(state.simTime, state.tick / 60);
     if (onNow && this._windowOpenedAtS == null) this._windowOpenedAtS = simNow;
-    const windowOpen = this._windowOpenedAtS != null
+    const windowOpen = !slowRaidImpact && this._windowOpenedAtS != null
       && (simNow - this._windowOpenedAtS < releaseWindowHoldMinS(state) || inBand);
     if (!windowOpen) this._windowOpenedAtS = null;
     solution.windowOpen = windowOpen;
@@ -409,7 +421,15 @@ export const masslineThrow = {
     const isNewLatch = !this._releaseLatchActive
       || this._releaseLatchPayloadId !== payload.id
       || (attachmentId != null && this._releaseLatchAttachmentId !== attachmentId);
-    if (!isNewLatch) return;
+    if (!isNewLatch) {
+      // Continue can restore the line before onboarding restores the marked rock. Fill a
+      // missing aim once that exact life is available, without changing a gesture in flight.
+      if (!runtime.releaseTarget && !this._pendingSnap && !this._throwArmWasHeld) {
+        const rock = markedRaiderReleaseRock(state, payload);
+        if (rock) runtime.releaseTarget = seedReleaseTarget(state, player, payload, rock);
+      }
+      return;
+    }
 
     this._pendingSnap = null; this._windowForecast = null; this._armAuthorized = false; this._windowWasOpen = false;
     this._windowOpenedAtS = null;
@@ -430,17 +450,35 @@ export const masslineThrow = {
     const preciseAim = !!(state.input && state.input.aimIntentActive === true
       && aimWorld && Number.isFinite(aimWorld.x) && Number.isFinite(aimWorld.z));
     if (allowPointer && preciseAim) {
+      const mouth = readIronMawMouth(state, this._mawAimScratch);
+      if (mouth && Math.hypot(aimWorld.x - mouth.x, aimWorld.z - mouth.z) <= mouth.radius) {
+        const target = this._pointerPointReleaseTarget;
+        target.pos.x = mouth.x;
+        target.pos.z = mouth.z;
+        target.radius = mouth.radius;
+        runtime.releaseTarget = target;
+        return { entity: null, target: { pos: target.pos, vel: mouth.boss.vel || ZERO_VELOCITY, radius: target.radius } };
+      }
       const candidates = queryNearbyEntities(
         state, { x: aimWorld.x, z: aimWorld.z }, AIM_QUERY_RADIUS, this._aimScratch, state.entityList || [],
       );
       let best = null;
       let bestMiss = Infinity;
+      let bestCenterDistance = Infinity;
       for (const e of candidates) {
-        if (!e || e.alive === false || !e.pos) continue;
-        if (e.id === player.id || e.id === payload.id) continue;
-        if (!AIMABLE_TYPES.has(e.type)) continue;
-        const miss = Math.max(0, Math.hypot(e.pos.x - aimWorld.x, e.pos.z - aimWorld.z) - Math.max(0, finite(e.radius, 0)));
-        if (miss <= CURSOR_AIM_GRACE && (miss < bestMiss || miss === bestMiss && String(e.id) < String(best && best.id))) { best = e; bestMiss = miss; }
+        if (!validReleaseEntity(e, player.id, payload.id)) continue;
+        const centerDistance = Math.hypot(e.pos.x - aimWorld.x, e.pos.z - aimWorld.z);
+        const miss = Math.max(0, centerDistance - Math.max(0, finite(e.radius, 0)));
+        if (miss > CURSOR_AIM_GRACE || miss > bestMiss) continue;
+        // Overlapping footprints can both have zero miss. Prefer the nearer centre before
+        // using a stable order for exact geometric ties.
+        if (miss === bestMiss) {
+          if (centerDistance > bestCenterDistance) continue;
+          if (centerDistance === bestCenterDistance && String(e.id) >= String(best.id)) continue;
+        }
+        best = e;
+        bestMiss = miss;
+        bestCenterDistance = centerDistance;
       }
       if (best) {
         const target = this._pointerEntityReleaseTarget;
@@ -488,9 +526,10 @@ export const masslineThrow = {
         runtime.releaseTarget = null;
         return null;
       }
+      const radius = entity.data?.raidRole === 'throwRock' ? whipContactRadius(entity) : entity.radius;
       return {
         entity,
-        target: { pos: entity.pos, vel: entity.vel || ZERO_VELOCITY, radius: entity.radius },
+        target: { pos: entity.pos, vel: entity.vel || ZERO_VELOCITY, radius },
       };
     }
     const pos = releaseTarget.pos;
@@ -644,7 +683,9 @@ export const masslineThrow = {
       source: 'massline',
       physicsEarned: !!solution.valid,
       payloadId: payload.id,
+      payloadGeneration: payload.occupantGeneration ?? null,
       aimTargetId: aim.entity ? aim.entity.id : null,
+      aimTargetGeneration: aim.entity?.occupantGeneration ?? null,
       aimSynthetic: !aim.entity,
       errorRad: solution.errorRad,
       payloadSpeed: solution.payloadSpeed,
@@ -958,7 +999,19 @@ function queueSpeedFractionImpulse(body, fraction) {
 
 const ZERO_VELOCITY = Object.freeze({ x: 0, z: 0 });
 
-function seedReleaseTarget(state, player, payload) {
+function markedRaiderReleaseRock(state, payload) {
+  const raid = state.onboarding?.raid;
+  const waypoint = state.nav?.waypoint;
+  if (raid?.active !== true || payload.data?.onboardingRaid !== true || payload.id !== raid.ids?.raider
+    || waypoint?.onboarding !== true || waypoint.markerId !== 'onboarding:raid'
+    || waypoint.presentationEntityId == null || waypoint.presentationEntityId !== raid.ids?.throwRock
+    || !Number.isSafeInteger(waypoint.presentationEntityGeneration)) return null;
+  const rock = state.entities?.get(waypoint.presentationEntityId);
+  return rock?.alive !== false && rock?.type === 'asteroid' && rock.data?.raidRole === 'throwRock'
+    && rock.occupantGeneration === waypoint.presentationEntityGeneration ? rock : null;
+}
+
+function seedReleaseTarget(state, player, payload, raidRock = null) {
   const selectedId = state.player ? state.player.targetId : null;
   if (selectedId != null && selectedId !== payload.id && selectedId !== player.id) {
     const selected = state.entities && state.entities.get ? state.entities.get(selectedId) : null;
@@ -985,6 +1038,12 @@ function seedReleaseTarget(state, player, payload) {
   if (validReleaseEntity(waypointEntity, player.id, payload.id)) {
     const target = entityReleaseTarget(waypointEntity.id, 'waypoint', 'waypoint');
     if (waypoint.stable) target.stable = waypoint.stable;
+    return target;
+  }
+  const rock = raidRock || markedRaiderReleaseRock(state, payload);
+  if (rock) {
+    const target = entityReleaseTarget(rock.id, 'raid-waypoint', 'waypoint');
+    target.stable = captureEntitySelection(rock);
     return target;
   }
   if (!waypoint.pos || !Number.isFinite(waypoint.pos.x) || !Number.isFinite(waypoint.pos.z)) return null;

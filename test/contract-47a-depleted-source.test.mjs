@@ -129,3 +129,38 @@ test('absence, unproven depletion and other-field rocks cannot move an existing 
     assert.deepEqual(mission.params.samplePos, fix);
   } finally { host.shutdown(); }
 });
+
+test('the seam recovery entry rebinds a destroyed exposure and still requires player extraction', async () => {
+  const host = createSimHost();
+  try {
+    await host.init({ profile: 'production', seed: 4242,
+      scenarioContract: JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json', import.meta.url), 'utf8')) });
+    const { state, registry, runtime } = host.host;
+    const sectorId = 'sector_helios_prime';
+    state.mode = 'flight';
+    const world = registry.get('world');
+    world.enterSector(sectorId);
+    const player = runtime.spawn({ type: 'ship', pos: { x: 0, z: 0 }, data: {} });
+    state.playerId = player.id;
+    state.player.cargo = { items: {}, usedVolume: 0, usedMass: 0, capVolume: 40, capMass: 200 };
+    const missionOwner = registry.get('missions');
+    missionOwner._installContract47aColdStart();
+    const mission = state.missions.active.find(m => m.storyTag === 'campaign47a:b0:recovery');
+    const source = missionOwner._resolveContract47aSampleSource(mission);
+    const binding = { ...mission.params.sampleSource };
+    source.hull = source.data.oreHP = 0;
+    source.alive = false;
+    assert.equal(world.persistResourceBody(source).outcome, 'destroyed');
+
+    const replacement = missionOwner.promoteContract47aSample();
+    assert.equal(replacement?.type, 'asteroid');
+    assert.notEqual(replacement.id, source.id);
+    assert.equal(replacement.data.fieldId, binding.fieldId);
+    assert.equal(replacement.homeSectorId, sectorId);
+    assert.equal(mission.params.sampleRecovered, false);
+    const mining = registry.get('mining');
+    mining.applyMining(replacement.id, (replacement.data.oreHPMax || 100) * 3, 1, player.id);
+    assert.equal(mission.params.sampleRecovered, true);
+    assert.equal(state.player.cargo.items.cmdty_47a_assay_sample, 1);
+  } finally { host.shutdown(); }
+});

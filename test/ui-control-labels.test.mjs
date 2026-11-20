@@ -37,10 +37,6 @@ test('every taught PILOT action labels a bound key, and that key produces the ac
       assert.equal(label, 'LMB', 'empty fire binding is the left mouse button');
       continue;
     }
-    if (action === 'tether') {
-      assert.equal(label, 'RMB', 'empty tether binding is the right mouse button (G18-02 Line)');
-      continue;
-    }
     if (!codes.length) {
       // G18-02: a wheel slice — no key seat by default, but still taught (the wheel row)
       // and rebindable. A blank code list is the contract, not a missing key.
@@ -52,8 +48,8 @@ test('every taught PILOT action labels a bound key, and that key produces the ac
     host._keys[codes[0]] = true;
     assert.equal(host._held(state, action), true, `${label} must produce ${action}`);
   }
-  // The taught table itself: WASD, Space boost, the held wheel key, the five powers.
-  for (const action of ['forward', 'reverse', 'yawLeft', 'yawRight', 'boost', 'contextWheel',
+  // The taught table itself: WASD, Shift boost, F tether, the held wheel key, the five powers.
+  for (const action of ['forward', 'reverse', 'yawLeft', 'yawRight', 'boost', 'tether', 'contextWheel',
     'pull', 'shove', 'pin', 'bomb', 'rig']) {
     assert.ok(resolveActionCodes(state, action).length > 0, `${action} keeps a real key seat`);
   }

@@ -17,6 +17,7 @@ import { fragileCargoGlyphFor } from '../../../systems/fragileCargo.js';
 import { injectOrreryMarket, qtyFromDialPoint, setQtyDial } from '../../orrery/marketLayouts.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { injectStationMarketLayouts } from '../../orrery/station-marketLayouts.js';
+import { injectItemThumbnailStyles } from '../../icons/itemThumbnails.js';
 import { isPhoneLayout } from '../../../systems/mobile/model.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { arcD, polar } from '../../orrery/svg.js';
@@ -922,6 +923,7 @@ export function createMarketScreen(ctx) {
   // plus this screen's own layout home (receipt lane, arrival — station-marketLayouts.js).
   injectOrreryMarket(document);
   injectStationMarketLayouts(document);
+  injectItemThumbnailStyles(document);
   el.innerHTML = marketFrameHtml();
   const adBoardEl = el.querySelector('[data-ad-board]');
   const listEl = el.querySelector('.sx-mkt__list');
@@ -1384,10 +1386,14 @@ export function createMarketScreen(ctx) {
   function tradedList(state) {
     const table = marketTable(state);
     const ids = table ? Object.keys(table) : COMMODITIES.map((c) => c.id);
-    const rows = ids.map((id) => ({ id, def: CMDTY_BY_ID.get(id), entry: table && table[id] }))
+    // The Sell view also accounts for sealed cargo the local exchange does not quote.
+    if (cargoOnly && table) {
+      for (const id of Object.keys(state.player?.cargo?.items || {})) {
+        if (!Object.hasOwn(table, id) && heldQty(state, id) > 0 && reservedCargoQuantity(state, id) > 0) ids.push(id);
+      }
+    }
+    const rows = ids.map((id) => ({ id, def: CMDTY_BY_ID.get(id), entry: table?.[id] || null }))
       .filter((r) => r.def);
-    // Sell is the hold. A sealed lot stays on that list so the pilot can see what they
-    // are carrying; the sell limit below is what keeps the counter from buying it.
     return cargoOnly
       ? rows.filter((r) => heldQty(state, r.id) > 0)
       : rows;
@@ -1487,7 +1493,7 @@ export function createMarketScreen(ctx) {
   }
 
   function tradeQuantityLimit(state, row) {
-    if (mode === 'sell' && row) return sellableCargoQuantity(state, row.id);
+    if (mode === 'sell' && row) return marketSellQuantity(state, row.id);
     const free = holdFree(state);
     const volume = Number(row.def.volPerU) > 0 ? Number(row.def.volPerU) : 1;
     const stock = Math.max(0, Math.floor(Number(row.entry && row.entry.stock) || 0) - 1);
@@ -1501,12 +1507,13 @@ export function createMarketScreen(ctx) {
   function pinSealedSellQuantity(state, id = selectedId) {
     if (pendingTrade) return;
     if (mode === 'sell' && id && reservedCargoQuantity(state, id) > 0) {
-      qty = Math.min(qty, sellableCargoQuantity(state, id));
+      qty = Math.min(qty, marketSellQuantity(state, id));
     }
   }
 
-  function sellOpeningQuantity(state, id) {
-    return sellableCargoQuantity(state, id);
+  function marketSellQuantity(state, id) {
+    const table = marketTable(state);
+    return table && !Object.hasOwn(table, id) ? 0 : sellableCargoQuantity(state, id);
   }
 
   function openTradeMode(nextMode, state, options = {}) {
@@ -1524,7 +1531,7 @@ export function createMarketScreen(ctx) {
     if (mode === 'sell' && rows.length) {
       const held = rows.find((r) => heldQty(state, r.id) > 0) || rows[0];
       selectedId = held.id;
-      qty = sellOpeningQuantity(state, held.id);
+      qty = marketSellQuantity(state, held.id);
       pinSealedSellQuantity(state, held.id);
     } else {
       qty = 1;
@@ -1654,12 +1661,15 @@ export function createMarketScreen(ctx) {
       const on = row.getAttribute('data-cmdty') === id;
       row.classList.toggle('is-active', on);
       row.setAttribute('aria-selected', String(on));
-      row.setAttribute('tabindex', on ? '0' : '-1');
+      // Every register row is a stop of its own (mission-log's contract): the pad's spatial focus
+      // passes over a roving -1, so a -1 register would be unreadable on a controller. The row
+      // keydown above still owns the arrows.
+      row.setAttribute('tabindex', '0');
       if (on && focus) { try { row.focus({ preventScroll: false }); } catch (_) {} }
     }
     dressRows();
     if (!changed) return;
-    qty = mode === 'sell' ? sellOpeningQuantity(ctx.state || {}, id) : 1;
+    qty = mode === 'sell' ? marketSellQuantity(ctx.state || {}, id) : 1;
     pinSealedSellQuantity(ctx.state || {}, id);
     const state = ctx.state || {};
     arrive(quoteEl);
@@ -1806,7 +1816,8 @@ export function createMarketScreen(ctx) {
         if (row.classList.contains('is-active') !== on) {
           row.classList.toggle('is-active', on);
           row.setAttribute('aria-selected', String(on));
-          row.setAttribute('tabindex', on ? '0' : '-1');
+          // every row stays a stop (see the selection path above): the pad reads the register
+          row.setAttribute('tabindex', '0');
         }
       }
     }
@@ -2288,11 +2299,13 @@ export function createMarketScreen(ctx) {
     const freeSell = mode === 'sell' ? sellableCargoQuantity(state, r.id) : 0;
     const sealedUnits = mode === 'sell' ? reservedCargoQuantity(state, r.id) : 0;
     const sealedHold = mode === 'sell' && isUnsellableCargo(state, r.id) && freeSell <= 0;
+    const sealedWithoutMarket = sealedUnits > 0 && entry == null && marketTable(state) !== null;
     const note = pendingTrade && pendingTrade.status === 'pending' ? 'Trade sent. Waiting for the station to confirm what settled.'
       : retryPending ? 'The result is unknown. Retry the original confirmed order with the same terms and ID. If it already committed, the station returns its saved result without another charge.'
       : pendingTrade && !pendingAtOriginalStation ? 'The original order is still unresolved. Return to the original station to retry these same confirmed terms; do not place a fresh order.'
       : pendingTrade ? 'A trade result is still unknown. Its original lot and quantity stay selected so you can safely retry the same order.'
       : sealedHold ? 'Sealed contract cargo cannot be sold'
+      : sealedWithoutMarket ? `${sealedUnits} u sealed on contract. This station does not trade ${def.name}.`
       : sealedUnits > 0 ? `${sealedUnits} u sealed on contract — sell limit is ${freeSell} u`
       : maxQty < 1 ? (mode === 'buy' ? 'Not enough credits, stock, or hold space.' : 'Nothing to sell here.')
       : qty < 1 ? ''
@@ -2305,9 +2318,11 @@ export function createMarketScreen(ctx) {
         : `${side === 'buy' ? 'Buy' : 'Sell'} ${fmt(qty)}`;
     if (receiptOnly && tradeEl.querySelector('[data-market-intel]')) {
       // Keep the focused numeric input alive while each keystroke updates its actual quote.
-      // A sealed lot has no quantity to type: put the field back to zero.
       const typed = tradeEl.querySelector('.sx-qty__in');
-      if (typed && sealedHold) typed.value = '0';
+      if (typed && !pendingTrade) {
+        const aboveSealedLimit = sealedUnits > 0 && Number.parseInt(typed.value, 10) > maxQty;
+        if (sealedHold || aboveSealedLimit) typed.value = String(qty);
+      }
       tradeEl.querySelector('[data-market-intel]').innerHTML = receiptHtml;
       setQtyDial(tradeEl, qty, maxQty);
       const totalEl = tradeEl.querySelector('[data-trade-total]');
@@ -2970,7 +2985,7 @@ export function createMarketScreen(ctx) {
       // An unresolved trade still owns its selection until its receipt is reconciled.
       if (!pendingTrade && open.commodityId && tradedList(st).some(row => row.id === open.commodityId)) {
         selectedId = open.commodityId;
-        qty = mode === 'sell' ? sellOpeningQuantity(st, selectedId) : 1;
+        qty = mode === 'sell' ? marketSellQuantity(st, selectedId) : 1;
         if (mode === 'sell') pinSealedSellQuantity(st, selectedId);
       }
       if (pendingTrade) {

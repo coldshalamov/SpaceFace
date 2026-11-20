@@ -34,6 +34,8 @@ import { understoryGardens as understoryProto } from '../src/systems/faction_und
 import { UNDERSTORY_RECEIVER } from '../src/data/understoryReceiver.js';
 import { createFurnaceIntake } from '../src/systems/furnaceIntake.js';
 import { furnaceMouthGlobal } from '../src/missions/furnaceWorksite.js';
+import { isSlateCore, slateCoreLayout } from '../src/missions/slateCoreWorksite.js';
+import { hasMawReceiving, mawReceivingLayout } from '../src/missions/mawWorksite.js';
 import { materializeAlienEcology, handleAlienEcologyEvent } from '../src/systems/alienEcology.js';
 import { ALIEN_SITES } from '../src/data/alienEcology.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
@@ -209,6 +211,46 @@ function completeSpineSetPiece(h, mission) {
       .map((id) => h.state.entities.get(id))
       .find((e) => e && e.data && e.data.physicalRole === role);
     assert.ok(target, `${mission.type} needs ${role}`);
+    // The living Maw refuses the line until all three supplied slag impacts land.
+    const stuns = mission.params && mission.params.mawStunsNeeded;
+    for (let i = 0; i < (stuns || 0); i++) hitSuppliedMawPod(h, mission, target);
+
+    const slate = isSlateCore(mission);
+    const layout = slate ? slateCoreLayout() : hasMawReceiving(mission) ? mawReceivingLayout() : null;
+    if (layout) {
+      const { state, bus, missions } = h;
+      if (slate) {
+        assert.deepEqual(state.nav.waypoint.pos, { x: target.pos.x, z: target.pos.z });
+        bus.emit('tether:latched', { sourceId: 999, targetId: target.id });
+        assert.equal(mission.params.slateCore.handled, false, 'another pilot cannot claim delivery custody');
+        assert.deepEqual(state.nav.waypoint.pos, { x: target.pos.x, z: target.pos.z });
+      }
+      const plotted = { kind: 'nav', label: 'Pilot’s chart course', pos: { x: -900, z: 1120 } };
+      if (slate) state.nav.waypoint = plotted;
+      bus.emit('tether:latched', { sourceId: state.playerId, targetId: target.id });
+      state.player.tether = { active: true, targetId: target.id };
+      if (slate) {
+        missions._ensureMissionTargets(mission);
+        assert.equal(state.nav.waypoint, plotted, 'the explicit course remains in control');
+        assert.equal(missions.trackMission(mission.id), true);
+        assert.deepEqual(state.nav.waypoint.pos, layout.receiver, 'the mission marks the real receiver when carrying the core');
+        assert.equal(state.nav.waypoint.stationId, null, 'the refinery cannot override the receiving beacon position');
+        state.player.tether = { active: false, targetId: null };
+        bus.emit('tether:detached', { ownerId: state.playerId, targetId: target.id });
+        missions._ensureMissionTargets(mission);
+        assert.deepEqual(state.nav.waypoint.pos, { x: target.pos.x, z: target.pos.z }, 'the mission marks the released core');
+      }
+      target.pos = { ...layout.receiver };
+      target.vel = { x: 0, z: 0 };
+      missions._ensureMissionTargets(mission);
+      state.player.tether = { active: false, targetId: null };
+      assert.equal(mission.status, 'completed', `${mission.storyTag} settles at its authored receiver`);
+      const receipt = slate ? mission.params.slateReceipt : mission.params.mawReceipt;
+      assert.equal(receipt?.missionId, mission.id);
+      assert.deepEqual(receipt.receiver, layout.receiver);
+      return;
+    }
+
     let berth = [...h.state.entities.values()].find((e) => (
       e && e.type === 'station' && e.data && e.data.stationId === mission.destStationId
     ));
@@ -217,11 +259,6 @@ function completeSpineSetPiece(h, mission) {
         type: 'station', pos: { x: 80, z: 40 }, radius: 40,
         data: { stationId: mission.destStationId, dockRadius: 80 },
       });
-    }
-    // The living maw refuses the line until the slag stuns land.
-    const stuns = mission.params && mission.params.mawStunsNeeded;
-    for (let i = 0; i < (stuns || 0); i++) {
-      hitSuppliedMawPod(h, mission, target);
     }
     h.bus.emit('tether:latched', { targetId: target.id });
     target.pos = { x: berth.pos.x, z: berth.pos.z };

@@ -5,6 +5,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { makeEntity } from '../src/core/entity.js';
 import { mulberry32 } from '../src/core/rng.js';
 import { onboarding } from '../src/systems/onboarding.js';
+import { CONTRACT_47A_B0_TAG } from '../src/systems/missionShared.js';
 import { configureRacingCorridorSession } from '../src/world/racingCorridor.js';
 
 function stubElement() {
@@ -186,6 +187,73 @@ test('game:started adopts the prepared actors by exact reference', async () => {
   assert.equal(rescue.startedAt, h.state.simTime);
   assert.ok(h.state.onboarding.missingThree);
   assert.ok(h.state.onboarding.storeSentence);
+});
+
+test('the opening latch and throw guide the learner while Cold Start stays tracked', async () => {
+  const h = boot('loading');
+  const notices = [];
+  h.helpers.voice.say = (notice) => { notices.push(notice); return true; };
+  const sample = { pos: { x: 390, z: 0 } };
+  const mission = { id: '47a', storyTag: CONTRACT_47A_B0_TAG, status: 'active', params: {} };
+  h.state.missions = { active: [mission] };
+  h.state.ui = { trackedMissionId: mission.id };
+  h.sys.registry = { get: (name) => name === 'missions' ? { contract47aSampleSite: () => sample } : null };
+  await scenePrepared(h);
+  h.state.mode = 'flight';
+  h.bus.emit('game:started', {});
+  const tick = () => {
+    h.state.simTime += 0.25;
+    h.sys.update(0.25, h.state);
+  };
+  tick();
+  const { rock, derelict, scout } = h.state.onboarding.rescue.ids;
+  const position = (id) => {
+    const { x, z } = h.state.entities.get(id).pos;
+    return { x, z };
+  };
+  assert.equal(h.state.nav.waypoint.label, 'Loose rock');
+  assert.deepEqual(h.state.nav.waypoint.pos, position(rock));
+  assert.equal(h.state.ui.trackedMissionId, mission.id);
+
+  const course = { kind: 'nav', pos: sample.pos };
+  h.state.nav.waypoint = course;
+  tick();
+  assert.equal(h.state.nav.waypoint, course);
+  h.state.nav.waypoint = null;
+  tick();
+  assert.deepEqual(h.state.nav.waypoint.pos, position(rock));
+
+  const attachments = h.state.combat.attachments.byId;
+  attachments.line = { ownerId: h.state.playerId, targetId: rock, state: 'active' };
+  h.bus.emit('tether:latched', { targetId: rock });
+  tick();
+  assert.equal(h.state.nav.waypoint.markerId, 'rescue:swing');
+  assert.deepEqual(h.state.nav.waypoint.pos, position(derelict));
+  assert.ok(!notices.some((notice) => notice.text === h.state.nav.waypoint.reason),
+    'the throw instruction belongs to the tracker while its marker is live');
+
+  delete attachments.line;
+  h.bus.emit('tether:broke', { targetId: rock });
+  tick();
+  assert.deepEqual(h.state.nav.waypoint.pos, position(rock));
+
+  h.state.player.tether = { active: true, targetId: scout };
+  attachments.line = { ownerId: h.state.playerId, targetId: scout, state: 'active' };
+  h.bus.emit('tether:latched', { targetId: scout });
+  tick();
+  assert.deepEqual(h.state.nav.waypoint.pos, position(rock));
+  assert.equal(h.state.nav.waypoint.reason, 'Release the current line. Latch the marked rock.');
+
+  h.state.player.tether = { active: false };
+  delete attachments.line;
+  tick();
+  assert.match(h.state.nav.waypoint.reason, /^Latch the loose rock/);
+
+  h.bus.emit('massline:throw', { payloadId: rock });
+  tick();
+  assert.equal(h.state.nav.waypoint.label, '47-A Recovery Site');
+  assert.deepEqual(h.state.nav.waypoint.pos, sample.pos);
+  assert.equal(h.state.ui.trackedMissionId, mission.id);
 });
 
 test('carve-outs: flight mode, scenario payload, hints off, and active runs skip prepare', async () => {

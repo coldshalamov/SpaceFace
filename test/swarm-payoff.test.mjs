@@ -10,7 +10,6 @@ import { createRunState } from '../src/core/runState.js';
 import { createTimeEffects } from '../src/core/timeEffects.js';
 import { runSession } from '../src/systems/runSession.js';
 import { swarmJuice } from '../src/systems/swarmJuice.js';
-import { SWARM_HITSTOP_SOURCE } from '../src/data/swarmJuice.js';
 import { SURVIVAL_COHORT_TAG } from '../src/systems/waveMaterialization.js';
 import { resolveThemeMatrix, swarmChainLift } from '../src/audio/themeMatrix.js';
 
@@ -82,20 +81,18 @@ test('an empty kills receipt announces nothing', () => {
   swarmJuice.destroy();
 });
 
-test('two pile-ups in a row never lease simulation time, and the count still climbs', () => {
+test('two pile-ups keep their calls without slowing the world', () => {
   const h = boot();
-  // First pile: three physics deaths (OVH-06a / R10: no sim dip any more - presentation only).
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   kill(h, { cause: 'ship_collision', surface: 'craft' });
   advance(h, DT);
-  assert.equal(h.effects.describeRequests()[SWARM_HITSTOP_SOURCE], undefined, 'the first pile leases no time');
-  // Second pile: the count grows, the clock stays free.
+  assert.deepEqual(h.effects.describeRequests(), {});
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   kill(h, { cause: 'terrain_collision', surface: 'terrain' });
   advance(h, DT);
-  assert.equal(h.effects.describeRequests()[SWARM_HITSTOP_SOURCE], undefined, 'a second pile leases no time either');
+  assert.deepEqual(h.effects.describeRequests(), {});
   const texts = named(h, 'swarm:announce').map((e) => e.payload.text).filter((t) => t.startsWith('PILE-UP'));
   assert.ok(texts.length >= 2, 'the count still climbs — presentation, not silence');
   swarmJuice.destroy();

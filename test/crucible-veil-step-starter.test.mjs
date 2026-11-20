@@ -130,7 +130,7 @@ test('Crucible readout names the Veil hold/release binding and current energy re
   assert.equal(line().status, 'cooldown');
   // G18-02 (b931aac851) taught one key set in both doors: boost left L-Shift/R-Shift for Space, and
   // this readout prints the live binding rather than a hard-coded key.
-  assert.match(line().text, /hold Space to aim · release to jump · needs 42 energy/);
+  assert.match(line().text, /hold Shift to aim · release to jump · needs 42 energy/);
 
   ship.boost.energy = 70;
   ship._phaseBlink = { aiming: true, active: true, dist: 120, readyAt: 0 };

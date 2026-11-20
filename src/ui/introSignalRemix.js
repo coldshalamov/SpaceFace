@@ -6,6 +6,7 @@
  * No new asset, second video decoder, audio, gameplay dependency or input owner.
  */
 import { createSignalTableaux } from './loadingSignalTableaux.js';
+import { retireWhenProgramsReady } from './previewContextRetire.js';
 
 export const SIGNAL_REMIX = Object.freeze({
   loopSeconds: 18, sourceSeconds: 32, maxWidth: 1280, maxHeight: 720,
@@ -167,16 +168,20 @@ export function attachIntroSignalRemix(video, { document = video?.ownerDocument,
     position: 'absolute', inset: '0', width: '100%', height: '100%',
     display: 'none', pointerEvents: 'none',
   });
-  let gl;
-  try { gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false }); }
-  catch (error) { try { onError(error); } catch {} return null; }
-  if (!gl) { try { onError(new Error('WebGL2 unavailable')); } catch {} return null; }
+  let gl, completionStatus;
+  try {
+    gl = canvas.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false });
+    if (!gl) throw new Error('WebGL2 unavailable');
+    completionStatus = gl.getExtension?.('KHR_parallel_shader_compile')?.COMPLETION_STATUS_KHR;
+    if (completionStatus == null) throw new Error('Parallel signal shader compilation unavailable');
+  } catch (error) { try { onError(error); } catch {} return null; }
   let disposed = false, failed = false, running = false, reducedMotion = false, reducedFlash = false;
   let raf = null, vf = null, startTime = null, elapsed = 0, lastPaint = 0, nextPaint = 0, lastSculpture = -Infinity;
   let width = 0, height = 0, index = 0, frameCount = 0, sculptureCount = 0;
   const savedRate = video.playbackRate;
   const textures = [], fbos = [], shaders = [];
   let program = null, vao = null, tableaux = null;
+  let linkComplete = false, ready = false, retirementStarted = false;
   const rafCall = fn => env.requestAnimationFrame(fn);
   const cancel = () => {
     if (raf != null) env.cancelAnimationFrame?.(raf);
@@ -192,13 +197,30 @@ export function attachIntroSignalRemix(video, { document = video?.ownerDocument,
     if (program) gl.deleteProgram(program);
     if (vao) gl.deleteVertexArray(vao);
     fbos.length = textures.length = shaders.length = 0;
+    program = vao = null;
+  }
+  function retire() {
+    if (retirementStarted) return;
+    retirementStarted = true;
+    if (!program || linkComplete) {
+      release();
+      return;
+    }
+    const linking = program;
+    retireWhenProgramsReady({
+      programs: [{ program: linking, isReady: () => gl.getProgramParameter(linking, completionStatus) }],
+      parallelCompile: true,
+      context: gl,
+      finish: () => { try { release(); } catch {} },
+      setTimer: env.setTimeout?.bind(env),
+    });
   }
   function fail(error) {
     if (failed || disposed) return;
     failed = true; running = false; cancel(); canvas.style.display = 'none';
     try { onError(error || new Error('Signal context lost')); } catch {}
     try { video.playbackRate = savedRate; } catch {}
-    try { release(); } catch {}
+    try { retire(); } catch {}
   }
   function texture(unit) {
     const tex = gl.createTexture(); textures.push(tex);
@@ -216,11 +238,26 @@ export function attachIntroSignalRemix(video, { document = video?.ownerDocument,
     for (const [type, source] of [[gl.VERTEX_SHADER, VERTEX], [gl.FRAGMENT_SHADER, SIGNAL_FRAGMENT]]) {
       const shader = gl.createShader(type); shaders.push(shader);
       gl.shaderSource(shader, source); gl.compileShader(shader);
-      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
       gl.attachShader(program, shader);
     }
     gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  } catch (error) { try { onError(error); } catch {} try { release(); } catch {} return null; }
+
+  function prepareProgram() {
+    if (ready) return true;
+    // Compile/link status and uniform lookups can join the driver compilation. Poll only
+    // the parallel extension until the link is complete while the native film presents.
+    try {
+      if (gl.isContextLost?.()) throw new Error('Signal context lost');
+      if (!gl.getProgramParameter(program, completionStatus)) return false;
+      linkComplete = true;
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+      bindProgramResources();
+      ready = true;
+      return true;
+    } catch (error) { fail(error); return false; }
+  }
+  function bindProgramResources() {
     gl.useProgram(program); vao = gl.createVertexArray(); gl.bindVertexArray(vao);
     uniforms = Object.fromEntries(['movie','previous','sculpture','glyphs','resolution','cover','camera','edit','timing']
       .map(key => [key, gl.getUniformLocation(program, key)]));
@@ -242,7 +279,7 @@ export function attachIntroSignalRemix(video, { document = video?.ownerDocument,
     gl.uniform1i(uniforms.movie, 0); gl.uniform1i(uniforms.previous, 1);
     gl.uniform1i(uniforms.sculpture, 2); gl.uniform1i(uniforms.glyphs, 3);
     video.parentNode.insertBefore(canvas, video.nextSibling);
-  } catch (error) { try { onError(error); } catch {} try { release(); } catch {} return null; }
+  }
 
   function resize() {
     // Layout size, not getBoundingClientRect: the intro stage sits under a slow CSS scale, and a
@@ -267,7 +304,7 @@ export function attachIntroSignalRemix(video, { document = video?.ownerDocument,
     lastSculpture = -Infinity; index = 0;
   }
   function draw(time, sourceTime = video.currentTime || 0, dt = 1 / 30) {
-    if (disposed || failed || video.readyState < 2 || !video.videoWidth) return false;
+    if (disposed || failed || video.readyState < 2 || !video.videoWidth || !prepareProgram()) return false;
     try {
       resize();
       const t = reducedMotion ? 12 : finiteTime(time);
@@ -299,7 +336,9 @@ export function attachIntroSignalRemix(video, { document = video?.ownerDocument,
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, fbos[next]); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
       gl.blitFramebuffer(0, 0, width, height, 0, 0, width, height, gl.COLOR_BUFFER_BIT, gl.NEAREST);
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      index = next; frameCount++; canvas.style.display = 'block'; return true;
+      index = next; frameCount++; canvas.style.display = 'block';
+      if (frameCount === 1) setRate();
+      return true;
     } catch (error) { fail(error); return false; }
   }
   function schedule() {
@@ -310,6 +349,7 @@ export function attachIntroSignalRemix(video, { document = video?.ownerDocument,
   function tick(timestamp) {
     raf = vf = null;
     if (!running || disposed || failed) return;
+    if (!prepareProgram()) { schedule(); return; }
     if (startTime == null) startTime = timestamp - elapsed * 1000;
     elapsed = Math.max(0, (timestamp - startTime) / 1000);
     if (timestamp + .1 >= nextPaint) {
@@ -320,7 +360,7 @@ export function attachIntroSignalRemix(video, { document = video?.ownerDocument,
     schedule();
   }
   function setRate() {
-    if (disposed || failed) return;
+    if (disposed || failed || frameCount === 0) return;
     const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : SIGNAL_REMIX.sourceSeconds;
     try { video.playbackRate = clamp(duration / SIGNAL_REMIX.loopSeconds, 1, 2); } catch {}
   }
@@ -331,7 +371,7 @@ export function attachIntroSignalRemix(video, { document = video?.ownerDocument,
     canvas,
     resume() {
       if (disposed || failed || running) return;
-      setRate(); running = !reducedMotion; startTime = null; lastPaint = nextPaint = 0;
+      running = !reducedMotion; startTime = null; lastPaint = nextPaint = 0;
       if (reducedMotion) draw(12); else schedule();
     },
     pause() { running = false; cancel(); startTime = null; },
@@ -341,7 +381,8 @@ export function attachIntroSignalRemix(video, { document = video?.ownerDocument,
       if (!changed || disposed || failed) return;
       const wasRunning = running;
       ctl.pause(); lastSculpture = -Infinity;
-      if (wasRunning && motion) draw(12); else if (wasRunning) ctl.resume();
+      if (wasRunning && motion && ready) draw(12);
+      else if (wasRunning && !motion) ctl.resume();
     },
     renderAt(time, sourceTime = video.currentTime, dt = 1 / 30) { return draw(time, sourceTime, dt); },
     inspect() { return { running, disposed, failed, frameCount, sculptureCount, width, height, reducedMotion, reducedFlash }; },
@@ -350,7 +391,7 @@ export function attachIntroSignalRemix(video, { document = video?.ownerDocument,
       ctl.pause(); disposed = true;
       canvas.removeEventListener('webglcontextlost', onContextLost);
       video.removeEventListener('loadedmetadata', setRate);
-      try { release(); } catch {}
+      try { retire(); } catch {}
       try { video.playbackRate = savedRate; } catch {}
       canvas.remove();
       if (video.__sfSignalRemix === ctl) delete video.__sfSignalRemix;

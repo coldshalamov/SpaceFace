@@ -100,7 +100,7 @@ test('Swarm presenters separate the combat chain from world receipts and danger 
         import('/src/ui/swarmJuiceHud.js'), import('/src/ui/voiceArbiter.js'),
       ]);
       const helpers = {};
-      createToasts({ state, bus });
+      const toasts = createToasts({ state, bus });
       createAlerts({ state, bus });
       bindCommsLogToasts(bus);
       voiceArbiter.init({ state, bus, helpers });
@@ -113,7 +113,9 @@ test('Swarm presenters separate the combat chain from world receipts and danger 
       bus.emit('swarm:chain', { chain: 25, best: 25, at: 100 });
       bus.emit('swarm:announce', { kind: 'collateral', text: 'COLLATERAL' });
       bus.emit('comms:log', { from: 'Starboard Stabilizer Break', kind: 'cargo', text: 'Starboard Stabilizer Break — bounty after the spill.' });
-      bus.emit('toast', { text: 'Yardmaster, Belt Outpost: Cold chain broken — Provisions spoiling.', kind: 'warn', ttl: 6 });
+      bus.emit('toast', { text: 'Yardmaster, Belt Outpost: Cold chain broken — Provisions spoiling.',
+        kind: 'warn', channel: 'chatter', ttl: 6 });
+      bus.emit('toast', { text: 'Repair cell collected', kind: 'info', ttl: 6 });
       bus.emit('voice:say', { channel: 'bark', kind: 'cargoSpill', text: 'Salvage Wreck posted a bounty. That cargo had a name.', ttl: 6, id: 'bounty' });
       voiceArbiter.update(0, state);
       swarmJuiceHud.update(0, state);
@@ -125,14 +127,26 @@ test('Swarm presenters separate the combat chain from world receipts and danger 
       bus.emit('voice:say', { channel: 'alert', kind: 'danger', priority: 110, text: 'TAKING FIRE', ttl: 3, id: 'danger' });
       voiceArbiter.update(0, state);
       const danger = document.querySelector('.sf-alert--floor').innerText;
-      return { before, danger, dangerRect: rect('.sf-alert--floor') };
+      const dangerRect = rect('.sf-alert--floor');
+      const activeToast = '#toasts [role="button"]:not(.sf-toast--out)';
+      document.querySelector(activeToast).click();
+      toasts.tick();
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      const next = document.querySelector(activeToast);
+      const nextToast = next.innerText;
+      const nextToastRect = rect(activeToast);
+      next.click();
+      return { before, danger, dangerRect, nextToast, nextToastRect };
     });
     if (process.env.SWARM_FEEDBACK_SCREENSHOT) await page.screenshot({ path: process.env.SWARM_FEEDBACK_SCREENSHOT });
     const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
     assert.match(outcome.before.text, /Starboard Stabilizer Break/);
-    assert.match(outcome.before.text, /Cold chain broken/);
+    assert.doesNotMatch(outcome.before.text, /Cold chain broken|Repair cell collected/, 'only one receipt is visible');
+    assert.match(outcome.nextToast, /Repair cell collected/, 'the repair receipt follows the dismissed card');
+    assert.doesNotMatch(outcome.nextToast, /Cold chain broken/, 'the arena does not show Adventure chatter');
     assert.equal(overlaps(outcome.before.hero, outcome.before.toasts), false, 'world receipts clear the chain');
     assert.equal(overlaps(outcome.before.calls, outcome.before.toasts), false, 'world receipts clear the announcer');
+    assert.equal(overlaps(outcome.before.calls, outcome.nextToastRect), false, 'the promoted receipt clears the announcer');
     assert.equal(overlaps(outcome.before.hero, outcome.before.alert), false, 'voice clears the chain');
     assert.equal(overlaps(outcome.before.toasts, outcome.before.alert), false, 'voice clears the receipts');
     assert.match(outcome.danger, /TAKING FIRE/);

@@ -5,6 +5,8 @@ import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { ATTACK_TRAIT_BY_ID } from '../data/attackTraits.js';
 import { resolveActionLabel } from '../systems/input.js';
+import { verbBindingLabel } from '../onboarding/verbSpeech.js';
+import { getPromptDevice } from './bindings.js';
 import { el } from './kit/index.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { PHASE_BLINK, phaseBlinkCommitCost } from '../data/phaseBlink.js';
@@ -15,6 +17,9 @@ const modules = new Map(MODULES.map(def => [def.id, def]));
 const FLIGHT_PHASES = new Set(['wave_intro', 'active', 'cleanup']);
 
 function binding(state, action) {
+  const device = state?.input?.promptDevice || getPromptDevice();
+  if (device === 'gamepad') return verbBindingLabel(state, action, device, { keyboardFallback: false }) || 'unbound';
+  if (device === 'touch' && action === 'fire') return 'Fire button';
   return resolveActionLabel(state || {}, action, { arrows: 'word', empty: 'unbound' });
 }
 

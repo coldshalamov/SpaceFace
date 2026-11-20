@@ -15,6 +15,9 @@ import { shouldHideOwnRepDelta } from '../story/endings/publicIdentity.js';
 import { floatLedger, floatPriority, seatOutOfRects } from './floatingTextRules.js';
 import { createAvoidRects } from './hudAvoidRects.js';
 import { loadingShellVisible } from '../localization/idleWarmPolicy.js';
+import { isAdventureFlight } from './attentionGlass.js';
+import { nearestSwarmFloorPad } from '../data/swarmFloor.js';
+import { getPromptDevice, promptLabel } from './bindings.js';
 
 const POOL = 56;
 
@@ -197,13 +200,14 @@ export function createFloatingText(ctx) {
   // the round panel or the radar never covers it; the floats keep the layer above.
   if (root && typeof root.insertBefore === 'function' && root.firstChild) root.insertBefore(padLayer, root.firstChild);
   else layer.appendChild(padLayer);
-  const PAD_TAG_REACH = 90;   // world units: price + name appear inside this
+  const PAD_TAG_REACH = 220;  // world units: show price before the shop approach
   const PAD_NOTE_REACH = 50;  // ambient flavor labels, tighter
   const padNodes = new Map();   // entityId -> { el, lastText, denied }
   const _padWorld = { x: 0, y: 0, z: 0 };
   const _padScreen = { x: 0, y: 0, onScreen: false };
   const visiblePads = [];
   const padObstacles = [];
+  const padLabelRects = [];
   const padBounds = { w: 0, h: 0 };
   const padBox = { x: 0, y: 0, w: 0, h: 0 };
   // The pad layer's box and the phone-deck flag move only on a viewport or deck change; reading
@@ -227,12 +231,14 @@ export function createFloatingText(ctx) {
   padStaticsObserver?.observe?.(document.documentElement, { attributes: true, attributeFilter: ['data-sf-mobile-flight'] });
 
   function syncPadLabels() {
+    padLabelRects.length = 0;
     // The loading shell covers the HUD: the pad pass under it only restyles elements nobody sees.
     if (loadingShellVisible(document)) return;
     if (!helpers.worldToScreen || typeof state.entities?.values !== 'function') return;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
     visiblePads.length = 0;
     const player = state.playerId != null ? state.entities.get(state.playerId) : null;
+    const selectedPad = nearestSwarmFloorPad(state);
     const inArena = state.run?.ruleset === 'swarm' || state.run?.kind === 'survival';
     for (const e of state.entities.values()) {
       const rec = e && e.data && e.data.swarmFloorPad;
@@ -260,7 +266,21 @@ export function createFloatingText(ctx) {
       }
       node.seen = true;
       const text = typeof rec.label === 'string' && rec.label ? rec.label : '';
-      if (node.lastText !== text) { node.lastText = text; node.el.textContent = text; node.w = 0; node.h = 0; }
+      const selected = e === selectedPad;
+      const armed = Number.isFinite(rec.armedUntil) && rec.armedUntil > now;
+      const fit = (rec.kind === 'wall_gun' || rec.kind === 'crate') && typeof rec.fitPreview === 'string' ? rec.fitPreview : '';
+      const hint = armed ? 'Cross pad to buy' : selected
+        ? (getPromptDevice() === 'touch' ? 'Tap Select' : `${promptLabel('dock')} Select`) : '';
+      if (node.lastText !== text || node.lastFit !== fit || node.lastHint !== hint) {
+        node.lastText = text;
+        node.lastFit = fit;
+        node.lastHint = hint;
+        node.el.textContent = [text, fit, hint].filter(Boolean).join('\n');
+        if (fit || hint) node.el.setAttribute?.('data-fit-preview', '1');
+        else node.el.removeAttribute?.('data-fit-preview');
+        node.w = 0;
+        node.h = 0;
+      }
       // The refusal flash is a second channel on the same beat the pad flashes: the sim stamps
       // refusedUntil in sim time, so the red reads exactly as long as the pad is lit denied.
       const denied = Number.isFinite(rec.refusedUntil) && rec.refusedUntil > now;
@@ -274,7 +294,7 @@ export function createFloatingText(ctx) {
         const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
         near = dx * dx + dz * dz <= reach * reach;
       }
-      if (denied) near = true;
+      if (denied || selected || armed) near = true;
       node.near = near;
       const far = !near && priced;
       if (node.far !== far || node.denied !== denied) {
@@ -284,6 +304,12 @@ export function createFloatingText(ctx) {
       const quiet = !near && !priced;
       const show = !quiet && Number.isFinite(s.x) && Number.isFinite(s.y)
         && (s.onScreen !== false || s.x !== 0 || s.y !== 0);
+      const termsVisible = selected && show && s.onScreen !== false;
+      if (node.termsVisible !== termsVisible) {
+        node.termsVisible = termsVisible;
+        if (termsVisible) node.el.setAttribute?.('data-floor-quote', String(e.id));
+        else node.el.removeAttribute?.('data-floor-quote');
+      }
       const nextDisplay = show ? 'block' : 'none';
       if (node.el.style.display !== nextDisplay) node.el.style.display = nextDisplay;
       if (show) {
@@ -332,6 +358,7 @@ export function createFloatingText(ctx) {
         node.seat.w = node.w;
         node.seat.h = node.h;
         padObstacles.push(node.seat);
+        if (!node.far && (phoneDeck ? fade === 1 : fade > 0)) padLabelRects.push(node.seat);
       }
       // Integer px like the Swarm kill-popups: subpixel projection noise used to mint a
       // new transform string (and a style mutation) every frame even when the chip held
@@ -352,13 +379,14 @@ export function createFloatingText(ctx) {
     n.label.textContent = '';
     n._sfHudTransform = '';
     n._sfOpacity = '';
+    n.stemGeometry = '';
   }
 
   function spawn(text, cls, wx, wz, targetId, opts) {
     opts = opts || {};
     // Damage numbers honor their toggle; control receipts (hit pips, counters) are feedback the
     // control itself owes the pilot and answer to their own keys.
-    if (!opts.controlReceipt && (!state.settings || state.settings.showDamageNumbers === false
+    if (!opts.controlReceipt && !opts.worldReceipt && (!state.settings || state.settings.showDamageNumbers === false
       || state.settings.gameplay?.damageNumbers === false)) return;
     if (opts.controlReceipt === 'pip' && state.settings?.gameplay?.hitPips === false) return;
     // G16-04: pip marks and control receipts are flat marks; every other word goes through the
@@ -371,8 +399,8 @@ export function createFloatingText(ctx) {
         const p = helpers.worldToScreen(_ftWorld, _ftScreen);
         if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) { sx = p.x; sy = p.y; }
       }
-      const adm = ledger.admit({ text, x: sx, y: sy, priority: floatPriority(cls),
-        mergeable: !opts.damage });
+      const adm = ledger.admit({ text, x: sx, y: sy, priority: floatPriority(cls, { earned: opts.worldReceipt }),
+        mergeable: !opts.damage && !opts.worldReceipt });
       if (adm.action === 'dropped') return;
       if (adm.action === 'merged') return adm.entry.node || undefined;
       entry = adm.entry;
@@ -392,18 +420,19 @@ export function createFloatingText(ctx) {
     n.entity = targetId != null ? state.entities.get(targetId) : null;
     n.damage = opts.damage || 0;
     n.damageClass = opts.damageClass || null;
+    n.worldReceipt = opts.worldReceipt === true;
     n.wx = wx; n.wz = wz;
     n.vy = -(opts.vy != null ? opts.vy : 48);      // px/s rise
     n.vx = (Math.random() - 0.5) * 26;
     n.oy = opts.oy || 0;                            // birth offset — a callout can open clear of the hit number
     // Control receipts are flat marks — the rise animation belongs to damage numbers.
-    n.el.className = 'sf-ft ' + cls;
+    n.el.className = 'sf-ft ' + cls + (n.worldReceipt ? ' sf-ft--world-receipt' : '');
     n.label.textContent = text;
     n.el.style.display = 'block';
-    n.el.style.opacity = '1';
+    n.el.style.opacity = n.worldReceipt ? '0' : '1';
     n.el.style.transform = 'translate3d(0,0,0) translate(-50%,-50%)';
     n._sfHudTransform = 'translate3d(0,0,0) translate(-50%,-50%)';
-    n._sfOpacity = '1';
+    n._sfOpacity = n.el.style.opacity;
     n.x = 0; n.y = 0;
     return n;
   }
@@ -525,7 +554,12 @@ export function createFloatingText(ctx) {
     if (!p || p.collectorId !== state.playerId) return;
     const spec = pickupFloatingTextSpec(p);
     if (!spec || !p.pos) return;
-    spawn(spec.text, spec.cls, p.pos.x, p.pos.z, null, { life: 1.2, vy: 38 });
+    if (!Number.isFinite(p.pos.x) || !Number.isFinite(p.pos.z)) return;
+    const worldReceipt = isAdventureFlight(state) && document.body?.dataset?.hudSkin === 'orrery'
+      && document.documentElement?.dataset?.sfMobileFlight !== '1';
+    spawn(spec.text, spec.cls, p.pos.x, p.pos.z, null, {
+      worldReceipt, life: worldReceipt ? 2.2 : 1.2, vy: 38,
+    });
   });
 
   // ---- faction rep changes ------------------------------------------------------------------
@@ -627,14 +661,16 @@ export function createFloatingText(ctx) {
       _ftWorld.x = wx; _ftWorld.z = wz;
       const s = helpers.worldToScreen(_ftWorld, _ftScreen);
       const t = n.age / n.life;
-      const rise = n.vy * n.age + n.oy;     // integrated rise (px), plus the birth offset
-      const drift = n.vx * n.age;
-      const sc = reduced ? 1 : popScale(n.age);
-      let px = s.x + drift, py = s.y + rise, seatFade = 1;
-      if (n.entry) { n.entry.x = px; n.entry.y = py; }
+      const rise = n.worldReceipt ? -45 : n.vy * n.age + n.oy;
+      const drift = n.worldReceipt ? 0 : n.vx * n.age;
+      const sc = n.worldReceipt || reduced ? 1 : popScale(n.age);
       // G16-04: a word never sits in the Swarm centre column or over a HUD corner panel — slide it to
       // the nearest clear seat, or dim it to 35% when there is none.
       if (!n.w && n.el.style.display !== 'none') { n.w = n.el.offsetWidth || 0; n.h = n.el.offsetHeight || 0; }
+      const side = n.worldReceipt && s.x + n.w + 28 > vw ? -1 : 1;
+      const across = n.worldReceipt ? side * (n.w / 2 + 22) : drift;
+      let px = s.x + across, py = s.y + rise, seatFade = 1;
+      if (n.entry) { n.entry.x = px; n.entry.y = py; }
       if (n.w > 0 && n.h > 0 && !/sf-ft--pip/.test(n.el.className)) {
         const seat = seatOutOfRects({ x: px - n.w / 2, y: py - n.h / 2, w: n.w, h: n.h }, avoid.get(), { w: vw, h: vh });
         px = seat.x + n.w / 2; py = seat.y + n.h / 2; seatFade = seat.fade;
@@ -644,6 +680,26 @@ export function createFloatingText(ctx) {
         n._sfHudTransform = nextTransform;
         n.el.style.transform = nextTransform;
       }
+      if (n.worldReceipt && n.w > 0 && n.h > 0 && s.onScreen) {
+        const left = px - n.w / 2;
+        const top = py - n.h / 2;
+        const x = Math.max(3, Math.min(n.w - 3, s.x - left));
+        const y = Math.max(3, Math.min(n.h - 3, s.y - top));
+        const dx = s.x - left - x;
+        const dy = s.y - top - y;
+        const length = Math.hypot(dx, dy);
+        const angle = Math.atan2(dy, dx).toFixed(3);
+        const visible = length <= 120 && seatFade === 1;
+        const geometry = `${Math.round(x)}/${Math.round(y)}/${Math.round(length)}/${angle}/${visible}`;
+        if (n.stemGeometry !== geometry) {
+          n.stemGeometry = geometry;
+          n.mark.style.setProperty('--stem-x', `${Math.round(x)}px`);
+          n.mark.style.setProperty('--stem-y', `${Math.round(y)}px`);
+          n.mark.style.setProperty('--stem-length', `${Math.round(length)}px`);
+          n.mark.style.setProperty('--stem-angle', `${angle}rad`);
+          n.mark.style.setProperty('--stem-visibility', visible ? 'visible' : 'hidden');
+        }
+      }
       // Edge-overshoot fade (was a binary onScreen gate): a float straddling the frustum edge
       // strobed between its fade value and 0 every frame as onScreen flipped. It now dims over
       // ~12% of the viewport past each edge. A failed projection — non-finite coords or the
@@ -651,7 +707,12 @@ export function createFloatingText(ctx) {
       let nextOpacity = '0';
       const ex = s.x + drift;
       const ey = s.y + rise;
-      if (Number.isFinite(ex) && Number.isFinite(ey)
+      if (n.worldReceipt) {
+        if (s.onScreen && Number.isFinite(s.x) && Number.isFinite(s.y) && seatFade === 1) {
+          const enter = reduced ? 1 : Math.min(1, n.age / 0.12);
+          nextOpacity = String(enter * Math.min(1, (n.life - n.age) / 0.32));
+        }
+      } else if (Number.isFinite(ex) && Number.isFinite(ey)
         && (s.onScreen !== false || s.x !== 0 || s.y !== 0)) {
         const overX = Math.max(0, Math.abs(ex - vw * 0.5) - vw * 0.5) / (vw * 0.12);
         const overY = Math.max(0, Math.abs(ey - vh * 0.5) - vh * 0.5) / (vh * 0.12);
@@ -667,6 +728,7 @@ export function createFloatingText(ctx) {
 
   return {
     update,
+    getFloorPadLabelRects: () => padLabelRects,
     _activeCount() { return activeCount; },
     destroy() {
       for (const unsubscribe of unsubscribers.splice(0)) {
@@ -761,6 +823,7 @@ function injectStyle() {
     background:rgb(8 10 14 / .78); border:1px solid rgb(242 185 80 / .42);
     box-shadow:0 0 0 1px rgb(0 0 0 / .45), 0 2px 8px rgb(0 0 0 / .5);
     text-shadow:var(--dp-text-legible, 0 1px 0 rgb(0 0 0 / .5)); }
+  .sf-fp[data-fit-preview] { text-align:center; white-space:pre; }
   /* A priced till out of reach: a small lit dot, no words. */
   .sf-fp--far { width:8px; height:8px; padding:0; border-radius:50%; font-size:0; line-height:0;
     overflow:hidden; background:var(--dp-lamp, #f2b950); border-color:rgb(0 0 0 / .55); opacity:.85; }

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { appendReaderDrain, preparationSnapshot, awaitPreparationChoice, launchPreparationChoice } from '../scripts/player-truth/run.mjs';
+import { fitFreeStartingGun } from '../scripts/player-truth/routes.mjs';
 
 async function withPreparation({ buttons, run = { kind: 'survival', ruleset: 'swarm', phase: 'draft', wave: 0 } }, fn) {
   const oldWindow = globalThis.window; const oldDocument = globalThis.document;
@@ -74,6 +75,61 @@ test('a hidden or held public preparation choice does not advance the actor', as
     { textContent: 'Keep current loadout Esc', offsetParent: null, disabled: false },
     { textContent: 'Launch round 1 Esc', offsetParent: {}, disabled: true },
   ] }, () => assert.equal(preparationSnapshot({ ruleset: 'swarm' }), null));
+});
+
+test('the ordinary free shelf audits a public fit against zero charge and the exact fitted instance', async () => {
+  const savedWindow = globalThis.window;
+  try {
+    assert.equal(await fitFreeStartingGun({ getByRole() { return { isVisible: async () => false }; } }), null);
+    for (const defect of [null, 'charge', 'wrong instance']) {
+      const defId = 'wpn_autocannon_s';
+      const start = { credits: 0, modifiers: [] };
+      const ship = { fittings: [null], fittedInstances: {} };
+      const clicks = [];
+      let receipt = null;
+      globalThis.window = { SF: { state: { run: start, player: { ownedShips: [ship], activeShipIndex: 0 } },
+        registry: new Map([['survivalDraft', { preparationReceipt: () => receipt }]]) } };
+      const price = { text: 'Free' };
+      const page = {
+        getByRole(role, { name, exact }) {
+          if (role === 'heading') {
+            assert.equal(name, 'Starting guns');
+            assert.equal(exact, true);
+            return { isVisible: async () => true };
+          }
+          assert.equal(role, 'button');
+          assert.match('Fit free: Autocannon S', name);
+          return { async click() {
+            assert.deepEqual(clicks, ['inspect']);
+            clicks.push('fit');
+            receipt = { offerId: 'sidearm', outcome: 'accepted', name: 'Autocannon S', defId, slotIndex: 0,
+              price: defect === 'charge' ? 18 : 0, charged: defect === 'charge' };
+            ship.fittings[0] = defId;
+            ship.fittedInstances[0] = { defId, instanceId: 'mi_0_1' };
+            start.modifiers.push({ startingEquipment: true, offerId: 'sidearm', defId, slotIndex: 0,
+              instanceId: defect === 'wrong instance' ? 'mi_0_2' : 'mi_0_1' });
+          } };
+        },
+        locator(selector, opts) {
+          if (selector === '.sf-cru-price') { assert.match(price.text, opts.hasText); return price; }
+          assert.match(selector, /:visible:not\(\.is-unavail\):not\(\.is-fitted\)$/);
+          return { filter({ has }) { assert.equal(has, price); return { first: () => ({
+            getAttribute: async name => { assert.equal(name, 'data-offer-id'); return 'sidearm'; },
+            click: async () => { clicks.push('inspect'); },
+          }) }; } };
+        },
+        evaluate: async fn => fn(),
+        async waitForFunction(fn, arg) {
+          const accepted = fn(arg);
+          if (!accepted) throw new Error('no matching free fit receipt');
+          return { jsonValue: async () => accepted };
+        },
+      };
+      if (defect) await assert.rejects(fitFreeStartingGun(page), /no matching free fit receipt/);
+      else assert.deepEqual(await fitFreeStartingGun(page), { ...receipt, instanceId: 'mi_0_1', credits: 0 });
+      assert.deepEqual(clicks, ['inspect', 'fit']);
+    }
+  } finally { globalThis.window = savedWindow; }
 });
 
 test('long paused preparation drains stay bounded while all actual opening samples and input receipts survive', () => {

@@ -33,8 +33,8 @@ export const SWARM_COURSE = Object.freeze([
   // PIT-01 — the lane itself is the reveal: no dealt card or wager rides its debut round.
   courseRound(4, 'Mind the Gap', 'the lane runs for the first time, with Wasps on both sides of it', null,
     'The lane is running. Let it carry them.'),
-  courseRound(5, 'Iron Maw', 'Boss. A mouth that eats what you throw — until you throw a Detonator', null,
-    'It eats what you throw. Almost everything.'),
+  courseRound(5, 'Iron Maw', 'After the heavy broadside, the Maw is easier to move.', null,
+    'Throw just after the broadside.'),
   courseRound(6, 'The Charge', 'Bruisers. Every wall has a scorch mark by the end', null,
     'Bruisers charge straight. Be somewhere else.'),
   // plate_drift is the Foundry's own cover card: cover rocks appear and the sag walks them.

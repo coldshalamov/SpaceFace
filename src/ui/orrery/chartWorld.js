@@ -330,12 +330,12 @@ function paintTerritory(c, w, h, charted, colours, frontOf = null, cellPx = TERR
           if (v > c1) { c2 = c1; o2 = o1; c1 = v; o1 = q; } else if (v > c2) { c2 = v; o2 = q; }
         }
         if (c1 <= 0.004) continue;
-        let aFill = 0.28 * c1;
+        let aFill = 0.16 * c1;
         let r = ownerTint[o1][0]; let gg = ownerTint[o1][1]; let b = ownerTint[o1][2];
         if (o2 >= 0 && c2 > 0.02) {
           // the border stands where the two pulls are equal
           const gap = (c1 - c2) / 0.05;
-          let aB = Math.min(0.55, Math.exp(-gap * gap) * 0.7 * smooth(0.16, 0.62, c2 * 1.25));
+          let aB = Math.min(0.29, Math.exp(-gap * gap) * 0.44 * smooth(0.16, 0.62, c2 * 1.25));
           if (aB > 0.002) {
             const bt = ownerTint[o2];
             // a front is drawn in its own colour: red along a war, pale along a tension
@@ -471,8 +471,8 @@ export function planChartGround(w, h, {
       }
       const size = Math.max(15, Math.min(24, w * 0.0125));
       c.save();
-      c.font = chartFont(800, size, { stretch: 'expanded' });
-      setTracking(c, 0.62, size);
+      c.font = chartFont(680, size, { stretch: 'normal' });
+      setTracking(c, 0.23, size);
       c.textAlign = 'center';
       c.textBaseline = 'middle';
       const taken = [];
@@ -486,13 +486,10 @@ export function planChartGround(w, h, {
         if (!seat) continue;
         taken.push({ x: seat.x, y: seat.y, w: textW });
         const col = colours.get(ownerId);
-        // the glow is geometry (two wide faint strokes under the fill), not a blur
         c.lineJoin = 'round';
-        c.strokeStyle = rgba(col.tint, 0.1); c.lineWidth = 12;
+        c.strokeStyle = 'rgba(8,12,16,.7)'; c.lineWidth = 2;
         c.strokeText(label, seat.x, seat.y);
-        c.strokeStyle = rgba(col.tint, 0.16); c.lineWidth = 6;
-        c.strokeText(label, seat.x, seat.y);
-        c.fillStyle = rgba(col.ink, 0.66);
+        c.fillStyle = rgba(mixRgb(col.ink, BONE, 0.5), 0.82);
         c.fillText(label, seat.x, seat.y);
       }
       setTracking(c, 0, size);
@@ -674,11 +671,9 @@ export function drawDominionLane(g, a, b, colours, { war = false } = {}) {
   };
   g.save();
   g.lineCap = 'round';
-  g.strokeStyle = grad(0.075); g.lineWidth = 26;
+  g.strokeStyle = 'rgba(8,12,16,.76)'; g.lineWidth = 3.4;
   g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
-  g.strokeStyle = grad(0.3); g.lineWidth = 9;
-  g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
-  g.strokeStyle = grad(0.78); g.lineWidth = 1.9;
+  g.strokeStyle = grad(war ? 0.77 : 0.58); g.lineWidth = 1.3;
   g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke();
   g.restore();
 }

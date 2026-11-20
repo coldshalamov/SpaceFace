@@ -435,7 +435,7 @@ export function buildFirstTradeOffer(seed = 1, options = {}) {
       outcome: template.receipt.outcome,
       requiredFields: [...template.receipt.requiredFields],
     },
-    teach: 'Accept → hold sealed cargo → dock Ceres → collect receipt and payment.',
+    teach: 'Accept → keep the sealed cargo aboard → dock at the marked destination → collect payment.',
     storyTag: null,
     expiresAtEpoch: Number.isFinite(Number(options.expiresAtEpoch))
       ? Math.floor(Number(options.expiresAtEpoch))

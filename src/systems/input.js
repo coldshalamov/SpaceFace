@@ -62,11 +62,11 @@ import { interactionProfileForEntity } from '../data/entityInteractionProfiles.j
 import { resolveWorldPresentationEntity } from '../world/presentationSources.js';
 import { resolveSteeringView } from './racingSteer.js';
 import { noteSwarmPilotAction, swarmPilotHasActed, swarmPilotIsActing } from './swarmSafety.js';
-import { isSwarmControls } from '../data/swarmControls.js';
+import { FLIGHT_CORE_KEYS, isSwarmControls } from '../data/swarmControls.js';
 export { isThrowArmPayload } from './masslineThrow.js';
 import { contextActionAllowed, contextStockBindings } from '../data/inputContexts.js';
 import {
-  POWER_VERBS, bombUsesCharge, powerVerbFor, powersFireOnPress, resolveRigTarget, savedCodesForPower, setHeldPower, swarmBombSelection,
+  POWER_VERBS, bombUsesCharge, powerVerbFor, powerUsesReleasePreview, resolveRigTarget, savedCodesForPower, setHeldPower, swarmBombSelection,
 } from './powerVerbs.js';
 
 // Helm-assist steering: turnIntent saturates at ±1 beyond this much nose-to-cursor error (rad),
@@ -272,12 +272,12 @@ function stepTravelLatch(host, state, inp, dt, lineOwnsAxis = false) {
 // modals (`modalInputActive`) — the same slot-claim contract the rail was designed around.
 const VERB_BINDINGS = {
   // G18-02 one set of keys: six inputs are the taught set — WASD move, mouse aim, LMB fire,
-  // RMB the Line, Space boost, 1–5 powers (E interact, M map stay UI-owned). EVERY other verb
+  // F/RMB for the Line, Shift to boost, 1–5 for powers (E interact, M map stay UI-owned). Other verbs
   // ships unbound by default and lives on the one context wheel held on Q (hold-Y on a pad);
   // each is still rebindable, so a player who wants a dedicated key can put one back.
   contextWheel:   ['KeyQ'],   // hold: the overflow wheel — tap slices are edges, level slices latch
   siteBeam:       [],   // level: contextual beam for an explicitly selected World Site proxy
-  tether:         [],   // RMB is the Line in every door; a key seat stays rebindable
+  ...FLIGHT_CORE_KEYS,
   // The five powers (edges). PULL deploys the Well; SHOVE the Repulsor plus a detonation of every
   // armed charge and drift bomb; PIN the anchor Mass Seed; RIG the cone or, in a planet band, the
   // skim scoop. BOMB is per scheme (the scheme tables below) because it inherits the old
@@ -323,7 +323,6 @@ const DEFAULT_BINDINGS = {   // CLASSIC scheme (1.x) + the new verbs
   // reachable as wheel latch slices and rebindable like every other action.
   strafeLeft:  [],
   strafeRight: [],
-  boost:    ['Space'],
   fire:     [],                 // LMB fires
   brake:    [],                 // full stop is a wheel latch; S/Down commands governed reverse thrust
   autoFire: [],
@@ -344,7 +343,6 @@ const HELM_BINDINGS = {      // HELM ASSIST: mouse owns the nose, so A/D stay st
   yawLeft:  [],
   strafeLeft:  ['KeyA', 'ArrowLeft'],
   strafeRight: ['KeyD', 'ArrowRight'],
-  boost:    ['Space'],
   fire:     [],                // LMB only
   brake:    [],                // full stop is a wheel latch; S/Down commands governed reverse thrust
   autoFire: [],
@@ -363,7 +361,6 @@ export const PILOT_BINDINGS = {     // PILOT (default): keyboard flies, mouse fi
   // G18-02: Q is the context wheel and E is interact — strafe moves to wheel latch slices.
   strafeLeft:  [],
   strafeRight: [],
-  boost:    ['Space'],
   fire:     [],                      // LMB fires — the mouse is a weapon, not a rudder
   brake:    [],                      // full stop is a wheel latch; S/Down commands governed reverse thrust
   autoFire: [],
@@ -438,6 +435,11 @@ function binding(state, action) {
   const list = custom
     || (contextStockBindings(state)?.[power] || undefined)
     || scheme[power] || DEFAULT_BINDINGS[power];
+  // A returning player's explicit use of a restored default key takes precedence over stock.
+  if (!custom && cfg && (power === 'boost' || power === 'tether')) {
+    return list.filter(code => !Object.entries(cfg).some(([owner, codes]) =>
+      owner !== power && (Array.isArray(codes) ? codes.includes(code) : codes === code)));
+  }
   return Array.isArray(list) ? list : (list ? [list] : []);
 }
 
@@ -541,6 +543,7 @@ export function resolveActionLabel(state, action, { sep = '/', arrows = 'glyph',
     if (action === 'tether') return MOUSE_ACTION_LABELS.tether;
     return empty;
   }
+  if (codes.length === 2 && codes.includes('ShiftLeft') && codes.includes('ShiftRight')) return 'Shift';
   // Two codes that print the same glyph (Backslash / IntlBackslash) are one label, not "\/\\".
   return Array.from(new Set(codes.map((c) => formatBindingCode(c, { arrows })).filter(Boolean))).join(sep);
 }
@@ -595,6 +598,19 @@ function clearActionCodes(state, keys, action, exceptCode) {
   for (const code of binding(state, action)) {
     if (code !== exceptCode) keys[code] = false;
   }
+}
+
+function legacySteeringArrowHeld(state, keys, code, yawAction, strafeAction) {
+  if (!keys[code]) return false;
+  const custom = state.settings?.controls?.bindings;
+  // These schemes share the same directional fallback at different throttle settings. An
+  // explicit remap to a different action takes over that physical key across scheme changes.
+  for (const action in custom) {
+    if (!Object.hasOwn(custom, action) || action === yawAction || action === strafeAction) continue;
+    const codes = custom[action];
+    if (Array.isArray(codes) ? codes.includes(code) : codes === code) return false;
+  }
+  return true;
 }
 
 /**
@@ -707,6 +723,9 @@ function resetHoldToggleLatches(latches, edges) {
   if (edges) for (const verb of HOLD_TO_TOGGLE_ACTIONS) edges[verb] = false;
 }
 const KEY_EDGE_CAP = 64;
+// Touch snapshots can include a whole tap between fixed steps. Preserve discrete action presses
+// in the same bounded queue as keyboard edges; their final held levels alone cannot carry a tap.
+const SAMPLED_TOUCH_PRESS_ACTIONS = new Set([...POWER_VERBS, 'deployShieldPylon', 'scanPulse']);
 
 function flightEdgeQueue(host) {
   return host._keyEdgeQueue || (host._keyEdgeQueue = []);
@@ -750,12 +769,14 @@ export function applyFlightKeyEvent(host, event = {}) {
   if (!SAMPLED_EDGE_ACTIONS.has(action)) return true;
   if (!pressed && action !== 'tether') return true;
   const queue = flightEdgeQueue(host);
-  queue.push({ code, pressed, action });
+  const edge = { code, pressed, action };
+  if (pressed && action === 'tether' && event.tetherPreview) edge.tetherPreview = event.tetherPreview;
+  queue.push(edge);
   if (queue.length > KEY_EDGE_CAP) queue.splice(0, queue.length - KEY_EDGE_CAP);
   return true;
 }
 
-// Touch pylon presses share the bounded sampled queue with keys. A worker can drain
+// Touch power and pylon presses share the bounded sampled queue with keys. A worker can drain
 // both the tap and its neutral frame before stepping; the final hold alone loses that tap.
 function discardSampledTouchPresses(host, action = null) {
   const queue = host._keyEdgeQueue;
@@ -1005,23 +1026,53 @@ function stickWorldDirection(host, state, player, axes) {
 // path (descriptors shipped to the sim's realm via ingestLaneDomEvent). Field
 // names are the wire contract. `uiCommand`/`offCanvas`/`neutralize` are computed
 // on the realm that owns the DOM — the sim realm replays them verbatim.
-// Flight DOM descriptors shipped to the simulation lane (keydown and mousedown).
 export function flightKeyDownDescriptor(state, e) {
-  return {
+  const d = {
     type: 'keydown',
     code: eventCode(e),
     pressed: true,
     repeat: e.repeat === true,
     blocked: modalInputActive() || isTextEntryTarget(e.target) || isUiCommandTarget(e.target),
   };
+  const preview = state?.masslineAcquisition;
+  const selected = preview?.selected;
+  // A keyboard press commits the same named body the presentation can show. Keep
+  // the identity on that edge through any later worker steps or cursor projections.
+  if (!d.blocked && !d.repeat && !e.ctrlKey && !state?.player?.tether?.active
+      && selected?.targetId != null && selected.occupantGeneration != null
+      && Number.isFinite(preview.validUntil) && actionForCode(state, d.code) === 'tether') {
+    d.tetherPreview = {
+      id: preview.id,
+      validUntil: preview.validUntil,
+      selected: {
+        targetId: selected.targetId,
+        occupantGeneration: selected.occupantGeneration,
+        status: selected.status,
+        reason: selected.reason,
+        context: selected.context,
+      },
+    };
+  }
+  return d;
+}
+
+// The presenting picker and the flight adapter share this exact DOM press.
+// Nothing is left in state for a later click or a resumed save to inherit.
+const servicePicksByPress = new WeakMap();
+
+export function recordMouseDownServicePick(event, targetId, occupantGeneration) {
+  if (!Number.isSafeInteger(targetId) || !Number.isSafeInteger(occupantGeneration)) return;
+  servicePicksByPress.set(event, { targetId, occupantGeneration });
 }
 
 export function flightMouseDownDescriptor(event, canvas, pointer) {
+  const servicePick = servicePicksByPress.get(event);
   return {
     ...pointer,
     type: 'mousedown',
     offCanvas: !!(canvas && event.target !== canvas),
     button: event.button,
+    ...(servicePick ? { servicePick } : {}),
   };
 }
 
@@ -1031,6 +1082,7 @@ export function domKeyEvent(host, d = {}) {
     pressed: d.pressed === true,
     repeat: d.repeat === true,
     blocked: d.blocked === true,
+    tetherPreview: d.tetherPreview,
   });
 }
 
@@ -1087,8 +1139,11 @@ export function domMouseDownEvent(host, d = {}) {
   if (d.button === 0) host._m0 = true;
   if (d.button === 1) host._m1 = true;
   if (d.button === 2 && host._m2 !== true) {
-    host._m2 = true;
     const line = host.state?.player?.tether;
+    // A captured service pick is selection-only while idle. If that pictured life
+    // retired on the way to the worker, this press still cannot latch a different body.
+    if (d.servicePick && !line?.active && !host.state?.player?.remoteMassline?.active) return;
+    host._m2 = true;
     host._throwLineAtPress = line?.active && line.targetId != null
       ? { targetId: line.targetId, attachmentId: line.attachmentId } : null;
     host._pendingThrowLineAtPress = host._throwLineAtPress;
@@ -1157,7 +1212,7 @@ export const input = {
     // G18-02 context-wheel latches: slice choices that read as "held" verbs until chosen again or
     // the flight context drops them (dock, modal, death — same contract as hold-to-toggle).
     this._wheelLatches = Object.create(null);
-    this._touchPylonQuarantined = false;
+    this._touchPressQuarantine = Object.create(null);
     this._masslineGrammar = createMasslineInputGrammar();
     // F4/G9: device arbitration uses deterministic (tick, sequence) activity stamps shared
     // across keyboard/gamepad/touch — never performance.now()/Date.now(). Sequence reflects
@@ -1274,21 +1329,26 @@ export const input = {
         // its resolved frame lands here — the lane touch reducer applies axes,
         // actions and cancelled-role resets into the sim-owned touch surface.
         if (this.touch && typeof this.touch.applyLaneFrame === 'function') {
-          const wasHeld = !!this.touch.actions?.deployShieldPylon?.held;
+          const wasHeld = Object.create(null);
+          for (const action of SAMPLED_TOUCH_PRESS_ACTIONS) wasHeld[action] = !!this.touch.actions?.[action]?.held;
           const tetherWasHeld = !!this.touch.actions?.tether?.held;
           this.touch.applyLaneFrame(d.frame, this);
-          const held = !!this.touch.actions?.deployShieldPylon?.held;
           const tetherHeld = !!this.touch.actions?.tether?.held;
-          if (d.frame?.active === false) {
-            discardSampledTouchPresses(this);
-            this._touchPylonQuarantined = false;
-          } else if (!held) {
-            this._touchPylonQuarantined = false;
-          } else if (!wasHeld && !this._touchPylonQuarantined) {
-            const queue = flightEdgeQueue(this);
-            queue.push({ action: 'deployShieldPylon', pressed: true, source: 'touch',
-              sector: this.state.world?.currentSectorId });
-            if (queue.length > KEY_EDGE_CAP) queue.splice(0, queue.length - KEY_EDGE_CAP);
+          const quarantine = this._touchPressQuarantine || (this._touchPressQuarantine = Object.create(null));
+          if (d.frame?.active === false) discardSampledTouchPresses(this);
+          for (const action of SAMPLED_TOUCH_PRESS_ACTIONS) {
+            const held = !!this.touch.actions?.[action]?.held;
+            if (d.frame?.cancelledRoles?.includes?.(action)) {
+              discardSampledTouchPresses(this, action);
+              quarantine[action] = held;
+            } else if (d.frame?.active === false || !held) {
+              quarantine[action] = false;
+            } else if (!wasHeld[action] && !quarantine[action]) {
+              const queue = flightEdgeQueue(this);
+              queue.push({ action, pressed: true, source: 'touch',
+                sector: this.state.world?.currentSectorId });
+              if (queue.length > KEY_EDGE_CAP) queue.splice(0, queue.length - KEY_EDGE_CAP);
+            }
           }
           if (d.frame?.active === false || d.frame?.cancelledRoles?.includes?.('tether')) {
             discardSampledTouchPresses(this, 'tether');
@@ -1339,17 +1399,7 @@ export const input = {
     // Re-evaluate on resize (phone rotate / tablet dock) unless the player set an explicit choice.
     listen(windowTarget, 'resize', () => this.touch.autoDetect());
 
-    listen(windowTarget, 'keydown', (e) => {
-      domKeyEvent(this, {
-        type: 'keydown',
-        code: eventCode(e),
-        pressed: true,
-        repeat: e.repeat === true,
-        blocked: modalInputActive()
-          || isTextEntryTarget(e.target)
-          || isUiCommandTarget(e.target),
-      });
-    });
+    listen(windowTarget, 'keydown', (e) => domKeyEvent(this, flightKeyDownDescriptor(this.state, e)));
     // Physical releases must reach the owner even when a modal consumes the event below
     // window. Otherwise frozen menu ticks preserve a held thrust/fire command on resume.
     listen(windowTarget, 'keyup', (e) => {
@@ -1372,11 +1422,7 @@ export const input = {
     listen(windowTarget, 'mousemove', handlePointerMove, { capture: true });
     listen(windowTarget, 'pointermove', handlePointerMove, { capture: true });
     listen(pointerSurface, 'mousedown', (e) => {
-      const d = pointerDescriptor(e);
-      d.type = 'mousedown';
-      d.offCanvas = !!(this._canvas && e.target !== this._canvas);
-      d.button = e.button;
-      domMouseDownEvent(this, d);
+      domMouseDownEvent(this, flightMouseDownDescriptor(e, this._canvas, pointerDescriptor(e)));
       if (e.button === 1 && typeof e.preventDefault === 'function') e.preventDefault(); // no autoscroll cursor
     });
     listen(windowTarget, 'mouseup', (e) => domMouseUpEvent(this, { type: 'mouseup', button: e.button }), { capture: true });
@@ -1545,7 +1591,8 @@ export const input = {
     discardSampledTouchPresses(this);
     this._touchThrow = null;
     // Only a real neutral touch descriptor re-arms the worker deck after interruption.
-    this._touchPylonQuarantined ||= !!this.touch?.actions?.deployShieldPylon?.held;
+    const touchQuarantine = this._touchPressQuarantine || (this._touchPressQuarantine = Object.create(null));
+    for (const action of SAMPLED_TOUCH_PRESS_ACTIONS) touchQuarantine[action] ||= !!this.touch?.actions?.[action]?.held;
     // A power grip is a flight context: focus loss or a hidden page cancels it without firing.
     this._cancelPowerHolds(this.state);
     if (this._swallowedFlightKeys) this._swallowedFlightKeys = Object.create(null);
@@ -1654,12 +1701,11 @@ export const input = {
     return !quarantine || quarantine[action] !== true;
   },
 
-  // Row 493 — which powers fire this update (see the call site). Grips live here, input-owned and
+  // Resolve each power's interaction. Aimed grips live here, input-owned and
   // never on state; the preview reads the newest live grip through powerVerbs.heldPower(state).
   _resolvePowerFire(state, gp, presses) {
     const fire = this._powerFire || (this._powerFire = { pull: false, shove: false, pin: false, bomb: false, rig: false });
     const holds = this._powerHolds || (this._powerHolds = Object.create(null));
-    const instant = powersFireOnPress(state);
     // OVH-01c2 conjurer_deep_cast — the measured hold of the grip a release fires, in integer
     // sim ticks. It rides the recorded command beside the action it deepens (see the act writes
     // below), never a presentation seam, so replays and the worker lane read the same depth.
@@ -1683,7 +1729,7 @@ export const input = {
         delete holds[power];
         hold = null;
       }
-      if (instant) { fire[power] = press; delete holds[power]; continue; }
+      if (!powerUsesReleasePreview(state, power)) { fire[power] = press; delete holds[power]; continue; }
       // The sampled queue (applyFlightKeyEvent) keeps presses, not releases, and a catch-up runs
       // several updates against the final key state. So a key press that lands on an open grip,
       // or that has another press of the same power still queued behind it, was let go before
@@ -1809,12 +1855,18 @@ export const input = {
       this._lastKbmSeq = stamp.seq;
       this._kbmActivityPending = false;
     }
-    const gp = this.gamepad;
-    if (gp) {
-      gp.tick(dt, state, this);
-      if (gp._laneFrame) state.input.gamepadHaptics = gp.haptics;
-      this._refreshGamepadLifecycleQuarantine(gp);
+    const sampledGamepad = this.gamepad;
+    const cargoCapturesPad = state.ui?.cargoPanelOpen === true || (sampledGamepad?._laneFrame?.captureMode === true
+      && !shouldNeutralizeFlightInput(state, modalInputActive()));
+    if (sampledGamepad) {
+      sampledGamepad.tick(dt, state, this);
+      if (sampledGamepad._laneFrame) state.input.gamepadHaptics = sampledGamepad.haptics;
+      if (cargoCapturesPad) {
+        const quarantine = this._gamepadLifecycleQuarantine || (this._gamepadLifecycleQuarantine = freshGamepadLifecycleQuarantine());
+        for (const action of GAMEPAD_LIFECYCLE_QUARANTINE_ACTIONS) quarantine[action] = true;
+      } else this._refreshGamepadLifecycleQuarantine(sampledGamepad);
     }
+    const gp = cargoCapturesPad ? null : sampledGamepad;
     const tp = this.touch;
     if (tp) tp.tick(dt, state, this);
 
@@ -1853,6 +1905,7 @@ export const input = {
       deployWellHoldTicks: 0, deployRepulsorHoldTicks: 0, deployMassSeedHoldTicks: 0,
       chargeThrowHoldTicks: 0, swarmBombThrowHoldTicks: 0, dropBombHoldTicks: 0,
     });
+    acts.tetherPreview = null;
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
     const touchThrow = this._touchThrow;
     this._touchThrow = null;
@@ -1983,8 +2036,8 @@ export const input = {
       kbdMoveX = pilotProjection.moveX;
       kbdTurn = pilotProjection.turnIntent;
     } else {
-      const arrowLeftHeld = !!this._keys.ArrowLeft;
-      const arrowRightHeld = !!this._keys.ArrowRight;
+      const arrowLeftHeld = legacySteeringArrowHeld(state, this._keys, 'ArrowLeft', 'yawLeft', 'strafeLeft');
+      const arrowRightHeld = legacySteeringArrowHeld(state, this._keys, 'ArrowRight', 'yawRight', 'strafeRight');
       const arrowYaw = !up && (arrowLeftHeld || arrowRightHeld);
       const arrowStrafe = up;
       const right = helm
@@ -2196,7 +2249,7 @@ export const input = {
     this._pendingThrowLineAtPress = null;
     this._pendingMouseLinePress = false;
     if (sampledMouseTap && throwLine) this._sampledMouseCutLine = throwLine;
-    const throwInput = massline2Flag('throw') && currentMouseLine && isThrowArmPayload(state);
+    const throwInput = currentMouseLine && canAimAttachedThrow(state);
     const throwArmHeld = mouseHeld && throwInput;
     if (throwInput && !mouseHeld) acts.throwTap = true;
     inp.fireGroup = (mineHeld && !throwInput) ? 2 : (inp.fire ? 1 : null);
@@ -2293,9 +2346,9 @@ export const input = {
     const edges = this._edgePrev || (this._edgePrev = {});
     const edge = (action) => {
       const sampled = takeSampledPress(this, state, action);
-      // Worker touch pylon edges were captured at descriptor ingest. Keep its final
+      // Worker touch tap edges were captured at descriptor ingest. Keep their final
       // raw hold truthful without deriving another press (or replaying one after blur).
-      const held = action === 'deployShieldPylon' && typeof tp?.applyLaneFrame === 'function'
+      const held = SAMPLED_TOUCH_PRESS_ACTIONS.has(action) && typeof tp?.applyLaneFrame === 'function'
         ? input._held.call(this, state, action) : this._held(state, action);
       const was = !!edges[action];
       edges[action] = held;
@@ -2305,8 +2358,7 @@ export const input = {
     const tetherEdge = takeOldestTetherEdge(this, state);
     // One alias releasing (F or 3) must not drop a second held seat while it is still down.
     // The edge's own code is excluded, so a same-key re-press still counts as a release.
-    // G18-02: the Line is RMB in every door — the mouse button holds/releases it through the
-    // same grammar a rebound key or the pad trigger uses.
+    // The right mouse button, tether key and pad trigger share the same hold/release grammar.
     const tetherHeld = mouseLineHeld || (tetherEdge
       ? (tetherEdge.pressed || (tetherEdge.source === 'touch'
         ? input._held.call(this, state, 'tether')
@@ -2337,7 +2389,8 @@ export const input = {
         pump: inp.boost,
         source: tetherHeld ? (tetherEdge?.source || 'keyboard')
           : (gpMasslineHeld ? 'gamepad' : (masslineHeld ? 'latch' : null)),
-        silentRelease: !!(gp && gp.deviceLostThisFrame) && !masslineHeld,
+        silentRelease: !masslineHeld && (!!gp?.deviceLostThisFrame
+          || (cargoCapturesPad && masslineGrammar.command.source === 'gamepad')),
         pressS: this._m2PressS,
       });
     if (!mouseLineHeld) this._m2PressS = null;
@@ -2355,6 +2408,7 @@ export const input = {
     acts.tetherFire = masslineCommand.latch;
     acts.tetherCut = masslineCommand.cut;
     inp.tetherMode = masslineCommand.latch && nearestTetherMode ? 'nearest' : null;
+    if (masslineCommand.latch && !nearestTetherMode) acts.tetherPreview = tetherEdge?.tetherPreview || null;
     // FB-003: every verb below also listens on its pad binding (stock chords or a player remap)
     // through the same quarantine gate the stock pad verbs already used. `_padEdge`/`_padHeld`
     // read gp.actions.<name>, which the chord layer resolves before this merge runs.
@@ -2381,11 +2435,11 @@ export const input = {
     acts.pin = { held: this._held(state, 'pin') || this._padHeld(gp, 'pin'), pressed: pinEdge };
     acts.bomb = { held: this._held(state, 'bomb') || this._padHeld(gp, 'bomb'), pressed: bombEdge };
     acts.rig = { held: this._held(state, 'rig') || this._padHeld(gp, 'rig'), pressed: rigEdge };
-    // Row 493 — hold to preview, release to use. A press grips the power (the preview draws what it
-    // will move); letting go fires it, and a whole tap between two updates fires at once. A screen,
-    // focus loss, a sector change or a fenced pad cancels the grip without firing. Settings →
-    // Gameplay "Powers: use on press" restores fire-on-press. Bomb's charge-or-bomb choice and
-    // Rig's cone-or-scoop target are read at the moment the power fires.
+    // Pull, Pin and Bomb can hold to preview then release to use, or use on press per the saved
+    // aiming preference. Shove is a reaction pulse; Rig toggles a persistent tool. Both answer
+    // the press immediately, with no use on release and no repeat while held. A screen, focus
+    // loss, sector change or fenced pad cancels aimed grips without firing. Bomb's charge-or-bomb
+    // choice and Rig's cone-or-scoop target are read at the moment the power fires.
     const fire = this._resolvePowerFire(state, gp, { pull: pullEdge, shove: shoveEdge, pin: pinEdge, bomb: bombEdge, rig: rigEdge });
     const bombThrowsCharge = fire.bomb && bombUsesCharge(state);
     acts.chargeThrow = bombThrowsCharge;
@@ -2436,7 +2490,7 @@ export const input = {
     if (touchThrow && tether?.active && touchThrow.targetId === tether.targetId
       && touchThrow.attachmentId === tether.attachmentId
       && touchThrow.sector === state.world?.currentSectorId
-      && massline2Flag('throw') && isThrowArmPayload(state)) {
+      && canAimAttachedThrow(state)) {
       acts.touchThrow = touchThrow;
     }
     // The Gyre Snare is a LEVEL verb like bulletTime/massline: hold to run the beam and hold the
@@ -2578,12 +2632,17 @@ function pointerBeamLane(state, entity) {
     && !(entity.data && entity.data.opticMaterial));
 }
 
+function canAimAttachedThrow(state) {
+  return massline2Flag('throw') && isThrowArmPayload(state);
+}
+
 export function initialMouseToolLane(state, id) {
+  // The existing line owns RMB regardless of which object lies at the aim point.
+  if (canAimAttachedThrow(state)) return 'sling';
   if (id != null) {
     const entity = resolveWorldPresentationEntity(state, id);
     if (entity && pointerBeamLane(state, entity)) return 'beam';
   }
-  if (isThrowArmPayload(state)) return 'sling';
   return 'inspect';
 }
 

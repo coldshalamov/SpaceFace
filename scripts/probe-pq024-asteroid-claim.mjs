@@ -28,6 +28,8 @@ import {
   createIsolatedElectronLaunch,
 } from './lib/electronTestIsolation.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { installFirstLightPromptHandler } from './player-truth/routes.mjs';
+import { FLIGHT_CORE_KEYS } from '../src/data/swarmControls.js';
 import { consumePageConditionValue } from './lib/playwrightCspPolling.mjs';
 import {
   PQ024_H3_PIPELINE_SETTLE_TIMEOUT_MS,
@@ -549,11 +551,11 @@ async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
           + 'and one screenshot. No downstream production or performance claim is recorded.',
         actorControls: [
           'New Game and Launch buttons',
-          'N galaxy map search and Set Waypoint',
+          'N galaxy map Browse and Set Waypoint',
           'held E dock and canonical Undock',
           'Market search, commodity tabs, quantity input, and Confirm Purchase',
-          'M local-map asteroid dot and production autopilot',
-          'Space Massline, B Asteroid Ops, Pulse survey, command-card Core, arrows, Enter, Escape',
+          'M local chart with wheel zoom, asteroid dot and production autopilot',
+          'F Massline, B Asteroid Ops, C survey, command-card Core, arrows, Enter, Escape',
         ],
         observations: {
           cargo,
@@ -614,11 +616,11 @@ async function runDefaultRoute(page, rootUrl, screenshot, options = {}) {
       informational_contended: true,
       actorControls: [
         'New Game and Launch buttons',
-        'N galaxy map search and Set Waypoint',
+        'N galaxy map Browse and Set Waypoint',
         'held E dock and canonical Undock',
         'Market search, commodity tabs, quantity input, and Confirm Purchase',
-        'M local-map asteroid dot and production autopilot',
-        'Space Massline, B Asteroid Ops, Pulse survey, command-card machine keys, cursor arrows, Enter',
+        'M local chart with wheel zoom, asteroid dot and production autopilot',
+        'F Massline, B Asteroid Ops, C survey, command-card machine keys, cursor arrows, Enter',
         'F5, Continue, and the same public asteroid-entry chain after restore',
       ],
       observations: {
@@ -1413,6 +1415,7 @@ async function capturePq024H3Png(page, name) {
 }
 
 async function bootSeededFlight(page, rootUrl, { navigateInitialRoot = true } = {}) {
+  await installFirstLightPromptHandler(page, (_label, _ok, detail) => console.log(detail));
   if (navigateInitialRoot) {
     await page.goto(rootUrl, { waitUntil: 'domcontentloaded' });
   } else {
@@ -1479,15 +1482,9 @@ async function installObservers(page) {
 async function dockAtHelios(page) {
   await page.keyboard.press('KeyN');
   await waitVisible(page, '#sf-galaxymap', 'galaxy map');
-  await page.keyboard.press('/');
-  const search = page.locator('.gm-search-input');
-  const searchFocused = await search.evaluate((element) => element === document.activeElement)
-    .catch(() => false);
-  if (!searchFocused) await search.click();
-  await page.keyboard.type('Helios Station');
-  await page.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first()
-    .waitFor({ state: 'visible' });
-  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Browse', exact: true }).click();
+  const station = page.locator('#gm-place-results .gm-search-item').filter({ hasText: 'Helios Station' }).first();
+  await station.click();
   const waypoint = page.getByRole('button', { name: 'Set Waypoint', exact: true });
   await waypoint.waitFor({ state: 'visible' });
   await waypoint.click();
@@ -1677,7 +1674,7 @@ async function buyConstructionCargo(page) {
 }
 
 async function openStationMarket(page) {
-  const market = page.getByRole('tab', { name: 'Market', exact: true });
+  const market = page.locator('[data-screen="station"] button[data-nav="market"]');
   await market.waitFor({ state: 'visible' });
   await market.click();
   await waitVisible(page, '[data-screen="station"] .sx-mkt', 'station Market');
@@ -1691,7 +1688,7 @@ async function readCargo(page, commodityId) {
 }
 
 async function publicUndock(page) {
-  const undock = page.locator('[data-screen="station"] .sx-dock button[data-act="undock"]');
+  const undock = page.locator('[data-screen="station"] button.sxb-launch[data-act="undock"]');
   await undock.waitFor({ state: 'visible' });
   await undock.click();
   const confirm = page.locator('[data-pop-launch]');
@@ -1703,7 +1700,8 @@ async function publicUndock(page) {
 async function selectAsteroidOnLocalMap(page, options = {}) {
   await page.keyboard.press('KeyM');
   await waitVisible(page, '#sf-galaxymap', 'unified local map');
-  await page.waitForFunction((siteId) => {
+  await page.waitForFunction(() => window.SF?.ctx?.screenManager?.getActiveScreenDef?.()?._view?.level === 'local');
+  const listed = (siteId) => {
     const def = window.SF?.ctx?.screenManager?.getActiveScreenDef?.();
     const state = window.SF?.state;
     return def?.id === 'galaxyMap' && (def._clickTargets || []).some((target) => {
@@ -1711,7 +1709,37 @@ async function selectAsteroidOnLocalMap(page, options = {}) {
       const entity = state?.entities?.get(target.entityId);
       return !siteId || entity?.data?.siteId === siteId;
     });
-  }, options.siteId || null, { timeout: 20_000 });
+  };
+  const canvas = page.locator('#sf-galaxymap canvas[aria-label^="Local navigation map"]');
+  const box = await canvas.boundingBox();
+  assert(box, 'unified local map canvas has no pointer box');
+  if (!await page.evaluate(listed, options.siteId || null)) {
+    // Local overview draws the belt at scale before exposing its individual marks.
+    // Aim the ordinary wheel zoom at a rock in frame and select only a painted contact.
+    const focus = await page.evaluate(({ siteId, width, height }) => {
+      const state = window.SF.state;
+      const def = window.SF.ctx.screenManager.getActiveScreenDef();
+      const cam = def._cams.local;
+      const field = def._clearField(width, height);
+      const scale = def._view.baseScale * cam.zoom;
+      const centerX = field.x + field.width / 2;
+      const centerY = field.y + field.height / 2;
+      const nearby = state.entityList.filter(ent => ent.type === 'asteroid' && ent.alive !== false
+        && ent.data?.respawnAt == null && (!siteId || ent.data?.siteId === siteId)).map(ent => ({
+        x: centerX - (ent.pos.x - cam.cx) * scale,
+        y: centerY - (ent.pos.z - cam.cy) * scale,
+      })).filter(p => p.x > field.x + 12 && p.x < field.x + field.width - 12
+        && p.y > field.y + 12 && p.y < field.y + field.height - 12);
+      nearby.sort((a, b) => Math.hypot(a.x - centerX, a.y - centerY) - Math.hypot(b.x - centerX, b.y - centerY));
+      return nearby[0] || null;
+    }, { siteId: options.siteId || null, width: box.width, height: box.height });
+    assert(focus, 'the local chart has no asteroid field in view');
+    await page.mouse.move(box.x + focus.x, box.y + focus.y);
+    for (let i = 0; i < 16 && !await page.evaluate(listed, options.siteId || null); i++) {
+      await page.mouse.wheel(0, -120);
+    }
+  }
+  await page.waitForFunction(listed, options.siteId || null, { timeout: 5000 });
   if (options.siteId) await hideWaypointOverlayForReentry(page);
   const target = await page.evaluate((siteId) => {
     const def = window.SF.ctx.screenManager.getActiveScreenDef();
@@ -1737,9 +1765,6 @@ async function selectAsteroidOnLocalMap(page, options = {}) {
     } : null;
   }, options.siteId || null);
   assert(target, `unified local map did not expose ${options.siteId ? `site ${options.siteId}` : 'an asteroid'} dot`);
-  const canvas = page.locator('#sf-galaxymap canvas');
-  const box = await canvas.boundingBox();
-  assert(box, 'unified local map canvas has no pointer box');
   await page.mouse.click(box.x + target.sx, box.y + target.sy);
   await page.waitForFunction((id) => {
     const selected = window.SF?.ctx?.screenManager?.getActiveScreenDef?.()?._selectedTarget;
@@ -1819,7 +1844,7 @@ async function enterAsteroidOps(page, targetEntityId) {
     // Keep the key down until a later fixed tick exposes the terminal tether owner state; the input
     // edge itself can be consumed before an external actor has a chance to observe it.
     const latchStartTick = await page.evaluate(() => Number(window.SF?.state?.tick) || 0);
-    await page.keyboard.down('Space');
+    await page.keyboard.down(FLIGHT_CORE_KEYS.tether[0]);
     let latched = false;
     let inputError = null;
     try {
@@ -1834,7 +1859,7 @@ async function enterAsteroidOps(page, targetEntityId) {
     } catch (error) {
       inputError = error;
     } finally {
-      await page.keyboard.up('Space');
+      await page.keyboard.up(FLIGHT_CORE_KEYS.tether[0]);
     }
     samples.push(await readPq024MasslineLatchSnapshot(
       page,
@@ -1938,9 +1963,7 @@ async function readPq024MasslineLatchSnapshot(page, label, targetEntityId) {
 }
 
 async function pulseSurveyReveal(page) {
-  // PQ-130.01 (2026-08-21): the console survey button was deleted with the rest of the chrome; the
-  // scan binding (default KeyC) is the public verb. PQ-130.04 removes the survey reveal loop itself
-  // (fog of war is gone) — re-aim this actor there. Until then this step is PRESENTATION-STALE.
+  // Survey has a public drill binding and reports its assayed formation in the crest.
   await page.keyboard.press('KeyC');
   await page.waitForFunction(() => {
     const chips = [...document.querySelectorAll('[data-screen="drill"] .aw-chip')];
@@ -1955,11 +1978,12 @@ async function pulseSurveyReveal(page) {
 }
 
 async function carveCoreBuildCorridor(page) {
-  // Core commitment adopts the current assayed formation atomically. Bore the two-cell dogleg
-  // first, then pulse Survey, so the public route leaves one hollow adjacent Core cell and one
-  // geology-contacting extractor cell without invalidating the survey after it is recorded.
+  // Cut a two-by-two pocket so the Core and extractor share a wall and leave a walkable shaft.
   await driveOneCell(page, 'ArrowDown', { dc: 0, dr: 1 });
   await driveOneCell(page, 'ArrowRight', { dc: 1, dr: 0 });
+  await driveOneCell(page, 'ArrowDown', { dc: 0, dr: 1 });
+  await driveOneCell(page, 'ArrowLeft', { dc: -1, dr: 0 });
+  await driveOneCell(page, 'ArrowUp', { dc: 0, dr: -1 });
 }
 
 async function driveOneCell(page, key, delta) {
@@ -1990,8 +2014,9 @@ async function planCorePlacement(page) {
         defId: 'sm_massline_core',
         col,
         row,
+        preview: true,
       });
-      if (check.ok) return { from: { ...d.avatar }, to: { col, row } };
+      if (check.ok && !check.sealsReturn) return { from: { ...d.avatar }, to: { col, row } };
     }
     return null;
   }).then((plan) => {
@@ -2014,8 +2039,9 @@ async function planExtractorPlacement(page, core, { fromAvatar = false } = {}) {
         defId: 'sm_extractor',
         col,
         row,
+        preview: true,
       });
-      if (check.ok && Number(check.profile?.solid) > 0) {
+      if (check.ok && !check.sealsReturn && Number(check.profile?.solid) > 0) {
         return { from: useAvatar ? { ...d.avatar } : { ...coreCell }, to: { col, row }, siteId };
       }
     }
@@ -2249,7 +2275,7 @@ async function releaseMassline(page) {
     };
   });
   const samples = [await readPq024MasslineReleaseSnapshot(page, 'before-keydown')];
-  await page.keyboard.down('Space');
+  await page.keyboard.down(FLIGHT_CORE_KEYS.tether[0]);
   try {
     const heldTickHandle = await page.waitForFunction(() => {
       const state = window.SF?.state;
@@ -2261,7 +2287,7 @@ async function releaseMassline(page) {
       heldTick, { timeout: 2_000 });
     samples.push(await readPq024MasslineReleaseSnapshot(page, 'keydown-received'));
   } finally {
-    await page.keyboard.up('Space');
+    await page.keyboard.up(FLIGHT_CORE_KEYS.tether[0]);
   }
   const released = await page.waitForFunction(() => window.SF?.state?.player?.tether?.active !== true,
     null, { timeout: 5_000 }).then(() => true, () => false);

@@ -34,7 +34,7 @@ function wedgeD(a0, a1, r0, r1) {
   return `M ${f(x0)} ${f(y0)} L ${f(x1)} ${f(y1)} A ${r1} ${r1} 0 0 ${sweep} ${f(x2)} ${f(y2)} L ${f(x3)} ${f(y3)} A ${r0} ${r0} 0 0 ${sweep ? 0 : 1} ${f(x0)} ${f(y0)} Z`;
 }
 
-export function createWheel(doc, { pages, icon, onUse, onPage }) {
+export function createWheel(doc, { pages, icon, onUse, onPage, onClose }) {
   const root = el(doc, 'div', 'mf-wheel');
   root.hidden = true;
 
@@ -66,6 +66,12 @@ export function createWheel(doc, { pages, icon, onUse, onPage }) {
   // ---- the choices, the banks, the readout ------------------------------------------------------------
   const nodes = el(doc, 'div', 'mf-nodes');
   const top = el(doc, 'div', 'mf-wheel-top');
+  const panel = el(doc, 'div', 'mf-wheel-panel');
+  const panelHead = el(doc, 'div', 'mf-wheel-panel-head');
+  const panelClose = el(doc, 'button', 'mf-wheel-close', 'Close');
+  panelClose.type = 'button';
+  panelClose.addEventListener('click', () => onClose?.());
+  panelHead.append(el(doc, 'strong', '', 'Ship controls'), panelClose);
   const tabs = el(doc, 'div', 'mf-tabs');
   tabs.setAttribute('role', 'group');
   tabs.setAttribute('aria-label', 'Power banks');
@@ -74,7 +80,8 @@ export function createWheel(doc, { pages, icon, onUse, onPage }) {
   const pickText = el(doc, 'span', 'mf-pick-text');
   pick.append(pickName, pickText);
   top.append(tabs, pick);
-  root.append(art, nodes, top);
+  panel.append(panelHead, top, nodes);
+  root.append(art, panel);
 
   const tabButtons = pages.map((page, i) => {
     const b = el(doc, 'button', 'mf-tab', page.name);
@@ -102,7 +109,7 @@ export function createWheel(doc, { pages, icon, onUse, onPage }) {
     root.style.setProperty('--mf-wheel-r', `${radius}px`);
     // Keep neighbouring hit targets separate, with a 44px floor for a thumb.
     const gap = 2 * radius * NODE_R * Math.sin(span * Math.PI / (360 * count));
-    root.style.setProperty('--mf-node-size', `${clamp(Math.min(radius * .4, gap - 4), 44, 64)}px`);
+    root.style.setProperty('--mf-node-size', `${clamp(Math.min(radius * .46, gap - 4), 44, 66)}px`);
     root.dataset.orbit = span === 360 ? '1' : '0';
     rule.setAttribute('d', Array.from({ length: count + 1 }, (_, k) => {
       const a = (side === 'left' ? 1 : -1) * k * span / count;
@@ -157,7 +164,7 @@ export function createWheel(doc, { pages, icon, onUse, onPage }) {
       hand.setAttribute('data-idle', '1');
       spring.set(side === 'left' ? 90 : -90);
       pickName.textContent = pages[page].name;
-      pickText.textContent = pinned ? 'Tap a power.' : 'Slide to a power, lift to use it. The middle cancels.';
+      pickText.textContent = pinned ? '' : 'Slide to a power and lift to use it.';
       root.dataset.choice = '0';
     }
   }
@@ -174,6 +181,13 @@ export function createWheel(doc, { pages, icon, onUse, onPage }) {
       selected = -1;
       root.hidden = false;
       root.dataset.pinned = isPinned ? '1' : '0';
+      if (isPinned) {
+        panel.setAttribute('role', 'dialog');
+        panel.setAttribute('aria-label', 'Ship controls');
+      } else {
+        panel.removeAttribute('role');
+        panel.removeAttribute('aria-label');
+      }
       root.dataset.side = geom.side;
       layout();
       fillNodes();

@@ -250,7 +250,6 @@ ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help) { display:inline-flex !important
 ${S} .sxb-ops .sxb-launch-seat { align-self:flex-start !important; margin-top:-8px !important; }
 ${S} .sxb-ops .sx-dock__group--nav { gap:0 clamp(28px, 2.2vw, 44px) !important; padding-left:6px !important; flex-wrap:nowrap !important; }
 @media (max-width:1500px) {
-  ${S} .sxb-ops .sx-receipt { top:auto !important; bottom:calc(100% + 10px) !important; left:0 !important; max-width:min(560px, 70vw) !important; }
   ${S} .sxb-vital { width:112px !important; }
   ${S} .sxb-vital [data-vital-act] { font-size: 12px !important; letter-spacing:.08em !important; }
   ${S} .sxb-ops .sx-dock__group--nav { gap:0 16px !important; }
@@ -302,18 +301,29 @@ ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help) .so-icon { width:14px; height:14
 ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help):is(:hover, :focus-visible, [aria-expanded='true']) { color:rgb(246 241 230) !important; outline:none !important; }
 ${S} .sxb-ops :is(.sx-comms__toggle, .sxb-help):focus-visible { color:var(--dp-hand, #f2b950) !important; }
 ${S} .sxb-ops .sx-comms__count { background:none !important; border:0 !important; color:rgb(248 244 234) !important; font-weight:700; }
-/* the receipt is a line of light over the foot, not a card: the arrow, what cleared, the sum */
-${S} .sxb-ops .sx-receipt { position:absolute !important; background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
-  top:auto !important; bottom:calc(100% + 10px) !important; left:0 !important; right:auto !important; width:max-content !important; max-width:min(560px, 36vw) !important; padding:6px 0 !important;
-  flex-wrap:nowrap !important; gap:12px !important; white-space:nowrap !important; isolation:isolate; }
-${S} .sxb-ops .sx-receipt::before { content:""; position:absolute; z-index:-1; left:-60px; right:-60px; top:-26px; bottom:-26px; pointer-events:none;
+/* the receipt is a line of light over the foot, not a card: the arrow, what cleared, the sum.
+   It grows LEFTWARD from the comms words (D265: at <=1500 the old rightward box ran past the
+   viewport edge and pushed its delta offscreen), and a long sentence - a PA line, a berth note -
+   wraps inside the bound instead of overflowing as one unbreakable run. */
+/* The receipt is a live player line: it takes its OWN row at the head of the foot and nothing
+   floats over a choice. The old corner-seat floats covered this tab's verbs (bench 2026-11-14:
+   3 verb hits on shipworks) and ran off-glass at <=1500; the flow lane is the one the narrow
+   band and the Market already proved — nothing covered, nothing off-glass, whatever wraps. */
+${S} .sxb-ops .sx-receipt { position:static !important; background:none !important; border:0 !important; border-radius:0 !important; box-shadow:none !important;
+  order:-1 !important; flex:1 0 100% !important; width:100% !important; max-width:100% !important; box-sizing:border-box;
+  top:auto !important; left:auto !important; right:auto !important; bottom:auto !important; padding:4px 0 !important;
+  flex-wrap:wrap !important; gap:2px 12px !important; white-space:normal !important; isolation:isolate; }
+${S} .sxb-ops:has(> .sx-comms > .sx-receipt:not([hidden])) { flex-wrap:wrap !important; }
+${S} .sxb-ops:has(> .sx-comms > .sx-receipt:not([hidden])) > .sx-comms { display:contents !important; }
+${S} .sxb-ops .sx-receipt::before { content:""; position:absolute; z-index:-1; left:-16px; right:-16px; top:-10px; bottom:-8px; pointer-events:none;
   background:radial-gradient(closest-side, rgb(7 8 10 / .85), rgb(7 8 10 / 0)); }
 ${S} .sxb-ops .sx-receipt .so-transfer { width:40px; color:rgb(${BONE} / .7); }
 ${S} .sxb-ops .sx-receipt__kind { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650; font-size: 12px !important;
   letter-spacing:.22em !important; color:rgb(${BONE} / .7) !important; }
-${S} .sxb-ops .sx-receipt__title { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size:12px !important;
-  letter-spacing:.12em; text-transform:uppercase; color:rgb(248 244 234) !important; }
-${S} .sxb-ops .sx-receipt__delta { margin-left:6px !important; font-variant-numeric:tabular-nums; color:rgb(${BONE} / .85) !important; }
+${S} .sxb-ops .sx-receipt__title { font-family:var(--dp-face-label, "Archivo") !important; font-stretch:112%; font-weight:650 !important; font-size:13px !important;
+  letter-spacing:.06em; text-transform:none; line-height:1.4; min-width:0; flex:0 1 auto; white-space:normal; overflow-wrap:break-word;
+  color:rgb(248 244 234) !important; }
+${S} .sxb-ops .sx-receipt__delta { margin-left:6px !important; font-variant-numeric:tabular-nums; color:rgb(${BONE} / .85) !important; white-space:nowrap !important; }
 
 /* ---- Undock: the one primary verb. Bone at rest; amber where the player reaches; red at risk --- */
 ${S} .sxb-launch-seat { background:none !important; border:0 !important; box-shadow:none !important; clip-path:none !important; }
@@ -351,10 +361,8 @@ html.sf-reduce-motion ${S} :is(.orr-vdial__fill, .orr-vdial__hand) { transition:
   ${S} .sxb-vital__value .orr-vden { font-size: 12px !important; }
   ${S} .sxb-vital__acts { margin-top:2px !important; gap:0 !important; }
 }
-/* a short screen: the trade receipt stands over the comms words, never across UNDOCK */
-@media (min-width:651px) and (max-height:800px), (max-height:600px) {
-  ${S} .sx-comms .sx-receipt, ${S} .sxb-ops .sx-receipt { position:absolute !important; left:0 !important; right:auto !important; top:auto !important; bottom:calc(100% + 6px) !important; max-width:min(420px, 46vw) !important; }
-}
+/* a short screen: the receipt keeps its flow row — the base lane covers every viewport, and a
+   floated corner box re-covered verbs and ran off-glass here (bench 2026-11-14). */
 /* station.css reserves a 292px (228px under 900) right gutter for the legacy corner crown; the ORRERY
    crown sits in the head grid, so that gutter was a dead third of a 960 screen. Give it back. */
 @media (min-width:651px) and (max-width:1100px) {

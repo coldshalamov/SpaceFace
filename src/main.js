@@ -11,6 +11,7 @@ import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
 import { entityIsJournaled } from './world/presentationSources.js';
 import { configureRacingCorridorSession } from './world/racingCorridor.js';
+import { SWARM_RULESET } from './data/swarmMode.js';
 import { createPresentationRuntimeCloser } from './core/presentationRunner.js';
 import { canonicalStringify } from './core/simSnapshot.js';
 import { installLiveClipDirector } from './ui/clipCaptureRuntime.js';
@@ -127,7 +128,8 @@ async function boot() {
     // Arm the error boundary here, not via window.SF (stripped from retail bundles). Its line reaches
     // the player through the presentation-only receipt route, never a bus `toast` that sim listeners hear.
     attachErrorBoundary({ getState: () => state });
-    installGameStartRecovery(bus);
+    let retryPreparedOpeningRoom = null;
+    installGameStartRecovery(bus, { retryPreparedRun: () => retryPreparedOpeningRoom?.() === true });
     // PQ-160.01: rated moments mark clip windows on the live bus so Pause → Clips lists them.
     // Production entity:killed has no tick; stamp sim tick + world seed onto the receipt.
     installLiveClipDirector(bus, {
@@ -327,6 +329,7 @@ async function boot() {
       return true;
     };
     helpers.beginLoadedGameTransition = () => {
+      retryPreparedOpeningRoom = null;
       // Reserve the load token BEFORE any reentrant lifecycle event. bus.emit is synchronous, so a
       // listener on game:loadingProgress that starts a new-game transition would otherwise take the
       // generation first and the save restore would proceed under a token it no longer owns.
@@ -359,6 +362,7 @@ async function boot() {
     let loopController = null;
     const closeRuntime = createPresentationRuntimeCloser({
       stopPresentation() {
+        retryPreparedOpeningRoom = null;
         state.render?.cancelOpeningPresentationHold?.();
         // Retire async Launch/Continue and GPU admissions before any teardown can settle their
         // gates. A late success must not publish flight into a runtime whose loop is stopped.
@@ -432,11 +436,25 @@ async function boot() {
     // gameState default). The world is created on New Game (game:new) and restored on Continue
     // (the save system handles game:load and emits save:loaded).
     bus.on('game:new', (opts) => {
-      const startNewGameTransition = () => {
+      retryPreparedOpeningRoom = null;
+      const startNewGameTransition = (preparedOpeningRoom = null) => {
         const transitionToken = runTransitionGuard.begin('new-game');
         if (state.render) state.render.admissionRunGeneration = transitionToken.generation;
         startNewGame(
           state, helpers, bus, registry, runTransitionGuard, transitionToken, opts || {},
+          {
+            loadingPresenter, preparedOpeningRoom,
+            workerIsUsable: () => !!laneCommandSink() && simLaneRuntime?.runner.isClosed() === false,
+            onOpeningRoomFailure(readPreparedRoom) {
+              retryPreparedOpeningRoom = () => {
+                retryPreparedOpeningRoom = null;
+                const room = runTransitionGuard.isCurrent(transitionToken) && readPreparedRoom();
+                if (!room) return false;
+                startNewGameTransition(room);
+                return true;
+              };
+            },
+          },
         ).catch((error) => {
           if (!runTransitionGuard.isCurrent(transitionToken)) return;
           console.error('[SpaceFace] new game startup failed', error);
@@ -454,6 +472,7 @@ async function boot() {
     });
 
     bus.on('game:exitToMenu', () => {
+      retryPreparedOpeningRoom = null;
       state.render?.cancelOpeningPresentationHold?.();
       // Returning to the menu also owns outstanding readiness work. Without a new generation,
       // an old Launch/Continue can settle afterward and put the player straight back in flight.
@@ -753,13 +772,27 @@ async function boot() {
 const SIM_WORKER_INIT_WINDOW_MS = 180_000;
 
 // Start a fresh game from the main menu: clear any prior world, build the new one, enter flight.
-async function startNewGame(state, helpers, bus, registry, runTransitionGuard, transitionToken, opts) {
+async function startNewGame(state, helpers, bus, registry, runTransitionGuard, transitionToken, opts, {
+  loadingPresenter, preparedOpeningRoom, workerIsUsable, onOpeningRoomFailure,
+}) {
   // The dynamic authority's bring-up (Rapier WASM compile + world construction) is pure CPU
   // work with no dependency on authored assets or the GPU cook. Kicked at scenePrepared it
   // overlaps the whole readiness chain instead of sitting as a serial stage at the end;
   // waitForPhysics below still gates flight on the same promise.
   let physicsPrep = null;
   let newGamePlus = null;
+  let acceptedOpeningRoom = preparedOpeningRoom;
+  let roomAdmitted = false;
+  const isCurrent = () => runTransitionGuard.isCurrent(transitionToken);
+  const liveOpeningRoom = () => {
+    const room = acceptedOpeningRoom;
+    const player = state.entities.get(state.playerId);
+    const run = state.run;
+    return !roomAdmitted && room && workerIsUsable() && player?.alive && player.id === room.playerId
+      && player.occupantGeneration === room.occupantGeneration && state.simTime === room.simTime
+      && run?.kind === 'survival' && run.ruleset === SWARM_RULESET && run.phase === 'draft'
+      && run.seed === room.seed && run.wave === room.wave ? room : null;
+  };
   return runNewGameStartTransition({
     guard: runTransitionGuard,
     token: transitionToken,
@@ -767,6 +800,18 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       // The veil goes up before the roster clear: a populated sector's entity:destroyed fan-out
       // is a multi-hundred-ms stretch, and it must not brick on the previous screen.
       enterLoadingMode(state, bus);
+      if (preparedOpeningRoom) {
+        // A graphics Retry gets a new admission generation over the same fitted player.
+        // Await the queued loading mode on its owning lane before invoking any room gates.
+        physicsPrep = laneRpc('physicsPrep');
+        await physicsPrep;
+        if (!isCurrent()) return;
+        if (!liveOpeningRoom() || state.mode !== 'loading') {
+          throw new GameStartReadinessError('OPENING_ROOM_UNAVAILABLE', 'preparing-run',
+            'The prepared Swarm room no longer has its original flight authority.');
+        }
+        return;
+      }
       newGamePlus = await resolveNewGamePlusOverlay(registry, opts);
       // Adventure keeps the authored Ceres actor ready for hard and continuous sector entry.
       // A standalone Crucible run cannot enter Ceres and does not request RU-7's four payloads.
@@ -779,12 +824,33 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
           opts: opts || {},
           newGamePlus: newGamePlus || null,
         });
-        const bootResult = await physicsPrep;
-        if (!bootResult || bootResult.aborted) return;
+        const bootResult = (await physicsPrep)?.result;
+        if (!bootResult || bootResult.aborted || !isCurrent()) return;
         // state.ui is main-owned — the boot's reset ran against the worker's
         // copy, so replay the same ui write here or the menu screens pinned on
         // screenStack would hold shouldFreezeFlightSubmit open forever.
         resetRunUiState(state);
+        const run = state.run;
+        const prepared = bootResult.crucible;
+        const startWave = Number.isInteger(run?.telemetry?.startWave) ? run.telemetry.startWave : 1;
+        const draft = state.survivalDraftPublic;
+        const player = state.entities.get(state.playerId);
+        const hull = state.player.ownedShips?.[state.player.activeShipIndex];
+        if (prepared?.ok && prepared.phase === 'draft' && hull?.defId === prepared.hullId
+            && player?.alive && player.id === prepared.playerId
+            && run?.kind === 'survival' && run.ruleset === SWARM_RULESET && run.phase === 'draft'
+            && run.wave === startWave - 1 && Number.isFinite(run.credits)
+            && draft?.wave === run.wave && draft.offers?.length) {
+          const accepted = await loadingPresenter.reviewOpeningArmory({ wave: run.wave, isCurrent });
+          if (!isCurrent()) return;
+          if (!accepted) {
+            throw new GameStartReadinessError('OPENING_ARMORY_UNAVAILABLE', 'preparing-run',
+              'The opening Swarm Armory could not finish reviewing equipment.');
+          }
+          const fittedPlayer = state.entities.get(state.playerId);
+          acceptedOpeningRoom = { playerId: fittedPlayer?.id, occupantGeneration: fittedPlayer?.occupantGeneration,
+            simTime: state.simTime, seed: run.seed, wave: run.wave };
+        }
         return;
       }
       const bootResult = await runNewGameSimBoot({
@@ -796,9 +862,13 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       });
       if (!bootResult || bootResult.aborted) return;
     },
-    discardRun: () => discardPreparedNewGameScene(
-      state, bus, runTransitionGuard, transitionToken,
-    ),
+    discardRun() {
+      if (liveOpeningRoom()) {
+        onOpeningRoomFailure(liveOpeningRoom);
+        return true;
+      }
+      return discardPreparedNewGameScene(state, bus, runTransitionGuard, transitionToken);
+    },
     waitForLibrary: () => withLoadingGatePulse(
       bus, runTransitionGuard, transitionToken, 'new-game',
       'authored-library', 0.25, 'Loading the ships',
@@ -881,9 +951,11 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       ...stage,
       detail: loadingDetailForStage(stage),
       transition: 'new-game',
+      ...(preparedOpeningRoom ? { destination: 'Crucible' } : {}),
     }),
     yieldForPresentation: nextPaintSliced,
     enterFlight() {
+      roomAdmitted = true;
       enterFlightMode(state, bus, { runTransitionGuard, transitionToken });
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
       // Worker lane: the receipt is generated inside the worker — the newGameBoot
@@ -1030,8 +1102,20 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
   }
   try {
     const restoredSettings = state.settings;
-    await ensureLocaleReady(restoredSettings?.locale || startupLocale);
+    let localeTimer;
+    let localeReady;
+    try {
+      localeReady = await Promise.race([
+        ensureLocaleReady(restoredSettings?.locale || startupLocale),
+        new Promise(resolve => { localeTimer = setTimeout(() => resolve(false), openingGateBudgetMs()); }),
+      ]);
+    } finally {
+      clearTimeout(localeTimer);
+    }
     if (!runTransitionGuard.isCurrent(transitionToken) || state.settings !== restoredSettings) return { stale: true };
+    if (localeReady === false) {
+      throw new GameStartReadinessError('LOCALE_UNAVAILABLE', 'language', 'The language catalog did not finish loading.');
+    }
     applyAccessibility(restoredSettings);
     bus.emit('game:loadingProgress', {
       id: 'authored-library',

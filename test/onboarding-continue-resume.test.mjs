@@ -9,11 +9,11 @@ import nodeTest from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createBus } from '../src/core/eventBus.js';
+import { resolveDockRange } from '../src/core/dockRange.js';
 import { makeEntity } from '../src/core/entity.js';
 import {
   RESCUE_PROOF_SEED,
   freshRescueState,
-  rescueBeatLine,
 } from '../src/onboarding/rescueOpening.js';
 import { freshMissingThreeState } from '../src/onboarding/missingThree.js';
 import { BEATS, onboarding } from '../src/systems/onboarding.js';
@@ -207,15 +207,45 @@ test('Continue restores the original version-1 seam, then docks without replayin
   assert.equal(ob.firedFollowups['seam:scan:hit'], true);
   const rock = entityOf(h, h.sys._miningRockId);
   assert.ok(rock?.alive);
+  const station = h.helpers.spawnEntity({
+    type: 'station', pos: { x: 1280, z: -420 }, radius: 84,
+    data: { stationId: 'station_helios', name: 'Helios Station', collisionProxy: 'helios_trade_hub' },
+  });
 
   h.bus.emit('mining:yield', { minerId: h.state.playerId, qty: 3, pos: rock.pos });
   advanceTime(h, 5);
   tick(h);
   assert.equal(BEATS[ob.currentBeat].key, 'dock');
-  h.bus.emit('dock:docked', { stationId: 'helios_prime' });
+  assert.equal(h.state.nav.waypoint.label, 'Helios Station');
+  assert.notDeepEqual(h.state.nav.waypoint.pos, { x: station.pos.x, z: station.pos.z },
+    'the objective marks the berth approach');
+  Object.assign(entityOf(h, h.state.playerId).pos, h.state.nav.waypoint.pos);
+  const range = resolveDockRange(h.state);
+  assert.equal(range.stationId, 'station_helios', 'following the objective brings the ship into dock range');
+  h.bus.emit('dock:docked', { stationId: range.stationId });
   assert.equal(BEATS[ob.currentBeat].key, 'choice');
   assert.deepEqual(ob.beatDoneAt, { ...done, seam: 100, dock: 105 });
   assert.equal(h.sys._trainerId, null);
+});
+
+test('Continue with the assay already secured skips seam restaging and leads to Helios', () => {
+  const h = boot();
+  h.state.missions = { active: [{ status: 'active', storyTag: 'campaign47a:b0:recovery',
+    params: { contractId: '47-A', sampleRecovered: true } }] };
+  h.helpers.spawnEntity({ type: 'station', pos: { x: 1280, z: -420 }, radius: 84,
+    data: { stationId: 'station_helios', name: 'Helios Station', collisionProxy: 'helios_trade_hub' } });
+  h.sys.deserialize({ version: 2, mainRailActive: true, active: true, currentBeatKey: 'seam',
+    beatAction: 'Beam the bright seams.', beatDoneAt: { tether: 10, raid: 20, claimed: 30 },
+    firedFollowups: { 'seam:scan:hit': true } });
+  h.bus.emit('save:loaded', {});
+
+  assert.equal(h.state.onboarding.beatDoneAt.seam, 100);
+  assert.equal(h.spawned.some(entity => entity.data?.trainingMining), false);
+  assert.equal(tutorialLines(h).includes('Beam the bright seams.'), false);
+  advanceTime(h, 5);
+  tick(h);
+  assert.equal(BEATS[h.state.onboarding.currentBeat].key, 'dock');
+  assert.equal(h.state.nav.waypoint.label, 'Helios Station');
 });
 
 test('Continue resolves keyed beats and keeps the before-first-lesson sentinel', () => {
@@ -374,8 +404,8 @@ test('Continue mid-swing rewinds latch state, restages the cast, re-speaks the v
   assert.ok(alive(h, rescue.ids.rock) && alive(h, rescue.ids.derelict), 'the swing pair is restaged');
   assert.ok(alive(h, rescue.ids.asteroid) && alive(h, rescue.ids.pod) && alive(h, rescue.ids.beacon),
     'the standing pieces for the pending verbs come back too');
-  assert.ok(tutorialLines(h).includes(rescueBeatLine('swing')),
-    'the interrupted verb re-presents its line');
+  assert.ok(tutorialLines(h).some((line) => /^Latch the loose rock/.test(line)),
+    'the interrupted swing explains how to latch the new rock');
   assert.ok(h.sys._panel, 'the panel mounts on a rescue-verb resume');
 
   // The lesson is finishable on the restaged bodies.

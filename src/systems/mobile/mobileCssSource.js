@@ -73,7 +73,7 @@ export const FLIGHT_CSS = `
 #sf-touch-overlay .mf-tether { left:0; bottom:0; width:calc(66px * var(--mf-scale)); height:calc(66px * var(--mf-scale)); }
 /* the smaller ring still holds its whole word */
 #sf-touch-overlay .mf-tether { padding-bottom:7px; }
-#sf-touch-overlay .mf-tether .mf-key-word { letter-spacing:0; font-size:10.5px; font-stretch:100%; }
+#sf-touch-overlay .mf-tether .mf-key-word { letter-spacing:0; font-size:12px; font-stretch:100%; }
 #sf-touch-overlay .mf-tether > svg:not([class]) { width:calc(22px * var(--mf-scale)); height:calc(22px * var(--mf-scale)); }
 #sf-touch-overlay .mf-ring-art { position:absolute; inset:0; width:100%; height:100%; overflow:visible; z-index:0; }
 #sf-touch-overlay .mf-pulse { transform-origin:40px 40px; animation:mf-orbit 2.6s linear infinite; animation-play-state:paused; opacity:0; }
@@ -164,6 +164,9 @@ export const FLIGHT_CSS = `
 #sf-touch-overlay[data-lefty="1"] .mf-ghost { left:auto; right:23%; }
 /* ---- the wheel: an ORRERY radial menu opening inward from the handle ---- */
 #sf-touch-overlay .mf-wheel { position:absolute; inset:0; z-index:7; pointer-events:none; }
+#sf-touch-overlay .mf-wheel-panel { display:contents; }
+#sf-touch-overlay .mf-wheel-panel-head { display:none; }
+:root[data-sf-mobile-wheel="1"] #hud .orr-hud-cluster { display:none!important; }
 #sf-touch-overlay .mf-wheel-art { position:absolute; pointer-events:none; animation:mf-wheel-open 280ms var(--mf-out) both; }
 /* the half-orbit's glass dissolves toward the handle instead of ending on a hard clipped edge
    (ORRERY glass law: edges are dissolved by a gradient mask, never a border or a raw cut) */
@@ -185,7 +188,7 @@ export const FLIGHT_CSS = `
 #sf-touch-overlay .mf-w-hub { fill:color-mix(in srgb, var(--mf-void) 92%, transparent); stroke:var(--mf-hand); stroke-width:2.2; vector-effect:non-scaling-stroke; }
 #sf-touch-overlay .mf-nodes { position:absolute; inset:0; pointer-events:none; }
 #sf-touch-overlay .mf-node { position:absolute; pointer-events:auto; touch-action:none; transform:translate(-50%,-50%); width:var(--mf-node-size,56px); min-width:44px; aspect-ratio:1; display:grid; place-content:center; justify-items:center; gap:2px; padding:0; border:0; border-radius:50%; background:rgb(var(--mf-bone) / .075); color:rgb(var(--mf-bone) / .92); animation:mf-node-in 300ms var(--mf-over) both; animation-delay:calc(var(--i, 0) * 32ms + 70ms); transition:background 90ms linear, color 90ms linear; }
-#sf-touch-overlay .mf-node svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+#sf-touch-overlay .mf-node svg { width:28px; height:28px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
 #sf-touch-overlay .mf-node span { max-width:78px; font:600 12px/1.05 var(--mf-face); font-stretch:96%; letter-spacing:.01em; text-transform:uppercase; text-align:center; }
 /* hybrid devices still hover: the pointer's inspection light lifts what it is over, the pressed and
    selected states stay the stronger registers (snap feedback, never an easing) */
@@ -207,6 +210,35 @@ export const FLIGHT_CSS = `
 #sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick { padding:6px 14px; }
 #sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick-name { font-size:16px; }
 #sf-touch-overlay .mf-wheel[data-orbit="1"] .mf-pick-text { font-size:12px; line-height:1.25; }
+#sf-touch-overlay .mf-wheel[data-pinned="1"] .mf-wheel-art,
+#sf-touch-overlay .mf-wheel[data-pinned="1"] .mf-pick,
+#sf-touch-overlay .mf-wheel[data-pinned="1"]:not([hidden]) ~ .mf-caption { display:none; }
+#sf-touch-overlay .mf-wheel[data-pinned="1"] .mf-wheel-panel {
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); display:block;
+  box-sizing:border-box; width:min(420px,calc(100vw - 28px)); max-height:calc(100dvh - 32px);
+  overflow:auto; overscroll-behavior:contain; touch-action:pan-y; pointer-events:auto;
+  border:1px solid var(--dp-rule-hi); border-radius:8px; background:var(--sf-pop-glass,var(--dp-metal-0));
+  box-shadow:var(--sf-pop-shadow); color:var(--dp-ink);
+}
+#sf-touch-overlay .mf-wheel[data-pinned="1"] .mf-wheel-panel-head { display:flex; align-items:center; justify-content:space-between;
+  gap:10px; padding:8px 12px; border-bottom:1px solid var(--dp-rule); font:720 17px/1.2 var(--mf-face); }
+#sf-touch-overlay .mf-wheel-close { min-height:44px; padding:5px 10px; border:1px solid var(--dp-rule); border-radius:4px;
+  background:var(--dp-metal-0); color:inherit; font:620 13px/1.2 var(--mf-face); }
+#sf-touch-overlay .mf-wheel[data-pinned="1"] .mf-wheel-top { position:static; transform:none; width:auto; max-width:none;
+  margin:0; padding:0 8px; justify-items:stretch; }
+#sf-touch-overlay .mf-wheel[data-pinned="1"] .mf-tabs { display:flex; flex-wrap:wrap; gap:0; justify-content:space-evenly; }
+#sf-touch-overlay .mf-wheel[data-pinned="1"] .mf-tab { min-height:44px; padding:6px; text-transform:none; letter-spacing:0; }
+#sf-touch-overlay .mf-wheel[data-pinned="1"] .mf-nodes { position:static; display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:6px; padding:8px 10px 12px; }
+#sf-touch-overlay .mf-wheel[data-pinned="1"] .mf-node { position:static; width:auto; min-width:0; min-height:72px; aspect-ratio:auto;
+  gap:5px; transform:none; padding:5px 3px; border:1px solid var(--dp-rule); border-radius:5px;
+  background:var(--dp-field); animation:none; }
+#sf-touch-overlay .mf-wheel[data-pinned="1"] .mf-node svg { width:32px; height:32px; }
+#sf-touch-overlay .mf-wheel[data-pinned="1"] .mf-node span { font-weight:650; text-transform:none; text-wrap:balance; }
+#sf-touch-overlay .mf-wheel[data-pinned="1"] .mf-node:is(:active,:focus-visible) { border-color:var(--dp-hand); color:var(--dp-hand-hot); }
+@media (max-width:350px) {
+  #sf-touch-overlay .mf-wheel[data-pinned="1"] .mf-nodes { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
 @media (max-height:599px) and (min-aspect-ratio:1/1) {
  /* The caption and bank tabs use the clear column opposite the half-orbit, below status. */
  #sf-touch-overlay .mf-wheel-top {

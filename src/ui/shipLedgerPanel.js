@@ -19,6 +19,7 @@ import {
 } from '../systems/shipLedger.js';
 import { laneCommandSink, laneRpc } from '../core/simLaneCommands.js';
 import { counted } from './numberFormat.js';
+import { stagger, reducedMotion } from './orrery/motion.js';
 
 export function shipLedgerEntryAriaLabel(entry) {
   if (!entry) return 'Empty ship ledger entry';
@@ -248,6 +249,7 @@ export function createShipLedgerPanel(ctx, options = {}) {
   let boardPending = false;
   let boardVisible = false;
   let boardDisposed = false;
+  let arriving = false; // the visible page's entries stagger in on show only; a later refresh is silent
 
   function cue() {
     if (ctx && ctx.bus && ctx.bus.emit) ctx.bus.emit('audio:cue', { id: 'ui_click' });
@@ -413,6 +415,14 @@ export function createShipLedgerPanel(ctx, options = {}) {
     const fragment = document.createDocumentFragment();
     for (const entry of model.entries) fragment.appendChild(renderEntry(entry));
     list.replaceChildren(fragment);
+    // Arrival (ORRERY §3.5): on show the visible page's entries rise in turn; the ledger's own
+    // refreshes (a new entry while the board is open) keep their still.
+    if (arriving && !reducedMotion()) {
+      arriving = false;
+      const rows = Array.from(list.children);
+      stagger(rows, { base: 40, step: 40 });
+      for (const row of rows) row.classList.add('orr-rise');
+    }
 
     empty.hidden = model.total !== 0;
     list.hidden = model.total === 0;
@@ -659,7 +669,13 @@ export function createShipLedgerPanel(ctx, options = {}) {
   return {
     el: root,
     get model() { return lastModel; },
-    onShow() { boardVisible = true; refresh(page); },
+    onShow() {
+      boardVisible = true;
+      arriving = true;
+      refresh(page);
+      // refresh consumed the pass; clear it in case the page had no entries to animate
+      arriving = false;
+    },
     refresh,
     openEvidence,
     openEvidenceByPageId,

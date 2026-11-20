@@ -25,6 +25,7 @@ import { openGalaxyMap, MAP_FOCUS } from '../../mapAuthority.js';
 import { syncScrollExtent } from '../../orrery/scrollExtent.js';
 import { injectOrreryStationIndustry } from '../../orrery/station-industryLayouts.js';
 import { industryPictogram } from '../../orrery/industryGlyphs.js';
+import { itemThumbHtml, injectItemThumbnailStyles } from '../../icons/itemThumbnails.js';
 import { dressLampKey } from '../../orrery/lampKey.js';
 import { decrypt } from '../../orrery/text.js';
 import { reducedMotion, stagger } from '../../orrery/motion.js';
@@ -94,11 +95,14 @@ export function yardStockAnswer({ have, need, yardStock, soldOut = false, restoc
   return { covers: false, word: 'yard holds none' };
 }
 
-/** Convenience for render paths: the yard word for one input of a blueprint, or '' when not short. */
-function yardWordFor(state, commodityId, have, need) {
+function yardSourceFor(state, commodityId, have, need) {
+  if (have >= need) return null;
+  const market = state?.economy?.markets?.[state?.ui?.dockedStationId];
+  // Market can only honor a commodity handoff if its local list has that row.
+  if (market && !Object.hasOwn(market, commodityId)) return { word: 'not traded here', canSource: false };
   const yard = yardStockOf(state, commodityId);
   const answer = yardStockAnswer({ have, need, yardStock: yard.stock, soldOut: yard.soldOut, restockSeconds: yard.restockSeconds });
-  return answer ? answer.word : '';
+  return answer ? { word: answer.word, canSource: true } : null;
 }
 // A fabricator output names a catalogue thing; map its kind onto the resolver vocabulary so the
 // name is a door. Weapons and anything off-vocabulary degrade to plain text inside entitySpanHtml.
@@ -206,6 +210,7 @@ export function industryBlocker(bp, r) {
 
 export function createIndustryScreen(ctx) {
   injectOrreryStationIndustry();
+  injectItemThumbnailStyles(document);
   const el = document.createElement('div');
   el.className = 'k-panel sx-ind';
   el.innerHTML = industryFrameHtml();
@@ -309,7 +314,7 @@ export function createIndustryScreen(ctx) {
           const headType = Object.keys(typeCount).sort((a, b) => typeCount[b] - typeCount[a])[0] || '';
           const facility = allStation ? (headType === 'fab' ? 'fabricator' : 'refinery') : '';
           const compactHead = typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth <= 1280;
-          const shortfall = (bp) => { for (const id in (bp.inputs || {})) { const have = Math.floor(freeQty(state, id)); if (have < bp.inputs[id]) { const yardWord = yardWordFor(state, id, have, bp.inputs[id]); return `Short ${bp.inputs[id] - have} ${matName(id)}${yardWord ? ` · ${yardWord}` : ''}`; } } return 'Needs materials'; };
+          const shortfall = (bp) => { for (const id in (bp.inputs || {})) { const have = Math.floor(freeQty(state, id)); if (have < bp.inputs[id]) { const source = yardSourceFor(state, id, have, bp.inputs[id]); return `Short ${bp.inputs[id] - have} ${matName(id)}${source ? ` · ${source.word}` : ''}`; } } return 'Needs materials'; };
           // a rung's own word: the shortfall when short; the tech or the module when locked; nothing when the header said why
           const whys = blueprints.map((bp, bi) => { const r = readiness[bi]; return r.state === 'ready' ? '' : r.state === 'materials' ? shortfall(bp) : r.state === 'station' ? (allStation && facilityForBlueprint(bp) === headType ? '' : shortBlockLabel(bp, r)) : shortBlockLabel(bp, r); });
           // what the whole group shares is said once on its header: one tier, and one reason when every rung not ready gives the same one
@@ -328,8 +333,10 @@ export function createIndustryScreen(ctx) {
               const outputName = niceName(bp.outputs.id, bp.outputs.kind);
               const output = `${outputName}${bp.outputs.qty > 1 ? ' × ' + bp.outputs.qty : ''}`;
               const qtyHtml = bp.outputs.qty > 1 ? `<span class="sx-ind-row__qty">×${bp.outputs.qty}</span>` : '';
+              const bpThumb = itemThumbHtml({ id: bp.outputs.id, kind: bp.outputs.kind }, { size: 'sm', showCrest: true, className: 'sx-ind-row__thumb' });
               return `<li><button type="button" ${stationControlAttrs('blueprint')} class="sx-ind-row k-row${selected ? ' is-active' : ''}${stateCls}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${selected}" tabindex="${selected ? 0 : -1}"` +
                 ` aria-label="${escapeHtml(output)}, ${CAT_LABEL[category]} process, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
+                bpThumb +
                 `<span class="sx-ind-row__body">` +
                   `<span class="k-row__name sx-ind-row__name">${escapeHtml(outputName)}${qtyHtml}${bp.category === 'augment' && bp.fromModule ? `<span class="sx-ind-row__from">from ${escapeHtml(niceName(bp.fromModule, 'module'))}</span>` : ''}</span>` +
                   ((!groupTier || why) ? `<span class="k-row__sub sx-ind-row__tier">${groupTier ? '' : `T${bp.tier}`}${why ? `<span class="sx-ind-row__why">${groupTier ? '' : ' · '}${escapeHtml(why)}</span>` : ''}</span>` : '') +
@@ -355,12 +362,13 @@ export function createIndustryScreen(ctx) {
     const inputs = Object.keys(bp.inputs || {}).map((id) => {
       const need = bp.inputs[id]; const have = Math.floor(freeQty(state, id));
       const ok = have >= need;
-      const yardWord = ok ? '' : yardWordFor(state, id, have, need);
+      const source = yardSourceFor(state, id, have, need);
       return (
         `<li class="k-row k-row--static sx-fab-in${ok ? ' is-ok' : ' is-missing'}">` +
+          itemThumbHtml({ id, kind: 'commodity' }, { size: 'sm', showCrest: false, className: 'sx-fab-in__thumb' }) +
           `<span class="k-row__name sx-fab-in__name">${entitySpanHtml('commodity:' + id, escapeHtml(matName(id)))}</span>` +
-          (yardWord ? `<span class="k-row__sub sx-fab-in__yard">Short ${need - have} · ${escapeHtml(yardWord)}</span>` : '') +
-          (ok ? '' : `<button type="button" ${stationControlAttrs('source-market')} class="k-word k-word--fine sx-fab-in__source" data-source-cmdty="${escapeHtml(id)}" aria-label="Find missing ${escapeHtml(matName(id))} in Market${yardWord ? `, ${escapeHtml(yardWord)}` : ''}">${stationControlLabel('source-market')}</button>`) +
+          (source ? `<span class="k-row__sub sx-fab-in__yard">Short ${need - have} · ${escapeHtml(source.word)}</span>` : '') +
+          (source?.canSource ? `<button type="button" ${stationControlAttrs('source-market')} class="k-word k-word--fine sx-fab-in__source" data-source-cmdty="${escapeHtml(id)}" aria-label="Find missing ${escapeHtml(matName(id))} in Market, ${escapeHtml(source.word)}">${stationControlLabel('source-market')}</button>` : '') +
           `<span class="k-row__num sx-fab-in__q">${have} <span class="k-62">/ ${need}</span></span>` +
         `</li>`
       );
@@ -400,9 +408,14 @@ export function createIndustryScreen(ctx) {
 
     stageEl.innerHTML =
       `<div class="sx-fab">` +
-        `<p class="k-caps sx-fab-head__cat">Tier ${bp.tier} blueprint</p>` +
-        `<h2 class="k-display k-t-title sx-fab-head__name">${outputLink(bp.outputs.id, bp.outputs.kind, escapeHtml(niceName(bp.outputs.id, bp.outputs.kind)))}</h2>` +
-        (bp.desc ? `<p class="k-sentence sx-fab-head__desc">${escapeHtml(bp.desc)}</p>` : '') +
+        `<div class="sx-fab-head">` +
+          itemThumbHtml({ id: bp.outputs.id, kind: bp.outputs.kind }, { size: 'hero', showCrest: true, className: 'sx-fab-head__thumb' }) +
+          `<div class="sx-fab-head__copy">` +
+            `<p class="k-caps sx-fab-head__cat">Tier ${bp.tier} blueprint</p>` +
+            `<h2 class="k-display k-t-title sx-fab-head__name">${outputLink(bp.outputs.id, bp.outputs.kind, escapeHtml(niceName(bp.outputs.id, bp.outputs.kind)))}</h2>` +
+            (bp.desc ? `<p class="k-sentence sx-fab-head__desc">${escapeHtml(bp.desc)}</p>` : '') +
+          `</div>` +
+        `</div>` +
         (!instantRung && !queue ? `<p class="k-sentence sx-fab-flight-note">Work pauses at berth and advances in flight.</p>` : '') +
         `<div class="sx-fab-heroes">` +
           `<div class="k-hero k-hero--hero sx-fab-out"><span class="k-hero__n">${bp.outputs.qty || 1}</span><span class="k-hero__w">${escapeHtml(bp.outputs.kind)} per run</span></div>` +
@@ -449,7 +462,7 @@ export function createIndustryScreen(ctx) {
     if (footRo) { footRo.disconnect(); footRo = null; }
     if (foot && typeof ResizeObserver === 'function') {
       footRo = new ResizeObserver(() => seatFoot());
-      for (const el of fab.querySelectorAll(':scope > .sx-fab-head__cat, :scope > .sx-fab-head__name, :scope > .sx-fab-head__desc')) footRo.observe(el);
+      for (const el of fab.querySelectorAll(':scope > .sx-fab-head, .sx-fab-head__cat, .sx-fab-head__name, .sx-fab-head__desc')) footRo.observe(el);
     }
     // Short desktop readings have content-driven rows around the drawing. Move the
     // chain's existing nodes, so its label lifecycle, live quantity and delegated
@@ -476,12 +489,12 @@ export function createIndustryScreen(ctx) {
         const need = bp.inputs[id];
         // a short input carries its own way out: the market, in one word under the count —
         // and what the yard itself stocks against the need, so the walk is never a guess
-        const yardWord = have < need ? yardWordFor(state, id, have, need) : '';
-        const verbHtml = have < need
+        const source = yardSourceFor(state, id, have, need);
+        const verbHtml = source?.canSource
           ? `<button type="button" ${stationControlAttrs('source-market')} class="orr-chain__source" data-source-cmdty="${escapeHtml(id)}">Source in market</button>`
           : '';
         return { nameHtml: escapeHtml(matName(id)), have, need, verbHtml, glyph: glyphFor(id, 'material'),
-          noteHtml: yardWord ? escapeHtml(yardWord) : '' };
+          noteHtml: source ? escapeHtml(source.word) : '' };
       }),
       process: CAT_LABEL[bp.category] || bp.category,
       timeLabel: buildDuration(bp) ? `${buildDuration(bp)} s` : 'instant',

@@ -51,7 +51,7 @@ export const WRECK_COURT_CASES = [
     access: 'anthology',
     playerStart: { x: -36, z: -220 },
     briefing: 'Two hulls drift as a pair. The insurer has a mutual-impact claim. The smaller hull\'s owner says they never met. File what the bodies support.',
-    uncertainty: 'Crew intent is not a measurement. A coat of polymer can be seen; why it was sprayed cannot. Parallel drifts have a miss distance with a few WU of sample noise.',
+    uncertainty: 'Crew intent is not a measurement. A coat of polymer can be seen; why it was sprayed cannot. Parallel drifts have a miss distance with a few u of sample noise.',
     build(ctx) {
       const j = ctx.j;
       return {

@@ -23,7 +23,31 @@ COLORS = {
 PYLONS = (30.0, 90.0, 150.0, 210.0, 270.0, 330.0)
 
 
+def signature(s):
+    """The exchange spire inside the ring, banded with ticker courses."""
+    base = K.polar(23.0, 0.0, 10.0)
+    tip = K.polar(20.0, 0.0, 34.0)
+    F.cylinder(s, 'MeridianSpire', base, tip, 3.2, 0.5, material='paint', segments=16,
+               bevel=0.05)
+    for k in range(7):
+        t = (k + 0.5) / 7.0
+        p = tuple(base[j] + (tip[j] - base[j]) * t for j in range(3))
+        F.ring(s, f'MeridianTicker{k}', (p[0], p[1], p[2]), 3.4 - 2.6 * t, 0.35,
+               axis=(0, 0, 1), material='stripe', segments=16, sides=5)
+    for i, a in enumerate((120.0, 240.0)):
+        b = K.polar(24.0, a, 10.0)
+        t = K.polar(22.0, a, 27.0)
+        F.cylinder(s, f'MeridianPylon{i}', b, t, 2.2, 0.4, material='paint2', segments=12,
+                   bevel=0.04)
+        F.ring(s, f'MeridianPylonRing{i}', (b[0], b[1], 18.0), 2.4, 0.35, axis=(0, 0, 1),
+               material='stripe', segments=12, sides=5)
+    s.detail = 1
+    F.light(s, 'MeridianSpireTip', tip, 'glow_amber.mts', size=0.6)
+    s.detail = 0
+
+
 def dress(s):
+    K.interior(s, 'stripe', 'glow_amber.mts')
     # the ticker band: alternating lit gold dashes and dark spacers — reads as a scrolling
     # price tape round the whole station
     K.ring_wall(s, 'TickerDark', K.SHELL_R + 0.8, 12.0, 20.0, 2.2, 'dark', segs=56)
@@ -65,6 +89,7 @@ def dress(s):
     s.detail = 1
     K.lamp_ring(s, 'FloorLamp', 'glow_warm', r=K.SHELL_R + 1.8, z=8.0, count=18, size=0.4)
     s.detail = 0
+    signature(s)
 
 
 def build():

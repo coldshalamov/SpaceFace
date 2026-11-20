@@ -463,7 +463,7 @@ export function buildKestrelHero(entity) {
       coolingRing = addTorusX(hull, mat.graphite, 'Kestrel_Drive_Cooling_Ring', 2.12, 0.10, [-12.6, -0.05, 0]);
     }
     if (tier >= 3) {
-      plume.material = glowMaterial(KESTREL_HERO_COLORS.frontier, 0.74);          // tier 3: hotter plume
+      plume.material.opacity = 0.74;                                             // tier 3: hotter plume
     }
   }
   root.userData.visualTier = tier;          // exposed for inspection / §9.10 smoke test
@@ -487,12 +487,10 @@ export function buildKestrelHero(entity) {
       addCylinderX(hull, mat.warning, `Kestrel_Repair_Fastener_${x}_${z}`, 0.075, 0.15, [x, 0.66, z], 6);
     }
   }
-  addBox(hull, mat.repair, 'Kestrel_Utility_Pod_Starboard', [3.25, 1.0, 1.65], [-1.4, 1.3, 3.75], [0, -0.08, 0]);
-  // The utility pod is a named secondary part: shed at Critical (§9.11 #4 asymmetric debris shedding).
-  // It is the pod body; the band is a sibling. Kept out of static batching so the damage driver can
-  // hide it cleanly when the ship has lost hardware.
-  addBox(hull, mat.warning, 'Kestrel_Utility_Pod_Band', [0.28, 1.08, 1.74], [-0.55, 1.3, 3.75]);
-  const utilityPod = hull.children[hull.children.length - 2]; // the pod body added just before the band
+  // Keep the body and band together when the secondary part is shed at Critical.
+  const utilityPod = new THREE.Group(); utilityPod.name = 'Kestrel_Utility_Pod_Assembly'; hull.add(utilityPod);
+  addBox(utilityPod, mat.repair, 'Kestrel_Utility_Pod_Starboard', [3.25, 1.0, 1.65], [-1.4, 1.3, 3.75], [0, -0.08, 0]);
+  addBox(utilityPod, mat.warning, 'Kestrel_Utility_Pod_Band', [0.28, 1.08, 1.74], [-0.55, 1.3, 3.75]);
   utilityPod.userData.damageRole = 'secondary';
   utilityPod.userData.keepSeparate = true;
   const mast = addCylinderX(hull, mat.gunmetal, 'Kestrel_Antenna_Mast', 0.08, 1.85, [-3.1, 2.65, -1.28], 7);
@@ -566,7 +564,7 @@ export function buildKestrelHero(entity) {
     // velocity proves the drive is active; this removes the giant white disc from Shipworks.
     mat.drive.emissiveIntensity = 0.42 + drive * 1.98;
     mat.driveCore.emissiveIntensity = 0.38 + drive * 2.82;
-    mat.driveGlow.opacity = drive * 0.65;
+    plume.material.opacity = drive * (tier >= 3 ? 0.74 : 0.65);
   };
 
   mergeStaticByMaterial(hull, new Set([fan, driveCore, plume]));

@@ -1155,7 +1155,7 @@ export const MAIL_LETTERS = Object.freeze([
     subject: 'REACH BURIAL — the long burn',
     body: 'The wire ran it as an incident and I am running it as what it was. A Reach pack took a '
       + 'dead captain home on the long burn: casket-rigged hull in slow column toward the star, '
-      + 'engines dim, and every hundred WU a wasp peeling off the column like a gun salute you '
+      + 'engines dim, and every hundred u a wasp peeling off the column like a gun salute you '
       + 'could set a watch by. The pack declared hands-off for the tow and is keeping the '
       + 'declaration. Nobody touched them; they touched nobody. Plenty of you price the hulls of '
       + 'dead captains. The market is closed for this one, and every Reach pack will remember it '
@@ -1275,7 +1275,7 @@ export const MAIL_LETTERS = Object.freeze([
   {
     id: 'mail_special500_spx-c-03', kind: 'cast', from: 'Research Station Veil',
     subject: 'ALL BANDS NOMINAL',
-    body: 'You held station inside four hundred WU through the surge, so the wire assumes you '
+    body: 'You held station inside four hundred u through the surge, so the wire assumes you '
       + 'heard it, and the wire would rather file this than be asked. Under the storm noise, one '
       + 'narrow band is carrying a pattern that is not weather and not any code on the books. It '
       + 'is not interference. Interference does not keep a schedule. The station\'s position, '

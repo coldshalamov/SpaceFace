@@ -123,7 +123,7 @@ const KIND_CODES = Object.freeze({
   [PRESENTATION_JOURNAL_KINDS.VISUAL]: 4,
 });
 
-function packJournalRange(journal, start, end, scratch, arena = null) {
+function packJournalRange(journal, start, end, scratch, arena = null, refreshVisualEntityId = null, visualEntities = null) {
   const count = Math.max(0, end - start);
   const alloc = sabPackAlloc(arena, count);
   const scalars = alloc ? alloc.scalars : new Float64Array(count * JOURNAL_SCALAR_STRIDE);
@@ -132,6 +132,8 @@ function packJournalRange(journal, start, end, scratch, arena = null) {
   const typeTable = [];
   const typeIds = new Map();
   const spawnEntityIds = [];
+  let refreshVisualEntity = false;
+  let refreshWeaponPadIds = null;
   let i = 0;
   journal.visitRange(start, end, scratch, (record) => {
     const o = i * JOURNAL_SCALAR_STRIDE;
@@ -163,8 +165,25 @@ function packJournalRange(journal, start, end, scratch, arena = null) {
     }
     typeIndex[i] = idx;
     if (record.kind === PRESENTATION_JOURNAL_KINDS.SPAWN) spawnEntityIds.push(record.entityId);
+    if (record.kind === PRESENTATION_JOURNAL_KINDS.VISUAL) {
+      if (record.entityId === refreshVisualEntityId) refreshVisualEntity = true;
+      if (record.entityType === 'pickup' && visualEntities) {
+        const pad = visualEntities.get(record.entityId);
+        const padKind = pad?.data?.swarmFloorPad?.kind;
+        if (pad && pad.alive !== false && (padKind === 'wall_gun' || padKind === 'crate' || padKind === 'tap' || padKind === 'forge')) {
+          (refreshWeaponPadIds ??= []).push(record.entityId);
+        }
+      }
+    }
     i++;
   });
+  // The local clock retains entity info with the journal. Refresh the existing player
+  // occupant after a fit or hull change so the HUD and model see the new loadout while paused.
+  if (refreshVisualEntity && !spawnEntityIds.includes(refreshVisualEntityId)) spawnEntityIds.push(refreshVisualEntityId);
+  // Weapon offers can change while the pad retains the same body.
+  if (refreshWeaponPadIds) for (const id of refreshWeaponPadIds) {
+    if (!spawnEntityIds.includes(id)) spawnEntityIds.push(id);
+  }
   return { count, scalars, kinds, typeIndex, typeTable, spawnEntityIds, start, end, sab: alloc != null, sabSlot: alloc ? alloc.slot : null };
 }
 
@@ -1463,9 +1482,7 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     const offRunShopResults = runShopResultEvents.map((event) => bus.on(event, () => {
       if (host.state?.run?.kind === 'survival') host.domainDiffer?.invalidateSubtree('run');
     }));
-    // The event bus also carries unrelated run-wallet traffic. Admit only the
-    // exact shop/refit rejection and refund receipts that can alter the visible
-    // purchase state; never subscribe to award requests or ordinary awards.
+    // Only the shop/refit rejection and refund receipts can change a paused purchase.
     const offSpendRejected = bus.on('run:spendRejected', (payload) => {
       if (host.state?.run?.kind === 'survival'
           && (payload?.reason === 'crucible:purchase' || payload?.reason === 'crucible:draftReroll'
@@ -1473,17 +1490,28 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         host.domainDiffer?.invalidateSubtree('run');
       }
     });
-    const offShopRefund = bus.on('run:awarded', (payload) => {
+    // Physical Swarm pickups and floor spends show only the new balance in the same reply.
+    const offRunAward = bus.on('run:awarded', (payload) => {
+      if (host.state?.run?.ruleset === 'swarm' && payload?.reason === 'chip_scooped') {
+        host.domainDiffer?.invalidateLeaf('run.credits');
+        return;
+      }
       if (host.state?.run?.kind === 'survival'
           && (payload?.reason === 'crucible:purchaseRefund' || payload?.reason === 'swarm:sellBack'
             || payload?.reason === 'partial_bank_refund')) {
         host.domainDiffer?.invalidateSubtree('run');
       }
     });
+    const offFloorSpend = bus.on('run:spent', (payload) => {
+      if (host.state?.run?.ruleset === 'swarm' && payload?.reason === 'swarm_floor_pad') {
+        host.domainDiffer?.invalidateLeaf('run.credits');
+      }
+    });
     host.runShopMirrorUnsubscribe = () => {
       for (const off of offRunShopResults) off();
       offSpendRejected();
-      offShopRefund();
+      offRunAward();
+      offFloorSpend();
       host.runShopMirrorUnsubscribe = null;
     };
     // Posted/withdrawn board rows must accompany their event/RPC even while the worker is
@@ -1905,12 +1933,14 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
           buildModule: ['bodyId', 'modId'],
           specialize: ['bodyId', 'specId'],
           deliverToClaim: ['bodyId', 'goodId', 'qty'],
+          requestRelayDispatch: ['bodyId', 'expectedConvoySeq'],
           collectFromClaim: ['bodyId'],
           teleportFrom: ['bodyId'],
         };
         const signature = method && SIGNATURES[method];
         if (!signature || typeof c[method] !== 'function') return { ok: false, reason: 'unknown-claims-method' };
         const result = c[method](...signature.map((key) => args[key]));
+        if (method === 'requestRelayDispatch' && result === true) host.domainDiffer?.invalidateLeaf('claims');
         if (method === 'claim' && result === true) {
           const poi = args.poi || null;
           const body = ((state.claims && state.claims.bodies) || []).find((b) => b && b.poiId === (poi && poi.id)) || null;
@@ -1940,7 +1970,12 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         const arities = {
           installMachine: 1, removeMachine: 3, setOverlay: 6, setMachineMode: 3,
           setExportFlag: 3, setPodTarget: 2, setPodDestination: 2, transferGoods: 5,
-          tickWorkbench: 2,
+          tickWorkbench: 3,
+          setReserveFloor: 3, setSiteLink: 4, removeSiteLink: 3,
+          commissionFieldAsteroid: 2, deploySiteDefense: 2,
+          setSiteDirective: 2, commissionSiteDrone: 2, applySiteBlueprint: 5,
+          autoLinkSectorCluster: 1, unlockBeltDoctrine: 1, acceptBeltCharter: 1,
+          tapOrScanSiteAnomalies: 3,
         };
         const method = args?.method;
         const values = args?.args;
@@ -1950,7 +1985,13 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
         if (!Array.isArray(values) || values.length > arities[method]) {
           return { ok: false, reason: 'bad-asteroid-sites-args' };
         }
-        return { ok: true, result: owner[method](...values) };
+        const result = owner[method](...values);
+        if (method !== 'tickWorkbench' && host.domainDiffer && typeof host.domainDiffer.invalidateLeaf === 'function') {
+          host.domainDiffer.invalidateLeaf('sites.byId');
+          host.domainDiffer.invalidateLeaf('sites.order');
+          host.domainDiffer.invalidateLeaf('sites.empire');
+        }
+        return { ok: true, result };
       }],
       // Generic method passthroughs for facade coverage — the main side's
       // capability checks see the method names; the lane's folded ops (like
@@ -2195,6 +2236,10 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
   // snapshot. The runner-facing surfaces — journal, aux, domains, commands,
   // replies — are identical to the legacy lane's.
   async function handleInitProduction(msg) {
+    const startingStorage = msg.initialRacingStorage
+      ? { ...msg.initialSharedStoreKeys, ...msg.initialRacingStorage }
+      : msg.initialSharedStoreKeys;
+    stageLaneStorage(startingStorage, pendingStorageOps);
     const seed = (Number(msg.seed) >>> 0) || 1;
     host.reloadAt = null;
     host.crashAt = Number.isSafeInteger(msg.crashAt) ? msg.crashAt : null;
@@ -2628,10 +2673,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
       },
       emitBusEvent: (type, payload) => {
         if (!host.bus || typeof host.bus.emit !== 'function' || typeof type !== 'string') return;
-        // Load/save events carry main's sf.* keyspace; stage it onto the lane
-        // storage shim first so save.load/save.save run their own slot logic
-        // against real bytes. Writes the worker staged but has not yet relayed
-        // main-side must survive the restage — the snapshot predates them.
+        // Load/save carries the main storage snapshot. Pending worker writes
+        // must survive the restage because the snapshot predates them.
         if ((type === 'game:load' || type === 'game:save') && payload && payload.__laneStorage) {
           stageLaneStorage(payload.__laneStorage, pendingStorageOps);
           host.lastStorageStage = { type, keys: Object.keys(payload.__laneStorage).length };
@@ -2859,7 +2902,8 @@ export function createSimHost({ onAsyncSaveReady } = {}) {
     let pack;
     try {
       pack = journalStart < journalEnd
-        ? packJournalRange(journal, journalStart, journalEnd, scratch, host.sabArena)
+        ? packJournalRange(journal, journalStart, journalEnd, scratch, host.sabArena,
+          production ? state.playerId : null, production ? state.entities : null)
         : { count: 0, scalars: new Float64Array(0), kinds: new Uint8Array(0), typeIndex: new Uint16Array(0), typeTable: [], spawnEntityIds: [], start: journalStart, end: journalEnd, sab: false, sabSlot: null };
     } catch (error) {
       const diag = journal.getDiagnostics ? journal.getDiagnostics() : {};

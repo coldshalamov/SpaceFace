@@ -51,9 +51,9 @@ test('the five powers stay on 1–5', () => {
   assert.equal(resolveActionCodes(SWARM_RUN, 'rig')[0], 'Digit5');
 });
 
-test('Space is the boost in Swarm and the tether leaves the keyboard', () => {
-  assert.deepEqual(resolveActionCodes(SWARM_RUN, 'boost'), ['Space']);
-  assert.deepEqual(resolveActionCodes(SWARM_RUN, 'tether'), []);
+test('Shift boosts and F operates the tether in Swarm', () => {
+  assert.deepEqual(resolveActionCodes(SWARM_RUN, 'boost'), ['ShiftLeft', 'ShiftRight']);
+  assert.deepEqual(resolveActionCodes(SWARM_RUN, 'tether'), ['KeyF']);
 });
 
 test('every Adventure-only action resolves to nothing in a live Swarm run', () => {
@@ -70,9 +70,9 @@ test('the same Adventure-only actions still resolve normally in Adventure', () =
     // rebindable rows, so an empty code list is correct here, not a broken binding.
     assert.deepEqual(resolveActionCodes(ADVENTURE, action), [], `${action} ships on the wheel in adventure`);
   }
-  // And the unified seats hold in Adventure: Space is the boost, the Line is RMB (no key).
-  assert.deepEqual(resolveActionCodes(ADVENTURE, 'boost'), ['Space']);
-  assert.deepEqual(resolveActionCodes(ADVENTURE, 'tether'), []);
+  // Adventure uses the same Shift boost and F tether defaults.
+  assert.deepEqual(resolveActionCodes(ADVENTURE, 'boost'), ['ShiftLeft', 'ShiftRight']);
+  assert.deepEqual(resolveActionCodes(ADVENTURE, 'tether'), ['KeyF']);
   assert.deepEqual(resolveActionCodes(ADVENTURE, 'contextWheel'), ['KeyQ']);
 });
 
@@ -85,6 +85,19 @@ test('saved rebinds still apply to keys inside the Swarm set', () => {
     },
   };
   assert.deepEqual(resolveActionCodes(rebound, 'boost'), ['KeyB']);
+});
+
+test('saved uses of restored stock keys keep their owner in both modes', () => {
+  for (const state of [SWARM_RUN, ADVENTURE]) {
+    const bindings = { brake: ['KeyF'], rig: ['ShiftLeft'] };
+    const rebound = { ...state, settings: { ...state.settings, controls: { bindings } } };
+    assert.deepEqual(resolveActionCodes(rebound, 'brake'), ['KeyF']);
+    assert.deepEqual(resolveActionCodes(rebound, 'rig'), ['ShiftLeft']);
+    assert.deepEqual(resolveActionCodes(rebound, 'tether'), []);
+    assert.deepEqual(resolveActionCodes(rebound, 'boost'), ['ShiftRight']);
+    bindings.boost = ['Space'];
+    assert.deepEqual(resolveActionCodes(rebound, 'boost'), ['Space']);
+  }
 });
 
 test('the Swarm rail is the six power icons and the Help card is the compact set', () => {

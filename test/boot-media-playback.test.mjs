@@ -50,6 +50,25 @@ test('hundreds of starts never seek, reload, or restart a playing cinematic', as
   assert.equal(f.video.loads, 1); assert.equal(f.video.plays, 1);
   assert.deepEqual(f.video.seeks, []); assert.equal(f.video.currentTime, 6.1); f.ctl.destroy();
 });
+test('first handoff adopts the parse-time stream without reloading or seeking', async () => {
+  for (const readyState of [0, 4]) {
+    const f = fixture({ startOffset: () => 9.25 });
+    f.video.currentSrc = `http://localhost/${BOOT_MEDIA.normal}`;
+    f.video.readyState = readyState;
+    f.video.time = readyState ? 0.15 : 0;
+    f.video.paused = false; // the HTML already called play(), which may still be pending
+    f.ctl.start();
+    f.video.duration = 17.5;
+    f.video.event('loadedmetadata');
+    assert.equal(f.video.loads, 0);
+    assert.equal(f.video.plays, 0);
+    assert.deepEqual(f.video.seeks, []);
+    f.video.readyState = 4;
+    f.video.present(0.2); f.video.present(0.24);
+    assert.equal((await f.ctl.playbackReady).reason, 'video');
+    f.ctl.destroy();
+  }
+});
 test('stop and resume retain movie position and require no fresh download', async () => {
   const f = fixture(); f.ctl.start(); await microtasks(); f.video.present(7); f.video.present(7.1);
   f.ctl.stop(); assert.equal(f.video.paused, true); assert.equal(f.video.frames.size, 0);

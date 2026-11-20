@@ -42,6 +42,10 @@ function fixture() {
 const scaleBeacons = (s) => s.entityList.filter((e) => e.alive && e.data?.kesslerScale === true);
 const recoveryProps = (s) => s.entityList.filter((e) => e.alive && e.data?.kesslerFreightRecovery);
 const tag = (w) => String(w.data?.scanLabel || '');
+const receiptTag = (pod, units, name = 'Cargo pod') => {
+  const { plateRead, trueRead } = pod.data.kesslerReceipt;
+  return `${name} · WEIGHED ${plateRead.toFixed(1)} t · STAMP ${trueRead.toFixed(1)} t · ${units} u`;
+};
 
 test('the weighed pod keeps its receipt on its own tag; real collection returns the freight once', () => {
   const h = fixture();
@@ -49,7 +53,7 @@ test('the weighed pod keeps its receipt on its own tag; real collection returns 
     const stamp = kesslerTrueRead(h.w.mass);
     assert.equal(h.w.data.kesslerRead, true);
     assert.equal(h.w.data.kesslerReceipt.trueRead, stamp);
-    assert.equal(tag(h.w), `Cargo pod · WEIGHED ${stamp.toFixed(1)} t · 17 u`, 'the pod itself carries the receipt and the live units');
+    assert.equal(tag(h.w), receiptTag(h.w, 17), 'the pod itself carries the receipt and the live units');
     assert.equal(recoveryProps(h.s).length, 0, 'no second beacon is minted for the fix');
     assert.equal(scaleBeacons(h.s).length, 1, 'only the scale board itself exists');
     assert.equal(h.s.player.cargo.items[IRON] || 0, 0);
@@ -65,14 +69,13 @@ test('the weighed pod keeps its receipt on its own tag; real collection returns 
 test('partial actual collection updates the remaining units on the pod tag', () => {
   const h = fixture();
   try {
-    const stamp = kesslerTrueRead(h.w.mass);
     h.s.player.cargo.capMass = 100;
     h.s.player.cargo.capVolume = 4; // iron volPerU 1.0 — four units fit
     h.m._collectPayload(h.w, h.p);
     h.tick();
     const held = h.s.player.cargo.items[IRON] || 0;
     assert.ok(held > 0 && held < 17);
-    assert.equal(tag(h.w), `Cargo pod · WEIGHED ${stamp.toFixed(1)} t · ${17 - held} u`, 'the tag follows the drained pool');
+    assert.equal(tag(h.w), receiptTag(h.w, 17 - held), 'the tag follows the drained pool');
     assert.equal(h.w.data.kesslerRead, true, 'weighed identity is preserved');
     h.s.player.cargo.capVolume = 100;
     h.m._collectPayload(h.w, h.p);
@@ -85,14 +88,13 @@ test('partial actual collection updates the remaining units on the pod tag', () 
 test('a multi-item pool never shows a stale single amount on the tag', () => {
   const h = fixture();
   try {
-    const stamp = kesslerTrueRead(h.w.mass);
     // A manifest pod whose pool holds two commodities must not collapse to data.amount.
     h.w.data.salvagePool = { [IRON]: 10, cmdty_ore_copper: 5 };
     h.tick(); // the tracked tag refreshes off the real pool
-    assert.equal(tag(h.w), `Cargo pod · WEIGHED ${stamp.toFixed(1)} t · 15 u`);
+    assert.equal(tag(h.w), receiptTag(h.w, 15));
     h.w.data.salvagePool = { [IRON]: 10, cmdty_ore_copper: 2 };
     h.tick();
-    assert.equal(tag(h.w), `Cargo pod · WEIGHED ${stamp.toFixed(1)} t · 12 u`);
+    assert.equal(tag(h.w), receiptTag(h.w, 12));
     assert.equal(h.w.data.amount, 17, 'the stale single amount is never the shown figure');
   } finally { h.sim.dispose(); }
 });
@@ -118,14 +120,13 @@ test('a second, differently-stamped real load flips the board and Kessler says t
     assert.equal(h.said.filter((m) => m.text === KESSLER_SCALE.comparisonLine).length, 1);
     // The weighed pods keep their own tags — no synthetic recovery beacon appears.
     assert.equal(recoveryProps(h.s).length, 0);
-    assert.match(tag(second), /WEIGHED 32\.0 t · 40 u/);
+    assert.equal(tag(second), receiptTag(second, 40));
   } finally { h.sim.dispose(); }
 });
 
 test('latched, weighed, released: the pod tag survives on the pod itself', () => {
   const h = fixture();
   try {
-    const stamp = kesslerTrueRead(h.w.mass);
     const before = tag(h.w);
     h.s.player.tether = { targetId: h.w.id, active: true };
     h.tick();
@@ -136,7 +137,7 @@ test('latched, weighed, released: the pod tag survives on the pod itself', () =>
     delete h.w.data.masslineLatched;
     h.s.player.tether = null;
     h.tick();
-    assert.equal(tag(h.w), `Cargo pod · WEIGHED ${stamp.toFixed(1)} t · 17 u`);
+    assert.equal(tag(h.w), receiptTag(h.w, 17));
     assert.equal(recoveryProps(h.s).length, 0);
   } finally { h.sim.dispose(); }
 });
@@ -161,6 +162,7 @@ test('a persisted weighed pod re-materializes with its tag and refreshes on part
     const rows = save._serializeEntities.call({ state: h.s });
     const row = rows.persistent.find((e) => e.data?.jettisonedCargo && e.data?.kesslerReceipt);
     assert.ok(row);
+    row.data.scanLabel = `Cargo pod · WEIGHED ${row.data.kesslerReceipt.trueRead.toFixed(1)} t · 17 u`;
     // The restore lane retires the old hull and respawns the envelope copy on a fresh generation.
     h.w.alive = false;
     save._spawnPersistentEntities.call({ state: h.s, helpers: h.sim.helpers }, [row]);
@@ -171,13 +173,13 @@ test('a persisted weighed pod re-materializes with its tag and refreshes on part
     assert.match(restored.data.scanLabel, /WEIGHED/);
     h.sim.bus.emit('save:loaded', {});
     h.tick();
+    assert.equal(tag(restored), receiptTag(restored, 17), 'restore corrects the older stamp-only label');
     h.s.player.cargo.capVolume = 5;
     h.m._collectPayload(restored, h.p);
     h.tick();
     const held = h.s.player.cargo.items[IRON] || 0;
     assert.ok(held > 0 && held < 17);
-    const stamp = kesslerTrueRead(restored.mass);
-    assert.equal(tag(restored), `Cargo pod · WEIGHED ${stamp.toFixed(1)} t · ${17 - held} u`, 'the restored pod still answers for its real remainder');
+    assert.equal(tag(restored), receiptTag(restored, 17 - held), 'the restored pod still answers for its real remainder');
     assert.equal(recoveryProps(h.s).length, 0);
   } finally { h.sim.dispose(); }
 });
@@ -197,7 +199,7 @@ test('an old save with no comparison record and a stale-format tag is tolerated 
     const held = h.s.player.cargo.items[IRON] || 0;
     assert.ok(held > 0 && held < 17);
     // On first real change the tag is rebuilt from its honest parts — name kept, never minted.
-    assert.equal(tag(h.w), `Iron freight · WEIGHED ${kesslerTrueRead(h.w.mass).toFixed(1)} t · ${17 - held} u`);
+    assert.equal(tag(h.w), receiptTag(h.w, 17 - held, 'Iron freight'));
     assert.equal(h.said.length, 0, 'nothing replays');
     const rows = save._serializeEntities.call({ state: h.s });
     assert.doesNotMatch(JSON.stringify(rows), /kesslerFreightRecovery/);

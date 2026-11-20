@@ -35,11 +35,14 @@ ${SL} .sf-save-ledger .sf-slot-label .k-input:disabled { border-bottom-color:var
 /* the placeholder leaves the legacy grey for the field's own ink at a whisper */
 ${SL} .sf-save-ledger .sf-slot-label .k-input::placeholder { color:color-mix(in srgb, var(--dp-ink, #e8e2d4) 40%, transparent); opacity:1; }
 
-/* reading ledger: promise-scale hairline card (overrides saveLayouts' .12 / radius-2 plate) */
+/* reading ledger: promise-scale hairline card (overrides saveLayouts' .12 / radius-2 plate).
+   The first alphas (.18/.025) vanished against the lit backdrop — the Records Wall finding —
+   so the face sits on the house E0 tokens (bench 2026-11-15). */
 ${SL} > .k-stage__foot.sf-save-ledger {
-  border:1px solid rgb(${BONE} / .18) !important;
+  border:1px solid rgb(${BONE} / .3) !important;
   border-radius:10px !important;
-  background:rgb(${BONE} / .025) !important;
+  background:var(--sf-face, rgb(8 11 16 / .8)) !important;
+  box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)) !important;
 }
 
 /* short frames: compress card chrome with the shared densify bands */

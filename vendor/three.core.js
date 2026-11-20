@@ -11743,6 +11743,10 @@ const _childaddedEvent = { type: 'childadded', child: null };
  */
 const _childremovedEvent = { type: 'childremoved', child: null };
 
+// SpaceFace: exact-target asset admission needs lights and LOD updates outside the selected
+// drawable set. Track which branches can contain them as the public graph APIs attach children.
+const _lightingOrLodDescendants = new WeakMap();
+
 /**
  * This is the base class for most objects in three.js and provides a set of
  * properties and methods for manipulating objects in 3D space.
@@ -12457,6 +12461,7 @@ class Object3D extends EventDispatcher {
 			object.removeFromParent();
 			object.parent = this;
 			this.children.push( object );
+			this._noteLightingOrLodChild( object, 1 );
 
 			object.dispatchEvent( _addedEvent );
 
@@ -12503,6 +12508,7 @@ class Object3D extends EventDispatcher {
 
 			object.parent = null;
 			this.children.splice( index, 1 );
+			this._noteLightingOrLodChild( object, - 1 );
 
 			object.dispatchEvent( _removedEvent );
 
@@ -12582,6 +12588,7 @@ class Object3D extends EventDispatcher {
 		object.removeFromParent();
 		object.parent = this;
 		this.children.push( object );
+		this._noteLightingOrLodChild( object, 1 );
 
 		object.updateWorldMatrix( false, true );
 
@@ -12592,6 +12599,30 @@ class Object3D extends EventDispatcher {
 		_childaddedEvent.child = null;
 
 		return this;
+
+	}
+
+	hasLightsOrLod() {
+
+		return this.isLight === true || this.isLightProbeGrid === true || this.isLOD === true ||
+			_lightingOrLodDescendants.has( this );
+
+	}
+
+	_noteLightingOrLodChild( child, direction ) {
+
+		const self = child.isLight === true || child.isLightProbeGrid === true || child.isLOD === true ? 1 : 0;
+		const count = ( _lightingOrLodDescendants.get( child ) || 0 ) + self;
+		if ( count === 0 ) return;
+
+		const delta = count * direction;
+		for ( let ancestor = this; ancestor !== null; ancestor = ancestor.parent ) {
+
+			const next = ( _lightingOrLodDescendants.get( ancestor ) || 0 ) + delta;
+			if ( next > 0 ) _lightingOrLodDescendants.set( ancestor, next );
+			else _lightingOrLodDescendants.delete( ancestor );
+
+		}
 
 	}
 

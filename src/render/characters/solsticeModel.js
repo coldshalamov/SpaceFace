@@ -48,14 +48,6 @@ function palette() {
       depthWrite: false,
       side: THREE.DoubleSide,
     }),
-    shockwave: new THREE.MeshBasicMaterial({
-      color: 0xffea9f,
-      transparent: true,
-      opacity: 0,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    }),
     amber: new THREE.MeshPhysicalMaterial({
       color: 0xffaa22,
       emissive: 0xff7700,
@@ -173,9 +165,10 @@ function buildCore(root, m) {
   const outerRingGroup = group(gimbals, 'outer_gimbal_ring');
   outerRingGroup.userData.animated = true;
   add(outerRingGroup, new THREE.TorusGeometry(18, 0.85, 8, 36), m.brass, 'outer_torus');
+  const notchGeometry = new THREE.BoxGeometry(0.7, 0.4, 2.4);
   for (let i = 0; i < 12; i++) {
     const a = (i / 12) * TAU;
-    const notch = add(outerRingGroup, new THREE.BoxGeometry(0.7, 0.4, 2.4), m.dark, `outer_notch_${i}`, Math.cos(a) * 18, 0, Math.sin(a) * 18);
+    const notch = add(outerRingGroup, notchGeometry, m.dark, `outer_notch_${i}`, Math.cos(a) * 18, 0, Math.sin(a) * 18);
     notch.rotation.y = -a;
   }
 
@@ -183,18 +176,20 @@ function buildCore(root, m) {
   const midRingGroup = group(gimbals, 'mid_gimbal_ring');
   midRingGroup.userData.animated = true;
   add(midRingGroup, new THREE.TorusGeometry(14, 0.65, 8, 32), m.dark, 'mid_torus');
+  const studGeometry = new THREE.CylinderGeometry(0.4, 0.4, 1.2, 6);
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * TAU;
-    add(midRingGroup, new THREE.CylinderGeometry(0.4, 0.4, 1.2, 6), m.gold, `mid_stud_${i}`, Math.cos(a) * 14, 0, Math.sin(a) * 14);
+    add(midRingGroup, studGeometry, m.gold, `mid_stud_${i}`, Math.cos(a) * 14, 0, Math.sin(a) * 14);
   }
 
   // Inner Gear Ring (Steel with 16 gear teeth)
   const innerRingGroup = group(gimbals, 'inner_gimbal_ring');
   innerRingGroup.userData.animated = true;
   add(innerRingGroup, new THREE.TorusGeometry(10.5, 0.5, 8, 28), m.steel, 'inner_torus');
+  const toothGeometry = new THREE.BoxGeometry(0.5, 0.35, 1.4);
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * TAU;
-    const tooth = add(innerRingGroup, new THREE.BoxGeometry(0.5, 0.35, 1.4), m.steel, `gear_tooth_${i}`, Math.cos(a) * 10.5, 0, Math.sin(a) * 10.5);
+    const tooth = add(innerRingGroup, toothGeometry, m.steel, `gear_tooth_${i}`, Math.cos(a) * 10.5, 0, Math.sin(a) * 10.5);
     tooth.rotation.y = -a;
   }
 

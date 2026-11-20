@@ -91,6 +91,24 @@ export function storeTotal(store) {
   return total;
 }
 
+/** The next courier load, in deterministic cargo order. Workbench staging can hold fractions. */
+export function stagedCourierLoad(buffer, capacity = SITE_BALANCE.podCapacity) {
+  const stagedUnits = storeTotal(buffer);
+  const cargo = {};
+  let units = 0;
+  if (stagedUnits + 1e-9 >= capacity) {
+    for (const goodId of Object.keys(buffer).sort()) {
+      const whole = Math.floor(Math.max(0, Number(buffer[goodId]) || 0) + 1e-9);
+      const take = Math.min(whole, capacity - units);
+      if (take <= 0) continue;
+      cargo[goodId] = take;
+      units += take;
+      if (units >= capacity) break;
+    }
+  }
+  return { cargo, stagedUnits, units };
+}
+
 /**
  * Numeric-safety ceiling for a single good's quantity in a store. This is NOT a gameplay
  * capacity — capacity limits INTAKE and never destroys stock (see the A10 ruling in

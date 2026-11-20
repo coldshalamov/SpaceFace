@@ -181,7 +181,34 @@ test('Cargo nobody nearby buys counts as 0 and flags unsellable', () => {
   // iron = 10 * 100 = 1000; obscure waste = 0; hasUnsellable = true
   assert.equal(hold.totalWorth, 1000);
   assert.equal(hold.hasUnsellable, true);
-  assert.equal(hold.text, 'HOLD 15/40 · ≈ 1,000 cr · some unsellable here');
+  assert.equal(hold.text, "HOLD 15/40 · ≈ 1,000 cr · some cargo can't be sold");
+});
+
+test('Hold worth quotes only the free units of a commodity with sealed freight', () => {
+  const mission = {
+    id: 'fuel-freight',
+    type: 'cargo_delivery',
+    status: 'active',
+    preloadedCargo: true,
+    destStationId: 'station_tethys',
+    params: { cmdtyId: 'cmdty_fuel_cells', qty: 8, sealAccounted: true, sealedRemaining: 8 },
+  };
+  const state = {
+    player: { cargo: { capVolume: 250, usedVolume: 10, items: { cmdty_fuel_cells: 10 } } },
+    economy: { markets: { station_tethys: { cmdty_fuel_cells: { lastSell: 100 } } } },
+    nav: { waypoint: { stationId: 'station_tethys' } },
+    missions: { active: [mission] },
+  };
+
+  const hold = calculateHoldWorth(state, { state });
+  assert.equal(hold.totalWorth, 200);
+  assert.equal(hold.hasUnsellable, true);
+  assert.equal(hold.text, "HOLD 10/250 · ≈ 200 cr · some cargo can't be sold");
+
+  mission.status = 'completed';
+  const after = calculateHoldWorth(state, { state });
+  assert.equal(after.totalWorth, 1000);
+  assert.equal(after.hasUnsellable, false);
 });
 
 test('Hold value follows the mission top-level destStationId', () => {

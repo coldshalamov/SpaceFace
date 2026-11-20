@@ -55,7 +55,7 @@ import { NEW_GAME } from '../data/newGameDefaults.js';
 import { starterBuoySavedMass } from '../missions/starterWorkday.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { restoreCombatState, restoreCombatStateSteps, serializeCombatState, resolveWorldJobCombatRef, hasPendingCeresWorkfleetAttachments,
-  resumeCeresWorkfleetAttachments, cancelPendingCeresWorkfleetAttachments,
+  resumeCeresWorkfleetAttachments, cancelPendingCeresWorkfleetAttachments, restoreCinderTowAttachment,
   ceresWorkfleetEntityRef, ceresWorkfleetRefKey, resolveCeresWorkfleetEntityRef, ceresWorkfleetHostileAttachmentOwners, ceresWorkfleetIncomingSavedOwnerIds } from '../combat/persistence.js';
 import { resolveCapitalBossRoleBinding } from '../missions/capitalBossSpawn.js';
 import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
@@ -108,7 +108,6 @@ import {
   mergeProfileSettings,
   migrateDefaultMutedAudioProfile,
   migrateGameMotionDefault,
-  migrateLegacyMasslineBindingProfile,
   migrateOneSetOfKeysProfile,
   readProfileSettings,
 } from '../core/graphicsProfileBootstrap.js';
@@ -1205,11 +1204,19 @@ export const save = {
 
   /** Build the `data` payload (plain JSON, deps-first key order). No mesh/THREE/Map/fn/Infinity. */
   _serializeNativePhysics() {
+    const timings = this._activePacedSave?.captureSerializerTimings;
+    let started = timings ? workNowMs() : 0;
     const nativePhysics = this._callSerialize('physics');
+    if (timings) {
+      const ended = workNowMs();
+      timings.push({ key: 'physics.exportAndCanonicalize', ms: ended - started });
+      started = ended;
+    }
     if (nativePhysics == null) return nativePhysics;
     // Physics can retain entity-side anchored recoil when no native snapshot is admissible.
     if (Object.keys(nativePhysics).length === 1 && Object.hasOwn(nativePhysics, 'anchoredRecoil')) return nativePhysics;
     const compact = compactNativeAttestationTables(nativePhysics);
+    if (timings) timings.push({ key: 'physics.compactAttestations', ms: workNowMs() - started });
     if (!compact) throw new Error('native_attestation_encode_failed');
     return compact;
   },
@@ -1800,7 +1807,7 @@ export const save = {
 
   _loadProfileSettings() {
     const profile = migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
-      migrateLegacyMasslineBindingProfile(this._readProfileSettings()),
+      migrateOneSetOfKeysProfile(this._readProfileSettings()),
     ));
     if (!profile) return false;
     this.state.settings = sanitizeRestoredSettings(mergeProfileSettings(this.state.settings, profile));
@@ -2073,6 +2080,10 @@ export const save = {
     const t = nowMs();
     const write = this._writeSlot(slot, envelope);
     const writeMs = nowMs() - t;
+    // A later synchronous write already owns this slot. A waiting live Quick must not
+    // read that new generation as its predecessor and replace it with an older capture.
+    const liveQuick = this._activePacedSave;
+    if (write.ok && liveQuick?.liveQuick && liveQuick.slot === slot) liveQuick.superseded = true;
     const timing = this._saveTiming({
       slot,
       reason,
@@ -2104,10 +2115,9 @@ export const save = {
    * guards, receipts, boundary markers and durable write, but the chain runs across
    * _scheduleAutosaveWork hops instead of as one multi-hundred-ms task inside the emit.
    *
-   * Only legal while `_frozenTickBoundary()` holds — pause/dock/stacked surfaces — where
-   * `_serializeDataFrozenAsync` can slice the O(world) capture coherently (an unfreeze
-   * retakes atomically). A live-flight save takes the documented one-task coherent
-   * capture on the sync lane, so this defers to save() outright when unfrozen.
+   * A frozen boundary can slice capture coherently; an unfreeze retakes atomically.
+   * The live Quick route captures detached data in one task before pacing encoding and
+   * storage. Other live writes use the synchronous owner.
    *
    * Overlapping paced writes supersede: a new job marks the in-flight one, which aborts
    * at its next hop with a 'superseded' receipt (a cancellation — the slot keeps its
@@ -2127,14 +2137,16 @@ export const save = {
       this._emitSaveTimingError(timing);
       return Promise.resolve(false);
     }
-    // Live sim: the chunked walk can't stay coherent across yields, so the documented
-    // one-task coherent capture still owns this lane.
-    if (!this._frozenTickBoundary()) {
+    const frozen = this._frozenTickBoundary();
+    const liveQuick = !frozen && this.state.mode === 'flight' && slot === 'quick'
+      && reason === 'manual' && !autosave && this.serialize === CANONICAL_SAVE_SERIALIZE;
+    if (!frozen && !liveQuick) {
       const accepted = this.save(slot, options);
       return accepted ? this._lastSaveDurability : Promise.resolve(false);
     }
 
-    const job = { slot, reason, autosave, started, superseded: false, runEpoch: this._runEpoch };
+    const job = { slot, reason, autosave, started, superseded: false, runEpoch: this._runEpoch,
+      liveQuick, restoreSequence: this._restoreSequence };
     if (this._activePacedSave) this._activePacedSave.superseded = true;
     this._activePacedSave = job;
     // An explicit paced write to the autosave slot (exit-to-menu, or a UI save that names
@@ -2147,6 +2159,7 @@ export const save = {
     if (slot === AUTOSAVE_SLOT) this._cancelActiveAutosave('superseded', { immediate: true });
     this.bus.emit('save:started', { slot, reason, autosave });
     this._noteWritePending(slot, reason, autosave);
+    if (liveQuick) job.pendingWrite = this.state.save?.pendingWrite;
     beginFocusLossSaveWrite(this.state);
     const snapshotBoundary = this._captureSaveSnapshotBoundary();
     const chain = this._runPacedSaveChain(job, options, snapshotBoundary);
@@ -2157,24 +2170,34 @@ export const save = {
   },
 
   async _runPacedSaveChain(job, options, snapshotBoundary) {
-    const { slot, reason, autosave, started } = job;
+    const { slot, reason, autosave, started, liveQuick } = job;
     // The serialized realm is captured once — init()/run teardowns rebind this.state
     // and this.bus, and the chain must keep reading the state it snapshotted.
     const state = this.state;
+    let holdsFocusLoss = true;
     const samples = [];
+    const serializerTimings = liveQuick ? [] : null;
     const hop = () => new Promise((resolve) => { this._scheduleAutosaveWork(resolve); });
-    const abortReason = () => (
-      job.superseded ? 'superseded'
-        : (this._restoring ? 'restoring'
-        : (job.runEpoch !== this._runEpoch ? 'stale' : null))
-    );
+    const abortReason = () => {
+      const staleRun = job.runEpoch !== this._runEpoch;
+      if (liveQuick && (staleRun || job.restoreSequence !== this._restoreSequence)) return 'stale';
+      if (job.superseded) return 'superseded';
+      if (this._restoring) return 'restoring';
+      return staleRun ? 'stale' : null;
+    };
     const fail = (failure, write = null, extra = {}) => {
       // A stale-epoch abort owes no receipt: the realm that heard save:started is
       // already torn down — the new session must not inherit a save:error it never made.
-      if (failure === 'stale') return false;
+      if (failure === 'stale') {
+        if (liveQuick && job.pendingWrite && state.save?.pendingWrite === job.pendingWrite) {
+          state.save.pendingWrite = null;
+        }
+        return false;
+      }
       const timing = this._saveTiming({
         slot, reason, autosave, started, ok: false, failure,
         blockingSamples: samples.length ? samples : null,
+        serializerTimings,
         ...extra,
       });
       this._publishSaveResult(slot, null, write || { ok: false, reason: failure }, timing);
@@ -2187,18 +2210,44 @@ export const save = {
       return false;
     };
     try {
-      // Serialize — sliced while the frozen boundary holds; an unfreeze retakes
-      // atomically inside _serializeDataFrozenAsync before it can mix ticks.
+      // Live Quick stays in this turn through data and descriptor capture. The frozen
+      // lane may yield between serializers and checks the boundary before each resume.
       let t = nowMs();
       let data;
       try {
+        if (liveQuick) {
+          const r = abortReason();
+          if (r) return fail(r);
+        }
         if (this._saveJumpInProgress()) return fail('jump_in_progress');
-        data = await this._serializeDataFrozenAsync(() => {
-          if (this._saveJumpInProgress()) {
-            throw Object.assign(new Error('Cannot retake a save in transit'), { code: 'jump_in_progress' });
+        if (liveQuick) {
+          const captureStarted = workNowMs();
+          let captured;
+          // Feature adapters forward the generator's output but not its arguments. Keep
+          // the observer on this job for the same synchronous capture through every adapter.
+          job.captureSerializerTimings = serializerTimings;
+          try { captured = this.serializeData(); }
+          finally { job.captureSerializerTimings = null; }
+          const captureEnded = workNowMs();
+          const physicsMs = serializerTimings.reduce((total, sample) => total + sample.ms, 0);
+          serializerTimings.push({ key: 'otherSaveReaders', ms: Math.max(0, captureEnded - captureStarted - physicsMs) });
+
+          const detachStarted = workNowMs();
+          let detachKey = 'detach.structuredClone';
+          try { data = structuredClone(captured); }
+          catch (_) {
+            detachKey = 'detach.cloneThenJsonFallback';
+            data = JSON.parse(safeStringify(captured));
           }
-          return this._frozenTickBoundary();
-        });
+          serializerTimings.push({ key: detachKey, ms: workNowMs() - detachStarted });
+        } else {
+          data = await this._serializeDataFrozenAsync(() => {
+            if (this._saveJumpInProgress()) {
+              throw Object.assign(new Error('Cannot retake a save in transit'), { code: 'jump_in_progress' });
+            }
+            return this._frozenTickBoundary();
+          });
+        }
       } catch (err) {
         // A torn-down realm fails the same way a corrupt one does — stale wins.
         const rr = abortReason();
@@ -2232,6 +2281,10 @@ export const save = {
         return fail('serialize_failed');
       }
       samples.push({ phase: 'envelope', ms: nowMs() - t });
+      if (liveQuick) {
+        endFocusLossSaveWrite(state);
+        holdsFocusLoss = false;
+      }
 
       await hop();
       r = abortReason();
@@ -2353,12 +2406,13 @@ export const save = {
           ? `${write.reason}:${write.verifyReason}${Number.isFinite(write.verifyActual) ? `(${write.verifyActual}>${write.verifyLimit})` : ''}`
           : write.reason || null,
         blockingSamples: samples,
+        serializerTimings,
       });
       const ok = this._publishSaveResult(slot, envelope, write, timing);
       if (ok) this._acknowledgeSaveSnapshotBoundary(snapshotBoundary);
       return ok ? this._lastSaveDurability : false;
     } finally {
-      endFocusLossSaveWrite(state);
+      if (holdsFocusLoss) endFocusLossSaveWrite(state);
       if (this._activePacedSave === job) this._activePacedSave = null;
     }
   },
@@ -8126,10 +8180,11 @@ export const save = {
     if (tether?.active === true) {
       const id = tether.attachmentId;
       const saved = typeof id === 'string' ? d?.attachments?.byId?.[id] : null;
+      const cinderWreck = restoreCinderTowAttachment(state, d, this.registry?.get?.('aftermathWrecks'), entityIdRemap);
       const attachment = typeof id === 'string' ? state.combat?.attachments?.byId?.[id] : null;
       const savedTarget = saved?.targetRef?.kind === 'persistent' ? saved.targetRef.saveId : null;
       const semanticKey = ceresWorkfleetRefKey(saved?.targetRef);
-      const semanticTarget = semanticKey ? resolveCeresWorkfleetEntityRef(state, saved.targetRef) : null;
+      const semanticTarget = cinderWreck || (semanticKey ? resolveCeresWorkfleetEntityRef(state, saved.targetRef) : null);
       const mappedTarget = semanticTarget ? semanticTarget.id
         : savedTarget != null && entityIdRemap instanceof Map ? entityIdRemap.get(String(savedTarget)) : null;
       const player = state.entities?.get?.(state.playerId);
@@ -8400,18 +8455,9 @@ export const save = {
     if (!d) return;
     // Deep-merge so new nested defaults absent from an old save survive (forward-compat).
     const saveSettings = migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
-      migrateLegacyMasslineBindingProfile(clonePlain(d)),
+      migrateOneSetOfKeysProfile(clonePlain(d)),
     ));
     let restored = sanitizeRestoredSettings(mergeProfileSettings(this.state.settings, saveSettings));
-    // A binding map is an atomic player choice, and that rule has to apply to the SAVE as well as to
-    // the profile below — it was only applied to the profile. mergePlain() is a deep merge, so a
-    // restore used to union the incoming map over whatever bindings were already live in
-    // state.settings. Loading slot A (with a rebound `forward`) and then slot B (which never rebound
-    // anything) left B running A's key. Take the save's map wholesale when it carries one.
-    if (saveSettings && saveSettings.controls
-      && Object.prototype.hasOwnProperty.call(saveSettings.controls, 'bindings')) {
-      restored.controls.bindings = normalizeControlBindings(saveSettings.controls.bindings);
-    }
     // FB-114: the pad override map is an atomic player choice for the same reason —
     // a deep merge would union the save's chords over whatever the live profile bound,
     // so a slot that never rebound pad buttons would keep the previous game's map.
@@ -8422,15 +8468,10 @@ export const save = {
       restored.controls.gamepad.bindings = clonePlain(saveSettings.controls.gamepad.bindings);
     }
     const profile = migrateGameMotionDefault(migrateDefaultMutedAudioProfile(
-      migrateLegacyMasslineBindingProfile(this._readProfileSettings()),
+      migrateOneSetOfKeysProfile(this._readProfileSettings()),
     ));
     if (profile) {
       restored = sanitizeRestoredSettings(mergeProfileSettings(restored, profile));
-      // Binding maps are an atomic player profile choice. Deep-merging here would retain keys
-      // injected by old-save migration underneath a newer Space-primary profile.
-      if (profile.controls && Object.prototype.hasOwnProperty.call(profile.controls, 'bindings')) {
-        restored.controls.bindings = normalizeControlBindings(profile.controls.bindings);
-      }
       // FB-005: rumble level is profile-scoped and never persisted inside a save slot. The
       // profile merge normally wins outright; when the profile predates the setting, the save's
       // copy must not leak through either — the shipped default stands.
@@ -10493,7 +10534,7 @@ function normalizeControlBindings(bindings) {
       const trimmed = code.trim();
       if (trimmed) clean.push(trimmed);
     }
-    if (clean.length) out[action] = clean;
+    if (clean.length || (Array.isArray(raw) && raw.length === 0)) out[action] = clean;
   }
   return Object.keys(out).length ? out : null;
 }

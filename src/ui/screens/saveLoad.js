@@ -15,7 +15,7 @@ import { FACTION_META } from '../../data/factions.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { SECTORS } from '../../data/sectors.js';
 import { contestedSectorForPair } from '../../data/conflictZones.js';
-import { SHIPS } from '../../data/ships.js';
+import { SHIPS, shipDisplayName as shipLabel } from '../../data/ships.js';
 import { THUNDERCHILD, THUNDERCHILD_TITLE_ID, TITLES } from '../../data/titles.js';
 import { rankFromRep } from '../../systems/factions.js';
 import { localizeText } from '../../localization/sourceText.js';
@@ -303,14 +303,7 @@ function titleCaseWords(s) {
   return String(s).split(/[\s_]+/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
-export function shipLabel(id) {
-  if (!id) return '';
-  // Catalog name wins. ship_kestrel's player-facing name is Hitch; title-casing the id
-  // would put the legacy "Kestrel" on the load portrait.
-  const known = SHIP_NAME_BY_ID.get(id);
-  if (known) return known;
-  return titleCaseWords(String(id).replace(/^ship_/, ''));
-}
+export { shipLabel };
 
 function fmtSavedAt(meta) {
   const when = meta.savedAt || meta.lastSavedAt;

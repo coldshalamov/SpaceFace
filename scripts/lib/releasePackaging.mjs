@@ -75,9 +75,13 @@ export const RELEASE_COPY_MAPPINGS = Object.freeze([
     destination: 'assets/audio',
     exclude: Object.freeze(['voice/line_', 'voice/blind/']),
   }),
-  // Runtime plume/RCS masks are loaded through template paths in vfx.js. Copy only this manifest-
-  // governed subtree; the labelled FX reference sheets in assets/fx/ remain authoring-only.
+  // Runtime plume/RCS masks and animated combat atlases each use their own runtime directory.
   Object.freeze({ source: 'assets/fx/thruster', destination: 'assets/fx/thruster' }),
+  Object.freeze({
+    source: 'assets/fx/sprites',
+    destination: 'assets/fx/sprites',
+    exclude: Object.freeze(['PROMPTS.md']),
+  }),
   // The live wreck investigation catalog imports this small authored variant table.
   Object.freeze({ source: 'assets/wreck-court', destination: 'assets/wreck-court' }),
   Object.freeze({ source: 'src/data/scenarios', destination: 'data/scenarios' }),

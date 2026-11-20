@@ -42,6 +42,20 @@ test('the live cap retires the oldest rounds and keeps a bounded set', () => {
   assert.equal(reserveProjectileCapacity(state, 0), 0);
 });
 
+test('the indexed cap admits rounds past spent rows and still retires the oldest live one when full', () => {
+  const projectiles = Array.from({ length: PROJECTILE_LIVE_CAP - 1 }, (_, id) =>
+    ({ id, type: 'projectile', alive: id !== 0 }));
+  const state = { entityIndex: { __spacefaceEntityIndexV1: true, projectiles } };
+
+  assert.equal(reserveProjectileCapacity(state, 1), 0);
+  projectiles.push({ id: PROJECTILE_LIVE_CAP - 1, type: 'projectile', alive: true });
+  assert.equal(reserveProjectileCapacity(state, 1), 0);
+  projectiles.push({ id: PROJECTILE_LIVE_CAP, type: 'projectile', alive: true });
+  assert.equal(reserveProjectileCapacity(state, 1), 1);
+  assert.equal(projectiles[1].alive, false);
+  assert.equal(projectiles[2].alive, true);
+});
+
 test('a bounce refreshes enough travel to come back, then stops refreshing', () => {
   const projectile = {
     pos: { x: 900, z: 0 },

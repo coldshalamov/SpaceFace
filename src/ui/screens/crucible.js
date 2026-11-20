@@ -27,7 +27,6 @@ import {
   normalizeSeed,
   practiceLaunchFor,
   canChooseSwarmOpeningLesson,
-  consumeSwarmPlayEntry,
   defaultSwarmStakeId,
   rememberSwarmStake,
 } from '../crucibleLaunch.js';
@@ -115,6 +114,8 @@ import {
   buyCrucibleHangarTrack,
   buyCrucibleHangarHull,
   crucibleSwarmDepthView,
+  SWARM_CHALLENGE_DAILY_WAVES,
+  SWARM_CHALLENGE_DAILY_BOUNTY,
   setCruciblePerkLoadout,
   kitBalanceBoard,
   overconfidenceStreak,
@@ -145,7 +146,7 @@ import {
 } from '../sandbox/sandboxSetup.js';
 import { ensurePhysicsLabRoute, notePracticeLaunch } from './crucibleLabControls.js';
 import { SURVIVAL_MUTATOR_BY_ID, SURVIVAL_TRIAL_BY_RULESET, POWERED_CONVEYOR_RULESET } from '../../data/survivalMutators.js';
-import { clearQueuedChallenge, queueGhostPlayback, queuePracticeRun, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
+import { clearQueuedChallenge, queueGhostPlayback, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
 import {
   availableOptions,
   isModeAvailable,
@@ -779,16 +780,16 @@ const CRUCIBLE_MODE_CARDS = Object.freeze([
     ruleset: SWARM_RULESET,
     label: 'Swarm',
     verb: 'Launch Swarm',
-    blurb: 'Bring the swarm. Turn the room against it.',
-    sub: 'Clear a round. Spend the spoils or save for a bigger toy. Push your build as far as it goes.',
+    blurb: 'Build a ship and survive waves of enemies.',
+    sub: 'Survive each wave. Spend your rewards on equipment between rounds.',
   },
   {
     ruleset: 'scored',
     label: 'Gauntlet',
     verb: 'Enter the Gauntlet',
     blurb: 'Thirty authored waves in three acts. One question per wave.',
-    sub: 'Thirty waves in three acts. Every wave you rearm; every ten you refit. '
-      + 'Nothing you earn here follows you home.',
+    sub: 'Thirty waves in three acts. Rearm between waves and refit at waves 10, 20, and 30. '
+      + 'Banked salvage goes to the Swarm hangar. Your Adventure save stays separate.',
   },
 ]);
 
@@ -796,7 +797,7 @@ const DAILY_CARD = Object.freeze({
   label: 'Daily',
   verb: 'Play today',
   blurb: 'The same seed for everyone, today.',
-  sub: 'One seed for the whole day. Same run on every machine. Nothing you earn here follows you home.',
+  sub: `Your score goes on the daily board. Clear ${SWARM_CHALLENGE_DAILY_WAVES} rounds for a one-time ${SWARM_CHALLENGE_DAILY_BOUNTY} cr bonus.`,
 });
 
 const GHOST_CARD = Object.freeze({
@@ -830,8 +831,6 @@ export const crucibleScreen = {
   mount(rootEl, ctx) {
     this._embarkSpecActive = false;
     const door = this;
-    // TITLE-01: the title's SWARM door lands here in its one-button PLAY state; Customise opens the rest.
-    let playMode = consumeSwarmPlayEntry();
     let enterButton = null;
     let preparation = null;
     let syncTrainingChoice = () => {};
@@ -872,6 +871,14 @@ export const crucibleScreen = {
     // PQ-146: a Best Line's "Practice this line" stages the same seed, the recorded ruleset and
     // your own ghost — flagged so the launch files under the 'practice' record mode.
     let practiceQueued = false;
+    const hullChoices = crucibleHullChoices();
+    const priorSwarmHull = previous && lastCrucibleRuleset() === SWARM_RULESET ? previous.hullId : null;
+    let swarmShipId = (hullChoices.find(choice => choice.earned && choice.hullId === priorSwarmHull)
+      || hullChoices.find(choice => choice.hullId === 'ship_hornet')).id;
+    const hullFirstSwarm = () => ruleset === SWARM_RULESET && !daily && !weekly && !practiceQueued
+      && (!pendingShare || pendingShare.zeroScrapOpening);
+    const zeroScrapOpening = () => hullFirstSwarm() && startWave === 1 && !raceGhost;
+    const currentStarterId = () => hullFirstSwarm() ? swarmShipId : starterId;
     // S5: the swarm's difficulty contract, remembered with the rest of the launch. Contender is
     // the tuning baseline — an absent or unknown stake normalizes to it, never silently higher.
     // First-timers start on Exhibition (the roomy purse); after that, the stake last used.
@@ -1107,6 +1114,8 @@ export const crucibleScreen = {
       raceGhost = !raceGhost;
       cue('confirm');
       syncGhost();
+      syncStake();
+      syncThreat();
     });
     addWord(modes, ghostButton);
     modeBody.appendChild(modes);
@@ -1143,7 +1152,7 @@ export const crucibleScreen = {
         loadoutRules: JSON.stringify({
           ruleset,
           mutators: terms.challengeMutators,
-          starter: starterId ?? null,
+          starter: currentStarterId(),
           stake: daily || ruleset !== SWARM_RULESET ? null : normalizeSwarmStake(stake),
         }),
         simulationAssistProfile: stuntAssistProfile(ctx.state),
@@ -1163,7 +1172,11 @@ export const crucibleScreen = {
 
     function syncGhost() {
       const offer = currentGhostOffer();
-      if (!offer.available) raceGhost = false;
+      if (!offer.available && raceGhost) {
+        raceGhost = false;
+        syncStake();
+        syncThreat();
+      }
       // The offer's own blurb names the compatibility — same rules, unknown stamp, or the
       // exact fields that differ — beside the ghost record. INF-037.
       ghostBlurb.textContent = offer.blurb || (offer.available ? GHOST_CARD.blurbOn : GHOST_CARD.blurbOff);
@@ -1200,6 +1213,7 @@ export const crucibleScreen = {
 
     function syncMode() {
       syncTrainingChoice();
+      syncHull();
       // The presentation is refreshed after the mode's own labels have settled below.
       const week = weeklyDoorCard();
       // SWARM-05 §7.2: the hangar reads the mode before every early return — a Daily or a
@@ -1225,6 +1239,7 @@ export const crucibleScreen = {
         syncStake();
         syncThreat();
         syncPerk();
+        syncLadder();
         syncGhost();
         return;
       }
@@ -1271,10 +1286,10 @@ export const crucibleScreen = {
     // THE STAKE ROW (swarm only): the run's difficulty contract as four tiles, each naming its
     // purse, its pressure and its earn — the same numbers the results surface reads back. Daily
     // hides the row and rides Contender: a shared challenge cannot let the purse be a door choice.
-    const stakeBody = settingRow('Stake', 'sf-crd-row--stake');
+    const stakeBody = settingRow('Difficulty', 'sf-crd-row--stake');
     const stakeLi = stakeBody.parentNode;
     const stakes = el('ul', 'k-words k-words--row sf-crd-stakes fh-cluster');
-    stakes.setAttribute('aria-label', 'Stake');
+    stakes.setAttribute('aria-label', 'Difficulty');
     pin(stakes, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
     const stakeButtons = [];
     const stakeSentence = el('p', 'k-sentence sf-crd-stake-sub', '');
@@ -1287,8 +1302,13 @@ export const crucibleScreen = {
       if (stakeLi && stakeLi.style) { stakeLi.hidden = !on; stakeLi.style.display = on ? '' : 'none'; }
       const def = swarmStakeFor(stake);
       // The blurb only: purse, pressure, pay and score all read on the tiles themselves.
-      stakeSentence.textContent = def.blurb;
-      for (const other of stakeButtons) syncChoice(other, other.dataset.stakeId === stake);
+      const startsAtZero = zeroScrapOpening();
+      stakeSentence.textContent = (startsAtZero && def.openingBlurb) || def.blurb;
+      for (const other of stakeButtons) {
+        syncChoice(other, other.dataset.stakeId === stake);
+        const numbers = other.querySelector('.sf-crd-stake-nums');
+        if (numbers) numbers.textContent = swarmStakePitch(other.dataset.stakeId, startsAtZero);
+      }
     }
     for (const entry of SWARM_STAKES) {
       const card = choiceTile(entry.label, 'sf-crd-stake', '', STAKE_ICON[entry.id] || 'hull');
@@ -1320,16 +1340,24 @@ export const crucibleScreen = {
     pin(threats, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
     const threatButtons = [];
     const threatSentence = el('p', 'k-sentence sf-crd-threat-sub', '');
+    const activeThreatPicks = () => [...threatPicks].filter(id => id !== 'thin_purse' || !zeroScrapOpening());
     function syncThreat() {
       const on = !daily && ruleset === SWARM_RULESET;
       if (threatLi && threatLi.style) { threatLi.hidden = !on; threatLi.style.display = on ? '' : 'none'; }
-      for (const other of threatButtons) syncChoice(other, threatPicks.has(other.dataset.threatId));
-      if (!threatPicks.size) {
+      const picks = activeThreatPicks();
+      for (const other of threatButtons) {
+        const hidden = other.dataset.threatId === 'thin_purse' && zeroScrapOpening();
+        other.hidden = hidden;
+        other.disabled = hidden;
+        if (other.parentElement?.tagName === 'LI') other.parentElement.style.display = hidden ? 'none' : '';
+        syncChoice(other, picks.includes(other.dataset.threatId));
+      }
+      if (!picks.length) {
         threatSentence.textContent = 'No wager — the room plays at its honest difficulty.';
         return;
       }
-      const names = [...threatPicks].map((id) => SWARM_THREAT_BY_ID[id].name).join(' + ');
-      const mult = swarmThreatBountyMult([...threatPicks]);
+      const names = picks.map(id => SWARM_THREAT_BY_ID[id].name).join(' + ');
+      const mult = swarmThreatBountyMult(picks);
       threatSentence.textContent = `${names} — the bounty lands at ×${mult.toFixed(2)}.`;
     }
     for (const threat of SWARM_THREATS) {
@@ -1449,7 +1477,23 @@ export const crucibleScreen = {
     const hullSentence = el('p', 'k-sentence sf-crd-hull-sub', '');
     // Hull words pressed the same as kit tiles but stay word-shaped — not `syncChoice` tiles.
     const hullButtons = [];
+    const swarmShipButtons = [];
     function syncHull() {
+      const starterId = currentStarterId();
+      const shipsOnly = hullFirstSwarm();
+      const heading = shipsOnly ? 'Ship' : 'Starter build';
+      hullBody.parentNode.firstChild.textContent = heading;
+      hulls.setAttribute('aria-label', heading);
+      anyHull.hidden = shipsOnly;
+      for (const card of buttons) {
+        card.parentNode.hidden = shipsOnly;
+        card.parentNode.style.setProperty('display', shipsOnly ? 'none' : '', shipsOnly ? 'important' : '');
+      }
+      for (const card of swarmShipButtons) {
+        card.parentNode.hidden = !shipsOnly;
+        card.parentNode.style.setProperty('display', shipsOnly ? '' : 'none', shipsOnly ? '' : 'important');
+        syncChoice(card, shipsOnly && card.dataset.starterId === starterId);
+      }
       const hullPick = typeof starterId === 'string' && starterId.startsWith('hull:')
         ? starterId.slice(5)
         : null;
@@ -1459,7 +1503,7 @@ export const crucibleScreen = {
         const name = entityLabel('hull:' + hullShip.id) || hullShip.name;
         hullSentence.innerHTML = `${entitySpanHtml('hull:' + hullShip.id, escapeHtml(name))}${escapeHtml(
           ruleset === SWARM_RULESET
-            ? ' — bare hull. The opening armory is the kit; the purse buys it.'
+            ? ' — choose equipment on the next screen.'
             : ' — bare hull. No fittings; the drafts decide.',
         )}`;
       } else {
@@ -1491,6 +1535,7 @@ export const crucibleScreen = {
       // behind the title or compete with another screen's New Game preparation.
       if (!door._embarkSpecActive || !ctx || !ctx.bus) return;
       const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === arenaId) || COMBAT_LAB_ARENAS[0];
+      const starterId = currentStarterId();
       const hullPick = typeof starterId === 'string' && starterId.startsWith('hull:')
         ? starterId.slice(5)
         : ((COMBAT_LAB_STARTER_PACKAGES.find((s) => s.id === starterId) || {}).hullId || null);
@@ -1502,6 +1547,7 @@ export const crucibleScreen = {
         sectorId: arena && arena.sectorId,
         shipId: hullPick,
         seed,
+        survivalRuleset: ruleset,
       });
     }
     this._armEmbarkSpec = armEmbarkSpec;
@@ -1555,6 +1601,20 @@ export const crucibleScreen = {
       buttons.push(card);
       addWord(hulls, card);
     }
+    for (const choice of hullChoices) {
+      if (!choice.earned) continue;
+      const card = choiceTile(choice.name, 'sf-crd-hull', '', 'hull');
+      card.dataset.starterId = choice.id;
+      card.dataset.tileFit = 'fill';
+      card.addEventListener('click', () => {
+        swarmShipId = choice.id;
+        cue('confirm');
+        syncHull();
+        syncGhost();
+      });
+      swarmShipButtons.push(card);
+      addWord(hulls, card);
+    }
     hullBody.appendChild(hulls);
     // ANY HULL — every ship in the catalog, grouped by tier, launches bare. Under swarm the
     // purse buys the kit at the opening armory; elsewhere a bare hull is a wager. Hull picks
@@ -1564,7 +1624,7 @@ export const crucibleScreen = {
       'Any hull, bare — the armory fits the kit.');
     anyHull.appendChild(anyHullCap);
     const hullTiers = new Map();
-    for (const choice of crucibleHullChoices()) {
+    for (const choice of hullChoices) {
       if (!hullTiers.has(choice.tier)) hullTiers.set(choice.tier, []);
       hullTiers.get(choice.tier).push(choice);
     }
@@ -1882,6 +1942,9 @@ export const crucibleScreen = {
       els.zoneLi.hidden = !onLadder;
       if (!onLadder) {
         startWave = 1;
+        syncTrainingChoice();
+        syncStake();
+        syncThreat();
         return;
       }
       const rec = ladderArenaRec();
@@ -1950,6 +2013,9 @@ export const crucibleScreen = {
           ? `Play ${picked.name} — Round ${startWave}`
           : 'Launch Swarm';
       }
+      syncTrainingChoice();
+      syncStake();
+      syncThreat();
     }
 
     // SWARM-05 §7.2 — the hangar strip. Swarm's persistent workshop: the bounty, each
@@ -2069,18 +2135,42 @@ export const crucibleScreen = {
       const res = applyRunShareCode(codeInput.value);
       if (!res.ok) {
         pendingShare = null;
+        syncHull();
+        syncStake();
+        syncThreat();
         shareNote.textContent = res.error;
         cue('deny');
         return;
+      }
+      if (res.zeroScrapOpening) {
+        const hull = hullChoices.find(choice => choice.id === res.starterId);
+        const arenaLocked = crucibleArenaLadderLocked(loadCrucibleMeta()?.ladder, res.arenaId);
+        if (!hull?.earned || arenaLocked) {
+          const locked = arenaLocked ? arenaDescriptions[res.arenaId]?.[0] || 'this arena' : hull?.name || 'this hull';
+          shareNote.textContent = `Unlock ${locked} to use this run code.`;
+          cue('deny');
+          return;
+        }
       }
       pendingShare = {
         mutators: res.mutators,
         dailyDateKey: res.dailyDateKey,
         weeklyMutatorId: res.weeklyMutatorId,
         ghostHash: res.ghostHash,
+        ...(res.zeroScrapOpening ? { zeroScrapOpening: true } : {}),
         ...(res.wreck ? { wreck: res.wreck } : {}),
       };
       starterId = res.starterId;
+      if (res.zeroScrapOpening) {
+        swarmShipId = res.starterId;
+        startWave = 1;
+        raceGhost = false;
+        trainingOpening = res.openingLesson;
+        threatPicks.clear();
+        for (const id of res.swarmThreats) threatPicks.add(id);
+        selectedModifiers.clear();
+        for (const button of rootEl.querySelectorAll('.sf-crd-modifier')) syncChoice(button, false);
+      }
       if (typeof res.stake === 'string' && res.stake) stake = normalizeSwarmStake(res.stake);
       if (COMBAT_LAB_ARENAS.some((a) => a.id === res.arenaId)) arenaId = res.arenaId;
       ruleset = res.ruleset;
@@ -2103,6 +2193,7 @@ export const crucibleScreen = {
       if (res.ghostHash != null && lastGhostRowByHash(doorProfile, res.ghostHash)) raceGhost = true;
       shareNote.textContent = `Code loaded — seed ${res.seed}`
         + (res.mutators.length ? `, ${counted(res.mutators.length, 'mutator', 'mutators')}` : '')
+        + (res.zeroScrapOpening ? ' · 0 Scrap. Choose your starting equipment next' : '')
         + '.';
       cue('confirm');
       syncHull();
@@ -2122,8 +2213,9 @@ export const crucibleScreen = {
     copyCode.addEventListener('click', () => {
       const terms = doorChallengeTerms();
       const dateKey = daily ? dailySnapshot.dateKey : terms.shareDailyKey;
+      const startsAtZero = zeroScrapOpening();
       const res = doorRunShareCode({
-        starterId,
+        starterId: currentStarterId(),
         seed: normalizeSeed(seedInput.value),
         arenaId,
         ruleset,
@@ -2131,6 +2223,9 @@ export const crucibleScreen = {
         dailyDateKey: dateKey,
         weeklyMutatorId: terms.weeklyMutatorId,
         stake: daily || ruleset !== SWARM_RULESET ? null : stake,
+        zeroScrapOpening: startsAtZero,
+        swarmThreats: activeThreatPicks(),
+        openingLesson: trainingOpening && trainingApplies(),
       });
       if (!res.ok) {
         shareNote.textContent = res.error || 'Code could not be written for this setup.';
@@ -2147,9 +2242,9 @@ export const crucibleScreen = {
           clipboard.writeText(res.code).catch(() => { /* the selected field is the fallback */ });
         }
       } catch { /* the selected field is the fallback */ }
-      shareNote.textContent = copied
-        ? 'Code copied — pasting it elsewhere reproduces this seed, build, and rules.'
-        : 'Code ready in the field — copy it from there.';
+      const copiedMessage = startsAtZero ? 'Code copied — paste it to open this ship and starting rules.'
+        : 'Code copied — pasting it elsewhere reproduces this seed, build, and rules.';
+      shareNote.textContent = copied ? copiedMessage : 'Code ready in the field — copy it from there.';
       cue('confirm');
     });
     codeRow.appendChild(copyCode);
@@ -2373,13 +2468,13 @@ export const crucibleScreen = {
     const footWords = el('ul', 'k-words k-words--row');
     footWords.setAttribute('aria-label', 'Swarm');
     let trainingOpening = false;
-    // The one launch path, shared by Enter and Quick play. INF-038.
-    function launchCurrent(trialRuleset = null, { inFlight = false } = {}) {
+    function launchCurrent(trialRuleset = null) {
       const conveyor = trialRuleset === POWERED_CONVEYOR_RULESET || ruleset === POWERED_CONVEYOR_RULESET;
+      const chosenStarterId = conveyor ? starterId : currentStarterId();
       const launchRuleset = conveyor ? POWERED_CONVEYOR_RULESET : ruleset;
       const launchArenaId = conveyor ? CRUCIBLE_ARENA_ID : arenaId;
-      const bareHull = typeof starterId === 'string' && starterId.startsWith('hull:');
-      if (!bareHull && !isStarterAvailable(doorProfile, starterId)) {
+      const bareHull = typeof chosenStarterId === 'string' && chosenStarterId.startsWith('hull:');
+      if (!bareHull && !isStarterAvailable(doorProfile, chosenStarterId)) {
         cue('deny');
         return;
       }
@@ -2387,7 +2482,7 @@ export const crucibleScreen = {
       // way it refused the click — a restored or hand-staged starter can land here without
       // ever passing the locked word's deny.
       if (bareHull) {
-        const pickDef = SHIPS.find((row) => row && row.id === starterId.slice(5));
+        const pickDef = SHIPS.find((row) => row && row.id === chosenStarterId.slice(5));
         if (pickDef && pickDef.swarmEarned && !swarmCrossoverEarned(pickDef.swarmEarned)) {
           hullSentence.dataset.kind = 'earn';
           hullSentence.textContent = `${pickDef.name} is earned, not picked — a Swarm run proves it first.`;
@@ -2399,10 +2494,10 @@ export const crucibleScreen = {
       // Daily rides Contender — a shared challenge does not get a purse choice; the same
       // shared-challenge law keeps a daily's Threat list empty.
       const launchStake = daily ? null : stake;
-      const launchThreats = daily ? null : [...threatPicks];
+      const launchThreats = daily ? null : activeThreatPicks();
       const setup = bareHull
         ? crucibleHullSetupFor({
-          hullId: starterId.slice(5),
+          hullId: chosenStarterId.slice(5),
           seed: normalizeSeed(seedInput.value),
           arenaId: launchArenaId,
           ruleset: launchRuleset,
@@ -2411,14 +2506,13 @@ export const crucibleScreen = {
           startWave: conveyor ? 1 : startWave,
         })
         : crucibleSetupFor({
-          starterId,
+          starterId: chosenStarterId,
           seed: normalizeSeed(seedInput.value),
           arenaId: launchArenaId,
           ruleset: launchRuleset,
           swarmStake: launchStake,
           swarmThreats: launchThreats,
           startWave: conveyor ? 1 : startWave,
-          ...(inFlight ? { openArmoryBeforeRound1: false } : {}),
         });
       if (!setup.ok || !setup.value) {
         cue('deny');
@@ -2428,6 +2522,7 @@ export const crucibleScreen = {
       cue('confirm');
       if (launchRuleset === SWARM_RULESET && launchStake) rememberSwarmStake(launchStake);
       const payload = { ...setup.value };
+      if (!conveyor && zeroScrapOpening()) payload.zeroScrapOpening = true;
       const offer = currentGhostOffer();
       let ghostHash = !conveyor && raceGhost && offer.available ? offer.hash : null;
       // PQ-160.02: a code-named ghost races when its block was imported to this machine.
@@ -2436,7 +2531,7 @@ export const crucibleScreen = {
         ghostHash = pendingShare.ghostHash;
       }
       if (ghostHash != null) payload.ghostHash = ghostHash;
-      payload.openingLesson = !conveyor && launchRuleset === SWARM_RULESET && trainingOpening;
+      payload.openingLesson = !conveyor && trainingOpening && trainingApplies();
       if (!conveyor && pendingShare?.wreck) payload.wreck = pendingShare.wreck;
       const {
         shareMutators, weeklyMutatorId, challengeMutators, shareDailyKey,
@@ -2456,62 +2551,40 @@ export const crucibleScreen = {
       } else {
         clearQueuedChallenge();
         if (ghostHash != null) queueGhostPlayback(ghostHash);
-        if (!conveyor && practiceQueued) queuePracticeRun();
+        if (!conveyor && practiceQueued) payload.practice = true;
       }
       requestSharedCrucibleRun(ctx.bus, payload, launchRuleset);
     }
-    const training = word('Training: Off', 'k-word');
+    const training = word('Start with one enemy · Off', 'k-word');
     paintKey(training, 'small');
-    training.setAttribute('aria-pressed', 'false');
-    const trainingApplies = () => canChooseSwarmOpeningLesson({
-      ruleset, daily, weekly, raceGhost, pendingShare, practiceQueued,
-    });
+    training.setAttribute('aria-label', 'Start with one enemy');
+    const trainingApplies = () => startWave === 1 && doorChallengeTerms().challengeMutators.length === 0
+      && canChooseSwarmOpeningLesson({
+        ruleset, daily, weekly, raceGhost, practiceQueued,
+        pendingShare: pendingShare?.zeroScrapOpening ? null : pendingShare,
+      });
     syncTrainingChoice = () => {
       const enabled = trainingApplies();
-      training.textContent = trainingOpening ? 'Training: On' : 'Training: Off';
+      const on = enabled && trainingOpening;
+      training.textContent = on ? 'Start with one enemy, then the wave · On'
+        : startWave > 1 ? 'Start with one enemy · Round 1 only' : 'Start with one enemy · Off';
       training.disabled = !enabled;
+      training.setAttribute('aria-pressed', String(on));
       training.setAttribute('aria-disabled', enabled ? 'false' : 'true');
-      training.setAttribute('aria-label', enabled
-        ? `Training opening: ${trainingOpening ? 'on' : 'off'}. Select to ${trainingOpening ? 'turn off' : 'turn on'} the optional single-enemy lesson.`
-        : 'Training opening unavailable for the selected mode or challenge.');
       training.title = enabled
-        ? 'Optional first-wave lesson. Off by default; the normal Swarm opening starts immediately.'
-        : 'Available for an ordinary Swarm run without a daily, weekly, or ghost challenge.';
+        ? 'The rest of Round 1 arrives when the first enemy is out of the fight or after 45 seconds.'
+        : 'Available when starting at Round 1 in ordinary Swarm.';
+      training.setAttribute('aria-description', training.title);
     };
     syncTrainingChoice();
     training.addEventListener('click', () => {
       if (!trainingApplies()) return;
       trainingOpening = !trainingOpening;
-      training.setAttribute('aria-pressed', trainingOpening ? 'true' : 'false');
       syncTrainingChoice();
       cue('confirm');
     });
     addWord(footWords, training);
-    const quick = word('Quick play', 'k-word--emph sf-swarm-quick-key');
-    quick.setAttribute('aria-label', 'Quick play: Swarm now on your ladder');
-    quick.title = 'Swarm now on the arena\u2019s ladder, with this build and checkpoint.';
-    // A key like Back beside it, not loose words in front of the launch key.
-    paintKey(quick, 'small');
-    // Quick play IS the ladder (§6.1/§7.2): Swarm on the arena's authored seed, at the picked
-    // checkpoint, no challenge keys, no ghost. Hull and arena stay — loadout is the player's to keep.
-    // seedCustom clears so the authored seed fills the field. PLAY (the title door's one button) is
-    // the same launch with round 1 starting in flight.
-    function quickLaunch({ inFlight = false } = {}) {
-      ruleset = SWARM_RULESET;
-      daily = false;
-      weekly = false;
-      practiceQueued = false;
-      pendingShare = null;
-      raceGhost = false;
-      seedCustom = false;
-      syncMode();
-      syncHull();
-      syncGhost();
-      launchCurrent(null, { inFlight });
-    }
-    quick.addEventListener('click', () => quickLaunch());
-    addWord(footWords, quick);
-    const enter = word('Hold the line', 'k-word--emph k-word--primary sf-swarm-enter-key');
+    const enter = word('Launch Swarm', 'k-word--emph k-word--primary sf-swarm-enter-key');
     enterButton = enter;
     paintKey(enter, 'hazard');
     enter.addEventListener('click', () => {
@@ -2520,41 +2593,18 @@ export const crucibleScreen = {
     addWord(footWords, enter);
     // The one way back, drawn by the deckplate sheet like every screen's (keycap + ESC chip).
     const back = word('Back', 'k-word--emph sf-back');
+    back.setAttribute('aria-label', back.textContent);
     back.addEventListener('click', () => { cue('close'); ctx.bus.emit('ui:popScreen', {}); });
     addWord(footWords, back);
-    // TITLE-01: PLAY (one press to round 1 on the shipped defaults) and Customise (the full entrance).
-    // Both are in the DOM always; the play state shows only these, Training and Back.
-    const play = word('Play', 'k-word--emph k-word--primary sf-swarm-play-key');
-    paintKey(play, 'hazard');
-    play.addEventListener('click', () => quickLaunch({ inFlight: true }));
-    addWord(footWords, play);
-    const customise = word('Customise', 'k-word--emph sf-swarm-customise-key');
-    paintKey(customise, 'small');
-    customise.addEventListener('click', () => {
-      playMode = false;
-      rootEl.classList.remove('orr-swarm-play');
-      cue('confirm');
-      try { enterButton && enterButton.focus({ preventScroll: true }); } catch { /* focus is a courtesy */ }
-    });
-    addWord(footWords, customise);
-    rootEl.classList.toggle('orr-swarm-play', playMode);
-    // The door is mounted ahead of the title's press (the manager prewarms it), so the PLAY state is also
-    // taken up at show time; hiding the door always drops it, so any other way in is the full entrance.
-    door._setPlayMode = (on) => {
-      playMode = !!on;
-      rootEl.classList.toggle('orr-swarm-play', playMode);
-    };
-    door._playKey = play;
     foot.appendChild(footWords);
     // r2: the door documents its input — one quiet line under the keys.
     foot.appendChild(el('p', 'k-t-fine orr-door-hint', '\u2190 \u2192 choose \u00b7 Enter launch'));
     rootEl.appendChild(foot);
 
     syncMode();
-    syncHull();
     preparation = createCruciblePreparation({ root: rootEl, stage, title, foot, enter,
       onPreviewVisibility: visible => this._cabinetAttract?.setVisible(visible),
-      read: () => ({ starterId, arenaId, arenaLabel: (arenaDescriptions[arenaId] || [])[0] || arenaId, ruleset, daily, dailySnapshot, weekly, stake, weeklyMutatorId: doorChallengeTerms().weeklyMutatorId, seed: seedInput.value }) });
+      read: () => ({ starterId: currentStarterId(), hullFirst: hullFirstSwarm(), zeroScrapOpening: zeroScrapOpening(), arenaId, arenaLabel: (arenaDescriptions[arenaId] || [])[0] || arenaId, ruleset, daily, dailySnapshot, weekly, stake, weeklyMutatorId: doorChallengeTerms().weeklyMutatorId, seed: seedInput.value }) });
     this._preparation = preparation;
     // The door unit's composition sheet lands after the prep sheet so its fixes win the cascade
     // (crucible-doorLayouts.js documents what it carries).
@@ -2582,7 +2632,6 @@ export const crucibleScreen = {
 
   onShow() {
     this._embarkSpecActive = true;
-    if (consumeSwarmPlayEntry()) this._setPlayMode?.(true);
     this._refreshDaily?.();
     this._armEmbarkSpec?.();
     this._refreshCabinetBoard?.();
@@ -2596,9 +2645,7 @@ export const crucibleScreen = {
       settle(r.stage, { from: 'left', delay: 60, state: 'crucible:open' });
       settle(r.foot, { from: 'bottom', delay: 120, state: 'crucible:open' });
     } catch { /* motion is cosmetic */ }
-    if (this._playKey && this._playKey.isConnected && this._playKey.offsetParent) {
-      try { this._playKey.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
-    } else if (this._preparation) this._preparation.focus();
+    if (this._preparation) this._preparation.focus();
     else if (r.enter && typeof r.enter.focus === 'function') {
       try { r.enter.focus({ preventScroll: true }); } catch { /* focus is best-effort */ }
     }
@@ -2606,7 +2653,6 @@ export const crucibleScreen = {
 
   onHide() {
     this._embarkSpecActive = false;
-    this._setPlayMode?.(false);
     this._cabinetAttract?.stop();
     this._cabinetDoc?.removeEventListener?.('visibilitychange', this._dailyVisibility);
     if (canAnimate()) cue('close');
@@ -2760,6 +2806,11 @@ export function weaponDisplayName(weaponId) {
     .join(' ');
 }
 
+function hitSourceName(entry) {
+  if (typeof entry.causeLabel === 'string' && entry.causeLabel) return entry.causeLabel;
+  return weaponDisplayName(typeof entry.weaponId === 'string' ? entry.weaponId : null);
+}
+
 /**
  * A weapon's short name for the abbreviated hit legend: the size token goes, a weight class
  * goes, and what is left names it ("Heavy Autocannon M" -> "Autocannon", "Pulse Laser M" ->
@@ -2801,10 +2852,7 @@ export function damageBreakdown(trail) {
   let hits = 0;
   for (const entry of entries) {
     if (!entry || typeof entry !== 'object') continue;
-    // Strings only: a null-prototype object would throw String(), and Number(Symbol)
-    // throws — both degrade to the unattributed bucket instead of breaking the plate.
-    const rawId = typeof entry.weaponId === 'string' ? entry.weaponId : null;
-    const name = weaponDisplayName(rawId);
+    const name = hitSourceName(entry);
     const rawAmount = typeof entry.amount === 'number' || typeof entry.amount === 'string'
       ? Number(entry.amount)
       : NaN;
@@ -2877,13 +2925,15 @@ export function buildLead(picks) {
  */
 export function killChainRows(defeat, death = null) {
   if (!defeat) return [];
-  const killer = defeat.attacker
-    ? (defeat.faction ? `${defeat.attacker} — ${defeat.faction}` : defeat.attacker)
-    : 'Unidentified attacker';
+  const environmental = defeat.source?.kind === 'environment';
+  const attacker = environmental ? defeat.source.label || 'Environmental hazard'
+    : defeat.attacker || defeat.source?.label || 'Unidentified attacker';
+  const killer = !environmental && defeat.faction ? `${attacker} — ${defeat.faction}` : attacker;
   const rows = [
     ['Killed by', killer],
-    // A rock or a hazard has no gun; "Unidentified weapon" under an environmental kill reads as a bug.
-    ['Its weapon', defeat.source && defeat.source.kind === 'environment' ? 'Impact' : defeat.weapon || 'Unidentified weapon'],
+    environmental || defeat.physicalLabel
+      ? ['Damage cause', defeat.physicalLabel || 'Environmental damage']
+      : ['Its weapon', defeat.weapon || 'Unidentified weapon'],
     ['It came from', bearingWord(defeat.direction)],
     ['It got in', breachPhrase(defeat.dominantLayer)],
   ];
@@ -2995,19 +3045,28 @@ function resultVersion(owner) {
  */
 function swarmFirstBossMilestone(state) {
   const run = state && state.run;
-  if (!run || run.ruleset !== SWARM_RULESET) return null;
+  // The pilot can die before presentation handles the boss kill from that same combat batch.
+  if (!run || run.ruleset !== SWARM_RULESET || run.phase === 'ended' || run.phase === 'victory') return null;
   const stamp = run.telemetry && run.telemetry.firstBossDown;
   if (!stamp || stamp.pending !== true) return null;
   return stamp;
 }
 
+function isRunBuildPick(pick) {
+  return pick?.startingEquipment !== true && Boolean(pick?.verb || pick?.defId);
+}
+
+function openingEquipmentOnly(result) {
+  return result?.openingEquipment != null && !(Array.isArray(result.picks) && result.picks.some(isRunBuildPick));
+}
+
 /** The band name for a section. The damage band means something different after a clear. */
-export function sectionTitle(id, outcome) {
+export function sectionTitle(id, outcome, result) {
   if (id === 'story') return 'The run';
   if (id === 'kill_chain') return 'How it ended';
   if (id === 'last_seconds') return outcome === 'defeat' ? 'The last seconds' : 'What you weathered';
   if (id === 'ledger') return 'Run ledger';
-  if (id === 'build') return 'What you built';
+  if (id === 'build') return openingEquipmentOnly(result) ? 'Starting equipment' : 'What you built';
   return '';
 }
 
@@ -3022,8 +3081,7 @@ export function resultSectionOrder(result) {
   if (!result) return [];
   const hasStory = !!(result.death
     || (Array.isArray(result.moments) && result.moments.length)
-    || result.buildName
-    || result.buildCode);
+    || (!openingEquipmentOnly(result) && (result.buildName || result.buildCode)));
   if (result.outcome === 'victory') {
     return hasStory ? ['story', 'build', 'last_seconds', 'ledger'] : ['build', 'last_seconds', 'ledger'];
   }
@@ -3109,7 +3167,7 @@ export function storySentences(result) {
   }
   // The build name lives in its own band below (renderBuild's build-name line); the story no
   // longer repeats it as a sentence.
-  if (typeof result.buildCode === 'string' && result.buildCode) {
+  if (!openingEquipmentOnly(result) && typeof result.buildCode === 'string' && result.buildCode) {
     lines.push(`Build code ${result.buildCode}`);
   }
   return lines;
@@ -3380,10 +3438,9 @@ function renderBestLineReview(line, hooks = {}) {
 }
 
 function renderKillChain(band, defeat, death = null) {
-  // Threat colour on the two rows that name the enemy. The label beside each is the channel that
-  // survives forced-colors and colour blindness; the tint is never the only one.
+  // Emphasize the source and cause of the damage. Their labels also carry this in forced colors.
   const chain = pairRows(killChainRows(defeat, death), 'sf-crres__chain',
-    (label) => (label === 'Killed by' || label === 'Its weapon' ? 'k-bad' : ''));
+    (label) => (['Killed by', 'Its weapon', 'Damage cause'].includes(label) ? 'k-bad' : ''));
   band.appendChild(chain);
 
   const vitals = vitalsFigures(defeat);
@@ -3497,7 +3554,13 @@ export function buildCodeLine(picks) {
 }
 
 function renderBuild(band, result) {
-  const picks = result && result.picks;
+  const picks = Array.isArray(result?.picks) ? result.picks.filter(isRunBuildPick) : [];
+  if (result?.openingEquipment) {
+    const { gun } = result.openingEquipment;
+    const start = gun ? `You started with a free ${weaponDisplayName(gun.defId)}.` : 'You started without a gun.';
+    band.appendChild(el('p', 'k-sentence sf-crres__lead', start));
+    if (!picks.length) return;
+  }
   band.appendChild(el('p', 'k-sentence sf-crres__lead', buildLead(picks)));
   if (result && typeof result.buildName === 'string' && result.buildName) {
     band.appendChild(el('p', 'k-sentence sf-crres__build-name', result.buildName));
@@ -3728,6 +3791,14 @@ export function buildShareBand(result) {
   return band;
 }
 
+function leaveCrucibleResults(ctx, openHangar = false) {
+  ctx.bus.emit('game:over:dismissed', {});
+  ctx.bus.emit('game:exitToMenu', { source: 'crucible_results' });
+  ctx.bus.emit('ui:closeAll', {});
+  ctx.bus.emit('ui:pushScreen', { id: 'mainMenu' });
+  if (openHangar) ctx.bus.emit('ui:pushScreen', { id: 'crucible' });
+}
+
 export const crucibleResultsScreen = {
   id: 'crucibleResults',
   data: { locked: true },
@@ -3785,8 +3856,12 @@ export const crucibleResultsScreen = {
     title.appendChild(h);
     title.appendChild(el('p', 'k-sentence k-sentence--emph sf-crd-headline',
       result && result.headline ? result.headline : 'The run ended.'));
-    if (result?.stopReason === 'player_retired' && result.bankLine) {
+    if (result?.recordRules?.mode === 'practice') {
+      title.appendChild(el('p', 'k-sentence', 'Practice run. No ranked score or rewards.'));
+    } else if (result?.stopReason === 'player_retired' && result.bankLine) {
       title.appendChild(el('p', 'k-sentence', result.bankLine));
+    } else if (result?.ruleset === 'scored' && Number.isSafeInteger(result.bankedBounty) && result.bankedBounty > 0) {
+      title.appendChild(el('p', 'k-sentence', `${result.bankedBounty.toLocaleString()} cr added to the Swarm hangar.`));
     }
     rootEl.appendChild(title);
 
@@ -3819,7 +3894,7 @@ export const crucibleResultsScreen = {
       const band = el('div', 'sf-crres__band');
       band.dataset.band = id;
       // A heading role rather than an <h2>, so the sections read as one column of sentences.
-      const bandTitle = el('p', 'k-caps sf-crres__band-title', sectionTitle(id, result.outcome));
+      const bandTitle = el('p', 'k-caps sf-crres__band-title', sectionTitle(id, result.outcome, result));
       bandTitle.setAttribute('role', 'heading');
       bandTitle.setAttribute('aria-level', '2');
       band.appendChild(bandTitle);
@@ -3859,7 +3934,7 @@ export const crucibleResultsScreen = {
       try {
         const readings = crucibleSheetReadings();
         ledger.appendChild(renderResultsSheet(resultsSheetModel({
-          result,
+          result: { ...result, arenaLabel: result.arenaLabel || ARENA_DESCRIPTIONS[result.arenaId]?.[0] },
           kitBoard: readings.board,
           overconfidenceStreak: readings.streak,
         })));
@@ -3994,16 +4069,18 @@ export const crucibleResultsScreen = {
     againButton.appendChild(againVerb);
     const again = addWord(againButton);
     again.addEventListener('click', () => {
+      if (again.disabled) return;
       // INF-010: one explicit retry action — same seed and kit as the run began, deep-copied
       // so the challenge cannot silently change; replays through the ordinary New Game route.
       // The round boundary: the kill-cam stops and the last fight's tape goes now (the
       // run:started listener clears it too — this is the same boundary, named early).
       try { clearKillcamTape(); } catch { /* the replay is optional */ }
-      const retry = buildCrucibleRetryRequest();
+      const retry = buildCrucibleRetryRequest(lastCrucibleSetup(), lastCrucibleRuleset(), result);
       if (!retry) {
-        ctx.bus.emit('ui:replaceScreen', { id: 'crucible' });
+        leaveCrucibleResults(ctx, true);
         return;
       }
+      again.disabled = true;
       const setup = retry.setup;
       // Restart is a real New Game: runSession.newGame resets the envelope to inactive, so the
       // begin below is accepted exactly as it was the first time.
@@ -4020,7 +4097,7 @@ export const crucibleResultsScreen = {
       } else if (setup.ghostHash != null) {
         queueGhostPlayback(setup.ghostHash);
       }
-      requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset);
+      if (!requestSharedCrucibleRun(ctx.bus, setup, retry.ruleset)) again.disabled = false;
     });
 
     // §7.4 — the ways out name where they go: Again (same seed above), the Hangar (the
@@ -4028,17 +4105,10 @@ export const crucibleResultsScreen = {
     const newSeed = addWord(word(
       result && result.ruleset === SWARM_RULESET ? 'Back to the hangar' : 'New run',
       'k-word--emph'));
-    newSeed.addEventListener('click', () => ctx.bus.emit('ui:replaceScreen', { id: 'crucible' }));
+    newSeed.addEventListener('click', () => leaveCrucibleResults(ctx, true));
 
     const menu = addWord(word('Main menu', 'k-word--emph k-word--danger'));
-    menu.addEventListener('click', () => {
-      // Same teardown pause uses: main.js consumes game:exitToMenu and returns state.mode to
-      // 'menu', runSession aborts and clears the run envelope.
-      ctx.bus.emit('game:over:dismissed', {});
-      ctx.bus.emit('game:exitToMenu', { source: 'crucible_results' });
-      ctx.bus.emit('ui:closeAll', {});
-      ctx.bus.emit('ui:pushScreen', { id: 'mainMenu' });
-    });
+    menu.addEventListener('click', () => leaveCrucibleResults(ctx));
 
     foot.appendChild(footWords);
     rootEl.appendChild(foot);
@@ -4240,7 +4310,7 @@ export function swarmStarAsks({ stars = 0, bestChain = 0, zoneIndex = 0, chainHi
  * run settled nothing worth a band; the plate then reads exactly as before.
  */
 export function resultCelebration(result) {
-  if (!result || result.ruleset !== SWARM_RULESET) return null;
+  if (!result || result.ruleset !== SWARM_RULESET || result.recordRules?.mode === 'practice') return null;
   const lines = [];
   const delta = result.ladderDelta && typeof result.ladderDelta === 'object' ? result.ladderDelta : null;
   const zones = delta && delta.zones && typeof delta.zones === 'object' ? delta.zones : {};
@@ -4270,7 +4340,9 @@ export function resultCelebration(result) {
       ? `Hangar +${banked} cr · ${chest} cr in all.`
       : `Hangar: ${chest} cr.`);
     if (result.outcome === 'defeat' && result.stopReason !== 'player_retired') {
-      lines.push('Defeat banks 50% of the remaining run purse, including its starting funds.');
+      lines.push(result.ruleset === SWARM_RULESET
+        ? 'Defeat banks 50% of your remaining earned credits.'
+        : 'Defeat banks 50% of the remaining run purse.');
     }
   }
   const unlocks = Array.isArray(result.unlocksEarned) ? result.unlocksEarned : [];
@@ -4391,14 +4463,15 @@ export function deathDialSpec(result, ctx) {
       .map(([word, value]) => ({ word, value })),
     hitAmounts: trail.map((e) => Number(e && e.amount)).filter((n) => Number.isFinite(n) && n > 0),
     hitWeapons: trail.filter((e) => Number.isFinite(Number(e && e.amount)) && Number(e.amount) > 0)
-      .map((e) => weaponDisplayName(typeof e.weaponId === 'string' ? e.weaponId : null)),
+      .map(hitSourceName),
     hitGroups: breakdown.rows.map((r) => ({ weapon: r.weapon, hits: r.hits, amount: r.amount })),
     hitSummary: breakdown.hits ? `Last ${counted(breakdown.hits, 'hit', 'hits')} · ${breakdown.total} damage` : '',
     engraving: Number(result.deepestWave || result.wave) > 0 ? `Wave ${Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 0)}` : '',
     caption: {
       label: 'Killed by',
       name: rows.get('Killed by') || 'Unidentified attacker',
-      detail: [rows.get('Its weapon'), rows.get('It came from'), rows.get('It got in')].filter(Boolean).join(' · '),
+      detail: [rows.get('Damage cause') || rows.get('Its weapon'), rows.get('It came from'), rows.get('It got in')]
+        .filter(Boolean).join(' · '),
       warn: leadIn ? `${leadIn[0]}: ${leadIn[1]}` : '',
     },
   };

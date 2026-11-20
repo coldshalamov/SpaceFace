@@ -62,8 +62,86 @@ test('headless/unsupported hosts keep the original movie untouched',()=>{
   assert.equal(video.playbackRate,1);assert.equal(errors.length,1);
 });
 
-function fixture({reduced=false,playing=true,native=false}={}) {
-  const observers=[],idle=new Map();let id=0;
+function coldRemixFixture({ parallel = true } = {}) {
+  const observed = [], frames = new Map(), retired = [];
+  const parallelStatus = 0x91b1, linkStatus = 0x8b82;
+  let complete = false, nextFrame = 0, canvases = 0;
+  const noOp = () => {};
+  const drawing = new Proxy({}, { get: (_, key) => key === 'canvas' ? null : noOp });
+  const gl = new Proxy({
+    LINK_STATUS: linkStatus, TEXTURE0: 0, FRAMEBUFFER_COMPLETE: 1,
+    getExtension: (name) => parallel && name === 'KHR_parallel_shader_compile'
+      ? { COMPLETION_STATUS_KHR: parallelStatus } : null,
+    createProgram: () => ({}), createShader: () => ({}),
+    compileShader: () => observed.push('compile'), linkProgram: () => observed.push('link'),
+    getShaderParameter: () => { observed.push('blocking-shader-status'); return true; },
+    getProgramParameter: (_, key) => {
+      observed.push(key === parallelStatus ? 'poll' : 'link-status');
+      return key === parallelStatus ? complete : true;
+    },
+    checkFramebufferStatus: () => 1,
+    drawArrays: () => observed.push('draw'),
+    deleteProgram: () => observed.push('delete-program'),
+  }, { get: (target, key) => target[key] ?? noOp });
+  const canvas = { style: {}, setAttribute: noOp, addEventListener: noOp, removeEventListener: noOp,
+    getContext: () => gl, remove: () => observed.push('remove') };
+  const video = { parentNode: { insertBefore: () => observed.push('mount') }, playbackRate: 1,
+    readyState: 4, videoWidth: 1920, videoHeight: 1080, duration: 32, currentTime: 0.1,
+    addEventListener: noOp, removeEventListener: noOp,
+    requestVideoFrameCallback(fn) { frames.set(++nextFrame, fn); return nextFrame; },
+    cancelVideoFrameCallback(id) { frames.delete(id); } };
+  const document = { createElement: () => canvases++ === 0 ? canvas : { getContext: () => drawing } };
+  const env = { setTimeout: (fn) => retired.push(fn) };
+  const ctl = attachIntroSignalRemix(video, { document, env });
+  const next = (timestamp) => { const work = [...frames.values()]; frames.clear(); for (const fn of work) fn(timestamp); };
+  return { observed, frames, retired, canvas, video, ctl, next, finish: () => { complete = true; } };
+}
+
+test('cold remix leaves the movie visible while its program links asynchronously', () => {
+  const { observed, frames, retired, canvas, video, ctl, next, finish } = coldRemixFixture();
+  assert.deepEqual(observed, ['compile', 'compile', 'link']);
+  ctl.resume();
+  next(30); next(66);
+  assert.deepEqual(observed, ['compile', 'compile', 'link', 'poll', 'poll']);
+  assert.equal(video.playbackRate, 1);
+  assert.equal(canvas.style.display, 'none');
+  finish();
+  next(100);
+  assert.deepEqual(observed.slice(-4), ['poll', 'link-status', 'mount', 'draw']);
+  assert.equal(canvas.style.display, 'block');
+  assert.equal(video.playbackRate, 32 / 18);
+  assert.equal(ctl.inspect().frameCount, 1);
+  ctl.destroy();
+  assert.equal(video.playbackRate, 1);
+  assert.equal(frames.size, 0);
+  assert.deepEqual(observed.slice(-2), ['delete-program', 'remove']);
+  assert.equal(retired.length, 0);
+});
+
+test('closing the title before link completion removes the layer and retires its program later', () => {
+  const { observed, frames, retired, video, ctl, finish } = coldRemixFixture();
+  ctl.resume();
+  ctl.destroy();
+  assert.deepEqual(observed, ['compile', 'compile', 'link', 'poll', 'remove']);
+  assert.equal(video.playbackRate, 1);
+  assert.equal(frames.size, 0);
+  assert.equal(retired.length, 1);
+  finish();
+  retired.shift()();
+  assert.deepEqual(observed.slice(-2), ['poll', 'delete-program']);
+  assert.equal(retired.length, 0);
+});
+
+test('a host without nonblocking link readiness plays the film without starting the remix shader', () => {
+  const { observed, canvas, video, ctl } = coldRemixFixture({ parallel: false });
+  assert.equal(ctl, null);
+  assert.deepEqual(observed, []);
+  assert.equal(canvas.style.display, 'none');
+  assert.equal(video.playbackRate, 1);
+});
+
+function fixture({reduced=false,playing=true,native=false,title=false}={}) {
+  const observers=[],idle=new Map(),videoFrames=new Map();let id=0;
   class Element {
     constructor(id='') {this.id=id;this.nodeType=1;this.isConnected=true;this.hidden=false;this.style={};this.listeners=new Map();this.classes=new Set();this.classList={contains:x=>this.classes.has(x),add:x=>this.classes.add(x),remove:x=>this.classes.delete(x)};}
     addEventListener(t,fn){if(!this.listeners.has(t))this.listeners.set(t,new Set());this.listeners.get(t).add(fn);}
@@ -73,7 +151,7 @@ function fixture({reduced=false,playing=true,native=false}={}) {
     contains(e){return e===this||e===video&&this===root;}
     closest(){return root;}
   }
-  const root=new Element('boot-overlay'),html=new Element('html'),video=new Element('boot-intro-video');
+  const root=new Element(title ? 'cinematic-splash' : 'boot-overlay'),html=new Element('html'),video=new Element('boot-intro-video');
   video.parentNode=root;video.readyState=4;video.videoWidth=1920;video.playbackRate=1;video.paused=!playing;
   video.native=native; video.hasAttribute=name=>name==='data-boot-native'&&video.native;
   let plays=0,pauses=0;
@@ -87,11 +165,32 @@ function fixture({reduced=false,playing=true,native=false}={}) {
   const media=new Element();media.matches=reduced;
   class Observer{constructor(fn){this.fn=fn;this.active=true;observers.push(this);}observe(target){this.target=target;}disconnect(){this.active=false;}}
   const env={MutationObserver:Observer,requestAnimationFrame:fn=>{idle.set(++id,fn);return id;},cancelAnimationFrame:n=>idle.delete(n),matchMedia:()=>media,getComputedStyle:()=>({display:'block',visibility:'visible'}),addEventListener(){},removeEventListener(){}};
+  const idleOptions=[];
+  if (title) {
+    video.requestVideoFrameCallback = fn => { videoFrames.set(++id, fn); return id; };
+    video.cancelVideoFrameCallback = n => videoFrames.delete(n);
+    env.requestIdleCallback = (fn, options) => { idleOptions.push(options); idle.set(++id, fn); return id; };
+    env.cancelIdleCallback = n => idle.delete(n);
+  }
   const flush=()=>{const work=[...idle.values()];idle.clear();for(const fn of work)fn(0);};
+  const present=()=>{const work=[...videoFrames.values()];videoFrames.clear();for(const fn of work)fn(0,{presentedFrames:1});};
   const mutate=(target,records=[])=>{for(const o of [...observers])if(o.active&&o.target===target)o.fn(records);};
   const ctl=installIntroSignalRemix(document,env);
-  return {document,env,root,video,html,media,ctl,state,flush,mutate,idle,observers,counts:()=>({plays,pauses})};
+  return {document,env,root,video,html,media,ctl,state,flush,present,mutate,idle,idleOptions,videoFrames,observers,counts:()=>({plays,pauses})};
 }
+test('title decoration waits for a delivered movie frame and has no forced idle deadline', () => {
+  const f = fixture({ title: true });
+  assert.equal(f.idle.size, 0);
+  assert.equal(f.videoFrames.size, 1);
+  f.present();
+  assert.equal(f.videoFrames.size, 0);
+  assert.equal(f.idle.size, 1);
+  assert.deepEqual(f.idleOptions, [undefined]);
+  assert.equal(f.state.resumes, 0);
+  f.flush();
+  assert.equal(f.state.resumes, 1);
+  f.ctl.destroy();
+});
 test('shared binder installs once, initializes lazily and never owns input',()=>{
  const f=fixture();assert.strictEqual(installIntroSignalRemix(f.document,f.env),f.ctl);
  assert.equal(f.state.resumes,0);assert.equal(f.idle.size,1);f.flush();assert.equal(f.state.resumes,1);

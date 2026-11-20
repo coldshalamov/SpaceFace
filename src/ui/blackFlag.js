@@ -5,8 +5,11 @@ import { queryShipjack, isBlackFlagAdventure } from '../shipjack/model.js';
 import { BLACK_FLAG_TERMS, BLACK_FLAG_ENCOUNTER_BY_ID } from '../data/blackFlag.js';
 import { laneInputWrite } from '../core/simLaneCommands.js';
 import { openingQuiet } from '../onboarding/openingQuiet.js';
+import { isFirstFreightActive } from '../onboarding/opportunityAdmission.js';
+import { localFurnaceWorksite } from '../missions/furnaceWorksite.js';
 
 const PANEL_ID = 'black-flag:acquisition';
+const OPPORTUNITY_ID = 'black-flag:opportunity';
 const LABELS = Object.freeze({
   scan: 'Read frame & signal', hail: 'Hail / guarantee safe passage', isolator: 'Pulse drive isolator',
   probe: 'Find signal access', port: 'Expose service port', helm: 'Assert helm control',
@@ -47,10 +50,17 @@ export function createBlackFlagPrompt(ctx, { read = queryShipjack, deck = getPro
   const { state, bus } = ctx;
   const offs = [];
   let selected = null, dismissed = null, signature = '', page = 0, frames = 0, pending = false;
-  let opportunity = null, priorHull = null;
+  let openedGeneration = null;
+  let opportunity = null, offeredOpportunity = null, priorHull = null;
   let distressShown = null;
   const resolve = () => { deck()?.resolveDecision(PANEL_ID); signature = ''; };
-  const clear = () => { selected = null; dismissed = null; page = 0; pending = false; opportunity = null; priorHull = null; distressShown=null; resolve(); deck()?.resolveDecision('black-flag:opportunity'); deck()?.resolveDecision('black-flag:prior-hull'); deck()?.resolveDecision('black-flag:distress'); };
+  const clear = () => { selected = null; dismissed = null; page = 0; pending = false; openedGeneration = null; opportunity = null; offeredOpportunity = null; priorHull = null; distressShown=null; resolve(); deck()?.resolveDecision(OPPORTUNITY_ID); deck()?.resolveDecision('black-flag:prior-hull'); deck()?.resolveDecision('black-flag:distress'); };
+  const deferOpportunity = payload => payload?.encounterId === 'black_flag_empty_seat' && isFirstFreightActive(state);
+  const holdOpportunity = () => {
+    opportunity ||= offeredOpportunity.payload;
+    offeredOpportunity = null;
+    deck()?.resolveDecision(OPPORTUNITY_ID);
+  };
   const on = (event, fn) => { const off = bus.on(event, fn); if (typeof off === 'function') offs.push(off); };
   const offerDistress = (force=false) => {
     const pilot=state.entities?.get(state.playerId);
@@ -82,10 +92,18 @@ export function createBlackFlagPrompt(ctx, { read = queryShipjack, deck = getPro
     // OPENING-1b (doc 20: the raid has no text wall): no vessel-link card until the first dock.
     if (openingQuiet(state)) { resolve(); return; }
     if (state.mode !== 'flight' || state.ui?.docked) { resolve(); return; }
-    if (targetId !== selected) { selected = targetId; dismissed = null; page = 0; pending = false; signature = ''; }
+    if (targetId !== selected) { selected = targetId; dismissed = null; page = 0; pending = false; signature = ''; openedGeneration = null; }
     if (dismissed === targetId && !force) return;
     const view = read(state, targetId);
     if (!view || view.eligible === false) { resolve(); return; }
+    const tracked = state.ui?.trackedMissionId;
+    const openedByPilot = openedGeneration != null && openedGeneration === view.generation;
+    if (!force && !openedByPilot && tracked
+        && localFurnaceWorksite(state.missions?.active?.find(mission => mission?.id === tracked), state)) {
+      resolve();
+      return;
+    }
+    if (force) openedGeneration = view.generation ?? null;
     const choices = shipjackPromptActions(view, page).map(row => ({ ...row, disabled: row.disabled || (pending && !row.id.startsWith('$')) }));
     const spec = {
       id: PANEL_ID, kind: view.titleStatus === 'hot' ? 'warn' : 'info', sender: 'BLACK FLAG · VESSEL LINK',
@@ -95,7 +113,7 @@ export function createBlackFlagPrompt(ctx, { read = queryShipjack, deck = getPro
       onChoose: (action, source) => {
         if (action === '$close') {
           if (view.transferPending) bus.emit('ui:shipjack',{action:'abort',targetId,generation:view.generation,vesselId:view.vesselId});
-          dismissed = targetId; resolve(); return;
+          dismissed = targetId; openedGeneration = null; resolve(); return;
         }
         if (action === '$course') { bus.emit('ui:shipjack',{action:'navigate',vesselId:view.vesselId}); return; }
         if (action === '$more') { page = (page + 1) % Math.max(1, Math.ceil((view.actions || []).length / 2)); signature = ''; show(true); return; }
@@ -164,20 +182,29 @@ export function createBlackFlagPrompt(ctx, { read = queryShipjack, deck = getPro
           });
         } else if (++receipt.waits >= 15) priorHull = null;
       }
-      if (!opportunity || state.mode !== 'flight' || state.ui?.docked || !isBlackFlagAdventure(state)) return;
-      const payload = opportunity; opportunity = null;
+      if (deferOpportunity(offeredOpportunity?.payload)) holdOpportunity();
+      if (!opportunity || deferOpportunity(opportunity) || state.mode !== 'flight'
+        || state.ui?.docked || !isBlackFlagAdventure(state)) return;
+      const prompt = deck();
+      if (!prompt) return;
+      const payload = opportunity;
       const entity = state.entities?.get(payload.entityId);
-      if (!entity?.alive) return;
+      if (!entity?.alive || entity.data?.vesselId !== payload.vesselId) { opportunity = null; return; }
       const generation = entity.data?.shipjackGeneration;
       const authored = BLACK_FLAG_ENCOUNTER_BY_ID.get(payload.encounterId);
-      deck()?.offerDecision({ id:'black-flag:opportunity', kind:'info', sender:'LOCAL RECOVERY CHANNEL',
+      const offer = { payload };
+      const admitted = prompt.offerDecision({ id:OPPORTUNITY_ID, kind:'info', sender:'LOCAL RECOVERY CHANNEL',
         headline:authored?.name || 'A ship worth bringing home',
         detail:authored?.intro || 'An intact frame is drifting nearby. Read its registry before deciding who should keep it.',
         choices:[{id:'target',label:'Acquire vessel signal'},{id:'course',label:'Plot the last trajectory'},{id:'leave',label:'Leave it for now',cancel:true}],
         onChoose: action => {
-          deck()?.resolveDecision('black-flag:opportunity');
+          if (offeredOpportunity !== offer) return;
+          if (deferOpportunity(payload)) { holdOpportunity(); return; }
+          offeredOpportunity = null;
+          prompt.resolveDecision(OPPORTUNITY_ID);
           const live = state.entities?.get(payload.entityId);
-          if (action === 'target' && live?.alive && live.data?.shipjackGeneration === generation) {
+          if (action === 'target' && live?.alive && live.data?.vesselId === payload.vesselId
+            && live.data?.shipjackGeneration === generation) {
             laneInputWrite(state,'player.targetId',live.id);
             laneInputWrite(state,'ui.objectSelection',null);
             laneInputWrite(state,'input.targetAssistDisabled',false);
@@ -185,6 +212,7 @@ export function createBlackFlagPrompt(ctx, { read = queryShipjack, deck = getPro
           } else if (action === 'course') bus.emit('ui:shipjack',{action:'navigate',vesselId:payload.vesselId});
         },
       });
+      if (admitted !== false) { offeredOpportunity = offer; opportunity = null; }
     },
     dispose() { offs.forEach(off => off()); clear(); },
   };

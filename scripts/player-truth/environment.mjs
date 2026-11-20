@@ -128,7 +128,7 @@ export function assessTree(entries, { root, stat = null, hash = null, overlayEnt
   for (const entry of entries) {
     const abs = path.join(root, entry.path);
     const overlay = overlayEntries?.get(entry.path);
-    const st = overlay ? { size: overlay.bytes } : doStat(abs);
+    const st = overlay && !overlay.assetPin ? { size: overlay.bytes } : doStat(abs);
     if (!st) {
       problems.push({ path: entry.path, kind: 'missing', expected: `${entry.size} ${entry.oid}`, served: 'absent' });
       continue;
@@ -141,9 +141,9 @@ export function assessTree(entries, { root, stat = null, hash = null, overlayEnt
       problems.push({ path: entry.path, kind: 'size', expected: String(entry.size), served: String(st.size) });
       continue;
     }
-    // Every pinned asset is fully checked against the requested Git tree, even when a
-    // large ordinary disk asset would receive only the existing bounded size check.
-    if (!overlay && !needsHash(entry.path, entry.size)) continue;
+    // References are hashed against the actual HTTP response below. Inline assets are
+    // checked in full even when an ordinary disk asset would receive only a size check.
+    if (overlay?.assetPin || (!overlay && !needsHash(entry.path, entry.size))) continue;
     hashed++;
     let oid;
     try { oid = overlay ? gitBlobOid(overlay.body) : doHash(abs); } catch (err) {
@@ -181,17 +181,18 @@ export function readHeadTree(root, rev = 'HEAD') {
 export async function checkServedSample(baseUrl, entries, samplePath = 'assets/ships/release/render-packages/kestrel/render-package.json') {
   const entry = entries.find((e) => e.path === samplePath);
   if (!entry) return { ok: false, problems: [{ path: samplePath, kind: 'missing', expected: 'listed in HEAD', served: 'not in ls-tree' }] };
+  const expected = entry.sha256 || entry.oid;
   const url = new URL(samplePath, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`);
   let res;
   try { res = await fetch(url); } catch (err) {
-    return { ok: false, problems: [{ path: samplePath, kind: 'missing', expected: entry.oid, served: String(err && err.message || err) }] };
+    return { ok: false, problems: [{ path: samplePath, kind: 'missing', expected, served: String(err && err.message || err) }] };
   }
-  if (!res.ok) return { ok: false, problems: [{ path: samplePath, kind: 'missing', expected: entry.oid, served: `HTTP ${res.status}` }] };
+  if (!res.ok) return { ok: false, problems: [{ path: samplePath, kind: res.status === 412 ? 'hash' : 'missing', expected, served: `HTTP ${res.status}` }] };
   const buf = Buffer.from(await res.arrayBuffer());
-  const oid = gitBlobOid(buf);
-  if (buf.length !== entry.size || oid !== entry.oid) {
+  const digest = entry.sha256 ? createHash('sha256').update(buf).digest('hex') : gitBlobOid(buf);
+  if (buf.length !== entry.size || digest !== expected) {
     const kind = buf.length !== entry.size ? 'size' : 'hash';
-    return { ok: false, problems: [{ path: samplePath, kind, expected: `${entry.size} ${entry.oid}`, served: `${buf.length} ${oid}` }] };
+    return { ok: false, problems: [{ path: samplePath, kind, expected: `${entry.size} ${expected}`, served: `${buf.length} ${digest}` }] };
   }
   return { ok: true, problems: [] };
 }
@@ -201,7 +202,9 @@ export function candidateAssetTree(entries, overlayEntries) {
   const candidate = [...overlayEntries.values()].filter((entry) => isRouteServed(entry.path));
   const byPath = new Map(entries.map((entry) => [entry.path, entry]));
   for (const entry of candidate) {
-    byPath.set(entry.path, { path: entry.path, size: entry.bytes, oid: gitBlobOid(entry.body) });
+    byPath.set(entry.path, entry.assetPin
+      ? { path: entry.path, size: entry.bytes, sha256: entry.sha256 }
+      : { path: entry.path, size: entry.bytes, oid: gitBlobOid(entry.body) });
   }
   return { entries: [...byPath.values()], candidatePaths: candidate.map((entry) => entry.path) };
 }
@@ -210,6 +213,7 @@ export async function verifyHarnessEnvironment({ root, rev = 'HEAD', baseUrl = n
   const headEntries = readHeadTree(root, rev).filter((entry) => isRouteServed(entry.path) && !isHarnessOutput(entry.path));
   const overlay = loadSourceOverlayManifest(sourceOverlay);
   if (candidateAssets && (!overlay || !baseUrl)) throw new Error('candidate assets require a validated source overlay and a running server');
+  if (overlay?.identity.assetPinCount && !candidateAssets) throw new Error('working-tree asset pins require --candidate-source');
   if (candidateAssets) {
     try {
       execFileSync('git', ['merge-base', '--is-ancestor', overlay.identity.sourceCommit, rev], { cwd: root, stdio: 'ignore' });

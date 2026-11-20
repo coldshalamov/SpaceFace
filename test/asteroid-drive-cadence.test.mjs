@@ -89,6 +89,38 @@ function carveShaft(state, rows = 40) {
   return col;
 }
 
+{
+  const { state, bus } = setup(130013);
+  const col = carveShaft(state, 4);
+  const pocket = { type: 'gas', hp: 1, maxHp: 1, hardness: 0.5, tierReq: 1 };
+  state.drill.field[col][2] = pocket;
+  const controls = createDrillInputController({ drillSys: drill, getState: () => state.drill });
+  const warnings = [];
+  bus.on('drill:warn', p => warnings.push(p.reason));
+
+  controls.press('down');
+  for (let i = 0; i < 60; i++) controls.tick(STEP);
+  assert.equal(state.drill.avatar.row, 1, 'hold stops one cell before the gas');
+  assert.equal(pocket.hp, 1, 'cruise does not start the gas breach');
+  assert.deepEqual(warnings, ['gasAhead']);
+  controls.release('down');
+  controls.press('down');
+  assert.equal(state.drill.avatar.row, 2, 'a fresh press commits the warned cut');
+  assert.equal(state.drill.gasHits, 1);
+}
+
+{
+  const { state } = setup(130014);
+  const col = carveShaft(state, 4);
+  const pocket = { type: 'gas', hp: 1, maxHp: 1, hardness: 0.5, tierReq: 1 };
+  state.drill.field[col][2] = pocket;
+  const target = { col, row: 1 };
+  drill.tickInput({ down: true }, STEP, { target, impulse: true });
+  for (let i = 0; i < 6; i++) drill.tickInput({ down: true }, STEP, { target });
+  assert.equal(state.drill.avatar.row, 1);
+  assert.equal(pocket.hp, 1, 'queued input for the previous seat never cuts the next cell');
+}
+
 /**
  * Press a direction, run the drill clock for `holdSteps` fixed steps, then release and let the
  * world settle. Returns the sim-time stamp of every cell the rover actually crossed, with t=0 at

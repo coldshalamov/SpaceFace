@@ -19,8 +19,10 @@ import { sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { withBankStone } from '../core/surfaceContact.js';
 import { asteroidColliderRadius } from '../data/asteroidColliders.js';
 import { applyRockSubstance, authoredRockPlaceId, rockSubstanceForSlot } from '../data/rockSubstances.js';
+import { SWARM_FLOOR_APRON_WU, SWARM_FLOOR_CRATE_RADIUS, swarmFloorPlanFor } from '../data/swarmFloor.js';
 import { Masks } from '../core/entity.js';
 import { bumpCollidesFlipEpoch, indexedTypeScan } from '../world/livingWorldViews.js';
+import { swarmPlacementIsClear } from './swarmSafety.js';
 import { markFieldRockAtRest } from './spawnClearance.js';
 import {
   PALLAS_REEF_MINES,
@@ -72,6 +74,29 @@ export function segmentDistance(px, pz, ax, az, qx, qz) {
   if (!(lenSq > 1e-9)) return Math.hypot(qx - px, qz - pz);
   const t = Math.max(0, Math.min(1, ((qx - px) * dx + (qz - pz) * dz) / lenSq));
   return Math.hypot(qx - (px + dx * t), qz - (pz + dz * t));
+}
+
+function seatClearOfStartingCrate(state, anchor, crate, dx, dz, radius, openingLane) {
+  const reach = SWARM_FLOOR_CRATE_RADIUS + SWARM_FLOOR_APRON_WU + radius;
+  const clear = (x, z) => Math.hypot(x - crate.dx, z - crate.dz) >= reach
+    && (!openingLane || segmentDistance(0, 0, openingLane.x, openingLane.z, x, z) >= OPENING_CORRIDOR_HALF);
+  if (clear(dx, dz)) return { x: dx, z: dz };
+
+  // Walk to the nearest usable side of this rock's original ring. Keep the same
+  // throw range, and check existing bodies before admitting a moved seat.
+  const distance = Math.hypot(dx, dz);
+  const bearing = Math.atan2(dz, dx);
+  for (let step = 1; step <= 12; step++) {
+    for (const direction of [1, -1]) {
+      const angle = bearing + direction * step * Math.PI / 12;
+      const x = distance * Math.cos(angle);
+      const z = distance * Math.sin(angle);
+      if (clear(x, z) && swarmPlacementIsClear(state, { x: anchor.x + x, z: anchor.z + z }, radius)) {
+        return { x, z };
+      }
+    }
+  }
+  return null;
 }
 
 function visitSolidAnchorCandidates(state, fn) {
@@ -137,6 +162,9 @@ export const terrainAnchors = {
     if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
     if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
     const arcade = payload.arcadeLayout === true && state.run?.ruleset === 'swarm';
+    const initialSwarm = arcade && payload.encounterId === 'survival-arena-w1';
+    const openingCrate = initialSwarm && state.run.arenaId === 'helios_core'
+      ? swarmFloorPlanFor(state.run.arenaId)?.crateSpots[0] : null;
     const required = arcade ? 6 : ANCHOR_MIN;
     const bubbleRadius = arcade ? 390 : ANCHOR_RADIUS;
     // VERB-07 — rocks dropped for the opening hauler raid are neighbourhood furniture, not
@@ -174,7 +202,15 @@ export const terrainAnchors = {
     const rotation = ((Number(payload.arenaSeed) >>> 0) % 360) * Math.PI / 180;
     const survivalCover = payload.kind === 'survival_arena';
     const ownership = sectorOwnershipFor(pos);
-    const spawnAnchor = (dx, dz, size, i = 0) => {
+    let spawned = 0;
+    const spawnAnchor = (dx, dz, size, i = 0, openingLane = null) => {
+      const radius = asteroidColliderRadius(ANCHOR_TYPE_ID, size);
+      // Spins are assigned to the seeded slots even when a crowded seat cannot be admitted.
+      const angVel = (this._rng() - 0.5) * 0.12;
+      const seat = openingCrate
+        ? seatClearOfStartingCrate(state, pos, openingCrate, dx, dz, radius, openingLane)
+        : { x: dx, z: dz };
+      if (!seat) return null;
       const oreHP = Math.round(360 + size * 14);
       const data = {
         typeId: ANCHOR_TYPE_ID,
@@ -202,23 +238,25 @@ export const terrainAnchors = {
       markFieldRockAtRest(this.helpers.spawnEntity({
         type: 'asteroid',
         homeSectorId: ownership.homeSectorId,
-        pos: { x: pos.x + dx, z: pos.z + dz },
+        pos: { x: pos.x + seat.x, z: pos.z + seat.z },
         vel: { x: 0, z: 0 },
         radius: size,
-        physicsBody: { radius: asteroidColliderRadius(ANCHOR_TYPE_ID, size) },
+        physicsBody: { radius },
         // 2D-area-ish density scaling: these read (and sling, §4.1 anchor-mass bonus) as monoliths.
         mass: Math.round(size * size * 40 * anchorDensity),
-        angVel: (this._rng() - 0.5) * 0.12,
+        angVel,
         hull: oreHP, hullMax: oreHP,
         collides: true,
         data: survivalCover ? withBankStone(data) : data,
       }), { simTime: now });
+      spawned++;
+      return seat;
     };
     // INF-017: the opening wave of a swarm run leads with one substantial anchor on a clear
     // sling corridor. Inbound enemies converge player-ward through its neighborhood; the
     // composition is untouched, so the gun-only route is exactly as authored.
     let opening = null;
-    if (arcade && payload.encounterId === 'survival-arena-w1') {
+    if (initialSwarm) {
       const bearing = OPENING_ANCHOR_BEARING_RAD + rotation;
       const dx = Math.cos(bearing) * OPENING_ANCHOR_DIST;
       const dz = Math.sin(bearing) * OPENING_ANCHOR_DIST;
@@ -232,8 +270,9 @@ export const terrainAnchors = {
       if (!occupied) opening = { dx, dz };
     }
     let placed = 0;
+    let openingLane = null;
     if (opening && placed < want) {
-      spawnAnchor(opening.dx, opening.dz, OPENING_ANCHOR_SIZE);
+      openingLane = spawnAnchor(opening.dx, opening.dz, OPENING_ANCHOR_SIZE);
       placed++;
     }
     for (let scan = 0; placed < want && scan < layout.length * 2; scan++) {
@@ -248,17 +287,17 @@ export const terrainAnchors = {
       if (opening && segmentDistance(0, 0, opening.dx, opening.dz, dx, dz) < OPENING_CORRIDOR_HALF) {
         continue;
       }
-      spawnAnchor(dx, dz, size, i);
+      spawnAnchor(dx, dz, size, i, openingLane);
       placed++;
     }
     // NXI-076 — replenishment is explained only when a real replacement is admitted: adopting
     // surviving in-bubble anchors is ownership bookkeeping, not new geometry, so the receipt
     // fires on `spawned > 0` alone and carries how much was already standing.
-    if (placed > 0 && this.bus && typeof this.bus.emit === 'function') {
+    if (spawned > 0 && this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('terrainAnchors:replenished', {
         encounterId: payload.encounterId || null,
         kind: payload.kind || null,
-        spawned: placed,
+        spawned,
         alreadyPresent: present,
       });
     }

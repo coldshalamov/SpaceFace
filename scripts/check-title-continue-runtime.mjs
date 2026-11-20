@@ -14,8 +14,8 @@ import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
-import { installFirstLightPromptHandler } from './player-truth/routes.mjs';
 import { CURRENT_VERSION } from '../src/data/saveVersion.js';
+import { SHARED_PLAYER_STORE_PATH } from '../src/save/sharedPlayerStore.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const { chromium } = await loadPlaywright();
@@ -33,12 +33,37 @@ try {
   browser = await chromium.launch({ headless: true, args: ['--use-gl=angle', '--ignore-gpu-blocklist'] });
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
   const issues = collectPageIssues(page);
-  await installFirstLightPromptHandler(page, () => {});
-
+  const storeRequests = [];
+  const storeRequestDetails = new Map();
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname !== SHARED_PLAYER_STORE_PATH) return;
+    const details = { method: request.method() };
+    if (details.method === 'PUT') {
+      try { details.keys = Object.keys(request.postDataJSON()?.keys || {}); }
+      catch { details.keys = null; }
+    }
+    storeRequestDetails.set(request, details);
+    storeRequests.push(details);
+  });
+  page.on('response', (response) => {
+    const details = storeRequestDetails.get(response.request());
+    if (details) details.status = response.status();
+  });
+  page.on('requestfailed', (request) => {
+    const details = storeRequestDetails.get(request);
+    if (details) details.failure = request.failure()?.errorText;
+  });
   await page.addInitScript((currentVersion) => {
     try {
       sessionStorage.setItem('sf.cinematicSeen', '1');
       localStorage.clear();
+      // These saves belong to a returning player. Seed their settled First Light
+      // choice before boot so the Continue click never doubles as a settings write.
+      localStorage.setItem('sf.settings.profile.v1', JSON.stringify({
+        version: 1,
+        updatedAt: '2026-06-27T12:00:00.000Z',
+        settings: { accessibility: { motionPreference: 'system', firstLightOffered: true, firstLightChoice: 'kept' } },
+      }));
       const index = {
         quick: {
           slot: 'quick',
@@ -116,11 +141,11 @@ try {
     const summary = document.querySelector('[data-screen="mainMenu"] .sf-menu-save-summary');
     return !!(summary && summary.classList.contains('has-save'));
   }, null, { timeout: 45000 });
+  const continueButton = page.locator('[data-screen="mainMenu"]').getByRole('button', { name: 'Continue', exact: true });
+  await continueButton.waitFor({ state: 'visible', timeout: 10000 });
 
   const report = await page.evaluate(() => {
     const text = (sel) => (document.querySelector(sel)?.textContent || '').replace(/\s+/g, ' ').trim();
-    const cont = [...document.querySelectorAll('[data-screen="mainMenu"] button')]
-      .find((b) => (b.textContent || '').trim() === 'Continue');
     const summary = document.querySelector('[data-screen="mainMenu"] .sf-menu-save-summary');
     // ORRERY: the dial shows no sentence under a verb; what Continue would load is the eyebrow
     // (mainMenu.js sets `[data-role="title-status"]` to `Continue · <summary>`). The
@@ -132,13 +157,11 @@ try {
       summaryHasSave: !!summary && summary.classList.contains('has-save'),
       eyebrow: text('[data-screen="mainMenu"] [data-role="title-status"]'),
       eyebrowRect: rect,
-      continueDisabled: cont ? cont.disabled : null,
-      continueTitle: cont ? cont.title : '',
     };
   });
 
   assert.equal(report.summaryHasSave, true, 'title summary should render occupied-save styling');
-  assert.equal(report.continueDisabled, false, 'Continue should be enabled when the save index has an occupied slot');
+  assert.equal(await continueButton.isEnabled(), true, 'Continue should be enabled when the save index has an occupied slot');
   assert(report.eyebrowRect && report.eyebrowRect.width > 20 && report.eyebrowRect.height > 10,
     'the eyebrow carrying the Continue summary should be visible on the title screen');
   assert.match(report.eyebrow, /^Continue · /, 'the eyebrow should explicitly label what Continue will load');
@@ -148,7 +171,7 @@ try {
   assert.match(report.eyebrow, /Route: Tethys Trade Hub - Provisions/, 'the eyebrow should show latest save objective context');
   assert.match(report.eyebrow, /1h 1m played/, 'the eyebrow should show latest save playtime context');
   assert.match(report.eyebrow, /12,345 CR/, 'the eyebrow should show latest save credit context');
-  assert.match(report.continueTitle, /Load .*Slot 3/, 'Continue tooltip should match the resolved latest save');
+  assert.match(await continueButton.getAttribute('title') || '', /Load .*Slot 3/, 'Continue tooltip should match the resolved latest save');
 
   await page.evaluate(() => {
     const sf = window.SF;
@@ -161,7 +184,7 @@ try {
     };
   });
 
-  assert.equal(await clickButton(page, 'Continue'), true, 'Continue button should be clickable');
+  await continueButton.click({ timeout: 10000 });
   const emitted = await page.waitForFunction(() =>
     (window.__sfContinueProbe || []).some((e) => e.name === 'game:load'),
   null, { timeout: 30000 }).then(() => page.evaluate(() =>
@@ -172,13 +195,36 @@ try {
     'Continue should emit the concrete slot shown in the title summary');
   assert.notEqual(emitted.payload && emitted.payload.slot, 'latest',
     'Continue should not ask a second latest resolver to reinterpret the visible summary');
-  assert.deepEqual(
-    issues.errorIssues().filter((issue) => !isHandledStoreProbeAbort(issue)),
-    [],
-    'title Continue runtime probe should not record page errors',
-  );
 
-  console.log('Title Continue runtime OK: seeded save index -> visible latest-save summary -> concrete slot load intent.');
+  // The isolated server starts empty. Read back the exact envelope for the slot shown to
+  // the player so handled mirror failures cannot look like successful boot reconciliation.
+  const slotKey = 'sf.save.' + emitted.payload.slot;
+  const localEnvelope = await page.evaluate((key) => localStorage.getItem(key), slotKey);
+  assert.ok(localEnvelope, 'the displayed slot should have a local save envelope');
+  const storeResponse = await fetch(new URL(SHARED_PLAYER_STORE_PATH, server.baseUrl), {
+    signal: AbortSignal.timeout(10000),
+  });
+  assert.equal(storeResponse.status, 200, 'the isolated shared store should be readable');
+  const { keys: sharedKeys } = await storeResponse.json();
+  const slotMirrored = sharedKeys[slotKey] === localEnvelope;
+  const pageErrors = issues.errorIssues().filter((issue) => !isHandledStoreProbeAbort(issue));
+  if (!slotMirrored || pageErrors.length > 0) {
+    console.error('Title Continue shared store outcome:', JSON.stringify({
+      slotMirrored,
+      mirrorHealthy: await page.evaluate(() => window.SF.ctx.registry.get('save').isSharedStoreMirrorHealthy()),
+      storeKeys: Object.keys(sharedKeys),
+      storeRequests,
+    }));
+  }
+  assert.deepEqual(
+    pageErrors,
+    [],
+    'title Continue runtime probe should not record page errors (shared slot persisted: ' + slotMirrored + ')',
+  );
+  assert.equal(slotMirrored, true,
+    'boot reconcile should persist the displayed slot in the initially empty shared store');
+
+  console.log('Title Continue runtime OK: seeded save index -> shared save mirror and visible latest-save summary -> concrete slot load intent.');
 } finally {
   if (browser) await browser.close();
   if (server && server.kill) server.kill();
@@ -195,13 +241,6 @@ async function waitForVisible(page, selector, timeoutMs, label) {
   }, selector, { timeout: timeoutMs }).catch((err) => {
     throw new Error('Timed out waiting for ' + label + ': ' + err.message);
   });
-}
-
-async function clickButton(page, label) {
-  const button = page.getByRole('button', { name: label, exact: true }).first();
-  if (await button.count() <= 0) return false;
-  await button.click({ timeout: 10000 });
-  return true;
 }
 
 async function startFreshServer() {

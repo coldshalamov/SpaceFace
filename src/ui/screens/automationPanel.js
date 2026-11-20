@@ -26,6 +26,8 @@ import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { laneInputWrite } from '../../core/simLaneCommands.js';
 import { industryReadoutFromState, renderIndustryStrip, traderCycleLine } from './industryReadout.js';
 import { injectOrreryMobileScreens } from '../orrery/mobileScreenLayouts.js';
+import { injectOrrery } from '../orrery/tokens.js';
+import { stagger, reducedMotion } from '../orrery/motion.js';
 import { SECTORS } from '../../data/sectors.js';
 import { MAX_PROGRAM_STEPS, MAX_PROGRAM_NAME_LENGTH, validateProgram } from '../../systems/alphabet.js';
 
@@ -1039,6 +1041,7 @@ export const automationScreen = {
   mount(rootEl, ctx) {
     injectStyle();
     injectOrreryMobileScreens();
+    injectOrrery(); // the arrival rise (.orr-rise) rides the orrery token sheet
     this._ctx = ctx;
     this._root = rootEl;
     rootEl.id = 'sf-automation';
@@ -1164,7 +1167,14 @@ export const automationScreen = {
     }
   },
 
-  onShow(ctx) { if (ctx) this._ctx = ctx; this.refresh(this._ctx, { forceBody: true }); },
+  onShow(ctx) {
+    if (ctx) this._ctx = ctx;
+    // Arrival pass (ORRERY §3.5): only an open choreographs; a signature-change re-render
+    // while the board is open stays silent.
+    this._arriving = true;
+    this.refresh(this._ctx, { forceBody: true });
+    this._arriving = false;
+  },
   onHide() { /* cached DOM retained */ },
   dispose() {
     if (this._offFleetChanged) this._offFleetChanged();
@@ -1466,6 +1476,13 @@ export const automationScreen = {
     else if (this._tab === 'outposts') this._renderOutposts(frag);
     else this._renderFleet(frag);
     body.replaceChildren(frag);
+    // Arrival (ORRERY §3.5): the board's sections rise in turn on open; a later refresh
+    // (no arriving pass) keeps the still so the entrance never replays.
+    if (this._arriving && !reducedMotion()) {
+      const units = Array.from(body.children);
+      stagger(units, { base: 60, step: 45 });
+      for (const unit of units) unit.classList.add('orr-rise');
+    }
     // Swap any native <select> (drone program dropdowns) for the styled sf-select widget before
     // focus restore, so the restored focus lands on the live control.
     enhanceSelects(body);
@@ -1838,21 +1855,21 @@ export const automationScreen = {
             <div class="au-note">${escapeHtml(outpostSaleExplanation(o))}</div>
             <div class="au-note">${escapeHtml(saleText)}</div>
             <div class="au-outpost-actions">
-              ${!passive ? `<button class="au-order" data-act="supplyOutpost" data-ref="${ref}" data-kind="outpost" title="${escapeHtml(supplyWhy || 'Move recipe inputs from your hold')}"${supplyWhy ? ' disabled' : ''}>Supply</button>
-              <button class="au-order" data-act="collectOutpost" data-ref="${ref}" data-kind="outpost" title="${escapeHtml(collectWhy || 'Take stored output into your hold')}"${collectWhy ? ' disabled' : ''}>Collect</button>` : ''}
-              <button class="au-order" data-act="sellOutpost" data-ref="${ref}" data-kind="outpost" title="${escapeHtml(settleWhy || 'Sell stored output at the buyer')}"${settleWhy ? ' disabled' : ''}>Settle</button>
+              ${!passive ? `<button class="au-order" data-act="supplyOutpost" data-ref="${ref}" data-kind="outpost" data-why="${escapeHtml(supplyWhy || 'Move recipe inputs from your hold')}" aria-label="Supply — ${escapeHtml(supplyWhy || 'move recipe inputs from your hold')}"${supplyWhy ? ' disabled' : ''}>Supply</button>
+              <button class="au-order" data-act="collectOutpost" data-ref="${ref}" data-kind="outpost" data-why="${escapeHtml(collectWhy || 'Take stored output into your hold')}" aria-label="Collect — ${escapeHtml(collectWhy || 'take stored output into your hold')}"${collectWhy ? ' disabled' : ''}>Collect</button>` : ''}
+              <button class="au-order" data-act="sellOutpost" data-ref="${ref}" data-kind="outpost" data-why="${escapeHtml(settleWhy || 'Sell stored output at the buyer')}" aria-label="Settle — ${escapeHtml(settleWhy || 'sell stored output at the buyer')}"${settleWhy ? ' disabled' : ''}>Settle</button>
             </div>
             <div class="au-note">${escapeHtml(accessHint)}</div>
             <details class="au-outpost-more" data-outpost-more="${ref}">
               <summary>More</summary>
               <div class="au-outpost-actions">
                 <button class="au-order" data-act="toggleOutpostSales" data-ref="${ref}" data-kind="outpost">${o.autoSell ? 'Pause sales' : 'Resume sales'}</button>
-                ${!passive ? `<button class="au-order" data-act="routeOutpost" data-ref="${ref}" data-kind="outpost" title="Next local buyer">Change buyer</button>
-                <button class="au-order" data-act="recoverOutpostInputs" data-ref="${ref}" data-kind="outpost" title="${escapeHtml(recoverWhy || 'Take stored inputs back into your hold')}"${recoverWhy ? ' disabled' : ''}>Recover</button>` : ''}
-                ${upgradeCost != null ? `<button class="au-buy" data-act="upgradeOutpost" data-ref="${ref}" data-kind="outpost" title="${escapeHtml(upgradeWhy || 'Bigger storage; upkeep up 50%')}"${upgradeWhy ? ' disabled' : ''}>Expand · ${fmtCr(upgradeCost)} cr</button>` : ''}
+                ${!passive ? `<button class="au-order" data-act="routeOutpost" data-ref="${ref}" data-kind="outpost" data-why="Next local buyer" aria-label="Change buyer — next local buyer">Change buyer</button>
+                <button class="au-order" data-act="recoverOutpostInputs" data-ref="${ref}" data-kind="outpost" data-why="${escapeHtml(recoverWhy || 'Take stored inputs back into your hold')}" aria-label="Recover — ${escapeHtml(recoverWhy || 'take stored inputs back into your hold')}"${recoverWhy ? ' disabled' : ''}>Recover</button>` : ''}
+                ${upgradeCost != null ? `<button class="au-buy" data-act="upgradeOutpost" data-ref="${ref}" data-kind="outpost" data-why="${escapeHtml(upgradeWhy || 'Bigger storage; upkeep up 50%')}" aria-label="Expand — ${escapeHtml(upgradeWhy || 'bigger storage; upkeep up 50%')}"${upgradeWhy ? ' disabled' : ''}>Expand · ${fmtCr(upgradeCost)} cr</button>` : ''}
                 ${o.status === 'distressed' ? `<button class="au-buy" data-act="resumeOutpost" data-ref="${ref}" data-kind="outpost">Resume · ${fmtCr(arrears)} cr</button>` : ''}
                 <button class="au-order" data-act="locateOutpost" data-ref="${ref}" data-kind="outpost">Locate</button>
-                <button class="au-recall" data-act="decommission" data-ref="${ref}" data-kind="outpost" title="${escapeHtml(retireWhy || 'Remove the facility')}"${retireWhy ? ' disabled' : ''}>Decommission</button>
+                <button class="au-recall" data-act="decommission" data-ref="${ref}" data-kind="outpost" data-why="${escapeHtml(retireWhy || 'Remove the facility')}" aria-label="Decommission — ${escapeHtml(retireWhy || 'remove the facility')}"${retireWhy ? ' disabled' : ''}>Decommission</button>
               </div>
             </details>
             <details class="au-outpost-detail" data-outpost-detail="${ref}">

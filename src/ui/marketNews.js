@@ -814,6 +814,7 @@ export function createMarketNews(ctx) {
     const span = document.createElement('span');
     span.className = 'sf-news-ticker__item sf-news-ticker__item--' + (item.kind || 'event');
     span.textContent = item.text;
+    span.title = item.text;
     el.appendChild(span);
     setTickerHostVisible(true);
     // Legibility floor: the flight tape is narrow, and after the BAND / COMMS / HAIL chrome a

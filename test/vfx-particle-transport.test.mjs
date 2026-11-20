@@ -31,6 +31,42 @@ test('first burst uploads immediately and zero dt preserves that first visible f
   } finally { f.dispose(); }
 });
 
+test('a long frame advances every transport substep but packs only the final picture', () => {
+  const scene = new THREE.Scene();
+  const flow = new ForceParticleFlow(scene, { capacity: 12 });
+  const stepped = new ForceParticleFlow(scene, { capacity: 12 });
+  try {
+    const event = { kind: 'well', x: 14, z: -8, radius: 65, seed: 92, count: 6, life: 1.5 };
+    flow.emit(event);
+    stepped.emit(event);
+    const pack = flow.batch.update.bind(flow.batch);
+    let packs = 0;
+    flow.batch.update = () => { packs++; pack(); };
+
+    const elapsed = 0.35;
+    const maxStep = 0.1;
+    flow.update(elapsed);
+    assert.equal(packs, 1);
+    for (const dt of [maxStep, maxStep, maxStep, elapsed - maxStep - maxStep - maxStep]) stepped.update(dt);
+    assert.deepEqual(sample(flow), sample(stepped));
+    assert.deepEqual(flow.flowShape, stepped.flowShape);
+    assert.deepEqual(flow.flowTail, stepped.flowTail);
+    assert.deepEqual(flow.flowMid, stepped.flowMid);
+    assert.equal(flow.batch.geometry.instanceCount, 6);
+    assert.deepEqual(flow.batch.geometry.getAttribute('offset').array,
+      stepped.batch.geometry.getAttribute('offset').array);
+
+    flow.update(0.35, { deferUpload: true });
+    assert.equal(packs, 1);
+    flow.publish();
+    assert.equal(packs, 2);
+    flow.update(1.5);
+    assert.equal(packs, 3);
+    assert.equal(flow.batch.geometry.instanceCount, 0);
+    assert.equal(flow.renderer.visible, false);
+  } finally { flow.dispose(); stepped.dispose(); }
+});
+
 test('seeded Quarks transport varies by event and ordinal, reuses bounded particle objects', () => {
   const scene = new THREE.Scene();
   const a = new ForceParticleFlow(scene, { capacity: 12 });
@@ -226,7 +262,7 @@ test('field transport packs once after advancing and emitting, with the same par
     const deferred = countPublicationWork(current);
     state.simTime = 0.49;
     for (const owner of [reference, current]) owner.update(0.25, state);
-    assert.equal(baseline.batch, 4, 'three transport substeps used to pack before the final field pack');
+    assert.equal(baseline.batch, 2, 'the transport and the new field emission each publish once');
     assert.equal(deferred.batch, 1);
     assert.equal(baseline.shape, 2);
     assert.equal(deferred.shape, 1);

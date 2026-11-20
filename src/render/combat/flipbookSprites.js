@@ -14,6 +14,10 @@ export const FLIPBOOK_SHEETS = Object.freeze({
   wisp: Object.freeze({ file: 'energy_wisp_sheet', blend: 'add', hdr: 5, cooling: 0 }),
 });
 
+export function flipbookSheetPath(id) {
+  return `assets/fx/sprites/${FLIPBOOK_SHEETS[id].file}.png`;
+}
+
 export function flipbooksAvailable() {
   return typeof document !== 'undefined' && typeof Image !== 'undefined';
 }
@@ -22,7 +26,7 @@ const _sheetCache = new Map();
 export function getFlipbookTexture(id) {
   if (_sheetCache.has(id)) return _sheetCache.get(id);
   const tex = new THREE.TextureLoader().load(
-    `assets/fx/sprites/${FLIPBOOK_SHEETS[id].file}.png`,
+    flipbookSheetPath(id),
     () => { tex.needsUpdate = true; },
     undefined,
     () => { tex.userData.spacefaceLoadFailed = true; },

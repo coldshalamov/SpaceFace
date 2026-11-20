@@ -27,6 +27,12 @@ export function readFaunaMotion(driveState) {
   return MOTION_BY_DRIVE[driveState] || null;
 }
 
+/** How far ordinary self-propelled steering can move a fauna center in this time. */
+export function faunaSelfTravelBound(species, seconds) {
+  if (!species || species.sessile || !(seconds > 0) || !Number.isFinite(seconds)) return 0;
+  return Math.max(0, species.speed || 0, species.fleeSpeed || 0) * seconds;
+}
+
 /**
  * The approach the animal takes toward the player. Returns null when this rule
  * does not apply (not yet reacted, dormant, or silenced) so the caller leaves

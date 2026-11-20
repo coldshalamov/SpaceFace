@@ -1,17 +1,19 @@
 #!/usr/bin/env node
 // Fleet stability gate — one command that says "the game still works".
 //
-//   npm run gate               all four steps, stopping at the first failure
-//   npm run gate -- --quick    steps 1–2 only (import lint + Adventure boot)
+//   npm run gate               all five steps, stopping at the first failure
+//   npm run gate -- --quick    steps 1–3 only (syntax, import lint, Adventure boot)
+//   npm run gate -- --swarm-candidate-source=<manifest>   use the identified candidate for step 4
 //   npm run gate -- --budget-scale=N   multiply every readiness wait (and the gate wall budget)
 //                                      by N — reads "slow" instead of "broken" on a loaded box
 //
-//   1. import-lint     npm run check:src-imports  every relative src/ specifier is canonical
+//   1. src-syntax      npm run check:src-syntax   every src/ module parses
+//   2. import-lint     npm run check:src-imports  every relative src/ specifier is canonical
 //                                               and resolves verbatim — the `.//` boot brick
-//   2. boot-adventure  npm run check:playable     real-route boot: menu, launch, hull, ship
+//   3. boot-adventure  npm run check:playable     real-route boot: menu, launch, hull, ship
 //                                               mesh, world, controls, no exception/shader error
-//   3. boot-swarm      npm run player-truth -- --mode=swarm --rounds=1 --duration=10   headless Swarm boot: 10 sim-s of live play (a whole round is too slow under software GL)
-//   4. sim-47a         npm run check:sim          deterministic 47-A replay
+//   4. boot-swarm      npm run player-truth -- --mode=swarm --rounds=1 --duration=10   headless Swarm boot: 10 sim-s of live play (a whole round is too slow under software GL)
+//   5. sim-47a         npm run check:sim          deterministic 47-A replay
 //
 // Prints one line per step (PASS boot-adventure 74s / FAIL boot-swarm: <first error line>),
 // then GATE PASS or GATE FAIL, writes the same to .devshots/fleet/gate-last.txt, and exits
@@ -60,13 +62,14 @@ function judgeSwarmBoot(result, outDir) {
   return bad.length ? `boot-critical checks not PASS: ${bad.join(', ')}` : null;
 }
 
-export function createSwarmBootStep(outputRoot) {
+export function createSwarmBootStep(outputRoot, candidateSource = null) {
   // Player-truth can fail preflight before it touches its output directory.
   // Only the verdict from this child invocation can judge this boot.
   const outDir = mkdtempSync(join(outputRoot, 'gate-swarm-'));
   return {
     name: 'boot-swarm',
-    args: ['run', 'player-truth', '--', '--mode=swarm', '--rounds=1', '--duration=10', `--out=${outDir}`],
+    args: ['run', 'player-truth', '--', '--mode=swarm', '--rounds=1', '--duration=10', `--out=${outDir}`,
+      ...(candidateSource ? [`--candidate-source=${candidateSource}`] : [])],
     // A finished route may fail or be incomplete on noncritical checks such
     // as loadout polish. Still require each boot-critical row to pass.
     judge: (result) => judgeSwarmBoot(result, outDir),
@@ -144,15 +147,23 @@ function runStep(step, timeoutMs) {
 }
 
 async function main(quick) {
+  const candidateOption = argv.find((arg) => arg.startsWith('--swarm-candidate-source='));
+  const candidateSource = candidateOption?.slice('--swarm-candidate-source='.length);
+  if (candidateOption && (!candidateSource || quick)) {
+    console.error('--swarm-candidate-source requires a manifest and the full gate');
+    return 2;
+  }
   mkdirSync(OUT_DIR, { recursive: true });
   const steps = [
+    { name: 'src-syntax', args: ['run', 'check:src-syntax'] },
     { name: 'import-lint', args: ['run', 'check:src-imports'] },
     { name: 'boot-adventure', args: ['run', 'check:playable'] },
   ];
-  if (!quick) steps.push(createSwarmBootStep(OUT_DIR), { name: 'sim-47a', args: ['run', 'check:sim'] });
+  if (!quick) steps.push(createSwarmBootStep(OUT_DIR, candidateSource), { name: 'sim-47a', args: ['run', 'check:sim'] });
   const lines = [];
   const emit = (l) => { lines.push(l); console.log(l); };
   emit(`budget scale ${BUDGET_SCALE}`);
+  if (candidateSource) emit(`Swarm candidate ${candidateSource}`);
   const deadline = Date.now() + GATE_BUDGET_MS;
   let gateOk = true;
 

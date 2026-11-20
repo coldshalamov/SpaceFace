@@ -1,8 +1,10 @@
 // Renderer-only adapter: no simulation writes, private animation loop, or Three.js dependency.
 // A transparent overlay canvas and the host camera's XZ->pixel projection are the only ports.
 import {requireCapitalBossEncounter} from '../data/encounters/capital-boss.js';
+import {IRON_MAW} from '../data/encounters/capital-boss/iron-maw.js';
 import {LAST_ARGUMENT} from '../data/lastArgument.js';
 import {capitalPlatePull,capitalPlateUnderLine} from '../combat/capitalPlates.js';
+import {ironMawRecoveryInstruction,readIronMawMouth} from '../combat/capitalBossGeometry.js';
 const TAU=Math.PI*2;
 /** Closed outlines, error <= 0.5 WU for authored dimensions. Lane ends remain rounded. */
 export function capitalShapeOutlines(shape) {
@@ -48,7 +50,7 @@ const byFightId=(a,b)=>a.fightId<b.fightId?-1:a.fightId>b.fightId?1:0;
  * (length trimmed to the live count), and a frame with no live fight allocates nothing.
  * Callers that pass nothing get a fresh array, as before.
  */
-export function capitalBossReadouts(state,out) {
+export function capitalBossReadouts(state,out,mouth=readIronMawMouth(state)) {
  const list=Array.isArray(out)?out:[];
  let n=0;
  const fights=state&&state.capitalBossEncounters&&state.capitalBossEncounters.fights;
@@ -152,17 +154,23 @@ export function capitalBossReadouts(state,out) {
    readout.partsAttached=cellN;
    readout.partsLive=!!(plateSpecN>0&&plateMatchN===plateSpecN&&r.encounterId!==LAST_ARGUMENT.scoreId);
    const cast=r.cast;
-   if(cast&&score&&Array.isArray(score.beats)){
+   const recovery=mouth?.fight===r?r.recovery:null;
+   const activeBeat=recovery||cast;
+   if(activeBeat&&score&&Array.isArray(score.beats)){
     let beat=null;
-    for(let i=0;i<score.beats.length;i+=1){const b=score.beats[i];if(b&&b.id===cast.beatId){beat=b;break;}}
+    for(let i=0;i<score.beats.length;i+=1){const b=score.beats[i];if(b&&b.id===activeBeat.beatId){beat=b;break;}}
     if(beat){
-     const fireAt=cast.startedAt+beat.tellTicks;
-     const endAt=cast.startedAt+beat.tellTicks+beat.activeTicks;
-     if(cast.startedAt<=r.clock&&r.clock<endAt){
+     const startedAt=activeBeat.startedAt;
+     const fireAt=recovery?startedAt:startedAt+beat.tellTicks;
+     const endAt=recovery?startedAt+beat.expose.durationTicks:fireAt+beat.activeTicks;
+     if(startedAt<=r.clock&&r.clock<endAt){
       const move=readout._move||(readout._move={castId:null,beatId:null,title:'',counter:'',
-       startedAt:0,fireAt:0,endAt:0,locked:false});
-      move.castId=cast.id;move.beatId=beat.id;move.title=beat.title;move.counter=beat.counter;
-      move.startedAt=cast.startedAt;move.fireAt=fireAt;move.endAt=endAt;move.locked=cast.locked===true;
+       startedAt:0,fireAt:0,endAt:0,locked:false,mouth:false});
+      move.castId=recovery?startedAt:cast.id;move.beatId=beat.id;
+      move.title=recovery?IRON_MAW.swarmMouth.recoveryTitle:beat.title;
+      move.counter=recovery?(recovery.mawCounter??ironMawRecoveryInstruction(state)):beat.counter;
+      move.startedAt=startedAt;move.fireAt=fireAt;move.endAt=endAt;
+      move.locked=!!recovery||cast.locked===true;move.mouth=!!recovery;
       readout.move=move;
      }
     }
@@ -180,6 +188,7 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
  // cost, so once the canvas is known-blank an empty draw() is a no-op. A canvas resize clears to
  // blank anyway, so the flag stays honest.
  let blank=false;
+ let mouth=null;
  // GOLD-COLOSSI: attached-plate anchors and the PLATE/HOLD read ride the same canvas in
  // warning style — fed per frame from capitalBossReadouts, never allocating here.
  const anchors=[];
@@ -209,6 +218,8 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
   ctx.stroke();
  };
  return {
+  hasActiveCues(){return warnings.size>0||anchors.length>0||mouth!=null;},
+  mouthAperture(aperture){mouth=aperture;},
   plateAnchors(list){
    anchors.length=0;
    if(Array.isArray(list))for(let i=0;i<list.length;i++)anchors.push(list[i]);
@@ -216,9 +227,21 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
    anchors.hold=list&&list.hold||null;
   },
   draw(){
-  if(warnings.size===0&&anchors.length===0){if(!blank){ctx.clearRect(0,0,canvas.width,canvas.height);blank=true;}return;}
+  if(warnings.size===0&&anchors.length===0&&!mouth){if(!blank){ctx.clearRect(0,0,canvas.width,canvas.height);blank=true;}return;}
   ctx.clearRect(0,0,canvas.width,canvas.height);blank=false;
   for(const c of warnings.values())drawCapitalWarning(ctx,c,clockForFight(c.fightId),worldToScreen,{reducedMotion});
+  if(mouth) {
+   ctx.save();ctx.beginPath();
+   for(let i=0;i<=24;i++) {
+    const angle=TAU*i/24;
+    _platePt.x=mouth.x+Math.cos(angle)*mouth.radius;_platePt.z=mouth.z+Math.sin(angle)*mouth.radius;
+    const pixel=worldToScreen(_platePt);
+    if(i===0)ctx.moveTo(pixel.x,pixel.y);else ctx.lineTo(pixel.x,pixel.y);
+   }
+   ctx.closePath();ctx.fillStyle='rgba(157,241,221,0.15)';ctx.fill();
+   ctx.strokeStyle='#9df1dd';ctx.lineWidth=2;ctx.stroke();
+   ctx.restore();
+  }
   for(let i=0;i<anchors.length;i++)drawPlateAnchor(anchors[i]);
   const hold=anchors.hold;
   if(hold){
@@ -235,7 +258,7 @@ export function createCapitalBossOverlay({canvas,bus,worldToScreen,clockForFight
    }
   }
  },
-  restore(fights){anchors.length=0;anchors.hold=null;warnings.clear();for(const r of Object.values(fights||{}))if(r.cast&&!r.suspended&&!r.terminal){
+  restore(fights){anchors.length=0;anchors.hold=null;mouth=null;warnings.clear();for(const r of Object.values(fights||{}))if(r.cast&&!r.suspended&&!r.terminal){
    const spec=requireCapitalBossEncounter(r.encounterId);
    const b=spec&&spec.score&&spec.score.beats&&spec.score.beats.find(b=>b.id===r.cast.beatId);
    if(!b) continue;

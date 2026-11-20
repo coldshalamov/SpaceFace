@@ -28,6 +28,22 @@ test('production worker carries a deployed beacon lease and its accepted renewal
  } finally {lane.shutdown();}
 });
 
+test('production worker mirrors a Dione range flag deadline for green and red presentation', async()=>{
+ const lane=createSimHost();
+ try {
+  const init=await lane.init({profile:'production',seed:4242,scenarioContract:JSON.parse(readFileSync(new URL('../src/data/scenarios/47a.scenario.json',import.meta.url)))});
+  const {state,runtime}=lane.host; state.mode='flight';
+  const flag=runtime.spawn({type:'beacon',pos:{x:0,z:0},radius:10,collides:false,
+   data:{storyPropKind:'dione_range_flag',rangeGreenUntil:30,dioneRangeFlagMissionId:'practice'}});
+  const reply=await lane.tick({tick:1,steps:0,ackEnd:init.journalSequence});
+  const main=createReadModel();applySpawnInfos(main,reply.spawnInfos);applyEntityVitals(main,reply.entityVitals);
+  const mirror=main.entities.get(flag.id);
+  assert.equal(mirror.data.rangeGreenUntil,30);
+  assert.equal(resolveBeaconLampPlan(mirror,29).mode,'range-green');
+  assert.equal(resolveBeaconLampPlan(mirror,30).mode,'range-red');
+ } finally {lane.shutdown();}
+});
+
 test('production market RPC exposes observed points only and the PA reads their supported interval',async()=>{
  const lane=createSimHost();
  try {

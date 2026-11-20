@@ -27,6 +27,7 @@ import { decorateEntityNode } from '../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from '../shipLedgerPanel.js';
 import { el, words, rows, hero, settle, cue } from '../kit/index.js';
+import { dataState } from '../uiPrimitives.js';
 import { injectDeckplate } from '../deckplate/index.js';
 import { injectArchiveLayouts } from '../orrery/archiveLayouts.js';
 import { deferScreenCssReady } from '../orrery/cssSidecar.js';
@@ -36,7 +37,7 @@ import {
   archiveWedgeSvg, archiveZoom, createLadderHand,
 } from '../orrery/archiveInstruments.js';
 import { decrypt, rollTo } from '../orrery/text.js';
-import { reducedMotion, createSpring } from '../orrery/motion.js';
+import { reducedMotion, createSpring, stagger } from '../orrery/motion.js';
 import { syncScrollExtent } from '../orrery/scrollExtent.js';
 import { dressLampKey } from '../orrery/lampKey.js';
 import { uniqueWreckById } from '../../data/uniqueWrecks.js';
@@ -861,7 +862,7 @@ const WORLD_ROW_COPY_14 = Object.freeze({
     sub: 'Apron texture', open: 'Overlapping approach calls, berth assignments, one voice always slightly behind the '
       + 'others. It ducks under anything urgent and fills the rest.',
     sealed: 'The choir keeps no secrets. The choir is made of work.',
-    note: 'The Helios apron approach — inside 250 WU at rush.',
+    note: 'The Helios apron approach — inside 250 u at rush.',
   }),
   chain: Object.freeze({
     sub: 'Enclosed text', open: 'The letter denies itself in writing: not a chain letter, do not forward it, '
@@ -929,13 +930,13 @@ const WORLD_ROW_COPY_B = Object.freeze({
     sub: 'Listening note', open: 'Hold still and the machinery composes: cranes, pumps, welders, all in tune, from '
       + 'exactly this bearing.',
     sealed: 'Move, and it degrades back into machinery. It was always the same machinery. You are what changed.',
-    note: 'Off the Sker market — the 80 WU zone, thrust under five percent, thirty seconds.',
+    note: 'Off the Sker market — the 80 u zone, thrust under five percent, thirty seconds.',
   }),
   flock: Object.freeze({
     sub: 'Herd receipt', open: 'The rigs detach, piece by piece, and gather the fresh wreckage into a quiet orbit. The '
       + 'one working PA loops softer each cycle.',
     sealed: 'COUNTED. COUNTED. COUNTED. The count is correct; the page keeps it at that.',
-    note: 'The Broken Shepherd — Charon Expanse, inside 600 WU.',
+    note: 'The Broken Shepherd — Charon Expanse, inside 600 u.',
   }),
   eye: Object.freeze({
     sub: 'Season filing', open: 'A calm pocket the storm flows around: lightning stops, drag vanishes, debris hangs '
@@ -1739,6 +1740,14 @@ export const codexScreen = {
   _arrive() {
     const root = this._codexRoot;
     if (!root || !root.classList) return;
+    // The entry pane rises with its index (ORRERY §3.5): the cx-arrive sheet covers the tab words
+    // and the ladder, and the body's own children join here. A tab pick re-renders the body
+    // without an arrival pass, so the entrance never replays.
+    if (!reducedMotion() && this._body && this._body.children.length) {
+      const nodes = Array.from(this._body.children);
+      stagger(nodes, { base: 80, step: 45 });
+      for (const node of nodes) node.classList.add('orr-rise');
+    }
     root.classList.remove('cx-arrive');
     if (typeof root.getBoundingClientRect === 'function') root.getBoundingClientRect();
     root.classList.add('cx-arrive');
@@ -2319,7 +2328,23 @@ export const codexScreen = {
     this._index.innerHTML = '';
     this._list = null;
     if (query && !visible.length) {
-      this._index.appendChild(el('p', 'k-empty', 'No matching unlocked entries.'));
+      // The data-state kit names the miss and hands back the one verb that fixes it (a bare
+      // sentence left the player to think of un-typing by hand).
+      this._index.appendChild(dataState('empty', {
+        code: 'CODEX_SEARCH',
+        compact: true,
+        headline: 'Nothing in the codex by that name.',
+        fills: 'The index reads every filed page. A shorter word, or the thing itself rather than its nickname, may reach it.',
+        verb: {
+          label: 'Clear the search',
+          onActivate: () => {
+            this._query = '';
+            if (this._search) this._search.value = '';
+            this._render(this._ctx);
+            if (this._search) this._search.focus({ preventScroll: true });
+          },
+        },
+      }));
       this._body.innerHTML = '';
       this._shownId = null;
       this._placeHand();

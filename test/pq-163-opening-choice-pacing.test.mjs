@@ -2,11 +2,11 @@
 //
 // Drives the REAL onboarding rail over one bus on a fixed seed, with the REAL missions,
 // lawSecurity, and heat systems wired behind it. The claimed-salvage beat is the opening's
-// first REFUSABLE choice ("Claimed salvage. Take it anyway, or leave it."): this file proves
+// first refusable choice: this file proves
 // both branches land with visible consequences —
 //   take  → a real lawSecurity receipt the heat owner accepts (the world remembers, in-session:
 //           heatLastIncident carries the payload_theft), then the search ring is outrun for real;
-//   leave → the tableau stands itself down after CLAIMED_WINDOW_S and the rail moves on —
+//   leave → flying away or waiting for the timeout moves the rail on —
 //           no wall, no heat, refusal is first-class.
 // It also walks the rest of the rail to the dock so the ledger shows where the first JOB
 // offer and the first JOB choice (HAUL / BOUNTY / SURVEY) fire.
@@ -20,7 +20,7 @@ import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
-import { makeEntity } from '../src/core/entity.js';
+import { makeEntity, stampOccupantGeneration } from '../src/core/entity.js';
 import { hash32, mulberry32 } from '../src/core/rng.js';
 import { FLIGHT_DRILL_BURST_SHOTS } from '../src/onboarding/flightDrill.js';
 import {
@@ -29,8 +29,10 @@ import {
   rescueScoutAtAsteroid,
 } from '../src/onboarding/rescueOpening.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
+import { cargo } from '../src/systems/cargo.js';
 import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { heat } from '../src/systems/heat.js';
+import { mining } from '../src/systems/mining.js';
 import {
   ONBOARDING_CHOICE_SOURCE,
   missions as missionsProto,
@@ -98,13 +100,14 @@ function makeState() {
   return state;
 }
 
-function boot() {
+function boot({ withCargo = false } = {}) {
   const bus = createBus();
   const state = makeState();
   const helpers = {
     spawnEntity(spec) {
       const entity = makeEntity(spec);
       entity.id = state.nextEntityId++;
+      stampOccupantGeneration(state, entity);
       state.entities.set(entity.id, entity);
       state.entityList.push(entity);
       return entity;
@@ -119,6 +122,12 @@ function boot() {
   };
   const systems = new Map();
   const registry = { get: (name) => systems.get(name) || null };
+
+  if (withCargo) {
+    const hold = Object.create(cargo);
+    hold.init({ state, bus, helpers, registry });
+    systems.set('cargo', hold);
+  }
 
   const missions = Object.create(missionsProto);
   missions.init({ state, bus, helpers, registry });
@@ -148,7 +157,7 @@ function boot() {
     ledger.push({ row, atS: Math.round((state.simTime || 0) * 10) / 10, ...extra });
     process.stdout.write(`  ${String(row).padEnd(34)} t=${String(ledger.at(-1).atS).padStart(6)}s${extra.note ? `  ${extra.note}` : ''}\n`);
   };
-  return { bus, state, sys, helpers, missions, law, heat: heatSys, ledger, mark };
+  return { bus, state, sys, helpers, registry, missions, law, heat: heatSys, ledger, mark };
 }
 
 // ── Drive helpers (real events, real cadence; the state writes stand in for hands) ───────
@@ -405,14 +414,18 @@ test('the first ten minutes: the opening timeline on a fixed seed', () => {
   const spill = h.state.entities.get(h.state.onboarding.claimed.ids.pickups[0]);
   const heatChanges = [];
   h.bus.on('heat:changed', (p) => heatChanges.push(p));
-  h.bus.emit('pickup:collected', {
+  const pickup = {
     pickupId: spill.id,
     collectorId: h.state.playerId,
     kind: 'cargo',
     commodityId: 'cmdty_salvage_electronics',
     amount: 4,
     pos: { x: spill.pos.x, z: spill.pos.z },
-  });
+  };
+  h.bus.emit('pickup:collected', { ...pickup, acceptedAmount: 0, rejectedAmount: 4 });
+  assert.equal(h.state.onboarding.claimed.taken, false, 'a full hold did not acquire the claim');
+  assert.equal(h.state.player.heat, 0);
+  h.bus.emit('pickup:collected', { ...pickup, acceptedAmount: 4, rejectedAmount: 0 });
   tick(h);
   const receipt = heatChanges[0] && heatChanges[0].incident;
   assert.ok(h.state.player.heat > 0, 'taking the claimed salvage raises real heat');
@@ -457,6 +470,12 @@ test('the choice is genuinely refusable: leaving the salvage stands the tableau 
   driveToChoiceOffered(h);
   const heatBefore = h.state.player.heat;
   assert.equal(heatBefore, 0, 'leaving the spill raises no heat');
+  const spill = h.state.entities.get(h.state.onboarding.claimed.ids.pickups[0]);
+  const velocity = { x: spill.vel.x, z: spill.vel.z };
+  const scoop = Object.create(mining);
+  scoop.init({ state: h.state, bus: h.bus, helpers: h.helpers, registry: { get: () => null } });
+  scoop._updatePickups(1 / 60, h.state);
+  assert.deepEqual({ x: spill.vel.x, z: spill.vel.z }, velocity, 'the passive magnet leaves the claim drifting');
 
   // The player flies on. The tableau stands down on its own — no wall, no nag.
   for (let i = 0; i < 140 && h.state.onboarding.beatDoneAt.claimed == null; i++) {
@@ -482,6 +501,101 @@ test('the choice is genuinely refusable: leaving the salvage stands the tableau 
   }
   tick(h);
   assert.ok(h.state.onboarding.beatDoneAt.seam != null, 'the rail moves on after a refusal');
+});
+
+test('a pilot flying away can decline claimed cargo without waiting two minutes', () => {
+  const h = boot();
+  const claimed = driveToChoiceOffered(h);
+  const pilot = playerOf(h);
+  const spill = h.state.entities.get(claimed.ids.pickups[0]);
+  const originalIds = [...claimed.ids.pickups];
+  const milestones = [];
+  h.bus.on('firsthour:milestone', (milestone) => milestones.push(milestone));
+  pilot.pos.x = spill.pos.x + 700;
+  pilot.pos.z = spill.pos.z;
+  pilot.vel.x = 90;
+  pilot.vel.z = 0;
+  advance(h, 1);
+  assert.equal(claimed.resolved, false, 'give the pilot time to read the offer');
+  pilot.vel.x = -90;
+  advance(h, 5);
+  assert.equal(claimed.resolved, false, 'returning to the cargo remains a choice');
+
+  pilot.vel.x = 90;
+  tick(h);
+  assert.equal(claimed.resolved, true);
+  assert.equal(claimed.taken, false);
+  assert.equal(h.state.player.heat, 0);
+  assert.ok(originalIds.every((id) => h.state.entities.get(id).alive === false));
+  assert.ok(milestones.some((entry) => entry.milestone === 'wantedBeat' && entry.how === 'declined'));
+  settle(h, 5);
+  assert.equal(BEATS[h.state.onboarding.currentBeat].key, 'seam');
+});
+
+test('an older claimed encounter without an offer time can still be declined', () => {
+  const h = boot();
+  const claimed = driveToChoiceOffered(h);
+  const pilot = playerOf(h);
+  const spill = h.state.entities.get(claimed.ids.pickups[0]);
+  delete claimed.enteredAt;
+  pilot.pos.x = spill.pos.x + 700;
+  pilot.pos.z = spill.pos.z;
+  pilot.vel.x = 90;
+  tick(h);
+  assert.equal(claimed.resolved, false);
+  assert.ok(Number.isFinite(claimed.enteredAt));
+  advance(h, 5);
+  assert.equal(claimed.resolved, true);
+  assert.equal(h.state.player.heat, 0);
+});
+
+test('only the original claimed pickup incurs theft and cleanup leaves recycled cargo alive', () => {
+  const h = boot({ withCargo: true });
+  const claimed = driveToChoiceOffered(h);
+  assert.equal(h.state.nav.waypoint.label, 'Claimed Cargo');
+  assert.match(h.state.nav.waypoint.reason, /Helios claims.*fly through.*steal.*fly away/i);
+  const player = playerOf(h);
+  const [retired, original] = claimed.ids.pickups.map(id => h.state.entities.get(id));
+  const scoop = Object.create(mining);
+  scoop.init({ state: h.state, bus: h.bus, helpers: h.helpers, registry: h.registry });
+  const commodityId = original.data.commodityId;
+  const held = () => h.state.player.cargo.items[commodityId] || 0;
+  const before = held();
+  const thefts = [];
+  h.bus.on('law:reportIncidentReceipt', receipt => {
+    if (receipt.accepted && receipt.kind === 'payload_theft') thefts.push(receipt);
+  });
+  const recycle = (old, amount) => {
+    old.alive = false;
+    const replacement = makeEntity({ type: 'pickup', pos: old.pos, vel: { x: 0, z: 0 }, radius: 3,
+      data: { kind: 'cargo', commodityId, amount } });
+    replacement.id = old.id;
+    stampOccupantGeneration(h.state, replacement);
+    h.state.entities.set(replacement.id, replacement);
+    h.state.entityList.push(replacement);
+    return replacement;
+  };
+
+  // A normal cargo transaction at an old actor slot still pays to the ordinary hold.
+  const ordinary = recycle(retired, 1);
+  assert.equal(scoop._collectPickupViaEvent(ordinary, player).accepted, 1);
+  assert.equal(held(), before + 1);
+  assert.equal(h.state.player.heat, 0);
+  assert.equal(claimed.taken, false, 'a replacement’s accepted cargo never becomes theft of the original');
+
+  assert.equal(scoop._collectPickupViaEvent(original, player).accepted, 4);
+  assert.equal(held(), before + 5);
+  assert.equal(claimed.taken, true);
+  assert.equal(thefts.length, 1);
+  assert.equal(h.state.player.heatLastIncident?.kind, 'payload_theft');
+  const waiting = recycle(original, 2);
+  player.pos.set(2600, 0, 0);
+  for (let i = 0; i < 160 && !claimed.resolved; i++) tick(h);
+  assert.equal(claimed.resolved, true);
+  assert.equal(h.state.player.heat, 0);
+  assert.equal(waiting.alive, true, 'standing down the scene must never retire unrelated cargo in a consumed slot');
+  assert.equal(held(), before + 5);
+  assert.equal(thefts.length, 1);
 });
 
 // ── The staging stays honest under the choice ────────────────────────────────────────────

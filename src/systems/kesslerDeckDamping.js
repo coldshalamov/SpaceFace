@@ -3,9 +3,9 @@
 // queues before the same fixed-step physics solve) drives syncKesslerDeckDamping
 // every tick. It touches only pods the kesslerScale owner has already recorded on
 // the deck (ids kept in _deckPods) — never a payload scan. No pose, velocity, mass
-// or reading is assigned; the impulse is ordinary dissipative drag.
+// or reading is assigned. The unread desk crate also gets a bounded pull back to its seat.
 import { KESSLER_SCALE } from '../data/kessler.js';
-import { kesslerPadPosition } from './kesslerScaleWorksite.js';
+import { kesslerPadPosition, kesslerDeliveredCratePosition } from './kesslerScaleWorksite.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { fieldBodyProfile } from '../core/fields/fieldReadModel.js';
 
@@ -22,19 +22,35 @@ export function kesslerDeckDampingImpulse(state, pod, dt) {
   const profile = fieldBodyProfile(pod, state);
   if (!profile.dynamic || !(profile.mass > 0)) return null;
   const speed = Math.hypot(pod.vel.x, pod.vel.z);
-  if (!(speed > 0)) return null;
+  const unreadDeskCrate = pod.data.kesslerDelivered === true
+    && pod.data.physicalCustodyOnly === true && pod.data.kesslerRead !== true;
+  if (!(speed > 0) && !unreadDeskCrate) return null;
   // Bounded drag: 24/s settles the observed ~60 u/s² pull below 8 u/s.
   // Even a large step can remove at most current speed, never reverse velocity
   // and inject energy. Effective solver mass follows the canonical physical read.
-  const fraction = Math.min(1, 24 * dt, 240 * dt / speed);
+  const fraction = speed > 0 ? Math.min(1, 24 * dt, 240 * dt / speed) : 0;
   // Jettison's owner authors a finite body mass. Refuse malformed/un-normalized
   // bodies: the solver's repair default may differ from entity.mass. Hitch load
   // belongs to field coupling and never changes this body's solver mass.
   const baseMass = pod.physicsBody?.mass;
   if (!(baseMass > 0) || !Number.isFinite(baseMass)) return null;
   const mass = baseMass * Math.max(.25, Math.min(8, profile.physicsMassScale));
-  const impulse = { x: -pod.vel.x * fraction * mass, y: 0, z: -pod.vel.z * fraction * mass };
-  return Number.isFinite(mass) && Number.isFinite(impulse.x) && Number.isFinite(impulse.z) ? impulse : null;
+  let dx = -pod.vel.x * fraction;
+  let dz = -pod.vel.z * fraction;
+  if (unreadDeskCrate) {
+    const seat = kesslerDeliveredCratePosition(pad);
+    const x = seat.x - pod.pos.x;
+    const z = seat.z - pod.pos.z;
+    const distance = Math.hypot(x, z);
+    if (distance > 0) {
+      // Drag alone leaves a steady drift in the Anvil pull. Limit the seat correction per step.
+      const correction = Math.min(6, 120 * dt, distance * 12 * dt) / distance;
+      dx += x * correction;
+      dz += z * correction;
+    }
+  }
+  const impulse = { x: dx * mass, y: 0, z: dz * mass };
+  return Number.isFinite(impulse.x) && Number.isFinite(impulse.z) && (dx !== 0 || dz !== 0) ? impulse : null;
 }
 
 /**

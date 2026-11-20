@@ -149,16 +149,14 @@ test('end to end: the convoy physically arrives and presses the market once', ()
   const h = boot(41);
   const { live, id } = fireConvoy(h);
   h.sim.runTicks(400 * 60);                     // transit + arrival (physical run ≈360s)
-  const tp = h.log.pressure.filter((p) => p.stationId === STATION_ID);
-  assert.equal(tp.length, 1, 'arrival applies market pressure exactly once');
+  const { cargoId } = live.data;
+  assert.ok(CONVOY_CARGO.some((c) => c.commodityId === cargoId), 'convoy carries planned cargo');
+  // Other scheduled freighters can deliver different cargo to the same station during transit.
+  const tp = h.log.pressure.filter((p) => p.stationId === STATION_ID && p.good === cargoId);
+  assert.equal(tp.length, 1, 'convoy cargo applies market pressure exactly once');
   assert.ok(tp[0].vol > 0 && tp[0].vol <= 12, `arrival pressure bounded (got ${tp[0].vol})`);
-  assert.ok(CONVOY_CARGO.some((c) => c.commodityId === tp[0].good), 'pressure is the convoy cargo');
-  assert.ok(
-    h.log.receipts.some((r) => r.encounterId === id && /CONVOY ARRIVED/.test(r.text)),
-    'arrival receipt',
-  );
-  assert.ok(
-    h.log.resolved.some((r) => r.encounterId === id && r.outcome === 'arrived'),
-    'encounter resolves arrived',
-  );
+  const receipts = h.log.receipts.filter((r) => r.encounterId === id && /CONVOY ARRIVED/.test(r.text));
+  assert.equal(receipts.length, 1, 'convoy emits one arrival receipt');
+  const outcomes = h.log.resolved.filter((r) => r.encounterId === id).map((r) => r.outcome);
+  assert.deepEqual(outcomes, ['arrived'], 'convoy resolves arrived exactly once');
 });

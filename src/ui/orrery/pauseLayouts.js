@@ -43,21 +43,27 @@ ${BOTH} .dp-title__eyebrow { color:rgb(${BONE} / .82) !important;
   text-shadow:0 0 2px rgb(4 6 9), 0 0 8px rgb(4 6 9 / .85) !important; }
 
 /* ---------- flight brief: hierarchy — kicker / name / next / save ---------- */
-/* ui-polish-398: flight brief wears the promise-scale hairline card (1px bone ~18% / radius 10 /
-   faint fill / padded); shade-pool ::before and console lit-face stand down. Densify radius 8→6. */
+/* ui-polish-398: flight brief wears the promise-scale hairline card (1px bone / radius 10 /
+   padded); shade-pool ::before and console lit-face stand down. Densify radius 8→6.
+   The first alphas (.18/.025) vanished against the paused live world — the Records Wall
+   finding — so the face sits on the house E0 tokens (bench 2026-11-15). */
 /* desktop dial brief stays position:absolute (screenLayouts); phone column stays in-flow */
 ${BOTH} .sf-pause-brief.orr-brief,
 ${BOTH} > .sf-pause-brief.orr-brief {
   isolation:isolate; box-sizing:border-box;
-  border-image:none !important; box-shadow:none !important; clip-path:none !important;
-  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px !important;
-  background:rgb(${BONE} / .025) !important; padding:16px 18px !important; }
+  border-image:none !important; clip-path:none !important;
+  border:1px solid rgb(${BONE} / .3) !important; border-radius:10px !important;
+  background:var(--sf-face, rgb(8 11 16 / .8)) !important;
+  box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)) !important;
+  padding:16px 18px !important; }
 ${PH} .sf-pause-brief,
 ${PN} .sf-pause-brief {
   position:relative; isolation:isolate; box-sizing:border-box;
-  border-image:none !important; box-shadow:none !important; clip-path:none !important;
-  border:1px solid rgb(${BONE} / .18) !important; border-radius:10px !important;
-  background:rgb(${BONE} / .025) !important; padding:16px 18px !important; }
+  border-image:none !important; clip-path:none !important;
+  border:1px solid rgb(${BONE} / .3) !important; border-radius:10px !important;
+  background:var(--sf-face, rgb(8 11 16 / .8)) !important;
+  box-shadow:var(--sf-edge, inset 0 1px 0 rgb(236 230 216 / .1), inset 0 -1px 0 rgb(0 0 0 / .5)) !important;
+  padding:16px 18px !important; }
 ${BOTH} .sf-pause-brief.orr-brief::before,
 ${BOTH} > .sf-pause-brief.orr-brief::before,
 ${PH} .sf-pause-brief::before,

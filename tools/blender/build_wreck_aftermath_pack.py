@@ -1242,6 +1242,12 @@ def build_aft_radiator_panel(state='cooling'):
     """The barge's radiator fin farm on its header pipe — shed heat-sink."""
     s = W.build_donor(DONOR_ORE)
     W.take_parts(s, ('Radiator', 'PipeRun', 'PipeClamp'))
+    # The donor's fins are flush flank slats; extracted alone they leave no panel face at all
+    # (review: rails + end fin stacks from every angle). Each comb gets the backing plate it
+    # was mounted on — bare metal, sized to the fin footprint — so the piece reads as the
+    # radiator PANEL its name and the furnace-maw "radiator plates" fiction promise.
+    W.F.box(s, 'RadiatorPanel', (-20.0, 2.05, 2.35), (3.2, 0.16, 1.2),
+          material='bare', bevel=0.02, mirror=True)
     W.apply_damage_state(s, state, seed=103)
     return _finish_forge(
         s, 'aft_radiator_panel', 24.0,
@@ -1366,12 +1372,42 @@ def build_frag_cable_bundle(state='cooling'):
 
 
 def build_frag_grating_sheet(state='derelict'):
+    """One bay of deck grating, torn off its hangers. The holes are the read: an open grid of
+    bearer bars over a kicked frame -- a solid plate reads as a slab at approach scale, so the
+    sheet is modelled as bars with space between them. The deck plane tilts about X so the key
+    light grades across the grid."""
     s = _blank_donor()
-    W._mk_plate(s, 'grate', (-1.1, -0.8, 0.0), (1.2, -0.4, 0.3), 2.2, 0.1, roll=0.35,
-                finish='wk_scorch')
-    for i in range(4):
-        W._mk_beam(s, f'gBar{i}', (-0.9 + i * 0.7, -0.7, 0.12 + i * 0.03),
-                   (-0.8 + i * 0.7, 1.0, 0.35 + i * 0.03), 0.06, finish='wk_frame')
+    tilt = 0.42  # z rise per metre of y, the tear bent the bay out of flat
+    za, zb = -0.92 * tilt, 0.92 * tilt
+    # long edge rails; the +y rail kicked up where the bay ripped free
+    W._mk_beam(s, 'railA', (-1.15, -0.92, za), (1.15, -0.92, za + 0.06), 0.05,
+               finish='wk_frame', verts=6)
+    W._mk_beam(s, 'railB', (-1.15, 0.92, zb + 0.14), (1.15, 0.92, zb + 0.05), 0.05,
+               finish='wk_frame', verts=6)
+    # bearer bars spanning the rails, sitting on top of them; one snapped mid-span
+    for i in range(6):
+        x = -1.0 + i * 0.4
+        wander = (-0.03, 0.02, -0.04, 0.0, 0.03, -0.02)[i]
+        if i == 3:
+            W._mk_beam(s, 'bearer3a', (x, -0.92, za + 0.05), (x + 0.05, -0.10, -0.05),
+                       0.035, finish='wk_torn', verts=5)
+            W._mk_beam(s, 'bearer3b', (x + 0.10, 0.28, 0.17), (x + 0.15, 0.92, zb + 0.12),
+                       0.035, finish='wk_torn', verts=5)
+            continue
+        W._mk_beam(s, f'bearer{i}', (x, -0.92, za + 0.05),
+                   (x + wander, 0.92, zb + 0.10), 0.035, finish='wk_frame', verts=5)
+    # thin cross battens under the bearers -- the second axis of the grid
+    for j, y in enumerate((-0.55, 0.0, 0.55)):
+        z = y * tilt + 0.03
+        W._mk_beam(s, f'batten{j}', (-1.08, y, z), (1.08, y + 0.04, z + 0.03), 0.016,
+                   finish='wk_frame', verts=4)
+    # the hangers it hung from: two torch-cut stubs trailing off the -y rail
+    for i, hx in enumerate((-0.55, 0.45)):
+        W._mk_beam(s, f'hanger{i}', (hx, -0.95, za - 0.02), (hx + 0.12, -1.60, za - 0.38),
+                   0.045, finish='wk_cut', verts=5)
+    # a scorched remnant of solid tread plate still welded near the -y rail corner
+    W._mk_plate(s, 'treadPatch', (0.55, -0.90, za - 0.02), (1.12, -0.94, za - 0.10),
+                0.55, 0.05, roll=0.5, finish='wk_scorch')
     W.apply_damage_state(s, state, seed=13)
     return _finish_forge(s, 'frag_grating_sheet', 8.0, [],
                          _frag_meta('frag_grating_sheet', state,

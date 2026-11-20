@@ -438,7 +438,9 @@ function buildMark(e) {
   else for (let i = 0; i < (mk.style === 2 ? 2 : 1); i++) addBar((i - ((mk.style === 2 ? 2 : 1) - 1) / 2) * 0.17, false, parts.bars);
   // Smear: a second, wandering copy of the strike that shows the hull moved while the paint was wet.
   if (mk.style === 3) addBar(0.1, true, parts.ghosts); else addBar(0.09, false, parts.ghosts);
-  for (const gh of parts.ghosts) for (const en of gh.entries) { en.bar.material = strike.clone(); en.bar.material.opacity = 0; en.back.visible = false; }
+  // Every smear segment follows the same opacity; one owned material keeps the marks in sync.
+  const smearMaterial = strike.clone(); smearMaterial.opacity = 0;
+  for (const gh of parts.ghosts) for (const en of gh.entries) { en.bar.material = smearMaterial; en.back.visible = false; }
   root.userData.updateAuthoredMotion = (entity, time, a11y = {}) => {
     const d = entity?.data?.rubricMark || {};
     const t = Number.isFinite(d.simTime) ? d.simTime : time || 0;

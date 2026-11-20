@@ -19,9 +19,12 @@ import { test } from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
+import { combat } from '../src/systems/combat.js';
 import { fields } from '../src/systems/fields.js';
 import { makeBudgetApi } from '../src/systems/spawnBudget.js';
 import { runSession } from '../src/systems/runSession.js';
+import { survivalResults } from '../src/systems/survivalResults.js';
+import { survivalRewards } from '../src/systems/survivalRewards.js';
 import {
   SURVIVAL_ARENA_INTRO_TICKS,
   SURVIVAL_WAVE_INTRO_TICKS,
@@ -34,14 +37,14 @@ import {
   resetCrucibleMetaForTests,
   useCrucibleMetaStorage,
 } from '../src/systems/survivalRecords.js';
-import { CRUCIBLE_ARENA_ID, crucibleSetupFor, requestCrucibleRun } from '../src/ui/crucibleLaunch.js';
+import { buildCrucibleRetryRequest, clearCrucibleSetup, CRUCIBLE_ARENA_ID, crucibleSetupFor, requestCrucibleRun } from '../src/ui/crucibleLaunch.js';
 import { installSandboxGameStartedHook } from '../src/ui/sandbox/sandboxSetup.js';
 import { HIVE_ARENA_ID } from '../src/systems/theHiveArena.js';
 import { SHIPS } from '../src/data/ships.js';
 import { COMBAT_LAB_STARTER_PACKAGES } from '../src/data/combatLabSetups.js';
 import { swarmRosterFor } from '../src/data/swarmMode.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
-import { swarmPilotHasActed } from '../src/systems/swarmSafety.js';
+import { noteSwarmPilotAction, swarmPilotHasActed } from '../src/systems/swarmSafety.js';
 import { quietWellCenter } from '../src/systems/swarmArena.js';
 
 const DT = 1 / 60;
@@ -334,5 +337,54 @@ test('swarm-overhaul: explicit training well only plants at a quiet furniture-fr
     const reach = well.radius + (Number.isFinite(e.radius) ? e.radius : 0);
     assert.ok(Math.hypot(e.pos.x - well.center.x, e.pos.z - well.center.z) >= reach,
       `furniture ${e.id} sits outside the lesson well`);
+  }
+});
+
+test('a one-enemy start continues the scored Swarm round and Retry reopens the same lesson', () => {
+  resetCrucibleMetaForTests();
+  useCrucibleMetaStorage(fakeStorage());
+  const h = boot();
+  armLaunch(h);
+  const combatSystem = Object.create(combat);
+  combatSystem.init(h.ctx);
+  survivalRewards.init(h.ctx);
+  survivalResults.init(h.ctx);
+  const liveShips = (playing) => playing.state.entityList.filter(e =>
+    e.type === 'ship' && e.alive !== false && e.data?.runCohort === 'survival');
+  try {
+    launchCrucible(h, 'kinetic_baseline', CRUCIBLE_ARENA_ID, true);
+    reachWaveOneActive(h);
+    assert.equal(h.state.run.practice, false);
+    assert.equal(liveShips(h).length, 1);
+    noteSwarmPilotAction(h.state);
+    combatSystem.kill(liveShips(h)[0], h.player.id, { origin: { kind: 'weapon' } });
+    assert.ok(h.state.run.score > 0, 'the lesson kill scores through the normal run reward owner');
+    tick(h, 4 * 60);
+    assert.equal(h.state.run.wave, 1);
+    assert.equal(h.state.run.phase, 'active');
+    assert.ok(liveShips(h).length > 1, 'the ordinary pack follows the lesson in Round 1');
+
+    h.player.vel = { x: 0, z: 0 };
+    combatSystem.kill(h.player, null, { context: 'collision_terrain' });
+    const result = survivalResults.lastResult();
+    assert.equal(result.stopReason, 'player_death');
+    assert.equal(result.recordRules.mode, 'swarm');
+    assert.ok(result.score > 0);
+
+    const retry = buildCrucibleRetryRequest();
+    assert.equal(retry.setup.seed, SEED);
+    const replay = boot();
+    armLaunch(replay);
+    assert.equal(requestCrucibleRun(replay.bus, retry.setup, retry.ruleset), true);
+    launchBus.emit('game:started');
+    reachWaveOneActive(replay);
+    assert.equal(liveShips(replay).length, 1);
+    assert.equal(replay.state.run.score, 0);
+  } finally {
+    survivalRewards.destroy();
+    survivalResults.destroy();
+    survivalArena.reset?.();
+    clearCrucibleSetup();
+    useCrucibleMetaStorage(null);
   }
 });

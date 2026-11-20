@@ -5,11 +5,22 @@ import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { rememberMoralDebt } from '../src/systems/moralMemory.js';
 import { confessionalReadback } from '../src/systems/special500Confessional.js';
 import { createDockIntent } from '../src/core/dockIntent.js';
+import { commitDockedUiState } from '../src/ui/dockStateCommit.js';
 import { stationShiftAt } from '../src/data/worldCalendar.js';
 
 test('real production save/Continue restores pending choice, once-only results and literal finale read-back', async t => {
   const runtime = createAuthoritativeRuntime({ profileId: 'production', nodeSafeOnly: true, seed: 4242 });
   const { state, bus } = runtime, get = name => runtime.getSystem(name);
+  const dock = stationId => {
+    const intent = createDockIntent(state, { stationId });
+    bus.emit('dock:docked', intent);
+    assert.equal(commitDockedUiState(state, intent, bus), true);
+  };
+  const undock = () => {
+    state.ui.docked = false;
+    state.ui.dockedStationId = null;
+    bus.emit('dock:undocked', { committed: true });
+  };
   const offers = [], errors = [], loaded = [], mail = [];
   bus.on('special500:confessional', p => { if (p.offerId) offers.push(p); });
   bus.on('save:error', p => errors.push(p)); bus.on('save:loaded', p => loaded.push(p));
@@ -25,19 +36,38 @@ test('real production save/Continue restores pending choice, once-only results a
     assert.equal(await get('physics').prepareBackend(state, { reset: true }), true);
     state.simTime = 60; state.tick = 3600;
     rememberMoralDebt(state, { id: 'save-ledger', name: 'A pilot spared, then returned', cause: 'moral_trap:save' });
-    bus.emit('dock:docked', createDockIntent(state, { stationId: 'station_forge' }, player));
+    rememberMoralDebt(state, { id: 'legacy-escape', name: 'Rill Half-Paid', cause: 'spared_escape' });
+    dock('station_forge');
+    assert.equal(offers.length, 0, 'a non-Choir dock does not open the booth');
+    undock();
+    dock('station_depot3');
+    undock();
     const original = offers.at(-1);
     assert.ok(original?.recordText.includes('A pilot spared, then returned'));
+    assert.match(original.recordText, /Rill Half-Paid — Allowed to leave/);
+    // An offer from an earlier build has been seen but has not been filed yet.
+    const legacyOfferText = original.recordText.replace('Allowed to leave', 'spared_escape');
+    state.story.flags.guilt_offer.recordText = legacyOfferText;
     const saver = get('save'), pending = JSON.parse(JSON.stringify(saver.serialize('incoming-pending')));
     const pendingBytes = JSON.stringify(pending);
-    assert.ok(pendingBytes.includes(original.recordText.replaceAll('\n', '\\n')));
+    assert.ok(pendingBytes.includes(legacyOfferText.replaceAll('\n', '\\n')));
     bus.emit('ui:confessionalChoose', { ...original, choice: 'decline' });
     const credits = state.player.credits;
+    const beforeContinue = offers.length;
     assert.equal(await saver.loadEnvelope(pending, 'incoming-pending'), true, JSON.stringify(errors));
     assert.ok(loaded.some(p => p.slot === 'incoming-pending'), 'save owner emitted its real loaded receipt');
+    bus.emit('ui:confessionalReady', {});
+    assert.equal(offers.length, beforeContinue, 'Continue keeps the unfunded offer off the flight deck');
+    assert.equal(state.story.flags.guilt_offer.recordText, legacyOfferText, 'the pending offer stays saved');
+    bus.emit('ui:confessionalChoose', { ...original, choice: 'file' });
+    assert.equal(state.player.credits, credits, 'a hidden pre-load choice stays stale');
+    state.mode = 'flight';
+    dock('station_depot3');
+    undock();
     const resumed = offers.at(-1);
     assert.equal(resumed.offerId, original.offerId); assert.ok(resumed.generation > original.generation);
     assert.equal(resumed.recordText, original.recordText);
+    assert.doesNotMatch(resumed.memo, /spared_escape/);
     bus.emit('ui:confessionalChoose', { ...original, choice: 'file' });
     assert.equal(state.player.credits, credits, 'pre-load choice is stale');
     bus.emit('ui:confessionalChoose', { ...resumed, choice: 'file' });

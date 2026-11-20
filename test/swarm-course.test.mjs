@@ -41,7 +41,7 @@ const AUTHORED = [
   [2, 'Second Helpings', 'Wasps from two gates. The first wall gun is lit'],
   [3, 'Hot Potato', 'Detonator Darts. The round teaches throwing things back'],
   [4, 'Mind the Gap', 'the lane runs for the first time, with Wasps on both sides of it'],
-  [5, 'Iron Maw', 'Boss. A mouth that eats what you throw — until you throw a Detonator'],
+  [5, 'Iron Maw', 'After the heavy broadside, the Maw is easier to move.'],
   [6, 'The Charge', 'Bruisers. Every wall has a scorch mark by the end'],
   [7, 'Long Shots', 'Lancers at the edges, Wasps in the middle. Rocks appear for cover'],
   [8, 'Breadcrumbs', 'Jackals. The floor fills with mines that are also yours to use'],
@@ -279,7 +279,9 @@ test('the Iron Maw keeps its hull name — the round name is not the ship', () =
   assert.ok(texts[0].startsWith('ROUND 5 — Iron Maw.'));
   assert.ok(texts[0].includes("Dreadnought 'Iron Maw'."),
     'the dreadnought still names itself on arrival');
+  assert.match(texts[0], /Cross its bow before the guns fire\./);
   assert.equal(texts[1], swarmCourseFor(5).twist);
+  assert.ok(texts.includes('Throw just after the broadside.'));
   survivalAnnounce.destroy();
 });
 

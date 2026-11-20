@@ -10,30 +10,70 @@ import {
   crucibleDraftScreen,
   launchGuardLine,
 } from '../src/ui/screens/crucibleDraft.js';
-import { fakeDom } from './helpers/fake-dom.mjs';
+import { getPromptDevice, setPromptDevice } from '../src/ui/bindings.js';
+import { fakeDom, findAll } from './helpers/fake-dom.mjs';
 
 const offer = (id, extra = {}) => ({
   id, name: `Card ${id}`, price: 50, available: true, purchased: false,
   defId: 'wpn_autocannon_s', kind: 'weapon', verb: 'Ram', blurb: 'A blunt idea.', ...extra,
 });
 
+// The inspector mounts only on a visual DOM. Its artwork and layout can stay inert here.
+function enableInspector(doc) {
+  const create = doc.createElement;
+  doc.createElement = doc._make = (tag) => {
+    const node = create(tag);
+    node.ownerDocument = doc;
+    let text = '';
+    Object.defineProperty(node, 'textContent', {
+      get: () => text + node.children.map(child => child.textContent).join(''),
+      set: (next) => { text = next; node.children = []; },
+    });
+    Object.defineProperty(node, 'innerHTML', { set: (next) => { node.textContent = next; } });
+    const detach = (child) => {
+      const parent = child.parentNode;
+      if (parent) parent.children = parent.children.filter(item => item !== child);
+      child.parentNode = null;
+    };
+    for (const method of ['appendChild', 'insertBefore']) {
+      const add = node[method];
+      node[method] = (child, before) => { detach(child); return add.call(node, child, before); };
+    }
+    node.prepend = (...children) => children.reverse().forEach(child => node.insertBefore(child, node.firstChild));
+    node.replaceChildren = (...children) => { node.textContent = ''; node.append(...children); };
+    node.remove = () => detach(node);
+    node.removeEventListener = (name, fn) => {
+      node.listeners[name] = (node.listeners[name] || []).filter(listener => listener !== fn);
+    };
+    node.querySelectorAll = selector => findAll(node, child => child !== node && (selector.startsWith('.')
+      ? child.classList.contains(selector.slice(1)) : selector === 'button:not(:disabled)'
+        ? child.tagName === 'button' && !child.disabled : child.tagName === selector));
+    node.querySelector = selector => node.querySelectorAll(selector)[0] || null;
+    return node;
+  };
+  doc.createElementNS = (_namespace, tag) => doc.createElement(tag);
+}
+
 /** Mount the real draft screen over the stub DOM; `restore()` puts the global document back. */
-function mountShop({ ruleset = 'swarm', credits = 80, offers = [offer('a')] } = {}) {
+function mountShop({ ruleset = 'swarm', wave = 3, credits = 80, offers = [offer('a')], ownedShip = null,
+  slots = [], telemetry = {}, visual = false, reroll = null } = {}) {
   const savedDocument = globalThis.document;
   const doc = fakeDom();
+  if (visual) enableInspector(doc);
   globalThis.document = doc;
   const root = doc._make('div');
   const emitted = [];
   const listeners = new Map();
   const owner = {
     currentOffers: () => offers,
-    currentWave: () => 3,
+    currentWave: () => wave,
     lastNotice: () => null,
-    rerollState: () => null,
+    rerollState: () => reroll,
     recommendedOffers: () => [],
+    refitRows: () => slots,
   };
   const ctx = {
-    state: { run: { phase: 'draft', ruleset, credits }, player: { ownedShips: [] } },
+    state: { run: { phase: 'draft', ruleset, wave, credits, telemetry, modifiers: [] }, player: { ownedShips: ownedShip ? [ownedShip] : [] } },
     registry: { get: (name) => (name === 'survivalDraft' ? owner : null) },
     screenManager: { top: () => 'crucibleDraft' },
     bus: {
@@ -66,10 +106,11 @@ function mountShop({ ruleset = 'swarm', credits = 80, offers = [offer('a')] } = 
   };
   const picks = () => emitted.filter(([name]) => name === 'run:draftPickRequested');
   const restore = () => {
+    if (visual) screen.dispose();
     if (savedDocument === undefined) delete globalThis.document;
     else globalThis.document = savedDocument;
   };
-  return { screen, ctx, press, picks, focused: () => focused, restore, offers };
+  return { screen, ctx, root, emitted, press, picks, focused: () => focused, restore, offers };
 }
 
 test('affordableOfferCount counts only what the wallet can buy now', () => {
@@ -213,32 +254,224 @@ test('a repaint with cards still affordable warns again instead of launching on 
   } finally { m.restore(); }
 });
 
-test('Digit1–3 through the input owner click the dealt cards the footer advertises', () => {
-  // dealt:true marks the dealt hand — the '1–3 BUY & FIT' claim only prints for it.
+test('featured cards inspect on click or digit and only Install requests a purchase', () => {
   const m = mountShop({ credits: 900, offers: [
-    offer('a', { dealt: true }), offer('b', { dealt: true }), offer('c', { dealt: true }),
+    offer('a', { dealt: true }), offer('b', { dealt: true, slotIndex: 0 }), offer('c', { dealt: true }),
   ] });
   try {
-    assert.equal(m.screen._hint.textContent.includes('buy & fit'), true, 'the footer claim is on');
+    // This DOM fixture has no SVG inspector. Capture the real screen's selected offer at its
+    // presentation boundary and exercise the same purchase handler that the Install button calls.
+    m.screen._reading = { offerId: null };
+    const initialQuote = { price: 50, slotIndex: 0, replaces: null, replacesTrial: false };
+    m.screen._paintReading = (_ctx, item) => {
+      m.screen._reading.offerId = item.id;
+      m.screen._reading.price = item.price;
+      m.screen._reading.quoteKey = item.id === 'b' ? JSON.stringify(initialQuote) : 'null';
+    };
+    assert.match(m.screen._hint.textContent, /inspect/i);
     const onKey = (key, target = m.screen._root) =>
       m.screen.onKey({ key, target, defaultPrevented: false, altKey: false, ctrlKey: false, metaKey: false });
-    assert.equal(onKey('1'), true, 'the owner seam owns the digit');
-    assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: 'a' }]],
-      'one press, one pick intent — buying stays inside the owner, never a DOM purchase');
-    m.screen.refresh(m.ctx);
+    m.screen._digitCards[0].click();
+    assert.equal(m.screen._reading.offerId, 'a');
     assert.equal(onKey('2'), true);
-    assert.equal(m.picks().length, 2);
-    assert.equal(m.picks()[1][1].offerId, 'b', 'the second dealt card is next');
-    m.screen.refresh(m.ctx);
-    assert.equal(onKey('3'), true);
-    assert.equal(m.picks()[2][1].offerId, 'c');
+    assert.equal(m.screen._reading.offerId, 'b');
+    assert.deepEqual(m.picks(), [], 'looking at two items sends no purchase intent');
+    assert.equal(m.ctx.state.run.credits, 900);
+    m.screen.refresh = () => {};
+    m.offers[1].replaces = 'wpn_pulse_laser_s';
+    m.screen._purchaseSelected(m.ctx);
+    assert.deepEqual(m.picks(), [], 'a changed replacement quote needs a fresh confirmation');
+    assert.match(m.screen._note.textContent, /offer changed/);
+    const updatedQuote = { ...initialQuote, replaces: 'wpn_pulse_laser_s' };
+    m.screen._reading.quoteKey = JSON.stringify(updatedQuote);
+    m.screen._purchaseSelected(m.ctx);
+    m.screen._purchaseSelected(m.ctx);
+    assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: 'b', quote: updatedQuote }]]);
     // Typing digits in the search field filters the shelf — it never picks.
     m.screen.refresh(m.ctx);
     assert.equal(onKey('1', m.screen._search), false, 'search owns its own digits');
-    assert.equal(m.picks().length, 3);
+    assert.equal(m.picks().length, 1);
     // A key the footer never advertised is not consumed.
     assert.equal(onKey('4'), false);
     assert.equal(onKey('r'), false, 'onKey leaves R to the root handler');
+  } finally { m.restore(); }
+});
+
+test('the Swarm opening presents the catalog and loan-eligible guns at zero credits', () => {
+  const m = mountShop({ wave: 0, credits: 0, offers: [
+    offer('a', { category: 'Weapons', dealt: true, slotIndex: 0, available: false, borrowAvailable: true }),
+  ] });
+  try {
+    assert.equal(m.screen._cards.hidden, false);
+    assert.equal(m.screen._dealt.hidden, true);
+    assert.equal(m.screen._category, 'Weapons');
+    assert.match(m.screen._sub.textContent, /Borrow one gun for round 1 at no cost/);
+    assert.deepEqual(m.picks(), []);
+  } finally { m.restore(); }
+});
+
+test('Equipment shows the free starting gun, its slot and an explicit launch without it', () => {
+  const installed = { defId: 'ship_hornet', fittings: [] };
+  const mount = { slotType: 'weapon', defId: null };
+  const starter = offer('autocannon', { name: 'Autocannon S', price: 0, slotIndex: 0,
+    category: 'Weapons', startingEquipment: true, demoAvailable: false });
+  const m = mountShop({ wave: 0, credits: 0, offers: [starter], ownedShip: installed, slots: [mount],
+    telemetry: { zeroScrapOpening: true } });
+  try {
+    const card = m.screen._cards.children.find(node => node.classList.contains('sf-cru-card'));
+    assert.match(card.getAttribute('aria-label'), /Free.*slot 1/i);
+    const head = card.children.find(node => node.classList.contains('sf-cru-cardhead'));
+    assert.equal(head.children.find(node => node.classList.contains('sf-cru-price')).textContent, 'Free');
+    assert.match(m.screen._sub.textContent, /keep it for this run/i);
+    assert.match(m.screen._launchSummary.textContent, /0 Scrap left/);
+    assert.equal(m.screen._skip.dataset.label, 'Launch round 1 without a gun');
+    assert.deepEqual(m.picks(), [], 'mounting Equipment does not choose a starter');
+    m.press('Escape');
+    m.press('Escape');
+    assert.equal(m.focused(), 2);
+    assert.match(m.screen._note.textContent, /choose Launch round 1 without a gun/);
+    assert.deepEqual(m.picks(), []);
+    card.click();
+    assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: 'autocannon', quote: {
+      price: 0, slotIndex: 0, replaces: null, replacesTrial: false,
+    } }]]);
+    m.screen._skip.click();
+    assert.deepEqual(m.picks()[1], ['run:draftPickRequested', { offerId: null }], 'only the explicit button requests bare launch');
+  } finally { m.restore(); }
+});
+
+test('ordinary zero-Scrap Equipment lets the pilot compare, fit and find a spare starter gun', () => {
+  const priorDevice = getPromptDevice();
+  const ownedShip = { defId: 'ship_hornet', fittings: [] };
+  const slots = [{ slotType: 'weapon', slotIndex: 0, defId: null, spares: [] }];
+  const autocannon = offer('sidearm', { name: 'Autocannon S', price: 0, slotIndex: 0,
+    category: 'Weapons', startingEquipment: true, demoAvailable: false, dealt: true });
+  const concussion = offer('concussion', { name: 'Concussion Cannon S', defId: 'wpn_concussion_cannon_s',
+    price: 0, slotIndex: 0, category: 'Weapons', startingEquipment: true, demoAvailable: false });
+  const paid = offer('market-gun', { price: 180, available: false, category: 'Weapons', dealt: true });
+  const m = mountShop({ wave: 0, credits: 0, ownedShip, slots,
+    telemetry: { zeroScrapOpening: true }, visual: true,
+    reroll: { open: true, price: 50, available: false, note: 'A re-roll costs 50 cr.' },
+    offers: [autocannon, concussion, paid, offer('owned-hull', { kind: 'hull', price: 0 })] });
+  try {
+    const { screen, root } = m;
+    const cards = () => screen._cards.querySelectorAll('.sf-cru-card').map(card => card.dataset.offerId);
+    const inspected = screen._reading.parts;
+    assert.deepEqual(cards(), ['sidearm', 'concussion']);
+    assert.equal(screen._armoryHeading.textContent, 'Starting guns');
+    assert.equal(root.querySelector('.orr-wallet-caption').textContent, 'Run Scrap');
+    assert.equal(screen._filters.hidden, true);
+    assert.equal(screen._browseBtn.hidden, true);
+    assert.equal(screen._rerollBtn.hidden, true);
+    assert.equal(screen._note.textContent, '');
+    assert.equal(screen._refitBtn.hidden, true);
+    assert.equal(inspected.more.hidden, true);
+    assert.equal(screen._skip.dataset.label, 'Launch round 1 without a gun');
+    assert.equal(screen._skip.classList.contains('k-word--primary'), false);
+    assert.ok(!screen._skip.hidden && !screen._skip.disabled, 'launching bare is still an explicit action');
+    assert.equal(screen._circuit.options.parentNode, screen._briefing);
+    assert.equal(screen._briefing.hidden, false);
+    assert.equal(screen._circuit.options.getAttribute('name'), null);
+    assert.ok(!screen._briefing.open && !screen._circuit.options.open, 'secondary choices start collapsed');
+    m.press('R');
+    m.press('B');
+    assert.ok(!m.emitted.some(([name]) => name === 'run:draftRerollRequested'));
+
+    assert.equal(inspected.name.textContent, 'Autocannon S');
+    const comparison = inspected.compare.textContent;
+    assert.match(comparison, /FIRE.*IMPACT/);
+    m.press('2');
+    assert.equal(inspected.name.textContent, 'Concussion Cannon S');
+    assert.notEqual(inspected.compare.textContent, comparison);
+    const plottedStats = () => findAll(inspected.compare, bar => bar.getAttribute('class') === 'orr-armory-compare__fill')
+      .map(bar => bar.getAttribute('d'));
+    const concussionBars = plottedStats();
+    assert.equal(concussionBars.length, 2);
+    assert.deepEqual(m.picks(), [], 'inspecting the two starter guns spends nothing');
+    assert.equal(screen._visualArmory.buy.textContent, 'Fit free');
+    assert.equal(screen._visualArmory.buy.disabled, false);
+    screen._visualArmory.buy.click();
+    assert.deepEqual(m.picks(), [['run:draftPickRequested', { offerId: concussion.id,
+      quote: { price: 0, slotIndex: 0, replaces: null, replacesTrial: false } }]]);
+    assert.equal(screen._skip.classList.contains('k-word--primary'), false, 'a request alone has not fitted the gun');
+
+    m.ctx.state.run.modifiers.push({ startingEquipment: true, offerId: concussion.id,
+      defId: concussion.defId, instanceId: 'starter-1', slotIndex: 0 });
+    ownedShip.fittings[0] = concussion.defId;
+    Object.assign(slots[0], { defId: concussion.defId, name: concussion.name, startingEquipment: true });
+    Object.assign(concussion, { purchased: true, purchaseStatus: 'Fitted', startingEquipment: false, available: false, price: 18 });
+    Object.assign(autocannon, { startingEquipment: false, available: false, price: 18 });
+    m.offers.push(offer('same-model', { defId: concussion.defId, purchased: true, purchaseStatus: 'Purchased' }));
+    screen.refresh(m.ctx);
+    assert.deepEqual(cards(), [concussion.id]);
+    assert.equal(screen._visualArmory.buy.textContent, 'Already fitted');
+    assert.equal(inspected.name.textContent, 'Concussion Cannon S');
+    assert.deepEqual(plottedStats(), concussionBars, 'fitting the gun keeps both stat bars on their original scales');
+    assert.equal(inspected.act.textContent, 'Primary fire — LMB · Fitted in slot 1.');
+    const fittedCard = screen._cards.querySelectorAll('.sf-cru-card')[0];
+    const fittedControls = m.ctx.state.settings = { controls: {
+      bindings: { fire: ['KeyP'] }, gamepad: { enabled: true, bindings: { fire: ['l1'] } },
+    } };
+    setPromptDevice('kbm');
+    screen.refresh(m.ctx, { periodic: true });
+    assert.equal(inspected.act.textContent, 'Primary fire — P · Fitted in slot 1.');
+    setPromptDevice('gamepad');
+    screen.refresh(m.ctx, { periodic: true });
+    assert.equal(inspected.act.textContent, 'Primary fire — LB · Fitted in slot 1.');
+    fittedControls.controls.gamepad.bindings.fire = [];
+    screen.refresh(m.ctx, { periodic: true });
+    assert.equal(inspected.act.textContent, 'Primary fire — unbound · Fitted in slot 1.');
+    setPromptDevice('kbm');
+    fittedControls.controls.bindings.fire = [];
+    screen.refresh(m.ctx, { periodic: true });
+    assert.equal(inspected.act.textContent, 'Primary fire — LMB · Fitted in slot 1.');
+    assert.equal(screen._cards.querySelectorAll('.sf-cru-card')[0], fittedCard, 'prompt-only refresh keeps the fitted card mounted');
+    assert.equal(screen._refitBtn.hidden, false);
+    assert.equal(screen._skip.dataset.label, 'Launch round 1');
+    assert.equal(screen._skip.classList.contains('k-word--primary'), true, 'the confirmed fit hands priority to Launch');
+    assert.doesNotMatch(screen._launchSummary.textContent, /No gun within budget/);
+
+    ownedShip.fittings[0] = null;
+    Object.assign(slots[0], { defId: null, startingEquipment: false, spares: [{ instanceId: 'starter-1' }] });
+    concussion.purchaseStatus = 'In spares';
+    screen.refresh(m.ctx);
+    assert.deepEqual(cards(), [concussion.id]);
+    assert.equal(screen._visualArmory.buy.textContent, 'In spares');
+    assert.equal(screen._refitBtn.hidden, false);
+    assert.equal(screen._skip.dataset.label, 'Launch round 1 without a gun');
+    screen._refitBtn.click();
+    assert.ok(m.emitted.some(([name, value]) => name === 'ui:pushScreen' && value.id === 'crucibleRefit'));
+
+    screen._briefing.open = true;
+    screen._circuit.options.open = true;
+    screen._circuit.choices.querySelector('button').click();
+    assert.match(m.picks().at(-1)[1].offerId, /^circuit_start_/);
+  } finally { setPromptDevice(priorDevice); m.restore(); }
+});
+
+test('round-one launch summary follows the owner from empty mounts to a fitted gun', () => {
+  const ownedShip = { defId: 'ship_hornet', fittings: [] };
+  const slots = [{ slotType: 'weapon', defId: null }, { slotType: 'weapon', defId: null }];
+  const buy = offer('a', { price: 18 });
+  const m = mountShop({ wave: 0, credits: 64, offers: [buy], ownedShip, slots });
+  try {
+    const summary = m.screen._launchSummary;
+    assert.equal(m.screen._skip.dataset.label, 'Launch round 1');
+    assert.equal(m.screen._skip.getAttribute('aria-describedby'), summary.id);
+    assert.match(summary.textContent, /Hornet · No guns fitted · 2 empty weapon slots/);
+    assert.match(summary.textContent, /Turning & braking \d+\/10 · 64 cr left · Guns from 18 cr · Tether and throw debris to fight/);
+    assert.deepEqual(m.picks(), []);
+
+    ownedShip.fittings[0] = buy.defId;
+    slots[0].defId = buy.defId;
+    slots[0].name = 'Autocannon S';
+    m.ctx.state.run.credits = 46;
+    buy.available = false;
+    buy.purchased = true;
+    m.screen.refresh(m.ctx);
+    assert.match(summary.textContent, /Hornet · Autocannon S · 1 empty weapon slot/);
+    assert.match(summary.textContent, /46 cr left/);
+    assert.doesNotMatch(summary.textContent, /No guns fitted|Tether and throw/);
   } finally { m.restore(); }
 });
 

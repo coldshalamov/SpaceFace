@@ -28,31 +28,26 @@ export function swarmFlightActionAllowed(state, action) {
   return !isSwarmControls(state) || SWARM_FLIGHT_SET.has(action);
 }
 
-// Swarm stock keys — consulted AFTER the player's saved rebinds, BEFORE the scheme defaults.
-// The Line lives on RMB in Swarm (no keyboard tether); Space is the dash.
-export const SWARM_DEFAULT_BINDINGS = Object.freeze({
-  tether: [],
-  boost: ['Space'],
+// Shared flight keys used by Adventure and the Swarm stock binding overlay.
+export const FLIGHT_CORE_KEYS = Object.freeze({
+  tether: Object.freeze(['KeyF']),
+  boost: Object.freeze(['ShiftLeft', 'ShiftRight']),
 });
+export const SWARM_DEFAULT_BINDINGS = FLIGHT_CORE_KEYS;
 
 // The six-icon power bar: the five powers on 1–5 plus the Line on RMB — rail slot indexes.
 export const SWARM_RAIL_SLOTS = Object.freeze([1, 2, 3, 4, 5, 6]);
 export function swarmRailSlotAllowed(state, slotIndex) {
   return !isSwarmControls(state) || SWARM_RAIL_SLOTS.includes(slotIndex);
 }
-// The Line socket's swarm key label — the rail reads live bindings for 1–5, but the tether
-// verb has no keyboard code in Swarm.
-export const SWARM_LINE_KEY_LABEL = 'RMB';
-
-// The whole Swarm Help card — nothing Adventure. Rows: [keys, verb]. The powers keep their
-// live key glyphs from the binding table; the fixed verbs carry literal text.
+// The whole Swarm Help card. Flight actions optionally supply a live key label.
 export const SWARM_HELP_ROWS = Object.freeze([
   ['W A S D', 'Move'],
   ['Mouse', 'Aim'],
   ['LMB', 'Fire'],
-  ['RMB', 'Line — fire / release'],
+  ['F / RMB', 'Line — fire / release', 'tether'],
   ['1–5', 'Pull · Shove · Pin · Bomb · Rig'],
-  ['Space', 'Boost / dash'],
+  ['Shift', 'Boost / dash', 'boost'],
   ['Q', 'Wheel — hold · aim · release'],  // Call-in lives on the wheel (G18-02b)
   ['E', 'Interact'],
   ['Tab', 'Scoreboard'],

@@ -40,7 +40,7 @@ export const BLACK_FLAG_ENCOUNTERS = Object.freeze([
     disabled: false, crew: 'stubborn', condition: 0.94, legalCategory: 'registered', returnReward: 2400,
     fitted: ['wpn_pulse_laser_m', 'unique_blackbird_governor', 'mod_shield_capacitor_m', 'mod_cargo_scanner_s'],
     objective: 'Read Blackbird’s signal. Negotiate, isolate its drive, or exploit an exposed port. Its title will remain corporate.',
-    intro: 'Oriel Pask: Blackbird is passing the weigh slip. Fast drive, slow paperwork. I am buying either.',
+    intro: 'Oriel Pask: Blackbird is passing through Tethys. I can send its signal or its last route.',
     failure: 'Blackbird’s departure closes the ambush. A recorded signature still identifies the frame.' }),
   Object.freeze({ id: 'black_flag_second_measure', act: 1, name: 'Second Measure',
     sectorId: 'sector_ceres_belt', stationId: 'station_ceres', anchorPoiId: 'world_site_ceres_second_measure', offset: { x: 95, z: -60 },

@@ -56,18 +56,18 @@ function mount(state, t) {
   return { root, mounted, player };
 }
 
-test('collapsed nodes speak the effective verb through mark and tip; the rail is icon-only', () => {
+test('visor sockets show a short action name with the authored mark and the full tip', () => {
   const t = installDom();
   const state = fixture();
   let view;
   try {
     view = mount(state, t);
     const pull = socketOf(view.root, 'Pull');
-    assert.equal(wordsOf(pull), '', 'the flight rail draws no verb words — X3 icon-only sockets');
-    assert.match(iconOf(pull).innerHTML, /data-arsenal="field_well_standard"/, 'a collapsed node draws the same authored mark as an unfolded key');
+    assert.equal(wordsOf(pull), 'Pull');
+    assert.match(iconOf(pull).innerHTML, /data-arsenal="field_well_standard"/);
     assert.equal(iconOf(pull).getAttribute('data-glyph-source'), 'authored');
-    assert.match(pull.className, /\bis-node\b/, 'it is still a node');
-    assert.match(pull.className, /\bis-cooldown\b/, 'and it carries the live state, not just the unfolded key');
+    assert.equal(pull.getAttribute('data-slot'), '1');
+    assert.match(pull.className, /\bis-cooldown\b/, 'the socket carries the live state');
     assert.match(pull.getAttribute('data-why'), /^Pull · Draws in — Place a gravity well at your aim point/);
     assert.match(socketOf(view.root, 'Shove').getAttribute('data-why'), /^Shove · Pushes away \+ 2 blasts/);
     assert.equal(shortWordsOf(socketOf(view.root, 'Shove')), '', 'no narrow word either');
@@ -77,13 +77,16 @@ test('collapsed nodes speak the effective verb through mark and tip; the rail is
       'the Gyre is holding a ball in the fixture');
     assert.match(socketOf(view.root, 'Cloak').getAttribute('data-why'), /^Cloak · Ready/);
     // the rig follows the planet band — mark and tip together, before any press
-    assert.match(socketOf(view.root, 'Rig').getAttribute('data-why'), /^Rig · Clear a path/);
+    assert.match(socketOf(view.root, 'Rig').getAttribute('data-why'), /^Rig · Cone OFF/);
+    assert.equal(wordsOf(socketOf(view.root, 'Rig')), 'Cone');
     state.planet = { active: true, player: { regionRank: PLANET_REGION_RANK.skim } };
     view.mounted.update(state, view.player, true);
     const rig = socketOf(view.root, 'Rig');
-    assert.equal(wordsOf(rig), '', 'still icon-only after the effective verb changes');
+    assert.equal(wordsOf(rig), 'Scoop', 'the visible action follows the fitted rig');
+    assert.equal(rig.getAttribute('aria-pressed'), 'false');
+    assert.equal(shortWordsOf(rig), 'OFF', 'the narrow label retains the state');
     assert.match(iconOf(rig).innerHTML, /data-arsenal="field_skim_standard"/);
-    assert.match(rig.getAttribute('data-why'), /^Rig · Harvest ore — You are in a planet band, so Rig opens the skim scoop/);
+    assert.match(rig.getAttribute('data-why'), /^Rig · Scoop OFF — Tap Rig once to turn on the ore scoop/);
     // the bomb names its payload and stock in the tip; a dry rack keeps the family mark and says so
     assert.match(socketOf(view.root, 'Bomb').getAttribute('data-why'), /^Bomb · throw Charge ×3/);
     state.player.cargo.items.cmdty_impulse_charge = 0;
@@ -92,6 +95,34 @@ test('collapsed nodes speak the effective verb through mark and tip; the rail is
     const bomb = socketOf(view.root, 'Bomb');
     assert.match(bomb.getAttribute('data-why'), /^Bomb · none left/);
     assert.equal(iconOf(bomb).getAttribute('data-glyph-source'), 'family', 'no authored drawing: the generic mark is marked generic');
+  } finally { view?.mounted.dispose(); t.restore(); }
+});
+
+test('Rig status survives key release and uses the current binding in its keycap', () => {
+  const t = installDom();
+  const state = fixture();
+  state.settings = { controls: { bindings: { rig: ['KeyJ'] } } };
+  state.fields.coneActive = true;
+  state.input = { actions: { rig: { pressed: false, held: false } } };
+  let view;
+  try {
+    view = mount(state, t);
+    let rig = socketOf(view.root, 'Rig');
+    assert.equal(wordsOf(rig), 'Cone');
+    assert.equal(shortWordsOf(rig), 'ON');
+    assert.equal(findAll(rig, n => n.tagName === 'b')[0]?.textContent, 'J');
+    assert.equal(rig.getAttribute('aria-pressed'), 'true');
+    assert.match(rig.getAttribute('data-why'), /Tap J to turn it off/);
+    assert.doesNotMatch(rig.className, /is-held|is-firing/);
+    // The attempted second press is not itself an ON signal; the owner has switched it off.
+    state.fields.coneActive = false;
+    state.input.actions.rig = { pressed: true, held: true };
+    view.mounted.update(state, view.player, true);
+    rig = socketOf(view.root, 'Rig');
+    assert.equal(wordsOf(rig), 'Cone');
+    assert.equal(shortWordsOf(rig), 'OFF');
+    assert.equal(rig.getAttribute('aria-pressed'), 'false');
+    assert.doesNotMatch(rig.className, /is-active|is-held|is-firing/);
   } finally { view?.mounted.dispose(); t.restore(); }
 });
 
@@ -107,7 +138,7 @@ test('a support verb the ship does not carry takes no seat, and unbound keys sho
     const gyre = socketOf(view.root, 'Gyre');
     assert.ok(gyre, 'the Gyre is a baseline verb');
     const key = findAll(gyre, (n) => n.tagName === 'b')[0];
-    assert.equal(key && key.textContent, '—', 'an unbound verb shows an empty key, not a default');
+    assert.equal(key && key.textContent, '', 'an unbound verb shows no keycap');
     // fitting a cloak brings its socket in without remounting
     state.player.ownedShips[0].fittings = ['wpn_pulse_laser_s', 'mod_cloak_mk1'];
     view.mounted.update(state, view.player, true);

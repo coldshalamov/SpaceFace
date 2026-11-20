@@ -23,7 +23,30 @@ COLORS = {
 }
 
 
+def signature(s):
+    """Frontier towers inside the ring: boxy homestead stacks with roof tanks and porch lamps."""
+    towers, roofs, tanks, lamps = [], [], [], []
+    for a in (60.0, 180.0, 300.0):
+        rz = math.radians(a)
+        x, y, _ = K.polar(24.0, a)
+        towers.append(((x, y, 13.0), (7.0, 8.0, 18.0), rz))
+        roofs.append(((x, y, 22.5), (8.0, 9.0, 1.0), rz))
+        tanks.append(K.polar(24.0, a, 25.5))
+        lamps.append(K.polar(28.4, a, 18.0))
+    F.boxes(s, 'FrontierTowers', towers, 'paint.patch', bevel=0.1)
+    F.boxes(s, 'FrontierRoofs', roofs, 'paint.rust', bevel=0.05)
+    for i, p in enumerate(tanks):
+        F.cylinder(s, f'FrontierTank{i}', (p[0], p[1], p[2] - 2.5), (p[0], p[1], p[2] + 2.5),
+                   2.0, 1.8, material='paint', segments=12, bevel=0.06)
+        F.band(s, f'FrontierTank{i}', (p[0], p[1], p[2]), (0, 0, 1), 0.8, 'stripe')
+    s.detail = 1
+    for i, p in enumerate(lamps):
+        F.light(s, f'FrontierTowerLamp{i}', p, 'glow_warm', size=0.45)
+    s.detail = 0
+
+
 def dress(s):
+    K.interior(s, 'stripe', 'glow_warm')
     # welded claim band in bare structure, then the quilt over it
     K.ring_wall(s, 'QuiltBand', K.SHELL_R + 0.7, 9.0, 25.0, 2.0, 'paint2', segs=56)
     K.ring_wall(s, 'QuiltRail', K.SHELL_R + 1.0, 25.0, 26.0, 2.4, 'stripe', segs=56)
@@ -54,6 +77,7 @@ def dress(s):
         F.light(s, f'ClaimLamp{i}', K.polar(K.SHELL_R + 2.0, a, 27.4), 'glow_cyan.free',
                 size=0.5)
     s.detail = 0
+    signature(s)
 
 
 def build():

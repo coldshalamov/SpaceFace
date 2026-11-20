@@ -19,7 +19,7 @@
 //     keyboard player, so every carrier must be focusable (button, or tabindex="0").
 //
 // ENUMERATED PHRASES ONLY, NEVER INVENTED TEXT (§7). This module renders the literal
-// `[data-why]` string and NOTHING else — it never composes, formats, or falls back. The bank
+// `[data-why]` string or its authored `[data-why-brief]` variant. The bank
 // discipline lives at the write sites (causePhrases for prices, CONTRACT_CLAUSES/missionConditions
 // for contract terms, REP_REASON_LABELS for standings). An empty or whitespace attribute renders
 // nothing at all: if a cause has no phrase, the honest UI is no tooltip, never a guess.
@@ -39,7 +39,7 @@ const TIP_ID = 'sf-why-tip';
 /** The enumerated reason an element carries, or '' when it carries none (render NOTHING then). */
 export function whyTextFor(el) {
   if (!el || typeof el.getAttribute !== 'function') return '';
-  const raw = el.getAttribute('data-why');
+  const raw = el.getAttribute('data-why-brief') || el.getAttribute('data-why');
   return typeof raw === 'string' ? raw.trim() : '';
 }
 
@@ -96,14 +96,24 @@ function place(el, x, y, preferAbove) {
 function show(text, x, y, owner, anchorEl) {
   const el = tipElement();
   if (!el) return;
+  el.toggleAttribute('data-visor-tip', !!anchorEl?.hasAttribute?.('data-why-brief'));
   el.textContent = String(text);
   el.style.display = 'block';
   if (anchorEl) {
     const rect = typeof anchorEl.getBoundingClientRect === 'function'
       ? anchorEl.getBoundingClientRect()
       : { left: 0, top: 0, bottom: 0 };
-    const vh = (typeof window !== 'undefined' && window.innerHeight) || 720;
-    place(el, rect.left, rect.bottom, rect.bottom + 60 > vh);
+    const panel = anchorEl.closest?.('[data-why-above]');
+    if (panel) {
+      const bounds = panel.getBoundingClientRect();
+      const centered = rect.left + (rect.width - el.offsetWidth) / 2;
+      const left = Math.max(bounds.left, Math.min(centered, bounds.right - el.offsetWidth));
+      place(el, left - 14, bounds.top + 5, true);
+    }
+    else {
+      const vh = (typeof window !== 'undefined' && window.innerHeight) || 720;
+      place(el, rect.left, rect.bottom, rect.bottom + 60 > vh);
+    }
   } else {
     place(el, x, y, false);
   }
@@ -160,7 +170,8 @@ export function mountWhyReveal(quiet = null) {
   const onPointerOver = (ev) => {
     const carrier = carrierFrom(ev);
     if (!carrier || hushed()) { hideWhyTip('data-why'); return; }
-    showWhyTip(whyTextFor(carrier), ev.clientX, ev.clientY, 'data-why');
+    if (carrier.closest('[data-why-above]')) showWhyTipForElement(whyTextFor(carrier), carrier, 'data-why');
+    else showWhyTip(whyTextFor(carrier), ev.clientX, ev.clientY, 'data-why');
     describe(carrier);
   };
   const onPointerOut = (ev) => {

@@ -138,7 +138,11 @@ export function words(items, { row = false, followLayout = false, onPick, onMove
       cue('confirm'); onPick?.(item.action, button);
     });
     buttons.push(button); li.append(button);
-    if (item.sub) li.append(el('div', lit ? 'dp-lit__note' : dp ? 'dp-menu__note' : 'k-word-sub', item.sub));
+    if (item.sub) {
+      const noteClass = lit ? 'dp-lit__note' : dp ? 'dp-menu__note' : 'k-word-sub';
+      if (item.containedNote) button.append(el('span', noteClass, item.sub));
+      else li.append(el('div', noteClass, item.sub));
+    }
     list.append(li);
   }
   roving(list, () => buttons, { row, followLayout, onMove: button => onMove?.(button.dataset.action, button) });

@@ -296,12 +296,12 @@ def resolve_material_name(mat) -> str:
         return "Material_Heat"
     if "cable" in lower or "service" in lower or "pipe" in lower:
         return "Material_Service"
-    if "torn" in lower or "insul" in lower or "dust" in lower or "ore" in lower:
-        return "Material_Insulation"
     if "frame" in lower or "steel" in lower or "grate" in lower or "struct" in lower \
             or "gunmetal" in lower or "wk_cut" in lower or "truss" in lower \
             or "beam" in lower or "rib" in lower or "strut" in lower:
         return "Material_Structural"
+    if "torn" in lower or "insul" in lower or "dust" in lower or "ore" in lower:
+        return "Material_Insulation"
     return "Material_Hull"
 
 

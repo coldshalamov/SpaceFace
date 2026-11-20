@@ -49,6 +49,7 @@
 // No recorded loss ⇒ generic wreck (unchanged).
 
 import { hash32 } from '../core/rng.js';
+import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { lostShipmentPressure } from './economyCycles.js';
 import { SECTORS } from '../data/sectors.js';
 import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
@@ -524,6 +525,9 @@ export const lossLedger = {
     const state = this._state;
     if (!state || !p || p.type !== 'ship' || p.id === state.playerId) return;
     const entity = state.entities && state.entities.get ? state.entities.get(p.id) : null;
+    // Arena-owned losses settle through the run. A campaign loss receipt would also
+    // file sector provenance, hull renown and an impound listing for the same kill.
+    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive' && runOwnsReward(entity)) return;
     const marker = entity && entity.data && entity.data.factionPresence;
     if (marker && marker.factionId === 'faction_understory') return;
     const shipDefId = entity && entity.data && entity.data.defId;

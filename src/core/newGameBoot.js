@@ -37,6 +37,7 @@ export async function runBootstrapScene(state, helpers, bus, registry, options =
     team: 0, factionId: 'faction_free', isPlayer: true, player: state.player, fittings,
     appearance: owned && owned.appearance,
     livingHull: owned && owned.livingHull,
+    legacyWeaponFallback: !options.swarmBoot,
     pos: { x: 0, z: 0 },
   });
   const player = helpers.spawnEntity(playerSpec);
@@ -46,7 +47,6 @@ export async function runBootstrapScene(state, helpers, bus, registry, options =
   const ships = registry.get('ships');
   if (ships && typeof ships.recomputeActiveShip === 'function') ships.recomputeActiveShip();
 
-  // World owns sector contents: it spawns stations, asteroid fields, enemies, and POIs from data.
   // Swarm enters its backdrop in the prepared arena setup, after runSession owns the run.
   // Campaign bootstrap would materialize Helios and its neighbors before that handoff.
   const world = options.swarmBoot ? null : registry.get('world');
@@ -252,10 +252,11 @@ export async function runNewGameSimBoot({
   if (!isCurrent()) return { aborted: true };
 
   const ships = registry.get('ships');
+  const swarmHullId = swarmBoot ? opts.crucibleSetup.survivalSetup?.hullId : null;
   if (ships && typeof ships.newGame === 'function') {
-    ships.newGame();
+    ships.newGame({ unfittedHullId: swarmHullId });
   } else {
-    state.player.ownedShips = [{ defId: NEW_GAME.shipId || 'ship_kestrel', fittings: [] }];
+    state.player.ownedShips = [{ defId: swarmHullId || NEW_GAME.shipId || 'ship_kestrel', fittings: [] }];
     state.player.activeShipIndex = 0;
     state.player.moduleInventory = [];
     state.player.researchedNodes = (NEW_GAME.researchedNodes || []).slice();
@@ -267,7 +268,7 @@ export async function runNewGameSimBoot({
   // installs the legacy NEW_GAME ship, so the pick rewrites the active owned ship here,
   // before the scene bootstrap spawns the player entity. Absent/unknown ids keep the legacy
   // defaults byte-for-byte; nothing about the pick is saved as a class or lock.
-  applyStarterPick(state, ships, opts);
+  if (!swarmHullId) applyStarterPick(state, ships, opts);
   applyRacingLoadout(state, ships, opts);
   if (!isCurrent()) return { aborted: true };
   // Single-frame breath: a committed paint is reserved for the boundary just

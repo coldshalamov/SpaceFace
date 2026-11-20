@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { FLIPBOOK_SHEETS, flipbookSheetPath } from '../src/render/combat/flipbookSprites.js';
 
 test('packaging parity gate owns the dynamic asset reachability contract', () => {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
@@ -35,6 +36,7 @@ test('asset reachability reports every dynamic runtime media registry', () => {
   assert.equal(report.dynamicRegistries.portraits.length, 23);
   assert.equal(report.dynamicRegistries.wreckCathedralEvidence.length, 5);
   assert.equal(report.dynamicRegistries.thrusterTextures.length, 9);
+  assert.deepEqual(report.dynamicRegistries.flipbookSprites, Object.keys(FLIPBOOK_SHEETS).map(flipbookSheetPath));
   assert.ok(
     report.dynamicRegistries.thrusterTextures.includes('assets/fx/thruster/plume_core_flow_v1.png'),
   );

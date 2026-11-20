@@ -56,7 +56,7 @@ await page.waitForTimeout(400);
 // (Ship & kit), and Swarm's verb opens the armory rather than the arena.
 await page.evaluate(() => {
   const b = [...document.querySelectorAll('#screens button')]
-    .find((x) => x.textContent.replace(/\s+/g, ' ').trim().includes('Choose ship & kit'));
+    .find((x) => x.textContent.replace(/\s+/g, ' ').trim().includes('Choose ship'));
   if (b) b.click();
 });
 await page.evaluate((seed) => {
@@ -68,7 +68,7 @@ await page.evaluate((seed) => {
 }, SEED);
 await page.evaluate(() => {
   [...document.querySelectorAll('#screens button')]
-    .find((x) => x.textContent.replace(/\s+/g, ' ').trim().includes('Open armory')).click();
+    .find((x) => x.textContent.replace(/\s+/g, ' ').trim().includes('Review equipment')).click();
 });
 await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 90000 });
 // Swarm's opening stop is the armory: the run waits in draft on "Launch round 1".

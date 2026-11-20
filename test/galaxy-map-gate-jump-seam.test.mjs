@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
+import * as chart from '../src/ui/galaxyMap.js';
 import {
   isOneHopNeighbor,
   isPlayerInGateRange,
@@ -34,6 +35,23 @@ test('seam source: legacy starmap jump payload shape is preserved', () => {
   assert.match(STARMAP_SRC, /world:requestJump/);
   assert.match(STARMAP_SRC, /via:\s*['"]gate['"]/);
   assert.match(STARMAP_SRC, /Set Course &amp; Jump|Set Course & Jump/);
+});
+
+test('Chart quotes a customs fine for the earned Ceres hold before it can jump', () => {
+  const state = { player: { cargo: { capVolume: 200, items: {
+    cmdty_stolen_goods: 2,
+    cmdty_host_archive_sample: 9,
+    cmdty_calcified_filament: 5,
+    cmdty_food: 6,
+  } }, salvageBay: { items: {} } } };
+  assert.equal(chart.resolveChartCustomsWarning(state),
+    'Customs may seize 16 units and fine you 7,278 cr. Check Cargo before jumping.');
+
+  state.player.derived = { hiddenCargoPct: 1 };
+  assert.equal(chart.resolveChartCustomsWarning(state), '', 'a fully shielded hold is excluded');
+  state.player.salvageBay.items.cmdty_calcified_filament = 2;
+  assert.equal(chart.resolveChartCustomsWarning(state),
+    'Customs may seize 2 units and fine you 336 cr. Check Cargo before jumping.');
 });
 
 test('buildSystemModel exposes gateTo as targetSectorId for live gates', () => {

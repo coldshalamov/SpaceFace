@@ -12,6 +12,7 @@ import { readRecentImpulseProvenance } from '../combat/impulseKernel.js';
 import { resolveCollisionProxyManifest, proxyOuterRadiusWu, proxyScaleFor } from '../data/collisionProxyManifests.js';
 import { articulatedColliderRadius } from '../core/articulatedColliderBounds.js';
 import { restoreLifetime } from '../matter/aggregateLifetime.js';
+import { trainingWheelsOn } from '../onboarding/trainingWheels.js';
 
 // A child may acquire a measured convex skin instead of its fallback ball. Bound both;
 // clearance against existing bodies below uses their actual native compound shapes.
@@ -186,6 +187,8 @@ export function queueEnvironmentImpact(state, entity, closingSpeed, origin = {})
   // A collector's knot is bound the same way while its emitter holds it (impact cohesion, not immunity).
   const knotHeld = !!entity?.data?.collectorCore;
   if (held || flight || knotHeld) return false;
+  // The learner still feels the contact. Keep that rock intact until the first taught throw.
+  if (trainingWheelsOn(state, entity)) return false;
   if (isAnchoredPhysicalBody(entity)) return false;
   if (entity?.data?.worldSiteStructural === true || ceresWorkfleetRoleForEntity(entity)) return false;
   const material = environmentMaterialOf(entity);

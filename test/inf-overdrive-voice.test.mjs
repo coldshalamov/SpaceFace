@@ -24,7 +24,7 @@ import {
   SWARM_CHAIN_WINDOW_S,
 } from '../src/systems/swarmChain.js';
 import { swarmJuice, swarmClimbRate, SWARM_MOMENT_CUES } from '../src/systems/swarmJuice.js';
-import { SWARM_CHAIN_TIERS, SWARM_HITSTOP_SOURCE } from '../src/data/swarmJuice.js';
+import { SWARM_CHAIN_TIERS } from '../src/data/swarmJuice.js';
 
 const DT = 1 / 60;
 /** The climb's top step: swarmClimbRate clamps any index past the ladder to the octave. */
@@ -99,8 +99,7 @@ test('crossing the score cap names the overdrive once, with the rate the guns re
     assert.equal(chime.length, 1, 'the climb\'s top chime marks it');
     const tierRates = SWARM_CHAIN_TIERS.map((_, i) => swarmClimbRate(i));
     assert.ok(!tierRates.includes(chime[0].rate), 'no tier mark uses that pitch, so it never reads as another rung');
-    // OVH-06a / R10: no Swarm beat leases simulation time any more - hitstop is a presentation hold.
-    assert.equal(h.effects.describeRequests()[SWARM_HITSTOP_SOURCE], undefined, 'the chain\'s overdrive never dips the simulation');
+    assert.deepEqual(h.effects.describeRequests(), {}, 'overdrive feedback does not lease simulation time');
 
     // The chain keeps climbing inside the same window: the overdrive is said once, not per kill.
     tick(h, 0.5);
@@ -146,13 +145,13 @@ test('a short chain that never reached the cap breaks without an overdrive word'
   }
 });
 
-test('reduced arcade effects keep the words and the chime and drop the dip', () => {
+test('reduced arcade effects keep the words and the chime', () => {
   const h = boot({ effects: 'reduced' });
   try {
     wipe(h, SWARM_CHAIN_SCORE_CAP);
     assert.equal(overdriveCalls(h).length, 1, 'the word is information, not juice');
     assert.ok(named(h, 'audio:cue').some((p) => p.id === SWARM_MOMENT_CUES.chainTier && p.rate === TOP_CHIME_RATE));
-    assert.ok(!h.effects.describeRequests()[SWARM_HITSTOP_SOURCE], 'no vestibular dip on reduced');
+    assert.deepEqual(h.effects.describeRequests(), {});
   } finally {
     teardown();
   }

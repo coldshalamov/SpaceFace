@@ -10,12 +10,12 @@ export const MAX_SHADE_REGIONS = 8;
 export const SHADE_REGION_UNIFORMS = Object.freeze({
   sfShadeEnabled: { value: 0 },
   sfShadeCount: { value: 0 },
-  sfShadeCenters: { value: Array.from({ length: MAX_SHADE_REGIONS }, () => new Vector3()) },
-  sfShadeHalfSizes: { value: Array.from({ length: MAX_SHADE_REGIONS }, () => new Vector3()) },
+  sfShadeCenters: { value: Array.from({ length: MAX_SHADE_REGIONS }, () => new Vector3()), needsUpdate: false },
+  sfShadeHalfSizes: { value: Array.from({ length: MAX_SHADE_REGIONS }, () => new Vector3()), needsUpdate: false },
   // x: feather falloff (>0), y: broad pocket floor [0..1], z: facet step bias [-1..1], w: facet contrast [0..1.5]
-  sfShadeParams: { value: Array.from({ length: MAX_SHADE_REGIONS }, () => new Vector4(1, 1, 0, 0)) },
+  sfShadeParams: { value: Array.from({ length: MAX_SHADE_REGIONS }, () => new Vector4(1, 1, 0, 0)), needsUpdate: false },
   // xyz: preferred unit world normal, w: directional selectivity [0..1]
-  sfShadeNormals: { value: Array.from({ length: MAX_SHADE_REGIONS }, () => new Vector4(0, 0, 0, 0)) },
+  sfShadeNormals: { value: Array.from({ length: MAX_SHADE_REGIONS }, () => new Vector4(0, 0, 0, 0)), needsUpdate: false },
 });
 
 const claims = new Map();
@@ -37,10 +37,11 @@ function normalizeNormal(spec) {
 }
 
 function syncUniforms() {
-  const centers = SHADE_REGION_UNIFORMS.sfShadeCenters.value;
-  const halfSizes = SHADE_REGION_UNIFORMS.sfShadeHalfSizes.value;
-  const params = SHADE_REGION_UNIFORMS.sfShadeParams.value;
-  const normals = SHADE_REGION_UNIFORMS.sfShadeNormals.value;
+  const u = SHADE_REGION_UNIFORMS;
+  const centers = u.sfShadeCenters.value;
+  const halfSizes = u.sfShadeHalfSizes.value;
+  const params = u.sfShadeParams.value;
+  const normals = u.sfShadeNormals.value;
 
   let slot = 0;
   for (const entry of claims.values()) {
@@ -52,8 +53,15 @@ function syncUniforms() {
     slot += 1;
   }
 
-  SHADE_REGION_UNIFORMS.sfShadeCount.value = slot;
-  SHADE_REGION_UNIFORMS.sfShadeEnabled.value = slot > 0 ? 1 : 0;
+  const enabled = slot > 0;
+  u.sfShadeCount.value = slot;
+  u.sfShadeEnabled.value = enabled ? 1 : 0;
+  // Only the control uniforms matter when the shader's region branch is disabled.
+  // Keep the stock upload path for every material draw once any claim is active.
+  u.sfShadeCenters.needsUpdate = enabled;
+  u.sfShadeHalfSizes.needsUpdate = enabled;
+  u.sfShadeParams.needsUpdate = enabled;
+  u.sfShadeNormals.needsUpdate = enabled;
 
   for (let i = slot; i < MAX_SHADE_REGIONS; i += 1) {
     centers[i].set(0, 0, 0);

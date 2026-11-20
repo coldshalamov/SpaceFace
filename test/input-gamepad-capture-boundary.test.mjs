@@ -4,8 +4,9 @@ import { createBus } from '../src/core/eventBus.js';
 import { createGamepad } from '../src/systems/gamepad.js';
 import { createUiInput } from '../src/ui/input.js';
 import { setGamepadCaptureHandler } from '../src/ui/bindings.js';
+import { setPromptDeck } from '../src/ui/promptDeck.js';
 
-function fixture() {
+function fixture({ cargoOpen = false } = {}) {
   const originals = new Map();
   const install = (name, value) => {
     originals.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
@@ -37,14 +38,18 @@ function fixture() {
   };
   const gamepad = createGamepad({ state, bus });
   const manager = {
-    isOpen: () => true, top: () => 'settings', getActiveScreenDef: () => ({ id: 'settings' }),
+    isOpen: () => !cargoOpen, top: () => cargoOpen ? null : 'settings', getActiveScreenDef: () => ({ id: 'settings' }),
     popScreen() {}, pushScreen() {}, locked: () => false,
   };
+  if (cargoOpen) {
+    state.mode = 'flight';
+    state.ui = { cargoPanelOpen: true, screenStack: [] };
+  }
   const ui = createUiInput({ state, bus, gamepad }, manager);
   const tick = () => { state.tick++; ui.tick(1 / 60); };
   tick();
   return {
-    gamepad, tick, confirms: () => confirms,
+    gamepad, tick, doc, state, bus, confirms: () => confirms,
     button(index, held) { pad.buttons[index] = { pressed: held, value: held ? 1 : 0 }; },
     cleanup() {
       setGamepadCaptureHandler(null);
@@ -70,6 +75,41 @@ test('the first sampled button during a rebind waits for release', () => {
     f.tick();
     assert.deepEqual(captured, ['accept']);
   } finally { f.cleanup(); }
+});
+
+test('Cargo owns Pad Back and Pad Accept has to focus the timed decision deliberately', () => {
+  const f = fixture({ cargoOpen: true });
+  try {
+    const seen = [];
+    const button = (name, x) => ({
+      tagName: 'BUTTON', closest: () => null, getAttribute: () => null,
+      getBoundingClientRect: () => ({ left: x, right: x + 80, top: 20, bottom: 60, width: 80, height: 40 }),
+      focus() { f.doc.activeElement = this; },
+      click() { seen.push(name); },
+    });
+    const holdButton = button('Cargo row', 20);
+    const choice = button('Rell of the Moisture Column', 200);
+    const root = child => ({ contains: node => node === child, querySelectorAll: () => [child] });
+    const cargo = root(holdButton);
+    const deck = root(choice);
+    f.doc.querySelector = selector => selector === '#hud .sf-cargo-panel.open' ? cargo : null;
+    setPromptDeck({ el: deck, size: 1, gamepadCapture() { throw new Error('automatic deck acceptance stole Cargo'); } });
+    f.bus.on('ui:closeCargo', () => { seen.push('Close cargo hold'); f.state.ui.cargoPanelOpen = false; });
+
+    holdButton.focus();
+    f.button(0, true); f.tick();
+    f.button(0, false); f.tick();
+    assert.deepEqual(seen, ['Cargo row']);
+    f.button(15, true); f.tick();
+    f.button(15, false); f.tick();
+    assert.equal(f.doc.activeElement, choice);
+    f.button(0, true); f.tick();
+    f.button(0, false); f.tick();
+    assert.deepEqual(seen, ['Cargo row', 'Rell of the Moisture Column']);
+    f.button(1, true); f.tick();
+    assert.deepEqual(seen, ['Cargo row', 'Rell of the Moisture Column', 'Close cargo hold']);
+    assert.equal(f.state.ui.cargoPanelOpen, false);
+  } finally { setPromptDeck(null); f.cleanup(); }
 });
 
 test('a modifier pressed on the first capture frame still forms a complete chord', () => {

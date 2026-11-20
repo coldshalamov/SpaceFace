@@ -24,7 +24,25 @@ COLORS = {
 RIBBONS = (20.0, 140.0, 260.0)
 
 
+def signature(s):
+    """Spires rising from the nave inside the ring, bells hung between them."""
+    for i, a in enumerate((30.0, 150.0, 270.0)):
+        base = K.polar(18.0, a, 17.0)
+        tip = K.polar(16.0 + i, a + 6.0, 33.5 + i * 1.2)
+        F.cylinder(s, f'ChoirSpire{i}', base, tip, 2.4, 0.35, material='paint', segments=14,
+                   bevel=0.04)
+        F.ring(s, f'ChoirSpireRing{i}', (base[0], base[1], 21.0), 2.5, 0.35, axis=(0, 0, 1),
+               material='stripe', segments=14, sides=6)
+        s.detail = 1
+        F.light(s, f'ChoirSpireLamp{i}', tip, 'glow_amber.choir', size=0.5)
+        s.detail = 0
+    for i, a in enumerate((90.0, 210.0, 330.0)):
+        K.bell(s, f'ChoirNaveBell{i}', K.polar(24.0, a, 22.0), 1.5, 2.4, material='bare',
+               cap='dark')
+
+
 def dress(s):
+    K.interior(s, 'stripe', 'glow_amber.choir')
     # consecrated band: bronze-umber plate with a pink votive rail
     K.ring_wall(s, 'HallowBand', K.SHELL_R + 0.8, 10.0, 24.0, 2.4, 'paint', segs=56)
     K.ring_wall(s, 'HallowRail', K.SHELL_R + 1.0, 24.0, 25.2, 2.5, 'stripe', segs=56)
@@ -55,6 +73,7 @@ def dress(s):
     for e in (-1, 1):
         F.light(s, f'BelfryLamp{e:+d}', (e * 7.0, 0.0, 45.4), 'glow_amber.choir', size=0.55)
     s.detail = 0
+    signature(s)
 
 
 def build():

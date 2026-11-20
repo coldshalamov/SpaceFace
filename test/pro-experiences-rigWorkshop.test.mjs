@@ -19,10 +19,12 @@ import { rigWorkshopSavePlanEntry, captureRigWorkshopSaveSlot, restoreRigWorksho
 import { createRigWorkshopView } from '../src/features/rigWorkshop/view.js';
 import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import { flightV3 } from '../src/systems/flightV3.js';
+import { world } from '../src/systems/world.js';
 import { physics as productionPhysics } from '../src/core/physics.js';
 import { combat } from '../src/systems/combat.js';
 import { tetherGameplay } from '../src/systems/tetherGameplay.js';
 import { buildEntitySpawnSpec } from '../src/testing/lab/entityProfiles.js';
+import { FIRST_TRADE_CONTRACT_SOURCE } from '../src/data/economyContractTemplates.js';
 import {
   createRigWorkshopPresentation, rigWorkshopDecision, buildRigWorkshopReadModel,
 } from '../src/features/rigWorkshop/presentation.js';
@@ -601,6 +603,67 @@ test('optional workshop intro waits out a live timed encounter and remains pendi
     assert.deepEqual(prompts[1].options.map(option => option.id), ['visit', 'later']);
     system.update(DT);
     assert.equal(prompts.length, 2, 'the restored choice is offered once in the resumed run');
+  } finally { system.destroy(); h.close(); }
+});
+
+test('a live freight contract defers the workshop invitation and leaves its route intact through Continue', async () => {
+  const h = await nativeFixture();
+  const system = createRigWorkshopSystem();
+  const courses = [];
+  const navOwner = Object.assign(Object.create(world), { state: h.state, bus: h.bus });
+  h.bus.on('ui:setCourse', value => { courses.push(value); navOwner._onSetCourse(value); });
+  try {
+    delete h.state.rigWorkshop;
+    h.state.world.currentSectorId = 'sector_helios_prime';
+    system.init(h.sim.registry.ctx);
+    assert.equal(system.discover(), true);
+    const intro = clone(system.workshop.prompt);
+    const bench = clone(system.workshop.bench);
+    const freight = {
+      id: 'm_2', status: 'active', source: FIRST_TRADE_CONTRACT_SOURCE, type: 'cargo_delivery',
+      deadline_s: 1200, destStationId: 'station_tethys', destSectorId: 'sector_tethys_junction',
+    };
+    h.state.missions.active = [freight];
+    h.state.ui.trackedMissionId = freight.id;
+    const course = { kind: 'mission', missionId: freight.id, sectorId: freight.destSectorId };
+    h.state.nav.waypoint = course;
+
+    // The acceptance can arrive before the next workshop tick while the old card is still visible.
+    assert.equal(system.choose({ promptId: intro.id, revision: intro.revision, choiceId: 'visit' }), false);
+    system.update(DT);
+    assert.equal(system.workshop.prompt, null, 'the field and away cards also yield');
+    assert.equal(h.state.nav.waypoint, course);
+    assert.deepEqual(courses, []);
+
+    assert.equal(system.deserialize(system.serialize()).ok, true);
+    h.state.ui.trackedMissionId = null;
+    h.state.nav.waypoint = { kind: 'local' };
+    system.update(DT);
+    assert.equal(system.workshop.prompt ?? null, null, 'the durable first trade survives a transient route or selection change');
+    assert.deepEqual(system.workshop.bench.pos, bench.pos);
+
+    freight.status = 'completed';
+    h.state.world.currentSectorId = freight.destSectorId;
+    system.update(DT);
+    const offered = system.workshop.prompt;
+    assert.equal(offered.options.find(option => option.id === 'visit')?.label, 'Plot route to the workshop');
+    assert.deepEqual(courses, []);
+    assert.equal(system.choose({ promptId: offered.id, revision: offered.revision, choiceId: 'visit' }), true);
+    assert.deepEqual(courses[0], { sectorId: bench.sectorId }, 'the world must take the inter-sector route branch');
+    assert.equal(h.state.nav.route?.legs.at(-1)?.to, bench.sectorId);
+
+    h.player.pos.x = bench.pos.x + 1500;
+    system.update(DT);
+    assert.equal(system.workshop.prompt, null, 'the return crossing is already charted');
+    h.bus.emit('sector:exit', { sectorId: freight.destSectorId });
+    h.state.world.currentSectorId = bench.sectorId;
+    h.bus.emit('sector:enter', { sectorId: bench.sectorId });
+    system.update(DT);
+    const returned = system.workshop.prompt;
+    assert.equal(returned.options.find(option => option.id === 'visit')?.label, 'Mark the nearby bench');
+    assert.equal(system.choose({ promptId: returned.id, revision: returned.revision, choiceId: 'visit' }), true);
+    assert.deepEqual(courses[1].pos, bench.pos, 'the local choice marks the actual returned workshop');
+    assert.deepEqual(h.state.nav.waypoint.pos, bench.pos);
   } finally { system.destroy(); h.close(); }
 });
 

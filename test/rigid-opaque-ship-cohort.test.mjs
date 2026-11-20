@@ -17,6 +17,8 @@ import {
   settleRigidOpaqueBatchSpecimenTwins,
 } from '../src/render/rigidOpaqueBatch.js';
 import { preloadRockSurfaceLibrary } from '../src/render/rockSurfaceLibrary.js';
+import { swarmRosterShipExemplarSpecs } from '../src/render/partsLibrary.js';
+import { swarmEligibleEnemyIds } from '../src/data/swarmMode.js';
 
 // Decode stand-ins so the asteroid material matrix builds without a real image pipeline.
 await preloadRockSurfaceLibrary(null, { loadTexture: async () => new THREE.Texture() });
@@ -317,6 +319,79 @@ test('the batch specimen warm mints one keyed batch specimen per group then deta
       if (Array.isArray(object.material)) object.material.forEach((material) => material.dispose());
       else object.material?.dispose?.();
     });
+  }
+});
+
+test('default Swarm specimen warm keeps settled hull boundaries under holders and defers nonship copies', async () => {
+  const launchIds = swarmEligibleEnemyIds(1);
+  const [firstOpponent] = swarmRosterShipExemplarSpecs('launch:', { enemyIds: launchIds });
+  const laterOpponent = swarmRosterShipExemplarSpecs('later:', { enemyIds: swarmEligibleEnemyIds(2) })
+    .find(spec => !launchIds.has(spec.data.lootTableId));
+  assert.deepEqual([firstOpponent.data.lootTableId, laterOpponent.data.lootTableId], ['wasp_swarmer', 'reaver_pirate']);
+
+  const meshes = [];
+  const pin = (id, defId, color, authoredSlot = 'hull') => {
+    const record = makeRoot(id, { defId });
+    meshes.push(record.root);
+    delete record.root.userData.presentationEntityId;
+    record.root.userData.authoredSlots = { [authoredSlot]: [`assets/ships/release/parts/${defId}.glb`] };
+    record.batched[0].material.color.setHex(color);
+    return record.root;
+  };
+  const playerColor = 0x778810, firstColor = 0x771080, laterColor = 0x107788;
+  const wreckColor = 0x772211, decodedColor = 0x335511, staleColor = 0x110055;
+  const roster = new THREE.Group();
+  roster.visible = false;
+  roster.userData.rosterPrewarm = 'bounded-cook';
+  const holder = new THREE.Group();
+  roster.add(holder);
+  holder.add(pin(201, 'ship_hornet', playerColor), pin(202, firstOpponent.data.defId, firstColor));
+  roster.add(pin(203, 'wreck', wreckColor, 'place'));
+  const decodedCopy = pin(204, firstOpponent.data.defId, decodedColor);
+  decodedCopy.userData = {};
+  roster.add(decodedCopy);
+  const deferred = new THREE.Group();
+  deferred.userData.rosterPrewarm = 'deferred-warm';
+  deferred.add(pin(205, laterOpponent.data.defId, laterColor));
+  const stale = makeRoot(206);
+  stale.batched[0].material.color.setHex(staleColor);
+
+  const calls = [];
+  const { owner, scene, state, dispose } = makeOwner([stale], { compile(root, options) {
+    assert.equal(options.debugBy, 'rigid-opaque-batch-specimen');
+    assert.equal(root.visible, false);
+    calls.push(...root.children.map(child => child.material.color.getHex()));
+    return { pipelines: {}, gpuResidency: {} };
+  } });
+  stale.root.userData.rosterPrewarmExemplar = true;
+  state.entities.get(206).occupantGeneration++;
+  state.mode = 'loading';
+  state.run = { kind: 'survival', ruleset: 'swarm', phase: 'draft', wave: 0 };
+  scene.add(roster, deferred);
+  const compiled = async (roots) => {
+    clearRigidOpaqueBatchWarmedKeys();
+    calls.length = 0;
+    await owner._runRigidOpaqueBatchSpecimenWarm(roots);
+    return new Set(calls);
+  };
+  try {
+    assert.deepEqual(await compiled([roster, stale.root]), new Set([playerColor, firstColor]));
+    assert.deepEqual(await compiled([deferred]), new Set([laterColor]));
+    assert.equal(holder.children.length, 2, 'the warm still owns both exact ship boundaries');
+    assert.equal(decodedCopy.parent, roster, 'the raster package holder remains pinned');
+    assert.equal(stale.batched[0].layers.mask, 1, 'a stale life cannot suppress a direct draw');
+
+    owner._rigidOpaqueBatchDefaultCohort = false;
+    assert.deepEqual(await compiled([roster]), new Set([playerColor, firstColor, wreckColor, decodedColor]),
+      'explicit diagnostic retains the whole specimen census');
+    owner._rigidOpaqueBatchDefaultCohort = true;
+    state.run = null;
+    assert.deepEqual(await compiled([roster]), new Set([playerColor, firstColor, wreckColor, decodedColor]),
+      'Adventure retains its existing warm policy');
+  } finally {
+    clearRigidOpaqueBatchWarmedKeys();
+    dispose();
+    for (const root of meshes) root.traverse(node => { node.geometry?.dispose(); node.material?.dispose(); });
   }
 });
 

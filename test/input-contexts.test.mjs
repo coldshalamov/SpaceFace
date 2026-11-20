@@ -147,18 +147,21 @@ test('the Swarm set is S5 unchanged', () => {
 
 test('stock bindings are Swarm-only; rebinds are consulted before them in input.js', () => {
   const swarm = state({ run: { kind: 'survival', phase: 'active', ruleset: 'swarm' } });
-  assert.deepEqual(contextStockBindings(swarm)?.tether, []);
-  assert.deepEqual(contextStockBindings(swarm)?.boost, ['Space']);
+  assert.deepEqual(contextStockBindings(swarm)?.tether, ['KeyF']);
+  assert.deepEqual(contextStockBindings(swarm)?.boost, ['ShiftLeft', 'ShiftRight']);
   assert.equal(contextStockBindings(state()), null);
 });
 
-test('X5 #6: the UI letter layer is gated — combat cannot open the chart, tech or codex', () => {
+test('a selected hostile or low hull keeps the advertised chart controls available', () => {
   const combat = state({ player: { targetId: 2 } });
-  for (const action of ['map', 'localmap', 'starmap', 'techTree', 'codex', 'fleetCommand', 'claimBase', 'drill', 'ship']) {
-    assert.equal(contextUiAllowed(combat, action), false, action);
-  }
-  for (const action of ['pause', 'help', 'missionLog', 'cargo', 'comms', 'find']) {
-    assert.equal(contextUiAllowed(combat, action), true, action);
+  for (const current of [combat, lowHullState()]) {
+    assert.equal(inputContextFor(current), 'combat');
+    for (const action of ['map', 'localmap', 'starmap', 'pause', 'help', 'missionLog', 'cargo', 'comms', 'find']) {
+      assert.equal(contextUiAllowed(current, action), true, action);
+    }
+    for (const action of ['techTree', 'codex', 'fleetCommand', 'claimBase', 'drill', 'ship']) {
+      assert.equal(contextUiAllowed(current, action), false, action);
+    }
   }
   // Out of the fight every instrument stays reachable; station and map screens keep their verbs.
   for (const st of [state(), state({ mode: 'station' }), state({ ui: { mapOpen: true } })]) {
@@ -179,7 +182,7 @@ test('X5 P0: labels stay live in every context — the sheet never blanks a real
   ];
   for (const st of contexts) {
     const ctx = inputContextFor(st);
-    // G18-02: the taught seats keep a live label in every context — movement, Space boost
+    // G18-02: the taught seats keep a live label in every context — movement, Shift boost
     // and the held wheel key. Overflow verbs ship unbound and read as blank here BY DESIGN
     // (the sheet names the wheel for them, see keyLabel's wheel fallback).
     for (const action of ['forward', 'reverse', 'boost', 'contextWheel']) {
@@ -192,7 +195,7 @@ test('X5 P0: labels stay live in every context — the sheet never blanks a real
     }
     // Fire is the left mouse button and the Line the right: no KeyboardEvent code, never blank.
     assert.equal(resolveActionLabel(st, 'fire'), 'LMB');
-    assert.equal(resolveActionLabel(st, 'tether'), 'RMB');
+    assert.equal(resolveActionLabel(st, 'tether'), 'F');
   }
 });
 

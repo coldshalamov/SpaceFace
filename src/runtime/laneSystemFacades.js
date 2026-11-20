@@ -24,6 +24,7 @@ function cloneReadValue(value) {
 // production/materialization methods are not part of that surface; volatile assays stay unknown.
 export function createLaneSystemFacade(ctx) {
   let nextSaveToken = 0;
+  let lastWorkbench = null;
   function durableSaveCommand(op, args = {}) {
     const bus = ctx?.bus;
     if (typeof bus?.on !== 'function') return Promise.resolve({ ok: false, reason: 'save-events-unavailable' });
@@ -261,6 +262,7 @@ export function createLaneSystemFacade(ctx) {
           buildModule: (bodyId, modId) => call('buildModule', { bodyId, modId }),
           specialize: (bodyId, specId) => call('specialize', { bodyId, specId }),
           deliverToClaim: (bodyId, goodId, qty) => call('deliverToClaim', { bodyId, goodId, qty }),
+          requestRelayDispatch: (bodyId, expectedConvoySeq) => call('requestRelayDispatch', { bodyId, expectedConvoySeq }),
           collectFromClaim: (bodyId) => call('collectFromClaim', { bodyId }),
           teleportFrom: (bodyId) => call('teleportFrom', { bodyId }),
         };
@@ -287,6 +289,7 @@ export function createLaneSystemFacade(ctx) {
             return { ok: false, reason: ack && (ack.reason || ack.error) || 'asteroid-sites-rpc-failed' };
           }
           const native = ack.result;
+          if (method !== 'tickWorkbench' && native?.ok !== false) lastWorkbench = null;
           // The worker handler returns { ok, result: nativeValue }; unwrap exactly that envelope
           // and leave the native denial/result untouched.  A native boolean (tickWorkbench) stays
           // a boolean so callers can distinguish a real answer from an absent response.
@@ -303,7 +306,19 @@ export function createLaneSystemFacade(ctx) {
         // that run over isolated clones.
         const siteForAsteroid = (asteroidId) => findAsteroidSiteFromState(st, asteroidId);
         const getSite = (siteId) => getAsteroidSiteFromState(st, siteId);
-        const projection = (siteId) => projectAsteroidSiteFromState(st, siteId);
+        const projection = (siteId) => {
+          const row = projectAsteroidSiteFromState(st, siteId);
+          const drill = st.drill;
+          if (row && drill?.active && lastWorkbench?.siteId === siteId
+              && lastWorkbench.requestId === drill.requestId && lastWorkbench.asteroidId === drill.asteroidId
+              && lastWorkbench.productionStep === row.site.productionStep) {
+            for (const m of row.machines) {
+              const latest = lastWorkbench.byMachine[m.id];
+              if (latest) m.status = cloneReadValue(latest);
+            }
+          }
+          return row;
+        };
         const canInstall = (request) => canInstallAsteroidSiteFromState(st, request || {});
         return {
           name: 'asteroidSites',
@@ -354,10 +369,64 @@ export function createLaneSystemFacade(ctx) {
           setExportFlag: (siteId, goodId, exported) => call('setExportFlag', [siteId, goodId, exported]),
           setPodTarget: (siteId, target) => call('setPodTarget', [siteId, target]),
           setPodDestination: (siteId, stationId) => call('setPodDestination', [siteId, stationId]),
+          setReserveFloor: (siteId, goodId, minUnits) => call('setReserveFloor', [siteId, goodId, minUnits]),
+          setSiteLink: (fromSiteId, toSiteId, kind, goodId) => call('setSiteLink', [fromSiteId, toSiteId, kind, goodId]),
+          removeSiteLink: (fromSiteId, toSiteId, kind) => call('removeSiteLink', [fromSiteId, toSiteId, kind]),
+          commissionFieldAsteroid: (asteroidId, template) => call('commissionFieldAsteroid', [asteroidId, template]),
+          deploySiteDefense: (siteOrAsteroidId, kind) => call('deploySiteDefense', [siteOrAsteroidId, kind]),
+          setSiteDirective: (siteOrAsteroidId, directiveId) => call('setSiteDirective', [siteOrAsteroidId, directiveId]),
+          commissionSiteDrone: (siteOrAsteroidId, droneKind) => call('commissionSiteDrone', [siteOrAsteroidId, droneKind]),
+          applySiteBlueprint: (siteOrAsteroidId, blueprintId, col, row, rot) => call(
+            'applySiteBlueprint', [siteOrAsteroidId, blueprintId, col, row, rot],
+          ),
+          autoLinkSectorCluster: (sectorId) => call('autoLinkSectorCluster', [sectorId]),
+          unlockBeltDoctrine: (doctrineId) => call('unlockBeltDoctrine', [doctrineId]),
+          acceptBeltCharter: (charterId) => call('acceptBeltCharter', [charterId]),
+          tapOrScanSiteAnomalies: (siteOrAsteroidId, action, anomalyId) => call(
+            'tapOrScanSiteAnomalies', [siteOrAsteroidId, action, anomalyId],
+          ),
+          sectorNetworkProjection: (sectorId) => {
+            const byId = st && st.sites && st.sites.byId;
+            if (!byId) {
+              return {
+                sectorId: sectorId || (st?.world?.currentSectorId ?? null),
+                sites: [],
+                links: [],
+                empire: null,
+                empireModifiers: null,
+                weather: null,
+                supplyMatrix: { commodities: [], sites: [], siteCount: 0, activeLinkCount: 0, totalPowerGenMw: 0, totalPowerDrawMw: 0, netPowerMw: 0, totalDefenseRating: 0, totalDrones: 0 },
+                totals: { siteCount: 0, totalPowerGenMw: 0, totalPowerDrawMw: 0, totalStoredU: 0, activeLinkCount: 0, defenseCount: 0, droneCount: 0, totalDefenseRating: 0, roleCounts: {} },
+              };
+            }
+            const clonedById = {};
+            for (const [id, site] of Object.entries(byId)) {
+              if (site && typeof site === 'object') clonedById[id] = cloneReadValue(site);
+            }
+            const clonedEmpire = st.sites.empire ? cloneReadValue(st.sites.empire) : null;
+            const isolated = { ...(st || {}), sites: { ...(st.sites || {}), byId: clonedById, empire: clonedEmpire } };
+            const view = Object.create(asteroidSiteReadMethods);
+            view.state = isolated;
+            view._rt = new Map();
+            view._surveyByAsteroid = new Map();
+            view._accessCache = null;
+            view.siteForAsteroid = (asteroidId) => findAsteroidSiteFromState(view.state, asteroidId);
+            return view.sectorNetworkProjection(sectorId);
+          },
           transferGoods: (siteId, machineId, goodId, qty, dir) => call(
             'transferGoods', [siteId, machineId, goodId, qty, dir],
           ),
-          tickWorkbench: (dt, siteId) => call('tickWorkbench', [dt, siteId]),
+          tickWorkbench: (dt, siteId) => {
+            const { requestId, asteroidId } = st.drill || {};
+            return call('tickWorkbench', [dt, siteId, true]).then((result) => {
+              if (!result?.byMachine) return result;
+              const drill = st.drill;
+              if (drill?.active && drill.requestId === requestId && drill.asteroidId === asteroidId) {
+                lastWorkbench = { siteId, requestId, asteroidId, ...result };
+              }
+              return true;
+            });
+          },
         };
       }
       case 'careerLadders': {

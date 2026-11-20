@@ -372,9 +372,69 @@ test('retail Three keeps clip-depth ordering for meshes, instance bounds and spr
   renderer.dispose();
 });
 
+test('retail Three reuses reflected programs across material disposal with bounded retention', () => {
+  const canvas = createEventCanvas();
+  const context = createDeterministicWebGl2Context(canvas);
+  let links = 0;
+  let reflections = 0;
+  let deletions = 0;
+  let linkFails = false;
+  const getProgramParameter = context.getProgramParameter;
+  context.getProgramParameter = (program, parameter) => {
+    if (parameter === context.ACTIVE_UNIFORMS) reflections++;
+    if (linkFails && parameter === context.ACTIVE_UNIFORMS) return 0;
+    if (linkFails && parameter === context.LINK_STATUS) return false;
+    return getProgramParameter(program, parameter);
+  };
+  context.linkProgram = () => { links++; };
+  context.deleteProgram = () => { deletions++; };
+  const renderer = new RetailTHREE.WebGLRenderer({ canvas, context, idleProgramLimit: 1 });
+  const scene = new RetailTHREE.Scene();
+  const camera = new RetailTHREE.PerspectiveCamera(50, 1, 0.1, 100);
+  camera.position.z = 5;
+  const geometry = new RetailTHREE.BoxGeometry();
+  const draw = (material) => {
+    const mesh = new RetailTHREE.Mesh(geometry, material);
+    scene.add(mesh);
+    renderer.render(scene, camera);
+    scene.remove(mesh);
+    const [active] = renderer.info.programs;
+    material.dispose();
+    assert.equal(renderer.info.programs.length, 0, 'the idle shader does not enter readiness scans');
+    return active;
+  };
+
+  const first = draw(new RetailTHREE.MeshBasicMaterial());
+  const reused = draw(new RetailTHREE.MeshBasicMaterial());
+  assert.equal(reused, first);
+  assert.deepEqual([links, reflections, deletions], [1, 1, 0]);
+  draw(new RetailTHREE.MeshLambertMaterial());
+  assert.deepEqual([links, reflections, deletions], [2, 2, 1], 'the oldest idle program is evicted');
+  assert.notEqual(draw(new RetailTHREE.MeshBasicMaterial()), first);
+  assert.deepEqual([links, reflections, deletions], [3, 3, 2]);
+
+  renderer.debug.checkShaderErrors = false;
+  linkFails = true;
+  draw(new RetailTHREE.MeshNormalMaterial());
+  assert.deepEqual([links, reflections, deletions], [4, 4, 3], 'discard a failed link immediately');
+  linkFails = false;
+  draw(new RetailTHREE.MeshNormalMaterial());
+  assert.deepEqual([links, reflections, deletions], [5, 5, 4], 'the next material can link successfully');
+  geometry.dispose();
+  renderer.dispose();
+  assert.equal(deletions, 5, 'renderer disposal releases the last idle program');
+});
+
 test('retail exact-target admission filters color and shadow draws for a single render', () => {
   const canvas = createEventCanvas();
-  const renderer = new RetailTHREE.WebGLRenderer({ canvas, context: createDeterministicWebGl2Context(canvas) });
+  const context = createDeterministicWebGl2Context(canvas);
+  const renderer = new RetailTHREE.WebGLRenderer({ canvas, context });
+  const target = new RetailTHREE.WebGLRenderTarget(128, 64);
+  target.scissor.set(4, 3, 100, 56);
+  target.scissorTest = true;
+  let scissor;
+  context.scissor = (x, y, width, height) => { scissor = [x, y, width, height]; };
+  renderer.setRenderTarget(target);
   const scene = new RetailTHREE.Scene();
   scene.matrixWorldAutoUpdate = false;
   const camera = new RetailTHREE.PerspectiveCamera(50, 1, 0.1, 100);
@@ -392,10 +452,22 @@ test('retail exact-target admission filters color and shadow draws for a single 
   const parent = new RetailTHREE.Mesh(geometry, material);
   const excluded = new RetailTHREE.Mesh(excludedGeometry, material);
   const excludedChild = new RetailTHREE.Mesh(excludedGeometry, material);
+  const unrelated = new RetailTHREE.Group();
+  unrelated.add(new RetailTHREE.Group());
+  const lodHolder = new RetailTHREE.Group();
+  const lod = new RetailTHREE.LOD();
+  let lodUpdates = 0;
+  lod.update = () => lodUpdates++;
+  lodHolder.add(lod);
   excluded.add(excludedChild);
   parent.add(selected);
-  scene.add(parent, excluded, lightHolder);
+  scene.add(parent, excluded, lightHolder, unrelated, lodHolder);
   scene.updateMatrixWorld(true);
+  let unrelatedVisits = 0;
+  const unrelatedChildren = unrelated.children;
+  Object.defineProperty(unrelated, 'children', {
+    get() { unrelatedVisits++; return unrelatedChildren; },
+  });
   renderer.shadowMap.enabled = true;
   const color = [];
   const depth = [];
@@ -410,7 +482,11 @@ test('retail exact-target admission filters color and shadow draws for a single 
   selected.onBeforeRender = () => {
     color.push('selected');
     // The subset belongs to the exact touch. No visibility change on unrelated objects.
-    if (renderer.__sfExactTargetTouch === true) assert.equal(excluded.visible, true);
+    if (renderer.__sfExactTargetTouch === true) {
+      assert.equal(excluded.visible, true);
+      assert.deepEqual(scissor, [46, 23, 16, 16]);
+      assert.equal(renderer.getRenderTarget(), target);
+    }
   };
   let calls = 0;
   const render = renderer.render.bind(renderer);
@@ -419,12 +495,33 @@ test('retail exact-target admission filters color and shadow draws for a single 
     return render(activeScene, activeCamera);
   };
   assert.equal(renderer.canFilterExactTargetDrawables(scene, camera), true);
-  assert.equal(touchSubjectOnExactTarget(renderer, null, selected, camera, scene).skipped, false);
+  assert.equal(touchSubjectOnExactTarget(renderer, target, selected, camera, scene).skipped, false);
   assert.equal(calls, 1, 'the ordinary renderer wrapper handles the exact touch');
   assert.deepEqual([...color].sort(), ['parent', 'selected']);
   assert.deepEqual([...depth].sort(), ['parent', 'selected'], 'visible lights outside the selected root still light the touch');
+  assert.equal(lodUpdates, 1, 'unselected LOD branches still update');
+  assert.equal(unrelatedVisits, 0, 'exact touches skip branches without selected drawables, lights, or LOD');
   assert.equal(excludedUploads, 0);
   assert.equal(excluded.visible, true);
+  assert.deepEqual(scissor, [4, 3, 100, 56], 'the presented target keeps its original scissor');
+
+  unrelated.attach(lightHolder);
+  unrelatedVisits = 0;
+  color.length = 0;
+  depth.length = 0;
+  touchSubjectOnExactTarget(renderer, target, selected, camera, scene);
+  assert.ok(unrelatedVisits > 0, 'an attached light makes its new branch relevant');
+  assert.deepEqual([...depth].sort(), ['parent', 'selected']);
+  scene.add(lightHolder);
+  unrelatedVisits = 0;
+  assert.ok(renderer.compile(selected, camera, scene).has(material));
+  assert.equal(unrelatedVisits, 0, 'compile skips branches after their lights move away');
+  const compiledPrograms = renderer.info.programs.length;
+  scene.traverseVisible = scene.traverseVisible.bind(scene);
+  renderer.compile(selected, camera, scene);
+  assert.ok(unrelatedVisits > 0, 'the ordinary compile traversal still visits all visible branches');
+  assert.equal(renderer.info.programs.length, compiledPrograms, 'both compile paths use the same lighting variant');
+  delete scene.traverseVisible;
 
   color.length = 0;
   depth.length = 0;
@@ -453,6 +550,7 @@ test('retail exact-target admission filters color and shadow draws for a single 
   assert.equal(excluded.visible, true);
 
   light.shadow.dispose();
+  target.dispose();
   geometry.dispose();
   excludedGeometry.dispose();
   material.dispose();

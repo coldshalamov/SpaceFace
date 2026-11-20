@@ -11,6 +11,7 @@ export { DIRT_HP, DIRT_HARDNESS, DRILL_GEOMETRY_RECOVERY_PER_S, EMPTY_TILE, dril
 import { addCargo, cargoUnitVolume } from './cargo.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { recordFieldExtraction, fieldMemoryReadout } from './fieldDepletion.js';
+import { asteroidHasDrillProgress } from '../world/resourceBodyRecords.js';
 
 function updateCableTrail(d, col, row) {
   if (!d.cableTrail) d.cableTrail = [];
@@ -166,7 +167,7 @@ function recordRubbleTile(data, col, row) {
 // Fallen ceiling material — soft fill the auger has to chew a second time. It is 'dirt' so the
 // extractor's silicate contact law applies unchanged; `rubble` marks it for the renderers.
 
-function writeVeinRemainder(data, col, row, yieldU, ore) {
+function writeVeinRemainder(data, col, row, yieldU, ore, hp = 0) {
   const d = ensureAsteroidDeepCore(data);
   if (!d) return;
   const idx = tileIndex(col, row);
@@ -178,7 +179,7 @@ function writeVeinRemainder(data, col, row, yieldU, ore) {
     next.push(rec);
   }
   const qty = Math.floor(Number(yieldU) || 0);
-  if (qty > 0) next.push({ idx, yieldU: qty, ore: ore || null });
+  if (qty > 0) next.push({ idx, yieldU: qty, ore: ore || null, hp: Math.max(0, hp) });
   d.drillVeinRemainders = next;
 }
 
@@ -195,6 +196,8 @@ export function applyVeinRemainders(field, remainders) {
     const tile = field[col] && field[col][row];
     if (!tile || tile.type !== 'vein') continue;
     tile.yieldU = yieldU;
+    // Preexisting remainder records were written after the cut finished.
+    tile.hp = Number.isFinite(rec.hp) ? Math.min(tile.maxHp, Math.max(0, rec.hp)) : 0;
     if (rec.ore) {
       tile.ore = rec.ore;
       tile.tierReq = drillTierReqForOre(rec.ore);
@@ -202,11 +205,48 @@ export function applyVeinRemainders(field, remainders) {
   }
 }
 
+function veinUnits(tile) {
+  return Math.max(0, Math.floor(Number(tile.yieldU) || 0));
+}
+
+function offeredVeinUnits(units, budget) {
+  return Math.min(units, Number.isFinite(budget) ? Math.max(0, Math.floor(budget)) : Infinity);
+}
+
+function holdFit(state, ore) {
+  const cargo = state.player?.cargo;
+  const volume = cargoUnitVolume(state, ore);
+  if (volume === 0) return Infinity;
+  const free = cargo?.capVolume - cargo?.usedVolume;
+  return Number.isFinite(free) ? Math.max(0, Math.floor(free / volume)) : 0;
+}
+
+function debitDrillBudget(state, session, data, units) {
+  if (!Number.isFinite(session.rockBudget) || units <= 0) return;
+  session.rockBudget = Math.max(0, session.rockBudget - units);
+  const capacity = session.rockBudgetMax;
+  if (!data || !(capacity > 0)) return;
+  data.drillDepletion = clamp01((Number(data.drillDepletion) || 0) + units / capacity);
+  data.lastDrillT = Number(state.simTime) || 0;
+}
+
+function refuseVeinLoad(host, d, ore, qty, col, row) {
+  d.remainderHold = DRILL_CARGO_FULL_RETRY_S;
+  d.remainderAt = { col, row };
+  host.bus.emit('drill:cargoFull', { commodityId: ore, qty, pos: { col, row } });
+  host.bus.emit('drill:warn', {
+    text: 'Hold has no room for this ore.',
+    reason: 'cargoFull',
+    commodityId: ore,
+    pos: { col, row },
+  });
+}
+
 /**
  * Pay a broken vein through the cargo writer before the hole is committed.
  * Returns 'preserve' when unaccepted ore is still on this cell, otherwise 'clear'.
  */
-function settleVeinYield(host, d, rockEnt, target, col, row, ore, yieldU) {
+function settleVeinYield(host, d, rockEnt, target, col, row, ore) {
   const budget = Number.isFinite(d.rockBudget) ? d.rockBudget : Infinity;
   if (budget <= 0) {
     host.bus.emit('drill:rockDepleted', {
@@ -228,19 +268,14 @@ function settleVeinYield(host, d, rockEnt, target, col, row, ore, yieldU) {
 
   // Pay only whole units this visit can cover. A refused bite keeps the rest of the vein,
   // including ore above this visit's budget — that tail is still in the rock, not destroyed.
-  const wholeYield = Math.max(0, Math.floor(Number(yieldU) || 0));
-  const avail = Math.min(wholeYield, Math.floor(budget));
+  const wholeYield = veinUnits(target);
+  const avail = offeredVeinUnits(wholeYield, budget);
   const added = avail > 0 ? addCargo(host.state, ore, avail) : 0;
   const rejected = Math.max(0, avail - added);
   const remain = Math.max(0, wholeYield - added);
   if (added > 0) {
     d.yieldLog[ore] = (d.yieldLog[ore] || 0) + added;
-    if (Number.isFinite(d.rockBudget)) d.rockBudget = Math.max(0, budget - added);
-    const entData = rockEnt && rockEnt.data;
-    if (entData && Number(d.rockBudgetMax) > 0 && Number.isFinite(d.rockBudget)) {
-      entData.drillDepletion = clamp01((Number(entData.drillDepletion) || 0) + added / Number(d.rockBudgetMax));
-      entData.lastDrillT = Number(host.state.simTime) || 0;
-    }
+    debitDrillBudget(host.state, d, rockEnt?.data, added);
     host.bus.emit('drill:yield', { commodityId: ore, qty: added, pos: { col, row } });
     if (Number.isFinite(d.rockBudget) && d.rockBudget <= 0 && Number(d.rockBudgetMax) > 0) {
       host.bus.emit('drill:rockDepleted', {
@@ -251,28 +286,14 @@ function settleVeinYield(host, d, rockEnt, target, col, row, ore, yieldU) {
     }
   }
   if (rejected > 0) {
-    target.type = 'vein';
-    target.ore = ore;
     target.yieldU = remain;
-    const restoredHp = Math.max(1, Number(target.maxHp) || 1);
-    target.hp = restoredHp;
-    target.maxHp = restoredHp;
+    target.hp = 0;
     if (rockEnt && rockEnt.data) writeVeinRemainder(rockEnt.data, col, row, remain, ore);
-    d.remainderHold = DRILL_CARGO_FULL_RETRY_S;
-    d.remainderAt = { col, row };
     d.moveCooldown = DRILL_CARGO_FULL_RETRY_S;
-    d.avatar.isDrilling = true;
+    d.avatar.isDrilling = false;
     d.avatar.drillTarget = { col, row };
-    d.avatar.drillBlocked = false;
-    host.bus.emit('drill:cargoFull', {
-      commodityId: ore, qty: remain, pos: { col, row },
-    });
-    host.bus.emit('drill:warn', {
-      text: 'Cargo holds cannot take this ore — free volume is too tight or holds are full.',
-      reason: 'cargoFull',
-      commodityId: ore,
-      pos: { col, row },
-    });
+    d.avatar.drillBlocked = true;
+    refuseVeinLoad(host, d, ore, remain, col, row);
     return 'preserve';
   }
   if (avail <= 0) {
@@ -296,17 +317,12 @@ function settleVeinYield(host, d, rockEnt, target, col, row, ore, yieldU) {
 function settleBlastYield(host, d, rockEnt, col, row, ore, yieldU) {
   const budget = Number.isFinite(d.rockBudget) ? d.rockBudget : Infinity;
   const wholeYield = Math.max(0, Math.floor(Number(yieldU) || 0));
-  const avail = Math.min(wholeYield, Math.floor(budget));
+  const avail = offeredVeinUnits(wholeYield, budget);
   if (rockEnt && rockEnt.data) writeVeinRemainder(rockEnt.data, col, row, 0);
   if (avail <= 0) return 0;
   const offer = Math.max(1, Math.floor(avail * CHARGE_YIELD_FRACTION));
   const added = offer > 0 ? addCargo(host.state, ore, offer) : 0;
-  if (Number.isFinite(d.rockBudget)) d.rockBudget = Math.max(0, budget - avail);
-  const entData = rockEnt && rockEnt.data;
-  if (entData && Number(d.rockBudgetMax) > 0 && Number.isFinite(d.rockBudget)) {
-    entData.drillDepletion = clamp01((Number(entData.drillDepletion) || 0) + avail / Number(d.rockBudgetMax));
-    entData.lastDrillT = Number(host.state.simTime) || 0;
-  }
+  debitDrillBudget(host.state, d, rockEnt?.data, avail);
   if (added > 0) {
     d.yieldLog[ore] = (d.yieldLog[ore] || 0) + added;
     host.bus.emit('drill:yield', { commodityId: ore, qty: added, pos: { col, row }, via: 'blast' });
@@ -371,13 +387,13 @@ export function computeDeepCoreBudget({
     depletion = clamp01(depletion - (now - lastT) * DRILL_ROCK_RECOVERY_PER_S);
   }
 
-  const remaining = Math.max(0, Math.floor(max * (1 - depletion) + 1e-9));
+  const remainingCapacity = max * (1 - depletion);
+  const remaining = Math.max(0, Math.floor(remainingCapacity + 1e-9));
   const richness = Number.isFinite(richnessMult) && richnessMult > 0 ? richnessMult : 1;
-  // Soft-scale by field richness, but never floor a rock that still has remaining capacity to 0.
-  // Bug this kills: floor(smallMax * richness≈0.45) === 0 → every real vein break paid nothing.
-  let budget = Math.floor(remaining * richness + 1e-9);
-  if (remaining > 0) budget = Math.max(1, budget);
-  else budget = 0;
+  // Richness reduces the available stock up front. Subtract paid ore at face value,
+  // or re-opening a thin rock would refund a share of every unit taken.
+  const accessible = Math.min(max, Math.max(1, Math.floor(max * richness + 1e-9)));
+  const budget = Math.max(0, Math.floor(accessible - max * depletion + 1e-9));
   return { budget, max, remaining, richness, depletion };
 }
 
@@ -429,13 +445,21 @@ export function extractionTelemetry(tile, baseDps = DRILL_DPS) {
   const effectiveDps = Math.max(0, Number(baseDps) || 0) / hardness;
   const maxHp = Math.max(0.001, Number(tile.maxHp) || Number(tile.hp) || 1);
   const hp = Math.max(0, Number(tile.hp) || 0);
+  const ice = tile.ore === 'cmdty_gem_diamond' || tile.ore === 'cmdty_ice_water';
   return {
     hardness,
     progress: Math.max(0, Math.min(1, 1 - hp / maxHp)),
     effectiveDps,
     remainingS: effectiveDps > 0 ? hp / effectiveDps : Infinity,
     energyPerS: 12 + hardness * 12,
-    heatPerS: 17 + hardness * 7,
+    heatPerS: (17 + hardness * 7) * (ice ? 0.55 : 1),
+  };
+}
+
+function drillWorkWindow(d, telemetry) {
+  return {
+    energyS: telemetry.energyPerS > 0 ? Math.max(0, d.drillEnergy) / telemetry.energyPerS : Infinity,
+    heatS: telemetry.heatPerS > 0 ? Math.max(0, 100 - d.drillTemp) / telemetry.heatPerS : Infinity,
   };
 }
 
@@ -484,6 +508,11 @@ const COMMITMENT_FACE = Object.freeze({
   up: Object.freeze([0, -1]),
   down: Object.freeze([0, 1]),
 });
+
+export function drillFacingCell(avatar) {
+  const [dx, dy] = COMMITMENT_FACE[avatar.faceDir] || COMMITMENT_FACE.down;
+  return { col: Math.trunc(avatar.col) + dx, row: Math.trunc(avatar.row) + dy };
+}
 
 function commitmentBlank() {
   return { type: null, ore: null, yieldU: null, tierReq: null, risk: null };
@@ -665,9 +694,7 @@ export function deriveDrillCommitment(session, opts = {}) {
   const near = dilateCleared(field, cols, rows);
   const ac = Math.trunc(avatar.col);
   const ar = Math.trunc(avatar.row);
-  const face = COMMITMENT_FACE[avatar.faceDir] || COMMITMENT_FACE.down;
-  const fc = ac + face[0];
-  const fr = ar + face[1];
+  const { col: fc, row: fr } = drillFacingCell(avatar);
   const evidence = (fc < 0 || fr < 0 || fc >= cols || fr >= rows)
     ? { kind: 'boundary', ...commitmentBlank() }
     : drillCellEvidence(field, fc, fr, near);
@@ -861,9 +888,11 @@ export const drill = {
       data.drillCleared = recoverClearedGeometry(data.drillCleared, awayS);
     }
 
-    // Sites freeze their layout: data.boreSeed (stamped at core install) survives the asteroid
-    // entity re-rolling its id across sector visits, so the same interior comes back every time.
-    const field = generateDrillField((data && Number.isFinite(data.boreSeed)) ? data.boreSeed : asteroidId);
+    // The bore seed follows the rock record across rematerialization, including before staking.
+    const seed = Number.isFinite(data?.boreSeed) ? data.boreSeed : asteroidId;
+    const boreSeed = (seed >>> 0) || 1;
+    if (data) data.boreSeed = boreSeed;
+    const field = generateDrillField(boreSeed);
     // Carve an entry shaft at the surface center so the avatar always has a legal start cell.
     const startCol = Math.floor(COLS / 2);
     field[startCol][0] = EMPTY_TILE();
@@ -872,8 +901,6 @@ export const drill = {
     // Resume prior bore: empty every tile this rock still remembers as dug after geometry recovery.
     const cleared = applyClearedTiles(field, data && data.drillCleared);
     if (data) data.drillCleared = cleared;
-    // A partial bite is not a cleared hole. The seed would otherwise put the original yield back.
-    applyVeinRemainders(field, data && data.drillVeinRemainders);
     // Layered flags: vented seams and blast scars live on cleared holes, and rubble lands after
     // them so a stale cleared entry can never erase a collapse. Seismic faults go last so a shot
     // that softened standing rubble stays softened — the live order was fracture-then-bury too.
@@ -881,6 +908,8 @@ export const drill = {
     applyFlaggedTiles(field, data && data.drillScars, (t) => { if (t.type === 'empty') t.scar = true; });
     applyRubbleTiles(field, data && data.drillRubble);
     applyFlaggedTiles(field, data && data.drillFaults, (t) => { if (t.type !== 'empty') fractureTile(t); });
+    // Apply the paid/rejected remainder after the rock's saved geometry and faults.
+    applyVeinRemainders(field, data && data.drillVeinRemainders);
 
     const rock = this._computeRockBudget(asteroidId);
 
@@ -1003,8 +1032,7 @@ export const drill = {
     const data = ensureAsteroidDeepCore(ent && ent.data);
     if (!data) return;
 
-    // Session budget is already richness-scaled. Storing 1 - budget/max would scale it again
-    // on the next begin. Depletion moves only when cargo accepts units, inside the bite.
+    // Each cut records depletion when it settles. Here we only close the away-time clock.
     if (Number.isFinite(d.rockBudget) && Number(d.rockBudgetMax) > 0) {
       data.drillYieldMax = Math.max(1, Math.floor(Number(d.rockBudgetMax) || 0));
       data.lastDrillT = Number(this.state.simTime) || 0;
@@ -1026,6 +1054,9 @@ export const drill = {
         }
       }
       data.drillCleared = [...merged].sort((a, b) => a - b);
+    }
+    if (!data.siteId && asteroidHasDrillProgress(data)) {
+      this.registry?.get?.('world')?.persistResourceBody?.(ent);
     }
   },
 
@@ -1055,6 +1086,7 @@ export const drill = {
   serialize() {
     const d = this.state.drill;
     if (d && d.charge) this._detonateCharge(d);
+    if (d) this._persistSessionProgress(d);
     return null;
   },
 
@@ -1197,7 +1229,7 @@ export const drill = {
   // credit moves. Callers pass the session budget, or a shadow of it already drained by the
   // veins the same cut would eat first.
   _blastYieldQuote(d, yieldU, budget = Number.isFinite(d.rockBudget) ? d.rockBudget : Infinity) {
-    const avail = Math.min(Math.max(0, Math.floor(Number(yieldU) || 0)), Math.floor(budget));
+    const avail = offeredVeinUnits(Math.max(0, Math.floor(Number(yieldU) || 0)), budget);
     return avail > 0 ? Math.max(1, Math.floor(avail * CHARGE_YIELD_FRACTION)) : 0;
   },
 
@@ -1762,11 +1794,15 @@ export const drill = {
 
     const nc = d.avatar.col + dx;
     const nr = d.avatar.row + dy;
-
-    if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) {
+    // A worker may receive several steps for the same cell before the new seat
+    // reaches the controller's mirror. Those steps cannot start cutting the next face.
+    const intended = opts?.target;
+    if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS
+      || (intended && (intended.col !== nc || intended.row !== nr))) {
       d.boreHold = 0;
       d.avatar.isDrilling = false;
       d.avatar.drillTarget = null;
+      d.avatar.drillBlocked = false;
       recoverRig(d, dt);
       return;
     }
@@ -1782,6 +1818,8 @@ export const drill = {
     const cooldownVal = impulse ? MOVE_HOLD_DELAY_S : cruiseVal;
 
     const target = d.field[nc][nr];
+    const guardGas = target.type === 'gas' && opts?.cruise;
+    if (!guardGas) d.gasGuard = null;
     // Installed site machines occupy hollow cells (asteroidSites.js stamps tile.structure on
     // drill:start). They block the rover and the bore alike — removal goes through the build
     // console, never the drill head.
@@ -1813,6 +1851,24 @@ export const drill = {
     } else {
       // Every cardinal face uses the same bore contract. The rover must be able to route
       // around deposits and cut back upward when making space for contact-fed machinery.
+      if (guardGas) {
+        const alreadyBlocked = d.gasGuard?.col === nc && d.gasGuard?.row === nr;
+        d.gasGuard = { col: nc, row: nr };
+        d.boreHold = 0;
+        d.avatar.isDrilling = false;
+        d.avatar.drillTarget = { col: nc, row: nr };
+        d.avatar.drillBlocked = true;
+        recoverRig(d, dt);
+        if (!alreadyBlocked) {
+          this.bus.emit('drill:warn', {
+            text: 'Gas ahead. Press again to cut the pocket.',
+            reason: 'gasAhead',
+            pos: { col: nc, row: nr },
+          });
+        }
+        return;
+      }
+
       if (d.overheated || d.energyDepleted) {
         d.boreHold = 0;
         d.avatar.isDrilling = false;
@@ -1859,21 +1915,20 @@ export const drill = {
         return;
       }
 
-      // Unaccepted ore is still in this cell. Do not grind it down again until the retry hold ends.
-      if (d.remainderHold > 0 && d.remainderAt && d.remainderAt.col === nc && d.remainderAt.row === nr) {
+      // Check the actual ore footprint before putting work into a vein. The retry
+      // timer throttles the callout only. Making space immediately permits the cut.
+      if (target.type === 'vein' && target.ore
+        && offeredVeinUnits(veinUnits(target), d.rockBudget) > 0 && holdFit(this.state, target.ore) === 0) {
         d.boreHold = 0;
-        d.avatar.isDrilling = true;
+        d.avatar.isDrilling = false;
         d.avatar.drillTarget = { col: nc, row: nr };
-        d.avatar.drillBlocked = false;
+        d.avatar.drillBlocked = true;
         recoverRig(d, dt);
-        if (d.moveCooldown <= 0) {
-          this.bus.emit('drill:warn', {
-            text: 'Cargo holds cannot take this ore — free volume is too tight or holds are full.',
-            reason: 'cargoFull',
-            commodityId: target.ore || null,
-            pos: { col: nc, row: nr },
-          });
-          d.moveCooldown = DRILL_CARGO_FULL_RETRY_S;
+        if (!(d.remainderHold > 0) || d.remainderAt?.col !== nc || d.remainderAt?.row !== nr) {
+          const rockEnt = drillSessionTarget(this.state, d);
+          const units = veinUnits(target);
+          if (rockEnt?.data) writeVeinRemainder(rockEnt.data, nc, nr, units, target.ore, target.hp);
+          refuseVeinLoad(this, d, target.ore, units, nc, nr);
         }
         return;
       }
@@ -1898,24 +1953,25 @@ export const drill = {
       if (impulse && d.moveCooldown <= 0) {
         biteDt = BORE_BITE_S;
         d.moveCooldown = cruiseVal;
-        d.boreDebt = Math.max(0, BORE_BITE_S - dt);
-        d.boreBites++;
       }
 
       const telemetry = extractionTelemetry(target, this.getDrillDPS());
-      const energyWindow = telemetry.energyPerS > 0 ? d.drillEnergy / telemetry.energyPerS : dt;
-      const heatWindow = telemetry.heatPerS > 0 ? (100 - d.drillTemp) / telemetry.heatPerS : dt;
+      const { energyS, heatS } = drillWorkWindow(d, telemetry);
       // Held grind is suppressed for exactly as long as the last bite already covered.
       const liveDt = biteDt > 0 ? 0 : Math.max(0, dt - paidAhead);
-      const workDt = Math.max(0, Math.min(liveDt + biteDt, energyWindow, heatWindow));
-      target.hp -= telemetry.effectiveDps * workDt;
-      d.drillEnergy = Math.max(0, d.drillEnergy - telemetry.energyPerS * workDt);
-      d.drillTemp = Math.min(100, d.drillTemp + telemetry.heatPerS * workDt);
+      const workDt = Math.min(liveDt + biteDt, telemetry.remainingS, energyS, heatS);
+      if (biteDt > 0 && workDt > 0) {
+        d.boreDebt = Math.max(0, workDt - dt);
+        d.boreBites++;
+      }
+      target.hp = workDt >= telemetry.remainingS ? 0 : target.hp - telemetry.effectiveDps * workDt;
+      d.drillEnergy = workDt >= energyS ? 0 : d.drillEnergy - telemetry.energyPerS * workDt;
+      d.drillTemp = workDt >= heatS ? 100 : d.drillTemp + telemetry.heatPerS * workDt;
       if (d.drillEnergy <= 0) d.energyDepleted = true;
       if (d.drillTemp >= 100) d.overheated = true;
 
       // Emit spark particles request
-      this.bus.emit('drill:spark', {
+      if (workDt > 0) this.bus.emit('drill:spark', {
         col: nc,
         row: nr,
         type: target.type,
@@ -1932,10 +1988,9 @@ export const drill = {
         const wasGas = target.type === 'gas';
         const wasType = target.type;
         const ore = target.ore;
-        const yieldU = target.yieldU || 0;
         const rockEnt = drillSessionTarget(this.state, d);
         // Cargo answers before the hole is committed. Unaccepted ore stays on this vein.
-        if (wasVein && ore && settleVeinYield(this, d, rockEnt, target, nc, nr, ore, yieldU) === 'preserve') {
+        if (wasVein && ore && settleVeinYield(this, d, rockEnt, target, nc, nr, ore) === 'preserve') {
           return;
         }
 
@@ -1998,7 +2053,19 @@ export const drill = {
     const d = this.state.drill;
     if (!d || col < 0 || col >= COLS || row < 0 || row >= ROWS) return null;
     const tile = d.field[col][row];
-    return { tile, ...extractionTelemetry(tile, this.getDrillDPS()) };
+    const telemetry = extractionTelemetry(tile, this.getDrillDPS());
+    const { energyS, heatS } = drillWorkWindow(d, telemetry);
+    const stop = d.overheated || (heatS <= energyS && heatS < telemetry.remainingS) ? 'heat'
+      : d.energyDepleted || energyS < telemetry.remainingS ? 'energy' : null;
+    let cut = null;
+    if (tile?.type === 'vein' && tile.ore) {
+      const units = veinUnits(tile);
+      const offer = offeredVeinUnits(units, d.rockBudget);
+      const bank = Math.min(offer, holdFit(this.state, tile.ore));
+      const kept = bank < offer ? units - bank : 0;
+      cut = { bank, kept, spent: units - bank - kept };
+    }
+    return { tile, ...telemetry, stop, cut };
   },
 
   /** Read-only next commitment. Presentation asks; the fixed step does not scan the field for it. */

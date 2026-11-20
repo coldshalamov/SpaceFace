@@ -1,6 +1,6 @@
 // RACE-01 — three circuits on terrain the game already has, and the five contracts that
 // require the stern camera. These are authored closed polylines in sector-local space.
-// They are not raceCourseForSector() chords: a 3900 WU lane at the 120 WU/s board record
+// They are not raceCourseForSector() chords: a 3900 u lane at the 120 u/s board record
 // is a straight the ships outrun, and the Helios rocks are not on that axis.
 //
 //   Helios  — through the starter belt and the outer metallic field
@@ -12,7 +12,7 @@
 
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 
-/** Reference pace for an authored circuit. Ships cruise ~440–1100 WU/s; the board's 120
+/** Reference pace for an authored circuit. Ships cruise ~440–1100 u/s; the board's 120
  *  WU/s figure is for the long lane chords and would make every lap a razor. */
 const AUTHORED_RECORD_WU_S = 520;
 const RAZOR_CAP_MULT = 1.15;
@@ -49,7 +49,7 @@ function freezeCourse(spec) {
   const gates = route.map(Object.freeze);
   const lengthWU = courseLengthWU(gates);
   // Sector circuits run hazard work, not flat pace: their board record uses the slower
-  // reference while the three originals keep the authored 520 WU/s standard untouched.
+  // reference while the three originals keep the authored 520 u/s standard untouched.
   const pace = Number.isFinite(spec.recordPaceWU) && spec.recordPaceWU > 0 ? spec.recordPaceWU : AUTHORED_RECORD_WU_S;
   const recordS = Math.max(12, Math.round(lengthWU / pace));
   return Object.freeze({
@@ -145,7 +145,7 @@ const VEIL_COURSE = freezeCourse({
 // Every way of life is a course: each of these laps is drawn so the sector's own
 // physics — its machinery cycle, its timed weather, its standing rocks — is the
 // racing problem. They are temporary time trials only (raceModes ['time-trial'],
-// temporaryOnly), revision 1, gate radius 90, and a 120 WU/s board record: the
+// temporaryOnly), revision 1, gate radius 90, and a 120 u/s board record: the
 // pilot pays in hazard work, not flat pace.
 const SECTOR_RECORD_WU_S = 120;
 
@@ -557,9 +557,9 @@ const CONTRACTS = Object.freeze([
     reward_cr: 1100,
     duration_s: 900,
     title: 'Burned canopy',
-    brief: 'Customs cooked the overhead picture on the tally. Approach within 70 WU of the line at 8 WU/s or less, align with the first leg and release any tether; fly the course, then dock at the destination station to file.',
-    summary: 'Stop and align at the start line (within 70 WU, at 8 WU/s or less, no tether), run the tally, then dock at the destination station. Chase view during countdown and course.',
-    gridLine: 'Approach within 70 WU, slow to 8 WU/s or less, align with the first leg and release any tether. Dock at the destination after the finish.',
+    brief: 'Customs cooked the overhead picture on the tally. Approach within 70 u of the line at 8 u/s or less, align with the first leg and release any tether; fly the course, then dock at the destination station to file.',
+    summary: 'Stop and align at the start line (within 70 u, at 8 u/s or less, no tether), run the tally, then dock at the destination station. Chase view during countdown and course.',
+    gridLine: 'Approach within 70 u, slow to 8 u/s or less, align with the first leg and release any tether. Dock at the destination after the finish.',
   }),
   Object.freeze({
     id: 'contract_veil_laps',

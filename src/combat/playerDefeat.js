@@ -127,7 +127,9 @@ export function physicalWeaponLabelFromDamage(packet = {}) {
     if (tag === 'bomb') return crushTick ? 'crush' : 'blast';
   }
   for (const tag of tags) {
-    if (tag === 'terrain_collision' || tag === 'collision_terrain') return 'arena impact';
+    if (tag === 'terrain_collision' || tag === 'collision_terrain' || tag === 'arena_slam') {
+      return 'arena impact';
+    }
   }
   for (const tag of tags) {
     if (tag === 'ship_collision' || tag === 'collision_craft' || tag === 'direct_contact') return 'hull ram';
@@ -603,10 +605,15 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
     : (physicalLabel || rawWeaponId);
   const dominantLayer = lethal.dominantLayer || lethal.result && lethal.result.dominantLayer || 'hull';
   const context = lethal.context || lethal.origin && lethal.origin.kind || 'combat';
-  const source = defeatSource(state, killerId, context);
+  const foundryRim = lethal.origin?.kind === 'arena_slam' && typeof lethal.origin.id === 'string'
+    && /^foundry_rim_\d+$/.test(lethal.origin.id);
+  // An earlier impulse can earn kill credit. The rim and its contact point explain the loss.
+  const impactActorId = foundryRim ? null : killerId;
+  const source = defeatSource(state, impactActorId, context);
+  if (foundryRim) source.label = 'Foundry rim';
   const subsystemId = lethal.subsystemId || lethal.result && lethal.result.subsystemId || null;
   const finalDamage = buildDamageReadout(state, {
-    attackerId: killerId,
+    attackerId: impactActorId,
     weaponId,
     dominantLayer,
     subsystemId,
@@ -625,6 +632,7 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
     faction: source.faction,
     weaponId,
     weapon: weaponId ? weaponLabel(weaponId) : null,
+    physicalLabel,
     dominantLayer,
     direction: finalDamage.direction,
     subsystemId,

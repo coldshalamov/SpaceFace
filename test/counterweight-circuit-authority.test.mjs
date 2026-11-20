@@ -76,6 +76,40 @@ test('gate uses the actual segment-plane crossing, not the segment midpoint',()=
  assert.equal(inside.phase,'complete','actual crossing is inside despite outside midpoint');
 });
 
+test('the Long Arm gate requires a crossing even across an exactly on-plane sample',()=>{
+ const def=defs.long_arm, {x,z}=def.gate.pos, dt=1/60;
+ const trial=(start)=>{
+   const attempt=swingToRelease().s;
+   let previousX=start, time=attempt.armedAt+2;
+   const fly=(nextX, releases=[])=>{
+     advanceAttempt(attempt,def,{simTime:time,dt,committed:true,lines:[],releases,bodies:{
+       load:{id:7,occupantGeneration:4,alive:true,hull:80,hullMax:80,pos:{x:nextX,z},
+         prevPos:{x:previousX,z},vel:{x:(nextX-previousX)/dt,z:0}},
+     }});
+     previousX=nextX;time+=dt;
+   };
+   fly(start,[{id:'line1',role:'load'}]);
+   assert.equal(attempt.legIndex,3,'the original player cut opened transit');
+   return {attempt,fly};
+ };
+
+ const bounce=trial(x+.3);
+ bounce.fly(x);
+ assert.equal(bounce.attempt.phase,'running','touching the gate plane has not crossed it');
+ bounce.fly(x+.3);
+ assert.equal(bounce.attempt.phase,'running','reversing from the plane onto the original side cannot score');
+
+ const downlane=trial(x-.3);
+ downlane.fly(x);
+ assert.equal(downlane.attempt.phase,'running');
+ downlane.fly(x+.3);
+ assert.equal(downlane.attempt.phase,'complete','passing through with one on-plane sample scores');
+
+ const stagedOnPlane=trial(x);
+ stagedOnPlane.fly(x+.3);
+ assert.equal(stagedOnPlane.attempt.phase,'running','departing the plane without a witnessed incoming side cannot score');
+});
+
 test('seating requires current occupant-bound physical receiver support',()=>{
  const d=defs.soft_berth, s=createAttemptState(d,{attemptId:2});
  const base={simTime:1,dt:2,committed:true,playerId:1,playerPos:{x:0,z:0},lines:[{id:'l',aId:1,bId:7,taut:true}],bodies:{

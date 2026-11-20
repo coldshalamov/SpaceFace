@@ -22,6 +22,8 @@ import assert from 'node:assert/strict';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createRunState } from '../src/core/runState.js';
+import { physics } from '../src/core/physics.js';
+import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import { survivalArena } from '../src/systems/survivalArena.js';
 import { createBroodEngine } from '../src/systems/swarmBrood.js';
 
@@ -108,8 +110,56 @@ function staticSolid(id, x, z, radius = 10) {
   };
 }
 
+test('S9: the native Foundry plate hurts on contact and allows travel through its empty bounding circle', async () => {
+  const h = boot({ ruleset: 'swarm' });
+  survivalArena._materializeRoom([{
+    id: 'bank', kind: 'plate', solid: true, pos: { x: 100, z: 0 },
+    normal: { x: 0, z: 1 }, halfWidth: 48, referenceRadius: 26,
+  }], 2);
+  const solid = survivalArena._roomSolids.get('bank');
+  assert.ok(solid);
+  solid.occupantGeneration = 1;
+  Object.assign(h.player, { collides: true, isPlayer: true, occupantGeneration: 1,
+    pos: { x: solid.pos.x, z: solid.pos.z - 46 }, vel: { x: 0, z: 90 } });
+  h.state.entityIndex = null;
+  assert.ok(solid.radius + h.player.radius > 46);
+  const native = await createSg02DynamicBodyOwner({ publishTelemetry: false });
+  const host = Object.create(physics);
+  host.init({ state: h.state, bus: h.bus, helpers: h.helpers });
+  host._sg02 = native;
+  const nativeContacts = [];
+  h.bus.on('physics:impact', impact => {
+    if (impact.backend === 'rapier-dynamic' && [impact.aId, impact.bId].includes(solid.id)) {
+      nativeContacts.push(structuredClone(impact));
+    }
+  });
+  const step = () => {
+    h.state.tick++;
+    h.state.simTime += DT;
+    survivalArena.update(DT, h.state);
+    host.update(DT, h.state);
+  };
+  try {
+    step();
+    assert.equal(nativeContacts.length, 0, 'the empty arc of the physical plate has no contact');
+    assert.equal(damageEventsOn(h, h.player.id).length, 0, 'proximity alone must leave the player unharmed');
+    for (let remaining = 75; remaining > 0 && nativeContacts.length === 0; remaining--) step();
+    assert.ok(nativeContacts[0]?.preSolveClosingSpeed >= 30, 'actual high-speed slab contact');
+    const hits = damageEventsOn(h, h.player.id);
+    assert.equal(hits.length, 1);
+    assert.deepEqual(hits[0].payload.origin, { kind: 'arena_slam', id: 'bank' });
+    assert.ok(h.player.hull < h.player.hullMax);
+    h.bus.emit('physics:contactsCompleted', { backend: 'rapier-dynamic', tick: h.state.tick });
+    assert.equal(damageEventsOn(h, h.player.id).length, 1, 'replayed native completion cannot charge the same contact');
+  } finally {
+    native.dispose();
+    survivalArena.destroy();
+  }
+});
+
 test('S9: a Swarm pilot meeting a static room solid at crumple speed takes the law\'s reading', () => {
   const h = boot({ ruleset: 'swarm' });
+  h.state.settings.gameplay.physicsBackend = 'custom';
   const solid = staticSolid('plate_1', 100, 0);
   survivalArena._roomSolids = new Map([[solid.id, solid]]);
 
@@ -129,6 +179,7 @@ test('S9: a Swarm pilot meeting a static room solid at crumple speed takes the l
 
 test('S9: the slam gate spares a tangential skim under the crumple threshold', () => {
   const h = boot({ ruleset: 'swarm' });
+  h.state.settings.gameplay.physicsBackend = 'custom';
   const solid = staticSolid('plate_1', 100, 0);
   survivalArena._roomSolids = new Map([[solid.id, solid]]);
 
@@ -142,6 +193,7 @@ test('S9: the slam gate spares a tangential skim under the crumple threshold', (
 
 test('S9: Adventure keeps the pilot\'s authored terrain exemption', () => {
   const h = boot({ ruleset: 'adventure' });
+  h.state.settings.gameplay.physicsBackend = 'custom';
   const solid = staticSolid('plate_1', 100, 0);
   survivalArena._roomSolids = new Map([[solid.id, solid]]);
 

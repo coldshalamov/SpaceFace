@@ -1,6 +1,18 @@
 // Opening submission census and exact compile/upload identity planning.
 import { collectOpeningSubmissionLeaves, openingProgramSubjectKey } from '../openingSubmissionPlan.js';
 
+function shouldSkipPendingOpeningRoot(root, entity) {
+  const data = root.userData;
+  const state = data?.authoredAssetState;
+  if (state !== 'awaiting-authored-admission' && state !== 'loading') return false;
+  // Collidable geology has a real rock silhouette while its authored model loads. Admit
+  // the mounted body using the normal leaf census so it can draw in the first picture.
+  const fallback = data.hull;
+  return !(entity.type === 'asteroid' && entity.collides !== false
+    && data.authoredGeologySkin === true && data.authoredFallbackActive === true
+    && fallback?.parent === root && fallback.visible !== false);
+}
+
 /**
  * Return only attached entity roots that can contribute to the current first camera picture.
  * Render residency intentionally lives elsewhere: this census observes the final mesh pose and
@@ -44,10 +56,7 @@ export function* collectOpeningEntityRootCandidatesSteps(meshes, entities, optio
     if (scene && mesh.parent !== scene) continue;
     const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
     if (!entity || entity.alive === false || entity._noMesh) continue;
-    const authoredState = mesh.userData && mesh.userData.authoredAssetState;
-    // Boundaries still waiting on authored GLB admission only expose a temporary marker (or
-    // nothing). They must not block the opening submission plan; mid-flight admission owns them.
-    if (authoredState === 'awaiting-authored-admission' || authoredState === 'loading') continue;
+    if (shouldSkipPendingOpeningRoot(mesh, entity)) continue;
     const leaves = collectOpeningSubmissionLeaves(mesh, { camera });
     if (leaves.length === 0) continue;
     candidates.push({
@@ -103,8 +112,7 @@ export function* collectOpeningShadowCasterRootCandidatesSteps(meshes, entities,
     if (scene && root.parent !== scene) continue;
     const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
     if (!entity || entity.alive === false || entity._noMesh) continue;
-    const authoredState = root.userData && root.userData.authoredAssetState;
-    if (authoredState === 'awaiting-authored-admission' || authoredState === 'loading') continue;
+    if (shouldSkipPendingOpeningRoot(root, entity)) continue;
     const shadowLeaves = collectOpeningSubmissionLeaves(root, { camera });
     if (!shadowLeaves.some((leaf) => leaf && leaf.castShadow === true)) continue;
     candidates.push({

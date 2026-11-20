@@ -50,8 +50,8 @@ function named(emitted, event) {
   return emitted.filter((entry) => entry.event === event);
 }
 
-function beginActive(harness) {
-  harness.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'scored', seed: SEED, arenaId: ARENA });
+function beginActive(harness, ruleset = 'scored') {
+  harness.bus.emit('run:beginRequested', { kind: 'survival', ruleset, seed: SEED, arenaId: ARENA });
   let from = 'loadout';
   for (const next of ['arena_intro', 'wave_intro', 'active']) {
     harness.bus.emit('run:transitionRequested', { expectedPhase: from, nextPhase: next, reason: 't', tick: 0 });
@@ -264,7 +264,7 @@ test('ending a run discards uncollected chips — only scooped earnings survive 
   assert.equal(harness.state.run.credits, 0);
 });
 
-test('the REAL mining pickup path spawns the chip and routes it to the run wallet', () => {
+test('the real Swarm chip stays with the pilot and pays the run wallet once', () => {
   // Not a stand-in: this drives mining's own loot:drop handler and its own credit-chip collector.
   const harness = boot();
   const spawned = [];
@@ -278,7 +278,8 @@ test('the REAL mining pickup path spawns the chip and routes it to the run walle
     return entity;
   };
   mining.init({ state: harness.state, bus: harness.bus, helpers: harness.ctx.helpers, registry: null });
-  beginActive(harness);
+  beginActive(harness, 'swarm');
+  const openingCredits = harness.state.run.credits;
   harness.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
   killCohortBody(harness);
 
@@ -289,14 +290,19 @@ test('the REAL mining pickup path spawns the chip and routes it to the run walle
   assert.equal(chip.data.kind, CREDIT_CHIP_KIND);
   assert.equal(chip.data.wallet, RUN_WALLET, 'the wallet stamp survived mining\'s spawn path');
   assert.equal(chip.data.credits, CHIP_VALUE);
+  assert.equal(chip.data.playerCollectOnly, true);
 
-  harness.bus.emit('pickup:collected', {
+  const receipt = {
     pickupId: chip.id, collectorId: harness.state.playerId, kind: CREDIT_CHIP_KIND,
     amount: chip.data.credits, credits: chip.data.credits, wallet: chip.data.wallet,
     pos: { x: chip.pos.x, z: chip.pos.z },
-  });
+  };
+  harness.bus.emit('pickup:collected', { ...receipt, collectorId: 999 });
+  assert.equal(harness.state.run.credits, openingCredits);
+  harness.bus.emit('pickup:collected', { ...receipt });
+  harness.bus.emit('pickup:collected', { ...receipt });
 
-  assert.equal(harness.state.run.credits, CHIP_VALUE, 'the run wallet was paid by mining, through runSession');
+  assert.equal(harness.state.run.credits, openingCredits + CHIP_VALUE);
   assert.equal(harness.state.player.credits, 1000);
   assert.ok(!harness.emitted.some((e) => e.event === 'economy:grantCredits'),
     'campaign economy was never asked for a grant');

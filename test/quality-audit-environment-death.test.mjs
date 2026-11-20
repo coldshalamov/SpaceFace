@@ -28,7 +28,8 @@ test('environment classification wins over stale killer, weapon, and telegraph f
   assert.match(counterplayFor(receipt), /brake|solid bodies/);
   assert.doesNotMatch(counterplayFor(receipt), /tell|weapon/);
   const rows = new Map(killChainRows(receipt));
-  assert.equal(rows.get('Its weapon'), 'Impact');
+  assert.equal(rows.get('Damage cause'), 'Environmental damage');
+  assert.equal(rows.has('Its weapon'), false);
   assert.equal(rows.has('It warned you'), false);
 });
 
@@ -41,8 +42,10 @@ test('an unknown (non-environment) killer still names the latest tell', () => {
   assert.equal(t.source, 'witnessed');
 });
 
-test('environmental kill chain reads Impact, not Unidentified weapon', () => {
+test('environmental kill chain displays the recorded physical cause', () => {
   const rows = new Map(killChainRows({ attacker: 'Environmental hazard', source: envReceipt.source }));
-  assert.equal(rows.get('Its weapon'), 'Impact');
+  assert.equal(rows.get('Damage cause'), 'Environmental damage');
+  const impact = new Map(killChainRows({ source: envReceipt.source, physicalLabel: 'arena impact' }));
+  assert.equal(impact.get('Damage cause'), 'arena impact');
   assert.equal(new Map(killChainRows({ attacker: 'Wasp' })).get('Its weapon'), 'Unidentified weapon');
 });

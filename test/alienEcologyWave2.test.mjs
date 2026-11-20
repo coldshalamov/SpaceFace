@@ -8,6 +8,7 @@ import {
   FAUNA_DROPS,
   RIPENING,
   planInfestationModules,
+  planFaunaCast,
   pointContaminationAt,
 } from '../src/data/alienEcology.js';
 import { FAUNA_SPECIES } from '../src/data/alienFauna.js';
@@ -17,6 +18,7 @@ import { ensureAlienEcologyState } from '../src/data/alienEcologyState.js';
 import { suppressionFieldAt } from '../src/data/precursorMachines.js';
 import { mulberry32, hash32 } from '../src/core/rng.js';
 import {
+  deserializeAlienEcologyState,
   handleAlienEcologyEvent,
   materializeAlienEcology,
   tickAlienEcology,
@@ -95,6 +97,50 @@ test('every phase-16 species is cast by at least one site (no dead species)', ()
     assert.ok(cast.has(id), `${id} cast somewhere`);
     assert.ok(FAUNA_SPECIES[id], `${id} defined`);
     assert.ok(FAUNA_DROPS[id] || FAUNA_DROPS.default, `${id} harvestable`);
+  }
+});
+
+test('Closed Refinery keeps a fixed work face and a Casket refuge across seeds and Continue', () => {
+  const site = ALIEN_SITES.closed_refinery;
+  const positions = {
+    'suture_mite:0': [1698, 1766], 'suture_mite:1': [1718, 1830],
+    'suture_mite:2': [1708, 1891], 'suture_mite:3': [1698, 1951],
+    'casket_worm:0': [1574, 1823], 'casket_worm:1': [1492, 1770],
+    'casket_worm:2': [1488, 1877], 'stone_lung:0': [1515, 1824],
+  };
+  for (const seed of [4151827082, 4930]) {
+    const state = makeState(site.sectorId);
+    state.meta.seed = seed;
+    const spawned = [];
+    const world = makeWorld(state, spawned, []);
+    const continued = seed === 4151827082;
+    const deadFauna = continued ? { 'closed_refinery:suture_mite:0': true,
+      'closed_refinery:suture_mite:4': true, 'closed_refinery:archive_crab:0': true } : {};
+    const ecology = deserializeAlienEcologyState(state, { schema: ensureAlienEcologyState(state).schema,
+      sites: { [site.siteId]: { deadFauna, state: 'dormant', scanRevealed: true,
+        signals: [{ kind: 'spore_density', vent: true, pos: { x: 1528.44, z: 1890.29 }, t: 412.81 }] } } });
+    materializeAlienEcology(world, { id: site.sectorId }, world.active, [site]);
+    const animals = spawned.filter(e => e.type === 'fauna');
+    for (const [shortKey, pos] of Object.entries(positions)) {
+      const key = `${site.siteId}:${shortKey}`;
+      const animal = animals.find(e => e.data.ecology.faunaKey === key);
+      if (deadFauna[key]) {
+        assert.equal(animal, undefined, `${key} cannot respawn from a continued record`);
+      } else {
+        assert.deepEqual(animal?.pos, { x: pos[0], z: pos[1] });
+        assert.deepEqual(animal.data.ecology.anchor, animal.pos);
+      }
+    }
+    assert.equal(animals.length, 12 - Object.keys(deadFauna).length);
+    assert.deepEqual(ecology.sites[site.siteId].deadFauna, deadFauna);
+    assert.equal(ecology.sites[site.siteId].scanRevealed, true);
+    assert.deepEqual(ecology.sites[site.siteId].signals, [], 'Continue must not lure Caskets to the old vent');
+    const placed = planFaunaCast(site, mulberry32(seed));
+    const original = planFaunaCast({ ...site, faunaAnchors: null }, mulberry32(seed));
+    for (const [i, row] of placed.entries()) {
+      assert.equal(row.phase, original[i].phase);
+      if (!positions[row.faunaKey.slice(site.siteId.length + 1)]) assert.deepEqual(row, original[i]);
+    }
   }
 });
 

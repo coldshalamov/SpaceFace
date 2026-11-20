@@ -805,6 +805,7 @@ export function circuitEntryBlocker(run, { queuedChallenge = false } = {}) {
   if (run.practice === true) return 'Practice runs cannot enter the Circuit.';
   if (queuedChallenge) return 'A queued challenge cannot enter the Circuit.';
   const telemetry = isPlainObject(run.telemetry) ? run.telemetry : {};
+  if (telemetry.dailyDateKey) return 'Daily runs cannot enter the Circuit.';
   if (Number.isInteger(telemetry.startWave) && telemetry.startWave > 1) {
     return 'A checkpoint start cannot enter the Circuit.';
   }

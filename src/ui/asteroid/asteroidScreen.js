@@ -14,7 +14,7 @@
 // Split per law: this shell owns lifecycle + DOM + events; asteroidRenderer3d owns pixels;
 // asteroidController owns modes/input. Excavation sim stays in systems/drill.js; durable
 // structures/production in systems/asteroidSites.js.
-import { DRILL_CONST, tileIndex, generateDrillField, chargeRefusalText } from '../../systems/drill.js';
+import { DRILL_CONST, tileIndex, generateDrillField, chargeRefusalText, drillFacingCell } from '../../systems/drill.js';
 import { BINDINGS } from '../bindings.js';
 import { injectOrreryMobileScreens } from '../orrery/mobileScreenLayouts.js';
 import { resolveDrillControlMap } from '../screens/drill.js';
@@ -34,9 +34,11 @@ import {
 } from './inspector.js';
 import { createBuildPalette, PALETTE_ITEMS, CORE_ID } from './buildPalette.js';
 import { SITE_BALANCE, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID } from '../../data/sites.js';
+import { SITE_DIRECTIVES, ASTEROID_BLUEPRINTS } from '../../data/beltEmpireData.js';
 import { spillConfirmWarning } from '../../systems/asteroidSites.js';
-import { industryReadoutFromState } from '../screens/industryReadout.js';
-import { miningNextStep } from './progressionGuide.js';
+import { industryReadout } from '../screens/industryReadout.js';
+import { findStarterBay, miningNextStep } from './progressionGuide.js';
+import { findFactoryBay, findFactoryRoute } from './networkRoute.js';
 import { firstTunnelControl } from './miningEntryFeedback.js';
 import { pluralWord } from '../numberFormat.js';
 
@@ -295,10 +297,22 @@ export function siteDrawerModel({
     machines: machines.length,
     running: machines.filter((m) => m.status && DRAWER_BUSY_STATES.has(m.status.state)).length,
     dark: machines.filter((m) => m.status && DRAWER_FAULT_STATES.has(m.status.state)).length,
+    generatedMw: projection?.totalPowerGenMw || 0,
+    drawMw: projection?.totalPowerDrawMw || 0,
     stored: Math.round(stored),
     capacity: Math.round(capacity),
     signatureLabel,
     thermalBand,
+    specializationLabel: (projection && projection.specialization && projection.specialization.label) || 'Anchored claim',
+    directiveLabel: sentenceCase((projection && projection.directive && projection.directive.name) || 'Balanced shift'),
+    capacitorMwS: Math.round((projection && projection.capacitorMwS) || 0),
+    synergyCount: (projection && projection.synergies && Array.isArray(projection.synergies.activeSynergies))
+      ? projection.synergies.activeSynergies.length
+      : 0,
+    activeLinks: (projection && Array.isArray(projection.links)) ? projection.links.length : 0,
+    defenses: (projection && Array.isArray(projection.defenses)) ? projection.defenses.length : 0,
+    dronesCount: (projection && Array.isArray(projection.drones)) ? projection.drones.length : 0,
+    sharedPowerInMw: (projection && Number(projection.sharedPowerInMw)) || 0,
     chargeStock: (() => {
       // Same read order the sim's own rack check uses: a resident rock's data is the freshest
       // copy; the durable site.chargeStock mirror carries it while the rock is off-sector.
@@ -318,6 +332,9 @@ export function siteDrawerModel({
   const dest = (projection && projection.courier) || null;
   const courier = {
     podsReady: fleet ? Math.floor(fleet.podsReady) : 0,
+    podCapacity: fleet?.podCapacity || SITE_BALANCE.podCapacity,
+    stagedUnits: Math.floor((dest?.stagedUnits || 0) + 1e-9),
+    readyUnits: dest?.readyUnits || 0,
     podTarget: fleet ? fleet.podTarget : 0,
     launches: fleet ? fleet.launches : 0,
     delivered: fleet ? fleet.delivered : 0,
@@ -443,6 +460,90 @@ export function siteDrawerModel({
           { ok: false, moved: 0, reason: 'no-site' },
         ),
       },
+      reserveFloor: {
+        owner: 'setReserveFloor',
+        goods: exportGoods.map((g) => ({
+          id: g.id,
+          name: g.name,
+          minUnits: Math.max(0, Math.trunc(Number(site && site.reserves && site.reserves[g.id]) || 0)),
+        })),
+        disabled: !site || !exportGoods.length,
+        reason: !site ? NO_SITE_REASON : (exportGoods.length ? null : 'Nothing is stored here yet.'),
+        apply: (goodId, minUnits) => call(
+          () => (typeof siteSys.setReserveFloor === 'function'
+            ? siteSys.setReserveFloor(site.id, goodId, minUnits)
+            : { ok: false, reason: 'unavailable' }),
+          { ok: false, reason: 'no-site' },
+        ),
+      },
+      siteLink: {
+        owner: 'setSiteLink',
+        links: (projection && Array.isArray(projection.links)) ? projection.links : [],
+        peers: (site && typeof siteSys.sectorNetworkProjection === 'function')
+          ? (siteSys.sectorNetworkProjection(site.sectorId).sites || []).filter((s) => s.siteId !== site.id)
+          : [],
+        disabled: !site,
+        reason: site ? null : NO_SITE_REASON,
+        apply: (toSiteId, kind = 'material', goodId = null) => call(
+          () => (typeof siteSys.setSiteLink === 'function'
+            ? siteSys.setSiteLink(site.id, toSiteId, kind, goodId)
+            : { ok: false, reason: 'unavailable' }),
+          { ok: false, reason: 'no-site' },
+        ),
+      },
+      directive: {
+        owner: 'setSiteDirective',
+        value: site ? ((projection && projection.directive && projection.directive.id) || 'standard') : null,
+        options: SITE_DIRECTIVES.map((d) => ({
+          id: d.id,
+          name: sentenceCase(d.name),
+          summary: d.summary,
+        })),
+        disabled: !site,
+        reason: site ? null : NO_SITE_REASON,
+        apply: (directiveId) => call(
+          () => (typeof siteSys.setSiteDirective === 'function'
+            ? siteSys.setSiteDirective(site.id, directiveId)
+            : { ok: false, reason: 'unavailable' }),
+          { ok: false, reason: 'no-site' },
+        ),
+      },
+      blueprint: {
+        owner: 'applySiteBlueprint',
+        options: ASTEROID_BLUEPRINTS.map((bp) => ({
+          id: bp.id,
+          name: `${sentenceCase(bp.name)} (T${bp.tier})`,
+        })),
+        disabled: !site,
+        reason: site ? null : NO_SITE_REASON,
+        apply: (blueprintId, rotation = 0) => call(
+          () => (typeof siteSys.applySiteBlueprint === 'function'
+            ? siteSys.applySiteBlueprint(site.id, blueprintId, null, null, rotation)
+            : { ok: false, reason: 'unavailable' }),
+          { ok: false, reason: 'no-site' },
+        ),
+      },
+      anomaly: {
+        owner: 'tapOrScanSiteAnomalies',
+        anomalies: ((projection && projection.anomalies) || [])
+          .filter((a) => a.status !== 'breached')
+          .map((a) => ({
+            id: a.id,
+            name: `${sentenceCase(a.name)} (${a.col},${a.row})`,
+            status: a.status,
+          })),
+        disabled: !site || !((projection && projection.anomalies) || []).some((a) => a.status !== 'breached'),
+        reason: !site ? NO_SITE_REASON
+          : (((projection && projection.anomalies) || []).some((a) => a.status !== 'breached')
+            ? null
+            : 'No active anomalies remain inside this rock.'),
+        apply: (action = 'breach', anomalyId = null) => call(
+          () => (typeof siteSys.tapOrScanSiteAnomalies === 'function'
+            ? siteSys.tapOrScanSiteAnomalies(site.id, action, anomalyId)
+            : { ok: false, reason: 'unavailable' }),
+          { ok: false, reason: 'no-site' },
+        ),
+      },
     },
   };
 }
@@ -505,12 +606,11 @@ export const asteroidScreen = {
     claimChip.style.display = 'none';
     hudEls.claim = claimChip;
 
-    // FB-055: the same industrial sentence the automation panel prints. One crest
-    // chip, inside the 40px band — not a second board.
+    // FB-055: one crest chip for the claim the player is working.
     const industryChip = document.createElement('span');
     industryChip.className = 'aw-chip';
     industryChip.dataset.chip = 'industry';
-    industryChip.textContent = industryReadoutFromState(state).crest;
+    industryChip.style.display = 'none';
     hudEls.industry = industryChip;
 
     // Claim-survey assay chip (PQ-024): volatile cold-state progress beside the claim it threatens;
@@ -611,7 +711,7 @@ export const asteroidScreen = {
     canvas.tabIndex = 0;
     canvas.setAttribute('role', 'img');
     canvas.setAttribute('aria-label',
-      `Asteroid cross-section. Hold ${controlMap.movementLabel} to drive or bore. Press ${BINDINGS.drill.label} for build mode, ${controlMap.scanLabel} to survey.`);
+      `Asteroid cross-section. Hold ${controlMap.movementLabel} to drive or bore. Press ${BINDINGS.drill.label} for build mode, ${controlMap.scanLabel} to inspect ahead.`);
     stage.appendChild(canvas);
 
     const rig = document.createElement('div');
@@ -727,6 +827,8 @@ export const asteroidScreen = {
     let hudElapsed = 0;
     let inspElapsed = 0;           // seconds since the lens last rebuilt (handlers force it to 10)
     let hover = null;              // { col, row }
+    let inspectFacing = false;
+    let guidedRun = null;
     // ---- cursor lens state (law §6.4) ----
     let lensPointer = null;        // { x, y } client coords of the live pointer, null if keyboard
     let lensDelay = -1;            // seconds left before the card may appear; < 0 = disarmed
@@ -821,15 +923,8 @@ export const asteroidScreen = {
       lastLaneOv = s && s.overlays ? s.overlays.lane : null;
       lastMachineCount = s && s.machines ? s.machines.length : 0;
       projDirty = false;
-      if (hudEls.industry) {
-        const view = projection ? {
-          siteName: s && s.name,
-          exportRatePerMin: projection.exportRatePerMin,
-          machines: projection.machines,
-          lanes: projection.lanes,
-        } : null;
-        hudEls.industry.textContent = industryReadoutFromState(state, view ? [view] : []).crest;
-      }
+      hudEls.industry.style.display = projection ? '' : 'none';
+      hudEls.industry.textContent = projection ? industryReadout({ sites: [projection] }).crest : '';
     }
 
     // Consume projDirty first (a tick can mutate rates/progress without replacing identity),
@@ -856,6 +951,8 @@ export const asteroidScreen = {
       controlMap,
       hooks: {
         onModeChanged(mode) {
+          disarmReturn();
+          if (mode !== MODES.BUILD) guidedRun = null;
           wrap.dataset.mode = mode === MODES.BUILD ? 'build' : 'drive';
           palette.setBuildActive(mode === MODES.BUILD);
           inspElapsed = 10;
@@ -868,6 +965,7 @@ export const asteroidScreen = {
             : 'Drive mode.');
         },
         onCursorMoved(cursor) {
+          disarmReturn();
           // Publish the build cursor the same way data-mode is published: the cell the player is
           // aiming at is public truth, and it is the only way a headless check can measure the
           // §11.7 cadence (one press = one cell) on the build cursor rather than just the rig.
@@ -878,7 +976,20 @@ export const asteroidScreen = {
           lensPointer = null;
           armLens(0);
         },
-        onScan: () => pulseSurvey(),
+        onDriveStep() {
+          clearBanner('starter-bay');
+          if (inspectFacing) hideLens();
+        },
+        onScan() {
+          pulseSurvey();
+          if (drawerTab !== null || !state.drill?.avatar) return;
+          inspectFacing = true;
+          lensPointer = null;
+          armLens(0);
+          const model = lensModel();
+          if (model) announce([model.name, model.numerals, ...model.chips.map(chip => chip.text), model.body]
+            .filter(Boolean).join('. '));
+        },
         // The demolition verb's two presses: arm the charge, then set it once the board has
         // bracketed the whole cut. Refusals already speak through drill:warn.
         onCharge() {
@@ -917,7 +1028,12 @@ export const asteroidScreen = {
     const palette = createBuildPalette(stage, {
       onPlan: () => controller.cancel(),
       getPlanContext: () => ({ machines: site()?.machines || [], cargo: state.player?.cargo?.items || {} }),
-      onSelect() { inspElapsed = 10; lensDirty = true; },
+      onSelect(item) {
+        disarmReturn();
+        if (guidedRun && item?.id !== guidedRun.kind) guidedRun = null;
+        inspElapsed = 10;
+        lensDirty = true;
+      },
       // A pressed key is an intent to build — arm BUILD from DRIVE (law §6.7).
       onUserSelect() {
         if (controller.state.mode !== MODES.BUILD) controller.setMode(MODES.BUILD);
@@ -1017,38 +1133,132 @@ export const asteroidScreen = {
     guideToggle.addEventListener('click', () => {
       controller.cancel();
       guideDismissed = !guideDismissed;
+      if (guideDismissed) guidedRun = null;
       updateGuide();
     });
     guideAction.addEventListener('click', () => {
       if (!guideStep || !boardReady()) return;
       controller.cancel();
       if (guideStep.action === 'site' || guideStep.action === 'help') {
-        openDrawer(guideStep.action);
+        const { action, selection } = guideStep;
+        openDrawer(action);
+        if (action === 'site' && selection?.section) focusSiteGuide(selection);
       } else if (guideStep.action === 'plan') {
         controller.setMode(MODES.BUILD);
         palette.openPlan(guideStep.selection);
+      } else if (guideStep.action === 'factory-bay') {
+        const { selection: defId, kit } = guideStep;
+        if (projDirty) refreshProjection();
+        const seat = findFactoryBay({ drill: state.drill, projection, defId,
+          canInstall: request => siteSys?.canInstall(request) });
+        controller.setMode(MODES.BUILD);
+        if (seat) {
+          clearBanner('factory-bay');
+          syncPalette();
+          palette.selectId(defId);
+          aimAtCell(seat);
+          canvas.focus({ preventScroll: true });
+        } else {
+          showBanner('factory-bay', 'Find a hollow bay by a powered lane and check the materials list.');
+          palette.openPlan(kit);
+        }
+      } else if (guideStep.action === 'route') {
+        armFactoryRoute(guideStep.route);
+      } else if (guideStep.action === 'clear-route') {
+        guidedRun = null;
+        updateGuide();
+        canvas.focus({ preventScroll: true });
       } else if (guideStep.action === 'build') {
+        const selection = guideStep.selection;
+        const starter = selection === CORE_ID || (selection === 'sm_extractor' && guideStep.id === 'extractor');
+        const bay = starter && findStarterBay({ drill: state.drill, site: site(), defId: selection,
+          canInstall: (request) => siteSys?.canInstall(request) });
+        if (starter && !bay) {
+          const text = selection === CORE_ID
+            ? 'Cut a side bay off the shaft.'
+            : 'Cut a bay beside the Core.';
+          showBanner('starter-bay', text);
+          announce(text);
+          return;
+        }
+        clearBanner('starter-bay');
         controller.setMode(MODES.BUILD);
         syncPalette();
-        palette.selectId(guideStep.selection);
+        palette.selectId(selection);
+        if (bay) aimAtCell(bay);
         canvas.focus({ preventScroll: true });
       } else if (guideStep.action === 'scan') {
         pulseSurvey();
         canvas.focus({ preventScroll: true });
       } else if (guideStep.action === 'leave') exit();
     });
+
+    function aimAtCell({ col, row }) {
+      const seat = cellRect(col, row);
+      const bounds = canvas.getBoundingClientRect();
+      if (seat && (seat.left < bounds.left || seat.top < bounds.top
+          || seat.right > bounds.right || seat.bottom > bounds.bottom)) {
+        releaseSiteZoom(false);
+        renderer3d?.setZoomRegister('site');
+      }
+      const cursor = controller.state.cursor;
+      controller.moveCursor(col - cursor.col, row - cursor.row);
+    }
+
+    function armFactoryRoute(route) {
+      if (projDirty) refreshProjection();
+      const cells = findFactoryRoute(state.drill?.field, projection, route);
+      if (!cells.length) {
+        const text = 'Cut a hollow corridor to connect these machines.';
+        showBanner('factory-route', text);
+        announce(text);
+        return;
+      }
+      clearBanner('factory-route');
+      controller.setMode(MODES.BUILD);
+      syncPalette();
+      palette.selectId(route.kind);
+      if (palette.selected?.id !== route.kind) return;
+      guidedRun = { kind: route.kind, cells };
+      aimAtCell(cells[0]);
+      updateGuide();
+      canvas.focus({ preventScroll: true });
+    }
+
+    function recordRouteCell(run, kind, { col, row }, advance) {
+      if (!run || guidedRun !== run || run.kind !== kind) return;
+      const cells = guidedRun.cells.filter(cell => cell.col !== col || cell.row !== row);
+      if (cells.length === guidedRun.cells.length) return;
+      if (cells.length) {
+        guidedRun.cells = cells;
+        if (advance && controller.state.cursor.col === col && controller.state.cursor.row === row) aimAtCell(cells[0]);
+      } else {
+        guidedRun = null;
+        const text = kind === 'power' ? 'Power cable laid.' : 'Material lane laid.';
+        showBanner('factory-route', text, 'good');
+        announce(text);
+      }
+    }
+
     function updateGuide() {
       guideToggle.setAttribute('aria-expanded', String(!guideDismissed));
-      guide.hidden = guideDismissed || !boardPublication.ready() || drawerTab !== null;
+      guide.hidden = guideDismissed || !boardReady() || drawerTab !== null;
       if (guide.hidden) return;
-      const s = site();
-      const missing = shortfallMap(s, [CORE_ID, 'sm_extractor']);
-      guideStep = miningNextStep({ drill: state.drill, site: s, projection,
-        cargo: state.player.cargo, coreMissing: missing[CORE_ID] || {},
-        extractorMissing: missing.sm_extractor || {},
-        build: controller.state.mode === MODES.BUILD,
-        movementLabel: controlMap.movementLabel, scanLabel: controlMap.scanLabel,
-        firstTunnel: firstTunnelControl(state.drill, controlMap, drillSys.getDrillTier?.() ?? 1) });
+      if (guidedRun) {
+        const n = guidedRun.cells.length;
+        guideStep = { id: 'lay-route', title: guidedRun.kind === 'power' ? 'Lay the power cable' : 'Lay the material lane',
+          detail: `${n} ${pluralWord(n, 'cell')} left. Press Enter to lay each highlighted cell, or paint the route with the pointer.`,
+          action: 'clear-route', label: 'Clear route preview' };
+      } else {
+        const s = site();
+        const missing = shortfallMap(s, [CORE_ID, 'sm_extractor']);
+        guideStep = miningNextStep({ drill: state.drill, site: s, projection,
+          cargo: state.player.cargo, coreMissing: missing[CORE_ID] || {},
+          extractorMissing: missing.sm_extractor || {},
+          build: controller.state.mode === MODES.BUILD,
+          movementLabel: controlMap.movementLabel, scanLabel: controlMap.scanLabel,
+          firstTunnel: firstTunnelControl(state.drill, controlMap, drillSys.getDrillTier?.() ?? 1) });
+      }
       if (!guideStep) { guide.hidden = true; return; }
       const signature = JSON.stringify(guideStep);
       if (guideSignature === signature) return;
@@ -1150,6 +1360,7 @@ export const asteroidScreen = {
 
     function hideLens() {
       lensDelay = -1;
+      inspectFacing = false;
       lens.hide();
     }
 
@@ -1178,8 +1389,14 @@ export const asteroidScreen = {
       return { x: subject.right, y: subject.bottom };
     }
 
+    function inspectionCursor() {
+      if (controller.state.mode === MODES.BUILD) return controller.state.cursor;
+      const avatar = state.drill?.avatar;
+      return inspectFacing && avatar ? drillFacingCell(avatar) : hover;
+    }
+
     function lensSubject() {
-      const cursor = controller.state.mode === MODES.BUILD ? controller.state.cursor : hover;
+      const cursor = inspectionCursor();
       return cursor ? cellRect(cursor.col, cursor.row) : null;
     }
 
@@ -1188,6 +1405,13 @@ export const asteroidScreen = {
     // clear on the same cell confirms the loss (the deterministic receipt lands in the site
     // ledger via site:laneSpilled). Arming resets on any other action.
     let armedSpill = null; // { kind, idx }
+    let armedReturn = null;
+    function disarmReturn() {
+      if (armedReturn === null) return;
+      armedReturn = null;
+      clearBanner('return-tunnel');
+    }
+
     function attemptOverlayChange(kind, cursor, on) {
       const idx = tileIndex(cursor.col, cursor.row);
       const confirmed = !on && armedSpill && armedSpill.kind === kind && armedSpill.idx === idx;
@@ -1214,14 +1438,21 @@ export const asteroidScreen = {
           announce('Paint follows machines — install the first machine to open the claim.');
           return;
         }
-        const on = !overlaySetFor(item.id).has(tileIndex(cursor.col, cursor.row));
-        return settleSiteMutation(attemptOverlayChange(item.id, cursor, on), (res) => {
+        const cell = { col: cursor.col, row: cursor.row };
+        const run = guidedRun;
+        const inRun = run?.kind === item.id && run.cells.some(c => c.col === cell.col && c.row === cell.row);
+        const on = inRun || !overlaySetFor(item.id).has(tileIndex(cell.col, cell.row));
+        const advance = !controller.state.dragPaint;
+        return settleSiteMutation(attemptOverlayChange(item.id, cell, on), (res) => {
           if (res.ok) {
             projDirty = true;
-            announce(`${item.name} ${on ? 'laid' : 'cleared'} at ${cursor.col},${cursor.row}.`
+            announce(`${item.name} ${on ? 'laid' : 'cleared'} at ${cell.col},${cell.row}.`
               + (res.spilled > 0 ? ` Spilled ${Math.floor(res.spilled)}u.` : ''));
+            if (on) recordRouteCell(run, item.id, cell, advance);
           } else if (res.reason !== 'would-spill') {
-            announce(placementReason({ reason: res.reason }));
+            const text = placementReason({ reason: res.reason });
+            if (inRun && guidedRun === run) { guidedRun = null; showBanner('factory-route', text); }
+            announce(text);
           }
           return res;
         });
@@ -1229,8 +1460,20 @@ export const asteroidScreen = {
       if (item.kind === 'remove') { commitRemoval(cursor); return; }
       if (!siteSys) return;
       armedSpill = null; // any non-overlay action disarms a pending spill confirmation
+      const request = { asteroidId: astId, defId: item.id, col: cursor.col, row: cursor.row };
+      const placement = siteSys.canInstall({ ...request, preview: true });
+      const seat = `${item.id}:${tileIndex(cursor.col, cursor.row)}`;
+      if (placement?.sealsReturn && armedReturn !== seat) {
+        armedReturn = seat;
+        const warning = 'Seals the return tunnel. Press again to place.';
+        showBanner('return-tunnel', warning);
+        announce(warning);
+        lensDirty = true;
+        return;
+      }
+      disarmReturn();
       return settleSiteMutation(
-        siteSys.installMachine({ asteroidId: astId, defId: item.id, col: cursor.col, row: cursor.row }),
+        siteSys.installMachine(request),
         (res) => {
           if (res.ok) {
             if (renderer3d) renderer3d.notify('install', { col: cursor.col, row: cursor.row });
@@ -1256,6 +1499,7 @@ export const asteroidScreen = {
 
     function commitRemoval(cursor) {
       if (!boardReady()) return;
+      disarmReturn();
       if (!siteSys || !currentSiteId) return;
       const s = site();
       const m = s && siteSys.machineAt(s, cursor.col, cursor.row);
@@ -1311,7 +1555,9 @@ export const asteroidScreen = {
     const canvasCell = (ev) => (renderer3d ? renderer3d.pickCell(ev.clientX, ev.clientY) : null);
     const onMouseMove = (ev) => {
       const cell = canvasCell(ev);
-      const changed = !!cell !== !!hover || (cell && hover && (cell.col !== hover.col || cell.row !== hover.row));
+      const changed = inspectFacing || !!cell !== !!hover
+        || (cell && hover && (cell.col !== hover.col || cell.row !== hover.row));
+      inspectFacing = false;
       hover = cell;
       lensPointer = { x: ev.clientX, y: ev.clientY };
       if (changed) { inspElapsed = 10; lensDirty = true; }
@@ -1327,14 +1573,20 @@ export const asteroidScreen = {
         drillSys.setChargeAim(cell.col, cell.row);
       }
       if (cell && controller.state.mode === MODES.BUILD) {
+        if (controller.state.cursor.col !== cell.col || controller.state.cursor.row !== cell.row) disarmReturn();
         controller.state.cursor.col = cell.col;
         controller.state.cursor.row = cell.row;
         if (controller.state.dragPaint && palette.selected.kind === 'overlay' && siteSys && currentSiteId) {
+          const kind = palette.selected.id;
+          const on = controller.state.dragPaint === 'on';
+          const run = guidedRun;
           settleSiteMutation(
-            siteSys.setOverlay(currentSiteId, palette.selected.id, cell.col, cell.row,
-              controller.state.dragPaint === 'on'),
+            siteSys.setOverlay(currentSiteId, kind, cell.col, cell.row, on),
             (res) => {
-              if (res.ok) projDirty = true;
+              if (res.ok) {
+                projDirty = true;
+                if (on) recordRouteCell(run, kind, cell, false);
+              }
               return res;
             },
           );
@@ -1365,7 +1617,9 @@ export const asteroidScreen = {
       controller.state.cursor.col = cell.col;
       controller.state.cursor.row = cell.row;
       if (palette.selected.kind === 'overlay' && currentSiteId) {
-        const on = !overlaySetFor(palette.selected.id).has(tileIndex(cell.col, cell.row));
+        const kind = palette.selected.id;
+        const inRun = guidedRun?.kind === kind && guidedRun.cells.some(c => c.col === cell.col && c.row === cell.row);
+        const on = inRun || !overlaySetFor(kind).has(tileIndex(cell.col, cell.row));
         controller.state.dragPaint = on ? 'on' : 'off';
       }
       commitPlacement(cell);
@@ -1577,11 +1831,12 @@ export const asteroidScreen = {
     const siteUi = { built: false, model: null, exportBtns: new Map(), exportSig: null, modeBtns: [], destBtns: [] };
     let transferQty = 5;
 
-    function siteBlock(host, title) {
+    function siteBlock(host, title, guideSection = null) {
       const sec = document.createElement('section');
       // A readout well is a sunk plate: the kit's recessed render, so numbers read out of a
       // machined recess rather than off a tinted div.
       sec.className = 'aw-site-block fh-plate fh-plate--sunk';
+      if (guideSection) sec.dataset.guideSection = guideSection;
       const h = document.createElement('h3');
       h.className = 'aw-site-title';
       h.textContent = title;
@@ -1662,18 +1917,25 @@ export const asteroidScreen = {
       prod.appendChild(clockNote);
       siteUi.machines = siteStat(prod, 'Machines');
       siteUi.running = siteStat(prod, 'Running');
-      siteUi.dark = siteStat(prod, 'Dark');
+      siteUi.dark = siteStat(prod, 'Needs attention');
+      siteUi.powerBudget = siteStat(prod, 'Supply / demand');
       siteUi.stored = siteStat(prod, 'Held in lanes');
       siteUi.signature = siteStat(prod, 'Signature');
       siteUi.thermal = siteStat(prod, 'Thermal');
+      siteUi.specialization = siteStat(prod, 'Specialization');
+      siteUi.directiveStat = siteStat(prod, 'Shift directive');
+      siteUi.capacitorStat = siteStat(prod, 'Capacitor');
+      siteUi.synergiesStat = siteStat(prod, 'Synergies');
+      siteUi.beltLinks = siteStat(prod, 'Belt links');
       siteUi.chargeStock = siteStat(prod, 'Charge stock');
       siteUi.exportRate = siteStat(prod, 'Export rate');
       siteUi.rates = document.createElement('div');
       siteUi.rates.className = 'aw-site-rates';
       prod.appendChild(siteUi.rates);
 
-      const cour = siteBlock(grid, 'Couriers');
+      const cour = siteBlock(grid, 'Couriers', 'couriers');
       siteUi.podsReady = siteStat(cour, 'Pods ready');
+      siteUi.nextLoad = siteStat(cour, 'Cargo staged');
       siteUi.launches = siteStat(cour, 'Launched');
       siteUi.delivered = siteStat(cour, 'Delivered');
       siteUi.lost = siteStat(cour, 'Lost');
@@ -1684,7 +1946,7 @@ export const asteroidScreen = {
       cour.appendChild(siteUi.flights);
 
       // verb 1 — siteSys.setExportFlag
-      const exp = siteBlock(grid, 'Ship or hold');
+      const exp = siteBlock(grid, 'Ship or hold', 'exports');
       siteUi.exportRow = verbRow(exp);
       siteUi.exportReason = siteReason(exp);
 
@@ -1697,7 +1959,7 @@ export const asteroidScreen = {
       siteUi.podReason = siteReason(pod);
 
       // verb 3 — siteSys.setMachineMode
-      const mode = siteBlock(grid, 'Machine mode');
+      const mode = siteBlock(grid, 'Machine mode', 'modes');
       siteUi.modeSelect = verbSelect(verbRow(mode), 'Machine');
       siteUi.modeChips = verbRow(mode);
       siteUi.modeReason = siteReason(mode);
@@ -1708,7 +1970,7 @@ export const asteroidScreen = {
       siteUi.destReason = siteReason(destBlock);
 
       // verb 4 — siteSys.transferGoods
-      const xfer = siteBlock(grid, 'Rover transfer');
+      const xfer = siteBlock(grid, 'Rover transfer', 'transfer');
       const pickRow = verbRow(xfer);
       siteUi.xferMachine = verbSelect(pickRow, 'Machine');
       siteUi.xferGood = verbSelect(pickRow, 'Material');
@@ -1721,6 +1983,44 @@ export const asteroidScreen = {
       siteUi.xferAll = actionBtn(qtyRow, 'Take all');
       siteUi.xferAll.title = 'Take this material up to the available space in your hold';
       siteUi.xferReason = siteReason(xfer);
+
+      // Reserve floor policy — minimum local units retained before export/links draw stock
+      const resBlock = siteBlock(grid, 'Reserve floor');
+      const resRow = verbRow(resBlock);
+      siteUi.resGood = verbSelect(resRow, 'Reserved material');
+      siteUi.resDown = stepBtn(resRow, '−', 'Decrease reserve floor by 5');
+      siteUi.resVal = monoValue(resRow, '0u');
+      siteUi.resUp = stepBtn(resRow, '+', 'Increase reserve floor by 5');
+      siteUi.resReason = siteReason(resBlock);
+      siteUi.resGood.addEventListener('change', () => refreshDrawer());
+      siteUi.resDown.addEventListener('click', () => stepReserveFloor(-5));
+      siteUi.resUp.addEventListener('click', () => stepReserveFloor(5));
+
+      // Shift directive policy
+      const dirBlock = siteBlock(grid, 'Shift directive');
+      siteUi.dirChips = verbRow(dirBlock);
+      siteUi.dirBtns = [];
+      siteUi.dirSig = '';
+      siteUi.dirReason = siteReason(dirBlock);
+
+      // Blueprint quick-stamper & Anomaly extraction
+      const bpBlock = siteBlock(grid, 'Subterranean engineering');
+      const bpRow = verbRow(bpBlock);
+      siteUi.bpSelect = verbSelect(bpRow, 'Blueprint');
+      siteUi.bpRotVal = 0;
+      siteUi.bpRotBtn = stepBtn(bpRow, '0°', 'Rotate blueprint 90 degrees');
+      siteUi.bpStampBtn = actionBtn(bpRow, 'Stamp');
+      siteUi.bpReason = siteReason(bpBlock);
+      const anomRow = verbRow(bpBlock);
+      siteUi.anomSelect = verbSelect(anomRow, 'Anomaly');
+      siteUi.anomBreachBtn = actionBtn(anomRow, 'Breach cache');
+      siteUi.anomReason = siteReason(bpBlock);
+      siteUi.bpRotBtn.addEventListener('click', () => {
+        siteUi.bpRotVal = (siteUi.bpRotVal + 1) % 4;
+        setNodeText(siteUi.bpRotBtn, `${siteUi.bpRotVal * 90}°`);
+      });
+      siteUi.bpStampBtn.addEventListener('click', () => applySiteBlueprint());
+      siteUi.anomBreachBtn.addEventListener('click', () => breachSiteAnomaly());
 
       siteUi.podDown.addEventListener('click', () => stepPodTarget(-1));
       siteUi.podUp.addEventListener('click', () => stepPodTarget(1));
@@ -1785,6 +2085,79 @@ export const asteroidScreen = {
           projDirty = true;
           pushLedgerLine('info', `Courier fleet target set to ${next}.`);
           announce(`Courier fleet target ${next}.`);
+        }
+        refreshDrawer();
+        return res;
+      });
+    }
+
+    function stepReserveFloor(delta) {
+      const verb = siteUi.model && siteUi.model.verbs.reserveFloor;
+      if (!verb || verb.disabled) return;
+      const goodId = siteUi.resGood && siteUi.resGood.value;
+      const row = verb.goods.find((g) => g.id === goodId);
+      if (!row) return;
+      const next = Math.max(0, Math.min(500, row.minUnits + delta));
+      if (next === row.minUnits) return;
+      settleSiteMutation(verb.apply(goodId, next), (res) => {
+        if (res.ok) {
+          projDirty = true;
+          pushLedgerLine('info', `${row.name} reserve floor set to ${next}u.`);
+          announce(`${row.name} reserve ${next} units.`);
+        }
+        refreshDrawer();
+        return res;
+      });
+    }
+
+    function applySiteDirective(directiveId) {
+      const verb = siteUi.model && siteUi.model.verbs.directive;
+      if (!verb || verb.disabled) return;
+      const opt = verb.options.find((o) => o.id === directiveId);
+      settleSiteMutation(verb.apply(directiveId), (res) => {
+        if (res.ok) {
+          projDirty = true;
+          const label = opt ? opt.name : directiveId;
+          pushLedgerLine('info', `Shift directive set to ${label}.`);
+          announce(`Shift directive: ${label}.`);
+        }
+        refreshDrawer();
+        return res;
+      });
+    }
+
+    function applySiteBlueprint() {
+      const verb = siteUi.model && siteUi.model.verbs.blueprint;
+      if (!verb || verb.disabled) return;
+      const bpId = siteUi.bpSelect && siteUi.bpSelect.value;
+      if (!bpId) return;
+      settleSiteMutation(verb.apply(bpId, siteUi.bpRotVal || 0), (res) => {
+        if (res.ok) {
+          projDirty = true;
+          pushLedgerLine('good', `Stamped ${res.placedCount || 0} blueprint components into site.`);
+          announce(`Blueprint stamped: ${res.placedCount || 0} components built.`);
+          refreshProjection();
+          syncPalette();
+        } else {
+          announce(placementReason(res));
+        }
+        refreshDrawer();
+        return res;
+      });
+    }
+
+    function breachSiteAnomaly() {
+      const verb = siteUi.model && siteUi.model.verbs.anomaly;
+      if (!verb || verb.disabled) return;
+      const anomalyId = siteUi.anomSelect && siteUi.anomSelect.value;
+      if (!anomalyId) return;
+      settleSiteMutation(verb.apply('breach', anomalyId), (res) => {
+        if (res.ok) {
+          projDirty = true;
+          pushLedgerLine('good', 'Geological anomaly breached for mineral cache.');
+          announce('Geological anomaly breached — cache deposited to lanes.');
+        } else {
+          announce('Unable to breach anomaly right now.');
         }
         refreshDrawer();
         return res;
@@ -1875,9 +2248,15 @@ export const asteroidScreen = {
       setNodeText(siteUi.machines, String(t.machines));
       setNodeText(siteUi.running, String(t.running));
       setNodeText(siteUi.dark, String(t.dark));
+      setNodeText(siteUi.powerBudget, `${t.generatedMw.toFixed(1)} / ${t.drawMw.toFixed(1)} MW`);
       setNodeText(siteUi.stored, `${t.stored} / ${t.capacity}u`);
       setNodeText(siteUi.signature, t.signatureLabel);
       setNodeText(siteUi.thermal, t.thermalBand);
+      setNodeText(siteUi.specialization, t.specializationLabel || 'Anchored claim');
+      setNodeText(siteUi.directiveStat, t.directiveLabel || 'Balanced shift');
+      setNodeText(siteUi.capacitorStat, `${t.capacitorMwS || 0} MwS`);
+      setNodeText(siteUi.synergiesStat, `${t.synergyCount || 0} active`);
+      setNodeText(siteUi.beltLinks, `${t.activeLinks || 0} active · ${t.defenses || 0} orb · ${t.dronesCount || 0} drn`);
       setNodeText(siteUi.chargeStock, `${t.chargeStock} racked`);
       setNodeText(siteUi.exportRate, `${t.exportRatePerMin.toFixed(1)}/min`);
       siteUi.rates.textContent = '';
@@ -1890,6 +2269,9 @@ export const asteroidScreen = {
 
       const c = model.courier;
       setNodeText(siteUi.podsReady, String(c.podsReady));
+      setNodeText(siteUi.nextLoad, c.readyUnits > 0
+        ? `${unitText(c.readyUnits)} ready · ${state.drill?.active ? 'return to flight' : 'dispatch queued'}`
+        : `${Math.min(c.stagedUnits, c.podCapacity)} / ${unitText(c.podCapacity)}`);
       setNodeText(siteUi.launches, String(c.launches));
       setNodeText(siteUi.delivered, String(c.delivered));
       setNodeText(siteUi.lost, String(c.lost));
@@ -2016,6 +2398,51 @@ export const asteroidScreen = {
         [siteUi.xferMachine, siteUi.xferGood, siteUi.xferDown, siteUi.xferUp, siteUi.xferLoad, siteUi.xferTake, siteUi.xferAll],
         xferVerb.reason || (goodRows.length ? null : 'Nothing to move either way yet.'),
       );
+
+      // Reserve floor controls
+      const resVerb = model.verbs.reserveFloor;
+      const resGoodId = syncSelect(siteUi.resGood, resVerb.goods.map((g) => ({ id: g.id, name: g.name })));
+      const resRow = resVerb.goods.find((g) => g.id === resGoodId) || null;
+      setNodeText(siteUi.resVal, resRow ? unitText(resRow.minUnits) : '0u');
+      setDisabledWith(
+        siteUi.resReason,
+        [siteUi.resGood, siteUi.resDown, siteUi.resUp],
+        resVerb.reason,
+      );
+
+      // Shift directive controls
+      const dirVerb = model.verbs.directive;
+      const dirSig = dirVerb.options.map((o) => o.id).join(',');
+      if (siteUi.dirSig !== dirSig) {
+        siteUi.dirSig = dirSig;
+        siteUi.dirChips.textContent = '';
+        siteUi.dirBtns = [];
+        for (const opt of dirVerb.options) {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'aw-verb-chip fh-key fh-key--legend';
+          chip.dataset.directive = opt.id;
+          chip.textContent = opt.name;
+          chip.title = opt.summary || opt.name;
+          chip.addEventListener('click', () => applySiteDirective(opt.id));
+          siteUi.dirChips.appendChild(chip);
+          siteUi.dirBtns.push(chip);
+        }
+      }
+      for (const chip of siteUi.dirBtns) {
+        const on = dirVerb.value === chip.dataset.directive;
+        chip.classList.toggle('on', on);
+        chip.setAttribute('aria-pressed', String(on));
+      }
+      setDisabledWith(siteUi.dirReason, siteUi.dirBtns, dirVerb.reason);
+
+      // Blueprint & Anomaly controls
+      const bpVerb = model.verbs.blueprint;
+      syncSelect(siteUi.bpSelect, bpVerb.options);
+      setDisabledWith(siteUi.bpReason, [siteUi.bpSelect, siteUi.bpRotBtn, siteUi.bpStampBtn], bpVerb.reason);
+      const anomVerb = model.verbs.anomaly;
+      syncSelect(siteUi.anomSelect, anomVerb.anomalies);
+      setDisabledWith(siteUi.anomReason, [siteUi.anomSelect, siteUi.anomBreachBtn], anomVerb.reason);
     }
 
     // ---------- drawer lifecycle ----------
@@ -2034,6 +2461,22 @@ export const asteroidScreen = {
       else if (drawerTab === 'site') renderSitePanel();
       else renderHelpPanel();
       drawerElapsed = 0;
+    }
+
+    function focusSiteGuide({ section, machineId, goodId }) {
+      const block = sitePanel.querySelector(`[data-guide-section="${section}"]`);
+      if (!block) return;
+      const select = section === 'modes' ? siteUi.modeSelect : section === 'transfer' ? siteUi.xferMachine : null;
+      if (select && Array.from(select.options).some(option => option.value === machineId)) {
+        select.value = machineId;
+        renderSitePanel();
+      }
+      if (section === 'transfer' && Array.from(siteUi.xferGood.options).some(option => option.value === goodId)) {
+        siteUi.xferGood.value = goodId;
+      }
+      block.scrollIntoView({ block: 'nearest' });
+      const focus = block.querySelector('select:not(:disabled), button:not(:disabled)');
+      focus?.focus({ preventScroll: true });
     }
 
     function openDrawer(tab) {
@@ -2381,10 +2824,18 @@ export const asteroidScreen = {
       const cap = cargo && cargo.capVolume > 0 ? cargo.capVolume : 0;
       const used = cargo ? Number(cargo.usedVolume) || 0 : 0;
       const pct = cap > 0 ? Math.round((used / cap) * 100) : 0;
-      const full = pct >= 100;
+      const full = cap > 0 && used >= cap;
       setBar(hudEls.holdFill, 'hb', pct, full ? 'full' : (pct >= 75 ? 'hot' : ''));
       if (full) showBanner('cargo', 'Hold full — leave to offload', 'bad');
+      else if (d.remainderHold > 0) showBanner('cargo', 'No room for this ore', 'bad');
       else clearBanner('cargo');
+
+      if (d.gasGuard && d.field?.[d.gasGuard.col]?.[d.gasGuard.row]?.type === 'gas') {
+        if (bannerKind !== 'cargo') showBanner('gas', 'Gas ahead · press again to cut');
+      } else clearBanner('gas');
+      if (bannerKind == null && d.rockBudgetMax > 0 && d.rockBudget <= 0) {
+        showBanner('depleted', 'Played out — no ore until it recovers');
+      }
 
       // rig cluster — gauges confirm what the rover's body already shows (law §6.2)
       const temp = Math.round(d.drillTemp || 0);
@@ -2459,7 +2910,8 @@ export const asteroidScreen = {
     }
 
     // ---------- the lens model (law §6.4) ----------
-    // One subject, in this precedence: placement ghost > machine > tile. Networks lost their card
+    // An installed machine owns its cell's readout, followed by the placement ghost and tile.
+    // Networks lost their card
     // with the context bay — a lane/cable is drawn ON the board (law §7), and naming it beside the
     // cursor would be the old bay in miniature.
     //
@@ -2472,17 +2924,9 @@ export const asteroidScreen = {
       if (!d) return null;
       if (projDirty) refreshProjection();
       const build = controller.state.mode === MODES.BUILD;
-      const cursor = build ? controller.state.cursor : hover;
+      const cursor = inspectionCursor();
       if (!cursor) return null;
       const s = site();
-
-      if (build && palette.selected && palette.selected.kind === 'machine') {
-        const check = siteSys ? siteSys.canInstall({
-          asteroidId: asteroidId(), defId: palette.selected.id,
-          col: cursor.col, row: cursor.row,
-        }) : null;
-        return ghostLensModel(palette.selected.id, check);
-      }
 
       if (s && projection && siteSys) {
         const m = siteSys.machineAt(s, cursor.col, cursor.row);
@@ -2490,6 +2934,14 @@ export const asteroidScreen = {
           const pm = projection.machines.find((x) => x.id === m.id);
           if (pm) return machineLensModel(pm);
         }
+      }
+
+      if (build && palette.selected && palette.selected.kind === 'machine') {
+        const check = siteSys ? siteSys.canInstall({
+          asteroidId: asteroidId(), defId: palette.selected.id,
+          col: cursor.col, row: cursor.row, preview: true,
+        }) : null;
+        return ghostLensModel(palette.selected.id, check);
       }
 
       if (!d.field) return null;
@@ -2506,6 +2958,9 @@ export const asteroidScreen = {
       const cutPreview = s && siteSys && tile.type !== 'empty'
         ? siteSys.previewBreak(s.id, cursor.col, cursor.row)
         : null;
+      const anomaly = projection && Array.isArray(projection.anomalies)
+        ? projection.anomalies.find((a) => a.col === cursor.col && a.row === cursor.row) || null
+        : null;
       return tileLensModel({
         tile,
         appearance,
@@ -2517,6 +2972,7 @@ export const asteroidScreen = {
         formation: siteSys
           ? siteSys.surveyCellRole(asteroidId(), tileIndex(cursor.col, cursor.row)) : null,
         cutPreview,
+        anomaly,
       });
     }
 
@@ -2541,10 +2997,11 @@ export const asteroidScreen = {
     // render pass did per repaint; the renderer just draws what it is told.
     function buildUiFrame() {
       const mode = controller.state.mode;
-      const cursor = mode === MODES.BUILD ? controller.state.cursor : hover;
+      const cursor = inspectionCursor();
       let buildKind = null;
       let buildDefId = null;
       let canOk = false;
+      let showMachineGhost = true;
       if (mode === MODES.BUILD && palette.selected) {
         buildKind = palette.selected.kind;
         if (buildKind === 'machine') {
@@ -2554,9 +3011,10 @@ export const asteroidScreen = {
             col: controller.state.cursor.col, row: controller.state.cursor.row,
           }) : null;
           canOk = !!(check && check.ok);
+          showMachineGhost = check?.reason !== 'occupied' && check?.reason !== 'rover-here';
         }
       }
-      return { mode, cursor, buildKind, buildDefId, canOk };
+      return { mode, cursor, buildKind, buildDefId, canOk, showMachineGhost, guidedRun };
     }
 
     // ---------- frame loop ----------
@@ -2650,6 +3108,8 @@ export const asteroidScreen = {
       currentSiteId = null;
       screen._active = true;
 
+      guidedRun = null;
+      disarmReturn();
       controller.cancel();
       controller.setMode(MODES.DRIVE);
       wrap.dataset.mode = 'drive'; // setMode is a no-op when it is already DRIVE

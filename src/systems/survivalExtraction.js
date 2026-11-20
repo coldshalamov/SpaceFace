@@ -5,10 +5,9 @@
 // PARTIAL BANK — the same window also sells the middle seat: bank half the purse into the
 // hangar chest and keep flying the rest. The banked part is spent out of the run wallet and
 // stamped on run.telemetry.securedBounty (the schema-free, run-lifelong field the stake,
-// threats and hangar already ride), so it is settled — secured forever — the moment the
-// spend lands. Whatever end the run later meets pays its ordinary fraction on only the
-// remainder: a death halves what is left, a post-boss cash-out takes all of it, and the
-// secured part is added on top rather than counted twice.
+// threats and hangar already ride). The ending adds the secured part once and applies its
+// fraction to the remaining bankable credits. An explicit retirement keeps the secured
+// part and forgoes the remainder.
 
 import { isExtractionWindow } from '../data/survivalWaves.js';
 import { PARTIAL_BANK_FRACTION } from '../data/swarmHangar.js';
@@ -39,6 +38,17 @@ export function securedBountyOf(run) {
   return Number.isFinite(secured) && secured > 0 ? Math.trunc(secured) : 0;
 }
 
+export function nonBankableRunCredits(run) {
+  const credits = run?.telemetry?.nonBankableCredits;
+  return Number.isSafeInteger(credits) && credits > 0 ? credits : 0;
+}
+
+/** Opening funds and armory resale stay spendable for the life of the run. */
+export function bankableRunCredits(run, credits = run?.credits) {
+  const purse = Number.isFinite(Number(credits)) ? Math.max(0, Math.round(Number(credits))) : 0;
+  return Math.max(0, purse - nonBankableRunCredits(run));
+}
+
 /**
  * The "bank half, keep flying" offer for the run as it stands, or null when the offer is
  * not on the table: the window gate is extraction's own, and an empty purse — or one too
@@ -47,7 +57,7 @@ export function securedBountyOf(run) {
 export function partialBankOffer(run) {
   if (!canExtract(run)) return null;
   const purse = Number.isInteger(run.credits) && run.credits > 0 ? run.credits : 0;
-  const amount = Math.floor(purse * PARTIAL_BANK_FRACTION);
+  const amount = Math.floor(bankableRunCredits(run) * PARTIAL_BANK_FRACTION);
   if (amount <= 0) return null;
   return { amount, remaining: purse - amount, purse };
 }

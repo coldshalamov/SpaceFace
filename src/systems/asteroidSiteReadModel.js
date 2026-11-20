@@ -2,16 +2,28 @@
 // No init/update/production/materialization authority is reachable through this module.
 // Runtime reconciliation operates only on caller-owned records: the native owner supplies its
 // durable record; the public mirror boundary below first clones that one site's save-safe data.
-import { COLS, ROWS, generateDrillField, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, tileIndex } from './drillFieldModel.js';
+import { COLS, ROWS, generateDrillField, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, tileIndex, entryShaftIndex } from './drillFieldModel.js';
 import { applySealedDeadDropCap, sealedDeadDropCapMissing } from './boreDeadDrop.js';
-import { SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID, SITE_BALANCE } from '../data/sites.js';
+import { SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID, SITE_BALANCE, classifySiteSpecialization } from '../data/sites.js';
 import { contactProfile, machineCapability, clamp01, round3 } from './siteProduction.js';
-import { buildComponents, laneCapacity, laneThroughput, storeTotal, reconcileStores, previewStoreReconciliation, wouldOwnComponent } from './siteLogistics.js';
+import { buildComponents, laneCapacity, laneThroughput, storeTotal, reconcileStores, previewStoreReconciliation, wouldOwnComponent, stagedCourierLoad } from './siteLogistics.js';
 import { paintStructuralFalls } from './siteStructuralModel.js';
 import { validateSurveyTarget } from './siteSurvey.js';
 import { solveRadiatorThermal, radiatorSignature } from './siteRadiatorReadModel.js';
 import { sellableCargoQuantity } from './cargoReservations.js';
 import { SECTORS } from '../data/sectors.js';
+import {
+  evaluateSubterraneanSynergies,
+  generateInteriorCutawaySchematic,
+  findBestBlueprintSeats,
+} from './asteroidInteriorPuzzle.js';
+import {
+  ensureEmpireState,
+  getEmpireModifiers,
+  getActiveWeather,
+  getSiteDroneCapacity,
+  computeSectorSupplyMatrix,
+} from './beltEmpireSystem.js';
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 
 export function getAsteroidSiteFromState(state, siteId) {
@@ -113,10 +125,10 @@ export function createAsteroidSiteMirrorReadView(state, siteId, cloneReadValue) 
   return view;
 }
 
-function constructionAccess(field, machines, start) {
+function constructionAccess(field, machines, start, excluded = -1) {
   const occupied = new Set((machines || []).map((m) => tileIndex(m.col, m.row)));
   const open = (c, r) => c >= 0 && c < COLS && r >= 0 && r < ROWS
-    && !occupied.has(tileIndex(c, r))
+    && tileIndex(c, r) !== excluded && !occupied.has(tileIndex(c, r))
     && field[c]?.[r]?.type === 'empty' && !field[c][r].structure;
   const reachable = new Uint8Array(COLS * ROWS);
   if (!start || !open(start.col, start.row)) return reachable;
@@ -234,7 +246,7 @@ export const asteroidSiteReadMethods = {
     return rt;
   },
 
-  canInstall({ asteroidId, defId, col, row }) {
+  canInstall({ asteroidId, defId, col, row, preview = false }) {
     const def = SITE_MACHINE_BY_ID.get(defId);
     if (!def) return { ok: false, reason: 'unknown-machine', missing: {}, profile: null };
     if (!Number.isInteger(col) || !Number.isInteger(row) || col < 0 || col >= COLS || row < 0 || row >= ROWS) {
@@ -306,7 +318,13 @@ export const asteroidSiteReadMethods = {
 
     const missing = this._missingMaterials(site, def.cost, this._fundingStoresFor(site, col, row));
     if (Object.keys(missing).length) return { ok: false, reason: 'materials', missing, profile };
-    return { ok: true, reason: null, missing: {}, profile };
+    const check = { ok: true, reason: null, missing: {}, profile };
+    if (preview && sessionHere) {
+      const shaft = entryShaftIndex();
+      check.sealsReturn = this._accessCache.cells[shaft] === 1
+        && constructionAccess(field, site?.machines, accessFrom, tileIndex(col, row))[shaft] === 0;
+    }
+    return check;
   },
 
   previewBreak(siteId, col, row) {
@@ -484,6 +502,7 @@ export const asteroidSiteReadMethods = {
     const rt = this._runtime(site);
 
     const power = [];
+    let sharedLeft = Number(site.sharedPowerInMw) || 0;
     for (const comp of rt.powerComps) {
       let gen = 0;
       let draw = 0;
@@ -494,6 +513,14 @@ export const asteroidSiteReadMethods = {
         const cap = machineCapability(def, rt.geo[m.id], m.mode);
         gen += cap.powerGen;
         draw += cap.powerDraw;
+      }
+      if (sharedLeft > 0 && draw > gen) {
+        const boost = Math.min(sharedLeft, draw - gen);
+        gen += boost;
+        sharedLeft -= boost;
+      } else if (sharedLeft > 0 && draw > 0) {
+        gen += sharedLeft;
+        sharedLeft = 0;
       }
       power.push({
         key: comp.key,
@@ -506,9 +533,22 @@ export const asteroidSiteReadMethods = {
       });
     }
 
+    const empire = ensureEmpireState(this.state?.sites, this.state?.simTime || 0);
+    const empMods = getEmpireModifiers(empire);
+    const weather = getActiveWeather(empire, this.state);
+    const synergies = evaluateSubterraneanSynergies({
+      site,
+      field: rt.field,
+      geoByMachine: rt.geo,
+      compRatio: Object.fromEntries(power.map((row) => [row.key, row.ratio])),
+      powerCompByMachine: rt.powerCompByMachine,
+      empireDoctrines: empire.doctrines,
+      weather,
+    });
+    const bonusCap = (synergies.summary.orbitalStorageBonus || 0) + (empMods.laneCapacityBonus || 0);
     const lanes = rt.laneComps.map((comp) => {
       const stored = storeTotal(rt.stores[comp.key]);
-      const capacity = rt.capacity[comp.key];
+      const capacity = (rt.capacity[comp.key] || 0) + bonusCap;
       return {
         key: comp.key,
         cells: comp.cells,
@@ -559,6 +599,7 @@ export const asteroidSiteReadMethods = {
     }
 
     const podRecipe = SITE_RECIPE_BY_ID.get('sr_fab_courier');
+    const load = stagedCourierLoad(site.exportBuffer);
     // Pod destination + options resolved HERE so the screen never imports sector data itself.
     const destSector = SECTOR_BY_ID.get(site.sectorId);
     // The screen/worker read view has no cadence cache. Use its freshly projected
@@ -568,8 +609,40 @@ export const asteroidSiteReadMethods = {
       compRatio: Object.fromEntries(power.map((row) => [row.key, row.ratio])),
       compPower: Object.fromEntries(power.map((row) => [row.key, row])),
     };
+    const incomingLinks = [];
+    const allSites = (this.state && this.state.sites && this.state.sites.byId) || {};
+    for (const other of Object.values(allSites)) {
+      if (!other || other.id === site.id || other.sectorId !== site.sectorId) continue;
+      for (const link of Array.isArray(other.links) ? other.links : []) {
+        if (!link || link.targetSiteId !== site.id || link.active === false) continue;
+        incomingLinks.push({
+          id: link.id || `${other.id}->${site.id}:${link.kind}`,
+          fromSiteId: other.id,
+          fromAsteroidId: other.asteroidId ?? null,
+          kind: link.kind === 'power' ? 'power' : 'material',
+          goodId: link.goodId || null,
+          ratePerMin: Number(link.ratePerMin) || 0,
+          transferredU: Number(link.transferredU) || 0,
+        });
+      }
+    }
+
+    const totalPowerGenMw = round3(power.reduce((s, c) => s + (Number(c.gen) || 0), 0)
+      + Math.max(0, sharedLeft)
+      + Math.max(0, Number(synergies.summary.orbitalPowerNetMw) || 0));
+    const totalPowerDrawMw = round3(power.reduce((s, c) => s + (Number(c.draw) || 0), 0)
+      + Math.max(0, -(Number(synergies.summary.orbitalPowerNetMw) || 0)));
+    const specialization = classifySiteSpecialization({
+      ...site,
+      powerGenMw: totalPowerGenMw,
+      powerDrawMw: totalPowerDrawMw,
+    });
+    const thermalSolved = solveRadiatorThermal(site, radiatorRuntime, 0);
+    const cutawaySchematic = generateInteriorCutawaySchematic(site, rt.field, machines, site.overlays, thermalSolved);
+    const blueprintSuggestions = findBestBlueprintSeats(rt.field, site, 'bp_smelter_crucible', 3);
+
     return {
-      thermal: solveRadiatorThermal(site, radiatorRuntime, 0),
+      thermal: thermalSolved,
       signature: radiatorSignature(site, radiatorRuntime),
       site,
       hasCore: this.hasCore(site),
@@ -577,9 +650,30 @@ export const asteroidSiteReadMethods = {
       power,
       lanes,
       machines,
+      specialization,
+      directive: synergies.directive,
+      synergies,
+      anomalies: synergies.anomalies,
+      drones: (Array.isArray(site.drones) ? site.drones : []).map((d) => ({ ...d })),
+      maxDrones: getSiteDroneCapacity(site, empire),
+      capacitorMwS: round3(Number(site.capacitorMwS) || 0),
+      cutawaySchematic,
+      blueprintSuggestions,
+      reserves: { ...(site.reserves || {}) },
+      links: (Array.isArray(site.links) ? site.links : []).map((l) => ({ ...l })),
+      incomingLinks,
+      defenses: (Array.isArray(site.defenses) ? site.defenses : []).map((d) => ({ ...d })),
+      sharedPowerInMw: Number(site.sharedPowerInMw) || 0,
+      sharedPowerOutMw: Number(site.sharedPowerOutMw) || 0,
+      totalPowerGenMw,
+      totalPowerDrawMw,
       exportRatePerMin: round3(exportRatePerMin),
       courier: {
         destinationId: site.podDestinationId || null,
+        stagedUnits: load.stagedUnits,
+        readyUnits: site.fleet.podsReady > 0 && machines.some(m => (
+          m.defId === 'sm_cargo_port' && m.powerRatio > 0 && m.laneKey != null
+        )) ? load.units : 0,
         stations: (destSector && Array.isArray(destSector.stations) ? destSector.stations : [])
           .map((st) => ({ id: st.id, name: st.name })),
       },
@@ -592,6 +686,110 @@ export const asteroidSiteReadMethods = {
       exportBuffer: site.exportBuffer,
       exportOff: site.exportOff,
       field: rt.field,
+    };
+  },
+
+  sectorNetworkProjection(sectorId = null) {
+    const activeSectorId = sectorId || (this.state && this.state.world && this.state.world.currentSectorId) || null;
+    const allSites = (this.state && this.state.sites && this.state.sites.byId) || {};
+    const order = (this.state && this.state.sites && Array.isArray(this.state.sites.order))
+      ? this.state.sites.order : Object.keys(allSites);
+    const nodes = [];
+    const links = [];
+    let totalPowerGenMw = 0;
+    let totalPowerDrawMw = 0;
+    let totalStoredU = 0;
+    let defenseCount = 0;
+    const roleCounts = {};
+
+    for (const siteId of order) {
+      const site = allSites[siteId];
+      if (!site || (activeSectorId && site.sectorId !== activeSectorId)) continue;
+      const proj = this.projection(siteId);
+      if (!proj) continue;
+      const ent = this.state.entities && this.state.entities.get ? this.state.entities.get(site.asteroidId) : null;
+      const pos = ent && ent.pos ? { x: ent.pos.x, z: ent.pos.z } : (site.anchor ? { x: site.anchor.x, z: site.anchor.z } : null);
+      const storedU = round3(proj.lanes.reduce((s, l) => s + (Number(l.stored) || 0), 0));
+      totalPowerGenMw += proj.totalPowerGenMw;
+      totalPowerDrawMw += proj.totalPowerDrawMw;
+      totalStoredU += storedU;
+      defenseCount += proj.defenses.length;
+      const specId = proj.specialization?.id || 'outpost';
+      roleCounts[specId] = (roleCounts[specId] || 0) + 1;
+      nodes.push({
+        siteId: site.id,
+        asteroidId: site.asteroidId,
+        sectorId: site.sectorId,
+        anchored: !!site.anchored,
+        pos,
+        specialization: proj.specialization,
+        totalPowerGenMw: proj.totalPowerGenMw,
+        totalPowerDrawMw: proj.totalPowerDrawMw,
+        storedU,
+        machines: proj.machines,
+        lanes: proj.lanes,
+        reserves: proj.reserves,
+        links: proj.links,
+        incomingLinks: proj.incomingLinks,
+        defenses: proj.defenses,
+        directive: proj.directive,
+        synergies: proj.synergies,
+        anomalies: proj.anomalies,
+        drones: proj.drones,
+        maxDrones: proj.maxDrones,
+        capacitorMwS: proj.capacitorMwS,
+        cutawaySchematic: proj.cutawaySchematic,
+        fleet: proj.fleet,
+        courier: proj.courier,
+        exportOff: proj.exportOff,
+        exportBuffer: proj.exportBuffer,
+        exportRatePerMin: proj.exportRatePerMin,
+        signature: proj.signature,
+        thermal: proj.thermal,
+      });
+    }
+
+    const nodeBySite = new Map(nodes.map((n) => [n.siteId, n]));
+    for (const node of nodes) {
+      for (const link of node.links) {
+        if (!link || link.active === false) continue;
+        const target = nodeBySite.get(link.targetSiteId);
+        links.push({
+          ...link,
+          fromSiteId: node.siteId,
+          fromAsteroidId: node.asteroidId,
+          toSiteId: link.targetSiteId,
+          toAsteroidId: target ? target.asteroidId : null,
+          fromPos: node.pos,
+          toPos: target ? target.pos : null,
+        });
+      }
+    }
+
+    const empire = ensureEmpireState(this.state?.sites, this.state?.simTime || 0);
+    const empireModifiers = getEmpireModifiers(empire);
+    const weather = getActiveWeather(empire, this.state);
+    const supplyMatrix = computeSectorSupplyMatrix(this, activeSectorId);
+
+    return {
+      sectorId: activeSectorId,
+      sites: nodes,
+      links,
+      empire,
+      empireModifiers,
+      weather,
+      supplyMatrix,
+      totals: {
+        siteCount: nodes.length,
+        totalPowerGenMw: round3(totalPowerGenMw),
+        totalPowerDrawMw: round3(totalPowerDrawMw),
+        totalStoredU: round3(totalStoredU),
+        activeLinkCount: links.length,
+        defenseCount,
+        droneCount: supplyMatrix.totalDrones,
+        totalDefenseRating: supplyMatrix.totalDefenseRating,
+        roleCounts,
+      },
     };
   },
 };
