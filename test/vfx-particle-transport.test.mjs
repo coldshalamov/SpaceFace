@@ -221,7 +221,8 @@ test('absolute-age emission matches stepped transport and publishes one shared b
 test('field transport packs once after advancing and emitting, with the same particle output', () => {
   const state = {
     simTime: 0,
-    fields: { active: [{ id: 'test-well', kind: 'well', center: { x: 2, z: 4 }, radius: 95, strength: 60 }] },
+    // Skim: the folded-surface field presenter still owns its particle transport (Pull moved to the kit).
+    fields: { active: [{ id: 'test-well', kind: 'sheet', center: { x: 2, z: 4 }, dir: { x: 1, z: 0 }, halfWidth: 40, radius: 95, strength: 60 }] },
     settings: { video: {}, accessibility: {} },
   };
   const reference = new FieldForcePresentation(new THREE.Scene());

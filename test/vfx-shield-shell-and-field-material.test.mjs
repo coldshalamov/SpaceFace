@@ -227,6 +227,9 @@ test('every powered tool is built from stiff hardware AND a working membrane, at
   });
 
   for (const [kind, signature] of Object.entries(FIELD_SIGNATURES)) {
+    // Shove, Pull, Pin and Plow are drawn by the VFX kit (light, matter, true edges), not by
+    // folded-cloth strips; only the folded presenter's remaining tools are checked here.
+    if (signature.surfaces === 0) continue;
     const owner = new FieldForcePresentation(new THREE.Scene());
     const state = { simTime: 0, fields: { active: [field(kind)] }, settings: { video: {} } };
     owner.update(0, state);

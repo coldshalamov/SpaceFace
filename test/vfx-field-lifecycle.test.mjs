@@ -25,7 +25,9 @@ for(const [kind,recipe]of Object.entries(FIELD_LIFECYCLES)){
   sampleFieldLifecycle(1000+recipe.release/2,0,1000,recipe,out);assert.equal(out.stage,'release');assert.ok(out.opacity>0&&out.opacity<1);assert.equal(out.supply,0);assert.equal(out.scale,1);
   sampleFieldLifecycle(1000+recipe.release+.001,0,1000,recipe,out);assert.equal(out.stage,'dead');assert.equal(out.opacity,0);
  });
- test(`${kind}: production adapter advances shader clock with NO affected targets`,()=>{
+ // Shove's repulsor is drawn by the VFX kit (test/vfx-kit-shove.test.mjs), not by folded surfaces.
+// Shove, Pull, Pin and Plow are drawn by the VFX kit (test/vfx-kit-shove.test.mjs); Skim keeps surfaces.
+ if(kind!=='repulsor'&&kind!=='well'&&kind!=='seed'&&kind!=='cone')test(`${kind}: production adapter advances shader clock with NO affected targets`,()=>{
   const system=Object.create(vfx);system._scene=new THREE.Scene();system.state=state([field(kind)]);
   system._fieldGeomInitialized=false;system._fieldGeom=null;system._combatBeamLocalizer=(x,z,out)=>Object.assign(out,{x,z});
   system._updateFieldGeometry(0);const o=system._fieldGeom;
@@ -67,7 +69,7 @@ test('same-id toggle restarts supply while old residue retires separately',()=>{
  assert.equal(alive.find(s=>s.release<0).born,1.2);assert.equal(alive.find(s=>s.release>=0).release,1.1);o.dispose();
 });
 test('float-origin reproject moves source pivots and strip origins together',()=>{
- const o=new FieldForcePresentation(new THREE.Scene()),s=state([field('seed')]);step(o,s,0);step(o,s,2);
+ const o=new FieldForcePresentation(new THREE.Scene()),s=state([field('sheet')]);step(o,s,0);step(o,s,2);
  const a=o.batch.attributes[0],p=o.batch.attributes[8],oldA=a.getX(0),oldP=p.getX(0);
  o.reproject(900,-700);assert.equal(a.getX(0),Math.fround(oldA+900));assert.equal(p.getX(0),Math.fround(oldP+900));assert.equal(p.getY(0),30-700);o.dispose();
 });

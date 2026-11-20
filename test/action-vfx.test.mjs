@@ -12,7 +12,8 @@ function fixture(){
   const player={id:1,alive:true,pos:{x:0,z:0},vel:{x:6,z:2},radius:7};
   const target={id:2,alive:true,pos:{x:20,z:30},vel:{x:5,z:10},radius:6};
   return {simTime:1,playerId:1,entities:new Map([[1,player],[2,target]]),settings:{video:{}},
-    fields:{active:[{id:'well',kind:'well',center:{x:0,z:0},radius:150,dir:{x:1,z:0}}]}};
+    // Skim keeps the folded-surface transport; Pull's well is drawn by the VFX kit.
+    fields:{active:[{id:'well',kind:'sheet',center:{x:0,z:0},radius:150,dir:{x:1,z:0},halfWidth:40}]}};
 }
 const payload={targetId:2,victimId:2,entityId:2,sourceId:1,ownerId:1,wellId:'well',fieldId:'well',pos:{x:20,z:30}};
 

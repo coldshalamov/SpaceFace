@@ -255,14 +255,18 @@ export class FieldForcePresentation {
       this.presence=Math.min(1,Math.max(FIELD_LANGUAGE_MIN_PRESENCE,
         FIELD_LANGUAGE_FULL_RADIUS/Math.max(1,s.radius)));
       switch(shapeOfFieldKind(s.kind)){
-        case 'seed':this._seed(s,s.seed,motion);break;
-        case 'well':this._well(s);break;
-        case 'repulsor':this._repulsor(s);break;
-        case 'cone':this._cone(s);break;
+        // Pin (seed) and Plow (cone) are drawn by the VFX kit: trail, landing, claws, beacon; true wedge.
+        case 'seed':break;
+        // Pull's well is drawn by the VFX kit too (falling rings, spiralling motes, core light).
+        case 'well':if(s.kind!=='well')this._well(s);break;
+        // Shove's own repulsor is drawn by the VFX kit (vfx/kit/powerFx.js): a light front, sparks
+        // and its true edge. Only other repulsor-shaped records (hull bursts) keep this recipe.
+        case 'repulsor':if(s.kind!=='repulsor')this._repulsor(s);break;
+        case 'cone':if(s.kind!=='cone')this._cone(s);break;
         case 'sheet':this._sheet(s);break;
       }
       const pulse=Math.floor((this.time-s.born)/(.12+s.character*.037));
-      if(!motion && !this.releasing && pulse>s.particlePulse){
+      if(!motion && !this.releasing && pulse>s.particlePulse && s.kind!=='repulsor' && s.kind!=='well' && s.kind!=='cone' && s.kind!=='seed'){
         const p=this.particleBurst;s.particlePulse=pulse;
         p.kind=shapeOfFieldKind(s.kind)==='sheet'?'skim':shapeOfFieldKind(s.kind);p.x=this.local.x;p.z=this.local.z;
         p.dx=Math.cos(s.angle);p.dz=Math.sin(s.angle);p.radius=s.kind==='seed'?Math.min(s.radius*.33,14):s.radius;

@@ -51,7 +51,8 @@ test('fields.active dirty-wake resumes update then re-latches when empty', () =>
   const s = state([]);
   step(o, s, 0);
   assert.equal(o._quietEmpty, true);
-  s.fields.active = [field('well')];
+  // Skim keeps the folded-surface presenter; Shove, Pull, Pin and Plow are drawn by the VFX kit.
+  s.fields.active = [field('sheet')];
   step(o, s, 1);
   assert.equal(o._quietEmpty, false);
   assert.equal(o.stats.active, 1);
@@ -72,12 +73,12 @@ test('fields.active dirty-wake resumes update then re-latches when empty', () =>
 
 test('picture unchanged while latched — mesh stays hidden/count 0', () => {
   const o = new FieldForcePresentation(new THREE.Scene());
-  const s = state([field('repulsor')]);
+  const s = state([field('sheet')]);
   step(o, s, 0);
   step(o, s, 1);
   assert.ok(o.mesh.visible);
   s.fields.active = [];
-  const release = FIELD_LIFECYCLES.repulsor.release;
+  const release = FIELD_LIFECYCLES.sheet.release;
   step(o, s, 1.05);
   step(o, s, 1.05 + release + 0.05);
   assert.equal(o._quietEmpty, true);

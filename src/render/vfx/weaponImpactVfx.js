@@ -13,6 +13,7 @@ import {
 } from './effectsCause.js';
 import { resolveImpactPresentationProfile } from '../vfxProfiles.js';
 import { recipeUsesSweptMuzzle, resolveWeaponRecipe } from '../weapons/index.js';
+import { gunFamilyOf } from '../../data/gunFamilies.js';
 
 // The VFX instance remains the event, beam, and shared-pool owner. These methods render its
 // existing weapon-fire and impact pictures without a second pool or lifecycle.
@@ -48,6 +49,8 @@ export function createWeaponImpactVfxMethods({
       base += (Math.random() - 0.5) * scatter * 1.1;
     }
     const profile = this._muzzleProfile(p, owner);
+    // The kit adds each gun family's own muzzle grammar (hose fizz vs thump blast), vfx/kit/powerFx.js.
+    if (p.continuous !== true) this._ensurePowerFx()?.gunMuzzle(gunFamilyOf(p.weaponId), origin.x, origin.z, base, p.ownerId === (this.state && this.state.playerId));
     if (p.continuous === true && p.to && this._combatBeams) {
       const startsBefore = this._combatBeams.startCount;
       if (!this._combatBeams.upsert(p, this._t, profile)) return;
@@ -275,6 +278,14 @@ export function createWeaponImpactVfxMethods({
     let presenterHit = null;
     if (this._weaponPresenter) {
       presenterHit = this._weaponPresenter.handleHit(p, hitShield);
+    }
+    {
+      // Each family hits the way it plays: hose pin-pricks, thump wallop (vfx/kit/powerFx.js).
+      const n0 = p && (p.normal || p.approach || p.dir);
+      let knx = n0 && Number(n0.x) || 0; let knz = n0 && Number(n0.z) || 0;
+      if (n0 && !p.normal) { knx = -knx; knz = -knz; }
+      if (!knx && !knz) knx = 1;
+      this._ensurePowerFx()?.gunImpact(gunFamilyOf(p && p.weaponId), pos.x, pos.z, knx, knz, hitShield, recipe && recipe.family === 'concussion');
     }
     const keepLegacyHit = recipe.variant === 'flak'
       || recipe.family === 'missile'

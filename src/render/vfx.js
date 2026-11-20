@@ -361,6 +361,8 @@ import {
   updateMasslineLatchRim,
 } from './masslineLatchRim.js';
 import { createPowerPreview } from './powerPreview.js';
+import { PowerFx, createPowerFxPrecompileGroup } from './vfx/kit/powerFx.js';
+import { ShipMarkers } from './vfx/kit/shipMarkers.js';
 import { powerHeld, powerPreviewPlan } from '../data/powerPreview.js';
 import {
   createMasslineChainReadout,
@@ -2083,6 +2085,10 @@ export const vfx = {
     disposeVfxRoot(this._monofilamentBlade && this._monofilamentBlade.mesh, disposeState);
     invokeVfxDisposer(this._selectionSigil, 'selection sigil');
     this._selectionSigil = null;
+    invokeVfxDisposer(this._powerFx, 'power vfx kit');
+    this._powerFx = null;
+    invokeVfxDisposer(this._shipMarkers, 'ship markers');
+    this._shipMarkers = null;
     invokeVfxDisposer(this._powerPreview, 'power preview');
     this._powerPreview = null;
     this._powerPreviewPlan = null;
@@ -2266,6 +2272,9 @@ export const vfx = {
       roots.push(object);
     };
     add(this._shardMesh);
+    add(this._powerFx && this._powerFx.sparks.mesh);
+    add(this._powerFx && this._powerFx.shells.mesh);
+    add(this._shipMarkers && this._shipMarkers.mesh);
     add(this._trailStreakPool && this._trailStreakPool.mesh);
     add(this._spriteBatches && this._spriteBatches.glow.mesh);
     add(this._spriteBatches && this._spriteBatches.ring.mesh);
@@ -3070,6 +3079,15 @@ export const vfx = {
     add('cruise:engaged', (p) => this._onCruiseEngaged(p));
     add('cruise:dropped', (p) => this._onCruiseDropped(p));
     add('charge:detonated', (p) => this._onChargeDetonated(p));
+    // The powers drawn with the VFX kit (vfx/kit/powerFx.js): light fronts, sparks, true edges.
+    add('fields:deployed', (p) => this._ensurePowerFx()?.onFieldDeployed(p, this.state));
+    add('massSeed:deployed', (p) => this._ensurePowerFx()?.pinFired(p));
+    add('massSeed:stakeCast', (p) => this._ensurePowerFx()?.stakeCast(p, this.state));
+    add('massSeed:staked', (p) => this._ensurePowerFx()?.staked(p, this.state));
+    add('massSeed:stakeReleased', (p) => this._powerFx?.stakeReleased(p, this.state));
+    add('massSeed:locking', (p) => this._ensurePowerFx()?.pinLanding(p, false));
+    add('massSeed:locked', (p) => this._ensurePowerFx()?.pinLanding(p, true));
+    for (const ev of ['massSeed:cleared', 'massSeed:collapsed', 'massSeed:destroyed']) add(ev, () => this._powerFx?.pinEnded());
     // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md): per-payload reads, never one generic ball.
     add('bombs:detonated', (p) => this._onBombDetonated(p));
     add('bombs:fieldEnded', (p) => this._onBombFieldEnded(p));
@@ -3239,6 +3257,7 @@ export const vfx = {
       this._energy?.plasmaStream?.reproject?.(ox, oz);
       this._arcadeStructural?.reproject(dx, dz);
       this._fieldGeom?.reproject(ox, oz);
+      this._powerFx?.reproject(ox, oz);
       this._actionVfx?.reproject(ox, oz);
       this._stationOperationVfx?.reproject(ox, oz);
       this._bombDetonationVfx?.reproject(ox, oz);
@@ -5908,6 +5927,9 @@ export const vfx = {
       ? presentation.position
       : this._posFrom(p, p && p.id);
     if (!pos) return false;
+    // A ship's death also gets the kit's blast grammar (shock front, sparks, chips, soot); the phased
+    // explosion keeps its fireball and owns the light.
+    if (p && p.type === 'ship') this._ensurePowerFx()?.bomb(pos.x, pos.z, Number.isFinite(radiusOverride) ? radiusOverride : (p.radius || 12), p.id, { light: false, cast: false });
     const direction = presentation && Object.hasOwn(presentation, 'direction')
       ? presentation.direction
       : p && (p.direction || p.vel || p.approach) || null;
@@ -7872,6 +7894,8 @@ export const vfx = {
     return updateMasslineLatchRim(rim, plan, dt, (x, z) => this._toLocalXZ(x, z, this._spawnLocalXZ));
   },
 
+  _powerFx: null,
+  _shipMarkers: null,
   _powerPreview: null,
   _powerPreviewPlan: null,
   _powerPreviewLocalize: null,
@@ -9829,37 +9853,12 @@ export const vfx = {
   _onChargeDetonated(p) {
     this._emitJuiceCue('combat.damage.charge', p, 2);
     if (!this._scene || !p || !p.pos) return;
-    const pos = p.pos;
-    const r = Math.max(4, Number(p.radius) || 12);
-    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
-    const reduced = acc.flashOpacityScale < 1;
-    const neon = resolveForceNeonScale('impulse', this._forceNeonMetrics());
-    const profile = resolveImpactPresentationProfile('wpn_vector_mine_m');
-    const coreScale = Math.max(1.6, Math.min(4.5, r * 0.08)) * neon.energy * 0.55;
-    // Compact structural core: collapsing punch, never the retired spherical explosion/ring.
-    this._spawnSprite(SPR_FLASH, pos.x, 0.16, pos.z, 0.10,
-      2.4 * coreScale, 0.85 * coreScale, 0.92, 0, '#ffffff', 0, 0, 1.15, 0);
-    this._emitDirectionalShoveSheets(pos, p.shoves, profile, reduced, Math.max(0.85, coreScale));
-    // IMPACTS: a carried charge releases in STAGES -- contact, first internal release, ejecta,
-    // second internal release, separation, then the cooling settle -- rather than as one flat
-    // bloom. No shove receipt means no signed side, so the recipe stays symmetric.
-    _impactOpts.vx = 0; _impactOpts.vy = 0; _impactOpts.vz = 0;
-    _impactOpts.serial = hashVfxId('charge:' + String(p.id ?? p.ownerId));
-    _impactOpts.targetId = p.id ?? null;
-    _impactOpts.eventClass = 'detonation';
-    _impactOpts.priority = 0.7;
-    _impactOpts.hero = false;
-    this._composeImpact(pos.x, 0.2, pos.z, 0, 0, 1, false, 0.62, 'hull', r * 0.45, _impactOpts);
-    if (acc.eventLightPeakScale > 0) {
-      // _flashLight already applies eventLightPeakScale — the neon gain is the authored runtime
-      // multiplier the preset peak doesn't own.
-      this._eventLight({ x: pos.x, z: pos.z }, 'impact', {
-        severity: 'detonation',
-        color: profile.accentColor,
-        peakMul: neon.lightPeak,
-      });
-    }
+    // The blast is drawn by the VFX kit (vfx/kit/powerFx.js bomb): one-frame flash, a room-lighting
+    // light, a fireball that cools into soot, a shock front, sparks and chips. It replaces the
+    // compact flash card, the shove sheets and the staged structural impact that read as a puff.
+    this._ensurePowerFx()?.bomb(p.pos.x, p.pos.z, Math.max(4, Number(p.radius) || 12), p.id ?? p.ownerId, { shoves: p.shoves });
   },
+
 
   // Drift-bomb detonations (design/ORDNANCE_BOMBS_SPEC.md). One handler, eight payloads, one
   // law: the read is the CONSEQUENCE the payload authored (shove / pull / splat / pulse), never
@@ -11168,6 +11167,46 @@ export const vfx = {
     layer.noteSilhouette(mark, this._causeNow());
   },
 
+  _ensurePowerFx() {
+    if (this._powerFx || !this._scene || typeof this._scene.add !== 'function') return this._powerFx || null;
+    this._powerFx = new PowerFx(this._scene, {
+      toLocal: (x, z, out) => this._toLocalXZ(x, z, out),
+      // Through the light director like every other event light (kind 'impact', values authored here).
+      flashLight: (pos, color, peak, decay, dist, priority) => this._eventLight(pos, 'impact', { color, peak, decay, distance: dist, priority }),
+      distortion: (spec) => { const d = this._weaponPresenter && this._weaponPresenter.distortion; if (d) d.spawn(spec); },
+    });
+    return this._powerFx;
+  },
+  // Ships pop from the floor: contact pool, team ring, the player's chevron (vfx/kit/shipMarkers.js).
+  _updateShipMarkers() {
+    if (!this._scene || !this.state || this.state.mode !== 'flight') {
+      if (this._shipMarkers) this._shipMarkers.mesh.visible = false;
+      return;
+    }
+    if (!this._shipMarkers) {
+      if (typeof this._scene.add !== 'function') return;
+      this._shipMarkers = new ShipMarkers(this._scene);
+    }
+    const time = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    // The chevron points where the nose points: the front weapon socket relative to the hull.
+    let heading = null;
+    const me = this.state.entities && this.state.entities.get ? this.state.entities.get(this.state.playerId) : null;
+    const sock = me && this.helpers && typeof this.helpers.socketWorldPos === 'function'
+      ? this.helpers.socketWorldPos(me.id, 'SOCKET_Weapon_Front') : null;
+    if (sock && me.pos && Math.hypot(sock.x - me.pos.x, sock.z - me.pos.z) > 0.5) heading = Math.atan2(sock.z - me.pos.z, sock.x - me.pos.x);
+    if (!this._shipMarkerLocalize) this._shipMarkerLocalize = (x, z, out) => this._toLocalXZ(x, z, out);
+    this._shipMarkers.update(this.state, this._shipMarkerLocalize, time, this._isReduced(), heading);
+  },
+  _updatePowerFx(dt) {
+    if (!this._powerFx) {
+      // Created (and its two programs warmed) the moment a fight is live, not at the first cast.
+      if (!this.state || this.state.mode !== 'flight') return;
+      if (!this._ensurePowerFx()) return;
+      this._powerFx.warm();
+    }
+    this._powerFx.update(dt, this.state);
+  },
+
   _updateFieldGeometry(dt) {
     if (!this._fieldGeomInitialized) {
       if (!this._fieldFlowRelevant()) return;
@@ -11579,6 +11618,8 @@ export const vfx = {
       sub.fieldFlow = fields ? fields.surfaces : 0;
     } else sub.fieldFlow = 0;
     this._syncFieldPowerLights();
+    this._updatePowerFx(dt);
+    this._updateShipMarkers();
     if (this._gyreRelevant() || this._gyreSnareFx) this._updateGyreSnare(dt);
     if (this._actionVfx) this._actionVfx.update(this.state);
     if (this._bombDetonationVfx) this._bombDetonationVfx.update(this.state);
@@ -16514,6 +16555,7 @@ export function createVfxPrecompileSalvo() {
   const group = new THREE.Group();
   group.name = 'SF_Precompile_VFX_Salvo';
   group.add(createForceSurfacePrecompileMesh());
+  group.add(createPowerFxPrecompileGroup());
 
   const shardPrecompile = createShardStreakCloud(group, 12);
   const points = shardPrecompile.mesh;

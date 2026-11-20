@@ -2,82 +2,68 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { FieldForcePresentation } from '../src/render/forceLanguage/fieldForcePresentation.js';
+import { PowerFx } from '../src/render/vfx/kit/powerFx.js';
+import { SHELL_MODE } from '../src/render/vfx/kit/shockShell.js';
 
-// INF-043 — pull and push distinguishable without reading. The shared transport cue is the
-// radial span of the working-surface strips: Well scythes run outer->inner (inward verb),
-// Repulsor shells run inner->outer (outward verb). This test reads geometry only (path radii
-// + member ribs + role) — never tint — so the distinction holds in grayscale by construction.
+// INF-043 — pull and push distinguishable without reading. Since the 2026-11-20 VFX rebuild the
+// powers are drawn by the VFX kit, and the verb is carried by MOTION and GEOMETRY, never tint:
+// Pull's fronts start at the field's true reach and CONTRACT (accelerating inward) while its motes
+// carry an inward field term; Shove's fronts start at the hull and EXPAND to the true reach. The
+// legacy folded-cloth strips for both are gone (they were the "blurry blanket").
 
 const RADIUS = 190;
-const field = (kind) => ({
-  id: kind, kind, center: { x: 30, z: -25 }, dir: { x: 1, z: 0 },
-  radius: RADIUS, halfWidth: 52, halfAngleRad: 0.56, engaged: true,
-});
-const state = (active) => ({
-  simTime: 0, fields: { active }, settings: { video: {} },
-  massSeed: { seedId: 'one', phase: 'active', lockAt: 0, activeAt: 1, warnAt: 4, expireAt: 7 },
-});
-function prime(kind) {
-  const owner = new FieldForcePresentation(new THREE.Scene());
-  const s = state([field(kind)]);
-  owner.update(0, s);
-  s.simTime = 0.5;
-  owner.update(0.5, s);
-  return owner;
-}
-// Working-surface strips: BODY role (1), polar path (0), membrane member (ribs 5).
-function workingStrips(owner, code) {
-  const path = owner.batch.attributes[1];
-  const shape = owner.batch.attributes[2];
-  const behavior = owner.batch.attributes[7];
-  const pivot = owner.batch.attributes[8];
+const host = () => ({ toLocal: (x, z, out) => { out.x = x; out.z = z; return out; } });
+const cast = (kind) => {
+  const fx = new PowerFx(new THREE.Scene(), host());
+  fx.update(0, { simTime: 1, settings: { video: {} }, fields: { active: [] } });
+  fx.onFieldDeployed({ fieldId: kind, kind, center: { x: 30, z: -25 }, radius: RADIUS }, { settings: { video: {} } });
+  return fx;
+};
+const shells = (fx) => {
   const out = [];
-  for (let i = 0; i < owner.mesh.count; i++) {
-    if (behavior.getX(i) !== code) continue; // family animation code: 2 = well, 3 = repulsor
-    if (behavior.getY(i) !== 0) continue; // BODY role only: rims/hardware excluded
-    if (path.getX(i) !== 0) continue; // polar strips only
-    if (pivot.getZ(i) !== 5) continue; // membrane member only
-    out.push({ r0: path.getW(i), r1: shape.getX(i) });
+  for (let i = 0; i < fx.shells.highWater; i++) {
+    out.push({ from: fx.shells.arrays[1][i * 4], to: fx.shells.arrays[1][i * 4 + 1], mode: fx.shells.arrays[3][i * 4] });
   }
   return out;
-}
+};
 
-test('INF-043: well working surface runs outer->inner (inward verb), inside the boundary', () => {
-  const owner = prime('well');
+test('INF-043: Pull fronts fall inward from the true reach; its motes carry an inward field term', () => {
+  const fx = cast('well');
   try {
-    const strips = workingStrips(owner, 2);
-    assert.equal(strips.length, 5, 'the five scythes carry the inward verb');
-    for (const s of strips) {
-      // rewriteFieldDescriptor normalizes the working surface to a capped body volume:
-      // each scythe still opens at its outer edge and closes inside it.
-      assert.ok(s.r0 > s.r1, `scythe spans inward (r0=${s.r0} r1=${s.r1})`);
-      assert.ok(s.r0 <= RADIUS, 'scythe starts inside the truth boundary');
+    const s = shells(fx);
+    assert.ok(s.length >= 1);
+    for (const shell of s) {
+      assert.equal(shell.mode, SHELL_MODE.CONTRACT, 'every Pull front contracts');
+      assert.ok(shell.from > shell.to, `inward span (${shell.from} -> ${shell.to})`);
+      assert.equal(shell.from, RADIUS, 'it starts at the field radius, not a capped stand-in');
     }
-  } finally { owner.dispose(); }
+    let inward = 0;
+    for (let i = 0; i < fx.sparks.highWater; i++) if (fx.sparks.arrays[5][i * 4 + 2] > 0) inward++;
+    assert.ok(inward > 40, 'motes are drawn inward');
+  } finally { fx.dispose(); }
 });
 
-test('INF-043: repulsor shells run inner->outer (outward verb), nested inside the boundary', () => {
-  const owner = prime('repulsor');
+test('INF-043: Shove fronts expand from the hull to the true reach', () => {
+  const fx = cast('repulsor');
   try {
-    const strips = workingStrips(owner, 3);
-    assert.equal(strips.length, 12, 'three fronts x four sectors carry the outward verb');
-    const bands = strips.map((s) => [s.r0, s.r1]).sort((a, b) => a[0] - b[0]);
-    for (const s of strips) {
-      // Constant-radius arcs by design: radial travel moves the whole crest outward,
-      // so the outward verb is the nested front order, not a widening static span.
-      assert.equal(s.r1, s.r0, `shell band holds a constant radius (r0=${s.r0} r1=${s.r1})`);
-      assert.ok(s.r1 <= RADIUS, 'shell ends inside the truth boundary');
-      assert.ok(s.r0 >= 48 * 0.5, 'throat stays clear of crest geometry at the normalized scale');
+    const s = shells(fx);
+    assert.ok(s.length >= 2);
+    for (const shell of s) {
+      assert.equal(shell.mode, SHELL_MODE.EXPAND, 'every Shove front expands');
+      assert.ok(shell.to > shell.from, `outward span (${shell.from} -> ${shell.to})`);
+      assert.ok(shell.to >= RADIUS * 0.9 && shell.to <= RADIUS, 'it reaches the field edge, no further');
     }
-    assert.ok(bands[0][0] < bands[4][0] && bands[4][0] < bands[8][0], 'fronts nest outward in three bands');
-  } finally { owner.dispose(); }
+  } finally { fx.dispose(); }
 });
 
-test('INF-043: strip counts are unchanged (no reskin, no new strips)', () => {
-  for (const [kind, count] of [['well', 19], ['repulsor', 23]]) {
-    const owner = prime(kind);
+test('INF-043: the folded-cloth presenter draws no strips for Pull or Shove any more', () => {
+  for (const kind of ['well', 'repulsor']) {
+    const owner = new FieldForcePresentation(new THREE.Scene());
+    const s = { simTime: 0, settings: { video: {} }, massSeed: null,
+      fields: { active: [{ id: kind, kind, center: { x: 30, z: -25 }, dir: { x: 1, z: 0 }, radius: RADIUS, engaged: true }] } };
     try {
-      assert.equal(owner.mesh.count, count, `${kind} keeps its authored strip count`);
+      owner.update(0, s); s.simTime = 0.5; owner.update(0.5, s);
+      assert.equal(owner.mesh.count, 0, `${kind}: no cloth strips`);
     } finally { owner.dispose(); }
   }
 });
