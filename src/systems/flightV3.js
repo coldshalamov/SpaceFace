@@ -1685,7 +1685,13 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     // edge would flicker brake on/off for the whole margin transit.
     if (autopilot.brakeSettled) {
       const combatSpeed = positive(profile.combatSpeed, 150);
-      const settleFraction = Math.min(0.3, (brakeFloor * 0.8) / combatSpeed);
+      // HARMONY-FIX 6: the corridor's capture tug no longer helps the autopilot park, so the creep
+      // must sit under the berth's own dock-speed gate too, or the dock-envelope brake duty-cycles
+      // at that gate for the whole last stretch.
+      const creepCap = target && target.dockingProxyId && target.dockingStage === 'berth'
+        ? Math.min(brakeFloor, positive(target.dockSpeedGate, 12) * 0.9)
+        : brakeFloor;
+      const settleFraction = Math.min(0.3, (creepCap * 0.8) / combatSpeed);
       const commanded = Math.hypot(Math.max(0, throttle), strafe);
       if (commanded > settleFraction) {
         const k = settleFraction / commanded;

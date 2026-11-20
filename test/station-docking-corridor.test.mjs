@@ -1199,3 +1199,21 @@ test('real authority: the +lat spar-pocket drift recovers and berths (D77)', asy
 function round6(value) {
   return Math.round(value * 1e6) / 1e6;
 }
+
+test('HARMONY-FIX 6: the corridor capture tug defers while the nav autopilot is flying the approach', () => {
+  dockingCorridor.init({ bus: null });
+  const dt = 1 / 60;
+  const mk = () => makeFlightState({ playerPos: skinPos(100, 0), playerVel: { x: 0, z: 0 } });
+  const own = mk();
+  dockingCorridor.update(dt, own.state);
+  assert.ok(own.state.dockingCorridor.assist, 'hand-flown: the corridor assists');
+  consumePhysicsCommand(own.player);
+
+  const piloted = mk();
+  piloted.state.nav = { autopilot: { active: true } };
+  dockingCorridor.update(dt, piloted.state);
+  assert.equal(piloted.state.dockingCorridor.phase, 'capture', 'the corridor still reads the berth');
+  assert.equal(piloted.state.dockingCorridor.assist, null, 'but applies no assist under autopilot');
+  const command = consumePhysicsCommand(piloted.player);
+  assert.ok(!command || command.impulses.length === 0, 'no corridor impulse reaches the membrane');
+});
