@@ -674,7 +674,9 @@ export const core = {
   _removeEntitiesAtIndices(indices, state, opts) {
     const list = state.entityList;
     if (!Array.isArray(list) || !indices || indices.length === 0) return 0;
-    indices.sort((a, b) => b - a);
+    // Copy before sorting — the caller's array is not ours to reorder, and a duplicated
+    // index would corpse whatever entity swap-pops into the slot a second time.
+    indices = [...new Set(indices)].sort((a, b) => b - a);
     const corpses = this._corpseScratch || (this._corpseScratch = []);
     corpses.length = 0;
     for (let k = 0; k < indices.length; k++) {

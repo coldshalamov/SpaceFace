@@ -210,9 +210,14 @@ export const physics = {
     this._spatialHashNeedsRebuild = false;
     if (ctx.helpers && !ctx.helpers.combatPhysics) ctx.helpers.combatPhysics = this._sg02CombatPhysics;
     if (this.bus && typeof this.bus.on === 'function') {
-      this.bus.on('save:loaded', () => { clearPhysicalEffects(this.state); this._resetSg02AfterLoad(); });
-      this.bus.on('game:newGame', () => clearPhysicalEffects(this.state));
-      this.bus.on('sector:exit', () => clearPhysicalEffects(this.state));
+      // Re-init on a live bus must drop the stale handlers first — otherwise every
+      // save:loaded / newGame / sector:exit fires once per past registration.
+      const offs = this._unsubs || (this._unsubs = []);
+      for (const off of offs) if (typeof off === 'function') off();
+      offs.length = 0;
+      offs.push(this.bus.on('save:loaded', () => { clearPhysicalEffects(this.state); this._resetSg02AfterLoad(); }));
+      offs.push(this.bus.on('game:newGame', () => clearPhysicalEffects(this.state)));
+      offs.push(this.bus.on('sector:exit', () => clearPhysicalEffects(this.state)));
     }
     const facade = this;
     let colliderCount = 0;
@@ -253,6 +258,13 @@ export const physics = {
       activityS3: 0,
       activityPhysicsBodies: 0,
     };
+  },
+
+  destroy() {
+    if (Array.isArray(this._unsubs)) {
+      for (const off of this._unsubs) if (typeof off === 'function') off();
+      this._unsubs.length = 0;
+    }
   },
 
   update(dt, state) {
