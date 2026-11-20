@@ -72,7 +72,7 @@ nothing stacks on `park/w3-foundry` (the Foundry there has open must-fixes).
 | Front door (B3, B3C, T8C, OVH-04b) | No First-light modal; one-press calm preset; Swarm/Gauntlet and death words; the run's own pause menu | Director, zcode, Sonnet | **Landed** 5a0ca1eb0d |
 | W3 = OVH-04 + OVH-09a | A Swarm run in its own space (load 43.1 → 38.8 s); loose rocks rest; every spawn clear | Codex, Devin, Sonnet porter | **Parked** (park/w3-foundry). Tests 28/28 from the park export; check:sim unchanged; an Adventure new game seen starting clean. Waiting for Codex's review. |
 | OVH-03a | The Ricochet Foundry as a lit set: factory deck, conveyors, furnace light, one shop-light shadow | Codex | **Parked** on top of W3. Frames: a dramatic step from black space. **Cost: ~17–20 ms of GPU per frame** (6–9 → ~26 ms, measured): holds 30 Hz, no room for 60. Before landing: cut the cost, fix the furnace casing that vanishes in some frames, respect Shadows Off. |
-| OVH-08a | Every gun measured on damage against kick | zcode | Built. Review found three bench errors (cadence rounding, the mortar lifecycle, a 121-tick probe); the fix is Codex's on return. |
+| OVH-08a | Every gun measured on damage against kick | zcode | Built. Review found three bench errors (cadence rounding, the mortar lifecycle, a 121-tick probe); fixed by OVH-08a-fix below. |
 | OVH-01a | The Pilot Tree engine: 81 nodes (with the Conjurer bends), banked picks, the three-card draw | zcode | **Parked** on `refs/heads/park/pilot-tree` (the harvest dropped another agent's refund ledger). Clean-HEAD: 254 pass, the same 12 pre-existing failures; check:sim unchanged. Its XP-curve retune is live in the working folder. |
 | OVH-01a2 | The route: the sim deals a hand the moment a pick is banked (never the screen); the screen asks by intent and hears refusals in words; only built nodes are dealt (`src/data/pilotLive.js`) | zcode | **Parked** 2a72ed65ff on `park/pilot-tree`. Director: zcode's editor flipped 146 LF lines of the mixed-ending `runSession.js` (restored line by line from the snapshot, `eol-restore.mjs`); the event surface regenerated from exactly the parked tree (`regen-surface.mjs`). |
 | OVH-01b | Level up without a pause; three cards in the breath [FE] | Sonnet (`cards`) | **Parked** e59a2a8855 on `park/pilot-tree`. Frames seen (the cards read at a glance; capstone and evolution frames distinct). Director fixes: the overlay's key listener leaked per open; the cards now say the owner's refusals. No new failures against the engine alone (same 92 pre-existing). Not yet seen in a played round. |
@@ -86,7 +86,22 @@ nothing stacks on `park/w3-foundry` (the Foundry there has open must-fixes).
 | OVH-09b | Pilots brake for each other | — | **Hold:** another agent's crossing-brake work is in `src/ai/maneuver.js` |
 | LOOK-THREAT-b | The gun-ready cue rides the hull (muzzle / running lights) now the emblem is gone | — | Review note (non-blocking) |
 | HUD-TAG-01 | The hover tag never prints over a floor sign ("F · TOW" on THE CRATE card) | — | Seen in Swarm frames |
+| OVH-08a-fix | The bench is honest: every gun measured, cadence, mortar and probe errors fixed | Director | **Parked** f31affc679 on `park/pilot-tree`. MISS list (OVH-08b's order): Flak/PD S, Railgun M, Bank Stream M, Autocannon S, Heavy AC M, Ironsong, Concussion S, Lighthouse, Heavy Beam L, Plasma Cone |
+| OVH-06b | Hits read on the body: flash, spark, scorch, the 60/30/10 ladder | Sonnet (`feel`) | **Parked** 7f144eaa8f (chain tip). A/B frames: subtle on small hulls; follow-up sizes the flash and spark by screen size |
+| INV-21…26 | Six audits: dogfight AI, guns and hits, Adventure's first ten minutes, the Swarm loop, places, the interface | deepseek, GLM | **Done.** Their findings are rows in `02` (A10–A15, B24–B31, C19–C27, D13–D19, G1–G9) |
+| W3-fix | A Swarm run stays in its own space: the arena's own sky, no campaign plants, no impound-yard leak | deepseek | **Built** 18:10, not harvested. With it, W3 + the `world.js` census fix can land without the Foundry |
+| CW-AI | Enemy pilots (INV-21 #1, 6, 7, 9, 10): the dodge tier table, flights, tighter packs, the press ring, the flee announce, the line-of-sight fire hold | deepseek | **Built**, not harvested |
+| CW-WPN | Enemy aim quiver and turret slew (INV-21 #2, 4); recoil on the hull, not the camera (INV-22 #7) | deepseek | **Built**, not harvested. Shares `weapons.js` and `feel.js` with other builders' hunks |
+| PT-FIX-A | Pilot-tree review blockers: Esc, the overlay across pause, Ram Plate shields, Execution, kick order, the XP curve to ~L14 at R10, plain card words | deepseek | **Built, partial** (Stagger still open), not harvested |
+| PT-FIX-C | Rope and power blockers: rack-bomb Echo, Long Reel physics, Combo self-blast, the combo queue, free Bomb echo | zcode | **4 of 5 done**; the combo queue is half-wired, so `conjurer_combo` is off in `pilotLive.js`. zcode resumes 23:07 |
+| CW-TELLS | Every attack tells 0.6 s ahead, every cue gets a chip, the lane paints for every doctrine (INV-21 #3) | GLM | **Stopped at the OpenCode 5-hour limit**, half done. `combat-doctrines.test.mjs` is red on the old 30-tick pin. Resume after the limit resets |
+| PLACES-1 | Sectors that don't share a sky; an arrival plate that names the place (INV-25 #1, 2, 7) | GLM | **Stopped at the OpenCode limit.** Sky frames shot for nine sectors; the arrival plate is not seen (the `?beat=` dev seam is broken at HEAD) |
 
-**Agents on hand (2026-11-19):** Devin `acct1`/`acct2` report "Upgrade to Pro" for SWE-2 Max and `acct4`
-needs an interactive login, so Devin runs on `devin3` only. zcode runs two at once; it resumes with
-`zcode -r <session>`. Sonnet subagents resume with SendMessage after a limit.
+**Agents on hand (2026-11-19):**
+- **Devin:** `acct1` and `acct2` report "Upgrade to Pro" for SWE-2 Max, and `acct4` needs an interactive login, so Devin runs on `devin3` only.
+- **zcode:** runs two at once and resumes with `zcode -r <session>`.
+- **Sonnet subagents:** resume with SendMessage after a limit.
+- **OpenCode Go** (deepseek and GLM): has a **5-hour usage limit**, hit at 18:40.
+- **agy:** `agy1` is out of credits, so reviews run on `agy2`.
+- **Codex:** out until 2026-11-24 15:52. The owner authorised agy-fleet reviews in its place.
+- **Watcher trap:** `watch-any.mjs --min=` counts bytes, and an `EXIT.json` is ~130 bytes. `--min=200` never wakes. Use the default.
