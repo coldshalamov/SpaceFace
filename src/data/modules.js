@@ -8,9 +8,13 @@ import {
 } from './userContent.js';
 import { BLACK_FLAG_MODULES } from './shipjackEquipment.js';
 import { LINE_HEAD_MODULES } from './lineProgression.js';
+// PORT-PRO-FIVE KINETIC CATALYSTS: three mutually exclusive salvage-only utility
+// relics. Records live with the feature so fitting exclusivity stays one writer.
+import { CATALYST_MODULES } from '../features/kineticCatalysts/catalog.js';
 
 const SHIPPED_MODULES = [
   ...BLACK_FLAG_MODULES,
+  ...CATALYST_MODULES,
   // ===================== FIRST-HAUL RACK (DUST P2a, 2026-10-31) =====================
   // The honest early rung. Story beats pay 400-3,000 cr and the Foothold wage is 6,000 cr/h, but
   // the cheapest existing fitting was 4,000 cr (Stripped RCS / Cargo Scanner S) — the first

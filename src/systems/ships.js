@@ -21,6 +21,9 @@ import { slotsNeededForHold } from './cargo.js';
 import { SECTORS } from '../data/sectors.js';
 import { sableShipworksAvailable } from '../data/sableVenn.js';
 import { LINE_HEAD_BY_ID, lineHeadBehavior, lineMetaEarned, normalizeModuleProvenance, PROVENANCE_TIERS } from '../data/lineProgression.js';
+// PORT-PRO-FIVE KINETIC CATALYSTS: recovered relics fit once, from their held instance.
+import { findCatalystFitConflict } from '../features/kineticCatalysts/fitting.js';
+import { resolveCatalyst } from '../features/kineticCatalysts/catalog.js';
 import {
   describeHullRole,
   flightClassForHull,
@@ -881,6 +884,17 @@ export function dryRunLoadoutPresetApply({
         slotIndex,
         conflictDefId: conflictingDef.id,
         text: 'Unfit ' + conflictingDef.name + ' before fitting another head',
+      });
+    }
+    const conflictingCatalyst = findCatalystFitConflict(afterFittings, slotIndex, def);
+    if (conflictingCatalyst) {
+      slotBlockers.push({
+        reason: 'catalyst_conflict',
+        defId,
+        name: def.name,
+        slotIndex,
+        conflictDefId: conflictingCatalyst.id,
+        text: 'Unfit ' + conflictingCatalyst.name + ' before fitting another catalyst',
       });
     }
   }
@@ -2746,6 +2760,12 @@ export const ships = {
       this.bus.emit('toast', { text: 'A Scarred Ram Plate is earned by the hull that did the rams — it is not for sale.', kind: 'error', ttl: 4 });
       return refuse('hull_history_required');
     }
+    // PORT-PRO-FIVE KINETIC CATALYSTS — recovered relics are issued once by the
+    // field trial; price 0 with no tech gate would otherwise free-mint a copy.
+    if (resolveCatalyst(def.id)) {
+      this.bus.emit('toast', { text: 'Kinetic catalysts are recovered relics, never sold.', kind: 'error', ttl: 3 });
+      return refuse('salvage_instance_required');
+    }
     if (!this.isUnlocked(def)) {
       this.bus.emit('toast', { text: defLockReasonText(def), kind: 'error', ttl: 3 });
       return refuse('research_required');
@@ -3287,6 +3307,13 @@ export const ships = {
         text: 'Unfit ' + conflictingDef.name + ' before fitting another head',
       };
     }
+    const conflictingCatalyst = findCatalystFitConflict(owned.fittings, slotIndex, def);
+    if (conflictingCatalyst) {
+      return {
+        reason: 'catalyst_conflict',
+        text: 'Unfit ' + conflictingCatalyst.name + ' before fitting another catalyst',
+      };
+    }
     const prospective = { ...owned, fittings: (owned.fittings || []).slice() };
     prospective.fittings[slotIndex] = def.id;
     const budgetBlocker = outfitBudgetBlocker(shipDef, prospective.fittings);
@@ -3361,6 +3388,12 @@ export const ships = {
       def = defById(defId);
     }
     if (!def) return refuse('unknown_module');
+    // PORT-PRO-FIVE KINETIC CATALYSTS — recovered relics exist exactly once: the
+    // defId-only mint path must never conjure one; only the held instance fits.
+    if (resolveCatalyst(def.id) && invIdx < 0) {
+      this.bus.emit('toast', { text: 'Fit the recovered catalyst instance from inventory.', kind: 'error', ttl: 3 });
+      return refuse('salvage_instance_required');
+    }
     const blocker = this.moduleFitBlocker({ shipIndex, slotIndex, def, swarmGrant });
     if (blocker) {
       if (blocker.text) this.bus.emit('toast', { text: blocker.text, kind: 'error', ttl: 3 });
