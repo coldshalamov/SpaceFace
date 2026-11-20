@@ -20,6 +20,7 @@ import {
   bolusToothSlips,
 } from '../src/data/bolusPlay.js';
 import { tickBolus } from '../src/systems/theBolus.js';
+import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 
 test('shutter, thread, crest, cough gap, and slip are pure', () => {
   assert.equal(bolusIrisOpenAmount(0), 0);
@@ -69,7 +70,11 @@ test('tooth slips on a tight cable and still bites when loaded', () => {
   bite.state.player.tether.phase = 'loaded';
   bite.state.combat.attachments.byId.line = { state: 'active', ownerId: 'p', targetId: bitten.id };
   tickBolus(bite.world, 0.1);
-  assert.equal(bite.state.entities.get('p').vel.x, 160);
+  assert.equal(bite.state.entities.get('p').vel.x, 0,
+    'R23/HARMONY-FIX 2: the volume never writes the hull\'s vel directly, on any backend');
+  applyMembrane(bite.world);
+  assert.equal(bite.state.entities.get('p').vel.x, 160,
+    'the bite still lands its full 160 wu/s — now through the SG-02 command membrane');
   assert.ok(bite.events.some((event) => event.payload && event.payload.id === 'bolus_tooth'));
 });
 
@@ -84,38 +89,46 @@ test('iris breath and thread do not move a ship that is sitting still', () => {
   const moving = worldFor(pilot(0, 400, 30, 0), []);
   moving.state.simTime = 3;
   tickBolus(moving.world, 0.1);
+  applyMembrane(moving.world);
   assert.equal(moving.state.entities.get('p').vel.z, 24);
   tickBolus(moving.world, 0.1);
+  applyMembrane(moving.world);
   assert.equal(moving.state.entities.get('p').vel.z, 24);
   assert.equal(moving.events.filter((event) => event.payload && event.payload.id === 'bolus_thread').length, 1);
 
   const late = worldFor(pilot(0, 400, 30, 0), []);
   late.state.simTime = 7.2;
   tickBolus(late.world, 0.1);
+  applyMembrane(late.world);
   assert.equal(late.state.entities.get('p').vel.z, 12);
 });
 
 test('lane crest is harder, gutter crest stays 46, cough spits once', () => {
   const lane = worldFor(pilot(-960, 0), []);
   tickBolus(lane.world, 0.1);
+  applyMembrane(lane.world);
   lane.state.entities.get('p').vel.z = 0;
   lane.state.simTime = 12;
   tickBolus(lane.world, 0.1);
+  applyMembrane(lane.world);
   assert.equal(lane.state.entities.get('p').vel.z, 56);
 
   const gutter = worldFor(pilot(0, 0), []);
   tickBolus(gutter.world, 0.1);
   gutter.state.simTime = 12;
   tickBolus(gutter.world, 0.1);
+  applyMembrane(gutter.world);
   assert.equal(gutter.state.entities.get('p').vel.z, 46);
 
   const spit = worldFor(pilot(-960, 1200, 0, 40), []);
   tickBolus(spit.world, 0.1);
+  applyMembrane(spit.world);
   assert.equal(spit.state.entities.get('p').vel.z, 80);
   const flags = ensureAlienEcologyState(spit.state).sectorFlags;
   assert.equal(flags['bolus:coughCracked'], true);
   assert.equal(flags['bolus:coughPaid'], true);
   tickBolus(spit.world, 0.1);
+  applyMembrane(spit.world);
   assert.equal(spit.state.entities.get('p').vel.z, 80);
   assert.ok(spit.events.some((event) => event.payload && event.payload.id === 'bolus_cough'));
 });
@@ -195,12 +208,14 @@ test('floaters get heavy, then fall into the lane wake, and a brush contaminates
   const bag = worldFor(pilot(0, 0), [heavy]);
   ensureAlienEcologyState(bag.state).exposure = 0.3;
   tickBolus(bag.world, 0.1);
+  applyMembrane(bag.world);
   assert.ok(Math.abs(heavy.vel.x - 8) < 1e-6, heavy.vel.x);
 
   const wake = fauna('floater', 'bolus_floater_w', -960, 0);
   const wakeBag = worldFor(pilot(0, 0, 0, 12), [wake]);
   ensureAlienEcologyState(wakeBag.state).exposure = 0.4;
   tickBolus(wakeBag.world, 0.1);
+  applyMembrane(wakeBag.world);
   assert.equal(wake.vel.z, 12);
   assert.equal(wake.vel.x, 0);
 
@@ -223,6 +238,7 @@ test('a held fingerling huddles the school and a boost scatters it', () => {
   huddle.state.player.tether.phase = 'loaded';
   huddle.state.combat.attachments.byId.line = { state: 'active', ownerId: 'p', targetId: held.id };
   tickBolus(huddle.world, 0.1);
+  applyMembrane(huddle.world);
   assert.ok(Math.abs(other.vel.x - (-14.4)) < 1e-6, other.vel.x);
 
   const loose = fauna('fingerling', 'bolus_fingerling_c', -530, -400);
@@ -230,30 +246,33 @@ test('a held fingerling huddles the school and a boost scatters it', () => {
   loose.data.bolus.anchorZ = -400;
   const free = worldFor(pilot(0, 0), [loose]);
   tickBolus(free.world, 0.1);
+  applyMembrane(free.world);
   assert.ok(Math.abs(loose.vel.x) < 1e-6);
 
   const school = fauna('fingerling', 'bolus_fingerling_d', -560, -300);
   const scatter = worldFor(pilot(-560, -400, 60, 0), [school]);
   scatter.state.entities.get('p').flags.boosting = true;
   tickBolus(scatter.world, 0.1);
+  applyMembrane(scatter.world);
   assert.ok(Math.abs(school.vel.z - 36) < 1e-6, school.vel.z);
 });
 
 test('nose light pins a fast drum, and cutting thrust lets it slide', () => {
   const pinned = fauna('drum', 'bolus_drum_pin', 80, 0);
   const pin = worldFor(pilot(0, 0, 60, 0), [pinned]);
-  for (let n = 0; n < 21; n++) tickBolus(pin.world, 0.1);
+  for (let n = 0; n < 21; n++) { tickBolus(pin.world, 0.1); applyMembrane(pin.world); }
   assert.equal(pinned.vel.x, 0);
   assert.equal(pinned.vel.z, 0);
 
   const drum = fauna('drum', 'bolus_drum_slide', 300, -700);
   const slide = worldFor(pilot(300, -600, 60, 0), [drum]);
-  for (let n = 0; n < 20; n++) tickBolus(slide.world, 0.1);
+  for (let n = 0; n < 20; n++) { tickBolus(slide.world, 0.1); applyMembrane(slide.world); }
   const chased = Math.hypot(drum.vel.x, drum.vel.z);
   assert.ok(Math.abs(chased - 62) < 1e-6);
   slide.state.entities.get('p').vel.x = 0;
   slide.state.entities.get('p').vel.z = 0;
   tickBolus(slide.world, 0.1);
+  applyMembrane(slide.world);
   assert.ok(Math.abs(Math.hypot(drum.vel.x, drum.vel.z) - 62) < 1e-6);
 });
 
@@ -263,8 +282,10 @@ test('a held valve swallows the crest, and commits cue stitch, grit, or pleat', 
   crest.state.player.tether.phase = 'loaded';
   crest.state.combat.attachments.byId.line = { state: 'active', ownerId: 'p', targetId: valve.id };
   tickBolus(crest.world, 0.1);
+  applyMembrane(crest.world);
   crest.state.simTime = 12;
   tickBolus(crest.world, 0.1);
+  applyMembrane(crest.world);
   assert.equal(crest.state.entities.get('p').vel.z, 0);
   assert.equal(ensureAlienEcologyState(crest.state).sectorFlags['bolus:peristalsisMark'], 1);
 
@@ -272,7 +293,7 @@ test('a held valve swallows the crest, and commits cue stitch, grit, or pleat', 
   const lip = stitch.state.entityList[0];
   stitch.state.player.tether.phase = 'loaded';
   stitch.state.combat.attachments.byId.line = { state: 'active', ownerId: 'p', targetId: lip.id };
-  for (let n = 0; n < 12; n++) tickBolus(stitch.world, 0.1);
+  for (let n = 0; n < 12; n++) { tickBolus(stitch.world, 0.1); applyMembrane(stitch.world); }
   assert.ok(stitch.events.some((event) => event.payload && event.payload.id === 'bolus_stitch'));
   assert.equal(stitch.events.some((event) => event.payload && event.payload.id === 'bolus_latch'), false);
 
@@ -280,14 +301,14 @@ test('a held valve swallows the crest, and commits cue stitch, grit, or pleat', 
   const stone = grit.state.entityList[0];
   grit.state.player.tether.phase = 'loaded';
   grit.state.combat.attachments.byId.line = { state: 'active', ownerId: 'p', targetId: stone.id };
-  for (let n = 0; n < 11; n++) tickBolus(grit.world, 0.1);
+  for (let n = 0; n < 11; n++) { tickBolus(grit.world, 0.1); applyMembrane(grit.world); }
   assert.ok(grit.events.some((event) => event.payload && event.payload.id === 'bolus_grit'));
 
   const pleat = worldFor(pilot(0, 0), [fauna('pleat', 'bolus_pleat', -240, 1280)]);
   const fold = pleat.state.entityList[0];
   pleat.state.player.tether.phase = 'loaded';
   pleat.state.combat.attachments.byId.line = { state: 'active', ownerId: 'p', targetId: fold.id };
-  for (let n = 0; n < 5; n++) tickBolus(pleat.world, 0.1);
+  for (let n = 0; n < 5; n++) { tickBolus(pleat.world, 0.1); applyMembrane(pleat.world); }
   assert.equal(pleat.state.entities.get('p').vel.z, 64);
   assert.ok(pleat.events.some((event) => event.payload && event.payload.id === 'bolus_pleat'));
 });
@@ -296,6 +317,7 @@ test('a mite flees the contact and a rib lodges in the cough', () => {
   const mite = fauna('mite', 'bolus_mite_0', 0, 30);
   const bag = worldFor(pilot(0, 0), [mite]);
   tickBolus(bag.world, 0.1);
+  applyMembrane(bag.world);
   assert.ok(Math.abs(mite.vel.z - 36) < 1e-6, mite.vel.z);
   assert.ok(ensureAlienEcologyState(bag.state).sectorFlags['bolus:miteFleeUntil'] > 0);
 
@@ -303,6 +325,7 @@ test('a mite flees the contact and a rib lodges in the cough', () => {
   rib.vel = { x: 5, y: 0, z: 5 };
   const lodge = worldFor(pilot(0, 0), [rib]);
   tickBolus(lodge.world, 0.1);
+  applyMembrane(lodge.world);
   assert.equal(rib.vel.x, 0);
   assert.equal(rib.vel.z, 0);
   assert.equal(ensureAlienEcologyState(lodge.state).sectorFlags['bolus:ribLodged'], true);
@@ -412,6 +435,22 @@ function pilot(x, z, vx = 0, vz = 0) {
     shield: 0,
     flags: {},
   };
+}
+
+/** Test stand-in for the solver step: the bolus routes every force through the SG-02
+ *  command membrane (HARMONY-FIX 2), so this harness applies queued impulses to the
+ *  mirror exactly the way the physics owner would. Nothing may write vel directly. */
+function applyMembrane(world) {
+  const bodies = [...world.state.entities.values(), ...(world.state.entityList || [])];
+  for (const ent of bodies) {
+    const command = consumePhysicsCommand(ent);
+    if (!command || !command.impulses.length) continue;
+    const mass = Number(ent.physicsBody?.mass) || Number(ent.mass) || 1;
+    for (const imp of command.impulses) {
+      ent.vel.x += (imp.x || 0) / mass;
+      ent.vel.z += (imp.z || 0) / mass;
+    }
+  }
 }
 
 function fauna(role, key, x, z) {
