@@ -275,7 +275,7 @@ import { customsWeirForSector } from '../world/customsWeir.js';
 import { promoteAsteroidFieldRock } from '../world/asteroidField.js';
 import { hash32 } from '../core/rng.js';
 import { deferSectorEnterMaterialization, deferredEnterNow, deferredEnterTick } from '../core/sectorEnterDefer.js';
-import { Masks } from '../core/entity.js';
+import { Masks, occupantGenerationOf } from '../core/entity.js';
 import { maxFittedModuleMod } from '../core/fittedModules.js';
 import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for mission risk
 import { COMMODITIES } from '../data/commodities.js';
@@ -5343,7 +5343,10 @@ export const missions = {
       // A resumed escort keeps its live hull now AND re-spawns one on Continue (the escort
       // branch no-ops while a live _escorteeId is bound, so a kept hull is never doubled).
       successor.needsTargets = descriptor.tag === 'resumed' ? true : kept.length === 0;
-      if (m._escorteeId != null) successor._escorteeId = m._escorteeId;
+      if (m._escorteeId != null) {
+        successor._escorteeId = m._escorteeId;
+        successor._escorteeGeneration = m._escorteeGeneration;
+      }
       // An already-docked convoy stays arrived — the steer tick re-derives it either way, but the
       // handoff should carry the fact, not relearn it.
       if (m._escorteeArrived) successor._escorteeArrived = true;

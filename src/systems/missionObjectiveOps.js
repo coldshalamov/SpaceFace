@@ -675,7 +675,14 @@ export const missionObjectiveOps = {
       const m = this.state.missions.active[i];
       if (isSpineBreakOperation(m)) continue; // handled by the mission-owned retry above
       if (m.status !== 'active' || m.type !== 'escort') continue;
-      if (m._escorteeId != null && m._escorteeId === p.id) {
+      // The id can have recycled onto a replacement escortee before this queued receipt
+      // flushes: the destroyed occupant must still be the hull this mission bound, not
+      // merely whatever held the id. A mission stamped before generations existed keeps
+      // the plain id match (generation == null fails open).
+      const escortReceiptIsOurs = m._escorteeId != null && m._escorteeId === p.id
+        && (p.entity == null || m._escorteeGeneration == null
+          || p.entity.occupantGeneration === m._escorteeGeneration);
+      if (escortReceiptIsOurs) {
         const site = escortLossSite(p.pos, this.state.world && this.state.world.currentSectorId);
         if (site) {
           m._escorteeSectorId = site.sectorId;

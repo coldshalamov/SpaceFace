@@ -1,4 +1,5 @@
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { syncSlateCore } from '../missions/slateCoreWorksite.js';
 import { isWeighingOperation, isWeighingTarget, weighingSpawnPosition, stampWeighingTarget, observeWeighingScene, WEIGHING_WORKSITE } from '../missions/weighingWorksite.js';
 import { syncMawWorksite } from '../missions/mawWorksite.js';
@@ -300,6 +301,7 @@ export const missionSpawningOps = {
       if (!existing.has(e.id)) adopted++;
       if (e.data && e.data.escortee === 'lead') {
         m._escorteeId = e.id;
+        m._escorteeGeneration = occupantGenerationOf(e);
         m._escorteeArrived = !!m._escorteeArrived;
       }
     }
