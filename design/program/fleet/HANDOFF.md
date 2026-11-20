@@ -1,3 +1,9 @@
+<!-- HISTORY-2026-11-20 -->
+> **History, not instructions (2026-11-20).** This file no longer assigns, orders or blocks any work.
+> States such as READY, TAKEN, HOLD, PARKED and NEEDS-PACKET mean nothing now. Read it for facts
+> about what was built or planned. The rule and the live board are in the root `AGENTS.md` and
+> `design/overhaul/12_PIPELINE.md`.
+
 # Handoff — where the build stands (checkpoint 2026-11-11 ~04:40 UTC)
 
 **New since this checkpoint (owner, 2026-11-11): work is split into four agent lanes in `QUEUE.md`
