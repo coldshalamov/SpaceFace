@@ -122,10 +122,14 @@ export function createRockFieldPainter(doc) {
     }
     if (density) {
       // Each rock lays a faint wash of its own: crowded ground accumulates, thin ground stays thin.
-      g.fillStyle = 'rgba(150, 196, 216, 0.035)';
+      // Faded out as discs grow: a large disc would read as a bubble, not as density.
       for (let i = 0; i < discs.length; i += 3) {
+        const r = discs[i + 2];
+        const alpha = 0.035 * Math.min(1, 10 / r);
+        if (alpha < 0.006) continue;
+        g.fillStyle = 'rgba(150, 196, 216, ' + alpha.toFixed(3) + ')';
         g.beginPath();
-        g.arc(discs[i], discs[i + 1], discs[i + 2] * 0.8, 0, TAU);
+        g.arc(discs[i], discs[i + 1], r * 0.8, 0, TAU);
         g.fill();
       }
     }

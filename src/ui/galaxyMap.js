@@ -11558,7 +11558,7 @@ _drawSystem(g, state, w, h) {
         const baseX = field.x - pad;
         const baseY = field.y - pad;
         this._surveyRockPainter.paint(rg, rocks, (x, z) => ({ x: sx(x) - baseX, y: sz(z) - baseY }), localScale, layerW, layerH, {
-          dpr, padWorld: 60, minPx: 4, maxPx: 40, density: true,
+          dpr, padWorld: 60, minPx: 4, maxPx: 22, density: true,
           fill: 'rgba(96, 146, 172, 0.12)', contour: 'rgba(168, 214, 234, 0.5)',
         });
         Object.assign(L, { key: sizeKey, fx: focus.x, fz: focus.z, s: localScale, cx: baseX, cy: baseY, version: fieldVersion, at: now });
