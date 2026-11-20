@@ -408,7 +408,7 @@ export function readRaceTape(params, player, gatesGlobal, simTime) {
   };
 }
 
-const RECORD_KEY = 'spaceface.raceRecords.v2';
+export const RACING_RECORD_STORAGE_KEY = 'spaceface.raceRecords.v2';
 export function raceRecordKey(params, category = params?.raceCategory) {
   if (!params || !params.racingContractId || !params.courseId) return null;
   const base = `${params.courseId}@${params.courseRevision || 1}:${params.racingContractId}:${circuitLaps(params)}L`;
@@ -435,7 +435,7 @@ export function racingLoadoutCategory(state, player = state?.entities?.get?.(sta
 
 export function readRaceRecords(storage) {
   try {
-    const raw = storage && storage.getItem && storage.getItem(RECORD_KEY);
+    const raw = storage && storage.getItem && storage.getItem(RACING_RECORD_STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
     const clean = {};
@@ -459,6 +459,6 @@ export function rememberRaceRecord(storage, levelId, elapsedS) {
   bag[levelId] = Math.max(0.01, Math.round(elapsedS * 100) / 100);
   const keys = Object.keys(bag);
   for (const key of keys.slice(0, Math.max(0, keys.length - 128))) delete bag[key];
-  try { storage.setItem(RECORD_KEY, JSON.stringify(bag)); } catch { return null; }
+  try { storage.setItem(RACING_RECORD_STORAGE_KEY, JSON.stringify(bag)); } catch { return null; }
   return bag[levelId];
 }

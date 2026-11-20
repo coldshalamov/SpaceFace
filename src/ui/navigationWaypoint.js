@@ -11,6 +11,15 @@ import { SECTORS } from '../data/sectors.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 
+export function resolveWaypointPresentationEntity(state, waypoint) {
+  const id = waypoint?.presentationEntityId;
+  if (id == null) return null;
+  const entity = state?.entities?.get?.(id);
+  if (!entity || entity.alive === false) return null;
+  const generation = waypoint.presentationEntityGeneration;
+  return generation == null || generation === entity.occupantGeneration ? entity : null;
+}
+
 // The durable 47-A recovery binding: the live contract is active, unrecovered, in this sector,
 // and `params.sampleSource` still carries the exact identity `expectedSource` stamped. This half
 // of the check reads only mission + world data, so it runs identically on the worker mirror —

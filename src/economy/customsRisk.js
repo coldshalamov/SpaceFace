@@ -90,6 +90,48 @@ export function hiddenHoldCapacity({ capVolume = 0, hiddenCargoPct = 0 } = {}) {
   return cap * pct;
 }
 
+export function readSmugglingCapabilities(state) {
+  const entity = state?.entities?.get?.(state.playerId);
+  const derived = entity?.data?.derived || state?.player?.derived || {};
+  const legacy = state?.player?.efficiencyMods || {};
+  return {
+    hiddenCargoPct: clamp(Number(derived.hiddenCargoPct ?? legacy.hiddenCargoPct) || 0, 0, 1),
+    scannerCloak: clamp(Number(derived.scannerCloak ?? legacy.scannerCloak) || 0, 0, 1),
+  };
+}
+
+/** Scan-exposed onboard cargo. The external salvage bay has no fitted shielding. */
+export function onboardIllicitCargo(state) {
+  const player = state?.player;
+  const cargo = player?.cargo;
+  const catalog = state?.content?.commodities;
+  const lookup = id => (Array.isArray(catalog) ? catalog.find(row => row?.id === id) : catalog?.[id])
+    || CMDTY_BY_ID.get(id);
+  let hold = [];
+  for (const [commodityId, qty] of Object.entries(cargo?.items || {})) {
+    const def = lookup(commodityId);
+    if (qty > 0 && def?.legality && def.legality !== 'legal') hold.push({ commodityId, qty, def });
+  }
+  const { hiddenCargoPct } = readSmugglingCapabilities(state);
+  const hiddenCapacity = hiddenHoldCapacity({ capVolume: cargo?.capVolume, hiddenCargoPct });
+  if (hiddenCapacity > 0) {
+    hold = remainingIllicit({ stacks: hold, hiddenCapacity }).exposedStacks.map(({ commodityId, qty }) => ({
+      commodityId, qty, def: lookup(commodityId),
+    }));
+  }
+  const aboard = new Map(hold.map(stack => [stack.commodityId, { ...stack, holdQty: stack.qty, bayQty: 0 }]));
+  for (const [commodityId, raw] of Object.entries(player?.salvageBay?.items || {})) {
+    const def = lookup(commodityId);
+    const qty = Math.max(0, Math.floor(Number(raw) || 0));
+    if (!qty || !def?.legality || def.legality === 'legal') continue;
+    const row = aboard.get(commodityId) || { commodityId, qty: 0, holdQty: 0, bayQty: 0, def };
+    row.bayQty += qty;
+    row.qty += qty;
+    aboard.set(commodityId, row);
+  }
+  return aboard;
+}
+
 /**
  * Normalize a stack to a full def-aware record. Accepts either:
  *   { commodityId, qty, def? }  or  { commodityId, qty, basePrice, legality, volPerU, name }

@@ -1005,6 +1005,26 @@ function stickWorldDirection(host, state, player, axes) {
 // path (descriptors shipped to the sim's realm via ingestLaneDomEvent). Field
 // names are the wire contract. `uiCommand`/`offCanvas`/`neutralize` are computed
 // on the realm that owns the DOM — the sim realm replays them verbatim.
+// Flight DOM descriptors shipped to the simulation lane (keydown and mousedown).
+export function flightKeyDownDescriptor(state, e) {
+  return {
+    type: 'keydown',
+    code: eventCode(e),
+    pressed: true,
+    repeat: e.repeat === true,
+    blocked: modalInputActive() || isTextEntryTarget(e.target) || isUiCommandTarget(e.target),
+  };
+}
+
+export function flightMouseDownDescriptor(event, canvas, pointer) {
+  return {
+    ...pointer,
+    type: 'mousedown',
+    offCanvas: !!(canvas && event.target !== canvas),
+    button: event.button,
+  };
+}
+
 export function domKeyEvent(host, d = {}) {
   applyFlightKeyEvent(host, {
     code: d.code,
