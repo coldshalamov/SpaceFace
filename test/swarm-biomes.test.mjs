@@ -305,9 +305,11 @@ test('Mill ore expiry retires the payout before its ID is reused by ordinary loo
     const npcOre = orePickups().find(pickup => pickup.alive);
     assert.ok(npcOre);
     const npc = sim.spawn({ type: 'ship', team: 1 });
-    assert.equal(collect._applyPickupCollection(npcOre, npc, bus, state), true);
-    assert.equal(npcOre.alive, false);
-    assert.equal(awards.length, 1, 'an NPC consumes ore without awarding its credits to the player');
+    // Pickups spend only when accepted (20b2c694af): an NPC touch is refused on the
+    // receipt, so the claim is not spent and the chunk stays on the field for the pilot.
+    assert.equal(collect._applyPickupCollection(npcOre, npc, bus, state), false);
+    assert.equal(npcOre.alive, true, 'an NPC scoop cannot eat the ore the pilot has not claimed');
+    assert.equal(awards.length, 1, 'a refused contact pays nothing and burns nothing');
     assert.equal(arena._millOres.size, orePickups().filter(pickup => pickup.alive).length);
   } finally {
     arena.destroy();
