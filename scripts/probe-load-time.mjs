@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // PROBE LOAD-TIME: cold and warm startup timing through the real browser route.
 //
-//   node scripts/fleet/game-lock.mjs run -- node scripts/probe-load-time.mjs [--runs=3] [--no-flight] [--out=<dir>]
+//   node scripts/fleet/game-lock.mjs run -- node scripts/probe-load-time.mjs [--runs=3] [--no-flight] [--out=<dir>] [--source-overlay=<manifest>]
+//
+// --source-overlay serves a frozen source snapshot (scripts/create-source-baseline.mjs)
+// instead of the working tree: interleave overlay/live invocations for cut attribution.
 //
 // Each run launches a FRESH Chromium profile (cold: no HTTP/V8/shader caches), navigates
 // to a disposable bench server, and waits for the game's own boot timeline
@@ -28,6 +31,11 @@ const argv = Object.fromEntries(process.argv.slice(2).map((a) => {
   const m = a.match(/^--([^=]+)(?:=(.*))?$/); return m ? [m[1], m[2] ?? true] : [a, true];
 }));
 const RUNS = Math.max(1, Number(argv.runs ?? 3));
+const SOURCE_OVERLAY = argv['source-overlay'] ? String(argv['source-overlay']) : null;
+// Human dwell between title-interactive and the New Game press. The title-dwell
+// pipeline warm only earns back during real dwell; --dwell=0 keeps the honest
+// instant-press floor.
+const DWELL_MS = Math.max(0, Number(argv.dwell ?? 0));
 const WITH_FLIGHT = argv.flight !== false && argv.flight !== 'false' && argv['no-flight'] === undefined;
 const HEADED = argv.headed === true || argv.headed === 'true';
 const STAMP = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
@@ -164,16 +172,20 @@ async function oneIteration(index, server, withFlight, chromium) {
     const cold = await measureNavigation(page, server.baseUrl, BOOT_TITLE_TIMEOUT_MS);
     cold.mode = 'cold'; cold.run = index;
     // WARM: a fresh page in the same context — HTTP cache, V8 code cache and shader
-    // cache hot, without the old page's queued menu-idle work competing with eval.
+    // cache hot. Close the cold page first or its idle menu work competes with
+    // the warm navigation on the same renderer budget.
+    await page.close().catch(() => {});
     const warmPage = await context.newPage();
     const warm = await measureNavigation(warmPage, server.baseUrl, BOOT_WARM_TIMEOUT_MS);
     warm.mode = 'warm'; warm.run = index;
-    await page.close().catch(() => {});
-    // FLIGHT leg: the ordinary New Game route on the warm session.
+    // FLIGHT leg: the ordinary New Game route on the warm session. A human
+    // dwell before the press lets title-idle warmup actually run; instant
+    // press (default) keeps the worst case measured.
     let flight = null;
     if (withFlight) {
       try {
         const step = () => {};
+        if (DWELL_MS > 0) await warmPage.waitForTimeout(DWELL_MS);
         await adventureToFlight(warmPage, step, {});
         // Let the drain witness run a few seconds beyond first flight control.
         await warmPage.waitForFunction(
@@ -270,7 +282,8 @@ function printFlight(results) {
 async function main() {
   installSessionSignalGuard(process);
   const { chromium } = await loadPlaywright();
-  const server = await startBenchServer();
+  const server = await startBenchServer(SOURCE_OVERLAY ? { sourceOverlay: SOURCE_OVERLAY } : {});
+  if (SOURCE_OVERLAY) console.log(`[probe] serving frozen source overlay: ${SOURCE_OVERLAY}`);
   const results = [];
   try {
     for (let i = 1; i <= RUNS; i++) {

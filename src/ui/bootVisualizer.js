@@ -74,7 +74,9 @@ export function getBootVisualizer(document = globalThis.document, options = {}) 
     onState({ status }) {
       if (disposed) return;
       overlay.dataset.bootVisualState = status;
-      if (status !== 'fallback') {
+      if (status === 'skipped') {
+        video.style.visibility = 'hidden'; overlay.classList.remove('boot-video-live'); art?.stop();
+      } else if (status !== 'fallback') {
         video.style.visibility = ''; overlay.classList.add('boot-video-live'); art?.stop();
       }
     },
@@ -132,6 +134,10 @@ export function getBootVisualizer(document = globalThis.document, options = {}) 
     playbackReady: media.playbackReady,
     start() { if (disposed) return media.ready; wanted = true; media.start(); if (media.inspect().failed) fallback(); refresh(); return media.ready; },
     stop() { wanted = false; media.stop(); art?.stop(); stopClock(); },
+    // The boot film is decoration: any key/click dismisses it. Scoped to the
+    // boot veil by bootEntry's listener — later loading movies reuse this owner
+    // without the skip arm.
+    skipFilm() { media.skip?.(); },
     updateProgress(stage = {}) { progress = stage; art?.updateProgress(stage); },
     inspect() { return { ...media.inspect(), fallback: !!art, fallbackPending: !!artPending }; },
     destroy() {

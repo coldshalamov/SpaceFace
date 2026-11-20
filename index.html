@@ -1618,9 +1618,10 @@
     <div id="boot-overlay" role="status" aria-live="polite" aria-busy="true">
       <canvas id="boot-terminal-canvas" class="boot-canvas"></canvas>
       <!-- The intro visualizer outranks every other boot asset: preload=auto makes its
-           bytes the first download of the page (parse time, before any script), and
-           bootEntry holds the game graph until the movie really plays. Native media is
-           the artwork; never put the live JS remix canvas over this loading surface. -->
+           bytes the first download of the page (parse time, before any script). It is
+           skippable on any key from its first frame and never gates the game graph —
+           bootEntry starts the module eval while the movie proves itself. Native media
+           is the artwork; never put the live JS remix canvas over this loading surface. -->
       <video id="boot-intro-video" class="boot-canvas boot-video" muted loop playsinline
              preload="auto" fetchpriority="high" poster="assets/cinematics/boot-visualizer.jpg" aria-hidden="true" data-boot-native="true">
         <source src="assets/cinematics/boot-visualizer.mp4" type="video/mp4" />

@@ -279,6 +279,16 @@ export function createBootMediaPlayback({ video, host = globalThis, timeoutMs = 
       refresh(); return ready;
     },
     stop() { wanted = false; pause(); upgradeTransport(); },
+    // Player dismissal: the film must be skippable on any key from its first
+    // frame. Same teardown as stop(), plus a state publish so the shell drops
+    // the video layer instead of holding a paused frame on screen.
+    skip() {
+      if (disposed || failed) return;
+      wanted = false;
+      pause();
+      notify('skipped', 'player-skip');
+      settle('skipped'); settlePlayback('skipped');
+    },
     refresh,
     inspect() { return { status, source: selected, wanted, disposed, failed, pending, playbackSettled,
       proofFrames, currentTime: Number(video.currentTime) || 0, paused: video.paused,
