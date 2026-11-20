@@ -2327,8 +2327,12 @@ export const fields = {
     // ~0 this tick. The field owns their motion until they leave the radius; the classifier pin
     // keeps their physics body alive for exactly that window.
     const affectedIds = this._affectedIds || (this._affectedIds = new Set());
+    // R11 / 03 §5: anything a field moves (the player's powers, hazards, an arena's planted well)
+    // is energised for 3 s — what it then slams into is a consequence, not a bump.
+    const energisedUntil = nowOf(state) + 3;
     for (const e of affected.keys()) {
       affectedIds.add(e.id);
+      if (e.data && e.id !== state.playerId) { e.data.energisedUntil = energisedUntil; e.data.energisedHop = 0; }
       // OVH-01c2 conjurer_combo — field membership is the power's touch, equilibrium or not.
       this._noteFieldComboTouches(state, rt, e, affected.get(e));
     }

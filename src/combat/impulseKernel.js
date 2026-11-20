@@ -509,6 +509,10 @@ export function clearImpulseProvenance(entity) {
   }
 }
 
+/** 03 §5: an uncaused bump takes at most this share of the struck hull (and never the last point). */
+export const UNCAUSED_HULL_SHARE = 0.15;
+function finiteOr(v, fb) { const n = Number(v); return Number.isFinite(n) ? n : fb; }
+
 export function resolveCollisionConsequence(input = {}) {
   const target = input.target;
   const other = input.other;
@@ -540,6 +544,13 @@ export function resolveCollisionConsequence(input = {}) {
     ? 'tumble'
     : deltaV >= COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV ? 'stagger' : 'none';
   if (!collisionAllowsHelmLoss(surface, provenance, deltaV)) control = 'none';
+  // R11 / 03 §5 / ledger D19 — the calm world's one safety net. A contact where NEITHER body was
+  // moved by the player or a hazard in the last 3 s (no causal provenance: no gun kick, throw,
+  // shove, pull, plow, ram, freight...) and neither body is the player is a bump: it cannot
+  // tumble, cannot kill, and takes at most UNCAUSED_HULL_SHARE of hull. The caller decides
+  // `uncaused`; physics (the bounce itself) is untouched.
+  const uncaused = input.uncaused === true;
+  if (uncaused) control = 'none';
   const staggerRange = COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV - COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV;
   const stagger01 = clamp((deltaV - COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV) / staggerRange, 0, 1);
   const staggerTicks = control === 'none'
@@ -610,6 +621,11 @@ export function resolveCollisionConsequence(input = {}) {
       }
     }
   }
+  if (uncaused && impactDamage > 0) {
+    const hullMax = positive(target.hullMax, 0);
+    const hull = Math.max(0, finiteOr(target.hull, hullMax));
+    impactDamage = Math.min(impactDamage, hullMax * UNCAUSED_HULL_SHARE, Math.max(0, hull - 1));
+  }
   const damage01 = damageCap > 0
     ? impactDamage / damageCap : 0;
   // §22 B5 — spall is moved mass: it reads the impact's energy, not only its damage packet. The
@@ -641,8 +657,9 @@ export function resolveCollisionConsequence(input = {}) {
     // CH-02: present only when the ram law raised the damage — the Δv the damage read.
     ...(ramDeltaV > 0 ? { ramDeltaV } : {}),
     control,
-    staggerTicks,
+    staggerTicks: uncaused ? 0 : staggerTicks,
     impactDamage,
+    ...(uncaused ? { uncaused: true } : {}),
     debrisCount,
     pos: freezePoint(input.pos),
     normal: freezeDirection(input.normal),

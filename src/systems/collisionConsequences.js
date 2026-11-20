@@ -462,6 +462,12 @@ export const collisionConsequences = {
     _consequenceArgs.pos = payload.pos;
     _consequenceArgs.normal = payload.normal;
     _consequenceArgs.preSolveClosingSpeed = payload.preSolveClosingSpeed;
+    // R11 / D19: no cause on either body and the player is not one of them → a bump, not a kill.
+    _consequenceArgs.uncaused = isUncausedContact(state, target, other, provenance, ramPlate);
+    // Hand-off (03 §5, measured at two hops so SWING-01 holds): a body struck by a caused contact is
+    // energised in turn for 3 s, so the pack
+    // a thrown body bowls into keeps colliding with consequence; the chain stops after two hand-offs.
+    if (!_consequenceArgs.uncaused) energiseByContact(state, target, other);
     if (strikerLoose) {
       _strikeArgs.strikerMass = positiveMass(other);
       _strikeArgs.closingSpeed = payload.preSolveClosingSpeed;
@@ -993,7 +999,7 @@ const _provenanceScratch = { actorId: null, weaponId: null, tag: null, tick: 0, 
 const _consequenceArgs = {
   target: null, other: null, exchangedMomentum: 0, tick: 0, provenance: null,
   craftDamageMultiplier: undefined, suppressCraftDamage: false, pos: null, normal: null,
-  preSolveClosingSpeed: undefined, projectileStrike: null,
+  preSolveClosingSpeed: undefined, projectileStrike: null, uncaused: false,
 };
 const _strikeArgs = { strikerMass: 0, closingSpeed: undefined };
 const _impulseArg = {
@@ -1169,6 +1175,54 @@ function causalProvenanceShadowsOnlyRope(causalProvenance) {
   if (!causalProvenance || causalProvenance.tag === 'direct_contact') return true;
   if (RAM_SHADOW_ROPE_WEAPON.has(causalProvenance.weaponId)) return true;
   return RAM_SHADOW_ROPE_TAG.test(String(causalProvenance.tag || ''));
+}
+
+// R11 / 03 §5 / ledger D19 — the calm world's safety net. A contact is a mere bump (no kill, no
+// tumble, <= 15 % hull) only when nothing the player or a hazard did is behind it:
+//  - the player is not one of the two bodies, and no Ram Plate is involved;
+//  - the struck body is not touching a hazard (a kill machine's anvil, a crusher, a furnace...);
+//  - there is no recorded cause, or the only "cause" is a ship's own drive: the struck hull flew
+//    itself in, or another hull under its own power touched it. A rock, wreck or other loose body
+//    in motion counts as caused — in the calm world loose mass rests until something moves it.
+function isUncausedContact(state, target, other, provenance, ramPlate) {
+  if (ramPlate || !state || target.id === state.playerId || other.id === state.playerId) return false;
+  // A hull that lost its helm is a projectile (it was knocked loose by something), and a body on
+  // or just off the player's Line is the player's throw: both are causes.
+  if (isLooseHull(state, target) || isLooseHull(state, other)) return false;
+  const line = state.player && state.player.tether;
+  const impacts = state.player && state.player.masslineImpacts;
+  const lineIds = [line && line.active ? line.targetId : null, impacts && impacts.tracking ? impacts.massId : null];
+  if (lineIds.some((id) => id != null && (id === target.id || id === other.id))) return false;
+  const energisedUntil = Math.max(Number(target.data && target.data.energisedUntil) || 0, Number(other.data && other.data.energisedUntil) || 0);
+  if (energisedUntil > (Number(state.simTime) || 0)) return false;
+  const od = other.data;
+  if (od && (od.killMachineAnvilId != null || od.killMachineId != null || od.hazard === true
+    || od.machinery === true || od.hazardKind != null || od.hazardType != null)) return false;
+  if (!provenance) return other.type === 'ship' || isRestingBody(other);
+  if (provenance.actorId === state.playerId) return false;
+  if (provenance.tag !== 'direct_contact' && provenance.tag !== 'environment') return false;
+  if (provenance.actorId == null || provenance.actorId === target.id) return true;
+  const actor = entityById(state, provenance.actorId);
+  return !!(actor && actor.type === 'ship' && actor.id !== state.playerId);
+}
+
+const ENERGISED_S = 3;
+const ENERGISED_MAX_HOPS = 2;
+function energiseByContact(state, target, other) {
+  if (!target || !target.data || target.id === state.playerId) return;
+  const now = Number(state.simTime) || 0;
+  const od = other && other.data;
+  const otherHop = od && Number(od.energisedUntil) > now ? (Number(od.energisedHop) || 0) : 0;
+  if (otherHop >= ENERGISED_MAX_HOPS) return; // the chain stops after ENERGISED_MAX_HOPS hand-offs
+  const td = target.data;
+  if (Number(td.energisedUntil) > now && (Number(td.energisedHop) || 0) === 0) return; // keep a direct stamp
+  td.energisedUntil = now + ENERGISED_S;
+  td.energisedHop = otherHop + 1;
+}
+
+function isRestingBody(entity) {
+  const v = entity && entity.vel;
+  return !v || Math.hypot(Number(v.x) || 0, Number(v.z) || 0) < 8;
 }
 
 function explicitContactProvenance(payload, tick) {
