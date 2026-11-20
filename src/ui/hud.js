@@ -30,7 +30,8 @@ import { glyphSvg, hasGlyph } from './glyphs.js';
 import { itemThumbHtml, injectItemThumbnailStyles } from './icons/itemThumbnails.js';
 import { wantedAlertText, wantedReasonText } from './wantedReason.js';
 import { formatCount } from './numberFormat.js';
-import { reservedCargoQty, salvageBayReading, sellableCargoQty } from '../systems/cargo.js';
+import { reservedCargoQty, salvageBayReading, sellableCargoQty, unitsPerSlotFor } from '../systems/cargo.js';
+import { freeSlotCount, packItemsIntoSlots } from '../data/cargoSlots.js';
 import { planFuelCrack, FUEL_CELL_ID, FUEL_CELL_SIP } from '../systems/fuelCrack.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { FIRST_TRADE_CONTRACT_SOURCE } from '../data/economyContractTemplates.js';
@@ -4281,6 +4282,7 @@ export function createHud(ctx, alerts) {
           <span class="sf-gauge-label">In the hold: <span class="sf-cargo-summary-lean"></span></span>
         </div>
       </div>
+      <button class="k-word k-word--emph sf-cargo-sort" type="button" aria-label="Consolidate cargo stacks">Sort</button>
       <button class="k-word k-word--emph sf-cargo-panel__close" type="button" aria-label="Close cargo hold">Close · Esc</button>
     </div>
     <div class="sf-cargo-body">
@@ -4315,6 +4317,7 @@ export function createHud(ctx, alerts) {
           </div>
           <div class="sf-ins-actions">
             <button class="k-word k-word--emph k-word--primary sf-btn-route" type="button">Set course</button>
+            <button class="k-word k-word--emph sf-btn-split" type="button">Split</button>
             <button class="k-word k-word--danger sf-btn-jettison" type="button">Jettison</button>
           </div>
         </div>
@@ -4397,6 +4400,7 @@ export function createHud(ctx, alerts) {
   if (state.ui) state.ui.cargoPanelOpen = false;
   let activeTab = 'cargo';
   let selectedCommodityId = null;
+  let selectedSlotIndex = null;
 
   const CMDTY_MAP = new Map();
   function buildCmdtyMap() {
@@ -4570,9 +4574,33 @@ export function createHud(ctx, alerts) {
           danger: true
         });
         if (ok) {
-          ctx.bus.emit('cargo:jettison', { commodityId, qty: dumpQty });
+          ctx.bus.emit('cargo:jettison', {
+            commodityId,
+            qty: dumpQty,
+            slotIndex: Number.isInteger(selectedSlotIndex) && selectedSlotIndex >= 0
+              ? selectedSlotIndex : undefined,
+          });
         }
       };
+    }
+
+    // Stack split — the selected stack halves into the next free slot. A stack of one or a
+    // bag without an open slot has nothing to split into, so the control disables itself.
+    const splitBtn = contentEl.querySelector('.sf-btn-split');
+    if (splitBtn) {
+      const hold = (state.player && state.player.cargo) || {};
+      const stack = Number.isInteger(selectedSlotIndex) && selectedSlotIndex >= 0
+        ? (hold.slots || [])[selectedSlotIndex] : null;
+      const canSplit = !!(stack && stack.commodityId === commodityId && stack.qty > 1
+        && (hold.slots || []).length < (hold.slotCount || 0));
+      splitBtn.disabled = !canSplit;
+      splitBtn.title = canSplit
+        ? `Split ${stack.qty}× ${name} into a second stack`
+        : 'Split unavailable — no free slot or stack is one unit';
+      splitBtn.onclick = canSplit ? () => {
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        ctx.bus.emit('cargo:splitStack', { slotIndex: selectedSlotIndex });
+      } : null;
     }
 
     const crackBtn = contentEl.querySelector('.sf-btn-crack');
@@ -4643,11 +4671,23 @@ export function createHud(ctx, alerts) {
       inertia: playerEntity && playerEntity.flightModel && playerEntity.flightModel.inertia,
     };
     const items = c.items || {};
+    // CARGO-BUILD-1: the gauge reads the bag — stacks aboard over slots the hull grants.
+    // Volume stays a physical readout in each stack's footer and the free-capacity line.
+    const slots = Array.isArray(c.slots) ? c.slots : [];
+    const slotCount = Math.max(0, Math.floor(Number(c.slotCount) || 0));
+    // Stacks aboard: the packed list counts itself (an over-cap tail shows past the bound);
+    // an un-packed hold counts the stacks its item mirror would claim.
+    const impliedSlots = slots.length
+      ? null
+      : packItemsIntoSlots(items, (id) => unitsPerSlotFor(state, id));
+    const usedSlots = slots.length ? slots.length : (impliedSlots ? impliedSlots.length : 0);
     const used = Math.round(c.usedVolume || 0);
     const cap = Math.round(c.capVolume || 40);
 
-    applySettledCircularGauge(cargoGaugeSettle.used, gaugeUsedFx, cap > 0 ? used / cap : 0, settleMeta, { label: `${used}/${cap}` });
-    cargoPanel.querySelector('.sf-cargo-summary-used').textContent = `${used} / ${cap}`;
+    applySettledCircularGauge(cargoGaugeSettle.used, gaugeUsedFx, slotCount > 0 ? usedSlots / slotCount : 0, settleMeta, { label: `${usedSlots}/${slotCount}` });
+    const summaryUsed = cargoPanel.querySelector('.sf-cargo-summary-used');
+    summaryUsed.textContent = `${usedSlots} / ${slotCount} slots`;
+    summaryUsed.title = `${used} / ${cap} u volume used`;
 
     // In the hold — the Cargo Conscience's moral leans, surfaced as chips. A lean is a read,
     // never a rep delta; a neutral hold renders '—' rather than a fake label.
@@ -4736,9 +4776,8 @@ export function createHud(ctx, alerts) {
     if (led) led.style.display = 'none';
 
     const missionCmdtyIds = getMissionCargoIds(state);
-    const keys = Object.keys(items).filter(id => {
-      if (items[id] <= 0) return false;
-      const def = CMDTY_MAP.get(id);
+    const slotPassesTab = (stack) => {
+      const def = CMDTY_MAP.get(stack.commodityId);
       if (activeTab === 'materials') {
         return def && (def.category === 'raw ore' || def.category === 'gas' || def.category === 'crystal');
       }
@@ -4746,36 +4785,36 @@ export function createHud(ctx, alerts) {
         return def && def.category === 'salvage';
       }
       if (activeTab === 'mission') {
-        return missionCmdtyIds.has(id);
+        return missionCmdtyIds.has(stack.commodityId);
       }
       return true;
-    });
+    };
+    // One block per stack: the bag is the law, so a hold renders its slot list (with the
+    // legacy items mirror as the fallback view for a hold that has not packed yet).
+    const view = slots.length
+      ? slots.map((s, i) => ({ index: i, commodityId: s.commodityId, qty: s.qty }))
+      : Object.entries(items).filter(([, qty]) => qty > 0)
+        .map(([commodityId, qty], i) => ({ index: -1 - i, commodityId, qty }));
+    const rows = view.filter(s => s.qty > 0 && slotPassesTab(s));
+    const freeSlots = freeSlotCount(slots.length ? slots : (impliedSlots || []), slotCount);
 
     schematicEl.innerHTML = '';
 
-    if (!keys.length) {
+    if (!rows.length && freeSlots <= 0) {
       schematicEl.innerHTML = `<div class="sf-cargo-empty-msg">No items in this category.</div>`;
       updateInspector(null);
       beamFx.setPath([], { active: false });
       return;
     }
 
-    let totalFilteredVolume = 0;
-    const itemVolumes = {};
-    for (const id of keys) {
-      const qty = items[id];
-      const def = CMDTY_MAP.get(id);
-      const vol = cargoVolumeForRow(state, id, qty, def);
-      itemVolumes[id] = vol;
-      totalFilteredVolume += vol;
-    }
-
     const frag = document.createDocumentFragment();
-    for (const id of keys) {
-      const qty = items[id];
+    for (const stack of rows) {
+      const id = stack.commodityId;
+      const qty = stack.qty;
       const def = CMDTY_MAP.get(id);
       const name = escapeHtml(cargoDisplayName(id));
-      const vol = itemVolumes[id];
+      const vol = cargoVolumeForRow(state, id, qty, def);
+      const ups = unitsPerSlotFor(state, id);
       const persistent = isPersistentCargoId(state, id);
       // NXB-025 — the lock marks units that cannot leave; a partly-sealed lot still
       // carries its contract badge but is not all locked.
@@ -4788,10 +4827,14 @@ export function createHud(ctx, alerts) {
       const block = document.createElement('button');
       block.type = 'button';
       block.className = `sf-cargo-block ${legalClass}`;
-      block.setAttribute('aria-pressed', String(selectedCommodityId === id));
-      if (selectedCommodityId === id) block.classList.add('selected');
+      const isSelected = selectedCommodityId === id && selectedSlotIndex === stack.index;
+      block.setAttribute('aria-pressed', String(isSelected));
+      if (isSelected) block.classList.add('selected');
       block.dataset.id = id;
-      block.style.flex = `${Math.max(1, Math.round(vol))} ${Math.max(1, Math.round(vol))} 140px`;
+      block.dataset.slotIndex = String(stack.index);
+      block.style.flex = '1 1 140px';
+      block.draggable = stack.index >= 0;
+      block.setAttribute('aria-label', `${name} — ${qty} of ${ups} in this stack`);
 
       let badgeHtml = '';
       if (def) {
@@ -4814,8 +4857,8 @@ export function createHud(ctx, alerts) {
           ${isLocked ? `<span class="sf-cargo-lock-icon" title="Locked — needed for an active contract or the story">${icon('lock', 12)}</span>` : ''}
         </span>
         <span class="sf-cargo-block-bottom">
-          <span class="sf-cargo-block-qty">${qty} units · ≈ ${formatCount(rowWorth, state)} cr</span>
-          <span class="sf-cargo-block-vol">${vol.toFixed(1)} space</span>
+          <span class="sf-cargo-block-qty">${qty} / ${ups} · ≈ ${formatCount(rowWorth, state)} cr</span>
+          <span class="sf-cargo-block-vol">${vol.toFixed(1)} u</span>
           ${badgeHtml}
         </span>
       `;
@@ -4823,6 +4866,7 @@ export function createHud(ctx, alerts) {
       block.addEventListener('click', (ev) => {
         ev.stopPropagation();
         selectedCommodityId = id;
+        selectedSlotIndex = stack.index;
         for (const item of schematicEl.querySelectorAll('button.sf-cargo-block')) {
           item.classList.toggle('selected', item === block);
           item.setAttribute('aria-pressed', String(item === block));
@@ -4831,20 +4875,25 @@ export function createHud(ctx, alerts) {
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
       });
 
+      // Drag-out: a stack dropped off the bag grid is a jettison intent; dropped onto
+      // another slot it is a move (the owner merges same-commodity stacks itself).
+      block.addEventListener('dragstart', (ev) => {
+        ev.dataTransfer.setData('text/plain', String(stack.index));
+        ev.dataTransfer.effectAllowed = 'move';
+      });
+
       frag.appendChild(block);
     }
 
-    const freeVol = Math.max(0, cap - used);
-    if (freeVol > 0 && activeTab === 'cargo') {
+    for (let i = 0; i < freeSlots && activeTab === 'cargo'; i++) {
       const freeBlock = document.createElement('div');
       freeBlock.className = 'sf-cargo-block free-space';
-      freeBlock.style.flex = `${Math.max(1, Math.round(freeVol))} ${Math.max(1, Math.round(freeVol))} 140px`;
       freeBlock.innerHTML = `
         <div class="sf-cargo-block-top">
-          <span class="sf-cargo-block-name" style="color:var(--ink-mute);">FREE CAPACITY</span>
+          <span class="sf-cargo-block-name" style="color:var(--ink-mute);">EMPTY SLOT</span>
         </div>
         <div class="sf-cargo-block-bottom">
-          <span class="sf-cargo-block-qty" style="color:var(--ink-mute);">${freeVol} units free</span>
+          <span class="sf-cargo-block-qty" style="color:var(--ink-mute);">open</span>
         </div>
       `;
       frag.appendChild(freeBlock);
@@ -4852,9 +4901,25 @@ export function createHud(ctx, alerts) {
 
     schematicEl.appendChild(frag);
 
-    if (!selectedCommodityId && keys.length > 0) {
-      selectedCommodityId = keys[0];
-      const firstBlock = schematicEl.querySelector(`.sf-cargo-block[data-id="${selectedCommodityId}"]`);
+    schematicEl.querySelectorAll('.sf-cargo-block[data-slot-index]').forEach((el) => {
+      el.addEventListener('dragover', (ev) => { ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; });
+      el.addEventListener('drop', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const from = Number(ev.dataTransfer.getData('text/plain'));
+        const to = Number(el.dataset.slotIndex);
+        if (Number.isInteger(from) && Number.isInteger(to) && from !== to && from >= 0 && to >= 0) {
+          // Same commodity stacks merge to the target's cap; different stacks swap places.
+          const same = slots[from] && slots[to] && slots[from].commodityId === slots[to].commodityId;
+          ctx.bus.emit(same ? 'cargo:mergeStacks' : 'cargo:moveStack', { from, to });
+        }
+      });
+    });
+
+    if (selectedCommodityId == null && rows.length > 0) {
+      selectedCommodityId = rows[0].commodityId;
+      selectedSlotIndex = rows[0].index;
+      const firstBlock = schematicEl.querySelector(`.sf-cargo-block[data-slot-index="${selectedSlotIndex}"]`);
       if (firstBlock) {
         firstBlock.classList.add('selected');
         firstBlock.setAttribute('aria-pressed', 'true');
@@ -4895,13 +4960,74 @@ export function createHud(ctx, alerts) {
     });
   });
 
+  const sortBtn = cargoPanel.querySelector('.sf-cargo-sort');
+  if (sortBtn) sortBtn.addEventListener('click', () => {
+    ctx.bus.emit('audio:cue', { id: 'ui_click' });
+    ctx.bus.emit('cargo:sortBag', {});
+  });
+
+  // Dropping a stack anywhere off the bag grid is the drag-out jettison gesture; the drop
+  // targets live on cargoPanel so the grid's own slots keep their move/merge handling.
+  cargoPanel.addEventListener('dragover', (ev) => {
+    if (!ev.target.closest('.sf-cargo-block[data-slot-index]')) ev.preventDefault();
+  });
+  cargoPanel.addEventListener('drop', (ev) => {
+    if (ev.target.closest('.sf-cargo-block[data-slot-index]')) return; // the slot's own drop ran
+    const from = Number(ev.dataTransfer.getData('text/plain'));
+    const list = (state.player && state.player.cargo && state.player.cargo.slots) || [];
+    const stack = Number.isInteger(from) && from >= 0 ? list[from] : null;
+    if (stack && stack.qty > 0) requestStackJettison(from, stack.commodityId, stack.qty);
+  });
+
+  // The stack-drag-out gesture shares the button's confirm, then emits the same intent.
+  // `cargo:jettison` stays the one lane-crossing event; slotIndex/confirmSealed ride options.
+  function requestStackJettison(slotIndex, commodityId, qty) {
+    const name = cargoDisplayName(commodityId);
+    const sealed = reservedCargoQty(state, commodityId);
+    confirm({
+      title: 'Confirm Jettison',
+      body: `Jettison ${qty}× ${name} from this stack? This action is permanent.${sealed > 0 ? ` (${sealed} units are sealed for a contract.)` : ''}`,
+      confirmLabel: 'Jettison',
+      danger: true,
+    }).then((ok) => {
+      if (ok) ctx.bus.emit('cargo:jettison', { commodityId, qty, slotIndex });
+    });
+  }
+
+  // Sealed-freight confirmation (CARGO-BUILD-1): the owner refuses a dump that reaches into
+  // contract-sealed units and hands the screen the numbers; this is the answer path.
+  let pendingSealedDump = null;
+  on('cargo:jettisonSealed', (p) => {
+    if (!p || pendingSealedDump) return;
+    const sealedQty = Math.max(0, Math.floor(Number(p.requested) - Number(p.sellable) || 0));
+    const name = cargoDisplayName(p.commodityId);
+    pendingSealedDump = p;
+    confirm({
+      title: 'Jettison sealed freight?',
+      body: `${p.requested}× ${name} includes ${Math.max(0, Number(p.reserved) || sealedQty)} units sealed for a contract. Dumping them breaches the seal and forfeits the job. Jettison the sealed freight anyway?`,
+      confirmLabel: 'Dump sealed freight',
+      danger: true,
+    }).then((ok) => {
+      const pending = pendingSealedDump;
+      pendingSealedDump = null;
+      if (ok && pending) {
+        ctx.bus.emit('cargo:jettison', {
+          commodityId: pending.commodityId,
+          qty: pending.requested,
+          slotIndex: Number.isInteger(pending.slotIndex) ? pending.slotIndex : undefined,
+          confirmSealed: true,
+        });
+      }
+    });
+  });
+
   // Listen for the jettison event in case the cargo system doesn't handle it natively
-  on('cargo:jettison', ({ commodityId, qty }) => {
+  on('cargo:jettison', ({ commodityId, qty, slotIndex, confirmSealed }) => {
     const cargoSys = ctx.registry && ctx.registry.get('cargo');
     if (cargoSys && cargoSys.jettison) {
       // On the worker lane the facade returns a Promise of the dumped count;
       // main-side it resolves a number through the same await.
-      Promise.resolve(cargoSys.jettison(commodityId, qty || 1)).then((dumped) => {
+      Promise.resolve(cargoSys.jettison(commodityId, qty || 1, { slotIndex, confirmSealed })).then((dumped) => {
         if (dumped > 0) {
           const name = cargoDisplayName(commodityId);
           ctx.bus.emit('toast', { text: `Jettisoned ${dumped}× ${name}`, kind: 'warn', ttl: 2 });

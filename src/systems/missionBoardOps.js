@@ -31,6 +31,7 @@ import { SET_PIECE_FOLLOW_ON_SOURCE } from '../data/sandboxSetPieceFollowOns.js'
 import { BREAKAWAY_RECOVERY_TYPE, COUNTERWEIGHT_WATCH_TYPE, PQ019C_HEIST_SOURCE, PQ019C_HEIST_STATION_ID, PQ019C_HEIST_TYPE, buildBreakawayOffer, buildCounterweightOffer, buildHeistOffer, heistMissionPolicy } from '../data/heistMission.js';
 import { QUIET_BERTH_TYPE, SPLIT_MANIFEST_TYPE, YARD_BOARD_STATION_ID, YARD_WORK_SOURCE, buildQuietBerthOffer, buildSplitManifestOffer } from '../data/yardContracts.js';
 import { syncWakeHandoffOffer } from './wakeHandoffRuntime.js';
+import { slotFitFor } from './cargo.js';
 import { attachClauses, attachConditions, CLAUSE_GAMBIT_SOURCE, reconstructClauseGambitOffer } from './contractClauses.js';
 import { counterweightRuntime, heistMissionRuntime } from '../missions/heistMissionRuntime.js';
 import { driveTender, tenderSpotRowRetained, TENDER_SPOT_SOURCE } from '../missions/tenderHaul.js';
@@ -443,10 +444,10 @@ export const missionBoardOps = {
     if (offer.factionId
       && this._repOf(offer.factionId) < missionOfferMinRep(offer, this.state)) return false;
     if (ONE_LOAD_CARGO_TYPES.has(offer.type)) {
-      const need = cargoFootprint(offer);
-      const cargo = (this.state.player && this.state.player.cargo) || {};
-      const free = Math.max(0, (Number(cargo.capVolume) || 0) - (Number(cargo.usedVolume) || 0));
-      if (need > 0 && free < need) return false;
+      // Slot law: zero-capital means the bag can already stack the whole one-load lot.
+      const p = offer.params || {};
+      const need = Math.max(0, Math.floor(Number(p.qty) || 0));
+      if (need > 0 && p.cmdtyId && slotFitFor(this.state, p.cmdtyId) < need) return false;
     }
     return true;
   },

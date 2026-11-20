@@ -121,6 +121,7 @@ import {
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isOpticEnergyBolt, isOpticOrdnance, opticMaterialOf } from '../combat/opticField.js';
 import { pickupHoldIsFull, successfulPickupAmount } from '../core/pickupAcceptance.js';
+import { slotUnitsFit, unitsPerSlotForDef } from '../data/cargoSlots.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
@@ -5525,19 +5526,41 @@ export const audio = {
   _onPickupHoldChanged(refusal = null) {
     if (!this.rt) return;
     const cargo = this.state?.player?.cargo;
-    const valid = cargo && Number.isFinite(cargo.capVolume) && cargo.capVolume > 0
+    // Slot law (CARGO-BUILD-1): a refusal latches as the commodity it was for and clears the
+    // moment the bag can stack one unit of it again. Holds without slot data keep the volume latch.
+    const slotted = !!(cargo && (Array.isArray(cargo.slots) || Number.isFinite(cargo.slotCount)));
+    const valid = !slotted && cargo && Number.isFinite(cargo.capVolume) && cargo.capVolume > 0
       && Number.isFinite(cargo.usedVolume);
     const free = valid ? cargo.capVolume - cargo.usedVolume : Infinity;
-    let unit = this.rt._pickupHoldRefusedUnit || 0;
-    if (free >= unit) unit = 0;
-    if (refusal?.commodityId && valid) {
+    const defFor = (commodityId) => {
       const registry = this.state.content?.commodities;
-      const def = (Array.isArray(registry) ? registry.find(c => c.id === refusal.commodityId)
-        : registry?.[refusal.commodityId]) || COMMODITIES.find(c => c.id === refusal.commodityId);
-      const refusedUnit = def?.volPerU > 0 ? def.volPerU : 1;
-      if (free < refusedUnit) unit = Math.max(unit, refusedUnit);
+      return (Array.isArray(registry) ? registry.find(c => c.id === commodityId)
+        : registry?.[commodityId]) || COMMODITIES.find(c => c.id === commodityId);
+    };
+    let unit = this.rt._pickupHoldRefusedUnit || 0;
+    let refusedId = this.rt._pickupHoldRefusedCommodity || null;
+    if (slotted) {
+      if (unit > 0 && refusedId
+          && slotUnitsFit(cargo.slots || [], cargo.slotCount, refusedId, unitsPerSlotForDef(defFor(refusedId))) >= 1) {
+        unit = 0;
+        refusedId = null;
+      } else if (!refusedId) unit = 0;
+    } else if (free >= unit) unit = 0;
+    if (refusal?.commodityId && (slotted || valid)) {
+      const def = defFor(refusal.commodityId);
+      if (slotted) {
+        if (unit === 0
+            && slotUnitsFit(cargo.slots || [], cargo.slotCount, refusal.commodityId, unitsPerSlotForDef(def)) < 1) {
+          unit = 1;
+          refusedId = refusal.commodityId;
+        }
+      } else {
+        const refusedUnit = def?.volPerU > 0 ? def.volPerU : 1;
+        if (free < refusedUnit) unit = Math.max(unit, refusedUnit);
+      }
     }
     this.rt._pickupHoldRefusedUnit = unit;
+    this.rt._pickupHoldRefusedCommodity = refusedId;
     const full = pickupHoldIsFull(cargo) || unit > 0;
     const crossed = full && !this.rt._pickupHoldFull;
     this.rt._pickupHoldFull = full;

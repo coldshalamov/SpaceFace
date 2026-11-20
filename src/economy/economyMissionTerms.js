@@ -8,11 +8,14 @@ export function offerMixForTier(profile, tier = 0) {
 }
 
 /** Fit one-load work to physical hold space, not the player's wallet or an imagined capacity. */
-export function affordableContractQuantity({ desired, freeVolume, volumePerUnit = 1, sourceStock = Infinity }) {
-  if (!Number.isFinite(freeVolume) || freeVolume < 0 || !(volumePerUnit > 0)) return 0;
+export function affordableContractQuantity({ desired, fitUnits, freeVolume, volumePerUnit = 1, sourceStock = Infinity }) {
+  // CARGO-BUILD-1: a slot-law fit answer beats the legacy volume projection when supplied.
+  const holdUnits = Number.isFinite(fitUnits)
+    ? Math.max(0, Math.floor(fitUnits))
+    : (Number.isFinite(freeVolume) && freeVolume >= 0 && volumePerUnit > 0
+      ? Math.floor((freeVolume + 1e-9) / volumePerUnit) : 0);
   const available = sourceStock === Infinity ? Infinity : Math.max(0,Math.floor(finite(sourceStock)));
-  return Math.max(0,Math.min(B.mission.maxCargoQty,Math.floor(finite(desired)),
-    Math.floor((freeVolume+1e-9)/volumePerUnit),available));
+  return Math.max(0,Math.min(B.mission.maxCargoQty,Math.floor(finite(desired)),holdUnits,available));
 }
 
 /**

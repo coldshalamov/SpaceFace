@@ -28,7 +28,7 @@ const CERES_NPC_AUTHORITY=Symbol('ceres-site-operation');
 import { generateDrillField, applyClearedTiles, applyFlaggedTiles, applyRubbleTiles, normalizeClearedTiles, tileIndex, drillSessionTarget, DRILL_CONST, EMPTY_TILE } from './drill.js';
 import { markFieldRockAtRest } from './spawnClearance.js';
 import { applySealedDeadDropCap, sealedDeadDropCapMissing } from './boreDeadDrop.js';
-import { addCargo, removeCargo, sellableCargoQuantity } from './cargo.js';
+import { addCargo, removeCargo, sellableCargoQuantity, slotFitFor } from './cargo.js';
 import {
   addToShipment,
   commitShipmentSale,
@@ -1881,8 +1881,8 @@ export const asteroidSites = {
         ? commodities.find(row => row.id === 'cmdty_control_unit')
         : commodities?.cmdty_control_unit) || COMMODITY_BY_ID.get('cmdty_control_unit');
       const requiredVolume = refundU * (unit?.volPerU > 0 ? unit.volPerU : 1);
-      const freeVolume = cargo ? cargo.capVolume - cargo.usedVolume : NaN;
-      if (!Number.isFinite(freeVolume) || freeVolume < requiredVolume) {
+      // Slot law: the refund loads only while the bag can stack every unit of it.
+      if (!cargo || slotFitFor(this.state, 'cmdty_control_unit') < refundU) {
         this.bus.emit('toast', { kind: 'warn', ttl: 4,
           text: `Make room for ${counted(refundU, 'control unit', 'control units')} before dismantling.` });
         return { ok: false, reason: 'refund-hold-full', requiredVolume };

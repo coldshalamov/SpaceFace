@@ -230,7 +230,7 @@ function playerEntity(state) {
 function credits(state) { return Math.max(0, Math.round(Number(state && state.player && state.player.credits) || 0)); }
 function hullFrac(state) { const s = playerEntity(state); return (s && s.hullMax > 0) ? Math.max(0, Math.min(1, (s.hull || 0) / s.hullMax)) : 1; }
 function fuelFrac(state) { const f = state && state.fuel; return (f && f.max > 0) ? Math.max(0, Math.min(1, (f.current || 0) / f.max)) : 1; }
-function cargoFrac(state) { const c = state && state.player && state.player.cargo; return (c && c.capVolume > 0) ? Math.max(0, Math.min(1, (c.usedVolume || 0) / c.capVolume)) : 0; }
+function cargoFrac(state) { const c = state && state.player && state.player.cargo; if (c && (Array.isArray(c.slots) || Number.isFinite(c.slotCount)) && c.slotCount > 0) return Math.max(0, Math.min(1, (Array.isArray(c.slots) ? c.slots.length : 0) / c.slotCount)); return (c && c.capVolume > 0) ? Math.max(0, Math.min(1, (c.usedVolume || 0) / c.capVolume)) : 0; }
 function fmtCr(n) { return Math.round(Number(n) || 0).toLocaleString('en-US'); }
 // Meter colour is no longer chosen here. A vital carries a data-tone and the sheet owns the hue,
 // so the "gain / caution / loss" contract lives in one place instead of being re-picked per meter.
@@ -616,11 +616,21 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     }).join('');
     const used = Number(cargo.usedVolume) || 0;
     const cap = Number(cargo.capVolume) || 0;
-    const usedPct = cap > 0 ? Math.max(0, Math.min(100, used / cap * 100)) : 0;
+    const slotted = Number.isFinite(cargo.slotCount) && cargo.slotCount > 0;
+    const usedSlots = Array.isArray(cargo.slots) ? cargo.slots.length : 0;
+    const usedPct = slotted
+      ? Math.max(0, Math.min(100, usedSlots / cargo.slotCount * 100))
+      : (cap > 0 ? Math.max(0, Math.min(100, used / cap * 100)) : 0);
+    const headText = slotted
+      ? `${fmtCr(usedSlots)} / ${fmtCr(cargo.slotCount)} slots · ${usedPct.toFixed(0)}% · ${fmtCr(used)} u`
+      : `${fmtCr(used)} / ${fmtCr(cap)} units · ${usedPct.toFixed(0)}%`;
+    const headAria = slotted
+      ? `Cargo hold ${usedPct.toFixed(0)} percent full, ${fmtCr(usedSlots)} of ${fmtCr(cargo.slotCount)} slots used`
+      : `Cargo hold ${usedPct.toFixed(0)} percent full, ${fmtCr(used)} of ${fmtCr(cap)} hold units used`;
     // The bay is one 2 px k-bar (no per-segment reveal: the rows below name every commodity).
     openPop(
-      `<div class="sx-pop__head k-t-emph">Cargo hold <em class="k-62">${fmtCr(used)} / ${fmtCr(cap)} units · ${usedPct.toFixed(0)}%</em></div>` +
-      `<div class="k-bar sx-holdbay" role="img" aria-label="Cargo hold ${usedPct.toFixed(0)} percent full, ${fmtCr(used)} of ${fmtCr(cap)} hold units used">` +
+      `<div class="sx-pop__head k-t-emph">Cargo hold <em class="k-62">${headText}</em></div>` +
+      `<div class="k-bar sx-holdbay" role="img" aria-label="${headAria}">` +
         `<span class="k-bar__fill sx-holdbay__used" style="width:${usedPct.toFixed(2)}%"></span>` +
       `</div>` +
       (rows ? `<ul class="k-rows sx-holdlist" style="--k-row-cols: minmax(0,1fr) auto auto auto">${rows}</ul>`
@@ -1573,8 +1583,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       },
       {
         k: 'hold', label: 'Hold', frac: holdF, tone: vitalTone(holdF, 'hold'), openHold: true,
-        value: `${fmtCr(cargo.usedVolume)} / ${fmtCr(cargo.capVolume)} units`,
-        aria: `Cargo hold ${fmtCr(cargo.usedVolume)} of ${fmtCr(cargo.capVolume)} units`,
+        // CARGO-BUILD-1: the bag's slot count is the capacity a trader reads here;
+        // volume stays a physical readout inside the hold popup.
+        value: Number.isFinite(cargo.slotCount) && cargo.slotCount > 0
+          ? `${fmtCr(Array.isArray(cargo.slots) ? cargo.slots.length : 0)} / ${fmtCr(cargo.slotCount)} slots`
+          : `${fmtCr(cargo.usedVolume)} / ${fmtCr(cargo.capVolume)} units`,
+        aria: Number.isFinite(cargo.slotCount) && cargo.slotCount > 0
+          ? `Cargo hold ${fmtCr(Array.isArray(cargo.slots) ? cargo.slots.length : 0)} of ${fmtCr(cargo.slotCount)} slots used`
+          : `Cargo hold ${fmtCr(cargo.usedVolume)} of ${fmtCr(cargo.capVolume)} units`,
         acts: [carrying
           ? `<button type="button" ${stationControlAttrs('sell')} class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="sell"` +
             ` aria-label="Sell cargo at this station">Sell</button>`

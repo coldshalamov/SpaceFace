@@ -15,7 +15,8 @@ import { BLUEPRINTS, BLUEPRINT_BY_ID, LEGACY_MATERIAL_OUTPUTS } from '../data/bl
 import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
 import { techDisplayName } from '../data/tech.js';
-import { addCargo, removeCargo, sellableCargoQuantity } from './cargo.js';
+import { packItemsIntoSlots, slotCountForCargoCap } from '../data/cargoSlots.js';
+import { addCargo, ensureSlots, removeCargo, sellableCargoQuantity, slotFitFor, unitsPerSlotFor } from './cargo.js';
 import { getDerivedStats } from './ships.js';
 import { instanceIdentityText } from './shipLedger.js';
 
@@ -64,33 +65,32 @@ export function buildDuration(bp) {
   return DEFAULT_TIME_S[bp.category] || 0;
 }
 
-function commodityVolume(id) {
-  const def = COMMODITY_BY_ID.get(id);
-  return def && def.volPerU > 0 ? def.volPerU : 1;
-}
-
-/** True when the hold can take `qty` of `commodityId` without exceeding capVolume. */
+/** True when the hold can take `qty` of `commodityId` — slots are the admission cap (slot law). */
 function cargoCanFit(state, commodityId, qty) {
-  const cargo = state && state.player && state.player.cargo;
-  if (!cargo) return false;
   const need = Math.max(0, Math.floor(Number(qty) || 0));
-  if (need <= 0) return true;
-  const free = (Number(cargo.capVolume) || 0) - (Number(cargo.usedVolume) || 0);
-  return Math.floor(free / commodityVolume(commodityId)) >= need;
+  return need <= 0 || slotFitFor(state, commodityId) >= need;
 }
 
-/** Instant refine consumes inputs first. Net volume after that swap must still fit. */
+/** Slots a hypothetical commodity→qty map needs once packed under slot law. */
+function packedSlotsFor(state, items) {
+  return packItemsIntoSlots(items, (id) => unitsPerSlotFor(state, id)).length;
+}
+
+/** Instant refine consumes inputs first. Slot law: the post-swap contents must still pack into the
+ *  bag — inputs eaten up front can only free stacks, so a packed fit is the exact admission test. */
 function cargoCanFitBlueprintSwap(state, bp) {
   const out = bp && bp.outputs;
   if (!out || out.kind !== 'commodity') return true;
   const cargo = state && state.player && state.player.cargo;
   if (!cargo) return false;
-  let used = Number(cargo.usedVolume) || 0;
+  ensureSlots(state, cargo);
+  const items = { ...(cargo.items || {}) };
   for (const id of Object.keys(bp.inputs || {})) {
-    used -= (Number(bp.inputs[id]) || 0) * commodityVolume(id);
+    const left = (Number(items[id]) || 0) - (Number(bp.inputs[id]) || 0);
+    if (left > 0) items[id] = left; else delete items[id];
   }
-  used += (Number(out.qty) || 0) * commodityVolume(out.id);
-  return used <= (Number(cargo.capVolume) || 0) + 1e-9;
+  items[out.id] = (Number(items[out.id]) || 0) + (Number(out.qty) || 0);
+  return packedSlotsFor(state, items) <= (Number(cargo.slotCount) || 0);
 }
 
 /** Where consumeOneModule(p, defId) would take the unit from, mirrored read-only: any loose
@@ -130,11 +130,14 @@ function fittedSourceOverflowText(state, bp) {
   const afterFittings = pick.owned.fittings.slice();
   afterFittings[pick.slotIndex] = null;
   const capAfter = getDerivedStats(pick.owned.defId, afterFittings, p).cargoCap;
-  let usedAfter = Number(cargo.usedVolume) || 0;
+  const slotCapAfter = slotCountForCargoCap(capAfter);
+  ensureSlots(state, cargo);
+  const items = { ...(cargo.items || {}) };
   for (const id of Object.keys(bp.inputs || {})) {
-    usedAfter -= (Number(bp.inputs[id]) || 0) * commodityVolume(id);
+    const left = (Number(items[id]) || 0) - (Number(bp.inputs[id]) || 0);
+    if (left > 0) items[id] = left; else delete items[id];
   }
-  if (usedAfter <= capAfter + 1e-9) return null;
+  if (packedSlotsFor(state, items) <= slotCapAfter) return null;
   return 'Consuming the fitted ' + moduleName(bp.fromModule)
     + ' would overflow the hold — free cargo space first';
 }

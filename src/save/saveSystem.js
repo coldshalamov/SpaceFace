@@ -1612,12 +1612,23 @@ export const save = {
 
   _serializeCargo() {
     const c = this.state.player.cargo || {};
-    const out = { items: clonePlain(c.items || {}), capVolume: c.capVolume, capMass: c.capMass };
+    // CARGO-BUILD-1: the slot list is the hold; items stays serialized alongside as the derived
+    // mirror so older tooling and v23 fallback reads still see the same totals.
+    const out = {
+      items: clonePlain(c.items || {}),
+      capVolume: c.capVolume,
+      capMass: c.capMass,
+    };
+    if (Array.isArray(c.slots)) out.slots = clonePlain(c.slots);
+    if (Number.isFinite(c.slotCount)) out.slotCount = c.slotCount;
     if (Array.isArray(c.richLots) && c.richLots.length) out.richLots = clonePlain(c.richLots);
     // Hull-burst overhaul slice D: the salvage bay rides the cargo record as an OPTIONAL key (absent = empty), so old
     // saves load unchanged and a save without one is byte-identical to before.
     const bay = this.state.player.salvageBay;
-    if (bay && bay.items && Object.keys(bay.items).length) out.salvageBay = { items: clonePlain(bay.items) };
+    if (bay && bay.items && Object.keys(bay.items).length) {
+      out.salvageBay = { items: clonePlain(bay.items) };
+      if (Array.isArray(bay.slots)) out.salvageBay.slots = clonePlain(bay.slots);
+    }
     // W-CAST-HANDS row 542 (Drift): the fractional sun-sublimation progress rides the cargo record
     // as an OPTIONAL key (absent = nothing ever melted), so a save without one is byte-identical.
     if (c.moisture && typeof c.moisture === 'object' && Object.keys(c.moisture).length) out.moisture = clonePlain(c.moisture);
@@ -8081,14 +8092,38 @@ export const save = {
   _restoreCargo(c) {
     const cargo = this.state.player.cargo;
     if (!c) return;
-    cargo.items = c.items || {};
+    // The slot list is the record. v24 saves carry it; anything older arrived through the
+    // migration with slots already packed. A crafted/absent list falls back to the items map,
+    // which the cargo owner packs into slots on first touch — same law, nothing lost.
+    if (Array.isArray(c.slots)) {
+      cargo.slots = clonePlain(c.slots).filter((s) => s && typeof s.commodityId === 'string'
+        && Number.isFinite(s.qty) && s.qty > 0)
+        .map((s) => ({ commodityId: s.commodityId, qty: Math.floor(s.qty) }));
+    } else if (Object.hasOwn(cargo, 'slots')) delete cargo.slots;
+    if (typeof c.slotCount === 'number' && c.slotCount > 0) cargo.slotCount = Math.floor(c.slotCount);
+    if (Array.isArray(cargo.slots)) {
+      const items = {};
+      for (const s of cargo.slots) items[s.commodityId] = (items[s.commodityId] || 0) + s.qty;
+      cargo.items = items;
+    } else {
+      cargo.items = c.items || {};
+    }
     if (typeof c.capVolume === 'number') cargo.capVolume = c.capVolume;
     if (typeof c.capMass === 'number') cargo.capMass = c.capMass;
     if (Array.isArray(c.richLots)) cargo.richLots = clonePlain(c.richLots);
     else if (Object.hasOwn(cargo, 'richLots')) delete cargo.richLots;
-    if (c.salvageBay && typeof c.salvageBay === 'object' && c.salvageBay.items && typeof c.salvageBay.items === 'object') {
-      // usedVolume is a cache: the cargo owner recomputes it from the items right after the restore.
-      this.state.player.salvageBay = { items: clonePlain(c.salvageBay.items), usedVolume: 0 };
+    if (c.salvageBay && typeof c.salvageBay === 'object' && (c.salvageBay.items || Array.isArray(c.salvageBay.slots))) {
+      // usedVolume is a cache: the cargo owner recomputes it from the slots right after the restore.
+      const bay = {
+        items: c.salvageBay.items && typeof c.salvageBay.items === 'object' ? clonePlain(c.salvageBay.items) : {},
+        usedVolume: 0,
+      };
+      if (Array.isArray(c.salvageBay.slots)) {
+        bay.slots = clonePlain(c.salvageBay.slots).filter((s) => s && typeof s.commodityId === 'string'
+          && Number.isFinite(s.qty) && s.qty > 0)
+          .map((s) => ({ commodityId: s.commodityId, qty: Math.floor(s.qty) }));
+      }
+      this.state.player.salvageBay = bay;
     } else if (Object.hasOwn(this.state.player, 'salvageBay')) delete this.state.player.salvageBay;
     // Drift moisture-loss accumulator (row 542): restored or cleared with the cargo record, same
     // optional-key law as salvageBay — a save that never melted leaves no key behind.
@@ -9390,6 +9425,19 @@ function needsPlayerEntityRepair(saved) {
  * a record legitimately carries and drop the field entirely when nothing valid is inside, so an
  * old or crafted save cannot smuggle negative or phantom units into a parked hold.
  */
+function normalizeSlotList(list) {
+  if (!Array.isArray(list)) return null;
+  const out = [];
+  for (const s of list) {
+    const qty = Math.floor(Number(s && s.qty));
+    if (s && typeof s.commodityId === 'string' && s.commodityId && qty > 0) {
+      out.push({ commodityId: s.commodityId, qty });
+    }
+    if (out.length >= 512) break; // a crafted save cannot grow an unbounded bag
+  }
+  return out.length ? out : [];
+}
+
 function normalizeParkedHoldSaveRecord(cargo) {
   const out = (cargo && typeof cargo === 'object' && !Array.isArray(cargo)) ? cargo : {};
   const items = {};
@@ -9398,6 +9446,14 @@ function normalizeParkedHoldSaveRecord(cargo) {
     if (typeof id === 'string' && id && n > 0) items[id] = n;
   }
   out.items = items;
+  // v24: the parked hold's slot list is truth when present; an absent list re-packs from items.
+  const slots = normalizeSlotList(out.slots);
+  if (slots) {
+    out.slots = slots;
+    const mirror = {};
+    for (const s of slots) mirror[s.commodityId] = (mirror[s.commodityId] || 0) + s.qty;
+    out.items = mirror;
+  }
   if (Array.isArray(out.richLots)) {
     out.richLots = out.richLots.filter((lot) => lot && typeof lot === 'object'
       && typeof lot.commodityId === 'string' && Number(lot.qty) > 0);
@@ -9413,6 +9469,15 @@ function normalizeParkedHoldSaveRecord(cargo) {
 function normalizeCargoSaveRecord(cargo) {
   const out = (cargo && typeof cargo === 'object' && !Array.isArray(cargo)) ? cargo : {};
   if (!out.items || typeof out.items !== 'object' || Array.isArray(out.items)) out.items = {};
+  // v24: a supplied slot list re-derives the items mirror; absent, items packs lazily on load.
+  const slots = normalizeSlotList(out.slots);
+  if (slots) {
+    out.slots = slots;
+    const mirror = {};
+    for (const s of slots) mirror[s.commodityId] = (mirror[s.commodityId] || 0) + s.qty;
+    out.items = mirror;
+  }
+  if (Number.isFinite(out.slotCount) && out.slotCount > 0) out.slotCount = Math.floor(out.slotCount);
   if (!Number.isFinite(out.capVolume) || out.capVolume <= 0) out.capVolume = NEW_GAME.cargoCapacity || 40;
   if (!Number.isFinite(out.capMass) || out.capMass <= 0) out.capMass = Math.max(60, out.capVolume);
   if (Array.isArray(out.richLots)) {

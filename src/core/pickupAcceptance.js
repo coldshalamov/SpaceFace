@@ -2,12 +2,18 @@
 // downstream feedback consumers. The mutable pickup:collected payload is finalized before the
 // event bus returns, so consumers must treat acceptedAmount as authoritative whenever either
 // acceptance field is present. Events without either field retain legacy full-consume semantics.
+import { freeSlotCount } from '../data/cargoSlots.js';
 
 export const PICKUP_ACCEPTANCE_RETRY_S = 0.75;
 
-// Cargo's hard limit is volume; mass affects handling, not pickup admission.
+// Cargo's hard limit is the bag's slot count (CARGO-BUILD-1); mass and volume remain readouts.
 export function pickupHoldIsFull(cargo) {
-  return !!cargo && Number.isFinite(cargo.capVolume) && cargo.capVolume > 0
+  if (!cargo) return false;
+  if (Array.isArray(cargo.slots) || Number.isFinite(cargo.slotCount)) {
+    return Number.isFinite(cargo.slotCount) && cargo.slotCount > 0
+      && freeSlotCount(cargo.slots, cargo.slotCount) <= 0;
+  }
+  return Number.isFinite(cargo.capVolume) && cargo.capVolume > 0
     && Number.isFinite(cargo.usedVolume) && cargo.usedVolume >= cargo.capVolume;
 }
 

@@ -23,4 +23,6 @@
 // v21: physical industry experiences retain original bodies, progress and settlement receipts.
 // v22: loss-owned survey custody and scanner-sidecar recognition survive Continue.
 // v23: Lantern Ward finite work/custody and once-only service settlement.
-export const CURRENT_VERSION = 23;
+// v24: CARGO-BUILD-1 — the hold is a slot bag: cargo.slots/slotCount and salvageBay slots
+//      persist; legacy items maps pack greedily into stacks (over-cap stays aboard).
+export const CURRENT_VERSION = 24;

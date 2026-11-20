@@ -10,7 +10,7 @@ import { aiPorts } from '../src/systems/aiPorts.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { save } from '../src/save/saveSystem.js';
 import { actions } from '../src/systems/actions.js';
-import { cargo } from '../src/systems/cargo.js';
+import { cargo, unitsPerSlotFor } from '../src/systems/cargo.js';
 import { combat } from '../src/systems/combat.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { heat } from '../src/systems/heat.js';
@@ -426,14 +426,18 @@ test('partial then complete witnessed collection remains one manifest-theft inci
   const [pod] = pods(h, live);
   const originalQty = pod.data.amount;
   addLawStation(h, pod.pos, 100, ':partial');
-  h.state.player.cargo.capVolume = h.state.player.cargo.usedVolume
-    + commodityVolume(pod.data.commodityId) + 1e-6;
+  // Slot law (CARGO-BUILD-1): force exactly one unit of headroom — one slot holding a stack
+  // one short of full.
+  const ups1 = unitsPerSlotFor(h.state, pod.data.commodityId);
+  h.state.player.cargo.slotCount = 1;
+  h.state.player.cargo.slots = [{ commodityId: pod.data.commodityId, qty: ups1 - 1 }];
 
   const partial = collectByPlayer(h, pod);
   assert.equal(partial.acceptedAmount, 1);
   assert.equal(partial.rejectedAmount, originalQty - 1);
   const heatAfterFirst = h.state.player.heat;
-  h.state.player.cargo.capVolume = 999;
+  h.state.player.cargo.slotCount = 8;
+  h.state.player.cargo.slots = [];
   collectByPlayer(h, pod);
 
   assert.equal(
@@ -565,7 +569,10 @@ test('zero and partial cargo acceptance retain or reduce the same physical pod w
   const originalMass = pod.mass;
   const originalRadius = pod.radius;
 
-  h.state.player.cargo.capVolume = h.state.player.cargo.usedVolume;
+  // Slot law: a full bag rejects the whole pod.
+  const upsFull = unitsPerSlotFor(h.state, pod.data.commodityId);
+  h.state.player.cargo.slotCount = 1;
+  h.state.player.cargo.slots = [{ commodityId: pod.data.commodityId, qty: upsFull }];
   const rejected = collectByPlayer(h, pod);
   assert.equal(rejected.acceptedAmount, 0);
   assert.equal(rejected.rejectedAmount, originalQty);
@@ -576,8 +583,9 @@ test('zero and partial cargo acceptance retain or reduce the same physical pod w
   assert.equal(record.playerCollectedQty, 0);
   assertConserved(record);
 
-  h.state.player.cargo.capVolume = h.state.player.cargo.usedVolume
-    + commodityVolume(pod.data.commodityId) + 1e-6;
+  // Slot law: one unit of headroom in the only slot.
+  h.state.player.cargo.slotCount = 1;
+  h.state.player.cargo.slots = [{ commodityId: pod.data.commodityId, qty: upsFull - 1 }];
   const partial = collectByPlayer(h, pod);
   assert.equal(partial.acceptedAmount, 1);
   assert.equal(partial.rejectedAmount, originalQty - 1);

@@ -8,7 +8,8 @@ export { DIRT_HP, DIRT_HARDNESS, DRILL_GEOMETRY_RECOVERY_PER_S, EMPTY_TILE, dril
 // Single-writer: drill owns only state.drill (the field + avatar + accumulator). Ore grants route
 // through cargo.addCargo. Determinism: the field is seeded by the asteroid's id (V2 §32 seed model)
 // so the same asteroid drills the same way every visit.
-import { addCargo, cargoUnitVolume } from './cargo.js';
+import { addCargo, cargoUnitVolume, slotFitFor, unitsPerSlotFor } from './cargo.js';
+import { fillSlots, freeSlotCount } from '../data/cargoSlots.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { recordFieldExtraction, fieldMemoryReadout } from './fieldDepletion.js';
 import { asteroidHasDrillProgress } from '../world/resourceBodyRecords.js';
@@ -214,11 +215,8 @@ function offeredVeinUnits(units, budget) {
 }
 
 function holdFit(state, ore) {
-  const cargo = state.player?.cargo;
-  const volume = cargoUnitVolume(state, ore);
-  if (volume === 0) return Infinity;
-  const free = cargo?.capVolume - cargo?.usedVolume;
-  return Number.isFinite(free) ? Math.max(0, Math.floor(free / volume)) : 0;
+  // Slot law (CARGO-BUILD-1): the hold admits a vein only while its ore can claim stacks.
+  return slotFitFor(state, ore);
 }
 
 function debitDrillBudget(state, session, data, units) {
@@ -493,9 +491,9 @@ export function drillEnergyLimitCopy() {
 }
 
 export function cargoFreeUnits(cargo) {
-  // No hold record means no capacity to promise — holdFit already settles on that semantic.
-  if (!cargo || !(Number(cargo.capVolume) > 0)) return 0;
-  return Math.max(0, Math.floor(Number(cargo.capVolume) - (Number(cargo.usedVolume) || 0)));
+  // The honest promise is open bag slots: without a slot list there is nothing to promise.
+  if (!cargo || !(Number(cargo.slotCount) > 0)) return 0;
+  return freeSlotCount(cargo.slots, cargo.slotCount);
 }
 
 const COMMITMENT_DIRS = Object.freeze([
@@ -1261,13 +1259,14 @@ export const drill = {
     // pricing every vein off the full pool over-promises what the detonation can pay.
     let quoteBudget = Number.isFinite(d.rockBudget) ? d.rockBudget : Number.POSITIVE_INFINITY;
     // …and the hold drains the same way in the same order: settleBlastYield banks only what
-    // addCargo takes, so the quote walks remaining cargo volume cell for cell and splits
-    // banked ore from ore the blast loses to a full hold. The shadow is addCargo's own
-    // usedVolume accumulation — recomputed per vein in detonation order, not a single
-    // subtracted free-volume number — so a multi-vein fractional remainder quotes what the
-    // real blast banks (Codex round-4: 44 diamonds, veins of 2+9 → 6 banked, not 5).
+    // addCargo takes, so the quote walks the bag cell for cell and splits banked ore from ore
+    // the blast loses to a full hold. The shadow is addCargo's own slot fill — the same
+    // fillSlots pass on a cloned slot list — so partial-stack headroom and per-commodity
+    // stack sizes quote exactly what the real blast banks (Codex round-4 keeps its promise).
     const quoteHold = this.state.player && this.state.player.cargo;
     const quoteUncapped = !quoteHold;
+    const quoteSlots = quoteUncapped || !Array.isArray(quoteHold.slots)
+      ? null : quoteHold.slots.map((s) => ({ ...s }));
     const quoteCap = quoteUncapped ? Number.POSITIVE_INFINITY : (Number(quoteHold.capVolume) || 0);
     let quoteUsed = quoteUncapped ? 0 : (Number(quoteHold.usedVolume) || 0);
     for (const { col, row } of this._chargePattern(anchor, payload)) {
@@ -1311,14 +1310,22 @@ export const drill = {
       if (tile.type === 'vein' && tile.ore) {
         const take = this._blastYieldQuote(d, tile.yieldU, quoteBudget);
         if (take > 0) {
-          const volPerU = this._blastQuoteVolPerUnit(tile.ore);
-          const banked = volPerU === 0 || quoteUncapped ? take
-            : (!Number.isFinite(quoteCap - quoteUsed) ? 0
-              : Math.max(0, Math.min(take, Math.floor((quoteCap - quoteUsed) / volPerU))));
+          let banked;
+          if (quoteUncapped) banked = take;
+          else if (quoteSlots) {
+            banked = fillSlots(quoteSlots, quoteHold.slotCount || 0, tile.ore, take,
+              unitsPerSlotFor(this.state, tile.ore));
+          } else {
+            // A hold record without slots (pre-pack restore): the old volume shadow.
+            const volPerU = this._blastQuoteVolPerUnit(tile.ore);
+            banked = volPerU === 0 ? take
+              : (!Number.isFinite(quoteCap - quoteUsed) ? 0
+                : Math.max(0, Math.min(take, Math.floor((quoteCap - quoteUsed) / volPerU))));
+            if (Number.isFinite(quoteCap)) quoteUsed += banked * volPerU;
+          }
           if (banked > 0) yields[tile.ore] = (yields[tile.ore] || 0) + banked;
           const lost = take - banked;
           if (lost > 0) spill[tile.ore] = (spill[tile.ore] || 0) + lost;
-          if (Number.isFinite(quoteCap)) quoteUsed += banked * volPerU;
         }
         // settleBlastYield debits the whole avail, not merely the banked fraction — mirror that.
         const avail = Math.min(Math.max(0, Math.floor(Number(tile.yieldU) || 0)), Math.floor(quoteBudget));

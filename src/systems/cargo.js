@@ -1,9 +1,11 @@
 import { receiveCinderglassPod } from '../features/cinderglassJob/ownerSeams.js';
 import { ANVIL_ORCHARD } from '../data/anvilOrchard.js';
 // Cargo system (ARCHITECTURE §0.6 single-writer, §0.12/§0.13 cargo shape, spec 02-mining-ores-cargo).
-// Owns state.player.cargo = { items:{[cmdtyId]:qty}, usedVolume, usedMass, capVolume, capMass }.
-// VOLUME is the only hard cap; MASS is informational (flight reads it as a handling penalty, never blocks).
-// All cargo mutation funnels through addCargo/removeCargo so the usedVolume/usedMass caches never desync.
+// Owns state.player.cargo = { slots:[{commodityId,qty}], slotCount, items:{[cmdtyId]:qty} (derived
+// mirror), usedVolume, usedMass, capVolume, capMass } — CARGO-BUILD-1 slot-bag law (R22, 06 §5.5).
+// SLOTS are the only hard admission cap; usedVolume/usedMass stay computed readouts for handling,
+// customs and HUD. All cargo mutation funnels through addCargo/removeCargo so the items mirror and
+// the usedVolume/usedMass caches never desync. The salvage bay joins the same shape.
 import { COMMODITIES } from '../data/commodities.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { PERSISTENT_CARGO } from '../data/narrative.js';
@@ -32,6 +34,13 @@ import {
   planDeadDropStow,
 } from './boreDeadDrop.js';
 import { counted, pluralWord } from '../core/numberFormat.js';
+import {
+  fillSlots,
+  packItemsIntoSlots,
+  slotCountForCargoCap,
+  slotUnitsFit,
+  unitsPerSlotForDef,
+} from '../data/cargoSlots.js';
 import { isPersistentCargo, isUnsellableCargo, reservedCargoQuantity, sellableCargoQuantity } from './cargoReservations.js';
 export {
   isPersistentCargo, isUnsellableCargo, releasableContractUnits,
@@ -181,13 +190,14 @@ function writableFreightFields(object, fields) {
 const VOL = Object.create(null);
 const MASS = Object.create(null);
 const LEGALITY = Object.create(null);
-for (const c of COMMODITIES) { VOL[c.id] = c.volPerU; MASS[c.id] = c.massPerU; LEGALITY[c.id] = c.legality; }
+const STACK = Object.create(null);
+for (const c of COMMODITIES) { VOL[c.id] = c.volPerU; MASS[c.id] = c.massPerU; LEGALITY[c.id] = c.legality; STACK[c.id] = c.stack; }
 // Receipt copy needs the player-facing name (the mechanic voice uses the same registry).
 const COMMODITY_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
 function commodityName(commodityId) {
   return COMMODITY_NAME.get(commodityId) || String(commodityId || '');
 }
-const PERSISTENT_FOOTPRINT = new Map(PERSISTENT_CARGO.map((c) => [c.id, { vol: 0, mass: c.mass, persistent: true }]));
+const PERSISTENT_FOOTPRINT = new Map(PERSISTENT_CARGO.map((c) => [c.id, { vol: 0, mass: c.mass, persistent: true, stack: 1 }]));
 const JETTISON_POD_RADIUS = 3;
 const JETTISON_EJECT_SPEED = 60;
 const JETTISON_CLEARANCE = 4;
@@ -224,14 +234,110 @@ export function cargoUnitVolume(state, commodityId) {
   return def ? volumePerUnit(def) : 1;
 }
 
+// ---- CARGO-BUILD-1: the slot bag --------------------------------------------------------------
+// `cargo.slots` is a dense list of stacks [{commodityId, qty}] and `cargo.slotCount` the bag's
+// bound, derived from the hull cargoCap (slotCountForCargoCap). Entries beyond slotCount are the
+// over-cap tail: they stay aboard, block all adds, and drain first on removal. `cargo.items`
+// remains the commodity→total mirror every read site consumes; only this module writes either.
+
+/** Units of `commodityId` one slot holds (20 ordinary / 10 bulky / 1 never-stack). */
+export function unitsPerSlotFor(state, commodityId) {
+  const def = defOf(state, commodityId);
+  return def ? unitsPerSlotForDef(def) : 20;
+}
+
+/** Lazy slot adoption: legacy holds ({items} only) pack once into slots; nothing is dropped,
+ *  so an over-cap legacy load becomes the over-cap tail rather than being deleted. */
+export function ensureSlots(state, cargo) {
+  if (!cargo) return null;
+  if (!Number.isFinite(cargo.slotCount) || cargo.slotCount <= 0) {
+    cargo.slotCount = slotCountForCargoCap(cargo.capVolume);
+  }
+  if (!Array.isArray(cargo.slots)) {
+    cargo.slots = packItemsIntoSlots(cargo.items || {}, (id) => unitsPerSlotFor(state, id));
+  }
+  return cargo;
+}
+
+/** Rebuild the derived items mirror from the slot list. */
+export function syncItemsFromSlots(cargo) {
+  const items = {};
+  if (Array.isArray(cargo.slots)) {
+    for (const s of cargo.slots) {
+      if (s && s.qty > 0 && typeof s.commodityId === 'string') {
+        items[s.commodityId] = (items[s.commodityId] || 0) + s.qty;
+      }
+    }
+  }
+  cargo.items = items;
+  return items;
+}
+
+/** True while the bag carries more stacks than it has slots (migration, module loss). */
+export function cargoOverCapacity(cargo) {
+  return !!(cargo && Array.isArray(cargo.slots)
+    && cargo.slots.length > (Number(cargo.slotCount) || 0));
+}
+
+/** Empty in-bag slots on a hold record — stacks beyond the bound sit in the over-cap tail. */
+export function cargoFreeSlotCount(cargo) {
+  if (!cargo || !Array.isArray(cargo.slots) || !(cargo.slotCount > 0)) return 0;
+  return Math.max(0, Math.floor(cargo.slotCount) - Math.min(cargo.slots.length, Math.floor(cargo.slotCount)));
+}
+
+/** The ONE admission helper (packet Part A): how many more units of `commodityId` the hold
+ *  accepts right now — partial in-bag stacks first, then empty slots. Over-cap → 0. Persistent
+ *  story items can never be refused, so they report Infinity and land as the over-cap tail. */
+export function slotFitFor(state, commodityId) {
+  const cargo = state && state.player && state.player.cargo;
+  const def = defOf(state, commodityId);
+  if (!cargo || !def) return 0;
+  ensureSlots(state, cargo);
+  if (def.persistent) return Infinity;
+  return slotUnitsFit(cargo.slots, cargo.slotCount, commodityId, unitsPerSlotForDef(def));
+}
+
+/** Minimum slots the current contents need once consolidated — the refit/berth "does the
+ *  cargo fit the smaller hold" gate, counted the way the bag actually packs. */
+export function slotsNeededForHold(state, cargoLike) {
+  const cargo = cargoLike || (state && state.player && state.player.cargo);
+  if (!cargo || !Array.isArray(cargo.slots)) return 0;
+  const totals = new Map();
+  for (const s of cargo.slots) {
+    if (s && s.qty > 0) totals.set(s.commodityId, (totals.get(s.commodityId) || 0) + s.qty);
+  }
+  let need = 0;
+  for (const [id, qty] of totals) need += Math.ceil(qty / unitsPerSlotFor(state, id));
+  return need;
+}
+
+/** Read-side bag description so one screen can show cargo, unfitted gear and salvage alike. */
+export function bagSections(state) {
+  const p = state && state.player;
+  const cargo = ensureSlots(state, p && p.cargo);
+  const gear = Array.isArray(p && p.moduleInventory) ? p.moduleInventory : [];
+  const bay = ensureBaySlots(state, p);
+  return {
+    cargo: {
+      slots: cargo ? cargo.slots : [],
+      slotCount: cargo ? cargo.slotCount : 0,
+      freeSlots: cargoFreeSlotCount(cargo),
+      overCapacity: cargoOverCapacity(cargo),
+    },
+    gear: { slots: gear.map((m) => ({ kind: 'module', defId: m && m.defId, instanceId: m && m.instanceId })), slotCount: null },
+    salvage: bay ? { slots: bay.slots, slotCount: bay.slotCount, freeSlots: cargoFreeSlotCount(bay) } : null,
+  };
+}
+
 // Resolve per-unit footprint, preferring a runtime content registry if one was loaded.
 function defOf(state, id) {
   const reg = state && state.content && state.content.commodities;
   if (reg) {
     const c = Array.isArray(reg) ? reg.find((x) => x.id === id) : reg[id];
-    if (c) return { vol: c.volPerU, mass: c.massPerU, legality: c.legality, basePrice: c.basePrice };
+    if (c) return { vol: c.volPerU, mass: c.massPerU, legality: c.legality, basePrice: c.basePrice, stack: c.stack };
   }
-  if (id in VOL) return { vol: VOL[id], mass: MASS[id], legality: LEGALITY[id], basePrice: BASE_PRICE[id] };
+  const staticDef = id in VOL ? { vol: VOL[id], mass: MASS[id], legality: LEGALITY[id], basePrice: BASE_PRICE[id], stack: STACK[id] } : null;
+  if (staticDef) return staticDef;
   if (PERSISTENT_FOOTPRINT.has(id)) return PERSISTENT_FOOTPRINT.get(id);
   return null;
 }
@@ -395,6 +501,31 @@ function emitChanged(state, cargo) {
   if (bus) bus.emit('cargo:changed', { cargo, usedU: cargo.usedVolume, massT: cargo.usedMass });
 }
 
+/** Content compares for recompute's quiet path — slots/items/richLots are rebuilt each pass,
+ *  so identity never says anything. */
+function sameStackList(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const sa = a[i], sb = b[i];
+    if (!sa !== !sb || (sa && (sa.commodityId !== sb.commodityId || sa.qty !== sb.qty))) return false;
+  }
+  return true;
+}
+function sameItemsMap(a, b) {
+  if (!a || !b) return a === b;
+  const ka = Object.keys(a), kb = Object.keys(b);
+  if (ka.length !== kb.length) return false;
+  for (const k of ka) if (a[k] !== b[k]) return false;
+  return true;
+}
+function sameRichLots(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (JSON.stringify(a[i]) !== JSON.stringify(b[i])) return false;
+  }
+  return true;
+}
+
 function richLotSource(source, commodityId, qty) {
   if (!source || typeof source !== 'object') return null;
   const opportunityId = typeof source.richOpportunityId === 'string' && source.richOpportunityId
@@ -475,26 +606,25 @@ function richLotSourcesForQty(cargo, commodityId, qty) {
   return allocations;
 }
 
-/** Add `qty` units of `commodityId` to the player hold. Clamps to remaining VOLUME (hard cap).
+/** Add `qty` units of `commodityId` to the player hold. Clamps to remaining SLOTS (the only
+ *  hard admission cap): partial in-bag stacks fill first, then empty slots. Persistent story
+ *  items can never be refused — they land as the over-cap tail if the bag is already full.
  *  Updates the usedVolume/usedMass caches incrementally (so back-to-back adds in one tick respect
  *  the cap and the emitted totals are accurate). Returns the amount actually accepted. */
 export function addCargo(state, commodityId, qty, lotSource = null) {
   const cargo = state.player.cargo;
   const def = defOf(state, commodityId);
   const requested = finiteWholePickupAmount(qty);
-  if (!def || requested <= 0) return 0;
-  const volPerU = volumePerUnit(def);
-  const free = cargo.capVolume - cargo.usedVolume;
-  // Fail closed when the hold caches are unknowable: a non-finite free must read as "no
-  // room" for volume-capped goods, never produce a NaN accepted count that callers would
-  // mistake for a successful add (a NaN capVolume previously made a market buy settle
-  // nothing yet report ok:true). Zero-volume items are uncapped and skip the check.
-  if (volPerU > 0 && !Number.isFinite(free)) return 0;
-  // floor so a bulky item (vol>1) only takes whole units that fit; max(0) guards over-capacity/float drift.
-  const accepted = volPerU === 0 ? Math.max(0, requested) : Math.max(0, Math.min(requested, Math.floor(free / volPerU)));
+  if (!def || requested <= 0 || !cargo) return 0;
+  ensureSlots(state, cargo);
+  const ups = unitsPerSlotForDef(def);
+  const fit = def.persistent ? requested
+    : slotUnitsFit(cargo.slots, cargo.slotCount, commodityId, ups);
+  const accepted = Math.max(0, Math.min(requested, fit));
   if (accepted > 0) {
-    cargo.items[commodityId] = (cargo.items[commodityId] || 0) + accepted;
-    cargo.usedVolume += accepted * volPerU;
+    fillSlots(cargo.slots, cargo.slotCount, commodityId, accepted, ups, { overflow: !!def.persistent });
+    syncItemsFromSlots(cargo);
+    cargo.usedVolume += accepted * volumePerUnit(def);
     cargo.usedMass += accepted * def.mass;
     if (lotSource) appendRichLot(cargo, lotSource, commodityId, accepted);
     emitChanged(state, cargo);
@@ -524,6 +654,22 @@ export function salvageBayCap(state) {
   return Math.max(SALVAGE_BAY.capFloor, hold * SALVAGE_BAY.capMult);
 }
 
+/** The bay joins the same slot shape as the hold (CARGO-BUILD-1): its bound derives from the
+ *  bay's volume cap through the one slot law, so a small hull keeps a usable bay. */
+export function salvageBaySlotCount(state) {
+  return slotCountForCargoCap(salvageBayCap(state));
+}
+
+function ensureBaySlots(state, player) {
+  if (!player || !player.salvageBay || typeof player.salvageBay !== 'object') return null;
+  const bay = player.salvageBay;
+  bay.slotCount = salvageBaySlotCount(state);
+  if (!Array.isArray(bay.slots)) {
+    bay.slots = packItemsIntoSlots(bay.items || {}, (id) => unitsPerSlotFor(state, id));
+  }
+  return bay;
+}
+
 /** What the UI shows: { used, cap, units, summary? } or null when the bay has never held anything. Pure. */
 export function salvageBayReading(state) {
   const bay = state && state.player && state.player.salvageBay;
@@ -546,22 +692,27 @@ export function salvageBayReading(state) {
 
 function ensureBay(state) {
   const player = state.player;
-  if (!player.salvageBay || typeof player.salvageBay !== 'object') player.salvageBay = { items: {}, usedVolume: 0 };
-  if (!player.salvageBay.items) player.salvageBay.items = {};
-  return player.salvageBay;
+  if (!player.salvageBay || typeof player.salvageBay !== 'object') {
+    player.salvageBay = { slots: [], slotCount: salvageBaySlotCount(state), items: {}, usedVolume: 0 };
+  }
+  const bay = ensureBaySlots(state, player);
+  if (!bay.items || typeof bay.items !== 'object') syncItemsFromSlots(bay);
+  return bay;
 }
 
-/** Add kill loot to the salvage bay. Clamps to the bay's remaining volume. Returns the amount accepted. */
+/** Add kill loot to the salvage bay. Clamps to the bay's remaining slots. Returns the amount accepted. */
 export function addSalvage(state, commodityId, qty) {
   const def = defOf(state, commodityId);
   const requested = finiteWholePickupAmount(qty);
   if (!def || requested <= 0) return 0;
   const volPerU = volumePerUnit(def);
   const bay = ensureBay(state);
-  const free = salvageBayCap(state) - (Number(bay.usedVolume) || 0);
-  const accepted = volPerU === 0 ? requested : Math.max(0, Math.min(requested, Math.floor(free / volPerU)));
+  const ups = unitsPerSlotForDef(def);
+  const fit = slotUnitsFit(bay.slots, bay.slotCount, commodityId, ups);
+  const accepted = Math.max(0, Math.min(requested, fit));
   if (accepted > 0) {
-    bay.items[commodityId] = (bay.items[commodityId] || 0) + accepted;
+    fillSlots(bay.slots, bay.slotCount, commodityId, accepted, ups);
+    syncItemsFromSlots(bay);
     bay.usedVolume = (Number(bay.usedVolume) || 0) + accepted * volPerU;
     const bus = busForState(state);
     if (bus) bus.emit('salvage:changed', { used: Math.round(bay.usedVolume), cap: Math.round(salvageBayCap(state)) });
@@ -606,6 +757,9 @@ export function cashInSalvage(state, { includeIllicit = false } = {}) {
     lots.push({ commodityId: id, qty, credits: value });
     delete bay.items[id];
   }
+  // The slot list owns the bay: repack whatever the sale left behind so slots and the
+  // items mirror tell the same story.
+  bay.slots = packItemsIntoSlots(bay.items, (id) => unitsPerSlotFor(state, id));
   bay.usedVolume = Object.entries(bay.items).reduce((volume, [id, qty]) =>
     volume + Math.max(0, Math.floor(Number(qty) || 0)) * volumePerUnit(defOf(state, id) || {}), 0);
   if (units <= 0) return null;
@@ -641,36 +795,172 @@ export function unvaluedSalvageLine(units) {
 /** Canonical bay custody removal for the customs owner. */
 export function removeSalvageBayCargo(state, commodityId, requested) {
   const bay = state.player?.salvageBay, def = defOf(state, commodityId);
-  if (!bay?.items || !def) return 0;
+  if (!bay || !def) return 0;
+  ensureBaySlots(state, state.player);
+  if (!bay.items || !def) return 0;
   const amount = Math.min(Math.max(0, Math.floor(Number(bay.items[commodityId]) || 0)),
     Math.max(0, Math.floor(Number(requested) || 0)));
   if (!amount) return 0;
-  const left = bay.items[commodityId] - amount;
-  if (left > 0) bay.items[commodityId] = left;
-  else delete bay.items[commodityId];
-  bay.usedVolume = Math.max(0, (Number(bay.usedVolume) || 0) - amount * (def.vol || 1));
-  return amount;
+  const removed = removeUnitsFromSlots(bay, commodityId, amount);
+  if (removed <= 0) return 0;
+  syncItemsFromSlots(bay);
+  bay.usedVolume = Math.max(0, (Number(bay.usedVolume) || 0) - removed * (def.vol || 1));
+  return removed;
+}
+
+/** Take `qty` units of `commodityId` out of the slot list: the over-cap tail drains first, so a
+ *  burdened hold returns to legal before legal stacks are touched. Mutates `cargo.slots` only —
+ *  callers then sync the mirror, caches and rich lots. Pass `slotIndex` to drain one stack only
+ *  (the jettison-a-stack path). */
+function removeUnitsFromSlots(cargo, commodityId, qty, slotIndex = null) {
+  let left = Math.max(0, Math.floor(Number(qty) || 0));
+  if (!Array.isArray(cargo.slots) || left <= 0) return 0;
+  let removed = 0;
+  if (Number.isInteger(slotIndex)) {
+    const s = cargo.slots[slotIndex];
+    if (!s || s.commodityId !== commodityId) return 0;
+    const take = Math.min(left, s.qty);
+    s.qty -= take;
+    removed = take;
+    if (s.qty <= 0) cargo.slots.splice(slotIndex, 1);
+    return removed;
+  }
+  for (let i = cargo.slots.length - 1; i >= 0 && left > 0; i--) {
+    const s = cargo.slots[i];
+    if (!s || s.commodityId !== commodityId) continue;
+    const take = Math.min(left, s.qty);
+    s.qty -= take;
+    left -= take;
+    removed += take;
+    if (s.qty <= 0) cargo.slots.splice(i, 1);
+  }
+  return removed;
+}
+
+/** Commit a slot removal: mirror, caches, rich lots, the changed event. Shared by removeCargo
+ *  and the slot-scoped jettison path. */
+function settleRemoval(state, cargo, commodityId, removed, def) {
+  syncItemsFromSlots(cargo);
+  cargo.usedVolume = Math.max(0, (Number(cargo.usedVolume) || 0) - removed * volumePerUnit(def));
+  cargo.usedMass = Math.max(0, (Number(cargo.usedMass) || 0) - removed * def.mass);
+  decrementRichLots(cargo, commodityId, removed);
+  emitChanged(state, cargo);
 }
 
 /** Remove up to `qty` units of `commodityId`. Returns the amount actually removed. */
 export function removeCargo(state, commodityId, qty) {
   if (isPersistentCargo(state, commodityId)) return 0;
   const cargo = state.player.cargo;
+  ensureSlots(state, cargo);
   const have = cargo.items[commodityId] || 0;
   const def = defOf(state, commodityId);
   const requested = finiteWholePickupAmount(qty);
   if (!def || requested <= 0 || have <= 0) return 0;
-  const removed = Math.min(requested, have);
+  const removed = removeUnitsFromSlots(cargo, commodityId, Math.min(requested, have));
   if (removed <= 0) return 0;
-  const left = have - removed;
-  if (left > 0) cargo.items[commodityId] = left; else delete cargo.items[commodityId];
-  cargo.usedVolume -= removed * volumePerUnit(def);
-  cargo.usedMass -= removed * def.mass;
-  decrementRichLots(cargo, commodityId, removed);
-  if (cargo.usedVolume < 0) cargo.usedVolume = 0;
-  if (cargo.usedMass < 0) cargo.usedMass = 0;
-  emitChanged(state, cargo);
+  settleRemoval(state, cargo, commodityId, removed, def);
   return removed;
+}
+
+/** Remove units from ONE bag stack (`cargo.slots[slotIndex]`). Used by the jettison-a-stack
+ *  intent; reservation law is the caller's (jettison checks sellable before it calls). */
+export function removeCargoFromSlot(state, slotIndex, qty) {
+  const cargo = state.player.cargo;
+  ensureSlots(state, cargo);
+  const index = Math.floor(Number(slotIndex));
+  const s = Number.isInteger(index) && index >= 0 ? cargo.slots[index] : null;
+  if (!s) return 0;
+  const def = defOf(state, s.commodityId);
+  const requested = finiteWholePickupAmount(qty);
+  if (!def || requested <= 0) return 0;
+  if (isPersistentCargo(state, s.commodityId)) return 0;
+  const removed = removeUnitsFromSlots(cargo, s.commodityId, Math.min(requested, s.qty), index);
+  if (removed <= 0) return 0;
+  settleRemoval(state, cargo, s.commodityId, removed, def);
+  return removed;
+}
+
+// ---- CARGO-BUILD-1 Part B: stack intents ------------------------------------------------------
+// Split, merge, move and sort manipulate the bag itself — no units leave the hold, nothing is
+// created or lost. Each returns what it changed; UI (keyboard, controller, touch, drag) emits
+// the matching intents and re-reads the slot list.
+
+/** Split `cargo.slots[slotIndex]` into a second stack of `qty` units (half by default), placed
+ *  in the next free slot. Refuses when the bag has no free slot or the stack can't give. */
+export function splitCargoStack(state, slotIndex, qty) {
+  const cargo = state && state.player && state.player.cargo;
+  if (!ensureSlots(state, cargo)) return 0;
+  const index = Math.floor(Number(slotIndex));
+  const stack = Number.isInteger(index) && index >= 0 ? cargo.slots[index] : null;
+  if (!stack || stack.qty < 2 || cargo.slots.length >= cargo.slotCount) return 0;
+  const move = Math.min(Math.max(1, Math.floor(Number(qty) || Math.floor(stack.qty / 2))), stack.qty - 1);
+  if (move <= 0) return 0;
+  stack.qty -= move;
+  cargo.slots.push({ commodityId: stack.commodityId, qty: move });
+  syncItemsFromSlots(cargo);
+  emitChanged(state, cargo);
+  return move;
+}
+
+/** Merge stack `from` into stack `to` up to `to`'s stack size; `from` disappears when emptied. */
+export function mergeCargoStacks(state, from, to) {
+  const cargo = state && state.player && state.player.cargo;
+  if (!ensureSlots(state, cargo)) return 0;
+  const fromIndex = Math.floor(Number(from));
+  const toIndex = Math.floor(Number(to));
+  const a = Number.isInteger(fromIndex) ? cargo.slots[fromIndex] : null;
+  const b = Number.isInteger(toIndex) ? cargo.slots[toIndex] : null;
+  if (!a || !b || a === b || a.commodityId !== b.commodityId) return 0;
+  const ups = unitsPerSlotFor(state, a.commodityId);
+  const move = Math.min(a.qty, Math.max(0, ups - b.qty));
+  if (move <= 0) return 0;
+  a.qty -= move;
+  b.qty += move;
+  if (a.qty <= 0) cargo.slots.splice(cargo.slots.indexOf(a), 1);
+  syncItemsFromSlots(cargo);
+  emitChanged(state, cargo);
+  return move;
+}
+
+/** Move the stack at `from` to bag position `to` (reorder within the bound; the over-cap tail
+ *  follows the list). */
+export function moveCargoStack(state, from, to) {
+  const cargo = state && state.player && state.player.cargo;
+  if (!ensureSlots(state, cargo)) return false;
+  const fromIndex = Math.floor(Number(from));
+  const toIndex = Math.floor(Number(to));
+  if (!Number.isInteger(fromIndex) || !Number.isInteger(toIndex) || fromIndex === toIndex
+    || fromIndex < 0 || fromIndex >= cargo.slots.length
+    || toIndex < 0 || toIndex >= Math.max(0, Math.floor(cargo.slotCount))) return false;
+  const [stack] = cargo.slots.splice(fromIndex, 1);
+  cargo.slots.splice(Math.min(toIndex, cargo.slots.length), 0, stack);
+  emitChanged(state, cargo);
+  return true;
+}
+
+/** Sort the bag: consolidate each commodity into full stacks (sorted id order), partial stacks
+ *  merge into one. The over-cap tail stays aboard — sorting never deletes units. */
+export function sortCargoBag(state) {
+  const cargo = state && state.player && state.player.cargo;
+  if (!ensureSlots(state, cargo)) return 0;
+  const totals = new Map();
+  for (const s of cargo.slots) {
+    if (s && s.qty > 0) totals.set(s.commodityId, (totals.get(s.commodityId) || 0) + s.qty);
+  }
+  const slots = [];
+  for (const id of [...totals.keys()].sort()) {
+    const ups = unitsPerSlotFor(state, id);
+    let left = totals.get(id);
+    while (left > 0) {
+      const take = Math.min(left, ups);
+      slots.push({ commodityId: id, qty: take });
+      left -= take;
+    }
+  }
+  cargo.slots = slots;
+  syncItemsFromSlots(cargo);
+  emitChanged(state, cargo);
+  return slots.length;
 }
 
 export const cargo = {
@@ -724,6 +1014,8 @@ export const cargo = {
     // the missing persistent items on load so the manifest matches the narrative again.
     subscribe(binding, 'save:loaded', () => {
       clearRunScopedSpillLatch();
+      // The loader already recompute()s restored cargo before deriving ship stats, and every
+      // hold touch re-packs lazily — only the persistent-story backfill needs this event.
       const locked = state.story && state.story.persistentCargo;
       if (!Array.isArray(locked)) return;
       for (const id of locked) {
@@ -756,22 +1048,24 @@ export const cargo = {
           // both the hold and the native owner can atomically retire that exact pod custody.
           const def = defOf(state, commodityId);
           const volume = def ? volumePerUnit(def) : NaN;
-          const cargo = state.player.cargo, items = cargo.items;
+          const cargo = state.player.cargo;
+          ensureSlots(state, cargo);
+          const items = cargo.items;
           const capVolume = cargo.capVolume, usedVolume = cargo.usedVolume, usedMass = cargo.usedMass;
           const itemDescriptor = items && Object.getOwnPropertyDescriptor(items, commodityId);
           const volumeDescriptor = Object.getOwnPropertyDescriptor(cargo, 'usedVolume');
           const massDescriptor = Object.getOwnPropertyDescriptor(cargo, 'usedMass');
           const itemValue = itemDescriptor && 'value' in itemDescriptor ? itemDescriptor.value : 0;
           const mass = def && def.mass;
-          const free = capVolume - usedVolume;
           const fits = qty > 0 && qty === finiteWholePickupAmount(pickup.data.amount)
             && Number.isFinite(volume) && Number.isFinite(mass) && Number.isFinite(itemValue)
+            && Array.isArray(cargo.slots) && cargo.slotCount > 0
             && items && (Object.getPrototypeOf(items) === Object.prototype || Object.getPrototypeOf(items) === null)
             && (!itemDescriptor || 'value' in itemDescriptor && itemDescriptor.writable)
             && (itemDescriptor || Object.isExtensible(items))
             && volumeDescriptor && 'value' in volumeDescriptor && volumeDescriptor.writable
             && massDescriptor && 'value' in massDescriptor && massDescriptor.writable
-            && (volume === 0 || Number.isFinite(free) && Math.floor(free / volume) >= qty);
+            && (volume === 0 || slotUnitsFit(cargo.slots, cargo.slotCount, commodityId, unitsPerSlotForDef(def)) >= qty);
           const cargoCurrent = () => {
             const currentItem = Object.getOwnPropertyDescriptor(items, commodityId);
             return state.player.cargo === cargo && cargo.items === items
@@ -809,8 +1103,9 @@ export const cargo = {
           }
           // All dynamic descriptors and capacity arithmetic were prepared before finite
           // settlement; this commit is only data-property writes with no intervening callback.
-          if (itemDescriptor) items[commodityId] = itemValue + qty;
-          else Object.defineProperty(items, commodityId, { value: itemValue + qty, writable: true, enumerable: true, configurable: true });
+          // The slot list is the record; the items mirror and caches re-derive from it.
+          fillSlots(cargo.slots, cargo.slotCount, commodityId, qty, unitsPerSlotForDef(def), { overflow: def.persistent === true });
+          syncItemsFromSlots(cargo);
           cargo.usedVolume = usedVolume + qty * volume;
           cargo.usedMass = usedMass + qty * mass;
           payload.acceptedAmount = qty;
@@ -861,8 +1156,11 @@ export const cargo = {
     const setCap = (shipId, cargoCap) => {
       if (shipId !== state.playerId) return;
       if (typeof cargoCap === 'number' && cargoCap >= 0) {
-        if (state.player.cargo.capVolume === cargoCap) return;
-        state.player.cargo.capVolume = cargoCap;
+        const cargo = state.player.cargo;
+        const slotCount = slotCountForCargoCap(cargoCap);
+        if (cargo.capVolume === cargoCap && cargo.slotCount === slotCount) return;
+        cargo.capVolume = cargoCap;
+        cargo.slotCount = slotCount; // a smaller bag leaves its excess as the over-cap tail
         binding.dirty = true;
         if (this._binding === binding) {
           this._dirty = true; // backstop recompute (a cap decrease leaves used > cap until volume drops)
@@ -870,6 +1168,14 @@ export const cargo = {
       }
     };
     subscribe(binding, 'ship:cargoCapChanged', ({ shipId, cargoCap }) => setCap(shipId, cargoCap));
+    subscribe(binding, 'ship:slotsChanged', ({ shipId, slots }) => {
+      if (shipId !== state.playerId || !Number.isFinite(slots) || slots <= 0) return;
+      const cargo = state.player.cargo;
+      if (cargo.slotCount === Math.floor(slots)) return;
+      cargo.slotCount = Math.floor(slots);
+      binding.dirty = true;
+      if (this._binding === binding) this._dirty = true;
+    });
     subscribe(binding, 'ship:statsChanged', ({ shipId, derived }) => {
       if (derived && typeof derived.cargoCap === 'number') setCap(shipId, derived.cargoCap);
     });
@@ -882,6 +1188,20 @@ export const cargo = {
     // The cargo-deck verb: docked at a shipyard with a second hull parked, the deck crew moves
     // units between the live hold and that hull's hold. UI emits the intent only.
     subscribe(binding, 'ui:transferParkedCargo', (payload) => this._transferParkedCargo(payload || {}));
+
+    // CARGO-BUILD-1 Part B — bag manipulation intents. Keyboard, controller, touch and drag all
+    // emit the same intents; only the owner mutates the slot list.
+    subscribe(binding, 'cargo:splitStack', (p) => splitCargoStack(state, p && p.slotIndex, p && p.qty));
+    subscribe(binding, 'cargo:mergeStacks', (p) => mergeCargoStacks(state, p && p.from, p && p.to));
+    subscribe(binding, 'cargo:moveStack', (p) => moveCargoStack(state, p && p.from, p && p.to));
+    subscribe(binding, 'cargo:sortBag', () => sortCargoBag(state));
+    // Stack-scoped jettison: the bag hands the owner a slot and a count; the existing jettison
+    // path (seals, pods, drift, embargo) does the rest. confirmSealed is the screen's answer to
+    // the sealed-freight confirmation data.
+    subscribe(binding, 'cargo:jettisonStack', (p) => {
+      if (!p || !Number.isFinite(p.slotIndex)) return;
+      this.jettison(null, p.qty, { slotIndex: Math.floor(Number(p.slotIndex)), confirmSealed: p.confirmSealed === true });
+    });
     // Drilling the false cap opens the room. The goods stay put until the pilot
     // steps inside; this listener only unseals the site record.
     subscribe(binding, 'drill:break', (payload) => {
@@ -968,25 +1288,36 @@ export const cargo = {
     }
   },
 
-  /** Authoritative full recompute of usedVolume/usedMass from items (drift backstop). */
+  /** Authoritative full recompute: the slot list is truth; items mirror, usedVolume/usedMass
+   *  and the rich-lot bounds all re-derive from it (drift backstop). Emits only when the
+   *  derived read actually moves — a same-answer recompute is silent. */
   recompute(state = this.state) {
     const cargo = state.player.cargo;
+    const before = cargo ? {
+      usedVolume: cargo.usedVolume, usedMass: cargo.usedMass,
+      slotCount: cargo.slotCount, capVolume: cargo.capVolume,
+      slots: cargo.slots, items: cargo.items, richLots: cargo.richLots,
+    } : null;
+    ensureSlots(state, cargo);
+    syncItemsFromSlots(cargo);
     let vol = 0, mass = 0;
-    for (const id in cargo.items) {
-      const q = cargo.items[id];
-      const def = defOf(state, id);
+    for (const s of cargo.slots) {
+      if (!s || s.qty <= 0) continue;
+      const def = defOf(state, s.commodityId);
       if (!def) continue;
-      vol += q * volumePerUnit(def);
-      mass += q * def.mass;
+      vol += s.qty * volumePerUnit(def);
+      mass += s.qty * def.mass;
     }
     cargo.usedVolume = vol;
     cargo.usedMass = mass;
-    const bay = state.player.salvageBay;
-    if (bay && bay.items) {
+    const bay = ensureBaySlots(state, state.player);
+    if (bay) {
+      syncItemsFromSlots(bay);
       let bayVol = 0;
-      for (const id in bay.items) {
-        const def = defOf(state, id);
-        if (def) bayVol += (Number(bay.items[id]) || 0) * volumePerUnit(def);
+      for (const s of bay.slots) {
+        if (!s || s.qty <= 0) continue;
+        const def = defOf(state, s.commodityId);
+        if (def) bayVol += s.qty * volumePerUnit(def);
       }
       bay.usedVolume = bayVol;
     }
@@ -1002,7 +1333,13 @@ export const cargo = {
         })
         .filter((lot) => lot.qty > 0);
     }
-    emitChanged(state, cargo);
+    const changed = !before
+      || before.usedVolume !== cargo.usedVolume || before.usedMass !== cargo.usedMass
+      || before.slotCount !== cargo.slotCount || before.capVolume !== cargo.capVolume
+      || !sameStackList(before.slots, cargo.slots)
+      || !sameItemsMap(before.items, cargo.items)
+      || !sameRichLots(before.richLots, cargo.richLots);
+    if (changed) emitChanged(state, cargo);
   },
 
   addCargo(commodityId, qty, lotSource = null) {
@@ -1018,25 +1355,28 @@ export const cargo = {
   // usedVolume, usedMass }. Written only here; absent on old saves and created the first time a
   // hull actually parks with units aboard (an empty store deletes itself, records stay lean).
 
-  _parkedStore(owned) {
+  _parkedStore(owned, state = this.state) {
     const store = owned.cargo && typeof owned.cargo === 'object'
       ? owned.cargo
-      : (owned.cargo = { items: {}, richLots: [] });
-    if (!store.items || typeof store.items !== 'object') store.items = {};
+      : (owned.cargo = { slots: [], items: {}, richLots: [] });
+    if (!Array.isArray(store.slots)) {
+      store.slots = packItemsIntoSlots(store.items || {}, (id) => unitsPerSlotFor(state, id));
+    }
+    if (!store.items || typeof store.items !== 'object') syncItemsFromSlots(store);
     if (!Array.isArray(store.richLots)) store.richLots = [];
     return store;
   },
 
   _syncParkedCaches(state, store) {
+    syncItemsFromSlots(store);
     let vol = 0;
     let mass = 0;
-    for (const id of Object.keys(store.items)) {
-      const def = defOf(state, id);
+    for (const s of store.slots || []) {
+      if (!s || s.qty <= 0) continue;
+      const def = defOf(state, s.commodityId);
       if (!def) continue;
-      const qty = Math.floor(Number(store.items[id]) || 0);
-      if (qty <= 0) continue;
-      vol += qty * volumePerUnit(def);
-      mass += qty * def.mass;
+      vol += s.qty * volumePerUnit(def);
+      mass += s.qty * def.mass;
     }
     store.usedVolume = vol;
     store.usedMass = mass;
@@ -1060,40 +1400,46 @@ export const cargo = {
     const to = p.ownedShips[payload && payload.toIndex];
     if (!from || !to || from === to) return false;
     const cap = Math.max(0, Number(payload && payload.cargoCapVolume) || 0);
+    const targetSlots = slotCountForCargoCap(cap);
+    ensureSlots(state, live);
 
-    // Feasibility first: reserved units ride with the pilot, so they have to fit the new hold.
-    let mustCarryVol = 0;
+    // Feasibility first: reserved units ride with the pilot, so the stacks they need have to
+    // fit the new bag — same "sealed must fit" law, counted in slots instead of volume.
+    let mustCarrySlots = 0;
     for (const id of Object.keys(live.items)) {
       const held = Math.floor(Number(live.items[id]) || 0);
       const keep = Math.min(held, reservedCargoQuantity(state, id));
       if (keep <= 0) continue;
       const def = defOf(state, id);
-      if (def) mustCarryVol += keep * volumePerUnit(def);
+      if (def) mustCarrySlots += Math.ceil(keep / unitsPerSlotForDef(def));
     }
-    if (mustCarryVol > cap) {
+    if (mustCarrySlots > targetSlots) {
       if (payload) payload.refused = 'sealed_cargo_overflow';
       return false;
     }
 
-    const store = this._parkedStore(from);
+    const store = this._parkedStore(from, state);
     for (const id of Object.keys(live.items)) {
       const held = Math.floor(Number(live.items[id]) || 0);
       const keep = Math.min(held, reservedCargoQuantity(state, id));
       const parkedQty = held - keep;
       if (parkedQty <= 0) continue;
-      store.items[id] = (store.items[id] || 0) + parkedQty;
-      if (keep > 0) live.items[id] = keep;
-      else delete live.items[id];
+      // Parked holds are uncapped: every parked unit lands as stacks on that hull's record.
+      fillSlots(store.slots, Infinity, id, parkedQty, unitsPerSlotFor(state, id), { overflow: true });
+      removeUnitsFromSlots(live, id, parkedQty);
+      syncItemsFromSlots(store);
       for (const lot of richLotSourcesForQty(live, id, parkedQty)) appendRichLot(store, lot, id, lot.richQty);
       decrementRichLots(live, id, parkedQty);
     }
+    syncItemsFromSlots(live);
 
     // The live hold now carries only what must ride with the pilot; adopt the incoming cap so
     // the parked hold's load phase obeys it before ships re-derives the entity.
     live.capVolume = cap;
+    live.slotCount = targetSlots;
     this.recompute(state);
 
-    const parked = to.cargo && to.cargo.items ? to.cargo : null;
+    const parked = to.cargo && (Array.isArray(to.cargo.slots) || to.cargo.items) ? this._parkedStore(to, state) : null;
     let movedUnits = 0;
     if (parked) {
       const ids = Object.keys(parked.items)
@@ -1104,9 +1450,7 @@ export const cargo = {
         if (qty <= 0 || !defOf(state, id)) continue;
         const accepted = addCargo(state, id, qty);
         if (accepted <= 0) continue;
-        const left = qty - accepted;
-        if (left > 0) parked.items[id] = left;
-        else delete parked.items[id];
+        removeUnitsFromSlots(parked, id, accepted);
         for (const lot of richLotSourcesForQty(parked, id, accepted)) appendRichLot(live, lot, id, lot.richQty);
         decrementRichLots(parked, id, accepted);
         movedUnits += accepted;
@@ -1143,12 +1487,13 @@ export const cargo = {
     const owned = p.ownedShips[index];
     if (!owned) return false;
     const dir = direction === 'stow' ? 'stow' : 'load';
-    const source = dir === 'load' ? (owned.cargo && owned.cargo.items ? owned.cargo : null) : live;
+    ensureSlots(state, live);
+    const source = dir === 'load' ? (owned.cargo ? this._parkedStore(owned, state) : null) : live;
     if (!source) return false;
-    const target = dir === 'load' ? live : this._parkedStore(owned);
-    const capVolume = dir === 'load'
-      ? Math.max(0, Number(live.capVolume) || 0)
-      : Math.max(0, Number(getDerivedStats(owned.defId, owned.fittings || [], p).cargoCap) || 0);
+    const target = dir === 'load' ? live : this._parkedStore(owned, state);
+    const targetSlotCount = dir === 'load'
+      ? Math.max(0, Math.floor(Number(live.slotCount) || 0))
+      : slotCountForCargoCap(Math.max(0, Number(getDerivedStats(owned.defId, owned.fittings || [], p).cargoCap) || 0));
     const ids = (commodityId ? [commodityId] : Object.keys(source.items))
       .filter((id) => Math.floor(Number(source.items[id]) || 0) > 0)
       .sort();
@@ -1160,20 +1505,22 @@ export const cargo = {
       if (dir === 'stow') want = Math.min(want, sellableCargoQuantity(state, id));
       if (qty != null) want = Math.min(want, Math.max(0, Math.floor(Number(qty) || 0)));
       if (want <= 0) continue;
-      const volPerU = volumePerUnit(def);
-      const free = capVolume - (Number(target.usedVolume) || 0);
-      const accepted = volPerU === 0 ? want : Math.max(0, Math.min(want, Math.floor(free / volPerU)));
+      const ups = unitsPerSlotForDef(def);
+      const fit = target === live
+        ? slotUnitsFit(target.slots, targetSlotCount, id, ups)
+        : want; // parked holds are uncapped — the deck crew stows whatever the pilot releases
+      const accepted = Math.min(want, fit);
       if (accepted <= 0) continue;
-      target.items[id] = (target.items[id] || 0) + accepted;
-      target.usedVolume = (Number(target.usedVolume) || 0) + accepted * volPerU;
+      fillSlots(target.slots, target === live ? targetSlotCount : Infinity, id, accepted, ups, { overflow: target !== live });
+      syncItemsFromSlots(target);
+      target.usedVolume = (Number(target.usedVolume) || 0) + accepted * volumePerUnit(def);
       target.usedMass = (Number(target.usedMass) || 0) + accepted * def.mass;
-      const left = Math.floor(Number(source.items[id]) || 0) - accepted;
-      if (left > 0) source.items[id] = left;
-      else delete source.items[id];
+      removeUnitsFromSlots(source, id, accepted);
       for (const lot of richLotSourcesForQty(source, id, accepted)) appendRichLot(target, lot, id, lot.richQty);
       decrementRichLots(source, id, accepted);
       moved += accepted;
     }
+    syncItemsFromSlots(source);
     this._syncParkedCaches(state, dir === 'load' ? source : target);
     if (owned.cargo && owned.cargo.items && !Object.keys(owned.cargo.items).length) delete owned.cargo;
     this.recompute(state);
@@ -1395,8 +1742,10 @@ export const cargo = {
       || !['drive', 'drum'].every(role => row.sockets?.[role]?.status === 'seated')
       : row.charter !== 'cooperative' || row.commission?.status !== 'paid' || job?.status !== 'open')
       return refuse('job_closed');
-    const hold = state.player?.cargo, items = hold?.items;
-    if (!hold || !Number.isFinite(hold.usedVolume) || !Number.isFinite(hold.usedMass)
+    const hold = state.player?.cargo;
+    ensureSlots(state, hold);
+    const items = hold?.items;
+    if (!hold || !Array.isArray(hold.slots) || !Number.isFinite(hold.usedVolume) || !Number.isFinite(hold.usedMass)
       || !writableFreightFields(hold, ['usedVolume', 'usedMass', 'richLots'])
       || !writableFreightFields(items, recipe.map(line => line.commodityId))
       || !writableFreightFields(stock, ['repair', 'fuel'])
@@ -1425,10 +1774,8 @@ export const cargo = {
     const pendingPayouts = kind === 'scrap'
       ? { ...row.pendingPayouts, scrap: { sourceId: 'breakwater:coop:scrap' } } : null;
     // Only prepared plain writable data fields follow: no callback, observer or Save boundary.
-    for (const line of plan) {
-      if (line.left) items[line.commodityId] = line.left;
-      else delete items[line.commodityId];
-    }
+    for (const line of plan) removeUnitsFromSlots(hold, line.commodityId, line.qty);
+    syncItemsFromSlots(hold);
     hold.usedVolume = Math.max(0, hold.usedVolume - volume);
     hold.usedMass = Math.max(0, hold.usedMass - mass);
     if (next.richLots) hold.richLots = next.richLots;
@@ -1532,19 +1879,44 @@ export const cargo = {
     return { ok: true, receipt: { ...receipt } };
   },
 
-  /** Dump up to `qty` units of `commodityId` as a colliding persistent cargo pod. Returns amount dumped. */
+  /** Dump up to `qty` units of `commodityId` as a colliding persistent cargo pod. Returns amount
+   *  dumped. `options.slotIndex` scopes the dump to one bag stack (the drag-off-a-slot gesture);
+   *  `options.confirmSealed` is the screen's answer to sealed-freight confirmation. */
   jettison(commodityId, qty, options = null) {
     if (this._jettisonInFlight) return 0;
     const state = this.state;
     const player = state.entities.get(state.playerId);
     if (!player || player.alive === false || typeof this.helpers?.spawnEntity !== 'function') return 0;
+    const hold = state.player.cargo;
+    ensureSlots(state, hold);
+    const slotIndex = Number.isInteger(options && options.slotIndex) ? options.slotIndex : null;
+    if (slotIndex != null) {
+      const stack = hold.slots[slotIndex];
+      if (!stack) return 0;
+      if (commodityId == null) commodityId = stack.commodityId;
+      if (commodityId !== stack.commodityId) return 0;
+    }
+    if (commodityId == null) return 0;
     const free = sellableCargoQuantity(this.state, commodityId);
-    if (qty == null) qty = free;
+    const reserved = reservedCargoQuantity(this.state, commodityId);
+    if (qty == null) qty = slotIndex != null
+      ? Math.min(free, hold.slots[slotIndex] ? hold.slots[slotIndex].qty : 0)
+      : free;
     qty = Math.max(0, Math.floor(Number(qty) || 0));
-    // A sealed manifest refuses a dump that would reach into it outright — the request named a
-    // count the contract forbids. "Dump everything" (no qty) means only the free units.
-    if (reservedCargoQuantity(this.state, commodityId) > 0 && qty > free) return 0;
-    qty = Math.min(qty, free);
+    // Sealed contract freight: a dump that would reach into the seal refuses and hands the
+    // screen its confirmation data — unless the request already carries the confirm answer,
+    // in which case the sealed units really do go overboard and the contract owner is told.
+    const sealedBreach = reserved > 0 && qty > free;
+    if (sealedBreach && !(options && options.confirmSealed === true)) {
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('cargo:jettisonSealed', { commodityId, requested: qty, sellable: free, reserved,
+          slotIndex });
+      }
+      return 0;
+    }
+    const held = Math.max(0, Math.floor(Number(hold.items[commodityId]) || 0));
+    qty = Math.min(qty, sealedBreach ? held : free);
+    if (slotIndex != null) qty = Math.min(qty, hold.slots[slotIndex] ? hold.slots[slotIndex].qty : 0);
     if (qty <= 0) return 0;
     const richSources = richLotSourcesForQty(state.player.cargo, commodityId, qty);
     const releaseBodies = richSources.length + (richSources.reduce((n, r) => n + r.richQty, 0) < qty ? 1 : 0);
@@ -1561,7 +1933,9 @@ export const cargo = {
     let removed = 0, dumped = 0;
     const acceptedRich = new Map();
     try {
-      removed = removeCargo(state, commodityId, qty);
+      removed = slotIndex != null
+        ? removeCargoFromSlot(state, slotIndex, qty)
+        : removeCargo(state, commodityId, qty);
       if (removed <= 0) return 0;
       const px = player.pos.x, pz = player.pos.z;
       const rot = Number.isFinite(player.rot) ? player.rot : 0;
@@ -1629,9 +2003,12 @@ export const cargo = {
         const retained = removed - dumped;
         if (retained > 0) {
           // This is the return of existing custody, not a new pickup. Even a synchronous
-          // fit/capacity change cannot make refused pods erase the pilot's original stock.
+          // fit/capacity change cannot make refused pods erase the pilot's original stock —
+          // the units land back as stacks (over-cap tail included), never as a written total.
           const hold = state.player.cargo;
-          hold.items[commodityId] = (hold.items[commodityId] || 0) + retained;
+          const retDef = defOf(state, commodityId);
+          fillSlots(hold.slots, hold.slotCount, commodityId, retained,
+            retDef ? unitsPerSlotForDef(retDef) : 20, { overflow: true });
           for (const source of richSources) {
             const amount = source.richQty - (acceptedRich.get(source.lotId) || 0);
             if (amount > 0) appendRichLot(hold, source, commodityId, amount);
@@ -1655,6 +2032,15 @@ export const cargo = {
             legality: (lotDef && lotDef.legality) || 'legal',
             holdRemaining,
           });
+          // Contract owner notification: confirmed seal breaches ride their own event so
+          // missions/contracts can settle the lost freight; the screen's confirmation is
+          // what made this dump legal in the first place.
+          const sealedAmount = sealedBreach ? Math.max(0, dumped - free) : 0;
+          if (sealedAmount > 0) {
+            this.bus.emit('cargo:sealedFreightJettisoned', {
+              commodityId, amount: dumped, sealedAmount, reserved,
+            });
+          }
         }
       } finally { this._jettisonInFlight = false; }
     }

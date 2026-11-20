@@ -16,6 +16,8 @@ import { MODULES } from '../data/modules.js';
 import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { BEAMS } from '../data/mining.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
+import { slotCountForCargoCap } from '../data/cargoSlots.js';
+import { slotsNeededForHold } from './cargo.js';
 import { SECTORS } from '../data/sectors.js';
 import { sableShipworksAvailable } from '../data/sableVenn.js';
 import { LINE_HEAD_BY_ID, lineHeadBehavior, lineMetaEarned, normalizeModuleProvenance, PROVENANCE_TIERS } from '../data/lineProgression.js';
@@ -933,9 +935,12 @@ export function dryRunLoadoutPresetApply({
   const budgetBlocker = outfitBudgetBlocker(shipDef, afterFittings);
   if (budgetBlocker) return { ok: false, ...budgetBlocker };
   if (enforceCargo) {
-    const usedVolume = Math.max(0, Number(player && player.cargo && player.cargo.usedVolume) || 0);
+    const hold = player && player.cargo;
+    const needed = Array.isArray(hold && hold.slots) && hold.slots.length
+      ? slotsNeededForHold(player ? { player } : null, hold)
+      : Math.ceil(Math.max(0, Number(hold && hold.usedVolume) || 0) / 20);
     const targetDerived = getDerivedStats(shipDef.id, afterFittings, player);
-    if (usedVolume > targetDerived.cargoCap) {
+    if (needed > slotCountForCargoCap(targetDerived.cargoCap)) {
       return { ok: false, reason: 'cargo_overflow', text: 'Cargo would overflow — jettison first' };
     }
   }
@@ -1718,6 +1723,7 @@ function computeDerivedStats(defId, fittings = [], player = null) {
     hullRepairOOC,
     droneBayCount,
     cargoCap,
+    cargoSlots: slotCountForCargoCap(cargoCap),
     maxWeaponRange,
     controlWeaponCount,
     chaffCount,
@@ -2574,6 +2580,7 @@ export const ships = {
     if (!options.quiet) {
       this.bus.emit('ship:statsChanged', { shipId: e.id, derived });
       this.bus.emit('ship:cargoCapChanged', { shipId: e.id, cargoCap: derived.cargoCap });
+      this.bus.emit('ship:slotsChanged', { shipId: e.id, slots: derived.cargoSlots });
     }
     // Appearance changed (hull swap or loadout change) → render track rebuilds the mesh so visible
     // weapons/engines/tier reflect the current ship. Emitted only on an actual change to avoid
@@ -3114,7 +3121,10 @@ export const ships = {
       }
     }
     const cargo = p.cargo || {};
-    if ((cargo.usedVolume || 0) > target.cargoCap) {
+    const neededSlots = Array.isArray(cargo.slots) && cargo.slots.length
+      ? slotsNeededForHold(this.state, cargo)
+      : Math.ceil(Math.max(0, Number(cargo.usedVolume) || 0) / 20);
+    if (neededSlots > slotCountForCargoCap(target.cargoCap)) {
       this.bus.emit('toast', { text: 'Cargo would overflow — jettison first', kind: 'error', ttl: 3 });
       return false;
     }
@@ -3745,7 +3755,10 @@ export const ships = {
     const cargo = this.state.player.cargo;
     if (!cargo) return false;
     const derived = getDerivedStats(owned.defId, prospectiveFittings || owned.fittings, this.state.player);
-    return (cargo.usedVolume || 0) > derived.cargoCap;
+    const needed = Array.isArray(cargo.slots) && cargo.slots.length
+      ? slotsNeededForHold(this.state, cargo)
+      : Math.ceil(Math.max(0, Number(cargo.usedVolume) || 0) / 20);
+    return needed > slotCountForCargoCap(derived.cargoCap);
   },
 
   recomputeIfActive(shipIndex, fittings) {

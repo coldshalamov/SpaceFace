@@ -16,7 +16,8 @@ import { seedCharterOffer, seedCharterRecord, SEED_CHARTER_STATION, SEED_CHARTER
 import { describeProgrammedMinerOperation } from '../../systems/automationOperations.js';
 import { outpostInputCapacity, outpostInputIds, outpostInputUsed, outpostLevel, outpostSaleExplanation,
   outpostTransferAccess, outpostUpgradeCost } from '../../systems/outpostOperations.js';
-import { sellableCargoQuantity, cargoUnitVolume } from '../../systems/cargo.js';
+import { sellableCargoQuantity, slotFitFor } from '../../systems/cargo.js';
+import { freeSlotCount } from '../../data/cargoSlots.js';
 import { shipworksStationAccess } from '../../systems/ships.js';
 import { escapeHtml } from '../comms.js';
 import { pluralWord } from '../numberFormat.js';
@@ -1797,11 +1798,9 @@ export const automationScreen = {
         const inputUsed = outpostInputUsed(o);
         const inputCap = outpostInputCapacity(o, def);
         const cargo = st.player?.cargo || {};
-        const holdFree = Math.max(0, Number(cargo.capVolume) - Number(cargo.usedVolume));
         const hasFeedstock = inputGoods.some((good) => sellableCargoQuantity(st, good) > 0);
         const outputGood = operation.output.goodId && operation.output.goodId !== 'credits' ? operation.output.goodId : null;
-        const outputVol = outputGood ? cargoUnitVolume(st, outputGood) : 0;
-        const holdFitsOutput = !outputGood || (outputVol > 0 ? holdFree >= outputVol : holdFree > 0);
+        const holdFitsOutput = !outputGood || slotFitFor(st, outputGood) >= 1;
         const arrears = Math.floor(a.accumulators?.upkeepDebt || 0);
         const supplyWhy = !near ? 'Fly within 450 m'
           : inputUsed >= inputCap ? 'Inputs full'
@@ -1812,9 +1811,10 @@ export const automationScreen = {
         const settleWhy = o.storage < 1 ? 'Nothing stored'
           : o.status === 'distressed' ? 'Pay arrears first'
           : o.status === 'raided' ? 'Raided' : '';
+        const holdFreeSlots = freeSlotCount(cargo.slots, cargo.slotCount);
         const recoverWhy = !near ? 'Fly within 450 m'
           : inputUsed < 1 ? 'Nothing stored'
-          : holdFree <= 0 ? 'Hold is full' : '';
+          : holdFreeSlots <= 0 ? 'Hold is full' : '';
         const upgradeWhy = stopped ? 'Facility stopped'
           : (st.player?.credits || 0) < upgradeCost ? 'Not enough credits' : '';
         const retireWhy = o.storage >= 1 || inputUsed >= 1 ? 'Collect and recover first' : '';

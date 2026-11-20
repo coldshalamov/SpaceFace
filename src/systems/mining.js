@@ -59,7 +59,8 @@ import { actionForWreck, poolForAction } from '../data/salvageActions.js';
 import { ANVIL_ORCHARD, normalizeOrchardRecord, orchardPhase } from '../data/anvilOrchard.js';
 import { isOrchardFrame, isOrchardPod } from '../data/anvilOrchardIdentity.js';
 import { debrisCacheFor, spawnDebrisCachePods } from '../data/scanReveal.js';
-import { removeCargo, addCargo } from './cargo.js';
+import { removeCargo, addCargo, slotFitFor, ensureSlots, syncItemsFromSlots, unitsPerSlotFor } from './cargo.js';
+import { fillSlots } from '../data/cargoSlots.js';
 import {
   claimRichSeamOpportunity,
   recordFieldExtraction,
@@ -2987,18 +2988,17 @@ export const mining = {
     if (qty <= 0) return 0;
     const cargo = this.state.player.cargo;
     if (!cargo) return 0;
-    if (!cargo.items) cargo.items = {};
+    ensureSlots(this.state, cargo);
     const ore = ORE_BY_ID.get(commodityId);
     const vol = (ore && ore.vol) || 1;
     const mass = (ore && ore.mass) || 1;
-    const cap = Number.isFinite(cargo.capVolume) ? cargo.capVolume : 40;
-    const free = cap - (cargo.usedVolume || 0);
-    const accepted = Math.max(0, Math.min(qty, Math.floor(free / vol)));
-    // The cargo writer emits this when it is mounted. The stub path has to say the same thing
-    // once, including a hold that takes nothing.
+    // Same slot law as the mounted writer: slotFitFor, then the shared fill. The stub keeps its
+    // own cargo:changed emit because the owner's bus binding is not mounted on this path.
+    const accepted = Math.max(0, Math.min(qty, slotFitFor(this.state, commodityId)));
     if (accepted < qty && this.bus) this.bus.emit('cargo:full', { commodityId });
     if (accepted <= 0) return 0;
-    cargo.items[commodityId] = (cargo.items[commodityId] || 0) + accepted;
+    fillSlots(cargo.slots, cargo.slotCount, commodityId, accepted, unitsPerSlotFor(this.state, commodityId));
+    syncItemsFromSlots(cargo);
     cargo.usedVolume = (cargo.usedVolume || 0) + accepted * vol;
     cargo.usedMass = (cargo.usedMass || 0) + accepted * mass;
     if (lotSource && typeof lotSource.richOpportunityId === 'string') {

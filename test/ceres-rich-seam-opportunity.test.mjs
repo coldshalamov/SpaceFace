@@ -199,7 +199,7 @@ test('target readout exposes the live seam and the exact rich lot carried away',
   const asteroid = richAsteroid();
   const opened = openOpportunity(state);
   // c90af4a92: an unclaimed window reads OPEN, not HOT CUT.
-  assert.equal(richSeamTargetReadout(asteroid, state).text, 'RICH SEAM · +8u · OPEN');
+  assert.equal(richSeamTargetReadout(asteroid, state).text, 'RICH SEAM · +8 units · OPEN');
 
   const carrier = {
     id: 202,
@@ -270,7 +270,9 @@ test('player rich ore keeps lot provenance through save, remove, and jettison', 
 });
 
 test('direct rich release preserves provenance across zero, partial, and full hold acceptance', () => {
-  const makeRelease = (capVolume) => {
+  // Slot law (CARGO-BUILD-1): `slots` seeds the bag — full foreign stack refuses, a partial
+  // stack's headroom is the acceptance bound, an empty slot takes a whole stack.
+  const makeRelease = (slots, slotCount = 1) => {
     const player = {
       id: 1,
       type: 'ship',
@@ -279,11 +281,11 @@ test('direct rich release preserves provenance across zero, partial, and full ho
       radius: 6,
       data: { miningBeam: { tierId: 'beam_mk1', directToCargo: true } },
     };
-    const asteroid = richAsteroid(70 + capVolume);
+    const asteroid = richAsteroid(70 + slotCount);
     const state = {
       ...opportunityState(10),
       playerId: player.id,
-      player: { cargo: { items: {}, capVolume, capMass: 100, usedVolume: 0, usedMass: 0 } },
+      player: { cargo: { items: {}, slots, slotCount, capMass: 100, usedVolume: 0, usedMass: 0 } },
       entities: new Map([[player.id, player], [asteroid.id, asteroid]]),
       entityList: [player, asteroid],
       rng: () => 0,
@@ -302,7 +304,7 @@ test('direct rich release preserves provenance across zero, partial, and full ho
     const data = asteroid.data;
     data._richBonusPending = 8;
     data._richLotSource = {
-      richOpportunityId: `rich-seam:partial:${capVolume}`,
+      richOpportunityId: `rich-seam:partial:${slotCount}`,
       richBonusU: 8,
       fieldId: FIELD_ID,
       activityObjectSlotId: SLOT_ID,
@@ -313,18 +315,17 @@ test('direct rich release preserves provenance across zero, partial, and full ho
     return { state, bus, cargo, spawned };
   };
 
-  const zero = makeRelease(0);
+  const zero = makeRelease([{ commodityId: 'cmdty_ice_water', qty: 10 }]);
   assert.equal(zero.state.player.cargo.items.cmdty_ore_iron, undefined);
   assert.equal(zero.spawned.length, 1);
   assert.equal(zero.spawned[0].data.richLotSource.richQty, 8);
 
-  const partial = makeRelease(3);
-  assert.equal(partial.state.player.cargo.items.cmdty_ore_iron, 3);
+  const partial = makeRelease([{ commodityId: 'cmdty_ore_iron', qty: 17 }]);
+  assert.equal(partial.state.player.cargo.items.cmdty_ore_iron, 20);
   assert.equal(partial.state.player.cargo.richLots[0].qty, 3);
   assert.equal(partial.spawned.length, 1);
   assert.equal(partial.spawned[0].data.richLotSource.richQty, 5);
-  partial.state.player.cargo.capVolume = 20;
-  partial.cargo.recompute();
+  partial.state.player.cargo.slotCount = 2;
   const pickup = partial.spawned[0].data;
   partial.bus.emit('pickup:collected', {
     collectorId: partial.state.playerId,
@@ -335,7 +336,7 @@ test('direct rich release preserves provenance across zero, partial, and full ho
   });
   assert.equal(partial.state.player.cargo.richLots[0].qty, 8);
 
-  const full = makeRelease(20);
+  const full = makeRelease([]);
   assert.equal(full.state.player.cargo.items.cmdty_ore_iron, 8);
   assert.equal(full.state.player.cargo.richLots[0].qty, 8);
   assert.equal(full.spawned.length, 0);

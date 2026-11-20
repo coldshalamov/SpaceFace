@@ -47,7 +47,8 @@ import {
   PLAYER_WRECK_ENCOUNTER_ID,
 } from './aftermathWrecks.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
-import { cargoUnitVolume } from './cargo.js';
+import { unitsPerSlotFor } from './cargo.js';
+import { fillSlots } from '../data/cargoSlots.js';
 import { createChoirReliefBerth, normalizeChoirRelief } from './choirReliefBerth.js';
 import { createMemorialThief, normalizeMemorialThief } from './memorialThief.js';
 // PB-CONS-B (SF-156 + SF-162): the aftermath-people companions, same hosting law as the Choir
@@ -1850,17 +1851,17 @@ export const uniqueWrecks = {
     return salvagePoolForWreck(rewardWreck, rawCargo);
   },
 
-  /** Volume the hold lacks to take every unit of `cargo`, 0 when it fits (or no hold exists). */
+  /** Units the hold lacks slots to take from `cargo`, 0 when every unit stacks (or no hold). */
   _bonusCargoShortfall(cargo) {
     const hold = this.state.player && this.state.player.cargo;
-    if (!hold || !Number.isFinite(hold.capVolume) || !Number.isFinite(hold.usedVolume)) return 0;
-    let free = hold.capVolume - hold.usedVolume;
+    if (!hold || !Number.isFinite(hold.slotCount)) return 0;
+    const shadow = Array.isArray(hold.slots) ? hold.slots.map((s) => ({ ...s })) : [];
     let short = 0;
     for (const [commodityId, amount] of Object.entries(cargo || {})) {
-      const need = Math.max(0, finite(amount, 0)) * cargoUnitVolume(this.state, commodityId);
-      if (need <= 0) continue;
-      if (need > free + 1e-9) short += need - Math.max(0, free);
-      free = Math.max(0, free - need);
+      const units = Math.max(0, finite(amount, 0));
+      if (units <= 0) continue;
+      short += units - fillSlots(shadow, hold.slotCount, commodityId, units,
+        unitsPerSlotFor(this.state, commodityId));
     }
     return short;
   },
@@ -1887,10 +1888,10 @@ export const uniqueWrecks = {
         sectorId: def.sectorId,
         choiceId: choice.id,
         reason: 'cargo_full',
-        neededVolume: shortfall,
+        neededUnits: shortfall,
       });
       this.bus.emit('toast', {
-        text: `${choice.label}: the hold needs ${Math.ceil(shortfall)} more free volume for the cargo. Make room and choose again.`,
+        text: `${choice.label}: the hold needs room for ${Math.ceil(shortfall)} more units of cargo. Make room and choose again.`,
         kind: 'warn',
         ttl: 8,
       });

@@ -7,6 +7,7 @@ import {
   avatarDrawPos,
   avatarMoveProgress,
   deriveDrillCommitment,
+  cargoFreeUnits,
   drillCellEvidence,
   drillEnergyLimitCopy,
   drillHeatLimitCopy,
@@ -2829,13 +2830,15 @@ export const drillScreen = {
       setText(hudEls.yield, 'yield', total);
       setText(hudEls.gas, 'gas', d.gasHits);
       const cargo = state.player.cargo;
-      const cap = cargo && cargo.capVolume > 0 ? cargo.capVolume : 0;
-      const used = cargo ? Number(cargo.usedVolume) || 0 : 0;
-      const freeU = cap > 0 ? Math.max(0, Math.floor(cap - used)) : 0;
-      const cargoUsed = cap > 0 ? Math.round((used / cap) * 100) : 0;
-      const cargoFull = cargoUsed >= 100 || (cap > 0 && freeU <= 0);
+      // Slot law: the gauge counts stacks aboard over slots the hull grants.
+      const slotCount = cargo && cargo.slotCount > 0 ? cargo.slotCount : 0;
+      const freeU = cargoFreeUnits(cargo);
+      const cargoUsed = slotCount > 0
+        ? Math.round(((Array.isArray(cargo.slots) ? Math.min(cargo.slots.length, slotCount) : 0) / slotCount) * 100)
+        : 0;
+      const cargoFull = slotCount > 0 && freeU <= 0;
       setText(hudEls.cargo, 'cargo',
-        cargoFull ? '100% FULL' : `${cargoUsed}% · ${freeU} units free`);
+        cargoFull ? '100% FULL' : `${cargoUsed}% · ${freeU} slots free`);
       setClassName(hudEls.cargo, 'cargoCn', cargoFull ? 'bad' : 'v');
       if (cargoFull) {
         showStatusBanner('cargo', DRILL_CARGO_FULL_BANNER);
@@ -2922,9 +2925,7 @@ export const drillScreen = {
       if (hudEls.scan) {
         const tier = drillScreen._drillTier || 1;
         const cargo = state.player && state.player.cargo;
-        const cargoFree = cargo && cargo.capVolume > 0
-          ? Math.max(0, Math.floor(cargo.capVolume - (Number(cargo.usedVolume) || 0)))
-          : Infinity;
+        const cargoFree = cargo ? cargoFreeUnits(cargo) : Infinity;
         const commitment = deriveDrillCommitment(d, { tier, cargoFree });
         commitmentPath = commitment && Array.isArray(commitment.returnPath) ? commitment.returnPath : [];
         let html = escapeHtml(formatDrillCommitment(commitment));

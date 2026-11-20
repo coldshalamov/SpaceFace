@@ -30,7 +30,10 @@ function bootBribe({ cargoItems = { cmdty_refined_metals: 18 }, seed = 4701, pir
   };
   const player = sim.spawn({ type: 'ship', team: 0, pos: { x: 0, z: 0 }, hull: 200, hullMax: 200 });
   state.playerId = player.id;
+  // Slot law (CARGO-BUILD-1): the slot list is the hold's truth — clear it so the seeded
+  // item map repacks into stacks on the recompute below.
   state.player.cargo.items = { ...cargoItems };
+  state.player.cargo.slots = null;
   sim.registry.get('cargo').recompute();
   const crew = [];
   for (let i = 0; i < pirates; i += 1) {

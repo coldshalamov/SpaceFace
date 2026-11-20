@@ -68,7 +68,7 @@ test('P02: a fully sealed input refuses before any mutation; the low-level remov
   // matching a recipe need must be a recoverable shortage, not a softlock. The free titanium is
   // unrelated freight and cannot substitute.
   state.missions.active.push(sealedDelivery('cmdty_ore_iron', 3));
-  state.player.cargo.capVolume = 40;
+  state.player.cargo.capVolume = 40; state.player.cargo.slotCount = 0; state.player.cargo.slots = null;
   addCargo(state, 'cmdty_ore_iron', 3);
   addCargo(state, 'cmdty_ore_titanium', 1);
 
@@ -89,7 +89,7 @@ test('P02: a fully sealed input refuses before any mutation; the low-level remov
 test('P02: a sealed lot plus own units spends only the free units and leaves the reservation usable', () => {
   const { state, inst } = boot();
   state.missions.active.push(sealedDelivery('cmdty_ore_iron', 3));
-  state.player.cargo.capVolume = 40;
+  state.player.cargo.capVolume = 40; state.player.cargo.slotCount = 0; state.player.cargo.slots = null;
   addCargo(state, 'cmdty_ore_iron', 6); // 3 sealed + 3 the player's own
   addCargo(state, 'cmdty_ore_titanium', 1); // unrelated freight under the canonical 2-iron bill
 
@@ -102,27 +102,28 @@ test('P02: a sealed lot plus own units spends only the free units and leaves the
 });
 
 test('P03: a fitted capacity-bearing source refuses atomically when the hold would overflow', () => {
-  const { state, inst, toasts } = boot();
+  const { state, inst, toasts } = boot({ shipDefId: 'ship_colossus' });
   const p = state.player;
   p.researchedNodes = ['tech_bulk_logistics'];
-  // Mule base cargo 1500 + Cargo Pod M (cargoFlat +50) fitted = 1550 working capacity.
-  const cargoSlot = slotIndexOfType('ship_mule', 'cargo');
+  // Colossus base cargo 1200 → 60 slots; + Cargo Pod M (cargoFlat +50) → 1250 vol = 64 slots.
+  // Slot law: eating the pod shrinks the bag by a whole row.
+  const cargoSlot = slotIndexOfType('ship_colossus', 'cargo');
   assert.ok(cargoSlot >= 0);
   p.moduleInventory.push({ instanceId: 'mi_pod', defId: 'mod_cargo_pod_m' });
   assert.equal(inst._ships.fitModule({ shipIndex: 0, slotIndex: cargoSlot, instanceId: 'mi_pod' }), true);
 
-  // Inputs for bp_aug_cargopod_m_to_l free 5.5 vol (hullplate 3×0.7, alloys 2×0.5, polymers 2×1.2);
+  // Inputs for bp_aug_cargopod_m_to_l (hullplate 3, alloys 2, polymers 2) vacate their stacks;
   // alloy ballast stands in for unrelated freight filling the hold.
-  p.cargo.capVolume = 1550;
+  p.cargo.capVolume = 1250; p.cargo.slotCount = 0; p.cargo.slots = null;
   addCargo(state, 'cmdty_comp_hullplate', 3);
   addCargo(state, 'cmdty_polymers', 2);
-  addCargo(state, 'cmdty_alloys', 3011); // 2 needed + 3009 ballast → used = 5.5 + 1504.5 = 1510
+  addCargo(state, 'cmdty_alloys', 1210); // 2 needed + 1208 ballast — post-input 1208 units pack to 61 stacks > 60 post slots
 
   assert.equal(inst.build('bp_aug_cargopod_m_to_l', 'station_helios'), false,
-    'post-input load 1504.5 exceeds the post-consumption cap 1500');
+    'post-input load packs to 61 stacks, exceeding the 60-slot post-consumption hold');
   assert.equal(state.player.ownedShips[0].fittings[cargoSlot], 'mod_cargo_pod_m',
     'the fitted source is still installed — the refusal mutated nothing');
-  assert.equal(state.player.cargo.items.cmdty_alloys, 3011);
+  assert.equal(state.player.cargo.items.cmdty_alloys, 1210);
   assert.equal(state.player.cargo.items.cmdty_comp_hullplate, 3);
   assert.equal(Object.keys(state.crafting.queues).length, 0, 'no half-written job');
   assert.ok(toasts.some((t) => /overflow the hold/i.test(t.text)),
@@ -130,20 +131,20 @@ test('P03: a fitted capacity-bearing source refuses atomically when the hold wou
 });
 
 test('P03: just-below-cap fitted consumption commits and the L expander lands in inventory, not the slot', () => {
-  const { state, inst } = boot();
+  const { state, inst } = boot({ shipDefId: 'ship_colossus' });
   const p = state.player;
   p.researchedNodes = ['tech_bulk_logistics'];
-  const cargoSlot = slotIndexOfType('ship_mule', 'cargo');
+  const cargoSlot = slotIndexOfType('ship_colossus', 'cargo');
   p.moduleInventory.push({ instanceId: 'mi_pod', defId: 'mod_cargo_pod_m' });
   assert.equal(inst._ships.fitModule({ shipIndex: 0, slotIndex: cargoSlot, instanceId: 'mi_pod' }), true);
 
-  p.cargo.capVolume = 1550;
+  p.cargo.capVolume = 1250; p.cargo.slotCount = 0; p.cargo.slots = null;
   addCargo(state, 'cmdty_comp_hullplate', 3);
   addCargo(state, 'cmdty_polymers', 2);
-  addCargo(state, 'cmdty_alloys', 3002); // used 1505.5 → post-input load exactly 1500 = post cap
+  addCargo(state, 'cmdty_alloys', 1202); // post-input 1200 units packs into exactly the 60 post slots
 
   assert.equal(inst.build('bp_aug_cargopod_m_to_l', 'station_helios'), true,
-    'post-input load equal to post-consumption capacity still fits');
+    'post-input load packing exactly to post-consumption capacity still fits');
   assert.equal(state.player.ownedShips[0].fittings[cargoSlot], null,
     'the fitted source was consumed out of its slot');
   assert.ok(state.crafting.queues.station_helios, 'the timed augment is queued');
@@ -157,18 +158,18 @@ test('P03: just-below-cap fitted consumption commits and the L expander lands in
 });
 
 test('P03: a loose duplicate answers the recipe even when the hold is full to the pod-boosted cap', () => {
-  const { state, inst } = boot();
+  const { state, inst } = boot({ shipDefId: 'ship_colossus' });
   const p = state.player;
   p.researchedNodes = ['tech_bulk_logistics'];
-  const cargoSlot = slotIndexOfType('ship_mule', 'cargo');
+  const cargoSlot = slotIndexOfType('ship_colossus', 'cargo');
   p.moduleInventory.push({ instanceId: 'mi_fitted', defId: 'mod_cargo_pod_m' });
   assert.equal(inst._ships.fitModule({ shipIndex: 0, slotIndex: cargoSlot, instanceId: 'mi_fitted' }), true);
   p.moduleInventory.push({ instanceId: 'mi_loose', defId: 'mod_cargo_pod_m' });
 
-  p.cargo.capVolume = 1550;
+  p.cargo.capVolume = 1250; p.cargo.slotCount = 0; p.cargo.slots = null;
   addCargo(state, 'cmdty_comp_hullplate', 3);
   addCargo(state, 'cmdty_polymers', 2);
-  addCargo(state, 'cmdty_alloys', 3089); // hold at the brim — but no fitted consume happens
+  addCargo(state, 'cmdty_alloys', 1240); // 62 stacks + 2 input stacks = brim-full 64 slots
 
   assert.equal(inst.build('bp_aug_cargopod_m_to_l', 'station_helios'), true,
     'a loose source never touches hold capacity');
@@ -179,23 +180,23 @@ test('P03: a loose duplicate answers the recipe even when the hold is full to th
 });
 
 test('P03: a source fitted on an inactive ship does not gate the flown hold', () => {
-  const { state, inst } = boot();
+  const { state, inst } = boot({ shipDefId: 'ship_colossus' });
   const p = state.player;
   p.researchedNodes = ['tech_bulk_logistics'];
-  const cargoSlot = slotIndexOfType('ship_mule', 'cargo');
+  const cargoSlot = slotIndexOfType('ship_colossus', 'cargo');
   // The pod rides a parked second hull; the flown ship's hold is only its own capacity.
   p.ownedShips.push({
-    defId: 'ship_mule',
-    fittings: Array(buildSlotList(SHIP_BY_ID.get('ship_mule')).length).fill(null),
+    defId: 'ship_colossus',
+    fittings: Array(buildSlotList(SHIP_BY_ID.get('ship_colossus')).length).fill(null),
     fittedInstances: {},
   });
   p.ownedShips[1].fittings[cargoSlot] = 'mod_cargo_pod_m';
   p.ownedShips[1].fittedInstances[cargoSlot] = { instanceId: 'mi_parked', defId: 'mod_cargo_pod_m' };
 
-  p.cargo.capVolume = 1500;
+  p.cargo.capVolume = 1200; p.cargo.slotCount = 0; p.cargo.slots = null;
   addCargo(state, 'cmdty_comp_hullplate', 3);
   addCargo(state, 'cmdty_polymers', 2);
-  addCargo(state, 'cmdty_alloys', 3000); // flown hold effectively full at its own cap
+  addCargo(state, 'cmdty_alloys', 1160); // 58 stacks + 2 input stacks = brim-full 60 slots
 
   assert.equal(inst.build('bp_aug_cargopod_m_to_l', 'station_helios'), true,
     'consuming a pod off a parked hull cannot overflow the flown hold');
@@ -203,18 +204,18 @@ test('P03: a source fitted on an inactive ship does not gate the flown hold', ()
 });
 
 test('P03: a fitted non-capacity source augments fine under a full hold', () => {
-  const { state, inst } = boot();
+  const { state, inst } = boot({ shipDefId: 'ship_colossus' });
   const p = state.player;
   p.researchedNodes = ['tech_deflector_theory'];
-  const shieldSlot = slotIndexOfType('ship_mule', 'shield');
+  const shieldSlot = slotIndexOfType('ship_colossus', 'shield');
   p.moduleInventory.push({ instanceId: 'mi_boost', defId: 'mod_shield_booster_s' });
   assert.equal(inst._ships.fitModule({ shipIndex: 0, slotIndex: shieldSlot, instanceId: 'mi_boost' }), true);
 
-  p.cargo.capVolume = 1500;
+  p.cargo.capVolume = 1200; p.cargo.slotCount = 0; p.cargo.slots = null;
   addCargo(state, 'cmdty_comp_circuitry', 2);
   addCargo(state, 'cmdty_alloys', 2);
   addCargo(state, 'cmdty_quantum_cores', 1);
-  addCargo(state, 'cmdty_ore_iron', 1490); // brim-full hold; the shield source carries no capacity
+  addCargo(state, 'cmdty_ore_iron', 1140); // 57 stacks + 3 input stacks = brim-full 60 slots
 
   assert.equal(inst.build('bp_aug_shield_s_to_m', 'station_helios'), true,
     'removing a non-cargo source cannot overflow the hold');

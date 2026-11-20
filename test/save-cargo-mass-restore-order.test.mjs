@@ -121,7 +121,10 @@ test('capacity decreases preserve an overfull hold and leave all cargo and salva
   try {
     // A save can legitimately retain more cargo than a later derived capacity permits.
     // Restore must retain custody, not silently drop units to fit the canonical hold.
+    // Slot law (CARGO-BUILD-1): the slot list is the hold's truth — write it directly so the
+    // 1001-unit over-cap tail is real, then let the owner rebuild the mirrors.
     h.state.player.cargo.capVolume = 1000;
+    h.state.player.cargo.slots = null;
     h.state.player.cargo.items = {cmdty_refined_metals: 1001};
     h.state.player.salvageBay = {items: {cmdty_refined_metals: 3}, usedVolume: 999};
     h.sim.registry.get('cargo').recompute();

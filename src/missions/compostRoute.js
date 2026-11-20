@@ -5,7 +5,7 @@ import { UNDERSTORY_GARDENS, UNDERSTORY_GARDEN_STAGES, UNDERSTORY_COMPOST_RUN } 
 import { ASTEROIDS, BEAMS } from '../data/mining.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
-import { sellableCargoQuantity } from '../systems/cargo.js';
+import { sellableCargoQuantity, slotFitFor } from '../systems/cargo.js';
 import { cargoPodMassForContents } from '../systems/lootShards.js';
 import { towClassMassFor } from '../systems/shipCapabilities.js';
 import { isAttachable } from '../systems/tetherGameplay.js';
@@ -142,10 +142,9 @@ export function compostRouteFocus(owner) {
     pos: { x: source.pos.x, z: source.pos.z }, reason: reason(`${number(sourceMass)}t usable loose feed located. Approach and catch it with the Line; clear any obstruction before latching. Then return to Rookside's west approach. Other valid feed also counts.`) };
   if (typeof cargoOwner?.jettison !== 'function' || typeof podOwner?.gardenFeedMass !== 'function') return unavailable('Cargo delivery eligibility is unavailable. No mining-to-feed supply is being promised.');
   const iron = IRON;
-  const hold = state.player?.cargo;
   if (!(towCapacity >= cargoPodMassForContents(iron.massPerU, 1))) return unavailable('No usable feed is held. This fit cannot put a 20t cargo pod under way; restore tow capability or bring a lighter eligible load. No feed is supplied.');
-  if (!beamAvailable(state, player) || !Number.isFinite(hold?.capVolume) || !Number.isFinite(hold?.usedVolume)
-    || hold.capVolume - hold.usedVolume < iron.volPerU) return unavailable('No usable loose feed located. Mining needs an available beam and free hold space; restore them or bring another eligible load.');
+  if (!beamAvailable(state, player) || slotFitFor(state, iron.id) < 1)
+    return unavailable('No usable loose feed located. Mining needs an available beam and free hold space; restore them or bring another eligible load.');
   const beamMode = state.ui?.beamMode || state.player?.beamMode || 'auto';
   if (!['auto', 'extract'].includes(beamMode) || state.input?.receiver) return unavailable('Set the beam to AUTO or EXTRACT without a transfer receiver to mine ordinary iron, or bring another eligible load.');
   const { face } = nearestMiningResourceFace(state, { sectorId: SECTOR, center: player.pos,

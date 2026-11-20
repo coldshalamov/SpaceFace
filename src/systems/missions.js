@@ -348,7 +348,7 @@ import { syncEntityCollisionIndexMembership, syncEntitySectorMembership, syncEnt
 import { getDressingRow } from '../world/dressingTable.js';
 // Cargo single-writer helper (same pattern economy.js uses) — delivery missions consume the
 // required cargo through this so usedVolume/usedMass caches stay correct (§0.6).
-import { addCargo, releasableContractUnits, removeCargo, sellableCargoQuantity } from './cargo.js';
+import { addCargo, releasableContractUnits, removeCargo, sellableCargoQuantity, slotFitFor } from './cargo.js';
 
 // OPENING-1b: how close an authored starter boulder must be to claim the first 47-A pick.
 const OPENING_BOULDER_PICK_WU = 600;
@@ -2020,10 +2020,11 @@ export const missions = {
     if (!offer || offer.source === 'custodyRecovery' || !ONE_LOAD_CARGO_TYPES.has(offer.type)) return { ok: true };
     const requiredVolume = cargoFootprint(offer);
     if (!(requiredVolume > 0)) return { ok: true };
-    const cargo = this.state.player && this.state.player.cargo || {};
-    const capVolume = Number.isFinite(cargo.capVolume) ? cargo.capVolume : 0;
-    const usedVolume = Number.isFinite(cargo.usedVolume) ? cargo.usedVolume : 0;
-    if (Math.max(0, capVolume - usedVolume) < requiredVolume) {
+    const p = offer.params || {};
+    // Slot law (CARGO-BUILD-1): the one-load contract loads only while the bag can stack
+    // the whole lot — partial bags and free volume no longer admit a load slots refuse.
+    const requiredUnits = Math.max(0, Math.floor(Number(p.qty) || 0));
+    if (requiredUnits > 0 && p.cmdtyId && slotFitFor(this.state, p.cmdtyId) < requiredUnits) {
       return {
         ok: false,
         reason: `Need ${fmtCargoUnits(requiredVolume)}u cargo capacity for this contract`,

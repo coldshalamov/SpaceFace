@@ -11,6 +11,9 @@ import { migrateSurveyCustody } from '../data/surveyCartography.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { UNIQUE_WRECK_STATE_SCHEMA_VERSION } from '../data/uniqueWrecks.js';
 import { COORDINATE_SCHEMA } from '../core/coordinates.js';
+import { CARGO_SLOTS, packItemsIntoSlots, slotCountForCargoCap } from '../data/cargoSlots.js';
+import { COMMODITIES } from '../data/commodities.js';
+import { PERSISTENT_CARGO } from '../data/narrative.js';
 import {
   createEmptyRecordsBag,
   normalizeRecordsBag,
@@ -437,7 +440,56 @@ export const MIGRATIONS = [
       }
     },
   },
+  {
+    from: 23,
+    to: 24,
+    // CARGO-BUILD-1 (R22, 06 §5.5): the hold becomes a slot bag. Every flat {items} map packs
+    // greedily into stacks, commodity by commodity in sorted-id order — ordinary 20/slot,
+    // bulky (volPerU > 1.2) 10/slot, never-stack goods one slot each. Whatever does not fit the
+    // derived slot count stays aboard as the over-cap tail (nothing is created or lost; new
+    // adds refuse until it drains). Re-runnable: a record already carrying slots is untouched.
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      const upsFor = (id) => {
+        if (PERSISTENT_STACK_IDS.has(id)) return 1;
+        const stack = MIGRATION_STACK_BY_ID.get(id);
+        return stack === 1 || stack === CARGO_SLOTS.stackBulky || stack === CARGO_SLOTS.stackOrdinary
+          ? stack
+          : CARGO_SLOTS.stackOrdinary;
+      };
+      const packHold = (hold, capVolume) => {
+        if (!hold || typeof hold !== 'object' || Array.isArray(hold)) return;
+        if (!Array.isArray(hold.slots)) {
+          hold.slots = packItemsIntoSlots(hold.items || {}, upsFor);
+        }
+        if (!Number.isFinite(hold.slotCount) || hold.slotCount <= 0) {
+          hold.slotCount = slotCountForCargoCap(capVolume);
+        }
+      };
+      packHold(data.cargo, data.cargo && data.cargo.capVolume);
+      const bay = data.cargo && data.cargo.salvageBay;
+      if (bay && typeof bay === 'object' && !Array.isArray(bay)) {
+        if (!Array.isArray(bay.slots)) bay.slots = packItemsIntoSlots(bay.items || {}, upsFor);
+        // The bay bound derives from its volume cap through the same slot law
+        // (5× the hold's capacity, floored — see SALVAGE_BAY in systems/cargo.js).
+        bay.slotCount = slotCountForCargoCap(Math.max(600, (Number(data.cargo && data.cargo.capVolume) || 0) * 5));
+      }
+      // Holds parked aboard the pilot's other hulls pack the same way; they are uncapped
+      // stores, so every unit stays aboard exactly where it was.
+      const ownedShips = data.player && Array.isArray(data.player.ownedShips) ? data.player.ownedShips : [];
+      for (const owned of ownedShips) {
+        const hold = owned && owned.cargo;
+        if (hold && typeof hold === 'object' && !Array.isArray(hold) && !Array.isArray(hold.slots)) {
+          hold.slots = packItemsIntoSlots(hold.items || {}, upsFor);
+        }
+      }
+    },
+  },
 ];
+
+// v23→v24 lookup: authored stack size per static commodity; persistent story items stack 1.
+const MIGRATION_STACK_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c.stack]));
+const PERSISTENT_STACK_IDS = new Set(PERSISTENT_CARGO.map((c) => c.id));
 
 /**
  * v10 → v11: seed world.records; strip runtime-only residency/frame smuggled keys from world overlay.

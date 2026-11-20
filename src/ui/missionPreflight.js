@@ -19,6 +19,8 @@ import { SECTORS } from '../data/sectors.js';
 import { stationBerthRefusal } from '../data/frontierRumors.js';
 import { forecastTransitFor, sectorSignalFor } from '../systems/sectorSim.js';
 import { authoredTenderHaul } from '../missions/tenderHaul.js';
+import { slotFitFor, unitsPerSlotFor } from '../systems/cargo.js';
+import { slotCountForCargoCap, slotUnitsFit } from '../data/cargoSlots.js';
 import { book4MissionChips } from './book4Choice.js';
 import {
   smugglingPreflightCopy,
@@ -858,18 +860,17 @@ export function missionPreflight(m, state) {
 
   const cargoNeed = missionCargoFootprint(m);
   if (cargoNeed.qty > 0) {
-    const cargo = state && state.player && state.player.cargo || {};
-    const cap = Number.isFinite(cargo.capVolume) ? cargo.capVolume : 0;
-    const used = Number.isFinite(cargo.usedVolume) ? cargo.usedVolume : 0;
-    const free = Math.max(0, cap - used);
     const oneLoad = ONE_LOAD_CARGO_TYPES.has(m && m.type);
     if (oneLoad) {
-      // The sim's _acceptPreflight rejects on free hold, before collateral/upfront charges. Keep
-      // this exact gate here so the dossier cannot expose an accept button the sim will refuse.
-      if (free < cargoNeed.volume) blockers.push(`Need ${fmtHoldUnits(cargoNeed.volume)} units of cargo capacity for this contract`);
+      // The sim's _acceptPreflight rejects on free slots, before collateral/upfront charges.
+      // Same gate here — slotFitFor is what addCargo will actually admit.
+      const p = (m && m.params) || {};
+      const fit = p.cmdtyId ? slotFitFor(state, p.cmdtyId) : 0;
+      const fits = fit >= cargoNeed.qty;
+      if (!fits) blockers.push(`Need ${fmtHoldUnits(cargoNeed.qty)} units of hold space for this contract`);
       chips.push({
-        kind: free < cargoNeed.volume ? 'bad' : 'ok',
-        text: `${fmtHoldUnits(cargoNeed.volume)} units hold required`,
+        kind: fits ? 'ok' : 'bad',
+        text: `${fmtHoldUnits(cargoNeed.qty)} units hold required`,
       });
     } else {
       chips.push({ kind: 'info', text: `${cargoNeed.qty.toLocaleString('en-US')} units quota` });
@@ -922,12 +923,12 @@ export function missionPreflight(m, state) {
     }
     const tenderCargo = state && state.player && state.player.cargo || {};
     const capVolume = Number.isFinite(tenderCargo.capVolume) ? tenderCargo.capVolume : 0;
-    const usedVolume = Number.isFinite(tenderCargo.usedVolume) ? tenderCargo.usedVolume : 0;
-    const freeHold = Math.max(0, capVolume - usedVolume);
+    const tenderCmdtyId = tenderParams.cmdtyId || null;
+    const freeHold = tenderCmdtyId ? Math.min(lotUnits, slotFitFor(state, tenderCmdtyId)) : 0;
     if (lotUnits > 0 && freeHold < lotUnits) {
       chips.push({
         kind: 'warn',
-        text: `CAUTION — the lot is ${fmtHoldUnits(lotUnits)} units; this hold carries ${fmtHoldUnits(freeHold)} units`,
+        text: `CAUTION — the lot is ${fmtHoldUnits(lotUnits)} units; this hold stacks ${fmtHoldUnits(freeHold)} units`,
       });
       // Only the racks this hull's cargo slots can take are named. When even the fullest fit
       // (the hull's base hold plus the best rack in every cargo slot — a rack already fitted is
@@ -937,9 +938,11 @@ export function missionPreflight(m, state) {
       const bestRack = tenderBestRackUnits(slotRanks);
       const hull = tenderHullDef(state);
       const baseHold = Math.max(0, Number(hull && hull.cargo) || 0);
-      const fullFitFree = bestRack == null
-        ? null
-        : Math.max(capVolume, baseHold + bestRack) - usedVolume;
+      const fullCapSlots = bestRack == null ? null
+        : slotCountForCargoCap(Math.max(capVolume, baseHold + bestRack));
+      const fullFitFree = fullCapSlots == null || !tenderCmdtyId ? null
+        : slotUnitsFit(tenderCargo.slots || [], fullCapSlots, tenderCmdtyId,
+            unitsPerSlotFor(state, tenderCmdtyId));
       if (fullFitFree != null && fullFitFree < lotUnits) {
         warnings.push(`The lot cannot ride one hold on this hull, even fully racked (${fmtHoldUnits(Math.max(0, fullFitFree))} units at best). The honest plan is two runs: haul what fits, sell it into the desk, and come back for the rest — the window is already running.`);
       } else {

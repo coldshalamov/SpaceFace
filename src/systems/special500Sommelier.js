@@ -13,7 +13,7 @@
 // an intent to its canonical owner. Determinism: the settlement reads live state only; the
 // one-time gate is the save-carried plain flag.
 
-import { addCargo, cargoUnitVolume } from './cargo.js';
+import { addCargo, slotFitFor } from './cargo.js';
 import { SOMMELIER } from '../data/special500/sommelier.js';
 
 export const special500Sommelier = {
@@ -70,13 +70,8 @@ export const special500Sommelier = {
       return { outcome: 'short' };
     }
     // The pour must fit the hold: the censer does not half-pour a vintage.
-    const cargo = state.player && state.player.cargo;
-    const unitVol = cargoUnitVolume(state, SOMMELIER.pourCommodity);
-    const free = cargo && Number.isFinite(cargo.capVolume) && Number.isFinite(cargo.usedVolume)
-      ? cargo.capVolume - cargo.usedVolume
-      : Infinity;
-    const need = SOMMELIER.pourCells * unitVol;
-    if (!(free >= need)) {
+    const need = SOMMELIER.pourCells;
+    if (!(slotFitFor(state, SOMMELIER.pourCommodity) >= need)) {
       this._emitReceipt('no_room');
       return { outcome: 'no_room' };
     }

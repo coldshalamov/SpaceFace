@@ -139,7 +139,10 @@ export function defaultPlayer() {
     efficiencyMods: { miningYieldMult: 1, shieldRegenMult: 1, energyRegenMult: 1, cargoCapMult: 1, tradeFeeMult: 1 },
     researchPoints: 0,
     salvageRights: 0,
-    cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 40, capMass: 60 },
+    // CARGO-BUILD-1: the hold is a slot bag — slots[] is the record, items the derived mirror.
+    // capVolume matches the starter hull's derived cargoCap (NEW_GAME.cargoCapacity=250); it stays
+    // as the mass/volume readout floor until ships.js writes the real derived stats.
+    cargo: { slots: [], slotCount: 12, items: {}, usedVolume: 0, usedMass: 0, capVolume: 250, capMass: 60 },
     targetId: null,
     fireGroups: { 1: [], 2: [] },
     boostActive: false,

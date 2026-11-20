@@ -4,6 +4,7 @@ import { KILL_MACHINE_BY_ID } from '../data/environmentalMachinery.js';
 import { MISSION_TUNING } from '../data/missions.js';
 import { WRECK_COLLIDER_PROPORTIONS } from '../data/wreckClasses.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { slotFitFor } from './cargo.js';
 
 const MACHINE = KILL_MACHINE_BY_ID.excavator_jaws;
 const OFFER_ID = 'working_battlefield:excavator_jaws';
@@ -58,9 +59,8 @@ export function workingBattlefieldPreflight(state) {
     return { ok: false, reason: 'Fit a mining beam and a gun at the Helios shipyard before taking this job.' };
   }
   if (!state.story?.flags?.workingBattlefieldPolymers) {
-    const hold = state.player.cargo;
-    if (hold.capVolume - hold.usedVolume < ALLOTMENT * 1.2) {
-      return { ok: false, reason: 'Make 2.4u of cargo room for the two job polymers before accepting.' };
+    if (slotFitFor(state, 'cmdty_polymers') < ALLOTMENT) {
+      return { ok: false, reason: 'Make room in the hold for the two job polymers before accepting.' };
     }
   }
   return { ok: true };

@@ -45,7 +45,7 @@ import {
   shipmentUsed,
 } from './cargoCustody.js';
 import { indexedTypeScan } from '../world/livingWorldViews.js';
-import { addCargo, removeCargo, sellableCargoQuantity, cargoUnitVolume } from './cargo.js';
+import { addCargo, removeCargo, sellableCargoQuantity, slotFitFor } from './cargo.js';
 import { COMMODITIES } from '../data/commodities.js';
 import {
   normalizeOutpostOperation, outpostCommodity, outpostInputCapacity, outpostInputIds,
@@ -3137,10 +3137,7 @@ export const automation = {
   _collectOutpostGood(o, good, available, consume) {
     const def = COMMODITY_BY_ID.get(good), cargo = this.state.player?.cargo;
     if (!def || !cargo) return 0;
-    const free = cargo.capVolume - cargo.usedVolume;
-    const volume = cargoUnitVolume(this.state, good);
-    if (!Number.isFinite(free)) return 0;
-    const qty = Math.max(0, Math.min(Math.floor(available), volume > 0 ? Math.floor(free / volume) : Math.floor(available)));
+    const qty = Math.max(0, Math.min(Math.floor(available), slotFitFor(this.state, good)));
     if (qty <= 0) return 0;
     consume(qty);
     const accepted = addCargo(this.state, good, qty);

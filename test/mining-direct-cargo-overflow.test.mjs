@@ -5,7 +5,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { cargo as cargoBase } from '../src/systems/cargo.js';
 import { mining as miningBase } from '../src/systems/mining.js';
 
-function bootRelease(capVolume) {
+function bootRelease(capVolume, cargoExtra) {
   const player = {
     id: 1,
     type: 'ship',
@@ -24,7 +24,7 @@ function bootRelease(capVolume) {
   };
   const state = {
     playerId: player.id,
-    player: { cargo: { items: {}, capVolume, capMass: 100, usedVolume: 0, usedMass: 0 } },
+    player: { cargo: { items: {}, capVolume, capMass: 100, usedVolume: 0, usedMass: 0, ...cargoExtra } },
     entities: new Map([[player.id, player], [asteroid.id, asteroid]]),
     entityList: [player, asteroid],
     rng: () => 0,
@@ -46,19 +46,31 @@ function bootRelease(capVolume) {
   return { state, mining, asteroid, player, spawned };
 }
 
-test('direct-feed mining spills ordinary ore as pickups when the hold is full', () => {
-  const full = bootRelease(0);
+test('direct-feed mining spills ordinary ore as pickups when every slot is full', () => {
+  // Slot law (CARGO-BUILD-1): a bag whose only slot holds a full stack admits nothing.
+  const full = bootRelease(0, {
+    slotCount: 1,
+    slots: [{ commodityId: 'cmdty_ore_iron', qty: 20 }],
+    items: { cmdty_ore_iron: 20 },
+    usedVolume: 20,
+  });
   full.mining._releaseOre(full.asteroid, { oreTable: { cmdty_ore_iron: 1 } }, 5, full.player);
-  assert.equal(full.state.player.cargo.items.cmdty_ore_iron, undefined);
+  assert.equal(full.state.player.cargo.items.cmdty_ore_iron, 20);
   assert.equal(full.spawned.length, 1);
   assert.equal(full.spawned[0].data.commodityId, 'cmdty_ore_iron');
   assert.equal(full.spawned[0].data.amount, 5);
 });
 
 test('direct-feed mining keeps what fits and spills only the rejected remainder', () => {
-  const partial = bootRelease(2);
+  // One slot with two units of headroom: the beam banks 2 and spills 3.
+  const partial = bootRelease(0, {
+    slotCount: 1,
+    slots: [{ commodityId: 'cmdty_ore_iron', qty: 18 }],
+    items: { cmdty_ore_iron: 18 },
+    usedVolume: 18,
+  });
   partial.mining._releaseOre(partial.asteroid, { oreTable: { cmdty_ore_iron: 1 } }, 5, partial.player);
-  assert.equal(partial.state.player.cargo.items.cmdty_ore_iron, 2);
+  assert.equal(partial.state.player.cargo.items.cmdty_ore_iron, 20);
   assert.equal(partial.spawned.length, 1);
   assert.equal(partial.spawned[0].data.amount, 3);
 });
