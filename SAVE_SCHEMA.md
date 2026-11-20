@@ -540,6 +540,7 @@ Current save version: `23`
 | `$.settings.gameplay.autosaveIntervalS` | number | 300 |
 | `$.settings.gameplay.controlScheme` | string | pilot |
 | `$.settings.gameplay.controlSchemeV2` | boolean | true |
+| `$.settings.gameplay.damageNumbers` | boolean | false |
 | `$.settings.gameplay.difficulty` | string | standard |
 | `$.settings.gameplay.flightBackend` | string | v3 |
 | `$.settings.gameplay.gameSpeed` | number | 1 |
