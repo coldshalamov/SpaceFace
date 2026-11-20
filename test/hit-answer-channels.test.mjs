@@ -169,7 +169,8 @@ function wireLiveChannels(state, bus) {
 
 test('default-kit packets carry the mass channel under the production profile', () => {
   applyFeatureConfigToMaps(PRODUCTION_FEATURES);
-  const AUTHORED_IMPULSE = { wpn_autocannon_m: 48, wpn_concussion_cannon_m: 920 };
+  // R5 Thump retune 2026-11-20: the concussion M wallops (920 → 1400).
+  const AUTHORED_IMPULSE = { wpn_autocannon_m: 48, wpn_concussion_cannon_m: 1400 };
   for (const { id } of DEFAULT_KIT) {
     const def = weaponDef(id);
     assert.equal(def.impulsePerHit, AUTHORED_IMPULSE[id],

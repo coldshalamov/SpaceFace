@@ -83,7 +83,7 @@ test('setup tools keep their authored ping impulse — their verb is not the hit
 
 test('shoveMetricValue surfaces exactly the momentum that matters', () => {
   assert.equal(shoveMetricValue(byId.get('wpn_pulse_laser_s')), 84);
-  assert.equal(shoveMetricValue(byId.get('wpn_concussion_cannon_m')), 920);
+  assert.equal(shoveMetricValue(byId.get('wpn_concussion_cannon_m')), 1400, 'R5 Thump retune 2026-11-20');
   assert.equal(shoveMetricValue(byId.get('wpn_vector_mine_m')), 756);
   assert.equal(shoveMetricValue(byId.get('wpn_inertial_shunt_s')), null, 'a 1-momentum ping is not a shove metric');
   assert.equal(shoveMetricValue(byId.get('wpn_flak_turret_s')), null, 'flak fragments are not a shove metric');

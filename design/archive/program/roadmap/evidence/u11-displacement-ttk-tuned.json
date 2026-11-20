@@ -98,7 +98,7 @@
     },
     {
       "id": "concussion_impulse_budget",
-      "finding": "Concussion Cannon M supplies 920 momentum per hit: about 57.5 wu/s on the light hull and 15.333333 wu/s on the medium hull before contact response.",
+      "finding": "Concussion Cannon M supplies 1400 momentum per hit: about 87.5 wu/s on the light hull and 23.333333 wu/s on the medium hull before contact response.",
       "refs": [
         "src/data/weapons.js:185",
         "src/data/weapons.js:189",
@@ -167,7 +167,7 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 0.883333,
+      "ttkS": 0.566667,
       "inputEffort": 1,
       "shotsFired": 1,
       "collisions": 1,
@@ -177,10 +177,10 @@
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 53,
-        "simTimeS": 0.883333,
-        "speed": 57.5,
-        "exchangedMomentum": 920
+        "tick": 34,
+        "simTimeS": 0.566667,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -191,7 +191,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 20.125,
+        "speed": 30.625,
         "x": 194.322976,
         "z": 3.112302
       },
@@ -239,7 +239,7 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 0.916667,
+      "ttkS": 0.6,
       "inputEffort": 1,
       "shotsFired": 1,
       "collisions": 1,
@@ -249,10 +249,10 @@
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 55,
-        "simTimeS": 0.916667,
-        "speed": 57.5,
-        "exchangedMomentum": 920
+        "tick": 36,
+        "simTimeS": 0.6,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -263,7 +263,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 20.125,
+        "speed": 30.625,
         "x": 193.008018,
         "z": 3.815582
       },
@@ -311,20 +311,20 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 1.066667,
-      "inputEffort": 2,
-      "shotsFired": 2,
+      "ttkS": 0.75,
+      "inputEffort": 1,
+      "shotsFired": 1,
       "collisions": 1,
-      "terrainCollisionDamage": 117.368,
-      "directWeaponDamage": 22.632,
+      "terrainCollisionDamage": 128.684,
+      "directWeaponDamage": 11.316,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 64,
-        "simTimeS": 1.066667,
-        "speed": 115,
-        "exchangedMomentum": 1840
+        "tick": 45,
+        "simTimeS": 0.75,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -335,7 +335,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 40.25,
+        "speed": 30.625,
         "x": 219.161678,
         "z": 3.767767
       },
@@ -383,20 +383,20 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 1.016667,
-      "inputEffort": 2,
-      "shotsFired": 2,
+      "ttkS": 0.666667,
+      "inputEffort": 1,
+      "shotsFired": 1,
       "collisions": 1,
-      "terrainCollisionDamage": 117.368,
-      "directWeaponDamage": 22.632,
+      "terrainCollisionDamage": 128.684,
+      "directWeaponDamage": 11.316,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 61,
-        "simTimeS": 1.016667,
-        "speed": 115,
-        "exchangedMomentum": 1840
+        "tick": 40,
+        "simTimeS": 0.666667,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -407,7 +407,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 40.25,
+        "speed": 30.625,
         "x": 203.126475,
         "z": -4.807558
       },
@@ -455,20 +455,20 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 1.166667,
-      "inputEffort": 2,
-      "shotsFired": 2,
+      "ttkS": 0.866667,
+      "inputEffort": 1,
+      "shotsFired": 1,
       "collisions": 1,
-      "terrainCollisionDamage": 117.368,
-      "directWeaponDamage": 22.632,
+      "terrainCollisionDamage": 128.684,
+      "directWeaponDamage": 11.316,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 70,
-        "simTimeS": 1.166667,
-        "speed": 115,
-        "exchangedMomentum": 1840
+        "tick": 52,
+        "simTimeS": 0.866667,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -479,7 +479,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 40.25,
+        "speed": 30.625,
         "x": 213.135511,
         "z": -2.747268
       },
@@ -527,20 +527,20 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 1.116667,
-      "inputEffort": 2,
-      "shotsFired": 2,
+      "ttkS": 0.8,
+      "inputEffort": 1,
+      "shotsFired": 1,
       "collisions": 1,
-      "terrainCollisionDamage": 117.368,
-      "directWeaponDamage": 22.632,
+      "terrainCollisionDamage": 128.684,
+      "directWeaponDamage": 11.316,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 67,
-        "simTimeS": 1.116667,
-        "speed": 115,
-        "exchangedMomentum": 1840
+        "tick": 48,
+        "simTimeS": 0.8,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -551,7 +551,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 40.25,
+        "speed": 30.625,
         "x": 223.759576,
         "z": 4.264401
       },
@@ -599,7 +599,7 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 0.983333,
+      "ttkS": 0.65,
       "inputEffort": 1,
       "shotsFired": 1,
       "collisions": 1,
@@ -609,10 +609,10 @@
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 59,
-        "simTimeS": 0.983333,
-        "speed": 57.5,
-        "exchangedMomentum": 920
+        "tick": 39,
+        "simTimeS": 0.65,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -623,7 +623,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 20.125,
+        "speed": 30.625,
         "x": 203.372745,
         "z": 4.282457
       },
@@ -671,7 +671,7 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 0.933333,
+      "ttkS": 0.616667,
       "inputEffort": 1,
       "shotsFired": 1,
       "collisions": 1,
@@ -681,10 +681,10 @@
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 56,
-        "simTimeS": 0.933333,
-        "speed": 57.5,
-        "exchangedMomentum": 920
+        "tick": 37,
+        "simTimeS": 0.616667,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -695,7 +695,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 20.125,
+        "speed": 30.625,
         "x": 186.032514,
         "z": 4.070015
       },
@@ -743,20 +743,20 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 1.066667,
-      "inputEffort": 2,
-      "shotsFired": 2,
+      "ttkS": 0.733333,
+      "inputEffort": 1,
+      "shotsFired": 1,
       "collisions": 1,
-      "terrainCollisionDamage": 117.368,
-      "directWeaponDamage": 22.632,
+      "terrainCollisionDamage": 128.684,
+      "directWeaponDamage": 11.316,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 64,
-        "simTimeS": 1.066667,
-        "speed": 115,
-        "exchangedMomentum": 1840
+        "tick": 44,
+        "simTimeS": 0.733333,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -767,7 +767,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 40.25,
+        "speed": 30.625,
         "x": 208.995686,
         "z": 2.788665
       },
@@ -815,7 +815,7 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 0.95,
+      "ttkS": 0.616667,
       "inputEffort": 1,
       "shotsFired": 1,
       "collisions": 1,
@@ -825,10 +825,10 @@
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 57,
-        "simTimeS": 0.95,
-        "speed": 57.5,
-        "exchangedMomentum": 920
+        "tick": 37,
+        "simTimeS": 0.616667,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -839,7 +839,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 20.125,
+        "speed": 30.625,
         "x": 200.643752,
         "z": -4.009291
       },
@@ -887,20 +887,20 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 1.05,
-      "inputEffort": 2,
-      "shotsFired": 2,
+      "ttkS": 0.716667,
+      "inputEffort": 1,
+      "shotsFired": 1,
       "collisions": 1,
-      "terrainCollisionDamage": 117.368,
-      "directWeaponDamage": 22.632,
+      "terrainCollisionDamage": 128.684,
+      "directWeaponDamage": 11.316,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 63,
-        "simTimeS": 1.05,
-        "speed": 115,
-        "exchangedMomentum": 1840
+        "tick": 43,
+        "simTimeS": 0.716667,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -911,7 +911,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 40.25,
+        "speed": 30.625,
         "x": 206.209937,
         "z": 1.236795
       },
@@ -959,20 +959,20 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 1.166667,
-      "inputEffort": 2,
-      "shotsFired": 2,
+      "ttkS": 0.883333,
+      "inputEffort": 1,
+      "shotsFired": 1,
       "collisions": 1,
-      "terrainCollisionDamage": 117.368,
-      "directWeaponDamage": 22.632,
+      "terrainCollisionDamage": 128.684,
+      "directWeaponDamage": 11.316,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 70,
-        "simTimeS": 1.166667,
-        "speed": 115,
-        "exchangedMomentum": 1840
+        "tick": 53,
+        "simTimeS": 0.883333,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -983,7 +983,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 40.25,
+        "speed": 30.625,
         "x": 211.164933,
         "z": 3.304605
       },
@@ -1031,20 +1031,20 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 1.166667,
-      "inputEffort": 2,
-      "shotsFired": 2,
+      "ttkS": 0.866667,
+      "inputEffort": 1,
+      "shotsFired": 1,
       "collisions": 1,
-      "terrainCollisionDamage": 117.368,
-      "directWeaponDamage": 22.632,
+      "terrainCollisionDamage": 128.684,
+      "directWeaponDamage": 11.316,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 70,
-        "simTimeS": 1.166667,
-        "speed": 115,
-        "exchangedMomentum": 1840
+        "tick": 52,
+        "simTimeS": 0.866667,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -1055,7 +1055,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 40.25,
+        "speed": 30.625,
         "x": 228.374026,
         "z": 1.242263
       },
@@ -1103,20 +1103,20 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 1,
-      "inputEffort": 2,
-      "shotsFired": 2,
+      "ttkS": 0.666667,
+      "inputEffort": 1,
+      "shotsFired": 1,
       "collisions": 1,
-      "terrainCollisionDamage": 117.368,
-      "directWeaponDamage": 22.632,
+      "terrainCollisionDamage": 128.684,
+      "directWeaponDamage": 11.316,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 60,
-        "simTimeS": 1,
-        "speed": 115,
-        "exchangedMomentum": 1840
+        "tick": 40,
+        "simTimeS": 0.666667,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -1127,7 +1127,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 40.25,
+        "speed": 30.625,
         "x": 203.487499,
         "z": -1.708199
       },
@@ -1175,20 +1175,20 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 1.166667,
-      "inputEffort": 2,
-      "shotsFired": 2,
+      "ttkS": 0.883333,
+      "inputEffort": 1,
+      "shotsFired": 1,
       "collisions": 1,
-      "terrainCollisionDamage": 117.368,
-      "directWeaponDamage": 22.632,
+      "terrainCollisionDamage": 128.684,
+      "directWeaponDamage": 11.316,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 70,
-        "simTimeS": 1.166667,
-        "speed": 115,
-        "exchangedMomentum": 1840
+        "tick": 53,
+        "simTimeS": 0.883333,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -1199,7 +1199,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 40.25,
+        "speed": 30.625,
         "x": 217.862842,
         "z": 1.619897
       },
@@ -1247,7 +1247,7 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 0.9,
+      "ttkS": 0.583333,
       "inputEffort": 1,
       "shotsFired": 1,
       "collisions": 1,
@@ -1257,10 +1257,10 @@
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 54,
-        "simTimeS": 0.9,
-        "speed": 57.5,
-        "exchangedMomentum": 920
+        "tick": 35,
+        "simTimeS": 0.583333,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -1271,7 +1271,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 20.125,
+        "speed": 30.625,
         "x": 187.812864,
         "z": 3.336629
       },
@@ -1319,20 +1319,20 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 1.166667,
-      "inputEffort": 2,
-      "shotsFired": 2,
+      "ttkS": 0.883333,
+      "inputEffort": 1,
+      "shotsFired": 1,
       "collisions": 1,
-      "terrainCollisionDamage": 117.368,
-      "directWeaponDamage": 22.632,
+      "terrainCollisionDamage": 128.684,
+      "directWeaponDamage": 11.316,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 70,
-        "simTimeS": 1.166667,
-        "speed": 115,
-        "exchangedMomentum": 1840
+        "tick": 53,
+        "simTimeS": 0.883333,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -1343,7 +1343,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 40.25,
+        "speed": 30.625,
         "x": 217.285053,
         "z": -4.898969
       },
@@ -1391,20 +1391,20 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 1.066667,
-      "inputEffort": 2,
-      "shotsFired": 2,
+      "ttkS": 0.733333,
+      "inputEffort": 1,
+      "shotsFired": 1,
       "collisions": 1,
-      "terrainCollisionDamage": 117.368,
-      "directWeaponDamage": 22.632,
+      "terrainCollisionDamage": 128.684,
+      "directWeaponDamage": 11.316,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 64,
-        "simTimeS": 1.066667,
-        "speed": 115,
-        "exchangedMomentum": 1840
+        "tick": 44,
+        "simTimeS": 0.733333,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -1415,7 +1415,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 40.25,
+        "speed": 30.625,
         "x": 219.337411,
         "z": -1.23875
       },
@@ -1463,20 +1463,20 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 1.066667,
-      "inputEffort": 2,
-      "shotsFired": 2,
+      "ttkS": 0.75,
+      "inputEffort": 1,
+      "shotsFired": 1,
       "collisions": 1,
-      "terrainCollisionDamage": 117.368,
-      "directWeaponDamage": 22.632,
+      "terrainCollisionDamage": 128.684,
+      "directWeaponDamage": 11.316,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 64,
-        "simTimeS": 1.066667,
-        "speed": 115,
-        "exchangedMomentum": 1840
+        "tick": 45,
+        "simTimeS": 0.75,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -1487,7 +1487,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 40.25,
+        "speed": 30.625,
         "x": 215.304609,
         "z": 1.107172
       },
@@ -1535,20 +1535,20 @@
       "hullArchetype": "wasp_swarmer",
       "tactic": "DISPLACEMENT",
       "killed": true,
-      "ttkS": 1.133333,
-      "inputEffort": 2,
-      "shotsFired": 2,
+      "ttkS": 0.833333,
+      "inputEffort": 1,
+      "shotsFired": 1,
       "collisions": 1,
-      "terrainCollisionDamage": 117.368,
-      "directWeaponDamage": 22.632,
+      "terrainCollisionDamage": 128.684,
+      "directWeaponDamage": 11.316,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 68,
-        "simTimeS": 1.133333,
-        "speed": 115,
-        "exchangedMomentum": 1840
+        "tick": 50,
+        "simTimeS": 0.833333,
+        "speed": 87.5,
+        "exchangedMomentum": 1400
       },
       "kill": {
         "cause": "collision_terrain",
@@ -1559,7 +1559,7 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 40.25,
+        "speed": 30.625,
         "x": 225.232639,
         "z": 2.740992
       },
@@ -1612,17 +1612,17 @@
       "ttkS": 3,
       "inputEffort": 4,
       "shotsFired": 4,
-      "collisions": 1,
-      "terrainCollisionDamage": 202.881645,
-      "directWeaponDamage": 46.492799,
+      "collisions": 2,
+      "terrainCollisionDamage": 200.880645,
+      "directWeaponDamage": 44.146799,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 126,
-        "simTimeS": 2.1,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 95,
+        "simTimeS": 1.583333,
+        "speed": 46.666667,
+        "exchangedMomentum": 2800
       },
       "kill": {
         "cause": "weapon",
@@ -1633,8 +1633,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 180.101309,
+        "speed": 20.883333,
+        "x": 194.200476,
         "z": 3.112302
       },
       "notes": [
@@ -1688,17 +1688,17 @@
       "ttkS": 3,
       "inputEffort": 4,
       "shotsFired": 4,
-      "collisions": 1,
-      "terrainCollisionDamage": 202.881645,
-      "directWeaponDamage": 46.492799,
+      "collisions": 2,
+      "terrainCollisionDamage": 200.880645,
+      "directWeaponDamage": 44.146799,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 129,
-        "simTimeS": 2.15,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 98,
+        "simTimeS": 1.633333,
+        "speed": 46.666667,
+        "exchangedMomentum": 2800
       },
       "kill": {
         "cause": "weapon",
@@ -1709,8 +1709,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 179.591351,
+        "speed": 20.883333,
+        "x": 192.599685,
         "z": 3.815582
       },
       "notes": [
@@ -1762,17 +1762,17 @@
       "ttkS": 3,
       "inputEffort": 4,
       "shotsFired": 4,
-      "collisions": 1,
-      "terrainCollisionDamage": 202.881645,
-      "directWeaponDamage": 46.492799,
+      "collisions": 2,
+      "terrainCollisionDamage": 200.880645,
+      "directWeaponDamage": 44.146799,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 146,
-        "simTimeS": 2.433333,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 115,
+        "simTimeS": 1.916667,
+        "speed": 46.666667,
+        "exchangedMomentum": 2800
       },
       "kill": {
         "cause": "weapon",
@@ -1783,8 +1783,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 210.306678,
+        "speed": 20.883333,
+        "x": 217.120011,
         "z": 3.767767
       },
       "notes": [
@@ -1836,17 +1836,17 @@
       "ttkS": 3,
       "inputEffort": 4,
       "shotsFired": 4,
-      "collisions": 1,
-      "terrainCollisionDamage": 202.881645,
-      "directWeaponDamage": 46.492799,
+      "collisions": 2,
+      "terrainCollisionDamage": 200.880645,
+      "directWeaponDamage": 44.146799,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 137,
-        "simTimeS": 2.283333,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 106,
+        "simTimeS": 1.766667,
+        "speed": 46.666667,
+        "exchangedMomentum": 2800
       },
       "kill": {
         "cause": "weapon",
@@ -1857,8 +1857,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 191.856475,
+        "speed": 20.883333,
+        "x": 201.942308,
         "z": -4.807558
       },
       "notes": [
@@ -1917,10 +1917,10 @@
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 160,
-        "simTimeS": 2.666667,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 126,
+        "simTimeS": 2.1,
+        "speed": 70,
+        "exchangedMomentum": 4200
       },
       "kill": {
         "cause": "weapon",
@@ -1931,8 +1931,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 208.037178,
+        "speed": 1.166667,
+        "x": 191.493844,
         "z": -2.747268
       },
       "notes": [
@@ -1991,10 +1991,10 @@
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 153,
-        "simTimeS": 2.55,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 121,
+        "simTimeS": 2.016667,
+        "speed": 70,
+        "exchangedMomentum": 4200
       },
       "kill": {
         "cause": "weapon",
@@ -2005,8 +2005,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 216.782909,
+        "speed": 1.166667,
+        "x": 200.076243,
         "z": 4.264401
       },
       "notes": [
@@ -2058,17 +2058,17 @@
       "ttkS": 3,
       "inputEffort": 4,
       "shotsFired": 4,
-      "collisions": 1,
-      "terrainCollisionDamage": 202.881645,
-      "directWeaponDamage": 46.492799,
+      "collisions": 2,
+      "terrainCollisionDamage": 200.880645,
+      "directWeaponDamage": 44.146799,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 134,
-        "simTimeS": 2.233333,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 103,
+        "simTimeS": 1.716667,
+        "speed": 46.666667,
+        "exchangedMomentum": 2800
       },
       "kill": {
         "cause": "weapon",
@@ -2079,8 +2079,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 191.297745,
+        "speed": 20.883333,
+        "x": 202.474412,
         "z": 4.282457
       },
       "notes": [
@@ -2132,17 +2132,17 @@
       "ttkS": 3,
       "inputEffort": 4,
       "shotsFired": 4,
-      "collisions": 1,
-      "terrainCollisionDamage": 202.881645,
-      "directWeaponDamage": 46.492799,
+      "collisions": 2,
+      "terrainCollisionDamage": 200.880645,
+      "directWeaponDamage": 44.146799,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 130,
-        "simTimeS": 2.166667,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 99,
+        "simTimeS": 1.65,
+        "speed": 46.666667,
+        "exchangedMomentum": 2800
       },
       "kill": {
         "cause": "weapon",
@@ -2153,8 +2153,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 172.884181,
+        "speed": 20.883333,
+        "x": 185.501681,
         "z": 4.070015
       },
       "notes": [
@@ -2206,17 +2206,17 @@
       "ttkS": 3,
       "inputEffort": 4,
       "shotsFired": 4,
-      "collisions": 1,
-      "terrainCollisionDamage": 202.881645,
-      "directWeaponDamage": 46.492799,
+      "collisions": 2,
+      "terrainCollisionDamage": 200.880645,
+      "directWeaponDamage": 44.146799,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 145,
-        "simTimeS": 2.416667,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 113,
+        "simTimeS": 1.883333,
+        "speed": 46.666667,
+        "exchangedMomentum": 2800
       },
       "kill": {
         "cause": "weapon",
@@ -2227,8 +2227,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 199.872353,
+        "speed": 20.883333,
+        "x": 207.158186,
         "z": 2.788665
       },
       "notes": [
@@ -2280,17 +2280,17 @@
       "ttkS": 3,
       "inputEffort": 4,
       "shotsFired": 4,
-      "collisions": 1,
-      "terrainCollisionDamage": 202.881645,
-      "directWeaponDamage": 46.492799,
+      "collisions": 2,
+      "terrainCollisionDamage": 200.880645,
+      "directWeaponDamage": 44.146799,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 131,
-        "simTimeS": 2.183333,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 100,
+        "simTimeS": 1.666667,
+        "speed": 46.666667,
+        "exchangedMomentum": 2800
       },
       "kill": {
         "cause": "weapon",
@@ -2301,8 +2301,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 187.763752,
+        "speed": 20.883333,
+        "x": 200.031252,
         "z": -4.009291
       },
       "notes": [
@@ -2354,17 +2354,17 @@
       "ttkS": 3,
       "inputEffort": 4,
       "shotsFired": 4,
-      "collisions": 1,
-      "terrainCollisionDamage": 202.881645,
-      "directWeaponDamage": 46.492799,
+      "collisions": 2,
+      "terrainCollisionDamage": 200.880645,
+      "directWeaponDamage": 44.146799,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 142,
-        "simTimeS": 2.366667,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 111,
+        "simTimeS": 1.85,
+        "speed": 46.666667,
+        "exchangedMomentum": 2800
       },
       "kill": {
         "cause": "weapon",
@@ -2375,8 +2375,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 196.281604,
+        "speed": 20.883333,
+        "x": 204.53577,
         "z": 1.236795
       },
       "notes": [
@@ -2435,10 +2435,10 @@
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 161,
-        "simTimeS": 2.683333,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 126,
+        "simTimeS": 2.1,
+        "speed": 70,
+        "exchangedMomentum": 4200
       },
       "kill": {
         "cause": "weapon",
@@ -2449,8 +2449,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 206.334933,
+        "speed": 1.166667,
+        "x": 189.523266,
         "z": 3.304605
       },
       "notes": [
@@ -2509,10 +2509,10 @@
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 160,
-        "simTimeS": 2.666667,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 126,
+        "simTimeS": 2.1,
+        "speed": 70,
+        "exchangedMomentum": 4200
       },
       "kill": {
         "cause": "weapon",
@@ -2523,8 +2523,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 223.275693,
+        "speed": 1.166667,
+        "x": 206.732359,
         "z": 1.242263
       },
       "notes": [
@@ -2576,17 +2576,17 @@
       "ttkS": 3,
       "inputEffort": 4,
       "shotsFired": 4,
-      "collisions": 1,
-      "terrainCollisionDamage": 202.881645,
-      "directWeaponDamage": 46.492799,
+      "collisions": 2,
+      "terrainCollisionDamage": 200.880645,
+      "directWeaponDamage": 44.146799,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 137,
-        "simTimeS": 2.283333,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 106,
+        "simTimeS": 1.766667,
+        "speed": 46.666667,
+        "exchangedMomentum": 2800
       },
       "kill": {
         "cause": "weapon",
@@ -2597,8 +2597,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 192.217499,
+        "speed": 20.883333,
+        "x": 202.303332,
         "z": -1.708199
       },
       "notes": [
@@ -2657,10 +2657,10 @@
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 161,
-        "simTimeS": 2.683333,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 126,
+        "simTimeS": 2.1,
+        "speed": 70,
+        "exchangedMomentum": 4200
       },
       "kill": {
         "cause": "weapon",
@@ -2671,8 +2671,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 213.032842,
+        "speed": 1.166667,
+        "x": 196.221175,
         "z": 1.619897
       },
       "notes": [
@@ -2726,17 +2726,17 @@
       "ttkS": 3,
       "inputEffort": 4,
       "shotsFired": 4,
-      "collisions": 1,
-      "terrainCollisionDamage": 202.881645,
-      "directWeaponDamage": 46.492799,
+      "collisions": 2,
+      "terrainCollisionDamage": 200.880645,
+      "directWeaponDamage": 44.146799,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 127,
-        "simTimeS": 2.116667,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 96,
+        "simTimeS": 1.6,
+        "speed": 46.666667,
+        "exchangedMomentum": 2800
       },
       "kill": {
         "cause": "weapon",
@@ -2747,8 +2747,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 173.859531,
+        "speed": 20.883333,
+        "x": 187.567864,
         "z": 3.336629
       },
       "notes": [
@@ -2807,10 +2807,10 @@
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 161,
-        "simTimeS": 2.683333,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 126,
+        "simTimeS": 2.1,
+        "speed": 70,
+        "exchangedMomentum": 4200
       },
       "kill": {
         "cause": "weapon",
@@ -2821,8 +2821,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 212.455053,
+        "speed": 1.166667,
+        "x": 195.643386,
         "z": -4.898969
       },
       "notes": [
@@ -2874,17 +2874,17 @@
       "ttkS": 3,
       "inputEffort": 4,
       "shotsFired": 4,
-      "collisions": 1,
-      "terrainCollisionDamage": 202.881645,
-      "directWeaponDamage": 46.492799,
+      "collisions": 2,
+      "terrainCollisionDamage": 200.880645,
+      "directWeaponDamage": 44.146799,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 145,
-        "simTimeS": 2.416667,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 114,
+        "simTimeS": 1.9,
+        "speed": 46.666667,
+        "exchangedMomentum": 2800
       },
       "kill": {
         "cause": "weapon",
@@ -2895,8 +2895,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 210.214078,
+        "speed": 20.883333,
+        "x": 217.377411,
         "z": -1.23875
       },
       "notes": [
@@ -2948,17 +2948,17 @@
       "ttkS": 3,
       "inputEffort": 4,
       "shotsFired": 4,
-      "collisions": 1,
-      "terrainCollisionDamage": 202.881645,
-      "directWeaponDamage": 46.492799,
+      "collisions": 2,
+      "terrainCollisionDamage": 200.880645,
+      "directWeaponDamage": 44.146799,
       "collateralDamage": 0,
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 146,
-        "simTimeS": 2.433333,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 115,
+        "simTimeS": 1.916667,
+        "speed": 46.666667,
+        "exchangedMomentum": 2800
       },
       "kill": {
         "cause": "weapon",
@@ -2969,8 +2969,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 206.449609,
+        "speed": 20.883333,
+        "x": 213.262942,
         "z": 1.107172
       },
       "notes": [
@@ -3029,10 +3029,10 @@
       "escapeRecoveryEvents": 0,
       "controlSuppressionTicks": 0,
       "firstTerrainImpact": {
-        "tick": 156,
-        "simTimeS": 2.6,
-        "speed": 46,
-        "exchangedMomentum": 2760
+        "tick": 123,
+        "simTimeS": 2.05,
+        "speed": 70,
+        "exchangedMomentum": 4200
       },
       "kill": {
         "cause": "weapon",
@@ -3043,8 +3043,8 @@
         "hull": 0,
         "armor": 0,
         "shield": 0,
-        "speed": 0.766667,
-        "x": 219.060972,
+        "speed": 1.166667,
+        "x": 202.365972,
         "z": 2.740992
       },
       "notes": [
@@ -3082,20 +3082,20 @@
       "runs": 20,
       "kills": 20,
       "survivors": 0,
-      "medianTtkS": 1.066667,
-      "p90TtkS": 1.166667,
-      "medianInputEffort": 2,
-      "p90InputEffort": 2,
-      "meanCollisionDamage": 120.7628,
-      "meanDirectWeaponDamage": 19.2372,
+      "medianTtkS": 0.733333,
+      "p90TtkS": 0.883333,
+      "medianInputEffort": 1,
+      "p90InputEffort": 1,
+      "meanCollisionDamage": 128.684,
+      "meanDirectWeaponDamage": 11.316,
       "escapeRecoveryEvents": 0,
       "collateralDamage": 0,
       "killCauseCounts": {
         "collision_terrain": 20
       },
       "outcomeVariance": {
-        "ttkStddevS": 0.094938,
-        "inputEffortStddev": 0.458258,
+        "ttkStddevS": 0.107108,
+        "inputEffortStddev": 0,
         "killRate": 1
       }
     },
@@ -3133,8 +3133,8 @@
       "p90TtkS": 3,
       "medianInputEffort": 4,
       "p90InputEffort": 4,
-      "meanCollisionDamage": 202.881645,
-      "meanDirectWeaponDamage": 46.492799,
+      "meanCollisionDamage": 201.580995,
+      "meanDirectWeaponDamage": 44.967899,
       "escapeRecoveryEvents": 0,
       "collateralDamage": 0,
       "killCauseCounts": {
@@ -3156,11 +3156,11 @@
       "medianInputEffort": 12
     },
     "light:DISPLACEMENT": {
-      "medianTtkS": 1.066667,
-      "p90TtkS": 1.166667,
+      "medianTtkS": 0.733333,
+      "p90TtkS": 0.883333,
       "kills": 20,
       "survivors": 0,
-      "medianInputEffort": 2
+      "medianInputEffort": 1
     },
     "medium:GUNFIRE": {
       "medianTtkS": 4.033333,

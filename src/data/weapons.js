@@ -57,7 +57,10 @@ const SHIPPED_WEAPONS = [
     // packed hull at least as fast and pays more Scrap, so the room stays the louder path. NPC copies of
     // this gun carry their own dmgOverride in src/data/enemies.js (wasp 6, zealot 4, reaver 6), so NPC
     // lethality is unchanged. Pinned by test/zc-a34-guns-nudge.test.mjs.
-    dmg: 9, rof: 5.5, dps: 49.5, damageType: 'energy', energyCost: 2,
+    // Combat lead 2026-11-20 (gun-curve bench): dmg 9 killed the reference Wasp in 2.2 s, just
+    // outside the Pew band (1.5–2.0 s). dmg 10 (dps 55) lands at 2.02 s, the band's edge; dmg 11
+    // would out-kill a committed throw (R5 keeps the room the louder path). Kick per hit unchanged.
+    dmg: 10, rof: 5.5, dps: 55, damageType: 'energy', energyCost: 2,
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.6,
     heatPerShot: 6, heatMax: 100, heatDissip: 16,
     // R5 is the PLAYER's starter. Every non-player copy of this gun (catalog enemies, the 47-A harasser,
@@ -105,7 +108,9 @@ const SHIPPED_WEAPONS = [
     dmg: 5, rof: 1.2, dps: 6.0, damageType: 'kinetic', energyCost: 3,
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 1.0,
     heatPerShot: 10, heatMax: 100, heatDissip: 24,
-    impulsePerHit: 520, environmentImpulsePerHit: 1024, tumbleTorque: 35, impulseProvenance: 'concussion_slug_s',
+    // Gun-curve bench 2026-11-20: one hit moved a Wasp 0.52 depth in 2 s; Thump needs >= 1 ("the
+    // cannon gun that wallops them… knocks them back so hard they become a weapon themselves").
+    impulsePerHit: 1100, environmentImpulsePerHit: 1024, tumbleTorque: 35, impulseProvenance: 'concussion_slug_s',
     // CW-WPN (INV-22 item 7): recoil is on the hull, never the camera. A light kicker still
     // answers on the firing ship through the shared physical-impulse path.
     recoilImpulse: 180,
@@ -319,7 +324,9 @@ const SHIPPED_WEAPONS = [
     dmg: 12, rof: 1.0, dps: 12, damageType: 'kinetic', energyCost: 6,
     projSpeed: 340, range: 260, tracking: 'fixed', spreadDeg: 1.2,
     heatPerShot: 16, heatMax: 100, heatDissip: 26,
-    impulsePerHit: 920, environmentImpulsePerHit: 1024, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
+    // Gun-curve bench 2026-11-20: one hit moved a Wasp 0.91 depth in 2 s; Thump needs >= 1 and the
+    // M must wallop harder than the S. (Rock kick stays the authored 1024: see the report's rock-mass note.)
+    impulsePerHit: 1400, environmentImpulsePerHit: 1024, tumbleTorque: 60, impulseProvenance: 'concussion_slug',
     // CW-WPN (INV-22 item 7): the hull pays part of the throw it deals - recoil on the ship,
     // never the camera (03_COMBAT.md:131-132), through the existing physical-impulse path.
     recoilImpulse: 320,
@@ -388,7 +395,7 @@ const SHIPPED_WEAPONS = [
     sentence: 'The starter bolt reborn meaner: the same push, faster and meaner on the follow-up.',
     // dmg follows its base, the starter bolt (R5, 2026-11-18: dmg 9): the unique keeps its own
     // cooler heat (5/shot) and Bank Shot/Relay — the same pistol, meaner on the follow-up.
-    dmg: 9, rof: 5.5, dps: 49.5, damageType: 'energy', energyCost: 2,
+    dmg: 10, rof: 5.5, dps: 55, damageType: 'energy', energyCost: 2,
     projSpeed: 320, range: 240, tracking: 'fixed', spreadDeg: 0.6,
     heatPerShot: 5, heatMax: 100, heatDissip: 12,
     impulsePerHit: 84, tumbleTorque: 0.05, impulseProvenance: 'starter_pulse_plink',

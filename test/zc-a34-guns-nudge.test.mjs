@@ -159,17 +159,19 @@ const TYPICAL_THROW_CLOSING = 60;
 // Ruling R5 (design/overhaul/00_RULINGS.md, owner 2026-11-18): "a pistol type weapon… they do damage, and
 // you can lay into enemies". The row-482 nerf (dmg 8 -> 5) is reversed past its origin: the starter is a
 // competent pistol, and it heats half as fast so it is not venting every three seconds.
-test('R5: the starter bolt is a competent pistol (dmg 9, dps 49.5, ~6 s of steady fire)', () => {
+test('R5: the starter bolt is a competent pistol (dmg 10, dps 55 — the Pew band, ~6 s of steady fire)', () => {
   const pulse = weapon('wpn_pulse_laser_s');
-  assert.equal(pulse.dmg, 9);          // row 482 had 5; before that 8
-  assert.equal(pulse.dps, 49.5);
+  // R5 + the gun-curve bench (2026-11-20): dmg 9 killed the reference Wasp in 2.2 s, outside the
+  // Pew band "kills in 1.5–2.0 s"; dmg 10 lands on the band's edge and stays slower than a throw.
+  assert.equal(pulse.dmg, 10, 'R5: "a pistol type weapon… they do damage" — the Pew band');          // row 482 had 5; before that 8, then 9
+  assert.equal(pulse.dps, 55);
   assert.equal(pulse.rof, 5.5, 'the burst cadence is untouched');
   const netHeatPerS = pulse.rof * pulse.heatPerShot - pulse.heatDissip;
   assert.ok(pulse.heatMax / netHeatPerS >= 5.5,
     `continuous fire lasts ${(pulse.heatMax / netHeatPerS).toFixed(1)} s before the vent (must be >= 5.5 s)`);
   const mirrorjaw = weapon('unique_mirrorjaw_pulse');
-  assert.equal(mirrorjaw.dmg, 9, 'the unique follows its base, the starter bolt');
-  assert.equal(mirrorjaw.dps, 49.5);
+  assert.equal(mirrorjaw.dmg, 10, 'the unique follows its base, the starter bolt');
+  assert.equal(mirrorjaw.dps, 55);
 });
 
 test('zc-a34: no enemy HP was inflated — the waves-1-10 roster stats are byte-identical', () => {
@@ -204,7 +206,7 @@ test('R5: non-player copies of the starter bolt keep the pre-R5 payload and heat
   const harasser = buildWeaponList(SHIPS.find((s) => s.id === 'ship_wasp'), fit, false)[0];
   assert.deepEqual([harasser.dmg, harasser.heat, harasser.heatDissip], [5, 8, 12], 'the 47-A harasser fires the old pulse');
   const mine = buildWeaponList(SHIPS.find((s) => s.id === 'ship_wasp'), fit, true)[0];
-  assert.deepEqual([mine.dmg, mine.heat, mine.heatDissip], [9, 6, 16], 'the same fitting on the player is the R5 pulse');
+  assert.deepEqual([mine.dmg, mine.heat, mine.heatDissip], [10, 6, 16], 'the same fitting on the player is the R5 pulse');
   const reaverPulse = makeEnemySpawnSpec('reaver_pirate', 1, { x: 0, z: 0 }).data.weapons.find((w) => w.defId === 'wpn_pulse_laser_s');
   assert.equal(reaverPulse.heatPerShot, 8, 'a catalog Reaver keeps the old heat per shot');
   assert.equal(reaverPulse.heat, 8, 'the runtime reads instance heat first (systems/weapons.js): a Reaver shot spends the old 8');
@@ -230,7 +232,8 @@ test('zc-a34: the concussion cannon follows the nudge law down — the shove is 
   const pulse = weapon('wpn_pulse_laser_s');
   assert.equal(concussion.dmg, 5);        // BEFORE: 6
   assert.equal(concussion.dps, 6.0);      // BEFORE: 7.2
-  assert.equal(concussion.impulsePerHit, 520, 'the shove is the payload — momentum untouched');
+  assert.equal(concussion.impulsePerHit, 1100,
+    'R5: "the cannon gun that wallops them… knocks them back so hard they become a weapon" — one hit sends a Wasp >= 1 screen depth in 2 s (gun-curve bench 2026-11-20)');
   assert.equal(concussion.tumbleTorque, 35, 'the tumble authority is untouched');
   assert.ok(concussion.dps < pulse.dps * 0.25,
     `concussion dps stays a fraction of the starter's (${(concussion.dps / pulse.dps * 100).toFixed(1)}% < 25%)`);

@@ -202,5 +202,7 @@ test('the 2 s shove probe integrates exactly 120 ticks', () => {
     Math.abs(run.displacementWu - run.finalSpeedWuS * (PROBE_TICKS / 60)) < 0.01,
     `displacement ${run.displacementWu} WU vs ${run.finalSpeedWuS} WU/s × ${PROBE_TICKS / 60} s`,
   );
-  assert.ok(Math.abs(run.displacementWu - 115) < 0.2, `Concussion Cannon M probe ${run.displacementWu} WU — expected ~115`);
+  // Thump retune 2026-11-20 (impulse 920 → 1400): one hit now carries a Wasp ~175 WU in 2 s
+  // (>= 1 screen depth of 126 WU, 03 §3.1 Thump).
+  assert.ok(Math.abs(run.displacementWu - 175) < 1, `Concussion Cannon M probe ${run.displacementWu} WU — expected ~175`);
 });

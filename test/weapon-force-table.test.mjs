@@ -27,7 +27,8 @@ test('five exact production impulse values and Mirrorjaw parity', () => {
   assert.equal(pulse.impulsePerHit, 84, 'wpn_pulse_laser_s impulsePerHit must be 84');
   assert.equal(mirrorjaw.impulsePerHit, 84, 'unique_mirrorjaw_pulse impulsePerHit must be 84');
   assert.equal(railgun.impulsePerHit, 168, 'wpn_railgun_m impulsePerHit must be 168');
-  assert.equal(concussion.impulsePerHit, 920, 'wpn_concussion_cannon_m impulsePerHit must be 920');
+  assert.equal(concussion.impulsePerHit, 1400,
+    'wpn_concussion_cannon_m impulsePerHit must be 1400 (R5 Thump: one hit sends a Wasp >= 1 screen depth in 2 s)');
   assert.equal(mine.impulsePerHit, 756, 'wpn_vector_mine_m impulsePerHit must be 756');
 
   // Mirrorjaw parity
@@ -53,10 +54,10 @@ test('Wasp delta-V fractions of cruise match authored expectations', () => {
   assert.equal(railDV, 10.5);
   assert.equal(railDV / WASP_CRUISE, 0.10);
 
-  // Concussion: ~54.76% (920 / 16 = 57.5 WU/s = ~0.5476 * 105, clearing one visible depth in 2 s)
+  // Concussion: 1400 / 16 = 87.5 WU/s (~83 % of cruise) — "wallops them… they become a weapon".
   const concussionDV = concussion.impulsePerHit / WASP_MASS;
-  assert.equal(concussionDV, 57.5);
-  assert.ok(Math.abs(concussionDV / WASP_CRUISE - 920 / (16 * 105)) < 1e-9);
+  assert.equal(concussionDV, 87.5);
+  assert.ok(Math.abs(concussionDV / WASP_CRUISE - 1400 / (16 * 105)) < 1e-9);
   assert.ok(concussionDV / WASP_CRUISE >= 0.30, 'concussion clears the 30% shove bar');
 
   // Vector Mine: exactly 45% at centre (756 / 16 = 47.25 WU/s = 0.45 * 105)
@@ -75,7 +76,7 @@ test('damage and ROF remain unchanged while force table is set', () => {
   // (row 482 had lowered it 8 -> 5). ROF and every impulse value are untouched — this test's protective
   // point (the force table never silently rewrites damage/ROF) is unchanged. Pinned alongside
   // test/zc-a34-guns-nudge.test.mjs.
-  assert.equal(pulse.dmg, 9);
+  assert.equal(pulse.dmg, 10, 'R5 Pew band: the starter kills a Wasp in ~2.0 s (gun-curve bench 2026-11-20)');
   assert.equal(pulse.rof, 5.5);
 
   assert.equal(railgun.dmg, 60);

@@ -63,8 +63,9 @@ test('mass response: throws light hulls, heavy hulls resist', () => {
   assert.ok(waspDeltaV > 30, `Wasp delta-V is ${waspDeltaV.toFixed(1)} WU/s (significant shove)`);
   assert.ok(waspDeltaV > 18, 'Exceeds tumbleDeltaV hitstun threshold');
 
-  // Heavy receives only ~3.47 WU/s
-  assert.ok(heavyDeltaV < 5, `Heavy delta-V is ${heavyDeltaV.toFixed(1)} WU/s (shrugs shove)`);
+  // Heavy receives ~7.3 WU/s — well under the 18 WU/s hitstun threshold: a heavy shrugs it
+  // (R5: "heavies shrug at Hose and Pew and fear thrown bodies, Thump and hazards" — they feel it, no tumble).
+  assert.ok(heavyDeltaV < 18, `Heavy delta-V is ${heavyDeltaV.toFixed(1)} WU/s (shrugs shove)`);
 });
 
 test('resolveWeaponImpulseForHit extracts correct physical impulse record', () => {
