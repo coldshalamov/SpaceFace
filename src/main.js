@@ -47,7 +47,8 @@ import { registerToastAction } from './ui/toastAction.js';
 import { installSlowFrameOffer, SLOW_OFFER_ACTION_ID } from './render/slowFrameOffer.js';
 import { createRuntimeFailurePresenter, describeBootFailure } from './ui/runtimeFailurePresenter.js';
 import { installGlobalErrorBoundary, attachErrorBoundary, recordRuntimeError } from './core/errorBoundary.js';
-import { authoredCriticalVisualReadiness, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
+import { authoredCriticalVisualReadiness, describeAuthoredUpgradeQueue, isAuthoredPartLibraryUsable } from './render/partsLibrary.js';
+import { bootMark, bootMarkOnce } from './core/bootTimeline.js';
 import { requiresRuckusWarmForNewGame, warmRuckusModel } from './render/characters/ruckusModel.js';
 import {
   settleRequiredPackageAdmission,
@@ -91,6 +92,7 @@ function debugRuntimeEnabled() {
 let diagnosticsState = null;
 
 async function boot() {
+  bootMark('main-boot-begin');
   installGlobalErrorBoundary();
   try {
     const modelTruthCensusUrl = runtimeAssetUrl('src/data/modelTruthCensus.json', import.meta.url);
@@ -105,6 +107,7 @@ async function boot() {
     contractPromise.catch(() => {});
     // Synchronous model measurements and localized copy are available before any system starts.
     await runtimeDataReady;
+    bootMark('runtime-data');
     const seed = (Date.now() & 0x7fffffff) >>> 0;
     const state = createGameState(seed);
     diagnosticsState = state;
@@ -112,10 +115,12 @@ async function boot() {
     // profile first so their boot resources match the player's settings on the very first frame.
     // This is read-only and therefore leaves the raw profile byte-identical.
     bootstrapProfileSettingsBeforeRegistry(state);
+    bootMark('state-created');
     // English source copy needs no inventory. A saved language/URL choice is prepared before
     // registry initialization can mount its first interactive localized screen.
     await ensureLocaleReady(state.settings?.locale || startupLocale);
     setGameLocale(state.settings?.locale || startupLocale);
+    bootMark('locale-ready', state.settings?.locale || startupLocale);
     // Phase 2: seed gameplay feature MAPS from the explicit production runtime profile (not
     // typeof window). createRegistry also re-applies from state.settings.gameplay.runtimeProfile.
     if (!state.settings.gameplay) state.settings.gameplay = {};
@@ -163,6 +168,7 @@ async function boot() {
     // sim-owned systems when the whole sim lives in the worker.
     const simLaneFlags = resolveSimLaneFlags();
     for (const w of simLaneFlags.warnings) console.warn(`[simLane] ${w}`);
+    bootMark('registry-eval-start', simLaneFlags.lane);
     const ctx = {
       state,
       bus,
@@ -233,6 +239,7 @@ async function boot() {
       registry = await createFullRegistry();
       ctx.registry = registry;
     }
+    bootMark('sim-worker-ready', ctx.simLane);
     // The render publisher binds ctx.presentationJournal at renderer init —
     // under the lane it must read the transport journal, not the in-process
     // one (which the worker's journal replaces wholesale).
@@ -248,6 +255,7 @@ async function boot() {
         });
       },
     });
+    bootMark('registry-init-done', `${bootInitMetrics?.initialized?.length ?? '?'} systems`);
     // The shell's normal close waits for the existing exit-save owner and queued mirrors.
     window.spacefaceShell?.onPrepareQuit?.(async () => {
       const owner = ctx.registry?.get?.('save');
@@ -406,6 +414,7 @@ async function boot() {
     bus.on('settings:changed', () => applyAccessibility(state.settings));
     bus.on('save:loaded', () => applyAccessibility(state.settings));
     bus.on('save:restoring', () => configureRacingCorridorSession(state, false));
+    bus.on('game:started', () => bootMark('game-started'));
     // Worker lane: the sim realm's save.load restores state off-thread, so the
     // restore generator's own helpers.finalizeLoadedGame call never fires
     // there. The bridged save:loaded is the same signal — drive the identical
@@ -437,6 +446,7 @@ async function boot() {
     // (the save system handles game:load and emits save:loaded).
     bus.on('game:new', (opts) => {
       retryPreparedOpeningRoom = null;
+      bootMark('new-game-pressed');
       const startNewGameTransition = (preparedOpeningRoom = null) => {
         const transitionToken = runTransitionGuard.begin('new-game');
         if (state.render) state.render.admissionRunGeneration = transitionToken.generation;
@@ -504,11 +514,12 @@ async function boot() {
       // recently — the runner's accepted presents are exactly that evidence,
       // while its suspended/restoring window correctly stops stamping. The same present also
       // feeds the slow-frame offer its per-callback frame time.
-      onPresented() { lastPaintAt = nowMs(); slowFrameOffer.onPresented(); },
+      onPresented() { lastPaintAt = nowMs(); slowFrameOffer.onPresented(); noteFlightFrameMarks(state); },
       onSimulationFailure: recoverRuntimeFailure,
       onPresentationFailure: recoverRuntimeFailure,
     });
     ctx.simStep = () => loopController.stepOnce();
+    bootMark('loop-started');
     const loopDebug = {
       getDiagnostics: () => loopController.getDiagnostics(),
       getPresentationFrame: () => loopController.getPresentationFrame?.(),
@@ -531,7 +542,12 @@ async function boot() {
     bus.emit('game:loadingProgress', { id: 'boot-menu', progress: .96, ceiling: .997,
       label: 'Opening the command deck', detail: 'All systems online' });
     await nextPaint();
+    bootMark('title-paint');
     loadingPresenter.hide();
+    bootMark('title-visible');
+    // The first screen root actually on the page is the player's real "title usable"
+    // point — the shell can lift a beat before uiRoot pushes it, so poll the DOM.
+    markTitleInteractiveWhenScreenMounts();
 
     // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)
     SF_DEBUG_ONLY: if (SF_DEBUG) {
@@ -947,12 +963,16 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
     ),
     readPackageAdmission: () => (state.render && state.render.requiredPackageAdmission) || null,
     awaitSettledPackageAdmission: () => settleRequiredPackageAdmission(state),
-    reportProgress: (stage) => bus.emit('game:loadingProgress', {
-      ...stage,
-      detail: loadingDetailForStage(stage),
-      transition: 'new-game',
-      ...(preparedOpeningRoom ? { destination: 'Crucible' } : {}),
-    }),
+    reportProgress: (stage) => {
+      bootMark(`stage:${stage && stage.id || 'unknown'}`, stage && stage.label);
+      if (stage && stage.id === 'authored-library') bootMark('world-built');
+      bus.emit('game:loadingProgress', {
+        ...stage,
+        detail: loadingDetailForStage(stage),
+        transition: 'new-game',
+        ...(preparedOpeningRoom ? { destination: 'Crucible' } : {}),
+      });
+    },
     yieldForPresentation: nextPaintSliced,
     enterFlight() {
       roomAdmitted = true;
@@ -1060,14 +1080,15 @@ function withLoadingGatePulse(bus, runTransitionGuard, transitionToken, transiti
     bus, runTransitionGuard, transitionToken, transition, id, progress, label,
     () => detailOf(nowMs() - startedMs),
   );
+  const done = () => { stop(); bootMark(`gate:${id}`, `${Math.round(nowMs() - startedMs)}ms`); };
   let result;
   try {
     result = gate();
   } catch (error) {
-    stop();
+    done();
     throw error;
   }
-  return Promise.resolve(result).finally(stop);
+  return Promise.resolve(result).finally(done);
 }
 
 async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payload = {}) {
@@ -1360,6 +1381,8 @@ function enterFlightMode(state, bus, options = {}) {
   timeEffects.clear('runtime:boot-menu');
   timeEffects.clear('runtime:loading');
   timeEffects.clear('runtime:start-failed');
+  bootMark('flight-entered');
+  armFlightFrameMarks();
   if (previousMode !== 'flight') bus.emit('mode:changed', { mode: 'flight', previousMode });
 }
 
@@ -1466,6 +1489,68 @@ async function waitForInitialAuthoredVisuals(state, timeoutMs = 20000, isCurrent
 
 function authoredVisualReadiness(state) {
   return authoredCriticalVisualReadiness(state);
+}
+
+// Boot-timeline frame witnesses. Armed at every flight entry: the first presented frame
+// after it is "first frame of flight", the first presented frame where the player's
+// authored hull has swapped in is "real ship on screen", and the first frame with an
+// empty authored-upgrade queue is the drain the packet's audit pinned (~22 s of held
+// model upgrades after first paint).
+let flightFrameMarkPending = false;
+let shipFrameMarkPending = false;
+let upgradeDrainMarkPending = false;
+
+function armFlightFrameMarks() {
+  flightFrameMarkPending = true;
+  shipFrameMarkPending = true;
+  upgradeDrainMarkPending = true;
+}
+
+function noteFlightFrameMarks(state) {
+  if (!flightFrameMarkPending && !shipFrameMarkPending && !upgradeDrainMarkPending) return;
+  if (!state || state.mode !== 'flight') return;
+  if (flightFrameMarkPending) {
+    flightFrameMarkPending = false;
+    bootMark('first-flight-frame');
+  }
+  if (shipFrameMarkPending) {
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    const assetState = player?.mesh?.userData?.authoredAssetState;
+    if (assetState === 'authored' || assetState === 'authored-with-cleanup-error') {
+      shipFrameMarkPending = false;
+      bootMark('first-ship-frame');
+    }
+  }
+  if (upgradeDrainMarkPending) {
+    const queue = describeAuthoredUpgradeQueue(state.render?.scene);
+    if (queue.present && queue.pending === 0 && queue.inFlight === 0 && queue.compiling === 0) {
+      upgradeDrainMarkPending = false;
+      bootMark('upgrade-queue-drained');
+    }
+  }
+}
+
+// The overlay hides before uiRoot's first screen necessarily paints — "title interactive"
+// is the frame a [data-screen] root is actually visible. Poll on presented frames until
+// it mounts (bounded: a wedged uiRoot leaves the mark absent, which the probe reports).
+function markTitleInteractiveWhenScreenMounts() {
+  const mounted = () => {
+    for (const root of document.querySelectorAll('[data-screen]')) {
+      if (typeof root.checkVisibility === 'function') {
+        try { if (root.checkVisibility({ checkVisibilityCSS: true })) return true; continue; } catch { /* older host */ }
+      }
+      if (root.offsetParent) return true;
+    }
+    return false;
+  };
+  if (mounted()) { bootMarkOnce('title-interactive'); return; }
+  let tries = 0;
+  const poll = () => {
+    if (mounted()) { bootMarkOnce('title-interactive'); return; }
+    if (++tries < 7200) requestAnimationFrame(poll); // ~2 min at 60 fps, then give up
+  };
+  requestAnimationFrame(poll);
 }
 
 function loadingDetailForStage(stageOrId) {
