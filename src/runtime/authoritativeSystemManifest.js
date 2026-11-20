@@ -546,6 +546,39 @@ export function calendarCohortTickMod(id) {
   return calendarCohortIndex(id) * CALENDAR_CLOCK_COHORT_STRIDE + calendarCohortSubPhase(id);
 }
 
+/**
+ * Fixed cadences (ENGINE job 6). A system listed here runs on one tick in every N of the 60 Hz
+ * step, on a phase fixed by its id — never by machine load — and receives the elapsed sim time
+ * since its last run as dt (the calendar stamping). Steering they write (data.intent) is a held
+ * desire that flight applies every tick, so motion stays smooth between runs. Periods divide the
+ * 30-tick calendar period so the pre-partitioned tick queues stay exact. Physics, flight, weapons,
+ * damage and the player's own controls are never listed: they run every tick.
+ */
+export const SYSTEM_CADENCE_TICKS = Object.freeze({
+  // [period ticks, phase]: phases are assigned so no two heavy owners share a tick.
+  npcJobsRuntime: [6, 0],   // 10 Hz: job intents, worksite bookkeeping
+  aiEncounter: [6, 1],      // 10 Hz: encounter director
+  traffic: [6, 2],          // 10 Hz: route intents, convoy bookkeeping
+  combatOutcome: [6, 3],    // 10 Hz: flee/surrender receipts
+  lawSecurity: [6, 4],      // 10 Hz: patrols, witnesses, wanted sweep
+  titles: [15, 5],          // 4 Hz: title/reputation observers
+});
+
+/** Period in ticks for a cadenced system (1 = every tick). */
+export function systemCadenceTicks(id) {
+  const row = SYSTEM_CADENCE_TICKS[clockLookupId(id)];
+  const p = row ? row[0] : 1;
+  return Number.isInteger(p) && p > 1 ? p : 1;
+}
+
+/** The tick phase (0..period-1) a cadenced system runs on, fixed in the table. */
+export function systemCadencePhase(id) {
+  const p = systemCadenceTicks(id);
+  if (p <= 1) return 0;
+  const row = SYSTEM_CADENCE_TICKS[clockLookupId(id)];
+  return ((row[1] | 0) % p + p) % p;
+}
+
 export const NEAR_CLOCK_IDS = Object.freeze([
   'flybyFocus', 'scanner', 'spectrum', 'scanReveal', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aiSlot', 'aiEncounter', 'traffic', 'titles',

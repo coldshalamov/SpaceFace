@@ -6,9 +6,11 @@ import { COHORT_RECIPE_RIVER } from '../src/ai/fodderCohort.js';
 import { shouldRunOnTick } from '../src/core/activityScheduler.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
 
-test('production Tactical AI decisions run at 30 Hz while physical requests remain 60 Hz', () => {
-  assert.equal(createTacticalAISystem().decisionIntervalTicks, 2,
-    'the live helper-port stack must amortize full decisions across two fixed ticks');
+test('production Tactical AI decisions run at 20 Hz while physical requests remain 60 Hz', () => {
+  // ENGINE job 6: a fixed, load-independent decision cadence; the last maneuver is replayed on
+  // every tick in between so thrust stays continuous.
+  assert.equal(createTacticalAISystem().decisionIntervalTicks, 3,
+    'the live helper-port stack must amortize full decisions across three fixed ticks');
 });
 
 test('injected Tactical AI fixtures retain every-tick decisions unless explicitly configured', () => {

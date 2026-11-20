@@ -5030,7 +5030,17 @@ export const lawSecurity = {
     let anyEyes = false;
     let allObserved = sweep.ships.length > 0;
     let occluders = null;
+    // ENGINE job 6: one sweeper re-tests its sight line per law tick (round robin, on the 10 Hz
+    // law cadence); the others answer from their last result. Each test walks every occluder near
+    // the segment, so testing every sweeper every tick was ~900 primitive tests per tick.
+    // Transient cache (never saved): a reload simply re-tests.
+    let cache = WANTED_SWEEP_EYES.get(sweep);
+    if (!cache) { cache = { next: 0, eyes: new Map() }; WANTED_SWEEP_EYES.set(sweep, cache); }
+    const testIndex = sweep.ships.length ? cache.next % sweep.ships.length : 0;
+    cache.next = testIndex + 1;
+    let index = -1;
     for (const id of sweep.ships) {
+      index++;
       const ship = entityById(state, id);
       const live = !!(ship && ship.alive !== false && ship.pos);
       if (!live) {
@@ -5043,9 +5053,16 @@ export const lawSecurity = {
       const d2 = distance2(ship.pos, player.pos);
       let eyes = d2 <= range * range;
       if (eyes) {
-        if (!occluders) occluders = lawWitnessOccluderPlan(state);
-        const ignored = new Set([id, state.playerId]);
-        eyes = !lawWitnessSightBlocked(state, ship, player.pos, ignored, occluders);
+        if (index === testIndex || !cache.eyes.has(id)) {
+          if (!occluders) occluders = lawWitnessOccluderPlan(state);
+          const ignored = new Set([id, state.playerId]);
+          eyes = !lawWitnessSightBlocked(state, ship, player.pos, ignored, occluders);
+          cache.eyes.set(id, eyes);
+        } else {
+          eyes = cache.eyes.get(id) === true;
+        }
+      } else {
+        cache.eyes.set(id, false);
       }
       if (eyes) {
         sweep.observed[id] = true;
@@ -8280,6 +8297,8 @@ function lawWitnessRowBlocked(rec, observer, targetPos, ignoredIds, ax, az, bx, 
   if (dx * dx + dz * dz <= r * r) return true;
   return false;
 }
+
+const WANTED_SWEEP_EYES = new WeakMap();
 
 function lawWitnessSightBlocked(state, observer, targetPos, ignoredIds, occluders) {
   if (!observer || !observer.pos || !targetPos || !occluders) return false;

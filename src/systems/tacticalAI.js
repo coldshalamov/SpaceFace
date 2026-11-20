@@ -383,7 +383,9 @@ export function createTacticalAISystem({
     ...config,
     runtime: {
       ...defaultRuntime,
-      decisionIntervalTicks: productionPortDefaults ? 2 : 1,
+      // ENGINE job 6: 20 Hz decisions on a fixed tick cadence (never load-dependent); the last
+      // maneuver is replayed on every other tick so thrust stays continuous.
+      decisionIntervalTicks: productionPortDefaults ? 3 : 1,
       ...runtime,
     },
     trace: config.trace === undefined ? defaultTraceConfig() : config.trace,
