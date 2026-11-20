@@ -24,7 +24,9 @@ import {
   useCrucibleMetaStorage,
 } from '../src/systems/survivalRecords.js';
 import { clearQueuedChallenge } from '../src/systems/survivalMutators.js';
-import { crucibleSetupFor, requestCrucibleRun } from '../src/ui/crucibleLaunch.js';
+import {
+  crucibleSetupFor, requestCrucibleRun, requestSwarmQuickStart, swarmQuickStartSetup,
+} from '../src/ui/crucibleLaunch.js';
 import {
   SWARM_QUICK_START,
   swarmQuickStartExtras,
@@ -177,4 +179,27 @@ test('the door keeps its authored opening: no flag still means the armory first'
   h.bus.emit('run:loadoutReady', { source: 'test' });
   h.bus.emit('run:openingPrepareRequested', { source: 'test' });
   assert.equal(h.state.run.phase, 'draft', 'the authored opening stop is the armory');
+});
+
+test('the title press: one call launches round 1 in flight, on a fresh seed, with the record defaults', () => {
+  resetMeta();
+  const h = bootDoor();
+  assert.equal(requestSwarmQuickStart(h.bus, { seed: SEED, previous: null, stake: null }), true);
+  launchBus.emit('game:started');
+  const begin = h.emitted.filter((e) => e.event === 'run:beginRequested').at(-1);
+  assert.equal(begin.payload.openArmoryBeforeRound1, false, 'one press goes to the fight, not the armory');
+  assert.equal(begin.payload.ruleset, SWARM_RULESET);
+  driveOpening(h);
+  assert.ok(h.state.run.phase === 'wave_intro' || h.state.run.phase === 'active', `round 1, got ${h.state.run.phase}`);
+});
+
+test('the title press remembers the last Swarm room and kit; a bare-hull kit falls back to a fitted one', () => {
+  const prior = { arenaId: 'cinder_sluice', hullId: 'ship_hornet', loadout: [], seed: 5 };
+  const bare = swarmQuickStartSetup({ seed: 9, previous: prior, previousRuleset: SWARM_RULESET, stake: 'veteran' });
+  assert.equal(bare.arenaId, 'cinder_sluice', 'the room last flown');
+  assert.equal(bare.swarmStake, 'veteran', 'the stake last chosen');
+  assert.ok(bare.loadout.length > 0, 'never an empty ship: the armory is skipped, so the kit must be fitted');
+  const other = swarmQuickStartSetup({ seed: 9, previous: prior, previousRuleset: 'scored', stake: null });
+  assert.equal(other.arenaId, SWARM_QUICK_START.arenaId, 'a Gauntlet launch does not steer the Swarm door');
+  assert.equal(other.swarmStake, SWARM_QUICK_START.stakeId);
 });

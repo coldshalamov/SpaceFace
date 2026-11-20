@@ -337,7 +337,7 @@ export function titlePrimaryAction(hasSave) {
  * already promised ("the scored ten-wave Survival run", "the authored intro cinematics").
  */
 export const MENU_MODE_GLOSSES = Object.freeze({
-  swarm: 'Choose a ship and fight waves of enemies.',
+  swarm: 'Straight into round 1. Level up, pick a build, survive.',
   crucible: 'A scored ten-wave survival run',
   archive: 'Authored intro reels, in the Codex',
   circuits: 'Race rivals or run time trials',
@@ -349,7 +349,7 @@ export const MENU_MODE_GLOSSES = Object.freeze({
 const ADVENTURE_DOOR_GLOSS = 'The campaign — your ship, the Helios Reach';
 
 export function titleVerbOrder() {
-  return ['continue', 'swarm', 'newGame', 'load', 'settings', 'quit'];
+  return ['continue', 'swarm', 'swarmSetup', 'newGame', 'load', 'settings', 'quit'];
 }
 
 /** The title's Tab order, in reading order: the verb ladder, the reference line, the fine line —
@@ -420,6 +420,8 @@ export const mainMenuScreen = {
       continue: coreText('continue'),
       load: 'Load',
       swarm: 'Swarm',
+      // The Swarm door launches round 1 in one press; the setup screen is this optional key under it.
+      swarmSetup: 'Customize Swarm',
       settings: coreText('settings'),
       quit: 'Quit',
     };
@@ -545,6 +547,7 @@ export const mainMenuScreen = {
     const bContinue = byAction('continue');
     const bNew = byAction('newGame');
     const bSwarm = byAction('swarm');
+    const bSwarmSetup = byAction('swarmSetup');
     const bLoad = byAction('load');
     const bArchive = byAction('archive');
     const bHelp = byAction('help');
@@ -555,7 +558,8 @@ export const mainMenuScreen = {
     const bQuit = byAction('quit');
     if (bNew) bNew.setAttribute('aria-label', coreText('newGame'));
     if (bContinue) bContinue.setAttribute('aria-label', coreText('continue'));
-    if (bSwarm) bSwarm.setAttribute('aria-label', 'Swarm');
+    if (bSwarm) bSwarm.setAttribute('aria-label', 'Swarm — start round 1');
+    if (bSwarmSetup) bSwarmSetup.setAttribute('aria-label', 'Customize the Swarm run: ship, room, difficulty');
     if (bLoad) bLoad.setAttribute('aria-label', coreText('loadGame'));
     bArchive.setAttribute('aria-label', coreText('signalArchive'));
     bQuit.setAttribute('aria-label', coreText('quitGame'));
@@ -605,9 +609,9 @@ export const mainMenuScreen = {
 
     refs = {
       root: rootEl, backdrop, title, stage, aside, list, version, versionText, bCredits, bAchievements, saveSummary, status,
-      bNew, bContinue, bSwarm, bLoad, bSettings, bSandbox, bQuit, bArchive, bCircuits, bHelp, bPhysics,
+      bNew, bContinue, bSwarm, bSwarmSetup, bLoad, bSettings, bSandbox, bQuit, bArchive, bCircuits, bHelp, bPhysics,
       titleContinueFailure: null,
-      buttons: [bContinue, bSwarm, bNew, bLoad, bHelp, bArchive, bCircuits, bPhysics, bSettings, bSandbox, bQuit].filter(Boolean),
+      buttons: [bContinue, bSwarm, bSwarmSetup, bNew, bLoad, bHelp, bArchive, bCircuits, bPhysics, bSettings, bSandbox, bQuit].filter(Boolean),
     };
 
     // Tab walks the screen the way it reads: down the verb ladder, along the reference line, then the
@@ -757,7 +761,8 @@ export const mainMenuScreen = {
         return;
       }
       case 'load': pushWhenReady(ctx, 'saveLoad', 'Load Game'); return;
-      case 'swarm':
+      case 'swarm': this._launchSwarm(ctx); return;
+      case 'swarmSetup':
       case 'crucible': pushWhenReady(ctx, 'crucible', 'Swarm'); return;
       case 'help': pushWhenReady(ctx, 'help', 'Help'); return;
       case 'archive': requestCodexTab('Archive'); pushWhenReady(ctx, 'codex', 'Signal Archive'); return;
@@ -770,6 +775,26 @@ export const mainMenuScreen = {
       case 'quit': requestQuit(ctx); return;
       default: return;
     }
+  },
+
+  /**
+   * ONE PRESS TO THE FIGHT: the Swarm door starts round 1 with the remembered defaults
+   * (crucibleLaunch.requestSwarmQuickStart). The setup screen is the "Customize Swarm" key.
+   * A second press while the launch is on its way does nothing.
+   */
+  _launchSwarm(ctx) {
+    if (!screenReady(ctx, 'crucible')) { pushWhenReady(ctx, 'crucible', 'Swarm'); return; }
+    if (this._swarmLaunching) return;
+    this._swarmLaunching = true;
+    import('../crucibleLaunch.js').then((launch) => {
+      if (!launch.requestSwarmQuickStart(ctx.bus)) {
+        this._swarmLaunching = false;
+        pushWhenReady(ctx, 'crucible', 'Swarm');
+      }
+    }).catch(() => {
+      this._swarmLaunching = false;
+      pushWhenReady(ctx, 'crucible', 'Swarm');
+    });
   },
 
   // Cheap signature of everything the render reads that can change while the menu sits on top.
@@ -800,9 +825,14 @@ export const mainMenuScreen = {
     const liOf = (a) => stage.querySelector('li:has(> [data-action="' + a + '"])');
     const hasSave = !!this._latestSave;
     stage.classList.toggle('has-save', hasSave);
-    const cont = liOf('continue'); const ng = liOf('newGame'); const sw = liOf('swarm');
-    for (const li of [cont, ng, sw]) if (li) li.classList.remove('of-title-door', 'is-adventure', 'is-swarm', 'of-title-door-secondary');
+    const cont = liOf('continue'); const ng = liOf('newGame'); const sw = liOf('swarm'); const swSet = liOf('swarmSetup');
+    for (const li of [cont, ng, sw, swSet]) if (li) li.classList.remove('of-title-door', 'is-adventure', 'is-swarm', 'of-title-door-secondary');
     if (sw) sw.classList.add('of-title-door', 'is-swarm');
+    // The Swarm door's own secondary key stands under it, the way New Game stands under Continue.
+    if (swSet) {
+      swSet.classList.add('of-title-door-secondary');
+      if (!isPhoneLayout()) { swSet.style.gridColumn = '13 / span 12'; swSet.style.gridRow = '2'; swSet.style.setProperty('margin', '0 0 0 7px', 'important'); }
+    }
     const adventure = hasSave ? cont : ng;
     if (adventure) adventure.classList.add('of-title-door', 'is-adventure');
     if (hasSave && ng) ng.classList.add('of-title-door-secondary');
@@ -813,7 +843,7 @@ export const mainMenuScreen = {
     if (isPhoneLayout()) return; // the phone's rows are CSS
     const lis = ['settings', 'help', 'quit'].map(liOf).filter((li) => li && !li.hidden);
     const start = Math.floor((24 - 6 * lis.length) / 2) + 1;
-    lis.forEach((li, i) => { li.style.gridColumn = (start + 6 * i) + ' / span 6'; li.style.gridRow = hasSave ? '3' : '2'; });
+    lis.forEach((li, i) => { li.style.gridColumn = (start + 6 * i) + ' / span 6'; li.style.gridRow = (hasSave || swSet) ? '3' : '2'; });
   },
 
   _render(ctx) {
@@ -823,6 +853,7 @@ export const mainMenuScreen = {
     this._menuSig = this._menuInputs(ctx);
     setScreenButtonReady(refs.bNew, ctx, 'newGame', 'New Game');
     setScreenButtonReady(refs.bSwarm, ctx, 'crucible', 'Swarm');
+    setScreenButtonReady(refs.bSwarmSetup, ctx, 'crucible', 'Swarm');
     setScreenButtonReady(refs.bLoad, ctx, 'saveLoad', 'Load Game');
     setScreenButtonReady(refs.bSettings, ctx, 'settings', 'Settings');
     if (refs.bSandbox) setScreenButtonReady(refs.bSandbox, ctx, 'sandbox', 'Sandbox');
@@ -923,6 +954,7 @@ export const mainMenuScreen = {
   },
 
   onShow(ctx) {
+    this._swarmLaunching = false; // back on the title: the Swarm door may launch again
     this._render(ctx);
     this._shown = true;
     this._showToken = (this._showToken || 0) + 1;

@@ -22,6 +22,8 @@ import { loadCrucibleMeta, normalizeBestLine } from '../systems/survivalRecords.
 import { isModeAvailable } from '../systems/survivalUnlocks.js';
 import { BLOCK_RULESET } from '../systems/survivalRun.js';
 import { POWERED_CONVEYOR_RULESET } from '../data/survivalMutators.js';
+import { clearQueuedChallenge } from '../systems/survivalMutators.js';
+import { swarmQuickStartExtras } from '../data/swarmQuickStart.js';
 
 /**
  * The door's default room — where a run lands when nothing else was picked. Every Combat Lab
@@ -418,4 +420,45 @@ export function buildCrucibleRetryRequest(setup = lastCrucibleSetup(), ruleset =
 /** Test/lifecycle seam: forget the remembered setup. */
 export function clearCrucibleSetup() {
   lastSetup = null;
+}
+
+/**
+ * ONE PRESS TO THE FIGHT (04_SWARM.md §2, director 2026-11-20). The title's Swarm door launches
+ * round 1 straight away: the quick-start record (ricochet kit, Ricochet Foundry, no opening armory),
+ * overlaid with what this player last chose — the stake they last flew and, within a session, the
+ * room and kit of their last Swarm launch — on a fresh seed. The setup screen stays the optional
+ * path behind the title's "Change run" key. Returns the validated setup, or null.
+ */
+export function swarmQuickStartSetup({
+  seed = freshSeed(),
+  previous = lastCrucibleSetup(),
+  previousRuleset = lastCrucibleRuleset(),
+  stake = lastSwarmStakeUsed(),
+} = {}) {
+  const extras = swarmQuickStartExtras();
+  if (!extras) return null;
+  const fromSwarm = !!previous && previousRuleset === SWARM_RULESET
+    && !previous.dailyDateKey && !previous.weeklyMutatorId && !previous.practice;
+  const priorKit = fromSwarm ? crucibleStarterIdForSetup(previous) : null;
+  // A bare-hull launch bought its kit in the opening armory the quick start skips; it falls back
+  // to the record's ready-fitted kit rather than flying an empty ship.
+  const starterId = priorKit && !priorKit.startsWith('hull:') ? priorKit : extras.starterId;
+  const arenaId = fromSwarm && typeof previous.arenaId === 'string' && previous.arenaId
+    ? previous.arenaId : extras.arenaId;
+  const build = (arena) => crucibleSetupFor({
+    starterId, seed, arenaId: arena, ruleset: SWARM_RULESET,
+    swarmStake: stake || extras.swarmStake, openArmoryBeforeRound1: false,
+  });
+  let setup = build(arenaId);
+  if ((!setup || !setup.ok) && arenaId !== extras.arenaId) setup = build(extras.arenaId);
+  return setup && setup.ok && setup.value ? setup.value : null;
+}
+
+/** The title's Swarm press: build the quick-start setup and send it down the ordinary New Game route. */
+export function requestSwarmQuickStart(bus, options = {}) {
+  const setup = swarmQuickStartSetup(options);
+  if (!setup) return false;
+  // A daily or shared challenge queued earlier must not hijack an ordinary quick run.
+  clearQueuedChallenge();
+  return requestCrucibleRun(bus, setup, SWARM_RULESET);
 }

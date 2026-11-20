@@ -36,6 +36,9 @@ const MINUTES = Number(argv.minutes ?? (MODE === 'adventure' ? 12 : 8));
 const STAMP = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const OUT = path.resolve(String(argv.out || `.devshots/capture/${MODE}-${STAMP}`));
 const SEED = argv.seed != null ? Number(argv.seed) : 4242;
+// Swarm only: `quick` is the ordinary route (the title's Swarm door starts round 1); `door` walks
+// the optional setup screen (Customize Swarm -> ship -> armory -> launch).
+const SWARM_ROUTE = String(argv['swarm-route'] || 'quick');
 mkdirSync(path.join(OUT, 'frames'), { recursive: true });
 
 // ---------- banned-words guard ----------
@@ -1084,22 +1087,36 @@ async function swarmSession(deadline) {
   currentStep = 'title-to-round1';
   await shoot('title');
   const pressesStart = await readPresses();
-  await crucibleToArmory(page, { ruleset: 'swarm', seed: SEED }, () => {});
-  await waitForPreparationLaunch(page, {});
-  const word = await armoryLaunchWord(page);
-  await clickText(page, word || 'Launch round 1');
+  if (SWARM_ROUTE === 'door') {
+    await crucibleToArmory(page, { ruleset: 'swarm', seed: SEED }, () => {});
+    await waitForPreparationLaunch(page, {});
+    const word = await armoryLaunchWord(page);
+    await clickText(page, word || 'Launch round 1');
+  } else {
+    await page.locator('[data-screen="mainMenu"] [data-action="swarm"]').first().click({ timeout: T(60000) });
+  }
   await waitUntilFlight(page, { timeout: T(600000), active: true });
   await waitBootOverlayGone(page);
   runSeed = await readLaunchedRunSeed(page).catch(() => null);
   pressesAtPlay = (await readPresses()) - pressesStart;
   flightReadyMs = Date.now() - navT0;
-  steps.push({ id: 'title-to-round1', ok: true, detail: `${pressesAtPlay} presses`, startS: 0, elapsedS: flightReadyMs / 1000 });
+  steps.push({ id: 'title-to-round1', ok: true, detail: `${pressesAtPlay} presses (${SWARM_ROUTE} route)`, startS: 0, elapsedS: flightReadyMs / 1000 });
   let beat = 0; let round = 1;
   const tether = await tetherCode();
   while (!deadlineHit(deadline)) {
     const ph = await readPhase();
     if (!ph) { await sleep(500); continue; }
     if (ph.ph === 'ended' || ph.ph === 'victory') break;
+    if (ph.top === 'pilotCards') {
+      // The level-up cards stand between rounds until a card is taken (they never close alone).
+      const id = `cards-${ph.w}`;
+      if (!steps.some((s) => s.id === id)) {
+        steps.push({ id, ok: true, detail: 'took card 1', startS: (Date.now() - navT0) / 1000, elapsedS: 0 });
+        await shoot(id);
+      }
+      noteKey(page, 'Digit1'); await page.keyboard.press('Digit1'); await page.waitForTimeout(700);
+      continue;
+    }
     if (ph.ph === 'active' && ph.mode === 'flight') {
       currentStep = `round-${ph.w}`;
       if (!steps.some((s) => s.id === currentStep)) {
@@ -1127,8 +1144,10 @@ async function swarmSession(deadline) {
       }
       const up = await takeFirstUpgrade();
       const shop = await visitSwarmShop();
-      const next = await awaitRoundHandoff(page, { previousWave: ph.w, timeoutMs: Math.min(120000, deadline - Date.now()) });
-      if (!next || next.kind === 'cap') break;
+      // Short waits: the level-up cards can rise mid-handoff and are answered at the loop's top.
+      const next = await awaitRoundHandoff(page, { previousWave: ph.w, timeoutMs: Math.min(8000, deadline - Date.now()) }).catch(() => null);
+      if (!next) continue;
+      if (next.kind === 'cap') break;
       if (next.kind === 'terminal') break;
       if (next.kind === 'active') { round = next.wave; continue; }
       continue;

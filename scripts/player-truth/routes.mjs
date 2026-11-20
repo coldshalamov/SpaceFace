@@ -483,7 +483,12 @@ export async function listHulls(page) {
  *  `hooks.onShip(doorPrep)` runs after the hull is selected and before the launch click, so a
  *  caller can photograph the ship step. Gauntlet never opens an armory; the door sentence is the preparation. */
 export async function crucibleToArmory(page, { ruleset, arena, seed, hull: wantHull = null }, step, hooks = {}) {
-  const modeAction = page.locator('[data-screen="mainMenu"] [data-action="swarm"]').first();
+  // The Swarm door itself launches round 1 in one press now; the setup screen is its
+  // "Customize Swarm" key. Older builds without that key still open the door from Swarm.
+  const setupKey = page.locator('[data-screen="mainMenu"] [data-action="swarmSetup"]').first();
+  const modeAction = (await setupKey.count().catch(() => 0))
+    ? setupKey
+    : page.locator('[data-screen="mainMenu"] [data-action="swarm"]').first();
   if (!(await modeAction.isVisible())) {
     const more = page.locator('[data-screen="mainMenu"] [data-title-more]').first();
     if (await more.isVisible()) await more.click({ timeout: T(60000) });
