@@ -1,3 +1,14 @@
+// ROUND BUDGETS — APPROVED by the director 2026-11-20 (swarm lead's proposal), for the enemy lead
+// to cast against next window. Bodies per round across the whole round (all groups, not on screen
+// at once); bosses every fifth round carry a lighter cast so the boss is the work. Rises by
+// composition and density, never a head-count spike (today's table jumps 28 -> 40 at round 6 and
+// totals 1,143). Target: ~45 s a round + the breath = a 30-round run in 20-25 minutes.
+//   round:  1  2  3  4  5B  6  7  8  9 10B 11 12 13 14 15B 16 17 18 19 20B 21 22 23 24 25B 26 27 28 29 30B
+//   bodies: 10 16 20 24 18 26 28 30 32 22  30 32 33 34 24  34 35 36 37 26  36 37 38 39 28  38 39 40 40 30
+//   total 912. No round adds more than +6 over the round before it (bosses excepted, which drop).
+//   The count reader today is swarmCourseQuota (src/data/swarmMode.js); the swarm lead switches it
+//   to this table once the casts sum to it.
+
 // C01-04 — the course's cast table: who actually comes through the gates on each of the
 // Pit's thirty rounds. G08-02 gave every round a name and a twist line; this table is the
 // roster half of keeping that promise. A round's name is a promise about what the round
