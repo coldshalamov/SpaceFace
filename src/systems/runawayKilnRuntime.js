@@ -191,7 +191,7 @@ function saved(d, live, state) {
   d.grant(PAY, 'runaway_kiln_saved');
   d.rep('faction_choir', 8, 'runaway_kiln_saved');
   d.emit('news:publish', {
-    text: 'CRUCIBLE NINE-ARM CAUGHT SHORT OF THE DEPOT RING — ONE PILOT, ONE ROPE, NO GUNS',
+    text: 'KILN NINE-ARM CAUGHT SHORT OF THE DEPOT RING — ONE PILOT, ONE ROPE, NO GUNS',
     kind: 'choir', sectorId: live.sectorId, encounterId: live.id, source: 'the_runaway_kiln',
   });
   finish(d, live, state, 'saved', { runawayKiln: 'saved' });

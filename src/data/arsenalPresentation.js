@@ -271,12 +271,12 @@ export function combinationExample(entries) {
   const key = (e) => (e && e.binding && e.binding.bound ? e.binding.label : 'unbound');
   const steps = [
     { id: 'pull', key: key(pull), text: `Pull (${key(pull)}) drops a well on a pile of loose rocks and they gather.` },
-    { id: 'gyre', key: key(gyre), text: `Hold Gyre (${key(gyre)}) over the pile: it scoops the rocks into one growing ball.` },
-    { id: 'throw', key: key(gyre), text: `Release Gyre to throw the ball through the pack. The collision does the damage.` },
+    { id: 'gyre', key: key(gyre), text: `Hold Gather (${key(gyre)}) over the pile: it scoops the rocks into one growing ball.` },
+    { id: 'throw', key: key(gyre), text: `Release Gather to throw the ball through the pack. The collision does the damage.` },
   ];
   return {
     id: 'pull-gyre-throw',
-    title: 'Pull, Gyre, throw',
+    title: 'Pull, Gather, throw',
     order: ['pull', 'gyre', 'throw'],
     steps,
     text: steps.map((s) => s.text).join(' '),
@@ -420,16 +420,16 @@ export function createArsenalPresentation() {
     // — Rig: the CURRENT function before use.
     const rig = entries.rig;
     rig.on = rigOn;
-    rig.label = `Rig · ${rigTarget === 'skim' ? 'Scoop' : 'Cone'} ${rigOn ? 'ON' : 'OFF'}`;
+    rig.label = `Plow · ${rigTarget === 'skim' ? 'Scoop' : 'Wedge'} ${rigOn ? 'ON' : 'OFF'}`;
     rig.hints = [...(rig.hints || []), rig.binding.bound
       ? `Tap ${rig.binding.label} to turn it ${rigOn ? 'off' : 'on'}.`
-      : 'Bind Rig in Settings → Controls to turn it on or off.'];
-    // — Gyre: gather / release.
+      : 'Bind Plow in Settings → Controls to turn it on or off.'];
+    // — Gather: gather / release.
     const g = gyreRead(state);
     const gyre = entries.gyre;
     gyre.phase = g.phase;
     gyre.verb = g.holding ? 'Release' : g.gathering ? 'Gathering' : g.launching || g.ballAway ? 'Thrown' : 'Gathers rocks';
-    gyre.label = `Gyre · ${g.holding ? 'Release' : g.gathering ? 'Gathering' : g.launching || g.ballAway ? 'Thrown' : 'Gathers rocks'}`;
+    gyre.label = `Gather · ${g.holding ? 'Release' : g.gathering ? 'Gathering' : g.launching || g.ballAway ? 'Thrown' : 'Gathers rocks'}`;
     if (g.holding) gyre.sentence = 'Holding a ball. Release to throw it ahead along the nose; a hard hit or a heavy ball does the damage.';
     else if (g.gathering) gyre.sentence = `Gathering: loose rocks and wrecks in the basin are being pulled in. Keep holding to build the ball; release to stop.${g.tooHeavy ? ` ${g.tooHeavy} too big to take whole.` : ''}`;
     // The owner's own latest refusal words (matter:refused), when the caller carries one — never composed here.

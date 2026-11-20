@@ -505,7 +505,7 @@ export const ENTRIES_WORLD_A = [
     channel: 'memory',
     followup: 'Bar set-dressing row at station_ceres gated to the night watch (worldCalendar stationShiftAt) + purchase option: buying the next round for the floor crew grants DMC rep +1; codex page under Shaft 7 (poi_ceres_shaft_seven keeps the stake).',
     payload: {
-      text: 'One stool on the Crucible\'s night rail has a drink on it and nobody near it. The barkeep explains, unprompted: "Shift 7\'s floor lead. Nine of eleven came back from Shaft 7. The drink is for the arithmetic." It is refreshed every night by the same crew. Nobody drinks it.',
+      text: 'One stool on the smelter\'s night rail has a drink on it and nobody near it. The barkeep explains, unprompted: "Shift 7\'s floor lead. Nine of eleven came back from Shaft 7. The drink is for the arithmetic." It is refreshed every night by the same crew. Nobody drinks it.',
     },
   },
 

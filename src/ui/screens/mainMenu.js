@@ -56,11 +56,11 @@ const LS_PREFIX = 'sf.save.';
 // never applied: `firstLightOffered` records the question, `firstLightChoice` records the answer.
 // ---------------------------------------------------------------------------------------------------
 export const FIRST_LIGHT_OFFER = Object.freeze({
-  title: 'First light',
+  title: 'Comfort preset',
   // Play is the primary verb — the calm cut is the offer beside it, never the gate on playing.
   body: 'Play as-is, or start with calmer motion, reduced flashing, high contrast, larger text and backed captions. Settings > Access has them any time.',
   confirmLabel: 'Play',
-  cancelLabel: 'Use first light',
+  cancelLabel: 'Turn on comfort preset',
   cancelValue: 'calm',
   dismissValue: 'play',
   danger: false,

@@ -555,13 +555,13 @@ export const gyreSnare = {
           // Text channel parity with the file's own convention — cap_dry toasts
           // 'drained — clump away', adoption 'clump reclaimed'; the tear is the
           // LOUDEST involuntary loss and shouldn't be the one with no words.
-          this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare — clump torn free', ttl: 1.6 });
+          this.bus.emit('toast', { kind: 'warn', text: 'Gather — clump torn free', ttl: 1.6 });
         }
         // A clump destroyed in the grip gets words too — every other involuntary
         // end narrates. No extra shake: whatever killed the core already landed
         // its own impact thump, and doubling it would read as two hits.
         else if (reason === 'core_lost') {
-          this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare — clump destroyed', ttl: 1.6 });
+          this.bus.emit('toast', { kind: 'warn', text: 'Gather — clump destroyed', ttl: 1.6 });
         }
       }
     }
@@ -1660,7 +1660,7 @@ export const gyreSnare = {
     // Involuntary losses narrate themselves (cap_dry/strained/drained all toast or
     // voice) — the quietest path in the file shouldn't be the one where someone
     // else's cargo simply de-rezzes mid-hold.
-    if (this.bus) this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare — clump reclaimed', ttl: 1.6 });
+    if (this.bus) this.bus.emit('toast', { kind: 'warn', text: 'Gather — clump reclaimed', ttl: 1.6 });
     this._drop('core_adopted');
   },
 
@@ -2743,7 +2743,7 @@ export const gyreSnare = {
         rt.dryDenyDone = true; // the flag's contract is 'denied while held' — every
                              // deny lane sets it, not just the cap_dry close sites
         if (this.bus) {
-          this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare needs charge to wake', ttl: 1.6 });
+          this.bus.emit('toast', { kind: 'warn', text: 'Gather needs charge to start', ttl: 1.6 });
           this.bus.emit('audio:cue', { id: 'ui_deny', gain: 0.7 });
           this.bus.emit('matter:refused', {
             tool: 'gyre', code: MATTER_REFUSAL.DRY, count: 1, need: D.capActivateMin, have: cap,
@@ -2838,7 +2838,7 @@ export const gyreSnare = {
         // Involuntary losses narrate themselves — a pin landing inside the
         // ~11-tick coil/burst is the ONE adoption the player least expects;
         // it shouldn't also be the one that silently eats their throw.
-        if (this.bus) this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare — clump reclaimed', ttl: 1.6 });
+        if (this.bus) this.bus.emit('toast', { kind: 'warn', text: 'Gather — clump reclaimed', ttl: 1.6 });
         this._drop('core_adopted');
       } else if (core && core.alive !== false && rt.launchWindup > 0) {
         // Wind-up beat: a ~100 ms coil that drags the clump slightly aft of the maw
@@ -3001,7 +3001,7 @@ export const gyreSnare = {
     // before the normal launch beat so the cause is legible at the moment of surprise.
     if (dry && rt.phase === PHASE.HOLD) {
       if (this.bus) {
-        this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare drained — clump away', ttl: 1.6 });
+        this.bus.emit('toast', { kind: 'warn', text: 'Gather drained — clump away', ttl: 1.6 });
         this.bus.emit('audio:cue', { id: 'ui_deny', gain: 0.5 });
       }
       rt.dryDenyDone = true; // the drain toast IS the wake attempt's narration
@@ -3010,7 +3010,7 @@ export const gyreSnare = {
     // An empty beam dying of thirst gets the same attribution: the cone vanishes and
     // the pill goes dark — say why, or the lash reads as self-closing.
     else if (dry && rt.phase === PHASE.BEAM) {
-      if (this.bus) this.bus.emit('toast', { kind: 'warn', text: 'Gyre Snare drained — lash off', ttl: 1.6 });
+      if (this.bus) this.bus.emit('toast', { kind: 'warn', text: 'Gather drained — off', ttl: 1.6 });
       rt.dryDenyDone = true;
       this._drop('cap_dry');
     }

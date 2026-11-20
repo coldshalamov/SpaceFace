@@ -10,9 +10,9 @@
 
 /** Named chain tiers (§5.1). Order matters: ascending. */
 export const SWARM_CHAIN_TIERS = Object.freeze([
-  { at: 10, id: 'ignition', name: 'IGNITION' },
-  { at: 25, id: 'flare', name: 'FLARE' },
-  { at: 50, id: 'nova', name: 'NOVA' },
+  { at: 10, id: 'ignition', name: 'STREAK ×10' },
+  { at: 25, id: 'flare', name: 'STREAK ×25' },
+  { at: 50, id: 'nova', name: 'STREAK ×50' },
   { at: 100, id: 'supernova', name: 'SUPERNOVA' },
   { at: 200, id: 'singularity', name: 'SINGULARITY' },
 ]);

@@ -46,7 +46,7 @@ export function pullWords() {
     target: 'aim point',
     range: { shape: 'ring', radiusWu: well.radius, reachWu: well.deployRange },
     cost: null, cooldownS: well.cooldownS,
-    combos: ['Pull piles loose rocks together, then Gyre scoops the pile into one ball you can throw.'],
+    combos: ['Pull piles loose rocks together, then Gather scoops the pile into one ball you can throw.'],
     sources: { range: 'data/fields.FIELD_DEFS.well', cooldown: 'data/fields.FIELD_DEFS.well.cooldownS',
       grip: 'data/combatDefs.GRAVITY_MARK_FIELD_COUPLING', sentence: 'data/fields.FIELD_DEFS.well' },
   };
@@ -87,11 +87,11 @@ export function rigWords(target, on) {
   const skim = FIELD_DEFS.skim;
   if (target === 'skim') {
     return {
-      name: 'Rig', verb: `Scoop ${on ? 'ON' : 'OFF'}`, role: 'Harvest', glyph: 'field_skim_standard',
+      name: 'Plow', verb: `Scoop ${on ? 'ON' : 'OFF'}`, role: 'Harvest', glyph: 'field_skim_standard',
       sentence: on
-        ? 'The ore scoop stays on while you fly. Tap Rig again to turn it off.'
-        : 'Tap Rig once to turn on the ore scoop, then graze the planet band to collect ore.',
-      limits: [`Collects through a ${wu(skim.radius)} sheet. Outside a planet band, Rig uses the clearing cone instead.`],
+        ? 'The ore scoop stays on while you fly. Tap Plow again to turn it off.'
+        : 'Tap Plow once to turn on the ore scoop, then graze the planet band to collect ore.',
+      limits: [`Collects through a ${wu(skim.radius)} sheet. Outside a planet band, Plow uses the clearing wedge instead.`],
       target: 'along your flight line',
       range: { shape: 'sheet', radiusWu: skim.radius, reachWu: skim.originGap },
       cost: null, cooldownS: 0,
@@ -102,15 +102,15 @@ export function rigWords(target, on) {
     };
   }
   return {
-    name: 'Rig', verb: `Cone ${on ? 'ON' : 'OFF'}`, role: 'Clear', glyph: 'field_cone_standard',
+    name: 'Plow', verb: `Wedge ${on ? 'ON' : 'OFF'}`, role: 'Clear', glyph: 'field_cone_standard',
     sentence: on
-      ? 'The clearing cone stays on while you fly. Tap Rig again to turn it off.'
-      : 'Tap Rig once to turn on the forward cone. It pushes loose debris out of your path.',
-    limits: [`Reaches ${wu(cone.radius)} ahead in a ${Math.round(cone.halfAngleRad * 2 * 180 / Math.PI)} degree wedge. In a planet band, Rig uses the ore scoop instead.`],
+      ? 'The clearing wedge stays on while you fly. Tap Plow again to turn it off.'
+      : 'Tap Plow once to turn on the forward wedge. It pushes loose debris out of your path.',
+    limits: [`Reaches ${wu(cone.radius)} ahead in a ${Math.round(cone.halfAngleRad * 2 * 180 / Math.PI)} degree wedge. In a planet band, Plow uses the ore scoop instead.`],
     target: 'ahead of your nose',
     range: { shape: 'wedge', radiusWu: cone.radius, reachWu: cone.originGap },
     cost: null, cooldownS: 0,
-    combos: ['Sweep a lane with the cone so loose rocks bunch up, then Pull or Gyre collects them.'],
+    combos: ['Sweep a lane with the wedge so loose rocks bunch up, then Pull or Gather collects them.'],
     sources: { range: 'data/fields.FIELD_DEFS.cone', target: 'systems/powerVerbs.resolveRigTarget' },
     other: 'skim',
   };
@@ -186,14 +186,14 @@ export function travelWords() {
 export function gyreWords() {
   const g = GYRE_SNARE;
   return {
-    name: 'Gyre', verb: 'Gathers rocks', role: 'Gather', glyph: 'power_gyre',
+    name: 'Gather', verb: 'Gathers rocks', role: 'Gather', glyph: 'power_gyre',
     sentence: `Hold to gather loose rocks and wrecks (${wu(g.basinRadius)} basin, ${wu(g.mawDist)} ahead) into one growing ball. Release to throw it ahead at up to ${Math.round(g.launchSpeed)} m/s; a full-size ball leaves ${Math.round(g.launchMassPenalty * 100)}% slower.`,
     limits: [`Needs ${g.capActivateMin} charge to start and drains it while held. Cargo, quest wrecks and anchored scenery are towed or skipped, never swallowed; bodies wider than ${wu(g.maxClumpRadius)} do not fit.`],
     target: 'ahead of your nose',
     range: { shape: 'basin', radiusWu: g.basinRadius, reachWu: g.mawDist },
     cost: { kind: 'energy', activate: g.capActivateMin, perSecond: g.capDrainPerS },
     cooldownS: 0,
-    combos: ['Pull piles rocks together, Gyre scoops the pile into a ball, release to throw it through the pack.'],
+    combos: ['Pull piles rocks together, Gather scoops the pile into a ball, release to throw it through the pack.'],
     sources: { range: 'data/gyreSnare.GYRE_SNARE', cost: 'data/gyreSnare.GYRE_SNARE.capActivateMin/capDrainPerS',
       sentence: 'data/gyreSnare.GYRE_SNARE' },
   };
@@ -218,7 +218,7 @@ export function cloakWords(read) {
 // Baselines for the verbs whose meaning depends on state (the live projection says which variant is
 // effective; a surface with no state says both).
 const BOMB_BASELINE = 'Throws a sticky charge that Shove sets off. With none aboard it uses a swarm call-in or the drift bomb the cycle chose.';
-const RIG_BASELINE = 'Opens the clearing cone in open space and the skim scoop inside a planet band. The socket names which one before you press.';
+const RIG_BASELINE = 'Opens the clearing wedge in open space and the skim scoop inside a planet band. The socket names which one before you press.';
 
 /**
  * One sentence for a verb with no live state — the DOM rail's bank, the Help sheet, the phone deck.

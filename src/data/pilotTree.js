@@ -47,8 +47,31 @@ function branchNodes(branch, rows) {
   });
 }
 
+// The bends' one-line effects come from the authored power-bend table (design/game/11_THE_ARMORY
+// §3): a bend card never draws before its effect is live (pilotLive.js), so the text names the
+// behavior the build ships. `bendRows` pins each node id to its original bend word so a display
+// rename (Plough → Plow) cannot move a save-stable id.
+const BEND_LABELS = Object.freeze({ Plough: 'Plow' });
+const BEND_TEXTS = Object.freeze({
+  Vortex: 'The gathered pile spins as it gathers; release it and it sprays in a ring.',
+  Leash: 'The Pull well follows your ship; you tow the gathered pile like a flail.',
+  Implode: 'A tiny, far stronger well; two heavies become one wreck.',
+  Wave: 'A long forward cone; it clears a lane the length of the screen.',
+  Hammer: 'One target takes the whole Shove; a boss slides back a ship-length.',
+  Avalanche: 'Shove hits ×3 on rocks and debris only; the whole field moves as a wall.',
+  Nail: 'Pins one body to another instead of the ground; thrust fights thrust.',
+  Post: 'The pin holds until something breaks it; plant your own anchors and build a swing course.',
+  Stasis: 'Pins everything in a small ring for a beat; freeze a pile, then choose.',
+  Sticky: 'Sticks on and waits for Shove; plant six, press once.',
+  Cluster: 'Splits into five on the first bounce; a carpet.',
+  Sinker: 'A gravity charge: pulls the pile in, then blows.',
+  Plough: 'A wide, short wedge; you drive through a crowd.',
+  Sluice: 'A narrow, long channel; everything in it accelerates out the far end.',
+  Scoop: 'Curved; it gathers bodies as it pushes. Herd a pack into a hazard.',
+});
+
 function bendRows(power, names) {
-  return names.map((name) => [ '2-3', name, `A ${power} bend — one bend per power.`, {
+  return names.map((name) => [ '2-3', BEND_LABELS[name] || name, BEND_TEXTS[name] || `A ${power} bend — one bend per power.`, {
     id: `conjurer_${snake(power)}_${snake(name)}`,
     bendPower: power,
   } ]);
@@ -58,7 +81,7 @@ export const PILOT_BRANCHES = Object.freeze([
   Object.freeze({ id: 'gunner', name: 'Gunner', motto: 'nothing survives the stream' }),
   Object.freeze({ id: 'bruiser', name: 'Bruiser', motto: 'one shot and he\'s across the room, through his friends' }),
   Object.freeze({ id: 'rigger', name: 'Rigger', motto: 'the rope (reads your hull\'s mass)' }),
-  Object.freeze({ id: 'conjurer', name: 'Conjurer', motto: 'one press and the whole field moves' }),
+  Object.freeze({ id: 'conjurer', name: 'Field Tech', motto: 'one press and the whole field moves' }),
   Object.freeze({ id: 'juggernaut', name: 'Juggernaut', motto: 'I don\'t dodge. I\'m the obstacle.' }),
   Object.freeze({ id: 'ghost', name: 'Ghost', motto: 'they never saw which way it came from' }),
   Object.freeze({ id: 'industry', name: 'Industry', motto: 'Adventure only', adventureOnly: true }),
@@ -79,25 +102,25 @@ export const PILOT_REROLL_SCRAP = 150;
 
 const GUNNER = branchNodes('gunner', [
   [1, 'Steady Hands', 'Your fire does not spread while you move.'],
-  [1, 'Quick Vent', 'The amber feathering band is twice as wide.'],
+  [1, 'Quick Vent', 'The cooling sweet spot is twice as wide.'],
   [1, 'Hollow Point', 'Shots tear unshielded hulls 50 % faster.'],
-  [2, 'Shred', 'A target under your fire for a full second starts shedding armour plates — throwable debris.'],
-  [2, 'Spin-Up', 'Hose guns fire faster the longer you hold, up to ×1.8 at two seconds.'],
+  [2, 'Shred', 'A target under your fire for a full second starts shedding armor plates — throwable debris.'],
+  [2, 'Spin-Up', 'Rapid-fire guns fire faster the longer you hold, up to ×1.8 at two seconds.'],
   [2, 'Drum', 'Your heat bar is twice as long.'],
   [3, 'Ricochet', 'Your bullets bounce once off rock and walls.'],
   [3, 'Both Hands', 'Both weapon groups fire together without extra heat.'],
   [3, 'Execution', 'A hull below 20 % dies to your next hit and bursts into chunks.'],
-  ['capstone', 'Gold Thread', 'Your Hose stream pierces everything in a line; held for three seconds it becomes a beam that lights the room.'],
+  ['capstone', 'Gold Thread', 'Your rapid-fire stream pierces everything in a line; held for three seconds it becomes a beam that lights the room.'],
 ]);
 
 const BRUISER = branchNodes('bruiser', [
-  [1, 'Heavy Slugs', 'Thump shots carry 30 % more kick.'],
+  [1, 'Heavy Slugs', 'Heavy shots carry 30 % more kick.'],
   [1, 'Cue Sight', 'The cue line on a rock shows its second bounce too.'],
   [1, 'Stagger', 'A body you kick cannot fire for one second.'],
   [2, 'Billiards', 'A rock you shot kills the first enemy it meets at speed, whatever its hull.'],
-  [2, 'Through and Through', 'Needle shots nail the last body they reach to whatever is behind it for two seconds.'],
+  [2, 'Through and Through', 'Piercing shots nail the last body they reach to whatever is behind it for two seconds.'],
   [2, 'Bowling', 'A body you kicked stays energised for six seconds and keeps its speed through the first kill.'],
-  [3, 'Breaker Rounds', 'A Thump hit on a rock splits it into three throwable chunks.'],
+  [3, 'Breaker Rounds', 'A heavy hit on a rock splits it into three throwable chunks.'],
   [3, 'Wall Splat', 'Anything you kick into a wall dies and leaves its scorch on the wall.'],
   [3, 'Pass It On', 'When a body you kicked hits another, the second takes the full kick too.'],
   ['capstone', 'Newton\'s Cradle', 'Momentum you give passes from body to body without loss, up to five times.'],
@@ -127,18 +150,18 @@ const CONJURER = branchNodes('conjurer', [
   ...bendRows('Rig', ['Plough', 'Sluice', 'Scoop']),
   [3, 'Echo', 'Every power fires twice, the second at half strength half a second later.'],
   [3, 'Combo', 'A body touched by two different powers within two seconds detonates.'],
-  ['capstone', 'Avalanche', 'The plough holds twice as many bodies, captures enemies as well as rocks, and launches them at double speed.'],
+  ['capstone', 'Avalanche', 'The plow holds twice as many bodies, captures enemies as well as rocks, and launches them at double speed.'],
 ]);
 
 const JUGGERNAUT = branchNodes('juggernaut', [
   [1, 'Ram Plate', 'Your bow takes no collision damage below 60 % of your cruise.'],
   [1, 'Ballast', 'You are 30 % heavier: you win collisions — and the rope\'s ANCHOR/TOW lines move for you.'],
   [1, 'Thick Skin', 'Armour regrows out of combat.'],
-  [2, 'Snowplough', 'Ramming a light enemy kills it and throws its pieces forward as shrapnel.'],
+  [2, 'Snowplow', 'Ramming a light enemy kills it and throws its pieces forward as shrapnel.', { id: 'juggernaut_snowplough' }],
   [2, 'Run-Up', 'Each second of unbroken boost raises your top speed, up to double.'],
-  [2, 'Shoulder Check', 'Boosting into something kicks it like a Thump hit.'],
+  [2, 'Shoulder Check', 'Boosting into something kicks it like a heavy hit.'],
   [3, 'Unstoppable', 'Collisions never take your helm.'],
-  [3, 'Dozer Blade', 'While boosting, the Rig\'s wedge rides your bow by itself.'],
+  [3, 'Dozer Blade', 'While boosting, the Plow\u2019s wedge rides your bow by itself.'],
   [3, 'Last Stand', 'Below 15 % hull, collisions you cause repair you.'],
   ['capstone', 'Juggernaut', 'Above cruise speed, you take no damage from anything you hit, and everything you hit takes double.'],
 ]);
@@ -151,7 +174,7 @@ const GHOST = branchNodes('ghost', [
   [2, 'Shadow Walker', 'Inside a real shadow, sensors cannot see you.', { adventureOnly: true }],
   [2, 'Saboteur', 'Plant a charge on an unaware ship without breaking stealth.'],
   [3, 'Ghost Line', 'Your line is invisible; a latched ship does not react for one second.', { adventureOnly: true }],
-  [3, 'Puppeteer', 'Fire the thrusters of a ship on your line (the Override head).', { adventureOnly: true }],
+  [3, 'Puppeteer', 'Fire the thrusters of a ship on your line (the thruster hijack).', { adventureOnly: true }],
   [3, 'Vanish', 'A kill from stealth returns you to stealth.', { adventureOnly: true }],
   ['capstone', 'Undertaker', 'Bodies you tumble do not recover their helm until they hit something.'],
 ]);
@@ -178,10 +201,10 @@ export const PILOT_NODES = Object.freeze([...GUNNER, ...BRUISER, ...RIGGER, ...C
 // The five evolutions 06 §2.2 names, with the exact prerequisite pairs it gives.
 export const PILOT_EVOLUTIONS = Object.freeze([
   Object.freeze({ id: 'evolution_orbital_saw', kind: 'evolution', name: 'Orbital Saw', text: 'Orbiting an anchor, your bullets ricochet between it and its friends.', requires: Object.freeze(['gunner', 'rigger']) }),
-  Object.freeze({ id: 'evolution_molten_avalanche', kind: 'evolution', name: 'Molten Avalanche', text: 'Plough-captured rocks glow white-hot and ignite what they hit.', requires: Object.freeze(['conjurer', 'gunner']) }),
+  Object.freeze({ id: 'evolution_molten_avalanche', kind: 'evolution', name: 'Molten Avalanche', text: 'Plow-captured rocks glow white-hot and ignite what they hit.', requires: Object.freeze(['conjurer', 'gunner']) }),
   Object.freeze({ id: 'evolution_wrecking_ball', kind: 'evolution', name: 'Wrecking Ball', text: 'A thrown body does not stop at the first kill.', requires: Object.freeze(['bruiser', 'rigger']) }),
   Object.freeze({ id: 'evolution_black_hole', kind: 'evolution', name: 'Black Hole', text: 'Pull and Bomb on one point make a well that eats everything for three seconds.', requires: Object.freeze(['conjurer', 'ghost']) }),
-  Object.freeze({ id: 'evolution_meteor', kind: 'evolution', name: 'Meteor', text: 'Boost through the plough and the whole pack rides your bow.', requires: Object.freeze(['juggernaut', 'conjurer']) }),
+  Object.freeze({ id: 'evolution_meteor', kind: 'evolution', name: 'Meteor', text: 'Boost through the plow and the whole pack rides your bow.', requires: Object.freeze(['juggernaut', 'conjurer']) }),
 ]);
 
 // Each power's three bends; one taken locks its siblings (06 §2.1 / §2.2's "One per power").

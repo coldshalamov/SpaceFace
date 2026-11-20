@@ -20,7 +20,7 @@ import { createSlotJig } from './slotJig.js';
 import { injectCruciblePreparation } from './cruciblePreparationLayouts.js';
 
 const defs = new Map([...WEAPONS, ...MODULES].map(d => [d.id, d]));
-const modeName = rules => ({ swarm: 'Swarm', scored: 'Gauntlet', boss_circuit: 'Boss circuit', block: 'Foundry Block' })[rules] || 'Crucible';
+const modeName = rules => ({ swarm: 'Swarm', scored: 'Gauntlet', boss_circuit: 'Boss circuit', block: 'Foundry Block' })[rules] || 'Swarm';
 const SLOT_SIZE_LABELS = { S: 'Small', M: 'Medium', L: 'Large' };
 
 /** One hull of each starter, for the stat ring's fractions against the largest of them. */

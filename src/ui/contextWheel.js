@@ -41,7 +41,7 @@ export const SLICES = Object.freeze([
   { action: 'strafeLeft',       label: 'Strafe ←',     icon: 'chevron-left',  phase: 'toggle' },
   { action: 'strafeRight',      label: 'Strafe →',     icon: 'chevron-right', phase: 'toggle' },
   { action: 'bulletTime',       label: 'Bullet Time',  icon: 'clock',    phase: 'toggle' },
-  { action: 'gyreSnare',        label: 'Gyre Lash',    icon: 'cone',     phase: 'toggle' },
+  { action: 'gyreSnare',        label: 'Gather',      icon: 'cone',     phase: 'toggle' },
   { action: 'cloak',            label: 'Cloak',        icon: 'pod',      phase: 'tap' },
   { action: 'countermeasure',   label: 'Counter',      icon: 'shield',   phase: 'tap' },
   { action: 'scanPulse',        label: 'Scan',         icon: 'scan',     phase: 'tap' },

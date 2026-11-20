@@ -177,9 +177,9 @@ export default defineFlavorPack({
     },
     {
       id: 'drift_crucible', programSlot: 'C13c', targetRef: 'landmark_c13c_drift_crucible',
-      displayName: 'Drift Crucible', location: { sectorId: 'sector_ceres_belt', zoneId: 'zone_ceres_refinery' },
+      displayName: 'Drift Smelter', location: { sectorId: 'sector_ceres_belt', zoneId: 'zone_ceres_refinery' },
       lines: [
-        { id: 'c13c_01', text: 'The Crucible has run eighty years without shutdown.' },
+        { id: 'c13c_01', text: 'The smelter has run eighty years without shutdown.' },
         { id: 'c13c_02', text: 'Ore-haulers feed it while shift crews change beneath them.' },
         { id: 'c13c_03', text: "Founders' names are welded where the molten load can see them." },
         { id: 'c13c_04', text: "Half the sector's economy leaves this cage as metal." },

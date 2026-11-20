@@ -315,7 +315,7 @@ export const POWER_ROSTER = Object.freeze([
   Object.freeze({
     id: 'seed',
     defKey: 'seed',
-    name: 'Mass Seed',
+    name: 'Pin anchor',
     action: 'deployMassSeed',
     railSlot: 3,
     volume: FIELD_VOLUMES.RING,
@@ -386,7 +386,7 @@ export const FIELD_ESCAPES = Object.freeze({
     id: 'well',
     verb: 'boost_out',
     name: 'Boost out',
-    sentence: 'Hold boost and fly out of the ring; a well cannot keep a boosting hull.',
+    sentence: 'Hold boost and fly out of the ring; the pull cannot hold a boosting hull.',
   }),
   repulsor: Object.freeze({
     id: 'repulsor',

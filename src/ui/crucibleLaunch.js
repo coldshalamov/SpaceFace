@@ -71,7 +71,7 @@ export function crucibleSetupFor({
 } = {}) {
   const starter = COMBAT_LAB_STARTER_PACKAGES.find((entry) => entry.id === starterId)
     || COMBAT_LAB_STARTER_PACKAGES.find(entry => entry.id === CRUCIBLE_DEFAULT_STARTER_ID);
-  if (!starter) return { ok: false, issues: [{ path: 'starterId', message: 'Default Crucible starter is missing' }] };
+  if (!starter) return { ok: false, issues: [{ path: 'starterId', message: 'Default Swarm starter is missing' }] };
   const result = validateCombatLabSetup({
     schema: 'spaceface.combatLabSetup.v1',
     hullId: starter.hullId,

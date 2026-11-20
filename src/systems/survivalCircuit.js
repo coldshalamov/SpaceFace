@@ -169,8 +169,8 @@ export const CIRCUIT_DESTINATIONS = Object.freeze({
     Object.freeze({
       arenaId: 'lagrange_crucible',
       nodeId: 'lagrange_crucible',
-      label: 'Lagrange Crucible',
-      line: 'Wells pull the whole room. Weight your passes.',
+      label: 'Lagrange Arena',
+      line: 'Pull wells drag the whole room. Weight your passes.',
     }),
     Object.freeze({
       arenaId: 'cinder_sluice',

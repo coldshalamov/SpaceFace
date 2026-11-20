@@ -20,7 +20,7 @@ test('new games default to Standard orbit steering and expose an Off switch', ()
   const state = createGameState(47);
   assert.equal(state.settings.gameplay.orbitAssistStrength, 'standard');
   const source = readFileSync(new URL('../src/ui/screens/settings.js', import.meta.url), 'utf8');
-  assert.match(source, /rowSelect\('Massline orbit assist',[\s\S]*orbitAssistStrength[\s\S]*\['full', 'Full'\][\s\S]*\['standard', 'Standard'\][\s\S]*\['light', 'Light'\][\s\S]*\['off', 'Off'\]/);
+  assert.match(source, /rowSelect\('Line orbit assist',[\s\S]*orbitAssistStrength[\s\S]*\['full', 'Full'\][\s\S]*\['standard', 'Standard'\][\s\S]*\['light', 'Light'\][\s\S]*\['off', 'Off'\]/);
 });
 
 test('orbit steering stays invisible in the player-facing tether HUD', () => {

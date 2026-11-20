@@ -272,10 +272,10 @@ function mountGameplay() {
 
 function releaseAssistRow(root) {
   const row = findAll(root, (node) => node.tagName === 'li'
-    && findAll(node, (child) => child.textContent === 'Massline release assist').length > 0)[0] || null;
+    && findAll(node, (child) => child.textContent === 'Line release assist').length > 0)[0] || null;
   const select = row && row.querySelector ? row.querySelector('select') : null;
   const notes = findAll(root, (node) => typeof node.textContent === 'string'
-    && node.textContent.includes('Massline'));
+    && node.textContent.includes('Line release assist'));
   return { row, select, notes };
 }
 
@@ -288,7 +288,7 @@ test('PRO-12 the Massline release-assist row stays, disabled with a reason when 
     assert.ok(hidden.row, 'row exists while the family is off');
     assert.equal(hidden.select && hidden.select.disabled, true);
     assert.equal(hidden.select.getAttribute('aria-disabled'), 'true');
-    assert.ok(hidden.notes.some((node) => node.textContent.includes('Massline family is off')));
+    assert.ok(hidden.notes.some((node) => node.textContent.includes('Line family is off')));
 
     MASSLINE2_FLAGS.enabled = true;
     const prev = globalThis.document;
@@ -307,7 +307,7 @@ test('PRO-12 the Massline release-assist row stays, disabled with a reason when 
     assert.notEqual(on.select.disabled, true);
     const plate = findAll(root, (node) => typeof node.textContent === 'string' && node.textContent.includes('RELEASE'));
     assert.ok(plate.length > 0, 'the enabled row names the release marker');
-    assert.equal(on.notes.some((node) => node.textContent.includes('Massline family is off')), false);
+    assert.equal(on.notes.some((node) => node.textContent.includes('Line family is off')), false);
   } finally {
     MASSLINE2_FLAGS.enabled = prior;
   }

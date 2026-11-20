@@ -187,7 +187,7 @@ export function crucibleCombatLines(state) {
 /** Mounted and released by crucibleFocus, never a second animation loop or input owner. */
 export function mountCrucibleCombatReadout(host) {
   const root = el('ul', 'k-text k-t-data sf-crucible-combat');
-  root.setAttribute('aria-label', 'Crucible combat fittings');
+  root.setAttribute('aria-label', 'Swarm combat fittings');
   root.setAttribute('aria-live', 'off');
   root.hidden = true;
   host.appendChild(root);

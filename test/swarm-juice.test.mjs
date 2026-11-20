@@ -112,12 +112,12 @@ test('swarmJuice is registered beside the chain and ticks for the boss bar', () 
 test('chain tiers: the named marks in order, and crossing is reported once', () => {
   assert.deepEqual(SWARM_CHAIN_TIERS.map((t) => t.at), [10, 25, 50, 100, 200]);
   assert.equal(swarmChainTier(9), null);
-  assert.equal(swarmChainTier(10).name, 'IGNITION');
-  assert.equal(swarmChainTier(99).name, 'NOVA');
+  assert.equal(swarmChainTier(10).name, 'STREAK ×10');
+  assert.equal(swarmChainTier(99).name, 'STREAK ×50');
   assert.equal(swarmChainTier(500).name, 'SINGULARITY');
-  assert.equal(swarmChainNextTier(0).name, 'IGNITION');
+  assert.equal(swarmChainNextTier(0).name, 'STREAK ×10');
   assert.equal(swarmChainNextTier(200), null, 'the top has no next mark');
-  assert.equal(swarmChainTierCrossed(25, 0).name, 'FLARE');
+  assert.equal(swarmChainTierCrossed(25, 0).name, 'STREAK ×25');
   assert.equal(swarmChainTierCrossed(30, 25), null, 'between marks says nothing');
   assert.equal(swarmChainTierCrossed(120, 9).name, 'SUPERNOVA', 'a burst reports the highest');
 });
@@ -340,7 +340,7 @@ test('the chain tier crossing lands its name; a broken chain shatters', () => {
   h.bus.emit('swarm:chain', { chain: 25, best: 25, cause: 'terrain', step: 2, at: 0, wave: 3 });
   const tiers = named(h, 'swarm:chainTier');
   assert.equal(tiers.length, 1);
-  assert.equal(tiers[0].payload.name, 'FLARE');
+  assert.equal(tiers[0].payload.name, 'STREAK ×25');
   h.bus.emit('swarm:chainBroken', { chain: 26, best: 26 });
   const shatter = named(h, 'swarm:chainShatter');
   assert.equal(shatter.length, 1);
@@ -672,7 +672,7 @@ test('end to end with the live chain: a milestone is one voice, the tier chord, 
   assert.equal(toasts.length, 1, 'the milestone still says its line on screen');
   assert.equal(toasts[0].payload.audio, false, 'the toast leaves the sound to the tier cue');
   const tierPlays = plays.filter((p) => p.recipeId === 'sfx_promotion_chord');
-  assert.equal(tierPlays.length, 1, 'IGNITION chords once');
+  assert.equal(tierPlays.length, 1, 'the first tier chords once');
   assert.equal(clicks(), clicksBefore, 'the milestone toast adds no click under the chord');
   assert.equal(plays.filter((p) => p.recipeId === 'sfx_ui_alert').length, 0, 'and no alert beep');
   ear.destroy();

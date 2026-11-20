@@ -274,7 +274,7 @@ export const techTreeScreen = {
     curveBtn.type = 'button';
     curveBtn.setAttribute('aria-expanded', 'false');
     curveBtn.setAttribute('aria-controls', 'sf-curve-ladder');
-    curveBtn.appendChild(el('span', 'con-curve__key', 'One new verb every hour'));
+    curveBtn.appendChild(el('span', 'con-curve__key', 'Next unlocks'));
     const curveFull = hourVerbCurveLine();
     // Each rung is its own nowrap span on a one-line wrapping row, so a narrow head drops whole
     // rungs instead of cutting one mid-word with an ellipsis (tech-treeLayouts.js).
@@ -289,7 +289,7 @@ export const techTreeScreen = {
     curveBtn.appendChild(curveRungs);
     const curveFly = el('ul', 'con-rows con-curve__fly');
     curveFly.id = 'sf-curve-ladder';
-    curveFly.setAttribute('aria-label', 'Verbs by research hour');
+    curveFly.setAttribute('aria-label', 'Unlocks by research hour');
     curveFly.hidden = true;
     for (const row of HOUR_VERB_CURVE) {
       const li = el('li', 'con-row');
@@ -312,7 +312,7 @@ export const techTreeScreen = {
     const corner = el('div', 'k-corner con-corner');
     corner.setAttribute('aria-label', 'Research resources');
     const crEl = reading(corner, 'Credits', 'data-cr');
-    const rpEl = reading(corner, 'Research points', 'data-rp');
+    const rpEl = reading(corner, 'Research', 'data-rp');
     const countEl = reading(corner, 'Unlocked', 'data-count');
     setText(countEl, '0/' + TECH_NODES.length);
     rootEl.appendChild(corner);
@@ -814,7 +814,7 @@ export const techTreeScreen = {
         ? `<p class="con-dossier__cost con-dossier__paid" aria-label="Cost">Paid ${escapeHtml(fmtCr(cost.credits || 0))} cr${cost.rp ? ' · ' + escapeHtml(Math.round(cost.rp).toLocaleString()) + ' RP' : ''}</p>`
         : `<dl class="con-dossier__cost" aria-label="Cost">
         ${costCellHtml('Credits', Math.round(cost.credits || 0), Math.round(player.credits || 0), fmtCr)}
-        ${costCellHtml('Research points', Math.round(cost.rp || 0), Math.round(player.researchPoints || 0), (v) => v.toLocaleString())}
+        ${costCellHtml('Research', Math.round(cost.rp || 0), Math.round(player.researchPoints || 0), (v) => v.toLocaleString())}
       </dl>`}
       ${readiness.state === 'locked' ? requiresHtml : ''}
       ${verbLine ? `<p class="con-sentence con-dossier__verb">${escapeHtml(verbLine)}</p>` : ''}

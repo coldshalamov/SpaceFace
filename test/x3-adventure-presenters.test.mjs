@@ -200,7 +200,7 @@ test('Adventure flight: the Gyre becomes a plain HOLD/LAUNCH instrument, not a t
     const text = visibleText(hud._dom.root).join(' ');
     assert.match(text, /\bHOLD\b/, 'the held verb is named plainly');
     assert.match(text, /FUSE 5s/, 'the fuse countdown survives');
-    assert.doesNotMatch(text, /GYRE|STRAIN|×4|38t|DMG|TOWING/);
+    assert.doesNotMatch(text, /GYRE|GATHER|STRAIN|×4|38t|DMG|TOWING/);
     assert.equal(hud._dom.pill.style.display, 'flex', 'the Adventure instrument is mounted');
     // The mass and strain bars are telemetry; only the fuse bar is part of the plain read.
     assert.equal(hud._dom.massFill.style.display, 'none');
@@ -228,7 +228,7 @@ test('Adventure flight: LAUNCH and the ball TTL are the only flight read after a
     state.gyreSnare = { phase: 'launching', ballMass: 212, clumpMass: 212, absorbs: 4, ballTtlLeftS: 2.6 };
     hud.update(2 / 60, state);
     assert.equal(hud._dom.pillText.textContent, 'LAUNCH · BALL 2s');
-    assert.doesNotMatch(hud._dom.pillText.textContent, /GYRE|BOWL|×5|212t|DMG/);
+    assert.doesNotMatch(hud._dom.pillText.textContent, /GYRE|GATHER|BOWL|×5|212t|DMG/);
   } finally {
     hud.destroy();
     t.restore();
@@ -249,7 +249,7 @@ test('a live Swarm run keeps the Gyre telemetry pill', () => {
     hud.init({ state });
     hud.update(1 / 60, state);
     const text = visibleText(hud._dom.root).join(' ');
-    assert.match(text, /GYRE/);
+    assert.match(text, /GATHER/);
     assert.match(text, /STRAIN/);
     assert.match(text, /38t/);
   } finally {

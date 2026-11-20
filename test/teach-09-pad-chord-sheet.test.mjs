@@ -59,7 +59,7 @@ test('a player who never opens Settings still reads the dual Xbox/PlayStation re
   // The five powers (owner 2026-10-22): SHOVE keeps Y and takes the old detonate's D-Pad Down.
   assert.equal(rows.get('Shove (repulsor; sets off armed ordnance)'), 'Y / △ or D-Pad Down');
   assert.equal(rows.get('Accept / confirm'), 'A / Cross');
-  assert.equal(rows.get('Massline'), 'A / Cross');
+  assert.equal(rows.get('Line'), 'A / Cross');
   assert.equal(rows.get('Countermeasure'), 'R3');
   assert.equal(rows.get('Bomb (selected ordnance)'), 'D-Pad Right');
   assert.equal(rows.get('Cycle ordnance'), 'D-Pad Left');
@@ -76,9 +76,9 @@ test('a player who never opens Settings still reads the dual Xbox/PlayStation re
   assert.equal(rows.get('Detonate charge'), undefined, 'the detonate is SHOVE now, not its own row');
   // FB-003: the chord layer prints every button it holds, in the same dual register.
   assert.equal(rows.get('Scanner pulse'), 'LB / L1 + D-Pad Up');
-  assert.equal(rows.get('Pin (anchor seed)'), 'LB / L1 + D-Pad Down');
+  assert.equal(rows.get('Pin (anchor)'), 'LB / L1 + D-Pad Down');
   assert.equal(rows.get('Pull (gravity well)'), 'LB / L1 + D-Pad Left');
-  assert.equal(rows.get('Rig (clearing cone / skim scoop)'), 'LB / L1 + D-Pad Right');
+  assert.equal(rows.get('Plow (clearing wedge / skim scoop)'), 'LB / L1 + D-Pad Right');
   assert.equal(rows.get('Cloak'), 'RB / R1 + D-Pad Down');
   assert.equal(rows.get('Cruise drive'), 'RB / R1 + D-Pad Right');
 });
@@ -96,7 +96,7 @@ test('a remap re-labels the sheet in the same short register Settings shows', ()
   const rows = byLabel(gamepadControlRows(map));
   assert.equal(rows.get('Dock / activate'), 'Home (when prompted)');
   assert.equal(rows.get('Fire'), 'RT', 'an untouched verb keeps the stock button');
-  assert.equal(rows.get('Massline'), 'A');
+  assert.equal(rows.get('Line'), 'A');
 });
 
 test('no button is invented: every printed name comes from the label vocabulary', () => {
@@ -169,6 +169,6 @@ test('the static rows are keyed by label, so inserting a row cannot mis-target o
   // FB-003: the Mass Seed has a real pad seat now (LB + D-Pad Down; the PIN power since the five
   // powers) — it is an action row, so the static 'keyboard verb' text is gone and only the mission
   // log stays pad-less.
-  assert.equal(rows.get('Pin (anchor seed)'), 'LB / L1 + D-Pad Down');
+  assert.equal(rows.get('Pin (anchor)'), 'LB / L1 + D-Pad Down');
   assert.equal(rows.get('Open mission log'), 'Start / Options → Pause → Mission Log');
 });

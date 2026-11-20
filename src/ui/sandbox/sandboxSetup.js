@@ -269,7 +269,7 @@ export const SCENARIO_PRESETS = Object.freeze([
   },
   {
     id: 'massline_long_line',
-    title: 'Massline — Long Line',
+    title: 'Line — Long',
     description: 'Start latched to a distant heavy anchor. Check forward+turn yaw at a long radius.',
     config: Object.freeze({
       scenarioId: 'massline_long_line',
@@ -280,7 +280,7 @@ export const SCENARIO_PRESETS = Object.freeze([
   },
   {
     id: 'massline_short_line',
-    title: 'Massline — Short Line',
+    title: 'Line — Short',
     description: 'Start latched close to a heavy anchor. Check fast swing yaw and raw-control release.',
     config: Object.freeze({
       scenarioId: 'massline_short_line',
@@ -291,7 +291,7 @@ export const SCENARIO_PRESETS = Object.freeze([
   },
   {
     id: 'massline_moving_anchor',
-    title: 'Massline — Moving Target',
+    title: 'Line — Moving Target',
     description: 'A crossing neutral target tests preview, natural acquisition and moving-body latch.',
     config: Object.freeze({
       scenarioId: 'massline_moving_anchor',
@@ -353,7 +353,7 @@ export const SCENARIO_PRESETS = Object.freeze([
   {
     id: 'planet_sling_course',
     title: 'Planet Sling Course',
-    description: 'Start off The Anvil with two physical route anchors and the normal Massline controls.',
+    description: 'Start off The Anvil with two physical route anchors and the normal line controls.',
     config: Object.freeze({
       scenarioId: 'planet_sling_course',
       sectorId: 'sector_tethys_junction',
@@ -1355,7 +1355,7 @@ export function applySandboxSetup(ctx, config) {
         const detail = survival.issues && survival.issues[0] && survival.issues[0].message
           ? survival.issues[0].message
           : 'invalid setup';
-        ctx.bus.emit('toast', { text: 'Crucible setup invalid: ' + detail, kind: 'error', ttl: 6 });
+        ctx.bus.emit('toast', { text: 'Swarm setup invalid: ' + detail, kind: 'error', ttl: 6 });
       }
     } else {
       const setup = survival.value;

@@ -99,7 +99,7 @@ export const COMBAT_LAB_STARTER_PACKAGES = freezeDeep([
   // in a room where the swarm is behind you as often as in front.
   {
     id: 'massline_rig',
-    label: 'Massline Rig',
+    label: 'Line Rig',
     hullId: 'ship_drifter',
     // The Drifter's weapon capacity is 16 and two M guns cost 18, so the rear mount takes the S
     // marker rather than a second heavy — which is also the better rig: the thing you want pointing
@@ -286,7 +286,7 @@ export const COMBAT_LAB_ARENAS = freezeDeep([
   },
   {
     id: 'lagrange_crucible',
-    label: 'Lagrange Crucible',
+    label: 'Lagrange Arena',
     sectorId: 'sector_helios_prime',
     spawnPos: { x: -500, z: 800 },
   },

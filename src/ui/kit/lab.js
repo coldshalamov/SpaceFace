@@ -66,7 +66,7 @@ const overview = section('kit-words', 'Helios Prime', 'The kit · words, tempera
 overview.hang.append(words([
   { action: 'continue', label: 'Continue', current: true, sub: 'Helios Prime · Hitch · 5,000 CR' },
   { action: 'newGame', label: 'New game' }, { action: 'load', label: 'Load', disabled: true, sub: 'No other saves' },
-  { action: 'crucible', label: 'Crucible' }, { action: 'archive', label: 'Archive' },
+  { action: 'crucible', label: 'Swarm' }, { action: 'archive', label: 'Archive' },
   { action: 'settings', label: 'Settings' }, { action: 'quit', label: 'Quit', danger: true },
 ], { onPick: name => { status.value = `Fixture action · ${name}`; }, ariaLabel: 'Menu words' }));
 overview.stage.append(hero('5,000', 'Credits'), el('p', 'k-sentence', 'The world belongs in the shot. This isolated kit is not a hull photograph.'));
