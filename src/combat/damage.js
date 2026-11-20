@@ -892,10 +892,13 @@ function wakeStatusAttachedLoop(state) {
 export function normalizeDamagePacket(packet = {}, channelOrder = ['kinetic', 'thermal', 'ion', 'plasma', 'phase']) {
   const channels = emptyChannels(channelOrder);
   for (const channel of channelOrder) channels[channel] = finiteNonNegative(packet.channels && packet.channels[channel]);
+  // pen + bypass > 1 would drive the shield-routed share negative: the shield gains hp and the
+  // packet delivers more than its raw total. Cap penetration so the sum stays within [0,1].
+  const shieldBypass = clamp01(Number(packet.shieldBypass) || 0);
   return {
     schemaVersion: 1,
     channels,
-    penetration: clamp01(Number(packet.penetration) || 0),
+    penetration: Math.min(clamp01(Number(packet.penetration) || 0), 1 - shieldBypass),
     impulse: normalizeImpulse(packet.impulse),
     tumbleTorque: finiteNonNegative(packet.tumbleTorque),
     heat: finiteNonNegative(packet.heat),
@@ -904,7 +907,7 @@ export function normalizeDamagePacket(packet = {}, channelOrder = ['kinetic', 't
       .map((status) => ({ id: status.id, stacks: Math.max(1, Math.floor(status.stacks || 1)), durationTicks: integerOrUndefined(status.durationTicks) })) : [],
     hit: normalizeHit(packet.hit),
     subsystemShare: packet.subsystemShare == null ? null : clamp01(Number(packet.subsystemShare) || 0),
-    shieldBypass: clamp01(Number(packet.shieldBypass) || 0),
+    shieldBypass,
     flags: packet.flags && typeof packet.flags === 'object' ? { ...packet.flags } : {},
     source: packet.source && typeof packet.source === 'object' ? { ...packet.source } : null,
     // Present only on continuous (per-tick) packets, so every other packet keeps its shape.
