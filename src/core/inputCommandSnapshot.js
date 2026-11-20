@@ -36,6 +36,9 @@ const ACTION_KEYS = Object.freeze([
   'deployRepulsorHoldTicks',
   'deployMassSeedHoldTicks',
   'chargeThrowHoldTicks',
+  // The one-shot actions the two bomb hold fields deepen must ride the same record.
+  'dropBomb',
+  'swarmBombThrow',
   'swarmBombThrowHoldTicks',
   'dropBombHoldTicks',
 ]);

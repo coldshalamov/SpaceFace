@@ -668,6 +668,7 @@ test('conjurer_deep_cast: the measured hold survives the input command snapshot 
   assert.equal(record.actions.deployWell, true, 'the one-shot action survived');
   assert.equal(record.actions.deployWellHoldTicks, 72, 'the measured hold survived');
   assert.equal(record.actions.dropBombHoldTicks, 48, 'the Bomb hold survived');
+  assert.equal(record.actions.dropBomb, true, 'the Bomb action its hold deepens survived too');
   assert.equal(record.actions.deployMassSeedHoldTicks, 0, 'an unset hold is 0, not undefined');
 
   // The depth the sim reads from the consumed record is the depth the pilot earned.

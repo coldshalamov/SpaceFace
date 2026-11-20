@@ -490,7 +490,8 @@ export const fields = {
         this.bus.on('sector:enter', () => this._clearAll(FIELD_END_REASONS.cleared, 'sector_enter')),
         this.bus.on('game:new', () => this._clearAll(FIELD_END_REASONS.cleared, 'new_game')),
         this.bus.on('run:waveCleared', () => this._releaseSwarmSpecialistAnchors('wave_cleared')),
-        this.bus.on('run:ended', () => this._releaseSwarmSpecialistAnchors('run_ended')),
+        this.bus.on('run:ended', () => { this._releaseSwarmSpecialistAnchors('run_ended'); this._clearPilotQueues(); }),
+        this.bus.on('game:newGame', () => this._clearPilotQueues()),
         // Victory is a terminal phase reached by transition — no run:ended follows it, and the
         // wave owner may carry cohort bodies across run:started, so anchors release here.
         this.bus.on('run:transitioned', (p) => {
@@ -549,6 +550,8 @@ export const fields = {
   // boundaries; the register order is the sync lane's, so the run stays bit-identical.
   *deserializeChunked(raw,remap=new Map()) {
     this._restoredOnLoad=false;
+    // A loaded world inherits no Echo, Combo ledger or queued Combo from the session before it.
+    this._clearPilotQueues();
     if(raw?.revision!==1||!Array.isArray(raw.fields))return;
     const mapped=id=>id==null?id:remap.get(String(id))??id,rt=defaultRuntime();
     this._kernel.clear();
@@ -937,6 +940,7 @@ export const fields = {
     fieldsRuntime.affectedIds = affectedIds;
     // Golden-safety gate (layer b): strict no-op unless enabled (OFF under node).
     if (!fieldsFlag('enabled')) {
+      if (this._comboQueue) this._comboQueue.length = 0;
       if (this._familyPrevPins) this._familyPrevPins.clear();
       if (this._familyPrevMines) this._familyPrevMines.clear();
       rt.familyRead = EMPTY_FAMILY_READ;
@@ -946,6 +950,7 @@ export const fields = {
       // Not flying (docked / station): apply no forces, but still tick expiry + destruction so a
       // field never outlives its bounded lifetime while the player is away, and keep the cone off.
       if (rt.coneActive) this._setConeActive(state, rt, false, FIELD_END_REASONS.toggledOff);
+      if (this._comboQueue) this._comboQueue.length = 0;
       this._syncSkimSheet(state, rt);
       this._syncEmitters(state, rt, /*applyForces*/ false, dt);
       this._syncSeedLockField(state, rt);
@@ -974,7 +979,9 @@ export const fields = {
     // quiet-path producers for up to 0.5 s while membership is stable; wake on entity-index
     // bump, rescan, or leaving idle (input/skim already ran above and clear idle when the
     // player deploys). Unlatched idle still runs every quiet-path producer each tick.
-    let idle = fieldsIdleSnapshot(rt, this._kernel, state);
+    // A queued Combo keeps the tick live: the well that set it up may already have expired, and
+    // the queue drains only after the force pass (agy2 delta review).
+    let idle = fieldsIdleSnapshot(rt, this._kernel, state) && !(this._comboQueue && this._comboQueue.length > 0);
     if (idle) {
       if (FIELDS_IDLE_QUIET_LATCH !== false) {
         const membership = fieldsMembershipVersion(state);
@@ -1936,6 +1943,12 @@ export const fields = {
         ttl: 1.6,
       });
     }
+  },
+
+  _clearPilotQueues() {
+    if (this._pilotEcho) this._pilotEcho.length = 0;
+    if (this._comboTouches) this._comboTouches.clear();
+    if (this._comboQueue) this._comboQueue.length = 0;
   },
 
   _clearAll(reason, why) {

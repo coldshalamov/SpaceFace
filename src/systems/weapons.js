@@ -2795,18 +2795,24 @@ export const weapons = {
     const hull = Number.isFinite(e && e.rot) ? e.rot : 0;
     const solve = Number.isFinite(aimAngle) ? aimAngle : hull;
     let bearing = Number.isFinite(w._turretAngle) ? w._turretAngle : hull;
-    // The hull turned; a cradle already at its stop is pushed along rather than left outside it.
-    const rel = wrapAngle(bearing - hull);
-    if (rel > half) bearing = hull + half;
-    else if (rel < -half) bearing = hull - half;
     const maxStep = TURRET_SLEW_RAD_S * (Number.isFinite(dt) && dt > 0 ? dt : 1 / 60);
-    const delta = wrapAngle(solve - bearing);
-    if (delta > maxStep) bearing += maxStep;
-    else if (delta < -maxStep) bearing -= maxStep;
-    else bearing = solve;
-    const relAfter = wrapAngle(bearing - hull);
-    if (relAfter > half) bearing = hull + half;
-    else if (relAfter < -half) bearing = hull - half;
+    if (arc >= TWO_PI - 1e-6) {
+      // A full ring takes the short way round.
+      const delta = wrapAngle(solve - bearing);
+      if (delta > maxStep) bearing += maxStep;
+      else if (delta < -maxStep) bearing -= maxStep;
+      else bearing = solve;
+      w._turretAngle = bearing;
+      return bearing;
+    }
+    // A bounded cradle traverses in hull-relative angle INSIDE its stops (agy2 delta review): the
+    // world-space short way can point through the dead zone, and clamping that step back to the
+    // stop pinned a 180-degree battery at +90 forever while its target crossed to -90.
+    const rel = Math.max(-half, Math.min(half, wrapAngle(bearing - hull)));
+    const solveRel = Math.max(-half, Math.min(half, wrapAngle(solve - hull)));
+    const d = solveRel - rel;
+    const relNext = Math.abs(d) <= maxStep ? solveRel : rel + Math.sign(d) * maxStep;
+    bearing = hull + relNext;
     w._turretAngle = bearing;
     return bearing;
   },

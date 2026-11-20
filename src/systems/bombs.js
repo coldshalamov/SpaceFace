@@ -796,13 +796,15 @@ export const bombs = {
       actions.dropBomb = false;
       if (!blocked(state, player)) {
         if (rt.selectedId) {
-          this.drop(player, rt.selectedId, state);
+          const dropped = this.drop(player, rt.selectedId, state);
           // A live bomb means the empty latch must not re-arm until the bay drains.
           this._bombsQuiet = null;
           // OVH-01c2 conjurer_echo — the Bomb key fires twice: the second drop leaves 0.5 s of
           // sim time later, same payload, half strength (drained above the quiet latch so a
           // detonated first bomb cannot starve it).
-          if (pilotHas(state, 'conjurer_echo')) {
+          // Only a drop that happened echoes: a press the bay cooldown refused must not queue a
+          // cooldown-bypassing second bomb (agy2 delta review).
+          if (dropped && pilotHas(state, 'conjurer_echo')) {
             const queue = this._pilotEcho || (this._pilotEcho = []);
             if (queue.length >= 4) queue.shift();
             queue.push({ payloadId: rt.selectedId, at: simNow(state) });

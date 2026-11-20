@@ -532,6 +532,8 @@ export function traumaFromContact(dp, context = {}) {
  * unknown mass falls back to the collision law's ACOUSTIC_MASS_UNKNOWN, which the camera's tier
  * table maps to the conservative medium beat (the old unconditional kiss), never to silence.
  */
+// A Bruiser (~170 t) is a heavy; a Wasp (~16 t) is not.
+const THROW_KILL_HEAVY_MASS = 120;
 function victimAcousticMass(receipt, state) {
   const entity = state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(receipt.id)
@@ -1633,6 +1635,10 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       const playerInvolved = (p.killerId === state.playerId) || (p.id === state.playerId);
       const ctrl = this.state.render && this.state.render.cameraCtrl;
       const isCapital = p.capital || /capital|flagship|cruiser|gunship/i.test(String(p.victimClass || p.type || '')) || (p.radius || 0) >= 55;
+      // OVH-06a hero beat: a thrown body (or the whip) killing a heavy. Swarm heavies such as the
+      // Bruiser are not capitals, so the beat keys on mass too (agy2 delta review).
+      const throwKill = p.cause === 'massline_whip' || p.impactorId != null;
+      const heavyThrowKill = throwKill && (isCapital || victimAcousticMass(p, state) >= THROW_KILL_HEAVY_MASS);
       if (!playerInvolved) {
         // Remote NPC kills stay silent at the camera; a local off-player kill keeps the small
         // world-event punch so nearby action remains readable without stealing the beat.
@@ -1649,9 +1655,9 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
           trauma = d2 <= 400 * 400 ? 0.5 : Math.min(0.5, 0.5 * ((400 * 400) / d2));
         }
         // OVH-06a: a capital kill moves the camera only as a throw kill on a heavy (hero beat).
-        const throwKill = p.cause === 'massline_whip' || p.impactorId != null;
         if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(trauma, throwKill ? 'throwKillHeavy' : 'kill');
-        if (throwKill) this._holdCameraBeat(HS_CAMERA_HOLD_MAX, 'throwKillHeavy');
+        // killCam's cause already freezes the hero frame; hold here only without a kill cam.
+        if (throwKill && !(ctrl && typeof ctrl.killCam === 'function')) this._holdCameraBeat(HS_CAMERA_HOLD_MAX, 'throwKillHeavy');
         this._trigger(HS_CAPITAL_KILL, FOV_PUNCH_KILL, 0, null);
         // FB-084: the capital tier of the weight-keyed kill beat (deep push + hold), keyed on
         // the same acoustic mass the kill audio resolves.
@@ -1668,9 +1674,12 @@ html.sf-reduce-motion #sf-hull-crit.on, html.sf-reduce-flash #sf-hull-crit.on {
       // along the kill direction the presentation receipt carries (G18-03); medium+ keeps the
       // zoom beat by the mass law.
       this._trigger(HS_KILL, FOV_PUNCH_KILL, 0, null);
+      if (heavyThrowKill && ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.35, 'throwKillHeavy');
+      if (heavyThrowKill && !(ctrl && typeof ctrl.killCam === 'function')) this._holdCameraBeat(HS_CAMERA_HOLD_MAX, 'throwKillHeavy');
       if (ctrl && typeof ctrl.killCam === 'function') {
         ctrl.killCam(victimAcousticMass(p, state), {
           capital: false,
+          ...(heavyThrowKill ? { cause: 'throwKillHeavy' } : null),
           direction: p.presentation && p.presentation.direction,
         });
       }
