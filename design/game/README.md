@@ -23,6 +23,7 @@ commission briefs (EC-S01…S25, G01…G21, A01…A07, Z01…Z04, C01) are in
 | [17 The ladder and the long game](17_THE_LADDER_AND_THE_LONG_GAME.md) | Eight rope classes, money, Swarm prices, the hours, the yard |
 | [18 Sound, look, and done](18_SOUND_LOOK_AND_DONE.md) | **The acceptance standard** and the owner's ten-minute card |
 | [19 What players expect](19_WHAT_PLAYERS_EXPECT.md) | First-evening basics: restart, controller, resume, fairness |
+| [20 The first hour](20_THE_FIRST_HOUR.md) | Launch, early Swarm and Adventure through their first outcomes, with other reachable routes |
 | [`../program/INFERENCE_PLANTS.md`](../program/INFERENCE_PLANTS.md) | 100 written world reactions (build exactly as written) |
 
 ## Rulings made after these documents (2026-11-10/11)

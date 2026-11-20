@@ -1,15 +1,17 @@
 # Start here — how SpaceFace gets built
 
-There are exactly three things to know:
+Start with these references.
 
 | Question | The one answer |
 |---|---|
 | **What is the game?** | `design/game/` (start at its README; doc 18 is the acceptance standard) |
+| **What must the complete build deliver?** | [Whole-game completion program](../../../build_map.md#whole-game-completion-program) |
 | **What do I work on?** | `design/program/fleet/QUEUE.md` — four lanes; you work only in yours |
 | **How do I work?** | `design/program/fleet/PROTOCOL.md` (rules), `PLAYBOOK.md` (the loop and the programs), `HANDOFF.md` (where things stand) |
 
-Everything else under `design/program/` and `design/program/finish/` is **history** unless a queue row
-links it. Do not take work from any other plan, board, build map, lane file or PR description.
+Use the build map’s completion program to reconcile plan scope and acceptance. The fleet queue
+continues to carry assignments. Historical plans supply context and outstanding details when linked
+from that program or a queue row.
 
 ## Starting an agent — paste this, with its number
 
@@ -34,8 +36,11 @@ workers on the same files. The runner resumes a worker after a provider rate lim
 
 ## The gate
 
-`npm run gate` (on a quiet machine): import lint → Adventure boot through the real route → Swarm boot
-(one round) → deterministic 47-A replay. One line per step, then `GATE PASS` / `GATE FAIL` (also in
-`.devshots/fleet/gate-last.txt`, step logs in `.devshots/fleet/gate-<step>.log`).
-`npm run gate -- --quick` = lint + Adventure boot. Run it after every batch and before every push;
+On a quiet machine, `npm run gate` checks source syntax, import lint, Adventure boot through the real
+route, ten simulated seconds of the Swarm opening, and a deterministic 47-A replay. It prints one line per step,
+then `GATE PASS` or `GATE FAIL`. See `.devshots/fleet/gate-last.txt` and the logs for each step.
+`npm run gate -- --quick` checks syntax, imports and Adventure boot. Run it after every batch and before every push;
 red means fix or revert before anything else lands.
+
+Use the [whole-game production workflows](../../../build_map.md#production-workflows) for
+packaged playability, performance, route coverage, and demo or release decisions.

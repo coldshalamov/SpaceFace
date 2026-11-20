@@ -29,7 +29,9 @@ In the fiction it is **the Pit**: the sport this world watches. **Madame Kiln** 
 | **Traps** | a lever. The crusher, the furnace door, a pylon, the sluice gate | low, with a cooldown | the room kills for you if you set it up |
 | **The Bench** | every tenth round: refit, change ship, or cash out | free | the breath |
 
-Everything on the floor is lit, labelled with a price you can read from across the room, and marked on the radar.
+Everything on the floor is lit, labelled with a price you can read from across the room, and marked
+on the radar. To spend, approach the offer, select it with Interact, and cross the pad. See the
+[Foundry purchase rules](../overhaul/04_SWARM.md#62-build-the-foundry-as-a-set).
 
 ### Drops — things that fall out of enemies
 

@@ -1,15 +1,279 @@
 <!-- LIFETIME: STABLE -->
-> **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
-> (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
-
 # SpaceFace Build Map
 
-> **Dispatch is closed (owner, 2026-11-06).** The current program is the master plan in
-> [`design/program/finish/MASTER_PLAN.md`](design/program/finish/MASTER_PLAN.md); lane dispatch and
-> path collisions are in [`MASTER_LANES.md`](design/program/finish/MASTER_LANES.md), and live outcome
-> state is in [`EXECUTION_STATUS_2026-11-06.md`](design/program/finish/EXECUTION_STATUS_2026-11-06.md).
-> The rows below are **specification and history**, not a queue. Do not run `program-dispatch --next`
-> or start a row here as a new assignment.
+## Whole-game completion program
+
+Use this section as the current plan for improving and releasing the entire game. Take work from
+the [fleet queue](design/program/fleet/QUEUE.md) and record the latest runtime evidence in
+[QUALITY.md](design/program/fleet/QUALITY.md). The [game design](design/game/README.md) defines the
+experience and [ARCHITECTURE.md](ARCHITECTURE.md) defines the contracts. This program integrates
+the first hour, the complete campaign and combat modes, and the systems and assets they use.
+
+### Plan coverage and carry-forward
+
+Review every active queue row, including built work awaiting ordinary play, and reconcile it to the
+player outcome it delivers. For an older plan, preserve its original ID and evidence, apply the
+current design and owner rulings, and attach surviving work to the same outcome. A planned feature
+that is still required and absent, divergent, or unreachable stays open. If a later ruling replaced
+a feature or route, record the disposition in the owning row so it cannot repeatedly return as new work.
+
+| Plan or checklist | Where it feeds the whole-game work |
+|---|---|
+| [November 18 design rulings](design/overhaul/00_RULINGS.md), [game overview](design/overhaul/01_THE_GAME.md), [inspection ledger](design/overhaul/02_INSPECTION_LEDGER.md), and [overhaul productions](#40-the-a-list-overhaul--productions-for-agents-director-2026-11-18) | Apply the newer rulings where they change an older requirement. Use QUAL-02/09 for the physical Adventure jobs and yard. Use QUAL-04/05 for the revised Swarm run, floor purchases, and pilot progression. Use QUAL-03/07/08 for camera, physics, performance, and device changes shared by both modes. Verify each production through those routes and retain the detailed findings in the inspection ledger. |
+| [Overhaul production order](design/overhaul/11_ORDER_OF_WORK.md) and [live packet pipeline](design/overhaul/12_PIPELINE.md) | Use the live packet board to see which agents already own the overhaul work. Carry the corresponding ordinary-route outcomes into the QUAL rows. Follow the packet's scoped review and integration checks when a change is ready to land. |
+| [Design 09–20](design/game/README.md), [experience commissions](design/program/experience-commissions/commissions/), and [conformance findings](design/program/fleet/CONFORMANCE.md) | Turn every intended rule, route, and presentation promise into an observed player decision and consequence. Follow up missing outpost jobs, arena features, combat variants, fits, progression, and endings. Confirm each conformance finding before changing the owning system. |
+| [Fleet lanes](design/program/fleet/QUEUE.md), [PR intake](design/program/fleet/PR-INTAKE.md), [Finish Program history](design/program/finish/README.md), and [the outstanding intake and play-through work](#37-pr-intake-2026-11-14--what-landed-from-the-open-pull-requests-and-every-plan-that-is-still-owed) | Integrate active implementation packets, retain accepted routes, and resolve still-open outcomes. Cover the full replay checklist, including both modes, weak target or tool feedback, platform differences, recovery, and authored late-game work. |
+| [November 17 whole-game review](https://github.com/coldshalamov/SpaceFace/pull/1117), production order, and player experience acceptance | Carry the review's specific unresolved tasks into the owners below. Use its coverage register to find interactions between systems, including actions that start in one screen or owner and settle in another. |
+| [Production quality](design/program/PRODUCTION_QUALITY_COMPOUNDING.md), [arsenal](design/program/ARSENAL_EXPERIENCE.md), [racing](design/program/RACING_FLIGHT_PROGRAM.md), and historical sections 11–25 | Put combat, flight, targeting, arena pacing, equipment, race handling, HUD, menus, feedback, and hardware into the same player-facing checks. Resolve any still-required variant through the current rules and assets. |
+| [Strategic Chaos](design/program/strategic-chaos/README.md), [Black Flag](docs/BLACK_FLAG.md), [world reaction plans](design/program/INFERENCE_PLANTS.md), and sections 29–36 | Follow the world’s causal chains through ownership, cargo, trade, threats, law, crews, faction response, story, and memory. Include special encounters and places that introduce different interactions. |
+| [Asset experience](design/program/asset-experience-program/ASSET_EXPERIENCE_PROGRAM.md), [visual assets](docs/visual-assets/README.md), [the graphics review](design/program/fleet/graphics-asset-review/PRACTICAL_HANDOFF.md), and historical sections 13B/13D | Use the existing authored catalog and inventory to repair materials, scale, silhouette, placement, motion, collision, and LOD in the running game. Carry individual asset results in the existing review ledger. |
+| [Repository hygiene](docs/REPOSITORY_HYGIENE.md), [module ownership](docs/MODULE_MAP.md), and [validation workflow](docs/VALIDATION_WORKFLOW.md) | Keep the single checkout and source ownership navigable. Limit generated captures and build staging, preserve unique work when reclaiming storage, and use the existing tests, manifests, and release tooling. |
+
+| Outstanding outcome from the November review | Owning route and completion |
+|---|---|
+| Turn earned Swarm rewards into a competitive build | QUAL-04/05 cover choosing a bare hull with zero Scrap, comparing and fitting one compatible free starting gun or launching empty, earning and deliberately spending Scrap on the floor, picking a Pilot Tree specialization, and refitting or banking at the Bench. Keep rule-specific challenge starts and preserve the eligible fit on Retry. Verify loss and the five-second warm Retry target. See the [Swarm design](design/overhaul/04_SWARM.md). |
+| Operate powers while steering | QUAL-02/04/08 cover a moving pilot who can recognize a ready action, cast or toggle it, see the actual result, and recover from interruption on each real input device. Include the planet scoop, remaps, and readable state at short screen heights. |
+| Keep run spending and permanent rewards honest | QUAL-04 and Swarm progression reconcile fresh stakes, purchases, earned salvage, extraction, loss, Retry, and an older resume. Starting credits cannot be banked as earnings. Show the first earned upgrade and one banked result from the player's build. |
+| Teach a counter before enemies demand it | Check round five's forecast against the actual damage window and the round-26 Wardens' mutual protection against the forecast and defeat route. Preserve a way to learn, fail, and try the same counter again. |
+| Show the ward lamp and return to Cold Start | QUAL-02/09 cover the first berth, optional ward lamp from offer through tow and result, return to the tracked story, and reserved versus free cargo through spending, customs, payment, and Continue. Present fuel, toll and potential seizure before committing to a crossing. |
+| Build and return with a different fit | QUAL-04/05/08 cover an informed purchase, free departure, fit recovery, loss and same-seed Retry. Verify the actual equipment under player control after both confirming and declining. |
+
+After the opening, verify at least two effective builds with distinct tactics, each ten-round
+stretch through the Swarm win and bank, Adventure choices that alter a return visit, trade and
+custody outcomes, and an older save through an actual packaged update. The demo and release gates
+below apply to the particular build and hardware the player receives.
+
+### System review inventory
+
+Start the sweep from the [production system manifest](src/runtime/authoritativeSystemManifest.js)
+and the [presentation registry](src/runtime/presentationRegistry.js). Include initialization-only
+and event-driven owners, alternate public routes, and supported compatibility paths. Extend the
+inventory with the module map, public screen registrations, shell integrations, and asset and data
+manifests. Review each owner with its callers and downstream player result. Record the specific
+system, checked route, defect or verified behavior, and remaining work in its existing queue row or
+checklist receipt.
+
+| System area | Review the ownership and interactions |
+|---|---|
+| Runtime, transitions, and persistence | Fixed-step simulation, event order, worker transport and read models, input delivery, time effects, New Game/load/quit, old saves and recovery, profile settings, game modes and records, world state lifetime, browser and Electron packaging and updater. |
+| Pilot, combat, physics, and encounters | Flight and camera, actual intent and remaps, targeting and Line, powers and fields, weapons, projectile lifecycle and damage, enemy decisions and spawning, collisions, fragmentation, damage/feedback, hazards, drops, defeat, recovery and replay. |
+| Combat formats and race formats | Swarm and its progression, Gauntlet, Foundry Block, Boss Circuit, Armory Circuit, Practice, Best Line, scheduled challenges, standings and ghosts, Time Trial, Pack, Cup, Counterweight, terminal results, resume, and record isolation. |
+| World and progression | Navigation, sectors, traffic, discovery and scan, sites and planets, factions, reputation and law, contracts and story, tutorial flow and access, events and their lasting consequences, people, towns and frontier. |
+| Economy and ownership | Cargo, trade, freight, mining and refining, fitting and shops, inventory, salvage and custody, crew and fleet orders, automation, claiming and base/yard construction, production, resource budgets, attack and recovery. |
+| Presentation and content | All publicly reachable UI, settings and accessibility, help and onboarding, overlays and render-to-screen promises, audio, captions and localization, world and UI art direction, ship and model identity, asset placement, collision, animation, LOD, and streaming. |
+| Sustained use and release | Representative devices and inputs, clean and upgraded packages, quiet and pressured frame budgets, extended sessions, memory and storage, save migrations and restore, stability under pause and focus loss, release recovery and comparison with shipped games. |
+
+### Checklist for each integrated batch
+
+1. Select the next unresolved player outcomes and give the runtime, design/content, and verification
+   owners disjoint work. Keep the accepted comparison build and confirm the current source and data
+   before choosing a fix.
+2. Exercise the actual entry, meaningful decisions, outcome, feedback, and return or recovery. Join
+   input, authority, and presentation around a failure so the correct owner receives it. Review the
+   affected input, state, persistence, visual, and performance contracts together.
+3. Repair the shared cause or tune the actual decision. Run the smallest relevant owner check, then
+   verify the affected player route and an adverse outcome through the integrated build. Preserve
+   earlier accepted controls, scenes, and gameplay consequences.
+4. Run the existing stability gate on the integrated batch. For performance compare the same
+   workload on the target machine. For visual or physical feel changes, use a gameplay-camera look
+   and the appropriate real device or human session.
+5. Record the actual result against the plan and update the queue. Repair failed or incomplete
+   requirements and move to the next independent work while a separate owner handles a blocker.
+   Repeat until the entire coverage table and remaining planned outcomes satisfy the finish line.
+
+### Production workflows
+
+Build SpaceFace around the player’s ability to read a situation, make a choice, act under pressure,
+and understand what happened. The same ship, Line, and world rules have to hold up when a player
+combines them in ways the author did not plan. [Doc 18](design/game/18_SOUND_LOOK_AND_DONE.md) sets
+the quality bar. The [fleet queue](design/program/fleet/QUEUE.md#whole-game-stability-and-performance) owns the work
+and [QUALITY.md](design/program/fleet/QUALITY.md) records the latest evidence.
+
+The local stability gate checks source syntax, imports, Adventure boot, the Swarm opening, and a deterministic 47-A
+replay. Existing CI also reaches Adventure flight and checks the opening HUD and Mission Log. The
+retail web smoke follows Adventure New Game and Swarm equipment through playable pictures and thrust response. The
+native Swarm clear and Retry cover first-round outcomes. Use the routes to build out packaged
+desktop and phone checks, sustained frame pacing, later progression and recovery, and comparison
+with other games. See [the stability gate](scripts/fleet/gate.mjs),
+[the first-15 CI check](scripts/check-first-15-runtime.mjs), and [the retail workflow](.github/workflows/retail-smoke.yml).
+
+#### 1. Integrate and test the build players receive
+
+- Keep one identifiable integration candidate and the last accepted comparison build. For a release
+  candidate record the code, assets and package identity. Use that package for QA, hardware and human
+  sessions. Keep using one shared checkout locally and the existing game lock for live runs.
+- Give the existing CI opening route one independently visible outcome for playable flight. Reuse the
+  [playable-flight assertions](scripts/check-game-playable.mjs) for ship and world
+  presentation and a real thrust response.
+  Extend the retail smoke from the title to that same outcome on the built web artifact. Exercise the
+  packaged Electron equivalent, including quit, Continue, and update/retry where the launcher changes.
+  Run `npm run check:electron:packaged-startup` for Adventure and append `-- --route=swarm` for the
+  normal Swarm ship and equipment path on the same unpacked candidate.
+- Measure Swarm setup from Review Equipment to a usable shop, and Launch to controllable flight.
+  Use the authoritative draft for the starting hull, credits, and purchases. Verify that the final
+  fit reaches flight and that collidable assets are ready for the first controllable picture.
+- Use the current broker to reuse and serialize expensive runs. Identify shell, device, starting
+  save or seed, and where the route actually stopped. A boot or diagnostic result earns its own
+  verdict. A timeout, unavailable device, or unexercised action leaves the relevant outcome open.
+  Cross-platform session runners can pair the game build, device, and test while retaining logs and
+  saves for diagnosis. [Epic’s automation framework](https://dev.epicgames.com/documentation/unreal-engine/gauntlet-automation-framework-overview-in-unreal-engine)
+- Keep package and capture output outside the authored asset and document inventories. Use the
+  existing pinned source overlays for matched tests in the shared checkout. Save archived source
+  overlays with `create-source-baseline.mjs --out=.devshots/source-baselines/name.json.gz`.
+  Keep current release packages, accepted evidence, and unique local work. Reclaim
+  space from retired generated copies after identifying what produced them and what still uses
+  them. Keep the build map, active queue, and quality receipts as the current production record.
+
+#### 2. Reproduce failures and repair shared system boundaries
+
+- Start from a real failed player action and capture the short interval around it. Bind the input
+  and its context to the authoritative decision, affected entity and generation, first visible or
+  audible result, and next available action. Use the same interval for frame timing, input delivery,
+  and object lifetime when those can explain the failure. Extend `player-truth` or an existing probe
+  only where a missing observation prevents an owner from diagnosing the failure.
+- Trace the first disagreement, then assign one owner across the handoff. For targeting, join the
+  object the player sees under the pointer, selected ID, held ID, release decision, and eventual
+  impact. For an invisible hit, join the reachable collider and successful visible draw or warning
+  by the same object identity. For a double purchase or lost save, join the confirmed quote, owner’s
+  commit, resulting fit or balance, and restore. Exercise the real entry point after the repair.
+- When an opening defect blocks a later stage, retain a regular player save at the reached
+  checkpoint. Resume it through Continue in an isolated validation profile to test the affected
+  downstream actions. Record both the opening run and the continued run. Replay both sides of
+  the repaired handoff before closing the continuous opening route.
+- Use one authoritative writer and one public result for commands that change custody, loadout, run,
+  or save state. Derive HUD, audio, tutorial, and read models from that result. Cover combinations
+  that have competing lifetimes, such as held input plus pause/focus loss, a sector transition plus
+  an active contract, defeat plus Retry, or a save while a result is being written.
+- Refactor a boundary when independent fixes keep failing because it has duplicate decisions,
+  ambiguous lifetimes, or measured work it cannot do inside its budget. A correct result with poor
+  feedback goes to presentation. A correct, clear result that produces dull or unfair play goes to
+  encounter, economy, or control design. Exercise the player consequence after either kind of change.
+
+#### 3. Budget encounters, physics, and presentation together
+
+- Start steady and busy workloads together. Measure quiet flight, the opening of a crowded encounter,
+  sustained round 20, and crowded Helios on quiet target hardware. Use an earned save or indexed
+  checkpoint for rapid late diagnostics, with its origin in the result. Track meaningful motion,
+  actual world submissions, frame-gap tails, sim-to-wall ratio, input latency, and memory growth.
+  Align CPU, GPU, worker, and streaming costs to a hitch before choosing the change. Repeat the matched
+  workload after the change. [Epic’s frame and thread profiling workflow](https://dev.epicgames.com/documentation/unreal-engine/timing-insights-in-unreal-engine)
+- Budget active threats, projectile and effect accumulation, physics bodies, visual admission,
+  and UI work as one encounter. Put warning and room to react into spawn and arena authoring. A
+  dangerous object needs a legible model, fallback, or warning before the player can reach it. Keep
+  those promises through asset streaming, reuse, and level-of-detail changes. Keep rule outcomes
+  deterministic by staging gameplay admission at its owner and making the warning available ahead
+  of that transition.
+- Use the authored requirements for 60 fps in round 20 and crowded Helios, at least 30% main-thread
+  idle, and sim-to-wall of at least 0.98 in the specified steady windows. Verify the supported phone
+  preset and controls on actual phone hardware. Measure cold boot to usable title and launch to
+  responsive flight separately. Preserve the film, contrast, silhouettes and advance warning when
+  a performance change earns its place. [Quality bar](design/game/18_SOUND_LOOK_AND_DONE.md#the-bar-for-the-whole-game) · [Target-hardware rulings](design/game/README.md)
+
+#### 4. Iterate on controls, interface, and the decisions during play
+
+- Give each screen an authored purpose and visible feedback for its consequences. For Swarm, choose a
+  hull, inspect gear, see what fits or gets replaced, confirm spend, then see the actual fit in flight.
+  Test a suggested fit and a deliberate alternative. Use the same binding source for prompts, Settings,
+  Help and input. Keep Shift boost, F tether, saved remaps and accessible alternatives. Exercise
+  steering while using tools, exiting modals, controller navigation, reduced effects, and touch gestures.
+  Players should understand the expected effect of an action from the interface itself.
+  [Xbox UI context](https://learn.microsoft.com/en-us/xbox/accessibility/xbox-accessibility-guidelines/114) · [Xbox UI navigation](https://learn.microsoft.com/en-us/xbox/accessibility/xbox-accessibility-guidelines/112)
+- Run short editing cycles on a real combat or job sequence. Set a design question, compare two
+  intentional alternatives with the last accepted build, and use what players actually did. Examples
+  are whether distinct hulls change tactics, whether pressure allows a recovery, and whether a reward
+  changes the next decision. Reuse known-good art and behavior as comparison material. Keep changes
+  that improve the decision and its consequence throughout the route. AdHoc describes rapid playable
+  prototypes and frequent internal playtests while developing the central mechanic of *Dispatch*.
+  [AdHoc developer interview](https://www.unrealengine.com/developer-interviews/how-adhoc-used-unreal-engine-to-deliver-2025s-narrative-driven-hit-dispatch)
+- Benchmark comparable moments in current shipped games for control, readable threats, equipment
+  decisions, and recovery. Observe the same unfamiliar players with a controller or keyboard they
+  actually use, with no coaching. Track the first useful action, warnings they can act on, mistaken
+  spending, and their first recovery attempt. Apply the authored time-to-first-throw target once
+  the title is usable. Ask what players predicted and whether they want another run. Use clips and
+  the project’s Stranger Test for legibility, and real hands for timing, comfort, mastery and fun.
+  Give the owner milestone builds for the authored ten-minute card.
+
+#### 5. Author and scale content through the running game
+
+- Finish a representative example of each reusable family, such as an enemy, arena, ship, job, or
+  town. Its authored data includes what it adds to play, how it reads from the gameplay camera,
+  placement and clearance, collision and LOD, audio and effects, the cost to run it, and its state
+  through failure and resume. Use the existing asset manifests and validation. Check the assembled
+  scene in motion and under pressure.
+- Build a materially different second example through the same machinery before widening the family.
+  If every example needs a bespoke exception, repair the common authoring or runtime boundary. If
+  the examples play alike, vary the options, tradeoffs and consequences. Sweep the progression data
+  for affordability, reward pacing, replacements, and routes that can trap the player. Check those
+  decisions in play before scaling the catalog. Preserve the authored art direction and recognizable
+  hulls across inspection, flight, and recovery.
+
+#### 6. Cover the whole game by player journeys
+
+Plan the first hour and later stress points concurrently. Cover the first hour in each reachable
+mode and profile type, or completion and recovery for shorter modes. Choose branches that exercise
+distinct systems. Use earned checkpoints to
+iterate on later sequences, then verify those transitions and results with real play and recovery.
+Smoke each public entry. Give each distinct action and state transition a scenario, including a
+credible denial, interruption or failure. Add variations for combinations with different failure
+modes, such as a returning remap on controller, a full hold on delivery, or defeat during a refit
+boundary. Cover content variants that introduce different mechanics, placement, or visual risks.
+
+| Coverage area | What the team must see in the game |
+|---|---|
+| Launch, controls, and saves | Fresh/returning, title and accessibility, New/Custom/Load/Continue, Help, Archive, sandbox and physics trials, pause/focus/quit, versioned saves, broken-load recovery, updater, and usable flight on the supported platform and input combinations. |
+| Swarm campaign | Choose, fit, fly, recover, clear and rearm across all seven floors and their distinct routes, enemies and bosses. Reach round 20 under load, earn and bank round 30 once, then leave or continue into the late course. Verify round-boundary custody and record outcomes. |
+| Combat variants | Gauntlet refits and terminal result, Foundry Block victory, Boss Circuit, Armory Circuit branches, Daily and Weekly rules and records, Practice and Best Line reset and record isolation. |
+| Adventure story | Eight books, physical story choices, faction branches, yard and deep approaches, five endings and postgame memory. Follow the story with text off and verify the state carried through the endings. |
+| Adventure world and work | All five towns, outposts and frontier waystations. Chart orientation, discovery, travel and hazard recovery, contract families and heists from acceptance through outcome, payment or loss, and return. |
+| Trade and custody | Markets, physical freight, sealed cargo, salvage, ship ownership, inspections, fines, contraband, and recovery after damage or death. Verify exact ownership, payment, heat and storage across travel and saves. |
+| Industry, fitting, fleet and bases | Mine or drill, refine, fabricate, fit and use gear through the shared Rig and Try It. Hire, escort and dispatch a real convoy. Claim, build and automate production, defend the yard, and recover assets across failure and relaunch. |
+| Circuits | Public Time Trial, Pack and Cup, score once, reset, retain bests and ghosts, and return with Adventure intact. Exercise the Counterweight rope trial separately. |
+
+Record what is present, broken, or still unbuilt for each area. The design defines the required
+experience, and live evidence establishes which pieces work. Track the missing outcomes on the
+existing queue and link the latest build results. The list of green scripts is supporting evidence.
+
+#### 7. Earn release confidence in stages
+
+| When | Workflow | Decision it supports |
+|---|---|---|
+| Per change | Import, data and relevant contract checks. Reproduce the regression through the owning code and verify the resulting state. Check source stability and full normal input and save compatibility where they are touched. | Safe to integrate the change. |
+| Per integrated batch | Existing stability gate plus the public journeys the batch affects. Review current gameplay frames or audio for presentation changes. Replay a failure slice with the original input or state and verify normal recovery. | Accept the batch or route the first failure back to its owner. |
+| Scheduled on the test machine | Run rotating seeds, overlapping system scenarios, long sessions and save migration on representative mid- and late-game states. Watch for crash, lost or duplicated state, stalls and cumulative memory, simulation and scene work. | Prioritize issues that only emerge over time or across systems. |
+| Per demo candidate | Run the intended demo path on its exact package and hardware, cover likely branches and mistakes, exercise exit/retry, and give a fresh player the controls without coaching. | Show this particular build on that hardware. |
+| Per release candidate | Cover the full scope above, packaged devices and real inputs, long-run stability and old-save recovery. Use fresh human sessions and the authored whole-game bar, including the owner’s five ticks in three successive sessions. | Release and expand content from a known playable foundation. |
+
+The lead owns the integrated result. Run the runtime and performance, QA and release, and game design
+and presentation work in parallel on disjoint paths. Use the same candidate when judging a batch.
+Prioritize the measured Swarm and shared frame-delivery bottlenecks until crowded combat meets the
+performance bar. Keep the Adventure reward and recovery routes moving in parallel.
+Start with three assignments in the current queue. First, connect the visible target to the actual
+Line release and the hazard warning to reachable contact. Second, make packaged playable flight a
+visible result in the existing smoke workflow. Third, capture first-hour decisions and late pressure
+on the same accepted rules, starting with Swarm round 20 and crowded Helios. The lead then integrates
+one Adventure work/reward/fit/resume chain and one complete Swarm progression chain, and extends the
+same workflow to the other coverage areas. If a required outcome or review fails, assign the failure
+and keep the build at its current stage. The owner’s role is to judge playable milestone builds.
+
+### Finish line
+
+The program ends when the game works as an integrated product. Each required mode, story branch,
+shared system and relevant content family works from its ordinary entry through outcome and
+recovery. The built browser and desktop packages run on their supported devices, with readable
+presentation, responsive controls, stable frame pacing under real load, and durable progress.
+Verify the authored 60 fps, main-thread headroom, and simulation cadence targets in the specified
+workloads. Complete the [whole-game acceptance bar](design/game/18_SOUND_LOOK_AND_DONE.md#the-bar-for-the-whole-game)
+with fresh players, the five town reviews, a real Swarm win, the complete story, and the owner’s
+milestone sessions. The lead and three successive independent subagent reviews must agree on the
+same demo candidate after examining its actual player routes, performance, combat, and system
+coverage. A failed review returns the concrete defect to its owner. The reviews follow completion
+of the required outcomes and hardware checks. Until then the next incomplete outcome stays in the
+queue.
+
+## Historical plans and technical references
+
+These records preserve the original plan lineage and implementation details. Use the current
+completion program and linked fleet assignments to carry forward outstanding work.
 
 > **Earlier routing (owner, 2026-10-28):** the Finish Program in
 > [`design/program/finish/`](design/program/finish/README.md) is the outcome detail for the work the
@@ -170,7 +434,9 @@ is closed or release packaging is parked. Queue order does not require building 
 
 Dispatch order is kind first (build before proof), then unit priority. The units of the finishing
 program carry priorities that encode this sequence, and their dependencies name the exact units they
-wait for, so content cannot be handed out before the ship handles.| Phase | Gate it serves (§15.1) | Packets, in order |
+wait for, so content cannot be handed out before the ship handles.
+
+| Phase | Gate it serves (§15.1) | Packets, in order |
 |---|---|---|
 | **0 · The playable demo** (first; owner, 2026-09-20) | DEMO | `PQ-210` smooth, solid, answering, hardware: `.00` Crucible roster prewarm · `.01` a fight fits the frame · `.02` the first 20 seconds · `.03` nothing on screen unloads · `.04` every hit answers, with sound · `.05` the demo HUD · `.06` a quiet machine · `.07` ask once about motion · `.08` the fifteen-minute demo. Target, evidence and bars: [`DEMO_READINESS_2026-09-20.md`](./design/program/DEMO_READINESS_2026-09-20.md) |
 | **A · The toy works** (now) | ALPHA | `PQ-173` the fun-loop instrument · `PQ-167` useful local telemetry · `PQ-137` the guts (`.03`–`.11`) · `PQ-189` **correct the compass** (controls contract, stale diagnoses retired) · `PQ-174` the swarm fun contract (with `.08` earned breathing room) · `PQ-139` impacts answer · `PQ-158.06` minimal action audio · `PQ-165.03` reduced motion keeps information · `PQ-138` the world reacts · `PQ-140` roster as physical problems · `PQ-146` stunt grammar · `PQ-186` the regression fortress · `PQ-180` the frontend grammar matrix · `PQ-144.01` the production baseline · `PQ-163` the first ten minutes · `PQ-141` **the 60-second proof (gate)** |
@@ -7222,6 +7488,12 @@ the armory verified on the bench at 1280×720, 1920×1080 and 390×844. The full
 play-through (both modes + the TOO HEAVY count) remains the queued acceptance pass
 (`PLAYTHROUGH-REPLAY`).
 
+## 39. First-hour player journey and whole-game expansion
+
+The original first-hour and expansion sequence is now part of the
+[whole-game completion program](#whole-game-completion-program) above. All first-hour and later
+routes share its system sweep, batch checklist, and finish line.
+
 ## 40. The A-list overhaul — productions for agents (director, 2026-11-18)
 
 The owner asked the creative director to inspect the whole game, fill its blanks, and split the work
@@ -7237,7 +7509,7 @@ records the frame.
 | ID | Production | Lane / who | Seam | Done when | Must not return |
 |---|---|---|---|---|---|
 | OVH-01 | **The Pilot Tree** — six combat branches + Industry, ~70 nodes, capstones, evolutions ([06 §2](design/overhaul/06_PROGRESSION_AND_ECONOMY.md)); Swarm level-up cards in the breath ([04 §3](design/overhaul/04_SWARM.md)); the Adventure tree screen | Lane 1 designs node effects; Lane 2 builds | `src/core/runState.js`, `src/systems/runSession.js` (`run:levelUp`), new tree data under `src/data/`, `src/ui/screens/techTree.js` rebuilt, a new card screen through the Stage | a level-up banks a pick; three cards in the breath; a stranger describes three different builds after three runs | levelling that grants nothing; percentage-soup nodes; research points |
-| OVH-02 | **Swarm loop rebuild** — retire the between-round Armory and Browse all; one Scrap economy from zero; fourteen systems to four ([04 §2, §5](design/overhaul/04_SWARM.md)) | Lane 2 | `src/data/swarmStakes.js`, `survivalDraft.js`, `swarmDraft.js`, `swarmCatalog.js`, `swarmWeaponLevels.js`, `swarmHangar.js`, `swarmPerks.js`, `swarmFloor.js`, `swarmMods.js`, the crucible draft/refit screens | ≥ 6 floor purchases by flying in a ten-round run; no menu between rounds except the Bench; old profiles load | a shop between every round; 18 cr prices beside 5,000 cr prices; stat tracks that persist between runs |
+| OVH-02 | **Swarm loop rebuild** — choose starting gear after choosing a hull, then use one Scrap economy from zero. Retire the between-round Armory and Browse all ([04 §2, §5](design/overhaul/04_SWARM.md)) | Lane 2 | `src/data/swarmStakes.js`, `survivalDraft.js`, `swarmDraft.js`, `swarmCatalog.js`, `swarmWeaponLevels.js`, `swarmHangar.js`, `swarmPerks.js`, `swarmFloor.js`, `swarmMods.js`, the crucible draft/refit screens | starting fit is visible and chosen. The pilot can make ≥ 6 floor purchases by flying in a ten-round run. The Bench handles refits between rounds and old profiles load. | hidden starter fits, confusing replacements, a shop between every round, 18 cr prices beside 5,000 cr prices, stat tracks that persist between runs |
 | OVH-03 | **The Foundry as a lit set**, then each arena — deck under the play plane, readable banks, lit gates, lamps over pads, a room sun ([04 §6.2](design/overhaul/04_SWARM.md), [07 §4](design/overhaul/07_LOOK_AND_LIGHT.md)) | Codex (3D, per the owner's asset split) + Lane 1 look | arena installs (`survivalArenas`, `src/render/arenaFinish.js`, `foundryBankSurface.js`), new set assets via `design/program/fleet/drafts/asset-findings-for-codex.md` | the in-flight Foundry reads like its PLAY-screen key art; a wall is in view most of the time; cost inside the [10 §4](design/overhaul/10_ENGINE.md) budget | a round fought over empty black space |
 | OVH-04 | **Swarm in its own space** — no campaign entity, notice, objective, count or voice in a run ([04 §6.1](design/overhaul/04_SWARM.md), [10 §3](design/overhaul/10_ENGINE.md)) | Codex (engine owner) | sector/arena admission; INV-08's load budget | a round-start census lists only run bodies and the arena set; no added load time | AFTERMATH cards, Helios ships counted as hostiles, Contract 47-A in a run |
 | OVH-05 | **The five powers rebuilt as force + light + matter**, and the 25-rock plough ([03 §4](design/overhaul/03_COMBAT.md), [07 §7](design/overhaul/07_LOOK_AND_LIGHT.md)) | Lane 1 look + Lane 2 physics | `src/systems/powerVerbs.js`, `src/render/forceLanguage/`, `src/render/vfx/` | a stranger names each power from a muted 5 s clip; effects-off paths identical; plough captures ≥ 20 of 40 rocks, holds them through a 90° turn, launches ≥ 15 three screens | a white smear for Pull, crescent sprites for Shove, any status chip standing in for an effect |

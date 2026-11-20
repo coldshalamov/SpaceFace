@@ -9,9 +9,9 @@ already measured, and the one architecture requirement it adds. It starts no par
 | Measure | Last number | Target |
 |---|---|---|
 | Boot → title | 38.5 s headed, Intel Arc (2026-11-15) | ≤ 10 s |
-| Swarm PLAY → first hostile | 36–42 s first door, 13–15 s later doors (LOAD-03) | ≤ 5 s warm, ≤ 10 s cold |
+| Swarm Launch → first hostile | 22.57 s from Launch to the first lit active draw, paid Hornet in the cold Intel Electron run | ≤ 5 s warm, ≤ 10 s cold |
 | Adventure New Game → flying | 13.5 s (ACCEPT-05) | ≤ 10 s |
-| Swarm round 20, preset low | ~26–30 fps headed (ACCEPT-05) | 60 |
+| Swarm round 20, preset low | 20.36 world draws/s and 11.27 fresh poses/s in the retained warm Intel window | 60 |
 | Crowded Helios, preset low | 45–52 fps (ACCEPT-04/05) | 60 |
 | Console errors per run | 6–10 `mergeGeometries()` (ROCK-04 claims fixed) | 0 |
 
@@ -19,7 +19,9 @@ already measured, and the one architecture requirement it adds. It starts no par
 
 - The Swarm veil waits for the whole survival cook (~36 s); Adventure lifts on a finite first picture.
 - ~22 s of the first Swarm door is one-time in-session compile; later doors are 13–15 s.
-- `live.postOpeningPipelines` is awaited (~8–11 s).
+- In the latest pinned cold run, `live.postOpeningPipelines` took 2.96 s. Its specimen warm held
+  8.53 s in the preceding run and took 0.70 s after narrowing it to relevant ship boundaries.
+  The exact first-picture seal held. See [the measured routes](../program/fleet/QUALITY.md#follow-up-on-the-first-hour).
 - Frame time in flight was dominated by style recalculation from the HUD (fixed down by STYLE-03/04)
   and a wide JS tail (timer and message churn, HUD obstacle snapshots).
 - The boot film gates start-up; the movie and its playback hold should never block the game's own

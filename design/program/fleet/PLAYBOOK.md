@@ -23,8 +23,9 @@ to do next. If you are an agent resuming this: read this page, then `QUEUE.md`, 
    Swarm boot → deterministic replay). Red gate: fix or revert the batch before anything else lands.
 5. **Publish.** `git fetch`, merge (never rebase/reset), `npm run gate -- --quick`, push.
 
-**The two rules that stop regressions** (the owner's "it breaks and regresses constantly"):
-- **Nothing lands that has not booted.** The gate, not a unit test, is the bar.
+**Integration rules**
+- Run the stability gate and exercise the affected outcome on the integrated build. Use focused
+  checks to protect system behavior and the public route to verify that players receive it.
 - **No half-finished work lives in the shared folder.** Uncommitted work from a stopped agent breaks
   everyone's boot and replay. A lead who finds it finishes it and lands it (or, only if it is wrong,
   removes it and says why). Never park finished work on a branch, a patch file or a HOLD row for a
@@ -137,3 +138,9 @@ run continuously on Flash.
 Any Devin pane can run the loop on `D` and `S` rows by itself (see `README.md`). Without a lead, do not
 take `L` rows, and do not mark anything `DONE` — leave it `BUILT` for the next lead. Run `npm run gate`
 before any push; if red, stop and leave a note at the top of `QUEUE.md`.
+
+## 5. Whole-game production workflows
+
+The scope, production workflows, and acceptance checklist live in the
+[whole-game completion program](../../../build_map.md#whole-game-completion-program).
+Use the fleet queue for current assignments.

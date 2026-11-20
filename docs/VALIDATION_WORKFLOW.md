@@ -2,8 +2,8 @@
 # Feature validation workflow
 
 This is the repository reference for choosing the smallest check that directly answers a claim.
-Root [`AGENTS.md`](../AGENTS.md) §9 and the active program's
-[`README.md`](../design/program/finish/README.md) §2 set current verification scope and cadence.
+Root [`AGENTS.md`](../AGENTS.md) and the [fleet README](../design/program/fleet/README.md)
+set current verification scope and cadence.
 Use this file for the validation tools and their limits; do not turn its examples into a checklist.
 For lab implementation work, read
 [`../src/testing/lab/AGENTS.md`](../src/testing/lab/AGENTS.md).
@@ -73,12 +73,34 @@ samples live telemetry through the observer-only `src/testing/playerTruth/reader
 `scratch/player-truth/<mode>[-<arena>]/{verdict.md,contact-sheet.jpg,verdict.json,trace.json.gz,frames/}`.
 `--evidence` copies the compact verdict and sheet into `design/archive/program/player-truth/<label>/`.
 
+Compare a new run with a retained verdict through the shared checkout. The ref pins the saved
+capture's source. For a matrix, give the parent directory of the matching route verdicts.
+
+```powershell
+npm run player-truth -- --mode=swarm --baseline=MASTER_COMMIT --baseline-verdict=scratch/player-truth/baseline --out=scratch/player-truth/current
+node scripts/player-truth/compare.mjs scratch/player-truth/baseline scratch/player-truth/current
+```
+
+The comparison preserves each run's recorded grade. Use a matched session for performance claims.
+
 Before the browser starts, the harness checks that served `assets/` match `git ls-tree HEAD`
 (every blob's size, plus a content hash of files ≤64KB, every `render-package.json`, and the
 starter-hull `render.glb` files, and one manifest fetched through the bench server). `design/`
 is not fetched by the route, so it is not graded. A mismatch aborts with `HARNESS ENVIRONMENT: assets stale vs HEAD` and exit 4 when that is the only result.
 The same exit quotes a player-facing load error ("The authored starter ship could not be loaded…",
 a prepare/boot failure of the same family) instead of grading it as a route FAIL.
+
+To check a working-tree art candidate, put the exact changed and new runtime asset paths in a file
+with one repository-relative path per line. Capture the runtime bytes and the asset hashes together.
+
+```powershell
+node scripts/create-source-baseline.mjs --working-tree --all-runtime --candidate-assets-file=.devshots/candidate-assets.txt --out=.devshots/source-baselines/current-art.json.gz
+npm run gate -- --swarm-candidate-source=.devshots/source-baselines/current-art.json.gz
+```
+
+The Swarm step checks the candidate's asset bytes over HTTP and checks the rest against HEAD. The
+game server checks each candidate asset as it serves it. The manifest stays usable while those
+exact asset bytes are present in the checkout.
 
 `readability` is PASS or FAIL once any of enemy, asteroid, or projectile has at least 5 on-screen
 samples. It fails when more than half of those samples have ΔL < 8 against the local backdrop, or

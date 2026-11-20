@@ -2,16 +2,15 @@
 # Agent operations
 
 This note explains how to finish assigned work. Root [`AGENTS.md`](../AGENTS.md) owns authority,
-shared-tree and Git safety, and the verification router. During the Finish Program, its
-[`README.md`](../design/program/finish/README.md) §2 owns current lane rulings; §5.1 and §5.5 own
-model/tool fit and the shared work loop. [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md) owns
-validation choices.
+shared-tree and Git safety, and the verification router. The [fleet README](../design/program/fleet/README.md)
+links to the current lanes, work loop, and batch gate. [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md)
+describes the available verification tools.
 Do not copy those procedures into another checklist.
 
 ## Finish the assigned outcome
 
 Work from the user's request and its done condition. Follow the project authority order in root
-`AGENTS.md` §4 and the active program rulings. Resolve uncertainty with the smallest interpretation
+`AGENTS.md` and the active program rulings. Resolve uncertainty with the smallest interpretation
 that fulfills the request; a process document or evidence artifact is not the outcome.
 
 Choose the smallest implementation that completes the player-visible or technical result. Inspect
@@ -27,8 +26,7 @@ cost ladder and route rules in [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.
 
 An independent look is useful when an unresolved question could materially change the fix, result,
 or risk, or when the active program requires it. Do not repeat completed reviews, duplicate an active
-investigation, require agreement between models, or treat reports as approval quotas. Finish Program
-review cadence is in its README §2; work outside that program follows root `AGENTS.md` §3.
+investigation, require agreement between models, or treat reports as approval quotas.
 
 Complete authorized work without waiting for a user playtest or verdict. Only an explicit external
 action the user requested can remain deferred; report any unresolved dependency and keep unrelated
@@ -37,11 +35,11 @@ work moving.
 ## Shared checkout
 
 Inspect current ownership and the exact diff before editing. Preserve concurrent changes; stage,
-commit, and publish only the paths the active instructions assign to you. Root `AGENTS.md` §3 owns
-all Git, checkpoint, worktree, fetch/merge, and publication rules. A checkpoint is coordination
-metadata, not a lease or permission gate. This file creates no additional Git ceremony.
+commit, and publish only the paths the active instructions assign to you. Root `AGENTS.md` owns
+Git and worktree rules. Keep one checkout and use its existing objects for historical comparisons.
+Follow [artifact retention](./ARTIFACT_RETENTION.md) when a workflow needs to stage a runnable baseline.
 
-When code and documentation disagree, follow the authority order in root `AGENTS.md` §4 and use the
+When code and documentation disagree, follow the authority order in root `AGENTS.md` and use the
 live owner to establish current behavior. Correct the specific stale instruction when it would cause
 the next agent to make the wrong change or run unnecessary work.
 
