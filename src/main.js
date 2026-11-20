@@ -614,6 +614,13 @@ async function boot() {
         };
         const preparePipelines = async (subject) => {
           for (const unit of unitsFor(subject)) {
+            // A New Game press stops the queue cold: the warm must not burn CPU
+            // inside the cook's gate — measured +7-11 s on the swarm armory leg
+            // when it ran through. retainWarmupOnEarlyExit keeps the programs
+            // already linked, so progress is surrendered, not wasted.
+            if (state.mode !== 'menu' || state.render !== warmOwner) {
+              const err = new Error('title dwell ended'); err.name = 'AbortError'; throw err;
+            }
             await compileSafely(renderer, unit.node, camera, scene);
             await new Promise((resolve) => setTimeout(resolve, 0));
           }
@@ -622,10 +629,14 @@ async function boot() {
         return precompile.precompileGlobalPipelines(renderer, scene, camera, {
           incremental: true,
           preparePipelines,
+          retainWarmupOnEarlyExit: true,
         }).then((result) => {
           bootMark('title-pipeline-warm-done',
             result && (result.reason || `${result.programs ?? '?'} programs`));
-        }).catch((error) => console.warn('[boot] title pipeline warm failed', error));
+        }).catch((error) => {
+          if (error && error.name === 'AbortError') bootMark('title-pipeline-warm-done', 'aborted');
+          else console.warn('[boot] title pipeline warm failed', error);
+        });
       };
       void titlePipelineWarm();
       // A player who dives into a route and returns still earns the warm: every

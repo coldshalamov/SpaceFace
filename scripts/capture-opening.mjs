@@ -1195,7 +1195,9 @@ async function swarmSession(deadline) {
 // ---------- main ----------
 async function main() {
   installSessionSignalGuard(process);
-  server = await startBenchServer();
+  server = await startBenchServer(argv['source-overlay']
+    ? { sourceOverlay: path.resolve(String(argv['source-overlay'])) }
+    : {});
   const { chromium } = await loadPlaywright();
   ({ browser } = await launchChromium(chromium, {
     headless: false,

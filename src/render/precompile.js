@@ -447,8 +447,14 @@ async function precompileNow(
     }
     if (canopyPipelineWarmup) {
       canopyPipelineWarmup.removeFromParent();
-      if (keepWarmupPrograms) retainPipelineWarmup(renderer, canopyPipelineWarmup);
-      else disposeObject(canopyPipelineWarmup);
+      // retainWarmupOnEarlyExit: an aborted dwell warm keeps the canopy cohort's
+      // linked programs — the cook's exact-scene compile still hits them; only
+      // the queue's unfinished tail is surrendered.
+      if (keepWarmupPrograms || options.retainWarmupOnEarlyExit === true) {
+        retainPipelineWarmup(renderer, canopyPipelineWarmup);
+      } else {
+        disposeObject(canopyPipelineWarmup);
+      }
     }
     disposeObject(staging);
   }
