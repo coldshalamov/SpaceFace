@@ -42,6 +42,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'contactHail:cancel',
   'contactHail:choice',
   'contactHail:request',
+  'convoyRaid:command',
   'counterweightCircuit:action',
   'counterweightCircuit:presentationReady',
   'crew:decide',

@@ -357,12 +357,16 @@ import * as encounter353 from './1321-wren-buoy.js';
 import * as encounter354 from './1322-the-shadow-ring.js';
 import * as encounter355 from './1323-the-tool-ledger.js';
 import * as encounter356 from './1400-cargo-weir-ambush.js';
-import * as encounter357 from './8103-pro-five-convoy-raid.js';
-import * as encounter358 from './8201-pro-yard.js';
-import * as encounter359 from './8202-pro-rig-workshop.js';
-import * as encounter360 from './8203-pro-salvage-tender.js';
-import * as encounter361 from './8204-pro-salvage-outfits.js';
-import * as encounter362 from './8205-pro-industrial-disasters.js';
+import * as encounter357 from './8101-pro-five-towjaw.js';
+import * as encounter358 from './8102-pro-five-derelict-expedition.js';
+import * as encounter359 from './8103-pro-five-convoy-raid.js';
+import * as encounter360 from './8104-pro-five-storm-chase.js';
+import * as encounter361 from './8105-pro-five-kinetic-catalysts.js';
+import * as encounter362 from './8201-pro-yard.js';
+import * as encounter363 from './8202-pro-rig-workshop.js';
+import * as encounter364 from './8203-pro-salvage-tender.js';
+import * as encounter365 from './8204-pro-salvage-outfits.js';
+import * as encounter366 from './8205-pro-industrial-disasters.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -727,5 +731,9 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter360,
   encounter361,
   encounter362,
+  encounter363,
+  encounter364,
+  encounter365,
+  encounter366,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);
