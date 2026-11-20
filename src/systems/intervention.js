@@ -65,6 +65,11 @@ export const intervention = {
       this.state.interventionMeta = { rngSeed: hash32(this.state.meta && this.state.meta.seed, 'intervention') };
     }
     this._nextId = 1;
+    // Restored records keep their serialized ids; a fresh 1 would alias a live record.
+    for (const r of [...this.state.interventions, ...this.state.pendingInterventions]) {
+      const n = Number(r && r.id);
+      if (Number.isFinite(n) && n >= this._nextId) this._nextId = n + 1;
+    }
 
     // The trigger: an automation asset was lost. Spawn salvage + raise the alert.
     this.bus.on('automation:assetLost', (p) => this._onAssetLost(p));
