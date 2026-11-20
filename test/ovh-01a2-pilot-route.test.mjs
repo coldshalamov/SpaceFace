@@ -104,29 +104,23 @@ test('a second banked pick deals after the first choice', () => withAllCardsLive
   assert.ok(firstHand.length === 3 && harness.state.run.pilot.nodes.length === 2);
 }));
 
-test('an empty live set opens no offer and keeps the pick banked', () => {
-  // An empty live set — the state between effect packets — injected, so this does not depend on
-  // which nodes the director has turned on.
+test('a level-up never promises a pick the tree cannot give', () => {
+  // Release list 2026-11-19: "A level-up must always offer a real pick or not happen" — runs used to
+  // bank picks after the skills ran out, and the HUD promised cards that never came.
   const harness = boot(23);
   withPilotLiveNodesForTest([], () => {
   beginSwarm(harness, 23);
   harness.bus.emit('run:awardRequested', { xp: RUN_XP_LEVEL_BASE, reason: 'kill' });
-  assert.equal(harness.state.run.level, 2);
-  assert.equal(harness.state.run.pilot.banked, 1, 'the pick stays banked');
-  assert.equal(harness.state.run.pilot.offer, null, 'nothing live means no offer, ever');
-  assert.equal(named(harness.emitted, 'run:pilotOffered').length, 0);
-
-  // A later level tries again — the next deal moment is the retry.
-  harness.bus.emit('run:awardRequested', { xp: RUN_XP_LEVEL_BASE + RUN_XP_LEVEL_STEP, reason: 'kill' });
-  assert.equal(harness.state.run.pilot.banked, 2);
+  assert.equal(harness.state.run.level, 2, 'the level still rises');
+  assert.equal(harness.state.run.pilot.banked, 0, 'but no pick is banked with nothing to take');
   assert.equal(harness.state.run.pilot.offer, null);
-  assert.equal(named(harness.emitted, 'run:pilotOffered').length, 0);
+  assert.equal(named(harness.emitted, 'run:levelUp').length, 0, 'and no level-up beat promises one');
   });
-  // And once nodes go live, the very next deal moment deals.
+  // Once cards exist, the next level banks and deals at once.
   withAllCardsLive(() => {
-    harness.bus.emit('run:awardRequested', { xp: RUN_XP_LEVEL_BASE + 2 * RUN_XP_LEVEL_STEP, reason: 'kill' });
+    harness.bus.emit('run:awardRequested', { xp: RUN_XP_LEVEL_BASE + RUN_XP_LEVEL_STEP, reason: 'kill' });
   });
-  assert.equal(harness.state.run.pilot.banked, 3);
+  assert.equal(harness.state.run.pilot.banked, 1);
   assert.equal(named(harness.emitted, 'run:pilotOffered').length, 1);
   assert.equal(harness.state.run.pilot.offer.cards.length, 3);
 });

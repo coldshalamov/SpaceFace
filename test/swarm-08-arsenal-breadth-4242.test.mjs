@@ -38,7 +38,7 @@ const GUN = 'wpn_micro_barrage_m';
 const TRIAD = SURVIVAL_EVOLUTIONS.find((row) => row.id === 'triad_volley');
 const CYCLER = swarmPassiveById('gun_cycler');
 
-function shop({ cash = 400, wave = 2, ruleset = 'swarm' } = {}) {
+function shop({ cash = 400, wave = 5, ruleset = 'swarm' } = {}) {
   const state = createGameState(4242);
   const bus = createBus();
   const registry = { get: (name) => ({ ships, economy, survivalDraft })[name] };
@@ -110,11 +110,11 @@ test('the cycler stacks on the shelf and the ledger sets the rate', () => {
   assert.ok(SWARM_PASSIVE_CATALOG.length >= 2, 'the stacking shelf holds more than one passive');
   assert.equal(swarmPassiveFireRateScale(null), 1, 'no run reads stock cadence');
 
-  const h = shop({ cash: 500, wave: 2 });
+  const h = shop({ cash: 500, wave: 5 }); // the first shop round (R3: every fifth)
   assert.equal(swarmPassiveGunRateScale(h.state), 1, 'no coils reads stock cadence');
   const offers = survivalDraft.currentOffers();
   const row = offers.find((offer) => offer.id === 'passive_gun_cycler');
-  assert.ok(row, 'the cycler is on the armory rail from wave two');
+  assert.ok(row, 'the cycler is on the armory rail at the first shop');
   assert.equal(row.service, 'passive');
   assert.equal(survivalDraft.resolvePick({ offerId: row.id }), true);
   assert.equal(swarmPassiveCount(h.state.run, 'gun_cycler'), 1);

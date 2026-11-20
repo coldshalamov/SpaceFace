@@ -17,6 +17,7 @@ import {
   createPilotBreathController,
   createPilotCardsView,
   pilotBreathSeconds,
+  breathStop,
   pilotCardFace,
   pilotCardsScreen,
   readPilotHand,
@@ -175,11 +176,11 @@ test('cards render the offer\'s nodes in order, verbatim, with branch colour and
     ['Hollow Point', 'Billiards', 'Orbital Saw']);
   // "Bruiser 3": the branch's held points ride the card; colour is a custom property, name is text.
   const branch = view.root.all((n) => n.className === 'pc__branch').map((n) => n.textContent);
-  assert.equal(branch[0], 'Gunner5');
-  assert.equal(branch[1], 'Bruiser3');
-  assert.equal(branch[2], 'Gunner 5 · Rigger 5');
+  assert.equal(branch[0], 'Guns5');
+  assert.equal(branch[1], 'Knockback3');
+  assert.equal(branch[2], 'Guns 5 · Line 5');
   assert.ok(cards.every((c) => c.styleProps['--pc']));
-  assert.equal(pilotCardFace(state, 'bruiser_billiards').branchLine, 'Bruiser 3');
+  assert.equal(pilotCardFace(state, 'bruiser_billiards').branchLine, 'Knockback 3');
   // A capstone and an evolution wear their own frame.
   assert.equal(pilotCardFace(state, 'bruiser_newtons_cradle').frame, 'capstone');
   assert.equal(pilotCardFace(state, 'evolution_orbital_saw').frame, 'evolution');
@@ -256,32 +257,26 @@ test('re-roll shows its Scrap price and is disabled when the purse is short', ()
   assert.deepEqual(b.bus.of(PILOT_REROLL_INTENT), [{}]);
 });
 
-test('the breath lasts 4 s and stretches up to 10 s while picks wait', () => {
-  assert.equal(pilotBreathSeconds(1), 4);
-  assert.equal(pilotBreathSeconds(2), 6);
-  assert.equal(pilotBreathSeconds(3), 8);
-  assert.equal(pilotBreathSeconds(9), PILOT_BREATH_MAX_S);
-  assert.equal(PILOT_BREATH_MAX_S, 10);
-
-  const one = mountView(runState({ banked: 1 }));
-  one.clock.t += 3900;
-  assert.equal(one.view.tick(one.clock.t), true);
-  one.clock.t += 200;
-  assert.equal(one.view.tick(one.clock.t), false);
-  assert.deepEqual(one.closes, ['timeout']);
-
-  const three = mountView(runState({ banked: 3 }));
-  three.clock.t += 7900;
-  assert.equal(three.view.tick(three.clock.t), true, 'three waiting picks hold the breath open past 4 s');
-  assert.match(three.view.elements.timerWord.textContent, /Closes in 1 s/);
-  three.clock.t += 200;
-  assert.equal(three.view.tick(three.clock.t), false);
-
-  // The overlay mode has no clock at all.
+test('the cards never close themselves: the player reads until a pick or Later', () => {
+  // Director, 2026-11-20: "The level-up cards never auto-close" — a self-closing hand loses picks.
+  for (const banked of [1, 3]) {
+    const view = mountView(runState({ banked }));
+    view.clock.t += 120000;
+    assert.equal(view.view.tick(view.clock.t), true, `${banked} waiting pick(s) still up after two minutes`);
+    assert.deepEqual(view.closes, []);
+    assert.equal(view.view.elements.timer.hidden, true, 'no countdown is drawn');
+  }
   const overlay = mountView(runState({ banked: 1 }), { mode: 'overlay' });
   overlay.clock.t += 60000;
   assert.equal(overlay.view.tick(overlay.clock.t), true);
   assert.equal(overlay.view.elements.timer.hidden, true);
+});
+
+test('the breath stops over the room on a Swarm round with no shop, and over the shop at the Bench', () => {
+  assert.equal(breathStop({ phase: 'draft', ruleset: 'swarm' }, []), true);
+  assert.equal(breathStop({ phase: 'active', ruleset: 'swarm' }, []), false);
+  assert.equal(breathStop({ phase: 'draft', ruleset: 'swarm' }, ['pause']), false);
+  assert.equal(breathStop({ phase: 'draft', ruleset: 'scored' }, ['crucibleDraft']), true);
 });
 
 test('Esc and Later send the breath away and leave the pick banked', () => {

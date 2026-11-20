@@ -48,7 +48,7 @@ function shop({ cash = 400, hullId = 'ship_hawser', ruleset = 'swarm' } = {}) {
   for (const next of ['arena_intro', 'wave_intro', 'active', 'cleanup']) {
     bus.emit('run:transitionRequested', { expectedPhase: phase, nextPhase: next }); phase = next;
   }
-  state.run.wave = 1;
+  state.run.wave = 5; // the Swarm shop opens every fifth round (R3)
   bus.emit('run:awardRequested', { credits: cash, reason: 'round_loot' });
   bus.emit('run:transitionRequested', { expectedPhase: 'cleanup', nextPhase: 'draft' });
   return { state, bus, events };

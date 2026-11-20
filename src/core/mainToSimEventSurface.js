@@ -128,6 +128,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'rigWorkshop:choose',
   'run:awardRequested',
   'run:beginRequested',
+  'run:breathEndRequested',
   'run:draftLockRequested',
   'run:draftPickRequested',
   'run:draftRerollRequested',

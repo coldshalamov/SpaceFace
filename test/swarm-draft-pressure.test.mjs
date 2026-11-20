@@ -84,7 +84,7 @@ function resetRun(h) {
   Object.assign(h.state.run, createRunState({ kind: 'survival', ruleset: SWARM_RULESET, seed: SEED }));
 }
 
-function openSwarmDraft(h, wave = 2) {
+function openSwarmDraft(h, wave = 5) {
   resetRun(h);
   h.state.run.phase = 'draft';
   h.state.run.wave = wave;

@@ -25,10 +25,13 @@ import { PILOT_CARDS_CSS, PILOT_CARDS_STYLE_ID } from './pilotCardsCss.js';
 export const PILOT_CARDS_SCREEN_ID = 'pilotCards';
 export const PILOT_CARD_INTENT = 'run:pilotCardRequested';
 export const PILOT_REROLL_INTENT = 'run:pilotRerollRequested';
+/** The breath is over (a card taken to the last pick, or Later): the run may start the next round. */
+export const PILOT_BREATH_END_INTENT = 'run:breathEndRequested';
 /** Time-effects source the "Pick at once" slowdown owns. */
 export const PILOT_PICK_TIME_SOURCE = 'ui:pilot-pick';
 export const PILOT_PICK_TIME_SCALE = 0.15;
-/** The breath: 4 s, stretching 2 s per extra waiting pick up to 10 s. */
+/** Retired timing (kept for callers that still read it): the breath used to close itself after
+ *  4 s, stretching 2 s per extra waiting pick up to 10 s. Since 2026-11-20 it never auto-closes. */
 export const PILOT_BREATH_BASE_S = 4;
 export const PILOT_BREATH_STEP_S = 2;
 export const PILOT_BREATH_MAX_S = 10;
@@ -84,7 +87,7 @@ export function pilotCardFace(state, id) {
     color2: second ? second.color : null,
     icon: look.icon,
     branches,
-    // "Bruiser 3" — or, for an evolution, both parents: "Gunner 5 · Rigger 5".
+    // "Knockback 3" — or, for an evolution, both parents: "Guns 5 · Line 5".
     branchLine: branches.map((b) => `${b.name} ${b.points}`).join(' · '),
   };
 }
@@ -185,7 +188,9 @@ export function createPilotCardsView({ state, bus, host, doc = globalThis.docume
   later.append(make(doc, 'kbd', '', 'Esc'), make(doc, 'span', '', 'Later'));
   bar.append(reroll, purse, timer, later);
   root.append(head, hand, status, bar);
-  if (mode === 'overlay') timer.hidden = true;
+  // No clock in either mode (director, 2026-11-20): the player reads until they take a card or
+  // press Later, which leaves the pick banked. A card that closes itself mid-sentence is a lost pick.
+  timer.hidden = true;
   if (host && typeof host.appendChild === 'function') host.appendChild(root);
 
   let current = null;       // the hand last drawn
@@ -253,9 +258,10 @@ export function createPilotCardsView({ state, bus, host, doc = globalThis.docume
   }
 
   function startBreath(hand0) {
-    if (mode !== 'screen') return;
-    breathMs = pilotBreathSeconds(hand0.banked) * 1000;
-    deadline = now() + breathMs;
+    // The breath no longer times out; `deadline` stays 0 so tick never closes the cards.
+    void hand0;
+    deadline = 0;
+    breathMs = 0;
     lastSecond = -1;
     lastFillPct = -1;
   }
@@ -454,7 +460,11 @@ export const pilotCardsScreen = {
     s.view = createPilotCardsView({
       state: ctx.state, bus: ctx.bus, host: rootEl, doc, mode: 'screen',
       onClose: () => {
-        if (ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('ui:closeScreen', { id: PILOT_CARDS_SCREEN_ID });
+        if (ctx.bus && typeof ctx.bus.emit === 'function') {
+          ctx.bus.emit('ui:closeScreen', { id: PILOT_CARDS_SCREEN_ID });
+          // Between rounds with no armory under the cards, the next round waits on this breath.
+          ctx.bus.emit(PILOT_BREATH_END_INTENT, {});
+        }
       },
     });
   },
@@ -529,6 +539,17 @@ function screenStackOf(state) {
   return Array.isArray(stack) ? stack : [];
 }
 
+/**
+ * Is this the between-round stop where the cards belong? Over the armory when it is up (the
+ * Bench round, or a ruleset that still shops every wave); and, for a Swarm round with no armory,
+ * over the room itself while the run waits in `draft` for the breath to end.
+ */
+export function breathStop(run, stack) {
+  if (!run) return false;
+  if (stack.includes('crucibleDraft')) return true;
+  return run.phase === 'draft' && run.ruleset === 'swarm' && stack.length === 0;
+}
+
 export function pilotPickAtOnceOn(state) {
   return !!(state && state.settings && state.settings.gameplay && state.settings.gameplay.pilotPickAtOnce === true);
 }
@@ -563,7 +584,7 @@ export function createPilotBreathController({ state, bus, doc = globalThis.docum
     if (!run || !hand) return false;
     const stack = screenStackOf(st);
     if (stack.includes(PILOT_CARDS_SCREEN_ID)) return true;
-    if (!stack.includes('crucibleDraft')) return false;
+    if (!breathStop(run, stack)) return false;
     const key = `${run.seed}:${run.wave}`;
     if (breathKey === key) return true;
     breathKey = key;
@@ -674,8 +695,8 @@ export function createPilotBreathController({ state, bus, doc = globalThis.docum
       return;
     }
 
-    // 1. The breath, over the between-round draft.
-    const draftUp = stack.includes('crucibleDraft');
+    // 1. The breath, between rounds: over the armory on a Bench round, over the room otherwise.
+    const draftUp = breathStop(run, stack);
     if (!draftUp) breathKey = null;
     else if (!stack.includes(PILOT_CARDS_SCREEN_ID) && breathKey !== `${run.seed}:${run.wave}`) {
       breathKey = `${run.seed}:${run.wave}`;

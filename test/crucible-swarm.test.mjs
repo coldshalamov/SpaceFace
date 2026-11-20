@@ -146,11 +146,12 @@ function killOne(h) {
   return true;
 }
 
-function beginSwarm(h) {
+function beginSwarm(h, { startWave = null } = {}) {
   resetSwarmPressureState();
   bindSwarmPressureContext(null);
   h.bus.emit('run:beginRequested', {
     kind: 'survival', ruleset: SWARM_RULESET, seed: SEED, arenaId: ARENA,
+    ...(startWave ? { startWave } : {}),
   });
   h.bus.emit('run:loadoutReady', {});
   tick(h, 1);
@@ -348,7 +349,7 @@ test('the stream holds the room near strength across a whole wave, and never bre
   assert.ok(h.budget.current() <= h.budget.max(), 'the budget was never oversubscribed');
 });
 
-test('a fast round clear earns the shop instead of waiting for a timer', () => {
+test('a fast round clear starts the next round after a short breath, not a shop or a timer', () => {
   const h = boot();
   beginSwarm(h);
   let killed = 0;
@@ -362,9 +363,30 @@ test('a fast round clear earns the shop instead of waiting for a timer', () => {
   assert.equal(killed, swarmCourseQuota(1));
   assert.equal(cleared[0].payload.survivors, 0);
   assert.ok(cleared[0].payload.tick < 3600, 'a fast player does not wait a minute');
-  tick(h, 300);
-  assert.equal(h.state.run.phase, 'draft');
-  assert.equal(liveHostiles(h).length, 0);
+  // R3 (owner): no shop stop every round. Round 2 begins after the breath, with no menu.
+  let waited = 0;
+  while (waited < 600 && !(h.state.run.wave === 2 && h.state.run.phase === 'active')) { tick(h, 1); waited += 1; }
+  assert.equal(h.state.run.wave, 2, 'round 2 began on its own');
+  assert.equal(h.state.run.phase, 'active');
+  assert.ok(waited <= 600, `the breath took ${waited} ticks`);
+});
+
+test('a waiting level-up hand holds the next round until the cards close', () => {
+  const h = boot(); beginSwarm(h);
+  for (let i = 0; i < 4000 && h.state.run.phase === 'active'; i++) {
+    if (i % 6 === 0) killOne(h); tick(h);
+  }
+  assert.equal(h.state.run.phase, 'cleanup');
+  // A pick is banked and a hand is dealt, as the run owner does on a level-up.
+  h.state.run.pilot = { ...(h.state.run.pilot || {}), nodes: h.state.run.pilot?.nodes || [], banked: 1, offer: { cards: ['gunner_drum'], rerolls: 0 } };
+  for (let i = 0; i < 400 && h.state.run.phase !== 'draft'; i++) tick(h, 1);
+  assert.equal(h.state.run.phase, 'draft', 'the round stops in the breath');
+  tick(h, 60);
+  assert.equal(h.state.run.phase, 'draft', 'and waits there while the cards are up');
+  assert.equal(h.state.run.wave, 1);
+  h.bus.emit('run:breathEndRequested', {});
+  tick(h, 200);
+  assert.equal(h.state.run.wave, 2, 'Later (or the last card) lets round 2 begin');
 });
 
 test('launching after shopping begins round two without leaking spawn slots', () => {
@@ -382,14 +404,14 @@ test('launching after shopping begins round two without leaking spawn slots', ()
   assert.equal(h.budget.current(), liveHostiles(h).length);
 });
 
-test('no hostiles spawn into a cleared round while the player shops', () => {
-  const h = boot(); beginSwarm(h);
+test('no hostiles spawn into a cleared round while the player shops at the Bench', () => {
+  const h = boot(); beginSwarm(h, { startWave: 10 });
   for (let i = 0; i < 4000 && h.state.run.phase !== 'draft'; i++) {
     if (i % 7 === 0) killOne(h); tick(h);
   }
   const admitted = h.spawned.length;
   tick(h, 7200);
-  assert.equal(h.state.run.wave, 1);
+  assert.equal(h.state.run.wave, 10);
   assert.equal(h.state.run.phase, 'draft');
   assert.equal(h.spawned.length, admitted);
   assert.equal(liveHostiles(h).length, 0);
@@ -425,9 +447,10 @@ test('a fast clear never overfills the finite round budget', () => {
   assert.equal(named(h.emitted, 'run:waveCleared').length, 1);
 });
 
-test('every round offers a voluntary purchase stop', () => {
-  for (let wave = 1; wave <= 40; wave++) assert.equal(swarmWaveEndsInMenu(wave), true);
-  assert.equal(SWARM_DRAFT_EVERY, 1);
+test('the shop opens after each boss (every fifth round), never every round', () => {
+  // Owner, R3 (2026-11-18): "No shop stop every round" — gear on the floor, skills on cards.
+  for (let wave = 1; wave <= 40; wave++) assert.equal(swarmWaveEndsInMenu(wave), wave % 5 === 0, `round ${wave}`);
+  assert.equal(SWARM_DRAFT_EVERY, 5);
 });
 
 test('a swarm refit wave gives BOTH the card and the bench, in that order', () => {
@@ -455,16 +478,18 @@ test('a swarm refit wave gives BOTH the card and the bench, in that order', () =
   assert.equal(seen[tenth + 1], 'w10:refit', 'and the bench came straight after the card');
 });
 
-test('the player controls when the next round begins', () => {
-  const h = boot(); beginSwarm(h);
+test('at the Bench the player controls when the next round begins', () => {
+  const h = boot(); beginSwarm(h, { startWave: 10 });
   for (let i = 0; i < 4000 && h.state.run.phase !== 'draft'; i++) {
     if (i % 6 === 0) killOne(h); tick(h);
   }
   tick(h, 1000);
-  assert.equal(h.state.run.wave, 1);
+  assert.equal(h.state.run.wave, 10);
   assert.equal(h.state.run.phase, 'draft');
-  h.bus.emit('run:draftResolved', {}); tick(h, 300);
-  assert.equal(h.state.run.wave, 2);
+  h.bus.emit('run:draftResolved', {}); tick(h, 5);
+  assert.equal(h.state.run.phase, 'refit', 'the shop, then the refit bench');
+  h.bus.emit('run:refitClosed', {}); tick(h, 300);
+  assert.equal(h.state.run.wave, 11);
 });
 
 test('the room raises its own capacity for the run and gives it back afterwards', () => {

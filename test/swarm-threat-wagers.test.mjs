@@ -96,7 +96,7 @@ function waveArmory(h, threats, wave) {
 
 test('an un-wagered armory still deals a shelf and answers its re-roll bench', () => {
   const h = boot();
-  waveArmory(h, null, 1);
+  waveArmory(h, null, 5);
   const dealt = named(h, 'run:draftOffered');
   assert.equal(dealt.length, 1);
   assert.ok(dealt[0].payload.offers.length > 0, 'the shelf dealt stock');
@@ -181,7 +181,7 @@ test('Draftless: the armory never deals — no shelf, no transactions, and the r
 
 test('No Re-rolls: the shelf deals once, then every bench — free or paid — is refused', () => {
   const h = boot();
-  waveArmory(h, ['no_rerolls'], 1);
+  waveArmory(h, ['no_rerolls'], 5);
   assert.deepEqual(h.state.run.telemetry.threats, ['no_rerolls']);
   assert.ok(h.state.run.arenaMutators.includes('no_reroll'));
 

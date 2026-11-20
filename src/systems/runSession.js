@@ -20,6 +20,7 @@ import {
   isPilotCardEligible,
   pilotCardWeight,
   pilotDoorForRun,
+  pilotPicksRemaining,
   untouchedPilotBranches,
 } from '../data/pilotTree.js';
 import { migrateHangar, purseBonusFor } from '../data/swarmHangar.js';
@@ -358,9 +359,14 @@ export const runSession = {
     // never reaches here (refused above), and a hand-built run without a pilot record gets one
     // rather than silently dropping the banked pick.
     const levelsGained = next.level > previousLevel ? next.level - previousLevel : 0;
+    // A level-up banks a pick only while the tree still holds one to give: never more banked
+    // picks than cards left to take (a promise of a pick that never comes is worse than none).
+    let picksBanked = 0;
     if (levelsGained > 0) {
       next.pilot ??= createPilotProgress();
-      next.pilot.banked += levelsGained;
+      const room = Math.max(0, pilotPicksRemaining(next.pilot, pilotDoorForRun(next)) - next.pilot.banked);
+      picksBanked = Math.min(levelsGained, room);
+      next.pilot.banked += picksBanked;
     }
     const committed = this._commitRun(next, 'run:awarded', {
       credits, xp, score,
@@ -374,7 +380,7 @@ export const runSession = {
       bankActs: toBankActs(request && request.bankActs),
       causePhrase: toCausePhrase(request && request.causePhrase),
     });
-    if (committed && levelsGained > 0) {
+    if (committed && picksBanked > 0) {
       this._emit('run:levelUp', { level: next.level, previousLevel, xp: next.xp, banked: next.pilot.banked });
       // OVH-01a2: the owner deals at a fixed moment — right after a level-up commit that banked
       // a pick, when no offer is open. The moment (and the state.rng it consumes) is the same

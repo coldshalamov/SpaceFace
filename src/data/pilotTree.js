@@ -77,13 +77,15 @@ function bendRows(power, names) {
   } ]);
 }
 
+// Branch NAMES are what a stranger reads on a card, the tree and Run Over: plain, short words for
+// the fighting style (director ruling, 2026-11-20). Ids stay the code's own (saves, tests, effects).
 export const PILOT_BRANCHES = Object.freeze([
-  Object.freeze({ id: 'gunner', name: 'Gunner', motto: 'nothing survives the stream' }),
-  Object.freeze({ id: 'bruiser', name: 'Bruiser', motto: 'one shot and he\'s across the room, through his friends' }),
-  Object.freeze({ id: 'rigger', name: 'Rigger', motto: 'the rope (reads your hull\'s mass)' }),
-  Object.freeze({ id: 'conjurer', name: 'Field Tech', motto: 'one press and the whole field moves' }),
-  Object.freeze({ id: 'juggernaut', name: 'Juggernaut', motto: 'I don\'t dodge. I\'m the obstacle.' }),
-  Object.freeze({ id: 'ghost', name: 'Ghost', motto: 'they never saw which way it came from' }),
+  Object.freeze({ id: 'gunner', name: 'Guns', motto: 'nothing survives the stream' }),
+  Object.freeze({ id: 'bruiser', name: 'Knockback', motto: 'one shot and he\'s across the room, through his friends' }),
+  Object.freeze({ id: 'rigger', name: 'Line', motto: 'the rope (reads your hull\'s mass)' }),
+  Object.freeze({ id: 'conjurer', name: 'Powers', motto: 'one press and the whole field moves' }),
+  Object.freeze({ id: 'juggernaut', name: 'Ramming', motto: 'I don\'t dodge. I\'m the obstacle.' }),
+  Object.freeze({ id: 'ghost', name: 'Stealth', motto: 'they never saw which way it came from' }),
   Object.freeze({ id: 'industry', name: 'Industry', motto: 'Adventure only', adventureOnly: true }),
 ]);
 
@@ -325,6 +327,35 @@ export function isPilotCardEligible(card, pilot, door) {
   if (!nodeAvailableInDoor(card, door)) return false;
   const held = Number.isInteger(pilot?.points?.[card.branch]) ? pilot.points[card.branch] : 0;
   return held + 1 >= tierGate(card.tier);
+}
+
+/**
+ * How many more picks this pilot could ever take in this door: live nodes not yet taken or locked,
+ * tier gates ignored (taking picks opens them), one per bend group (a bend locks its siblings), plus
+ * live evolutions not yet taken. The run owner never banks more picks than this — a level-up must
+ * offer a real card or not promise one (release list, 2026-11-19).
+ */
+export function pilotPicksRemaining(pilot, door) {
+  const live = pilotLiveNodeIds();
+  const taken = new Set(Array.isArray(pilot?.nodes) ? pilot.nodes : []);
+  const locked = lockedPilotNodeIds(pilot);
+  const bendGroupOf = new Map();
+  PILOT_BEND_GROUPS.forEach((group, i) => { for (const id of group.bends) bendGroupOf.set(id, i); });
+  const groupsOpen = new Set();
+  let count = 0;
+  for (const node of PILOT_NODES) {
+    if (!live.has(node.id) || taken.has(node.id) || locked.has(node.id) || !nodeAvailableInDoor(node, door)) continue;
+    const group = bendGroupOf.get(node.id);
+    if (group != null) {
+      if ([...PILOT_BEND_GROUPS[group].bends].some((id) => taken.has(id)) || groupsOpen.has(group)) continue;
+      groupsOpen.add(group);
+    }
+    count += 1;
+  }
+  for (const evolution of PILOT_EVOLUTIONS) {
+    if (live.has(evolution.id) && !taken.has(evolution.id)) count += 1;
+  }
+  return count;
 }
 
 /** Every card the run may currently be offered, in tree order (branch nodes, then evolutions). */

@@ -354,7 +354,7 @@ test('Expert can borrow a gun without credits and the loan ends at the next armo
   assert.equal(h.state.run.credits, 0);
   // Launch: resolve, walk the round, come back through cleanup to the next armory.
   h.bus.emit('run:draftPickRequested', { offerId: null });
-  h.state.run.wave = 1;
+  h.state.run.wave = 5; // a shop round: the Swarm shop opens every fifth round (R3)
   transition(h, 'draft', 'wave_intro');
   transition(h, 'wave_intro', 'active');
   transition(h, 'active', 'cleanup');
@@ -404,7 +404,7 @@ test('buying the demoed slot retires the trial — the run keeps it', () => {
   assert.ok(beforeWalk >= 1, 'the bought copy is fitted');
   // Walk to the next armory — the demo copy strips, the paid copy stays. Exactly one remains.
   h.bus.emit('run:draftPickRequested', { offerId: null });
-  h.state.run.wave = 1;
+  h.state.run.wave = 5; // a shop round: the Swarm shop opens every fifth round (R3)
   transition(h, 'draft', 'wave_intro');
   transition(h, 'wave_intro', 'active');
   transition(h, 'active', 'cleanup');
@@ -471,7 +471,7 @@ test('buying a hull retires the demos on the hull you are leaving', () => {
   // Foreign hulls go on sale once the run has begun — the opening armory fits the door's
   // free pick, so the buy under test happens at the round-1 shelf.
   h.bus.emit('run:draftPickRequested', { offerId: null });
-  h.state.run.wave = 1;
+  h.state.run.wave = 5; // a shop round: the Swarm shop opens every fifth round (R3)
   transition(h, 'draft', 'wave_intro');
   transition(h, 'wave_intro', 'active');
   transition(h, 'active', 'cleanup');
@@ -481,7 +481,7 @@ test('buying a hull retires the demos on the hull you are leaving', () => {
     Number.isInteger(o.slotIndex) && typeof o.defId === 'string' && o.kind === 'number');
   const hullOffer = shelf.find((o) =>
     o.kind === 'hull' && o.available && o.defId !== 'ship_hornet');
-  assert.ok(demoable && hullOffer, 'a demoable card and a foreign hull are on the round-1 shelf');
+  assert.ok(demoable && hullOffer, 'a demoable card and a foreign hull are on the round-5 shelf');
   h.bus.emit('run:draftPickRequested', { offerId: demoable.id, demo: true });
   const oldHull = h.state.player.ownedShips[h.state.player.activeShipIndex];
   assert.ok(oldHull.fittings.includes(demoable.defId), 'the demo is bolted on');
@@ -524,7 +524,7 @@ test('an owned hull switches back for free and stays switchable', () => {
   assert.equal(ownedRow.price, 0, 'an owned hull is never priced again');
   // Foreign hulls go on sale once the run has begun — walk to the round-1 shelf for the buy.
   h.bus.emit('run:draftPickRequested', { offerId: null });
-  h.state.run.wave = 1;
+  h.state.run.wave = 5; // a shop round: the Swarm shop opens every fifth round (R3)
   transition(h, 'draft', 'wave_intro');
   transition(h, 'wave_intro', 'active');
   transition(h, 'active', 'cleanup');
@@ -532,7 +532,7 @@ test('an owned hull switches back for free and stays switchable', () => {
   // Buy a foreign hull — the swap lands; the hornet leaves the cradle but not the manifest.
   const foreign = survivalDraft.currentOffers().find((o) =>
     o.kind === 'hull' && o.available && o.defId !== 'ship_hornet');
-  assert.ok(foreign, 'a foreign hull is on the round-1 shelf');
+  assert.ok(foreign, 'a foreign hull is on the round-5 shelf');
   h.bus.emit('run:draftPickRequested', { offerId: foreign.id });
   const player = h.state.player;
   assert.equal(player.ownedShips[player.activeShipIndex].defId, foreign.defId, 'the bought hull flies');
@@ -571,7 +571,7 @@ test('an unearned crossover hull is a locked goal on the shelf, never a sale', (
   landPurse(h, 'exhibition');
   transition(h, 'loadout', 'draft');
   h.bus.emit('run:draftPickRequested', { offerId: null });
-  h.state.run.wave = 1;
+  h.state.run.wave = 5; // a shop round: the Swarm shop opens every fifth round (R3)
   transition(h, 'draft', 'wave_intro');
   transition(h, 'wave_intro', 'active');
   transition(h, 'active', 'cleanup');
@@ -618,7 +618,7 @@ test('a demoed module stays buyable — the trial is not a lock', () => {
   assert.equal(activeFittings(h)[card.slotIndex], card.defId, 'the paid copy is on the slot');
   // Walk to the next armory — a paid copy was never a trial, so nothing strips.
   h.bus.emit('run:draftPickRequested', { offerId: null });
-  h.state.run.wave = 1;
+  h.state.run.wave = 5; // a shop round: the Swarm shop opens every fifth round (R3)
   transition(h, 'draft', 'wave_intro');
   transition(h, 'wave_intro', 'active');
   transition(h, 'active', 'cleanup');

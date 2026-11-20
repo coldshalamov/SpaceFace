@@ -57,9 +57,12 @@ export const SWARM_WAVE_MAX = 30;
 export const SWARM_DEEP_WAVE_MAX = 999;
 
 /**
- * Every round opens the cash armory. Every tenth also opens the refit/extraction bench.
+ * The shop opens every fifth round — after each boss falls — and the refit bench joins it every
+ * tenth (R3, 04_SWARM.md §2: "No shop stop every round"; director 2026-11-20: "a shop every few
+ * rounds rather than every round"). Between the other rounds the run passes straight through
+ * `draft`: skills arrive as the level-up cards in the breath, and gear is bought on the floor.
  */
-export const SWARM_DRAFT_EVERY = 1;
+export const SWARM_DRAFT_EVERY = 5;
 export const SWARM_REFIT_EVERY = 10;
 
 /** The design's cadence: the first champion arrives at wave 5, then every fifth round —
@@ -832,6 +835,8 @@ export function isSwarmBossWave(wave) {
 }
 
 export function isSwarmDraftWave(wave) {
+  // Wave 0 is the opening stop before round 1: the setup screen's route still opens the armory there.
+  if (Number.isFinite(Number(wave)) && Number(wave) < 1) return true;
   const w = swarmWaveOf(wave);
   return w % SWARM_DRAFT_EVERY === 0;
 }

@@ -76,7 +76,7 @@ test('non-Swarm cancellation and the existing Circuit choice gate keep priority'
 test('real draft owner supplies hull-switch exclusions and live repair affordability', () => {
   const state = createGameState(4242), bus = createBus();
   state.run = { ...createRunState({ kind: 'survival', ruleset: 'swarm', seed: 4242 }),
-    phase: 'draft', wave: 1, credits: 40 };
+    phase: 'draft', wave: 5, credits: 40 }; // a shop round (every fifth)
   state.player.ownedShips = [{ defId: 'ship_kestrel', fittings: [] },
     { defId: 'ship_mule', fittings: [] }];
   state.player.activeShipIndex = 0;

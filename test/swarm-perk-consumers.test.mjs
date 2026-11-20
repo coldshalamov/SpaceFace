@@ -334,7 +334,7 @@ test('gambler: two free draws ride after the Hangar\'s, then the bench sells at 
 test('without gambler the same armory spends the Hangar\'s draw, then the bench is dead', () => {
   const h = draftBoot();
   saveCrucibleMeta({ ladder: ladderWithStars(8), hangar: migrateHangar({ ranks: { rerolls: 1 } }) });
-  waveArmory(h, null, 1);
+  waveArmory(h, null, 5);
   assert.equal(h.state.run.telemetry.perks, undefined, 'no pick was stamped');
 
   const info = survivalDraft.rerollState();
