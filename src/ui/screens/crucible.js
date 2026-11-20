@@ -1975,7 +1975,7 @@ export const crucibleScreen = {
         const askText = open.length ? ` · still to earn: ${open.join(' and ')}` : '';
         button.title = z === 0
           ? `From the top — the whole ladder ahead.${open.length ? ` ${mark} banked${askText}.` : ''}`
-          : `Checkpoint start — the armory holds a working purse. ${mark} banked${askText}`;
+          : `Checkpoint start — later rounds, 0 Scrap to start. ${mark} banked${askText}`;
         button.setAttribute('aria-label',
           `Zone ${zone.number}, ${zone.name}, from round ${wave}. ${stars} of 3 stars banked.`
           + `${open.length ? ` Still to earn: ${open.join(' and ')}.` : ''}`);
@@ -4333,7 +4333,7 @@ export function resultCelebration(result) {
   if (delta && delta.newCheckpoint) {
     const cp = delta.newCheckpoint;
     lines.push(`Checkpoint banked — the next run can open at Round ${cp.startWave}`
-      + (Number.isFinite(Number(cp.purse)) ? ` with a ${cp.purse} cr purse.` : '.'));
+      + (Number(cp.purse) > 0 ? ` with ${cp.purse} Scrap.` : '.'));
   }
   const banked = Number.isFinite(result.bankedBounty) ? result.bankedBounty : null;
   const chest = Number.isFinite(result.hangarBounty) ? result.hangarBounty : null;

@@ -164,7 +164,7 @@ test('a Round-1 ladder start is untouched: no checkpoint fact, stake purse only,
   assert.equal(h.state.run.wave, 1);
 });
 
-test('a zone-2 checkpoint start enters at Round 11 with the mid-build purse already banked', () => {
+test('a zone-2 checkpoint start enters at Round 11 with 0 Scrap, like every run', () => {
   resetMeta();
   const h = bootDoor();
   launch(h, { startWave: swarmCheckpointStartWave(1) });
@@ -174,18 +174,10 @@ test('a zone-2 checkpoint start enters at Round 11 with the mid-build purse alre
   assert.equal(h.state.run.wave, 10, 'parked one wave back — the planner adds the first fight');
   assert.equal(h.state.run.telemetry.startWave, 11, 'settlement reads the honest entry');
 
-  // The authored purse rule (SWARM_ARCADE §6.2): 800 cr at the first checkpoint, +350 a
-  // zone — on top of the stake, through the same wallet seam, before the armory opens.
-  const checkpoint = awardsOf(h, 'swarm:checkpoint:').at(-1);
-  assert.ok(checkpoint, 'the checkpoint purse lands through the wallet seam');
-  assert.equal(checkpoint.payload.reason, 'swarm:checkpoint:w11');
-  assert.equal(checkpoint.payload.credits, swarmCheckpointPurseFor(1));
-  assert.equal(
-    h.state.run.credits,
-    swarmStakeFor('contender').purse + swarmCheckpointPurseFor(1),
-    'a bought Round 11 never opens on a Round-1 wallet',
-  );
-  assert.ok(h.state.run.credits > swarmStakeFor('contender').purse, 'not wave-1 trivial');
+  // Director 2026-11-20: checkpoint starts also begin at 0 Scrap (every run starts at zero).
+  assert.equal(awardsOf(h, 'swarm:checkpoint:').length, 0, 'no checkpoint purse is paid');
+  assert.equal(swarmCheckpointPurseFor(1), 0);
+  assert.equal(h.state.run.credits, 0, 'a checkpoint run opens at 0 Scrap');
 
   driveToFirstPlan(h);
   const planned = h.emitted.filter((e) => e.event === 'run:wavePlanned').at(-1);
@@ -194,7 +186,7 @@ test('a zone-2 checkpoint start enters at Round 11 with the mid-build purse alre
   assert.equal(h.state.run.wave, 11);
 });
 
-test('deeper checkpoints scale on the same authored rule — Round 21 parks at 20 and banks 1150', () => {
+test('deeper checkpoints enter their own round — Round 21 parks at 20, still 0 Scrap', () => {
   resetMeta();
   const h = bootDoor();
   launch(h, { startWave: swarmCheckpointStartWave(2) });
@@ -202,9 +194,8 @@ test('deeper checkpoints scale on the same authored rule — Round 21 parks at 2
   const begin = h.emitted.filter((e) => e.event === 'run:beginRequested').at(-1);
   assert.equal(begin.payload.startWave, 21);
   assert.equal(h.state.run.wave, 20);
-  const checkpoint = awardsOf(h, 'swarm:checkpoint:').at(-1);
-  assert.equal(checkpoint.payload.reason, 'swarm:checkpoint:w21');
-  assert.equal(h.state.run.credits, swarmStakeFor('contender').purse + swarmCheckpointPurseFor(2));
+  assert.equal(awardsOf(h, 'swarm:checkpoint:').length, 0);
+  assert.equal(h.state.run.credits, 0, 'Director 2026-11-20: checkpoint starts also begin at 0 Scrap (every run starts at zero).');
 
   driveToFirstPlan(h);
   const planned = h.emitted.filter((e) => e.event === 'run:wavePlanned').at(-1);
@@ -216,9 +207,10 @@ test('the authored checkpoint table: zone index → wave, zone index → purse',
   assert.equal(swarmCheckpointStartWave(1), 11, 'zone 2 opens at Round 11');
   assert.equal(swarmCheckpointStartWave(13), 131, 'zone 14 opens at Round 131');
   assert.equal(swarmCheckpointPurseFor(0), 0, 'Round 1 is not a checkpoint');
-  assert.equal(swarmCheckpointPurseFor(1), 800);
-  assert.equal(swarmCheckpointPurseFor(2), 800 + 350);
-  assert.equal(swarmCheckpointPurseFor(13), 800 + 350 * 12);
+  // Director 2026-11-20: checkpoint starts also begin at 0 Scrap (every run starts at zero).
+  assert.equal(swarmCheckpointPurseFor(1), 0);
+  assert.equal(swarmCheckpointPurseFor(2), 0);
+  assert.equal(swarmCheckpointPurseFor(13), 0);
 });
 
 test('the checkpoint armory stocks a deeper shelf than wave 0 — never an empty shop', () => {
