@@ -429,9 +429,12 @@ export class PackBrain {
     switch (rec.phase) {
       case PACK_PHASE.APPROACH: {
         const armed = !panicked && tick >= rec.cooldownUntil && dist <= arch.ingressWU;
+        // Retry is deferred ONLY when an authorization attempt was actually made and denied:
+        // bumping while the retry gate itself is closed pushes the deadline 14 ticks further
+        // every think, so a wasp denied once inside its no-fire response window never attacks.
         if (armed && tick >= rec.authRetryAt && this._authorized(state, rec, player, tick)) {
           this._beginWindup(ctx, rec, tick, player, predX, predZ, ex, ez);
-        } else if (armed) {
+        } else if (armed && tick >= rec.authRetryAt) {
           rec.authRetryAt = tick + AUTH_RETRY_TICKS;
         }
         break;
