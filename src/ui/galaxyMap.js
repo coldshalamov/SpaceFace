@@ -99,6 +99,7 @@ import { pallasHiddenCacheMapReadouts, pallasHiddenCacheMapTarget } from './pall
 import { worldSiteMapMarkers } from './worldSiteMapLayer.js';
 import { getCounterweightCircuitMapMarkers } from '../features/counterweightCircuit/readModel.js';
 import { getBreakwaterSpurMapMarkers } from '../features/breakwaterSpur/readModel.js';
+import { getSwitchbackMapMarkers } from '../features/convoyRaid/mapMarkers.js';
 import { ceresArrivalChartTarget, ceresArrivalMapTarget } from '../story/ceresArrivalStory.js';
 import { orrinWitnessMapTarget } from '../data/orrinWitnessCase.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
@@ -2280,6 +2281,17 @@ function counterweightChartTargets(state, sectorId) {
   }));
 }
 
+// PORT-PRO-FIVE expeditions: fixed departure/site anchors drawn like the sibling
+// circuit sites, so a pilot can set a course to each before the proximity offer fires.
+function switchbackChartTargets(state, sectorId) {
+  return getSwitchbackMapMarkers(state, sectorId).map(marker => ({
+    id: marker.id, kind: 'poi', poiType: 'convoy_raid', name: marker.label,
+    x: marker.pos.x, z: marker.pos.z,
+    drawPos: globalToSectorLocalForSector(marker.pos, sectorId), sectorId,
+    entityId: null, named: true, searchText: marker.label,
+  }));
+}
+
 export function buildSystemModel(state, sectorId, options = {}) {
   const sid = sectorId || currentSectorId(state);
   const record = sectorRecordById(state, sid);
@@ -2462,7 +2474,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
   }
   const ceresArrival = ceresArrivalChartTarget(state, sid);
   if (ceresArrival) points.push(ceresArrival);
-  points.push(...breakwaterChartTargets(state, sid), ...counterweightChartTargets(state, sid), ...cinderglassChartTargets(state, sid));
+  points.push(...breakwaterChartTargets(state, sid), ...counterweightChartTargets(state, sid), ...cinderglassChartTargets(state, sid), ...switchbackChartTargets(state, sid));
   // Orrin's accepted original resolves through the ordinary station target/click/course path.
   // The case reader deliberately supplies no nav state; this only gives the existing Customs
   // Gate point a persistent reason to be selected after the one-shot referral intent is gone.
@@ -2641,7 +2653,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
     sectorId,
     player: player ? { id: player.id, x: player.pos.x, z: player.pos.z, rot: player.rot || 0 } : null,
     contacts: filterSalvageTenderMapContacts(state, contacts),
-    circuitSites: [...breakwaterChartTargets(state, sectorId), ...counterweightChartTargets(state, sectorId), ...cinderglassChartTargets(state, sectorId)],
+    circuitSites: [...breakwaterChartTargets(state, sectorId), ...counterweightChartTargets(state, sectorId), ...cinderglassChartTargets(state, sectorId), ...switchbackChartTargets(state, sectorId)],
     ownership: buildClaimOwnershipMarkers(state, sectorId, options.claimsSystem || null),
     bearings: discoveryBearingReadouts(state, sectorId),
     rumorCorroborations: frontierRumorCorroborations(state, sectorId),
