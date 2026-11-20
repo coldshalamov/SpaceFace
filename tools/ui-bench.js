@@ -2145,6 +2145,10 @@ async function mountFlightHud(opts = {}) {
   // minimap's sensor ping moves (and, with --reduced-motion=reduce, that it does not).
   const minimapT = Number(params.get('minimapT'));
   if (Number.isFinite(minimapT) && minimapT !== 0) state.simTime += minimapT;
+  // `?minimapCast=1`: a composed round announces its cast (the composer's event, through the bus).
+  if (params.get('minimapCast')) {
+    bus.emit('encounter:castAnnounced', { wave: 4, recipeId: 'bench', line: 'A rushing pack, with a sniper on the rim', answer: 'Break its line with a rock', jobs: ['rush', 'reach', 'deny'], groups: [], tick: 0 });
+  }
   try {
     if (typeof hud.forceRefresh === 'function') hud.forceRefresh();
     if (typeof hud.frame === 'function') {

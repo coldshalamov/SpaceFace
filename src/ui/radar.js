@@ -1838,8 +1838,8 @@ export function createRadar(ctx) {
     minimap.canvas.hidden = true;
     dial.appendChild(minimap.canvas);
     wrap.appendChild(chartFooter);
-    wrap.__minimapStats = () => minimap.getStats();
-    if (typeof window !== 'undefined') window.__SF_MINIMAP_STATS__ = () => minimap.getStats();
+    wrap.__minimapStats = () => ({ ...minimap.getStats(), censusReuses: chartCensusReuses });
+    if (typeof window !== 'undefined') window.__SF_MINIMAP_STATS__ = () => ({ ...minimap.getStats(), censusReuses: chartCensusReuses });
   }
   let chartShown = false;
 
@@ -2095,6 +2095,12 @@ export function createRadar(ctx) {
   let displayRange = null;
   let lastRangeStepSimS = null;
   let lastChartHostiles = 0;
+  let castAnnounce = null;
+  let castAnnouncements = 0;
+  let lastChartCensusSimS = null;
+  let lastChartCensusTarget = null;
+  let lastChartCensusRange = 0;
+  let chartCensusReuses = 0;
   let quietTick = 0;
   const offRangeHostileScratch = [];
   const mineScratch = [];
@@ -2158,6 +2164,14 @@ export function createRadar(ctx) {
       ['swarm:arenaEntered', onSectorEnter],
       ['mode:changed', ({ mode } = {}) => { if (mode !== 'flight') clearHostileCourse(); }],
       ['combat:damage', (p) => { if (p && p.targetId === state.playerId) recordPlayerDamageHit(p); }],
+      // A composed round names its cast before contact: the minimap shows the arriving jobs.
+      ['encounter:castAnnounced', (p) => {
+        const jobs = p && Array.isArray(p.jobs) ? p.jobs.filter((j) => typeof j === 'string') : [];
+        if (!jobs.length) return;
+        castAnnounce = { jobs: jobs.slice(0, 6), atS: Number.isFinite(state.simTime) ? state.simTime : 0 };
+        castAnnouncements += 1;
+        if (typeof window !== 'undefined') window.__SF_CAST_ANNOUNCED__ = (window.__SF_CAST_ANNOUNCED__ || 0) + 1;
+      }],
       ['physics:impact', (p) => {
         if (!p || (p.aId !== state.playerId && p.bId !== state.playerId)) return;
         if (!(Number(p.damage) > 0 || Number(p.hullDamage) > 0 || Number(p.impulse) > 120)) return;
@@ -2389,7 +2403,19 @@ export function createRadar(ctx) {
     ) || 'none';
     if (colorblindMode !== legendMode) refreshLegendDots(colorblindMode);
     const contacts = contactsFor(player);
-    const contactCensus = censusRadarContactsStillLayer({
+    // MAPS-1 cost: in minimap mode the census only decides WHO is on the scope (the minimap reads
+    // positions live from the entities), so its membership is reused for 200 ms of game time.
+    const censusSimS = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const reuseCensus = showChart && lastChartCensusSimS != null
+      && censusSimS >= lastChartCensusSimS && censusSimS - lastChartCensusSimS < 0.2
+      && lastChartCensusTarget === targetId && lastChartCensusRange === Math.round(censusRange / 25);
+    if (showChart && !reuseCensus) {
+      lastChartCensusSimS = censusSimS;
+      lastChartCensusTarget = targetId;
+      lastChartCensusRange = Math.round(censusRange / 25);
+    }
+    chartCensusReuses += reuseCensus ? 1 : 0;
+    const contactCensus = reuseCensus ? null : censusRadarContactsStillLayer({
       contacts, player, playerTeam, state, range: censusRange, rangeSq, metrics, targetId, projectScratch,
       pushHostileMark, pushInfrastructureMark, pushNeutralMark, hostileMarks, infrastructureMarks,
       neutralMarks, cache: contactsStillCache, updateTrailFn: showChart ? null : updateTrail,
@@ -2404,10 +2430,10 @@ export function createRadar(ctx) {
       const sectorId = String((state.world && state.world.currentSectorId) || '');
 
       // Collect mines, solid arena walls/furnaces, and distant off-range hostiles using pooled scratch arrays.
-      mineScratch.length = 0;
-      roomWallScratch.length = 0;
-      offRangeHostileScratch.length = 0;
-      for (let i = 0; i < contacts.length; i += 1) {
+      if (!reuseCensus) mineScratch.length = 0;
+      if (!reuseCensus) roomWallScratch.length = 0;
+      if (!reuseCensus) offRangeHostileScratch.length = 0;
+      for (let i = 0; i < (reuseCensus ? 0 : contacts.length); i += 1) {
         const entity = contacts[i];
         if (!entity || !entity.pos || !entity.alive || entity === player) continue;
         if (entity.type === 'mine') {
@@ -2504,9 +2530,12 @@ export function createRadar(ctx) {
         stanceOf: (entity) => shipState(entity, playerTeam, state, hostileOf),
         colorOf: (entity) => contactColor(entity, playerTeam, colorblindMode, state, hostileOf),
         jobColors: colorblindMode === 'none',
+        castAnnounce: castAnnounce && Number.isFinite(state.simTime) && state.simTime - castAnnounce.atS < 6
+          ? { jobs: castAnnounce.jobs, ageS: state.simTime - castAnnounce.atS } : null,
       });
 
-      lastChartHostiles = visibleHostiles.length + offRangeHostileScratch.length;
+      lastChartHostiles = visibleHostiles.length + offRangeHostileScratch.length
+        + (castAnnounce && Number.isFinite(state.simTime) && state.simTime - castAnnounce.atS < 6 ? 1 : 0);
       const cue = target ? {
         resolved: true, distance: Math.hypot(target.x - playerX, target.z - playerZ),
       } : null;

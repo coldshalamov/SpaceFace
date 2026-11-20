@@ -1078,6 +1078,7 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
     stanceOf = null,
     colorOf = null,
     jobColors = true,
+    castAnnounce = null,
   }) {
     const t0 = typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
     const cut = chamferSize(width);
@@ -1433,7 +1434,7 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
     for (let i = 0; i < neutral.length; i += 1) {
       const mark = neutral[i];
       const entity = mark && mark.entity;
-      if (!entity || !entity.pos || entity.type === 'mine') continue;
+      if (!entity || !entity.pos || entity.alive === false || entity.type === 'mine') continue;
       const at = project(entity.pos.x, entity.pos.z);
       if (!pointInsideChamfer(at.x, at.y, width, height, 10, cut)) continue;
       const selected = entity.id === targetId || mark.selected;
@@ -1512,7 +1513,7 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
     for (let i = 0; i < orderedHostiles.length; i += 1) {
       const { mark, role, boss: isBoss } = orderedHostiles[i];
       const entity = mark.entity;
-      if (!entity.pos) continue;
+      if (!entity.pos || entity.alive === false) continue;
       const at = project(entity.pos.x, entity.pos.z);
       const distW = Math.sqrt(mark.distanceSq || 0);
       const selected = entity.id === targetId;
@@ -1721,8 +1722,45 @@ export function createFlightMinimap(doc, dpr, requestDraw) {
       drawHitRimFlash(ctx, cx, cy, width, height, hit.angle, intensity, hit.layer, cut, reducedMotion || reduceFlash);
     }
 
+    // 12b. An arriving group, named before contact: its jobs as glyphs along the top rim with the one
+    // word "Incoming", for six seconds (it fades over the last 1.5 s unless motion is reduced).
+    let castRect = null;
+    if (castAnnounce && Array.isArray(castAnnounce.jobs) && castAnnounce.jobs.length) {
+      const age = Number(castAnnounce.ageS) || 0;
+      const fade = reducedMotion ? 1 : clamp((6 - age) / 1.5, 0, 1);
+      if (fade > 0.02) {
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.font = canvasFont(650, 12, 'read');
+        const word = 'Incoming';
+        const ww = textWidthMemo.get('cast|word') ?? ctx.measureText(word).width;
+        textWidthMemo.set('cast|word', ww);
+        const n = castAnnounce.jobs.length;
+        const boxW = 12 + ww + 10 + n * 21;
+        const bx = cut + 10;
+        const by = 8;
+        ctx.fillStyle = 'rgba(9, 22, 32, 0.92)';
+        ctx.fillRect(bx, by, boxW, 24);
+        ctx.strokeStyle = 'rgba(255, 120, 96, 0.7)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bx + 0.5, by + 0.5, boxW - 1, 23);
+        ctx.fillStyle = '#ffd9cf';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(word, bx + 8, by + 12.5);
+        for (let i = 0; i < n; i += 1) {
+          const job = castAnnounce.jobs[i];
+          const color = (jobColors && CONTACT_JOB_PALETTE[job]) || TACTICAL_MAP_PALETTE.hostile;
+          drawRoleGlyph(ctx, job, 'hostile', bx + 12 + ww + 10 + i * 21 + 9, by + 13, 0, { color, scale: job === 'reach' ? 0.9 : 1.1 });
+        }
+        ctx.restore();
+        castRect = { x: bx, y: by, w: boxW, h: 24 };
+      }
+    }
+
     // 13. Words ONLY where needed: Objective + one Hovered/Selected contact (min 12px, collision-solved!)
     occupiedRects.length = 0;
+    if (castRect) occupiedRects.push(castRect);
     // Reserve: center player hull, top-center North mark, bottom-right range numeral, top-left blind banner
     occupiedRects.push(
       { x: cx - 15, y: cy - 15, w: 30, h: 30 },
