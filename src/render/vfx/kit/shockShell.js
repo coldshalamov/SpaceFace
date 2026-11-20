@@ -75,7 +75,7 @@ void main(){
     // A 'wall' front (seed integer part >= 5) is a broad, blinding band that holds full strength for
     // its first ~40 % of life and is gone by half-life; ordinary fronts are a hot lip and a skirt.
     bool wall=floor(vSeed)>4.5;
-    float lip=wall?exp(-pow((vAcross-0.15)*1.5,2.0)):exp(-pow((vAcross-0.5)*2.4,2.0));
+    float lip=wall?exp(-pow((vAcross-0.15)*1.5,2.0)):exp(-pow((vAcross-0.4)*1.8,2.0));
     float skirt=0.22*smoothstep(-1.0,0.4,vAcross)*(1.0-smoothstep(0.4,1.0,vAcross));
     float cells=vRadius*0.09+3.0;
     // seed: fractional part = noise phase, integer part = extra fade exponent (a front that is
@@ -84,7 +84,7 @@ void main(){
     float fadeExp=2.0+floor(vSeed);
     float n=noise1(vAngle*cells+sd*53.0)*0.65+noise1(vAngle*cells*2.7-sd*11.0+vLife*3.0)*0.35;
     float breakup=smoothstep(0.18+0.55*vLife,0.9,n+0.25);
-    float fade=wall?(1.0-smoothstep(0.3,0.5,vLife)):pow(1.0-vLife,fadeExp)*smoothstep(0.0,0.05,vLife);
+    float fade=wall?(1.0-smoothstep(0.45,0.7,vLife)):pow(1.0-vLife,fadeExp)*smoothstep(0.0,0.05,vLife);
     a=(lip+skirt)*breakup*fade;
   }
   if(a<0.003)discard;

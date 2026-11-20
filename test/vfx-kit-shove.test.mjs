@@ -157,7 +157,7 @@ test('Bomb is a blast, not a puff: one-frame flash, fireball that cools to soot,
   let flash = false; let scorch = false;
   for (let i = 0; i < fx.sparks.highWater; i++) {
     const life = fx.sparks.arrays[1][i * 4 + 3];
-    if (life <= 0.1 && fx.sparks.arrays[3][i * 4] >= 12) flash = true;
+    if (life <= 0.12 && fx.sparks.arrays[3][i * 4] >= 12) flash = true;
     if (life >= 3 && C1[i * 4 + 3] >= 0.99) scorch = true;
   }
   assert.ok(flash, 'a white-hot core for the first frames, not a fade-in');

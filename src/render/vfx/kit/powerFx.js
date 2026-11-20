@@ -148,9 +148,9 @@ export class PowerFx {
 
     // The wall: a thick, blinding band riding the same curve as the front for its first ~120 ms,
     // then gone (fade exponent 8); a dimmer, wider pressure skirt just behind it.
-    Object.assign(s, { x: cx, y: 1.5, z: cz, birth: t0, from: 6, to: R, life: SHOVE_FRONT_S, halfWidth: Math.max(12, R * 0.1), r: 7, g: 5.6, b: 3.6, alpha: 1, mode: SHELL_MODE.EXPAND, arcStart: unit(seed, 4) * TAU, arcSpan: 0, seed: 6 + unit(seed, 5) });
+    Object.assign(s, { x: cx, y: 1.5, z: cz, birth: t0, from: 6, to: R, life: SHOVE_FRONT_S, halfWidth: Math.max(16, R * 0.12), r: 10, g: 8, b: 5.2, alpha: 1, mode: SHELL_MODE.EXPAND, arcStart: unit(seed, 4) * TAU, arcSpan: 0, seed: 6 + unit(seed, 5) });
     this.shells.emit(s);
-    Object.assign(s, { birth: t0, from: 4, to: R * 0.94, life: SHOVE_FRONT_S + 0.04, halfWidth: Math.max(18, R * 0.16), r: 1.6, g: 1.1, b: 0.6, alpha: 0.6, seed: 3 + unit(seed, 6) });
+    Object.assign(s, { birth: t0, from: 4, to: R * 0.94, life: SHOVE_FRONT_S + 0.04, halfWidth: Math.max(22, R * 0.18), r: 2.4, g: 1.6, b: 0.8, alpha: 0.8, seed: 3 + unit(seed, 6) });
     this.shells.emit(s);
     // A ripple in the picture riding the front: lenses born along the ring as the front passes.
     if (!this.reduced.motion) {
@@ -163,7 +163,7 @@ export class PowerFx {
       }
     }
     // The front: a hot lip and a cooler trailing shock.
-    Object.assign(s, { x: cx, y: 1.4, z: cz, birth: t0, from: 5, to: R, life: SHOVE_FRONT_S + 0.06, halfWidth: Math.max(5, R * 0.045), r: 4.6, g: 3.4, b: 2.0, alpha: 1, mode: SHELL_MODE.EXPAND, arcStart: unit(seed, 1) * TAU, arcSpan: 0, seed: unit(seed, 2) });
+    Object.assign(s, { x: cx, y: 1.4, z: cz, birth: t0, from: 5, to: R, life: SHOVE_FRONT_S + 0.06, halfWidth: Math.max(8, R * 0.06), r: 7, g: 5.2, b: 3.2, alpha: 1, mode: SHELL_MODE.EXPAND, arcStart: unit(seed, 1) * TAU, arcSpan: 0, seed: unit(seed, 2) });
     this.shells.emit(s);
     Object.assign(s, { birth: t0 + 0.05, from: 4, to: R * 0.92, life: SHOVE_FRONT_S + 0.14, halfWidth: Math.max(2.4, R * 0.02), r: 1.8, g: 2.1, b: 2.8, alpha: 0.9, seed: unit(seed, 3) });
     this.shells.emit(s);
