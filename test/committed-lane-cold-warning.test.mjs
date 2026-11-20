@@ -17,7 +17,7 @@ function initialState(doctrineId = 'interceptor_flyby') {
   for (const id of IDS) entities.set(id, { id, occupantGeneration: 7 + id,
     type: 'ship', alive: true, team: 1, pos: { x: 0, z: id * 12 }, vel: { x: 0, z: 0 }, rot: 0, radius: 12,
     data: { ai: { combatDoctrineId: id === 2 ? doctrineId : null,
-      activity: structuredClone(ACTIVITY), roe: 'weapons_free', ...(id === 2 ? { swarmFireHoldUntil: 10 } : {}) },
+      activity: structuredClone(ACTIVITY), roe: 'weapons_free', ...(id === 2 ? { arrivalHoldUntil: 10 } : {}) },
     intent: {}, weapons: [{ projSpeed: 420 }] } });
   return { tick: 0, simTime: 0, playerId: 1, entities, meta: { seed: 47 },
     player: { heat: 0 }, combat: { trace: { events: [] } } };
@@ -81,7 +81,7 @@ test('cold committed warning uses the restored record and emits once after repea
       'JSON restores value copies, so cached-decision pointer identity is insufficient');
     step(cold, 2);
     assert.equal(cold.cues().length, 0, 'a still-held restored lane does not announce early');
-    for (const h of [warm, cold]) h.state.entities.get(2).data.ai.swarmFireHoldUntil = 0;
+    for (const h of [warm, cold]) h.state.entities.get(2).data.ai.arrivalHoldUntil = 0;
     step(warm, 3); step(cold, 3);
     assert.equal(warm.cues().length, 1); assert.equal(cold.cues().length, 1);
     const cue = cold.cues()[0];
@@ -90,8 +90,8 @@ test('cold committed warning uses the restored record and emits once after repea
     assert.deepEqual(cue.aimCommit, warm.cues()[0].aimCommit, 'the restored warning never changes committed aim');
     assert.deepEqual(cue.attackLine, warm.cues()[0].attackLine);
     step(cold, 3);
-    cold.state.entities.get(2).data.ai.swarmFireHoldUntil = 10; step(cold, 4);
-    cold.state.entities.get(2).data.ai.swarmFireHoldUntil = 0; step(cold, 5);
+    cold.state.entities.get(2).data.ai.arrivalHoldUntil = 10; step(cold, 4);
+    cold.state.entities.get(2).data.ai.arrivalHoldUntil = 0; step(cold, 5);
     assert.equal(cold.cues().length, 1, 'repeat update and later hold/release cannot remint the same cue');
   } finally { warm.tactical.destroy(); cold?.tactical.destroy(); }
 });
@@ -107,7 +107,7 @@ test('a noncommitted doctrine and a completed announce do not invent a cold warn
       if (kind === 'noncommitted') assert.equal(snapshot.aimCommit, null);
       else assert.equal(snapshot.telegraph, null, 'the real doctrine has left its announce phase');
       cold = coldFrom(warm);
-      cold.state.entities.get(2).data.ai.swarmFireHoldUntil = 0;
+      cold.state.entities.get(2).data.ai.arrivalHoldUntil = 0;
       step(cold, warm.state.tick + 1);
       assert.equal(cold.cues().length, 0, kind);
     } finally { warm.tactical.destroy(); cold?.tactical.destroy(); }
@@ -122,7 +122,7 @@ test('a rejected source or target life cannot rearm its cached announce', () => 
       cold = coldFrom(warm, { wrongLifeId, visible: false });
       assert.equal(cold.tactical.stack.combatDoctrine.byEntity.has(2), false,
         'the canonical binding reader rejects the stale relation before restore can rearm it');
-      cold.state.entities.get(2).data.ai.swarmFireHoldUntil = 0; step(cold, 2);
+      cold.state.entities.get(2).data.ai.arrivalHoldUntil = 0; step(cold, 2);
       assert.equal(cold.cues().length, 0, 'no warning can revive the rejected cached life');
     } finally { warm.tactical.destroy(); cold?.tactical.destroy(); }
   }

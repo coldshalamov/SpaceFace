@@ -53,7 +53,10 @@ const SEED2 = arg('repeat', 0);               // optional second seed measured i
 const SHIPS = Number(arg('ships', 0));
 const CENSUS = process.argv.includes('--census');
 const AI_BUCKETS = process.argv.includes('--ai-buckets');
+//   --pack=off     A/B: fly every Swarm ship on the tactical stack instead of the pack brain
+const PACK_OFF = arg('pack', 'on') === 'off';
 
+if (PACK_OFF) (await import('../src/systems/tacticalAI.js')).setPackBrainEnabledForBench(false);
 const { createAuthoritativeRuntime } = await import('../src/runtime/createAuthoritativeRuntime.js');
 const { createBus } = await import('../src/core/eventBus.js');
 const { loadRapierCompatRuntime } = await import('../src/core/rapierCompatRuntime.js');

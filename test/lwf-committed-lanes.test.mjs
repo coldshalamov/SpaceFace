@@ -518,13 +518,13 @@ test('an admitted corridor is not held; each volley gate names its own hold', ()
     'an armed corridor announces honestly');
 
   // The wave shaper's ranked cap — the same field applyAIFiringIntent reads.
-  entity.data.ai.swarmFireHoldUntil = 5;
-  assert.equal(committedLaneFireHeld(entity, decision, state, null), 'swarm_fire_hold',
+  entity.data.ai.arrivalHoldUntil = 5;
+  assert.equal(committedLaneFireHeld(entity, decision, state, null), 'arrival_hold',
     'a shooter-cap hold must hold the painted lane too');
-  entity.data.ai.swarmFireHoldUntil = 4;
+  entity.data.ai.arrivalHoldUntil = 4;
   assert.equal(committedLaneFireHeld(entity, decision, state, null), null,
     'the cap releasing at the same instant re-arms the lane');
-  entity.data.ai.swarmFireHoldUntil = 0;
+  entity.data.ai.arrivalHoldUntil = 0;
   entity.data.ai.arrivalHoldUntil = 6;
   assert.equal(committedLaneFireHeld(entity, decision, state, null), 'arrival_hold');
   delete entity.data.ai.arrivalHoldUntil;

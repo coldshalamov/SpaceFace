@@ -633,6 +633,8 @@ export const aiPorts = {
       // Explicit passive navigation is also used by civilian vignette choreography.
       // It needs collision-aware movement, not a faction combat doctrine or fire authority.
       if (!ai || (ai.passive && ai.allowPassiveManeuver !== true)) continue;
+      // Pack-brain hulls think in one shared pass (src/ai/pack/packBrain.js), not in the stack.
+      if (ai.packBrain === true) continue;
       // The activity owner view already excludes far S2/S3/S4 actors until their wake. Keep all
       // S0/S1 members in the roster so a near cadence skip does not make a squad disappear; the
       // tactical stack applies the deterministic near cadence (`entityNeedsAiThink`) at its

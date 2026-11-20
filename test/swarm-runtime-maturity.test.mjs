@@ -160,15 +160,15 @@ test('failed budget binding rolls back bodies without kill or award receipts', (
   assert.equal(h.state.entities.size, 1);
   assert.equal(h.events.filter(e => e.event === 'entity:killed' || e.event === 'run:awardRequested').length, 0);
 });
-test('every admitted hull is armed late at the materialization seam itself', () => {
+test('no admitted hull carries an arrival fire hold (owner: nobody frozen waiting a turn)', () => {
   const h = room(); h.state.simTime = 7.123;
   const receipt = materializeWaveBatch(h, request(9));
   assert.ok(receipt.admitted > 0);
   for (const id of receipt.spawnedIds) {
-    const e = h.state.entities.get(id); assert.ok(held(e, h.state.simTime));
+    const e = h.state.entities.get(id);
+    assert.equal(held(e, h.state.simTime), false, 'an arrival is not held by a timer');
     applyAIFiringIntent({ entityId: id }, h.state);
-    assert.equal(e.data.intent.fire, false);
-    assert.equal(e.data.intent.fireBlockReason, 'swarm_fire_hold');
+    assert.notEqual(e.data.intent.fireBlockReason, 'swarm_fire_hold');
   }
 });
 test('100 seeded crowded arrivals are collision-clear, bounded and reproducible', () => {
@@ -230,14 +230,13 @@ test('a dead player at the same boundary as the last enemy never receives a wave
   h.helpers.removeEntity([...sys._cohort.keys()][0]); h.player.alive = false; tick(h, sys);
   assert.equal(h.events.filter(e => e.event === WAVE_CLEARED_SEAM).length, 0); sys.destroy();
 });
-test('the two-shooter cap holds on EVERY tick across fractional arrival grace expiry', () => {
+test('no shooter cap: every admitted hull stays free to fire on every tick', () => {
   const h = room(); h.state.simTime = 10.123; h.state.input.fire = true; const sys = owner(h, plan(6));
-  for (let i = 0; i < 300; i++) {
+  for (let i = 0; i < 120; i++) {
     tick(h, sys);
-    const firing = [...sys._cohort.keys()].filter(id => !held(h.state.entities.get(id), h.state.simTime));
-    assert.ok(firing.length <= 2, `burst of ${firing.length} on tick ${i}`);
+    const held_ = [...sys._cohort.keys()].filter(id => held(h.state.entities.get(id), h.state.simTime));
+    assert.equal(held_.length, 0, `tick ${i}: ${held_.length} hulls frozen by a rule`);
   }
-  assert.equal([...sys._cohort.keys()].filter(id => !held(h.state.entities.get(id), h.state.simTime)).length, 2);
   sys.destroy();
 });
 test('roster admission never deletes a longer encounter-owned hold', () => {

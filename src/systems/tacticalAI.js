@@ -71,6 +71,7 @@ import { recordImpulseProvenance } from '../combat/impulseKernel.js';
 import { isTumbling } from '../combat/tumbleStatus.js';
 import { selectIncomingMassCue, INCOMING_MASS_CUE_KIND, INCOMING_MASS_CUE_TICKS } from '../render/incomingMassCue.js';
 import { driveCounterplay, isCounterplayOwned, rebindCounterplayCast } from '../ai/counterplay/live.js';
+import { PackBrain } from '../ai/pack/packBrain.js';
 import { placeCounterplayAdventure, clearCounterplayAdventure } from '../ai/counterplay/adventure.js';
 
 // Set when this module body runs. The doctrine arena must stay false.
@@ -314,6 +315,12 @@ export function getTacticalAiQuietLatchForBench() {
   return TACTICAL_AI_QUIET_LATCH !== false;
 }
 
+/** Bench A/B: production default ON. Ordinary Swarm ships fly the shared pack brain. */
+let PACK_BRAIN_ENABLED = true;
+export function setPackBrainEnabledForBench(enabled) {
+  PACK_BRAIN_ENABLED = enabled !== false;
+}
+
 function anyNonPlayerNeedsAiThink(state, shipLikeList) {
   const list = shipLikeList || indexedShipLikeScan(state);
   if (!list || !list.length) return false;
@@ -405,6 +412,10 @@ export function createTacticalAISystem({
   const decisionIntervalTicks = runtimeDecisionInterval(runtimeConfig);
   let quietLatch = null;
   let counterplayBindingVersion = -1;
+  // The pack brain (src/ai/pack/packBrain.js): one shared pass for every ordinary Swarm ship.
+  // Production only — injected-port fixtures keep their historical stack-only behavior.
+  let pack = null;
+  const packCtx = { bus: null, maneuverPort: null };
 
   function ensureStack(state) {
     if (stack) return stack;
@@ -498,6 +509,7 @@ export function createTacticalAISystem({
     lastDecisionEntityRefs.clear();
     quietLatch = null;
     counterplayBindingVersion = -1;
+    if (pack) pack.reset();
     resetFirstSessionAttackerOwnership(ctxRef && ctxRef.state);
   }
 
@@ -731,6 +743,14 @@ export function createTacticalAISystem({
       } else if (state && state.tacticalAiRuntime) {
         state.tacticalAiRuntime.quietLatched = false;
       }
+      if (productionPortDefaults && PACK_BRAIN_ENABLED) {
+        if (!pack) pack = new PackBrain({ seed: (state && state.meta && state.meta.seed) || 1 });
+        packCtx.bus = ctxRef && ctxRef.bus;
+        packCtx.maneuverPort = maneuver || (ctxRef && ctxRef.helpers && ctxRef.helpers.aiManeuver) || null;
+        pack.step(state, packCtx, shipLikeList, Number.isInteger(state && state.tick) ? state.tick : 0);
+      } else if (pack) {
+        pack.releaseAll();
+      }
       markCheapCohortMembers(state, shipLikeList);
       stampManeuverIdentities(state, shipLikeList);
       restoreShovePanics(state, shipLikeList);
@@ -932,6 +952,7 @@ export function createTacticalAISystem({
     },
 
     get stack() { return stack; },
+    get pack() { return pack; },
     get decisionIntervalTicks() { return decisionIntervalTicks; },
   };
 }
@@ -1102,8 +1123,6 @@ export function committedLaneFireHeld(entity, decision, state, liveStack) {
   const ai = data.ai;
   const now = Number.isFinite(state && state.simTime) ? state.simTime
     : (Number.isFinite(state && state.tick) ? state.tick / 60 : 0);
-  const swarmHoldUntil = Number(ai && ai.swarmFireHoldUntil);
-  if (Number.isFinite(swarmHoldUntil) && now < swarmHoldUntil) return 'swarm_fire_hold';
   const arrivalHoldUntil = Number(ai && ai.arrivalHoldUntil);
   if (Number.isFinite(arrivalHoldUntil) && now < arrivalHoldUntil) return 'arrival_hold';
   const director = liveStack && liveStack.maneuver && liveStack.maneuver.squadFrames;
@@ -1356,7 +1375,7 @@ function autoSquadKeyFor(ai) {
 function autoSquadEligible(entity, state) {
   if (!entity || entity.alive === false || entity.id === (state && state.playerId)) return false;
   const ai = entity.data && entity.data.ai;
-  if (!ai || ai.passive === true) return false;
+  if (!ai || ai.passive === true || ai.packBrain === true) return false;
   if (ai.squadRecipe && ai.autoSquadRecipe !== true) return false;
   if (ai.cohortRecipe) return false;
   if (ai.roe !== 'weapons_free') return false;

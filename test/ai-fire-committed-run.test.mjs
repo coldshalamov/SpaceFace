@@ -34,7 +34,7 @@ for (const role of [CombatDoctrineId.INTERCEPTOR_FLYBY,CombatDoctrineId.BRAWLER_
   test(`${role}: delayed arrival fire cannot re-anchor an escaped warning`,()=>{
     const h=fixture(role), cue=h.update(60);
     assert.equal(cue.phase,'engine_flare');
-    h.shooter.data.ai.swarmFireHoldUntil=1.9; h.fire(cue);
+    h.shooter.data.ai.arrivalHoldUntil=1.9; h.fire(cue);
     assert.equal(h.shooter.data.intent.fire,false);
     const run=h.update(90); assert.ok(run.fireWindow);
     const later=h.update(114,380,260); assert.ok(later.fireWindow);

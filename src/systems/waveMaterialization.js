@@ -12,7 +12,7 @@
 // counting entities.
 
 import { mulberry32 } from '../core/rng.js';
-import { findSwarmArrival, SWARM_ARRIVAL_GRACE_S } from './swarmSafety.js';
+import { findSwarmArrival } from './swarmSafety.js';
 import { findClearSpawnPoint } from './spawnClearance.js';
 import { makeEnemySpawnSpec } from './enemySpawnSpec.js';
 import { swarmDoctrineStamp, SWARM_MIN_ARRIVAL_WU } from '../data/swarmMode.js';
@@ -429,12 +429,8 @@ export function materializeWaveBatch(ctx, request) {
         spec.data.ai.wingId = `swarm:${Number.isInteger(req.wave) ? req.wave : 0}:${flightGroup}`;
       }
       spec.data.ai.spawnContext = 'encounter';
-      // Admission owns the initial hold: the AI may run before the next wave update.
-      if (req.swarm === true) {
-        const now = Number.isFinite(ctx.state?.simTime) ? ctx.state.simTime : 0;
-        spec.data.ai.swarmArmedAt = now + SWARM_ARRIVAL_GRACE_S;
-        spec.data.ai.swarmFireHoldUntil = spec.data.ai.swarmArmedAt;
-      }
+      // No arrival fire hold: an arrival enters outside the materialisation line through a visible
+      // gate, and its own tell is what announces its first shot.
       // A run cohort hunts the pilot until the round resolves. Adventure surrender,
       // pirate morale and a spawn-point leash otherwise strand the final few enemies.
       const playerId = ctx.state?.playerId;

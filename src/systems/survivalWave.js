@@ -18,7 +18,6 @@
 import { mulberry32 } from '../core/rng.js';
 import { validateRunStateForTick } from '../core/runState.js';
 import {
-  SWARM_ARRIVAL_GRACE_S,
   SWARM_SPAWN_RETRY_TICKS,
   noteSwarmPilotAction,
   swarmPilotHasActed,
@@ -62,7 +61,6 @@ import {
   materializeWaveBatch,
 } from './waveMaterialization.js';
 import { SWARM_THREAT_MARK_SCALE } from '../data/swarmThreatMark.js';
-import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import { turretLossCount } from '../combat/turretSubsystems.js';
 
 export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
@@ -100,12 +98,9 @@ const OPENING_ARRIVAL_WINDOW_TICKS = 8 * 60;
 const OPENING_ARRIVAL_GAP_TICKS = 80;
 /** C01-05 — a queued freight ride waits at most 30 s for a string before gating in. */
 const SWARM_FREIGHT_RIDE_STALE_TICKS = 30 * 60;
-// Swarm fire shaping. A new pilot reads one or two guns, not ten: only the nearest few cohort
-// hulls are cleared to shoot at once (more each wave), a fresh arrival holds its guns for a beat,
-// and a hull the pilot just hit is prioritised within that cap. Independent of encounter holds.
-const SWARM_SHOOTERS_BY_WAVE = Object.freeze([2, 2, 3, 4, 5, 6, 6, 7, 8]);
-const SWARM_ARRIVAL_HOLD_S = SWARM_ARRIVAL_GRACE_S;
-const SWARM_RETURN_FIRE_S = 2;
+// Swarm fire is not rationed (owner, 2026-11-20: "there just shouldn't be rules that only allow
+// like 5 enemies to attack while the others are frozen"). Every cohort hull that can shoot,
+// shoots; pressure is shaped by the cast and the tells, never by a shooter cap or arrival hold.
 // A breath is SWARM_BREATH_TICKS of held stream; this window is more than two of them. A hold
 // still suppressing owed work after it is not a breath — it is the D195 stall, and the owner
 // lifts it rather than let a finite round starve on a quota nothing can deliver.
@@ -1504,39 +1499,17 @@ export const survivalWave = {
   _shapeSwarmFire() {
     if (!this._cohort?.size) return;
     const state = this.state;
-    const player = state?.entities?.get?.(state.playerId);
-    if (!player || player.alive === false || !player.pos) return;
-    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
-    // Both authored Crucible routes await this wave's first deliberate pilot act.
-    // The Gauntlet releases its ordinary full roster then; only Swarm owns the
-    // arrival grace, ranked shooter cap, and marks below.
+    // The pilot's first act still opens damage admission elsewhere; it no longer gates fire.
     if (swarmPilotIsActing(state)) noteSwarmPilotAction(state);
-    const quiet = !swarmPilotHasActed(state);
-    if (!this._swarm) {
-      for (const [id, member] of this._cohort) {
-        const entity = this._resolveCohortEntity(id, member);
-        const ai = entity && entity.alive !== false && entity.data?.ai;
-        if (!ai) continue;
-        if (quiet) {
-          ai.swarmFireHeld = true;
-          ai.swarmFireHoldUntil = now + 2 / 60;
-          member.firstActHeld = true;
-        } else if (member.firstActHeld) {
-          ai.swarmFireHeld = false;
-          ai.swarmFireHoldUntil = now;
-          member.firstActHeld = false;
-        }
-      }
-      return;
-    }
-    const rank = [];
+    if (!this._swarm) return;
     for (const [id, member] of this._cohort) {
       const entity = this._resolveCohortEntity(id, member);
       if (!entity || entity.alive === false || !entity.pos || !entity.data?.ai) continue;
-      // A hive node is a rooted sac, not a shooter. Hold the gun for the whole round.
+      const ai = entity.data.ai;
+      // A hive node is a rooted sac with no guns: it holds fire because it has nothing to fire.
       if (entity.data.circuitNode === true) {
-        entity.data.ai.swarmFireHeld = true;
-        entity.data.ai.swarmFireHoldUntil = now + 2 / 60;
+        ai.swarmFireHeld = true;
+        ai.roe = 'hold_fire';
         continue;
       }
       // Opt-in bracket. The default plate stays on entity.radius so a hull without
@@ -1545,53 +1518,7 @@ export const survivalWave = {
       // body off the sky; widening this rim paints the background ring.
       const bodyR = Math.max(2, Number(entity.radius) || 2);
       entity.data.swarmMarkRadius = bodyR * SWARM_THREAT_MARK_SCALE;
-      const ai = entity.data.ai;
-      if (!Number.isFinite(member.armedAt)) {
-        member.armedAt = Number.isFinite(ai.swarmArmedAt) ? ai.swarmArmedAt : now + SWARM_ARRIVAL_HOLD_S;
-      }
-      // A separate lease: never erase an arrival/encounter hold owned by another system.
-      // Refresh every tick so the warmup cannot expire between half-second roster updates.
-      ai.swarmFireHoldUntil = Math.max(member.armedAt, now + 2 / 60);
-      ai.swarmFireHeld = true;
-      if (quiet || member.armedAt > now) continue;
-      const boss = this._bossIds?.has(id);
-      const answering = Number.isFinite(entity.lastDamageT) && now - entity.lastDamageT < SWARM_RETURN_FIRE_S;
-      const distance = Math.hypot(entity.pos.x - player.pos.x, entity.pos.z - player.pos.z);
-      rank.push({ id, ai, key: boss ? 0 : answering ? 1 : 2, distance });
-    }
-    if (quiet) return;
-    const index = Math.max(0, Math.min(SWARM_SHOOTERS_BY_WAVE.length - 1, (this._wave | 0) - 1));
-    const character = this._characterFightId && state.capitalBossEncounters?.fights?.[this._characterFightId];
-    // LW-04 — an authored act may carry its own simultaneous-fire budget on the plan. It is a
-    // ceiling on the wave table's number, never a raise, and the character's clamps still
-    // apply on top of it. Absent or non-positive means the legacy cap, byte-identical.
-    const authored = this._swarm && Number.isInteger(this._swarm.shooterCap) && this._swarm.shooterCap > 0
-      ? this._swarm.shooterCap
-      : null;
-    const waveCap = authored != null
-      ? Math.min(SWARM_SHOOTERS_BY_WAVE[index], authored)
-      : SWARM_SHOOTERS_BY_WAVE[index];
-    // A character's readable move earns breathing room from its henchmen: three cohort
-    // shooters during the tell/attack, five while the mantle is open. Population is unchanged.
-    // LW-05 — a Kraken-sourced momentum sink outlives its cast into that open window: while the
-    // player is still hauled to the boss's frame the wave stays at tell/attack volume through
-    // recovery. Only the character's own boss extends it — a sink from any other attacker, or
-    // one already expired, restores the ordinary recovery budget.
-    const playerRuntime = state.combat && state.combat.entities
-      ? state.combat.entities[state.playerId] : null;
-    const sink = playerRuntime && playerRuntime.statuses
-      ? playerRuntime.statuses[MOMENTUM_SINK_STATUS_ID] : null;
-    const tick = Number.isInteger(state.tick) ? state.tick : Math.floor(now * 60);
-    const krakenGrip = !!sink && !!character && sink.attackerId === character.bossId
-      && (sink.expiresTick | 0) > tick;
-    const cap = character && !character.terminal && !character.suspended
-      ? Math.min(waveCap, character.phase === 'recovery' && !krakenGrip ? 5 : 3)
-      : waveCap;
-    rank.sort((a, b) => a.key - b.key || a.distance - b.distance || a.id - b.id);
-    for (let i = 0; i < rank.length; i++) {
-      if (i >= cap && rank[i].key !== 0) continue; // authored champions keep their own attack score
-      rank[i].ai.swarmFireHoldUntil = now;
-      rank[i].ai.swarmFireHeld = false;
+      ai.swarmFireHeld = false;
     }
   },
 

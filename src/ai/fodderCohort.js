@@ -80,7 +80,8 @@ export function isFodderCohortMutationForced() {
 
 export function cohortRecipeFromEntity(entity) {
   const ai = entity && entity.data && entity.data.ai;
-  if (!ai) return null;
+  // A pack-brain hull steers itself (src/ai/pack/packBrain.js); no cohort may also drive it.
+  if (!ai || ai.packBrain === true) return null;
   const id = ai.cohortRecipe || ai.fodderRecipe;
   return getCohortRecipe(id) ? id : null;
 }
