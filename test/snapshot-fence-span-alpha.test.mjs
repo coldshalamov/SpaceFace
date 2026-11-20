@@ -10,7 +10,9 @@ import { createSimLaneRuntime } from '../src/core/simLaneMain.js';
 
 import {
   applySnapshotPoseToMesh,
+  coastAlpha,
   createSnapshotFence,
+  EXTRAPOLATION_DECAY_TAU_S,
   poseSpanAlpha,
   snapshotIndexOf,
 } from '../src/render/snapshotFence.js';
@@ -47,11 +49,13 @@ test('turning across wrapped yaw draws the short turn in both the hull and its a
       applySnapshotPoseToMesh(mesh, fence.latestSnapshot(), PLAYER_ID, { x: 0, z: 0 },
         fence.previousSnapshot(), alpha);
       const anchor = fence.presentedPose(PLAYER_ID);
-      const expected = -direction * (Math.PI - 0.03 + 0.06 * fraction);
+      // Past the newest pack the pose coasts (ENGINE slice 1): the effective fraction decays.
+      const effective = fraction > 1 ? coastAlpha((fraction - 1) * DT, DT) : fraction;
+      const expected = -direction * (Math.PI - 0.03 + 0.06 * effective);
       assert.ok(Math.abs(Math.sin(mesh.rotation.y - expected)) < 0.0001);
       assert.ok(Math.cos(mesh.rotation.y - expected) > 0.9999, `hull turned away at ${fraction}`);
       assert.equal(anchor.rot, mesh.rotation.y);
-      assert.ok(Math.abs(mesh.position.x - 3 * fraction) < 1e-9);
+      assert.ok(Math.abs(mesh.position.x - 3 * effective) < 1e-9);
     }
   }
 });
@@ -233,11 +237,9 @@ test('worker silence keeps motion continuous, bounded, and eases back without re
   frame(0.016);
   for (let i = 0; i < 20; i++) frame(0.016); // 320 ms of silence
   for (let i = 1; i < xs.length; i++) assert.ok(xs[i] >= xs[i - 1] - 1e-9, `no rewind: ${xs}`);
-  // E1 playout buffer: the presented clock plays at newest − adaptive delay and may run
-  // past the newest sample by up to PRESENTATION_EXTRAPOLATION_S — 150 ms per the master
-  // plan (was 100 ms before the playout buffer; the delay absorbs the first ~50+ ms of
-  // silence, so the extrapolation window is reached later than before, not sooner).
-  assert.ok(xs.at(-1) <= 100 + 200 * 0.15 + 1e-6, 'never beyond 150 ms of velocity');
+  // ENGINE slice 1: past the newest sample the hull COASTS — its pair velocity decays with
+  // EXTRAPOLATION_DECAY_TAU_S, so however long the silence, it never runs past tau of velocity.
+  assert.ok(xs.at(-1) <= 100 + 200 * EXTRAPOLATION_DECAY_TAU_S + 1e-6, 'never beyond tau of velocity');
   assert.ok(xs.at(-1) > 100, 'ran past the completed pose');
   // A real reply lands that is BEHIND the extrapolated pose. E1's contract is no rewind: the
   // presented clock re-seats smoothly and the hull never steps backwards, even by a fraction

@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import {
   applySnapshotPoseToMesh,
   createSnapshotFence,
-  PLAYOUT_MAX_GAP_S,
+  EXTRAPOLATION_DECAY_TAU_S,
+  PLAYOUT_RESEAT_FRAME_S,
 } from '../src/render/snapshotFence.js';
 import { presentedAnchorRot, presentedAnchorXZ } from '../src/render/presentedAnchor.js';
 
@@ -34,6 +35,11 @@ function draw(fence, mesh, elapsedS, rawElapsedS = elapsedS) {
     fence.previousSnapshot(),
     alpha,
   );
+  // The drawn pose: the renderer adds the fence's correction blend (ENGINE slice 1).
+  fence.beginBlendFrame(elapsedS);
+  const b = fence.blendDrawnPose(PLAYER_ID, 0, mesh.position.x, mesh.position.z, mesh.rotation.y, {});
+  mesh.position.x = b.x;
+  mesh.position.z = b.z;
   return alpha;
 }
 
@@ -134,8 +140,9 @@ test('a 3 s worker silence re-seats on the burst and recovers in under 1 s', () 
     assert.ok(silence[i] >= silence[i - 1] - 1e-9, `silence never rewinds: frame ${i}`);
   }
   const atBurst = mesh.position.x;
-  assert.ok(atBurst - beforeSilence <= SPEED * 0.25,
-    'the silence advances at most the reserve + extrapolation window');
+  // ENGINE slice 1: the hull coasts — at most the playout reserve plus tau of velocity.
+  assert.ok(atBurst - beforeSilence <= SPEED * (0.1 + EXTRAPOLATION_DECAY_TAU_S),
+    'the silence advances at most the reserve + the coast');
 
   // The worker bursts: every tick since the silence lands at once (3 s of sim time).
   for (let tick = 60; tick < 240; tick++) {
@@ -185,7 +192,7 @@ test('a long no-frame interval re-seats instead of replaying the occlusion backl
   const diag = fence.getPlayoutDiagnostics();
   assert.equal(diag.gapResets, 1, 'the long frame re-seated');
   assert.ok(diag.lastGapResetRawElapsedMs >= 1900);
-  assert.ok(mesh.position.x <= before + SPEED * (PLAYOUT_MAX_GAP_S + PLAYOUT_MAX_GAP_S),
+  assert.ok(mesh.position.x <= before + SPEED * 2 * PLAYOUT_RESEAT_FRAME_S,
     'the long frame does not invent seconds of motion');
 });
 

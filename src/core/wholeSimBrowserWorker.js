@@ -183,6 +183,7 @@ const localClock = {
   // E1 stall harness state (?simStall=): cycle of ms values, one consumed per local-clock tick.
   stallCycle: null,
   stallIndex: 0,
+  oneShotStallMs: 0,
   stallApplications: 0,
   stallTotalMs: 0,
   // A slow authoritative tick must not leave one promise per timer turn queued
@@ -219,10 +220,18 @@ function stallBlock(ms) {
 }
 
 function runInjectedStall() {
-  const cycle = localClock.stallCycle;
-  if (!cycle || !cycle.length || localClock.stopped) return;
-  const ms = cycle[localClock.stallIndex % cycle.length];
-  localClock.stallIndex++;
+  if (localClock.stopped) return;
+  // One-shot stall requested at runtime by a probe (laneInjectStall); consumed by the next tick.
+  let ms = 0;
+  if (localClock.oneShotStallMs > 0) {
+    ms = localClock.oneShotStallMs;
+    localClock.oneShotStallMs = 0;
+  } else {
+    const cycle = localClock.stallCycle;
+    if (!cycle || !cycle.length) return;
+    ms = cycle[localClock.stallIndex % cycle.length];
+    localClock.stallIndex++;
+  }
   if (!(ms > 0)) return;
   const started = localNowMs();
   stallBlock(ms);
@@ -1542,6 +1551,12 @@ self.onmessage = (event) => {
   if (!msg || typeof msg !== 'object') return;
   // Presentation heartbeat: lane bookkeeping only, never parked behind the serial chain. A beat
   // resumes a held clock from the held pose without charging the stalled wall interval.
+  // Probe harness: one blocked worker turn of `ms` (a heavy authoritative step), on demand.
+  if (msg.kind === 'laneInjectStall') {
+    const ms = Number(msg.ms);
+    if (Number.isFinite(ms) && ms > 0 && ms <= 5000) localClock.oneShotStallMs = ms;
+    return;
+  }
   if (msg.kind === 'laneHeartbeat') {
     const now = localNowMs();
     const lastBeat = localClock.lastHeartbeatAtMs;

@@ -1532,6 +1532,13 @@ export function createSimLaneRuntime({
   let lastDomEventFlushAtMs = -Infinity;
   const freezeEpisodes = [];
   if (typeof window !== 'undefined') window.__SF_FREEZE_LOG__ = freezeEpisodes;
+  // Dev probe harness: block the worker for one turn of `ms` (an authoritative-step spike).
+  if (typeof window !== 'undefined' && IS_DEV) {
+    window.__SF_INJECT_WORKER_STALL__ = (ms) => {
+      if (laneClosed || !ready) return false;
+      try { channel.post({ kind: 'laneInjectStall', ms: Number(ms) }); return true; } catch (_) { return false; }
+    };
+  }
   let motionSampleId = 0;
   // -1 is "no reply applied yet": 0 is a valid early timestamp (page boot, or a
   // mocked clock) and must not read as "never applied".
