@@ -32,7 +32,7 @@ export const shipjack = {
     on('game:new',()=>{if(this.state.player)delete this.state.player.shipjack;delete this.state.shipjack;this._pendingEntry=false;this._opportunitiesDeferred=false;});
     on('game:started',()=>{this._pendingEntry=true;this._nextWork=0;});
     on('sector:enter',()=>{this._pendingEntry=true;this._nextWork=0;});
-    on('sector:exit',()=>this.parkSector());
+    on('sector:exit',(p)=>{if(p&&(p.continuous||p.noTeleport))return;this.parkSector();});
     on('save:restoring',()=>{delete this.state.shipjack;this._pendingEntry=false;this._opportunitiesDeferred=false;});
     on('save:started',()=>this.snapshotFleetVessels());
     on('save:loaded',()=>{
@@ -280,6 +280,7 @@ export const shipjack = {
     for(const [id,a] of Object.entries(own.custodyAttempts)){
       if(TERMINAL.has(a.phase))continue;
       const v=own.vesselsById[id],e=state.entities.get(v?.location?.entityId);
+      if(v&&v.location?.entityId==null)continue; // parked/remote hull: custody is registry state; the attempt resumes when its body rematerializes
       if(!e?.alive||e.data?.shipjackGeneration!==a.generation){a.phase=e?.data?.shipjackGeneration===a.generation?'destroyed':'escaped';a.transferStartedAt=null;continue;}
       const readiness=captureReadiness(state,e,a);
       if(readiness.tethered&&readiness.distance<180&&fittedBlackFlagTool(state,'mod_claw_anchor_s')){
