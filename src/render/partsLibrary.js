@@ -6367,7 +6367,7 @@ export function enqueueBoundaryUpgrade(scene, job) {
   state.byBoundary.set(queuedJob.boundary, queuedJob);
   state.byKey.set(queuedJob.key, queuedJob);
   upgradeTokensByBoundary.set(queuedJob.boundary, queuedJob.boundaryToken);
-  if (state.firstFlightHandoffHold === true && firstFlightReadableShipJob(queuedJob)) {
+  if (state.firstFlightHandoffHold === true && firstFlightHoldPassJob(state, queuedJob)) {
     primeNextAuthoredAssetPlan(state);
   }
   if (!state.running) processUpgradeQueue(state);
@@ -6455,6 +6455,7 @@ export function resumeAuthoredUpgradeQueueAfterOpening(scene) {
   const held = state.openingHandoffHold === true || state.firstFlightHandoffHold === true;
   state.openingHandoffHold = false;
   state.firstFlightHandoffHold = false;
+  state.firstFlightDressingHoldOnly = false;
   state.firstFlightPrefetchJob = null;
   if (state.heldShipWakeTimer != null) clearTimeout(state.heldShipWakeTimer);
   state.heldShipWakeTimer = null;
@@ -6471,6 +6472,7 @@ export function resumeAuthoredUpgradeQueueForLoadingHulls(scene) {
   if (!state) return false;
   state.openingHandoffHold = false;
   state.firstFlightHandoffHold = false;
+  state.firstFlightDressingHoldOnly = false;
   state.firstFlightPrefetchJob = null;
   if (state.heldShipWakeTimer != null) clearTimeout(state.heldShipWakeTimer);
   state.heldShipWakeTimer = null;
@@ -6494,7 +6496,25 @@ export function holdAuthoredUpgradeQueueForFirstFlight(scene, options = {}) {
   // every non-ship job until the regular release latch.
   state.openingHandoffHold = false;
   state.firstFlightHandoffHold = true;
+  state.firstFlightDressingHoldOnly = false;
   state.loadingHullsOnly = false;
+  invalidateScheduledUpgradeFrame(state);
+  scheduleNextUpgradeFrame(state);
+  return true;
+}
+
+/**
+ * Narrow the first-flight hold to dressing once the first playable frame has painted. A hull
+ * or any body the player can hit is a contact, not dressing — a mid-flight spawn that parks
+ * behind leftover place/fx compiles for the full handoff window shows exactly the hole this
+ * packet exists to kill (a colliding ship stuck as a marker for ~20 s). Dressing itself still
+ * waits out the handoff window so leftover compiles cannot land inside the first presents.
+ */
+export function releaseAuthoredUpgradeFirstFlightContactHold(scene) {
+  const state = scene && upgradeQueuesByScene.get(scene);
+  if (!state || state.retired) return false;
+  if (state.firstFlightHandoffHold !== true || state.firstFlightDressingHoldOnly === true) return false;
+  state.firstFlightDressingHoldOnly = true;
   invalidateScheduledUpgradeFrame(state);
   scheduleNextUpgradeFrame(state);
   return true;
@@ -6515,6 +6535,7 @@ function upgradeQueueState(scene) {
       firstFlightPrefetchJob: null,
       openingHandoffHold: false,
       firstFlightHandoffHold: false,
+      firstFlightDressingHoldOnly: false,
       stallBypassShipPass: false,
       loadingHullsOnly: false,
       lateSkips: 0,
@@ -6735,6 +6756,47 @@ function firstFlightReadableGlassJob(job) {
     && (entityIsOnReadableGlass(entity) || entity.mesh?.visible === true));
 }
 
+// Once the first paint has narrowed the hold to dressing, anything the player can hit passes
+// immediately: hulls and every colliding body — a solid asteroid or parked station waiting out
+// the window is the same "crash into nothing" hole a marker-ship is.
+function firstFlightContactReleaseJob(job) {
+  const entity = job && job.entity;
+  return !!(entity && entity.alive !== false
+    && (firstFlightReadableContactKind(entity) || entity.collides === true));
+}
+
+function firstFlightHoldPassJob(state, job) {
+  return firstFlightReadableGlassJob(job)
+    || firstFlightReadableShipJob(job)
+    || (state && state.firstFlightDressingHoldOnly === true && firstFlightContactReleaseJob(job));
+}
+
+// Equal-priority ties break toward what the player can hit (STREAM-BUILD-1): a solid body
+// closing on the player, then solids by distance, then ships by distance, then dressing —
+// enqueue order used to let queued dressing starve an inbound ship. Ranking only moves jobs
+// inside a priority rung; the rungs themselves still express deadline vs ambient.
+function authoredUpgradeContactRank(job, live) {
+  const entity = job && job.entity;
+  if (!entity || entity.alive === false || !live || live.mode !== 'flight') return 3;
+  const player = live.entities && typeof live.entities.get === 'function'
+    ? live.entities.get(live.playerId) : null;
+  if (entity.collides === true) {
+    return player && firstFlightClosingToward(entity, player, live) ? 0 : 1;
+  }
+  return entity.type === 'ship' ? 2 : 3;
+}
+
+// The drawn envelope leads the pivot: a freighter's far edge counts, not just its centre.
+function authoredUpgradeContactEdge(job, live) {
+  const entity = job && job.entity;
+  const player = live && live.entities && typeof live.entities.get === 'function'
+    ? live.entities.get(live.playerId) : null;
+  const dist = planarRangeWU(entity, player);
+  if (dist === null) return Infinity;
+  const radius = Number(entity && entity.radius);
+  return dist - (Number.isFinite(radius) && radius > 0 ? radius : 0);
+}
+
 function scheduleHeldShipWake(state) {
   if (!state || state.retired || state.heldShipWakeTimer != null || state.jobs.length === 0) return;
   state.heldShipWakeTimer = setTimeout(() => {
@@ -6746,7 +6808,7 @@ function scheduleHeldShipWake(state) {
 
 function firstFlightShipCanPassBusyPlace(state) {
   if (!state || state.firstFlightHandoffHold !== true || state.inFlight !== 1
-      || !state.jobs.some(firstFlightReadableShipJob)) return false;
+      || !state.jobs.some((job) => firstFlightHoldPassJob(state, job))) return false;
   const active = [...state.byBoundary.values()].filter((job) =>
     job.lifecycle === 'in-flight' && job.serialSlotReleased !== true);
   // A slow hub/place upload may remain in flight long after the opening shell has gone. Reserve
@@ -8041,8 +8103,7 @@ function scheduleNextUpgradeFrame(state) {
     return;
   }
   if (state.firstFlightHandoffHold === true
-      && !state.jobs.some((job) => firstFlightReadableGlassJob(job)
-        || firstFlightReadableShipJob(job))) {
+      && !state.jobs.some((job) => firstFlightHoldPassJob(state, job))) {
     scheduleHeldShipWake(state);
     // The hold does not freeze in-flight jobs — a hog stalled through the hold still needs its
     // diagnostic closed on schedule.
@@ -8068,8 +8129,7 @@ function scheduleNextUpgradeFrame(state) {
   scheduleUpgradeFrame(() => {
     if (state.retired || state.frameScheduleToken !== token || state.openingHandoffHold === true) return;
     if (state.firstFlightHandoffHold === true
-        && !state.jobs.some((job) => firstFlightReadableGlassJob(job)
-          || firstFlightReadableShipJob(job))) {
+        && !state.jobs.some((job) => firstFlightHoldPassJob(state, job))) {
       state.frameScheduled = false;
       scheduleHeldShipWake(state);
       armStalledHogWake(state);
@@ -8155,6 +8215,11 @@ function admitNextUpgradeJob(state) {
       const urgentDelta = Number(pickVerdict(b, 'shipJob', firstFlightReadableShipJob))
         - Number(pickVerdict(a, 'shipJob', firstFlightReadableShipJob));
       if (urgentDelta) return urgentDelta;
+      if (state.firstFlightDressingHoldOnly === true) {
+        const contactDelta = Number(pickVerdict(b, 'contactJob', firstFlightContactReleaseJob))
+          - Number(pickVerdict(a, 'contactJob', firstFlightContactReleaseJob));
+        if (contactDelta) return contactDelta;
+      }
     }
     const priorityDelta = pickVerdict(a, 'priority', authoredUpgradePriority)
       - pickVerdict(b, 'priority', authoredUpgradePriority);
@@ -8167,12 +8232,25 @@ function admitNextUpgradeJob(state) {
       const nearB = pickVerdict(b, 'near', (j) => planarRangeWU(j.entity, player));
       if (nearA !== null && nearB !== null && nearA !== nearB) return nearA - nearB;
     }
+    // Equal-rung work orders by what the player can hit — closing solids, then solids by
+    // envelope edge, then ships by edge — so ambient dressing can no longer drain ahead of
+    // an inbound hull whose deadline is measured in seconds, not rungs.
+    const rankA = pickVerdict(a, 'contactRank', (j) => authoredUpgradeContactRank(j, live));
+    const rankB = pickVerdict(b, 'contactRank', (j) => authoredUpgradeContactRank(j, live));
+    if (rankA !== rankB) return rankA - rankB;
+    if (rankA < 3) {
+      const edgeA = pickVerdict(a, 'contactEdge', (j) => authoredUpgradeContactEdge(j, live));
+      const edgeB = pickVerdict(b, 'contactEdge', (j) => authoredUpgradeContactEdge(j, live));
+      if (edgeA !== edgeB) return edgeA - edgeB;
+    }
     return a.sequence - b.sequence;
   });
   noteForcedFrameSpend(Math.min(monotonicNow() - pickSortStarted, FORCED_FRAME_BUDGET_MS));
   if (state.firstFlightHandoffHold === true
       && !(state.jobs[0] && pickVerdict(state.jobs[0], 'shipJob', firstFlightReadableShipJob))
-      && !(state.jobs[0] && pickVerdict(state.jobs[0], 'glassJob', firstFlightReadableGlassJob))) {
+      && !(state.jobs[0] && pickVerdict(state.jobs[0], 'glassJob', firstFlightReadableGlassJob))
+      && !(state.firstFlightDressingHoldOnly === true
+        && state.jobs[0] && pickVerdict(state.jobs[0], 'contactJob', firstFlightContactReleaseJob))) {
     scheduleHeldShipWake(state);
     armStalledHogWake(state);
     return null;
@@ -8448,6 +8526,7 @@ function authoredUpgradeConcurrencyLimit() {
     opening: render.deferNoncriticalMeshStreaming === true,
     deferNoncriticalMeshStreaming: render.deferNoncriticalMeshStreaming === true,
     firstPlayableFrameAt: render.firstPlayableFrameAt,
+    lastPresentDtMs: render.lastPresentDtMs,
     nowMs,
   });
 }
@@ -8467,8 +8546,7 @@ function primeNextAuthoredAssetPlan(state) {
         && jobStillNeeded(state, state.firstFlightPrefetchJob)) return;
     state.firstFlightPrefetchJob = null;
     const player = liveState.entities?.get?.(liveState.playerId);
-    const eligible = state.jobs.filter((job) => (firstFlightReadableGlassJob(job)
-        || firstFlightReadableShipJob(job))
+    const eligible = state.jobs.filter((job) => firstFlightHoldPassJob(state, job)
       && job.renderer && jobStillNeeded(state, job) && !job.prefetchPromise
       // A requestless non-ship's prefetch resolves null immediately — it would still park
       // the first-flight slot for a whole serial admit while real warms wait behind it.
@@ -10876,6 +10954,23 @@ async function commitAuthoredBoundary(
   // substrate, or the boundary keeps reporting a resolving marker over the committed hero hull.
   const staleMarker = boundary.userData && boundary.userData.resolvingMarker;
   if (staleMarker && staleMarker.parent !== boundary) delete boundary.userData.resolvingMarker;
+  // wrapShipWithAuthoredParts copies every pending-window stamp off the substrate onto the
+  // boundary. They describe a window that just closed: syncResolvingMarker exits early once
+  // resolvingMarker is gone, so a committed hull otherwise reports 'no-resident-record' /
+  // 'pending' for the rest of its life and the streaming census counts real hulls as stand-ins.
+  delete boundary.userData.admissionStandInPending;
+  delete boundary.userData.admissionStandInRetryAt;
+  delete boundary.userData.admissionStandInResolver;
+  delete boundary.userData.admissionStandInRelease;
+  delete boundary.userData.resolvingMarkerFallbackReason;
+  delete boundary.userData.authoredResolvingMarker;
+  delete boundary.userData.authoredAdmissionSubstrate;
+  delete boundary.userData.authoredAdmissionTemporaryDrawables;
+  delete boundary.userData.wantsBoundaryResolvingMarker;
+  delete boundary.userData.boundaryResolvingMarkerEntity;
+  delete boundary.userData.admissionProceduralFallback;
+  delete boundary.userData.admissionProceduralFallbackMissionOnly;
+  delete boundary.userData.shipConstruction;
   boundary.add(authored.root);
   // The swap mutated the tree under no park key — a withheld/parked verdict
   // keyed on the fallback subtree stays stale until the recheck backstop

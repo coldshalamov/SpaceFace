@@ -1557,6 +1557,22 @@ export async function loadAuthoredRenderPackagePilot(runtime, pilot, url, option
         sectorId: options.sectorId || null,
         ...(ownerlessWarm ? { softLease: true, decodeWarm: true } : {}),
       });
+      // Same decode-cache lease the GLB lane takes above (:858): a boundary-scoped serve used
+      // to leave a strictly package-cache-only residue — first casualty of the idle sweep and
+      // of byte pressure — and the staleness hook then dropped the deduped task, so every
+      // same-kind repeat ship paid a whole re-decode. The served lease keeps the blueprint
+      // mountable for the next boundary while staying soft (byte-budgeted) itself.
+      const decodeResidency = getAssetResidency(options.renderer);
+      if (decodeResidency && options.residencyOwner
+          && record.residency && record.residency.key) {
+        const warmRole = WARM_PURPOSE_RESIDENCY_ROLE.test(String(options.residencyRole || ''));
+        decodeResidency.retain(record.residency.key, runtime.decodeCacheOwner, {
+          role: 'decode-cache',
+          sectorId: options.sectorId || null,
+          decodeWarm: warmRole,
+          decodeServed: !warmRole,
+        });
+      }
     }
     if (handoff) {
       if (runtime.retiring || !authoredConsumerIsActive(options) || cachedPackage.evicted || cachedPackage.released

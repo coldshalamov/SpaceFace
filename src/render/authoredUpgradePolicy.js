@@ -19,10 +19,21 @@ import { entityVisualCullRadius } from './visualCullRadius.js';
 export const AUTHORED_UPGRADE_STEADY_LIMIT = 1;
 export const AUTHORED_UPGRADE_OPENING_LIMIT = 2;
 export const AUTHORED_UPGRADE_SETTLE_MS = 0;
+// A present inside the frame budget can carry two admission lanes: steady flight serialized
+// every compose, which is how an inbound hull could wait ~20 s behind one station decode.
+// The second lane exists only while the measured present has headroom — a frame already over
+// budget keeps the serial invariant so two composes never collide on a struggling beat, and
+// missing telemetry (no presented frame yet) stays serial as well.
+export const AUTHORED_UPGRADE_HEADROOM_FRAME_MS = 20;
 
 export function authoredUpgradeConcurrencyLimit(runtime = {}) {
   if (runtime.mode === 'loading') return AUTHORED_UPGRADE_OPENING_LIMIT;
   if (runtime.opening === true || runtime.deferNoncriticalMeshStreaming === true) {
+    return AUTHORED_UPGRADE_OPENING_LIMIT;
+  }
+  if (runtime.mode === 'flight'
+      && Number.isFinite(runtime.lastPresentDtMs)
+      && runtime.lastPresentDtMs <= AUTHORED_UPGRADE_HEADROOM_FRAME_MS) {
     return AUTHORED_UPGRADE_OPENING_LIMIT;
   }
   return AUTHORED_UPGRADE_STEADY_LIMIT;
