@@ -1,3 +1,6 @@
+<!-- HISTORY-2026-11-20 -->
+> Where this page and design/overhaul/00_RULINGS.md disagree, the rulings win. Its last section ("no new plan documents") no longer applies.
+
 # 10 — The game: the verdict, the decisions, and what changes in the plans
 
 **From the creative director, 2026-11-10.** Seven scouts read the code against `design/VISION.md`. This page says what the finished game is, where today's build falls short of it, and what is decided. Where it differs from 09 on order, this page wins.

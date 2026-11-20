@@ -1,3 +1,8 @@
+<!-- HISTORY-2026-11-20 -->
+> **History, not instructions (2026-11-20).** This file no longer assigns, orders or blocks any work.
+> Read it for facts about what was built or planned. The rule and the live board are in the root
+> `AGENTS.md` and `design/overhaul/12_PIPELINE.md`.
+
 # 11 — Agent orchestration and execution contracts
 
 **Purpose:** turn the owner's complaints into intelligent, coordinated engineering and art work without another queue, conflicting writers, or a pile of disconnected demos. This document is an execution plan, not a claim that subagents were launched. The planning PR starts no paid sessions, automations, or implementation jobs.

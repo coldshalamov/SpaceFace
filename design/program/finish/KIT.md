@@ -1,4 +1,9 @@
 <!-- LIFETIME: ACTIVE_PROGRAM -->
+<!-- HISTORY-2026-11-20 -->
+> **History, not instructions (2026-11-20).** This file no longer assigns, orders or blocks any work.
+> Read it for facts about what was built or planned. The rule and the live board are in the root
+> `AGENTS.md` and `design/overhaul/12_PIPELINE.md`.
+
 > **HISTORY — not a source of work.** Superseded on 2026-11-11 by `design/program/fleet/QUEUE.md`
 > (work) and `design/game/` (design). Read for background only; do not take tasks from this file.
 

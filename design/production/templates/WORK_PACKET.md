@@ -1,3 +1,8 @@
+<!-- HISTORY-2026-11-20 -->
+> **History, not instructions (2026-11-20).** This file no longer assigns, orders or blocks any work.
+> Read it for facts about what was built or planned. The rule and the live board are in the root
+> `AGENTS.md` and `design/overhaul/12_PIPELINE.md`.
+
 # WORK PACKET `<ID>` — `<PLAYER OUTCOME>`
 
 > **Activated-campaign template only.** This becomes operative only after a user/lead activates a

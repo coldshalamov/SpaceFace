@@ -2,8 +2,8 @@
 # Policy and document map
 
 This page identifies document roles; it does not create extra rules. Root [`AGENTS.md`](../AGENTS.md)
-is the concise operating front door. Find current fleet assignments and completion criteria through
-the [fleet README](../design/program/fleet/README.md).
+is the concise operating front door. The live board for current work is
+[`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md).
 For the authority order and shared-checkout contract, follow those sources rather than repeating
 their text here.
 
@@ -12,11 +12,11 @@ their text here.
 | Role | Examples | How to use |
 |---|---|---|
 | Inherited instructions | Root and nested `AGENTS.md` | Apply to the task and paths in scope. Root summarizes navigation and shared-tree safety; nested files describe local ownership/contracts. |
-| Current program or selected design | Fleet README and queue, active packet, `ARCHITECTURE.md`, `design/game/` | Read the relevant section for dispatch, technical contracts, or product intent. |
+| Current program or selected design | `ARCHITECTURE.md`, `design/game/`, [`design/overhaul/`](../design/overhaul/README.md) | Read the relevant section for technical contracts or product intent. |
 | Executable contract | Tests, schemas, manifests, checks | Run the relevant check for the behavior or artifact being changed. These constrain behavior; they do not prescribe unrelated process. |
 | Generated index | `docs/SYSTEM_REGISTRY.md`, `docs/EVENT_ROUTING.md` | Use for navigation and regenerate from the owning source; do not hand-edit as authority. |
-| Current status | Fleet queue and `design/program/NOW.md` | The queue carries task order and status. `NOW.md` and checkpoints help resolve exact live path overlaps. |
-| Historical evidence | Archived plans, old reviews, handoffs, receipts, completed-work records | Use when the active task needs historical context. They do not dispatch work or override current direction. |
+| Current status | [`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md) | The live board carries task order and status. |
+| Historical evidence | Archived plans, old reviews, handoffs, receipts, completed-work records, the fleet queue and `NOW.md` | Use when the active task needs historical context. They do not dispatch work or override current direction. |
 | Local/generated residue | Captures, transcripts, build output, scratch and tool state | Inspect only for a named task or diagnostic need; never treat as policy or source authority. |
 
 ## Conflict handling
@@ -33,8 +33,6 @@ the specific navigation text. Do not copy a full rule set into multiple document
 
 Control documents may identify themselves as stable routing, active packets, generated indexes, or
 historical evidence. A stable navigation page should not copy live status. A generated index follows
-its source. An archived packet records what was true for its work; it is not a current assignment
-unless the fleet queue explicitly selects it.
+its source. An archived packet records what was true for its work; it is not a current assignment.
 
-For changes to this control surface, run `node scripts/check-program-docs.mjs` and check the links
-you changed.
+After changing links in this tree, check that the changed Markdown links resolve.

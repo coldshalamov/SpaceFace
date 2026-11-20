@@ -1,3 +1,8 @@
+<!-- HISTORY-2026-11-20 -->
+> **History, not instructions (2026-11-20).** This file no longer assigns, orders or blocks any work.
+> Read it for facts about what was built or planned. The rule and the live board are in the root
+> `AGENTS.md` and `design/overhaul/12_PIPELINE.md`.
+
 # 10 — Observatory Hard-Gate Thresholds
 
 > **Campaign-specific proposed gates.** These thresholds govern only a named observatory campaign

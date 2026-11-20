@@ -2,16 +2,16 @@
 # Agent operations
 
 This note explains how to finish assigned work. Root [`AGENTS.md`](../AGENTS.md) owns authority,
-shared-tree and Git safety, and the verification router. The [fleet README](../design/program/fleet/README.md)
-links to the current lanes, work loop, and batch gate. [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md)
+shared-tree and Git safety, and the verification router. The live board is
+[`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md).
+[`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md)
 describes the available verification tools.
 Do not copy those procedures into another checklist.
 
 ## Finish the assigned outcome
 
-Work from the user's request and its done condition. Follow the project authority order in root
-`AGENTS.md` and the active program rulings. Resolve uncertainty with the smallest interpretation
-that fulfills the request; a process document or evidence artifact is not the outcome.
+Work from the user's request and its done condition. Resolve uncertainty with the smallest
+interpretation that fulfills the request; a process document or evidence artifact is not the outcome.
 
 Choose the smallest implementation that completes the player-visible or technical result. Inspect
 the live owner and its relevant callers, preserve single-writer and save/input contracts, and fix
@@ -25,7 +25,7 @@ governing spec, failed/conflicting result, material risk, or honest claim requir
 cost ladder and route rules in [`VALIDATION_WORKFLOW.md`](./VALIDATION_WORKFLOW.md).
 
 An independent look is useful when an unresolved question could materially change the fix, result,
-or risk, or when the active program requires it. Do not repeat completed reviews, duplicate an active
+or risk. Do not repeat completed reviews, duplicate an active
 investigation, require agreement between models, or treat reports as approval quotas.
 
 Complete authorized work without waiting for a user playtest or verdict. Only an explicit external

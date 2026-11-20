@@ -1,15 +1,15 @@
 # Repository Hygiene Register
 
-This is the single holding area for cleanup candidates that are plausible but not safe to change
-without an owner or product decision. It is not product scope or a reason to delay current Alpha
-work. Remove rows when resolved; completed cleanup belongs in Git history rather than an accumulating
+A list of cleanup candidates with the facts that keep each one in the tree. Nothing here parks,
+holds or queues work: when a row's reason no longer holds, anyone may resolve it in the same job.
+Remove rows when resolved; completed cleanup belongs in Git history rather than an accumulating
 ledger.
 
-## Admission rule
+## When a cleanup is safe
 
-A cleanup is immediately safe only when it has no current diff, maintained consumer, runtime or
-authoring role, accepted-evidence role, or unresolved provenance. Otherwise record the decision gate
-here. Absence from the default runtime or `npm run check` is not enough by itself.
+A cleanup is safe only when it has no current diff, maintained consumer, runtime or authoring role,
+accepted-evidence role, or unresolved provenance. Absence from the default runtime or
+`npm run check` is not enough by itself.
 
 ## Deferred decisions
 
@@ -19,7 +19,7 @@ here. Absence from the default runtime or `npm run check` is not enough by itsel
 | `skills/` | Vendored generic skills have license/provenance records and may still serve an external harness. | Confirm whether any maintained workflow consumes them; then keep the complete vendor package or remove it as one unit. |
 | `.campaign/` and copied workspaces | Ignored controller state may contain an active campaign as well as stale snapshot instructions. | Let the active controller owner expire/archive campaigns; never promote copied `AGENTS.md` files to authority. |
 | `.devshots/` captures and runnable copies | These are the largest local storage consumer. Named route baselines and graphics review receipts still have owners. | Keep the compact verdict and required capture. Full source overlays are gzip files by default. Use the manifest path printed by the creator. Reuse [saved comparisons](./VALIDATION_WORKFLOW.md#player-truth-route-check). Recover unique local work before retiring any copied tree. |
-| `.dev/pr-expansion/work/` | The active PR intake packet relies on original numbered staging directories. | Close or migrate the active work through the [fleet queue](../design/program/fleet/QUEUE.md) with its ledger before pruning staging payloads. |
+| `.dev/pr-expansion/work/` | The 2026-11-14 PR intake work relied on original numbered staging directories; unique local work may still sit there. | Recover unique local work before pruning staging payloads. |
 | `.git/objects/` | Pack files include current history and locally retained objects. A fetch can have in-progress packs. | Keep the shared object store while work is active. Treat any eventual history rewrite as a separate coordinated migration. |
 | `src/ui/station/` helpers and station panels | The monolithic `src/ui/screens/stationHub.js` is gone; the station shell owns the body and helpers live under `src/ui/station/`. | Retire any remaining checks or references that still name the removed module. |
 | Source-only feature candidates (`asteroidMotion`, handling/mass/module panels, Ship's Ledger UI) | Some are retained or admitted product outcomes with focused checks; Ship's Ledger still needs player reachability. | Decide integrate-versus-retire per outcome against `design/program/`; remove source, checks, and plan claim together if retired. |

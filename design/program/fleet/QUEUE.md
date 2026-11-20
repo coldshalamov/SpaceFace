@@ -6,38 +6,12 @@
 
 # The work queue — four lanes
 
-**This is the only place work comes from.** The design it builds is `design/game/`. How work runs:
-`PLAYBOOK.md`; worker rules: `PROTOCOL.md`; where things stand: `HANDOFF.md`.
+The design it built is `design/game/`. How work ran: `PLAYBOOK.md`; worker rules: `PROTOCOL.md`;
+where things stood: `HANDOFF.md`.
 
-## How to take work
-
-You are told your lane: **Agent 1, 2, 3 or 4**. Take the **first `READY` row in your own lane**, top
-to bottom. Change its State to `TAKEN agent<N>` and commit that one line
-(`git commit -m "queue: agent<N> takes <ID>" -- design/program/fleet/QUEUE.md`), then do the job: the
-packet in `packets/<ID>.md`, or, where the row says "spec:", the spec it names. When done set
-`BUILT <commit hash>` and commit. If your lane has no `READY` row you may take one from a **higher-
-numbered** (easier) lane — never from a lower-numbered lane. Never take a `TAKEN` row.
-
-**Frontend rule (owner, 2026-11-11):** rows marked **[FE]** are screens/HUD/popups/visuals — never Devin. They go to a
-Sonnet sub-agent (lead-run) or, if routine, Gemini Flash; the lead looks at every one on screen.
-
-| Lane | Who | What lives here |
-|---|---|---|
-| **1** | the strongest model available (Claude Opus/Fable class) | taste, creative writing, art and 3D, architecture, diagnosis, **reviewing what others built on screen**, writing packets for lanes 2–4 |
-| **2** | strong coder (Devin SWE-2 Max at its best) | large engineering packets that name the seam: performance, controls, mobile camera/HUD, landing parked work |
-| **3** | solid coder (Devin SWE-2 Max, Gemini Flash) | fully specified medium packets: data tables, wiring an existing system, one world reaction, recon drafts |
-| **4** | any agent (Gemini Flash) | mechanical work that cannot go wrong: exact text, exact lists, run-and-report |
-
-States: `READY` · `TAKEN agent<N>` · `BUILT <hash>` (worker says done) · `DONE` (Lane 1 looked) ·
-`REDO <one sentence>` · `NEEDS-PACKET` (Lane 1 writes it first).
-
-**No holds (owner, 2026-11-19).** There is no `HOLD` or `PARKED` state. If a row needs something
-else first — a review, another row, a file someone else touched, a missing packet — do that
-prerequisite yourself in the same job, then finish and land the row. Finished work is wired in, never
-shelved waiting for a reviewer or an ordering rule. Every row still reading `HOLD …` or `PARKED …`
-below is `READY`: take it and do its prerequisite. A `TAKEN` row with no commit in 24 hours is `READY`.
-**Nothing is `DONE` until Lane 1 has looked at it on screen** (if it is visible). After a batch, run
-`npm run gate`; red → fix or revert before anything else lands.
+States the rows below use (they mean nothing now): `READY` · `TAKEN agent<N>` · `BUILT <hash>`
+(worker said done) · `DONE` (Lane 1 looked) · `REDO <one sentence>` · `NEEDS-PACKET` (Lane 1 wrote
+it first).
 
 ---
 

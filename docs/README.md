@@ -11,7 +11,7 @@ This is the navigation front door for engineering and world-content documentatio
 | Named campaign / symptom door | [`TASK_ROUTER.md`](./TASK_ROUTER.md) |
 | Shared-checkout work, validation, and reporting | [`AGENT_OPERATIONS.md`](./AGENT_OPERATIONS.md) |
 | Owner preferences and verified workspace facts | [`AGENT_LESSONS.md`](./AGENT_LESSONS.md) |
-| Active game-finishing work and verification | [Fleet README](../design/program/fleet/README.md) |
+| Active game-finishing work and verification | [`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md) |
 | Technical invariants and ownership | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) |
 | Find the module that owns behavior | [`MODULE_MAP.md`](./MODULE_MAP.md), then the nearest `src/**/AGENTS.md` |
 | Diagnose a recurring failure | [`COMMON_BUGS.md`](./COMMON_BUGS.md) |
@@ -30,12 +30,12 @@ This is the navigation front door for engineering and world-content documentatio
 
 ## Documentation classes
 
-- **Authority:** root `AGENTS.md`, `ARCHITECTURE.md`, `design/game/`, and the active packet.
-- **Current status:** the [fleet queue](../design/program/fleet/QUEUE.md) and [`NOW.md`](../design/program/NOW.md) for exact write claims.
+- **Authority:** root `AGENTS.md`, `ARCHITECTURE.md`, `design/game/`, and `design/overhaul/`.
+- **Current status:** the live board, [`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md).
 - **Navigation/reference:** `MODULE_MAP.md`, `COMMON_BUGS.md`, and `SEARCH_CONTEXT.md`.
 - **Generated indexes:** `EVENT_ROUTING.md` and `SYSTEM_REGISTRY.md`; regenerate with `npm run build:indexes`.
 - **Historical evidence:** handoffs, reviews, old audit reports, and captures. They explain; they do not dispatch.
 
 ## Maintenance
 
-Read [`AGENTS.md`](./AGENTS.md) before changing this tree. Prefer durable paths/symbols over dates, line numbers, file sizes, or copied status. Run `node scripts/check-program-docs.mjs` after changing program-facing links or policy lifetimes.
+Read [`AGENTS.md`](./AGENTS.md) before changing this tree. Prefer durable paths/symbols over dates, line numbers, file sizes, or copied status. After changing links in this tree, check that the changed Markdown links resolve.

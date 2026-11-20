@@ -1,8 +1,8 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace orientation
 
-This is a short map of the game and repository. Start at root [`AGENTS.md`](../AGENTS.md) and
-follow the [fleet README](../design/program/fleet/README.md) to the active work queue.
+This is a short map of the game and repository. Start at root [`AGENTS.md`](../AGENTS.md); the live
+board for current work is [`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md).
 [`TASK_ROUTER.md`](./TASK_ROUTER.md) points to named workflows. These documents route work; they do
 not duplicate volatile status.
 
@@ -33,7 +33,7 @@ for generated indexes.
 | `src/data/`, `src/world/`, `src/story/` | Catalogs, world state, and narrative systems. |
 | `assets/` | Authored ships, places, props, portraits, and art; start at `assets/AGENTS.md` and the asset docs. |
 | `design/` | Product intent and selected design specifications. Read only the section activated by the task. |
-| `design/program/fleet/` | Current work queue, operating rules and quality checkpoint. |
+| `design/program/fleet/` | The retired fleet queue and its packets — history. |
 | `docs/` | Engineering navigation, contracts, validation, and historical context. See `docs/README.md`. |
 | `test/`, `scripts/`, `tools/` | Tests, checks, and production tooling; read the nearest `AGENTS.md`. |
 | `styles/`, `electron/`, `schemas/` | Styling, desktop shell, and data schemas. |
@@ -43,7 +43,7 @@ for generated indexes.
 
 | Need | Read |
 |---|---|
-| Fleet assignment | [Fleet README](../design/program/fleet/README.md) → queue → the selected task's spec and source owner |
+| Current work and where things stand | [Root `AGENTS.md`](../AGENTS.md) → [`design/overhaul/12_PIPELINE.md`](../design/overhaul/12_PIPELINE.md) |
 | Find a code owner | [`MODULE_MAP.md`](./MODULE_MAP.md) → nearest `AGENTS.md` |
 | Trace state or update order | `ARCHITECTURE.md` → generated `SYSTEM_REGISTRY.md` / `EVENT_ROUTING.md` |
 | Diagnose a recurring defect | [`COMMON_BUGS.md`](./COMMON_BUGS.md) and the live owner |
@@ -53,4 +53,4 @@ for generated indexes.
 
 Large references are section-addressable: read the section the active task names, not the entire
 file. Historical plans, reviews, captures, and agent notes explain prior decisions; they do not
-replace current user direction, fleet assignments, live source, or relevant behavior checks.
+replace current user direction, live source, or relevant behavior checks.
