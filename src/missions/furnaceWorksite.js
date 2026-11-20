@@ -67,6 +67,10 @@ export function furnaceMites(state) {
     && e.data?.ecology?.speciesId === 'suture_mite'
     && FURNACE_MITE_KEYS.includes(e.data.ecology.faunaKey));
 }
+export function localFurnaceWorksite(mission, state) {
+  return authoredFurnaceWorksite(mission) && state?.world?.currentSectorId === mission.destSectorId;
+}
+
 export function furnaceWorksiteFocus(m, state) {
   if (!authoredFurnaceWorksite(m)) return null;
   if (m.params.furnaceLedgerInvalid) return { pos: furnaceMouthGlobal(), label: 'Refinery cargo record unavailable', reason: 'The saved cargo ledger is invalid; the detail is paused without creating replacement material or payment.' };

@@ -31,7 +31,7 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { isHostileToPlayer } from './scanner.js';
 
 const WHIP_IMPACT_MIN_SPEED = 25;   // wu/s — mirrors SNAP_CATCH_MIN_SPEED ("genuinely moving")
-const WHIP_IMPACT_SOLID = 55;       // wu/s relSpeed — rating floor for a 'solid' hit
+export const WHIP_IMPACT_SOLID = 55;       // wu/s relSpeed — rating floor for a 'solid' hit
 const WHIP_IMPACT_CRUSHING = 95;    // wu/s relSpeed — 'crushing' floor; also the severity ceiling
 const WHIP_SLING_WINDOW_S = 6;      // s — a released mass stays "the player's whip" this long
 const WHIP_CONTACT_PAD = 0.5;       // wu — overlap tolerance (physics rests solids at ~touching)
