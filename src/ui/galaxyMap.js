@@ -10129,10 +10129,14 @@ _draw() {
 
     // MAPS-2 lenses: read once per frame. Trade reads prices only through chartTradeRead (the price
     // model is being rebuilt; that file is the seam). Jobs count the posted offers the player has seen.
-    const galaxyTrade = this._layers.market ? sectorTradeRead(state, this._selectedCommodity, SECTORS) : null;
-    let galaxyJobs = null;
-    let galaxyTrackedSector = null;
-    if (this._layers.mission) {
+    // Both reads are cached per second of game time and per selected good: a pan or an animation
+    // frame reuses them.
+    const lensKey = `${Math.floor(Number(state.simTime) || 0)}|${this._selectedCommodity}|${this._layers.market ? 1 : 0}${this._layers.mission ? 1 : 0}`;
+    const lensCache = this._lensCache && this._lensCache.key === lensKey && this._lensCache.state === state ? this._lensCache : null;
+    const galaxyTrade = lensCache ? lensCache.trade : (this._layers.market ? sectorTradeRead(state, this._selectedCommodity, SECTORS) : null);
+    let galaxyJobs = lensCache ? lensCache.jobs : null;
+    let galaxyTrackedSector = lensCache ? lensCache.tracked : null;
+    if (this._layers.mission && !lensCache) {
       galaxyJobs = new Map();
       const stationSector = new Map();
       for (const sec of SECTORS) for (const st of sec.stations || []) if (st && st.id) stationSector.set(String(st.id), sec.id);
@@ -10148,6 +10152,7 @@ _draw() {
       const tracked = trackedMissionOf(state);
       galaxyTrackedSector = tracked ? (tracked.destSectorId || (tracked.params && tracked.params.sectorId) || null) : null;
     }
+    if (!lensCache) this._lensCache = { key: lensKey, state, trade: galaxyTrade, jobs: galaxyJobs, tracked: galaxyTrackedSector };
     let tradeMarginLabel = null;
     // The trade arrow: from the best known place to buy the selected good to the best place to sell
     // it, labelled with the margin per unit.
