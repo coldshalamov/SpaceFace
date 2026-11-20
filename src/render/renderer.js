@@ -33367,6 +33367,36 @@ export const render = {
         const frameSample = perfRt.readFrameSample(this._adaptivePerfSample || (this._adaptivePerfSample = {}));
         sample.cpuMs = frameSample.callbackMs;
       }
+      // GPU-time feedback: where async timer queries exist (EXT_disjoint_timer_query_webgl2 —
+      // available on the owner's Arc iGPU under ANGLE/D3D11), the measured scene + post passes
+      // tell the controller directly whether the GPU is the long pole. Queries are read back a
+      // few frames late and never stall; a counter that stops advancing means stale, unused.
+      sample.gpuMs = undefined;
+      const gpuTimers = this._gpuTimers;
+      if (eligible && gpuTimers && frameCostFixOn('gpuDrs')) {
+        if (this._gpuDrsArmed !== true && this._gpuDrsArmed !== false) {
+          const cap = typeof gpuTimers.getCapability === 'function' ? gpuTimers.getCapability() : null;
+          this._gpuDrsArmed = !!(cap && cap.available && typeof gpuTimers.lastMs === 'function');
+          if (this._gpuDrsArmed && !gpuTimers.enabled) gpuTimers.setEnabled(true);
+        }
+        if (this._gpuDrsArmed) {
+          gpuTimers.poll();
+          const completed = gpuTimers.completedCount();
+          if (completed !== this._gpuDrsCompleted) {
+            this._gpuDrsCompleted = completed;
+            this._gpuDrsStaleFrames = 0;
+          } else {
+            this._gpuDrsStaleFrames = (this._gpuDrsStaleFrames | 0) + 1;
+          }
+          if (this._gpuDrsStaleFrames < 30) {
+            const scene = gpuTimers.lastMs('bloomScene');
+            if (scene != null) {
+              sample.gpuMs = scene + (gpuTimers.lastMs('bloomComposite') || 0)
+                + (gpuTimers.lastMs('bloomDownsample') || 0);
+            }
+          }
+        }
+      }
       tryPresentedCall(this, 'adaptive-quality', () => this._adaptive.update(frameDt, sample));
       if (adaptiveState.render) adaptiveState.render.dynResBound = this._adaptive.getBound?.().bound;
     }

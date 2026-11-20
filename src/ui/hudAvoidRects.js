@@ -1,3 +1,4 @@
+import { frameCostFixOn } from '../render/frameCostSwitches.js';
 // The rects a world label must not sit in (G16-04): the Swarm centre column's live children
 // (round callouts, the ignition countdown, PILE-UP / chain words), the Stage banner, and the HUD
 // corner panels. Read from the live DOM so a layout change is followed, never hard-coded; cached
@@ -131,8 +132,11 @@ const docSnapshots = new WeakMap();
 // An invalidation now re-reads on the next get() only once this long has passed since the last
 // read: at most ~7 reads a second, while a quiet HUD still follows a real change within a frame.
 export const AVOID_RECT_INVALIDATE_COALESCE_MS = 150;
+// ?rfx=-hudRects (or a live probe flip) restores the old every-invalidation / every-frame reads so
+// the saving can be measured against its absence in one page.
+const hudRectCacheOn = () => frameCostFixOn('hudRects');
 
-function createRectSnapshot(doc, query, ttl, exclude) {
+function createRectSnapshot(doc, query, ttl, exclude, perFrameWhenOff = false) {
   let rows = [];
   let at = -Infinity;
   let dirty = false;
@@ -147,7 +151,9 @@ function createRectSnapshot(doc, query, ttl, exclude) {
   }
   return {
     get(t) {
-      if (t - at >= ttl || (dirty && t - at >= AVOID_RECT_INVALIDATE_COALESCE_MS)) {
+      const cacheOn = hudRectCacheOn();
+      const coalesceMs = cacheOn ? AVOID_RECT_INVALIDATE_COALESCE_MS : 0;
+      if (t - at >= (cacheOn || !perFrameWhenOff ? ttl : 0) || (dirty && t - at >= coalesceMs)) {
         rows = readRectRows(doc, query, exclude);
         at = t;
         dirty = false;
@@ -223,7 +229,7 @@ export function createAvoidRects(doc, opts = {}) {
  */
 export function createSelectorRects(doc, selectors, opts = {}) {
   const now = opts.now || (() => (doc?.defaultView?.performance?.now() ?? globalThis.performance?.now() ?? Date.now()));
-  const snapshot = createRectSnapshot(doc, selectors, opts.ttlMs ?? 250, opts.exclude);
+  const snapshot = createRectSnapshot(doc, selectors, opts.ttlMs ?? 250, opts.exclude, true);
   let source;
   let cache = [];
   return {

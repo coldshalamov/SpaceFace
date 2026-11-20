@@ -7,7 +7,8 @@
 //   ?rfx=off        every change off
 //   ?rfx=-sort      one change off (comma list: ?rfx=-sort,-guard)
 //
-// Names: sort (state-sorted opaque list).
+// Names: sort (state-sorted opaque list), gpuDrs (GPU timer queries steer dynamic resolution),
+// hudRects (HUD obstacle rects cached and invalidations coalesced, src/ui/hudAvoidRects.js).
 //
 // A measurement harness may also flip a switch live in one page: globalThis.__sfRfx = { name: bool }
 // overrides the URL for switches the renderer reads per frame (scripts/probe-frame-toggle.mjs).

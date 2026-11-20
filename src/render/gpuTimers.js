@@ -519,10 +519,23 @@ export function createGpuTimers(gl) {
     };
   }
 
+  // Allocation-free reads for the dynamic-resolution feedback loop (renderer.prepareFrame):
+  // the newest completed elapsed time of one pass, and how many queries have ever completed
+  // (a stalled counter means the value is stale and must not steer resolution).
+  function lastMs(label) {
+    const ring = rings[label];
+    return ring && ring.count > 0 ? ring.last : null;
+  }
+  function completedCount() {
+    return queryCounts.completed;
+  }
+
   return {
     begin,
     end,
     poll,
+    lastMs,
+    completedCount,
     reset,
     abandon,
     dispose,
