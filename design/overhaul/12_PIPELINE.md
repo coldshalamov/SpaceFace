@@ -1,55 +1,91 @@
-# 12 — The pipeline: how the overhaul gets built
+# 12 — The studio: who builds, how work lands, and the live board
 
-**Director, 2026-11-19.** The owner: *"form an agentic pipeline with adversarial reviews to chug through
-the game and deliver the best game from this repo"* and *"make sure you or your subagents personally
-pass and review everything that gets merged and do little fixes so it's all just like you would do it,
-but the other agents save usage as long as you fix problems."* This page is how that runs. The board at
-the bottom is the live state; `11_ORDER_OF_WORK.md` keeps the order, `build_map.md` §40 the productions.
+**Director, 2026-11-20.** The owner put one session in charge of a multi-day, full-coverage facelift:
+*"orchestrate agents broadly across the game to polish and improve it… you're in charge and
+responsible for the overall quality of the output at the end."* This page is how that runs. The
+board at the bottom is the live state.
 
 ## 1. Who does what
 
-| Agent | Takes | Never |
+| Agent | Takes |
+|---|---|
+| **Director** (Claude Fable) | Sets direction, writes every brief, reads every change before it is pushed, looks at every visible change on screen, fixes the small things, keeps this board. |
+| **Department leads** (Claude Opus subagents, about four at once) | One per area below. Each first diagnoses and plans, then builds its own plan in slices with its context intact. |
+| **Sonnet subagents** | Breadth over depth: wide document or asset sweeps, batch reviews. |
+| **Devin SWE-2 Max** (`scripts/fleet/run.mjs <ID> devin3`) | The workhorse for scoped engineering with a named seam and a measurable result. Never taste. |
+| **GLM 5.3 max** (`run.mjs <ID> glm`; zcode for a second seat) | Fully specified packets, audits, scripts, mechanical fixes. No vision. |
+| **Gemini Neon** (`run.mjs <ID> neon2`) | A different mind: second opinions, fresh-eyes critiques of frames, frontend proposals. |
+| **deepseek v4.1 Flash** (`run.mjs <ID> deepseek`) | Reading frames aloud where GLM cannot see. |
+
+Frontend is built by the director or Gemini Neon and judged by the director. Everything that lands
+is reviewed by the director or an Opus lead.
+
+## 2. How a change lands
+
+The working copy and `master` are the same thing again (checkpoint 9b3b0f1930, 2026-11-20), so the
+line is short.
+
+1. **Brief.** The director writes it: the player-visible result, the files, how it is proven.
+   Outside agents get theirs as `design/program/fleet/packets/<ID>.md`.
+2. **Build.** The builder edits its files, runs its checks and commits its own files by exact path.
+   It does not push.
+3. **Review.** The director (or the area's lead) reads the commit, opens the frame if anything is
+   visible, and fixes forward or reverts. A finding blocks only if the change breaks the game, a
+   test of something still wanted, or its own claim.
+4. **Publish.** The director pushes by merge. Never rebase, never force.
+5. **Board.** The row below moves.
+
+Two builders never share a file at the same time. If a build needs a prerequisite, the builder or
+the director does it then and there.
+
+## 3. Departments
+
+| Lead | Owns | The owner's complaint it answers |
 |---|---|---|
-| **Director** (Claude Opus) | Writes every packet. Reads every diff before it lands, fixes the small things, looks at every visible change on screen, commits, pushes, keeps this board. Taste calls and the hard seams. | Lets a change land unread. |
-| **Sonnet subagents** (≤ 2 at once) | Judgment-heavy builds: HUD and screens [FE], feel, copy, review-finding fixes that need reading around. | Git writes. Opus subagents are never used. |
-| **Devin SWE-2 Max** (`scripts/fleet/run.mjs <ID> devin1/devin2`) | Scoped engineering packets with a named seam: sim systems, data tables, benches, tests, run-and-report. Effectively unlimited. | Frontend (owner rule 2026-11-11) or taste. |
-| **zcode GLM-5.3** (GLM-5.3-Flash when it must see a frame) | Fully specified small packets, mechanical fixes, recon, reading a frame aloud. Beta: it writes LF into CRLF files (the harvest restores CRLF); judge it by its edits, not its exit code. | Git writes. |
-| **Codex gpt-6.2-sol** | **xhigh**: the adversarial review of every batch before it lands. **high**: engine, simulation, load, performance and 3D/Blender builds (the owner's split). | |
+| `engine` | The clock between simulation and picture; the cost of a simulation step | "It freezes locations of all objects until a blip moves them" |
+| `streaming` | Models arriving on screen: admission, stand-ins, levels of detail | "I crash into nothing and then a model appears" |
+| `ai` | Enemy brains and the enemy roster | "Tons of units with complex behaviour instead of something basic… each enemy should have its own character" |
+| `world` | What persists off screen, rock regrowth, who populates a sector, the first five minutes | "Not respawn instantly, not depopulate the galaxy… some places feel overcrowded" |
+| `vfx` | Powers, weapons, impacts, explosions | "A blurry blanket, not a cool real VFX" |
+| interface (director + Gemini Neon) | HUD, power bar, words, screens | "I can't tell what any of the powers do… gibberish language" |
+| `plans` | The index of every unbuilt or unwired plan in the repo | "Work that sat done for weeks and was never wired up" |
 
-## 2. The line every change walks
+More departments open as these land: the Swarm loop, Adventure's economy and jobs, the asteroid
+board and yard, stations, sound.
 
-1. **Packet.** `design/program/fleet/packets/<ID>.md`: the design section it serves, the player-visible
-   *done when*, the allowlisted files, the tests, and the pipeline header (no git writes — this
-   overrides `PROTOCOL.md`'s commit step).
-2. **Snap.** `node .devshots/director/pipe.mjs snap <ID> [--dirty-text] -- <allowlist>` records the
-   tree before the builder starts.
-3. **Build.** The agent edits the working tree and reports.
-4. **Harvest.** `pipe.mjs touched <ID>` lists every path that changed (anything outside the allowlist
-   is explained or dropped), then `pipe.mjs harvest <ID> [--onto=<earlier stage>]` replays exactly the
-   builder's lines onto HEAD with `git merge-file`. Other agents' uncommitted work stays out. A
-   conflict means the builder leaned on someone else's unfinished code: the director ports the idea
-   onto HEAD's shape by hand.
-5. **Adversarial review.** Codex xhigh reads the patch and its intent
-   (`.devshots/director/codex-review.mjs`). **Convergence rule:** a finding blocks only if the batch
-   breaks a test, the ordinary player route, or its own claim; pre-existing or scope-widening findings
-   become board rows. One re-review, on the delta only. Clean pieces of a batch land without waiting
-   for the rest.
-6. **Director pass.** Read the whole diff; fix the small things directly; anything visible gets a real
-   frame (`node scripts/ui-bench.mjs --shot=<id>` for screens, a headed probe through the game lock for
-   flight) that the director opens and judges.
-7. **Clean-HEAD check.** `node .devshots/director/headcheck.mjs --stage=<dirs> -- <tests>` runs the
-   tests that import each changed module against HEAD plus only the staged lines — a green working
-   tree can hide a red HEAD. `check:sim` runs there too when the sim can move; a moved hash follows
-   COMMON_BUGS §8/§10d, never a quiet re-record.
-8. **Land.** `pipe.mjs stage <ID>`, `git diff --cached --name-status` shows only our paths, commit with
-   no pathspec. Push by merge, never rebase or force.
-9. **Board.** The row below moves; the inspection ledger records what was seen.
+## 4. The measure
 
-## 3. What the owner sees
+Taken on a quiet machine before any agent was running (2026-11-20, working copy = 9b3b0f1930):
 
-Each landing is reported in plain words: what changed in the game, what was checked, what is left.
+| Measure | Now | Target |
+|---|---|---|
+| Adventure new game, 170 s of flight: world speed against the clock | 0.93 (one ten-second stretch at 0.46) | 1.00, and never visibly below |
+| Same flight: frames per second | 35 average, swinging 9–57 | steady 60 |
+| Same flight: visible freezes (no new positions for over 0.35 s) | 5, longest 3.6 s | 0 |
+| Same flight: simulation step in the worker | 8.6 ms median, 13.6 ms at the 95th percentile | under 8 ms at the 95th |
+| Swarm wave 15 headless: simulation step | 9.5 ms mean, 14.8 at the 95th, 58 worst | under 8 ms at the 95th, worst under 16 |
 
-## 4. Board
+Probes: `.devshots/director/travel-probe.mjs` (through the game lock) and
+`node scripts/sim-crowd-stress.mjs --ticks=600 --warmup=240`. Numbers taken while agents are working
+are not comparable to these: the same build measured 22.6 ms a step last night under load.
+
+## 5. Board
+
+| ID | What the player gets | Builder | State |
+|---|---|---|---|
+| CHECKPOINT | `master` is the game the owner actually runs | Director | **Landed** 9b3b0f1930 (code), 62539fd891 (assets), 1db5ddcbf0 (plans) |
+| FRONT-DOOR | One rule; old queues, holds and claims boards are history | Director | **Landed** e027b513ad |
+| ENGINE-0 | The freeze explained to its exact mechanism; the cure in slices | `engine` | Investigating |
+| STREAM-0 | Why nearby ships never get their real model; the rule that makes it impossible | `streaming` | Investigating |
+| AI-0 | Cheap swarm brains, a group mind, a roster of characters | `ai` | Investigating |
+| WORLD-0 | What persistence really does today; the regrowth and population design | `world` | Investigating |
+| VFX-0 | Why effects read as a blanket; the replacement technique, power by power | `vfx` | Investigating |
+| PLANS-0 | Every unbuilt and unwired plan, ranked by what a player would feel | `plans` (Sonnet) | Investigating |
+| PERF-09 | Three repeated costs out of every simulation step | Devin | Building |
+| ASSET-COST-AUDIT | What every model costs to draw, and which cost too much | GLM | Building |
+| UX-FRESH-EYES | Where a stranger gets lost; the ten changes that fix it | Gemini Neon | Investigating |
+
+## 6. Landed before 2026-11-20
 
 **2026-11-20, owner rule: no holds.** Finished work is never parked waiting for a reviewer: the director reviews it (with agy2 as the second eye when it is free) and lands it. Red master (callers importing uncommitted pieces after sweep commits) is repaired on sight: 96d40380cc, 65b2046fbd.
 

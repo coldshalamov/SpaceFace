@@ -113,7 +113,8 @@ if (devin) {
   cmd = process.env.ComSpec || 'C:\\Windows\\System32\\cmd.exe';
   const acct = backend === 'neon1' ? ['agy1', 'devteamrob.helix@gmail.com'] : ['agy2', '93robingattis@gmail.com'];
   cmdArgs = ['/d', '/s', '/c', join(HOME, 'bin', 'agy-acct.cmd'), acct[0], '--acct', acct[1], '--print',
-    prompt.replace(/\r?\n/g, ' ').replace(/"/g, "'"), '--model', 'gemini-4-neon-xhigh', '--dangerously-skip-permissions', '--output-format', 'text'];
+    // Windows command lines mangle a long quoted prompt: hand agy one line that points at the prompt file.
+    `Read the file ${join(runDir, 'PROMPT.txt')} and follow it exactly. Work in ${REPO}.`, '--model', 'gemini-4-neon-xhigh', '--dangerously-skip-permissions', '--output-format', 'text'];
 } else if (backend === 'codex') {
   // The senior agent (owner, 2026-11-11): GPT 6.1 Sol, high effort, via the npm codex 0.163 shim
   // (the codex.exe on PATH is an old desktop bundle). Prompt on stdin. Use for hard backend /
