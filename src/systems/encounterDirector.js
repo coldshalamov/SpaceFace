@@ -2918,6 +2918,11 @@ export const encounterDirector = {
   _onEntityGone(p) {
     const id = p && p.id;
     if (id == null) return;
+    // entity:destroyed queues after the map delete: if the id already carries a new
+    // occupant, every id-keyed row below belongs to it — drop the stale receipt.
+    const liveOccupant = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(id) : null;
+    if (p.entity && liveOccupant && liveOccupant !== p.entity) return;
     const dir = ensureDirectorState(this.state);
     // Entity ids recycle through freeIds — a stale pursuit row would leak onto the next hull.
     if (dir.pursuitWatch) delete dir.pursuitWatch[id];

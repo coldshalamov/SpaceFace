@@ -221,6 +221,11 @@ export const gateControlDirector = {
   _onEntityDestroyed(p) {
     const id = p && p.id;
     if (id == null) return;
+    // entity:destroyed queues after the map delete: a scene-spawned hull that recycled
+    // this id owns its slot row — drop the dead occupant's stale receipt.
+    const live = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(id) : null;
+    if (p.entity && live && live !== p.entity) return;
     const g = ensureState(this.state);
     const scene = g.scene;
     if (!scene || !scene.entityIds.length) return;

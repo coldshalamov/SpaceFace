@@ -219,7 +219,12 @@ export const someonesCoursePlant = {
   },
 
   _onSwingAnchorDestroyed(payload) {
-    if (!payload || !this.state) return;
+    if (!payload || !this.state || payload.id == null) return;
+    // entity:destroyed queues after the map delete: a recycled id names the live anchor,
+    // not the dead one — a stale receipt must not mark it cut or spawn debris.
+    const live = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(payload.id) : null;
+    if (payload.entity && live && live !== payload.entity) return;
     const now = finite(this.state.simTime, 0);
     const row = this._swingMemory.get('line');
     if (!row || !row.anchorIds.length) return;

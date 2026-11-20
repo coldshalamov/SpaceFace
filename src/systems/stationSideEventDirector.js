@@ -360,6 +360,11 @@ export const stationSideEventDirector = {
   _onEntityDestroyed(p) {
     const id = p && p.id;
     if (id == null) return;
+    // entity:destroyed queues after the map delete: if the id carries a new occupant,
+    // its ledger row belongs to the live hull — drop the stale receipt.
+    const live = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(id) : null;
+    if (p.entity && live && live !== p.entity) return;
     const s = ensureState(this.state);
     for (const eventId of Object.keys(s.active)) {
       const rec = s.active[eventId];

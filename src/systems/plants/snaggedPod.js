@@ -282,6 +282,11 @@ export const snaggedPodPlant = {
   _onSnaggedDestroyed(payload) {
     if (!payload || payload.id == null) return;
     if (!this._snaggedMemory || !this._snaggedMemory.has(payload.id)) return;
+    // entity:destroyed queues after the map delete: a recycled pod id's memory row
+    // belongs to the live snag — the dead pod's receipt must not free it.
+    const live = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(payload.id) : null;
+    if (payload.entity && live && live !== payload.entity) return;
     this._snaggedMemory.delete(payload.id);
   },
 
