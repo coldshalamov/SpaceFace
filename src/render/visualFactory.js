@@ -327,6 +327,63 @@ export function setFactoryPresentationNow(seconds) {
 export function factoryPresentationNow() {
   return _presentationNow;
 }
+
+// The render layer reports facts the simulation must own instead of writing them
+// into entity.data (snapshotEntity hashes data; worker-lane entities are read-only
+// mirrors). 'wreck:ruptureFired' is forwarded to the sim lane, where
+// aftermathWrecks stamps the durable latch that wreck markers persist.
+let eventBus = null;
+export function setFactoryEventBus(bus) {
+  eventBus = bus && typeof bus.emit === 'function' ? bus : null;
+}
+
+// Local suppression for the sim-stamped latch's transit: the durable truth is
+// entity.data.fractureRuptureFired (sim-owned), but the worker lane only ships
+// data at spawn — a live piece that re-admits before a respawn must still skip a
+// second kick. Records key on id + occupantGeneration so a recycled id cannot
+// inherit a dead occupant's latch, and the root stamp covers same-root retries.
+const ruptureClipFiredById = new Map();
+
+function ruptureClipAlreadyFired(entity, root) {
+  const data = entity && entity.data;
+  if (data && data.fractureRuptureFired === true) return true;
+  if (root && root.userData && root.userData.fractureRuptureFired === true) return true;
+  const generation = entity && entity.occupantGeneration;
+  return generation != null && ruptureClipFiredById.get(entity.id) === generation;
+}
+
+function stampRuptureClipFired(entity, root) {
+  const generation = entity && entity.occupantGeneration;
+  if (entity && generation != null) ruptureClipFiredById.set(entity.id, generation);
+  if (root && root.userData) root.userData.fractureRuptureFired = true;
+  if (eventBus) {
+    eventBus.emit('wreck:ruptureFired', {
+      id: entity && entity.id,
+      entityId: entity && entity.id,
+      occupantGeneration: generation ?? null,
+      fired: true,
+    });
+  }
+}
+
+// The orphaned-commit path restores the latch so a later admission of the same
+// piece re-fires its kick: unwind the local stamps and report the reversal —
+// the sim clears its durable flag so marker write-back never saw a false fire.
+function unstampRuptureClipFired(entity, root) {
+  const generation = entity && entity.occupantGeneration;
+  if (entity && generation != null && ruptureClipFiredById.get(entity.id) === generation) {
+    ruptureClipFiredById.delete(entity.id);
+  }
+  if (root && root.userData) root.userData.fractureRuptureFired = false;
+  if (eventBus) {
+    eventBus.emit('wreck:ruptureFired', {
+      id: entity && entity.id,
+      entityId: entity && entity.id,
+      occupantGeneration: generation ?? null,
+      fired: false,
+    });
+  }
+}
 function nowSec() {
   if (_presentationNow != null) return _presentationNow;
   const n = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -5473,9 +5530,9 @@ function readyPackagedWreck(cache, relativeFile, entity) {
     const controller = bindInstanceMotion(packaged, ready.motionBank);
     if (controller) {
       attachAuthoredMotionDriver(root, entity, [controller]);
-      if (entity.data?.fracturePiece && entity.data.fractureRuptureFired !== true) {
+      if (entity.data?.fracturePiece && !ruptureClipAlreadyFired(entity, root)) {
         controller.handleEvent?.('wreck:rupture', { pieceId: entity.id }, factoryPresentationNow() ?? 0);
-        entity.data.fractureRuptureFired = true;
+        stampRuptureClipFired(entity, root);
       }
     }
     const emberMats = ready.materials.filter(material => material.userData?.hulkEmberGain != null);
@@ -5627,8 +5684,8 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
           releaseReason, mintedAdmissionOptions.admissionEpoch);
         root.userData.authoredAssetState = 'orphaned-before-swap';
         // A rupture re-fired on this commit dies with the disposed subtree — restore the
-        // flag so a later re-admission of the same entity fires its kick again.
-        if (ruptureRefired && entity && entity.data) entity.data.fractureRuptureFired = false;
+        // latch so a later re-admission of the same entity fires its kick again.
+        if (ruptureRefired && entity) unstampRuptureClipFired(entity, root);
         return true;
       };
       // Drives a Steps twin across its own yields — each internal slice debits the
@@ -5723,8 +5780,8 @@ function attachPackagedBody(root, relativeFile, entity, readyBodies = null) {
       // admission lands — so the controller registry was empty at dispatch. Re-fire the
       // rupture here: the flap/mast kick starts as the fragment becomes visible.
       if (motionControllers.length && entity && entity.data && entity.data.fracturePiece
-          && entity.data.fractureRuptureFired !== true) {
-        entity.data.fractureRuptureFired = true;
+          && !ruptureClipAlreadyFired(entity, root)) {
+        stampRuptureClipFired(entity, root);
         ruptureRefired = true;
         const now = factoryPresentationNow() ?? 0;
         for (const controller of motionControllers) {

@@ -165,7 +165,7 @@ import {
   loadFoundryIblTexture,
   resolveIblSource,
 } from './foundryEnvironment.js';
-import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryPresentationNow, syncSwarmThreatPlate, updateHulkEmber, upgradeBareRockMaterials, upgradeFamilylessRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
+import { asteroidLeafResources, asteroidPoolCensusKeys, asteroidPoolWarmResources, asteroidVisualExemplarSpecs, buildAsteroidLeafWarmGroup, combatSpawnableExemplarSpecs, createVisualFactory, fractureFragmentFilesForDef, hulkExemplarSpecsForShips, instantiatePackagedPrimitives, setEnvMapForShips, setFactoryEventBus, setFactoryPresentationNow, syncSwarmThreatPlate, updateHulkEmber, upgradeBareRockMaterials, upgradeFamilylessRockMaterials, wreckPackagedFile, wreckVisualExemplarSpecs } from './visualFactory.js';
 import { createOpeningStandInWarmSubject, installVisualOverrides, materializeBoundaryResolvingMarker, packagedPropSpec, releaseAdmissionStandInFallback, resolvingMarkerFallbackCount, setBoundaryStandInResolver, upgradeAdmissionStandIn } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
@@ -9943,6 +9943,9 @@ export const render = {
     state.render.spaceBg = spaceBg;
     // Generated backdrop producers publish their exact construction recipe in their constructors;
     // renderer only consumes those immutable boundaries.
+    // Render-owned facts cross to the sim over this bus (e.g. wreck:ruptureFired);
+    // visualFactory emits them instead of writing entity.data on the mirrors.
+    setFactoryEventBus(bus);
     const vf = createVisualFactory({
       renderer,
       planetDetailAdmission: {

@@ -1249,6 +1249,7 @@ export const aftermathWrecks = {
     };
     this._onSaveError = () => { this._saveRestoring = false; };
     this._onLooseImpact = (payload) => this._shedImpactChips(payload || {});
+    this._onRuptureFired = (payload) => this._setRuptureClipFired(payload || {});
 
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('scan:pulse', this._onPatrolPulse);
@@ -1259,6 +1260,8 @@ export const aftermathWrecks = {
       this.bus.on('entity:destroyed', this._onDestroyed);
       this.bus.on('wreckField:source', this._onFieldSource);
       this.bus.on('physics:impact', this._onLooseImpact);
+      // Render-side rupture-clip reports: sim owns the durable fractureRuptureFired latch.
+      this.bus.on('wreck:ruptureFired', this._onRuptureFired);
       // Live GPU + flight + hard enter: defer into the cook's FIFO — the census
       // drains the same _onSectorEnter under its slice clock in listener order.
       this._onSectorEnterWrapped = (p) => {
@@ -2906,6 +2909,22 @@ export const aftermathWrecks = {
     // fragment doesn't replay the kick long after the kill.
     if (entity.data && entity.data.fractureRuptureFired === true) marker.fractureRuptureFired = true;
     return true;
+  },
+
+  // Render reports the rupture clip actually played ('wreck:ruptureFired'); sim owns the
+  // durable latch on entity.data so the write-back above persists it into the marker and
+  // a rematerialized fragment does not replay the kick. `fired:false` is the orphaned-commit
+  // reversal — a disposed admission restores the latch for the next admission's re-fire.
+  _setRuptureClipFired(payload) {
+    const id = payload && (payload.entityId ?? payload.id);
+    const entities = this.state && this.state.entities;
+    const entity = id != null && entities && typeof entities.get === 'function' ? entities.get(id) : null;
+    const data = entity && entity.data;
+    if (!entity || !data || !data.fracturePiece) return;
+    const generation = payload.occupantGeneration;
+    if (generation != null && entity.occupantGeneration != null
+        && entity.occupantGeneration !== generation) return; // recycled id — the report is not this occupant's
+    data.fractureRuptureFired = payload.fired !== false;
   },
 
   _writeBackAllBound() {

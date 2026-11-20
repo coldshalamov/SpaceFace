@@ -9,6 +9,7 @@
 export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'achievement:unlocked',
   'band:cycle',
+  'band:tune',
   'borrowedSun:charter',
   'borrowedSun:debtSettle',
   'borrowedSun:leaseBuy',
@@ -126,8 +127,11 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'run:draftPickRequested',
   'run:draftRerollRequested',
   'run:loadoutReady',
+  'run:modifierRecordRequested',
   'run:openingPrepareRequested',
   'run:partialBankRequested',
+  'run:pilotCardRequested',
+  'run:pilotRerollRequested',
   'run:refitCloseRequested',
   'run:refitFitRequested',
   'run:refitSellRequested',
@@ -157,6 +161,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'survivalArena:stormPresented',
   'survivorPod:choose',
   'swarm:eventVerdict',
+  'swarm:floorPadArmRequested',
   'swarm:fortifyBuildRequested',
   'swarm:fortifyReloadRequested',
   'swarm:fortifyRepairRequested',
@@ -228,6 +233,7 @@ export const MAIN_TO_SIM_BUS_EVENTS = new Set([
   'world:requestRoute',
   'world:requestSectorScan',
   'world:stuckTowAccept',
+  'wreck:ruptureFired',
   'wreckCourt:action',
   'wreckMission:choose',
 ]);
@@ -314,6 +320,8 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'ui:closeAll',
   'ui:closeCargo',
   'ui:closeComms',
+  'ui:closeFieldBuild',
+  'ui:closeScreen',
   'ui:confirm',
   'ui:cycleComponent',
   'ui:cycleTarget',
@@ -332,6 +340,7 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'ui:toast',
   'ui:toggleCargo',
   'ui:toggleComms',
+  'ui:toggleFieldBuild',
   'ui:toggleOverview',
   'ui:transferParkedCargo',
   'ui:wingmanRadial',
@@ -344,4 +353,4 @@ export const KNOWN_UNFORWARDED_BUS_EVENTS = new Set([
   'watch:changed',
 ]);
 
-// provenance: census=190 dynamic=42 legacy=18 excluded=6 total=222 knownUnforwarded=88
+// provenance: census=197 dynamic=42 legacy=18 excluded=6 total=229 knownUnforwarded=91
