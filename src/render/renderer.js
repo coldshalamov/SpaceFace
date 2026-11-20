@@ -223,6 +223,7 @@ import {
   resumeAuthoredUpgradeQueueAfterOpening,
   resumeAuthoredUpgradeQueueForLoadingHulls,
   holdAuthoredUpgradeQueueForFirstFlight,
+  releaseAuthoredUpgradeFirstFlightContactHold,
   waitForAuthoredUpgradeQueueIdle,
   waitForOpeningCompositionSettled,
   retryAuthoredPartLibrary,
@@ -1076,6 +1077,7 @@ const _submitVisibilityOptions = {
   projectedPx: 0,
   allowShadowCast: false,
   onLiveGlass: false,
+  contactHorizon: false,
 };
 const _viewBandOptions = {
   isPlayer: false,
@@ -2630,6 +2632,148 @@ function releaseSectorPrewarmRecord(owner, record, reason) {
     : 0;
 }
 
+// STREAM-BUILD-1: the truthful census of what the player can see and hit. A body counts as
+// 'real' only when a non-stand-in drawable draws — wrap-time substrate flags used to lie about
+// committed hulls, and the queue's own diagnostics never measured on-screen stand-ins at all.
+const STREAM_CENSUS_SECONDS = 0.25;
+const STREAM_CENSUS_CONTACT_WU = 600;
+const STREAM_CENSUS_SIGHT_WU = 1500;
+const STREAM_CENSUS_SOLID_TYPES = new Set([
+  'ship', 'asteroid', 'wreck', 'station', 'drone', 'prop', 'structure', 'payload',
+]);
+let _streamCensusVec = null;
+function _streamCensusDraws(mesh) {
+  let real = 0, standIn = 0;
+  if (!mesh || mesh.visible === false) return { real, standIn };
+  for (let n = mesh.parent; n; n = n.parent) if (n.visible === false) return { real, standIn };
+  mesh.traverseVisible((o) => {
+    if (!(o.isMesh || o.isInstancedMesh) || (o.isInstancedMesh && o.count === 0)) return;
+    // Classify by the drawable's own chain only — wrapShipWithAuthoredParts copies substrate
+    // flags onto the boundary, so ancestor userData marks a committed hull as a stand-in.
+    let tag = 'real';
+    for (let n = o; n && n !== mesh; n = n.parent) {
+      const name = n.name || '';
+      if (/^StandIn_|^AuthoredResolvingStandIn$/.test(name)
+          || (n.userData && n.userData.admissionStandInHull === true)) { tag = 'standIn'; break; }
+      if (/^AuthoredResolvingMarker/.test(name)
+          || (n.userData && n.userData.authoredResolvingMarker === true)) { tag = 'standIn'; break; }
+    }
+    if (tag === 'real') real++; else standIn++;
+  });
+  const body = mesh.userData && mesh.userData.asteroidInstanceBody;
+  if (body && body.userData && body.userData.asteroidInstanceAdopted === true) real++;
+  return { real, standIn };
+}
+export function updateStreamingCensus(owner) {
+  const state = owner && owner.state;
+  const render = state && state.render;
+  const entities = state && state.entities;
+  if (!state || !render || !entities || typeof entities.values !== 'function') return null;
+  const simTime = Number(state.simTime) || 0;
+  const player = (typeof entities.get === 'function' ? entities.get(state.playerId) : null) || null;
+  const px = Number(player && player.pos && player.pos.x) || 0;
+  const pz = Number(player && player.pos && player.pos.z) || 0;
+  const cam = (state.camera && state.camera.obj && state.camera.obj.isCamera) ? state.camera.obj
+    : (render.camera && render.camera.isCamera ? render.camera : null);
+  const meshes = render.meshes instanceof Map ? render.meshes : (owner._meshes || null);
+  // Sim positions project through the render world's own rebase: read the offset off the
+  // player's mesh so a body with no mesh still lands in the right screen cell.
+  let offX = 0, offZ = 0;
+  const plMesh = player && meshes && meshes.get(player.id != null ? player.id : state.playerId);
+  if (plMesh) {
+    if (!_streamCensusVec) _streamCensusVec = new THREE.Vector3();
+    plMesh.getWorldPosition(_streamCensusVec);
+    offX = _streamCensusVec.x - px;
+    offZ = _streamCensusVec.z - pz;
+  }
+  const onScreen = (entity) => {
+    if (!cam || !entity.pos) return null;
+    if (!_streamCensusVec) _streamCensusVec = new THREE.Vector3();
+    _streamCensusVec.set(Number(entity.pos.x) + offX, 0, Number(entity.pos.z) + offZ).project(cam);
+    if (_streamCensusVec.z > 1) return false;
+    const W = typeof innerWidth === 'number' ? innerWidth : 1280;
+    const H = typeof innerHeight === 'number' ? innerHeight : 720;
+    const sx = (_streamCensusVec.x + 1) / 2 * W;
+    const sy = (1 - _streamCensusVec.y) / 2 * H;
+    const padPx = 40;
+    return sx > -padPx && sx < W + padPx && sy > -padPx && sy < H + padPx;
+  };
+  const shipTrack = owner._streamCensusShips || (owner._streamCensusShips = new Map());
+  const standInTrack = owner._streamCensusStandIns || (owner._streamCensusStandIns = new Map());
+  const seen = new Set();
+  let onScreenStandIns = 0;
+  let solidUndrawn600 = 0;
+  const standIns = [];
+  for (const entity of entities.values()) {
+    if (!entity || entity.alive === false || entity.id === state.playerId) continue;
+    const ex = Number(entity.pos && entity.pos.x);
+    const ez = Number(entity.pos && entity.pos.z);
+    const d = Number.isFinite(ex) && Number.isFinite(ez) ? Math.hypot(ex - px, ez - pz) : null;
+    const solid = entity.collides !== false && STREAM_CENSUS_SOLID_TYPES.has(entity.type);
+    if (entity.type !== 'ship' && !(solid && d !== null && d <= STREAM_CENSUS_SIGHT_WU)) continue;
+    seen.add(entity.id);
+    const mesh = meshes && meshes.get(entity.id);
+    const draws = _streamCensusDraws(mesh);
+    const isStandIn = draws.real === 0 && draws.standIn > 0;
+    const undrawn = draws.real === 0 && draws.standIn === 0;
+    if (solid && d !== null && d < STREAM_CENSUS_CONTACT_WU && undrawn) solidUndrawn600++;
+    if (entity.type === 'ship') {
+      let rec = shipTrack.get(entity.id);
+      if (!rec) {
+        rec = { id: entity.id, def: (entity.data && (entity.data.defId || entity.data.typeId)) || null,
+          spawnS: simTime, realS: null, goneS: null, d: null };
+        shipTrack.set(entity.id, rec);
+      }
+      rec.d = d;
+      rec.goneS = null;
+      if (rec.realS == null && draws.real > 0) rec.realS = simTime;
+    }
+    if (isStandIn) {
+      if (!standInTrack.has(entity.id)) standInTrack.set(entity.id, simTime);
+      if (solid && onScreen(entity) === true) {
+        onScreenStandIns++;
+        if (standIns.length < 12) {
+          const sinceS = standInTrack.get(entity.id);
+          standIns.push({ id: entity.id, type: entity.type,
+            def: (entity.data && (entity.data.defId || entity.data.typeId || entity.data.placeId)) || null,
+            d: d !== null ? Math.round(d) : null,
+            sinceS, ageS: Math.max(0, Math.round((simTime - sinceS) * 10) / 10) });
+        }
+      }
+    } else if (standInTrack.has(entity.id)) {
+      standInTrack.delete(entity.id);
+    }
+  }
+  for (const id of standInTrack.keys()) {
+    if (typeof entities.has !== 'function' || entities.has(id) !== true) standInTrack.delete(id);
+  }
+  const ships = [];
+  for (const rec of shipTrack.values()) {
+    if (!seen.has(rec.id) && rec.goneS == null) rec.goneS = simTime;
+    if (rec.goneS != null && simTime - rec.goneS > 60) { shipTrack.delete(rec.id); continue; }
+    ships.push({
+      id: rec.id, def: rec.def, spawnS: rec.spawnS,
+      realS: rec.realS, spawnToRealS: rec.realS != null ? Math.round((rec.realS - rec.spawnS) * 10) / 10 : null,
+      ageS: Math.max(0, Math.round((simTime - rec.spawnS) * 10) / 10),
+      d: rec.d !== null ? Math.round(rec.d) : null, gone: rec.goneS != null,
+    });
+  }
+  let queue = null;
+  try { queue = owner.scene ? describeAuthoredUpgradeQueue(owner.scene) : null; } catch (_) { queue = null; }
+  const census = {
+    atS: simTime,
+    contactHorizonWU: STREAM_CENSUS_CONTACT_WU,
+    onScreenStandIns,
+    solidUndrawn600,
+    standIns,
+    ships,
+    queue,
+  };
+  render.streamingCensus = census;
+  render.computeStreamingCensus = () => updateStreamingCensus(owner);
+  return census;
+}
+
 export function serviceRenderMeshResidency(owner, frameDt) {
   const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now() : Date.now());
@@ -2646,6 +2790,15 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   // one union walk per registry per frame instead of five walks per corpse.
   owner?._flushMeshReleasePending?.();
   settleRebuildBridges(owner, frameDt);
+  // The census answers "what does the player see and hit" independent of which residency lane
+  // ran this frame — it must keep refreshing through holds and defer windows alike.
+  if (owner) {
+    owner._streamCensusS = (Number(owner._streamCensusS) || 0) - (Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0);
+    if (owner._streamCensusS <= 0) {
+      owner._streamCensusS = STREAM_CENSUS_SECONDS;
+      try { updateStreamingCensus(owner); } catch (_) { /* diagnostic only — never break a frame */ }
+    }
+  }
   if (owner && owner._sessionRecookKeepGpu === true && owner.state && owner.state.mode === 'loading') {
     abandonResidencyPoll(owner);
     // A suspended pass minted outside this keep-gpu window predates the restore and
@@ -4118,6 +4271,18 @@ export function enqueueSpawnedEntityMesh(owner, entity, state = owner && owner.s
  * rectangle for entities the frame never names (ledger rows, just-promoted
  * arrivals). Everything missing all four is ambient.
  */
+/**
+ * STREAM-BUILD-1 contact horizon: a solid body inside the collision reach can be hit
+ * inside one approach window whether or not the camera shows it. Submit gates, mesh
+ * builds, compiles and geometry residency all treat it as deadline work so its visible
+ * mesh can never lag the physics that already touches the player.
+ */
+function entityInsideContactHorizon(entity, state, root) {
+  return !!(entity && entity.alive !== false && entity.collides !== false
+    && (playerPlanarDistance(entity, state)
+      - entityVisualCullRadius(entity, root || entity.mesh)) <= STREAM_CENSUS_CONTACT_WU);
+}
+
 function entityIsOnDeadlineGlass(entity, state) {
   if (!entity || entity.alive === false || !state) return false;
   if (entityIsExplicitRenderFocus(entity, state)) return true;
@@ -13207,6 +13372,11 @@ export const render = {
       if (counterweightGeometryDeadline(state, entity, root)) {
         return { urgent: true, reason: 'counterweight-preparation' };
       }
+      // A solid the player can already hit cannot wait behind ambient roots for its
+      // GPU buffers: it is deadline work even while the camera has not reached it.
+      if (entityInsideContactHorizon(entity, state, root)) {
+        return { urgent: true, reason: 'contact-horizon' };
+      }
       const bounds = this._entityViewCullBounds();
       const data = root.userData || {};
       const hlodRadius = data.hlod && Number(data.hlod.visualRadius);
@@ -13295,6 +13465,9 @@ export const render = {
       priorityOf: (entity, root, env = renderAdmissionEnv(state)) => {
         if (!entity || entity.alive === false) return 99;
         if (entityIsExplicitRenderFocus(entity, state)) return 0;
+        // Contact horizon (STREAM-BUILD-1): a solid inside collision reach must not
+        // drain behind runway props that merely approach the glass earlier.
+        if (entityInsideContactHorizon(entity, state, root)) return 0.5;
         const seconds = entityTimeToGlassSeconds(entity, env, state, TABLE_COLLECT_HORIZON_SECONDS);
         return 1 + Math.min(
           Number.isFinite(seconds) ? seconds : TABLE_COLLECT_HORIZON_SECONDS,
@@ -29576,7 +29749,8 @@ export const render = {
             return compileFn(subject, {
               debugBy: 'mesh-build-compile',
               urgent: entityIsOnDeadlineGlass(e, capturedState)
-                || (e.type === 'asteroid' && linkOnGlass), isActive,
+                || (e.type === 'asteroid' && linkOnGlass)
+                || entityInsideContactHorizon(e, capturedState, subject), isActive,
             });
           }).finally(() => {
             // On-glass builds never took the hold above. Releasing anyway would
@@ -30610,7 +30784,13 @@ export const render = {
         _submitVisibilityOptions.isPlayer = isPlayer;
         _submitVisibilityOptions.forceRender = forceRender;
         _submitVisibilityOptions.neverCull = neverCull;
-        _submitVisibilityOptions.hidden = true;
+        // Contact horizon (STREAM-BUILD-1): the query drops rows behind the camera, but a
+        // solid inside collision reach can be hit there anyway — an off-screen hull with a
+        // safe drawable (marker, stand-in, resident body) must stay submitted instead of
+        // becoming the invisible body the player rams. Pending/residency latches above the
+        // contact clause still hide genuinely unready roots.
+        const contactSolid = entityInsideContactHorizon(entity, this.state, mesh);
+        _submitVisibilityOptions.hidden = contactSolid !== true;
         _submitVisibilityOptions.snapshotMissing = !posed;
         _submitVisibilityOptions.pipelinesPending = !!(mesh.userData && mesh.userData.pipelinesPending);
         _submitVisibilityOptions.sfAdmittedOnce = !!(mesh.userData && mesh.userData.sfAdmittedOnce);
@@ -30631,6 +30811,7 @@ export const render = {
         _submitVisibilityOptions.projectedPx = 0;
         _submitVisibilityOptions.allowShadowCast = false;
         _submitVisibilityOptions.onLiveGlass = false;
+        _submitVisibilityOptions.contactHorizon = contactSolid;
         // The query dropped this row, but a limb can still be inside the camera.
         // Blanking a picture that is already on that glass, then revealing it when
         // the query takes the row back, is the in-view pop. The hold does not
@@ -30970,6 +31151,7 @@ export const render = {
         _submitVisibilityOptions.ledgerRow = !!(packedFlags & PRESENTATION_FLAGS.LEDGER) || isPresentationLedgerRow(entity);
         _submitVisibilityOptions.presentationTier = entity && entity.activity && entity.activity.presentationTier;
         _submitVisibilityOptions.onLiveGlass = onLiveGlass;
+        _submitVisibilityOptions.contactHorizon = entityInsideContactHorizon(entity, this.state, mesh);
         // Pending latches hide an ordinary root until compile finishes. On a body
         // the camera is already drawing, that blank and the later reveal are the
         // in-view pop. The hold is not a first-show skip: a root that is not
@@ -36554,6 +36736,12 @@ export function applyFirstPlayablePaintRelease(owner) {
     if (owner && owner.scene && owner.state && owner.state.mode === 'flight'
         && survivalRunHoldsArena(owner.state)) {
       resumeAuthoredUpgradeQueueAfterOpening(owner.scene);
+    } else if (owner && owner.scene && owner.state && owner.state.mode === 'flight') {
+      // Adventure's first-flight hold protects the first presents from leftover dressing
+      // compiles. Ships and solid bodies are contacts, not dressing: the hold must release
+      // them at this same paint or a mid-flight spawn parks as a marker behind ambient work
+      // for the whole handoff window (STREAM-BUILD-1). Dressing itself still waits it out.
+      releaseAuthoredUpgradeFirstFlightContactHold(owner.scene);
     }
   }
   return owner;
