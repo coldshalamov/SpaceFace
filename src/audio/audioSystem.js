@@ -1066,10 +1066,11 @@ export const FIELD_LIFE_CAPTIONS = Object.freeze({
   'massline:snareArmed': Object.freeze({ text: 'Snare armed.', assertive: false }),
   'massline:snareCut': Object.freeze({ text: 'Snare cut.', assertive: false }),
   'massSeed:deployed': Object.freeze({ text: 'Mass seed deployed.', assertive: false }),
-  'massSeed:locking': Object.freeze({ text: 'Seed locking.', assertive: false }),
-  'massSeed:locked': Object.freeze({ text: 'Seed locked.', assertive: false }),
-  'massSeed:warning': Object.freeze({ text: 'Seed unstable.', assertive: true }),
-  'massSeed:collapsing': Object.freeze({ text: 'Seed collapses.', assertive: false }),
+  // R18 plain words: the power is Pin; say what it is doing.
+  'massSeed:locking': Object.freeze({ text: 'Pin setting.', assertive: false }),
+  'massSeed:locked': Object.freeze({ text: 'Pin holding.', assertive: false }),
+  'massSeed:warning': Object.freeze({ text: 'Pin slipping.', assertive: true }),
+  'massSeed:collapsing': Object.freeze({ text: 'Pin broke.', assertive: false }),
 });
 
 export function fieldLifeCaption(event) {

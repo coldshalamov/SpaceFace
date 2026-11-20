@@ -518,7 +518,7 @@ export const massSeed = {
             expireAt: ms.expireAt,
             remainingS: ms.expireAt - now,
           });
-          this.bus.emit('toast', { text: 'Anchor seed destabilizing', kind: 'warn', ttl: 2.5 });
+          this.bus.emit('toast', { text: 'Pin slipping', kind: 'warn', ttl: 2.5 });
           // FB-010: the warning voice is the authored quickening sfx_massseed_warning
           // (audioSystem routing); the generic 'alert' menu blip is retired.
         }

@@ -150,8 +150,8 @@ test('field lifecycle captions name deploy, warning, and collapse once each', ()
     assert.equal(fieldLifeCaption('massSeed:warning').assertive, true);
     assert.deepEqual(captions.map((c) => c.text), [
       'Mass seed deployed.',
-      'Seed unstable.',
-      'Seed collapses.',
+      'Pin slipping.',
+      'Pin broke.',
     ]);
     assert.equal(captions[1].assertive, true);
     assert.equal(missionMomentCaption('mission:accepted'), 'Mission accepted.');
