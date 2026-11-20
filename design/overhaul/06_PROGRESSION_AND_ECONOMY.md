@@ -16,7 +16,21 @@ failed (doc 10 §5.5, doc 17 sentence test).
 ### 2.1 Shape
 
 - **Six combat branches** shared by both doors — Gunner, Bruiser, Rigger, Conjurer, Juggernaut, Ghost
-  (`01` §4) — plus **Industry**, which exists only in Adventure.
+  (`01` §4) — plus **three work branches** that exist only in Adventure (ruling R21: each rung of
+  the ladder is its own game with its own skills). The earlier single "Industry" branch is split:
+  - **Trader** — reading markets. Nodes lengthen the price history the chart shows, reveal a
+    good's current trend regime by name, deliver news of events a jump sooner, show the best known
+    buyer for anything in the hold, soften the dent the player's own trades make, and at depth let
+    the player place standing buy and sell orders. (Prices themselves: §5.4.)
+  - **Prospector** — getting the pick of the rock. Nodes bias the laser's random mix, show vein
+    quality before cutting, speed the rover and widen what it can carry, and at depth survey a
+    whole rock's interior from outside.
+  - **Builder** — the board inside the rock and the yard outside. Nodes unlock module kinds a few
+    at a time, raise what an adjacent material block gives, add drone slots and escorts, and at
+    depth let one base feed another.
+  Piracy, bounty work and salvage are fed by the combat branches; they need no branch of their own.
+- The player-facing names of the combat branches follow R18 (the COPY-SWEEP renamed Conjurer to
+  **Field Tech**); the screen prints the plain names.
 - Each branch: three tiers of three nodes and one **capstone** (ten nodes). Tier 2 opens at 2 points in
   the branch, tier 3 at 4, the capstone at 6.
 - **Evolutions** — named cross-branch nodes — open when two branches each hold 5 points.
@@ -207,6 +221,60 @@ Re-price every hull to the moment it should arrive in this table.
 2. Tune until **every activity at a stage pays within a third of every other**, and the purchase table
    above holds for a player doing what they like.
 3. Then the owner plays the first three hours; the card decides.
+
+### 5.4 Market prices: trends you can read, events that break them (ruling R20)
+
+**Nothing about prices runs while the player flies.** A price is computed when a screen asks:
+
+> price(good, station, t) = base(good) × station bias × **regime curve**(t) × **event** multiplier(t) × the player's own **dent**(t)
+
+- **Station bias** is fixed by what the station makes and needs (producers sell cheap, consumers
+  pay dear). It is why a route exists at all.
+- **A regime** is the shape a price follows for a stretch (roughly 20–90 minutes of play), chosen
+  by a seeded draw per good and station. Six shapes, each recognisable on the chart:
+
+  | Regime | Curve | What the chart looks like | What a trader does |
+  |---|---|---|---|
+  | Steady | flat with a faint ripple | a calm line | nothing; a safe milk run |
+  | Climb | straight rise toward a cap | a ramp | sell here later, or buy now |
+  | Slide | straight fall toward a floor | a ramp down | sell now, or wait to buy |
+  | Swing | a sine, period 12–20 min | waves | buy troughs, sell crests |
+  | Squeeze | accelerating rise to a spike, then a cliff | a hockey stick | **the gold rush**: haul in before the cliff |
+  | Glut | a cliff down, then a slow recovery | a drop and a long tail | buy the bottom, hold |
+
+- **Events** end regimes and start new ones. They are scheduled from the save's seed and clock (so
+  an unvisited market is exact whenever it is looked at), they come from the world's war and
+  traffic, and the player can cause them: a convoy lost on a lane squeezes what it carried at its
+  destination; a new strike gluts ore where it lands; a blockade squeezes everything behind it; a
+  flooded market gluts. Each event is a line of news with a place, a cause and the goods it moves.
+- **The dent.** Selling into a market pushes its price down in proportion to the amount against the
+  station's size, and it recovers on the good's half-life (the half-lives already exist in the
+  commodity data). One route cannot be milked forever; a big haul is worth splitting.
+- **History is free.** The chart is the same function evaluated at past times plus the event list.
+  Nothing is logged per tick, and the only saved state is the event list and the player's recent
+  dents.
+
+**Trading as its own game** (R21). What a trader is good at is *information*:
+- A price is only known for a station the player has visited or has news from, and it shows its
+  age ("seen 14 min ago"). The galaxy chart's Trade layer draws arrows only from what is known.
+- The chart is the hero of the market screen; the regime's shape is there to be recognised. The
+  Trader branch (§2.1) lengthens history, names the regime, speeds news and adds standing orders.
+- News arrives on the station's news line, on the chart as a pin, and by radio in flight from
+  ships that came from there. Acting on it early is the skill; arriving after the cliff is the
+  lesson.
+- Smuggling, convoy raids and escorts plug into the same numbers: stolen cargo sells where the
+  squeeze is, and a raid *is* an event.
+
+### 5.5 The hold is a bag (ruling R22)
+
+One cargo owner. The hold is a grid of slots, sized by the hull and its cargo modules. Like items
+stack to 20, then take a new slot; a few things never stack (a named pod, a live animal, a vault).
+The bag opens with one key in flight without pausing, and it is the left half of every trade and
+storage screen. Dragging a stack out drops it as a crate that drifts, can be picked up, roped or
+stolen, and counts as jettison for the law. Controller and touch: select a stack, press Jettison.
+Unfitted guns and modules live in the same bag; fitting is dragging to a hardpoint in the
+Shipyard. Old saves migrate into slots, and anything that no longer fits goes to station storage
+at the last dock, never lost.
 
 ## 6. Ledgers — fewer things to track
 
