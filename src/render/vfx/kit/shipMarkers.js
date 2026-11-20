@@ -13,6 +13,7 @@
 //
 // Cost: one draw, <= 2 quads per ship (+1 for the player), CPU writes only live ships per frame.
 import * as THREE from 'three';
+import { enemyJobFor } from '../../../data/enemyJobs.js';
 
 export const MARKER_CAPACITY = 900;
 const TYPE_POOL = 0;
@@ -60,10 +61,28 @@ void main(){
     float w=fwidth(r)*1.5;
     ring=max(ring,(1.0-smoothstep(0.0,w,abs(r-0.86)-0.012))*0.8);
     if(vType>1.5){
-      // Threat: four broken arcs, slowly turning.
+      // Threat ring: the enemy's JOB by shape (same language as the minimap glyphs).
+      //  1 rush: 3 short arcs (fodder, faint)   2 burst: full ring, fast fuse blink
+      //  3 reach: 2 bracket arcs                4 wall: heavy double ring
+      //  5 skirmish: 4 arcs                     6 deny: 8 dots
+      //  7 seize: 2 arcs + inner ring           8 source: 8 dashes + outer ring
+      float pat=vParam.x;
       float ang=atan(vUv.y,vUv.x)+vParam.y;
-      float seg=fract(ang/1.5707963);
-      ring*=smoothstep(0.08,0.14,seg)*(1.0-smoothstep(0.62,0.68,seg));
+      float n=4.0, duty=0.55;
+      if(pat<1.5&&pat>0.5){n=3.0;duty=0.32;}
+      else if(pat<2.5&&pat>1.5){n=1.0;duty=1.0;}
+      else if(pat<3.5&&pat>2.5){n=2.0;duty=0.28;}
+      else if(pat<4.5&&pat>3.5){n=1.0;duty=1.0;}
+      else if(pat<6.5&&pat>5.5){n=8.0;duty=0.25;}
+      else if(pat<7.5&&pat>6.5){n=2.0;duty=0.6;}
+      else if(pat>7.5){n=8.0;duty=0.6;}
+      float seg=fract(ang*n/6.2831853);
+      float on=duty>=1.0?1.0:smoothstep(0.0,0.04,seg)*(1.0-smoothstep(duty-0.04,duty,seg));
+      ring*=on;
+      if(pat>3.5&&pat<4.5) ring=max(ring,exp(-pow((r-0.74)*22.0,2.0))*0.9);
+      if(pat>6.5&&pat<7.5) ring=max(ring,exp(-pow((r-0.55)*26.0,2.0))*0.8);
+      if(pat>7.5) ring=max(ring,exp(-pow((r-0.97)*30.0,2.0)));
+      if(pat>1.5&&pat<2.5) ring*=0.55+0.45*step(0.5,fract(uTime*3.0+vParam.y));
     }
     o=vec4(vColor.rgb*ring*vColor.a,0.0);
   }else{
@@ -104,6 +123,28 @@ export function createMarkerMaterial() {
   });
 }
 
+// Job colours: the minimap's CONTACT_JOB_PALETTE (src/ui/map/tacticalMapGrammar.js) lifted to HDR.
+const hexRgb = (h, k) => [((h >> 16) & 255) / 255 * k, ((h >> 8) & 255) / 255 * k, (h & 255) / 255 * k];
+export const JOB_STYLE = Object.freeze({
+  rush: { pat: 1, rgb: hexRgb(0xff4d3d, 1.6), alpha: 0.42, size: 1.15, pool: 0.35 },
+  burst: { pat: 2, rgb: hexRgb(0xff9a2e, 2.0), alpha: 0.95, size: 1.3, pool: 0.5 },
+  reach: { pat: 3, rgb: hexRgb(0xe26bff, 2.0), alpha: 0.95, size: 1.4, pool: 0.5 },
+  wall: { pat: 4, rgb: hexRgb(0xffb4a2, 1.8), alpha: 0.9, size: 1.3, pool: 0.6 },
+  skirmish: { pat: 5, rgb: hexRgb(0xff6fae, 2.0), alpha: 0.9, size: 1.35, pool: 0.5 },
+  deny: { pat: 6, rgb: hexRgb(0x8f86ff, 2.0), alpha: 0.95, size: 1.4, pool: 0.5 },
+  seize: { pat: 7, rgb: hexRgb(0xffe24f, 2.0), alpha: 0.95, size: 1.4, pool: 0.5 },
+  source: { pat: 8, rgb: hexRgb(0xff2f6a, 2.2), alpha: 1.0, size: 1.3, pool: 0.65 },
+});
+const JOB_DEFAULT = Object.freeze({ pat: 5, rgb: [2.1, 0.42, 0.26], alpha: 0.85, size: 1.35, pool: 0.55 });
+
+/** The marker style for an entity's combat job (null for non-combat ships). */
+export function jobStyleFor(e) {
+  const d = e && e.data;
+  const job = (d && typeof d.combatJob === 'string' && d.combatJob)
+    || (enemyJobFor(d && (d.enemyTypeId || d.lootTableId || d.archetypeId)) || {}).job;
+  return (job && JOB_STYLE[job]) || JOB_DEFAULT;
+}
+
 export const TEAM_COLORS = Object.freeze({
   player: [1.9, 1.45, 0.75],
   hostile: [2.1, 0.42, 0.26],
@@ -135,12 +176,12 @@ export class ShipMarkers {
     if (scene && typeof scene.add === 'function') scene.add(this.mesh);
   }
 
-  _push(x, y, z, half, rgb, type, heading, alpha, phase) {
+  _push(x, y, z, half, rgb, type, heading, alpha, phase, pattern = 0) {
     if (this.count >= this.capacity) return;
     const o = this.count * 4;
     this.a[o] = x; this.a[o + 1] = y; this.a[o + 2] = z; this.a[o + 3] = half;
     this.b[o] = rgb[0]; this.b[o + 1] = rgb[1]; this.b[o + 2] = rgb[2]; this.b[o + 3] = type;
-    this.c[o] = heading; this.c[o + 1] = alpha; this.c[o + 2] = 0; this.c[o + 3] = phase;
+    this.c[o] = heading; this.c[o + 1] = alpha; this.c[o + 2] = pattern; this.c[o + 3] = phase;
     this.count++;
   }
 
@@ -148,8 +189,16 @@ export class ShipMarkers {
    * Rebuild from live ships. `toLocal(x, z, out)` maps world to the render frame; when the ship's
    * own mesh is present its drawn position is used, so the pool never lags the hull.
    */
-  update(state, toLocal, time = 0, reduced = false, playerHeading = null) {
+  /**
+   * @param {string} attention the HUD attention state ('fight' | 'teach' | 'calm'). In calm flight
+   *   the player's ring fades out to a faint heading chevron: the ship is already easy to find.
+   */
+  update(state, toLocal, time = 0, reduced = false, playerHeading = null, attention = 'fight') {
     this.count = 0;
+    const target = attention === 'calm' ? 0 : attention === 'teach' ? 0.6 : 1;
+    const dt = Math.max(0, Math.min(0.1, time - (this._lastTime ?? time)));
+    this._lastTime = time;
+    this.playerVis = this.playerVis == null ? target : this.playerVis + (target - this.playerVis) * Math.min(1, dt * 3);
     const list = state && state.entityList;
     const playerId = state && state.playerId;
     const me = state && state.entities && state.entities.get ? state.entities.get(playerId) : null;
@@ -167,13 +216,23 @@ export class ShipMarkers {
         const rad = Math.max(5, Math.min(60, Number.isFinite(e.radius) ? e.radius : 10));
         const isPlayer = e.id === playerId || e.isPlayer;
         const hostile = !isPlayer && e.team != null && e.team !== 0 && e.team !== myTeam;
-        const rgb = isPlayer ? TEAM_COLORS.player : hostile ? TEAM_COLORS.hostile : TEAM_COLORS.neutral;
         const heading = isPlayer && Number.isFinite(playerHeading) ? playerHeading : (Number.isFinite(e.rot) ? e.rot : 0);
-        this._push(x, y - 0.3, z, rad * 1.9, rgb, TYPE_POOL, 0, isPlayer ? 0.7 : 0.55, 0);
-        const ringAlpha = isPlayer ? 0.95 : hostile ? 0.85 : 0.35;
-        this._push(x, y, z, rad * 1.35, rgb, hostile ? TYPE_RING_THREAT : TYPE_RING_FULL, 0, ringAlpha,
-          reduced ? 0 : time * 0.6 + (e.id % 7));
-        if (isPlayer) this._push(x + Math.cos(heading) * rad * 1.75, y, z + Math.sin(heading) * rad * 1.75, rad * 0.55, rgb, TYPE_CHEVRON, heading, 1.1, 0);
+        const spin = reduced ? 0 : time * 0.6 + (e.id % 7);
+        if (isPlayer) {
+          const v = this.playerVis;
+          if (v > 0.02) {
+            this._push(x, y - 0.3, z, rad * 1.9, TEAM_COLORS.player, TYPE_POOL, 0, 0.7 * v, 0);
+            this._push(x, y, z, rad * 1.35, TEAM_COLORS.player, TYPE_RING_FULL, 0, 0.95 * v, spin);
+          }
+          this._push(x + Math.cos(heading) * rad * 1.75, y, z + Math.sin(heading) * rad * 1.75, rad * 0.55, TEAM_COLORS.player, TYPE_CHEVRON, heading, 0.35 + 0.75 * v, 0);
+        } else if (hostile) {
+          const st = jobStyleFor(e);
+          this._push(x, y - 0.3, z, rad * 1.9, st.rgb, TYPE_POOL, 0, st.pool, 0);
+          this._push(x, y, z, rad * st.size, st.rgb, TYPE_RING_THREAT, 0, st.alpha, spin, st.pat);
+        } else {
+          this._push(x, y - 0.3, z, rad * 1.9, TEAM_COLORS.neutral, TYPE_POOL, 0, 0.45, 0);
+          this._push(x, y, z, rad * 1.35, TEAM_COLORS.neutral, TYPE_RING_FULL, 0, 0.35, spin);
+        }
       }
     }
     const n = Math.max(1, this.count) * 4;

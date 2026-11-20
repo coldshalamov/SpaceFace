@@ -11196,7 +11196,17 @@ export const vfx = {
       ? this.helpers.socketWorldPos(me.id, 'SOCKET_Weapon_Front') : null;
     if (sock && me.pos && Math.hypot(sock.x - me.pos.x, sock.z - me.pos.z) > 0.5) heading = Math.atan2(sock.z - me.pos.z, sock.x - me.pos.x);
     if (!this._shipMarkerLocalize) this._shipMarkerLocalize = (x, z, out) => this._toLocalXZ(x, z, out);
-    this._shipMarkers.update(this.state, this._shipMarkerLocalize, time, this._isReduced(), heading);
+    // The HUD's attention state (src/ui/hud.js publishes data-hud-attention): calm flight fades
+    // the player's ring; fights and the teaching window keep it.
+    let attention = 'fight';
+    if (typeof document !== 'undefined') {
+      if ((!this._hudAttentionEl || !this._hudAttentionEl.isConnected) && !((this._hudAttentionLook = (this._hudAttentionLook || 0) + 1) % 30)) {
+        this._hudAttentionEl = document.querySelector('[data-hud-attention]');
+      }
+      const a = this._hudAttentionEl && this._hudAttentionEl.getAttribute('data-hud-attention');
+      if (a) attention = a;
+    }
+    this._shipMarkers.update(this.state, this._shipMarkerLocalize, time, this._isReduced(), heading, attention);
   },
   _updatePowerFx(dt) {
     if (!this._powerFx) {

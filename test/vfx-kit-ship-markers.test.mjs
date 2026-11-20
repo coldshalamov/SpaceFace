@@ -33,3 +33,22 @@ test('dead and docked ships carry no marker; an empty frame hides the draw', () 
   assert.equal(m.mesh.visible, false);
   m.dispose();
 });
+
+test('enemy markers name the job by shape; fodder is faint; the player ring fades out in calm flight', () => {
+  const m = new ShipMarkers(new THREE.Scene());
+  const me = { id: 1, type: 'ship', team: 1, alive: true, pos: { x: 0, z: 0 }, radius: 12, rot: 0, isPlayer: true };
+  const wasp = { id: 2, type: 'ship', team: 2, alive: true, pos: { x: 100, z: 0 }, radius: 6, data: { enemyTypeId: 'wasp_swarmer' } };
+  const sniper = { id: 3, type: 'ship', team: 2, alive: true, pos: { x: 200, z: 0 }, radius: 10, data: { enemyTypeId: 'lancer_sniper' } };
+  const state = { playerId: 1, entities: new Map([[1, me]]), entityList: [me, wasp, sniper] };
+  m.update(state, toLocal, 0, false, null, 'fight');
+  const ringOf = (i) => ({ pattern: m.c[i * 4 + 2], alpha: m.c[i * 4 + 1] });
+  // order: player pool, ring, chevron, wasp pool, wasp ring, sniper pool, sniper ring
+  assert.equal(ringOf(4).pattern, 1, 'a rusher wears the three-arc fodder ring');
+  assert.ok(ringOf(4).alpha < 0.5, 'and it is faint, so thirty wasps are not thirty loud rings');
+  assert.equal(ringOf(6).pattern, 3, 'a sniper wears the two-bracket reach ring');
+  for (let i = 0; i < 40; i++) m.update(state, toLocal, 0.05 * (i + 1), false, null, 'calm');
+  let ringQuads = 0;
+  for (let i = 0; i < m.count; i++) if (m.b[i * 4 + 3] === 1) ringQuads++;
+  assert.equal(ringQuads, 0, 'in calm flight the player ring is gone; only the heading chevron stays');
+  m.dispose();
+});
