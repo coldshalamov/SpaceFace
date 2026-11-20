@@ -106,7 +106,7 @@ test('the lead body plays ahead of the delayed world by about the playout delay,
   let still = 0;
   let lead = [];
   for (let frame = 0; frame < FPS * 6; frame++) {
-    const silent = frame >= FPS * 3 && frame < FPS * 3 + 15; // a 500 ms worker silence
+    const silent = frame >= FPS * 3 && frame < FPS * 3 + 45; // a 1500 ms worker silence
     if (!silent) { sim += 2 * DT; pack(); }
     fence.samplePresentationAlpha(wdt, 0, DT, 1, wdt);
     fence.beginBlendFrame(wdt);

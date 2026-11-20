@@ -1253,7 +1253,11 @@ export function createSnapshotFence(options = {}) {
         // (0.5x..2x), so a reply landing early or late bends its speed instead of holding it.
         const err = target - prevLead;
         const corr = Math.max(-0.5, Math.min(1, err / PLAYOUT_CORRECTION_TAU_S));
-        let next = prevLead + elapsed * presentationRate * (1 + corr);
+        // Past the newest pack the lead eases off exactly like the presented clock, so a long
+        // silence glides the ship to rest instead of running it into the coast cap and holding.
+        const leadCoastS = prevLead - current.simTime;
+        const leadEase = leadCoastS > 0 ? Math.max(COAST_CLOCK_RATE_MIN, Math.exp(-leadCoastS / COAST_CLOCK_TAU_S)) : 1;
+        let next = prevLead + elapsed * presentationRate * (1 + corr) * leadEase;
         if (next < presentedTime) next = presentedTime;
         if (next < prevLead) next = prevLead;
         if (next > current.simTime + PRESENTATION_EXTRAPOLATION_S) next = Math.max(prevLead, current.simTime + PRESENTATION_EXTRAPOLATION_S);
