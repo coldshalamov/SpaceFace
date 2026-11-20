@@ -139,18 +139,29 @@ for (const seed of SEEDS) {
     assert.notEqual(nudgeFeel.id, slamFeel.id, 'feel recipe tier: knock vs slam');
   });
 
-  test(`seed ${seed}: the live collision beat separates kick and beat window on the pre-solve axis`, () => {
+  test(`seed ${seed}: the live collision beat separates the beat window on the pre-solve axis; R10 keeps the camera still`, () => {
     const answers = [NUDGE, SLAM].map((speed) => {
-      const { bus, host, traumas, kicks, frame } = feelHost();
+      const { state, bus, host, traumas, kicks, frame } = feelHost();
       bus.emit('combat:collisionConsequence', consequenceReceipt(speed));
       frame();
-      return { trauma: traumas[0], hsDur: beatWindow(host), kickWu: kicks[0] };
+      return {
+        traumas: traumas.length,
+        kicks: kicks.length,
+        hsDur: beatWindow(host),
+        roomRefusals: state.render.cameraGate.counts().refused.collision || 0,
+      };
     });
     const [nudge, slam] = answers;
-    console.log(`[B5 live kick] seed=${seed} nudge kick ${nudge.kickWu.toFixed(2)} WU -> slam kick ${slam.kickWu.toFixed(2)} WU`);
-    assert.ok(slam.kickWu / nudge.kickWu >= 2,
-      `the directed kick must buy with the pre-solve exchange, got ${nudge.kickWu} vs ${slam.kickWu}`);
-    assert.ok(slam.trauma > nudge.trauma, 'trauma rises through the live bus');
-    assert.ok(slam.hsDur > nudge.hsDur, 'the beat window rises through the live bus');
+    console.log(`[B5 live beat] seed=${seed} nudge window ${nudge.hsDur.toFixed(3)} s -> slam window ${slam.hsDur.toFixed(3)} s`);
+    // R10: a collision is a room event. The camera never kicks or shakes for it, whoever caused
+    // it — each beat still flushes and paces, and is booked as one refused room trauma at the gate.
+    assert.ok(slam.hsDur / nudge.hsDur >= 1.5,
+      `the beat window must buy with the pre-solve exchange, got ${nudge.hsDur} vs ${slam.hsDur}`);
+    assert.equal(nudge.kicks, 0, 'R10: no directed camera kick for a room contact');
+    assert.equal(slam.kicks, 0, 'R10: no directed camera kick for a room contact');
+    assert.equal(nudge.traumas, 0, 'R10: a collision never shakes the camera');
+    assert.equal(slam.traumas, 0, 'R10: a collision never shakes the camera');
+    assert.equal(nudge.roomRefusals, 1, 'the nudge beat flushed and was refused as room trauma');
+    assert.equal(slam.roomRefusals, 1, 'the slam beat flushed and was refused as room trauma');
   });
 }
