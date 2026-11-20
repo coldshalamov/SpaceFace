@@ -23,6 +23,11 @@ each other while they do that.
   the code, never for orders.
 - **Use taste, not proxies.** Do not optimise a stand-in ("action in thirty seconds", entity counts,
   checklist rows). Ask what would make this better for a player, and do that.
+- **Build it the way a game released today would.** Fix slowness with architecture (data layout,
+  shared queries, batching, time-slicing, streaming), never by making the game dumber, uglier or
+  emptier. Before choosing a technique, ask what a current A-list game does for this exact problem
+  and do that, sized for this engine. A cheap trick that would look dated in a new release is not
+  an answer; neither is a heavy system that cannot hold frame rate.
 - **Prefer one good system to two competing ones.** When you find two implementations of the same
   idea, keep the better one, move its callers over and delete the other.
 
