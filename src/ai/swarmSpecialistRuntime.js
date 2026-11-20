@@ -1,6 +1,7 @@
 // Swarm-only phase state for the existing specialist verb owner. Entity, damage, and field
 // mutations remain with their canonical owners.
 import { SWARM_SPECIALIST_TUNING } from '../data/swarmSpecialists.js';
+import { occupantGenerationOf } from '../core/entity.js';
 
 function phase(view, name, started, ends = null) {
   if (view.phase !== name) { view.phase = name; view.phaseStartedAt = started; }
@@ -26,6 +27,7 @@ export function breakSwarmGuard(entity, tick) {
     view.phaseEndsAt = view.linkReadyAt;
   }
   view.targetId = null;
+  delete view.targetGeneration;
   delete view.targetX;
   delete view.targetZ;
   view.linkEnergy = 0;
@@ -33,24 +35,36 @@ export function breakSwarmGuard(entity, tick) {
   view.relinkWindupStarted = false;
 }
 
+export function isSwarmWardenPair(guard, ward) {
+  const pair = guard?.data?.swarmWardPair;
+  return pair != null && ward?.data?.swarmWardPair === pair && guard.id !== ward.id
+    && guard.data.runWave === ward.data.runWave;
+}
+
+export function swarmWardOccupantMatches(view, ward) {
+  return view.targetGeneration == null || view.targetGeneration === occupantGenerationOf(ward);
+}
+
 function validWard(ward, guard, state) {
   return ward && ward.alive !== false && ward.type === 'ship' && ward.pos
     && ward.id !== guard.id && ward.id !== state.playerId
     && ward.team === guard.team && ward.data?.runCohort === 'survival'
     && ward.data.runWave === guard.data.runWave
-    && (ward.data.lootTableId || ward.data.enemyTypeId) !== 'warden_escort';
+    && (guard.data.swarmWardPair != null ? isSwarmWardenPair(guard, ward)
+      : (ward.data.lootTableId || ward.data.enemyTypeId) !== 'warden_escort');
 }
 
 /** One deterministic, same-wave ward choice shared by the production AI sensor and verb. */
 export function swarmWardCandidateId(state, entity) {
   const view = entity.data?.swarmSpecialist;
-  const boundId = view?.phase === 'active' ? view.targetId : view?.wardCandidateId;
+  const active = view?.phase === 'active';
+  const boundId = active ? view.targetId : view?.wardCandidateId;
   const inRange = ward => validWard(ward, entity, state)
     && Math.hypot(ward.pos.x - entity.pos.x, ward.pos.z - entity.pos.z)
       <= SWARM_SPECIALIST_TUNING.warden.linkRange;
   const bound = boundId != null ? state.entities?.get(boundId) : null;
-  if (inRange(bound)) return bound.id;
-  if (view?.phase === 'active' && view.targetId != null) return null;
+  if (inRange(bound) && (!active || swarmWardOccupantMatches(view, bound))) return bound.id;
+  if (active && view.targetId != null) return null;
   const roster = state.entityIndex?.shipLike || state.entityList || state.entities?.values() || [];
   let selected = null, best = Infinity;
   for (const candidate of roster) {
@@ -71,6 +85,7 @@ export function updateSwarmWarden(state, entity, doctrinePhase, started, tick, d
   if (wasActive && (disabled || doctrinePhase !== 'screen_hold'
     || tick - view.phaseStartedAt >= tuning.activeTicks
     || (view.targetId != null && (!validWard(ward, entity, state)
+      || !swarmWardOccupantMatches(view, ward)
       || Math.hypot(ward.pos.x - entity.pos.x, ward.pos.z - entity.pos.z) > tuning.linkRange)))) {
     breakSwarmGuard(entity, tick);
   } else if (disabled && view.phase === 'windup') breakSwarmGuard(entity, tick);
@@ -111,6 +126,7 @@ export function updateSwarmWarden(state, entity, doctrinePhase, started, tick, d
   if (view.targetId == null) {
     const selected = view.wardCandidateId != null ? state.entities?.get(view.wardCandidateId) : null;
     view.targetId = selected?.id ?? null;
+    view.targetGeneration = occupantGenerationOf(selected);
     view.linkEnergy = selected ? tuning.linkMaxEnergy : 0;
     view.linkHp = view.linkEnergy;
     view.linkMaxHp = tuning.linkMaxEnergy;

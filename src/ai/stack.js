@@ -24,6 +24,21 @@ const NORMALIZED_ROSTER_FLAG = '__spacefaceNormalizedAIRoster';
 const ROSTER_SIGNATURE_FLAG = '__spacefaceRosterSignature';
 const DOCTRINE_REFRESH_TICKS = 3;
 
+// CW-AI item 7 — fodder packs at ~60 WU, light/medium fly loose at ~90, heavy keeps the authored
+// 118. ManeuverPlanner resolves its config once at construction, so the tier reaches the
+// separation step through a live numeric cell the planner reads on every plan. A caller-supplied
+// numeric radius still wins (the cell is only installed when the config omitted one).
+const DEFAULT_FRIENDLY_SEPARATION_RADIUS = 118;
+const FODDER_FRIENDLY_SEPARATION_RADIUS = 60;
+const LOOSE_FRIENDLY_SEPARATION_RADIUS = 90;
+
+/** The authored friendly-separation clearance for one thrown-body tier. */
+export function friendlySeparationRadiusForTier(tier) {
+  if (tier === 'fodder') return FODDER_FRIENDLY_SEPARATION_RADIUS;
+  if (tier === 'light' || tier === 'medium') return LOOSE_FRIENDLY_SEPARATION_RADIUS;
+  return DEFAULT_FRIENDLY_SEPARATION_RADIUS;
+}
+
 /**
  * Five-layer SG-06 tactical AI host.
  *
@@ -56,6 +71,10 @@ export class TacticalAIStack {
     this.executor = new BehaviorExecutor({ actionPort: this.ports.actions, trace: traceForLayer(activeTrace, TraceLayer.BEHAVIOR), config: { ...(config.behavior || {}), freezeResults: this.freezeResults } });
     const maneuverConfig = { ...(config.maneuver || {}), freezeResults: this.freezeResults };
     if (!this.freezeResults && maneuverConfig.includeTrajectory === undefined) maneuverConfig.includeTrajectory = false;
+    const configuredSeparation = Number(config.maneuver && config.maneuver.friendlySeparationRadius);
+    this.friendlySeparationCell = Number.isFinite(configuredSeparation)
+      ? null : { value: DEFAULT_FRIENDLY_SEPARATION_RADIUS, valueOf() { return this.value; } };
+    if (this.friendlySeparationCell) maneuverConfig.friendlySeparationRadius = this.friendlySeparationCell;
     this.maneuver = new ManeuverPlanner({ seed: this.seed, trace: traceForLayer(activeTrace, TraceLayer.MANEUVER), config: maneuverConfig });
     this.combatDoctrine = new CombatDoctrineRuntime({ seed: this.seed });
     const runtimeConfig = config.runtime && typeof config.runtime === 'object' ? config.runtime : {};
@@ -81,6 +100,11 @@ export class TacticalAIStack {
     this.entitySquad = new Map();
     this.lastTick = -1;
     this.lastResult = null;
+  }
+
+  _applyFriendlySeparationTier(self) {
+    if (!this.friendlySeparationCell) return;
+    this.friendlySeparationCell.value = friendlySeparationRadiusForTier(self && self.bodyDodgeTier);
   }
 
   update(tick, authoredEncounter = {}) {
@@ -214,6 +238,7 @@ export class TacticalAIStack {
             // Keep tactical waypoints live without re-running action selection. This is motor
             // control, not another utility think; the accepted action and its gates stay intact.
             const action = authoredAction;
+            this._applyFriendlySeparationTier(perception && perception.self);
             const request = mind?.ownManeuver || authoredManeuver ? this.maneuver.plan({
               tick, entityId: member.id, perception, behavior: action, directive: effectiveDirective,
             }) : cached.maneuver;
@@ -239,6 +264,7 @@ export class TacticalAIStack {
         }), mind);
         const behavior = this.shapeBehavior(applyEnemyMindBehavior(
           this.executor.update({ tick, entityId: member.id, selected, directive: effectiveDirective, perception }), mind, freeze), member.id);
+        this._applyFriendlySeparationTier(perception && perception.self);
         const request = this.maneuver.plan({ tick, entityId: member.id, perception, behavior, directive: effectiveDirective });
         this.ports.maneuver.request(request);
         const decision = freeze({

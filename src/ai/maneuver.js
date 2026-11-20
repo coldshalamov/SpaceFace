@@ -722,7 +722,8 @@ export class ManeuverPlanner {
       rawRight = 0;
     }
 
-    const emergencyManeuver = desired.obstacleAvoidance || kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER;
+    const emergencyManeuver = desired.obstacleAvoidance || desired.obstacleBrake
+      || kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER;
     // Row 491 wind-up tell: during the doctrine's telegraph cue the hull settles onto the
     // attack line — reduced turn authority and calmer inputs (straightening), never an
     // emergency lane (choreographed hulls fly authored beats, not the tell).
@@ -743,7 +744,8 @@ export class ManeuverPlanner {
     const boostWanted = ((kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
       speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78)
       || (reflex != null && reflex.boost === true && Math.abs(angleError) < 0.9);
-    const boost = boostWanted && !desired.obstacleAvoidance && !(reflex && reflex.simmer) && !disruption.active
+    const boost = boostWanted && !desired.obstacleAvoidance && !desired.obstacleBrake
+      && !(reflex && reflex.simmer) && !disruption.active
       && selfPose.energyFraction >= this.config.minBoostEnergyFraction && selfPose.heatFraction <= this.config.maxBoostHeatFraction;
     const slotSpeed = choreo && choreo.slotVel
       ? Math.hypot(choreo.slotVel.x || 0, choreo.slotVel.z || 0)
@@ -1326,6 +1328,9 @@ function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, enti
   let x = dir.x, z = dir.z;
   const rightX = -dir.z;
   const rightZ = dir.x;
+  const tracked = desired.control === 'track';
+  let crossingTime = Infinity;
+  let crossingOffset = 0;
   const passes = runtime.collisionPasses || (runtime.collisionPasses = new Map());
   // A broken-off contact seek cannot honor a blocker's halo when the destination itself sits
   // inside it (the freight pod spilled 33 WU off the dead carrier, inside its ~72 WU keep-out —
@@ -1344,7 +1349,8 @@ function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, enti
     const distance = Math.hypot(dx, dz);
     const ahead = dx * dir.x + dz * dir.z;
     const lateral = dx * rightX + dz * rightZ;
-    const clearance = config.shipCollisionClearance + bodyRadius(self) + bodyRadius(contact)
+    const hullClearance = bodyRadius(self) + bodyRadius(contact);
+    const clearance = config.shipCollisionClearance + hullClearance
       + massClearanceFor(contact, intent, self, config);
     if (seekDest && contact.id !== target.id
       && distance2(contact.pos, seekDest) < clearance) continue;
@@ -1356,11 +1362,16 @@ function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, enti
       pass = null;
     }
     if (!pass && ahead > 0 && ahead <= config.shipCollisionLookahead && Math.abs(lateral) < clearance) {
-      const deterministicSide = hashUnit(seed, entityId, contact.id, 'ship_collision_pass') < 0.5 ? -1 : 1;
+      // Symmetric head-on: both hulls must mint the same local side (each keeps its own right —
+      // port-to-port). Hashing (observer, contact) gives each a private coin flip, and a split
+      // decision puts both on the same shoulder. The unordered pair key is shared by both.
+      const lo = Math.min(entityId, contact.id), hi = Math.max(entityId, contact.id);
+      const deterministicSide = hashUnit(seed, lo, hi, 'ship_collision_pass') < 0.5 ? -1 : 1;
       const side = Math.abs(lateral) <= clearance * 0.15 ? deterministicSide : (lateral < 0 ? 1 : -1);
       pass = {
         forwardX: dir.x,
         forwardZ: dir.z,
+        side,
         pointX: contact.pos.x + dir.x * clearance * 3 + rightX * side * clearance * 1.85,
         pointZ: contact.pos.z + dir.z * clearance * 3 + rightZ * side * clearance * 1.85,
         untilTick: tick + 240,
@@ -1368,11 +1379,50 @@ function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, enti
       passes.set(contact.id, pass);
     }
     if (!pass) continue;
+    // A moving blocker leaves its minted pass point behind: once the hull is astern of the
+    // desired line the frozen point is a ghost the helm would circle back to. Release it so
+    // the tracked leg resumes instead of stranding on a stale shoulder.
+    if (tracked && contact.vel && ahead <= 0) {
+      passes.delete(contact.id);
+      continue;
+    }
+    // An established steering pass alone only changes the nose on a tracked leg.
+    // Use the relative velocity to brake and move the tracked setpoint for a real crossing.
+    if (tracked && ahead > 0 && contact.vel) {
+      const vx = contact.vel.x - self.vel.x;
+      const vz = contact.vel.z - self.vel.z;
+      const closing = -(dx * vx + dz * vz);
+      const speed2 = vx * vx + vz * vz;
+      if (closing > 0 && speed2 > 0) {
+        const t = Math.min(1.5, closing / speed2);
+        const nearX = dx + vx * t;
+        const nearZ = dz + vz * t;
+        if (t < crossingTime && nearX * nearX + nearZ * nearZ < hullClearance * hullClearance) {
+          crossingTime = t;
+          // The established pass owns the side — its deterministic shoulder choice and this
+          // crossing must steer the same way on every tick, or the helm pinballs between them.
+          const passSide = Number.isFinite(pass.side) ? pass.side
+            : (Math.sign((pass.pointX - contact.pos.x) * rightX
+              + (pass.pointZ - contact.pos.z) * rightZ) || 1);
+          crossingOffset = passSide * clearance;
+        }
+      }
+    }
     const passDirection = unit2(pass.pointX - self.pos.x, pass.pointZ - self.pos.z, dir.x, dir.z);
     const proximity = saturate(1 - distance / (config.shipCollisionLookahead * 1.5));
     const blend = clamp(0.65 + proximity * config.shipCollisionWeight, 0, 1);
     x = x * (1 - blend) + passDirection.x * blend;
     z = z * (1 - blend) + passDirection.z * blend;
+  }
+  if (crossingOffset !== 0) {
+    const side = Math.sign(crossingOffset);
+    const lateralSpeed = side * config.interceptSpeed;
+    return {
+      ...desired, x: dir.x + rightX * side, z: dir.z + rightZ * side,
+      desiredPos: { x: self.pos.x + rightX * crossingOffset, z: self.pos.z + rightZ * crossingOffset },
+      desiredVel: { x: rightX * lateralSpeed, z: rightZ * lateralSpeed },
+      obstacleBrake: Math.hypot(self.vel.x, self.vel.z) > 20,
+    };
   }
   return stampDesired(desired, { x, z, arrivalDistance: desired.arrivalDistance });
 }

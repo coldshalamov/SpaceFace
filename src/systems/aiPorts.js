@@ -10,6 +10,7 @@ import {
   DirectorPhase,
   NORMALIZED_SENSOR_FRAME_FLAG,
   NORMALIZED_THRUSTER_REQUEST_FLAG,
+  hashUnit,
   normalizeSensorFrame,
   stableId,
   wrapAngle,
@@ -1109,11 +1110,14 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     ? cacheOwner._subsystemFractionsFor(entity, runtime)
     : freeze(subsystemFractions(runtime));
   const activity = effectiveActivityForAI(ai);
-  const bands = operationalBandsFor(state, entity, runtime, attachmentIndex);
+  const tethered = attachmentsFor(attachmentIndex, entity.id).length > 0;
+  const disabled = isDisabled(runtime, entity);
+  const bands = writeOperationalBands({}, state, entity, tethered, disabled);
   const ramAuthorized = explicitRamAuthorization(entity, ai, activity, bands)
     || acePassAuthorization(state, entity, ai, activity);
   const specialistKind = isSwarmSpecialistRun(state) && entity.data?.runCohort === 'survival'
     ? swarmSpecialistKind(entity.data?.lootTableId || entity.data?.enemyTypeId) : null;
+  const bodyDodgeTier = bodyDodgeTierFor(entity, bands);
   const self = {
     id: entity.id,
     team: entity.team == null ? null : entity.team,
@@ -1125,28 +1129,31 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     hullFraction: fraction(entity.hull, entity.hullMax, 1),
     moraleImmune: ai.moraleImmune === true,
     arenaPursuit: entity.data?.runCohort === 'survival' && ai.forcePlayerTarget === true,
-    // design/overhaul/03_COMBAT.md §9: fodder exists to be thrown. A Swarm hull whose character-sheet tier
-    // (src/data/swarmCharacter.js) is 'fodder' never dodges a thrown body; every other pilot keeps its dodge.
-    bodyDodge: !(entity.data?.runCohort === 'survival'
-      && swarmCharacterFor(entity.data?.enemyTypeId || entity.data?.lootTableId)?.tier === 'fodder'),
+    // design/overhaul/03_COMBAT.md §9: the thrown-body table is a per-hull tier, not one boolean.
+    // The sheet's dodgeTier wins (it reconciles the five rows where the materialisation band and
+    // the design table disagree); hulls with no sheet row fall back to their operational mass band.
+    bodyDodgeTier,
+    // Legacy compatibility for the planner's ship-collision pass-around: fodder takes the throw
+    // it exists for, and heavy/capital hulls are terrain.
+    bodyDodge: bodyDodgeTier !== 'fodder' && bodyDodgeTier !== 'heavy' && bodyDodgeTier !== 'capital',
     swarmSpecialistKind: specialistKind,
     swarmWardTargetId: specialistKind === 'warden' ? swarmWardCandidateId(state, entity) : null,
     energyFraction: fraction(entity.cap, entity.capMax, 1),
     heatFraction: clamp(finite(runtime && runtime.heat, 0) / heatMax, 0, 1),
-    disabled: isDisabled(runtime, entity),
+    disabled,
     // INF-021: the helm reads decontrol off the same frame as everything else, so a yanked
     // ship relents instead of thrusting through its own tumble.
     tumbling: isTumbling(state, entity),
     // INF-027: post-tumble stabilization reads off the same frame, so tactics can tell a
     // recovering helm (disrupted thrust, silent guns) from a fully re-engaged one.
     recovering: isRecovering(state, entity),
-    tethered: attachmentsFor(attachmentIndex, entity.id).length > 0,
+    tethered,
     capabilities,
     subsystemFractions: subsystemFractionView,
     activity,
     roe: normalizeRoe(ai.roe, ai.passive ? 'hold_fire' : 'weapons_free'),
     combatDoctrineId: normalizeCombatDoctrineId(ai.combatDoctrineId),
-    factionBehavior: normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine),
+    factionBehavior: fleetFactionBehavior(state, entity, ai),
     // SF-050: the committed-corridor telegraph must forecast with the speed the battery actually
     // shoots — a doctrine committed at a nominal bolt speed would release a volley visibly off
     // the line the pilot was shown on railgun-fast mounts.
@@ -1641,7 +1648,7 @@ function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, 
   const tags = cacheOwner && typeof cacheOwner._tagsFor === 'function'
     ? cacheOwner._tagsFor(other, runtime)
     : tagsFor(other, runtime, freeze);
-  return {
+  const contact = {
     id: other.id,
     kind,
     team: other.team == null ? null : other.team,
@@ -1663,9 +1670,10 @@ function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, 
     objectiveValue: objectiveValueFor(other),
     fortifyTarget: other.data?.swarmFortify?.schemaVersion === 1,
     massClass: Math.max(1, Math.round(Math.log2(positive(other.mass, 1) + 1))),
-    ...operationalBandsFor(state, other, runtime, attachmentIndex, { tethered, disabled }),
-    tags,
   };
+  writeOperationalBands(contact, state, other, tethered, disabled);
+  contact.tags = tags;
+  return contact;
 }
 
 function attachmentContacts(state, self, range, confidenceScale, activeAttachments = null, freeze = Object.freeze, outScratch = null) {
@@ -2044,23 +2052,66 @@ function profileSignature(profile) {
     : '';
 }
 
-function operationalBandsFor(state, entity, runtime, attachmentIndex, facts = null) {
+function writeOperationalBands(out, state, entity, tethered, disabled) {
   const mass = operationalMassFor(state, entity);
   const maxSpeed = positive(entity && entity.maxSpeed, positive(entity && entity.flightModel && entity.flightModel.maxSpeed, 0));
   const turnRate = positive(entity && entity.turnRate, positive(entity && entity.flightModel && entity.flightModel.maxYawRate, 0));
   const cargoMass = cargoMassFor(state, entity);
-  const tethered = facts && typeof facts.tethered === 'boolean'
-    ? facts.tethered
-    : attachmentsFor(attachmentIndex, entity && entity.id).length > 0;
-  const disabled = facts && typeof facts.disabled === 'boolean'
-    ? facts.disabled
-    : isDisabled(runtime, entity);
-  return {
-    operationalMassBand: mass < 40 ? 'light' : mass < 140 ? 'medium' : mass < 700 ? 'heavy' : 'capital',
-    mobilityBand: maxSpeed >= 135 || turnRate >= 2 ? 'high' : (maxSpeed > 0 && maxSpeed < 80) || (turnRate > 0 && turnRate < 0.8) ? 'low' : 'medium',
-    cargoBand: cargoMass < 1 ? 'empty' : cargoMass < 10 ? 'light' : cargoMass < 40 ? 'valuable' : 'rich',
-    tetherabilityBand: tethered ? 'poor' : disabled ? 'excellent' : mass >= 700 ? 'fair' : mass >= 140 ? 'good' : 'excellent',
-  };
+  out.operationalMassBand = mass < 40 ? 'light' : mass < 140 ? 'medium' : mass < 700 ? 'heavy' : 'capital';
+  out.mobilityBand = maxSpeed >= 135 || turnRate >= 2 ? 'high' : (maxSpeed > 0 && maxSpeed < 80) || (turnRate > 0 && turnRate < 0.8) ? 'low' : 'medium';
+  out.cargoBand = cargoMass < 1 ? 'empty' : cargoMass < 10 ? 'light' : cargoMass < 40 ? 'valuable' : 'rich';
+  out.tetherabilityBand = tethered ? 'poor' : disabled ? 'excellent' : mass >= 700 ? 'fair' : mass >= 140 ? 'good' : 'excellent';
+  return out;
+}
+
+// design/overhaul/03_COMBAT.md §9 — the thrown-body tier table. The character sheet names the
+// design's combat tier separately from its materialisation band (see src/data/swarmCharacter.js);
+// hulls with no roster row keep the operational mass band. Adventure and Swarm share this rule.
+const BODY_DODGE_TIERS = new Set(['fodder', 'light', 'medium', 'heavy', 'capital']);
+
+function bodyDodgeTierFor(entity, bands) {
+  const enemyId = entity && entity.data && (entity.data.enemyTypeId || entity.data.lootTableId);
+  const sheetTier = swarmCharacterFor(enemyId)?.dodgeTier;
+  if (BODY_DODGE_TIERS.has(sheetTier)) return sheetTier;
+  const band = bands && bands.operationalMassBand;
+  return BODY_DODGE_TIERS.has(band) ? band : 'medium';
+}
+
+// design/overhaul/03_COMBAT.md §9 / receipt item 7 — pack_pursuit's authored ring. The doctrine
+// computes the same ring in packOrbitRangeFor, but the faction standoff profile overwrites it at
+// snapshot time. Resolving the faction band to the ring here means the hull actually holds the
+// authored 78-150 WU press instead of the faction's sampled standoff. Deterministic: seed + id.
+const PACK_ORBIT_RANGE_WU = 130;
+const PACK_ORBIT_RING_OFFSETS = Object.freeze([-0.4, -0.1, 0.15]);
+const PACK_ORBIT_RING_JITTER = 0.08;
+const PACK_RING_PROFILES = new WeakMap();
+
+function fleetFactionBehavior(state, entity, ai) {
+  const profile = normalizeFactionBehaviorProfile(ai && ai.factionPresenceDoctrine);
+  if (!profile) return null;
+  if (normalizeCombatDoctrineId(ai && ai.combatDoctrineId) !== CombatDoctrineId.PACK_PURSUIT) return profile;
+  const preferredRange = packOrbitRingFor(state, entity, ai);
+  if (preferredRange === profile.preferredRange) return profile;
+  // One resolved profile per entity while its faction profile and ring band hold: the sensor
+  // frame is rebuilt every tick, and a fresh frozen object per hull per tick is pure garbage.
+  const cached = entity ? PACK_RING_PROFILES.get(entity) : null;
+  if (cached && cached.profile === profile && cached.range === preferredRange) return cached.value;
+  const value = normalizeFactionBehaviorProfile({ ...profile, preferredRange });
+  if (entity) PACK_RING_PROFILES.set(entity, { profile, range: preferredRange, value });
+  return value;
+}
+
+function packOrbitRingFor(state, entity, ai) {
+  const seed = Number(state && state.meta && state.meta.seed) || 1;
+  const entityId = entity ? entity.id : 'anonymous';
+  if (ai && ai.swarmLastStand === true) {
+    return PACK_ORBIT_RANGE_WU * (1 + PACK_ORBIT_RING_OFFSETS[0]);
+  }
+  const ring = Math.min(PACK_ORBIT_RING_OFFSETS.length - 1,
+    Math.floor(hashUnit(seed, entityId, 'pack_orbit_ring') * PACK_ORBIT_RING_OFFSETS.length));
+  const jitter = hashUnit(seed, entityId, 'pack_orbit_jitter') - 0.5;
+  return PACK_ORBIT_RANGE_WU
+    * (1 + PACK_ORBIT_RING_OFFSETS[ring] + jitter * PACK_ORBIT_RING_JITTER);
 }
 
 function operationalMassFor(state, entity) {

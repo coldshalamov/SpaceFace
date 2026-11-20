@@ -9,11 +9,29 @@ export const SPECIALIST_DOCTRINES = new Set([
 /** Reserve bespoke specialist/boss control. Their authored verbs are not generic flank jobs. */
 export function enemyMindDirectiveInput(directive, perception) {
   const doctrine = directive?.combatDoctrineId || perception?.self?.combatDoctrineId;
-  if ((SPECIALIST_DOCTRINES.has(doctrine) || perception?.self?.moraleImmune === true
-    || perception?.self?.arenaPursuit === true) && directive?.objective?.kind !== 'retreat') return {
+  // CW-TELLS (INV-21 item 5): a named Swarm elite (character-sheet row above fodder) may run
+  // the mind instead of being held — the horde's fodder stays a doctrine-only clock and hulls
+  // without a sheet row (bosses) keep the authored hold. The arena promise is unchanged: the
+  // elite never egresses (the survival cohort is egress-protected) and its mind goals are
+  // bounded, so admitting it surfaces reads without opening the arena door.
+  const elite = swarmEliteMindHull(perception);
+  if ((SPECIALIST_DOCTRINES.has(doctrine) || (perception?.self?.moraleImmune === true && !elite)
+    || (perception?.self?.arenaPursuit === true && !elite)) && directive?.objective?.kind !== 'retreat') return {
     ...directive, objective: { ...directive.objective, kind: 'hold' },
   };
   return directive;
+}
+
+/**
+ * A Swarm elite the mind may drive. The sensor self already mirrors the sheet's facts
+ * (src/systems/aiPorts.js sensorSelf): `arenaPursuit` says the hull is an arena-bound
+ * survival pursuer, `swarmTellFloor` says it carries a character-sheet row, and `bodyDodge`
+ * is false exactly for the sheet's fodder tier. Together they name the sheet's named
+ * non-fodder elites — the hulls whose reads (flank/bait/punish/cover) the player should see.
+ */
+export function swarmEliteMindHull(perception) {
+  const self = perception?.self;
+  return self?.arenaPursuit === true && self?.swarmTellFloor === true && self?.bodyDodge === true;
 }
 
 /** Never changes target assignment or broadens an upper-layer order. */

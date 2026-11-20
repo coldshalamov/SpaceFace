@@ -37,13 +37,14 @@ const FIRE_PHASES = new Set(['strike', 'commit', 'fire_window']);
     self: { x: 430, z: -12, vx: 70, operationalMassBand: 'light' }, target: { x: 600, z: 0 },
   });
   assert.equal(doctrine.fireWindow, false, 'the entire telegraph stays weapons-cold');
-  doctrine = step(runtime, 40, 2, CombatDoctrineId.INTERCEPTOR_FLYBY, {
+  // CW-TELLS: the strike begins one full tell floor after the flare lit (tick 10 + 36).
+  doctrine = step(runtime, 10 + DOCTRINE_TELEGRAPH_TICKS, 2, CombatDoctrineId.INTERCEPTOR_FLYBY, {
     self: { x: 438, z: -10, vx: 70, operationalMassBand: 'light' }, target: { x: 600, z: 0 },
   });
   assert.equal(doctrine.phase, 'strike');
   assert.equal(doctrine.fireWindow, true);
 
-  doctrine = step(runtime, 70, 2, CombatDoctrineId.INTERCEPTOR_FLYBY, {
+  doctrine = step(runtime, 10 + DOCTRINE_TELEGRAPH_TICKS + 24, 2, CombatDoctrineId.INTERCEPTOR_FLYBY, {
     self: { x: 645, z: 8, vx: 74, operationalMassBand: 'light' }, target: { x: 600, z: 0 },
   });
   assert.equal(doctrine.phase, 'extend');
@@ -94,7 +95,7 @@ const FIRE_PHASES = new Set(['strike', 'commit', 'fire_window']);
     self: { x: 160, vx: 52, operationalMassBand: 'heavy', mobilityBand: 'low' }, target: { x: 560 },
   });
   assert.equal(doctrine.phase, 'engine_flare');
-  doctrine = step(runtime, 42, 22, CombatDoctrineId.INTERCEPTOR_FLYBY, {
+  doctrine = step(runtime, 12 + DOCTRINE_TELEGRAPH_TICKS, 22, CombatDoctrineId.INTERCEPTOR_FLYBY, {
     self: { x: 250, vx: 58, operationalMassBand: 'heavy', mobilityBand: 'low' }, target: { x: 520 },
   });
   assert.equal(doctrine.phase, 'commit');
@@ -128,12 +129,12 @@ const FIRE_PHASES = new Set(['strike', 'commit', 'fire_window']);
   });
   assert.equal(doctrine.phase, 'charge_cue');
   assert.equal(doctrine.side, side, 'lateral side does not randomly flip between decisions');
-  doctrine = step(runtime, 75, 30, CombatDoctrineId.RANGED_DISENGAGER, {
+  doctrine = step(runtime, 45 + DOCTRINE_TELEGRAPH_TICKS, 30, CombatDoctrineId.RANGED_DISENGAGER, {
     self: { x: 20, z: 55, operationalMassBand: 'medium' }, target: { x: 640, z: 0 },
   });
   assert.equal(doctrine.phase, 'fire_window');
   assert.equal(doctrine.fireWindow, true);
-  doctrine = step(runtime, 76, 30, CombatDoctrineId.RANGED_DISENGAGER, {
+  doctrine = step(runtime, 46 + DOCTRINE_TELEGRAPH_TICKS, 30, CombatDoctrineId.RANGED_DISENGAGER, {
     self: { x: 440, z: 0, vx: 0, operationalMassBand: 'medium' }, target: { x: 620, z: 0, vx: -80 },
   });
   assert.equal(doctrine.phase, 'retreat');
@@ -165,9 +166,9 @@ const FIRE_PHASES = new Set(['strike', 'commit', 'fire_window']);
   assert.equal(doctrine.maneuverKind, ManeuverKind.INTERCEPT, 'raider flanks on an approach vector, not a perpetual orbit');
   doctrine = step(runtime, 10, 40, CombatDoctrineId.TETHER_CONTROL_RAIDER, { target: { x: 120 } });
   assert.equal(doctrine.phase, 'spool_cue');
-  doctrine = step(runtime, 40, 40, CombatDoctrineId.TETHER_CONTROL_RAIDER, { target: { x: 105 } });
+  doctrine = step(runtime, 10 + DOCTRINE_TELEGRAPH_TICKS, 40, CombatDoctrineId.TETHER_CONTROL_RAIDER, { target: { x: 105 } });
   assert.equal(doctrine.phase, 'attach_window');
-  doctrine = step(runtime, 56, 40, CombatDoctrineId.TETHER_CONTROL_RAIDER, {
+  doctrine = step(runtime, 10 + DOCTRINE_TELEGRAPH_TICKS + 15, 40, CombatDoctrineId.TETHER_CONTROL_RAIDER, {
     self: { x: 15, vx: 40 }, target: { x: 110 },
   });
   assert.equal(doctrine.phase, 'escape');

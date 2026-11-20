@@ -269,6 +269,7 @@ function neutralSelf(entityId) {
     moraleImmune: false,
     arenaPursuit: false,
     bodyDodge: true,
+    bodyDodgeTier: 'medium',
     swarmSpecialistKind: null,
     swarmWardTargetId: null,
     energyFraction: 1,
@@ -296,6 +297,9 @@ function neutralSelf(entityId) {
 
 function normalizeSelf(value, entityId) {
   if (!value || typeof value !== 'object') return neutralSelf(entityId);
+  const operationalMassBand = normalizeBand(value.operationalMassBand, ['light', 'medium', 'heavy', 'capital'], 'medium');
+  const dodgeTier = ['fodder', 'light', 'medium', 'heavy', 'capital'].includes(value.bodyDodgeTier)
+    ? value.bodyDodgeTier : operationalMassBand;
   const self = {
     id: value.id == null ? entityId : value.id,
     team: value.team == null ? null : value.team,
@@ -307,6 +311,7 @@ function normalizeSelf(value, entityId) {
     moraleImmune: value.moraleImmune === true,
     arenaPursuit: value.arenaPursuit === true,
     bodyDodge: value.bodyDodge !== false,
+    bodyDodgeTier: dodgeTier,
     swarmSpecialistKind: ['warden', 'jackal', 'anchor'].includes(value.swarmSpecialistKind)
       ? value.swarmSpecialistKind : null,
     swarmWardTargetId: value.swarmSpecialistKind === 'warden'
@@ -334,7 +339,7 @@ function normalizeSelf(value, entityId) {
       (Array.isArray(value.turretPhaseEdges) ? value.turretPhaseEdges : [])
         .filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b)),
     turretsLost: Math.max(0, Math.floor(finite(value.turretsLost, 0))),
-    operationalMassBand: normalizeBand(value.operationalMassBand, ['light', 'medium', 'heavy', 'capital'], 'medium'),
+    operationalMassBand,
     mobilityBand: normalizeBand(value.mobilityBand, ['low', 'medium', 'high'], 'medium'),
     cargoBand: normalizeBand(value.cargoBand, ['empty', 'light', 'valuable', 'rich'], 'empty'),
     tetherabilityBand: normalizeBand(value.tetherabilityBand, ['poor', 'fair', 'good', 'excellent'], 'good'),

@@ -331,6 +331,27 @@ function publishTacticalAiQuiet(state, latched) {
   rt.quietLatched = !!latched;
 }
 
+// CW-AI item 9 — the doctrine already computes one `pressure_break` outcome when a hurt or
+// heat-soaked hull decides to disengage. Announce that decision through the existing ai:flee
+// surface (VFX vent, bark, presentation withdraw); one event per break, never one per tick.
+function announcePressureBreak(ctxRef, entity, doctrine, announced, tick) {
+  if (!entity || !doctrine || doctrine.outcome !== 'pressure_break') return false;
+  const key = `${doctrine.doctrineId}:${doctrine.cycle}:${doctrine.phaseStartedTick}`;
+  if (announced.get(entity) === key) return false;
+  announced.set(entity, key);
+  const bus = ctxRef && ctxRef.bus;
+  if (!bus || typeof bus.emit !== 'function') return false;
+  bus.emit('ai:flee', {
+    entityId: entity.id,
+    reason: 'pressure_break',
+    doctrineId: doctrine.doctrineId,
+    phase: doctrine.phase,
+    targetId: doctrine.targetId == null ? null : doctrine.targetId,
+    tick,
+  });
+  return true;
+}
+
 export function createTacticalAISystem({
   seed = null,
   config = {},
@@ -371,6 +392,9 @@ export function createTacticalAISystem({
   // Presentation-only: a sent lane cue needs one cancellation if its doctrine disappears
   // without a phaseChanged receipt (notably when the target leaves sensor coverage).
   let committedLaneCues = new WeakMap();
+  // CW-AI item 9 — a pressure break is one decision, announced once. Keyed by entity (WeakMap)
+  // with the doctrine cycle/phase so a cached decision cannot re-emit on a skipped think tick.
+  const pressureBreakAnnounced = new WeakMap();
   // Committed-corridor telegraphs suppressed by a live fire hold. entity -> the frozen
   // doctrine.telegraph object whose emit is still owed; identity expires with the phase.
   let heldLaneTelegraphs = new WeakMap();
@@ -761,6 +785,7 @@ export function createTacticalAISystem({
         if (entity) lastDecisionEntityRefs.set(decision.entityId, entity);
         if (decision && decision.maneuver) lastManeuverRequests.push(decision.maneuver);
         const doctrine = decision && decision.combatDoctrine;
+        announcePressureBreak(ctxRef, entity, doctrine, pressureBreakAnnounced, tick);
         const priorLane = entity && committedLaneCues.get(entity);
         const aim = doctrine?.aimCommit;
         const targetGeneration = state.entities?.get?.(doctrine?.targetId)?.occupantGeneration;
