@@ -3034,7 +3034,7 @@ export const asteroidSites = {
         siteBeacon: site.id,
         sectorId: site.sectorId,
         homeSectorId: site.sectorId,
-        name: 'Massline Site Relay',
+        name: 'Line Site Relay',
         visualRadius: 6,
         placeRadius: 6,
         factionId: 'faction_player',

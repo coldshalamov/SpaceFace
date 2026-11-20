@@ -94,8 +94,8 @@ test('the same offer still mounts in Adventure — sender, headline, verbs intac
   assert.equal(h.prompt.show(h.offer), true);
   const spec = h.calls.filter((c) => c.offered).at(-1).offered;
   assert.equal(spec.id, 'aftermath:field');
-  assert.equal(spec.sender, 'AFTERMATH');
-  assert.equal(spec.headline, 'FIELD RESPONSE');
+  assert.equal(spec.sender, 'WRECK FOUND');
+  assert.equal(spec.headline, 'CHOOSE A RESPONSE');
   assert.deepEqual(spec.choices.map((c) => c.id), ['salvage', 'escape']);
   h.prompt.destroy();
 });

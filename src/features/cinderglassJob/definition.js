@@ -185,7 +185,7 @@ export const CINDERGLASS_JOB_RELEASE_QUIET = 'service_release';
 export const CINDERGLASS_JOB_TERMS_COPY = Object.freeze({
   template: 'Convoy: one Mule, two escorts, four legs through the layby at the far pull-off. ' +
     'If the run completes with CG-7 aboard, the recovery closes for this campaign. ' +
-    'Bring a scanner — you need a real read on the pod before anyone talks. A starter Massline tows the 18t pod home. Force is unlawful; this is no warrant. ' +
+    'Bring a scanner — you need a real read on the pod before anyone talks. A starter line tows the 18t pod home. Force is unlawful; this is no warrant. ' +
     'Intact controller: {intactCr}CR. Damaged but whole: {damagedCr}CR. ' +
     'Dask will hear {depositCr}CR against release; that comes back to you when I accept the pod.',
   values: Object.freeze({ intactCr: CINDERGLASS_JOB_TALA_BASE_CR,

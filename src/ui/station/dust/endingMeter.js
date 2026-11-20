@@ -57,22 +57,22 @@ export function endingMeterModel(state) {
       value: Math.max(0, facts.netWorthCr), max: ENDGAME_NET_WORTH_CR, met: netWorthMet,
     },
     {
-      gate: 'standing', label: 'Branch standing',
+      gate: 'standing', label: 'Faction trust',
       figure: sealStanding ? 'sealed by request' : `${integerText(facts.branchRep)} / ${integerText(ENDGAME_REP_MIN)}`,
       value: sealStanding ? null : Math.max(0, facts.branchRep), max: ENDGAME_REP_MIN,
       met: standingMet, sealed: sealStanding,
     },
     {
-      gate: 'branch', label: 'Branch filed',
-      figure: facts.branch ? (BRANCH_LABELS[facts.branch] || factionShort(facts.branchFactionId)) : 'nothing yet',
+      gate: 'branch', label: 'Ending path',
+      figure: facts.branch ? (BRANCH_LABELS[facts.branch] || factionShort(facts.branchFactionId)) : 'not chosen yet',
       value: null, max: null, met: facts.branch != null,
     },
   ];
   return {
     schema: 'spaceface.dust.endingMeter.v1',
-    title: 'Eligibility Assessment',
-    note: 'Assessment is free. Dispositions are not.',
-    footnote: 'Gates named by the disposition ledger. Counts, not promises.',
+    title: 'Story progress',
+    note: 'The endings check three things.',
+    footnote: 'The count is your record, not a promise.',
     rows,
     metCount: rows.filter((r) => r.met).length,
     boardEndings: ENDING_DEFS.filter((d) => d.boardEligible).map((d) => d.title),
@@ -117,7 +117,7 @@ export function createEndingMeter(state) {
   const model = endingMeterModel(state);
   ensureStyle();
   const section = el('section', 'dust-em');
-  section.setAttribute('aria-label', 'Ending eligibility assessment');
+  section.setAttribute('aria-label', 'Story progress');
   section.append(el('h3', 'dust-em__head', model.title));
   section.append(el('p', 'dust-em__note', model.note));
   const list = el('ul', 'dust-em__rows');

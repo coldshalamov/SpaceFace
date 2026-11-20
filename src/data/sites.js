@@ -28,10 +28,10 @@ export const CONTACT_YIELD = {
 export const SITE_MACHINES = [
   {
     id: 'sm_massline_core',
-    name: 'Massline Core',
+    name: 'Line Core',
     short: 'Core',
     verb: 'anchor',
-    desc: 'Feeds 12 MW down the massline umbilical and exposes the exterior attachment point. Your first installation already makes this asteroid a permanent claim.',
+    desc: 'Feeds 12 MW down the line umbilical and exposes the exterior attachment point. Your first installation already makes this asteroid a permanent claim.',
     power: 12,
     usesGeology: false,
     cost: { cmdty_regocrete: 2, cmdty_control_unit: 1, cmdty_refined_metals: 1 },

@@ -3662,7 +3662,7 @@ export const rangeScreen = {
           exitSpeed: 0,
         },
         exitGate: { z: exitGateZ, centerX: 0, half: Math.max(60, lineLength * 0.26), crossed: false },
-        because: 'You entered at 0 u/s and left at 0 u/s. The rock gave you the corner.',
+        because: 'You entered at 0 m/s and left at 0 m/s. The rock gave you the corner.',
       };
     }
 

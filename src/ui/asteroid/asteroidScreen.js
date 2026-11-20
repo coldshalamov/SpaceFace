@@ -1057,7 +1057,7 @@ export const asteroidScreen = {
     stakeBtn.type = 'button';
     stakeBtn.className = 'aw-stake-key';
     stakeBtn.textContent = 'Stake claim';
-    stakeBtn.setAttribute('aria-label', 'Stake claim: open build mode to place the Massline Core');
+    stakeBtn.setAttribute('aria-label', 'Stake claim: open build mode to place the Line Core');
     emptyLayer.append(emptyRock, stakeBtn);
     stage.appendChild(emptyLayer);
 

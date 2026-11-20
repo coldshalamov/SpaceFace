@@ -214,7 +214,7 @@ export default defineEncounter(trigger, {
   primaryLine: 'HOLED FREIGHTER: Took a mine and our deck spilled forward into the rest of the field. Medical cargo, four pods. We cannot go in. Pull them out, sweep them out, clear the mines — anything.',
   verbs: ['latch', 'tow', 'field', 'throw', 'shoot'],
   choices: [
-    { id: 'pick', verb: 'latch', text: 'Thread the mines and Massline the pods out one at a time.' },
+    { id: 'pick', verb: 'latch', text: 'Thread the mines and tow the pods out one at a time.' },
     { id: 'sweep', verb: 'field', text: 'Drop a gravity Well at the edge of the field and pull the loose mass out — mines included.' },
     { id: 'return', verb: 'throw', text: 'Latch a mine and throw it back at the Reach layer.' },
     { id: 'pass', verb: 'fly_on', text: 'Fly on and leave the cargo in the garden.' },

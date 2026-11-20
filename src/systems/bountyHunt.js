@@ -252,7 +252,7 @@ export const bountyHunt = {
       if (typeof state.rng !== 'function' || state.rng() < 0.5) return false;
       tow.phase = 'approach';
       emit(this.bus, 'toast', { kind: 'warn', ttl: 4,
-        text: `${data.name || 'A rival hunter'} is closing on your prize. Keep clear of their Massline.` });
+        text: `${data.name || 'A rival hunter'} is closing on your prize. Keep clear of their line.` });
     }
     // Flight V3 consumes these navigation axes. Passive excludes this temporarily
     // owned hull from the tactical motor planner, so two pilots never fight its helm.

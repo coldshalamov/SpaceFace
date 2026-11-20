@@ -1069,12 +1069,12 @@ export function createUiInput(ctx, screenManager, shipScreenRequest = {}) {
       const latchHint = tetherKey
         ? `Launch a tether (${tetherKey}) to lock onto the asteroid first.`
         : 'Launch a tether to lock onto the asteroid first.';
-      bus.emit('toast', { text: `No Massline link. ${latchHint}`, kind: 'warn', ttl: 3.5 });
+      bus.emit('toast', { text: `No line link. ${latchHint}`, kind: 'warn', ttl: 3.5 });
       return;
     }
     if (activeTether.defId !== 'tether_standard') {
       bus.emit('toast', {
-        text: 'This legacy Massline has no drill winch. Relatch with the standard Massline to drill.',
+        text: 'This legacy line has no drill winch. Relatch with the standard line to drill.',
         kind: 'warn',
         ttl: 4,
       });

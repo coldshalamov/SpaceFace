@@ -766,7 +766,7 @@ export function voidCrateRows(state) {
   const sale = discontinuedSaleRow(state);
   const rows = [
     Object.freeze({ label: 'SCANNER', value: 'MASS 0.0', sealed: false }),
-    Object.freeze({ label: 'MASSLINE', value: 'PULLS HEAVY', sealed: false }),
+    Object.freeze({ label: 'LINE', value: 'PULLS HEAVY', sealed: false }),
     Object.freeze({
       label: 'INTERIOR',
       value: 'VOID STASIS CRATE — MASS-CANCELED, OLDER THAN THE CHARTER',

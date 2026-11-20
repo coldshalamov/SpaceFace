@@ -161,7 +161,7 @@ const UI_CUES = Object.freeze({
   'subsystem.restored': uiCue('presentation:subsystem:restored', 'info', 'SUBSYSTEM RESTORED', 1.5, true),
   'scenario.signal.pulse': uiCue('presentation:scenario:signal', 'info', 'UNREGISTERED SIGNAL', 2.2, true),
   'scenario.comms.kessler': uiCue('presentation:scenario:kessler', 'info', 'PRIORITY COMMS', 2.2, true),
-  'scenario.comms.denial': uiCue('presentation:scenario:denial', 'warn', 'OFFICIAL DENIAL', 2.2, true),
+  'scenario.comms.denial': uiCue('presentation:scenario:denial', 'warn', 'STATION NOTICE: INCIDENT DENIED', 2.2, true),
   'scenario.objective.priority_split': uiCue('presentation:scenario:priority-split', 'warn', 'OBJECTIVES SPLIT', 2.4, true),
   'scenario.branch.resolved': uiCue('presentation:scenario:resolved', 'info', 'EVIDENCE ROUTE LOCKED', 2.4, true),
   // Rated cluster detonations — the authored voice owns the moment so the alert stays silent.
@@ -174,22 +174,22 @@ const UI_CUES = Object.freeze({
 
 const CAPTIONS = Object.freeze({
   'combat.player.kill': 'Target destroyed.',
-  'tether.attach': 'Massline attached.',
+  'tether.attach': 'Line attached.',
   'tether.line_on_you': 'A hostile line is on your hull.',
-  'tether.near_break': 'Massline strain rising.',
-  'tether.break': 'Massline broken.',
-  'tether.break.overload': 'Massline overloaded and parted.',
-  'tether.break.severed': 'Massline severed by an enemy action.',
-  'tether.break.endpoint': 'Massline target lost.',
-  'tether.whip_impact': 'Massline impact landed.',
+  'tether.near_break': 'Line strain rising.',
+  'tether.break': 'Line broken.',
+  'tether.break.overload': 'Line overloaded and parted.',
+  'tether.break.severed': 'Line severed by an enemy action.',
+  'tether.break.endpoint': 'Line target lost.',
+  'tether.whip_impact': 'Line impact landed.',
   'massline.threat': 'Swing threat detected.',
-  'massline.threat.sweep_commit': 'An enemy blade will reach your Massline at the marked point — move or cut first.',
-  'massline.counter_tether.cut': 'Enemy is preparing to cut the Massline.',
-  'massline.counter_tether.overload': 'Enemy is preparing a Massline overload break.',
+  'massline.threat.sweep_commit': 'An enemy blade will reach your line at the marked point — move or cut first.',
+  'massline.counter_tether.cut': 'Enemy is preparing to cut the line.',
+  'massline.counter_tether.overload': 'Enemy is preparing a line overload break.',
   'tether.release.good': 'Clean release.',
   'tether.release.clean': 'Clean cut.',
   'tether.release.razor': 'Razor cut.',
-  'massline.release.missed': 'Massline release window missed.',
+  'massline.release.missed': 'Line release window missed.',
   'shield.collapse': 'Shield collapse.',
   'subsystem.disabled': 'Subsystem disabled.',
   'subsystem.restored': 'Subsystem restored.',
@@ -808,7 +808,7 @@ function playerSubsystemLine(cue, state) {
   const id = String(cue.subsystemId || '').toLowerCase();
   let part = null;
   if (id.includes('clamp')) part = 'Clamp';
-  else if (id.includes('tether') || id.includes('spool')) part = 'Massline spool';
+  else if (id.includes('tether') || id.includes('spool')) part = 'Line spool';
   else if (id.includes('drive') || id.includes('engine') || id.includes('thrust')) part = 'Drive';
   else if (id.includes('weapon') || id.includes('hardpoint') || id.includes('turret') || id.includes('gun')) part = 'Guns';
   else if (id.includes('sensor') || id.includes('comms') || id.includes('scanner')) part = 'Sensors';
@@ -818,7 +818,7 @@ function playerSubsystemLine(cue, state) {
   if (!part) return null;
   if (cue.id === 'subsystem.restored') return `${part} back online`;
   if (part === 'Drive') return 'Drive out — the ship is not pushing';
-  if (part === 'Massline spool') return 'Massline spool out — the rope will not hold';
+  if (part === 'Line spool') return 'Line spool out — the rope will not hold';
   if (part === 'Clamp') return 'Clamp out — the load is no longer held';
   if (part === 'Guns') return 'Guns out — the battery is dark';
   if (part === 'Sensors') return 'Sensors out — the board is blind';
@@ -865,13 +865,13 @@ function masslineImpactTier(cue) {
   if (!cue || cue.id !== 'tether.whip_impact') return null;
   const rating = masslineImpactRating(cue);
   if (rating === 'crushing') {
-    return { sev: 'warn', text: 'MASSLINE CRUSHING', ttl: 2.2, caption: 'Crushing massline impact.' };
+    return { sev: 'warn', text: 'LINE CRUSHING', ttl: 2.2, caption: 'Crushing line impact.' };
   }
   if (rating === 'solid') {
-    return { sev: 'info', text: 'MASSLINE IMPACT', ttl: 1.4, caption: 'Massline impact landed.' };
+    return { sev: 'info', text: 'LINE IMPACT', ttl: 1.4, caption: 'Line impact landed.' };
   }
   if (rating === 'glance') {
-    return { sev: 'info', text: 'MASSLINE GLANCE', ttl: 0.8, caption: 'Glancing massline impact.' };
+    return { sev: 'info', text: 'LINE GRAZED', ttl: 0.8, caption: 'Glancing line impact.' };
   }
   return null;
 }

@@ -1833,7 +1833,7 @@ export const tetherGameplay = {
     });
     const verb = direction === 'reel_in' ? 'reel-in' : 'pay-out';
     this.bus.emit('toast', {
-      text: `Massline ${verb} blocked: ${LINE_CONTROL_DENIAL_COPY[reason] || humanizeReasonSlug(reason)}`,
+      text: `Line ${verb} blocked: ${LINE_CONTROL_DENIAL_COPY[reason] || humanizeReasonSlug(reason)}`,
       kind: 'warn',
       ttl: 2,
     });
@@ -2163,7 +2163,7 @@ export const tetherGameplay = {
       if (this._lastCutDenial !== key) {
         this._lastCutDenial = key;
         this.bus.emit('toast', {
-          text: `Massline cut refused: ${CUT_DENIAL_COPY[reason] || humanizeReasonSlug(reason)}`,
+          text: `Line cut refused: ${CUT_DENIAL_COPY[reason] || humanizeReasonSlug(reason)}`,
           kind: 'warn',
           ttl: 2,
         });
@@ -2619,7 +2619,7 @@ export const tetherGameplay = {
           tick: Number.isFinite(state.tick) ? state.tick : null,
         });
         this.bus.emit('toast', {
-          text: 'MASSLINE SNAGGED — haul through, reposition, or cut free.',
+          text: 'LINE SNAGGED — haul through, reposition, or cut free.',
           kind: 'warn',
           ttl: 4,
         });

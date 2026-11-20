@@ -4118,7 +4118,7 @@ function sectorCauseIntelHtml(cause) {
       </div>
       <div class="gm-meter"><i style="width:${Math.round(clamp01(cause.danger) * 100)}%; background:${dangerColor(cause.danger)};"></i></div>
       <div class="gm-ins-row">
-        <span>Price pressure</span>
+        <span>Price swing</span>
         <span class="gm-ins-row-val">${mapPressureLabel(cause.pricePressure)} ${mapPercent(cause.pricePressure, true)} · ${mapTrendWord('pricePressure', trend.pricePressure)}</span>
       </div>
       <div class="gm-ins-row">
@@ -7762,7 +7762,7 @@ _stepAnimation(now) {
       <div class="gm-weather-head">
         <span class="gm-weather-word">${caption}</span>
       </div>
-      <div class="gm-weather-bar" role="img" aria-label="Encounter pressure ${snap.pool} of 140">
+      <div class="gm-weather-bar" role="img" aria-label="Encounter risk ${snap.pool} of 140">
         <i class="gm-weather-seg gm-weather-seg--combat" style="width:${combatPct}%"></i>
         <i class="gm-weather-seg gm-weather-seg--civil" style="width:${civilPct}%"></i>
       </div>
@@ -7847,7 +7847,7 @@ _stepAnimation(now) {
       this._deckTableEl.innerHTML = `
         <div class="gm-deck-empty">
           <div class="gm-deck-empty-title">No viable deck route</div>
-          <div class="gm-deck-empty-body">Dock and scan markets, or carry cargo to seed HERE liquidation lanes.</div>
+          <div class="gm-deck-empty-body">Dock and scan markets to see the best sell routes from here.</div>
         </div>`;
       return;
     }

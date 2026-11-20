@@ -30,7 +30,7 @@ export const LINE_CLASS_NAMES = Object.freeze({
   5: Object.freeze({ name: 'Chain', hold: 'haulers, hot plates, heavies', move: 'Drag — tow at full boost' }),
   6: Object.freeze({ name: 'Girder', hold: 'hulls off hooks, station modules', move: 'Tear — pull parts off something bigger than you' }),
   7: Object.freeze({ name: 'Span', hold: 'sections of a capital wreck', move: 'Orbit — keep a body circling you as a shield, then send it' }),
-  8: Object.freeze({ name: 'the Massline', hold: 'a moonlet', move: 'Sling a moonlet' }),
+  8: Object.freeze({ name: 'the Line', hold: 'a moonlet', move: 'Sling a moonlet' }),
 });
 
 export const PROVENANCE_TIERS = Object.freeze({
@@ -47,7 +47,7 @@ export const PROVENANCE_TIERS = Object.freeze({
 // Head ids are stable sim stamps (`holder.data.lineHeadId`). `masslineHeadId` is only
 // reused where the existing specialized-line owner already implements the same physical law.
 export const LINE_HEADS = Object.freeze([
-  Object.freeze({ id: 'head_standard', name: 'Standard Head', source: 'Tessera', rarityFloor: 'stock', behavior: 'standard', cableColor: '#7bd7ff', sentence: 'Latch, reel, swing and release.' }),
+  Object.freeze({ id: 'head_standard', name: 'Standard Head', source: 'Hitch', rarityFloor: 'stock', behavior: 'standard', cableColor: '#7bd7ff', sentence: 'Latch, reel, swing and release.' }),
   Object.freeze({ id: 'head_coupler', name: 'Coupler Head', source: 'Meridian', rarityFloor: 'worked', behavior: 'train', cableColor: '#e8b45f', sentence: 'Chains held bodies into a train.' }),
   Object.freeze({ id: 'head_breaker', name: 'Breaker Head', source: 'Drift', rarityFloor: 'worked', behavior: 'split_on_slam', cableColor: '#d9d9d9', sentence: 'A slammed rock splits into throwable chunks.' }),
   Object.freeze({ id: 'head_barb', name: 'Barb Head', source: 'Reach', rarityFloor: 'worked', behavior: 'hook_ship', cableColor: '#f07f72', sentence: 'Hooks a light ship and drags it.' }),

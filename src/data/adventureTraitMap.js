@@ -217,7 +217,7 @@ export const ADVENTURE_TRAIT_MAP = freezeDeep([
     acquisition: ['buy', 'research'],
     legality: 'legal',
     collateral: { civilians: 'none', cargo: 'none' },
-    blurb: 'Massline conductor fitting. Payloads against the live anchor are amplified within a cap.',
+    blurb: 'Line conductor fitting. Payloads against the live anchor are amplified within a cap.',
   },
   {
     traitId: 'mod_conductive_path',

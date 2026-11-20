@@ -126,7 +126,7 @@ test('RIG shows the CURRENT function before use, and a context change swaps the 
 
 test('gesture hints follow current bindings and the aimed-power preference without turning Rig into a hold', () => {
   const state = makeState({ settings: {
-    gameplay: { powerFire: 'hold' },
+    gameplay: { powerFire: 'aim' },
     controls: { bindings: { pull: ['KeyU'], shove: ['KeyI'], rig: ['KeyJ'] } },
   } });
   const reader = createArsenalPresentation();

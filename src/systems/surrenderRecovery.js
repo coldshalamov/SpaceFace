@@ -794,7 +794,7 @@ export const surrenderRecovery = {
     const intent = rescuer.data.intent || (rescuer.data.intent = {});
     intent.moveX = 0; intent.moveZ = 0; intent.boost = false; intent.fire = false; intent.fireGroup = null;
     this._emit('toast', { kind: 'warn', ttl: 5,
-      text: `Its wingmates are coming for the tow — keep clear of their Massline.` });
+      text: `Its wingmates are coming for the tow — keep clear of their line.` });
   },
 
   _threatenEscapee(record, entity, debt) {
