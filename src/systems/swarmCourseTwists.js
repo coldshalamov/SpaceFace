@@ -33,6 +33,7 @@ import {
 } from '../data/swarmTwists.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { getCombatKernel } from '../combat/kernel.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { SWARM_DROP_DEFS } from '../data/swarmDrops.js';
 
 function finite(v, fallback = 0) {
@@ -402,8 +403,8 @@ const SWARM_GANG_ODD_GRACE_TICKS = 30;
 
 function createChainGangModule(host) {
   const queue = [];        // member ids awaiting a partner, in arrival order
-  const queuedAt = new Map();
-  let lastTailId = null;   // target of the most recent link — the odd man's anchor
+  const queuedAt = new Map(); // id → { tick, gen } — the gen proves the queue row's occupant
+  let lastTail = null;     // { id, gen } ref of the most recent link — the odd man's anchor
 
   function service() {
     try {
@@ -412,23 +413,40 @@ function createChainGangModule(host) {
     } catch (_) { return null; }
   }
 
-  function living(id) {
+  function living(id, gen) {
     const st = host.state;
     const e = st && st.entities && typeof st.entities.get === 'function' ? st.entities.get(id) : null;
-    return e && e.alive !== false ? e : null;
+    if (!e || e.alive === false) return null;
+    // Ids recycle while destroyed receipts queue: a bare id can name a fresh hull.
+    // Only the recorded occupant (generation match) that is still a chain candidate
+    // may take the bind — never a recycled foreign body.
+    const recorded = gen !== undefined ? gen : (queuedAt.get(id) || {}).gen;
+    if (recorded != null && occupantGenerationOf(e) !== recorded) return null;
+    return gangCandidate(e) ? e : null;
+  }
+
+  // Still a valid chain link: cohort ship. swarmGangMember is excluded here — queued
+  // members carry it already and must stay resolvable; gangEligible layers it on for
+  // first-time stamping only.
+  function gangCandidate(e) {
+    return !!(e && e.data && e.data.runCohort === 'survival' && e.type === 'ship');
   }
 
   function gangEligible(e) {
-    return !!(e && e.data && e.data.runCohort === 'survival'
-      && e.data.swarmGangMember !== true
-      && e.type === 'ship');
+    return !!(gangCandidate(e) && e.data.swarmGangMember !== true);
   }
 
   function stamp(e) {
     if (!gangEligible(e)) return;
+    // An id already in the queue belongs to an unreaped member — the recycled
+    // occupant waits until the stale row drains, or pairing could self-bind.
+    if (queuedAt.has(e.id)) return;
     e.data.swarmGangMember = true;
     queue.push(e.id);
-    queuedAt.set(e.id, host.state && Number.isInteger(host.state.tick) ? host.state.tick : 0);
+    queuedAt.set(e.id, {
+      tick: host.state && Number.isInteger(host.state.tick) ? host.state.tick : 0,
+      gen: occupantGenerationOf(e),
+    });
   }
 
   function bind(owner, target) {
@@ -439,7 +457,7 @@ function createChainGangModule(host) {
     owner.data.swarmGangPartner = target.id;
     target.data.swarmGangPartner = owner.id;
     owner.data.swarmGangAttachment = res.attachment.id;
-    lastTailId = target.id;
+    lastTail = { id: target.id, gen: occupantGenerationOf(target) };
     return true;
   }
 
@@ -464,10 +482,11 @@ function createChainGangModule(host) {
     // grows a chain link — the odd member shackles to the previous link's tail.
     if (queue.length === 1) {
       const odd = living(queue[0]);
-      const tail = living(lastTailId);
-      const waited = odd && tail
+      const tail = lastTail ? living(lastTail.id, lastTail.gen) : null;
+      const queued = queuedAt.get(odd && odd.id);
+      const waited = odd && tail && queued
         && Number.isInteger(host.state && host.state.tick)
-        && host.state.tick - (queuedAt.get(odd.id) || 0) >= SWARM_GANG_ODD_GRACE_TICKS;
+        && host.state.tick - (queued.tick || 0) >= SWARM_GANG_ODD_GRACE_TICKS;
       // Same refusal contract as the paired branch: a declined bind keeps the
       // odd hull queued — the next tick's drain asks again.
       if (waited && bind(odd, tail)) dequeue(odd.id);
@@ -481,6 +500,16 @@ function createChainGangModule(host) {
     }
   }
 
+  // A destroyed/retired receipt flushes after ids recycle — only the corpse's own
+  // generation may free its queue row; a stale receipt must not evict a new occupant's.
+  function releaseIfCorpse(p) {
+    if (!p || p.id == null) return;
+    const stamped = queuedAt.get(p.id);
+    if (p.entity && stamped && stamped.gen != null
+      && occupantGenerationOf(p.entity) !== stamped.gen) return;
+    dequeue(p.id);
+  }
+
   return {
     activate() { sweep(); drain(); },
     onEntitySpawned(p) {
@@ -488,10 +517,10 @@ function createChainGangModule(host) {
       if (e) stamp(e);
       drain();
     },
-    onEntityDestroyed(p) { if (p && p.id != null) dequeue(p.id); },
-    onEntityRetired(p) { if (p && p.id != null) dequeue(p.id); },
+    onEntityDestroyed(p) { releaseIfCorpse(p); },
+    onEntityRetired(p) { releaseIfCorpse(p); },
     update() { sweep(); drain(); },
-    teardown() { queue.length = 0; queuedAt.clear(); lastTailId = null; },
+    teardown() { queue.length = 0; queuedAt.clear(); lastTail = null; },
   };
 }
 

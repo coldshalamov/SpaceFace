@@ -562,13 +562,16 @@ export const fields = {
       if (++restored % 8 === 0) yield 'fields-kernel-batch';
     }
     yield 'fields-kernel';
-    for(const [id,h] of Object.entries(raw.hitches??{})){const eid=mapped(id);const ent=this.state.entities.get(eid)||this.state.entities.get(Number(eid));if(ent&&this._kernel.has(h.fieldId))rt.hitches[eid]={...h,sourceId:mapped(h.sourceId)};}
+    for(const [id,h] of Object.entries(raw.hitches??{})){const eid=mapped(id);const ent=this.state.entities.get(eid)||this.state.entities.get(Number(eid));if(ent&&this._kernel.has(h.fieldId))rt.hitches[eid]={...h,sourceId:mapped(h.sourceId),generation:ent.occupantGeneration??null};}
     yield 'fields-hitches';
     // NPC cone recs are id-keyed mirror state for kernel fields already restored
     // above — without them the field lives on as an orphan nobody retires.
     for(const [sid,rec] of Object.entries(raw.npcFields??{})){
       if(!rec||!this._kernel.has(rec.fieldId))continue;
       const restored={...rec,sourceId:mapped(rec.sourceId??sid)};
+      // Occupant tokens never round-trip a save: re-stamp from the live source hull so
+      // a restored cone keeps its generation proof instead of carrying a dead token.
+      restored.sourceGeneration=this.state.entities.get(restored.sourceId)?.occupantGeneration??null;
       if(rec.industrial===true){
         restored.targetId=mapped(rec.targetId);
         restored.targetGeneration=this.state.entities.get(restored.targetId)?.occupantGeneration;
@@ -720,7 +723,14 @@ export const fields = {
     const field = this._kernel.get(fieldId);
     if (!field) return null;
     const rt = ensureRuntime(s);
-    const rec = { fieldId, sourceId: field.sourceId, attachedAt: nowOf(s) };
+    // Entity ids recycle: record the latched body's occupant token so _syncHitches
+    // can tell "our hitched body still lives" from "a new hull took the id" — only
+    // the real occupant may hold the frame lock (deserialize re-stamps this).
+    const ent = s.entities && s.entities.get
+      ? (s.entities.get(entityId) || s.entities.get(Number(entityId)))
+      : null;
+    const rec = { fieldId, sourceId: field.sourceId, attachedAt: nowOf(s),
+      generation: ent ? (ent.occupantGeneration ?? null) : null };
     rt.hitches[entityId] = rec;
     this.bus.emit('fields:hitchLatched', { entityId, fieldId, sourceId: rec.sourceId });
     return rec;
@@ -822,7 +832,11 @@ export const fields = {
         const ent = state.entities && state.entities.get
           ? (state.entities.get(id) || state.entities.get(Number(id)))
           : null;
-        if (!rec || !ent || ent.alive === false || !this._kernel.has(rec.fieldId)) delete rt.hitches[id];
+        // A live occupant at a recycled id is not the body that latched — without the
+        // generation proof the hitch frame-locks a foreign hull until it leaves range.
+        const recycled = rec && rec.generation != null
+          && (ent ? ent.occupantGeneration : null) !== rec.generation;
+        if (!rec || !ent || ent.alive === false || recycled || !this._kernel.has(rec.fieldId)) delete rt.hitches[id];
       }
     }
     const field = this._seedLockFieldId ? this._kernel.get(this._seedLockFieldId) : null;
@@ -1525,6 +1539,9 @@ export const fields = {
         fieldId,
         kind: 'cone',
         sourceId: entity.id,
+        // The id recycles; the occupant token is the proof the cone still belongs to
+        // the hull that deployed it (deserialize re-stamps it from the live source).
+        sourceGeneration: entity.occupantGeneration ?? null,
         role: deployRole,
         ...(industrial ? { industrial: true, targetId: plan.massId, targetGeneration: plan.massGeneration } : {}),
         holdUntilTick: (state.tick | 0) + NPC_CONE_HOLD_TICKS,
@@ -1570,7 +1587,11 @@ export const fields = {
         ? state.entities.get(sourceId)
         : null);
       const hull = resolved && resolved.alive !== false ? resolved : null;
-      if (!hull) {
+      // A live hull at a recycled id is a foreign occupant, not the cone's deployer —
+      // without the generation proof the cone re-centers on it and inherits the record.
+      const recycled = !!(rec && rec.sourceGeneration != null
+        && (hull ? hull.occupantGeneration : null) !== rec.sourceGeneration);
+      if (!hull || recycled) {
         if (rec && rec.fieldId && this._kernel) this._kernel.unregister(rec.fieldId);
         delete npcFields[sourceId];
         if (rec) this.bus.emit('fields:ended', { fieldId: rec.fieldId, kind: rec.kind, reason: FIELD_END_REASONS.destroyed });

@@ -315,12 +315,17 @@ export const intervention = {
       const rec = list[i];
       this._tickJumper(state, rec);
       const e = rec.wreckEntityId != null ? state.entities.get(rec.wreckEntityId) : null;
-      if (!e || !e.alive) {
+      // Entity ids recycle before receipts flush: a live body at wreckEntityId is this
+      // site's wreck only while it still carries the record's marker — a recycled
+      // occupant means our wreck is already gone (same unverifiable-removal case as a
+      // missing entity), never salvageable state to read.
+      const ours = !!(e && e.data && e.data.interventionId === rec.id);
+      if (!ours || !e.alive) {
         // wreck gone (salvaged or despawned) — close the intervention
         list.splice(i, 1);
         this.bus.emit('intervention:closed', {
           id: rec.id,
-          recovered: !e || (e.data && e.data._salvaged),
+          recovered: !ours || (e.data && e.data._salvaged),
           strippedByJumper: (rec.jumper && rec.jumper.stolen) || 0,
         });
       }
@@ -333,7 +338,9 @@ export const intervention = {
     const jumper = rec.jumper;
     if (!jumper || jumper.phase === 'gone') return;
     const ent = jumper.entityId != null ? state.entities.get(jumper.entityId) : null;
-    if (!ent || ent.alive === false) {
+    // The id recycles; only a body still stamped for THIS record is our jumper —
+    // steering or ripping a recycled occupant would hijack a foreign hull.
+    if (!ent || ent.alive === false || !ent.data || ent.data.interventionJumper !== rec.id) {
       jumper.phase = 'gone';
       return;
     }
@@ -356,8 +363,9 @@ export const intervention = {
       this._spookJumper(state, rec, ent, wreck);
       return;
     }
-    if (!wreck || wreck.alive === false) {
-      // Nothing left to work — drift off without fanfare.
+    if (!wreck || wreck.alive === false || !wreck.data || wreck.data.interventionId !== rec.id) {
+      // Nothing left to work — drift off without fanfare. The marker check is the
+      // recycled-id guard: a different hull on this id is not our salvage pool.
       jumper.phase = 'fled';
       return;
     }

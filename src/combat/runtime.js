@@ -1,4 +1,5 @@
 import { hydrateOrchardWorkDamage } from './orchardWorkDamage.js';
+import { occupantGenerationOf } from '../core/entity.js';
 import { recomputeCombatantModifiers } from './subsystems.js';
 import {
   ACTION_DEFS,
@@ -72,7 +73,15 @@ export function ensureCombatant(state, entity, catalog) {
       const expectedId = (typeof explicit === 'string' && explicit)
         ? explicit
         : (DEFAULT_COMBAT_PROFILE_BY_TYPE[entity.type] || null);
-      if (warmRuntime.profileId === expectedId) {
+      // Entity ids recycle LIFO through freeIds while entity:destroyed receipts queue —
+      // a warm row keyed by the bare id can still be the dead occupant's book. A proven
+      // generation mismatch falls through to the cold path and rebuilds instead of
+      // inheriting corpse state; unprovable identities (unstamped fixture bodies,
+      // hand-built rows) keep the lenient bare-id match they always had.
+      const warmGen = warmRuntime.occupantGeneration != null ? warmRuntime.occupantGeneration : null;
+      const entityGen = occupantGenerationOf(entity);
+      const sameOccupantWarm = warmGen == null || entityGen == null || warmGen === entityGen;
+      if (warmRuntime.profileId === expectedId && sameOccupantWarm) {
         if (!Number.isFinite(warmRuntime.heatDissipationPerTick)) {
           const warmProfile = expectedId ? catalog.profiles.get(expectedId) : null;
           warmRuntime.heatDissipationPerTick = warmProfile && warmProfile.heat
@@ -89,9 +98,18 @@ export function ensureCombatant(state, entity, catalog) {
   // skips one String() allocation per combatant per pass.
   let runtime = combat.entities[entity.id];
   const profile = resolveCombatProfile(entity, catalog);
-  if (!runtime || runtime.profileId !== (profile && profile.id)) {
-    const cold = !runtime;
-    runtime = createCombatantRuntime(entity, profile, catalog, runtime);
+  // A row only survives for the occupant it was stamped with. kernel's onEntityGone keeps
+  // the row when the id was already retaken (identityTaken), so the new body arrives to a
+  // corpse's book — a proven generation mismatch must rebuild, and the previous-merge (heat,
+  // subsystem damage, pending transitions) applies only to sanctioned same-occupant
+  // rebuilds like a mid-life profile swap.
+  const recordedGen = runtime && runtime.occupantGeneration != null ? runtime.occupantGeneration : null;
+  const entityGen = occupantGenerationOf(entity);
+  const sameOccupant = !!runtime
+    && (recordedGen == null || entityGen == null || recordedGen === entityGen);
+  if (!runtime || runtime.profileId !== (profile && profile.id) || !sameOccupant) {
+    const cold = !sameOccupant;
+    runtime = createCombatantRuntime(entity, profile, catalog, sameOccupant ? runtime : null);
     combat.entities[entity.id] = runtime;
     if (cold && hydrateOrchardWorkDamage(state, entity, runtime, profile, catalog))
       recomputeCombatantModifiers({ state, catalog }, entity, runtime, null, false);
@@ -182,6 +200,9 @@ function createCombatantRuntime(entity, profile, catalog, previous) {
   const runtime = {
     schemaVersion: COMBAT_SCHEMA_VERSION,
     entityId: entity.id,
+    // The id this row is keyed by recycles; the occupant token is the proof it still
+    // names the body this row was built for (null on never-stamped fixture entities).
+    occupantGeneration: occupantGenerationOf(entity),
     profileId: profile ? profile.id : null,
     heat: previous && finiteNonNegative(previous.heat) ? previous.heat : 0,
     heatMax: profile && profile.heat ? profile.heat.max : 100,

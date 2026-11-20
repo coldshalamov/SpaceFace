@@ -72,7 +72,7 @@ export function* restoreCombatStateSteps(state, payload, resolveEntityRef, { def
   const entityFor = (id) => state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(id) || null
     : null;
-  restoreCombatants(combat, payload.entities, resolveEntityRef, summary);
+  restoreCombatants(combat, payload.entities, resolveEntityRef, entityFor, summary);
   // World records own Orchard wounds across residency. The save reset removed
   // spawn-time runtime, so rehydrate only already-materialized originals here.
   // This does not enroll any actor into action/attachment reference persistence.
@@ -459,6 +459,9 @@ function serializeCombatants(combat, refs) {
     if (!runtime || typeof runtime !== 'object') continue;
     serializeRuntimeEntityRefs(runtime, refs);
     delete runtime.entityId;
+    // This-run occupant proof, not durable identity — re-stamped against the live
+    // body in restoreCombatants (same convention as attachment generations below).
+    delete runtime.occupantGeneration;
     runtime.entityRef = clonePlain(ref);
     out.push(runtime);
   }
@@ -559,7 +562,7 @@ function serializeActions(combat, refs, savedAttachmentIds) {
   };
 }
 
-function restoreCombatants(combat, savedList, resolveEntityRef, summary) {
+function restoreCombatants(combat, savedList, resolveEntityRef, entityFor, summary) {
   if (!Array.isArray(savedList)) return;
   for (const saved of savedList) {
     const entityId = resolveEntityRef(saved && saved.entityRef);
@@ -567,6 +570,10 @@ function restoreCombatants(combat, savedList, resolveEntityRef, summary) {
     const runtime = clonePlain(saved);
     delete runtime.entityRef;
     runtime.entityId = entityId;
+    // Occupant generations are this-run proofs, never durable identity — re-stamp from
+    // the live body like the attachment/action generations below, or the next
+    // ensureCombatant sees a generation mismatch and rebuilds over the restored row.
+    runtime.occupantGeneration = occupantGenerationOf(entityFor(entityId));
     restoreRuntimeEntityRefs(runtime, resolveEntityRef);
     combat.entities[entityKey(entityId)] = runtime;
     summary.restoredEntities++;
