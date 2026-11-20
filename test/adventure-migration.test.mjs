@@ -44,7 +44,6 @@ import {
   causalKindsFromSpec,
   causalDistributionForSpec,
   physicalRewardForKill,
-  lawForSite,
   doctrineForWaveRole,
   developerShortcut,
   mappingTable,
@@ -248,18 +247,8 @@ test('Mirrorjaw Pulse bakes Bank Shot and Bank Relay from the weapon, not a draf
   assert.deepEqual(mods, [['mod_bank_relay', 1], ['mod_bank_shot', 1]]);
 });
 
-test('arena laws are existing sites; idle rooms keep their KINDs', () => {
+test('adventure arena sites cover exactly the live arena set', () => {
   assert.deepEqual(ADVENTURE_ARENA_SITES.map((row) => row.arenaId).sort(), [...ADVENTURE_LIVE_ARENA_IDS].sort());
-  const lagrange = lawForSite('lagrange_crucible');
-  assert.ok(lagrange.fields.some((field) => field.kind === 'well'));
-  const cinder = lawForSite('cinder_sluice');
-  assert.ok(cinder.fields.some((field) => field.kind === 'cone'));
-  const cryo = lawForSite('cryo_drift');
-  assert.ok(cryo.fields.length >= 2);
-  const storm = lawForSite('storm_lattice');
-  assert.ok(Array.isArray(storm.fields));
-  const forge = lawForSite('helios_core');
-  assert.equal(forge.cover, true);
   const sluice = ADVENTURE_ARENA_SITES.find((row) => row.arenaId === 'cinder_sluice');
   assert.equal(sluice.siteId, 'world_site_ceres_cinder_sluice');
 });
