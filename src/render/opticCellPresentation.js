@@ -77,7 +77,12 @@ function hashId(id) {
 export function opticCellKindOf(entity) {
   const data = entity && entity.data;
   const id = data && data.opticMaterial;
-  if (id === 'metal' && data.fieldId && !data.opticStructureId) return null;
+  // Ordinary field ore carries opticMaterial ('metal'/'diamond') as a SURFACE tag —
+  // environmentSurfaceData / adventureMaterialFor stamp it with fieldId and no
+  // opticStructureId. Only the lattice id marks a real cell; physics, mining and
+  // NPC jobs already key on it. The metal-only refusal let crystal-surface ore
+  // claim the near-white diamond prism (WHITE-DIAMONDS / fleet LOOK-03).
+  if (data && data.fieldId && !data.opticStructureId) return null;
   return (typeof id === 'string' && OPTIC_MATERIALS[id]) ? id : null;
 }
 

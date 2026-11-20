@@ -23,3 +23,22 @@ test('ordinary reflective ore keeps a rock body while lattice mirrors keep their
   assert.notEqual(ore.userData.asteroidBody.geometry, mirror.userData.asteroidBody.geometry);
   globalThis.document = originalDocument;
 });
+
+test('ordinary crystal-surface ore keeps a rock body while lattice diamonds keep their optic skin', () => {
+  const originalDocument = globalThis.document;
+  globalThis.document = { createElement: () => ({ getContext: () => ({
+    createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }),
+    putImageData() {},
+  }) }) };
+  const factory = createVisualFactory();
+  const oreData = environmentSurfaceData('crystal', { typeId: 'ast_common_rock', fieldId: 'f_helios_starter', asteroidSlotId: '4' });
+  const ore = factory.build(rock('ore', oreData));
+  const spentOre = factory.build(rock('spent_ore', { ...oreData, opticMaterial: 'spent' }));
+  const cell = factory.build(rock('cell', { typeId: 'ast_crystalline', opticMaterial: 'diamond', opticStructureId: 'lattice_1', opticCell: '0,0' }));
+  assert.equal(oreData.opticMaterial, 'diamond', 'ordinary ore retains its combat surface');
+  assert.equal(ore.userData.sfOpticSkin, undefined, 'crystal-surface field ore uses the rock presentation');
+  assert.equal(spentOre.userData.sfOpticSkin, undefined, 'spent crystal-surface field ore stays on the rock presentation');
+  assert.equal(cell.userData.sfOpticSkin, 'diamond', 'authored lattice cell keeps the prism presentation');
+  assert.notEqual(ore.userData.asteroidBody.geometry, cell.userData.asteroidBody.geometry);
+  globalThis.document = originalDocument;
+});
