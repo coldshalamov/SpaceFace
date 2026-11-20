@@ -70,7 +70,7 @@ import { drawSeeded, hash32, mulberry32 } from '../core/rng.js';
 import { consumePeriodicClock, normalizePeriodicAccumulator } from '../core/periodicClock.js';
 import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { addCargo, removeCargo, removeSalvageBayCargo, reservedCargoQuantity, sellableCargoQuantity } from './cargo.js';
-import { ensureCommittedIntents } from './cargoCustody.js';
+import { boundCommittedIntents, ensureCommittedIntents } from './cargoCustody.js';
 import { outpostCommodity } from './outpostOperations.js';
 import {
   getCycle as getCycleCore, cycleFactorAt, maybeAdvanceRegime, createCycle,
@@ -158,6 +158,10 @@ export const ECONOMY_EVENT_TYPES = Object.freeze([
   'shortage', 'boom', 'blockade', 'piracy', 'piracy_spike',
 ]);
 const ECONOMY_EVENT_TYPE_SET = new Set(ECONOMY_EVENT_TYPES);
+// Restore bound for the persisted active-event list. Live generation already caps at
+// MAX_EVENTS_PER_STATION per berth; the save slice only needs the newest few dozen so a
+// crafted history cannot rehydrate an unbounded event stack.
+const ECON_EVENTS_CAP = 64;
 // The chart samples every 15 seconds and keeps roughly sixteen minutes. A new campaign is
 // pre-seeded from the live formula, so the first dock reads like a market with a past rather than
 // a blank instrument waiting for the player to stand around.
@@ -230,7 +234,11 @@ export function normalizeRestoredEconomyEvent(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const type = normalizeEconomyEventType(value.type);
   if (!type) return null;
-  return { ...value, type };
+  // The event must stay age-able: a non-finite start or duration compares false forever in
+  // ageEvents and would never expire. Clamp malformed timing to zero so the row expires on the
+  // first tick — its market mods strip on the way out instead of lingering owner-less.
+  const timed = Number.isFinite(value.startT) && Number.isFinite(value.duration);
+  return { ...value, type, startT: timed ? value.startT : 0, duration: timed ? value.duration : 0 };
 }
 
 export const ECONOMY_PRICE_TUNING = Object.freeze({
@@ -983,13 +991,30 @@ function serializeEventMods(raw) {
   return out;
 }
 
+// The only fields eventModMult() ever multiplies — injectEvent() authors exactly these.
+// A restored mod outside the set (or with a non-finite mult) has no owner that would ever
+// expire it, so it is dropped rather than left to distort the listing permanently.
+const EVENT_MOD_FIELD_SET = new Set(['equilibrium', 'spread', 'drift']);
+
+function normalizeEventMod(field, mult, eventId) {
+  const multN = Number(mult);
+  if (typeof field !== 'string' || !EVENT_MOD_FIELD_SET.has(field) || !Number.isFinite(multN)) return null;
+  return { field, mult: multN, eventId };
+}
+
 function deserializeEventMods(raw) {
   if (!Array.isArray(raw) || raw.length === 0) return [];
-  if (raw[0] && typeof raw[0] === 'object') return raw.slice();
   const out = [];
+  if (raw[0] && typeof raw[0] === 'object') {
+    for (const mod of raw) {
+      const ok = mod && normalizeEventMod(mod.field, mod.mult, mod.eventId);
+      if (ok) out.push(ok);
+    }
+    return out;
+  }
   for (let i = 0; i + 2 < raw.length; i += 3) {
-    if (!raw[i]) continue;
-    out.push({ field: raw[i], mult: Number(raw[i + 1]) || 1, eventId: raw[i + 2] });
+    const mod = normalizeEventMod(raw[i], raw[i + 1], raw[i + 2]);
+    if (mod) out.push(mod);
   }
   return out;
 }
@@ -6711,13 +6736,16 @@ export const economy = {
     deserializeCycles(this.state, data.cycles);
     econ.markets = {};
     for (const sid in (data.markets || {})) {
+      // A crafted sid must never reach `markets[sid] =` — the '__proto__' setter would
+      // replace the market map's prototype instead of adding a station section.
+      if (sid === '__proto__' || sid === 'constructor' || sid === 'prototype') continue;
       const m = data.markets[sid]; const out = {};
       const rows = Array.isArray(m)
         ? m.map((row) => deserializeMarketRow(null, row))
-        : Object.entries(m).map(([cid, entry]) => deserializeMarketRow(cid, entry));
+        : Object.entries(m || {}).map(([cid, entry]) => deserializeMarketRow(cid, entry));
       for (const e of rows) {
         const cid = e.cid;
-        if (!cid) continue;
+        if (!cid || cid === '__proto__' || cid === 'constructor' || cid === 'prototype') continue;
         const def = commodityDef(this.state, cid);
         const entry = {
           stock: e.stock, equilibrium: e.equilibrium, baseEq: e.baseEq, role: e.role,
@@ -6754,7 +6782,7 @@ export const economy = {
       yield 'economy-market-section';
     }
     econ.econEvents = Array.isArray(data.econEvents)
-      ? data.econEvents.map(normalizeRestoredEconomyEvent).filter(Boolean)
+      ? data.econEvents.map(normalizeRestoredEconomyEvent).filter(Boolean).slice(-ECON_EVENTS_CAP)
       : [];
     econ.econClock = { ...(data.econClock || { accumulator: 0, lastTickT: 0, ticksElapsed: 0 }) };
     // Resume an interrupted slice at the saved cursor. Restoring is not a step: no phase advances
@@ -6798,6 +6826,9 @@ export const economy = {
       for (const key of Object.keys(econ.committedIntents)) {
         if (key.startsWith('pod-intake:')) delete econ.committedIntents[key];
       }
+      // Apply the live journal's retention too: a save written before the bound (or a crafted
+      // one) can carry unlimited intents; keep only the newest rows for retry correlation.
+      boundCommittedIntents(econ.committedIntents);
       if (!Object.keys(econ.committedIntents).length) delete econ.committedIntents;
     } else {
       delete econ.committedIntents;
@@ -6810,7 +6841,12 @@ function cloneSaveTree(value) {
   if (value == null || typeof value !== 'object') return value;
   if (Array.isArray(value)) return value.map(cloneSaveTree);
   const out = {};
-  for (const key of Object.keys(value)) out[key] = cloneSaveTree(value[key]);
+  for (const key of Object.keys(value)) {
+    // A crafted '__proto__' own key would hit the prototype setter on `out` rather than
+    // becoming data (same guard family as the market-row restore above).
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+    out[key] = cloneSaveTree(value[key]);
+  }
   return out;
 }
 

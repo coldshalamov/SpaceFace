@@ -111,13 +111,26 @@ export function commitShipmentSale(group, plan, apply) {
   return { ok: true, duplicate: false, receipt };
 }
 
+// Retry correlation only needs the newest intents. Like the pod-intake and cargo-kill rings,
+// the journal is insertion-ordered and sheds its oldest rows past the cap, so market:*/freight:*
+// receipts cannot grow the save without bound.
+export const COMMITTED_INTENTS_CAP = 512;
+
+/** Drop the oldest keys of an insertion-ordered journal, in place, past COMMITTED_INTENTS_CAP. */
+export function boundCommittedIntents(journal) {
+  if (!journal || typeof journal !== 'object') return journal;
+  const keys = Object.keys(journal);
+  for (let i = 0; i + COMMITTED_INTENTS_CAP < keys.length; i++) delete journal[keys[i]];
+  return journal;
+}
+
 export function ensureCommittedIntents(state) {
   if (!state || !state.economy) return null;
   if (!state.economy.committedIntents || typeof state.economy.committedIntents !== 'object'
     || Array.isArray(state.economy.committedIntents)) {
     state.economy.committedIntents = {};
   }
-  return state.economy.committedIntents;
+  return boundCommittedIntents(state.economy.committedIntents);
 }
 
 // ── AL-STORY-1 (row 423) — manifest declarations vs the rope's own reading ──────────────

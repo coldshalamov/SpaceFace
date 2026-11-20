@@ -255,8 +255,9 @@ export function lastMoveCause({ state, stationId, commodity, entry } = {}) {
       if (Number.isFinite(startT)) {
         if (startT >= newestT) { newest = ev; newestT = startT; }
       } else if (!newest) {
-        // A restored row can carry no startT (normalizeRestoredEconomyEvent validates only
-        // type). It cannot outrank a datable cause, but it still stands in when nothing else does.
+        // A restored row clamps malformed timing to startT 0 (normalizeRestoredEconomyEvent),
+        // so this is only a defensive fallback. It cannot outrank a datable cause, but it still
+        // stands in when nothing else does.
         newest = ev;
       }
     }
