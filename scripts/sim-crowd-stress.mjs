@@ -45,6 +45,14 @@ const TICKS = Number(arg('ticks', 600));
 const TOP = Number(arg('top', 30));
 const JSON_OUT = arg('json', null);           // --json → stdout blob; --json=path → file
 const SEED2 = arg('repeat', 0);               // optional second seed measured in the same run
+// Enemy-AI levers (additive; the default invocation prints exactly what it always did):
+//   --ships=N      keep the room topped up to N AI ships (Wasp/Zealot/Dart mix through the real
+//                  wave materializer), outside the timed bracket — wave 15 alone fields ~11 ships
+//   --census       print which brain each AI ship runs (pack / squad frame / solo doctrine)
+//   --ai-buckets   split tacticalAI into stack / pack brain / rest, plus planner calls per tick
+const SHIPS = Number(arg('ships', 0));
+const CENSUS = process.argv.includes('--census');
+const AI_BUCKETS = process.argv.includes('--ai-buckets');
 
 const { createAuthoritativeRuntime } = await import('../src/runtime/createAuthoritativeRuntime.js');
 const { createBus } = await import('../src/core/eventBus.js');
@@ -55,7 +63,7 @@ const { makeShipEntitySpec } = await import('../src/systems/ships.js');
 const { applyCombatLabSetup } = await import('../src/ui/sandbox/sandboxSetup.js');
 const { COMBAT_LAB_STARTER_PACKAGES, COMBAT_LAB_ARENAS } = await import('../src/data/combatLabSetups.js');
 const { validateCombatLabSetup } = await import('../src/contracts/combatLabSetupSchema.js');
-const { SURVIVAL_COHORT_TAG } = await import('../src/systems/waveMaterialization.js');
+const { SURVIVAL_COHORT_TAG, materializeWaveBatch } = await import('../src/systems/waveMaterialization.js');
 const { TECH_NODES } = await import('../src/data/tech.js');
 const { INERTIAL_SHUNT_TUNING } = await import('../src/data/combatDefs.js');
 const { FIELD_FLAGS } = await import('../src/data/fields.js');
@@ -108,6 +116,52 @@ function cohortHostiles(state) {
     out.push(e);
   }
   return out;
+}
+
+function aiShips(state) {
+  let n = 0;
+  for (const e of cohortHostiles(state)) if (e.type === 'ship') n++;
+  return n;
+}
+
+const TOP_UP_MIX = Object.freeze(['wasp_swarmer', 'wasp_swarmer', 'choir_zealot', 'wasp_swarmer',
+  'detonator_dart', 'wasp_swarmer']);
+const TOP_UP_GATES = Object.freeze(['nw', 'ne', 'se', 'sw']);
+/** --ships=N: materialize the shortfall through the real wave owner path (spawn budget, gates,
+ *  role stamps). Deterministic: the mix and gates cycle on the batch counter. Harness cost —
+ *  callers run it outside the timed bracket. */
+function topUpShips(ctx, state, seed, counter) {
+  if (!(SHIPS > 0)) return 0;
+  // The stress cell measures a full room: lift the live cap to the budget's own hard ceiling.
+  if (state.spawnBudget && Number.isFinite(state.spawnBudget.max) && state.spawnBudget.max < 40) {
+    state.spawnBudget.max = 40;
+  }
+  const missing = SHIPS - aiShips(state);
+  if (missing <= 0) return 0;
+  let made = 0;
+  for (let i = 0; i < Math.min(missing, 8); i += 4) {
+    const k = counter.n++;
+    const r = materializeWaveBatch(ctx, {
+      swarm: true, enemyId: TOP_UP_MIX[k % TOP_UP_MIX.length], count: Math.min(4, missing - i),
+      wave: WAVE, seed, gateGroup: TOP_UP_GATES[k % TOP_UP_GATES.length], ownerId: 'survival-wave:crowd-stress-topup',
+      packageIndex: 90, batchIndex: k,
+    });
+    made += (r && r.admitted) || 0;
+  }
+  return made;
+}
+
+function aiCensus(state) {
+  const by = new Map();
+  for (const e of cohortHostiles(state)) {
+    if (e.type !== 'ship') continue;
+    const ai = (e.data && e.data.ai) || {};
+    const path = ai.packBrain === true ? 'pack' : ai.cohortRecipe ? 'cohort'
+      : ai.squadRecipe ? 'squadFrame' : ai.combatDoctrineId ? 'soloDoctrine' : 'utility';
+    const key = `${e.data.lootTableId || e.data.enemyTypeId} ${path} ${ai.combatDoctrineId || '-'}`;
+    by.set(key, (by.get(key) || 0) + 1);
+  }
+  return [...by].sort().map(([k, n]) => `${String(n).padStart(3)}  ${k}`);
 }
 
 function liveEntityCount(state) {
@@ -436,6 +490,9 @@ async function runCell({ seed }) {
   const deltas = [];
   const ents = [];
   const hostilesN = [];
+  const shipsN = [];
+  let aiCensusLines = null;
+  let aiBucketCtl = null;
   try {
     const previousFlags = snapshotFeatureMaps();
     try {
@@ -517,25 +574,33 @@ async function runCell({ seed }) {
       }
 
       // Warmup: the spawn schedule and reinforcement ramp fill the room; wrecks accumulate.
+      const topUp = { n: 0 };
       for (let i = 0; i < WARMUP; i++) {
         bus.emit('run:draftPickRequested', { offerId: null });
         drivePilot({ state, player: player(), inputSys, aim, tick: state.tick | 0 });
+        if (i % 30 === 0) topUpShips(ctx, state, seed, topUp);
         runtime.step(SIM_DT);
       }
 
+      if (CENSUS) aiCensusLines = aiCensus(state);
+      if (AI_BUCKETS) aiBucketCtl = instrumentAIBuckets(runtime);
       meterCtl.armed = true;
       fanoutCtl.armed = true;
+      if (aiBucketCtl) aiBucketCtl.armed = true;
       for (let i = 0; i < TICKS; i++) {
         bus.emit('run:draftPickRequested', { offerId: null });
         drivePilot({ state, player: player(), inputSys, aim, tick: state.tick | 0 });
+        if ((SHIPS > 0) && i % 30 === 0) topUpShips(ctx, state, seed, topUp);
         const t0 = performance.now();
         runtime.step(SIM_DT);
         deltas.push(performance.now() - t0);
         ents.push(liveEntityCount(state));
         hostilesN.push(cohortHostiles(state).length);
+        shipsN.push(aiShips(state));
       }
       meterCtl.armed = false;
       fanoutCtl.armed = false;
+      if (aiBucketCtl) aiBucketCtl.armed = false;
     } finally {
       restoreFeatureMaps(previousFlags);
     }
@@ -601,7 +666,50 @@ async function runCell({ seed }) {
     },
     impactFanout,
     systems,
+    ...((SHIPS > 0 || CENSUS || AI_BUCKETS) ? { ai: {
+      shipsMean: Math.round((shipsN.reduce((s, v) => s + v, 0) / (shipsN.length || 1)) * 10) / 10,
+      shipsMax: shipsN.length ? Math.max(...shipsN) : 0,
+      census: aiCensusLines,
+      buckets: aiBucketCtl ? aiBucketCtl.report(TICKS, systems.find((s) => s.name === 'tacticalAI')) : null,
+    } } : {}),
   };
+}
+
+/** --ai-buckets: wrap the live stack's update and planner, and the pack brain if present. */
+function instrumentAIBuckets(runtime) {
+  const tai = runtime.getSystem('tacticalAI') || runtime.getSystem('aiSlot');
+  const ctl = { armed: false, stackMs: 0, packMs: 0, plans: 0 };
+  const stack = tai && tai.stack;
+  if (stack) {
+    const up = stack.update.bind(stack);
+    stack.update = (...a) => {
+      if (!ctl.armed) return up(...a);
+      const t0 = performance.now();
+      try { return up(...a); } finally { ctl.stackMs += performance.now() - t0; }
+    };
+    const plan = stack.maneuver.plan.bind(stack.maneuver);
+    stack.maneuver.plan = (a) => { if (ctl.armed) ctl.plans++; return plan(a); };
+  }
+  const pack = tai && tai.pack;
+  if (pack && typeof pack.step === 'function') {
+    const step = pack.step.bind(pack);
+    pack.step = (...a) => {
+      if (!ctl.armed) return step(...a);
+      const t0 = performance.now();
+      try { return step(...a); } finally { ctl.packMs += performance.now() - t0; }
+    };
+  }
+  ctl.report = (ticks, row) => {
+    const total = row ? row.totalMs : 0;
+    return {
+      tacticalAIMeanMs: round3(total / ticks),
+      stackMeanMs: round3(ctl.stackMs / ticks),
+      packMeanMs: round3(ctl.packMs / ticks),
+      restMeanMs: round3((total - ctl.stackMs - ctl.packMs) / ticks),
+      planCallsPerTick: round3(ctl.plans / ticks),
+    };
+  };
+  return ctl;
 }
 
 const hostBusy = hostBusyNote();
@@ -624,6 +732,12 @@ for (const cell of cells) {
   if (cell.impacts.preSolveClosingSpeed) {
     const c = cell.impacts.preSolveClosingSpeed;
     console.log(`preSolveClosingSpeed: belowShuntMin(40)=${c.belowShuntMin} atOrAbove=${c.atOrAboveShuntMin} missing=${c.missing} ccPhases=${cell.ccPhasesInstrumented}`);
+  }
+  if (cell.ai) {
+    const b = cell.ai.buckets;
+    console.log(`ai ships: mean=${cell.ai.shipsMean} max=${cell.ai.shipsMax}${SHIPS > 0 ? ` target=${SHIPS}` : ''}`);
+    if (b) console.log(`ai buckets ms/tick: tacticalAI=${b.tacticalAIMeanMs} stack=${b.stackMeanMs} pack=${b.packMeanMs} rest=${b.restMeanMs} planCalls/tick=${b.planCallsPerTick}`);
+    if (cell.ai.census) { console.log('ai census (enemy path doctrine):'); for (const l of cell.ai.census) console.log('  ' + l); }
   }
   console.log(`sim-step ms: mean=${cell.simStepMs.mean} p50=${cell.simStepMs.p50} p95=${cell.simStepMs.p95} p99=${cell.simStepMs.p99} max=${cell.simStepMs.max}`);
   console.log('per-system (top ' + TOP + ' by total ms):');
