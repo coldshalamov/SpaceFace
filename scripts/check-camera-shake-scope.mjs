@@ -2,16 +2,19 @@
 //
 // THE DEFECT THIS PINS. `camera:shake` has 13 emitters and the renderer's consumer read only
 // `{ amount }`, so a shake was a bare scalar with no notion of where it came from. Two of those
-// emitters describe WORLD events — src/render/vfx.js's ship-destruction burst (0.16 for a small hull,
-// up to 0.62 for a capital) and src/systems/combat.js's `entity:killed` kick (0.5, fired for EVERY
+// emitters describe WORLD events — the ship-destruction burst in src/render/vfx/explosionPresentationVfx.js
+// (0.16 for a small hull, up to 0.62 for a capital) and src/systems/combat.js's `entity:killed` kick (0.5, fired for EVERY
 // entity killed) — so a ship dying anywhere in the sector kicked the player's camera exactly as hard
 // as one dying on their nose. Measured on the default tutorial route: six unearned kicks in ~30 s of
 // flight, from destructions ~920 WU away, at full 0.16 trauma each.
 //
-// The fix attenuates at the CONSUMER rather than at 13 call sites: a payload carrying `position` is a
-// world event and gets a distance falloff; a payload without one is already player-scoped by
-// construction (player hit / death / respawn, drill, tether, presentation cues) and passes through
-// untouched. That covers the emitters nobody has audited.
+// The fix lives at the CONSUMER rather than at every call site: renderer.js routes every shake
+// through camera.js's cameraShakeAmountForPlayer. A payload without `position` is already
+// player-scoped by construction (player hit / death / respawn, drill, tether, presentation cues)
+// and passes through whole; a positioned payload is a WORLD event and — since the camera gate
+// landed — spends none of the player's shake budget unless it explicitly claims `audience: 'hero'`,
+// in which case it falls off with distance (world effects keep their local light and debris
+// feedback). That covers the emitters nobody has audited.
 //
 // This probe asserts, in order of how likely each is to rot:
 //   1. THE CURVE IS SANE — full strength close in, monotonically decreasing, exactly zero at cutoff.
@@ -26,6 +29,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  cameraShakeAmountForPlayer,
   SHAKE_CUTOFF_RADIUS_WU,
   SHAKE_FULL_RADIUS_WU,
   shakeDistanceAttenuation,
@@ -76,26 +80,32 @@ check('non-finite and negative distances degrade to full strength rather than Na
 // ---- 2. the consumer --------------------------------------------------------------------------
 const rendererSrc = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 
-check('renderer imports and applies the shared attenuation instead of re-deriving one', () => {
-  assert.match(rendererSrc, /import \{[^}]*shakeDistanceAttenuation[^}]*\} from '\.\/camera\.js'/,
-    'renderer must import shakeDistanceAttenuation from camera.js (a second local curve would drift)');
+check('renderer routes every shake through the shared camera.js amount-for-player helper', () => {
+  assert.match(rendererSrc, /import \{[^}]*cameraShakeAmountForPlayer[^}]*\} from '\.\/camera\.js'/,
+    'renderer must import cameraShakeAmountForPlayer from camera.js (a second local routing would drift)');
   const handler = rendererSrc.slice(rendererSrc.indexOf("onBus('camera:shake'"));
-  assert(handler.includes('shakeDistanceAttenuation'), 'the camera:shake handler must apply the attenuation');
-  assert(handler.includes('position'), 'the camera:shake handler must read payload.position');
+  assert(handler.includes('cameraShakeAmountForPlayer'),
+    'the camera:shake handler must route amounts through the shared helper');
+  assert(handler.includes('cam.addTrauma(scaled'),
+    'the handler must add trauma from the routed amount (or the impact-kick path scaled from it)');
 });
 
-check('un-positioned shakes pass through the consumer unattenuated', () => {
-  const handler = rendererSrc.slice(rendererSrc.indexOf("onBus('camera:shake'"), rendererSrc.indexOf("onBus('camera:kill'"));
-  // The contract is semantic, not shape: with no usable position (or no player to measure
-  // against) the trauma amount must reach the camera whole. The FB-072 handler expresses that
-  // as `let scaled = amount` — attenuation only ever rewrites `scaled` inside the positioned
-  // + measured branch — and then `cam.addTrauma(scaled)` (or the direction-aware impact-kick
-  // path that scales from it). Pin the default-to-full-amount wiring, not a literal arg name,
-  // so a refactor cannot silently weaken the 11 player-scoped emitters.
-  assert(/let\s+scaled\s*=\s*amount\b/.test(handler),
-    'the handler must default scaled to the full amount before any attenuation branch');
-  assert(handler.includes('cam.addTrauma(scaled)'),
-    'the handler must add trauma from scaled — the unattenuated default for un-positioned shakes');
+check('un-positioned shakes pass through whole; world events need hero admission to spend', () => {
+  // The default-to-whole and audience contracts moved into camera.js's routing helper, so they
+  // are pinned behaviorally, not as handler source text: with no usable position the amount
+  // must reach the camera whole, and a positioned payload without `audience: 'hero'` spends
+  // nothing — world effects keep their local feedback and only an admitted hero beat may
+  // draw on the player's shake budget, attenuated by distance from there.
+  assert.equal(cameraShakeAmountForPlayer({ amount: 0.3 }, null), 0.3,
+    'an un-positioned cue reaches the camera whole');
+  assert.equal(cameraShakeAmountForPlayer({ amount: 0.3 }, undefined), 0.3,
+    'an un-positioned cue stays whole with no player position to measure against');
+  assert.equal(cameraShakeAmountForPlayer({ amount: 0.16, position: { x: 0, z: 0 } }, { x: 0, z: 0 }), 0,
+    'a positioned world event without hero admission spends none of the shake budget');
+  assert.equal(cameraShakeAmountForPlayer({ amount: 0.5, position: { x: 60, z: 0 }, audience: 'hero' }, { x: 0, z: 0 }), 0.5,
+    'a hero beat inside the full-strength radius is unattenuated');
+  const far = cameraShakeAmountForPlayer({ amount: 0.16, position: { x: 920, z: 0 }, audience: 'hero' }, { x: 0, z: 0 });
+  assert(far < 0.01, `a hero beat ~920 WU out must stay a rounding error (got ${far.toFixed(4)})`);
 });
 
 // ---- 3. the emitters --------------------------------------------------------------------------
@@ -111,11 +121,13 @@ const SRC_ROOT = fileURLToPath(new URL('../src/', import.meta.url));
 // The world events: destruction bursts and the death-spiral detonation happen where the ship
 // died; the entity:killed kick happens where the kill landed.
 const WORLD_SHAKE_FILES = new Set([
-  'render/vfx.js',
+  // The ship-destruction bursts (rupture/burst/tear phases) moved out of vfx.js into the
+  // explosion presentation module; they are still world events and still tag where they hit.
+  'render/vfx/explosionPresentationVfx.js',
   'render/shipMicroMotion.js',
   'systems/combat.js',
-  // swarmJuice multi-kill/wipe dips tag the victim position — a real world location, so a far-off
-  // swarm wipe attenuates instead of kicking the camera at full force.
+  // swarmJuice multi-kill/wipe dips tag the victim position and claim hero admission — a real
+  // world location, so a far-off swarm wipe attenuates instead of kicking at full force.
   'systems/swarmJuice.js',
 ]);
 
@@ -171,13 +183,13 @@ function shakeEmitters() {
 }
 
 check('the ship-destruction bursts tag their world positions', () => {
-  const vfx = shakeEmitters().filter((s) => s.file === 'render/vfx.js');
-  assert(vfx.length > 0, 'expected camera:shake emitters in vfx.js');
-  assert(vfx.some((s) => s.body.includes('shake')),
+  const bursts = shakeEmitters().filter((s) => s.file === 'render/vfx/explosionPresentationVfx.js');
+  assert(bursts.length >= 2, 'expected the destruction-burst emitters in the explosion presentation module');
+  assert(bursts.some((s) => s.body.includes('shake')),
     'expected the destruction-burst emitter (amount derived from `shake`)');
-  for (const s of vfx) {
+  for (const s of bursts) {
     assert(s.body.includes('position'),
-      `vfx.js destruction shakes must send position so they can be attenuated (got: ${s.body.slice(0, 90)})`);
+      `destruction shakes must send position so they can be scoped to the world (got: ${s.body.slice(0, 90)})`);
   }
 });
 
