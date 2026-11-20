@@ -11,6 +11,13 @@
 import * as THREE from 'three';
 import { SparkField, sparkSpec, SPARK_SHAPE, SPARK_ADD, SPARK_MATTER } from './sparkField.js';
 import { ShockShell, shellSpec, SHELL_MODE } from './shockShell.js';
+import { enemyJobFor } from '../../../data/enemyJobs.js';
+
+// Tell colours: the job palette (minimap CONTACT_JOB_PALETTE), lifted to HDR.
+const TELL_COLORS = Object.freeze({
+  burst: [3.2, 1.6, 0.45], reach: [2.4, 0.9, 3.2], seize: [3.2, 2.8, 0.8], deny: [1.4, 1.3, 3.2],
+  rush: [3.0, 0.8, 0.6], wall: [3.0, 2.1, 1.9], skirmish: [3.0, 1.1, 2.0], source: [3.0, 0.5, 1.2], default: [3.0, 0.9, 0.6],
+});
 
 const TAU = Math.PI * 2;
 const PLOW_KEYS = Object.freeze(['plow:a', 'plow:b', 'plow:c']);
@@ -73,6 +80,8 @@ export class PowerFx {
     this.pin = null;
     this.plow = null;
     this.castFields = new Set();
+    this.sched = [];        // future distortion lenses (a ripple riding a front)
+    this.trails = new Map(); // entity id -> { from, until, r, g, b } launched-body trails
     this.pendingHits = [];
     this.stats = { casts: 0, particles: 0, shells: 0, lights: 0, boundaries: 0 };
     this.reduced = { motion: false, flash: false };
@@ -134,9 +143,25 @@ export class PowerFx {
     this.stats.casts++;
 
     // Core flash: tight and hot, gone in a tenth of a second.
-    this._spark(cx, 2, cz, 0, 0, 0, t0, 0.1, 18, 40, 0, 0, 7.5, 6.0, 4.2, 2.6, 1.2, 0.35, SPARK_SHAPE.GLOW, SPARK_ADD);
+    this._spark(cx, 2, cz, 0, 0, 0, t0, 0.14, 22, 46, 0, 0, 9, 7.5, 5.2, 2.6, 1.2, 0.35, SPARK_SHAPE.GLOW, SPARK_ADD);
     this._spark(cx, 2.2, cz, 0, 0, 0, t0, 0.22, 12, 20, 0, 0, 9.0, 8.5, 7.5, 3.0, 1.6, 0.6, SPARK_SHAPE.GLOW, SPARK_ADD);
 
+    // The wall: a thick, blinding band riding the same curve as the front for its first ~120 ms,
+    // then gone (fade exponent 8); a dimmer, wider pressure skirt just behind it.
+    Object.assign(s, { x: cx, y: 1.5, z: cz, birth: t0, from: 6, to: R, life: SHOVE_FRONT_S, halfWidth: Math.max(12, R * 0.1), r: 7, g: 5.6, b: 3.6, alpha: 1, mode: SHELL_MODE.EXPAND, arcStart: unit(seed, 4) * TAU, arcSpan: 0, seed: 6 + unit(seed, 5) });
+    this.shells.emit(s);
+    Object.assign(s, { birth: t0, from: 4, to: R * 0.94, life: SHOVE_FRONT_S + 0.04, halfWidth: Math.max(18, R * 0.16), r: 1.6, g: 1.1, b: 0.6, alpha: 0.6, seed: 3 + unit(seed, 6) });
+    this.shells.emit(s);
+    // A ripple in the picture riding the front: lenses born along the ring as the front passes.
+    if (!this.reduced.motion) {
+      for (const frac of [0.25, 0.5, 0.78]) {
+        const at = t0 + shoveFrontDelay(R * frac, R);
+        for (let k = 0; k < 10; k++) {
+          const a = (k / 10) * TAU + unit(seed, 700 + k) * 0.3;
+          this.sched.push({ at, x: cx + Math.cos(a) * R * frac, y: 1, z: cz + Math.sin(a) * R * frac, radius: R * 0.14, strength: 0.9 * (1.1 - frac), life: 0.09 });
+        }
+      }
+    }
     // The front: a hot lip and a cooler trailing shock.
     Object.assign(s, { x: cx, y: 1.4, z: cz, birth: t0, from: 5, to: R, life: SHOVE_FRONT_S + 0.06, halfWidth: Math.max(5, R * 0.045), r: 4.6, g: 3.4, b: 2.0, alpha: 1, mode: SHELL_MODE.EXPAND, arcStart: unit(seed, 1) * TAU, arcSpan: 0, seed: unit(seed, 2) });
     this.shells.emit(s);
@@ -159,13 +184,14 @@ export class PowerFx {
     }
 
     // Deck dust kicked outward the instant the front passes it (born in the future).
-    const nDust = Math.round(96 * scale);
+    const nDust = Math.round(150 * scale);
     for (let i = 0; i < nDust; i++) {
       const a = unit(seed, 600 + i) * TAU;
       const rho = 12 + (R * 0.95 - 12) * Math.sqrt(unit(seed, 800 + i));
       const ca = Math.cos(a);
       const sa = Math.sin(a);
-      const v = 70 + 150 * unit(seed, 1000 + i) * (1 - rho / R * 0.6);
+      // Dragged along the floor at close to the front's own speed there, then braking.
+      const v = 120 + 260 * unit(seed, 1000 + i) * (1 - rho / R * 0.6);
       const birth = t0 + shoveFrontDelay(rho, R);
       const ember = i % 4 === 0;
       if (ember) {
@@ -210,6 +236,11 @@ export class PowerFx {
     Object.assign(this.s, { x, y: 1.4, z, birth: t0, from: R, to: 6, life: 0.62, halfWidth: Math.max(4, R * 0.03), r: 2.4, g: 2.0, b: 4.8, alpha: 1, mode: SHELL_MODE.CONTRACT, arcStart: unit(seed, 1) * TAU, arcSpan: 0, seed: unit(seed, 2) });
     this.shells.emit(this.s);
     this.stats.shells++;
+    // Two thinner rings chase the first inward, so the edge has depth.
+    for (let k = 1; k <= 2; k++) {
+      Object.assign(this.s, { x, y: 1.35, z, birth: t0 + 0.1 * k, from: R * (1 - 0.06 * k), to: 6, life: 0.62, halfWidth: Math.max(2, R * 0.012), r: 1.6, g: 1.4, b: 3.4, alpha: 0.85 - 0.2 * k, mode: SHELL_MODE.CONTRACT, arcStart: unit(seed, 10 + k) * TAU, arcSpan: 0, seed: unit(seed, 20 + k) });
+      this.shells.emit(this.s);
+    }
     this._pullMotes(x, z, R, seed, 0, this.reduced.motion ? 40 : 110, t0);
     if (this.host.flashLight && this.host.flashLight({ x: gx, z: gz }, '#b9a2ff', 9, 4.5, R * 1.2, 0.9)) this.stats.lights++;
     if (this.host.distortion && !this.reduced.motion) this.host.distortion({ x, y: 1, z, radius: R * 0.3, strength: 1.0, life: 0.3 });
@@ -262,11 +293,17 @@ export class PowerFx {
         w.nextRing = t + 0.33; w.n++;
         Object.assign(this.s, { x: w.x, y: 1.3, z: w.z, birth: t, from: w.R, to: 6, life: 0.6, halfWidth: Math.max(2.6, w.R * 0.018), r: 1.6, g: 1.4, b: 3.4, alpha: 0.75, mode: SHELL_MODE.CONTRACT, arcStart: unit(w.seed, 100 + w.n) * TAU, arcSpan: 0, seed: unit(w.seed, 200 + w.n) });
         this.shells.emit(this.s);
+        for (let k = 1; k <= 2; k++) {
+          Object.assign(this.s, { x: w.x, y: 1.3, z: w.z, birth: t + 0.09 * k, from: w.R * (1 - 0.05 * k), to: 6, life: 0.6, halfWidth: Math.max(1.4, w.R * 0.009), r: 1.2, g: 1.0, b: 2.6, alpha: 0.55 - 0.15 * k, mode: SHELL_MODE.CONTRACT, arcStart: unit(w.seed, 400 + w.n * 3 + k) * TAU, arcSpan: 0, seed: unit(w.seed, 500 + w.n * 3 + k) });
+          this.shells.emit(this.s);
+        }
         this._pullMotes(w.x, w.z, w.R, w.seed, 20000 + w.n * 64, 30, t);
       }
       if (t >= w.nextCore) {
         w.nextCore = t + 0.1;
-        this._spark(w.x, 2.2, w.z, 0, 0, 0, t, 0.2, 16 + 5 * unit(w.seed, 300 + w.n), 10, 0, 0, 5, 4.5, 8.5, 2.5, 2, 5, SPARK_SHAPE.GLOW, SPARK_ADD);
+        // A dark core: the throat swallows light around the hot pinpoint, so it reads as a hole.
+        this._spark(w.x, 1.9, w.z, 0, 0, 0, t, 0.22, w.R * 0.32, w.R * 0.26, 0, 0, 0, 0, 0, 0, 0, 0, SPARK_SHAPE.GLOW, 0.9);
+        this._spark(w.x, 2.2, w.z, 0, 0, 0, t, 0.2, 10 + 4 * unit(w.seed, 300 + w.n), 6, 0, 0, 5, 4.5, 8.5, 2.5, 2, 5, SPARK_SHAPE.GLOW, SPARK_ADD);
       }
       if (t >= w.nextBody) {
         w.nextBody = t + 0.15;
@@ -321,7 +358,11 @@ export class PowerFx {
     const R = kill ? Math.max(40, Math.min(110, (Number(radius) || 12) * 2.2)) : Math.max(70, Math.min(180, (Number(radius) || 30) * 2.5));
     const scale = (this.reduced.motion ? 0.5 : 1) * (kill ? 0.45 : 1);
     if (!opts || opts.cast !== false) this.stats.casts++;
+    // 0-60 ms: a white-hot core that collapses to orange.
+    this._spark(x, 3.2, z, 0, 0, 0, t0, 0.1, R * 0.42, R * 0.3, 0, 0, 16, 15, 14, 9, 6, 3, SPARK_SHAPE.GLOW, SPARK_ADD);
     this._spark(x, 2.8, z, 0, 0, 0, t0, 0.28, R * 0.28, R * 0.14, 0, 0, 9, 6, 2.5, 3, 1, 0.2, SPARK_SHAPE.GLOW, SPARK_ADD);
+    // Scorch on the deck: a dark mark that lingers for seconds after the smoke has gone.
+    if (!opts || opts.cast !== false) this._spark(x, 0.6, z, 0, 0, 0, t0 + 0.05, 4.5, R * 0.55, R * 0.62, 0, 0, 0.02, 0.015, 0.012, 0.0, 0.0, 0.0, SPARK_SHAPE.PUFF, 1.0);
     this._spark(x, 3, z, 0, 0, 0, t0, 0.1, R * 0.35, R * 0.5, 0, 0, 12, 11, 9.5, 6, 4, 2, SPARK_SHAPE.GLOW, SPARK_ADD);
     Object.assign(this.s, { x, y: 1.5, z, birth: t0, from: 6, to: R, life: 0.3, halfWidth: Math.max(3, R * 0.05), r: 3.6, g: 2.6, b: 1.6, alpha: 1, mode: SHELL_MODE.EXPAND, arcStart: unit(seed, 1) * TAU, arcSpan: 0, seed: unit(seed, 2) });
     this.shells.emit(this.s);
@@ -333,7 +374,7 @@ export class PowerFx {
       const v = R * (0.5 + 0.9 * unit(seed, 40 + i));
       const size = R * (0.22 + 0.14 * unit(seed, 70 + i));
       this._spark(x, 2.6, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0, 0.45 + 0.3 * unit(seed, 100 + i), size, size * 2.4, 3.6, 0,
-        8, 4.2, 1.4, 1.2, 0.35, 0.08, SPARK_SHAPE.PUFF, 0.3);
+        11, 7.5, 3.2, 1.0, 0.28, 0.06, SPARK_SHAPE.PUFF, 0.3);
     }
     // Soot: rolls out behind the fire and darkens the scene behind it.
     const nSmoke = Math.round(12 * scale);
@@ -352,12 +393,13 @@ export class PowerFx {
       this._spark(x, 2.4, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0, 0.35 + 0.45 * unit(seed, 600 + i), 2.2, 0.7, 3.0, 0.04,
         7, 5.5, 3.2, 2.2, 0.6, 0.1, SPARK_SHAPE.STREAK, SPARK_ADD);
     }
-    const nChips = Math.round(12 * scale);
+    // Hard chunks thrown PAST the shock front (terminal distance v/k > R).
+    const nChips = Math.round(20 * scale);
     for (let i = 0; i < nChips; i++) {
       const a = unit(seed, 700 + i) * TAU;
-      const v = R * (1.2 + 1.6 * unit(seed, 720 + i));
-      this._spark(x, 2.4, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0, 0.9 + 0.6 * unit(seed, 740 + i), 2.6, 2.0, 1.4, 0.004,
-        3.2, 1.6, 0.6, 0.35, 0.3, 0.28, SPARK_SHAPE.CHIP, 0.55);
+      const v = R * (2.4 + 2.4 * unit(seed, 720 + i));
+      this._spark(x, 2.4, z, Math.cos(a) * v, 0, Math.sin(a) * v, t0, 1.0 + 0.7 * unit(seed, 740 + i), 3.6, 2.8, 1.2, 0.006,
+        5, 2.6, 0.9, 0.4, 0.34, 0.3, SPARK_SHAPE.CHIP, 0.6);
     }
     const nEmbers = Math.round(30 * scale);
     for (let i = 0; i < nEmbers; i++) {
@@ -382,7 +424,7 @@ export class PowerFx {
         }
       }
     }
-    if ((!opts || opts.light !== false) && this.host.flashLight && this.host.flashLight({ x: gx, z: gz }, '#ffb070', 14, 5, R * 2.6, 0.95)) this.stats.lights++;
+    if ((!opts || opts.light !== false) && this.host.flashLight && this.host.flashLight({ x: gx, z: gz }, '#ffc890', 22, 4.5, R * 3.2, 0.97)) this.stats.lights++;
     if (this.host.distortion && !this.reduced.motion) this.host.distortion({ x, y: 1, z, radius: R * 0.8, strength: 1.2, life: 0.25 });
   }
 
@@ -419,7 +461,9 @@ export class PowerFx {
     const t0 = this.time;
     const seed = hashString('pinland:' + String(p.seedId) + ':' + Math.round(t0 * 1000));
     if (!locked) {
-      this._spark(x, 2.4, z, 0, 0, 0, t0, 0.12, 22, 34, 0, 0, 7, 10, 12, 2, 4, 6, SPARK_SHAPE.GLOW, SPARK_ADD);
+      // The clank: a hard white flash, then claws biting in (below, on lock).
+      this._spark(x, 2.6, z, 0, 0, 0, t0, 0.1, 30, 20, 0, 0, 14, 15, 16, 4, 7, 9, SPARK_SHAPE.GLOW, SPARK_ADD);
+      this._spark(x, 2.4, z, 0, 0, 0, t0, 0.14, 16, 26, 0, 0, 7, 10, 12, 2, 4, 6, SPARK_SHAPE.GLOW, SPARK_ADD);
       for (let i = 0; i < 26; i++) {
         const a = unit(seed, i) * TAU;
         const v = 120 + 300 * unit(seed, 30 + i);
@@ -465,8 +509,11 @@ export class PowerFx {
     if (ent && ent.pos) { const l = this._toLocal(ent.pos.x, ent.pos.z); pin.x = l.x; pin.z = l.z; }
     if (pin.phase === 'travel' && ent && ent.pos && !this.reduced.motion) {
       // The flying seed leaves a trail of short-lived hot streaks (a ribbon of light behind it).
-      this._spark(pin.x, 1.8, pin.z, 0, 0, 0, t, 0.26, 3.4, 0.8, 0, 0, 3, 7, 9, 0.6, 1.6, 2.4, SPARK_SHAPE.GLOW, SPARK_ADD);
+      this._spark(pin.x, 1.9, pin.z, 0, 0, 0, t, 0.22, 6, 1.2, 0, 0, 8, 12, 14, 1, 3, 4, SPARK_SHAPE.GLOW, SPARK_ADD);
     }
+    // A standing post: a steady marker light every frame, a pulse each second, and its hold
+    // radius on the floor (the seed field's true radius, drawn by the boundary line pass).
+    if (pin.phase === 'held') this._spark(pin.x, 2.2, pin.z, 0, 0, 0, t, 0.05, 6, 6, 0, 0, 3, 7, 8, 3, 7, 8, SPARK_SHAPE.GLOW, SPARK_ADD);
     if (pin.phase === 'held' && t >= pin.next) {
       pin.next = t + 1;
       pin.n++;
@@ -675,36 +722,48 @@ export class PowerFx {
     }
   }
 
-  gunImpact(family, x0, z0, nx, nz, hitShield, heavy) {
+  gunImpact(family, x0, z0, nx, nz, hitShield, heavy, targetId = null) {
     const { x, z } = this._toLocal(x0, z0);
     const t = this.time;
     const seed = (this.stats.particles * 2246822519 + 7) >>> 0;
     const base = Math.atan2(nz, nx);
     const shield = !!hitShield;
+    // A hit reads at a fixed minimum ON-SCREEN size: a 30-pixel wasp's hit is as legible as a
+    // bruiser's (world size per pixel from the camera, so it holds at every zoom).
+    const wpp = this.host.wuPerPx ? this.host.wuPerPx(x, z) : 0;
+    const fMin = 14 * wpp; const sMin = 2.4 * wpp;
     const hot = shield ? [2.2, 4.5, 6] : [7, 5.5, 3.4];
     const cool = shield ? [0.6, 1.4, 2.4] : [2.2, 0.6, 0.12];
     if (family === 'hose') {
-      this._spark(x, 2.4, z, 0, 0, 0, t, 0.06, 4, 6, 0, 0, hot[0], hot[1], hot[2], cool[0], cool[1], cool[2], SPARK_SHAPE.GLOW, SPARK_ADD);
+      this._spark(x, 2.4, z, 0, 0, 0, t, 0.06, Math.max(4, fMin * 0.6), Math.max(6, fMin * 0.8), 0, 0, hot[0], hot[1], hot[2], cool[0], cool[1], cool[2], SPARK_SHAPE.GLOW, SPARK_ADD);
       for (let i = 0; i < 3; i++) {
         const a = base + (unit(seed, i) - 0.5) * 2.2;
         const v = 120 + 180 * unit(seed, 10 + i);
-        this._spark(x, 2.2, z, Math.cos(a) * v, 0, Math.sin(a) * v, t, 0.12 + 0.08 * unit(seed, 20 + i), 0.9, 0.3, 6, 0.025, hot[0], hot[1], hot[2], cool[0], cool[1], cool[2], SPARK_SHAPE.STREAK, SPARK_ADD);
+        this._spark(x, 2.2, z, Math.cos(a) * v, 0, Math.sin(a) * v, t, 0.12 + 0.08 * unit(seed, 20 + i), Math.max(0.9, sMin), 0.3, 6, 0.025, hot[0], hot[1], hot[2], cool[0], cool[1], cool[2], SPARK_SHAPE.STREAK, SPARK_ADD);
       }
       return;
     }
     if (family === 'thump' || heavy) {
-      this._spark(x, 2.6, z, 0, 0, 0, t, 0.07, 14, 22, 0, 0, 10, 8.5, 6.5, 3, 1.6, 0.6, SPARK_SHAPE.GLOW, SPARK_ADD);
-      Object.assign(this.s, { x, y: 1.6, z, birth: t, from: 4, to: 60, life: 0.28, halfWidth: 4.5, r: shield ? 1.4 : 3.6, g: shield ? 3 : 2.6, b: shield ? 4 : 1.6, alpha: 1, mode: SHELL_MODE.EXPAND, arcStart: unit(seed, 2) * TAU, arcSpan: 0, seed: unit(seed, 3) });
+      // The cannon's wallop is the biggest single impact in the game: a white-hot punch, a thick
+      // blinding front that thins as it flies, a wide ring, a big spark fan and hard chunks, and
+      // the struck body burns a trail as it is flung.
+      this._spark(x, 2.8, z, 0, 0, 0, t, 0.09, 24, 16, 0, 0, 16, 15, 14, 5, 3, 1.5, SPARK_SHAPE.GLOW, SPARK_ADD);
+      this._spark(x, 2.6, z, 0, 0, 0, t, 0.12, 16, 30, 0, 0, 10, 8.5, 6.5, 3, 1.6, 0.6, SPARK_SHAPE.GLOW, SPARK_ADD);
+      Object.assign(this.s, { x, y: 1.7, z, birth: t, from: 4, to: 90, life: 0.3, halfWidth: 10, r: shield ? 2.4 : 6, g: shield ? 4.5 : 4.6, b: shield ? 6 : 3, alpha: 1, mode: SHELL_MODE.EXPAND, arcStart: unit(seed, 4) * TAU, arcSpan: 0, seed: 6 + unit(seed, 5) });
       this.shells.emit(this.s);
-      for (let i = 0; i < 26; i++) {
+      if (targetId != null) this.trails.set(targetId, { from: t, until: t + 0.9, r: 5, g: 3.4, b: 1.6 });
+      if (this.host.distortion && !this.reduced.motion) this.host.distortion({ x, y: 1, z, radius: 46, strength: 1.2, life: 0.16 });
+      Object.assign(this.s, { x, y: 1.6, z, birth: t, from: 4, to: 70, life: 0.32, halfWidth: 4.5, r: shield ? 1.4 : 3.6, g: shield ? 3 : 2.6, b: shield ? 4 : 1.6, alpha: 1, mode: SHELL_MODE.EXPAND, arcStart: unit(seed, 2) * TAU, arcSpan: 0, seed: unit(seed, 3) });
+      this.shells.emit(this.s);
+      for (let i = 0; i < 40; i++) {
         const a = base + (unit(seed, 40 + i) - 0.5) * 2.6;
-        const v = 200 + 380 * unit(seed, 70 + i);
+        const v = 260 + 520 * unit(seed, 70 + i);
         this._spark(x, 2.4, z, Math.cos(a) * v, 0, Math.sin(a) * v, t, 0.25 + 0.25 * unit(seed, 100 + i), 2.0, 0.6, 4.5, 0.04, hot[0], hot[1], hot[2], cool[0], cool[1], cool[2], SPARK_SHAPE.STREAK, SPARK_ADD);
       }
       if (!shield) {
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 10; i++) {
           const a = base + (unit(seed, 140 + i) - 0.5) * 2.0;
-          const v = 80 + 120 * unit(seed, 150 + i);
+          const v = 140 + 220 * unit(seed, 150 + i);
           this._spark(x, 2.4, z, Math.cos(a) * v, 0, Math.sin(a) * v, t, 0.7 + 0.4 * unit(seed, 160 + i), 2.2, 1.6, 1.6, 0.004, 3, 1.5, 0.6, 0.35, 0.3, 0.28, SPARK_SHAPE.CHIP, 0.55);
         }
         for (let i = 0; i < 3; i++) {
@@ -734,11 +793,11 @@ export class PowerFx {
     }
     if (family === 'boom') { this.bomb(x0, z0, 18, 'boom:' + seed, { cast: false }); return; }
     // pew and anything unlisted: a crisp small hit.
-    this._spark(x, 2.4, z, 0, 0, 0, t, 0.08, 8, 12, 0, 0, hot[0], hot[1], hot[2], cool[0], cool[1], cool[2], SPARK_SHAPE.GLOW, SPARK_ADD);
+    this._spark(x, 2.4, z, 0, 0, 0, t, 0.08, Math.max(8, fMin), Math.max(12, fMin * 1.3), 0, 0, hot[0], hot[1], hot[2], cool[0], cool[1], cool[2], SPARK_SHAPE.GLOW, SPARK_ADD);
     for (let i = 0; i < 7; i++) {
       const a = base + (unit(seed, i) - 0.5) * 2.2;
       const v = 150 + 250 * unit(seed, 10 + i);
-      this._spark(x, 2.2, z, Math.cos(a) * v, 0, Math.sin(a) * v, t, 0.16 + 0.12 * unit(seed, 20 + i), 1.1, 0.35, 5, 0.03, hot[0], hot[1], hot[2], cool[0], cool[1], cool[2], SPARK_SHAPE.STREAK, SPARK_ADD);
+      this._spark(x, 2.2, z, Math.cos(a) * v, 0, Math.sin(a) * v, t, 0.16 + 0.12 * unit(seed, 20 + i), Math.max(1.1, sMin), 0.35, 5, 0.03, hot[0], hot[1], hot[2], cool[0], cool[1], cool[2], SPARK_SHAPE.STREAK, SPARK_ADD);
     }
     if (!shield) this._spark(x, 2.3, z, Math.cos(base) * 90, 0, Math.sin(base) * 90, t, 0.6, 1.8, 1.4, 1.8, 0.004, 3, 1.5, 0.6, 0.35, 0.3, 0.28, SPARK_SHAPE.CHIP, 0.55);
   }
@@ -799,6 +858,16 @@ export class PowerFx {
     if (p.pos) ends.push(this._toLocal(p.pos.x, p.pos.z));
     const ent = state && state.entities && state.entities.get ? state.entities.get(p.targetId) : null;
     if (ent && ent.pos) { const e = this._toLocal(ent.pos.x, ent.pos.z); ends.push({ x: e.x, z: e.z }); }
+    if (ends.length === 2) {
+      const a = ends[0]; const b = ends[1];
+      const ax = a.x; const az = a.z; const bx = b.x; const bz = b.z;
+      const len = Math.hypot(bx - ax, bz - az) || 1;
+      const ux = (bx - ax) / len; const uz = (bz - az) / len;
+      for (let i = 0; i < 12; i++) {
+        const f = i / 12;
+        this._spark(ax + (bx - ax) * f, 2, az + (bz - az) * f, ux * 220, 0, uz * 220, t0 + f * 0.05, 0.14, 1.6, 0.4, 6, 0.06, 9, 10, 11, 2, 3, 4, SPARK_SHAPE.STREAK, SPARK_ADD);
+      }
+    }
     for (let k = 0; k < ends.length; k++) {
       const { x, z } = ends[k];
       for (let i = 0; i < 12; i++) {
@@ -833,7 +902,7 @@ export class PowerFx {
         const px = ax + (bx - ax) * f - uz * off;
         const pz = az + (bz - az) * f + ux * off;
         this._spark(px, 2, pz, ux * 4, 0, uz * 4, t, 0.05, 1.3 + strain * 0.8, 1.3 + strain * 0.8, 0, len / n / 4,
-          1.2 + 4 * strain, 3.2 + 3 * strain, 4 + 2 * strain, 1.2 + 4 * strain, 3.2 + 3 * strain, 4 + 2 * strain, SPARK_SHAPE.STREAK, SPARK_ADD);
+          1.2 + 8 * strain * strain, 3.2 + 6 * strain * strain, 4 + 5 * strain * strain, 1.2 + 8 * strain * strain, 3.2 + 6 * strain * strain, 4 + 5 * strain * strain, SPARK_SHAPE.STREAK, SPARK_ADD);
       }
       this._spark(bx, 2.2, bz, 0, 0, 0, t, 0.05, 5, 5, 0, 0, 3, 7, 8, 3, 7, 8, SPARK_SHAPE.GLOW, SPARK_ADD);
     }
@@ -864,6 +933,121 @@ export class PowerFx {
     }
   }
 
+  _runSchedule() {
+    const q = this.sched;
+    if (!q.length) return;
+    let w = 0;
+    for (let i = 0; i < q.length; i++) {
+      const it = q[i];
+      if (it.at <= this.time) { if (this.host.distortion) this.host.distortion(it); }
+      else q[w++] = it;
+    }
+    q.length = w;
+  }
+
+  /** Bodies a power launched leave a short hot trail, so the eye follows the bodies. */
+  _bodyTrails(state) {
+    if (!this.trails.size) return;
+    const ents = state && state.entities;
+    const t = this.time;
+    for (const [id, tr] of this.trails) {
+      if (t > tr.until) { this.trails.delete(id); continue; }
+      if (t < tr.from || this.reduced.motion) continue;
+      const e = ents && ents.get ? ents.get(id) : null;
+      if (!e || !e.pos || e.alive === false) { this.trails.delete(id); continue; }
+      const l = this._toLocal(e.pos.x, e.pos.z);
+      const k = 1 - (t - tr.from) / Math.max(0.01, tr.until - tr.from);
+      const rad = Number.isFinite(e.radius) ? e.radius : 6;
+      this._spark(l.x, 1.8, l.z, 0, 0, 0, t, 0.28, rad * 0.7, rad * 0.25, 0, 0, tr.r * (0.5 + k), tr.g * (0.5 + k), tr.b * (0.5 + k), tr.r * 0.3, tr.g * 0.2, tr.b * 0.1, SPARK_SHAPE.GLOW, SPARK_ADD);
+    }
+  }
+
+  /**
+   * ENEMY TELLS (ruling R19): each job's wind-up is a picture the player learns.
+   *   burst     a dive line: a bright dashed lane from the dart along its nose, growing to the
+   *             strike over the wind-up; a fuse glow on the dart.
+   *   reach     a charge-up line on the floor from the sniper to its target, thin and dim at first,
+   *             brightening and tightening until it fires.
+   *   seize     a cable reaching from the grappler toward the hull, extending over the wind-up.
+   *   deny      a ring at the source swelling to the reach of the field it is about to lay.
+   *   others    an engine flare and a short warning ring at the ship.
+   */
+  telegraph(p, state) {
+    if (!p || p.entityId == null) return;
+    const now = state && Number.isFinite(state.simTime) ? state.simTime : 0;
+    const e = state && state.entities && state.entities.get ? state.entities.get(p.entityId) : null;
+    if (!e || !e.pos) return;
+    const d = e.data || {};
+    const row = enemyJobFor(d.enemyTypeId || d.lootTableId || d.archetypeId);
+    const job = (typeof d.combatJob === 'string' && d.combatJob) || (row && row.job) || null;
+    const dur = Math.max(0.25, Math.min(4, (Number(p.durationTicks) || 60) / 60));
+    const tells = this.tells || (this.tells = new Map());
+    if (tells.size > 16) { const first = tells.keys().next().value; tells.delete(first); }
+    tells.set(e.id, { id: e.id, targetId: p.targetId, job, born: this.time, until: this.time + dur, dur, line: p.attackLine || null, seed: hashString('tell:' + e.id + ':' + Math.round(now * 60)) });
+    // The start of every tell: a short warning ring at the ship in its job colour.
+    const l = this._toLocal(e.pos.x, e.pos.z);
+    const c = TELL_COLORS[job] || TELL_COLORS.default;
+    const rad = Number.isFinite(e.radius) ? e.radius : 8;
+    Object.assign(this.s, { x: l.x, y: 1.6, z: l.z, birth: this.time, from: rad * 0.8, to: rad * 2.6, life: 0.35, halfWidth: 1.6, r: c[0], g: c[1], b: c[2], alpha: 1, mode: SHELL_MODE.EXPAND, arcStart: 0, arcSpan: 0, seed: 0.37 });
+    this.shells.emit(this.s);
+  }
+
+  _sustainTells(state) {
+    const tells = this.tells;
+    if (!tells || !tells.size) return;
+    const t = this.time;
+    const ents = state && state.entities;
+    for (const [id, tl] of tells) {
+      if (t > tl.until) { tells.delete(id); continue; }
+      const e = ents && ents.get ? ents.get(id) : null;
+      if (!e || !e.pos || e.alive === false) { tells.delete(id); continue; }
+      const a = this._toLocal(e.pos.x, e.pos.z); const ax = a.x; const az = a.z;
+      const k = (t - tl.born) / tl.dur; // 0 -> 1 over the wind-up
+      const c = TELL_COLORS[tl.job] || TELL_COLORS.default;
+      const tgt = tl.targetId != null && ents.get ? ents.get(tl.targetId) : null;
+      let bx = ax; let bz = az;
+      if (tl.line && tl.line.to) { const b = this._toLocal(tl.line.to.x, tl.line.to.z); bx = b.x; bz = b.z; }
+      else if (tgt && tgt.pos) { const b = this._toLocal(tgt.pos.x, tgt.pos.z); bx = b.x; bz = b.z; }
+      const len0 = Math.hypot(bx - ax, bz - az);
+      if (tl.job === 'burst') {
+        // Dive lane along the nose, reaching further as the fuse burns.
+        const h = Number.isFinite(e.rot) ? e.rot : Math.atan2(bz - az, bx - ax);
+        const L = 60 + 220 * k;
+        this._lane(ax, az, ax + Math.cos(h) * L, az + Math.sin(h) * L, c, 0.5 + 0.8 * k, true, t);
+        this._spark(ax, 2.2, az, 0, 0, 0, t, 0.05, 6 + 4 * k, 6 + 4 * k, 0, 0, c[0] * 1.5, c[1] * 1.5, c[2] * 1.5, c[0], c[1], c[2], SPARK_SHAPE.GLOW, SPARK_ADD);
+      } else if (tl.job === 'reach' && len0 > 4) {
+        // Charge-up line on the floor: dim and wide early, bright and thin just before the shot.
+        this._lane(ax, az, bx, bz, c, 0.25 + 1.2 * k * k, false, t, 1.6 - 0.9 * k);
+      } else if (tl.job === 'seize' && len0 > 4) {
+        const f = Math.min(1, 0.2 + k);
+        this._lane(ax, az, ax + (bx - ax) * f, az + (bz - az) * f, c, 0.6 + 0.6 * k, true, t);
+      } else if (tl.job === 'deny') {
+        if (((t * 60) | 0) % 6 === 0) {
+          Object.assign(this.s, { x: ax, y: 1.4, z: az, birth: t, from: 10, to: 40 + 120 * k, life: 0.3, halfWidth: 1.6, r: c[0], g: c[1], b: c[2], alpha: 0.6, mode: SHELL_MODE.EXPAND, arcStart: 0, arcSpan: 0, seed: 0.5 });
+          this.shells.emit(this.s);
+        }
+      } else {
+        const h = Number.isFinite(e.rot) ? e.rot : 0;
+        this._spark(ax - Math.cos(h) * 8, 2, az - Math.sin(h) * 8, 0, 0, 0, t, 0.05, 5 + 3 * k, 5, 0, 0, c[0], c[1], c[2], c[0], c[1], c[2], SPARK_SHAPE.GLOW, SPARK_ADD);
+      }
+    }
+  }
+
+  /** A lane of light between two points, redrawn per frame (dashed = moving dashes toward b). */
+  _lane(ax, az, bx, bz, c, gain, dashed, t, width = 1.1) {
+    const len = Math.hypot(bx - ax, bz - az);
+    if (!(len > 1)) return;
+    const ux = (bx - ax) / len; const uz = (bz - az) / len;
+    const n = Math.max(4, Math.min(20, Math.round(len / 14)));
+    const scroll = dashed ? (t * 3) % 1 : 0;
+    for (let i = 0; i < n; i++) {
+      const f = (i + scroll) / n;
+      const segLen = dashed ? len / n * 0.55 : len / n;
+      this._spark(ax + (bx - ax) * f, 1.8, az + (bz - az) * f, ux * 4, 0, uz * 4, t, 0.05, width, width, 0, segLen / 4,
+        c[0] * gain, c[1] * gain, c[2] * gain, c[0] * gain, c[1] * gain, c[2] * gain, SPARK_SHAPE.STREAK, SPARK_ADD);
+    }
+  }
+
   _bodyHits(state, gx, gz, cx, cz, R, t0, seed, scale) {
     const list = state && state.entityList;
     if (!list || !list.length) return;
@@ -878,7 +1062,7 @@ export class PowerFx {
       const d = Math.hypot(dx, dz);
       const rad = Number.isFinite(e.radius) ? e.radius : 6;
       if (d - rad > R || d < 1) continue;
-      hits.push({ d, dx: dx / d, dz: dz / d, rad, ex: e.pos.x, ez: e.pos.z });
+      hits.push({ d, dx: dx / d, dz: dz / d, rad, ex: e.pos.x, ez: e.pos.z, id: e.id });
     }
     hits.sort((a, b) => a.d - b.d);
     const n = Math.min(hits.length, Math.round(22 * scale));
@@ -891,6 +1075,7 @@ export class PowerFx {
       const az = at.z;
       const base = Math.atan2(hit.dz, hit.dx);
       const hs = (seed + h * 7919) >>> 0;
+      if (hit.id != null) this.trails.set(hit.id, { from: birth, until: birth + 0.75, r: 4.5, g: 3.2, b: 1.6 });
       this._spark(ax, 2, az, 0, 0, 0, birth, 0.12, 8 + hit.rad * 0.5, 16 + hit.rad, 0, 0, 6, 5, 3.6, 2, 0.9, 0.3, SPARK_SHAPE.GLOW, SPARK_ADD);
       const nS = 9;
       for (let i = 0; i < nS; i++) {
@@ -926,13 +1111,13 @@ export class PowerFx {
     if (Array.isArray(list)) {
       for (let i = 0; i < list.length; i++) {
         const f = list[i];
-        if (!f || (f.kind !== 'repulsor' && f.kind !== 'well') || !f.center || !(f.radius > 0)) continue;
+        if (!f || (f.kind !== 'repulsor' && f.kind !== 'well' && f.kind !== 'seed') || !f.center || !(f.radius > 0)) continue;
         const key = `b:${f.id}`;
         const well = f.kind === 'well';
         seen.add(key);
         const { x, z } = this._toLocal(f.center.x, f.center.z);
-        const power = this.castFields.has(String(f.id));
-        Object.assign(this.s, { x, y: 1.1, z, from: f.radius, to: f.radius, halfWidth: Math.max(1.4, f.radius * 0.008), r: well ? 1.1 : 2.0, g: well ? 1.0 : 1.35, b: well ? 2.4 : 0.75, alpha: power ? 0.75 : 0.28, arcStart: 0, arcSpan: 0, seed: 0.3 });
+        const power = this.castFields.has(String(f.id)) || f.kind === 'seed';
+        Object.assign(this.s, { x, y: 1.1, z, from: f.radius, to: f.radius, halfWidth: Math.max(1.4, f.radius * 0.008), r: f.kind === 'seed' ? 0.9 : well ? 1.1 : 2.0, g: f.kind === 'seed' ? 2.6 : well ? 1.0 : 1.35, b: f.kind === 'seed' ? 3.0 : well ? 2.4 : 0.75, alpha: power ? 0.75 : 0.28, arcStart: 0, arcSpan: 0, seed: 0.3 });
         this.shells.hold(key, this.s);
         const echo = this.echoes.get(String(f.id));
         if (echo) { echo.x = x; echo.z = z; echo.alive = true; }
@@ -976,6 +1161,9 @@ export class PowerFx {
     this._sustain(state);
     this._sustainWells(state);
     this._sustainPin(state);
+    this._runSchedule();
+    this._sustainTells(state);
+    this._bodyTrails(state);
     this._sustainStakes(state);
     this._sustainPlow(state);
     this._energisedTrails(state);

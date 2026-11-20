@@ -154,7 +154,14 @@ test('Bomb is a blast, not a puff: one-frame flash, fireball that cools to soot,
   for (let i = 0; i < fx.sparks.highWater; i++) { if (C1[i * 4 + 3] >= 0.8) soot++; else if (C1[i * 4 + 3] <= 0.2) light++; }
   assert.ok(soot >= 8, 'dark soot that darkens what is behind it (alpha matter)');
   assert.ok(light >= 60, 'additive fire, sparks and embers');
-  assert.ok(fx.sparks.arrays[1][7] <= 0.13, 'the opening flash is a few frames, not a fade');
+  let flash = false; let scorch = false;
+  for (let i = 0; i < fx.sparks.highWater; i++) {
+    const life = fx.sparks.arrays[1][i * 4 + 3];
+    if (life <= 0.1 && fx.sparks.arrays[3][i * 4] >= 12) flash = true;
+    if (life >= 3 && C1[i * 4 + 3] >= 0.99) scorch = true;
+  }
+  assert.ok(flash, 'a white-hot core for the first frames, not a fade-in');
+  assert.ok(scorch, 'a scorch mark that lingers on the deck for seconds');
   assert.equal(h.calls.light.length, 1);
   assert.ok(h.calls.light[0].dist >= 100, 'the flash lights the room, not a 20 WU dot');
   fx.dispose();
@@ -209,5 +216,23 @@ test('Plow: true wedge contours, an arc and a hot rim on every captured rock, a 
   assert.equal(fx.shells.held.size, 0, 'closing the Plow retires contours and rims');
   fx.plowLaunched({ count: 1, ids: [5], dir: { x: 1, z: 0 } }, s);
   assert.equal(h.calls.light.length, 1, 'the launch is a bang with light');
+  fx.dispose();
+});
+
+test('enemy tells by job: a Burst dart draws a dive lane that grows; a Reach sniper a line to its target', () => {
+  const fx = new PowerFx(new THREE.Scene(), host());
+  const me = { id: 1, type: 'ship', alive: true, pos: { x: 0, z: 0 }, radius: 10 };
+  const dart = { id: 2, type: 'ship', alive: true, pos: { x: 200, z: 0 }, radius: 6, rot: Math.PI, data: { enemyTypeId: 'detonator_dart' } };
+  const sniper = { id: 3, type: 'ship', alive: true, pos: { x: 0, z: 300 }, radius: 8, data: { enemyTypeId: 'lancer_sniper' } };
+  const s = state({ entities: new Map([[1, me], [2, dart], [3, sniper]]) });
+  fx.update(0, s);
+  fx.telegraph({ entityId: 2, targetId: 1, durationTicks: 60 }, s);
+  fx.telegraph({ entityId: 3, targetId: 1, durationTicks: 90 }, s);
+  assert.equal(fx.tells.size, 2);
+  const before = fx.stats.particles;
+  s.simTime += 0.5; fx.update(0.5, s);
+  assert.ok(fx.stats.particles - before >= 8, 'both lanes are drawn this frame');
+  for (let i = 0; i < 20; i++) { s.simTime += 0.1; fx.update(0.1, s); }
+  assert.equal(fx.tells.size, 0, 'tells end with their wind-up');
   fx.dispose();
 });

@@ -285,7 +285,7 @@ export function createWeaponImpactVfxMethods({
       let knx = n0 && Number(n0.x) || 0; let knz = n0 && Number(n0.z) || 0;
       if (n0 && !p.normal) { knx = -knx; knz = -knz; }
       if (!knx && !knz) knx = 1;
-      this._ensurePowerFx()?.gunImpact(gunFamilyOf(p && p.weaponId), pos.x, pos.z, knx, knz, hitShield, recipe && recipe.family === 'concussion');
+      this._ensurePowerFx()?.gunImpact(gunFamilyOf(p && p.weaponId), pos.x, pos.z, knx, knz, hitShield, recipe && recipe.family === 'concussion', p && p.targetId);
     }
     const keepLegacyHit = recipe.variant === 'flak'
       || recipe.family === 'missile'

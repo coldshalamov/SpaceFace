@@ -32,10 +32,11 @@ test('INF-043: Pull fronts fall inward from the true reach; its motes carry an i
   try {
     const s = shells(fx);
     assert.ok(s.length >= 1);
+    assert.equal(s[0].from, RADIUS, 'the first ring starts exactly at the field radius');
     for (const shell of s) {
       assert.equal(shell.mode, SHELL_MODE.CONTRACT, 'every Pull front contracts');
       assert.ok(shell.from > shell.to, `inward span (${shell.from} -> ${shell.to})`);
-      assert.equal(shell.from, RADIUS, 'it starts at the field radius, not a capped stand-in');
+      assert.ok(shell.from <= RADIUS && shell.from >= RADIUS * 0.85, 'it starts at the field radius (chasing rings just inside it)');
     }
     let inward = 0;
     for (let i = 0; i < fx.sparks.highWater; i++) if (fx.sparks.arrays[5][i * 4 + 2] > 0) inward++;

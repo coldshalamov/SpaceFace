@@ -2893,7 +2893,12 @@ export const vfx = {
   _subscribe() {
     const bus = this.bus;
     const add = (name, fn, opts) => this._subs.push(bus.on(name, fn, opts));
-    for (const name of ACTION_VFX_EVENTS) add(name, (p) => this._onActionVfx(name, p));
+    for (const name of ACTION_VFX_EVENTS) {
+      // Enemy wind-ups are drawn by the VFX kit as job tells (dive line, charge line, cable, swell).
+      if (name === 'ai:telegraph') continue;
+      add(name, (p) => this._onActionVfx(name, p));
+    }
+    add('ai:telegraph', (p) => this._ensurePowerFx()?.telegraph(p, this.state));
     // FB-073 — undock also plays the docking cradle backwards (brackets release, chevrons run
     // outbound over the same 0.28 s fade). The ACTION_VFX_EVENTS row above owns the vent
     // primitive; this subscription is the cradle hologram's half of the same departure.
@@ -11178,6 +11183,8 @@ export const vfx = {
       // Through the light director like every other event light (kind 'impact', values authored here).
       flashLight: (pos, color, peak, decay, dist, priority) => this._eventLight(pos, 'impact', { color, peak, decay, distance: dist, priority }),
       distortion: (spec) => { const d = this._weaponPresenter && this._weaponPresenter.distortion; if (d) d.spawn(spec); },
+      // World units per screen pixel at a local point (hits keep a minimum on-screen size).
+      wuPerPx: (x, z) => { const w = this._weaponPresenter; return w && typeof w._pixelWorldAt === 'function' ? w._pixelWorldAt(x, 0, z) || 0 : 0; },
     });
     return this._powerFx;
   },
